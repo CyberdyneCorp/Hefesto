@@ -19,6 +19,6 @@ jobs:
         with:
           node-version: 22
       - name: Install OpenSpec CLI
-        run: npm install -g @fission-ai/openspec@latest
+        run: npm install -g @fission-ai/openspec@1.13.2
       - name: Validate specs and changes
         run: openspec validate --all --strict
