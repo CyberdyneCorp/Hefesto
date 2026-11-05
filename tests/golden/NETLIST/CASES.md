@@ -62,3 +62,12 @@ These cases will be captured later by running Magic 8.3.694 (commit fc5daa9e) he
 | NL-RESNET-04 | extresist-network | chain of small segments with minres 1000 vs 0; port-to-port short segment | simplified network | Network simplification |
 | NL-RESNET-05 | extresist-network | branching net with gate loads; mindelay 1, 10 ps | pruned branches and Tdi debug output | Elmore delay and pruning |
 | NL-RESNET-06 | extresist-network | `extresist skip poly` on a metal-poly net | network extent | Net geometry collection |
+| NL-RESNET-07 | extresist-network | metal1 L-shapes `[0,100]×[0,10] ∪ [0,30]×[10,100]` and `∪ [0,10]×[10,100]`; `extresist` with `debug` tile dump | fractured tiles; network | Tile fracturing |
+| NL-RESNET-08 | extresist-network | T-, U- and staircase-shaped wires with a driver and ports at the ends | `.res.ext` network | Tile fracturing; Breakpoints; Tile processing order |
+| NL-RESNET-09 | extresist-network | 7×3 tile with breakpoints at (0,1) and (7,2); `[0,4]×[0,100]` north-south tile | resistor values and node capacitances | Tile resistors |
+| NL-RESNET-10 | extresist-network | diffusion wire next to a transistor on one edge, two edges, and on top+bottom; single-breakpoint device tile | network, node capacitances | Near-device cutting (Q-NETLIST-43) |
+| NL-RESNET-11 | extresist-network | L-wire with origin and port (scenario values); parallel straps; a 3-node loop forming a triangle | `.res.ext` values | Construction-time reductions (Q-NETLIST-44) |
+| NL-RESNET-12 | extresist-network | same net extracted first and second in a session; net with equal-weight paths | node order and path resistances | Path resistance and capacitance distribution (Q-NETLIST-46) |
+| NL-RESNET-13 | extresist-network | fanout net with gate loads, mindelay 1 ps and 100 ps | pruned network | Elmore delay and pruning |
+| NL-RESNET-14 | extresist-network | networks with <10 and ≥10 sub-tolerance resistors, equal values, port-to-port shorts | `.res.ext` after final pass | Network simplification; Final scrunch pass (Q-NETLIST-26, Q-NETLIST-47) |
+| NL-RESNET-15 | extresist-network | high-fanout node (≥10 resistors) inside a resistor triangle, run twice | network stability | Construction-time reductions (Q-NETLIST-45) |

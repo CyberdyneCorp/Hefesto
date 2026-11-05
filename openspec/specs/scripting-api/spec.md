@@ -350,7 +350,7 @@ Compatibility: exact
 The following commands SHALL return these results. "dist" means a value formatted per "Numeric value formatting in results". "List" means a script list.
 
 - `box values` → `{llx lly urx ury}` (dist). `box position` → `{llx lly}`. `box size` → `{w h}`. `box width` / `box height` → dist. `box exists` → boolean `1`/`0`. All other box forms return empty.
-- `units` → see above.
+- `units` → see above. `snap` (no argument) → `internal`, `lambda` or `user`. PDK generators save and restore it with `set s [snap] ; … ; snap $s`.
 - `cellname list exists|self <c>` → `<c>` if loaded, `0` if not. A loaded cell with no name gives `1`. With no `<c>`: the selected child cells' names, or the edit root.
 - `cellname list children|parents|instances <c>` → list of names, empty if none.
 - `cellname list topcells|allcells|modified` → list. `cellname list window` → the window's root cell name.
@@ -413,3 +413,21 @@ Compatibility: informative
 #### Scenario: No implicit exec
 - **WHEN** a script calls the unknown command `ls`
 - **THEN** it SHALL fail as an unknown command and SHALL NOT run `/bin/ls`
+
+### Requirement: Script-defined procedures in the engine namespace
+Scripts SHALL be able to create procedures and variables inside the engine namespace `magic`, either with `proc magic::<name>` or with `namespace eval magic`. Such definitions SHALL be callable as `magic::<name>`. They are not callable as a bare `<name>`, because the global import (see "Global import of magic commands") runs before any startup file and imports only the commands that exist at that moment (verify against Magic). The PDKs always use the qualified names. The editor SHALL NOT define engine commands or framework procedures with the names that the verified PDKs define there: `u2l`, `l2u`, `i2u`, `u2i`, `float2spice`, `spice2float`, `3digitpastdecimal`, `searchcellondisk`, `iscellnameunique`, `query_mylib_ip`, `query_my_projects`, `magceil`, `magfloor`. A PDK redefinition of a framework procedure SHALL replace it for the rest of the session, as a Tcl `proc` does. A later definition replaces an earlier one with no warning (Q-SCRIPT-41).
+
+Writes to undeclared namespace variables, such as `set magic::ctot_val 1`, SHALL create the variable.
+Compatibility: behavioral
+
+(Magic ref: tcltk/tclmagic.c:1603-1673, tcltk/toolkit.tcl:1285-1306) (PDK ref: open_pdks common/pdk.tcl:12-271, IHP ihp-sg13g2-util.tcl:668-835)
+
+#### Scenario: PDK helper callable
+- **GIVEN** the sky130A device script (with `common/pdk.tcl` appended) has been sourced
+- **WHEN** a script evaluates `magic::3digitpastdecimal 0.12345`
+- **THEN** the result SHALL be `0.123`
+
+#### Scenario: Helper name not reserved
+- **GIVEN** a fresh session with no PDK loaded
+- **WHEN** `info commands magic::spice2float` is evaluated
+- **THEN** the result SHALL be empty

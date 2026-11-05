@@ -16,9 +16,13 @@ A device library SHALL be a script namespace `<library>`. For each device type `
 - `<type>_draw {parameters}`: draws the device into the current edit cell. For `nocell` devices it instead places an instance and returns that instance's name.
 
 The full device name is `<library>::<type>`. If a name has no `::`, the library SHALL default to `toolkit`. A device SHALL be recognized as a gencell if and only if `<library>::<type>_convert` exists as a command. Otherwise `magic::gencell` SHALL raise the error `No import routine for <library> library cell <type>!`. See Q-SCRIPT-20.
+
+The verified PDK libraries (`sky130`, `gf180mcu`, `sg13g2`) deviate from the full contract in two ways that the framework SHALL tolerate:
+- Some devices have no `_check` procedure (sg13g2 `rm6`, `rm7`). The check call then fails with `invalid command name "<library>::<type>_check"`. The framework prints that message on stderr and continues with the unchecked parameters, as for any check error (see "Create algorithm").
+- Family helpers such as `<library>::mos_convert`, `cap_convert`, `res_convert`, `diode_convert` and `fixed_convert` have no `_defaults`. By the rule above, `magic::gencell <library>::mos` is therefore recognized as a gencell and then fails when it calls `mos_defaults`. Device names exposed in PDK menus always have the full set of procedures.
 Compatibility: exact
 
-(Magic ref: tcltk/toolkit.tcl:23-55,714-723)
+(Magic ref: tcltk/toolkit.tcl:23-55,714-723,1238-1241) (PDK ref: IHP ihp-sg13g2-res.tcl:190-199,263,393,1322,1539-1541, open_pdks sky130/magic/sky130-fet.tcl:219-259)
 
 #### Scenario: Unknown device
 - **WHEN** a script runs `magic::gencell sky130::nosuchdev x1`
@@ -28,13 +32,20 @@ Compatibility: exact
 - **WHEN** a script runs `magic::gencell mycap`
 - **THEN** the library SHALL be `toolkit` and the device type `mycap`
 
+#### Scenario: Missing check procedure
+- **GIVEN** the sg13g2 library is loaded, and `sg13g2::rm6_check` does not exist
+- **WHEN** `magic::gencell sg13g2::rm6 R1` runs
+- **THEN** `invalid command name "sg13g2::rm6_check"` SHALL be printed on stderr, and the device SHALL still be created from the merged defaults (verify against Magic)
+
 ### Requirement: Parameter dictionary model
 A parameter set SHALL be an ordered key/value dictionary of strings, using Tcl dict semantics. The effective parameters of a device SHALL be `merge(<type>_defaults, given)`, where later values override earlier ones and default keys keep their positions. The arguments to `magic::gencell` after the instance name SHALL be key/value pairs. An odd count is an error (the dict-creation error). Two keys are special:
 - `gencell`: if present after merging, it SHALL change the device type to its value before the type's `_defaults`, `_check` and `_draw` are used. It SHALL be removed from the dictionary before naming and storage.
-- `nocell`: if present, the device is a "fixed" device. Its `_draw` procedure places an instance of a pre-existing cell and returns the instance name. No generated cell or properties are created. The keys `nx`, `ny`, `pitchx` and `pitchy` describe the instance array. When an existing nocell instance is edited, `nx = xhi−xlo+1`, `ny = yhi−ylo+1` and `pitchx`/`pitchy` are filled from the instance's array information.
+- `nocell`: if present, the device is a "fixed" device. Its `_draw` procedure places an instance of a pre-existing cell and returns the instance name. No generated cell or properties are created. When an existing nocell instance is opened for editing, the framework sets `nx = xhi−xlo+1`, `ny = yhi−ylo+1`, and `pitchx`/`pitchy` from `array -list pitch` (dist) on the dialog parameters. The verified PDKs describe the array with the keys `nx`, `ny`, `deltax`, `deltay`, `xstep` and `ystep` instead (pitch = step + delta, see capability `scripting-pdk-integration`). They never read `pitchx`/`pitchy`, and those keys have no dialog widget, so they are dropped on Apply (Q-SCRIPT-38).
+
+Parameter values MAY be lists or non-numeric words. For example, the sky130 MOSFET defaults contain `class mosfet` and `compatible {sky130_fd_pr__nfet_01v8 sky130_fd_pr__nfet_01v8_lvt …}`. Such values are stored and hashed as their string form.
 Compatibility: exact
 
-(Magic ref: tcltk/toolkit.tcl:686,1528-1532,1218-1246,1253-1258,1642-1653)
+(Magic ref: tcltk/toolkit.tcl:686,1528-1532,1218-1246,1253-1258,1642-1653) (PDK ref: open_pdks sky130/magic/sky130-fet.tcl:91-102, open_pdks sky130/magic/sky130-fix.tcl:10-92,254-282)
 
 #### Scenario: Defaults merge
 - **GIVEN** `_defaults` returns `w 1 l 0.15 nf 1`
@@ -51,7 +62,7 @@ For naming, each parameter value v SHALL be normalized as follows:
 1. If v is a strict double string (Tcl `string is double -strict`: decimal, exponent and hexadecimal-integer forms with optional surrounding whitespace), let x = double(v). If |x − round(x)| < 1e−9, the result is `%d` of round(x). Rounding is half away from zero.
 2. Otherwise, format x with `%.3f` and then delete the leftmost match of the regular expression `\.?0+$`.
 3. A non-numeric v is used verbatim.
-See Q-SCRIPT-21 for values that are infinite or NaN.
+See Q-SCRIPT-21 for values that are infinite or NaN. A list value such as `{a b}` is not a strict double, so it is used verbatim as its string form (`a b`).
 Compatibility: exact
 
 (Magic ref: tcltk/toolkit.tcl:1848-1869)
@@ -59,6 +70,10 @@ Compatibility: exact
 #### Scenario: Numeric normalization table
 - **WHEN** values `2`, `2.0`, `2e0`, `0.1500`, `1.23456`, `-0.5`, `0.0004`, `10.5`, `0x10`, ` 3 `, `abc` are normalized
 - **THEN** the results SHALL be `2`, `2`, `2`, `0.15`, `1.235`, `-0.5`, `0`, `10.5`, `16`, `3`, `abc`
+
+#### Scenario: List-valued PDK parameter
+- **WHEN** the value `sky130_fd_pr__nfet_01v8 sky130_fd_pr__nfet_01v8_lvt` (a two-element list) is normalized
+- **THEN** the result SHALL be the same string, unchanged
 
 ### Requirement: Deterministic generated-cell naming
 The generated cell for device type T with final parameters P SHALL be named `T_<suffix>`. The suffix is computed as follows:
@@ -244,9 +259,11 @@ The framework SHALL provide these builders. Each appends a row (label in column 
 - `magic::add_message pname text P ?color blue?`: read-only text. Widget `<pname>_txt`.
 
 `magic::gencell_getparams` SHALL return a dictionary of `pname → magic::<pname>_val` for every `_ent`, `_chk` and `_sel` widget in grid order. `magic::gencell_setparams P` SHALL write P into those widgets. It writes `_txt` only if the key exists, skips the pseudo-widget `gencell_sel`, and does nothing if no dialog exists.
+
+The verified PDKs use `add_entry`, `add_checkbox`, `add_selectlist`, `add_message` and `add_dependency`, but not `add_selectindex`. `add_selectlist gencell "Device type" <compatible list> P <type>` provides the type switch (see "Parameter dictionary model"). PDK `_check` procedures also write the message variables directly, inside `catch`: `magic::ctot_val`, `atot_val`, `ptot_val`, `ltot_val`, `minfo_val`. When no dialog exists these writes create plain namespace variables and have no visible effect. The variables SHALL be ordinary script variables in the `magic` namespace, so that the writes never raise an error.
 Compatibility: behavioral
 
-(Magic ref: tcltk/toolkit.tcl:1285-1306,1414-1517,811-865)
+(Magic ref: tcltk/toolkit.tcl:1285-1306,1414-1517,811-865) (PDK ref: open_pdks sky130/magic/sky130-cap.tcl:117-174, open_pdks sky130/magic/sky130-fet.tcl:345-346,1873-1875, open_pdks sky130/magic/sky130-res.tcl:2378-2380, open_pdks sky130/magic/sky130-dio.tcl:86)
 
 #### Scenario: Select index
 - **GIVEN** `add_selectindex topc "Top contact" {none full half} P` with P lacking `topc`
@@ -285,10 +302,10 @@ The framework SHALL provide these procedures for PDK menus inside a wrapper wind
 - `magic::add_toolkit_command F text command ?library? ?args?`: adds an item that runs `<command> <args>`.
 - `magic::add_toolkit_separator F ?library?`: adds a separator.
 
-F is the layout frame `.layoutN.pane.top` (see `ui-gui-managers`).
+F is the layout frame `.layoutN.pane.top` (see `ui-gui-managers`). The verified PDKs use `add_toolkit_menu`, `add_toolkit_command` and `add_toolkit_separator` only. They do not use `add_toolkit_button`, and they call `magic::gencell <lib>::<type>` through `add_toolkit_command` instead. The library argument is `pdk1` or `pdk2`, not the PDK namespace, so the menu buttons are `F.titlebar.mbuttons.pdk1` and `F.titlebar.mbuttons.pdk2`.
 Compatibility: behavioral
 
-(Magic ref: tcltk/toolkit.tcl:61-105)
+(Magic ref: tcltk/toolkit.tcl:61-105) (PDK ref: open_pdks sky130/magic/sky130.tcl:83-243, open_pdks gf180mcu/magic/gf180mcu.tcl:86-243, IHP ihp-sg13g2.tcl:162-282)
 
 #### Scenario: PDK device menu entry
 - **WHEN** `magic::add_toolkit_menu .layout1.pane.top "Devices 1" pdk1` and `magic::add_toolkit_command .layout1.pane.top "nmos (MOSFET)" "magic::gencell sky130::sky130_fd_pr__nfet_01v8" pdk1` run
@@ -339,10 +356,14 @@ On a platform where PDK generator scripts cannot run (see Q-SCRIPT-1), Hefesto S
 - preserve those properties byte-for-byte;
 - compute the cell names of this spec exactly.
 
-If Hefesto provides native re-implementations of a PDK's generators, then for every parameter set the generated cell SHALL be geometrically identical (same paint, labels, ports and properties) to the PDK script's output, and SHALL have the identical cell name.
+If Hefesto provides native re-implementations of a PDK's generators, then for every parameter set the generated cell SHALL be geometrically identical (same paint, labels, ports and properties) to the PDK script's output, and SHALL have the identical cell name. Identity includes:
+- the corrections made by the device's `_check`, which run before naming;
+- the numeric results of the PDK helper procedures, including their defects (`magic::spice2float`, `u2i`, `i2u`, `3digitpastdecimal`; see `scripting-pdk-integration` and Q-SCRIPT-40);
+- for fixed (`nocell`) devices, the placed library cell and its array pitch;
+- for sg13g2 fixed devices, the on-demand library cell built by the PDK's cell script, with its `gencell`/`library`/`parameters` properties.
 Compatibility: behavioral
 
-(Magic ref: tcltk/toolkit.tcl:1-55)
+(Magic ref: tcltk/toolkit.tcl:1-55) (PDK ref: open_pdks common/pdk.tcl:12-106, IHP ihp-sg13g2-fix.tcl:238-260)
 
 #### Scenario: Round trip without scripts
 - **GIVEN** a layout containing `nfet_XCJNSH` created on a desktop with the PDK script

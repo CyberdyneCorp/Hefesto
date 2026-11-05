@@ -49,6 +49,17 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-OP-026 | mask-output-operators | cell property MASKHINTS_HVI; `mask-hints HVI` | geometry | mask-hints |
 | MASK-OP-027 | mask-output-operators | hierarchical write with squares, squares+grow, bbox layers in overlapping subcells | parent cell geometry | Hierarchical-mode truncation |
 | MASK-OP-028 | mask-output-operators | non-Manhattan layout; `cif unfracture yes/no`; gds write | polygon partition | Non-Manhattan merge option |
+| MASK-OP-029 | mask-output-operators | catecorner squares `[0,10]²`,`[12,22]²`; `bridge 5 4` with gridLimit 0 and 5 | geometry | bridge (expansion, grid snap) |
+| MASK-OP-030 | mask-output-operators | overlapping corners `[0,10]² ∪ [9,20]²`; `bridge 5 4` | geometry | bridge (pass B pinch) |
+| MASK-OP-031 | mask-output-operators | SE-catecorner pair where the bottom-left and bottom-right neighbours differ; `bridge 5 4` and `bridge-lim 5 4 L` | geometry | bridge, bridge-lim (Q-MASK-3) |
+| MASK-OP-032 | mask-output-operators | `bridge 10 4` with x-gap 8, y-gap 2 (d > w); run on x86-64 and arm64 | geometry per platform | bridge (Q-MASK-227) |
+| MASK-OP-033 | mask-output-operators | catecorner squares; `bridge-lim 5 4 L` with L empty, L = `[13,30]×[0,8]`, L = that plus `[6,14]×[15,30]` | geometry | bridge-lim (candidate order, erase, Q-MASK-229) |
+| MASK-OP-034 | mask-output-operators | 2-wide wire, 2-high wire with solid neighbours above/below; `bridge-lim 4 6 L` with and without a limiting tile beside it; L as database type at scalefactor 10 | geometry | bridge-lim pass 0 (Q-MASK-5) |
+| MASK-OP-035 | mask-output-operators | bridge-lim where a bridge creates new corners (staircase of three squares) | geometry | bridge-lim (Q-MASK-228) |
+| MASK-OP-036 | mask-output-operators | scalefactor 10; mask layer trigger `[-17,23]×[0,10]`; `bloat-all M ndiff` and `bloat-all M ndiff 5` | geometry | bloat-all (case A, Q-MASK-232) |
+| MASK-OP-037 | mask-output-operators | poly contact trigger with poly bloat type; two layers both using `bloat-all pc poly` | geometry of both layers | bloat-all (Q-MASK-230) |
+| MASK-OP-038 | mask-output-operators | two triggers over the same two disjoint ndiff regions, d = 0, triggers in both orders | geometry | bloat-all (Q-MASK-231) |
+| MASK-OP-039 | mask-output-operators | non-Manhattan ndiff reached by bloat-all, with and without clip | geometry | bloat-all (split tiles) |
 | MASK-HG-001 | mask-hierarchical-generation | Leaf cell, S=10, `layer CMF; or m1`, m1 (0,0)-(10,4); `gds write` | Boundaries in the leaf structure | Per-cell output composition |
 | MASK-HG-002 | mask-hierarchical-generation | Parent with no paint and one SREF to the leaf | Parent structure has no boundaries | Per-cell output composition |
 | MASK-HG-003 | mask-hierarchical-generation | Cell bbox (0,0)-(10,10) with `FIXED_BBOX -20 -20 30 30` and layer `bbox`; GDS and CIF write | Generated bbox-layer geometry in GDS vs CIF | Own-paint generation area |

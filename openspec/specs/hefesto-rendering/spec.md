@@ -33,7 +33,7 @@ The 2D layout view SHALL draw every layer with the fill, stipple, outline, color
 - feedback
 - DRC error styles
 
-Stipple orientation follows decision X-5.
+The default style variant SHALL be Magic's OpenGL dstyle/cmap variant, which uses true color with translucency. Other variants SHALL be selectable in settings. Stipple bit orientation SHALL follow Magic's OpenGL/Cairo driver.
 
 Compatibility: behavioral
 
