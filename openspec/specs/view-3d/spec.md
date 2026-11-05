@@ -4,7 +4,7 @@
 
 Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement that gives mask layers a display style, height and thickness, the use of extract-section layer `height` values, the viewing transform, and the rendering model. In Magic this client exists only when built with 3D support and only on the OpenGL display under Tk/X11; Hefesto specifies the behaviour independently of the graphics API.
 
-Related capabilities (referenced, not duplicated): `tech-file-format`, `mask-output-styles` and `mask-output-operators` (mask layers generated for the CIF view), `extract-tech-section` (the `height` keyword, `planeorder`, units conversion), `display-style-files` (display style table, style names and numbers), `window-system` (window creation with `specialopen`, `closewindow`, `windownames`, key macros).
+Related capabilities (referenced, not duplicated): `tech-file-format`, `mask-output-styles` and `mask-output-operators` (mask layers generated for the CIF view), `extract-tech-section` (the `height` keyword, `planeorder`, units conversion), `display-style-files` (display style table, style names and numbers), `ui-windows-and-views` (window creation with `specialopen`, `closewindow`, `windownames`, key macros).
 
 ## Requirements
 
