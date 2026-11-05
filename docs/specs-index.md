@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 129 capabilities, 1570 requirements, 2379 scenarios, 738 open questions.
+**Totals:** 137 capabilities, 1599 requirements, 2411 scenarios, 744 open questions.
 
 ## Hefesto product (native)
 
@@ -179,6 +179,21 @@ Open questions: [19](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 | [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 15 | 26 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
 | [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 22 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
 | [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 12 | 14 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
+
+## AI layout agent (AGENT)
+
+Open questions: [6](decisions/open-questions/AGENT.md) · Benchmark cases: [CASES.md](../tests/golden/AGENT/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`agent-architecture`](../openspec/specs/agent-architecture/spec.md) | 5 | 5 | Defines how Hefesto's AI layout agent is structured. The agent is a planner driven by an AI model. It can act on a layout only by calling tools, and every tool maps to the command … |
+| [`agent-device-and-cell-generation`](../openspec/specs/agent-device-and-cell-generation/spec.md) | 3 | 4 | Lets the agent build devices and cells from a description or from a SPICE subcircuit. Examples: "nfet W=2 µm L=0.15 µm with 4 fingers", "a 1 pF MIM capacitor", "an inverter cell ma… |
+| [`agent-drc-lvs-fix-loop`](../openspec/specs/agent-drc-lvs-fix-loop/spec.md) | 3 | 4 | Lets the agent repair layout by iterating. It reads DRC errors and LVS mismatches, proposes edits, re-runs the checks, and repeats until the checks are clean or a limit is reached.… |
+| [`agent-evaluation`](../openspec/specs/agent-evaluation/spec.md) | 3 | 3 | Defines how agent quality is measured and kept from regressing. A benchmark suite of layout tasks is scored by Hefesto's own verification gates. The cases are listed in `tests/gold… |
+| [`agent-model-providers`](../openspec/specs/agent-model-providers/spec.md) | 4 | 4 | Defines the pluggable interface through which the layout agent reaches an AI model, and the confidentiality rules for layout data. Layouts and PDK data are often confidential, and … |
+| [`agent-natural-language-commands`](../openspec/specs/agent-natural-language-commands/spec.md) | 2 | 3 | Lets users describe layout operations in natural language, for example "make a 2 µm wide metal2 strap from pin A to pin B". The agent translates the request into a reviewable seque… |
+| [`agent-safety-and-approval`](../openspec/specs/agent-safety-and-approval/spec.md) | 5 | 5 | Defines how the layout agent operates under human approval. The agent proposes changes, the user reviews them as a visual and structural diff, and only an explicit accept applies t… |
+| [`agent-schematic-driven-layout`](../openspec/specs/agent-schematic-driven-layout/spec.md) | 4 | 4 | Lets the agent turn a schematic netlist into a verified layout. It generates the devices (capability `agent-device-and-cell-generation`), places them, routes the nets, and closes t… |
 
 ## Editing commands (CMDEDIT)
 
