@@ -1,0 +1,190 @@
+# Hefesto Specification Index
+
+Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`.
+Each area also has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
+
+**Totals:** 93 capabilities, 1206 requirements, 1851 scenarios.
+
+## Technology files (TECH)
+
+Open questions: [32](decisions/open-questions/TECH.md) · Golden cases: [CASES.md](../tests/golden/TECH/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`tech-command`](../openspec/specs/tech-command/spec.md) | 9 | 14 | Defines the `tech` command. It queries the current technology (name, file name, version, internal scale, planes, layers and DRC values), loads a new technology, and changes which l… |
+| [`tech-compose-and-connect`](../openspec/specs/tech-compose-and-connect/spec.md) | 17 | 30 | Defines the `compose` and `connect` sections of a technology file and the tables they produce: - the per-plane **paint** and **erase** result tables, which define what any type bec… |
+| [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
+| [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 29 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
+| [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
+| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 18 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
+| [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |
+
+## Cell files (.mag) (CELL)
+
+Open questions: [41](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 49 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
+| [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 14 | 18 | Defines the safety rules around reading and writing cell files: |
+| [`cell-library-resolution`](../openspec/specs/cell-library-resolution/spec.md) | 15 | 26 | Defines how Hefesto maps a cell name, or an instance's recorded path, to a cell file. It covers: |
+| [`cell-timestamps`](../openspec/specs/cell-timestamps/spec.md) | 8 | 11 | Defines the timestamp carried by every cell definition and by every instance record in a parent. The hierarchical design-rule checker uses these timestamps to detect children that … |
+
+## Layout data model (MODEL)
+
+Open questions: [29](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`layout-connectivity`](../openspec/specs/layout-connectivity/spec.md) | 5 | 7 | Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, a… |
+| [`layout-geometry-model`](../openspec/specs/layout-geometry-model/spec.md) | 9 | 21 | Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their pre… |
+| [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 20 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
+| [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
+| [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 19 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
+| [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 9 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
+| [`layout-undo`](../openspec/specs/layout-undo/spec.md) | 5 | 8 | Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo … |
+
+## Design rule checking (DRC)
+
+Open questions: [23](decisions/open-questions/DRC.md) · Golden cases: [CASES.md](../tests/golden/DRC/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
+| [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 19 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
+| [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 14 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
+| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 29 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
+| [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 20 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
+
+## Mask generation, GDS, CIF (MASK)
+
+Open questions: [133](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`cif-format-io`](../openspec/specs/cif-format-io/spec.md) | 30 | 40 | Defines the Caltech Intermediate Form (CIF) as read and written by Hefesto in a Magic-compatible way: the lexical rules and grammar accepted on input, how symbols, calls, transform… |
+| [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 83 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
+| [`gds-write`](../openspec/specs/gds-write/spec.md) | 28 | 64 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
+| [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 43 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
+| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 41 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
+| [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 32 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
+| [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 33 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |
+
+## LEF / DEF (LEFDEF)
+
+Open questions: [102](decisions/open-questions/LEFDEF.md) · Golden cases: [CASES.md](../tests/golden/LEFDEF/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`def-read`](../openspec/specs/def-read/spec.md) | 30 | 51 | Defines how Hefesto reads a DEF (Design Exchange Format) file into a layout cell, compatibly with Magic's `def read` command. It covers the command and its options, the accepted DE… |
+| [`def-write`](../openspec/specs/def-write/spec.md) | 25 | 47 | Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default ru… |
+| [`lef-read`](../openspec/specs/lef-read/spec.md) | 23 | 44 | Defines how a LEF file is read into the layout database by `lef read`: the shared LEF/DEF tokenizer and error reporting, unit conversion, LEF layer name resolution, the technology … |
+| [`lef-tech-section`](../openspec/specs/lef-tech-section/spec.md) | 10 | 19 | Defines the `lef` section of the technology file: the table that maps LEF/DEF layer, cut and via names to magic tile types, the per-entry LEF class, the obstruction types, and the … |
+| [`lef-write`](../openspec/specs/lef-write/spec.md) | 40 | 64 | Defines how Hefesto writes LEF (Library Exchange Format) abstract views of layout cells so that the result is byte-compatible with Magic VLSI 8.3.694. It covers the `lef write`, `l… |
+
+## Circuit extraction (EXTRACT)
+
+Open questions: [26](decisions/open-questions/EXTRACT.md) · Golden cases: [CASES.md](../tests/golden/EXTRACT/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`extract-capacitance`](../openspec/specs/extract-capacitance/spec.md) | 13 | 16 | Defines the exact numeric models the extractor uses to compute parasitic capacitance within one flattened area of layout: node capacitance to substrate (area, perimeter and corner … |
+| [`extract-commands`](../openspec/specs/extract-commands/spec.md) | 12 | 13 | Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the tec… |
+| [`extract-devices`](../openspec/specs/extract-devices/spec.md) | 19 | 21 | Defines how the extractor recognizes devices in the paint of one cell, chooses the device record (model) among the candidates declared in the tech file, assigns gate, terminal and … |
+| [`extract-file-format`](../openspec/specs/extract-file-format/spec.md) | 7 | 7 | Defines the `.ext` file written by the extractor for each cell: the complete grammar of every record the extractor writes, the exact number formatting, the order of records, and an… |
+| [`extract-hierarchy`](../openspec/specs/extract-hierarchy/spec.md) | 12 | 12 | Defines hierarchical circuit extraction: the order in which cells are extracted, how interactions between a cell's own paint and its subcells (and between subcells, and between ele… |
+| [`extract-nodes-and-labels`](../openspec/specs/extract-nodes-and-labels/spec.md) | 10 | 16 | Defines how the flat (single-cell) extractor partitions the paint of one cell into electrical nodes, how each node's reference point and generated name are computed, how labels are… |
+| [`extract-resistance-lumped`](../openspec/specs/extract-resistance-lumped/spec.md) | 5 | 6 | Defines the lumped resistance estimate written for every node of a `.ext` file, the per-resistance-class area and perimeter values written with every node and merge record, and the… |
+| [`extract-substrate`](../openspec/specs/extract-substrate/spec.md) | 8 | 9 | Defines how the extractor represents the substrate: the global substrate node of each cell, isolated substrate regions (e.g., p-wells inside deep n-wells), substrate shielding type… |
+| [`extract-tech-section`](../openspec/specs/extract-tech-section/spec.md) | 22 | 29 | Defines the `extract` section of the technology file: extraction styles and variants, units and scale factors, the connectivity used for nodes, sheet resistance classes, every para… |
+
+## Netlists and extresist (NETLIST)
+
+Open questions: [42](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 13 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
+| [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 12 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
+| [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 21 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
+| [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 8 | This capability defines the `extresist-command` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arit… |
+| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 7 | 8 | This capability defines how `extresist-command` builds a resistor network for one net from layout geometry, and how it reduces that network: path resistance, capacitance distributi… |
+| [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 6 | This capability defines the outputs of `extresist-command`: - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numeric formatting - how netlisters consum… |
+| [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 3 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 6 | 9 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 15 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
+| [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 8 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
+| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 17 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+
+## Editing commands (CMDEDIT)
+
+Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASES.md](../tests/golden/CMDEDIT/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`cmd-box`](../openspec/specs/cmd-box/spec.md) | 15 | 26 | Defines the **box**: the single rectangular editing cursor that marks the area for paint, erase, fill, selection, cell placement and most other editing commands. This capability co… |
+| [`cmd-coordinates-and-units`](../openspec/specs/cmd-coordinates-and-units/spec.md) | 14 | 37 | Defines how editing commands parse distances and coordinates (numbers, unit suffixes, simple expressions), how keyword arguments and direction names are matched, how the `units`, `… |
+| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 24 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
+| [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 13 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
+| [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 10 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, `see`, `crosshair`, `findbox`, `feedback`, the command surface of `… |
+| [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 26 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
+| [`cmd-selection`](../openspec/specs/cmd-selection/spec.md) | 21 | 30 | Defines the selection model and the commands that create, inspect and operate on it: `select` (every option and qualifier, point-selection cycling, chunk/region/net growth, `short`… |
+
+## UI, display, startup (UI)
+
+Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md](../tests/golden/UI/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`app-startup`](../openspec/specs/app-startup/spec.md) | 13 | 19 | Defines how the application starts and ends: - command-line options and file arguments - installation-root and search-path resolution - the order of startup files - default technol… |
+| [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 22 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
+| [`ui-color-window`](../openspec/specs/ui-color-window/spec.md) | 6 | 7 | Defines the `color` window client. It edits one entry of the session color map interactively, using RGB and HSV bars, and loads or saves color-map files. The file format is in `dis… |
+| [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 29 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
+| [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 8 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |
+| [`ui-tools-and-input`](../openspec/specs/ui-tools-and-input/spec.md) | 8 | 13 | Defines pointer tools and the default input bindings: - the tool registry and the `tool` command - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl … |
+| [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 23 | 30 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |
+| [`ui-wizard-and-debug`](../openspec/specs/ui-wizard-and-debug/spec.md) | 4 | 4 | Documents Magic's wizard commands. These are the commands whose names begin with `*`. They exist for developers: debugging, statistics and internal dumps. They are listed here for … |
+
+## Scripting, PCells, Tcl tools (SCRIPT)
+
+Open questions: [37](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES.md](../tests/golden/SCRIPT/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 29 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
+| [`readspice`](../openspec/specs/readspice/spec.md) | 5 | 9 | Specifies the `readspice <netlist>` command. It is defined by `readspice.tcl` and loaded at startup when present. The command annotates already-loaded layout cells with the port or… |
+| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 19 | 38 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
+| [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 9 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
+| [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 10 | 12 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
+| [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 13 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
+| [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 18 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
+
+## Antenna, mask hints, fonts, 3D, plot (MISC)
+
+Open questions: [33](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 19 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
+| [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 14 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
+| [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 13 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
+| [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
+| [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 13 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
+
+## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
+
+Open questions: [28](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`irsim-interface`](../openspec/specs/irsim-interface/spec.md) | 9 | 11 | Defines how Hefesto names electrical nodes under selected paint (`getnode`) consistently with Magic's extractor naming, and the interface Magic offers to the switch-level simulator… |
+| [`netlist-window`](../openspec/specs/netlist-window/spec.md) | 10 | 11 | Defines Magic's netlist facility used by the routers and by interactive netlist editing: the `.net` file format (exact grammar, reading and writing), the in-memory netlist model (n… |
+| [`openaccess`](../openspec/specs/openaccess/spec.md) | 2 | 2 | Records the existence of Magic's experimental OpenAccess (OA) integration, compiled only with both the Tcl wrapper and the `OPENACCESS` build option. It lets cell definitions flagg… |
+| [`plow`](../openspec/specs/plow/spec.md) | 11 | 12 | Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, the edge-queue algor… |
+| [`router-channel`](../openspec/specs/router-channel/spec.md) | 18 | 23 | Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, … |
+| [`router-gate-array`](../openspec/specs/router-gate-array/spec.md) | 11 | 13 | Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initializa… |
+| [`router-maze`](../openspec/specs/router-maze/spec.md) | 12 | 13 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
+| [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 10 | 12 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
+| [`router-net2ir`](../openspec/specs/router-net2ir/spec.md) | 3 | 4 | Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) pl… |
+| [`scheme-interpreter`](../openspec/specs/scheme-interpreter/spec.md) | 3 | 3 | Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: cu… |
+| [`wiring-tool`](../openspec/specs/wiring-tool/spec.md) | 8 | 9 | Defines Magic's wiring interface: the `wiring` technology section (contact definitions used for layer switches), the `wire` command and all its subcommands (type selection, legs, c… |

@@ -1,0 +1,43 @@
+schema: spec-driven
+
+context: |
+  Hefesto is a VLSI layout editor written in C++20 targeting Linux, macOS and
+  iPadOS. It is data-compatible with Magic VLSI (reference: RTimothyEdwards/magic
+  @ fc5daa9e, v8.3.694): it reads/writes Magic technology files and .mag cells and
+  reproduces Magic's DRC, mask generation, extraction and netlist outputs, so that
+  existing open PDKs (sky130, gf180mcu, IHP sg13g2) work unchanged.
+  Specs follow docs/spec-conventions.md: every requirement declares a
+  compatibility class (exact | behavioral | informative), is implementation
+  independent, and ends with a (Magic ref: file:line) trace. Suspected Magic bugs
+  and platform decisions are logged in docs/decisions/open-questions/.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
