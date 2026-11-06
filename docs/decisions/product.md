@@ -78,3 +78,19 @@ These remain open and are tracked in `docs/decisions/cross-cutting.md`:
   - The license must be compatible with App Store distribution.
   - It must be compatible with the bundled permissive components: Magic, Tcl, ngspice, zlib.
   - Hefesto must contain no GPL code.
+
+## P-10: AI layout agent
+
+- Status: decided (2026-11-05)
+- Decision: Hefesto SHALL include an AI layout agent with four abilities:
+  - natural-language commands
+  - device and cell generation
+  - a DRC/LVS fix loop
+  - layout driven from a schematic
+- The agent acts only through the command API.
+- AI models are reached through a pluggable provider interface:
+  - cloud API
+  - self-hosted OpenAI-compatible gateway
+  - offline / on-device
+- Provider choice is per project. The default is "disabled": no layout data leaves the device until the user enables a provider.
+- Autonomy: the agent proposes, and a human approves. The agent works in a scratch copy, verifies its result with DRC and LVS, and presents a diff. Nothing changes the user's cells until the user accepts. Accepting is one undo step.
