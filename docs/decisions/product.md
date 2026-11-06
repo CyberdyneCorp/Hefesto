@@ -164,3 +164,71 @@ These remain open and are tracked in `docs/decisions/cross-cutting.md`:
 
 - Status: decided (2026-11-06)
 - Decision: On the desktop, Hefesto SHALL integrate with the open digital flow (OpenROAD/LibreLane). It SHALL import hardened blocks and MAY run the flow as an external process.
+
+## P-18: KLayout-based sign-off runs externally on desktop
+
+- Status: decided (2026-11-06). Resolves Q-TAPEOUT-1.
+- Decision:
+  - **Desktop:** where a PDK's sign-off depends on KLayout rule decks (gf180mcu and IHP DRC, fill and density; the KLayout checks in sky130 prechecks), Hefesto SHALL run the user's installed `klayout` as an external process and import its results. KLayout is GPL and SHALL NOT be linked or bundled.
+  - **iPadOS:** designs for such PDKs can be built, checked with Magic-compatible DRC, and exported. They SHALL NOT be marked "sign-off ready" until the KLayout checks have passed on a desktop.
+  - **sky130:** sign-off based on Magic DRC works on every platform. Its KLayout prechecks follow the desktop rule above.
+
+## P-22: Product operations
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL provide:
+  - opt-in crash reporting and usage telemetry, with no layout data collected
+  - desktop update channels: stable and beta, with signed updates
+  - published minimum system requirements
+- Capability: `hefesto-product-operations`.
+
+## P-23: Visual design system
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto's look is defined by a design system:
+  - design tokens: color, typography, spacing, radius, elevation, motion
+  - an icon set and component patterns
+  - light and dark themes
+- Desktop: implemented through Raven's theme system. iPadOS: implemented in SwiftUI.
+- Layout layer colors come from the PDK display styles. They are not part of the UI theme.
+- Capability: `hefesto-design-system`. Screen mockups are kept as design artifacts and linked from it.
+
+## P-19: Advanced analog simulation
+
+- Status: decided (2026-11-06)
+- Decision: On top of the embedded ngspice engine (P-7), Hefesto SHALL provide:
+  - parameter, temperature and supply sweeps, nested sweeps and design-of-experiments sampling
+  - corner analysis built from the corner definitions in the PDK store, with a corner matrix view, "run all" and pass/fail per corner
+  - Monte Carlo analysis of process variation and device mismatch through the PDKs' own statistical models, with seeds that make every sample reproducible on every platform
+  - measurements, specifications with limits, and statistics: histograms, mean, sigma, yield, Cpk, correlation, and result export
+  - optional hooks that let the AI agent (P-10) run optimisation loops through the same evaluation path
+- Platforms: all of them, including iPadOS within the iPad scope (P-13). On Linux and macOS, run sets are spread over worker processes. On iPadOS they run one simulation at a time, in process, and give the same results.
+- Capabilities: `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`, `simulation-optimization-hooks`. Open questions: `docs/decisions/open-questions/SIMADV.md`.
+
+## P-20: Plugin and extension API
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL be extensible by third-party plugins. A plugin can:
+  - register commands in the single command API (X-3), so every plugin action is scriptable, logged and replayable
+  - add panels and views, described declaratively and rendered by each shell (no Raven or SwiftUI types cross the boundary)
+  - add file importers and exporters, DRC and analysis checks, 2D/3D overlays, and PDK adapters
+- Binary interface: a **stable, versioned C ABI** (`hefesto/plugin.h`) is the only contract between host and native plugins. A **header-only C++20 wrapper** (`hefesto/plugin.hpp`) gives RAII, spans and error types on top of it. C++ types, exceptions and allocators never cross the boundary. This keeps plugins working across compilers, standard libraries and Hefesto releases. Versioning: `major.minor`; minors only append; a major is supported for at least two host major releases or 24 months after its successor ships, whichever is longer.
+- Plugin kinds:
+  - **native** (shared library): Linux and macOS only. Runs in process, so its permissions are declarative and enforced at the API boundary only. The consent UI says so.
+  - **script** (sandboxed Tcl, the X-3 sandbox): every platform, with capability-based permissions enforced by the sandbox.
+  - **built-in**: native plugins compiled into the app at build time, registered statically. This is the only native form on iPadOS.
+- iPadOS: no native code is loaded at runtime (App Store guideline 2.5.2). User-installed script plugins are allowed, subject to the same App Review risk as PDK scripts (X-3). If App Review rejects them, iPadOS falls back to built-in and curated, bundled script plugins only.
+- Distribution: `.hfplugin` packages with a JSON manifest, Ed25519 signatures, SemVer dependencies and an optional signed catalog. Updates are never applied without consent, and any permission escalation needs fresh consent.
+- SDK: headers, CMake package, packaging and signing tool, sample plugins, a headless test and conformance harness, and generated documentation. SDK headers are Apache-2.0.
+- Capabilities: `plugin-api`, `plugin-packaging-and-distribution`, `plugin-security-and-platforms`, `plugin-sdk`. Open questions: `docs/decisions/open-questions/PLUGIN.md`.
+
+## P-21: Electromigration and IR-drop analysis
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL provide layout reliability analysis on every platform, including iPadOS:
+  - **EM rules as PDK data:** current-density limits per layer, via and contact, by width range, temperature, current metric (average, RMS, peak) and direction, stored as a rule file in the PDK store with provenance. Hefesto bundles what the PDKs publish: IHP sg13g2 (process spec §2.15) and gf180mcu (design manual §14.2). sky130 publishes no EM limits, so its rule file is empty until the user supplies one.
+  - **IR drop:** static and dynamic IR drop on power and ground nets. The grid comes from the `extresist` resistance network with reduction disabled. Load currents come from embedded-simulation results, or from a co-simulation of the extracted grid. Hefesto solves the grid with its own sparse linear solver.
+  - **EM check:** per-segment and per-via current (average, absolute average, RMS, peak) against the rule limits, with a deterministic report, violations as diagnostics, and an optional sign-off checklist item.
+  - **Visualization:** 2D and 3D heat maps through the `hefesto-3d-visualization` overlays, a violation browser, and cross-probing to layout, waveforms and schematics.
+- Hefesto makes no lifetime prediction beyond comparing currents to the PDK limits. Thermal (self-heating) analysis is out of scope.
+- Capabilities: `reliability-em-rules`, `reliability-ir-drop`, `reliability-em-check`, `reliability-visualization`. Open questions: `docs/decisions/open-questions/RELIABILITY.md`.

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 154 capabilities, 1823 requirements, 2708 scenarios, 800 open questions.
+**Totals:** 169 capabilities, 1966 requirements, 2899 scenarios, 832 open questions.
 
 ## Hefesto product (native)
 
@@ -16,6 +16,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 7 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
+| [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 7 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
 | [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 3 | 3 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
@@ -28,6 +29,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
 | [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
+| [`hefesto-product-operations`](../openspec/specs/hefesto-product-operations/spec.md) | 5 | 5 | Defines how Hefesto runs as a shipped product (decision P-22): - opt-in crash reporting and usage telemetry that never collect design data - signed desktop updates with stable and … |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 4 | 5 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 4 | 4 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
@@ -179,8 +181,13 @@ Open questions: [19](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 |---|---|---|---|
 | [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 11 | 16 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
 | [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 7 | 11 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
+| [`simulation-corners`](../openspec/specs/simulation-corners/spec.md) | 8 | 10 | Defines corner analysis in Hefesto (decision P-19): - the corner definitions and corner sets held by each PDK's simulation model descriptor in the PDK store - the bundled corner ta… |
 | [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 15 | 26 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
+| [`simulation-measurements-and-statistics`](../openspec/specs/simulation-measurements-and-statistics/spec.md) | 11 | 17 | Defines how Hefesto turns simulation results into numbers and verdicts, and how it summarises many runs (decision P-19): - named measurements on stored vectors, extending the wavef… |
+| [`simulation-monte-carlo`](../openspec/specs/simulation-monte-carlo/spec.md) | 10 | 17 | Defines Monte Carlo analysis in Hefesto (decision P-19): - the Monte Carlo modes (process, mismatch, both) and how each maps onto a PDK's own statistical model sections and switche… |
 | [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 24 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-optimization-hooks`](../openspec/specs/simulation-optimization-hooks/spec.md) | 7 | 8 | Defines an optional evaluation interface through which optimisation loops drive simulation (decision P-19). The main client is the AI agent (decision P-10): its sizing and post-lay… |
+| [`simulation-sweeps`](../openspec/specs/simulation-sweeps/spec.md) | 9 | 17 | Defines how Hefesto runs one testbench many times with different values (decision P-19): - run sets, the batch object shared by sweeps, corners (capability `simulation-corners`) an… |
 | [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 12 | 14 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
 
 ## AI layout agent (AGENT)
@@ -232,6 +239,28 @@ Open questions: [10](decisions/open-questions/DIGITAL.md) · Golden cases: [CASE
 | [`digital-flow-mixed-signal`](../openspec/specs/digital-flow-mixed-signal/spec.md) | 10 | 13 | Defines how hardened digital blocks (capability `digital-flow-block-import`) are used inside analog and top-level layouts in Hefesto: placing block instances, connecting their supp… |
 | [`digital-flow-results`](../openspec/specs/digital-flow-results/spec.md) | 13 | 16 | Defines how Hefesto presents the results of a LibreLane run: the run summary, the metrics, the logs, the sign-off reports (DRC, LVS, antenna) mapped onto layout locations, the fina… |
 | [`digital-flow-run`](../openspec/specs/digital-flow-run/spec.md) | 16 | 21 | Defines how the Hefesto desktop app configures and launches the open digital flow (LibreLane, built on Yosys, OpenROAD, Magic, KLayout and Netgen) as an external process. It covers… |
+
+## Plugin API (PLUGIN)
+
+Open questions: [8](decisions/open-questions/PLUGIN.md) · Golden cases: [CASES.md](../tests/golden/PLUGIN/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`plugin-api`](../openspec/specs/plugin-api/spec.md) | 17 | 24 | Defines what Hefesto plugins can do and the binary contract they use (decision P-20). A plugin extends Hefesto through a fixed set of extension points: commands in the single comma… |
+| [`plugin-packaging-and-distribution`](../openspec/specs/plugin-packaging-and-distribution/spec.md) | 12 | 15 | Defines how Hefesto plugins are packaged, described, signed, found, installed, updated and removed (decision P-20). It covers: - the `.hfplugin` package and its `plugin.json` manif… |
+| [`plugin-sdk`](../openspec/specs/plugin-sdk/spec.md) | 8 | 8 | Defines the Hefesto plugin SDK (decision P-20). The SDK contains: - the C ABI header and the C++20 wrapper - the build integration and the packaging and signing tool - the required… |
+| [`plugin-security-and-platforms`](../openspec/specs/plugin-security-and-platforms/spec.md) | 10 | 11 | Defines the security model for Hefesto plugins and their availability on each platform (decision P-20). It covers: - capability-based permissions - how permissions are enforced for… |
+
+## Reliability (EM / IR drop) (RELIABILITY)
+
+Open questions: [12](decisions/open-questions/RELIABILITY.md) · Golden cases: [CASES.md](../tests/golden/RELIABILITY/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`reliability-em-check`](../openspec/specs/reliability-em-check/spec.md) | 10 | 13 | Defines the electromigration (EM) check (decision P-21). For every wire segment, via and contact of the selected nets, Hefesto computes current metrics (average, absolute average, … |
+| [`reliability-em-rules`](../openspec/specs/reliability-em-rules/spec.md) | 9 | 15 | Defines how electromigration (EM) current limits are represented as PDK data in the PDK store, how a limit is looked up for one wire segment, via or contact, and which limits Hefes… |
+| [`reliability-ir-drop`](../openspec/specs/reliability-ir-drop/spec.md) | 12 | 14 | Defines static and dynamic IR-drop analysis of power and ground nets (decision P-21). The resistive grid is the resistance network that capability `extresist-network` builds, with … |
+| [`reliability-visualization`](../openspec/specs/reliability-visualization/spec.md) | 8 | 10 | Defines how Hefesto presents IR-drop and electromigration results (decision P-21). It covers: - 2D heat maps over the layout - 3D overlays through capability `hefesto-3d-visualizat… |
 
 ## Editing commands (CMDEDIT)
 

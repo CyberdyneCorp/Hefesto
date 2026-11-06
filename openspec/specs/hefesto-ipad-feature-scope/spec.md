@@ -10,9 +10,11 @@ The first iPadOS release SHALL provide the following, with the same results as o
 - **Layout and DRC:** viewing and editing layout (with touch and Apple Pencil), technology loading, continuous and on-demand DRC, PDK device generators (PCells), and the wiring tool.
 - **Schematics and simulation:** schematic editing and netlisting (`schematic-*` capabilities), and ngspice simulation with waveforms and cross-probing (`simulation-*`).
 - **Extraction and LVS:** extraction and netlist generation (`extract-*`, `netlist-spice-*`, `extresist-*`), LVS (`lvs-*`), and the 3D view with overlays (`hefesto-3d-visualization`, `view-3d`).
-- **File I/O:** reading and writing GDS, OASIS, CIF, LEF and DEF, and the tapeout capabilities (`tapeout-*`).
+- **File I/O:** reading and writing GDS, OASIS, CIF, LEF and DEF, and the tapeout capabilities (`tapeout-*`). An exception is sign-off steps that require KLayout rule decks: on iPadOS they are not run, and the design is not marked sign-off ready until they pass on a desktop (decision P-18).
 - **Interactive routing:** the maze router and `iroute` (`router-maze`, `router-maze-iroute`).
 - **Agent:** the AI layout agent (`agent-*`), with cloud, on-prem and offline providers.
+- **Advanced simulation and reliability:** sweeps, corners, Monte Carlo and statistics (in-process, sequential), and EM/IR analysis with overlays (`reliability-*`).
+- **Plugins:** built-in plugins and sandboxed Tcl script plugins only. Native plugins are not loaded on iPadOS (capability `plugin-security-and-platforms`).
 - **PDKs:** the PDK manager (`hefesto-pdk-manager`), which is the only way to install PDKs on iPadOS.
 - **Supporting capabilities:** plotting, structural and visual diff, document sync, onboarding and help, and settings.
 
