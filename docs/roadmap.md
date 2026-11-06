@@ -26,20 +26,21 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 | Milestone | Theme | Capabilities | Requirements | Release |
 |---|---|---|---|---|
-| M0 | Foundations and Raven go/no-go | 8 | 33 | |
-| M1 | Core model, formats, 2D viewer | 24 | 261 | |
-| M2 | Interactive editing | 18 | 176 | |
-| M3 | Design rule checking | 5 | 72 | |
+| M0 | Foundations and Raven go/no-go | 8 | 33 |  |
+| M1 | Core model, formats, PDK manager, 2D viewer | 25 | 280 |  |
+| M2 | Interactive editing | 18 | 176 |  |
+| M3 | Design rule checking | 5 | 72 |  |
 | M4 | Scripting and PDK integration | 8 | 90 | **Desktop Alpha** |
-| M5 | Mask generation, GDS, CIF | 8 | 203 | |
-| M6 | LEF/DEF and OASIS | 9 | 215 | |
-| M7 | Extraction and netlisting | 21 | 207 | |
-| M8 | LVS and simulation | 13 | 146 | **Desktop Beta** |
-| M9 | 3D, plotting, diff, interactive routing | 6 | 61 | |
-| M10 | AI layout agent | 8 | 29 | |
-| M11 | Legacy tools | 8 | 102 | |
-| M12 | Desktop 1.0 hardening | 1 | 4 | **Desktop 1.0** |
-| M13 | iPadOS app | (platform parts of earlier capabilities) | — | **iPad 1.0** |
+| M5 | Mask generation, GDS, CIF | 8 | 203 |  |
+| M6 | LEF/DEF and OASIS | 9 | 215 |  |
+| M7 | Extraction and netlisting | 21 | 207 |  |
+| M8 | Schematic capture (xschem-compatible) | 6 | 101 |  |
+| M9 | LVS and simulation | 13 | 146 | **Desktop Beta** |
+| M10 | 3D, plotting, diff, routing, digital flow | 10 | 111 |  |
+| M11 | AI layout agent | 8 | 29 |  |
+| M12 | Legacy tools | 8 | 102 |  |
+| M13 | Tapeout readiness and Desktop 1.0 hardening | 6 | 54 | **Desktop 1.0** |
+| M14 | iPadOS app (feature scope plus iPad parts of earlier capabilities) | 1 | 4 | **iPad 1.0** |
 
 ## M0 — Foundations and Raven go/no-go
 
@@ -69,13 +70,14 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Open real PDK layouts (for example the sky130 standard cells) and display them with Magic-identical styles. Save them byte-identical.
 
-**Capabilities:** `tech-file-format`, `tech-layers-and-planes`, `tech-contacts-and-stacking`, `tech-compose-and-connect`, `tech-styles-section`, `tech-loading-and-scaling`, `tech-command`, `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarchy`, `layout-labels-ports`, `layout-properties`, `cell-file-format`, `cell-library-resolution`, `cell-io-safety`, `cell-timestamps`, `hefesto-mag-extensions`, `display-style-files`, `hefesto-rendering`, `ui-windows-and-views`, `font-labels`, `app-startup`, `hefesto-settings`, `hefesto-files-and-pdks` (desktop parts)
+**Capabilities:** `tech-file-format`, `tech-layers-and-planes`, `tech-contacts-and-stacking`, `tech-compose-and-connect`, `tech-styles-section`, `tech-loading-and-scaling`, `tech-command`, `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarchy`, `layout-labels-ports`, `layout-properties`, `cell-file-format`, `cell-library-resolution`, `cell-io-safety`, `cell-timestamps`, `hefesto-mag-extensions`, `display-style-files`, `hefesto-rendering`, `ui-windows-and-views`, `font-labels`, `app-startup`, `hefesto-settings`, `hefesto-files-and-pdks` (desktop parts), `hefesto-pdk-manager`
 
 **Deliverables**
 - **Loading:** load tech files, including the PDK tech files.
 - **Data model:** a corner-stitched data model that reproduces Magic's tile order (X-1).
 - **`.mag` files:** read and write, with hierarchy, labels and properties, plus library path resolution and PDK discovery.
 - **Viewer:** a 2D viewer with zoom and pan, expand and unexpand, layer styles from `.dstyle`/`.cmap` (OpenGL variant, X-5), and font labels.
+- **PDK manager:** browse, download, verify and install sky130, gf180mcu and IHP sg13g2, with the version pinned per project.
 - **Startup:** startup and settings layers, including execution of `.magicrc` files once M4 adds Tcl. Until then only the non-script settings apply.
 
 **Exit criteria**
@@ -128,7 +130,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Desktop Alpha:** open, edit, DRC-check and place PCells in real PDK designs on Linux and macOS.
 
-**Early de-risking (start here):** submit the App Review inquiry about running sandboxed Tcl on iPadOS (X-3 risk). The answer decides whether the M13 iPad app runs user-imported PDK scripts or curated packs.
+**Early de-risking (start here):** submit the App Review inquiry about running sandboxed Tcl on iPadOS (X-3 risk). The answer decides whether the M14 iPad app runs user-imported PDK scripts or curated packs.
 
 ## M5 — Mask generation, GDS and CIF
 
@@ -176,7 +178,23 @@ Depends on `mask-hints`, which is completed in M3.
 - The EXTRACT and NETLIST golden cases pass.
 - `.ext` and SPICE output matches Magic's after canonicalization on the PDK standard cells.
 
-## M8 — LVS and simulation → Desktop Beta
+## M8 — Schematic capture
+
+**Goal.** Draw schematics in an editor that is compatible with xschem, using the PDKs' symbol libraries. Schematics then drive simulation and LVS.
+
+**Capabilities:** `schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration`, `schematic-command`
+
+**Deliverables**
+- **Files and libraries:** read and write xschem `.sch`/`.sym` files, and the PDK symbol libraries for sky130, gf180mcu and IHP. Implemented clean-room, because xschem is GPL.
+- **Editing:** wires, instances, labels, buses, hierarchy and net highlighting, with desktop input.
+- **Netlisting:** SPICE netlists compatible with xschem's, in simulation mode and in LVS mode.
+- **Testbenches:** testbench schematics, ready for the embedded simulator in M9.
+
+**Exit criteria**
+- The common exit criteria.
+- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics.
+
+## M9 — LVS and simulation → Desktop Beta
 
 **Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`
 
@@ -184,21 +202,22 @@ Depends on `mask-hints`, which is completed in M3.
 - **LVS:** built-in LVS compatible with netgen, implemented clean-room from the specs. Reports in `comp.out` and JSON formats, and cross-probing between the report and the layout.
 - **Simulation:** embedded ngspice in a worker process, a waveform viewer, and probing from the layout.
 
-**Desktop Beta:** the complete flow (layout → DRC → GDS → extraction → LVS → simulation) on Linux and macOS.
+**Desktop Beta:** the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS.
 
-**Early de-risking:** legal review of how ngspice's LGPL (KLU, numparam) and MPL (OSDI) parts are linked. This must be decided before M13 (Q-SIM).
+**Early de-risking:** legal review of how ngspice's LGPL (KLU, numparam) and MPL (OSDI) parts are linked. This must be decided before M14 (Q-SIM).
 
-## M9 — 3D, plotting, diff, interactive routing
+## M10 — 3D, plotting, diff, routing, digital flow
 
-**Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`
+**Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`, `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results`, `digital-flow-mixed-signal`
 
 **Deliverables**
 - **3D view:** parity with Magic's 3D view, plus interactive 3D inspection (cross-sections, net highlighting, picking linked to the 2D view), glTF and STL export, and parasitic and field overlays.
 - **Plotting:** PostScript, PNM and SVG.
 - **Collaboration:** structural and visual diff, the git diff and merge helpers, and sync.
-- **Routing:** the maze router and `iroute`. These are prerequisites for the agent in M10.
+- **Routing:** the maze router and `iroute`. These are prerequisites for the agent in M11.
+- **Digital flow (desktop-only):** import hardened blocks, run LibreLane as an external process, browse results, and place digital blocks into mixed-signal layouts.
 
-## M10 — AI layout agent
+## M11 — AI layout agent
 
 **Capabilities:** `agent-architecture`, `agent-model-providers`, `agent-safety-and-approval`, `agent-natural-language-commands`, `agent-device-and-cell-generation`, `agent-drc-lvs-fix-loop`, `agent-schematic-driven-layout`, `agent-evaluation`
 
@@ -213,7 +232,7 @@ Depends on `mask-hints`, which is completed in M3.
 - A qualified provider meets the pass-rate threshold on the AGENT benchmark.
 - The open questions Q-AGENT-1 (analog routing) and Q-AGENT-5 (confidential PDKs) are resolved.
 
-## M11 — Legacy tools
+## M12 — Legacy tools
 
 **Capabilities:** `router-channel`, `router-gate-array`, `router-net2ir`, `plow`, `netlist-window`, `irsim-interface`, `scheme-interpreter`, `openaccess`
 
@@ -222,23 +241,27 @@ Depends on `mask-hints`, which is completed in M3.
 - **Netlists and simulation:** the netlist window, and IRSIM on desktop.
 - **Informative-only items:** the Scheme interpreter and OpenAccess are specified as informative. Implement them only if users need them.
 
-## M12 — Desktop 1.0 hardening
+## M13 — Tapeout readiness and Desktop 1.0
 
-**Capabilities:** `hefesto-performance`
+**Capabilities:** `hefesto-performance`, `tapeout-fill-and-density`, `tapeout-seal-ring`, `tapeout-signoff-checklist`, `tapeout-shuttle-packages`, `hefesto-onboarding-and-help`
 
 **Deliverables**
+- **Tapeout:** fill generation and density checks, seal rings, the sign-off checklist, and export packages for shuttles (Tiny Tapeout, ChipFoundry, wafer.space, IHP). The KLayout sign-off approach follows decision Q-TAPEOUT-1.
+- **Onboarding:** the new-project wizard, templates and example designs per PDK, interactive tutorials, and command help.
 - **Performance:** the targets met on the reference workloads. Batch runs no slower than Magic.
 - **Accessibility and localization:** completed.
 - **Packaging:** an AppImage and a native Linux package, and a signed, notarized macOS app with MoltenVK bundled.
 - **Release gates:** license and acknowledgements checks. Every open question is resolved for the shipped scope.
 
-**Desktop 1.0:** release on Linux and macOS.
+**Desktop 1.0:** release on Linux and macOS, ready to take a design to a shuttle.
 
-## M13 — iPadOS app → iPad 1.0
+## M14 — iPadOS app → iPad 1.0
 
 Starts after Desktop 1.0, or earlier only if the desktop core's golden suite has been stable for a full milestone (P-11).
 
-**Scope:** the iPadOS parts of capabilities that are already complete:
+**Capabilities:** `hefesto-ipad-feature-scope`
+
+**Scope:** the feature set of `hefesto-ipad-feature-scope`. It is delivered as the iPadOS parts of capabilities that are already complete:
 - `hefesto-architecture`: the iPadOS shell, in Swift and SwiftUI, using Swift/C++ interoperability
 - `hefesto-rendering`: the Metal backend
 - `hefesto-input-and-touch`: touch and Pencil, with mode-based gestures (X-5)
@@ -248,6 +271,10 @@ Starts after Desktop 1.0, or earlier only if the desktop core's golden suite has
 - `agent-model-providers`: the offline provider
 - `hefesto-app-ux`: SwiftUI panels, scenes and Stage Manager
 - `hefesto-settings`: iCloud sync
+- `schematic-editing`: touch and Pencil schematic editing
+- `hefesto-pdk-manager`: sandboxed PDK installation, the only way to get PDKs on iPadOS
+
+Desktop-only at first: the digital flow, the legacy tools, `shell` and git integration.
 
 **Exit criteria**
 - The full golden suite passes in the iPadOS simulator and on device, byte-identical to Linux (`hefesto-testing-strategy`).
@@ -262,5 +289,6 @@ Starts after Desktop 1.0, or earlier only if the desktop core's golden suite has
 | M0 | Golden capture setup for Magic | Whether the X-6 verification approach works at all |
 | M1 entry | Resolve open questions TECH, CELL, MODEL | Starting M1 work on settled behavior |
 | M4 | App Review inquiry on sandboxed Tcl | iPad scripting: user-imported scripts or curated packs (X-3) |
-| M8 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
-| M10 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |
+| M5 | KLayout sign-off decision (Q-TAPEOUT-1) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
+| M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
+| M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |

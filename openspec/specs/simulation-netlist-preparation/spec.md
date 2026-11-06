@@ -20,13 +20,19 @@ A simulation testbench SHALL take its DUT from exactly one of these sources:
 |---|---|
 | `layout <cell>` | Netlist generated from the layout of `<cell>` (Requirement "Layout DUT netlist generation") |
 | `netlist <file>` | An imported SPICE file that defines a `.subckt` named by the user |
+| `schematic <file>` | An xschem-compatible testbench schematic whose netlist is the complete deck (capability `schematic-simulation-integration`, Requirement "Schematic as a circuit source") |
 | `none` | No DUT. The testbench is a complete deck written by the user (Requirement "Raw decks"). |
 
 The generated deck SHALL be held in memory and passed to ngspice as lines (Requirement "Deck delivery"). Writing it to disk SHALL NOT be required on any platform. A copy SHALL be written only when the user asks for it (`sim deck write`, capability `simulation-command`).
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7)
+(Hefesto decision: docs/decisions/product.md#P-7, docs/decisions/product.md#P-12)
+
+#### Scenario: Schematic source
+- **GIVEN** an IHP testbench schematic `dc_lv_nmos.sch`
+- **WHEN** a testbench with source `schematic dc_lv_nmos.sch` is prepared
+- **THEN** the deck SHALL be the schematic's netlist, generated in memory
 
 #### Scenario: Layout source on iPad
 - **GIVEN** cell `inv` open on iPad and a testbench with source `layout inv`
@@ -321,6 +327,8 @@ Before passing a deck to ngspice, Hefesto SHALL check it and reject it with a sp
 
 Other `.control` sections in imported netlists and raw decks SHALL be removed, with the warning `Removed .control section (lines <a>-<b>)`, unless the testbench setting `allowControl` is on. `allowControl` defaults to off. Even when it is on, the forbidden commands above remain rejected.
 
+For a deck from a `schematic` source, `.control` sections SHALL be kept. They SHALL first be translated as defined by capability `schematic-simulation-integration`, Requirement "Control block translation", which maps `write` and `quit` to job-result capture and job completion. This validation SHALL run after that translation, so translated `write` and `quit` lines are not rejected. Every other forbidden command SHALL still be rejected.
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-9.)
@@ -329,6 +337,11 @@ Compatibility: native
 - **GIVEN** an imported netlist with `.control`, `shell ls`, `.endc`
 - **WHEN** the deck is prepared with `allowControl` on
 - **THEN** preparation SHALL fail with `Control command 'shell' is not allowed in simulation decks`
+
+#### Scenario: xschem testbench write and quit
+- **GIVEN** a schematic-source deck whose `.control` block contains `run`, `write tb.raw`, `quit`
+- **WHEN** the deck is prepared
+- **THEN** preparation SHALL succeed, `write tb.raw` SHALL become a capture of the plot as result `tb.raw`, and `quit` SHALL end the job normally
 
 #### Scenario: Control section stripped
 - **GIVEN** an imported netlist whose lines 40-44 are `.control`, `run`, `plot v(out)`, `.endc`

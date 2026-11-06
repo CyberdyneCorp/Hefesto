@@ -34,7 +34,7 @@ The `sim` options SHALL be:
 | Option | Syntax | Effect / result |
 |---|---|---|
 | `testbench` | `testbench [new\|select\|delete\|list] [<name>]` | Manage testbenches. Without arguments, return the current testbench name. |
-| `dut` | `dut layout <cell> [-parasitics none\|c\|rc] [-cthresh <fF>] [-reuse]` \| `dut netlist <file> <subckt>` \| `dut none <deckfile>` | Set the DUT source. Without arguments, return the current source. |
+| `dut` | `dut layout <cell> [-parasitics none\|c\|rc] [-cthresh <fF>] [-reuse]` \| `dut netlist <file> <subckt>` \| `dut schematic <file>` \| `dut none <deckfile>` | Set the DUT source. Without arguments, return the current source. |
 | `bind` | `bind [<port> [<node>]]` | Bind a DUT port to a testbench node. Return all bindings, or one. |
 | `source` | `source <name> <n+> <n-> <kind> <params…> [ac <mag> [<phase>]] [-supply]` \| `source delete <name>` \| `source list` | Define stimuli. |
 | `extra` | `extra add <line>` \| `extra clear` \| `extra list` | Extra deck lines. |

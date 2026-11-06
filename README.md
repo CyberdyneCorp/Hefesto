@@ -9,7 +9,7 @@ so existing open PDKs work unchanged.
 
 - `openspec/specs/` — normative specifications (OpenSpec), one folder per capability
 - `docs/specs-index.md` — index of all capabilities with counts
-- `docs/roadmap.md` — milestones M0–M13 (desktop first with Raven, then iPadOS)
+- `docs/roadmap.md` — milestones M0–M14 (desktop first with Raven, then iPadOS)
 - `docs/decisions/product.md` — decided product facts (C++20, CMake, platforms, Metal/Vulkan, 3D scope)
 - `docs/decisions/cross-cutting.md` — decisions to resolve before implementation
 - `docs/spec-conventions.md` — how specs are written (compatibility classes, traceability)

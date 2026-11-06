@@ -113,3 +113,54 @@ These remain open and are tracked in `docs/decisions/cross-cutting.md`:
   - Wrap Raven in a thin C++20 UI-shell layer. Raven types SHALL NOT appear outside the shell.
   - Contribute fixes upstream.
   - Re-evaluate Raven at each milestone gate.
+
+## P-12: Built-in schematic editor, xschem-compatible
+
+- Status: decided (2026-11-06)
+- Decision:
+  - Hefesto SHALL include a schematic editor that reads and writes xschem `.sch`/`.sym` files and xschem symbol libraries, so that the PDK libraries for sky130, gf180mcu and IHP sg13g2 work unchanged.
+  - Its SPICE netlists SHALL be compatible with xschem's. Schematics drive simulation and LVS.
+- Licensing: xschem is GPL, so the implementation SHALL be clean-room from the specs (capability `hefesto-licensing`).
+
+## P-13: iPad v1 feature scope
+
+- Status: decided (2026-11-06)
+- Decision: The first iPadOS release SHALL include:
+  - viewing, layout editing, DRC and PCells
+  - schematic editing and ngspice simulation
+  - extraction, LVS and 3D
+  - GDS/OASIS export
+  - the AI agent
+- These are desktop-only at first:
+  - the digital flow integration
+  - the legacy tools: channel and gate-array routers, plow, netlist window, IRSIM
+  - shell commands and git integration
+- The authoritative list is capability `hefesto-ipad-feature-scope`.
+
+## P-14: In-app PDK manager
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL let users browse, download, install, update and pin open PDKs inside the app on every platform. This is the only way to get a PDK on iPadOS.
+
+## P-15: Tapeout readiness
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL support taking a design to fabrication:
+  - fill generation and density checks
+  - seal rings
+  - a sign-off checklist
+  - export packages for open shuttle programs
+
+## P-16: Onboarding and help
+
+- Status: decided (2026-11-06)
+- Decision: Hefesto SHALL provide:
+  - a new-project wizard
+  - templates and example designs
+  - interactive tutorials
+  - in-app help for every command
+
+## P-17: Digital flow integration (desktop-only)
+
+- Status: decided (2026-11-06)
+- Decision: On the desktop, Hefesto SHALL integrate with the open digital flow (OpenROAD/LibreLane). It SHALL import hardened blocks and MAY run the flow as an external process.
