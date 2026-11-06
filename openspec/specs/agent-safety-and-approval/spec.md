@@ -23,7 +23,7 @@ Compatibility: native
 - **THEN** no user cell SHALL change, and the scratch session SHALL be discarded
 
 ### Requirement: Accept is a single undo step
-Applying an accepted proposal SHALL be recorded as one undo unit (capability `layout-undo`). A single `undo` SHALL restore the state before the acceptance.
+Applying an accepted proposal SHALL be recorded as one undo unit (capability `layout-undo`, requirement "Native undo events for Hefesto compound operations"). A single `undo` SHALL restore the state before the acceptance, including property changes and cell creation, rename and deletion, which ordinary commands do not record.
 
 Compatibility: native
 
@@ -41,7 +41,7 @@ Each task SHALL run within configurable limits:
 - maximum number of tool calls
 - the set of cells the task may modify
 
-The agent SHALL stop at a limit and return its best proposal, marked "incomplete". It SHALL NOT modify cells outside the declared scope, not even in the scratch session.
+The default values are open (see Q-AGENT-6). The agent SHALL stop at a limit and return its best proposal, marked "incomplete". It SHALL NOT modify cells outside the declared scope, not even in the scratch session.
 
 Compatibility: native
 

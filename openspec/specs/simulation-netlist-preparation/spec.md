@@ -2,7 +2,7 @@
 
 ## Purpose
 Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from:
-- a circuit under test (DUT): extracted layout netlisted by the SPICE netlister (capabilities `netlist-spice-options`, `netlist-spice-hierarchy`, `netlist-spice-devices`), optionally with `extresist-command` parasitic networks (capability `extresist-output`); or an imported netlist
+- a circuit under test (DUT): extracted layout netlisted by the SPICE netlister (capabilities `netlist-spice-options`, `netlist-spice-hierarchy`, `netlist-spice-devices`), optionally with `extresist` parasitic networks (capability `extresist-output`); or an imported netlist
 - a testbench: stimuli, analyses and saved vectors
 - PDK model libraries, resolved through the PDK store of capability `hefesto-files-and-pdks`
 - process, voltage and temperature corners
@@ -20,7 +20,7 @@ A simulation testbench SHALL take its DUT from exactly one of these sources:
 |---|---|
 | `layout <cell>` | Netlist generated from the layout of `<cell>` (Requirement "Layout DUT netlist generation") |
 | `netlist <file>` | An imported SPICE file that defines a `.subckt` named by the user |
-| `schematic <file>` | An xschem-compatible testbench schematic whose netlist is the complete deck (capability `schematic-simulation-integration`, Requirement "Schematic as a circuit source") |
+| `schematic <file>` | An xschem-compatible testbench schematic whose netlist is the complete deck (capability `schematic-simulation-integration`, Requirement "Schematic circuit source") |
 | `none` | No DUT. The testbench is a complete deck written by the user (Requirement "Raw decks"). |
 
 The generated deck SHALL be held in memory and passed to ngspice as lines (Requirement "Deck delivery"). Writing it to disk SHALL NOT be required on any platform. A copy SHALL be written only when the user asks for it (`sim deck write`, capability `simulation-command`).
@@ -80,7 +80,7 @@ A layout DUT SHALL be netlisted in one of three parasitic modes:
 | `c` (default) | `cthresh <t>` where `<t>` is the testbench capacitance threshold in fF (default 0), `extresist off` | Devices plus node and coupling capacitors above the threshold |
 | `rc` | as `c`, plus `extresist on` | As `c`, plus the resistor networks from the `.res.ext` overlays (capability `extresist-output`, Requirement "Consumption by netlisters") |
 
-In mode `rc`, if a cell with resistance extraction enabled has no `.res.ext` file, or that file is older than its `.ext`, Hefesto SHALL run the resistance extraction of capability `extresist-command` with the testbench's `extresist-command` options (default: the tech file defaults) before netlisting.
+In mode `rc`, if a cell with resistance extraction enabled has no `.res.ext` file, or that file is older than its `.ext`, Hefesto SHALL run the resistance extraction of capability `extresist-command` with the testbench's `extresist` options (default: the tech file defaults) before netlisting.
 
 Compatibility: native
 
@@ -97,7 +97,7 @@ Compatibility: native
 
 ### Requirement: Net name map
 Every DUT generation SHALL also produce a net-name map with one entry per SPICE node of the DUT netlist. Each entry has three fields:
-- `layoutName`: the node's hierarchical layout name as computed by capability `irsim-interface`, Requirement "Hierarchical node names", relative to the DUT cell
+- `layoutName`: the node's hierarchical layout name as computed by capability `irsim-interface`, Requirement "Hierarchical node names", relative to the DUT cell. Only that naming rule is used; it applies on every platform, including iPadOS, where the IRSIM interface itself is unavailable (capability `hefesto-ipad-feature-scope`)
 - `spiceName`: the node name as written in the netlist
 - `simName`: the ngspice vector name of that node once it is instantiated as `Xdut`
 
@@ -167,7 +167,7 @@ Example: a sky130 inverter in corner `tt_27_1v8`:
 ```
 * hefesto testbench inv_tran corner tt_27_1v8
 .temp 27
-.lib "/pdk/sky130A/libs.tech/ngspice/sky130.lib.spice" tt
+.lib "/pdk/sky130A/libs.tech/combined/sky130.lib.spice" tt
 .subckt inv A Y VPWR VGND
 X0 Y A VGND VGND sky130_fd_pr__nfet_01v8 w=0.65u l=0.15u
 X1 Y A VPWR VPWR sky130_fd_pr__pfet_01v8_hvt w=1u l=0.15u
@@ -233,24 +233,24 @@ Every PDK entry in the PDK store (capability `hefesto-files-and-pdks`) that supp
 - the ngspice initialisation commands
 - the OSDI modules required
 
-Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The exact files and section names are to be verified against open_pdks (Q-SIM-8):
+Hefesto SHALL bundle descriptors for sky130A/B, gf180mcuC/D and IHP sg13g2, with the initial content below. The full corner tables, the additional section variables and the rule that emits a model line only when its file is used are owned by capability `simulation-corners`, Requirement "Bundled corner tables"; where the two differ, that requirement wins. The remaining files and section names are to be verified against open_pdks (Q-SIM-8):
 
 | PDK | Model lines | Process sections | Init commands | OSDI |
 |---|---|---|---|---|
-| sky130A | `.lib sky130.lib.spice <proc>` | `tt ff ss sf fs` | `set ngbehavior=hsa`, `set ng_nomodcheck` | none |
-| gf180mcuD | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hsa` | none |
-| sg13g2 | `.lib cornerMOSlv.lib <mos>`, `.lib cornerMOShv.lib <moshv>`, `.lib cornerHBT.lib <hbt>`, `.lib cornerRES.lib <res>`, `.lib cornerCAP.lib <cap>` | mos: `mos_tt mos_ff mos_ss mos_sf mos_fs`; others from the PDK | `set ngbehavior=hsa` | `psp103_nqs`, `r3_cmc`, `mosvar` |
+| sky130A/B | `.lib sky130.lib.spice <proc>`, model root `libs.tech/combined` | `tt ff ss sf fs` | `set ngbehavior=hsa`, `set ng_nomodcheck` | none |
+| gf180mcuC/D | `.include design.ngspice`, `.lib sm141064.ngspice <proc>` | `typical ff ss fs sf` | `set ngbehavior=hsa` | none |
+| sg13g2 | `.lib cornerMOSlv.lib <mos>`, `.lib cornerMOShv.lib <moshv>`, `.lib cornerHBT.lib <hbt>`, `.lib cornerRES.lib <res>`, `.lib cornerCAP.lib <cap>` | mos: `mos_tt mos_ff mos_ss mos_sf mos_fs`; others from the PDK | `set ngbehavior=hsa` | `psp103`, `psp103_nqs`, `r3_cmc`, `mosvar`, `cap_cmomi`, `cap_cmomf` |
 
 A user MAY add or edit descriptors. On Linux and macOS, a descriptor MAY be generated from a PDK's `libs.tech/ngspice` directory found by the PDK store's search rules.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-8.)
+(Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-8, Q-SIMADV-2, Q-SIMADV-5.)
 
 #### Scenario: Default corner for sky130A
 - **GIVEN** sky130A installed with its bundled descriptor
 - **WHEN** a testbench is created with no corner selected
-- **THEN** the deck SHALL contain `.lib "<root>/sky130.lib.spice" tt` and `.temp 27`
+- **THEN** the deck SHALL contain `.lib "<store>/sky130A/libs.tech/combined/sky130.lib.spice" tt` and `.temp 27`
 
 ### Requirement: Model library resolution
 Hefesto SHALL resolve every file reference in a deck to an absolute path before passing the deck to ngspice. This covers `.lib` and `.include` lines in model templates, in imported netlists and in raw decks, applied recursively to included files. ngspice SHALL never need to search for a file or expand an environment variable. A reference `f` found in a file whose directory is `d` resolves as follows; the first rule that applies wins:
@@ -270,9 +270,9 @@ Compatibility: native
 (Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/frontend/inpcom.c:2040-2130, src/frontend/inpcom.c:2160-2314) (See Q-SIM-13.)
 
 #### Scenario: Relative include inside a PDK library
-- **GIVEN** `sky130.lib.spice` in `/store/sky130A/libs.tech/ngspice/`, which contains `.include "corners/tt.spice"` inside section `tt`
+- **GIVEN** `sky130.lib.spice` in `/store/sky130A/libs.tech/combined/`, which contains `.include "corners/tt.spice"` inside section `tt`
 - **WHEN** the deck is prepared
-- **THEN** that line SHALL be passed to ngspice as `.include "/store/sky130A/libs.tech/ngspice/corners/tt.spice"`
+- **THEN** that line SHALL be passed to ngspice as `.include "/store/sky130A/libs.tech/combined/corners/tt.spice"`
 
 #### Scenario: Unknown environment variable
 - **GIVEN** an imported netlist containing `.include $MYLIB/cells.sp`
@@ -306,7 +306,7 @@ The supply scale multiplies the DC value of every stimulus marked `supply`. A co
 - `<temp>` is the integer °C, prefixed `m` when negative
 - `<supply>` is the scaled supply in volts in `%g` format, with `.` replaced by `v`, and the supply is that of the first `supply` stimulus
 
-Each corner SHALL produce one job. Decks for different corners of one testbench SHALL differ only in their title line, `.temp`, `.param` and section words, and in the values of `supply` stimuli.
+Each corner SHALL produce one job; a corner sweep runs as the corner dimension of a run set (capabilities `simulation-corners`, Requirement "Corner dimension", and `simulation-sweeps`, Requirement "Run sets"). Decks for different corners of one testbench SHALL differ only in their title line, `.temp`, `.param` and section words, and in the values of `supply` stimuli.
 
 Compatibility: native
 
@@ -327,7 +327,7 @@ Before passing a deck to ngspice, Hefesto SHALL check it and reject it with a sp
 
 Other `.control` sections in imported netlists and raw decks SHALL be removed, with the warning `Removed .control section (lines <a>-<b>)`, unless the testbench setting `allowControl` is on. `allowControl` defaults to off. Even when it is on, the forbidden commands above remain rejected.
 
-For a deck from a `schematic` source, `.control` sections SHALL be kept. They SHALL first be translated as defined by capability `schematic-simulation-integration`, Requirement "Control block translation", which maps `write` and `quit` to job-result capture and job completion. This validation SHALL run after that translation, so translated `write` and `quit` lines are not rejected. Every other forbidden command SHALL still be rejected.
+For a deck from a `schematic` source, `.control` sections SHALL be kept. They SHALL first be translated as defined by capability `schematic-simulation-integration`, Requirement "Control block translation", which maps `write` and `wrdata` to job-result capture and removes `quit` and `exit`. This validation SHALL run after that translation, so translated `write`, `wrdata`, `quit` and `exit` lines are not rejected. Every other forbidden command SHALL still be rejected.
 
 Compatibility: native
 
@@ -341,7 +341,7 @@ Compatibility: native
 #### Scenario: xschem testbench write and quit
 - **GIVEN** a schematic-source deck whose `.control` block contains `run`, `write tb.raw`, `quit`
 - **WHEN** the deck is prepared
-- **THEN** preparation SHALL succeed, `write tb.raw` SHALL become a capture of the plot as result `tb.raw`, and `quit` SHALL end the job normally
+- **THEN** preparation SHALL succeed, `write tb.raw` SHALL become a capture of the plot as result `tb.raw`, and `quit` SHALL be removed, so the job ends normally
 
 #### Scenario: Control section stripped
 - **GIVEN** an imported netlist whose lines 40-44 are `.control`, `run`, `plot v(out)`, `.endc`

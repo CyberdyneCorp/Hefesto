@@ -73,7 +73,7 @@ The 3D view SHALL display extraction results as overlays:
 - coupling capacitance as markers between coupled nets, filtered by a threshold
 - resistance networks from the `extresist-*` capabilities, as edges with resistance values
 
-When current or voltage data are available from an imported simulation result, the view SHALL display a current-density color map. Each overlay SHALL show its legend, units and value range. Values SHALL come directly from the extraction outputs and SHALL NOT be recomputed.
+When current or voltage data are available from an imported simulation result, the view SHALL display a current-density color map. The IR-drop and electromigration datasets, their color maps and thresholds are owned by capability `reliability-visualization`. Each overlay SHALL show its legend, units and value range. Values SHALL come directly from the extraction outputs and SHALL NOT be recomputed.
 
 Compatibility: native
 

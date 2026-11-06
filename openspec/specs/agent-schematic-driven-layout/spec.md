@@ -6,7 +6,7 @@ Lets the agent turn a schematic netlist into a verified layout. It generates the
 ## Requirements
 
 ### Requirement: End-to-end flow
-Given a SPICE netlist of a block, plus optional constraints, the agent SHALL produce a proposal for a cell. The constraints MAY include:
+Given a SPICE netlist of a block, or a schematic netlisted in LVS mode by capability `schematic-netlisting`, plus optional constraints, the agent SHALL produce a proposal for a cell. The constraints MAY include:
 - an outline
 - pin locations
 - matching or symmetry groups
@@ -15,7 +15,7 @@ Given a SPICE netlist of a block, plus optional constraints, the agent SHALL pro
 The agent SHALL build the proposal with these stages, recording each stage's result:
 1. Device generation.
 2. Placement that respects the constraints.
-3. Routing of every net using the routing tools, which wrap capabilities `router-maze`, `router-channel` and `wiring-tool`, or direct paint commands.
+3. Routing of every net using the routing tools, which wrap capabilities `router-maze`, `router-maze-iroute` and `wiring-tool`, or direct paint commands. These are available on every platform, including iPadOS (capability `hefesto-ipad-feature-scope`). The routing engine for analog nets is still open (see Q-AGENT-1).
 4. DRC.
 5. LVS against the source netlist.
 6. Parasitic extraction.
@@ -48,18 +48,18 @@ Compatibility: native
 - **THEN** the placement SHALL arrange the fingers ABBA (or an equivalent common-centroid pattern), and the report SHALL mark the constraint satisfied
 
 ### Requirement: Post-layout comparison against the schematic
-If the user provides a testbench, the agent SHALL simulate the pre-layout and post-layout netlists with the embedded simulator (capability `simulation-command`). The post-layout netlist SHALL include the extracted parasitics. The proposal SHALL report the differences in the user-selected measurements, such as gain, bandwidth, delay and offset.
+If the user provides a testbench, the agent SHALL simulate the pre-layout and post-layout netlists with the embedded simulator, through the evaluation interface of capability `simulation-optimization-hooks`. The post-layout netlist SHALL include the extracted parasitics. The proposal SHALL report the differences in the user-selected measurements, such as gain, bandwidth, delay and offset.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-10)
+(Hefesto decision: docs/decisions/product.md#P-10, docs/decisions/product.md#P-19)
 
 #### Scenario: Delay degradation reported
 - **WHEN** post-layout delay is 12% worse than pre-layout
 - **THEN** the proposal SHALL show both values and the 12% delta next to the gate results
 
 ### Requirement: Iterative improvement
-After a verified layout exists, the user MAY ask the agent to optimize a metric: area, wirelength, parasitic capacitance on named nets, or matching. The agent SHALL keep every intermediate verified layout as a selectable alternative. It SHALL NOT present an unverified layout as better than a verified one.
+After a verified layout exists, the user MAY ask the agent to optimize a metric: area, wirelength, parasitic capacitance on named nets, matching, or a simulated measurement. Simulation-based candidates SHALL be evaluated, budgeted and recorded as capability `simulation-optimization-hooks` specifies. The agent SHALL keep every intermediate verified layout as a selectable alternative. It SHALL NOT present an unverified layout as better than a verified one.
 
 Compatibility: native
 

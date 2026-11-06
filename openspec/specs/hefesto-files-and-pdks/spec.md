@@ -12,14 +12,14 @@ Hefesto SHALL keep a PDK store of installed technologies on every platform. Each
 - startup data
 - cell libraries
 
-On Linux and macOS, the store SHALL also find PDKs by the same search rules as Magic: `PDK_ROOT`, `PDKPATH` and the installation paths (capabilities `cell-library-resolution` and `tech-loading-and-scaling`). On iPadOS, PDKs SHALL be imported into the app sandbox from the Files app or downloaded, and SHALL then be resolved by name.
+On Linux and macOS, the store SHALL also find PDKs by the same search rules as Magic: `PDK_ROOT`, `PDKPATH` and the installation paths (capabilities `cell-library-resolution` and `tech-loading-and-scaling`). On iPadOS, PDKs SHALL be installed into the app sandbox only through the PDK manager (capability `hefesto-pdk-manager`), by download or by importing an offline PDK pack, and SHALL then be resolved by name.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/cross-cutting.md#X-4)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-4, docs/decisions/product.md#P-14)
 
 #### Scenario: PDK auto-discovery on iPad
-- **GIVEN** sky130A has been imported into the PDK store on iPad
+- **GIVEN** sky130A has been installed into the PDK store on iPad through the PDK manager
 - **WHEN** a `.mag` file with `tech sky130A` is opened
 - **THEN** the technology SHALL load automatically, as Magic would load it from `PDK_ROOT`
 

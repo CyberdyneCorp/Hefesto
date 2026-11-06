@@ -8,7 +8,7 @@ Defines the selection model and the commands that create, inspect and operate on
 
 ### Requirement: Selection model
 
-The selection SHALL be a flattened, root-coordinate copy of chosen layout items: paint (with types), labels, and subcell uses (keeping their array parameters and use identifiers). It is tied to one **selection root cell**, the top cell of the window it was made in. It is displayed as a highlight in all windows on that root cell.
+The selection SHALL be a flattened, root-coordinate copy of chosen layout items: paint (with types), labels, and subcell uses (keeping their array parameters and instance identifiers). It is tied to one **selection root cell**, the top cell of the window it was made in. It is displayed as a highlight in all windows on that root cell.
 
 Selecting in a window whose top cell differs from the current selection root SHALL first clear the selection and then make that cell the new root. Each item SHALL remember where it came from (which cell of the hierarchy), so that operations can tell edit-cell items from non-edit items. Every change of the selection SHALL be recorded in the undo history, and undo/redo SHALL restore the previous selection. The selection is never saved with a cell.
 
@@ -215,7 +215,7 @@ Compatibility: behavioral
 
 ### Requirement: Floating selection (pick, move, keep)
 
-The selection MAY carry a display offset that is not yet applied to the layout:
+Hefesto SHALL support a floating selection: the selection MAY carry a display offset that is not yet applied to the layout:
 
 - `select pick` SHALL delete the edit-cell parts of the selection from the layout, and keep the selection unchanged.
 - `select move` SHALL set the selection's offset to (pointer − box lower-left). The pointer must be in a window on the edit cell, and the box must exist, otherwise the command reports "Error: Pointer is not in the edit cell.". `select move X Y` sets the offset to (X, Y).
@@ -290,7 +290,7 @@ Compatibility: exact
 
 After the operation, the box SHALL be translated by the same displacement if it is in the selection's root. For `move`, this also happens when there is no selection.
 
-- `copy` SHALL copy the entire selection, displaced, into the edit cell. Subcell use identifiers SHALL be made unique in the edit cell. The copy SHALL become the new selection.
+- `copy` SHALL copy the entire selection, displaced, into the edit cell. Subcell instance identifiers SHALL be made unique in the edit cell. The copy SHALL become the new selection.
 - `move` SHALL translate the edit-cell parts of the selection (delete, then re-add displaced). The moved items become the selection.
 
 Compatibility: exact
@@ -455,7 +455,7 @@ Compatibility: behavioral
 
 `identify ID` and its alias `id ID` SHALL rename the first selected subcell use to ID:
 
-- ID SHALL not contain `,` or `/` (or the other characters rejected for use identifiers). Otherwise the command fails with an illegal-character error.
+- ID SHALL not contain `,` or `/` (or the other characters rejected for instance identifiers). Otherwise the command fails with an illegal-character error.
 - The use SHALL be a child of the edit cell, and not a window's top-level use.
 - ID SHALL be unique among the uses of the parent. Otherwise the command reports "New name isn't unique within its parent definition." and changes nothing.
 - If no subcell is selected, it SHALL report "There isn't a selected subcell; can't change ids."
@@ -469,7 +469,7 @@ Compatibility: behavioral
 #### Scenario: Rename instance
 - **GIVEN** a selected use `inv_0` that is a child of the edit cell
 - **WHEN** `identify buf1` is run
-- **THEN** the use identifier SHALL be `buf1`
+- **THEN** the instance identifier SHALL be `buf1`
 
 #### Scenario: Duplicate rejected
 - **GIVEN** the edit cell already has a use `buf1`

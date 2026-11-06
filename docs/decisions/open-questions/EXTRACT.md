@@ -99,6 +99,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/extract.h:70-96, extract/ExtMain.c:56, doc/html/extract.html
 - Options: follow code | follow doc
 - Recommendation: follow code (specified in `extract-commands`); correct the overview document.
+- Status: the overview part is done. `docs/reference/magic/circuit-extraction.md` now lists `all` correctly. The HTML-doc mismatch remains informative only.
 
 ### Q-EXTRACT-15: `r` parameter with zero width or zero area
 - Kind: bug

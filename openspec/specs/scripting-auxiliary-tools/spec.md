@@ -22,7 +22,7 @@ The system SHALL NOT open any network listener during normal startup. The script
 - for every complete line received, echo the line to stdout and evaluate it as a script with full privileges;
 - close the connection on end-of-file.
 
-It performs no authentication. Hefesto SHALL NOT provide an unauthenticated remote evaluation service by default. Any equivalent SHALL be explicit opt-in and SHALL be logged under Q-SCRIPT-12.
+It performs no authentication. In Hefesto the script cannot run, because the Tcl sandbox denies `socket` (capability `hefesto-scripting`). Any remote-control equivalent is governed by capability `hefesto-security` (Requirement "No remote command server by default"); see Q-SCRIPT-12.
 Compatibility: informative
 
 (Magic ref: tcltk/socketcmd.tcl:1-27, tcltk/magic.tcl.in:239-280)

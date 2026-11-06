@@ -163,7 +163,7 @@ Compatibility: exact
 - `property NAME ""` SHALL delete the property.
 - `property NAME VALUE…` SHALL set it. String properties keep the text. `integer` parses 32-bit integers. `double` parses 64-bit integers. `dimension` parses each value as a coordinate and stores internal units, reported per `units`. `plane` takes groups of four coordinates as rectangles, stored as a geometry plane.
 - Reserved names force their type: `GDS_START`, `GDS_END` (double); `GDS_FILE` (string); `FIXED_BBOX`, `OBS_BBOX` (dimension); `MASKHINTS_*` (plane). Their meaning is defined by the capabilities that use them (MASK, LEF/DEF, extraction).
-- `property compat [yes|no]` SHALL query or set the global compatibility mode in which all properties are stored and written as strings.
+- `property compat [yes|no]` SHALL query or set the global property compat mode (capability `layout-properties`, requirement "Property compat mode"), in which all properties are stored and written as strings.
 - A value that cannot be parsed as an integer reports "Unable to parse integer value" and stores 0.
 
 Setting a property SHALL mark the cell modified.

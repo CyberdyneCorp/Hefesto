@@ -104,14 +104,14 @@ Compatibility: native
 - **THEN** `catch` SHALL return 1 and `msg` SHALL contain `shorted`
 
 ### Requirement: Headless use
-The headless CLI (capability `hefesto-architecture`, Requirement "Headless command-line tool") SHALL run `schematic` commands without a display, including `open`, `netlist`, `simulate` (with `-wait`), `getprop`, `setprop` and `save`. A command-line form SHALL netlist a schematic in one call: `hefesto --netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]`, which SHALL exit with status 0 on success, 10 when the netlist run reports failure (as xschem's netlist exit code), and 1 on other errors.
+The headless CLI (capability `hefesto-architecture`, Requirement "Headless command-line tool") SHALL run `schematic` commands without a display, including `open`, `netlist`, `simulate` (with `-wait`), `getprop`, `setprop` and `save`. A command-line form of the headless executable (`hefesto-cli`) SHALL netlist a schematic in one call: `hefesto-cli --netlist <file.sch> [-o <out>] [--lvs] [--pdk <name>]`, where `--lvs` turns on options `lvs_netlist` and `lvs_ignore` (capability `schematic-netlisting`). It SHALL exit with status 0 on success, 10 when the netlist run reports failure (as xschem's netlist exit code), and 1 on other errors.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-12; xschem ref: spice_netlist.c:636-641)
 
 #### Scenario: CI netlist check
-- **WHEN** `hefesto --netlist inv.sch --lvs --pdk sky130A -o inv.spice` is run on a clean schematic
+- **WHEN** `hefesto-cli --netlist inv.sch --lvs --pdk sky130A -o inv.spice` is run on a clean schematic
 - **THEN** it SHALL write `inv.spice` and exit with status 0
 
 ### Requirement: xschem compatibility command

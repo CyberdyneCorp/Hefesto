@@ -6,7 +6,7 @@ Defines how Hefesto generates metal, poly and diffusion fill and checks layout d
 - density windows and limits
 - the reports
 
-Where the open PDKs ship a Magic-based fill or density flow, Hefesto reproduces it exactly. This applies to sky130 (`generate_fill.py`, `check_density.py`) and to the gf180mcu `metfill` output style. Where a PDK or shuttle defines fill or density only as KLayout scripts, Hefesto implements the rule natively and checks itself against the rule values. This applies to IHP sg13g2 and to the gf180mcu LibreLane/wafer.space flow. It does not claim byte equality there (see Q-TAPEOUT-1, Q-TAPEOUT-7, Q-TAPEOUT-8).
+Where the open PDKs ship a Magic-based fill or density flow, Hefesto reproduces it exactly. This applies to sky130 (`generate_fill.py`, `check_density.py`) and to the gf180mcu `metfill` output style. Where a PDK or shuttle defines fill or density only as KLayout scripts, Hefesto implements the rule natively and checks itself against the rule values. This applies to IHP sg13g2 and to the gf180mcu LibreLane/wafer.space flow. It does not claim byte equality there (decision P-18; see Q-TAPEOUT-1, Q-TAPEOUT-7, Q-TAPEOUT-8).
 
 Mask operators (`slots`, `grow`, `shrink`, `and-not`, `bbox`) are capability `mask-output-operators`. Output styles and variants are capability `mask-output-styles`. Flattening is capability `cmd-hierarchy`. GDS output is capability `gds-write`. Coverage measurement (`cif coverage`) is capability `cif-format-io`. The sign-off use of density results is capability `tapeout-signoff-checklist`.
 
@@ -218,6 +218,8 @@ Limits (strict `<` min, else strict `>` max):
 | POLY | none | none |
 | LI1, MET1–MET4 | 0.35 | 0.60 |
 | MET5 | 0.45 | 0.76 |
+
+POLY is measured and reported but has no limit (see Q-TAPEOUT-16).
 
 Output SHALL be, in this order:
 - `Stepped area density results (total tiles = N):` with N = (ytiles−9)(xtiles−9)

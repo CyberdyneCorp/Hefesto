@@ -197,6 +197,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/paths.h:40, database/DBio.c:577-735, utils/main.c:303-307, commands/CmdTZ.c:544-622, database/DBtech.c:231-232
 - Options: platform alternative
 - Recommendation: provide an ordered, user-configurable list of technology roots (on iPadOS: inside the sandbox, plus user-granted folders). Provide a project-level default technology instead of startup scripts. Compare `requires` against the Magic compatibility level (8.3.694), not Hefesto's own version.
+- Overlap: the path-variable and root parts are tracked in Q-CELL-17 (canonical). This entry keeps the technology-discovery and `requires` parts. Platform owner: capability `hefesto-files-and-pdks`. (Consolidation audit, 2026-11-06.)
 
 ### Q-TECH-29: Manual and code disagree on file and command syntax
 - Kind: doc-mismatch

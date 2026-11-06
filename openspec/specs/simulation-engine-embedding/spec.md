@@ -14,7 +14,7 @@ Hefesto SHALL run SPICE simulation by calling the ngspice shared-library API in-
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/include/ngspice/sharedspice.h:1-160, cmake/NgspiceOptions.cmake:86)
+(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/include/ngspice/sharedspice.h:1-160, cmake/NgspiceOptions.cmake:86) (See Q-SIM-7.)
 
 #### Scenario: No system ngspice installed
 - **GIVEN** a macOS host with no `ngspice` executable or `libngspice` on any search path
@@ -46,13 +46,19 @@ The ngspice build SHALL use this feature set on every platform:
 
 Hefesto SHALL ship the license texts of every ngspice component it links, including the Modified BSD license of ngspice and the separately licensed parts it contains: KLU (LGPLv2), numparam (LGPLv2 or newer), OSDI (MPL 2.0) and sparse (MIT-style). No GPL-licensed ngspice component SHALL be linked. Static linking of the LGPL parts on iPadOS is pending Q-SIM-1.
 
+The build manifest SHALL list every Hefesto patch applied to ngspice, including at least the static OSDI registry (Requirement "OSDI compact models"), the static code-model registration, and the portable generator seeding of capability `simulation-monte-carlo`, Requirement "Portable random numbers".
+
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: COPYING:1-60, cmake/NgspiceOptions.cmake:21-74)
+(Hefesto decision: docs/decisions/product.md#P-7, docs/decisions/product.md#P-19) (ngspice ref: COPYING:1-60, cmake/NgspiceOptions.cmake:21-74) (See Q-SIM-1, Q-SIM-12, Q-SIMADV-6.)
 
 #### Scenario: No GPL code linked
 - **WHEN** the license manifest of a release build is generated
 - **THEN** it SHALL list ngspice (Modified BSD), KLU, numparam, OSDI and sparse with their licenses, and SHALL NOT list FFTW3, the `table` code model library or readline
+
+#### Scenario: Patch list in the manifest
+- **WHEN** the build manifest of a release build is generated
+- **THEN** its ngspice entry SHALL name the portable-seeding patch among the Hefesto patches
 
 #### Scenario: Built-in FFT
 - **GIVEN** a build without FFTW3
@@ -86,14 +92,13 @@ Compatibility: native
 Before calling `ngSpice_Init`, the adapter SHALL call `ngSpice_nospinit` and `ngSpice_nospiceinit`, so that ngspice reads no `spinit` file and no `.spiceinit` file from the current directory, `SPICE_USERINIT_DIR`, `HOME` or `USERPROFILE`. It SHALL pass non-null `SendChar`, `SendStat`, `ControlledExit`, `SendData`, `SendInitData` and `BGThreadRunning` callbacks and a user-data pointer that identifies the engine instance. Right after initialisation, the adapter SHALL send this fixed command list, in this order:
 1. `set noaskquit`
 2. `set nomoremode`
-3. `set rndseed=1`
-4. `set filetype=binary`
+3. `set filetype=binary`
 
-It SHALL then send the per-PDK initialisation commands of capability `simulation-netlist-preparation` before each deck is loaded. Simulation results SHALL NOT depend on environment variables, the current directory or the user's home directory, on any platform.
+Before each deck is loaded, it SHALL send the per-PDK initialisation commands of capability `simulation-netlist-preparation` (Requirement "PDK initialisation commands"), followed by `setseed <s>`, where `s` is 1 for ordinary jobs and the sample seed `s_i` for Monte Carlo samples (capability `simulation-monte-carlo`, Requirement "Sample seeds"). `setseed <n>` reseeds ngspice's generator immediately, including the pool used by `trnoise` and `trrandom` sources; `set rndseed=<n>` only sets a variable and SHALL NOT be relied on, because the shared-library initialisation seeds the generator from the process id. Simulation results SHALL NOT depend on environment variables, the current directory, the user's home directory or the process id, on any platform.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/sharedspice.c:803-830, src/sharedspice.c:856-1092)
+(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/sharedspice.c:803-830, src/sharedspice.c:856-1092, src/sharedspice.c:930-951, src/maths/misc/randnumb.c:71-92, src/maths/misc/randnumb.c:287-330, src/frontend/trannoise/wallace.c:76) (See Q-SIMADV-7.)
 
 #### Scenario: Stray .spiceinit ignored
 - **GIVEN** a `.spiceinit` file in the user's home directory containing `set ngbehavior=ps`
@@ -101,9 +106,9 @@ Compatibility: native
 - **THEN** the compatibility mode in effect SHALL be the one from the sky130 PDK descriptor, not `ps`
 
 #### Scenario: Reproducible random sources
-- **GIVEN** a deck with a `trnoise` source and no `rndseed` setting
-- **WHEN** it is simulated twice in fresh engine instances on the same machine
-- **THEN** both runs SHALL produce bit-identical vectors
+- **GIVEN** a deck with a `trnoise` source and a top-level `.param p = 'agauss(1, 0.1, 1)'`, and no seed setting
+- **WHEN** it is simulated twice in fresh engine instances (different process ids) on the same machine
+- **THEN** `setseed 1` SHALL have been sent before each load, and both runs SHALL produce bit-identical vectors and the same value of `p`
 
 ### Requirement: Single engine instance per address space
 ngspice keeps its simulator state in process-wide globals. Hefesto SHALL therefore create at most one ngspice engine instance per process, and SHALL serialise all API calls to it. Jobs SHALL go through one FIFO job queue per engine instance. At most one job SHALL be loaded or running in an instance at a time. When a job's results have been copied out (see capability `simulation-analyses-and-results`), the adapter SHALL send `remcirc` and `destroy all`. This keeps the instance's memory from growing from job to job. Hefesto SHALL NOT load several copies of the ngspice library into one process.
@@ -163,7 +168,7 @@ The live stream SHALL be used only for progress and live plotting. Stored result
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/include/ngspice/sharedspice.h:240-330, src/sharedspice.c:1700-1720, src/sharedspice.c:1810-1820)
+(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/include/ngspice/sharedspice.h:240-330, src/sharedspice.c:1700-1720, src/sharedspice.c:1810-1820) (See Q-SIM-15.)
 
 #### Scenario: Error stream classification
 - **WHEN** `SendChar` delivers `stderr Error: unknown subckt: xinv`
@@ -225,7 +230,7 @@ If the instance becomes `unavailable`, Hefesto SHALL report `simulation engine n
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-4.)
+(Hefesto decision: docs/decisions/product.md#P-7) (See Q-SIM-4, Q-SIM-19.)
 
 #### Scenario: Autosave before simulation
 - **GIVEN** an iPad session with unsaved edits in cell `inv`
@@ -267,7 +272,7 @@ Compatibility: native
 - **THEN** the job SHALL fail before loading with `OSDI model 'mymodel' is not built into this app`, and no file SHALL be opened as code
 
 ### Requirement: OSDI compact models
-Hefesto SHALL ship a built-in set of OSDI compact models, compiled from Verilog-A at Hefesto build time with a pinned OpenVAF-reloaded compiler (OSDI descriptor version 0.4). The set SHALL include at least the modules the supported PDKs need: for IHP sg13g2, PSP 103 (`psp103`, `psp103_nqs`), `r3_cmc` and `mosvar`, plus any HICUM module the PDK's model files instantiate. The adapter SHALL resolve `pre_osdi <path>` and `osdi <path>` by the file's basename without the `.osdi` extension:
+Hefesto SHALL ship a built-in set of OSDI compact models, compiled from Verilog-A at Hefesto build time with a pinned OpenVAF-reloaded compiler (OSDI descriptor version 0.4). The set SHALL include at least the modules the supported PDKs need: for IHP sg13g2, the six modules its `.spiceinit` loads: PSP 103 (`psp103`, `psp103_nqs`), `r3_cmc`, `mosvar`, `cap_cmomi` and `cap_cmomf`, plus any HICUM module the PDK's model files instantiate. The adapter SHALL resolve `pre_osdi <path>` and `osdi <path>` by the file's basename without the `.osdi` extension:
 - **Built-in name.** The built-in module is used on every platform, so results do not depend on any `.osdi` files installed on the host.
 - **Not built in, on Linux or macOS.** The file MAY be loaded dynamically if the user setting "allow external OSDI models" is on. The default is off, and then the job fails with `OSDI model '<name>' is not built into this app`.
 - **Not built in, on iPadOS.** See Requirement "No runtime loading of executable code on iPadOS".
@@ -276,7 +281,7 @@ Hefesto SHALL NOT compile Verilog-A at run time on any platform.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/osdi/osdiregistry.c:340-470, src/frontend/commands.c:298-306) (See Q-SIM-2, Q-SIM-8.)
+(Hefesto decision: docs/decisions/product.md#P-7) (ngspice ref: src/osdi/osdiregistry.c:340-470, src/frontend/commands.c:298-306) (See Q-SIM-2, Q-SIM-8, Q-SIMADV-5.)
 
 #### Scenario: sg13g2 PSP model on iPad
 - **GIVEN** the sg13g2 PDK descriptor requires `psp103_nqs.osdi`

@@ -28,7 +28,7 @@ The command SHALL take an optional first word. It is matched case-insensitively,
 | `short none\|resistor\|voltage` | Shorted-port policy (see capability `ext-flattening-read`). | none |
 | `subcircuits on\|off` | Same as `subcircuits descend on\|off`. | on |
 | `subcircuits top on\|off\|auto` | Top-level `.subckt` wrapper. | auto |
-| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here sets *top* to auto. | on |
+| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here sets *top* to auto (Q-NETLIST-41). | on |
 | `hierarchy on\|off` | Hierarchical output. | off |
 | `blackbox on\|off` | Emit abstract views as stub subcircuits. | off |
 | `renumber on\|off` | Number instances `X0, X1, …` instead of using their ids. | off |
@@ -68,7 +68,7 @@ A run SHALL accept the common arguments of capability `ext-flattening-hierarchy`
 | `-y <n>` | Deprecated. Prints `The cap accuracy flag 'y' is deprecated.` |
 | `-h` | Usage |
 
-An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell argument, the run SHALL use the cell in the current layout window. The output file SHALL be `<cell>.cdl` in CDL format and `<cell>.spice` otherwise, in the current directory, unless `-o` is given. The thresholds set by options SHALL be copied into the run before arguments are parsed. All device, capacitor, resistor, diode, voltage-source, subcircuit and node counters SHALL be reset at the start of each run:
+An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell argument, the run SHALL use the cell in the current layout window. The output file SHALL be `<cell>.cdl` in CDL format and `<cell>.spice` otherwise, in the current directory, unless `-o` is given for that run (see Q-NETLIST-42). The thresholds set by options SHALL be copied into the run before arguments are parsed. All device, capacitor, resistor, diode, voltage-source, subcircuit and node counters SHALL be reset at the start of each run:
 - devices start at 1000
 - SPICE2 node numbers start at 10
 - all other counters start at 0
@@ -83,12 +83,12 @@ Compatibility: behavioral
 - **THEN** it writes `amp.cdl`
 
 ### Requirement: File header and scale card
-The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × EFScale / 100`. If scale mode is off, the output length unit SHALL be `EFScale / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.
+The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × S_out / 100`, where `S_out` is the global output scale of capability `ext-flattening-read`. If scale mode is off, the output length unit SHALL be `S_out / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:900-915, ext2spice/ext2spice.c:1063-1075)
 
 #### Scenario: Default header
-- **GIVEN** cell `inv`, technology `scmos`, EFScale 5, and default options
+- **GIVEN** cell `inv`, technology `scmos`, output scale `S_out` 5, and default options
 - **WHEN** the netlist is written
 - **THEN** it begins `* SPICE3 file created from inv.ext - technology: scmos`, an empty line, `.option scale=50n`, an empty line
 

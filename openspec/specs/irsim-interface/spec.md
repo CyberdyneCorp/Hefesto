@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how Hefesto names electrical nodes under selected paint (`getnode`) consistently with Magic's extractor naming, and the interface Magic offers to the switch-level simulators rsim/IRSIM (`rsim`, `startrsim`, `simcmd`, and the Tcl `irsim` command). Node naming is exact because the names must match `.sim`/`.ext`-derived netlists (see capabilities `extract-nodes-and-labels` and `netlist-sim`). The simulator process mechanics (fork/exec, pipes, environment variables, Tcl package loading) are host-specific and informative; iPadOS cannot fork processes, so a platform decision is logged (Q-LEGACY-71).
+Defines how Hefesto names electrical nodes under selected paint (`getnode`) consistently with Magic's extractor naming, and the interface Magic offers to the switch-level simulators rsim/IRSIM (`rsim`, `startrsim`, `simcmd`, and the Tcl `irsim` command). Node naming is exact because the names must match `.sim`/`.ext`-derived netlists (see capabilities `extract-nodes-and-labels` and `netlist-sim`). The simulator process mechanics (fork/exec, pipes, environment variables, Tcl package loading) are host-specific and informative. The IRSIM integration is desktop-only (decisions X-4 and P-13; capability `hefesto-ipad-feature-scope`); embedded ngspice provides simulation on every platform (Q-LEGACY-71). The node-naming rules (requirements "Hierarchical node names" and "Node name preference order") are not part of the IRSIM integration: they apply on every platform, because simulation probing and the simulation net-name map use them (capabilities `simulation-netlist-preparation` and `simulation-ui-and-crossprobe`). Whether the `getnode` command itself is available on iPadOS is open (decision D-35 in `docs/decisions/audit/DECISIONS.md`).
 
 ## Requirements
 
@@ -122,12 +122,14 @@ Compatibility: informative
 - **THEN** an error such as `can not execute '<path>'` is printed and no simulator runs
 
 ### Requirement: Hefesto simulator integration intent
-Hefesto SHALL expose the simulator integration as an abstract capability: given a simulator session object (in-process library, remote service, or child process where the host allows it), it SHALL send per-node commands using node names computed exactly as specified above and display returned logic values on nodes. On hosts without process creation (iPadOS), the integration MUST use an in-process or remote backend; see Q-LEGACY-71.
+Hefesto SHALL expose the simulator integration as an abstract capability: given a simulator session object (in-process library or child process), it SHALL send per-node commands using node names computed exactly as specified above and display returned logic values on nodes. The integration is available only in the desktop app. On iPadOS the simulator commands SHALL be unavailable as specified by capability `hefesto-ipad-feature-scope`; see Q-LEGACY-71.
 
 Compatibility: behavioral
 (Magic ref: sim/SimRsim.c:140-280, sim/SimSelect.c:443-620)
 
-#### Scenario: No process creation available
+(Hefesto decision: docs/decisions/cross-cutting.md#X-4)
+
+#### Scenario: IRSIM unavailable on iPadOS
 - **GIVEN** Hefesto running on iPadOS
-- **WHEN** the user starts a simulation
-- **THEN** Hefesto uses a non-forking backend (or reports that none is configured) instead of attempting fork/exec
+- **WHEN** the user runs `startrsim inv.sim`
+- **THEN** the command fails with a diagnostic stating that IRSIM is available only in the desktop app, and no process is started

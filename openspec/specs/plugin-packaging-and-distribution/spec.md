@@ -209,7 +209,7 @@ Compatibility: native
 - **THEN** no directory for the plugin SHALL remain in the user root
 
 ### Requirement: Plugin catalog
-Hefesto MAY be configured with one or more plugin catalogs. A catalog is an HTTPS URL serving `index.json`:
+Hefesto MAY be configured with one or more plugin catalogs (governance and hosting: see Q-PLUGIN-7). A catalog is an HTTPS URL serving `index.json`:
 
 ```json
 {"schema": 1, "generated": "<ISO 8601>",

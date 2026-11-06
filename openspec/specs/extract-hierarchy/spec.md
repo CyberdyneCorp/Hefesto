@@ -48,7 +48,7 @@ Compatibility: exact
 
 ### Requirement: Hierarchical label names
 
-When a subcell's paint is copied (flattened) for an interaction, each of its name-role labels, from every depth, whose type is not space SHALL be copied with its text prefixed by the instance path: for each level, the use identifier followed by `[x]` (1-D array in x), `[y]` (1-D array in y) or `[y,x]` (2-D array) for array uses, then `/`. Coordinates SHALL be transformed to the parent. Generated node names of subcells (no label) SHALL be referenced by the same prefix plus the child's generated name (e.g., `I1/metal1_10_4#`).
+When a subcell's paint is copied (flattened) for an interaction, each of its name-role labels, from every depth, whose type is not space SHALL be copied with its text prefixed by the instance path: for each level, the instance identifier followed by `[x]` (1-D array in x), `[y]` (1-D array in y) or `[y,x]` (2-D array) for array uses, then `/`. Coordinates SHALL be transformed to the parent. Generated node names of subcells (no label) SHALL be referenced by the same prefix plus the child's generated name (e.g., `I1/metal1_10_4#`).
 Compatibility: exact
 
 (Magic ref: extract/ExtYank.c:113-246, database/DBcellbox.c:62-107)
@@ -87,7 +87,7 @@ Compatibility: exact
 ### Requirement: Merge records and pass-2 adjustments
 
 At the end of a cell's subcell (and separately array) processing, for every hierarchical node with names n0..nk (k ≥ 1), the extractor SHALL write `merge "n0" "n1" <C> <a0> <p0> ... <aN-1> <pN-1>` followed by `merge "n(i)" "n(i+1)"` for i = 1..k−1 (no values). C (aF divided by `cscale`, `%lg`, may be negative) and the area/perimeter values SHALL be the node's accumulated adjustments; they are 0 when option `adjust` is off.
-Compatibility: exact (values and name pairs); behavioral (record order, see Q-EXTRACT-7)
+Compatibility: exact (values and name pairs); behavioral (record order, see Q-EXTRACT-7; Hefesto uses the deterministic order of capability `hefesto-output-determinism`)
 
 When `adjust` is on, for each interaction the cumulative area SHALL be re-extracted within C (nodes, labels, and coupling when `coupling` is on); for each cumulative node whose name is a hierarchical node, its capacitance and per-class area and perimeter SHALL be added to that node; then for each subtree (parent included) and each of its nodes that maps (by its reference point) to a cumulative node with a name in the table, the subtree node's values SHALL be subtracted. Thus the adjustment equals (value of the merged geometry) − (sum of values of the separately extracted pieces), restricted to C and summed over all interactions.
 

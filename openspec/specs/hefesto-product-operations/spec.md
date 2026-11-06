@@ -86,7 +86,7 @@ Hefesto SHALL publish minimum and recommended system requirements, and the insta
 |---|---|---|---|
 | Linux | glibc 2.31 or later, x86_64 or aarch64 | Vulkan 1.2 capable | minimum 8 GB, recommended 16 GB |
 | macOS | 14 or later | Metal-capable, used through MoltenVK | minimum 8 GB, recommended 16 GB |
-| iPadOS | 17 or later | M1 or later recommended, A14 minimum | — |
+| iPadOS | 17 or later | M1 or later recommended, A14 minimum | minimum 4 GB, recommended 8 GB (the iPad memory bound of `hefesto-performance` is set on an 8 GB M1 iPad Pro) |
 
 On a system below the minimum, the app SHALL explain what is missing and SHALL NOT crash. The values SHALL be revised against the benchmarks of capability `hefesto-performance`.
 

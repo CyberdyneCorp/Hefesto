@@ -3,7 +3,7 @@
 ## Purpose
 Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The spec covers the procedure-naming contract between a PDK library and the framework, the parameter dictionary model, the deterministic naming of generated cells, the cell properties that record how a cell was generated, the create/change/regenerate algorithms, the parameter-dialog builder API, menu hooks, and SPICE-netlist-driven layout seeding.
 
-Generated cells are ordinary layout cells. They are saved, read and extracted like any other cell. Hefesto MUST interoperate with them at the data level (names, properties, geometry) whether or not it can run the PDK's generator code (see Q-SCRIPT-1). The legacy framework `toolkit_rev0.tcl` and the menu helpers in `bsitools.tcl` are installed but not loaded by default (see capability `scripting-auxiliary-tools`).
+Generated cells are ordinary layout cells. They are saved, read and extracted like any other cell. Hefesto MUST interoperate with them at the data level (names, properties, geometry) whether a cell is produced by the PDK's Tcl generator or by a native generator (capability `hefesto-scripting`, decision X-3). The legacy framework `toolkit_rev0.tcl` and the menu helpers in `bsitools.tcl` are installed but not loaded by default (see capability `scripting-auxiliary-tools`).
 
 ## Requirements
 
@@ -351,12 +351,12 @@ Compatibility: behavioral
 - **THEN** the created label text SHALL be exactly `vout[0]` with no backslashes
 
 ### Requirement: Native generator equivalence
-On a platform where PDK generator scripts cannot run (see Q-SCRIPT-1), Hefesto SHALL still:
+Whenever a PDK's generator scripts are not run (because a native generator is used, or in the iPadOS curated-pack fallback of capability `hefesto-scripting`), Hefesto SHALL still:
 - read, display, edit, save and extract cells that carry `library`/`gencell`/`parameters` properties;
 - preserve those properties byte-for-byte;
 - compute the cell names of this spec exactly.
 
-If Hefesto provides native re-implementations of a PDK's generators, then for every parameter set the generated cell SHALL be geometrically identical (same paint, labels, ports and properties) to the PDK script's output, and SHALL have the identical cell name. Identity includes:
+For the native generators required by capability `hefesto-scripting` (Requirement "Native PCell generators validated against Tcl"), for every parameter set the generated cell SHALL be geometrically identical (same paint, labels, ports and properties) to the PDK script's output, and SHALL have the identical cell name. Identity includes:
 - the corrections made by the device's `_check`, which run before naming;
 - the numeric results of the PDK helper procedures, including their defects (`magic::spice2float`, `u2i`, `i2u`, `3digitpastdecimal`; see `scripting-pdk-integration` and Q-SCRIPT-40);
 - for fixed (`nocell`) devices, the placed library cell and its array pitch;
@@ -367,5 +367,5 @@ Compatibility: behavioral
 
 #### Scenario: Round trip without scripts
 - **GIVEN** a layout containing `nfet_XCJNSH` created on a desktop with the PDK script
-- **WHEN** it is opened, moved and saved on a platform without scripting
+- **WHEN** it is opened, moved and saved in a session where the PDK's generator scripts are not run
 - **THEN** the saved cell SHALL contain the same `library`, `gencell` and `parameters` property values

@@ -30,7 +30,7 @@ Abbreviations:
 | SIM-ENG-14 | simulation-engine-embedding | release build license manifest | component and license list | ngspice build configuration and license hygiene |
 | SIM-ENG-15 | simulation-engine-embedding | `sim engine` on each platform | key-value list | ngspice embedded as a library; Engine subcommand |
 | SIM-NET-01 | simulation-netlist-preparation | min tech inverter `inv`; edit after extraction; `sim run` with source `layout inv` | re-extraction event; DUT text vs Magic `ext2spice` with the forced settings | Layout DUT netlist generation |
-| SIM-NET-02 | simulation-netlist-preparation | same cell, parasitic modes `none`, `c`, `rc` (with `extresist-command`) | the three DUT texts vs Magic output; presence of `R0 a.t0 a.n0 2.0005`-style lines in `rc` | Parasitic modes |
+| SIM-NET-02 | simulation-netlist-preparation | same cell, parasitic modes `none`, `c`, `rc` (with `extresist`) | the three DUT texts vs Magic output; presence of `R0 a.t0 a.n0 2.0005`-style lines in `rc` | Parasitic modes |
 | SIM-NET-03 | simulation-netlist-preparation | cell `buf` = two instances of `inv` (`inv_0`, `inv_1`), mode `all` | net-name map; vector list from reference ngspice (`display`) | Net name map |
 | SIM-NET-04 | simulation-netlist-preparation | DUT with labels `A` and `a` on different nets | renamed deck lines; warning text; map entries | Case-collision handling (Q-SIM-6) |
 | SIM-NET-05 | simulation-netlist-preparation | sky130A `inv` testbench, bindings for 3 of 4 ports | composed deck text, byte for byte | Testbench composition; Stimulus definitions |

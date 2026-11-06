@@ -69,6 +69,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: cif/CIFrdcl.c:736-753
 - Options: replicate | fix (look up `MASKHINTS_<name>` and union)
 - Recommendation: fix (union), the evident intent.
+- Duplicate: tracked in Q-MASK-308, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
 
 ### Q-MISC-12: `plane` property type keyword not accepted in .mag
 - Kind: quirk
@@ -113,6 +114,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdRS.c:1992-1993, commands/CmdRS.c:2380-2384, commands/CmdRS.c:2420-2424
 - Options: replicate | fix
 - Recommendation: fix (informative output only).
+- Canonical entry for Q-CMDEDIT-90.
 
 ### Q-MISC-24: Rotation transform direction mismatch
 - Kind: bug

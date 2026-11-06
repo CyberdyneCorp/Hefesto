@@ -35,18 +35,20 @@ These are decisions about Hefesto itself. Each one is cited from `native` requir
   3. 3D export to glTF 2.0 and STL.
   4. Overlays of extracted parasitics and fields (capacitance, resistance, current density).
 
-## Open product decisions
+## Cross-cutting decisions
 
-These remain open and are tracked in `docs/decisions/cross-cutting.md`:
+These are tracked in `docs/decisions/cross-cutting.md`:
 
-| ID | Topic |
-|---|---|
-| X-1 | Output-ordering comparison policy |
-| X-2 | Replicate or fix Magic bugs |
-| X-3 | Scripting runtime per platform |
-| X-4 | iPadOS replacements for host facilities |
-| X-5 | Rendering fidelity details |
-| X-6 | Golden capture |
+| ID | Topic | Status |
+|---|---|---|
+| X-1 | Output-ordering comparison policy | decided (2026-11-05) |
+| X-2 | Replicate or fix Magic bugs | decided (2026-11-05) |
+| X-3 | Scripting runtime per platform | decided (2026-11-05) |
+| X-4 | iPadOS replacements for host facilities | decided (2026-11-05) |
+| X-5 | Rendering fidelity details | decided (2026-11-05); font-label metrics still open |
+| X-6 | Golden capture | open (deferred until the spec is complete) |
+
+Open decisions found by the spec audit are listed in `docs/decisions/audit/DECISIONS.md`.
 
 ## P-5: Built-in LVS
 

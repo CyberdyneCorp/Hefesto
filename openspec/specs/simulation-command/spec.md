@@ -1,18 +1,18 @@
 # Simulation Command
 
 ## Purpose
-Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the headless CLI do everything related to simulation. It covers testbench editing, model and corner selection, running jobs, querying and exporting results, probing, and the waveform viewer. The behaviour behind each subcommand is specified in capabilities `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results` and `simulation-ui-and-crossprobe`. This capability fixes only the syntax, return values and errors. `sim` has no Magic counterpart. Magic's `rsim`, `startrsim` and `simcmd` stay as specified in capability `irsim-interface`.
+Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the headless CLI do everything related to simulation. It covers testbench editing, model and corner selection, running jobs, querying and exporting results, probing, and the waveform viewer. The behaviour behind each subcommand is specified in capabilities `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results` and `simulation-ui-and-crossprobe`. The advanced-simulation options (decision P-19) are listed in the table of this capability, but their full syntax and behaviour are owned by capabilities `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics` and `simulation-optimization-hooks`. This capability fixes only the syntax, return values and errors. `sim` has no Magic counterpart. Magic's `rsim`, `startrsim` and `simcmd` stay as specified in capability `irsim-interface`.
 
 ## Requirements
 
 ### Requirement: Command and option matching
-The command SHALL be `sim <option> [args…]`. `<option>` and every keyword argument SHALL be matched case-insensitively with unique-prefix matching, as other Hefesto commands are. These cases SHALL fail without side effects:
+The command SHALL be `sim <option> [args…]`. `<option>` and every keyword argument SHALL be matched case-insensitively with unique-prefix matching, as other Hefesto commands are. A word that equals a whole option name SHALL select that option even when it is also a prefix of longer names (for example `corner` and `corners`, `meas` and `measure`, `opt` and `option`, `run` and `runset`, `vector` and `vectors`). These cases SHALL fail without side effects:
 
 | Case | Error |
 |---|---|
 | Ambiguous prefix | `sim: ambiguous option "<w>"` |
 | Unknown word | `sim: unknown option "<w>". Use "sim help".` |
-| Missing arguments | `Usage: sim <option> <syntax>`, with the syntax from the table of Requirement "Subcommand table" |
+| Missing arguments | `Usage: sim <option> <syntax>`, with the syntax from the table of Requirement "Subcommand table", or from the owning capability for the options that table delegates |
 
 `sim` with no option, and `sim help`, SHALL print one line per option, in the table's order. Testbench names, job ids, node names and vector names are not keywords, and SHALL be matched exactly, except that vector names SHALL be matched case-insensitively.
 
@@ -21,12 +21,16 @@ Compatibility: native
 (Hefesto decision: docs/decisions/product.md#P-7)
 
 #### Scenario: Prefix match
-- **WHEN** `sim stat` is executed
+- **WHEN** `sim statu` is executed
 - **THEN** it SHALL act as `sim status`
 
+#### Scenario: Exact name wins over a longer option
+- **WHEN** `sim corner` is executed
+- **THEN** it SHALL act as `sim corner`, not report an ambiguity with `sim corners`
+
 #### Scenario: Ambiguous prefix
-- **WHEN** `sim s` is executed
-- **THEN** `sim: ambiguous option "s"` SHALL be reported, because `save`, `source` and `status` all start with `s`
+- **WHEN** `sim stat` is executed
+- **THEN** `sim: ambiguous option "stat"` SHALL be reported, because `stats` and `status` both start with `stat`
 
 ### Requirement: Subcommand table
 The `sim` options SHALL be:
@@ -39,12 +43,15 @@ The `sim` options SHALL be:
 | `source` | `source <name> <n+> <n-> <kind> <params…> [ac <mag> [<phase>]] [-supply]` \| `source delete <name>` \| `source list` | Define stimuli. |
 | `extra` | `extra add <line>` \| `extra clear` \| `extra list` | Extra deck lines. |
 | `pdk` | `pdk [<name>]` | Select the PDK descriptor. Return the current one. |
-| `corner` | `corner [<name>]` \| `corner sweep <sections> -temp <list> [-supply <list>]` \| `corner list` | Select a corner, or define a sweep. |
+| `corner` | `corner [<name>]` \| `corner sweep <sections> -temp <list> [-supply <list>]` \| `corner list` | Select a corner. `corner sweep` defines an unnamed user corner set (the cartesian product, capability `simulation-corners`, Requirement "User-defined corners and corner sets") and selects it for `run -all`. |
+| `corners` | see capability `simulation-corners`, Requirement "Corner command options" | Corner definitions, corner sets, "run all", re-run failed, corner matrix. |
 | `analysis` | `analysis add <op\|dc\|ac\|tran\|noise\|tf> <params…>` \| `analysis clear` \| `analysis list` | Analyses. |
 | `save` | `save default\|all\|all+currents` \| `save <vector…>` | Saved-vector mode. |
 | `option` | `option <text>` \| `option clear` | `.option` lines. |
 | `deck` | `deck [write <file>]` | Return the composed deck for the current corner, or write it to `<file>`. |
-| `run` | `run [-corner <name>\|-all] [-wait]` | Submit jobs. Return their job ids. |
+| `run` | `run [-corner <name>\|-all] [-wait]` | Submit jobs. Return their job ids. `-all` starts a run set whose only dimension is the selected corner set (capability `simulation-corners`, Requirement "Corner dimension") and returns the ids of its point jobs. |
+| `sweep` / `doe` / `runset` | see capability `simulation-sweeps`, Requirement "Sweep command options" | Sweep dimensions, design of experiments, run sets. |
+| `mc` | see capability `simulation-monte-carlo`, Requirement "Monte Carlo command options" | Monte Carlo dimension and statistical parameters. |
 | `status` | `status [<job>]` | Return `<state> <progress>` for the job, or for every non-final job. |
 | `pause` / `resume` / `cancel` | `<op> <job>\|all` | Job control. |
 | `jobs` | `jobs [<testbench>]` | Return the stored job ids, newest first. |
@@ -52,6 +59,8 @@ The `sim` options SHALL be:
 | `vectors` | `vectors <job> <plot>` | Return the display names of the vectors. |
 | `vector` | `vector <job> <plot> <name> [-mode re\|im\|mag\|db\|phase]` | Return the values. |
 | `measure` | `measure <job> <plot> <kind> <vector> <args…>` | Return one number. |
+| `meas` / `spec` / `stats` | see capability `simulation-measurements-and-statistics`, Requirement "Measurement and statistics command options" | Named measurements, specifications, statistics over run sets. |
+| `opt` | see capability `simulation-optimization-hooks`, Requirement "Optimisation command options" | Optimisation sessions for the AI agent. |
 | `export` | `export <job> <file> [-format raw\|rawascii\|csv] [-plot <p>] [-mode reim\|dbphase] [<vector…>]` | Write a file. |
 | `import` | `import <file> [-cell <cell>]` | Import a raw file. Return the new job id. |
 | `probe` | `probe [<net>\|-selection\|-device]` | Add traces. Return the vector names. |
@@ -63,11 +72,15 @@ The `sim` options SHALL be:
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-7)
+(Hefesto decision: docs/decisions/product.md#P-7, docs/decisions/product.md#P-19) (See Q-SIMADV-1.)
 
 #### Scenario: Build and run a testbench
 - **WHEN** the script `sim testbench new inv_tran; sim dut layout inv -parasitics c; sim pdk sky130A; sim bind A in; sim bind Y out; sim bind VPWR vdd; sim bind VGND 0; sim source Vdd vdd 0 dc 1.8 -supply; sim source Vin in 0 pulse 0 1.8 1n 100p 100p 5n 10n; sim analysis add tran 10p 20n; sim run -wait` is executed
 - **THEN** one job SHALL be created, and `sim status <job>` SHALL return `completed 1.0`
+
+#### Scenario: Help lists the advanced options
+- **WHEN** `sim help` is executed
+- **THEN** the list SHALL include `corners`, `sweep`, `doe`, `runset`, `mc`, `meas`, `spec`, `stats` and `opt`, in table order
 
 ### Requirement: Numeric argument syntax
 Numeric arguments SHALL accept:
@@ -146,7 +159,7 @@ A testbench SHALL be saved in the project as `simulations/<testbench>/testbench.
 - extra lines and options
 - the PDK, the corner or sweep, analyses and save mode
 
-Each change made through `sim` SHALL be saved immediately and SHALL be undoable with the editor's undo (capability `layout-undo`) as one undo event per command. Testbench edits SHALL NOT change any cell. `sim testbench delete <name>` SHALL delete the testbench and its stored jobs, after confirmation in interactive use.
+Each change made through `sim` SHALL be saved immediately and SHALL be undoable with the editor's undo as one undo step per command (capability `layout-undo`, requirement "Native undo events for Hefesto compound operations"). Testbench edits SHALL NOT change any cell. `sim testbench delete <name>` SHALL delete the testbench and its stored jobs, after confirmation in interactive use.
 
 Compatibility: native
 

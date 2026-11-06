@@ -231,7 +231,7 @@ end_record  = "end" , [ SP , root_cell ] , NL ;
 
 **`root_cell`.** The name of the root cell of the first layout window, if one exists.
 
-**Cell order.** The order of the cell records follows Magic's cell-table enumeration order (see Q-CELL-28).
+**Cell order.** Magic writes the cell records in its cell hash-table enumeration order, which is arbitrary (see Q-CELL-28). Hefesto SHALL write them in a deterministic order, sorted by cell name with the natural comparator of capability `cell-file-format`; the reader is order-independent, and golden comparison SHALL canonicalize record order (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
 
 **Side effects of writing a record.** Writing a cell into a backup does not change any of the cell's flags. A pending new timestamp is suppressed for this write only, so no out-of-date warning is printed.
 
@@ -265,8 +265,8 @@ Compatibility: behavioral
 **Removal on normal exit.** The session backup file is removed when the session ends normally.
 
 **Schedule.**
-- Periodic backups run every 10 minutes by default, with a configurable interval. An interval of 0 or less stops them.
-- Backups can be started, stopped, resumed and disabled.
+- Periodic backups run at a configurable interval. An interval of 0 or less stops them. Starting backups with no interval set uses 10 minutes, but the GUI tool setup run by the system startup file sets 1 minute before starting them, so 1 minute is the effective default in an interactive session (see Q-SCRIPT-18).
+- Backups can be started, stopped, resumed and disabled. The `crashbackups` command that does this is specified in capability `ui-gui-managers`, requirement "Crash backup timer".
 - A termination request writes a final backup before exiting.
 
 (Magic ref: database/DBio.c:6399-6440, database/DBio.c:6542-6550, tcltk/tools.tcl:53-118, utils/signals.c:503-507, utils/main.c:201)
@@ -285,7 +285,7 @@ Compatibility: informative
 
 **Rewriting.** The file is rewritten in place, not atomically.
 
-**Schedule.** Periodic backups are a Tcl `after` timer (`Opts(backupinterval)`, default 600000 ms) that runs `crash save`. SIGTERM triggers a backup and exit.
+**Schedule.** Periodic backups are a Tcl `after` timer (`Opts(backupinterval)`, 600000 ms when unset at start; the tool setup sets 60000 ms) that runs `crash save`. SIGTERM triggers a backup and exit.
 
 **Explicit name.** When an explicit name is given, the confirmation message prints the previous name rather than the new one (see Q-CELL-29).
 

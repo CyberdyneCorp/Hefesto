@@ -205,7 +205,7 @@ A run set SHALL be stored in the project in folder `simulations/<testbench>/<run
 | `runset.json` | definition and state, see below |
 | `base.spice` | the prepared base deck, before point changes |
 | `points.csv` | one row per point: index, job id, state, one column per dimension, then the measurements of capability `simulation-measurements-and-statistics` |
-| `p<index>/` | the job folder of each point whose waveforms are kept, with the files of capability `simulation-analyses-and-results`, Requirement "Result storage" |
+| `p<index>/` | the job folder of each point that has run, with the files of capability `simulation-analyses-and-results`, Requirement "Result storage"; `result.raw` is present only as the retention setting below allows |
 
 `runset.json` SHALL hold: `id`, `testbench`, `state`, the dimension definitions (including DOE seed and Monte Carlo seed), `total`, `keep`, `deckSha256` of `base.spice`, and the PDK descriptor identity. Each point's deck SHALL be reproducible from `base.spice` and the point's level values, so that "re-run point" gives the same deck text.
 

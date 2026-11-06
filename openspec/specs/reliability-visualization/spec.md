@@ -36,8 +36,8 @@ Compatibility: native
 
 ### Requirement: 2D heat map
 The layout view SHALL draw a selected dataset as a filled color overlay over the geometry it refers to, above the layout layers and below selection highlights. The overlay SHALL use these color maps:
-- **`ir.drop`, `ir.current`, `em.density`, `em.cut`:** a perceptually uniform sequential map that colour-blind viewers can distinguish (viridis-like), linear over [0, max] by default, with an optional user-set range and an optional log scale.
-- **`em.ratio`:** a fixed threshold map. Ratio ≤ r_warn is drawn in a neutral color; r_warn < ratio ≤ 1 in a warning color; ratio > 1 in an error color. Within each band, intensity rises with the ratio. Unchecked items are drawn hatched.
+- **`ir.drop`, `ir.current`, `em.density`, `em.cut`:** a perceptually uniform sequential map that color-blind viewers can distinguish (viridis-like), linear over [0, max] by default, with an optional user-set range and an optional log scale.
+- **`em.ratio`:** a fixed threshold map. Ratio ≤ r_warn is drawn in a neutral color; r_warn < ratio ≤ 1 in the `warning` color token; ratio > 1 in the `danger` color token (capability `hefesto-design-system`). Within each band, intensity rises with the ratio. Unchecked items are drawn hatched.
 
 A legend SHALL show the unit, the range, the thresholds (budget for IR, r_warn and 1.0 for EM), and the run id. The opacity SHALL be adjustable from 0 to 100 %. The overlay SHALL hide items smaller than one pixel at the current zoom, and SHALL instead draw a marker at the worst item in each 8×8-pixel screen bin, so that violations stay visible when zoomed out. The overlay SHALL NOT change the layout, and SHALL NOT be saved in cells.
 
@@ -48,7 +48,7 @@ Compatibility: native
 #### Scenario: Violation visible when zoomed out
 - **GIVEN** an EM run with one failing via of 0.2 µm × 0.2 µm in a 2 mm × 2 mm chip
 - **WHEN** the whole chip is shown with `em.ratio` on
-- **THEN** a marker in the error color SHALL be drawn at the via's screen bin
+- **THEN** a marker in the `danger` color SHALL be drawn at the via's screen bin
 
 #### Scenario: Overlay not saved
 - **WHEN** a cell is saved while an IR overlay is shown
@@ -68,7 +68,7 @@ Compatibility: native
 #### Scenario: Via colored in 3D
 - **GIVEN** the failing via1 of an EM run
 - **WHEN** the 3D view shows `em.ratio`
-- **THEN** the via1 solid SHALL be drawn in the error color, and picking it SHALL show ratio 1.25 and rule `JMAXVIA1`
+- **THEN** the via1 solid SHALL be drawn in the `danger` color, and picking it SHALL show ratio 1.25 and rule `JMAXVIA1`
 
 ### Requirement: Time scrubbing
 For a dynamic IR run, and for an EM run from a transient job, the overlays SHALL support a time cursor:

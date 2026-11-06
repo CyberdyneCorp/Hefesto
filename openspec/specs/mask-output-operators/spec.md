@@ -841,7 +841,7 @@ If the property exists but is not a four-value dimension property the result is 
 
 Compatibility: exact
 
-The property value is a set of rectangles (property type "plane"; textual form is groups of four integers `llx lly urx ury`, see capability `cell-file-format`). The property name is truncated to 511 characters.
+The property value is a set of rectangles (property type "plane"; textual form is groups of four integers `llx lly urx ury`, see capability `cell-file-format`). The property name is truncated to 511 characters. The full operator semantics (argument count, interaction-distance cut-off, hint flattening for flattened regions) are owned by capability `mask-hints` requirement "Mask-hint output operator"; this entry is a summary for the operator catalog.
 
 (Magic ref: cif/CIFgen.c:5682-5705, cif/CIFgen.c:4998-5020)
 
@@ -869,16 +869,16 @@ How the truncated result is used is specified in capability `mask-hierarchical-g
 
 ### Requirement: Non-Manhattan merge option
 
-When the non-Manhattan optimisation option is enabled (`cif unfracture yes`), each generated layer's plane SHALL be post-processed by merging split tiles into larger non-Manhattan tiles before clipping; the covered point set is unchanged but the tile decomposition (and hence polygon partitioning in output) changes.
+When the `unfracture` switch is on, each generated layer's plane SHALL be post-processed by merging split tiles into larger non-Manhattan tiles before clipping, as specified in capability `mask-hierarchical-generation` requirement "Non-manhattan merge option", which owns the switch, its default (off) and its command syntax (see Q-MASK-413). The covered point set is unchanged; only the tile decomposition (and hence polygon partitioning in output) changes.
 
 Compatibility: exact
 
-Default: disabled. The merge procedure is defined in capability `layout-geometry-model`.
+The merge procedure is defined in capability `layout-geometry-model`.
 
 (Magic ref: cif/CIFgen.c:49, cif/CIFgen.c:5797-5799, commands/CmdCD.c:2060-2080)
 
 #### Scenario: Default off
 
-- **GIVEN** a fresh session
-- **WHEN** querying `cif unfracture`
-- **THEN** it reports that non-Manhattan geometry is not optimised
+- **GIVEN** a fresh session in which the `unfracture` switch has never been set
+- **WHEN** a layer is generated from split tiles
+- **THEN** no merge is applied and the layer keeps its generated tile decomposition

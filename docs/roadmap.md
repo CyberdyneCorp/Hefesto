@@ -14,7 +14,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 1. **The core never depends on the UI.** Raven is confined to the desktop shell (`hefesto-architecture`). The CLI and every test run headless.
 2. **Verification drives each milestone.** Before work on a milestone starts:
    - Its open questions are resolved (`Resolution:` lines, per `hefesto-magic-compat-mode`).
-   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164.
+   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164, xschem @ 4142e6d6 (for the schematic cases).
 3. **Exit criteria are the same for every milestone:**
    - The area's golden cases pass under the canonical comparison of `hefesto-output-determinism`.
    - Unit, property and fuzz tests are green (`hefesto-testing-strategy`).
@@ -28,7 +28,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 |---|---|---|---|---|
 | M0 | Foundations and Raven go/no-go | 8 | 33 |  |
 | M1 | Core model, formats, PDK manager, 2D viewer | 25 | 280 |  |
-| M2 | Interactive editing and design system | 19 | 183 |  |
+| M2 | Interactive editing and design system | 19 | 186 |  |
 | M3 | Design rule checking | 5 | 72 |  |
 | M4 | Scripting and PDK integration | 8 | 90 | **Desktop Alpha** |
 | M5 | Mask generation, GDS, CIF | 8 | 203 |  |
@@ -249,7 +249,7 @@ Depends on `mask-hints`, which is completed in M3.
 **Capabilities:** `hefesto-performance`, `tapeout-fill-and-density`, `tapeout-seal-ring`, `tapeout-signoff-checklist`, `tapeout-shuttle-packages`, `hefesto-onboarding-and-help`, `hefesto-product-operations`, `plugin-api`, `plugin-packaging-and-distribution`, `plugin-security-and-platforms`, `plugin-sdk`
 
 **Deliverables**
-- **Tapeout:** fill generation and density checks, seal rings, the sign-off checklist, and export packages for shuttles (Tiny Tapeout, ChipFoundry, wafer.space, IHP). The KLayout sign-off approach follows decision Q-TAPEOUT-1.
+- **Tapeout:** fill generation and density checks, seal rings, the sign-off checklist, and export packages for shuttles (Tiny Tapeout, ChipFoundry, wafer.space, IHP). The KLayout sign-off approach follows decision P-18 (external KLayout on desktop; resolves Q-TAPEOUT-1).
 - **Plugins:** a stable plugin C ABI with a C++20 SDK, plus signed packaging and distribution.
 - **Operations:** opt-in crash reporting and telemetry, signed update channels, and published system requirements.
 - **Onboarding:** the new-project wizard, templates and example designs per PDK, interactive tutorials, and command help.
@@ -294,6 +294,6 @@ Desktop-only at first: the digital flow, the legacy tools, `shell` and git integ
 | M0 | Golden capture setup for Magic | Whether the X-6 verification approach works at all |
 | M1 entry | Resolve open questions TECH, CELL, MODEL | Starting M1 work on settled behavior |
 | M4 | App Review inquiry on sandboxed Tcl | iPad scripting: user-imported scripts or curated packs (X-3) |
-| M5 | KLayout sign-off decision (Q-TAPEOUT-1) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
+| M5 | ~~KLayout sign-off decision (Q-TAPEOUT-1)~~ Done: decided by P-18 (2026-11-06) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
 | M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
 | M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |

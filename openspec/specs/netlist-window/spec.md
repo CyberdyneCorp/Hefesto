@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines Magic's netlist facility used by the routers and by interactive netlist editing: the `.net` file format (exact grammar, reading and writing), the in-memory netlist model (named terminals grouped into nets), the netlist window (`specialopen netlist`) and its command set (`add`, `cleanup`, `cull`, `dnet`, `dterm`, `extract`, `find`, `flush`, `joinnets`, `measure`, `netlist`, `print`, `pushbutton`, `ripup`, `savenetlist`, `shownet`, `showterms`, `trace`, `verify`, `writeall`), the netlist tool in layout windows (`netlist select|join|terminal`), and the conversion of a netlist into terminal locations for the routers (capabilities `router-channel`, `router-gate-array`). Terminal names are hierarchical label names (`useid/useid/label`).
+Defines Magic's netlist facility used by the routers and by interactive netlist editing: the `.net` file format (exact grammar, reading and writing), the in-memory netlist model (named terminals grouped into nets), the netlist window (`specialopen netlist`) and its command set (`add`, `cleanup`, `cull`, `dnet`, `dterm`, `extract`, `find`, `flush`, `joinnets`, `measure`, `netlist`, `print`, `pushbutton`, `ripup`, `savenetlist`, `shownet`, `showterms`, `trace`, `verify`, `writeall`), the netlist tool in layout windows (`netlist select|join|terminal`), and the conversion of a netlist into terminal locations for the routers (capabilities `router-channel`, `router-gate-array`). Terminal names are hierarchical label names (`useid/useid/label`). This capability is desktop-only in the first iPadOS release (decision P-13; capability `hefesto-ipad-feature-scope`).
 
 ## Requirements
 

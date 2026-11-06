@@ -361,7 +361,7 @@ On iPadOS, the PDK root SHALL be `Application Support/PDKs/` inside the app cont
 - excluded from iCloud backup by default, because they can be downloaded again
 - never placed in `Caches`, which the system may purge
 
-Before a download, the manager SHALL check free space for the asset size plus the unpacked estimate. It SHALL refuse to start when space is short. Downloads SHALL use a background transfer session, so that an install continues when the app is suspended. Unpacking SHALL resume when the app next runs. PDK files SHALL NOT be exposed in the Files app. Offline packs SHALL be imported through the document picker. Script execution from installed PDKs SHALL follow capability `hefesto-scripting`, including its App Store fallback.
+Before a download, the manager SHALL check free space for the asset size plus the unpacked estimate. It SHALL refuse to start when space is short. Downloads SHALL use a background transfer session, so that an install continues when the app is suspended. Unpacking SHALL resume when the app next runs. PDK files SHALL NOT be exposed in the Files app. Offline packs SHALL be imported through the document picker. The default library set on iPadOS is open (see Q-TAPEOUT-17). Script execution from installed PDKs SHALL follow capability `hefesto-scripting`, including its App Store fallback.
 
 Compatibility: native
 

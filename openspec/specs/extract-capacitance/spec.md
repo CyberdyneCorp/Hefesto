@@ -190,7 +190,7 @@ Compatibility: exact
 
 ### Requirement: Coupling record output
 
-Each pair entry with value V ≠ 0 after dividing by `cscale` SHALL be written as `cap "<name1>" "<name2>" <V>` with V in C `%lg` format (6 significant digits). Coupling records SHALL NOT be written for a cell carrying the `device` property. Pair entries are unordered: the order of the two names within a record and the order of records SHALL be treated as implementation-defined (see Q-EXTRACT-7); a Hefesto implementation SHALL emit them in a deterministic order.
+Each pair entry with value V ≠ 0 after dividing by `cscale` SHALL be written as `cap "<name1>" "<name2>" <V>` with V in C `%lg` format (6 significant digits). Coupling records SHALL NOT be written for a cell carrying the `device` property. Pair entries are unordered: in Magic the order of the two names within a record and the order of records depend on hash and memory-address order (see Q-EXTRACT-7); Hefesto SHALL emit them in the deterministic order of capability `hefesto-output-determinism` (decision X-1).
 Compatibility: exact (set of unordered pairs and values); behavioral (order)
 
 The node capacitance written in a `node` record SHALL be `max(0, C_node / cscale)` in `%lg` format.

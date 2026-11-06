@@ -231,7 +231,7 @@ A plugin panel SHALL be described as a declarative UI tree. The plugin SHALL NOT
 - `image` (RGBA8 pixels or PNG bytes)
 - `plot` (x/y series, with axis labels and units)
 
-Each shell SHALL render the tree in its own toolkit: Raven on the desktop, SwiftUI on iPadOS. A plugin updates its panel by replacing the tree or by setting variables. Panel callbacks SHALL be delivered on the UI thread, and SHALL interact with the layout only by running commands.
+Each shell SHALL render the tree in its own toolkit: Raven on the desktop, SwiftUI on iPadOS. Extending the node set is tracked in Q-PLUGIN-6. A plugin updates its panel by replacing the tree or by setting variables. Panel callbacks SHALL be delivered on the UI thread, and SHALL interact with the layout only by running commands.
 
 Compatibility: native
 
@@ -375,7 +375,7 @@ A script plugin SHALL use the same manifest, extension points and permissions as
 - `run_command` and `post_command`
 - `emit_diagnostic`
 
-A script plugin SHALL see the `magic::` commands only through `run_command`, and SHALL get the same results as a native plugin calling the same API. Script plugins SHALL be supported on every platform.
+A script plugin SHALL see the `magic::` commands only through `run_command` (see Q-PLUGIN-8), and SHALL get the same results as a native plugin calling the same API. Script plugins SHALL be supported on every platform.
 
 Compatibility: native
 

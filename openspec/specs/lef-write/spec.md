@@ -527,7 +527,7 @@ The remaining records SHALL be written as follows:
 | masterslice | `  TYPE MASTERSLICE ;` |
 | overlap | `  TYPE OVERLAP ;` |
 
-Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order follows the layer hash table's iteration order; see Q-LEFDEF-30. With default initialization, the written WIDTH equals the DRC default spacing and no SPACING line appears; see Q-LEFDEF-31. The CUT AREA default is discussed in Q-LEFDEF-32.
+Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order follows the layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`); see Q-LEFDEF-30. With default initialization, the written WIDTH equals the DRC default spacing and no SPACING line appears; see Q-LEFDEF-31. The CUT AREA default is discussed in Q-LEFDEF-32.
 
 Compatibility: exact
 
@@ -545,12 +545,12 @@ Compatibility: exact
 
 ### Requirement: Magic type to LEF layer name
 
-For each magic type `t`, the system SHALL determine its LEF layer name. The name is the canonical name of the first layer record, in layer hash-table iteration order, for which both of these hold:
+For each magic type `t` (user types and stacked contact types), the system SHALL determine its LEF layer name. The name is the canonical name of the first layer record, in layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`), for which both of these hold:
 
-1. The record's class is cut/via when `t` is a contact type, and route or masterslice when `t` is not a contact.
+1. The record's class is cut/via when `t` is a contact type (including via definitions that `lef read` created), and route or masterslice when `t` is not a contact.
 2. The record's magic type, or its obstruction type, equals `t`.
 
-If no record matches, `t` SHALL have no LEF name. Geometry of a type with no LEF name is never written. This mapping is shared with capability `def-write`. When several records match, the hash order decides the winner; see Q-LEFDEF-30.
+If no record matches, `t` SHALL have no LEF name. Geometry of a type with no LEF name is never written. This capability owns the mapping; capability `def-write` uses it. When several records match, the enumeration order decides the winner; see Q-LEFDEF-30.
 
 Compatibility: exact
 
@@ -560,6 +560,11 @@ Compatibility: exact
 - **GIVEN** tech lines `route metal1 met1` and `obstruction obsm1 met1`
 - **WHEN** paint of type `obsm1` is written
 - **THEN** it SHALL be written under `LAYER met1 ;`
+
+#### Scenario: Via definition captures a cut type (verify against Magic)
+- **GIVEN** a LEF file read with `VIA M1M2_PR` whose cut is magic type `via1`, and a tech `cut via1 via1` entry
+- **WHEN** `M1M2_PR` comes earlier in layer-table enumeration order than `via1`
+- **THEN** type `via1` SHALL map to the name `M1M2_PR` (see Q-LEFDEF-92)
 
 ### Requirement: Macro source geometry and layer masks
 

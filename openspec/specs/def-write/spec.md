@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. The extracted-netlist flattening belongs to the extraction (EXTFLAT) area.
+Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. Reading and flattening the extracted netlist belong to capabilities `ext-flattening-read` and `ext-flattening-hierarchy`.
 
 Terms used throughout:
 
@@ -271,12 +271,7 @@ Compatibility: exact
 
 ### Requirement: Magic-to-LEF layer map
 
-Before writing, the system SHALL build a map from every magic tile type `t` (user types and stacked contact types) to a LEF layer record and its name:
-
-- If `t` is a contact type, the candidates SHALL be the layer-table records of class cut/via (including via definitions that `lef read` created).
-- Otherwise, the candidates SHALL be the records of class route or masterslice.
-- The map entry SHALL be the first candidate, in layer-table enumeration order (see "Table enumeration order"), whose magic type or obstruction type equals `t`. The written name SHALL be that record's canonical name.
-- If no candidate exists, `t` has no LEF name. Geometry of that type SHALL be skipped wherever this capability says so.
+Before writing, the system SHALL build a map from every magic tile type `t` (user types and stacked contact types) to a LEF layer record and its name, using the magic-type-to-LEF-layer rule owned by capability `lef-write` (Requirement "Magic type to LEF layer name"), with candidates taken in this capability's table enumeration order (see "Table enumeration order"). If `t` has no LEF name, geometry of that type SHALL be skipped wherever this capability says so.
 
 Compatibility: exact
 
@@ -286,12 +281,6 @@ Compatibility: exact
 
 - **GIVEN** the tech `lef` section line `obstruction obsm1 metal1` and `route metal1 metal1`
 - **THEN** both magic types `metal1` and `obsm1` SHALL map to LEF layer `metal1`
-
-#### Scenario: Via definition captures a cut type (verify against Magic)
-
-- **GIVEN** a LEF file read with `VIA M1M2_PR` whose cut is magic type `via1`, and a tech `cut via1 via1` entry
-- **WHEN** `M1M2_PR` comes earlier in table enumeration order than `via1`
-- **THEN** type `via1` SHALL map to the name `M1M2_PR` (see Q-LEFDEF-92)
 
 ### Requirement: Contact region identification
 
@@ -521,7 +510,7 @@ Counts:
 - Without `-allspecial`: special nets = special nodes; regular nets = port nodes that are not special; all other nodes are "blockage" nodes.
 - With `-allspecial`: special nets = special or port nodes; regular nets = 0.
 
-SPECIALNETS SHALL list the special nets (and, under `-allspecial`, the port nets). NETS SHALL list the regular nets. Both SHALL use the flattened-node enumeration order of the netlist (see the EXTFLAT capabilities).
+SPECIALNETS SHALL list the special nets (and, under `-allspecial`, the port nets). NETS SHALL list the regular nets. Both SHALL use the flattened-node enumeration order of the netlist (see capability `ext-flattening-hierarchy`).
 
 Compatibility: exact
 
@@ -584,9 +573,9 @@ For each net, the routing geometry SHALL be found as follows:
 2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
 3. After the last seed, if a segment is pending and it is not a via, write its end coordinate with the pending orientation. Then write ` ;` and a newline, and reset the column to 0.
 
-The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Byte-exact output therefore requires the same tile decomposition (maximal horizontal strips) and the same traversal (see Q-LEFDEF-108). Seeds whose components are connected in the top cell produce repeated geometry (Q-LEFDEF-112).
+The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). Seeds whose components are connected in the top cell produce repeated geometry (Q-LEFDEF-112).
 
-Compatibility: behavioral
+Compatibility: exact
 
 (Magic ref: lef/defWrite.c:747-834, database/DBconnect.c:171-243, database/DBconnect.c:395-640)
 

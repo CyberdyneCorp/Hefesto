@@ -367,9 +367,10 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 ### Q-MASK-308: mask-hints input property lookup uses wrong key
 - Kind: bug
 - Magic behavior: The existing plane is looked up under `NAME` but stored under `MASKHINTS_NAME`; each templayer creates a fresh plane that replaces any earlier hints of the same name in the same cell.
-- Evidence: cif/CIFrdcl.c:454-473
+- Evidence: cif/CIFrdcl.c:736-753
 - Options: replicate | fix (look up MASKHINTS_NAME and merge)
 - Recommendation: fix (merge); only differs when two templayers target the same hint name.
+- Canonical entry for Q-MISC-11.
 
 ### Q-MASK-309: copyup ignored by the CIF reader
 - Kind: quirk

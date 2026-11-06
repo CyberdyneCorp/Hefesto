@@ -144,7 +144,7 @@ Compatibility: exact
 - **THEN** the pin order SHALL be B, A
 
 ### Requirement: Templates and instance attributes
-A new instance SHALL get the symbol's `template` value (decoded, capability `schematic-file-format`, Requirement "Property strings") as its property string, with `name` made unique (Requirement "Instance names"). When an `@key` token is resolved for an instance (capability `schematic-netlisting`, Requirement "Attribute substitution"), the instance property string SHALL be searched first, then the symbol template. Instance attributes that the template does not define SHALL be kept and SHALL be usable by `@key`. An instance MAY override `format` and `lvs_format`; an instance value SHALL be used before the symbol value.
+A new instance SHALL get the symbol's `template` value (decoded, capability `schematic-file-format`, Requirement "Property strings") as its property string, with `name` made unique (Requirement "Instance names"). When an `@key` token is resolved for an instance (capability `schematic-netlisting`, Requirement "Format string substitution"), the instance property string SHALL be searched first, then the symbol template. Instance attributes that the template does not define SHALL be kept and SHALL be usable by `@key`. An instance MAY override `format` and `lvs_format`; an instance value SHALL be used before the symbol value.
 
 Compatibility: exact
 

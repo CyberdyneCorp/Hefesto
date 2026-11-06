@@ -14,6 +14,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: openspec/specs/simulation-command/spec.md (Requirement "Subcommand table"); openspec/specs/simulation-netlist-preparation/spec.md (Requirement "Corners")
 - Options: (a) add the new rows to `simulation-command` and define `corner sweep` as creating an unnamed user corner set; (b) keep the rows in the new capabilities and make the table in `simulation-command` say it is extended by them.
 - Recommendation: (a), in the next change to `simulation-command`. Also make `sim help` list the new options, and make `sim run -all` start a run set (the new capabilities already assume this).
+- Resolution: fix. `simulation-command` now lists `corners`, `sweep`/`doe`/`runset`, `mc`, `meas`/`spec`/`stats` and `opt` in its table (syntax delegated to the owning capabilities), `sim help` lists them, an exact option name wins over longer names it prefixes, `corner sweep` defines an unnamed user corner set, and `run -all` starts a run set (2026-11-06, audit G4).
 
 ### Q-SIMADV-2: sky130 model file, section list and descriptor
 - Kind: doc-mismatch
@@ -21,6 +22,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: combined_models/sky130.lib.spice:20-79 (header), :82-1378 (`.lib` lines); open_pdks sky130/Makefile.in:1508-1513; xschem_sky130 xschemrc:502
 - Options: use `libs.tech/combined` as the sky130 model root everywhere; report the missing `sf_lh` upstream; keep `simulation-corners` rejecting it.
 - Recommendation: switch the sky130 descriptor in `simulation-netlist-preparation` to `libs.tech/combined` (this also closes the sky130 part of Q-SIM-8). Check whether `set ng_nomodcheck` is still needed with the combined models.
+- Resolution: fix. The sky130 descriptor in `simulation-netlist-preparation` uses model root `libs.tech/combined`; `simulation-corners` owns the full section list (2026-11-06, audit G4). The `ng_nomodcheck` check remains open under Q-SIM-8.
 
 ### Q-SIMADV-3: sky130 Monte Carlo switches
 - Kind: ambiguity
@@ -42,6 +44,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: ngspice/models/cornerMOSlv.lib:74-565; cornerRES.lib:19-240; sg13g2_moslv_stat.lib:21-30; sg13g2_moslv_mod_mismatch.lib:66-118; xschem/sg13g2_pr/sg13_lv_nmos.sym:20-26; xschem/sg13g2_tests/mc_lv_nmos_cs_loop.sch:30-64; ngspice/.spiceinit
 - Options: (a) no `both` mode for sg13g2 (current spec); (b) a Hefesto-defined combined section that includes both the `_stat` and the `_mod_mismatch` libraries; (c) ask IHP for an official combined section.
 - Recommendation: (a) now and (c) upstream. Add `cap_cmomi` and `cap_cmomf` to the built-in OSDI list (a gap in `simulation-engine-embedding`; see Q-SIM-2). For layout-extracted DUTs, decide whether the netlister emits `mm_ok=1` on sg13g2 devices; otherwise extracted circuits never show mismatch.
+- Resolution: fix. `cap_cmomi` and `cap_cmomf` (and `psp103`) added to the built-in OSDI set in `simulation-engine-embedding` and to the sg13g2 descriptor in `simulation-netlist-preparation`; option (a) stays (2026-11-06, audit G4). Whether the layout netlister emits `mm_ok=1` on extracted sg13g2 devices is still open (see docs/decisions/audit/G4.md, Needs decision).
 
 ### Q-SIMADV-6: [platform] Random sequence depends on the C library
 - Kind: platform
@@ -49,6 +52,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: src/maths/misc/randnumb.c:101-116, :140-150, :220-235, :304-330
 - Options: (a) a Hefesto patch that derives the state words from SplitMix64 (current spec); (b) ship a fixed portable `rand()` replacement linked into ngspice only; (c) accept platform-dependent samples and compare only statistics across platforms.
 - Recommendation: (a), and offer it upstream as an option (`set portable_seed`). The reference ngspice for golden cases must carry the same patch. Check that `log` differences between math libraries never flip a rejection-sampling decision (`r >= 1.0`) for the golden seeds.
+- Resolution: fix. Option (a) as specified in `simulation-monte-carlo` (Requirement "Portable random numbers"); `simulation-engine-embedding` now requires the patch in the build manifest (2026-11-06, audit G4).
 
 ### Q-SIMADV-7: [platform] Engine seeding and `set rndseed=1`
 - Kind: doc-mismatch
@@ -56,6 +60,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" points
 - Evidence: src/sharedspice.c:930-936; src/maths/misc/randnumb.c:71-92, :287-330; src/maths/cmaths/cmath2.c:137; src/frontend/inpcom.c:8380-8412
 - Options: change the fixed init list in `simulation-engine-embedding` to send `setseed 1` before every deck load (not only for Monte Carlo); verify which RNG `trnoise`/`trrandom` sources use; pin the post-47 statistical-parameter semantics.
 - Recommendation: send `setseed <s>` before every deck load, with `s = 1` for ordinary jobs and `s_i` for Monte Carlo samples. Update scenario "Reproducible random sources" in `simulation-engine-embedding`. Add a golden case that fails if the seed came from the pid (SIMADV-MC-03).
+- Resolution: fix. `simulation-engine-embedding` no longer sends `set rndseed=1`; it sends `setseed <s>` before every deck load (`s = 1`, or `s_i` for Monte Carlo samples). Verified in the ngspice clone: `setseed` calls `srand`, `TausSeed` and `initw` (the Wallace pool used by `trnoise`), randnumb.c:292-330. The post-47 statistical-parameter semantics are pinned by `simulation-monte-carlo` (no `stat_param_as_func`) (2026-11-06, audit G4).
 
 ### Q-SIMADV-8: Monte Carlo around non-typical corners
 - Kind: ambiguity

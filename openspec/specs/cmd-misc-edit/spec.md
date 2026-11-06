@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, `see`, `crosshair`, `findbox`, `feedback`, the command surface of `straighten`, and the wizard/debug commands (`*coord`, `*extract`, `*plow`, `*psearch`, `*showmem`, `*showtech`, `*tilestats`, `*tsearch`, `*watch`, `history`, `makesw`, `sgraph`). The plowing algorithm is in capability `plow`. Coordinates are in `cmd-coordinates-and-units` and the box is in `cmd-box`. The command surface is `behavioral`. The `xor` geometry is `exact`.
+Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific commands `history`, `makesw` and `sgraph`. It also summarises commands owned elsewhere: `see`, `crosshair` and `findbox` (owned by capability `ui-windows-and-views`), `feedback` (owned by capability `ui-feedback-and-highlights`) and the layout wizard commands (owned by capability `ui-wizard-and-debug`). Where a summary and its owner differ, the owner governs. The plowing algorithm is in capability `plow`. Coordinates are in `cmd-coordinates-and-units` and the box is in `cmd-box`. The command surface is `behavioral`. The `xor` geometry is `exact`.
 
 ## Requirements
 
@@ -58,15 +58,7 @@ Compatibility: informative
 
 ### Requirement: See command
 
-`see [no] [LAYERS|allSame]` SHALL change what the current layout window displays:
-
-- `see LAYERS` makes the listed layers visible. `see no LAYERS` hides them. Each user type affects its own layer and the contact types whose display includes it.
-- `labels` and `subcell` in LAYERS control display of labels and of subcell outlines/names.
-- `see` alone shows everything. `see no` alone hides everything.
-- `see allSame` / `see no allSame` turns on or off display of non-edit cells in the same style as the edit cell.
-- More than two arguments (or two without `no`) print usage.
-
-Visibility affects display, `$` layer specs, `select visible`, and paint-by-example. It does not change layout data. It is per window.
+`see [no] [LAYERS|allSame]` SHALL change which layers the current layout window displays, as specified by capability `ui-windows-and-views`, requirement "Layer visibility (see)", which governs. In summary: `see LAYERS` shows and `see no LAYERS` hides the listed layers, `see` / `see no` alone affect all layers, and `allSame` controls drawing non-edit material in normal style. Visibility is per window and does not change layout data; it also affects `$` layer specs, `select visible` and paint-by-example.
 
 Compatibility: behavioral
 
@@ -79,7 +71,7 @@ Compatibility: behavioral
 
 ### Requirement: Crosshair command
 
-`crosshair X Y` SHALL show a full-window horizontal and vertical line through the point (X, Y) in the root coordinates of the current window. `crosshair off` SHALL remove it. Other forms print `Usage: crosshair off|x y`. The crosshair is display-only.
+`crosshair X Y` SHALL show a horizontal and a vertical line through the point (X, Y) in root coordinates, and `crosshair off` SHALL remove it, as specified by capability `ui-windows-and-views`, requirement "Crosshair", which governs. The crosshair is display-only.
 
 Compatibility: behavioral
 
@@ -91,7 +83,7 @@ Compatibility: behavioral
 
 ### Requirement: Findbox command
 
-`findbox` SHALL scroll the current window, without changing its scale, so that the box is centred. `findbox zoom` SHALL set the view to the box grown on each side by 1/20 of its width (x) and height (y), using integer division. The box must be in the window's root cell. Otherwise the command reports "The box is not in the same coordinate system as the window." Other arguments print `Usage: findbox [zoom]`.
+`findbox` SHALL scroll the current window, without changing its scale, so that the box is centered, and `findbox zoom` SHALL frame the box plus a margin of max(2, ⌊width/20⌋) in x and max(2, ⌊height/20⌋) in y, as specified by capability `ui-windows-and-views`, requirement "center and findbox", which governs (including the error messages).
 
 Compatibility: behavioral
 
@@ -102,11 +94,16 @@ Compatibility: behavioral
 - **WHEN** `findbox zoom` is run
 - **THEN** the view SHALL be set to (−10,−5)–(210,105)
 
+#### Scenario: Minimum findbox margin
+- **GIVEN** the box (0,0)–(20,20)
+- **WHEN** `findbox zoom` is run
+- **THEN** the view SHALL be set to (−2,−2)–(22,22)
+
 ### Requirement: Feedback command
 
-`feedback OPTION` SHALL manage feedback areas: highlighted root-coordinate areas with an explanatory text and a display style, used by DRC, extraction and other tools. Options (keyword-matched):
+`feedback OPTION` SHALL manage feedback areas: highlighted root-coordinate areas with an explanatory text and a display style, used by DRC, extraction and other tools. The command, its options, messages and save-file format are owned by capability `ui-feedback-and-highlights` requirement "feedback command"; the summary below does not override it. Options (keyword-matched):
 
-- `add TEXT [STYLE] [POINTS…]`: add an area. Without points it covers the box. With 2 values it is a point. With 4 values it is a rectangle. With more values (pairs) it is a polygon. STYLE is `dotted`, `medium`, `outline`, `pale`, `solid`, a display-style number, or a long style name. An odd number of coordinates is a usage error.
+- `add TEXT [STYLE] [x y …]`: add an area. Without points it covers the box. With 1 point (2 values) it is a point. With 2 points (4 values) it is a line. With more points it is a polygon split into rectangles and triangles. STYLE is `dotted`, `medium`, `outline`, `pale` (default), `solid`, or a long display-style name. An odd number of coordinates is a usage error.
 - `clear [SUBSTRING]`: remove all areas, or only those whose text contains SUBSTRING.
 - `count`: return or print the number of areas.
 - `find [N]`: set the box to the next (or N-th) area and print its text.
@@ -139,7 +136,7 @@ Compatibility: behavioral
 
 ### Requirement: Wizard and debug commands
 
-The wizard commands `*coord`, `*extract`, `*plow`, `*psearch`, `*showmem`, `*showtech`, `*tilestats`, `*tsearch` and `*watch` (hidden from normal `help`), the readline `history` command, and the LLNL-only `makesw` and `sgraph` are internal debugging or build-specific tools. Hefesto MAY omit them or provide its own diagnostics. They SHALL NOT be required for data compatibility.
+The readline `history` command and the LLNL-only `makesw` and `sgraph` are build-specific tools, and the layout wizard commands (`*coord`, `*extract`, `*plow`, `*psearch`, `*showmem`, `*showtech`, `*tilestats`, `*tsearch`, `*watch`; owned by capability `ui-wizard-and-debug`, requirement "Layout wizard commands") are internal debugging tools. Hefesto MAY omit them or provide its own diagnostics. They SHALL NOT be required for data compatibility.
 
 Compatibility: informative
 

@@ -25,7 +25,7 @@ Compatibility: native
 ### Requirement: Golden compatibility suite
 For each case in `tests/golden/<AREA>/CASES.md`, the suite SHALL store:
 - the input bundle: tech file, layout and command script
-- the reference output captured from the pinned reference tool: Magic 8.3.694 at commit fc5daa9e, the pinned netgen commit, or the pinned ngspice release
+- the reference output captured from the pinned reference tool: Magic 8.3.694 at commit fc5daa9e, the pinned netgen commit, the pinned ngspice release, or, for schematic netlisting cases, the pinned xschem commit
 
 The headless CLI SHALL replay each case. Its outputs SHALL be compared using the canonical comparison of capability `hefesto-output-determinism`, with `magic-compat` ON. A capture script SHALL be able to regenerate the reference outputs.
 
@@ -68,6 +68,8 @@ Every reader of external input SHALL have a coverage-guided fuzz target. The rea
 - SPICE
 - `.dstyle`, `.cmap`, `.net`
 - netgen setup files
+- xschem `.sch` and `.sym` files
+- the JSON and archive inputs of the PDK manager, plugin packages and manifests, EM rule files, and digital-flow run reports
 
 Malformed input SHALL never cause a crash, hang or memory-safety violation. CI SHALL run each fuzz target for a bounded time on every pull request and continuously on main.
 
@@ -80,7 +82,7 @@ Compatibility: native
 - **THEN** Hefesto SHALL report a format error and SHALL NOT crash
 
 ### Requirement: Cross-platform determinism checks
-CI SHALL run the golden suite on Linux x86_64, Linux aarch64, macOS arm64 and the iPadOS simulator. It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields.
+CI SHALL run the golden suite on Linux x86_64, Linux aarch64 and macOS arm64, and on the iPadOS simulator from the start of the iPadOS milestone (capability `hefesto-build-and-distribution`). It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields.
 
 Compatibility: native
 

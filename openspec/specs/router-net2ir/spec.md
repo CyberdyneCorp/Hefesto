@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) plus a netlist file into a script of `iroute route` commands that route each two-terminal net. Hefesto may provide this as a separate tool or as an import function; the textual output format is the compatibility surface.
+Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) plus a netlist file into a script of `iroute route` commands that route each two-terminal net. Hefesto may provide this as a separate tool or as an import function; the textual output format is the compatibility surface. This capability is desktop-only in the first iPadOS release (decision P-13; capability `hefesto-ipad-feature-scope`).
 
 ## Requirements
 

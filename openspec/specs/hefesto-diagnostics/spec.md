@@ -24,15 +24,20 @@ Compatibility: native
 - **THEN** an `error` diagnostic SHALL be emitted with a stable code, file and line 42, and text equivalent to Magic's message
 
 ### Requirement: Command results and errors
-Every command of the command API SHALL return a status (success or failure), a result value, and the diagnostics emitted while it ran. Script bindings SHALL map a failure to a script error. This deliberately differs from Magic, whose commands return Tcl OK even when they fail. A compat flag SHALL restore the old behavior for PDK scripts that depend on it.
+Every command of the command API SHALL return a status (success or failure), a result value, and the diagnostics emitted while it ran. The GUI, the CLI and plugins SHALL see this status directly. In Tcl, Magic's commands return OK even when they fail, and PDK scripts rely on it. So the Tcl binding SHALL follow the status convention of capability `scripting-api` (Requirement "Command status and error signalling") by default, and SHALL map a failure to a script error only in an opt-in strict mode (see Q-SCRIPT-2).
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/cross-cutting.md#X-2)
 
-#### Scenario: Failing command in script
-- **WHEN** a script runs `load nonexistent -fail`
+#### Scenario: Failing command in a strict-mode script
+- **GIVEN** strict mode is enabled for the script
+- **WHEN** the script runs `load nonexistent -fail`
 - **THEN** the script SHALL receive an error carrying the diagnostic code and text
+
+#### Scenario: Failing command in a PDK script by default
+- **WHEN** a PDK script runs `catch {load nonexistent -fail}` with default settings
+- **THEN** `catch` SHALL return 0, as in Magic, and the diagnostic SHALL still be recorded
 
 ### Requirement: Diagnostic presentation and logging
 The diagnostics SHALL be presented as follows:

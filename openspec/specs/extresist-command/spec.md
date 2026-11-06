@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability defines the `extresist-command` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, the choice of driver, and the per-cell flow. Network construction and simplification belong to capability `extresist-network`. File formats belong to capability `extresist-output`. Units: resistance in mΩ, capacitance in aF, delay in zeptoseconds (zs = mΩ·aF; 1 ps = 1e9 zs).
+This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, the choice of driver, and the per-cell flow. Network construction and simplification belong to capability `extresist-network`. File formats belong to capability `extresist-output`. Units: resistance in mΩ, capacitance in aF, delay in zeptoseconds (zs = mΩ·aF; 1 ps = 1e9 zs).
 
 ## Requirements
 

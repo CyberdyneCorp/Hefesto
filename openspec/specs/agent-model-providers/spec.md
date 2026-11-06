@@ -9,7 +9,7 @@ Defines the pluggable interface through which the layout agent reaches an AI mod
 Hefesto SHALL define a provider interface that supports chat with tool calling, streaming responses, cancellation, and reporting of token or cost usage. Hefesto SHALL ship these implementations:
 - a cloud API provider, for example the Anthropic Claude API
 - an OpenAI-compatible HTTP provider, for self-hosted or on-prem gateways
-- an offline provider for local models where the platform supports them
+- an offline provider for local models where the platform supports them (task coverage on iPadOS: see Q-AGENT-3)
 
 The model, endpoint and parameters SHALL be configuration. No model identifier SHALL be hard-coded.
 
@@ -22,7 +22,7 @@ Compatibility: native
 - **THEN** subsequent agent tasks SHALL use that endpoint, and no requests SHALL go to the cloud provider
 
 ### Requirement: Disabled by default, per-project opt-in
-For every project, the agent provider SHALL default to "disabled". Enabling a provider SHALL require an explicit user action, and that action SHALL show which data categories will be sent. The provider choice SHALL be stored in the project settings (capability `hefesto-settings`), so a team can pin, for example, "on-prem only" for a confidential project.
+For every project, the agent provider SHALL default to "disabled". Enabling a provider SHALL require an explicit user action, and that action SHALL show which data categories will be sent. The provider choice SHALL be stored in the project settings (capability `hefesto-settings`), so a team can pin, for example, "on-prem only" for a confidential project. Restricting providers for confidential PDKs is open (see Q-AGENT-5), and so are the App Store disclosure rules for the agent (see Q-AGENT-4).
 
 Compatibility: native
 

@@ -24,7 +24,7 @@ Compatibility: behavioral
 - `-import`: matched by any argument beginning with `-import`. It SHALL be accepted and ignored for DEF.
 - Options are examined only when at least one argument follows the file name. Arguments that begin with `-` and match none of the prefixes, and extra arguments that do not begin with `-`, SHALL be ignored silently.
 - If no file name is given (`def read` alone), the command SHALL print the `def` option summary and do nothing else.
-- The subcommand word itself (`read`) is matched by unique-prefix lookup against the table `read`, `write`, `writeall`, `nocheck`, `datestamp`, `help`. `def nocheck` and `def datestamp` SHALL print "The "nocheck" option is only for LEF writes." and "The "datestamp" option is only for LEF reads." respectively. `def writeall` is specified in `def-write`.
+- The subcommand word itself (`read`) is matched as specified in capability `def-write` (Requirement "def command argument validation"), which also owns `def nocheck`, `def datestamp` and `def writeall`.
 - On success, the cell that received the design SHALL be returned. If exactly one layout window exists, the design SHALL be loaded into it.
 
 (Magic ref: lef/lefCmd.c:78-273, lef/defRead.c:2456-2537)

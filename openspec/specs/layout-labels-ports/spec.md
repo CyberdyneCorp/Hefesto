@@ -4,7 +4,7 @@
 
 Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offset, sticky flag), port attributes (index, connection directions, class, use, shape), how labels choose and keep their attached layer as paint changes, how labels behave on contacts and stacked contacts, how ports are renumbered, how hierarchical label searches decide which labels belong to an area, and how a cell is determined to be a subcircuit.
 
-The `.mag` `rlabel`/`flabel`/`port` syntax belongs to the `cell-*` capabilities; the `label`, `setlabel` and `port` commands belong to `cmd-*`; extraction use of labels belongs to `extract-nodes-and-labels`.
+The `.mag` `rlabel`/`flabel`/`port` syntax belongs to capability `cell-file-format`; the `label`, `setlabel` and `port` commands belong to `cmd-labels-properties`; extraction use of labels belongs to `extract-nodes-and-labels`.
 
 ## Requirements
 
@@ -172,7 +172,7 @@ Compatibility: exact
 A label SHALL be a port exactly when at least one of its port direction bits is set; ports SHALL carry an index, and several port labels with the same index in one cell SHALL denote the same electrical terminal.
 Compatibility: behavioral
 
-- Port index uniqueness across different names is not enforced by the data model (commands enforce it; see `cmd-*`).
+- Port index uniqueness across different names is not enforced by the data model (commands enforce it; see `cmd-labels-properties`).
 - During hierarchical net tracing, reaching one port label also reaches the material under every other port label of the same cell with the same index and a non-space type (see `layout-connectivity`).
 - Removing port status clears all flags (directions, class, use, shape and sticky).
 

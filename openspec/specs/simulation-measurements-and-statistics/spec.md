@@ -266,7 +266,7 @@ The `sim` command (capability `simulation-command`) SHALL accept these options, 
 | `spec` | `spec add <measurement> min <lo>\|max <hi>\|range <lo> <hi>\|target <t> <tol> [-scale <x>] [-corners <glob…>]` \| `spec override <measurement> <glob> <limit…>` \| `spec delete <measurement>` \| `spec list` | Define specifications |
 | `stats` | `stats <run set id> [<measurement>] [-group <g>]` \| `stats yield <run set id>` \| `stats corr <run set id> <col1> <col2> [-spearman]` \| `stats export <run set id> <file> [-format points\|statistics\|matrix\|json]` | Return statistics as key-value pairs, or write a file |
 
-Definitions SHALL be stored in `testbench.json` and SHALL be undoable as one undo event per command. Adding or changing measurements or specifications SHALL NOT re-run simulations: Hefesto SHALL recompute the affected values from stored vectors where waveforms were kept, and SHALL mark points whose waveforms were not kept as `stale` for the changed measurement until they are re-run.
+Definitions SHALL be stored in `testbench.json` and SHALL be undoable as one undo step per command (capability `layout-undo`, requirement "Native undo events for Hefesto compound operations"). Adding or changing measurements or specifications SHALL NOT re-run simulations: Hefesto SHALL recompute the affected values from stored vectors where waveforms were kept, and SHALL mark points whose waveforms were not kept as `stale` for the changed measurement until they are re-run.
 
 Compatibility: native
 

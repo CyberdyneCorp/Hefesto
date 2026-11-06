@@ -204,3 +204,11 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint2.c:179-192, database/DBtpaint.c:199-218
 - Options: replicate | fix (clear all planes)
 - Recommendation: replicate at the data-model level; commands use explicit masks.
+
+### Q-MODEL-30: `undo 0` enables and `redo 0` disables undo recording
+- Kind: quirk
+- Magic behavior: a count of 0 is not a no-op. `undo 0` resumes recording by one nesting level and `redo 0` suspends it by one level, with no message. This is undocumented in the help text (`undo [count]`, `redo [count]`).
+- Evidence: windows/windCmdSZ.c:686-691, windows/windCmdNR.c:382-385
+- Options: replicate | fix (treat 0 as a no-op; keep `undo enable|disable` only)
+- Recommendation: replicate behind `magic-compat` (scripts may rely on `redo 0`/`undo 0` as a disable/enable idiom); with the setting off, treat 0 as a no-op.
+

@@ -311,7 +311,7 @@ When a cell file declares a technology different from the current one, the reade
 2. `/usr/local/share/pdk`;
 3. the script variables `PDK_ROOT`, `PDKROOT`, `PDK_PATH`, `PDKPATH`.
 
-It searches each directory tree for a `magic/` subdirectory. In the scripting build, if the technology was found by any of these steps and `<dir>/<tech>.magicrc` exists, that file SHALL be evaluated as a script before the technology is loaded. The found directory SHALL be appended to the system search path, and the technology loaded. If the directory path contains `libs.tech` and no `.magicrc` was evaluated, the corresponding `libs.ref` standard-cell directories SHALL be added to the cell search path, printing `Cell path is now "<path>"`. Tag callbacks for `tech load` SHALL then run. See Q-SCRIPT-10.
+It searches each directory tree for a `magic/` subdirectory. If the technology was found by any of these steps and `<dir>/<tech>.magicrc` exists, that file SHALL be evaluated as a script before the technology is loaded. In Hefesto this evaluation is subject to the consent rule of capability `hefesto-security` (Requirement "Consent before implicit script execution"). The found directory SHALL be appended to the system search path, and the technology loaded. If the directory path contains `libs.tech` and no `.magicrc` was evaluated, the corresponding `libs.ref` standard-cell directories SHALL be added to the cell search path, printing `Cell path is now "<path>"`. Tag callbacks for `tech load` SHALL then run. See Q-SCRIPT-10.
 Compatibility: behavioral
 
 (Magic ref: database/DBio.c:575-740)
@@ -334,8 +334,8 @@ Compatibility: exact
 - **WHEN** the parent is saved
 - **THEN** the stored path SHALL begin with `$PDKPATH/libs.ref/sky130_fd_sc_hd/mag`
 
-### Requirement: Platform without script execution
-On a platform that cannot evaluate PDK scripts (see Q-SCRIPT-1), the editor SHALL support a declarative PDK profile instead. The profile provides the effects of a PDK `.magicrc`:
+### Requirement: Sessions without PDK script execution
+When the iPadOS build runs in curated-pack mode and a PDK's startup script is not among the bundled scripts (capability `hefesto-scripting`, Requirement "App Store fallback for iPadOS"), Hefesto SHALL support a declarative PDK profile instead. A script the user declines to trust is handled by capability `hefesto-security`, not by this profile. See Q-SCRIPT-46. The profile provides the effects of a PDK `.magicrc`:
 - the grid rescale rule (`scalegrid 1 D` when the lambda denominator is below D);
 - the Euclidean DRC setting;
 - the random seed (time-based in the PDKs; a fixed value for reproducible GDS output, see Q-SCRIPT-44);
@@ -347,11 +347,12 @@ On a platform that cannot evaluate PDK scripts (see Q-SCRIPT-1), the editor SHAL
 - the device library namespace, which replaces the effect of sourcing `<tech>.tcl` (see `pcell-toolkit`).
 
 The editor SHALL apply these effects in the order the `.magicrc` would (see "PDK startup file contract"). The editor SHALL NOT silently ignore a PDK `.magicrc`. It SHALL report which statements were not applied. Device generators that are unavailable SHALL leave existing generated cells editable as ordinary cells (see `pcell-toolkit`).
-Compatibility: behavioral
 
-(Magic ref: tcltk/magic.tcl.in:339-470) (PDK ref: open_pdks sky130/magic/sky130.magicrc:5-73, IHP ihp-sg13g2.magicrc:19-64)
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3)
 
 #### Scenario: Declarative profile equivalence
 - **GIVEN** a profile equivalent to the sky130A `.magicrc`
-- **WHEN** a session starts on iPadOS
+- **WHEN** a session starts on iPadOS in curated-pack mode without the sky130A scripts
 - **THEN** `tech name` SHALL be `sky130A`, `$VDD` (or its equivalent query) SHALL be `VPWR`, and the cell search path SHALL equal the desktop session's

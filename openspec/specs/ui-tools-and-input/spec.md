@@ -6,7 +6,7 @@ Defines pointer tools and the default input bindings:
 - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl `pick` tool
 - cursor glyph selection and the `cursor` command
 - the default key and button binding table installed by the system startup file
-- how Hefesto maps these to touch input on iPadOS ([platform])
+- how Hefesto maps these to touch input on iPadOS (decision X-5; the gesture vocabulary is owned by `hefesto-input-and-touch`)
 
 Macro mechanics and key-name syntax are in `ui-command-dispatch`. The box commands are owned by `cmd-box`. Wire operations are owned by `wiring-tool`. Netlist operations are owned by `netlist-window`. Rsim is owned by `irsim-interface`.
 
@@ -42,10 +42,7 @@ The `tool` command SHALL behave as follows:
 
 Switching tools SHALL set the tool's cursor glyph.
 
-In the Tcl build, `tool` is replaced by a script command:
-- the tools are `box`, `wiring`, `nettool` and `pick`, cycled in that order
-- each tool is just a separate macro table
-- switching is refused while a pick-tool drag is active
+In the Tcl build, `tool` is replaced by a script command whose tools are `box`, `wiring`, `nettool` and `pick`, each just a separate macro table. That command is specified in capability `ui-gui-managers`, requirement "Tool modes", which owns it.
 
 Compatibility: behavioral (messages informative)
 (Magic ref: commands/CmdTZ.c:667-733, dbwind/DBWbuttons.c:171-297, tcltk/tools.tcl:700-760)
@@ -60,8 +57,8 @@ Compatibility: behavioral (messages informative)
 - **THEN** `"foo" isn't a tool name.` SHALL be reported, followed by `  The legal names are:` and the tool names
 
 ### Requirement: Box tool buttons
-The `box` tool SHALL handle buttons in a layout window as follows:
-- Pressing the middle button SHALL paint (or erase) under the box according to the material under the cursor, as defined by `paint cursor` (see cmd-box).
+The `box` tool SHALL handle buttons in a layout window as follows. The box semantics (move, resize, nearest-corner choice, snapping) are owned by capability `cmd-box`, requirement "Box tool pointer gestures", which governs; this requirement adds the cursor glyphs.
+- Pressing the middle button SHALL paint (or erase) under the box according to the material under the cursor, as defined by `paint cursor` (capability `cmd-paint-erase`, requirement "Paint or erase by example (cursor and pick)").
 - Pressing the left button alone SHALL choose the lower-left corner and show the "box with lower-left corner" cursor (glyph 6). Releasing it SHALL move the box, without resizing, so that its lower-left corner is at the cursor point.
 - Pressing the right button alone SHALL choose the upper-right corner and show the upper-right corner cursor (glyph 5). Releasing it SHALL move only that corner to the cursor point, resizing the box.
 - If the other of left/right is pressed while one is held, the corner nearest the cursor SHALL become the chosen corner. The first button pressed SHALL still decide between move (left) and resize (right).
@@ -243,17 +240,18 @@ Compatibility: behavioral
 ### Requirement: Touch and pointer gesture mapping
 Hefesto SHALL let every tool action, key binding and button binding be reached on platforms without mouse buttons or a physical keyboard (iPadOS touch). It SHALL do this through a gesture and on-screen-control mapping that dispatches the same commands as the bindings above.
 
-The mapping SHALL keep these semantics:
-- a single-finger tap at a point is the primary button (Button1) of the current tool
-- a long-press is Button3
-- an explicit modifier affordance provides Button2 and Shift/Control variants
+The mapping SHALL keep these semantics, which follow decision X-5 and are specified in full by capability `hefesto-input-and-touch` (requirement "Touch and Pencil mapping"), which owns the gesture vocabulary:
+- a one-finger tap or drag, or the Apple Pencil, is the primary button (Button1) of the current tool
+- a long press opens a context menu with the actions of the tool's secondary and tertiary buttons (Button2 and Button3)
+- a floating modifier key switches the next touch to middle-button (Button2) or right-button (Button3) semantics, and provides the Shift/Control variants
 - two-finger pan is `scroll` by the dragged distance
 - pinch is `zoom` about the pinch center
 
-The mapping SHALL be user-rebindable through the same macro tables. The exact gesture vocabulary is a [platform] decision (see Q-UI-22).
+The mapping SHALL be user-rebindable through the same macro tables (see Q-UI-22).
 
 Compatibility: behavioral
 (Magic ref: magic/proto.magicrc.in:247-298, dbwind/DBWbuttons.c:355-478)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5)
 
 #### Scenario: Tap moves the box
 - **GIVEN** Hefesto on iPadOS with the box tool current

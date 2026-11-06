@@ -177,6 +177,8 @@ Hefesto SHALL process recorded mismatches only at safe points. The safe points a
 - before extraction;
 - before LEF and CIF/GDS output.
 
+Compatibility: behavioral
+
 **Processing.** When at least one mismatch is pending, Magic prints `Processing timestamp mismatches.`. Then, for each recorded mismatch (cell D, old area A), most recently recorded first, with each cell processed at most once:
 
 1. If D is not available, read it, ignoring the technology and following its dereference flag.

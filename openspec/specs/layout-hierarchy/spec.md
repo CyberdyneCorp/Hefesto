@@ -4,7 +4,7 @@
 
 Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bounding boxes and extended bounding boxes, locked instances, expansion/descend rules that control which subcells hierarchical operations see, flattening (copy and in-place), and cell rename/delete semantics, including internal cells.
 
-The `.mag` syntax of `use`, `array`, `transform` and `box` records belongs to the `cell-*` capabilities; user commands (`getcell`, `flatten`, `cellname`, `instance`, `expand`, ...) belong to `cmd-*`. Transforms are defined in `layout-geometry-model`; paint copying in `layout-paint-semantics`.
+The `.mag` syntax of `use`, `array`, `transform` and `box` records belongs to capability `cell-file-format`; user commands (`getcell`, `flatten`, `cellname`, `instance`, `expand`, ...) belong to `cmd-hierarchy` and the other `cmd-*` capabilities. Transforms are defined in `layout-geometry-model`; paint copying in `layout-paint-semantics`.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ A cell instance (use) SHALL reference one child definition and record its parent
 Compatibility: behavioral
 
 - A new use has identity transform, array indices `xlo=xhi=ylo=yhi=0`, separations 0, not locked, unexpanded everywhere.
-- A definition may be instantiated any number of times, in any number of parents, but never (directly or indirectly) inside itself (recursion is rejected by the placing commands; see `cmd-*`).
+- A definition may be instantiated any number of times, in any number of parents, but never (directly or indirectly) inside itself (recursion is rejected by the placing commands; see `cmd-hierarchy`).
 - Placing a use marks the parent modified and needing a new timestamp; removing a use does the same.
 - Two uses of the same child with identical transform and identical array dimensions/separations at the same bounding box are duplicates; copy operations detect and skip such duplicates (see `cmd-*`).
 
@@ -99,7 +99,7 @@ Compatibility: exact
 
 ### Requirement: Array element naming
 
-The printed name of an array element SHALL be the use identifier followed by `[y,x]` for a two-dimensional array, `[x]` when only x varies, `[y]` when only y varies, and nothing for a non-arrayed use; parsing of hierarchical names SHALL accept `[y,x]`, `[y][x]` and a single `[i]`.
+The printed name of an array element SHALL be the instance identifier followed by `[y,x]` for a two-dimensional array, `[x]` when only x varies, `[y]` when only y varies, and nothing for a non-arrayed use; parsing of hierarchical names SHALL accept `[y,x]`, `[y][x]` and a single `[i]`.
 Compatibility: exact
 
 - The y index comes first in two-dimensional names.
@@ -157,10 +157,10 @@ Compatibility: exact
 A use SHALL carry a locked flag that is persisted with the parent and that prevents interactive modification of that instance.
 Compatibility: behavioral
 
-- Locked uses cannot be moved, copied, rotated, flipped, deleted or edited through selection-based commands (enforced by the `cmd-*` capabilities); other paint in the parent is unaffected.
+- Locked uses cannot be moved, copied, rotated, flipped, deleted or edited through selection-based commands (enforced by the `cmd-*` capabilities, chiefly `cmd-selection`); other paint in the parent is unaffected.
 - Locking/unlocking is undoable (recorded as before/after state) but does NOT mark the parent modified (see Q-MODEL-13).
 - A descend mode exists that skips locked uses (see requirement "Descend rules").
-- In `.mag` files the lock is encoded by a `*` before the instance identifier (see `cell-*`).
+- In `.mag` files the lock is encoded by a `*` before the instance identifier (see capability `cell-file-format`).
 
 (Magic ref: database/database.h.in:495-517, database/DBcellname.c:1260-1312, database/DBio.c:2428,3021,6247)
 

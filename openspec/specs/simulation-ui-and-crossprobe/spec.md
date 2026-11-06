@@ -104,7 +104,7 @@ Compatibility: native
 - **THEN** the panel SHALL span 5 ns to 15 ns, and the y range SHALL be unchanged
 
 ### Requirement: Probing a layout net
-Selecting a net in the layout and choosing "probe" SHALL resolve the net to a simulation vector and add it as a trace. Selection works as in `getnode` (capability `irsim-interface`). Resolution SHALL work as follows:
+Selecting a net in the layout and choosing "probe" SHALL resolve the net to a simulation vector and add it as a trace. Selection works as in `getnode` (capability `irsim-interface`); this and the naming rule below apply on every platform, including iPadOS, where the IRSIM interface itself is unavailable (capability `hefesto-ipad-feature-scope`). Resolution SHALL work as follows:
 1. Compute the net's hierarchical name relative to the root cell of the layout window, as specified by capability `irsim-interface`, Requirement "Hierarchical node names", including the handling of global names.
 2. If the root cell is not the DUT cell of the selected job, fail with `Layout window shows <root>, but job simulated <dut>`.
 3. Look up the name in the job's net-name map, getting `simName`.
@@ -166,7 +166,7 @@ Compatibility: native
 ### Requirement: Data feed to 3D overlays
 For a job of a layout DUT, Hefesto SHALL provide capability `hefesto-3d-visualization` with overlay datasets. Each dataset is a time series indexed by the plot scale, or a single point for `op`. Two kinds SHALL be provided:
 - **Net voltage.** For every mapped net with a saved vector: the net's voltage, in V.
-- **Resistor-edge current.** Available in parasitic mode `rc`. For every `extresist-command` resistor between network nodes `n1` and `n2` with resistance `R` Ω, both of whose node vectors were saved: `I = (V(n1) − V(n2)) / R` in A, positive from `n1` to `n2`. Using the segment's width `w` in µm, from the extresist geometry of capability `extresist-output`, and its layer thickness `t` in µm, from the technology, the dataset SHALL also give:
+- **Resistor-edge current.** Available in parasitic mode `rc`. For every `extresist` resistor between network nodes `n1` and `n2` with resistance `R` Ω, both of whose node vectors were saved: `I = (V(n1) − V(n2)) / R` in A, positive from `n1` to `n2`. Using the segment's width `w` in µm, from the extresist geometry of capability `extresist-output`, and its layer thickness `t` in µm, from the technology, the dataset SHALL also give:
   - the linear current density `Jw = |I| / w` in mA/µm
   - the volumetric current density `J = |I| / (w · t)` in mA/µm²
 

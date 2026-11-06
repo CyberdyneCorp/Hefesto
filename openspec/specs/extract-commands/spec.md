@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the tech-format-dependent `fringehalo` default), warnings, styles, side halo and step size overrides, output path and `.ext` file location, permanent and temporary unique naming, path-length (`length`) extraction, and cell properties that change extraction. The result of extraction is specified by the other `extract-*` capabilities. On hosts without a command line (iPadOS), the same operations SHALL be offered through the application's interaction surface; the command syntax below is the reference for scripting.
+Defines the `extract` command family: which cells are extracted and when (incremental, all, single cell, parents), extraction options (`do`/`no`), their defaults (including the start-up value of `fringehalo`; the tech-format rule that resets it on technology load is owned by `extract-tech-section`), warnings, styles, side halo and step size overrides, output path and `.ext` file location, permanent and temporary unique naming, path-length (`length`) extraction, and cell properties that change extraction. The result of extraction is specified by the other `extract-*` capabilities. On hosts without a command line (iPadOS), the same operations SHALL be offered through the application's interaction surface; the command syntax below is the reference for scripting.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ Compatibility: behavioral
 
 ### Requirement: Extract all, cell, parents and showparents
 
-`extract all` SHALL extract every cell of the root's tree regardless of timestamps (root must be named). `extract cell NAME` SHALL extract only the currently selected cell into the file `NAME.ext` (children are not extracted but their substrates are prepared; path-length extraction is not done), followed by full R-C extraction of that cell when option `extresist-command` is on; with no selection it SHALL report `No cell selected`. `extract parents` SHALL extract the selected cell and every cell that uses it directly or indirectly (selected cell first, then parents depth-first). `extract showparents` SHALL print, without extracting, the names of the cells `parents` would extract, comma-separated.
+`extract all` SHALL extract every cell of the root's tree regardless of timestamps (root must be named). `extract cell NAME` SHALL extract only the currently selected cell into the file `NAME.ext` (children are not extracted but their substrates are prepared; path-length extraction is not done), followed by full R-C extraction of that cell when option `extresist` is on; with no selection it SHALL report `No cell selected`. `extract parents` SHALL extract the selected cell and every cell that uses it directly or indirectly (selected cell first, then parents depth-first). `extract showparents` SHALL print, without extracting, the names of the cells `parents` would extract, comma-separated.
 Compatibility: behavioral
 
 (Magic ref: commands/CmdE.c:1220-1310, extract/ExtMain.c:250-460, extract/ExtMain.c:620-700)
@@ -56,7 +56,7 @@ Compatibility: exact
 
 ### Requirement: Extraction options
 
-`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist-command`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist-command` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
+`extract do OPT` / `extract no OPT` SHALL enable / disable an option, OPT matched by unique prefix among: `adjust`, `all`, `capacitance`, `corners [k]`, `coupling`, `extresist`, `length`, `local`, `lumped`, `labelcheck`, `aliases`, `unique [notopports]`, `resistance`, `fringehalo`. With no OPT the current settings SHALL be listed. `all` SHALL denote exactly {adjust, capacitance, coupling, lumped, length, unique}; it SHALL NOT include fringehalo, corners, labelcheck, aliases, extresist or the notopports modifier. `resistance` SHALL be a synonym of `extresist` (full R-C extraction, capability `extresist-command`); `lumped` selects lumped resistance. `corners K` SHALL also set the corner factor to K (parsed as a double; non-numeric gives `Usage:  extract do corners [value]` and no change). `unique notop...` (first 5 characters `notop`) SHALL set both `unique` and `notopports`; `extract no unique notopports` SHALL clear both. `local` SHALL be a synonym for `extract path .` (do) / `extract path none` (no).
 Compatibility: behavioral
 
 See Q-EXTRACT-14.

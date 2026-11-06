@@ -185,6 +185,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: sim/SimRsim.c:140-280, doc/html/irsim.html, lisp/lispIO.c
 - Options: platform alternative — link a simulator engine in-process (e.g. IRSIM core as a library) or connect to a remote simulation service; on Linux/macOS a child-process backend may also be offered
 - Recommendation: define a simulator-backend interface in Hefesto; ship an in-process backend for iPadOS and allow a child-process backend on desktop. Node naming (exact) is shared by all backends.
+- Resolution: decided by X-4 and P-13 (2026-11-06). IRSIM and the Scheme interpreter are desktop-only; on iPadOS embedded ngspice (P-7) provides simulation. Tcl is available on every platform (X-3), but sandboxed, so no process is spawned from scripts.
 
 ### Q-LEGACY-72: verify/cull short-circuit feedback text ends with a newline
 - Kind: quirk

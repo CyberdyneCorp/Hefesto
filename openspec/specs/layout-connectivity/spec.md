@@ -2,18 +2,18 @@
 
 ## Purpose
 
-Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, and across the cell hierarchy, and how the flat and hierarchical connectivity searches used by net selection, net highlighting, DEF/netlist tools and resistance extraction enumerate a net. Extraction's own node-building algorithm is specified in `extract-nodes-and-labels`; the technology `connect` section syntax in `tech-*`.
+Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, and across the cell hierarchy, and how the flat and hierarchical connectivity searches used by net selection, net highlighting, DEF/netlist tools and resistance extraction enumerate a net. Extraction's own node-building algorithm is specified in `extract-nodes-and-labels`; the technology `connect` section syntax and the connectivity tables in `tech-compose-and-connect`.
 
 ## Requirements
 
 ### Requirement: Connect table
 
-The system SHALL derive from the technology a symmetric "connects-to" relation over tile types, including the rules for contacts and generated stacked contacts given below.
+The system SHALL use the symmetric "connects-to" relation over tile types that the technology defines. The relation is built by capability `tech-compose-and-connect` (requirements "connect section" and "Connectivity finalization"), which owns it; this requirement only summarises it.
 Compatibility: exact
 
-- Every type connects to itself; the technology `connect` section adds pairs (see `tech-*`).
-- A contact connects to each of its residues and to everything its residues connect to as declared by the technology.
-- A generated stacked type connects to its residue contacts, to every type those contacts connect to, and to every other stacked type with which it shares a residue contact.
+- Every type connects to itself; the technology `connect` section adds pairs.
+- A user contact connects to its residues, and to what they connect to, only where the `connect` section says so; nothing is added automatically for user contacts.
+- A generated stacked type connects to its component contacts, to every type those contacts connect to, and to every other stacked type with which it shares a component contact.
 - The relation is made symmetric after the above.
 - Only contact (and stacked) types link planes: the "connect planes" of a type are its own planes if it is a contact, otherwise none.
 - Space connects to nothing.
@@ -21,7 +21,7 @@ Compatibility: exact
 (Magic ref: database/DBtech.c:272-300,352-470,500-510)
 
 #### Scenario: Stacked type connects to both metals
-- **GIVEN** stackable `via1 (metal1,metal2)`, `via2 (metal2,metal3)` and generated `via1+via2`
+- **GIVEN** stackable `via1 (metal1,metal2)`, `via2 (metal2,metal3)` and generated `via1+via2`, with a `connect` section in which `via1` connects to `metal1` and `metal2`, and `via2` connects to `metal2` and `metal3`
 - **WHEN** the connect relation is queried
 - **THEN** `via1+via2` SHALL connect to `via1`, `via2`, `metal1`, `metal2` and `metal3`
 

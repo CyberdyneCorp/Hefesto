@@ -371,11 +371,14 @@ Compatibility: behavioral
    - Symbolic links to directories are not followed where the directory listing reports entry types.
    - The result depends on directory-listing order (see Q-CELL-40).
 3. **Startup script.** If found, and a `T.magicrc` file exists in that directory, it is executed first (scripting build only).
-4. **Register the directory.** The directory is appended to the system search path.
-5. **Load.** Magic prints `Loading technology T` and the technology is loaded. On failure Magic prints `Error in loading technology file`.
+4. **Register the directory.** If found, the directory is appended to the system search path.
+5. **Load.** Whether or not a directory was found, Magic prints `Loading technology T` and loads T by name as a full load, without the readability pre-check (capability `tech-loading-and-scaling`). When no directory was found, the normal technology file search rules apply. On failure Magic prints `Error in loading technology file`.
 6. **open_pdks layout.** If the load succeeded, the found directory contains the substring `libs.tech`, and no startup script was executed, the found path is truncated to end at `libs.ref` (everything after `libs.tech` is discarded and the substring becomes `libs.ref`). Standard-cell discovery is then run on it.
+7. **Hooks.** If the load succeeded, the callbacks registered for `tech load` are run (scripting build).
 
-(Magic ref: database/DBio.c:223-320, database/DBio.c:597-740)
+If the technology still differs from T after these steps, the read fails with a message suggesting `tech load`, or `cellname delete` followed by `load -force`.
+
+(Magic ref: database/DBio.c:223-320, database/DBio.c:597-750)
 
 #### Scenario: Open a PDK cell in a fresh session
 - **GIVEN** an empty session in technology `minimum`, `PDK_ROOT` = `/opt/pdk`, `/opt/pdk/sky130A/libs.tech/magic/sky130A.tech` and `sky130A.magicrc` beside it

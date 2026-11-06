@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: current Magic distributions are built with Tcl. Hefesto has no obligation to implement it; this capability records its behavior so that old `.scm` scripts can be recognised and, if desired, translated. Scripting in Hefesto is covered by capability `ui-command-dispatch`.
+Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: current Magic distributions are built with Tcl. Hefesto has no obligation to implement it; this capability records its behavior so that old `.scm` scripts can be recognised and, if desired, translated. Scripting in Hefesto is covered by capabilities `hefesto-scripting` and `scripting-api`; command-line dispatch by `ui-command-dispatch`. Capability `hefesto-ipad-feature-scope` lists this interpreter as desktop-only.
 
 ## Requirements
 

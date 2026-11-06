@@ -589,7 +589,7 @@ Compatibility: behavioral
 - `lef datestamp default` (exact, case-sensitive) SHALL clear the fixed stamp.
 - `lef datestamp <int>`, where the argument is a valid integer, SHALL set the fixed stamp to that value. Every macro or site cell read afterwards SHALL get that timestamp and be marked as having a fixed timestamp.
 - Any other value SHALL report `Unrecognizable date stamp "<v>".` followed by the help text; more than one value SHALL print the help text. In both cases the setting is unchanged.
-- `def datestamp` SHALL print `The "datestamp" option is only for LEF reads.` and do nothing.
+- `def datestamp` is rejected as specified in capability `def-write` (Requirement "def command argument validation").
 The setting SHALL persist for the session and starts as "default".
 Compatibility: behavioral
 

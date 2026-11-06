@@ -224,7 +224,7 @@ Compatibility: behavioral
 - **THEN** `No interactions in this area for that radius.` is printed and the box is unchanged
 
 ### Requirement: Scripting results on iPadOS and non-Tcl hosts
-Hefesto SHALL expose the list-mode results (`list`/`listall` variants of count, find, why and style) through its scripting interface with the same data structure (nested lists of strings and integers) even where Tcl is unavailable.
+Hefesto SHALL expose the list-mode results (`list`/`listall` variants of count, find, why and style) through its scripting interface (capability `scripting-api`) with the same data structure (nested lists of strings and integers) on every platform, including iPadOS, where the sandboxed embedded Tcl interpreter provides it (decision X-3), and through any non-Tcl binding of the command API.
 Compatibility: behavioral
 
 See Q-DRC-12 [platform].

@@ -435,7 +435,7 @@ Each layout window SHALL have a grid with spacing (sx, sy) and origin (ox, oy). 
 
 When the grid is on and the window shows the edit cell, an origin square SHALL be drawn in style 18 at the edit cell's origin, 2 pixels beyond the origin point on each side. It is drawn only if 2 layout units span at least 4 pixels.
 
-`grid` command forms:
+`grid` command forms (summary; argument parsing, units and script results are owned by capability `cmd-coordinates-and-units`, requirement "Grid command"; this requirement owns the grid display):
 - `grid` SHALL toggle the grid. `grid toggle` is the same.
 - `grid on`, `grid off` and `grid 0` SHALL turn it on or off.
 - `grid state` SHALL report `Grid is on|off`.

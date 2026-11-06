@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability defines the outputs of `extresist-command`:
+This capability defines the outputs of the `extresist` command (capability `extresist-command`):
 - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numeric formatting
 - how netlisters consume the overlay, which ties into capabilities `ext-flattening-read` and `netlist-spice-devices`
 - the FastHenry `.fh` geometry file
@@ -34,7 +34,7 @@ q(x)     = '"' , x , '"' ;
 - **net blocks** are written in net processing order. Within a block, rnodes follow the network node list and resistors follow the network resistor list.
 - **device records** follow the scale line's net blocks and are written in reverse `.ext` reading order. A device record is written only for devices that have at least one terminal renamed. It starts with `device ` unless the class is `fet`.
 - **device fields**:
-  - The geometry pair is area and perimeter for `fet`, length and width for mosfet/asymmetric/bjt, and absent for other classes.
+  - The geometry pair is area and perimeter for `fet`, length and width for mosfet/asymmetric/bjt, and absent for other classes, which therefore carry no value or L/W fields (Q-NETLIST-39).
   - The substrate is the renamed substrate node if any, else the default substrate name, else `None`.
   - The drain is written only if the device has more than one source/drain terminal.
   - An empty attribute is written as `0`.
@@ -57,6 +57,7 @@ Let net′ be the net name with one trailing `!` or `#` removed. Nodes SHALL be 
 - **Other unnamed nodes.** These SHALL be named `net′.n<k>`, k from 0, in network node-list order.
 - **Unnamed resistor ends.** Any resistor end still unnamed SHALL be named `net′.r<k>`.
 - **Port and label nodes.** These keep their label text.
+- **Drivers and sinks.** They receive no special names (Q-NETLIST-22).
 
 The original net SHALL be killed unless some network node carries exactly the original name. If any device terminal could not be found, the error `Missing <terminal> connection of device at (<x> <y>) on net <n>` is printed. In that case the net is not killed. Instead, after the rnode lines, the patch `resist "<net>" "<first node>" 0.0` is written with the warning `Orphaned node "<net>" arbitrarily attached to "<first>"`.
 Compatibility: exact
@@ -100,7 +101,7 @@ With `fasthenry`, the file `<cell>.fh` SHALL be written. All lengths are multipl
 
 2. **Per net.**
    - An empty line, then `* List of nodes in network`.
-   - One line per node: `N<name or id> x=%1.2f y=%1.2f z=%1.2f`. Unnamed nodes get ids from a per-net counter starting at 1 (Q-NETLIST-40). z is the layer height times o, or 0.1 × the plane order when the height is 0.
+   - One line per node: `N<name or id> x=%1.2f y=%1.2f z=%1.2f`. Unnamed nodes get ids from a per-net counter starting at 1 (Q-NETLIST-40). z is the layer height times o, or 0.1 × the plane order when the height is 0. For a node that touches only contact resistors Magic uses an unassigned height (Q-NETLIST-27).
    - Multi-via contacts add per-via nodes `N<n>_<i>_<j>` and an `.equiv` line.
    - An empty line, `* List of externally-connected ports`, and then `.external` followed by the first two named nodes. Further named nodes go on a line `* Warning! external nodes not recorded:`. Then two newlines.
    - `* Segments connecting nodes in network`, then `E<k> N<a> N<b> w=%1.2f h=%1.2f` per resistor. Contact resistors use the CIF via width/100; others use rr_width × o and thickness × o, with thickness 0.05 when the thickness is 0. Multi-via contacts produce one segment per via. k is a per-net counter starting at 1.

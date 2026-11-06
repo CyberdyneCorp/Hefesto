@@ -9,7 +9,7 @@ Defines how user actions become commands and reach the code that runs them. This
 - script files
 - the commands that drive the dispatcher itself: `macro`, `imacro`, `logcommands`, `pushbutton`, `setpoint`, `sleep`, `echo`, `send`, `source`, `history`
 
-Coordinate parsing inside commands is owned by `cmd-coordinates-and-units`. Window and view commands are in `ui-windows-and-views`. Tools and default bindings are in `ui-tools-and-input`. Tcl-level command wrapping is owned by the scripting capability.
+Coordinate parsing inside commands is owned by `cmd-coordinates-and-units`. Window and view commands are in `ui-windows-and-views`. Tools and default bindings are in `ui-tools-and-input`. Tcl-level command wrapping is owned by capability `scripting-api`.
 
 ## Requirements
 
@@ -394,7 +394,7 @@ Hefesto SHALL provide the dispatcher semantics independently of Magic's host mec
 - the non-Tcl build: a terminal reader, `select()` on input devices, and an X11 event pump
 - the Tcl build: Tcl `proc`s that call the dispatcher, Tk key bindings, and the tkcon console
 
-Hefesto SHALL provide the same command semantics from its own command console and its scripting surface. It MUST NOT depend on a terminal or on Tcl.
+Hefesto SHALL provide the same command semantics from its own command console and its scripting surface. It MUST NOT depend on a terminal. The scripting surface is the sandboxed Tcl interpreter that Hefesto embeds on every platform (decision X-3; capability `scripting-api`), but dispatching a command SHALL NOT require going through Tcl.
 
 Compatibility: informative
 (Magic ref: textio/txCommands.c:993-1094, textio/txCommands.c:1595-1769, tcltk/tclmagic.c)

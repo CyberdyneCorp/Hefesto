@@ -10,7 +10,7 @@ Defines how the application starts and ends:
 - crash recovery at startup
 - `quit`, `version` and exit status
 
-Host mechanics (environment variables, Tcl launcher scripts, terminals, `/tmp`) are `informative`. Platform decisions for macOS, Linux and iPadOS are logged as `[platform]` open questions. Display-style loading is in `display-style-files`. Technology-file loading is owned by the technology capability.
+Host mechanics (environment variables, Tcl launcher scripts, terminals, `/tmp`) are `informative`. Platform decisions for macOS, Linux and iPadOS are logged as `[platform]` open questions. Display-style loading is in `display-style-files`. Technology-file loading and the technology-selection algorithm are owned by capability `tech-loading-and-scaling`.
 
 ## Requirements
 
@@ -149,8 +149,8 @@ Compatibility: behavioral
 - **THEN** `Bad local startup file ".magicrc", continuing without.` SHALL be printed and startup SHALL complete
 
 ### Requirement: Default technology selection
-After the startup files, the technology SHALL be chosen as follows:
-1. If no technology was loaded by `-T` or by a startup file, and a file argument was given, the system SHALL read the `tech` line of the first file argument and try to load that technology.
+After the startup files, the technology SHALL be chosen by the algorithm of capability `tech-loading-and-scaling`, requirement "Startup technology selection", which owns it. In summary:
+1. If no technology is loaded yet and no `-T` technology was given, and a file argument was given, the system SHALL read the `tech` line of the first file argument and try to load that technology. A `-T` technology that failed to load earlier is retried instead, and the file argument is not consulted.
 2. If still no technology is loaded, the built-in `minimum` technology SHALL be loaded again and kept.
 3. If `minimum` cannot be loaded, startup SHALL fail and the process SHALL exit with status 255.
 
@@ -235,14 +235,9 @@ Compatibility: informative
 - **THEN** a version string SHALL be printed and the exit status SHALL be 0, without loading a technology
 
 ### Requirement: Crash recovery at startup
-With `-r` and an initial window, startup SHALL look for a crash backup file instead of loading command-line files. It SHALL search the temporary directory (`$TMPDIR`, or the system default) for files that:
-- have names starting with `MAG`
-- are owned by the current user
-- are not tied to a running process (a decimal process id after `MAG` and before the first `.` names a live process)
+With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (backup files in the temporary directory, `$TMPDIR` or the system default, named `MAG…`, owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
 
-It SHALL pick the one with the most recent status-change time and ask `Recover from backup file F?` with the answers `read` (default) and `cancel`. On `read`, the backup SHALL be loaded and the backup file removed. If a backup file is in use by the current session, report `Error:  Backup file in use for current session.`.
-
-On normal exit, the session's own backup file SHALL be removed. The backup file format and periodic backups are owned by the database capability. Hefesto SHALL keep backups in an application-private location (see Q-UI-31).
+On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (see Q-UI-31 and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements").
 
 Compatibility: behavioral (location and process checks [platform])
 (Magic ref: utils/main.c:1170-1185, database/DBio.c:1114-1235, utils/main.c:190-252)

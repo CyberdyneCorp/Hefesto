@@ -1,7 +1,7 @@
 # Display Style Files
 
 ## Purpose
-Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.glyphs`, cursor shapes) and the legacy `displays` file. It also defines how these files are found and which variant is chosen. Hefesto MUST read the files that PDKs and Magic installations ship without modification. How a style is rendered on screen is specified in `ui-windows-and-views`. The tech-file `styles` section grammar is owned by the technology-file capability. This capability only defines what a `styletype` line causes to be loaded and how style references resolve.
+Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.glyphs`, cursor shapes) and the legacy `displays` file. It also defines how these files are found and which variant is chosen. Hefesto MUST read the files that PDKs and Magic installations ship without modification. How a style is rendered on screen is specified in `ui-windows-and-views`. The tech-file `styles` section grammar is owned by capability `tech-styles-section`. This capability only defines what a `styletype` line causes to be loaded and how style references resolve.
 
 ## Requirements
 
@@ -87,8 +87,11 @@ For a technology `styletype` value T and display class D, the dstyle file name S
 
 If `T.D.dstyle` cannot be opened, Magic tries `T.D.dstyle5`. That fallback never succeeds (see Q-UI-1). If neither name is found, the message SHALL be `Couldn't open display styles file "T.D.dstyle5"` and the load SHALL fail.
 
-Compatibility: exact (file names); the class Hefesto uses is a [platform] decision (see Q-UI-8)
+Hefesto's default class SHALL be `OpenGL`; the other classes SHALL be selectable in settings (decision X-5, see Q-UI-8 and capability `hefesto-rendering`).
+
+Compatibility: exact (file names); behavioral (class choice)
 (Magic ref: graphics/grDStyle.c:434-450, graphics/grTk1.c:633-654, graphics/grTOGL1.c:336-337, graphics/grTCairo1.c:295-296)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5)
 
 #### Scenario: OpenGL variant name
 - **GIVEN** the technology line `styletype mos` and the OpenGL display class
@@ -210,15 +213,16 @@ Compatibility: exact
 ### Requirement: Stipple patterns
 Each stipples-section line SHALL define stipple pattern `n` as eight 8-bit rows. If there are not exactly nine numbers, or if `n < 0`, the line is a format error. Undefined stipple numbers below the highest defined number SHALL be all-zero patterns. A `stipples` header SHALL discard every previously defined stipple.
 
-On screen, the pattern SHALL repeat every 8 pixels in x and y, anchored to the window pixel grid, and a pixel SHALL be painted only where its pattern bit is 1. Reference orientation (Magic's X11/Tk drivers): row 0 is the top pixel row of each 8×8 cell, and bit 0 (the least significant bit) is the leftmost pixel. Magic's OpenGL driver uses the opposite orientation (see Q-UI-6).
+On screen, the pattern SHALL repeat every 8 pixels in x and y, anchored to the window pixel grid, and a pixel SHALL be painted only where its pattern bit is 1. Hefesto SHALL use the orientation of Magic's OpenGL/Cairo driver: row 0 is the bottom pixel row of each 8×8 cell, and the most significant bit is the leftmost pixel (decision X-5). Magic's X11/Tk drivers use the opposite orientation: row 0 is the top row and bit 0 (the least significant bit) is the leftmost pixel (informative; see Q-UI-6).
 
-Compatibility: exact (parsing); behavioral (orientation, see Q-UI-6)
+Compatibility: exact (parsing); behavioral (orientation)
 (Magic ref: graphics/grDStyle.c:287-345, graphics/grTk1.c:261-298, graphics/grTOGL1.c:191-212)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5)
 
 #### Scenario: Checkerboard stipple
 - **WHEN** the version-8 line `6  aa 55 aa 55 aa 55 aa 55	half 'n half` is read
 - **THEN** stipple 6 SHALL have rows 0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55
-- **AND** in reference orientation, pixel (x=0, y=0) of each 8×8 cell SHALL be unpainted and pixel (1,0) SHALL be painted
+- **AND** in Hefesto's (OpenGL) orientation, in the bottom pixel row of each 8×8 cell the leftmost pixel SHALL be painted and the pixel to its right SHALL be unpainted
 
 ### Requirement: Outline and fill rendering semantics
 A style SHALL be rendered as follows:
@@ -356,15 +360,11 @@ Compatibility: exact (indices); behavioral (shapes, see ui-tools-and-input)
 - **THEN** cursor glyph 19 SHALL be shown
 
 ### Requirement: Style loading triggered by styletype
-When the tech file's `styles` section gives `styletype T [path1 … pathK]`, the system SHALL immediately:
-1. Read the color map. It SHALL try each pathi in order, then the system library path, and stop at the first path where `T.C.M.cmap` loads. If all fail, the tech load fails.
-2. Read `T.D.dstyle` from "." and then that same path. A failure here fails the tech load.
-3. Read the cursor glyphs from "." and then that same path.
-4. Select cursor 0.
+When the tech file's `styles` section gives `styletype T [path1 … pathK]`, the system SHALL load, for family T, the color map `T.C.M.cmap` (see Requirement: Color map file grammar), the display-style file `T.D.dstyle` (see Requirement: Dstyle file name and lookup) and the cursor glyphs (see Requirement: Glyph file grammar), and SHALL then select cursor 0.
 
-A tech `styles` line `type s1 s2 …` SHALL bind the tile type to each style si. An integer si SHALL match the first layout style whose `num` ordinal equals it. A non-integer si SHALL match the layout style with exactly that long name. A failed match SHALL report `Invalid style "si" for tile type t` and SHALL NOT be fatal. When a contact type is bound to a style, the system SHALL also bind every stacked-contact type that has it as a residue on the same home plane.
+The order of these steps, the search locations, which failures reject the line or fail the technology load (including the headless case), and the binding of tile types to styles by number or long name with contact-style propagation are owned by capability `tech-styles-section` (requirements "styletype statement", "Type to style mapping" and "Contact style propagation"). This capability only defines the files and the style table that those references resolve into: an integer reference selects the first layout style whose `num` ordinal equals it.
 
-Compatibility: exact
+Compatibility: behavioral
 (Magic ref: dbwind/DBWdisplay.c:1688-1789)
 
 #### Scenario: Numeric tech style reference

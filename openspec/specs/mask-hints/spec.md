@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell's internal coordinates that (a) adds geometry to a mask layer on output through the cifoutput `mask-hints` operator, (b) is created from GDS/CIF input either through the cifinput `mask-hints` operator or the `gds maskhints` option, and (c) scopes DRC rules through `exception`/`exemption` blocks. This capability owns the hint data model, its creation, storage in `.mag` files, copying/flattening/scaling, and output.
+Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell's internal coordinates that (a) adds geometry to a mask layer on output through the cifoutput `mask-hints` operator, (b) is created from GDS/CIF input either through the cifinput `mask-hints` operator or the `gds maskhints` option, and (c) scopes DRC rules through `exception`/`exemption` blocks. This capability owns the hint data model, its creation (including the cifinput `mask-hints` operator and the `gds maskhints` read option), storage in `.mag` files, copying/flattening/scaling, and the semantics of the cifoutput `mask-hints` operator. Capabilities `mask-input-styles`, `mask-output-operators` and `gds-read` list the operator or option and refer here.
 
 Related capabilities (referenced, not duplicated): `cmd-labels-properties` (general `property` command), `cell-file-format` (properties section layout, scale reducer, property order), `mask-output-styles` and `mask-output-operators` (cifoutput layer operator pipeline), `mask-input-styles` (cifinput templayers), `gds-read` (GDS reading, coordinate scaling), `drc-rule-language` (exception/exemption block semantics), `layout-hierarchy` (flatten commands), `layout-geometry-model` (tile-plane region representation and enumeration order).
 
@@ -40,13 +40,13 @@ Compatibility: behavioral
 
 ### Requirement: Mask hints in .mag files
 
-The system SHALL write each mask hint in the `.mag` properties section as one line `string MASKHINTS_<name>` followed, for each strip of the region in enumeration order, by ` <x1> <y1> <x2> <y2>` (each value the internal coordinate divided by the file's scale reducer, decimal integer, single leading space), and SHALL read back a properties-section line whose type keyword is `string` and whose key starts with `MASKHINTS_` by parsing the value as integers in groups of four, multiplying each by the file scale-up factor and dividing (truncating) by the scale-down factor, and painting each group into the hint region. When the property compatibility mode is turned off (`property compat false`) the type keyword written is `dimension` instead of `string`. A value containing a non-integer token reports "Mask-hint "<rest>" has non-integer values!" and the property is dropped; a count not divisible by four reports "Mask-hint property number of values is not divisible by four.  Truncated." and keeps the complete groups. Mask-hint coordinates participate in the greatest-common-factor computation that selects the file scale reducer. The type keyword `plane` is not accepted in a `.mag` properties section (see Q-MISC-12).
+The system SHALL write each mask hint in the `.mag` properties section as one line `string MASKHINTS_<name>` followed, for each strip of the region in enumeration order, by ` <x1> <y1> <x2> <y2>` (each value the internal coordinate divided by the file's scale reducer, decimal integer, single leading space), and SHALL read back a properties-section line whose type keyword is `string` and whose key starts with `MASKHINTS_` by parsing the value as integers in groups of four, multiplying each by the file scale-up factor and dividing (truncating) by the scale-down factor, and painting each group into the hint region. When property compat mode is turned off (`property compat false`) the type keyword written is `dimension` instead of `string`. A value containing a non-integer token reports "Mask-hint "<rest>" has non-integer values!" and the property is dropped; a count not divisible by four reports "Mask-hint property number of values is not divisible by four.  Truncated." and keeps the complete groups. Mask-hint coordinates participate in the greatest-common-factor computation that selects the file scale reducer. The type keyword `plane` is not accepted in a `.mag` properties section (see Q-MISC-12).
 
 Compatibility: exact
 
 ```ebnf
 hint_line  = type_kw , " " , "MASKHINTS_" , name , { " " , int , " " , int , " " , int , " " , int } , "\n" ;
-type_kw    = "string" | "dimension" ;     (* "dimension" only written when compat mode is off; see Q-MISC-10 *)
+type_kw    = "string" | "dimension" ;     (* "dimension" only written when property compat mode is off; see Q-MISC-10 *)
 name       = ? non-blank characters, total key length <= 127 ? ;
 int        = [ "-" ] , digit , { digit } ;
 ```
@@ -61,7 +61,7 @@ string MASKHINTS_SRAM 5 10 15 15 0 5 15 10 0 0 10 5
 (Magic ref: database/DBio.c:3211-3245, database/DBio.c:3309-3320, database/DBio.c:3386-3462, database/DBio.c:4405-4421, database/DBio.c:4985-5000, database/DBio.c:5030-5096, database/DBprop.c:37, commands/CmdLQ.c:2525-2541)
 
 #### Scenario: Round trip through a .mag file
-- **GIVEN** a cell whose MASKHINTS_SRAM region is the union of (0,0)-(10,10) and (5,5)-(15,15), saved with default property compatibility
+- **GIVEN** a cell whose MASKHINTS_SRAM region is the union of (0,0)-(10,10) and (5,5)-(15,15), saved with property compat mode at its default (on)
 - **WHEN** the cell is written and read back
 - **THEN** the file line is `string MASKHINTS_SRAM 5 10 15 15 0 5 15 10 0 0 10 5` (verify strip order against Magic)
 - **AND** the region read back equals the original region
@@ -100,7 +100,7 @@ mask_hints_op = "mask-hints" , ws , name ;
 
 ### Requirement: Mask hints from cifinput templayers
 
-When a cifinput `templayer` contains the operator `mask-hints <name>` and no `copyup` operator, the system SHALL, after computing that templayer's geometry for a cell being read, convert each resulting rectangle from input units to internal units (exact conversion, which may rescale the internal grid as described in capability `gds-read`) and union it into the cell's `MASKHINTS_<name>` property, creating the property if needed. A templayer with no geometry creates no property.
+When a cifinput `templayer` contains the operator `mask-hints <name>` and no `copyup` operator, the system SHALL, after computing that templayer's geometry for a cell being read, convert each resulting rectangle from input units to internal units (exact conversion, which may rescale the internal grid as described in capability `gds-read`) and store it in the cell's `MASKHINTS_<name>` property. Magic looks up an existing hint plane under the bare key `<name>` instead of `MASKHINTS_<name>`, so the lookup normally fails and each templayer creates a fresh property that replaces any earlier `MASKHINTS_<name>` of the same cell instead of adding to it (see Q-MISC-11 and Q-MASK-308). A templayer with no geometry creates no property.
 
 Compatibility: exact
 
@@ -114,7 +114,7 @@ cifinput_mask_hints_op = "mask-hints" , ws , name ;   (* exactly one argument *)
 - **GIVEN** a cifinput style with `templayer SRAMH 81,2` followed by `mask-hints SRAM`, and a GDS cell with a boundary on 81/2 from (0,0) to (1000,1000) nm at 10 nm per internal unit
 - **WHEN** the GDS is read
 - **THEN** the cell has MASKHINTS_SRAM = (0,0)-(100,100)
-- **AND** a second templayer hint with the same name in the same cell adds to the existing region (see Q-MISC-11)
+- **AND** a second templayer hint with the same name in the same cell replaces the existing region instead of adding to it (Magic behavior; see Q-MISC-11)
 
 ### Requirement: Mask hints generated by gds maskhints
 

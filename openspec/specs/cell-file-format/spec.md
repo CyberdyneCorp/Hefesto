@@ -79,7 +79,7 @@ rlabel metal1 s 0 2 6 8 0 VDD           <- sticky rectangular label, position 0 
 port 1 nsew power bidirectional         <- port attributes of the preceding label
 flabel metal1 0 0 0 0 3 FreeSans 64 0 8 0 out   <- rendered-font label
 << properties >>
-string FIXED_BBOX 0 0 60 20             <- properties sorted by key, compat mode
+string FIXED_BBOX 0 0 60 20             <- properties sorted by key, property compat mode
 << end >>
 ```
 
@@ -192,10 +192,10 @@ Let the file's ratio be `(nf, df)` from `magscale` (default `(1, 1)`). Let the c
 
 1. Compute `n = nf × L1` and `d = df × L0`. Reduce n/d by their greatest common factor (always positive).
 2. If `d > 1` and the grid-limit test below allows refinement:
-   - Rescale the entire database and the technology-dependent values by the factor `d`, as for the `scalegrid` operation (owned by the layout and technology capabilities).
+   - Rescale the entire database and the technology-dependent values by the factor `d`, as for the `scalegrid` command (see capability `tech-loading-and-scaling`, requirement "scalegrid command").
    - Set `L1 = L1 × d` and then `d = 1`.
    - At full verbosity, print `Input cell <cell> scales magic internal geometry by factor of <d>`.
-3. **Grid-limit test.** Let the current output style have scale factor `s`, expander `e` and grid limit `g` (with `g = 0` treated as 1). Refinement is refused when `(s × n × 10) / (g × e × d)` is 0 in integer division, or when `(s × n × 10)` is not divisible by `(g × e × d)`. If there is no current output style, refinement is always allowed. (See the CIF/GDS output style capabilities.)
+3. **Grid-limit test.** Let the current output style have scale factor `s`, expander `e` and grid limit `g` (with `g = 0` treated as 1). Refinement is refused when `(s × n × 10) / (g × e × d)` is 0 in integer division, or when `(s × n × 10)` is not divisible by `(g × e × d)`. If there is no current output style, refinement is always allowed. This is the grid-limit check of capability `tech-loading-and-scaling` (requirement "Grid limit check") applied to the factor (n, d); the style values are defined by the `mask-*` capabilities.
 4. Every coordinate-like value read afterwards is converted as `v' = v × n` (if n > 1), then `v' = v' / d` (if d > 1). The division truncates toward zero.
    - This applies to rect and tri coordinates, use-block translation and box values, array separations, label rectangles, flabel size and offsets, element coordinates, `dimension` property values, `FIXED_BBOX`/`OBS_BBOX` values given as strings, and `MASKHINTS_*` values.
    - It does not apply to array indices, transform matrix coefficients a, b, d, e, `integer` or `double` property values, or label position and rotation.
@@ -291,7 +291,7 @@ Compatibility: exact
 - `rect x1 y1 x2 y2` denotes the rectangle [x1,x2]×[y1,y2].
 - `tri x1 y1 x2 y2 C` denotes the right triangle inside that rectangle whose right-angle vertex is corner C of the rectangle. In terms of a split tile: `nw` and `sw` are the left side of the diagonal, `se` and `ne` are the right side. For `nw` and `se` the diagonal runs from lower-left to upper-right; for `sw` and `ne` it runs from upper-left to lower-right.
 - After scaling (see "Coordinate scaling on read"), a record whose rectangle has x1 ≥ x2 or y1 ≥ y2 is silently ignored.
-- Each record is painted into the cell with the technology's paint rules, in file order (see the layout capabilities).
+- Each record is painted into the cell with the technology's paint rules, in file order (see capability `layout-paint-semantics`).
 - At full verbosity, every 10000th record prints `<cell>: <count> rects`.
 
 (Magic ref: database/DBio.c:916-980, utils/getrect.c:57-145, tiles/tile.h:205-250)
@@ -634,7 +634,7 @@ Compatibility: exact
 
 **Built-in types.** Built-in types are written like any other type: `checkpaint`, `checksubcell`, `error_p`, `error_s`, `error_ps`, `magnet`, `fence`, `rotate`, in that order, before the technology types.
 
-**Plane enumeration order.** For the given tile decomposition of the plane (owned by the layout capabilities), the order is a depth-first pre-order traversal of a forest:
+**Plane enumeration order.** This is the tile enumeration order of capability `layout-geometry-model` (requirement "Tile enumeration order"), which owns it, applied to the whole plane. Restated for the whole-plane case, it is a depth-first pre-order traversal of a forest:
 - The parent of a tile X is the tile containing the point (left(X) − 1, bottom(X)).
 - Tiles touching the plane's left boundary are roots, visited from top to bottom.
 - The children of a tile are visited from top to bottom.
@@ -717,7 +717,7 @@ Compatibility: exact
 - `<styles>` is the comma-joined list of the element's display-style long names.
 - Flags are joined with `,` and preceded by one space.
 
-**Order.** Elements are written in Magic's element hash-table enumeration order (see Q-CELL-11).
+**Order.** Magic writes elements in its element hash-table enumeration order, which is arbitrary (see Q-CELL-11). Hefesto SHALL write them in a deterministic order, sorted by element name with the natural comparator (see "Natural ordering of names"), and golden comparison SHALL canonicalize element order before comparing (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
 
 (Magic ref: database/DBio.c:4909-4916, dbwind/DBWelement.c:178-272)
 
@@ -732,7 +732,7 @@ If the cell has properties, Hefesto SHALL write `<< properties >>` followed by o
 Compatibility: exact
 
 **Record format.** Each record is `<typeword> <key><values>`.
-- **`<typeword>`.** In compatibility mode (the default, toggled by the `property compat` setting) it is always `string`. Otherwise it is `string`, `integer`, `dimension` (also used for plane properties) or `double`, according to the property's type.
+- **`<typeword>`.** In property compat mode (the default, toggled by `property compat`; see capability `layout-properties`) it is always `string`. Otherwise it is `string`, `integer`, `dimension` (also used for plane properties) or `double`, according to the property's type.
 - **`<values>` by property type:**
   - string: one space followed by the value verbatim;
   - integer: ` %d` for each value;
@@ -740,17 +740,17 @@ Compatibility: exact
   - double: ` %lld` for each value;
   - plane: ` %d %d %d %d` of each non-space tile's coordinates divided by r, in plane enumeration order.
 
-**Round-trip consequence.** In compatibility mode, integer, double and dimension properties are re-read as strings, unless their key is one of the reserved keys listed in "Properties section records" (see Q-CELL-7).
+**Round-trip consequence.** In property compat mode, integer, double and dimension properties are re-read as strings, unless their key is one of the reserved keys listed in "Properties section records" (see Q-CELL-7).
 
 (Magic ref: database/DBio.c:4918-4944, database/DBio.c:4981-5110, database/DBprop.c:37, commands/CmdLQ.c:2525-2541)
 
-#### Scenario: Compatibility mode output
-- **GIVEN** compatibility mode is on and the cell has dimension property `FIXED_BBOX` = (0,0,60,20) and integer property `NFING` = (4)
+#### Scenario: Property compat mode output
+- **GIVEN** property compat mode is on and the cell has dimension property `FIXED_BBOX` = (0,0,60,20) and integer property `NFING` = (4)
 - **WHEN** the cell is written with r = 1
 - **THEN** the properties section SHALL be `string FIXED_BBOX 0 0 60 20` followed by `string NFING 4`
 
 #### Scenario: Typed mode output
-- **GIVEN** compatibility mode is off
+- **GIVEN** property compat mode is off
 - **WHEN** the same cell is written
 - **THEN** the records SHALL be `dimension FIXED_BBOX 0 0 60 20` and `integer NFING 4`
 
@@ -764,7 +764,7 @@ Compatibility: exact
 3. Else, if the current characters are not both decimal digits, compare them case-insensitively. If they differ, return the difference of their lowercase codes. Otherwise advance both strings by one character.
 4. Else, read the maximal digit runs of both strings as unsigned decimal numbers and compare them numerically. If they differ, return the sign. Otherwise advance both strings past their runs.
 
-This comparator is not a strict weak order: a proper prefix compares greater than its extension in both directions, and differences in case or in leading zeros compare equal. The resulting order for such inputs depends on the sorting algorithm (see Q-CELL-12).
+This comparator is not a strict weak order: a proper prefix compares greater than its extension in both directions, and differences in case or in leading zeros compare equal. The resulting order for such inputs depends on the sorting algorithm (see Q-CELL-12) Hefesto SHALL instead use one deterministic total order on every platform, equal to Magic's order whenever cmp is consistent for the inputs; the tie-breaking rule for the inconsistent cases is set by Q-CELL-12 (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
 
 (Magic ref: database/DBcellname.c:676-707, database/DBio.c:4454-4467, database/DBio.c:4556-4567)
 

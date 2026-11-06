@@ -251,6 +251,8 @@ The variant determines the top metal and its thickness, following the open_pdks 
 | gf180mcuC | 5 | metal5 | 9 kÅ |
 | gf180mcuD | 5 | metal5 | 11 kÅ |
 
+No shipped variant uses the 6 kÅ top metal row (see Q-RELIABILITY-12).
+
 The rule file SHALL record in `note` that the published lifetime target is T₀.₁ > 100 000 h at 85 °C, that the formula of §14.2.2 assumes Ea = 0.7 eV and n = 2, and that "CB" in the table headings is undefined in the source (Q-RELIABILITY-5).
 
 Compatibility: native

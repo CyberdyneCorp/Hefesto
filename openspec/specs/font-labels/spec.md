@@ -143,7 +143,7 @@ The system SHALL provide the following font-related forms (general command seman
 - `setlabel fontlist` lists the names of loaded fonts in load order.
 - `setlabel font <index>` (integer) prints the name of that font (`default` for −1) or reports an out-of-range index.
 - `setlabel font <name> [scale]`: if no loaded font has that name (case-insensitive; `default` means −1), the argument is treated as a font file name and loaded with `scale` (default 1.0) — the newly loaded font is then applied only if its name matches the argument; otherwise the font is applied to all selected labels in the edit cell (or to the default-label settings with `setlabel -default`). Applying a font to a label whose size is 0 sets its size to the integer numerator of the lambda-to-internal ratio (in 1/8 units, see Q-MISC-22).
-- `setlabel size <value>`, `setlabel offset <x> <y>` (or one argument "x y") take values in current user units and store them ×8; `setlabel rotate <degrees>` takes an integer. Without a value they report the current value(s) of each selected label (size and offset printed after division by 8; see Q-MISC-23).
+- `setlabel size`, `setlabel offset` and `setlabel rotate` (values in user units stored ×8; integer degrees; queries divide by 8) are specified in capability `cmd-labels-properties` requirements "Setlabel command" and "Label units and attributes" (see Q-MISC-23 and Q-CMDEDIT-90).
 - `label <text> <font> [size [rotation [offx offy [justification [layer]]]]]`, where `<font>` is a font name or index: size defaults to the lambda ratio numerator (in 1/8 units) unless defaults were set with `setlabel -default`, size/offset are user-unit values stored ×8.
 
 Compatibility: behavioral
@@ -175,7 +175,7 @@ Compatibility: informative
 
 ### Requirement: GDS representation of font attributes
 
-When writing a font label as a GDS TEXT element the system SHALL emit, after TEXTTYPE, a PRESENTATION record whose bits 4–5 are (font index AND 3) and whose low four bits encode justification (SE 0x0, S 0x1, SW 0x2, E 0x4, CENTER 0x5, W 0x6, NE 0x8, N 0x9, NW 0xA), an STRANS record of 0, a MAG record equal to (size / 800) × scalefactor / expander (the text height in micrometres), and an ANGLE record equal to the rotation only when it is non-zero. Reading a TEXT element with a PRESENTATION record creates a font label with font index (bits 4–5), the inverse justification mapping, size from MAG (×1000 × magscale × multiplier / scalefactor, rounded) and integer angle from ANGLE; if that font index is not loaded the label becomes a default-font label. Record encoding is owned by `gds-write`/`gds-read`.
+The system SHALL represent a font label in GDS as a TEXT element carrying PRESENTATION (font index AND 3 in bits 4–5, justification in the low four bits), STRANS 0, MAG (size / 800 × scalefactor / expander, the text height in micrometres) and, only for a non-zero rotation, ANGLE. The exact records, formulas and rounding are owned by capability `gds-write` requirement "Label TEXT records" (writing) and capability `gds-read` requirement "TEXT element parsing" (reading); this summary does not override them. In addition, when a TEXT element read with a PRESENTATION record names a font index that is not loaded, the label becomes a default-font label.
 
 Compatibility: exact
 

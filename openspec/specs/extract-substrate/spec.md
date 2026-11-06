@@ -22,7 +22,7 @@ Compatibility: exact
 
 ### Requirement: Isolated substrate regions
 
-When P_sub ≥ 0 and D exists, for the duration of extracting a cell, the cell's P_sub plane SHALL be replaced by a copy in which every area of P_sub that is space in the flattened hierarchy (cell plus all subcells) and is enclosed by shield types or by non-substrate types of P_sub—i.e., an *isolated* substrate area not connected to the outer (unbounded) substrate—is painted with D. Areas reachable from the unbounded outside SHALL remain space. The original plane SHALL be restored after the cell (and, for `extract all`, after the whole run) is extracted. Under full R-C extraction the entire substrate area of the cell SHALL instead be painted with D (owned by `extresist-command`).
+When P_sub ≥ 0 and D exists, for the duration of extracting a cell, the cell's P_sub plane SHALL be replaced by a copy in which every area of P_sub that is space in the flattened hierarchy (cell plus all subcells) and is enclosed by shield types or by non-substrate types of P_sub—i.e., an *isolated* substrate area not connected to the outer (unbounded) substrate—is painted with D. Areas reachable from the unbounded outside SHALL remain space. The original plane SHALL be restored after the cell (and, for `extract all`, after the whole run) is extracted. Under full R-C extraction the entire substrate area of the cell SHALL instead be painted with D (owned by capability `extresist-command`).
 Compatibility: exact
 
 (Magic ref: extract/ExtCell.c:283-330, extract/ExtCell.c:410-450, database/DBcellcopy.c:DBCellGenerateSubstrate)

@@ -388,7 +388,7 @@ Compatibility: exact
 
 ### Requirement: CIF output preconditions and flat output
 
-Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL flatten all paint of the hierarchy (not labels) into one temporary cell, write it as symbol 1 named `__CIF2__` with the same format (no reducer check, see Q-MASK-332), and end with `C 1;` and `End` (see Q-MASK-321).
+Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output" (one temporary cell holding the flattened paint, no labels, written as symbol 1 named `__CIF2__`), using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End` (see Q-MASK-321).
 
 Compatibility: exact
 
@@ -502,11 +502,11 @@ Compatibility: behavioral
 
 ### Requirement: cif polygon and unfracture options
 
-Hefesto SHALL implement `cif polygon subcells [yes|no]` (stores a flag, default no; it has no effect on CIF reading, see Q-MASK-319) and `cif unfracture [yes|no]` (default no; when yes, each generated output layer has adjacent non-manhattan tiles merged after generation, as specified in capability `mask-hierarchical-generation`). With only the sub-word given, the current value is reported.
+Hefesto SHALL implement `cif polygon subcells [yes|no]` (stores a flag, default no; it has no effect on CIF reading, see Q-MASK-319) and `cif unfracture [yes|no]` (default no; when yes, each generated output layer has adjacent non-Manhattan tiles merged after generation, as specified in capability `mask-hierarchical-generation` requirement "Non-manhattan merge option"). For `polygon`, with only the sub-word `subcells` given, the current value is reported. For `unfracture`, Magic reads the value from the fourth word (`cif unfracture <any> yes|no`), `cif unfracture <any>` reports the current value, and `cif unfracture` alone is an argument error (see Q-MASK-413).
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdCD.c:2014-2056, cif/CIFgen.c:5785-5786)
+(Magic ref: commands/CmdCD.c:2014-2080, cif/CIFgen.c:5785-5786)
 
 #### Scenario: Query polygon setting
 - **WHEN** `cif polygon subcells` is executed with no value

@@ -34,7 +34,7 @@ lef
     layer       m2c    via1 VIA12            # m2c is a contact type -> treated as "cut"
     contact     pc     cont1                 # cut whose RECTs are resized to magic contact size
     obstruction m1     OBS1                  # OBS1 geometry paints m1 as obstruction
-    obstruction obsv1,m1 via1                # via1 obstruction: primary obsv1, second type m1
+    obstruction obsv1,m1 via1                # via1 obstruction: primary = lower-numbered type, other = secondary
     bound       comment OVERLAP_BOUND
     ignore      PWELL NWELL                  # recognized, never painted
 end

@@ -41,7 +41,7 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
      - parse-argument quirks that change results
 
      With the setting OFF, Hefesto uses the corrected behavior and documents each difference.
-  3. **Case by case:** ambiguous items. Each open-question entry records its resolution as `Resolution: fix | compat | n/a`.
+  3. **Case by case:** ambiguous items. Each open-question entry records its resolution as `Resolution: fix | compat | platform | n/a`.
 - **Spec impact:** requirements that cite a tier-1 open question describe the corrected behavior once that question is resolved.
 
 ## X-3: Scripting runtime
