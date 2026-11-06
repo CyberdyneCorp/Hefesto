@@ -275,6 +275,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResFract.c:64-490, resis/ResMakeRes.c:547-855
 - Options: specify from golden captures | port the algorithm literally
 - Recommendation: capture golden networks (NL-RESNET cases), then refine `extresist-network` with exact pseudo-code before implementation.
+- Status: resolved. The fracture walk, concavity test, near-device cutting and the rest of the network construction are now specified as exact pseudo-code in `extresist-network` (requirements "Tile fracturing" and "Near-device cutting"). Golden captures NL-RESNET-07..14 confirm them.
 
 ### Q-NETLIST-39: `.res.ext` device records omit value and L/W for non-MOS classes
 - Kind: bug
@@ -303,3 +304,52 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2spice/ext2spice.c:1452-1455, ext2spice/ext2spice.c:872-878
 - Options: fix (per-run)
 - Recommendation: fix.
+
+### Q-NETLIST-43: Near-device tile with a single breakpoint loses its area
+- Kind: bug
+- Magic behavior: a tile whose breakpoints include a device terminal, and which has only that one breakpoint, is dropped without adding its area to the node. Tiles cut east-west or north-south add the whole tile area in the same situation. The node's share of the net capacitance is therefore too small.
+- Evidence: resis/ResMakeRes.c:565-570, resis/ResMakeRes.c:148-154
+- Options: replicate | fix (add `width × height` to the node)
+- Recommendation: fix after golden comparison (verify against Magic). The change alters only capacitance distribution.
+
+### Q-NETLIST-44: Delta-to-star conversion adds 0.5 mΩ instead of rounding
+- Kind: bug
+- Magic behavior: the star resistor values are computed as `Ra·Rb/S + 0.5` and stored in a float. The `+ 0.5` was meant to round to an integer, but it adds half a milliohm to every arm.
+- Evidence: resis/ResMerge.c:630-641, resis/ResMerge.c:765-776
+- Options: replicate | fix (drop the + 0.5)
+- Recommendation: replicate. Output values are printed in Ω with limited precision, so the effect is usually invisible.
+
+### Q-NETLIST-45: Triangle search order depends on hash-table iteration for high-degree nodes
+- Kind: quirk
+- Magic behavior: for a node with 10 or more resistors, neighbours are visited in hash-table iteration order. The table is keyed by node addresses, so when several triangles exist, the one that is reduced first can differ between runs and platforms.
+- Evidence: resis/ResMerge.c:560-585
+- Options: replicate (impossible to reproduce exactly) | fix (iterate neighbours in resistor-list order, as for small nodes)
+- Recommendation: fix with list order. Golden networks with high-fanout triangles may differ.
+
+### Q-NETLIST-46: Path-resistance heap behaves differently for the first net of a session
+- Kind: quirk
+- Magic behavior: the heap is created once per session, and its "built" state is never reset. For the first net, the origin's resistors are appended unbuilt and heapified on the first removal. For later nets, every insert sifts up. Ties between equal integer keys can therefore be broken differently for the same net, depending on whether it is the first net extracted.
+- Evidence: resis/ResSimple.c:1088-1125, utils/heap.c:242-260, utils/heap.c:386-452
+- Options: replicate | fix (deterministic tie-break, e.g. insertion order)
+- Recommendation: fix together with Q-NETLIST-25.
+
+### Q-NETLIST-47: Final-pass sort and neighbour search edge cases
+- Kind: bug
+- Magic behavior:
+  - With fewer than 10 resistors, the final pass sorts by repeated insertion before the first value that is greater or equal. Equal values come out in reverse order, so this is not a stable sort.
+  - When the smallest adjacent resistor `work` is the head of the resistor list, which can happen after protected resistors are skipped, the code dereferences a null predecessor while unlinking it.
+  - If neither end of the current resistor has another resistor, `work` stays null.
+- Evidence: resis/ResSimple.c:512-527, resis/ResSimple.c:612-620
+- Options: replicate the order and guard the crashes | fix (stable sort)
+- Recommendation: replicate the order (it decides which equal resistor is folded first). Guard both null cases by skipping the resistor.
+
+### Q-NETLIST-48: sim2simp is shipped as source only and is not built
+- Kind: platform
+- Magic behavior: `ext2sim/sim2simp.c` is a standalone stdin/stdout filter that merges parallel MOSFETs in a `.sim` file. The makefile no longer builds or installs it ("deprecated/removed"). It also has quirks:
+  - every non-device line is echoed with an extra blank line;
+  - the last field keeps its newline;
+  - attribute parsing assumes the `A_<n>,P_<n>` form.
+- Evidence: ext2sim/Makefile.in:18-20, ext2sim/sim2simp.c:125-170
+- Options: omit | reimplement as an optional tool (`merge` option of the `.sim` writer covers the use case)
+- Recommendation: omit. Point users to the `merge` option of `ext2sim`. See the informative note in capability `netlist-sim`.
+

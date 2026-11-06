@@ -1,26 +1,35 @@
 # Hefesto Specification Index
 
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`.
-The `hefesto-*` product specs come first; the Magic-compatibility areas follow.
-Each compatibility area also has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
+Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 102 capabilities, 1242 requirements, 1890 scenarios.
+**Totals:** 129 capabilities, 1570 requirements, 2379 scenarios, 738 open questions.
 
 ## Hefesto product (native)
 
-Decisions: [product.md](decisions/product.md) · Open: [cross-cutting.md](decisions/cross-cutting.md)
+Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cross-cutting.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 6 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
+| [`hefesto-app-ux`](../openspec/specs/hefesto-app-ux/spec.md) | 4 | 4 | Defines the information architecture of Hefesto's modern GUI: the main window, panels, browsers and multi-window behavior on desktop and iPad. Magic's Tk wrapper GUI is specified s… |
 | [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 6 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
+| [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
+| [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 3 | 3 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
+| [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 4 | 4 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
+| [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |
+| [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 3 | 4 | Implements decision X-2. Hefesto always fixes Magic's crashes, undefined behavior and data-loss bugs. Magic quirks that change output values are reproduced only when the `magic-com… |
+| [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 3 | 3 | Implements decision X-1. Hefesto reproduces Magic's ordering wherever that ordering is defined by Magic's canonical tile decomposition. Where Magic's ordering comes from hash table… |
 | [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends: Metal on macOS and iPadOS, and Vulkan on Linux. The look of the lay… |
-| [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 3 | 3 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
+| [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 4 | 5 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
+| [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 4 | 4 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
+| [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 4 | 4 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
+| [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 6 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
 
 ## Technology files (TECH)
 
@@ -75,7 +84,7 @@ Open questions: [23](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 
 ## Mask generation, GDS, CIF (MASK)
 
-Open questions: [133](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
+Open questions: [139](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -84,8 +93,19 @@ Open questions: [133](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 | [`gds-write`](../openspec/specs/gds-write/spec.md) | 28 | 64 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 43 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
 | [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 41 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
-| [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 32 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
+| [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 39 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
 | [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 33 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |
+
+## OASIS (OASIS)
+
+Open questions: [34](decisions/open-questions/OASIS.md) · Golden cases: [CASES.md](../tests/golden/OASIS/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`oasis-command`](../openspec/specs/oasis-command/spec.md) | 7 | 11 | Defines the `oasis` command: Hefesto's command-level API for reading and writing OASIS files. Its options mirror the Magic `gds` (`calma`) command, so that scripts written for GDS … |
+| [`oasis-format`](../openspec/specs/oasis-format/spec.md) | 30 | 56 | Defines the OASIS (SEMI P39, version 1.0) byte-level format as Hefesto reads and writes it: the magic bytes, the START and END records, the primitive encodings (unsigned and signed… |
+| [`oasis-read`](../openspec/specs/oasis-read/spec.md) | 25 | 41 | Defines how Hefesto reads an OASIS file (the `oasis read` operation, capability `oasis-command`) into layout cells. Magic has no OASIS reader. The governing rule is **GDS equivalen… |
+| [`oasis-write`](../openspec/specs/oasis-write/spec.md) | 25 | 34 | Defines how Hefesto serializes a layout hierarchy to an OASIS file (the `oasis write` operation, capability `oasis-command`). Magic has no OASIS writer. The governing rule is **GDS… |
 
 ## LEF / DEF (LEFDEF)
 
@@ -117,7 +137,7 @@ Open questions: [26](decisions/open-questions/EXTRACT.md) · Golden cases: [CASE
 
 ## Netlists and extresist (NETLIST)
 
-Open questions: [42](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
+Open questions: [48](decisions/open-questions/NETLIST.md) · Golden cases: [CASES.md](../tests/golden/NETLIST/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -125,13 +145,40 @@ Open questions: [42](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 | [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 12 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 21 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 8 | This capability defines the `extresist-command` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arit… |
-| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 7 | 8 | This capability defines how `extresist-command` builds a resistor network for one net from layout geometry, and how it reduces that network: path resistance, capacitance distributi… |
+| [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 26 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
 | [`extresist-output`](../openspec/specs/extresist-output/spec.md) | 5 | 6 | This capability defines the outputs of `extresist-command`: - the `.res.ext` overlay file: grammar, naming of new nodes, record order and numeric formatting - how netlisters consum… |
 | [`netlist-extcheck`](../openspec/specs/netlist-extcheck/spec.md) | 2 | 3 | This capability defines `extcheck`, a standalone checker. It reads and flattens a `.ext` tree using capabilities `ext-flattening-read` and `ext-flattening-hierarchy`, reports globa… |
-| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 6 | 9 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
+| [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 10 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 15 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 8 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
 | [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 17 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+
+## LVS (netgen-compatible) (LVS)
+
+Open questions: [29](decisions/open-questions/LVS.md) · Golden cases: [CASES.md](../tests/golden/LVS/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`lvs-command`](../openspec/specs/lvs-command/spec.md) | 8 | 8 | Defines Hefesto's LVS entry points: - the netgen-compatible `lvs` command and its arguments - the lower-level netgen command set exposed to scripts - obtaining the layout netlist f… |
+| [`lvs-comparison-algorithm`](../openspec/specs/lvs-comparison-algorithm/spec.md) | 13 | 14 | Defines how two flat views of a cell pair (circuit 1 and circuit 2) are compared for graph isomorphism. It covers: - the bipartite device/net graph - the initial partition - iterat… |
+| [`lvs-device-reduction`](../openspec/specs/lvs-device-reduction/spec.md) | 8 | 10 | Defines how devices are reduced before and during LVS comparison: - combining parallel devices into one device with several property records - combining series devices into one dev… |
+| [`lvs-hierarchy`](../openspec/specs/lvs-hierarchy/spec.md) | 9 | 12 | Defines hierarchical LVS: - building the bottom-up compare queue of matching cell pairs - the per-pair comparison flow of the `lvs` command - flattening unmatched or mismatched sub… |
+| [`lvs-netlist-input`](../openspec/specs/lvs-netlist-input/spec.md) | 14 | 23 | Defines how the built-in layout-versus-schematic (LVS) engine reads the two netlists it compares. Decision P-5 requires the results to be compatible with netgen. This covers: - the… |
+| [`lvs-property-matching`](../openspec/specs/lvs-property-matching/spec.md) | 9 | 12 | Defines how the properties of matched devices are compared: - which properties are compared (properties of interest) - value types and promotion between them - tolerance rules for … |
+| [`lvs-reports`](../openspec/specs/lvs-reports/spec.md) | 11 | 12 | Defines the outputs of LVS: - which messages go to the comparison log (`comp.out`) and which go only to the console - the two-column side-by-side layout - the exact text of each re… |
+| [`lvs-setup-file`](../openspec/specs/lvs-setup-file/spec.md) | 15 | 16 | Defines the LVS setup file and the commands that PDK setup files use to configure a comparison. Examples of such files are `sky130A_setup.tcl`, `gf180mcuD_setup.tcl` and `sg13g2_se… |
+
+## Embedded simulation (ngspice) (SIM)
+
+Open questions: [19](decisions/open-questions/SIM.md) · Golden cases: [CASES.md](../tests/golden/SIM/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 11 | 16 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
+| [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 7 | 11 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
+| [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 15 | 26 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
+| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 22 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 12 | 14 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
 
 ## Editing commands (CMDEDIT)
 
@@ -164,15 +211,15 @@ Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 
 ## Scripting, PCells, Tcl tools (SCRIPT)
 
-Open questions: [37](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES.md](../tests/golden/SCRIPT/CASES.md)
+Open questions: [45](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES.md](../tests/golden/SCRIPT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 29 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
+| [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 31 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
 | [`readspice`](../openspec/specs/readspice/spec.md) | 5 | 9 | Specifies the `readspice <netlist>` command. It is defined by `readspice.tcl` and loaded at startup when present. The command annotates already-loaded layout cells with the port or… |
-| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 19 | 38 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
+| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 40 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
 | [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 9 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
-| [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 10 | 12 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
+| [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 13 | 22 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
 | [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 13 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
 | [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 18 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
 
@@ -190,17 +237,17 @@ Open questions: [33](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 
 ## Legacy: routers, plow, wiring, netlist window, IRSIM (LEGACY)
 
-Open questions: [28](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
+Open questions: [60](decisions/open-questions/LEGACY.md) · Golden cases: [CASES.md](../tests/golden/LEGACY/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`irsim-interface`](../openspec/specs/irsim-interface/spec.md) | 9 | 11 | Defines how Hefesto names electrical nodes under selected paint (`getnode`) consistently with Magic's extractor naming, and the interface Magic offers to the switch-level simulator… |
 | [`netlist-window`](../openspec/specs/netlist-window/spec.md) | 10 | 11 | Defines Magic's netlist facility used by the routers and by interactive netlist editing: the `.net` file format (exact grammar, reading and writing), the in-memory netlist model (n… |
 | [`openaccess`](../openspec/specs/openaccess/spec.md) | 2 | 2 | Records the existence of Magic's experimental OpenAccess (OA) integration, compiled only with both the Tcl wrapper and the `OPENACCESS` build option. It lets cell definitions flagg… |
-| [`plow`](../openspec/specs/plow/spec.md) | 11 | 12 | Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, the edge-queue algor… |
-| [`router-channel`](../openspec/specs/router-channel/spec.md) | 18 | 23 | Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, … |
+| [`plow`](../openspec/specs/plow/spec.md) | 27 | 33 | Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, and the complete edg… |
+| [`router-channel`](../openspec/specs/router-channel/spec.md) | 37 | 50 | Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, … |
 | [`router-gate-array`](../openspec/specs/router-gate-array/spec.md) | 11 | 13 | Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initializa… |
-| [`router-maze`](../openspec/specs/router-maze/spec.md) | 12 | 13 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
+| [`router-maze`](../openspec/specs/router-maze/spec.md) | 20 | 34 | Defines Magic's maze router ("mzrouter"): the `mzrouter` technology section (styles, route layers, route contacts, spacings, search parameters, widths), the derivation of widths an… |
 | [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 10 | 12 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
 | [`router-net2ir`](../openspec/specs/router-net2ir/spec.md) | 3 | 4 | Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) pl… |
 | [`scheme-interpreter`](../openspec/specs/scheme-interpreter/spec.md) | 3 | 3 | Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: cu… |

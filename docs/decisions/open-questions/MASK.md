@@ -23,12 +23,12 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix
 - Recommendation: replicate (affects only which SE corners are bridged).
 
-### Q-MASK-4: bridge width/grid expansion is a no-op
-- Kind: bug
-- Magic behavior: the helper computing a minimum-width, grid-snapped bridge rectangle writes into a local copy and never stores it; bridges are exactly the corner-to-corner gap rectangle.
-- Evidence: cif/CIFgen.c:1703-1836
-- Options: replicate | fix
-- Recommendation: replicate; changing it alters mask output.
+### Q-MASK-4: bridge width/grid expansion is a no-op (withdrawn)
+- Kind: doc-mismatch
+- Magic behavior: withdrawn. The helper that computes the minimum-width, grid-snapped bridge rectangle stores its result back through the rectangle pointer (`*area = r`), so the expansion IS applied. The `bridge` requirement now specifies the expansion exactly.
+- Evidence: cif/CIFgen.c:1703-1803 (line 1802)
+- Options: n/a
+- Recommendation: none; kept for traceability.
 
 ### Q-MASK-5: bridge-lim searches database planes with mask-unit coordinates
 - Kind: bug
@@ -937,4 +937,46 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaWrite.c:1037-1049, 1077-1080, 357-388
 - Options: replicate | fix (validate the whole tree before writing, or delete the file)
 - Recommendation: fix (validate first). Behavioral class.
+
+### Q-MASK-227: bridge expansion takes square roots of negative values
+- Kind: bug
+- Magic behavior: the bridge expansion computes `sqrtf(w² − x²)` without checking the sign. When the gap along the chosen axis exceeds w (possible when d > w), the argument is negative, the result is NaN, and `ceilf(NaN)` is converted to int. That conversion is undefined in C: x86-64 yields INT_MIN, AArch64 yields 0. The bridge rectangle therefore differs between platforms, and on x86-64 can overflow to a huge rectangle when NaN is the governing term.
+- Evidence: cif/CIFgen.c:1735-1765
+- Options: replicate the x86-64 result | fix (clamp the argument to 0)
+- Recommendation: fix by clamping to 0. Capture x86-64 golden output first to see whether any real PDK hits it (verify against Magic).
+
+### Q-MASK-228: bridge-lim passes 1 and 2 modify the plane they are enumerating
+- Kind: bug
+- Magic behavior: after pass 0, the plane being searched for corners is also the plane that bridges are painted into. Tiles created or merged by a bridge can be visited, revisited or skipped depending on the enumeration state, so the result depends on the tile-plane traversal algorithm and not only on the geometry.
+- Evidence: cif/CIFgen.c:5243-5267
+- Options: replicate (port the enumeration literally) | fix (enumerate a snapshot and paint into a copy)
+- Recommendation: fix (snapshot), after golden captures show whether common layouts differ (verify against Magic).
+
+### Q-MASK-229: bridge-lim erases whole limiting tiles, not only their part inside the bridge
+- Kind: bug
+- Magic behavior: when no limit-free bridge shape exists, every limiting tile that overlaps the bridge is erased from the result over its full extent (unscaled), which can also remove original geometry far from the bridge.
+- Evidence: cif/CIFgen.c:4379-4405
+- Options: replicate | fix (erase only the intersection with the bridge, in mask units)
+- Recommendation: replicate until golden output confirms the effect; then decide with Q-MASK-5.
+
+### Q-MASK-230: bloat-all leaves contact-image trigger tiles marked
+- Kind: bug
+- Magic behavior: with d = 0, a trigger tile is marked as processed. At the end of the operation, marks are cleared only on the T2 plane. A trigger found on another plane (the image of a contact on a second plane) stays marked, so a later `bloat-all` that uses the same tile as a trigger does not push it and produces nothing for it.
+- Evidence: cif/CIFgen.c:1427-1432, cif/CIFgen.c:1473-1477, cif/CIFgen.c:5313-5328
+- Options: replicate | fix (clear marks on every plane searched for triggers)
+- Recommendation: fix (verify against Magic first).
+
+### Q-MASK-231: bloat-all seeding depends on trigger order when d = 0
+- Kind: quirk
+- Magic behavior: for triggers that are not on the T2 plane, only the first unprocessed T2 tile overlapping the trigger seeds the flood. With d = 0, tiles stay processed across triggers, so a later trigger whose first overlapping region is already done seeds a different, unprocessed region instead. The union of painted regions therefore depends on the trigger enumeration order.
+- Evidence: cif/CIFgen.c:1332-1344, cif/CIFgen.c:1458-1478
+- Options: replicate | fix (seed every region overlapping the trigger)
+- Recommendation: replicate.
+
+### Q-MASK-232: bloat-all converts mask-layer triggers to internal units with truncation toward zero
+- Kind: quirk
+- Magic behavior: a mask-layer trigger used with database T2 types is divided by the scale factor with C integer division, which truncates toward zero. Both the seed area and the clip base (multiplied back by the scale) shift toward the origin for negative or off-grid coordinates.
+- Evidence: cif/CIFgen.c:1420-1428, cif/CIFgen.c:1480-1490
+- Options: replicate | fix (floor/ceil outward)
+- Recommendation: replicate; it only matters for off-grid mask geometry.
 

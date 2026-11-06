@@ -1,77 +1,89 @@
-# Cross-cutting decisions (open)
+# Cross-cutting decisions
 
-These decisions affect many capabilities. They should be resolved before implementation starts.
+These decisions affect many capabilities. Per-area items are tracked in `open-questions/<AREA>.md`.
 
-Per-area items are in `open-questions/<AREA>.md`. There are 604 entries in total, covering bugs, quirks, documentation mismatches and platform questions.
+## X-1: How to compare output with Magic when its record order is arbitrary
 
-## X-1: How to compare output with Magic when Magic's order is unspecified
-
-Magic writes some records in an order that comes from its internals rather than from any rule:
-
-- **Corner-stitched tile decomposition and search order:**
-  - `.mag` rect order
-  - GDS/CIF element order
-  - LEF RECT order
-  - DEF route segments
-  - `drc find` / `drc count`
-  - PostScript output
-- **Hash-table iteration:**
-  - .ext and SPICE device/instance/port order
-  - LEF `-tech` layer blocks
-  - DEF vias and rules
-  - `.mag` elements
-- **Memory addresses:** the order of coupling capacitors and which terminal is listed first (.ext `cap`, SPICE). No other implementation can reproduce this.
-- **Platform-dependent sort:** the sort Magic uses for instances and properties already gives different results on Linux and on macOS.
-
-Options:
-
-- (a) Replicate the canonical maximal-horizontal-strip tiling and the hash algorithms. This is specified where possible: see `layout-geometry-model` and `ext-flattening-*`.
-- (b) Define "compatible" as semantic equivalence, so golden tests compare canonicalized, order-insensitive output.
-- (c) Hybrid: replicate tiling order (deterministic and specified), and canonicalize hash-order and address-order output.
-
-Recommendation: (c).
-
-Refs: Q-LEFDEF-30, Q-LEFDEF-108, Q-MASK-14/204/218/323/336/408, Q-CELL-10/11, Q-EXTRACT-5/7, NETLIST Q-1.
+- **Status:** decided (2026-11-05). Option: **hybrid**.
+- **Decision:** the rule depends on where Magic's order comes from.
+  - **Tile order.** Hefesto SHALL reproduce Magic's canonical maximal-horizontal-strip decomposition and its traversal order, as specified in `layout-geometry-model`. Output whose order comes from tiles SHALL therefore be byte-identical:
+    - `.mag` rects
+    - GDS/CIF elements
+    - LEF RECTs
+    - DEF route segments
+    - `drc find` order
+  - **Hash-table or memory-address order.** Hefesto SHALL write these records in a documented deterministic order (sorted by name, then by coordinates). Golden comparison SHALL canonicalize both outputs before comparing. Affected records:
+    - `.ext` cap and merge records
+    - SPICE device, instance and port order wherever Magic uses hash order
+    - LEF `-tech` layer blocks
+    - DEF vias and rules
+    - `.mag` elements
+    - coupling-capacitor terminal order
+  - **Platform-dependent sorts in Magic.** Hefesto SHALL use one deterministic ordering on all platforms.
+- **Refs:** Q-LEFDEF-30, Q-LEFDEF-108, Q-MASK-14/204/218/323/336/408, Q-CELL-10/11, Q-EXTRACT-5/7, NETLIST Q-1.
 
 ## X-2: Replicate or fix Magic's bugs
 
-The specs describe what Magic does today, including suspected bugs. Each item needs a decision: replicate it for compatibility, or fix it and record the divergence.
+- **Status:** decided (2026-11-05). Option: **tiered**.
+- **Decision:** Hefesto handles suspected Magic bugs in three tiers:
+  1. **Always fix:**
+     - crashes
+     - undefined behavior: uninitialized reads, NULL dereferences, buffer overflows
+     - data loss, for example:
+       - port uses `reset`/`scan`/`tieoff` lost on save
+       - label text truncated at 99 characters
+       - `.mag.gz` saved as `.mag.gz.mag`
+       - backup content duplicated
+  2. **Replicate behind the `magic-compat` setting (default ON):** quirks that change output values. Examples:
+     - rounding asymmetries
+     - `.res.ext` +0.5 mΩ offset
+     - triangle rounding
+     - parse-argument quirks that change results
 
-Recommendation:
-- Fix crashes and undefined behavior (uninitialized reads, NULL dereferences, buffer overflows).
-- Replicate quirks that change output values (rounding, `.res.ext` +0.5 mΩ, triangle rounding) behind a "Magic-compat" switch.
-- Fix data-loss bugs (port uses lost, label text truncated, `.mag.gz` saved as `.mag.gz.mag`).
+     With the setting OFF, Hefesto uses the corrected behavior and documents each difference.
+  3. **Case by case:** ambiguous items. Each open-question entry records its resolution as `Resolution: fix | compat | n/a`.
+- **Spec impact:** requirements that cite a tier-1 open question describe the corrected behavior once that question is resolved.
 
-## X-3: Scripting and PDK integration (Q-SCRIPT-1)
+## X-3: Scripting runtime
 
-PDKs drive Magic through Tcl: `.magicrc` startup scripts and the `toolkit.tcl` PCell generators. iPadOS cannot run arbitrary Tcl with `exec`.
+- **Status:** decided (2026-11-05). Option: **Tcl everywhere plus native PCell fast path**.
+- **Decision:**
+  - Hefesto SHALL embed a sandboxed Tcl interpreter on all platforms, including iPadOS. It SHALL expose the `magic::` command API (`scripting-api`) and SHALL NOT allow process execution, sockets, or loading native extensions.
+  - Hefesto SHALL additionally provide native C++ implementations of the PCell generators for supported PDKs, as a performance path. These SHALL be validated against the Tcl generators for identical cell names and geometry.
+- **Risk:** App Store guideline 2.5.2 restricts executing code that is not bundled with the app. Running PDK scripts that the user imported is a grey area and SHALL be confirmed with App Review early. Fallback if rejected: on iPadOS, ship curated PDK packs whose scripts are bundled, plus the native generators.
 
-Proposal:
-- Embed Tcl on Linux and macOS.
-- On iPadOS, use a declarative PDK profile plus native C++ generators.
-- Bind both to one host-independent command API, as specified in `scripting-api`.
+## X-4: Host facilities on iPadOS
 
-## X-4: Host facilities missing on iPadOS
-
-Magic relies on these host facilities:
-- `fork`/`exec` (IRSIM, git, shell)
-- `fcntl` file locks
-- crash-recovery backups in `/tmp` with process-ID checks
-- environment variables (`CAD_ROOT`, `PDK_ROOT`)
-- inode identity and symlinks
-
-Hefesto needs a platform abstraction for each of these: a sandboxed PDK store, a document-based file model, and app-managed autosave. See items tagged `[platform]` in `CELL`, `UI`, `SCRIPT` and `LEGACY`.
+- **Status:** decided (2026-11-05). Option: **abstracted services**.
+- **Decision:** host facilities SHALL be reached only through the platform-services interfaces of `hefesto-architecture` and `hefesto-files-and-pdks`:
+  - PDK store
+  - file coordination
+  - app autosave
+  - settings instead of environment variables
+- **Desktop-only exceptions:** on iPadOS, `irsim-interface` and `shell` are unavailable. Embedded ngspice provides simulation on every platform.
 
 ## X-5: Rendering fidelity
 
-Decisions needed:
-- Which `.dstyle` variant Hefesto renders (Q-UI-8).
-- Stipple bit orientation, which differs between Magic's X11 and OpenGL drivers (Q-UI-6).
-- Font-label metrics.
-- How the touch-gesture map replaces Magic's mouse button bindings (Q-UI-22).
+- **Status:** decided (2026-11-05).
+- **Decision:**
+  - **Default style variant:** the OpenGL dstyle/cmap variant (true color with translucency). The other variants SHALL be selectable in settings.
+  - **Stipple bit orientation:** follows Magic's OpenGL/Cairo driver.
+  - **iPad gestures:** mode-based mapping, as follows:
 
-## X-6: Verification against Magic (deferred)
+    | Gesture | Action |
+    |---|---|
+    | One-finger drag | Primary button action |
+    | Two-finger drag | Pan |
+    | Pinch | Zoom |
+    | Long press | Context menu with secondary and tertiary actions |
+    | Apple Pencil | Precise primary action |
+    | Floating modifier key | Switches to middle- or right-button semantics |
 
-Scenarios marked "(verify against Magic)", and every `tests/golden/*/CASES.md` inventory (about 1100 cases), need Magic run headless to capture reference outputs.
+- **Still open:** font-label metrics (Q-MISC font items).
 
-This also requires the open_pdks sources for sky130, gf180mcu and IHP sg13g2. They are needed to confirm the PDK script contract (Q-SCRIPT-9).
+## X-6: Verification against Magic
+
+- **Status:** open, deferred by the user until the spec is complete.
+- **Needed:**
+  - Run Magic headless to capture golden outputs for every `tests/golden/*/CASES.md` inventory.
+  - Get the open_pdks sources. (The agent working on Q-SCRIPT-9 is verifying the PDK script contract.)

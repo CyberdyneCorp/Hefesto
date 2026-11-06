@@ -168,3 +168,27 @@ Compatibility: behavioral
 - **GIVEN** a session in which `ext2spice` ran, followed by `ext2sim` with a node named `vdd!`
 - **WHEN** the `.sim` file is written
 - **THEN** the node is written as `vdd`
+
+### Requirement: Deprecated sim2simp filter
+Hefesto SHALL NOT be required to provide the `sim2simp` filter. Magic ships its source, but neither builds nor installs it, so this requirement only records its behaviour. Parallel-device merging is covered by the `merge` option of this capability (Q-NETLIST-48).
+
+The filter reads a `.sim` file on standard input:
+- Lines starting with `p`, `n`, `e` or `d` are transistors. Their fields are space-separated: type, gate, source, drain, length, width, and optionally x, y, gate attributes, source attributes and drain attributes.
+- A transistor is merged into an earlier one when all of the following match:
+  - the type letter;
+  - the length (float equality);
+  - the gate name;
+  - the source/drain pair, in either order.
+- On a merge, the widths are added, and the `A_<a>,P_<p>` area/perimeter values of the matching terminals are added. A reversed pair swaps the terminals.
+- Every other line is echoed immediately with an extra newline.
+- At the end, `| <n> parallel devices` is written to standard error. Then each remaining transistor is written as `%c %s %s %s %g %g %d %d %s s=A_%d,P_%d d=A_%d,P_%d`.
+
+Compatibility: informative
+
+(Magic ref: ext2sim/sim2simp.c:1-171, ext2sim/Makefile.in:18-20)
+
+#### Scenario: Two parallel transistors merged
+- **GIVEN** the input lines `n a x y 2 4 0 0 g s=A_8,P_12 d=A_8,P_12` and `n a y x 2 6 10 0 g s=A_12,P_16 d=A_10,P_14`
+- **WHEN** they are filtered
+- **THEN** one transistor of width 10 remains
+- **AND** its source totals are A_18,P_26 and its drain totals A_20,P_28, because the second device's terminals are swapped

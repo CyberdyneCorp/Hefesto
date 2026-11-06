@@ -299,42 +299,80 @@ If the resulting rectangle is inverted (`x1 > x2` or `y1 > y2`) nothing is paint
 
 ### Requirement: bloat-all
 
-`bloat-all T T2 [d]` SHALL OR into cur, for every trigger tile of T, the connected region of T2 geometry reached from that trigger, optionally clipped to the trigger tile expanded by d.
+`bloat-all T T2 [d]` SHALL OR directly into cur, for every trigger tile of T, the tiles of T2 geometry reachable from that trigger by 4-connected flood fill, each scaled to mu and, when d > 0, clipped to the trigger area expanded by d, exactly as defined by the procedure below.
 
 Compatibility: exact
 
+Definitions:
+
+- s = scaleFactor of the style; p2 = the single database plane of the T2 types (when T2 are database types).
+- `connect` = the set of T2 database types (every type with a non-zero bloat value), or `{solid}` when T2 are mask layers.
+- `a / s` divides each coordinate with C truncation toward zero (so `-17/10 = -1`); `a · s` multiplies each coordinate.
+- A tile's *mark* is one of `unmarked`, `pending`, `processed`. All marks start `unmarked`. `push(u, side)` pushes (u, side) onto a LIFO stack and sets mark(u) = pending, but only if mark(u) = unmarked.
+- *Seed search* over area A in plane P: enumerate tiles of P whose type is in `connect` (database) or solid (mask layer) and overlap A, in tile enumeration order (capability `layout-geometry-model`); `push` the first one whose mark is `unmarked` and stop. Tiles that are already marked are skipped.
+
+Trigger enumeration order: database planes in plane order, each searched over the evaluation area E for the database types of T; then the mask layers of T in layer order, each over its whole plane. Triggers never come from cur.
+
+Per trigger X (rectangle `[x1,x2]×[y1,y2]`):
+
+| Case | Trigger | T2 | Seeds | clip base | locScale |
+|---|---|---|---|---|---|
+| A | mask layer | database | seed search on p2 over `X / s` | `X / s` | s |
+| B | mask layer | mask layers | one seed search per T2 layer, in layer order, over X | X | 1 |
+| C | database type t, and every T2 type shares a plane with t | database | X itself (pushed with its own side, even if t ∉ connect) | X | s |
+| D | database type t otherwise | database | seed search on p2 over X | X | s |
+| E | database type t | mask layers | one seed search per T2 layer over `X · s` | `X · s` | 1 |
+
+If d > 0: `clip = (clipBase · locScale)` with every side moved outward by d.
+
 ```
-connect = T2 (database types on one plane) or {solid} of the T2 mask layers
-for each trigger tile X (type in T found in search area, or solid of a T mask layer):
-  if X's type is a database type on the T2 plane (or a contact touching it):
-       seed = X itself (X is painted even if its type is not in T2)
-  else: seed = the first not-yet-processed connect tile overlapping X's area,
-        converting X's area to the T2 units (×scaleFactor or ÷scaleFactor
-        with C truncation)
-  clip = X's area (in T2-scaled mu) expanded by d   (only if d > 0)
-  flood fill from seed through neighbours whose facing kind is in connect;
-  each reached tile is painted (scaled to mu); if d > 0, rectangular tiles are
-  painted clipped to clip (split tiles unclipped) and propagation in a
-  direction stops once the tile reaches the clip boundary in that direction
-  tiles reached are marked processed for the rest of this operation when d = 0;
-  with d > 0 marks are reset after each trigger
+flood(stack):
+  while stack not empty:
+    (t, side) = pop
+    if mark(t) != pending: continue
+    mark(t) = processed
+    A = rect(t) · locScale
+    if d > 0:
+      remember t for reset
+      C = A ∩ clip
+      if C.x1 >= C.x2 or C.y1 >= C.y2: continue        # touching only: nothing painted, no propagation
+    if t is split:
+      if (side = right and leftType(t) ∈ connect) or (side = left and rightType(t) ∈ connect):
+        paint A (full rectangle)
+      else paint the `side` triangle of A
+    else paint (d > 0 ? C : A)
+    # propagation; each direction is skipped when d > 0 and A already reaches the clip edge
+    if d = 0 or A.y2 < clip.y2: for u in top neighbours (right to left):   if bottomType(u) ∈ connect: push(u, dir(u) = dir(t) ? left : right)
+    if d = 0 or A.x1 > clip.x1: for u in left neighbours (bottom to top):  if rightType(u) ∈ connect: push(u, right)
+    if d = 0 or A.y1 > clip.y1: for u in bottom neighbours (left to right): if topType(u) ∈ connect: push(u, dir(u) = dir(t) ? right : left)
+    if d = 0 or A.x2 < clip.x2: for u in right neighbours (top to bottom): if leftType(u) ∈ connect: push(u, left)
+  if d > 0: set every remembered tile to unmarked
 ```
 
-Only one connected region is seeded per trigger tile when the trigger is not on the T2 plane. See capability `mask-output-styles` for argument rules.
+`dir(t)` is the split direction (0 for a non-split tile). Split tiles are never clipped: the clip only decides whether they are painted and expanded. With d = 0 the marks persist for the rest of the operation, so a region reached from one trigger is not re-flooded, and a later trigger whose first overlapping region is already processed seeds the next unprocessed region overlapping it instead (Q-MASK-231). After all triggers, marks are reset: on the T2 mask layers (all solid tiles), or on plane p2 for the types `connect ∪ T` (database case). Trigger tiles of case C on another plane than p2 (contact images) are not reset (Q-MASK-230). Mask-layer triggers in case A use truncating division (Q-MASK-232). See capability `mask-output-styles` for argument rules.
 
-(Magic ref: cif/CIFgen.c:1374-1625, cif/CIFgen.c:5282-5330)
+(Magic ref: cif/CIFgen.c:1233-1249, cif/CIFgen.c:1332-1344, cif/CIFgen.c:1374-1625, cif/CIFgen.c:3974-4030, cif/CIFgen.c:5282-5330, drc/DRCtech.c:113-126)
 
 #### Scenario: Implant covering device and contacts
 
 - **GIVEN** scaleFactor 1; `nfet` `[10,20]×[0,10]`, `ndiff` `[0,10]×[0,10]` and `[20,30]×[0,10]`, `ndc` `[30,35]×[0,10]`, all on the active plane
 - **WHEN** `bloat-all nfet ndiff,ndc`
-- **THEN** the result is `[0,35]×[0,10]` (the nfet tile itself plus all connected ndiff/ndc)
+- **THEN** the result is `[0,35]×[0,10]` (case C: the nfet tile itself plus all connected ndiff/ndc)
 
-#### Scenario: Clipped bloat-all (verify against Magic)
+#### Scenario: Clipped bloat-all
 
 - **GIVEN** the same layout and `bloat-all nfet ndiff,ndc 5`
 - **WHEN** applied
-- **THEN** the result is `[5,25]×[0,10]` (clip `[5,25]×[-5,15]` around the nfet; both ndiff tiles are clipped and reach the clip boundary, so ndc is not reached)
+- **THEN** clip = `[5,25]×[-5,15]`; the nfet is painted, the left ndiff is painted as `[5,10]×[0,10]` and does not propagate left (its left edge 0 ≤ 5), the right ndiff is painted as `[20,25]×[0,10]` and does not propagate right (30 ≥ 25), so ndc is never reached
+- **AND** the result is `[5,25]×[0,10]`
+
+#### Scenario: Mask-layer trigger with truncating unit conversion (verify against Magic)
+
+- **GIVEN** scaleFactor 10, a mask layer `M` with one tile `[-17,23]×[0,10]` mu, and an `ndiff` tile `[-2,3]×[0,1]` internal units
+- **WHEN** `bloat-all M ndiff 5`
+- **THEN** (case A) the seed area is `[-1,2]×[0,1]`, which finds the ndiff tile; clip = `[-10,20]×[0,10]` grown by 5 = `[-15,25]×[-5,15]`
+- **AND** the painted result is `[-15,25]×[0,10]`
+- **AND** with `bloat-all M ndiff` (no distance) the result is the whole ndiff tile `[-20,30]×[0,10]`
 
 ### Requirement: Contact strip pre-pass for squares and slots
 
@@ -470,72 +508,200 @@ Area is the sum of tile areas (a split tile counts its full rectangle area divid
 
 ### Requirement: bridge
 
-`bridge d w` SHALL add to cur bridging rectangles at catecorner configurations, where two solid shapes meet (or nearly meet) diagonally at a corner with spacing less than d, according to the per-tile algorithm below.
+`bridge d w` SHALL replace cur by cur plus one bridging rectangle for every catecorner solid–solid gap (pass A) and every catecorner space–space pinch (pass B) found by the corner tests below, each bridge being the corner-to-corner rectangle expanded by the minimum-width rule `expand(·, w, ·)`.
 
 Compatibility: exact
 
+d is the spacing distance, w the bridge width, both mu (> 0, see capability `mask-output-styles`). All tests read the unmodified input plane cur; all bridges are painted into a copy of cur, so the result is order-independent except for which violator is chosen. Neighbour notation for a tile T with left L, right R, bottom B, top Tp: `TR(T)` = right neighbour at T's top, `RT(T)` = top neighbour at T's right end, `LB(T)` = bottom neighbour at T's left end, `BL(T)` = left neighbour at T's bottom. `RBot(T)` = the right neighbour containing T's bottom edge (start at TR(T), step down while its bottom > B). `BRight(T)` = the bottom neighbour at T's right end (start at LB(T), step right while its right < R). The plane's boundary sentinel tiles are neither space nor solid. Rectangles are written `[x1,x2]×[y1,y2]` and may be inverted (x1 > x2) before `expand`.
+
 ```
-out = copy of cur
-for each solid tile T (unprocessed):
-  # NE outside corner
-  if left kind of TR(T) is space and bottom kind of RT(T) is space:
-     search solid tiles V ≠ T overlapping [R-w, R+d]×[Tp-w, Tp+d] such that
-        left(V) > R-w and bottom(V) > Tp-w, the tile below V's left end does not
-        continue V (its top kind ≠ V's bottom kind), V is not space on right/top,
-        and (tile below V's left end has space on top or tile left of V's bottom
-        end has space on its right)
-     first such V: paint [R, left(V)] × [Tp, bottom(V)]
-  # SE outside corner (see Q-MASK-3 for the neighbour actually tested)
-  RB = the right neighbour at T's bottom; LB0 = the bottom neighbour at T's LEFT end
-  if left kind of RB is space and top kind of LB0 is space:
-     search [R-w, R+d]×[B-d, B+w] for V (NW test) ; paint [R, left(V)]×[top(V), B]
-for each space tile T: the dual test with kinds swapped and area
-  [R-d, R+w]×[Tp-d, Tp+w] (resp. [R-d,R+w]×[B-w,B+d]); paints solid
+bridge(cur, d, w):
+  out = copy(cur)
+  for each solid tile T of cur, in tile enumeration order:            # pass A
+    if leftKind(TR(T)) = space and bottomKind(RT(T)) = space:          # NE outer corner
+      V = violator(cur, [R-w, R+d]×[Tp-w, Tp+d], T, SW, k=space, search=solid)
+      if V: paint(out, expand([R, left(V)]×[Tp, bottom(V)], w, false))
+    if leftKind(RBot(T)) = space and topKind(LB(T)) = space:           # SE outer corner (Q-MASK-3: LB, not BRight)
+      V = violator(cur, [R-w, R+d]×[B-d, B+w], T, NW, k=space, search=solid)
+      if V: paint(out, expand([R, left(V)]×[top(V), B], w, false))
+  for each space tile T of cur, in tile enumeration order:            # pass B
+    if leftKind(TR(T)) = solid and bottomKind(RT(T)) = solid:          # NE inner corner
+      V = violator(cur, [R-d, R+w]×[Tp-d, Tp+w], T, SW, k=solid, search=space)
+      if V: paint(out, expand([R, left(V)]×[Tp, bottom(V)], w, true))
+    if leftKind(RBot(T)) = solid and topKind(BRight(T)) = solid:       # SE inner corner
+      V = violator(cur, [R-d, R+w]×[B-w, B+d], T, NW, k=solid, search=space)
+      if V: paint(out, expand([R, left(V)]×[top(V), B], w, true))
+  cur = out
+
+violator(plane, S, T, dir, k, search):
+  for each tile V of kind `search` overlapping S, in tile enumeration order, V ≠ T:
+    if dir = SW:
+      P = LB(V); Q = BL(V)
+      if left(V) <= S.x1 or bottom(V) <= S.y1: continue      # SW corner outside S
+      if topKind(P) = bottomKind(V): continue                 # false corner
+      if rightKind(V) = k or topKind(V) = k: continue         # split tile, NE corner clipped
+      if topKind(P) = k or rightKind(Q) = k: return V         # note: OR
+    if dir = NW:
+      P = top neighbour at V's left end; Q = left neighbour at V's top end
+      if left(V) <= S.x1 or top(V) >= S.y2: continue
+      if bottomKind(P) = topKind(V): continue
+      if rightKind(V) = k or bottomKind(V) = k: continue
+      if bottomKind(P) = k and rightKind(Q) = k: return V     # note: AND
+  return none
 ```
 
-R, Tp, B are T's right, top and bottom. The intended grid/width expansion of the bridge rectangle has no effect (Q-MASK-4); rectangles with non-positive extent paint nothing.
+`expand(r, w, space)` computes the bridge rectangle (all square roots in IEEE single precision, `ceilf` rounding up):
 
-(Magic ref: cif/CIFgen.c:1838-2135, cif/CIFgen.c:1703-1836, cif/CIFgen.c:5223-5241)
+```
+overlap = false
+if r.x1 > r.x2: overlap = true; horiz = not space
+if r.y1 > r.y2: overlap = true; horiz = space            # wins if both are inverted
+q = canonical(r)  (swap inverted coordinates);  W = q.x2 - q.x1;  H = q.y2 - q.y1
+if not overlap: horiz = (W > H)
+if horiz:
+  dx = ceilf((w - W) / 2.0)
+  b  = (overlap or space) ? w² - (W + dx)² : w² - dx²
+  dy = (space and not overlap) ? ceilf(sqrtf(b) - H) : ceilf(sqrtf(b))
+  dy = max(dy, ceilf((sqrtf(w² - W²) - H) / 2.0))
+else:   (same with x/W and y/H exchanged)
+  dy = ceilf((w - H) / 2.0)
+  b  = (overlap or space) ? w² - (H + dy)² : w² - dy²
+  dx = (space and not overlap) ? ceilf(sqrtf(b) - W) : ceilf(sqrtf(b))
+  dx = max(dx, ceilf((sqrtf(w² - H²) - W) / 2.0))
+q = [q.x1-dx, q.x2+dx] × [q.y1-dy, q.y2+dy]
+if gridLimit g > 1: snap q.x1, q.y1 down and q.x2, q.y2 up to multiples of g (correct for negative values)
+return q
+```
+
+dx or dy is negative when the gap already exceeds w, which narrows the bridge to w or w+1 along that axis. A negative argument to `sqrtf` yields NaN, and its conversion to int is platform-dependent (Q-MASK-227). The expansion is applied (an earlier reading that it was discarded, Q-MASK-4, is withdrawn).
+
+(Magic ref: cif/CIFgen.c:1703-1803, cif/CIFgen.c:1838-2135, cif/CIFgen.c:5223-5241, cif/CIFtech.c:1199-1216, tiles/tile.c:139-160)
 
 #### Scenario: Catecorner squares (verify against Magic)
 
-- **GIVEN** cur = `[0,10]×[0,10] ∪ [12,22]×[12,22]`
+- **GIVEN** gridLimit 0, cur = `[0,10]×[0,10] ∪ [12,22]×[12,22]`
 - **WHEN** `bridge 5 4`
-- **THEN** the gap rectangle `[10,12]×[10,12]` is added
+- **THEN** pass A on tile `[0,10]×[0,10]` finds NE corner (10,10), search box `[6,15]×[6,15]`, violator `[12,22]×[12,22]`; gap `[10,12]×[10,12]`, W = H = 2, vertical: dy = 1, b = 15, dx = ceil(3.873) = 4, dx2 = ceil(0.732) = 1
+- **AND** the result is cur ∪ `[6,16]×[9,13]`; no other corner produces a bridge
+
+#### Scenario: Bridge snapped to grid limit (verify against Magic)
+
+- **GIVEN** the same cur, `bridge 5 4`, and gridLimit 5
+- **WHEN** applied
+- **THEN** the bridge `[6,16]×[9,13]` is snapped outward to `[5,20]×[5,15]` and ORed into cur
+
+#### Scenario: Pinch between overlapping corners (verify against Magic)
+
+- **GIVEN** gridLimit 0, cur = `[0,10]×[0,10] ∪ [9,20]×[9,20]` (1×1 overlap)
+- **WHEN** `bridge 5 4`
+- **THEN** pass B on space tile `[-∞,9]×[10,20]` finds the SE inner corner (9,10), search box `[4,13]×[6,15]`, violator space tile `[10,∞]×[0,9]`; gap `[9,10]×[9,10]`, W = H = 1, vertical with space: dy = 2, b = 7, dx = ceil(2.646 − 1) = 2, dx2 = 2
+- **AND** the result is cur ∪ `[7,12]×[7,12]`
+
+#### Scenario: Gap at or beyond the spacing distance
+
+- **GIVEN** cur = `[0,10]×[0,10] ∪ [15,25]×[15,25]`
+- **WHEN** `bridge 5 4`
+- **THEN** the NE search box `[6,15]×[6,15]` does not overlap the second square's interior, no violator is found, and cur is unchanged
 
 ### Requirement: bridge-lim
 
-`bridge-lim d w L` SHALL behave as `bridge` but first widen narrow tiles to w where not blocked by the limiting layers L and choose bridge shapes that avoid L, erasing L from a bridge when no limit-free shape exists, per the algorithm below.
+`bridge-lim d w L` SHALL (pass 0) widen every solid tile of cur narrower or shorter than w into a new plane, avoiding the limiting layers L where possible, and then (passes 1 and 2) add bridges at catecorner gaps and pinches of that new plane, choosing among three fixed candidate shapes the first whose bounding box does not overlap L, exactly as defined below.
 
 Compatibility: exact
 
+L may contain database types and mask layers. `limitFree(A)` is true iff no tile of L overlaps A: database planes containing L types are searched first (plane order), then L mask layers (layer order). Database planes are searched with the mask-unit rectangle A unchanged (Q-MASK-5). `limitOverlap(A)` searches the same tiles and returns `(found, Xmax, Ymax)` where Xmax/Ymax start at A.x1/A.y1 and become the largest right/top edge of any L tile overlapping A (raw coordinates of the plane searched, Q-MASK-5). `eraseLimits(A)` erases from the output plane the **whole** rectangle of every L tile overlapping A, unscaled (Q-MASK-229).
+
 ```
-pass 0 (into a new plane), for each solid tile T:
-  A = T; if width(T) < w: A.x1 = A.x2 - w; if L overlaps A: A.x1 = min(left(T), Xmax); A.x2 = A.x1 + w
-         where Xmax = max right edge of L tiles overlapping the trial A (initially A.x1)
-  if height(A) < w: for each bottom neighbour P and top neighbour Q of T that
-     overlap in x within A, form a column; if its height (from P's bottom if P
-     continues T, else A.y1, to Q's top if Q continues T, else A.y2) < w:
-     paint the column grown to height w downward from its top, or, if L
-     overlaps, upward from min(bottom, Ymax)
-  paint A
-pass 1/2 on the widened plane: as bridge, but the violator search uses a squared
-  Euclidean test (corner pairs with dx>0, dy>0 and dx²+dy² ≥ d² (pass 1) or ≥ w²
-  (pass 2) are ignored); candidate bridge rectangles are tried in a fixed order
-  (vertical-first L, horizontal-first L, full square); the first candidate not
-  overlapping L is painted; if none, the full candidate is painted and L's
-  geometry inside it is erased from the result
+# pass 0: cur -> P (new empty plane), for each solid tile T of cur in enumeration order
+A = rect(T)
+if width(T) < w:
+  A.x1 = A.x2 - w
+  (found, Xmax, _) = limitOverlap(A)
+  if found: A.x1 = min(left(T), Xmax); A.x2 = A.x1 + w
+if height(A) < w:
+  for p in bottom neighbours of T (left to right):
+    lim = max(left(p), A.x1)
+    for q in top neighbours of T (right to left) while right(q) > lim:
+      if left(q) >= right(p): continue
+      col.x1 = max(left(q), lim); col.x2 = min(right(q), right(p), A.x2)
+      col.y2 = (bottomKind(q) = solid) ? top(q) : A.y2
+      y0     = (topKind(p) = solid)    ? bottom(p) : A.y1
+      if col.y2 - y0 < w:
+        col.y1 = col.y2 - w
+        (found, _, Ymax) = limitOverlap(col)
+        if found: col.y1 = min(y0, Ymax); col.y2 = col.y1 + w
+        paint(P, col)
+paint(P, A)
 ```
 
-Limiting database types are searched using mask-unit coordinates on internal-unit planes (Q-MASK-5). Hefesto MUST reproduce the per-tile procedure exactly as in the referenced code; the summary above is normative only together with the scenario cases in the golden set.
+Passes 1 and 2 enumerate the tiles of P and paint into P itself while it is being enumerated (Q-MASK-228). They use the corner tests of `bridge` (including Q-MASK-3 for the pass-1 SE corner; the pass-2 SE corner uses BRight) with these differences: search boxes start at the corner, i.e. pass 1 NE `[R, R+d]×[Tp, Tp+d]`, SE `[R, R+d]×[B-d, B]`; pass 2 NE `[R, R+w]×[Tp, Tp+w]`, SE `[R, R+w]×[B-w, B]`; and the violator test is:
 
-(Magic ref: cif/CIFgen.c:4146-4725, cif/CIFgen.c:5243-5267)
+```
+limViolator(P, S, T, dir, k, search, D):        # D = d (pass 1) or w (pass 2)
+  for each tile V of kind `search` overlapping S, enumeration order, V ≠ T:
+    if V is split and (dir = NW: rightKind(V) = k or bottomKind(V) = k;
+                       dir = SW: rightKind(V) = k or topKind(V) = k): continue
+    SW: P1 = LB(V), Q1 = BL(V); dx = left(V) - R; dy = bottom(V) - Tp; need topKind(P1) = k and rightKind(Q1) = k
+    NW: P1 = top neighbour at V's left end, Q1 = left neighbour at V's top end;
+        dx = left(V) - R; dy = B - top(V); need bottomKind(P1) = k and rightKind(Q1) = k
+    if the need holds:
+      if dx > 0 and dy > 0 and dx² + dy² >= D² (64-bit): continue
+      return V
+  return none
+```
 
-#### Scenario: Narrow tile widened (verify against Magic)
+Bridge shapes (Vl, Vb, Vt = left, bottom, top of V; the first candidate whose bounding box is limit-free is used):
 
-- **GIVEN** cur = `[0,2]×[0,20]`, empty L, `bridge-lim 4 6 L`
-- **WHEN** pass 0 runs
-- **THEN** the tile becomes `[-4,2]×[0,20]` (widened leftward from its right edge to width 6)
+```
+pass 1, NE (V up-right of T):
+  c1 = [min(Vl,R), max(R,Vl+w)] × [min(Vb,Tp-w), max(Tp,Vb)]
+  if limitFree(c1): paint [c1.x1,c1.x2]×[c1.y1,Tp]; paint [Vl,c1.x2]×[c1.y1,c1.y2]
+  else c2 = [min(Vl,R-w), max(R,Vl)] × [min(Vb,Tp), max(Tp,Vb+w)]
+    if limitFree(c2): paint [c2.x1,c2.x2]×[Vb,c2.y2]; paint [c2.x1,R]×[c2.y1,c2.y2]
+    else c3 = [min(Vl,R-w), max(R,Vl+w)] × [min(Vb,Tp-w), max(Tp,Vb+w)]; paint c3; eraseLimits(c3)
+pass 1, SE (V down-right of T):
+  c1 = [min(Vl,R-w), max(R,Vl)] × [min(B,Vt-w), max(Vt,B)]
+  if limitFree(c1): paint [c1.x1,R]×[c1.y1,c1.y2]; paint [c1.x1,c1.x2]×[c1.y1,Vt]
+  else c2 = [min(Vl,R), max(R,Vl+w)] × [min(B,Vt), max(Vt,B+w)]
+    if limitFree(c2): paint [Vl,c2.x2]×[c2.y1,c2.y2]; paint [c2.x1,c2.x2]×[B,c2.y2]
+    else c3 = [min(Vl,R-w), max(R,Vl+w)] × [min(B,Vt-w), max(Vt,B+w)]; paint c3; eraseLimits(c3)
+pass 2, NE:  a = [Vl-w, R]×[Vb-w, Tp]; if not limitFree(a): a = [Vl, R+w]×[Vb, Tp+w]
+             if not limitFree(a): a = [Vl-w, R+w]×[Vb-w, Tp+w]; paint a; eraseLimits(a)  else paint a
+pass 2, SE:  a = [Vl, R+w]×[B-w, Vt]; if not limitFree(a): a = [Vl-w, R]×[B, Vt+w]
+             if not limitFree(a): a = [Vl-w, R+w]×[B-w, Vt+w]; paint a; eraseLimits(a)  else paint a
+```
+
+Paint/erase of a rectangle with non-positive extent changes nothing. Bridges do not use `expand` or the grid limit. Unlike `bridge`, the SW violator test requires both neighbour conditions (AND) and there is no false-corner or corner-in-box test.
+
+(Magic ref: cif/CIFgen.c:4124-4725, cif/CIFgen.c:103-120, cif/CIFgen.c:5243-5267, cif/CIFtech.c:1218-1236)
+
+#### Scenario: Narrow tile widened
+
+- **GIVEN** cur = `[0,2]×[0,20]`, L a mask layer with no geometry, `bridge-lim 4 6 L`
+- **WHEN** applied
+- **THEN** pass 0 paints `[-4,2]×[0,20]` (widened leftward from its right edge to width 6); passes 1 and 2 find no corners
+- **AND** the result is `[-4,2]×[0,20]`
+
+#### Scenario: Catecorner gap without limits (verify against Magic)
+
+- **GIVEN** cur = `[0,10]×[0,10] ∪ [12,22]×[12,22]`, L an empty mask layer, `bridge-lim 5 4 L`
+- **WHEN** applied
+- **THEN** pass 1 at the NE corner (10,10) finds V = `[12,22]×[12,22]` (dx = dy = 2, 8 < 25); c1 = `[10,16]×[6,12]` is limit-free
+- **AND** the result is cur ∪ `[10,16]×[6,10]` ∪ `[12,16]×[6,12]`
+
+#### Scenario: First candidate blocked by a limit (verify against Magic)
+
+- **GIVEN** the same cur, L a mask layer with one tile `[13,30]×[0,8]`, `bridge-lim 5 4 L`
+- **WHEN** applied
+- **THEN** c1 = `[10,16]×[6,12]` overlaps L; c2 = `[6,12]×[10,16]` is limit-free
+- **AND** the result is cur ∪ `[6,12]×[12,16]` ∪ `[6,10]×[10,16]`
+
+#### Scenario: All candidates blocked (verify against Magic)
+
+- **GIVEN** the same cur, L with tiles `[13,30]×[0,8]` and `[6,14]×[15,30]`, `bridge-lim 5 4 L`
+- **WHEN** pass 1 processes the NE corner of `[0,10]×[0,10]`
+- **THEN** c1 and c2 both overlap L, c3 = `[6,16]×[6,16]` is painted, and then both L tiles are erased in full
+- **AND** the part `[12,14]×[15,22]` of the original square `[12,22]×[12,22]` is also removed (Q-MASK-229)
 
 ### Requirement: maxrect
 

@@ -28,7 +28,7 @@ On iPadOS, every tool action and every default key or button binding SHALL be re
 - Apple Pencil: precise primary actions
 - an on-screen command bar: typed commands
 
-Hardware keyboards and pointers on iPad SHALL get desktop bindings. The full gesture table is decided in Q-UI-22.
+A floating modifier key SHALL switch the next touch to middle-button or right-button semantics. Hardware keyboards and pointers on iPad SHALL get desktop bindings.
 
 Compatibility: native
 

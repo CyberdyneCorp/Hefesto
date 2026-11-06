@@ -47,3 +47,34 @@ These remain open and are tracked in `docs/decisions/cross-cutting.md`:
 | X-4 | iPadOS replacements for host facilities |
 | X-5 | Rendering fidelity details |
 | X-6 | Golden capture |
+
+## P-5: Built-in LVS
+
+- Status: decided (2026-11-05)
+- Decision: Hefesto SHALL include a layout-versus-schematic comparison whose results are compatible with netgen.
+- Reason: LVS must work on iPadOS without external tools.
+
+## P-6: OASIS support
+
+- Status: decided (2026-11-05)
+- Decision: Hefesto SHALL read and write OASIS (SEMI P39) layout files, in addition to GDSII.
+
+## P-7: Embedded SPICE simulation
+
+- Status: decided (2026-11-05)
+- Decision: Hefesto SHALL embed ngspice as a library, so that simulation works on every platform, including iPadOS.
+- IRSIM support remains the legacy desktop path.
+
+## P-8: Collaboration and diff
+
+- Status: decided (2026-11-05)
+- Decision: Hefesto SHALL provide visual and structural layout diff, a git-friendly workflow, and iCloud/Files sync.
+
+## P-9: Hefesto's own source license
+
+- Status: decided (2026-11-05)
+- Decision: Apache-2.0.
+- Constraints (from capability `hefesto-licensing`):
+  - The license must be compatible with App Store distribution.
+  - It must be compatible with the bundled permissive components: Magic, Tcl, ngspice, zlib.
+  - Hefesto must contain no GPL code.

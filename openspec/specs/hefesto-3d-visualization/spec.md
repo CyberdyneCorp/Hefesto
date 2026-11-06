@@ -71,7 +71,7 @@ Compatibility: native
 The 3D view SHALL display extraction results as overlays:
 - node capacitance as a color map on net geometry
 - coupling capacitance as markers between coupled nets, filtered by a threshold
-- resistance networks from the `extresist` capabilities, as edges with resistance values
+- resistance networks from the `extresist-*` capabilities, as edges with resistance values
 
 When current or voltage data are available from an imported simulation result, the view SHALL display a current-density color map. Each overlay SHALL show its legend, units and value range. Values SHALL come directly from the extraction outputs and SHALL NOT be recomputed.
 

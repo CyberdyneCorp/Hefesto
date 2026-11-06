@@ -199,3 +199,227 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: commands/CmdFI.c:1160-1230, doc/html/getnode.html
 - Options: replicate | tighten parsing
 - Recommendation: replicate (lenient parsing) and document.
+
+### Q-LEGACY-74: Greedy router collapse evaluation reuses a stale split-distance cache
+- Kind: bug
+- Magic behavior: The tie-break between collapse/uncollapse patterns with equal freed-track counts compares "distance of the n-th uncollapsed split net from the channel edge" against a cache computed for the current best pattern. The cache is reset only once per channel, not when a new best is adopted on a freed-count win nor between columns, and the n-th entry is computed from the loop index rather than from the previous split position. Patterns are therefore compared against values belonging to earlier patterns/columns.
+- Evidence: gcr/gcrColl.c:142-290 (gcrInitCollapse, gcrEvalPat, gcrNextSplit), gcr/gcrRoute.c:95
+- Options: replicate | fix (recompute the best pattern's split distances on every comparison)
+- Recommendation: replicate for golden compatibility; record the cache as explicit router state.
+
+### Q-LEGACY-75: Reduce-range downward scan tests the wrong track for "clear"
+- Kind: bug
+- Magic behavior: When moving the highest track of a split net downward, the "source track is free of obstacles" test reads the flags of the low-side loop index i instead of the track being moved (W+1-i).
+- Evidence: gcr/gcrColl.c:368-372
+- Options: replicate | fix (test track W+1-i)
+- Recommendation: replicate (changes jog choices near obstacles).
+
+### Q-LEGACY-76: Vacate step uses a different "near the end" definition
+- Kind: quirk
+- Magic behavior: Everywhere else a column c is near the end when L+1-c <= E; the vacate step uses L-c <= E, i.e. one more column counts as near the end there.
+- Evidence: gcr/gcrUnsplit.c:73, gcr/gcr.h:239
+- Options: replicate | fix (use the common definition)
+- Recommendation: replicate.
+
+### Q-LEGACY-77: Right-edge wanted tracks never marked when E > L
+- Kind: quirk
+- Magic behavior: Right-pin tracks are marked "wanted" at near-end columns only if E < L or the previous column was not near the end. When E >= L+1, column 0 already counts as near the end, so the marking is never performed (only the per-net wanted marking at feasible connections and the first column applies).
+- Evidence: gcr/gcrRoute.c:171-173
+- Options: replicate | fix (always mark at the first near-end column)
+- Recommendation: replicate; large end constants on short channels change results.
+
+### Q-LEGACY-78: Downward corner distance one unit longer in channel decomposition
+- Kind: bug
+- Magic behavior: When measuring the vertical distance from a cell corner downward, a stop caused by a tile whose edge coincides with the corner x leaves the measured position one unit below the bottom of the last good tile, so the downward distance is one unit larger than the equivalent upward distance. This affects the `xDist < yDist` choice on ties.
+- Evidence: router/rtrDcmpose.c:849-940 (rtrYDist)
+- Options: replicate | fix (reset to the tile bottom as for the other stop reasons)
+- Recommendation: replicate (channel shapes are golden-tested).
+
+### Q-LEGACY-79: River tiles blocked only when both sides are full
+- Kind: doc-mismatch
+- Magic behavior: The comment says a river tile whose pins are completely blocked on one side becomes blocked; the code blocks it only when no usable pin exists on either side.
+- Evidence: grouter/grouteChan.c:1025-1065 (glChanRiverBlock)
+- Options: replicate | fix (block when either side is full)
+- Recommendation: replicate.
+
+### Q-LEGACY-80: Density-blockage scan reads one entry past the density vector
+- Kind: bug
+- Magic behavior: The run-extension loop reads density[hi] before checking hi < size, reading one element past the end when a saturated run reaches the last column/row. The bounds check still stops the loop, so geometry is unaffected unless the read faults.
+- Evidence: grouter/grouteChan.c:667-760 (glChanBlockDens)
+- Options: fix (check the bound first)
+- Recommendation: fix; no observable change.
+
+### Q-LEGACY-81: Uncollapse "connect to existing track" jog uses the wrong net
+- Kind: bug
+- Magic behavior: For an empty wanted track i, when the scan finds a track `to` already holding the wanted net, the jog is made with no net argument, so the net is taken from want[to], which may be empty or a different net; the vertical wiring may then be recorded with no net.
+- Evidence: gcr/gcrEdge.c:235-240, gcr/gcrLib.c:115-118
+- Options: replicate | fix (pass want[i])
+- Recommendation: replicate pending golden evidence; flag in tests.
+
+### Q-LEGACY-82: Top/bottom conflict priority differs from "shorter connection wins"
+- Kind: quirk
+- Magic behavior: When top and bottom pins of a column compete, the top pin wins if botTarget > W - topTarget - 1, i.e. unless the bottom jog is at least two tracks shorter than the top jog (W+1-topTarget). Equal or one-shorter bottom connections lose.
+- Evidence: gcr/gcrFeas.c:145-160
+- Options: replicate | fix (compare jog lengths directly)
+- Recommendation: replicate.
+
+### Q-LEGACY-83: Vacate search accepts occupied tracks above
+- Kind: quirk
+- Magic behavior: When looking for a track to vacate to, downward candidates must be empty, but upward candidates only need to be free of conflicting vertical wiring/obstacles and not wanted by another net; an occupied upper track can be returned, after which the vacate run fails because the full run cannot reach it.
+- Evidence: gcr/gcrUnsplit.c:145-260 (gcrLook)
+- Options: replicate | fix (require empty upward candidates)
+- Recommendation: replicate.
+
+### Q-LEGACY-84: Global search recursion into split pieces uses the original tile for crossings
+- Kind: quirk
+- Magic behavior: When a channel is split into several map tiles by density blockage, expansion recurses through the channel's own pieces; crossings into another channel found from a piece are enumerated using the shared edge between the ORIGINAL tile of the search point and the far tile, which may not be adjacent (the shared range can be empty or wrong).
+- Evidence: grouter/grouteMaze.c:365-470 (glMazeTile), grouter/grouteCrss.c:292-370 (glCrossEnum)
+- Options: replicate | fix (use the piece adjacent to the far tile)
+- Recommendation: replicate; only matters for density-saturated channels.
+
+### Q-LEGACY-85: Initial LR contact uses an inverted length test
+- Kind: bug
+- Magic behavior: When creating initial paths, an LR (horizontal-plane) contact at the start point is offered only when the free run to the right is NOT long enough (`xtop - x <= length - width`); the UD (vertical) variant uses the correct test (`ytop - y > length - width`). The in-search contact extension uses the correct test for both.
+- Evidence: mzrouter/mzStart.c:330-350 vs mzrouter/mzStart.c:355-370, mzrouter/mzSearch.c:880-885
+- Options: replicate | fix (use `>` like the other three sites)
+- Recommendation: replicate for golden compatibility; consider a fix behind a compatibility flag.
+
+### Q-LEGACY-86: Same-node zero-cost rule overwrites the parent path's estimated total
+- Kind: quirk
+- Magic behavior: After choosing an extension end point that lies in same-node area, if the origin path has no predecessor or its predecessor's estimated total is 0, the origin path's stored estimated total (cost so far + estimate) is overwritten with 0. The new path's total is then computed from 0 minus the origin's estimate-to-go, and the origin's hash entry now holds total 0, so any later path to that key is rejected.
+- Evidence: mzrouter/mzXtndRght.c:555-560, mzXtndLeft.c:560-565, mzXtndUp.c:553-558, mzXtndDown.c:557-562, mzSearch.c:1290-1310
+- Options: replicate | fix (track a separate "cost so far" and zero only that)
+- Recommendation: replicate; it determines which start-node point routes leave from.
+
+### Q-LEGACY-87: Upward extension ignores closer stop points in the free case
+- Kind: bug
+- Magic behavior: In the upward extension, when the next blockage tile is free and space is not constricting, the end point is unconditionally set to that tile's bottom after pruning, overriding a closer bounds edge, without updating the reason set. Right/left/down do not do this.
+- Evidence: mzrouter/mzXtndUp.c:230-236
+- Options: replicate | fix (remove the unconditional assignment)
+- Recommendation: replicate; it changes routes and can run past generated blockage.
+
+### Q-LEGACY-88: Same-node paint of a contact onto its own route type blocks half of it
+- Kind: quirk
+- Magic behavior: When start/destination material of a contact type c is painted as same-node into route type c itself, the first of the two same-node rectangles is painted same-node but the second is painted `blocked`.
+- Evidence: mzrouter/mzBlock.c:410-450
+- Options: replicate | fix (paint both same-node)
+- Recommendation: replicate; document as Magic behavior.
+
+### Q-LEGACY-89: Contact same-node exemption tests the wrong tile
+- Kind: bug
+- Magic behavior: When painting blocked material into a contact route type over same-node area, the code looks up the layer plane tile but tests the contact plane tile again, so the exemption applies whenever the material type is either layer of the first contact (contact order) of that type, regardless of the layer plane.
+- Evidence: mzrouter/mzBlock.c:380-405
+- Options: replicate | fix (test the layer plane tile)
+- Recommendation: replicate the effective rule (as specified).
+
+### Q-LEGACY-90: Integer overflow in estimate and adjusted-cost arithmetic
+- Kind: bug
+- Magic behavior: Dijkstra edge weights and dominance tests multiply two 32-bit ints before widening (`rate * distance`, `hcost * |dx|`), which overflows for distances above ~2^31 / cost; the adjusted-cost key multiplies the 64-bit estimate-to-go by the penalty mantissa, which overflows when the estimate is COST_MAX (unreachable point).
+- Evidence: mzrouter/mzEstimate.c:1680, 1740, 1300-1310; mzrouter/mzSearch.c:519-524
+- Options: replicate (wraparound) | fix (64-bit/ saturating arithmetic)
+- Recommendation: fix with saturating 64-bit arithmetic; results are identical for realistic layouts.
+
+### Q-LEGACY-91: Contact-to-contact spacing checked only within one contact class
+- Kind: quirk
+- Magic behavior: LR contact placement checks spacing only against the most recent LR contact ('O') and UD placement only against the most recent UD contact ('X'); interesting-point pruning also considers inactive contacts of the layer.
+- Evidence: mzrouter/mzSearch.c:830-845, 1060-1075; mzrouter/mzXtndRght.c:425-445
+- Options: replicate | fix (check the most recent contact of either class; skip inactive)
+- Recommendation: replicate.
+
+### Q-LEGACY-92: Start point is the lower-left of the first enumerated start tile
+- Kind: quirk
+- Magic behavior: The initial point of a start term is the lower-left corner of the first same-node/walk/destination tile found in the layer's horizontal blockage plane within the term rectangle grown by 1 at left/bottom; that corner can lie outside the term (merged tiles) and depends on corner-stitched enumeration order (upper-left first).
+- Evidence: mzrouter/mzStart.c:60-66, 160-180
+- Options: replicate (including tile enumeration order) | define a canonical point
+- Recommendation: replicate; specify enumeration order in the tile-plane capability.
+
+### Q-LEGACY-93: Destination contact-walk passes run with an invalid argument
+- Kind: bug
+- Magic behavior: Destination-area building runs the LR/UD contact-walk callbacks once directly over the destination-area cell with a tree-search context in place of the route type; no route type ever matches so the passes are no-ops. The effective contact walks come from the nested pass.
+- Evidence: mzrouter/mzBlock.c:870-880, 1291-1330
+- Options: replicate (no-op) | remove
+- Recommendation: remove; no observable effect.
+
+### Q-LEGACY-94: Vertical extensions use horizontal-strip contact blockage
+- Kind: quirk
+- Magic behavior: Contact-related interesting points are computed from each contact's horizontal-strip blockage plane in all four directions, so vertical moves stop at every horizontal strip boundary of contact blockage; layer planes use the strip form perpendicular to the move.
+- Evidence: mzrouter/mzXtndUp.c:434, mzXtndDown.c:437
+- Options: replicate | fix (use vertical-strip plane for vertical moves)
+- Recommendation: replicate; it affects the set of interesting points and thus routes.
+
+### Q-LEGACY-95: Stale paths still consume blooms
+- Kind: quirk
+- Magic behavior: A path taken from a heap to start a bloom increments the bloom counter (which drives the window offset) before the hashed-best check; if it is stale it is then discarded with no extension.
+- Evidence: mzrouter/mzSearch.c:595-680, 166-200, 700-712
+- Options: replicate | fix (check staleness before blooming)
+- Recommendation: replicate; the window position depends on the bloom count.
+
+### Q-LEGACY-96: Straight-shot estimators follow corner-neighbour chains only
+- Kind: quirk
+- Magic behavior: A straight-shot estimator looks for a destination only along the chain of neighbours at one corner of the tile (e.g. right neighbours at the top-right corner), so a destination reachable straight across from another part of the edge is missed.
+- Evidence: mzrouter/mzEstimate.c:1080-1200
+- Options: replicate | fix (search the whole edge)
+- Recommendation: replicate; estimates steer the search order.
+
+### Q-LEGACY-97: Plowed subcells use a truncated "unset move" sentinel
+- Kind: bug
+- Magic behavior: A use's plow move starts as the 64-bit client sentinel `-(2^62 - 4)`. When a cell edge is processed, the move is compared after truncation to `int`, which on 64-bit hosts yields 4, so a cell moves only if its required move exceeds 4 the first time. The "find cells" rule (paint pushing or dragging cells) and the cell rule never queue a use whose move is still the sentinel, so paint never pushes a cell that has not already been moved by the plow itself. Write-back skips uses whose move is the sentinel or 0.
+- Evidence: plow/PlowMain.c:1548, plow/PlowRules2.c:1089-1091, plow/PlowYank.c:462, database/DBcellname.c:2095, tiles/tile.h:171-172, utils/magic.h:81
+- Options: replicate (cells move only when move > 4 initially; paint never pushes unmoved cells) | fix (unset = "not moved": any positive move counts, paint pushes cells)
+- Recommendation: capture LEG-PL-20 first; if confirmed, fix (treat unset as 0) and record the deviation, since the behavior depends on host word size.
+
+### Q-LEGACY-98: Box plow clamps edges to box width + 1
+- Kind: quirk
+- Magic behavior: The plow rectangle is widened by 1 to the left to catch edges under the plow's left side, and the queue's per-edge distance clamp is taken from the widened rectangle, so an edge may move up to (box width + 1) instead of the box width.
+- Evidence: plow/PlowMain.c:690-694, plow/PlowMain.c:751, plow/PlowQueue.c:170-180
+- Options: replicate | fix (clamp to box width)
+- Recommendation: replicate; it only matters when the layout already violates rules.
+
+### Q-LEGACY-99: Boundary overshoot for edges left of the boundary
+- Kind: bug
+- Magic behavior: For a moving edge whose original x is left of the boundary, the recorded overshoot is `max(newx, boundary.xbot) - x`, which is positive (at least the distance to the boundary) even when the edge never reaches the boundary. Any such move therefore shrinks the plow and forces another pass, possibly repeatedly.
+- Evidence: plow/PlowMain.c:1380-1385
+- Options: replicate | fix (`max(0, newx - boundary.xbot)` or "edges left of the boundary may not move")
+- Recommendation: capture a golden case (LEG-PL-19) before deciding; document the chosen semantics.
+
+### Q-LEGACY-100: Penumbra-only rules are applied in the umbra
+- Kind: quirk
+- Magic behavior: Edge rules whose corner types differ from their right types generate an extra rule flagged "penumbra only", but the flag is checked only by the inside-sliver rule; umbra, penumbra and sliver rules apply these rules everywhere, so plowing is more conservative than the DRC rule.
+- Evidence: plow/PlowTech.c:536-547, plow/PlowRules3.c:218, plow/PlowMain.c:1700-1735
+- Options: replicate | fix (skip penumbra-only rules in the umbra)
+- Recommendation: replicate for geometric compatibility.
+
+### Q-LEGACY-101: touching_illegal spacing rule uses the wrong outline set
+- Kind: bug
+- Magic behavior: For `spacing A B d touching_illegal`, the forward rules (LHS in A) get outline types `T(q) ∩ B` instead of `T(q) ∩ A` (both directions use the complement of the reverse right-hand set), so the penumbra and sliver outlines are traced around the wrong material.
+- Evidence: plow/PlowTech.c:380-395
+- Options: replicate | fix (use A for the forward rules)
+- Recommendation: replicate; compatibility of plowed geometry depends on it.
+
+### Q-LEGACY-102: Inside-sliver rule searches original, not final, coordinates
+- Kind: quirk
+- Magic behavior: The search for violating material in the inside-sliver rule is named a "final area" search but uses the original tile coordinates, ignoring moves already recorded.
+- Evidence: plow/PlowRules3.c:393-401
+- Options: replicate | fix (search using trail/lead coordinates)
+- Recommendation: replicate.
+
+### Q-LEGACY-103: Jog horizon extends to the horizon on a tile boundary
+- Kind: quirk
+- Magic behavior: The upward jog-horizon walk stops when the next left tile starts at or beyond the horizon; if a left tile ends exactly at the horizon the edge is extended to the horizon even though the boundary continues straight there, which creates a jog at the horizon. Whether this happens depends on where the canonical tiling splits the left-hand material.
+- Evidence: plow/PlowMain.c:1205-1240
+- Options: replicate | fix (extend only to real jogs)
+- Recommendation: replicate.
+
+### Q-LEGACY-104: Labels are not moved by straightening
+- Kind: quirk
+- Magic behavior: `straighten` (and automatic straightening after a plow) repaints the changed paint but never moves labels, so labels on straightened material can end up off their paint. Magic's TODO lists "Move labels with straighten".
+- Evidence: plow/PlowMain.c:332-436, plow/TODO
+- Options: replicate | fix (apply the plow label rule to straightened tiles)
+- Recommendation: fix (UI-visible defect with no data-format impact), recorded as a deviation.
+
+### Q-LEGACY-105: Incremental loading may hide material from the plow
+- Kind: ambiguity
+- Magic behavior: Plowing works on a lazily grown copy of the edit cell. Growth is triggered by heuristic margins (1 unit around rule areas, H around edges); searches that reach beyond the loaded area without triggering growth see space. The real-width search extends to the cell's bounding box and is retried after growth.
+- Evidence: plow/PlowYank.c:107-220, plow/PlowMain.c:1745-1790
+- Options: replicate the loading heuristics exactly | load the whole cell
+- Recommendation: load the whole cell, and use golden cases with distant material (LEG-PL-21) to detect any divergence.

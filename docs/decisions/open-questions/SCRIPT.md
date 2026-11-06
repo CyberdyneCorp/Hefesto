@@ -59,12 +59,21 @@ Magic reference: fc5daa9e (8.3.694).
 - Options: replicate (unspecified) | fix (order by first occurrence, or by rule text)
 - Recommendation: define a deterministic order (rule text, ascending). Golden comparisons of `drc.out` must sort the rule blocks.
 
-### Q-SCRIPT-9: PDK script inventory not verified against PDK sources
+### Q-SCRIPT-9: PDK script inventory not verified against PDK sources — partially resolved
 - Kind: ambiguity
-- Magic behavior: the Magic tree does not contain the open_pdks `.magicrc`/`<pdk>.tcl` files. The PDK startup contract and device-script contract in `scripting-pdk-integration` were reconstructed from `toolkit.tcl`, `wrapper.tcl`, `DBio.c` and the known open_pdks templates.
-- Evidence: tcltk/toolkit.tcl:1-105,379-402; tcltk/wrapper.tcl:485-505
-- Options: obtain sky130A, gf180mcuD and IHP sg13g2 files from open_pdks, and grep the full command and option inventory
-- Recommendation: do this before implementation. Add golden cases SCRIPT-PDK-* that run each PDK's generators for every device with default parameters.
+- Magic behavior: the Magic tree does not contain the open_pdks `.magicrc`/`<pdk>.tcl` files. The PDK startup contract and device-script contract in `scripting-pdk-integration` were first reconstructed from `toolkit.tcl`, `wrapper.tcl` and `DBio.c`.
+- Evidence: tcltk/toolkit.tcl:1-105,379-402; tcltk/wrapper.tcl:485-505. Verified sources: open_pdks @ c6df28c1 (`sky130/magic/*`, `gf180mcu/magic/*`, `common/pdk.tcl`, `sky130/Makefile.in`, `gf180mcu/Makefile.in`) and IHP-Open-PDK @ 5e6d592e (`ihp-sg13g2/libs.tech/magic/*.tcl`, `*.magicrc`). open_pdks has no sg13g2 support; IHP ships its own Magic files.
+- Status: partially resolved (source reading only). Corrections made in the specs:
+  - The rc files do not wrap `tech load` in `suspendall`/`resumeall`, do not set `drc style`/`drc on`, do not use `MAGTYPE`, and do not call `query_mylib_ip`/`query_my_projects`. Those were assumptions. Library paths are `libs.ref/<lib>/mag`.
+  - The rc files do use `tech lambda` + `scalegrid`, `random seed`, `ext2spice scale off`, `quit -noprompt` on a tech-name mismatch, and (IHP) `info script` to find their own directory.
+  - `PDKPATH` is set by the device script, not the rc file.
+  - `Opts(callback)` is prepended with `set … [subst …]`, not `lappend`ed.
+  - Fixed devices use `deltax/deltay/xstep/ystep`, not `pitchx/pitchy`.
+  - The PDKs define helpers in `magic::` (`spice2float`, `u2i`, …) that Hefesto must not predefine.
+  - Generators use far fewer framework-level commands than assumed: no `pushstack`, `identify`, `what -list`, `goto`, `drc check` or `instance list`.
+- Remaining: (a) run SCRIPT-PDK-09 (command trace) to confirm the static inventory dynamically, because static grep can miss commands built in strings; (b) the expected values in the scenarios marked "(verify against Magic)"; (c) other open_pdks-style PDKs that were not checked (for example gf180mcu variants that differ only in `#ifdef`s, and sky130B).
+- Options: run the golden cases SCRIPT-PDK-01..17 on Magic 8.3.694 with the pinned PDK commits
+- Recommendation: pin the PDK commits above in the golden-test harness, and re-verify whenever either PDK repository bumps its Magic templates.
 
 ### Q-SCRIPT-10: Implicit sourcing of `<tech>.magicrc` during cell reads
 - Kind: platform
@@ -261,3 +270,59 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/magic.tcl.in:172-224
 - Options: replicate | fix (strict option table)
 - Recommendation: replicate. Command-line compatibility matters for PDK flows.
+
+### Q-SCRIPT-38: Editing a fixed device adds `pitchx`/`pitchy`, but PDKs use `deltax`/`xstep`
+- Kind: doc-mismatch
+- Magic behavior: when the dialog opens for an existing `nocell` instance, the framework sets `nx`, `ny`, `pitchx` and `pitchy` from the instance array. The verified PDKs define and read `nx ny deltax deltay xstep ystep` (pitch = step + delta) and never read `pitchx`/`pitchy`. The dialog therefore shows the instance's `nx`/`ny` but the default `deltax`/`deltay` (0). Applying the dialog re-places the array at pitch `xstep`, losing any custom spacing.
+- Evidence: tcltk/toolkit.tcl:1642-1653; open_pdks sky130/magic/sky130-fix.tcl:10-30,254-282; IHP ihp-sg13g2-fix.tcl:446-476
+- Options: replicate (keys and loss of spacing); fix in Hefesto by deriving `deltax = pitchx − xstep` when both keys exist (changes the parameters seen by `_check`, so cell placement can differ from Magic)
+- Recommendation: replicate. Report upstream to open_pdks/Magic so that one side adopts the other's keys.
+
+### Q-SCRIPT-39: sg13g2 uses `label … +<layer>`, which Magic rejects
+- Kind: bug
+- Magic behavior: the `label` command treats only a leading `-` as the sticky marker. `label E c +m2` and `label npn13G2 c +comment` (sg13g2 bipolar generator) fail with `Unknown layer: +m2` and create no label. The following `port make` then acts on whatever label is under the box. The PDK comment says the intent was a sticky label on metal2.
+- Evidence: commands/CmdLQ.c:324-338; IHP ihp-sg13g2-bjt.tcl:254,615,862
+- Options: replicate (error, no label); accept `+` as "attach, not sticky" (differs from Magic, and generated cells would differ)
+- Recommendation: replicate, so that generated cells match Magic. File an upstream issue with IHP to change `+` to `-`.
+
+### Q-SCRIPT-40: `magic::spice2float` suffix-mapping defects
+- Kind: bug
+- Magic behavior (PDK code, open_pdks `common/pdk.tcl` and its IHP copy): the value is lowercased before the first `string map`, so its `uF/nF/pF/aF` keys never match. In the second map, `n` maps to `"* 1.0 e-9"` (with an embedded space), which is a syntax error in `expr`: any value with an `n` suffix (`10n`, and `1nf` after mapping) returns the fault value `0.0` and prints `Value is not numeric!`. `a` maps to `1.0e-15`, not `1e-18`. Values such as `10pf` become `10* 1.0e-12* 1.0e-15`.
+- Evidence: open_pdks common/pdk.tcl:87-98; IHP ihp-sg13g2-util.tcl:766-780
+- Options: replicate when running PDK scripts (automatic, since the PDK code runs as is); in native generators, replicate bit-for-bit; report upstream
+- Recommendation: replicate in native generators, and file upstream issues. Golden case SCRIPT-PDK-12 pins the behavior.
+
+### Q-SCRIPT-41: PDK helpers share the `magic::` namespace and differ between PDKs
+- Kind: quirk
+- Magic behavior: sky130/gf180mcu (`common/pdk.tcl`) and sg13g2 (`ihp-sg13g2-util.tcl`) define the same procedure names in `magic::` with different results. sg13g2's `i2u` returns `%.3f` text and its `u2i` rounds to an integer. Sourcing a second PDK's script in one session silently replaces the first PDK's helpers, which changes the first PDK's generated geometry and names. The helper file also defines a global procedure `magic:cellnameunique` (single colon), which looks like a typo.
+- Evidence: open_pdks common/pdk.tcl:35-44,116; IHP ihp-sg13g2-util.tcl:691-704,795
+- Options: replicate (single namespace); isolate each PDK's helpers per library namespace (deviates from Tcl semantics)
+- Recommendation: replicate, and document that only one PDK may be loaded per session. Hefesto may warn when a second PDK script redefines `magic::` procedures.
+
+### Q-SCRIPT-42: PDK scripts manipulate wrapper Tk widgets directly [platform]
+- Kind: platform
+- Magic behavior: `<ns>::addtechmenu` runs `${frame}.titlebar cget -height` to detect the frame layout, runs `add command` on `${frame}.titlebar.mbuttons.drc.toolmenu`, runs `insert 4 command`/`insert 4 separator` on `${frame}.titlebar.mbuttons.file.toolmenu`, sets `Winopts(<frame>,cmdentry)`, and calls `addcommandentry`. `importspice` calls `tk_getOpenFile`. `suspendall` uses `winfo`. The device script also renames `closewrapper`. The wrapper evaluates the callback inside `catch`, so if a widget path is missing, the rest of the PDK menu setup is skipped silently. No Hefesto spec defines these widget paths or the File-menu item order (index 4).
+- Evidence: tcltk/wrapper.tcl:1219-1221,1495-1500,1541-1565; tcltk/tools.tcl:14-45; open_pdks sky130/magic/sky130.tcl:36-47,83-243; IHP ihp-sg13g2.tcl:115-126,162-282
+- Options: (a) provide a Tk-compatible widget shim with these paths in the desktop GUI; (b) intercept the PDK callback and map the three known widget operations to native menu actions; (c) ignore and report
+- Recommendation: (b) on desktop, plus a report of skipped statements, consistent with "Platform without script execution". Add a `ui-gui-managers` requirement that names these paths if (a) is chosen.
+
+### Q-SCRIPT-43: PDK extraction sections use `$SUB` in device lines and `$[…]` model names
+- Kind: ambiguity
+- Magic behavior: all three PDK extract sections declare `substrate … $SUB …`, and this is specified. sg13g2 additionally uses `$SUB` as a device substrate terminal and in `s=$SUB`, and writes resistor model names as `$[rmod_rsil]`, `$[res_rppd]` and `$[rmod_rhigh]`. A grep of `openspec/specs` finds no specification of `$`-substitution in `device` lines or of the `$[…]` model-name form.
+- Evidence: IHP ihp-sg13g2-extract.tech:60-62,1252-1254; open_pdks sky130/magic/sky130-extract.tech:149; extract/ExtBasic.c:900-916,2650-2665
+- Options: hand over to the EXT area owner to specify, or confirm that Magic treats them literally
+- Recommendation: open an EXT question and add golden extraction cases on an sg13g2 resistor. SCRIPT cannot verify it.
+
+### Q-SCRIPT-44: PDK startup seeds the random generator from the clock
+- Kind: quirk
+- Magic behavior: every verified rc file runs `catch {random seed}`, which seeds from the current time. GDS output draws library prefixes from that generator (see capability `gds-write`), so two runs of the same flow can produce different GDS files. The rc files recommend replacing it with a fixed seed for repeatable output.
+- Evidence: open_pdks sky130/magic/sky130.magicrc:17-19; commands/CmdRS.c:71-122; Q-MASK-211
+- Options: replicate; let a Hefesto profile pin the seed
+- Recommendation: replicate. The golden-test harness MUST run `random seed 1` after startup.
+
+### Q-SCRIPT-45: sg13g2 generators change the window root cell with `load` during a gencell draw
+- Kind: ambiguity
+- Magic behavior: sg13g2 fixed and bipolar devices build their base cell on demand inside `_draw`, while the framework has the edit stack pushed into the generated cell. They save `cellname list window` or `cellname list self`, suspend the `load` tag, run `load <base> -silent`, paint, and then run `load <saved>`. The state of the framework's edit stack and of `popstack` after this sequence was not derived. `cellname list self` with no selection may return the generated cell, not the window root.
+- Evidence: IHP ihp-sg13g2-fix.tcl:238-260; IHP ihp-sg13g2-bjt.tcl:195-262; tcltk/toolkit.tcl:1253-1283
+- Options: replicate whatever Magic does (golden case SCRIPT-PDK-14)
+- Recommendation: capture SCRIPT-PDK-14 before implementing gencell `load` interaction.
