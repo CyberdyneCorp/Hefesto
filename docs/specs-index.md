@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 137 capabilities, 1599 requirements, 2412 scenarios, 744 open questions.
+**Totals:** 154 capabilities, 1823 requirements, 2708 scenarios, 800 open questions.
 
 ## Hefesto product (native)
 
@@ -19,10 +19,13 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 3 | 3 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
+| [`hefesto-ipad-feature-scope`](../openspec/specs/hefesto-ipad-feature-scope/spec.md) | 4 | 4 | Defines which features the first iPadOS release includes and which stay desktop-only (decision P-13). This list is authoritative: a capability not listed as desktop-only here SHALL… |
 | [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 4 | 4 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
 | [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |
 | [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 3 | 4 | Implements decision X-2. Hefesto always fixes Magic's crashes, undefined behavior and data-loss bugs. Magic quirks that change output values are reproduced only when the `magic-com… |
+| [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
 | [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 3 | 3 | Implements decision X-1. Hefesto reproduces Magic's ordering wherever that ordering is defined by Magic's canonical tile decomposition. Where Magic's ordering comes from hash table… |
+| [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
 | [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
@@ -177,7 +180,7 @@ Open questions: [19](decisions/open-questions/SIM.md) · Golden cases: [CASES.md
 | [`simulation-analyses-and-results`](../openspec/specs/simulation-analyses-and-results/spec.md) | 11 | 16 | Defines which analyses Hefesto runs through the embedded ngspice engine (capability `simulation-engine-embedding`), and the job lifecycle around them: states, progress reporting, c… |
 | [`simulation-command`](../openspec/specs/simulation-command/spec.md) | 7 | 11 | Defines the `sim` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, scripts and the head… |
 | [`simulation-engine-embedding`](../openspec/specs/simulation-engine-embedding/spec.md) | 15 | 26 | Defines how Hefesto embeds the ngspice circuit simulator as a library so that SPICE simulation works on Linux, macOS and iPadOS (decision P-7). It covers how ngspice is built and l… |
-| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 22 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
+| [`simulation-netlist-preparation`](../openspec/specs/simulation-netlist-preparation/spec.md) | 14 | 24 | Defines how Hefesto builds the SPICE deck that the embedded ngspice engine runs (capability `simulation-engine-embedding`). The deck is built from: - a circuit under test (DUT): ex… |
 | [`simulation-ui-and-crossprobe`](../openspec/specs/simulation-ui-and-crossprobe/spec.md) | 12 | 14 | Defines the waveform viewer and the links between simulation results and layout: - probing layout nets and devices to show their vectors - highlighting the layout net of a waveform… |
 
 ## AI layout agent (AGENT)
@@ -194,6 +197,41 @@ Open questions: [6](decisions/open-questions/AGENT.md) · Golden cases: [CASES.m
 | [`agent-natural-language-commands`](../openspec/specs/agent-natural-language-commands/spec.md) | 2 | 3 | Lets users describe layout operations in natural language, for example "make a 2 µm wide metal2 strap from pin A to pin B". The agent translates the request into a reviewable seque… |
 | [`agent-safety-and-approval`](../openspec/specs/agent-safety-and-approval/spec.md) | 5 | 5 | Defines how the layout agent operates under human approval. The agent proposes changes, the user reviews them as a visual and structural diff, and only an explicit accept applies t… |
 | [`agent-schematic-driven-layout`](../openspec/specs/agent-schematic-driven-layout/spec.md) | 4 | 4 | Lets the agent turn a schematic netlist into a verified layout. It generates the devices (capability `agent-device-and-cell-generation`), places them, routes the nets, and closes t… |
+
+## Schematic capture (xschem-compatible) (SCHEM)
+
+Open questions: [29](decisions/open-questions/SCHEM.md) · Golden cases: [CASES.md](../tests/golden/SCHEM/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`schematic-command`](../openspec/specs/schematic-command/spec.md) | 6 | 8 | Defines the `schematic` command: the command-API surface (capability `hefesto-architecture`, Requirement "Single command API") through which the GUI, touch gestures, key bindings, … |
+| [`schematic-editing`](../openspec/specs/schematic-editing/spec.md) | 19 | 21 | Defines the editing model of Hefesto's schematic and symbol editor (decision P-12): the document and object model, snapping, selection, placing and changing wires, instances, label… |
+| [`schematic-file-format`](../openspec/specs/schematic-file-format/spec.md) | 22 | 29 | Defines the on-disk format of schematic (`.sch`) and symbol (`.sym`) files used by Hefesto's built-in schematic editor (decision P-12). Hefesto SHALL read and write these files so … |
+| [`schematic-netlisting`](../openspec/specs/schematic-netlisting/spec.md) | 24 | 35 | Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is identical to the one xschem produces (decision P-12). The netlist feeds embedded simulation (capabiliti… |
+| [`schematic-simulation-integration`](../openspec/specs/schematic-simulation-integration/spec.md) | 11 | 15 | Defines how schematics drive simulation and LVS in Hefesto (decisions P-12, P-7 and P-5). This covers: - testbench schematics and their code blocks (`.include`, `.lib`, `.param`, `… |
+| [`schematic-symbols-and-libraries`](../openspec/specs/schematic-symbols-and-libraries/spec.md) | 19 | 24 | Defines what a schematic symbol means and how symbols are found. Decision P-12 requires the xschem symbol libraries of the sky130, gf180mcu and IHP sg13g2 PDKs to work in Hefesto u… |
+
+## Tapeout readiness (TAPEOUT)
+
+Open questions: [17](decisions/open-questions/TAPEOUT.md) · Golden cases: [CASES.md](../tests/golden/TAPEOUT/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`tapeout-fill-and-density`](../openspec/specs/tapeout-fill-and-density/spec.md) | 13 | 17 | Defines how Hefesto generates metal, poly and diffusion fill and checks layout density before tapeout: - per-PDK fill recipes - density windows and limits - the reports |
+| [`tapeout-seal-ring`](../openspec/specs/tapeout-seal-ring/spec.md) | 9 | 12 | Defines how Hefesto generates the die seal ring for each supported PDK and places it around a chip. Where the PDK ships a Magic-based generator, Hefesto reproduces its geometry exa… |
+| [`tapeout-shuttle-packages`](../openspec/specs/tapeout-shuttle-packages/spec.md) | 9 | 10 | Defines how Hefesto exports a design as a submission package for an open shuttle program. A package contains: - the files the program requires, under the required names and folder … |
+| [`tapeout-signoff-checklist`](../openspec/specs/tapeout-signoff-checklist/spec.md) | 15 | 20 | Defines Hefesto's sign-off checklist. It is an ordered, reproducible set of checks that runs on the exact GDS to be submitted. Its result tells the user whether the design is ready… |
+
+## Digital flow (desktop-only) (DIGITAL)
+
+Open questions: [10](decisions/open-questions/DIGITAL.md) · Golden cases: [CASES.md](../tests/golden/DIGITAL/CASES.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`digital-flow-block-import`](../openspec/specs/digital-flow-block-import/spec.md) | 11 | 16 | Defines how Hefesto imports hardened digital blocks (macros) produced by the open digital flow (LibreLane, formerly OpenLane 2, built on OpenROAD) so that they can be viewed, place… |
+| [`digital-flow-mixed-signal`](../openspec/specs/digital-flow-mixed-signal/spec.md) | 10 | 13 | Defines how hardened digital blocks (capability `digital-flow-block-import`) are used inside analog and top-level layouts in Hefesto: placing block instances, connecting their supp… |
+| [`digital-flow-results`](../openspec/specs/digital-flow-results/spec.md) | 13 | 16 | Defines how Hefesto presents the results of a LibreLane run: the run summary, the metrics, the logs, the sign-off reports (DRC, LVS, antenna) mapped onto layout locations, the fina… |
+| [`digital-flow-run`](../openspec/specs/digital-flow-run/spec.md) | 16 | 21 | Defines how the Hefesto desktop app configures and launches the open digital flow (LibreLane, built on Yosys, OpenROAD, Magic, KLayout and Netgen) as an external process. It covers… |
 
 ## Editing commands (CMDEDIT)
 

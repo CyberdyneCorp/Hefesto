@@ -49,13 +49,13 @@ Hefesto SHALL run on the following platforms:
 | macOS | 14 | arm64, x86_64 |
 | iPadOS | 17 | — |
 
-Delivery SHALL be phased (decision P-11): Linux and macOS first, and iPadOS after the desktop release criteria of the roadmap are met. Once delivered, each platform SHALL provide the full feature set defined by the compatibility capabilities, except where a capability explicitly allows a platform to omit or substitute a feature. Every such exception SHALL be listed in that capability and logged as a `[platform]` decision.
+Delivery SHALL be phased (decision P-11): Linux and macOS first, and iPadOS after the desktop release criteria of the roadmap are met. Linux and macOS SHALL provide the full feature set. iPadOS SHALL provide the feature set defined by capability `hefesto-ipad-feature-scope`. Any other platform exception SHALL be listed in the capability it affects and logged as a `[platform]` decision.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2)
+(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/product.md#P-13)
 
-#### Scenario: iPad feature parity
+#### Scenario: iPad core flow
 - **GIVEN** an iPad running iPadOS 17
 - **WHEN** a user opens a sky130 layout
 - **THEN** the user SHALL be able to edit it, run DRC, extract it and write a SPICE netlist, just as on desktop platforms
