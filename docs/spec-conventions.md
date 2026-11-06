@@ -10,7 +10,7 @@ Hefesto is a VLSI layout editor written in C++20 for Linux, macOS and iPadOS. It
 Every requirement belongs to one of three compatibility classes. State the class on its own line in the requirement body, right after the SHALL sentence:
 
 ```
-Compatibility: exact | behavioral | informative
+Compatibility: exact | behavioral | informative | native
 ```
 
 | Class | Meaning | Typical content |
@@ -18,6 +18,7 @@ Compatibility: exact | behavioral | informative
 | `exact` | Hefesto MUST produce output that is identical to Magic, or numerically equal within the stated rounding. It MUST accept the same inputs. | File grammars (.tech, .mag, .ext, .res.ext, .net, .sim, SPICE, GDS/CIF/LEF/DEF records), coordinate scaling and rounding, DRC error geometry, generated mask geometry, extracted values, node naming, record ordering |
 | `behavioral` | Hefesto MUST give the same results and semantics. The interaction surface may differ (touch, GUI, scripting language). | Editing operations, selection semantics, hierarchy rules, undo grouping, command options as capabilities |
 | `informative` | Documents Magic's behavior for reference. Hefesto MAY differ. | Exact message text, Magic-only UI details, host-specific mechanics (X11, Tcl, fork/exec, env vars, /tmp) |
+| `native` | A Hefesto product requirement with no Magic counterpart. It ends with `(Hefesto decision: <ref>)` instead of a Magic ref. | Language and toolchain, platforms, architecture, rendering, 3D, touch input, distribution, performance |
 
 ## 2. Writing rules
 
@@ -30,7 +31,7 @@ Compatibility: exact | behavioral | informative
 
    `openspec validate <capability> --type spec --strict` MUST pass.
 2. **Implementation-independent.** Do not name Magic C functions, structs or globals in requirement text. Describe observable behavior, data semantics and algorithms in mathematical or geometric terms.
-3. **Traceability.** End each requirement body with `(Magic ref: path/file.c:line[, ...])`. This is the only place Magic code is named.
+3. **Traceability.** End each requirement body with `(Magic ref: path/file.c:line[, ...])`. This is the only place Magic code is named. `native` requirements end with `(Hefesto decision: docs/decisions/<file>#<id>)` instead. Product specs use the `hefesto-` capability prefix.
 4. **Be precise enough to reimplement.** Specify all of the following:
    - Units, integer vs float, rounding and truncation direction, overflow behavior, and limits.
    - Defaults, allowed values, and keyword prefix-matching rules.

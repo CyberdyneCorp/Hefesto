@@ -1,9 +1,26 @@
 # Hefesto Specification Index
 
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`.
-Each area also has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
+The `hefesto-*` product specs come first; the Magic-compatibility areas follow.
+Each compatibility area also has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 93 capabilities, 1206 requirements, 1851 scenarios.
+**Totals:** 102 capabilities, 1242 requirements, 1890 scenarios.
+
+## Hefesto product (native)
+
+Decisions: [product.md](decisions/product.md) · Open: [cross-cutting.md](decisions/cross-cutting.md)
+
+| Capability | Req | Scen | Purpose |
+|---|---|---|---|
+| [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 6 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
+| [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 6 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
+| [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
+| [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
+| [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
+| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
+| [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
+| [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends: Metal on macOS and iPadOS, and Vulkan on Linux. The look of the lay… |
+| [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 3 | 3 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 
 ## Technology files (TECH)
 
