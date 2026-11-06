@@ -49,7 +49,7 @@ Hefesto SHALL run on the following platforms:
 | macOS | 14 | arm64, x86_64 |
 | iPadOS | 17 | — |
 
-Each platform SHALL provide the full feature set defined by the compatibility capabilities, except where a capability explicitly allows a platform to omit or substitute a feature. Every such exception SHALL be listed in that capability and logged as a `[platform]` decision.
+Delivery SHALL be phased (decision P-11): Linux and macOS first, and iPadOS after the desktop release criteria of the roadmap are met. Once delivered, each platform SHALL provide the full feature set defined by the compatibility capabilities, except where a capability explicitly allows a platform to omit or substitute a feature. Every such exception SHALL be listed in that capability and logged as a `[platform]` decision.
 
 Compatibility: native
 

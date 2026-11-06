@@ -1,7 +1,7 @@
 # Hefesto Rendering
 
 ## Purpose
-Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends: Metal on macOS and iPadOS, and Vulkan on Linux. The look of the layout comes from Magic display style files, so PDK colors and stipples appear as they do in Magic. The 3D view uses the same interface (see capability `hefesto-3d-visualization`).
+Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through MoltenVK on macOS; the canvas is a Raven viewport. On iPadOS the backend is Metal. The look of the layout comes from Magic display style files, so PDK colors and stipples appear as they do in Magic. The 3D view uses the same interface (see capability `hefesto-3d-visualization`).
 
 ## Requirements
 
@@ -12,15 +12,19 @@ All drawing SHALL go through one internal, API-neutral rendering interface. The 
 - render passes
 - frame presentation
 
-The backends SHALL be Metal on macOS and iPadOS and Vulkan 1.2 or later on Linux. There SHALL be no OpenGL backend. Code outside the backend modules SHALL NOT call Metal or Vulkan directly.
+The backends SHALL be:
+- **Desktop:** Vulkan 1.2 or later; on macOS through MoltenVK. It SHALL draw inside a Raven viewport, either through a draw callback within Raven's render pass or into a texture that the viewport presents.
+- **iPadOS:** Metal.
+
+There SHALL be no OpenGL backend. Code outside the backend modules SHALL NOT call Metal or Vulkan directly.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-3)
+(Hefesto decision: docs/decisions/product.md#P-3, docs/decisions/product.md#P-11)
 
 #### Scenario: Backend selection
-- **WHEN** Hefesto starts on Linux
-- **THEN** the Vulkan backend SHALL be used, and the same view code SHALL draw through the Metal backend on macOS
+- **WHEN** the desktop app starts on Linux or macOS
+- **THEN** the Vulkan backend SHALL draw the canvas in a Raven viewport, and the iPadOS app SHALL draw the same view code through the Metal backend
 
 ### Requirement: Style-file-faithful 2D drawing
 The 2D layout view SHALL draw every layer with the fill, stipple, outline, color and pale variant given by the display style files and the tech `styles` section. These are specified by capabilities `display-style-files` and `tech-styles-section`. The view SHALL also draw the following as specified by capability `ui-windows-and-views`:

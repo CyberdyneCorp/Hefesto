@@ -20,10 +20,10 @@ These are decisions about Hefesto itself. Each one is cited from `native` requir
 
 ## P-3: Rendering stack
 
-- Status: decided (2026-11-05)
-- Decision: All drawing (2D and 3D) SHALL go through one internal rendering interface, with two backends:
-  - Metal on macOS and iPadOS.
-  - Vulkan on Linux.
+- Status: decided (2026-11-05), revised (2026-11-06) by P-11
+- Decision: All layout and 3D drawing SHALL go through one internal rendering interface, with two backends:
+  - **Desktop (Linux and macOS):** Vulkan. On Linux it is native; on macOS it runs through MoltenVK, matching Raven's renderer.
+  - **iPadOS:** Metal.
 - No OpenGL path.
 
 ## P-4: 3D visualization scope
@@ -94,3 +94,22 @@ These remain open and are tracked in `docs/decisions/cross-cutting.md`:
   - offline / on-device
 - Provider choice is per project. The default is "disabled": no layout data leaves the device until the user enables a provider.
 - Autonomy: the agent proposes, and a human approves. The agent works in a scratch copy, verifies its result with DRC and LVS, and presents a diff. Nothing changes the user's cells until the user accepts. Accepting is one undo step.
+
+## P-11: Desktop-first delivery with Raven; iPad app later in Swift
+
+- Status: decided (2026-11-06)
+- Decision:
+  - **Desktop app (Linux and macOS) ships first.** Its UI is built with Raven (github.com/oscar-soirey/Raven, Apache-2.0, a C11 GUI library with C++ bindings) on top of the C++20 core:
+    - Raven renders through Vulkan, using MoltenVK on macOS.
+    - Hefesto draws the layout canvas and the 3D view itself, in Raven viewports.
+  - **iPad app comes after the desktop app.** It is built in Swift with SwiftUI and Metal, on the same C++20 core through Swift/C++ interoperability.
+  - **iPad starts only after the desktop core meets the roadmap's release criteria.** These criteria are a working core that is well tested and passes the golden compatibility tests.
+- Risks:
+  - Raven is at v0.2.x, its public API is unstable, and it has a small maintainer base.
+  - Wayland support and input methods on Wayland are immature.
+  - It has no drag-out.
+- Mitigation:
+  - Pin Raven to an exact commit.
+  - Wrap Raven in a thin C++20 UI-shell layer. Raven types SHALL NOT appear outside the shell.
+  - Contribute fixes upstream.
+  - Re-evaluate Raven at each milestone gate.

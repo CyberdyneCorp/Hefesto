@@ -14,7 +14,7 @@ Each layout document window SHALL contain:
 - a command bar
 - a status bar showing cursor coordinates in the current units, the box size, the edit cell and the DRC state
 
-Panels SHALL be collapsible. On iPad, panels SHALL appear as sidebars or popovers that adapt to the size class.
+Panels SHALL be collapsible. On the desktop, the window SHALL be built from Raven widgets: dock area, splitters, tabs and tree/table views. Panels SHALL be dockable, and the UI theme SHALL use Raven's theme system, including light and dark themes. On iPad, panels SHALL be SwiftUI sidebars or popovers that adapt to the size class.
 
 Compatibility: native
 
@@ -55,7 +55,7 @@ Compatibility: native
 
 ### Requirement: Accessibility and localization
 The GUI SHALL support:
-- the platform screen readers: VoiceOver on Apple platforms, AT-SPI on Linux, for all controls and panels
+- the platform screen readers, for all controls and panels: on the desktop through Raven's accessibility support (VoiceOver on macOS, AT-SPI on Linux), on iPad through SwiftUI accessibility
 - full keyboard navigation
 - Dynamic Type, or the platform font scaling equivalent
 - localizable user-interface strings

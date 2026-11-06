@@ -1,7 +1,7 @@
 # Hefesto 3D Visualization
 
 ## Purpose
-Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/STL export, and overlays of extracted parasitics and fields. All 3D drawing goes through the rendering interface of capability `hefesto-rendering`.
+Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/STL export, and overlays of extracted parasitics and fields. All 3D drawing goes through the rendering interface of capability `hefesto-rendering`. On the desktop, the 3D view is a Raven viewport.
 
 ## Requirements
 

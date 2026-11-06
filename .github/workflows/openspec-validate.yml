@@ -22,3 +22,9 @@ jobs:
         run: npm install -g @fission-ai/openspec@1.13.2
       - name: Validate specs and changes
         run: openspec validate --all --strict
+      - name: Check roadmap covers every capability
+        run: python3 scripts/check_roadmap_coverage.py
+      - name: Check specs index is up to date
+        run: |
+          python3 scripts/gen_specs_index.py
+          git diff --exit-code docs/specs-index.md

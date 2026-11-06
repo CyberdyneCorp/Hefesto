@@ -6,7 +6,7 @@ Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Mag
 ## Requirements
 
 ### Requirement: Desktop input parity with Magic
-On Linux and macOS with a mouse and keyboard, the following SHALL behave as specified by capability `ui-tools-and-input`:
+On Linux and macOS, input SHALL arrive through Raven's input events (mouse, keyboard, trackpad scroll and pinch, pen). With a mouse and keyboard, the following SHALL behave as specified by capability `ui-tools-and-input`:
 - the default key bindings
 - the button bindings of each tool (box, wiring, netlist, rsim)
 - user macros
@@ -20,7 +20,7 @@ Compatibility: behavioral
 - **THEN** the box SHALL move by its lower-left corner to the cursor, as in Magic
 
 ### Requirement: Touch and Pencil mapping
-On iPadOS, every tool action and every default key or button binding SHALL be reachable without a mouse or a hardware keyboard. The mapping SHALL be:
+On iPadOS (SwiftUI/UIKit gesture recognizers), every tool action and every default key or button binding SHALL be reachable without a mouse or a hardware keyboard. The mapping SHALL be:
 - one-finger drag: the tool's primary action
 - two-finger drag: pan
 - pinch: zoom
