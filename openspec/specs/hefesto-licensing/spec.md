@@ -28,6 +28,8 @@ Hefesto SHALL reproduce the copyright and permission notices for permissively li
 - Tcl's BSD-style license
 - ngspice's license
 - zlib
+- Raven (Apache-2.0) and the code and fonts it bundles: stb_truetype and stb_image, nanosvg, and Roboto and Roboto Mono
+- MoltenVK (Apache-2.0), bundled in the macOS package
 
 The notices SHALL appear in an in-app "Acknowledgements" screen and in a third-party notices file in each package.
 

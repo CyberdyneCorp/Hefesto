@@ -94,17 +94,20 @@ Compatibility: native
 - **THEN** pan and zoom SHALL remain responsive, and the final DRC errors SHALL match a single-threaded run
 
 ### Requirement: App shells per platform
-Each platform SHALL have its own thin app shell:
-- Linux: a native UI with a Vulkan surface
-- macOS: an AppKit/SwiftUI app with a Metal surface
-- iPadOS: a UIKit/SwiftUI app with a Metal surface
+Hefesto SHALL have two thin app shells over the same core:
+- **Desktop shell (Linux and macOS):** written in C++20 on the Raven GUI library. Raven's C API SHALL be wrapped in a C++20 UI-shell layer, and no Raven type or header SHALL appear outside that layer. The layout canvas and the 3D view SHALL be Raven viewports in which Hefesto's own renderer draws.
+- **iPadOS shell:** written in Swift with SwiftUI and Metal. It SHALL call the C++20 core through Swift/C++ interoperability.
 
-Each shell SHALL contain only presentation, input mapping and platform services. Shell code MAY use Swift or Objective-C++ at the boundary to Apple frameworks.
+Each shell SHALL contain only presentation, input mapping and platform services. The desktop shell SHALL be delivered first. The iPadOS shell SHALL follow the desktop release criteria of the roadmap.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/product.md#P-3)
+(Hefesto decision: docs/decisions/product.md#P-11)
+
+#### Scenario: Raven confined to the shell
+- **WHEN** the core and CLI targets are built
+- **THEN** they SHALL compile and link without Raven headers or libraries
 
 #### Scenario: Shared behavior
-- **WHEN** the same command sequence is run in the macOS shell and in the iPadOS shell
+- **WHEN** the same command sequence is run in the desktop shell and in the iPadOS shell
 - **THEN** the resulting layout SHALL be identical

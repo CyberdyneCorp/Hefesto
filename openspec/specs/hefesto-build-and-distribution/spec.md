@@ -31,7 +31,7 @@ Third-party dependencies SHALL be:
 - fetched or vendored reproducibly (CMake FetchContent or a vendored tree)
 - license-compatible with Hefesto's license
 
-The core library SHALL NOT depend on any library unavailable on iPadOS.
+The core library SHALL NOT depend on any library unavailable on iPadOS. Raven SHALL be pinned to an exact commit, and only the desktop shell may use it. The macOS package SHALL bundle MoltenVK.
 
 Compatibility: native
 
@@ -47,7 +47,7 @@ CI SHALL build and test the following on every pull request:
 - Linux x86_64 with GCC and Clang
 - Linux aarch64
 - macOS arm64
-- an iPadOS simulator build
+- an iPadOS simulator build, from the start of the iPadOS milestone
 
 CI SHALL also run:
 - `openspec validate --all --strict`
