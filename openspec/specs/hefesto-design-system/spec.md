@@ -117,7 +117,7 @@ Icons SHALL be 1.6 px stroke drawings on a 24 px grid. They SHALL be filled only
 - 3D, agent, undo
 - zoom to fit, and the layer visibility and lock icons
 
-Icon-only buttons SHALL carry an accessible label.
+Icon-only buttons SHALL carry an accessible label. Icons SHALL be shipped as SVG files. On the desktop they are drawn by Raven's SVG support at the screen's density; on iPadOS they are converted to SF-Symbol-style vector assets.
 
 Compatibility: native
 
