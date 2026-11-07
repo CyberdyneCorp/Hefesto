@@ -53,6 +53,8 @@ The desktop app SHALL check for updates on two channels, stable (the default) an
 - verified against a signature from the Hefesto release key before installation
 - installed only after user confirmation
 
+Downloads use URLSession on macOS and libcurl on Linux. Signature checks and digests use CryptoKit on macOS and libsodium on Linux. Crash reports and telemetry are sent through the same HTTPS clients (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13).
+
 The update mechanism by platform SHALL be:
 - macOS: the notarized app, updated in place
 - Linux AppImage: AppImage update information (zsync)
@@ -85,7 +87,7 @@ Hefesto SHALL publish minimum and recommended system requirements, and the insta
 | Platform | OS minimum | GPU | Memory |
 |---|---|---|---|
 | Linux | glibc 2.31 or later, x86_64 or aarch64 | Vulkan 1.2 capable | minimum 8 GB, recommended 16 GB |
-| macOS | 14 or later | Metal-capable, used through MoltenVK | minimum 8 GB, recommended 16 GB |
+| macOS | 14 or later, Apple silicon (arm64) only; Intel Macs are not supported (decision D-12) | Apple silicon GPU (Metal), used through MoltenVK | minimum 8 GB, recommended 16 GB |
 | iPadOS | 17 or later | M1 or later recommended, A14 minimum | minimum 4 GB, recommended 8 GB (the iPad memory bound of `hefesto-performance` is set on an 8 GB M1 iPad Pro) |
 
 On a system below the minimum, the app SHALL explain what is missing and SHALL NOT crash. The values SHALL be revised against the benchmarks of capability `hefesto-performance`.

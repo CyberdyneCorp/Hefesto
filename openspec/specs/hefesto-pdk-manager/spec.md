@@ -143,7 +143,7 @@ On any mismatch the manager SHALL:
 - install nothing from that version
 - report which asset failed, with the expected and actual values
 
-An asset with no known SHA-256 SHALL NOT be installed silently. The manager SHALL either obtain the digest from the signed Hefesto catalog or ask the user to accept an unverified install. Downloads SHALL use HTTPS with platform certificate validation. Downloads SHALL be resumable (HTTP range requests), and the resumed file SHALL be verified in full.
+An asset with no known SHA-256 SHALL NOT be installed silently. The manager SHALL either obtain the digest from the signed Hefesto catalog or ask the user to accept an unverified install. Downloads SHALL use HTTPS with platform certificate validation. Downloads SHALL be resumable (HTTP range requests), and the resumed file SHALL be verified in full. HTTPS goes through URLSession on macOS and iPadOS and libcurl on Linux; SHA-256 and the Ed25519 check of the signed catalog go through CryptoKit on Apple platforms and libsodium on Linux (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13).
 
 Note: ciel itself does not verify a digest of the release tarballs. A version hash identifies the source commit, not the archive content. See Q-TAPEOUT-2.
 
@@ -162,7 +162,7 @@ Compatibility: native
 - **THEN** it SHALL continue from the stored offset, and the whole file SHALL then be hashed and verified
 
 ### Requirement: Safe archive unpacking
-Assets SHALL be Zstandard-compressed tar archives. Unpacking SHALL treat them as untrusted input (capability `hefesto-security`):
+Assets SHALL be Zstandard-compressed tar archives, decompressed with the zstd library (BSD-3-Clause; capability `hefesto-licensing`, decision D-13). Unpacking SHALL treat them as untrusted input (capability `hefesto-security`):
 - Directory entries SHALL be skipped. Directories SHALL be created as needed for regular files.
 - Every regular file SHALL be written to `<version_dir>/<entry name>`.
 - An entry name that is absolute, contains a `..` component, or resolves outside the version directory SHALL abort the install.

@@ -66,7 +66,7 @@ Compatibility: native
 | `lint <dir\|file>` | Validate `plugin.json` against the manifest rules, check that `provides` matches what the code registers (by running the plugin in the harness), and check that every declared permission is used |
 | `pack <dir> -o <file>.hfplugin` | Build a package with the layout of capability `plugin-packaging-and-distribution`; entries SHALL be sorted by path, with fixed timestamps (1980-01-01 00:00:00), so that the same inputs give byte-identical output |
 | `sign <file> --key <ed25519 private key file>` | Add or replace `SIGNATURE` |
-| `keygen -o <file>` | Create an Ed25519 key pair and print its key id |
+| `keygen -o <file>` | Create an Ed25519 key pair and print its key id. Keys, signatures and SHA-256 digests use CryptoKit on macOS and libsodium on Linux (capability `hefesto-licensing`, decision D-13) |
 | `verify <file>` | Verify as the host would |
 
 Each subcommand SHALL exit 0 on success and non-zero on failure, and SHALL print diagnostics in text or JSON lines.

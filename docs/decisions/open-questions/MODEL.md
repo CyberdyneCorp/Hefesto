@@ -99,6 +99,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBprop.c:58-125
 - Options: replicate | add undo
 - Recommendation: add undo in Hefesto (behavioral improvement, no file impact).
+- Resolution: compat — decided by D-10 (2026-11-07). Not recorded with `magic-compat` ON (Magic's behavior); recorded and undoable with `magic-compat` OFF. Hefesto compound operations (agent proposals, `sim` edits) always record them (capability `layout-undo`).
 
 ### Q-MODEL-15: Renamed cell itself not flagged modified
 - Kind: ambiguity
@@ -197,6 +198,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: commands/CmdFI.c:2116-2140
 - Options: replicate | make undoable
 - Recommendation: make undoable (behavioral improvement).
+- Resolution: compat — decided by D-10 (2026-11-07). Not recorded with `magic-compat` ON; recorded as one undo step with `magic-compat` OFF (capability `layout-undo`).
 
 ### Q-MODEL-29: Erasing "space" is a no-op
 - Kind: bug
@@ -211,4 +213,5 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: windows/windCmdSZ.c:686-691, windows/windCmdNR.c:382-385
 - Options: replicate | fix (treat 0 as a no-op; keep `undo enable|disable` only)
 - Recommendation: replicate behind `magic-compat` (scripts may rely on `redo 0`/`undo 0` as a disable/enable idiom); with the setting off, treat 0 as a no-op.
+- Resolution: compat — decided by D-11 (2026-11-07). With `magic-compat` ON, `undo 0` resumes and `redo 0` suspends recording, silently; with it OFF, both are no-ops (capability `layout-undo`).
 

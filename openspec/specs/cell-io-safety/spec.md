@@ -231,7 +231,7 @@ end_record  = "end" , [ SP , root_cell ] , NL ;
 
 **`root_cell`.** The name of the root cell of the first layout window, if one exists.
 
-**Cell order.** Magic writes the cell records in its cell hash-table enumeration order (see Q-CELL-28). That order never affects any result, so it is an exception to the rule that name-keyed hash order is reproduced (capability `hefesto-output-determinism`). Hefesto SHALL write them in a deterministic order, sorted by cell name with the natural comparator of capability `cell-file-format`; the reader is order-independent, and golden comparison SHALL canonicalize record order (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
+**Cell order.** Magic writes the cell records in its cell hash-table enumeration order (see Q-CELL-28). That order never affects any result, so it is an exception to the rule that name-keyed hash order is reproduced (capability `hefesto-output-determinism`). Hefesto SHALL write them in a deterministic order, sorted by cell name with the total natural order of capability `cell-file-format`, requirement "Natural ordering of names" (a natural prefix sorts first, then byte comparison); the reader is order-independent, and golden comparison SHALL canonicalize record order (decision X-1, `docs/decisions/cross-cutting.md#X-1`; confirmed by decision D-9, Q-CELL-28).
 
 **Side effects of writing a record.** Writing a cell into a backup does not change any of the cell's flags. A pending new timestamp is suppressed for this write only, so no out-of-date warning is printed.
 
@@ -241,6 +241,11 @@ end_record  = "end" , [ SP , root_cell ] , NL ;
 - **GIVEN** the only modified editable cell is `top`, recorded at `/p/top`, and window 0 shows `top`
 - **WHEN** a crash backup is written
 - **THEN** the file SHALL be `file /p/top`, then the full `.mag` text of `top`, then `end top`
+
+#### Scenario: Backup cell records are sorted by name
+- **GIVEN** the modified editable cells `inv10`, `Inv2` and `inv`, recorded at `/p/inv10`, `/p/Inv2` and `/p/inv`, and no layout window
+- **WHEN** a crash backup is written
+- **THEN** the `file` records SHALL appear in the order `/p/inv`, `/p/Inv2`, `/p/inv10`, followed by `end`
 
 ### Requirement: Crash backup policy
 
@@ -289,7 +294,9 @@ Compatibility: informative
 
 **Explicit name.** When an explicit name is given, the confirmation message prints the previous name rather than the new one (see Q-CELL-29).
 
-See Q-CELL-30 [platform].
+**Liveness test.** Recovery treats a backup as abandoned when the process ID encoded in its name does not belong to a running process. Magic tests this by sending the process `SIGCONT`, which also resumes a stopped process.
+
+Hefesto does not use this location or this liveness test for its own backups. It uses an app-private directory and a per-session lock file (requirement "Crash backup location and session lock"), and offers Magic's backups for import on the desktop (requirement "Import of Magic crash backups"). See Q-CELL-30, resolved by decision D-8.
 
 (Magic ref: database/DBio.c:6411-6456, tcltk/tools.tcl:57-118)
 
@@ -306,11 +313,11 @@ Compatibility: behavioral
 **Preconditions.** Recovery is refused, with `Error:  Backup file in use for current session.`, if the current session already has a backup file.
 
 **Choosing the file.**
-- Without an explicit file, Hefesto scans the backup directory for candidates and selects the one with the newest status-change time among those that meet all of the following:
-  - its name starts with `MAG`;
+- Without an explicit file, Hefesto scans its crash backup directory (requirement "Crash backup location and session lock") and selects the backup with the newest status-change time among those that meet all of the following:
   - it is owned by the current user;
-  - the process ID encoded between `MAG` and the first `.` does not belong to a running process.
-- With an explicit file, that file is used.
+  - its session lock is not held, that is, the session that wrote it is no longer running.
+- On the desktop, the candidates also include Magic's crash backups found by requirement "Import of Magic crash backups". A Hefesto backup and a Magic backup compete on status-change time alone.
+- With an explicit file, that file is used, whatever its location or name.
 
 **Confirmation.** The user is asked `Recover from backup file <file>?` with the choices `read` and `cancel`.
 
@@ -321,13 +328,87 @@ Compatibility: behavioral
 (Magic ref: database/DBio.c:1113-1215, utils/main.c:1175-1182, commands/CmdCD.c:3755-3780)
 
 #### Scenario: Recover after crash
-- **GIVEN** a crashed session with process ID 1234 left `/tmp/MAG1234.abcdef`, owned by the user, and process 1234 is not running
+- **GIVEN** a crashed session left the crash backup `S1.backup` and the lock file `S1.lock` in the crash backup directory, both owned by the user, and no running session holds the lock on `S1.lock`
 - **WHEN** a new session requests recovery and the user answers `read`
-- **THEN** the cells in the file SHALL be loaded and `/tmp/MAG1234.abcdef` SHALL be deleted
+- **THEN** the cells in `S1.backup` SHALL be loaded, and `S1.backup` and `S1.lock` SHALL be deleted
 
 #### Scenario: Backup of a live session is skipped
-- **GIVEN** `/tmp/MAG999.xyz123` belongs to the running process 999
-- **WHEN** recovery scans for backups
+- **GIVEN** a running Hefesto session holds the lock on `S2.lock`, and `S2.backup` is in the crash backup directory
+- **WHEN** another session scans for backups
+- **THEN** `S2.backup` SHALL NOT be offered
+
+### Requirement: Crash backup location and session lock
+
+Hefesto SHALL keep its own crash backups in an app-private, persistent directory, never in a temporary or caches directory, and SHALL decide whether a backup is abandoned by a per-session lock file instead of a process-ID probe.
+Compatibility: native
+
+**Crash backup directory.**
+
+| Platform | Directory |
+|---|---|
+| macOS | `<Application Support>/Hefesto/CrashBackups/`, where `<Application Support>` is the user's Application Support directory (`~/Library/Application Support`, or the app container's equivalent when sandboxed) |
+| Linux | `$XDG_STATE_HOME/hefesto/crash-backups/`. When `XDG_STATE_HOME` is unset or empty, `~/.local/state` is used, as the XDG Base Directory specification requires |
+| iPadOS | `<Application Support>/Hefesto/CrashBackups/` inside the app container, excluded from iCloud backup |
+
+Hefesto creates the directory with owner-only permissions (mode `0700` on Linux and macOS) on the first backup. It never uses `$TMPDIR`, `/tmp`, `~/Library/Caches` or `$XDG_CACHE_HOME`, because the OS may purge them.
+
+**Session files.** Each session has a session identifier that is unique on the device (a random 128-bit value written as 32 lowercase hexadecimal digits). The first crash backup of the session creates two files in the crash backup directory:
+- `<id>.lock`: the session lock file. The session holds an exclusive advisory lock on it for its whole lifetime (`flock` or `fcntl` on Linux and macOS). The OS releases the lock when the process ends, normally or not.
+- `<id>.backup`: the session backup file, in the format of requirement "Crash backup file format". It is created atomically, and later backups replace it atomically (write to a temporary file in the same directory, then rename).
+
+On iPadOS only one Hefesto process runs at a time, so any lock file found at launch belongs to an ended session.
+
+**Liveness test.** A backup `<id>.backup` belongs to a running session if and only if its lock file `<id>.lock` exists and another process holds its lock. A backup with no lock file, or whose lock can be taken, is abandoned. Hefesto never sends a signal to another process for this test.
+
+**Explicit target.** A backup requested with an explicit file name (requirement "Crash backup policy") is written to that file instead, and the lock file still marks the session.
+
+**Normal exit.** When the session ends normally, Hefesto deletes `<id>.backup` (unless an explicit target replaced it) and `<id>.lock`. After a successful recovery, it deletes the recovered backup and its lock file.
+
+**Terminology.** The file is the *crash backup*. The platform service that triggers crash backups and owns this directory is *autosave* (capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements").
+
+(Hefesto decision: docs/decisions/audit/DECISIONS.md#D-8, docs/decisions/cross-cutting.md#X-4)
+
+#### Scenario: Linux location
+- **GIVEN** Hefesto on Linux with `XDG_STATE_HOME` unset and home directory `/home/ana`
+- **WHEN** the first crash backup of a session with identifier `0f1e2d3c4b5a69788796a5b4c3d2e1f0` is written
+- **THEN** Hefesto SHALL create `/home/ana/.local/state/hefesto/crash-backups/0f1e2d3c4b5a69788796a5b4c3d2e1f0.backup` and the matching `.lock` file, and SHALL hold the lock on the `.lock` file
+
+#### Scenario: Crash leaves an abandoned backup
+- **GIVEN** a session wrote `S3.backup` and `S3.lock` and then crashed
+- **WHEN** a new session starts
+- **THEN** the lock on `S3.lock` SHALL be free, and `S3.backup` SHALL be a recovery candidate
+
+#### Scenario: Normal exit removes the session files
+- **GIVEN** a session that has written `S4.backup` and holds `S4.lock`
+- **WHEN** the session ends normally
+- **THEN** `S4.backup` and `S4.lock` SHALL be deleted
+
+### Requirement: Import of Magic crash backups
+
+On Linux and macOS, Hefesto SHALL also find Magic's crash backups and offer to recover them, so that a session lost in Magic can be continued in Hefesto.
+Compatibility: behavioral
+
+**Where to look.** The directory named by the `TMPDIR` path variable, or `/tmp` when it is unset or empty.
+
+**Candidates.** A file is a Magic crash backup candidate when all of the following hold:
+- its name starts with `MAG`;
+- it is owned by the current user;
+- the decimal process ID between `MAG` and the first `.` does not belong to a running process. Hefesto tests this without affecting the process (for example `kill(pid, 0)` on POSIX), not with `SIGCONT` (see requirement "Crash backup host mechanism").
+
+**Recovery.** A Magic candidate is offered and read exactly like a Hefesto backup (requirement "Crash recovery"), since the two share the file format of requirement "Crash backup file format". After a successful read, Hefesto deletes the Magic backup file, as Magic's own recovery does, so that it is not offered again.
+
+**iPadOS.** iPadOS has no shared temporary directory, so there is nothing to import. A Magic backup file can still be recovered there by naming it explicitly (`crash recover FILE`).
+
+(Hefesto decision: docs/decisions/audit/DECISIONS.md#D-8; Magic ref: database/DBio.c:1113-1215)
+
+#### Scenario: Import a Magic backup
+- **GIVEN** Hefesto on macOS, `TMPDIR` is `/var/folders/x/T/`, and `/var/folders/x/T/MAG1234.abcdef` is owned by the user while process 1234 is not running
+- **WHEN** Hefesto offers crash recovery and the user answers `read`
+- **THEN** the cells in `MAG1234.abcdef` SHALL be loaded, and `MAG1234.abcdef` SHALL be deleted
+
+#### Scenario: Live Magic session is skipped
+- **GIVEN** `/tmp/MAG999.xyz123` is owned by the user and process 999 is running
+- **WHEN** Hefesto on Linux scans for Magic crash backups
 - **THEN** that file SHALL NOT be offered
 
 ### Requirement: Backup and archive reading

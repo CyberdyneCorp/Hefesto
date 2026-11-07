@@ -162,6 +162,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdFI.c:2125-2150
 - Options: replicate | fix (record as one undo unit)
 - Recommendation: fix — make it undoable.
+- Resolution: compat — decided by D-10 (2026-11-07). Same answer as Q-MODEL-28: one undo step with `magic-compat` OFF, not recorded with it ON.
 
 ### Q-CMDEDIT-32: Search paths on sandboxed platforms
 - Kind: platform
@@ -192,6 +193,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Options: platform alternative (app-container autosave)
 - Recommendation: autosave to the app container. Keep `crash save|recover FILE` for explicit files.
 - Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
+- Resolution: platform — decided by D-8 (2026-11-07). Duplicate of Q-CELL-30; see the resolution there.
 
 ### Q-CMDEDIT-60: `select no …` is parsed as `nocycle`
 - Kind: quirk

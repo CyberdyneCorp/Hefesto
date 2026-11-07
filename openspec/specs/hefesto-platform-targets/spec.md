@@ -46,14 +46,16 @@ Hefesto SHALL run on the following platforms:
 | Platform | Minimum version | Architectures |
 |---|---|---|
 | Linux | glibc 2.31 | x86_64, aarch64 |
-| macOS | 14 | arm64, x86_64 |
+| macOS | 14 | arm64 (Apple silicon) only |
 | iPadOS | 17 | — |
+
+macOS on Intel (x86_64) processors is not supported (decision D-12, amending P-2). Hefesto SHALL NOT ship x86_64 or universal macOS binaries.
 
 Delivery SHALL be phased (decision P-11): Linux and macOS first, and iPadOS after the desktop release criteria of the roadmap are met. Linux and macOS SHALL provide the full feature set. iPadOS SHALL provide the feature set defined by capability `hefesto-ipad-feature-scope`. Any other platform exception SHALL be listed in the capability it affects and logged as a `[platform]` decision.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/product.md#P-13)
+(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/product.md#P-13, docs/decisions/audit/DECISIONS.md#D-12)
 
 #### Scenario: iPad core flow
 - **GIVEN** an iPad running iPadOS 17
@@ -63,6 +65,10 @@ Compatibility: native
 #### Scenario: Unsupported OS
 - **WHEN** installation is attempted on macOS 13
 - **THEN** the package SHALL refuse to install, stating that the minimum is macOS 14
+
+#### Scenario: Intel Mac
+- **WHEN** the macOS app is opened on an Intel (x86_64) Mac running macOS 14
+- **THEN** it SHALL NOT run, and the published system requirements SHALL state that an Apple silicon Mac is required
 
 ### Requirement: Magic data compatibility is a product guarantee
 Hefesto SHALL meet every `exact` and `behavioral` requirement of the Magic-compatibility capabilities on all supported platforms. A given input SHALL produce the same results on every platform, subject to the comparison policy of cross-cutting decision X-1.

@@ -79,6 +79,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: extflat/EFname.c:101-118
 - Options: replicate (configuration map of global names) | platform alternative (trailing-`!` rule)
 - Recommendation: use the trailing-`!` rule by default, and offer an optional configured global-name set that emulates the Tcl array.
+- Resolution: platform — decided by D-14 (2026-11-07). A name is global if its leaf is in `globalNets` of the project setting "global nets and power names" (`hefesto-settings`), seeded from the PDK's `globals` array; this follows Magic's Tcl build, and a trailing `!` alone does not make a name global in flattening.
 
 ### Q-NETLIST-12: `resist` values are offset by +0.5 mΩ
 - Kind: quirk
@@ -241,6 +242,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2spice/ext2spice.c:943-956, ext2spice/ext2spice.c:1005-1050, resis/ResPrint.c:126-133
 - Options: platform alternative (project variables map)
 - Recommendation: provide a per-project variable map with the same names. iPadOS has no Tcl.
+- Resolution: platform — decided by D-14 (2026-11-07). `$SUB`, `$VDD` and `$GND` come from the `sub`, `vdd` and `gnd` fields of the project setting "global nets and power names" (`hefesto-settings`), seeded from the startup scripts; the Tcl variables mirror the setting.
 
 ### Q-NETLIST-34: Flat device names from gate attributes lack a separator
 - Kind: quirk

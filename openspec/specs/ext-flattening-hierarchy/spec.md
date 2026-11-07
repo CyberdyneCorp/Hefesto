@@ -123,14 +123,19 @@ Compatibility: exact
 - **THEN** that device is not output
 
 ### Requirement: Global name merging
-Unless name merging is disabled (the SPICE netlister option `global off`, or `lvs`), the flattener SHALL walk the flat node list after kills. Each node whose canonical name's last component is global (see capability `ext-flattening-names`) SHALL be recorded under that last component. A later node with the same global leaf SHALL be merged into the first. If neither node is device-terminal-only, the message `*** Global name <g> not fully connected:` SHALL be printed first, listing up to 10 names of each part (informative). Then, iterating the global-leaf table in container order, the bare leaf name SHALL be added as a new name of its node. It is prepended, so it becomes the canonical name, unless that bare name already exists as a flat name.
+Unless name merging is disabled (the SPICE netlister option `global off`, or `lvs`), the flattener SHALL walk the flat node list after kills. Each node whose canonical name's last component is global (see capability `ext-flattening-names`, requirement "Global and ground detection", which takes the global names from the project setting "global nets and power names" of capability `hefesto-settings`; decision D-14) SHALL be recorded under that last component. A later node with the same global leaf SHALL be merged into the first. If neither node is device-terminal-only, the message `*** Global name <g> not fully connected:` SHALL be printed first, listing up to 10 names of each part (informative). Then, iterating the global-leaf table in container order, the bare leaf name SHALL be added as a new name of its node. It is prepended, so it becomes the canonical name, unless that bare name already exists as a flat name.
 Compatibility: exact
 (Magic ref: extflat/EFflat.c:730-905)
 
 #### Scenario: Disconnected vdd! merged
-- **GIVEN** flat nodes `u1/vdd!` and `u2/vdd!` that are not connected in layout
+- **GIVEN** flat nodes `u1/vdd!` and `u2/vdd!` that are not connected in layout, and `vdd!` in `globalNets`
 - **WHEN** global merging runs
 - **THEN** one node remains, its canonical name is `vdd!`, and a "not fully connected" warning is printed
+
+#### Scenario: Name not in the global list is not merged
+- **GIVEN** flat nodes `u1/vss!` and `u2/vss!` that are not connected in layout, and `globalNets` empty
+- **WHEN** global merging runs
+- **THEN** both nodes remain separate and no warning is printed
 
 ### Requirement: Coupling capacitance flattening
 When couplings are requested (the capacitance threshold is finite), each `cap` record of each instance SHALL be resolved to flat nodes. Unresolvable names are ignored silently when |C|/1000 < threshold, and with a warning otherwise. The coupling SHALL be dropped if either node is killed or both are the same node. If either node is the global substrate, C SHALL be added to the other node's capacitance to ground. Otherwise C SHALL be accumulated on the unordered node pair. Iterating the accumulated pairs yields Magic's memory-address-dependent order, and terminal order within a pair also depends on memory addresses. Hefesto SHALL emit pairs in the deterministic order of capability `hefesto-output-determinism` (decision X-1); see Q-NETLIST-1.

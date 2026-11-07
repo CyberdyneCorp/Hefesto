@@ -499,11 +499,11 @@ When the netlist is available, every flattened node SHALL be classified, skippin
 
 1. If the node's preferred name is a top-level name (no hierarchy prefix):
    - It is **special** if the name ends in `!`.
-   - It is **special** if the name is a key in the user's global-nets list, or equals the user's configured VDD or GND net name.
+   - It is **special** if the name is an entry of `globalNets`, or equals the `vdd` or `gnd` field, of the project setting "global nets and power names" (capability `hefesto-settings`).
    - It is **special** if it is neither special nor a port, and its name does not end in `#`.
 2. A node is a **port** node if any cell in the hierarchy declares it as a port (port flags are merged when nodes are flattened together).
 
-In Magic, the second bullet of rule 1 comes from the Tcl array `globals` and the variables `$VDD` and `$GND`. In Magic, the second and third bullets apply only in builds with Tcl. Hefesto SHALL provide equivalent settings, and SHALL apply all three bullets as in the Tcl build (see Q-LEFDEF-102).
+In Magic, the second bullet of rule 1 comes from the Tcl array `globals` and the variables `$VDD` and `$GND`, and the second and third bullets apply only in builds with Tcl. Hefesto SHALL apply all three bullets as in the Tcl build, taking the second from the project setting, which a startup script seeds from those variables. The first bullet, the trailing-`!` rule, is kept as an explicit additional rule because Magic applies it in every build (Q-LEFDEF-102, decided by D-14).
 
 Counts:
 

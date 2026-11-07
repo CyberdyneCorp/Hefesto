@@ -235,17 +235,17 @@ Compatibility: informative
 - **THEN** a version string SHALL be printed and the exit status SHALL be 0, without loading a technology
 
 ### Requirement: Crash recovery at startup
-With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (backup files in the temporary directory, `$TMPDIR` or the system default, named `MAG…`, owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
+With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (Hefesto's crash backups in its app-private crash backup directory whose session lock is free and, on the desktop, Magic's `MAG…` backups in `$TMPDIR` or `/tmp` that are owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
 
-On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (see Q-UI-31 and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements").
+On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (capability `cell-io-safety`, requirement "Crash backup location and session lock", and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements"; Q-CELL-30, resolved by decision D-8).
 
 Compatibility: behavioral (location and process checks [platform])
 (Magic ref: utils/main.c:1170-1185, database/DBio.c:1114-1235, utils/main.c:190-252)
 
 #### Scenario: Live session skipped
-- **GIVEN** `/tmp/MAG1234.xyz` is owned by the user and process 1234 is running
+- **GIVEN** `/tmp/MAG1234.xyz` is owned by the user and process 1234 is running, and a running Hefesto session holds the lock of its own crash backup
 - **WHEN** another instance starts with `-r`
-- **THEN** that file SHALL NOT be offered for recovery
+- **THEN** neither file SHALL be offered for recovery
 
 ### Requirement: quit command and exit status
 `quit [STATUS] [-noprompt]` SHALL end the application:
@@ -299,7 +299,7 @@ On iPadOS, where there is no command line, environment or arbitrary file system,
 - opening files at launch (file arguments), including files handed over by other apps
 - crash recovery on the next launch
 
-These SHALL keep the precedence order defined in this capability. The mechanisms are [platform] decisions (see Q-UI-26 and Q-UI-31).
+These SHALL keep the precedence order defined in this capability. The mechanisms are [platform] decisions (see Q-UI-26, and Q-CELL-30 for crash recovery, resolved by decision D-8).
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:253-473, utils/main.c:835-1258)

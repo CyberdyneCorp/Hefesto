@@ -5,6 +5,8 @@ Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every op
 
 Generated cells are ordinary layout cells. They are saved, read and extracted like any other cell. Hefesto MUST interoperate with them at the data level (names, properties, geometry) whether a cell is produced by the PDK's Tcl generator or by a native generator (capability `hefesto-scripting`, decision X-3). The legacy framework `toolkit_rev0.tcl` and the menu helpers in `bsitools.tcl` are installed but not loaded by default (see capability `scripting-auxiliary-tools`).
 
+PDK references have the form `(PDK ref: <repo> <path>:<line>)` and were verified against open_pdks `RTimothyEdwards/open_pdks` @ `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (`open_pdks` paths are relative to the repository root) and IHP-Open-PDK `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`IHP` paths are relative to `ihp-sg13g2/libs.tech/magic/`), as in capability `scripting-pdk-integration`.
+
 ## Requirements
 
 ### Requirement: Library and device procedure contract

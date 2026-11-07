@@ -291,7 +291,7 @@ Compatibility: behavioral
 - `stop` / `cancel`: cancels the pending backup.
 - `disable`: cancels and unsets the interval.
 
-Each backup SHALL run `*bypass crash save`. A failure is printed as `Crash backup save error:  <msg>`. The next backup is rescheduled only if the interval is set and > 0. Otherwise a warning is printed (`Warning:  Crash backups halted due to interval of <n>` or `...due to no interval being set.`). The tool setup run from the system startup file SHALL set the interval to 60000 ms and start backups (Q-SCRIPT-18). See Q-SCRIPT-35 for the backup location and timers on sandboxed platforms.
+Each backup SHALL run `*bypass crash save`. A failure is printed as `Crash backup save error:  <msg>`. The next backup is rescheduled only if the interval is set and > 0. Otherwise a warning is printed (`Warning:  Crash backups halted due to interval of <n>` or `...due to no interval being set.`). The tool setup run from the system startup file SHALL set the interval to 60000 ms and start backups (Q-SCRIPT-18). The backups are written to Hefesto's app-private crash backup directory, never to a temporary or caches directory (capability `cell-io-safety`, requirement "Crash backup location and session lock"). On iPadOS the autosave service also writes a backup when the app moves to the background (capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements"; Q-SCRIPT-35 and Q-CELL-30, resolved by decision D-8).
 Compatibility: behavioral
 
 (Magic ref: tcltk/tools.tcl:52-120,582-586, doc/html/crashbackups.html)

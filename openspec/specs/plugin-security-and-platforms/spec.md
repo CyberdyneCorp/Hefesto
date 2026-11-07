@@ -189,7 +189,7 @@ Compatibility: native
 - **THEN** it SHALL NOT be installed, and the message SHALL say that this build runs only bundled plugins
 
 ### Requirement: Plugin network and privacy rules
-A plugin SHALL reach the network only through `host->http_request` (HTTPS only, with certificates verified by the platform), and only to hosts granted by `network:` permissions. Every plugin request SHALL be logged in the session log with the plugin id, method, host and byte counts, and without bodies. Hefesto SHALL show an indicator while a plugin request is in flight.
+A plugin SHALL reach the network only through `host->http_request` (HTTPS only, with certificates verified by the platform), and only to hosts granted by `network:` permissions. The host implements `http_request` with URLSession on macOS and iPadOS and with libcurl on Linux (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13). Every plugin request SHALL be logged in the session log with the plugin id, method, host and byte counts, and without bodies. Hefesto SHALL show an indicator while a plugin request is in flight.
 
 Nothing in the plugin API SHALL send design data anywhere by itself. A plugin that uploads data does so through its own `http_request` calls, which its consent sheet disclosed.
 

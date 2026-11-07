@@ -13,6 +13,8 @@ Hefesto SHALL define a provider interface that supports chat with tool calling, 
 
 The model, endpoint and parameters SHALL be configuration. No model identifier SHALL be hard-coded.
 
+The cloud and OpenAI-compatible providers SHALL use HTTPS through URLSession on macOS and iPadOS and through libcurl on Linux, and SHALL encode and decode JSON with nlohmann/json (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13).
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-10)

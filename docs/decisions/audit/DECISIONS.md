@@ -109,6 +109,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) bless all three, and document the syntax in §1 and §2.3, with a pinned commit for each tool in the spec's Purpose; (b) forbid them, and split the requirements.
 - **Recommendation:** (a). Splitting would add about 70 requirements and no precision. The golden harness reads the first class as the class for the main content.
 - **Priority:** blocks M0–M2.
+- **Status:** resolved (2026-11-07): option a — `docs/spec-conventions.md` §1 and §2.3 now allow qualified `Compatibility:` lines (first class = main content), traces to other reference tools with the tool's pinned commit in the spec's Purpose (pins added to `pcell-toolkit`, `scripting-api`, `reliability-em-check`), and combined `(Hefesto decision: …; <tool> ref: …)` traces.
 
 ### D-7: Is Magic's Tcl build the normative reference?
 
@@ -131,6 +132,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) Magic's location and process-ID liveness test on the desktop, app-private on iPadOS; (b) an app-private directory everywhere (Application Support, not caches), a per-session lock file, and import of `MAG*` files on the desktop; (c) a caches directory.
 - **Recommendation:** (b). Keep the Magic-readable file format. Keep the term "crash backup" for that file and "autosave" for the platform service (see the glossary).
 - **Priority:** blocks M0–M2 (M1).
+- **Status:** resolved (2026-11-07): option b — app-private crash backup directory (Application Support on macOS/iPadOS, `$XDG_STATE_HOME/hefesto` on Linux, never caches) with a per-session lock file and the Magic-readable format, plus import of Magic's `$TMPDIR/MAG*` backups on the desktop (`cell-io-safety`, `hefesto-files-and-pdks`, `cmd-hierarchy`, `ui-gui-managers`); Q-CELL-30 resolved, duplicates marked.
 
 ### D-9: Order of backup and archive cells, and the natural-comparator tie-break (Q-CELL-28, Q-CELL-12)
 
@@ -139,6 +141,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** for the order, (a) confirm the sort or (b) copy the hash order (see D-1). For the tie-break, (a) a proper prefix sorts first, then byte comparison (Q-CELL-12 recommendation), or (b) another total order.
 - **Recommendation:** confirm the sort, because the reader does not depend on order. Use the Q-CELL-12 tie-break.
 - **Priority:** blocks M0–M2 (M1).
+- **Status:** resolved (2026-11-07): sort confirmed — backup/archive cells are sorted by name; the natural comparator is a total order (natural prefix first, then unsigned byte comparison) in `cell-file-format`; Q-CELL-28 and Q-CELL-12 resolved.
 
 ### D-10: Undo scope beyond Magic: native undo events, properties and flatten in place
 
@@ -147,6 +150,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) confirm the native requirement and keep Magic's non-recorded list for ordinary commands; (b) also record property changes and flatten in place everywhere (a behavioral improvement with no file impact); (c) narrow the P-10 promise instead.
 - **Recommendation:** (a) now, and (b) behind `magic-compat` OFF, as a later change. If (b) is chosen, update the scenario "Plain property change stays non-recorded".
 - **Priority:** blocks M0–M2 (M2).
+- **Status:** resolved (2026-11-07): options a and b — native undo events for agent proposals and `sim` edits confirmed; ordinary property changes and flatten in place stay non-recorded with `magic-compat` ON and are recorded with it OFF (`layout-undo`, `layout-properties`, `cmd-hierarchy`); Q-MODEL-14, Q-MODEL-28 (and Q-CMDEDIT-31) resolved.
 
 ### D-11: `undo 0` and `redo 0` (Q-MODEL-30, new)
 
@@ -155,6 +159,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** replicate | treat 0 as a no-op.
 - **Recommendation:** replicate behind `magic-compat` (the spec currently states Magic's behavior).
 - **Priority:** blocks M0–M2 (M2). Small.
+- **Status:** resolved (2026-11-07): replicate behind `magic-compat` — `undo 0` resumes and `redo 0` suspends recording with it ON; both are no-ops with it OFF (`layout-undo`); Q-MODEL-30 resolved.
 
 ### D-12: macOS x86_64 in CI
 
@@ -163,6 +168,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) add a macOS x86_64 CI leg and determinism check; (b) drop x86_64 from P-2 and `simulation-analyses-and-results`.
 - **Recommendation:** (b), unless there is a known user base on Intel Macs. Raven and MoltenVK testing on x86_64 is extra cost for a shrinking platform.
 - **Priority:** blocks M0–M2 (M0).
+- **Status:** resolved (2026-11-07): option b — macOS x86_64 dropped; P-2 amended to macOS 14+ on Apple silicon only (Linux x86_64 and aarch64 stay); `hefesto-platform-targets`, `hefesto-build-and-distribution`, `hefesto-product-operations`, `simulation-analyses-and-results` and `plugin-packaging-and-distribution` updated.
 
 ### D-13: Unnamed third-party dependencies and the P-9 component list
 
@@ -171,6 +177,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) platform crypto and networking on Apple platforms and permissive libraries on Linux (for example libsodium or Monocypher, libcurl, zstd, a header-only JSON library), each added to `hefesto-licensing`; (b) one cross-platform library set everywhere.
 - **Recommendation:** (a), and correct the P-9 list to match `hefesto-licensing`.
 - **Priority:** blocks M0–M2 (M0 licensing, M1 PDK manager).
+- **Status:** resolved (2026-11-07): option a — CryptoKit and URLSession on Apple platforms, libsodium (or Monocypher) and libcurl on Linux, plus zstd, zlib, nlohmann/json and cgltf (or tinygltf) everywhere, each with its license in `hefesto-licensing` and referenced from the PDK manager, plugin, agent-provider, 3D and product-operations specs; P-9 component list corrected.
 
 ---
 
@@ -183,6 +190,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) one project-level "global nets / power names" setting in `hefesto-settings`, seeded from the Tcl variables when a PDK script sets them; (b) keep each spec's own rule.
 - **Recommendation:** (a). Resolve the four open questions together.
 - **Priority:** blocks M6.
+- **Status:** resolved (2026-11-07): option a — one project setting "global nets and power names" in `hefesto-settings` (`globalNets`, `vdd`, `gnd`, `sub`), seeded from the startup scripts' `globals`, `$VDD`, `$GND`, `$SUB`; used by `def-write`, `lef-write`, `ext-flattening-names`, `ext-flattening-hierarchy` and `netlist-spice-options`, with the trailing-`!` rule kept only where Magic's Tcl build applies it; Q-NETLIST-11, Q-NETLIST-33, Q-LEFDEF-44 and Q-LEFDEF-102 resolved.
 
 ### D-15: Tier-1 bugs still written as Magic behavior in extraction and netlisting
 

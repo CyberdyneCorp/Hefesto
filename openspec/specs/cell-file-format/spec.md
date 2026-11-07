@@ -764,13 +764,25 @@ Compatibility: exact
 3. Else, if the current characters are not both decimal digits, compare them case-insensitively. If they differ, return the difference of their lowercase codes. Otherwise advance both strings by one character.
 4. Else, read the maximal digit runs of both strings as unsigned decimal numbers and compare them numerically. If they differ, return the sign. Otherwise advance both strings past their runs.
 
-This comparator is not a strict weak order: a proper prefix compares greater than its extension in both directions, and differences in case or in leading zeros compare equal. The resulting order for such inputs depends on the sorting algorithm (see Q-CELL-12) Hefesto SHALL instead use one deterministic total order on every platform, equal to Magic's order whenever cmp is consistent for the inputs; the tie-breaking rule for the inconsistent cases is set by Q-CELL-12 (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
+This comparator is not a strict weak order: a proper prefix compares greater than its extension in both directions, and differences in case or in leading zeros compare equal. The resulting order for such inputs depends on the sorting algorithm, so Magic's own output differs between hosts (see Q-CELL-12). Hefesto SHALL instead sort with the following total order, on every platform. It equals Magic's order whenever cmp is consistent for the inputs (decision X-1, `docs/decisions/cross-cutting.md#X-1`; tie-break decided by D-9, `docs/decisions/audit/DECISIONS.md#D-9`):
+
+1. Run the loop above, but when exactly one string is exhausted at step 1 or 2, the exhausted string (a *natural prefix* of the other, such as `x` of `x2`, or `a01` of `a1b`) sorts first.
+2. If the loop ends with both strings exhausted and no difference found (they differ only in letter case or in leading zeros of digit runs, or are identical), compare the two complete strings byte by byte as unsigned 8-bit values; at the first differing byte the smaller value sorts first, and a string that is a byte prefix of the other sorts first.
+3. Two strings that are equal byte for byte compare equal; within one cell, instance ids and property keys are unique, so this never decides an order.
 
 (Magic ref: database/DBcellname.c:676-707, database/DBio.c:4454-4467, database/DBio.c:4556-4567)
 
 #### Scenario: Numeric runs compare numerically
 - **WHEN** the instance ids `a10`, `B1`, `a2` are sorted for writing
 - **THEN** the write order SHALL be `a2`, `a10`, `B1`
+
+#### Scenario: A natural prefix sorts first
+- **WHEN** the instance ids `x2` and `x` are sorted for writing, in either input order
+- **THEN** the write order SHALL be `x`, `x2`
+
+#### Scenario: Case and leading-zero ties are broken by bytes
+- **WHEN** the property keys `a1`, `A1` and `a01` are sorted for writing
+- **THEN** the write order SHALL be `A1`, `a01`, `a1`
 
 ### Requirement: Compressed cell input
 

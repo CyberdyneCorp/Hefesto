@@ -46,7 +46,7 @@ Compatibility: native
 CI SHALL build and test the following on every pull request:
 - Linux x86_64 with GCC and Clang
 - Linux aarch64
-- macOS arm64
+- macOS arm64 (the only macOS architecture, decision D-12; there is no macOS x86_64 leg)
 - an iPadOS simulator build, from the start of the iPadOS milestone
 
 CI SHALL also run:
@@ -68,7 +68,7 @@ Hefesto SHALL be distributed as follows:
 | Platform | Package | Requirements |
 |---|---|---|
 | Linux | AppImage, plus at least one native package format | runs on glibc 2.31 or later |
-| macOS | signed and notarized app bundle | — |
+| macOS | signed and notarized app bundle | arm64 only (Apple silicon), macOS 14 or later; no x86_64 or universal binary (decision D-12) |
 | iPadOS | App Store / TestFlight build | — |
 
 Each package SHALL include:
@@ -78,7 +78,7 @@ Each package SHALL include:
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2)
+(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/audit/DECISIONS.md#D-12)
 
 #### Scenario: Fresh macOS install
 - **WHEN** the notarized app is opened on macOS 14 for the first time

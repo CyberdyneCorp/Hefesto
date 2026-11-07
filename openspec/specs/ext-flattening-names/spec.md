@@ -85,14 +85,24 @@ Compatibility: exact
 - **THEN** `VSS` is preferred
 
 ### Requirement: Global and ground detection
-A name SHALL be global if its leaf component ends in `!`. This is an explicit exception to the rule that Magic's Tcl build is normative (`docs/spec-conventions.md`), recorded in Q-NETLIST-11 and pending D-14. Informative: Magic's Tcl build treats a name as global only if the Tcl array `globals` has an element named after the leaf; its non-Tcl build uses the trailing-`!` rule. A name SHALL be the compatibility-mode ground if it has a single component equal to `GND!`, or equal to the value of the scripting variable `GND` as in Magic's Tcl build (see D-14).
+A name SHALL be global if its leaf component is an entry of `globalNets` in the project setting "global nets and power names" (capability `hefesto-settings`), which takes the place of Magic's Tcl array `globals`; this follows Magic's Tcl build. A trailing `!` does not by itself make a name global here, because Magic's Tcl build does not apply that rule in flattening. Informative: Magic's non-Tcl build treats a name as global if and only if its leaf ends in `!`; the same result is obtained in Hefesto by listing those names in `globalNets`. A name SHALL be the compatibility-mode ground if it has a single component equal to `GND!`, or equal to the `gnd` field of the same setting (Magic's `$GND`). See Q-NETLIST-11 and Q-NETLIST-33, decided by D-14.
 Compatibility: behavioral
 (Magic ref: extflat/EFname.c:101-170)
 
 #### Scenario: Global leaf
-- **GIVEN** the name `u1/vdd!`
+- **GIVEN** the name `u1/vdd!` and `globalNets` = `vdd!`
 - **WHEN** it is tested
-- **THEN** it is global under the trailing-`!` rule
+- **THEN** it is global
+
+#### Scenario: Trailing bang alone is not global
+- **GIVEN** the name `u1/vss!` and `globalNets` empty
+- **WHEN** it is tested
+- **THEN** it is not global
+
+#### Scenario: Ground from the setting
+- **GIVEN** the `gnd` field is `VGND`
+- **WHEN** the single-component names `VGND`, `GND!` and `u1/VGND` are tested
+- **THEN** `VGND` and `GND!` are the compatibility-mode ground and `u1/VGND` is not
 
 ### Requirement: SPICE output name conversion
 The SPICE netlisters SHALL convert a canonical name to text as follows, given the active conversion flags (trim-global, trim-local, convert-comma, convert-equal, convert-brackets) and the output format.

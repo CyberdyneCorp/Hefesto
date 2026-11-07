@@ -249,6 +249,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Options: replicate on desktop | app container directory with a lock file
 - Recommendation: use an app-private backup directory on all platforms, with a lock file per session for the liveness check. Keep the backup file format Magic-readable.
 - Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) The recommendations of Q-UI-31, Q-CELL-30 and Q-SCRIPT-35 disagree on the desktop location; see docs/decisions/audit/DECISIONS.md.
+- Resolution: platform — decided by D-8 (2026-11-07). Duplicate of Q-CELL-30; see the resolution there.
 
 ### Q-UI-32: `quit` exit status not range-checked
 - Kind: bug

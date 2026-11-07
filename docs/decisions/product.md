@@ -9,14 +9,15 @@ These are decisions about Hefesto itself. Each one is cited from `native` requir
 
 ## P-2: Platforms and minimum OS versions
 
-- Status: decided (2026-11-05)
+- Status: decided (2026-11-05), amended (2026-11-07) by D-12
 - Decision: Support these three platforms:
 
   | Platform | Minimum version | Architectures |
   |---|---|---|
   | Linux | glibc ≥ 2.31 (Ubuntu 20.04 era) | x86_64, aarch64 |
-  | macOS | 14 | Apple silicon, x86_64 |
+  | macOS | 14 | Apple silicon (arm64) only |
   | iPadOS | 17 | — |
+- Amendment (2026-11-07, D-12): macOS x86_64 (Intel Macs) is dropped. macOS builds, CI and the determinism matrix cover Apple silicon only, and no universal binary is shipped. Linux keeps x86_64 and aarch64.
 
 ## P-3: Rendering stack
 
@@ -74,11 +75,20 @@ Open decisions found by the spec audit are listed in `docs/decisions/audit/DECIS
 
 ## P-9: Hefesto's own source license
 
-- Status: decided (2026-11-05)
+- Status: decided (2026-11-05), component list corrected (2026-11-07) by D-13
 - Decision: Apache-2.0.
 - Constraints (from capability `hefesto-licensing`):
   - The license must be compatible with App Store distribution.
-  - It must be compatible with the bundled permissive components: Magic, Tcl, ngspice, zlib.
+  - It must be compatible with the bundled third-party components, as listed in `hefesto-licensing`:
+    - Magic (UC Berkeley permissive notice) and Tcl (BSD-style)
+    - ngspice (modified BSD), with its separately licensed linked parts: KLU and numparam (LGPLv2), OSDI (MPL-2.0) and sparse; the GPL parts (`table` code models, FFTW3) are excluded, and the linking form of the LGPL parts is open in D-28 (Q-SIM-1)
+    - zlib (zlib license) and Zstandard (BSD-3-Clause)
+    - nlohmann/json (MIT) and a glTF writer, cgltf or tinygltf (MIT)
+    - on Linux: libsodium (ISC) or Monocypher (BSD-2-Clause or CC0-1.0), and libcurl (curl license) with its TLS library (OpenSSL 3.x, Apache-2.0). On Apple platforms the system CryptoKit and URLSession frameworks are used instead.
+    - desktop: Raven (Apache-2.0) and the code it bundles (stb_truetype, stb_image, nanosvg); macOS: MoltenVK (Apache-2.0)
+    - fonts: Inter and JetBrains Mono (SIL OFL 1.1), Roboto and Roboto Mono (bundled with Raven, upstream licenses), and FreeSans where bundled for font labels (GPL with the font exception, kept as a separate data file)
+    - Eigen (MPL-2.0), only if it is used as the IR-drop sparse solver (D-39, Q-RELIABILITY-9)
+    - PDK data, under each PDK's upstream license
   - Hefesto must contain no GPL code.
 
 ## P-10: AI layout agent

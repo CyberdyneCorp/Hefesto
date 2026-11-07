@@ -68,8 +68,9 @@ The remaining unifications are tracked as decisions D-45 and D-46 in `docs/decis
 | cell library path | The second list searched for cells (`path cell`). | library path (unqualified) | `cell-library-resolution` |
 | system search path | The list searched for system files: technology, styles, startup files (`path sys`). | system library path, SysLibPath | `cell-library-resolution`, `tech-loading-and-scaling` ("File search rules") |
 | path variables | The table of `$VAR` values used to expand and substitute paths. It is seeded from the environment on desktop and from settings on iPadOS. | environment variables (on iPadOS) | `hefesto-files-and-pdks` (Q-CELL-17) |
-| crash backup | Magic's backup file format and the `crash save|recover` mechanism. | autosave (for this file) | `cell-io-safety` |
-| autosave | The platform service that triggers crash backups and stores them in the app's location. | crash backup (for the service) | `hefesto-files-and-pdks` |
+| crash backup | The backup file, in Magic's readable format, and the `crash save|recover` mechanism. Hefesto keeps its own in an app-private directory with a per-session lock file, and imports Magic's `$TMPDIR/MAG*` files on the desktop (D-8). | autosave (for this file) | `cell-io-safety` |
+| autosave | The platform service that triggers crash backups and stores them in the app-private crash backup directory (Application Support on macOS and iPadOS, `$XDG_STATE_HOME/hefesto` on Linux; never a caches directory). | crash backup (for the service) | `hefesto-files-and-pdks` |
+| global nets and power names | The project setting with the global net list (`globalNets`) and the `vdd`, `gnd` and `sub` names, seeded from Magic's Tcl `globals`, `$VDD`, `$GND` and `$SUB` (D-14). | global-nets list, configured VDD/GND (unqualified) | `hefesto-settings` |
 | PDK store | The abstract store of installed PDKs. | PDK folder | `hefesto-files-and-pdks` |
 | PDK root | The PDK store's on-disk layout, which follows ciel. | — | `hefesto-pdk-manager` |
 | desktop | Linux and macOS (P-11). "Desktop app" means the Raven app. | — | `hefesto-platform-targets` |

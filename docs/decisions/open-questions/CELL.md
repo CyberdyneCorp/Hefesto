@@ -87,6 +87,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBcellname.c:676-707
 - Options: replicate (requires a host-specific sort) | fix (prefix sorts first; ties broken by byte comparison)
 - Recommendation: Fix with a total order that matches Magic whenever Magic's comparator is consistent (all ordinary cases).
+- Resolution: fix — decided by D-9 (2026-11-07). Total order: Magic's comparison, a natural prefix sorts first, and remaining ties (case, leading zeros) are broken by unsigned byte comparison (`cell-file-format`, requirement "Natural ordering of names").
 
 ### Q-CELL-13: Failed .tcl save falls back to a .mag write
 - Kind: bug
@@ -211,6 +212,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate the hash | fix (sorted by name, or parents before children)
 - Recommendation: Sort by name with the natural comparator. The reader is order-independent.
 - Status: confirmed by X-1 as amended (2026-11-06, D-1): backup and archive cell order is name-keyed but never affects results, so it keeps the sort by name with the natural comparator. The tie-break question remains open in D-9.
+- Resolution: fix — decided by D-9 (2026-11-07). Backup and archive cells are written sorted by name with the total natural order of `cell-file-format`; golden comparison canonicalizes the order.
 
 ### Q-CELL-29: Wrong file name in the explicit crash-save message
 - Kind: bug
@@ -225,7 +227,8 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:6419-6437, database/DBio.c:1137-1179, utils/signals.c:265-278, tcltk/tools.tcl:57-118
 - Options: platform alternative
 - Recommendation: Use a per-user application-support directory with a session lock file instead of process-ID probing. Keep the `MAG<pid>.*` reading capability for importing Magic backups on desktop. On iPadOS, back up on the app-background notification and with the timer.
-- Canonical entry for Q-UI-31, Q-SCRIPT-35 and Q-CMDEDIT-35. Platform owner: capability `hefesto-files-and-pdks`. The desktop location is an open decision (docs/decisions/audit/DECISIONS.md).
+- Canonical entry for Q-UI-31, Q-SCRIPT-35 and Q-CMDEDIT-35. Platform owner: capability `hefesto-files-and-pdks`. The desktop location was decided by D-8 (docs/decisions/audit/DECISIONS.md).
+- Resolution: platform — decided by D-8 (2026-11-07). Crash backups go to an app-private directory (Application Support on macOS and iPadOS, `$XDG_STATE_HOME/hefesto` on Linux; never caches), with a per-session lock file for liveness and the Magic-readable file format; on the desktop, Magic's `$TMPDIR/MAG*` backups are offered for import (capability `cell-io-safety`).
 
 ### Q-CELL-31: Cell name derived from the first ".mag" in a backup location
 - Kind: bug

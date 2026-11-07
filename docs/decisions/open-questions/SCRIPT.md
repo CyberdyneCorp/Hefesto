@@ -261,6 +261,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Options: app-container temporary directory and an app timer | OS state restoration
 - Recommendation: use the app sandbox's caches directory, with the same interval semantics.
 - Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) The caches directory recommended here may be purged by the OS; see docs/decisions/audit/DECISIONS.md.
+- Resolution: platform — decided by D-8 (2026-11-07). Duplicate of Q-CELL-30; see the resolution there.
 
 ### Q-SCRIPT-36: Wrapper "Rotate 90 degree" calls a non-existent command
 - Kind: bug

@@ -246,7 +246,7 @@ Compatibility: exact
 - **THEN** no capacitor line is written for it, because 2 is not greater than 2
 
 ### Requirement: Global card in hierarchical mode
-In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. With CDL format, the values of the scripting variables `SUB`, `VDD` and `GND` that end in `!` SHALL also be added, as in Magic's Tcl build. Where Hefesto takes those values from is pending D-14; see Q-NETLIST-33.
+In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. With CDL format, the `sub`, `vdd` and `gnd` fields of the project setting "global nets and power names" (capability `hefesto-settings`; Magic's `$SUB`, `$VDD` and `$GND`) SHALL also be added, each only if it is set and ends in `!`, as in Magic's Tcl build; this trailing-`!` test is an explicit rule of this requirement. They are checked in the order `sub`, `vdd`, `gnd`, and each one added is placed before all names already in the list, so the written order is `gnd`, `vdd`, `sub`, then the device-substrate names. They are not checked for duplicates or for the excluded names. A default device-substrate name of the form `$<name>` resolves `$SUB`, `$VDD` and `$GND` from the same setting (see Q-NETLIST-33, decided by D-14).
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:965-1045, ext2spice/ext2spice.c:1086-1120)
 
@@ -254,3 +254,8 @@ Compatibility: exact
 - **GIVEN** an extraction style whose device list has substrate names `VSUBS!` (first) and `VDD!` (second), and hierarchical SPICE3 output
 - **WHEN** the global card is written
 - **THEN** the line is `.global VDD VSUBS ` followed by an empty line
+
+#### Scenario: CDL adds bang-terminated power names (verify against Magic)
+- **GIVEN** an extraction style whose only default substrate name is `VSUBS`, CDL hierarchical output, and the setting with `sub` = `VSUBS`, `vdd` = `vdd!` and `gnd` = `gnd!`
+- **WHEN** the global card is written
+- **THEN** the line is `.global gnd! vdd! VSUBS ` followed by an empty line; `sub` adds nothing because `VSUBS` does not end in `!`

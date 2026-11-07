@@ -275,6 +275,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:1092-1112
 - Options: platform alternative (session settings named VDD and GND, settable from scripts and preferences)
 - Recommendation: Provide the settings. Their defaults are unset.
+- Resolution: platform — decided by D-14 (2026-11-07). The power and ground names are the `vdd` and `gnd` fields of the project setting "global nets and power names" (`hefesto-settings`), seeded from `$VDD` and `$GND`.
 
 ### Q-LEFDEF-45: float32 arithmetic in coordinate output
 - Kind: ambiguity
@@ -618,6 +619,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:328-372
 - Options: replicate the Tcl build with Hefesto settings (global-net list, VDD/GND names) | expose as preferences
 - Recommendation: provide a project setting for the global nets and VDD/GND, and apply the Tcl-build rules.
+- Resolution: platform — decided by D-14 (2026-11-07). DEF applies the Tcl-build rules with `globalNets`, `vdd` and `gnd` from the project setting "global nets and power names" (`hefesto-settings`); the trailing-`!` rule stays as an explicit additional rule.
 
 ### Q-LEFDEF-103: PINS formatting defects
 - Kind: bug
