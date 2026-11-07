@@ -31,7 +31,7 @@ Third-party dependencies SHALL be:
 - fetched or vendored reproducibly (CMake FetchContent or a vendored tree)
 - license-compatible with Hefesto's license
 
-The core library SHALL NOT depend on any library unavailable on iPadOS. Raven SHALL be pinned to an exact commit, and only the desktop shell may use it. The macOS package SHALL bundle MoltenVK.
+The core library SHALL NOT depend on any library unavailable on iPadOS. Raven SHALL be pinned to an exact commit at or after release v0.2.2, and only the desktop shell may use it. Linux CI SHALL run the desktop shell's tests under both X11 and Wayland, because Raven's Wayland platform is less tested. The macOS package SHALL bundle MoltenVK.
 
 Compatibility: native
 

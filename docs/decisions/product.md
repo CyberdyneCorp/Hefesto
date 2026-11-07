@@ -116,10 +116,13 @@ Open decisions found by the spec audit are listed in `docs/decisions/audit/DECIS
     - Hefesto draws the layout canvas and the 3D view itself, in Raven viewports.
   - **iPad app comes after the desktop app.** It is built in Swift with SwiftUI and Metal, on the same C++20 core through Swift/C++ interoperability.
   - **iPad starts only after the desktop core meets the roadmap's release criteria.** These criteria are a working core that is well tested and passes the golden compatibility tests.
+- Raven version: the minimum is v0.2.2 (released 2026-11-06), pinned to an exact commit. v0.2.2 fixed a macOS crash on modifier keys, a Wayland freeze of hidden windows on NVIDIA, swapchain flicker and menu shortcuts, and added the platform features used by `hefesto-app-ux` (Table, system notifications, Dock and launcher progress, the macOS menu bar, SVG images).
 - Risks:
-  - Raven is at v0.2.x, its public API is unstable, and it has a small maintainer base.
-  - Wayland support and input methods on Wayland are immature.
-  - It has no drag-out.
+  - Raven's public API is unstable until its 1.0, which plans versioned structures. Its maintainer base is small.
+  - Input methods for Chinese, Japanese and Korean are not connected on macOS, Windows or Wayland yet. ASCII names are unaffected; non-Latin label text is.
+  - Wayland is tested only against Raven's own test compositor, not GNOME, KDE or wlroots. Linux CI therefore covers both X11 and Wayland.
+  - It has no drag-out to other applications.
+- iPad and Raven: Raven may gain an iOS and Metal backend (upstream proposal #37, not merged as of 2026-11-07). The iPad app stays Swift and SwiftUI regardless (decided 2026-11-07).
 - Mitigation:
   - Pin Raven to an exact commit.
   - Wrap Raven in a thin C++20 UI-shell layer. Raven types SHALL NOT appear outside the shell.

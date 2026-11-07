@@ -53,12 +53,36 @@ Compatibility: native
 - **WHEN** an iPad is connected to an external display under Stage Manager
 - **THEN** a second layout window SHALL be openable on that display
 
+### Requirement: Desktop platform integration through Raven
+On the desktop, the shell SHALL use Raven's platform features for these purposes:
+- **Tables:** result and list browsers SHALL use Raven's Table widget with virtual rows, sortable and resizable columns, keyboard and screen-reader support. These include the DRC results, LVS mismatches, cell and library managers, net browser, and simulation measurements.
+- **Menu bar:** on macOS, the application menu SHALL appear in the system menu bar.
+- **Job completion:** when a long job finishes while the window is not focused, Hefesto SHALL post a system notification (macOS Notification Center, freedesktop notifications on Linux). Long jobs include DRC, extraction, LVS, simulation sweeps or Monte Carlo, tapeout packaging, and agent proposals. A setting SHALL turn this off.
+- **Job progress:** a running long job SHALL show its progress on the Dock icon (macOS) or the launcher entry (Linux).
+- **Developer inspector:** Raven's widget inspector MAY be enabled in development builds. It SHALL be absent from release builds.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-11)
+
+#### Scenario: Extraction finishes in the background
+- **GIVEN** a full-chip extraction is running and the user has switched to another application
+- **WHEN** the extraction finishes
+- **THEN** a system notification SHALL report the result, and the Dock or launcher progress indicator SHALL be cleared
+
+#### Scenario: Large DRC result list
+- **WHEN** a DRC run reports 200,000 errors
+- **THEN** the DRC browser SHALL list them in a virtual Table, without creating a widget per row, and SHALL sort by rule or by count
+
 ### Requirement: Accessibility and localization
 The GUI SHALL support:
 - the platform screen readers, for all controls and panels: on the desktop through Raven's accessibility support (VoiceOver on macOS, AT-SPI on Linux), on iPad through SwiftUI accessibility
 - full keyboard navigation
-- Dynamic Type, or the platform font scaling equivalent
+- Dynamic Type on iPad; on the desktop, Raven's text scale
+- on the desktop, Raven's high-contrast themes, color filters for color blindness, and reduced motion, applied to the UI chrome only (layer colors on the canvas follow `hefesto-design-system`)
 - localizable user-interface strings
+
+Input methods for Chinese, Japanese and Korean text depend on Raven, which does not connect them yet on the desktop (decision P-11, risks). Until it does, entering such text in labels is unsupported on the desktop.
 
 Layout-data text and command names SHALL NOT be localized.
 
