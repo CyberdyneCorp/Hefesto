@@ -8,6 +8,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: utils/geometry.c:154-189, database/DBlabel.c:1440-1460, commands/CmdCD.c:2279-2345
 - Options: replicate | fix (subtract for clockwise) | verify rendering first
 - Recommendation: capture golden output (MODEL-G-012) before deciding; replicate for file data.
+- Resolution: compat — label rotations transform as in Magic (+90 for the clockwise-90 transform), because the values are written to files; golden case MODEL-G-012 confirms the rendering; with `magic-compat` OFF, a clockwise transform subtracts 90 (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-2: Transformed angle can be 360
 - Kind: bug
@@ -15,6 +16,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: utils/geometry.c:179
 - Options: replicate | fix (reduce `>= 360`)
 - Recommendation: fix internally but normalize 360 -> 0 only where it is not written to files; verify whether `flabel` output can contain 360.
+- Resolution: compat — a sum of exactly 360 is kept, as in Magic, because it can reach `flabel` output; with `magic-compat` OFF, the sum is reduced when it is 360 or more (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-3: Asymmetric rounding of non-Manhattan subdivision
 - Kind: quirk
@@ -22,6 +24,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint.c:1657-1745
 - Options: replicate | fix (symmetric round-half-up)
 - Recommendation: replicate (geometry is written to files); golden cases MODEL-G-020/021.
+- Resolution: compat — `/` crossings round half-up and `\` crossings truncate, as in Magic, because the geometry is written to files; Hefesto computes the truncation without Magic's undefined shift; with `magic-compat` OFF, both diagonals round half-up (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-4: Opposite-diagonal overlap on 1-unit areas fills the rectangle
 - Kind: quirk
@@ -29,6 +32,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint.c:1572-1590
 - Options: replicate | fix
 - Recommendation: replicate.
+- Resolution: n/a — the union of two opposite-diagonal triangles in a 1-unit square is not a single split tile, so Magic's fill is a limit of the representation rather than a defect; the spec keeps it (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-5: Non-unique representation of non-Manhattan geometry
 - Kind: ambiguity
@@ -36,6 +40,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint.c:1018-1320, 788-1012
 - Options: replicate history-dependent behaviour | canonicalize triangles on output
 - Recommendation: replicate operations exactly; accept history dependence; golden tests compare after identical command sequences.
+- Resolution: compat — tile order: X-1 requires Magic's decomposition and fracturing/merging rules to be reproduced, so the same command history gives the same `tri` records; golden tests compare after identical command sequences (X-1, 2026-11-07).
 
 ### Q-MODEL-6: Font-label bounding box rounding mask
 - Kind: bug
@@ -43,6 +48,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBlabel.c:1484-1499
 - Options: replicate | fix (`& 0x7`)
 - Recommendation: replicate (it affects extended bounding boxes, which appear in `.mag` and LEF outputs); verify.
+- Resolution: compat — the `& 0x7f` test is kept, as in Magic, because extended bounding boxes reach `.mag` and LEF output; with `magic-compat` OFF, the test is `& 0x7` (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-7: Inconsistent array subscript order
 - Kind: quirk
@@ -50,6 +56,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellbox.c:99-104, database/DBlabel2.c:410-440, database/DBcellcopy.c:650-662
 - Options: replicate | fix (use `[y][x]`)
 - Recommendation: replicate; document.
+- Resolution: compat — in-place flattening prefixes labels with `[x][y]`, as in Magic; with `magic-compat` OFF, it uses `[y][x]`, like element names (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-8: Default identifier base differs between link and read
 - Kind: quirk
@@ -57,6 +64,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellname.c:2425-2440, 2758-2770
 - Options: replicate | fix (always use basename)
 - Recommendation: fix (ids with `/` break hierarchical names); keep reading such ids.
+- Resolution: compat — ids generated on read use the full child name, as in Magic, because they appear in written files and netlists; such ids are always read back; with `magic-compat` OFF, the part after the last `/` is used, as when linking (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-9: Natural-sort comparator not antisymmetric
 - Kind: bug
@@ -64,6 +72,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellname.c:676-713
 - Options: replicate (impossible deterministically) | fix (shorter first)
 - Recommendation: fix with shorter-first; affects port renumbering, `.mag` use order and property order (cell-* owners should align).
+- Resolution: fix — same comparator as Q-CELL-12: the total natural order of `cell-file-format`, with a proper prefix sorting first (D-9, 2026-11-07).
 
 ### Q-MODEL-10: Duplicate detection in port renumbering is case-sensitive
 - Kind: quirk
@@ -71,6 +80,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: commands/CmdLQ.c:2100-2112
 - Options: replicate | fix
 - Recommendation: replicate.
+- Resolution: compat — index sharing compares case-sensitively, as in Magic (it changes port indices); with `magic-compat` OFF, it compares case-insensitively, like the sort (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-11: Label size adjustment threshold
 - Kind: doc-mismatch
@@ -78,6 +88,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBlabel.c:672-718
 - Options: replicate code | implement comment
 - Recommendation: replicate code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-MODEL-12: Undo of paint does not mark the cell modified
 - Kind: bug
@@ -85,6 +96,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBundo.c:306-420
 - Options: replicate | fix (mark modified on any replay)
 - Recommendation: fix; verify with MODEL-G-040.
+- Resolution: fix — the cell differs from disk while its modified flag is clear, so the change can be lost on exit without a prompt (silent data loss); undo and redo replays mark the affected cells modified (X-2 tier 1, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-13: Lock/unlock does not mark the parent modified
 - Kind: bug
@@ -92,6 +104,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellname.c:1260-1300, database/DBio.c:6247
 - Options: replicate | fix
 - Recommendation: fix.
+- Resolution: fix — the lock flag is saved in `.mag`, so an unflagged change can be lost on exit without a prompt (silent data loss); locking or unlocking marks the parent modified (X-2 tier 1, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-14: Property changes are not undoable
 - Kind: quirk
@@ -107,6 +120,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellname.c:2122-2155
 - Options: replicate | fix
 - Recommendation: verify the `cellname rename` command behaviour (cmd owner) before deciding.
+- Resolution: fix — `cellname rename` leaves the renamed cell unflagged, so quitting loses the cell under its new name while saved parents reference it (silent data loss); the renamed definition is marked modified (X-2 tier 1, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-16: Mask-hint plane lookup uses the wrong key on CIF/GDS read
 - Kind: bug
@@ -128,6 +142,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/database.h.in:299-301, database/DBio.c:4845-4862
 - Options: replicate (lose on save) | fix (write names; reader must accept them)
 - Recommendation: decide with cell-* owner; default replicate for byte-identical output.
+- Resolution: fix — data loss (named in X-2): reset, scan and tieoff are written and read back, as decided for Q-CELL-6 (X-2 tier 1, 2026-11-07).
 
 ### Q-MODEL-19: Bounding box includes DRC error and hint planes
 - Kind: quirk
@@ -135,6 +150,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBcellbox.c:575-585
 - Options: replicate | fix (paint planes only)
 - Recommendation: replicate (box appears in `.mag` and drives array/overlap computations).
+- Resolution: compat — DRC error and hint planes extend the bounding box, as in Magic, because the box is written to `.mag` and drives array and overlap computations; with `magic-compat` OFF, only paint planes count (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-20: Flattened labels keep untransformed font attributes
 - Kind: bug
@@ -142,6 +158,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: commands/CmdFI.c:1990-2005
 - Options: replicate | fix (transform like hierarchical copies do)
 - Recommendation: fix; record as intentional difference.
+- Resolution: compat — flatten copies font rotation and offset untransformed, as in Magic, because the values are written to the flattened cell; with `magic-compat` OFF, they are transformed as hierarchical copies do (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-21: Undo history limit
 - Kind: ambiguity
@@ -156,6 +173,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint2.c:272-277,380-417
 - Options: replicate | fix
 - Recommendation: replicate until a command-level test shows the effect.
+- Resolution: compat — erase-valid ignores stacked types in its mask, as in Magic; with `magic-compat` OFF, it decomposes them into residues, like paint-valid (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-23: Paint/erase always mark modified
 - Kind: quirk
@@ -163,6 +181,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint2.c:65,177
 - Options: replicate | fix
 - Recommendation: replicate (users rely on the prompt-on-exit behaviour).
+- Resolution: n/a — intended behaviour: every paint and erase marks the cell modified, and users rely on the resulting prompt on exit; the spec keeps it (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-24: Geometry beyond the plane limits
 - Kind: ambiguity
@@ -170,6 +189,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: tiles/tile.h:149-165, tiles/tile.c:67
 - Options: clip | reject with error
 - Recommendation: reject with an error message.
+- Resolution: fix — geometry beyond ±(2^30−6) corrupts the tile plane and overflows transforms (undefined behaviour); it is rejected with an error (X-2 tier 1, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-25: Property listing order
 - Kind: ambiguity
@@ -191,6 +211,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint.c:282-286, database/DBtiles.c:556-558
 - Options: replicate | atomic operations with cancellation before commit
 - Recommendation: atomic operations; on iPadOS there are no signals, use cooperative cancellation.
+- Resolution: platform — paint and search are atomic, with cooperative cancellation before commit on every platform (no signals on iPadOS); an interrupted operation leaves no partial paint (X-4, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-28: Flatten in place is not undoable
 - Kind: quirk
@@ -206,6 +227,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: database/DBpaint2.c:179-192, database/DBtpaint.c:199-218
 - Options: replicate | fix (clear all planes)
 - Recommendation: replicate at the data-model level; commands use explicit masks.
+- Resolution: compat — erasing space is a no-op at the data-model level, as in Magic; commands use explicit masks; with `magic-compat` OFF, erasing space clears every type in the area (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MODEL-30: `undo 0` enables and `redo 0` disables undo recording
 - Kind: quirk

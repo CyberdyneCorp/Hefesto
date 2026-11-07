@@ -85,7 +85,7 @@ For a technology `styletype` value T and display class D, the dstyle file name S
 | Indexed or true color, any other depth ≥ 2 | `24bit` |
 | Monochrome (depth 0 or 1) | `bw` |
 
-If `T.D.dstyle` cannot be opened, Magic tries `T.D.dstyle5`. That fallback never succeeds (see Q-UI-1). If neither name is found, the message SHALL be `Couldn't open display styles file "T.D.dstyle5"` and the load SHALL fail.
+If `T.D.dstyle` cannot be opened, Magic tries `T.D.dstyle5`. In Magic that fallback never succeeds. Hefesto SHALL parse a `.dstyle5` file found this way as a version-5 file (see Q-UI-1). If neither name is found, the message SHALL be `Couldn't open display styles file "T.D.dstyle5"` and the load SHALL fail.
 
 Hefesto's default class SHALL be `OpenGL`; the other classes SHALL be selectable in settings (decision X-5, see Q-UI-8 and capability `hefesto-rendering`).
 
@@ -132,11 +132,11 @@ row           = version <= 6 ? octal : hex ;         (* hex digits without 0x *)
 Section rules:
 - `version` SHALL set the format version. If the file has no `version` section, the version SHALL be 5. If the number cannot be read, the version SHALL be 6 and the message `DStyle format version could not be read: assuming version 6` SHALL be printed.
 - `display_styles` SHALL come before `layout_styles` and `pale_styles`. Otherwise the error `DStyle sections out of order: display_styles must come before layout_styles and pale_styles` SHALL be reported and the load SHALL fail.
-- `layout_styles` after `pale_styles` is fatal in Magic: the process exits with status 1 (see Q-UI-2).
+- `layout_styles` after `pale_styles` is fatal in Magic: the process exits with status 1. Hefesto SHALL never exit because of a style file. It SHALL report a load error that rejects the file, whatever the `magic-compat` setting, and SHALL keep running (see Q-UI-2).
 - `stipples` MAY appear anywhere and MAY be omitted.
 - An integer-looking word in header position SHALL produce `Unexpected empty line in .dstyle file.` The line SHALL then be treated as a data line of the current section.
 - Any other unknown header SHALL produce `Bad section name "X" in .dstyle file.` and the load SHALL fail (see Q-UI-3).
-- Content before the first blank line, other than comments, has undefined meaning (see Q-UI-4).
+- Content before the first blank line, other than comments, has undefined meaning in Magic. Hefesto SHALL treat the first non-comment line of the file as a section header (see Q-UI-4).
 
 Compatibility: exact
 (Magic ref: graphics/grDStyle.c:405-586, graphics/grDStyle.c:199-282, utils/strdup.c:92-105, utils/lookupfull.c:52-75)
@@ -166,10 +166,10 @@ Compatibility: exact
 Each style line SHALL be interpreted as follows:
 - `mask` and `color` SHALL be ANDed with the display's valid-plane mask. On a GPU display the plane mask covers 24 bits, so values pass through unchanged.
 - `color` SHALL first be parsed as an integer. If that fails, it SHALL be looked up by exact name among the color-map entry names. An unknown name gives color −1, which after masking becomes the all-ones plane mask (see Q-UI-5).
-- If `num` is an integer string (optional sign, then digits), it SHALL become the style's ordinal. Otherwise the ordinal SHALL be 1 (see Q-UI-5).
+- If `num` is an integer string (optional sign, then digits), it SHALL become the style's ordinal. Otherwise the ordinal SHALL be 1 (see Q-UI-5). With `magic-compat` OFF, a non-integer `num` SHALL take the next ordinal in sequence, and an unknown color name SHALL make the line an error.
 - `fill` SHALL be matched case-insensitively against the full words `solid`, `cross`, `outline`, `stipple`, `grid`. A non-matching fill SHALL make the line an error.
 - `short_name` SHALL be stored as its 7-bit value.
-- The long name SHALL be stored only if present. A line with fewer than 7 fields SHALL be an error.
+- The long name SHALL be stored only if present. A style without a long name SHALL never match a lookup by name (Magic crashes on that lookup; see Q-UI-5). A line with fewer than 7 fields SHALL be an error.
 - Any style-line error SHALL report `Style line contained format error: <line>` and the whole load SHALL fail.
 
 The meaning of `mask` depends on the display class:
@@ -194,7 +194,7 @@ At the `layout_styles` header, the number of display-style lines read so far SHA
 - If it is smaller, report `Error: Display style file defines only K of 52 required internal styles.`
 - If it is larger, report `Error: Display style file defines too many (K) internal styles; should be 52.`
 
-In both cases loading continues and the indices of all later styles shift by the difference (see Q-UI-2).
+In both cases Magic continues loading and the indices of all later styles shift by the difference. With `magic-compat` ON (the default), Hefesto SHALL do the same: report the error and continue loading, so that third-party PDK style files still load. With `magic-compat` OFF, Hefesto SHALL reject the file (see Q-UI-2).
 
 At the end of the file:
 - If any of `display_styles`, `layout_styles` or `pale_styles` is missing, the system SHALL report `Not all required style sections were read.  Missing sections are:` followed by the missing names, and the load SHALL fail.
@@ -204,6 +204,11 @@ A failed load SHALL leave no style table.
 
 Compatibility: exact
 (Magic ref: graphics/grDStyle.c:497-520, graphics/grDStyle.c:588-645)
+
+#### Scenario: Wrong display-style count with magic-compat ON
+- **GIVEN** a dstyle file with 51 display-style lines and `magic-compat` ON
+- **WHEN** it is loaded
+- **THEN** `Error: Display style file defines only 51 of 52 required internal styles.` SHALL be reported and loading SHALL continue with the later indices shifted by one
 
 #### Scenario: Pale count mismatch
 - **GIVEN** a file with 120 layout lines and 119 pale lines
@@ -258,7 +263,7 @@ entry      = int , ws , int , ws , int , ws , int , [ ws , name ] , newline ;
                                              (* red green blue maxIndex [name]; name = rest of line, <= 99 chars *)
 ```
 
-Lines SHALL be read up to 127 characters. Blank lines are NOT allowed and SHALL be reported as syntax errors (see Q-UI-7).
+Lines SHALL be read up to 127 characters. Magic reports blank lines as syntax errors. Hefesto SHALL skip them (see Q-UI-7).
 
 Loading SHALL take two passes:
 1. The color-map size is 1 + the maximum `maxIndex` over all entries. A line with no fourth integer that is not a comment SHALL report `Syntax error in color map file "F.cmap"` and `Last color read was index K`, and loading fails.
@@ -279,10 +284,10 @@ Compatibility: exact
 - **WHEN** the line `220 95 95 1 poly_red` follows `200 200 200 0 background_gray`
 - **THEN** index 1 SHALL be (220,95,95) with name `poly_red`
 
-#### Scenario: Blank line rejected
+#### Scenario: Blank line skipped
 - **GIVEN** a cmap file that contains an empty line
 - **WHEN** it is loaded
-- **THEN** a syntax error SHALL be reported and the color map SHALL NOT be loaded
+- **THEN** the empty line SHALL be skipped and the color map SHALL be loaded, where Magic reports a syntax error
 
 ### Requirement: Color map file writing
 Saving the color map SHALL write `T.C.M.cmap`, opened through the search path in write mode. For each maximal run of consecutive indices with identical RGB, the system SHALL write one line `"%d %d %d %d"` (red green blue last-index-of-run). If the first index of the run has a name, the line SHALL be followed by `" %s"` with that name, and then `"\n"`. Names on later indices of the run SHALL be dropped (see Q-UI-7). If the file cannot be opened, the message SHALL be `Couldn't write color map file "T.C.M.cmap"`.

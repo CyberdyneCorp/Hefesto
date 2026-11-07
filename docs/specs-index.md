@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1979 requirements, 2952 scenarios, 834 open questions.
+**Totals:** 169 capabilities, 1979 requirements, 2953 scenarios, 834 open questions.
 
 ## Hefesto product (native)
 
@@ -283,7 +283,7 @@ Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`app-startup`](../openspec/specs/app-startup/spec.md) | 13 | 19 | Defines how the application starts and ends: - command-line options and file arguments - installation-root and search-path resolution - the order of startup files - default technol… |
-| [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 22 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
+| [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 23 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
 | [`ui-color-window`](../openspec/specs/ui-color-window/spec.md) | 6 | 7 | Defines the `color` window client. It edits one entry of the session color map interactively, using RGB and HSV bars, and loads or saves color-map files. The file format is in `dis… |
 | [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 29 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 8 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |

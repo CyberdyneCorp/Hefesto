@@ -10,6 +10,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: COPYING:1-45
 - Options: (a) ship static, with object files and relink instructions offered on request (the usual LGPL static-linking compliance); (b) embed KLU and numparam as a signed dynamic framework inside the app bundle (allowed on iOS); (c) build without KLU (Sparse 1.3 solver only) and ask upstream to relicense numparam; (d) legal review before deciding.
 - Recommendation: (b) for KLU and numparam as one embedded framework, if legal review agrees. Otherwise (a). Exclude the `table` code models (GPL) in any case, as the spec already requires.
+- Resolution: platform — draft following D-28's recommendation: legal review first, then KLU and numparam as one embedded, signed dynamic framework, or static linking with object files and relink instructions on request if the review says so; the GPL `table` code models are excluded in every case; confirm in D-28 before M9 (D-28, D-5 draft, 2026-11-07).
 
 ### Q-SIM-2: [platform] OSDI / Verilog-A models on iPadOS
 - Kind: platform
@@ -17,6 +18,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: src/osdi/osdiregistry.c:32, src/osdi/osdiregistry.c:340-470, src/osdi/osdi.h:20-21
 - Options: (a) a Hefesto patch adding a static OSDI registry: compile each module at build time with symbol prefixing (for example `objcopy --prefix-symbols`, or an OpenVAF option if one exists) and register the descriptors through a table; (b) upstream such a static-registration API to ngspice; (c) no OSDI on iPad, which drops IHP sg13g2 support there.
 - Recommendation: (a) now, (b) in parallel. Decide the built-in module list (PSP 103.x, `r3_cmc`, `mosvar`, HICUM L2, and possibly BSIM-CMG and EKV) and check each model's license for redistribution in binary form.
+- Resolution: platform — a Hefesto patch adds a static OSDI registry: each module is compiled at build time with prefixed symbols and registered through a table; the same API is proposed upstream; the built-in module list is the one of `simulation-engine-embedding`, each model's license checked for binary redistribution (P-7, P-13, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-SIM-3: [platform] XSPICE code models without dlopen
 - Kind: platform
@@ -97,6 +99,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: src/frontend/inpcom.c:2040-2130, src/frontend/inpcom.c:2160-2314
 - Options: Hefesto resolves and rewrites all paths before ngspice sees them (current spec) | set environment variables in-process with `setenv` before loading.
 - Recommendation: rewrite, as specified. It is deterministic and does not depend on process-global environment state.
+- Resolution: platform — Hefesto resolves and rewrites `.include`/`.lib` paths against the PDK store before ngspice reads the deck; no environment variables are consulted (X-4, hefesto-files-and-pdks, 2026-11-07).
 
 ### Q-SIM-14: Progress reporting tracks only two thread identities
 - Kind: quirk
@@ -132,6 +135,7 @@ These capabilities are `native` and have no Magic counterpart. "Evidence" theref
 - Evidence: src/include/ngspice/sharedspice.h:185-210, src/include/ngspice/sharedspice.h:395-430
 - Options: no switch-level simulation on iPad | embed IRSIM as a library (it is not designed for that) | map `.sim` to an XSPICE digital netlist.
 - Recommendation: defer. Decide together with Q-LEGACY-71.
+- Resolution: platform — no switch-level simulation on iPadOS; IRSIM is desktop-only and embedded ngspice provides simulation on every platform (same answer as Q-LEGACY-71) (X-4, P-13, 2026-11-07).
 
 ### Q-SIM-19: [platform] Background execution on iPadOS
 - Kind: platform

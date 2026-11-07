@@ -10,6 +10,7 @@ The reference is LibreLane, not Magic: `librelane/librelane` @ `8494d4fea0ddd9be
 - Evidence: librelane/steps/step.py:1290-1370, librelane/__main__.py:380-410
 - Options: platform alternative (no flow on iPad; blocks and run results usable read-only) | remote execution on a user-provided server | none
 - Recommendation: follow P-13 and P-17. On iPadOS, running the flow, importing or updating blocks, and exporting macro packages are unavailable. Blocks stored in a project load, display, place, and take part in DRC, extraction and LVS. Run directories stored in a project are browsable read-only. Revisit remote execution only after the desktop flow ships.
+- Resolution: platform — the digital flow is desktop-only; on iPadOS flow runs, block import/update and macro export are unavailable, while stored blocks load, place and take part in DRC, extraction and LVS, and stored run directories are browsable read-only (P-13, P-17, 2026-11-07).
 
 ### Q-DIGITAL-2: Who provisions the PDK for a run
 - Kind: ambiguity

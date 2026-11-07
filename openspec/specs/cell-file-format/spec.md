@@ -103,7 +103,7 @@ Compatibility: exact
 - Every CR byte (0x0D) is discarded. A line ends at LF or at end of file.
 - A line whose first character is `#` is a comment and is skipped entirely. This applies to every line read through the general line reader: header lines, section headers, use-block lines, label, element and property records. Inside a paint section, a line starting with `#` is also skipped.
 - The general line buffer holds at most 2047 characters including the LF. A longer physical line is delivered as several consecutive logical lines. The only exceptions are the `use` line, which is read in full whatever its length, and property values (see "Properties section records").
-- A blank line (a line that contains only LF) is **not** skipped. In every position where a section header, record or use line is expected, it causes a format error. See Q-CELL-1.
+- In Magic, a blank line (a line that contains only LF) is **not** skipped: in every position where a section header, record or use line is expected, it causes a format error. Hefesto SHALL skip blank lines on read, and SHALL never write them (see Q-CELL-1).
 - End of file before the `<< end >>` line is a format error. Any content after `<< end >>` is ignored. Exception: in backup and archive files, the next line is read as a container record (see capability `cell-io-safety`).
 
 (Magic ref: database/DBio.c:4187-4214, database/DBio.c:986-999, database/DBio.c:3117-3140)
@@ -118,11 +118,11 @@ Compatibility: exact
 - **WHEN** it is read
 - **THEN** it SHALL be read identically to the same file with LF line endings
 
-#### Scenario: Blank line is a format error (verify against Magic)
+#### Scenario: Blank line is skipped
 - **GIVEN** a file with an empty line between two paint sections
 - **WHEN** it is read
-- **THEN** the read SHALL stop at the empty line with a format error
-- **AND** the paint read before the empty line SHALL remain in the cell
+- **THEN** the empty line SHALL be skipped without an error
+- **AND** the paint of both sections SHALL be in the cell
 
 ### Requirement: Header parsing
 
@@ -219,7 +219,7 @@ Let the file's ratio be `(nf, df)` from `magscale` (default `(1, 1)`). Let the c
 - **GIVEN** λ ratio (1,1) and an output style whose grid limit forbids refinement by 2
 - **WHEN** a file with `magscale 1 2` containing `rect -3 0 3 5` is read
 - **THEN** the rectangle SHALL be stored as (-1,0)-(1,2), with each value divided by 2 and truncated toward zero
-- **AND** the "Geometry may be lost" warning SHALL NOT be printed, because n = 1 (see Q-CELL-2)
+- **AND** the "Geometry may be lost" warning SHALL be printed, although Magic omits it because n = 1 (see Q-CELL-2)
 
 ### Requirement: Body section dispatch
 
@@ -270,7 +270,7 @@ Compatibility: exact
 **Reading the four integers.**
 - Each integer is an optional `-` followed by decimal digits. Zero digits yield the value 0.
 - After each of the first three integers the next character MUST be whitespace. Otherwise the record is a format error.
-- Before the second, third and fourth integers, any run of whitespace is skipped, and that run may include LF (see Q-CELL-3). As a result, `rect  1 2 3 4` (two spaces after `rect`) is read as (0,1,2,3).
+- Before the second, third and fourth integers, any run of whitespace is skipped, and that run may include LF (see Q-CELL-3). As a result, `rect  1 2 3 4` (two spaces after `rect`) is read as (0,1,2,3). With `magic-compat` OFF, a `rect` or `tri` record SHALL be parsed as whitespace-separated tokens on its own line, and a short or malformed record SHALL be a format error.
 - No overflow checking is performed.
 
 **Remainder of the line.**
@@ -386,7 +386,7 @@ Compatibility: behavioral
 
 - When an instance has the same id as an instance already seen, Magic prints `Duplicate instance-id for cell <child> (<id>) will be renamed`, and that instance's id is cleared.
 - Every instance without an id then receives `<childname>_<k>`. Here k is the smallest non-negative integer, at or above a per-child-definition counter starting at 0, such that the name is not used in the cell. Magic prints `Setting instance-id of cell <child> to <id>`.
-- The order in which instances are visited follows Magic's subcell-plane enumeration, not file order. See Q-CELL-4.
+- Magic visits instances in its subcell-plane enumeration order. Hefesto SHALL visit them in file order, so the later of two instances with the same id is the one renamed (see Q-CELL-4).
 - The naming rule itself belongs to the layout hierarchy capabilities.
 
 (Magic ref: database/DBio.c:1013, database/DBcellname.c:2605-2772)
@@ -417,7 +417,7 @@ Compatibility: exact
 **Field rules.**
 - `<layer>` has at most 49 characters.
 - `<pos>` is the integer position code: 0 = center, 1 = n, 2 = ne, 3 = e, 4 = se, 5 = s, 6 = sw, 7 = w, 8 = nw.
-- `<text>` is everything after the separating whitespace up to the end of the line, including inner and trailing spaces. It is truncated to its first 99 characters (see Q-CELL-5).
+- `<text>` is everything after the separating whitespace up to the end of the line, including inner and trailing spaces. Magic truncates it to its first 99 characters. Hefesto SHALL keep the full text (see Q-CELL-5).
 
 **Malformed records.** A record that does not match prints `Skipping bad "rlabel" line: <line>` (or `flabel` or `label`) and is skipped. A malformed `rlabel` whose sticky token cannot be read prints `Skipping bad "flabel" line`. Skipping a bad record is not a format error.
 
@@ -438,9 +438,9 @@ Compatibility: exact
 - **WHEN** `rlabel metal1 0 0 0 0 0 a b  c` is read
 - **THEN** the label text SHALL be `a b  c`
 
-#### Scenario: Long label text truncated (verify against Magic)
+#### Scenario: Long label text kept
 - **WHEN** an rlabel record has a 120-character text
-- **THEN** the stored label text SHALL be its first 99 characters
+- **THEN** the stored label text SHALL be all 120 characters, where Magic keeps only the first 99
 
 ### Requirement: Port records
 
@@ -449,9 +449,9 @@ Compatibility: exact
 
 Grammar: `port <index> <dirs> [<use> <class> [<shape>]]`.
 
-- **Token count.** The record MUST have exactly 2, 4 or 5 tokens after `port`. With 3 tokens, the record is rejected (see Q-CELL-6).
+- **Token count.** The record MUST have 2, 3, 4 or 5 tokens after `port`. Magic rejects 3 tokens. Hefesto SHALL accept them, reading the third token as `<class>` and leaving the use unset, because that is the line Magic writes for the uses reset, scan and tieoff (see Q-CELL-6).
 - **`<dirs>`.** At most 4 characters from `n`, `s`, `e`, `w`, each setting the corresponding connection direction. Other letters are ignored.
-- **`<use>`.** Selected by its first letter: `s` signal, `a` analog, `p` power, `g` ground, `c` clock, `d` default. Any other letter prints `Ignoring unknown "port" use: <use>` and leaves use unset.
+- **`<use>`.** The full words `reset`, `scan` and `tieoff` select those uses (Hefesto only, Q-CELL-6). Otherwise selected by its first letter: `s` signal, `a` analog, `p` power, `g` ground, `c` clock, `d` default. Any other letter prints `Ignoring unknown "port" use: <use>` and leaves use unset.
 - **`<class>`.** Selected by its first letter: `i` input, `o` output, `t` tristate, `b` bidirectional, `f` feedthrough, `d` default. Any other letter prints `Ignoring unknown "port" use: <use>`. The message names the use token (see Q-CELL-6).
 - **`<shape>`.** Selected by its first letter: `a` abutment, `r` ring, `f` feedthrough, `d` default. Any other letter prints `Ignoring unknown "port" shape: <shape>`.
 - **Rejection.** The record is skipped with `Skipping bad "port" line: <line>` when there is no preceding label, when the preceding label already has any direction set, or when the token count is wrong.
@@ -462,9 +462,9 @@ Grammar: `port <index> <dirs> [<use> <class> [<shape>]]`.
 - **WHEN** `rlabel metal1 0 0 1 1 0 A` is followed by `port 2 ew signal input`
 - **THEN** label `A` SHALL be port 2 with directions east and west, use signal and class input
 
-#### Scenario: Three-token port rejected
-- **WHEN** a label is followed by `port 1 nsew power`
-- **THEN** the port line SHALL be skipped with `Skipping bad "port" line` and the label SHALL NOT be a port
+#### Scenario: Three-token port accepted
+- **WHEN** a label is followed by `port 1 nsew input`
+- **THEN** the label SHALL be port 1 with all four directions, class input and the use unset, where Magic skips the line
 
 ### Requirement: Element records
 
@@ -513,7 +513,7 @@ Compatibility: exact
 - `integer`: whitespace-separated integers (base auto-detected, as in C `strtol` with base 0, when validating; stored using decimal `%d` parsing). Stored unscaled.
 - `double`: 64-bit integers, same rules, stored unscaled.
 - `dimension`: integers scaled by the read scale.
-- If any token of an `integer`, `double` or `dimension` value fails to parse as an integer, Magic stores the raw value as a string property and then also overwrites it with a numeric property built from the tokens. This is a memory-safety defect (see Q-CELL-8).
+- If any token of an `integer`, `double` or `dimension` value fails to parse as an integer, Magic stores the raw value as a string property and then also overwrites it with a numeric property built from the tokens. This is a memory-safety defect (see Q-CELL-8). Hefesto SHALL store the raw value as a string property and stop.
 
 **`string` values with reserved keys.**
 - `GDS_FILE`: stored as a string, and the cell is marked as a vendor (read-only GDS) cell (see capability `gds-read`).
@@ -589,7 +589,7 @@ Compatibility: exact
 
   Stop early when g reaches 1. Then r = g.
 
-**Values not folded into r.** Built-in-type tiles (DRC check and error tiles, router hints), flabel size and offsets, and element coordinates are not part of r. They are later divided by r with truncation toward zero (see Q-CELL-9).
+**Values not folded into r.** Built-in-type tiles (DRC check and error tiles, router hints), flabel size and offsets, and element coordinates are not part of r. They are later divided by r with truncation toward zero (see Q-CELL-9). With `magic-compat` OFF, these values SHALL also be folded into r.
 
 **Header lines.**
 1. `magic`
@@ -628,7 +628,7 @@ Compatibility: exact
 **Records.**
 - A non-split tile gives `rect <l> <b> <r> <t>` (each value divided by r).
 - A split tile gives `tri <l> <b> <r> <t> <corner>`. The corner is `nw` if T is on the left side and the diagonal direction bit is 0, `sw` if left and the bit is 1, `se` if right and the bit is 0, and `ne` if right and the bit is 1.
-- A split tile is reported once for each side whose type is in M. Each report writes the left-side record if the left side's type is in M, and the right-side record otherwise. As a result, when both sides match (for example a stacked contact on one side and one of its residues on the other), the left-side record is written twice (see Q-CELL-15).
+- A split tile is reported once for each side whose type is in M. Each report writes the left-side record if the left side's type is in M, and the right-side record otherwise. As a result, when both sides match (for example a stacked contact on one side and one of its residues on the other), the left-side record is written twice (see Q-CELL-15). With `magic-compat` OFF, each side SHALL be written once, with its own record.
 
 **Stacked contacts.** A stacked contact tile is written once under each of its residue types, so stacked types never appear as section names.
 
@@ -694,7 +694,7 @@ Compatibility: exact
 - Rendered-font label: `flabel <type long name> [s ]<x1> <y1> <x2> <y2> <pos> <font name> <size/r> <rotation> <ox/r> <oy/r> <text>`.
 
 **Port records.** If the label has any connection direction, a port record follows its label: `port <index> <dirs>`, where `<dirs>` concatenates `n`, `s`, `e`, `w` in that order for the directions that are set. If the label's use, class or shape is non-default, the record continues with:
-- the use, written as ` signal`, ` analog`, ` power`, ` ground`, ` clock` or ` default`. Uses reset, scan and tieoff write nothing (see Q-CELL-6).
+- the use, written as ` signal`, ` analog`, ` power`, ` ground`, ` clock` or ` default`. Magic writes nothing for the uses reset, scan and tieoff. Hefesto SHALL write them as ` reset`, ` scan` and ` tieoff` (see Q-CELL-6).
 - the class, written as ` input`, ` output`, ` tristate`, ` bidirectional`, ` feedthrough` or ` default`.
 - the shape, written as ` abutment`, ` ring` or ` feedthrough`. A default shape writes nothing.
 
@@ -740,7 +740,7 @@ Compatibility: exact
   - double: ` %lld` for each value;
   - plane: ` %d %d %d %d` of each non-space tile's coordinates divided by r, in plane enumeration order.
 
-**Round-trip consequence.** In property compat mode, integer, double and dimension properties are re-read as strings, unless their key is one of the reserved keys listed in "Properties section records" (see Q-CELL-7).
+**Round-trip consequence.** In property compat mode, integer, double and dimension properties are re-read as strings, unless their key is one of the reserved keys listed in "Properties section records" (see Q-CELL-7). With `magic-compat` OFF, properties SHALL be written with their own type, and a property with an empty value SHALL be written and read back as empty.
 
 (Magic ref: database/DBio.c:4918-4944, database/DBio.c:4981-5110, database/DBprop.c:37, commands/CmdLQ.c:2525-2541)
 
@@ -807,7 +807,7 @@ Compatibility: behavioral
 - The cell is not renamed.
 - No read-only check, locking or temporary file is used.
 - On success, Magic prints `Saved cell <cell> as a sequence of magic commands (file <file>).`.
-- If the file cannot be created, the save continues as a normal `.mag` save to `<file>.tcl.mag` (see Q-CELL-13).
+- If the file cannot be created, Magic continues with a normal `.mag` save to `<file>.tcl.mag`. Hefesto SHALL instead report the failure and write nothing (see Q-CELL-13).
 
 (Magic ref: database/DBio.c:5629-5646, commands/CmdSubrs.c:754-769)
 
@@ -838,7 +838,7 @@ box values 0 0 0 0
 - A non-split tile gives `box values l b r t` followed by `paint <name of the tile's actual type>`.
 - A split tile gives `box values ...` followed by one `splitpaint <dir> <type>` line for each non-space side. `<dir>` is taken from the table `nw, se, sw, ne`, indexed by 2·direction + side, and the same `<dir>` is used for both sides (see Q-CELL-14).
 
-**3. Instances.** Instances are written in enumeration order, as `box position <llx> <lly>` of the instance bounding box, `getcell <child>` and `identify <id>`. Transform, array, lock and path are not written.
+**3. Instances.** Instances are written in enumeration order, as `box position <llx> <lly>` of the instance bounding box, `getcell <child>` and `identify <id>`. Transform, array, lock and path are not written. Hefesto SHALL NOT replicate the defects of this requirement: it SHALL write each split side with its own direction, the instance transform, array, lock and path, label offsets converted like sizes, quoted texts, the port uses, and dimension properties in internal units (see Q-CELL-14).
 
 **4. Labels.** For each label:
 - `box values ...`.

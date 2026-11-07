@@ -25,7 +25,7 @@ Each cell definition SHALL carry an optional cell file path. The rules for setti
 Compatibility: behavioral
 
 - **Naming a definition.** A name that ends in `.mag` loses that suffix when it becomes a definition name.
-- **After a successful read.** The cell file path becomes the opened file name. A trailing `.mag` is removed. A trailing `.mag.gz` is kept as-is (see Q-CELL-16).
+- **After a successful read.** The cell file path becomes the opened file name. A trailing `.mag` is removed. Magic keeps a trailing `.mag.gz` as-is, so the next save writes `x.mag.gz.mag`. Hefesto SHALL remove a trailing `.mag.gz` too (see Q-CELL-16).
 - **After a failed lookup with no path recorded.** The cell file path becomes `<cellname>.mag`, with the suffix.
 - **After a successful save.** The cell file path becomes the written file name with its last extension removed.
 - **`~` and `$`.** These may appear at the start of a cell file path and are expanded only when a file is opened.
@@ -78,7 +78,7 @@ Compatibility: behavioral
   1. F + `.mag`, opened directly. A relative F is relative to the working directory.
   2. F + `.mag.gz`, opened directly.
   3. C + `.mag` through Path, then through the library path.
-  4. A gzip retry through Path and then the library path. Magic uses F rather than C as the name for this retry (see Q-CELL-18).
+  4. A gzip retry through Path and then the library path. Magic uses F rather than C as the name for this retry. Hefesto SHALL use C (see Q-CELL-18).
   5. If a search-path candidate (steps 3–4) succeeds, the following warnings are printed:
      - `Warning:  Parent cell lists instance of "<C>" at bad file path <F>.`
      - `The cell exists in the search paths at <found>.`
@@ -92,7 +92,7 @@ Compatibility: behavioral
 1. C + `.mag` through Path, then through the library path.
 2. C + `.mag.gz` through Path, then through the library path.
 
-**Compressed counterpart preference.** When file locking is enabled (the default), every open first checks whether `<candidate>.gz` is readable and, if so, opens that file instead. The recorded name is still the candidate. With locking enabled, `x.mag.gz` therefore wins over `x.mag` (see Q-CELL-16).
+**Compressed counterpart preference.** When file locking is enabled (the default), every open first checks whether `<candidate>.gz` is readable and, if so, opens that file instead. The recorded name is still the candidate. With locking enabled, `x.mag.gz` therefore wins over `x.mag` in Magic. When both are readable, Hefesto SHALL open `x.mag` and warn (see Q-CELL-16).
 
 **Recording the result.** On success, the cell is marked available, its not-found flag is cleared, and the recorded path is updated (see "Cell file path bookkeeping"). At full verbosity, Magic prints `Cell <C> read from path <dir>` or `Cell <C> read from current working directory`.
 
@@ -131,7 +131,7 @@ For the path token P of a `use` line in a parent being read, Hefesto SHALL compu
 Compatibility: behavioral
 
 1. **Trim.** Leading spaces and tabs are removed. A path that is only a newline counts as empty.
-2. **Variable expansion.** If P begins with `$`, the variable name runs until `}`, `/`, whitespace or end, and may be enclosed in `{}`. If the variable is defined, the `$NAME` or `${NAME}` prefix is replaced by its value. Otherwise P is kept unchanged (see Q-CELL-19).
+2. **Variable expansion.** If P begins with `$`, the variable name runs until `}`, `/`, whitespace or end, and may be enclosed in `{}`. If the variable is defined, the `$NAME` or `${NAME}` prefix is replaced by its value. Otherwise Magic keeps P unchanged. Hefesto SHALL instead report `undefined variable <NAME>` and skip steps 3 and 4, going straight to the search-path fallback (see Q-CELL-19).
 3. **Parent-relative join.** This step applies only on the first use of this child name in the file. If P is empty or does not begin with `/` or `~`, and the parent's cell file path contains `/`, let Pd be the parent's directory (the text before the last `/`):
    - If P is empty, D = Pd.
    - Otherwise D = collapse(Pd + `/` + P), using the collapse algorithm in "Path normalization algorithms".
@@ -212,7 +212,7 @@ Compatibility: exact
      - If q is non-empty, the path is q.
      - If q failed, the path is subst(absDir(cdir)), when absDir succeeds.
    - If isDirPrefix holds, the preliminary path is kept.
-5. If a path results, it is written after the id, separated by one space, without quoting. C is then marked as written for the rest of this file. A path that contains whitespace therefore cannot be read back (see Q-CELL-41).
+5. If a path results, it is written after the id, separated by one space, without quoting. C is then marked as written for the rest of this file. A path that contains whitespace therefore cannot be read back (see Q-CELL-41). Hefesto SHALL refuse, when they are created, whitespace in cell names, instance ids and paths, and newlines in label texts and property values.
 
 (Magic ref: database/DBio.c:6130-6243, database/DBio.c:2097-2134)
 
@@ -246,8 +246,8 @@ Compatibility: exact
 The function subst(s) SHALL rewrite a directory string as follows.
 Compatibility: exact
 
-1. **PDK variables.** Check the variables `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT`, in that order. For the first one that is defined with value V such that s starts with the characters of V, the result is `$` + name + the rest of s. This is a plain character-prefix test, not a component test (see Q-CELL-20).
-2. **Home directory.** Otherwise, if s is absolute and the child's cell file directory starts with HOME immediately followed by `/`, the result is `~` + the part of that directory after HOME. Magic tests the child's recorded directory here, not s (see Q-CELL-21).
+1. **PDK variables.** Check the variables `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT`, in that order. For the first one that is defined with value V such that s starts with the characters of V, the result is `$` + name + the rest of s. In Magic this is a plain character-prefix test, not a component test. Hefesto SHALL also require V to be followed in s by `/` or the end of s (see Q-CELL-20).
+2. **Home directory.** Otherwise, if s is absolute and the child's cell file directory starts with HOME immediately followed by `/`, the result is `~` + the part of that directory after HOME. Magic tests the child's recorded directory here, not s (see Q-CELL-21). With `magic-compat` OFF, s SHALL be tested.
 3. **Otherwise** s is returned unchanged.
 
 Step 1 SHALL read the scripting interpreter's global variables, which are typically set by a PDK's startup script, as in Magic's Tcl build. How those variables are set on each platform is a host mechanism (Q-CELL-17 [platform]). Informative: Magic's non-Tcl build skips step 1.
@@ -266,15 +266,15 @@ Compatibility: behavioral
 
 **Case A: the recorded path contains `/`.** Let E be the existing directory (the recorded path before its last `/`). The paths are equivalent ("OK") when any of the following holds:
 
-1. D starts with `~` and E equals HOME + D[1:], or D equals the PWD environment value. Magic compares D with PWD, not with E, and fails if PWD is unset (see Q-CELL-39).
-2. E and D, as directories, have the same inode number (see Q-CELL-22).
+1. D starts with `~` and E equals HOME + D[1:], or D equals the PWD environment value. Magic compares D with PWD, not with E, and fails if PWD is unset (see Q-CELL-39). Hefesto SHALL use the process working directory wherever this procedure uses PWD, so case B always runs.
+2. E and D, as directories, have the same inode number. Hefesto SHALL compare the platform file identity instead: device and inode, or the file resource identifier on Apple platforms (see Q-CELL-22).
 3. *Missing test.* Otherwise, if no file N.mag exists through D, D is noted as missing.
-4. If D is not missing and both directories are in git work trees with the same HEAD commit, Magic prints `Cells <N> in <E> and <D> have matching git repository commits and can be considered equivalent.` and treats them as OK. Magic's invocation is defective (see Q-CELL-23).
+4. If D is not missing and both directories are in git work trees with the same HEAD commit, Magic prints `Cells <N> in <E> and <D> have matching git repository commits and can be considered equivalent.` and treats them as OK. Magic's invocation is defective (see Q-CELL-23). Hefesto SHALL compare the HEAD commits of the repositories that contain E and D, and SHALL treat the test as inconclusive where git is unavailable.
 
 If the paths are still not OK:
 
 - **D is missing.** The existing definition is kept. Magic prints `Bad cell path in <parent>:  Instance of cell <N> specifies path <D>, which does not contain the cell.  Cell previously read from <E> will be used instead.`, or the variant `..., which does not exist.  ...` when D is not a directory.
-- **D is not missing.** Magic prints `Duplicate cell in <parent>:  Instance of cell <N> is from path <D> but cell was previously read from <E>.`. The existing definition is renamed to `N__k`, where k is the smallest integer ≥ 0 not used as a definition name, with the message `Cell name conflict:  Renaming original cell to N__k.`. A new placeholder N is created with the child timestamp and box guess and recorded path `D/N.mag`. The renamed definition keeps its old file path, and its parents are marked modified (see Q-CELL-24).
+- **D is not missing.** Magic prints `Duplicate cell in <parent>:  Instance of cell <N> is from path <D> but cell was previously read from <E>.`. The existing definition is renamed to `N__k`, where k is the smallest integer ≥ 0 not used as a definition name, with the message `Cell name conflict:  Renaming original cell to N__k.`. A new placeholder N is created with the child timestamp and box guess and recorded path `D/N.mag`. The renamed definition keeps its old file path, and its parents are marked modified (see Q-CELL-24). Hefesto SHALL warn when it saves a parent that references the renamed definition.
 
 **Case B: the recorded path has no `/`.** This check runs only when PWD is defined.
 
@@ -369,7 +369,7 @@ Compatibility: behavioral
    - Within a directory, an entry named exactly T is visited first, and the others follow in directory-listing order. `.` and `..` are skipped.
    - A non-directory entry named `T.tech` ends the search with the containing directory as the result. Other directory entries are searched recursively.
    - Symbolic links to directories are not followed where the directory listing reports entry types.
-   - The result depends on directory-listing order (see Q-CELL-40).
+   - In Magic the result depends on directory-listing order. Hefesto SHALL visit the other entries sorted by name, by byte comparison (see Q-CELL-40).
 3. **Startup script.** If found, and a `T.magicrc` file exists in that directory, it is executed first.
 4. **Register the directory.** If found, the directory is appended to the system search path.
 5. **Load.** Whether or not a directory was found, Magic prints `Loading technology T` and loads T by name as a full load, without the readability pre-check (capability `tech-loading-and-scaling`). When no directory was found, the normal technology file search rules apply. On failure Magic prints `Error in loading technology file`.

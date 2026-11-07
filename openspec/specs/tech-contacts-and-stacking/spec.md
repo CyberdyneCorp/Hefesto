@@ -35,7 +35,7 @@ Because step 1 resolves the first token by unique prefix, a technology with a ty
 
 A contact declaration needs at least one residue to pass the home-plane check in "Residue validation". A line with only a base type fails with `Contact type <t> missing a residue on its home plane`.
 
-Declaring the same base type twice merges the residue sets and registers the contact twice (see Q-TECH-17).
+Declaring the same base type twice merges the residue sets and registers the contact twice (see Q-TECH-17). With `magic-compat` OFF, a first token that exactly equals `contact`, `device` or `stackable` SHALL be read as the keyword, and redeclaring a contact SHALL be an error that rejects the line.
 
 **Init:** when the `contact` header is read, every type becomes a non-contact with an empty residue set and an empty plane set, and the contact list is emptied.
 

@@ -13,7 +13,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 1. **The core never depends on the UI.** Raven is confined to the desktop shell (`hefesto-architecture`). The CLI and every test run headless.
 2. **Verification drives each milestone.** Before work on a milestone starts:
-   - Its open questions are resolved (`Resolution:` lines, per `hefesto-magic-compat-mode`).
+   - Its open questions are resolved (`Resolution:` lines, per `hefesto-magic-compat-mode`). `scripts/check_milestone_readiness.py --milestone M<n>` lists the entries its capabilities cite that are still unresolved; CI runs it with `--through M1`, the gate for starting development.
    - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164, xschem @ 4142e6d6 (for the schematic cases).
 3. **Exit criteria are the same for every milestone:**
    - The area's golden cases pass under the canonical comparison of `hefesto-output-determinism`.

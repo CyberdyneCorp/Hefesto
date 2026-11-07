@@ -54,7 +54,7 @@ When a use is linked into a parent without an identifier, the system SHALL assig
 Compatibility: exact
 
 - Only existing identifiers of the form `<base>_<something>` are considered taken; the search starts at 0 every time.
-- When a cell is read and its uses are made unique (duplicates or missing identifiers), the first use with a given identifier keeps it; each later duplicate loses its identifier; then every use without an identifier receives `<defname>_<k>` where `<defname>` is the child's full name (including any `/`, see Q-MODEL-8) and `<k>` starts at 0 per child definition and increases, skipping identifiers already present.
+- When a cell is read and its uses are made unique (duplicates or missing identifiers), the first use with a given identifier keeps it; each later duplicate loses its identifier; then every use without an identifier receives `<defname>_<k>` where `<defname>` is the child's full name (including any `/`, see Q-MODEL-8; with `magic-compat` off, it SHALL be the part after the last `/`) and `<k>` starts at 0 per child definition and increases, skipping identifiers already present.
 - Identifier lookup ignores a trailing array subscript: `foo_0[1,2]` and `foo_0[3]` find use `foo_0`; if that fails the full string is tried.
 - Renaming a use to its own name is a no-op; renaming to an identifier already used in the parent fails; a successful rename is undoable and marks the parent modified (but does not request a new timestamp).
 
@@ -125,7 +125,7 @@ Compatibility: exact
 The bounding box of a definition SHALL be the union of all paint on planes 1 and above except the DRC check plane, the bounding boxes of all subcell uses, and the rectangles of all labels; the extended bounding box SHALL additionally include subcell extended boxes and the rendered text box of every outline-font label; degenerate results SHALL be normalized as described.
 Compatibility: exact
 
-- Paint includes DRC error tiles and router hint planes (see Q-MODEL-19).
+- Paint includes DRC error tiles and router hint planes (see Q-MODEL-19). With `magic-compat` OFF, only the paint planes SHALL count.
 - Label rectangles (even zero-size points and lines) contribute their corner points.
 - If nothing at all is present, both boxes are `(0,0)-(1,1)`.
 - If a box has zero width, `xtop = xbot + 1`; zero height, `ytop = ybot + 1` (both boxes independently).
@@ -158,7 +158,7 @@ A use SHALL carry a locked flag that is persisted with the parent and that preve
 Compatibility: behavioral
 
 - Locked uses cannot be moved, copied, rotated, flipped, deleted or edited through selection-based commands (enforced by the `cmd-*` capabilities, chiefly `cmd-selection`); other paint in the parent is unaffected.
-- Locking/unlocking is undoable (recorded as before/after state) but does NOT mark the parent modified (see Q-MODEL-13).
+- Locking/unlocking is undoable (recorded as before/after state) but in Magic does NOT mark the parent modified. Hefesto SHALL mark the parent modified (see Q-MODEL-13).
 - A descend mode exists that skips locked uses (see requirement "Descend rules").
 - In `.mag` files the lock is encoded by a `*` before the instance identifier (see capability `cell-file-format`).
 
@@ -202,7 +202,7 @@ Flattening a cell into a new destination definition SHALL copy all paint (all ty
 Compatibility: behavioral
 
 - Paint is merged per plane through the paint tables (`layout-paint-semantics`, "Copying paint between cells").
-- Labels (default): every label of every level is copied with its rectangle and justification transformed; text becomes the hierarchical path with the last `/` replaced by `.` (e.g. a label `A` inside `x_0/y_1` becomes `x_0/y_1.A`); only labels of the top level keep their port flags and index; font, size, rotation and offset are copied untransformed (see Q-MODEL-20).
+- Labels (default): every label of every level is copied with its rectangle and justification transformed; text becomes the hierarchical path with the last `/` replaced by `.` (e.g. a label `A` inside `x_0/y_1` becomes `x_0/y_1.A`); only labels of the top level keep their port flags and index; font, size, rotation and offset are copied untransformed (see Q-MODEL-20). With `magic-compat` OFF, rotation and offset SHALL be transformed as for hierarchical copies.
 - "Top labels only" copies only the labels of the root level. "No labels" copies none.
 - Properties other than `MASKHINTS_*` are not copied.
 - The destination must not already exist unless a box-limited flatten is requested.
@@ -220,7 +220,7 @@ Compatibility: behavioral
 Flattening a use in place SHALL, for each array element in order (x varying fastest from `xlo` toward `xhi`, then y from `ylo` toward `yhi`), copy the element's paint, labels (per option), mask hints and (for non-"all" modes) non-descended sub-instances into the parent, rename the child's top-level labels with the element prefix, and finally remove the use; the operation SHALL NOT be undoable.
 Compatibility: behavioral
 
-- Top-level child labels are re-created in the parent as non-port labels with text `<id>[x][y]/<text>` (2-D array), `<id>[x]/<text>` or `<id>[y]/<text>` (1-D), or `<id>/<text>`, and the unprefixed copies are removed. Note the `[x][y]` order differs from element naming (`[y,x]`); see Q-MODEL-7.
+- Top-level child labels are re-created in the parent as non-port labels with text `<id>[x][y]/<text>` (2-D array), `<id>[x]/<text>` or `<id>[y]/<text>` (1-D), or `<id>/<text>`, and the unprefixed copies are removed. Note the `[x][y]` order differs from element naming (`[y,x]`); see Q-MODEL-7. With `magic-compat` OFF, the prefix SHALL be `<id>[y][x]/<text>`.
 - Flattening every selected use applies the same procedure to each and deletes them from the selection.
 
 (Magic ref: database/DBcellcopy.c:580-735,781-800, commands/CmdFI.c:2105-2140)
@@ -236,7 +236,7 @@ Compatibility: behavioral
 Renaming a definition SHALL fail for internal cells, for a target name that already exists, and for vendor-GDS (read-only) cells unless forced; a forced rename of a vendor cell SHALL remove its `GDS_FILE`, `GDS_START` and `GDS_END` properties; a successful rename SHALL mark every parent of its uses modified and SHALL NOT be undoable.
 Compatibility: behavioral
 
-- The renamed definition itself is not flagged modified by the rename (see Q-MODEL-15).
+- In Magic, the renamed definition itself is not flagged modified by the rename. Hefesto SHALL mark it modified (see Q-MODEL-15).
 - All uses keep their identifiers and keep referring to the definition.
 
 (Magic ref: database/DBcellname.c:95-175,2122-2155)

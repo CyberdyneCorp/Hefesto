@@ -113,7 +113,7 @@ Compatibility: behavioral
 **Setting a stamp explicitly.** Setting a cell's stamp explicitly with the `cellname timestamp` command:
 - assigns the value;
 - clears the pending mark when the value differs from the current one;
-- does not set the fixed-stamp attribute, even though Magic's code suggests that intent (see Q-CELL-36).
+- does not set the fixed-stamp attribute, even though Magic's code suggests that intent (see Q-CELL-36). With `magic-compat` OFF, it SHALL also set the fixed-stamp attribute.
 
 **GDS timestamps.** GDS reads that do not use a configured date stamp take each structure's creation time from the GDS file (see capability `gds-read`).
 

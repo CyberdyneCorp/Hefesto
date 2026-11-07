@@ -47,6 +47,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: actions.c:825-878; IHP xschemrc:446-450; xschem_sky130 sky130_fd_pr/nfet_01v8.sym
 - Options: run in the sandboxed Tcl like `tcleval` | ignore | re-implement the checks natively
 - Recommendation: run in the sandbox; the procedures only compute and print.
+- Resolution: platform — symbol `drc` procedures run in the sandboxed embedded Tcl interpreter on every platform (X-3, 2026-11-07).
 
 ### Q-SCHEM-7: [platform] Tcl dependence of PDK symbols
 - Kind: platform
@@ -54,6 +55,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: token.c:59-81, xschem.tcl:7224-7298, xschem.tcl:677-698
 - Options: embedded sandboxed Tcl on every platform (decision X-3, capability `hefesto-scripting`) | re-implement the used Tcl subset natively | pre-expand PDK symbols at install time (breaks user edits)
 - Recommendation: embedded Tcl, as already decided for Magic PDK scripts. If the iPadOS App Store fallback of `hefesto-scripting` applies, iPad needs a native evaluator for the exact constructs found in the three PDKs (`subst` with `[ev ...]`, `[ev7 ...]`, `$::VAR`, `[to_eng ...]`), validated by golden cases SCHEM-NL-07/08.
+- Resolution: platform — PDK symbol attributes are evaluated by the sandboxed embedded Tcl interpreter on every platform, iPadOS included; the iPadOS App Store fallback of `hefesto-scripting` covers the rejected-scripts case (X-3, 2026-11-07).
 
 ### Q-SCHEM-8: Tcl procedures and variables required by PDK libraries
 - Kind: ambiguity
@@ -82,6 +84,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: token.c:83-182, save.c:4918-4930
 - Options: Tcl generators only, in the sandbox | allow external programs on desktop | none
 - Recommendation: Tcl only on all platforms (spec); allow external programs on desktop later behind a per-folder trust setting if users need them. iPadOS cannot spawn processes.
+- Resolution: platform — symbol generators run only as Tcl in the sandbox on every platform; no external program is executed, since the sandbox forbids process execution (X-3, X-4, 2026-11-07).
 
 ### Q-SCHEM-12: `expr()` number lexing swallows minus signs
 - Kind: bug
@@ -167,6 +170,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 - Evidence: xinit.c:3552-3610; IHP and sky130 xschemrc
 - Options: provide synthetic `env()` values mapped to the PDK store and the document folder (spec) | parse only `XSCHEM_LIBRARY_PATH` lines
 - Recommendation: synthetic environment in the sandbox; the iPad sandbox grants read access to the PDK store only.
+- Resolution: platform — `xschemrc` runs in the sandboxed Tcl interpreter with synthetic `env()` values mapped to the PDK store and the document folder, settings replacing environment variables (X-3, X-4, 2026-11-07).
 
 ### Q-SCHEM-24: [platform] Touch editing details
 - Kind: platform

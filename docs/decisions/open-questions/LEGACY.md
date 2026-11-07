@@ -73,6 +73,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: garouter/gaSimple.c:455-468
 - Options: replicate (AND of checks performed last) | fix (logical AND of both checks; false when unassigned)
 - Recommendation: fix to AND of both checks and treat unassigned as "not OK"; document possible routing differences.
+- Resolution: fix — compute the terminal-contact clearance flag as the AND of both layer checks and treat an unassigned flag as "not OK", instead of reading an uninitialised value (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-22: Channel type keyword matched by first character only
 - Kind: quirk
@@ -101,6 +102,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: mzrouter/mzMain.c:580-610, doc/html/iroute.html
 - Options: replicate code | follow doc
 - Recommendation: replicate code behavior; correct the Hefesto documentation.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-LEGACY-31: Malformed mzrouter contact line leaves a half-registered contact
 - Kind: bug
@@ -129,6 +131,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: doc/html/iroute.html, irouter/irCommand.c:1445-1460, irouter/irCommand.c:2240-2252
 - Options: replicate code | add aliases
 - Recommendation: replicate code; optionally accept `expandDests` as an alias.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-LEGACY-35: Spacing listings include undefined type slots
 - Kind: bug
@@ -136,6 +139,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: mzrouter/mzTech.c:180-186, irouter/irCommand.c:1890-1900, irouter/irCommand.c:2420-2432
 - Options: replicate | fix (only defined types)
 - Recommendation: fix; emit only defined tile types.
+- Resolution: fix — emit spacing entries only for defined tile types, instead of passing a null type name to the output (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-36: Displaying a boolean parameter reports an error
 - Kind: bug
@@ -143,6 +147,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: utils/set.c (SetNoisyBool: result initialised to -2 and checked even when no value given)
 - Options: replicate | fix
 - Recommendation: fix (suppress the message when no value was supplied).
+- Resolution: fix — print no error when the boolean helper is called only to display a value, instead of formatting a null value (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-50: Plowing of non-Manhattan (split) tiles
 - Kind: ambiguity
@@ -164,6 +169,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: wiring/wireOps.c:385-392, wiring/wireOps.c:845-850
 - Options: replicate (crash) | fix (skip selection when no window)
 - Recommendation: fix; also required for headless/iPadOS operation.
+- Resolution: fix — skip the redisplay when no window shows the edit cell's root, instead of dereferencing a missing window (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-53: wire segment usage message lists coordinates in the wrong order
 - Kind: doc-mismatch
@@ -178,6 +184,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: utils/hash.c:218-262, netmenu/NMnetlist.c:470-575, utils/netlist.c:60-80
 - Options: replicate the LP64/signed-char variant exactly | write nets in a stable order (e.g. file order)
 - Recommendation: replicate the 64-bit, signed-char behaviour (the common Linux x86-64 build) so golden files match; document that order is otherwise not semantically significant.
+- Resolution: compat — the `.net` netlist order is name-keyed hash order and is reproduced exactly with Magic's string hash table and signed key bytes on every platform (X-1 "Name-keyed hash-table order", as amended by D-1, 2026-11-07).
 
 ### Q-LEGACY-71: [platform] Simulator and helper processes on iPadOS
 - Kind: platform
@@ -200,6 +207,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: commands/CmdFI.c:1160-1230, doc/html/getnode.html
 - Options: replicate | tighten parsing
 - Recommendation: replicate (lenient parsing) and document.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-LEGACY-74: Greedy router collapse evaluation reuses a stale split-distance cache
 - Kind: bug
@@ -242,6 +250,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: grouter/grouteChan.c:1025-1065 (glChanRiverBlock)
 - Options: replicate | fix (block when either side is full)
 - Recommendation: replicate.
+- Resolution: n/a — spec follows Magic's code; the source comment is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-LEGACY-80: Density-blockage scan reads one entry past the density vector
 - Kind: bug
@@ -249,6 +258,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: grouter/grouteChan.c:667-760 (glChanBlockDens)
 - Options: fix (check the bound first)
 - Recommendation: fix; no observable change.
+- Resolution: fix — check the index bound before reading the density vector; geometry is unchanged (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-81: Uncollapse "connect to existing track" jog uses the wrong net
 - Kind: bug
@@ -319,6 +329,7 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 - Evidence: mzrouter/mzEstimate.c:1680, 1740, 1300-1310; mzrouter/mzSearch.c:519-524
 - Options: replicate (wraparound) | fix (64-bit/ saturating arithmetic)
 - Recommendation: fix with saturating 64-bit arithmetic; results are identical for realistic layouts.
+- Resolution: fix — use saturating 64-bit arithmetic for edge weights, dominance tests and the adjusted-cost key; results are identical for realistic layouts (X-2 tier 1, 2026-11-07).
 
 ### Q-LEGACY-91: Contact-to-contact spacing checked only within one contact class
 - Kind: quirk

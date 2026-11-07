@@ -78,7 +78,7 @@ Compatibility: behavioral
 - **Result:** the two-element list {L, I}.
 - **Magic's non-Tcl build (informative):** it prints `Internal units per Lambda = <L> / <I>`. The label is the inverse of the printed ratio (see Q-TECH-26).
 - **Setting the fraction:** `tech lambda N [D]`, where N is an integer, first sets I := N and L := D. If D is omitted, L := 1. If D is given but is not an integer, L is unchanged. The fraction is then reduced and reported as above.
-  - Setting it this way rescales no table and no layout (see Q-TECH-26).
+  - Setting it this way rescales no table and no layout (see Q-TECH-26). With `magic-compat` OFF, setting the fraction SHALL be refused with an error that points to `scalegrid`.
 
 (Magic ref: commands/CmdTZ.c:227-243, commands/CmdTZ.c:259-271)
 
@@ -148,7 +148,7 @@ Compatibility: behavioral
   4. Restrict the active set to types 6..255.
 - **`tech revert` (no argument).** Set the active set equal to the tech-file active set, then adjust contacts (below).
 - **`tech revert <list>`.** Let M be the parsed list. For each type in M, set its active bit to its value in the tech-file active set. Then adjust contacts (below).
-  - With `*`, M is the tech-file active set itself. So `tech revert *` re-activates the layers that were active in the technology file, but does not re-lock the layers that were locked there (see Q-TECH-25).
+  - With `*`, M is the tech-file active set itself. So `tech revert *` re-activates the layers that were active in the technology file, but in Magic does not re-lock the layers that were locked there (see Q-TECH-25). Hefesto SHALL also re-lock them, as `tech revert` with no argument does.
 - **Contact adjustment after revert:**
   - Every user contact is unlocked if active and locked otherwise.
   - Every stacked type is made active and unlocked if all its component contacts are active.

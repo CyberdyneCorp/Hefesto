@@ -29,6 +29,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefTech.c:164-171, lef/lefRead.c:732-741, 1960-1963, 3138-3148
 - Options: replicate (impossible: crash) | fix (treat as absent)
 - Recommendation: Fix: treat as absent, as the spec states.
+- Resolution: fix — a table name with no entry is treated as absent (NULL dereference) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-5: New ROUTE entries from LEF LAYER sections have undefined parameters
 - Kind: bug
@@ -36,6 +37,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:3128-3137
 - Options: replicate (impossible) | fix (initialize like a tech `routing` line: DRC defaults, pitch 0, horizontal)
 - Recommendation: Fix: initialize with pitch 0, horizontal direction, and width and spacing as in Q-LEFDEF-1.
+- Resolution: fix — a ROUTE entry created from a LEF LAYER section is initialised like a tech `routing` line: DRC default width and spacing, pitch 0, horizontal (uninitialised memory) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-6: Last SPACING statement in a LEF LAYER wins
 - Kind: quirk
@@ -57,6 +59,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:611-680
 - Options: replicate (impossible for the uninitialized parts) | fix (choose an alias of the same entry; set the class to VIA)
 - Recommendation: Fix.
+- Resolution: fix — a redefined shared via keeps an alias of the same entry as its canonical name and the new entry's class is VIA (uninitialised class, free through the wrong union member) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-9: NONDEFAULTRULE duplicate renaming never increments
 - Kind: bug
@@ -64,6 +67,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:1897-1907
 - Options: replicate (impossible: hang) | fix (try _0, _1, _2, ...)
 - Recommendation: Fix with an incrementing index. The first rename (`_0`) stays as in Magic.
+- Resolution: fix — duplicate NONDEFAULTRULE names try `_0`, `_1`, `_2`, … (infinite loop); the first rename stays `_0` as in Magic (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-10: NONDEFAULTRULE statements that leave `;` swallow the next statement
 - Kind: bug
@@ -113,6 +117,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefCmd.c:244-245, lef/lefRead.c:2345-2350, doc/html/lef.html
 - Options: replicate | fix (implement the import)
 - Recommendation: Replicate. Accept and ignore the flag.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-17: Cut growing uses the output style, not the input style
 - Kind: doc-mismatch
@@ -120,6 +125,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:2453-2483
 - Options: replicate | fix
 - Recommendation: Replicate. The spec follows the code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-18: POLYGON on an unknown layer
 - Kind: bug
@@ -127,6 +133,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:1293-1317, 1045-1065
 - Options: replicate (impossible) | fix (skip, as for RECT)
 - Recommendation: Fix: skip the polygon.
+- Resolution: fix — a POLYGON after a LAYER that resolved to no type is skipped, as a RECT is (paint with type -1) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-19: Empty CLASS or SYMMETRY statement
 - Kind: bug
@@ -134,6 +141,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:2194-2207, 2241-2253
 - Options: replicate (impossible) | fix (store an empty string, or skip)
 - Recommendation: Fix: do not set the property.
+- Resolution: fix — an empty CLASS or SYMMETRY statement sets no property (read past an empty string) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-20: Ignored layers in VIA definitions report errors
 - Kind: quirk
@@ -169,6 +177,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:150-235, utils/path.c:615-646
 - Options: replicate on desktop | platform alternative (document picker or security-scoped bookmarks on iPadOS)
 - Recommendation: Use the search path on Linux and macOS and the sandbox picker on iPadOS. The read semantics do not change.
+- Resolution: platform — LEF and DEF files are found through the cell search path on Linux and macOS and through the document picker or granted folders on iPadOS; read semantics do not change (X-4, hefesto-files-and-pdks, 2026-11-07).
 
 ### Q-LEFDEF-30: LEF write order depends on hash-table iteration
 - Kind: ambiguity
@@ -247,6 +256,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: extract/ExtTech.c:519, extract/ExtTech.c:556, lef/lefWrite.c:1286-1287
 - Options: fix (treat the masks as empty)
 - Recommendation: Treat them as empty. The spec already states this.
+- Resolution: fix — with no extraction style the gate and diffusion masks are empty (uninitialised masks) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-41: writeall macro order depends on subcell enumeration; doc says only cells with ports are written
 - Kind: doc-mismatch
@@ -254,6 +264,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:2246-2291, lef/lefWrite.c:2321-2339, doc/html/lef.html
 - Options: replicate the enumeration order | fix (sort by name)
 - Recommendation: Replicate the documented traversal, and pin down the enumeration order in the database/tile-plane spec. Golden case LEFDEF-140 captures it.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-42: LEFproperties format differs from documentation
 - Kind: doc-mismatch
@@ -261,6 +272,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:2040-2084, lef/lefWrite.c:2139-2200, doc/html/lef.html
 - Options: replicate the code
 - Recommendation: Replicate the code, and correct the Hefesto documentation.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-43: Output file location
 - Kind: platform
@@ -268,6 +280,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:150-235
 - Options: replicate | platform alternative (on iPadOS, use the document container or a user-chosen location)
 - Recommendation: Replicate the naming rules on desktop. On iPadOS, resolve relative paths against the project's document folder.
+- Resolution: platform — Magic's naming rules on desktop; on iPadOS relative paths resolve against the project's document folder (X-4, hefesto-files-and-pdks, 2026-11-07).
 
 ### Q-LEFDEF-44: Power/ground names come from Tcl variables
 - Kind: platform
@@ -325,6 +338,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:1321-1330
 - Options: fix (fall back to the cell bounding box)
 - Recommendation: Fall back to the cell bbox, or FIXED_BBOX if present.
+- Resolution: fix — a declared but unpainted boundary layer falls back to FIXED_BBOX if present, otherwise the cell bounding box (uninitialised y-extent) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-60: DEF "generated via" flag is never reset between vias
 - Kind: bug
@@ -339,6 +353,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:1920-1923, lef/defRead.c:2027-2031
 - Options: replicate (previous value) | fix (take defaults from the LEF VIARULE GENERATE or DRC rules; 0 spacing/enclosure)
 - Recommendation: fix: use the VIARULE when known, otherwise 0, and warn.
+- Resolution: fix — omitted generated-via parameters take the LEF VIARULE values when known, otherwise 0, with a warning (uninitialised values) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-62: VIAS ORIGIN/OFFSET/PATTERN/POLYGON/MASK ignored
 - Kind: quirk
@@ -381,6 +396,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:1632-1650
 - Options: replicate | fix (report and skip the rectangle)
 - Recommendation: fix.
+- Resolution: fix — an unknown pin layer is reported and its rectangle skipped (paint and label with invalid type -1) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-68: Rectangle parse failure dereferences NULL
 - Kind: bug
@@ -388,6 +404,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefRead.c:928-930, lef/defRead.c:1631-1635, lef/defRead.c:1850-1851, lef/defRead.c:2638-2644
 - Options: replicate (n/a) | fix (report error, skip statement)
 - Recommendation: fix.
+- Resolution: fix — a malformed RECT in DIEAREA, PINS LAYER or BLOCKAGES is reported and its statement skipped (NULL dereference) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-69: Unknown special-net "+" keyword swallows the next net
 - Kind: bug
@@ -437,6 +454,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:800, lef/defRead.c:880-886, lef/defRead.c:163-169
 - Options: replicate | fix (initialise; look up without inserting; report unknown layer)
 - Recommendation: fix.
+- Resolution: fix — the `inlayer` flag is initialised, names are looked up without inserting entries, and an unknown layer is reported (uninitialised flag) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-76: Placement and other non-layer blockages painted on stale layer
 - Kind: bug
@@ -444,6 +462,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:1790-1855
 - Options: replicate | fix (ignore placement blockages or map to a dedicated type)
 - Recommendation: fix (ignore placement blockages, with a message).
+- Resolution: fix — blockages without a LAYER (placement blockages) are ignored with a message instead of painting a stale or uninitialised type (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-77: Polygonal DIEAREA uses only the first two points
 - Kind: quirk
@@ -472,6 +491,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:1703, doc/html/def.html
 - Options: replicate | fix (labels only)
 - Recommendation: decide; replicate for byte compatibility unless users object.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-81: Annotation terminal lookup uses the edit cell
 - Kind: ambiguity
@@ -486,6 +506,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:2041-2075, lef/defRead.c:500-515
 - Options: replicate (unspecified order) | fix (deterministic: tech-file declaration order)
 - Recommendation: fix with declaration order.
+- Resolution: compat — the LEF layer table is name-keyed, so the record found after a via is the first match in Magic's string hash order, reproduced exactly (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-LEFDEF-83: Duplicate component instance names
 - Kind: bug
@@ -528,6 +549,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defRead.c:1715-1717, drc/DRCtech.c:4620-4665
 - Options: replicate (n/a) | fix (use minimum size 1 or the rectangle height)
 - Recommendation: fix.
+- Resolution: fix — the pin label sizing loop terminates; with no default width the rectangle height is used (infinite loop) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-90: DEF write file mechanics (temporary _part file, search paths)
 - Kind: platform
@@ -535,6 +557,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:3015-3043, lef/defWrite.c:3093-3203; lef/lefWrite.c:150-235
 - Options: replicate the temp file | buffer in memory (same bytes) | on iPadOS resolve within the sandboxed document container
 - Recommendation: buffer in memory and keep the naming rules for the final file. On iPadOS, write through the document picker or container.
+- Resolution: platform — NETS and SPECIALNETS are buffered in memory instead of a `_part.def` temporary file (same bytes) and the final file keeps Magic's naming rules; on iPadOS it is written through the document model (X-4, hefesto-files-and-pdks, 2026-11-07).
 
 ### Q-LEFDEF-91: VIAS section writes uncounted via records
 - Kind: bug
@@ -549,6 +572,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:2041-2081, lef/defWrite.c:2910-2928
 - Options: replicate | fix (prefer cut-layer records, i.e. records without via geometry)
 - Recommendation: fix. Prefer true cut layers.
+- Resolution: compat — the magic-to-LEF map is name-keyed, so the first via-class record in Magic's string hash order wins, reproduced exactly; a VIA definition such as `M1M2_PR` can win over the cut layer (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-LEFDEF-93: COMPONENTS placement subtracts the untransformed bbox origin; arrays do not
 - Kind: quirk
@@ -605,6 +629,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:3090-3100, lef/lefTech.c:151-180
 - Options: replicate (crash) | fix (skip empty slots)
 - Recommendation: fix. The spec already requires skipping.
+- Resolution: fix — `-anal` skips empty layer-table slots (NULL dereference) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-101: Blockage collector called with mismatched arguments
 - Kind: bug
@@ -612,6 +637,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:2614, lef/defWrite.c:2642-2646, database/DBconnect.c:456
 - Options: replicate (impossible: crash) | fix (implement intended collection)
 - Recommendation: fix, as specified. Golden cases must avoid floating nets until this is confirmed on a real Magic build.
+- Resolution: fix — the blockage collector receives its intended arguments and collects the net's geometry (crash from mismatched arguments) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-102: Special-net classification depends on Tcl variables
 - Kind: platform
@@ -634,6 +660,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefCmd.c:396-414
 - Options: replicate | fix (report the missing argument; reject n ≤ 0)
 - Recommendation: fix.
+- Resolution: fix — a missing `-units` argument is reported and values ≤ 0 are rejected (NULL `argv` read) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-105: Asymmetric directional-surround probe
 - Kind: bug
@@ -648,6 +675,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:1920-1937, lef/defWrite.c:2002
 - Options: fix (treat as 0)
 - Recommendation: treat as 0.
+- Resolution: fix — the high-layer surround of a single-residue contact is 0 (uninitialised) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-107: Inverted y warning in via cut generation
 - Kind: bug
@@ -662,6 +690,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: database/DBconnect.c:395-640, lef/defWrite.c:765-768
 - Options: replicate the traversal exactly | compare nets semantically (geometry union per net) in golden tests
 - Recommendation: replicate if Hefesto uses maximal-horizontal-strip tiles. Otherwise compare NETS semantically and everything else byte-exactly.
+- Resolution: compat — tile order: route segments follow Magic's maximal-horizontal-strip decomposition and traversal and are byte-identical (X-1 tile order, 2026-11-07).
 
 ### Q-LEFDEF-109: `def write` help shows `[cell]`, but the argument is the output file name
 - Kind: doc-mismatch
@@ -669,6 +698,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefCmd.c:177, lef/lefCmd.c:432-440
 - Options: replicate | fix help text
 - Recommendation: fix the help text.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-LEFDEF-110: Stale .ext used without check
 - Kind: quirk
@@ -697,6 +727,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:477, lef/defWrite.c:668-669, lef/defWrite.c:1448-1450
 - Options: fix (unbounded strings)
 - Recommendation: fix.
+- Resolution: fix — net and via names are unbounded strings (unchecked 256-byte buffers) (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-114: Pin layer error message arguments swapped
 - Kind: bug
@@ -711,6 +742,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/defWrite.c:2154-2160
 - Options: replicate | fix (skip the RECT)
 - Recommendation: fix (skip it, and warn).
+- Resolution: fix — a generated-via residue with no LEF mapping is skipped with a warning instead of printing a NULL string as `(null)` (X-2 tier 1, 2026-11-07).
 
 ### Q-LEFDEF-116: Hash ordering depends on char signedness
 - Kind: platform
@@ -718,3 +750,4 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: utils/hash.c:229-232
 - Options: signed | unsigned
 - Recommendation: signed, which matches Magic on x86-64 Linux and on macOS.
+- Resolution: compat — the string hash adds key bytes as signed values on every platform, matching Magic on x86-64 Linux and macOS (X-1 as amended by D-1, 2026-11-07).

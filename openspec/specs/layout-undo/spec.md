@@ -76,7 +76,7 @@ Compatibility: behavioral
 - `undo n` / `redo n` repeat up to n steps and stop at the ends of the log.
 - Replaying paint applies the inverse table operation over the recorded rectangle (erase new type, paint old type) without image resolution; after a replay the affected cells' bounding boxes are recomputed, the changed area is redisplayed and re-queued for DRC.
 - Replay itself records nothing.
-- Undo/redo do not by themselves set or clear the modified flag of the affected cells for paint events and label removals (see Q-MODEL-12); replays that re-create a label, or place or delete a use, mark the cell modified as normal edits do.
+- In Magic, undo/redo do not by themselves set or clear the modified flag of the affected cells for paint events and label removals. Hefesto SHALL mark the affected cells modified for these replays too (see Q-MODEL-12). Replays that re-create a label, or place or delete a use, mark the cell modified as normal edits do.
 
 (Magic ref: utils/undo.c:568-694,857-904, database/DBundo.c:258-420,545-600,687-830,989-1000)
 

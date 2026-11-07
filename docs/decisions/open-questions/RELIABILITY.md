@@ -77,6 +77,7 @@ The following sources were cloned read-only into the session scratchpad, and wer
 - Evidence: openspec/specs/reliability-ir-drop/spec.md (Requirement "Grid solver"); openspec/specs/hefesto-licensing/spec.md
 - Options: (a) Eigen (MPL-2.0) SimplicialLLT and ConjugateGradient with IncompleteCholesky; (b) SuiteSparse CHOLMOD, which is LGPL/GPL depending on the module and not suitable for iPad static linking; (c) KLU, which is already present through ngspice but is LGPLv2 (Q-SIM-1); (d) Hefesto's own supernodal Cholesky.
 - Recommendation: (a). MPL-2.0 is file-level copyleft and compatible with Apache-2.0 distribution and the App Store, provided Eigen's source stays unmodified or changes are published. Check the determinism requirement, bit-identical results across thread counts, with Eigen's threading disabled or fixed.
+- Resolution: platform — draft following D-39's recommendation: Eigen (MPL-2.0, unmodified source) with threading disabled or fixed, so results are bit-identical across thread counts; P-21 to be amended; confirm in D-39 before M10 (D-39, D-5 draft, 2026-11-07).
 
 ### Q-RELIABILITY-10: Redistributing signal-net currents
 - Kind: ambiguity

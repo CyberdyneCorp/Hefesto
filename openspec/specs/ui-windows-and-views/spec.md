@@ -195,7 +195,7 @@ Compatibility: behavioral
 - **THEN** a color window editing color index 10 (octal 12) SHALL open
 
 ### Requirement: windowpositions and windownames
-`windowpositions [frame] [FILE]` SHALL report each window, in stacking order, as the line `specialopen %d %d %d %d %s` with llx lly urx ury and the client name. The rectangle is the screen area, or the frame area if `frame` is given. With FILE, the lines SHALL be written to that file. Magic writes them to the wrong stream (see Q-UI-17). In Tcl, each window's values replace the previous result, so only the last window is returned (see Q-UI-17).
+`windowpositions [frame] [FILE]` SHALL report each window, in stacking order, as the line `specialopen %d %d %d %d %s` with llx lly urx ury and the client name. The rectangle is the screen area, or the frame area if `frame` is given. With FILE, the lines SHALL be written to that file. Magic writes them to the wrong stream (see Q-UI-17). In Tcl, each window's values replace the previous result, so only the last window is returned (see Q-UI-17). Hefesto SHALL write every line to FILE, and without FILE SHALL return one list per window.
 
 `windownames [all|TYPE]` SHALL report:
 - with no argument: the single layout window if exactly one exists (`Window ID = N` or `Window ID = N, Name = S`); otherwise all windows
@@ -218,7 +218,7 @@ Compatibility: behavioral
 Other forms:
 - `view get` SHALL report the window's surface area as `(llx, lly) to (urx, ury)`, using the current print units.
 - `view bbox` SHALL report the root bounding box the same way.
-- `view llx lly urx ury` (or a single argument holding four space-separated values) SHALL frame that area. Coordinates are parsed with the unit rules (see Q-UI-18 for the single-argument form).
+- `view llx lly urx ury` (or a single argument holding four space-separated values) SHALL frame that area. Coordinates are parsed with the unit rules Magic parses all four values of the single-argument form as x coordinates; Hefesto SHALL parse them as x, y, x, y (see Q-UI-18).
 - Any other form SHALL print `Usage: view [get|bbox|llx lly urx ury]`.
 - A non-scrollable window SHALL report `Sorry, can't zoom out this window.`.
 
@@ -441,7 +441,7 @@ When the grid is on and the window shows the edit cell, an origin square SHALL b
 - `grid state` SHALL report `Grid is on|off`.
 - `grid box` or `grid what` SHALL report `Grid unit box is (ox, oy) to (ox+sx, oy+sy)`.
 - `grid sx [sy [ox oy]]` and `grid box sx [sy [ox oy]]` SHALL set the grid and turn it on. Spacings are distances, origins are positions. sy defaults to sx and the origin to (0,0). A spacing ≤ 0 SHALL report `Grid spacing must be greater than zero.`. 3 or more than 4 values SHALL print usage.
-- `grid multiple [m|off]` SHALL store a value from 1–255 that has no visible effect (see Q-UI-21).
+- `grid multiple [m|off]` SHALL store a value from 1–255. In Magic the value has no visible effect, and out-of-range values are stored with an error. Hefesto SHALL draw every m-th grid line when the lines would otherwise be too dense to draw, and SHALL reject out-of-range values without storing them (see Q-UI-21).
 - `grid help` SHALL print usage.
 
 Compatibility: behavioral

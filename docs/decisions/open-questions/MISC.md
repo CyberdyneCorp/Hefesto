@@ -18,6 +18,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: extract/ExtTech.c:816-823, extract/ExtTech.c:942-951, extract/ExtTech.c:3086-3105
 - Options: replicate (impossible deterministically) | fix (initialise to 0 on style init)
 - Recommendation: fix — start empty; equals Magic's behaviour whenever malloc returns zeroed memory.
+- Resolution: fix — the antenna model flags start empty for every style and on reload (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-3: Antenna line without calc type and no default
 - Kind: quirk
@@ -39,6 +40,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: extract/ExtTech.c:156-157, extract/ExtTech.c:3044-3046
 - Options: replicate (crash) | fix (report "Malformed line")
 - Recommendation: fix — report an error and ignore the line.
+- Resolution: fix — an `antenna` line with a calc type and a single ratio reports an error and is ignored, instead of reading a missing argument (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-6: Missing plane-order index reuses previous check plane
 - Kind: bug
@@ -46,6 +48,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: extflat/EFantenna.c:492-494
 - Options: replicate | fix (skip k)
 - Recommendation: fix — skip order indices with no plane.
+- Resolution: fix — plane-order indices with no plane are skipped, instead of reusing a previous or uninitialised check plane (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-7: Connectivity restriction uses plane numbers and one contact type
 - Kind: quirk
@@ -62,6 +65,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: database/DBio.c:5053-5060, database/DBio.c:3604-3660, cif/CIFgen.c:5695
 - Options: replicate | fix (detect `MASKHINTS_` prefix for any declared type)
 - Recommendation: fix — always parse `MASKHINTS_` keys as regions.
+- Resolution: fix — `MASKHINTS_` property keys are always parsed as regions, so hints round-trip with `property compat false` (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-11: cifinput templayer hints look up the wrong key
 - Kind: bug
@@ -93,6 +97,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: database/DBlabel.c:1481-1492
 - Options: replicate | fix (`& 0x7`)
 - Recommendation: replicate — affects extended bboxes saved to `.mag` timestamps/bboxes and redraw areas only marginally.
+- Resolution: compat — same as Q-MODEL-6: the `& 0x7f` test is kept because the extended bounding box is saved; with `magic-compat` OFF, the test is `& 0x7` (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MISC-21: `flatten` copies font label rotation/offset untransformed
 - Kind: bug
@@ -100,6 +105,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdFI.c:1996-2011
 - Options: replicate | fix (transform like other copies)
 - Recommendation: fix.
+- Resolution: compat — same as Q-MODEL-20: plain `flatten` copies rotation and offset untransformed, because the values are written to the flattened cell; with `magic-compat` OFF, they are transformed like the other copies (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MISC-22: Default font label size equals lambda numerator in eighth units
 - Kind: quirk
@@ -107,6 +113,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdRS.c:2104, commands/CmdLQ.c:255-256
 - Options: replicate | fix (8 × numerator)
 - Recommendation: replicate for data compatibility; GUI may suggest a size.
+- Resolution: compat — the default size is the lambda numerator in 1/8 units, as in Magic, because it is stored in `.mag`; the GUI may suggest a size; with `magic-compat` OFF, the default is 8 × the numerator (one lambda) (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MISC-23: `setlabel offset` query prints x twice; size/offset query scaling inconsistent
 - Kind: bug
@@ -115,6 +122,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Options: replicate | fix
 - Recommendation: fix (informative output only).
 - Canonical entry for Q-CMDEDIT-90.
+- Resolution: fix — query output is informative: the per-label offset query prints x and y, and the `-default` queries are scaled like the per-label ones (÷8) (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MISC-24: Rotation transform direction mismatch
 - Kind: bug
@@ -122,6 +130,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: utils/geometry.c:154-189, database/DBlabel.c:1440-1458
 - Options: replicate | fix
 - Recommendation: replicate (stored angles in `.mag`/GDS must match Magic); flag in UI.
+- Resolution: compat — same as Q-MODEL-1: stored angles in `.mag` and GDS must match Magic; the UI may flag the mismatch; with `magic-compat` OFF, a clockwise 90° transform subtracts 90 (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-MISC-25: Unclosed glyph path overflows point buffer
 - Kind: bug
@@ -129,6 +138,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: database/DBlabel.c:1745-1757
 - Options: fix (allocate count points)
 - Recommendation: fix — semantics unchanged (all distinct points kept).
+- Resolution: fix — the glyph point buffer holds every distinct point of an unclosed path; semantics unchanged (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-26: Loading a font by file name duplicates fonts
 - Kind: quirk
@@ -187,6 +197,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: plot/plotPNM.c:560-575, plot/plotPNM.c:880-905
 - Options: replicate | fix (render labels)
 - Recommendation: replicate (byte-identical images).
+- Resolution: n/a — spec follows Magic's code (PNM draws paint only); documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-MISC-47: PNM downsampling message computes required memory oddly
 - Kind: quirk
@@ -224,6 +235,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: graphics/W3Dmain.c:879-890, graphics/W3Dmain.c:1502-1503
 - Options: fix (start in layout mode when no style; ignore toggle)
 - Recommendation: fix.
+- Resolution: fix — toggling `cif` with no output style keeps layout mode and reports it, instead of dereferencing the missing style (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-74: 3D window size fixed at 500 x 500
 - Kind: bug
@@ -238,6 +250,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: graphics/W3Dmain.c:1474-1480, graphics/W3Dmain.c:1540-1586
 - Options: platform alternative (Metal/Vulkan/OpenGL abstraction; touch gestures)
 - Recommendation: implement natively on all platforms including iPadOS.
+- Resolution: platform — the 3D view is implemented natively on every platform, iPadOS included, through the rendering interface (Vulkan on desktop, Metal on iPadOS) (P-3, P-13, `view-3d`, 2026-11-07).
 
 ## Scope
 
@@ -247,3 +260,4 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: doc/html/search.html, doc/html/cellsearch.html, dbwind/DBWcommands.c:213-225, commands/CmdWizard.c:975-1120
 - Options: omit | implement as Hefesto scripting API
 - Recommendation: omit from the compatibility contract (no capability `layout-measurement-and-search` was written); consider a scripting API later.
+- Resolution: n/a — spec follows Magic's code (the commands do not exist and are not specified); documentation is wrong (X-2 tier 3, 2026-11-07).

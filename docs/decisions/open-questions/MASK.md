@@ -29,6 +29,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFgen.c:1703-1803 (line 1802)
 - Options: n/a
 - Recommendation: none; kept for traceability.
+- Resolution: n/a — withdrawn; the spec follows Magic's code and applies the expansion (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-5: bridge-lim searches database planes with mask-unit coordinates
 - Kind: bug
@@ -64,6 +65,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFtech.c:1567-1585, cif/CIFtech.c:1611-1612
 - Options: replicate (reject) | fix
 - Recommendation: reject the line with a wrong-argument error without undefined behaviour.
+- Resolution: fix — the 6-token `slots` line is rejected with a wrong-argument error without reading past the argument list (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-10: style name prefix shadowing
 - Kind: bug
@@ -85,6 +87,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFtech.c:1996-2037, cif/CIFtech.c:1131-1146
 - Options: replicate (impossible) | fix (skip these operators)
 - Recommendation: fix: skip; verify against a tech using `interacting` to confirm observed reducer.
+- Resolution: fix — the reducer computation skips `nonoverlapping`, `interacting` and `noninteracting` instead of dereferencing their flag as a pointer (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-13: bloat-all prevents unit reduction
 - Kind: quirk
@@ -99,6 +102,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: utils/maxrect.c:80-160, utils/maxrect.c:324-333
 - Options: replicate | define deterministic tie-break
 - Recommendation: replicate enumeration order (top-to-bottom, left-to-right area search) and use 64-bit areas; capture golden ties.
+- Resolution: compat — candidates are taken in Magic's tile enumeration order (tile order bullet) and ties keep the first by strict `>`; areas are computed in 64 bits, since the 32-bit overflow is undefined behaviour (X-1 as amended by D-1; X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-15: grow-min geometric formula is incomplete
 - Kind: quirk
@@ -113,6 +117,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: utils/tech.c:806-812
 - Options: replicate (crash) | fix (ignore option when gridLimit = 0)
 - Recommendation: fix with a tech error.
+- Resolution: fix — with gridlimit 0 the set-minimum-grid option is ignored and a tech error is reported instead of dividing by zero (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-17: no implicit "default" style
 - Kind: doc-mismatch
@@ -120,6 +125,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFtech.c:713-716, doc/latexfiles/maint2.tex:1180-1186
 - Options: replicate | follow doc
 - Recommendation: replicate the code (error), mention in tech-file lint.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-18: interaction radius not recomputed when no reduction occurs
 - Kind: bug
@@ -134,6 +140,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/calmaInt.h:117, doc/latexfiles/maint2.tex (Calma layers subsection)
 - Options: follow code
 - Recommendation: follow code (0..255).
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; GDS layer and datatype numbers are 0..255 (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-20: bloat-or on split tiles ignores corner extensions
 - Kind: quirk
@@ -169,6 +176,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFgen.c:5611-5630
 - Options: fix (paint nothing)
 - Recommendation: fix.
+- Resolution: fix — a malformed FIXED_BBOX paints nothing instead of an uninitialised rectangle (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-25: centring divisions truncate toward zero
 - Kind: quirk
@@ -197,6 +205,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFgen.c:2738-2990, doc/latexfiles/maint2.tex (squares paragraph)
 - Options: follow code
 - Recommendation: follow code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; cuts are placed per region bounding box (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-400: Phantom interaction area around the origin
 - Kind: bug
@@ -253,6 +262,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFhier.c:1446-1449
 - Options: replicate (not acceptable) | fix (treat the axis as having nx=1, or reject the array)
 - Recommendation: fix. Treat the axis as one element for the correction and warn.
+- Resolution: fix — an axis with separation 0 is treated as one element for the correction, with a warning, instead of dividing by zero (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-408: Array replication copies whole residual tiles beyond the window
 - Kind: quirk
@@ -260,6 +270,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFhier.c:1330-1360, cif/CIFhier.c:1568-1617
 - Options: replicate (needs a canonical strip decomposition) | fix (clip to the window)
 - Recommendation: replicate for manhattan geometry, where the decomposition is canonical. Track non-manhattan differences as a known deviation.
+- Resolution: compat — tile order bullet: replication copies whole residual tiles of Magic's canonical strip decomposition; the non-Manhattan case follows Q-MASK-218 (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-MASK-409: Grow-slivers details
 - Kind: quirk
@@ -342,6 +353,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdtech.c:1036-1046, cif/CIFrdtech.c:1451-1516, doc/latexfiles/maint2.tex:1760-1768
 - Options: replicate | fix
 - Recommendation: replicate; document in user docs.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; distances are in read units of 1/M centimicron (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-305: gridlimit is in nanometers, not CIF units
 - Kind: doc-mismatch
@@ -349,6 +361,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdtech.c:93-114, cif/CIFread.h:86-91
 - Options: replicate | fix
 - Recommendation: replicate; document as nanometers.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; gridlimit is in nanometres (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-306: input grow/shrink algorithm depends on the output style
 - Kind: quirk
@@ -399,6 +412,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdpt.c:766-800
 - Options: replicate truncation at 5 | fix (read whole name)
 - Recommendation: replicate truncation to 5 chars without the overflow.
+- Resolution: fix — the terminator is never written out of bounds; names are still truncated to 5 characters as Magic reads them (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-313: unbounded name buffer in 9/91/94/95
 - Kind: bug
@@ -406,6 +420,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdcl.c:1260-1300
 - Options: fix (unbounded string)
 - Recommendation: fix; accept arbitrary length.
+- Resolution: fix — names of any length are accepted, without the 128-byte buffer overflow (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-314: 95 rescale does not update the symbol scale
 - Kind: bug
@@ -448,6 +463,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdutils.c:103, commands/CmdCD.c:2014-2034
 - Options: replicate (no-op) | fix (implement)
 - Recommendation: replicate as no-op; document.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; `cif polygon subcells` is stored and has no effect (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-320: ".cif" always appended to file names [platform]
 - Kind: platform
@@ -511,6 +527,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdtech.c:622-624, doc/latexfiles/maint2.tex:1712-1714
 - Options: replicate | fix (implicit "default" style)
 - Recommendation: replicate with a warning.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; statements before the first `style` are ignored (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-329: GDS text on unmapped layer indexes kind table at -1
 - Kind: bug
@@ -518,6 +535,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaRdpt.c:1015, calma/CalmaRdpt.c:1038
 - Options: fix (treat kind as NONE)
 - Recommendation: fix.
+- Resolution: fix — the label kind of an unmapped layer is treated as NONE, without indexing the table at -1 (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-330: not-square drops non-manhattan geometry
 - Kind: quirk
@@ -539,6 +557,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFwrite.c:729-792 vs cif/CIFwrite.c:142-147
 - Options: fix (same refusal as hierarchical)
 - Recommendation: fix.
+- Resolution: fix — flat CIF write refuses a style with reducer 0, like the hierarchical write, instead of dividing by zero (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-333: CIF wires use square end extensions
 - Kind: quirk
@@ -567,6 +586,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFwrite.c:400-418
 - Options: replicate the plane enumeration order | define canonical order
 - Recommendation: replicate (needed for byte equality); share definition with gds-write.
+- Resolution: compat — tile order bullet: B/P lines follow Magic's maximal-horizontal-strip decomposition and area-search order, byte-identical (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-MASK-337: area label default differs from documentation
 - Kind: doc-mismatch
@@ -574,6 +594,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFwrite.c:52, doc/html/cif.html
 - Options: replicate code default
 - Recommendation: replicate (default no).
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; `cif arealabels` defaults to no (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-110: Structure with trailing garbage leaves input planes uncleared
 - Kind: bug
@@ -595,6 +616,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaRdcl.c:1758-1840 (was_called/predefined logic), calma/CalmaRdcl.c:1192
 - Options: replicate | fix (remember predefined status per name)
 - Recommendation: fix. The printed message already shows the intent.
+- Resolution: fix — the predefined status is remembered per name, so `noduplicates yes` never overwrites an in-memory cell (silent data loss) (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-113: Round path ends (PATHTYPE 1) read as flush
 - Kind: quirk
@@ -630,6 +652,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFrdpt.c:459-495
 - Options: replicate | fix (paint the accumulated polygon up to the bend)
 - Recommendation: fix. Missing geometry is worse than an approximate end. Log the decision.
+- Resolution: fix — at a mitre-limit stop the accumulated polygon is painted up to the bend instead of being dropped (silent data loss) (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-118: Path outline uses H = 1.5708 and savetheta = 0 for the first segment
 - Kind: quirk
@@ -700,6 +723,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaRdcl.c:323-350
 - Options: replicate | fix (track created polygon cells explicitly)
 - Recommendation: fix.
+- Resolution: fix — only polygon cells created by the reader are flattened and deleted; genuine structures named `polygon*` are kept (silent data loss) (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-128: Home-directory substitution in GDS_FILE uses the wrong string
 - Kind: bug
@@ -728,6 +752,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: commands/CmdCD.c:170-172, calma/CalmaRead.c:295-310
 - Options: replicate behavior | document
 - Recommendation: replicate the behavior and fix the documentation.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; the read places no geometry in the edit cell (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-132: Host dependencies (time zone, PDK variables, gzip)
 - Kind: platform
@@ -742,6 +767,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaRdpt.c:1015
 - Options: replicate (impossible to replicate deterministically) | fix
 - Recommendation: fix. Treat unmapped pairs as not cell-id (the spec states this).
+- Resolution: fix — a TEXT on an unmapped layer is treated as not cell-id, without indexing the kind table at -1 (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-134: BGNSTR year interpreted as years since 1900
 - Kind: quirk
@@ -812,6 +838,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaWrite.c:3218-3243
 - Options: replicate output bytes but do not mutate data | fix (map to '_' or 'X')
 - Recommendation: replicate the output bytes, and never mutate layout data (already stated as normative in the spec).
+- Resolution: fix — layout data (label text, use ids) is never mutated by the encoder (data loss); the bytes written stay as Magic writes them (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-209: Sanitized structure names are not checked for uniqueness
 - Kind: bug
@@ -847,6 +874,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: calma/CalmaWrite.c:425-433
 - Options: replicate | fix (write nothing)
 - Recommendation: fix.
+- Resolution: fix — an empty vendor library writes nothing, so no premature ENDLIB header truncates the stream for readers (silent data loss) (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-214: Forward-reference renaming in full dumps
 - Kind: quirk
@@ -882,6 +910,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: database/DBtiles.c:521-618; cif/CIFgen.c (paint order)
 - Options: replicate (reimplement the corner-stitch paint algorithm exactly) | fix (canonical decomposition)
 - Recommendation: replicate the corner-stitched plane implementation. This is shared with capability `mask-output-operators`.
+- Resolution: compat — tile order bullet: Hefesto reproduces Magic's corner-stitched paint algorithm, including split-tile decomposition, so element order and triangle splitting match (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-MASK-219: Write with no output style leaves an empty file
 - Kind: quirk
@@ -924,6 +953,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: commands/CmdCD.c:125, 932-944; calma/CalmaWrite.c:1440-1443
 - Options: replicate | fix (doc)
 - Recommendation: replicate the code. Document it correctly in Hefesto.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong; `datestamp yes` uses each cell's timestamp (spec conventions §2.7, 2026-11-07).
 
 ### Q-MASK-225: Incompatible expander writes mis-scaled output
 - Kind: quirk
@@ -945,6 +975,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFgen.c:1735-1765
 - Options: replicate the x86-64 result | fix (clamp the argument to 0)
 - Recommendation: fix by clamping to 0. Capture x86-64 golden output first to see whether any real PDK hits it (verify against Magic).
+- Resolution: fix — the square-root argument is clamped to 0, so no NaN is converted to int (undefined behaviour) (X-2 tier 1, 2026-11-07).
 
 ### Q-MASK-228: bridge-lim passes 1 and 2 modify the plane they are enumerating
 - Kind: bug

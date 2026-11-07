@@ -26,7 +26,7 @@ Compatibility: exact
 | sticky | flag | the attached layer never changes automatically |
 | port directions | N, E, S, W bits | a label is a port iff at least one bit is set |
 | port class | default, input, output, tristate, bidirectional, feedthrough | |
-| port use | default, signal, analog, power, ground, clock, reset, scan, tieoff | reset/scan/tieoff are not persisted by `.mag` (Q-MODEL-18) |
+| port use | default, signal, analog, power, ground, clock, reset, scan, tieoff | Magic does not persist reset/scan/tieoff in `.mag`; Hefesto does (Q-MODEL-18, Q-CELL-6) |
 | port shape | default, abutment, ring, feedthrough | |
 | port index | unsigned integer | meaningful only for ports |
 
@@ -71,7 +71,7 @@ Compatibility: exact
 2. Scale: each of `0, w, bot, top` is multiplied by `size` and divided (C truncation) by the unscaled `top` (result in 1/8 units).
 3. Vertical justification: S/SW/SE: `bot -= top; top = 0`. E/W/center: `top >>= 1; bot -= top`. Horizontal: W/NW/SW: `xbot -= xtop; xtop = 0`. N/S/center: `xtop >>= 1; xbot -= xtop`.
 4. Add the offset; rotate the four corners by `rotation` degrees counter-clockwise using `round()` of the double-precision result; take their bounding box.
-5. Add `4 * (r.xbot + r.xtop)` and `4 * (r.ybot + r.ytop)` (the anchor centre in 1/8 units); convert each coordinate to database units by arithmetic right shift by 3, decrementing a lower bound / incrementing an upper bound when `(value & 0x7f) != 0` (see Q-MODEL-6).
+5. Add `4 * (r.xbot + r.xtop)` and `4 * (r.ybot + r.ytop)` (the anchor centre in 1/8 units); convert each coordinate to database units by arithmetic right shift by 3, decrementing a lower bound / incrementing an upper bound when `(value & 0x7f) != 0` (see Q-MODEL-6; with `magic-compat` off, the test SHALL be `(value & 0x7) != 0`).
 
 (Magic ref: database/DBlabel.c:1352-1500)
 
@@ -189,7 +189,7 @@ Renumbering ports SHALL sort all labels of the cell with a case-insensitive natu
 Compatibility: exact
 
 - Non-port labels are skipped but participate in sorting.
-- "Identical text" for index sharing is a case-sensitive comparison with the previously numbered port (see Q-MODEL-10).
+- "Identical text" for index sharing is a case-sensitive comparison with the previously numbered port (see Q-MODEL-10). With `magic-compat` OFF, the comparison SHALL be case-insensitive.
 - The natural comparison: compare character by character case-insensitively; when both strings are at a digit, compare the maximal digit runs as unsigned integers. If one string is a prefix of the other the comparator is not antisymmetric in Magic (Q-MODEL-9); Hefesto SHALL sort the shorter string first.
 
 (Magic ref: commands/CmdLQ.c:1430-1460,2070-2120, database/DBcellname.c:676-713)

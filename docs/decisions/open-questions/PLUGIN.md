@@ -31,6 +31,7 @@ These capabilities are `native`. Magic has no plugin API: it is extended through
 - Evidence: App Store Review Guidelines 2.5.2 (no downloading of executable code that changes features) and 4.7 (mini apps, plug-ins and similar software not embedded in the binary, with conditions); docs/decisions/cross-cutting.md#X-3 (the same risk for PDK scripts); openspec/specs/plugin-security-and-platforms/spec.md (Requirement "Script plugins on iPadOS under App Review")
 - Options: (a) allow user-installed sandboxed-Tcl script plugins (specified default), arguing that they are interpreted, sandboxed, cannot change the app's primary purpose, and that Hefesto offers a reporting channel as 4.7 asks; (b) curated mode only: built-in plugins plus script plugins bundled in the app or in curated PDK packs; (c) no third-party plugins on iPad.
 - Recommendation: ask App Review together with the X-3 PDK-script question, before the iPad beta. Keep (b) ready as a build switch, as specified. Never ship native or JIT code on iPad.
+- Resolution: platform — user-installed sandboxed-Tcl script plugins are allowed on iPadOS by default, with the curated-mode build switch as the fallback if App Review rejects them (P-20, X-3, 2026-11-07).
 
 ### Q-PLUGIN-5: Plugin licensing and GPL plugins
 - Kind: ambiguity

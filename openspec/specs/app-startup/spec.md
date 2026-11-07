@@ -71,26 +71,26 @@ Compatibility: behavioral (option letters exact)
 - **THEN** `~/my.rc` and then `./my.rc` SHALL be read in place of the `.magicrc` files
 
 ### Requirement: Command-line file arguments
-Each non-option argument SHALL be recorded as a file to load, unless the initial window is suppressed. In that case Magic ignores file arguments (see Q-UI-25). Recording rules:
+Each non-option argument SHALL be recorded as a file to load, also when the initial window is suppressed, where Magic ignores file arguments (see Q-UI-25). Recording rules:
 - A trailing `.mag` SHALL be stripped.
-- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, any extension starting with `.gd` → GDS, `.tcl` → script. Anything else is a layout cell.
+- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, `.gds` → GDS (Magic accepts any extension starting with `.gd`; see Q-UI-25), `.tcl` → script. Anything else is a layout cell.
 - A `.tcl` argument SHALL end option and file processing. Later arguments belong to the script.
 
 After startup files and technology loading:
-- The recorded files SHALL be processed in reverse command-line order, each announced with `Loading "F" from command line.`.
+- The recorded files SHALL be processed in command-line order, each announced with `Loading "F" from command line.`. Magic processes them in reverse order (see Q-UI-25).
 - A layout cell SHALL be loaded into every layout window.
 - LEF and DEF files SHALL be read.
 - A script SHALL be evaluated.
-- CIF and GDS arguments SHALL be announced but not read (see Q-UI-25).
+- CIF and GDS files SHALL be read. Magic only announces them (see Q-UI-25).
 
-Because every layout load replaces the window contents, the window SHALL end up showing the first layout file named on the command line.
+The window SHALL end up showing the first layout file named on the command line.
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:388-452, utils/main.c:1176-1228)
 
 #### Scenario: Two cells
 - **WHEN** the application is started with `a.mag b`
-- **THEN** `b` SHALL be loaded first and then `a`
+- **THEN** `a` SHALL be loaded first and then `b`
 - **AND** the window SHALL show `a`
 
 #### Scenario: Suffix stripped
@@ -258,7 +258,7 @@ Compatibility: behavioral (location and process checks [platform])
   - the netlist client asks about an unsaved netlist
 - On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS (default 0).
 
-Magic does not range-check STATUS, so the host truncates it to 8 bits (see Q-UI-32).
+Magic does not range-check STATUS, so the host truncates it to 8 bits. Hefesto SHALL reject a STATUS outside 0–255 with `Invalid exit_status` and SHALL NOT exit (see Q-UI-32).
 
 Exit statuses produced by the application itself SHALL be:
 

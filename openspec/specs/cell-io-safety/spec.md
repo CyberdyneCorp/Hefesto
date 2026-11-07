@@ -115,7 +115,7 @@ Compatibility: behavioral
 
 **Write-all behavior.** When writing all modified cells without prompting, a read-only cell is skipped. If it was modified, Magic reports `Cell '<cell>' is not writeable;  modified cell not written.`
 
-**Exception for the `save` command.** When there is no edit cell, `save` first clears the read-only mark of the window's root cell. A read-only root cell that is not locked can then be written. With an explicit new name, this works as "save as" (see Q-CELL-37).
+**Exception for the `save` command.** When there is no edit cell, `save` first clears the read-only mark of the window's root cell. In Magic, a read-only root cell that is not locked can then be written. Hefesto SHALL refuse to overwrite a read-only cell in place; with an explicit new name, `save` still works as "save as" (see Q-CELL-37).
 
 (Magic ref: database/DBio.c:5695-5710, database/DBio.c:5739-5747, commands/CmdTZ.c:2290-2302, commands/CmdRS.c:207-218)
 
@@ -168,7 +168,7 @@ Compatibility: informative
 1. Open N for appending and append the whole cell, which reserves space. If this fails, truncate back to the original size and fail.
 2. If the original size was non-zero, rewind and write the cell again, then truncate the file to the current position.
 
-Because the file is open in append mode, the second write also goes to the end. The resulting file holds the old content followed by two copies of the new content, and the size check then fails. Hefesto should not replicate this (see Q-CELL-27).
+Because the file is open in append mode, the second write also goes to the end. The resulting file holds the old content followed by two copies of the new content, and the size check then fails. Hefesto SHALL NOT replicate this. When no temporary file can be created, it SHALL fail the save with a clear message and leave the old file intact (see Q-CELL-27).
 
 (Magic ref: database/DBio.c:5799-5858)
 
@@ -292,7 +292,7 @@ Compatibility: informative
 
 **Schedule.** Periodic backups are a Tcl `after` timer (`Opts(backupinterval)`, 600000 ms when unset at start; the tool setup sets 60000 ms) that runs `crash save`. SIGTERM triggers a backup and exit.
 
-**Explicit name.** When an explicit name is given, the confirmation message prints the previous name rather than the new one (see Q-CELL-29).
+**Explicit name.** When an explicit name is given, Magic's confirmation message prints the previous name rather than the new one. Hefesto SHALL print the new name (see Q-CELL-29).
 
 **Liveness test.** Recovery treats a backup as abandoned when the process ID encoded in its name does not belong to a running process. Magic tests this by sending the process `SIGCONT`, which also resumes a stopped process.
 
@@ -427,7 +427,7 @@ Compatibility: exact
 1. The line MUST start with `file`. Otherwise Magic prints `Error in <type> file <name>; expected keyword "file", got "<line>"!` and fails.
 2. Derive the cell name from the location:
    - remove the trailing newline;
-   - cut at the first occurrence of `.mag` anywhere in the text (see Q-CELL-31);
+   - cut at the first occurrence of `.mag` anywhere in the text; Hefesto SHALL instead remove only a trailing `.mag`, and SHALL accept record lines of any length (see Q-CELL-31);
    - take the part after the last `/`;
    - skip leading whitespace.
    An empty name fails.
@@ -436,11 +436,11 @@ Compatibility: exact
 5. Read the next line. End of file here gives `Error in <type> file <name>; partial restore only!` and fails.
 6. Flag the cell's parents for timestamp changes and recompute its bounding box.
 
-**Location is not restored.** The location in the `file` line is used only to derive the cell name. A cell's recorded path is not set from it (see Q-CELL-32).
+**Location is not restored.** The location in the `file` line is used only to derive the cell name. Magic does not set a cell's recorded path from it. Hefesto SHALL set the recorded path from the location when the cell has none (see Q-CELL-32).
 
 **End record.** If text follows `end ` on the end record, that cell is loaded into every layout window.
 
-**Modified flag.** Cells read from a backup are not marked modified (see Q-CELL-33).
+**Modified flag.** Magic does not mark cells read from a backup as modified. Hefesto SHALL mark cells recovered from a crash backup as modified; cells read from an archive are not marked (see Q-CELL-33).
 
 (Magic ref: database/DBio.c:1235-1333)
 
@@ -467,7 +467,7 @@ Compatibility: behavioral
 
 **Archive file name.**
 - Writing uses the given file name exactly. Magic prints `Created database archive file <file>`.
-- Reading appends `.mag` to the given name (see Q-CELL-34).
+- Magic's read appends `.mag` to the given name. Hefesto SHALL try the given name first and then the name with `.mag` appended (see Q-CELL-34).
 
 **Interaction with crash backups.** Writing an archive does not change the session's crash backup target, and the archive file is not removed at exit.
 

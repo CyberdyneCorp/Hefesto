@@ -16,7 +16,7 @@ Compatibility: exact
 - Coordinates are 32-bit signed integers. The representable plane is bounded by `INFINITY = 2^30 - 4 = 1073741820` and `MINFINITY = -INFINITY`.
 - The usable plane area ("whole plane rectangle") is `[MINFINITY+2, INFINITY-2]` in both x and y, i.e. `(-1073741818, -1073741818) .. (1073741818, 1073741818)`. Searches "over the whole plane" (file output, bounding-box computation, global erase) use exactly this rectangle.
 - Products of two coordinates (slope tests on triangles, array-overlap computations) SHALL be computed in at least 64-bit precision.
-- Behaviour for geometry outside the usable area is undefined in Magic (no clipping is performed). Hefesto SHALL reject or clip such geometry; see Q-MODEL-24.
+- Behaviour for geometry outside the usable area is undefined in Magic (no clipping is performed). Hefesto SHALL reject such geometry with an error; see Q-MODEL-24.
 - The relationship between internal units and lambda / microns (scale factors, `scalegrid`, `.mag` `magscale`) is specified in `tech-loading-and-scaling`, `cmd-coordinates-and-units` and `cell-file-format`, not here.
 
 (Magic ref: tiles/tile.h:149-165, tiles/tile.c:67, database/DBtiles.c:567-574)
@@ -243,7 +243,7 @@ Positions are integers: `0 center, 1 N, 2 NE, 3 E, 4 SE, 5 S, 6 SW, 7 W, 8 NW`; 
 
 Opposite positions: N<->S, NE<->SW, E<->W, SE<->NW, center<->center.
 
-Angles (degrees, label rotation): if `a == 0 && e == 0`: add 90 when `b > 0`, else add 270, and the transform is a flip if `b == d`; otherwise add 180 when `a < 0`, and it is a flip if `a != e`. Then if the sum `> 360` subtract 360. If it is a flip: when the original angle is strictly between 90 and 270 the result is `360 - sum`, else `-sum`. Finally add 360 if negative. Note: a sum of exactly 360 is not reduced (see Q-MODEL-2), and the sense of rotation is questioned in Q-MODEL-1.
+Angles (degrees, label rotation): if `a == 0 && e == 0`: add 90 when `b > 0`, else add 270, and the transform is a flip if `b == d`; otherwise add 180 when `a < 0`, and it is a flip if `a != e`. Then if the sum `> 360` subtract 360. If it is a flip: when the original angle is strictly between 90 and 270 the result is `360 - sum`, else `-sum`. Finally add 360 if negative. Note: a sum of exactly 360 is not reduced (see Q-MODEL-2), and the sense of rotation is questioned in Q-MODEL-1. With `magic-compat` OFF, a sum of exactly 360 SHALL be reduced to 0 (Q-MODEL-2), and the clockwise-90 transform SHALL subtract 90 instead of adding it (Q-MODEL-1).
 
 Triangles: the triangle's bounding rectangle transforms as a rectangle and its right-angle corner transforms as a position (rule above); the direction/side encoding is then derived from the new corner using the table of requirement "Non-Manhattan (split tile) geometry".
 

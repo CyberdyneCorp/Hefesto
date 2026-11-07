@@ -9,6 +9,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:434-447, graphics/grDStyle.c:588-600
 - Options: replicate (no `.dstyle5` support) | fix (parse `.dstyle5` as version 5)
 - Recommendation: fix. Parse `.dstyle5` as a version-5 file. No PDK is known to rely on the failure.
+- Resolution: fix — a `.dstyle5` file found by the fallback is parsed as a version-5 file; display resources only, and no PDK relies on the failure (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-2: Dstyle section-count and order handling
 - Kind: quirk
@@ -16,6 +17,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:497-520
 - Options: replicate | fix (treat both as load errors, keep running)
 - Recommendation: fix both to be non-fatal load errors that reject the file. Never exit the process because of a style file.
+- Resolution: compat — a wrong `display_styles` count warns and continues like Magic with magic-compat ON, and rejects the file with it OFF; `layout_styles` after `pale_styles` rejects the file on every setting and never exits the process (exit is a tier-1 data-loss bug) (D-5, approved with change 2026-11-07).
 
 ### Q-UI-3: Unknown dstyle section name
 - Kind: quirk
@@ -23,6 +25,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:538-553, graphics/grDStyle.c:588-600
 - Options: replicate (reject) | fix (skip the unknown section with a warning)
 - Recommendation: replicate the rejection, with a clearer message.
+- Resolution: n/a — Magic's rejection of the file is kept; Hefesto's message names the unknown section, and message text is informative (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-4: Dstyle content before the first blank line
 - Kind: ambiguity
@@ -30,6 +33,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:451-480
 - Options: replicate (undefined) | fix (treat the first non-comment line as a header)
 - Recommendation: fix. Treat the first non-comment line of the file as a section header.
+- Resolution: fix — the line is processed under an uninitialised section variable (undefined behaviour); the first non-comment line of the file is treated as a section header (X-2 tier 1, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-5: Dstyle field edge cases
 - Kind: quirk
@@ -40,6 +44,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:228-253, dbwind/DBWdisplay.c:1693-1704
 - Options: replicate | fix (sequential ordinals; error on unknown color; skip unnamed styles in name lookup)
 - Recommendation: replicate the ordinal and color results for compatibility. Fix the crash by never matching unnamed styles.
+- Resolution: compat — ordinal 1 for a non-integer `num` and the all-ones mask for an unknown color, as in Magic; the crash on a style without a long name is always fixed: such a style never matches a lookup by name; with `magic-compat` OFF, ordinals are sequential and an unknown color name is an error (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-6: Stipple bit orientation differs between drivers
 - Kind: platform
@@ -61,6 +66,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grCMap.c:153-200, graphics/grCMap.c:281-299, graphics/grCMap.c:384-405
 - Options: replicate | fix (tolerate blank lines; keep names)
 - Recommendation: tolerate blank lines on read, as a superset. Replicate the write format exactly.
+- Resolution: fix — blank lines in a `.cmap` are skipped on read, a superset of what Magic accepts; the write format is replicated exactly (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-8: Which dstyle variant Hefesto renders with
 - Kind: platform
@@ -96,6 +102,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: textio/txCommands.c:1284, graphics/grTOGL1.c:778
 - Options: replicate the non-Tcl behavior | follow the Tcl behavior
 - Recommendation: follow the Tcl behavior. Macros are per window client.
+- Resolution: n/a — the Tcl build is normative (D-7): key macros are looked up in the focused window's client; the non-Tcl behaviour is informative (D-7, 2026-11-07).
 
 ### Q-UI-12: Key naming tied to X11 keysyms
 - Kind: platform
@@ -133,6 +140,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windView.c:154-234, windows/windInt.h:60-92
 - Options: logical points | physical pixels
 - Recommendation: use logical points for all window-pixel quantities. Compatibility tests compare views only for fixed headless window sizes.
+- Resolution: platform — window-pixel quantities are logical points on every platform; compatibility tests compare views only for fixed headless window sizes (P-11, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-17: windowpositions output bugs
 - Kind: bug
@@ -140,6 +148,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windCmdSZ.c:1177-1238
 - Options: replicate | fix (write all lines; return a list of lists)
 - Recommendation: fix.
+- Resolution: fix — writing through the wrong object gives garbage or a crash; all lines are written to the file, and without a file one list per window is returned (X-2 tier 1, 2026-11-07).
 
 ### Q-UI-18: `view` single-argument form parses y as x
 - Kind: quirk
@@ -147,6 +156,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windCmdSZ.c:870-905
 - Options: replicate | fix
 - Recommendation: fix.
+- Resolution: fix — the single-argument form parses its values as x, y, x, y; only the view changes, never layout data (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-19: `expand` toggle detection
 - Kind: quirk
@@ -154,6 +164,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: commands/CmdE.c:840-850
 - Options: replicate | fix
 - Recommendation: replicate.
+- Resolution: n/a — prefix matching of `toggle` follows Magic's usual keyword rule; the spec keeps it (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-20: Label text visibility depends on backend font sizes
 - Kind: platform
@@ -161,6 +172,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: dbwind/DBWdisplay.c:205-232
 - Options: replicate with Hefesto's font metrics | a fixed threshold in points
 - Recommendation: replicate the rule with Hefesto's four UI text sizes.
+- Resolution: platform — the visibility rule is replicated with Hefesto's four UI text sizes in place of the backend font sizes (X-5, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-21: `grid multiple` has no effect
 - Kind: quirk
@@ -168,6 +180,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: commands/CmdFI.c:1398-1418, graphics/grClip.c:52
 - Options: replicate | implement (coarser grid at large scales)
 - Recommendation: implement as documented. Draw every m-th line when lines are too dense, and reject out-of-range values without storing them.
+- Resolution: fix — `grid multiple` is implemented as documented: when grid lines would be too dense to draw, every m-th line is drawn, and out-of-range values are rejected without being stored; display only (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-22: Touch gesture vocabulary
 - Kind: platform
@@ -205,6 +218,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/main.c:388-452, utils/main.c:1183-1226
 - Options: replicate | fix (load in order, read CIF/GDS, check exact extensions)
 - Recommendation: fix. Load in command-line order, ending on the first file, and read GDS and CIF.
+- Resolution: fix — files are loaded in command-line order and the window ends on the first one, file arguments are kept with `-nowindow`, `.cif` and `.gds` arguments are read, and only exact extensions select a type (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-26: Installation root and search paths on each platform
 - Kind: platform
@@ -213,6 +227,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Options: environment plus settings | settings only on iPadOS
 - Recommendation: Linux and macOS honor `CAD_ROOT` and `~`. iPadOS uses an app-sandbox root chosen in settings, where `$CAD_ROOT` maps to that folder and `~` maps to the app's Documents folder.
 - Duplicate: tracked in Q-CELL-17, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) Platform owner: capability `hefesto-files-and-pdks`.
+- Resolution: platform — duplicate of Q-CELL-17; see the resolution there (X-4, 2026-11-07).
 
 ### Q-UI-27: Home startup file read twice (non-Tcl)
 - Kind: quirk
@@ -220,6 +235,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/main.c:1066-1125, utils/main.c:991-993
 - Options: replicate | fix
 - Recommendation: fix, following the Tcl behavior.
+- Resolution: n/a — the Tcl build is normative (D-7) and reads `~/.magicrc` once; the spec already follows it and records the non-Tcl behaviour as informative (D-7, 2026-11-07).
 
 ### Q-UI-28: Manual page says the default technology is scmos
 - Kind: doc-mismatch
@@ -227,6 +243,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/main.c:1130-1170, doc/man/magic.1
 - Options: follow code | follow doc
 - Recommendation: follow the code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-UI-29: Display-type prefix rule and Hefesto's display names
 - Kind: doc-mismatch
@@ -234,6 +251,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grMain.c:275-282
 - Options: replicate | fix
 - Recommendation: replicate. Map `NULL` to headless and every other known name to the default GPU backend.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-UI-30: Headless mode on iPadOS
 - Kind: platform
@@ -241,6 +259,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: tcltk/magicdnull.c:22-61
 - Options: none on iPadOS | Shortcuts or App Intents running a script
 - Recommendation: no stdin batch on iPadOS. Expose script execution through App Intents later.
+- Resolution: platform — no standard-input batch mode on iPadOS; headless runs are desktop-only, and script execution through App Intents may come later (P-13, X-4, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-31: Crash backup location and liveness check
 - Kind: platform
@@ -257,6 +276,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windCmdNR.c:280-289
 - Options: replicate | fix (reject values outside 0–255)
 - Recommendation: fix. Reject with `Invalid exit_status`.
+- Resolution: fix — `quit` rejects a status outside 0–255 with `Invalid exit_status` and does not exit (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-33: `macro copy` from a non-layout client
 - Kind: bug
@@ -264,6 +284,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/macros.c:462-512
 - Options: replicate | fix (use the client name)
 - Recommendation: fix.
+- Resolution: fix — uninitialised read; the source client's name is used as the table name (X-2 tier 1, 2026-11-07).
 
 ### Q-UI-34: Glyph character mapping with shared short names
 - Kind: quirk
@@ -271,6 +292,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grDStyle.c:621-636, graphics/grGlyphs.c:170-175
 - Options: replicate
 - Recommendation: replicate.
+- Resolution: n/a — intended behaviour: the earliest style wins a shared short name and unused characters map to style 0; the spec keeps it (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-35: OpenGL translucency formula
 - Kind: platform
@@ -278,6 +300,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grTOGL1.c:90-136
 - Options: replicate the formula | plain alpha
 - Recommendation: replicate it in the shader, so colors match Magic's OpenGL screenshots.
+- Resolution: platform — the OpenGL translucency formula (c' = 2c − 0.8, alpha = mask/127) is reproduced in Hefesto's shaders for the default OpenGL variant, so colors match Magic's OpenGL screenshots (X-5, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-UI-36: `undo 0` / `redo 0` toggle undo recording
 - Kind: quirk
@@ -285,6 +308,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windCmdNR.c:335-408, windows/windCmdSZ.c:634-715
 - Options: replicate
 - Recommendation: replicate. Cross-reference with the undo capability owner.
+- Resolution: compat — same as Q-MODEL-30: with `magic-compat` ON `undo 0` resumes and `redo 0` suspends recording; with it OFF both are no-ops (D-11, 2026-11-07).
 
 ### Q-UI-37: Color window button simulation and color picking
 - Kind: quirk
@@ -299,6 +323,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: dbwind/DBWfdback.c:205-225
 - Options: follow code
 - Recommendation: follow the code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-UI-39: dstyle(5), cmap(5) and glyphs(5) manual pages are outdated
 - Kind: doc-mismatch
@@ -306,6 +331,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: doc/man/dstyle.5, doc/man/cmap.5, graphics/grDStyle.c
 - Options: follow code
 - Recommendation: follow the code.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-UI-40: Window chrome
 - Kind: platform
@@ -313,3 +339,4 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windDisp.c:386-668, windows/windClient.c:315-640
 - Options: replicate the chrome | native toolkit chrome
 - Recommendation: native chrome with equivalent actions. Keep the caption text exact.
+- Resolution: platform — native shell chrome with equivalent actions (Raven on the desktop, SwiftUI on iPadOS); the caption text stays exact (P-11, 2026-11-07).
