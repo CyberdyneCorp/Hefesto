@@ -21,7 +21,7 @@ The `*window` client's wizard commands SHALL be treated as informative. Magic pr
 
 | Command | Effect |
 |---|---|
-| `*bypass CMD…` | Tcl build only. Runs a command without changing the command counter, the selection state or the input redirection. Default button bindings use it so that clicks do not break background DRC. It is never logged. |
+| `*bypass CMD…` | Runs a command without changing the command counter, the selection state or the input redirection. Default button bindings use it so that clicks do not break background DRC. It is never logged. Informative: Magic's non-Tcl build does not have it. |
 | `*crash` | prints `OK -- crashing...` and aborts with a core dump |
 | `*files` | lists the status of file descriptors 0–19 and prints `N open files, M unopened file descriptors left` |
 | `*grstats N [STYLE]` | redraws the window N times, or N times a 15-pixel box pattern on a 20-pixel pitch in STYLE, then prints `[stats]` and `R rectangles, U uS, P uS/rectangle, S rects/sec` |

@@ -9,6 +9,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tclmagic.c:1603-1673; tcltk/magic.tcl.in; tcltk/toolkit.tcl
 - Options: (a) embed a real Tcl 8.6/9 interpreter (C library) on Linux/macOS and run PDK scripts unchanged, using a non-Tk dialog layer that implements the `magic::add_entry/...` builder API natively; (b) on iPadOS, where Tcl execution is ruled out, provide a declarative PDK profile plus native C++ re-implementations of the generators for selected PDKs, validated against the desktop Tcl output by golden tests; (c) a Tcl-subset interpreter (for example Jim Tcl) on all platforms (rejected for iPadOS by the brief); (d) offline translation of PDK generator scripts.
 - Recommendation: (a) on desktop and (b) on iPadOS. Both bind to the host-independent command API in `scripting-api`, so results are identical. The generated-cell naming (`pcell-toolkit`) and property preservation are data-level guarantees on every platform. Record the final choice as an ADR.
+- Resolution: decided by X-3 (2026-11-05). Sandboxed embedded Tcl on every platform, including iPadOS, plus native C++ PCell generators as a fast path (capability `hefesto-scripting`). Option (b) survives only as the iPadOS App Store fallback.
 
 ### Q-SCRIPT-2: Command failures return Tcl OK
 - Kind: quirk
@@ -16,6 +17,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tclmagic.c:496-528; textio/txCommands.c:1491-1575; windows/windSend.c:86-287; commands/CmdTZ.c:430-450
 - Options: replicate | fix (raise script errors on command failure) | dual mode
 - Recommendation: replicate in compatibility mode, because PDK scripts and `toolkit.tcl` rely on `catch` returning 0 (for example `load -fail`). Offer an opt-in strict mode for new scripts.
+- Resolution: decided by D-4 (2026-11-06): replicate by default. Magic's ok-status convention is the default, independent of `magic-compat`. Strict mode is opt-in through the project setting `script-strict` (default off) and the per-interpreter command `hefesto::strict on|off`, which overrides the setting for its interpreter (capability `hefesto-diagnostics`).
 
 ### Q-SCRIPT-3: Tag `%r` substitution is unescaped, and substitution rescans
 - Kind: bug
@@ -81,6 +83,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: database/DBio.c:600-700
 - Options: replicate | fix (ask the user) | platform alternative (apply a declarative profile)
 - Recommendation: on desktop, ask once per PDK (trust prompt). On iPadOS, apply the declarative profile only.
+- Resolution: decided by X-3 (2026-11-05). Ask once per PDK version on every platform, iPadOS included (capability `hefesto-security`, Requirement "Consent before implicit script execution").
 
 ### Q-SCRIPT-11: Toolbar sources `./<tech>_toolbars.tcl` from the working directory
 - Kind: platform
@@ -95,6 +98,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/socketcmd.tcl:10-27
 - Options: omit | provide a loopback-only, token-authenticated equivalent
 - Recommendation: omit by default. If provided, bind to loopback only and require a token.
+- Resolution: decided (capability `hefesto-security`, Requirement "No remote command server by default"). The Tcl sandbox denies `socket`, so `socketcmd.tcl` cannot run in Hefesto.
 
 ### Q-SCRIPT-13: Wrapper callbacks: scope and per-window key bug
 - Kind: bug
@@ -256,6 +260,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tools.tcl:52-120
 - Options: app-container temporary directory and an app timer | OS state restoration
 - Recommendation: use the app sandbox's caches directory, with the same interval semantics.
+- Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) The caches directory recommended here may be purged by the OS; see docs/decisions/audit/DECISIONS.md.
 
 ### Q-SCRIPT-36: Wrapper "Rotate 90 degree" calls a non-existent command
 - Kind: bug
@@ -304,7 +309,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Magic behavior: `<ns>::addtechmenu` runs `${frame}.titlebar cget -height` to detect the frame layout, runs `add command` on `${frame}.titlebar.mbuttons.drc.toolmenu`, runs `insert 4 command`/`insert 4 separator` on `${frame}.titlebar.mbuttons.file.toolmenu`, sets `Winopts(<frame>,cmdentry)`, and calls `addcommandentry`. `importspice` calls `tk_getOpenFile`. `suspendall` uses `winfo`. The device script also renames `closewrapper`. The wrapper evaluates the callback inside `catch`, so if a widget path is missing, the rest of the PDK menu setup is skipped silently. No Hefesto spec defines these widget paths or the File-menu item order (index 4).
 - Evidence: tcltk/wrapper.tcl:1219-1221,1495-1500,1541-1565; tcltk/tools.tcl:14-45; open_pdks sky130/magic/sky130.tcl:36-47,83-243; IHP ihp-sg13g2.tcl:115-126,162-282
 - Options: (a) provide a Tk-compatible widget shim with these paths in the desktop GUI; (b) intercept the PDK callback and map the three known widget operations to native menu actions; (c) ignore and report
-- Recommendation: (b) on desktop, plus a report of skipped statements, consistent with "Platform without script execution". Add a `ui-gui-managers` requirement that names these paths if (a) is chosen.
+- Recommendation: (b) on desktop, plus a report of skipped statements, consistent with "Sessions without PDK script execution" (capability `scripting-pdk-integration`). Add a `ui-gui-managers` requirement that names these paths if (a) is chosen.
 
 ### Q-SCRIPT-43: PDK extraction sections use `$SUB` in device lines and `$[…]` model names
 - Kind: ambiguity
@@ -326,3 +331,10 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: IHP ihp-sg13g2-fix.tcl:238-260; IHP ihp-sg13g2-bjt.tcl:195-262; tcltk/toolkit.tcl:1253-1283
 - Options: replicate whatever Magic does (golden case SCRIPT-PDK-14)
 - Recommendation: capture SCRIPT-PDK-14 before implementing gencell `load` interaction.
+
+### Q-SCRIPT-46: Is the declarative PDK profile still needed under X-3?
+- Kind: platform
+- Magic behavior: none. Magic always evaluates PDK `.magicrc` files as Tcl.
+- Evidence: tcltk/magic.tcl.in:339-470
+- Options: (a) keep the declarative profile for PDKs that are not in the iPadOS curated packs when App Review rejects imported scripts; (b) drop it, and make curated-pack mode refuse PDKs without bundled scripts; (c) also use it when the user declines script consent, instead of the `minimum`-tech read-only fallback of `hefesto-security`
+- Recommendation: (b), unless App Review rejects imported scripts and users need uncurated PDKs on iPadOS. The requirement "Sessions without PDK script execution" in `scripting-pdk-integration` was written under the pre-X-3 assumption that iPadOS has no Tcl. It is now limited to curated-pack mode until this is decided.

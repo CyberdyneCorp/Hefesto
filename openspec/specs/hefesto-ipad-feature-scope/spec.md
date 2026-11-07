@@ -8,17 +8,21 @@ Defines which features the first iPadOS release includes and which stay desktop-
 ### Requirement: Included feature set
 The first iPadOS release SHALL provide the following, with the same results as on the desktop:
 - **Layout and DRC:** viewing and editing layout (with touch and Apple Pencil), technology loading, continuous and on-demand DRC, PDK device generators (PCells), and the wiring tool.
+- **Scripting:** the embedded, sandboxed Tcl interpreter and PDK startup scripts (`hefesto-scripting`), subject to its App Store fallback to curated packs.
 - **Schematics and simulation:** schematic editing and netlisting (`schematic-*` capabilities), and ngspice simulation with waveforms and cross-probing (`simulation-*`).
-- **Extraction and LVS:** extraction and netlist generation (`extract-*`, `netlist-spice-*`, `extresist-*`), LVS (`lvs-*`), and the 3D view with overlays (`hefesto-3d-visualization`, `view-3d`).
-- **File I/O:** reading and writing GDS, OASIS, CIF, LEF and DEF, and the tapeout capabilities (`tapeout-*`).
+- **Extraction and LVS:** extraction and netlist generation (`extract-*`, `ext-flattening-*`, `netlist-spice-*`, `netlist-sim`, `extresist-*`), LVS (`lvs-*`), and the 3D view with overlays (`hefesto-3d-visualization`, `view-3d`).
+- **File I/O:** reading and writing GDS, OASIS, CIF, LEF and DEF, and the tapeout capabilities (`tapeout-*`). An exception is sign-off steps that require KLayout rule decks: on iPadOS they are not run, and the design is not marked sign-off ready until they pass on a desktop (decision P-18).
 - **Interactive routing:** the maze router and `iroute` (`router-maze`, `router-maze-iroute`).
 - **Agent:** the AI layout agent (`agent-*`), with cloud, on-prem and offline providers.
+- **Advanced simulation and reliability:** sweeps, corners, Monte Carlo, measurements and statistics, and the optimization hooks (`simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`, `simulation-optimization-hooks`; in-process, one simulation at a time), and EM/IR analysis with overlays (`reliability-*`), within the iPadOS memory budgets those capabilities state.
+- **Plugins:** built-in plugins and sandboxed Tcl script plugins only (`plugin-*`). Native plugins are not loaded on iPadOS, and user-installed script plugins depend on App Review (capability `plugin-security-and-platforms`).
 - **PDKs:** the PDK manager (`hefesto-pdk-manager`), which is the only way to install PDKs on iPadOS.
-- **Supporting capabilities:** plotting, structural and visual diff, document sync, onboarding and help, and settings.
+- **Digital blocks already in a project:** placing, checking, extracting and running LVS on imported hardened blocks (`digital-flow-mixed-signal`), and browsing stored flow results read-only (`digital-flow-results`).
+- **Supporting capabilities:** plotting (`plot-output`), structural and visual diff, document sync, onboarding and help, settings, and App Store updates and opt-in diagnostics (`hefesto-product-operations`).
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-13)
+(Hefesto decision: docs/decisions/product.md#P-13, docs/decisions/product.md#P-17, docs/decisions/product.md#P-19, docs/decisions/product.md#P-20, docs/decisions/product.md#P-21)
 
 #### Scenario: Full analog flow on iPad
 - **GIVEN** an iPad with sky130A installed through the PDK manager
@@ -27,12 +31,12 @@ Compatibility: native
 
 ### Requirement: Desktop-only features
 These features SHALL be desktop-only in the first iPadOS release:
-- the digital flow integration (`digital-flow-*`), which runs external tools
+- running the digital flow (`digital-flow-run`), which runs external tools, and importing or updating hardened blocks (`digital-flow-block-import`)
 - the channel and gate-array routers and `net2ir` (`router-channel`, `router-gate-array`, `router-net2ir`)
 - plowing (`plow`)
 - the netlist window (`netlist-window`)
 - IRSIM (`irsim-interface`)
-- the Scheme interpreter (`scheme-interpreter`) and OpenAccess (`openaccess`)
+- the Scheme interpreter (`scheme-interpreter`) and OpenAccess (`openaccess`), if they are ever implemented. Both capabilities are informative and Hefesto does not implement them on any platform (roadmap M12), so they are listed here only to keep them off iPadOS.
 - the `shell` command, and git integration (the git parts of `hefesto-collaboration-and-diff`)
 
 Compatibility: native

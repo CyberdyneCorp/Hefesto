@@ -50,6 +50,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grTk1.c:288-295, graphics/grX11su1.c:288-295, graphics/grTOGL1.c:204-210
 - Options: follow X11 | follow OpenGL | per-variant (X11 orientation for 7bit/24bit files, OpenGL orientation for OpenGL files)
 - Recommendation: per-variant. Render each file in the orientation of the Magic backend it was written for, so screenshots match the reference.
+- Resolution: decided by X-5 (2026-11-05). Stipple bit orientation follows Magic's OpenGL/Cairo driver for every file (capability `display-style-files`). The per-variant recommendation above is superseded.
 
 ### Q-UI-7: Color-map strictness and name loss
 - Kind: quirk
@@ -71,6 +72,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: graphics/grTk1.c:633-654, graphics/grTOGL1.c:89-136, graphics/grDStyle.c:228-236
 - Options: always `OpenGL` | user-selectable | emulate 7-bit plane mixing on the GPU
 - Recommendation: default to the `OpenGL` variant, with fallback to `24bit` if missing. Offer a setting to emulate `7bit` plane mixing for users who want the classic look.
+- Resolution: decided by X-5 (2026-11-05). The `OpenGL` dstyle/cmap variant is the default; the other variants are selectable in settings (capability `display-style-files`).
 
 ### Q-UI-9: "Did you point to the correct window?" is never printed
 - Kind: quirk
@@ -177,6 +179,7 @@ Magic reference: commit fc5daa9e (8.3.694).
   - a floating modifier palette for Shift and Control
   - two-finger pan = scroll, pinch = zoom
   - all bindings rebindable through the macro tables
+- Resolution: decided by X-5 (2026-11-05). Mode-based gesture table of X-5 (capability `hefesto-input-and-touch`); the mapping recommended above is superseded (long press opens a context menu, not Button3).
 
 ### Q-UI-23: `feedback add` style argument parsing
 - Kind: quirk
@@ -209,6 +212,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/path.c:193-388, tcltk/tclmagic.c:1663-1669
 - Options: environment plus settings | settings only on iPadOS
 - Recommendation: Linux and macOS honor `CAD_ROOT` and `~`. iPadOS uses an app-sandbox root chosen in settings, where `$CAD_ROOT` maps to that folder and `~` maps to the app's Documents folder.
+- Duplicate: tracked in Q-CELL-17, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) Platform owner: capability `hefesto-files-and-pdks`.
 
 ### Q-UI-27: Home startup file read twice (non-Tcl)
 - Kind: quirk
@@ -244,6 +248,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: database/DBio.c:1114-1200
 - Options: replicate on desktop | app container directory with a lock file
 - Recommendation: use an app-private backup directory on all platforms, with a lock file per session for the liveness check. Keep the backup file format Magic-readable.
+- Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) The recommendations of Q-UI-31, Q-CELL-30 and Q-SCRIPT-35 disagree on the desktop location; see docs/decisions/audit/DECISIONS.md.
 
 ### Q-UI-32: `quit` exit status not range-checked
 - Kind: bug

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile type to one or more display styles. The formats of the display-style (`.dstyle`) and color-map (`.cmap`) files, and how styles are rendered, belong to capability `display-style-files` and the display capabilities. They are referred to here only by name.
+Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile type to one or more display styles. The formats of the display-style (`.dstyle`) and color-map (`.cmap`) files, and how styles are rendered, belong to capabilities `display-style-files`, `ui-windows-and-views` and `hefesto-rendering`. They are referred to here only by name.
 
 ## Requirements
 

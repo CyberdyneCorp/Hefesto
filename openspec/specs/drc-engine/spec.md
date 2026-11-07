@@ -232,6 +232,6 @@ Hefesto MAY use any scheduling mechanism (worker thread, run-loop idle source on
 (Magic ref: drc/DRCcontin.c:481-560)
 
 #### Scenario: Busy indication
-- **GIVEN** the Tcl build with pending checks
+- **GIVEN** Magic with pending checks
 - **WHEN** the checker starts and finishes
 - **THEN** `magic::drcstate busy` and later `magic::drcstate idle` are scheduled

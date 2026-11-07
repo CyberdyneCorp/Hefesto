@@ -8,7 +8,7 @@ Defines the `.ext` file written by the extractor for each cell: the complete gra
 
 ### Requirement: Lexical conventions
 
-A `.ext` file SHALL be ASCII text, one record per line terminated by a single `\n`, fields separated by single spaces, with no leading or trailing whitespace and no comments. Node names, port names, equiv names and device terminal names SHALL be enclosed in double quotes with no escaping (names never contain `"` or whitespace); the node name in `attr` records, use identifiers, cell names, type names and model names SHALL be written unquoted.
+A `.ext` file SHALL be ASCII text, one record per line terminated by a single `\n`, fields separated by single spaces, with no leading or trailing whitespace and no comments. Node names, port names, equiv names and device terminal names SHALL be enclosed in double quotes with no escaping (names never contain `"` or whitespace); the node name in `attr` records, instance identifiers, cell names, type names and model names SHALL be written unquoted.
 Compatibility: exact
 
 Number formats SHALL be those of C `printf`: integers `%d`; areas `%lld`; capacitances in `node`, `cap`, `merge` records `%lg`; device values (`devres`/`devcap` with model `None`), `c` and `r` parameters and scale/`%g` fields `%g`. `%g`/`%lg` SHALL use 6 significant digits, drop trailing zeros and the decimal point when integral, and use exponent form `d.ddddde±XX` when the exponent is < −4 or ≥ 6.
@@ -110,10 +110,13 @@ Compatibility: exact (content); behavioral (order, see Q-EXTRACT-5)
 
 ### Requirement: Record order
 
-Within a file, records SHALL appear in this order: header; use records; the `parameters :<cell>` record of a `device primitive` property; device `parameters` records; `abstract` (when the cell has `LEFview`); all `port` records; for each node in node order its `node`/`substrate` record followed by its `attr` and then its `equiv` records; flat `cap` records (unless the cell has the `device` property); device records (or the single property-device or `primitive` line); hierarchical subcell `cap` records; subcell `merge` groups; array `cap` records; array `merge` groups; `distance` records. Orders within a record class that derive from hash tables or memory identity are implementation-defined (Q-EXTRACT-7).
-Compatibility: exact (class order); behavioral (order within hash-ordered classes)
+Within a file, records SHALL appear in this order: header; use records; the `parameters :<cell>` record of a `device primitive` property; device `parameters` records; `abstract` (when the cell has `LEFview`); all `port` records; for each node in node order its `node`/`substrate` record followed by its `attr` and then its `equiv` records; flat `cap` records (unless the cell has the `device` property); device records (or the single property-device or `primitive` line); hierarchical subcell `cap` records; subcell `merge` groups; array `cap` records; array `merge` groups; `distance` records. Within a record class, the order follows decision X-1 (capability `hefesto-output-determinism`, Q-EXTRACT-7):
+- Subcell and array `merge` groups come from Magic string hash tables keyed by node names. Hefesto SHALL reproduce that iteration order exactly, and golden comparison SHALL be byte for byte.
+- `cap` records, and the order of the two names within each, come from tables keyed by node memory addresses. Hefesto SHALL write them in the deterministic order of capability `hefesto-output-determinism`, and golden comparison SHALL canonicalize that order.
 
-(Magic ref: extract/ExtBasic.c:216-620, extract/ExtCell.c:501-547)
+Compatibility: exact (class order and `merge` order); behavioral (order within `cap` classes)
+
+(Magic ref: extract/ExtBasic.c:216-620, extract/ExtCell.c:501-547, extract/ExtHier.c:1111-1180, extract/ExtSubtree.c:223, extract/ExtArray.c:166)
 
 #### Scenario: Ports precede nodes
 - **GIVEN** a cell with two ports and three nodes

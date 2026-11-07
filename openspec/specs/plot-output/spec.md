@@ -10,7 +10,7 @@ Related capabilities (referenced, not duplicated): `tech-file-format` (section s
 
 ### Requirement: Plot command and plotted region
 
-The system SHALL provide `plot <option> ...` where `<option>` is matched by unique prefix against `postscript`, `pnm`, `svg` (only when an SVG-capable display is built in), `versatec`, `parameters`, `help` (and `gremlin`, `pixels` in builds that include them); no option prints the help list ("The "plot" commands are:" followed by one line per option); an unknown option reports ""<x>" isn't a valid plot option." and prints the help. For every output option the plotted window is the layout window under the pointer or the only layout window ("The cursor must be over a layout window to plot." otherwise); the plotted area is the box if the box lies in that window's root cell, else the root cell's bounding box; the default layer set is the window's visible layers, plus labels when the window displays labels, plus subcell outlines; an explicit layer-list argument replaces that set (special names `labels` and `subcell` select labels and unexpanded-subcell outlines). Hierarchy is plotted according to the window's expansion state: paint and labels of expanded cells, bounding boxes of unexpanded subcells.
+The system SHALL provide `plot <option> ...` where `<option>` is matched by unique prefix against `postscript`, `pnm`, `svg`, `versatec`, `parameters` and `help` (informative: Magic offers `svg` only when an SVG-capable display is built in, and `gremlin` and `pixels` only in builds that include those devices); no option prints the help list ("The "plot" commands are:" followed by one line per option); an unknown option reports ""<x>" isn't a valid plot option." and prints the help. For every output option the plotted window is the layout window under the pointer or the only layout window ("The cursor must be over a layout window to plot." otherwise); the plotted area is the box if the box lies in that window's root cell, else the root cell's bounding box; the default layer set is the window's visible layers, plus labels when the window displays labels, plus subcell outlines; an explicit layer-list argument replaces that set (special names `labels` and `subcell` select labels and unexpanded-subcell outlines). Hierarchy is plotted according to the window's expansion state: paint and labels of expanded cells, bounding boxes of unexpanded subcells.
 
 Compatibility: behavioral
 
@@ -274,7 +274,7 @@ Compatibility: exact
 
 ### Requirement: SVG plot
 
-`plot svg <file>` SHALL write an SVG 1.2 document of the current layout window's visible contents (window frame decorations and the box cursor excluded) at the window's pixel size, appending `.svg` when the name has no extension. In Magic this requires the Cairo display ("Must be running in mode "-d XR" (CAIRO) to get SVG output.") and the Tcl build.
+`plot svg <file>` SHALL write an SVG 1.2 document of the current layout window's visible contents (window frame decorations and the box cursor excluded) at the window's pixel size, appending `.svg` when the name has no extension. Informative: Magic writes SVG only when it runs with the Cairo display ("Must be running in mode "-d XR" (CAIRO) to get SVG output."). Hefesto SHALL provide `plot svg` with every display.
 
 Compatibility: behavioral
 

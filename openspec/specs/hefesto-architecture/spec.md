@@ -61,7 +61,7 @@ Compatibility: native
 - **THEN** the shell SHALL issue the same `box` command that a script would, and command logging SHALL record it
 
 ### Requirement: Headless command-line tool
-Hefesto SHALL ship a headless executable on Linux and macOS that runs the core with no display. It SHALL:
+Hefesto SHALL ship a headless executable, named `hefesto-cli`, on Linux and macOS that runs the core with no display. It SHALL:
 - load a technology
 - run command scripts
 - read and write all supported formats

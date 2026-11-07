@@ -10,7 +10,7 @@ Defines how the application starts and ends:
 - crash recovery at startup
 - `quit`, `version` and exit status
 
-Host mechanics (environment variables, Tcl launcher scripts, terminals, `/tmp`) are `informative`. Platform decisions for macOS, Linux and iPadOS are logged as `[platform]` open questions. Display-style loading is in `display-style-files`. Technology-file loading is owned by the technology capability.
+Host mechanics (environment variables, Tcl launcher scripts, terminals, `/tmp`) are `informative`. Platform decisions for macOS, Linux and iPadOS are logged as `[platform]` open questions. Display-style loading is in `display-style-files`. Technology-file loading and the technology-selection algorithm are owned by capability `tech-loading-and-scaling`.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ Startup SHALL run in this order:
 11. Set the box to the edit cell's bounding box.
 12. Set the undo fence so that startup actions cannot be undone.
 
-The application SHALL be considered initialized only after all steps succeed. In the non-Tcl build it then reads commands from the terminal and window until `quit` or end of input.
+The application SHALL be considered initialized only after all steps succeed. Informative: Magic's non-Tcl build then reads commands from the terminal and window until `quit` or end of input.
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:511-556, utils/main.c:557-834, utils/main.c:835-1258, utils/main.c:1286-1317)
@@ -52,10 +52,10 @@ The core option parser SHALL accept the following. Options that take an argument
 | `-r`, `-re…` | recover a crash file |
 | `-rc…` / `-rcfile FILE` | use FILE as the user startup file name instead of `.magicrc` |
 | `-D` | debug mode |
-| `-w…` | (Tcl build) no initial window |
-| `-noc…` | (Tcl build) no console |
-| `-now…` | (Tcl build) no initial window |
-| `-nor…` | (Tcl build) read no user startup files |
+| `-w…` | no initial window |
+| `-noc…` | no console |
+| `-now…` | no initial window |
+| `-nor…` | read no user startup files |
 
 `-n` with fewer than 4 characters SHALL report `Ambiguous option -n…:  use -nowindow, -noconsole, or -norcfile` and fail with status 1. Any other option SHALL report `Unknown option: '-X'` and a usage line, and fail with status 1.
 
@@ -73,8 +73,8 @@ Compatibility: behavioral (option letters exact)
 ### Requirement: Command-line file arguments
 Each non-option argument SHALL be recorded as a file to load, unless the initial window is suppressed. In that case Magic ignores file arguments (see Q-UI-25). Recording rules:
 - A trailing `.mag` SHALL be stripped.
-- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, any extension starting with `.gd` → GDS, `.tcl` → script (Tcl build). Anything else is a layout cell.
-- In the Tcl build, a `.tcl` argument SHALL end option and file processing. Later arguments belong to the script.
+- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, any extension starting with `.gd` → GDS, `.tcl` → script. Anything else is a layout cell.
+- A `.tcl` argument SHALL end option and file processing. Later arguments belong to the script.
 
 After startup files and technology loading:
 - The recorded files SHALL be processed in reverse command-line order, each announced with `Loading "F" from command line.`.
@@ -99,7 +99,7 @@ Compatibility: behavioral
 
 ### Requirement: Installation root and search paths
 The installation root (`CAD_ROOT`) SHALL be resolved from, in order:
-1. the scripting variable `CAD_ROOT` (Tcl build)
+1. the scripting variable `CAD_ROOT`
 2. the environment variable `CAD_ROOT`
 3. the built-in install prefix
 
@@ -109,7 +109,7 @@ The search paths SHALL be:
 - system library path: `. $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/current`
 - cell library path: `$CAD_ROOT/magic/<tech> $CAD_ROOT/magic/sys/current $CAD_ROOT/magic/tutorial` when a technology is known at that point, otherwise `$CAD_ROOT/magic/sys/current $CAD_ROOT/magic/tutorial`
 - system startup file: `$CAD_ROOT/magic/sys/.magicrc`
-- pre-startup file (Tcl build): `$CAD_ROOT/magic/sys/.initrc`
+- pre-startup file: `$CAD_ROOT/magic/sys/.initrc`
 
 Hefesto SHALL let the user or the PDK configuration designate an installation root containing `magic/sys`. On iPadOS this root SHALL be inside the app's sandbox (see Q-UI-26).
 
@@ -123,13 +123,13 @@ Compatibility: behavioral (host mechanics informative)
 
 ### Requirement: Startup file order
 Startup files SHALL be processed in this order:
-1. (Tcl build) the pre-startup file `$CAD_ROOT/magic/sys/.initrc`, which by default sources `site.pre` if present.
+1. The pre-startup file `$CAD_ROOT/magic/sys/.initrc`, which by default sources `site.pre` if present.
 2. The `-T` technology, if given. If it cannot be loaded, report `Failed to load technology "T"` or `Error loading technology "T"`, and the `-T` override SHALL be cancelled.
-3. (Non-Tcl build) print `Using technology "NAME", version V.` and the description, when a technology is loaded.
+3. Informative: at this point Magic's non-Tcl build prints `Using technology "NAME", version V.` and the description, when a technology is loaded.
 4. The system startup file `$CAD_ROOT/magic/sys/.magicrc`. The default one ends by sourcing `site.def` (Tcl).
 5. Unless startup files were disabled (`-norcfile`):
-   1. The home file `~/<rcname>` when rcname is not absolute. If it is missing, `~/.magic` is tried; in the non-Tcl build only when rcname is `.magicrc`. `~/.magic` prints `Note:  Use of the file name "~/.magic" is deprecated.  Please change this to "~/.magicrc".`.
-   2. The local file `<rcname>`, resolved from the current directory. In the Tcl build it SHALL be skipped when the current directory is the home directory, unless rcname is absolute. The non-Tcl build reads it even then (see Q-UI-27). If it is missing and rcname is `.magicrc`, `./.magic` (with a deprecation note) and then `magic_setup` are tried. A missing non-default rcname SHALL report `Startup file "F" not found or unreadable!` (non-Tcl).
+   1. The home file `~/<rcname>` when rcname is not absolute. If it is missing, `~/.magic` is tried (informative: Magic's non-Tcl build tries it only when rcname is `.magicrc`). `~/.magic` prints `Note:  Use of the file name "~/.magic" is deprecated.  Please change this to "~/.magicrc".`.
+   2. The local file `<rcname>`, resolved from the current directory. It SHALL be skipped when the current directory is the home directory, unless rcname is absolute (informative: Magic's non-Tcl build reads it even then; see Q-UI-27). If it is missing and rcname is `.magicrc`, `./.magic` (with a deprecation note) and then `magic_setup` are tried. Informative: Magic's non-Tcl build reports `Startup file "F" not found or unreadable!` for a missing non-default rcname.
 
 A script error in a startup file SHALL be reported and startup SHALL continue. For local files, `Bad local startup file "F", continuing without.` SHALL also be printed. Startup files SHALL be executed as command streams (see ui-command-dispatch).
 
@@ -144,13 +144,13 @@ Compatibility: behavioral
 - **THEN** the technology SHALL be `sky130A`
 
 #### Scenario: Bad local file
-- **GIVEN** the local `.magicrc` raises a script error (Tcl build)
+- **GIVEN** the local `.magicrc` raises a script error
 - **WHEN** the application starts
 - **THEN** `Bad local startup file ".magicrc", continuing without.` SHALL be printed and startup SHALL complete
 
 ### Requirement: Default technology selection
-After the startup files, the technology SHALL be chosen as follows:
-1. If no technology was loaded by `-T` or by a startup file, and a file argument was given, the system SHALL read the `tech` line of the first file argument and try to load that technology.
+After the startup files, the technology SHALL be chosen by the algorithm of capability `tech-loading-and-scaling`, requirement "Startup technology selection", which owns it. In summary:
+1. If no technology is loaded yet and no `-T` technology was given, and a file argument was given, the system SHALL read the `tech` line of the first file argument and try to load that technology. A `-T` technology that failed to load earlier is retried instead, and the file argument is not consulted.
 2. If still no technology is loaded, the built-in `minimum` technology SHALL be loaded again and kept.
 3. If `minimum` cannot be loaded, startup SHALL fail and the process SHALL exit with status 255.
 
@@ -200,8 +200,8 @@ With the `NULL` display, the application SHALL draw nothing and SHALL run every 
 In batch mode, interrupt handling SHALL be disabled. Batch mode is the `magicdnull` executable selected by `-dnull`, or the Tcl variable `batch_mode`.
 
 Commands SHALL be read from standard input:
-- In the non-Tcl build, standard input is read as keystrokes, so command lines must start with `:`. End of standard input SHALL end the program with `EOF encountered on input stream -- Magic exiting.` and status 1.
-- In the Tcl build, the interpreter reads standard input until `quit` or end of input.
+- The interpreter SHALL read standard input until `quit` or end of input.
+- Informative: Magic's non-Tcl build reads standard input as keystrokes, so command lines must start with `:`, and end of standard input ends the program with `EOF encountered on input stream -- Magic exiting.` and status 1.
 
 Hefesto SHALL provide an equivalent headless mode on Linux and macOS that takes a command script from standard input or from a file argument. iPadOS has no headless mode (see Q-UI-30).
 
@@ -209,7 +209,7 @@ Compatibility: behavioral
 (Magic ref: utils/main.c:557-834, graphics/grNull.c:370-380, textio/txCommands.c:1595-1769, tcltk/magic.sh.in:33-72)
 
 #### Scenario: Scripted run
-- **GIVEN** the Tcl build of Magic, or Hefesto's headless mode
+- **GIVEN** Magic, or Hefesto's headless mode
 - **WHEN** `echo "box 0 0 10 10 ; quit -noprompt" | <app> -dnull -noconsole -T scmos` is run
 - **THEN** the box SHALL be set and the process SHALL exit with status 0
 
@@ -235,14 +235,9 @@ Compatibility: informative
 - **THEN** a version string SHALL be printed and the exit status SHALL be 0, without loading a technology
 
 ### Requirement: Crash recovery at startup
-With `-r` and an initial window, startup SHALL look for a crash backup file instead of loading command-line files. It SHALL search the temporary directory (`$TMPDIR`, or the system default) for files that:
-- have names starting with `MAG`
-- are owned by the current user
-- are not tied to a running process (a decimal process id after `MAG` and before the first `.` names a live process)
+With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (backup files in the temporary directory, `$TMPDIR` or the system default, named `MAG…`, owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
 
-It SHALL pick the one with the most recent status-change time and ask `Recover from backup file F?` with the answers `read` (default) and `cancel`. On `read`, the backup SHALL be loaded and the backup file removed. If a backup file is in use by the current session, report `Error:  Backup file in use for current session.`.
-
-On normal exit, the session's own backup file SHALL be removed. The backup file format and periodic backups are owned by the database capability. Hefesto SHALL keep backups in an application-private location (see Q-UI-31).
+On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (see Q-UI-31 and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements").
 
 Compatibility: behavioral (location and process checks [platform])
 (Magic ref: utils/main.c:1170-1185, database/DBio.c:1114-1235, utils/main.c:190-252)
@@ -270,7 +265,7 @@ Exit statuses produced by the application itself SHALL be:
 | Status | Cause |
 |---|---|
 | 0 | normal `quit`, or a second Ctrl-C while an interrupt is pending |
-| 1 | bad option, display failure, Tcl initialization failure, or end of input on the non-Tcl terminal |
+| 1 | bad option, display failure, Tcl initialization failure, or end of input on the terminal (Magic's non-Tcl build; informative) |
 | 2 | `minimum` technology failure during initialization |
 | 255 | `minimum` technology failure after the startup files |
 

@@ -31,6 +31,8 @@ AREAS = [
     ("Schematic capture (xschem-compatible)", "SCHEM", ["schematic-"]),
     ("Tapeout readiness", "TAPEOUT", ["tapeout-"]),
     ("Digital flow (desktop-only)", "DIGITAL", ["digital-flow-"]),
+    ("Plugin API", "PLUGIN", ["plugin-"]),
+    ("Reliability (EM / IR drop)", "RELIABILITY", ["reliability-"]),
     ("Editing commands", "CMDEDIT", ["cmd-"]),
     ("UI, display, startup", "UI", ["ui-command", "ui-windows", "ui-tools", "ui-color", "ui-feedback", "ui-wizard", "display-", "app-"]),
     ("Scripting, PCells, Tcl tools", "SCRIPT", ["scripting-", "pcell-", "ui-box", "ui-gui", "readspice"]),

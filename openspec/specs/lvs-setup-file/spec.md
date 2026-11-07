@@ -32,7 +32,7 @@ Other capabilities own related parts:
 A setup file SHALL be a Tcl script. It SHALL be evaluated in the embedded, sandboxed Tcl interpreter of decision X-3, on every platform including iPadOS. The LVS commands of this capability SHALL be available unqualified and also as `netgen::<cmd>`. Standard Tcl control flow and list and string commands SHALL be available, because PDK setup files use them: `if`, `foreach`, `set`, `lappend`, `lsearch`, `regexp`, `catch`, `info`, `string`, `puts`.
 
 `$env(NAME)` SHALL read from Hefesto settings instead of the process environment (decision X-4). Setup files reach it through `catch {format $env(NETGEN_COLUMNS)}`. See Q-LVS-15.
-See Q-LVS-27 for App Store constraints and Q-LVS-28 for which compatibility switch governs netgen quirks.
+See Q-LVS-27 for App Store constraints. netgen quirks that this and the other `lvs-*` capabilities replicate are governed by the `netgen-compat` setting of capability `hefesto-magic-compat-mode` (Q-LVS-28).
 Compatibility: native
 (Hefesto decision: docs/decisions/product.md#P-5)
 

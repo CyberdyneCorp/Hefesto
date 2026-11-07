@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expand`, `unexpand`, `flatten`, `save`, `writeall`, `flush`, `cellname`/`instance`, `path`, `addpath`, `locking`, `archive` and `crash`. The `.mag` file grammar is in capability `cell-file-format`. Coordinates are in `cmd-coordinates-and-units`, the box in `cmd-box` and the selection in `cmd-selection`. The command surface is `behavioral`. Instance placement transforms, generated use identifiers and flattened geometry are `exact`.
+Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expand`, `unexpand`, `flatten`, `save`, `writeall`, `flush`, `cellname`/`instance`, `path`, `addpath`, `locking`, `archive` and `crash`. The `.mag` file grammar is in capability `cell-file-format`. Coordinates are in `cmd-coordinates-and-units`, the box in `cmd-box` and the selection in `cmd-selection`. The command surface is `behavioral`. Instance placement transforms, generated instance identifiers and flattened geometry are `exact`.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ Defines the commands that load, create, place, navigate, expand, flatten, save a
 
 Cell names given to `load`, `xload` and `save` SHALL be rejected if they contain `[`, `]` or `,`, or any character that is not printable. Use identifiers (instance names) SHALL be rejected if they contain `,` or `/`. A cell-name argument MAY include a directory path and a `.mag` suffix, optionally followed by `.gz`. The cell name is the final path component without these suffixes, and the path is remembered as the cell's file location.
 
-When a new instance is created without an identifier, it SHALL be named `<base>_<n>`. `<base>` is the cell name after its last `/`, and `<n>` is the smallest integer ≥ 0 such that no existing instance in the parent has that identifier.
+When a new instance is created without an identifier, it SHALL be named `<base>_<n>` as specified in capability `layout-hierarchy` requirement "Instance identifier assignment": `<base>` is the cell name after its last `/`, and `<n>` is the smallest integer ≥ 0 such that no existing instance in the parent has that identifier.
 
 Compatibility: exact
 
@@ -360,7 +360,7 @@ Compatibility: behavioral
 
 ### Requirement: Locking mechanism
 
-Magic implements locking with POSIX advisory record locks (`fcntl`) on the open `.mag` file, held while the cell is loaded. This mechanism is `informative`. On iPadOS and other platforms without cross-process advisory locks, Hefesto SHALL choose an equivalent mechanism (see Q-CMDEDIT-33).
+Hefesto SHALL treat Magic's locking mechanism (POSIX advisory record locks on the open `.mag` file, held while the cell is loaded) as reference material. The mechanism, the session-locking semantics and the platform alternative are owned by capability `cell-io-safety` requirements "Locking mechanism" and "Advisory locking between sessions" (see Q-CELL-26 and Q-CMDEDIT-33).
 
 Compatibility: informative
 
@@ -373,31 +373,31 @@ Compatibility: informative
 
 ### Requirement: Archive command
 
-`archive write|writeall|read|readref FILE` SHALL write or read a single-file archive of cells:
+`archive write|writeall|read|readref FILE` SHALL write or read a single-file archive of cells, with the four modes, the set of cells written, the file-name rules and the archive format specified in capability `cell-io-safety` requirements "Archive files" and "Crash backup file format":
 
-- `write` writes the modified cells in memory.
-- `writeall` writes all cells.
-- `read` reads cells from the archive and also reads cells referenced by file path.
-- `readref` reads cells from the archive but keeps references to external files unresolved, as references.
+- `write` writes every available cell, modified or not, except internal, not-found and read-only cells.
+- `writeall` also writes read-only (for example PDK) cells.
+- `read` loads the archive with every cell dereferenced.
+- `readref` loads the archive without dereferencing, so recorded file paths are honored.
 
-The archive format is the crash-backup format of capability `cell-file-format`. The command SHALL require exactly two arguments. Magic prints usage on a wrong count but continues anyway (see Q-CMDEDIT-34). Hefesto SHALL stop.
+Reading appends `.mag` to the given name (see Q-CELL-34). The command SHALL require exactly two arguments. Magic prints usage on a wrong count but continues anyway (see Q-CMDEDIT-34). Hefesto SHALL stop.
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdAB.c:110-195)
+(Magic ref: commands/CmdAB.c:84-147, database/DBio.c:6382-6560)
 
 #### Scenario: Archive round trip
 - **GIVEN** cells `top` and `sub` in memory
-- **WHEN** `archive writeall arch.mag`, then a fresh session runs `archive read arch.mag`
+- **WHEN** `archive writeall arch.mag`, then a fresh session runs `archive read arch` (which opens `arch.mag`)
 - **THEN** both cells SHALL be in memory with identical contents
 
 ### Requirement: Crash backup command
 
-`crash save [FILE]` SHALL write a crash-recovery backup of all modified cells (default file: the session's temporary backup file). `crash recover [FILE]` SHALL restore cells from the given backup, or from the first backup found. Unknown sub-commands, or more than two arguments, print usage. The periodic automatic backup and its temporary-directory location are host-specific (see Q-CMDEDIT-35).
+`crash save [FILE]` SHALL write a crash backup of the cells selected by capability `cell-io-safety`, requirement "Crash backup policy" (modified, available, editable, not internal and not flagged not-found), to FILE or, without FILE, to the session backup file. `crash recover [FILE]` SHALL recover from FILE or, without FILE, from the candidate with the newest status-change time, as specified by capability `cell-io-safety`, requirement "Crash recovery", which governs (confirmation, refusal while the session has a backup file, deletion after reading). The sub-command is keyword-matched. An unknown sub-command, or more than two arguments, prints `Usage: crash save|recover [filename]`; `crash` alone does nothing. The periodic automatic backup and its location are host-specific (see Q-CELL-30).
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdCD.c:3751-3790)
+(Magic ref: commands/CmdCD.c:3751-3780, database/DBio.c:1113-1215)
 
 #### Scenario: Recover
 - **GIVEN** `crash save bk` was run with modified cell `a`

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, and the complete edge-propagation algorithm (initial edges, edge queue, every search rule with its exact search geometry, real-width computation, penumbra outline following, slivers, illegal edges, covered/fixed/drag/contact types, cells, jog-horizon extension, write-back of paint, labels and cells, plow boundaries, and jog straightening). Plowing results are layout geometry; for the same input, technology and parameters Hefesto must produce the same geometry, including where Magic inserts jogs.
+Defines Magic's plowing facility: the `plow` and `straighten` commands, the `plowing` technology section, the plowing rule tables derived from the DRC section, and the complete edge-propagation algorithm (initial edges, edge queue, every search rule with its exact search geometry, real-width computation, penumbra outline following, slivers, illegal edges, covered/fixed/drag/contact types, cells, jog-horizon extension, write-back of paint, labels and cells, plow boundaries, and jog straightening). Plowing results are layout geometry; for the same input, technology and parameters Hefesto must produce the same geometry, including where Magic inserts jogs. This capability is desktop-only in the first iPadOS release (decision P-13; capability `hefesto-ipad-feature-scope`).
 
 Terminology used throughout:
 

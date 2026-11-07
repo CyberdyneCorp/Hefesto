@@ -86,12 +86,12 @@ Compatibility: behavioral
 ### Requirement: Layout netlist from extraction
 When `lvs` is invoked through Hefesto's layout-aware form, `lvs -layout <cell> <schematic> [<setup>] [<log>] [option …]`, the layout side SHALL be generated internally:
 1. Extract `<cell>` and its hierarchy as `extract all` would (capability `extract-commands`).
-2. Netlist it with the `ext2spice lvs` preset (capability `netlist-spice-options`): hierarchy on, ngspice format, infinite cthresh and rthresh, blackbox on, global off, subcircuits top auto.
+2. Netlist it with the `ext2spice lvs` preset as defined by capability `netlist-spice-options` (hierarchy on, ngspice format, infinite cthresh and rthresh, renumber off, scale off, blackbox on, global off, subcircuits top auto).
 3. Load the result as circuit 1.
 
 The loaded result SHALL be identical to netgen reading the `.spice` file that Hefesto's `ext2spice` would write with that preset. The file MAY be kept in memory. The netlist SHALL be written to `<cell>.spice` in the document folder only when the user's settings request it.
 
-The layout netlist SHALL retain a mapping from every device instance and net name back to layout objects (Requirement "Cross-probing"). The schematic side SHALL be any file accepted by capability `lvs-netlist-input`.
+The layout netlist SHALL retain a mapping from every device instance and net name back to layout objects (Requirement "Cross-probing"). The schematic side SHALL be any file accepted by capability `lvs-netlist-input`. In this form and in the netgen form, a name whose file ends in `.sch` SHALL instead be netlisted in memory in LVS netlist mode, as capability `schematic-simulation-integration` (Requirements "Schematic to layout cross-probing" and "Schematic-driven LVS command") specifies, and the text SHALL be read as SPICE.
 Compatibility: native
 (Hefesto decision: docs/decisions/product.md#P-5)
 

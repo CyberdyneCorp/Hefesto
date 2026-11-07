@@ -176,11 +176,12 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: utils/flock.c, commands/CmdLQ.c:599-672
 - Options: replicate on POSIX | platform alternative (lock files or file coordination on Apple platforms)
 - Recommendation: use OS file coordination where available. Interoperate with Magic's `fcntl` locks on Linux/macOS.
+- Duplicate: tracked in Q-CELL-26, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
 
 ### Q-CMDEDIT-34: `archive` continues after a usage error
 - Kind: bug
-- Magic behavior: With the wrong argument count, the usage is printed, but execution falls through to the switch with an uninitialised option and a possibly NULL filename.
-- Evidence: commands/CmdAB.c:150-190
+- Magic behavior: With the wrong argument count, the usage is printed, but execution falls through to the switch. The option is initialized to -1, so the switch does nothing; the only stray action is reading `argv[2]` into the file name, which is never used. The impact is cosmetic: observable behavior is the same as stopping after the usage message.
+- Evidence: commands/CmdAB.c:118-145
 - Options: fix (stop after usage)
 - Recommendation: fix.
 
@@ -190,6 +191,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdCD.c:3751-3790, database/DBio.c DBWriteBackup/DBFileRecovery
 - Options: platform alternative (app-container autosave)
 - Recommendation: autosave to the app container. Keep `crash save|recover FILE` for explicit files.
+- Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
 
 ### Q-CMDEDIT-60: `select no …` is parsed as `nocycle`
 - Kind: quirk
@@ -225,6 +227,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdRS.c:1905-1910
 - Options: replicate | fix
 - Recommendation: fix.
+- Duplicate: tracked in Q-MISC-23, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) Q-MISC-23 also covers the size/offset query scaling.
 
 ### Q-CMDEDIT-91: `setlabel box` coordinates parsed as relative distances
 - Kind: quirk
@@ -267,3 +270,4 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdRS.c:2736-2780
 - Options: platform alternative (unavailable on iPadOS; native on desktop)
 - Recommendation: provide on Linux/macOS only.
+- Resolution: n/a (platform). Answered by P-13 and capability `hefesto-ipad-feature-scope`: `shell` is desktop-only.

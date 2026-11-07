@@ -4,7 +4,7 @@
 
 Defines the `tech` command. It queries the current technology (name, file name, version, internal scale, planes, layers and DRC values), loads a new technology, and changes which layers are locked. The loading semantics are in capability `tech-loading-and-scaling`. Locking semantics for the paint tables are in capability `tech-compose-and-connect`. Name and type-list parsing is in capability `tech-layers-and-planes`. The values returned by `tech drc` are defined by the `drc-*` capabilities.
 
-In Magic, results are printed to the console in the non-Tcl build and returned as Tcl results in the Tcl build. Both forms are given where they differ. The textual form is `informative`. The information returned is `behavioral`.
+Results are returned as script results, as in Magic's Tcl build, which is normative where the builds differ (`docs/spec-conventions.md`). Magic's non-Tcl build prints them to the console instead; that printed form is given where it differs and is `informative`. The information returned is `behavioral`.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Compatibility: behavioral
 - **Ambiguous.** An ambiguous prefix, such as `l`, `la` or `lo`, reports `Ambiguous techinfo option: "<opt>"` and then `  Type ":tech help" for help.`.
 - **Unknown.** An unknown option reports `"<opt>" isn't a valid tech option.  Type ":tech help" for help.`.
 - **Wrong argument count.** This reports `wrong number of arguments to command "tech"` and the help hint.
-- **Namespace prefix.** In the Tcl build, a leading `::magic::` or `magic::` on the option is ignored.
+- **Namespace prefix.** A leading `::magic::` or `magic::` on the option is ignored.
 
 The manual names the lock options `layers lock|unlock|revert`. The command actually takes `locked`, `unlocked` and `revert` as top-level options. `lock` and `unlock` work as prefixes (see Q-TECH-29).
 
@@ -59,14 +59,14 @@ The command SHALL return these technology properties:
 Compatibility: behavioral
 
 Output forms:
-- **Non-Tcl build:** `Technology name is "<n>"`, `Technology filename is "<f>"`, `Technology version is: "<v>"`, and `Description: <d>` on the next line.
-- **Tcl build:** the result is the name, the file name, or a two-element list {version, description}.
+- **Magic's non-Tcl build (informative):** `Technology name is "<n>"`, `Technology filename is "<f>"`, `Technology version is: "<v>"`, and `Description: <d>` on the next line.
+- **Result:** the name, the file name, or a two-element list {version, description}.
 
 (Magic ref: commands/CmdTZ.c:217-226, commands/CmdTZ.c:249-258)
 
 #### Scenario: Version query
 - **GIVEN** the example technology of capability `tech-file-format`
-- **WHEN** `tech version` is executed in the Tcl build
+- **WHEN** `tech version` is executed
 - **THEN** the result is the list {`1.0`, `Tiny demo process`}
 
 ### Requirement: tech lambda
@@ -75,8 +75,8 @@ Output forms:
 
 Compatibility: behavioral
 
-- **Tcl build:** the result is the two-element list {L, I}.
-- **Non-Tcl build:** it prints `Internal units per Lambda = <L> / <I>`. The label is the inverse of the printed ratio (see Q-TECH-26).
+- **Result:** the two-element list {L, I}.
+- **Magic's non-Tcl build (informative):** it prints `Internal units per Lambda = <L> / <I>`. The label is the inverse of the printed ratio (see Q-TECH-26).
 - **Setting the fraction:** `tech lambda N [D]`, where N is an integer, first sets I := N and L := D. If D is omitted, L := 1. If D is given but is not an integer, L is unchanged. The fraction is then reduced and reported as above.
   - Setting it this way rescales no table and no layout (see Q-TECH-26).
 
@@ -84,7 +84,7 @@ Compatibility: behavioral
 
 #### Scenario: Query after scalegrid
 - **GIVEN** `scalegrid 1 2` has been executed from 1:1
-- **WHEN** `tech lambda` is executed in the Tcl build
+- **WHEN** `tech lambda` is executed
 - **THEN** the result is {1 2}
 
 ### Requirement: tech planes
@@ -93,14 +93,14 @@ Compatibility: behavioral
 
 Compatibility: behavioral
 
-- **Non-Tcl build:** it prints `Defined planes (<K>) are:`, then one line per plane: three spaces and the plane name.
-- **Tcl build:** the result is a list of the names.
+- **Magic's non-Tcl build (informative):** it prints `Defined planes (<K>) are:`, then one line per plane: three spaces and the plane name.
+- **Result:** a list of the names.
 
 (Magic ref: commands/CmdTZ.c:244-247, commands/CmdTZ.c:272-276)
 
 #### Scenario: Example technology planes
 - **GIVEN** the example technology
-- **WHEN** `tech planes` is executed in the Tcl build
+- **WHEN** `tech planes` is executed
 - **THEN** the result is {router designRuleCheck designRuleError mhint fhint rhint well active metal1 metal2}
 
 ### Requirement: tech layers
@@ -190,7 +190,7 @@ Compatibility: behavioral
 - **Missing second layer.** For `surr` and `direc`, a missing t2 reports `Requires two layer types.`.
 - **Unknown keyword.** An unknown rule keyword returns nothing, silently.
 - **Too few arguments.** Fewer than 4 words, counting `tech drc`, is a wrong-argument-count error.
-- **Output.** The non-Tcl build prints `Minimum width is <v>`, `Minimum spacing is <v>`, `Minimum surround is <v>`, or `Minimum surround (in one orientation) is <v>`. The Tcl build returns `<v>`.
+- **Output.** The result is `<v>`. Informative: Magic's non-Tcl build prints `Minimum width is <v>`, `Minimum spacing is <v>`, `Minimum surround is <v>`, or `Minimum surround (in one orientation) is <v>`.
 
 The values and their unit formatting are defined by the `drc-*` capabilities and the display-units capability.
 

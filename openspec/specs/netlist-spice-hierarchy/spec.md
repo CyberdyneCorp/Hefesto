@@ -59,7 +59,7 @@ Each written definition SHALL be laid out as follows:
   2. device lines, after the merge pre-pass if merging is on
   3. resistor lines
   4. coupling capacitor lines
-  5. node lines, written only if a `substrate` record was read (not in compatibility mode)
+  5. node lines, written only if a `substrate` record was read (not in substrate compatibility mode; Q-NETLIST-20)
 - **Closing.** The section SHALL close with `.ends` and an empty line, or with `.end` and an empty line for a root that was not wrapped.
 - **Counters.** After each section, the counters for capacitors, devices (back to 1000), resistors, diodes, subcircuits and SPICE2 nodes (back to 10) and the HSPICE prefix table SHALL be reset. The voltage-source counter is not reset (Q-NETLIST-35).
 Compatibility: exact

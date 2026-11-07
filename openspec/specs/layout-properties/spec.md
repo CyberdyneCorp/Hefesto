@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling and origin moves, the compatibility ("compat") mode that controls how types are persisted, and the complete list of reserved property names recognised anywhere in Magic together with their side effects, so that PDK cells and generated layouts keep their meaning in Hefesto.
+Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling and origin moves, the property compat mode that controls how types are persisted, and the complete list of reserved property names recognised anywhere in Magic together with their side effects, so that PDK cells and generated layouts keep their meaning in Hefesto.
 
-The `.mag` `<< properties >>` syntax belongs to the `cell-*` capabilities, the `property` command to `cmd-*`, mask-hint semantics to `mask-hints`, and the consumers of individual reserved names to the capabilities cited in the table.
+The `.mag` `<< properties >>` syntax belongs to capability `cell-file-format`, the `property` command to `cmd-labels-properties`, mask-hint semantics to `mask-hints`, and the consumers of individual reserved names to the capabilities cited in the table.
 
 ## Requirements
 
@@ -68,15 +68,16 @@ Compatibility: exact
 - **WHEN** the database is scaled by 2/1
 - **THEN** `FIXED_BBOX` SHALL become `(0,0,200,400)` and `n` SHALL stay `7`
 
-### Requirement: Compatibility (compat) mode
+### Requirement: Property compat mode
 
-The system SHALL maintain a global compat setting, true by default, under which every property is written to `.mag` files with type keyword `string`; when compat is false each property SHALL be written with its own type keyword (`string`, `integer`, `dimension` for dimension and plane, `double`).
+The system SHALL maintain a global property compat flag, true by default, under which every property is written to `.mag` files with type keyword `string`; when compat is false each property SHALL be written with its own type keyword (`string`, `integer`, `dimension` for dimension and plane, `double`).
 Compatibility: exact
 
+- This flag is unrelated to Hefesto's `magic-compat` setting (capability `hefesto-magic-compat-mode`), which does not change it.
 - Reading always converts reserved names to their forced types (requirement "Reserved-name type coercion") whatever keyword is present, so compat files round-trip.
-- The value text written is the same in both modes (dimension and plane values divided by the output reducer; see `cell-*`).
-- Properties are written in natural-sort order of their names (see `cell-*`).
-- The compat flag is queried and set through the `property compat` command (`cmd-*`); accepted values: `disable, no, false, off, 0` / `enable, yes, true, on, 1`.
+- The value text written is the same in both modes (dimension and plane values divided by the output reducer; see capability `cell-file-format`).
+- Properties are written in natural-sort order of their names (see capability `cell-file-format`, requirement "Natural ordering of names").
+- The compat flag is queried and set through the `property compat` command (capability `cmd-labels-properties`); accepted values: `disable, no, false, off, 0` / `enable, yes, true, on, 1`.
 
 (Magic ref: database/DBprop.c:37-44, database/DBio.c:4918-4942,5022-5100, commands/CmdLQ.c:2343-2541)
 

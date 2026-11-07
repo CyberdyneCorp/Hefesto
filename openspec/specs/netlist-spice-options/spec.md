@@ -28,7 +28,7 @@ The command SHALL take an optional first word. It is matched case-insensitively,
 | `short none\|resistor\|voltage` | Shorted-port policy (see capability `ext-flattening-read`). | none |
 | `subcircuits on\|off` | Same as `subcircuits descend on\|off`. | on |
 | `subcircuits top on\|off\|auto` | Top-level `.subckt` wrapper. | auto |
-| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here sets *top* to auto. | on |
+| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here sets *top* to auto (Q-NETLIST-41). | on |
 | `hierarchy on\|off` | Hierarchical output. | off |
 | `blackbox on\|off` | Emit abstract views as stub subcircuits. | off |
 | `renumber on\|off` | Number instances `X0, X1, …` instead of using their ids. | off |
@@ -68,7 +68,7 @@ A run SHALL accept the common arguments of capability `ext-flattening-hierarchy`
 | `-y <n>` | Deprecated. Prints `The cap accuracy flag 'y' is deprecated.` |
 | `-h` | Usage |
 
-An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell argument, the run SHALL use the cell in the current layout window. The output file SHALL be `<cell>.cdl` in CDL format and `<cell>.spice` otherwise, in the current directory, unless `-o` is given. The thresholds set by options SHALL be copied into the run before arguments are parsed. All device, capacitor, resistor, diode, voltage-source, subcircuit and node counters SHALL be reset at the start of each run:
+An unknown flag SHALL fail the run with `Unrecognized flag: <f>`. Without a cell argument, the run SHALL use the cell in the current layout window. The output file SHALL be `<cell>.cdl` in CDL format and `<cell>.spice` otherwise, in the current directory, unless `-o` is given for that run (see Q-NETLIST-42). The thresholds set by options SHALL be copied into the run before arguments are parsed. All device, capacitor, resistor, diode, voltage-source, subcircuit and node counters SHALL be reset at the start of each run:
 - devices start at 1000
 - SPICE2 node numbers start at 10
 - all other counters start at 0
@@ -83,12 +83,12 @@ Compatibility: behavioral
 - **THEN** it writes `amp.cdl`
 
 ### Requirement: File header and scale card
-The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × EFScale / 100`. If scale mode is off, the output length unit SHALL be `EFScale / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.
+The first output line SHALL be `* <FMT> file created from <cell>.ext - technology: <tech>` followed by one empty line. `<FMT>` is one of `SPICE2 SPICE3 HSPICE NGSPICE CDL`. If scale mode is on, the next lines SHALL be `.option scale=<v>` followed by an empty line. Here `<v>` is the SI form (see Requirement "SI value formatting") of `1e-6 × S_out / 100`, where `S_out` is the global output scale of capability `ext-flattening-read`. If scale mode is off, the output length unit SHALL be `S_out / 100` µm per internal unit. If the active extraction style does not match the file, the run SHALL warn `Warning:  Current extraction style does not match .ext file!` and continue.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:900-915, ext2spice/ext2spice.c:1063-1075)
 
 #### Scenario: Default header
-- **GIVEN** cell `inv`, technology `scmos`, EFScale 5, and default options
+- **GIVEN** cell `inv`, technology `scmos`, output scale `S_out` 5, and default options
 - **WHEN** the netlist is written
 - **THEN** it begins `* SPICE3 file created from inv.ext - technology: scmos`, an empty line, `.option scale=50n`, an empty line
 
@@ -175,7 +175,7 @@ Compatibility: exact
 
 ### Requirement: Subcircuit header line
 A `.subckt` line SHALL be written as `.subckt <name>` followed by the ports in ascending port index, each preceded by one space. `<name>` is the cell name, prefixed with `x` if its first character is not a letter; the cell's name is permanently renamed this way.
-- **Port index.** A port node without an explicit index on any of its names SHALL receive one past the current maximum, in node-table iteration order. Abstract cells in black-box mode are the exception. Indices need not be contiguous; gaps are skipped.
+- **Port index.** A port node without an explicit index on any of its names SHALL receive one past the current maximum, in node-table iteration order. That order is the Magic string hash table order of capability `ext-flattening-hierarchy` (requirement "Container iteration order"), which Hefesto SHALL reproduce exactly because it decides the port numbering (decision X-1, capability `hefesto-output-determinism`). Abstract cells in black-box mode are the exception. Indices need not be contiguous; gaps are skipped.
 - **Port name.** The name is the node's SPICE name. For abstract cells it is the converted port name itself.
 - **Duplicate names.** A port name already written SHALL NOT be written again; the duplicate node's index is set to the first one's.
 - **Optimized-out ports.** A port whose name no longer resolves to a flat node SHALL be dropped. The note `Note:  Port <p> was optimized out of <cell>` is informative.
@@ -193,7 +193,7 @@ Compatibility: exact
 A subcircuit call SHALL be written as follows.
 - **Instance name.** `X<n>` (next subcircuit number) if renumbering is on, the format is SPICE2, or the use has no id. Otherwise `X` followed by the full instance path, converted with only convert-comma active.
 - **Nodes.** One space plus the SPICE name of each port in ascending port index.
-  - Without a declared port order, ports follow the subcell's node-table iteration order.
+  - Without a declared port order, ports follow the subcell's node-table iteration order, reproduced exactly as for the port index.
   - With one, each index takes the subcell's canonical port name, or the most preferred alias that carries that index.
 - **Model name.** In CDL, ` /` is written before the cell name. Then a space and the cell name follow, with the `x`-prefix rule.
 - **Parameters.** Cell instance parameters SHALL be appended.
@@ -246,7 +246,7 @@ Compatibility: exact
 - **THEN** no capacitor line is written for it, because 2 is not greater than 2
 
 ### Requirement: Global card in hierarchical mode
-In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. In the Tcl build with CDL format, the values of the Tcl variables `SUB`, `VDD` and `GND` that end in `!` are also added. Hefesto MAY offer that through configuration; see Q-NETLIST-33.
+In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. With CDL format, the values of the scripting variables `SUB`, `VDD` and `GND` that end in `!` SHALL also be added, as in Magic's Tcl build. Where Hefesto takes those values from is pending D-14; see Q-NETLIST-33.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:965-1045, ext2spice/ext2spice.c:1086-1120)
 

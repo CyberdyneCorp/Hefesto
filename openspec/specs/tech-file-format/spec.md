@@ -328,7 +328,7 @@ Compatibility: exact
 
 If no name line is present, the technology name is left unchanged from the previously loaded technology (see Q-TECH-8).
 
-The technology name is the string that `.mag` files must match in their `tech` header (see the `cell-*` capabilities). It is also reported by `tech name` (see capability `tech-command`).
+The technology name is the string that `.mag` files must match in their `tech` header (see capability `cell-file-format`). It is also reported by `tech name` (see capability `tech-command`).
 
 (Magic ref: database/DBtech.c:70-82, database/DBtech.c:104-134, utils/tech.h:40)
 
@@ -393,9 +393,7 @@ The technology format version SHALL default to 27 and SHALL be set only by the `
 Compatibility: exact
 
 1. **Filename fallback.** When a technology named `X` is not found as `X.tech`, the file `X.tech27` is tried (see capability `tech-loading-and-scaling`). 27 is the last format version that was encoded in the file suffix.
-2. **Fringe-halo extraction default.** When a technology is loaded in full and its `extract` section is finalized, the extraction option `fringehalo` is enabled if the format version is 34 or more, and disabled otherwise. A later reload of just the extract style (an extraction style change) does not re-apply this default, so a user's `extract do|no fringehalo` choice is kept. See the `extract-*` capabilities.
-
-Because the format version is read when the `extract` section is finalized, a `tech` section that appears after the `extract` section does not affect the fringe-halo default for that load. The value then in effect is the one set by the previous technology load, or 27 if it was reset by an earlier `tech` section init (see Q-TECH-32).
+2. **Fringe-halo extraction default.** The format version (34 or more: on; otherwise off) selects the default of the extraction option `fringehalo`, as specified by capability `extract-tech-section`, requirement "Fringe model default chosen from tech format", which governs (including when the default is applied and the effect of a `tech` section placed after `extract`; see Q-TECH-32).
 
 Formats 28 to 35 change no other parsing rule in the reference version. Older syntax restrictions mentioned in the manual, such as one style per line in format 27 and earlier, are not enforced.
 

@@ -103,7 +103,7 @@ Compatibility: behavioral
 - **THEN** it SHALL return without error and without effect
 
 ### Requirement: Ruler annotation
-`ruler ?text? ?orient?` (orient ∈ `auto` (default), `horizontal`, `vertical`) SHALL draw a dimension marker inside the cursor box using drawing elements (see capability for the `element` command). Let (llx,lly,urx,ury) be `box values` in the current units, w = urx−llx, h = ury−lly, mmx = (llx+urx)/2 and mmy = (lly+ury)/2, using integer division when the operands are integers. Then:
+`ruler ?text? ?orient?` (orient ∈ `auto` (default), `horizontal`, `vertical`) SHALL draw a dimension marker inside the cursor box using drawing elements (see capability `cmd-labels-properties` for the `element` command). Let (llx,lly,urx,ury) be `box values` in the current units, w = urx−llx, h = ury−lly, mmx = (llx+urx)/2 and mmy = (lly+ury)/2, using integer division when the operands are integers. Then:
 1. `auto` selects `horizontal` iff w > h, else `vertical`.
 2. Let k be a session counter: 0 for the first ruler, then +1 for each ruler.
 3. Let gap tclr = 4 for horizontal or 2 for vertical when text is non-empty, else 0.

@@ -120,7 +120,7 @@ The new window SHALL show:
 - otherwise, if a box exists, the box's cell, zoomed so the box plus a margin on each side fills the window. The margin is max(2, ⌊width/20⌋) in x and max(2, ⌊height/20⌋) in y.
 - otherwise the unnamed cell `(UNNAMED)`
 
-`name` is a host window name used by the Tcl build. If creation fails, report `Could not create window`.
+`name` is a host window name. If creation fails, report `Could not create window`.
 
 `closewindow [name]` SHALL close the named window, or the pointed window. Errors:
 - name not found: `Window named N cannot be found`
@@ -209,8 +209,8 @@ Compatibility: behavioral
 
 #### Scenario: Positions to terminal (verify against Magic)
 - **GIVEN** one layout window with screen area (2,9)-(509,463)
-- **WHEN** `windowpositions` is executed in the non-Tcl build
-- **THEN** the output SHALL be `specialopen 2 9 509 463 layout`
+- **WHEN** `windowpositions` is executed in Magic's non-Tcl build (informative)
+- **THEN** Magic prints `specialopen 2 9 509 463 layout`
 
 ### Requirement: view, xview and zoom
 `view` SHALL frame the root cell's bounding box B, expanded on each side by ⌊(B.w+1)/10⌋ in x and ⌊(B.h+1)/10⌋ in y, computed side by side in the order xbot, xtop, ybot, ytop. Each later expansion uses the already-expanded size.
@@ -294,7 +294,7 @@ Compatibility: behavioral
 - `redraw` SHALL mark every window's whole area for redisplay.
 - `reset` SHALL re-initialize the display and reload the color map, display styles and cursor glyphs. On a host-managed window system it SHALL report that it does not apply.
 - `updatedisplay` SHALL immediately perform all pending redisplay.
-- In the Tcl build, `updatedisplay suspend` SHALL stop all layout redisplay until `updatedisplay resume`.
+- `updatedisplay suspend` SHALL stop all layout redisplay until `updatedisplay resume`.
 
 Compatibility: behavioral
 (Magic ref: windows/windCmdNR.c:409-472, windows/windCmdSZ.c:716-761)
@@ -435,7 +435,7 @@ Each layout window SHALL have a grid with spacing (sx, sy) and origin (ox, oy). 
 
 When the grid is on and the window shows the edit cell, an origin square SHALL be drawn in style 18 at the edit cell's origin, 2 pixels beyond the origin point on each side. It is drawn only if 2 layout units span at least 4 pixels.
 
-`grid` command forms:
+`grid` command forms (summary; argument parsing, units and script results are owned by capability `cmd-coordinates-and-units`, requirement "Grid command"; this requirement owns the grid display):
 - `grid` SHALL toggle the grid. `grid toggle` is the same.
 - `grid on`, `grid off` and `grid 0` SHALL turn it on or off.
 - `grid state` SHALL report `Grid is on|off`.

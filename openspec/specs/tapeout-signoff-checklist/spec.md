@@ -12,8 +12,9 @@ Defines Hefesto's sign-off checklist. It is an ordered, reproducible set of chec
 - antenna
 - density, fill and seal ring presence
 - LVS
+- optionally, electromigration and IR drop (capability `reliability-em-check`, Requirement "Sign-off checklist item")
 
-The checklist also states Hefesto's position on KLayout DRC decks. Hefesto implements Magic's DRC exactly. The gf180mcu and IHP shuttles, and parts of the sky130 prechecks, gate on KLayout Ruby-DSL decks that Magic's DRC does not reproduce. See Q-TAPEOUT-1.
+The checklist also states Hefesto's position on KLayout DRC decks. Hefesto implements Magic's DRC exactly. The gf180mcu and IHP shuttles, and parts of the sky130 prechecks, gate on KLayout Ruby-DSL decks that Magic's DRC does not reproduce. Decision P-18 (resolving Q-TAPEOUT-1) runs those decks externally on desktop.
 
 Related capabilities:
 - `drc-engine`, `drc-commands`: Magic DRC
@@ -23,6 +24,7 @@ Related capabilities:
 - `tapeout-fill-and-density`: density and fill
 - `tapeout-seal-ring`: seal rings
 - `tapeout-shuttle-packages`: per-program profiles and package layout
+- `reliability-em-check`, `reliability-ir-drop`: the optional electromigration and IR-drop item
 
 Reference sources (read-only, never executed):
 - mpw_precheck @ `0941bdc1b62b5c3f99c8683bd11199d330af2ef3` (`mpw_precheck ref:`)
@@ -71,6 +73,7 @@ The default checklist SHALL run in this order. A program profile MAY drop items 
 14. KLayout DRC decks (external)
 15. Antenna
 16. LVS
+17. Electromigration and IR drop (optional; capability `reliability-em-check`)
 
 Cheap structural checks SHALL run before DRC. A blocking failure in items 1 to 3 SHALL stop the run, because later items depend on a valid top cell. Every other failure SHALL let the run continue, so that all problems are reported at once.
 
@@ -236,13 +239,13 @@ Hefesto SHALL implement Magic's DRC exactly. It SHALL NOT claim that Magic DRC r
 | gf180mcuD (wafer.space) | `gf180mcu.drc` DRC, antenna, density; zero-area | run, non-gating |
 | ihp-sg13g2 / sg13cmos5l (Tiny Tapeout, IHP MPW) | `ihp-sg13g2.drc` or `ihp-sg13cmos5l.drc`, density deck | not run |
 
-On Linux and macOS, Hefesto SHALL be able to run a listed deck as an external process. This uses a user-installed `klayout` executable with batch flags, the deck from the pinned PDK, and the profile's variables. The result database (`.lyrdb`) SHALL be imported as checklist results, with markers browsable on the canvas. The item SHALL be `external`, and SHALL become `pass` or `fail` from the imported report. The report's input hash SHALL be recorded. Hefesto SHALL NOT link KLayout code (see Q-TAPEOUT-1 for the license and iPadOS constraints).
+On Linux and macOS, Hefesto SHALL be able to run a listed deck as an external process. This uses a user-installed `klayout` executable with batch flags, the deck from the pinned PDK, and the profile's variables. The result database (`.lyrdb`) SHALL be imported as checklist results, with markers browsable on the canvas. The item SHALL be `external`, and SHALL become `pass` or `fail` from the imported report. The report's input hash SHALL be recorded. Hefesto SHALL NOT link or bundle KLayout code (decision P-18; see Q-TAPEOUT-1 for the license and iPadOS constraints).
 
 On iPadOS, and on desktop without `klayout`, each deck item SHALL be `not-run`. Such a run SHALL NOT be `ready` for a program whose profile marks that deck as gating. A run can become `ready` when the user attaches a `.lyrdb` report produced elsewhere and that report names the same input hash or the same top cell and file size.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/open-questions/TAPEOUT.md#Q-TAPEOUT-1; mpw_precheck ref: check_manager/__init__.py:240-270, check_manager/__init__.py:587-610; tt ref: precheck/precheck.py:489-560; ws-precheck ref: precheck.py:437-470)
+(Hefesto decision: docs/decisions/product.md#P-18; mpw_precheck ref: check_manager/__init__.py:240-270, check_manager/__init__.py:587-610; tt ref: precheck/precheck.py:489-560; ws-precheck ref: precheck.py:437-470)
 
 #### Scenario: gf180 on iPad
 - **GIVEN** a gf180mcuD Tiny Tapeout project on iPadOS

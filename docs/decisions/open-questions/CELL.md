@@ -79,6 +79,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: dbwind/DBWelement.c:186-227, database/DBio.c:3747
 - Options: replicate the hash order | fix (sort by name)
 - Recommendation: Sort elements by name with the natural comparator. Elements are rare in PDK data. Document that the order differs.
+- Resolution: decided by X-1 (2026-11-05). Elements are written sorted by name with the natural comparator, and golden comparison canonicalizes the order (capability `cell-file-format`). The 10-byte buffer overflow is tier-1 (always fix, X-2).
 
 ### Q-CELL-12: Natural comparator is not a strict weak order
 - Kind: bug
@@ -130,6 +131,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: utils/path.c:270-300, database/DBio.c:2585-2610, database/DBio.c:6059-6088, database/DBio.c:614-672
 - Options: platform alternative
 - Recommendation: Hefesto defines a single "path variables" table, seeded from the environment (desktop) or app settings (iPadOS), plus PDK configuration. Substitution on write must reproduce Magic's `$PDK_ROOT/...` text whenever the same variable values are configured. On iPadOS, `~` maps to the app container, and `~user` is unsupported (treated as an unknown user).
+- Canonical entry for Q-UI-26 and the path-variable part of Q-TECH-28. Platform owner: capability `hefesto-files-and-pdks`.
 
 ### Q-CELL-18: Gzip search-path retry uses the recorded path instead of the cell name
 - Kind: bug
@@ -193,6 +195,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: utils/flock.c:98-215
 - Options: platform alternative
 - Recommendation: On Linux and macOS, use OFD locks (`F_OFD_SETLK`) or `fcntl` with careful descriptor ownership, so that they interoperate with Magic sessions on the same files. On iPadOS, use NSFileCoordinator/NSFilePresenter for in-app coordination. There is no cross-process locking with Magic there, so treat every file as unlocked and rely on the atomic save.
+- Canonical entry for Q-CMDEDIT-33. Platform owner: capability `hefesto-files-and-pdks`.
 
 ### Q-CELL-27: In-place fallback write corrupts the file
 - Kind: bug
@@ -207,6 +210,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:6473
 - Options: replicate the hash | fix (sorted by name, or parents before children)
 - Recommendation: Sort by name with the natural comparator. The reader is order-independent.
+- Status: confirmed by X-1 as amended (2026-11-06, D-1): backup and archive cell order is name-keyed but never affects results, so it keeps the sort by name with the natural comparator. The tie-break question remains open in D-9.
 
 ### Q-CELL-29: Wrong file name in the explicit crash-save message
 - Kind: bug
@@ -221,6 +225,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:6419-6437, database/DBio.c:1137-1179, utils/signals.c:265-278, tcltk/tools.tcl:57-118
 - Options: platform alternative
 - Recommendation: Use a per-user application-support directory with a session lock file instead of process-ID probing. Keep the `MAG<pid>.*` reading capability for importing Magic backups on desktop. On iPadOS, back up on the app-background notification and with the timer.
+- Canonical entry for Q-UI-31, Q-SCRIPT-35 and Q-CMDEDIT-35. Platform owner: capability `hefesto-files-and-pdks`. The desktop location is an open decision (docs/decisions/audit/DECISIONS.md).
 
 ### Q-CELL-31: Cell name derived from the first ".mag" in a backup location
 - Kind: bug

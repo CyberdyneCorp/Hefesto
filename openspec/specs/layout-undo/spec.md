@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo and redo replay events, the history limit, how a new edit discards the redo tail, and when recording is suspended. The `undo`/`redo` commands themselves (argument syntax, `undo print`, `undo enable|disable`) belong to `cmd-*`.
+Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo and redo replay events, the history limit, how a new edit discards the redo tail, and when recording is suspended. This capability also owns the `undo` and `redo` commands (argument syntax, `undo print`, `undo enable|disable`) and the native undo events that Hefesto adds for its own compound operations (agent proposals, testbench edits). The commands are registered by the window client, so they are valid in every window type (capability `ui-command-dispatch`, requirement "Command registration and help text").
 
 ## Requirements
 
@@ -93,7 +93,7 @@ Compatibility: behavioral
 The system SHALL retain at least the 1000 most recent completed steps; when a new step boundary makes the number of retained steps exceed 1000 the oldest steps SHALL be discarded.
 Compatibility: behavioral
 
-- Magic's limit is fixed at 1000 (`MAXCOMMANDS = LOWCOMMANDS = 1000`). Hefesto MAY allow a larger configurable limit but SHALL NOT retain fewer than 1000 by default (Q-MODEL-21).
+- Magic's limit is fixed at 1000 steps. Hefesto MAY allow a larger configurable limit but SHALL NOT retain fewer than 1000 by default (Q-MODEL-21).
 - Magic additionally supported an undo log file (unused); Hefesto need not.
 
 (Magic ref: utils/undo.c:46-59,546-547,811-836)
@@ -102,3 +102,88 @@ Compatibility: behavioral
 - **GIVEN** 1001 consecutive paint commands
 - **WHEN** `undo` is executed 1001 times
 - **THEN** at least the last 1000 commands SHALL have been undone and the first paint MAY remain
+
+### Requirement: undo command
+
+The `undo` command SHALL accept the forms `undo`, `undo <n>`, `undo print <n>`, `undo enable` and `undo disable`, and SHALL act as follows.
+Compatibility: behavioral
+
+- `undo` is `undo 1`. `undo <n>` with an integer n > 0 SHALL undo up to n steps (requirement "Undo and redo semantics"). If no step could be undone, it SHALL print `Nothing more to undo`.
+- An integer is an optional `+` or `-` followed by decimal digits. A negative n SHALL print `Count must be a positive integer` and change nothing.
+- `undo 0` SHALL behave as `undo enable` (see Q-MODEL-30).
+- `undo enable` and `undo disable` SHALL match their keywords exactly (no prefix matching). `undo disable` SHALL suspend recording by one nesting level and `undo enable` SHALL resume it by one level, never below zero. These share the nesting counter of requirement "Non-recorded operations", so two `undo disable` need two `undo enable`.
+- Any other single non-integer argument SHALL print `Option must be a count (integer)`.
+- With two arguments, the first SHALL begin with `print` (its first five characters are compared) and the second SHALL be an integer, otherwise `Usage: undo print count` is printed. `undo print <n>` SHALL list the n log entries before the current position, newest first; n ≤ 0 lists back to the start of the log. It changes nothing. The listing format is informative (Magic prints internal addresses).
+- More than two arguments SHALL print the usage text `Usage: undo [count]`, `       undo print [count]`, `       undo enable|disable`.
+- While recording is suspended, `undo <n>` SHALL NOT replay any step. Magic prints `Attempted undo with undo disabled. . . abort function.` followed by `Nothing more to undo`; message text is informative.
+
+(Magic ref: windows/windCmdSZ.c:634-697, windows/windClient.c:779-781, utils/undo.c:408-436,569-584,955-988, utils/strdup.c:125-134)
+
+#### Scenario: Undo with a count
+- **GIVEN** three paint commands S1, S2, S3
+- **WHEN** `undo 2` is executed
+- **THEN** S3 and S2 SHALL be undone and S1 SHALL remain
+
+#### Scenario: Undo past the start of the log (verify against Magic)
+- **GIVEN** one recorded step after the startup fence
+- **WHEN** `undo 5` is executed
+- **THEN** the step SHALL be undone and no message SHALL be printed
+- **AND** a further `undo` SHALL print `Nothing more to undo`
+
+#### Scenario: Negative count
+- **WHEN** `undo -1` is executed
+- **THEN** `Count must be a positive integer` SHALL be printed and nothing SHALL change
+
+#### Scenario: Disable and enable nest
+- **GIVEN** `undo disable` executed twice
+- **WHEN** `undo enable` is executed once and then `paint metal1` is executed
+- **THEN** the paint SHALL NOT be recorded
+- **AND** after a second `undo enable`, a further paint SHALL be recorded
+
+### Requirement: redo command
+
+The `redo` command SHALL accept the forms `redo`, `redo <n>` and `redo print <n>`, and SHALL act as follows.
+Compatibility: behavioral
+
+- `redo` is `redo 1`. `redo <n>` with an integer n > 0 SHALL redo up to n undone steps. If no step could be redone, it SHALL print `Nothing more to redo`.
+- A negative n SHALL print `Count must be a positive integer`. A non-integer single argument SHALL print `Count must be numeric`. Neither changes anything.
+- `redo 0` SHALL suspend recording by one nesting level, like `undo disable` (see Q-MODEL-30).
+- With two arguments, the first SHALL begin with `print` and the second SHALL be an integer, otherwise `Usage: redo print count` is printed. `redo print <n>` SHALL list the n log entries after the current position, oldest first; n ≤ 0 lists to the end of the log. The listing format is informative.
+- More than two arguments SHALL print `Usage: redo [count]`.
+- `redo` has no `enable` or `disable` keyword: `redo enable` prints `Count must be numeric`.
+
+(Magic ref: windows/windCmdNR.c:335-391, windows/windClient.c:751-753, utils/undo.c:651-694,932-953,979-988)
+
+#### Scenario: Redo with nothing undone
+- **GIVEN** a paint command and no undo since
+- **WHEN** `redo` is executed
+- **THEN** `Nothing more to redo` SHALL be printed and nothing SHALL change
+
+#### Scenario: redo 0 suspends recording
+- **GIVEN** recording is enabled
+- **WHEN** `redo 0` is executed and then `paint metal1` is executed
+- **THEN** the paint SHALL NOT be recorded until `undo enable` (or `undo 0`) is executed
+
+### Requirement: Native undo events for Hefesto compound operations
+
+Hefesto SHALL record native undo events, in the same linear log as the Magic-compatible events, for operations that have no Magic counterpart and that are promised to be undoable as one step: applying an accepted agent proposal (capability `agent-safety-and-approval`), testbench edits made through `sim` (capability `simulation-command`) and measurement or specification definitions (capability `simulation-measurements-and-statistics`).
+Compatibility: native
+
+- Applying an accepted proposal SHALL be one step. For every cell the proposal changes, the step SHALL record enough state to restore it exactly, including the changes that ordinary commands do not record (requirement "Non-recorded operations"): property changes, cell creation, rename and deletion, and flattening. Undo SHALL restore every such cell, delete cells the proposal created and restore cells it deleted or renamed; redo SHALL re-apply the proposal.
+- A testbench or measurement edit SHALL be one step whose events restore the previous `testbench.json` content. Undoing it SHALL also save the restored content.
+- Recording these native events SHALL NOT change which events ordinary Magic commands record. The non-recorded list of requirement "Non-recorded operations" keeps applying outside these operations.
+- These steps obey the history limit and the redo-discard rule like any other step.
+
+(Hefesto decision: docs/decisions/product.md#P-10, docs/decisions/product.md#P-7, docs/decisions/product.md#P-19)
+
+#### Scenario: Undo an accepted proposal that set a property and created a cell
+- **GIVEN** an accepted proposal that painted in cell `top`, set property `FIXED_BBOX` on `top` and created cell `inv_x1`
+- **WHEN** `undo` is executed once
+- **THEN** the paint and the property SHALL be removed from `top`
+- **AND** cell `inv_x1` SHALL no longer exist
+
+#### Scenario: Plain property change stays non-recorded
+- **GIVEN** recording enabled and no agent proposal involved
+- **WHEN** `property x 1` is executed and then `undo` is executed
+- **THEN** the property SHALL remain set
+

@@ -126,7 +126,7 @@ Compatibility: exact
 
 A type's home plane is the plane it is stored on. A non-contact type exists only on its home plane. Built-in types 1 to 8 have the home planes listed in "Built-in tile types". Type 0 (space) has no home plane.
 
-The long name of a type is the name written to `.mag` files and printed in messages. It is an `exact` compatibility item (see the `cell-*` capabilities).
+The long name of a type is the name written to `.mag` files and printed in messages. It is an `exact` compatibility item (see capability `cell-file-format`).
 
 (Magic ref: database/DBtechtype.c:200-250, database/DBtechtype.c:422-484, database/DBtechtype.c:559-575)
 

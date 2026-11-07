@@ -14,11 +14,11 @@ Each layout document window SHALL contain:
 - a command bar
 - a status bar showing cursor coordinates in the current units, the box size, the edit cell and the DRC state
 
-Panels SHALL be collapsible. On the desktop, the window SHALL be built from Raven widgets: dock area, splitters, tabs and tree/table views. Panels SHALL be dockable, and the UI theme SHALL use Raven's theme system, including light and dark themes. On iPad, panels SHALL be SwiftUI sidebars or popovers that adapt to the size class.
+Panels SHALL be collapsible. On the desktop, the window SHALL be built from Raven widgets: dock area, splitters, tabs and tree/table views. Panels SHALL be dockable, and the UI theme SHALL use Raven's theme system, including light and dark themes. On iPad, panels SHALL be SwiftUI sidebars or popovers that adapt to the size class. Visual styling follows capability `hefesto-design-system`.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2)
+(Hefesto decision: docs/decisions/product.md#P-11, docs/decisions/product.md#P-23)
 
 #### Scenario: Layer palette paint
 - **WHEN** the user selects a layer in the palette and invokes "paint"
@@ -64,7 +64,7 @@ Layout-data text and command names SHALL NOT be localized.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-2)
+(Hefesto decision: docs/decisions/product.md#P-2, docs/decisions/product.md#P-11)
 
 #### Scenario: VoiceOver on layer palette
 - **WHEN** VoiceOver focuses a layer palette entry

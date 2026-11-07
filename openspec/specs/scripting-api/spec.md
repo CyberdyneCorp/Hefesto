@@ -3,12 +3,12 @@
 ## Purpose
 Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding and namespaces, command results, error signalling, name-collision handling, command tag callbacks, window-directed commands, the Tcl global variables that the layout engine reads, output and prompt routing, and the result formats that third-party scripts depend on. The most important of these scripts are the open-PDK startup files and device generators (see capabilities `scripting-pdk-integration` and `pcell-toolkit`).
 
-Hefesto may host the scripts in an embedded Tcl interpreter or in an equivalent engine. In either case, any script written against Magic's Tcl API MUST observe the results, side effects and variables specified here. The choice of scripting language is logged as Q-SCRIPT-1 [platform]. Command semantics (what `box`, `paint`, `select` and so on do to the database) belong to the command capabilities. This spec covers only how those commands bind to the scripting layer and what values they return to it.
+Hefesto hosts the scripts in an embedded, sandboxed Tcl interpreter on every platform, including iPadOS (decision X-3; capability `hefesto-scripting`). Any script written against Magic's Tcl API MUST observe the results, side effects and variables specified here, except for operations the sandbox denies (process execution, sockets, loading native extensions; capability `hefesto-security`). Command semantics (what `box`, `paint`, `select` and so on do to the database) belong to the command capabilities. This spec covers only how those commands bind to the scripting layer and what values they return to it.
 
 ## Requirements
 
 ### Requirement: Scripting host choice is abstracted behind a command API
-Hefesto SHALL implement the scripting API in this capability as a host-independent command interface. A command is a name plus a vector of string arguments. It returns a status (ok or error) and a string result. Hefesto SHALL be able to bind this interface to a Tcl interpreter. On a platform where Tcl cannot be used, every script-visible behavior in this capability SHALL still be reachable through the platform's alternative mechanism, with identical results for identical command vectors.
+Hefesto SHALL implement the scripting API in this capability as a host-independent command interface. A command is a name plus a vector of string arguments. It returns a status (ok or error) and a string result. Hefesto SHALL bind this interface to the embedded Tcl interpreter on every platform (capability `hefesto-scripting`). Every other caller of the command interface (the GUI, the AI agent, plugins) SHALL get identical results for identical command vectors.
 Compatibility: behavioral
 
 Magic implements this as the shared library `tclmagic` loaded into `tclsh`/`wish`/`tkcon`. The library provides the Tcl package `Tclmagic` at the Magic version (for example `8.3`). It requires the Tcl stubs API at version 8.5, or 9.0 when built against Tcl 9. The `MagicLEF`, `Exttospice`, `Exttosim` and `Plot` packages each require `Tclmagic` at the same version. (Magic ref: tcltk/tclmagic.c:57-65,1603-1673, lef/tcllef.c:44-60, ext2spice/ext2spice.c:209-226)
@@ -16,11 +16,11 @@ Magic implements this as the shared library `tclmagic` loaded into `tclsh`/`wish
 #### Scenario: Same command vector, same result regardless of host
 - **GIVEN** a layout whose cursor box is (0,0)-(10,20) in internal units and units set to `internal`
 - **WHEN** the command vector `["box","values"]` is executed through the Tcl binding
-- **AND** the same vector is executed through the platform alternative
+- **AND** the same vector is executed directly through the command interface
 - **THEN** both SHALL return status ok with result `0 0 10 20`
 
 ### Requirement: Command registration in the magic namespace
-For every command of every window client (layout, window-manager, color, netlist, 3-D and the others), the system SHALL register a script command named `magic::<fullname>`. `<fullname>` is the first whitespace-delimited word of the command-table entry, for example `magic::box`, `magic::*bypass`, `magic::*flags`. Registration SHALL happen after the layout engine has finished its core initialization. Only full names SHALL be registered. Abbreviated command names SHALL NOT be callable as script commands.
+For every command of every window client (layout, window-manager, color, netlist, 3D and the others), the system SHALL register a script command named `magic::<fullname>`. `<fullname>` is the first whitespace-delimited word of the command-table entry, for example `magic::box`, `magic::*bypass`, `magic::*flags`. Registration SHALL happen after the layout engine has finished its core initialization. Only full names SHALL be registered. Abbreviated command names SHALL NOT be callable as script commands.
 Compatibility: exact
 
 The following script commands SHALL also exist:
@@ -77,7 +77,8 @@ Compatibility: exact
 
 #### Scenario: Shared library load
 - **WHEN** a script runs `load /opt/x/libfoo.so`
-- **THEN** the Tcl built-in result (success or its error) SHALL be returned, and the Magic `load` SHALL NOT run
+- **THEN** the Tcl built-in result SHALL be returned, and the Magic `load` SHALL NOT run
+- **AND** in Hefesto that result SHALL be the sandbox error, because loading native extensions is denied (capability `hefesto-scripting`)
 
 #### Scenario: Cell load with dotted directory
 - **WHEN** a script runs `load ../lib.v2/inv` and the built-in fails
@@ -132,7 +133,7 @@ When dispatch fails through the script namespace, the diagnostic messages SHALL 
 
 A command that runs but rejects its arguments or fails internally (usage errors, missing cells, unreadable files) SHALL print its diagnostic on the error stream and SHALL return ok status. Its result is whatever it set, often empty. Two documented exceptions return ok status but set an explanatory result string: `tech load` with an unreadable file (result `Technology file does not exist or is not readable\n`) and `tech load` with a parse failure (result `Error in loading technology file\n`). Commands invoked through a window path (see "Window-directed commands") SHALL NOT return error status for dispatch failures. They print the diagnostic instead.
 
-Scripts MUST therefore detect failures by inspecting results, not by catching errors. Hefesto SHALL reproduce this ok-status convention in compatibility mode. See Q-SCRIPT-2.
+Scripts MUST therefore detect failures by inspecting results, not by catching errors. Hefesto SHALL reproduce this ok-status convention by default. A script can opt in to script strict mode, in which such failures raise Tcl errors, through the project setting `script-strict` or the per-interpreter command `hefesto::strict on|off` (capability `hefesto-diagnostics`, Requirement "Script strict mode switch"). See Q-SCRIPT-2.
 Compatibility: exact
 
 (Magic ref: tcltk/tclmagic.c:496-528,538-578, textio/txCommands.c:1491-1575, textio/txcommands.h:38-39, windows/windSend.c:86-287, commands/CmdTZ.c:430-450)

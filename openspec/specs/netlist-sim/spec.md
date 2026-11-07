@@ -16,7 +16,7 @@ The command SHALL take an optional first word, matched case-insensitively with u
 | `format MIT\|LBL\|SU` | Dialect. An unknown value prints `exttosim: output formats are MIT, LBL, or SU`. | MIT |
 | `cthresh <fF>\|inf…` | Capacitance threshold | 2 |
 | `rthresh <Ω>\|inf…` | Resistance threshold, an integer | 10 |
-| `merge none\|conservative\|aggressive` | Parallel-device merging | none |
+| `merge none\|conservative\|aggressive` | Parallel-device merging (Q-NETLIST-14) | none |
 | `extresist on\|off` | Read `.res.ext` overlays | off |
 
 `default` SHALL reset cthresh to 2 and rthresh to 10, clear all name-conversion and short flags, reset the scale, and clear `-T` and `-p`. Run flags SHALL be the common arguments of capability `ext-flattening-hierarchy` plus:
@@ -46,9 +46,9 @@ Compatibility: behavioral
 - **THEN** the output is written to `inv.ext.sim`
 
 ### Requirement: File structure and order
-The `.sim` file SHALL begin with `| units: <EFScale %g> tech: <tech> format: <MIT|LBL|SU>`. It SHALL then contain:
+The `.sim` file SHALL begin with `| units: <S_out %g> tech: <tech> format: <MIT|LBL|SU>`. It SHALL then contain:
 1. device lines, in the device visit order of capability `ext-flattening-hierarchy`, after a merge pre-pass if merging is on
-2. coupling capacitor lines, if cthresh was finite when the command options were set
+2. coupling capacitor lines, if cthresh was finite when the command options were set; a run-level `-c` does not enable them (Q-NETLIST-18)
 3. resistor lines
 4. node lines, in node visit order
 
@@ -66,7 +66,7 @@ Compatibility: exact
 (Magic ref: ext2sim/ext2sim.c:640-700, ext2sim/ext2sim.c:1700-1866)
 
 #### Scenario: Header
-- **GIVEN** EFScale 5 and technology `scmos`
+- **GIVEN** output scale `S_out` 5 (capability `ext-flattening-read`) and technology `scmos`
 - **WHEN** a MIT file is written
 - **THEN** the first line is `| units: 5 tech: scmos format: MIT`
 

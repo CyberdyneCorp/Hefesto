@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under both scale modes, source/drain area and perimeter sharing, substrate naming, resistor tee and pi handling, CDL variations, and parallel-device merging. Notation: `SI(v)` is the formatting of capability `netlist-spice-options`, `name(n)` is the node naming of the same capability, `s` is the per-definition scale passed by the device visit (normally 1.0), and `E` is the length unit `EFScale/100` µm used when scale mode is off.
+This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under both scale modes, source/drain area and perimeter sharing, substrate naming, resistor tee and pi handling, CDL variations, and parallel-device merging. Notation: `SI(v)` is the formatting of capability `netlist-spice-options`, `name(n)` is the node naming of the same capability, `s` is the per-definition scale passed by the device visit (normally 1.0), and `E` is the length unit `S_out/100` µm (`S_out` is the global output scale of capability `ext-flattening-read`) used when scale mode is off.
 
 ## Requirements
 
@@ -20,7 +20,7 @@ Each emitted device SHALL start with a class letter:
 | `N` | veriloga |
 | `X` | subckt, rsubckt, csubckt, dsubckt, msubckt |
 
-If the gate terminal (terminal 0) has an attribute string, that string SHALL follow the letter. In flat mode it is preceded by the raw `/`-joined instance path without a trailing separator. In hierarchical mode no path is added. Otherwise the letter SHALL be followed by a counter:
+If the gate terminal (terminal 0) has an attribute string, that string SHALL follow the letter. In flat mode it is preceded by the raw `/`-joined instance path without a trailing separator (Q-NETLIST-34). In hierarchical mode no path is added. Otherwise the letter SHALL be followed by a counter:
 - `R` and `D` each have their own counter.
 - `C` shares its counter with parasitic capacitors.
 - `V` has its own counter.
@@ -115,7 +115,7 @@ The remaining keys SHALL be handled as follows:
 - **`s`**: ` <n>=` followed by the substrate text, unless the substrate was already written.
 - **`r`, `c` with a name**: ` <n>=SI(R)` / ` <n>=SI(C)`, using the raw device value.
 
-After the declared parameters, every verbatim device parameter SHALL be written as ` <text>`. A blanked entry yields a lone space.
+After the declared parameters, every verbatim device parameter SHALL be written as ` <text>`. A blanked entry yields a lone space (Q-NETLIST-32).
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:2200-2519, ext2spice/ext2hier.c:227-360)
 

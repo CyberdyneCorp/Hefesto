@@ -303,7 +303,7 @@ Each use found by the depth search counts as a separate source. This includes ea
 
 When the hierarchy below a cell is flattened into a scratch cell for an area W, the implementation SHALL:
 
-1. Copy every paint tile of the requested types from every cell of the subtree, at every depth and for every array element, whose rectangle overlaps W in root coordinates. The **whole tile** is copied, not clipped to W. A tile is a maximal horizontal strip of one type on one plane of the source cell, or the relevant half of a split (non-manhattan) tile.
+1. Copy every paint tile of the requested types from every cell of the subtree, at every depth and for every array element, whose rectangle overlaps W in root coordinates. The **whole tile** is copied, not clipped to W. A tile is a maximal horizontal strip of one type on one plane of the source cell, or the relevant half of a split (non-Manhattan) tile.
 2. Transform each tile into root coordinates. For a split tile, transform its diagonal direction as well.
 3. Paint the tile onto every plane on which its type exists, using the technology's paint-composition rules. Overlapping material from different cells therefore composes exactly as if the layout had been flattened by painting, for example poly over diffusion yields the transistor type.
 4. Skip space tiles.
@@ -402,7 +402,7 @@ See Q-MASK-402.
 
 When a non-templayer component tile is not fully covered by the total, the implementation SHALL report a CIF generation error on the parent cell. The error area is the uncovered part of the component tile, in output units. The report SHALL NOT be made when the style option `no-errors` is set.
 
-For split (non-manhattan) total tiles, space inside the split tile is not an error when the component tile's left edge coincides with a left-side split tile, or its right edge with a right-side split tile.
+For split (non-Manhattan) total tiles, space inside the split tile is not an error when the component tile's left edge coincides with a left-side split tile, or its right edge with a right-side split tile.
 
 In Magic the report is a feedback area at `area / S` on the parent, with the text `CIF error in cell <cell>, layer <layer>: parent and child disagree on CIF`. Hefesto MAY present it differently.
 
@@ -648,7 +648,7 @@ Compatibility: exact
 
 ### Requirement: Non-manhattan merge option
 
-When the `unfracture` switch is on (default off), the implementation SHALL merge adjacent non-manhattan (split) tiles of each generated layer result, wherever they can be represented by fewer tiles. This happens after each layer is generated and before clipping. It applies to all generation modes and changes only the decomposition, not the covered point set.
+When the `unfracture` switch is on (default off), the implementation SHALL merge adjacent non-Manhattan (split) tiles of each generated layer result, wherever they can be represented by fewer tiles. This happens after each layer is generated and before clipping. It applies to all generation modes and changes only the decomposition, not the covered point set.
 
 In Magic the switch is set with `cif unfracture <any> yes|no`. The value is the fourth word. With only three words the command reports the state. See Q-MASK-413.
 

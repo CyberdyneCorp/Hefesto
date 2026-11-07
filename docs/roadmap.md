@@ -14,7 +14,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 1. **The core never depends on the UI.** Raven is confined to the desktop shell (`hefesto-architecture`). The CLI and every test run headless.
 2. **Verification drives each milestone.** Before work on a milestone starts:
    - Its open questions are resolved (`Resolution:` lines, per `hefesto-magic-compat-mode`).
-   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164.
+   - Its golden cases are captured from the reference tools: Magic 8.3.694 @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164, xschem @ 4142e6d6 (for the schematic cases).
 3. **Exit criteria are the same for every milestone:**
    - The area's golden cases pass under the canonical comparison of `hefesto-output-determinism`.
    - Unit, property and fuzz tests are green (`hefesto-testing-strategy`).
@@ -28,18 +28,18 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 |---|---|---|---|---|
 | M0 | Foundations and Raven go/no-go | 8 | 33 |  |
 | M1 | Core model, formats, PDK manager, 2D viewer | 25 | 280 |  |
-| M2 | Interactive editing | 18 | 176 |  |
+| M2 | Interactive editing and design system | 19 | 186 |  |
 | M3 | Design rule checking | 5 | 72 |  |
 | M4 | Scripting and PDK integration | 8 | 90 | **Desktop Alpha** |
 | M5 | Mask generation, GDS, CIF | 8 | 203 |  |
 | M6 | LEF/DEF and OASIS | 9 | 215 |  |
 | M7 | Extraction and netlisting | 21 | 207 |  |
 | M8 | Schematic capture (xschem-compatible) | 6 | 101 |  |
-| M9 | LVS and simulation | 13 | 146 | **Desktop Beta** |
-| M10 | 3D, plotting, diff, routing, digital flow | 10 | 111 |  |
-| M11 | AI layout agent | 8 | 29 |  |
+| M9 | LVS, simulation and advanced analog simulation | 17 | 184 | **Desktop Beta** |
+| M10 | 3D, plotting, diff, routing, EM/IR, digital flow | 14 | 150 |  |
+| M11 | AI layout agent | 9 | 36 |  |
 | M12 | Legacy tools | 8 | 102 |  |
-| M13 | Tapeout readiness and Desktop 1.0 hardening | 6 | 54 | **Desktop 1.0** |
+| M13 | Tapeout, plugins, operations and Desktop 1.0 hardening | 11 | 106 | **Desktop 1.0** |
 | M14 | iPadOS app (feature scope plus iPad parts of earlier capabilities) | 1 | 4 | **iPad 1.0** |
 
 ## M0 — Foundations and Raven go/no-go
@@ -85,15 +85,16 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 - The golden cases TECH, CELL, MODEL and the viewer-related UI cases pass.
 - Round-tripping the sky130 standard cell library gives byte-identical files.
 
-## M2 — Interactive editing
+## M2 — Interactive editing and design system
 
 **Goal.** Make Hefesto a usable editor, with Magic's full editing command set and a modern desktop UI.
 
-**Capabilities:** `cmd-coordinates-and-units`, `cmd-box`, `cmd-paint-erase`, `cmd-selection`, `cmd-hierarchy`, `cmd-labels-properties`, `cmd-misc-edit`, `layout-undo`, `layout-connectivity`, `ui-command-dispatch`, `ui-tools-and-input`, `ui-feedback-and-highlights`, `ui-box-stack-and-measure`, `ui-color-window`, `ui-wizard-and-debug`, `hefesto-input-and-touch` (desktop), `hefesto-app-ux`, `wiring-tool`
+**Capabilities:** `cmd-coordinates-and-units`, `cmd-box`, `cmd-paint-erase`, `cmd-selection`, `cmd-hierarchy`, `cmd-labels-properties`, `cmd-misc-edit`, `layout-undo`, `layout-connectivity`, `ui-command-dispatch`, `ui-tools-and-input`, `ui-feedback-and-highlights`, `ui-box-stack-and-measure`, `ui-color-window`, `ui-wizard-and-debug`, `hefesto-input-and-touch` (desktop), `hefesto-app-ux`, `hefesto-design-system`, `wiring-tool`
 
 **Deliverables**
 - **Editing:** box tool, paint and erase, selection (chunk, region, net), copy, move and stretch, transforms, arrays, cell hierarchy editing, labels and ports, properties, and undo/redo.
 - **Commands:** macros and key bindings (Magic default set), the command bar with history and completion, and the wiring tool.
+- **Design system:** the forge tokens, icons and component patterns (`hefesto-design-system`), implemented as a Raven theme.
 - **Desktop UI:** layer palette, hierarchy browser, property inspector, status bar, dockable panels, light and dark themes.
 
 **Exit criteria**
@@ -194,32 +195,34 @@ Depends on `mask-hints`, which is completed in M3.
 - The common exit criteria.
 - The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics.
 
-## M9 — LVS and simulation → Desktop Beta
+## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
 
-**Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`
+**Capabilities:** `lvs-netlist-input`, `lvs-setup-file`, `lvs-comparison-algorithm`, `lvs-device-reduction`, `lvs-property-matching`, `lvs-hierarchy`, `lvs-reports`, `lvs-command`, `simulation-engine-embedding`, `simulation-netlist-preparation`, `simulation-analyses-and-results`, `simulation-ui-and-crossprobe`, `simulation-command`, `simulation-sweeps`, `simulation-corners`, `simulation-monte-carlo`, `simulation-measurements-and-statistics`
 
 **Deliverables**
 - **LVS:** built-in LVS compatible with netgen, implemented clean-room from the specs. Reports in `comp.out` and JSON formats, and cross-probing between the report and the layout.
 - **Simulation:** embedded ngspice in a worker process, a waveform viewer, and probing from the layout.
+- **Advanced analog simulation:** sweeps, corner matrix, Monte Carlo and mismatch with reproducible seeds, measurements, specs and yield statistics.
 
 **Desktop Beta:** the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS.
 
 **Early de-risking:** legal review of how ngspice's LGPL (KLU, numparam) and MPL (OSDI) parts are linked. This must be decided before M14 (Q-SIM).
 
-## M10 — 3D, plotting, diff, routing, digital flow
+## M10 — 3D, plotting, diff, routing, EM/IR, digital flow
 
-**Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`, `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results`, `digital-flow-mixed-signal`
+**Capabilities:** `view-3d`, `hefesto-3d-visualization`, `plot-output`, `hefesto-collaboration-and-diff`, `router-maze`, `router-maze-iroute`, `digital-flow-block-import`, `digital-flow-run`, `digital-flow-results`, `digital-flow-mixed-signal`, `reliability-em-rules`, `reliability-ir-drop`, `reliability-em-check`, `reliability-visualization`
 
 **Deliverables**
 - **3D view:** parity with Magic's 3D view, plus interactive 3D inspection (cross-sections, net highlighting, picking linked to the 2D view), glTF and STL export, and parasitic and field overlays.
 - **Plotting:** PostScript, PNM and SVG.
 - **Collaboration:** structural and visual diff, the git diff and merge helpers, and sync.
 - **Routing:** the maze router and `iroute`. These are prerequisites for the agent in M11.
+- **Reliability:** electromigration and IR-drop analysis from extresist networks and simulation currents, shown as 2D and 3D heat maps.
 - **Digital flow (desktop-only):** import hardened blocks, run LibreLane as an external process, browse results, and place digital blocks into mixed-signal layouts.
 
 ## M11 — AI layout agent
 
-**Capabilities:** `agent-architecture`, `agent-model-providers`, `agent-safety-and-approval`, `agent-natural-language-commands`, `agent-device-and-cell-generation`, `agent-drc-lvs-fix-loop`, `agent-schematic-driven-layout`, `agent-evaluation`
+**Capabilities:** `agent-architecture`, `agent-model-providers`, `agent-safety-and-approval`, `agent-natural-language-commands`, `agent-device-and-cell-generation`, `agent-drc-lvs-fix-loop`, `agent-schematic-driven-layout`, `agent-evaluation`, `simulation-optimization-hooks`
 
 **Deliverables**
 - **Agent:** the agent with pluggable providers, disabled by default.
@@ -241,12 +244,14 @@ Depends on `mask-hints`, which is completed in M3.
 - **Netlists and simulation:** the netlist window, and IRSIM on desktop.
 - **Informative-only items:** the Scheme interpreter and OpenAccess are specified as informative. Implement them only if users need them.
 
-## M13 — Tapeout readiness and Desktop 1.0
+## M13 — Tapeout, plugins, operations and Desktop 1.0
 
-**Capabilities:** `hefesto-performance`, `tapeout-fill-and-density`, `tapeout-seal-ring`, `tapeout-signoff-checklist`, `tapeout-shuttle-packages`, `hefesto-onboarding-and-help`
+**Capabilities:** `hefesto-performance`, `tapeout-fill-and-density`, `tapeout-seal-ring`, `tapeout-signoff-checklist`, `tapeout-shuttle-packages`, `hefesto-onboarding-and-help`, `hefesto-product-operations`, `plugin-api`, `plugin-packaging-and-distribution`, `plugin-security-and-platforms`, `plugin-sdk`
 
 **Deliverables**
-- **Tapeout:** fill generation and density checks, seal rings, the sign-off checklist, and export packages for shuttles (Tiny Tapeout, ChipFoundry, wafer.space, IHP). The KLayout sign-off approach follows decision Q-TAPEOUT-1.
+- **Tapeout:** fill generation and density checks, seal rings, the sign-off checklist, and export packages for shuttles (Tiny Tapeout, ChipFoundry, wafer.space, IHP). The KLayout sign-off approach follows decision P-18 (external KLayout on desktop; resolves Q-TAPEOUT-1).
+- **Plugins:** a stable plugin C ABI with a C++20 SDK, plus signed packaging and distribution.
+- **Operations:** opt-in crash reporting and telemetry, signed update channels, and published system requirements.
 - **Onboarding:** the new-project wizard, templates and example designs per PDK, interactive tutorials, and command help.
 - **Performance:** the targets met on the reference workloads. Batch runs no slower than Magic.
 - **Accessibility and localization:** completed.
@@ -289,6 +294,6 @@ Desktop-only at first: the digital flow, the legacy tools, `shell` and git integ
 | M0 | Golden capture setup for Magic | Whether the X-6 verification approach works at all |
 | M1 entry | Resolve open questions TECH, CELL, MODEL | Starting M1 work on settled behavior |
 | M4 | App Review inquiry on sandboxed Tcl | iPad scripting: user-imported scripts or curated packs (X-3) |
-| M5 | KLayout sign-off decision (Q-TAPEOUT-1) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
+| M5 | ~~KLayout sign-off decision (Q-TAPEOUT-1)~~ Done: decided by P-18 (2026-11-06) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
 | M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
 | M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |

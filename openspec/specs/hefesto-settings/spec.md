@@ -40,7 +40,7 @@ Compatibility: behavioral
 A project SHALL be a folder with a `hefesto.project` file. The file SHALL record:
 - the PDK name and version
 - the cell search paths, relative to the project
-- project settings, including `magic-compat`
+- project settings, including the reference-tool compatibility settings `magic-compat` and `netgen-compat` (capability `hefesto-magic-compat-mode`) and `script-strict` (capability `hefesto-diagnostics`)
 - open documents and window layout
 
 The file SHALL be text, with deterministic key order, so that it diffs well under version control.

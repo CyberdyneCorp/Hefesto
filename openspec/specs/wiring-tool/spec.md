@@ -86,7 +86,7 @@ Compatibility: exact
 - **THEN** m2contact is painted over (78,0)-(82,4) and the wire type becomes metal2 width 4
 
 ### Requirement: wire show, values and width
-`wire show` SHALL compute the leg that `wire leg` would paint from the box to the cursor and display it as the selection only (no layout change, not undoable); it silently does nothing when the box, cursor or wire type is missing. `wire values` prints `Wire layer %s, width %s` (width formatted in the current display units; scripting builds return a two-element list). `wire width` prints `Wire width is %s`; `wire width value` sets the width keeping the type.
+`wire show` SHALL compute the leg that `wire leg` would paint from the box to the cursor and display it as the selection only (no layout change, not undoable); it silently does nothing when the box, cursor or wire type is missing. `wire values` returns the two-element list {layer, width}, with the width formatted in the current display units. `wire width` returns the width, formatted the same way; `wire width value` sets the width keeping the type. Informative: Magic's non-Tcl build prints `Wire layer %s, width %s` and `Wire width is %s` instead.
 
 Compatibility: behavioral
 (Magic ref: wiring/wireOps.c:420-560, commands/CmdTZ.c:1915-1950, commands/CmdTZ.c:1975-1995)
@@ -94,7 +94,7 @@ Compatibility: behavioral
 #### Scenario: Width query
 - **GIVEN** the wire width is 4 and display units are internal units
 - **WHEN** `wire width` is executed
-- **THEN** `Wire width is 4` is printed
+- **THEN** the result is `4`
 
 ### Requirement: wire segment
 `wire segment layer width x1 y1 x2 y2 ... [-noendcap]` or `wire segment layer width filename [-noendcap]` SHALL paint a centerline path of the given width on every plane of the layer in the edit cell, without using the current wire state:

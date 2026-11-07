@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, terminal stem assignment, the global router (crossing assignment with its cost model), the greedy channel router, metal maximization, paint-back of wires/contacts/stems, via minimization, and error feedback. Hefesto must reproduce Magic's routed geometry for the same layout, netlist and technology wherever the algorithm is deterministic. The gate-array front end (`garoute`) is in capability `router-gate-array`; the maze router used for maze stems is in `router-maze`; netlist files are in `netlist-window`.
+Defines the netlist-driven channel router (`route`, `channels`): the `router` technology section, the routing grid, channel decomposition of empty space, obstacle and hazard maps, terminal stem assignment, the global router (crossing assignment with its cost model), the greedy channel router, metal maximization, paint-back of wires/contacts/stems, via minimization, and error feedback. Hefesto must reproduce Magic's routed geometry for the same layout, netlist and technology wherever the algorithm is deterministic. The gate-array front end (`garoute`) is in capability `router-gate-array`; the maze router used for maze stems is in `router-maze`; netlist files are in `netlist-window`. This capability is desktop-only in the first iPadOS release (decision P-13; capability `hefesto-ipad-feature-scope`).
 
 Terminology used throughout:
 

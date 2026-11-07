@@ -359,7 +359,7 @@ Under these rules, the AREF that gds-write produces and the PLACEMENT that oasis
 - **THEN** three separate uses of `A` are created, at x = 0, 5 and 12
 
 ### Requirement: Instance properties
-A standard property `S_GDS_PROPERTY` attached to a PLACEMENT SHALL be read as the GDS PROPATTR/PROPVALUE pair (attribute = first value, value = second value as a string), in PROPERTY record order. The gds-read rules "Instance properties" then apply unchanged: attributes 61 and 98 give the use identifier, attribute 99 gives the array index limits, and any other attribute ends property processing for the element.
+A standard property `S_GDS_PROPERTY` attached to a PLACEMENT SHALL be read as the GDS PROPATTR/PROPVALUE pair (attribute = first value, value = second value as a string), in PROPERTY record order. The gds-read rules "Instance properties" then apply unchanged: attributes 61 and 98 give the instance identifier, attribute 99 gives the array index limits, and any other attribute ends property processing for the element.
 
 Compatibility: exact
 
@@ -516,7 +516,7 @@ Each OASIS read error is prefixed `Error while reading cell "<cell>" (byte posit
 - **THEN** 99 error messages and the limit notice are printed
 
 ### Requirement: GDS-equivalence cross-check
-For every OASIS file `F` whose content has a GDS equivalent (no CIRCLE, no XGEOMETRY, no magnification or angle outside what GDS expresses, and all values in GDS ranges), reading `F` with `oasis read` SHALL produce the same cells, paint, labels, ports, uses, arrays, use identifiers and properties as reading the GDS file `G` with `gds read`, with the same style and equivalent option values. Here `G` is obtained by converting each OASIS element instance to its GDS-equivalent element as defined in this capability. Cell timestamps are excluded from the comparison.
+For every OASIS file `F` whose content has a GDS equivalent (no CIRCLE, no XGEOMETRY, no magnification or angle outside what GDS expresses, and all values in GDS ranges), reading `F` with `oasis read` SHALL produce the same cells, paint, labels, ports, uses, arrays, instance identifiers and properties as reading the GDS file `G` with `gds read`, with the same style and equivalent option values. Here `G` is obtained by converting each OASIS element instance to its GDS-equivalent element as defined in this capability. Cell timestamps are excluded from the comparison.
 
 Compatibility: exact
 

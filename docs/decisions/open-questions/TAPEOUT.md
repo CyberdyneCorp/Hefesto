@@ -33,6 +33,7 @@ Sources:
   4. A remote sign-off service.
 - Recommendation: (1) now, as specified in `tapeout-signoff-checklist`. Make "ready" depend on the deck items for programs that gate on them. Re-evaluate (2) after measuring how much of the DSL the three PDK decks use. Do not pursue (3) as sign-off. (4) needs a product decision (privacy, cost).
 - Decision needed: yes. Product owner to confirm (1) as the v1 position, and decide whether iPadOS may ever show "ready" for gf180 or IHP programs.
+- Resolution: decided by P-18 (2026-11-06). External KLayout on desktop; on iPadOS such designs are not marked sign-off ready.
 
 ### Q-TAPEOUT-2: Integrity hashes for PDK release assets
 - Kind: ambiguity

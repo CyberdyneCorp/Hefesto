@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This capability defines the `extresist-command` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, the choice of driver, and the per-cell flow. Network construction and simplification belong to capability `extresist-network`. File formats belong to capability `extresist-output`. Units: resistance in mΩ, capacitance in aF, delay in zeptoseconds (zs = mΩ·aF; 1 ps = 1e9 zs).
+This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, the choice of driver, and the per-cell flow. Network construction and simplification belong to capability `extresist-network`. File formats belong to capability `extresist-output`. Units: resistance in mΩ, capacitance in aF, delay in zeptoseconds (zs = mΩ·aF; 1 ps = 1e9 zs).
 
 ## Requirements
 
@@ -13,7 +13,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 |---|---|---|
 | `threshold [v]` | Lumped-resistance cutoff `rthresh` in mΩ, float. A negative value prints usage. | 10000 |
 | `minresist [v]` | Simplification tolerance `minres` in mΩ | 1000 |
-| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. The standalone build reports it unconverted (Q-NETLIST-28). | 1 ps |
+| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. Informative: Magic's non-Tcl build reports it unconverted (Q-NETLIST-28). | 1 ps |
 | `tolerance` | Prints `Note:  This option has been deprecated and is unused.` | — |
 | `simplify on\|off` | Network simplification | on |
 | `extout on\|off` | Write `.res.ext` | on |

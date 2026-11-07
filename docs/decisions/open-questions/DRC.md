@@ -81,7 +81,7 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 
 ### Q-DRC-12: Background checker and scripting results without Tcl
 - Kind: platform
-- Magic behavior: The checker runs from the Tcl idle loop (or before blocking on terminal input), processes Tcl events between squares, and returns list results via the Tcl interpreter (`drc list ...`). iPadOS has no Tcl and no fork/exec.
+- Magic behavior: The checker runs from the Tcl idle loop (or before blocking on terminal input), processes Tcl events between squares, and returns list results via the Tcl interpreter (`drc list ...`). Under X-3, Hefesto embeds sandboxed Tcl on every platform, including iPadOS, so the scripting-results part is settled (capability `scripting-api`); only the background scheduling remains open. iPadOS has no fork/exec.
 - Evidence: drc/DRCcontin.c:481-560, commands/CmdCD.c:4197-4274
 - Options: platform alternative (background worker thread or run-loop idle source with cancellation on edit; scripting API returning native list objects)
 - Recommendation: implement cancellation-safe background checking on a worker with a snapshot or edit-generation counter; expose list results through Hefesto's scripting layer with identical structure.

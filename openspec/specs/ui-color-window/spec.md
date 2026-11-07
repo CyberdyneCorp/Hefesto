@@ -34,7 +34,7 @@ Compatibility: behavioral
 In a color window, a button press SHALL act on the layout point under the cursor:
 - On a bar, the component SHALL be set to (x − bar.xbot)/(bar.xtop − bar.xbot), with x clamped to the bar.
 - On a pump, the left button SHALL add the pump amount and any other button SHALL add 5× the amount. The amount is ±0.0078 for R, G and B, and ±0.01 for H, S and V.
-- In the non-Tcl build, a press on the swatch SHALL start a pick. The press prints `Release button over new color to edit.` (left) or `Release button over color to copy.` (other buttons). The release then reads the pixel value under the cursor. Left loads that color index for editing. Other buttons copy its RGB into the edited color.
+- Informative: in Magic's non-Tcl build, a press on the swatch starts a pick. The press prints `Release button over new color to edit.` (left) or `Release button over color to copy.` (other buttons). The release then reads the pixel value under the cursor. Left loads that color index for editing. Other buttons copy its RGB into the edited color. Magic's Tcl build, which is normative, does not start a pick from the swatch.
 
 Compatibility: behavioral
 (Magic ref: cmwind/CMWcmmnds.c:141-298)
@@ -94,8 +94,8 @@ The color client SHALL register `color`, `load`, `pushbutton` and `save`.
 - With no argument, it SHALL print `Current color is %o octal (%d decimal) (red = %d, green = %d, blue = %d)`.
 - `color N` (C-integer syntax: decimal, 0x hex, leading-0 octal) SHALL select index N.
 - `next` and `last` SHALL step by one with wrap-around. Only the first 4 letters are checked.
-- `get` SHALL report the index: `Color index %d` in non-Tcl builds, an integer in Tcl.
-- `rgb` SHALL report `Color RGB=%d %d %d` in non-Tcl builds, a list in Tcl.
+- `get` SHALL return the index as an integer (informative: Magic's non-Tcl build prints `Color index %d`).
+- `rgb` SHALL return the list of the three components (informative: Magic's non-Tcl build prints `Color RGB=%d %d %d`).
 - An index outside [0, size) SHALL report `The colormap only has values from 0 to MAX (decimal).`.
 - Other arguments SHALL report `Usage: color [#|next|last|get|rgb]`.
 

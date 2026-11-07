@@ -15,7 +15,7 @@ Options: `*flatcheck`, `*halo [d]`, `*showint radius`, `*stepsize [d]`, `catchup
 - Only `printrules`, `find`, `*showint`, `help`, `euclidean`, `*stepsize`, `*halo`, `count`, `style` and `ignore` accept an extra argument; extra arguments for other options print `Wrong arguments in "drc <arg>" command:`, `    drc <option table line>` and `Try "drc help" for more help.` and do nothing.
 - With no option: `No option given in ":drc" command.` followed by help (for `drc list` alone see Q-DRC-22).
 - Options that operate on "the box" use the box of the window containing the box (capability `cmd-box`); if there is no such window the command does nothing.
-- Help output (exact): Tcl builds print `DRC commands have the form ":drc [list|listall] option",` and others `DRC commands have the form ":drc option",`, then ` where option is one of:` and one line `    <option table entry>` per option in the order above, skipping `*` entries unless `help wizard`.
+- Help output (exact): `DRC commands have the form ":drc [list|listall] option",` (informative: Magic's non-Tcl build prints `DRC commands have the form ":drc option",`), then ` where option is one of:` and one line `    <option table entry>` per option in the order above, skipping `*` entries unless `help wizard`.
 
 (Magic ref: commands/CmdCD.c:4054-4150, commands/CmdCD.c:4448-4465, utils/lookup.c)
 
@@ -34,13 +34,13 @@ Options: `*flatcheck`, `*halo [d]`, `*showint radius`, `*stepsize [d]`, `catchup
 `drc on` SHALL enable background checking (only if it is currently off), `drc off` SHALL abort any in-progress background check and disable background checking, and `drc status` SHALL report whether it is enabled, treating the transient "not set" state as on.
 Compatibility: behavioral
 
-Output: non-Tcl prints `DRC checker is on.` / `DRC checker is off.`; Tcl returns the boolean `1`/`0` as the command result. `drc off` also restores the normal prompt. While off, edits still mark check areas, which are processed when re-enabled or by `drc catchup`.
+Output: the boolean `1`/`0` is returned as the command result (informative: Magic's non-Tcl build prints `DRC checker is on.` / `DRC checker is off.`). `drc off` also restores the normal prompt. While off, edits still mark check areas, which are processed when re-enabled or by `drc catchup`.
 
 (Magic ref: commands/CmdCD.c:4513-4542)
 
 #### Scenario: Status in scripting mode
 - **GIVEN** background DRC enabled
-- **WHEN** `drc off` then `drc status` are executed in the Tcl build
+- **WHEN** `drc off` then `drc status` are executed
 - **THEN** the result of `drc status` is `0`
 
 ### Requirement: drc catchup and drc check
@@ -59,7 +59,7 @@ Compatibility: behavioral
 Compatibility: exact
 
 Output and results:
-- Without `total`, for each cell with a non-zero count: `Cell <name> has <n> error tiles.` or, for n = 1, `Cell <name> has just one error tile.`; cells with zero errors are not listed; cell order is unspecified (hash order).
+- Without `total`, for each cell with a non-zero count: `Cell <name> has <n> error tiles.` or, for n = 1, `Cell <name> has just one error tile.`; cells with zero errors are not listed. Magic's cell order comes from a table keyed by memory addresses, so Hefesto SHALL list the cells in the deterministic order of capability `hefesto-output-determinism` (by cell name; decision X-1), and golden comparison SHALL canonicalize that order.
 - Then, when not in list mode: with `total`, `Total DRC errors found: <sum>`; without `total`, if background DRC is not off, `Total DRC errors found: 0` is printed regardless of the per-cell counts (see Q-DRC-14).
 - List mode (Tcl): without `total`, the result is a list of `{cellname count}` pairs (only cells with count > 0); with `total`, the result is the integer sum.
 - Cells not yet loaded are not descended into.
@@ -224,7 +224,7 @@ Compatibility: behavioral
 - **THEN** `No interactions in this area for that radius.` is printed and the box is unchanged
 
 ### Requirement: Scripting results on iPadOS and non-Tcl hosts
-Hefesto SHALL expose the list-mode results (`list`/`listall` variants of count, find, why and style) through its scripting interface with the same data structure (nested lists of strings and integers) even where Tcl is unavailable.
+Hefesto SHALL expose the list-mode results (`list`/`listall` variants of count, find, why and style) through its scripting interface (capability `scripting-api`) with the same data structure (nested lists of strings and integers) on every platform, including iPadOS, where the sandboxed embedded Tcl interpreter provides it (decision X-3), and through any non-Tcl binding of the command API.
 Compatibility: behavioral
 
 See Q-DRC-12 [platform].

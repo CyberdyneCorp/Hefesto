@@ -17,7 +17,7 @@ Every command name registered for the layout client is either covered by a CMDED
 | `xor`, `random`, `shell`, `see`, `crosshair`, `findbox`, `feedback`, `straighten` (surface only), `*coord`, `*extract`, `*plow`, `*psearch`, `*showmem`, `*showtech`, `*tilestats`, `*tsearch`, `*watch`, `history`, `makesw`, `sgraph` | cmd-misc-edit |
 | `drc` | elsewhere: drc-commands |
 | `extract`, `ext` | elsewhere: extract-commands |
-| `ext2spice`, `exttospice`, `ext2sim`, `exttosim`, `extresist-command` | elsewhere: netlist / extresist agents |
+| `ext2spice`, `exttospice`, `ext2sim`, `exttosim`, `extresist` | elsewhere: netlist / extresist agents |
 | `cif`, `calma`, `gds` | elsewhere: MASK area |
 | `lef`, `def`, `antennacheck` | elsewhere: LEFDEF / antenna agent |
 | `tech` | elsewhere: tech-loading-and-scaling |

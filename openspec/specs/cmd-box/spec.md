@@ -319,7 +319,7 @@ When the box tool is the active pointer tool, pointer buttons SHALL act as follo
 - **Both buttons**: when the second of the two buttons is pressed, the corner of the visible part of the box nearest to the pointer SHALL be chosen. The first button pressed determines the action (left = move whole box, right = move that corner). The action happens when the last button is released, at the release point. Nearest corner: the pointer is compared with the midpoint of the box clipped to the window, on each axis (lower half → bottom, otherwise top; left half → left, otherwise right).
 - **Middle button press**: paint or erase at the box, using the layers under the pointer (see the `paint cursor` behavior in capability `cmd-paint-erase`).
 
-On touch devices, Hefesto SHALL provide equivalent gestures for "move box by a corner" and "move one corner". The specific gestures are a UI decision (see Q-CMDEDIT-13).
+On touch devices, Hefesto SHALL provide equivalent gestures for "move box by a corner" and "move one corner". The gestures follow the mode-based mapping of decision X-5 (one-finger drag = primary button, long press = secondary/tertiary actions, floating modifier key = middle/right-button semantics); remaining details are tracked in Q-CMDEDIT-13.
 
 Compatibility: behavioral
 

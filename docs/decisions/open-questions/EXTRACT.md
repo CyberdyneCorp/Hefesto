@@ -50,6 +50,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtCouple.c:289-322, extract/ExtCouple.c:557-562, extract/ExtHier.c:1111-1180
 - Options: replicate (impossible to reproduce addresses) | define a deterministic order (e.g., by first appearance) and compare unordered
 - Recommendation: Hefesto writes a deterministic order; golden comparison treats `cap` pairs as unordered and sums duplicates, and compares merge name sets.
+- Resolution: decided by X-1 as amended (2026-11-06, D-1). `merge` groups are name-keyed and reproduced in Magic's hash order; `cap` records and their terminal order are address-keyed, written in the deterministic order and canonicalized (capability `extract-file-format`).
 
 ### Q-EXTRACT-8: Zero-size capacitor writes dimensions twice
 - Kind: bug
@@ -99,6 +100,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/extract.h:70-96, extract/ExtMain.c:56, doc/html/extract.html
 - Options: follow code | follow doc
 - Recommendation: follow code (specified in `extract-commands`); correct the overview document.
+- Status: the overview part is done. `docs/reference/magic/circuit-extraction.md` now lists `all` correctly. The HTML-doc mismatch remains informative only.
 
 ### Q-EXTRACT-15: `r` parameter with zero width or zero area
 - Kind: bug

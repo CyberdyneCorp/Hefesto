@@ -4,7 +4,7 @@
 
 Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their predicates, the plane model, Manhattan and non-Manhattan (split / triangle) geometry, the canonical decomposition of a plane into maximal horizontal strips (and every place where that decomposition becomes observable), and the eight Manhattan transforms with their matrix form, composition, inversion and effect on points, rectangles, positions, angles and triangles.
 
-Hefesto is not required to store geometry as corner-stitched tiles. Requirements marked `exact` describe observable results; data-structure descriptions are `informative`. Paint operations themselves are specified in capability `layout-paint-semantics`; hierarchy in `layout-hierarchy`; `.mag` syntax in the `cell-*` capabilities; technology types/planes/contacts in the `tech-*` capabilities.
+Hefesto is not required to store geometry as corner-stitched tiles. Requirements marked `exact` describe observable results; data-structure descriptions are `informative`. Paint operations themselves are specified in capability `layout-paint-semantics`; hierarchy in `layout-hierarchy`; `.mag` syntax in `cell-file-format`; technology types and planes in `tech-layers-and-planes`, contacts in `tech-contacts-and-stacking`.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ Compatibility: exact
 - The usable plane area ("whole plane rectangle") is `[MINFINITY+2, INFINITY-2]` in both x and y, i.e. `(-1073741818, -1073741818) .. (1073741818, 1073741818)`. Searches "over the whole plane" (file output, bounding-box computation, global erase) use exactly this rectangle.
 - Products of two coordinates (slope tests on triangles, array-overlap computations) SHALL be computed in at least 64-bit precision.
 - Behaviour for geometry outside the usable area is undefined in Magic (no clipping is performed). Hefesto SHALL reject or clip such geometry; see Q-MODEL-24.
-- The relationship between internal units and lambda / microns (scale factors, `scalegrid`, `.mag` `magscale`) is specified in `cmd-coordinates-and-units` and the `cell-*` capabilities, not here.
+- The relationship between internal units and lambda / microns (scale factors, `scalegrid`, `.mag` `magscale`) is specified in `tech-loading-and-scaling`, `cmd-coordinates-and-units` and `cell-file-format`, not here.
 
 (Magic ref: tiles/tile.h:149-165, tiles/tile.c:67, database/DBtiles.c:567-574)
 
@@ -74,7 +74,7 @@ Compatibility: exact
 Each cell definition SHALL hold one independent paint plane per technology plane, where every point of every plane carries exactly one tile type (space when nothing is painted), and SHALL additionally hold the DRC bookkeeping planes.
 Compatibility: behavioral
 
-- Plane numbering is defined by the technology (see `tech-*`): planes 0..5 are built in (`router` / unused, `designRuleCheck`, `designRuleError`, and three router hint planes `mhint`, `fhint`, `rhint`); technology planes start at 6; at most 64 planes exist in total.
+- Plane numbering is defined by the technology (see `tech-layers-and-planes`): planes 0..5 are built in (`router` / unused, `designRuleCheck`, `designRuleError`, and three router hint planes `mhint`, `fhint`, `rhint`); technology planes start at 6; at most 64 planes exist in total.
 - Tile types are small integers below 256; types 0..8 are built in (`space`, `checkpaint`, `checksubcell`, `error_p`, `error_s`, `error_ps`, `magnet`, `fence`, `rotate`), technology types start at 9, and automatically generated stacked-contact types are numbered after all user types.
 - A non-contact type lives on exactly one plane (its home plane). A contact type is present, with the same type number, on every plane of each of its residues; its home plane is the lowest-numbered of those planes. A generated stacked-contact type has as home plane the plane of the residue shared by its two component contacts.
 - Space has no home plane and may appear on every plane except plane 0.
@@ -137,9 +137,9 @@ Given a search area `A` and the canonical decomposition:
 - Roots are the tiles that contain points on the left edge of `A` (`x = A.xbot`), visited from top to bottom.
 - The parent of a non-root tile `R` is the tile containing the point `(R.xbot - 1, max(R.ybot, A.ybot))`.
 - After visiting a tile, its children (tiles whose parent it is) are visited, ordered from top to bottom, each followed immediately by its own subtree.
-- A split (triangle) tile is reported at most twice in one visit: first its left part, then its right part, each only if its type matches the filter and the part intersects `A` (see requirement "Non-Manhattan geometry").
+- A split (triangle) tile is reported at most twice in one visit: first its left part, then its right part, each only if its type matches the filter and the part intersects `A` (see requirement "Non-Manhattan (split tile) geometry").
 
-For `.mag` output the area is the whole plane and the enumeration is performed separately for every user type in technology order (see the `cell-*` capabilities).
+For `.mag` output the area is the whole plane and the enumeration is performed separately for every user type in technology order (see capability `cell-file-format`, requirement "Writer paint sections").
 
 (Magic ref: database/DBtiles.c:521-640, database/DBio.c:4751-4774)
 
@@ -278,7 +278,7 @@ Compatibility: informative
 
 - Magic tile: lower-left point, type word (bit 30 = split, bit 28 = `\` direction, bits 0..13 left type, bits 14..27 right type; bit 29 is a transient "side" flag), four corner stitches. Top/right coordinates are derived from neighbours. Each plane carries a "hint" tile for locality of searches.
 - Paint is performed by splitting tiles at the paint boundary, changing types via a result table, and re-merging (see `layout-paint-semantics`).
-- Interrupting a long paint or search (Magic's `SigInterruptPending`) may leave a partially applied operation; Hefesto SHALL make paint operations atomic. See Q-MODEL-27.
+- Interrupting a long paint or search (a user interrupt in Magic) may leave a partially applied operation; Hefesto SHALL make paint operations atomic. See Q-MODEL-27.
 
 (Magic ref: tiles/tile.h:65-99,205-254, database/DBpaint.c:242-330, bplane/bplane.h)
 

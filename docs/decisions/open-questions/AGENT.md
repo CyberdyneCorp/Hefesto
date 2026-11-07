@@ -3,7 +3,7 @@
 ### Q-AGENT-1: Routing engine for schematic-driven layout
 - Kind: ambiguity
 - Magic behavior: Magic's routers are a legacy channel router and a maze router, designed for digital nets and simple metal stacks.
-- Evidence: capabilities router-channel, router-maze
+- Evidence: capabilities router-channel, router-maze, router-maze-iroute. The agent's routing tools wrap only `router-maze`, `router-maze-iroute` and `wiring-tool` (capability `agent-schematic-driven-layout`), because the channel router is a legacy, desktop-only tool (capability `hefesto-ipad-feature-scope`, roadmap M12) and the agent must also work on iPadOS.
 - Options:
   - extend the maze router with analog constraints (width per net, shielding, symmetric routing)
   - specify a new detailed router capability

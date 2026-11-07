@@ -195,14 +195,14 @@ Compatibility: native
 - **THEN** the schematic instance `M1` SHALL be selected and highlighted
 
 ### Requirement: Schematic-driven LVS command
-The `lvs` command (capability `lvs-command`) SHALL accept a schematic file wherever it accepts a schematic netlist file: a `.sch` path SHALL be netlisted as in Requirement "Schematic to layout cross-probing", using the PDK's LVS conventions (`lvs_format`, `lvs_ignore`). The generated text SHALL be retrievable (`schematic netlist -lvs`, capability `schematic-command`) for comparison with the netlist xschem produces.
+The `lvs` command (capability `lvs-command`) SHALL accept a schematic file wherever it accepts a schematic netlist file: a `.sch` path SHALL be netlisted as in Requirement "Schematic to layout cross-probing", using the PDK's LVS conventions (`lvs_format`, `lvs_ignore`). The generated text SHALL be retrievable (`schematic netlist -lvs -lvsignore`, capability `schematic-command`) for comparison with the netlist xschem produces.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-5)
 
 #### Scenario: LVS from schematic file
-- **WHEN** the user runs `lvs inv.mag inv.sch sky130A`
+- **WHEN** the user runs `lvs -layout inv inv.sch sky130A`
 - **THEN** `inv.sch` SHALL be netlisted in LVS mode in memory and compared with the layout netlist
 
 ### Requirement: Results interchange with xschem

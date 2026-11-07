@@ -222,7 +222,7 @@ Compatibility: behavioral
 
 ### Requirement: Shared antenna definitions for LEF output
 
-The gate-type set (tile types of `mosfet`/`fet`/`asymmetric`/`msubcircuit` device declarations) and the tie-down type set SHALL be the same sets used when computing LEF pin `ANTENNAGATEAREA` and `ANTENNADIFFAREA` values: per pin net, the area of the respective types on the first plane (in plane-number order) that has any such area, excluding pins whose use is power or ground and nets matched by the LEF ignore-net list; the values are written only when positive, scaled by the square of the output scale with `%f`. The output format is owned by capability `lef-write`.
+The gate-type set (tile types of `mosfet`/`fet`/`asymmetric`/`msubcircuit` device declarations) and the tie-down type set SHALL be the same sets (G and D) used when computing LEF pin `ANTENNAGATEAREA` and `ANTENNADIFFAREA` values. The per-pin computation (first plane in plane-number order with a non-zero area, power/ground and ignore-net exclusions, positive-only output scaled by the square of the output scale) and the output format are owned by capability `lef-write` requirement "Antenna areas".
 
 Compatibility: exact
 

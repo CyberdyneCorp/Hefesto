@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initialization shared with the netlist router, stem assignment for terminals inside river-routing channels ("internal" stems with simple and maze-routed variants), and the overall routing flow. Global routing, greedy channel routing, paint-back and external stems are specified in capability `router-channel` and are only referenced here. Maze routing used for stems is specified in `router-maze`.
+Defines the gate-array router driven by the `garoute` command: user-defined routing channels (normal and river-routing), automatic channel-definition generation, channel initialization shared with the netlist router, stem assignment for terminals inside river-routing channels ("internal" stems with simple and maze-routed variants), and the overall routing flow. Global routing, greedy channel routing, paint-back and external stems are specified in capability `router-channel` and are only referenced here. Maze routing used for stems is specified in `router-maze`. This capability is desktop-only in the first iPadOS release (decision P-13; capability `hefesto-ipad-feature-scope`).
 
 ## Requirements
 

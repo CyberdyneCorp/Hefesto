@@ -10,7 +10,9 @@ The agent SHALL act on layout only through a declared tool set. Every tool SHALL
 - `paint`, `erase`, `box`, `label`, `port`
 - `getcell`, `copy`, `move`, `flatten`
 - the PCell generators
-- `drc`, `extract`, `ext2spice`, `lvs`, `simulate`
+- `drc`, `extract`, `ext2spice`, `lvs`, `sim` (capability `simulation-command`)
+- the routing commands, for example `iroute` (capabilities `router-maze` and `router-maze-iroute`)
+- the optimization tools `sim_evaluate` and `sim_describe` (capability `simulation-optimization-hooks`)
 - read-only queries: `what`, `select`, `cellname`, `drc listall why`, net tracing, the tech rule summary
 
 The agent SHALL NOT access the database, files or scripts by any other path. Each tool call and its result SHALL be logged.
@@ -46,7 +48,7 @@ For each task, the agent SHALL receive a structured context containing:
 - the current selection and box
 - for schematic-driven tasks, the source netlist
 
-The context SHALL be generated from the specs' data models (tech, DRC rules, PCell catalog). It SHALL NOT be free text scraped from files.
+The context SHALL be generated from the specs' data models (tech, DRC rules, PCell catalog). It SHALL NOT be free text scraped from files. The representation of PDK rules in the context is open (see Q-AGENT-2).
 
 Compatibility: native
 

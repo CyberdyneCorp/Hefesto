@@ -64,5 +64,5 @@ Compatibility: native
 
 #### Scenario: Curated pack mode
 - **GIVEN** the iPadOS build is in curated-pack mode
-- **WHEN** a user imports a PDK folder that contains Tcl scripts
+- **WHEN** a user imports an unsigned offline PDK pack (capability `hefesto-pdk-manager`) that contains Tcl scripts
 - **THEN** Hefesto SHALL use the bundled curated scripts for that PDK, and SHALL report that imported scripts are not executed

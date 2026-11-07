@@ -186,7 +186,7 @@ Compatibility: behavioral
    - While startup scripts run, `tech load` commands are ignored silently, so the command-line choice wins.
    - If this load fails, the override is dropped and later startup scripts may load a technology.
 3. **Startup scripts.** Run the startup scripts. They may load a technology with `tech load`.
-4. **Cell argument.** If no technology has been loaded yet, no command-line technology was given, and a layout file was named on the command line, use the technology named in that file's `tech` header (see the `cell-*` capabilities).
+4. **Cell argument.** If no technology has been loaded yet, no command-line technology was given, and a layout file was named on the command line, use the technology named in that file's `tech` header (see capability `cell-file-format`).
 5. **Default.** If a default name was chosen by step 2 or step 4 and no technology is loaded, load it with the pre-check.
 6. **Fallback.** If still no technology is loaded, load `minimum` again and keep it.
 
@@ -206,32 +206,18 @@ Script names and the pre-startup mechanism are `informative`. On iPadOS, Hefesto
 
 ### Requirement: Automatic load from a cell's technology
 
-When a layout cell is read whose `tech` header names a technology T different from the current one, the cell is not forced, and no non-internal cell in memory has paint, the system SHALL try to find and load T automatically:
+When reading a layout cell triggers an automatic technology load, the system SHALL perform it as a full load (see "Full technology load") without the readability pre-check (see "Readability pre-check"). The trigger conditions (a `tech` header naming a different technology, the cell not forced, no paint in memory), the PDK search roots and directory walk, the `T.magicrc` script, the search-path additions and the open_pdks `libs.ref` handling are owned by capability `cell-library-resolution`, requirement "Automatic technology discovery".
 
 Compatibility: behavioral
 
-1. **Search roots.** Look for `T.tech` under these roots, in order:
-   - the environment variables `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT`;
-   - the directory `/usr/local/share/pdk`;
-   - with the Tcl build, the Tcl global variables `PDK_ROOT`, `PDKROOT`, `PDK_PATH` and `PDKPATH`.
-2. **Directory walk.** Each root is searched recursively, at most 10 levels deep. In each directory, a subdirectory named exactly T is searched first, and the other entries follow in directory-listing order. The first directory containing a regular file named `T.tech` is the result.
-3. **Load.** If a directory is found:
-   - (Tcl build only) The file `<dir>/T.magicrc` is run if it exists.
-   - The directory is appended to the system library path.
-   - `Loading technology T` is printed and T is loaded, without the readability pre-check.
-   - If the directory path contains `libs.tech`, and no `T.magicrc` was run, the sibling `libs.ref` tree is added to the cell search path.
-   - On a successful load, `tech load` hooks are run.
-4. **Not found.** If no directory is found, T is still loaded by name using the normal search rules.
-
-The environment variables, directory walking and `.magicrc` mechanism are `informative`. Hefesto SHALL provide an equivalent "find PDK technology by name" facility with a configurable list of roots (see Q-TECH-28).
+The environment variables, directory walking and `.magicrc` mechanism are `informative`. Hefesto SHALL provide an equivalent "find PDK technology by name" facility with a configurable list of roots (see Q-TECH-28 and capability `hefesto-files-and-pdks`).
 
 (Magic ref: database/DBio.c:224-320, database/DBio.c:577-735)
 
 #### Scenario: open_pdks layout
 - **GIVEN** `PDK_ROOT=/opt/pdk`, the file `/opt/pdk/sky130A/libs.tech/magic/sky130A.tech`, and no paint in memory
 - **WHEN** a cell with header `tech sky130A` is read while the current technology is `minimum`
-- **THEN** `/opt/pdk/sky130A/libs.tech/magic` is appended to the system path and sky130A is loaded
-- **AND** `/opt/pdk/sky130A/libs.ref` subdirectories containing `.mag` files are added to the cell path, if no `sky130A.magicrc` exists there
+- **THEN** `/opt/pdk/sky130A/libs.tech/magic` is appended to the system path and sky130A is loaded, even if its first logical line is not `tech`
 
 ### Requirement: Internal grid scale
 
@@ -243,7 +229,7 @@ The scale changes only through these routes:
 - `scalegrid` (see "scalegrid command");
 - the minimum-grid post-load step;
 - `tech lambda`, which sets the fraction without rescaling anything (see capability `tech-command` and Q-TECH-26);
-- cell reading with an explicit scale or a `magscale` header (see the `cell-*` capabilities);
+- cell reading with an explicit scale or a `magscale` header (see capability `cell-file-format`, requirement "Coordinate scaling on read");
 - CIF/GDS input that needs a finer grid (see the `mask-*` capabilities).
 
 Every change keeps the fraction reduced: the greatest common factor of I and L is divided out.
@@ -257,7 +243,7 @@ Every change keeps the fraction reduced: the greatest common factor of I and L i
 
 ### Requirement: scalegrid command
 
-The command `scalegrid a b`, or `scalegrid a/b`, or `scalegrid a:b`, SHALL change the internal grid so that the internal unit becomes a/b of its former size, rescaling every scale-dependent table and all layout:
+The command `scalegrid a b`, or `scalegrid a/b`, or `scalegrid a:b`, SHALL change the internal grid so that the internal unit becomes a/b of its former size, rescaling every scale-dependent table and all layout. This requirement owns the rescaling procedure; capability `cmd-coordinates-and-units`, requirement "Scalegrid command", summarizes the command surface and defers here.
 
 Compatibility: exact
 

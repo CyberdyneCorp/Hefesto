@@ -23,9 +23,9 @@ Every keyword argument of an editing command (options, sub-commands, unit names,
 3. An argument that is a prefix of two or more entries (and not an exact match of any entry) SHALL be ambiguous.
 4. An argument that matches no entry SHALL be unrecognized.
 
-The empty string is a prefix of every entry, so it is ambiguous whenever the table has more than one entry. Only the leading word of each table entry (up to the first space) takes part in matching. In the scripting build, a leading `::magic::` or `magic::` qualifier SHALL be ignored before matching. Commands whose description says an argument is compared "exactly" (for example `pick`, `erase`, `cursor`) do not use this rule.
+The empty string is a prefix of every entry, so it is ambiguous whenever the table has more than one entry. Only the leading word of each table entry (up to the first space) takes part in matching. A leading `::magic::` or `magic::` qualifier SHALL be ignored before matching. Commands whose description says an argument is compared "exactly" (for example `pick`, `erase`, `cursor`) do not use this rule. This is the same table lookup that capability `ui-command-dispatch` requirement "Command name lookup" specifies for command names.
 
-Compatibility: behavioral
+Compatibility: exact
 
 (Magic ref: utils/lookup.c:40-126, utils/lookup.c LookupStruct)
 
@@ -313,7 +313,7 @@ Compatibility: exact
 - `grid state` SHALL return a boolean in scripting mode, or print `Grid is on|off`.
 - `grid box` or `grid what` (no values) SHALL return the four integers `gx0 gy0 gx1 gy1` in internal units, as a space-separated string in scripting mode, or print `Grid unit box is (gx0, gy0) to (gx1, gy1)`.
 - `grid help` SHALL print usage.
-- `grid multiple [m]` SHALL set the minimum display multiple, an integer 1–255, or `off` (= 1). With no value it SHALL return the current multiple in scripting mode. This affects only display.
+- `grid multiple [m]` SHALL set the minimum display multiple, an integer 1–255, or `off` (= 1). With no value it SHALL return the current multiple in scripting mode. Magic stores the value but never reads it when drawing (see capability `ui-windows-and-views`, requirement "Grid display and grid command", and Q-UI-21).
 - `grid xs [ys [xo yo]]` and `grid box xs [ys [xo yo]]` SHALL set the grid. `xs` is parsed as a relative x distance, `ys` as a relative y distance (default `ys = xs`), and `xo yo` as absolute coordinates (default 0 0). The result SHALL be `G = (xo, yo)–(xo+xs, yo+ys)`, and display SHALL be turned on. A spacing that is not greater than 0 SHALL produce "Grid spacing must be greater than zero." and change nothing. Exactly three numeric arguments, or more than four, SHALL produce a usage error.
 
 A value given to `grid multiple` outside 1–255 SHALL report a usage error. Magic still stores the value modulo 256 (see Q-CMDEDIT-7). The user grid is per window. A new window's grid SHALL be `(0,0)–(1,1)`, off.
@@ -349,6 +349,8 @@ If `a = b`, nothing SHALL change. Otherwise:
 The command SHALL then report `<L1> Magic internal unit[s] = <L0> Lambda` (singular `unit` when L1 = 1). The report is also printed when `a = b`.
 
 Scaling is cumulative: running `scalegrid 1 2` twice gives 4 internal units per lambda.
+
+The rescaling procedure itself (which tables are rescaled, coordinate rounding including the unscaled infinity markers, and the scale update) is also specified in capability `tech-loading-and-scaling` requirement "scalegrid command"; that requirement governs the rescaling, and this one the command surface.
 
 Compatibility: exact
 

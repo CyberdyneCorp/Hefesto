@@ -16,25 +16,15 @@ Hierarchical name formats belong to capability `ext-flattening-names`.
 ## Requirements
 
 ### Requirement: Container iteration order
-Several output orders are defined by iterating unordered keyed tables. Hefesto SHALL reproduce those orders by emulating the following chained hash table exactly. The affected tables are:
-- device table per definition (string keys `"<x>x<y>_<t>"`)
-- use table per definition (string keys = use ids)
-- node-name table per definition (string keys)
-- global-name table during flattening
+Several output orders are defined by iterating unordered keyed tables. Hefesto SHALL reproduce those orders exactly by emulating each table as a Magic string hash table, as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules. Under decision X-1 these orders depend only on names and insertion history and SHALL be byte-identical to Magic's. The affected tables are:
+- device table per definition (string keys `"<x>x<y>_<t>"`), requested size 32
+- use table per definition (string keys = use ids), requested size 32
+- node-name table per definition (string keys), requested size 32
+- global-name table during flattening, requested size 1024
 
-The table SHALL behave as follows:
-- **Size.** Initial bucket count = the smallest power of two ≥ max(2, requested). Requested sizes are 32 for the per-definition tables and 1024 for the flat tables.
-- **Shift.** `shift` starts at 29 for size 2 and decreases by 1 for each doubling.
-- **String hash.** Over the key bytes, using 64-bit unsigned wrap-around arithmetic: `h = c + (h<<6) + (h<<16) - h`, starting from h = 0.
-- **Client hash.** For client-keyed tables (hierarchical names), `h` = the signed 32-bit client hash sign-extended to 64 bits.
-- **Bucket.** `bucket = ((h × 1103515245 + 12345) mod 2^64) >> shift) & (size − 1)`.
-- **Insertion.** A new entry is inserted at the head of its bucket chain.
-- **Growth.** Before inserting, if the entry count is ≥ 3 × size, the table grows to 4 × size. Old buckets are visited in ascending index, and each chain from head to tail. Each entry is pushed onto the head of its new bucket.
-- **Iteration.** Buckets are visited in ascending index, and each chain from head to tail.
-
-A table's iteration order is therefore fully determined by its key insertion history.
+Tables keyed by hierarchical names use the client hash of capability `ext-flattening-names` (requirement "Component hash"), sign-extended as the owning requirement states. A table's iteration order is therefore fully determined by its key insertion history. See Q-NETLIST-2.
 Compatibility: exact
-(Magic ref: utils/hash.c:146-262, utils/hash.c:353-470, utils/hash.c:492-530, utils/hash.c:641-690, extflat/EFdef.c:36-40, extflat/EFdef.c:256-272, extflat/EFflat.c:41)
+(Magic ref: extflat/EFdef.c:36-40, extflat/EFdef.c:256-272, extflat/EFflat.c:41)
 
 #### Scenario: Use iteration order
 - **GIVEN** a definition with uses inserted in the order `u3`, `u1`, `u2` into a 32-bucket table
@@ -64,7 +54,7 @@ All netlisters SHALL accept these arguments, which may be mixed with tool-specif
 | `-s sym=value` | Defines a symbol for `ext:l=`/`ext:w=` attributes |
 | `-S <file>` | Symbol file |
 | `-t <chars>` | Output-name conversions (see below) |
-| `-T <tech>` | Technology; standalone build only |
+| `-T <tech>` | Technology (informative: accepted only by Magic's standalone netlister programs) |
 | `-v` | Warnings |
 | `-n <name>`, `-N <file>` | Watch nodes; debug |
 | `-z` | Name statistics |
@@ -143,7 +133,7 @@ Compatibility: exact
 - **THEN** one node remains, its canonical name is `vdd!`, and a "not fully connected" warning is printed
 
 ### Requirement: Coupling capacitance flattening
-When couplings are requested (the capacitance threshold is finite), each `cap` record of each instance SHALL be resolved to flat nodes. Unresolvable names are ignored silently when |C|/1000 < threshold, and with a warning otherwise. The coupling SHALL be dropped if either node is killed or both are the same node. If either node is the global substrate, C SHALL be added to the other node's capacitance to ground. Otherwise C SHALL be accumulated on the unordered node pair. Iterating the accumulated pairs yields Magic's memory-address-dependent order, and terminal order within a pair also depends on memory addresses. Hefesto SHALL emit pairs in a deterministic order; see Q-NETLIST-1.
+When couplings are requested (the capacitance threshold is finite), each `cap` record of each instance SHALL be resolved to flat nodes. Unresolvable names are ignored silently when |C|/1000 < threshold, and with a warning otherwise. The coupling SHALL be dropped if either node is killed or both are the same node. If either node is the global substrate, C SHALL be added to the other node's capacitance to ground. Otherwise C SHALL be accumulated on the unordered node pair. Iterating the accumulated pairs yields Magic's memory-address-dependent order, and terminal order within a pair also depends on memory addresses. Hefesto SHALL emit pairs in the deterministic order of capability `hefesto-output-determinism` (decision X-1); see Q-NETLIST-1.
 Compatibility: behavioral
 (Magic ref: extflat/EFflat.c:1043-1157, extflat/EFvisit.c:629-650)
 
@@ -157,10 +147,10 @@ The flattener SHALL offer these visits:
 - **Devices.** Recursively visit children first, in use order with array expansion as in Requirement "Flat node construction", then the definition's own devices in device-table order. Definitions flagged as subcircuits are not descended into.
 - **Resistors.** Children first, then the definition's own `resist` records in reverse file order, since they are prepended. Pairs on the same or killed nodes are skipped.
 - **Couplings.** As in Requirement "Coupling capacitance flattening".
-- **Nodes.** Flat node list order. Killed nodes are skipped. The capacitance passed is 0 for the global substrate node. In compatibility mode (no `substrate` record was read), it is 0 for a root-level node named `GND!` (or the value of the Tcl variable `GND`).
+- **Nodes.** Flat node list order. Killed nodes are skipped. The capacitance passed is 0 for the global substrate node. In substrate compatibility mode (no `substrate` record was read), it is 0 for a root-level node named `GND!` (or the value of the Tcl variable `GND`).
 - **Subcircuits.** First the root, if it is a subcircuit. Then, for each child in use order: call it if it is a subcircuit, otherwise recurse into it.
 
-Each device visit SHALL pass a scale of `def_scale` if the scale-changed flag is set and `def_scale ≠ 1`, else 1.0.
+Each device visit SHALL pass the definition's scale (see Requirement "Scale record" of capability `ext-flattening-read`) if the scale-changed flag is set and that scale ≠ 1, else 1.0.
 Compatibility: exact
 (Magic ref: extflat/EFvisit.c:93-170, extflat/EFvisit.c:280-330, extflat/EFvisit.c:489-627, extflat/EFvisit.c:685-780)
 

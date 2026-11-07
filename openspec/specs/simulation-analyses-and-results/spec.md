@@ -47,7 +47,7 @@ Compatibility: native
 - **THEN** the error `ac: fstart must be > 0 for dec sweep` SHALL be reported
 
 ### Requirement: Job lifecycle
-Every simulation run SHALL be a job with a unique id `<YYYYMMDD>-<HHMMSS>-<testbench>-<corner>`, using local time. If two jobs would get the same id, the second SHALL get the suffix `-2`, the third `-3`, and so on.
+Every simulation run SHALL be a job with a unique id `<YYYYMMDD>-<HHMMSS>-<testbench>-<corner>`, using local time. If two jobs would get the same id, the second SHALL get the suffix `-2`, the third `-3`, and so on. A job that is a point of a run set SHALL instead take the id `<run set id>-p<index>` defined in capability `simulation-sweeps`, Requirement "Run sets".
 
 A job SHALL pass through these states in this order: `queued` → `preparing` (netlisting, resolution, validation) → `loading` (deck sent to ngspice) → `running` → one final state. The final state SHALL be one of:
 - `completed`
@@ -147,7 +147,7 @@ Compatibility: native
 - **THEN** the job SHALL be cancelled with `result memory budget exceeded`
 
 ### Requirement: Result storage
-Each job that reaches a final state SHALL be stored in the project, in folder `simulations/<testbench>/<job-id>/`, with these files:
+Each job that reaches a final state SHALL be stored in the project, in folder `simulations/<testbench>/<job-id>/`, with these files. A run-set point job is stored instead in `simulations/<testbench>/<run set id>/p<index>/`, and its `result.raw` is kept only as the retention setting of capability `simulation-sweeps`, Requirement "Run set storage", allows:
 
 | File | Content |
 |---|---|

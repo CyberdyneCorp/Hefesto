@@ -497,18 +497,11 @@ Values considered: every non-zero distance; squares border, size/2, sep/2; slots
 
 ### Requirement: Interaction radius
 
-The style SHALL compute, for each layer in declaration order, a maximum grow distance G and shrink distance S (mask units), and an interaction radius `R = floor(2 * max(maxG, maxS) / scaleFactor) + 1` in internal units.
+Each loaded (or rescaled) style SHALL carry an interaction radius `R = floor(2 * max(maxG, maxS) / scaleFactor) + 1` in internal units, where `maxG` and `maxS` are the largest per-layer grow and shrink distances in mask units. The exact per-operator accumulation rules and the `scaleFactor <= 0` case are owned by capability `mask-hierarchical-generation` requirement "Halo radius", which calls this value the *halo radius*; this requirement only records that the value is part of the normalised style.
 
 Compatibility: exact
 
-Per layer, scanning operations in order and stopping at the first `bbox`, `net`, `tagged` or `mask-hints` operation:
-
-- if the operation references mask layers, `G = max(G, G_ref)` and `S = max(S, S_ref)` over referenced layers;
-- `grow`, `grow-min`, `grow-grid`: `G += distance`; `shrink`: `S += distance`;
-- `bloat-or`: `G +=` largest positive per-type value; `S +=` largest magnitude of a negative value encountered after no larger positive (Magic's `if/else if`; see code);
-- all other operations add nothing (`bloat-max`, `bloat-min`, `bloat-all`, `close`, `bridge*`, `squares*`, `slots` contribute 0).
-
-`maxG`, `maxS` are maxima over all layers. If `scaleFactor <= 0` the division is skipped. The radius is used by capability `mask-hierarchical-generation` and to expand the search area of flat generation (`mask-output-operators`).
+The radius is used by capability `mask-hierarchical-generation` and to expand the search area of flat generation (`mask-output-operators`).
 
 (Magic ref: cif/CIFtech.c:1668-1830)
 

@@ -10,11 +10,11 @@ Hefesto SHALL be implemented in ISO C++20. Specifically:
 - All first-party code SHALL compile in C++20 mode (`-std=c++20` or the equivalent).
 - No first-party code SHALL depend on compiler extensions, except inside isolated, platform-specific source files.
 - First-party code MAY use C++20 library features that all supported toolchains provide: concepts, ranges, `std::span`, `std::format` where available, and coroutines.
-- Objective-C++ is permitted only in the Apple platform shell layer (see capability `hefesto-architecture`).
+- Swift is permitted only in the iPadOS shell, and Objective-C++ only in the Apple platform-services layer of the shells (see capability `hefesto-architecture`, decision P-11). The desktop shell on macOS is C++20 on Raven, like the Linux shell.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-1)
+(Hefesto decision: docs/decisions/product.md#P-1, docs/decisions/product.md#P-11)
 
 #### Scenario: Strict standard build
 - **GIVEN** a clean checkout

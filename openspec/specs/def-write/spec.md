@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. The extracted-netlist flattening belongs to the extraction (EXTFLAT) area.
+Defines the `def write` command and the DEF 5.7 file that it writes for one cell. The file contains the die area, generated via definitions, placed components, pins, non-default rules, special and regular nets (taken from the cell's extracted netlist) and blockages. Hefesto must reproduce Magic's output byte for byte for every `exact` item. Related capabilities: `lef-tech-section` and `lef-read` populate the LEF layer table, `def-read` reads DEF, `lef-write` writes LEF. Reading and flattening the extracted netlist belong to capabilities `ext-flattening-read` and `ext-flattening-hierarchy`.
 
 Terms used throughout:
 
@@ -271,12 +271,7 @@ Compatibility: exact
 
 ### Requirement: Magic-to-LEF layer map
 
-Before writing, the system SHALL build a map from every magic tile type `t` (user types and stacked contact types) to a LEF layer record and its name:
-
-- If `t` is a contact type, the candidates SHALL be the layer-table records of class cut/via (including via definitions that `lef read` created).
-- Otherwise, the candidates SHALL be the records of class route or masterslice.
-- The map entry SHALL be the first candidate, in layer-table enumeration order (see "Table enumeration order"), whose magic type or obstruction type equals `t`. The written name SHALL be that record's canonical name.
-- If no candidate exists, `t` has no LEF name. Geometry of that type SHALL be skipped wherever this capability says so.
+Before writing, the system SHALL build a map from every magic tile type `t` (user types and stacked contact types) to a LEF layer record and its name, using the magic-type-to-LEF-layer rule owned by capability `lef-write` (Requirement "Magic type to LEF layer name"), with candidates taken in this capability's table enumeration order (see "Table enumeration order"). If `t` has no LEF name, geometry of that type SHALL be skipped wherever this capability says so.
 
 Compatibility: exact
 
@@ -286,12 +281,6 @@ Compatibility: exact
 
 - **GIVEN** the tech `lef` section line `obstruction obsm1 metal1` and `route metal1 metal1`
 - **THEN** both magic types `metal1` and `obsm1` SHALL map to LEF layer `metal1`
-
-#### Scenario: Via definition captures a cut type (verify against Magic)
-
-- **GIVEN** a LEF file read with `VIA M1M2_PR` whose cut is magic type `via1`, and a tech `cut via1 via1` entry
-- **WHEN** `M1M2_PR` comes earlier in table enumeration order than `via1`
-- **THEN** type `via1` SHALL map to the name `M1M2_PR` (see Q-LEFDEF-92)
 
 ### Requirement: Contact region identification
 
@@ -521,7 +510,7 @@ Counts:
 - Without `-allspecial`: special nets = special nodes; regular nets = port nodes that are not special; all other nodes are "blockage" nodes.
 - With `-allspecial`: special nets = special or port nodes; regular nets = 0.
 
-SPECIALNETS SHALL list the special nets (and, under `-allspecial`, the port nets). NETS SHALL list the regular nets. Both SHALL use the flattened-node enumeration order of the netlist (see the EXTFLAT capabilities).
+SPECIALNETS SHALL list the special nets (and, under `-allspecial`, the port nets). NETS SHALL list the regular nets. Both SHALL use the flattened-node enumeration order of the netlist (see capability `ext-flattening-hierarchy`).
 
 Compatibility: exact
 
@@ -584,9 +573,9 @@ For each net, the routing geometry SHALL be found as follows:
 2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
 3. After the last seed, if a segment is pending and it is not a via, write its end coordinate with the pending orientation. Then write ` ;` and a newline, and reset the column to 0.
 
-The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Byte-exact output therefore requires the same tile decomposition (maximal horizontal strips) and the same traversal (see Q-LEFDEF-108). Seeds whose components are connected in the top cell produce repeated geometry (Q-LEFDEF-112).
+The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). Seeds whose components are connected in the top cell produce repeated geometry (Q-LEFDEF-112).
 
-Compatibility: behavioral
+Compatibility: exact
 
 (Magic ref: lef/defWrite.c:747-834, database/DBconnect.c:171-243, database/DBconnect.c:395-640)
 
@@ -776,25 +765,21 @@ Compatibility: exact
 
 ### Requirement: Table enumeration order
 
-Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be that of Magic's string-keyed hash table:
+Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be the iteration order of a Magic string hash table as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes (see Q-LEFDEF-116). Under decision X-1 these orders depend only on names and insertion history, and the output SHALL be byte-identical to Magic's. This capability adds:
 
-- **Hash.** `i` is an unsigned 64-bit accumulator starting at 0. For each key byte `c` (taken as a signed 8-bit value sign-extended to 64 bits), `i = c + (i<<6) + (i<<16) − i` (mod 2^64). The bucket is `((i·1103515245 + 12345) mod 2^64 >> k) & (size−1)`, where `size = 2^m` and `k = 30 − m`.
-- **Size.** The initial size is the smallest power of two ≥ max(2, requested), where the layer table and the rule table request 32.
-- **Insert.** A new key is inserted at the head of its bucket chain. Before inserting a new key, if `entries ≥ 3·size`, the table grows to `4·size`: old buckets are taken in index order, each chain from head to tail, and each entry is pushed onto the head of its new bucket.
-- **Enumerate.** Buckets go in index order 0..size−1, each chain from head to tail.
-- **Platform.** Magic takes key bytes as C `char`, which is signed on x86-64 and on macOS but unsigned on Linux/arm64. Hefesto SHALL use the signed interpretation (see Q-LEFDEF-116).
-- **Removal.** Removing a generated via clears its value but keeps the key (and its position), so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
+- **Size.** The layer table and the rule table each request 32 buckets.
+- **Removal.** Removing a generated via clears its value but keeps the key and its position, so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
 
 The subcell enumeration order for COMPONENTS SHALL be the cell's subcell-plane enumeration order (see the database capabilities).
 
 Compatibility: exact
 
-(Magic ref: utils/hash.c:146-262, utils/hash.c:380-470, utils/hash.c:492-530, utils/hash.c:641-686, lef/lefTech.c:151-180)
+(Magic ref: lef/lefTech.c:151-180, lef/defWrite.c:2052-2068)
 
 #### Scenario: Hash of a short key
 
-- **GIVEN** the key `"ab"` (bytes 97, 98) in a table of size 32 (m = 5, k = 25)
-- **THEN** i = 98 + 97·65599 = 6363201, and the bucket SHALL be `((6363201·1103515245 + 12345) mod 2^64 >> 25) & 31` = 1
+- **GIVEN** a layer-table key `"ab"` (bytes 97, 98) in a table of size 32 (shift = 25)
+- **THEN** h = 98 + 97·65599 = 6363201, and the bucket SHALL be `((6363201·1103515245 + 12345) mod 2^64 >> 25) & 31` = 1
 
 ### Requirement: Session state after writing
 

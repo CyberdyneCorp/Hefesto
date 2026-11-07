@@ -6,7 +6,7 @@ Defines pointer tools and the default input bindings:
 - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl `pick` tool
 - cursor glyph selection and the `cursor` command
 - the default key and button binding table installed by the system startup file
-- how Hefesto maps these to touch input on iPadOS ([platform])
+- how Hefesto maps these to touch input on iPadOS (decision X-5; the gesture vocabulary is owned by `hefesto-input-and-touch`)
 
 Macro mechanics and key-name syntax are in `ui-command-dispatch`. The box commands are owned by `cmd-box`. Wire operations are owned by `wiring-tool`. Netlist operations are owned by `netlist-window`. Rsim is owned by `irsim-interface`.
 
@@ -31,37 +31,32 @@ Compatibility: behavioral
 - **THEN** the current tool SHALL be `box` and the normal cursor (glyph 0) SHALL be shown
 
 ### Requirement: tool command
-The `tool` command SHALL behave as follows:
-- `tool` with no argument SHALL switch to the next registered tool in registration order, wrapping around, and print `Switching to "T" tool.`. The first switch of a session SHALL add `  If you didn't really want to switch,` / `    type ":tool box" to switch back to the box tool.`.
-- `tool NAME` SHALL select the tool whose name has NAME as a prefix (case-sensitive).
-  - No match SHALL report `"NAME" isn't a tool name.` and list the legal names.
-  - Several matches SHALL report `"NAME" is an ambiguous tool name.` and list the legal names.
-- `tool info` SHALL print the current tool's usage text, or `(no usage information)` if it has none.
-- `tool type` SHALL report `Current tool is "T".`.
-- More than one argument SHALL print `Usage: tool [name|info]`.
+The `tool` command SHALL be the script command specified in capability `ui-gui-managers`, requirement "Tool modes", which owns it: its tools are `box`, `wiring`, `nettool` and `pick`, each a separate macro table, and `tool` with no argument cycles box → wiring → nettool → pick → box. This follows Magic's Tcl build, which is normative where the builds differ (`docs/spec-conventions.md`).
 
-Switching tools SHALL set the tool's cursor glyph.
+Informative: Magic's non-Tcl build has a built-in `tool` command instead, which behaves as follows:
+- `tool` with no argument switches to the next registered tool in registration order, wrapping around, and prints `Switching to "T" tool.`. The first switch of a session adds `  If you didn't really want to switch,` / `    type ":tool box" to switch back to the box tool.`.
+- `tool NAME` selects the tool whose name has NAME as a prefix (case-sensitive). No match reports `"NAME" isn't a tool name.` and lists the legal names. Several matches report `"NAME" is an ambiguous tool name.` and list the legal names.
+- `tool info` prints the current tool's usage text, or `(no usage information)` if it has none.
+- `tool type` reports `Current tool is "T".`.
+- More than one argument prints `Usage: tool [name|info]`.
+- Switching tools sets the tool's cursor glyph.
 
-In the Tcl build, `tool` is replaced by a script command:
-- the tools are `box`, `wiring`, `nettool` and `pick`, cycled in that order
-- each tool is just a separate macro table
-- switching is refused while a pick-tool drag is active
-
-Compatibility: behavioral (messages informative)
-(Magic ref: commands/CmdTZ.c:667-733, dbwind/DBWbuttons.c:171-297, tcltk/tools.tcl:700-760)
+Compatibility: behavioral (Tcl `tool` command); informative (non-Tcl built-in command)
+(Magic ref: tcltk/tools.tcl:700-760, commands/CmdTZ.c:667-733, dbwind/DBWbuttons.c:171-297)
 
 #### Scenario: Cycle tools
-- **GIVEN** the tools box, wiring, netlist and rsim are registered and box is current
+- **GIVEN** the box tool is current
 - **WHEN** `tool` is executed twice
-- **THEN** the current tool SHALL be `netlist`
+- **THEN** the current tool SHALL be `nettool`
 
-#### Scenario: Unknown tool
-- **WHEN** `tool foo` is executed
-- **THEN** `"foo" isn't a tool name.` SHALL be reported, followed by `  The legal names are:` and the tool names
+#### Scenario: Query the tool
+- **GIVEN** the wiring tool is current
+- **WHEN** `tool type` is executed
+- **THEN** the result SHALL be `wiring`
 
 ### Requirement: Box tool buttons
-The `box` tool SHALL handle buttons in a layout window as follows:
-- Pressing the middle button SHALL paint (or erase) under the box according to the material under the cursor, as defined by `paint cursor` (see cmd-box).
+The `box` tool SHALL handle buttons in a layout window as follows. The box semantics (move, resize, nearest-corner choice, snapping) are owned by capability `cmd-box`, requirement "Box tool pointer gestures", which governs; this requirement adds the cursor glyphs.
+- Pressing the middle button SHALL paint (or erase) under the box according to the material under the cursor, as defined by `paint cursor` (capability `cmd-paint-erase`, requirement "Paint or erase by example (cursor and pick)").
 - Pressing the left button alone SHALL choose the lower-left corner and show the "box with lower-left corner" cursor (glyph 6). Releasing it SHALL move the box, without resizing, so that its lower-left corner is at the cursor point.
 - Pressing the right button alone SHALL choose the upper-right corner and show the upper-right corner cursor (glyph 5). Releasing it SHALL move only that corner to the cursor point, resizing the box.
 - If the other of left/right is pressed while one is held, the corner nearest the cursor SHALL become the chosen corner. The first button pressed SHALL still decide between move (left) and resize (right).
@@ -94,12 +89,7 @@ Compatibility: behavioral
 - **THEN** the box SHALL be (40,40)-(50,50)
 
 ### Requirement: Other tools' buttons
-The other tools SHALL behave as follows:
-- `wiring`: left = pick the wire layer and width under the cursor (`wire type`), right = add a wire leg to the cursor (`wire leg`), middle = place a contact and switch layers (`wire switch`). The cursor SHALL be glyph 19.
-- `netlist`: left = select the net containing the terminal nearest the cursor, right = toggle that terminal in or out of the current net, middle = join the current net with that terminal's net. The cursor SHALL be glyph 18.
-- `rsim`: left and right act as in the box tool, middle = display the Rsim node values of the selected paint. The cursor SHALL be glyph 21.
-
-Tcl build defaults (informative), as button macros:
+The other tools SHALL be button-macro tables with the following defaults, as in Magic's Tcl build, which is normative where the builds differ (`docs/spec-conventions.md`). The tables are set up by the `tool` command of capability `ui-gui-managers`, requirement "Tool modes". The cursor SHALL be glyph 19 for `wiring`, 18 for `nettool` and 22 for `pick`.
 
 | Tool | Button1 | Button2 | Button3 | Shift_Button1 | Shift_Button2 | Shift_Button3 | Button4 / Button5 |
 |---|---|---|---|---|---|---|---|
@@ -110,7 +100,12 @@ Tcl build defaults (informative), as button macros:
 
 For the box tool, Control_Button1, Control_Button2 and Control_Button3 are `box move bl cursor`, `paint cursor` and `box corner ur cursor`. Control_Button1 is `trackwire current` in wiring.
 
-Compatibility: behavioral (non-Tcl handlers); informative (Tcl table)
+Informative: Magic's non-Tcl build has built-in tools instead of these tables:
+- `wiring`: left = pick the wire layer and width under the cursor (`wire type`), right = add a wire leg to the cursor (`wire leg`), middle = place a contact and switch layers (`wire switch`); cursor glyph 19.
+- `netlist`: left = select the net containing the terminal nearest the cursor, right = toggle that terminal in or out of the current net, middle = join the current net with that terminal's net; cursor glyph 18.
+- `rsim`: left and right act as in the box tool, middle = display the Rsim node values of the selected paint; cursor glyph 21.
+
+Compatibility: behavioral (button tables); informative (non-Tcl built-in tools)
 (Magic ref: wiring/wireOps.c:1120-1128, netmenu/NMmain.c:465-478, sim/SimRsim.c:922-934, tcltk/tools.tcl:519-584, magic/proto.magicrc.in:274-298)
 
 #### Scenario: Wiring tool left click
@@ -146,11 +141,11 @@ The system startup file SHALL install the following bindings into the `box` tool
 | F | `upsidedown` | g | `grid` |
 | G | `grid 2` | i | `select cell` |
 | I | `select more cell` | Control_XK_i | `select less cell` |
-| l | imacro `label ` (readline or Tcl builds) | L | `shell ls` |
+| l | imacro `label ` | L | `shell ls` |
 | ^L | `redraw` | m | `move` |
 | M | `stretch` | ^N | (empty: deleted) |
 | o | `openwindow` | O | `closewindow` |
-| p | imacro `paint ` (readline or Tcl builds) | Control_Shift_XK_q | `quit` |
+| p | imacro `paint ` | Control_Shift_XK_q | `quit` |
 | r | `clockwise` | R | `clockwise 270` |
 | ^R | `clockwise 180` | s | `select` |
 | S | `select more` | ^S | `select less` |
@@ -202,7 +197,7 @@ Keypad:
 
 Function keys F1–F12: `paint ndiff`, `pdiff`, `poly`, `poly2`, `m1`, `m2`, `m3`, `m4`, `ndc`, `pdc`, `pc`, `via`.
 
-Buttons for all tools in the non-Tcl build: Control_Button1 `box move bl cursor`, Control_Button2 `paint cursor`, Control_Button3 `box corner ur cursor`. The box-tool button macros Button1–3 and Shift_Button1–3 are as in the Tcl table above. In the Tcl build these commands are prefixed with `*bypass`.
+Buttons for all tools: Control_Button1 `*bypass box move bl cursor`, Control_Button2 `*bypass paint cursor`, Control_Button3 `*bypass box corner ur cursor`. The box-tool button macros Button1–3 and Shift_Button1–3 are as in the table of requirement "Other tools' buttons", each prefixed with `*bypass`. Informative: Magic's non-Tcl build binds the same commands without the `*bypass` prefix.
 
 Color window: Button1 / Button2 / Button3 `pushbutton left/middle/right`, u `undo`, U `redo`, plus `color next`, minus `color last`.
 
@@ -243,17 +238,18 @@ Compatibility: behavioral
 ### Requirement: Touch and pointer gesture mapping
 Hefesto SHALL let every tool action, key binding and button binding be reached on platforms without mouse buttons or a physical keyboard (iPadOS touch). It SHALL do this through a gesture and on-screen-control mapping that dispatches the same commands as the bindings above.
 
-The mapping SHALL keep these semantics:
-- a single-finger tap at a point is the primary button (Button1) of the current tool
-- a long-press is Button3
-- an explicit modifier affordance provides Button2 and Shift/Control variants
+The mapping SHALL keep these semantics, which follow decision X-5 and are specified in full by capability `hefesto-input-and-touch` (requirement "Touch and Pencil mapping"), which owns the gesture vocabulary:
+- a one-finger tap or drag, or the Apple Pencil, is the primary button (Button1) of the current tool
+- a long press opens a context menu with the actions of the tool's secondary and tertiary buttons (Button2 and Button3)
+- a floating modifier key switches the next touch to middle-button (Button2) or right-button (Button3) semantics, and provides the Shift/Control variants
 - two-finger pan is `scroll` by the dragged distance
 - pinch is `zoom` about the pinch center
 
-The mapping SHALL be user-rebindable through the same macro tables. The exact gesture vocabulary is a [platform] decision (see Q-UI-22).
+The mapping SHALL be user-rebindable through the same macro tables (see Q-UI-22).
 
 Compatibility: behavioral
 (Magic ref: magic/proto.magicrc.in:247-298, dbwind/DBWbuttons.c:355-478)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5)
 
 #### Scenario: Tap moves the box
 - **GIVEN** Hefesto on iPadOS with the box tool current

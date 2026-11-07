@@ -84,18 +84,18 @@ Compatibility: exact
 - **THEN** the line is reported as unrecognized and ignored
 
 ### Requirement: Scale record
-A `scale <rscale> <cscale> <lscale>` record SHALL set the per-file multipliers. Every later `resist` value is multiplied by `rscale`, and every capacitance (`node`, `substrate`, `cap`, `merge`, `subcap`, `rnode`) by `cscale`. If `rscale` or `cscale` parses to 0 it SHALL be reset to 1. If `lscale` differs from the current extraction style's units-per-lambda `U`, the coordinate rescale factor `locScale = lscale / U` SHALL apply to later coordinates, as stated per record. `lscale` SHALL then be taken as `U`, or as 1 if it is 0. Unless coordinates are to be kept in database units, the definition's scale SHALL become `lscale`. The global output scale `EFScale` SHALL work as follows:
+A `scale <rscale> <cscale> <lscale>` record SHALL set the per-file multipliers. Every later `resist` value is multiplied by `rscale`, and every capacitance (`node`, `substrate`, `cap`, `merge`, `subcap`, `rnode`) by `cscale`. If `rscale` or `cscale` parses to 0 it SHALL be reset to 1. If `lscale` differs from the current extraction style's units-per-lambda `U`, the coordinate rescale factor `locScale = lscale / U` SHALL apply to later coordinates, as stated per record. `lscale` SHALL then be taken as `U`, or as 1 if it is 0. Unless coordinates are to be kept in database units, the definition's scale SHALL become `lscale`. The global output scale `S_out`, used by the netlisters for output lengths (`S_out / 100` µm per internal unit), SHALL work as follows:
 - If it is still 0, it becomes `lscale`.
 - If a different nonzero value is seen in another file, it becomes 1.0 and the "scale changed" flag is set.
 
-At the end of a successful read, `EFScale = 0` SHALL be replaced by 1.0.
+At the end of a successful read, `S_out = 0` SHALL be replaced by 1.0.
 Compatibility: exact
 (Magic ref: extflat/EFread.c:244-276, extflat/EFread.c:110-118)
 
 #### Scenario: Matching scales
 - **GIVEN** two files that both have `scale 1000 1000 5` and an extraction style with units-per-lambda 5
 - **WHEN** both are read
-- **THEN** `EFScale = 5` and the scale-changed flag stays clear
+- **THEN** `S_out = 5` and the scale-changed flag stays clear
 
 #### Scenario: Zero resistance scale
 - **GIVEN** `scale 0 1000 5`
@@ -144,7 +144,7 @@ An optional substrate is present when the remaining token count after the parame
 
 If the terminal tokens are not a multiple of 3, the record SHALL fail with `Incomplete terminal description for device`. Terminal and substrate node names that do not exist SHALL be created. A substrate node created this way, and any node marked as a device substrate whose name is not global, SHALL be flagged as an implicit substrate port. A substrate node created this way SHALL also be flagged as a device-terminal-only node.
 
-A device whose type is `Short` SHALL NOT be stored. It SHALL behave as `equiv` between its first two terminal names. When `extresist-command` overlays are being read, it SHALL do so only while reading the `.res.ext` file, or always when overlays are disabled.
+A device whose type is `Short` SHALL NOT be stored. It SHALL behave as `equiv` between its first two terminal names. When resistance-extraction overlays (`extresist on`) are being read, it SHALL do so only while reading the `.res.ext` file, or always when overlays are disabled.
 
 Devices SHALL be keyed by the string `"<llx>x<lly>_<t>"` (decimal integers). `t` is the technology tile-type index of the device type. If the type is unknown to the technology, `t` is the smallest index ≥ the number of tile types for which the key is still unused. A second record with an existing key SHALL be merged into the first if class, type (or tile type) and terminal count match. Its terminal nodes then replace the original ones. Otherwise it SHALL be rejected with an overlap error.
 Compatibility: exact
@@ -196,9 +196,9 @@ Compatibility: exact
 When both names are ports with different port indices, the following rules SHALL apply in order:
 1. When netlisting SPICE and the names are equal ignoring case, merge silently.
 2. If the names are equal after cutting each name at its first `_uq`, merge silently.
-3. Otherwise, under `short resistor` (or `short voltage`), do not merge. Instead create a resistor (or voltage source) device of type `None` with value 0 between the two names, plus a dangling first terminal named `dummy`.
-4. Otherwise, when not reading for `extresist-command`, warn `Ports "<a>" and "<b>" are electrically shorted.` and merge.
-5. When reading with `extresist-command` overlays, keep them separate.
+3. Otherwise, under `short resistor` (or `short voltage`), do not merge. Instead create a resistor (or voltage source) device of type `None` with value 0 between the two names, plus a dangling first terminal named `dummy` (Q-NETLIST-31).
+4. Otherwise, when not reading resistance-extraction overlays, warn `Ports "<a>" and "<b>" are electrically shorted.` and merge.
+5. When reading with resistance-extraction overlays, keep them separate.
 
 Every `equiv` read while an overlay is pending SHALL also be remembered. After the `.res.ext` file has been read, it SHALL be applied as a plain merge, but only if neither name appeared on an `rnode` or `resist` record of the overlay.
 
