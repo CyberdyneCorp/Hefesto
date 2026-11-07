@@ -12,6 +12,8 @@ Magic has no EM check. Every requirement is `native`.
 
 Units: currents in A internally and mA in reports, widths in µm, time in s.
 
+Reference source (read-only, never executed): gf180mcu-pdk @ `de3240d7529a6970437ac3344820aaae7839f215`, design manual §14.2 "Electro-migration", `docs/physical_verification/design_manual/drm_14_2.rst` (`gf ref:`), as in capability `reliability-em-rules`.
+
 ## Requirements
 
 ### Requirement: Check scope and items

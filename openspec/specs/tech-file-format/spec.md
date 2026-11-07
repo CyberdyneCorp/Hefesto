@@ -127,7 +127,8 @@ Compatibility: behavioral
 
 Magic's behavior beyond these limits is undefined. A physical line longer than the buffer, a final line with no LF, and more than 30 tokens all cause memory-safety faults. Hefesto MUST NOT crash. It SHALL handle these cases as follows:
 - A final line without a terminating LF SHALL be accepted as if it had one.
-- Lines longer than 1023 characters and lines with more than 30 tokens are recorded in Q-TECH-3 and Q-TECH-4 for decision. Until the decision is made, Hefesto SHALL report an error on that line and SHALL keep reading.
+- A physical line longer than 1023 characters SHALL be truncated to 1023 characters with the warning `long line truncated`, and reading SHALL continue (Q-TECH-3).
+- A line with more than 30 tokens SHALL be accepted with all of its tokens (Q-TECH-4).
 
 (Magic ref: utils/tech.c:120-121, utils/tech.c:1007-1041)
 
@@ -144,7 +145,7 @@ Compatibility: exact
 
 When no section is open, the reader handles each logical line as follows:
 - A line with more than one token SHALL produce the error `Bad section header line`. The reader then enters skip mode.
-- A one-token line that is not a registered name or alias SHALL produce `Unrecognized section name: <name>`. The reader then enters skip mode. This also applies to a stray `end`, which is not a section name (see Q-TECH-6).
+- A one-token line that is not a registered name or alias SHALL produce `Unrecognized section name: <name>`. The reader then enters skip mode. This also applies to a stray `end`, which is not a section name (see Q-TECH-6). With `magic-compat` OFF, a stray `end` SHALL instead be ignored with a warning.
 - After either error, the reader prints `[Skipping to "end"]`.
 
 In skip mode, every line is ignored until the next line that is exactly `end`. That `end` leaves skip mode, and no handler runs for it.
@@ -156,7 +157,7 @@ When a header is accepted, these steps happen in order:
 2. The body lines are dispatched to the line handlers.
 3. At `end`, the section is marked as read, its bit is added to the "sections read" set, and its final procedures run in registration order.
 
-A section may appear more than once. Each appearance runs init again, and for most sections this discards what the earlier appearance defined (see Q-TECH-7).
+A section may appear more than once. Each appearance runs init again, and for most sections this discards what the earlier appearance defined (see Q-TECH-7). Hefesto SHALL also warn about the repeated section. With `magic-compat` OFF, a repeated `types`, `planes`, `contact`, `compose` or `connect` section SHALL be an error that fails the load.
 
 The order of sections in the file is free, except for the prerequisite rule (see "Section registry and prerequisites").
 
@@ -259,11 +260,11 @@ A logical line whose first token is `include` and that has at least two tokens S
 
 Compatibility: exact
 
-To find the include file, the loader appends the current technology-file suffix to the name. This is `.tech`, or `.tech27` if the top-level file was found through the `.tech27` fallback (see Q-TECH-1). It then tries these places in order:
+To find the include file, the loader appends the current technology-file suffix to the name. This is `.tech`, or `.tech27` if the top-level file was found through the `.tech27` fallback (see Q-TECH-1; with `magic-compat` off, if no suffixed file is found, the verbatim name is tried next, with a warning). It then tries these places in order:
 1. The name resolved as described in capability `tech-loading-and-scaling` ("File search rules"): `~`/`$` expansion, absolute and `./`/`../` paths, then the directory `.`, then the system library search path.
 2. The directory part of the file currently being read (the including file).
 
-If neither is found, the loader SHALL warn `Warning: Couldn't find include file <name>`. Magic then processes the `include` line itself as an ordinary line: outside a section it is a bad header line, and inside a section it goes to the section handlers (see Q-TECH-2).
+If neither is found, the loader SHALL warn `Warning: Couldn't find include file <name>`. Magic then processes the `include` line itself as an ordinary line: outside a section it is a bad header line, and inside a section it goes to the section handlers. Hefesto SHALL instead discard the `include` line after the warning and SHALL fail the load (see Q-TECH-2).
 
 While an included file is being read, error locations name the included file and its own line numbers.
 
@@ -293,7 +294,7 @@ The repeat block works as follows:
 - `<N>` must be an optional sign followed by decimal digits. Otherwise the error `Error: "repeat" with invalid count <tok>` is reported, the pending count is set to 0, and the following lines are read once.
 - On `repeat N`, the loader saves the current position in the current file and sets the remaining count to N−1. A count of 0 or less therefore reads the block once.
 - On `endrepeat`, if the remaining count is greater than 0, it is decremented and reading resumes at the saved position. Otherwise `endrepeat` is ignored.
-- There is one counter and one saved position. Nested repeat blocks are not supported: an inner `repeat` replaces the outer state. The saved position belongs to whichever file was current at `repeat`. A block that spans an include boundary is undefined (see Q-TECH-5).
+- There is one counter and one saved position. Nested repeat blocks are not supported: an inner `repeat` replaces the outer state. The saved position belongs to whichever file was current at `repeat`. A block that spans an include boundary is undefined in Magic; Hefesto SHALL report it as an error. With `magic-compat` OFF, nested repeat blocks SHALL be supported, each with its own counter and saved position (see Q-TECH-5).
 - Line numbers keep increasing across repetitions. They are not reset.
 
 (Magic ref: utils/tech.c:607-632)
@@ -323,10 +324,10 @@ Compatibility: exact
 
 - **Init:** when the `tech` header is read, the format version is set to 27.
 - **One token:** the token becomes the technology name. If the section has several one-token lines, the last one wins.
-- **Two tokens with the first beginning with `format` or `version`:** this is a prefix test, so `formatted 30` also qualifies. If the second token is an integer (optional sign, then digits), the format version is set to its value. Otherwise `Bad format version number. . . assuming 27` is reported and the line is accepted, but the format version is not changed (see Q-TECH-9).
+- **Two tokens with the first beginning with `format` or `version`:** this is a prefix test, so `formatted 30` also qualifies. If the second token is an integer (optional sign, then digits), the format version is set to its value. Otherwise `Bad format version number. . . assuming 27` is reported and the line is accepted, but the format version is not changed (see Q-TECH-9). With `magic-compat` OFF, only the exact keywords `format` and `version` SHALL be accepted, and a bad value SHALL set the format version to 27.
 - **Any other line:** `Badly formed technology name` is reported, and the line is rejected, which fails the load.
 
-If no name line is present, the technology name is left unchanged from the previously loaded technology (see Q-TECH-8).
+If no name line is present, Magic leaves the technology name unchanged from the previously loaded technology. Hefesto SHALL instead reset the name at the start of every full load and SHALL report a missing name line as an error that fails the load (see Q-TECH-8).
 
 The technology name is the string that `.mag` files must match in their `tech` header (see capability `cell-file-format`). It is also reported by `tech name` (see capability `tech-command`).
 
@@ -366,7 +367,7 @@ Compatibility: exact
 
 Hefesto SHALL compare `requires` against the Magic version it claims compatibility with. For this baseline that is 8.3.694. It SHALL NOT compare against its own product version (see Q-TECH-28).
 
-The version and description strings are not reset when a new technology is loaded. A technology without a `version` section keeps the previous technology's strings (see Q-TECH-8).
+Magic does not reset the version and description strings when a new technology is loaded. Hefesto SHALL reset both to empty at the start of every full load, so a technology without a `version` section has empty strings (see Q-TECH-8).
 
 (Magic ref: database/DBtech.c:147-259)
 
@@ -393,7 +394,7 @@ The technology format version SHALL default to 27 and SHALL be set only by the `
 Compatibility: exact
 
 1. **Filename fallback.** When a technology named `X` is not found as `X.tech`, the file `X.tech27` is tried (see capability `tech-loading-and-scaling`). 27 is the last format version that was encoded in the file suffix.
-2. **Fringe-halo extraction default.** The format version (34 or more: on; otherwise off) selects the default of the extraction option `fringehalo`, as specified by capability `extract-tech-section`, requirement "Fringe model default chosen from tech format", which governs (including when the default is applied and the effect of a `tech` section placed after `extract`; see Q-TECH-32).
+2. **Fringe-halo extraction default.** The format version (34 or more: on; otherwise off) selects the default of the extraction option `fringehalo`, as specified by capability `extract-tech-section`, requirement "Fringe model default chosen from tech format", which governs (including when the default is applied and the effect of a `tech` section placed after `extract`; see Q-TECH-32). With `magic-compat` OFF, the default SHALL be applied after the whole file has been read.
 
 Formats 28 to 35 change no other parsing rule in the reference version. Older syntax restrictions mentioned in the manual, such as one style per line in format 27 and earlier, are not enforced.
 

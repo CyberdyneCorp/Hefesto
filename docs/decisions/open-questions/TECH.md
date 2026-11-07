@@ -8,6 +8,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:461, utils/tech.c:524, utils/tech.c:639, utils/tech.c:659, utils/path.c:689-710
 - Options: replicate | fix (try the name verbatim first, then with the suffix)
 - Recommendation: replicate the suffix behavior, and also accept the verbatim name as a fallback that warns. Existing PDKs rely only on the suffixed form.
+- Resolution: compat — the suffix is always appended, as in Magic; with `magic-compat` OFF, if no suffixed file is found the verbatim name is tried next, with a warning (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-2: Missing include file falls through as an ordinary line
 - Kind: bug
@@ -15,6 +16,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:674-677
 - Options: replicate | fix (discard the line after the warning)
 - Recommendation: fix (discard the line). Keep the warning, and make it fail the load, so that error reporting stays visible.
+- Resolution: fix — after the warning the `include` line is discarded and the load fails; Magic's fall-through only produces confusing follow-on errors on a file that cannot load correctly (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-3: Over-long physical lines and final line without newline
 - Kind: bug
@@ -22,6 +24,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:1007-1041
 - Options: replicate (impossible to do safely) | fix (truncate at 1023 characters with a warning, and treat EOF as end of line)
 - Recommendation: fix. Accept EOF as end of line. Report `long line truncated` and keep going.
+- Resolution: fix — read past the buffer is undefined behaviour; EOF ends the last line, and a physical line over 1023 characters is truncated with `long line truncated` and reading continues (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-4: More than 30 tokens per line
 - Kind: bug
@@ -29,6 +32,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:120, utils/tech.c:1053
 - Options: fix (error) | fix (accept any number of tokens)
 - Recommendation: accept any number of tokens. Long `variant`, `layer` and `mask` lists in real PDKs may exceed 30 tokens without this ever having been noticed.
+- Resolution: fix — the 30-slot token vector overflows the stack; Hefesto accepts any number of tokens (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-5: repeat/endrepeat limitations
 - Kind: quirk
@@ -36,6 +40,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:607-632
 - Options: replicate | fix (support nesting)
 - Recommendation: replicate the single-level semantics and the count rules, and make cross-file blocks an error.
+- Resolution: compat — single-level repeat semantics and count rules as in Magic; a block that crosses an include boundary is an error in both modes (Magic seeks in the wrong file); with `magic-compat` OFF, nested repeat blocks are supported (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-6: Stray `end` swallows the next section
 - Kind: quirk
@@ -43,6 +48,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:677-690
 - Options: replicate | fix (ignore a stray `end` with a warning)
 - Recommendation: replicate. The error is visible, and the load result (failure because of the missing section) should match.
+- Resolution: compat — a stray `end` enters skip mode as in Magic; with `magic-compat` OFF, a stray `end` is ignored with a warning (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-7: A repeated section re-runs init
 - Kind: quirk
@@ -50,6 +56,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:713-719
 - Options: replicate | fix (error on duplicate)
 - Recommendation: replicate, and add a warning.
+- Resolution: compat — a repeated section re-runs its init as in Magic, plus a warning; with `magic-compat` OFF, a repeated `types`, `planes`, `contact`, `compose` or `connect` section is an error (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-8: Technology name, version and description survive a reload
 - Kind: bug
@@ -57,6 +64,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtech.c:70-82, database/DBtech.c:147-151
 - Options: replicate | fix (reset to empty at the start of a full load)
 - Recommendation: fix for version and description. Make a missing technology name an error.
+- Resolution: fix — stale name, version and description from the previous technology are leaked state; a full load resets them to empty, and a technology without a name line fails to load (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-9: Format line edge cases
 - Kind: quirk
@@ -64,6 +72,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtech.c:113-126
 - Options: replicate | fix (exact keywords, and actually set 27)
 - Recommendation: replicate the acceptance. Set 27 on a bad value, which is what the message promises.
+- Resolution: compat — prefix acceptance and the unchanged format version after `assuming 27` as in Magic (the version selects the fringe-halo default); with `magic-compat` OFF, only the exact keywords `format` and `version` are accepted and a bad value sets the version to 27 (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-10: Loads are not atomic; partial-reload failure uses an uninitialized plane count
 - Kind: bug
@@ -71,6 +80,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:444, utils/tech.c:577-595, utils/tech.c:861-867
 - Options: replicate | fix (atomic load: build the new technology aside and swap on success)
 - Recommendation: fix (atomic), with the same diagnostics.
+- Resolution: fix — the partial-reload failure reads an uninitialised plane count; loads are atomic (built aside and swapped on success) with the same diagnostics (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-11: Dangling names after a rejected type or plane line
 - Kind: bug
@@ -78,6 +88,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechtype.c:462-475, database/DBtechtype.c:290-293, database/DBtechtype.c:755-768
 - Options: replicate | fix (validate first, then add names)
 - Recommendation: fix. The load fails in any case.
+- Resolution: fix — validate the whole line before adding any name, so a rejected line leaves no names behind; the load fails either way, so no output changes (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-12: `alias` with two tokens in the types section crashes
 - Kind: bug
@@ -85,6 +96,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechtype.c:437-458
 - Options: fix (report `Line must contain at least 2 fields`)
 - Recommendation: fix.
+- Resolution: fix — NULL dereference; report `Line must contain at least 2 fields` (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-13: Alias precedence differs between single names and type lists
 - Kind: quirk
@@ -92,6 +104,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechname.c:74-103, database/DBtechname.c:689-696
 - Options: replicate | fix (aliases always win)
 - Recommendation: replicate, because commands and rules that use these names must resolve the same way.
+- Resolution: compat — the two precedence rules are kept, because commands and rules must resolve names as Magic does; with `magic-compat` OFF, an alias-table key wins over type names in single-name resolution too (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-14: Prefix ambiguous among names of the same type
 - Kind: quirk
@@ -99,6 +112,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechtype.c:674-693
 - Options: replicate | fix (resolve when all candidates denote the same value)
 - Recommendation: fix as a strict superset. It only accepts inputs that Magic rejects. Log a note for compatibility testing.
+- Resolution: compat — the lookup stays ambiguous as in Magic; with `magic-compat` OFF, a prefix whose candidates all denote the same type or plane resolves to it (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-15: Null list `0` only at the end of the string
 - Kind: quirk
@@ -106,6 +120,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechname.c:682
 - Options: replicate | fix (treat a `0` atom as empty anywhere)
 - Recommendation: replicate the error, and treat it as non-fatal, as Magic does. The load still fails only where the owning section rejects the line.
+- Resolution: compat — the non-fatal `Unrecognized layer (type) name "0"` error as in Magic; with `magic-compat` OFF, a `0` atom means the empty set anywhere in a list (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-16: Plane qualifier quirks in type lists
 - Kind: bug
@@ -113,6 +128,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechname.c:745-764
 - Options: replicate | fix (empty selection on a bad plane; add planes instead of replacing)
 - Recommendation: replicate the plane-set behavior, because explicit paint rules depend on it (`paint ... R` uses the plane set of R). Treat a bad plane as an error.
+- Resolution: compat — a bad or `router` plane applies no restriction and a qualified segment replaces the plane set, as in Magic (explicit paint rules depend on it); with `magic-compat` OFF, a bad plane is an error and qualified segments add their plane to the set (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-17: Contact-section keyword handling and redeclaration
 - Kind: quirk
@@ -120,6 +136,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtcontact.c:177-189, database/DBtcontact.c:267, database/DBtcontact.c:617
 - Options: replicate | fix (check keywords first; reject redeclaration)
 - Recommendation: check keywords first only when the token is an exact keyword and no type has that exact name. Reject redeclaration.
+- Resolution: compat — prefix resolution before keywords and redeclaration merging as in Magic; with `magic-compat` OFF, exact keywords are checked before type names and redeclaring a contact is an error (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-18: Contact compose rule kept after a failing pair
 - Kind: quirk
@@ -127,6 +144,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtpaint.c:471-521
 - Options: replicate | fix (discard the whole rule)
 - Recommendation: replicate. It is only observable on files that fail to load.
+- Resolution: compat — pairs validated before the failure are kept, as in Magic; only observable on files that fail to load; with `magic-compat` OFF, the whole rule is discarded (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-19: Saved contact rules are never cleared
 - Kind: bug
@@ -134,6 +152,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtpaint.c:58-59, database/DBtpaint.c:471
 - Options: replicate | fix (clear at compose init)
 - Recommendation: fix. The specs already require clearing it. Behavior on the first load of a session is identical.
+- Resolution: fix — the never-cleared 256-entry list overflows and corrupts memory and re-applies stale rules; it is cleared at every `compose` section (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-20: Explicit `erase` rules mark the paint entry as user-defined
 - Kind: bug
@@ -141,6 +160,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtpaint.c:690
 - Options: replicate | fix (mark the erase flag for erase rules)
 - Recommendation: replicate. It changes tables for real PDKs. Golden tests (TECH-G21) must show the actual result.
+- Resolution: compat — `erase` rules set the paint entry's user-defined flag as in Magic, which changes paint tables for real PDKs; with `magic-compat` OFF, `erase` rules mark the erase entry instead (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-21: Non-contact compose with components on different planes
 - Kind: quirk
@@ -148,6 +168,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtpaint.c:419-437
 - Options: replicate | fix (error)
 - Recommendation: replicate.
+- Resolution: compat — entries are written on r's home plane only, as in Magic; with `magic-compat` OFF, a non-contact compose whose components lie on different planes is an error (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-22: Contacts with identical residues
 - Kind: quirk
@@ -155,6 +176,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtcontact.c:594-610, database/DBtpaint2.c:479-494
 - Options: replicate | fix (keep the image type)
 - Recommendation: replicate, and log a warning at load time.
+- Resolution: compat — painting a residue gives the lowest-numbered contact with those residues, as in Magic, plus a load-time warning; with `magic-compat` OFF, the painted contact keeps its image type (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-23: Painting a non-residue over a contact differs from the manual
 - Kind: doc-mismatch
@@ -162,6 +184,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtpaint.c:199-211, database/DBtpaint2.c:496-507, doc/latexfiles/maint2.tex ("Compose section")
 - Options: replicate tables | fix (per-plane residue composition)
 - Recommendation: replicate the tables. Confirm the final geometry with golden case TECH-G19.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-TECH-24: styles section without styletype, and headless loading
 - Kind: quirk / platform
@@ -169,6 +192,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: dbwind/DBWdisplay.c:1739-1775, graphics/grCMap.c:129-146
 - Options: replicate | fix (clear the map at styles init; never fail a load for missing display resources in headless mode)
 - Recommendation: fix both. Display resources are a platform concern, and data compatibility does not depend on them.
+- Resolution: fix — display resources are a platform concern (X-4): the style map is cleared at the start of every `styles` section, and missing display files never fail a technology load (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-25: `tech revert *` does not re-lock
 - Kind: bug
@@ -176,6 +200,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: commands/CmdTZ.c:389-397
 - Options: replicate | fix (`*` means all user layers)
 - Recommendation: fix.
+- Resolution: fix — `tech revert *` re-locks the layers locked in the technology file, like `tech revert` with no argument; no output values change (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-26: `tech lambda` label is inverted, and setting it does not rescale
 - Kind: quirk
@@ -183,6 +208,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: commands/CmdTZ.c:227-243, commands/CmdTZ.c:259-271
 - Options: replicate | fix (correct the label; make setting either rescale or be refused)
 - Recommendation: the label is informative, so fix it. Keep the raw-set capability, but only behind an explicit expert option.
+- Resolution: compat — the raw set without rescaling is kept as in Magic; the inverted label belongs to the informative non-Tcl output and Hefesto prints the correct one; with `magic-compat` OFF, `tech lambda N [D]` is refused with an error that points to `scalegrid` (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-27: set-minimum-grid with grid limit 0
 - Kind: bug
@@ -190,6 +216,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:808-812, cif/CIFtech.c:775-786
 - Options: fix (treat 0 as 1, as the grid-limit check does)
 - Recommendation: fix.
+- Resolution: fix — division by zero; a grid limit of 0 is treated as 1, as the grid-limit check does (X-2 tier 1, 2026-11-07).
 
 ### Q-TECH-28: Host mechanisms for finding and loading technologies
 - Kind: platform
@@ -198,6 +225,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Options: platform alternative
 - Recommendation: provide an ordered, user-configurable list of technology roots (on iPadOS: inside the sandbox, plus user-granted folders). Provide a project-level default technology instead of startup scripts. Compare `requires` against the Magic compatibility level (8.3.694), not Hefesto's own version.
 - Overlap: the path-variable and root parts are tracked in Q-CELL-17 (canonical). This entry keeps the technology-discovery and `requires` parts. Platform owner: capability `hefesto-files-and-pdks`. (Consolidation audit, 2026-11-06.)
+- Resolution: platform — technology roots are the ordered, user-configurable PDK store and search list of `hefesto-files-and-pdks` (requirement "PDK store"), the default technology is a project setting, and `requires` is compared with Magic 8.3.694 (X-4, P-14, 2026-11-07).
 
 ### Q-TECH-29: Manual and code disagree on file and command syntax
 - Kind: doc-mismatch
@@ -209,6 +237,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:1024-1035, utils/tech.c:696, commands/CmdTZ.c:194-196, doc/latexfiles/maint2.tex, doc/html/tech.html
 - Options: replicate code
 - Recommendation: replicate the code, and document the differences in the user docs.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-TECH-30: `tech layers` list form returns the longest name
 - Kind: doc-mismatch
@@ -216,6 +245,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: database/DBtechname.c:459-464
 - Options: replicate | fix
 - Recommendation: replicate, because scripts depend on it.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-TECH-31: Existing layout is not remapped when the technology changes
 - Kind: ambiguity
@@ -223,6 +253,7 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: utils/tech.c:852-859, commands/CmdTZ.c:571-574
 - Options: replicate | extension (remap by long name, or refuse the reload while layout exists)
 - Recommendation: replicate by default. Offer an opt-in remap-by-name.
+- Resolution: compat — raw type numbers are kept across a reload, with a warning, as in Magic; with `magic-compat` OFF, existing layout is remapped by long type name (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TECH-32: Fringe-halo default depends on section order
 - Kind: quirk
@@ -230,3 +261,4 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Evidence: extract/ExtTech.c:3580-3587, database/DBtech.c:78
 - Options: replicate | fix (apply the default after the whole file is read)
 - Recommendation: fix. Every known PDK puts `tech` first, so the outcome there is the same.
+- Resolution: compat — the default follows the format version known when the `extract` section is finalized, as in Magic (it changes extracted values); with `magic-compat` OFF, the default is applied after the whole file is read; every known PDK puts `tech` first, so both agree on them (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).

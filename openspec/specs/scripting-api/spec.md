@@ -5,6 +5,8 @@ Defines the scripting surface that Hefesto exposes to scripts. This is the surfa
 
 Hefesto hosts the scripts in an embedded, sandboxed Tcl interpreter on every platform, including iPadOS (decision X-3; capability `hefesto-scripting`). Any script written against Magic's Tcl API MUST observe the results, side effects and variables specified here, except for operations the sandbox denies (process execution, sockets, loading native extensions; capability `hefesto-security`). Command semantics (what `box`, `paint`, `select` and so on do to the database) belong to the command capabilities. This spec covers only how those commands bind to the scripting layer and what values they return to it.
 
+PDK references have the form `(PDK ref: <repo> <path>:<line>)` and were verified against open_pdks `RTimothyEdwards/open_pdks` @ `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (`open_pdks` paths are relative to the repository root) and IHP-Open-PDK `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`IHP` paths are relative to `ihp-sg13g2/libs.tech/magic/`), as in capability `scripting-pdk-integration`.
+
 ## Requirements
 
 ### Requirement: Scripting host choice is abstracted behind a command API
@@ -292,7 +294,7 @@ The engine SHALL read these global script variables at the moment of use:
 | `CAD_ROOT` | Install root. If unset at load time, it is set from the environment variable `CAD_ROOT`, or else the compiled default. |
 | `VDD`, `GND` | Power and ground net names: LEF/DEF power nets, ground recognition in substrate-compatibility extraction, CDL global list when the value ends in `!`. |
 | `SUB` | Substrate global for CDL output when the value ends in `!`. |
-| `globals(<name>)` | A node name is global iff this array element exists. |
+| `globals(<name>)` | A node name is global iff this array element exists. In Hefesto, `globals`, `VDD`, `GND` and `SUB` read and write the project setting "global nets and power names" (capability `hefesto-settings`, decision D-14). |
 | `<name>` | A tech-file substrate or default node written `$<name>` (single `$`) is replaced by the value of `<name>`. If `<name>` is undefined, the `$` is stripped. `$$` is left alone. |
 | `PDK_ROOT`, `PDKROOT`, `PDK_PATH`, `PDKPATH` | Technology auto-discovery after the corresponding environment variables (see `scripting-pdk-integration`), and shortening of saved cell paths to `$<VAR>/...`. |
 | `Opts(tool)` | Name of the active macro/button table. |

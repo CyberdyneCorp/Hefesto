@@ -29,6 +29,7 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Evidence: drc/DRCtech.c:1858-1861
 - Options: replicate (treat `45` as 45-with-90) | fix
 - Recommendation: fix: `45` means 45+90 degrees; `45` followed by exactly one separator character and `only` means 45-only.
+- Resolution: fix — the token is never read past its end: `45` means 45 and 90 degrees, `45` followed by one separator and `only` means 45 only (X-2 tier 1, 2026-11-07).
 
 ### Q-DRC-5: Covered-rule elimination conditions
 - Kind: bug
@@ -155,6 +156,7 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Evidence: commands/CmdCD.c:4111-4135
 - Options: fix (print help)
 - Recommendation: fix.
+- Resolution: fix — `drc list` with no option prints the help instead of dereferencing a missing argument (X-2 tier 1, 2026-11-07).
 
 ### Q-DRC-23: Check-plane operation type ignored
 - Kind: quirk

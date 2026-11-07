@@ -58,6 +58,8 @@ Compatibility: behavioral
 - Recording is suspended with a nesting counter: nested suspensions require the same number of resumptions.
 - Deleting the cell whose events are being recorded clears the whole history.
 - Flattening in place deletes the use without an undo record, so the deletion cannot be undone (see Q-MODEL-28).
+- This list applies as written while the `magic-compat` setting is ON (the default). With `magic-compat` OFF, property changes and flattening in place are recorded instead, as specified by requirement "Undoable property changes and flatten in place with magic-compat off" (decision D-10). Every other entry of the list stays non-recorded with either setting.
+- Hefesto's own compound operations record native events regardless of the setting (requirement "Native undo events for Hefesto compound operations").
 
 (Magic ref: utils/undo.c:408-436, database/DBio.c:838-841, calma/CalmaRead.c:211, database/DBcellname.c:167-173,326-357, commands/CmdFI.c:2116-2245, database/DBcellbox.c:705-735, database/DBpaint.c:1018-1035, database/DBundo.c:197-206)
 
@@ -74,7 +76,7 @@ Compatibility: behavioral
 - `undo n` / `redo n` repeat up to n steps and stop at the ends of the log.
 - Replaying paint applies the inverse table operation over the recorded rectangle (erase new type, paint old type) without image resolution; after a replay the affected cells' bounding boxes are recomputed, the changed area is redisplayed and re-queued for DRC.
 - Replay itself records nothing.
-- Undo/redo do not by themselves set or clear the modified flag of the affected cells for paint events and label removals (see Q-MODEL-12); replays that re-create a label, or place or delete a use, mark the cell modified as normal edits do.
+- In Magic, undo/redo do not by themselves set or clear the modified flag of the affected cells for paint events and label removals. Hefesto SHALL mark the affected cells modified for these replays too (see Q-MODEL-12). Replays that re-create a label, or place or delete a use, mark the cell modified as normal edits do.
 
 (Magic ref: utils/undo.c:568-694,857-904, database/DBundo.c:258-420,545-600,687-830,989-1000)
 
@@ -110,7 +112,7 @@ Compatibility: behavioral
 
 - `undo` is `undo 1`. `undo <n>` with an integer n > 0 SHALL undo up to n steps (requirement "Undo and redo semantics"). If no step could be undone, it SHALL print `Nothing more to undo`.
 - An integer is an optional `+` or `-` followed by decimal digits. A negative n SHALL print `Count must be a positive integer` and change nothing.
-- `undo 0` SHALL behave as `undo enable` (see Q-MODEL-30).
+- `undo 0`: with the `magic-compat` setting ON (the default), it SHALL behave as `undo enable`, resuming recording by one nesting level, silently. With `magic-compat` OFF, it SHALL be a no-op: it changes nothing and prints nothing (see Q-MODEL-30, decided by D-11).
 - `undo enable` and `undo disable` SHALL match their keywords exactly (no prefix matching). `undo disable` SHALL suspend recording by one nesting level and `undo enable` SHALL resume it by one level, never below zero. These share the nesting counter of requirement "Non-recorded operations", so two `undo disable` need two `undo enable`.
 - Any other single non-integer argument SHALL print `Option must be a count (integer)`.
 - With two arguments, the first SHALL begin with `print` (its first five characters are compared) and the second SHALL be an integer, otherwise `Usage: undo print count` is printed. `undo print <n>` SHALL list the n log entries before the current position, newest first; n ≤ 0 lists back to the start of the log. It changes nothing. The listing format is informative (Magic prints internal addresses).
@@ -147,7 +149,7 @@ Compatibility: behavioral
 
 - `redo` is `redo 1`. `redo <n>` with an integer n > 0 SHALL redo up to n undone steps. If no step could be redone, it SHALL print `Nothing more to redo`.
 - A negative n SHALL print `Count must be a positive integer`. A non-integer single argument SHALL print `Count must be numeric`. Neither changes anything.
-- `redo 0` SHALL suspend recording by one nesting level, like `undo disable` (see Q-MODEL-30).
+- `redo 0`: with the `magic-compat` setting ON (the default), it SHALL suspend recording by one nesting level, like `undo disable`, silently. With `magic-compat` OFF, it SHALL be a no-op: it changes nothing and prints nothing (see Q-MODEL-30, decided by D-11).
 - With two arguments, the first SHALL begin with `print` and the second SHALL be an integer, otherwise `Usage: redo print count` is printed. `redo print <n>` SHALL list the n log entries after the current position, oldest first; n ≤ 0 lists to the end of the log. The listing format is informative.
 - More than two arguments SHALL print `Usage: redo [count]`.
 - `redo` has no `enable` or `disable` keyword: `redo enable` prints `Count must be numeric`.
@@ -160,9 +162,15 @@ Compatibility: behavioral
 - **THEN** `Nothing more to redo` SHALL be printed and nothing SHALL change
 
 #### Scenario: redo 0 suspends recording
-- **GIVEN** recording is enabled
+- **GIVEN** recording is enabled and the `magic-compat` setting is ON
 - **WHEN** `redo 0` is executed and then `paint metal1` is executed
 - **THEN** the paint SHALL NOT be recorded until `undo enable` (or `undo 0`) is executed
+
+#### Scenario: undo 0 and redo 0 are no-ops with magic-compat off
+- **GIVEN** recording is enabled, the `magic-compat` setting is OFF, and step S1 = paint has been recorded
+- **WHEN** `redo 0` is executed, then `paint metal2` is executed, then `undo 0` is executed
+- **THEN** the `metal2` paint SHALL be recorded as a new step
+- **AND** `undo 0` SHALL undo nothing, leaving both S1 and the `metal2` step in place
 
 ### Requirement: Native undo events for Hefesto compound operations
 
@@ -171,10 +179,10 @@ Compatibility: native
 
 - Applying an accepted proposal SHALL be one step. For every cell the proposal changes, the step SHALL record enough state to restore it exactly, including the changes that ordinary commands do not record (requirement "Non-recorded operations"): property changes, cell creation, rename and deletion, and flattening. Undo SHALL restore every such cell, delete cells the proposal created and restore cells it deleted or renamed; redo SHALL re-apply the proposal.
 - A testbench or measurement edit SHALL be one step whose events restore the previous `testbench.json` content. Undoing it SHALL also save the restored content.
-- Recording these native events SHALL NOT change which events ordinary Magic commands record. The non-recorded list of requirement "Non-recorded operations" keeps applying outside these operations.
+- Recording these native events SHALL NOT change which events ordinary Magic commands record. Outside these operations, requirement "Non-recorded operations" keeps applying, including its `magic-compat` dependence (decision D-10).
 - These steps obey the history limit and the redo-discard rule like any other step.
 
-(Hefesto decision: docs/decisions/product.md#P-10, docs/decisions/product.md#P-7, docs/decisions/product.md#P-19)
+(Hefesto decision: docs/decisions/product.md#P-10, docs/decisions/product.md#P-7, docs/decisions/product.md#P-19, docs/decisions/audit/DECISIONS.md#D-10)
 
 #### Scenario: Undo an accepted proposal that set a property and created a cell
 - **GIVEN** an accepted proposal that painted in cell `top`, set property `FIXED_BBOX` on `top` and created cell `inv_x1`
@@ -183,7 +191,36 @@ Compatibility: native
 - **AND** cell `inv_x1` SHALL no longer exist
 
 #### Scenario: Plain property change stays non-recorded
-- **GIVEN** recording enabled and no agent proposal involved
+- **GIVEN** recording enabled, the `magic-compat` setting ON, and no agent proposal involved
 - **WHEN** `property x 1` is executed and then `undo` is executed
 - **THEN** the property SHALL remain set
+
+#### Scenario: Undo a sim testbench edit
+- **GIVEN** the current testbench has no analyses and its `testbench.json` is saved
+- **WHEN** `sim analysis add tran 10ps 20ns` is executed and then `undo` is executed once
+- **THEN** the testbench SHALL again have no analyses, and the restored `testbench.json` SHALL be saved
+- **AND** no cell SHALL change
+
+### Requirement: Undoable property changes and flatten in place with magic-compat off
+
+With the `magic-compat` setting OFF, Hefesto SHALL record undo events for property changes and for flattening in place, so that both can be undone and redone like any other command. With `magic-compat` ON (the default), it SHALL keep Magic's behavior of recording neither (requirement "Non-recorded operations").
+Compatibility: native
+
+- **Property changes.** Every set, change or removal of a cell property, by any command, records the property key, its previous value and type (or its absence), and its new value and type (or its absence). Undo restores the previous state of the property; redo applies the new one. Undo and redo mark the cell modified, as the property command does (capability `layout-properties`).
+- **Flatten in place.** `flatten -doinplace` (capability `cmd-hierarchy`) records, in one step, the paint, labels and instances it adds to the edit cell and the deletion of each flattened instance, with the full instance state of requirement "Recorded event kinds". Undo removes the added contents and restores the instances; redo flattens them again.
+- Flattening into a new cell, cell rename and cell delete stay non-recorded with either setting.
+- The recorded events follow the grouping, history-limit and redo-discard rules of this capability. The setting changes nothing in any file Hefesto writes.
+
+(Hefesto decision: docs/decisions/audit/DECISIONS.md#D-10, docs/decisions/cross-cutting.md#X-2)
+
+#### Scenario: Property change is undoable with magic-compat off
+- **GIVEN** the `magic-compat` setting OFF and a cell without property `x`
+- **WHEN** `property x 1` is executed and then `undo` is executed
+- **THEN** property `x` SHALL no longer exist
+- **AND** after `redo`, property `x` SHALL have the value `1`
+
+#### Scenario: Flatten in place is undoable with magic-compat off
+- **GIVEN** the `magic-compat` setting OFF, and edit cell `top` with instance `x1` of `leaf` at translate(100,0), where `leaf` has metal1 (0,0)–(5,5)
+- **WHEN** `flatten -doinplace x1` is executed and then `undo` is executed
+- **THEN** `top` SHALL again contain instance `x1` at translate(100,0) and SHALL NOT contain metal1 (100,0)–(105,5)
 

@@ -36,6 +36,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:5057-5200, extract/ExtBasic.c:4976-5005, extract/ExtCell.c:617
 - Options: replicate (Hefesto's tile planes use the same maximal-horizontal-strip decomposition and enumeration order) | fix (sort by reference point) and compare golden files order-insensitively
 - Recommendation: replicate if `layout-geometry-model` is bit-compatible; otherwise compare records as sets per record class and document.
+- Resolution: compat — record order follows the tile order bullet: Hefesto reproduces Magic's maximal-horizontal-strip decomposition and enumeration order, so `node`, `device`, `use` and `port` order is byte-identical (X-1 as amended by D-1, 2026-11-07).
 
 ### Q-EXTRACT-6: Temporary unique labels not reverted for some cells
 - Kind: bug
@@ -58,6 +59,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:3135-3142, extract/ExtBasic.c:3184-3196
 - Options: replicate (undefined values) | fix (write ` 0 0` once)
 - Recommendation: fix.
+- Resolution: fix — the zero-size capacitor writes ` 0 0` once and no uninitialised L and W (X-2 tier 1, 2026-11-07).
 
 ### Q-EXTRACT-9: `$`-variable substitution in substrate names [platform]
 - Kind: platform
@@ -65,6 +67,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:900-925, extract/ExtBasic.c:2617-2630
 - Options: replicate with Hefesto's scripting variables | platform alternative (project-level variable table on iPadOS)
 - Recommendation: provide a variable table in the session; strip `$` when undefined, as Magic does.
+- Resolution: platform — the host variables are the global variables of the embedded Tcl interpreter, available on every platform including iPadOS; an undefined name is used without its `$`, as in Magic (X-3, 2026-11-07).
 
 ### Q-EXTRACT-10: Version string written in `.ext`
 - Kind: ambiguity
@@ -93,6 +96,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:2930-2938
 - Options: replicate (undefined) | fix (compute L,W first, or treat as 0)
 - Recommendation: fix by computing L and W (as for capacitors) before range matching; ranges on diode L/W are rare.
+- Resolution: fix — L and W are computed before parameter-range matching for diode classes, so no uninitialised values are read (X-2 tier 1, 2026-11-07).
 
 ### Q-EXTRACT-14: Documentation mismatches for `extract do all` and defaults
 - Kind: doc-mismatch
@@ -101,6 +105,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Options: follow code | follow doc
 - Recommendation: follow code (specified in `extract-commands`); correct the overview document.
 - Status: the overview part is done. `docs/reference/magic/circuit-extraction.md` now lists `all` correctly. The HTML-doc mismatch remains informative only.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (`extract-commands` follows the code; the overview is corrected) (spec conventions §2.7, 2026-11-07).
 
 ### Q-EXTRACT-15: `r` parameter with zero width or zero area
 - Kind: bug
@@ -108,6 +113,7 @@ Open questions found while specifying the circuit extractor (capabilities `extra
 - Evidence: extract/ExtBasic.c:1975-2010
 - Options: replicate (crash/undefined) | fix (write 0)
 - Recommendation: fix (write `r=0`).
+- Resolution: fix — `r` is written as 0 when the width or area is zero, instead of dividing by zero (X-2 tier 1, 2026-11-07).
 
 ### Q-EXTRACT-16: `device` cell property dimensions
 - Kind: quirk

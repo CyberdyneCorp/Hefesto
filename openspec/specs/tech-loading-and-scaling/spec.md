@@ -141,7 +141,7 @@ Compatibility: behavioral
    - If K > K₀, empty planes K₀..K−1 are added.
    - If K < K₀, planes K..K₀−1 are deleted with all their tiles.
 
-Hefesto SHALL do the same by default. Hefesto MAY offer a safer remap of existing layout by type name as an extension, but only if requested explicitly. See Q-TECH-31.
+Hefesto SHALL do the same with `magic-compat` ON. With `magic-compat` OFF, Hefesto SHALL instead remap existing layout by long type name. See Q-TECH-31.
 
 (Magic ref: utils/tech.c:281-310, utils/tech.c:852-859, commands/CmdTZ.c:85-103)
 

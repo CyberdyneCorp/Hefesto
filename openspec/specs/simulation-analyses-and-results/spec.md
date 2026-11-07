@@ -161,7 +161,7 @@ Each job that reaches a final state SHALL be stored in the project, in folder `s
 - `deckSha256`
 - `pdk` (name and descriptor version)
 - `engineVersion`, `hefestoVersion`
-- `platform` (`linux-x86_64`, `linux-aarch64`, `macos-arm64`, `macos-x86_64` or `ipados-arm64`)
+- `platform` (`linux-x86_64`, `linux-aarch64`, `macos-arm64` or `ipados-arm64`; there is no `macos-x86_64`, decision D-12)
 - `started` and `finished` (ISO 8601 with UTC offset)
 - `plots`: an array of `{name, type, title, scale, vectors: [{name, displayName, type, complex}]}`
 - `netMap`: the net-name map of capability `simulation-netlist-preparation`, or `null`

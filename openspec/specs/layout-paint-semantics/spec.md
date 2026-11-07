@@ -46,7 +46,7 @@ Algorithm for `paint(cell, rect, t)`:
 
 `erase(cell, rect, t)`:
 1. Mark the cell modified and needing a new timestamp.
-2. If `t` is space: apply the paint table of space `P[p][space]` on every plane >= 1 (Magic intends "erase everything", but with default tables every `P[p][space][s]` is `s`, so this is a no-op; see Q-MODEL-29). Otherwise apply `E[p][t]` on every plane `t` affects when erased.
+2. If `t` is space: apply the paint table of space `P[p][space]` on every plane >= 1 (Magic intends "erase everything", but with default tables every `P[p][space][s]` is `s`, so this is a no-op; see Q-MODEL-29; with `magic-compat` off, erasing space SHALL erase every type in the area). Otherwise apply `E[p][t]` on every plane `t` affects when erased.
 3. Merge split tiles over `rect` expanded by 1, except when `rect` equals the whole-plane rectangle (global erase skips merging).
 4. No image resolution is performed after erase.
 
@@ -124,7 +124,7 @@ Compatibility: exact
 - A generated stacked type is named `<shortname1>+<shortname2>` (generation rules and limits: see `tech-*`). Its residues are the two contact types; its home plane is the plane of the first shared residue.
 - Stacked types never appear in files: the `.mag` writer emits, for each user type `u`, the tiles of `u` and of every stacked type having `u` as a residue, on `u`'s home plane, under `<< u >>`. On reading, a stacked type name is painted as each of its residues.
 - Stacked types are never chosen as a label's layer (see `layout-labels-ports`).
-- `erase-valid` style erasing ignores stacked types in its mask (see Q-MODEL-22), while `paint-valid` decomposes them into residues.
+- `erase-valid` style erasing ignores stacked types in its mask (see Q-MODEL-22), while `paint-valid` decomposes them into residues. With `magic-compat` OFF, `erase-valid` SHALL decompose stacked types into residues too.
 
 (Magic ref: database/DBtpaint2.c:404-425,298-336, database/DBtcontact.c:357-412,694-723, database/DBtechtype.c:506-528, database/DBio.c:4751-4774,900-912, database/DBpaint2.c:255-316,365-417)
 
@@ -168,7 +168,7 @@ Let the triangle have bounding rectangle `A` (width `W`, height `H`), direction 
 2. If exactly one tile lies under `A`: combine quadrant-wise. The old tile's types for N, S, E, W quadrants are taken from its halves (or its single type); the operand changes W (side 0) or E (side 1), and N if `dir == side` else S. If N==E and S==W the result is a split tile (`\` if N!=W) or a rectangle (if all equal); if N==W and S==E it is a `/` split tile; if the result equals the old type nothing happens. Otherwise (a triangle over a triangle with the opposite diagonal) `A` is quartered: with `xm = A.xtop - floor(W/2)` and `ym = A.ytop - floor(H/2)` the quarters are `(A.xbot,A.ybot)-(xm,ym)`, `(A.xbot,ym)-(xm,A.ytop)`, `(xm,A.ybot)-(A.xtop,ym)` and `(xm,ym)-(A.xtop,A.ytop)`, and each quarter is processed by step 3 against the original diagonal of `A`. If `W == 1` or `H == 1` no quartering is possible and the whole of `A` is painted as a rectangle instead (see Q-MODEL-4).
 3. Otherwise, for each tile rectangle `r` under `A` (clipped to `A`), compute where the diagonal of `A` crosses `r`:
    - for `dir == 0`: `x(y) = A.xbot + round_half_up(W*(y - A.ybot)/H)`, `y(x) = A.ybot + round_half_up(H*(x - A.xbot)/W)`;
-   - for `dir == 1`: `x(y) = A.xbot + floor(W*(A.ytop - y)/H)`, `y(x) = A.ybot + floor(H*(A.xtop - x)/W)` (truncation, never rounding up; see Q-MODEL-3).
+   - for `dir == 1`: `x(y) = A.xbot + floor(W*(A.ytop - y)/H)`, `y(x) = A.ybot + floor(H*(A.xtop - x)/W)` (truncation, never rounding up; see Q-MODEL-3; with `magic-compat` off, both diagonals SHALL round half-up as for `dir == 0`).
    - `r` is cut vertically at `x(r.ybot)`/`x(r.ytop)` and horizontally at `y(r.xbot)`/`y(r.xtop)` when those fall strictly inside `r`; pieces wholly on the operand's side are painted as rectangles, pieces wholly on the other side are skipped, and pieces still straddling the diagonal are processed recursively as triangles with bounding rectangle equal to the piece.
 4. After painting, split-tile merging is applied over `A` expanded by 1 (see requirement "Split tile merging").
 
@@ -265,7 +265,7 @@ Compatibility: behavioral
 Every paint, erase, paint-mask, erase-mask and paint-copy operation on a cell SHALL mark that cell modified and in need of a new timestamp, regardless of whether any geometry changed.
 Compatibility: behavioral
 
-- Undo/redo replay of paint does not itself set the flag (see `layout-undo`, Q-MODEL-12).
+- In Magic, undo/redo replay of paint does not itself set the flag. Hefesto SHALL mark the cell modified on every replay (see `layout-undo`, Q-MODEL-12).
 - Bounding-box propagation to parents is not a modification (see `layout-hierarchy`).
 
 (Magic ref: database/DBpaint2.c:65,177, database/DBcellcopy.c:1592, database/DBcellbox.c:178-186)

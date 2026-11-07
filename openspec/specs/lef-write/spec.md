@@ -731,7 +731,7 @@ Compatibility: exact
 
 ### Requirement: Power and ground pin detection
 
-A pin SHALL be a power rail if its use is power or ground. A pin with default use SHALL also be a power rail if its label text exactly equals the configured power-net name or the configured ground-net name. For such a pin, the system SHALL write `    USE POWER ;` and/or `    USE GROUND ;`, in that order. Both lines are written if the text matches both names. Power rails SHALL get no antenna lines.
+A pin SHALL be a power rail if its use is power or ground. A pin with default use SHALL also be a power rail if its label text exactly equals the configured power-net name or the configured ground-net name. These are the `vdd` and `gnd` fields of the project setting "global nets and power names" (capability `hefesto-settings`; decision D-14), seeded from Magic's `$VDD` and `$GND`. An unset field matches nothing. For such a pin, the system SHALL write `    USE POWER ;` and/or `    USE GROUND ;`, in that order. Both lines are written if the text matches both names. Power rails SHALL get no antenna lines.
 
 Compatibility: behavioral
 
@@ -744,7 +744,7 @@ Compatibility: behavioral
 
 ### Requirement: Power-name source in Magic
 
-Hefesto SHALL treat the configured power and ground names as host settings; in Magic they are the global Tcl variables `VDD` and `GND`, and Magic's non-Tcl build does no such matching (informative). Hefesto SHALL expose the same two names as session settings; see Q-LEFDEF-44.
+Hefesto SHALL treat this description of where Magic takes the power and ground names from as reference material. In Magic they are the global Tcl variables `VDD` and `GND`, and Magic's non-Tcl build does no such matching. Hefesto takes them from the `vdd` and `gnd` fields of the project setting "global nets and power names" of capability `hefesto-settings`, which a startup script seeds by setting `VDD` and `GND` (Q-LEFDEF-44, decided by D-14).
 
 Compatibility: informative
 

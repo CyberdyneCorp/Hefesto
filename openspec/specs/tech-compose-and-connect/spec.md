@@ -121,7 +121,7 @@ Compatibility: exact
 
 1. Resolve r and s, noisily. If either fails, the line is rejected. Earlier pairs remain applied.
 2. If r or s is a contact: `Can't have contact layers on RHS of non-contact rule`, and the line is rejected.
-3. Let p be the home plane of r. The home plane of s is not used (see Q-TECH-21).
+3. Let p be the home plane of r. The home plane of s is not used (see Q-TECH-21). With `magic-compat` OFF, a rule whose r and s have different home planes SHALL be rejected with an error.
 4. For `compose` only: set `P[p](r,s) := T` and `P[p](s,r) := T`, and mark `udP(r,s)` and `udP(s,r)`.
 5. For both rule kinds:
    - `P[p](T,r) := T`
@@ -160,7 +160,7 @@ Compatibility: exact
 3. **Remove result planes.** Pm := Pm \ Rp.
 4. **Result types.** For each type r in Rt, in increasing order, with r < U, and for each tech plane q in Rp on which r can appear (q ∈ Planes(r)): set `P[q](h,t) := r` for `paint`, or `E[q](h,t) := r` for `erase`. These are unconditional. When several types land on one plane, the highest-numbered one wins. Stacked types in Rt are ignored.
 5. **Remaining planes.** For each tech plane q in Pm: set `P[q](h,t) := space` for `paint`, or `E[q](h,t) := space` for `erase`.
-6. **Flag.** Mark `udP(h,t)`. This happens for `erase` rules too. `udE` is not marked, so contact default steps may later overwrite an explicit erase rule (see Q-TECH-20).
+6. **Flag.** Mark `udP(h,t)`. This happens for `erase` rules too. `udE` is not marked, so contact default steps may later overwrite an explicit erase rule (see Q-TECH-20). With `magic-compat` OFF, an `erase` rule SHALL mark `udE(h,t)` instead of `udP(h,t)`.
 
 The explicit plane argument limits only step 5. Step 4 always writes on every plane of Rp. A result list such as `space` has Rp = every plane except router, so step 4 writes space on every tech plane where h can appear.
 
@@ -194,7 +194,7 @@ Compatibility: exact
 3. **Subset of planes.** Planes(r) ∪ Planes(s) must be a subset of Planes(T). Otherwise: `Component planes are a superset of result planes`, and the line is rejected.
 4. **Equal planes for compose.** For `compose` only, Planes(r) ∪ Planes(s) must equal Planes(T). Otherwise: `Union of pair planes must = result planes`, and the line is rejected.
 
-A rule is saved even when a later pair fails, with the pairs validated before the failure (see Q-TECH-18). The saved-rule list keeps declaration order.
+A rule is saved even when a later pair fails, with the pairs validated before the failure (see Q-TECH-18). With `magic-compat` OFF, a rule with a failing pair SHALL be discarded entirely. The saved-rule list keeps declaration order.
 
 Magic does not clear the saved-rule list when a new technology is loaded. It holds at most 256 rules for the whole session (see Q-TECH-19). Hefesto SHALL clear the list at the start of every `compose` section. That is the behavior Magic shows for the first technology loaded in a session.
 
@@ -275,7 +275,7 @@ Let S = Planes(I) ∩ Planes(T). For a non-contact T, Planes(T) = {home(T)} and 
     - Else, if T is a contact and I < U: for each residue r of I in increasing order, `setP(I, T, home(r), T)` when r ∈ Res(T), and `setP(I, T, home(r), r)` otherwise.
     - Else, if T is a contact and T ∉ Res(I): for each r of I in increasing order with r < U and r ∈ Res(T), `setP(I, T, home(r), T)`. For a stacked I this matches nothing.
     - Otherwise: `setP(I, T, home(I), I)`.
-  - **A1b.** Otherwise (C is not empty and G does not exist): let k be the lowest-numbered type in C, and `setP(I, T, q, k)` for every q ∈ Planes(k) (see Q-TECH-22).
+  - **A1b.** Otherwise (C is not empty and G does not exist): let k be the lowest-numbered type in C, and `setP(I, T, q, k)` for every q ∈ Planes(k) (see Q-TECH-22). With `magic-compat` OFF, k SHALL be the image type I itself when I is in C, so the contact keeps its type.
 - **A2, incompatible.** For each residue r of I with r < U and r ≠ x, `setP(I, T, home(r), r)`. No entry is written on the plane where the scan stopped.
 
 **Case B: S is empty and T is a contact.** Let C be as in A1. For every k ∈ C, in increasing order, and every q ∈ Planes(k), `setP(I, T, q, k)`.

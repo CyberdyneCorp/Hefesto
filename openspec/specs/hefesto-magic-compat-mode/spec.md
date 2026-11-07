@@ -88,6 +88,6 @@ Compatibility: native
 (Hefesto decision: docs/decisions/cross-cutting.md#X-2)
 
 #### Scenario: Provisional requirement
-- **GIVEN** a requirement cites Q-DRC-10, which has no Resolution line
+- **GIVEN** a requirement cites an open-question entry that has no Resolution line
 - **WHEN** the release checklist runs
 - **THEN** that requirement SHALL be reported as provisional

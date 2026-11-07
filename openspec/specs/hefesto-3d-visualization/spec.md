@@ -59,6 +59,8 @@ Hefesto SHALL export the current 3D model:
 
 Units SHALL be microns. Exported geometry SHALL equal the displayed model.
 
+glTF files SHALL be written with the cgltf writer (MIT; tinygltf, MIT, MAY replace it), on every platform (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13). STL is written by Hefesto's own code.
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-4)

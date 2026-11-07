@@ -8,6 +8,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: extflat/EFflat.c:1140-1150, extflat/EFvisit.c:629-650, extflat/EFhier.c:681-700
 - Options: replicate (impossible) | fix (deterministic order: by first-creation order of the node pair, with terminals in canonical-name order)
 - Recommendation: fix with a documented deterministic order. Golden comparison of `C` coupling lines must be order-insensitive and symmetric in the two terminals. The capacitor counter values in the names then differ, so compare after renumbering.
+- Resolution: fix — address-keyed order: coupling capacitors are written in the documented deterministic order and golden comparison is order-insensitive and symmetric in the terminals (X-1 memory-address order, as amended by D-1, 2026-11-07).
 
 ### Q-NETLIST-2: Output order inherits Magic's hash-table internals
 - Kind: quirk
@@ -23,6 +24,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2spice/ext2spice.c:840, ext2spice/ext2spice.c:4041-4060
 - Options: replicate | fix (filter resistors below the threshold)
 - Recommendation: replicate, and document the option as inert.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-NETLIST-4: Flat CDL/value writer prints resistance for an unnamed `c` parameter
 - Kind: bug
@@ -79,6 +81,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: extflat/EFname.c:101-118
 - Options: replicate (configuration map of global names) | platform alternative (trailing-`!` rule)
 - Recommendation: use the trailing-`!` rule by default, and offer an optional configured global-name set that emulates the Tcl array.
+- Resolution: platform — decided by D-14 (2026-11-07). A name is global if its leaf is in `globalNets` of the project setting "global nets and power names" (`hefesto-settings`), seeded from the PDK's `globals` array; this follows Magic's Tcl build, and a trailing `!` alone does not make a name global in flattening.
 
 ### Q-NETLIST-12: `resist` values are offset by +0.5 mΩ
 - Kind: quirk
@@ -100,6 +103,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2sim/ext2sim.c:325-329
 - Options: fix
 - Recommendation: fix. Accept `none`, `conservative` and `aggressive`.
+- Resolution: fix — the merge value table is terminated, so lookup accepts `none`, `conservative` and `aggressive` without reading past the array (X-2 tier 1, 2026-11-07).
 
 ### Q-NETLIST-15: ext2sim node-capacitance line lost its GND field
 - Kind: bug
@@ -153,6 +157,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResRex.c:240-241
 - Options: fix (default 10 MHz)
 - Recommendation: fix.
+- Resolution: fix — the FastHenry frequency defaults to 10 MHz instead of being uninitialised (X-2 tier 1, 2026-11-07).
 
 ### Q-NETLIST-22: Drive/sink renaming stubs
 - Kind: doc-mismatch
@@ -160,6 +165,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResRex.c:1469-1514, resis/ResRex.c:2196-2203
 - Options: replicate (no renaming) | fix
 - Recommendation: replicate (no-op).
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-NETLIST-23: `extresist skip` takes a single type
 - Kind: doc-mismatch
@@ -188,6 +194,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResSimple.c:470-500
 - Options: replicate (glibc order) | fix (stable sort)
 - Recommendation: fix (stable sort). Golden networks may then differ only in equal-value cases.
+- Resolution: fix — stable sort, one order on every platform (X-1 platform-dependent sorts, as amended by D-1, 2026-11-07).
 
 ### Q-NETLIST-27: FastHenry z for contact-only nodes is uninitialized
 - Kind: bug
@@ -195,6 +202,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResPrint.c:445-460
 - Options: fix (use the contact's upper-layer height)
 - Recommendation: fix.
+- Resolution: fix — a contact-only node takes the height of the contact's upper layer instead of an uninitialised value (X-2 tier 1, 2026-11-07).
 
 ### Q-NETLIST-28: `mindelay` query reports raw zeptoseconds in the standalone build
 - Kind: quirk
@@ -241,6 +249,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2spice/ext2spice.c:943-956, ext2spice/ext2spice.c:1005-1050, resis/ResPrint.c:126-133
 - Options: platform alternative (project variables map)
 - Recommendation: provide a per-project variable map with the same names. iPadOS has no Tcl.
+- Resolution: platform — decided by D-14 (2026-11-07). `$SUB`, `$VDD` and `$GND` come from the `sub`, `vdd` and `gnd` fields of the project setting "global nets and power names" (`hefesto-settings`), seeded from the startup scripts; the Tcl variables mirror the setting.
 
 ### Q-NETLIST-34: Flat device names from gate attributes lack a separator
 - Kind: quirk
@@ -262,6 +271,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: doc/man/extcheck.1, extflat/EFargs.c:47
 - Options: replicate code | follow doc
 - Recommendation: replicate the code (2 fF), and fix the doc.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (D-5, 2026-11-07).
 
 ### Q-NETLIST-37: Flat SPICE ignores ports for subcircuit marking
 - Kind: quirk
@@ -305,6 +315,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: ext2spice/ext2spice.c:1452-1455, ext2spice/ext2spice.c:872-878
 - Options: fix (per-run)
 - Recommendation: fix.
+- Resolution: fix — the `-o` output name applies to one run only (dangling pointer) (X-2 tier 1, 2026-11-07).
 
 ### Q-NETLIST-43: Near-device tile with a single breakpoint loses its area
 - Kind: bug
@@ -326,6 +337,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResMerge.c:560-585
 - Options: replicate (impossible to reproduce exactly) | fix (iterate neighbours in resistor-list order, as for small nodes)
 - Recommendation: fix with list order. Golden networks with high-fanout triangles may differ.
+- Resolution: fix — address-keyed order: neighbours of high-degree nodes are visited in resistor-list order, as for small nodes (X-1 memory-address order, as amended by D-1, 2026-11-07).
 
 ### Q-NETLIST-46: Path-resistance heap behaves differently for the first net of a session
 - Kind: quirk
@@ -343,6 +355,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: resis/ResSimple.c:512-527, resis/ResSimple.c:612-620
 - Options: replicate the order and guard the crashes | fix (stable sort)
 - Recommendation: replicate the order (it decides which equal resistor is folded first). Guard both null cases by skipping the resistor.
+- Resolution: fix — both null cases are guarded by skipping the resistor (NULL dereference); the final-pass insertion order stays Magic's, as the entry recommends (X-2 tier 1, 2026-11-07).
 
 ### Q-NETLIST-48: sim2simp is shipped as source only and is not built
 - Kind: platform

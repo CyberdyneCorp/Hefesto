@@ -52,7 +52,7 @@ The display-type parts of the file names (`<display-cmap-type>`, `<display-style
 
 Hefesto SHALL resolve `<family>` to its own display-style resources. Hefesto MAY bundle the standard `mos` family. A technology file SHALL load successfully in a headless session without any display files (see Q-TECH-24). The file search order above is `informative` for Hefesto.
 
-The style mapping is reset only by a `styletype` line. A `styles` section without one keeps adding to the mapping left by the previous technology (see Q-TECH-24).
+The style mapping is reset only by a `styletype` line. In Magic, a `styles` section without one keeps adding to the mapping left by the previous technology. Hefesto SHALL clear the mapping at the start of every `styles` section (see Q-TECH-24).
 
 (Magic ref: dbwind/DBWdisplay.c:1745-1775, dbwind/DBWdisplay.c:1651-1670, graphics/grDStyle.c:405-440, graphics/grCMap.c:105-147)
 

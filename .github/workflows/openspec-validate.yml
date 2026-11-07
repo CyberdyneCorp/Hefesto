@@ -24,6 +24,8 @@ jobs:
         run: openspec validate --all --strict
       - name: Check roadmap covers every capability
         run: python3 scripts/check_roadmap_coverage.py
+      - name: Check open questions of M0 and M1 are resolved (development gate)
+        run: python3 scripts/check_milestone_readiness.py --through M1
       - name: Check specs index is up to date
         run: |
           python3 scripts/gen_specs_index.py

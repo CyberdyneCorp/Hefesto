@@ -199,7 +199,7 @@ Compatibility: behavioral
 
 Without `-dobox`, if DEST exists the command SHALL fail with `DEST already exists`. Paint SHALL be copied from every level, transformed to the top coordinates, and merged with the paint rules. Mask hints SHALL be flattened. Labels from subcells SHALL be named with the hierarchical instance path prefixed to the label text (verify the separator against Magic) and keep text, layer, justification and font. Only top-level labels keep port attributes. DEST is created in memory, unsaved and not displayed. Flattening into a new cell is not undoable.
 
-`flatten -doinplace [INSTANCE]` SHALL replace the named instance of the edit cell (or, without a name, every selected instance) with its flattened contents in the edit cell, then delete the instance(s). The undo history is not recorded for this (see Q-CMDEDIT-31).
+`flatten -doinplace [INSTANCE]` SHALL replace the named instance of the edit cell (or, without a name, every selected instance) with its flattened contents in the edit cell, then delete the instance(s). With the `magic-compat` setting ON (the default), the undo history is not recorded for this, as in Magic. With it OFF, the whole flatten in place is recorded as one undo step (capability `layout-undo`, requirement "Undoable property changes and flatten in place with magic-compat off"; Q-CMDEDIT-31 and Q-MODEL-28, decided by D-10). Flattening into a new cell is not undoable with either setting.
 
 Compatibility: exact
 
@@ -214,6 +214,12 @@ Compatibility: exact
 - **GIVEN** a cell `topflat` exists
 - **WHEN** `flatten topflat` is run
 - **THEN** the command SHALL fail with `topflat already exists`
+
+#### Scenario: Flatten in place and undo
+- **GIVEN** edit cell `top` with instance `x1` of `leaf` at translate(100,0), and `leaf` with metal1 (0,0)–(5,5)
+- **WHEN** `flatten -doinplace x1` is run and then `undo` is run
+- **THEN** with the `magic-compat` setting ON, `top` SHALL still contain metal1 (100,0)–(105,5) and no instance `x1`
+- **AND** with the `magic-compat` setting OFF, `top` SHALL again contain instance `x1` and no metal1 (100,0)–(105,5)
 
 ### Requirement: Save command
 
@@ -393,7 +399,7 @@ Compatibility: behavioral
 
 ### Requirement: Crash backup command
 
-`crash save [FILE]` SHALL write a crash backup of the cells selected by capability `cell-io-safety`, requirement "Crash backup policy" (modified, available, editable, not internal and not flagged not-found), to FILE or, without FILE, to the session backup file. `crash recover [FILE]` SHALL recover from FILE or, without FILE, from the candidate with the newest status-change time, as specified by capability `cell-io-safety`, requirement "Crash recovery", which governs (confirmation, refusal while the session has a backup file, deletion after reading). The sub-command is keyword-matched. An unknown sub-command, or more than two arguments, prints `Usage: crash save|recover [filename]`; `crash` alone does nothing. The periodic automatic backup and its location are host-specific (see Q-CELL-30).
+`crash save [FILE]` SHALL write a crash backup of the cells selected by capability `cell-io-safety`, requirement "Crash backup policy" (modified, available, editable, not internal and not flagged not-found), to FILE or, without FILE, to the session backup file. `crash recover [FILE]` SHALL recover from FILE or, without FILE, from the candidate with the newest status-change time, as specified by capability `cell-io-safety`, requirement "Crash recovery", which governs (confirmation, refusal while the session has a backup file, deletion after reading). The sub-command is keyword-matched. An unknown sub-command, or more than two arguments, prints `Usage: crash save|recover [filename]`; `crash` alone does nothing. The periodic automatic backup is the autosave service of capability `hefesto-files-and-pdks`. The session backup file lives in Hefesto's app-private crash backup directory, and the default candidates of `crash recover` include, on the desktop, Magic's `$TMPDIR/MAG*` backups (capability `cell-io-safety`, requirements "Crash backup location and session lock" and "Import of Magic crash backups"; Q-CELL-30, resolved by decision D-8).
 
 Compatibility: behavioral
 

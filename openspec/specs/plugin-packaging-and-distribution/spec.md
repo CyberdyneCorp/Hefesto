@@ -25,7 +25,6 @@ README.md                        optional
 bin/linux-x86_64/<lib>.so        native code per platform (native plugins)
 bin/linux-aarch64/<lib>.so
 bin/macos-arm64/<lib>.dylib
-bin/macos-x86_64/<lib>.dylib
 scripts/...                      Tcl sources (script plugins)
 resources/...                    icons, data files, panel images
 ```
@@ -62,7 +61,7 @@ Compatibility: native
 | `kind` | string | yes | `native` or `script` |
 | `api` | object | yes | `{"major": int, "minorMin": int}` (capability `plugin-api`) |
 | `hefesto` | string | no | SemVer range of host versions, default `*` |
-| `platforms` | array | native: yes | Subset of `linux-x86_64`, `linux-aarch64`, `macos-arm64`, `macos-x86_64`; script plugins MAY omit it, meaning every platform including `ipados-arm64` |
+| `platforms` | array | native: yes | Subset of `linux-x86_64`, `linux-aarch64`, `macos-arm64` (macOS is Apple silicon only, decision D-12); script plugins MAY omit it, meaning every platform including `ipados-arm64` |
 | `entry` | object or string | yes | Native: `{"<platform>": "bin/<platform>/<lib>"}`. Script: the path of the entry `.tcl` file |
 | `provides` | array | yes | Extension-point ids declared (capability `plugin-api`, Requirement "Extension points") |
 | `permissions` | array | yes | Permission strings (capability `plugin-security-and-platforms`); may be empty |
@@ -122,6 +121,8 @@ Compatibility: native
 {"alg": "ed25519", "keyId": "<16 hex: first 8 bytes of SHA-256 of the public key>",
  "files": {"<path>": "<sha256 hex>", ...}, "sig": "<base64 signature>"}
 ```
+
+SHA-256 and Ed25519 SHALL be computed with CryptoKit on macOS and iPadOS and with libsodium on Linux, and JSON SHALL be parsed and written with nlohmann/json (capability `hefesto-licensing`, requirement "Third-party libraries for cryptography, networking and data formats"; decision D-13).
 
 `files` SHALL list every archive entry except `SIGNATURE`, and no other paths. `sig` is the Ed25519 signature over the canonical form of `{"alg","keyId","files"}`: keys sorted by code point, no whitespace, and strings escaped minimally as in RFC 8785.
 

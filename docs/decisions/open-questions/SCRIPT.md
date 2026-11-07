@@ -141,6 +141,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tools.tcl:92-103,584-585; doc/html/crashbackups.html
 - Options: replicate 60 s | use 10 min
 - Recommendation: replicate the effective 60 s default, and document it.
+- Resolution: n/a — spec follows Magic's code (effective 60 s interval set by the tool setup); documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-SCRIPT-19: `readspice` uses the Tcl `case` command
 - Kind: bug
@@ -155,6 +156,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/toolkit.tcl:720-731
 - Options: replicate | fix (test `_defaults`)
 - Recommendation: replicate (PDKs always define `_convert`), and warn.
+- Resolution: n/a — spec follows Magic's code (`_convert` is required); documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-SCRIPT-21: Normalization of Inf/NaN parameter values
 - Kind: bug
@@ -183,6 +185,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/toolkit.tcl:1260-1273,795-808; commands/CmdCD.c:1652-1659
 - Options: replicate | fix (reuse the existing cell without drawing, as `gencell_change` does; load from disk first)
 - Recommendation: fix, with a golden case comparing label counts.
+- Resolution: fix — a create with existing parameters reuses the generated cell without drawing into it again, and never shadows a same-named cell on disk with a new empty one, so labels, ports and properties are not duplicated and on-disk content is not lost (X-2 tier 1, 2026-11-07).
 
 ### Q-SCRIPT-25: `add_dependency` without parameter names
 - Kind: bug
@@ -261,6 +264,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Options: app-container temporary directory and an app timer | OS state restoration
 - Recommendation: use the app sandbox's caches directory, with the same interval semantics.
 - Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) The caches directory recommended here may be purged by the OS; see docs/decisions/audit/DECISIONS.md.
+- Resolution: platform — decided by D-8 (2026-11-07). Duplicate of Q-CELL-30; see the resolution there.
 
 ### Q-SCRIPT-36: Wrapper "Rotate 90 degree" calls a non-existent command
 - Kind: bug

@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1974 requirements, 2926 scenarios, 834 open questions.
+**Totals:** 169 capabilities, 1979 requirements, 2953 scenarios, 834 open questions.
 
 ## Hefesto product (native)
 
@@ -18,22 +18,22 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
 | [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 7 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
 | [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 4 | 8 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
-| [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
+| [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 5 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
 | [`hefesto-ipad-feature-scope`](../openspec/specs/hefesto-ipad-feature-scope/spec.md) | 4 | 4 | Defines which features the first iPadOS release includes and which stay desktop-only (decision P-13). This list is authoritative: a capability not listed as desktop-only here SHALL… |
-| [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 4 | 6 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
+| [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 5 | 8 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
 | [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |
 | [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 5 | 7 | Implements decision X-2, generalized by decision D-2 to every reference tool that Hefesto must match. Hefesto always fixes the reference tools' crashes, undefined behavior and data… |
 | [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
 | [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 5 | 8 | Implements decision X-1 (as amended on 2026-11-06). Hefesto reproduces Magic's ordering wherever that ordering is a deterministic function of the input: Magic's canonical tile deco… |
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
 | [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
-| [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
+| [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 6 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-product-operations`](../openspec/specs/hefesto-product-operations/spec.md) | 5 | 5 | Defines how Hefesto runs as a shipped product (decision P-22): - opt-in crash reporting and usage telemetry that never collect design data - signed desktop updates with stable and … |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
 | [`hefesto-scripting`](../openspec/specs/hefesto-scripting/spec.md) | 4 | 5 | Defines how Hefesto runs scripts and PDK integration code. Open PDKs drive Magic through Tcl startup files and the `toolkit.tcl` PCell generators (capabilities `scripting-api`, `sc… |
 | [`hefesto-security`](../openspec/specs/hefesto-security/spec.md) | 4 | 4 | Defines Hefesto's security posture. Hefesto treats every opened file as untrusted data and confines script execution to a sandbox. It also requires user consent before a file trigg… |
-| [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 4 | 4 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
+| [`hefesto-settings`](../openspec/specs/hefesto-settings/spec.md) | 5 | 7 | Defines how Hefesto replaces Magic's `.magicrc` and environment-variable configuration with layered settings. The layers are application defaults, user preferences, PDK startup dat… |
 | [`hefesto-testing-strategy`](../openspec/specs/hefesto-testing-strategy/spec.md) | 6 | 6 | Defines how Hefesto proves that it meets its specifications. Testing has these layers: - unit tests - golden compatibility tests against Magic, netgen and ngspice, using the canoni… |
 
 ## Technology files (TECH)
@@ -56,8 +56,8 @@ Open questions: [41](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 49 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
-| [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 14 | 18 | Defines the safety rules around reading and writing cell files: |
+| [`cell-file-format`](../openspec/specs/cell-file-format/spec.md) | 24 | 51 | Defines Magic's native text cell format (`.mag`) for both reading and writing, so that Hefesto can read every `.mag` file Magic reads and write files that are byte-identical to the… |
+| [`cell-io-safety`](../openspec/specs/cell-io-safety/spec.md) | 16 | 24 | Defines the safety rules around reading and writing cell files: |
 | [`cell-library-resolution`](../openspec/specs/cell-library-resolution/spec.md) | 15 | 26 | Defines how Hefesto maps a cell name, or an instance's recorded path, to a cell file. It covers: |
 | [`cell-timestamps`](../openspec/specs/cell-timestamps/spec.md) | 8 | 11 | Defines the timestamp carried by every cell definition and by every instance record in a parent. The hierarchical design-rule checker uses these timestamps to detect children that … |
 
@@ -72,8 +72,8 @@ Open questions: [30](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 | [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 20 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
 | [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
 | [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 19 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
-| [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 9 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
-| [`layout-undo`](../openspec/specs/layout-undo/spec.md) | 8 | 16 | Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo … |
+| [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 10 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
+| [`layout-undo`](../openspec/specs/layout-undo/spec.md) | 9 | 20 | Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo … |
 
 ## Design rule checking (DRC)
 
@@ -146,8 +146,8 @@ Open questions: [48](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 13 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
-| [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 12 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
+| [`ext-flattening-hierarchy`](../openspec/specs/ext-flattening-hierarchy/spec.md) | 11 | 14 | This capability defines how the hierarchical circuit model read by capability `ext-flattening-read` is flattened, fully or one level at a time, into flat nodes, devices, couplings … |
+| [`ext-flattening-names`](../openspec/specs/ext-flattening-names/spec.md) | 7 | 14 | This capability defines hierarchical node names during netlisting: - their structure and canonical string form - instance and array-element naming - the preference order that picks… |
 | [`ext-flattening-read`](../openspec/specs/ext-flattening-read/spec.md) | 11 | 21 | This capability defines how the netlisting front end reads a tree of `.ext` files (and their optional `.res.ext` overlays) into an in-memory hierarchical circuit model of cell defi… |
 | [`extresist-command`](../openspec/specs/extresist-command/spec.md) | 6 | 8 | This capability defines the `extresist` command (full R-C extraction): its options and persistent settings, the inputs it reads, which nets it processes and the cutoff arithmetic, … |
 | [`extresist-network`](../openspec/specs/extresist-network/spec.md) | 15 | 26 | This capability defines how the `extresist` command builds a resistor network for one net from layout geometry, and how it reduces that network. It covers: - tile fracturing; - bre… |
@@ -156,7 +156,7 @@ Open questions: [48](decisions/open-questions/NETLIST.md) · Golden cases: [CASE
 | [`netlist-sim`](../openspec/specs/netlist-sim/spec.md) | 7 | 10 | This capability defines the `.sim` netlist generator (Magic's `ext2sim` / `exttosim` command) and its companion `.al` (alias) and `.nodes` (label) files, in the MIT, LBL and SU dia… |
 | [`netlist-spice-devices`](../openspec/specs/netlist-spice-devices/spec.md) | 10 | 15 | This capability defines the exact SPICE text for each extracted device: the instance name and counters, the terminal order per device class, geometry and parameter formatting under… |
 | [`netlist-spice-hierarchy`](../openspec/specs/netlist-spice-hierarchy/spec.md) | 6 | 8 | This capability defines SPICE output with `hierarchy on`: one subcircuit per cell definition, the pre-pass that promotes nets to ports, which cells are omitted, stubbed or absorbed… |
-| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 17 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
+| [`netlist-spice-options`](../openspec/specs/netlist-spice-options/spec.md) | 10 | 18 | This capability defines the SPICE netlist generator (Magic's `ext2spice` / `exttospice` command): its options, defaults and run flags, the output file, and the structure of a flat … |
 
 ## LVS (netgen-compatible) (LVS)
 
@@ -270,7 +270,7 @@ Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`cmd-box`](../openspec/specs/cmd-box/spec.md) | 15 | 26 | Defines the **box**: the single rectangular editing cursor that marks the area for paint, erase, fill, selection, cell placement and most other editing commands. This capability co… |
 | [`cmd-coordinates-and-units`](../openspec/specs/cmd-coordinates-and-units/spec.md) | 14 | 37 | Defines how editing commands parse distances and coordinates (numbers, unit suffixes, simple expressions), how keyword arguments and direction names are matched, how the `units`, `… |
-| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 24 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
+| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 25 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
 | [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 13 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
 | [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 11 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific command… |
 | [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 26 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
@@ -283,7 +283,7 @@ Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`app-startup`](../openspec/specs/app-startup/spec.md) | 13 | 19 | Defines how the application starts and ends: - command-line options and file arguments - installation-root and search-path resolution - the order of startup files - default technol… |
-| [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 22 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
+| [`display-style-files`](../openspec/specs/display-style-files/spec.md) | 15 | 23 | Defines the file formats that give layers and user-interface elements their look: display-style files (`.dstyle`, all format versions), color-map files (`.cmap`), glyph files (`.gl… |
 | [`ui-color-window`](../openspec/specs/ui-color-window/spec.md) | 6 | 7 | Defines the `color` window client. It edits one entry of the session color map interactively, using RGB and HSV bars, and loads or saves color-map files. The file format is in `dis… |
 | [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 29 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 8 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |

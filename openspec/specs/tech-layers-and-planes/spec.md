@@ -52,7 +52,7 @@ Compatibility: exact
 - **Errors:** each of these rejects the line, which fails the load:
   - A line with a token count other than 1: `Line must contain names for plane`.
   - A plane count already at 64: `Too many tile planes (max=64)`.
-  - A name already in the table: `Duplicate name: <n>`. Names earlier in the same list stay in the table, pointing at the plane number N, but the plane count is not incremented, so the next plane line takes the same number (see Q-TECH-11).
+  - A name already in the table: `Duplicate name: <n>`. Names earlier in the same list stay in the table, pointing at the plane number N, but the plane count is not incremented, so the next plane line takes the same number (see Q-TECH-11). Hefesto SHALL instead validate the whole line before adding any name, so a rejected line adds no names.
 
 Plane names follow the lookup rules in "Name lookup by unique prefix".
 
@@ -121,7 +121,7 @@ Compatibility: exact
   - An unknown plane: `Unrecognized plane name "<p>"`.
   - An ambiguous plane: `Ambiguous plane name "<p>"`.
 
-  With a duplicate name, an unknown plane or an ambiguous plane, the names already added stay in the table bound to number N, which the next type line will reuse (see Q-TECH-11).
+  With a duplicate name, an unknown plane or an ambiguous plane, the names already added stay in the table bound to number N, which the next type line will reuse (see Q-TECH-11). Hefesto SHALL instead validate the whole line before adding any name, so a rejected line adds no names.
 - **Final:** at the section `end`, the number of user layers U is fixed to the type count. Types 9 to U−1 are the user types. Stacked types created later are numbered U and up (see capability `tech-contacts-and-stacking`).
 
 A type's home plane is the plane it is stored on. A non-contact type exists only on its home plane. Built-in types 1 to 8 have the home planes listed in "Built-in tile types". Type 0 (space) has no home plane.
@@ -165,7 +165,7 @@ Type names and plane names SHALL be resolved against their own name table. The l
 1. If S is empty, the result is "not found".
 2. Otherwise, if S has exactly one name, the result is that name's value.
 3. Otherwise, if S contains a name exactly equal to q, the result is that name's value.
-4. Otherwise the result is "ambiguous". This holds even when all names in S belong to the same type or plane (see Q-TECH-14).
+4. Otherwise the result is "ambiguous". This holds even when all names in S belong to the same type or plane (see Q-TECH-14). With `magic-compat` OFF, a prefix whose candidates all denote the same type or plane SHALL resolve to it.
 
 Compatibility: exact
 
@@ -243,7 +243,7 @@ Compatibility: exact
 5. **Multi-type alias.** Otherwise `alias-name` is stored in the alias table, mapped to the parsed type set. This is a snapshot of the set at definition time. If the name is already in the alias table, the loader reports `Type "<a>" is already defined and cannot be an alias` and keeps the first definition.
 6. **Wildcard in the types section.** In the `types` section, a `type-list` containing `*` is refused with `Type alias "<l>" contains the wildcard character "*" (alias ignored).` followed by a hint. A `types`-section alias line with only two tokens (`alias name`) crashes Magic (see Q-TECH-12). Hefesto SHALL report `Line must contain at least 2 fields` instead.
 
-Alias names take part in type-list parsing and single-name resolution, but the precedence differs (see Q-TECH-13):
+Alias names take part in type-list parsing and single-name resolution, but the precedence differs (see Q-TECH-13; with `magic-compat` off, an alias-table key also wins over type names in single-name resolution):
 - In a type list, a token that is an alias-table key always resolves to the alias set first.
 - In single-name resolution, the type-name prefix lookup is tried first. The alias table is consulted only if that lookup fails.
 
@@ -286,7 +286,7 @@ The parse goes left to right, one segment at a time. Each segment yields a type 
 1. **Parentheses.** For `(`, the text up to the matching `)` (counting nesting) is parsed recursively as a type-list, and M is its result. If no matching `)` exists, the loader reports `Unmatched parenthesis in layer name "<list>".`, and the group extends to the end of the string.
 2. **Atom.** Otherwise the atom is the text up to the next `/`, `,` or end of string.
    - **Empty atom:** `Missing layer name in "<list>".` is reported and M is empty.
-   - **`0`:** if the remaining text, from the atom to the end of the whole string, is exactly `0`, then M is empty. A `0` followed by more text, as in `0,poly` or `0/active`, is treated as a type name and is unrecognized (see Q-TECH-15).
+   - **`0`:** if the remaining text, from the atom to the end of the whole string, is exactly `0`, then M is empty. A `0` followed by more text, as in `0,poly` or `0/active`, is treated as a type name and is unrecognized (see Q-TECH-15). With `magic-compat` OFF, a `0` atom SHALL denote the empty set anywhere in the list.
    - **Alias:** if the atom, including any leading `*`, is an alias-table key, M is the alias set.
    - **Type name:** otherwise strip a leading `*`, if present, and resolve the rest as a type name with plain prefix lookup (single-name resolution, which may itself consult the alias table). If it resolves to t, M = {t}. If it does not, M is empty and a noisy parse prints an error.
      - **With `*`:** also add every user type r (9..U−1) whose residue set contains t. These are all the contacts with t as a residue.
@@ -295,7 +295,7 @@ The parse goes left to right, one segment at a time. Each segment yields a type 
 4. **Plane restriction.** If `/plane` follows, the plane is resolved by unique prefix. If its number is greater than 0, M is intersected with the set of types that can appear on that plane (see "Derived type and plane tables"). If the plane is unknown, ambiguous or `router`, no restriction is applied; a noisy parse still reports unknown and ambiguous planes (see Q-TECH-16).
 
 The type list also yields a plane set P, built up as the segments are parsed:
-- A segment with an effective `/plane` restriction sets P to exactly that one plane. This replaces whatever earlier segments contributed (see Q-TECH-16).
+- A segment with an effective `/plane` restriction sets P to exactly that one plane. This replaces whatever earlier segments contributed (see Q-TECH-16). With `magic-compat` OFF, an unknown, ambiguous or `router` plane SHALL be an error, and a plane-qualified segment SHALL add its plane to P instead of replacing it.
 - A segment without one adds to P the plane set of every user type in M (types 9..U−1).
 
 When the parse ends, if the result type set is empty or is exactly {space}, and P is empty, then P becomes "every plane except router". That is the 64-bit mask with only bit 0 cleared.

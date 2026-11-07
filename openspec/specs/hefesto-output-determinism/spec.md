@@ -88,11 +88,13 @@ This covers:
 - instance and property order where Magic's sort is platform-dependent
 - `drc count` cell order, which Magic keys by memory addresses (capability `drc-commands`)
 - `.mag` elements, sorted by name with the natural comparator (Q-CELL-11). The reader does not depend on their order.
-- cell order in crash-backup and archive files, sorted by name with the natural comparator (Q-CELL-28). The reader does not depend on their order.
+- cell order in crash-backup and archive files, sorted by name with the natural comparator (Q-CELL-28, confirmed by D-9). The reader does not depend on their order.
+
+The natural comparator is the total order of capability `cell-file-format`, requirement "Natural ordering of names": Magic's digit-aware, case-insensitive comparison, with a natural prefix sorting first and remaining ties broken by unsigned byte comparison (Q-CELL-12, decided by D-9).
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/cross-cutting.md#X-1)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-1, docs/decisions/audit/DECISIONS.md#D-9)
 
 #### Scenario: Stable coupling order
 - **WHEN** the same layout is extracted twice, on Linux and on iPadOS

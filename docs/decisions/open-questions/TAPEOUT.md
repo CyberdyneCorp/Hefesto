@@ -44,11 +44,13 @@ Sources:
   - Use GitHub's asset `digest` field where available.
   - Ask ciel upstream to add `sha256` to its manifests.
 - Recommendation: Hefesto-signed manifests (required by `hefesto-pdk-manager`), and propose an upstream `sha256` field.
+- Resolution: platform — the PDK manager verifies every asset against Hefesto-signed SHA-256 manifests (`hefesto-pdk-manager`), uses GitHub's asset `digest` where it exists as an extra check, and a `sha256` field is proposed to ciel upstream (P-14, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TAPEOUT-3: Catalog hosting and signing key
 - Kind: platform
 - Question: Who hosts the PDK and program-profile catalog? Which signature scheme does it use (for example minisign or Ed25519), and how are keys rotated? Do mirrored PDK assets on Hefesto infrastructure meet Apache-2.0 redistribution notices?
 - Recommendation: Ed25519-signed index with a pinned public key in the app and a documented rotation procedure. Store the LICENSE and NOTICE files with the mirrored assets.
+- Resolution: platform — Hefesto hosts the catalog as an Ed25519-signed index whose public key is pinned in the app, with a documented key rotation procedure; mirrored assets are stored with their LICENSE and NOTICE files (P-14, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TAPEOUT-4: sky130 generate_fill tile clamp compares a coordinate with a width
 - Kind: bug
@@ -136,6 +138,7 @@ Sources:
   - a private per-run PDK root containing symlinks to the pinned version
   - refuse
 - Recommendation: a private per-run root under the project's cache.
+- Resolution: platform — a private per-run PDK root under the project's cache, holding symlinks to the pinned version, is passed to desktop child tools; the global `current` symlinks are never re-pointed (P-14, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-TAPEOUT-15: Unconfirmed program requirements
 - Kind: ambiguity
@@ -156,3 +159,4 @@ Sources:
 - Kind: platform
 - Question: A full sky130A install is several GB. Should iPadOS default to a reduced library set, for example without `sky130_fd_io` GDS? Does App Review accept downloading PDK script content? (See the App Store fallback in `hefesto-scripting`.)
 - Recommendation: offer a "layout essentials" set on iPadOS (`libs.tech`, `sky130_fd_pr`, one standard-cell library), and get pre-submission App Review guidance.
+- Resolution: platform — iPadOS offers a "layout essentials" set by default (`libs.tech`, `sky130_fd_pr`, one standard-cell library), with the rest optional; pre-submission App Review guidance is requested together with the X-3 inquiry in M4 (P-13, X-3, D-5, approved 2026-11-07, 2026-11-07).

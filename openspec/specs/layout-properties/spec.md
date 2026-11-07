@@ -130,15 +130,21 @@ Script-level conventions without database side effects (Tcl device generators) u
 
 ### Requirement: Property changes and modification/undo
 
-Setting or removing a property through the user command SHALL mark the cell modified and needing a new timestamp; property changes SHALL NOT be recorded in the undo history.
+Setting or removing a property through the user command SHALL mark the cell modified and needing a new timestamp. With the `magic-compat` setting ON (the default), property changes SHALL NOT be recorded in the undo history; with it OFF, they SHALL be recorded and undoable.
 Compatibility: behavioral
 
-- Properties created as side effects of reading files (GDS, LEF, DEF, CIF) do not by themselves mark the cell modified beyond what the reader does.
-- See Q-MODEL-14 for the absence of undo.
+- Properties created as side effects of reading files (GDS, LEF, DEF, CIF) do not by themselves mark the cell modified beyond what the reader does, and are never recorded for undo (reading is not undoable).
+- The undo recording with `magic-compat` OFF is specified by capability `layout-undo`, requirement "Undoable property changes and flatten in place with magic-compat off" (Q-MODEL-14, decided by D-10).
+- Property changes made by an accepted agent proposal or another Hefesto compound operation are always undoable as part of that operation's step (capability `layout-undo`, requirement "Native undo events for Hefesto compound operations").
 
 (Magic ref: commands/CmdLQ.c:2760-2768, database/DBprop.c:58-125)
 
 #### Scenario: Property set is not undoable
-- **GIVEN** a cell without property `x`
+- **GIVEN** the `magic-compat` setting ON and a cell without property `x`
 - **WHEN** `property x 1` is executed and then `undo` is executed
 - **THEN** property `x` SHALL still exist
+
+#### Scenario: Property set is undoable with magic-compat off
+- **GIVEN** the `magic-compat` setting OFF and a cell without property `x`
+- **WHEN** `property x 1` is executed and then `undo` is executed
+- **THEN** property `x` SHALL no longer exist

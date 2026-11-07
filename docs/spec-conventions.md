@@ -20,6 +20,16 @@ Compatibility: exact | behavioral | informative | native
 | `informative` | Documents Magic's behavior for reference. Hefesto MAY differ. | Exact message text, Magic-only UI details, host-specific mechanics (X11, Tcl, fork/exec, env vars, /tmp) |
 | `native` | A Hefesto product requirement with no Magic counterpart. It ends with `(Hefesto decision: <ref>)` instead of a Magic ref. | Language and toolchain, platforms, architecture, rendering, 3D, touch input, distribution, performance |
 
+**Qualified compatibility lines.** A requirement whose parts fall into different classes MAY qualify each class with the part it covers, separated by `; `:
+
+```
+Compatibility: exact (content); behavioral (order)
+```
+
+The first class is the class of the requirement's main content. The golden harness of `hefesto-testing-strategy` uses it as the class of the requirement. The later classes cover only the named parts. (Decision D-6, 2026-11-07.)
+
+**Other reference tools.** A capability that is about another reference tool (netgen, xschem, ngspice, LibreLane, ciel, a PDK, a shuttle precheck) applies these classes relative to that tool, and says so in its Purpose.
+
 ## 2. Writing rules
 
 1. **OpenSpec format.** Each spec has the following structure:
@@ -31,7 +41,9 @@ Compatibility: exact | behavioral | informative | native
 
    `openspec validate <capability> --type spec --strict` MUST pass.
 2. **Implementation-independent.** Do not name Magic C functions, structs or globals in requirement text. Describe observable behavior, data semantics and algorithms in mathematical or geometric terms.
-3. **Traceability.** End each requirement body with `(Magic ref: path/file.c:line[, ...])`. This is the only place Magic code is named. `native` requirements end with `(Hefesto decision: docs/decisions/<file>#<id>)` instead. Product specs use the `hefesto-` capability prefix.
+3. **Traceability.** End each requirement body with `(Magic ref: path/file.c:line[, ...])`. This is the only place Magic code is named. `native` requirements end with `(Hefesto decision: docs/decisions/<file>#<id>)` instead. Product specs use the `hefesto-` capability prefix. Two further forms are allowed (decision D-6, 2026-11-07):
+   - **Other reference tools.** A trace MAY cite another reference tool as `(<tool> ref: path:line[, ...])`, alone or together with a Magic ref. The established prefixes are `netgen ref:`, `xschem ref:`, `ngspice ref:`, `LibreLane ref:` (also `librelane ref:`), `ciel ref:`, `volare ref:`, `PDK ref:`, `open_pdks ref:`, `IHP ref:`, `gf ref:`, `sky ref:`, `tt ref:`, `tt-template ref:`, `caravel ref:`, `mpw_precheck ref:`, `ws-precheck ref:` and `ws-template ref:`. Every spec that uses such a prefix MUST state, in its Purpose, the repository and the exact commit it was written against, and the prefix that cites it. Paths are relative to that repository unless the Purpose says otherwise.
+   - **Combined traces.** An `exact` or `behavioral` requirement that also rests on a product decision MAY combine both in one trace, decision first, followed by a Magic ref or another tool's ref: `(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: path/file.c:line)`. The requirement keeps the class stated on its `Compatibility:` line.
 4. **Be precise enough to reimplement.** Specify all of the following:
    - Units, integer vs float, rounding and truncation direction, overflow behavior, and limits.
    - Defaults, allowed values, and keyword prefix-matching rules.

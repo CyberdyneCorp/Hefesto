@@ -36,6 +36,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdSubrs.c:258-260
 - Options: fix (error)
 - Recommendation: fix: error "division by zero" and treat argument as invalid.
+- Resolution: fix — division by zero in a coordinate expression reports "division by zero" and the argument is invalid (X-2 tier 1, 2026-11-07).
 
 ### Q-CMDEDIT-6: `units print` while units are `default` switches to microns
 - Kind: bug
@@ -57,6 +58,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdAB.c:744-753, doc/html/box.html
 - Options: replicate | fix (treat `box DIR DIST` as `box move DIR DIST`)
 - Recommendation: fix (implement as move) — harmless superset.
+- Resolution: n/a — spec follows Magic's code (an unrecognized first word prints the report); documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-CMDEDIT-9: `box corner DIR X Y` parses the direction word as the X coordinate
 - Kind: bug
@@ -71,6 +73,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdAB.c:804-822, commands/CmdAB.c:1128-1142
 - Options: fix (default to lower-left) | error
 - Recommendation: default to lower-left (as the spec states), or reject with an error.
+- Resolution: fix — a Manhattan or `center` direction uses the lower-left (`sw`) corner instead of an uninitialised value, as `cmd-box` states (X-2 tier 1, 2026-11-07).
 
 ### Q-CMDEDIT-11: `box grow|shrink DIR cursor` does nothing
 - Kind: quirk
@@ -99,6 +102,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdSubrs.c:556-568, doc/html/erase.html
 - Options: replicate code | change docs
 - Recommendation: replicate code behaviour; document correctly.
+- Resolution: n/a — spec follows Magic's code; documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-CMDEDIT-15: `corner ... bevel` paints into the root cell of the edit window
 - Kind: bug
@@ -127,6 +131,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdSubrs.c:497, commands/CmdSubrs.c:527-531
 - Options: fix (no length limit)
 - Recommendation: fix; keep `-`/`+` as operators.
+- Resolution: fix — layer-list names of any length are accepted without a fixed buffer; `-` and `+` stay operators (X-2 tier 1, 2026-11-07).
 
 ### Q-CMDEDIT-19: `polygon` with non-convex or self-intersecting vertices
 - Kind: ambiguity
@@ -162,6 +167,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdFI.c:2125-2150
 - Options: replicate | fix (record as one undo unit)
 - Recommendation: fix — make it undoable.
+- Resolution: compat — decided by D-10 (2026-11-07). Same answer as Q-MODEL-28: one undo step with `magic-compat` OFF, not recorded with it ON.
 
 ### Q-CMDEDIT-32: Search paths on sandboxed platforms
 - Kind: platform
@@ -169,6 +175,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: commands/CmdLQ.c:1090-1195, utils/path.c
 - Options: platform alternative (security-scoped bookmarks / project-relative paths on iPadOS)
 - Recommendation: keep the command surface; resolve entries against user-granted locations.
+- Resolution: platform — the `path`/`addpath` command surface is kept, and entries resolve within the folders the user has granted access to (hefesto-files-and-pdks, X-4, 2026-11-07).
 
 ### Q-CMDEDIT-33: Advisory file locking mechanism
 - Kind: platform
@@ -177,6 +184,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Options: replicate on POSIX | platform alternative (lock files or file coordination on Apple platforms)
 - Recommendation: use OS file coordination where available. Interoperate with Magic's `fcntl` locks on Linux/macOS.
 - Duplicate: tracked in Q-CELL-26, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
+- Resolution: platform — `fcntl` advisory locks interoperate with Magic on Linux and macOS; on iPadOS, platform file coordination prevents conflicting edits (hefesto-files-and-pdks "Locking and recovery replacements", X-4, 2026-11-07).
 
 ### Q-CMDEDIT-34: `archive` continues after a usage error
 - Kind: bug
@@ -192,6 +200,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Options: platform alternative (app-container autosave)
 - Recommendation: autosave to the app container. Keep `crash save|recover FILE` for explicit files.
 - Duplicate: tracked in Q-CELL-30, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
+- Resolution: platform — decided by D-8 (2026-11-07). Duplicate of Q-CELL-30; see the resolution there.
 
 ### Q-CMDEDIT-60: `select no …` is parsed as `nocycle`
 - Kind: quirk
@@ -206,6 +215,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Evidence: dbwind/DBWcommands.c:466-468, commands/CmdCD.c:2306-2390
 - Options: replicate | change (counter-clockwise for `rotate`)
 - Recommendation: replicate (scripts depend on it). Fix the documentation.
+- Resolution: n/a — spec follows Magic's code (`rotate` is an alias of `clockwise`); documentation is wrong (X-2 tier 3, 2026-11-07).
 
 ### Q-CMDEDIT-62: `orient` is relative, and `180v` is listed but rejected
 - Kind: quirk
@@ -228,6 +238,7 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Options: replicate | fix
 - Recommendation: fix.
 - Duplicate: tracked in Q-MISC-23, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.) Q-MISC-23 also covers the size/offset query scaling.
+- Resolution: fix — duplicate of Q-MISC-23; see the resolution there (D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-CMDEDIT-91: `setlabel box` coordinates parsed as relative distances
 - Kind: quirk

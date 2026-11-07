@@ -71,26 +71,26 @@ Compatibility: behavioral (option letters exact)
 - **THEN** `~/my.rc` and then `./my.rc` SHALL be read in place of the `.magicrc` files
 
 ### Requirement: Command-line file arguments
-Each non-option argument SHALL be recorded as a file to load, unless the initial window is suppressed. In that case Magic ignores file arguments (see Q-UI-25). Recording rules:
+Each non-option argument SHALL be recorded as a file to load, also when the initial window is suppressed, where Magic ignores file arguments (see Q-UI-25). Recording rules:
 - A trailing `.mag` SHALL be stripped.
-- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, any extension starting with `.gd` → GDS, `.tcl` → script. Anything else is a layout cell.
+- The type SHALL be chosen by the last `.` extension, case-insensitively: `.lef` → LEF, `.def` → DEF, `.cif` → CIF, `.gds` → GDS (Magic accepts any extension starting with `.gd`; see Q-UI-25), `.tcl` → script. Anything else is a layout cell.
 - A `.tcl` argument SHALL end option and file processing. Later arguments belong to the script.
 
 After startup files and technology loading:
-- The recorded files SHALL be processed in reverse command-line order, each announced with `Loading "F" from command line.`.
+- The recorded files SHALL be processed in command-line order, each announced with `Loading "F" from command line.`. Magic processes them in reverse order (see Q-UI-25).
 - A layout cell SHALL be loaded into every layout window.
 - LEF and DEF files SHALL be read.
 - A script SHALL be evaluated.
-- CIF and GDS arguments SHALL be announced but not read (see Q-UI-25).
+- CIF and GDS files SHALL be read. Magic only announces them (see Q-UI-25).
 
-Because every layout load replaces the window contents, the window SHALL end up showing the first layout file named on the command line.
+The window SHALL end up showing the first layout file named on the command line.
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:388-452, utils/main.c:1176-1228)
 
 #### Scenario: Two cells
 - **WHEN** the application is started with `a.mag b`
-- **THEN** `b` SHALL be loaded first and then `a`
+- **THEN** `a` SHALL be loaded first and then `b`
 - **AND** the window SHALL show `a`
 
 #### Scenario: Suffix stripped
@@ -235,17 +235,17 @@ Compatibility: informative
 - **THEN** a version string SHALL be printed and the exit status SHALL be 0, without loading a technology
 
 ### Requirement: Crash recovery at startup
-With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (backup files in the temporary directory, `$TMPDIR` or the system default, named `MAG…`, owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
+With `-r` and an initial window, startup SHALL run crash recovery instead of loading command-line files. Candidate selection (Hefesto's crash backups in its app-private crash backup directory whose session lock is free and, on the desktop, Magic's `MAG…` backups in `$TMPDIR` or `/tmp` that are owned by the current user and not tied to a running process), the `Recover from backup file F?` prompt with the answers `read` (default) and `cancel`, loading, and removal of the recovered file are specified in capability `cell-io-safety`, requirement "Crash recovery".
 
-On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (see Q-UI-31 and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements").
+On normal exit, the session's own backup file SHALL be removed. The backup file format, periodic backups and the recovery procedure are owned by capability `cell-io-safety`. Hefesto SHALL keep backups in an application-private location (capability `cell-io-safety`, requirement "Crash backup location and session lock", and capability `hefesto-files-and-pdks`, requirement "Locking and recovery replacements"; Q-CELL-30, resolved by decision D-8).
 
 Compatibility: behavioral (location and process checks [platform])
 (Magic ref: utils/main.c:1170-1185, database/DBio.c:1114-1235, utils/main.c:190-252)
 
 #### Scenario: Live session skipped
-- **GIVEN** `/tmp/MAG1234.xyz` is owned by the user and process 1234 is running
+- **GIVEN** `/tmp/MAG1234.xyz` is owned by the user and process 1234 is running, and a running Hefesto session holds the lock of its own crash backup
 - **WHEN** another instance starts with `-r`
-- **THEN** that file SHALL NOT be offered for recovery
+- **THEN** neither file SHALL be offered for recovery
 
 ### Requirement: quit command and exit status
 `quit [STATUS] [-noprompt]` SHALL end the application:
@@ -258,7 +258,7 @@ Compatibility: behavioral (location and process checks [platform])
   - the netlist client asks about an unsaved netlist
 - On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS (default 0).
 
-Magic does not range-check STATUS, so the host truncates it to 8 bits (see Q-UI-32).
+Magic does not range-check STATUS, so the host truncates it to 8 bits. Hefesto SHALL reject a STATUS outside 0–255 with `Invalid exit_status` and SHALL NOT exit (see Q-UI-32).
 
 Exit statuses produced by the application itself SHALL be:
 
@@ -299,7 +299,7 @@ On iPadOS, where there is no command line, environment or arbitrary file system,
 - opening files at launch (file arguments), including files handed over by other apps
 - crash recovery on the next launch
 
-These SHALL keep the precedence order defined in this capability. The mechanisms are [platform] decisions (see Q-UI-26 and Q-UI-31).
+These SHALL keep the precedence order defined in this capability. The mechanisms are [platform] decisions (see Q-UI-26, and Q-CELL-30 for crash recovery, resolved by decision D-8).
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:253-473, utils/main.c:835-1258)

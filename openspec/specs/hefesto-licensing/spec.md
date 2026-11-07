@@ -8,7 +8,7 @@ Defines Hefesto's licensing obligations. Hefesto's specifications are derived fr
 - xschem, the reference for the schematic file formats and netlisting (decision P-12), under the GPL
 - ngspice, under a modified BSD license. Some ngspice parts use other licenses: KLU and numparam are LGPLv2, OSDI is MPL-2.0, and the `table` code models and FFTW3 are GPL. The GPL parts are excluded. Static linking of the LGPL parts on iPadOS is tracked in Q-SIM-1.
 
-Hefesto also bundles third-party code and data: Tcl, ngspice, zlib, the Raven GUI library and MoltenVK on desktop, fonts, and PDK files. GPL-licensed code is incompatible with App Store distribution and with a permissive Hefesto license. So Hefesto may reproduce the behavior of GPL tools but must never contain their code. Hefesto's own source code is licensed under Apache-2.0 (decision P-9).
+Hefesto also bundles third-party code and data: Tcl, ngspice (with its LGPL and MPL parts), zlib, Zstandard, a JSON library, a glTF writer, libsodium and libcurl on Linux, the Raven GUI library on desktop, MoltenVK on macOS, fonts, and PDK files. On Apple platforms it uses the system CryptoKit and URLSession frameworks instead of bundled cryptography and networking libraries (requirement "Third-party libraries for cryptography, networking and data formats"). GPL-licensed code is incompatible with App Store distribution and with a permissive Hefesto license. So Hefesto may reproduce the behavior of GPL tools but must never contain their code. Hefesto's own source code is licensed under Apache-2.0 (decision P-9).
 
 ## Requirements
 
@@ -32,8 +32,10 @@ Hefesto SHALL reproduce the copyright and permission notices for permissively li
 - Magic's UC Berkeley notice, for any ported logic and the bundled scmos/minimum tech files, including the scmos MOSIS copyright notice
 - Tcl's BSD-style license
 - ngspice's license, together with the separately licensed ngspice parts that are linked: KLU (LGPLv2), numparam (LGPLv2 or newer), OSDI (MPL-2.0) and sparse (capability `simulation-engine-embedding`), and the license of each compact model compiled in for OSDI (Q-SIM-2)
-- zlib
-- the Zstandard decoder used for PDK assets (capability `hefesto-pdk-manager`)
+- zlib (zlib license)
+- Zstandard (`zstd`, BSD-3-Clause), used for PDK assets (capability `hefesto-pdk-manager`)
+- the JSON library (nlohmann/json, MIT) and the glTF writer (cgltf, MIT, or tinygltf, MIT) of requirement "Third-party libraries for cryptography, networking and data formats"
+- on Linux: libsodium (ISC) or Monocypher (BSD-2-Clause or CC0-1.0), libcurl (curl license, MIT-style) and, where the package bundles it, the TLS library libcurl uses (OpenSSL 3.x, Apache-2.0)
 - Raven (Apache-2.0) and the code and fonts it bundles: stb_truetype and stb_image, nanosvg, and Roboto and Roboto Mono
 - MoltenVK (Apache-2.0), bundled in the macOS package
 - the sparse linear solver library of capability `reliability-ir-drop`, if one is used instead of Hefesto's own (for example Eigen, MPL-2.0; Q-RELIABILITY-9)
@@ -48,7 +50,39 @@ Compatibility: native
 
 #### Scenario: Acknowledgements present
 - **WHEN** a user opens About → Acknowledgements
-- **THEN** the Magic, Tcl, ngspice (including KLU, numparam and OSDI) and zlib notices SHALL be listed, and on macOS the Raven and MoltenVK notices as well
+- **THEN** the Magic, Tcl, ngspice (including KLU, numparam and OSDI), zlib, Zstandard, nlohmann/json and glTF writer notices SHALL be listed, on desktop the Raven notices, on macOS the MoltenVK notice, and on Linux the libsodium (or Monocypher) and libcurl notices as well
+
+### Requirement: Third-party libraries for cryptography, networking and data formats
+Hefesto SHALL obtain SHA-256 hashing, Ed25519 signature verification and signing, HTTPS, Zstandard and zlib decompression, JSON parsing and writing, and glTF writing from the following components, and SHALL NOT bundle any other library for these functions:
+
+| Function | macOS and iPadOS | Linux | License |
+|---|---|---|---|
+| SHA-256 | CryptoKit (`SHA256`), Apple system framework | libsodium (`crypto_hash_sha256`) | system framework; libsodium: ISC |
+| Ed25519 verify and sign | CryptoKit (`Curve25519.Signing`), Apple system framework | libsodium (`crypto_sign_*`); Monocypher with its `monocypher-ed25519` module MAY replace libsodium | system framework; libsodium: ISC; Monocypher: BSD-2-Clause or CC0-1.0 |
+| HTTPS client | URLSession (Foundation), Apple system framework | libcurl, with certificate verification against the system trust store | system framework; libcurl: curl license (MIT-style); its TLS library, OpenSSL 3.x: Apache-2.0 |
+| Zstandard | zstd | zstd | BSD-3-Clause (zstd is dual-licensed BSD-3-Clause or GPLv2; Hefesto uses it under BSD-3-Clause) |
+| zlib (deflate, gzip) | zlib | zlib | zlib license |
+| JSON | nlohmann/json, header-only | nlohmann/json, header-only | MIT |
+| glTF 2.0 writing | cgltf (`cgltf_write.h`), header-only; tinygltf MAY replace it | same as Apple platforms | MIT (both) |
+
+Rules:
+- The Apple frameworks are reached through the platform-services layer of capability `hefesto-architecture`. CryptoKit and URLSession are Swift and Objective-C APIs, so the desktop macOS build contains a thin bridge to them. No framework type crosses into the C++20 core.
+- If Monocypher replaces libsodium on Linux, SHA-256 SHALL come from the TLS library already linked by libcurl (OpenSSL 3.x `libcrypto`), because Monocypher has no SHA-256.
+- Every component SHALL be pinned to an exact version in the build (capability `hefesto-build-and-distribution`), and its notice SHALL be listed as required by requirement "Attribution for permissive sources".
+- Results SHALL be identical on every platform: the same input bytes give the same SHA-256 digest, an Ed25519 signature that verifies on one platform verifies on all of them, and the same 3D model gives the same glTF content.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/audit/DECISIONS.md#D-13, docs/decisions/product.md#P-9)
+
+#### Scenario: Plugin signature verified on Linux and macOS
+- **GIVEN** a `.hfplugin` package signed with an Ed25519 key on macOS through CryptoKit
+- **WHEN** it is verified on Linux through libsodium
+- **THEN** the signature SHALL verify, and the SHA-256 digests in `SIGNATURE` SHALL match those computed on Linux
+
+#### Scenario: No extra crypto library on Apple platforms
+- **WHEN** the macOS or iPadOS package is inspected
+- **THEN** it SHALL NOT contain libsodium, Monocypher, libcurl or OpenSSL
 
 ### Requirement: Bundled fonts and PDK data licensing
 Bundled fonts SHALL be distributed under their own licenses with the required notices. These are:

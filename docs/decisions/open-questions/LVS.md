@@ -26,6 +26,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/objlist.c:193-258, base/hash.c:116-152
 - Options: replicate | fix (fold brackets in the hash too; index by unsigned byte)
 - Recommendation: fix (tier 1 for the out-of-bounds index). Folding brackets in the hash changes only lookups that netgen fails. Golden cases NG-NAME-02 and NG-NAME-03 measure the effect.
+- Resolution: fix — index the fold tables by unsigned byte (out-of-bounds read on signed-char platforms) and fold brackets in the case-insensitive hash too, as the entry recommends (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-4: Hash collisions and pseudo-random labels
 - Kind: ambiguity
@@ -40,6 +41,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:6996-7004
 - Options: fix (clear the list)
 - Recommendation: fix (tier 1).
+- Resolution: fix — clear the pair list when `permute forget` frees it (use-after-free) (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-6: `property add` single-word and `{key tol}` parsing
 - Kind: quirk
@@ -61,6 +63,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:5817-5835, base/netcmp.c:4266-4280, base/netcmp.c:5090-5100
 - Options: replicate | fix (use |a−b| / max(|a|,|b|), with 0 = 0)
 - Recommendation: replicate behind the `netgen-compat` setting (it changes results). Cover with golden case NG-PROP-07.
+- Resolution: compat — netgen's tolerance ratio 2·|a−b|/(a+b) with its NaN, ∞ and negative-sum outcomes, behind `netgen-compat`; with `netgen-compat` OFF, the ratio is |a−b| / max(|a|,|b|), and two zero values match (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-LVS-8: Inconsistent sort comparators
 - Kind: bug
@@ -68,6 +71,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:4246-4280, base/netcmp.c:4413, base/netcmp.c:4599
 - Options: replicate glibc behavior | fix (stable sort with a proper three-way comparator)
 - Recommendation: fix with a stable sort. Capture golden outputs from Linux netgen and note any macOS divergence.
+- Resolution: fix — stable sort with a proper three-way comparator, one order on every platform (platform-dependent sort) (X-1 platform-dependent sorts, 2026-11-07).
 
 ### Q-LVS-9: Parallel signature uses only the first permutable pair
 - Kind: quirk
@@ -75,6 +79,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netgen.c:3335-3384
 - Options: replicate | fix (generate signatures for all permutation-equivalent pin orders)
 - Recommendation: replicate the single pair behind the `netgen-compat` setting, because merging more changes the device counts that are reported. Fix the uninitialized use (tier 1).
+- Resolution: compat — only the first permutable pair gives an alternate parallel signature, behind `netgen-compat` (merging more changes the reported device counts); the uninitialised pointers when pin names are missing are always fixed (tier 1); with `netgen-compat` OFF, signatures are generated for every permutation-equivalent pin order (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-LVS-10: Property comparison failure is reported as a property error
 - Kind: ambiguity
@@ -96,6 +101,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:1559, base/netcmp.c:1686, base/netcmp.c:2031
 - Options: fix (print literally)
 - Recommendation: fix (tier 1). Hefesto writes names literally.
+- Resolution: fix — report text is written literally, never used as a format string (crash on `%`) (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-13: JSON file naming and escaping
 - Kind: bug
@@ -120,6 +126,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/netgen.tcl.in:772-783; open_pdks setup files
 - Options: platform alternative (`env` array backed by Hefesto settings, per decision X-4)
 - Recommendation: platform alternative on all platforms, for determinism.
+- Resolution: platform — the setup-file `env` array is backed by Hefesto settings on every platform (X-4, 2026-11-07).
 
 ### Q-LVS-16: Column widths: no validation and right-column overflow
 - Kind: bug
@@ -129,6 +136,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/tclnetgen.c:2073-2082, base/netcmp.c:1539-1545, base/netcmp.c:1582-1590
 - Options: fix (reject widths ≤ 0; truncate the right column at its own width)
 - Recommendation: fix (tier 1). With default and equal widths the output is identical.
+- Resolution: fix — reject widths ≤ 0 and truncate the right column at its own width (buffer overflow); output is unchanged for default and equal widths (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-17: Pin-match results −1 and −2 are never produced
 - Kind: quirk
@@ -143,6 +151,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:5096-5108
 - Options: fix (use the double default)
 - Recommendation: fix (tier 1, an uninitialized-style read). Golden case NG-PROP-10 records any divergence.
+- Resolution: fix — use the double default of the property definition (garbage read) (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-19: List/JSON value for value-type and expression properties
 - Kind: bug
@@ -157,6 +166,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/tclnetgen.c:2697-2701, tcltk/netgen.tcl.in:705-715
 - Options: replicate | fix (also log it)
 - Recommendation: replicate behind the `netgen-compat` setting. The structured result always carries the status.
+- Resolution: compat — the symmetry verdict goes to the console only and `comp.out` ends with `Final result: `, behind `netgen-compat`; the structured result always carries the status; with `netgen-compat` OFF, `comp.out` also records `Circuits match with <k> symmetries.` (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-LVS-21: Extra `.` line after a unique match
 - Kind: quirk
@@ -171,6 +181,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/tclnetgen.c:2880-2916
 - Options: fix (error `bad option`)
 - Recommendation: fix (tier 1). Keep the wrong-argument error for the one-argument form.
+- Resolution: fix — an unknown option word reports `bad option` instead of using an uninitialised option index; the one-argument form keeps its wrong-argument error (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-23: Pin matching writes to freed memory
 - Kind: bug
@@ -178,6 +189,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:8144, base/netcmp.c:8409
 - Options: fix
 - Recommendation: fix (tier 1). It has no effect on printed output.
+- Resolution: fix — no write to the freed net-correspondence array (use-after-free); printed output is unchanged (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-24: Placeholder test uses logical instead of bitwise AND
 - Kind: bug
@@ -185,6 +197,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:7935
 - Options: replicate | fix (test the placeholder flag)
 - Recommendation: replicate behind the `netgen-compat` setting, because it changes pin pairing results. Measure with golden case NG-PIN-06.
+- Resolution: compat — the logical-AND placeholder test, behind `netgen-compat` (it changes pin pairing); with `netgen-compat` OFF, only the placeholder flag enables the size-1-array pin-name equivalence (X-2 tier 2 as amended by D-2, D-5, approved 2026-11-07, 2026-11-07).
 
 ### Q-LVS-25: Orphan-net summary printed with missing arguments
 - Kind: bug
@@ -192,6 +205,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: base/netcmp.c:540
 - Options: fix
 - Recommendation: fix (tier 1). It is console-only and not part of `comp.out`.
+- Resolution: fix — print the orphan-net summary with its two counts (missing printf arguments) (X-2 tier 1, 2026-11-07).
 
 ### Q-LVS-26: No-connect pins merged as one net for parallel detection
 - Kind: ambiguity
@@ -206,6 +220,7 @@ Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-
 - Evidence: tcltk/netgen.tcl.in:503-526
 - Options: platform alternative (the sandboxed Tcl of decision X-3; curated bundled setup files if App Review rejects user scripts)
 - Recommendation: follow the X-3 fallback. Ship validated setup files for sky130A/B, gf180mcuD and sg13g2 in PDK packs.
+- Resolution: platform — setup files run in the sandboxed Tcl on every platform; if App Review rejects user scripts, iPadOS uses the validated setup files bundled in curated PDK packs (X-3, hefesto-scripting, 2026-11-07).
 
 ### Q-LVS-28: Compatibility switch for netgen quirks
 - Kind: ambiguity
