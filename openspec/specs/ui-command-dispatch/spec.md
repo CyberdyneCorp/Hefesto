@@ -49,7 +49,7 @@ Compatibility: behavioral
 ### Requirement: Command registration and help text
 Each command SHALL be registered with a help string whose first whitespace-delimited word is the command name. The rest of the string is a one-line synopsis and MAY contain newlines. A client's table SHALL be kept in ascending byte order (`strcmp`) of the full help string. Commands whose names begin with `*` SHALL be wizard commands (see ui-wizard-and-debug).
 
-The `*window` client SHALL register: `center`, `closewindow`, `cursor`, `grow`, `help`, `imacro`, `logcommands`, `macro`, `openwindow`, `over`, `pushbutton`, `quit`, `redo`, `redraw`, `reset`, `scroll`, `setpoint`, `sleep`, `specialopen`, `underneath`, `undo`, `updatedisplay`, `version`, `view`, `windowborder`, `windowcaption`, `windownames`, `windowpositions`, `windowscrollbars`, `xview`, `zoom`. It SHALL also register the wizard commands `*bypass` (Tcl build only), `*crash`, `*files`, `*grstats`, `*pause`, `*winddebug` and `*winddump`. Builds without Tcl SHALL add `echo`, `send` and `source`.
+The `*window` client SHALL register: `center`, `closewindow`, `cursor`, `grow`, `help`, `imacro`, `logcommands`, `macro`, `openwindow`, `over`, `pushbutton`, `quit`, `redo`, `redraw`, `reset`, `scroll`, `setpoint`, `sleep`, `specialopen`, `underneath`, `undo`, `updatedisplay`, `version`, `view`, `windowborder`, `windowcaption`, `windownames`, `windowpositions`, `windowscrollbars`, `xview`, `zoom`. It SHALL also register the wizard commands `*bypass`, `*crash`, `*files`, `*grstats`, `*pause`, `*winddebug` and `*winddump`. Informative: Magic's non-Tcl build omits `*bypass` and adds `echo`, `send` and `source`.
 
 Compatibility: behavioral
 (Magic ref: windows/windMain.c:472-553, windows/windClient.c:680-828)
@@ -68,7 +68,7 @@ A typed command word SHALL be matched against a table as follows. Only the part 
 - If the word matches no entry, the result SHALL be "not found".
 - An empty word is a prefix of every entry, so it is ambiguous whenever the table has two or more entries.
 
-In the Tcl build, a leading `::magic::` or `magic::` SHALL be stripped before matching.
+A leading `::magic::` or `magic::` SHALL be stripped before matching.
 
 Compatibility: exact
 (Magic ref: utils/lookup.c:58-126)
@@ -146,8 +146,8 @@ A command line SHALL be split into commands and words as follows:
 
 Limits:
 - Each command SHALL be copied into a 2048-byte buffer before it is split. Text after the first 2047 bytes of the remaining line SHALL be silently dropped (see Q-UI-10).
-- In the non-Tcl build, a command reaching 200 words SHALL report `Too many arguments.` and then `Unable to completely parse command line '<line>'`. That command and all later commands on the line SHALL be dropped, so at most 199 words are accepted.
-- In the Tcl build, more than 200 words SHALL report `Error: number of command arguments exceeds 200!`, and more than 2048 bytes in total SHALL report `Error: command length exceeds 2048 characters!` (see Q-UI-10).
+- More than 200 words SHALL report `Error: number of command arguments exceeds 200!`, and more than 2048 bytes in total SHALL report `Error: command length exceeds 2048 characters!` (see Q-UI-10).
+- Informative: Magic's non-Tcl build instead reports `Too many arguments.` and then `Unable to completely parse command line '<line>'` for a command reaching 200 words, and drops that command and all later commands on the line, so at most 199 words are accepted.
 
 Compatibility: exact
 (Magic ref: utils/parser.c:55-160, textio/txCommands.c:1095-1153, textio/txCommands.c:1491-1594, textio/txcommands.h:38-39)
@@ -174,7 +174,7 @@ Keystrokes SHALL be handled as follows in a layout window, outside a pending tex
   - an undefined key SHALL report `Unknown macro or short command: '<name>'`, where `<name>` is the key's display name (see Requirement: Macro key names)
 - Interactive macros whose text starts with `:` SHALL open the prompt with that `:` removed.
 
-In the non-Tcl build, key macros SHALL always be looked up in the layout client's current-tool table, whatever window has focus (see Q-UI-11).
+Informative: Magic's non-Tcl build always looks key macros up in the layout client's current-tool table, whatever window has focus (see Q-UI-11).
 
 Compatibility: behavioral
 (Magic ref: textio/txCommands.c:1199-1363, graphics/grTOGL1.c:765-850)
@@ -249,8 +249,8 @@ Selecting the table:
 
 Listing:
 - With no key, all entries SHALL be listed. `imacro` lists only interactive macros. `help` shows help text in place of the macro text when help exists. `search TEXT` keeps only entries whose shown text contains TEXT.
-- The non-Tcl default format SHALL be `Macro 'K' contains "TEXT"`, or `Interactive macro 'K' contains "TEXT"` for interactive macros.
-- With `list`, the format SHALL be `K = "TEXT"`. In Tcl, `list` returns a flat list of key/text pairs, with the order reversed under `-reverse`.
+- Without `list`, the format SHALL be `Macro 'K' contains "TEXT"`, or `Interactive macro 'K' contains "TEXT"` for interactive macros.
+- With `list`, the result SHALL be a flat list of key/text pairs, with the text before the key in each pair under `-reverse`. Informative: Magic's non-Tcl build prints `K = "TEXT"` lines instead.
 - If nothing is listed and `list` was not given, the system SHALL print `No macros are defined for this client.`.
 - An unknown table SHALL report `Cannot get macro list from current window.` and list the known tables.
 
@@ -274,17 +274,17 @@ Compatibility: behavioral
 - **THEN** pressing `+` in a color window SHALL run `color next`
 
 #### Scenario: Unavailable client fails quietly
-- **GIVEN** a build without the 3-D client
-- **WHEN** `macro wind3d L "level up"` is read from the system startup file
+- **GIVEN** a startup file written for a host that registers a client named `wind3d`, which the running application does not register
+- **WHEN** `macro wind3d L "level up"` is read from that startup file
 - **THEN** no error SHALL be printed
 
 ### Requirement: Script files and source
-`source FILE` (non-Tcl build) SHALL open FILE through the path `.` and then the system library path, and SHALL execute it as a command stream. If the file cannot be opened, the system SHALL report `Couldn't read from FILE.`.
+`source FILE` SHALL be the `source` command of the scripting interpreter (capability `scripting-api`), as in Magic's Tcl build. Informative: Magic's non-Tcl build registers its own `source` command, which opens FILE through the path `.` and then the system library path, executes it as a command stream, and reports `Couldn't read from FILE.` if the file cannot be opened.
 
-Script lines SHALL be read with these rules:
+Command files that are read through the command dispatcher SHALL be read with these rules:
 - A physical line ending in `\` + newline SHALL be joined with the next line. The `\` SHALL be kept and only the newline removed (see Q-UI-13).
 - Lines that are empty, or whose first non-blank character is `#`, SHALL be skipped.
-- A line beginning with `:` SHALL have that character removed. Magic also removes the first character when the second character is `;` (see Q-UI-13). In the Tcl build only a single leading `:` (not `::`) is removed.
+- A line beginning with a single `:` (not `::`, which is a namespace marker) SHALL have that character removed. Informative: Magic's non-Tcl build removes the first character of any line that begins with `:`, and also when the second character is `;` (see Q-UI-13).
 - Each remaining line SHALL be parsed as a command line.
 
 Command lines from scripts SHALL NOT be written to the command log. A point forced by `setpoint` SHALL stay in effect for all later commands of the same script. An interrupt SHALL abort the script with `[Read-in of command file aborted]`. End of file SHALL end the script. End of input on the interactive terminal SHALL print `EOF encountered on input stream -- Magic exiting.` and exit with status 1.
@@ -294,7 +294,7 @@ Compatibility: behavioral
 
 #### Scenario: Continuation and comments
 - **GIVEN** a script whose lines are `# setup`, `:box 0 0 \`, `10 10`
-- **WHEN** it is sourced
+- **WHEN** it is read as a command file through the dispatcher
 - **THEN** a single `box` command SHALL run, with argv [`box`, `0`, `0`, `\10`, `10`]
 
 ### Requirement: Command logging
@@ -304,7 +304,7 @@ Starting:
 - If a log is already open, report `There is already a log file open!`.
 - If the file cannot be created, report `Could not open file 'F' for writing.`.
 - Otherwise print `Logging commands to file "F"`.
-- In the Tcl build, write the header lines `# Magic command log file`, `# Using technology: T`, `# Title: <window caption>` and `# Date: <ctime>`.
+- Write the header lines `# Magic command log file`, `# Using technology: T`, `# Title: <window caption>` and `# Date: <ctime>`.
 - If the command came from a window, write `view Xi Yi Xi Yi` with the window's surface area. If a box exists, write `box values Xi Yi Xi Yi` with its root coordinates.
 
 Logging rules:
@@ -312,7 +312,7 @@ Logging rules:
 - Commands whose name (after any `::`) starts with `logc`, or is `*bypass` or `setpoint`, SHALL NOT be logged. Neither SHALL `wire show`.
 - Button events SHALL be written as `pushbutton left|middle|right down|up`.
 - In update mode, `updatedisplay` SHALL follow each logged command.
-- In the non-Tcl build, every logged line except the `box values` line SHALL start with `:` (see Q-UI-14).
+- Informative: in Magic's non-Tcl build, every logged line except the `box values` line starts with `:` (see Q-UI-14).
 - `suspend` and `resume` SHALL pause and continue logging. `update` SHALL toggle update mode, printing `Forcing display refresh after logged commands.` or `No display refresh after logged commands.`.
 - `stop` SHALL print `Ending command logging to file.`.
 
@@ -320,7 +320,7 @@ Compatibility: exact (log file content); behavioral (messages)
 (Magic ref: windows/windCmdAM.c:917-996, textio/txCommands.c:703-992)
 
 #### Scenario: Logged quoting
-- **GIVEN** command logging to `log.txt` in the Tcl build
+- **GIVEN** command logging to `log.txt`
 - **WHEN** `label "my net" n` is executed interactively
 - **THEN** the log SHALL contain the line `label "my net" n`
 
@@ -330,9 +330,8 @@ Compatibility: exact (log file content); behavioral (messages)
 `setpoint [x y [WID|name]]` SHALL force the point and window id of following commands. In interactive use the forced point SHALL apply to the next command only. In a script it SHALL stay in effect until the script ends. The values are window pixel coordinates with y measured from the window's bottom edge.
 
 With no arguments, `setpoint` SHALL report the current point. Formats:
-- non-Tcl with a window: `Point is at screen coordinates (x, y) in window W.` then `Point is at layout coordinates (X, Y)`
-- non-Tcl without a window: `Point is at screen coordinates (x, y).`
-- Tcl: the list `x y X Y`
+- the result SHALL be the list `x y X Y`
+- informative: Magic's non-Tcl build prints `Point is at screen coordinates (x, y) in window W.` then `Point is at layout coordinates (X, Y)` with a window, and `Point is at screen coordinates (x, y).` without one
 
 Non-integer x or y SHALL print `Usage: setpoint [x y [window ID|name]]`.
 
@@ -347,16 +346,14 @@ Compatibility: behavioral
 ### Requirement: sleep, echo and send
 `sleep N` SHALL pause for N−1 whole seconds when N ≥ 2, and SHALL NOT pause when N ≤ 1 (see Q-UI-15). An interrupt SHALL end the pause early. A wrong argument count SHALL report `Usage: sleep seconds`.
 
-`echo [-n] words…` (non-Tcl build) SHALL print the words separated by single spaces and then a newline. If the first word is `-n`, the newline SHALL be suppressed, and the output SHALL start with a space when more words follow (see Q-UI-15).
+Informative: `echo` and `send` are Magic commands only in its non-Tcl build; in the Tcl build, which is normative, these names belong to the scripting environment. In the non-Tcl build, `echo [-n] words…` prints the words separated by single spaces and then a newline; if the first word is `-n`, the newline is suppressed, and the output starts with a space when more words follow (see Q-UI-15). `send TYPE command…` sends the command to the first window found of client TYPE (unique prefix; hidden clients refused), or with no window if none exists; a wrong usage prints `Usage: send type command` and the list of valid window types.
 
-`send TYPE command…` (non-Tcl build) SHALL send the command to the first window found of client TYPE (unique prefix; hidden clients refused). If no such window exists, it SHALL send the command with no window. A wrong usage SHALL print `Usage: send type command` and the list of valid window types.
-
-Compatibility: behavioral
+Compatibility: behavioral (sleep); informative (echo, send)
 (Magic ref: windows/windCmdSZ.c:319-362, windows/windCmdAM.c:646-688, windows/windCmdSZ.c:1055-1100)
 
-#### Scenario: echo without newline
-- **WHEN** `echo -n a b` is executed
-- **THEN** the output SHALL be ` a b` with no trailing newline
+#### Scenario: sleep of one second does not pause
+- **WHEN** `sleep 1` is executed
+- **THEN** the command SHALL return without pausing
 
 #### Scenario: sleep off-by-one
 - **WHEN** `sleep 3` is executed
@@ -375,12 +372,12 @@ Compatibility: informative
 
 ### Requirement: Command counter and post-command update
 After each dispatched command, the system SHALL:
-1. increment a global command counter, except for `*bypass` in the Tcl build
+1. increment a global command counter, except for `*bypass`
 2. close the current undo event group for clients that use undo
 3. run every client's update handler
 4. update all windows (see ui-windows-and-views)
 
-A command that ends with an interrupt SHALL print `[Interrupted]` in the Tcl build.
+A command that ends with an interrupt SHALL print `[Interrupted]`.
 
 Compatibility: behavioral
 (Magic ref: textio/txCommands.c:1491-1594, textio/txCommands.c:1595-1769, dbwind/DBWprocs.c:984-1010, dbwind/DBWprocs.c:1068-1073)

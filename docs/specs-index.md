@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1969 requirements, 2914 scenarios, 834 open questions.
+**Totals:** 169 capabilities, 1974 requirements, 2926 scenarios, 834 open questions.
 
 ## Hefesto product (native)
 
@@ -17,15 +17,15 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
 | [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 7 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
-| [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 3 | 4 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
+| [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 4 | 8 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 3 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
 | [`hefesto-ipad-feature-scope`](../openspec/specs/hefesto-ipad-feature-scope/spec.md) | 4 | 4 | Defines which features the first iPadOS release includes and which stay desktop-only (decision P-13). This list is authoritative: a capability not listed as desktop-only here SHALL… |
 | [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 4 | 6 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
 | [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |
-| [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 3 | 4 | Implements decision X-2. Hefesto always fixes Magic's crashes, undefined behavior and data-loss bugs. Magic quirks that change output values are reproduced only when the `magic-com… |
+| [`hefesto-magic-compat-mode`](../openspec/specs/hefesto-magic-compat-mode/spec.md) | 5 | 7 | Implements decision X-2, generalized by decision D-2 to every reference tool that Hefesto must match. Hefesto always fixes the reference tools' crashes, undefined behavior and data… |
 | [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
-| [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 3 | 3 | Implements decision X-1. Hefesto reproduces Magic's ordering wherever that ordering is defined by Magic's canonical tile decomposition. Where Magic's ordering comes from hash table… |
+| [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 5 | 8 | Implements decision X-1 (as amended on 2026-11-06). Hefesto reproduces Magic's ordering wherever that ordering is a deterministic function of the input: Magic's canonical tile deco… |
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
 | [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 5 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |

@@ -30,6 +30,7 @@ Entries are ordered by priority, then by milestone.
   - (b) Keep X-1 as written. Rewrite the four specs to sort, and accept the semantic differences, recording them in `hefesto-magic-compat-mode`.
 - **Recommendation:** (a). Make `hefesto-output-determinism` the owner of the "Magic string hash table" definition. Then decide whether `.mag` elements (Q-CELL-11) and backup order (Q-CELL-28, D-9) keep the sort, which is allowed under (a) because they never change results.
 - **Priority:** blocks M0–M2. `hefesto-output-determinism` is M0, and `.mag` element order is M1.
+- **Status:** resolved (2026-11-06): option a — X-1 amended: name-keyed Magic hash order is reproduced exactly (table defined once in `hefesto-output-determinism`); the sort stays only for address-keyed or platform-dependent order and for `.mag` elements and backup/archive cells, whose order never affects results.
 
 ### D-2: Q-LVS-28, a separate `netgen-compat` setting or reuse of `magic-compat`
 
@@ -38,6 +39,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) reuse `magic-compat`; (b) add a `netgen-compat` setting, default ON, defined next to `magic-compat` in `hefesto-magic-compat-mode`.
 - **Recommendation:** (b), as Q-LVS-28 recommends, so that LVS fidelity can be toggled without changing layout output. Generalize `hefesto-magic-compat-mode` to own the set of reference-tool compatibility settings. D-21 covers xschem.
 - **Priority:** blocks M0–M2. `hefesto-magic-compat-mode` is M0 and defines the settings.
+- **Status:** resolved (2026-11-06): option b — `netgen-compat` (default ON) added next to `magic-compat` in `hefesto-magic-compat-mode`, which now owns all reference-tool compatibility settings; Q-LVS-28 resolved, xschem still open in D-21.
 
 ### D-3: Allowed `Resolution:` values
 
@@ -56,6 +58,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) a project setting `script-strict` (default off); (b) a per-interpreter command, such as `hefesto::strict on|off`, that a script turns on for itself; (c) both, with the command overriding the setting for its interpreter. Script plugins already get Tcl errors on `HF_E_PERMISSION`.
 - **Recommendation:** (c). Keep it separate from `magic-compat`, which governs output quirks, not error signalling. Rewrite `scripting-api` "in compatibility mode" as "by default", and name the switch in `hefesto-diagnostics`.
 - **Priority:** blocks M0–M2. `hefesto-diagnostics` is M0.
+- **Status:** resolved (2026-11-06): option c — project setting `script-strict` (default off) plus per-interpreter `hefesto::strict on|off` that overrides it, defined in `hefesto-diagnostics` and independent of `magic-compat`; `scripting-api` now says "by default".
 
 ### D-5: Missing `Resolution:` lines across the open-questions files
 
@@ -119,6 +122,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) the Tcl build is normative, and non-Tcl text becomes informative; (b) decide case by case.
 - **Recommendation:** (a). State it in `docs/spec-conventions.md`, and remove the "scripting build", "Tcl build" and "builds without …" wording from normative text (`scripting-pdk-integration`, `router-maze-iroute`, `view-3d`, `plot-output`, `ui-command-dispatch`).
 - **Priority:** blocks M0–M2.
+- **Status:** resolved (2026-11-06): option a — rule 11 of `docs/spec-conventions.md` makes Magic's Tcl build normative and non-Tcl behavior informative; build-conditioned wording requalified across the specs.
 
 ### D-8: Crash-backup location on the desktop (Q-CELL-30, with Q-UI-31, Q-SCRIPT-35 and Q-CMDEDIT-35)
 

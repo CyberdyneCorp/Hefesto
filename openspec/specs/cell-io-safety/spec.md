@@ -231,7 +231,7 @@ end_record  = "end" , [ SP , root_cell ] , NL ;
 
 **`root_cell`.** The name of the root cell of the first layout window, if one exists.
 
-**Cell order.** Magic writes the cell records in its cell hash-table enumeration order, which is arbitrary (see Q-CELL-28). Hefesto SHALL write them in a deterministic order, sorted by cell name with the natural comparator of capability `cell-file-format`; the reader is order-independent, and golden comparison SHALL canonicalize record order (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
+**Cell order.** Magic writes the cell records in its cell hash-table enumeration order (see Q-CELL-28). That order never affects any result, so it is an exception to the rule that name-keyed hash order is reproduced (capability `hefesto-output-determinism`). Hefesto SHALL write them in a deterministic order, sorted by cell name with the natural comparator of capability `cell-file-format`; the reader is order-independent, and golden comparison SHALL canonicalize record order (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
 
 **Side effects of writing a record.** Writing a cell into a backup does not change any of the cell's flags. A pending new timestamp is suppressed for this write only, so no out-of-date warning is printed.
 

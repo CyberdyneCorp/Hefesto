@@ -765,25 +765,21 @@ Compatibility: exact
 
 ### Requirement: Table enumeration order
 
-Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be that of Magic's string-keyed hash table:
+Wherever this capability says "table enumeration order" (the layer table, the non-default rule table, the via position index), the order SHALL be the iteration order of a Magic string hash table as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), which owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes (see Q-LEFDEF-116). Under decision X-1 these orders depend only on names and insertion history, and the output SHALL be byte-identical to Magic's. This capability adds:
 
-- **Hash.** `i` is an unsigned 64-bit accumulator starting at 0. For each key byte `c` (taken as a signed 8-bit value sign-extended to 64 bits), `i = c + (i<<6) + (i<<16) − i` (mod 2^64). The bucket is `((i·1103515245 + 12345) mod 2^64 >> k) & (size−1)`, where `size = 2^m` and `k = 30 − m`.
-- **Size.** The initial size is the smallest power of two ≥ max(2, requested), where the layer table and the rule table request 32.
-- **Insert.** A new key is inserted at the head of its bucket chain. Before inserting a new key, if `entries ≥ 3·size`, the table grows to `4·size`: old buckets are taken in index order, each chain from head to tail, and each entry is pushed onto the head of its new bucket.
-- **Enumerate.** Buckets go in index order 0..size−1, each chain from head to tail.
-- **Platform.** Magic takes key bytes as C `char`, which is signed on x86-64 and on macOS but unsigned on Linux/arm64. Hefesto SHALL use the signed interpretation (see Q-LEFDEF-116).
-- **Removal.** Removing a generated via clears its value but keeps the key (and its position), so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
+- **Size.** The layer table and the rule table each request 32 buckets.
+- **Removal.** Removing a generated via clears its value but keeps the key and its position, so an emptied slot can be refilled in a later write. Enumeration skips empty slots.
 
 The subcell enumeration order for COMPONENTS SHALL be the cell's subcell-plane enumeration order (see the database capabilities).
 
 Compatibility: exact
 
-(Magic ref: utils/hash.c:146-262, utils/hash.c:380-470, utils/hash.c:492-530, utils/hash.c:641-686, lef/lefTech.c:151-180)
+(Magic ref: lef/lefTech.c:151-180, lef/defWrite.c:2052-2068)
 
 #### Scenario: Hash of a short key
 
-- **GIVEN** the key `"ab"` (bytes 97, 98) in a table of size 32 (m = 5, k = 25)
-- **THEN** i = 98 + 97·65599 = 6363201, and the bucket SHALL be `((6363201·1103515245 + 12345) mod 2^64 >> 25) & 31` = 1
+- **GIVEN** a layer-table key `"ab"` (bytes 97, 98) in a table of size 32 (shift = 25)
+- **THEN** h = 98 + 97·65599 = 6363201, and the bucket SHALL be `((6363201·1103515245 + 12345) mod 2^64 >> 25) & 31` = 1
 
 ### Requirement: Session state after writing
 

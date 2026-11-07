@@ -115,7 +115,7 @@ Compatibility: behavioral
 - Any other single non-integer argument SHALL print `Option must be a count (integer)`.
 - With two arguments, the first SHALL begin with `print` (its first five characters are compared) and the second SHALL be an integer, otherwise `Usage: undo print count` is printed. `undo print <n>` SHALL list the n log entries before the current position, newest first; n ≤ 0 lists back to the start of the log. It changes nothing. The listing format is informative (Magic prints internal addresses).
 - More than two arguments SHALL print the usage text `Usage: undo [count]`, `       undo print [count]`, `       undo enable|disable`.
-- While recording is suspended, `undo <n>` SHALL NOT replay any step. Magic's Tcl build prints `Attempted undo with undo disabled. . . abort function.` followed by `Nothing more to undo`; message text is informative.
+- While recording is suspended, `undo <n>` SHALL NOT replay any step. Magic prints `Attempted undo with undo disabled. . . abort function.` followed by `Nothing more to undo`; message text is informative.
 
 (Magic ref: windows/windCmdSZ.c:634-697, windows/windClient.c:779-781, utils/undo.c:408-436,569-584,955-988, utils/strdup.c:125-134)
 

@@ -17,6 +17,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tclmagic.c:496-528; textio/txCommands.c:1491-1575; windows/windSend.c:86-287; commands/CmdTZ.c:430-450
 - Options: replicate | fix (raise script errors on command failure) | dual mode
 - Recommendation: replicate in compatibility mode, because PDK scripts and `toolkit.tcl` rely on `catch` returning 0 (for example `load -fail`). Offer an opt-in strict mode for new scripts.
+- Resolution: decided by D-4 (2026-11-06): replicate by default. Magic's ok-status convention is the default, independent of `magic-compat`. Strict mode is opt-in through the project setting `script-strict` (default off) and the per-interpreter command `hefesto::strict on|off`, which overrides the setting for its interpreter (capability `hefesto-diagnostics`).
 
 ### Q-SCRIPT-3: Tag `%r` substitution is unescaped, and substitution rescans
 - Kind: bug

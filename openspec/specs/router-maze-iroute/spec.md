@@ -35,7 +35,7 @@ Compatibility: behavioral
 | `-slabel` | name | start at label `name` |
 | `-slayers` | layer-list | restrict start layers |
 | `-spoint` | x y | start point (edit-cell coordinates) |
-| `-timeout` | seconds | interrupt the search after the given integer time (scripting builds only) |
+| `-timeout` | seconds | interrupt the search after the given integer time |
 
 Errors: `Bad option to 'iroute route':  '%s'`, `Ambiguous option to 'iroute route':  '%s'`, `Missing label.`, `Missing layer list.`, `No active route layers in destination list!` / `... start list!`, `Incomplete coordinates.`, `Nonnumeric coordinate: %s` (the first `-drect` field reports `Non coordinate: %s`), `No timeout value given.`, `Noninteger timeout value: %s`. Any error aborts the command without routing. When multiple start/destination options are given the last one wins. The documented form `iroute route node_name...` is not implemented (see Q-LEGACY-34).
 

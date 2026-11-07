@@ -52,11 +52,12 @@ The remaining unifications are tracked as decisions D-45 and D-46 in `docs/decis
 | Canonical term | Definition | Rejected variants | Owner |
 |---|---|---|---|
 | `magic-compat` setting | The Hefesto setting (default ON) that replicates Magic's output-changing quirks (decision X-2, tier 2). | compat mode, compat flag, compatibility mode, compatibility switch | `hefesto-magic-compat-mode` |
-| `netgen-compat` / `xschem-compat` setting | Proposed counterparts for netgen and xschem quirks. Not yet decided (D-2, D-21). | "the compatibility switch" | `hefesto-magic-compat-mode` (proposed) |
+| `netgen-compat` setting | The Hefesto setting (default ON) that replicates netgen's output-changing quirks in the `lvs-*` capabilities (decision X-2 as amended by D-2). Independent of `magic-compat`. | "the compatibility switch" | `hefesto-magic-compat-mode` |
+| `xschem-compat` setting | Proposed counterpart for xschem quirks. Not yet decided (D-21). | "the compatibility switch" | `hefesto-magic-compat-mode` (proposed) |
 | property compat mode | Magic's global property flag (`property compat`, default true): every property is written as `string`. Unrelated to `magic-compat`. | compatibility mode, compat mode, property compatibility mode | `layout-properties` ("Property compat mode") |
 | substrate compatibility mode | Netlister behavior when a `.ext` file has no `substrate` record. | compatibility mode | `ext-flattening-hierarchy` |
 | ngspice compatibility mode | ngspice's `ngbehavior` setting (`hs`, `hsa`, `ps`, …). | compatibility mode (unqualified) | `simulation-netlist-preparation` ("PDK initialisation commands") |
-| script strict mode | The opt-in mode in which failed commands raise Tcl errors. Its name and scope are not yet decided (D-4). | compat flag, compatibility mode (for the default ok-status convention) | `hefesto-diagnostics` |
+| script strict mode | The opt-in mode in which failed commands raise Tcl errors. Set by the project setting `script-strict` (default off) and overridden per interpreter by `hefesto::strict on\|off` (D-4). Independent of `magic-compat`. | compat flag, compatibility mode (for the default ok-status convention) | `hefesto-diagnostics` |
 | `Resolution:` | The line in an open-questions entry that records the answer: `fix`, `compat`, `n/a` (and `platform`, if D-3 allows it). | Status (used for progress notes only) | decision X-2 |
 
 ## Files, paths and platforms
@@ -73,7 +74,7 @@ The remaining unifications are tracked as decisions D-45 and D-46 in `docs/decis
 | PDK root | The PDK store's on-disk layout, which follows ciel. | — | `hefesto-pdk-manager` |
 | desktop | Linux and macOS (P-11). "Desktop app" means the Raven app. | — | `hefesto-platform-targets` |
 | `hefesto-cli` | The headless executable. | `hefesto --netlist`, headless mode | `hefesto-architecture` ("Headless command-line tool") |
-| Tcl build | Magic's build with the Tcl wrapper. Every Hefesto build embeds sandboxed Tcl (X-3), so "scripting build" and "Tcl build" describe Magic only. | scripting build (for Hefesto) | `scripting-api`; see D-7 |
+| Tcl build | Magic's build with the Tcl wrapper. Every Hefesto build embeds sandboxed Tcl (X-3), so "scripting build" and "Tcl build" describe Magic only. Where Magic's builds differ, the Tcl build is normative and the non-Tcl build informative (D-7, `docs/spec-conventions.md` rule 11). | scripting build (for Hefesto) | `docs/spec-conventions.md`; see D-7 |
 
 ## Extraction and netlisting
 

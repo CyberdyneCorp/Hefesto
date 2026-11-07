@@ -164,7 +164,7 @@ Compatibility: informative
 
 ### Requirement: Platform mechanism of the 3D view
 
-Magic's 3D view requires a build with 3D support, the OpenGL display driver, Tk and GLX; Hefesto SHALL provide the same view on every platform, including iPadOS, through the rendering interface of capability `hefesto-rendering` (Vulkan on the desktop, Metal on iPadOS; decision P-3), with touch or pointer gestures equivalent to the key bindings (see Q-MISC-75). Hefesto's extensions of the view are owned by capability `hefesto-3d-visualization`.
+Hefesto SHALL provide the 3D view on every platform, including iPadOS, through the rendering interface of capability `hefesto-rendering` (Vulkan on the desktop, Metal on iPadOS; decision P-3), with touch or pointer gestures equivalent to the key bindings (see Q-MISC-75). Hefesto's extensions of the view are owned by capability `hefesto-3d-visualization`. Informative: Magic provides the view only when it is compiled with 3D support and runs with the OpenGL display driver, Tk and GLX.
 
 Compatibility: informative
 

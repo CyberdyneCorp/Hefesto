@@ -176,6 +176,7 @@ Each entry records Magic behavior (commit fc5daa9e) that looks accidental, ambig
 - Evidence: lef/lefWrite.c:303-313, lef/lefWrite.c:316-370, lef/lefWrite.c:385-479, lef/defWrite.c:2052-2068
 - Options: replicate (reimplement Magic's hash function, table growth and iteration order) | fix (use tech-file declaration order for layers and first-seen order for properties and sites)
 - Recommendation: Replicate for byte compatibility of the `-tech` and PROPERTYDEFINITIONS output. Golden cases LEFDEF-112 and LEFDEF-113 should capture the order.
+- Resolution: decided by X-1 as amended (2026-11-06, D-1): replicate. Hefesto reproduces Magic's string hash order exactly (capability `hefesto-output-determinism`, requirement "Magic string hash table").
 
 ### Q-LEFDEF-31: Default route spacing overwrites width
 - Kind: bug

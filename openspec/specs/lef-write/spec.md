@@ -471,7 +471,7 @@ Property keys SHALL be collected from the `LEFproperties` string of every cell i
 3. Pairs are separated by one or more spaces.
 4. Collection stops at a key with no value.
 
-All property types are declared as `STRING`. The order of keys follows the collection hash table's iteration order; see Q-LEFDEF-30.
+All property types are declared as `STRING`. The order of keys SHALL be the iteration order of the collection's Magic string hash table (capability `hefesto-output-determinism`, requirement "Magic string hash table"), reproduced exactly under decision X-1; see Q-LEFDEF-30.
 
 Compatibility: exact
 
@@ -498,7 +498,7 @@ For each distinct `LEFsite` property value among the cells in the write set, the
 - `END <name>`
 - an empty line
 
-If the site cell has the fixed-bounding-box flag, the box SHALL instead come from the `FIXED_BBOX` property of the cell *being written*, not the site cell, provided that property exists as four integers. See Q-LEFDEF-33. Values with no cell of that name SHALL be skipped silently. SITE blocks appear in hash-iteration order.
+If the site cell has the fixed-bounding-box flag, the box SHALL instead come from the `FIXED_BBOX` property of the cell *being written*, not the site cell, provided that property exists as four integers. See Q-LEFDEF-33. Values with no cell of that name SHALL be skipped silently. SITE blocks SHALL appear in the iteration order of the site Magic string hash table (capability `hefesto-output-determinism`), reproduced exactly under decision X-1.
 
 Compatibility: exact
 
@@ -527,7 +527,7 @@ The remaining records SHALL be written as follows:
 | masterslice | `  TYPE MASTERSLICE ;` |
 | overlap | `  TYPE OVERLAP ;` |
 
-Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order follows the layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`); see Q-LEFDEF-30. With default initialization, the written WIDTH equals the DRC default spacing and no SPACING line appears; see Q-LEFDEF-31. The CUT AREA default is discussed in Q-LEFDEF-32.
+Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order SHALL be the layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`), reproduced exactly under decision X-1; see Q-LEFDEF-30. With default initialization, the written WIDTH equals the DRC default spacing and no SPACING line appears; see Q-LEFDEF-31. The CUT AREA default is discussed in Q-LEFDEF-32.
 
 Compatibility: exact
 
@@ -545,12 +545,12 @@ Compatibility: exact
 
 ### Requirement: Magic type to LEF layer name
 
-For each magic type `t` (user types and stacked contact types), the system SHALL determine its LEF layer name. The name is the canonical name of the first layer record, in layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`), for which both of these hold:
+For each magic type `t` (user types and stacked contact types), the system SHALL determine its LEF layer name. The name is the canonical name of the first layer record, in layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`, a Magic string hash table as defined in capability `hefesto-output-determinism`), for which both of these hold:
 
 1. The record's class is cut/via when `t` is a contact type (including via definitions that `lef read` created), and route or masterslice when `t` is not a contact.
 2. The record's magic type, or its obstruction type, equals `t`.
 
-If no record matches, `t` SHALL have no LEF name. Geometry of a type with no LEF name is never written. This capability owns the mapping; capability `def-write` uses it. When several records match, the enumeration order decides the winner; see Q-LEFDEF-30.
+If no record matches, `t` SHALL have no LEF name. Geometry of a type with no LEF name is never written. This capability owns the mapping; capability `def-write` uses it. When several records match, the enumeration order decides the winner, so Hefesto SHALL reproduce Magic's enumeration order exactly (decision X-1); see Q-LEFDEF-30.
 
 Compatibility: exact
 
@@ -744,7 +744,7 @@ Compatibility: behavioral
 
 ### Requirement: Power-name source in Magic
 
-Hefesto SHALL treat the configured power and ground names as host settings; in Magic they are the global Tcl variables `VDD` and `GND`. This matching happens only in the Tcl build. Hefesto SHALL expose the same two names as session settings; see Q-LEFDEF-44.
+Hefesto SHALL treat the configured power and ground names as host settings; in Magic they are the global Tcl variables `VDD` and `GND`, and Magic's non-Tcl build does no such matching (informative). Hefesto SHALL expose the same two names as session settings; see Q-LEFDEF-44.
 
 Compatibility: informative
 

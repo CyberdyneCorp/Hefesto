@@ -58,7 +58,7 @@ The update mechanism by platform SHALL be:
 - Linux AppImage: AppImage update information (zsync)
 - Linux native packages: the platform package manager
 
-Update checks SHALL be disableable. An update SHALL never change a project's pinned PDK version or the `magic-compat` setting.
+Update checks SHALL be disableable. An update SHALL never change a project's pinned PDK version or its reference-tool compatibility settings (`magic-compat`, `netgen-compat`).
 
 Compatibility: native
 

@@ -70,10 +70,10 @@ Compatibility: exact
 - **THEN** the file is ` Netlist File`, an empty line, then the three names in the circular order starting at whichever of `a`, `b`, `c` the hash order visits first (e.g. `b`, `c`, `a`)
 
 ### Requirement: Netlist enumeration order
-The netlist's terminal table SHALL be a hash table with Magic's ordering so that written files and router net order are reproducible: initial bucket count 32 (`downShift = 25`, `mask = 31`); string hash `h = 0; for each byte c (as a sign-extended char): h = c + (h << 6) + (h << 16) - h` in unsigned 64-bit arithmetic; bucket = `((h * 1103515245 + 12345) >> downShift) & mask` (64-bit unsigned); new entries are prepended to their bucket; when the entry count reaches 3 × bucket count before an insertion, the table grows 4× (downShift decreases by 2, mask = 4×size−1) by re-inserting entries in old-bucket order (each prepended). Iteration visits buckets in increasing index, entries in bucket-list order. Deleted terminals leave empty entries that are skipped. See Q-LEGACY-70 regarding platform dependence.
+The netlist's terminal table SHALL be a Magic string hash table, as defined in capability `hefesto-output-determinism` (requirement "Magic string hash table"), with a requested size of 32, so that written files and router net order are byte-identical to Magic's (decision X-1). That capability owns the hash, bucket, growth and iteration rules and the signed-byte interpretation of key bytes. Deleted terminals leave empty entries that are skipped. See Q-LEGACY-70 regarding platform dependence.
 
 Compatibility: exact
-(Magic ref: utils/hash.c:146-262, utils/hash.c:353-520, netmenu/NMnetlist.c:520-575)
+(Magic ref: netmenu/NMnetlist.c:520-575)
 
 #### Scenario: Deterministic order
 - **GIVEN** the same set of terminal names inserted in the same order

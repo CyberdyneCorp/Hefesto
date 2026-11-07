@@ -175,7 +175,7 @@ Compatibility: exact
 
 ### Requirement: Subcircuit header line
 A `.subckt` line SHALL be written as `.subckt <name>` followed by the ports in ascending port index, each preceded by one space. `<name>` is the cell name, prefixed with `x` if its first character is not a letter; the cell's name is permanently renamed this way.
-- **Port index.** A port node without an explicit index on any of its names SHALL receive one past the current maximum, in node-table iteration order. Abstract cells in black-box mode are the exception. Indices need not be contiguous; gaps are skipped.
+- **Port index.** A port node without an explicit index on any of its names SHALL receive one past the current maximum, in node-table iteration order. That order is the Magic string hash table order of capability `ext-flattening-hierarchy` (requirement "Container iteration order"), which Hefesto SHALL reproduce exactly because it decides the port numbering (decision X-1, capability `hefesto-output-determinism`). Abstract cells in black-box mode are the exception. Indices need not be contiguous; gaps are skipped.
 - **Port name.** The name is the node's SPICE name. For abstract cells it is the converted port name itself.
 - **Duplicate names.** A port name already written SHALL NOT be written again; the duplicate node's index is set to the first one's.
 - **Optimized-out ports.** A port whose name no longer resolves to a flat node SHALL be dropped. The note `Note:  Port <p> was optimized out of <cell>` is informative.
@@ -193,7 +193,7 @@ Compatibility: exact
 A subcircuit call SHALL be written as follows.
 - **Instance name.** `X<n>` (next subcircuit number) if renumbering is on, the format is SPICE2, or the use has no id. Otherwise `X` followed by the full instance path, converted with only convert-comma active.
 - **Nodes.** One space plus the SPICE name of each port in ascending port index.
-  - Without a declared port order, ports follow the subcell's node-table iteration order.
+  - Without a declared port order, ports follow the subcell's node-table iteration order, reproduced exactly as for the port index.
   - With one, each index takes the subcell's canonical port name, or the most preferred alias that carries that index.
 - **Model name.** In CDL, ` /` is written before the cell name. Then a space and the cell name follow, with the `x`-prefix rule.
 - **Parameters.** Cell instance parameters SHALL be appended.
@@ -246,7 +246,7 @@ Compatibility: exact
 - **THEN** no capacitor line is written for it, because 2 is not greater than 2
 
 ### Requirement: Global card in hierarchical mode
-In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. In the Tcl build with CDL format, the values of the Tcl variables `SUB`, `VDD` and `GND` that end in `!` are also added. Hefesto MAY offer that through configuration; see Q-NETLIST-33.
+In hierarchical mode, before the body, `.global` SHALL be written followed by each distinct default device-substrate name of the extraction style, each name followed by one space, and then an empty line. Names are taken in reverse order of the device list, and any trailing `!` is removed except in CDL. Names starting with `err`, containing `error`/`Error`/`ERROR`, or equal to `None` ignoring case SHALL be excluded. No `.global` line SHALL be written if the list is empty. With CDL format, the values of the scripting variables `SUB`, `VDD` and `GND` that end in `!` SHALL also be added, as in Magic's Tcl build. Where Hefesto takes those values from is pending D-14; see Q-NETLIST-33.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:965-1045, ext2spice/ext2spice.c:1086-1120)
 

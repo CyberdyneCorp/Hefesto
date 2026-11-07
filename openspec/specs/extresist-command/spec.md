@@ -13,7 +13,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 |---|---|---|
 | `threshold [v]` | Lumped-resistance cutoff `rthresh` in mΩ, float. A negative value prints usage. | 10000 |
 | `minresist [v]` | Simplification tolerance `minres` in mΩ | 1000 |
-| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. The standalone build reports it unconverted (Q-NETLIST-28). | 1 ps |
+| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. Informative: Magic's non-Tcl build reports it unconverted (Q-NETLIST-28). | 1 ps |
 | `tolerance` | Prints `Note:  This option has been deprecated and is unused.` | — |
 | `simplify on\|off` | Network simplification | on |
 | `extout on\|off` | Write `.res.ext` | on |

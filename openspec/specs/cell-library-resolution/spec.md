@@ -58,7 +58,7 @@ The two cell search paths are:
 - **Path** (default `.`, extended by `addpath` and `path`).
 - **Library path**. The default is `$CAD_ROOT/magic/<techname> $CAD_ROOT/magic/sys/current $CAD_ROOT/magic/tutorial` when a technology was named at startup, and `$CAD_ROOT/magic/sys/current $CAD_ROOT/magic/tutorial` otherwise. It is extended by the standard-cell discovery described below.
 
-The variable source is informative: Magic's Tcl build resolves `$NAME` against the interpreter's global variables, and the non-Tcl build against the process environment. See Q-CELL-17 [platform].
+`$NAME` SHALL be resolved against the scripting interpreter's global variables, as in Magic's Tcl build, which is normative where the builds differ (`docs/spec-conventions.md`). How those variables are set on each platform is a host mechanism (Q-CELL-17 [platform]). Informative: Magic's non-Tcl build resolves `$NAME` against the process environment.
 
 (Magic ref: utils/path.c:193-367, utils/path.c:389-430, utils/path.c:447-626, utils/main.c:516-517, utils/main.c:590-607, utils/paths.h:40-44)
 
@@ -250,7 +250,7 @@ Compatibility: exact
 2. **Home directory.** Otherwise, if s is absolute and the child's cell file directory starts with HOME immediately followed by `/`, the result is `~` + the part of that directory after HOME. Magic tests the child's recorded directory here, not s (see Q-CELL-21).
 3. **Otherwise** s is returned unchanged.
 
-The variable source is informative. In Magic's Tcl build, step 1 reads interpreter globals, which are typically set by a PDK's startup script. Without Tcl, step 1 is skipped. See Q-CELL-17 [platform].
+Step 1 SHALL read the scripting interpreter's global variables, which are typically set by a PDK's startup script, as in Magic's Tcl build. How those variables are set on each platform is a host mechanism (Q-CELL-17 [platform]). Informative: Magic's non-Tcl build skips step 1.
 
 (Magic ref: database/DBio.c:6059-6111)
 
@@ -363,18 +363,18 @@ Compatibility: behavioral
 1. **Search roots.** Search for the file `T.tech` under each root in turn, stopping at the first hit:
    - the environment variables `PDK_PATH`, `PDKPATH`, `PDK_ROOT`, `PDKROOT`;
    - the fixed directory `/usr/local/share/pdk`;
-   - in a scripting build, the interpreter variables `PDK_ROOT`, `PDKROOT`, `PDK_PATH`, `PDKPATH`.
+   - the interpreter variables `PDK_ROOT`, `PDKROOT`, `PDK_PATH`, `PDKPATH`.
 2. **Directory search.** The search below each root is depth-first, with these rules:
    - The root is level 0. Levels above 10 are not entered.
    - Within a directory, an entry named exactly T is visited first, and the others follow in directory-listing order. `.` and `..` are skipped.
    - A non-directory entry named `T.tech` ends the search with the containing directory as the result. Other directory entries are searched recursively.
    - Symbolic links to directories are not followed where the directory listing reports entry types.
    - The result depends on directory-listing order (see Q-CELL-40).
-3. **Startup script.** If found, and a `T.magicrc` file exists in that directory, it is executed first (scripting build only).
+3. **Startup script.** If found, and a `T.magicrc` file exists in that directory, it is executed first.
 4. **Register the directory.** If found, the directory is appended to the system search path.
 5. **Load.** Whether or not a directory was found, Magic prints `Loading technology T` and loads T by name as a full load, without the readability pre-check (capability `tech-loading-and-scaling`). When no directory was found, the normal technology file search rules apply. On failure Magic prints `Error in loading technology file`.
 6. **open_pdks layout.** If the load succeeded, the found directory contains the substring `libs.tech`, and no startup script was executed, the found path is truncated to end at `libs.ref` (everything after `libs.tech` is discarded and the substring becomes `libs.ref`). Standard-cell discovery is then run on it.
-7. **Hooks.** If the load succeeded, the callbacks registered for `tech load` are run (scripting build).
+7. **Hooks.** If the load succeeded, the callbacks registered for `tech load` are run.
 
 If the technology still differs from T after these steps, the read fails with a message suggesting `tech load`, or `cellname delete` followed by `load -force`.
 

@@ -85,7 +85,7 @@ Compatibility: exact
 - **THEN** `VSS` is preferred
 
 ### Requirement: Global and ground detection
-In the standalone build, a name SHALL be global if its leaf component ends in `!`. In the embedded Tcl build, Magic treats a name as global only if the Tcl array `globals` has an element named after the leaf. Hefesto SHALL use the trailing-`!` rule and treat the Tcl mechanism as informative; see Q-NETLIST-11. A name SHALL be the compatibility-mode ground if it has a single component equal to `GND!` (or, in the Tcl build, equal to the Tcl variable `GND`).
+A name SHALL be global if its leaf component ends in `!`. This is an explicit exception to the rule that Magic's Tcl build is normative (`docs/spec-conventions.md`), recorded in Q-NETLIST-11 and pending D-14. Informative: Magic's Tcl build treats a name as global only if the Tcl array `globals` has an element named after the leaf; its non-Tcl build uses the trailing-`!` rule. A name SHALL be the compatibility-mode ground if it has a single component equal to `GND!`, or equal to the value of the scripting variable `GND` as in Magic's Tcl build (see D-14).
 Compatibility: behavioral
 (Magic ref: extflat/EFname.c:101-170)
 

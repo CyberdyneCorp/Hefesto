@@ -20,7 +20,7 @@ Defines how Hefesto names electrical nodes under selected paint (`getnode`) cons
 | `getnode abort` | Clear the set of abort names. |
 | `getnode abort <name>` | Add `<name>` to the set of abort names (searching stops when a node with that local name is reached). |
 
-Any other form prints `Usage: getnode [abort [str]]`, `   or: getnode alias [on | off]`, `   or: getnode globals [on | off]`, `   or: getnode fast`. The forms that query names require the cursor in a layout window (`Put the cursor in a layout window`). If the selection contains no paint: `You must select paint (not a cell) to use getnode.`. Output: one line `node name : %s` per node (`short node name : %s` for `fast`); in scripting builds the names are returned as a list instead. Nodes are listed in reverse order of discovery (most recently found first); a name is listed once (positional `@=` names are never de-duplicated).
+Any other form prints `Usage: getnode [abort [str]]`, `   or: getnode alias [on | off]`, `   or: getnode globals [on | off]`, `   or: getnode fast`. The forms that query names require the cursor in a layout window (`Put the cursor in a layout window`). If the selection contains no paint: `You must select paint (not a cell) to use getnode.`. Output: the names are returned as a list (informative: Magic's non-Tcl build prints one line `node name : %s` per node, `short node name : %s` for `fast`). Nodes are listed in reverse order of discovery (most recently found first); a name is listed once (positional `@=` names are never de-duplicated).
 
 Compatibility: behavioral
 (Magic ref: commands/CmdFI.c:1152-1270, sim/SimSelect.c:734-826)

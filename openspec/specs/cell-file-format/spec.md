@@ -717,7 +717,7 @@ Compatibility: exact
 - `<styles>` is the comma-joined list of the element's display-style long names.
 - Flags are joined with `,` and preceded by one space.
 
-**Order.** Magic writes elements in its element hash-table enumeration order, which is arbitrary (see Q-CELL-11). Hefesto SHALL write them in a deterministic order, sorted by element name with the natural comparator (see "Natural ordering of names"), and golden comparison SHALL canonicalize element order before comparing (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
+**Order.** Magic writes elements in its element hash-table enumeration order (see Q-CELL-11). That order never affects any result, because the reader does not depend on it, so it is an exception to the rule that name-keyed hash order is reproduced (capability `hefesto-output-determinism`). Hefesto SHALL write them in a deterministic order, sorted by element name with the natural comparator (see "Natural ordering of names"), and golden comparison SHALL canonicalize element order before comparing (decision X-1, `docs/decisions/cross-cutting.md#X-1`).
 
 (Magic ref: database/DBio.c:4909-4916, dbwind/DBWelement.c:178-272)
 

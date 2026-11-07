@@ -15,6 +15,7 @@ These entries cover the capabilities `ext-flattening-read`, `ext-flattening-hier
 - Evidence: utils/hash.c:218-262, utils/hash.c:405-470, utils/hash.c:492-530, extflat/EFdef.c:256-272
 - Options: replicate (emulate the table exactly) | fix (sort by key)
 - Recommendation: replicate. It is required for line-by-line identical netlists. Encapsulate it as a `MagicOrderedTable` utility. Bytes ≥ 0x80 in keys hash differently on signed-char and unsigned-char platforms in Magic; Hefesto should use signed char, as on x86-64 Linux, and record this.
+- Resolution: decided by X-1 as amended (2026-11-06, D-1): replicate. The table is defined once in capability `hefesto-output-determinism` (requirement "Magic string hash table"), with signed key bytes.
 
 ### Q-NETLIST-3: `ext2spice rthresh` has no effect
 - Kind: doc-mismatch

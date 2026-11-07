@@ -4,7 +4,8 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
 
 ## X-1: How to compare output with Magic when its record order is arbitrary
 
-- **Status:** decided (2026-11-05). Option: **hybrid**.
+- **Status:** decided (2026-11-05). Option: **hybrid**. Amended 2026-11-06 (D-1, option a).
+- **Amendment (2026-11-06, D-1):** the original text sent every hash-table order to a sorted, canonicalized order. A sort changes results where Magic's hash order decides them, such as the LEF layer-map winner and implicit SPICE port numbering. Name-keyed hash order is therefore now reproduced exactly, and the sort is kept only for memory-address order, platform-dependent sorts and name-keyed records whose order never affects results. The bullet "Hash-table or memory-address order" below replaces the original one.
 - **Decision:** the rule depends on where Magic's order comes from.
   - **Tile order.** Hefesto SHALL reproduce Magic's canonical maximal-horizontal-strip decomposition and its traversal order, as specified in `layout-geometry-model`. Output whose order comes from tiles SHALL therefore be byte-identical:
     - `.mag` rects
@@ -12,19 +13,24 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
     - LEF RECTs
     - DEF route segments
     - `drc find` order
-  - **Hash-table or memory-address order.** Hefesto SHALL write these records in a documented deterministic order (sorted by name, then by coordinates). Golden comparison SHALL canonicalize both outputs before comparing. Affected records:
-    - `.ext` cap and merge records
-    - SPICE device, instance and port order wherever Magic uses hash order
-    - LEF `-tech` layer blocks
-    - DEF vias and rules
-    - `.mag` elements
-    - coupling-capacitor terminal order
+  - **Name-keyed hash-table order.** Where Magic's order comes from a string-keyed hash table, its order depends only on the key names and the insertion history, so it is deterministic. Hefesto SHALL reproduce that order exactly, and the output SHALL be byte-identical. The table algorithm (hash, buckets, growth, iteration, signed key bytes) is defined once, in `hefesto-output-determinism` requirement "Magic string hash table". Affected records:
+    - SPICE and other netlist device, subcircuit, instance and flatten order, and implicit port numbering (`ext-flattening-hierarchy`, `netlist-spice-options`)
+    - LEF `-tech` layer blocks, PROPERTYDEFINITIONS, SITE blocks and the layer-map winner (`lef-write`)
+    - DEF vias, non-default rules and blockages (`def-write`)
+    - `.ext` subcell and array `merge` groups (`extract-file-format`)
+    - `.net` netlist files (`netlist-window`)
+  - **Memory-address order, and name-keyed order that never affects results.** Hefesto SHALL write these records in a documented deterministic order (sorted by name, then by coordinates). Golden comparison SHALL canonicalize both outputs before comparing. Affected records:
+    - `.ext` `cap` records and coupling-capacitor terminal order (address-keyed)
+    - flat coupling capacitors and resistor networks (Q-NETLIST-1, -26, -45)
+    - `drc count` cell order (address-keyed)
+    - `.mag` elements (Q-CELL-11): name-keyed, but the reader does not depend on their order, so the sort is kept
+    - cells in crash-backup and archive files (Q-CELL-28, D-9): name-keyed, but the reader does not depend on their order, so the sort is kept
   - **Platform-dependent sorts in Magic.** Hefesto SHALL use one deterministic ordering on all platforms.
-- **Refs:** Q-LEFDEF-30, Q-LEFDEF-108, Q-MASK-14/204/218/323/336/408, Q-CELL-10/11, Q-EXTRACT-5/7, NETLIST Q-1.
+- **Refs:** Q-LEFDEF-30, Q-LEFDEF-92, Q-LEFDEF-108, Q-LEFDEF-116, Q-MASK-14/204/218/323/336/408, Q-CELL-10/11/28, Q-EXTRACT-5/7, Q-NETLIST-1/2/26/45, Q-LEGACY-70, D-1.
 
 ## X-2: Replicate or fix Magic's bugs
 
-- **Status:** decided (2026-11-05). Option: **tiered**.
+- **Status:** decided (2026-11-05). Option: **tiered**. Amended 2026-11-06 (D-2).
 - **Decision:** Hefesto handles suspected Magic bugs in three tiers:
   1. **Always fix:**
      - crashes
@@ -41,6 +47,8 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
      - parse-argument quirks that change results
 
      With the setting OFF, Hefesto uses the corrected behavior and documents each difference.
+
+     **Amendment (2026-11-06, D-2):** the same tier applies to netgen quirks, behind a separate `netgen-compat` setting (default ON), so that LVS fidelity can be toggled without changing layout output. `hefesto-magic-compat-mode` owns the set of reference-tool compatibility settings (`magic-compat`, `netgen-compat`). Whether xschem gets an `xschem-compat` setting is open (D-21).
   3. **Case by case:** ambiguous items. Each open-question entry records its resolution as `Resolution: fix | compat | platform | n/a`.
 - **Spec impact:** requirements that cite a tier-1 open question describe the corrected behavior once that question is resolved.
 

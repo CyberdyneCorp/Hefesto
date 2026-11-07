@@ -210,7 +210,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:6473
 - Options: replicate the hash | fix (sorted by name, or parents before children)
 - Recommendation: Sort by name with the natural comparator. The reader is order-independent.
-- Status: X-1 applied provisionally by audit G1 (sort by name; canonicalized comparison). Q-CELL-28 is not in X-1's ref list, so this is pending confirmation (docs/decisions/audit/DECISIONS.md).
+- Status: confirmed by X-1 as amended (2026-11-06, D-1): backup and archive cell order is name-keyed but never affects results, so it keeps the sort by name with the natural comparator. The tie-break question remains open in D-9.
 
 ### Q-CELL-29: Wrong file name in the explicit crash-save message
 - Kind: bug

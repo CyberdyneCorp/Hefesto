@@ -133,7 +133,7 @@ When dispatch fails through the script namespace, the diagnostic messages SHALL 
 
 A command that runs but rejects its arguments or fails internally (usage errors, missing cells, unreadable files) SHALL print its diagnostic on the error stream and SHALL return ok status. Its result is whatever it set, often empty. Two documented exceptions return ok status but set an explanatory result string: `tech load` with an unreadable file (result `Technology file does not exist or is not readable\n`) and `tech load` with a parse failure (result `Error in loading technology file\n`). Commands invoked through a window path (see "Window-directed commands") SHALL NOT return error status for dispatch failures. They print the diagnostic instead.
 
-Scripts MUST therefore detect failures by inspecting results, not by catching errors. Hefesto SHALL reproduce this ok-status convention in compatibility mode. See Q-SCRIPT-2.
+Scripts MUST therefore detect failures by inspecting results, not by catching errors. Hefesto SHALL reproduce this ok-status convention by default. A script can opt in to script strict mode, in which such failures raise Tcl errors, through the project setting `script-strict` or the per-interpreter command `hefesto::strict on|off` (capability `hefesto-diagnostics`, Requirement "Script strict mode switch"). See Q-SCRIPT-2.
 Compatibility: exact
 
 (Magic ref: tcltk/tclmagic.c:496-528,538-578, textio/txCommands.c:1491-1575, textio/txcommands.h:38-39, windows/windSend.c:86-287, commands/CmdTZ.c:430-450)

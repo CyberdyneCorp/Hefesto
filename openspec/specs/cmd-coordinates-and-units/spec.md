@@ -23,7 +23,7 @@ Every keyword argument of an editing command (options, sub-commands, unit names,
 3. An argument that is a prefix of two or more entries (and not an exact match of any entry) SHALL be ambiguous.
 4. An argument that matches no entry SHALL be unrecognized.
 
-The empty string is a prefix of every entry, so it is ambiguous whenever the table has more than one entry. Only the leading word of each table entry (up to the first space) takes part in matching. In the scripting build, a leading `::magic::` or `magic::` qualifier SHALL be ignored before matching. Commands whose description says an argument is compared "exactly" (for example `pick`, `erase`, `cursor`) do not use this rule. This is the same table lookup that capability `ui-command-dispatch` requirement "Command name lookup" specifies for command names.
+The empty string is a prefix of every entry, so it is ambiguous whenever the table has more than one entry. Only the leading word of each table entry (up to the first space) takes part in matching. A leading `::magic::` or `magic::` qualifier SHALL be ignored before matching. Commands whose description says an argument is compared "exactly" (for example `pick`, `erase`, `cursor`) do not use this rule. This is the same table lookup that capability `ui-command-dispatch` requirement "Command name lookup" specifies for command names.
 
 Compatibility: exact
 

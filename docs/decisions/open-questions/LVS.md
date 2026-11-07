@@ -4,7 +4,7 @@ These entries cover the capabilities `lvs-netlist-input`, `lvs-setup-file`, `lvs
 
 The reference is netgen, not Magic: `RTimothyEdwards/netgen` @ `93dcda14d36349d0b0ca63168d3cbbab20fe2ece` (version 1.5.327). The "Magic behavior" field below therefore describes **netgen behavior**, and "Evidence" cites netgen sources.
 
-Decision X-2 (tiered bug handling) applies to these entries, with the compatibility switch chosen in Q-LVS-28. Contributors resolving these entries SHALL follow the clean-room rule in capability `hefesto-licensing`.
+Decision X-2 (tiered bug handling) applies to these entries, behind the `netgen-compat` setting chosen in Q-LVS-28 (capability `hefesto-magic-compat-mode`). Contributors resolving these entries SHALL follow the clean-room rule in capability `hefesto-licensing`.
 
 ### Q-LVS-1: Legacy `.ext` reader drops modern device records
 - Kind: doc-mismatch
@@ -60,7 +60,7 @@ Decision X-2 (tiered bug handling) applies to these entries, with the compatibil
   The sort routine divides by |a+b|, with the same edge cases.
 - Evidence: base/netcmp.c:5817-5835, base/netcmp.c:4266-4280, base/netcmp.c:5090-5100
 - Options: replicate | fix (use |a−b| / max(|a|,|b|), with 0 = 0)
-- Recommendation: replicate behind the compatibility switch (it changes results). Cover with golden case NG-PROP-07.
+- Recommendation: replicate behind the `netgen-compat` setting (it changes results). Cover with golden case NG-PROP-07.
 
 ### Q-LVS-8: Inconsistent sort comparators
 - Kind: bug
@@ -74,7 +74,7 @@ Decision X-2 (tiered bug handling) applies to these entries, with the compatibil
 - Magic behavior: only the first declared pin permutation produces an alternate parallel signature, so devices with several permutable pairs may not merge. If the pin names are not found on an instance, uninitialized pointers are used.
 - Evidence: base/netgen.c:3335-3384
 - Options: replicate | fix (generate signatures for all permutation-equivalent pin orders)
-- Recommendation: replicate the single pair behind the compatibility switch, because merging more changes the device counts that are reported. Fix the uninitialized use (tier 1).
+- Recommendation: replicate the single pair behind the `netgen-compat` setting, because merging more changes the device counts that are reported. Fix the uninitialized use (tier 1).
 
 ### Q-LVS-10: Property comparison failure is reported as a property error
 - Kind: ambiguity
@@ -156,7 +156,7 @@ Decision X-2 (tiered bug handling) applies to these entries, with the compatibil
 - Magic behavior: `verify only` reports `Circuits match with <k> symmetries.` to the console only. If symmetries survive resolution, `comp.out` ends with `Final result: ` and no verdict.
 - Evidence: tcltk/tclnetgen.c:2697-2701, tcltk/netgen.tcl.in:705-715
 - Options: replicate | fix (also log it)
-- Recommendation: replicate behind the compatibility switch. The structured result always carries the status.
+- Recommendation: replicate behind the `netgen-compat` setting. The structured result always carries the status.
 
 ### Q-LVS-21: Extra `.` line after a unique match
 - Kind: quirk
@@ -184,7 +184,7 @@ Decision X-2 (tiered bug handling) applies to these entries, with the compatibil
 - Magic behavior: the size-1-array pin-name equivalence is meant for placeholder cells. Its test treats circuit 2 as a placeholder whenever it has *any* flag set, so the relaxation applies far more often than intended.
 - Evidence: base/netcmp.c:7935
 - Options: replicate | fix (test the placeholder flag)
-- Recommendation: replicate behind the compatibility switch, because it changes pin pairing results. Measure with golden case NG-PIN-06.
+- Recommendation: replicate behind the `netgen-compat` setting, because it changes pin pairing results. Measure with golden case NG-PIN-06.
 
 ### Q-LVS-25: Orphan-net summary printed with missing arguments
 - Kind: bug
@@ -213,6 +213,7 @@ Decision X-2 (tiered bug handling) applies to these entries, with the compatibil
 - Evidence: decision X-2; capability `hefesto-magic-compat-mode`
 - Options: reuse `magic-compat` | add a separate `netgen-compat` setting (default ON)
 - Recommendation: a separate `netgen-compat` setting, so LVS fidelity can be toggled independently of layout output.
+- Resolution: decided by D-2 (2026-11-06): a separate `netgen-compat` project setting, default ON, defined in capability `hefesto-magic-compat-mode` next to `magic-compat` (X-2 amendment).
 
 ### Q-LVS-29: `equate classes -unique` uses a random suffix
 - Kind: quirk

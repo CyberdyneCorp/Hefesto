@@ -17,7 +17,7 @@ Result formats are specified in `scripting-api`. The full startup-file search or
 ## Requirements
 
 ### Requirement: Script-host startup sequence
-In the scripting build, startup SHALL proceed in this order:
+Startup SHALL proceed in this order:
 1. Load the engine extension.
 2. Define the batch-mode console stubs and the `irsim`/`xcircuit`/`netgen`/`echo` helpers.
 3. Parse the command line (next requirement).
