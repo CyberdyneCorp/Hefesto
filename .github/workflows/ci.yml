@@ -112,9 +112,11 @@ jobs:
           # Linux aarch64 with GCC and Clang (roadmap M0; unsigned `char` matters for the signed-byte hash rule).
           - { name: linux-arm64-gcc, os: ubuntu-24.04-arm, cc: gcc, cxx: g++, preset: ci-linux }
           - { name: linux-arm64-clang, os: ubuntu-24.04-arm, cc: clang-18, cxx: clang++-18, preset: ci-linux }
-          # Oldest supported Apple Clang (Xcode 15) and the newest runner image. The newest also builds the
+          # Oldest Apple Clang available on hosted runners and the newest runner image. GitHub retired the
+          # macos-14 image, and macos-15 has no Xcode 15, so the oldest leg selects the oldest Xcode installed
+          # on macos-15 (deviation from hefesto-platform-targets "Supported toolchains", design D12). The newest also builds the
           # desktop shell against MoltenVK (the macOS platform of the Raven go/no-go).
-          - { name: macos-arm64-xcode-15, os: macos-14, cc: clang, cxx: clang++, preset: ci-macos, xcode: "15.4", ipados: true }
+          - { name: macos-arm64-xcode-oldest, os: macos-15, cc: clang, cxx: clang++, preset: ci-macos, xcode: oldest, ipados: true }
           - name: macos-arm64-latest
             os: macos-latest
             cc: clang
@@ -128,9 +130,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Select Xcode ${{ matrix.xcode }}
-        if: matrix.xcode
-        run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
+      - name: Select the oldest installed Xcode
+        if: matrix.xcode == 'oldest'
+        run: |
+          app="$(ls -d /Applications/Xcode_*.app | sort -V | head -n 1)"
+          sudo xcode-select -s "$app"
+          echo "::notice::Selected $app"
+          clang++ --version
 
       - uses: actions/setup-python@v5
         with:

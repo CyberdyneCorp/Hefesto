@@ -62,8 +62,11 @@ inline constexpr std::size_t kMagicMaxTableSize = std::size_t{1} << 30U;
 
 /// bucket = (((h * 1103515245 + 12345) mod 2^64) >> shift) & (size - 1).
 [[nodiscard]] constexpr std::size_t magic_bucket(std::uint64_t h, unsigned shift, std::size_t size) noexcept {
+  static_assert(sizeof(std::size_t) == sizeof(std::uint64_t), "Hefesto targets 64-bit platforms only");
   const std::uint64_t mixed = h * 1103515245ULL + 12345ULL;
-  return static_cast<std::size_t>((mixed >> shift) & static_cast<std::uint64_t>(size - 1));
+  const std::uint64_t mask = size - 1;
+  const std::size_t bucket = (mixed >> shift) & mask;
+  return bucket;
 }
 
 /// Key traits for string keys hashed with magic_string_hash.

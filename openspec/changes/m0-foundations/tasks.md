@@ -39,7 +39,7 @@
 - [x] 4.2 Define the case layout (`case.toml`, `input/`, `expected/`, `provenance.json`) and implement `tools/golden/capture.py`; verify it validates a case directory and produces provenance
 - [x] 4.3 Implement the golden comparator (`tools/golden/compare/`) with the `bytes` comparator (with field masking) and the canonicalizer interface; verify Python unit tests cover masking and the "Equivalent .ext despite order" scenario — delivered as the `tools/golden/compare/` package (`python3 -m compare`)
 - [x] 4.4 Implement `tools/golden/replay.py` and `tools/golden/CMakeLists.txt` (CTest per captured case, label `golden`; comparator tests, label `golden-tools`); verify `ctest -L golden-tools` passes
-- [ ] 4.5 Capture and commit one end-to-end case per design D8 and verify `ctest -L golden` passes on macOS, with the choice recorded in the case's `case.toml` — CORE-HASH-01 committed and `ctest -L golden` passes on macOS, but `expected/` is still provisional (spec-model runner, `reference_captured: false`); re-capture with the reference harness to close
+- [x] 4.5 Capture and commit one end-to-end case per design D8 and verify `ctest -L golden` passes on macOS, with the choice recorded in the case's `case.toml` — CORE-HASH-01 captured from the reference harness (Magic `utils/hash.c` @ fc5daa9e, local runner, `reference_captured: true`); `ctest -L golden` passes on macOS
 
 ## 5. CI, licensing & traceability
 

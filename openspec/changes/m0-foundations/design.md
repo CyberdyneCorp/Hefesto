@@ -199,7 +199,7 @@ M0 implements existing requirements; none of their observable behavior changes. 
 | linux-x64-clang-latest | ubuntu-24.04 | newest Clang | `ci-linux-desktop` | Vulkan (Mesa lavapipe) + X11/Wayland dev packages; all tests under Xvfb, unit tests again under a headless Weston, and the window smoke test (`hefesto --smoke-frames`, starts the app through Raven and checks the window system) under each |
 | linux-arm64-gcc | ubuntu-24.04-arm | GCC | `ci-linux` | |
 | linux-arm64-clang | ubuntu-24.04-arm | Clang 18 | `ci-linux` | roadmap: Linux aarch64 with GCC and Clang |
-| macos-arm64-xcode-15 | macos-14 (Xcode 15) | Apple Clang (oldest) | `ci-macos` | plus `ipados` configure and iOS link probe |
+| macos-arm64-xcode-oldest | macos-15 (oldest installed Xcode; GitHub retired macos-14, so Xcode 15 is no longer available on hosted runners — deviation from "Supported toolchains") | Apple Clang (oldest available) | `ci-macos` | plus `ipados` configure and iOS link probe |
 | macos-arm64-latest | latest macOS | Apple Clang | `ci-macos-desktop` | Homebrew MoltenVK + Vulkan loader/headers; desktop shell built against MoltenVK; plus `ipados` and iOS link probe |
 | asan | ubuntu-24.04 | Clang | `linux-asan` | |
 | fuzz | ubuntu-24.04 | Clang | `linux-fuzz` | 60 s per target |

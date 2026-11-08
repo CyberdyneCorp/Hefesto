@@ -118,7 +118,8 @@ class ReplayTest(unittest.TestCase):
         code, summary = self.run_replay("")
         self.assertEqual(code, 0)
         self.assertEqual(summary["totals"]["pass"], 1)
-        self.assertTrue(summary["cases"][0]["provisional_reference"])
+        prov = json.loads((CASE / "expected" / "provenance.json").read_text(encoding="utf-8"))
+        self.assertEqual(summary["cases"][0]["provisional_reference"], not prov["reference_captured"])
 
     def test_fail_on_wrong_order(self):
         code, summary = self.run_replay("wrong")
