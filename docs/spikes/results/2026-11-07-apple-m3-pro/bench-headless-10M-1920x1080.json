@@ -1,0 +1,142 @@
+{
+  "benchmark": "hefesto-canvas",
+  "brute_force": {
+    "device_bytes": 160000000,
+    "meets_target": false,
+    "pan_full_chip": {
+      "cpu": {
+        "frames": 600,
+        "max_ms": 59.513084,
+        "mean_ms": 44.106009588333315,
+        "median_ms": 42.492791000000004,
+        "p95_ms": 54.456251,
+        "p99_ms": 56.653083
+      },
+      "draw_calls_per_frame_max": 8.0,
+      "gpu": {
+        "frames": 600,
+        "max_ms": 59.125125,
+        "mean_ms": 43.697359300000016,
+        "median_ms": 42.083666,
+        "p95_ms": 54.048958999999996,
+        "p99_ms": 56.237458
+      },
+      "instances_per_frame_max": 10000000.0,
+      "instances_per_frame_median": 10000000.0,
+      "meets_target": false,
+      "target_median_ms": 16.7
+    },
+    "upload": {
+      "bytes": 160000000,
+      "gib_per_s": 1.2607579810440988,
+      "seconds": 0.118192083
+    },
+    "zoom_sweep": {
+      "cpu": {
+        "frames": 240,
+        "max_ms": 58.598791,
+        "mean_ms": 32.16246014166668,
+        "median_ms": 29.883001,
+        "p95_ms": 48.221334,
+        "p99_ms": 55.8865
+      },
+      "draw_calls_per_frame_max": 8.0,
+      "gpu": {
+        "frames": 240,
+        "max_ms": 58.169124999999994,
+        "mean_ms": 31.756550149999985,
+        "median_ms": 29.484541999999998,
+        "p95_ms": 47.671040999999995,
+        "p99_ms": 55.488625
+      },
+      "instances_per_frame_max": 10000000.0,
+      "instances_per_frame_median": 10000000.0,
+      "meets_target": false,
+      "target_median_ms": 16.7
+    }
+  },
+  "dataset": {
+    "fingerprint": 9488214721081088727,
+    "generate_s": 0.122658792,
+    "index_build_s": 0.819671708,
+    "index_instance_bytes": 311760816,
+    "index_lod_cells": 9485051,
+    "instance_bytes": 160000000,
+    "layers": 8,
+    "rectangles": 10000000,
+    "scene_build_s": 0.061630166,
+    "seed": 5207645807688568576
+  },
+  "device": {
+    "driver": "vendor 4203, driver 10402",
+    "name": "Apple M3 Pro",
+    "vulkan_api": "1.1.357"
+  },
+  "indexed": {
+    "device_bytes": 311760816,
+    "meets_target": true,
+    "pan_full_chip": {
+      "cpu": {
+        "frames": 600,
+        "max_ms": 9.143793,
+        "mean_ms": 5.455836133333332,
+        "median_ms": 4.934958,
+        "p95_ms": 7.771542,
+        "p99_ms": 8.734959
+      },
+      "draw_calls_per_frame_max": 833.0,
+      "gpu": {
+        "frames": 600,
+        "max_ms": 8.817708,
+        "mean_ms": 5.097842611666669,
+        "median_ms": 4.578666999999999,
+        "p95_ms": 7.442374999999999,
+        "p99_ms": 8.419292
+      },
+      "instances_per_frame_max": 1886871.0,
+      "instances_per_frame_median": 1130951.0,
+      "meets_target": true,
+      "target_median_ms": 16.7
+    },
+    "upload": {
+      "bytes": 311760816,
+      "gib_per_s": 3.766601457427462,
+      "seconds": 0.077085375
+    },
+    "zoom_sweep": {
+      "cpu": {
+        "frames": 240,
+        "max_ms": 14.298709,
+        "mean_ms": 2.164232120833332,
+        "median_ms": 0.731625,
+        "p95_ms": 9.506584,
+        "p99_ms": 13.512417000000001
+      },
+      "draw_calls_per_frame_max": 518.0,
+      "gpu": {
+        "frames": 240,
+        "max_ms": 13.836791999999999,
+        "mean_ms": 1.8756552083333327,
+        "median_ms": 0.452125,
+        "p95_ms": 9.189499999999999,
+        "p99_ms": 13.174959
+      },
+      "instances_per_frame_max": 3736535.0,
+      "instances_per_frame_median": 110151.0,
+      "meets_target": true,
+      "target_median_ms": 16.7
+    }
+  },
+  "meets_target": true,
+  "memory": {
+    "device_local_budget_bytes": 30150672384,
+    "device_local_usage_bytes": 321486848,
+    "peak_rss_bytes": 1414103040
+  },
+  "mode": "headless-offscreen",
+  "spec": "hefesto-performance: Interactive frame rate",
+  "viewport": {
+    "height": 1080,
+    "width": 1920
+  }
+}

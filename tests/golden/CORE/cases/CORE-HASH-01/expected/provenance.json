@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case": "CORE-HASH-01",
+  "area": "CORE",
+  "tool": "magic-hash-harness",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "local",
+  "reference_captured": true,
+  "compiler_command": [
+    "cc",
+    "-std=gnu99",
+    "-O1",
+    "-fsigned-char",
+    "-w",
+    "-DSUPPORT_DIRECT_MALLOC"
+  ],
+  "command": [
+    "magic-hash-harness"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-08T02:47:53Z",
+  "outputs": {
+    "stdout.txt": "fd7eb3997cb8c41707372c30c3811d338fe688b757fd9a182a8f4db61e96f6db"
+  }
+}

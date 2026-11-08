@@ -1,0 +1,207 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+
+#include "hefesto/cmd/builtins.hpp"
+
+#include <charconv>
+#include <optional>
+#include <string>
+#include <utility>
+
+#include "hefesto/cmd/context.hpp"
+#include "hefesto/diag/codes.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
+#include "hefesto/version.hpp"
+
+namespace hefesto::cmd {
+
+namespace {
+
+namespace codes = diag::codes;
+
+CommandResult usage(std::string_view synopsis) {
+  return CommandResult::failure(diag::make(codes::kCmdUsage, "usage: " + std::string{synopsis}));
+}
+
+CommandResult from_status(const diag::Status& status) {
+  return status.ok() ? CommandResult::success() : CommandResult::failure(status.error());
+}
+
+// --- help -----------------------------------------------------------------
+
+constexpr std::string_view kHelpSynopsis = "help ?command?";
+
+CommandResult help_all(const CommandRegistry& registry) {
+  std::string text;
+  for (const auto& name : registry.names()) {
+    if (!text.empty()) {
+      text += '\n';
+    }
+    text += registry.find(name)->synopsis;
+  }
+  return CommandResult::success(std::move(text));
+}
+
+CommandResult help(CommandContext& ctx, const Invocation& inv) {
+  if (inv.args.empty()) {
+    return help_all(ctx.registry());
+  }
+  if (inv.args.size() != 1) {
+    return usage(kHelpSynopsis);
+  }
+  const CommandSpec* spec = ctx.registry().find(inv.args[0]);
+  if (spec == nullptr) {
+    return CommandResult::failure(diag::make(codes::kCmdUsage, "help: no command named \"" + inv.args[0] + "\""));
+  }
+  return CommandResult::success(spec->synopsis + "\n    " + spec->help);
+}
+
+// --- echo, version, quit ----------------------------------------------------
+
+CommandResult echo(CommandContext& /*ctx*/, const Invocation& inv) {
+  std::string text;
+  for (const auto& arg : inv.args) {
+    if (!text.empty()) {
+      text += ' ';
+    }
+    text += arg;
+  }
+  return CommandResult::success(std::move(text));
+}
+
+CommandResult version(CommandContext& /*ctx*/, const Invocation& inv) {
+  if (!inv.args.empty()) {
+    return usage("version");
+  }
+  return CommandResult::success(std::string{hefesto::version()});
+}
+
+CommandResult quit(CommandContext& ctx, const Invocation& inv) {
+  if (!inv.args.empty()) {
+    return usage("quit");
+  }
+  ctx.session().quit_requested = true;
+  return CommandResult::success();
+}
+
+// --- setting ----------------------------------------------------------------
+
+constexpr std::string_view kSettingSynopsis = "setting ?get name | set name on|off?";
+
+CommandResult setting_list(const settings::ProjectSettings& project) {
+  Value::List pairs;
+  for (const auto name : settings::setting_names()) {
+    pairs.emplace_back(std::string{name});
+    pairs.emplace_back(settings::get(project, name).value() ? "on" : "off");
+  }
+  return CommandResult::success(std::move(pairs));
+}
+
+CommandResult setting(CommandContext& ctx, const Invocation& inv) {
+  const auto& args = inv.args;
+  if (args.empty()) {
+    return setting_list(ctx.project());
+  }
+  if (args[0] == "get" && args.size() == 2) {
+    const auto value = settings::get(ctx.project(), args[1]);
+    return value ? CommandResult::success(value.value() ? "on" : "off") : CommandResult::failure(value.error());
+  }
+  if (args[0] == "set" && args.size() == 3) {
+    return from_status(settings::set(ctx.project(), args[1], args[2]));
+  }
+  return usage(kSettingSynopsis);
+}
+
+// --- hefesto::strict ---------------------------------------------------------
+
+CommandResult strict(CommandContext& ctx, const Invocation& inv) {
+  if (inv.args.empty()) {
+    return CommandResult::success(ctx.session().strict ? 1 : 0);
+  }
+  if (inv.args.size() == 1 && (inv.args[0] == "on" || inv.args[0] == "off")) {
+    ctx.session().strict = inv.args[0] == "on";
+    return CommandResult::success();
+  }
+  // "Any other argument SHALL raise a Tcl error with a usage message", in both modes.
+  return CommandResult::raised(diag::make(codes::kCmdUsage, "usage: hefesto::strict ?on|off?"));
+}
+
+// --- hefesto::debug::hashorder (M0 only) ------------------------------------
+
+constexpr std::string_view kHashOrderSynopsis = "hefesto::debug::hashorder size ?+key|-key ...?";
+
+std::optional<std::size_t> parse_size(std::string_view text) {
+  std::size_t value = 0;
+  const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+  if (ec != std::errc{} || end != text.data() + text.size() || value == 0 || value > (std::size_t{1} << 20)) {
+    return std::nullopt;
+  }
+  return value;
+}
+
+// Applies "+key" (insert) or "-key" (remove); false for any other form.
+bool apply_hash_op(util::MagicHashTable<int>& table, std::string_view op) {
+  if (op.size() < 2 || (op.front() != '+' && op.front() != '-')) {
+    return false;
+  }
+  const std::string key{op.substr(1)};
+  if (op.front() == '+') {
+    table.find_or_insert(key);
+  } else {
+    table.remove(key);
+  }
+  return true;
+}
+
+CommandResult hash_order(CommandContext& /*ctx*/, const Invocation& inv) {
+  const auto size = inv.args.empty() ? std::nullopt : parse_size(inv.args[0]);
+  if (!size) {
+    return usage(kHashOrderSynopsis);
+  }
+  util::MagicHashTable<int> table(*size);
+  for (std::size_t i = 1; i < inv.args.size(); ++i) {
+    if (!apply_hash_op(table, inv.args[i])) {
+      return usage(kHashOrderSynopsis);
+    }
+  }
+  std::string order;
+  table.for_each([&](const auto& entry) {
+    if (!order.empty()) {
+      order += ' ';
+    }
+    order += entry.key;
+  });
+  return CommandResult::success(std::move(order));
+}
+
+}  // namespace
+
+bool register_builtins(CommandRegistry& registry) {
+  CommandSpec specs[] = {
+      {"help", std::string{kHelpSynopsis}, "Lists every command, or shows the synopsis and help of one command.",
+       help},
+      {"echo", "echo ?word ...?", "Returns its arguments joined by single spaces.", echo},
+      {"version", "version", "Returns the Hefesto version as major.minor.patch.", version},
+      {"quit", "quit", "Stops the running script and ends the session.", quit},
+      {"setting", std::string{kSettingSynopsis},
+       "Lists the project settings (magic-compat, netgen-compat, script-strict), reads one, or changes one. "
+       "Each setting is independent of the others.",
+       setting},
+      {"hefesto::strict", "hefesto::strict ?on|off?",
+       "Without an argument returns 1 if script strict mode is in effect for this interpreter and 0 otherwise; "
+       "on or off sets it for this interpreter only.",
+       strict},
+      {"hefesto::debug::hashorder", std::string{kHashOrderSynopsis},
+       "M0-only debug command for golden case CORE-HASH-01: builds a Magic string hash table of the requested "
+       "size, applies each +key (insert) and -key (remove) in order, and returns the keys in iteration order. "
+       "Removed when layout commands can exercise hash order.",
+       hash_order},
+  };
+  bool all_added = true;
+  for (auto& spec : specs) {
+    all_added = !registry.add(std::move(spec)).has_value() && all_added;
+  }
+  return all_added;
+}
+
+}  // namespace hefesto::cmd

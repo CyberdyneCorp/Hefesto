@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
 """Check that a milestone's open questions are resolved before its work starts.
 
 Roadmap principle 2 requires every open question cited by a milestone's
@@ -69,27 +71,40 @@ def cited_ids(capability: str) -> set[str]:
     return set(QID.findall(spec.read_text())) if spec.exists() else set()
 
 
+def classify_citations(capabilities: list[str], entries: dict[str, tuple[str, bool]]
+                       ) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """Map each unresolved and each missing cited entry to the capabilities citing it."""
+    unresolved: dict[str, list[str]] = {}
+    missing: dict[str, list[str]] = {}
+    for capability in capabilities:
+        for qid in sorted(cited_ids(capability)):
+            if qid not in entries:
+                missing.setdefault(qid, []).append(capability)
+            elif not entries[qid][1]:
+                unresolved.setdefault(qid, []).append(capability)
+    return unresolved, missing
+
+
+def report_milestone(milestone: str, entries: dict[str, tuple[str, bool]],
+                     unresolved: dict[str, list[str]], missing: dict[str, list[str]]) -> int:
+    """Print one milestone's status and blocking entries; return their number."""
+    count = len(unresolved) + len(missing)
+    status = "ready" if count == 0 else f"{count} blocking"
+    print(f"{milestone}: {status}")
+    for qid in sorted(unresolved, key=sort_key):
+        print(f"  unresolved {qid} ({entries[qid][0]}.md) cited by {', '.join(unresolved[qid])}")
+    for qid in sorted(missing, key=sort_key):
+        print(f"  missing    {qid} cited by {', '.join(missing[qid])}")
+    return count
+
+
 def check_milestones(milestones: list[str], entries: dict[str, tuple[str, bool]]) -> int:
     """Report unresolved or missing cited entries; return the number of problems."""
     assignments = milestone_assignments(ROADMAP.read_text())
     problems = 0
     for milestone in milestones:
-        unresolved: dict[str, list[str]] = {}
-        missing: dict[str, list[str]] = {}
-        for capability in assignments.get(milestone, []):
-            for qid in sorted(cited_ids(capability)):
-                if qid not in entries:
-                    missing.setdefault(qid, []).append(capability)
-                elif not entries[qid][1]:
-                    unresolved.setdefault(qid, []).append(capability)
-        count = len(unresolved) + len(missing)
-        status = "ready" if count == 0 else f"{count} blocking"
-        print(f"{milestone}: {status}")
-        for qid in sorted(unresolved, key=sort_key):
-            print(f"  unresolved {qid} ({entries[qid][0]}.md) cited by {', '.join(unresolved[qid])}")
-        for qid in sorted(missing, key=sort_key):
-            print(f"  missing    {qid} cited by {', '.join(missing[qid])}")
-        problems += count
+        unresolved, missing = classify_citations(assignments.get(milestone, []), entries)
+        problems += report_milestone(milestone, entries, unresolved, missing)
     return problems
 
 

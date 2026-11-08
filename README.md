@@ -7,9 +7,10 @@
 
 It is **data-compatible with [Magic VLSI](https://github.com/RTimothyEdwards/magic)**. Hefesto reads and writes the same files as Magic, and produces the same DRC results, GDS and netlists. So the open PDKs, sky130, gf180mcu and IHP sg13g2, work unchanged.
 
-> **Status: specification complete for the first milestones, development starting.**
+> **Status: specification complete for the first milestones; M0 (foundations) in progress.**
 > - **Specs:** 169 capabilities and 1,979 requirements. Milestones M0 and M1 pass the readiness gate.
-> - **Code:** none yet.
+> - **Code:** M0 skeleton. The headless core (command API, structured diagnostics, platform services, Magic string hash table) and `hefesto-cli` build and pass their tests. The desktop shell over Raven and the Vulkan canvas spike run on macOS, and the golden-test tooling has one end-to-end case. There is no layout database or file I/O yet (M1). Build instructions: [`docs/building.md`](docs/building.md).
+> - **Raven go/no-go:** provisional "GO, conditional"; see [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md).
 > - **Screenshots:** the images below are design mockups, not running software.
 
 ## Features
@@ -121,7 +122,7 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 
 | Milestone | Theme | Release |
 |---|---|---|
-| M0 | Foundations, Raven go/no-go, golden capture from Magic | |
+| M0 | Foundations, Raven go/no-go, golden capture from Magic (in progress) | |
 | M1 | Core model, tech and `.mag` files, PDK manager, 2D viewer | |
 | M2 | Interactive editing and design system | |
 | M3 | Design rule checking | |
@@ -154,7 +155,9 @@ Details, gates and the de-risking schedule are in [`docs/roadmap.md`](docs/roadm
 - [`docs/glossary.md`](docs/glossary.md) defines the shared terms.
 - [`docs/reference/magic/`](docs/reference/magic/) is a non-normative overview of Magic 8.3.694.
 
-Checks that CI runs on every push:
+Building, testing and contributing: [`docs/building.md`](docs/building.md) and [`docs/contributing/README.md`](docs/contributing/README.md).
+
+Spec checks that CI runs on every push:
 
 ```sh
 openspec validate --all --strict                          # specs are well-formed

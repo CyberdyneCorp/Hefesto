@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
 """Check that every OpenSpec capability is assigned to exactly one roadmap milestone.
 
 Milestones are the `## M<n>` sections of docs/roadmap.md; a capability is assigned

@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Reference-tool pins for golden capture (capability hefesto-testing-strategy,
+# requirement "Golden compatibility suite"; decision X-6; design D8).
+#
+# This file is the single source of truth. container/Containerfile repeats the
+# values as ARG defaults (Containerfile syntax cannot read TOML); the unit test
+# tests/test_pins.py fails if the two disagree.
+#
+# How each pin was resolved (2026-11-07):
+#   git ls-remote https://github.com/RTimothyEdwards/magic   -> refs/tags/8.3.694^{} = fc5daa9e...
+#   git ls-remote https://github.com/RTimothyEdwards/netgen  -> refs/heads/master    = 93dcda14...
+#   ngspice short SHA 7aa47164 is not a ref tip, so ls-remote cannot expand it:
+#     git clone --bare https://git.code.sf.net/p/ngspice/ngspice ngspice.git
+#     git -C ngspice.git rev-parse 7aa47164            -> 7aa4716494c0...
+#     git -C ngspice.git branch --contains 7aa47164    -> pre-master-48, ga_dev
+#   xschem full SHA is taken from the specs (openspec/specs/*: "xschem @ 4142e6d6f1eb...");
+#     it is not a ref tip either; `git fetch --depth 1 origin <sha>` on GitHub verifies it.
+#   Base image digest: Docker Hub registry API, manifest list digest of the dated tag.
+
+schema = 1
+
+[base_image]
+name = "docker.io/library/debian"
+tag = "trixie-20261020-slim"
+digest = "sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad"
+# APT packages are installed from snapshot.debian.org at this timestamp, so
+# package versions are fixed without listing each version by hand.
+apt_snapshot = "20261020T000000Z"
+
+[tools.magic]
+repo = "https://github.com/RTimothyEdwards/magic"
+version = "8.3.694"
+tag = "8.3.694"
+commit = "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
+
+[tools.netgen]
+repo = "https://github.com/RTimothyEdwards/netgen"
+version = "1.5.327"
+commit = "93dcda14d36349d0b0ca63168d3cbbab20fe2ece"
+# The specs pin netgen by commit. The git tag 1.5.327 points to a different
+# commit (8df5f0d912ee...); the tag is NOT used.
+
+[tools.ngspice]
+repo = "https://git.code.sf.net/p/ngspice/ngspice"
+version = "ngspice-47+ (pre-master-48)"
+branch = "pre-master-48"
+commit = "7aa4716494c01ac1d3120211316e898539a6cb4c"
+# Not on master. pre-master branches are rebased; if the commit disappears
+# upstream, the capture workflow fails loudly at checkout (it verifies the SHA).
+
+[tools.xschem]
+repo = "https://github.com/StefanSchippers/xschem"
+commit = "4142e6d6f1eb5cd0e271bb183f14202af374ce27"
+
+# Magic's own string hash table (utils/hash.c at the Magic pin), compiled into a
+# tiny driver (harness/magic_hash/driver.c). The hashes guard the local capture
+# path, which downloads these three files instead of using the container.
+[harness.magic_hash]
+tool = "magic"
+files = [
+  { path = "utils/hash.c", sha256 = "d4be43d62525b58272d680f001522ec2fff45c98cb053b0edab6f5f6d31cd3bb" },
+  { path = "utils/hash.h", sha256 = "1b90da0dea68791ed2685f0f9b5deab0d281b0a2aec6f610a21391e7c87de794" },
+  { path = "utils/malloc.h", sha256 = "8929ce3c573cdf81a5f4490d40960a131a25311e914b21ef56e68a14450bd09f" },
+]

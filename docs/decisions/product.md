@@ -128,6 +128,7 @@ Open decisions found by the spec audit are listed in `docs/decisions/audit/DECIS
   - Wrap Raven in a thin C++20 UI-shell layer. Raven types SHALL NOT appear outside the shell.
   - Contribute fixes upstream.
   - Re-evaluate Raven at each milestone gate.
+- M0 go/no-go (follow-up): in progress. Provisional recommendation "GO, conditional" (2026-11-07), pending the M1 Mac and Linux frame-rate runs, live input, Inter / JetBrains Mono and screen-reader checks. Record: `docs/decisions/raven-go-no-go.md`; the final decision is logged here at the M0 gate.
 
 ## P-12: Built-in schematic editor, xschem-compatible
 

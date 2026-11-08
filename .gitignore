@@ -1,1 +1,29 @@
 .DS_Store
+
+# Build trees (presets write to build/<preset>) and the dependency cache
+/build/
+/build-*/
+/out/
+/.cache/
+CMakeUserPresets.json
+compile_commands.json
+
+# IDEs and tools
+/.idea/
+/.vscode/
+*.swp
+/.clangd/
+
+# Python
+__pycache__/
+*.pyc
+/.venv/
+.pytest_cache/
+
+# Fuzzing and benchmark artifacts
+crash-*
+leak-*
+timeout-*
+oom-*
+/tests/fuzz/corpus-local/
+/bench/results-local/
