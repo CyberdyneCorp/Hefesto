@@ -5,13 +5,19 @@
 # and re-captures every golden case in verify mode: a fresh capture from Magic
 # and the other reference tools must match the committed expected/ outputs.
 # Capability hefesto-testing-strategy, requirement "Golden compatibility suite";
-# design.md D8. Manual and weekly only: the image build takes a long time.
+# design.md D8. Manual, weekly, and on PRs that change the image or harness: the build takes a long time.
 # Verify mode never writes; re-capturing a case is done locally (tools/golden/README.md).
 
 name: Golden capture
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - tools/golden/container/**
+      - tools/golden/harness/**
+      - tools/golden/pins.toml
+      - .github/workflows/golden-capture.yml
   schedule:
     - cron: "17 4 * * 1"
 
