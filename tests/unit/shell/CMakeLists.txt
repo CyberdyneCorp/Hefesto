@@ -34,3 +34,14 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       TIMEOUT 120)
   endforeach()
 endif()
+
+# No-display path (task 3.3): with no X11 or Wayland display the app must
+# report a clear error and exit 3 instead of crashing. Linux only: macOS
+# always has a window server. Needs no display, so it runs in every Linux
+# desktop build.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_test(NAME "hefesto: exits 3 without a display"
+           COMMAND env -u DISPLAY -u WAYLAND_DISPLAY -u RAVEN_WINDOW_SYSTEM
+                   sh -c "\"$0\" --smoke-frames 1; test $? -eq 3" $<TARGET_FILE:hefesto>)
+  set_tests_properties("hefesto: exits 3 without a display" PROPERTIES LABELS "unit" TIMEOUT 60)
+endif()
