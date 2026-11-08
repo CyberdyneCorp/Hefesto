@@ -133,7 +133,7 @@ jobs:
       - name: Select the oldest installed Xcode
         if: matrix.xcode == 'oldest'
         run: |
-          app="$(ls -d /Applications/Xcode_*.app | sort -V | head -n 1)"
+          app="$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | head -n 1)"
           sudo xcode-select -s "$app"
           echo "::notice::Selected $app"
           clang++ --version
