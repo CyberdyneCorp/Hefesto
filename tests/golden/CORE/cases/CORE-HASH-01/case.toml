@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# M0 end-to-end golden case (design D8, "The M0 end-to-end case").
+#
+# Why this case: D8 prefers a case whose output order is a Magic string hash
+# table, an `exact` requirement owned by an M0 capability. No Magic command
+# prints a hash table's raw iteration order without layout support (e.g.
+# `cellname list allcells` sorts the names; database/DBcellname.c:812), and
+# M0 Hefesto has no layout database. So, as D8 allows:
+#   - reference side: magic-hash-harness, Magic's own utils/hash.c at the
+#     pinned commit compiled unmodified behind a small driver
+#     (tools/golden/harness/magic_hash/driver.c);
+#   - Hefesto side: the temporary M0-only command `hefesto::debug::hashorder`
+#     (m0_only below), backed by hefesto/util/magic_hash_table.hpp.
+# Both sides read the same script, input/commands.hef.
+
+schema = 1
+id = "CORE-HASH-01"
+area = "CORE"
+capability = "hefesto-output-determinism"
+requirements = ["Magic string hash table"]
+tool = "magic-hash-harness"
+description = "Iteration order of Magic string hash tables: spec scenarios, size rounding, growth at 3 x size, signed key bytes, removal."
+
+[reference]
+script = "input/commands.hef"
+
+[hefesto]
+args = ["--no-log", "{input}/commands.hef"]
+requires_commands = ["hefesto::debug::hashorder"]
+m0_only = true
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "bytes"
+masks = []

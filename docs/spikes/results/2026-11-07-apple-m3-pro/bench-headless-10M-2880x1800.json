@@ -1,0 +1,87 @@
+{
+  "benchmark": "hefesto-canvas",
+  "dataset": {
+    "fingerprint": 9488214721081088727,
+    "generate_s": 0.125565333,
+    "index_build_s": 0.674117959,
+    "index_instance_bytes": 311760816,
+    "index_lod_cells": 9485051,
+    "instance_bytes": 160000000,
+    "layers": 8,
+    "rectangles": 10000000,
+    "scene_build_s": 0.05245525,
+    "seed": 5207645807688568576
+  },
+  "device": {
+    "driver": "vendor 4203, driver 10402",
+    "name": "Apple M3 Pro",
+    "vulkan_api": "1.1.357"
+  },
+  "indexed": {
+    "device_bytes": 311760816,
+    "meets_target": true,
+    "pan_full_chip": {
+      "cpu": {
+        "frames": 600,
+        "max_ms": 16.537667,
+        "mean_ms": 10.767790398333323,
+        "median_ms": 9.932208999999999,
+        "p95_ms": 15.571667,
+        "p99_ms": 16.422875
+      },
+      "draw_calls_per_frame_max": 961.0,
+      "gpu": {
+        "frames": 600,
+        "max_ms": 16.101625,
+        "mean_ms": 10.366517138333336,
+        "median_ms": 9.577375,
+        "p95_ms": 15.131082999999999,
+        "p99_ms": 16.040042
+      },
+      "instances_per_frame_max": 4074455.0,
+      "instances_per_frame_median": 2487676.0,
+      "meets_target": true,
+      "target_median_ms": 16.7
+    },
+    "upload": {
+      "bytes": 311760816,
+      "gib_per_s": 8.228880756182786,
+      "seconds": 0.03528425
+    },
+    "zoom_sweep": {
+      "cpu": {
+        "frames": 240,
+        "max_ms": 16.825291,
+        "mean_ms": 2.6293969249999987,
+        "median_ms": 0.7948329999999999,
+        "p95_ms": 12.291959,
+        "p99_ms": 15.813625
+      },
+      "draw_calls_per_frame_max": 575.0,
+      "gpu": {
+        "frames": 240,
+        "max_ms": 16.450582999999998,
+        "mean_ms": 2.3249419791666655,
+        "median_ms": 0.524417,
+        "p95_ms": 11.927375,
+        "p99_ms": 15.438333
+      },
+      "instances_per_frame_max": 4074455.0,
+      "instances_per_frame_median": 110151.0,
+      "meets_target": true,
+      "target_median_ms": 16.7
+    }
+  },
+  "meets_target": true,
+  "memory": {
+    "device_local_budget_bytes": 30150672384,
+    "device_local_usage_bytes": 334643200,
+    "peak_rss_bytes": 1414053888
+  },
+  "mode": "headless-offscreen",
+  "spec": "hefesto-performance: Interactive frame rate",
+  "viewport": {
+    "height": 1800,
+    "width": 2880
+  }
+}

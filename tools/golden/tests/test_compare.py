@@ -1,0 +1,103 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+"""Comparator tests.
+
+cap:hefesto-output-determinism req:Canonical comparison against Magic
+"""
+from __future__ import annotations
+
+import struct
+import unittest
+
+from compare import compare_bytes
+from compare.ext_cap import canonicalize
+from compare.masks import apply_masks, get_mask, mask_gds_dates
+
+
+def gds_record(rtype: int, dtype: int, payload: bytes) -> bytes:
+    return struct.pack(">HBB", 4 + len(payload), rtype, dtype) + payload
+
+
+def gds_library(date: tuple[int, ...]) -> bytes:
+    dates = struct.pack(">12h", *(date * 2))
+    return b"".join([
+        gds_record(0x00, 0x02, struct.pack(">h", 600)),        # HEADER
+        gds_record(0x01, 0x02, dates),                         # BGNLIB
+        gds_record(0x02, 0x06, b"LIB\0"),                      # LIBNAME
+        gds_record(0x05, 0x02, dates),                         # BGNSTR
+        gds_record(0x06, 0x06, b"TOP\0"),                      # STRNAME
+        gds_record(0x07, 0x00, b""),                           # ENDSTR
+        gds_record(0x04, 0x00, b""),                           # ENDLIB
+        bytes(16),                                             # block padding
+    ])
+
+
+class ExtCapTest(unittest.TestCase):
+    def test_spec_scenario_equivalent_ext_despite_order(self):
+        magic = b'cap "a" "b" 3\ncap "c" "a" 2\n'
+        hefesto = b'cap "a" "b" 3\ncap "a" "c" 2\n'
+        self.assertTrue(compare_bytes(magic, hefesto, "ext-cap").equal)
+
+    def test_bytes_comparator_rejects_reordered_caps(self):
+        magic = b'cap "a" "b" 3\ncap "c" "a" 2\n'
+        hefesto = b'cap "a" "b" 3\ncap "a" "c" 2\n'
+        self.assertFalse(compare_bytes(magic, hefesto, "bytes").equal)
+
+    def test_smaller_terminal_first_and_sorted(self):
+        data = b'tech x\ncap "z" "m" 1\nnode "q" 0\ncap "b" "a" 5\n'
+        self.assertEqual(canonicalize(data), b'tech x\ncap "a" "b" 5\nnode "q" 0\ncap "m" "z" 1\n')
+
+    def test_values_are_compared(self):
+        self.assertFalse(compare_bytes(b'cap "a" "b" 3\n', b'cap "b" "a" 4\n', "ext-cap").equal)
+
+    def test_spec_scenario_merge_lines_compared_byte_for_byte(self):
+        magic = b'merge "x/a" "y/b" -1\nmerge "x/c" "y/d" -1\ncap "a" "b" 1\n'
+        swapped = b'merge "x/c" "y/d" -1\nmerge "x/a" "y/b" -1\ncap "a" "b" 1\n'
+        self.assertTrue(compare_bytes(magic, magic, "ext-cap").equal)
+        result = compare_bytes(magic, swapped, "ext-cap")
+        self.assertFalse(result.equal)
+        self.assertIn("line 1", result.detail)
+
+    def test_cap_moved_to_other_slot_still_fails_on_other_lines(self):
+        magic = b'cap "a" "b" 1\nnode "n" 0\n'
+        hefesto = b'node "n" 0\ncap "a" "b" 1\n'
+        self.assertFalse(compare_bytes(magic, hefesto, "ext-cap").equal)
+
+    def test_malformed_cap_line_left_untouched(self):
+        data = b'cap "b" "a"\n'
+        self.assertEqual(canonicalize(data), data)
+
+
+class MaskTest(unittest.TestCase):
+    def test_gds_dates_masked_only_in_date_records(self):
+        old, new = gds_library((2020, 1, 2, 3, 4, 5)), gds_library((2026, 11, 7, 8, 9, 10))
+        self.assertNotEqual(old, new)
+        self.assertEqual(mask_gds_dates(old), mask_gds_dates(new))
+        self.assertEqual(len(mask_gds_dates(old)), len(old))
+        self.assertTrue(compare_bytes(old, new, "bytes", ["gds-dates"]).equal)
+        self.assertFalse(compare_bytes(old, new, "bytes").equal)
+
+    def test_gds_mask_keeps_geometry_differences(self):
+        a = gds_library((2020, 1, 2, 3, 4, 5)).replace(b"TOP\0", b"TOQ\0")
+        b = gds_library((2026, 1, 2, 3, 4, 5))
+        self.assertFalse(compare_bytes(a, b, "bytes", ["gds-dates"]).equal)
+
+    def test_timestamp_line(self):
+        a = b"magic\ntech min\ntimestamp 1700000000\n<< m1 >>\n"
+        b = b"magic\ntech min\ntimestamp 1762500000\n<< m1 >>\n"
+        self.assertTrue(compare_bytes(a, b, "bytes", ["mag-timestamp"]).equal)
+        self.assertEqual(apply_masks(b"xtimestamp 5\n", ["ext-timestamp"]), b"xtimestamp 5\n")
+
+    def test_regex_mask(self):
+        a, b = b"* Created 2020-01-01\nR1 a b 1k\n", b"* Created 2026-11-07\nR1 a b 1k\n"
+        self.assertTrue(compare_bytes(a, b, "bytes", [r"regex:\d{4}-\d{2}-\d{2}"]).equal)
+
+    def test_unknown_mask_and_comparator(self):
+        with self.assertRaises(ValueError):
+            get_mask("nope")
+        with self.assertRaises(ValueError):
+            compare_bytes(b"", b"", "nope")
+
+
+if __name__ == "__main__":
+    unittest.main()

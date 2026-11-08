@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
 """Regenerate docs/specs-index.md from openspec/specs, grouped by area.
 
 Every capability must match exactly one area prefix; the script fails otherwise,

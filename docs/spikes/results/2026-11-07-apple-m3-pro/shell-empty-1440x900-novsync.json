@@ -1,0 +1,35 @@
+{
+  "benchmark": "hefesto-shell-canvas",
+  "canvas_instances": 0,
+  "frame_interval": {
+    "frames": 600,
+    "max_ms": 9.93275,
+    "median_ms": 8.317541,
+    "p95_ms": 9.358042,
+    "p99_ms": 9.679334
+  },
+  "meets_target": true,
+  "mode": "raven-viewport-draw-callback",
+  "raven": "0.2.2",
+  "raven_layout_paint": {
+    "frames": 600,
+    "max_ms": 0.29399991035461426,
+    "median_ms": 0.033999793231487274,
+    "p95_ms": 0.06800005212426186,
+    "p99_ms": 0.0849999487400055
+  },
+  "raven_render": {
+    "frames": 600,
+    "max_ms": 9.687,
+    "median_ms": 8.107,
+    "p95_ms": 9.217,
+    "p99_ms": 9.42
+  },
+  "rectangles": 0,
+  "target_median_ms": 16.7,
+  "vsync": false,
+  "window": {
+    "height": 900,
+    "width": 1440
+  }
+}

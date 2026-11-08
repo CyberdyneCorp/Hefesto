@@ -1,0 +1,69 @@
+# Tasks
+
+## 1. Repo & build
+
+- [x] 1.1 Create the OpenSpec change `m0-foundations` (proposal, design, tasks, `skip_specs: true`) and verify `openspec validate m0-foundations --strict` and `openspec validate --all --strict` pass
+- [x] 1.2 Add root `CMakeLists.txt` (CMake ≥ 3.25, C++20, extensions off, in-source builds rejected, options `HEFESTO_BUILD_DESKTOP/TESTS/FUZZ/BENCH`, `HEFESTO_WARNINGS_AS_ERRORS`, `HEFESTO_SANITIZERS`) and verify `cmake --preset macos-debug` configures with desktop OFF when no Vulkan SDK is present
+- [x] 1.3 Add `cmake/Dependencies.cmake` with exact pins (zlib v1.3.1 and nlohmann/json v3.11.3 by SHA-256, Catch2 v3.7.1 and Raven v0.2.2 by commit) and verify a reconfigure with `-DFETCHCONTENT_FULLY_DISCONNECTED=ON` succeeds from the populated `.cache/deps`
+- [x] 1.4 Add `cmake/CompilerWarnings.cmake` and `cmake/Sanitizers.cmake` and verify first-party targets build warning-free with `-DHEFESTO_WARNINGS_AS_ERRORS=ON`
+- [x] 1.5 Add `CMakePresets.json` (linux-/macos-debug/release, macos-xcode, ipados, *-asan, linux-fuzz, ci-linux, ci-linux-desktop, ci-macos, ci-macos-desktop) and verify `cmake --list-presets` lists them on macOS and the `ipados` preset configures — also verified: the `ipados` build of `hefesto_ios_link_probe` links the core into an iOS arm64 executable (`CODE_SIGNING_ALLOWED=NO`)
+- [x] 1.6 Add placeholder `CMakeLists.txt` and sources in `src/core`, `src/cli`, `src/render/vulkan`, `src/shell/desktop`, `tests/unit` (with `hefesto_add_unit_test()`), `tests/fuzz` (with `hefesto_add_fuzz_target()`), `bench/canvas` and `tools/golden`, and verify `cmake --build --preset macos-debug && ctest --preset macos-debug` passes
+- [x] 1.7 Update `.gitignore` (build/, .cache/, IDE files) and document presets, options and offline rebuilds in `docs/building.md`; verify the documented commands run as written
+
+## 2. Core & CLI
+
+- [x] 2.1 Implement `hefesto/diag` (Diagnostic, Severity, Location, ObjectRef, DiagnosticSink, collecting sink, code table) and the text and JSON-lines renderers; verify unit tests tagged `[cap:hefesto-diagnostics][req:Structured diagnostic records]` and `[req:Diagnostic presentation and logging]` pass, including byte-stable JSON key order
+- [x] 2.2 Add `docs/diagnostics/codes.md` and a unit test that fails when a code in the code table is undocumented or a documented code is missing
+- [x] 2.3 Implement `hefesto/cmd` (Invocation, Value, CommandResult, CommandRegistry, Dispatcher, CommandObserver, CommandContext) with dispatch failure `CMD-DISPATCH-001`; verify unit tests tagged `[cap:hefesto-architecture][req:Single command API]` and `[cap:hefesto-diagnostics][req:Command results and errors]` pass
+- [x] 2.4 Implement the platform-services interfaces and portable defaults (FileSystem, PdkStore, AutosaveService, Clock, Logger, TaskExecutor, UnsupportedProcessRunner); verify a unit test tagged `[cap:hefesto-architecture][req:Platform services abstraction]` shows an unsupported process request returns `PLATFORM-UNSUPPORTED-001` without crashing
+- [x] 2.5 Implement `hefesto/compat` (`magic-compat`, `netgen-compat`, header tag) and verify unit tests tagged `[cap:hefesto-magic-compat-mode]` for defaults ON and independent changes pass
+- [x] 2.6 Implement the Magic string hash table and verify unit tests for every scenario of `[cap:hefesto-output-determinism][req:Magic string hash table]` pass, including the signed-byte rule and growth at 3 × size
+- [x] 2.7 Implement the M0 command-script reader and built-ins (`quit`, `version`, `hefesto::strict`); verify unit tests tagged `[cap:hefesto-diagnostics][req:Script strict mode switch]` pass
+- [x] 2.8 Implement `hefesto-cli` (`-c`, script files, `-T` accepted, `--diagnostics=text|json`, `--version`, `--help`, exit codes 0 ok / 1 command failure / 2 usage) with a POSIX ProcessRunner; verify CTest smoke tests for each exit code pass
+- [ ] 2.9 Add a libFuzzer target for the command-script reader in `tests/fuzz` and verify it builds with the `linux-fuzz` preset (CI) and is skipped with a warning on Apple Clang — target written, seeds in `tests/fuzz/corpus/fuzz_command_script/`; skipped with a warning on Apple Clang (verified); the `linux-fuzz` build is verified only once CI runs (the CI job now fails if the target is missing)
+- [x] 2.10 Verify the core has no forbidden includes and links without Raven or Vulkan (`[cap:hefesto-architecture][req:Platform-independent core]`), and keep every function's cognitive complexity ≤ 15
+
+## 3. Desktop shell & canvas spike
+
+- [ ] 3.1 Wire Raven (`raven::raven`) into `hefesto_shell_desktop` only and verify `cmake --preset ci-linux-desktop` builds it in CI while `hefesto_core` and `hefesto-cli` link no Raven symbols — Raven is linked PRIVATE into the shell only and `hefesto-cli`/`hefesto_core` carry no Raven or Vulkan symbols (verified on macOS with `nm`); the `ci-linux-desktop` build is pending the first CI run
+- [x] 3.2 Implement the C++20 wrapper classes (Window, Dock, Panel, CommandBar, Viewport) with no Raven type in their public headers; verify a unit test or header check under `tests/unit/shell/` enforces it
+- [ ] 3.3 Build the `hefesto` main window (dock area, panels, command bar, canvas viewport) with the command bar issuing `Invocation`s through the core Dispatcher; verify the app starts and degrades gracefully (clear error, non-zero exit) without a display — main window built; the command bar runs every line through the core Dispatcher (origin `gui`) and the canvas keys issue `pan`/`zoom`/`view` with origin `key` (unit-tested); the desktop session keeps `<storage>/logs/hefesto.log` and a `CommandLog` (unit-tested, and checked after a run on macOS); a minimal Diagnostics panel lists every diagnostic (filtering and object navigation deferred to M2, design D7); `hefesto --smoke-frames 30 --expect-window-system cocoa` exits 0 on macOS and exits 4 with `x11`; continuous gestures still bypass the command API (deviation, design D6); the no-display path (exit 3) was not exercised
+- [ ] 3.4 Implement `hefesto_render_vk` instanced-rectangle rendering into a Raven viewport draw callback, plus the texture-mode fallback; verify on macOS (MoltenVK) and Linux that a test scene renders — instanced rendering verified on macOS (MoltenVK) by GPU readback tests and in the app; Linux pending; the texture-mode fallback is measured headless only, not inside Raven
+- [x] 3.5 Implement `hefesto-bench-canvas` (deterministic 10M-rectangle generator, scripted pan and zoom, CPU and GPU frame times, JSON output); verify it runs headless in offscreen mode and windowed inside Raven
+- [ ] 3.6 Run the spike on the reference platforms and write `docs/spikes/canvas-spike.md` with the measurements against `hefesto-performance` "Interactive frame rate" — `docs/spikes/canvas-spike.md` written with Apple M3 Pro measurements; the reference M1 Mac and Linux runs are pending
+- [ ] 3.7 Evaluate viewport embedding, text and theming, accessibility hooks and API stability, and write `docs/decisions/raven-go-no-go.md` with the decision per design D9 — record written at `docs/decisions/raven-go-no-go.md` (design D9 updated to that path); provisional "GO, conditional", not final until the open checks pass
+
+## 4. Golden capture
+
+- [ ] 4.1 Write `tools/golden/container/Containerfile` and `tools/golden/pins.toml` pinning Magic @ fc5daa9e, netgen @ 93dcda14, ngspice @ 7aa47164 and the base image digest; verify the CI capture workflow builds it (not built locally) — written with all pins (a unit test checks the Containerfile against `pins.toml`); `.github/workflows/golden-capture.yml` builds it manually/weekly; never built yet
+- [x] 4.2 Define the case layout (`case.toml`, `input/`, `expected/`, `provenance.json`) and implement `tools/golden/capture.py`; verify it validates a case directory and produces provenance
+- [x] 4.3 Implement the golden comparator (`tools/golden/compare/`) with the `bytes` comparator (with field masking) and the canonicalizer interface; verify Python unit tests cover masking and the "Equivalent .ext despite order" scenario — delivered as the `tools/golden/compare/` package (`python3 -m compare`)
+- [x] 4.4 Implement `tools/golden/replay.py` and `tools/golden/CMakeLists.txt` (CTest per captured case, label `golden`; comparator tests, label `golden-tools`); verify `ctest -L golden-tools` passes
+- [ ] 4.5 Capture and commit one end-to-end case per design D8 and verify `ctest -L golden` passes on macOS, with the choice recorded in the case's `case.toml` — CORE-HASH-01 committed and `ctest -L golden` passes on macOS, but `expected/` is still provisional (spec-model runner, `reference_captured: false`); re-capture with the reference harness to close
+
+## 5. CI, licensing & traceability
+
+- [x] 5.1 Add `.github/workflows/ci.yml` implementing the matrix of design D12 with `.cache/deps` caching; verify the workflow passes `actionlint` (or equivalent YAML validation) locally — actionlint 1.7.7 passes locally after the review fixes (aarch64 Clang leg, desktop builds with GCC 14 and on macOS/MoltenVK, X11/Wayland window smoke tests, iOS link probe, masked golden outputs); green on GitHub pending
+- [x] 5.2 Add `scripts/check_license_headers.py` (every first-party C++, CMake, Python and GLSL file carries the SPDX Apache-2.0 header) and run it in CI; verify it passes on the tree and fails on a file without the header
+- [x] 5.3 Add `scripts/check_core_includes.py` (forbidden UI, GPU, Raven and process headers in `src/core`) and run it in CI; verify it fails on a planted forbidden include
+- [x] 5.4 Add `scripts/check_requirement_coverage.py` (Catch2 `[cap:…][req:…]` tags, including tags shared through a `#define`, and golden `case.toml` joined with exact/behavioral requirements) and publish its uncovered-requirements report in CI; verify it reports the M0 tests and lists uncovered requirements
+- [x] 5.5 Add `THIRD_PARTY_NOTICES.md` (zlib, nlohmann/json, Catch2 as a build-time-only dependency, Raven and its bundled code and fonts) and `NOTICE`; verify every dependency in `cmake/Dependencies.cmake` has an entry — also `scripts/check_third_party_notices.py`
+- [ ] 5.6 Add a fuzz CI job running each target for 60 s and an asan job; verify both pass on the M0 targets — both jobs are in `ci.yml`; the fuzz job seeds from `tests/fuzz/corpus/<target>/` and fails when `fuzz_command_script` is missing; not run yet (needs Linux Clang with libFuzzer); the asan preset passes locally on macOS
+
+## 6. Integration & docs
+
+- [x] 6.1 Apply the shared-file changes requested by workstreams 2–5 (root CMake, presets, dependencies) and verify all presets available on macOS configure, build and test — macos-debug, macos-release, macos-asan, macos-bench (desktop ON with MoltenVK), ci-macos and macos-xcode build and test; ipados configures
+- [ ] 6.2 Verify the M0 exit criteria end to end: unit, golden and fuzz tests green in CI on Linux x86_64, Linux aarch64 and macOS arm64; `openspec validate --all --strict` passes; the traceability report lists the M0 requirements covered — locally green on macOS arm64 (unit, golden, `openspec validate --all --strict`, coverage report: Magic string hash table covered; the 2 other M0 exact requirements need the M1 layout database); CI on Linux x86_64/aarch64 not run yet
+- [ ] 6.3 Record the Raven go/no-go decision in `docs/decisions/product.md` and update `README.md` and `docs/roadmap.md` with the M0 status and build instructions — README.md and docs/roadmap.md updated with the M0 status and build links; P-11 records the provisional go/no-go; the final decision waits for the open checks
+
+## 7. Review fixes (M0 review round)
+
+- [x] 7.1 Route canvas key bindings through the Dispatcher (origin `key`, new `pan` view command) and give the desktop session a rotating log and a `CommandLog`; record continuous gestures as a deviation (design D6) — unit tests `keys pan, zoom and fit through the command API with origin key` and `the desktop session keeps a rotating log and a command log`
+- [x] 7.2 Add a minimal desktop Diagnostics panel and record filtering/navigation as deferred to M2 (design D7); share `default_storage_dir()` and `install_session_log()` between CLI and desktop (`hefesto/platform/session_log.hpp`, new code `PLATFORM-LOG-001`)
+- [x] 7.3 `hefesto::strict` with a bad argument raises (aborts the script) in default mode too (`CommandResult::raises`) — regression tests in core and CLI
+- [x] 7.4 `LocalFileSystem::read` rejects non-regular files and detects read errors; `write_atomic` uses an exclusively created temp name with a per-process random tag; `MemoryFileSystem` accepts a trailing separator — regression tests (directory read, `hefesto-cli <dir>` exits 1, trailing-slash `list`)
+- [x] 7.5 `MagicHashTable` clamps sizes to 2^30 buckets and stops growing there (no out-of-range shift) — boundary unit test
+- [x] 7.6 Process-runner pipes are close-on-exec (`pipe2` on Linux; `pipe`+`FD_CLOEXEC` under a spawn mutex on macOS) — regression test: a child holds no pipe fds besides 0-2 (fails without the fix)
+- [x] 7.7 CI: fuzz job fails without `fuzz_command_script` and finds its seeds (corpus renamed to `corpus/fuzz_command_script/`); `linux-arm64-clang` leg; iOS link probe; desktop builds with GCC 14 and on macOS (MoltenVK); window smoke tests under X11 and Wayland; golden outputs masked per case before the cross-platform diff (`tools/golden` test with GDS dates) — actionlint passes; Linux and macOS CI legs not run yet
+- [x] 7.8 Record the embedded-Roboto conflict with `hefesto-licensing` in `docs/decisions/raven-go-no-go.md`, design D9 and `THIRD_PARTY_NOTICES.md`
+

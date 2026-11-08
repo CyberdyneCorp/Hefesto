@@ -1,0 +1,354 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Build, test, fuzz and policy checks for every pull request and for main.
+# Implements the CI matrix of openspec/changes/m0-foundations/design.md (D12):
+#   hefesto-build-and-distribution  "Continuous integration matrix", "Dependency policy"
+#   hefesto-platform-targets        "Supported toolchains" (oldest and newest of each compiler)
+#   hefesto-testing-strategy        "Requirement-traceable tests", "Parser fuzzing",
+#                                   "Cross-platform determinism checks"
+#   hefesto-licensing               SPDX headers on first-party code
+# `openspec validate --all --strict` runs in openspec-validate.yml.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Pinned host tools, installed from PyPI so every leg (x86_64, aarch64, macOS) gets the same versions.
+  CMAKE_VERSION: "3.31.6"
+  NINJA_VERSION: "1.11.1.4"
+  PYTHON_VERSION: "3.12"
+  # CMake reads these from the environment, so the presets need no ccache entries.
+  CMAKE_C_COMPILER_LAUNCHER: ccache
+  CMAKE_CXX_COMPILER_LAUNCHER: ccache
+  CTEST_PARALLEL_LEVEL: "4"
+  # Leg whose golden outputs are the reference for the cross-platform determinism check.
+  GOLDEN_REFERENCE_LEG: linux-x64-gcc-latest
+
+jobs:
+  lint:
+    name: lint (SPDX, notices, core includes, traceability, workflows)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Unit tests of the check scripts
+        run: python3 -m unittest discover -s scripts/tests -v
+      - name: SPDX Apache-2.0 headers on first-party files
+        run: python3 scripts/check_license_headers.py
+      - name: Every pinned dependency is in THIRD_PARTY_NOTICES.md
+        run: python3 scripts/check_third_party_notices.py
+      - name: Core has no UI, GPU, Raven or process includes
+        run: python3 scripts/check_core_includes.py
+      - name: Requirement coverage report (report-only)
+        run: |
+          mkdir -p coverage-report
+          python3 scripts/check_requirement_coverage.py --milestone M0 --output coverage-report/m0.md
+          python3 scripts/check_requirement_coverage.py --milestone M0 --classes exact,behavioral,native \
+            --output coverage-report/m0-all-classes.md
+          python3 scripts/check_requirement_coverage.py --format json --output coverage-report/all.json
+          python3 scripts/check_requirement_coverage.py --output coverage-report/all.md
+          {
+            cat coverage-report/m0.md
+            echo
+            echo "## All milestones"
+            echo
+            python3 - <<'EOF'
+          import json
+          d = json.load(open("coverage-report/all.json"))
+          print(f"Covered {d['covered']} of {d['total']} exact/behavioral requirements ({d['percent']} %). "
+                "Full list in the requirement-coverage artifact.")
+          EOF
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: requirement-coverage
+          path: coverage-report/
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Oldest supported GCC and Clang (hefesto-platform-targets "Supported toolchains").
+          - { name: linux-x64-gcc-11, os: ubuntu-22.04, cc: gcc-11, cxx: g++-11, preset: ci-linux }
+          - { name: linux-x64-clang-14, os: ubuntu-22.04, cc: clang-14, cxx: clang++-14, preset: ci-linux }
+          # Newest GCC and Clang shipped on the runner image. Bump together with the image.
+          # Both build the desktop shell and renderer, so Raven and the Vulkan code compile with GCC and Clang.
+          - name: linux-x64-gcc-latest
+            os: ubuntu-24.04
+            cc: gcc-14
+            cxx: g++-14
+            preset: ci-linux-desktop
+            desktop: true
+          - name: linux-x64-clang-latest
+            os: ubuntu-24.04
+            cc: clang-18
+            cxx: clang++-18
+            preset: ci-linux-desktop
+            desktop: true
+          # Linux aarch64 with GCC and Clang (roadmap M0; unsigned `char` matters for the signed-byte hash rule).
+          - { name: linux-arm64-gcc, os: ubuntu-24.04-arm, cc: gcc, cxx: g++, preset: ci-linux }
+          - { name: linux-arm64-clang, os: ubuntu-24.04-arm, cc: clang-18, cxx: clang++-18, preset: ci-linux }
+          # Oldest supported Apple Clang (Xcode 15) and the newest runner image. The newest also builds the
+          # desktop shell against MoltenVK (the macOS platform of the Raven go/no-go).
+          - { name: macos-arm64-xcode-15, os: macos-14, cc: clang, cxx: clang++, preset: ci-macos, xcode: "15.4", ipados: true }
+          - name: macos-arm64-latest
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+            preset: ci-macos-desktop
+            ipados: true
+            moltenvk: true
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode ${{ matrix.xcode }}
+        if: matrix.xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${{ matrix.xcode }}.app"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+
+      - name: Install Vulkan, X11 and Wayland development packages
+        if: matrix.desktop
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libvulkan-dev vulkan-tools mesa-vulkan-drivers glslang-tools glslc spirv-tools \
+            libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev wayland-protocols libdecor-0-dev \
+            xvfb xauth weston
+
+      - name: Install MoltenVK and the Vulkan loader and headers
+        if: matrix.moltenvk
+        run: brew install molten-vk vulkan-loader vulkan-headers
+
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.name }}
+          max-size: 500M
+
+      # FetchContent sources (design D4: FETCHCONTENT_BASE_DIR=.cache/deps/<preset>).
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-${{ matrix.name }}-
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }}
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        if: ${{ !matrix.desktop }}
+        run: ctest --preset ${{ matrix.preset }}
+
+      # hefesto-build-and-distribution "Dependency policy": desktop shell tests run under X11 and Wayland.
+      # Vulkan uses Mesa's software rasterizer (lavapipe); the runners have no GPU. Raven needs only libx11-dev
+      # to build and opens the Wayland libraries at run time; the rest of the list is for the shell and tests.
+      # The window smoke tests (labels desktop-window-x11 / -wayland, preset option HEFESTO_TEST_DESKTOP_WINDOW)
+      # start the real `hefesto` app through Raven and fail if Raven picks the other window system.
+      - name: Test under X11 (Xvfb)
+        if: matrix.desktop
+        env:
+          RAVEN_WINDOW_SYSTEM: x11  # Raven's documented override of its window-system choice
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -LE desktop-window
+          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -L desktop-window-x11
+
+      - name: Test under Wayland (headless Weston)
+        if: matrix.desktop
+        run: |
+          XDG_RUNTIME_DIR="$(mktemp -d)"
+          export XDG_RUNTIME_DIR
+          chmod 700 "$XDG_RUNTIME_DIR"
+          weston --backend=headless --socket=wayland-hefesto --idle-time=0 &
+          weston_pid=$!
+          for _ in $(seq 1 50); do
+            [ -S "$XDG_RUNTIME_DIR/wayland-hefesto" ] && break
+            sleep 0.2
+          done
+          test -S "$XDG_RUNTIME_DIR/wayland-hefesto" || { echo "::error::weston did not start"; exit 1; }
+          status=0
+          env -u DISPLAY WAYLAND_DISPLAY=wayland-hefesto XDG_SESSION_TYPE=wayland RAVEN_WINDOW_SYSTEM=wayland \
+            ctest --preset ${{ matrix.preset }} -L 'unit|desktop-window-wayland' || status=$?
+          kill "$weston_pid"
+          exit "$status"
+
+      # hefesto-architecture "Platform-independent core": the core builds for iPadOS without UI (design D5).
+      - name: Configure iPadOS (core only)
+        if: matrix.ipados
+        # The Xcode generator picks Xcode's own clang; drop the Ninja-leg compiler and launcher settings.
+        run: env -u CC -u CXX -u CMAKE_C_COMPILER_LAUNCHER -u CMAKE_CXX_COMPILER_LAUNCHER cmake --preset ipados
+
+      # The link probe app links hefesto_core into an iOS executable (a static library alone never links).
+      - name: Build and link core for iPadOS
+        if: matrix.ipados
+        run: cmake --build build/ipados --target hefesto_ios_link_probe --config Debug -- CODE_SIGNING_ALLOWED=NO
+
+      # Golden outputs of this leg, compared against the reference leg in the determinism job.
+      - name: Replay golden cases into golden-out/
+        shell: bash
+        run: |
+          # Writes golden-out/<AREA>/<case-id>/<output>; exits non-zero when a case fails.
+          # The summary stays outside golden-out/: it holds host paths, which differ per leg.
+          python3 tools/golden/replay.py --hefesto-cli "build/${{ matrix.preset }}/src/cli/hefesto-cli" \
+            --json golden-summary.json --output-dir golden-out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: golden-${{ matrix.name }}
+          path: golden-out/
+          if-no-files-found: ignore
+
+  determinism:
+    name: cross-platform determinism
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        # No leg uploads anything until golden cases exist.
+        continue-on-error: true
+        with:
+          pattern: golden-*
+          path: golden
+      - name: Compare every leg with ${{ env.GOLDEN_REFERENCE_LEG }}
+        run: |
+          reference="golden/golden-${GOLDEN_REFERENCE_LEG}"
+          if [ ! -d "$reference" ]; then
+            echo "::notice::no golden outputs from ${GOLDEN_REFERENCE_LEG}; nothing to compare yet"
+            exit 0
+          fi
+          legs=()
+          for dir in golden/golden-*; do
+            [ "$dir" = "$reference" ] || legs+=("$dir")
+          done
+          if [ "${#legs[@]}" -eq 0 ]; then
+            echo "::error::only the reference leg produced golden outputs"
+            exit 1
+          fi
+          # replay.py --output-dir already applied each case's documented masks (case.toml [[outputs]] masks,
+          # e.g. gds-dates, mag-timestamp), so the trees are compared byte for byte.
+          python3 scripts/compare_golden_outputs.py "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
+
+  asan:
+    name: linux-asan (Clang, ASan + UBSan)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CC: clang-18
+      CXX: clang++-18
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-asan
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-asan-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-linux-asan-
+      - run: cmake --preset linux-asan
+      - run: cmake --build --preset linux-asan
+      - run: ctest --preset linux-asan
+
+  # hefesto-testing-strategy "Parser fuzzing": every target runs for a bounded time on pull requests
+  # (design D11: 60 s per target) and on every push to main.
+  fuzz:
+    name: fuzz (libFuzzer, 60 s per target)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      FUZZ_SECONDS: "60"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-fuzz
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-linux-fuzz-
+      # The linux-fuzz preset uses the unversioned clang/clang++ (Clang 18 on ubuntu-24.04).
+      - run: cmake --preset linux-fuzz
+      - run: cmake --build --preset linux-fuzz
+      - name: Run each fuzz target
+        run: |
+          mkdir -p fuzz-artifacts
+          mapfile -t targets < <(find build/linux-fuzz/tests/fuzz -maxdepth 1 -type f -perm -u+x -name 'fuzz_*' | sort)
+          # M0 has fuzz_command_script, so an empty set means the libFuzzer probe failed: fail, never pass silently.
+          if [ ! -x build/linux-fuzz/tests/fuzz/fuzz_command_script ]; then
+            echo "::error::fuzz_command_script was not built (libFuzzer probe failed?); found: ${targets[*]:-none}"
+            exit 1
+          fi
+          status=0
+          for target in "${targets[@]}"; do
+            name="$(basename "$target")"
+            corpus="$(mktemp -d)"
+            # Seed corpora live in tests/fuzz/corpus/<target>/ (docs/contributing/README.md).
+            if [ -d "tests/fuzz/corpus/$name" ]; then
+              cp -R "tests/fuzz/corpus/$name/." "$corpus/"
+            else
+              echo "::warning::no seed corpus in tests/fuzz/corpus/$name"
+            fi
+            echo "::group::$name"
+            "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 \
+              -artifact_prefix="fuzz-artifacts/$name-" -print_final_stats=1 || status=1
+            echo "::endgroup::"
+          done
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzz-crashes
+          path: fuzz-artifacts/
+          if-no-files-found: ignore

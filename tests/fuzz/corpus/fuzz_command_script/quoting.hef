@@ -1,0 +1,3 @@
+echo "a b\n" {x {y} z} c\;d # c
+# comment
+hefesto::strict on

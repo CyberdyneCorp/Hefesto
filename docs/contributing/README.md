@@ -1,0 +1,122 @@
+# Contributing to Hefesto
+
+This page covers the day-to-day workflow: building, running each kind of test, and the rules every pull request follows. The build itself (presets, options, offline rebuilds, source layout) is described in [docs/building.md](../building.md).
+
+## Before you start
+
+- Behavior is defined by the specs in `openspec/specs/`. Medium or large changes, and any change to a requirement, go through an OpenSpec change (`openspec/changes/<id>/`) with a proposal, design and tasks. Run `openspec validate --all --strict` before pushing.
+- Hefesto is licensed under Apache-2.0 (decision P-9). Read the [clean-room rule](#clean-room-rule) before touching LVS, schematic or OASIS code.
+- Supported compilers: GCC 11+, Clang 14+, Apple Clang 15+ (Xcode 15). CMake 3.25+ and Ninja.
+
+## Build
+
+```sh
+cmake --list-presets                # presets available on this host
+cmake --preset macos-debug          # or linux-debug
+cmake --build --preset macos-debug
+```
+
+| Preset | Use it for |
+|---|---|
+| `linux-debug`, `macos-debug` | everyday development |
+| `linux-release`, `macos-release` | release builds, profiling |
+| `linux-asan`, `macos-asan` | AddressSanitizer + UndefinedBehaviorSanitizer runs |
+| `linux-fuzz` | libFuzzer targets (Clang on Linux only) |
+| `macos-xcode` | working in Xcode |
+| `ipados` | checking that the core configures and builds for iPadOS (configure only) |
+| `ci-linux`, `ci-linux-desktop`, `ci-macos` | reproducing a CI leg locally (warnings are errors) |
+
+The desktop app (`hefesto`) is built only when a Vulkan SDK is found. Core and CLI never need it.
+
+## Run the tests
+
+```sh
+ctest --preset macos-debug                 # everything registered with CTest
+ctest --preset macos-debug -L unit         # Catch2 unit tests only
+ctest --preset macos-debug -L golden       # golden replay of captured cases
+ctest --preset macos-debug -L golden-tools # unit tests of the golden comparators
+ctest --preset macos-debug -R 'Magic string hash'   # by test name
+```
+
+### Unit tests and traceability
+
+Unit tests use Catch2 v3 and live in `tests/unit/<area>/`. Every test names the capability and the requirement it covers in its tags, using the exact `### Requirement:` heading from the spec:
+
+```cpp
+TEST_CASE("bucket of short key",
+          "[cap:hefesto-output-determinism][req:Magic string hash table]") { ... }
+```
+
+Every `exact` and `behavioral` requirement needs at least one such test (capability `hefesto-testing-strategy`, requirement "Requirement-traceable tests"). CI publishes the uncovered requirements in the job summary of the `lint` job. Run the report locally:
+
+```sh
+python3 scripts/check_requirement_coverage.py --milestone M0        # markdown to stdout
+python3 scripts/check_requirement_coverage.py --format json --output coverage.json
+python3 scripts/check_requirement_coverage.py --milestone M0 --classes exact,behavioral,native
+```
+
+The report also lists tags that name no existing requirement, which usually means a typo in the requirement name.
+
+### Golden suite
+
+Golden cases compare `hefesto-cli` output with output captured from the pinned reference tools (Magic, netgen, ngspice). The inventory of planned cases is `tests/golden/<AREA>/CASES.md`; a captured case lives in `tests/golden/<AREA>/cases/<case-id>/` with its manifest, `input/` and `expected/` (with `provenance.json`). See `tools/golden/` for the capture runner, the comparators and the reference container.
+
+- Replaying never needs the reference tools: `ctest -L golden` runs `hefesto-cli` on each captured case and compares with the canonical comparators.
+- Capturing (regenerating `expected/`) runs the reference tools in the pinned container, built only in CI by the capture workflow. Do not edit files in `expected/` by hand.
+- CI runs the golden suite on every leg and fails if any platform's output differs from Linux x86_64, except for documented time-dependent fields (requirement "Cross-platform determinism checks").
+
+### Fuzzing
+
+Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirement "Parser fuzzing"). libFuzzer needs LLVM Clang on Linux; Apple Clang does not ship it, so on macOS use the `macos-asan` preset for sanitizer coverage instead.
+
+```sh
+cmake --preset linux-fuzz
+cmake --build --preset linux-fuzz
+mkdir -p /tmp/corpus
+build/linux-fuzz/tests/fuzz/fuzz_command_script /tmp/corpus -max_total_time=60
+```
+
+CI runs each target for 60 seconds on every pull request. Seed corpora go in `tests/fuzz/corpus/<target>/`. A crash found by fuzzing is fixed together with a regression test that replays the crashing input.
+
+## Checks that run in CI
+
+| Check | Command |
+|---|---|
+| SPDX header on first-party files | `python3 scripts/check_license_headers.py` |
+| Pinned dependencies listed in `THIRD_PARTY_NOTICES.md` | `python3 scripts/check_third_party_notices.py` |
+| No UI, GPU, Raven or process headers in the core | `python3 scripts/check_core_includes.py` |
+| Requirement coverage report (report-only) | `python3 scripts/check_requirement_coverage.py` |
+| Unit tests of the scripts above | `python3 -m unittest discover -s scripts/tests` |
+| Specs, roadmap and specs index | `.github/workflows/openspec-validate.yml` |
+| Build and test matrix, ASan, fuzz, golden determinism | `.github/workflows/ci.yml` |
+
+The build matrix covers the oldest and newest supported compilers: GCC 11 and the newest GCC on Ubuntu 22.04/24.04, Clang 14 and the newest Clang, Linux aarch64, and macOS arm64 with Xcode 15 and the newest Xcode (requirement "Supported toolchains"). The newest-Clang leg also builds the desktop shell and runs its tests under X11 (Xvfb) and Wayland (headless Weston).
+
+Every first-party source file starts with:
+
+```cpp
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+```
+
+with `#` instead of `//` in CMake, Python and shell files.
+
+## Clean-room rule
+
+Hefesto reproduces the behavior of GPL-licensed tools but never contains their code (capability `hefesto-licensing`, requirement "Clean-room rule for GPL-sourced behavior").
+
+- Do not copy, translate or closely paraphrase code from GPL projects, including **netgen**, **KLayout** and **xschem**.
+- Implement behavior that must match those tools only from the Hefesto specifications. If a spec is not precise enough, raise it as a spec change; do not read the GPL source to fill the gap.
+- This applies in particular to the netgen-compatible **LVS**, the **OASIS** features and the xschem-compatible **schematic** (`.sch`, `.sym`) editor.
+- KLayout may only be run as a separate, user-installed program on desktop (decision P-18). It is never linked or bundled.
+- Magic (UC Berkeley notice) and ngspice (modified BSD, GPL parts excluded) are permissively licensed. Ported logic keeps their notices, recorded in `THIRD_PARTY_NOTICES.md`.
+
+The pull request template asks you to confirm this for every pull request that touches these areas.
+
+## Pull requests
+
+- One logical change per pull request, with a description of what changed and why.
+- Every bug fix comes with a regression test.
+- Update the specs (or the OpenSpec change) and the docs when behavior changes.
+- Keep functions simple: the cognitive-complexity target is 15 per function for backend code; flag a function that genuinely cannot meet it instead of contorting it.
+- New third-party dependencies are pinned to an exact version in `cmake/Dependencies.cmake` and added to `THIRD_PARTY_NOTICES.md` in the same pull request.

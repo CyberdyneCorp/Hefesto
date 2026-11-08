@@ -1,0 +1,460 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "FETCHCONTENT_BASE_DIR": "${sourceDir}/.cache/deps/${presetName}",
+        "HEFESTO_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ninja",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Ninja"
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "inherits": "ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "macos",
+      "hidden": true,
+      "inherits": "ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0"
+      }
+    },
+    {
+      "name": "debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "ci",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "HEFESTO_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "HEFESTO_SANITIZERS": "address,undefined"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "inherits": [
+        "linux",
+        "debug"
+      ]
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "inherits": [
+        "linux",
+        "release"
+      ]
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "Linux Debug + ASan/UBSan",
+      "inherits": [
+        "linux",
+        "asan"
+      ]
+    },
+    {
+      "name": "linux-bench",
+      "displayName": "Linux Release with desktop app and canvas benchmark (Vulkan required)",
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HEFESTO_BUILD_DESKTOP": "ON",
+        "HEFESTO_BUILD_BENCH": "ON"
+      }
+    },
+    {
+      "name": "linux-fuzz",
+      "displayName": "Linux libFuzzer (Clang)",
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "HEFESTO_BUILD_FUZZ": "ON",
+        "HEFESTO_BUILD_DESKTOP": "OFF",
+        "HEFESTO_SANITIZERS": "address,undefined,fuzzer-no-link"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "macOS arm64 Debug",
+      "inherits": [
+        "macos",
+        "debug"
+      ]
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macOS arm64 Release",
+      "inherits": [
+        "macos",
+        "release"
+      ]
+    },
+    {
+      "name": "macos-asan",
+      "displayName": "macOS arm64 Debug + ASan/UBSan",
+      "inherits": [
+        "macos",
+        "asan"
+      ]
+    },
+    {
+      "name": "macos-bench",
+      "displayName": "macOS arm64 Release with desktop app and canvas benchmark (Vulkan/MoltenVK required)",
+      "inherits": [
+        "macos"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HEFESTO_BUILD_DESKTOP": "ON",
+        "HEFESTO_BUILD_BENCH": "ON"
+      }
+    },
+    {
+      "name": "macos-xcode",
+      "displayName": "macOS arm64 Xcode project",
+      "inherits": "base",
+      "generator": "Xcode",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "14.0"
+      }
+    },
+    {
+      "name": "ipados",
+      "displayName": "iPadOS Xcode project (core only, configure only)",
+      "inherits": "base",
+      "generator": "Xcode",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "iOS",
+        "CMAKE_OSX_SYSROOT": "iphoneos",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "17.0",
+        "CMAKE_XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY": "2",
+        "HEFESTO_BUILD_DESKTOP": "OFF",
+        "HEFESTO_BUILD_TESTS": "OFF",
+        "HEFESTO_BUILD_FUZZ": "OFF",
+        "HEFESTO_BUILD_BENCH": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux",
+      "displayName": "CI Linux (compiler from CC/CXX)",
+      "inherits": [
+        "linux",
+        "ci"
+      ]
+    },
+    {
+      "name": "ci-linux-desktop",
+      "displayName": "CI Linux with desktop shell (Vulkan required, window smoke tests)",
+      "inherits": [
+        "linux",
+        "ci"
+      ],
+      "cacheVariables": {
+        "HEFESTO_BUILD_DESKTOP": "ON",
+        "HEFESTO_BUILD_BENCH": "ON",
+        "HEFESTO_TEST_DESKTOP_WINDOW": "ON"
+      }
+    },
+    {
+      "name": "ci-macos",
+      "displayName": "CI macOS arm64",
+      "inherits": [
+        "macos",
+        "ci"
+      ]
+    },
+    {
+      "name": "ci-macos-desktop",
+      "displayName": "CI macOS arm64 with desktop shell (MoltenVK required)",
+      "inherits": [
+        "macos",
+        "ci"
+      ],
+      "cacheVariables": {
+        "HEFESTO_BUILD_DESKTOP": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan"
+    },
+    {
+      "name": "linux-fuzz",
+      "configurePreset": "linux-fuzz"
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release"
+    },
+    {
+      "name": "macos-asan",
+      "configurePreset": "macos-asan"
+    },
+    {
+      "name": "macos-xcode",
+      "configurePreset": "macos-xcode",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux",
+      "configurePreset": "ci-linux"
+    },
+    {
+      "name": "ci-linux-desktop",
+      "configurePreset": "ci-linux-desktop"
+    },
+    {
+      "name": "ci-macos",
+      "configurePreset": "ci-macos"
+    },
+    {
+      "name": "ci-macos-desktop",
+      "configurePreset": "ci-macos-desktop"
+    },
+    {
+      "name": "linux-bench",
+      "configurePreset": "linux-bench"
+    },
+    {
+      "name": "macos-bench",
+      "configurePreset": "macos-bench"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "linux-asan",
+      "configurePreset": "linux-asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "linux-fuzz",
+      "configurePreset": "linux-fuzz",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "ignore",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "macos-asan",
+      "configurePreset": "macos-asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "macos-xcode",
+      "configurePreset": "macos-xcode",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux",
+      "configurePreset": "ci-linux",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "ci-linux-desktop",
+      "configurePreset": "ci-linux-desktop",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "ci-macos",
+      "configurePreset": "ci-macos",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "ci-macos-desktop",
+      "configurePreset": "ci-macos-desktop",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "linux-bench",
+      "configurePreset": "linux-bench",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "macos-bench",
+      "configurePreset": "macos-bench",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ]
+}

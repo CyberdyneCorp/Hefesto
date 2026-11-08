@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Builds the pinned reference-tool image (tools/golden/container/Containerfile)
+# and re-captures every golden case in verify mode: a fresh capture from Magic
+# and the other reference tools must match the committed expected/ outputs.
+# Capability hefesto-testing-strategy, requirement "Golden compatibility suite";
+# design.md D8. Manual and weekly only: the image build takes a long time.
+# Verify mode never writes; re-capturing a case is done locally (tools/golden/README.md).
+
+name: Golden capture
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: build reference image and verify captures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build reference-tool image
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Verify every captured case against a fresh capture
+        shell: bash
+        run: |
+          mapfile -t cases < <(find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort)
+          if [ "${#cases[@]}" -eq 0 ]; then
+            echo "::notice::no golden cases to verify"
+            exit 0
+          fi
+          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci --verify "${cases[@]}"

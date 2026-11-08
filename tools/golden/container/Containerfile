@@ -1,0 +1,127 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Pinned, headless reference-tool image for golden capture
+# (capability hefesto-testing-strategy, requirement "Golden compatibility suite";
+# decision X-6; design D8). Built in CI by the manual/scheduled capture workflow,
+# not on developer machines. Build context is tools/golden:
+#
+#   docker build -f tools/golden/container/Containerfile -t hefesto-golden:local tools/golden
+#
+# Every ARG default below must equal tools/golden/pins.toml (checked by
+# tools/golden/tests/test_pins.py). Reproducibility:
+#   - base image pinned by tag AND manifest-list digest;
+#   - APT packages come from snapshot.debian.org at a fixed timestamp, so their
+#     versions are fixed without listing each version;
+#   - every tool is checked out at a full commit SHA, verified after checkout;
+#   - no network access is needed at capture time (capture.py runs --network=none).
+# "Headless" means no display at run time: Magic runs as `magic -dnull -noconsole`,
+# netgen as `netgen -batch`, ngspice as `ngspice -b`, xschem with `-x --no_x`.
+# Tcl/Tk and X11 *development* packages are still needed to compile the Tcl
+# builds of Magic, netgen and xschem (the Tcl build of Magic is normative).
+
+ARG BASE_IMAGE=docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
+FROM ${BASE_IMAGE}
+
+ARG APT_SNAPSHOT=20261020T000000Z
+ARG MAGIC_REPO=https://github.com/RTimothyEdwards/magic
+ARG MAGIC_COMMIT=fc5daa9e2856b89a0a3056f296ded1fd4474e39e
+ARG NETGEN_REPO=https://github.com/RTimothyEdwards/netgen
+ARG NETGEN_COMMIT=93dcda14d36349d0b0ca63168d3cbbab20fe2ece
+ARG NGSPICE_REPO=https://git.code.sf.net/p/ngspice/ngspice
+ARG NGSPICE_BRANCH=pre-master-48
+ARG NGSPICE_COMMIT=7aa4716494c01ac1d3120211316e898539a6cb4c
+ARG XSCHEM_REPO=https://github.com/StefanSchippers/xschem
+ARG XSCHEM_COMMIT=4142e6d6f1eb5cd0e271bb183f14202af374ce27
+ARG WITH_XSCHEM=1
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=UTC \
+    LC_ALL=C \
+    PREFIX=/opt/ref \
+    PATH=/opt/ref/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# APT from a dated snapshot (versions frozen at APT_SNAPSHOT).
+RUN set -eux; \
+    rm -f /etc/apt/sources.list.d/debian.sources; \
+    printf 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/%s trixie main\n' "${APT_SNAPSHOT}" > /etc/apt/sources.list; \
+    printf 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/%s trixie-security main\n' "${APT_SNAPSHOT}" >> /etc/apt/sources.list; \
+    apt-get -o Acquire::Check-Valid-Until=false update; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates git build-essential pkg-config m4 tcsh python3 \
+        autoconf automake libtool bison flex \
+        tcl8.6-dev tk8.6-dev libx11-dev libxext-dev zlib1g-dev libreadline-dev \
+        libxpm-dev libcairo2-dev libxrender-dev libx11-xcb-dev libxcb1-dev; \
+    rm -rf /var/lib/apt/lists/*
+
+# fetch_commit DIR REPO SHA [BRANCH]: shallow fetch by SHA when the server allows
+# it (GitHub does), else clone the branch; then verify HEAD is exactly SHA.
+RUN cat > /usr/local/bin/fetch_commit <<'EOF'
+#!/bin/bash
+set -euo pipefail
+dir=$1 repo=$2 sha=$3 branch=${4:-}
+git init -q "$dir"
+git -C "$dir" remote add origin "$repo"
+if ! git -C "$dir" fetch -q --depth 1 origin "$sha"; then
+  git -C "$dir" fetch -q origin ${branch:+"$branch"}
+fi
+git -C "$dir" -c advice.detachedHead=false checkout -q "$sha"
+test "$(git -C "$dir" rev-parse HEAD)" = "$sha"
+EOF
+RUN chmod +x /usr/local/bin/fetch_commit
+
+# Magic 8.3.694, Tcl build without OpenGL/Cairo; run with -dnull -noconsole.
+RUN set -eux; \
+    fetch_commit /opt/src/magic "${MAGIC_REPO}" "${MAGIC_COMMIT}"; \
+    cd /opt/src/magic; \
+    ./configure --prefix="${PREFIX}" --with-tcl=/usr/lib/tcl8.6 --with-tk=/usr/lib/tk8.6 \
+        --with-opengl=no --with-cairo=no; \
+    make -j"$(nproc)"; make install; \
+    test -x "${PREFIX}/bin/magic"
+
+# netgen (pinned by commit; tag 1.5.327 is a different commit and is not used).
+RUN set -eux; \
+    fetch_commit /opt/src/netgen "${NETGEN_REPO}" "${NETGEN_COMMIT}"; \
+    cd /opt/src/netgen; \
+    ./configure --prefix="${PREFIX}" --with-tcl=/usr/lib/tcl8.6 --with-tk=/usr/lib/tk8.6; \
+    make -j"$(nproc)"; make install
+
+# ngspice: batch binary and shared library (libngspice), no X.
+RUN set -eux; \
+    fetch_commit /opt/src/ngspice "${NGSPICE_REPO}" "${NGSPICE_COMMIT}" "${NGSPICE_BRANCH}"; \
+    cd /opt/src/ngspice; ./autogen.sh; \
+    mkdir build-bin build-lib; \
+    (cd build-bin && ../configure --prefix="${PREFIX}" --with-x=no --enable-xspice --enable-cider \
+        --enable-openmp=no --disable-debug && make -j"$(nproc)" && make install); \
+    (cd build-lib && ../configure --prefix="${PREFIX}" --with-x=no --enable-xspice --enable-cider \
+        --enable-openmp=no --disable-debug --with-ngshared && make -j"$(nproc)" && make install); \
+    "${PREFIX}/bin/ngspice" -v
+
+# xschem (schematic netlisting cases only), run headless with -x --no_x.
+RUN set -eux; \
+    if [ "${WITH_XSCHEM}" = "1" ]; then \
+      fetch_commit /opt/src/xschem "${XSCHEM_REPO}" "${XSCHEM_COMMIT}"; \
+      cd /opt/src/xschem; ./configure --prefix="${PREFIX}"; make -j"$(nproc)"; make install; \
+    fi
+
+# magic-hash-harness: Magic's own utils/hash.c (unmodified, from the checkout
+# above) behind tools/golden/harness/magic_hash/driver.c.
+COPY harness/magic_hash /opt/src/magic-hash-harness
+RUN set -eux; \
+    cc -std=gnu99 -O1 -fsigned-char -w -DSUPPORT_DIRECT_MALLOC \
+       -I/opt/src/magic-hash-harness/shim -I/opt/src/magic \
+       -o "${PREFIX}/bin/magic-hash-harness" \
+       /opt/src/magic-hash-harness/driver.c /opt/src/magic/utils/hash.c
+
+LABEL org.opencontainers.image.title="hefesto-golden" \
+      org.opencontainers.image.description="Pinned headless Magic/netgen/ngspice/xschem for Hefesto golden capture" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      io.hefesto.magic.commit="${MAGIC_COMMIT}" \
+      io.hefesto.netgen.commit="${NETGEN_COMMIT}" \
+      io.hefesto.ngspice.commit="${NGSPICE_COMMIT}" \
+      io.hefesto.xschem.commit="${XSCHEM_COMMIT}" \
+      io.hefesto.apt.snapshot="${APT_SNAPSHOT}"
+
+WORKDIR /work
