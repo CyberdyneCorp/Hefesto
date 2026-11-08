@@ -23,10 +23,14 @@ function(hefesto_set_warnings target)
       -Wnon-virtual-dtor
       -Woverloaded-virtual
       -Wcast-align
-      -Wnull-dereference
       -Wdouble-promotion
       -Wformat=2
       -Wimplicit-fallthrough)
+    # GCC's -Wnull-dereference reports false positives inside libstdc++'s
+    # <streambuf> (GCC 13/14, optimized builds), so it is enabled for Clang only.
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      list(APPEND _warnings -Wnull-dereference)
+    endif()
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
       list(APPEND _warnings
         -Wmisleading-indentation

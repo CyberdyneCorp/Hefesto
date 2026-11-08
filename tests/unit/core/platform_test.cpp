@@ -158,7 +158,11 @@ TEST_CASE("clocks", SERVICES_TAGS) {
         "2025-11-07T13:05:09.000Z");
   CHECK(platform::format_utc_timestamp(std::chrono::system_clock::time_point{} - 1ms) == "1969-12-31T23:59:59.999Z");
   platform::SystemClock system;
-  CHECK(system.monotonic_now() <= system.monotonic_now());
+  // Two statements: the operands of one expression are unsequenced, and GCC
+  // evaluates the right-hand call first (regression seen on GCC 11).
+  const auto first = system.monotonic_now();
+  const auto second = system.monotonic_now();
+  CHECK(first <= second);
 }
 
 TEST_CASE("task executors run every task", SERVICES_TAGS) {
