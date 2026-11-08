@@ -44,4 +44,8 @@ class CommandBarModel {
 /// Removes ASCII blanks (space, tab, CR, LF) at both ends.
 [[nodiscard]] std::string_view trim(std::string_view text) noexcept;
 
+/// Console lines for one command: "> <command>", then each line of its result
+/// (a multi-line result such as `help` gives one line per row; empty: none).
+[[nodiscard]] std::vector<std::string> console_lines(std::string_view command, std::string_view result);
+
 }  // namespace hefesto::shell

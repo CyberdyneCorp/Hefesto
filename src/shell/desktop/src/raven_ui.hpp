@@ -112,6 +112,8 @@ class ListPanel : public Widget {
  public:
   static ListPanel create();
   void add_item(std::string_view text);
+  /// Scrolls so that the last item is visible (log-style panels).
+  void scroll_to_end();
 
  private:
   using Widget::Widget;

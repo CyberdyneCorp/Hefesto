@@ -300,6 +300,13 @@ void ListPanel::add_item(std::string_view text) {
   Rlist_view_add_item(id_, str(text).c_str());
 }
 
+void ListPanel::scroll_to_end() {
+  const int count = Rlist_view_get_item_count(id_);
+  if (count > 0) {
+    Rlist_view_scroll_to_item(id_, count - 1);
+  }
+}
+
 TreePanel TreePanel::create() {
   return TreePanel(Rwidget_create(R_WIDGET_TREE_VIEW));
 }

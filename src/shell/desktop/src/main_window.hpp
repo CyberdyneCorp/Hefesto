@@ -71,6 +71,7 @@ class MainWindow {
   void build_command_bar();
   void register_view_commands();
   void on_command(const std::string& text);
+  void append_console(const std::string& command, const std::string& result);
   void wire_viewport();
   void apply_theme(ThemeMode mode);
   void camera_changed();
@@ -88,6 +89,7 @@ class MainWindow {
   std::unique_ptr<ui::CommandBar> command_bar_;
   ui::Label status_ = ui::Label::create("");
   ui::ListPanel diagnostics_ = ui::ListPanel::create();
+  ui::ListPanel console_ = ui::ListPanel::create();  // command echo and full results
   DiagnosticsPanelSink diagnostics_sink_{diagnostics_};
   std::string last_message_;
 
