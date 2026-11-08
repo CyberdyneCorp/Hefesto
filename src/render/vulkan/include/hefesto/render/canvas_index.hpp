@@ -55,7 +55,8 @@ class CanvasIndex {
   [[nodiscard]] std::size_t rect_count() const noexcept { return rect_count_; }
   [[nodiscard]] std::size_t lod_cell_count() const noexcept { return instances_.size() - rect_count_; }
   [[nodiscard]] std::uint64_t byte_size() const noexcept {
-    return static_cast<std::uint64_t>(instances_.size()) * sizeof(RectInstance);
+    const std::uint64_t count = instances_.size();  // implicit: size_t and uint64_t may be the same type
+    return count * sizeof(RectInstance);
   }
 
   /// The LOD level used at `units_per_pixel`, or -1 when every rectangle is drawn.

@@ -43,7 +43,7 @@ std::string format_utc_timestamp(std::chrono::system_clock::time_point time) {
   const long long days = (ms >= 0 ? ms : ms - ms_per_day + 1) / ms_per_day;
   const long long in_day = ms - days * ms_per_day;
   const CivilDate date = civil_from_days(days);
-  char buffer[40];
+  char buffer[192];  // room for any long long year, so GCC proves no truncation
   std::snprintf(buffer, sizeof buffer, "%04lld-%02u-%02uT%02lld:%02lld:%02lld.%03lldZ", date.year, date.month,
                 date.day, in_day / 3'600'000, in_day / 60'000 % 60, in_day / 1000 % 60, in_day % 1000);
   return buffer;

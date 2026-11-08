@@ -388,7 +388,7 @@ void CanvasRenderer::record(const DrawTarget& target, const ViewTransform& view,
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, impl_->pipeline);
   const VkDeviceSize zero = 0;
   vkCmdBindVertexBuffers(cmd, 0, 1, &impl_->instances.buffer, &zero);
-  const auto capacity = static_cast<std::uint64_t>(impl_->instances.size / sizeof(RectInstance));
+  const std::uint64_t capacity = impl_->instances.size / sizeof(RectInstance);
   const LayerStyle fallback{};
   std::uint32_t pushed_layer = std::numeric_limits<std::uint32_t>::max();
   for (const LayerBatch& batch : draws) {
@@ -411,7 +411,8 @@ std::uint64_t CanvasRenderer::device_bytes() const noexcept {
 }
 
 std::size_t CanvasRenderer::instance_count() const noexcept {
-  return static_cast<std::size_t>(device_bytes() / sizeof(RectInstance));
+  const std::size_t count = device_bytes() / sizeof(RectInstance);  // 64-bit targets only
+  return count;
 }
 
 }  // namespace hefesto::render

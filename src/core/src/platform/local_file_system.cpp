@@ -160,7 +160,8 @@ diag::Outcome<std::uint64_t> LocalFileSystem::size(const Path& path) {
   if (ec) {
     return io_error(codes::kPlatformNotFound, "no such file", path, ec);
   }
-  return static_cast<std::uint64_t>(bytes);
+  const std::uint64_t result = bytes;  // implicit: uintmax_t and uint64_t may be the same type
+  return result;
 }
 
 diag::Outcome<std::vector<Path>> LocalFileSystem::list(const Path& directory) {

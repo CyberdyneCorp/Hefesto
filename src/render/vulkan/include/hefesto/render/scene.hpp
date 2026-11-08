@@ -80,7 +80,8 @@ class RectScene {
   [[nodiscard]] const Bounds& bounds() const noexcept { return bounds_; }
   [[nodiscard]] std::size_t size() const noexcept { return instances_.size(); }
   [[nodiscard]] std::uint64_t byte_size() const noexcept {
-    return static_cast<std::uint64_t>(instances_.size()) * sizeof(RectInstance);
+    const std::uint64_t count = instances_.size();  // implicit: size_t and uint64_t may be the same type
+    return count * sizeof(RectInstance);
   }
 
  private:

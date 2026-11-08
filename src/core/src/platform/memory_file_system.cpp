@@ -75,7 +75,8 @@ diag::Outcome<std::uint64_t> MemoryFileSystem::size(const Path& path) {
   if (it == files_.end()) {
     return not_found(path);
   }
-  return static_cast<std::uint64_t>(it->second.size());
+  const std::uint64_t bytes = it->second.size();  // implicit: size_t and uint64_t may be the same type
+  return bytes;
 }
 
 diag::Outcome<std::vector<Path>> MemoryFileSystem::list(const Path& directory) {

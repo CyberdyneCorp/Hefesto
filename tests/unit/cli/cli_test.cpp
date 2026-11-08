@@ -15,6 +15,10 @@
 #include "options.hpp"
 #include "posix_process_runner.hpp"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace cli = hefesto::cli;
 using Args = std::vector<std::string_view>;
 
@@ -217,12 +221,31 @@ TEST_CASE("POSIX process runner", SERVICES_TAGS) {
 // Regression: pipe fds were not close-on-exec. Each child kept extra copies of
 // its own pipe ends besides 0-2, and a child spawned by another thread could
 // inherit (and hold open) another run's write ends, so that run never saw EOF.
+namespace {
+// Pipes above fd 2 that this test process already holds without close-on-exec
+// (inherited from CTest or the sanitizer runtime). A child inherits these
+// regardless of the runner, so they are the baseline.
+int inheritable_pipe_count() {
+  int count = 0;
+  const long max_fd = ::sysconf(_SC_OPEN_MAX);
+  for (int fd = 3; fd < max_fd && fd < 4096; ++fd) {
+    struct stat st {};
+    const int flags = ::fcntl(fd, F_GETFD);
+    if (flags != -1 && (flags & FD_CLOEXEC) == 0 && ::fstat(fd, &st) == 0 && S_ISFIFO(st.st_mode)) {
+      ++count;
+    }
+  }
+  return count;
+}
+}  // namespace
+
 TEST_CASE("POSIX process runner: children inherit no pipe fds besides 0, 1 and 2", SERVICES_TAGS) {
   cli::PosixProcessRunner runner;
+  const std::string baseline = std::to_string(inheritable_pipe_count()) + "\n";
   const char* script =
       "n=0; for f in /dev/fd/*; do case $f in /dev/fd/0|/dev/fd/1|/dev/fd/2) ;; "
       "*) if [ -p \"$f\" ]; then n=$((n+1)); fi ;; esac; done; echo $n";
   const auto r = runner.run({.program = "sh", .args = {"-c", script}, .working_directory = {}, .stdin_data = {}});
   REQUIRE(r.ok());
-  CHECK(r.value().stdout_data == "0\n");
+  CHECK(r.value().stdout_data == baseline);
 }
