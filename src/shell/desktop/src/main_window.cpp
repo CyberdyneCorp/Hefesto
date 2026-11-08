@@ -55,6 +55,7 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
 
 void MainWindow::DiagnosticsPanelSink::emit(const diag::Diagnostic& diagnostic) {
   panel_.add_item(diag::format_text(diagnostic));
+  panel_.scroll_to_end();
 }
 
 MainWindow::~MainWindow() {
@@ -89,6 +90,9 @@ void MainWindow::build_panels() {
   diagnostics_.set_font(runtime_.mono_font());
   diagnostics_.set_accessible_name("Diagnostics");
   dock_.add_panel(diagnostics_, "Diagnostics", ui::DockSide::bottom, viewport_.get(), 0.2F);
+  console_.set_font(runtime_.mono_font());
+  console_.set_accessible_name("Console");
+  dock_.add_panel(console_, "Console", ui::DockSide::tab, &diagnostics_, 0.0F);
 }
 
 void MainWindow::build_command_bar() {
@@ -126,16 +130,21 @@ void MainWindow::on_command(const std::string& text) {
   for (const std::string& d : outcome.diagnostics) {
     std::fprintf(stderr, "%s\n", d.c_str());
   }
-  // Multi-line results (e.g. `help`) go to stdout; the status bar shows the first line.
+  // The Console shows the command and its full result (multi-line for `help`);
+  // the status bar shows the first line.
   const std::string& status = command_model_.status_text();
-  const std::size_t newline = status.find('\n');
-  if (newline != std::string::npos) {
-    std::fprintf(stdout, "%s\n", status.c_str());
-  }
-  update_status(status.substr(0, newline));
+  append_console(text, status);
+  update_status(status.substr(0, status.find('\n')));
   if (core_.quit_requested()) {
     runtime_.quit();
   }
+}
+
+void MainWindow::append_console(const std::string& command, const std::string& result) {
+  for (const std::string& line : console_lines(command, result)) {
+    console_.add_item(line);
+  }
+  console_.scroll_to_end();
 }
 
 void MainWindow::wire_viewport() {

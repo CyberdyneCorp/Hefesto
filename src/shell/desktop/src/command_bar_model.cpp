@@ -57,4 +57,16 @@ std::string CommandBarModel::next() {
   return history_[cursor_];
 }
 
+std::vector<std::string> console_lines(std::string_view command, std::string_view result) {
+  std::vector<std::string> lines{"> " + std::string(command)};
+  std::size_t start = 0;
+  while (start < result.size()) {
+    const std::size_t end = result.find('\n', start);
+    const std::size_t stop = end == std::string_view::npos ? result.size() : end;
+    lines.emplace_back(result.substr(start, stop - start));
+    start = stop + 1;
+  }
+  return lines;
+}
+
 }  // namespace hefesto::shell

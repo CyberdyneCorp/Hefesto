@@ -59,3 +59,13 @@ TEST_CASE("trim removes ASCII blanks only at both ends", "[cap:hefesto-architect
   CHECK(trim("").empty());
   CHECK(trim(" \t ").empty());
 }
+
+// Regression: multi-line results (e.g. `help`) were only written to stdout and
+// never shown in the window; the Console panel now lists every line.
+TEST_CASE("console lines echo the command and every result line",
+          "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
+  CHECK(console_lines("help", "box\nhelp\nquit") == std::vector<std::string>{"> help", "box", "help", "quit"});
+  CHECK(console_lines("version", "0.0.1") == std::vector<std::string>{"> version", "0.0.1"});
+  CHECK(console_lines("zoom 2", "") == std::vector<std::string>{"> zoom 2"});
+  CHECK(console_lines("help", "a\n\nb\n") == std::vector<std::string>{"> help", "a", "", "b"});
+}
