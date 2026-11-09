@@ -83,6 +83,25 @@ TEST_CASE("elements are kept and written sorted by natural name order",
         "<< end >>\n");
 }
 
+TEST_CASE("element flags are a comma list; an unknown flag is reported",
+          "[cap:cell-file-format][req:Element records][regression]") {
+  // Regression: "NORTH small" (blank, not comma) was split silently; Magic
+  // takes it as one unknown flag and prints "No such text element flag".
+  CellIo io;
+  db::CellDef& c = io.read("c", "magic\ntech tiny\ntimestamp 1\n<< elements >>\n"
+                                "text t1 red 5 5 \"hello\" NORTH small\n"
+                                "rectangle r1 white 0 0 1 1 small\n"
+                                "line l1 white 0 0 1 1 halfx,bogus\n<< end >>\n");
+  REQUIRE(c.elements().size() == 3);
+  std::vector<std::string> texts;
+  for (const auto& d : io.sink.snapshot()) texts.push_back(d.text);
+  CHECK(texts == std::vector<std::string>{"No such text element flag \"NORTH small\"",
+                                          "No such rect element flag \"small\"",
+                                          "No such line element flag \"bogus\""});
+  CHECK(c.elements()[0].text_position == 0);  // unchanged
+  CHECK(c.elements()[2].half_x);              // the known flag still applies
+}
+
 TEST_CASE("temporary elements are not written", "[cap:cell-file-format][req:Writer elements]") {
   CellIo io;
   db::CellDef& c = io.read("c", "magic\ntech tiny\ntimestamp 1\n<< elements >>\nrectangle r red 0 0 1 1 temporary\n"
