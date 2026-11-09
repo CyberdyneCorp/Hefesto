@@ -15,6 +15,9 @@
 #include <climits>
 #include <cstdint>
 #include <charconv>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <variant>
 #include <utility>
 
@@ -68,36 +71,184 @@ std::vector<Label*> labels_in(CellDef& def, const Rect& area) {
 }
 
 // --- label -------------------------------------------------------------------
+//
+// CmdLabel (Magic ref: commands/CmdLQ.c:200-345): `label text [pos [layer]]`
+// or `label text font [size [rotation [offx offy [pos [layer]]]]]`, starting
+// from the `setlabel -default` values when they were set.
+
+struct LabelArgs {
+  Label lab;
+  bool stop = false;  // an error was reported: no label is made
+  std::optional<tech::TileType> type;
+};
+
+LabelArgs initial_label_args(const cu::Session& s, const std::string& text) {
+  LabelArgs a;
+  a.lab.text = text;
+  a.lab.justification = -1;
+  if (const auto& d = s.editor->label_defaults) {
+    a.lab.justification = d->justification;
+    a.lab.font = d->font;
+    a.lab.size = d->size;
+    a.lab.rotation = d->rotation;
+    a.lab.offset = d->offset;
+    a.lab.sticky = d->sticky;
+    a.type = d->type;
+  }
+  return a;
+}
+
+// The second word: a position, else a font index or a font name.
+void parse_label_second(const cu::Session& s, const std::string& word, LabelArgs& a) {
+  const int pos = parse_position(word, false);
+  if (pos >= 0) {
+    a.lab.justification = pos;
+    return;
+  }
+  const auto count = static_cast<std::int32_t>(s.editor->fonts.fonts.size());
+  if (cu::str_is_int(word)) {
+    a.lab.font = cu::c_atoi(word);
+    if (a.lab.font < 0 || a.lab.font >= count) {  // reported; the label gets the default font
+      cu::warn(s, count == 0 ? std::string{"No vector outline fonts are loaded!"}
+                             : "Font value out of range (0 to " + std::to_string(count - 1) + ")");
+    }
+    return;
+  }
+  a.lab.font = s.editor->fonts.find(word);
+  if (a.lab.font < -1) {
+    cu::warn(s, "Unknown vector outline font \"" + word + "\"");
+    a.stop = true;
+  }
+}
+
+// The offset words of the font form: "x y" in one word (then the position
+// is the next word) or two words. Returns the index of the position word.
+std::size_t parse_label_offset(const cu::Session& s, const std::vector<std::string>& args, LabelArgs& a) {
+  const std::string& first = args[4];
+  const std::size_t space = first.find(' ');
+  const std::string_view word{first};
+  const bool one_word = space != std::string::npos;
+  const std::string_view x = one_word ? word.substr(0, space) : word;
+  const std::string_view y = one_word ? word.substr(space + 1) : std::string_view{args[5]};
+  if (!cu::str_is_numeric(x) || !cu::str_is_numeric(y)) {
+    cu::warn(s, "Uninterpretable offset value \"" + std::string{x} + " " + std::string{y} + "\"");
+    a.stop = true;
+    return args.size();
+  }
+  a.lab.offset = Point{cu::scaled_coord(s, x, 8, true), cu::scaled_coord(s, y, 8, false)};
+  return one_word ? 5 : 6;
+}
+
+// Size, rotation, offset and position of the font form.
+void parse_label_font_form(const cu::Session& s, const std::vector<std::string>& args, LabelArgs& a) {
+  if (!s.editor->label_defaults) {
+    a.lab.size = cu::default_font_size(s);  // Q-MISC-22
+  }
+  if (args.size() > 2 && cu::str_is_numeric(args[2])) {
+    a.lab.size = cu::scaled_coord(s, args[2], 8, true);
+  }
+  if (args.size() > 3 && cu::str_is_int(args[3])) {
+    a.lab.rotation = cu::c_atoi(args[3]);
+  }
+  std::size_t pos_index = 6;
+  if (args.size() > 5) {
+    pos_index = parse_label_offset(s, args, a);
+  }
+  if (a.stop || pos_index >= args.size()) {
+    return;
+  }
+  const int pos = parse_position(args[pos_index], false);
+  if (pos < 0) {
+    cu::warn(s, position_error_text(args[pos_index], false));
+    a.stop = true;
+    return;
+  }
+  a.lab.justification = pos;
+}
+
+// The last word names the layer ('-' prefix: sticky).
+void parse_label_type(const cu::Session& s, const std::string& word, LabelArgs& a) {
+  std::string_view name{word};
+  if (name.starts_with('-')) {
+    a.lab.sticky = true;
+    name.remove_prefix(1);
+  }
+  const auto found = s.tech->find_type(name);
+  if (!found.ok()) {
+    cu::warn(s, "Unknown layer: " + word);
+    a.stop = true;
+    return;
+  }
+  a.type = *found.id;
+}
+
+LabelArgs parse_label_args(const cu::Session& s, const std::vector<std::string>& args) {
+  LabelArgs a = initial_label_args(s, args[0]);
+  if (args.size() > 1) {
+    parse_label_second(s, args[1], a);
+  }
+  if (!a.stop && a.lab.font >= 0) {
+    parse_label_font_form(s, args, a);
+  }
+  const bool has_layer = a.lab.font < 0 ? args.size() > 2 : args.size() >= 7;
+  if (!a.stop && has_layer) {
+    parse_label_type(s, args.back(), a);
+  }
+  return a;
+}
+
+// CmdIllegalChars(text, " /", "Label name"); the message, or "" when legal.
+std::string illegal_label_text(const std::string& text) {
+  for (const char ch : text) {
+    const auto c = static_cast<unsigned char>(ch);
+    if (c > 127 || std::iscntrl(c) != 0) {
+      constexpr std::string_view kHex = "0123456789abcdef";
+      std::string hex;
+      for (unsigned v = c; v != 0 || hex.empty(); v /= 16) {
+        hex.insert(hex.begin(), kHex[v % 16]);
+      }
+      return "Label name contains illegal control character 0x" + hex;
+    }
+    if (ch == ' ' || ch == '/') {
+      return std::string{"Label name contains illegal character \""} + ch + "\"";
+    }
+  }
+  return {};
+}
 
 CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
-  if (inv.args.empty() || inv.args.size() > 3) {
-    return cu::fail(cu::bad_argument("usage: label text ?position? ?layer?"));
+  auto s = cu::session(ctx);
+  if (!s.ok()) {
+    return cu::fail(s.error());
+  }
+  if (inv.args.empty() || inv.args.size() > 8) {
+    cu::warn(s.value(), "Usage: label text [direction [layer]]\n"
+                        "or:    label text font [size [rotation [offsetx offsety [direction [layer]]]]]");
+    return CommandResult::success();
+  }
+  LabelArgs a = parse_label_args(s.value(), inv.args);
+  if (a.stop) {
+    return CommandResult::success();
   }
   auto t = label_target(ctx);
   if (!t.ok()) {
     return cu::fail(t.error());
   }
   const LabelTarget& e = t.value();
-  Label lab;
-  lab.text = inv.args[0];
-  lab.rect = e.area;
-  bool auto_justify = true;
-  if (inv.args.size() >= 2) {
-    const int pos = parse_position(inv.args[1], false);
-    if (pos < 0) {
-      return cu::fail(cu::bad_argument("bad position \"" + inv.args[1] + "\""));
-    }
-    lab.justification = pos;
-    auto_justify = false;
+  if (a.lab.text.empty()) {
+    cu::warn(e.s, "Can't have null label name.");
+    return CommandResult::success();
   }
-  if (inv.args.size() == 3) {
-    auto layer = cu::parse_layer(*e.s.tech, inv.args[2]);
-    if (!layer.ok()) {
-      return cu::fail(layer.error());
-    }
-    lab.type = label_layer_for(*e.s.tech, layer.value());
+  if (const std::string bad = illegal_label_text(a.lab.text); !bad.empty()) {
+    cu::warn(e.s, bad);
+    return CommandResult::success();
   }
-  auto put = put_label(*e.def, std::move(lab), auto_justify);
+  // CmdLabelProc: duplicates at the same place are erased whatever their type.
+  (void)cu::erase_labels_by_content(*e.def, e.area, a.lab.text);
+  a.lab.rect = e.area;
+  a.lab.type = a.type ? label_layer_for(*e.s.tech, *a.type) : tech::kSpace;
+  const bool auto_justify = a.lab.justification < 0;
+  auto put = put_label(*e.def, std::move(a.lab), auto_justify, e.s.editor->fonts.fonts.size());
   if (!put.ok()) {
     return cu::fail(put.error());
   }
@@ -105,6 +256,7 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
   // then moves every label in the box to the paint under it, with notes.
   // (Magic ref: commands/CmdLQ.c:124-137)
   Label* made = put.value();
+  cu::update_font_label(e.s, *made);
   std::vector<std::string> notes;
   (void)adjust_labels(*e.def, *e.s.tech, e.area, &notes);
   for (std::string& n : notes) {
@@ -113,169 +265,9 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
   made->type = label_layer_for(*e.s.tech, made->type);
   recompute_bbox(*e.def, e.s.magic_compat);
   // DBWLabelChanged (ui-windows-and-views "Change-driven redisplay"): the
-  // label's area, grown by one unit so that a point label has an area, with
-  // the window's label extent.
-  e.s.editor->windows.area_changed(*e.def, expand(e.area, 1), std::nullopt);
-  return CommandResult::success();
-}
-
-// --- setlabel ----------------------------------------------------------------
-
-using LabelGetter = Value (*)(const cu::Session&, const Label&);
-using LabelSetter = std::optional<diag::Diagnostic> (*)(const cu::Session&, Label&, const std::vector<std::string>&);
-
-Value get_text(const cu::Session&, const Label& l) { return Value{l.text}; }
-Value get_justify(const cu::Session&, const Label& l) { return Value{std::int64_t{l.justification}}; }
-Value get_font(const cu::Session&, const Label& l) { return Value{std::int64_t{l.font}}; }
-Value get_size(const cu::Session& s, const Label& l) { return cu::coord_value(s, l.size); }
-Value get_rotate(const cu::Session&, const Label& l) { return Value{std::int64_t{l.rotation}}; }
-Value get_offset(const cu::Session&, const Label& l) {
-  return Value{Value::List{Value{std::int64_t{l.offset.x}}, Value{std::int64_t{l.offset.y}}}};
-}
-Value get_layer(const cu::Session& s, const Label& l) { return Value{std::string{s.tech->type_name(l.type)}}; }
-Value get_sticky(const cu::Session&, const Label& l) { return Value{std::int64_t{l.sticky ? 1 : 0}}; }
-
-std::optional<diag::Diagnostic> set_text(const cu::Session&, Label& l, const std::vector<std::string>& v) {
-  if (v[0].empty()) {
-    return diag::make(codes::kLabelEmpty, "a label needs non-empty text");
-  }
-  l.text = v[0];
-  return std::nullopt;
-}
-
-std::optional<diag::Diagnostic> set_int_field(std::int32_t& field, const std::string& text) {
-  auto n = cu::parse_int(text);
-  if (!n.ok()) {
-    return n.error();
-  }
-  field = static_cast<std::int32_t>(n.value());
-  return std::nullopt;
-}
-
-std::optional<diag::Diagnostic> set_justify(const cu::Session&, Label& l, const std::vector<std::string>& v) {
-  const int pos = parse_position(v[0], false);
-  if (pos < 0) {
-    return cu::bad_argument("bad position \"" + v[0] + "\"");
-  }
-  l.justification = pos;
-  return std::nullopt;
-}
-
-std::optional<diag::Diagnostic> set_font(const cu::Session& s, Label& l, const std::vector<std::string>& v) {
-  if (v[0] == "default" || v[0] == "-1") {
-    l.font = -1;
-    l.size = 0;
-    l.rotation = 0;
-    l.offset = Point{};
-    return std::nullopt;
-  }
-  // A loaded font by name (DBNameToFont), else an index.
-  if (const int index = s.editor->fonts.find(v[0]); index >= 0) {
-    l.font = index;
-    return std::nullopt;
-  }
-  return set_int_field(l.font, v[0]);
-}
-
-// Label::text_bbox of an outline-font label (font-labels "Label geometry"),
-// so the extended bounding box (update_bounding_boxes) covers the text.
-void update_text_bbox(const cu::Session& s, Label& l) {
-  const display::OutlineFont* font = l.font >= 0 ? s.editor->fonts.font_of(l) : nullptr;
-  if (font == nullptr) {
-    l.text_bbox.reset();
-    return;
-  }
-  l.text_bbox = display::font_label_geometry(l, *font, s.magic_compat).bbox;
-}
-
-std::optional<diag::Diagnostic> set_size(const cu::Session& s, Label& l, const std::vector<std::string>& v) {
-  auto c = cu::parse_coord(s, v[0]);
-  if (!c.ok()) {
-    return c.error();
-  }
-  l.size = c.value();
-  return std::nullopt;
-}
-
-std::optional<diag::Diagnostic> set_rotate(const cu::Session&, Label& l, const std::vector<std::string>& v) {
-  return set_int_field(l.rotation, v[0]);
-}
-
-std::optional<diag::Diagnostic> set_offset(const cu::Session&, Label& l, const std::vector<std::string>& v) {
-  if (v.size() != 2) {
-    return cu::bad_argument("usage: setlabel offset x y");
-  }
-  if (auto e = set_int_field(l.offset.x, v[0])) {
-    return e;
-  }
-  return set_int_field(l.offset.y, v[1]);
-}
-
-std::optional<diag::Diagnostic> set_layer(const cu::Session& s, Label& l, const std::vector<std::string>& v) {
-  auto t = cu::parse_layer(*s.tech, v[0]);
-  if (!t.ok()) {
-    return t.error();
-  }
-  l.type = label_layer_for(*s.tech, t.value());
-  return std::nullopt;
-}
-
-std::optional<diag::Diagnostic> set_sticky(const cu::Session&, Label& l, const std::vector<std::string>& v) {
-  const std::string& b = v[0];
-  l.sticky = b == "1" || b == "true" || b == "yes" || b == "on";
-  return std::nullopt;
-}
-
-struct LabelOption {
-  std::string_view name;
-  LabelGetter get;
-  LabelSetter set;
-};
-
-constexpr std::array<LabelOption, 8> kLabelOptions = {{
-    {"text", get_text, set_text},
-    {"justify", get_justify, set_justify},
-    {"font", get_font, set_font},
-    {"size", get_size, set_size},
-    {"rotate", get_rotate, set_rotate},
-    {"offset", get_offset, set_offset},
-    {"layer", get_layer, set_layer},
-    {"sticky", get_sticky, set_sticky},
-}};
-
-CommandResult cmd_setlabel(CommandContext& ctx, const Invocation& inv) {
-  if (inv.args.empty()) {
-    return cu::fail(cu::bad_argument("usage: setlabel option ?value?"));
-  }
-  const auto* opt = std::find_if(kLabelOptions.begin(), kLabelOptions.end(),
-                                 [&](const LabelOption& o) { return o.name == inv.args[0]; });
-  if (opt == kLabelOptions.end()) {
-    return cu::fail(cu::bad_argument("unknown setlabel option \"" + inv.args[0] + "\""));
-  }
-  auto t = label_target(ctx);
-  if (!t.ok()) {
-    return cu::fail(t.error());
-  }
-  const LabelTarget& e = t.value();
-  const std::vector<Label*> labels = labels_in(*e.def, e.area);
-  if (inv.args.size() == 1) {
-    Value::List values;
-    for (const Label* l : labels) {
-      values.push_back(opt->get(e.s, *l));
-    }
-    return CommandResult::success(Value{std::move(values)});
-  }
-  const std::vector<std::string> v(inv.args.begin() + 1, inv.args.end());
-  for (Label* l : labels) {
-    if (auto err = opt->set(e.s, *l, v)) {
-      return cu::fail(*err);
-    }
-    update_text_bbox(e.s, *l);
-  }
-  if (!labels.empty()) {
-    mark_modified(*e.def);
-    recompute_bbox(*e.def, e.s.magic_compat);
-  }
+  // label's area (or rendered text box), grown by one unit so that a point
+  // label has an area, with the window's label extent.
+  cu::label_changed(e.s, *e.def, *made);
   return CommandResult::success();
 }
 
@@ -753,10 +745,13 @@ CommandResult cmd_property(CommandContext& ctx, const Invocation& inv) {
 namespace cmdutil {
 
 bool register_label_commands(cmd::CommandRegistry& registry) {
-  bool ok = add(registry, "label", "label text ?position? ?layer?",
+  bool ok = add(registry, "label",
+                "label text ?position? ?layer? | label text font ?size? ?rotation? ?offx offy? ?position? ?layer?",
                 "Creates a label on the box (layer chosen from the paint when omitted).", cmd_label);
-  ok = add(registry, "setlabel", "setlabel text|justify|font|size|rotate|offset|layer|sticky ?value?",
-           "Shows or changes attributes of the labels in the box.", cmd_setlabel) && ok;
+  ok = add(registry, "setlabel",
+           "setlabel ?-default? box|font|fontlist|justify|layer|offset|rotate|size|sticky|text|help ?value?",
+           "Shows or changes attributes of the labels in the box, or the defaults of later labels.",
+           setlabel_command) && ok;
   ok = add(registry, "port", "port make|remove|renumber|index|class|use|shape|exists ?args?",
            "Shows or changes port attributes of the label in the box.", cmd_port) && ok;
   ok = add(registry, "property", "property ?compat ?bool?? | ?type? ?name ?value??",

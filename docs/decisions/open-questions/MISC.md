@@ -146,6 +146,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdRS.c:2287-2300, database/DBlabel.c:1680-1688
 - Options: replicate | fix (skip loading if the file's font name already exists)
 - Recommendation: fix — font indices are not persisted (`.mag` stores names; GDS stores index & 3, see Q-MISC-27).
+- Resolution: replicate — the file is loaded again and gets a new index, as in Magic, in both modes: `setlabel fontlist` output and the GDS font index (index & 3, Q-MISC-27) then match Magic's for the same startup and scripts (golden case MISC-FL-04); recorded 2026-11-09 while implementing the `setlabel` font family; approved 2026-11-09.
 
 ### Q-MISC-27: GDS stores only two bits of font index
 - Kind: quirk
@@ -153,6 +154,14 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: calma/CalmaWrite.c:2860-2867, calma/CalmaRdpt.c:831
 - Options: replicate
 - Recommendation: replicate; Hefesto must load FreeSans, FreeSerif, FreeMono in that order by default.
+
+### Q-MISC-28: `setlabel font <index>` resets the selected labels to the default font
+- Kind: bug
+- Magic behavior: `setlabel font N` with an integer N prints the name of font N (or reports an out-of-range index), but the index is held in a variable declared inside that block; the outer `font` variable is still -1, so the command then applies font -1 to every selected label (or to the `-default` label). The same happens for `setlabel font N scale`. The query prints the name; the change silently turns the labels into default-font labels (size, rotation and offset are kept).
+- Evidence: commands/CmdRS.c:2276-2330
+- Options: replicate | fix (apply font N, or only print and change nothing)
+- Recommendation: fix (only print and change nothing): the documented use is "see the font name corresponding to a font number".
+- Resolution: replicate in magic-compat (scripts written for Magic change labels the same way); fix in native mode, where `setlabel font <index>` only prints the font name and changes no label (approved 2026-11-09).
 
 ## plot-output
 

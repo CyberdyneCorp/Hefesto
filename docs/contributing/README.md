@@ -100,7 +100,7 @@ CI runs each target for 60 seconds on every pull request, and fails if any targe
 | Specs, roadmap and specs index | `.github/workflows/openspec-validate.yml` |
 | Build and test matrix, ASan, fuzz, golden determinism | `.github/workflows/ci.yml` |
 
-The build matrix covers the oldest and newest supported compilers: GCC 11 and the newest GCC on Ubuntu 22.04/24.04, Clang 14 and the newest Clang, Linux aarch64, and macOS arm64 with Xcode 15 and the newest Xcode (requirement "Supported toolchains"). The newest-Clang leg also builds the desktop shell and runs its tests under X11 (Xvfb) and Wayland (headless Weston).
+The build matrix covers the oldest and newest supported compilers: GCC 11 and the newest GCC on Ubuntu 22.04/24.04, Clang 14 and the newest Clang, Linux aarch64, and macOS arm64 with Xcode 15 and the newest Xcode (requirement "Supported toolchains"). The newest-Clang leg also builds the desktop shell and runs its tests under X11 (Xvfb) and Wayland (headless Weston). The job `gpu-readback-lavapipe` builds only `hefesto_render_tests` and runs it on Mesa's software Vulkan driver (lavapipe, loaded alone through `VK_DRIVER_FILES`) with `HEFESTO_REQUIRE_VULKAN_DEVICE=llvmpipe`, so the GPU readback tests (`tests/unit/render/headless_gpu_test.cpp`) must run there: without that variable they skip when no Vulkan device exists; with it a missing device, or a device whose name does not contain the value, fails the test.
 
 Every first-party source file starts with:
 

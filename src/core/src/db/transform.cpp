@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cctype>
+#include <string>
 
 namespace hefesto::db {
 
@@ -102,6 +103,34 @@ int parse_position(std::string_view name, bool manhattan) noexcept {
   }
   const PositionName& entry = kPositionNames[static_cast<std::size_t>(index)];
   return !manhattan || entry.manhattan ? entry.value : -2;
+}
+
+std::string position_error_text(std::string_view name, bool manhattan) {
+  // (Magic ref: utils/geometry.c:410-445)
+  const int found = lookup_position(name);
+  std::string text = "\"" + std::string{name} + "\" ";
+  if (found >= 0) {
+    text += "is not a Manhattan direction or position.";
+  } else {
+    text += found == -1 ? "is ambiguous." : "is not a valid direction or position.";
+  }
+  text += "\nLegal directions/positions are:\n\t";
+  bool first = true;
+  for (const PositionName& entry : kPositionNames) {
+    if (manhattan && !entry.manhattan) {
+      continue;
+    }
+    text += first ? "" : ",";
+    text += entry.name;
+    first = false;
+  }
+  return text;
+}
+
+std::string_view position_long_name(Position pos) noexcept {
+  constexpr std::array<std::string_view, 9> kNames = {"CENTER", "NORTH", "NORTHEAST", "EAST", "SOUTHEAST",
+                                                      "SOUTH",  "SOUTHWEST", "WEST", "NORTHWEST"};
+  return pos >= 0 && pos <= 8 ? kNames[static_cast<std::size_t>(pos)] : std::string_view{"*ILLEGAL*"};
 }
 
 namespace {

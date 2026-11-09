@@ -57,6 +57,9 @@ struct EditorState {
   std::string current_use;
   /// `property compat` (layout-properties): Magic-compatible property typing.
   bool property_compat = true;
+  /// `setlabel -default` values used by `label` (Magic's DefaultLabel);
+  /// nullopt until the first `setlabel -default`.
+  std::optional<db::LabelDefaults> label_defaults;
 
   // CELL: search paths, path variables and the lock service (nullptr =
   // locking disabled).

@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/diag/sink.hpp"
@@ -27,5 +28,15 @@ namespace hefesto::cell {
 /// fonts added.
 std::size_t load_default_fonts(platform::FileSystem& fs, const std::vector<platform::Path>& directories,
                                display::FontRegistry& fonts, diag::DiagnosticSink& sink);
+
+/// DBLoadFont for `setlabel font <file> [scale]`: opens `file` as given
+/// (PaOpen's "." entry: relative to the working directory) or from the first
+/// of `directories` (the system path) holding it, parses it with `scale` and
+/// appends the font to `fonts`, even when a font of that name is already
+/// loaded (Q-MISC-26). Returns the new font's index, or why it failed (not
+/// found, unreadable, not an outline font).
+/// (Magic ref: database/DBlabel.c:1586-1614, database/DBlabel.c:1680-1688)
+diag::Outcome<int> load_font_file(platform::FileSystem& fs, const std::vector<platform::Path>& directories,
+                                  std::string_view file, double scale, display::FontRegistry& fonts);
 
 }  // namespace hefesto::cell

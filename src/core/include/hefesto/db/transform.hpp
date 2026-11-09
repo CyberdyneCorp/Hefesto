@@ -12,6 +12,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 #include "hefesto/db/geometry.hpp"
@@ -85,6 +86,14 @@ inline constexpr Position kNorthWest = 8;
 /// accepted on input"); `manhattan` restricts to the Manhattan names.
 /// Returns the position, -1 when ambiguous, -2 when invalid.
 [[nodiscard]] int parse_position(std::string_view name, bool manhattan) noexcept;
+
+/// The message GeoNameToPos prints in verbose mode when `name` is ambiguous,
+/// invalid or (with `manhattan`) not Manhattan, ending with the list of
+/// legal names (no final line feed).
+[[nodiscard]] std::string position_error_text(std::string_view name, bool manhattan);
+
+/// GeoPosToName: "CENTER", "NORTH", ... "NORTHWEST", "*ILLEGAL*" otherwise.
+[[nodiscard]] std::string_view position_long_name(Position pos) noexcept;
 
 /// "Transforming positions, angles and triangles": a label rotation in
 /// degrees under `t` (GeoTransAngle). `magic_compat` true keeps Magic's

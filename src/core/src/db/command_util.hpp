@@ -62,6 +62,41 @@ void set_units_internal(const Session& s);
 
 [[nodiscard]] diag::Outcome<std::int64_t> parse_int(std::string_view text);
 
+/// cmdScaleCoord(w, text, relative, is_x, scale): the distance `text` in
+/// internal units times `scale` (8 for label sizes and offsets), rounded half
+/// away from zero. A word that is not a number prints Magic's "Coordinate
+/// value cannot be parsed:  assuming 0" and yields 0.
+/// (Magic ref: commands/CmdSubrs.c:123-300)
+[[nodiscard]] std::int32_t scaled_coord(const Session& s, std::string_view text, int scale, bool is_x,
+                                        bool relative = true);
+
+/// Magic's StrIsInt (optional sign, then only digits), StrIsNumeric (strtod
+/// reads a number at the start) and atoi (saturated at the int range).
+[[nodiscard]] bool str_is_int(std::string_view text) noexcept;
+[[nodiscard]] bool str_is_numeric(std::string_view text) noexcept;
+[[nodiscard]] std::int32_t c_atoi(std::string_view text) noexcept;
+
+/// The size a label gets when a font is given without one: DBLambda[1]
+/// eighths (Q-MISC-22); with `magic-compat` OFF, 8 x that (one lambda).
+[[nodiscard]] std::int32_t default_font_size(const Session& s) noexcept;
+
+/// DBWLabelChanged: the label's area (its rendered text box for an outline
+/// font) changed in `def`.
+void label_changed(const Session& s, const CellDef& def, const Label& label);
+
+/// DBEraseLabelsByContent(def, rect, -1, text): removes every label of
+/// `def` with exactly `rect` and `text`, of any type. Returns how many.
+std::size_t erase_labels_by_content(CellDef& def, const Rect& rect, std::string_view text);
+
+/// `setlabel` (commands_setlabel.cpp).
+[[nodiscard]] cmd::CommandResult setlabel_command(cmd::CommandContext& ctx, const cmd::Invocation& inv);
+
+/// DBFontLabelSetBBox (font-labels "Font label geometry"): Label::text_bbox
+/// of an outline-font label, nullopt for the default font or an unloaded
+/// index; the rotation of an outline-font label is normalised into [0, 360)
+/// (stored back, as Magic does).
+void update_font_label(const Session& s, Label& label);
+
 /// A comma/space separated layer list ("*" = every user type, "labels" =
 /// the label pseudo-type); DB-CMD-003 on an unknown or ambiguous name.
 [[nodiscard]] diag::Outcome<tech::TypeMask> parse_layers(const tech::Technology& tech, std::string_view text);

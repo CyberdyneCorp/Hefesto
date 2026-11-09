@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Draws through the real Vulkan path (MoltenVK on macOS) into an offscreen
-// image and reads pixels back. SKIPs when no Vulkan device is available.
+// Draws through the real Vulkan path (MoltenVK on macOS, Mesa lavapipe in the
+// Linux CI job `gpu-readback-lavapipe`) into an offscreen image and reads
+// pixels back. SKIPs when no Vulkan device is available, unless
+// HEFESTO_REQUIRE_VULKAN_DEVICE is set (see make_canvas).
 
 #include <catch2/catch_test_macros.hpp>
+#include <cstdlib>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "hefesto/render/headless.hpp"
@@ -14,12 +18,27 @@ using namespace hefesto::render;
 
 namespace {
 
+// Returns a 64x64 canvas, or SKIPs the test when no Vulkan device exists.
+// HEFESTO_REQUIRE_VULKAN_DEVICE=<name part> (set by a CI job that must run
+// these tests) turns that skip into a failure and also fails when the picked
+// device's name does not contain <name part> (e.g. "llvmpipe" for lavapipe).
 std::unique_ptr<HeadlessCanvas> make_canvas() {
+  const char* env = std::getenv("HEFESTO_REQUIRE_VULKAN_DEVICE");
+  const std::string required = env != nullptr ? env : "";
+  std::unique_ptr<HeadlessCanvas> canvas;
   try {
-    return std::make_unique<HeadlessCanvas>(HeadlessOptions{64, 64, false});
+    canvas = std::make_unique<HeadlessCanvas>(HeadlessOptions{64, 64, false});
   } catch (const VulkanError& e) {
-    return nullptr;
+    if (!required.empty()) {
+      FAIL("no Vulkan device, but HEFESTO_REQUIRE_VULKAN_DEVICE=" << required << ": " << e.what());
+    }
+    SKIP("no Vulkan device: " << e.what());
   }
+  if (!required.empty()) {
+    INFO("Vulkan device: " << canvas->device_name() << " (" << canvas->driver_info() << ")");
+    REQUIRE(canvas->device_name().find(required) != std::string::npos);
+  }
+  return canvas;
 }
 
 std::uint8_t channel(std::uint32_t rgba, unsigned index) {
@@ -31,9 +50,6 @@ std::uint8_t channel(std::uint32_t rgba, unsigned index) {
 TEST_CASE("renderer draws instanced rectangles with layer colors",
           "[cap:hefesto-performance][req:Interactive frame rate]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // Layer 0 covers the left half of a 64x64 world, layer 1 the top-right quarter.
   const std::vector<RectInstance> instances{{0, 0, 32, 64}, {32, 32, 64, 64}};
   const std::vector<LayerBatch> draws{{0, 0, 1}, {1, 1, 1}};
@@ -58,9 +74,6 @@ TEST_CASE("renderer draws instanced rectangles with layer colors",
 
 TEST_CASE("sub-pixel rectangles stay visible", "[cap:hefesto-performance][req:Interactive frame rate]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // A 1x1-unit rectangle seen at 1/100 pixel per unit is still drawn one pixel wide.
   const std::vector<RectInstance> instances{{3200, 3200, 3201, 3201}};
   const std::vector<LayerBatch> draws{{0, 0, 1}};
@@ -81,9 +94,6 @@ TEST_CASE("sub-pixel rectangles stay visible", "[cap:hefesto-performance][req:In
 
 TEST_CASE("stipples use the OpenGL orientation on the GPU", "[cap:display-style-files][req:Stipple patterns]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // A full-canvas rectangle in a checkerboard stipple whose rows differ:
   // row 0 (bottom) 0x80 -> only the leftmost pixel of each 8-pixel run.
   const std::vector<RectInstance> instances{{0, 0, 64, 64}};
@@ -106,9 +116,6 @@ TEST_CASE("stipples use the OpenGL orientation on the GPU", "[cap:display-style-
 TEST_CASE("cross styles draw both diagonals on the GPU, not under 4 pixels",
           "[cap:display-style-files][req:Outline and fill rendering semantics]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // A 40x40 rectangle (diagonals) and a 3x3 one (under GR_THRESH: nothing).
   const std::vector<RectInstance> instances{{12, 12, 52, 52}, {2, 2, 5, 5}};
   const std::vector<LayerBatch> draws{{0, 0, 2}};
@@ -138,9 +145,6 @@ TEST_CASE("cross styles draw both diagonals on the GPU, not under 4 pixels",
 TEST_CASE("outline line patterns repeat every 8 pixels from the line's left end",
           "[cap:display-style-files][req:Outline and fill rendering semantics]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // A horizontal zero-height line from x = 0 to 64 at y = 32, pattern 0x0F:
   // pixels 0-3 of each 8 painted, 4-7 not.
   const std::vector<RectInstance> instances{{0, 32, 64, 32}};
@@ -173,9 +177,6 @@ TEST_CASE("outline line patterns repeat every 8 pixels from the line's left end"
 TEST_CASE("polygons draw triangles and glyph fills merged in layer order",
           "[cap:hefesto-rendering][req:Style-file-faithful 2D drawing]") {
   auto canvas = make_canvas();
-  if (!canvas) {
-    SKIP("no Vulkan device");
-  }
   // Layer 0: a red rectangle over the whole canvas. Layer 1: a blue
   // lower-left triangle of (0,0)-(64,64), relative to base (100, 100).
   // Layer 2: a green rectangle over the top-right corner, drawn after it.

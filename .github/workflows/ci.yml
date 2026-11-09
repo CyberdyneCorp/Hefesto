@@ -274,6 +274,59 @@ jobs:
           path: golden-out/
           if-no-files-found: ignore
 
+  # hefesto-rendering, task 5.5 of openspec/changes/m1-core-viewer: the GPU readback tests
+  # (tests/unit/render/headless_gpu_test.cpp: layer colors, stipples, diagonals, dash patterns, triangles and
+  # layer order) on Mesa's software Vulkan driver, lavapipe. They render offscreen, so no X11 or Wayland
+  # server runs. Elsewhere they skip without a Vulkan device; HEFESTO_REQUIRE_VULKAN_DEVICE makes a skip a
+  # failure here and checks that the device is lavapipe (its device name is "llvmpipe (...)").
+  # Only the render test executable is built: the preset enables the desktop build, so Raven is
+  # configured (it needs libx11-dev), but the shell, the app and the other tests are not compiled.
+  gpu-readback-lavapipe:
+    name: linux-x64 GPU readback (lavapipe)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CC: gcc-14
+      CXX: g++-14
+      PRESET: ci-linux-desktop
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the Vulkan loader, headers and Mesa lavapipe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libvulkan-dev mesa-vulkan-drivers vulkan-tools libx11-dev
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-lavapipe
+          max-size: 300M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-lavapipe-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-linux-lavapipe-
+      - name: Configure
+        run: cmake --preset "$PRESET"
+      - name: Build the render tests
+        run: cmake --build --preset "$PRESET" --target hefesto_render_tests
+      - name: GPU readback tests on lavapipe
+        env:
+          HEFESTO_REQUIRE_VULKAN_DEVICE: llvmpipe
+        run: |
+          # Only the lavapipe driver is loaded (VK_DRIVER_FILES, Vulkan loader 1.3.234+), whatever else the image
+          # ships. Mesa names its manifest lvp_icd.json or lvp_icd.<arch>.json depending on the release.
+          ls /usr/share/vulkan/icd.d/
+          icd="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' | head -n 1)"
+          test -n "$icd" || { echo "::error::no lavapipe ICD manifest in /usr/share/vulkan/icd.d"; exit 1; }
+          export VK_DRIVER_FILES="$icd"
+          vulkaninfo --summary
+          "build/$PRESET/tests/unit/render/hefesto_render_tests" --reporter console --durations yes
+
   determinism:
     name: cross-platform determinism
     needs: build

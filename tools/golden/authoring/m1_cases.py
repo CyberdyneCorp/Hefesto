@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Write the generated M1 golden cases (TECH, MODEL, CELL, viewer-related UI).
+"""Write the generated M1 golden cases (TECH, MODEL, CELL, viewer-related UI, MISC font labels).
 
 Design D8 of openspec/changes/m1-core-viewer. The specs live in
-``{tech,model,cell,ui}_cases.py``; each module's NOT_AUTHORED lists the CASES.md rows
+``{tech,model,cell,ui,misc}_cases.py``; each module's NOT_AUTHORED lists the CASES.md rows
 it leaves out and why. Run from anywhere:
 
     python3 tools/golden/authoring/m1_cases.py            # write every case
@@ -25,11 +25,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import casegen  # noqa: E402
 import cell_cases  # noqa: E402
+import misc_cases  # noqa: E402
 import model_cases  # noqa: E402
 import tech_cases  # noqa: E402
 import ui_cases  # noqa: E402
 
-MODULES = (tech_cases, model_cases, cell_cases, ui_cases)
+MODULES = (tech_cases, model_cases, cell_cases, ui_cases, misc_cases)
 
 
 def all_specs() -> list[casegen.Spec]:

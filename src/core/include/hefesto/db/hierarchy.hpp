@@ -97,12 +97,24 @@ enum class Descend : std::uint8_t { all, no_subcircuit, no_vendor, property_flat
 /// Whether hierarchical operations in `mode` descend into `use`.
 [[nodiscard]] bool descends(const CellUse& use, Descend mode);
 
+/// Which labels flattening copies: `all` (flatCopyAllLabels: every
+/// descended label, prefixed with its path, rotation and offset copied
+/// untransformed in magic-compat, Q-MODEL-20), `top_only` (DBCellCopyAllLabels
+/// of `-dotoplabels`: only the source's own labels, rotation and offset
+/// transformed, duplicates replaced) or `none`.
 enum class FlattenLabels : std::uint8_t { all, top_only, none };
+
+/// DBFontLabelSetBBox for a label being written: fills `text_bbox` of an
+/// outline-font label (nullopt for the default font) and normalises its
+/// rotation into [0, 360) as Magic stores it; flattening runs it on every
+/// label it writes.
+using FontLabelUpdate = std::function<void(Label&)>;
 
 struct FlattenOptions {
   Descend descend = Descend::all;
   FlattenLabels labels = FlattenLabels::all;
   bool magic_compat = true;  // Q-MODEL-7, Q-MODEL-20
+  FontLabelUpdate font_update;  // empty: copied labels get no text box
 };
 
 /// "Flattening into a new cell": a copy of `source` with every descended

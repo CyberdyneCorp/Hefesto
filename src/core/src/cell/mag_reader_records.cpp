@@ -165,8 +165,10 @@ void add_label(ReadState& st, const LabelFields& f) {
     lab.rotation = f.rotate;
     lab.offset = db::Point{st.scale(f.offset.x), st.scale(f.offset.y)};
     const display::OutlineFont* font = st.ctx.fonts->font_of(lab);
-    if (font != nullptr) {
-      lab.text_bbox = display::font_label_geometry(lab, *font, st.ctx.magic_compat).bbox;
+    if (font != nullptr) {  // DBPutFontLabel -> DBFontLabelSetBBox, which stores the normalised rotation
+      const display::FontLabelGeometry geo = display::font_label_geometry(lab, *font, st.ctx.magic_compat);
+      lab.text_bbox = geo.bbox;
+      lab.rotation = geo.rotation;
     }
   }
   lab.type = label_type(st, f);

@@ -53,7 +53,7 @@ The core and the CLI never need Vulkan or Raven.
 
 The desktop app (`hefesto`), its renderer and the canvas benchmark need Vulkan headers and a Vulkan library that CMake's `find_package(Vulkan)` can find. Raven is fetched at its pinned commit.
 
-- **Linux:** `libvulkan-dev` and `libx11-dev` (plus `libwayland-dev`, `libxkbcommon-dev` and `libdecor-0-dev` for the Wayland backend). Without a GPU, `mesa-vulkan-drivers` (lavapipe) lets the GPU readback tests run instead of being skipped.
+- **Linux:** `libvulkan-dev` and `libx11-dev` (plus `libwayland-dev`, `libxkbcommon-dev` and `libdecor-0-dev` for the Wayland backend). Without a GPU, `mesa-vulkan-drivers` (lavapipe) lets the GPU readback tests run instead of being skipped. Set `HEFESTO_REQUIRE_VULKAN_DEVICE=<part of the device name>` (for example `llvmpipe`) to make them fail instead of skip when no such Vulkan device is found; the CI job `gpu-readback-lavapipe` does, with `VK_DRIVER_FILES` pointing at the lavapipe manifest (`/usr/share/vulkan/icd.d/lvp_icd*.json`).
 - **macOS:** the LunarG Vulkan SDK, or Homebrew `molten-vk`, `vulkan-headers` and `vulkan-loader`. With MoltenVK alone, point CMake at the Khronos headers and the MoltenVK library:
 
   ```sh
