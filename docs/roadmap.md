@@ -93,6 +93,10 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Make Hefesto a usable editor, with Magic's full editing command set and a modern desktop UI.
 
+**Pull-forward:** the `ui-gui-managers` requirement "Tool modes" (the `tool` command) is implemented in M2 because the M2 tools need it; the rest of `ui-gui-managers` stays in M4.
+
+**Status (2026-11-09):** planned, OpenSpec change `openspec/changes/m2-interactive-editing` (scaffold, M2 UX design boards, eight parallel workstreams and integration; progress in its `tasks.md`). The 42 open questions that blocked M2 are resolved and the specs aligned (`scripts/check_milestone_readiness.py --milestone M2`: ready). Implementation has not started.
+
 **Capabilities:** `cmd-coordinates-and-units`, `cmd-box`, `cmd-paint-erase`, `cmd-selection`, `cmd-hierarchy`, `cmd-labels-properties`, `cmd-misc-edit`, `layout-undo`, `layout-connectivity`, `ui-command-dispatch`, `ui-tools-and-input`, `ui-feedback-and-highlights`, `ui-box-stack-and-measure`, `ui-color-window`, `ui-wizard-and-debug`, `hefesto-input-and-touch` (desktop), `hefesto-app-ux`, `hefesto-design-system`, `wiring-tool`
 
 **Deliverables**
