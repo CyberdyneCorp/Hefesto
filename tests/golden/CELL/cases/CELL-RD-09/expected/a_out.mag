@@ -1,0 +1,8 @@
+magic
+tech fake
+timestamp 100
+<< m2contact >>
+rect 0 0 4 4
+<< m3contact >>
+rect 0 0 4 4
+<< end >>

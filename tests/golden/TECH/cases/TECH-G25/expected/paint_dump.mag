@@ -1,0 +1,27 @@
+magic
+tech tiny
+timestamp 1794195332
+<< checkpaint >>
+rect 0 6 1 7
+rect 3 6 4 7
+rect 6 6 7 7
+rect 0 3 1 4
+rect 3 3 4 4
+rect 6 3 7 4
+rect 0 0 1 1
+rect 3 0 4 1
+rect 6 0 7 1
+<< metal1 >>
+rect 3 6 4 7
+rect 6 6 7 7
+<< pdiffusion >>
+rect 3 6 4 7
+rect 3 3 4 4
+<< pdcontact >>
+rect 0 6 1 7
+rect 0 3 1 4
+rect 6 3 7 4
+rect 0 0 1 1
+rect 3 0 4 1
+rect 6 0 7 1
+<< end >>

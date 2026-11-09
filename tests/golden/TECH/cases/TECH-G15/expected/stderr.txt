@@ -1,0 +1,10 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+input/tiny.tech: line 76: section (none):
+	Unrecognized layer (type) name "0"
+input/tiny.tech: line 76: section (none):
+	Unmatched parenthesis in layer name "(poly,ndiff".

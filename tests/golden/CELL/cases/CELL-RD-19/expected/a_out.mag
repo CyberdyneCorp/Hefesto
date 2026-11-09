@@ -1,0 +1,7 @@
+magic
+tech scmos
+timestamp 100
+<< elements >>
+text t1 5 5 "hello"
+rectangle r1 white 0 0 10 10
+<< end >>

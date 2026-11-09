@@ -1,0 +1,12 @@
+magic
+tech mt
+timestamp 1794195327
+<< checkpaint >>
+rect 0 8 5 10
+rect 0 2 8 8
+rect 0 0 5 2
+<< metal1 >>
+rect 5 2 8 8
+<< labels >>
+rlabel metal1 5 2 8 8 1 A
+<< end >>

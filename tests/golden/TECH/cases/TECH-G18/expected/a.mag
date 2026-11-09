@@ -1,0 +1,14 @@
+magic
+tech tiny
+timestamp 1794195330
+<< checkpaint >>
+rect 0 0 4 4
+rect 10 0 14 4
+<< polycontact >>
+rect 0 0 4 4
+<< ndcontact >>
+rect 10 0 14 4
+<< m2contact >>
+rect 0 0 4 4
+rect 10 0 14 4
+<< end >>

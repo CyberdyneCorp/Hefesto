@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794195322
+<< checkpaint >>
+rect 0 0 10 40
+use fl  fl_0 input
+timestamp 100
+transform 0 1 0 -1 0 40
+box 0 0 40 10
+<< end >>

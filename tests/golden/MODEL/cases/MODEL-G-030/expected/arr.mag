@@ -1,0 +1,19 @@
+magic
+tech mt
+timestamp 100
+use leaf  leaf_0 input
+array 0 3 20 0 1 15
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 70 25
+use leaf  leaf_1
+array 0 2 -20 0 0 0
+timestamp 100
+transform 1 0 200 0 1 0
+box 0 0 70 25
+use leaf  leaf_2
+array 0 3 20 0 0 0
+timestamp 100
+transform 0 1 300 -1 0 0
+box 0 0 70 25
+<< end >>

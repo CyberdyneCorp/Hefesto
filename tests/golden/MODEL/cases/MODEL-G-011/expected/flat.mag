@@ -1,0 +1,37 @@
+magic
+tech mt
+timestamp 1794195322
+<< metal1 >>
+tri 0 760 10 770 nw
+tri 0 740 10 750 ne
+tri 0 720 10 730 se
+tri 0 700 10 710 sw
+tri 0 660 10 670 ne
+tri 0 640 10 650 nw
+tri 0 620 10 630 sw
+tri 0 600 10 610 se
+tri 0 500 10 510 nw
+tri 20 500 30 510 sw
+tri 40 500 50 510 se
+tri 60 500 70 510 ne
+tri 0 400 10 410 sw
+tri 20 400 30 410 nw
+tri 40 400 50 410 ne
+tri 60 400 70 410 se
+tri 0 360 10 370 nw
+tri 0 340 10 350 ne
+tri 0 320 10 330 se
+tri 0 300 10 310 sw
+tri 0 200 10 210 sw
+tri 20 200 30 210 nw
+tri 40 200 50 210 ne
+tri 60 200 70 210 se
+tri 0 160 10 170 ne
+tri 0 140 10 150 nw
+tri 0 120 10 130 sw
+tri 0 100 10 110 se
+tri 0 0 10 10 nw
+tri 20 0 30 10 sw
+tri 40 0 50 10 se
+tri 60 0 70 10 ne
+<< end >>

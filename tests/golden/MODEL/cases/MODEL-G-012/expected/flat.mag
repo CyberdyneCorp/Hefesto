@@ -1,0 +1,11 @@
+magic
+tech mt
+timestamp 1794195322
+<< metal1 >>
+rect 0 0 10 40
+<< labels >>
+flabel metal1 0 30 10 40 0 FreeSans 16 0 0 0 fl_0.r0
+flabel metal1 0 20 10 30 0 FreeSans 16 90 0 0 fl_0.r90
+flabel metal1 0 10 10 20 0 FreeSans 16 180 0 0 fl_0.r180
+flabel metal1 0 0 10 10 0 FreeSans 16 270 0 0 fl_0.r270
+<< end >>

@@ -1,0 +1,13 @@
+magic
+tech fake
+timestamp 1794195320
+<< checkpaint >>
+rect 0 0 4 4
+rect 10 0 20 10
+<< m2contact >>
+rect 0 0 4 4
+rect 10 0 20 10
+<< m3contact >>
+rect 0 0 4 4
+tri 10 0 20 10 se
+<< end >>

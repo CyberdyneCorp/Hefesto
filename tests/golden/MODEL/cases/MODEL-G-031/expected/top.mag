@@ -1,0 +1,25 @@
+magic
+tech mt
+timestamp 1794195325
+<< checkpaint >>
+rect 0 0 15 15
+rect 100 0 101 1
+rect 200 0 201 1
+rect 300 0 340 10
+use c1  c1_0
+timestamp 1794195325
+transform 1 0 0 0 1 0
+box 0 0 15 15
+use c2  c2_0
+timestamp 1794195325
+transform 1 0 97 0 1 -4
+box 3 4 4 5
+use c3  c3_0
+timestamp 0
+transform 1 0 200 0 1 0
+box 0 0 1 1
+use fl  fl_0 input
+timestamp 100
+transform 1 0 300 0 1 0
+box 0 0 40 10
+<< end >>

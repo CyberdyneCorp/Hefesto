@@ -1,0 +1,14 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell a couldn't be read
+No such file or directory
+Cell s has technology "scmos", but current technology is "tiny"
+Use command "tech load" if you want to switch technologies, or use
+"cellname delete s" and "load s -force" to force the cell to load as technology tiny

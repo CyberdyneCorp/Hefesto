@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "CELL-WR-10",
+  "area": "CELL",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:9ed57b4943b99d8659296545b292b5d53b64d9a25f6d7a3248e2cf1f699417fd",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-09T03:30:07Z",
+  "outputs": {
+    "sky130_fd_sc_hd__a21bo_1.mag": "a14cfb7fda48e0fc22baf2a8bbe339cb766eda78805f543e17e9b73c95318205",
+    "sky130_fd_sc_hd__tapvpwrvgnd_1.mag": "534dd2804105eb035ea23287ca8ff7c74c2197df69e5f1f8a3e66ae9e3f644bc",
+    "stderr.txt": "14d6f4b66b4da3096399694e1db3fd9585745db1f5d3054d3091bf526c5d01ee",
+    "stdout.txt": "f530fe16bf41e87d59f3a1d408c299beda9b22a3c872a03c088e75a718eae092"
+  }
+}

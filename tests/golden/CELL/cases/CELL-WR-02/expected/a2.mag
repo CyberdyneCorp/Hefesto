@@ -1,0 +1,11 @@
+magic
+tech scmos
+magscale 1 2
+timestamp 1794195319
+<< checkpaint >>
+rect -28 33 32 36
+rect -28 -28 41 33
+<< metal1 >>
+rect 0 0 4 8
+rect 10 0 13 5
+<< end >>

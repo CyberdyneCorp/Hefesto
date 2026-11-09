@@ -1,0 +1,18 @@
+magic
+tech mt
+timestamp 1794195327
+<< labels >>
+rlabel space 1 1 1 1 6 b
+port 2 sw
+rlabel space 3 1 3 1 8 A10
+port 1 nw
+rlabel space 5 1 5 1 8 A2
+port 0 nw
+rlabel space 7 1 7 1 8 VDD
+port 3 nw
+rlabel space 9 1 9 1 8 vdd
+port 4 nw
+rlabel space 11 1 11 1 8 VDD
+port 5 nw
+rlabel space 20 1 20 1 8 c
+<< end >>

@@ -1,0 +1,7 @@
+magic
+tech tiny
+magscale 1 2
+timestamp 100
+<< metal1 >>
+rect -3 1 5 7
+<< end >>

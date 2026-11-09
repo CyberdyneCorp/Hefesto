@@ -1,0 +1,13 @@
+input/tiny.tech: line 31: section types:
+	Type alias "*m1" contains the wildcard character "*" (alias ignored).
+Perhaps you want to define aliases in the "alias" section?
+input/tiny.tech: line 44: section aliases:
+	Type alias "poly" shadows a defined type
+input/tiny.tech: line 45: section aliases:
+	Type "allm1" is already defined and cannot be an alias
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,

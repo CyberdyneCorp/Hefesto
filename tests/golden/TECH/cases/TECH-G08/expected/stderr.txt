@@ -1,0 +1,14 @@
+input/tiny_inc.tech: line 71: section (none):
+	Warning: Couldn't find include file tiny-drc.tech
+input/tiny_inc.tech: line 71: section (none):
+	Bad section header line
+[Skipping to "end"]
+Section "drc" was missing from input/tiny_inc.tech.
+Section "extract" was missing from input/tiny_inc.tech.
+input/tiny2.tech: line 71: section (none):
+	Warning: Couldn't find include file common.inc
+input/tiny2.tech: line 71: section (none):
+	Bad section header line
+[Skipping to "end"]
+Section "drc" was missing from input/tiny2.tech.
+Section "extract" was missing from input/tiny2.tech.

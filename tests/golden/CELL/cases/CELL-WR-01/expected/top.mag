@@ -1,0 +1,23 @@
+magic
+tech scmos
+timestamp 1794195319
+<< checkpaint >>
+rect -14 20 18 34
+rect 26 20 64 24
+rect -14 -14 64 20
+rect 86 -14 124 24
+rect 186 -14 224 24
+<< polysilicon >>
+rect 0 0 4 20
+<< metal1 >>
+rect 10 0 30 6
+tri 40 0 50 10 nw
+use leaf  leaf_0
+timestamp 1794195319
+transform 1 0 100 0 1 0
+box 0 0 10 10
+use leaf  leaf_1
+timestamp 1794195319
+transform 0 1 200 -1 0 10
+box 0 0 10 10
+<< end >>

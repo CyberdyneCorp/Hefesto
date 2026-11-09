@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794195326
+<< metal2 >>
+rect 20 0 30 10
+use pc  pc_0
+timestamp 1794195326
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

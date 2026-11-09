@@ -1,0 +1,14 @@
+magic
+tech scmos
+timestamp 1794195315
+<< checkpaint >>
+rect -14 -14 28 18
+use c  c_0
+timestamp 1794195315
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use c  c_1
+timestamp 1794195315
+transform 1 0 10 0 1 0
+box 0 0 4 4
+<< end >>

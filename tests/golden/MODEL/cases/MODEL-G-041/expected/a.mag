@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794195327
+<< checkpaint >>
+rect 0 0 6 6
+<< via1 >>
+rect 0 0 6 6
+<< labels >>
+rlabel via1 2 2 4 4 1 L
+<< end >>

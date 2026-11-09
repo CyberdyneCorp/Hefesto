@@ -1,0 +1,16 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+<< labels >>
+rlabel metal1 1 1 1 1 0 p2
+port 1 n
+rlabel metal1 2 2 2 2 0 p3
+rlabel metal1 3 3 3 3 0 p4
+port 3 n signal input
+rlabel metal1 4 4 4 4 0 p5
+port 4 n power input abutment
+rlabel metal1 5 5 5 5 0 unk
+port 6 n default bidirectional
+<< end >>

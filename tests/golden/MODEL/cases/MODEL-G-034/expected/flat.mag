@@ -1,0 +1,13 @@
+magic
+tech mt
+timestamp 1794195326
+<< metal1 >>
+rect 0 0 10 10
+rect 50 0 60 10
+<< labels >>
+rlabel space 1 1 1 1 2 T
+rlabel space 52 2 52 2 2 mid_1.M
+rlabel metal1 55 5 55 5 1 mid_1.leaf_0.L
+rlabel space 2 2 2 2 2 mid_0.M
+rlabel metal1 5 5 5 5 1 mid_0.leaf_0.L
+<< end >>
