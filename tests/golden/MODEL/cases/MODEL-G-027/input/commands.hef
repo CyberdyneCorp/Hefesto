@@ -1,0 +1,16 @@
+# MODEL-G-027: getcell inv three times (instance deletion needs select/delete: not authored).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load inv
+box 0 0 10 10
+paint metal1
+save inv
+load top
+box 0 0 0 0
+getcell inv
+box 20 0 20 0
+getcell inv
+box 40 0 40 0
+getcell inv
+save top

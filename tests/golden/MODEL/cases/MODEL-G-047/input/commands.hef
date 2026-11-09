@@ -1,0 +1,9 @@
+# MODEL-G-047: A .mag with string GDS_START, FIXED_BBOX, MASKHINTS_X; property queries.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load input/p
+property GDS_START
+property FIXED_BBOX
+property MASKHINTS_X
+property

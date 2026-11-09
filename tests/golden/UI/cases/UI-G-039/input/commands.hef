@@ -1,0 +1,12 @@
+# UI-G-039: grid 10 20 5 0; grid box; grid state; grid; grid state; grid 0; grid -1; grid 1 2 3.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+grid 10 20 5 0
+grid box
+grid state
+grid
+grid state
+grid 0
+grid -1
+grid 1 2 3

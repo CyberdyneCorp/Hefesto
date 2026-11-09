@@ -1,0 +1,16 @@
+# MODEL-G-021: metal1 stripe 0 1 10 2, then splitpaint nw (cell a) and ne (cell b) over 0 0 10 3 (Q-MODEL-3).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 1 10 2
+paint metal1
+box 0 0 10 3
+splitpaint nw metal1
+save a
+load b
+box 0 1 10 2
+paint metal1
+box 0 0 10 3
+splitpaint ne metal1
+save b

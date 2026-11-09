@@ -1,0 +1,6 @@
+# MODEL-G-029: A .mag with two uses sharing an id and one without an id; load and save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load input/dup
+save dup

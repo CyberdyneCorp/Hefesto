@@ -1,0 +1,18 @@
+# MODEL-G-024: Child via1 0 0 4 4 placed at 100 0 over parent metal2 100 0 120 4; flatten.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load child
+box 0 0 4 4
+paint via1
+save child
+load top
+box 100 0 120 4
+paint metal2
+box 100 0 100 0
+getcell child
+save top
+load top
+flatten flat
+load flat
+save flat

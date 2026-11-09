@@ -1,0 +1,32 @@
+magic
+tech mt
+timestamp 100
+<< labels >>
+flabel metal1 0 0 0 0 0 FreeSans 8 0 0 0 t0_8
+flabel metal1 30 0 30 0 0 FreeSans 64 0 0 0 t0_64
+flabel metal1 60 0 60 0 0 FreeSans 128 45 0 0 t0_128
+flabel metal1 100 0 100 0 1 FreeSans 8 0 0 0 t1_8
+flabel metal1 130 0 130 0 1 FreeSans 64 0 0 0 t1_64
+flabel metal1 160 0 160 0 1 FreeSans 128 45 0 0 t1_128
+flabel metal1 200 0 200 0 2 FreeSans 8 0 0 0 t2_8
+flabel metal1 230 0 230 0 2 FreeSans 64 0 0 0 t2_64
+flabel metal1 260 0 260 0 2 FreeSans 128 45 0 0 t2_128
+flabel metal1 300 0 300 0 3 FreeSans 8 0 0 0 t3_8
+flabel metal1 330 0 330 0 3 FreeSans 64 0 0 0 t3_64
+flabel metal1 360 0 360 0 3 FreeSans 128 45 0 0 t3_128
+flabel metal1 400 0 400 0 4 FreeSans 8 0 0 0 t4_8
+flabel metal1 430 0 430 0 4 FreeSans 64 0 0 0 t4_64
+flabel metal1 460 0 460 0 4 FreeSans 128 45 0 0 t4_128
+flabel metal1 500 0 500 0 5 FreeSans 8 0 0 0 t5_8
+flabel metal1 530 0 530 0 5 FreeSans 64 0 0 0 t5_64
+flabel metal1 560 0 560 0 5 FreeSans 128 45 0 0 t5_128
+flabel metal1 600 0 600 0 6 FreeSans 8 0 0 0 t6_8
+flabel metal1 630 0 630 0 6 FreeSans 64 0 0 0 t6_64
+flabel metal1 660 0 660 0 6 FreeSans 128 45 0 0 t6_128
+flabel metal1 700 0 700 0 7 FreeSans 8 0 0 0 t7_8
+flabel metal1 730 0 730 0 7 FreeSans 64 0 0 0 t7_64
+flabel metal1 760 0 760 0 7 FreeSans 128 45 0 0 t7_128
+flabel metal1 800 0 800 0 8 FreeSans 8 0 0 0 t8_8
+flabel metal1 830 0 830 0 8 FreeSans 64 0 0 0 t8_64
+flabel metal1 860 0 860 0 8 FreeSans 128 45 0 0 t8_128
+<< end >>

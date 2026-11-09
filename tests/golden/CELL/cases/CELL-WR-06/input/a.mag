@@ -1,0 +1,32 @@
+magic
+tech scmos
+timestamp 100
+use leaf a10
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use leaf B1
+timestamp 100
+transform 1 0 20 0 1 0
+box 20 0 30 10
+use leaf a2
+timestamp 100
+transform 1 0 40 0 1 0
+box 40 0 50 10
+use leaf x
+timestamp 100
+transform 1 0 60 0 1 0
+box 60 0 70 10
+use leaf x2
+timestamp 100
+transform 1 0 80 0 1 0
+box 80 0 90 10
+use leaf A1
+timestamp 100
+transform 1 0 100 0 1 0
+box 100 0 110 10
+use leaf a1
+timestamp 100
+transform 1 0 120 0 1 0
+box 120 0 130 10
+<< end >>

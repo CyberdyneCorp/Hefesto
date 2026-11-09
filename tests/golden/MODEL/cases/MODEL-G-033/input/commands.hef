@@ -1,0 +1,25 @@
+# MODEL-G-033: flatten -nosubcircuits with a ported and an unported child.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load pc
+box 0 0 10 10
+paint metal1
+box 5 5 5 5
+label A
+port make
+save pc
+load uc
+box 0 0 10 10
+paint metal2
+save uc
+load top
+box 0 0 0 0
+getcell pc
+box 20 0 20 0
+getcell uc
+save top
+load top
+flatten -nosubcircuits flat
+load flat
+save flat

@@ -1,0 +1,57 @@
+tech
+    format 35
+    mt
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+    metal3,m3
+end
+
+types
+    active  ndiffusion,ndiff
+    active  pdiffusion,pdiff
+    active  polysilicon,poly
+    active  ntransistor,nfet
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal3  metal3,m3
+    active  pdcontact,pdc
+    metal1  via1
+    metal2  via2
+end
+
+contact
+    pdc   pdiff  metal1
+    via1  metal1 metal2
+    via2  metal2 metal3
+    stackable via1 via2
+end
+
+styles
+    styletype mos
+end
+
+compose
+    compose nfet poly ndiff
+end
+
+connect
+    metal1 via1
+    metal2 via1,via2
+    metal3 via2
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end

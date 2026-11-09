@@ -1,0 +1,12 @@
+# MODEL-G-004: Three disjoint metal1 rectangles.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 20 0 30 30
+paint metal1
+box 0 20 10 30
+paint metal1
+box 0 0 10 10
+paint metal1
+save a

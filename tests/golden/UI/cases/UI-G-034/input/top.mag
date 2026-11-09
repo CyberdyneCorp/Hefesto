@@ -1,0 +1,10 @@
+magic
+tech tiny
+timestamp 100
+use leaf leaf_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< metal1 >>
+rect 0 0 100 50
+<< end >>

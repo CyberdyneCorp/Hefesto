@@ -1,0 +1,6 @@
+# CELL-WR-06: Instance ids a10, B1, a2, x, x2, A1, a1: use order on save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+save a_out

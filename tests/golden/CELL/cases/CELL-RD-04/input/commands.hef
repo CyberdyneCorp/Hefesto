@@ -1,0 +1,11 @@
+# CELL-RD-04: magscale 1 2 file in a fresh session, then a file without magscale holding rect 0 0 3 5.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+box
+load input/b
+box
+save a_out
+load a
+save a2

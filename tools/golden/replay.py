@@ -19,7 +19,8 @@ with each output's documented masks applied, as <DIR>/<AREA>/<case-id>/<file>,
 the layout scripts/compare_golden_outputs.py compares across platforms.
 
 A case is SKIPPED (not failed) when it lists [hefesto] requires_commands and
-hefesto-cli rejects one of them as unknown (diagnostic CMD-DISPATCH-001).
+hefesto-cli rejects one of them as unknown (diagnostic CMD-DISPATCH-001), or
+when one of its [[external]] inputs (goldenlib/external.py) is not present.
 Exit status: 1 if any case failed or errored; else N (--skip-code, default 0)
 if any case was skipped; else 0. 2 on usage errors.
 """
@@ -38,6 +39,7 @@ from pathlib import Path
 from compare import COMPARATORS, compare_bytes
 from compare.masks import apply_masks
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case
+from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.refrunners import ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -78,7 +80,9 @@ def hefesto_argv(cli: Path, case: Case, work: Path) -> list[str]:
 
 
 def execute(cli: Path, case: Case, work: Path) -> Execution:
+    """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent."""
     shutil.copytree(case.input_dir, work / "input")
+    stage(case.externals, work / "input")
     env = {**os.environ, **ENVIRONMENT}
     proc = subprocess.run(hefesto_argv(cli, case, work), capture_output=True, cwd=work,
                           env=env, timeout=TIMEOUT_S, check=False, stdin=subprocess.DEVNULL)
@@ -140,7 +144,11 @@ def is_provisional(case: Case) -> bool:
 def replay_case(cli: Path, case: Case, output_dir: Path | None) -> CaseReport:
     report = CaseReport(case.id, case.area, "error", is_provisional(case))
     with tempfile.TemporaryDirectory(prefix=f"replay-{case.id}-") as tmp:
-        execution = execute(cli, case, Path(tmp))
+        try:
+            execution = execute(cli, case, Path(tmp))
+        except ExternalUnavailable as error:
+            report.status, report.detail = "skip", f"external input unavailable: {error}"
+            return report
     if output_dir is not None:
         save_outputs(case, execution, output_dir)
     missing = missing_command(case, execution)

@@ -38,6 +38,7 @@ from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, load_case
+from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
 from goldenlib.refrunners import ENVIRONMENT, ContainerRunner, LocalHarnessRunner, ModelRunner, RunnerError, RunResult
 
@@ -88,6 +89,10 @@ def run_reference(case: Case, runner) -> tuple[RunResult, dict[str, bytes]]:
     with tempfile.TemporaryDirectory(prefix=f"golden-{case.id}-") as tmp:
         work = Path(tmp)
         shutil.copytree(case.input_dir, work / "input")
+        try:
+            stage(case.externals, work / "input")
+        except ExternalUnavailable as error:
+            raise RunnerError(f"{case.id}: external input unavailable: {error}") from error
         result = runner.run(case, work)
         if result.returncode != 0 and not case.reference.get("allow_nonzero_exit", False):
             raise RunnerError(f"{case.id}: reference tool exited {result.returncode}:\n"

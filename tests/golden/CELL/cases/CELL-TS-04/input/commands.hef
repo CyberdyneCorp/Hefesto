@@ -1,0 +1,6 @@
+# CELL-TS-04: A file with timestamp 0.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/z
+cellname list allcells

@@ -1,0 +1,6 @@
+# CELL-RD-02: First line MAGIC.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+cellname list allcells

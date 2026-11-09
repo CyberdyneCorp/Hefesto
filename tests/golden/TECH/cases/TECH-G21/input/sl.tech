@@ -1,0 +1,48 @@
+tech
+    format 35
+    sl
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+end
+
+types
+    well    pwell,pw
+    well    nwell,nw
+    active  pdiffusion,pdiff
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    active  pdcontact,pdc
+    active  ndcontact,ndc
+end
+
+contact
+    pdc pdiff metal1
+    ndc ndiff metal1
+end
+
+styles
+    styletype mos
+end
+
+compose
+    erase pdc pwell pdiff
+end
+
+connect
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end

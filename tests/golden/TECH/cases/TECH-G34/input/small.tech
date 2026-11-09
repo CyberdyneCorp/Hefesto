@@ -1,0 +1,39 @@
+tech
+    format 35
+    small
+end
+
+planes
+    active,a
+    metal1,m1
+end
+
+types
+    active  polysilicon,poly
+    metal1  metal1,m1
+end
+
+contact
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end

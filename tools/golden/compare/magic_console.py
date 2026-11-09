@@ -19,9 +19,11 @@ pattern                                                     Magic source
 ==========================================================  ======================================
 ``Magic <version> revision <rev> - Compiled on <date>.``    tcltk/tclmagic.c:737
 ``Starting magic under Tcl interpreter``                    tcltk/tclmagic.c:739
+``WARNING: RLIMIT_NOFILE is above <n> and Tcl_Version<9...``  tcltk/tclmagic.c:638 (host fd limit)
 ``Using the terminal as the console.``                      tcltk/tclmagic.c:743
 ``Using NULL graphics device.``                             graphics/grNull.c:315
 ``Processing system .magicrc file``                         tcltk/magic.tcl / utils/main.c
+``Switching to <BOX|WIRING|NETLIST|PICK> tool.``            tcltk/tools.tcl:764-779 (system .magicrc)
 ``Using technology "<name>"[, version <v>.]``               utils/main.c:892-894
 ``Sourcing design .magicrc for technology <name> ...``      sys/.magicrc of the installed tree
 ``Loading "<file>" from command line.``                     utils/main.c:1197
@@ -39,9 +41,11 @@ _PREAMBLE = re.compile(
     rb"^(?:"
     rb"|Magic \S+ revision \S+ - Compiled on .*"
     rb"|Starting magic under Tcl interpreter"
+    rb"|WARNING: RLIMIT_NOFILE is above \d+ and Tcl_Version<9 this may cause runtime issues \[rlim_cur=\d+\]"
     rb"|Using the terminal as the console\."
     rb"|Using NULL graphics device\."
     rb"|Processing system \.magicrc file"
+    rb"|Switching to (?:BOX|WIRING|NETLIST|PICK) tool\."
     rb'|Using technology "[^"]*"(?:, version .*)?'
     rb"|Sourcing design \.magicrc for technology .*"
     rb'|Loading "[^"]*" from command line\.'

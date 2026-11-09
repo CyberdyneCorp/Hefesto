@@ -1,0 +1,12 @@
+# MODEL-G-041: Label on metal1 2 2 4 4, then via1 0 0 6 6.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 2 2 4 4
+paint metal1
+box 2 2 4 4
+label L
+box 0 0 6 6
+paint via1
+save a

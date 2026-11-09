@@ -1,0 +1,10 @@
+# TECH-G45: Painted layout; tech load -quiet (usage) and -noprompt (the 'no' dialog answer is not authored).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+snap internal
+load a
+box 0 0 4 4
+paint metal1
+tech load input/tiny -quiet
+tech load input/tiny -noprompt
+tech name

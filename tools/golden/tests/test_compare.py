@@ -123,6 +123,19 @@ class MagicConsoleTest(unittest.TestCase):
         late = b"minimum\nUsing NULL graphics device.\n"
         self.assertEqual(magic_console(late), late)
 
+    def test_preamble_of_the_first_container_capture_is_removed(self):
+        # Regression: the first CI capture (Magic in the pinned image) also printed the
+        # host fd-limit warning and the system .magicrc tool switches before the script.
+        magic = (b"\nMagic 8.3 revision 694 - Compiled on Mon Nov  9 02:03:20 UTC 2026.\n"
+                 b"Starting magic under Tcl interpreter\nUsing the terminal as the console.\n"
+                 b"WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues"
+                 b" [rlim_cur=65536]\nUsing NULL graphics device.\nProcessing system .magicrc file\n"
+                 b"Switching to WIRING tool.\nSwitching to NETLIST tool.\nSwitching to PICK tool.\n"
+                 b"Switching to BOX tool.\nLoading \"input/commands.tcl\" from command line.\n\ntiny\n")
+        self.assertTrue(compare_bytes(magic, b"\ntiny\n", "magic-console").equal)
+        late = b"tiny\nSwitching to BOX tool.\n"
+        self.assertEqual(magic_console(late), late)
+
     def test_differences_in_script_output_are_reported(self):
         result = compare_bytes(self.PREAMBLE + b"minimum\n", b"tiny\n", "magic-console")
         self.assertFalse(result.equal)

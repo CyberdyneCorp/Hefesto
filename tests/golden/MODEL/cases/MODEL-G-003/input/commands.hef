@@ -1,0 +1,16 @@
+# MODEL-G-003: The same L shape painted in two histories (history independence).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 20 10
+paint metal1
+box 0 10 10 20
+paint metal1
+save a
+load b
+box 0 0 10 20
+paint metal1
+box 10 0 20 10
+paint metal1
+save b

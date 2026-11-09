@@ -1,0 +1,12 @@
+# UI-G-027: scroll r .1 w; scroll n; scroll e 10; scroll x 1 w.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+scroll r .1 w
+view get
+scroll n
+view get
+scroll e 10
+view get
+scroll x 1 w
+view get

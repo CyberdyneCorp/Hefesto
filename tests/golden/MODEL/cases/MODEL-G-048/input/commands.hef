@@ -1,0 +1,12 @@
+# MODEL-G-048: property GDS_FILE x.gds; cellname rename; remove the property; cellname readonly.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+property GDS_FILE x.gds
+cellname readonly a
+cellname rename a b
+property GDS_FILE
+property GDS_FILE {}
+cellname readonly a
+cellname rename a b

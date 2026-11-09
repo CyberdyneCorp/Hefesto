@@ -1,0 +1,6 @@
+# MODEL-G-030: Arrays: 4x2 of a 10x10 child, negative x separation, rotated 90; load and save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load input/arr
+save arr

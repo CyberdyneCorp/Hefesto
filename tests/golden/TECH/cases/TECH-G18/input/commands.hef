@@ -1,0 +1,16 @@
+# TECH-G18: stackable with no arguments: stacked types saved in a .mag; pm12c lookup.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+snap internal
+load a
+box 0 0 4 4
+paint pc
+box 0 0 4 4
+paint m2c
+box 10 0 14 4
+paint ndc
+box 10 0 14 4
+paint m2c
+save a
+tech layers pm12c
+tech layers *

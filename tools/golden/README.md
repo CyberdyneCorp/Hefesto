@@ -15,7 +15,8 @@ tools/golden/
   capture.py             run the reference tool, write expected/ + provenance.json
   replay.py              run hefesto-cli on each case and compare (run.py = alias)
   compare/               canonical comparators and time-field masks (python3 -m compare)
-  goldenlib/             case model, pins, reference runners, hash-table model
+  goldenlib/             case model, pins, reference runners, hash-table model, external inputs
+  authoring/             generator of the M1 cases (m1_cases.py) and the paint/erase table dump
   harness/magic_hash/    driver around Magic's own utils/hash.c (magic-hash-harness)
   tests/                 unit tests (CTest label golden-tools)
 ```
@@ -30,7 +31,9 @@ input/           tech file, layout, reference script (commands.tcl), Hefesto scr
 expected/        captured outputs + provenance.json   (written by capture.py only)
 ```
 
-The `case.toml` schema is documented at the top of `goldenlib/case.py`. Each output declares where it comes from (`stdout`, `stderr` or a file path in the work directory), a comparator and the masks to apply.
+The `case.toml` schema is documented at the top of `goldenlib/case.py`.
+
+Pinned data that is never committed (design D1: PDK data, and Magic's generated `scmos.tech`) is declared as `[[external]]` inputs (`goldenlib/external.py`): `source = "pdk"` copies `<pdk-root>/ciel/sky130/versions/<pin of scripts/fetch_pdk.py>/<path>` (root `$HEFESTO_PDK_ROOT` or `.cache/pdks`), `source = "scmos"` copies `$HEFESTO_SCMOS_TECH` or a `scmos.tech` generated once into `.cache/golden/` from `build/ref/magic`. Both tools read the copy in `<work>/input/`. A missing external input fails a capture and skips a replay; `golden-capture.yml` fetches both data sets (`scripts/fetch_pdk.py`, cached like `ci.yml`). Each output declares where it comes from (`stdout`, `stderr` or a file path in the work directory), a comparator and the masks to apply.
 
 `provenance.json` records the following:
 
@@ -138,6 +141,10 @@ So the case uses the options D8 allows:
 - **One shared script:** both sides read the same `input/commands.hef`. The keys never need Tcl list quoting, and no table is empty.
 
 **Current status:** `expected/stdout.txt` was produced with the `model` runner, so it is provisional. Compiling Magic's sources was not possible in the session that created the case. The model reproduces every spec scenario (u1 u2 u3; b a; bucket 1 for "ab"). Run `python3 capture.py --runner local --verify ../../tests/golden/CORE/cases/CORE-HASH-01`, or the container runner, to confirm it against Magic's code. Then re-capture with that runner so that provenance says `reference_captured: true`.
+
+## M1 case generator
+
+`authoring/m1_cases.py` writes the generated TECH, MODEL, CELL and viewer-related UI cases from the specs in `authoring/{tech,model,cell,ui}_cases.py` (never `expected/`); `--not-authored` lists the CASES.md rows left out and why (commands hefesto-cli does not have, environment-dependent setups, screenshots). Each command becomes `catch {cmd} result; puts $result` in `commands.tcl` and the same line in `commands.hef`; `.mag` outputs are compared byte for byte with the `mag-timestamp` mask. The paint/erase table dumps (TECH-G20, G23, G24, G25, G28) paint every type pair on its own 1x1 box and save one `.mag` per table (`authoring/paint_dump.py`, the method TECH/CASES.md asks to record). Edit a spec, re-run the generator, then `capture.py --check`.
 
 ## Adding a case
 

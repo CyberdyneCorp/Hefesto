@@ -1,0 +1,11 @@
+magic
+tech mt
+timestamp 100
+<< metal1 >>
+rect 0 0 40 10
+<< labels >>
+flabel metal1 0 0 10 10 0 FreeSans 16 0 0 0 r0
+flabel metal1 10 0 20 10 0 FreeSans 16 90 0 0 r90
+flabel metal1 20 0 30 10 0 FreeSans 16 180 0 0 r180
+flabel metal1 30 0 40 10 0 FreeSans 16 270 0 0 r270
+<< end >>

@@ -1,0 +1,9 @@
+# CELL-PR-01: Parent mid/top uses inv from ../lib; a second parent other/top2 references ../lib too.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/mid/top
+load input/other/top2
+cellname list allcells
+load top
+save top_out

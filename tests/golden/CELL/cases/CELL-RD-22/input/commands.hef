@@ -1,0 +1,7 @@
+# CELL-RD-22: Only inv.mag.gz present (gzip); load inv.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/inv
+cellname list allcells
+save inv_out

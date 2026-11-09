@@ -1,0 +1,3 @@
+# TECH-G09: A missing include inside connect (Q-TECH-2).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt

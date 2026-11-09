@@ -1,0 +1,7 @@
+magic
+tech scmos
+timestamp 100
+magscale 1 2
+<< metal1 >>
+rect 0 0 6 10
+<< end >>

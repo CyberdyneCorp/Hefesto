@@ -1,0 +1,9 @@
+# CELL-PR-11: load b/inv after a/inv was loaded; getcell b/inv.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a/inv
+load input/b/inv
+load top
+getcell input/b/inv
+cellname list allcells
