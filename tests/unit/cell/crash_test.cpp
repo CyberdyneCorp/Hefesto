@@ -167,7 +167,7 @@ TEST_CASE("normal exit removes the session files", "[cap:cell-io-safety][req:Cra
   CHECK(names_in(s->files(), kDir).size() == 2);
   cell::end_crash_session(s->editor, s->files());
   CHECK(names_in(s->files(), kDir).empty());
-  CHECK_FALSE(cell::cell_session(s->editor).backup_file.has_value());
+  CHECK(cell::cell_session(s->editor).backup_file.empty());
 }
 
 TEST_CASE("the crash command's usage", "[cap:cmd-hierarchy][req:Crash backup command]") {

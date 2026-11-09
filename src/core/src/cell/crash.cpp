@@ -198,7 +198,7 @@ void end_crash_session(editor::EditorState& ed, platform::FileSystem& fs) {
   const platform::Path lock = s.backup_directory / (s.session_id + ".lock");
   ed.locks->release(lock);
   (void)fs.remove(lock);
-  s.backup_file.reset();
+  s.backup_file.clear();
   s.backup_explicit = false;
   s.session_id.clear();
 }

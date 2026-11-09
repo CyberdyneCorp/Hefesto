@@ -96,7 +96,7 @@ diag::Status open_session_files(IoSession& s) {
     cs.session_id = id;
     cs.backup_directory = dir;
   }
-  if (!cs.backup_file) {
+  if (cs.backup_file.empty()) {
     cs.backup_file = cs.backup_directory / (cs.session_id + ".backup");
   }
   return diag::Done{};
@@ -106,10 +106,7 @@ CommandResult crash_save(IoSession& s, const std::optional<std::string>& file) {
   CellSession& cs = s.session;
   if (file) {
     cs.backup_explicit = !file->empty();
-    cs.backup_file.reset();  // an empty name clears the target
-    if (cs.backup_explicit) {
-      cs.backup_file.emplace(*file);
-    }
+    cs.backup_file = platform::Path{*file};  // an empty name clears the target
   }
   const auto text = write_backup(s.io, crash_backup_includes, first_window_root(s.ed));
   if (!text) {
@@ -118,7 +115,7 @@ CommandResult crash_save(IoSession& s, const std::optional<std::string>& file) {
   if (auto opened = open_session_files(s); !opened) {
     return CommandResult::failure(opened.error());
   }
-  const platform::Path target = *cs.backup_file;
+  const platform::Path target = cs.backup_file;
   const bool existed = s.io.fs.exists(target);
   if (auto written = s.io.fs.write_atomic(target, *text); !written) {
     return fail(codes::kWriteFailed, "Cannot write crash backup file " + target.generic_string());
@@ -163,7 +160,7 @@ std::vector<RecoveryCandidate> choose_backup(IoSession& s, const std::optional<s
 }
 
 CommandResult crash_recover(IoSession& s, const std::optional<std::string>& file) {
-  if (s.session.backup_file) {
+  if (!s.session.backup_file.empty()) {
     return fail(codes::kBackupRead, "Error:  Backup file in use for current session.");
   }
   const auto chosen_list = choose_backup(s, file);

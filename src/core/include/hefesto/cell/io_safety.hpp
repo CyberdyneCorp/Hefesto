@@ -56,7 +56,10 @@ struct CellSession {
   bool locking = true;                    // the `locking` setting
   std::unique_ptr<FileHost> host;         // nullptr: the local disk
   TimestampLog stamps;                    // pending mismatches
-  std::optional<platform::Path> backup_file;  // session crash backup target
+  // Session crash backup target; empty: none chosen yet. A plain Path, not
+  // std::optional: GCC 14 reports a bogus -Wmaybe-uninitialized on
+  // optional<path>::emplace.
+  platform::Path backup_file;
   bool backup_explicit = false;           // backup_file was named by `crash save FILE`
   /// "Crash backup location and session lock"; empty: the platform
   /// directory from the path variables (crash_backup_directory).
