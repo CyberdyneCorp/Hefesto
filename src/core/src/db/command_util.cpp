@@ -5,9 +5,14 @@
 
 #include "db/command_util.hpp"
 
+#include <algorithm>
 #include <array>
+#include <climits>
+#include <cctype>
 #include <charconv>
 #include <cmath>
+#include <cstdlib>
+#include <string>
 #include <utility>
 
 #include "hefesto/cmd/all_commands.hpp"
@@ -16,6 +21,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/display/font.hpp"
 
 namespace hefesto::db::cmdutil {
 
@@ -180,6 +186,64 @@ diag::Outcome<Coord> parse_coord(const Session& s, std::string_view text) {
     return diag::make(codes::kGeometryOutsidePlane, "coordinate " + std::to_string(internal) + " is outside the plane");
   }
   return static_cast<Coord>(internal);
+}
+
+std::int32_t scaled_coord(const Session& s, std::string_view text, int scale, bool is_x, bool relative) {
+  diag::DiagnosticSink* sink = s.ctx != nullptr ? &s.ctx->sink() : nullptr;
+  const auto value = cmd::parse_coordinate(text, coordinate_units(s), is_x ? cmd::Axis::x : cmd::Axis::y, relative,
+                                           sink);
+  if (!value.ok()) {
+    warn(s, "Coordinate value cannot be parsed:  assuming 0");
+    return 0;
+  }
+  const double v = std::round(value.value() * static_cast<double>(scale));
+  constexpr auto kMax = static_cast<double>(INT32_MAX);
+  return static_cast<std::int32_t>(std::clamp(v, -kMax, kMax));
+}
+
+bool str_is_int(std::string_view text) noexcept {
+  if (!text.empty() && (text.front() == '-' || text.front() == '+')) {
+    text.remove_prefix(1);
+  }
+  return std::all_of(text.begin(), text.end(), [](char c) { return std::isdigit(static_cast<unsigned char>(c)) != 0; });
+}
+
+bool str_is_numeric(std::string_view text) noexcept {
+  const std::string copy{text};
+  char* end = nullptr;
+  (void)std::strtod(copy.c_str(), &end);
+  return end != copy.c_str();
+}
+
+std::int32_t c_atoi(std::string_view text) noexcept {
+  const std::string copy{text};
+  const long v = std::strtol(copy.c_str(), nullptr, 10);
+  return static_cast<std::int32_t>(std::clamp<long>(v, INT32_MIN, INT32_MAX));
+}
+
+std::int32_t default_font_size(const Session& s) noexcept {
+  const std::int64_t l1 = s.editor->grid.internal;
+  return static_cast<std::int32_t>(s.magic_compat ? l1 : 8 * l1);
+}
+
+void label_changed(const Session& s, const CellDef& def, const Label& label) {
+  const Rect area = label.font >= 0 && label.text_bbox ? include(label.rect, *label.text_bbox) : label.rect;
+  s.editor->windows.area_changed(def, expand(area, 1), std::nullopt);
+}
+
+std::size_t erase_labels_by_content(CellDef& def, const Rect& rect, std::string_view text) {
+  return std::erase_if(def.labels(), [&](const Label& l) { return l.rect == rect && l.text == text; });
+}
+
+void update_font_label(const Session& s, Label& label) {
+  const display::OutlineFont* font = label.font >= 0 ? s.editor->fonts.font_of(label) : nullptr;
+  if (font == nullptr) {
+    label.text_bbox.reset();
+    return;
+  }
+  const display::FontLabelGeometry geo = display::font_label_geometry(label, *font, s.magic_compat);
+  label.text_bbox = geo.bbox;
+  label.rotation = geo.rotation;
 }
 
 cmd::Value coord_value(const Session& s, Coord value) {

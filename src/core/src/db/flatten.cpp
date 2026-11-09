@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,10 +42,43 @@ void for_each_element(const CellUse& use, const std::function<void(std::int32_t,
   }
 }
 
+// Erases every label with `rect` and `text` (DBEraseLabelsByContent with type
+// -1), keeping `generated` parallel; returns the new position of index `i`.
+std::size_t erase_labels_by_content(std::vector<Label>& labels, std::vector<bool>& generated, const Rect& rect,
+                                    const std::string& text, std::size_t i) {
+  std::size_t w = 0;
+  std::size_t new_i = i;
+  for (std::size_t r = 0; r < labels.size(); ++r) {
+    if (r == i) {
+      new_i = w;
+    }
+    if (labels[r].rect == rect && labels[r].text == text) {
+      continue;
+    }
+    if (w != r) {
+      labels[w] = std::move(labels[r]);
+      generated[w] = generated[r];
+    }
+    ++w;
+  }
+  labels.resize(w);
+  generated.resize(w);
+  return new_i;
+}
+
+// DBPutFontLabel -> DBFontLabelSetBBox on a label being written.
+void update_font_label(const FlattenOptions& options, Label& l) {
+  if (options.font_update) {
+    options.font_update(l);
+  } else {
+    l.text_bbox.reset();
+  }
+}
+
 class Flattener {
  public:
   Flattener(CellDef& dest, const tech::Technology& tech, const FlattenOptions& options)
-      : dest_(dest), tech_(tech), options_(options) {}
+      : dest_(dest), tech_(tech), options_(options), generated_(dest.labels().size(), false) {}
 
   // DBCellCopyAllPaint + DBCellCopyAllCells over `def` and its descended
   // subtree, `t` mapping `def` into the destination.
@@ -106,8 +140,9 @@ class Flattener {
     }
   }
 
-  // Labels added for the top level of the flattened source, in order.
-  [[nodiscard]] const std::vector<std::size_t>& top_label_indices() const noexcept { return top_indices_; }
+  // Parallel to the destination's labels: true for a label copied from the
+  // top level of the flattened source (Magic's LABEL_GENERATE).
+  [[nodiscard]] const std::vector<bool>& generated() const noexcept { return generated_; }
 
  private:
   void put_flat_label(const Label& lab, const Transform& t, const std::string& path, bool top) {
@@ -123,14 +158,19 @@ class Flattener {
     if (!top) {
       clear_port_and_flags(out);
     }
-    if (!options_.magic_compat && lab.font >= 0) {  // Q-MODEL-20
-      out.rotation = transform_angle(t, lab.rotation, false);
+    // dbCopyAllLabels (top labels) transforms rotation and offset;
+    // flatCopyAllLabels copies them unchanged in magic-compat (Q-MODEL-20).
+    const bool top_only = options_.labels == FlattenLabels::top_only;
+    if (lab.font >= 0 && (top_only || !options_.magic_compat)) {
+      out.rotation = transform_angle(t, lab.rotation, options_.magic_compat);
       const Transform delta{t.a, t.b, 0, t.d, t.e, 0};
       out.offset = apply(delta, lab.offset);
     }
-    if (top) {
-      top_indices_.push_back(dest_.labels().size());
+    update_font_label(options_, out);
+    if (top_only) {
+      (void)erase_labels_by_content(dest_.labels(), generated_, out.rect, out.text, 0);
     }
+    generated_.push_back(top);
     dest_.labels().push_back(std::move(out));
     mark_modified(dest_);
   }
@@ -162,7 +202,7 @@ class Flattener {
   CellDef& dest_;
   const tech::Technology& tech_;
   const FlattenOptions& options_;
-  std::vector<std::size_t> top_indices_;
+  std::vector<bool> generated_;
 };
 
 std::string in_place_prefix(const CellUse& use, std::int32_t x, std::int32_t y, bool magic_compat) {
@@ -184,9 +224,10 @@ std::string in_place_prefix(const CellUse& use, std::int32_t x, std::int32_t y, 
 }
 
 // A non-port copy of `label` with `prefix` before its text.
-Label prefixed_copy(const Label& label, const std::string& prefix) {
+Label prefixed_copy(const Label& label, const std::string& prefix, const FlattenOptions& options) {
   Label fresh = label;
   fresh.text = prefix + label.text;
+  update_font_label(options, fresh);
   fresh.sticky = false;
   fresh.port_directions = 0;
   fresh.port_class = PortClass::default_class;
@@ -196,34 +237,11 @@ Label prefixed_copy(const Label& label, const std::string& prefix) {
   return fresh;
 }
 
-// Erases every label with `rect` and `text` (DBEraseLabelsByContent with type
-// -1), keeping `generated` parallel; returns the new position of index `i`.
-std::size_t erase_labels_by_content(std::vector<Label>& labels, std::vector<bool>& generated, const Rect& rect,
-                                    const std::string& text, std::size_t i) {
-  std::size_t w = 0;
-  std::size_t new_i = i;
-  for (std::size_t r = 0; r < labels.size(); ++r) {
-    if (r == i) {
-      new_i = w;
-    }
-    if (labels[r].rect == rect && labels[r].text == text) {
-      continue;
-    }
-    if (w != r) {
-      labels[w] = std::move(labels[r]);
-      generated[w] = generated[r];
-    }
-    ++w;
-  }
-  labels.resize(w);
-  generated.resize(w);
-  return new_i;
-}
-
 // The relabeling loop of DBFlattenInPlace: every generated label gets a
 // prefixed non-port copy, then every label with its rectangle and text is
 // erased (DBEraseLabelsByContent with type -1).
-void prefix_generated_labels(CellDef& dest, std::vector<bool> generated, const std::string& prefix) {
+void prefix_generated_labels(CellDef& dest, std::vector<bool> generated, const std::string& prefix,
+                             const FlattenOptions& options) {
   auto& labels = dest.labels();
   std::size_t i = 0;
   while (i < labels.size()) {
@@ -233,7 +251,7 @@ void prefix_generated_labels(CellDef& dest, std::vector<bool> generated, const s
     }
     const Rect rect = labels[i].rect;
     const std::string text = labels[i].text;
-    labels.push_back(prefixed_copy(labels[i], prefix));
+    labels.push_back(prefixed_copy(labels[i], prefix, options));
     generated.push_back(false);
     i = erase_labels_by_content(labels, generated, rect, text, i);
   }
@@ -278,11 +296,7 @@ diag::Status flatten_element(CellUse& use, std::int32_t x, std::int32_t y, const
   if (options.labels != FlattenLabels::none) {
     f.copy_labels(*use.def, t, std::string{}, true);
   }
-  std::vector<bool> generated(dest.labels().size(), false);
-  for (const std::size_t i : f.top_label_indices()) {
-    generated[i] = true;
-  }
-  prefix_generated_labels(dest, std::move(generated), in_place_prefix(use, x, y, options.magic_compat));
+  prefix_generated_labels(dest, f.generated(), in_place_prefix(use, x, y, options.magic_compat), options);
   return diag::Done{};
 }
 

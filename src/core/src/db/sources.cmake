@@ -13,6 +13,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands_cells.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands_labels.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/commands_setlabel.cpp
   ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
   ${CMAKE_CURRENT_LIST_DIR}/hierarchy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/labels.cpp

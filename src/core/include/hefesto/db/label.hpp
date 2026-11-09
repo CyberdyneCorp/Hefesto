@@ -52,4 +52,21 @@ struct Label {
   friend bool operator==(const Label&, const Label&) = default;
 };
 
+/// Magic's DefaultLabel, created by the first `setlabel -default` and used
+/// by later `label` commands (cmd-labels-properties "Label command"). Its
+/// initial values mean "not set": justification -1 (automatic), font -1,
+/// type nullopt (layer chosen from the paint).
+/// (Magic ref: commands/CmdRS.c:2207-2222)
+struct LabelDefaults {
+  Position justification = -1;
+  std::int32_t font = -1;
+  std::int32_t size = 0;      // 1/8 database units
+  std::int32_t rotation = 0;  // degrees
+  Point offset;               // 1/8 database units
+  bool sticky = false;
+  std::optional<tech::TileType> type;
+
+  friend bool operator==(const LabelDefaults&, const LabelDefaults&) = default;
+};
+
 }  // namespace hefesto::db

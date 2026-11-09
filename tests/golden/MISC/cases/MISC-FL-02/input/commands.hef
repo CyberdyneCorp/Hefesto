@@ -1,0 +1,14 @@
+# MISC-FL-02: Font labels rotated 90 and -90 (stored 270), a one-word offset, a font index; save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box -20 -20 20 20
+paint metal1
+box 0 0 0 0
+label R90 FreeSans 10 90 0 0 center m1
+box 5 5 5 5
+label Rm90 FreeSans 10 -90 0 0 center m1
+box -5 -5 -5 -5
+label Off 1 4 0 {2 1} sw m1
+save a

@@ -451,6 +451,8 @@ namespace {
 struct FlattenRequest {
   FlattenOptions options;
   bool in_place = false;
+  bool dolabels = true;    // -nolabels / -dolabels
+  bool toplabels = false;  // -dotoplabels / -notoplabels
   std::string name;
 };
 
@@ -465,10 +467,10 @@ std::optional<diag::Diagnostic> apply_flatten_option(FlattenRequest& r, std::str
       r.in_place = !invert;
       break;
     case 'l':
-      r.options.labels = invert ? FlattenLabels::none : FlattenLabels::all;
+      r.dolabels = !invert;
       break;
     case 't':
-      r.options.labels = invert ? FlattenLabels::all : FlattenLabels::top_only;
+      r.toplabels = !invert;
       break;
     case 'p':
       r.options.descend = (arg.substr(3, 4) == "prop" && !invert) ? Descend::property_flatten : Descend::all;
@@ -500,6 +502,15 @@ diag::Outcome<FlattenRequest> parse_flatten(const std::vector<std::string>& args
   if (r.name.empty()) {
     return cu::bad_argument("usage: flatten ?options? name");
   }
+  // CmdFlatten prefers the top labels over all labels; DBFlattenInPlace the
+  // reverse (Magic ref: commands/CmdFI.c:2205-2217, database/DBcellcopy.c:624-631).
+  const FlattenLabels top = r.toplabels ? FlattenLabels::top_only : FlattenLabels::none;
+  const FlattenLabels all = r.dolabels ? FlattenLabels::all : FlattenLabels::none;
+  if (r.in_place) {
+    r.options.labels = r.dolabels ? FlattenLabels::all : top;
+  } else {
+    r.options.labels = r.toplabels ? FlattenLabels::top_only : all;
+  }
   return r;
 }
 
@@ -518,7 +529,8 @@ CommandResult flatten_command(CommandContext& ctx, const Invocation& inv) {
   if (!req.ok()) {
     return cu::fail(req.error());
   }
-  const FlattenRequest& r = req.value();
+  FlattenRequest& r = req.value();
+  r.options.font_update = [sess = s.value()](Label& l) { cu::update_font_label(sess, l); };
   if (r.in_place) {
     CellUse* use = find_use(*def.value(), r.name);
     if (use == nullptr || use->id != r.name) {

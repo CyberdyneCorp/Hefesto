@@ -292,6 +292,24 @@ TEST_CASE("Magic's default fonts load and flabels round-trip", "[cap:cell-file-f
   CHECK(io.write(c) == text);
 }
 
+TEST_CASE("a font label's rotation is stored normalised, as DBFontLabelSetBBox does",
+          "[cap:font-labels][req:Font label geometry]") {
+  // Regression: a negative or >= 360 rotation read from a flabel was kept
+  // and written back unchanged; Magic stores it in [0, 360).
+  CellIo io;
+  if (!io.load_fonts()) {
+    SKIP("Magic's default fonts (build/ref/magic/graphics) not present");
+  }
+  const std::string text = "magic\ntech tiny\ntimestamp 1\n<< labels >>\n"
+                           "flabel metal1 0 0 0 0 0 FreeSans 80 -90 0 0 a\n"
+                           "flabel metal1 2 2 2 2 0 FreeSans 80 450 0 0 b\n<< end >>\n";
+  db::CellDef& c = io.read("c", text);
+  REQUIRE(c.labels().size() == 2);
+  CHECK(c.labels()[0].rotation == 270);
+  CHECK(c.labels()[1].rotation == 90);
+  CHECK(io.write(c).find("FreeSans 80 270 0 0 a\n") != std::string::npos);
+}
+
 namespace {
 
 constexpr std::string_view kStampedA = "magic\ntech tiny\ntimestamp 100\n<< metal1 >>\nrect 0 0 4 4\n<< end >>\n";

@@ -1,0 +1,28 @@
+# MISC-FL-03: Child font label (rotation 30, offset 1 0) placed 90 and v; flatten; flatten -dotoplabels; flatten -doinplace -dotoplabels child_0; flatten -doinplace -nolabels -dotoplabels child_1 (Q-MISC-21).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load child
+box 0 0 10 10
+paint metal1
+box 5 5 5 5
+label F FreeSans 2 30 1 0 center metal1
+save child
+load top
+box 0 0 0 0
+getcell child 90
+box 40 0 40 0
+getcell child v
+save top
+load top
+flatten flat
+load flat
+save flat
+load top
+flatten -dotoplabels flat_t
+load flat_t
+save flat_t
+load top
+flatten -doinplace -dotoplabels child_0
+flatten -doinplace -nolabels -dotoplabels child_1
+save top

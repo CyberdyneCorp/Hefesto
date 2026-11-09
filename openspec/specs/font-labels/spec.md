@@ -124,11 +124,11 @@ Compatibility: behavioral
 
 ### Requirement: Transforming font labels
 
-When a font label is copied through an instance transform T (copying into a parent, selection, yank/stuff, flattening in place), the system SHALL transform the attachment rectangle and justification as for any label, transform the offset as a vector by T's linear part (no translation), and transform the rotation r as: if T's diagonal terms are both zero (90°/270° rotations, possibly mirrored) add 90 when T's top-right term is positive else 270, and the result is mirrored when T's top-right and bottom-left terms are equal; otherwise add 180 if T's top-left term is negative, and mirror when the top-left and bottom-right terms differ; then subtract 360 if the sum exceeds 360; mirroring maps a to 360 − a when the original angle lies strictly between 90 and 270, else to −a; finally add 360 if negative. Here T maps (x, y) to (a·x + b·y + c, d·x + e·y + f); "top-left", "top-right", "bottom-left", "bottom-right" are a, b, d, e. Size is unchanged. The plain `flatten` command copies rotation and offset untransformed (see Q-MISC-21). With `magic-compat` OFF, plain `flatten` SHALL transform them like the other copies, and a clockwise 90° transform SHALL subtract 90 from the rotation instead of adding it (Q-MISC-24, Q-MODEL-1).
+When a font label is copied through an instance transform T by Magic's label copy (DBCellCopyAllLabels: selecting, copying and stuffing, and the top-level labels of `flatten -dotoplabels`), the system SHALL transform the attachment rectangle and justification as for any label, transform the offset as a vector by T's linear part (no translation), and transform the rotation r as: if T's diagonal terms are both zero (90°/270° rotations, possibly mirrored) add 90 when T's top-right term is positive else 270, and the result is mirrored when T's top-right and bottom-left terms are equal; otherwise add 180 if T's top-left term is negative, and mirror when the top-left and bottom-right terms differ; then subtract 360 if the sum exceeds 360; mirroring maps a to 360 − a when the original angle lies strictly between 90 and 270, else to −a; finally add 360 if negative. Here T maps (x, y) to (a·x + b·y + c, d·x + e·y + f); "top-left", "top-right", "bottom-left", "bottom-right" are a, b, d, e. Size is unchanged. A label of the default font keeps rotation 0 and offset (0,0). The copy replaces any label of the destination with the same rectangle and text, and its rendered text box (requirement "Font label geometry") is computed from the copied attributes, so it is not the transformed image of the original text box. Flattening that copies every label with its hierarchical name (flatCopyAllLabels: `flatten`, and `flatten -doinplace` unless `-nolabels` leaves only `-dotoplabels`) copies rotation and offset untransformed (see Q-MISC-21); `flatten` uses the label copy when `-dotoplabels` is given, `flatten -doinplace` only when labels are also turned off with `-nolabels`. With `magic-compat` OFF, both forms of `flatten` SHALL transform rotation and offset like the other copies, and a clockwise 90° transform SHALL subtract 90 from the rotation instead of adding it (Q-MISC-24, Q-MODEL-1).
 
 Compatibility: exact
 
-(Magic ref: utils/geometry.c:154-189, database/DBcellcopy.c:1228-1262, select/selOps.c:1160-1172, commands/CmdFI.c:1990-2015)
+(Magic ref: utils/geometry.c:154-189, database/DBcellcopy.c:1228-1262, database/DBcellcopy.c:620-632, select/selOps.c:1160-1172, commands/CmdFI.c:1990-2015, commands/CmdFI.c:2205-2217)
 
 #### Scenario: Rotation through a 90-degree instance
 - **GIVEN** a font label with rotation 30 and offset (8,0) in a child placed with transform (x,y) → (−y, x)
@@ -136,24 +136,38 @@ Compatibility: exact
 - **THEN** the copied label has rotation 300 (= 30 + 270) and offset (0,8)
 - **AND** its corners are recomputed with the counter-clockwise rotation of 300°, which does not match the geometric image of the original corners (see Q-MISC-24)
 
+#### Scenario: Flattening keeps the rotation unless only top labels are copied
+- **GIVEN** a font label with rotation 30 and offset (8,0) in a child placed with `getcell child 90` (transform (x,y) → (y, −x)) as instance `child_0`, and `magic-compat` ON
+- **WHEN** `flatten flat` is run, and separately `flatten -doinplace -nolabels -dotoplabels child_0`
+- **THEN** the label of `flat` has rotation 30 and offset (8,0)
+- **AND** the in-place label `child_0/F` has rotation 120 (= 30 + 90) and offset (0,−8)
+- **AND** each copy's rendered text box is computed from its own rotation and offset
+
 ### Requirement: Font-related label commands
 
 The system SHALL provide the following font-related forms (general command semantics are owned by `cmd-labels-properties`):
 
-- `setlabel fontlist` lists the names of loaded fonts in load order.
-- `setlabel font <index>` (integer) prints the name of that font (`default` for −1) or reports an out-of-range index.
-- `setlabel font <name> [scale]`: if no loaded font has that name (case-insensitive; `default` means −1), the argument is treated as a font file name and loaded with `scale` (default 1.0) — the newly loaded font is then applied only if its name matches the argument; otherwise the font is applied to all selected labels in the edit cell (or to the default-label settings with `setlabel -default`). Applying a font to a label whose size is 0 sets its size to the integer numerator of the lambda-to-internal ratio (in 1/8 units, see Q-MISC-22; with `magic-compat` off, to 8 × that numerator).
+- `setlabel fontlist` lists the names of loaded fonts in load order (the result list).
+- `setlabel font` lists the font name of each selected label (`default` for −1), or with `-default` the default label's font.
+- `setlabel font <index>` (integer) prints the name of that font (`default` for −1), or reports `Font index out of range (0 to N)` (`No vector outline fonts are loaded.` when none is loaded). As in Magic, the font then applied to the selected labels (or the default label) is −1, the default font (Q-MISC-28); the same holds for `setlabel font <index> <scale>`.
+- `setlabel font <name> [scale]`: if no loaded font has that name (case-insensitive; `default` means −1), the argument is treated as a font file name, searched in the current directory and then the system path, and loaded with `scale` (default 1.0; a font already loaded from that file is loaded again, Q-MISC-26); a failure prints `Error loading font "<name>"`. The newly loaded font is then applied only if its name matches the argument; otherwise nothing more happens. A font found by name is applied to all selected labels in the edit cell (or to the default-label settings with `setlabel -default`). Applying a font to a label whose size is 0 sets its size to the integer numerator of the lambda-to-internal ratio (in 1/8 units, see Q-MISC-22; with `magic-compat` off, to 8 × that numerator). The label's rendered text box is recomputed.
 - `setlabel size`, `setlabel offset` and `setlabel rotate` (values in user units stored ×8; integer degrees; queries divide by 8) are specified in capability `cmd-labels-properties` requirements "Setlabel command" and "Label units and attributes" (see Q-MISC-23 and Q-CMDEDIT-90).
-- `label <text> <font> [size [rotation [offx offy [justification [layer]]]]]`, where `<font>` is a font name or index: size defaults to the lambda ratio numerator (in 1/8 units) unless defaults were set with `setlabel -default`, size/offset are user-unit values stored ×8.
+- `label <text> <font> [size [rotation [offx offy [justification [layer]]]]]`, where `<font>` is a font name or index: size defaults to the lambda ratio numerator (in 1/8 units) unless defaults were set with `setlabel -default`, size/offset are user-unit values stored ×8. An unknown font name prints `Unknown vector outline font "<name>"` and makes no label; an index that is not loaded prints `Font value out of range (0 to N)` (`No vector outline fonts are loaded!` when none is) and makes a default-font label.
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdRS.c:2150-2340, commands/CmdRS.c:2369-2457, commands/CmdRS.c:2527-2557, commands/CmdRS.c:1785-2111, commands/CmdLQ.c:200-345)
+(Magic ref: commands/CmdRS.c:2150-2340, commands/CmdRS.c:2369-2457, commands/CmdRS.c:2527-2557, commands/CmdRS.c:1785-2111, commands/CmdLQ.c:200-345, database/DBlabel.c:1549-1614)
 
 #### Scenario: Loading fonts the way the startup file does
 - **GIVEN** no fonts loaded
 - **WHEN** the user runs `setlabel font FreeSans.pt3 0.58`
 - **THEN** the font `FreeSans` is loaded with index 0 and no selected label is changed (the name `FreeSans.pt3` does not match the loaded font name)
+
+#### Scenario: Font index query
+- **GIVEN** FreeSans loaded as font 0 and a selected FreeSans label
+- **WHEN** the user runs `setlabel font 0`
+- **THEN** `FreeSans` is printed
+- **AND** the selected label becomes a default-font label (Q-MISC-28)
 
 #### Scenario: Apply a font to a selected label
 - **GIVEN** FreeSans loaded, 1 internal unit per lambda, and a selected default-font label of size 0
