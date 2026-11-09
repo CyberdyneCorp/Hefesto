@@ -7,7 +7,7 @@ Capability hefesto-licensing, requirement "Attribution for permissive sources",
 and hefesto-build-and-distribution, requirement "Dependency policy". For every
 FetchContent_Declare in cmake/Dependencies.cmake, the notices file must name the
 upstream repository (github.com/<owner>/<repo>) and the pin: the commit of a
-GIT_TAG, or the version (vX.Y.Z) found in a release URL.
+GIT_TAG, or the release tag (vX.Y.Z, curl-8_23_0, ...) of a GitHub release URL.
 
 Usage:
     check_third_party_notices.py
@@ -25,7 +25,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DECLARE = re.compile(r"FetchContent_Declare\(\s*(\w+)(.*?)\)", re.S)
 REPOSITORY = re.compile(r"https://github\.com/([\w.-]+/[\w-]+?)(?:\.git|/|\s)", re.I)
 GIT_TAG = re.compile(r"GIT_TAG\s+(\S+)")
-URL_VERSION = re.compile(r"/(v\d+(?:\.\d+)+)/")
+# The release tag of a GitHub release URL (v1.3.1, curl-8_23_0, ...).
+URL_VERSION = re.compile(r"/releases/download/([^/\s]+)/")
 
 
 def declarations(cmake_text: str) -> list[tuple[str, str | None, str | None]]:

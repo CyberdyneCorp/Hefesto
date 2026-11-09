@@ -12,12 +12,16 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/pdk/commands.hpp"
 
 namespace hefesto::cmd {
 
 /// Registers every command. Returns false if any name was taken (each area
 /// still registers the rest of its commands).
 bool register_all_commands(CommandRegistry& registry);
+/// The same, with the front end's PDK host mechanisms for `pdk` (hefesto-cli
+/// and the desktop pass the platform_net HTTPS Fetcher).
+bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_hosts);
 
 /// The editor session of `ctx`, or CMD-SESSION-001 when the front end runs
 /// without one. Typical use in a handler:

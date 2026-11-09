@@ -4,12 +4,16 @@
 // The PDK manager panel's install job (hefesto-pdk-manager "Headless and
 // scripted operation"): the panel's install runs `pdk install ...
 // -progress` through a Dispatcher (here with an in-memory Fetcher), its
-// progress events drive the bar, and the finished command lands in the UI
-// session's command log.
+// progress events drive the bar (live, through a Dispatcher live sink), and
+// the finished command lands in the UI session's command log.
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
+#include <condition_variable>
 #include <filesystem>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include "../pdk/fakes.hpp"
 #include "../pdk/temp_dir.hpp"
@@ -126,4 +130,81 @@ TEST_CASE("the panel's install runs through a Dispatcher with progress and is lo
   CHECK(heard == 1);
   REQUIRE_FALSE(core.command_log().history().empty());
   CHECK(core.command_log().history().back().find("pdk install sky130A") != std::string::npos);
+}
+
+namespace {
+
+/// Holds every download until released, after reporting half of it, so the
+/// test can look at the job's progress while the command is still running.
+class HeldFetcher final : public pdk::Fetcher {
+ public:
+  explicit HeldFetcher(test::MapFetcher& to) : to_(to) {}
+  diag::Outcome<std::string> get_text(std::string_view url) override { return to_.get_text(url); }
+  diag::Status download(std::string_view url, const platform::Path& to,
+                        const std::function<void(std::uint64_t, std::uint64_t)>& progress) override {
+    const std::uint64_t size = to_.documents[std::string{url}].size();
+    if (progress) progress(size / 2, size);
+    {
+      std::unique_lock lock{mutex_};
+      opened_.wait(lock, [this] { return open_; });
+    }
+    return to_.download(url, to, progress);
+  }
+  void release() {
+    {
+      const std::lock_guard guard{mutex_};
+      open_ = true;
+    }
+    opened_.notify_all();
+  }
+
+ private:
+  test::MapFetcher& to_;
+  std::mutex mutex_;
+  std::condition_variable opened_;
+  bool open_ = false;
+};
+
+}  // namespace
+
+// Regression (8.1 SHELL leftover): the bar followed the job's Fetcher, so a
+// download showed "(asset N)" without the asset count; the job now takes the
+// command's PDK-PROGRESS-001 events live from a Dispatcher live sink.
+TEST_CASE("the panel's install job shows live download progress with the asset count",
+          "[cap:hefesto-pdk-manager][req:Headless and scripted operation]") {
+  test::TempDir dir;
+  test::MapFetcher fetcher;
+  publish(fetcher);
+  HeldFetcher held{fetcher};
+  PdkJob::Setup setup;
+  setup.options = platform::PortableOptions{.storage_root = dir.path() / "storage", .pdk_roots = {},
+                                            .in_memory = false, .inline_tasks = true};
+  setup.settings.set(app::SettingLayer::user, app::kPdkRoot, (dir.path() / "root").string());
+  setup.hosts.fetcher = [&held](platform::PlatformServices&) { return std::make_unique<Forwarding>(held); };
+  setup.hosts.decompressor = [](platform::PlatformServices&) { return std::make_unique<test::CopyDecompressor>(); };
+  setup.hosts.install_host = [] { return std::make_unique<test::FakeHost>(); };
+  const auto line = pdk_command(PdkAction::install, "sky130", "sky130A", kHash, {true, true});
+  REQUIRE(line);
+  PdkJob job;
+  REQUIRE(job.start(with_progress(*line + " -lib sky130_fd_sc_hd -source " + kBase), std::move(setup)));
+
+  pdk::InstallProgress live;
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{20};
+  bool seen = false;
+  while (!seen && std::chrono::steady_clock::now() < deadline) {
+    seen = job.progress(live) && live.phase == pdk::InstallPhase::download && live.bytes > 0;
+    if (!seen) std::this_thread::sleep_for(std::chrono::milliseconds{5});
+  }
+  const bool still_running = job.running();
+  held.release();
+  job.wait();
+  REQUIRE(seen);
+  CHECK(still_running);  // observed while the download was held
+  CHECK(live.parts == 2);
+  CHECK(live.part == 1);
+  CHECK(live.asset == "common.tar.zst");
+  CHECK(pdk_progress_view(live).text.starts_with("Downloading common.tar.zst (1/2) "));
+  PdkJob::Finished done;
+  REQUIRE(job.take_finished(done));
+  CHECK(done.result.ok());
 }

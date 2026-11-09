@@ -944,11 +944,17 @@ std::unique_ptr<platform::PdkStore> make_managed_pdk_store(const PdkManager& man
 
 SessionPdk make_session_pdk(platform::FileSystem& fs, platform::ProcessRunner& runner,
                             const std::optional<platform::Path>& root) {
+  auto fetcher = runner.supported() ? make_process_fetcher(runner, make_local_install_host()->environment("GITHUB_TOKEN"))
+                                    : make_unsupported_fetcher();
+  return make_session_pdk(fs, std::move(fetcher), root);
+}
+
+SessionPdk make_session_pdk(platform::FileSystem& fs, std::unique_ptr<Fetcher> fetcher,
+                            const std::optional<platform::Path>& root) {
   SessionPdk out;
   out.host = make_local_install_host();
-  out.fetcher = runner.supported() ? make_process_fetcher(runner, out.host->environment("GITHUB_TOKEN"))
-                                   : make_unsupported_fetcher();
-  out.decompressor = make_default_decompressor(runner);
+  out.fetcher = std::move(fetcher);
+  out.decompressor = make_default_decompressor();
   out.manager = std::make_unique<PdkManager>(fs, *out.host, *out.fetcher, Catalog::builtin());
   out.manager->set_decompressor(out.decompressor.get());
   out.manager->set_root(out.manager->resolve_root(root));

@@ -2,7 +2,9 @@
 // Copyright 2026 The Hefesto Authors
 //
 // End-to-end PDK install over the network (ctest label `network`; set
-// HEFESTO_SKIP_NETWORK_TESTS=1 to skip): the real curl Fetcher, the real
+// HEFESTO_SKIP_NETWORK_TESTS=1 to skip), run with each real Fetcher: the
+// in-process HTTPS Fetcher of the front ends (hefesto::platform_net:
+// URLSession on macOS, libcurl on Linux) and the curl-process fallback. The
 // Zstandard decoder and the local install host install the pinned sky130A
 // release 0fe599b2 (common + the 9.5 KB sky130_ml_xx_hd library, about
 // 6.4 MB downloaded, the magic subset kept) from the ciel release assets
@@ -14,23 +16,27 @@
 //
 // Network robustness: a transient fetch failure (PDK-FETCH-001) is retried
 // up to kAttempts times with exponential backoff; when the network is
-// clearly unavailable (curl cannot resolve or connect to GitHub, or GitHub
-// keeps answering with an HTTP 5xx server error, before the test or after
-// the last attempt) the test is skipped, not failed. Any other failure (a
+// clearly unavailable (GitHub cannot be resolved or connected to, or keeps
+// answering with an HTTP 5xx server error, before the test or after the
+// last attempt) the test is skipped, not failed. Any other failure (a
 // verification or unpack error, an HTTP 4xx, or a fetch failure that
 // persists while GitHub is reachable and healthy) still fails the test.
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <thread>
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
 #include "hefesto/pdk/manager.hpp"
+#include "hefesto/platform_net/http_fetcher.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
 #include "temp_dir.hpp"
 
@@ -74,15 +80,22 @@ bool skipped() {
 
 constexpr int kAttempts = 4;
 
-// curl exit 6 (could not resolve host) and 7 (could not connect): no network.
-// curl exit 22 with an HTTP 5xx status: GitHub itself is failing (e.g. 504).
+bool contains(const std::string& text, std::string_view part) {
+  return text.find(part) != std::string::npos;
+}
+
+// No network: curl exit 6 (could not resolve host) or 7 (could not connect),
+// or the HTTP Fetcher's "cannot resolve host" / "cannot connect". GitHub
+// itself failing (e.g. 504): curl exit 22 with an HTTP 5xx status, or the
+// HTTP Fetcher's ": HTTP 5xx".
 bool network_unavailable(const hefesto::diag::Diagnostic& d) {
   if (d.code != pdk::codes::kFetch) {
     return false;
   }
-  const bool offline = d.text.find("curl exit 6:") != std::string::npos || d.text.find("curl exit 7:") != std::string::npos;
-  const bool server_error = d.text.find("curl exit 22:") != std::string::npos &&
-                            d.text.find("returned error: 5") != std::string::npos;
+  const bool offline = contains(d.text, "curl exit 6:") || contains(d.text, "curl exit 7:") ||
+                       contains(d.text, ": cannot resolve host") || contains(d.text, ": cannot connect");
+  const bool server_error = (contains(d.text, "curl exit 22:") && contains(d.text, "returned error: 5")) ||
+                            contains(d.text, ": HTTP 5");
   return offline || server_error;
 }
 
@@ -119,6 +132,18 @@ auto with_retries(Op op) -> decltype(op()) {
   return result;
 }
 
+// The Fetcher under test: "http" (platform_net, what hefesto-cli and the
+// desktop use) or "process" (curl through the ProcessRunner).
+std::unique_ptr<pdk::Fetcher> make_fetcher(std::string_view kind, hefesto::platform::ProcessRunner& runner,
+                                           pdk::InstallHost& host) {
+  if (kind == "http") {
+    hefesto::platform_net::HttpFetcherOptions options;
+    options.github_token = host.environment("GITHUB_TOKEN");
+    return hefesto::platform_net::make_http_fetcher(std::move(options));
+  }
+  return pdk::make_process_fetcher(runner, host.environment("GITHUB_TOKEN"));
+}
+
 bool has_code(const hefesto::diag::CollectingSink& sink, std::string_view code, std::string_view text) {
   for (const auto& d : sink.snapshot()) {
     if (d.code == code && d.text.find(text) != std::string::npos) {
@@ -130,7 +155,7 @@ bool has_code(const hefesto::diag::CollectingSink& sink, std::string_view code, 
 
 }  // namespace
 
-TEST_CASE("network: install the pinned sky130A subset with the real fetcher, verified",
+TEST_CASE("network: install the pinned sky130A subset with each real fetcher, verified",
           "[cap:hefesto-pdk-manager][req:Download integrity verification][network]") {
   if (skipped()) {
     SKIP("HEFESTO_SKIP_NETWORK_TESTS is set");
@@ -140,7 +165,9 @@ TEST_CASE("network: install the pinned sky130A subset with the real fetcher, ver
   hefesto::platform_posix::PosixProcessRunner runner;
   require_network(runner);
   auto host = pdk::make_local_install_host();
-  auto fetcher = pdk::make_process_fetcher(runner, host->environment("GITHUB_TOKEN"));
+  const std::string kind = GENERATE(as<std::string>{}, "http", "process");
+  INFO("fetcher: " << kind << (kind == "http" ? " (" + std::string{hefesto::platform_net::http_backend_name()} + ")" : ""));
+  auto fetcher = make_fetcher(kind, runner, *host);
   auto decoder = pdk::make_default_decompressor(runner);
   pdk::PdkManager manager{files, *host, *fetcher, pdk::Catalog::builtin()};
   manager.set_decompressor(decoder.get());
@@ -220,7 +247,9 @@ TEST_CASE("network: the GitHub releases source lists the pinned version's assets
   hefesto::platform_posix::PosixProcessRunner runner;
   require_network(runner);
   auto host = pdk::make_local_install_host();
-  auto fetcher = pdk::make_process_fetcher(runner, host->environment("GITHUB_TOKEN"));
+  const std::string kind = GENERATE(as<std::string>{}, "http", "process");
+  INFO("fetcher: " << kind);
+  auto fetcher = make_fetcher(kind, runner, *host);
   pdk::PdkManager manager{files, *host, *fetcher, pdk::Catalog::builtin()};
   const auto assets = with_retries(
       [&] { return manager.version_assets(*manager.catalog().find_family("sky130"), kVersion, pdk::CatalogSource{}); });

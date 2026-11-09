@@ -7,10 +7,10 @@
 // same `pdk` commands as scripts). The job runs the command through a
 // Dispatcher of its own (a headless command session with the PDK commands,
 // a copy of the editor's layered settings and the session's storage), so it
-// never touches the UI session's state concurrently. Downloads are observed
-// live at the job's Fetcher (the Dispatcher publishes a command's
-// PDK-PROGRESS-001 diagnostics only when it returns; their last event ends
-// the bar); the panel polls the progress snapshot every frame, and the
+// never touches the UI session's state concurrently. The command's
+// PDK-PROGRESS-001 diagnostics reach the job live through a Dispatcher live
+// sink (Dispatcher::add_live_sink), downloads included, with the asset
+// count known; the panel polls the progress snapshot every frame, and the
 // finished Invocation and CommandResult are handed back to the UI thread,
 // which records them in the session's command log and Console.
 // Toolkit-free and unit-tested.

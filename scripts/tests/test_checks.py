@@ -219,6 +219,9 @@ FetchContent_Declare(raven
   GIT_REPOSITORY https://github.com/oscar-soirey/Raven.git
   GIT_TAG 4a05d6f11c79e5a6eae77d7fe26f702f5fea4331 # v0.2.2
   GIT_PROGRESS FALSE)
+FetchContent_Declare(hefesto_curl
+  URL https://github.com/curl/curl/releases/download/curl-8_23_0/curl-8.23.0.tar.xz
+  SYSTEM)
 """
 
 
@@ -227,15 +230,17 @@ class ThirdPartyNoticesTest(unittest.TestCase):
         self.assertEqual(notices.declarations(DEPENDENCIES), [
             ("hefesto_zlib", "madler/zlib", "v1.3.1"),
             ("raven", "oscar-soirey/Raven", "4a05d6f11c79e5a6eae77d7fe26f702f5fea4331"),
+            ("hefesto_curl", "curl/curl", "curl-8_23_0"),  # a release tag without a leading v
         ])
 
     def test_missing_entry_and_pin(self):
         complete = ("https://github.com/madler/zlib v1.3.1\n"
-                    "https://github.com/oscar-soirey/Raven 4a05d6f11c79e5a6eae77d7fe26f702f5fea4331\n")
+                    "https://github.com/oscar-soirey/Raven 4a05d6f11c79e5a6eae77d7fe26f702f5fea4331\n"
+                    "https://github.com/curl/curl curl-8_23_0\n")
         self.assertEqual(notices.problems(DEPENDENCIES, complete), [])
         stale = "https://github.com/madler/zlib v1.3.0\n"
         found = notices.problems(DEPENDENCIES, stale)
-        self.assertEqual(len(found), 3)
+        self.assertEqual(len(found), 5)
         self.assertTrue(any("pin v1.3.1" in f for f in found))
         self.assertTrue(any("oscar-soirey/Raven not listed" in f for f in found))
 

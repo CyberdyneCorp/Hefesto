@@ -6,6 +6,7 @@
 # own subdirectory and never edits this file:
 #   core/    INTEGRATION (M0 core)          (always)
 #   cli/     PDK (M1 CLI commands)          (when hefesto-cli is built)
+#   net/     INTEGRATION (HTTPS Fetcher)    (when hefesto::platform_net is built)
 #   tech/    TECH                           (always)
 #   db/      MODEL                          (always)
 #   cell/    CELL                           (always)
@@ -64,6 +65,10 @@ endforeach()
 
 if(TARGET hefesto-cli)
   add_subdirectory(cli)
+endif()
+
+if(TARGET hefesto_platform_net)
+  add_subdirectory(net)  # INTEGRATION: the HTTPS Fetcher (URLSession, libcurl)
 endif()
 
 if(HEFESTO_BUILD_DESKTOP)

@@ -148,6 +148,11 @@ jobs:
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
 
+      # The pinned libcurl (src/platform_net, hefesto-licensing D-13) links the system OpenSSL 3.
+      - name: Install the OpenSSL headers for libcurl
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
       - name: Install Vulkan, X11 and Wayland development packages
         if: matrix.desktop
         run: |
@@ -205,8 +210,9 @@ jobs:
         if: ${{ !matrix.desktop }}
         run: ctest --preset ${{ matrix.preset }}
 
-      # hefesto-pdk-manager (task 7.3): the real curl Fetcher installs the pinned sky130A common asset and one
-      # small library (about 6.4 MB, a few seconds) into a temporary root. One leg only, with the job token for
+      # hefesto-pdk-manager (task 7.3): the real Fetchers (in-process HTTPS: libcurl here; and the curl-process
+      # fallback) install the pinned sky130A common asset and one small library (about 6.4 MB each, a few
+      # seconds) into a temporary root. One leg only, with the job token for
       # the GitHub API listing; the other legs skip the test (HEFESTO_SKIP_NETWORK_TESTS above).
       - name: PDK network test
         if: matrix.network
@@ -300,7 +306,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libvulkan-dev mesa-vulkan-drivers vulkan-tools libx11-dev
+            libvulkan-dev mesa-vulkan-drivers vulkan-tools libx11-dev libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-lavapipe
@@ -374,6 +380,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-asan
@@ -402,6 +410,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
       - uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: linux-fuzz
