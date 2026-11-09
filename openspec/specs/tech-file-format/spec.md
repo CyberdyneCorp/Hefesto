@@ -31,9 +31,17 @@ A logical line that contains no tokens is skipped, and the reader moves on to th
 
 Each physical line read increments the current line number, including comment lines, blank lines and continuation lines. Line numbers count from 1 within each file, and an included file has its own count (see "include directive"). Error messages report the line number of the last physical line consumed.
 
+When an included file ends, Magic restores the including file's count to the line number of the `include` line, and the read that continues after it does not count again. Every later line of the including file is therefore reported one lower than its physical line number, and one lower again for each further include that ends in the same file. With `magic-compat` on, Hefesto SHALL reproduce this count. With `magic-compat` off, Hefesto SHALL report physical line numbers.
+
 The user manual says that `#` starts a comment anywhere on a line. The code recognizes `#` only at the start of a line (see Q-TECH-29).
 
 (Magic ref: utils/tech.c:1004-1040, utils/tech.c:1097-1098)
+
+#### Scenario: Line numbers after an include ends
+- **GIVEN** a file whose line 5 is `include more`, where `more.tech` exists, and whose line 9 is a bad line
+- **WHEN** the file is loaded with `magic-compat` on
+- **THEN** the error for the bad line reports line 8
+- **AND** with `magic-compat` off it reports line 9
 
 #### Scenario: Indented comment line is ignored
 - **GIVEN** a section body line `    # metal rules follow`
@@ -266,7 +274,7 @@ To find the include file, the loader appends the current technology-file suffix 
 
 If neither is found, the loader SHALL warn `Warning: Couldn't find include file <name>`. Magic then processes the `include` line itself as an ordinary line: outside a section it is a bad header line, and inside a section it goes to the section handlers. Hefesto SHALL instead discard the `include` line after the warning and SHALL fail the load (see Q-TECH-2).
 
-While an included file is being read, error locations name the included file and its own line numbers.
+While an included file is being read, error locations name the included file and its own line numbers. After the included file ends, line numbers in the including file follow "Physical line reading and comment lines": with `magic-compat` on they are one lower than the physical line for each include that has ended in that file, and with `magic-compat` off they are physical line numbers.
 
 A one-token line `include` is not a directive. It is processed as an ordinary line.
 

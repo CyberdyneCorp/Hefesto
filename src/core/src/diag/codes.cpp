@@ -5,6 +5,9 @@
 
 #include <algorithm>
 #include <array>
+#include <vector>
+
+#include "diag/area_codes.hpp"
 
 namespace hefesto::diag {
 
@@ -16,7 +19,7 @@ using enum Severity;
 constexpr std::array kTable = {
     CodeInfo{"CLI-LOG-001", warning, "The session log file cannot be opened; the run continues without it."},
     CodeInfo{"CLI-SCRIPT-001", error, "A script file named on the command line cannot be read."},
-    CodeInfo{"CLI-TECH-001", warning, "`-T <tech>` was recorded but technology loading is not implemented yet (M1)."},
+    CodeInfo{"CLI-TECH-001", warning, "Retired in M1, never reused. Was: `-T <tech>` recorded but not loaded; `-T` now loads the technology at startup."},
     CodeInfo{"CLI-USAGE-001", error, "Invalid command-line option or option argument."},
     CodeInfo{"CMD-DISPATCH-001", error, "Unknown command name; the command was not run."},
     CodeInfo{"CMD-INTERNAL-001", error, "A command handler raised an unexpected internal error; the command failed."},
@@ -24,7 +27,9 @@ constexpr std::array kTable = {
     CodeInfo{"CMD-PARSE-002", error, "Command script has an unterminated brace group."},
     CodeInfo{"CMD-PARSE-003", error, "Extra characters after a closing quote or brace in a command script."},
     CodeInfo{"CMD-REGISTRY-001", error, "A command with the same name is already registered."},
+    CodeInfo{"CMD-SESSION-001", error, "The command needs an editor session (technology, cells, windows) and none is attached."},
     CodeInfo{"CMD-USAGE-001", error, "Wrong number or form of command arguments."},
+    CodeInfo{"CORE-NOTIMPL-001", error, "Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -51,16 +56,71 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
+const std::array<CodeArea, 8>& areas() noexcept {
+  static const std::array<CodeArea, 8> table = {
+      CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
+      CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
+      CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
+      CodeArea{"cell", "CELL", "docs/diagnostics/codes/cell.md", area_codes::cell()},
+      CodeArea{"display", "DISPLAY", "docs/diagnostics/codes/display.md", area_codes::display()},
+      CodeArea{"view", "VIEW", "docs/diagnostics/codes/view.md", area_codes::view()},
+      CodeArea{"pdk", "PDK", "docs/diagnostics/codes/pdk.md", area_codes::pdk()},
+      CodeArea{"app", "APP", "docs/diagnostics/codes/app.md", area_codes::app()},
+  };
+  return table;
+}
+
+// Every code of every area, sorted by code (built once).
+const std::vector<CodeInfo>& merged() {
+  static const std::vector<CodeInfo> all = [] {
+    std::vector<CodeInfo> codes;
+    for (const auto& area : areas()) {
+      codes.insert(codes.end(), area.codes.begin(), area.codes.end());
+    }
+    std::sort(codes.begin(), codes.end(), [](const CodeInfo& a, const CodeInfo& b) { return a.code < b.code; });
+    return codes;
+  }();
+  return all;
+}
+
+std::string render_rows(std::span<const CodeInfo> codes) {
+  std::string out = "| Code | Default severity | Meaning |\n|---|---|---|\n";
+  for (const auto& info : codes) {
+    out += "| `";
+    out += info.code;
+    out += "` | ";
+    out += severity_name(info.severity);
+    out += " | ";
+    out += info.summary;
+    out += " |\n";
+  }
+  return out;
+}
+
 }  // namespace
 
 std::span<const CodeInfo> code_table() noexcept {
-  return kTable;
+  return merged();
+}
+
+std::span<const CodeArea> code_areas() noexcept {
+  return areas();
+}
+
+std::optional<CodeArea> find_code_area(std::string_view name) noexcept {
+  for (const auto& area : areas()) {
+    if (area.name == name) {
+      return area;
+    }
+  }
+  return std::nullopt;
 }
 
 std::optional<CodeInfo> find_code(std::string_view code) noexcept {
-  const auto it = std::lower_bound(kTable.begin(), kTable.end(), code,
+  const auto& table = merged();
+  const auto it = std::lower_bound(table.begin(), table.end(), code,
                                     [](const CodeInfo& info, std::string_view c) { return info.code < c; });
-  if (it == kTable.end() || it->code != code) {
+  if (it == table.end() || it->code != code) {
     return std::nullopt;
   }
   return *it;
@@ -78,17 +138,12 @@ bool is_well_formed_code(std::string_view code) noexcept {
 }
 
 std::string render_code_table_markdown() {
-  std::string out = "| Code | Default severity | Meaning |\n|---|---|---|\n";
-  for (const auto& info : kTable) {
-    out += "| `";
-    out += info.code;
-    out += "` | ";
-    out += severity_name(info.severity);
-    out += " | ";
-    out += info.summary;
-    out += " |\n";
-  }
-  return out;
+  return render_rows(kTable);
+}
+
+std::string render_code_table_markdown(std::string_view area) {
+  const auto found = find_code_area(area);
+  return render_rows(found ? found->codes : std::span<const CodeInfo>{});
 }
 
 }  // namespace hefesto::diag

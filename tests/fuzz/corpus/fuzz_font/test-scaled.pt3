@@ -1,0 +1,23 @@
+%!PS-AdobeFont-1.0: Test
+/FontBBox {-10 -200 1000 800 }readonly def
+% comment line
+/CharProcs 128 dict def
+CharProcs begin
+  /.notdef { 500 0 0 0 400 700 setcachedevice
+	} bind def
+  /space { 300 0 0 0 0 0 setcachedevice
+	} bind def
+  /A { 600 0 0 0 600 700 setcachedevice
+	0 0 moveto
+	 300 700 lineto
+	 600 0 lineto
+	 0 0 lineto
+	closepath
+	} bind def
+  /B { 500 0 0 -100 450 700 setcachedevice
+	0 0 moveto
+	 0 0 0 60 60 60 curveto
+	closepath
+	} bind def
+currentdict end
+/Test.Regular exch definefont

@@ -51,7 +51,7 @@ CommandResult Dispatcher::run_handler(const Invocation& invocation) {
         diag::make(diag::codes::kCmdDispatch, "unknown command \"" + invocation.name + "\"", location_of(invocation)));
   }
   diag::CollectingSink collected;
-  CommandContext context{services_, project_, session_, collected, registry_};
+  CommandContext context{services_, project_, session_, collected, registry_, editor_};
   CommandResult result;
   try {
     result = spec->handler(context, invocation);

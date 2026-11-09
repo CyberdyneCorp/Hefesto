@@ -29,6 +29,112 @@ Raven's Wayland platform opens `libwayland-client`, `libxkbcommon`, `libwayland-
 `libdecor` (all MIT) from the system at run time; they are not bundled. The Vulkan loader is the
 system's on Linux.
 
+## Components in M1
+
+| Component | Version / pin | License | Shipped in | Source |
+|---|---|---|---|---|
+| Zstandard (decoder only) | v1.5.6, release archive SHA-256 `8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1` | BSD-3-Clause | all packages (core) | https://github.com/facebook/zstd |
+| Magic VLSI (ported logic) | 8.3.694, commit `fc5daa9e2856b89a0a3056f296ded1fd4474e39e` | UC Berkeley permissive notice | all packages (core) | https://github.com/RTimothyEdwards/magic |
+| Inter (UI font) | 4.1, archive SHA-256 `9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e` | OFL-1.1 | desktop | https://github.com/rsms/inter |
+| JetBrains Mono (UI font) | 2.304, archive SHA-256 `6f6376c6ed2960ea8a963cd7387ec9d76e3f629125bc33d1fdcd7eb7012f7bbf` | OFL-1.1 | desktop | https://github.com/JetBrains/JetBrainsMono |
+
+Fonts are data files (`assets/fonts/`, unmodified, with their license texts beside them; see
+`assets/fonts/README.md`). Magic's FreeSans, FreeSerif and FreeMono `.pt3` outline fonts are not
+bundled: they are read at run time from a Magic installation (`$CAD_ROOT/magic/sys`). PDK data
+(`.cache/pdks`) and Magic's display-style files used by tests (`build/ref/magic`) are fetched by
+`scripts/fetch_pdk.py` and never committed or shipped.
+
+## Zstandard
+
+The core's PDK manager decodes `.tar.zst` release assets with the Zstandard streaming decoder
+(`hefesto::zstd`, built from the release sources' `lib/common` and `lib/decompress` only).
+
+```text
+BSD License
+
+For Zstandard software
+
+Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+ * Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+ * Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+ * Neither the name Facebook, nor Meta, nor the names of its contributors may
+   be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+## Magic VLSI (ported logic)
+
+Hefesto ports algorithms and file formats from Magic 8.3.694 (decision P-10, capability
+`hefesto-licensing`, requirement "Attribution for permissive sources"). Every ported file names
+the Magic sources it follows and keeps this notice by reference. In M1:
+
+| Area | Hefesto files | Magic sources |
+|---|---|---|
+| technology files | `src/core/src/tech/` (reader, sections, types, contacts, compose, styles, loader, scaling, `tech`/`scalegrid`, built-in `minimum` technology) | `utils/tech.c`, `utils/path.c`, `database/DBtech*.c`, `database/DBtcontact.c`, `database/DBtpaint.c`, `database/DBtechtype.c`, `cif/CIFtech.c`, `commands/CmdTZ.c`, `scmos/minimum.tech.in` |
+| layout database | `src/core/src/db/` (corner-stitched planes, paint and erase, split tiles, hierarchy, flattening, labels and ports, properties, commands) | `tiles/*.c`, `database/DBpaint.c`, `database/DBpaint2.c`, `database/DBcellsrch.c`, `database/DBcellname.c`, `database/DBcellsubr.c`, `database/DBlabel.c`, `database/DBprop.c`, `database/DBtiles.c`, `commands/Cmd*.c` |
+| cell files | `src/core/src/cell/` (`.mag` reader and writer, elements, search paths, I/O safety, timestamps, commands) | `database/DBio.c`, `database/DBtimestmp.c`, `database/DBcellname.c`, `utils/path.c`, `utils/lookup.c`, `commands/CmdLQ.c`, `commands/CmdRS.c` |
+| display styles and fonts | `src/core/src/display/` (`.cmap`, `.dstyle`, glyphs, outline fonts, scene order) | `graphics/grCMap.c`, `graphics/grDStyle.c`, `graphics/grGlyphs.c`, `database/DBlabel.c`, `dbwind/DBWdisplay.c` |
+| windows and view commands | `src/core/src/view/` | `windows/windView.c`, `windows/windTrans.c`, `windows/windMove.c`, `dbwind/DBWprocs.c`, `commands/CmdSubrs.c`, `commands/CmdWizard.c` |
+| shared helpers | `src/core/src/util/record_order.cpp` (natural name order), `src/core/src/cmd/coordinates.cpp` (coordinate units) | `database/DBcellname.c` (`strcmpbynum`), `commands/CmdSubrs.c` (`cmdScaleCoord`) |
+| app startup | `src/core/src/app/` (startup order and options) | `utils/main.c`, `tcltk/tclmagic.c` |
+
+Magic's license (`LICENSE` at the pinned commit):
+
+```text
+Copyright (C) 1985, 1990 Regents of the University of California.
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies.  The University of California
+makes no representations about the suitability of this
+software for any purpose.  It is provided "as is" without
+express or implied warranty.  Export of this software outside
+of the United States of America may require an export license.
+```
+
+## Inter
+
+UI font of the desktop shell (`hefesto-design-system` "Typography"). The full SIL Open Font License
+1.1 text is `assets/fonts/Inter-OFL.txt`.
+
+```text
+Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+```
+
+## JetBrains Mono
+
+Monospace font of the desktop shell (coordinates, names, commands). The full SIL Open Font License
+1.1 text is `assets/fonts/JetBrainsMono-OFL.txt`.
+
+```text
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+```
+
 ## zlib
 
 Used by the core for deflate and gzip (`hefesto::zlib`, built from the release sources).
@@ -416,19 +522,16 @@ networking and data formats" and "Bundled fonts and PDK data licensing" of `hefe
 
 | Component | Expected license | Where | Notes |
 |---|---|---|---|
-| Magic (ported logic; scmos/minimum tech files, including the scmos MOSIS notice) | UC Berkeley permissive notice | all | |
+| Magic scmos tech files (including the scmos MOSIS notice) | UC Berkeley permissive notice + MOSIS notice | all, if bundled | M1 tests generate scmos.tech from build/ref/magic; not shipped |
 | Tcl | Tcl/Tk license (BSD-style) | all | X-3 |
 | ngspice | modified BSD | all | GPL parts excluded |
 | ↳ KLU, numparam | LGPLv2 / LGPLv2+ | all | static linking on iPadOS: Q-SIM-1 |
 | ↳ OSDI | MPL-2.0 | all | plus each compact model compiled in (Q-SIM-2) |
 | ↳ sparse | per ngspice | all | capability `simulation-engine-embedding` |
-| Zstandard (zstd) | BSD-3-Clause | all | PDK assets |
 | cgltf (or tinygltf) | MIT | all | glTF writer |
 | libsodium (or Monocypher) | ISC (BSD-2-Clause or CC0-1.0) | Linux | |
 | libcurl | curl license (MIT-style) | Linux | |
 | OpenSSL 3.x | Apache-2.0 | Linux, where the package bundles it | libcurl's TLS library |
-| Inter | OFL-1.1 | all | UI font (`hefesto-design-system`) |
-| JetBrains Mono | OFL-1.1 | all | UI font |
 | FreeSans | GPL with font exception | where bundled for font labels | kept as a separate data file |
 | Sparse linear solver (e.g. Eigen) | MPL-2.0 | all, if used | Q-RELIABILITY-9 |
 | PDK packs (sky130, gf180mcu, IHP) | Apache-2.0, to confirm per pack | installed with the pack | upstream LICENSE and NOTICE kept |

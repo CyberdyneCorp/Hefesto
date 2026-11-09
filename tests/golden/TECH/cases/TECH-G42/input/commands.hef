@@ -1,0 +1,7 @@
+# TECH-G42: tech lambda, tech lambda 2, tech lambda 3 2.
+# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
+# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
+tech load input/tiny -noprompt
+tech lambda
+tech lambda 2
+tech lambda 3 2

@@ -1,0 +1,216 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+
+#include "side_panels.hpp"
+
+#include <utility>
+
+#include "hefesto/display/scene.hpp"
+#include "hefesto/editor/editor_state.hpp"
+#include "hefesto/view/window.hpp"
+#include "screen_paint.hpp"
+
+namespace hefesto::shell {
+
+namespace {
+
+constexpr float kPanelPadX = 14.0F;  // the mockup's 14 px panel padding
+constexpr float kTitleHeight = 28.0F;  // 12 px top padding + 11 px label + gap
+constexpr float kTreeRowHeight = 20.0F;  // 12 px JetBrains Mono + 4 px gap (mockup)
+constexpr float kTreeHeight = 200.0F;
+
+std::unique_ptr<ui::Painted> section_title(ScreenContext& ctx, std::string_view text) {
+  auto title = make_painted(ctx, [text](ui::Painter& p, float, float h, const ThemeTokens& t) {
+    paint::section_label(p, kPanelPadX, h - 4.0F - p.line_height(TextRole::section_label), text, t);
+  });
+  title->set_size(-1.0F, kTitleHeight);
+  title->set_role(ui::Role::heading);
+  title->set_accessible_name(text);
+  return title;
+}
+
+}  // namespace
+
+std::unique_ptr<ui::Painted> make_painted(ScreenContext& ctx,
+                                          std::function<void(ui::Painter&, float, float, const ThemeTokens&)> paint) {
+  return ui::Painted::create(ctx.runtime, [&ctx, paint = std::move(paint)](ui::Painter& p, float w, float h) {
+    paint(p, w, h, ctx.tokens());
+  });
+}
+
+std::unique_ptr<ui::Painted> make_interactive(ScreenContext& ctx, StatePaint paint) {
+  return ui::Painted::create_stateful(
+      ctx.runtime, [&ctx, paint = std::move(paint)](ui::Painter& p, float w, float h, const ui::Painted& self) {
+        paint(p, w, h, ctx.tokens(), self.hovered(), self.focused());
+      });
+}
+
+std::unique_ptr<ui::Painted> make_separator(ScreenContext& ctx, bool vertical) {
+  auto line = make_painted(ctx, [](ui::Painter& p, float w, float h, const ThemeTokens& t) {
+    paint::fill_rect(p, w, h, t.border);
+  });
+  line->set_size(vertical ? 1.0F : -1.0F, vertical ? -1.0F : 1.0F);
+  line->set_hit_testable(false);
+  return line;
+}
+
+// --- left panel ----------------------------------------------------------------
+
+LeftPanel::LeftPanel(ScreenContext& ctx)
+    : ctx_(ctx), background_(ui::Panel::create(ctx.tokens().surface1)), filter_(ui::TextInput::create("Filter layers")) {
+  layers_title_ = section_title(ctx_, "Layers");
+  hierarchy_title_ = section_title(ctx_, "Hierarchy");
+  divider_ = make_separator(ctx_, false);
+  edge_ = make_separator(ctx_, true);
+
+  filter_->set_accessible_name("Filter layers");
+  filter_->set_size(-1.0F, static_cast<float>(kInputHeight));
+  filter_->set_font(ctx_.runtime.font(TextRole::small));
+  filter_->set_font_size(text_spec(TextRole::small).size_px);
+  filter_->on_change([this](std::string text) {
+    filter_text_ = std::move(text);
+    rebuild_layers();
+  });
+  ui::Box filter_row = ui::Box::vertical();
+  filter_row.set_padding(kPanelPadX, 0.0F, kPanelPadX, 8.0F);
+  filter_row.add(*filter_);
+
+  layer_rows_box_.set_spacing(2.0F);
+  layer_rows_box_.set_padding(6.0F, 0.0F, 6.0F, 8.0F);
+  layer_list_.add(layer_rows_box_);
+  layer_list_.set_accessible_name("Layers");
+  tree_rows_box_.set_spacing(4.0F);
+  tree_rows_box_.set_padding(kPanelPadX, 0.0F, kPanelPadX, 12.0F);
+  tree_list_.add(tree_rows_box_);
+  tree_list_.set_accessible_name("Cell hierarchy");
+  tree_list_.set_size(-1.0F, kTreeHeight);
+
+  column_.add(*layers_title_);
+  column_.add(filter_row);
+  column_.add(layer_list_, 1.0F);
+  column_.add(*divider_);
+  column_.add(*hierarchy_title_);
+  column_.add(tree_list_);
+  background_.set_child(column_);
+  root_.add(background_, 1.0F);
+  root_.add(*edge_);
+  root_.set_size(static_cast<float>(kLeftPanelWidth), -1.0F);
+  root_.set_accessible_name("Layers and hierarchy");
+}
+
+void LeftPanel::refresh(const view::LayoutWindow* window) {
+  window_ = window;
+  rebuild_layers();
+  rebuild_hierarchy(window);
+}
+
+void LeftPanel::repaint() {
+  background_.set_fill(ctx_.tokens().surface1);
+  for (ui::Painted* w : {layers_title_.get(), hierarchy_title_.get(), divider_.get(), edge_.get()}) {
+    w->invalidate();
+  }
+  for (auto& w : layer_widgets_) w->invalidate();
+  for (auto& w : tree_widgets_) w->invalidate();
+}
+
+void LeftPanel::rebuild_layers() {
+  // Raven deletes the row widgets first; their callbacks go after.
+  layer_rows_box_.clear();
+  layer_widgets_.clear();
+  layers_.clear();
+  const editor::EditorState& ed = ctx_.editor();
+  if (ed.technology && ed.styles) {
+    const tech::TypeMask visible = window_ != nullptr ? window_->visible_types() : tech::TypeMask::all();
+    layers_ = layer_rows(display::layer_palette(*ed.technology, *ed.styles), visible, filter_text_);
+  }
+  for (std::size_t i = 0; i < layers_.size(); ++i) {
+    auto row = make_interactive(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
+                                                bool foc) {
+      paint::layer_row(p, w, h, layers_[i], paint::WidgetState{hov, foc, true, false}, t);
+    });
+    row->set_size(-1.0F, static_cast<float>(kLayerRowHeight));
+    row->set_role(ui::Role::toggle_button);
+    row->set_accessible_name(layers_[i].accessible_name());
+    row->set_tooltip(layers_[i].visible ? "Hide " + layers_[i].name + " (see no)" : "Show " + layers_[i].name + " (see)");
+    row->on_click([this, i](float, float) { ctx_.run(layers_[i].toggle_command()); });
+    layer_rows_box_.add(*row);
+    layer_widgets_.push_back(std::move(row));
+  }
+  if (layers_.empty()) {
+    const std::string tech_name = ed.technology ? ed.technology->name() : std::string();
+    const std::string hint = layer_empty_hint(tech_name, ed.styles.has_value());
+    auto empty = make_painted(ctx_, [hint](ui::Painter& p, float, float h, const ThemeTokens& t) {
+      p.text_centered_y(TextRole::meta, 8.0F, h / 2.0F, hint, t.text_tertiary);
+    });
+    empty->set_size(-1.0F, static_cast<float>(kLayerRowHeight));
+    layer_rows_box_.add(*empty);
+    layer_widgets_.push_back(std::move(empty));
+  }
+}
+
+void LeftPanel::rebuild_hierarchy(const view::LayoutWindow* window) {
+  tree_rows_box_.clear();
+  tree_widgets_.clear();
+  tree_.clear();
+  const db::CellDef* root = window != nullptr ? window->root() : nullptr;
+  if (root != nullptr) {
+    tree_ = hierarchy_rows(*root, [window](const db::CellUse& use) { return window->is_expanded(use); });
+  } else {
+    tree_.push_back(HierarchyRow{0, "No cell loaded", false, false, nullptr, {}, {}, false});
+  }
+  for (std::size_t i = 0; i < tree_.size(); ++i) {
+    auto row = make_interactive(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
+                                                bool foc) {
+      paint::hierarchy_row(p, w, h, tree_[i], paint::WidgetState{hov, foc, true, false}, t);
+    });
+    row->set_size(-1.0F, kTreeRowHeight);
+    row->set_role(ui::Role::tree_item);
+    row->set_accessible_name(tree_[i].accessible_name());
+    if (tree_[i].expandable) {
+      // The full text: the painted name may be ellipsized.
+      row->set_tooltip(tree_[i].text + (tree_[i].expanded ? ": unexpand (moves the box to it)"
+                                                          : ": expand (moves the box to it)"));
+      row->on_click([this, i](float, float) { toggle_expansion(i); });
+    }
+    tree_rows_box_.add(*row);
+    tree_widgets_.push_back(std::move(row));
+  }
+}
+
+void LeftPanel::toggle_expansion(std::size_t index) {
+  if (index >= tree_.size()) return;
+  // Through the Dispatcher like a typed command: the box goes to the
+  // instance and `expand surround` / `unexpand surround` acts on it.
+  const std::string command = tree_[index].toggle_command();
+  if (!command.empty()) ctx_.run(command);
+}
+
+// --- inspector ---------------------------------------------------------------------
+
+InspectorPanel::InspectorPanel(ScreenContext& ctx) : ctx_(ctx) {
+  edge_ = make_separator(ctx_, true);
+  body_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
+    paint::fill_rect(p, w, h, t.surface1);
+    paint::inspector(p, w, h, view_, t);
+  });
+  body_->set_role(ui::Role::pane);
+  body_->set_accessible_name("Inspector");
+  root_.add(*edge_);
+  root_.add(*body_, 1.0F);
+  root_.set_size(static_cast<float>(kInspectorWidth), -1.0F);
+}
+
+void InspectorPanel::refresh(const UnitScale& scale) {
+  const editor::EditorState& ed = ctx_.editor();
+  view_ = inspector_view(ed.box, ed.edit_cell, scale);
+  body_->set_accessible_description(view_.title + ". " + view_.subtitle);
+  body_->set_tooltip(view_.title + " — " + view_.subtitle);  // the painted title and subtitle may be ellipsized
+  body_->invalidate();
+}
+
+void InspectorPanel::repaint() {
+  edge_->invalidate();
+  body_->invalidate();
+}
+
+}  // namespace hefesto::shell

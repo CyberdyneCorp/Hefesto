@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto 3D inspection</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FF8A3D}a:hover{color:#FFA866}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+
+  <header style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-bottom: 1px solid #2F343D; background: #15181C">
+    <svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"></path></svg>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 13px; font-weight: 600">inverter_demo · 3D</span>
+      <span style="font-size: 11px; color: #8A919D">sky130A stack · overlay from tran simulation at t = 5.03 ns</span>
+    </div>
+    <div role="tablist" aria-label="Editor view" style="margin-left: 24px; display: flex; padding: 3px; border-radius: 8px; background: #0F1114; border: 1px solid #2F343D">
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Layout</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Schematic</button>
+      <button type="button" role="tab" aria-selected="true" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: #2A2F37; color: #E8EAED; font: 600 12px Inter, sans-serif">3D</button>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Cross-section</button>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Export glTF…</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <aside aria-label="Layer stack" style="width: 248px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #181B20; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Layer stack</h2>
+      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px">
+        <li style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 6px"><span style="width: 16px; height: 12px; border-radius: 2px; background: #4F8DE8"></span><span style="flex-grow: 1">metal1</span><span style="font: 400 11px 'JetBrains Mono', monospace; color: #8A919D">1.38–1.73</span></li>
+        <li style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 6px"><span style="width: 16px; height: 12px; border-radius: 2px; background: #9B6BD6"></span><span style="flex-grow: 1">locali</span><span style="font: 400 11px 'JetBrains Mono', monospace; color: #8A919D">0.94–1.04</span></li>
+        <li style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 6px"><span style="width: 16px; height: 12px; border-radius: 2px; background: #E0524F"></span><span style="flex-grow: 1">poly</span><span style="font: 400 11px 'JetBrains Mono', monospace; color: #8A919D">0.33–0.51</span></li>
+        <li style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 6px"><span style="width: 16px; height: 12px; border-radius: 2px; background: #3BB273"></span><span style="flex-grow: 1">diff</span><span style="font: 400 11px 'JetBrains Mono', monospace; color: #8A919D">0.00–0.12</span></li>
+        <li style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border-radius: 6px; color: #8A919D"><span style="width: 16px; height: 12px; border-radius: 2px; background: #3D434E"></span><span style="flex-grow: 1">substrate</span><span style="font: 400 11px 'JetBrains Mono', monospace">ghosted</span></li>
+      </ul>
+      <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #8A919D">Heights and thicknesses come from the tech file (<code style="font-family: 'JetBrains Mono', monospace">render</code> and <code style="font-family: 'JetBrains Mono', monospace">height</code>), in microns.</p>
+      <div role="group" aria-label="Camera" style="margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid rgba(255,138,61,0.6); background: rgba(255,138,61,0.14); color: #FFB27A; font: 600 12px Inter, sans-serif">Isometric</button>
+        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Top</button>
+        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Front</button>
+        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Side</button>
+      </div>
+    </aside>
+
+    <main aria-label="3D view" style="flex-grow: 1; min-width: 0; position: relative; background: radial-gradient(circle at 50% 40%, #171A1F 0%, #0B0C0E 70%)">
+      <svg width="908" height="852" viewBox="0 0 908 852" role="img" aria-label="Isometric 3D view of the inverter layer stack; the VPWR rail is colored hot by current density">
+        <g transform="translate(40,70)">
+          <polygon points="170.2,450.0 533.9,660.0 533.9,690.0 170.2,480.0" fill="#1E2127" stroke="#3D434E" stroke-width="0.8"></polygon>
+          <polygon points="793.7,510.0 533.9,660.0 533.9,690.0 793.7,540.0" fill="#23272E" stroke="#3D434E" stroke-width="0.8"></polygon>
+          <polygon points="430.0,300.0 793.7,510.0 533.9,660.0 170.2,450.0" fill="#2A2F37" stroke="#3D434E" stroke-width="0.8"></polygon>
+          <polygon points="369.4,365.0 663.8,535.0 663.8,545.0 369.4,375.0" fill="#1F5A3F" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="733.1,495.0 663.8,535.0 663.8,545.0 733.1,505.0" fill="#256B4B" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="438.7,325.0 733.1,495.0 663.8,535.0 369.4,365.0" fill="#2F7D59" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="230.8,445.0 525.3,615.0 525.3,625.0 230.8,455.0" fill="#1F5A3F" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="594.5,575.0 525.3,615.0 525.3,625.0 594.5,585.0" fill="#256B4B" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="300.1,405.0 594.5,575.0 525.3,615.0 230.8,445.0" fill="#2F7D59" stroke="#3BB273" stroke-width="0.8"></polygon>
+          <polygon points="343.4,510.0 369.4,525.0 369.4,545.0 343.4,530.0" fill="#8E3532" stroke="#E0524F" stroke-width="0.8"></polygon>
+          <polygon points="611.9,385.0 369.4,525.0 369.4,545.0 611.9,405.0" fill="#A8403D" stroke="#E0524F" stroke-width="0.8"></polygon>
+          <polygon points="585.9,370.0 611.9,385.0 369.4,525.0 343.4,510.0" fill="#C9504D" stroke="#E0524F" stroke-width="0.8"></polygon>
+          <polygon points="256.8,380.0 282.8,395.0 282.8,415.0 256.8,400.0" fill="#573E7C" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="473.3,285.0 282.8,395.0 282.8,415.0 473.3,305.0" fill="#6A4C95" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="447.3,270.0 473.3,285.0 282.8,395.0 256.8,380.0" fill="#7E5BB0" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="464.6,500.0 490.6,515.0 490.6,535.0 464.6,520.0" fill="#573E7C" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="681.1,405.0 490.6,515.0 490.6,535.0 681.1,425.0" fill="#6A4C95" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="655.2,390.0 681.1,405.0 490.6,515.0 464.6,500.0" fill="#7E5BB0" stroke="#9B6BD6" stroke-width="0.8"></polygon>
+          <polygon points="395.4,175.0 759.1,385.0 759.1,410.0 395.4,200.0" fill="#A9541C" stroke="#FFB27A" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="793.7,365.0 759.1,385.0 759.1,410.0 793.7,390.0" fill="#C86526" stroke="#FFB27A" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="430.0,155.0 793.7,365.0 759.1,385.0 395.4,175.0" fill="#FF8A3D" stroke="#FFB27A" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="170.2,305.0 533.9,515.0 533.9,540.0 170.2,330.0" fill="#8F6E21" stroke="#F0C661" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="568.6,495.0 533.9,515.0 533.9,540.0 568.6,520.0" fill="#B08729" stroke="#F0C661" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="204.8,285.0 568.6,495.0 533.9,515.0 170.2,305.0" fill="#E5B13A" stroke="#F0C661" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="533.9,395.0 559.9,410.0 559.9,435.0 533.9,420.0" fill="#356A99" stroke="#82BEF5" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="611.9,380.0 559.9,410.0 559.9,435.0 611.9,405.0" fill="#4686C2" stroke="#82BEF5" stroke-width="0.8" opacity="0.95"></polygon>
+          <polygon points="585.9,365.0 611.9,380.0 559.9,410.0 533.9,395.0" fill="#5AA9F0" stroke="#82BEF5" stroke-width="0.8" opacity="0.95"></polygon>
+          <path d="M612 270L700 230" stroke="#E8EAED" stroke-width="1"></path>
+          <rect x="700" y="196" width="190" height="60" rx="8" fill="#20242B" stroke="#3D434E"></rect>
+          <text x="714" y="220" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#E8EAED">VPWR rail · metal1</text>
+          <text x="714" y="242" font-family="JetBrains Mono, monospace" font-size="11" fill="#FFB27A">0.71 mA/um · 82% of EM limit</text>
+        </g>
+        <g transform="translate(36,760)" font-family="JetBrains Mono, monospace" font-size="10" fill="#8A919D">
+          <path d="M0 0h40" stroke="#FF6B6B" stroke-width="2"></path><text x="46" y="4">x</text>
+          <path d="M0 0l-20 -20" stroke="#5FD3A0" stroke-width="2"></path><text x="-30" y="-24">y</text>
+          <path d="M0 0v-40" stroke="#5AA9F0" stroke-width="2"></path><text x="4" y="-44">z</text>
+        </g>
+      </svg>
+    </main>
+
+    <aside aria-label="Overlays" style="width: 284px; flex-shrink: 0; border-left: 1px solid #2F343D; background: #181B20; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Overlay</h2>
+      <label for="ov" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Overlay</label>
+      <select id="ov" style="height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif"><option>Current density (simulation)</option><option>Node capacitance (extraction)</option><option>Coupling capacitance</option><option>Resistance network</option></select>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="height: 12px; border-radius: 3px; background: linear-gradient(90deg, #5AA9F0, #E5B13A 60%, #FF8A3D 85%, #F0605D)"></span>
+        <span style="display: flex; justify-content: space-between; font: 400 11px 'JetBrains Mono', monospace; color: #A4ABB6"><span>0</span><span>0.5</span><span>0.87 mA/um</span></span>
+        <span style="font-size: 11px; color: #8A919D">EM limit 0.87 mA/um at 105 °C (PDK reliability data)</span>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; font-size: 12px">
+        <dt style="color: #8A919D">Peak</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; color: #FFB27A">0.71 mA/um</dd>
+        <dt style="color: #8A919D">Segments over 80%</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">1</dd>
+        <dt style="color: #8A919D">EM violations</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; color: #5FD3A0">0</dd>
+      </dl>
+      <label style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #C9CED6"><input type="checkbox" checked style="accent-color: #FF8A3D"> Isolate selected net</label>
+      <label style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: #C9CED6"><input type="checkbox" style="accent-color: #FF8A3D"> Show contacts and vias</label>
+      <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: #20242B; border: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; font-weight: 600">Cross-section A–A′</span>
+        <svg width="254" height="70" viewBox="0 0 254 70" role="img" aria-label="Cross-section strip showing diff, poly, local interconnect and metal1 layers stacked">
+          <rect x="0" y="58" width="254" height="12" fill="#2A2F37"></rect>
+          <rect x="20" y="52" width="80" height="6" fill="#3BB273"></rect><rect x="150" y="52" width="80" height="6" fill="#3BB273"></rect>
+          <rect x="112" y="40" width="26" height="12" fill="#E0524F"></rect>
+          <rect x="30" y="28" width="18" height="8" fill="#9B6BD6"></rect><rect x="200" y="28" width="18" height="8" fill="#9B6BD6"></rect>
+          <rect x="0" y="6" width="254" height="14" fill="#FF8A3D"></rect>
+        </svg>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

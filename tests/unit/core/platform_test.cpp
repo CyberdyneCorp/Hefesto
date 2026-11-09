@@ -7,7 +7,9 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <random>
+#include <string>
 
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/platform/services.hpp"
@@ -89,6 +91,22 @@ TEST_CASE("portable services default to no process execution", SERVICES_TAGS) {
   platform::PortableServices services({.storage_root = "/app", .pdk_roots = {}, .in_memory = true,
                                        .inline_tasks = true});
   CHECK_FALSE(services.view().processes.supported());
+}
+
+TEST_CASE("a front end replaces the PDK store before taking the view", SERVICES_TAGS) {
+  struct FixedStore final : platform::PdkStore {
+    [[nodiscard]] std::vector<platform::Path> roots() const override { return {"/pdk"}; }
+    [[nodiscard]] hefesto::diag::Outcome<platform::Path> find_technology(std::string_view name) override {
+      return platform::Path{"/pdk/" + std::string{name} + ".tech"};
+    }
+  };
+  platform::PortableServices services({.storage_root = "/app", .pdk_roots = {}, .in_memory = true,
+                                       .inline_tasks = true});
+  CHECK_FALSE(services.view().pdks.find_technology("sky130A").ok());
+  services.set_pdk_store(std::make_unique<FixedStore>());
+  CHECK(services.view().pdks.find_technology("sky130A").value() == platform::Path{"/pdk/sky130A.tech"});
+  services.set_pdk_store(nullptr);  // back to an empty directory store
+  CHECK(services.view().pdks.roots().empty());
 }
 
 TEST_CASE("local file system", SERVICES_TAGS) {

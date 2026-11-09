@@ -2,21 +2,30 @@
 # Copyright 2026 The Hefesto Authors
 #
 # Desktop shell tests: the toolkit-independent parts (command bar, canvas
-# input mapping, view commands, options, theme tokens) and a compile check
+# input mapping, view commands, options, design tokens, the Desktop-Layout
+# view models, the canvas overlay geometry, the PDK panel model, bundled
+# assets) and a compile check
 # that the shell's public headers do not need Raven. No window is opened,
 # except by the opt-in smoke tests at the end (HEFESTO_TEST_DESKTOP_WINDOW).
-# Owner: workstream "Desktop shell & canvas spike" (design.md D2).
+# Owner: SHELL (openspec/changes/m1-core-viewer/design.md D2).
 
 hefesto_add_unit_test(hefesto_shell_tests
   SOURCES
+    assets_test.cpp
     canvas_controller_test.cpp
+    canvas_overlay_test.cpp
     command_bar_test.cpp
+    design_tokens_test.cpp
     options_test.cpp
+    pdk_panel_model_test.cpp
     public_headers_test.cpp
     theme_tokens_test.cpp
     view_commands_test.cpp
+    view_models_test.cpp
   LIBS
     hefesto::shell_desktop)
+# assets_test reads the bundled fonts and the shell sources.
+target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 
 # Window smoke tests (capability hefesto-build-and-distribution, "Dependency
 # policy": Linux CI runs the desktop shell's tests under X11 and Wayland).

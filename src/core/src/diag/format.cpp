@@ -72,6 +72,9 @@ std::optional<Format> parse_format(std::string_view name) noexcept {
   if (name == "json") {
     return Format::json;
   }
+  if (name == "magic") {
+    return Format::magic;
+  }
   return std::nullopt;
 }
 
@@ -95,8 +98,27 @@ std::string format_json(const Diagnostic& diagnostic) {
   return j.dump(-1, ' ', false, Json::error_handler_t::replace);
 }
 
+std::string format_magic(const Diagnostic& diagnostic) {
+  const auto* where = std::get_if<SourceLocation>(&diagnostic.location);
+  const bool tech_line = where != nullptr && where->line > 0 && diagnostic.related.has_value() &&
+                         diagnostic.related->kind == ObjectKind::section;
+  if (!tech_line) {
+    return diagnostic.text;
+  }
+  return where->file + ": line " + std::to_string(where->line) + ": section " + diagnostic.related->name + ":\n\t" +
+         diagnostic.text;
+}
+
 std::string format(const Diagnostic& diagnostic, Format fmt) {
-  return fmt == Format::json ? format_json(diagnostic) : format_text(diagnostic);
+  switch (fmt) {
+    case Format::json:
+      return format_json(diagnostic);
+    case Format::magic:
+      return format_magic(diagnostic);
+    case Format::text:
+      break;
+  }
+  return format_text(diagnostic);
 }
 
 }  // namespace hefesto::diag

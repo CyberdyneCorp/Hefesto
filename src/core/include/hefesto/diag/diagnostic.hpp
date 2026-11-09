@@ -42,7 +42,9 @@ struct LayoutLocation {
 /// No location, a source location, or a layout location.
 using Location = std::variant<std::monostate, SourceLocation, LayoutLocation>;
 
-enum class ObjectKind { cell, instance, net, label, rule };
+/// `section` names the technology-file section a source-located diagnostic
+/// was reported in (Magic's TechPrintLine context; "(none)" outside sections).
+enum class ObjectKind { cell, instance, net, label, rule, section };
 
 [[nodiscard]] std::string_view object_kind_name(ObjectKind kind) noexcept;
 

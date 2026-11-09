@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto schematic and waveforms</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FF8A3D}a:hover{color:#FFA866}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+
+  <header style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-bottom: 1px solid #2F343D; background: #15181C">
+    <svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"></path></svg>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 13px; font-weight: 600">tb_inverter.sch</span>
+      <span style="font-size: 11px; color: #8A919D">sky130A · xschem-compatible · testbench</span>
+    </div>
+    <div role="tablist" aria-label="Editor view" style="margin-left: 24px; display: flex; padding: 3px; border-radius: 8px; background: #0F1114; border: 1px solid #2F343D">
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Layout</button>
+      <button type="button" role="tab" aria-selected="true" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: #2A2F37; color: #E8EAED; font: 600 12px Inter, sans-serif">Schematic</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">3D</button>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <label for="corner" style="font-size: 12px; color: #A4ABB6">Corner</label>
+    <select id="corner" style="height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif"><option>tt · 27 °C · 1.80 V</option><option>ss · 125 °C · 1.62 V</option></select>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Netlist</button>
+    <button type="button" style="height: 32px; padding: 0 16px; border-radius: 6px; border: none; background: #FF8A3D; color: #1A0F06; font: 600 13px Inter, sans-serif">▶ Simulate</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <aside aria-label="Symbol library" style="width: 232px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #181B20; padding: 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Symbols · sky130_fd_pr</h2>
+      <label for="sym-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search symbols</label>
+      <input id="sym-search" placeholder="Search symbols" style="height: 30px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif">
+      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font: 400 12px 'JetBrains Mono', monospace">
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px; background: #2A2F37">nfet_01v8.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">pfet_01v8.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">res_high_po.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">cap_mim_m3_1.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">vsource.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">ipin.sym · opin.sym</li>
+        <li style="height: 30px; display: flex; align-items: center; padding: 0 8px; border-radius: 6px">code_shown.sym</li>
+      </ul>
+    </aside>
+
+    <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column">
+      <main aria-label="Schematic canvas" style="flex-grow: 1; min-height: 0; background: #0B0C0E; position: relative">
+        <svg width="924" height="470" viewBox="0 0 924 470" role="img" aria-label="Inverter testbench schematic with pulse source and the output net highlighted">
+          <defs><pattern id="sgrid" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#262A31"></circle></pattern></defs>
+          <rect width="924" height="470" fill="url(#sgrid)"></rect>
+          <g stroke="#C9CED6" stroke-width="2" fill="none">
+            <path d="M420 80v40"></path>
+            <path d="M400 120h40M400 130h40M400 120v40M440 120v40M400 160h40"></path>
+            <path d="M420 160v60"></path>
+            <path d="M420 270v60"></path>
+            <path d="M400 270h40M400 280h40M400 270v40M440 270v40M400 310h40"></path>
+            <path d="M420 310v40"></path>
+            <path d="M380 140h12M380 290h12M380 140v150"></path>
+            <circle cx="398" cy="140" r="5"></circle>
+            <path d="M300 215h80"></path>
+            <path d="M420 350v30M405 380h30M410 388h20M415 396h10"></path>
+            <path d="M420 80h0M405 80h30"></path>
+            <circle cx="200" cy="260" r="26"></circle>
+            <path d="M188 262l6-12 6 24 6-12"></path>
+            <path d="M200 234v-19h100M200 286v94M185 380h30M190 388h20M195 396h10"></path>
+          </g>
+          <path d="M420 220v50M420 245h150" stroke="#FFFFFF" stroke-width="3" fill="none"></path>
+          <circle cx="420" cy="245" r="4" fill="#FFFFFF"></circle>
+          <g font-family="JetBrains Mono, monospace" font-size="12" fill="#C9CED6">
+            <text x="452" y="140">XM2 pfet_01v8</text><text x="452" y="156" fill="#8A919D">W=2 L=0.15</text>
+            <text x="452" y="290">XM1 nfet_01v8</text><text x="452" y="306" fill="#8A919D">W=1 L=0.15</text>
+            <text x="404" y="72">VDD</text><text x="304" y="207">A</text>
+            <text x="580" y="249" fill="#FFFFFF" font-weight="500">Y</text>
+            <text x="120" y="250">V1</text><text x="96" y="268" fill="#8A919D">pulse 0 1.8</text>
+          </g>
+          <rect x="640" y="60" width="250" height="118" rx="6" fill="#15181C" stroke="#3D434E"></rect>
+          <g font-family="JetBrains Mono, monospace" font-size="11" fill="#A4ABB6">
+            <text x="654" y="84" fill="#FFB27A">code_shown · NGSPICE</text>
+            <text x="654" y="106">.lib $PDK/sky130.lib.spice tt</text>
+            <text x="654" y="124">.tran 1p 10n</text>
+            <text x="654" y="142">.meas tran tpd TRIG v(a)</text>
+            <text x="654" y="160">+ VAL=0.9 RISE=1 TARG v(y)</text>
+          </g>
+        </svg>
+      </main>
+
+      <section aria-label="Waveforms" style="height: 330px; flex-shrink: 0; border-top: 1px solid #2F343D; background: #15181C; display: flex; flex-direction: column">
+        <div style="height: 38px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid #2F343D">
+          <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Waveforms · tran · tt</h2>
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 14px; height: 3px; background: #5AA9F0"></span>v(a)</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 14px; height: 3px; background: #FF8A3D"></span>v(y)</span>
+          <span style="margin-left: auto; font: 500 12px 'JetBrains Mono', monospace; color: #5FD3A0">tpd = 34.2 ps ✓ spec &lt; 50 ps</span>
+        </div>
+        <svg width="1208" height="290" viewBox="0 0 1208 290" role="img" aria-label="Input pulse and inverted output waveform with a cursor at 5.03 nanoseconds">
+          <g stroke="#262A31" stroke-width="1">
+            <path d="M60 30h1120M60 90h1120M60 150h1120M60 210h1120M60 250h1120"></path>
+            <path d="M60 30v220M340 30v220M620 30v220M900 30v220M1180 30v220"></path>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="10" fill="#8A919D">
+            <text x="22" y="34">1.8</text><text x="22" y="154">0.9</text><text x="30" y="254">0</text>
+            <text x="56" y="270">0</text><text x="330" y="270">2.5n</text><text x="612" y="270">5n</text><text x="890" y="270">7.5n</text><text x="1164" y="270">10n</text>
+          </g>
+          <path d="M60 250h220l6-220h276l6 220h270l6-220h276l6 220h54" stroke="#5AA9F0" stroke-width="2" fill="none"></path>
+          <path d="M60 30h226c6 0 10 220 22 220h264c8 0 12-220 24-220h258c6 0 10 220 22 220h264c8 0 12-220 24-220h22" stroke="#FF8A3D" stroke-width="2" fill="none"></path>
+          <path d="M624 26v228" stroke="#FFFFFF" stroke-width="1" stroke-dasharray="4 3"></path>
+          <rect x="632" y="40" width="148" height="46" rx="6" fill="#20242B" stroke="#3D434E"></rect>
+          <text x="644" y="60" font-family="JetBrains Mono, monospace" font-size="11" fill="#E8EAED">t = 5.03 ns</text>
+          <text x="644" y="76" font-family="JetBrains Mono, monospace" font-size="11" fill="#A4ABB6">v(y) = 0.92 V</text>
+        </svg>
+      </section>
+    </div>
+
+    <aside aria-label="Instance properties" style="width: 284px; flex-shrink: 0; border-left: 1px solid #2F343D; background: #181B20; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Net</h2>
+        <p style="margin: 0; font: 600 15px 'JetBrains Mono', monospace">Y</p>
+        <p style="margin: 0; font-size: 12px; color: #A4ABB6">2 pins · probed in waveforms · linked to layout net Y</p>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="p-w" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8A919D">XM2 · W (um)</label>
+        <input id="p-w" value="2" style="height: 32px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px 'JetBrains Mono', monospace">
+        <label for="p-l" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8A919D">XM2 · L (um)</label>
+        <input id="p-l" value="0.15" style="height: 32px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px 'JetBrains Mono', monospace">
+      </div>
+      <div style="padding: 12px; border-radius: 8px; background: #20242B; border: 1px solid #2F343D; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600">Operating point (back-annotated)</span>
+        <span style="font: 400 12px 'JetBrains Mono', monospace; color: #A4ABB6">Id = 182 uA · gm = 1.31 mS</span>
+        <span style="font: 400 12px 'JetBrains Mono', monospace; color: #A4ABB6">Vgs = 0.90 V · Vds = 0.88 V</span>
+      </div>
+      <button type="button" style="height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Run Monte Carlo (200 samples)…</button>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

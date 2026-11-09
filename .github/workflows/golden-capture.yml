@@ -2,21 +2,47 @@
 # Copyright 2026 The Hefesto Authors
 #
 # Builds the pinned reference-tool image (tools/golden/container/Containerfile)
-# and re-captures every golden case in verify mode: a fresh capture from Magic
-# and the other reference tools must match the committed expected/ outputs.
+# and runs the golden cases through Magic and the other reference tools.
 # Capability hefesto-testing-strategy, requirement "Golden compatibility suite";
-# design.md D8. Manual, weekly, and on PRs that change the image or harness: the build takes a long time.
-# Verify mode never writes; re-capturing a case is done locally (tools/golden/README.md).
+# design.md D8 (m0-foundations) and D8 (m1-core-viewer).
+#
+# Two steps, each on its own set of cases:
+#   verify   cases WITH expected/provenance.json: a fresh capture must match the
+#            committed expected/ (compare-only, writes nothing in the checkout).
+#   capture  cases WITHOUT expected/: the reference outputs are captured and
+#            uploaded as the artifact "golden-expected" (tests/golden/... paths),
+#            to be reviewed and committed. Nothing is pushed by this workflow.
+#
+# When each step runs:
+#   pull_request    both: verify the captured cases, capture the new ones (a PR that
+#                   adds or edits a case.toml or its input/ gets its outputs as an artifact).
+#   schedule        verify only.
+#   workflow_dispatch  input `mode`: verify, capture or both (default both); input
+#                   `cases` limits either step to the given case directories.
 
 name: Golden capture
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "verify (captured cases), capture (cases without expected/) or both"
+        type: choice
+        options: [both, verify, capture]
+        default: both
+      cases:
+        description: "Space-separated case directories (e.g. tests/golden/TECH/cases/TECH-G01); empty = all"
+        type: string
+        default: ""
   pull_request:
     paths:
       - tools/golden/container/**
       - tools/golden/harness/**
       - tools/golden/pins.toml
+      - tools/golden/capture.py
+      - tools/golden/goldenlib/**
+      - tests/golden/**/case.toml
+      - tests/golden/**/input/**
       - .github/workflows/golden-capture.yml
   schedule:
     - cron: "17 4 * * 1"
@@ -26,9 +52,12 @@ permissions:
 
 jobs:
   capture:
-    name: build reference image and verify captures
+    name: build reference image, verify and capture
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    env:
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'verify' || 'both') }}
+      CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.cases || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,15 +65,55 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: List cases
+        shell: bash
+        run: |
+          if [ -n "$CASES" ]; then
+            read -ra requested <<< "$CASES"
+            printf '%s\n' "${requested[@]}" > cases.txt
+          else
+            find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort > cases.txt
+          fi
+          mapfile -t cases < cases.txt
+          echo "${#cases[@]} case(s); mode $MODE"
+          python3 tools/golden/capture.py --check "${cases[@]}"
+
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
-      - name: Verify every captured case against a fresh capture
+      - name: Verify captured cases against a fresh capture
+        if: env.MODE == 'both' || env.MODE == 'verify'
         shell: bash
         run: |
-          mapfile -t cases < <(find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort)
-          if [ "${#cases[@]}" -eq 0 ]; then
-            echo "::notice::no golden cases to verify"
-            exit 0
+          # capture.py --only-captured keeps the cases with expected/provenance.json.
+          mapfile -t cases < cases.txt
+          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
+            --verify --only-captured "${cases[@]}"
+
+      - name: Capture cases without expected/
+        if: env.MODE == 'both' || env.MODE == 'capture'
+        shell: bash
+        run: |
+          # Reproducible provenance: the capture time is the commit time.
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          mapfile -t cases < cases.txt
+          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
+            --only-missing "${cases[@]}" | tee capture.log
+          # Collect the new expected/ directories, keeping their tests/golden/... paths.
+          mkdir -p golden-expected
+          git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
+          if [ -s new-files.txt ]; then
+            tar -cf - -T new-files.txt | tar -xf - -C golden-expected
+            echo "::notice::captured $(grep -c 'captured' capture.log) case(s); download the golden-expected artifact and commit it"
+          else
+            echo "::notice::no case without expected/"
           fi
-          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci --verify "${cases[@]}"
+
+      - uses: actions/upload-artifact@v4
+        if: env.MODE == 'both' || env.MODE == 'capture'
+        with:
+          name: golden-expected
+          path: golden-expected/
+          if-no-files-found: ignore
+          retention-days: 30

@@ -6,7 +6,7 @@
 #include <string>
 #include <utility>
 
-#include "hefesto/cmd/builtins.hpp"
+#include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
@@ -52,8 +52,10 @@ CoreSession::CoreSession(platform::PortableOptions options, std::optional<platfo
     : services_(std::move(options)),
       log_(open_session_log(services_, log_dir)),
       dispatcher_(registry_, services_.view(), project_, session_) {
-  cmd::register_builtins(registry_);
+  cmd::register_all_commands(registry_);
+  dispatcher_.set_editor(&editor_);
   dispatcher_.add_observer(command_log_);
+  dispatcher_.add_observer(forwarder_);
   if (log_.logger != nullptr) {
     log_.logger->write(diag::Severity::info, "session start hefesto " + std::string{version()});
   }

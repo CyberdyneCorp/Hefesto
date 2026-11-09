@@ -1,0 +1,9 @@
+# TECH-G41: tech, tech help, tech la, tech foo, tech name extra.
+# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
+# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
+tech load input/tiny -noprompt
+tech
+tech help
+tech la
+tech foo
+tech name extra

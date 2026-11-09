@@ -3,6 +3,8 @@
 
 #include "options.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <utility>
 
 namespace hefesto::cli {
@@ -28,6 +30,10 @@ class ArgParser {
  private:
   void add_positional(std::string_view arg) {
     using Kind = ScriptSource::Kind;
+    if (is_layout_file(arg)) {
+      result_.options.files.emplace_back(arg);
+      return;
+    }
     const Kind kind = arg == "-" ? Kind::standard_input : Kind::file;
     result_.options.sources.push_back({kind, std::string{arg}});
   }
@@ -62,6 +68,12 @@ class ArgParser {
       set_value(arg, "--diagnostics", [this](std::string_view v) { set_format(v); });
     } else if (is_option(arg, "--log-dir")) {
       set_value(arg, "--log-dir", [this](std::string_view v) { result_.options.log_dir = std::filesystem::path{v}; });
+    } else if (is_option(arg, "--project")) {
+      set_value(arg, "--project", [this](std::string_view v) { result_.options.project = std::filesystem::path{v}; });
+    } else if (is_option(arg, "--pdk-root")) {
+      set_value(arg, "--pdk-root", [this](std::string_view v) { result_.options.pdk_root = std::filesystem::path{v}; });
+    } else if (is_option(arg, "--setting")) {
+      set_value(arg, "--setting", [this](std::string_view v) { add_setting(v); });
     } else {
       fail("unknown option '" + std::string{arg} + "'");
     }
@@ -76,10 +88,17 @@ class ArgParser {
       o.show_version = true;
     } else if (arg == "--diagnostic-codes") {
       o.show_codes = true;
+    } else if (arg.starts_with("--diagnostic-codes=")) {
+      o.show_codes = true;
+      o.codes_area = std::string{arg.substr(std::string_view{"--diagnostic-codes="}.size())};
     } else if (arg == "--no-log") {
       o.no_log = true;
     } else if (arg == "--") {
       options_ended_ = true;
+    } else if (arg == "--magic") {
+      o.magic_mode = true;
+      o.magic_args.assign(args_.begin() + static_cast<std::ptrdiff_t>(index_), args_.end());
+      index_ = args_.size();
     } else {
       return false;
     }
@@ -97,8 +116,17 @@ class ArgParser {
     if (const auto fmt = diag::parse_format(value)) {
       result_.options.diagnostics = *fmt;
     } else {
-      fail("--diagnostics expects text or json, got '" + std::string{value} + "'");
+      fail("--diagnostics expects text, json or magic, got '" + std::string{value} + "'");
     }
+  }
+
+  void add_setting(std::string_view text) {
+    const auto equals = text.find('=');
+    if (equals == std::string_view::npos || equals == 0) {
+      fail("--setting expects <name>=<value>, got '" + std::string{text} + "'");
+      return;
+    }
+    result_.options.settings.emplace_back(std::string{text.substr(0, equals)}, std::string{text.substr(equals + 1)});
   }
 
   void fail(std::string text) {
@@ -115,23 +143,45 @@ class ArgParser {
 
 }  // namespace
 
+bool is_layout_file(std::string_view word) {
+  const auto dot = word.rfind('.');
+  if (dot == std::string_view::npos || word.find('/', dot) != std::string_view::npos) {
+    return false;
+  }
+  std::string ext{word.substr(dot)};
+  std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  return ext == ".mag" || ext == ".lef" || ext == ".def" || ext == ".cif" || ext == ".gds";
+}
+
 ParsedArgs parse_args(std::span<const std::string_view> args) {
   return ArgParser{args}.run();
 }
 
 std::string usage_text() {
-  return "usage: hefesto-cli [options] [script ...]\n"
+  return "usage: hefesto-cli [options] [script | layout-file ...]\n"
+         "       hefesto-cli [options] --magic [magic options] [file ...]\n"
          "\n"
-         "Runs Hefesto command scripts headless. Scripts and -c commands run in\n"
-         "command-line order; '-' reads a script from standard input.\n"
+         "Runs Hefesto command scripts headless. Startup (settings, technology,\n"
+         "layout files) runs first; then scripts and -c commands run in\n"
+         "command-line order; '-' reads a script from standard input. Words\n"
+         "ending in .mag, .lef, .def, .cif or .gds are layout files.\n"
          "\n"
          "options:\n"
-         "  -T <tech>                 technology to load (recorded; loading arrives in M1)\n"
+         "  -T <tech>                 technology to load at startup (name or .tech path)\n"
+         "  --project=<dir>           project folder (default: . when it has hefesto.project)\n"
+         "  --pdk-root=<dir>          PDK root (default: setting pdk-root, $PDK_ROOT, ~/.ciel)\n"
+         "  --setting <name>=<value>  session setting (highest settings layer)\n"
+         "  --magic ...               Magic's command line: -T, -d, -rcfile, -norcfile, -r,\n"
+         "                            cells and a .tcl script; commands from standard input\n"
          "  -c <commands>             run commands, e.g. -c \"echo hi; version\"\n"
-         "  --diagnostics=text|json   diagnostic format on stderr (default text)\n"
+         "  --diagnostics=text|json|magic\n"
+         "                            diagnostic format on stderr (default text); magic prints\n"
+         "                            Magic's console text and each script command's result\n"
+         "                            (golden replay against Magic)\n"
          "  --log-dir=<dir>           session log directory (default: app storage)\n"
          "  --no-log                  do not write a session log\n"
-         "  --diagnostic-codes        print the diagnostic code table (Markdown)\n"
+         "  --diagnostic-codes[=AREA] print a diagnostic code table (Markdown); AREA is\n"
+         "                            core (default), tech, db, cell, display, view, pdk or app\n"
          "  --version                 print the version and exit\n"
          "  -h, --help                print this help and exit\n"
          "\n"

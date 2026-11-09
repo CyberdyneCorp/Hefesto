@@ -1,0 +1,1 @@
+{"format":"hefesto.project","version":1,"pdk":{"family":"sky130","variant":"sky130A","version":"0fe599b2afb6708d281543108caf8310912f54af","libraries":["sky130_fd_sc_hd"]},"settings":{"magic-compat":true},"cellSearchPaths":["lib","$PDKPATH/libs.ref"],"newKey":{"x":1}}

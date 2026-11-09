@@ -57,17 +57,24 @@ python3 scripts/check_requirement_coverage.py --milestone M0 --classes exact,beh
 
 The report also lists tags that name no existing requirement, which usually means a typo in the requirement name.
 
+Each M1 area (`tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`) builds one executable `hefesto_<area>_tests` from every `*_test.cpp` in `tests/unit/<area>/`, so a new test file needs no CMake edit (reconfigure picks it up). Header-only helpers shared by several areas live in `tests/unit/common/` (for example `reference_data.hpp`, which locates the pinned PDK and Magic data of `scripts/fetch_pdk.py`). Tests that need that data skip when it is absent.
+
+### Diagnostic codes
+
+Each area owns its codes (`AREA-TOPIC-NNN`) in `src/core/src/<area>/codes.cpp` and documents them in `docs/diagnostics/codes/<area>.md`; the M0 codes are the `core` area in `src/core/src/diag/codes.cpp` and `docs/diagnostics/codes.md`. After adding a code, regenerate the table between the document's `BEGIN`/`END DIAGNOSTIC CODES` markers with `hefesto-cli --diagnostic-codes=<area>` (replace only that block; the prose around it is hand-written). A released code is never renumbered or reused; a retired code keeps its row, marked "Retired". The unit test "each area's code table matches its document and prefix" fails when a table and its document disagree.
+
 ### Golden suite
 
 Golden cases compare `hefesto-cli` output with output captured from the pinned reference tools (Magic, netgen, ngspice). The inventory of planned cases is `tests/golden/<AREA>/CASES.md`; a captured case lives in `tests/golden/<AREA>/cases/<case-id>/` with its manifest, `input/` and `expected/` (with `provenance.json`). See `tools/golden/` for the capture runner, the comparators and the reference container.
 
 - Replaying never needs the reference tools: `ctest -L golden` runs `hefesto-cli` on each captured case and compares with the canonical comparators.
-- Capturing (regenerating `expected/`) runs the reference tools in the pinned container, built only in CI by the capture workflow. Do not edit files in `expected/` by hand.
+- Capturing (regenerating `expected/`) runs the reference tools in the pinned container, built only in CI by the capture workflow (`.github/workflows/golden-capture.yml`). On a pull request that adds or edits a `case.toml` or its `input/`, the workflow verifies the captured cases and captures every case without `expected/`; the new `expected/` directories come back as the `golden-expected` artifact, to review and commit. A manual run (`workflow_dispatch`) takes `mode` (`both`, `verify`, `capture`) and an optional list of cases. Do not edit files in `expected/` by hand.
+- Cases compared with Magic's console (`tool = "magic"`) run `hefesto-cli --diagnostics=magic`, and each command line of `commands.hef` matches one `puts` line of `commands.tcl`; the `magic-console` comparator drops Magic's startup preamble (`tools/golden/compare/magic_console.py`).
 - CI runs the golden suite on every leg and fails if any platform's output differs from Linux x86_64, except for documented time-dependent fields (requirement "Cross-platform determinism checks").
 
 ### Fuzzing
 
-Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirement "Parser fuzzing"). libFuzzer needs LLVM Clang on Linux; Apple Clang does not ship it, so on macOS use the `macos-asan` preset for sanitizer coverage instead.
+Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirement "Parser fuzzing"): the command-script reader, technology files, `.mag` cells, `.dstyle`, `.cmap`, glyph files, outline fonts, `hefesto.project`, the PDK catalog and manifests, and tar unpacking. libFuzzer needs LLVM Clang on Linux; Apple Clang does not ship it, so on macOS use the `macos-asan` preset for sanitizer coverage instead. Without `HEFESTO_BUILD_FUZZ`, every target is still built with a replay driver (`tests/fuzz/standalone_main.cpp`) and its seed corpus runs once as the CTest `fuzz-seeds.<target>` (label `fuzz-seeds`), on every platform.
 
 ```sh
 cmake --preset linux-fuzz
@@ -76,7 +83,7 @@ mkdir -p /tmp/corpus
 build/linux-fuzz/tests/fuzz/fuzz_command_script /tmp/corpus -max_total_time=60
 ```
 
-CI runs each target for 60 seconds on every pull request. Seed corpora go in `tests/fuzz/corpus/<target>/`. A crash found by fuzzing is fixed together with a regression test that replays the crashing input.
+CI runs each target for 60 seconds on every pull request, and fails if any target with a seed corpus was not built. Seed corpora go in `tests/fuzz/corpus/<target>/`; a new target is added to `HEFESTO_FUZZ_TARGETS` in `tests/fuzz/CMakeLists.txt`, which refuses a target without a corpus. A crash found by fuzzing is fixed together with a regression test that replays the crashing input.
 
 ## Checks that run in CI
 

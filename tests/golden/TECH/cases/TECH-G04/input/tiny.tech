@@ -1,0 +1,75 @@
+# tiny.tech -- the valid annotated example of capability tech-file-format,
+# requirement "Complete annotated example" (SPDX-License-Identifier: Apache-2.0).
+tech
+    format 35
+    tiny
+end
+
+version
+    version 1.0
+    description "Tiny demo process"
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    well    nwell,nw
+    active  polysilicon,poly,p
+    active  ndiffusion,ndiff
+    active  ntransistor,nfet
+    metal1  metal1,m1
+    metal2  metal2,m2
+    active  polycontact,pcontact,pc
+    active  ndcontact,ndc
+    metal1  m2contact,m2c,via
+    -well   pwell,pw
+end
+
+contact
+    pc   poly  metal1
+    ndc  ndiff metal1
+    m2c  metal1 metal2
+    stackable pc m2c pm12c
+end
+
+aliases
+    allm1  *m1
+end
+
+styles
+    styletype mos
+    poly 1
+    ndiff 2
+    nfet 6 7
+    metal1 20
+    metal2 21
+    pc 1 20 32
+end
+
+compose
+    compose nfet poly ndiff
+end
+
+connect
+    poly,pc      poly,pc
+    ndiff,ndc    ndiff,ndc
+    *m1          *m1
+    m2,m2c       m2,m2c
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc # x
+end
+
+extract
+end

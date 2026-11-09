@@ -87,6 +87,8 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 - The golden cases TECH, CELL, MODEL and the viewer-related UI cases pass.
 - Round-tripping the sky130 standard cell library gives byte-identical files.
 
+**Status (in progress, change `openspec/changes/m1-core-viewer`).** Technology files, the corner-stitched database, `.mag` read and write, display styles and fonts, the core view commands, the PDK manager, settings and the shared startup are implemented and unit-tested; `tasks.md` of the change tracks what is verified. Open against the exit criteria: the golden TECH, CELL, MODEL and UI cases still need their first capture from Magic in CI (`golden-capture.yml`; 19 TECH case inputs authored so far), and the sky130 round trip is byte-identical for 439 of the 441 `sky130_fd_sc_hd` cells (two cached files are not in the form Magic's writer produces; the CELL capture decides). **Design-system pull-forward:** M1 builds the desktop Desktop-Layout screen on the forge tokens, Inter and JetBrains Mono, status shapes and PDK layer colors (`hefesto-design-system`, decision P-23), ahead of M2; gaps are recorded in `docs/design/m1-ui-conformance.md`.
+
 ## M2 — Interactive editing and design system
 
 **Goal.** Make Hefesto a usable editor, with Magic's full editing command set and a modern desktop UI.

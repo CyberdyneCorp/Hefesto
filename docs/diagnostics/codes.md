@@ -5,17 +5,33 @@ Every diagnostic that Hefesto emits carries a stable code of the form
 "Structured diagnostic records"). Codes are never renumbered or reused once
 released; a retired code stays in this table marked as retired.
 
-The table below is generated from the core's code table
-(`src/core/src/diag/codes.cpp`):
+The table below is the "core" area of the code table
+(`src/core/src/diag/codes.cpp`). Since M1 each area owns its own codes and
+document, so parallel work never edits the same table
+(`openspec/changes/m1-core-viewer/design.md` D3):
+
+| Area | Prefix | Source | Document |
+|---|---|---|---|
+| core | CLI, CMD, CORE, PLATFORM, SETTINGS | `src/core/src/diag/codes.cpp` | this file |
+| tech | TECH | `src/core/src/tech/codes.cpp` | [codes/tech.md](codes/tech.md) |
+| db | DB | `src/core/src/db/codes.cpp` | [codes/db.md](codes/db.md) |
+| cell | CELL | `src/core/src/cell/codes.cpp` | [codes/cell.md](codes/cell.md) |
+| display | DISPLAY | `src/core/src/display/codes.cpp` | [codes/display.md](codes/display.md) |
+| view | VIEW | `src/core/src/view/codes.cpp` | [codes/view.md](codes/view.md) |
+| pdk | PDK | `src/core/src/pdk/codes.cpp` | [codes/pdk.md](codes/pdk.md) |
+| app | APP | `src/core/src/app/codes.cpp` | [codes/app.md](codes/app.md) |
+
+Regenerate the core table with:
 
 ```sh
 hefesto-cli --diagnostic-codes
 ```
 
 The unit test `diagnostic code table matches docs/diagnostics/codes.md`
-fails when the two disagree. To add a code: add it to `codes.cpp` (sorted by
-code) and to `hefesto/diag/codes.hpp`, then paste the command's output between
-the markers below.
+fails when the two disagree. To add a core code: add it to `codes.cpp` (sorted
+by code) and to `hefesto/diag/codes.hpp`, then paste the command's output
+between the markers below. Area codes follow the same steps in the area's
+`codes.cpp` and document (`hefesto-cli --diagnostic-codes=<area>`).
 
 ## Renderings
 
@@ -34,7 +50,7 @@ the markers below.
 |---|---|---|
 | `CLI-LOG-001` | warning | The session log file cannot be opened; the run continues without it. |
 | `CLI-SCRIPT-001` | error | A script file named on the command line cannot be read. |
-| `CLI-TECH-001` | warning | `-T <tech>` was recorded but technology loading is not implemented yet (M1). |
+| `CLI-TECH-001` | warning | Retired in M1, never reused. Was: `-T <tech>` recorded but not loaded; `-T` now loads the technology at startup. |
 | `CLI-USAGE-001` | error | Invalid command-line option or option argument. |
 | `CMD-DISPATCH-001` | error | Unknown command name; the command was not run. |
 | `CMD-INTERNAL-001` | error | A command handler raised an unexpected internal error; the command failed. |
@@ -42,7 +58,9 @@ the markers below.
 | `CMD-PARSE-002` | error | Command script has an unterminated brace group. |
 | `CMD-PARSE-003` | error | Extra characters after a closing quote or brace in a command script. |
 | `CMD-REGISTRY-001` | error | A command with the same name is already registered. |
+| `CMD-SESSION-001` | error | The command needs an editor session (technology, cells, windows) and none is attached. |
 | `CMD-USAGE-001` | error | Wrong number or form of command arguments. |
+| `CORE-NOTIMPL-001` | error | Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

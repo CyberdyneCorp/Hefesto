@@ -2,6 +2,7 @@
 // Copyright 2026 The Hefesto Authors
 
 #include <catch2/catch_test_macros.hpp>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -41,4 +42,26 @@ TEST_CASE("bad desktop options are reported", "[cap:hefesto-architecture][req:Ap
   CHECK_FALSE(parse({"--rects", "12x"}).options);
   CHECK_FALSE(parse({"--width", "0"}).options);
   CHECK_FALSE(parse({"--frobnicate", "1"}).error.empty());
+}
+
+TEST_CASE("desktop options pass Magic startup words to app-startup",
+          "[cap:app-startup][req:Command-line options]") {
+  const ParseResult r = parse({"-T", "sky130A", "--theme", "dark", "-norcfile", "inv_1.mag", "--console"});
+  REQUIRE(r.options);
+  const std::vector<std::string> expected = {"-T", "sky130A", "-norcfile", "inv_1.mag"};
+  CHECK(r.options->startup_args == expected);
+  CHECK(r.options->show_console);
+  CHECK_FALSE(r.options->show_pdk_manager);
+}
+
+TEST_CASE("desktop asset, capture and panel options parse", "[cap:hefesto-architecture][req:App shells per platform]") {
+  const ParseResult r =
+      parse({"--asset-dir", "/opt/assets", "--capture", "out.ppm", "--capture-frames", "5", "--pdk-manager"});
+  REQUIRE(r.options);
+  CHECK(r.options->asset_dir == "/opt/assets");
+  CHECK(r.options->capture == "out.ppm");
+  CHECK(r.options->capture_frames == 5);
+  CHECK(r.options->show_pdk_manager);
+  CHECK_FALSE(parse({"--capture-frames", "0"}).options);
+  CHECK_FALSE(parse({"--font-dir", "/x"}).options);  // replaced by the bundled fonts (--asset-dir)
 }

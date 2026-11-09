@@ -10,8 +10,12 @@
 
 #include "raven_ui.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -50,35 +54,74 @@ void set_color(RColorRole role, const Rgba& c) {
   Rtheme_set_color(role, c.r, c.g, c.b, c.a);
 }
 
-Rgba mix(const Rgba& a, const Rgba& b, float t) {
-  return Rgba{a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, 1.0F};
+Rgba with_alpha(const Rgba& c, float a) {
+  return Rgba{c.r, c.g, c.b, a};
 }
 
-/// Maps the forge tokens onto Raven's color roles.
+/// Maps the forge tokens (and the mockup-derived shades) onto every Raven
+/// color role, so no Raven default color is left visible.
 void apply_tokens(const ThemeTokens& t) {
   set_color(R_COLOR_WINDOW, t.surface0);
   set_color(R_COLOR_PANEL, t.surface1);
-  set_color(R_COLOR_HEADER, t.surface1);
-  set_color(R_COLOR_TAB_ACTIVE, t.surface2);
-  set_color(R_COLOR_POPUP, t.surface1);
-  set_color(R_COLOR_INPUT, t.surface0);
-  set_color(R_COLOR_CONTROL, t.surface2);
-  set_color(R_COLOR_CONTROL_HOVERED, mix(t.surface2, t.border, 0.5F));
   set_color(R_COLOR_BORDER, t.border);
-  set_color(R_COLOR_CONTROL_BORDER, t.border);
-  set_color(R_COLOR_POPUP_BORDER, t.border);
-  set_color(R_COLOR_SEPARATOR, t.border);
   set_color(R_COLOR_TEXT, t.text_primary);
-  set_color(R_COLOR_TEXT_PLACEHOLDER, t.text_secondary);
-  set_color(R_COLOR_TEXT_DISABLED, t.text_secondary);
+  set_color(R_COLOR_TEXT_DISABLED, t.text_tertiary);
+  set_color(R_COLOR_TEXT_PLACEHOLDER, t.text_tertiary);
   set_color(R_COLOR_ACCENT, t.accent);
+  set_color(R_COLOR_ACCENT_HOVERED, t.accent_hover);
+  set_color(R_COLOR_ACCENT_PRESSED, t.accent_pressed);
+  set_color(R_COLOR_ACCENT_TEXT, t.accent_text);
+  set_color(R_COLOR_CONTROL, t.surface2);
+  set_color(R_COLOR_CONTROL_HOVERED, t.row_selected);
+  set_color(R_COLOR_CONTROL_PRESSED, t.row_selected);
+  set_color(R_COLOR_CONTROL_BORDER, t.control_border);
+  set_color(R_COLOR_INPUT, t.input);
   set_color(R_COLOR_FOCUS, t.accent);
-  Rtheme_set_accent(t.accent.r, t.accent.g, t.accent.b);
+  set_color(R_COLOR_SELECTION, t.row_selected);
+  set_color(R_COLOR_ROW_HOVERED, with_alpha(t.row_selected, 0.6F));
+  set_color(R_COLOR_TRACK, t.surface2);
+  set_color(R_COLOR_HANDLE, t.control_border);
+  set_color(R_COLOR_HANDLE_HOVERED, t.text_tertiary);
+  set_color(R_COLOR_SEPARATOR, t.border);
+  set_color(R_COLOR_HEADER, t.bar);
+  set_color(R_COLOR_HEADER_HOVERED, t.surface2);
+  set_color(R_COLOR_TAB_ACTIVE, t.surface1);
+  set_color(R_COLOR_POPUP, t.surface2);
+  set_color(R_COLOR_POPUP_BORDER, t.control_border);
+  set_color(R_COLOR_SHADOW, Rgba{0.0F, 0.0F, 0.0F, kPopoverShadowAlpha});
+  set_color(R_COLOR_TOOLTIP, t.surface2);
+  set_color(R_COLOR_TOOLTIP_TEXT, t.text_primary);
+  set_color(R_COLOR_SWITCH, t.accent);
+  set_color(R_COLOR_SUCCESS, t.success);
+  set_color(R_COLOR_WARNING, t.warning);
+  set_color(R_COLOR_DANGER, t.danger);
+  set_color(R_COLOR_LINK, t.accent);
+  set_color(R_COLOR_CODE, t.input);
 }
 
-std::optional<WidgetId> load_font(const std::string& dir, const char* file) {
-  const std::filesystem::path path = std::filesystem::path(dir) / file;
-  if (!std::filesystem::exists(path)) {
+/// Desktop density and radius of "Spacing, radius, elevation, motion and density".
+void apply_metrics() {
+  Rtheme_set_metric(R_METRIC_FONT_SIZE, text_spec(TextRole::body).size_px);
+  Rtheme_set_metric(R_METRIC_CORNER_RADIUS, static_cast<float>(kRadiusControl));
+  Rtheme_set_metric(R_METRIC_POPUP_RADIUS, static_cast<float>(kRadiusPanel));
+  Rtheme_set_metric(R_METRIC_BORDER_WIDTH, static_cast<float>(kPanelBorderPx));
+  Rtheme_set_metric(R_METRIC_CONTROL_HEIGHT, static_cast<float>(kInputHeight));
+  Rtheme_set_metric(R_METRIC_ROW_HEIGHT, 24.0F);
+  Rtheme_set_metric(R_METRIC_PADDING_X, static_cast<float>(kSpacing[1]));
+  Rtheme_set_metric(R_METRIC_PADDING_Y, static_cast<float>(kSpacing[0]));
+  Rtheme_set_metric(R_METRIC_SPACING, static_cast<float>(kSpacing[1]));
+  Rtheme_set_metric(R_METRIC_INDENT, static_cast<float>(kSpacing[3]));
+  Rtheme_set_metric(R_METRIC_SPLITTER_SIZE, static_cast<float>(kPanelBorderPx));
+  Rtheme_set_metric(R_METRIC_SCROLLBAR_SIZE, static_cast<float>(kSpacing[1]));
+}
+
+int face_key(FontFace face) {
+  return (face.family == FontFamily::mono ? 1000 : 0) + face.weight;
+}
+
+std::optional<Rid> load_font_file(const std::filesystem::path& path) {
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec)) {
     return std::nullopt;
   }
   const Rid font = Rfont_create_from_file(path.string().c_str());
@@ -86,6 +129,41 @@ std::optional<WidgetId> load_font(const std::string& dir, const char* file) {
     return std::nullopt;
   }
   return font;
+}
+
+std::string read_text_file(const std::filesystem::path& path) {
+  std::ifstream in(path, std::ios::binary);
+  return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+RAccessibleRole to_role(Role role) {
+  switch (role) {
+    case Role::none: return R_ROLE_NONE;
+    case Role::group: return R_ROLE_GROUP;
+    case Role::text: return R_ROLE_TEXT;
+    case Role::heading: return R_ROLE_HEADING;
+    case Role::button: return R_ROLE_BUTTON;
+    case Role::toggle_button: return R_ROLE_TOGGLE_BUTTON;
+    case Role::checkbox: return R_ROLE_CHECKBOX;
+    case Role::list: return R_ROLE_LIST;
+    case Role::list_item: return R_ROLE_LIST_ITEM;
+    case Role::tree: return R_ROLE_TREE;
+    case Role::tree_item: return R_ROLE_TREE_ITEM;
+    case Role::tab_list: return R_ROLE_TAB_LIST;
+    case Role::tab: return R_ROLE_TAB;
+    case Role::toolbar: return R_ROLE_TOOLBAR;
+    case Role::status_bar: return R_ROLE_STATUS_BAR;
+    case Role::canvas: return R_ROLE_CANVAS;
+    case Role::image: return R_ROLE_IMAGE;
+    case Role::pane: return R_ROLE_PANE;
+  }
+  return R_ROLE_AUTO;
+}
+
+std::string upper(std::string_view text) {
+  std::string out(text);
+  std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+  return out;
 }
 
 PointerButton to_button(RMouseButton b) {
@@ -137,17 +215,6 @@ CanvasInput to_canvas_input(const REvent& e) {
   in.button = to_button(e.button);
   in.key = to_key(e.key);
   return in;
-}
-
-RDockSide to_dock_side(DockSide side) {
-  switch (side) {
-    case DockSide::left: return R_DOCK_LEFT;
-    case DockSide::right: return R_DOCK_RIGHT;
-    case DockSide::top: return R_DOCK_TOP;
-    case DockSide::bottom: return R_DOCK_BOTTOM;
-    case DockSide::tab: return R_DOCK_TAB;
-  }
-  return R_DOCK_TAB;
 }
 
 }  // namespace
@@ -224,24 +291,81 @@ std::string Runtime::version() const {
   return Rget_version();
 }
 
-bool Runtime::apply_theme(ThemeMode mode, const std::string& font_dir) {
-  Rtheme_apply(mode == ThemeMode::light ? R_THEME_LIGHT : R_THEME_DARK);
+bool Runtime::load_assets(const std::filesystem::path& asset_dir) {
+  bool all = true;
+  const FontFace faces[] = {{FontFamily::ui, 400}, {FontFamily::ui, 500}, {FontFamily::ui, 600},
+                            {FontFamily::ui, 700}, {FontFamily::mono, 400}, {FontFamily::mono, 500}};
+  for (const FontFace face : faces) {
+    const auto font = load_font_file(asset_dir / font_file(face));
+    if (font) {
+      faces_[face_key(face)] = *font;
+    } else {
+      all = false;
+    }
+  }
+  // The shapes and arrows Inter lacks (▾ ▸) come from JetBrains Mono.
+  const WidgetId mono = font(FontFace{FontFamily::mono, 400});
+  for (const auto& [key, id] : faces_) {
+    if (key < 1000) Rfont_set_fallback(id, mono);
+  }
+  std::error_code ec;
+  for (const auto& entry : std::filesystem::directory_iterator(asset_dir / "icons", ec)) {
+    if (entry.path().extension() != ".svg") continue;
+    const std::string svg = read_text_file(entry.path());
+    // Rasterized at 3x so that the 18 px icons stay sharp on Retina displays.
+    const Rid tex = Rtexture_create_from_svg(svg.data(), svg.size(), 3.0F);
+    if (Rtexture_is_valid(tex) != kFalse) icons_[entry.path().stem().string()] = tex;
+  }
+  fonts_loaded_ = all;
+  return all;
+}
+
+void Runtime::apply_theme(ThemeMode mode) {
+  Rlook_set(mode == ThemeMode::light ? R_LOOK_RAVEN_LIGHT : R_LOOK_RAVEN_DARK);
+  Rtheme_set_dark(mode == ThemeMode::dark ? kTrue : kFalse);
+  Rtheme_set_material(R_MATERIAL_SOLID);
   apply_tokens(theme_tokens(mode));
-  if (font_dir.empty()) {
-    mono_font_ = Rfont_get_monospace();
-    return true;
+  Rtheme_set_accent(theme_tokens(mode).accent.r, theme_tokens(mode).accent.g, theme_tokens(mode).accent.b);
+  // Rtheme_set_accent derives focus and selection from the accent; the
+  // forge selection is the neutral selected-row shade, focus stays ember.
+  set_color(R_COLOR_SELECTION, theme_tokens(mode).row_selected);
+  set_color(R_COLOR_FOCUS, theme_tokens(mode).accent);
+  apply_metrics();
+  const WidgetId ui = font(FontFace{FontFamily::ui, 400});
+  Rtheme_set_font(ui);
+  RAccessibilitySettings system{};
+  Raccessibility_get_system_settings(&system);
+  Raccessibility_set_reduce_motion(system.reduce_motion);
+}
+
+WidgetId Runtime::font(FontFace face) const {
+  const auto exact = faces_.find(face_key(face));
+  if (exact != faces_.end()) return exact->second;
+  const auto regular = faces_.find(face_key(FontFace{face.family, 400}));
+  if (regular != faces_.end()) {
+    return face.weight >= 600 ? Rfont_get_variant(regular->second, R_FONT_BOLD) : regular->second;
   }
-  const auto inter = load_font(font_dir, "Inter-Regular.ttf");
-  const auto mono = load_font(font_dir, "JetBrainsMono-Regular.ttf");
-  if (inter) {
-    ui_font_ = *inter;
-    Rtheme_set_font(ui_font_);
-  }
-  mono_font_ = mono ? *mono : Rfont_get_monospace();
-  return inter.has_value() && mono.has_value();
+  return face.family == FontFamily::mono ? Rfont_get_monospace() : Rfont_get_default();
+}
+
+float Runtime::text_width(TextRole role, std::string_view text) const {
+  const TextSpec spec = text_spec(role);
+  float w = 0.0F;
+  float h = 0.0F;
+  Rfont_measure_text(font(spec.face), spec.size_px, str(text).c_str(), &w, &h);
+  return w;
+}
+
+WidgetId Runtime::icon(std::string_view name) const {
+  const auto it = icons_.find(name);
+  return it != icons_.end() ? it->second : kNoWidget;
 }
 
 // --- Widgets ---------------------------------------------------------------
+
+void announce(std::string_view text, bool assertive) {
+  Raccessibility_announce(str(text).c_str(), assertive ? kTrue : kFalse);
+}
 
 void Widget::set_accessible_name(std::string_view name) {
   Rwidget_set_accessible_name(id_, str(name).c_str());
@@ -261,6 +385,30 @@ void Widget::focus() {
   Rwidget_focus(id_);
 }
 
+void Widget::set_size(float width, float height) {
+  Rwidget_set_size(id_, width, height);
+}
+
+void Widget::set_min_size(float width, float height) {
+  Rwidget_set_min_size(id_, width, height);
+}
+
+void Widget::set_visible(bool visible) {
+  Rwidget_set_visibility(id_, visible ? R_VISIBLE : R_COLLAPSED);
+}
+
+void Widget::set_enabled(bool enabled) {
+  Rwidget_set_enabled(id_, enabled ? kTrue : kFalse);
+}
+
+void Widget::set_hit_testable(bool hit_testable) {
+  Rwidget_set_hit_testable(id_, hit_testable ? kTrue : kFalse);
+}
+
+void Widget::set_font_size(float size) {
+  Rwidget_set_metric(id_, R_METRIC_FONT_SIZE, size);
+}
+
 Box Box::vertical() {
   return Box(Rwidget_create(R_WIDGET_VBOX));
 }
@@ -276,20 +424,21 @@ void Box::add(const Widget& child, float fill) {
   }
 }
 
+void Box::add_centered(const Widget& child) {
+  Rwidget_add_child(id_, child.id());
+  Rslot_set_valign(child.id(), R_VALIGN_CENTER);
+}
+
+void Box::clear() {
+  Rwidget_clear_children(id_);
+}
+
 void Box::set_padding(float left, float top, float right, float bottom) {
   Rslot_set_padding(id_, left, top, right, bottom);
 }
 
 void Box::set_spacing(float spacing) {
   Rpanel_set_spacing(id_, spacing);
-}
-
-Label Label::create(std::string_view text) {
-  return Label(Rlabel_create(str(text).c_str()));
-}
-
-void Label::set_text(std::string_view text) {
-  Rlabel_set_text(id_, str(text).c_str());
 }
 
 ListPanel ListPanel::create() {
@@ -300,6 +449,10 @@ void ListPanel::add_item(std::string_view text) {
   Rlist_view_add_item(id_, str(text).c_str());
 }
 
+void ListPanel::clear() {
+  Rlist_view_clear_items(id_);
+}
+
 void ListPanel::scroll_to_end() {
   const int count = Rlist_view_get_item_count(id_);
   if (count > 0) {
@@ -307,21 +460,271 @@ void ListPanel::scroll_to_end() {
   }
 }
 
-TreePanel TreePanel::create() {
-  return TreePanel(Rwidget_create(R_WIDGET_TREE_VIEW));
+// --- Containers --------------------------------------------------------------
+
+Panel Panel::create(const Rgba& background) {
+  Panel panel(Rwidget_create(R_WIDGET_BORDER));
+  Rborder_set_background(panel.id_, background.r, background.g, background.b, background.a);
+  Rborder_set_outline(panel.id_, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
+  Rborder_set_corner_radius(panel.id_, 0.0F, 0.0F, 0.0F, 0.0F);
+  Rborder_set_padding(panel.id_, 0.0F, 0.0F, 0.0F, 0.0F);
+  return panel;
 }
 
-WidgetId TreePanel::add_item(WidgetId parent, std::string_view text) {
-  return Rtree_view_add_item(id_, parent, str(text).c_str());
+void Panel::set_child(const Widget& child) {
+  Rwidget_clear_children(id_);
+  Rwidget_add_child(id_, child.id());
 }
 
-Dock Dock::create() {
-  return Dock(Rdock_area_create());
+void Panel::set_fill(const Rgba& c) {
+  Rborder_set_background(id_, c.r, c.g, c.b, c.a);
 }
 
-void Dock::add_panel(const Widget& panel, std::string_view title, DockSide side, const Widget* relative, float size) {
-  Rdock_area_add_panel(id_, panel.id(), str(title).c_str(), to_dock_side(side),
-                       relative != nullptr ? relative->id() : kNoWidget, size);
+void Panel::set_padding(float left, float top, float right, float bottom) {
+  Rborder_set_padding(id_, left, top, right, bottom);
+}
+
+Overlay Overlay::create() {
+  return Overlay(Rwidget_create(R_WIDGET_OVERLAY));
+}
+
+void Overlay::add(const Widget& child) {
+  Rwidget_add_child(id_, child.id());
+}
+
+ScrollBox ScrollBox::create() {
+  ScrollBox box(Rwidget_create(R_WIDGET_SCROLL_BOX));
+  Rscroll_box_set_orientation(box.id_, R_VERTICAL);
+  return box;
+}
+
+void ScrollBox::add(const Widget& child) {
+  Rwidget_add_child(id_, child.id());
+}
+
+void ScrollBox::clear() {
+  Rwidget_clear_children(id_);
+}
+
+Tabs Tabs::create() {
+  return Tabs(Rwidget_create(R_WIDGET_TAB_VIEW));
+}
+
+void Tabs::add(const Widget& page, std::string_view title) {
+  Rtab_view_add_tab(id_, str(title).c_str(), page.id());
+}
+
+void Tabs::show(int index) {
+  Rtab_view_set_active(id_, index);
+}
+
+// --- TextInput -----------------------------------------------------------------
+
+struct TextInput::Callbacks {
+  std::function<void(std::string)> change;
+  static void on_change(Rid /*input*/, const char* text, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->change) cb->change(text != nullptr ? text : "");
+  }
+};
+
+TextInput::TextInput(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+TextInput::~TextInput() = default;
+
+std::unique_ptr<TextInput> TextInput::create(std::string_view placeholder) {
+  std::unique_ptr<TextInput> input(new TextInput(Rwidget_create(R_WIDGET_TEXT_INPUT)));
+  Rtext_input_set_placeholder(input->id_, str(placeholder).c_str());
+  Rtext_input_set_changed_callback(input->id_, &Callbacks::on_change, input->callbacks_.get());
+  return input;
+}
+
+void TextInput::on_change(std::function<void(std::string)> callback) {
+  callbacks_->change = std::move(callback);
+}
+
+// --- Painter -------------------------------------------------------------------
+
+namespace {
+RPainter* raven(void* p) {
+  return static_cast<RPainter*>(p);
+}
+
+/// Byte length of the UTF-8 sequence starting with `lead`.
+std::size_t utf8_length(unsigned char lead) {
+  if (lead < 0x80U) return 1;
+  if ((lead >> 5U) == 0x6U) return 2;
+  if ((lead >> 4U) == 0xEU) return 3;
+  return 4;
+}
+}  // namespace
+
+void Painter::fill(float x, float y, float w, float h, float radius, const Rgba& c) {
+  Rdraw_rect(raven(p_), x, y, w, h, radius, c.r, c.g, c.b, c.a);
+}
+
+void Painter::stroke(float x, float y, float w, float h, float radius, float thickness, const Rgba& c) {
+  Rdraw_rect_outline(raven(p_), x, y, w, h, radius, thickness, c.r, c.g, c.b, c.a);
+}
+
+void Painter::line(float x0, float y0, float x1, float y1, float thickness, const Rgba& c) {
+  Rdraw_line(raven(p_), x0, y0, x1, y1, thickness, c.r, c.g, c.b, c.a);
+}
+
+void Painter::dashed_rect(float x, float y, float w, float h, float thickness, float dash, float gap, const Rgba& c) {
+  const auto dashes = [&](float x0, float y0, float dx, float dy, float length) {
+    for (float t = 0.0F; t < length; t += dash + gap) {
+      const float e = std::min(t + dash, length);
+      Rdraw_rect(raven(p_), x0 + dx * t, y0 + dy * t, std::max(dx * (e - t), thickness),
+                 std::max(dy * (e - t), thickness), 0.0F, c.r, c.g, c.b, c.a);
+    }
+  };
+  dashes(x, y, 1.0F, 0.0F, w);
+  dashes(x, y + h - thickness, 1.0F, 0.0F, w);
+  dashes(x, y, 0.0F, 1.0F, h);
+  dashes(x + w - thickness, y, 0.0F, 1.0F, h);
+}
+
+void Painter::text(TextRole role, float x, float y, std::string_view text, const Rgba& c) {
+  const TextSpec spec = text_spec(role);
+  const Rid font = runtime_.font(spec.face);
+  if (!spec.uppercase) {
+    Rdraw_text(raven(p_), font, spec.size_px, x, y, str(text).c_str(), c.r, c.g, c.b, c.a);
+    return;
+  }
+  // Raven has no letter spacing: draw the caps glyph by glyph, tracked.
+  const std::string caps = upper(text);
+  const float tracking = 0.08F * spec.size_px;
+  for (std::size_t i = 0; i < caps.size();) {
+    const std::size_t n = std::min(utf8_length(static_cast<unsigned char>(caps[i])), caps.size() - i);
+    const std::string glyph = caps.substr(i, n);
+    Rdraw_text(raven(p_), font, spec.size_px, x, y, glyph.c_str(), c.r, c.g, c.b, c.a);
+    float w = 0.0F;
+    float h = 0.0F;
+    Rfont_measure_text(font, spec.size_px, glyph.c_str(), &w, &h);
+    x += w + tracking;
+    i += n;
+  }
+}
+
+void Painter::text_centered_y(TextRole role, float x, float cy, std::string_view text, const Rgba& c) {
+  this->text(role, x, cy - line_height(role) / 2.0F, text, c);
+}
+
+float Painter::text_width(TextRole role, std::string_view text) const {
+  const TextSpec spec = text_spec(role);
+  float w = 0.0F;
+  float h = 0.0F;
+  const std::string s = spec.uppercase ? upper(text) : std::string(text);
+  Rfont_measure_text(runtime_.font(spec.face), spec.size_px, s.c_str(), &w, &h);
+  if (spec.uppercase) {
+    std::size_t glyphs = 0;
+    for (std::size_t i = 0; i < s.size(); i += utf8_length(static_cast<unsigned char>(s[i]))) ++glyphs;
+    w += 0.08F * spec.size_px * static_cast<float>(glyphs);
+  }
+  return w;
+}
+
+float Painter::line_height(TextRole role) const {
+  const TextSpec spec = text_spec(role);
+  float w = 0.0F;
+  float h = 0.0F;
+  Rfont_measure_text(runtime_.font(spec.face), spec.size_px, "Hg", &w, &h);
+  return h;
+}
+
+void Painter::icon(std::string_view name, float x, float y, float size, const Rgba& c) {
+  const WidgetId tex = runtime_.icon(name);
+  if (tex != kNoWidget) {
+    Rdraw_image(raven(p_), tex, x, y, size, size, c.r, c.g, c.b, c.a);
+  }
+}
+
+void Painter::push_clip(float x, float y, float w, float h) {
+  Rdraw_push_clip_rect(raven(p_), x, y, w, h);
+}
+
+void Painter::pop_clip() {
+  Rdraw_pop_clip_rect(raven(p_));
+}
+
+// --- Painted -------------------------------------------------------------------
+
+struct Painted::Callbacks {
+  const Runtime* runtime = nullptr;
+  const Painted* widget = nullptr;
+  StatefulPaintFn paint;
+  std::function<void(float, float)> click;
+
+  static void on_paint(Rid /*widget*/, RPainter* painter, float width, float height, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (!cb->paint) return;
+    Painter p(painter, *cb->runtime);
+    cb->paint(p, width, height, *cb->widget);
+  }
+  static int on_event(Rid widget, const REvent* e, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (e->type == R_EVENT_MOUSE_ENTER || e->type == R_EVENT_MOUSE_LEAVE) {
+      Rwidget_invalidate(widget);
+      return kFalse;
+    }
+    if (!cb->click || Rwidget_is_enabled(widget) == kFalse) return kFalse;
+    if (e->type == R_EVENT_MOUSE_DOWN && e->button == R_MOUSE_LEFT) {
+      cb->click(e->local_x, e->local_y);
+      return kTrue;
+    }
+    const bool activate = e->key == R_KEY_ENTER || e->key == R_KEY_KP_ENTER || e->key == R_KEY_SPACE;
+    if (e->type == R_EVENT_KEY_DOWN && activate) {
+      cb->click(-1.0F, -1.0F);
+      return kTrue;
+    }
+    return kFalse;
+  }
+};
+
+Painted::Painted(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+Painted::~Painted() = default;
+
+std::unique_ptr<Painted> Painted::create(const Runtime& runtime, PaintFn paint) {
+  if (!paint) return create_stateful(runtime, nullptr);
+  return create_stateful(runtime, [paint = std::move(paint)](Painter& p, float w, float h, const Painted&) {
+    paint(p, w, h);
+  });
+}
+
+std::unique_ptr<Painted> Painted::create_stateful(const Runtime& runtime, StatefulPaintFn paint) {
+  std::unique_ptr<Painted> w(new Painted(Rwidget_create(R_WIDGET_CUSTOM)));
+  w->callbacks_->runtime = &runtime;
+  w->callbacks_->widget = w.get();
+  w->callbacks_->paint = std::move(paint);
+  Rcustom_set_paint_callback(w->id_, &Callbacks::on_paint, w->callbacks_.get());
+  Rwidget_set_event_callback(w->id_, &Callbacks::on_event, w->callbacks_.get());
+  return w;
+}
+
+void Painted::on_click(std::function<void(float, float)> callback) {
+  callbacks_->click = std::move(callback);
+  Rwidget_set_focusable(id_, kTrue);
+  Rwidget_set_cursor(id_, R_CURSOR_HAND);
+}
+
+void Painted::set_role(Role role) {
+  Rwidget_set_accessible_role(id_, to_role(role));
+}
+
+void Painted::set_accessible_description(std::string_view text) {
+  Rwidget_set_accessible_description(id_, str(text).c_str());
+}
+
+bool Painted::hovered() const {
+  return Rwidget_is_hovered(id_) != kFalse;
+}
+
+bool Painted::focused() const {
+  return Rwidget_is_focused(id_) != kFalse;
+}
+
+void Painted::invalidate() {
+  Rwidget_invalidate(id_);
 }
 
 // --- CommandBar ------------------------------------------------------------
@@ -481,6 +884,36 @@ std::string Window::window_system() const {
     case R_WINDOW_SYSTEM_WIN32: return "win32";
     default: return "none";
   }
+}
+
+void Window::set_title(std::string_view title) {
+  Rwindow_set_title(id_, str(title).c_str());
+}
+
+void Window::set_min_size(int width, int height) {
+  Rwindow_set_min_size(id_, width, height);
+}
+
+void Window::set_clear_color(const Rgba& c) {
+  Rwindow_set_clear_color(id_, c.r, c.g, c.b, c.a);
+}
+
+std::optional<std::string> Window::open_file_dialog(std::string_view title, std::string_view filter_name,
+                                                    std::string_view patterns) const {
+  const std::string t = str(title);
+  const std::string name = str(filter_name);
+  const std::string pat = str(patterns);
+  const RFileFilter filters[] = {{name.c_str(), pat.c_str()}, {"All files", "*"}};
+  RFileDialogDesc desc{};
+  desc.parent = id_;
+  desc.title = t.c_str();
+  desc.filters = filters;
+  desc.filter_count = 2;
+  const char* path = Rfile_dialog_open(&desc);
+  if (path == nullptr) {
+    return std::nullopt;
+  }
+  return std::string(path);
 }
 
 bool Window::capture_ppm(const std::string& path) const {

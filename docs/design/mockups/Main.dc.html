@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto design system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FF8A3D}a:hover{color:#FFA866}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; box-sizing: border-box; padding: 48px 56px; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column; gap: 32px">
+
+  <header style="display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 16px">
+      <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+        <rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect>
+        <path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path>
+        <path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2" stroke-linejoin="round"></path>
+        <path d="M22 9l2.2 4.6L22 16l-2.2-2.4z" fill="#FFB27A"></path>
+      </svg>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em">Hefesto</h1>
+        <p style="margin: 0; font-size: 13px; color: #A4ABB6">Forge design system · v0.1 · desktop (Raven) and iPadOS (SwiftUI)</p>
+      </div>
+    </div>
+    <p style="margin: 0; max-width: 520px; font-size: 13px; line-height: 1.5; color: #A4ABB6">UI chrome stays neutral graphite so PDK layer colors own the canvas. One ember accent marks actions and focus; selection on the canvas is drawn in white, never a hue.</p>
+  </header>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+
+    <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Dark theme (default)</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #121418; border: 1px solid #3D434E"></span><span style="font-size: 12px; line-height: 1.4">surface-0<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#121418</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #181B20; border: 1px solid #3D434E"></span><span style="font-size: 12px; line-height: 1.4">surface-1<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#181B20</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #20242B; border: 1px solid #3D434E"></span><span style="font-size: 12px; line-height: 1.4">surface-2<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#20242B</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #0B0C0E; border: 1px solid #3D434E"></span><span style="font-size: 12px; line-height: 1.4">canvas<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#0B0C0E</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #2F343D"></span><span style="font-size: 12px; line-height: 1.4">border<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#2F343D</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #E8EAED"></span><span style="font-size: 12px; line-height: 1.4">text-primary<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#E8EAED</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #A4ABB6"></span><span style="font-size: 12px; line-height: 1.4">text-secondary<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#A4ABB6</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #FF8A3D"></span><span style="font-size: 12px; line-height: 1.4">accent · ember<br><code style="font-family: 'JetBrains Mono', monospace; color: #A4ABB6">#FF8A3D</code></span></div>
+      </div>
+    </section>
+
+    <section style="background: #FFFFFF; border: 1px solid #D9DDE3; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 14px; color: #16191D">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #4E5663">Light theme</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #F6F7F9; border: 1px solid #C9CED6"></span><span style="font-size: 12px; line-height: 1.4">surface-0<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#F6F7F9</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #FFFFFF; border: 1px solid #C9CED6"></span><span style="font-size: 12px; line-height: 1.4">surface-1<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#FFFFFF</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #EEF0F3; border: 1px solid #C9CED6"></span><span style="font-size: 12px; line-height: 1.4">surface-2<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#EEF0F3</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #0B0C0E; border: 1px solid #C9CED6"></span><span style="font-size: 12px; line-height: 1.4">canvas (stays dark)<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#0B0C0E</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #D9DDE3"></span><span style="font-size: 12px; line-height: 1.4">border<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#D9DDE3</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #16191D"></span><span style="font-size: 12px; line-height: 1.4">text-primary<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#16191D</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #4E5663"></span><span style="font-size: 12px; line-height: 1.4">text-secondary<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#4E5663</code></span></div>
+        <div style="display: flex; gap: 10px; align-items: center"><span style="width: 36px; height: 36px; border-radius: 6px; background: #C24E0C"></span><span style="font-size: 12px; line-height: 1.4">accent · ember<br><code style="font-family: 'JetBrains Mono', monospace; color: #4E5663">#C24E0C</code></span></div>
+      </div>
+    </section>
+
+    <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Status &amp; canvas</h2>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(63,178,127,0.14); color: #5FD3A0; font-size: 12px; font-weight: 500">● success #3FB27F</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(229,177,58,0.14); color: #F0C661; font-size: 12px; font-weight: 500">▲ warning #E5B13A</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(240,96,93,0.14); color: #FF8784; font-size: 12px; font-weight: 500">■ danger #F0605D</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: rgba(90,169,240,0.14); color: #82BEF5; font-size: 12px; font-weight: 500">◆ info #5AA9F0</span>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #A4ABB6">Status always pairs a shape with its color, so it reads without hue.</p>
+      <div style="height: 1px; background: #2F343D"></div>
+      <p style="margin: 0; font-size: 12px; color: #A4ABB6">Layer colors come from the PDK <code style="font-family: 'JetBrains Mono', monospace">.dstyle</code> (OpenGL variant). Example, sky130:</p>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; font-size: 12px">
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: rgba(59,178,115,0.55); border: 1px solid #3BB273"></span>diff</span>
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: rgba(224,82,79,0.55); border: 1px solid #E0524F"></span>poly</span>
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: rgba(155,107,214,0.5); border: 1px solid #9B6BD6"></span>li</span>
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: rgba(79,141,232,0.45); border: 1px solid #4F8DE8"></span>met1</span>
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: rgba(208,95,182,0.45); border: 1px solid #D05FB6"></span>met2</span>
+        <span style="display: flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 3px; background: #0B0C0E; border: 2px dashed #FFFFFF"></span>selection</span>
+      </div>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px">
+    <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Typography</h2>
+      <p style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em">Display 28 / 700</p>
+      <p style="margin: 0; font-size: 20px; font-weight: 600">Title 20 / 600</p>
+      <p style="margin: 0; font-size: 15px; font-weight: 600">Heading 15 / 600</p>
+      <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #C9CED6">Body 13 / 400 — panels, dialogs and help text use Inter at a compact desktop density.</p>
+      <p style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Label 11 / 600 caps</p>
+      <p style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #A4ABB6">Mono 12 · box 0 0 1.38um 2.72um · net VPWR</p>
+    </section>
+
+    <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Spacing · radius · elevation · motion</h2>
+      <div style="display: flex; align-items: flex-end; gap: 10px">
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 4px; height: 4px; background: #FF8A3D"></span>4</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 8px; height: 8px; background: #FF8A3D"></span>8</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 12px; height: 12px; background: #FF8A3D"></span>12</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 16px; height: 16px; background: #FF8A3D"></span>16</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 24px; height: 24px; background: #FF8A3D"></span>24</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #A4ABB6"><span style="width: 32px; height: 32px; background: #FF8A3D"></span>32</span>
+      </div>
+      <div style="display: flex; gap: 12px">
+        <span style="width: 56px; height: 40px; border-radius: 4px; background: #20242B; border: 1px solid #3D434E; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A4ABB6">r 4</span>
+        <span style="width: 56px; height: 40px; border-radius: 8px; background: #20242B; border: 1px solid #3D434E; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A4ABB6">r 8</span>
+        <span style="width: 56px; height: 40px; border-radius: 12px; background: #20242B; border: 1px solid #3D434E; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A4ABB6">r 12</span>
+        <span style="width: 88px; height: 40px; border-radius: 8px; background: #20242B; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 11px; color: #A4ABB6">popover</span>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #A4ABB6">Motion: 120 ms ease-out for hover and press, 200 ms for panels; off when the system asks for reduced motion. Density: desktop controls 28–32 px, iPad touch targets 44 px.</p>
+    </section>
+
+    <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Icons</h2>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; color: #E8EAED">
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"></rect></svg>box</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16z"></path></svg>paint</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><path d="M5 5l6 14 2-6 6-2z"></path></svg>select</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><path d="M4 18h6v-6h6V6"></path><circle cx="16" cy="6" r="2"></circle></svg>wire</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"></path><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"></path></svg>3D</span>
+        <span style="display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 10px; color: #A4ABB6"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.6" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"></path><path d="M18 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"></path></svg>agent</span>
+      </div>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #A4ABB6">1.6 px stroke icons on a 24 px grid; filled only for active state.</p>
+    </section>
+  </div>
+
+  <section style="background: #181B20; border: 1px solid #2F343D; border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+    <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Components</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start">
+      <div style="display: flex; gap: 10px; align-items: center">
+        <button type="button" style="height: 32px; padding: 0 16px; border-radius: 6px; border: none; background: #FF8A3D; color: #1A0F06; font: 600 13px Inter, sans-serif">Run DRC</button>
+        <button type="button" style="height: 32px; padding: 0 16px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Extract</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border-radius: 6px; border: none; background: transparent; color: #C9CED6; font: 500 13px Inter, sans-serif">Cancel</button>
+        <button type="button" style="height: 32px; padding: 0 16px; border-radius: 6px; border: 1px solid rgba(240,96,93,0.5); background: rgba(240,96,93,0.12); color: #FF8784; font: 500 13px Inter, sans-serif">Reject</button>
+        <button type="button" aria-label="Zoom to fit" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8EAED" stroke-width="1.8" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg></button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="ds-width" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8A919D">Wire width</label>
+        <input id="ds-width" value="0.17 um" style="width: 160px; height: 32px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px 'JetBrains Mono', monospace">
+      </div>
+
+      <div role="tablist" aria-label="Editor view" style="display: flex; padding: 3px; border-radius: 8px; background: #0F1114; border: 1px solid #2F343D">
+        <button type="button" role="tab" aria-selected="true" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: #2A2F37; color: #E8EAED; font: 600 12px Inter, sans-serif">Layout</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Schematic</button>
+        <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">3D</button>
+      </div>
+
+      <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; color: #C9CED6">
+        <span style="width: 36px; height: 20px; border-radius: 999px; background: #FF8A3D; position: relative; display: inline-block"><span style="position: absolute; top: 2px; left: 18px; width: 16px; height: 16px; border-radius: 50%; background: #1A0F06"></span></span>
+        Continuous DRC
+      </label>
+
+      <div style="display: flex; gap: 8px">
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(63,178,127,0.14); color: #5FD3A0; font: 500 12px Inter, sans-serif">● DRC clean</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(63,178,127,0.14); color: #5FD3A0; font: 500 12px Inter, sans-serif">● LVS match</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(229,177,58,0.14); color: #F0C661; font: 500 12px Inter, sans-serif">▲ 3 antenna</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

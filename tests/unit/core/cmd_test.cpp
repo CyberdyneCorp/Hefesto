@@ -3,8 +3,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+#include <cmath>
 #include <stdexcept>
 
+#include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/cmd/value.hpp"
 #include "hefesto/version.hpp"
 #include "test_session.hpp"
@@ -148,3 +151,59 @@ TEST_CASE("values render as Tcl results", CMD_API_TAGS) {
   CHECK(Value{2.0}.to_string() == "2.0");
   CHECK(Value{Value::List{"a", "b c", "", Value::List{1, 2}, "x{"}}.to_string() == "a {b c} {} {1 2} x\\{");
 }
+
+// --- shared coordinate units (cmd-coordinates-and-units "Unit suffixes") ------
+
+#define UNIT_TAGS "[cap:cmd-coordinates-and-units][req:Unit suffixes]"
+
+namespace {
+
+double coord(std::string_view text, const hefesto::cmd::CoordinateUnits& units,
+             hefesto::cmd::Axis axis = hefesto::cmd::Axis::x, bool relative = false) {
+  const auto v = hefesto::cmd::parse_coordinate(text, units, axis, relative);
+  REQUIRE(v.ok());
+  return v.value();
+}
+
+}  // namespace
+
+TEST_CASE("microns with a 10 nm internal unit", UNIT_TAGS) {
+  hefesto::cmd::CoordinateUnits u;
+  u.cif_scale = std::array<std::int64_t, 2>{1, 1};  // 10*1/(1*k): 10 nm per internal unit
+  CHECK(std::lround(coord("1.5um", u)) == 150);
+  CHECK(std::lround(coord("0.005um", u)) == 1);  // 0.5 rounds away from zero
+  CHECK(std::lround(coord("25nm", u)) == 3);
+  CHECK(std::lround(coord("1microns", u)) == 100);
+  CHECK(std::lround(coord("1u", u)) == 100);
+  CHECK(std::lround(coord("100cu", u)) == 100);
+}
+
+TEST_CASE("lambda, internal and grid suffixes", UNIT_TAGS) {
+  hefesto::cmd::CoordinateUnits u;
+  u.internal_per = 2;  // 2 internal units = 1 lambda
+  CHECK(coord("3l", u) == 6.0);
+  CHECK(coord("3", u) == 6.0);  // the default unit is lambda
+  CHECK(coord("3i", u) == 3.0);
+  u.default_unit = hefesto::cmd::DefaultUnit::internal;
+  CHECK(coord("3", u) == 3.0);
+  CHECK(coord("2g", u) == 0.0);  // no window: the parse ends (Q-CMDEDIT-4)
+  u.grid = std::array<std::int64_t, 4>{5, 5, 15, 25};
+  CHECK(coord("2g", u) == 25.0);
+  CHECK(coord("2g", u, hefesto::cmd::Axis::y, true) == 40.0);
+}
+
+TEST_CASE("unknown units are reported and taken as internal units", UNIT_TAGS) {
+  hefesto::cmd::CoordinateUnits u;
+  hefesto::diag::CollectingSink sink;
+  const auto km = hefesto::cmd::parse_coordinate("5km", u, hefesto::cmd::Axis::x, false, &sink);
+  REQUIRE(km.ok());
+  CHECK(km.value() == 5.0);
+  const auto x = hefesto::cmd::parse_coordinate("5zz", u, hefesto::cmd::Axis::x, false, &sink);
+  REQUIRE(x.ok());
+  const auto notes = sink.take();
+  REQUIRE(notes.size() == 2);
+  CHECK(notes[0].text == "Unknown metric prefix \"km\"; assuming internal units");
+  CHECK(notes[1].text == "Unknown coordinate type at \"zz\"; assuming internal units");
+  CHECK_FALSE(hefesto::cmd::parse_coordinate("abc", u).ok());
+}
+

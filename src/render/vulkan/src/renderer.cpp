@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstring>
 #include <limits>
@@ -29,8 +30,20 @@ struct PushConstants {
   float offset[2];
   float min_size[2];
   float color[4];
+  std::uint32_t stipple[4];  // rows 0-3, rows 4-7, enabled, unused
+  std::int32_t anchor[4];    // left pixel column, bottom pixel row, unused, unused
 };
-static_assert(sizeof(PushConstants) == 48);
+static_assert(sizeof(PushConstants) == 80);
+
+constexpr VkShaderStageFlags kPushStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+std::uint32_t pack_rows(const std::array<std::uint8_t, 8>& rows, std::size_t first) {
+  std::uint32_t word = 0;
+  for (std::size_t i = 0; i < 4; ++i) {
+    word |= std::uint32_t{rows[first + i]} << (8U * i);
+  }
+  return word;
+}
 
 /// Staging chunk: bounds the host memory an upload needs, whatever the scene size.
 constexpr VkDeviceSize kStagingChunk = VkDeviceSize{32} << 20U;
@@ -144,12 +157,14 @@ struct PipelineState {
   }
 };
 
-PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& style) {
+PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& style, const DrawTarget& target) {
   return PushConstants{{view.origin_x, view.origin_y},
                        {view.scale_x, view.scale_y},
                        {view.offset_x, view.offset_y},
                        {view.min_size_x, view.min_size_y},
-                       {style.r, style.g, style.b, style.a}};
+                       {style.r, style.g, style.b, style.a},
+                       {pack_rows(style.stipple, 0), pack_rows(style.stipple, 4), style.stippled ? 1U : 0U, 0U},
+                       {target.x, target.y + target.height - 1, 0, 0}};
 }
 
 }  // namespace
@@ -192,7 +207,7 @@ struct CanvasRenderer::Impl {
     }
     vert = make_shader(device, spv::kRectVertSpv, sizeof(spv::kRectVertSpv));
     frag = make_shader(device, spv::kRectFragSpv, sizeof(spv::kRectFragSpv));
-    VkPushConstantRange range{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants)};
+    VkPushConstantRange range{kPushStages, 0, sizeof(PushConstants)};
     VkPipelineLayoutCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     info.pushConstantRangeCount = 1;
@@ -397,8 +412,8 @@ void CanvasRenderer::record(const DrawTarget& target, const ViewTransform& view,
     }
     if (batch.layer != pushed_layer) {
       const LayerStyle& style = batch.layer < impl_->styles.size() ? impl_->styles[batch.layer] : fallback;
-      const PushConstants pc = make_push_constants(view, style);
-      vkCmdPushConstants(cmd, impl_->layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pc), &pc);
+      const PushConstants pc = make_push_constants(view, style, target);
+      vkCmdPushConstants(cmd, impl_->layout, kPushStages, 0, sizeof(pc), &pc);
       pushed_layer = batch.layer;
     }
     vkCmdDraw(cmd, 6, batch.count, 0, batch.first);

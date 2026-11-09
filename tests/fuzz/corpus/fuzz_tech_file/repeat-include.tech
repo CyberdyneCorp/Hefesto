@@ -1,0 +1,16 @@
+tech
+ format 35
+ t
+end
+planes
+ m1
+end
+types
+ m1 metal1,m1
+end
+connect
+repeat 3
+m1 m1
+endrepeat
+include missing
+end

@@ -12,6 +12,7 @@
 # Targets provided:
 #   hefesto::zlib                   zlib v1.3.1, static, built from its sources
 #   nlohmann_json::nlohmann_json    nlohmann/json v3.11.3, header-only
+#   hefesto::zstd                   Zstandard v1.5.6 decoder, static (PDK .tar.zst assets)
 #   Catch2::Catch2WithMain          Catch2 v3.7.1             (HEFESTO_BUILD_TESTS)
 #   raven::raven                    Raven v0.2.2              (HEFESTO_BUILD_DESKTOP; desktop shell only)
 #
@@ -42,6 +43,15 @@ FetchContent_Declare(hefesto_json
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   ${_hefesto_no_cmake})
 
+# --- Zstandard v1.5.6 (BSD-3-Clause), decoder only ------------------------
+# PDK release assets are .tar.zst (design D9). Only the streaming decoder is
+# built, so PDK unpacking can stop at its size bound while decoding.
+FetchContent_Declare(hefesto_zstd
+  URL https://github.com/facebook/zstd/releases/download/v1.5.6/zstd-1.5.6.tar.gz
+  URL_HASH SHA256=8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  ${_hefesto_no_cmake})
+
 # --- Catch2 v3.7.1 (BSL-1.0), tests only ----------------------------------
 FetchContent_Declare(Catch2
   GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -54,7 +64,7 @@ FetchContent_Declare(raven
   GIT_TAG 4a05d6f11c79e5a6eae77d7fe26f702f5fea4331 # v0.2.2
   GIT_PROGRESS FALSE)
 
-FetchContent_MakeAvailable(hefesto_zlib hefesto_json)
+FetchContent_MakeAvailable(hefesto_zlib hefesto_json hefesto_zstd)
 
 # zlib: static library from the release sources, no zlib CMake involved.
 set(_hefesto_zlib_sources
@@ -71,6 +81,23 @@ set_target_properties(hefesto_zlib PROPERTIES POSITION_INDEPENDENT_CODE ON C_EXT
 # Third-party code: silence its warnings (Xcode enables extra ones by default).
 if(NOT MSVC)
   target_compile_options(hefesto_zlib PRIVATE -w)
+endif()
+
+# zstd: static decoder library from the release sources (no zstd CMake, no
+# assembly, no legacy formats, no threads).
+set(_hefesto_zstd_sources
+  common/debug.c common/entropy_common.c common/error_private.c common/fse_decompress.c
+  common/pool.c common/threading.c common/xxhash.c common/zstd_common.c
+  decompress/huf_decompress.c decompress/zstd_ddict.c decompress/zstd_decompress.c
+  decompress/zstd_decompress_block.c)
+list(TRANSFORM _hefesto_zstd_sources PREPEND "${hefesto_zstd_SOURCE_DIR}/lib/")
+add_library(hefesto_zstd STATIC ${_hefesto_zstd_sources})
+add_library(hefesto::zstd ALIAS hefesto_zstd)
+target_include_directories(hefesto_zstd SYSTEM PUBLIC "$<BUILD_INTERFACE:${hefesto_zstd_SOURCE_DIR}/lib>")
+target_compile_definitions(hefesto_zstd PRIVATE ZSTD_DISABLE_ASM=1 ZSTD_LEGACY_SUPPORT=0)
+set_target_properties(hefesto_zstd PROPERTIES POSITION_INDEPENDENT_CODE ON C_EXTENSIONS ON)
+if(NOT MSVC)
+  target_compile_options(hefesto_zstd PRIVATE -w)
 endif()
 
 # nlohmann/json: header-only interface target with the upstream name.

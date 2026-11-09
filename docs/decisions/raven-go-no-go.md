@@ -18,7 +18,7 @@ This record separates three kinds of statement:
 |---|---|---|---|
 | 1 | Canvas frame rate | median ≤ 16.7 ms during the pan, on both platforms, with Raven's UI drawn in the same frame | **Partial.** Met on macOS on an Apple M3 Pro (13.3 ms median). Reference M1 Mac pending. Linux frame rate pending: CI runs on the lavapipe software rasterizer, which says nothing about GPU frame rate. |
 | 2 | Viewport embedding | the canvas resizes, receives mouse, scroll and keyboard input, and coexists with docked panels without flicker or extra frame latency | **Partial.** Embedding, docking and resize verified on macOS. On Linux, CI (PR #10) starts the real app and renders 30 frames with 10k rectangles inside the Raven viewport under X11 (Xvfb) and Wayland (headless Weston), with GCC and Clang, through lavapipe; this proves embedding works on both window systems, not frame rate. Input implemented and unit-tested at the mapping level, not exercised in a live window. Flicker and latency not assessed. |
-| 3 | Text and theming | command bar and panels render Inter / JetBrains Mono and follow the design-system tokens (light and dark) | **Partial.** Tokens in dark and light verified. Raven's bundled Roboto / Roboto Mono render. Inter / JetBrains Mono loading implemented, not tested: the fonts are not in the repo yet. Raven compiles Roboto into its code, which conflicts with `hefesto-licensing` (fonts as data files); see section 3. |
+| 3 | Text and theming | command bar and panels render Inter / JetBrains Mono and follow the design-system tokens (light and dark) | **Met (M1).** Inter 4.1 and JetBrains Mono 2.304 are bundled as data files under `assets/fonts/` (OFL-1.1, pins and SHA-256 in `assets/fonts/README.md`, notices in `THIRD_PARTY_NOTICES.md`) and loaded at startup; every text role uses the forge type scale (m1-core-viewer task 6.1, screenshot check in `docs/design/m1-ui-conformance.md`). Tokens in dark and light verified. Still open, but no longer blocking the criterion: Raven compiles Roboto into its code, which conflicts with `hefesto-licensing` (fonts as data files); see section 3. |
 | 4 | Accessibility hooks | Raven exposes the platform accessibility tree for standard controls on macOS and Linux | **Pending.** Raven documents the support and the shell names its controls. Nothing was verified with VoiceOver or Orca. |
 | 5 | API stability risk | every Raven call isolated; symbol count and v0.2.0 → v0.2.2 breaking changes recorded and judged acceptable | **Met.** 56 functions, all in one file. No removals and no signature changes among them since v0.2.0. |
 
@@ -28,7 +28,7 @@ This record separates three kinds of statement:
 - The frame budget is dominated by the canvas, not by Raven.
 - The API surface is small and contained.
 
-The decision cannot be final until criteria 1 (M1 and Linux), 2 (live input), 3 (Inter / JetBrains Mono) and 4 (screen readers) are checked. The checklist at the end lists each check. If a pending check fails, the fallback order is:
+The decision cannot be final until criteria 1 (M1 and Linux), 2 (live input) and 4 (screen readers) are checked; criterion 3 was met in M1 (fonts bundled and loaded). The checklist at the end lists each check. If a pending check fails, the fallback order is:
 
 1. fix upstream (P-11 mitigation);
 2. use texture mode instead of the draw callback for the canvas, which `hefesto_render_vk` already supports through its offscreen path;
@@ -81,10 +81,10 @@ The decision cannot be final until criteria 1 (M1 and Linux), 2 (live input), 3 
 - Raven's bundled fonts render: Roboto in the UI, and Roboto Mono in the command bar and status bar.
 - Theme switching at run time is wired to the M0 `theme dark|light` command.
 
-**Implemented, not verified:**
+**Verified in M1 (m1-core-viewer):**
 
-- `hefesto --font-dir DIR` loads `Inter-Regular.ttf` and `JetBrainsMono-Regular.ttf` (`Rfont_create_from_file`), sets Inter as the theme font, and uses JetBrains Mono for the command bar and status bar. The fonts are not in the repository: bundling them is `hefesto-licensing` work, and P-9 lists them under SIL OFL 1.1. This path was therefore not run.
-- The type scale (sizes and weights of `hefesto-design-system` "Typography") is not applied yet.
+- Inter (Regular, Medium, SemiBold, Bold) and JetBrains Mono (Regular, Medium) are data files in `assets/fonts/` with their OFL-1.1 texts; `hefesto --asset-dir DIR` (default: the source tree's `assets/`) loads them with `Rfont_create_from_file`, Inter as the theme font and JetBrains Mono for coordinates, names, the command bar and the status bar.
+- The type scale of `hefesto-design-system` "Typography" is applied per text role (`design_tokens.hpp`, unit-tested role table plus a screenshot check recorded in `docs/design/m1-ui-conformance.md`).
 
 **Conflict with `hefesto-licensing` (open):**
 
@@ -113,17 +113,20 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
 
 **Verified:**
 
-- **Isolation.** Raven's header is included by exactly one translation unit, `src/shell/desktop/src/raven_ui.cpp`. Every other shell file uses the Raven-free wrappers in `raven_ui.hpp`: `Runtime`, `Window`, `Dock`, `Box`, `Label`, `ListPanel`, `TreePanel`, `CommandBar` and `Viewport`. `raven::raven` is a PRIVATE link dependency of `hefesto_shell_desktop`. The unit test `tests/unit/shell/public_headers_test.cpp` compiles every public shell header in a target without Raven's include path, and fails if one pulls Raven in.
-- **Symbols used: 57 functions.**
-  - Lifecycle: `Rinit_ex`, `Rshutdown`, `Rwait_frame`, `Rquit`, `Rset_frame_callback`, `Rget_version`.
-  - Errors: `Rerror_set_callback`, `Rerror_get_last`, `Rerror_to_string`, `Rseverity_to_string`.
+- **Isolation.** Raven's header is included by exactly one translation unit, `src/shell/desktop/src/raven_ui.cpp`. Every other shell file uses the Raven-free wrappers declared in `raven_ui.hpp`. `raven::raven` is a PRIVATE link dependency of `hefesto_shell_desktop`. The unit test `tests/unit/shell/public_headers_test.cpp` compiles every public shell header in a target without Raven's include path, and fails if one pulls Raven in.
+- **Symbols used: 100 functions** in `raven_ui.cpp` after the M1 Desktop-Layout screen (counted at the M1 integration pass; the M0 list had 57):
+  - Lifecycle and errors: `Rinit_ex`, `Rshutdown`, `Rwait_frame`, `Rquit`, `Rset_frame_callback`, `Rget_version`, `Rerror_set_callback`, `Rerror_get_last`, `Rerror_to_string`, `Rseverity_to_string`.
   - Vulkan sharing: `Rvulkan_set_queue_lock_callbacks`, `Rvulkan_get_instance`, `Rvulkan_get_physical_device`, `Rvulkan_get_device`, `Rvulkan_get_graphics_queue`, `Rvulkan_get_graphics_queue_family`.
-  - Theme and fonts: `Rtheme_apply`, `Rtheme_set_color`, `Rtheme_set_accent`, `Rtheme_set_font`, `Rfont_create_from_file`, `Rfont_is_valid`, `Rfont_get_monospace`.
-  - Widgets: `Rwidget_create`, `Rwidget_add_child`, `Rwidget_focus`, `Rwidget_invalidate`, `Rwidget_set_accessible_name`, `Rwidget_set_event_callback`, `Rwidget_set_focusable`, `Rwidget_set_font`, `Rwidget_set_tooltip`, `Rslot_set_fill`, `Rslot_set_padding`, `Rpanel_set_spacing`.
-  - Controls: `Rlabel_create`, `Rlabel_set_text`, `Rlist_view_add_item`, `Rtree_view_add_item`, `Rtext_input_set_committed_callback`, `Rtext_input_set_placeholder`, `Rtext_input_set_text`.
-  - Shell: `Rdock_area_create`, `Rdock_area_add_panel`.
+  - Theme, look and accessibility settings: `Rtheme_set_dark`, `Rtheme_set_color`, `Rtheme_set_accent`, `Rtheme_set_font`, `Rtheme_set_material`, `Rtheme_set_metric`, `Rlook_set`, `Raccessibility_get_system_settings`, `Raccessibility_set_reduce_motion`.
+  - Fonts: `Rfont_create_from_file`, `Rfont_is_valid`, `Rfont_get_default`, `Rfont_get_monospace`, `Rfont_get_variant`, `Rfont_measure_text`, `Rfont_set_fallback`.
+  - Widgets (22): `Rwidget_create`, `Rwidget_add_child`, `Rwidget_clear_children`, `Rwidget_focus`, `Rwidget_invalidate`, `Rwidget_is_enabled`, `Rwidget_is_focused`, `Rwidget_is_hovered`, `Rwidget_set_accessible_name`, `Rwidget_set_accessible_description`, `Rwidget_set_accessible_role`, `Rwidget_set_cursor`, `Rwidget_set_enabled`, `Rwidget_set_event_callback`, `Rwidget_set_focusable`, `Rwidget_set_font`, `Rwidget_set_hit_testable`, `Rwidget_set_metric`, `Rwidget_set_min_size`, `Rwidget_set_size`, `Rwidget_set_tooltip`, `Rwidget_set_visibility`.
+  - Layout containers: `Rslot_set_fill`, `Rslot_set_padding`, `Rslot_set_valign`, `Rpanel_set_spacing`, `Rborder_set_background`, `Rborder_set_corner_radius`, `Rborder_set_outline`, `Rborder_set_padding`, `Rscroll_box_set_orientation`, `Rtab_view_add_tab`, `Rtab_view_set_active`.
+  - Controls: `Rlist_view_add_item`, `Rlist_view_clear_items`, `Rlist_view_get_item_count`, `Rlist_view_scroll_to_item`, `Rtext_input_set_changed_callback`, `Rtext_input_set_committed_callback`, `Rtext_input_set_placeholder`, `Rtext_input_set_text`, `Rfile_dialog_open`.
+  - Custom drawing (rulers, minimap, status shapes): `Rcustom_set_paint_callback`, `Rdraw_rect`, `Rdraw_rect_outline`, `Rdraw_line`, `Rdraw_text`, `Rdraw_image`, `Rdraw_push_clip_rect`, `Rdraw_pop_clip_rect`, `Rtexture_create_from_svg`, `Rtexture_is_valid`.
   - Viewport: `Rviewport_set_draw_callback`, `Rviewport_set_resize_callback`, `Rviewport_set_realtime`.
-  - Window: `Rwindow_create`, `Rwindow_destroy`, `Rwindow_set_content`, `Rwindow_is_valid`, `Rwindow_request_redraw`, `Rwindow_get_scale`, `Rwindow_get_frame_stats`, `Rwindow_capture`, `Rwindow_get_native_handle` (window-system check of the smoke test), `Rpixels_free`.
+  - Window: `Rwindow_create`, `Rwindow_destroy`, `Rwindow_set_content`, `Rwindow_set_title`, `Rwindow_set_min_size`, `Rwindow_set_clear_color`, `Rwindow_is_valid`, `Rwindow_request_redraw`, `Rwindow_get_scale`, `Rwindow_get_frame_stats`, `Rwindow_capture`, `Rwindow_get_native_handle` (window-system check of the smoke test), `Rpixels_free`.
+
+  The M0 dock (`Rdock_area_*`), label and tree-view calls are no longer used. The 43 functions added in M1 were not diffed against v0.2.0; they all exist at the v0.2.2 pin, which is what the build uses.
 
   Structures read: `RInitDesc`, `REvent`, `RViewportDrawInfo`, `RFrameStats`, `RNativeWindow` (only `system`).
 - **v0.2.0 → v0.2.2** (2026-10-30 → 2026-11-06, 145 commits), comparing the `RAVEN_API` declarations of `include/` at both tags:
@@ -146,7 +149,7 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
 - [ ] Run `hefesto-bench-canvas` and `hefesto --bench-frames 600 --rects 10000000` on an M1 Mac, and commit the JSON (criterion 1).
 - [ ] Run the same on Linux x86_64 with a mid-range discrete GPU, under X11 and under Wayland (criterion 1).
 - [ ] Drive the live window: drag-pan, wheel and trackpad zoom, keys after a click, a live resize with the canvas animating, and docking or undocking the Layout panel; check for flicker (criterion 2).
-- [ ] Bundle Inter and JetBrains Mono (with their licenses) and check them through `--font-dir`, or through the bundled path once it exists (criterion 3).
+- [x] Bundle Inter and JetBrains Mono (with their licenses) and load them through the bundled path (`--asset-dir`) (criterion 3, M1).
 - [ ] Resolve the embedded-Roboto conflict with `hefesto-licensing` (section 3): a Raven build option or pinned patch without embedded fonts, or a spec exception (criterion 3).
 - [ ] VoiceOver on macOS; Orca on Linux under X11 and Wayland (criterion 4).
 - [ ] Decide, and log the outcome as a P-11 follow-up in `docs/decisions/product.md`.

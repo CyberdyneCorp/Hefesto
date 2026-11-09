@@ -60,6 +60,22 @@ TEST_CASE("a custom name comparator plugs in", ORDER_TAGS) {
   CHECK(hefesto::util::record_less({"b", 0, 0, ""}, {"a", 0, 0, ""}, reversed));
 }
 
+TEST_CASE("the natural comparator orders digit runs by value and is total",
+          "[cap:cell-file-format][req:Natural ordering of names]") {
+  using hefesto::util::compare_natural;
+  CHECK(compare_natural("a2", "a10") < 0);
+  CHECK(compare_natural("a10", "a2") > 0);
+  CHECK(compare_natural("A1", "a2") < 0);      // letters compare case-insensitively
+  CHECK(compare_natural("a", "a1") < 0);       // a proper prefix sorts first
+  CHECK(compare_natural("a01", "a1") != 0);    // equal by value, then byte-wise: a total order
+  CHECK(compare_natural("a01", "a1") == -compare_natural("a1", "a01"));
+  CHECK(compare_natural("x", "x") == 0);
+  std::vector<std::string> names{"u10", "u2", "U1", "u1"};
+  hefesto::util::sort_records(names, [](const std::string& n) { return hefesto::util::RecordKey{n, 0, 0, {}}; },
+                              compare_natural);
+  CHECK(names == std::vector<std::string>{"U1", "u1", "u2", "u10"});
+}
+
 TEST_CASE("single writer, concurrent readers", "[cap:hefesto-architecture][req:Concurrency model]") {
   hefesto::util::Guarded<std::vector<int>> db;
   std::atomic<bool> torn{false};

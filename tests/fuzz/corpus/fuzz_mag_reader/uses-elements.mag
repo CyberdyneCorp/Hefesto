@@ -1,0 +1,13 @@
+magic
+tech tiny
+timestamp 1000
+use child child_0 ../lib
+array 0 2 10 0 1 20
+timestamp 999
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< elements >>
+rectangle r1 white 0 0 10 10 
+line l1 red,dashed 0 0 10 10
+text t1 white 5 5 hello
+<< end >>

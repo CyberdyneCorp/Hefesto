@@ -24,7 +24,7 @@ TEST_CASE("a diagnostic carries severity, stable code, text, location and relate
   CHECK(d.severity == diag::Severity::error);  // default severity from the code table
   CHECK(d.code == "CMD-USAGE-001");
   CHECK(std::get<diag::SourceLocation>(d.location).line == 42U);
-  CHECK(diag::make(diag::codes::kCliTechNotImplemented, "t").severity == diag::Severity::warning);
+  CHECK(diag::make(diag::codes::kCliLog, "t").severity == diag::Severity::warning);
 }
 
 TEST_CASE("severity and object-kind names round-trip", RECORD_TAGS) {
@@ -56,8 +56,11 @@ TEST_CASE("every code in the table is well formed, unique and sorted", RECORD_TA
   CHECK(diag::is_well_formed_code("CELL-READ-001"));
 }
 
-TEST_CASE("diagnostic code table matches docs/diagnostics/codes.md", RECORD_TAGS) {
-  std::ifstream in(HEFESTO_SOURCE_DIR "/docs/diagnostics/codes.md");
+namespace {
+
+// The table text between the BEGIN/END markers of a code document.
+std::string generated_table(const std::string& relative_path) {
+  std::ifstream in(std::string{HEFESTO_SOURCE_DIR} + "/" + relative_path);
   REQUIRE(in);
   std::stringstream buffer;
   buffer << in.rdbuf();
@@ -69,8 +72,33 @@ TEST_CASE("diagnostic code table matches docs/diagnostics/codes.md", RECORD_TAGS
   REQUIRE(begin != std::string::npos);
   REQUIRE(end != std::string::npos);
   const auto table_start = doc.find('\n', begin) + 1;
+  return doc.substr(table_start, end - table_start);
+}
+
+}  // namespace
+
+TEST_CASE("diagnostic code table matches docs/diagnostics/codes.md", RECORD_TAGS) {
   // Regenerate with: hefesto-cli --diagnostic-codes
-  CHECK(doc.substr(table_start, end - table_start) == diag::render_code_table_markdown());
+  CHECK(generated_table("docs/diagnostics/codes.md") == diag::render_code_table_markdown());
+}
+
+TEST_CASE("each area's code table matches its document and prefix", RECORD_TAGS) {
+  // Regenerate with: hefesto-cli --diagnostic-codes=<area>
+  for (const auto& area : diag::code_areas()) {
+    INFO(area.name);
+    CHECK(generated_table(std::string{area.doc}) == diag::render_code_table_markdown(area.name));
+    for (std::size_t i = 0; i < area.codes.size(); ++i) {
+      INFO(area.codes[i].code);
+      if (!area.prefix.empty()) {
+        CHECK(area.codes[i].code.starts_with(std::string{area.prefix} + "-"));
+      }
+      if (i > 0) {
+        CHECK(area.codes[i - 1].code < area.codes[i].code);
+      }
+    }
+  }
+  CHECK(diag::find_code_area("tech").has_value());
+  CHECK_FALSE(diag::find_code_area("nope").has_value());
 }
 
 TEST_CASE("text rendering", PRESENTATION_TAGS) {
@@ -104,7 +132,22 @@ TEST_CASE("JSON rendering never throws on invalid UTF-8", PRESENTATION_TAGS) {
   CHECK(diag::format_json(d).find("\xEF\xBF\xBD") != std::string::npos);  // U+FFFD
 }
 
+TEST_CASE("Magic rendering prints the text, with TechPrintLine context for technology lines", PRESENTATION_TAGS) {
+  diag::Diagnostic d{diag::Severity::error, "TECH-LINE-001", "Line must contain exactly 2 lists of types",
+                     diag::SourceLocation{"./input/tiny.tech", 60}, diag::ObjectRef{diag::ObjectKind::section, "connect"}};
+  CHECK(diag::format_magic(d) ==
+        "./input/tiny.tech: line 60: section connect:\n\tLine must contain exactly 2 lists of types");
+  CHECK(diag::format(d, diag::Format::magic) == diag::format_magic(d));
+  d.related.reset();  // not a technology-file line: the text alone
+  CHECK(diag::format_magic(d) == "Line must contain exactly 2 lists of types");
+  d.location = diag::SourceLocation{"f.tech", 0};
+  d.related = diag::ObjectRef{diag::ObjectKind::section, "connect"};
+  CHECK(diag::format_magic(d) == "Line must contain exactly 2 lists of types");
+  CHECK(diag::object_kind_name(diag::ObjectKind::section) == "section");
+}
+
 TEST_CASE("format names parse", PRESENTATION_TAGS) {
+  CHECK(diag::parse_format("magic") == diag::Format::magic);
   CHECK(diag::parse_format("json") == diag::Format::json);
   CHECK(diag::parse_format("text") == diag::Format::text);
   CHECK_FALSE(diag::parse_format("xml").has_value());

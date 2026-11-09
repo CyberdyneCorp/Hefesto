@@ -7,8 +7,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <string>
+#include <string_view>
 #include <vector>
 
+#include "hefesto/cmd/context.hpp"
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/view_commands.hpp"
@@ -23,15 +25,12 @@ platform::PortableOptions test_options() {
 }
 
 struct Recorder {
-  int fits = 0;
-  double zoom = 0.0;
   ThemeMode theme = ThemeMode::dark;
   double pan_x = 0.0;
   double pan_y = 0.0;
 
   ViewActions actions() {
-    return ViewActions{[this] { ++fits; }, [this](double f) { zoom = f; }, [this](ThemeMode m) { theme = m; },
-                       [this](double dx, double dy) {
+    return ViewActions{[this](ThemeMode m) { theme = m; }, [this](double dx, double dy) {
                          pan_x = dx;
                          pan_y = dy;
                        }};
@@ -60,33 +59,46 @@ bool has_code(const CommandOutcome& outcome, std::string_view code) {
 TEST_CASE("view commands are core commands dispatched from the command bar",
           "[cap:hefesto-architecture][req:Single command API]") {
   CoreSession core(test_options());
+  // design.md D5: `view` and `zoom` are the core's (register_all_commands);
+  // the shell only adds `theme` and `pan`.
+  REQUIRE(core.registry().find("zoom") != nullptr);
+  REQUIRE(core.registry().find("view") != nullptr);
   Recorder rec;
   REQUIRE(register_view_commands(core.registry(), rec.actions()));
   CoreCommandSink sink(core.dispatcher());
 
-  CHECK(sink.submit("view").ok());
-  CHECK(rec.fits == 1);
-  CHECK(sink.submit("zoom 2.5").ok());
-  CHECK(rec.zoom == 2.5);
   CHECK(sink.submit("theme light").ok());
   CHECK(rec.theme == ThemeMode::light);
   CHECK(sink.submit("pan -12.5 40").ok());
   CHECK(rec.pan_x == -12.5);
   CHECK(rec.pan_y == 40.0);
 
-  for (const char* bad : {"zoom -1", "zoom x", "zoom", "zoom inf", "theme blue", "view extra", "pan 1", "pan a b"}) {
+  for (const char* bad : {"theme blue", "pan 1", "pan a b"}) {
     const CommandOutcome out = sink.submit(bad);
     CHECK_FALSE(out.ok());
     CHECK(has_code(out, "CMD-USAGE-001"));
   }
-  CHECK(rec.fits == 1);
-  CHECK(rec.zoom == 2.5);
 
   const CommandOutcome help = sink.submit("help");
   REQUIRE(help.ok());
-  CHECK(help.message.find("zoom <factor>") != std::string::npos);
-  CHECK(help.message.find("version") != std::string::npos);  // core built-ins are there too
+  CHECK(help.message.find("theme dark|light") != std::string::npos);
+  CHECK(help.message.find("zoom factor") != std::string::npos);  // the core's synopsis
+  CHECK(help.message.find("version") != std::string::npos);      // core built-ins are there too
   CHECK_FALSE(register_view_commands(core.registry(), rec.actions()));  // names already taken
+}
+
+TEST_CASE("the core zoom moves the current window, so the canvas follows it",
+          "[cap:ui-windows-and-views][req:View mapping]") {
+  CoreSession core(test_options());
+  auto& windows = core.editor().windows;
+  auto opened = windows.open(nullptr, view::ScreenRect{0, 0, 799, 599});
+  REQUIRE(opened.ok());
+  windows.set_current(opened.value()->id());
+  const db::Rect before = windows.current()->mapping().surface;
+  CoreCommandSink sink(core.dispatcher());
+  REQUIRE(sink.submit("zoom 0.5").ok());
+  CHECK(windows.current()->mapping().surface.width() < before.width());
+  CHECK_FALSE(sink.submit("zoom -1").ok());
 }
 
 TEST_CASE("command bar lines run through the core Dispatcher with origin gui",
@@ -111,10 +123,11 @@ TEST_CASE("command bar failures carry core diagnostics",
   CoreSession core(test_options());
   CoreCommandSink sink(core.dispatcher());
 
-  const CommandOutcome unknown = sink.submit("paint m1; echo never");
+  // `paint` is a registered M1 command now; use a name no area registers.
+  const CommandOutcome unknown = sink.submit("nosuchcommand m1; echo never");
   CHECK_FALSE(unknown.ok());
   CHECK(has_code(unknown, "CMD-DISPATCH-001"));
-  CHECK(unknown.message.find("paint") != std::string::npos);
+  CHECK(unknown.message.find("nosuchcommand") != std::string::npos);
 
   const CommandOutcome parse = sink.submit("echo \"unterminated");
   CHECK_FALSE(parse.ok());

@@ -1,0 +1,12 @@
+# TECH-G15: tech layers on type lists.
+# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
+# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
+tech load input/tiny -noprompt
+tech layers m1
+tech layers pc
+tech layers *m1
+tech layers ~(pc,ndc)/active
+tech layers 0
+tech layers 0,poly
+tech layers (poly,ndiff
+tech layers allm1

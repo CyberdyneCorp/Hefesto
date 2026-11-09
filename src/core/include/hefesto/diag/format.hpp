@@ -14,9 +14,12 @@
 
 namespace hefesto::diag {
 
-enum class Format { text, json };
+/// `magic` renders a diagnostic the way Magic prints the same message: only
+/// its text, with TechPrintLine's "<file>: line <n>: section <s>:" line for
+/// technology-file diagnostics (golden replay against Magic).
+enum class Format { text, json, magic };
 
-/// Parses "text" or "json".
+/// Parses "text", "json" or "magic".
 [[nodiscard]] std::optional<Format> parse_format(std::string_view name) noexcept;
 
 /// `<severity>: <code>: <text>[ at <file>:<line>| in <cell> (<x>, <y>)]`
@@ -28,6 +31,11 @@ enum class Format { text, json };
 /// no insignificant whitespace, so the output is byte-stable across platforms.
 /// Invalid UTF-8 in strings is replaced by U+FFFD.
 [[nodiscard]] std::string format_json(const Diagnostic& diagnostic);
+
+/// Magic's console text: `text`, preceded by "<file>: line <n>: section
+/// <s>:\n\t" (utils/tech.c TechPrintLine) when the diagnostic has a source
+/// location with a line and a related `section` object. No severity, no code.
+[[nodiscard]] std::string format_magic(const Diagnostic& diagnostic);
 
 [[nodiscard]] std::string format(const Diagnostic& diagnostic, Format fmt);
 
