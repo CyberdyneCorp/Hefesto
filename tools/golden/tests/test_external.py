@@ -80,6 +80,17 @@ class ExternalTest(unittest.TestCase):
             self.assertIn("external input unavailable", report.detail)
 
 
+class ContainerRunnerTest(unittest.TestCase):
+    def test_tool_runs_as_the_owner_of_the_work_directory(self):
+        # Regression: as root, Magic reported every input cell "is not writeable" (owner is
+        # the CI user, mode 0644), so captured consoles carried a warning replay never prints.
+        from goldenlib.refrunners import ContainerRunner
+        with tempfile.TemporaryDirectory() as tmp:
+            argv = ContainerRunner("img").argv(load_case(case_with(Path(tmp), "")), Path("/w"))
+        self.assertIn(f"{os.getuid()}:{os.getgid()}", argv[argv.index("--user") + 1])
+        self.assertLess(argv.index("--user"), argv.index("img"))
+
+
 class AuthoringTest(unittest.TestCase):
     def test_tcl_line_prints_one_result_and_never_aborts(self):
         self.assertEqual(casegen.tcl_line("paint m1", True), "catch {paint m1} result; puts $result")
