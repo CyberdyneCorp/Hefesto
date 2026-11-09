@@ -58,12 +58,15 @@ bool sink_has(const CellIo& io, std::string_view text) {
   return false;
 }
 
-/// A memory host whose git HEAD is fixed per directory.
+/// A memory host whose git HEAD is fixed per directory and whose
+/// `symlinks` paths are symbolic links.
 class GitHost final : public cell::FileHost {
  public:
   GitHost(hefesto::platform::FileSystem& fs, std::map<std::string, std::string> heads)
       : inner_(cell::make_memory_file_host(fs, "/work")), heads_(std::move(heads)) {}
-  bool is_symlink(const hefesto::platform::Path& p) override { return inner_->is_symlink(p); }
+  bool is_symlink(const hefesto::platform::Path& p) override {
+    return symlinks.contains(p.generic_string()) || inner_->is_symlink(p);
+  }
   bool is_directory(const hefesto::platform::Path& p) override { return inner_->is_directory(p); }
   std::optional<bool> same_file(const hefesto::platform::Path& a, const hefesto::platform::Path& b) override {
     return inner_->same_file(a, b);
@@ -78,6 +81,8 @@ class GitHost final : public cell::FileHost {
     const auto it = heads_.find(dir.generic_string());
     return it == heads_.end() ? std::nullopt : std::optional{it->second};
   }
+
+  std::set<std::string> symlinks;
 
  private:
   std::unique_ptr<cell::FileHost> inner_;
@@ -212,6 +217,89 @@ TEST_CASE("rebasing leaves rooted and over-climbing paths alone",
   CHECK(cell::rebase_path("~/inv", "/home/u/a", "/home/u/b") == "~/inv");
   CHECK(cell::rebase_path("$PDK/inv", "/home/u/a", "/home/u/b") == "$PDK/inv");
   CHECK(cell::rebase_path("../../../../inv", "/home/u", "/tmp") == "../../../../inv");
+}
+
+// --- path normalization and substitution ------------------------------------------
+
+#define NORMALIZE_TAGS "[cap:cell-library-resolution][req:Path normalization algorithms]"
+
+TEST_CASE("collapse keeps '..' after a symbolic link", NORMALIZE_TAGS) {
+  hefesto::platform::MemoryFileSystem fs;
+  GitHost host{fs, {}};
+  host.symlinks.insert("/a/link");
+  CHECK(cell::collapse_path("/a/link/../b", host) == "/a/link/../b");
+  CHECK(cell::collapse_path("/a/dir/../b", host) == "/a/b");
+  CHECK(cell::collapse_path("/../x", host) == "/x");          // '..' after the root is dropped
+  CHECK(cell::collapse_path("a/./../..//b", host) == "../b");  // empty and '.' components dropped
+  CHECK(cell::collapse_path("a/..", host) == ".");             // an empty result is '.'
+}
+
+TEST_CASE("absComps, relDir, absDir and isDirPrefix", NORMALIZE_TAGS) {
+  hefesto::platform::MemoryFileSystem fs;
+  GitHost host{fs, {}};  // working directory /work
+  CHECK(cell::relative_dir("/h/u/proj", "/h/u/other", host) == std::optional<std::string>{"../other"});
+  CHECK(cell::relative_dir("/h/u", "/h/u", host) == std::optional<std::string>{""});
+  CHECK(cell::relative_dir("lib", "/work/x", host) == std::optional<std::string>{"../x"});
+  CHECK_FALSE(cell::relative_dir("~/a", "/h/u", host).has_value());  // absComps fails for ~ and $
+  CHECK_FALSE(cell::relative_dir("/a/b", "/c/d", host).has_value());  // no common component
+  host.symlinks.insert("/h/u/proj");
+  CHECK_FALSE(cell::relative_dir("/h/u/proj", "/h/u/other", host).has_value());  // link below the common part
+
+  const auto comps = cell::absolute_comps("../lib", host);
+  REQUIRE(comps.has_value());
+  CHECK(cell::join_path(*comps) == "/lib");  // a leading '..' pops the working directory
+  CHECK_FALSE(cell::absolute_comps("a/../b", host).has_value());
+  CHECK_FALSE(cell::absolute_comps("$PDK/x", host).has_value());
+
+  CHECK(cell::absolute_dir("/abs/./d", host) == std::optional<std::string>{"/abs/./d"});  // unchanged
+  CHECK(cell::absolute_dir("lib/../mag", host) == std::optional<std::string>{"/work/mag"});
+  CHECK(cell::absolute_dir("", host) == std::optional<std::string>{"/work"});
+  CHECK_FALSE(cell::absolute_dir("~/x", host).has_value());
+
+  CHECK(cell::is_dir_prefix("/a/b", "/a/b/c"));
+  CHECK_FALSE(cell::is_dir_prefix("/a/b", "a/b/c"));  // absolute vs relative
+  CHECK(cell::is_dir_prefix("", "x/y"));
+  CHECK_FALSE(cell::is_dir_prefix("/a/bc", "/a/b"));
+}
+
+#define SUBST_TAGS "[cap:cell-library-resolution][req:Path variable substitution on write]"
+
+namespace {
+
+cell::PathVariables vars_of(std::map<std::string, std::string> values, std::string home) {
+  cell::PathVariables vars;
+  vars.variable = [table = std::move(values)](std::string_view name) -> std::optional<std::string> {
+    const auto it = table.find(std::string{name});
+    return it == table.end() ? std::nullopt : std::optional{it->second};
+  };
+  vars.home_of = [home_dir = std::move(home)](std::string_view user) -> std::optional<std::string> {
+    return user.empty() ? std::optional{home_dir} : std::nullopt;
+  };
+  return vars;
+}
+
+}  // namespace
+
+TEST_CASE("PDK variables are substituted first, in order", SUBST_TAGS) {
+  const auto vars = vars_of({{"PDK_ROOT", "/usr/share/pdk"}}, "/home/u");
+  CHECK(cell::substitute_path("/usr/share/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag", "", vars, true) ==
+        "$PDK_ROOT/sky130A/libs.ref/sky130_fd_sc_hd/mag");
+  CHECK(cell::substitute_path("/usr/share/pdk", "", vars, true) == "$PDK_ROOT");
+  // Q-CELL-20: a path prefix, not a character prefix.
+  CHECK(cell::substitute_path("/usr/share/pdk2/x", "", vars, true) == "/usr/share/pdk2/x");
+  const auto both = vars_of({{"PDKPATH", "/p/sky130A"}, {"PDK_ROOT", "/p"}}, "/home/u");
+  CHECK(cell::substitute_path("/p/sky130A/libs.ref", "", both, true) == "$PDKPATH/libs.ref");
+  CHECK(cell::substitute_path("/p/gf180/libs.ref", "", both, true) == "$PDK_ROOT/gf180/libs.ref");
+}
+
+TEST_CASE("the home rule tests the child's directory in compat mode, else the string", SUBST_TAGS) {
+  const auto vars = vars_of({}, "/home/u");
+  // Magic tests the child's recorded directory (Q-CELL-21).
+  CHECK(cell::substitute_path("/home/u/lib", "/home/u/lib", vars, true) == "~/lib");
+  CHECK(cell::substitute_path("/home/u/lib", "/elsewhere/lib", vars, true) == "/home/u/lib");
+  CHECK(cell::substitute_path("/home/u/lib", "/elsewhere/lib", vars, false) == "~/lib");
+  CHECK(cell::substitute_path("/home/user2/lib", "/home/user2/lib", vars, true) == "/home/user2/lib");
+  CHECK(cell::substitute_path("rel/lib", "/home/u/rel/lib", vars, true) == "rel/lib");  // not absolute
 }
 
 // --- discovery ----------------------------------------------------------------------

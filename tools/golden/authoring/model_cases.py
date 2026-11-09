@@ -93,9 +93,9 @@ def geometry_specs() -> list[Spec]:
               cell("a", rects("metal1", [(20, 0, 30, 30), (0, 20, 10, 30), (0, 0, 10, 10)])), ["a.mag"]),
         model("MODEL-G-005", GEO, ["Tile enumeration order"], "30 fixed metal1 rectangles (LCG seed 1).",
               cell("a", rects("metal1", stress_rects())), ["a.mag"]),
-        model("MODEL-G-007", GEO, ["Non-Manhattan geometry"], "splitpaint nw metal1 over 0 0 10 10.",
+        model("MODEL-G-007", GEO, ["Non-Manhattan (split tile) geometry"], "splitpaint nw metal1 over 0 0 10 10.",
               cell("a", split("nw", "metal1", 0, 0, 10, 10)), ["a.mag"]),
-        model("MODEL-G-008", GEO, ["Non-Manhattan geometry"], "split nw then se metal1 on the same box.",
+        model("MODEL-G-008", GEO, ["Non-Manhattan (split tile) geometry"], "split nw then se metal1 on the same box.",
               cell("a", split("nw", "metal1", 0, 0, 10, 10) + split("se", "metal1", 0, 0, 10, 10)), ["a.mag"]),
         model("MODEL-G-009", GEO, ["Manhattan transforms"],
               "Child (metal1 0 0 10 20, label N) placed with getcell in 8 orientations; flattened.",
@@ -122,7 +122,7 @@ def paint_specs() -> list[Spec]:
     compose = (["load a"] + paint("ndiff", 0, 0, 10, 10) + paint("poly", 4, -2, 6, 12) + ["save a1"]
                + erase("poly", 4, 0, 6, 10) + ["save a2"])
     return [
-        one("MODEL-G-013", "Result-table model", "ndiff 0 0 10 10, pdiff 5 0 15 10.",
+        one("MODEL-G-013", "Result-table model of painting", "ndiff 0 0 10 10, pdiff 5 0 15 10.",
             paint("ndiff", 0, 0, 10, 10) + paint("pdiff", 5, 0, 15, 10)),
         one("MODEL-G-014", "Default contact painting rules", "metal1 0 0 20 10, then via1 0 0 10 10.",
             paint("metal1", 0, 0, 20, 10) + paint("via1", 0, 0, 10, 10)),
@@ -153,7 +153,7 @@ def paint_specs() -> list[Spec]:
               cell("child", paint("via1", 0, 0, 4, 4))
               + cell("top", paint("metal2", 100, 0, 120, 4) + [box(100, 0, 100, 0), "getcell child"])
               + flatten_save("top", "flat"), ["flat.mag"]),
-        one("MODEL-G-025", "Active layers", "tech locked metal2, then paint via1.",
+        one("MODEL-G-025", "Active (locked) layers", "tech locked metal2, then paint via1.",
             ["tech locked metal2"] + paint("via1", 0, 0, 4, 4)),
         model("MODEL-G-026", PAINT, ["Paint operation"],
               "Save, then paint metal1 where metal1 already is; cellname list modified (Q-MODEL-23).",
@@ -252,10 +252,10 @@ def label_specs() -> list[Spec]:
         model("MODEL-G-043", LABELS, ["Port renumbering"],
               "Ports b, A10, A2, VDD, vdd, VDD and non-port c; port renumber (Q-MODEL-9, Q-MODEL-10).",
               cell("a", ports + label("c", 20, 1) + ["port renumber"]), ["a.mag"]),
-        model("MODEL-G-044", LABELS, ["Rendered text box"],
+        model("MODEL-G-044", LABELS, ["Rendered text box of outline-font labels"],
               "FreeSans flabels of sizes 8/64/128, every justification, rotation 45; parent use box (Q-MODEL-6).",
               cell("top", [box(0, 0, 0, 0), "getcell input/f"]), ["top.mag"], files={"f.mag": sizes}),
-        model("MODEL-G-046", PROPS, ["Typed property store", "Property compat mode", "Geometric properties"],
+        model("MODEL-G-046", PROPS, ["Typed property store", "Property compat mode", "Geometric properties follow the geometry"],
               "FIXED_BBOX, integer n, compat false; save; scalegrid 1 2; save.",
               ["load a", "property FIXED_BBOX 0 0 100 200", "property integer n 7", "save a1",
                "property compat false", "save a2", "scalegrid 1 2", "save a3"], ["a1.mag", "a2.mag", "a3.mag"]),
@@ -263,7 +263,7 @@ def label_specs() -> list[Spec]:
               "A .mag with string GDS_START, FIXED_BBOX, MASKHINTS_X; property queries.",
               ["load input/p", "property GDS_START", "property FIXED_BBOX", "property MASKHINTS_X", "property"], [],
               files={"p.mag": strings}),
-        model("MODEL-G-048", PROPS, ["Reserved property names"],
+        model("MODEL-G-048", PROPS, ["Reserved property names and side effects"],
               "property GDS_FILE x.gds; cellname rename; remove the property; cellname readonly.",
               ["load a", "property GDS_FILE x.gds", "cellname readonly a", "cellname rename a b", "property GDS_FILE",
                "property GDS_FILE {}", "cellname readonly a", "cellname rename a b"], []),

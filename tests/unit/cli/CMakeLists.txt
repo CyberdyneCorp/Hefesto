@@ -52,3 +52,19 @@ add_test(NAME "hefesto-cli: bad Magic option exits 1"
          COMMAND "${CMAKE_COMMAND}" -DCLI=$<TARGET_FILE:hefesto-cli> -DEXPECT=1 "-DARGS=--no-log;--magic;-x"
                  -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
 set_tests_properties("hefesto-cli: bad Magic option exits 1" PROPERTIES LABELS "unit;cli")
+
+# [cap:app-startup][req:Batch and headless operation]: Magic's scripted run,
+# commands from standard input until quit, with the status quit gives.
+add_test(NAME "hefesto-cli: batch commands from standard input exit 0"
+         COMMAND "${CMAKE_COMMAND}" -DCLI=$<TARGET_FILE:hefesto-cli> -DEXPECT=0
+                 "-DARGS=--no-log;--magic;-dnull;-noconsole"
+                 "-DSTDIN=box 0 0 10 10\nquit -noprompt\necho never\n" "-DEXPECT_OUT=^$"
+                 -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
+set_tests_properties("hefesto-cli: batch commands from standard input exit 0" PROPERTIES LABELS "unit;cli")
+
+# [cap:app-startup][req:quit command and exit status]
+add_test(NAME "hefesto-cli: quit 3 -noprompt exits 3"
+         COMMAND "${CMAKE_COMMAND}" -DCLI=$<TARGET_FILE:hefesto-cli> -DEXPECT=3
+                 "-DARGS=--no-log;--magic;-dnull;-noconsole" "-DSTDIN=quit 3 -noprompt\n"
+                 -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
+set_tests_properties("hefesto-cli: quit 3 -noprompt exits 3" PROPERTIES LABELS "unit;cli")

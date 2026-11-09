@@ -10,7 +10,7 @@ schema = 1
 id = "TECH-G23"
 area = "TECH"
 capability = "tech-compose-and-connect"
-requirements = ["Finalization step 3a", "Finalization step 3c", "Default paint and erase rules"]
+requirements = ["Finalization step 3a, painting over a contact", "Finalization step 3c, stacked types as applied types", "Default paint and erase rules"]
 tool = "magic"
 description = "scmos.tech (generated from Magic's sources): P/E dump of intersecting-plane pairs."
 

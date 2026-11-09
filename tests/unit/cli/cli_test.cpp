@@ -232,6 +232,35 @@ TEST_CASE("script files run in order and quit stops the run", CLI_TAGS) {
   CHECK(r.out == "zero\none\n");
 }
 
+TEST_CASE("quit ends the session with its exit status", "[cap:app-startup][req:quit command and exit status]") {
+  const Run three = run_cli({"--no-log", "-c", "echo before; quit 3 -noprompt; echo never"});
+  CHECK(three.status == 3);
+  CHECK(three.out == "before\n");
+  // A bad status cancels the quit: the script goes on and the run fails.
+  const Run bad = run_cli({"--no-log", "-c", "quit 300; echo still"});
+  CHECK(bad.status == cli::kExitFailure);
+  CHECK(bad.out == "still\n");
+  CHECK(bad.err.find("Invalid exit_status: 300") != std::string::npos);
+  CHECK(bad.err.find("Usage: quit [exit_status] [-noprompt]") != std::string::npos);
+  // A plain quit keeps the failure status of an earlier command.
+  CHECK(run_cli({"--no-log", "-c", "nosuch; quit"}).status == cli::kExitFailure);
+}
+
+TEST_CASE("headless mode takes a command script from a file argument",
+          "[cap:app-startup][req:Batch and headless operation]") {
+  ScratchDir dir;
+  const auto script = dir.path() / "batch.tcl";
+  std::ofstream(script) << "box 0 0 10 10\nbox\nquit -noprompt\necho never\n";
+  const std::string path = script.string();
+  const Run r = run_cli({"--no-log", "--magic", "-dnull", "-noconsole", path});
+  INFO(r.err);
+  CHECK(r.status == cli::kExitOk);
+  CHECK(r.out.find("never") == std::string::npos);
+  // The null display draws nothing but the box is set in the startup window.
+  CHECK(r.err.find("Root cell box:") != std::string::npos);
+  CHECK(r.err.find("10 x 10") != std::string::npos);
+}
+
 TEST_CASE("a failing command fails the run but the script continues", CLI_TAGS) {
   const Run r = run_cli({"--no-log", "-c", "setting set nope on; echo still"});
   CHECK(r.status == cli::kExitFailure);

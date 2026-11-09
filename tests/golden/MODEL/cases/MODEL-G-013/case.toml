@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-013"
 area = "MODEL"
 capability = "layout-paint-semantics"
-requirements = ["Result-table model"]
+requirements = ["Result-table model of painting"]
 tool = "magic"
 description = "ndiff 0 0 10 10, pdiff 5 0 15 10."
 

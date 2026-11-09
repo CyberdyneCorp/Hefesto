@@ -9,7 +9,7 @@ schema = 1
 id = "TECH-G22"
 area = "TECH"
 capability = "tech-compose-and-connect"
-requirements = ["Finalization step 3a", "Finalization step 3c"]
+requirements = ["Finalization step 3a, painting over a contact", "Finalization step 3c, stacked types as applied types"]
 tool = "magic"
 description = "m2c over pc (a); pc,m2c on empty space (b); erase pc,m2c (c)."
 

@@ -197,6 +197,68 @@ TEST_CASE("built-in commands", CMD_API_TAGS) {
   CHECK(s.session().quit_requested);
 }
 
+#define QUIT_TAGS "[cap:app-startup][req:quit command and exit status]"
+
+// Regression: `quit` took no arguments, so Magic's scripted `quit -noprompt`
+// and `quit 3` failed with a usage error.
+TEST_CASE("quit takes an exit status and -noprompt as the last word", QUIT_TAGS "[regression]") {
+  hefesto::test::Session s;
+  CHECK(s.exec("quit", {"3", "-noprompt"}).ok());
+  CHECK(s.session().quit_requested);
+  CHECK(s.session().exit_status == 3);
+
+  hefesto::test::Session plain;
+  CHECK(plain.exec("quit", {"-noprompt"}).ok());
+  CHECK(plain.session().quit_requested);
+  CHECK(plain.session().exit_status == 0);
+}
+
+TEST_CASE("quit with a bad status or extra words reports and keeps running", QUIT_TAGS) {
+  const auto texts = [](const CommandResult& r) {
+    std::vector<std::string> out;
+    for (const auto& d : r.diagnostics) {
+      out.push_back(d.text);
+    }
+    return out;
+  };
+  hefesto::test::Session s;
+  const auto word = s.exec("quit", {"abc"});
+  CHECK_FALSE(word.ok());
+  CHECK(texts(word) == std::vector<std::string>{"Invalid exit_status: abc", "Usage: quit [exit_status] [-noprompt]"});
+  // Q-UI-32: Magic truncates to 8 bits; Hefesto rejects the status.
+  CHECK(texts(s.exec("quit", {"256", "-noprompt"})) ==
+        std::vector<std::string>{"Invalid exit_status: 256", "Usage: quit [exit_status] [-noprompt]"});
+  CHECK(texts(s.exec("quit", {"-1"})).front() == "Invalid exit_status: -1");
+  // -noprompt is recognized only as the last word.
+  CHECK(texts(s.exec("quit", {"-noprompt", "1"})) ==
+        std::vector<std::string>{"Usage: quit [exit_status] [-noprompt]"});
+  CHECK(texts(s.exec("quit", {"1", "2"})) == std::vector<std::string>{"Usage: quit [exit_status] [-noprompt]"});
+  CHECK_FALSE(s.session().quit_requested);
+}
+
+TEST_CASE("an exit check can veto quit unless -noprompt is given", QUIT_TAGS) {
+  hefesto::test::Session s;
+  int asked = 0;
+  bool discard = false;
+  s.session().exit_checks.emplace_back([&] {
+    ++asked;
+    return discard;  // "discard the modified cells?"
+  });
+  CHECK(s.exec("quit").ok());
+  CHECK(asked == 1);
+  CHECK_FALSE(s.session().quit_requested);  // declined: the application keeps running
+  CHECK(s.exec("quit", {"3", "-noprompt"}).ok());
+  CHECK(asked == 1);  // not asked
+  CHECK(s.session().quit_requested);
+  CHECK(s.session().exit_status == 3);
+
+  hefesto::test::Session accepted;
+  accepted.session().exit_checks.emplace_back([] { return true; });
+  CHECK(accepted.exec("quit", {"4"}).ok());
+  CHECK(accepted.session().quit_requested);
+  CHECK(accepted.session().exit_status == 4);
+}
+
 TEST_CASE("values render as Tcl results", CMD_API_TAGS) {
   CHECK(Value{}.to_string().empty());
   CHECK(Value{42}.to_string() == "42");

@@ -203,7 +203,9 @@ class Session {
     const bool ok = script_session_.quit_requested || run_sources();
     magic_console_.flush();
     cell::end_crash_session(editor_, services_.files());  // normal exit: drop this session's backup and lock
-    const int status = ok ? kExitOk : kExitFailure;
+    // `quit N` sets the status (app-startup "quit command and exit
+    // status"); a plain `quit` keeps the failure status of earlier commands.
+    const int status = script_session_.exit_status != 0 ? script_session_.exit_status : (ok ? kExitOk : kExitFailure);
     log(diag::Severity::info, "session end exit=" + std::to_string(status));
     return status;
   }

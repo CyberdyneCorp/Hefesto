@@ -358,7 +358,7 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:4035, database/DBio.c:4060, database/DBio.c:4079
 - Options: replicate | fix (each warning on its own line)
 - Recommendation: fix. Every diagnostic is one record; the console prints one per line.
-- Resolution: fix — each warning is printed on its own line; the text is Magic's (recorded 2026-11-09 from the CELL-RD-18 capture; needs approval).
+- Resolution: fix — each warning is printed on its own line; the text is Magic's (recorded 2026-11-09 from the CELL-RD-18 capture; approved 2026-11-09).
 
 ### Q-CELL-44: Element styles unknown to the display style table are dropped
 - Kind: bug
@@ -366,4 +366,4 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Evidence: database/DBio.c:3800-3815, graphics/grDStyle.c:136-148, dbwind/DBWelement.c:1100-1170
 - Options: replicate | fix (keep the style names as written)
 - Recommendation: fix. A `.mag` file's element styles should not depend on the display used to open it (X-2 tier 1, data loss).
-- Resolution: fix — element style names are kept as read and written back unchanged; no "has no styles" warning (recorded 2026-11-09 from the CELL-RD-19 / CELL-WR-08 captures; needs approval).
+- Resolution: fix — element style names are kept as read and written back unchanged; no "has no styles" warning (recorded 2026-11-09 from the CELL-RD-19 / CELL-WR-08 captures; approved 2026-11-09).

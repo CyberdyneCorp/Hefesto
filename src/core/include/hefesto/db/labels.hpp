@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string_view>
 
@@ -27,8 +28,11 @@ namespace hefesto::db {
 
 /// DBPutFontLabel: appends `label` to `def` (the `.mag` order), choosing
 /// the justification with auto_justification() when `auto_justify`, and
-/// marks the cell modified. Empty text is refused (DB-LABEL-001).
-[[nodiscard]] diag::Outcome<Label*> put_label(CellDef& def, Label label, bool auto_justify = false);
+/// marks the cell modified. Empty text is refused (DB-LABEL-001). A font
+/// index outside [0, font_count) makes a default-font label with size 0,
+/// rotation 0 and offset (0,0) (font-labels "Font label attributes").
+[[nodiscard]] diag::Outcome<Label*> put_label(CellDef& def, Label label, bool auto_justify = false,
+                                              std::size_t font_count = 0);
 
 /// "Choosing a label's layer" (DBPickLabelLayer with doCalma = FALSE).
 [[nodiscard]] tech::TileType choose_label_layer(const CellDef& def, const tech::Technology& tech,

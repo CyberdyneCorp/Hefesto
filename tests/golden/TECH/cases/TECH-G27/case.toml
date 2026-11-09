@@ -9,7 +9,7 @@ schema = 1
 id = "TECH-G27"
 area = "TECH"
 capability = "tech-compose-and-connect"
-requirements = ["Contact locking", "tech locked"]
+requirements = ["Contact locking"]
 tool = "magic"
 description = "tech locked pc; erase metal1 over a pc tile."
 

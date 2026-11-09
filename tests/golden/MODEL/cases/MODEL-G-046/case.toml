@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-046"
 area = "MODEL"
 capability = "layout-properties"
-requirements = ["Typed property store", "Property compat mode", "Geometric properties"]
+requirements = ["Typed property store", "Property compat mode", "Geometric properties follow the geometry"]
 tool = "magic"
 description = "FIXED_BBOX, integer n, compat false; save; scalegrid 1 2; save."
 

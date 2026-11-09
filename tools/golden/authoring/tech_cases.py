@@ -152,7 +152,7 @@ def big_dump(tech: str, types: list[TechType]) -> list[str]:
 
 
 def dump_spec(cid: str, desc: str, cmds: list[str], files=None, ext=None, reqs=None) -> Spec:
-    return Spec(cid, COMPOSE, reqs or ["Finalization step 3a", "Finalization step 3c", "Default paint and erase rules"],
+    return Spec(cid, COMPOSE, reqs or ["Finalization step 3a, painting over a contact", "Finalization step 3c, stacked types as applied types", "Default paint and erase rules"],
                 desc, cmds, files=files or {}, outputs=["paint_dump.mag", "erase_dump.mag"], streams=False,
                 external=[ext] if ext else [], notes=["Table dump through paint/erase/save: authoring/paint_dump.py."])
 
@@ -193,7 +193,7 @@ def compose_specs() -> list[Spec]:
              tech_load("tiny") + ["load a"] + paint("pc", 0, 0, 4, 4) + paint("m2c", 0, 0, 4, 4)
              + paint("ndc", 10, 0, 14, 4) + paint("m2c", 10, 0, 14, 4) + ["save a", "tech layers pm12c", "tech layers *"],
              files={"tiny.tech": stack_none}, outputs=["a.mag"]),
-        cell_case("TECH-G19", ["Finalization step 3a"], "ndiff painted over a 4x4 pc (Q-TECH-23).",
+        cell_case("TECH-G19", ["Finalization step 3a, painting over a contact"], "ndiff painted over a 4x4 pc (Q-TECH-23).",
                   paint("pc", 0, 0, 4, 4) + paint("ndiff", 0, 0, 4, 4)),
         dump_spec("TECH-G20", "tiny.tech: full P/E dump over the user types and pm12c.", tiny_dump(),
                   files={"tiny.tech": TINY}),
@@ -201,7 +201,7 @@ def compose_specs() -> list[Spec]:
                   "scmos-like tech with an explicit 'erase pdc pwell pdiff': paint pdc, erase pwell (Q-TECH-20).",
                   paint("pdc", 0, 0, 4, 4) + paint("pwell", 0, 0, 4, 4) + erase("pwell", 0, 0, 4, 4),
                   tech="sl", files={"sl.tech": SCMOS_LIKE}),
-        Spec("TECH-G22", COMPOSE, ["Finalization step 3a", "Finalization step 3c"],
+        Spec("TECH-G22", COMPOSE, ["Finalization step 3a, painting over a contact", "Finalization step 3c, stacked types as applied types"],
              "m2c over pc (a); pc,m2c on empty space (b); erase pc,m2c (c).",
              tech_load("tiny") + ["load a"] + paint("pc", 0, 0, 4, 4) + paint("m2c", 0, 0, 4, 4) + ["save a", "load b"]
              + paint("pc,m2c", 0, 0, 4, 4) + ["save b", "load c"] + paint("pc,m2c", 0, 0, 4, 4)
@@ -214,8 +214,8 @@ def compose_specs() -> list[Spec]:
                   tech_load("tiny") + dump_cmds(["pdc", "pdiff", "metal1"], [(h, t) for h in range(3) for t in range(3)],
                                                 "paint", "paint_dump")
                   + dump_cmds(["pdc", "pdiff", "metal1"], [(h, t) for h in range(3) for t in range(3)], "erase", "erase_dump"),
-                  files={"tiny.tech": TINY_CC}, reqs=["Contact compose and decompose rules", "Finalization step 4"]),
-        cell_case("TECH-G27", ["Contact locking", "tech locked"], "tech locked pc; erase metal1 over a pc tile.",
+                  files={"tiny.tech": TINY_CC}, reqs=["Contact compose and decompose rules", "Finalization step 4, saved contact rules"]),
+        cell_case("TECH-G27", ["Contact locking"], "tech locked pc; erase metal1 over a pc tile.",
                   ["tech locked pc"] + paint("pc", 0, 0, 4, 4) + erase("metal1", 0, 0, 4, 4)),
         dump_spec("TECH-G28", "tiny, then tiny with a contact compose rule, then tiny again: P/E dump (Q-TECH-19).",
                   tiny_dump(["tech load input/tiny -noprompt", "tech load input/tiny_cc -noprompt"] + tech_load("tiny")),

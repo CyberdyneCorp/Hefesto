@@ -379,3 +379,50 @@ TEST_CASE("startup records the opened project in the recent-projects list",
   CHECK(list.value() == std::vector<std::filesystem::path>{folder});
   CHECK(s.editor.settings.effective("pdk-update-check")->value == "on");  // built-in default
 }
+
+TEST_CASE("startup technology: the command line wins over a startup script",
+          "[cap:tech-loading-and-scaling][req:Startup technology selection]") {
+  Session s;
+  write_file(s.env.working_directory / ".magicrc", "tech load gf180mcuD\n");
+  app::StartupOptions options;
+  options.technology = "sky130A";
+  REQUIRE(s.start(options).ok());
+  // The startup script's `tech load` is not run (ignored while -T holds).
+  CHECK(s.calls == std::vector<std::string>{"tech load sky130A"});
+}
+
+TEST_CASE("startup technology: taken from the layout argument, else the minimum fallback",
+          "[cap:tech-loading-and-scaling][req:Startup technology selection]") {
+  Session s;
+  write_file(s.env.working_directory / "inv.mag", "magic\ntech tiny\ntimestamp 0\n<< end >>\n");
+  REQUIRE(s.start(with_files({"inv.mag"})).ok());
+  CHECK(s.calls == std::vector<std::string>{"tech load tiny", "load inv"});
+
+  // A failed default keeps (re-loads) the bootstrap technology `minimum`.
+  Session f;
+  write_file(f.env.working_directory / "inv.mag", "magic\ntech failtech\n<< end >>\n");
+  const auto r = f.start(with_files({"inv.mag"}));
+  REQUIRE(r.ok());
+  CHECK(f.calls == std::vector<std::string>{"tech load failtech", "load inv"});
+  CHECK(r.value().technology == "minimum");
+}
+
+// The iPadOS front end has no command line, environment or startup files:
+// it hands run_startup the settings-chosen technology (the -T equivalent),
+// user startup files disabled (-norcfile) and the file opened from another
+// app. The shared startup keeps the precedence order for those inputs.
+TEST_CASE("platform startup surface: a default PDK technology loads before an opened file",
+          "[cap:app-startup][req:Platform startup surface]") {
+  Session s;
+  s.env.host = nullptr;  // no environment on iPadOS
+  write_file(s.env.home / ".magicrc", "tech load gf180mcuD\n");
+  write_file(s.env.working_directory / "inv.mag", "magic\ntech gf180mcuD\n<< end >>\n");
+  app::StartupOptions options = with_files({"inv.mag"});
+  options.technology = "sky130A";  // the PDK selected as default in settings
+  options.no_rc = true;
+  const auto r = s.start(options);
+  REQUIRE(r.ok());
+  CHECK(r.value().startup_files.empty());
+  CHECK(s.calls == std::vector<std::string>{"tech load sky130A", "load inv"});
+  REQUIRE(s.editor.windows.current() != nullptr);  // the opened cell is shown in the startup window
+}

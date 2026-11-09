@@ -286,7 +286,7 @@ def resolution_specs() -> list[Spec]:
         scmos("CELL-PW-03", ["Writing instance paths"], "Child in the same directory; two instances.",
               ["load c", *paint("metal1", 0, 0, 4, 4), "save c", "load top", box(0, 0, 0, 0), "getcell c",
                box(10, 0, 10, 0), "getcell c", "save top"], {}, ["top.mag"], cap=RESOLUTION),
-        Spec("CELL-LIB-03", RESOLUTION, ["Automatic technology discovery", "Technology check on read"],
+        Spec("CELL-LIB-03", RESOLUTION, ["Automatic technology discovery"],
              "Technology mismatch with paint loaded (tiny vs a scmos cell); load -force.",
              tech_load("tiny") + ["load a", *paint("metal1", 0, 0, 4, 4), "load input/s", "load input/s -force", *DUMP],
              files={"tiny.tech": TINY, "s.mag": inv}),

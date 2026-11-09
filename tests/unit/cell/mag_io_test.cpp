@@ -49,6 +49,28 @@ TEST_CASE("paint, labels and properties round-trip byte-identically",
   CHECK(io.write(c) == text);
 }
 
+TEST_CASE("a Magic-written cell without extensions saves byte-identically",
+          "[cap:hefesto-mag-extensions][req:Byte-compatibility when no extensions are used]") {
+  CellIo io;
+  const std::string text =
+      "magic\ntech tiny\ntimestamp 1700000000\n"
+      "<< polysilicon >>\nrect 0 0 4 10\n"
+      "<< metal1 >>\nrect -2 3 8 5\n"
+      "use inv  inv_0\ntimestamp 1600000000\ntransform 1 0 10 0 1 0\nbox 0 0 8 12\n"
+      "<< labels >>\nrlabel metal1 s -2 3 8 5 0 A\nport 1 nsew signal input\n"
+      "<< properties >>\nstring FIXED_BBOX 0 0 10 10\nstring LEFview TRUE\n"
+      "<< end >>\n";
+  REQUIRE(io.ctx.fs.create_directories("/lib").ok());
+  REQUIRE(io.ctx.fs.write_atomic("/lib/c.mag", text).ok());
+  io.paths.path = {"/lib"};
+  auto loaded = cell::load_cell(io.ctx, "c");
+  REQUIRE(loaded.ok());
+  REQUIRE(cell::save_cell(io.ctx, *loaded.value()).ok());  // no edits
+  const auto saved = io.ctx.fs.read("/lib/c.mag");
+  REQUIRE(saved.ok());
+  CHECK(saved.value() == text);
+}
+
 TEST_CASE("elements are kept and written sorted by natural name order",
           "[cap:cell-file-format][req:Element records][req:Writer elements]") {
   CellIo io;

@@ -137,7 +137,7 @@ python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
 
 Run one step with `scripts/fetch_pdk.py pdk` or `scripts/fetch_pdk.py magic-ref`; both are no-ops once the data is present and verified. CI runs them in the `build` job behind `actions/cache`, keyed on `scripts/fetch_pdk.py` (where the pins live).
 
-The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only.
+The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried twice, after 2 s and 4 s; when GitHub cannot be reached at all (curl cannot resolve or connect, before the test or after the last attempt) the test skips instead of failing. Any other failure still fails it.
 
 ## Dependencies and offline rebuilds
 

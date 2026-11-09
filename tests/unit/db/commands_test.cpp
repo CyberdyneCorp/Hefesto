@@ -201,6 +201,72 @@ TEST_CASE("label, port and setlabel through commands (MODEL-G-038/043)", "[cap:l
   CHECK(s.editor.edit_cell->labels().back().port_index == 0);
 }
 
+TEST_CASE("a port is a label with direction bits; removing it clears every port flag",
+          "[cap:layout-labels-ports][req:Ports]") {
+  HEFESTO_REQUIRE_MT(mt);
+  Session s(mt);
+  s.editor.edit_cell->set_bboxes({0, 0, 30, 30}, {0, 0, 30, 30});
+  s.ok("snap internal");
+  s.ok("box 0 0 4 4");
+  s.ok("paint metal1");
+  s.ok("box 10 0 14 4");
+  s.ok("paint metal1");
+  s.ok("box 2 2 2 2");
+  s.ok("label VDD north metal1");
+  s.ok("port make");
+  s.ok("port use power");
+  s.ok("port class inout");
+  s.ok("port shape abutment");
+  s.ok("setlabel sticky 1");
+  s.ok("box 12 2 12 2");
+  s.ok("label VDD north metal1");
+  s.ok("port make");
+  s.ok("port index 1");
+  auto& labels = s.editor.edit_cell->labels();
+  REQUIRE(labels.size() == 2);
+  // The data model does not enforce index uniqueness: both VDD labels share
+  // index 1 and so denote one terminal (port renumbering keeps that).
+  labels[0].port_index = 1;
+  CHECK(labels[0].is_port());
+  CHECK(labels[1].is_port());
+  CHECK(labels[0].port_index == labels[1].port_index);
+  s.ok("port renumber");
+  CHECK(labels[0].port_index == labels[1].port_index);
+
+  s.ok("box 2 2 2 2");
+  CHECK(s.run("port exists").value.to_string() == "1");
+  s.editor.edit_cell->flags() = db::CellFlags{};
+  s.ok("port remove");
+  CHECK(s.run("port exists").value.to_string() == "0");
+  const db::Label& removed = labels[0];
+  CHECK_FALSE(removed.is_port());
+  CHECK(removed.port_directions == 0);
+  CHECK(removed.port_class == db::PortClass::default_class);
+  CHECK(removed.port_use == db::PortUse::default_use);
+  CHECK(removed.port_shape == db::PortShape::default_shape);
+  CHECK_FALSE(removed.sticky);
+  CHECK(s.editor.edit_cell->flags().modified);
+}
+
+TEST_CASE("property set and remove mark the cell modified and pending a new stamp",
+          "[cap:layout-properties][req:Property changes and modification/undo]") {
+  HEFESTO_REQUIRE_MT(mt);
+  Session s(mt);
+  s.editor.edit_cell->flags() = db::CellFlags{};
+  s.ok("property x 1");
+  CHECK(s.editor.edit_cell->flags().modified);
+  CHECK(s.editor.edit_cell->flags().needs_new_timestamp);
+  s.editor.edit_cell->flags() = db::CellFlags{};
+  cmd::Invocation remove;
+  remove.name = "property";
+  remove.args = {"x", ""};
+  REQUIRE(s.dispatcher->execute(remove).ok());
+  CHECK(s.editor.edit_cell->properties().find("x") == nullptr);
+  CHECK(s.editor.edit_cell->flags().modified);
+  CHECK(s.editor.edit_cell->flags().needs_new_timestamp);
+  // Undo (layout-undo) arrives with M2; M1 has no undo history to record into.
+}
+
 TEST_CASE("port attributes take Magic's keywords and synonyms only",
           "[cap:cmd-labels-properties][req:Port attributes][regression]") {
   // Regression: `port use reset` was accepted (Magic prints its usage), and

@@ -10,7 +10,7 @@ schema = 1
 id = "TECH-G25"
 area = "TECH"
 capability = "tech-compose-and-connect"
-requirements = ["Contact compose and decompose rules", "Finalization step 4"]
+requirements = ["Contact compose and decompose rules", "Finalization step 4, saved contact rules"]
 tool = "magic"
 description = "tiny.tech plus pdc and 'compose pdc pdiff m1': P/E dump of pdc, pdiff, metal1."
 

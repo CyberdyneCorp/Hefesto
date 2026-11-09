@@ -9,7 +9,7 @@ schema = 1
 id = "TECH-G19"
 area = "TECH"
 capability = "tech-compose-and-connect"
-requirements = ["Finalization step 3a"]
+requirements = ["Finalization step 3a, painting over a contact"]
 tool = "magic"
 description = "ndiff painted over a 4x4 pc (Q-TECH-23)."
 

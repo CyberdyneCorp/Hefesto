@@ -9,7 +9,7 @@ schema = 1
 id = "CELL-LIB-03"
 area = "CELL"
 capability = "cell-library-resolution"
-requirements = ["Automatic technology discovery", "Technology check on read"]
+requirements = ["Automatic technology discovery"]
 tool = "magic"
 description = "Technology mismatch with paint loaded (tiny vs a scmos cell); load -force."
 

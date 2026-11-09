@@ -302,3 +302,92 @@ TEST_CASE("scaling FIXED_BBOX leaves integer properties alone", PR "[req:Geometr
   const db::PropertyValue plane{db::PlaneValue{{Rect{0, 0, 4, 4}}}};
   CHECK(db::scale_property(plane, 3, 1) == db::PropertyValue{db::PlaneValue{{Rect{0, 0, 12, 12}}}});
 }
+
+#define FL "[cap:font-labels]"
+
+// Regression: put_label kept a font index beyond the loaded fonts.
+TEST_CASE("a font index outside the loaded fonts makes a default-font label",
+          FL "[req:Font label attributes][regression]") {
+  db::CellDef d("a", 8);
+  db::Label lab = make_label("f", {0, 0, 0, 0});
+  lab.font = 5;
+  lab.size = 80;
+  lab.rotation = 45;
+  lab.offset = db::Point{8, 8};
+  REQUIRE(db::put_label(d, lab, false, 2).ok());  // two fonts loaded
+  const db::Label& stored = d.labels().back();
+  CHECK(stored.font == -1);
+  CHECK(stored.size == 0);
+  CHECK(stored.rotation == 0);
+  CHECK(stored.offset == db::Point{});
+
+  lab.font = 1;  // in range: every font attribute is kept (size and offset in 1/8 units)
+  REQUIRE(db::put_label(d, lab, false, 2).ok());
+  CHECK(d.labels().back().font == 1);
+  CHECK(d.labels().back().size == 80);
+  CHECK(d.labels().back().rotation == 45);
+  CHECK(d.labels().back().offset == db::Point{8, 8});
+
+  // Without a justification, it is chosen as for default labels.
+  d.set_bboxes({0, 0, 30, 30}, {0, 0, 30, 30});
+  lab.rect = Rect{28, 15, 28, 15};
+  auto placed = db::put_label(d, lab, true, 2);
+  REQUIRE(placed.ok());
+  CHECK(placed.value()->justification == db::kWest);
+}
+
+TEST_CASE("a default-font label has no rendered text box", LP "[req:Rendered text box of outline-font labels]") {
+  db::CellDef d("a", 8);
+  db::Label lab = make_label("t", {0, 0, 2, 2});
+  lab.text_bbox = Rect{-5, 0, 30, 4};  // stale: the label has the default font
+  REQUIRE(db::put_label(d, lab).ok());
+  CHECK_FALSE(d.labels().back().text_bbox.has_value());
+  db::recompute_bbox(d);
+  CHECK(d.extended_bbox() == Rect{0, 0, 2, 2});  // only the label rectangle contributes
+}
+
+TEST_CASE("font label rotation and offset follow the instance transform", FL "[req:Transforming font labels]") {
+  // (x, y) -> (-y, x): diagonal terms zero, top-right term negative: +270.
+  const db::Transform ccw{0, -1, 0, 1, 0, 0};
+  CHECK(db::transform_angle(ccw, 30, true) == 300);
+  CHECK(db::apply(db::Transform{ccw.a, ccw.b, 0, ccw.d, ccw.e, 0}, db::Point{8, 0}) == db::Point{0, 8});
+  // (x, y) -> (y, -x): top-right positive adds 90 in magic-compat; -90 with it off (Q-MODEL-1).
+  const db::Transform cw{0, 1, 0, -1, 0, 0};
+  CHECK(db::transform_angle(cw, 30, true) == 120);
+  CHECK(db::transform_angle(cw, 30, false) == 300);
+  // Mirror in x (a < 0, a != e): +180 then mirrored; 30 is outside (90, 270).
+  CHECK(db::transform_angle(db::Transform{-1, 0, 0, 0, 1, 0}, 30, true) == 150);
+  // Upside down (a = e = -1): +180, no mirror.
+  CHECK(db::transform_angle(db::Transform{-1, 0, 0, 0, -1, 0}, 30, true) == 210);
+  // Rotated and mirrored (b = d): 90 + 30 = 120, mirrored to 360 - 120 = 240.
+  CHECK(db::transform_angle(db::Transform{0, 1, 0, 1, 0, 0}, 30, true) == 240);
+}
+
+TEST_CASE("plain flatten copies font label rotation and offset untransformed in magic-compat",
+          FL "[req:Transforming font labels]") {
+  HEFESTO_REQUIRE_MT(mt);
+  for (const bool compat : {true, false}) {
+    db::CellLibrary lib;
+    auto* top = lib.create("top", mt.tech->plane_count()).value();
+    auto* child = lib.create("child", mt.tech->plane_count()).value();
+    db::Label lab = make_label("F", {0, 0, 0, 0}, mt.m1);
+    lab.font = 0;
+    lab.size = 64;
+    lab.rotation = 30;
+    lab.offset = db::Point{8, 0};
+    REQUIRE(db::put_label(*child, lab, false, 1).ok());
+    db::PlaceOptions o;
+    o.transform = db::Transform{0, -1, 0, 1, 0, 0};
+    REQUIRE(db::place(*top, *child, o).ok());
+    db::FlattenOptions fo;
+    fo.magic_compat = compat;
+    auto flat = db::flatten_to_new(lib, *top, compat ? "flat_c" : "flat", *mt.tech, fo);
+    REQUIRE(flat.ok());
+    REQUIRE(flat.value()->labels().size() == 1);
+    const db::Label& out = flat.value()->labels().front();
+    INFO("magic_compat " << compat);
+    CHECK(out.size == 64);  // size is unchanged
+    CHECK(out.rotation == (compat ? 30 : 300));  // Q-MISC-21
+    CHECK(out.offset == (compat ? db::Point{8, 0} : db::Point{0, 8}));
+  }
+}
