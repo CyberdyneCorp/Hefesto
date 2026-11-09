@@ -81,6 +81,7 @@ include(Dependencies)
 add_subdirectory(src/core)
 
 if(NOT HEFESTO_IS_IOS)
+  add_subdirectory(src/platform_posix)  # POSIX host services for the CLI and desktop
   add_subdirectory(src/cli)
 else()
   add_subdirectory(tests/ios)  # link probe: the core links on iPadOS

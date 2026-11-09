@@ -5,14 +5,12 @@
 // F_GETLK for a conflicting whole-file write lock, then F_SETLK on a
 // descriptor kept open while the lock is held.
 
-#include "posix_lock_service.hpp"
+#include "hefesto/platform_posix/lock_service.hpp"
 
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <string>
-
-namespace hefesto::cli {
+namespace hefesto::platform_posix {
 
 namespace {
 
@@ -65,4 +63,8 @@ void PosixLockService::release(const platform::Path& file) {
   }
 }
 
-}  // namespace hefesto::cli
+std::unique_ptr<cell::FileLockService> make_lock_service() {
+  return std::make_unique<PosixLockService>();
+}
+
+}  // namespace hefesto::platform_posix

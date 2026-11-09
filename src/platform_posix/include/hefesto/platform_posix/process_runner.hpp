@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// POSIX implementation of the ProcessRunner platform service. It lives in the
-// CLI host because the core must not spawn processes (capability
-// hefesto-architecture, requirement "Platform-independent core").
+// POSIX implementation of the ProcessRunner platform service (posix_spawn).
+// It lives outside the core because the core must not spawn processes
+// (capability hefesto-architecture, requirement "Platform-independent
+// core"); the CLI and the desktop both link it.
 
 #pragma once
 
 #include "hefesto/platform/process_runner.hpp"
 
-namespace hefesto::cli {
+namespace hefesto::platform_posix {
 
 class PosixProcessRunner final : public platform::ProcessRunner {
  public:
@@ -21,4 +22,4 @@ class PosixProcessRunner final : public platform::ProcessRunner {
   [[nodiscard]] diag::Outcome<platform::ProcessOutput> run(const platform::ProcessRequest& request) override;
 };
 
-}  // namespace hefesto::cli
+}  // namespace hefesto::platform_posix

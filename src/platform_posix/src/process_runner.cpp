@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 
-#include "posix_process_runner.hpp"
+#include "hefesto/platform_posix/process_runner.hpp"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -21,7 +21,7 @@
 
 extern char** environ;  // NOLINT(readability-redundant-declaration)
 
-namespace hefesto::cli {
+namespace hefesto::platform_posix {
 
 namespace {
 
@@ -242,4 +242,4 @@ diag::Outcome<ProcessOutput> PosixProcessRunner::run(const ProcessRequest& reque
   return output;
 }
 
-}  // namespace hefesto::cli
+}  // namespace hefesto::platform_posix
