@@ -72,6 +72,11 @@ endif()
 
 # --- Toolchain settings and dependencies ---------------------------------
 
+# The macOS HTTPS Fetcher bridges to URLSession in Objective-C++ (src/platform_net).
+if(APPLE AND NOT HEFESTO_IS_IOS)
+  enable_language(OBJCXX)
+endif()
+
 include(CompilerWarnings)
 include(Sanitizers)
 include(Dependencies)
@@ -82,6 +87,7 @@ add_subdirectory(src/core)
 
 if(NOT HEFESTO_IS_IOS)
   add_subdirectory(src/platform_posix)  # POSIX host services for the CLI and desktop
+  add_subdirectory(src/platform_net)    # HTTPS Fetcher: URLSession (macOS) or libcurl (Linux)
   add_subdirectory(src/cli)
 else()
   add_subdirectory(tests/ios)  # link probe: the core links on iPadOS

@@ -8,7 +8,7 @@
 // used by `crash recover` (cell-io-safety "Crash recovery", "Import of
 // Magic crash backups").
 //
-// Install: `hefesto::cell::cell_session(editor).host = hefesto::platform_posix::make_file_host();`
+// Install: `editor.cell_session.host = hefesto::platform_posix::make_file_host();`
 //
 // Owner: CELL (openspec/changes/m1-core-viewer/design.md, D2).
 

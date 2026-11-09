@@ -92,8 +92,9 @@ class FileGrowthReporter {
   std::thread worker_;
 };
 
-// curl through the platform ProcessRunner. HTTPS uses curl's system trust
-// store; `--proto =https,file` refuses plain HTTP and other schemes.
+// curl through the platform ProcessRunner: the fallback for hosts without
+// hefesto::platform_net's in-process HTTPS Fetcher. HTTPS uses curl's system
+// trust store; `--proto =https,file` refuses plain HTTP and other schemes.
 class ProcessFetcher final : public Fetcher {
  public:
   ProcessFetcher(platform::ProcessRunner& runner, std::optional<std::string> token)
@@ -274,6 +275,10 @@ bool have_zstd_library() noexcept {
 
 std::unique_ptr<Decompressor> make_default_decompressor(platform::ProcessRunner& runner) {
   (void)runner;  // kept for API stability: the decoder no longer runs a process
+  return make_default_decompressor();
+}
+
+std::unique_ptr<Decompressor> make_default_decompressor() {
   return std::make_unique<LibraryDecompressor>();
 }
 

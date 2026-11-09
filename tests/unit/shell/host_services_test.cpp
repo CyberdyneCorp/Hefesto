@@ -65,7 +65,7 @@ TEST_CASE("a desktop session installs the managed PDK store, the lock service an
   CHECK(core.pdk_manager()->root() == dir.path / "pdks");
   CHECK(core.services().processes.supported());
   REQUIRE(core.editor().locks != nullptr);
-  CHECK(cell::cell_session(core.editor()).import_magic_backups);
+  CHECK(core.editor().cell_session.import_magic_backups);
   // `crashbackups start` arms the desktop's clock (the core's default interval).
   CHECK_FALSE(core.backup_timer_seconds());
   const auto started =

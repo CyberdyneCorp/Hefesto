@@ -118,13 +118,6 @@ void scan_magic_backups(platform::FileSystem& fs, FileHost& host, const platform
 
 }  // namespace
 
-CellSession& cell_session(editor::EditorState& ed) {
-  if (!ed.locks) {
-    ed.locks = make_in_process_lock_service();
-  }
-  return ed.locks->session();
-}
-
 std::string make_session_id() {
   static constexpr std::string_view kHex = "0123456789abcdef";
   std::random_device rd;
@@ -187,7 +180,7 @@ std::vector<RecoveryCandidate> find_recovery_candidates(platform::FileSystem& fs
 }
 
 void end_crash_session(editor::EditorState& ed, platform::FileSystem& fs) {
-  CellSession& s = cell_session(ed);
+  CellSession& s = ed.cell_session;
   if (s.session_id.empty() || s.backup_directory.empty()) {
     return;
   }
@@ -196,7 +189,9 @@ void end_crash_session(editor::EditorState& ed, platform::FileSystem& fs) {
   }
   (void)fs.remove(s.backup_directory / (s.session_id + ".backup"));
   const platform::Path lock = s.backup_directory / (s.session_id + ".lock");
-  ed.locks->release(lock);
+  if (ed.locks) {
+    ed.locks->release(lock);
+  }
   (void)fs.remove(lock);
   s.backup_file.clear();
   s.backup_explicit = false;
@@ -208,7 +203,7 @@ void run_backup_timer(cmd::Dispatcher& dispatcher) {
   if (ed == nullptr) {
     return;
   }
-  CellSession& s = cell_session(*ed);
+  CellSession& s = ed->cell_session;
   if (s.backup_timer != CellSession::BackupTimer::running) {
     return;  // stopped after the host armed the timer
   }

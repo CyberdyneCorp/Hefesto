@@ -12,6 +12,7 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
+#include "hefesto/platform_net/http_fetcher.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/version.hpp"
@@ -56,9 +57,19 @@ platform::SessionLog open_session_log(platform::PortableServices& services, cons
 pdk::SessionPdk install_pdk_services(platform::PortableServices& services, const HostServices& host) {
   if (!host.posix) return {};
   services.set_process_runner(std::make_unique<platform_posix::PosixProcessRunner>());
-  pdk::SessionPdk pdk = pdk::make_session_pdk(services.files(), services.view().processes, host.pdk_root);
+  // hefesto-licensing D-13: in-process HTTPS (URLSession on macOS, libcurl on Linux).
+  platform_net::HttpFetcherOptions fetch;
+  fetch.github_token = pdk::make_local_install_host()->environment("GITHUB_TOKEN");
+  pdk::SessionPdk pdk = pdk::make_session_pdk(services.files(), platform_net::make_http_fetcher(fetch), host.pdk_root);
   services.set_pdk_store(pdk::make_managed_pdk_store(*pdk.manager, *pdk.host));
   return pdk;
+}
+
+/// The `pdk` command's host mechanisms: the HTTPS Fetcher with host services,
+/// else the core defaults (hermetic tests).
+pdk::CommandHosts pdk_command_hosts(const HostServices& host, pdk::InstallHost* install_host) {
+  if (!host.posix || install_host == nullptr) return {};
+  return pdk::CommandHosts{platform_net::http_fetcher_factory(install_host->environment("GITHUB_TOKEN")), {}, {}};
 }
 
 }  // namespace
@@ -72,7 +83,7 @@ CoreSession::CoreSession(platform::PortableOptions options, std::optional<platfo
   if (host.posix) {
     editor_.locks = platform_posix::make_lock_service();
   }
-  cell::CellSession& cell = cell::cell_session(editor_);
+  cell::CellSession& cell = editor_.cell_session;
   if (host.posix) {
     cell.host = platform_posix::make_file_host();
     cell.import_magic_backups = true;
@@ -80,7 +91,7 @@ CoreSession::CoreSession(platform::PortableOptions options, std::optional<platfo
   auto timer = std::make_unique<DeadlineTimer>();
   timer_ = timer.get();
   cell.timer = std::move(timer);
-  cmd::register_all_commands(registry_);
+  cmd::register_all_commands(registry_, pdk_command_hosts(host, pdk_.host.get()));
   dispatcher_.set_editor(&editor_);
   dispatcher_.add_observer(command_log_);
   dispatcher_.add_observer(redisplay_);  // before the UI listener, which redraws

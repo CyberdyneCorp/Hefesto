@@ -8,6 +8,7 @@
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/pdk/catalog.hpp"
+#include "hefesto/platform_net/http_fetcher.hpp"
 #include "side_panels.hpp"
 
 namespace hefesto::shell {
@@ -293,10 +294,8 @@ void PdkPanel::start_job(const std::string& line) {
   setup.options = platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}};
   setup.settings = ctx_.editor().settings;
   if (shared_manager_ != nullptr) setup.settings.set(app::SettingLayer::session, app::kPdkRoot, manager().root().string());
-  // The session's process runner outlives the job (the panel waits for it).
-  platform::ProcessRunner* runner = &ctx_.core.services().processes;
-  std::optional<std::string> token = host_->environment("GITHUB_TOKEN");
-  setup.hosts.fetcher = [runner, token](platform::PlatformServices&) { return pdk::make_process_fetcher(*runner, token); };
+  // hefesto-licensing D-13: the job downloads in process (URLSession or libcurl).
+  setup.hosts.fetcher = platform_net::http_fetcher_factory(host_->environment("GITHUB_TOKEN"));
   job_failed_ = false;
   if (!job_.start(line, std::move(setup))) return;
   progress_view_ = PdkProgressView{0.0, "Starting: " + line};

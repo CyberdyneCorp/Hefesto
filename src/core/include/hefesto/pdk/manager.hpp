@@ -9,9 +9,11 @@
 // parts of hefesto-files-and-pdks "PDK store").
 //
 // The core never opens sockets: downloads go through a host-supplied
-// Fetcher. Hosts that can run processes get a curl-based Fetcher over the
-// platform ProcessRunner (make_process_fetcher); the in-process HTTPS
-// clients of hefesto-licensing D-13 (URLSession, libcurl) replace it later.
+// Fetcher. hefesto-cli and the desktop install the in-process HTTPS Fetcher
+// of hefesto-licensing D-13 (URLSession on macOS, libcurl on Linux;
+// hefesto::platform_net, outside the core). A host that supplies none but
+// can run processes gets the curl-process Fetcher over the platform
+// ProcessRunner (make_process_fetcher), else the unsupported one.
 // The manager works on the local disk (std::filesystem): installs stream
 // archives of hundreds of megabytes, which platform::FileSystem (whole-file
 // reads) cannot do. Environment, home directory and symbolic links go
@@ -60,7 +62,8 @@ class Fetcher {
 /// A Fetcher that always fails with PLATFORM-UNSUPPORTED-001 (headless default).
 [[nodiscard]] std::unique_ptr<Fetcher> make_unsupported_fetcher();
 
-/// A Fetcher that runs `curl` through `runner` (HTTPS with the system
+/// A Fetcher that runs `curl` through `runner` (fallback for hosts without
+/// the platform_net HTTPS Fetcher; HTTPS with the system
 /// trust store, `file://` for local catalogs, `-C -` resume). A GitHub API
 /// token is taken from `github_token` when set (passed on stdin, never argv).
 [[nodiscard]] std::unique_ptr<Fetcher> make_process_fetcher(platform::ProcessRunner& runner,
@@ -84,6 +87,7 @@ class Decompressor {
 /// PDK-UNPACK limit as soon as the output exceeds `max_bytes`. `runner` is
 /// unused (kept for API stability).
 [[nodiscard]] std::unique_ptr<Decompressor> make_default_decompressor(platform::ProcessRunner& runner);
+[[nodiscard]] std::unique_ptr<Decompressor> make_default_decompressor();
 /// True: the zstd library is always linked into the core.
 [[nodiscard]] bool have_zstd_library() noexcept;
 
@@ -306,13 +310,12 @@ class PdkManager {
                                                                          std::optional<PinnedVersion> pin = std::nullopt);
 
 /// The PDK manager of one front-end session with its host mechanisms
-/// (hefesto-files-and-pdks "PDK store"): the local install host, a curl
-/// Fetcher when `runner` can run processes (else the unsupported one), the
-/// zstd decoder, and a manager whose root is `root`, else PDK_ROOT, else
-/// ~/.ciel. Keep it alive as long as the PortableServices that hold the
-/// store made from it:
+/// (hefesto-files-and-pdks "PDK store"): the local install host, `fetcher`
+/// (front ends pass platform_net::make_http_fetcher), the zstd decoder, and
+/// a manager whose root is `root`, else PDK_ROOT, else ~/.ciel. Keep it
+/// alive as long as the PortableServices that hold the store made from it:
 ///
-///   pdk_ = pdk::make_session_pdk(services.files(), runner, pdk_root);
+///   pdk_ = pdk::make_session_pdk(services.files(), platform_net::make_http_fetcher(options), pdk_root);
 ///   services.set_pdk_store(pdk::make_managed_pdk_store(*pdk_.manager, *pdk_.host));
 ///   // ... then take services.view()
 struct SessionPdk {
@@ -322,6 +325,10 @@ struct SessionPdk {
   std::unique_ptr<PdkManager> manager;
 };
 
+[[nodiscard]] SessionPdk make_session_pdk(platform::FileSystem& fs, std::unique_ptr<Fetcher> fetcher,
+                                          const std::optional<platform::Path>& root = std::nullopt);
+/// The same with the curl-process Fetcher when `runner` can run processes
+/// (GITHUB_TOKEN from the environment), else the unsupported one.
 [[nodiscard]] SessionPdk make_session_pdk(platform::FileSystem& fs, platform::ProcessRunner& runner,
                                           const std::optional<platform::Path>& root = std::nullopt);
 

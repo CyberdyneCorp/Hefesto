@@ -45,9 +45,22 @@ cmd::CommandResult fail(std::string_view code, std::string text) {
   return cmd::CommandResult::failure(diag::make(code, std::move(text)));
 }
 
+namespace {
+
+/// The session's CELL state, with the in-process lock service installed
+/// when the session has none (crash backups hold a session lock).
+CellSession& prepared_session(editor::EditorState& editor) {
+  if (!editor.locks) {
+    editor.locks = make_in_process_lock_service();
+  }
+  return editor.cell_session;
+}
+
+}  // namespace
+
 IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
     : ed(editor),
-      session(cell_session(editor)),
+      session(prepared_session(editor)),
       command(cmd_ctx),
       io{cmd_ctx.services().files,
          cmd_ctx.services().clock,

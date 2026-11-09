@@ -17,6 +17,7 @@
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/cell.hpp"
+#include "hefesto/db/commands.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
@@ -293,6 +294,22 @@ TEST_CASE("scalegrid scales the box once with magic-compat off",
   s.editor.box = db::Rect{0, 0, 3, 5};
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
   CHECK(*s.editor.box == db::Rect{0, 0, 6, 10});
+}
+
+// Regression (8.1 close-out): metric units used the output style as read,
+// ignoring `scalegrid` (Magic rescales it with CIFTechOutputScale).
+TEST_CASE("metric coordinates follow scalegrid", "[cap:cmd-coordinates-and-units][req:Unit suffixes]") {
+  Session s;
+  REQUIRE(hefesto::db::register_db_commands(s.registry));
+  s.file("/t/m.tech", with(tiny(), "cifoutput\nend", "cifoutput\nstyle s\nscalefactor 10 nanometers\nend"));
+  REQUIRE(s.run("tech", {"load", "/t/m", "-noprompt"}).ok());
+  s.editor.edit_cell = s.painted_cell(6, 13, db::Rect{0, 0, 1, 1});
+  // Centimicrons: divisors 1.0 and 0.5 are exact in single precision.
+  REQUIRE(s.run("box", {"0", "0", "100cu", "6cu"}).ok());
+  CHECK(*s.editor.box == db::Rect{0, 0, 100, 6});  // 10 nm per internal unit
+  REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
+  REQUIRE(s.run("box", {"0", "0", "100cu", "6cu"}).ok());
+  CHECK(*s.editor.box == db::Rect{0, 0, 200, 12});  // 5 nm per internal unit
 }
 
 TEST_CASE("a lookup after a load reports TechPrintLine's end-of-file location",

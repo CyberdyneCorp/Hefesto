@@ -3,6 +3,8 @@
 
 #include "hefesto/cmd/all_commands.hpp"
 
+#include <utility>
+
 #include "hefesto/cell/commands.hpp"
 #include "hefesto/cmd/builtins.hpp"
 #include "hefesto/db/commands.hpp"
@@ -14,6 +16,10 @@
 namespace hefesto::cmd {
 
 bool register_all_commands(CommandRegistry& registry) {
+  return register_all_commands(registry, pdk::CommandHosts{});
+}
+
+bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_hosts) {
   // Every area registers even if an earlier one failed, so one duplicate
   // name does not hide the rest of the command set.
   bool ok = register_builtins(registry);
@@ -22,7 +28,7 @@ bool register_all_commands(CommandRegistry& registry) {
   ok = cell::register_cell_commands(registry) && ok;
   ok = view::register_view_commands(registry) && ok;
   ok = view::register_view_and_zoom(registry) && ok;
-  ok = pdk::register_pdk_commands(registry) && ok;
+  ok = pdk::register_pdk_commands(registry, std::move(pdk_hosts)) && ok;
   return ok;
 }
 

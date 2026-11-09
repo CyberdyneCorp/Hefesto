@@ -1,6 +1,6 @@
 # Building Hefesto
 
-Hefesto builds with CMake 3.25 or later and a C++20 compiler: GCC 11+, Clang 14+ or Apple Clang 15+ (capability `hefesto-platform-targets`). Builds are out of tree, under `build/<preset>`.
+Hefesto builds with CMake 3.25 or later and a C++20 compiler: GCC 11+, Clang 14+ or Apple Clang 15+ (capability `hefesto-platform-targets`). Builds are out of tree, under `build/<preset>`. On Linux, the pinned libcurl that `hefesto-cli` and the desktop download with is built against the system OpenSSL 3, so install its headers first (`libssl-dev` on Debian and Ubuntu, `openssl-devel` on Fedora).
 
 ## Quick start
 
@@ -102,7 +102,7 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `--no-vsync`, `--validation` | presentation without vsync; Vulkan validation layers |
 | `--rects N`, `--seed N`, `--bench-frames N`, `--bench-output FILE`, `--smoke-frames N`, `--expect-window-system` | benchmark and smoke-test modes (`docs/spikes/canvas-spike.md`, CI window tests) |
 
-The desktop installs the same host services as `hefesto-cli` (`src/platform_posix`: POSIX file locks, the crash-backup file host, the process runner for `curl`): a session holds a lock on its crash-backup file, `crashbackups` saves periodically, SIGTERM and SIGHUP save a backup before exiting, a normal exit removes it, and `-r` (or `crash recover`) restores the newest backup whose session is gone.
+The desktop installs the same host services as `hefesto-cli` (`src/platform_posix`: POSIX file locks, the crash-backup file host, the process runner; `src/platform_net`: the HTTPS Fetcher): a session holds a lock on its crash-backup file, `crashbackups` saves periodically, SIGTERM and SIGHUP save a backup before exiting, a normal exit removes it, and `-r` (or `crash recover`) restores the newest backup whose session is gone.
 
 ### Managing PDKs
 
@@ -119,7 +119,7 @@ The `pdk` command (both front ends; capability `hefesto-pdk-manager`) manages th
 | `pdk import PACK ?-accept-unverified? ?-progress?` | install from an offline pack without network access; every asset is verified, and the install is recorded as unverified (packs are not signed yet) |
 | `pdk enable`, `pin`, `info`, `remove-library`, `root` | see the usage that `pdk` prints without arguments |
 
-Downloads use the system `curl` through the process runner; `GITHUB_TOKEN`, when set, is passed for the GitHub API.
+Downloads run in process (capability `hefesto-licensing`, decision D-13; `src/platform_net`): URLSession on macOS, the pinned libcurl on Linux, HTTPS with the system trust store, redirects followed, `file://` read from disk. A partial download is resumed with a range request, and a transient failure (timeout, host not resolved, connection lost, HTTP 408, 429, 500, 502, 503 or 504) is retried three times after 1 s, 2 s and 4 s, like `curl --retry 3`. `GITHUB_TOKEN`, when set, is sent to the GitHub API only (`api.github.com`). The core keeps a `curl`-process Fetcher (`pdk::make_process_fetcher`) for hosts that supply none.
 
 ## Reference data for tests
 
@@ -137,11 +137,11 @@ python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
 
 Run one step with `scripts/fetch_pdk.py pdk` or `scripts/fetch_pdk.py magic-ref`; both are no-ops once the data is present and verified. CI runs them in the `build` job behind `actions/cache`, keyed on `scripts/fetch_pdk.py` (where the pins live).
 
-The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (curl cannot resolve or connect) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
+The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 
 ## Dependencies and offline rebuilds
 
-All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, Catch2, and Raven for the desktop build) and fetched with CMake FetchContent into `.cache/deps/<preset>`. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
+All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and fetched with CMake FetchContent into `.cache/deps/<preset>`. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
 
 ```sh
 cmake --preset macos-debug -DFETCHCONTENT_FULLY_DISCONNECTED=ON
@@ -155,6 +155,7 @@ cmake --build --preset macos-debug
 | `src/core/` | `hefesto_core`: layout database, algorithms, command API, diagnostics; no UI, GPU or process APIs |
 | `src/cli/` | `hefesto-cli`, the headless tool used by batch flows and golden tests |
 | `src/platform_posix/` | `hefesto_platform_posix`: POSIX host services the core must not contain (file locks, crash-backup file host, process runner); linked by the CLI and the desktop on Linux and macOS |
+| `src/platform_net/` | `hefesto_platform_net`: the in-process HTTPS Fetcher of the PDK manager (URLSession bridge in Objective-C++ on macOS, libcurl on Linux; hefesto-licensing D-13); linked by the CLI and the desktop |
 | `src/render/vulkan/` | `hefesto_render_vk`, the Vulkan canvas renderer (desktop) |
 | `src/shell/desktop/` | `hefesto_shell_desktop` and the `hefesto` app; the only code that uses Raven |
 | `tests/unit/` | Catch2 unit tests, tagged with the capability and requirement they cover |

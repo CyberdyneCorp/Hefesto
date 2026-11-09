@@ -37,12 +37,46 @@ system's on Linux.
 | Magic VLSI (ported logic) | 8.3.694, commit `fc5daa9e2856b89a0a3056f296ded1fd4474e39e` | UC Berkeley permissive notice | all packages (core) | https://github.com/RTimothyEdwards/magic |
 | Inter (UI font) | 4.1, archive SHA-256 `9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e` | OFL-1.1 | desktop | https://github.com/rsms/inter |
 | JetBrains Mono (UI font) | 2.304, archive SHA-256 `6f6376c6ed2960ea8a963cd7387ec9d76e3f629125bc33d1fdcd7eb7012f7bbf` | OFL-1.1 | desktop | https://github.com/JetBrains/JetBrainsMono |
+| libcurl (HTTPS client) | curl-8_23_0 (8.23.0), release archive SHA-256 `8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5` | curl (MIT-style) | Linux CLI and desktop | https://github.com/curl/curl |
+| OpenSSL 3.x (TLS for libcurl) | the system's (`libssl`), linked dynamically, not bundled | Apache-2.0 | Linux, from the system | https://github.com/openssl/openssl |
 
 Fonts are data files (`assets/fonts/`, unmodified, with their license texts beside them; see
 `assets/fonts/README.md`). Magic's FreeSans, FreeSerif and FreeMono `.pt3` outline fonts are not
 bundled: they are read at run time from a Magic installation (`$CAD_ROOT/magic/sys`). PDK data
 (`.cache/pdks`) and Magic's display-style files used by tests (`build/ref/magic`) are fetched by
 `scripts/fetch_pdk.py` and never committed or shipped.
+
+## libcurl
+
+The Linux CLI and desktop download PDK catalogs and assets over HTTPS with libcurl
+(`hefesto::curl`, static, HTTP and HTTPS only, `src/platform_net/src/curl_transport.cpp`; capability
+`hefesto-licensing`, decision D-13). TLS comes from the system OpenSSL 3, which is not bundled.
+macOS uses the system URLSession framework instead and contains no libcurl or OpenSSL.
+
+```text
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright (c) 1996 - 2026, Daniel Stenberg, <daniel@haxx.se>, and many
+contributors, see the THANKS file.
+
+All rights reserved.
+
+Permission to use, copy, modify, and distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright
+notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. IN
+NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+OR OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall not
+be used in advertising or otherwise to promote the sale, use or other dealings
+in this Software without prior written authorization of the copyright holder.
+```
 
 ## Zstandard
 

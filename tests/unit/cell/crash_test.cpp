@@ -34,7 +34,7 @@ const Path kDir = "/state/crash";
 /// shared with every other session made from `registry`.
 std::unique_ptr<CommandSession> make_session(const std::shared_ptr<cell::LockRegistry>& registry) {
   auto s = std::make_unique<CommandSession>(cell::make_in_process_lock_service(registry));
-  cell::cell_session(s->editor).backup_directory = kDir;
+  s->editor.cell_session.backup_directory = kDir;
   return s;
 }
 
@@ -108,7 +108,7 @@ TEST_CASE("crash save writes the modified cells and creates the session files",
   (void)modified_cell(*s, "top");
   const auto r = s->run("crash", {"save"});
   REQUIRE(r.ok());
-  const cell::CellSession& cs = cell::cell_session(s->editor);
+  const cell::CellSession& cs = s->editor.cell_session;
   REQUIRE(cs.session_id.size() == 32);
   const Path backup = kDir / (cs.session_id + ".backup");
   const Path lock = kDir / (cs.session_id + ".lock");
@@ -120,6 +120,35 @@ TEST_CASE("crash save writes the modified cells and creates the session files",
   CHECK(has_text(r, "Created database crash recovery file " + backup.generic_string()));
 }
 
+TEST_CASE("the session's CELL state lives in EditorState, not in the lock service",
+          "[cap:cell-io-safety][req:Crash backup location and session lock]") {
+  const auto registry = cell::make_lock_registry();
+  auto s = make_session(registry);
+  REQUIRE(s->run("locking", {"0"}).ok());
+  REQUIRE(s->run("crashbackups", {"stop"}).ok());
+  // A front end installs its own lock service after the session exists.
+  s->editor.locks = cell::make_in_process_lock_service(registry);
+  CHECK(s->editor.cell_session.backup_directory == kDir);
+  CHECK(s->run("locking").value.to_string() == "disabled");
+  REQUIRE(s->run("locking", {"1"}).ok());
+  (void)modified_cell(*s, "top");
+  REQUIRE(s->run("crash", {"save"}).ok());
+  const cell::CellSession& cs = s->editor.cell_session;
+  REQUIRE(cs.session_id.size() == 32);
+  CHECK(s->editor.locks->holds(kDir / (cs.session_id + ".lock")));
+}
+
+TEST_CASE("end_crash_session without a lock service still removes the session files",
+          "[cap:cell-io-safety][req:Crash backup location and session lock]") {
+  const auto registry = cell::make_lock_registry();
+  auto s = make_session(registry);
+  (void)modified_cell(*s, "top");
+  REQUIRE(s->run("crash", {"save"}).ok());
+  s->editor.locks.reset();
+  cell::end_crash_session(s->editor, s->files());
+  CHECK(names_in(s->files(), kDir).empty());
+}
+
 TEST_CASE("crash save with nothing modified creates no file", "[cap:cell-io-safety][req:Crash backup policy]") {
   const auto registry = cell::make_lock_registry();
   auto s = make_session(registry);
@@ -127,7 +156,7 @@ TEST_CASE("crash save with nothing modified creates no file", "[cap:cell-io-safe
   REQUIRE(s->run("load", {"top"}).ok());
   REQUIRE(s->run("crash", {"save"}).ok());
   CHECK(names_in(s->files(), kDir).empty());
-  CHECK(cell::cell_session(s->editor).session_id.empty());
+  CHECK(s->editor.cell_session.session_id.empty());
 }
 
 TEST_CASE("crash save skips read-only, internal and not-found cells", "[cap:cell-io-safety][req:Crash backup policy]") {
@@ -152,7 +181,7 @@ TEST_CASE("an explicit crash save target is used and kept at exit",
   REQUIRE(r.ok());
   CHECK(has_text(r, "Created database crash recovery file /work/bk"));  // Q-CELL-29: the new name
   CHECK(s->files().exists("/work/bk"));
-  const std::string id = cell::cell_session(s->editor).session_id;
+  const std::string id = s->editor.cell_session.session_id;
   CHECK(s->files().exists(kDir / (id + ".lock")));  // the lock still marks the session
   cell::end_crash_session(s->editor, s->files());
   CHECK(s->files().exists("/work/bk"));
@@ -167,7 +196,7 @@ TEST_CASE("normal exit removes the session files", "[cap:cell-io-safety][req:Cra
   CHECK(names_in(s->files(), kDir).size() == 2);
   cell::end_crash_session(s->editor, s->files());
   CHECK(names_in(s->files(), kDir).empty());
-  CHECK(cell::cell_session(s->editor).backup_file.empty());
+  CHECK(s->editor.cell_session.backup_file.empty());
 }
 
 TEST_CASE("the crash command's usage", "[cap:cmd-hierarchy][req:Crash backup command]") {
@@ -197,7 +226,7 @@ TEST_CASE("the backup directory falls back to the platform location", "[cap:cell
 #else
   const Path dir = "/home/ana/.local/state/hefesto/crash-backups";
 #endif
-  CHECK(cell::cell_session(s.editor).backup_directory == dir);
+  CHECK(s.editor.cell_session.backup_directory == dir);
   CHECK(names_in(s.files(), dir).size() == 2);
 }
 
@@ -239,7 +268,7 @@ TEST_CASE("recovery skips live sessions and takes an abandoned backup",
   auto live = make_session(registry);
   (void)modified_cell(*live, "livecell");
   REQUIRE(live->run("crash", {"save"}).ok());
-  const std::string live_id = cell::cell_session(live->editor).session_id;
+  const std::string live_id = live->editor.cell_session.session_id;
 
   auto fresh = make_session(registry);
   auto& fs = fresh->files();
@@ -251,7 +280,7 @@ TEST_CASE("recovery skips live sessions and takes an abandoned backup",
   fresh->write(kDir / (crashed + ".lock"), "");
 
   std::vector<Path> asked;
-  cell::cell_session(fresh->editor).confirm_recovery = [&asked](const Path& p) {
+  fresh->editor.cell_session.confirm_recovery = [&asked](const Path& p) {
     asked.push_back(p);
     return true;
   };
@@ -268,7 +297,7 @@ TEST_CASE("cancel at the recovery prompt reads nothing", "[cap:cell-io-safety][r
   const auto registry = cell::make_lock_registry();
   auto s = make_session(registry);
   s->write(kDir / "abc.backup", "file top\nmagic\ntech tiny\ntimestamp 5\n<< end >>\nend\n");
-  cell::cell_session(s->editor).confirm_recovery = [](const Path&) { return false; };
+  s->editor.cell_session.confirm_recovery = [](const Path&) { return false; };
   REQUIRE(s->run("crash", {"recover"}).ok());
   CHECK(s->editor.cells.find("top") == nullptr);
   CHECK(s->files().exists(kDir / "abc.backup"));
@@ -310,7 +339,7 @@ TEST_CASE("startup recovery imports a Magic backup on the desktop", "[cap:cell-i
   const auto registry = cell::make_lock_registry();
   auto s = make_session(registry);
   auto host = std::make_unique<RecoveryHost>(s->files());
-  cell::CellSession& cs = cell::cell_session(s->editor);
+  cell::CellSession& cs = s->editor.cell_session;
   cs.host = std::move(host);
   cs.import_magic_backups = true;
   s->editor.path_variables.variable = [](std::string_view name) -> std::optional<std::string> {
@@ -440,7 +469,7 @@ TEST_CASE("readref keeps recorded paths; a wrong argument count stops",
 TEST_CASE("crashbackups drives the host timer", "[cap:ui-gui-managers][req:Crash backup timer]") {
   CommandSession s;
   std::vector<std::string> log;
-  cell::CellSession& cs = cell::cell_session(s.editor);
+  cell::CellSession& cs = s.editor.cell_session;
   cs.timer = std::make_unique<FakeTimer>(log);
   REQUIRE(s.run("crashbackups", {"start"}).ok());
   REQUIRE(s.run("crashbackups", {"stop"}).ok());
@@ -456,7 +485,7 @@ TEST_CASE("a fired backup timer saves and reschedules, or halts without an inter
   const auto registry = cell::make_lock_registry();
   auto s = make_session(registry);
   std::vector<std::string> log;
-  cell::CellSession& cs = cell::cell_session(s->editor);
+  cell::CellSession& cs = s->editor.cell_session;
   cs.timer = std::make_unique<FakeTimer>(log);
   (void)modified_cell(*s, "a");
   REQUIRE(s->run("crashbackups").ok());

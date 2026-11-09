@@ -13,6 +13,8 @@
 #   hefesto::zlib                   zlib v1.3.1, static, built from its sources
 #   nlohmann_json::nlohmann_json    nlohmann/json v3.11.3, header-only
 #   hefesto::zstd                   Zstandard v1.5.6 decoder, static (PDK .tar.zst assets)
+#   hefesto::curl                   libcurl 8.23.0, static, HTTPS with the system OpenSSL
+#                                   (Linux only; macOS uses URLSession, hefesto-licensing D-13)
 #   Catch2::Catch2WithMain          Catch2 v3.7.1             (HEFESTO_BUILD_TESTS)
 #   raven::raven                    Raven v0.2.2              (HEFESTO_BUILD_DESKTOP; desktop shell only)
 #
@@ -51,6 +53,18 @@ FetchContent_Declare(hefesto_zstd
   URL_HASH SHA256=8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
   ${_hefesto_no_cmake})
+
+# --- libcurl 8.23.0 (curl license, MIT-style), Linux only ----------------
+# The HTTPS client of src/platform_net on Linux (hefesto-licensing D-13);
+# Apple platforms use URLSession and must not contain libcurl. Built static
+# with HTTP(S) only, TLS from the system OpenSSL 3 (libssl-dev) and the
+# system trust store (CA bundle found at configure time, OpenSSL's default
+# paths as fallback).
+FetchContent_Declare(hefesto_curl
+  URL https://github.com/curl/curl/releases/download/curl-8_23_0/curl-8.23.0.tar.xz
+  URL_HASH SHA256=8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  SYSTEM)
 
 # --- Catch2 v3.7.1 (BSL-1.0), tests only ----------------------------------
 FetchContent_Declare(Catch2
@@ -105,6 +119,57 @@ add_library(hefesto_json INTERFACE)
 add_library(nlohmann_json::nlohmann_json ALIAS hefesto_json)
 target_include_directories(hefesto_json SYSTEM INTERFACE "$<BUILD_INTERFACE:${hefesto_json_SOURCE_DIR}/include>")
 target_compile_features(hefesto_json INTERFACE cxx_std_20)
+
+# libcurl: its own CMake build, configured in a block so its options do not
+# leak into the rest of the project.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  block()
+    set(BUILD_SHARED_LIBS OFF)
+    set(BUILD_STATIC_LIBS ON)
+    set(BUILD_CURL_EXE OFF)
+    set(BUILD_TESTING OFF)
+    set(BUILD_EXAMPLES OFF)
+    set(BUILD_LIBCURL_DOCS OFF)
+    set(BUILD_MISC_DOCS OFF)
+    set(ENABLE_CURL_MANUAL OFF)
+    set(CURL_DISABLE_INSTALL ON)
+    set(CURL_ENABLE_EXPORT_TARGET OFF)
+    set(PICKY_COMPILER OFF)
+    set(CURL_DISABLE_DICT ON)
+    set(CURL_DISABLE_FILE ON)
+    set(CURL_DISABLE_FTP ON)
+    set(CURL_DISABLE_GOPHER ON)
+    set(CURL_DISABLE_IMAP ON)
+    set(CURL_DISABLE_LDAP ON)
+    set(CURL_DISABLE_LDAPS ON)
+    set(CURL_DISABLE_MQTT ON)
+    set(CURL_DISABLE_POP3 ON)
+    set(CURL_DISABLE_RTSP ON)
+    set(CURL_DISABLE_SMTP ON)
+    set(CURL_DISABLE_TELNET ON)
+    set(CURL_DISABLE_TFTP ON)
+    set(CURL_DISABLE_IPFS ON)
+    set(CURL_DISABLE_COOKIES ON)
+    set(CURL_DISABLE_ALTSVC ON)
+    set(CURL_DISABLE_HSTS ON)
+    set(CURL_DISABLE_NETRC ON)
+    set(CURL_DISABLE_WEBSOCKETS ON)
+    set(CURL_USE_OPENSSL ON)
+    set(CURL_CA_FALLBACK ON)
+    set(CURL_ZLIB OFF)
+    set(CURL_BROTLI OFF)
+    set(CURL_ZSTD OFF)
+    set(USE_NGHTTP2 OFF)
+    set(USE_LIBIDN2 OFF)
+    set(CURL_USE_LIBPSL OFF)
+    set(CURL_USE_LIBSSH2 OFF)
+    set(CURL_USE_LIBSSH OFF)
+    set(CURL_USE_GSSAPI OFF)
+    set(ENABLE_ARES OFF)
+    FetchContent_MakeAvailable(hefesto_curl)
+  endblock()
+  add_library(hefesto::curl ALIAS libcurl_static)
+endif()
 
 if(HEFESTO_BUILD_TESTS AND NOT HEFESTO_IS_IOS)
   set(CATCH_INSTALL_DOCS OFF CACHE BOOL "" FORCE)

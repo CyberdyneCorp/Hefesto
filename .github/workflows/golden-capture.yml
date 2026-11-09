@@ -100,6 +100,7 @@ jobs:
           CC: gcc-14
           CXX: g++-14
         run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
           python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
           cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
           cmake --build --preset linux-release --target hefesto-cli

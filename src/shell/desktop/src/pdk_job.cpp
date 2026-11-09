@@ -82,33 +82,18 @@ namespace {
 
 using Update = std::function<void(const pdk::InstallProgress&)>;
 
-/// The Dispatcher publishes a command's diagnostics when it returns, so
-/// PDK-PROGRESS-001 cannot drive a live bar: downloads (the long part) are
-/// observed at the Fetcher instead, live from the fetcher's thread. The
-/// asset count is not known there (parts = 0).
-class ObservingFetcher final : public pdk::Fetcher {
+/// The running command's PDK-PROGRESS-001 events, live: a Dispatcher live
+/// sink receives the `-progress` diagnostics while the command runs (from
+/// the fetcher's thread during a download), with the asset count known.
+class LiveProgress final : public diag::DiagnosticSink {
  public:
-  ObservingFetcher(std::unique_ptr<pdk::Fetcher> inner, Update update)
-      : inner_(std::move(inner)), update_(std::move(update)) {}
-  diag::Outcome<std::string> get_text(std::string_view url) override { return inner_->get_text(url); }
-  diag::Status download(std::string_view url, const platform::Path& to,
-                        const std::function<void(std::uint64_t, std::uint64_t)>& progress) override {
-    ++part_;
-    const std::string_view asset = url.substr(url.find_last_of('/') + 1);
-    pdk::InstallProgress event{pdk::InstallPhase::download, std::string(asset), part_, 0, 0, 0};
-    update_(event);
-    return inner_->download(url, to, [&](std::uint64_t bytes, std::uint64_t total) {
-      event.bytes = bytes;
-      event.total = total;
-      update_(event);
-      if (progress) progress(bytes, total);
-    });
+  explicit LiveProgress(Update update) : update_(std::move(update)) {}
+  void emit(const diag::Diagnostic& diagnostic) override {
+    if (const auto p = pdk::parse_install_progress(diagnostic)) update_(*p);
   }
 
  private:
-  std::unique_ptr<pdk::Fetcher> inner_;
   Update update_;
-  std::size_t part_ = 0;
 };
 
 /// The last progress event among a finished command's diagnostics; false when none.
@@ -130,17 +115,16 @@ cmd::CommandResult run_job(const cmd::Invocation& invocation, PdkJob::Setup setu
   settings::ProjectSettings project;
   cmd::ScriptSession script{project};
   cmd::CommandRegistry registry;
-  if (setup.hosts.fetcher) {
-    setup.hosts.fetcher = [make = std::move(setup.hosts.fetcher), update](platform::PlatformServices& s) {
-      return std::make_unique<ObservingFetcher>(make(s), update);
-    };
-  }
   (void)pdk::register_pdk_commands(registry, std::move(setup.hosts));
   editor::EditorState editor;
   editor.settings = std::move(setup.settings);
   cmd::Dispatcher dispatcher(registry, services.view(), project, script);
   dispatcher.set_editor(&editor);
-  return dispatcher.execute(invocation);
+  LiveProgress live{update};
+  dispatcher.add_live_sink(live);
+  cmd::CommandResult result = dispatcher.execute(invocation);
+  dispatcher.remove_live_sink(live);
+  return result;
 }
 
 }  // namespace

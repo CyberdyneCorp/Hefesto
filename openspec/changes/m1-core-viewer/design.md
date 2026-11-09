@@ -66,7 +66,7 @@ Rules:
 
 ### D4. Session state and command registration
 
-- `editor::EditorState` (`hefesto/editor/editor_state.hpp`) aggregates the session: `technology` (`std::shared_ptr<const tech::Technology>`, never null; starts as `tech::builtin_technology()`), `grid` (`tech::GridScale`), `cells` (`db::CellLibrary`), `edit_cell`, `box`, `locked_types`, `search_paths`, `path_variables`, `locks` (`cell::FileLockService`), `styles` (optional `display::StyleSet`, absent headless), `fonts`, `windows` (`view::WindowManager`), `settings` (`app::SettingsStack`). The M0 typed project settings (`magic-compat`, `netgen-compat`, `script-strict`) stay in `settings::ProjectSettings` via `CommandContext::project()`.
+- `editor::EditorState` (`hefesto/editor/editor_state.hpp`) aggregates the session: `technology` (`std::shared_ptr<const tech::Technology>`, never null; starts as `tech::builtin_technology()`), `grid` (`tech::GridScale`), `cells` (`db::CellLibrary`), `edit_cell`, `box`, `locked_types`, `search_paths`, `path_variables`, `locks` (`cell::FileLockService`, a pure host mechanism), `cell_session` (`cell::CellSession`: the `locking` setting, file host, timestamp log, crash backups and their timer, recovery; it outlives a replacement of `locks`), `styles` (optional `display::StyleSet`, absent headless), `fonts`, `windows` (`view::WindowManager`), `settings` (`app::SettingsStack`). The M0 typed project settings (`magic-compat`, `netgen-compat`, `script-strict`) stay in `settings::ProjectSettings` via `CommandContext::project()`.
 - Handlers reach it through `cmd::CommandContext::editor()`; `cmd::require_editor(ctx)` returns it or `CMD-SESSION-001`. `cmd::Dispatcher::set_editor()` attaches it; `hefesto-cli` and the desktop `CoreSession` own one `EditorState` each and attach it.
 - `cmd::register_all_commands(registry)` registers the M0 built-ins plus `tech::register_tech_commands`, `db::register_db_commands`, `cell::register_cell_commands`, `view::register_view_commands`, `pdk::register_pdk_commands`. The CLI and the shell call only this function. A new area command is added inside the area's `commands.cpp`.
 - A member an area needs in `EditorState` (e.g. an undo log for M2) is requested as an open item. Types of members are owned by their areas, so changing a member's *type* stays inside the area.
@@ -97,7 +97,7 @@ Every UI the desktop shell shows follows `openspec/specs/hefesto-design-system/s
 - **Tile order (X-1).** `db::Plane::enumerate` reproduces Magic's area-enumeration order exactly; the `.mag` writer enumerates every user type in technology order over the whole plane. MODEL may store geometry in any structure (spec: "Geometry data structure is informative") but the public plane is corner-stitched per decision X-1.
 - **Hash-table order.** Wherever Magic iterates a string hash table observably (cell namespace, properties), the order comes from `util::MagicHashTable` (M0).
 - **Tech → display.** A technology loads headless without display files (Q-TECH-24). TECH keeps the styles section raw (`tech::StylesSection`); VIEWER resolves it against the `.dstyle` with `display::resolve_type_styles`.
-- **Host mechanisms.** The core has no sockets, locks or symlinks: `cell::FileLockService` (advisory locks, read-only detection), `pdk::Fetcher` (downloads) and `pdk::InstallHost` (symlinks, environment, home) are interfaces the CLI/desktop implement; portable defaults exist for tests and headless runs.
+- **Host mechanisms.** The core has no sockets, locks or symlinks: `cell::FileLockService` (advisory locks, read-only detection), `pdk::Fetcher` (downloads) and `pdk::InstallHost` (symlinks, environment, home) are interfaces the CLI/desktop implement; portable defaults exist for tests and headless runs. The front ends' `Fetcher` is the in-process HTTPS client of hefesto-licensing D-13 in `src/platform_net` (URLSession through an Objective-C++ bridge on macOS, the pinned libcurl on Linux); the core's curl-process `Fetcher` remains only for hosts that supply none.
 
 ### D8. Golden cases and exit criteria
 
@@ -136,6 +136,7 @@ The headers are the contract; each is documented. Key types and functions per ar
 - `search_path.hpp`: `SearchPaths`, `PathVariables`, `split_search_path`, `expand_entry`, `find_cell_file` → `FoundFile`, `instance_path_for_write`, `discover_library_paths`.
 - `mag_io.hpp`: `CellIoContext`, `read_mag`, `load_cell`, `write_mag`, `save_cell`, `kExtensionPrefix`.
 - `io_safety.hpp`: `FileLockService`, `make_in_process_lock_service`, crash backup write/read.
+- `session.hpp`: `CellSession` (per-session CELL state, held by `EditorState::cell_session`), `BackupTimerHost`.
 - `commands.hpp`: `load`, `save`, `writeall`, `path`, `addpath`, `locking`, `crashbackups`.
 
 ### VIEWER — `hefesto/display/`, `hefesto/view/`, `hefesto/render/layout_scene.hpp`

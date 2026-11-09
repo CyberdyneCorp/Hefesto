@@ -12,9 +12,9 @@
 //   (platform_posix::make_lock_service on Linux/macOS) and, for the
 //   ownership/ctime/liveness tests, a FileHost (platform_posix::
 //   make_file_host) before running commands: `editor.locks = ...;
-//   cell_session(editor).host = ...;`.
+//   editor.cell_session.host = ...;`.
 // - `-r` at startup runs the `crash recover` command (app startup does).
-// - A desktop sets `cell_session(editor).import_magic_backups = true`, may
+// - A desktop sets `editor.cell_session.import_magic_backups = true`, may
 //   set `confirm_recovery` to ask `Recover from backup file <file>?`, and
 //   installs a BackupTimerHost in `timer`; when it fires, call
 //   run_backup_timer on the command thread.
@@ -44,10 +44,6 @@ struct EditorState;
 }
 
 namespace hefesto::cell {
-
-/// The per-session CELL state of `ed`, kept in its lock service (an
-/// in-process one is created when the session has none).
-[[nodiscard]] CellSession& cell_session(editor::EditorState& ed);
 
 /// A front end's BackupTimerHost fired: runs `crash save` through
 /// `dispatcher` (whose editor is the session), reports a failure as

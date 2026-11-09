@@ -37,8 +37,9 @@ namespace hefesto::shell {
 /// The host services of a desktop session (hefesto-files-and-pdks "PDK
 /// store", cell-io-safety): off by default so tests stay hermetic.
 struct HostServices {
-  /// POSIX process runner (the curl Fetcher), the managed PDK store over
-  /// the PDK manager, the fcntl() lock service and the POSIX file host
+  /// POSIX process runner, the HTTPS Fetcher (URLSession or libcurl) of the
+  /// PDK manager and the `pdk` command, the managed PDK store over the PDK
+  /// manager, the fcntl() lock service and the POSIX file host
   /// (ownership, ctime, process liveness: import of Magic crash backups).
   bool posix = false;
   /// The PDK root; nullopt: PDK_ROOT, else ~/.ciel.

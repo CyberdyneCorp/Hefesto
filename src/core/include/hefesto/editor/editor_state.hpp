@@ -17,6 +17,7 @@
 
 #include "hefesto/app/settings_stack.hpp"
 #include "hefesto/cell/search_path.hpp"
+#include "hefesto/cell/session.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
@@ -61,11 +62,14 @@ struct EditorState {
   /// nullopt until the first `setlabel -default`.
   std::optional<db::LabelDefaults> label_defaults;
 
-  // CELL: search paths, path variables and the lock service (nullptr =
-  // locking disabled).
+  // CELL: search paths, path variables, the lock service (a host
+  // mechanism; front ends replace the in-process default) and the
+  // per-session CELL state (`locking`, file host, timestamps, crash
+  // backups, recovery), which outlives a replacement of `locks`.
   cell::SearchPaths search_paths;
   cell::PathVariables path_variables;
   std::unique_ptr<cell::FileLockService> locks;
+  cell::CellSession cell_session;
 
   // VIEWER: display styles (absent in a headless session), fonts, windows.
   std::optional<display::StyleSet> styles;
