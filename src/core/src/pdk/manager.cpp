@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <map>
 #include <set>
 #include <system_error>
 
@@ -796,6 +797,54 @@ diag::Status PdkManager::remove_library(const Family& family, std::string_view h
     stdfs::remove_all(version_dir / variant.name / "libs.ref" / std::string{library}, ec);
   }
   return ec ? diag::Status{io_error("cannot remove library " + std::string{library}, ec)} : diag::Status{diag::Done{}};
+}
+
+namespace {
+
+// The regular files (links not followed) under `dir`, in path order.
+std::vector<Path> regular_files_under(const Path& dir) {
+  std::vector<Path> files;
+  std::error_code ec;
+  for (stdfs::recursive_directory_iterator it{dir, ec}, end; !ec && it != end; it.increment(ec)) {
+    if (it->is_regular_file(ec) && !it->is_symlink(ec)) {
+      files.push_back(it->path());
+    }
+  }
+  std::sort(files.begin(), files.end());
+  return files;
+}
+
+}  // namespace
+
+diag::Outcome<std::size_t> PdkManager::deduplicate(const Family& family, std::string_view hash) {
+  const Path version_dir = family_dir(family) / "versions" / std::string{hash};
+  if (!is_dir(version_dir)) {
+    return diag::make(codes::kNotInstalled, family.name + " version " + std::string{hash} + " is not installed");
+  }
+  std::map<std::string, Path> first_by_digest;
+  std::size_t replaced = 0;
+  for (const auto& variant : family.variants) {
+    for (const Path& file : regular_files_under(version_dir / variant.name)) {
+      auto digest = sha256_file_hex(file);
+      if (!digest) {
+        return digest.error();
+      }
+      const auto [it, inserted] = first_by_digest.emplace(std::move(digest).value(), file);
+      if (inserted) {
+        continue;
+      }
+      std::error_code ec;
+      stdfs::remove(file, ec);
+      if (ec) {
+        return io_error("cannot replace " + file.string(), ec);
+      }
+      if (auto linked = host_.make_symlink(it->second.lexically_relative(file.parent_path()), file); !linked) {
+        return linked.error();
+      }
+      ++replaced;
+    }
+  }
+  return replaced;
 }
 
 std::optional<platform::Path> PdkManager::variant_dir(const Family& family, std::string_view variant,

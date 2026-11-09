@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
@@ -76,11 +77,52 @@ CommandResult version(CommandContext& /*ctx*/, const Invocation& inv) {
   return CommandResult::success(std::string{hefesto::version()});
 }
 
-CommandResult quit(CommandContext& ctx, const Invocation& inv) {
-  if (!inv.args.empty()) {
-    return usage("quit");
+// app-startup "quit command and exit status" (windQuitCmd): `-noprompt` only
+// as the last word, then an optional integer status. Hefesto rejects a
+// status outside 0-255 (Q-UI-32); a rejected word stays as an extra
+// argument, so the usage error follows and quitting is cancelled.
+// (Magic ref: windows/windCmdNR.c:262-334)
+std::optional<int> parse_exit_status(std::string_view word) {
+  int value = 0;
+  const auto [end, ec] = std::from_chars(word.data(), word.data() + word.size(), value);
+  if (ec != std::errc{} || end != word.data() + word.size() || value < 0 || value > 255) {
+    return std::nullopt;
   }
-  ctx.session().quit_requested = true;
+  return value;
+}
+
+CommandResult quit(CommandContext& ctx, const Invocation& inv) {
+  std::vector<std::string> args = inv.args;
+  bool check_first = true;
+  if (!args.empty() && args.back() == "-noprompt") {
+    check_first = false;
+    args.pop_back();
+  }
+  int status = 0;
+  std::vector<diag::Diagnostic> notes;
+  if (!args.empty()) {
+    if (const auto parsed = parse_exit_status(args.back())) {
+      status = *parsed;
+      args.pop_back();
+    } else {
+      notes.push_back(diag::make(codes::kCmdUsage, "Invalid exit_status: " + args.back()));
+    }
+  }
+  if (!args.empty()) {
+    CommandResult result = CommandResult::failure(diag::make(codes::kCmdUsage, "Usage: quit [exit_status] [-noprompt]"));
+    result.diagnostics.insert(result.diagnostics.begin(), notes.begin(), notes.end());
+    return result;
+  }
+  ScriptSession& session = ctx.session();
+  if (check_first) {
+    for (const auto& may_exit : session.exit_checks) {
+      if (may_exit && !may_exit()) {
+        return CommandResult::success();  // vetoed: the application keeps running
+      }
+    }
+  }
+  session.exit_status = status;
+  session.quit_requested = true;
   return CommandResult::success();
 }
 
@@ -182,7 +224,10 @@ bool register_builtins(CommandRegistry& registry) {
        help},
       {"echo", "echo ?word ...?", "Returns its arguments joined by single spaces.", echo},
       {"version", "version", "Returns the Hefesto version as major.minor.patch.", version},
-      {"quit", "quit", "Stops the running script and ends the session.", quit},
+      {"quit", "quit ?exit_status? ?-noprompt?",
+       "Stops the running script and ends the session with exit_status (0-255, default 0). Without -noprompt "
+       "every exit check runs first and may cancel the quit.",
+       quit},
       {"setting", std::string{kSettingSynopsis},
        "Lists the project settings (magic-compat, netgen-compat, script-strict), reads one, or changes one. "
        "Each setting is independent of the others.",

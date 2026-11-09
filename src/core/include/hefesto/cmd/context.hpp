@@ -6,6 +6,9 @@
 
 #pragma once
 
+#include <functional>
+#include <vector>
+
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
@@ -25,6 +28,11 @@ struct ScriptSession {
 
   bool strict = false;          // script strict mode for this interpreter
   bool quit_requested = false;  // set by `quit`
+  int exit_status = 0;          // the status `quit` asked for (0-255)
+  /// Client exit checks (Magic's w_exit), run by `quit` without -noprompt;
+  /// any one returning false cancels the quit (e.g. a front end asking
+  /// whether to discard modified cells). Headless sessions install none.
+  std::vector<std::function<bool()>> exit_checks;
 };
 
 class CommandContext {

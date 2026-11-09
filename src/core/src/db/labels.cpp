@@ -338,17 +338,19 @@ Position auto_justification(const Rect& b, const Rect& rect) noexcept {
   return pick(kNorth, kSouth, kNorth);
 }
 
-diag::Outcome<Label*> put_label(CellDef& def, Label label, bool auto_justify) {
+diag::Outcome<Label*> put_label(CellDef& def, Label label, bool auto_justify, std::size_t font_count) {
   if (label.text.empty()) {
     return diag::make(codes::kLabelEmpty, "a label needs non-empty text");
   }
   if (auto_justify) {
     label.justification = auto_justification(def.bbox(), label.rect);
   }
-  if (label.font < 0) {
+  if (label.font < 0 || static_cast<std::size_t>(label.font) >= font_count) {
+    label.font = -1;
     label.size = 0;
     label.rotation = 0;
     label.offset = Point{};
+    label.text_bbox.reset();  // only outline-font labels have a rendered text box
   }
   def.labels().push_back(std::move(label));
   mark_modified(def);

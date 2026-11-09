@@ -126,7 +126,7 @@ TEST_CASE("hierarchy rows follow the mockup's tree", "[cap:hefesto-app-ux][req:M
   CHECK(collapsed[3].text == "▸ via1_2x1 ×4");  // leaf instances of one definition grouped
   CHECK(collapsed[3].use == nullptr);
   CHECK(collapsed[3].expandable);  // a leaf still has contents to show
-  CHECK(collapsed[3].boxes.size() == 4);
+  CHECK(collapsed[3].paths == std::vector<std::string>{"V0", "V1", "V2", "V3"});
   CHECK(collapsed[4].text == "▸ via1_2x1 (A1) [4×2]");  // arrays keep their own row
 
   const auto expanded = hierarchy_rows(top, [x1](const db::CellUse& u) { return &u == x1; });
@@ -138,7 +138,7 @@ TEST_CASE("hierarchy rows follow the mockup's tree", "[cap:hefesto-app-ux][req:M
   CHECK(hierarchy_rows(top, nullptr, 3).size() == 3);  // row limit
 }
 
-TEST_CASE("hierarchy rows expand and unexpand through core commands on the box",
+TEST_CASE("hierarchy rows expand and unexpand their instances by path",
           "[cap:ui-windows-and-views][req:Per-window expansion state]") {
   db::CellDef top("top", 4);
   db::CellDef mid("mid", 4);
@@ -147,36 +147,41 @@ TEST_CASE("hierarchy rows expand and unexpand through core commands on the box",
   inner->bbox = db::Rect{0, 0, 10, 20};
   db::CellUse* x1 = add_use(top, mid, "X1");
   x1->bbox = db::Rect{100, 200, 150, 260};
-  x1->transform = db::Transform{1, 0, 100, 0, 1, 200};  // translate by (100, 200)
 
   const auto collapsed = hierarchy_rows(top, [](const db::CellUse&) { return false; });
   REQUIRE(collapsed.size() == 2);
   CHECK(collapsed[0].toggle_command().empty());  // the root is always expanded
-  // Expanding opens one level: the child (L1, at 100,200 in root coordinates) is unexpanded again.
-  CHECK(collapsed[1].toggle_command() ==
-        "box values 100i 200i 150i 260i; expand surround; box values 100i 200i 110i 220i; unexpand surround");
-  CHECK(collapsed[1].toggle_command(db::Rect{0, 0, 5, 5}) ==
-        "box values 100i 200i 150i 260i; expand surround; box values 100i 200i 110i 220i; unexpand surround; "
-        "box values 0i 0i 5i 5i");
+  CHECK(collapsed[1].toggle_command() == "expand instance X1");
 
   const auto open = hierarchy_rows(top, [x1](const db::CellUse& u) { return &u == x1; });
   REQUIRE(open.size() == 3);
-  CHECK(open[1].toggle_command() == "box values 100i 200i 150i 260i; unexpand surround");
-  // Nested rows carry their box in root coordinates.
-  REQUIRE(open[2].boxes.size() == 1);
-  CHECK(open[2].boxes[0] == db::Rect{100, 200, 110, 220});
-  CHECK(open[2].toggle_command() == "box values 100i 200i 110i 220i; expand surround");
+  CHECK(open[1].toggle_command() == "unexpand instance X1");
+  // Nested rows carry their path from the root.
+  CHECK(open[2].paths == std::vector<std::string>{"X1/L1"});
+  CHECK(open[2].toggle_command() == "expand instance X1/L1");
 
   // A grouped row toggles each of its instances.
-  db::CellUse* l2 = add_use(top, leaf, "L2");
-  l2->bbox = db::Rect{0, 0, 10, 20};
-  db::CellUse* l3 = add_use(top, leaf, "L3");
-  l3->bbox = db::Rect{20, 0, 30, 20};
+  add_use(top, leaf, "L2");
+  add_use(top, leaf, "L3");
   const auto grouped = hierarchy_rows(top, [](const db::CellUse&) { return false; });
   REQUIRE(grouped.size() == 3);
   CHECK(grouped[2].text == "▸ leaf ×2");
-  CHECK(grouped[2].toggle_command() ==
-        "box values 0i 0i 10i 20i; expand surround; box values 20i 0i 30i 20i; expand surround");
+  CHECK(grouped[2].toggle_command() == "expand instance L2; expand instance L3");
+
+  // Ids the script reader would split are quoted.
+  db::CellDef odd("odd", 4);
+  add_use(odd, leaf, "a b");
+  const auto quoted = hierarchy_rows(odd, [](const db::CellUse&) { return false; });
+  REQUIRE(quoted.size() == 2);
+  CHECK(quoted[1].toggle_command() == "expand instance \"a b\"");
+}
+
+TEST_CASE("the canvas rebuilds each changed area, or their union when there are many",
+          "[cap:ui-windows-and-views][req:Change-driven redisplay]") {
+  const std::vector<db::Rect> two{{0, 0, 10, 10}, {20, 20, 30, 30}};
+  CHECK(splice_areas(two) == two);
+  CHECK(splice_areas(two, 1) == std::vector<db::Rect>{{0, 0, 30, 30}});
+  CHECK(splice_areas({}).empty());
 }
 
 TEST_CASE("top bar shows cell, PDK, version and magic-compat", "[cap:hefesto-app-ux][req:Main window layout]") {

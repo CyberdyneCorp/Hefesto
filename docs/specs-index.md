@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1980 requirements, 2962 scenarios, 838 open questions.
+**Totals:** 169 capabilities, 1981 requirements, 2964 scenarios, 838 open questions.
 
 ## Hefesto product (native)
 
@@ -288,7 +288,7 @@ Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 29 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 8 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |
 | [`ui-tools-and-input`](../openspec/specs/ui-tools-and-input/spec.md) | 8 | 13 | Defines pointer tools and the default input bindings: - the tool registry and the `tool` command - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl … |
-| [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 23 | 31 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |
+| [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 24 | 33 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |
 | [`ui-wizard-and-debug`](../openspec/specs/ui-wizard-and-debug/spec.md) | 4 | 4 | Documents Magic's wizard commands. These are the commands whose names begin with `*`. They exist for developers: debugging, statistics and internal dumps. They are listed here for … |
 
 ## Scripting, PCells, Tcl tools (SCRIPT)

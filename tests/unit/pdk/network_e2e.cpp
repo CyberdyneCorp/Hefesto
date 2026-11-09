@@ -11,11 +11,22 @@
 // manager's own verification is exercised: a wrong digest installs nothing,
 // the corrected catalog reuses the already-verified download. Not part of
 // hefesto_pdk_tests so that `ctest -LE network` leaves it out.
+//
+// Network robustness: a transient fetch failure (PDK-FETCH-001) is retried
+// up to kAttempts times with exponential backoff; when the network is
+// clearly unavailable (curl cannot resolve or connect to GitHub, or GitHub
+// keeps answering with an HTTP 5xx server error, before the test or after
+// the last attempt) the test is skipped, not failed. Any other failure (a
+// verification or unpack error, an HTTP 4xx, or a fetch failure that
+// persists while GitHub is reachable and healthy) still fails the test.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <string_view>
+#include <thread>
 
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
@@ -61,6 +72,53 @@ bool skipped() {
   return skip != nullptr && *skip != '\0' && std::string_view{skip} != "0";
 }
 
+constexpr int kAttempts = 4;
+
+// curl exit 6 (could not resolve host) and 7 (could not connect): no network.
+// curl exit 22 with an HTTP 5xx status: GitHub itself is failing (e.g. 504).
+bool network_unavailable(const hefesto::diag::Diagnostic& d) {
+  if (d.code != pdk::codes::kFetch) {
+    return false;
+  }
+  const bool offline = d.text.find("curl exit 6:") != std::string::npos || d.text.find("curl exit 7:") != std::string::npos;
+  const bool server_error = d.text.find("curl exit 22:") != std::string::npos &&
+                            d.text.find("returned error: 5") != std::string::npos;
+  return offline || server_error;
+}
+
+void skip_if_offline(const hefesto::diag::Diagnostic& d) {
+  if (network_unavailable(d)) {
+    SKIP("network unavailable: " + d.text);
+  }
+}
+
+// Skips the test when GitHub cannot be reached at all.
+void require_network(hefesto::platform::ProcessRunner& runner) {
+  const hefesto::platform::ProcessRequest probe{
+      "curl", {"-sS", "-o", "/dev/null", "-I", "--max-time", "30", "https://github.com/"}, std::nullopt, {}};
+  const auto out = runner.run(probe);
+  REQUIRE(out.ok());  // the curl fetcher needs curl: its absence is a real failure
+  if (out.value().exit_code == 6 || out.value().exit_code == 7) {
+    SKIP("network unavailable: curl exit " + std::to_string(out.value().exit_code) + ": " + out.value().stderr_data);
+  }
+}
+
+// Runs `op` until it succeeds, fails with something other than a fetch
+// error, or kAttempts runs failed to fetch; waits 2 s, 4 s, then 6 s, between runs.
+template <typename Op>
+auto with_retries(Op op) -> decltype(op()) {
+  auto result = op();
+  for (int attempt = 1; attempt < kAttempts && !result.ok() && result.error().code == pdk::codes::kFetch; ++attempt) {
+    UNSCOPED_INFO("attempt " << attempt << " failed to fetch: " << result.error().text);
+    std::this_thread::sleep_for(std::chrono::seconds{2 * attempt});
+    result = op();
+  }
+  if (!result.ok()) {
+    skip_if_offline(result.error());
+  }
+  return result;
+}
+
 bool has_code(const hefesto::diag::CollectingSink& sink, std::string_view code, std::string_view text) {
   for (const auto& d : sink.snapshot()) {
     if (d.code == code && d.text.find(text) != std::string::npos) {
@@ -80,6 +138,7 @@ TEST_CASE("network: install the pinned sky130A subset with the real fetcher, ver
   hefesto::test::TempDir dir;
   hefesto::platform::LocalFileSystem files;
   hefesto::platform_posix::PosixProcessRunner runner;
+  require_network(runner);
   auto host = pdk::make_local_install_host();
   auto fetcher = pdk::make_process_fetcher(runner, host->environment("GITHUB_TOKEN"));
   auto decoder = pdk::make_default_decompressor(runner);
@@ -107,7 +166,8 @@ TEST_CASE("network: install the pinned sky130A subset with the real fetcher, ver
   // 1. A wrong digest for the library: verification fails, nothing is installed.
   write_catalog(catalog, std::string(64, '0'));
   hefesto::diag::CollectingSink failed;
-  const auto bad = manager.install(selection, kVersion, {"sky130_ml_xx_hd"}, options, failed);
+  const auto bad =
+      with_retries([&] { return manager.install(selection, kVersion, {"sky130_ml_xx_hd"}, options, failed); });
   REQUIRE_FALSE(bad.ok());
   CHECK(bad.error().code == pdk::codes::kVerify);
   CHECK(bad.error().text.find("sky130_ml_xx_hd.tar.zst: SHA-256 mismatch") != std::string::npos);
@@ -119,7 +179,8 @@ TEST_CASE("network: install the pinned sky130A subset with the real fetcher, ver
   // 2. The corrected catalog: common is reused from the verified download cache.
   write_catalog(catalog, kLibrary.sha256);
   hefesto::diag::CollectingSink sink;
-  const auto good = manager.install(selection, kVersion, {"sky130_ml_xx_hd"}, options, sink);
+  const auto good =
+      with_retries([&] { return manager.install(selection, kVersion, {"sky130_ml_xx_hd"}, options, sink); });
   INFO((good.ok() ? std::string{} : good.error().text));
   REQUIRE(good.ok());
   CHECK(has_code(sink, pdk::codes::kInfo, "using the downloaded common.tar.zst"));
@@ -157,10 +218,12 @@ TEST_CASE("network: the GitHub releases source lists the pinned version's assets
   }
   hefesto::platform::LocalFileSystem files;
   hefesto::platform_posix::PosixProcessRunner runner;
+  require_network(runner);
   auto host = pdk::make_local_install_host();
   auto fetcher = pdk::make_process_fetcher(runner, host->environment("GITHUB_TOKEN"));
   pdk::PdkManager manager{files, *host, *fetcher, pdk::Catalog::builtin()};
-  const auto assets = manager.version_assets(*manager.catalog().find_family("sky130"), kVersion, pdk::CatalogSource{});
+  const auto assets = with_retries(
+      [&] { return manager.version_assets(*manager.catalog().find_family("sky130"), kVersion, pdk::CatalogSource{}); });
   INFO((assets.ok() ? std::string{} : assets.error().text));
   REQUIRE(assets.ok());
   const auto common = std::find_if(assets.value().begin(), assets.value().end(),

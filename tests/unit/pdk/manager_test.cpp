@@ -331,3 +331,34 @@ TEST_CASE("a front-end session PDK: manager, root and store over it",
   REQUIRE_FALSE(text.ok());
   CHECK(text.error().code == hefesto::diag::codes::kPlatformUnsupported);
 }
+
+TEST_CASE("deduplication links identical files within one version",
+          "[cap:hefesto-pdk-manager][req:Optional file deduplication]") {
+  Harness h;
+  const auto v = h.version_dir(kHashA);
+  const fs::path gds = "libs.ref/sky130_fd_sc_hd/gds/x.gds";
+  write_file(v / "sky130A" / gds, "same bytes");
+  write_file(v / "sky130B" / gds, "same bytes");
+  write_file(v / "sky130B/libs.tech/magic/sky130B.tech", "tech B\n");
+  write_file(v / "sky130A/libs.tech/magic/sky130A.tech", "tech A\n");
+  // Another version with the same content is left alone (no cross-version links).
+  write_file(h.version_dir(kHashB) / "sky130A" / gds, "same bytes");
+
+  const auto replaced = h.manager.deduplicate(h.sky130(), kHashA);
+  REQUIRE(replaced.ok());
+  CHECK(replaced.value() == 1);
+  CHECK_FALSE(fs::is_symlink(v / "sky130A" / gds));
+  REQUIRE(fs::is_symlink(v / "sky130B" / gds));
+  const fs::path target = fs::read_symlink(v / "sky130B" / gds);
+  CHECK(target.is_relative());
+  CHECK(target == fs::path{"../../../../sky130A"} / gds);
+  CHECK(hefesto::test::read_file(v / "sky130B" / gds) == "same bytes");
+  CHECK_FALSE(fs::is_symlink(v / "sky130B/libs.tech/magic/sky130B.tech"));
+  CHECK_FALSE(fs::is_symlink(h.version_dir(kHashB) / "sky130A" / gds));
+
+  // Running it again finds nothing more to replace.
+  CHECK(h.manager.deduplicate(h.sky130(), kHashA).value() == 0);
+  const auto missing = h.manager.deduplicate(h.sky130(), std::string(40, 'c'));
+  REQUIRE_FALSE(missing.ok());
+  CHECK(missing.error().code == pdk::codes::kNotInstalled);
+}

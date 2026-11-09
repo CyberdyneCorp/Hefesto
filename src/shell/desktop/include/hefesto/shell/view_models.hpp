@@ -242,29 +242,21 @@ struct HierarchyRow {
   bool expandable = false;        // instances whose contents can be shown (not the root)
   bool expanded = false;          // a group: every instance is expanded
   const db::CellUse* use = nullptr;  // null for the root and for grouped rows
-  std::vector<db::Rect> boxes;    // each instance's bounding box in root coordinates
+  std::vector<std::string> paths; // each instance's path from the root: use ids joined by '/'
   std::string suffix;             // the tail of `text` that tells rows apart: " ×4 · 1 open", " (X1) [4×2]"
   bool partial = false;           // a group with some, not all, instances expanded
-  /// The direct children of the row's instance in root coordinates (for an
-  /// array: of its first element), unexpanded after an expansion so that a
-  /// row opens one level only.
-  std::vector<db::Rect> child_boxes;
 
   /// `text` without `suffix` (the marker and the cell name).
   [[nodiscard]] std::string_view name_part() const;
   /// `text` plus its state: ", expanded", ", collapsed" or ", partly expanded".
   [[nodiscard]] std::string accessible_name() const;
 
-  /// The commands that toggle the row's instances through the Dispatcher
-  /// (Magic's `expand` / `unexpand` act on the box): for each instance the
-  /// box is set to it (internal units) and `expand surround` or
-  /// `unexpand surround` acts on it. `expand surround` expands every
-  /// instance inside the box at any depth (DBExpandAll), so an expansion is
-  /// followed by `unexpand surround` on each direct child's box: the row
-  /// opens one level, as Magic's `expand toggle` of a selected cell does.
-  /// `restore_box` (internal units), when given, is set back at the end.
-  /// Empty for rows that cannot expand.
-  [[nodiscard]] std::string toggle_command(const std::optional<db::Rect>& restore_box = std::nullopt) const;
+  /// The commands that toggle the row's instances through the Dispatcher:
+  /// `expand instance PATH` or `unexpand instance PATH` per instance
+  /// (ui-windows-and-views "Per-window expansion state", Hefesto's
+  /// instance-addressed form). Only those instances change, so the row opens
+  /// one level and the box is left alone. Empty for rows that cannot expand.
+  [[nodiscard]] std::string toggle_command() const;
 };
 
 /// How many leading top-bar groups to hide so the bar fits `available`
@@ -286,6 +278,12 @@ struct HierarchyRowLayout {
 [[nodiscard]] HierarchyRowLayout hierarchy_row_layout(const HierarchyRow& row, float width, const TextMeasure& measure);
 
 using ExpandedTest = std::function<bool(const db::CellUse&)>;
+
+/// The areas the canvas rebuilds for a window's pending redisplay
+/// ("Change-driven redisplay"): the areas themselves, or their bounding box
+/// once there are more than `max_areas` (one larger rebuild is cheaper than
+/// many small ones).
+[[nodiscard]] std::vector<db::Rect> splice_areas(const std::vector<db::Rect>& areas, std::size_t max_areas = 16);
 
 /// The tree of `root`: the root row, then its instances depth-first. Leaf
 /// instances of the same definition are grouped into one "<def> ×N" row (as

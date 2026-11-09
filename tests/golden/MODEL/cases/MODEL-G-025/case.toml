@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-025"
 area = "MODEL"
 capability = "layout-paint-semantics"
-requirements = ["Active layers"]
+requirements = ["Active (locked) layers"]
 tool = "magic"
 description = "tech locked metal2, then paint via1."
 

@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Window commands `openwindow`, `closewindow`, `windownames`,
+// Window commands `openwindow`, `specialopen`, `closewindow`, `windownames`,
 // `windowpositions`, `windowcaption`, `windowborder`, `windowscrollbars`,
-// `over`, `underneath` and `crosshair` (capability ui-windows-and-views).
+// `over`, `underneath`, `grow` and `crosshair` (capability
+// ui-windows-and-views).
 // Messages follow Magic 8.3.694 windows/windCmdAM.c, windows/windCmdNR.c,
 // windows/windCmdSZ.c and commands/CmdCD.c, Copyright (C) 1985, 1990
 // Regents of the University of California, used under Magic's permissive
 // license (see THIRD_PARTY_NOTICES.md).
+
+#include <algorithm>
+#include <array>
+#include <optional>
 
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
@@ -43,19 +48,16 @@ diag::Outcome<db::CellDef*> cell_named(editor::EditorState& e, std::string_view 
   return made;
 }
 
-CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
-  auto e = session(ctx);
-  if (!e) {
-    return failure(e.error());
-  }
-  editor::EditorState& ed = *e.value();
-  const bool on_box = inv.args.empty() && ed.box && ed.edit_cell != nullptr;
-  auto root = cell_named(ed, !inv.args.empty() ? std::string_view(inv.args[0])
-                                               : (on_box ? std::string_view(ed.edit_cell->name()) : kUnnamed));
+/// WindCreate + DBWcreate: a layout window on the named cell, or on the
+/// box's cell framed on the box, or on "(UNNAMED)"; `name` is the host name.
+CommandResult open_layout(editor::EditorState& ed, const ScreenRect& frame, const std::vector<std::string>& args) {
+  const bool on_box = args.empty() && ed.box && ed.edit_cell != nullptr;
+  auto root = cell_named(ed, !args.empty() ? std::string_view(args[0])
+                                           : (on_box ? std::string_view(ed.edit_cell->name()) : kUnnamed));
   if (!root) {
     return failure(root.error());
   }
-  auto opened = ed.windows.open_frame(root.value(), create_frame());
+  auto opened = ed.windows.open_frame(root.value(), frame);
   if (!opened) {
     diag::Diagnostic d = opened.error();
     d.text += "\nCould not create window";  // windOpenCmd after WindCreate fails
@@ -64,14 +66,90 @@ CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
   if (on_box) {
     opened.value()->move_to(box_frame(*ed.box));
   }
-  if (inv.args.size() > 1) {
-    opened.value()->set_name(inv.args[1]);
+  if (args.size() > 1) {
+    opened.value()->set_name(args[1]);
   }
   if (ed.edit_cell == nullptr && !root.value()->flags().no_edit) {
     ed.edit_cell = root.value();
   }
   refresh_captions(ed);
   return CommandResult::success();
+}
+
+CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
+  auto e = session(ctx);
+  if (!e) {
+    return failure(e.error());
+  }
+  return open_layout(*e.value(), create_frame(), inv.args);
+}
+
+// --- specialopen (windSpecialOpenCmd, windows/windCmdSZ.c:404-460) ----------------------
+
+/// Magic's window clients in WindPrintClientList order (each WindAddClient
+/// prepends; the hidden "*window" client was added first). Only `layout`
+/// exists before M2: `color` is ui-color-window, `netlist` netlist-window.
+constexpr std::array<std::string_view, 4> kClients = {"netlist", "color", "layout", "*window"};
+constexpr std::size_t kLayoutClient = 2;
+
+/// WindGetClient(name, FALSE): a unique prefix, or nullopt.
+std::optional<std::size_t> find_client(std::string_view name) {
+  std::optional<std::size_t> found;
+  for (std::size_t i = 0; i < kClients.size(); ++i) {
+    if (kClients[i].starts_with(name)) {
+      if (found) {
+        return std::nullopt;
+      }
+      found = i;
+    }
+  }
+  return found;
+}
+
+/// The usage on stdout and the visible clients on stderr (TxPrintf, then
+/// WindPrintClientList's TxError lines); no Tcl error.
+CommandResult specialopen_usage(CommandContext& ctx) {
+  print(ctx, "Usage: specialopen [leftx bottomy rightx topy] type [args]\nValid window types are:");
+  std::string clients;
+  for (const std::string_view c : kClients) {
+    if (!c.starts_with('*')) {
+      clients += (clients.empty() ? "\t" : "\n\t") + std::string(c);
+    }
+  }
+  return fail(codes::kUsage, clients);
+}
+
+/// The frame given by four integers, raised to the minimum window size
+/// (WIND_MIN_WIDTH / WIND_MIN_HEIGHT of windows/windInt.h).
+ScreenRect explicit_frame(const std::vector<std::string>& args, WindowManager& wm) {
+  const ChromeMetrics& m = wm.chrome_metrics();
+  const auto v = [&args](std::size_t i) { return static_cast<std::int32_t>(*parse_int(args[i])); };
+  const std::int32_t min_w = 6 * m.border + 3 * m.scrollbar + 25;
+  const std::int32_t min_h = m.caption + 4 * m.border + 3 * m.scrollbar + 25;
+  return ScreenRect{v(0), v(1), std::max(v(2), v(0) + min_w), std::max(v(3), v(1) + min_h)};
+}
+
+CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
+  auto e = session(ctx);
+  if (!e) {
+    return failure(e.error());
+  }
+  const std::vector<std::string>& a = inv.args;
+  const bool coords = !a.empty() && parse_int(a[0]).has_value();
+  if (a.empty() || (coords && (a.size() < 5 || !parse_int(a[1]) || !parse_int(a[2]) || !parse_int(a[3])))) {
+    return specialopen_usage(ctx);
+  }
+  const std::size_t first = coords ? 4 : 0;
+  const auto client = find_client(a[first]);
+  if (!client || a[first].starts_with('*')) {
+    return specialopen_usage(ctx);
+  }
+  if (*client != kLayoutClient) {
+    return fail(codes::kClient, "The " + std::string(kClients[*client]) + " window is not available in this version.");
+  }
+  editor::EditorState& ed = *e.value();
+  const ScreenRect frame = coords ? explicit_frame(a, ed.windows) : create_frame();
+  return open_layout(ed, frame, std::vector<std::string>(a.begin() + static_cast<std::ptrdiff_t>(first) + 1, a.end()));
 }
 
 LayoutWindow* window_named(const editor::EditorState& e, const std::string& name) {
@@ -218,6 +296,16 @@ cmd::Handler stacking_handler(bool front) {
   };
 }
 
+// windGrowCmd (windows/windCmdAM.c:743-754): no usage check in Magic.
+CommandResult grow_cmd(CommandContext& ctx, const Invocation& /*inv*/) {
+  auto t = pointed(ctx, "Point to a window first.");
+  if (!t) {
+    return failure(t.error());
+  }
+  t.value().editor.windows.toggle_full_screen(t.value().window.id());
+  return CommandResult::success();
+}
+
 CommandResult crosshair_cmd(CommandContext& ctx, const Invocation& inv) {
   auto t = pointed(ctx);
   if (!t) {
@@ -242,6 +330,9 @@ CommandResult crosshair_cmd(CommandContext& ctx, const Invocation& inv) {
 
 bool register_window_ops(cmd::CommandRegistry& registry) {
   bool ok = add(registry, "openwindow", "openwindow [cell] [name]", "Opens a layout window.", openwindow_cmd);
+  ok = add(registry, "specialopen", "specialopen [leftx bottomy rightx topy] type [args]",
+           "Opens a window of the given type (layout before M2).", specialopen_cmd) &&
+       ok;
   ok = add(registry, "closewindow", "closewindow [name]", "Closes a layout window.", closewindow_cmd) && ok;
   ok = add(registry, "windownames", "windownames [all|type]", "Lists window ids and names.", windownames_cmd) && ok;
   ok = add(registry, "windowpositions", "windowpositions [frame] [file]", "Lists window positions.",
@@ -258,6 +349,7 @@ bool register_window_ops(cmd::CommandRegistry& registry) {
        ok;
   ok = add(registry, "over", "over", "Moves the window to the front.", stacking_handler(true)) && ok;
   ok = add(registry, "underneath", "underneath", "Moves the window to the back.", stacking_handler(false)) && ok;
+  ok = add(registry, "grow", "grow", "Blows the window up to full-screen size or back again.", grow_cmd) && ok;
   ok = add(registry, "crosshair", "crosshair x y | off", "Shows or removes the crosshair.", crosshair_cmd) && ok;
   return ok;
 }

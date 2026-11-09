@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "db/command_util.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
@@ -279,13 +280,18 @@ PaintOptions paint_options(const cu::Session& s) {
 
 // DBAdjustLabels after paint/erase, with its "Moving label" / "Adjusting
 // size of label" notes (Magic ref: database/DBlabel.c:690-725).
-void finish_edit(const EditTarget& t) {
+// Then DBWAreaChanged over the edited area (ui-windows-and-views
+// "Change-driven redisplay"): the changed layers, or every layer and the
+// label extent when labels were erased or adjusted.
+void finish_edit(const EditTarget& t, const tech::TypeMask& layers, bool labels_changed = false) {
   std::vector<std::string> notes;
-  (void)adjust_labels(*t.def, *t.s.tech, t.area, &notes);
+  const bool adjusted = adjust_labels(*t.def, *t.s.tech, t.area, &notes);
   for (std::string& n : notes) {
     cu::print(t.s, std::move(n));
   }
   recompute_bbox(*t.def, t.s.magic_compat);
+  const bool labels = labels_changed || adjusted;
+  t.s.editor->windows.area_changed(*t.def, t.area, labels ? std::nullopt : std::optional<tech::TypeMask>(layers));
 }
 
 CommandResult cmd_paint(CommandContext& ctx, const Invocation& inv) {
@@ -305,7 +311,7 @@ CommandResult cmd_paint(CommandContext& ctx, const Invocation& inv) {
       }
     }
   }
-  finish_edit(e);
+  finish_edit(e, mask.value());
   return CommandResult::success();
 }
 
@@ -323,8 +329,8 @@ CommandResult cmd_erase(CommandContext& ctx, const Invocation& inv) {
   if (auto st = erase(*e.def, *e.s.tech, e.area, mask.value(), paint_options(e.s)); !st.ok()) {
     return cu::fail(st.error());
   }
-  (void)erase_labels(*e.def, *e.s.tech, e.area, mask.value());
-  finish_edit(e);
+  const bool labels = erase_labels(*e.def, *e.s.tech, e.area, mask.value()) > 0;
+  finish_edit(e, mask.value(), labels);
   return CommandResult::success();
 }
 
@@ -353,18 +359,20 @@ CommandResult cmd_splitpaint(CommandContext& ctx, const Invocation& inv) {
     return cu::fail(cu::bad_argument("direction must be nw, ne, sw or se"));
   }
   const TriangleSide side = triangle_side(*corner);
+  tech::TypeMask painted;
   for (std::size_t i = 1; i < inv.args.size(); ++i) {
     auto layer = cu::parse_layer(*e.s.tech, inv.args[i]);
     if (!layer.ok()) {
       return cu::fail(layer.error());
     }
+    painted.set(layer.value());
     const bool right = i == 1 ? side.right_side : !side.right_side;
     if (auto st = paint_triangle(*e.def, *e.s.tech, e.area, side.diagonal, right, layer.value(), paint_options(e.s));
         !st.ok()) {
       return cu::fail(st.error());
     }
   }
-  finish_edit(e);
+  finish_edit(e, painted);
   return CommandResult::success();
 }
 

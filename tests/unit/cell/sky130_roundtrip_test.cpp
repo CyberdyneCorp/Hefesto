@@ -74,7 +74,8 @@ std::string first_difference(const std::string& a, const std::string& b) {
 }  // namespace
 
 TEST_CASE("every sky130_fd_sc_hd cell round-trips byte-identically",
-          "[cap:cell-file-format][req:Overall file grammar][req:Writer paint sections][golden:CELL-WR-10]") {
+          "[cap:cell-file-format][req:Overall file grammar][req:Writer paint sections][golden:CELL-WR-10]"
+          "[cap:hefesto-mag-extensions][req:Byte-compatibility when no extensions are used]") {
   const auto root = sky130a_root();
   if (!root) {
     SKIP("sky130A with sky130_fd_sc_hd not in .cache/pdks");

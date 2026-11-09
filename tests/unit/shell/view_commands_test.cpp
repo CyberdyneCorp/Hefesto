@@ -158,6 +158,7 @@ TEST_CASE("a hierarchy row expands one instance one level through core commands"
           "[cap:ui-windows-and-views][req:Per-window expansion state]") {
   // Regression: the row ran `box values <bbox>; expand surround`, which
   // expands every instance inside the box at any depth (the whole subtree).
+  // It now runs `expand instance <path>` on its own instance.
   CoreSession core(test_options());
   editor::EditorState& ed = core.editor();
   db::CellDef top("top", 4);
@@ -186,23 +187,27 @@ TEST_CASE("a hierarchy row expands one instance one level through core commands"
   const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
   REQUIRE(rows.size() == 3);
   CoreCommandSink sink(core.dispatcher());
-  const CommandOutcome out = sink.submit(rows[1].toggle_command(ed.box));
+  CHECK(rows[1].toggle_command() == "expand instance X1");
+  const CommandOutcome out = sink.submit(rows[1].toggle_command());
   INFO(out.message);
   REQUIRE(out.status == OutcomeStatus::ok);
   CHECK(win.is_expanded(*x1));
   CHECK_FALSE(win.is_expanded(*inner));  // one level only
   CHECK_FALSE(win.is_expanded(*x2));     // other instances untouched
-  CHECK(ed.box == db::Rect{0, 0, 4, 4});  // the user's box is back
+  CHECK(ed.box == db::Rect{0, 0, 4, 4});  // the box is never touched
 
   const auto open = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
-  REQUIRE(sink.submit(open[1].toggle_command(ed.box)).status == OutcomeStatus::ok);
+  REQUIRE(open.size() == 4);
+  CHECK(open[2].toggle_command() == "expand instance X1/L1");
+  REQUIRE(sink.submit(open[1].toggle_command()).status == OutcomeStatus::ok);
   CHECK_FALSE(win.is_expanded(*x1));
 }
 
-TEST_CASE("a hierarchy row whose child covers it still expands",
-          "[cap:ui-windows-and-views][req:Per-window expansion state]") {
-  // Regression: a wrapper whose only child spans its whole bbox collapsed
-  // again, because the child's `unexpand surround` box surrounded the parent.
+TEST_CASE("a hierarchy row whose child covers it expands one level and keeps the box",
+          "[cap:ui-windows-and-views][req:Instance-addressed expansion]") {
+  // Regression: with box-based `expand surround`, a wrapper whose only child
+  // spans its whole bbox either collapsed again or stayed expanded two
+  // levels, and with no visible box the box was left on the last child.
   CoreSession core(test_options());
   editor::EditorState& ed = core.editor();
   db::CellDef top("top", 4);
@@ -218,10 +223,10 @@ TEST_CASE("a hierarchy row whose child covers it still expands",
     parent.uses().push_back(std::move(use));
     return parent.uses().back().get();
   };
-  (void)add(wrap, leaf, "L1", db::Rect{0, 0, 50, 60}, db::kIdentity);
+  db::CellUse* l1 = add(wrap, leaf, "L1", db::Rect{0, 0, 50, 60}, db::kIdentity);
   db::CellUse* w1 = add(top, wrap, "W1", db::Rect{100, 200, 150, 260}, db::Transform{1, 0, 100, 0, 1, 200});
   ed.edit_cell = &top;
-  ed.box = db::Rect{0, 0, 4, 4};
+  ed.box.reset();  // no visible box
   auto opened = ed.windows.open(&top, view::ScreenRect{0, 0, 999, 999});
   REQUIRE(opened);
   view::LayoutWindow& win = *opened.value();
@@ -229,10 +234,9 @@ TEST_CASE("a hierarchy row whose child covers it still expands",
 
   const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
   REQUIRE(rows.size() == 2);
-  const std::string command = rows[1].toggle_command(ed.box);
-  CHECK(command.find("unexpand") == std::string::npos);  // the covering child is not collapsed over its parent
   CoreCommandSink sink(core.dispatcher());
-  REQUIRE(sink.submit(command).status == OutcomeStatus::ok);
+  REQUIRE(sink.submit(rows[1].toggle_command()).status == OutcomeStatus::ok);
   CHECK(win.is_expanded(*w1));
-  CHECK(ed.box == db::Rect{0, 0, 4, 4});
+  CHECK_FALSE(win.is_expanded(*l1));  // one level, although L1 covers W1
+  CHECK_FALSE(ed.box.has_value());    // no box was created
 }

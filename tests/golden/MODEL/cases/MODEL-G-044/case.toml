@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-044"
 area = "MODEL"
 capability = "layout-labels-ports"
-requirements = ["Rendered text box"]
+requirements = ["Rendered text box of outline-font labels"]
 tool = "magic"
 description = "FreeSans flabels of sizes 8/64/128, every justification, rotation 45; parent use box (Q-MODEL-6)."
 

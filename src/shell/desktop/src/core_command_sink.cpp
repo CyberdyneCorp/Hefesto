@@ -83,6 +83,7 @@ CoreSession::CoreSession(platform::PortableOptions options, std::optional<platfo
   cmd::register_all_commands(registry_);
   dispatcher_.set_editor(&editor_);
   dispatcher_.add_observer(command_log_);
+  dispatcher_.add_observer(redisplay_);  // before the UI listener, which redraws
   dispatcher_.add_observer(forwarder_);
   if (log_.logger != nullptr) {
     log_.logger->write(diag::Severity::info, "session start hefesto " + std::string{version()});
@@ -103,6 +104,7 @@ bool CoreSession::poll_backup_timer() {
 
 void CoreSession::record_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
   command_log_.on_command(invocation, result);
+  redisplay_.on_command(invocation, result);
   for (const diag::Diagnostic& d : result.diagnostics) {
     if (d.code != pdk::codes::kProgress) dispatcher_.report(d);
   }

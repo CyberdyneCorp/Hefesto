@@ -11,4 +11,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/font.cpp
   ${CMAKE_CURRENT_LIST_DIR}/scene.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/scene_splice.cpp
   ${CMAKE_CURRENT_LIST_DIR}/styles.cpp)

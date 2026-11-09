@@ -5,9 +5,43 @@
 
 #include "hefesto/view/commands.hpp"
 
+#include <algorithm>
+#include <array>
+#include <span>
+
 #include "view/command_util.hpp"
 
 namespace hefesto::view {
+
+namespace {
+
+/// Editing commands that call WindowManager::area_changed on success.
+constexpr auto kReportingEdits = std::to_array<std::string_view>({"paint", "erase", "splitpaint", "label"});
+
+/// Commands that notify windows themselves or draw nothing.
+constexpr auto kDisplayCommands = std::to_array<std::string_view>({
+    "box", "center", "closewindow", "crosshair", "echo", "expand", "findbox", "grid", "grow", "help",
+    "openwindow", "over", "redraw", "reset", "scroll", "see", "snap", "specialopen", "underneath", "unexpand",
+    "updatedisplay", "view", "windowborder", "windowcaption", "windownames", "windowpositions", "windowscrollbars",
+    "xview", "zoom"});
+
+bool listed(std::span<const std::string_view> names, std::string_view name) {
+  return std::find(names.begin(), names.end(), name) != names.end();
+}
+
+}  // namespace
+
+bool reports_own_redisplay(std::string_view command) {
+  return listed(kReportingEdits, command) || listed(kDisplayCommands, command);
+}
+
+void RedisplayTracker::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
+  const bool edit = listed(kReportingEdits, invocation.name);
+  if (!reports_own_redisplay(invocation.name) || (edit && !result.ok())) {
+    windows_.redisplay_all();
+  }
+  windows_.update_display();
+}
 
 bool register_view_commands(cmd::CommandRegistry& registry) {
   bool ok = detail::register_view_ops(registry);

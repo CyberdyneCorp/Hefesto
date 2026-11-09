@@ -18,8 +18,10 @@ using enum Severity;
 // Keep sorted by code. Never renumber or reuse a code once released.
 constexpr std::array kViewCodes = {
     CodeInfo{"VIEW-BOX-001", error, "A view command needs the box and there is none, or the box is in another cell than the window's root."},
+    CodeInfo{"VIEW-CLIENT-001", error, "`specialopen` names a window client that is not available yet (`color` arrives with ui-color-window, `netlist` with netlist-window)."},
     CodeInfo{"VIEW-COORD-001", error, "A view command argument is not a valid coordinate, integer or fraction."},
     CodeInfo{"VIEW-EXPAND-001", warning, "An instance under the box cannot be expanded because its cell is unavailable."},
+    CodeInfo{"VIEW-EXPAND-002", error, "`expand instance` / `unexpand instance` names an instance path that does not exist under the window's root."},
     CodeInfo{"VIEW-GRID-001", error, "A `grid` spacing is not greater than zero, or `grid multiple` is outside 1..255."},
     CodeInfo{"VIEW-REPORT-001", info, "A view or window command prints a note (Magic's TxPrintf text) and returns no result."},
     CodeInfo{"VIEW-RESET-001", info, "`reset` does not apply: the host window system manages the display."},

@@ -180,12 +180,14 @@ Compatibility: exact (caption text)
 - Otherwise the frame SHALL be a 300×300 frame centered on the point.
 - Remaining args go to the client: for `layout` a cell name, for `color` an octal color index.
 
-Bad usage SHALL print `Usage: specialopen [leftx bottomy rightx topy] type [args]` and the valid types. The `netlist` client SHALL allow only one window (`Sorry, can't have more than one netlist menu at a time.`).
+Bad usage SHALL print `Usage: specialopen [leftx bottomy rightx topy] type [args]` and `Valid window types are:` on standard output and each visible client name, after a tab, on standard error (`netlist`, `color`, `layout`, in that order). The `netlist` client SHALL allow only one window (`Sorry, can't have more than one netlist menu at a time.`).
+
+Hefesto: until the `color` client (capability `ui-color-window`) and the `netlist` client (capability `netlist-window`) exist, `specialopen` of either SHALL fail with VIEW-CLIENT-001 and open nothing; the type names are still listed and matched.
 
 Other window commands:
 - `over` SHALL move the pointed window to the front of the stacking order.
 - `underneath` SHALL move it to the back.
-- `grow` SHALL toggle the pointed window between full-screen and its previous frame and depth.
+- `grow` SHALL toggle the pointed window between full-screen (the whole screen, in front) and its previous frame and depth, mapping the layout area it showed onto its new screen area.
 - Each SHALL report `Point to a window first` (or `Point to a window first.`) when no window is pointed.
 
 Compatibility: behavioral
@@ -326,6 +328,18 @@ Compatibility: behavioral
 - **WHEN** `expand` with the box over `u1` is executed in window 0
 - **THEN** window 0 SHALL draw the paint of `inv`
 - **AND** window 1 SHALL still draw only the outline of `u1`
+
+### Requirement: Instance-addressed expansion
+Hefesto extension (Magic has no such form; its `expand` acts on the box or the selection). `expand instance PATH [toggle]` and `unexpand instance PATH` SHALL expand, toggle or unexpand exactly the instance PATH names, in the pointed window, without using or changing the box and without descending into its children. PATH is the chain of instance ids from the window's root, separated by `/`; an array subscript after an id (`a[0,1]`) names the whole array. Unavailable cells are read as for `expand`. An unknown path SHALL fail with `Instance PATH not found in this window.` (VIEW-EXPAND-002). The desktop hierarchy browser toggles its rows with these commands. The keyword `instance` is not a prefix of any of Magic's modes, so Magic's command forms are unchanged.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-11)
+
+#### Scenario: A child covering its parent
+- **GIVEN** instance `W1` whose only child `L1` covers all of `W1`, and no box
+- **WHEN** `expand instance W1` is executed
+- **THEN** `W1` SHALL be expanded, `L1` SHALL stay unexpanded and there SHALL still be no box
 
 ### Requirement: Layer visibility (see)
 Each layout window SHALL have a set of visible tile types and flags for labels, cell outlines and "all same". All types, labels and cells are visible initially, and "all same" is off.
@@ -508,6 +522,11 @@ Rules:
 - Changes that may affect labels SHALL grow the screen area by the largest label extent seen in that window.
 - A window that shows a tile-structure debug overlay SHALL redraw completely.
 - Redisplay SHALL happen at the next update, after the current command.
+- A zero-width or zero-height changed area SHALL change nothing.
+- Expanding or unexpanding an instance SHALL mark the instance's area in that window only.
+- `redraw`, `see` and `grow` SHALL mark the whole window.
+
+Hefesto: a host canvas that keeps the drawn content outside its screen area (the desktop's GPU canvas) SHALL get the changed areas in root coordinates, unclipped, and SHALL rebuild only those areas of what it shows. A command whose display changes are not yet reported this way SHALL mark every window for a whole redisplay, so that no window shows stale content.
 
 Compatibility: behavioral
 (Magic ref: dbwind/DBWdisplay.c:1295-1650, windows/windDisp.c:267-385)
@@ -516,3 +535,8 @@ Compatibility: behavioral
 - **GIVEN** window 0 has metal1 hidden
 - **WHEN** metal1 is painted in the root cell
 - **THEN** window 0 SHALL NOT be redrawn for that change
+
+#### Scenario: Change in an expanded child
+- **GIVEN** window 0 expands instance `u1` of `inv` (placed at (100,0)) and window 1 does not
+- **WHEN** area (1,2)-(3,4) of `inv` changes
+- **THEN** window 0 SHALL redisplay (101,2)-(103,4) and window 1 SHALL NOT redisplay anything

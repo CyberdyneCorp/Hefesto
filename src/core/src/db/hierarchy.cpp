@@ -159,11 +159,28 @@ bool walk(const CellDef& def, const Transform& to_root, int depth, const UseVisi
   return true;
 }
 
+struct LabelSearch {
+  Descend mode;
+  LabelMatch match;
+  const std::function<bool(const LabelHit&)>& visit;
+
+  /// GEO_TOUCH at the root, GEO_OVERLAP with the area grown by one in
+  /// subcells (DBTreeFindUse / dbCellLabelSrFunc).
+  [[nodiscard]] bool hit(const Label& l, const Rect& area, bool root) const {
+    const auto meets = [&area, root](const Rect& r) { return root ? touch(r, area) : overlap(r, expand(area, 1)); };
+    if (meets(l.rect)) {
+      return true;
+    }
+    return match == LabelMatch::display && l.font >= 0 && l.text_bbox && meets(*l.text_bbox);
+  }
+};
+
 bool search(const CellDef& def, const Rect& area, const std::string& path, const Transform& to_root, bool root,
-            Descend mode, const std::function<bool(const LabelHit&)>& visit) {
+            const LabelSearch& s) {
+  const auto& visit = s.visit;
+  const Descend mode = s.mode;
   for (const Label& l : def.labels()) {
-    const bool hit = root ? touch(l.rect, area) : overlap(l.rect, expand(area, 1));
-    if (hit && !visit(LabelHit{&l, path, to_root})) {
+    if (s.hit(l, area, root) && !visit(LabelHit{&l, path, to_root})) {
       return false;
     }
   }
@@ -178,8 +195,7 @@ bool search(const CellDef& def, const Rect& area, const std::string& path, const
       }
       const Transform et = element_transform(*u, x, y);
       const Rect child_area = apply(invert(et), area);
-      go_on = search(*u->def, child_area, path + array_element_name(*u, x, y) + "/", compose(to_root, et), false,
-                     mode, visit);
+      go_on = search(*u->def, child_area, path + array_element_name(*u, x, y) + "/", compose(to_root, et), false, s);
     });
     if (!go_on) {
       return false;
@@ -442,8 +458,8 @@ void walk_hierarchy(const CellDef& root, const UseVisitor& visit) {
 }
 
 void search_labels(const CellDef& root, const Rect& area, const std::function<bool(const LabelHit&)>& visit,
-                   Descend descend) {
-  (void)search(root, area, std::string{}, kIdentity, true, descend, visit);
+                   Descend descend, LabelMatch match) {
+  (void)search(root, area, std::string{}, kIdentity, true, LabelSearch{descend, match, visit});
 }
 
 }  // namespace hefesto::db

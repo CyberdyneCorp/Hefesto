@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-048"
 area = "MODEL"
 capability = "layout-properties"
-requirements = ["Reserved property names"]
+requirements = ["Reserved property names and side effects"]
 tool = "magic"
 description = "property GDS_FILE x.gds; cellname rename; remove the property; cellname readonly."
 

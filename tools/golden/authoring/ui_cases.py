@@ -16,7 +16,6 @@ VIEWS = "ui-windows-and-views"
 
 NOT_AUTHORED = {
     "UI-G-033": "needs edit (edit cell inside a child) and per-window command routing",
-    "UI-G-035": "specialopen is not implemented (task 5.6 open)",
     "UI-G-036": "needs what/select per window",
     "UI-G-041..045": "X11/OpenGL screenshots", "UI-G-050..059": "style-file dumps need a reader harness (no command)",
 }
@@ -59,6 +58,11 @@ def specs() -> list[Spec]:
                                     "windowscrollbars on", "windowcaption on"]),
         ui("UI-G-034", ["Window captions"], "A 200-character cell name; load it; windowcaption.",
            [f"load {long_name}", "windowcaption"]),
+        ui("UI-G-035", ["specialopen, over, underneath and grow"],
+           "specialopen usage forms (hidden, unknown, short coordinates) and a layout window by prefix; "
+           "the color window is ui-color-window (M2).",
+           ["specialopen *window", "specialopen foo", "specialopen", "specialopen 1 2 layout", "specialopen la c",
+            "windownames all"]),
         ui("UI-G-037", ["Per-window expansion state", "view, xview and zoom"],
            "expand t, expand toggle, unexpand, xview on a cell with a child.",
            ["load input/top", "box 0 0 10 10", "expand t", "expand toggle", "unexpand", "xview", "view get"]),

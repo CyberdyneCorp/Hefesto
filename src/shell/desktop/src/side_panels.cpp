@@ -156,7 +156,7 @@ void LeftPanel::rebuild_hierarchy(const view::LayoutWindow* window) {
   if (root != nullptr) {
     tree_ = hierarchy_rows(*root, [window](const db::CellUse& use) { return window->is_expanded(use); });
   } else {
-    tree_.push_back(HierarchyRow{0, "No cell loaded", false, false, nullptr, {}, {}, false, {}});
+    tree_.push_back(HierarchyRow{0, "No cell loaded", false, false, nullptr, {}, {}, false});
   }
   for (std::size_t i = 0; i < tree_.size(); ++i) {
     auto row = make_interactive(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
@@ -178,11 +178,9 @@ void LeftPanel::rebuild_hierarchy(const view::LayoutWindow* window) {
 
 void LeftPanel::toggle_expansion(std::size_t index) {
   if (index >= tree_.size()) return;
-  // Through the Dispatcher like a typed command: the box goes to the
-  // instance, `expand surround` / `unexpand surround` acts on it (one level:
-  // see HierarchyRow::toggle_command), then the user's box comes back.
-  const editor::EditorState& ed = ctx_.editor();
-  const std::string command = tree_[index].toggle_command(visible_box(ed.box, ed.box_root, ed.edit_cell));
+  // Through the Dispatcher like a typed command: `expand instance` /
+  // `unexpand instance` on the row's instance paths (the box is untouched).
+  const std::string command = tree_[index].toggle_command();
   if (!command.empty()) ctx_.run(command);
 }
 

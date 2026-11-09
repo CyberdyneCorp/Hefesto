@@ -9,7 +9,7 @@ schema = 1
 id = "MODEL-G-008"
 area = "MODEL"
 capability = "layout-geometry-model"
-requirements = ["Non-Manhattan geometry"]
+requirements = ["Non-Manhattan (split tile) geometry"]
 tool = "magic"
 description = "split nw then se metal1 on the same box."
 

@@ -248,7 +248,7 @@ TEST_CASE("outline-font text boxes extend the extended box", HI "[req:Bounding b
   db::Label l = label("t", {0, 0, 2, 2});
   l.font = 0;
   l.text_bbox = Rect{-5, 0, 30, 4};
-  REQUIRE(db::put_label(*d, l).ok());
+  REQUIRE(db::put_label(*d, l, false, 1).ok());  // one font loaded
   db::recompute_bbox(*d);
   CHECK(d->bbox() == Rect{0, 0, 2, 2});
   CHECK(d->extended_bbox() == Rect{-5, 0, 30, 4});

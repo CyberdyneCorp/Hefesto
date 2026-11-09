@@ -262,6 +262,13 @@ class PdkManager {
   [[nodiscard]] diag::Status uninstall(const Family& family, std::string_view hash);
   /// Removes `libs.ref/<library>` under every variant of the version.
   [[nodiscard]] diag::Status remove_library(const Family& family, std::string_view hash, std::string_view library);
+  /// "Optional file deduplication" (ciel's optimize step): walks the
+  /// version's variant directories in catalog order, files in path order,
+  /// and replaces each regular file whose SHA-256 equals an earlier file's
+  /// with a relative symbolic link to that file. Never crosses versions.
+  /// Returns the number of files replaced; PDK-INSTALL-004 when the version
+  /// is not installed. Off unless a front end asks (never on iPadOS).
+  [[nodiscard]] diag::Outcome<std::size_t> deduplicate(const Family& family, std::string_view hash);
   /// The recorded provenance of an installed version; PDK-INSTALL-004 when
   /// the version is not installed.
   [[nodiscard]] diag::Outcome<Provenance> provenance(const Family& family, std::string_view hash) const;

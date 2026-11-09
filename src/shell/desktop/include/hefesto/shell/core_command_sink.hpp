@@ -30,6 +30,7 @@
 #include "hefesto/settings/project_settings.hpp"
 #include "hefesto/shell/backup_timer.hpp"
 #include "hefesto/shell/command_sink.hpp"
+#include "hefesto/view/commands.hpp"
 
 namespace hefesto::shell {
 
@@ -115,6 +116,9 @@ class CoreSession {
   cmd::ScriptSession session_{project_};
   cmd::CommandRegistry registry_;
   editor::EditorState editor_;
+  // ui-windows-and-views "Change-driven redisplay": marks what a command
+  // changed for the windows and runs the update after it.
+  view::RedisplayTracker redisplay_{editor_.windows};
   DeadlineTimer* timer_ = nullptr;  // owned by the editor's cell session
   cmd::Dispatcher dispatcher_;
   Forwarder forwarder_;

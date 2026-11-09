@@ -534,7 +534,7 @@ void MainWindow::sync_styles() {
 
 void MainWindow::refresh_all() {
   sync_styles();
-  canvas_->refresh_scene();
+  canvas_->update_scene();
   left_->refresh(ctx_.editor().windows.current());
   inspector_->refresh(canvas_->unit_scale());
   refresh_header();

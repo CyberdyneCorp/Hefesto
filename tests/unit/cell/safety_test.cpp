@@ -6,11 +6,16 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
+#include <cstdint>
 #include <string>
+#include <vector>
 
 #include "cell_fixture.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/labels.hpp"
+#include "hefesto/db/paint.hpp"
 
 namespace cell = hefesto::cell;
 namespace db = hefesto::db;
@@ -285,4 +290,164 @@ TEST_CASE("Magic's default fonts load and flabels round-trip", "[cap:cell-file-f
                            "flabel metal1 s 0 0 10 10 0 FreeSans 80 0 0 0 VPWR\n<< end >>\n";
   db::CellDef& c = io.read("c", text);
   CHECK(io.write(c) == text);
+}
+
+namespace {
+
+constexpr std::string_view kStampedA = "magic\ntech tiny\ntimestamp 100\n<< metal1 >>\nrect 0 0 4 4\n<< end >>\n";
+
+
+/// A memory file system whose `.mag` writes fail outright (`fail`) or
+/// store only part of the data (`truncate`, a stream error after the paint
+/// sections), as a full disk does.
+class FaultyFileSystem final : public hefesto::platform::FileSystem {
+ public:
+  enum class Fault : std::uint8_t { none, fail, truncate };
+  Fault fault = Fault::none;
+
+  hefesto::diag::Outcome<std::string> read(const hefesto::platform::Path& p) override { return inner_.read(p); }
+  hefesto::diag::Status write_atomic(const hefesto::platform::Path& p, std::string_view data) override {
+    if (p.extension() == ".mag" && fault == Fault::fail) {
+      return hefesto::diag::make("PLATFORM-IO-002", "No space left on device");
+    }
+    if (p.extension() == ".mag" && fault == Fault::truncate) {
+      return inner_.write_atomic(p, data.substr(0, data.find("<< end >>")));
+    }
+    return inner_.write_atomic(p, data);
+  }
+  hefesto::diag::Status append(const hefesto::platform::Path& p, std::string_view data) override {
+    return inner_.append(p, data);
+  }
+  bool exists(const hefesto::platform::Path& p) override { return inner_.exists(p); }
+  hefesto::diag::Outcome<std::uint64_t> size(const hefesto::platform::Path& p) override { return inner_.size(p); }
+  hefesto::diag::Outcome<std::vector<hefesto::platform::Path>> list(const hefesto::platform::Path& d) override {
+    return inner_.list(d);
+  }
+  hefesto::diag::Status create_directories(const hefesto::platform::Path& d) override {
+    return inner_.create_directories(d);
+  }
+  hefesto::diag::Status rename(const hefesto::platform::Path& a, const hefesto::platform::Path& b) override {
+    return inner_.rename(a, b);
+  }
+  hefesto::diag::Status remove(const hefesto::platform::Path& p) override { return inner_.remove(p); }
+
+ private:
+  hefesto::platform::MemoryFileSystem inner_;
+};
+
+}  // namespace
+
+TEST_CASE("a failed write leaves the cell modified and reports Magic's messages",
+          "[cap:cell-io-safety][req:I/O error handling during write]") {
+  FaultyFileSystem fs;
+  REQUIRE(fs.create_directories("/w").ok());
+  CellIo io{cell::test::tiny_technology(), &fs};
+  db::CellDef& a = io.read("a", kStampedA);
+  a.flags().modified = true;
+
+  fs.fault = FaultyFileSystem::Fault::fail;
+  const auto failed = cell::save_cell(io.ctx, a, "/w/a");
+  REQUIRE_FALSE(failed.ok());
+  CHECK(failed.error().code == cell::codes::kWriteFailed);
+  CHECK(failed.error().text == "Could not write file.  Cell not written.");
+  CHECK(io.has_code(cell::codes::kWriteFailed));  // "Warning: I/O error in writing file /w/a.mag"
+  CHECK(a.flags().modified);
+  CHECK(a.file_path().empty());  // the recorded path is not moved to the failed file
+
+  fs.fault = FaultyFileSystem::Fault::truncate;
+  const auto short_write = cell::save_cell(io.ctx, a, "/w/a");
+  REQUIRE_FALSE(short_write.ok());
+  CHECK(short_write.error().text == "Warning: I/O error in writing file \"/w/a.mag\"");
+  CHECK(a.flags().modified);
+
+  fs.fault = FaultyFileSystem::Fault::none;
+  REQUIRE(cell::save_cell(io.ctx, a, "/w/a").ok());
+  CHECK_FALSE(a.flags().modified);
+}
+
+TEST_CASE("content changes mark a cell for a new stamp; reading clears the mark",
+          "[cap:cell-timestamps][req:Marking cells for a new stamp]") {
+  CellIo io;
+  const auto& tech = *cell::test::tiny_technology();
+  db::CellDef& a = io.read("a", kStampedA);
+  CHECK_FALSE(a.flags().needs_new_timestamp);  // cleared by the read
+  CHECK_FALSE(a.flags().modified);
+  REQUIRE(db::paint(a, tech, {10, 10, 20, 20}, tech.find_type("metal1").id.value()).ok());
+  CHECK(a.flags().modified);
+  CHECK(a.flags().needs_new_timestamp);
+
+  // A label marks the cell; recomputing an unchanged bounding box does not.
+  db::CellDef& b = io.read("b", kStampedA);
+  db::recompute_bbox(b);
+  CHECK_FALSE(b.flags().needs_new_timestamp);
+  db::Label lab;
+  lab.text = "x";
+  REQUIRE(db::put_label(b, lab).ok());
+  CHECK(b.flags().needs_new_timestamp);
+
+  // Placing an instance marks the parent; renaming a child marks every parent.
+  db::CellDef& p = io.read("p", "magic\ntech tiny\ntimestamp 100\n<< end >>\n");
+  db::CellDef& c = io.read("c", kStampedA);
+  place(p, c);
+  CHECK(p.flags().needs_new_timestamp);
+  p.flags().needs_new_timestamp = false;
+  REQUIRE(io.library.rename(c, "c2").ok());
+  CHECK(p.flags().needs_new_timestamp);
+
+  // A file stamp of 0 sets the mark again.
+  db::CellDef& z = io.read("z", "magic\ntech tiny\ntimestamp 0\n<< end >>\n");
+  CHECK(z.flags().needs_new_timestamp);
+}
+
+TEST_CASE("two parents that disagree on a child's stamp force a mismatch",
+          "[cap:cell-timestamps][req:Timestamps on instance read]") {
+  CellIo io;
+  (void)io.read("p1", "magic\ntech tiny\ntimestamp 200\nuse inv inv_0\ntimestamp 100\n"
+                      "transform 1 0 0 0 1 0\nbox 0 0 8 12\n<< end >>\n");
+  db::CellDef* inv = io.library.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK(inv->timestamp() == 100);  // the placeholder takes the use's stamp
+  CHECK(io.stamps.empty());        // which matches: no mismatch
+  (void)io.read("p2", "magic\ntech tiny\ntimestamp 200\nuse inv inv_0\ntimestamp 120\n"
+                      "transform 1 0 0 0 1 0\nbox 0 0 8 12\n<< end >>\n");
+  CHECK(inv->timestamp() == 0);  // forces a mismatch until inv is read
+  REQUIRE_FALSE(io.stamps.empty());
+  CHECK(io.stamps.entries().back().def == inv);
+  CHECK(io.stamps.entries().back().old_area == db::Rect{0, 0, 8, 12});
+}
+
+TEST_CASE("saving writes the current stamps and clears the changed-child flag",
+          "[cap:cell-timestamps][req:Timestamps in written files]") {
+  CellIo io;
+  REQUIRE(io.ctx.fs.create_directories("/w").ok());
+  io.clock.advance(std::chrono::seconds{-750});  // the clock reads 250
+  db::CellDef& a = io.read("a", kStampedA);
+  REQUIRE(db::paint(a, *cell::test::tiny_technology(), {10, 10, 20, 20},
+                    cell::test::tiny_technology()->find_type("metal1").id.value())
+              .ok());
+  a.flags().child_timestamps_changed = true;
+
+  // Still pending when rendered: Magic's warning, except for backup records.
+  (void)io.write(a);
+  CHECK(io.has_code(cell::codes::kOutOfDateStamp));
+  CellIo quiet;
+  db::CellDef& q = quiet.read("q", kStampedA);
+  q.flags().needs_new_timestamp = true;
+  cell::WriteOptions backup;
+  backup.backup = true;
+  (void)cell::write_mag(quiet.ctx, q, backup);
+  CHECK_FALSE(quiet.has_code(cell::codes::kOutOfDateStamp));
+
+  REQUIRE(cell::save_cell(io.ctx, a, "/w/a").ok());
+  const auto text = io.ctx.fs.read("/w/a.mag");
+  REQUIRE(text.ok());
+  CHECK(text.value().find("timestamp 250\n") != std::string::npos);
+  CHECK_FALSE(a.flags().child_timestamps_changed);
+  CHECK_FALSE(a.flags().needs_new_timestamp);
+
+  // A use block carries the child definition's current stamp.
+  db::CellDef& top = io.read("top", "magic\ntech tiny\ntimestamp 300\n<< end >>\n");
+  place(top, a);
+  CHECK(io.write(top).find("use a  a_0") != std::string::npos);
+  CHECK(io.write(top).find("timestamp 250\ntransform") != std::string::npos);
 }

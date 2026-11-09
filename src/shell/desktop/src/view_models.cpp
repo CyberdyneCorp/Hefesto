@@ -90,12 +90,12 @@ struct TreeBuilder {
 
   /// One row for the leaf instances of one definition: open when all are,
   /// partial (collapsed marker, "· N open") when only some are.
-  void add_group(const std::vector<const db::CellUse*>& uses, int depth, const db::Transform& to_root) {
-    HierarchyRow row{depth, {}, true, true, nullptr, {}, {}, false, {}};
+  void add_group(const std::vector<const db::CellUse*>& uses, int depth, const std::string& prefix) {
+    HierarchyRow row{depth, {}, true, true, nullptr, {}, {}, false};
     std::size_t open = 0;
     for (const db::CellUse* use : uses) {
       open += is_open(*use) ? 1U : 0U;
-      row.boxes.push_back(db::apply(to_root, use->bbox));
+      row.paths.push_back(prefix + use->id);
     }
     row.expanded = open == uses.size();
     row.partial = open > 0 && !row.expanded;
@@ -104,29 +104,22 @@ struct TreeBuilder {
     rows.push_back(std::move(row));
   }
 
-  void add_use(const db::CellUse& use, int depth, const db::Transform& to_root) {
+  void add_use(const db::CellUse& use, int depth, const std::string& prefix) {
     const bool expandable = can_expand(use);
     const bool open = is_open(use);
     const std::string name = use.def != nullptr ? use.def->name() : std::string("(missing)");
     const std::string marker = expandable ? (open ? "▾ " : "▸ ") : "";
     std::string suffix = " (" + use.id + ")" + array_suffix(use.array);
-    HierarchyRow row{depth, marker + name + suffix, expandable, open, &use, {db::apply(to_root, use.bbox)},
-                     std::move(suffix), false, {}};
-    if (use.def != nullptr) {
-      const db::Transform child_to_root = db::compose(to_root, use.transform);
-      for (const auto& child : use.def->uses()) {
-        if (child) row.child_boxes.push_back(db::apply(child_to_root, child->bbox));
-      }
-    }
-    rows.push_back(std::move(row));
+    const std::string path = prefix + use.id;
+    rows.push_back(HierarchyRow{depth, marker + name + suffix, expandable, open, &use, {path}, std::move(suffix), false});
     if (open && !use.def->uses().empty()) {
-      add_children(*use.def, depth + 1, db::compose(to_root, use.transform));
+      add_children(*use.def, depth + 1, path + "/");
     }
   }
 
   /// Leaf instances (no children, not arrays) of one definition collapse into
   /// one counted row at the position of the first; the others keep their order.
-  void add_children(const db::CellDef& def, int depth, const db::Transform& to_root) {
+  void add_children(const db::CellDef& def, int depth, const std::string& prefix) {
     std::map<const db::CellDef*, std::vector<const db::CellUse*>> leaves;
     for (const auto& use : def.uses()) {
       if (is_groupable(*use)) leaves[use->def].push_back(use.get());
@@ -135,9 +128,9 @@ struct TreeBuilder {
       if (full()) return;
       const auto group = is_groupable(*use) ? leaves.find(use->def) : leaves.end();
       if (group == leaves.end() || group->second.size() < 2) {
-        add_use(*use, depth, to_root);
+        add_use(*use, depth, prefix);
       } else if (group->second.front() == use.get()) {
-        add_group(group->second, depth, to_root);
+        add_group(group->second, depth, prefix);
       }
     }
   }
@@ -480,9 +473,20 @@ std::vector<HierarchyRow> hierarchy_rows(const db::CellDef& root, const Expanded
   TreeBuilder builder{expanded, max_rows, {}};
   const bool has_children = !root.uses().empty();
   builder.rows.push_back(
-      HierarchyRow{0, (has_children ? "▾ " : "") + root.name(), false, has_children, nullptr, {}, {}, false, {}});
-  builder.add_children(root, 1, db::kIdentity);
+      HierarchyRow{0, (has_children ? "▾ " : "") + root.name(), false, has_children, nullptr, {}, {}, false});
+  builder.add_children(root, 1, "");
   return builder.rows;
+}
+
+std::vector<db::Rect> splice_areas(const std::vector<db::Rect>& areas, std::size_t max_areas) {
+  if (areas.size() <= max_areas) {
+    return areas;
+  }
+  db::Rect all = areas.front();
+  for (const db::Rect& r : areas) {
+    all = db::Rect{std::min(all.x0, r.x0), std::min(all.y0, r.y0), std::max(all.x1, r.x1), std::max(all.y1, r.y1)};
+  }
+  return {all};
 }
 
 std::string_view HierarchyRow::name_part() const {
@@ -523,31 +527,24 @@ HierarchyRowLayout hierarchy_row_layout(const HierarchyRow& row, float width, co
   return out;
 }
 
-std::string HierarchyRow::toggle_command(const std::optional<db::Rect>& restore_box) const {
+std::string HierarchyRow::toggle_command() const {
   if (!expandable) {
     return {};
   }
-  const auto box = [](const db::Rect& b) {
-    const auto i = [](db::Coord v) { return std::to_string(v) + "i"; };
-    return "box values " + i(b.x0) + " " + i(b.y0) + " " + i(b.x1) + " " + i(b.y1);
+  // A path word the script reader keeps whole (as typed paths are quoted).
+  const auto word = [](const std::string& path) {
+    if (path.find_first_of(" \t\"\\{}[]$;") == std::string::npos) return path;
+    std::string out = "\"";
+    for (const char c : path) {
+      if (c == '"' || c == '\\' || c == '$' || c == '[' || c == ']') out += '\\';
+      out += c;
+    }
+    return out + "\"";
   };
   std::string out;
-  const auto add = [&out](const std::string& command) { out += (out.empty() ? "" : "; ") + command; };
-  for (const db::Rect& b : boxes) {
-    add(box(b) + "; " + (expanded ? "unexpand surround" : "expand surround"));
+  for (const std::string& path : paths) {
+    out += (out.empty() ? "" : "; ") + std::string(expanded ? "unexpand instance " : "expand instance ") + word(path);
   }
-  if (!expanded) {
-    // A child box that surrounds a parent box would collapse the parent again
-    // (`unexpand surround` matches every use the box surrounds); such a child
-    // stays expanded until instance-addressed expansion exists in the core.
-    const auto surrounds_parent = [this](const db::Rect& c) {
-      return std::any_of(boxes.begin(), boxes.end(), [&c](const db::Rect& b) { return db::surround(c, b); });
-    };
-    for (const db::Rect& c : child_boxes) {
-      if (!surrounds_parent(c)) add(box(c) + "; unexpand surround");
-    }
-  }
-  if (restore_box && !out.empty()) add(box(*restore_box));
   return out;
 }
 

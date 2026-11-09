@@ -5,7 +5,7 @@
 //   help [<command>]                 list commands, or show one command's help
 //   echo [<word> ...]                return the words joined by single spaces
 //   version                          return the Hefesto version
-//   quit                             stop the running script / session
+//   quit [<status>] [-noprompt]      stop the running script / session
 //   setting [get <name> | set <name> <on|off>]
 //                                    list, read or change a project setting
 //   hefesto::strict [on|off]         query or set script strict mode for the
