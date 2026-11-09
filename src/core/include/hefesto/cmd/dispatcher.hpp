@@ -46,6 +46,17 @@ class Dispatcher {
   void add_sink(diag::DiagnosticSink& sink) { sinks_.push_back(&sink); }
   void remove_sink(const diag::DiagnosticSink& sink) { std::erase(sinks_, &sink); }
 
+  /// Live sinks see each diagnostic a handler emits through its context at
+  /// the moment it is emitted, while the command still runs (for progress
+  /// displays such as `pdk install -progress`), in addition to the normal
+  /// publication to the sinks above after the command returns. They are
+  /// called on the emitting thread (a handler's worker thread included),
+  /// before the command's script location is attached, and never for the
+  /// diagnostics a handler returns in its result. Do not add or remove live
+  /// sinks while a command runs.
+  void add_live_sink(diag::DiagnosticSink& sink) { live_sinks_.push_back(&sink); }
+  void remove_live_sink(const diag::DiagnosticSink& sink) { std::erase(live_sinks_, &sink); }
+
   /// Attaches the M1 session state passed to every handler (not owned; must
   /// outlive the dispatcher or be detached with nullptr).
   void set_editor(editor::EditorState* editor) noexcept { editor_ = editor; }
@@ -65,6 +76,7 @@ class Dispatcher {
   editor::EditorState* editor_ = nullptr;
   std::vector<CommandObserver*> observers_;
   std::vector<diag::DiagnosticSink*> sinks_;
+  std::vector<diag::DiagnosticSink*> live_sinks_;
 };
 
 }  // namespace hefesto::cmd

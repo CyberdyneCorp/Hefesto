@@ -35,6 +35,8 @@ struct ExpandWalk {
   bool expand;  // false: unexpand
   bool toggle;
   std::vector<std::string> unavailable;
+  CommandContext* ctx = nullptr;
+  WindowManager::CellReader reader = nullptr;
 
   [[nodiscard]] bool matches(const db::Rect& bbox) const {
     switch (mode) {
@@ -47,12 +49,16 @@ struct ExpandWalk {
   }
 
   void act(const db::CellUse& use) {
-    if (expand && use.def->flags().not_found) {
+    const bool now = window.is_expanded(use);
+    const bool next = toggle ? !now : expand;
+    if (next && !use.def->flags().available && reader != nullptr && ctx != nullptr) {
+      (void)reader(*ctx, *use.def);  // DBExpand reads the cell (database/DBexpand.c)
+    }
+    if (next && use.def->flags().not_found) {
       unavailable.push_back(use.def->name());
       return;
     }
-    const bool now = window.is_expanded(use);
-    window.set_expanded(use, toggle ? !now : expand);
+    window.set_expanded(use, next);
   }
 
   /// DBExpandAll: acts on every matching instance at any depth, descending
@@ -116,7 +122,8 @@ CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand)
   if (w.root() == nullptr) {
     return CommandResult::success();
   }
-  ExpandWalk walk{w, box.value_or(db::Rect{}), args->mode, expand, args->toggle, {}};
+  ExpandWalk walk{w, box.value_or(db::Rect{}), args->mode, expand, args->toggle, {}, &ctx,
+                  t.value().editor.windows.cell_reader()};
   walk.walk(*w.root(), db::kIdentity);
   for (const auto& name : walk.unavailable) {
     ctx.emit(diag::make(codes::kExpand, "Cell " + name + " is unavailable.  It could not be expanded."));
@@ -269,7 +276,7 @@ CommandResult grid_set(Target& t, const std::vector<std::string>& values) {
   return CommandResult::success();
 }
 
-CommandResult grid_option(Target& t, int option, const Invocation& inv) {
+CommandResult grid_option(CommandContext& ctx, Target& t, int option, const Invocation& inv) {
   GridState& g = t.window.grid();
   const db::Rect& b = g.spacing;
   switch (option) {
@@ -278,12 +285,13 @@ CommandResult grid_option(Target& t, int option, const Invocation& inv) {
       if (option == 0 && inv.args.size() > 1) {
         return grid_set(t, std::vector<std::string>(inv.args.begin() + 1, inv.args.end()));
       }
-      return CommandResult::success("Grid unit box is (" + std::to_string(b.x0) + ", " + std::to_string(b.y0) +
-                                    ") to (" + std::to_string(b.x1) + ", " + std::to_string(b.y1) + ")");
+      // Tcl build: "%d %d %d %d" (commands/CmdFI.c:1350-1362)
+      return CommandResult::success(std::to_string(b.x0) + " " + std::to_string(b.y0) + " " + std::to_string(b.x1) +
+                                    " " + std::to_string(b.y1));
     case 1:  // help
-      return CommandResult::success(std::string(kGridUsage) +
-                                    "\nor     grid <option>\nwhere <option> is one of: on, off, state, box, what, "
-                                    "help, or multiple.");
+      print(ctx, std::string(kGridUsage) +
+                     "\nor     grid <option>\nwhere <option> is one of: on, off, state, box, what, help, or multiple.");
+      return CommandResult::success();
     case 2:
       return grid_multiple(g, inv);
     case 3:
@@ -291,7 +299,7 @@ CommandResult grid_option(Target& t, int option, const Invocation& inv) {
       g.visible = option == 4;
       return CommandResult::success();
     case 5:
-      return CommandResult::success(std::string("Grid is ") + (g.visible ? "on" : "off"));
+      return CommandResult::success(cmd::Value{std::int64_t{g.visible ? 1 : 0}});  // Tcl_NewBooleanObj
     default:  // toggle
       g.visible = !g.visible;
       return CommandResult::success();
@@ -309,7 +317,7 @@ CommandResult grid_cmd(CommandContext& ctx, const Invocation& inv) {
   } else if (!inv.args.empty()) {
     option = lookup(inv.args[0], {"box", "help", "multiple", "off", "on", "state", "toggle", "what"});
   }
-  const CommandResult result = option < 0 ? grid_set(t.value(), inv.args) : grid_option(t.value(), option, inv);
+  const CommandResult result = option < 0 ? grid_set(t.value(), inv.args) : grid_option(ctx, t.value(), option, inv);
   t.value().editor.windows.notify(t.value().window.id(), Change::grid);
   return result;
 }

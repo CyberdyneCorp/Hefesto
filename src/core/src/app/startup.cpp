@@ -16,6 +16,7 @@
 #include "hefesto/app/startup.hpp"
 
 #include "hefesto/app/diag_codes.hpp"
+#include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cell/fonts.hpp"
 #include "hefesto/cell/host.hpp"
@@ -137,6 +138,21 @@ class Startup {
       state_.settings.set(SettingLayer::session, name, value);
     }
     apply_effective(state_.settings, typed_);
+    record_recent_project();
+  }
+
+  // The recent-projects list: published for the `pdk` command and updated
+  // with the project opened by this startup.
+  void record_recent_project() {
+    if (!env_.recent_projects) {
+      return;
+    }
+    state_.settings.set(SettingLayer::session, kRecentProjectsFile, env_.recent_projects->string());
+    if (result_.project && env_.project_folder) {
+      if (auto status = note_recent_project(fs_, *env_.recent_projects, *env_.project_folder); !status) {
+        report(codes::kRecentProjects, "cannot update the recent-projects list: " + status.error().text);
+      }
+    }
   }
 
   // An explicit root from the front end becomes a session setting, so the
@@ -155,6 +171,20 @@ class Startup {
 
   // Search paths: the project's (relative to its folder) and the library path.
   void configure_paths() {
+    install_path_variables();
+    if (result_.project) {
+      for (const auto& entry : result_.project->cell_search_paths) {
+        const Path path{entry};
+        state_.search_paths.path.push_back(path.is_absolute() ? entry : (*env_.project_folder / path).string());
+      }
+    }
+    state_.search_paths.library = cell_library_path(options_.technology);
+    state_.search_paths.system = system_library_path();
+    load_default_fonts();
+  }
+
+  // Path-variable expansion: environment (through the host), CAD_ROOT, ~.
+  void install_path_variables() {
     state_.path_variables.install_root = env_.install_root;
     // The lookup outlives this Startup object (later `load` and `path`
     // commands use it), so it captures only the caller-owned host and values,
@@ -176,15 +206,6 @@ class Startup {
     state_.path_variables.home_of = [home](std::string_view user) -> std::optional<std::string> {
       return user.empty() && !home.empty() ? std::optional<std::string>{home.string()} : std::nullopt;
     };
-    if (result_.project) {
-      for (const auto& entry : result_.project->cell_search_paths) {
-        const Path path{entry};
-        state_.search_paths.path.push_back(path.is_absolute() ? entry : (*env_.project_folder / path).string());
-      }
-    }
-    state_.search_paths.library = cell_library_path(options_.technology);
-    state_.search_paths.system = system_library_path();
-    load_default_fonts();
   }
 
   // Magic's system startup file loads FreeSans, FreeSerif and FreeMono

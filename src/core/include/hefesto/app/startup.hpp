@@ -114,6 +114,10 @@ struct StartupEnvironment {
   std::optional<platform::Path> user_preferences;   // preferences JSON (user layer)
   std::optional<platform::Path> pdk_root;           // explicit PDK root; else settings, PDK_ROOT, ~/.ciel
   std::optional<platform::Path> pdk_startup_file;   // the PDK's .magicrc (role "pdk"), if known
+  /// The recent-projects list (app/recent_projects.hpp); when set, the opened
+  /// project folder is recorded in it and the session setting
+  /// `recent-projects-file` names it for the `pdk` command.
+  std::optional<platform::Path> recent_projects;
 };
 
 /// "Installation root and search paths": the environment variable

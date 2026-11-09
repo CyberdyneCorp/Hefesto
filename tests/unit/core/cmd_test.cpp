@@ -6,6 +6,9 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/cmd/value.hpp"
@@ -107,6 +110,57 @@ TEST_CASE("every front end goes through the dispatcher and is logged with its or
   const auto lines = s.logger().lines();
   CHECK(lines.at(0) == "info cmd[touch] echo box \"1 2\" -> ok");
   CHECK(lines.at(1) == "info cmd[script] echo box \"1 2\" -> ok");
+}
+
+TEST_CASE("internal commands are logged but kept out of the history", CMD_API_TAGS) {
+  hefesto::test::Session s;
+  (void)s.dispatcher().execute({"echo", {"tick"}, Origin::internal, std::nullopt});
+  (void)s.exec("echo", {"user"});
+  CHECK(s.log().history() == std::vector<std::string>{"echo user"});
+  CHECK(s.logger().lines().at(0) == "info cmd[internal] echo tick -> ok");
+}
+
+namespace {
+
+// Records each diagnostic text and whether the command had returned by then.
+struct LiveRecorder final : hefesto::diag::DiagnosticSink {
+  explicit LiveRecorder(const bool& returned) : returned_(returned) {}
+  void emit(const hefesto::diag::Diagnostic& d) override { seen.emplace_back(d.text, returned_); }
+  std::vector<std::pair<std::string, bool>> seen;
+
+ private:
+  const bool& returned_;
+};
+
+CommandResult emit_two_steps(hefesto::cmd::CommandContext& ctx, const Invocation& /*invocation*/) {
+  ctx.emit(hefesto::diag::make(codes::kCmdUsage, "step 1"));
+  ctx.emit(hefesto::diag::make(codes::kCmdUsage, "step 2"));
+  CommandResult r = CommandResult::success();
+  r.diagnostics.push_back(hefesto::diag::make(codes::kCmdUsage, "returned"));
+  return r;
+}
+
+}  // namespace
+
+TEST_CASE("live sinks see context diagnostics while the command runs", CMD_API_TAGS) {
+  hefesto::test::Session s;
+  REQUIRE_FALSE(s.registry().add({"progress", "progress", "Emits two steps.", emit_two_steps}));
+  bool returned = false;
+  LiveRecorder live{returned};
+  LiveRecorder after{returned};
+  s.dispatcher().add_live_sink(live);
+  s.dispatcher().add_sink(after);
+  const CommandResult r = s.exec("progress");
+  returned = true;
+  // Live: only the diagnostics emitted through the context, while it ran.
+  CHECK(live.seen == std::vector<std::pair<std::string, bool>>{{"step 1", false}, {"step 2", false}});
+  // The ordinary sinks and the result still get all three after it returns.
+  REQUIRE(after.seen.size() == 3U);
+  CHECK(after.seen.back().first == "returned");
+  CHECK(r.diagnostics.size() == 3U);
+  s.dispatcher().remove_live_sink(live);
+  (void)s.exec("progress");
+  CHECK(live.seen.size() == 2U);
 }
 
 TEST_CASE("the command log replays a session", CMD_API_TAGS) {

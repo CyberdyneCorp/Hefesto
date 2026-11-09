@@ -12,6 +12,9 @@
 // THIRD_PARTY_NOTICES.md).
 
 #include <algorithm>
+#include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "hefesto/db/cell.hpp"
@@ -101,6 +104,32 @@ void scale_labels(db::CellDef& def, std::int64_t n, std::int64_t d) {
   }
 }
 
+// layout-properties "Geometric properties follow the geometry": dimension
+// values scale pairwise as points (a trailing odd value is kept), plane
+// properties rectangle by rectangle; other types are unchanged.
+void scale_properties(db::CellDef& def, std::int64_t n, std::int64_t d) {
+  std::vector<std::pair<std::string, db::PropertyValue>> scaled;
+  def.properties().for_each([&](std::string_view name, const db::PropertyValue& value) {
+    if (const auto* dims = std::get_if<db::DimensionList>(&value)) {
+      db::DimensionList out = *dims;
+      for (std::size_t i = 0; i + 1 < out.values.size(); i += 2) {
+        (void)scale_in_place(out.values[i], n, d);
+        (void)scale_in_place(out.values[i + 1], n, d);
+      }
+      scaled.emplace_back(std::string{name}, std::move(out));
+    } else if (const auto* plane = std::get_if<db::PlaneValue>(&value)) {
+      db::PlaneValue out = *plane;
+      for (db::Rect& r : out.rects) {
+        (void)scale_rect(r, n, d);
+      }
+      scaled.emplace_back(std::string{name}, std::move(out));
+    }
+  });
+  for (auto& [name, value] : scaled) {
+    def.properties().put(name, std::move(value));
+  }
+}
+
 bool scale_cell(db::CellDef& def, const Technology& tech, std::int64_t n, std::int64_t d) {
   bool inexact = false;
   if (def.flags().available) {
@@ -114,6 +143,7 @@ bool scale_cell(db::CellDef& def, const Technology& tech, std::int64_t n, std::i
       }
     }
     scale_labels(def, n, d);
+    scale_properties(def, n, d);
   }
   db::Rect bbox = def.bbox();
   db::Rect extended = def.extended_bbox();

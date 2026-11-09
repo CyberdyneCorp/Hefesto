@@ -8,6 +8,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cstdint>
+#include <variant>
 #include <memory>
 #include <string>
 #include <vector>
@@ -283,9 +285,38 @@ TEST_CASE("a load with a different plane count resizes every cell's planes",
   CHECK(def->plane(static_cast<tech::PlaneId>(def->plane_count() - 1)).empty());  // a new plane starts empty
 }
 
+TEST_CASE("scalegrid scales the box once with magic-compat off",
+          "[cap:tech-loading-and-scaling][req:scalegrid command]") {
+  Session s;
+  s.project.compat.magic_compat = false;
+  s.load_tiny();
+  s.editor.box = db::Rect{0, 0, 3, 5};
+  REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
+  CHECK(*s.editor.box == db::Rect{0, 0, 6, 10});
+}
+
+TEST_CASE("a lookup after a load reports TechPrintLine's end-of-file location",
+          "[cap:tech-file-format][req:Error reporting and recovery]") {
+  Session s;
+  s.load_tiny();
+  const auto r = s.run("tech", {"layers", "nosuchlayer"});
+  REQUIRE_FALSE(r.diagnostics.empty());
+  const auto* where = std::get_if<hefesto::diag::SourceLocation>(&r.diagnostics.front().location);
+  REQUIRE(where != nullptr);
+  CHECK(where->file == "/t/tiny.tech");
+  const std::string text_of_file = tiny();
+  REQUIRE(text_of_file.ends_with('\n'));
+  // The read at end of file counts too (utils/tech.c:1009): last line + 1.
+  CHECK(where->line == static_cast<std::uint32_t>(std::count(text_of_file.begin(), text_of_file.end(), '\n') + 1));
+  REQUIRE(r.diagnostics.front().related.has_value());
+  CHECK(r.diagnostics.front().related->name == "(none)");
+}
+
 TEST_CASE("internal grid scale stays reduced", "[cap:tech-loading-and-scaling][req:Internal grid scale]") {
   Session s;
-  CHECK(text(s.run("scalegrid", {"2", "4"})) == "2 Magic internal units = 1 Lambda");
+  const auto r = s.run("scalegrid", {"2", "4"});
+  CHECK(text(r).empty());  // the scale is printed (TxPrintf), not returned
+  CHECK(says(r, "2 Magic internal units = 1 Lambda"));
   CHECK(s.editor.grid == tech::GridScale{2, 1});
   CHECK(tech::reduce(tech::GridScale{6, 4}) == tech::GridScale{3, 2});
 }
@@ -297,8 +328,10 @@ TEST_CASE("scalegrid rescales box and layout", "[cap:tech-loading-and-scaling][r
   auto* def = s.painted_cell(8, 13, db::Rect{-3, 0, 1, 2});
   auto r = s.run("scalegrid", {"1", "2"});
   REQUIRE(r.ok());
-  CHECK(text(r) == "2 Magic internal units = 1 Lambda");
-  CHECK(*s.editor.box == db::Rect{0, 0, 6, 10});
+  CHECK(says(r, "2 Magic internal units = 1 Lambda"));
+  // magic-compat: DBScaleEverything and CmdScalegrid both rescale the box,
+  // so it grows by (b/a)^2 as in Magic (TECH-G36).
+  CHECK(*s.editor.box == db::Rect{0, 0, 12, 20});
   CHECK(def->plane(8).bounding_box() == db::Rect{-6, 0, 2, 4});
   REQUIRE(s.editor.windows.open(def, {0, 0, 400, 400}).ok());
   s.editor.windows.current()->move_to(db::Rect{-10, -10, 30, 30});
@@ -309,12 +342,12 @@ TEST_CASE("scalegrid rescales box and layout", "[cap:tech-loading-and-scaling][r
   CHECK(after.width() < before.width());
   CHECK(after.x0 <= tech::scale_value(before.x0, 1, 2));  // the scaled area is still in view
   CHECK(after.x1 >= tech::scale_value(before.x1, 1, 2));
-  CHECK(text(r) == "1 Magic internal unit = 1 Lambda");
+  CHECK(says(r, "1 Magic internal unit = 1 Lambda"));
   CHECK(*s.editor.box == db::Rect{0, 0, 3, 5});
   REQUIRE(s.run("scalegrid", {"2", "1"}).ok());  // -3 -> floor(-1.5) = -2
   CHECK(def->plane(8).bounding_box().x0 == -2);
-  CHECK(text(s.run("scalegrid", {"1:3"})) == "3 Magic internal units = 2 Lambda");
-  CHECK(text(s.run("scalegrid", {"3/3"})) == "3 Magic internal units = 2 Lambda");
+  CHECK(says(s.run("scalegrid", {"1:3"}), "3 Magic internal units = 2 Lambda"));
+  CHECK(says(s.run("scalegrid", {"3/3"}), "3 Magic internal units = 2 Lambda"));
   for (const auto& args : std::vector<std::vector<std::string>>{{"0", "2"}, {"2"}, {"a", "b"}, {"1", "2", "3"}}) {
     CHECK(s.run("scalegrid", args).diagnostics.at(0).text ==
           "Usage:  scalegrid a b, where a and b are strictly positive integers");

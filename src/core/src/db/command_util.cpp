@@ -58,6 +58,7 @@ diag::Outcome<Session> session(cmd::CommandContext& ctx) {
   s.editor = ed.value();
   s.tech = s.editor->technology.get();
   s.magic_compat = ctx.project().compat.magic_compat;
+  s.ctx = &ctx;
   if (s.tech == nullptr) {
     return diag::make(diag::codes::kCmdSession, "the session has no technology");
   }
@@ -73,7 +74,7 @@ diag::Outcome<CellDef*> edit_cell(const Session& s) {
 
 diag::Outcome<Rect> box(const Session& s) {
   if (!s.editor->box) {
-    return diag::make(codes::kNoBox, "the box is not set");
+    return diag::make(codes::kNoBox, "Box tool must be present");
   }
   return *s.editor->box;
 }
@@ -84,6 +85,29 @@ Snap snap_mode(const Session& s) {
 
 void set_snap_mode(const Session& s, Snap mode) {
   s.editor->snap = mode;
+}
+
+void print(const Session& s, std::string text) {
+  if (s.ctx != nullptr) {
+    s.ctx->emit(diag::make(codes::kReport, std::move(text)));
+  }
+}
+
+void warn(const Session& s, std::string text) {
+  if (s.ctx != nullptr) {
+    s.ctx->emit(diag::make(codes::kWarning, std::move(text)));
+  }
+}
+
+constexpr std::string_view kUnitsSetting = "units";
+
+bool units_internal(const Session& s) {
+  const auto v = s.editor->settings.value_in(app::SettingLayer::session, kUnitsSetting);
+  return v && *v == "internal";
+}
+
+void set_units_internal(const Session& s) {
+  s.editor->settings.set(app::SettingLayer::session, kUnitsSetting, "internal");
 }
 
 std::string_view snap_name(Snap mode) noexcept {
@@ -116,7 +140,7 @@ cmd::CoordinateUnits coordinate_units(const Session& s) {
   cmd::CoordinateUnits u;
   u.internal_per = s.editor->grid.internal;
   u.lambda_per = s.editor->grid.lambda;
-  switch (snap_mode(s)) {
+  switch (units_internal(s) ? Snap::internal : snap_mode(s)) {
     case Snap::internal:
       u.default_unit = cmd::DefaultUnit::internal;
       break;
@@ -159,7 +183,7 @@ diag::Outcome<Coord> parse_coord(const Session& s, std::string_view text) {
 }
 
 cmd::Value coord_value(const Session& s, Coord value) {
-  if (snap_mode(s) == Snap::internal) {
+  if (units_internal(s) || snap_mode(s) == Snap::internal) {
     return cmd::Value{std::int64_t{value}};
   }
   const std::int64_t num = std::int64_t{value} * s.editor->grid.lambda;
@@ -216,6 +240,21 @@ CellUse* current_use(const Session& s) {
 
 void set_current_use(const Session& s, const CellUse* use) {
   s.editor->current_use = use == nullptr ? std::string{} : use->id;
+}
+
+int lookup(std::string_view word, std::initializer_list<std::string_view> choices) {
+  int found = -2;
+  int index = 0;
+  for (const std::string_view choice : choices) {
+    if (choice == word) {
+      return index;
+    }
+    if (!word.empty() && choice.starts_with(word)) {
+      found = found == -2 ? index : -1;
+    }
+    ++index;
+  }
+  return found;
 }
 
 std::string join_args(const std::vector<std::string>& args, std::size_t first) {

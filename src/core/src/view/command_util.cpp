@@ -18,6 +18,10 @@ cmd::CommandResult fail(std::string_view code, std::string text) {
   return cmd::CommandResult::failure(diag::make(code, std::move(text)));
 }
 
+void print(cmd::CommandContext& ctx, std::string text) {
+  ctx.emit(diag::make(codes::kReport, std::move(text)));
+}
+
 cmd::CommandResult failure(const diag::Diagnostic& d) {
   return cmd::CommandResult::failure(d);
 }

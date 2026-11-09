@@ -57,7 +57,9 @@ CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
   }
   auto opened = ed.windows.open_frame(root.value(), create_frame());
   if (!opened) {
-    return failure(opened.error());
+    diag::Diagnostic d = opened.error();
+    d.text += "\nCould not create window";  // windOpenCmd after WindCreate fails
+    return failure(d);
   }
   if (on_box) {
     opened.value()->move_to(box_frame(*ed.box));
@@ -95,47 +97,41 @@ CommandResult closewindow_cmd(CommandContext& ctx, const Invocation& inv) {
   return closed ? CommandResult::success() : failure(closed.error());
 }
 
-std::string window_line(const LayoutWindow& w, bool header_has_names) {
-  std::string line = std::to_string(w.id());
-  if (header_has_names) {
-    line += "\t" + w.name();
-  }
-  return line;
-}
-
+// windNamesCmd, Tcl build (Magic ref: windows/windCmdSZ.c:481-560): the
+// window id (no name pointer with a host-managed display), or the list of
+// every window's id from the top window down.
 CommandResult windownames_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
     return failure(e.error());
   }
   const WindowManager& wm = e.value()->windows;
-  if (inv.args.size() > 1 || (inv.args.size() == 1 && inv.args[0] != "all" && lookup(inv.args[0], {"layout"}) < 0)) {
-    return fail(codes::kUsage, "Usage: windownames [all | client_type]");
+  if (inv.args.size() > 1 || (inv.args.size() == 1 && !inv.args[0].starts_with("all") &&
+                              lookup(inv.args[0], {"layout"}) < 0)) {
+    return fail(codes::kUsage, "Usage:  windownames [all | client_type]");
   }
   if (inv.args.empty() && wm.size() == 1) {
-    const LayoutWindow& w = *wm.current();
-    return CommandResult::success("Window ID = " + std::to_string(w.id()) +
-                                  (w.name().empty() ? std::string() : ", Name = " + w.name()));
+    return CommandResult::success(cmd::Value{std::int64_t{wm.current()->id()}});
   }
-  bool named = false;
-  wm.for_each([&named](LayoutWindow& w) { named = named || !w.name().empty(); });
-  std::string out = named ? "Window ID\tWindow Name" : "Window ID";
-  wm.for_each([&](LayoutWindow& w) { out += "\n" + window_line(w, named); });
-  return CommandResult::success(out);
+  cmd::Value::List ids;
+  wm.for_each([&ids](LayoutWindow& w) { ids.emplace_back(std::int64_t{w.id()}); });
+  return CommandResult::success(cmd::Value{std::move(ids)});
 }
 
+// windPositionsCmd. Magic's Tcl build returns only the last window's list;
+// Hefesto returns one list per window (Q-UI-17, X-2 tier 1).
 CommandResult windowpositions_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
     return failure(e.error());
   }
   std::vector<std::string> args = inv.args;
-  const bool frame = !args.empty() && args.front() == "frame";
+  const bool frame = !args.empty() && args.front().starts_with("frame");
   if (frame) {
     args.erase(args.begin());
   }
   if (args.size() > 1) {
-    return fail(codes::kUsage, "Usage: windowpositions [frame] [file]");
+    return fail(codes::kUsage, "Usage:  windowpositions [file]");
   }
   std::string text;
   cmd::Value::List lists;
@@ -167,13 +163,15 @@ constexpr ChromeCommand kCaption{"windowcaption", &ChromeFlags::caption, "New wi
 constexpr ChromeCommand kScrollbars{"windowscrollbars", &ChromeFlags::scrollbars, "New windows will have scroll bars.",
                                     "New windows will not have scroll bars."};
 
-CommandResult set_chrome(editor::EditorState& ed, const ChromeCommand& c, const std::string& value) {
+CommandResult set_chrome(CommandContext& ctx, editor::EditorState& ed, const ChromeCommand& c,
+                         const std::string& value) {
   const int which = lookup(value, {"on", "off"});
   if (which < 0) {
     return fail(codes::kUsage, "Usage: " + std::string(c.name) + " [on|off]");
   }
   ed.windows.chrome_defaults().*c.flag = which == 0;
-  return CommandResult::success(std::string(which == 0 ? c.on_text : c.off_text));
+  print(ctx, std::string(which == 0 ? c.on_text : c.off_text));  // TxPrintf; no Tcl result
+  return CommandResult::success();
 }
 
 /// The query form (no argument) of windowborder / windowcaption.
@@ -182,11 +180,12 @@ CommandResult query_chrome(editor::EditorState& ed, const ChromeCommand& c) {
   if (w == nullptr) {
     return fail(codes::kNoWindow, "No window specified for caption command\nUsage: " + std::string(c.name) + " [on|off]");
   }
+  // Tcl build: the caption itself, or "on"/"off" (windows/windCmdAM.c:81-210).
   if (c.flag == &ChromeFlags::caption) {
     refresh_captions(ed);
-    return CommandResult::success("Window caption is \"" + w->caption() + "\"");
+    return CommandResult::success(w->caption());
   }
-  return CommandResult::success(std::string("Window border is ") + (w->chrome().*c.flag ? "on" : "off"));
+  return CommandResult::success(std::string(w->chrome().*c.flag ? "on" : "off"));
 }
 
 cmd::Handler chrome_handler(const ChromeCommand& c) {
@@ -199,7 +198,7 @@ cmd::Handler chrome_handler(const ChromeCommand& c) {
     if (inv.args.size() > 1 || (inv.args.empty() && !query_ok)) {
       return fail(codes::kUsage, "Usage: " + std::string(c.name) + (query_ok ? " [on|off]" : " on|off"));
     }
-    return inv.args.empty() ? query_chrome(*e.value(), c) : set_chrome(*e.value(), c, inv.args[0]);
+    return inv.args.empty() ? query_chrome(*e.value(), c) : set_chrome(ctx, *e.value(), c, inv.args[0]);
   };
 }
 

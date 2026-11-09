@@ -34,9 +34,12 @@ inline constexpr std::string_view kGnd = "gnd";
 inline constexpr std::string_view kSub = "sub";
 /// The PDK root chosen in the settings ("Install layout compatible with ciel", step 1).
 inline constexpr std::string_view kPdkRoot = "pdk-root";
+/// on/off: the automatic PDK update check (hefesto-pdk-manager "Updates"); built-in on.
+inline constexpr std::string_view kPdkUpdateCheck = "pdk-update-check";
 
 /// Built-in layer: magic-compat on, netgen-compat on, script-strict off,
-/// vdd `vdd!`, gnd `gnd!` (Magic's system startup file values), no globals.
+/// vdd `vdd!`, gnd `gnd!` (Magic's system startup file values), no globals,
+/// pdk-update-check on.
 void install_builtin_defaults(SettingsStack& stack);
 
 /// Project layer from a project file (typed settings as on/off, other

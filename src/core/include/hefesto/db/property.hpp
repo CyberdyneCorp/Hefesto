@@ -76,6 +76,12 @@ class PropertyStore {
 /// (FIXED_BBOX/OBS_BBOX: 4 dimensions; GDS_START/GDS_BEGIN/GDS_END: double;
 /// GDS_FILE: string; MASKHINTS_*: plane of 4-value groups). Other names keep
 /// `value`. A value that cannot be parsed falls back to its string form.
+/// A plane property's region as Magic stores and enumerates it: the
+/// rectangles painted into a tile plane (merged into maximal horizontal
+/// strips), in the plane's area-enumeration order (DBSrPaintArea), which is
+/// the order `.mag` files and the `property` command show them.
+[[nodiscard]] std::vector<Rect> plane_property_tiles(const PlaneValue& value);
+
 [[nodiscard]] PropertyValue coerce_reserved_property(std::string_view name, const PropertyValue& value);
 
 /// "Geometric properties follow the geometry": a dimension or plane value

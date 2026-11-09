@@ -11,6 +11,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
+#include <climits>
+#include <cstdint>
+#include <charconv>
+#include <variant>
 #include <utility>
 
 #include "db/command_util.hpp"
@@ -95,9 +100,16 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
   if (!put.ok()) {
     return cu::fail(put.error());
   }
-  if (inv.args.size() < 3) {
-    put.value()->type = label_layer_for(*e.s.tech, choose_label_layer(*e.def, *e.s.tech, *put.value()));
+  // CmdLabelProc: a label without a layer starts on space; DBAdjustLabels
+  // then moves every label in the box to the paint under it, with notes.
+  // (Magic ref: commands/CmdLQ.c:124-137)
+  Label* made = put.value();
+  std::vector<std::string> notes;
+  (void)adjust_labels(*e.def, *e.s.tech, e.area, &notes);
+  for (std::string& n : notes) {
+    cu::print(e.s, std::move(n));
   }
+  made->type = label_layer_for(*e.s.tech, made->type);
   recompute_bbox(*e.def, e.s.magic_compat);
   return CommandResult::success();
 }
@@ -439,86 +451,237 @@ CommandResult cmd_port(CommandContext& ctx, const Invocation& inv) {
 }
 
 // --- property ------------------------------------------------------------------
+//
+// CmdDoProperty, Tcl build (Magic ref: commands/CmdLQ.c:2324-2800). Magic
+// 8.3.694 defines PROPERTY_TYPE_COMPAT as 4, the index of "plane", not of
+// "compat" (5): `property compat ...` takes "compat" as a type keyword and
+// queries or sets the next word as a property name, and `property plane
+// ...` is the compat switch. magic-compat ON replicates this argument quirk
+// (decision X-2 tier 2); OFF uses the documented keywords
+// (layout-properties "Property compat mode").
 
+enum PropType { kString, kInteger, kDimension, kDouble, kPlane, kCompatKeyword };
 
 std::optional<bool> parse_bool(std::string_view v) {
-  for (const std::string_view t : {"enable", "yes", "true", "on", "1"}) {
-    if (v == t) {
-      return true;
-    }
+  const int idx = cu::lookup(v, {"disable", "no", "false", "off", "0", "enable", "yes", "true", "on", "1"});
+  if (idx < 0) {
+    return std::nullopt;
   }
-  for (const std::string_view f : {"disable", "no", "false", "off", "0"}) {
-    if (v == f) {
-      return false;
-    }
-  }
-  return std::nullopt;
+  return idx > 4;
 }
 
-CommandResult property_compat(const cu::Session& s, const std::vector<std::string>& args) {
-  if (args.size() == 1) {
+struct PropertyArgs {
+  std::vector<std::string> words;  // name and values
+  int type = kString;
+  bool compat_switch = false;  // this invocation is the compat query/set
+  bool dolist = false;
+};
+
+PropertyArgs parse_property_args(const std::vector<std::string>& args, bool magic_compat) {
+  PropertyArgs p;
+  p.words = args;
+  if (!p.words.empty() && p.words.front() == "list") {
+    p.dolist = true;
+    p.words.erase(p.words.begin());
+  }
+  if (p.words.empty()) {
+    return p;
+  }
+  const int found = cu::lookup(p.words.front(), {"string", "integer", "dimension", "double", "plane", "compat"});
+  const int compat_index = magic_compat ? kPlane : kCompatKeyword;
+  if (found == compat_index) {
+    p.compat_switch = true;
+  } else if (found >= 0) {
+    p.type = found;
+    p.words.erase(p.words.begin());
+  }
+  return p;
+}
+
+CommandResult property_compat(const cu::Session& s, const PropertyArgs& p) {
+  if (p.words.size() == 1) {
     return CommandResult::success(Value{std::int64_t{s.editor->property_compat ? 1 : 0}});
   }
-  const auto b = parse_bool(args[1]);
+  const auto b = parse_bool(p.words[1]);
   if (!b) {
-    return cu::fail(cu::bad_argument("bad boolean \"" + args[1] + "\""));
+    return cu::fail(cu::bad_argument("Unknown property compat option \"" + p.words[1] + "\""));
   }
   s.editor->property_compat = *b;
   return CommandResult::success();
 }
 
-CommandResult property_list(const CellDef& def) {
-  Value::List items;
-  def.properties().for_each([&](std::string_view name, const PropertyValue& v) {
-    items.push_back(Value{Value::List{Value{std::string{name}}, Value{property_text(v)}}});
-  });
-  return CommandResult::success(Value{std::move(items)});
-}
-
-bool is_type_keyword(std::string_view s) {
-  return s == "string" || s == "integer" || s == "dimension" || s == "double";
-}
-
-// Dimensions are typed in the current snap units: each space-separated value
-// converted to internal units.
-diag::Outcome<std::string> dimension_text(const cu::Session& s, const std::string& text) {
-  std::string out;
-  std::size_t pos = 0;
-  while (pos < text.size()) {
-    const std::size_t end = text.find(' ', pos);
-    const std::string tok = text.substr(pos, end == std::string::npos ? std::string::npos : end - pos);
-    if (!tok.empty()) {
-      auto c = cu::parse_coord(s, tok);
-      if (!c.ok()) {
-        return c.error();
-      }
-      out += (out.empty() ? "" : " ") + std::to_string(c.value());
+// The values of one property as Tcl list elements (printPropertiesFunc and
+// the single-property result).
+Value::List property_values(const cu::Session& s, const PropertyValue& v) {
+  Value::List out;
+  if (const auto* str = std::get_if<std::string>(&v)) {
+    out.emplace_back(*str);
+  } else if (const auto* ints = std::get_if<IntegerList>(&v)) {
+    for (const std::int32_t i : ints->values) {
+      out.emplace_back(std::int64_t{i});
     }
-    pos = end == std::string::npos ? text.size() : end + 1;
+  } else if (const auto* dims = std::get_if<DimensionList>(&v)) {
+    for (const std::int32_t i : dims->values) {
+      out.push_back(cu::coord_value(s, i));
+    }
+  } else if (const auto* dbl = std::get_if<DoubleList>(&v)) {
+    for (const std::int64_t i : dbl->values) {
+      out.emplace_back(i);
+    }
+  } else if (const auto* plane = std::get_if<PlaneValue>(&v)) {
+    for (const Rect& r : plane_property_tiles(*plane)) {
+      for (const Coord c : {r.x0, r.y0, r.x1, r.y1}) {
+        out.push_back(cu::coord_value(s, c));
+      }
+    }
   }
   return out;
 }
 
-CommandResult property_put(const cu::Session& s, CellDef& def, std::string_view type, const std::string& name,
-                           const std::string& text) {
-  if (text.empty()) {
-    set_property(def, name, std::nullopt);
-    mark_modified(def);
+CommandResult property_list(const cu::Session& s, const CellDef& def) {
+  Value::List items;
+  def.properties().for_each([&](std::string_view name, const PropertyValue& v) {
+    Value::List item{Value{std::string{name}}};
+    for (Value& e : property_values(s, v)) {
+      item.push_back(std::move(e));
+    }
+    items.emplace_back(std::move(item));
+  });
+  return CommandResult::success(Value{std::move(items)});
+}
+
+CommandResult property_get(const cu::Session& s, const CellDef& def, const PropertyArgs& p) {
+  const PropertyValue* v = def.properties().find(p.words[0]);
+  if (v == nullptr) {
+    if (!p.dolist) {
+      cu::warn(s, "Property name \"" + p.words[0] + "\" is not defined");
+    }
     return CommandResult::success();
   }
-  std::string value_text = text;
-  if (type == "dimension") {
-    auto internal = dimension_text(s, text);
-    if (!internal.ok()) {
-      return cu::fail(internal.error());
+  Value::List values = property_values(s, *v);
+  if (std::holds_alternative<std::string>(*v) || (values.size() == 1 && !std::holds_alternative<PlaneValue>(*v))) {
+    return CommandResult::success(std::move(values.front()));
+  }
+  return CommandResult::success(Value{std::move(values)});
+}
+
+int reserved_type(std::string_view name, int type) {
+  if (name == "GDS_START" || name == "GDS_END") {
+    return kDouble;
+  }
+  if (name == "GDS_FILE") {
+    return kString;
+  }
+  if (name == "FIXED_BBOX" || name == "OBS_BBOX") {
+    return kDimension;
+  }
+  return name.starts_with("MASKHINTS_") ? kPlane : type;
+}
+
+std::vector<std::string> split_words(std::string_view text) {
+  std::vector<std::string> out;
+  std::size_t i = 0;
+  while (i < text.size()) {
+    while (i < text.size() && std::isspace(static_cast<unsigned char>(text[i])) != 0) {
+      ++i;
     }
-    value_text = std::move(internal).value();
+    const std::size_t start = i;
+    while (i < text.size() && std::isspace(static_cast<unsigned char>(text[i])) == 0) {
+      ++i;
+    }
+    if (i > start) {
+      out.emplace_back(text.substr(start, i - start));
+    }
   }
-  auto v = parse_property_value(type, value_text);
-  if (!v.ok()) {
-    return cu::fail(v.error());
+  return out;
+}
+
+// sscanf("%d") / sscanf("%lld"): a leading integer (after blanks and an
+// optional sign), saturated instead of overflowing; 0 with Magic's error
+// when there is none.
+std::int64_t scan_integer(const cu::Session& s, const std::string& word, bool split) {
+  std::string_view v = word;
+  while (!v.empty() && std::isspace(static_cast<unsigned char>(v.front())) != 0) {
+    v.remove_prefix(1);
   }
-  set_property(def, name, coerce_reserved_property(name, v.value()));
+  const bool negative = !v.empty() && v.front() == '-';
+  if (!v.empty() && (v.front() == '+' || v.front() == '-')) {
+    v.remove_prefix(1);
+  }
+  std::uint64_t magnitude = 0;
+  const auto [ptr, ec] = std::from_chars(v.data(), v.data() + v.size(), magnitude);
+  if (ptr == v.data()) {
+    cu::warn(s, split ? "Unable to parse integer value from \"" + word + "\""
+                      : "Unable to parse value \"" + word + "\" as an integer");
+    return 0;
+  }
+  constexpr std::uint64_t kMax = static_cast<std::uint64_t>(INT64_MAX);
+  if (ec == std::errc::result_out_of_range || magnitude > kMax) {
+    return negative ? INT64_MIN : INT64_MAX;
+  }
+  const auto value = static_cast<std::int64_t>(magnitude);
+  return negative ? -value : value;
+}
+
+diag::Outcome<PropertyValue> build_property(const cu::Session& s, int type, const std::vector<std::string>& values,
+                                            bool split) {
+  if (type == kString) {
+    return PropertyValue{values.front()};
+  }
+  IntegerList ints;
+  DimensionList dims;
+  DoubleList dbl;
+  PlaneValue plane;
+  std::vector<Coord> coords;
+  for (const std::string& w : values) {
+    if (type == kInteger) {
+      ints.values.push_back(static_cast<std::int32_t>(std::clamp<std::int64_t>(scan_integer(s, w, split), INT32_MIN,
+                                                                               INT32_MAX)));
+    } else if (type == kDouble) {
+      dbl.values.push_back(scan_integer(s, w, split));
+    } else {
+      auto c = cu::parse_coord(s, w);
+      if (!c.ok()) {
+        return c.error();
+      }
+      coords.push_back(c.value());
+    }
+  }
+  if (type == kInteger) {
+    return PropertyValue{ints};
+  }
+  if (type == kDouble) {
+    return PropertyValue{dbl};
+  }
+  if (type == kDimension) {
+    dims.values.assign(coords.begin(), coords.end());
+    return PropertyValue{dims};
+  }
+  for (std::size_t i = 0; i + 3 < coords.size(); i += 4) {
+    plane.rects.push_back(canonical(Rect{coords[i], coords[i + 1], coords[i + 2], coords[i + 3]}));
+  }
+  return PropertyValue{plane};
+}
+
+CommandResult property_put(const cu::Session& s, CellDef& def, const PropertyArgs& p) {
+  const std::string& name = p.words[0];
+  if (p.words[1].empty()) {
+    set_property(def, name, std::nullopt);
+  } else {
+    const int type = reserved_type(name, p.type);
+    const bool split = p.words.size() == 2;
+    const std::vector<std::string> values =
+        split && type != kString ? split_words(p.words[1])
+                                 : std::vector<std::string>{p.words.begin() + 1, p.words.end()};
+    if (values.empty()) {
+      return CommandResult::success();
+    }
+    auto v = build_property(s, type, values, split);
+    if (!v.ok()) {
+      return cu::fail(v.error());
+    }
+    set_property(def, name, std::move(v).value());
+  }
   mark_modified(def);
   return CommandResult::success();
 }
@@ -528,29 +691,21 @@ CommandResult cmd_property(CommandContext& ctx, const Invocation& inv) {
   if (!s.ok()) {
     return cu::fail(s.error());
   }
-  const auto& args = inv.args;
-  if (!args.empty() && args[0] == "compat") {
-    return property_compat(s.value(), args);
+  const PropertyArgs p = parse_property_args(inv.args, s.value().magic_compat);
+  if (p.compat_switch) {
+    return property_compat(s.value(), p);
   }
   auto def = cu::edit_cell(s.value());
   if (!def.ok()) {
     return cu::fail(def.error());
   }
-  std::size_t first = 0;
-  std::string_view type = "string";
-  if (!args.empty() && is_type_keyword(args[0])) {
-    type = args[0];
-    first = 1;
+  if (p.words.empty()) {
+    return property_list(s.value(), *def.value());
   }
-  if (args.size() == first) {
-    return property_list(*def.value());
+  if (p.words.size() == 1) {
+    return property_get(s.value(), *def.value(), p);
   }
-  const std::string& name = args[first];
-  if (args.size() == first + 1) {
-    const PropertyValue* v = def.value()->properties().find(name);
-    return CommandResult::success(v != nullptr ? Value{property_text(*v)} : Value{});
-  }
-  return property_put(s.value(), *def.value(), type, name, cu::join_args(args, first + 1));
+  return property_put(s.value(), *def.value(), p);
 }
 
 }  // namespace

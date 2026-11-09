@@ -24,6 +24,10 @@
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
+
+namespace hefesto::cmd {
+class CommandContext;
+}
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/tech/types.hpp"
 
@@ -253,6 +257,15 @@ class WindowManager {
   [[nodiscard]] bool display_suspended() const noexcept { return suspended_; }
   void set_display_suspended(bool on) noexcept { suspended_ = on; }
 
+  /// Reads an unavailable cell from its file when an instance of it is
+  /// expanded (Magic's DBExpand reads it; `load` itself reads only the named
+  /// cell). Installed by the CELL area, which owns cell files; a plain
+  /// function so nothing it refers to can dangle. Returns false when the
+  /// cell could not be read.
+  using CellReader = bool (*)(cmd::CommandContext& ctx, db::CellDef& def);
+  void set_cell_reader(CellReader reader) noexcept { cell_reader_ = reader; }
+  [[nodiscard]] CellReader cell_reader() const noexcept { return cell_reader_; }
+
   /// Observers are not owned and must outlive the manager or be removed.
   void add_observer(ViewObserver& observer);
   void remove_observer(const ViewObserver& observer);
@@ -268,6 +281,7 @@ class WindowManager {
   ChromeFlags chrome_defaults_;
   ChromeMetrics chrome_metrics_;
   bool suspended_ = false;
+  CellReader cell_reader_ = nullptr;
 };
 
 }  // namespace hefesto::view

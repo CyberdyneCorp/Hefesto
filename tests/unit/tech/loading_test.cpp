@@ -38,7 +38,7 @@ TEST_CASE("file search: direct names, then . and the system path", "[cap:tech-lo
   REQUIRE(fs.write_atomic("./tiny.tech", "x").ok());
   REQUIRE(fs.write_atomic("/sys/tiny.tech", "x").ok());
   REQUIRE(fs.write_atomic("/sys/other.tech", "x").ok());
-  CHECK(resolved(fs, "tiny") == "./tiny.tech");
+  CHECK(resolved(fs, "tiny") == "tiny.tech");  // PaOpen's "." entry adds no "./"
   CHECK(resolved(fs, "other") == "/sys/other.tech");
   CHECK(resolved(fs, "/sys/tiny") == "/sys/tiny.tech");
   CHECK(resolved(fs, "/abs/tiny").starts_with("error:"));

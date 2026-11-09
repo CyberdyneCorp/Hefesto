@@ -157,7 +157,11 @@ void Reporter::emit(std::string_view code, std::string text) {
     sink_.emit(diag::make(code, std::move(text)));  // a command-time parse: no file location
     return;
   }
-  sink_.emit(diag::make(code, std::move(text), where_));
+  diag::Diagnostic d = diag::make(code, std::move(text), where_);
+  if (stamp_section_) {
+    d.related = diag::ObjectRef{diag::ObjectKind::section, section_};
+  }
+  sink_.emit(d);
 }
 
 Data::Data() {

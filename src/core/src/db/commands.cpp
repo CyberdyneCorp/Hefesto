@@ -10,7 +10,9 @@
 
 #include "hefesto/db/commands.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstdio>
 #include <utility>
 
 #include "db/command_util.hpp"
@@ -52,6 +54,70 @@ diag::Outcome<std::vector<Coord>> parse_coords(const cu::Session& s, const std::
   return out;
 }
 
+// Fixed-size printf buffer for one report line (the values are bounded).
+using LineBuf = std::array<char, 256>;
+
+// The microns or lambda line of CmdBox's report: values in float times
+// `scale`, promoted to double for printf as in C.
+std::string scaled_line(const Rect& r, float scale, bool lambda_line, std::int64_t area) {
+  const auto f = [scale](Coord v) { return static_cast<double>(static_cast<float>(v) * scale); };
+  const double a = static_cast<double>(static_cast<float>(area) * scale * scale);
+  LineBuf buf{};
+  if (lambda_line) {
+    std::snprintf(buf.data(), buf.size(), "   %6.2f x %-6.2f  (% 6.2f, % -6.2f), (% 6.2f, % -6.2f)", f(r.x1 - r.x0),
+                  f(r.y1 - r.y0), f(r.x0), f(r.y0), f(r.x1), f(r.y1));
+  } else {
+    std::snprintf(buf.data(), buf.size(), "microns:  %6.3f x %-6.3f  (% 6.3f, % -6.3f), (% 6.3f, % -6.3f)",
+                  f(r.x1 - r.x0), f(r.y1 - r.y0), f(r.x0), f(r.y0), f(r.x1), f(r.y1));
+  }
+  std::string out = buf.data();
+  if (area > 0) {
+    LineBuf tail{};
+    std::snprintf(tail.data(), tail.size(), lambda_line ? "  %-10.2f" : "  %-10.3f", a);
+    out += tail.data();
+  }
+  return out;
+}
+
+std::string internal_line(const Rect& r, std::int64_t area) {
+  LineBuf buf{};
+  std::snprintf(buf.data(), buf.size(), " %6d x %-6d  (% 6d, % -6d), (% 6d, % -6d)", r.x1 - r.x0, r.y1 - r.y0, r.x0,
+                r.y0, r.x1, r.y1);
+  std::string out = buf.data();
+  if (area > 0) {
+    LineBuf tail{};
+    std::snprintf(tail.data(), tail.size(), "  %-10lld", static_cast<long long>(area));
+    out += tail.data();
+  }
+  return out;
+}
+
+// CmdBox's BOX_DEFAULT report (Magic ref: commands/CmdAB.c:1184-1226).
+std::string box_report(const cu::Session& s, const Rect& r) {
+  const std::int64_t area = std::int64_t{r.x1 - r.x0} * std::int64_t{r.y1 - r.y0};
+  const tech::GridScale& g = s.editor->grid;
+  // CIFGetOutputScale(1000). The style is kept as read (in lambda); Magic
+  // rescales it with every grid change (CIFTechOutputScale), which is the
+  // factor lambda/internal of the session grid. No output style: 1.0.
+  float oscale = 1.0F;
+  if (const auto& cif = s.tech->cif_output_grid()) {
+    oscale = static_cast<float>(10 * cif->scale_factor * g.lambda) /
+             static_cast<float>(cif->expander * 1000 * g.internal);
+  }
+  std::string out = "Root cell box:\n           width x height  (   llx,  lly  ), (   urx,  ury  )";
+  if (area > 0) {
+    out += "  area (units^2)";
+  }
+  out += "\n\n" + scaled_line(r, oscale, false, area) + "\nlambda:";
+  if (g.internal != g.lambda) {
+    const float iscale = static_cast<float>(g.lambda) / static_cast<float>(g.internal);  // DBLambda[0] / DBLambda[1]
+    out += scaled_line(r, iscale, true, area) + "\ninternal:";
+  } else {
+    out += "  ";
+  }
+  return out + internal_line(r, area);
+}
+
 CommandResult box_set(const cu::Session& s, const std::vector<std::string>& args, std::size_t first) {
   auto c = parse_coords(s, args, first, 4);
   if (!c.ok()) {
@@ -60,13 +126,19 @@ CommandResult box_set(const cu::Session& s, const std::vector<std::string>& args
   const auto& v = c.value();
   s.editor->box = canonical(Rect{v[0], v[1], v[2], v[3]});
   s.editor->box_root = s.editor->edit_cell;
-  return CommandResult::success(box_value(s, *s.editor->box));
+  return CommandResult::success();
 }
 
 CommandResult box_resize(const cu::Session& s, const std::vector<std::string>& args, bool size) {
   auto b = cu::box(s);
   if (!b.ok()) {
     return cu::fail(b.error());
+  }
+  if (args.size() == 1) {
+    const Rect& r = b.value();
+    return CommandResult::success(size ? Value{Value::List{cu::coord_value(s, r.x1 - r.x0),
+                                                           cu::coord_value(s, r.y1 - r.y0)}}
+                                       : Value{Value::List{cu::coord_value(s, r.x0), cu::coord_value(s, r.y0)}});
   }
   auto c = parse_coords(s, args, 1, 2);
   if (!c.ok()) {
@@ -77,7 +149,7 @@ CommandResult box_resize(const cu::Session& s, const std::vector<std::string>& a
   r = size ? Rect{r.x0, r.y0, r.x0 + v[0], r.y0 + v[1]}
            : Rect{v[0], v[1], v[0] + (r.x1 - r.x0), v[1] + (r.y1 - r.y0)};
   s.editor->box = canonical(r);
-  return CommandResult::success(box_value(s, *s.editor->box));
+  return CommandResult::success();
 }
 
 CommandResult box_query(const cu::Session& s, std::string_view what) {
@@ -95,47 +167,83 @@ CommandResult box_query(const cu::Session& s, std::string_view what) {
   return CommandResult::success(box_value(s, r));
 }
 
+// The default form: `box` alone, `box x1 y1 x2 y2` (sets the box first) or an
+// unrecognized option: prints the report, returns nothing.
+CommandResult box_default(const cu::Session& s, const std::vector<std::string>& args) {
+  if (args.size() == 4) {
+    if (auto set = box_set(s, args, 0); !set.ok()) {
+      return set;
+    }
+  }
+  auto b = cu::box(s);
+  if (!b.ok()) {
+    return cu::fail(b.error());
+  }
+  cu::print(s, box_report(s, b.value()));
+  return CommandResult::success();
+}
+
+bool is_query(const std::vector<std::string>& args) {
+  return args.size() == 1 && (args[0] == "values" || args[0] == "width" || args[0] == "height");
+}
+
 CommandResult cmd_box(CommandContext& ctx, const Invocation& inv) {
   auto s = cu::session(ctx);
   if (!s.ok()) {
     return cu::fail(s.error());
   }
   const auto& args = inv.args;
-  if (args.empty() || (args.size() == 1 && (args[0] == "values" || args[0] == "width" || args[0] == "height"))) {
-    return box_query(s.value(), args.empty() ? "values" : args[0]);
+  if (is_query(args)) {
+    return box_query(s.value(), args[0]);
   }
-  if (args[0] == "values") {
+  if (!args.empty() && args[0] == "values") {
     return box_set(s.value(), args, 1);
   }
-  if (args[0] == "size" || args[0] == "position") {
+  if (!args.empty() && (args[0] == "size" || args[0] == "position")) {
     return box_resize(s.value(), args, args[0] == "size");
   }
-  return box_set(s.value(), args, 0);
+  return box_default(s.value(), args);
 }
 
 // --- snap --------------------------------------------------------------------
 
+// CmdSnap (Magic ref: commands/CmdRS.c:2944-3021): setting returns nothing;
+// `snap` / `snap list` return the grid name.
 CommandResult cmd_snap(CommandContext& ctx, const Invocation& inv) {
   auto s = cu::session(ctx);
   if (!s.ok()) {
     return cu::fail(s.error());
   }
-  if (inv.args.size() > 1) {
-    return cu::fail(cu::bad_argument("usage: snap ?internal|lambda|user?"));
-  }
-  if (inv.args.size() == 1) {
-    const std::string& m = inv.args[0];
-    if (m == "internal" || m == "int") {
-      cu::set_snap_mode(s.value(), cu::Snap::internal);
-    } else if (m == "lambda" || m == "on") {
-      cu::set_snap_mode(s.value(), cu::Snap::lambda);
-    } else if (m == "user" || m == "grid") {
-      cu::set_snap_mode(s.value(), cu::Snap::user);
-    } else {
-      return cu::fail(cu::bad_argument("unknown snap mode \"" + m + "\""));
+  enum Choice { off, internal, lambda, grid, user, on, list };
+  int n = list;
+  if (!inv.args.empty()) {
+    n = cu::lookup(inv.args[0], {"off", "internal", "lambda", "grid", "user", "on", "list"});
+    if (n < 0) {
+      cu::print(s.value(), "Usage: snap [internal | lambda | user]");
+      return CommandResult::success();
     }
   }
-  return CommandResult::success(Value{std::string{cu::snap_name(cu::snap_mode(s.value()))}});
+  if (n == internal && !cu::units_internal(s.value())) {
+    cu::set_units_internal(s.value());
+    cu::warn(s.value(),
+             "Warning:  snap setting is also changing units.  This usage is deprecated\n"
+             "and may be removed in the future.  Use \"units\" to change units, and\n"
+             "change units before setting snap to keep this message from appearing.");
+  }
+  switch (n) {
+    case off:
+    case internal:
+      cu::set_snap_mode(s.value(), cu::Snap::internal);
+      return CommandResult::success();
+    case lambda:
+      cu::set_snap_mode(s.value(), cu::Snap::lambda);
+      return CommandResult::success();
+    case list:
+      return CommandResult::success(Value{std::string{cu::snap_name(cu::snap_mode(s.value()))}});
+    default:
+      cu::set_snap_mode(s.value(), cu::Snap::user);
+      return CommandResult::success();
+  }
 }
 
 // --- paint / erase / splitpaint ------------------------------------------------
@@ -169,8 +277,14 @@ PaintOptions paint_options(const cu::Session& s) {
   return o;
 }
 
+// DBAdjustLabels after paint/erase, with its "Moving label" / "Adjusting
+// size of label" notes (Magic ref: database/DBlabel.c:690-725).
 void finish_edit(const EditTarget& t) {
-  (void)adjust_labels(*t.def, *t.s.tech, t.area);
+  std::vector<std::string> notes;
+  (void)adjust_labels(*t.def, *t.s.tech, t.area, &notes);
+  for (std::string& n : notes) {
+    cu::print(t.s, std::move(n));
+  }
   recompute_bbox(*t.def, t.s.magic_compat);
 }
 
@@ -274,18 +388,36 @@ std::optional<Transform> parse_orientation(std::string_view name) {
   return std::nullopt;
 }
 
-CommandResult cmd_getcell(CommandContext& ctx, const Invocation& inv) {
+}  // namespace
+
+// CmdGetcell for a definition already in memory (the CELL area reads it
+// first): placed with the box's lower-left corner as the reference point,
+// the box then covers the new instance and the result is its identifier.
+// (Magic ref: commands/CmdFI.c:1067-1120, commands/CmdCD.c:4893-5420)
+CommandResult getcell_command(CommandContext& ctx, const Invocation& inv) {
   if (inv.args.empty() || inv.args.size() > 2) {
-    return cu::fail(cu::bad_argument("usage: getcell name ?orientation?"));
+    return cu::fail(cu::bad_argument("Usage: getcell cellName [child refPointChild] [parent refPointParent]"));
+  }
+  auto s = cu::session(ctx);
+  if (!s.ok()) {
+    return cu::fail(s.error());
+  }
+  if (s.value().editor->edit_cell == nullptr) {
+    return cu::fail(diag::make(codes::kNoEditCell, "No cell def being edited; cannot place cell use!"));
+  }
+  const std::string& name = inv.args[0];
+  if (!s.value().editor->box) {
+    return cu::fail(diag::make(codes::kNoBox, "The box's lower-left corner must point to the place\n"
+                                              "    in the edit cell where you'd like to put \"" + name + "\"."));
   }
   auto t = edit_target(ctx);
   if (!t.ok()) {
     return cu::fail(t.error());
   }
   const EditTarget& e = t.value();
-  CellDef* child = e.s.editor->cells.find(inv.args[0]);
+  CellDef* child = e.s.editor->cells.find(name);
   if (child == nullptr) {
-    return cu::fail(diag::make(codes::kCellNotFound, "no cell named \"" + inv.args[0] + "\""));
+    return cu::fail(diag::make(codes::kCellNotFound, "Cell " + name + " couldn't be read"));
   }
   const auto orient = inv.args.size() == 2 ? parse_orientation(inv.args[1]) : std::optional<Transform>{kIdentity};
   if (!orient) {
@@ -300,8 +432,11 @@ CommandResult cmd_getcell(CommandContext& ctx, const Invocation& inv) {
   }
   recompute_bbox(*e.def, e.s.magic_compat);
   cu::set_current_use(e.s, use.value());
+  e.s.editor->box = use.value()->bbox;  // DBWSetBox(EditRootDef, newUse bbox)
   return CommandResult::success(Value{use.value()->id});
 }
+
+namespace {
 
 // --- flatten -------------------------------------------------------------------
 
@@ -360,7 +495,9 @@ diag::Outcome<FlattenRequest> parse_flatten(const std::vector<std::string>& args
   return r;
 }
 
-CommandResult cmd_flatten(CommandContext& ctx, const Invocation& inv) {
+}  // namespace
+
+CommandResult flatten_command(CommandContext& ctx, const Invocation& inv) {
   auto s = cu::session(ctx);
   if (!s.ok()) {
     return cu::fail(s.error());
@@ -382,11 +519,12 @@ CommandResult cmd_flatten(CommandContext& ctx, const Invocation& inv) {
     auto st = flatten_in_place(*use, *s.value().tech, r.options);
     return st.ok() ? CommandResult::success() : cu::fail(st.error());
   }
+  if (s.value().editor->cells.find(r.name) != nullptr) {
+    return cu::fail(diag::make(codes::kCellExists, r.name + " already exists"));
+  }
   auto made = flatten_to_new(s.value().editor->cells, *def.value(), r.name, *s.value().tech, r.options);
-  return made.ok() ? CommandResult::success(Value{made.value()->name()}) : cu::fail(made.error());
+  return made.ok() ? CommandResult::success() : cu::fail(made.error());  // CmdFlatten sets no result
 }
-
-}  // namespace
 
 namespace cmdutil {
 
@@ -402,10 +540,6 @@ bool register_paint_commands(cmd::CommandRegistry& registry) {
   ok = add(registry, "splitpaint", "splitpaint dir layer ?layer2?",
            "Paints a triangle of the box (right angle at dir) and optionally the other half.", cmd_splitpaint) &&
        ok;
-  ok = add(registry, "getcell", "getcell name ?orientation?",
-           "Places an instance of a cell with its lower-left corner at the box.", cmd_getcell) && ok;
-  ok = add(registry, "flatten", "flatten ?options? name",
-           "Flattens the edit cell into a new cell (-doinplace: flattens an instance).", cmd_flatten) && ok;
   return ok;
 }
 

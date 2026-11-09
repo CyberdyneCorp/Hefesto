@@ -213,11 +213,18 @@ class CellLibrary {
   /// `force` (DB-CELL-004; forcing removes GDS_FILE/GDS_START/GDS_END).
   /// Marks every parent and (Q-MODEL-15) the definition itself modified.
   [[nodiscard]] diag::Status rename(CellDef& def, std::string_view new_name, bool force = false);
+  /// DBCellRenameDef: only the name changes (no checks besides an existing
+  /// name, nothing marked modified); `save` uses it after writing a cell
+  /// under a new name.
+  [[nodiscard]] diag::Status rename_definition(CellDef& def, std::string_view new_name);
   /// "Deleting a cell definition": fails for internal cells (DB-CELL-003)
   /// and while a non-internal parent instantiates it (DB-CELL-002, naming
   /// the instance); uses in internal parents are removed first. `def` is
   /// destroyed on success.
   [[nodiscard]] diag::Status remove(CellDef& def);
+  /// The checks of remove() without removing anything: fails when the
+  /// definition is internal or instantiated in a non-internal cell.
+  [[nodiscard]] diag::Status check_removable(const CellDef& def) const;
   /// Every definition in Magic's cell hash-table order (observable by
   /// `cellname list`, `writeall` and the save order of golden cases). The
   /// visitor must not create, rename or remove definitions.

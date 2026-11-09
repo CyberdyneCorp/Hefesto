@@ -34,6 +34,7 @@ constexpr std::array kTechCodes = {
     CodeInfo{"TECH-FILE-003", error, "A partial section reload was requested with no technology file loaded."},
     CodeInfo{"TECH-GRID-001", error, "`scalegrid` usage error (a and b must be strictly positive integers)."},
     CodeInfo{"TECH-GRID-002", error, "The grid scaling is finer than the limit set by the CIF output style."},
+    CodeInfo{"TECH-GRID-003", info, "The internal grid scale after `scalegrid` (`<I> Magic internal units = <L> Lambda`)."},
     CodeInfo{"TECH-INCLUDE-001", error, "An `include` file was not found; the include line is discarded and the load fails."},
     CodeInfo{"TECH-INCLUDE-002", warning,
              "An `include` file was found only without the technology suffix (magic-compat off)."},

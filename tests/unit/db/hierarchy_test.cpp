@@ -149,13 +149,15 @@ TEST_CASE("read uniquification of instance ids", HI "[req:Instance identifier as
   a->id = "dup";
   b->id = "dup";
   c->id.clear();
+  // DBGenerateUniqueIds walks the uses newest first (BPlane in-box order):
+  // the later "dup" keeps its id, the earlier one is renamed after c.
   CHECK(db::make_use_ids_unique(*top, true) == 2);
-  CHECK(a->id == "dup");
-  CHECK(b->id == "lib/inv_0");  // Q-MODEL-8: full child name in compat
-  CHECK(c->id == "lib/inv_1");
-  b->id.clear();
+  CHECK(b->id == "dup");
+  CHECK(c->id == "lib/inv_0");  // Q-MODEL-8: full child name in compat
+  CHECK(a->id == "lib/inv_1");
+  a->id.clear();
   CHECK(db::make_use_ids_unique(*top, false) == 1);
-  CHECK(b->id == "inv_0");
+  CHECK(a->id == "inv_0");
 }
 
 TEST_CASE("array element placement", HI "[req:Arrays]") {

@@ -31,6 +31,25 @@ void attach_location(std::vector<diag::Diagnostic>& diagnostics, const Invocatio
   }
 }
 
+// The context sink of one command: collects every diagnostic for the result
+// and forwards it to the live sinks as it is emitted.
+class LiveSink final : public diag::DiagnosticSink {
+ public:
+  LiveSink(diag::CollectingSink& collected, const std::vector<diag::DiagnosticSink*>& live)
+      : collected_(collected), live_(live) {}
+
+  void emit(const diag::Diagnostic& diagnostic) override {
+    collected_.emit(diagnostic);
+    for (auto* sink : live_) {
+      sink->emit(diagnostic);
+    }
+  }
+
+ private:
+  diag::CollectingSink& collected_;
+  const std::vector<diag::DiagnosticSink*>& live_;
+};
+
 }  // namespace
 
 Dispatcher::Dispatcher(const CommandRegistry& registry, platform::PlatformServices services,
@@ -51,7 +70,8 @@ CommandResult Dispatcher::run_handler(const Invocation& invocation) {
         diag::make(diag::codes::kCmdDispatch, "unknown command \"" + invocation.name + "\"", location_of(invocation)));
   }
   diag::CollectingSink collected;
-  CommandContext context{services_, project_, session_, collected, registry_, editor_};
+  LiveSink sink{collected, live_sinks_};
+  CommandContext context{services_, project_, session_, sink, registry_, editor_};
   CommandResult result;
   try {
     result = spec->handler(context, invocation);

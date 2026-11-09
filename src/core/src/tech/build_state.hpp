@@ -38,6 +38,16 @@ class Reporter {
     where_ = std::move(where);
     section_ = std::move(section);
   }
+  /// A name lookup after a load (a command): Magic's TechError still prints
+  /// TechPrintLine's context, the last file read, its final techLineNumber and
+  /// section "(none)". Nothing changes for a technology not read from a file.
+  void locate_after_load(const std::string& file, std::uint32_t end_line) {
+    if (!file.empty()) {
+      where_ = diag::SourceLocation{file, end_line};
+      section_ = "(none)";
+      stamp_section_ = true;
+    }
+  }
   [[nodiscard]] const std::string& section() const noexcept { return section_; }
   [[nodiscard]] const diag::SourceLocation& where() const noexcept { return where_; }
 
@@ -67,6 +77,7 @@ class Reporter {
   diag::DiagnosticSink& sink_;
   diag::SourceLocation where_;
   std::string section_;
+  bool stamp_section_ = false;  // emit() adds the section itself (no SectionStampSink)
 };
 
 /// The technology under construction.

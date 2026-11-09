@@ -11,6 +11,9 @@ void CommandLog::on_command(const Invocation& invocation, const CommandResult& r
     logger_->write(diag::Severity::info, "cmd[" + std::string{origin_name(invocation.origin)} + "] " + line +
                                              (result.ok() ? " -> ok" : " -> failed"));
   }
+  if (invocation.origin == Origin::internal) {
+    return;  // not issued by the user: not replayed
+  }
   const std::scoped_lock lock{mutex_};
   lines_.push_back(std::move(line));
 }

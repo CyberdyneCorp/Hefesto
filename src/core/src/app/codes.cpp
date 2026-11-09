@@ -31,6 +31,7 @@ constexpr std::array kAppCodes = {
              "The PDK version pinned by the project is not installed; the `minimum` technology is used until it is installed."},
     CodeInfo{"APP-PROJECT-001", error, "The hefesto.project file is malformed."},
     CodeInfo{"APP-PROJECT-002", error, "The hefesto.project file cannot be read or written."},
+    CodeInfo{"APP-RECENT-001", warning, "The recent-projects list is malformed or unreadable; it is treated as empty."},
     CodeInfo{"APP-RECOVER-001", warning, "Crash recovery (-r) is not available in this release; command-line files were not loaded."},
     CodeInfo{"APP-SETTINGS-001", warning, "The user preferences file is malformed; the user settings layer is left empty."},
     CodeInfo{"APP-STARTUP-001", info,
