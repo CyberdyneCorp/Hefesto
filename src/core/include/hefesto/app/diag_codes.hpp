@@ -15,6 +15,7 @@ namespace hefesto::app::codes {
 inline constexpr std::string_view kDisplayUnknown = "APP-DISPLAY-001";
 inline constexpr std::string_view kFileLoading = "APP-FILE-001";
 inline constexpr std::string_view kFileUnsupported = "APP-FILE-002";
+inline constexpr std::string_view kLibraryPath = "APP-LIBPATH-001";
 inline constexpr std::string_view kOptionUnknown = "APP-OPTION-001";
 inline constexpr std::string_view kOptionBadName = "APP-OPTION-002";
 inline constexpr std::string_view kOptionAmbiguous = "APP-OPTION-003";

@@ -140,7 +140,7 @@ StatusBarText MainWindow::status_text() {
   const editor::EditorState& ed = ctx_.editor();
   StatusBarInput in;
   in.cursor = canvas_->cursor();
-  in.box = ed.box;
+  in.box = visible_box(ed.box, ed.box_root, ed.edit_cell);
   in.edit_cell = ed.edit_cell != nullptr ? ed.edit_cell->name() : std::string();
   in.scale = canvas_->unit_scale();
   in.snap = ed.settings.value_in(app::SettingLayer::session, "snap").value_or("lambda");

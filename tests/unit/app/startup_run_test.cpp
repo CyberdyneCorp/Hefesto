@@ -7,6 +7,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -317,4 +318,33 @@ TEST_CASE("path variables still resolve after startup returns", "[cap:app-startu
   REQUIRE(cad_root.has_value());
   CHECK(*cad_root == (s.dir.path() / "cad").string());
   CHECK_FALSE(s.editor.path_variables.get("HEFESTO_UNSET_VARIABLE").has_value());
+}
+
+// Loading a cell by name after `-T <open_pdks>/libs.tech/magic/X.tech` failed
+// in the desktop app: the PDK's .magicrc `addpath` lines cannot run before the
+// Tcl binding, so startup applies Magic's open_pdks discovery instead.
+TEST_CASE("an open_pdks technology adds the PDK's standard-cell libraries to the library path",
+          "[cap:cell-library-resolution][req:Standard-cell library path discovery]") {
+  Session s;
+  const auto pdk = s.dir.path() / "sky130A";
+  write_file(pdk / "libs.tech/magic/sky130A.tech", "tech\n  sky130A\nend\n");
+  write_file(pdk / "libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag", "magic\ntech sky130A\n");
+  write_file(pdk / "libs.ref/sky130_fd_sc_hd/lef/sky130_fd_sc_hd.lef", "");
+  app::StartupOptions options;
+  options.technology = (pdk / "libs.tech/magic/sky130A.tech").string();
+  REQUIRE(s.start(options).ok());
+  const auto& library = s.editor.search_paths.library;
+  CHECK(std::find(library.begin(), library.end(), (pdk / "libs.ref/sky130_fd_sc_hd/mag").string()) != library.end());
+  CHECK(s.reported(app::codes::kLibraryPath, "Cell path is now"));
+}
+
+TEST_CASE("a technology outside an open_pdks tree leaves the library path alone",
+          "[cap:cell-library-resolution][req:Standard-cell library path discovery]") {
+  Session s;
+  write_file(s.dir.path() / "tech/scmos.tech", "tech\n  scmos\nend\n");
+  write_file(s.dir.path() / "tech/cells/a.mag", "magic\n");
+  app::StartupOptions options;
+  options.technology = (s.dir.path() / "tech/scmos.tech").string();
+  REQUIRE(s.start(options).ok());
+  CHECK_FALSE(s.reported(app::codes::kLibraryPath));
 }

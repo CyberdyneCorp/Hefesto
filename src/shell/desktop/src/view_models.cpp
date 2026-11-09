@@ -283,6 +283,14 @@ std::string toggle_accessible_name(std::string_view label, bool pressed) {
   return std::string(label) + (pressed ? ", pressed" : ", not pressed");
 }
 
+std::optional<db::Rect> visible_box(const std::optional<db::Rect>& box, const db::CellDef* box_root,
+                                    const db::CellDef* edit_cell) {
+  if (box_root != nullptr && box_root != edit_cell) {
+    return std::nullopt;
+  }
+  return box;
+}
+
 std::string checkbox_accessible_name(std::string_view label, bool checked) {
   return std::string(label) + (checked ? ", checked" : ", not checked");
 }

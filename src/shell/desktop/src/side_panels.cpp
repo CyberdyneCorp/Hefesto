@@ -202,7 +202,7 @@ InspectorPanel::InspectorPanel(ScreenContext& ctx) : ctx_(ctx) {
 
 void InspectorPanel::refresh(const UnitScale& scale) {
   const editor::EditorState& ed = ctx_.editor();
-  view_ = inspector_view(ed.box, ed.edit_cell, scale);
+  view_ = inspector_view(visible_box(ed.box, ed.box_root, ed.edit_cell), ed.edit_cell, scale);
   body_->set_accessible_description(view_.title + ". " + view_.subtitle);
   body_->set_tooltip(view_.title + " — " + view_.subtitle);  // the painted title and subtitle may be ellipsized
   body_->invalidate();

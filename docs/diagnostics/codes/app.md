@@ -19,6 +19,7 @@ fails when the two disagree.
 | `APP-DISPLAY-001` | error | Unknown display type given with -d; startup fails with status 1. |
 | `APP-FILE-001` | info | A file named on the command line is being loaded (`Loading "F" from command line.`). |
 | `APP-FILE-002` | warning | A command-line file of this type (LEF, DEF, CIF, GDS, Tcl script) cannot be read in this release; it was skipped. |
+| `APP-LIBPATH-001` | info | Standard-cell libraries of an open_pdks PDK were added to the library path (`Cell path is now "PATH"`). |
 | `APP-OPTION-001` | error | Unknown command-line option (`Unknown option: '-X'`); startup fails with status 1. |
 | `APP-OPTION-002` | error | An option argument starts with '-' (`Bad name after '-X' option`); startup fails with status 1. |
 | `APP-OPTION-003` | error | Ambiguous `-n` option (use -nowindow, -noconsole or -norcfile); startup fails with status 1. |

@@ -278,6 +278,12 @@ struct InspectorView {
   std::vector<InspectorRow> rows;
 };
 
+/// The box as the edit cell's window shows it. As in Magic, the box belongs to
+/// one root cell (`box_root`; none means the edit cell) and is not shown in a
+/// window on another cell, so after `load` of a new cell the old box is hidden.
+[[nodiscard]] std::optional<db::Rect> visible_box(const std::optional<db::Rect>& box, const db::CellDef* box_root,
+                                                  const db::CellDef* edit_cell);
+
 /// M1 inspects the box (or, without a box, the edit cell); selection is M2.
 [[nodiscard]] InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell,
                                            const UnitScale& scale);

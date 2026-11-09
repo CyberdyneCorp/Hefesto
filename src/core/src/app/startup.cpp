@@ -18,6 +18,7 @@
 #include "hefesto/app/diag_codes.hpp"
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cell/fonts.hpp"
+#include "hefesto/cell/host.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/script.hpp"
@@ -99,6 +100,7 @@ class Startup {
       apply_startup_file(*next);
     }
     select_technology();
+    discover_pdk_libraries();
     result_.technology = state_.technology->name();
     open_startup_window();
     if (options_.recover && !options_.no_window) {
@@ -281,6 +283,7 @@ class Startup {
     if (target != name) {
       result_.technology_file = Path{target};
     }
+    loaded_tech_path_ = target;
     report(codes::kTechUsing, "Using technology \"" + state_.technology->name() + "\".");
     return true;
   }
@@ -310,6 +313,32 @@ class Startup {
     if (!tech_loaded_ && state_.technology->name() != "minimum") {
       state_.technology = tech::builtin_technology();
     }
+  }
+
+  // "Automatic technology discovery" step 6 (open_pdks layout): Magic adds the
+  // PDK's libs.ref libraries to the library path when no startup script set
+  // the search path. Startup scripts (the PDK .magicrc, whose `addpath` lines
+  // do this) cannot run before the Tcl binding (M4), so the rule applies
+  // whenever the technology was loaded from an open_pdks libs.tech directory.
+  void discover_pdk_libraries() {
+    const std::string& tech_file = loaded_tech_path_;
+    const std::size_t at = tech_file.find("libs.tech");
+    if (at == std::string::npos) {
+      return;
+    }
+    const Path root{tech_file.substr(0, at) + "libs.ref"};
+    const auto host = cell::make_memory_file_host(fs_, env_.working_directory);
+    const auto found = cell::discover_library_paths(fs_, *host, root);
+    if (found.empty()) {
+      return;
+    }
+    auto& library = state_.search_paths.library;
+    library.insert(library.end(), found.begin(), found.end());
+    std::string joined;
+    for (const auto& entry : library) {
+      joined += (joined.empty() ? "" : " ") + entry;
+    }
+    report(codes::kLibraryPath, "Cell path is now \"" + joined + "\"");
   }
 
   // "Per-project version pinning": the pinned version, never the enabled one.
@@ -442,6 +471,7 @@ class Startup {
   StartupEnvironment env_;
   diag::DiagnosticSink& sink_;
   NullInstallHost null_host_;
+  std::string loaded_tech_path_;  // as given to `tech load`; empty when none loaded
   pdk::InstallHost& host_;
   std::unique_ptr<pdk::Fetcher> fetcher_;
   pdk::PdkManager manager_;

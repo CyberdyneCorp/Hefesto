@@ -293,7 +293,8 @@ void LayoutCanvas::paint_overlay(ui::Painter& p, float w, float h) {
   overlay_state_.camera = camera_;
   overlay_state_.pixel_ratio = static_cast<double>(pixel_ratio_());
   overlay_state_.scale = unit_scale();
-  overlay_state_.box = ctx_.editor().box;
+  const editor::EditorState& ed = ctx_.editor();
+  overlay_state_.box = visible_box(ed.box, ed.box_root, ed.edit_cell);
   overlay_state_.empty_hint = empty_hint_;
   render::Camera fitted = camera_;
   fitted.fit(bounds_);

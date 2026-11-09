@@ -422,3 +422,15 @@ TEST_CASE("accessible names carry state and problems are announced", "[cap:hefes
   CHECK(status_bar_accessible_name(text) == "Status: ■ error: APP-FILE-001. ■ 1 error. ◆ DRC not run");
   CHECK(status_bar_accessible_name(StatusBarText{}) == "Status");
 }
+
+// Regression: after `load` of another cell the desktop kept drawing (and
+// inspecting) the previous cell's box. Magic hides a box whose root differs.
+TEST_CASE("the box shows only in the window of its root cell", "[cap:hefesto-app-ux][req:Main window layout]") {
+  db::CellDef old_cell("sky130_fd_sc_hd__dfxtp_1", 4);
+  db::CellDef new_cell("sky130_fd_sc_hd__inv_1", 4);
+  const std::optional<db::Rect> box = db::Rect{-19, -24, 755, 296};
+  CHECK(visible_box(box, &old_cell, &old_cell) == box);
+  CHECK_FALSE(visible_box(box, &old_cell, &new_cell).has_value());
+  CHECK(visible_box(box, nullptr, &new_cell) == box);  // no root recorded: the edit cell's
+  CHECK_FALSE(visible_box(std::nullopt, &new_cell, &new_cell).has_value());
+}
