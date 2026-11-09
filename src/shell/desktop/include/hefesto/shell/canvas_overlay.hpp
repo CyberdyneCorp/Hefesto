@@ -42,13 +42,22 @@ struct RulerTick {
                                                  const UnitScale& scale, double min_spacing_px = 120.0);
 
 /// The left ruler's label in its shortest form: no leading zero ("0.5" ->
-/// ".5", "-0.5" -> "-.5") and thousands as "k" ("1000" -> "1k", "-1500" ->
-/// "-1.5k"); other labels are returned unchanged.
+/// ".5", "-0.5" -> "-.5"), zero as "0" ("0.0" -> "0") and thousands as "k"
+/// ("1000" -> "1k", "-1500" -> "-1.5k"); other labels are returned unchanged.
 [[nodiscard]] std::string compact_ruler_label(std::string_view label);
 
+/// Size of the left ruler's labels: the mockup's JetBrains Mono 10, which
+/// fits three characters ("-.5", "2.7") in the 20 px ruler.
+inline constexpr double kLeftRulerLabelSize = 10.0;
+
+/// How many characters of `char_px` fit across a ruler `ruler_px` wide with
+/// a pixel of air on each side (at least 1).
+[[nodiscard]] std::size_t ruler_label_max_chars(double ruler_px, double char_px);
+
 /// The lines a ruler label is drawn on in a ruler `max_chars` characters
-/// wide: the label itself when it fits, else one character per line
-/// (stacked top to bottom), so nothing spills onto the canvas.
+/// wide: the label itself when it fits, else its sign on a line of its own
+/// and the rest in lines of `max_chars` ("-500" in 3 -> "-", "500"), so
+/// nothing spills onto the canvas.
 [[nodiscard]] std::vector<std::string> ruler_label_lines(std::string_view label, std::size_t max_chars);
 
 // --- minimap -------------------------------------------------------------------
@@ -83,6 +92,24 @@ struct MinimapGeometry {
 /// The world point at a minimap pixel (click to center the view there).
 [[nodiscard]] db::Point minimap_to_world(const db::Rect& bounds, double width, double height, double px, double py,
                                          double padding = 12.0);
+
+/// One filled rectangle of the minimap's layout thumbnail, in minimap pixels.
+struct MinimapFill {
+  PixelRect rect;
+  Rgba color;  // opaque
+};
+
+/// A thumbnail of `scene`'s paint for the minimap ("Minimap" of the
+/// Desktop-Layout mockup): the content rectangle of minimap_geometry() is cut
+/// into cells of `cell_px` pixels; each cell takes the PDK colors of the
+/// solid and stippled layers that cover it, composited in redisplay order
+/// over `background` at the styles' opacity (stipples and pale layers at
+/// half of it); outline-only and cross styles are left out. Adjacent cells
+/// of one color on a row are merged into one fill. Empty for an empty
+/// scene or null `bounds`.
+[[nodiscard]] std::vector<MinimapFill> minimap_thumbnail(const display::LayoutScene& scene, const db::Rect& bounds,
+                                                         const Rgba& background, double width, double height,
+                                                         double cell_px = 2.0, double padding = 12.0);
 
 // --- zoom control and hit testing ----------------------------------------------
 

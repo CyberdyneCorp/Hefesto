@@ -15,8 +15,15 @@
 // M0 bindings (provisional; hefesto-app-ux owns the final ones):
 //   middle or right drag ... pan            wheel ............ zoom at cursor
 //   trackpad two-finger .... pan            arrows ........... pan 1/8 view
+//   pinch (trackpad, touch)  zoom at the fingers, continuous
 //   + / = ................... zoom in       - ................ zoom out
 //   f / Home ................ fit the layout
+//
+// A wheel event is told from two fingers on a trackpad by Raven's
+// REvent::wheel_precise (macOS: NSEvent hasPreciseScrollingDeltas): precise
+// deltas pan, a real wheel zooms. Every continuous zoom (wheel, pinch) is
+// clamped to the zoom range the core `zoom` command reaches (kMinPixelsPerUnit
+// .. kMaxPixelsPerUnit).
 
 #pragma once
 
@@ -30,7 +37,9 @@
 
 namespace hefesto::shell {
 
-enum class InputKind : std::uint8_t { pointer_down, pointer_up, pointer_move, wheel, key_down, other };
+enum class InputKind : std::uint8_t { pointer_down, pointer_up, pointer_move, wheel, key_down, pinch, other };
+/// Phase of a pinch (Raven's RGesturePhase).
+enum class GesturePhase : std::uint8_t { begin, update, end };
 enum class PointerButton : std::uint8_t { left, right, middle, other };
 enum class CanvasKey : std::uint8_t { left, right, up, down, zoom_in, zoom_out, fit, other };
 
@@ -44,6 +53,11 @@ struct CanvasInput {
   double wheel_x = 0.0;
   double wheel_y = 0.0;  // positive = away from the user (up)
   bool precise_wheel = false;  // trackpad: pan instead of zoom
+  /// Pinch: (x, y) is the center of the fingers now, (dx, dy) how far it
+  /// moved since the previous event and `scale` how much the distance
+  /// between the fingers changed since then (RGestureEvent::scale_delta).
+  double scale = 1.0;
+  GesturePhase phase = GesturePhase::update;
   PointerButton button = PointerButton::other;
   CanvasKey key = CanvasKey::other;
 };
@@ -54,6 +68,12 @@ class CanvasController {
   static constexpr double kWheelZoomStep = 1.15;
   /// Logical pixels per trackpad wheel line (Raven: 48 units per line).
   static constexpr double kTrackpadLinePixels = 48.0;
+  /// Zoom range of continuous gestures, in framebuffer pixels per internal
+  /// unit: the core ViewMapping's smallest scale (1 in 16.16 fixed point,
+  /// "At minimum scale!") up to the camera's largest, the range the zoom
+  /// buttons (`zoom 2` / `zoom 0.5`) reach.
+  static constexpr double kMinPixelsPerUnit = 1.0 / 65536.0;
+  static constexpr double kMaxPixelsPerUnit = render::Camera::kMaxPixelsPerUnit;
 
   explicit CanvasController(render::Camera& camera) noexcept : camera_(camera) {}
 
@@ -74,6 +94,9 @@ class CanvasController {
   bool handle_key(CanvasKey key);
   bool run_command(std::string name, std::vector<std::string> args);
   bool handle_wheel(const CanvasInput& input) noexcept;
+  bool handle_pinch(const CanvasInput& input) noexcept;
+  /// Camera::zoom_at with the factor limited to the zoom range.
+  void zoom_clamped(double factor, double x_px, double y_px) noexcept;
 
   render::Camera& camera_;
   cmd::Dispatcher* commands_ = nullptr;

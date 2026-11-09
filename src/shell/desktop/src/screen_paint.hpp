@@ -74,6 +74,7 @@ struct OverlayState {
   std::array<Rgba, 3> highlight{Rgba{1.0F, 1.0F, 1.0F, 1.0F}, Rgba{1.0F, 1.0F, 1.0F, 1.0F},
                                 Rgba{1.0F, 1.0F, 1.0F, 1.0F}};
   db::Rect bounds;  // the root cell's bounding box (minimap); null: empty
+  std::vector<MinimapFill> minimap;  // the layout thumbnail (minimap_thumbnail), minimap pixels
   std::vector<display::SceneLabel> labels;  // bitmap label text (glyphs of font labels are on the GPU)
   std::vector<display::SceneCell> cells;
   std::string empty_hint;  // shown when nothing is loaded

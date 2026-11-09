@@ -60,19 +60,19 @@ void swatch(ui::Painter& p, float x, float y, const LayerRow& row, const ThemeTo
   }
 }
 
-/// A left-ruler label: compact, on one line when it fits the ruler, else
-/// stacked one character per line; never wider than the ruler.
+/// A left-ruler label: compact, in the mockup's 10 px mono, on one line when
+/// it fits the ruler, else wrapped (ruler_label_lines); never wider than the ruler.
 void left_ruler_label(ui::Painter& p, float y, const std::string& label, const ThemeTokens& t) {
   const auto rs = static_cast<float>(kRulerSize);
+  const auto size = static_cast<float>(kLeftRulerLabelSize);
   const std::string text = compact_ruler_label(label);
-  const float char_w = std::max(p.text_width(TextRole::mono_small, "0"), 1.0F);
-  const auto max_chars = static_cast<std::size_t>((rs - 4.0F) / char_w);
-  const float step = p.line_height(TextRole::mono_small) * 0.8F;
+  const auto [char_w, line_h] = p.measure_px(TextRole::mono_small, size, "0");
+  const std::size_t max_chars = ruler_label_max_chars(kRulerSize, static_cast<double>(char_w));
   float line_y = y + 2.0F;
   for (const std::string& line : ruler_label_lines(text, max_chars)) {
-    const float x = (rs - 1.0F - p.text_width(TextRole::mono_small, line)) / 2.0F;
-    p.text(TextRole::mono_small, x, line_y, line, t.text_tertiary);
-    line_y += step;
+    const float x = (rs - 1.0F - p.measure_px(TextRole::mono_small, size, line).first) / 2.0F;
+    p.text_px(TextRole::mono_small, size, x, line_y, line, t.text_tertiary);
+    line_y += line_h * 0.85F;
   }
 }
 
@@ -227,7 +227,12 @@ void minimap(ui::Painter& p, const OverlayLayout& l, const OverlayState& s, cons
   const auto g = minimap_geometry(s.bounds, s.camera.visible_window(), l.minimap.w, l.minimap.h);
   if (!g) return;
   p.fill(x + static_cast<float>(g->content.x), y + static_cast<float>(g->content.y),
-         static_cast<float>(g->content.w), static_cast<float>(g->content.h), 0.0F, alpha(t.text_tertiary, 0.18F));
+         static_cast<float>(g->content.w), static_cast<float>(g->content.h), 0.0F, t.canvas);
+  // The layout thumbnail in the PDK's layer colors.
+  for (const MinimapFill& f : s.minimap) {
+    p.fill(x + static_cast<float>(f.rect.x), y + static_cast<float>(f.rect.y), static_cast<float>(f.rect.w),
+           static_cast<float>(f.rect.h), 0.0F, f.color);
+  }
   p.stroke(x + static_cast<float>(g->content.x), y + static_cast<float>(g->content.y),
            static_cast<float>(g->content.w), static_cast<float>(g->content.h), 0.0F, 1.0F, t.text_tertiary);
   p.stroke(x + static_cast<float>(g->view.x), y + static_cast<float>(g->view.y), static_cast<float>(g->view.w),

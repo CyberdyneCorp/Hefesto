@@ -27,6 +27,9 @@ struct CommandOutcome {
   OutcomeStatus status = OutcomeStatus::ok;
   std::string message;
   std::vector<std::string> diagnostics;
+  /// The non-empty results of the line's commands that succeeded, in order,
+  /// one per line (`help; paint x` keeps the help text when paint fails).
+  std::string output;
 
   [[nodiscard]] bool ok() const noexcept { return status == OutcomeStatus::ok; }
 };

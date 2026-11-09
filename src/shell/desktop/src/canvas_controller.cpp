@@ -3,6 +3,7 @@
 
 #include "hefesto/shell/canvas_controller.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <optional>
@@ -41,6 +42,8 @@ bool CanvasController::handle(const CanvasInput& input) {
       return handle_wheel(input);
     case InputKind::key_down:
       return handle_key(input.key);
+    case InputKind::pinch:
+      return handle_pinch(input);
     case InputKind::other:
       break;
   }
@@ -56,8 +59,32 @@ bool CanvasController::handle_wheel(const CanvasInput& input) noexcept {
   if (input.wheel_y == 0.0) {
     return false;
   }
-  camera_.zoom_at(std::pow(kWheelZoomStep, input.wheel_y), input.x * ratio_, input.y * ratio_);
+  zoom_clamped(std::pow(kWheelZoomStep, input.wheel_y), input.x * ratio_, input.y * ratio_);
   return true;
+}
+
+bool CanvasController::handle_pinch(const CanvasInput& input) noexcept {
+  // The canvas takes the whole gesture at its beginning (Raven then neither
+  // scrolls nor zooms anything else with it); the begin carries no change.
+  if (input.phase == GesturePhase::begin) {
+    return true;
+  }
+  const double dx = input.dx * ratio_;
+  const double dy = input.dy * ratio_;
+  // Zoom about where the fingers' center was, then follow its move: the
+  // layout point under the fingers stays under them.
+  zoom_clamped(input.scale, input.x * ratio_ - dx, input.y * ratio_ - dy);
+  camera_.pan_pixels(dx, dy);
+  return true;
+}
+
+void CanvasController::zoom_clamped(double factor, double x_px, double y_px) noexcept {
+  const double ppu = camera_.pixels_per_unit();
+  if (!(factor > 0.0) || !std::isfinite(factor) || !(ppu > 0.0)) {
+    return;
+  }
+  const double target = std::clamp(ppu * factor, kMinPixelsPerUnit, kMaxPixelsPerUnit);
+  camera_.zoom_at(target / ppu, x_px, y_px);
 }
 
 bool CanvasController::run_command(std::string name, std::vector<std::string> args) {

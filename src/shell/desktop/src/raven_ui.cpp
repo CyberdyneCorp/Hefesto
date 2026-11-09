@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -214,6 +215,28 @@ CanvasInput to_canvas_input(const REvent& e) {
   in.precise_wheel = e.wheel_precise != kFalse;
   in.button = to_button(e.button);
   in.key = to_key(e.key);
+  return in;
+}
+
+GesturePhase to_phase(RGesturePhase phase) {
+  switch (phase) {
+    case R_GESTURE_BEGIN: return GesturePhase::begin;
+    case R_GESTURE_END: return GesturePhase::end;
+    default: return GesturePhase::update;
+  }
+}
+
+/// A pinch of two fingers on a touch screen or a trackpad (macOS:
+/// magnifyWithEvent), in the viewport's logical coordinates.
+CanvasInput to_canvas_input(const RGestureEvent& e) {
+  CanvasInput in;
+  in.kind = InputKind::pinch;
+  in.x = static_cast<double>(e.local_x);
+  in.y = static_cast<double>(e.local_y);
+  in.dx = static_cast<double>(e.pan_x);
+  in.dy = static_cast<double>(e.pan_y);
+  in.scale = e.scale_delta > 0.0F ? static_cast<double>(e.scale_delta) : 1.0;
+  in.phase = to_phase(e.phase);
   return in;
 }
 
@@ -805,6 +828,12 @@ struct Viewport::Callbacks {
     }
     return cb->input && cb->input(to_canvas_input(*e)) ? kTrue : kFalse;
   }
+  // Pinches only: a swipe of three fingers keeps navigating back / forward.
+  static int on_gesture(Rid /*viewport*/, const RGestureEvent* e, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (e->kind != R_GESTURE_PINCH || e->cancelled != kFalse) return kFalse;
+    return cb->input && cb->input(to_canvas_input(*e)) ? kTrue : kFalse;
+  }
   static void on_resize(Rid /*viewport*/, int width, int height, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
     if (cb->resize) cb->resize(width, height);
@@ -822,6 +851,9 @@ std::unique_ptr<Viewport> Viewport::create() {
   Rwidget_set_focusable(vp->id_, kTrue);
   Rviewport_set_draw_callback(vp->id_, &Callbacks::on_draw, vp->callbacks_.get());
   Rwidget_set_event_callback(vp->id_, &Callbacks::on_event, vp->callbacks_.get());
+  // The canvas zooms itself: it takes the pinch (trackpad or touch screen)
+  // instead of letting Raven zoom or scroll a parent with it.
+  Rwidget_set_gesture_callback(vp->id_, &Callbacks::on_gesture, vp->callbacks_.get());
   Rviewport_set_resize_callback(vp->id_, &Callbacks::on_resize, vp->callbacks_.get());
   return vp;
 }
@@ -934,6 +966,16 @@ std::optional<std::string> Window::open_file_dialog(std::string_view title, std:
     return std::nullopt;
   }
   return std::string(path);
+}
+
+void Window::inject_trackpad_pinch(float x, float y, double factor, int steps) {
+  if (!(factor > 0.0) || steps < 1) return;
+  const auto step = static_cast<float>(std::pow(factor, 1.0 / steps));
+  Rwindow_inject_trackpad_gesture(id_, R_GESTURE_PINCH, R_GESTURE_BEGIN, x, y, 1.0F, 0.0F, 0.0F, 0.0F, 2);
+  for (int i = 0; i < steps; ++i) {
+    Rwindow_inject_trackpad_gesture(id_, R_GESTURE_PINCH, R_GESTURE_UPDATE, x, y, step, 0.0F, 0.0F, 0.0F, 2);
+  }
+  Rwindow_inject_trackpad_gesture(id_, R_GESTURE_PINCH, R_GESTURE_END, x, y, 1.0F, 0.0F, 0.0F, 0.0F, 2);
 }
 
 bool Window::capture_ppm(const std::string& path) const {

@@ -19,6 +19,35 @@ Compatibility: behavioral
 - **WHEN** the left mouse button is clicked in a layout window with the box tool active
 - **THEN** the box SHALL move by its lower-left corner to the cursor, as in Magic
 
+### Requirement: Desktop canvas gestures
+On Linux and macOS, the layout canvas SHALL take trackpad and touch-screen gestures through Raven's gesture events (`RGestureEvent`, kind `R_GESTURE_PINCH`; on macOS Raven turns `magnifyWithEvent` into it) and the wheel events Raven marks precise (`REvent::wheel_precise`, from `hasPreciseScrollingDeltas` on macOS):
+- a pinch (two fingers on a trackpad or a touch screen) SHALL zoom the view continuously by each event's scale change, about the center of the fingers: the layout point under the fingers stays under them, and when the fingers also move, it moves with them
+- two fingers moving on a trackpad (precise wheel deltas) SHALL pan the view, the content following the fingers
+- a mouse wheel (deltas that are not precise) SHALL zoom the view about the pointer
+- these gestures SHALL stop at the zoom range the zoom control's `zoom` commands reach: from the core window's smallest scale (one 1/65536 pixel per internal unit, Magic's "At minimum scale!") to the renderer's largest
+- after each gesture event the zoom percentage of the zoom control, the rulers, the minimap's view rectangle and the core window's view SHALL show the new view
+
+The canvas SHALL take the whole pinch when it begins, so that Raven neither scrolls nor zooms another widget with it. A swipe of three or more fingers SHALL be left to Raven (back / forward). Continuous gestures move the view directly instead of issuing one command per event (design.md D6 of change m1-core-viewer); keys and the zoom control issue commands.
+
+Compatibility: native
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5)
+
+#### Scenario: Trackpad pinch zooms at the pointer
+- **GIVEN** a cell shown at 93 % in the desktop app on macOS
+- **WHEN** the user spreads two fingers on the trackpad until the distance between them is 2.5 times larger, with the pointer over a contact
+- **THEN** the view SHALL zoom smoothly to about 232 %, the contact SHALL stay under the pointer, and the zoom control SHALL read the new percentage
+
+#### Scenario: Two-finger scroll pans, the wheel zooms
+- **WHEN** the user moves two fingers up on a trackpad
+- **THEN** the view SHALL pan with the fingers and its zoom SHALL not change
+- **WHEN** the user then turns a mouse wheel one notch up
+- **THEN** the view SHALL zoom in about the pointer
+
+#### Scenario: Pinch stops at the zoom limit
+- **GIVEN** a view already at the largest zoom the zoom-in button reaches
+- **WHEN** the user keeps spreading two fingers
+- **THEN** the zoom SHALL stay at that limit and the point under the fingers SHALL not drift
+
 ### Requirement: Touch and Pencil mapping
 On iPadOS (SwiftUI/UIKit gesture recognizers), every tool action and every default key or button binding SHALL be reachable without a mouse or a hardware keyboard. The mapping SHALL be:
 - one-finger drag: the tool's primary action

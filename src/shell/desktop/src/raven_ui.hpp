@@ -351,6 +351,10 @@ class Window {
   [[nodiscard]] FrameStats frame_stats() const;
   /// Saves the last rendered frame as a binary PPM; false on failure.
   bool capture_ppm(const std::string& path) const;
+  /// Tests and scripted captures: a trackpad pinch at window point (x, y)
+  /// (logical pixels) as the system would send it, `factor` spread over
+  /// `steps` updates between a begin and an end.
+  void inject_trackpad_pinch(float x, float y, double factor, int steps);
   /// The window system Raven chose for this window: "x11", "wayland",
   /// "cocoa", "win32", or "none" (headless or unknown).
   [[nodiscard]] std::string window_system() const;

@@ -61,6 +61,7 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
       command_bar_(ui::CommandBar::create("Type a command (help)")),
       core_sink_(core.dispatcher()) {
   ctx_.run = [this](const std::string& line) { run_line(line); };
+  pending_pinch_ = options.pinch;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   window_.set_min_size(1024, 640);
   ctx_.runtime.apply_theme(ctx_.mode);
@@ -464,14 +465,30 @@ void MainWindow::on_frame() {
   } else if (!pending_run_.empty()) {
     window_.request_redraw();
   }
-  if (!dirty_) return;
-  dirty_ = false;
-  if (reveal_diagnostics_) {
-    reveal_diagnostics_ = false;
-    if (!console_visible_) toggle_console();
-    console_tabs_.show(1);  // the Diagnostics tab
+  if (dirty_) {
+    dirty_ = false;
+    if (reveal_diagnostics_) {
+      reveal_diagnostics_ = false;
+      if (!console_visible_) toggle_console();
+      console_tabs_.show(1);  // the Diagnostics tab
+    }
+    refresh_all();
   }
-  refresh_all();
+  // After the refresh: the first scene build frames the cell, which would
+  // replace a pinch made before it.
+  if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
+}
+
+void MainWindow::run_pending_pinch() {
+  const PinchOption pinch = *pending_pinch_;
+  pending_pinch_.reset();
+  const std::string before = canvas_->zoom_text();
+  window_.inject_trackpad_pinch(pinch.x, pinch.y, pinch.factor, 8);
+  std::printf("hefesto: pinch at %g,%g by %g: zoom %s -> %s\n", static_cast<double>(pinch.x),
+              static_cast<double>(pinch.y), pinch.factor, before.c_str(), canvas_->zoom_text().c_str());
+  std::fflush(stdout);
+  dirty_ = true;
+  window_.request_redraw();
 }
 
 void MainWindow::append_console(const std::string& command, const std::string& result) {
