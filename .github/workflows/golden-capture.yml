@@ -129,8 +129,11 @@ jobs:
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
           mapfile -t cases < cases.txt
+          # A case that fails (e.g. the reference tool crashes) must not drop the others' outputs:
+          # collect and upload what was captured, then fail the step.
+          status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --only-missing "${cases[@]}" | tee capture.log
+            --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
           # Collect the new expected/ directories, keeping their tests/golden/... paths.
           mkdir -p golden-expected
           git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
@@ -140,9 +143,11 @@ jobs:
           else
             echo "::notice::no case without expected/"
           fi
+          grep ': error: ' capture.log | sed 's/^/::error::/' || true
+          exit "$status"
 
       - uses: actions/upload-artifact@v4
-        if: env.MODE == 'both' || env.MODE == 'capture'
+        if: always() && (env.MODE == 'both' || env.MODE == 'capture')
         with:
           name: golden-expected
           path: golden-expected/

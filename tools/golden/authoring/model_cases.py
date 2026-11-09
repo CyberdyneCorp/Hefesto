@@ -196,9 +196,12 @@ def hierarchy_specs() -> list[Spec]:
               + cell("c3", []) + cell("top", [box(0, 0, 0, 0), "getcell c1", box(100, 0, 100, 0), "getcell c2",
                                                box(200, 0, 200, 0), "getcell c3", box(300, 0, 300, 0), "getcell input/fl"]),
               ["top.mag", "c1.mag", "c2.mag", "c3.mag"], files={"fl.mag": FLABELS}),
-        model("MODEL-G-032", HIER, ["Locked instances"], "instance lock inv_0; save (move/delete not authored).",
-              inv + cell("top", [box(0, 0, 0, 0), "getcell inv", "instance lock inv_0"]) + ["cellname list modified"],
-              ["top.mag"]),
+        model("MODEL-G-032", HIER, ["Locked instances"],
+              "A .mag with a locked use (*inv_0); load and save (instance lock crashed Magic in capture: "
+              "exit 139; move/delete not authored).",
+              ["load input/top", "cellname list modified", "save top_out"], ["top_out.mag"],
+              files={"top.mag": mag("mt", _use("inv", "*inv_0", "1 0 0 0 1 0", "0 0 10 10")
+                                    + _use("inv", "inv_1", "1 0 20 0 1 0", "20 0 30 10")), "inv.mag": LEAF}),
         model("MODEL-G-033", HIER, ["Descend rules"], "flatten -nosubcircuits with a ported and an unported child.",
               cell("pc", paint("metal1", 0, 0, 10, 10) + label("A", 5, 5) + ["port make"])
               + cell("uc", paint("metal2", 0, 0, 10, 10))
