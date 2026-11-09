@@ -78,3 +78,27 @@ TEST_CASE("sub-pixel rectangles stay visible", "[cap:hefesto-performance][req:In
   }
   CHECK(found);
 }
+
+TEST_CASE("stipples use the OpenGL orientation on the GPU", "[cap:display-style-files][req:Stipple patterns]") {
+  auto canvas = make_canvas();
+  if (!canvas) {
+    SKIP("no Vulkan device");
+  }
+  // A full-canvas rectangle in a checkerboard stipple whose rows differ:
+  // row 0 (bottom) 0x80 -> only the leftmost pixel of each 8-pixel run.
+  const std::vector<RectInstance> instances{{0, 0, 64, 64}};
+  const std::vector<LayerBatch> draws{{0, 0, 1}};
+  LayerStyle style{1.0F, 1.0F, 1.0F, 1.0F, true, {0x80, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  const std::vector<LayerStyle> styles{style};
+  canvas->renderer().upload(instances);
+  canvas->renderer().set_layer_styles(styles);
+  Camera camera(32.0, 32.0, 1.0);
+  camera.set_viewport(64, 64);
+  (void)canvas->render(camera.transform(), draws);
+  const int bottom = canvas->height() - 1;  // read_pixel rows count from the top
+  CHECK(channel(canvas->read_pixel(0, bottom), 0) == 255);   // row 0, MSB: painted
+  CHECK(channel(canvas->read_pixel(1, bottom), 0) < 20);     // row 0, next bit: not painted
+  CHECK(channel(canvas->read_pixel(8, bottom), 0) == 255);   // repeats every 8 pixels
+  CHECK(channel(canvas->read_pixel(3, bottom - 1), 0) == 255);  // row 1 = 0xFF
+  CHECK(channel(canvas->read_pixel(0, bottom - 2), 0) < 20);    // row 2 = 0x00
+}

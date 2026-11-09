@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto layout editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FF8A3D}a:hover{color:#FFA866}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+
+  <header style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-bottom: 1px solid #2F343D; background: #15181C">
+    <svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"></path></svg>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 13px; font-weight: 600">inverter_demo</span>
+      <span style="font-size: 11px; color: #8A919D">sky130A · 1.0.471 · magic-compat on</span>
+    </div>
+    <div role="tablist" aria-label="Editor view" style="margin-left: 24px; display: flex; padding: 3px; border-radius: 8px; background: #0F1114; border: 1px solid #2F343D">
+      <button type="button" role="tab" aria-selected="true" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: #2A2F37; color: #E8EAED; font: 600 12px Inter, sans-serif">Layout</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Schematic</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">3D</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 28px; padding: 0 14px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif">Waveforms</button>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(63,178,127,0.14); color: #5FD3A0; font: 500 12px Inter, sans-serif">● DRC clean</span>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(63,178,127,0.14); color: #5FD3A0; font: 500 12px Inter, sans-serif">● LVS match</span>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Extract</button>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Simulate</button>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: none; background: #FF8A3D; color: #1A0F06; font: 600 13px Inter, sans-serif; display: inline-flex; align-items: center; gap: 8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1A0F06" stroke-width="2" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"></path></svg>Ask agent</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+
+    <nav aria-label="Tools" style="width: 52px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #15181C; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 10px">
+      <button type="button" aria-label="Box tool" aria-pressed="true" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(255,138,61,0.6); background: rgba(255,138,61,0.14); display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFB27A" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"></rect></svg></button>
+      <button type="button" aria-label="Select" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><path d="M5 5l6 14 2-6 6-2z"></path></svg></button>
+      <button type="button" aria-label="Paint" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16z"></path></svg></button>
+      <button type="button" aria-label="Wire" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><path d="M4 18h6v-6h6V6"></path><circle cx="16" cy="6" r="2"></circle></svg></button>
+      <button type="button" aria-label="Label" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><path d="M5 7V5h14v2M12 5v14M9 19h6"></path></svg></button>
+      <button type="button" aria-label="Measure" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><path d="M3 16L16 3l5 5L8 21z"></path><path d="M7 12l2 2M10 9l2 2M13 6l2 2"></path></svg></button>
+      <button type="button" aria-label="Place device" style="width: 36px; height: 36px; border-radius: 8px; border: none; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9CED6" stroke-width="1.6" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="1"></rect><path d="M12 4v16M6 12h12"></path></svg></button>
+    </nav>
+
+    <aside aria-label="Layers" style="width: 240px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #181B20; display: flex; flex-direction: column">
+      <div style="padding: 12px 14px 8px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Layers</h2>
+        <label for="layer-filter" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Filter layers</label>
+        <input id="layer-filter" placeholder="Filter layers" style="height: 30px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif">
+      </div>
+      <ul style="list-style: none; margin: 0; padding: 0 6px; display: flex; flex-direction: column; gap: 2px; font-size: 13px">
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(46,125,87,0.25); border: 1px dashed #2E7D57"></span><span style="flex-grow: 1">nwell</span><span style="font-size: 11px; color: #8A919D">well</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(59,178,115,0.55); border: 1px solid #3BB273"></span><span style="flex-grow: 1">pdiff</span><span style="font-size: 11px; color: #8A919D">active</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(59,178,115,0.55); border: 1px solid #3BB273"></span><span style="flex-grow: 1">ndiff</span><span style="font-size: 11px; color: #8A919D">active</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(224,82,79,0.55); border: 1px solid #E0524F"></span><span style="flex-grow: 1">poly</span><span style="font-size: 11px; color: #8A919D">poly</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; background: #2A2F37; outline: 1px solid rgba(255,138,61,0.55)"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(155,107,214,0.5); border: 1px solid #9B6BD6"></span><span style="flex-grow: 1; font-weight: 600">locali</span><span style="font-size: 11px; color: #FFB27A">paint</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(79,141,232,0.45); border: 1px solid #4F8DE8"></span><span style="flex-grow: 1">metal1</span><span style="font-size: 11px; color: #8A919D">metal1</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(208,95,182,0.45); border: 1px solid #D05FB6"></span><span style="flex-grow: 1">metal2</span><span style="font-size: 11px; color: #8A919D">metal2</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; color: #8A919D"><span style="width: 18px; height: 14px; border-radius: 3px; background: rgba(230,180,60,0.25); border: 1px solid #8A7A3C"></span><span style="flex-grow: 1">metal3</span><span style="font-size: 11px">hidden</span></li>
+        <li style="display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px"><span style="width: 18px; height: 14px; border-radius: 3px; background: #0B0C0E; border: 1px solid #C9CED6; display: flex; align-items: center; justify-content: center; font-size: 10px">×</span><span style="flex-grow: 1">contacts</span><span style="font-size: 11px; color: #8A919D">cut</span></li>
+      </ul>
+      <div style="margin-top: auto; padding: 12px 14px; border-top: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Hierarchy</h2>
+        <ul style="list-style: none; margin: 0; padding: 0; font-size: 12px; display: flex; flex-direction: column; gap: 4px; font-family: 'JetBrains Mono', monospace">
+          <li style="color: #E8EAED">▾ inverter_demo</li>
+          <li style="padding-left: 16px; color: #C9CED6">▸ nfet_01v8 (X1)</li>
+          <li style="padding-left: 16px; color: #C9CED6">▸ pfet_01v8_hvt (X2)</li>
+          <li style="padding-left: 16px; color: #8A919D">via1_2x1 ×4</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main aria-label="Layout canvas" style="flex-grow: 1; min-width: 0; position: relative; background: #0B0C0E">
+      <svg width="868" height="772" viewBox="0 0 868 772" role="img" aria-label="Inverter layout with the output wire selected">
+        <defs>
+          <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#2A2F37"></circle></pattern>
+          <pattern id="stipple-diff" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#3BB273" stroke-width="1"></path></pattern>
+          <pattern id="stipple-poly" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 0L6 6" stroke="#E0524F" stroke-width="1"></path></pattern>
+        </defs>
+        <rect x="0" y="0" width="868" height="772" fill="url(#dots)"></rect>
+        <rect x="0" y="0" width="868" height="20" fill="#15181C"></rect>
+        <rect x="0" y="0" width="20" height="772" fill="#15181C"></rect>
+        <g font-family="JetBrains Mono, monospace" font-size="10" fill="#8A919D">
+          <text x="276" y="14">0.00</text><text x="416" y="14">0.69</text><text x="556" y="14">1.38</text>
+          <text x="2" y="114">2.7</text><text x="2" y="394">1.4</text><text x="2" y="674">0.0</text>
+        </g>
+        <rect x="250" y="80" width="360" height="300" fill="rgba(46,125,87,0.10)" stroke="#2E7D57" stroke-dasharray="6 4"></rect>
+        <rect x="320" y="190" width="220" height="150" fill="rgba(59,178,115,0.30)" stroke="#3BB273"></rect>
+        <rect x="320" y="190" width="220" height="150" fill="url(#stipple-diff)" opacity="0.6"></rect>
+        <rect x="320" y="440" width="220" height="120" fill="rgba(59,178,115,0.30)" stroke="#3BB273"></rect>
+        <rect x="320" y="440" width="220" height="120" fill="url(#stipple-diff)" opacity="0.6"></rect>
+        <rect x="418" y="160" width="26" height="430" fill="rgba(224,82,79,0.45)" stroke="#E0524F"></rect>
+        <rect x="418" y="160" width="26" height="430" fill="url(#stipple-poly)" opacity="0.5"></rect>
+        <rect x="336" y="372" width="108" height="44" fill="rgba(224,82,79,0.45)" stroke="#E0524F"></rect>
+        <rect x="270" y="100" width="320" height="44" fill="rgba(79,141,232,0.40)" stroke="#4F8DE8"></rect>
+        <rect x="270" y="620" width="320" height="44" fill="rgba(79,141,232,0.40)" stroke="#4F8DE8"></rect>
+        <rect x="340" y="140" width="40" height="160" fill="rgba(155,107,214,0.45)" stroke="#9B6BD6"></rect>
+        <rect x="340" y="460" width="40" height="164" fill="rgba(155,107,214,0.45)" stroke="#9B6BD6"></rect>
+        <rect x="486" y="210" width="40" height="330" fill="rgba(155,107,214,0.55)" stroke="#FFFFFF" stroke-width="2.5"></rect>
+        <rect x="480" y="204" width="52" height="342" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-dasharray="4 4"></rect>
+        <g stroke="#E8EAED" stroke-width="1.2" fill="#0B0C0E">
+          <rect x="353" y="232" width="14" height="14"></rect><path d="M353 232l14 14M367 232l-14 14"></path>
+          <rect x="353" y="500" width="14" height="14"></rect><path d="M353 500l14 14M367 500l-14 14"></path>
+          <rect x="499" y="232" width="14" height="14"></rect><path d="M499 232l14 14M513 232l-14 14"></path>
+          <rect x="499" y="500" width="14" height="14"></rect><path d="M499 500l14 14M513 500l-14 14"></path>
+          <rect x="353" y="387" width="14" height="14"></rect><path d="M353 387l14 14M367 387l-14 14"></path>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-size="13" font-weight="500" fill="#FFFFFF">
+          <text x="280" y="127">VPWR</text>
+          <text x="280" y="647">VGND</text>
+          <text x="300" y="400">A</text>
+          <text x="536" y="380">Y</text>
+        </g>
+        <g>
+          <rect x="560" y="300" width="196" height="64" rx="8" fill="#20242B" stroke="#3D434E"></rect>
+          <text x="574" y="324" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#E8EAED">locali · net Y</text>
+          <text x="574" y="346" font-family="JetBrains Mono, monospace" font-size="11" fill="#A4ABB6">0.17 × 1.65 um · 3 contacts</text>
+        </g>
+      </svg>
+      <div style="position: absolute; right: 16px; bottom: 16px; width: 168px; height: 112px; border-radius: 8px; border: 1px solid #3D434E; background: #15181C; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center">
+        <span style="width: 54px; height: 84px; border: 1px solid #4F8DE8; background: rgba(79,141,232,0.12); outline: 1.5px solid #FFFFFF; outline-offset: 6px"></span>
+      </div>
+      <div style="position: absolute; left: 36px; bottom: 16px; display: flex; gap: 6px">
+        <button type="button" aria-label="Zoom out" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 600 16px Inter">−</button>
+        <span style="height: 32px; padding: 0 10px; display: inline-flex; align-items: center; border-radius: 6px; background: #20242B; border: 1px solid #3D434E; font: 500 12px 'JetBrains Mono', monospace; color: #C9CED6">400%</span>
+        <button type="button" aria-label="Zoom in" style="width: 32px; height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 600 16px Inter">+</button>
+      </div>
+    </main>
+
+    <aside aria-label="Inspector" style="width: 284px; flex-shrink: 0; border-left: 1px solid #2F343D; background: #181B20; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Selection</h2>
+        <p style="margin: 0; font-size: 15px; font-weight: 600">Chunk · locali</p>
+        <p style="margin: 0; font-size: 12px; color: #A4ABB6">Net <code style="font-family: 'JetBrains Mono', monospace; color: #E8EAED">Y</code> · in edit cell inverter_demo</p>
+      </div>
+      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; font-size: 12px">
+        <dt style="color: #8A919D">Width</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">0.170 um</dd>
+        <dt style="color: #8A919D">Height</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">1.650 um</dd>
+        <dt style="color: #8A919D">Lower left</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">1.08, 0.66</dd>
+        <dt style="color: #8A919D">Node cap</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">0.84 fF</dd>
+      </dl>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="insp-layer" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #8A919D">Layer</label>
+        <select id="insp-layer" style="height: 32px; padding: 0 8px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif"><option>locali</option><option>metal1</option></select>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="flex-grow: 1; height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Select net</button>
+        <button type="button" style="flex-grow: 1; height: 32px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Show in 3D</button>
+      </div>
+      <div style="margin-top: auto; padding: 12px; border-radius: 8px; background: #20242B; border: 1px solid #2F343D; display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 12px; font-weight: 600">Design rules nearby</span>
+        <span style="font-size: 12px; color: #A4ABB6">li.1 width ≥ 0.17 um <span style="color: #5FD3A0">✓</span></span>
+        <span style="font-size: 12px; color: #A4ABB6">li.3 spacing ≥ 0.17 um <span style="color: #5FD3A0">✓</span></span>
+      </div>
+    </aside>
+  </div>
+
+  <div style="height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-top: 1px solid #2F343D; background: #15181C">
+    <label for="cmd" style="font: 500 12px 'JetBrains Mono', monospace; color: #FF8A3D">%</label>
+    <input id="cmd" value="select net" style="flex-grow: 1; height: 28px; box-sizing: border-box; padding: 0 8px; border-radius: 6px; border: 1px solid #2F343D; background: #0F1114; color: #E8EAED; font: 400 12px 'JetBrains Mono', monospace">
+    <span style="font: 400 11px 'JetBrains Mono', monospace; color: #8A919D">⏎ run · ↑ history · tab complete</span>
+  </div>
+  <footer style="height: 26px; flex-shrink: 0; display: flex; align-items: center; gap: 22px; padding: 0 14px; background: #0F1114; border-top: 1px solid #2F343D; font: 400 11px 'JetBrains Mono', monospace; color: #A4ABB6">
+    <span>x 1.165  y 1.480 um</span><span>box 0.170 × 1.650</span><span>edit: inverter_demo</span><span>snap: lambda · units: um</span><span style="margin-left: auto; color: #5FD3A0">● DRC idle · 0 errors</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

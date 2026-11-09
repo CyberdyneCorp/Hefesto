@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto DRC results</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#FF8A3D}a:hover{color:#FFA866}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+
+  <header style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-bottom: 1px solid #2F343D; background: #15181C">
+    <svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"></path></svg>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 13px; font-weight: 600">ota_5t · DRC results</span>
+      <span style="font-size: 11px; color: #8A919D">gf180mcuD · Magic-compatible DRC · style drc(full)</span>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(240,96,93,0.14); color: #FF8784; font: 500 12px Inter, sans-serif">■ 7 errors · 3 rules</span>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Re-check</button>
+    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: none; background: #FF8A3D; color: #1A0F06; font: 600 13px Inter, sans-serif">Fix with agent…</button>
+  </header>
+
+  <div style="flex-grow: 1; display: flex; min-height: 0">
+    <aside aria-label="Violations" style="width: 340px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #181B20; display: flex; flex-direction: column">
+      <div style="padding: 12px 14px; display: flex; gap: 8px; border-bottom: 1px solid #2F343D">
+        <label for="drc-filter" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Filter violations</label>
+        <input id="drc-filter" placeholder="Filter by rule or text" style="flex-grow: 1; height: 30px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif">
+      </div>
+      <ol style="list-style: none; margin: 0; padding: 8px; display: flex; flex-direction: column; gap: 4px; overflow: hidden">
+        <li style="padding: 10px; border-radius: 8px; background: #2A2F37; outline: 1px solid rgba(255,138,61,0.55); display: flex; flex-direction: column; gap: 4px">
+          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>M1.2a · metal1 spacing</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×3</span></span>
+          <span style="font-size: 12px; color: #C9CED6">Metal1 spacing &lt; 0.23 um</span>
+          <span style="font: 400 11px 'JetBrains Mono', monospace; color: #A4ABB6">#1 of 3 · at (12.40, 3.86)</span>
+        </li>
+        <li style="padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
+          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>V1.3 · via1 enclosure</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×2</span></span>
+          <span style="font-size: 12px; color: #C9CED6">Metal2 must enclose Via1 by 0.01 um</span>
+        </li>
+        <li style="padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
+          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>PL.5 · poly extension</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×2</span></span>
+          <span style="font-size: 12px; color: #C9CED6">Poly overhang of Diff &lt; 0.22 um</span>
+        </li>
+      </ol>
+      <div style="margin-top: auto; padding: 14px; border-top: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Sign-off (wafer.space)</h2>
+        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Magic DRC</span><span style="color: #FF8784">■ 7</span></span>
+        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>LVS</span><span style="color: #5FD3A0">● match</span></span>
+        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Antenna</span><span style="color: #5FD3A0">● clean</span></span>
+        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>KLayout decks (external)</span><span style="color: #F0C661">▲ run on desktop</span></span>
+        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Density / fill</span><span style="color: #A4ABB6">○ pending</span></span>
+      </div>
+    </aside>
+
+    <main aria-label="Error location" style="flex-grow: 1; min-width: 0; background: #0B0C0E; position: relative">
+      <svg width="816" height="852" viewBox="0 0 816 852" role="img" aria-label="Zoomed view of two metal1 wires closer than the minimum spacing, with the violation area hatched in red">
+        <defs>
+          <pattern id="g2" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#262A31"></circle></pattern>
+          <pattern id="err" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#F0605D" stroke-width="2"></path></pattern>
+        </defs>
+        <rect width="816" height="852" fill="url(#g2)"></rect>
+        <rect x="120" y="160" width="240" height="520" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
+        <rect x="392" y="240" width="300" height="140" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
+        <rect x="392" y="480" width="220" height="200" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
+        <rect x="360" y="240" width="32" height="140" fill="url(#err)" stroke="#F0605D" stroke-width="2"></rect>
+        <path d="M360 410h32" stroke="#FFFFFF" stroke-width="1.5"></path>
+        <path d="M360 404v12M392 404v12" stroke="#FFFFFF" stroke-width="1.5"></path>
+        <text x="352" y="436" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">0.18 um</text>
+        <rect x="430" y="404" width="300" height="72" rx="8" fill="#20242B" stroke="#F0605D"></rect>
+        <text x="446" y="430" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#FF8784">Metal1 spacing &lt; 0.23 um</text>
+        <text x="446" y="454" font-family="JetBrains Mono, monospace" font-size="11" fill="#A4ABB6">measured 0.18 · need 0.23 · Δ 0.05 um</text>
+        <g font-family="JetBrains Mono, monospace" font-size="12" fill="#C9CED6">
+          <text x="132" y="186">net vout</text><text x="404" y="266">net vbias</text><text x="404" y="506">net vss</text>
+        </g>
+      </svg>
+      <div style="position: absolute; left: 16px; top: 16px; display: flex; gap: 6px">
+        <button type="button" aria-label="Previous error" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">◀ Prev</button>
+        <button type="button" aria-label="Next error" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Next ▶</button>
+      </div>
+    </main>
+
+    <aside aria-label="Rule details" style="width: 284px; flex-shrink: 0; border-left: 1px solid #2F343D; background: #181B20; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Rule</h2>
+      <code style="display: block; padding: 10px; border-radius: 6px; background: #0F1114; border: 1px solid #2F343D; font: 400 11px/1.6 'JetBrains Mono', monospace; color: #C9CED6; white-space: pre-wrap">spacing metal1 metal1 0.23um touching_ok \
+  "Metal1 spacing &lt; %d (M1.2a)"</code>
+      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; font-size: 12px">
+        <dt style="color: #8A919D">Cell</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">ota_5t</dd>
+        <dt style="color: #8A919D">Area</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">0.18 × 0.70</dd>
+        <dt style="color: #8A919D">Nets</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">vout · vbias</dd>
+      </dl>
+      <div style="padding: 12px; border-radius: 8px; background: rgba(255,138,61,0.08); border: 1px solid rgba(255,138,61,0.35); display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 12px; font-weight: 600; color: #FFB27A">Suggested fix</span>
+        <span style="font-size: 12px; line-height: 1.5; color: #C9CED6">Move the vbias strap right by 0.05 um. No new violations within the halo.</span>
+        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Preview fix</button>
+      </div>
+      <button type="button" style="height: 32px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif; text-align: left">Ignore this rule (drc ignore)…</button>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

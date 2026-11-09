@@ -1,12 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
 #
-# Unit tests (Catch2 v3). Shared file owned by the scaffolding workstream;
-# each area adds tests in its own subdirectory (design.md D2):
-#   core/    Core & CLI workstream          (always)
-#   cli/     Core & CLI workstream          (when hefesto-cli is built)
-#   render/  Desktop shell workstream       (desktop builds, if present)
-#   shell/   Desktop shell workstream       (desktop builds, if present)
+# Unit tests (Catch2 v3). Shared file owned by INTEGRATION
+# (openspec/changes/m1-core-viewer/design.md D2); each area adds tests in its
+# own subdirectory and never edits this file:
+#   core/    INTEGRATION (M0 core)          (always)
+#   cli/     PDK (M1 CLI commands)          (when hefesto-cli is built)
+#   tech/    TECH                           (always)
+#   db/      MODEL                          (always)
+#   cell/    CELL                           (always)
+#   display/ view/  VIEWER                  (always)
+#   pdk/ app/       PDK                     (always)
+#   render/  VIEWER                         (desktop builds, if present)
+#   shell/   SHELL                          (desktop builds, if present)
+#   common/  INTEGRATION: header-only helpers shared by the area tests
+# Each M1 area directory builds one executable hefesto_<area>_tests from every
+# *_test.cpp in it (glob), so adding a test file needs no CMake edit.
 #
 # Tests name the capability and requirement they cover in Catch2 tags, for the
 # traceability report (capability hefesto-testing-strategy):
@@ -34,6 +43,24 @@ function(hefesto_add_unit_test name)
 endfunction()
 
 add_subdirectory(core)
+
+# hefesto_add_area_tests(<area>)
+#   One Catch2 executable hefesto_<area>_tests from tests/unit/<area>/*_test.cpp,
+#   linked to hefesto::core, with HEFESTO_SOURCE_DIR and HEFESTO_TEST_DATA_DIR
+#   (tests/data/<area>) defined for fixtures.
+function(hefesto_add_area_tests area)
+  file(GLOB _sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
+  hefesto_add_unit_test(hefesto_${area}_tests SOURCES ${_sources} LIBS hefesto::core)
+  target_compile_definitions(hefesto_${area}_tests PRIVATE
+    HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+    HEFESTO_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/${area}")
+  # common/: shared test helpers (reference_data.hpp: pinned PDK and Magic data).
+  target_include_directories(hefesto_${area}_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
+endfunction()
+
+foreach(_area IN ITEMS tech db cell display view pdk app)
+  add_subdirectory(${_area})
+endforeach()
 
 if(TARGET hefesto-cli)
   add_subdirectory(cli)

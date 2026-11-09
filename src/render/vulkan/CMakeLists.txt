@@ -5,12 +5,13 @@
 # MoltenVK on macOS). Knows Vulkan and plain geometry, never Raven.
 # Public headers are Vulkan-free (handles cross as opaque pointers); only the
 # sources under src/ include <vulkan/vulkan.h>.
-# Owner: workstream "Desktop shell & canvas spike" (design.md D2).
+# Owner: VIEWER (openspec/changes/m1-core-viewer/design.md D2).
 
 add_library(hefesto_render_vk STATIC
   src/camera.cpp
   src/canvas_index.cpp
   src/headless.cpp
+  src/layout_scene.cpp
   src/renderer.cpp
   src/scene.cpp
   src/synthetic_layout.cpp

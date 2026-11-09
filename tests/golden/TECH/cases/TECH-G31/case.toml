@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# TECH-G31 (tests/golden/TECH/CASES.md). Inputs only: expected/ is written by
+# capture.py in CI (golden-capture.yml).
+
+schema = 1
+id = "TECH-G31"
+area = "TECH"
+capability = "tech-loading-and-scaling"
+requirements = ["Technology file name resolution"]
+tool = "magic"
+description = "Names with dots, explicit suffix, legacy suffix, missing file."
+
+[reference]
+script = "input/commands.tcl"
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+requires_commands = ["tech"]
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = []
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+# The directory list of "Could not find file ... in any of these directories:"
+# is Magic's SysLibPath as stored (". $CAD_ROOT/magic/sys ..."), an
+# installation detail; Hefesto lists its own search path. Only that line is masked.
+masks = ['regex:(?<=directories:\n)[^\n]*']

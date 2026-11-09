@@ -12,6 +12,9 @@ output's masks. The outputs match when the canonical forms are identical.
 ``ext-cap``
     ``.ext`` files: cap records put in canonical order, everything else byte
     for byte. See ext_cap.py.
+``magic-console``
+    stdout/stderr of a Magic run: Magic's leading startup preamble removed,
+    everything else byte for byte. See magic_console.py.
 
 To add a format canonicalizer: put it in its own module with its rules in the
 module docstring (the spec requires each canonicalizer to be specified next
@@ -22,12 +25,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from . import ext_cap
+from . import ext_cap, magic_console
 from .masks import apply_masks
 
 COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "bytes": lambda data: data,
     "ext-cap": ext_cap.canonicalize,
+    "magic-console": magic_console.canonicalize,
 }
 
 

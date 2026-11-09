@@ -51,6 +51,11 @@ class PortableServices {
 
   void set_logger(std::unique_ptr<Logger> logger);
   void set_process_runner(std::unique_ptr<ProcessRunner> runner);
+  /// Replaces the PDK store (front ends install pdk::make_managed_pdk_store,
+  /// hefesto-files-and-pdks). nullptr restores the directory store with no
+  /// roots. Like the other setters, call it before taking view(): a view
+  /// holds references to the services current at that time.
+  void set_pdk_store(std::unique_ptr<PdkStore> store);
 
   [[nodiscard]] FileSystem& files() noexcept { return *files_; }
   [[nodiscard]] Clock& clock() noexcept { return *clock_; }

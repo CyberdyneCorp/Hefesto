@@ -1,0 +1,6 @@
+# TECH-G16: Aliases diff, poly (shadowing), allm1 twice and a types-section alias with '*'.
+# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
+# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
+tech load input/tiny -noprompt
+tech layers
+tech layers diff

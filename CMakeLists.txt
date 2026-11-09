@@ -97,7 +97,9 @@ if(HEFESTO_BUILD_TESTS AND NOT HEFESTO_IS_IOS)
   add_subdirectory(tools/golden)
 endif()
 
-if(HEFESTO_BUILD_FUZZ)
+# libFuzzer targets with HEFESTO_BUILD_FUZZ; otherwise their seed corpora
+# are replayed as CTests (tests/fuzz/CMakeLists.txt).
+if(HEFESTO_BUILD_FUZZ OR (HEFESTO_BUILD_TESTS AND NOT HEFESTO_IS_IOS))
   add_subdirectory(tests/fuzz)
 endif()
 

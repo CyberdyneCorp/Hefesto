@@ -145,3 +145,17 @@ So the case uses the options D8 allows:
 2. Create `cases/<id>/case.toml` and `input/`, then run `capture.py --check`.
 3. Capture with the container runner and commit `expected/`.
 4. Re-run CMake, which registers one CTest per captured case.
+
+## M1: cases compared with Magic's console
+
+Most M1 cases (TECH, CELL, MODEL, UI) run a Tcl script in Magic and the equivalent `commands.hef` in `hefesto-cli`, and compare stdout and stderr:
+
+- Every command line of `commands.tcl` is `puts [cmd]` or `catch {cmd} result; puts $result`, so each prints exactly one result line; `commands.hef` has the same commands, one per line, and `quit -noprompt` only in the Tcl script.
+- `[hefesto] args` include `--diagnostics=magic`: `hefesto-cli` then prints each script command's result (an empty line for an empty result). As in Magic's Tcl build, a failed command's error is TxError text on stderr and its result stays empty, except for an explicit result (`tech load` failures: `Technology file does not exist or is not readable\n`, `Error in loading technology file\n`) or a Tcl error (unknown command, raised usage error), whose text is the result. It renders diagnostics as Magic's text (`diag::format_magic`: technology-file messages get TechPrintLine's `<file>: line <n>: section <s>:` line; informational messages go to stdout like TxPrintf, the rest to stderr like TxError).
+- Both streams use the `magic-console` comparator, which removes Magic's leading startup preamble (banner, NULL graphics, startup files) and compares everything else byte for byte. The patterns, each with its Magic source line, are in `compare/magic_console.py`; extend them only when a capture shows another preamble message.
+
+Capture in CI (`.github/workflows/golden-capture.yml`):
+
+- `capture.py --only-captured` / `--only-missing` keep the cases that have, or lack, `expected/provenance.json`; an empty selection succeeds.
+- Pull requests that add or edit a `case.toml` or `input/` run both steps: a fresh capture of the captured cases must match `expected/` (verify), and the cases without `expected/` are captured and uploaded as the `golden-expected` artifact (paths under `tests/golden/`), to review and commit. `SOURCE_DATE_EPOCH` is the commit time, so provenance is reproducible.
+- `workflow_dispatch` takes `mode` (`both`, `verify`, `capture`) and an optional list of case directories; the weekly schedule verifies only.

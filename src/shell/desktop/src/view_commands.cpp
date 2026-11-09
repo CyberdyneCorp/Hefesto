@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
@@ -19,14 +20,6 @@ cmd::CommandResult usage(std::string_view synopsis) {
   return cmd::CommandResult::failure(diag::make(diag::codes::kCmdUsage, "usage: " + std::string(synopsis)));
 }
 
-cmd::CommandResult fit(const ViewActions& actions, const cmd::Invocation& inv) {
-  if (!inv.args.empty() || !actions.fit) {
-    return usage("view");
-  }
-  actions.fit();
-  return cmd::CommandResult::success("view: fit");
-}
-
 // A finite number filling all of `text`; strtod rather than
 // from_chars<double>, which needs macOS 15+ libc++.
 std::optional<double> parse_number(const std::string& text) {
@@ -36,16 +29,6 @@ std::optional<double> parse_number(const std::string& text) {
     return std::nullopt;
   }
   return value;
-}
-
-cmd::CommandResult zoom(const ViewActions& actions, const cmd::Invocation& inv) {
-  constexpr std::string_view kSynopsis = "zoom <factor>  (factor > 0)";
-  const auto factor = inv.args.size() == 1 ? parse_number(inv.args.front()) : std::nullopt;
-  if (!factor || !(*factor > 0.0) || !actions.zoom) {
-    return usage(kSynopsis);
-  }
-  actions.zoom(*factor);
-  return cmd::CommandResult::success("zoom " + inv.args.front());
 }
 
 cmd::CommandResult pan(const ViewActions& actions, const cmd::Invocation& inv) {
@@ -76,15 +59,8 @@ cmd::Handler bind(ViewHandler handler, const ViewActions& actions) {
 }  // namespace
 
 bool register_view_commands(cmd::CommandRegistry& registry, const ViewActions& actions) {
-  bool ok = !registry.add({"view", "view", "M0: fit the layout in the canvas.", bind(fit, actions)}).has_value();
-  ok = !registry.add({"zoom", "zoom <factor>", "M0: zoom about the canvas center; factor > 1 zooms in.",
-                      bind(zoom, actions)})
-            .has_value() &&
-       ok;
-  ok = !registry.add({"theme", "theme dark|light", "M0: switch the UI theme.", bind(theme, actions)}).has_value() &&
-       ok;
-  ok = !registry.add({"pan", "pan <dx> <dy>", "M0: move the view by framebuffer pixels.", bind(pan, actions)})
-            .has_value() &&
+  bool ok = !registry.add({"theme", "theme dark|light", "Switches the UI theme.", bind(theme, actions)}).has_value();
+  ok = !registry.add({"pan", "pan <dx> <dy>", "Moves the view by framebuffer pixels.", bind(pan, actions)}).has_value() &&
        ok;
   return ok;
 }

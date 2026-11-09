@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1980 requirements, 2955 scenarios, 834 open questions.
+**Totals:** 169 capabilities, 1980 requirements, 2958 scenarios, 834 open questions.
 
 ## Hefesto product (native)
 
@@ -42,10 +42,10 @@ Open questions: [32](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`tech-command`](../openspec/specs/tech-command/spec.md) | 9 | 14 | Defines the `tech` command. It queries the current technology (name, file name, version, internal scale, planes, layers and DRC values), loads a new technology, and changes which l… |
+| [`tech-command`](../openspec/specs/tech-command/spec.md) | 9 | 16 | Defines the `tech` command. It queries the current technology (name, file name, version, internal scale, planes, layers and DRC values), loads a new technology, and changes which l… |
 | [`tech-compose-and-connect`](../openspec/specs/tech-compose-and-connect/spec.md) | 17 | 30 | Defines the `compose` and `connect` sections of a technology file and the tables they produce: - the per-plane **paint** and **erase** result tables, which define what any type bec… |
 | [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
-| [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 29 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
+| [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 30 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
 | [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
 | [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 18 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
 | [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |

@@ -1,0 +1,21 @@
+magic
+tech tiny
+magscale 3 2
+timestamp 1001
+<< polysilicon >>
+rect 0 0 10 20
+rect 05 0 20 4
+<< metal1 >>
+rect -4 -4 24 24
+tri 0 30 10 40 s
+<< labels >0
+<<qlipy o,icon >>
+rect 0 0 10 2044444444444444444440 s
+0 CELL-READ-004_note v1:el-4 2 0 0 10 20
+rect 05 0 20 4
+<< metal2 >>
+rect -4 -4 24+24
+tri 0 0 20 20
+str)gscale 2 2
+timest10 ello
+<< end >>

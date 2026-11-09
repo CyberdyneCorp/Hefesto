@@ -82,11 +82,8 @@ class InvocationRecorder final : public hefesto::cmd::CommandObserver {
   std::vector<bool> ok;
 };
 
-ViewActions camera_actions(Camera& cam, const hefesto::render::Bounds& bounds) {
-  return ViewActions{[&cam, bounds] { cam.fit(bounds); },
-                     [&cam](double f) { cam.zoom_at(f, cam.viewport_width() / 2.0, cam.viewport_height() / 2.0); },
-                     [](ThemeMode) {},
-                     [&cam](double dx, double dy) { cam.pan_pixels(dx, dy); }};
+ViewActions camera_actions(Camera& cam) {
+  return ViewActions{[](ThemeMode) {}, [&cam](double dx, double dy) { cam.pan_pixels(dx, dy); }};
 }
 
 hefesto::platform::PortableOptions test_options() {
@@ -101,7 +98,12 @@ TEST_CASE("keys pan, zoom and fit through the command API with origin key",
   cam.set_viewport(800, 800);
   const hefesto::render::Bounds bounds{0, 0, 1600, 400, true};
   CoreSession core(test_options());
-  REQUIRE(register_view_commands(core.registry(), camera_actions(cam, bounds)));
+  REQUIRE(register_view_commands(core.registry(), camera_actions(cam)));
+  // The core `zoom` and `view` act on the current layout window (design.md D5).
+  auto& windows = core.editor().windows;
+  auto opened = windows.open(nullptr, hefesto::view::ScreenRect{0, 0, 799, 799});
+  REQUIRE(opened.ok());
+  windows.set_current(opened.value()->id());
   InvocationRecorder recorder;
   core.dispatcher().add_observer(recorder);
   CanvasController ctl(cam);
@@ -116,25 +118,28 @@ TEST_CASE("keys pan, zoom and fit through the command API with origin key",
   ctl.set_commands(&core.dispatcher());
   CHECK(ctl.handle(key));
   CHECK(cam.center_x() == Approx(100.0));
+  const auto width = [&] { return windows.current()->mapping().surface.width(); };
+  const auto before = width();
   key.key = CanvasKey::zoom_in;
   CHECK(ctl.handle(key));
-  CHECK(cam.pixels_per_unit() == Approx(2.0));
+  CHECK(width() < before);  // Magic's `zoom 0.5` zooms in
+  key.key = CanvasKey::zoom_out;
+  CHECK(ctl.handle(key));
   key.key = CanvasKey::fit;
   CHECK(ctl.handle(key));
-  CHECK(cam.center_x() == Approx(800.0));
-  CHECK(cam.center_y() == Approx(200.0));
   key.key = CanvasKey::other;
   CHECK_FALSE(ctl.handle(key));
 
-  REQUIRE(recorder.seen.size() == 3U);
+  REQUIRE(recorder.seen.size() == 4U);
   CHECK(recorder.seen[0].name == "pan");
   CHECK(recorder.seen[0].args == std::vector<std::string>{"-100", "0"});
   CHECK(recorder.seen[1].name == "zoom");
-  CHECK(recorder.seen[1].args == std::vector<std::string>{"2"});
-  CHECK(recorder.seen[2].name == "view");
+  CHECK(recorder.seen[1].args == std::vector<std::string>{"0.5"});
+  CHECK(recorder.seen[2].args == std::vector<std::string>{"2"});
+  CHECK(recorder.seen[3].name == "view");
   for (const auto& invocation : recorder.seen) {
     CHECK(invocation.origin == hefesto::cmd::Origin::key);
   }
   // Logged and replayable like typed commands.
-  CHECK(core.command_log().history() == std::vector<std::string>{"pan -100 0", "zoom 2", "view"});
+  CHECK(core.command_log().history() == std::vector<std::string>{"pan -100 0", "zoom 0.5", "zoom 2", "view"});
 }

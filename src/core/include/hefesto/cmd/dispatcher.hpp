@@ -46,6 +46,11 @@ class Dispatcher {
   void add_sink(diag::DiagnosticSink& sink) { sinks_.push_back(&sink); }
   void remove_sink(const diag::DiagnosticSink& sink) { std::erase(sinks_, &sink); }
 
+  /// Attaches the M1 session state passed to every handler (not owned; must
+  /// outlive the dispatcher or be detached with nullptr).
+  void set_editor(editor::EditorState* editor) noexcept { editor_ = editor; }
+  [[nodiscard]] editor::EditorState* editor() const noexcept { return editor_; }
+
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
@@ -57,6 +62,7 @@ class Dispatcher {
   platform::PlatformServices services_;
   settings::ProjectSettings& project_;
   ScriptSession& session_;
+  editor::EditorState* editor_ = nullptr;
   std::vector<CommandObserver*> observers_;
   std::vector<diag::DiagnosticSink*> sinks_;
 };

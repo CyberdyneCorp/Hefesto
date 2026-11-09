@@ -12,8 +12,8 @@ namespace hefesto::diag {
 
 namespace {
 constexpr std::array<std::string_view, 4> kSeverityNames = {"error", "warning", "info", "debug"};
-constexpr std::array<std::string_view, 5> kObjectKindNames = {"cell", "instance", "net", "label",
-                                                              "rule"};
+constexpr std::array<std::string_view, 6> kObjectKindNames = {"cell", "instance", "net", "label",
+                                                              "rule", "section"};
 }  // namespace
 
 std::string_view severity_name(Severity severity) noexcept {

@@ -171,11 +171,32 @@ jobs:
           key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake') }}
           restore-keys: deps-${{ matrix.name }}-
 
+      # Pinned reference data of the PDK and Magic-reference tests (design D8; docs/building.md,
+      # "Reference data for tests"): the sky130A test subset of open_pdks in .cache/pdks and a sparse
+      # Magic checkout (scmos/, graphics/) in build/ref/magic. The pins live in scripts/fetch_pdk.py, so the
+      # cache key follows them; on a hit both fetch steps only verify (the PDK subset by its tree digest).
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/pdks
+            build/ref/magic
+          key: reference-data-${{ runner.os }}-${{ hashFiles('scripts/fetch_pdk.py') }}
+
+      # Before Configure: tests/unit/tech generates scmos.tech from build/ref/magic at configure time.
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
       - name: Configure
         run: cmake --preset ${{ matrix.preset }}
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
+
+      # Uses the hefesto-cli just built (its own `pdk install`); a no-op when the cached subset verifies.
+      - name: Fetch the pinned sky130A test subset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py pdk --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
 
       - name: Test
         if: ${{ !matrix.desktop }}
@@ -305,7 +326,7 @@ jobs:
   fuzz:
     name: fuzz (libFuzzer, 60 s per target)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       FUZZ_SECONDS: "60"
     steps:
@@ -331,11 +352,16 @@ jobs:
         run: |
           mkdir -p fuzz-artifacts
           mapfile -t targets < <(find build/linux-fuzz/tests/fuzz -maxdepth 1 -type f -perm -u+x -name 'fuzz_*' | sort)
-          # M0 has fuzz_command_script, so an empty set means the libFuzzer probe failed: fail, never pass silently.
-          if [ ! -x build/linux-fuzz/tests/fuzz/fuzz_command_script ]; then
-            echo "::error::fuzz_command_script was not built (libFuzzer probe failed?); found: ${targets[*]:-none}"
-            exit 1
-          fi
+          # Every seed corpus belongs to a target (tests/fuzz/CMakeLists.txt refuses a target without
+          # one), so a corpus without its executable means the libFuzzer probe or a build failed:
+          # fail, never pass silently.
+          for corpus_dir in tests/fuzz/corpus/fuzz_*/; do
+            expected="$(basename "$corpus_dir")"
+            if [ ! -x "build/linux-fuzz/tests/fuzz/$expected" ]; then
+              echo "::error::$expected was not built (libFuzzer probe failed?); found: ${targets[*]:-none}"
+              exit 1
+            fi
+          done
           status=0
           for target in "${targets[@]}"; do
             name="$(basename "$target")"

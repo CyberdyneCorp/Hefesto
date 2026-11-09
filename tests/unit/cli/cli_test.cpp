@@ -129,11 +129,97 @@ TEST_CASE("JSON diagnostics option prints JSON lines", PRESENTATION_TAGS) {
         "\"location\":{\"file\":\"-c\",\"line\":1},\"related\":null}\n");
 }
 
-TEST_CASE("the tech option is accepted and reported as not yet implemented", CLI_TAGS) {
-  const Run r = run_cli({"--no-log", "-T", "sky130A", "-c", "echo ok"});
-  CHECK(r.status == cli::kExitOk);  // a warning, not a failure
-  CHECK(r.out == "ok\n");
-  CHECK(r.err.find("warning: CLI-TECH-001: technology 'sky130A' recorded") == 0);
+TEST_CASE("Magic console diagnostics print each script command's result like puts", PRESENTATION_TAGS) {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "echo hello; setting get magic-compat; nosuch"});
+  // An unknown command is a Tcl error: its message is the result, on stdout (the script stops there).
+  CHECK(r.out == "hello\non\nunknown command \"nosuch\"\n");
+  CHECK(r.err.empty());
+  CHECK(cli::parse_args(Args{"--diagnostics=magic"}).options.diagnostics == hefesto::diag::Format::magic);
+}
+
+// Regression (TECH-G41): an ordinary command error is TxError text on stderr
+// and the Tcl result stays empty, so `puts` prints an empty line on stdout.
+TEST_CASE("Magic console prints an ordinary command error on stderr and an empty result", PRESENTATION_TAGS) {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "tech foo; tech la; echo after"});
+  CHECK(r.out == "\n\nafter\n");
+  CHECK(r.err ==
+        "\"foo\" isn't a valid tech option.  Type \":tech help\" for help.\n"
+        "Ambiguous techinfo option: \"la\"\n  Type \":tech help\" for help.\n");
+}
+
+// Regression (TECH-G01/G31): Magic's Tcl `tech load` sets an explicit result
+// on failure (no period, trailing LF) and prints no TxError line for it.
+TEST_CASE("Magic console prints the tech load failure result on stdout", PRESENTATION_TAGS) {
+  const ScratchDir dir;
+  {
+    std::ofstream bad(dir.path() / "bad.tech");
+    bad << "tech\n  format 35\n  bad\nend\n";  // no planes section: the full load fails
+  }
+  const std::string missing = (dir.path() / "nothere").string();
+  const std::string broken = (dir.path() / "bad").string();
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
+                         "tech load " + missing + " -noprompt; tech load " + broken + " -noprompt"});
+  CHECK(r.out ==
+        "Technology file does not exist or is not readable\n\n"
+        "Error in loading technology file\n\n");
+  CHECK(r.err.find("Could not find file '" + missing + ".tech' in any of these directories:") == 0);
+  CHECK(r.err.find("does not exist or is not readable") == std::string::npos);
+  CHECK(r.err.find("Error in loading") == std::string::npos);
+}
+
+// Regression for the M1 migration: -T used to only record the technology
+// (CLI-TECH-001); it now loads it at startup and a failure is a warning.
+TEST_CASE("the tech option loads the technology at startup", "[cap:app-startup][req:Startup file order]") {
+  const Run r = run_cli({"--no-log", "-T", "no_such_technology", "-c", "echo ok; tech name"});
+  CHECK(r.status == cli::kExitOk);  // startup continues with the minimum technology
+  CHECK(r.out == "ok\nminimum\n");
+  CHECK(r.err.find("CLI-TECH-001") == std::string::npos);
+  CHECK(r.err.find("warning: APP-TECH-001: Failed to load technology \"no_such_technology\"") != std::string::npos);
+}
+
+TEST_CASE("layout files on the command line are startup file arguments",
+          "[cap:app-startup][req:Command-line file arguments]") {
+  const auto parsed = cli::parse_args(Args{"inv.mag", "run.tcl", "top.GDS", "x.lef", "dir.mag/script"});
+  REQUIRE_FALSE(parsed.error.has_value());
+  CHECK(parsed.options.files == std::vector<std::string>{"inv.mag", "top.GDS", "x.lef"});
+  REQUIRE(parsed.options.sources.size() == 2);
+  CHECK(parsed.options.sources[1].value == "dir.mag/script");
+  const Run r = run_cli({"--no-log", "/nonexistent/inv.mag", "-c", "echo after"});
+  CHECK(r.out == "after\n");
+  CHECK(r.err.find("Loading \"/nonexistent/inv\" from command line.") != std::string::npos);
+}
+
+TEST_CASE("the magic option takes Magic's command line", "[cap:app-startup][req:Command-line options]") {
+  const auto parsed = cli::parse_args(Args{"--no-log", "--magic", "-dnull", "-noconsole", "-T", "scmos", "a.mag"});
+  REQUIRE_FALSE(parsed.error.has_value());
+  CHECK(parsed.options.magic_mode);
+  CHECK(parsed.options.magic_args == std::vector<std::string>{"-dnull", "-noconsole", "-T", "scmos", "a.mag"});
+  const Run unknown = run_cli({"--no-log", "--magic", "-x"});
+  CHECK(unknown.status == 1);
+  CHECK(unknown.err.starts_with("Unknown option: '-x'\nUsage:  magic"));
+  const Run display = run_cli({"--no-log", "--magic", "-d", "FOO"});
+  CHECK(display.status == 1);
+  CHECK(display.err.find("Use '-d NULL' if you don't need graphics.") != std::string::npos);
+  const Run missing = run_cli({"--no-log", "--magic", "-T"});
+  CHECK(missing.status == 1);
+  CHECK(missing.err == "-T requires a following technology\n");
+  const Run ok = run_cli({"--no-log", "-c", "tech name", "--magic", "-dnull", "-noconsole"});
+  CHECK(ok.status == 0);
+  CHECK(ok.out == "minimum\n");
+}
+
+TEST_CASE("the version option names the Magic compatibility version", "[cap:app-startup][req:Tcl launcher options]") {
+  const Run r = run_cli({"--version"});
+  CHECK(r.status == 0);
+  CHECK(r.out.find("(Magic 8.3.694 compatible)") != std::string::npos);
+}
+
+TEST_CASE("session settings from the command line", "[cap:hefesto-settings][req:Layered settings resolution]") {
+  CHECK(cli::parse_args(Args{"--setting", "units=microns"}).options.settings ==
+        std::vector<std::pair<std::string, std::string>>{{"units", "microns"}});
+  CHECK(cli::parse_args(Args{"--setting", "novalue"}).error.has_value());
+  const Run r = run_cli({"--no-log", "--setting", "magic-compat=off", "-c", "setting get magic-compat"});
+  CHECK(r.out == "off\n");
 }
 
 TEST_CASE("script files run in order and quit stops the run", CLI_TAGS) {

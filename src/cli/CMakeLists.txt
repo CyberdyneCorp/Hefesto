@@ -9,6 +9,7 @@
 add_library(hefesto_cli_lib STATIC
   app.cpp
   options.cpp
+  posix_lock_service.cpp
   posix_process_runner.cpp)
 target_include_directories(hefesto_cli_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(hefesto_cli_lib PUBLIC hefesto::core)

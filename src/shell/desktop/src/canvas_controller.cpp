@@ -76,8 +76,9 @@ bool CanvasController::handle_key(CanvasKey key) {
     case CanvasKey::right: return run_command("pan", {"-" + step_x, "0"});
     case CanvasKey::up: return run_command("pan", {"0", step_y});
     case CanvasKey::down: return run_command("pan", {"0", "-" + step_y});
-    case CanvasKey::zoom_in: return run_command("zoom", {"2"});
-    case CanvasKey::zoom_out: return run_command("zoom", {"0.5"});
+    // Magic's `zoom`: a factor below 1 zooms in, above 1 zooms out.
+    case CanvasKey::zoom_in: return run_command("zoom", {"0.5"});
+    case CanvasKey::zoom_out: return run_command("zoom", {"2"});
     case CanvasKey::fit: return run_command("view", {});
     case CanvasKey::other: break;
   }

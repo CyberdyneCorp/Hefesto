@@ -10,6 +10,10 @@
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
 
+namespace hefesto::editor {
+struct EditorState;
+}
+
 namespace hefesto::cmd {
 
 class CommandRegistry;
@@ -26,13 +30,19 @@ struct ScriptSession {
 class CommandContext {
  public:
   CommandContext(platform::PlatformServices services, settings::ProjectSettings& project, ScriptSession& session,
-                 diag::DiagnosticSink& sink, const CommandRegistry& registry)
-      : services_(services), project_(project), session_(session), sink_(sink), registry_(registry) {}
+                 diag::DiagnosticSink& sink, const CommandRegistry& registry,
+                 editor::EditorState* editor = nullptr)
+      : services_(services), project_(project), session_(session), sink_(sink), registry_(registry),
+        editor_(editor) {}
 
   [[nodiscard]] platform::PlatformServices& services() noexcept { return services_; }
   [[nodiscard]] settings::ProjectSettings& project() noexcept { return project_; }
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
+  /// The M1 session state (technology, cells, windows, ...); nullptr when the
+  /// front end runs without one (M0 tests). Handlers that need it fail with
+  /// CMD-USAGE-001 "no editor session" when it is absent (cmd::require_editor).
+  [[nodiscard]] editor::EditorState* editor() const noexcept { return editor_; }
 
   /// Emits a diagnostic; it is attached to the running command's result.
   void emit(const diag::Diagnostic& diagnostic) { sink_.emit(diagnostic); }
@@ -44,6 +54,7 @@ class CommandContext {
   ScriptSession& session_;
   diag::DiagnosticSink& sink_;
   const CommandRegistry& registry_;
+  editor::EditorState* editor_;
 };
 
 }  // namespace hefesto::cmd

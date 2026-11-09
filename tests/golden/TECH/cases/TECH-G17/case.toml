@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# TECH-G17 (tests/golden/TECH/CASES.md). Inputs only: expected/ is written by
+# capture.py in CI (golden-capture.yml).
+
+schema = 1
+id = "TECH-G17"
+area = "TECH"
+capability = "tech-layers-and-planes"
+requirements = ["types section"]
+tool = "magic"
+description = "A types line with an unknown plane followed by a valid line."
+
+[reference]
+script = "input/commands.tcl"
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+requires_commands = ["tech"]
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = []
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+masks = []

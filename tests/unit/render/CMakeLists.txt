@@ -3,13 +3,14 @@
 #
 # Vulkan canvas renderer tests (desktop builds). The GPU test SKIPs when no
 # Vulkan device can be created (e.g. a CI runner without a driver).
-# Owner: workstream "Desktop shell & canvas spike" (design.md D2).
+# Owner: VIEWER (openspec/changes/m1-core-viewer/design.md D2).
 
 hefesto_add_unit_test(hefesto_render_tests
   SOURCES
     camera_test.cpp
     canvas_index_test.cpp
     headless_gpu_test.cpp
+    layout_scene_test.cpp
     scene_test.cpp
     synthetic_layout_test.cpp
   LIBS

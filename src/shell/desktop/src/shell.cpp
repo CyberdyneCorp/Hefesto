@@ -13,11 +13,16 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <numbers>
+#include <optional>
+#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "hefesto/app/startup.hpp"
+#include "hefesto/diag/format.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/shell/assets.hpp"
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/render/synthetic_layout.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
@@ -62,6 +67,7 @@ struct UiBench {
   std::vector<double> raven_layout_paint_ms;
 
   void on_frame() {
+    window.on_frame();
     const Clock::time_point now = Clock::now();
     if (done > 0) {
       interval_ms.push_back(std::chrono::duration<double, std::milli>(now - last).count());
@@ -118,6 +124,7 @@ int run_bench(ui::Runtime& runtime, MainWindow& window, const ShellOptions& opti
 int run_smoke(ui::Runtime& runtime, MainWindow& window, const ShellOptions& options) {
   int frames = 0;
   runtime.set_frame_callback([&](double) {
+    window.on_frame();
     if (++frames >= options.smoke_frames) {
       runtime.quit();
     }
@@ -142,13 +149,92 @@ int run_smoke(ui::Runtime& runtime, MainWindow& window, const ShellOptions& opti
   return 0;
 }
 
+/// Capture mode: renders `capture_frames` frames, saves the last one as a
+/// binary PPM and exits (screenshots for the conformance record).
+int run_capture(ui::Runtime& runtime, MainWindow& window, const ShellOptions& options) {
+  int frames = 0;
+  runtime.set_frame_callback([&](double) {
+    window.on_frame();
+    if (++frames >= options.capture_frames) runtime.quit();
+  });
+  window.set_realtime(true);
+  while (runtime.wait_frame(0.0) && window.open()) {
+  }
+  runtime.set_frame_callback({});
+  if (!window.capture(options.capture)) {
+    std::fprintf(stderr, "hefesto: could not capture the window to %s\n", options.capture.c_str());
+    return 1;
+  }
+  return 0;
+}
+
 /// The core session lives in the per-user app storage (autosave, and the
 /// rotating session log in <storage>/logs/hefesto.log).
 platform::PortableOptions core_options() {
   return platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}};
 }
 
+/// Loads Inter and JetBrains Mono (OFL-1.1) and the icons from assets/
+/// ("Typography", "Icons"); Raven's own fonts stand in when they are missing.
+void load_assets(ui::Runtime& runtime, const ShellOptions& options) {
+  std::error_code ec;
+  std::filesystem::path exe_dir;
+  if (!options.program.empty()) {
+    exe_dir = std::filesystem::weakly_canonical(std::filesystem::path(options.program), ec).parent_path();
+  }
+#ifdef HEFESTO_SOURCE_ASSET_DIR
+  const std::filesystem::path source_dir = HEFESTO_SOURCE_ASSET_DIR;
+#else
+  const std::filesystem::path source_dir;
+#endif
+  const auto dirs = asset_search_dirs(options.asset_dir, exe_dir, source_dir);
+  const auto found = find_asset_dir(dirs);
+  if (!found || !runtime.load_assets(*found)) {
+    std::fprintf(stderr, "hefesto: the bundled fonts (assets/fonts/Inter-*.ttf, JetBrainsMono-*.ttf) were not found%s; "
+                         "using Raven's fonts\n",
+                 options.asset_dir.empty() ? "" : (" in " + options.asset_dir).c_str());
+  }
+}
+
+class ReportSink final : public diag::DiagnosticSink {
+ public:
+  explicit ReportSink(cmd::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
+  void emit(const diag::Diagnostic& d) override { dispatcher_.report(d); }
+
+ private:
+  cmd::Dispatcher& dispatcher_;
+};
+
+std::optional<platform::Path> env_path(const char* name) {
+  const char* value = std::getenv(name);
+  if (value == nullptr || *value == '\0') return std::nullopt;
+  return platform::Path(value);
+}
+
+/// Steps 6-11 of app-startup "Startup sequence" on the window's session:
+/// technology, settings layers, startup files, file arguments. Problems are
+/// reported to the Diagnostics panel; the window stays open.
+void run_startup(CoreSession& core, const app::StartupOptions& startup) {
+  app::StartupEnvironment env;
+  env.install_root = env_path("CAD_ROOT").value_or(platform::Path());
+  env.home = env_path("HOME").value_or(platform::Path());
+  std::error_code ec;
+  env.working_directory = std::filesystem::current_path(ec);
+  env.pdk_root = env_path("PDK_ROOT");
+  ReportSink sink(core.dispatcher());
+  auto result = app::run_startup(core.dispatcher(), core.project(), core.files(), startup, env, sink);
+  if (!result) core.dispatcher().report(result.error());
+}
+
 int run_window(const ShellOptions& options) {
+  // Magic-compatible startup words: a bad option exits 1 before any window
+  // (app-startup "Command-line options").
+  std::vector<std::string_view> words(options.startup_args.begin(), options.startup_args.end());
+  auto startup = app::parse_startup_options(words);
+  if (!startup) {
+    std::fprintf(stderr, "%s\n%s\n", diag::format_text(startup.error()).c_str(), app::startup_usage_line().data());
+    return 1;
+  }
   // Shared by Raven's render thread and the canvas renderer's uploads.
   std::mutex queue_mutex;
   ui::RuntimeOptions rt_options;
@@ -162,10 +248,12 @@ int run_window(const ShellOptions& options) {
     std::fprintf(stderr, "hefesto: %s\n", error.c_str());
     return 3;
   }
+  load_assets(*runtime, options);
   int status = 0;
   {
     CoreSession core(core_options(), platform::default_storage_dir() / "logs");
     MainWindow window(*runtime, options, queue_mutex, core);
+    run_startup(core, startup.value());
     if (options.rects > 0) {
       render::SyntheticLayoutParams params;
       params.count = options.rects;
@@ -176,9 +264,13 @@ int run_window(const ShellOptions& options) {
       status = run_smoke(*runtime, window, options);
     } else if (options.bench_frames > 0) {
       status = run_bench(*runtime, window, options);
+    } else if (!options.capture.empty()) {
+      status = run_capture(*runtime, window, options);
     } else {
+      runtime->set_frame_callback([&window](double) { window.on_frame(); });
       while (runtime->wait_frame(-1.0) && window.open()) {
       }
+      runtime->set_frame_callback({});
     }
   }
   return status;
@@ -188,7 +280,8 @@ int run_window(const ShellOptions& options) {
 
 int run(int argc, char** argv) {
   std::vector<std::string_view> args(argv + 1, argv + argc);
-  const ParseResult parsed = parse_shell_options(args);
+  ParseResult parsed = parse_shell_options(args);
+  if (parsed.options && argc > 0) parsed.options->program = argv[0];
   if (!parsed.options) {
     std::fprintf(stderr, "hefesto: %s\n%s", parsed.error.c_str(), shell_usage().data());
     return 2;

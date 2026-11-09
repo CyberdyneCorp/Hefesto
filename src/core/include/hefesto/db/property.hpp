@@ -1,0 +1,98 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// Typed cell properties (capability layout-properties; reserved Hefesto
+// names per capability hefesto-mag-extensions).
+// (Magic ref: database/database.h.in:730-795, database/DBprop.c)
+//
+// Owner: MODEL (openspec/changes/m1-core-viewer/design.md, D2).
+
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <variant>
+#include <vector>
+
+#include "hefesto/db/geometry.hpp"
+#include "hefesto/diag/outcome.hpp"
+
+namespace hefesto::db {
+
+struct IntegerList {
+  std::vector<std::int32_t> values;
+  friend bool operator==(const IntegerList&, const IntegerList&) = default;
+};
+/// Internal units; consecutive pairs are points that scale with the database.
+struct DimensionList {
+  std::vector<std::int32_t> values;
+  friend bool operator==(const DimensionList&, const DimensionList&) = default;
+};
+/// 64-bit integers (file offsets), never scaled.
+struct DoubleList {
+  std::vector<std::int64_t> values;
+  friend bool operator==(const DoubleList&, const DoubleList&) = default;
+};
+/// A set of rectangles (MASKHINTS_* only).
+struct PlaneValue {
+  std::vector<Rect> rects;
+  friend bool operator==(const PlaneValue&, const PlaneValue&) = default;
+};
+
+using PropertyValue = std::variant<std::string, IntegerList, DimensionList, DoubleList, PlaneValue>;
+
+/// Name -> typed value, iterated in Magic's string hash-table order (8
+/// initial buckets, as DBPropPut creates it): the order of the `property`
+/// listing (Q-MODEL-25). The `.mag` writer sorts names itself ("Writer
+/// properties"). Side effects on cell flags: db::set_property().
+class PropertyStore {
+ public:
+  PropertyStore();
+  ~PropertyStore();
+  PropertyStore(const PropertyStore&);
+  PropertyStore& operator=(const PropertyStore&);
+  PropertyStore(PropertyStore&&) noexcept;
+  PropertyStore& operator=(PropertyStore&&) noexcept;
+
+  /// Replaces any previous value of `name`.
+  void put(std::string_view name, PropertyValue value);
+  /// True if a property was removed.
+  bool remove(std::string_view name);
+  void clear();
+  [[nodiscard]] const PropertyValue* find(std::string_view name) const;
+  [[nodiscard]] std::size_t size() const noexcept;
+  void for_each(const std::function<void(std::string_view, const PropertyValue&)>& visit) const;
+
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
+};
+
+/// "Reserved-name type coercion": the value a reserved name is stored with
+/// (FIXED_BBOX/OBS_BBOX: 4 dimensions; GDS_START/GDS_BEGIN/GDS_END: double;
+/// GDS_FILE: string; MASKHINTS_*: plane of 4-value groups). Other names keep
+/// `value`. A value that cannot be parsed falls back to its string form.
+[[nodiscard]] PropertyValue coerce_reserved_property(std::string_view name, const PropertyValue& value);
+
+/// "Geometric properties follow the geometry": a dimension or plane value
+/// rescaled by num/den (dimension values pairwise as points, a trailing odd
+/// value unchanged) or translated by (dx, dy); other types are unchanged.
+/// Scaling truncates like Magic's integer scaling (callers scale only by
+/// factors that keep the grid exact).
+[[nodiscard]] PropertyValue scale_property(const PropertyValue& value, std::int64_t num, std::int64_t den);
+[[nodiscard]] PropertyValue translate_property(const PropertyValue& value, Coord dx, Coord dy);
+
+/// Value text as the `property` command and the `.mag` writer print it
+/// (lists space-separated, plane rectangles as groups of 4 values).
+[[nodiscard]] std::string property_text(const PropertyValue& value);
+
+/// Parses a typed value from command or file text: `type` is one of
+/// "string", "integer", "dimension", "double" (DB-PROP-001 when the text
+/// does not parse).
+[[nodiscard]] diag::Outcome<PropertyValue> parse_property_value(std::string_view type, std::string_view text);
+
+}  // namespace hefesto::db

@@ -60,7 +60,7 @@ Compatibility: behavioral
 
 Output forms:
 - **Magic's non-Tcl build (informative):** `Technology name is "<n>"`, `Technology filename is "<f>"`, `Technology version is: "<v>"`, and `Description: <d>` on the next line.
-- **Result:** the name, the file name, or a two-element list {version, description}.
+- **Result:** the name, the file name, or the version followed by the description. With `magic-compat` on, the version result is built as Magic builds it: the raw version string, then the description appended as one Tcl list element (`Tcl_AppendElement`: a separating space unless the version is empty or ends in whitespace, and the description quoted when needed). The version string itself is not quoted, so a multi-word `version` line, whose words Magic joins with LF, does not form a proper list element. With `magic-compat` off, the result is a proper two-element list {version, description}.
 
 (Magic ref: commands/CmdTZ.c:217-226, commands/CmdTZ.c:249-258)
 
@@ -68,6 +68,12 @@ Output forms:
 - **GIVEN** the example technology of capability `tech-file-format`
 - **WHEN** `tech version` is executed
 - **THEN** the result is the list {`1.0`, `Tiny demo process`}
+
+#### Scenario: Multi-word version
+- **GIVEN** a technology with `version 1.0 beta` and `description "a b"`
+- **WHEN** `tech version` is executed with `magic-compat` on
+- **THEN** the result is `1.0`, LF, `beta {a b}`
+- **AND** with `magic-compat` off it is the list {`1.0`LF`beta`, `a b`}, shown as `{1.0`LF`beta} {a b}`
 
 ### Requirement: tech lambda
 
@@ -215,8 +221,10 @@ Compatibility: behavioral
    - After the scan exactly `tech load <file>` must remain. Otherwise report `Usage: tech load <filename> [-noprompt] [-override]`.
 2. **Command-line override.** If a command-line technology override is active (during startup; see capability `tech-loading-and-scaling`), do nothing and report nothing.
 3. **Confirmation.** Unless `-noprompt` was given, if any non-internal cell has paint (types 6..255 on planes 3..K−1), ask `Technology file (re)loading may invalidate the existing layout.  Continue? ` with the choices `no` and `yes` (default `no`). Answering `no` cancels the command.
-4. **Pre-check.** Run the readability pre-check. On failure report `Technology file does not exist or is not readable.` (Tcl: the result is set to that text).
-5. **Load.** Perform the full load. On failure report `Error in loading technology file`.
+4. **Pre-check.** Run the readability pre-check. On failure the command returns ok status with the result set to `Technology file does not exist or is not readable\n` (no period, trailing LF) and prints no diagnostic line of its own. A missing file still prints the `Could not find file` message from the search.
+5. **Load.** Perform the full load. On failure the command returns ok status with the result set to `Error in loading technology file\n` (trailing LF), after the loader's own error messages.
+
+These are the results of Magic's Tcl build, which Hefesto follows (capability `scripting-api`, "Command result and error conventions"). Magic's non-Tcl build prints `Technology file does not exist or is not readable.` (with a period) and `Error in loading technology file` as error text instead. Hefesto's own diagnostic stream (text or JSON) carries the failure as diagnostic `TECH-FILE-002` or `TECH-LOAD-001` with the non-Tcl wording. With `--diagnostics=magic`, only the result is printed, as Magic does.
 
 Hefesto SHALL present the confirmation in a way that suits the platform. A non-interactive session SHALL treat it as declined unless `-noprompt` was given.
 
@@ -231,3 +239,8 @@ Hefesto SHALL present the confirmation in a way that suits the platform. A non-i
 - **GIVEN** any session
 - **WHEN** `tech load tiny -quiet` is executed
 - **THEN** `Usage: tech load <filename> [-noprompt] [-override]` is reported and nothing is loaded
+
+#### Scenario: Result of a failed load
+- **GIVEN** no file `nothere.tech` and a file `bad.tech` that fails to load
+- **WHEN** `puts [tech load nothere -noprompt]` and `puts [tech load bad -noprompt]` run
+- **THEN** stdout shows `Technology file does not exist or is not readable` followed by an empty line, then `Error in loading technology file` followed by an empty line

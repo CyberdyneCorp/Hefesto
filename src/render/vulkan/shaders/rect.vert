@@ -15,6 +15,8 @@ layout(push_constant) uniform View {
   vec2 offset;
   vec2 min_size;
   vec4 color;
+  uvec4 stipple;  // x: rows 0-3, y: rows 4-7 (row 0 in the low byte), z: enabled
+  ivec4 anchor;   // x: left pixel column, y: bottom pixel row of the drawing area
 } view;
 
 layout(location = 0) out vec4 out_color;

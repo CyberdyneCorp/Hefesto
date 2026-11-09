@@ -54,4 +54,8 @@ void PortableServices::set_process_runner(std::unique_ptr<ProcessRunner> runner)
   processes_ = runner ? std::move(runner) : std::make_unique<UnsupportedProcessRunner>();
 }
 
+void PortableServices::set_pdk_store(std::unique_ptr<PdkStore> store) {
+  pdks_ = store ? std::move(store) : std::make_unique<DirectoryPdkStore>(*files_, std::vector<Path>{});
+}
+
 }  // namespace hefesto::platform

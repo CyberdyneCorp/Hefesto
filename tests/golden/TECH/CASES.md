@@ -4,12 +4,14 @@ These cases are to be captured later by running Magic 8.3.694 (commit fc5daa9e) 
 
 The paint and erase table dumps can be captured with a small Tcl helper that loops over planes, h and t. The helper paints t over h on a 1×1 box in a scratch cell and reads back the type with `what` or `select`. Another way is to run magic's internal `*showtech`-style debug output with a debug build. Record which method was used.
 
+Cases whose load fails (G01, G04, G05, G06, G07, G10, G12) capture only the error output and the load result. They do not query the technology afterwards: Magic keeps the partly loaded tables and Hefesto keeps the previous technology (atomic load, Q-TECH-10), a documented deviation.
+
 | ID | capability | input description (tech, layout, commands) | what to capture | requirement(s) covered |
 |---|---|---|---|---|
 | TECH-G01 | tech-file-format | tiny.tech variant with indented `#` comments, mid-line `#` tokens in a connect line, and CRLF endings | load result; connect table; error text | Physical line reading and comment lines; Tokenization and quoting |
 | TECH-G02 | tech-file-format | tiny.tech with a continuation `metal\`+`1` inside `types`, and a comment line inside a continuation | type names table (`tech layers`) | Line continuation |
 | TECH-G03 | tech-file-format | `version` section with `description "a b"` and `version 1.0 beta` | `tech version` result (exact string, including LF) | Tokenization and quoting; version section |
-| TECH-G04 | tech-file-format | tiny.tech with the header `drc # x` | error output; load result; `tech layers` | Section structure |
+| TECH-G04 | tech-file-format | tiny.tech with the header `drc # x` | error output; load result | Section structure |
 | TECH-G05 | tech-file-format | tiny.tech with a stray `end` before `planes` | error output; load result (expect failure: planes missing) | Section structure; Section registry and prerequisites |
 | TECH-G06 | tech-file-format | tiny.tech with `types` placed before `planes` | full error text, including the prerequisite listing | Section registry and prerequisites |
 | TECH-G07 | tech-file-format | tiny.tech with a `connect` line `m1` (1 token) | error lines; list of sections with errors; `tech load` message | Error reporting and recovery |

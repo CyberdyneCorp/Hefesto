@@ -1,0 +1,19 @@
+magic
+tech tiny
+magscale 1 2
+timestamp 1000
+<< polysilicon >>
+rect 0 0 10 20
+rect 10 0 20 4
+<< metal1 >>
+rect -4 -4 24 24
+tri 0 30 10 40 s
+<< labels >>
+rlabel metal1 0 0 4 4 1 IN
+port 1 nsew signal input
+flabel metal1 10 10 12 12 0 FreeSans 16 0 0 0 OUT
+port 2 n
+<< properties >>
+string FIXED_BBOX 0 0 20 20
+string HEFESTO_note v1:hello
+<< end >>

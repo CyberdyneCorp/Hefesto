@@ -11,6 +11,7 @@ import unittest
 
 from compare import compare_bytes
 from compare.ext_cap import canonicalize
+from compare.magic_console import canonicalize as magic_console
 from compare.masks import apply_masks, get_mask, mask_gds_dates
 
 
@@ -101,3 +102,28 @@ class MaskTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MagicConsoleTest(unittest.TestCase):
+    PREAMBLE = (b"\nMagic 8.3 revision 694 - Compiled on Mon Oct 20 00:00:00 UTC 2026.\n"
+                b"Starting magic under Tcl interpreter\nUsing the terminal as the console.\n"
+                b"Using NULL graphics device.\nProcessing system .magicrc file\n"
+                b'Using technology "minimum", version 0.0.\n'
+                b'Loading "input/commands.tcl" from command line.\n')
+
+    def test_leading_preamble_is_removed(self):
+        magic = self.PREAMBLE + b"Error in loading technology file\n\nminimum\n"
+        hefesto = b"Error in loading technology file\n\nminimum\n"
+        self.assertTrue(compare_bytes(magic, hefesto, "magic-console").equal)
+
+    def test_later_lines_and_blank_results_are_compared(self):
+        # A blank result line after the first script output is significant.
+        self.assertFalse(compare_bytes(self.PREAMBLE + b"a\n\nb\n", b"a\nb\n", "magic-console").equal)
+        # A preamble-looking line after script output is not removed.
+        late = b"minimum\nUsing NULL graphics device.\n"
+        self.assertEqual(magic_console(late), late)
+
+    def test_differences_in_script_output_are_reported(self):
+        result = compare_bytes(self.PREAMBLE + b"minimum\n", b"tiny\n", "magic-console")
+        self.assertFalse(result.equal)
+        self.assertIn("minimum", result.detail)

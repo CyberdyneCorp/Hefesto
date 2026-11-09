@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# TECH-G01 (tests/golden/TECH/CASES.md). Inputs only: expected/ is written by
+# capture.py in CI (golden-capture.yml).
+
+schema = 1
+id = "TECH-G01"
+area = "TECH"
+capability = "tech-file-format"
+requirements = ["Physical line reading and comment lines", "Tokenization and quoting"]
+tool = "magic"
+description = "Indented comments, a mid-line '#' in a connect line (3 tokens: an error) and CRLF line endings."
+
+[reference]
+script = "input/commands.tcl"
+
+[hefesto]
+args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+requires_commands = ["tech"]
+
+[[outputs]]
+name = "stdout.txt"
+source = "stdout"
+comparator = "magic-console"
+masks = []
+
+[[outputs]]
+name = "stderr.txt"
+source = "stderr"
+comparator = "magic-console"
+masks = []

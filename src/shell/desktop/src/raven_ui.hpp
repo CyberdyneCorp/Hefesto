@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The C++20 wrapper over Raven's C API (design.md D5): Runtime, Window, Dock,
-// Box, Label, ListPanel, TreePanel, CommandBar and Viewport. Every Raven call
+// The C++20 wrapper over Raven's C API (m0-foundations design.md D5):
+// Runtime, Window, Box, Panel, ListPanel, CommandBar, Viewport, and for the
+// forge screens (m1-core-viewer D6) Painted (custom-painted widgets through a
+// Raven-free Painter), TextInput, Overlay, ScrollBox and Tabs. Every Raven call
 // of Hefesto goes through raven_ui.cpp, which is the only file that includes
 // <Raven.h>; this header is Raven-free (widgets are plain 32-bit handles), so
 // the rest of the shell never sees a Raven type.
@@ -14,13 +16,17 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
+#include <map>
+#include <optional>
 #include <memory>
 #include <string>
 #include <string_view>
 
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
+#include "hefesto/shell/design_tokens.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
 
 namespace hefesto::shell::ui {
@@ -55,19 +61,32 @@ class Runtime {
   [[nodiscard]] render::VulkanDevice vulkan_device() const;
   [[nodiscard]] std::string version() const;
 
-  /// Applies the forge tokens as the Raven theme; loads Inter / JetBrains
-  /// Mono from `font_dir` when given. Returns false if fonts were requested but
-  /// could not be loaded (Raven's bundled fonts stay in use).
-  bool apply_theme(ThemeMode mode, const std::string& font_dir);
+  /// Loads the bundled Inter / JetBrains Mono faces and the icons from
+  /// `asset_dir` (fonts/, icons/). Returns false when a font file is missing
+  /// or unreadable; Raven's Roboto then stands in for the missing faces.
+  bool load_assets(const std::filesystem::path& asset_dir);
+  /// Applies the forge tokens as the Raven theme: every color role, the
+  /// metrics (radius, control and row heights, font size) and Inter as the
+  /// theme font. Honors the system's reduce-motion setting.
+  void apply_theme(ThemeMode mode);
+  /// The loaded face nearest to `face` (Raven's bundled font if none).
+  [[nodiscard]] WidgetId font(FontFace face) const;
+  [[nodiscard]] WidgetId font(TextRole role) const { return font(text_spec(role).face); }
   /// The monospace font for commands and coordinates (JetBrains Mono when loaded).
-  [[nodiscard]] WidgetId mono_font() const noexcept { return mono_font_; }
+  [[nodiscard]] WidgetId mono_font() const { return font(FontFace{FontFamily::mono, 400}); }
+  /// The icon texture `assets/icons/<name>.svg`, rasterized for `scale`; kNoWidget if absent.
+  [[nodiscard]] WidgetId icon(std::string_view name) const;
+  [[nodiscard]] bool fonts_loaded() const noexcept { return fonts_loaded_; }
+  /// Width of `text` in `role`, in logical units (for sizing painted widgets).
+  [[nodiscard]] float text_width(TextRole role, std::string_view text) const;
 
  private:
   Runtime() = default;
   struct Callbacks;
   std::unique_ptr<Callbacks> callbacks_;
-  WidgetId ui_font_ = kNoWidget;
-  WidgetId mono_font_ = kNoWidget;
+  std::map<int, WidgetId> faces_;  // key: family * 1000 + weight
+  std::map<std::string, WidgetId, std::less<>> icons_;
+  bool fonts_loaded_ = false;
 };
 
 /// Base of the widget wrappers: a Raven handle plus common properties.
@@ -78,6 +97,14 @@ class Widget {
   void set_tooltip(std::string_view text);
   void set_font(WidgetId font);
   void focus();
+  /// Fixed logical size; a negative value leaves that axis free.
+  void set_size(float width, float height);
+  void set_min_size(float width, float height);
+  /// false: collapsed (takes no space).
+  void set_visible(bool visible);
+  void set_enabled(bool enabled);
+  void set_hit_testable(bool hit_testable);
+  void set_font_size(float size);
 
  protected:
   explicit Widget(WidgetId id) noexcept : id_(id) {}
@@ -91,6 +118,9 @@ class Box : public Widget {
   static Box horizontal();
   /// Adds a child; fill > 0 makes it take that share of the free space.
   void add(const Widget& child, float fill = 0.0F);
+  /// Adds a child centered across the box's direction.
+  void add_centered(const Widget& child);
+  void clear();
   void set_padding(float left, float top, float right, float bottom);
   void set_spacing(float spacing);
 
@@ -98,45 +128,134 @@ class Box : public Widget {
   using Widget::Widget;
 };
 
-class Label : public Widget {
+/// A background around one child.
+class Panel : public Widget {
  public:
-  static Label create(std::string_view text);
-  void set_text(std::string_view text);
+  static Panel create(const Rgba& background);
+  void set_child(const Widget& child);
+  void set_fill(const Rgba& background);
+  void set_padding(float left, float top, float right, float bottom);
 
  private:
   using Widget::Widget;
 };
 
-/// A list (the layer palette placeholder).
+/// Children drawn on top of each other (the canvas and its overlay).
+class Overlay : public Widget {
+ public:
+  static Overlay create();
+  void add(const Widget& child);
+
+ private:
+  using Widget::Widget;
+};
+
+/// A vertical scrollable stack.
+class ScrollBox : public Widget {
+ public:
+  static ScrollBox create();
+  void add(const Widget& child);
+  void clear();
+
+ private:
+  using Widget::Widget;
+};
+
+/// Tabs over pages (Console / Diagnostics).
+class Tabs : public Widget {
+ public:
+  static Tabs create();
+  void add(const Widget& page, std::string_view title);
+  void show(int index);
+
+ private:
+  using Widget::Widget;
+};
+
+/// A single-line input (layer filter). `on_change` runs on every edit.
+class TextInput : public Widget {
+ public:
+  static std::unique_ptr<TextInput> create(std::string_view placeholder);
+  ~TextInput();
+  TextInput(const TextInput&) = delete;
+  TextInput& operator=(const TextInput&) = delete;
+  void on_change(std::function<void(std::string)> callback);
+
+ private:
+  explicit TextInput(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+enum class Role : std::uint8_t { none, group, text, heading, button, toggle_button, checkbox, list, list_item, tree,
+                                 tree_item, tab_list, tab, toolbar, status_bar, canvas, image, pane };
+
+/// Has a screen reader read `text`; `assertive` interrupts what it is reading.
+void announce(std::string_view text, bool assertive);
+
+/// Draws with Raven's painter in logical units; the only drawing surface the
+/// rest of the shell sees. Colors are forge tokens or PDK colors.
+class Painter {
+ public:
+  Painter(void* raven_painter, const Runtime& runtime) noexcept : p_(raven_painter), runtime_(runtime) {}
+  void fill(float x, float y, float w, float h, float radius, const Rgba& c);
+  void stroke(float x, float y, float w, float h, float radius, float thickness, const Rgba& c);
+  void line(float x0, float y0, float x1, float y1, float thickness, const Rgba& c);
+  /// A dashed rectangle outline (box tool, dashed wells): `dash` on, `gap` off.
+  void dashed_rect(float x, float y, float w, float h, float thickness, float dash, float gap, const Rgba& c);
+  /// Text with its top-left corner at (x, y), in the family, size and weight
+  /// of `role`; uppercase roles are tracked 0.08 em.
+  void text(TextRole role, float x, float y, std::string_view text, const Rgba& c);
+  /// Text vertically centered on `cy`.
+  void text_centered_y(TextRole role, float x, float cy, std::string_view text, const Rgba& c);
+  [[nodiscard]] float text_width(TextRole role, std::string_view text) const;
+  [[nodiscard]] float line_height(TextRole role) const;
+  /// An icon of `assets/icons/`, tinted with `c`, in a `size` square.
+  void icon(std::string_view name, float x, float y, float size, const Rgba& c);
+  void push_clip(float x, float y, float w, float h);
+  void pop_clip();
+
+ private:
+  void* p_;
+  const Runtime& runtime_;
+};
+
+/// A widget painted by the shell: chips, tool and action buttons, layer
+/// rows, hierarchy rows, rulers, minimap, status bar. Clickable and
+/// focusable when given a click handler (Enter / Space click it); draw the
+/// focus ring with `focused()`.
+class Painted : public Widget {
+ public:
+  using PaintFn = std::function<void(Painter&, float width, float height)>;
+  /// A paint function that also gets the widget (hover and focus state).
+  using StatefulPaintFn = std::function<void(Painter&, float width, float height, const Painted& self)>;
+  static std::unique_ptr<Painted> create(const Runtime& runtime, PaintFn paint);
+  static std::unique_ptr<Painted> create_stateful(const Runtime& runtime, StatefulPaintFn paint);
+  ~Painted();
+  Painted(const Painted&) = delete;
+  Painted& operator=(const Painted&) = delete;
+
+  void on_click(std::function<void(float x, float y)> callback);
+  void set_role(Role role);
+  void set_accessible_description(std::string_view text);
+  [[nodiscard]] bool hovered() const;
+  [[nodiscard]] bool focused() const;
+  void invalidate();
+
+ private:
+  explicit Painted(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// A list of text rows (Console, Diagnostics).
 class ListPanel : public Widget {
  public:
   static ListPanel create();
   void add_item(std::string_view text);
+  void clear();
   /// Scrolls so that the last item is visible (log-style panels).
   void scroll_to_end();
-
- private:
-  using Widget::Widget;
-};
-
-/// A tree (the cell hierarchy placeholder).
-class TreePanel : public Widget {
- public:
-  static TreePanel create();
-  /// Adds an item under `parent` (kNoWidget: top level); returns its handle.
-  WidgetId add_item(WidgetId parent, std::string_view text);
-
- private:
-  using Widget::Widget;
-};
-
-enum class DockSide : std::uint8_t { left, right, top, bottom, tab };
-
-class Dock : public Widget {
- public:
-  static Dock create();
-  /// Adds `panel` with a tab titled `title` next to `relative` (null: the whole area).
-  void add_panel(const Widget& panel, std::string_view title, DockSide side, const Widget* relative, float size);
 
  private:
   using Widget::Widget;
@@ -227,6 +346,13 @@ class Window {
   /// The window system Raven chose for this window: "x11", "wayland",
   /// "cocoa", "win32", or "none" (headless or unknown).
   [[nodiscard]] std::string window_system() const;
+  void set_title(std::string_view title);
+  void set_min_size(int width, int height);
+  void set_clear_color(const Rgba& color);
+  /// The system's open dialog for one file matching `patterns` ("*.mag");
+  /// nullopt when cancelled.
+  [[nodiscard]] std::optional<std::string> open_file_dialog(std::string_view title, std::string_view filter_name,
+                                                            std::string_view patterns) const;
 
  private:
   WidgetId id_ = kNoWidget;

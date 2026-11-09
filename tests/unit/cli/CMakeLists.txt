@@ -3,7 +3,8 @@
 #
 # CLI tests: unit tests of the CLI logic, plus smoke tests that run the
 # hefesto-cli executable for each exit status.
-# Owner: workstream "Core & CLI" (design.md D2).
+# Owner: workstream "Core & CLI" (M0 design.md D2); the M1 startup options
+# and tests belong to PDK (m1-core-viewer design.md D2).
 
 hefesto_add_unit_test(hefesto_cli_tests
   SOURCES
@@ -45,3 +46,9 @@ add_test(NAME "hefesto-cli: directory as script exits 1"
                  "-DARGS=--no-log;${CMAKE_CURRENT_SOURCE_DIR}"
                  -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
 set_tests_properties("hefesto-cli: directory as script exits 1" PROPERTIES LABELS "unit;cli")
+
+# [cap:app-startup][req:Command-line options]: a bad Magic option exits 1.
+add_test(NAME "hefesto-cli: bad Magic option exits 1"
+         COMMAND "${CMAKE_COMMAND}" -DCLI=$<TARGET_FILE:hefesto-cli> -DEXPECT=1 "-DARGS=--no-log;--magic;-x"
+                 -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
+set_tests_properties("hefesto-cli: bad Magic option exits 1" PROPERTIES LABELS "unit;cli")

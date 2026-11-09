@@ -163,3 +163,21 @@ class ReplayTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SelectionTest(unittest.TestCase):
+    def test_only_captured_and_only_missing_split_the_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            done, todo = Path(tmp) / "A-1", Path(tmp) / "A-2"
+            (done / "expected").mkdir(parents=True)
+            (done / "expected" / "provenance.json").write_text("{}", encoding="utf-8")
+            todo.mkdir()
+            self.assertEqual(capture.select_cases([done, todo], True, False), [done])
+            self.assertEqual(capture.select_cases([done, todo], False, True), [todo])
+            self.assertEqual(capture.select_cases([done, todo], False, False), [done, todo])
+
+    def test_an_empty_selection_succeeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp) / "A-2"
+            todo.mkdir()
+            self.assertEqual(quiet(capture.main, [str(todo), "--only-captured", "--verify"]), 0)

@@ -88,11 +88,11 @@ A full load never edits the tile types stored in existing cells (see "Effect on 
 #### Scenario: Load failure is reported
 - **GIVEN** a technology file missing its `connect` section
 - **WHEN** it is loaded
-- **THEN** `Section "connect" was missing from <file>.` is reported, and the `tech load` command reports `Error in loading technology file`
+- **THEN** `Section "connect" was missing from <file>.` is reported, and the `tech load` command's result is `Error in loading technology file\n`
 
 ### Requirement: Readability pre-check
 
-Before an interactive or startup full load (`tech load`, `-T`, or the startup default), the system SHALL check the file. The first logical line, after comments and blank lines are skipped and with no directive processing, must be exactly the single token `tech`. If the file cannot be found or opened, or its first logical line is anything else, the load is not attempted. No table is touched. `tech load` reports `Technology file does not exist or is not readable.`, and startup reports `Failed to load technology "<name>"`.
+Before an interactive or startup full load (`tech load`, `-T`, or the startup default), the system SHALL check the file. The first logical line, after comments and blank lines are skipped and with no directive processing, must be exactly the single token `tech`. If the file cannot be found or opened, or its first logical line is anything else, the load is not attempted. No table is touched. `tech load` sets its result to `Technology file does not exist or is not readable\n` (Magic's Tcl text: no period, trailing LF; see capability `tech-command`, "tech load"), and startup reports `Failed to load technology "<name>"`.
 
 Compatibility: behavioral
 
@@ -103,7 +103,7 @@ So a technology file loaded this way must begin with its `tech` section. Automat
 #### Scenario: File starting with the version section
 - **GIVEN** a technology file whose first section is `version`
 - **WHEN** `tech load` names it
-- **THEN** `Technology file does not exist or is not readable.` is reported and the current technology is unchanged
+- **THEN** the result is `Technology file does not exist or is not readable\n` and the current technology is unchanged
 
 ### Requirement: Post-load adjustments
 

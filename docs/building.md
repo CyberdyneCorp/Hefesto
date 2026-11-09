@@ -39,7 +39,7 @@ ctest --preset linux-debug
 |---|---|---|
 | `HEFESTO_BUILD_DESKTOP` | ON if a Vulkan SDK is found, else OFF; always OFF for iPadOS | Vulkan renderer, Raven desktop shell, `hefesto` app |
 | `HEFESTO_BUILD_TESTS` | ON | unit tests and golden-test registration |
-| `HEFESTO_BUILD_FUZZ` | OFF | libFuzzer targets |
+| `HEFESTO_BUILD_FUZZ` | OFF | libFuzzer targets; when OFF (and tests are on), the same targets are built with a replay driver and their seed corpora run as CTests `fuzz-seeds.<target>` |
 | `HEFESTO_BUILD_BENCH` | OFF | canvas benchmark (needs the desktop build) |
 | `HEFESTO_WARNINGS_AS_ERRORS` | OFF | `-Werror` for first-party code |
 | `HEFESTO_SANITIZERS` | empty | comma list for `-fsanitize=`, applied to all targets |
@@ -67,9 +67,58 @@ The desktop app (`hefesto`), its renderer and the canvas benchmark need Vulkan h
 
 `hefesto --help` lists the app's options; `--rects N --bench-frames F` runs the in-window benchmark and `build/<preset>/bench/canvas/hefesto-bench-canvas` the headless one (see `docs/spikes/canvas-spike.md`).
 
+## Running the tools
+
+Both front ends run the same Magic-compatible startup (`app::run_startup`, capability `app-startup`): settings layers, startup files (located and reported; executed only once the Tcl binding exists, M4), the technology, then the layout files named on the command line, then the box. `CAD_ROOT` (environment) is the Magic installation root: its `magic/sys` directories are searched for technology, display-style and font files (FreeSans/FreeSerif/FreeMono `.pt3`, needed for `flabel` labels); without it there are no system files and the session starts on the built-in `minimum` technology.
+
+### `hefesto-cli`
+
+| Option | Meaning |
+|---|---|
+| `-T <tech>` | technology to load at startup (a name resolved through the PDK store, or a `.tech` path) |
+| `<cell>.mag`, `.lef`, `.def`, `.cif`, `.gds` | layout files loaded at startup, in command-line order; any other word is a script |
+| `--project=<dir>` | project folder (default: `.` when it holds `hefesto.project`); its PDK pin selects the technology |
+| `--pdk-root=<dir>` | PDK root (default: setting `pdk-root`, then `$PDK_ROOT`, then `~/.ciel`); the session's PDK store resolves through the PDK manager's installs there |
+| `--setting <name>=<value>` | a session setting (the highest settings layer) |
+| `--magic ...` | the rest is Magic's own command line (`-T`, `-d`, `-rcfile`, `-norcfile`, `-r`, cells, a `.tcl` script); commands are then read from standard input |
+| `-c <commands>` | run commands, e.g. `-c "tech load sky130A; tech layers"` |
+| `--diagnostics=text\|json\|magic` | diagnostic format on stderr; `magic` prints Magic's console text and each script command's result, as the golden reference scripts do (see `tools/golden/README.md`) |
+| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`) |
+| `--log-dir=<dir>`, `--no-log` | session log location, or none |
+
+### `hefesto` (desktop)
+
+`hefesto [-T tech] [-r] [-norcfile] [cell.mag ...]` takes Magic's startup words (`-T`, `-r` crash recovery, `-norcfile`, cells), plus:
+
+| Option | Meaning |
+|---|---|
+| `--asset-dir DIR` | where the bundled UI fonts and icons are read (default: the source tree's `assets/`) |
+| `--theme dark\|light` | the UI theme (dark by default; the canvas stays dark in both) |
+| `--width PX`, `--height PX` | the initial window size |
+| `--console` | open the Console panel (command output) at startup |
+| `--pdk-manager` | open the PDK manager panel at startup |
+| `--capture FILE.ppm [--capture-frames N]` | render N frames (default 1), write the window to a PPM file and exit (screenshot checks of `docs/design/m1-ui-conformance.md`) |
+| `--no-vsync`, `--validation` | presentation without vsync; Vulkan validation layers |
+| `--rects N`, `--seed N`, `--bench-frames N`, `--bench-output FILE`, `--smoke-frames N`, `--expect-window-system` | benchmark and smoke-test modes (`docs/spikes/canvas-spike.md`, CI window tests) |
+
+## Reference data for tests
+
+The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`). Without it they skip cleanly.
+
+```sh
+# After building hefesto-cli (any preset):
+python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
+```
+
+- `pdk`: the sky130A test subset of open_pdks at ciel version `0fe599b2afb6708d281543108caf8310912f54af` (`libs.tech/magic/` and `libs.ref/sky130_fd_sc_hd/mag/`), installed into `.cache/pdks/ciel/sky130/versions/<pin>/` by `hefesto-cli`'s own `pdk install` (about 134 MB downloaded, 6.5 MB kept) and verified against a pinned tree digest. Tests use only this exact version (`tests/unit/common/reference_data.hpp`), never another installed one.
+- `magic-ref`: a sparse, shallow checkout of Magic at `fc5daa9e` into `build/ref/magic` with only `scmos/` and `graphics/` (display styles, color maps, glyphs, the `.pt3` fonts, the scmos tech sources; about 4 MB). A full clone (`git clone https://github.com/RTimothyEdwards/magic build/ref/magic && git -C build/ref/magic checkout fc5daa9e`) works too and is what reading Magic's sources for porting needs.
+- `scmos.tech` is generated from `build/ref/magic/scmos` at configure time (`tests/data/tech/generate_scmos.cmake`, run by `tests/unit/tech/CMakeLists.txt`), so fetch `magic-ref` before configuring, or reconfigure afterwards.
+
+Run one step with `scripts/fetch_pdk.py pdk` or `scripts/fetch_pdk.py magic-ref`; both are no-ops once the data is present and verified. CI runs them in the `build` job behind `actions/cache`, keyed on `scripts/fetch_pdk.py` (where the pins live).
+
 ## Dependencies and offline rebuilds
 
-All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, Catch2, and Raven for the desktop build) and fetched with CMake FetchContent into `.cache/deps/<preset>`. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
+All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, Catch2, and Raven for the desktop build) and fetched with CMake FetchContent into `.cache/deps/<preset>`. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
 
 ```sh
 cmake --preset macos-debug -DFETCHCONTENT_FULLY_DISCONNECTED=ON
@@ -85,7 +134,7 @@ cmake --build --preset macos-debug
 | `src/render/vulkan/` | `hefesto_render_vk`, the Vulkan canvas renderer (desktop) |
 | `src/shell/desktop/` | `hefesto_shell_desktop` and the `hefesto` app; the only code that uses Raven |
 | `tests/unit/` | Catch2 unit tests, tagged with the capability and requirement they cover |
-| `tests/fuzz/` | libFuzzer targets |
+| `tests/fuzz/` | libFuzzer targets (one per external-input reader) and their seed corpora in `corpus/<target>/` |
 | `tests/golden/` | golden-case inventories and captured cases |
 | `tools/golden/` | reference-tool container, capture runner and comparators |
 | `bench/canvas/` | canvas benchmark |

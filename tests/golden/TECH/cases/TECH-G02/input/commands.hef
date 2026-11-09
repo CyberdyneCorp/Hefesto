@@ -1,0 +1,5 @@
+# TECH-G02: A continuation splitting metal1 inside types, with a comment line inside it.
+# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
+# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
+tech load input/tiny -noprompt
+tech layers

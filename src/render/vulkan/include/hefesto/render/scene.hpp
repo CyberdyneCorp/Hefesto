@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -90,12 +91,19 @@ class RectScene {
   Bounds bounds_;
 };
 
-/// Fill color of a layer, straight (non-premultiplied) RGBA in 0..1.
+/// Fill of a layer: straight (non-premultiplied) RGBA in 0..1 and an
+/// optional 8x8 stipple in Magic's OpenGL orientation (display-style-files
+/// "Stipple patterns", decision X-5): stipple[0] is the bottom pixel row of
+/// each 8x8 cell anchored to the bottom-left of the drawing area, and the
+/// most significant bit is the leftmost pixel; a pixel is painted only where
+/// its bit is 1.
 struct LayerStyle {
   float r = 1.0F;
   float g = 1.0F;
   float b = 1.0F;
   float a = 1.0F;
+  bool stippled = false;
+  std::array<std::uint8_t, 8> stipple{};
 };
 
 /// A fixed 8-entry style table for the spike, loosely modeled on Magic's

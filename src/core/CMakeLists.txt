@@ -4,16 +4,19 @@
 # hefesto_core: the platform-independent core (capability hefesto-architecture).
 # Depends only on the C++20 standard library, zlib and nlohmann/json.
 # No windowing, GPU, OS-UI or process-spawning API may be used here.
-# Owner: workstream "Core & CLI" (openspec/changes/m0-foundations/design.md D2).
+# Owner: INTEGRATION (openspec/changes/m1-core-viewer/design.md D2). The M1
+# areas add their sources in src/<area>/sources.cmake, never here (D3).
 
 configure_file(include/hefesto/version.hpp.in
   "${CMAKE_CURRENT_BINARY_DIR}/include/hefesto/version.hpp" @ONLY)
 
 add_library(hefesto_core STATIC
   src/version.cpp
+  src/cmd/all_commands.cpp
   src/cmd/builtins.cpp
   src/cmd/command.cpp
   src/cmd/command_log.cpp
+  src/cmd/coordinates.cpp
   src/cmd/dispatcher.cpp
   src/cmd/registry.cpp
   src/cmd/script_parser.cpp
@@ -24,6 +27,7 @@ add_library(hefesto_core STATIC
   src/diag/diagnostic.cpp
   src/diag/format.cpp
   src/diag/sink.cpp
+  src/editor/editor_state.cpp
   src/platform/local_file_system.cpp
   src/platform/logger.cpp
   src/platform/memory_file_system.cpp
@@ -34,6 +38,15 @@ add_library(hefesto_core STATIC
   src/settings/project_settings.cpp
   src/util/record_order.cpp)
 add_library(hefesto::core ALIAS hefesto_core)
+
+# M1 areas (openspec/changes/m1-core-viewer/design.md D2/D3). Each fragment
+# calls target_sources(hefesto_core PRIVATE ...) for its own directory and is
+# edited only by the owning workstream:
+#   tech/ TECH   db/ MODEL   cell/ CELL   display/ view/ VIEWER   pdk/ app/ PDK
+set(HEFESTO_CORE_AREAS tech db cell display view pdk app)
+foreach(_area IN LISTS HEFESTO_CORE_AREAS)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
+endforeach()
 
 target_include_directories(hefesto_core
   PUBLIC
