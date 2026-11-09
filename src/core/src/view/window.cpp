@@ -13,7 +13,9 @@
 #include "hefesto/view/window.hpp"
 
 #include <algorithm>
+#include <utility>
 
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/view/diag_codes.hpp"
 
 namespace hefesto::view {
@@ -81,6 +83,47 @@ std::string shorten(std::string_view name, std::size_t limit) {
 
 db::Coord grow(db::Coord lo, db::Coord hi) {
   return (hi - lo + 1) / 10;  // SLOP
+}
+
+/// WindSurfaceToScreen of a rectangle.
+ScreenRect to_screen(const ViewMapping& m, const db::Rect& r) {
+  return ScreenRect{m.screen_x(r.x0), m.screen_y(r.y0), m.screen_x(r.x1), m.screen_y(r.y1)};
+}
+
+/// GeoClip; nullopt when nothing is left (inclusive corners).
+std::optional<ScreenRect> clip(const ScreenRect& r, const ScreenRect& to) {
+  const ScreenRect c{std::max(r.x0, to.x0), std::max(r.y0, to.y0), std::min(r.x1, to.x1), std::min(r.y1, to.y1)};
+  if (c.x0 > c.x1 || c.y0 > c.y1) {
+    return std::nullopt;
+  }
+  return c;
+}
+
+std::uint32_t window_bit(WindowId id) {
+  return std::uint32_t{1} << static_cast<std::uint32_t>(id);
+}
+
+/// DBWAreaChanged's step from a child to its parent: the changed area of
+/// `def` in the parent of `use`, per array element or as the span of all
+/// elements when the area is more than half the cell's width or height.
+std::vector<db::Rect> parent_areas(const db::CellDef& def, const db::CellUse& use, const db::Rect& area) {
+  const db::ArrayInfo& a = use.array;
+  if (!a.is_array()) {
+    return {db::apply(use.transform, area)};
+  }
+  const db::Rect& bbox = def.bbox();
+  if (2 * area.width() > bbox.width() || 2 * area.height() > bbox.height()) {
+    const db::Rect lo = db::apply(db::element_transform(use, a.xlo, a.ylo), area);
+    const db::Rect hi = db::apply(db::element_transform(use, a.xhi, a.yhi), area);
+    return {db::Rect{std::min(lo.x0, hi.x0), std::min(lo.y0, hi.y0), std::max(lo.x1, hi.x1), std::max(lo.y1, hi.y1)}};
+  }
+  std::vector<db::Rect> out;
+  for (std::int32_t y = std::min(a.ylo, a.yhi); y <= std::max(a.ylo, a.yhi); ++y) {
+    for (std::int32_t x = std::min(a.xlo, a.xhi); x <= std::max(a.xlo, a.xhi); ++x) {
+      out.push_back(db::apply(db::element_transform(use, x, y), area));
+    }
+  }
+  return out;
 }
 
 }  // namespace
@@ -225,6 +268,35 @@ void LayoutWindow::set_expanded(const db::CellUse& use, bool expanded) {
   }
 }
 
+void LayoutWindow::mark_redisplay(const db::Rect& root_area, bool labels) {
+  if (redisplay_.all) {
+    return;
+  }
+  redisplay_.areas.push_back(root_area);
+  ScreenRect r = to_screen(mapping_, root_area);
+  if (const auto clipped = clip(r, mapping_.screen)) {
+    r = *clipped;
+    if (labels) {
+      r = ScreenRect{r.x0 + label_extent_.x0, r.y0 + label_extent_.y0, r.x1 + label_extent_.x1,
+                     r.y1 + label_extent_.y1};
+    }
+    redisplay_.screen.push_back(r);
+  }
+}
+
+void LayoutWindow::mark_redisplay_all() {
+  redisplay_ = Redisplay{true, {}, {mapping_.screen}};
+}
+
+Redisplay LayoutWindow::take_redisplay() {
+  return std::exchange(redisplay_, Redisplay{});
+}
+
+void LayoutWindow::include_label_extent(const ScreenRect& amounts) noexcept {
+  label_extent_ = ScreenRect{std::min(label_extent_.x0, amounts.x0), std::min(label_extent_.y0, amounts.y0),
+                             std::max(label_extent_.x1, amounts.x1), std::max(label_extent_.y1, amounts.y1)};
+}
+
 // --- WindowManager -------------------------------------------------------------------
 
 WindowManager::WindowManager() = default;
@@ -331,6 +403,93 @@ void WindowManager::lower(WindowId id) {
   const auto it = std::find_if(windows_.begin(), windows_.end(), [id](const auto& w) { return w->id() == id; });
   if (it != windows_.end()) {
     std::rotate(it, std::next(it), windows_.end());
+  }
+}
+
+void WindowManager::toggle_full_screen(WindowId id) {
+  const auto it = std::find_if(windows_.begin(), windows_.end(), [id](const auto& w) { return w->id() == id; });
+  if (it == windows_.end()) {
+    return;
+  }
+  LayoutWindow& w = **it;
+  const bool host_managed = w.mapping().screen == w.frame();
+  const ScreenRect frame = w.full_screen_ ? w.saved_frame_ : screen_;
+  std::size_t depth = 0;
+  if (w.full_screen_) {
+    depth = w.saved_depth_;
+  } else {
+    w.saved_frame_ = w.frame_;
+    w.saved_depth_ = static_cast<std::size_t>(it - windows_.begin());
+  }
+  w.full_screen_ = !w.full_screen_;
+  // WindSetWindowAreas, then WindMove onto the surface area it showed.
+  const db::Rect surface = w.mapping().surface;
+  w.frame_ = frame;
+  w.mapping_ = ViewMapping::fit(host_managed ? frame : inner_area(frame, w.chrome_, chrome_metrics_), surface);
+  auto owned = std::move(*it);
+  windows_.erase(it);
+  windows_.insert(windows_.begin() + static_cast<std::ptrdiff_t>(std::min(depth, windows_.size())), std::move(owned));
+  w.mark_redisplay_all();
+  notify(id, Change::view);
+}
+
+void WindowManager::area_changed(const db::CellDef& def, const db::Rect& area,
+                                 const std::optional<tech::TypeMask>& layers, std::optional<WindowId> only) {
+  if (area.x0 == area.x1 || area.y0 == area.y1) {
+    return;
+  }
+  std::uint32_t all = 0;
+  for (const auto& w : windows_) {
+    if (!only || *only == w->id()) {
+      all |= window_bit(w->id());
+    }
+  }
+  propagate_change(def, area, all, layers);
+}
+
+void WindowManager::propagate_change(const db::CellDef& def, const db::Rect& area, std::uint32_t windows,
+                                     const std::optional<tech::TypeMask>& layers) {
+  for (const auto& w : windows_) {
+    if ((windows & window_bit(w->id())) == 0 || w->root() != &def) {
+      continue;
+    }
+    if (!layers || !(*layers & w->visible_types()).empty()) {
+      w->mark_redisplay(area, !layers.has_value());
+    }
+  }
+  for (const db::CellUse* use : def.instances()) {
+    if (use == nullptr || use->parent == nullptr) {
+      continue;
+    }
+    std::uint32_t expanded = 0;
+    for (const auto& w : windows_) {
+      if ((windows & window_bit(w->id())) != 0 && w->is_expanded(*use)) {
+        expanded |= window_bit(w->id());
+      }
+    }
+    if (expanded == 0) {
+      continue;
+    }
+    for (const db::Rect& parent_area : parent_areas(def, *use, area)) {
+      propagate_change(*use->parent, parent_area, expanded, layers);
+    }
+  }
+}
+
+void WindowManager::redisplay_all() {
+  for (const auto& w : windows_) {
+    w->mark_redisplay_all();
+  }
+}
+
+void WindowManager::update_display() {
+  if (suspended_) {
+    return;
+  }
+  for (const auto& w : windows_) {
+    if (!w->pending_redisplay().empty()) {
+      notify(w->id(), Change::content);
+    }
   }
 }
 

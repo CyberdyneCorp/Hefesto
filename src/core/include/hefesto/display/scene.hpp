@@ -80,6 +80,9 @@ struct SceneLayer {
   /// material and other material only; internal edges between abutting
   /// tiles of the same style are not included. Empty when outline == 0.
   std::vector<SceneSegment> outline;
+  /// Position in the redisplay order: 2 × (layout style − first layout
+  /// style) + 1 for the pale variant (splice_scene merges by it).
+  std::size_t order = 0;
 };
 
 struct SceneLabel {
@@ -131,8 +134,18 @@ using ExpandedFn = std::function<bool(const db::CellUse& use)>;
 using PaintSource = std::function<bool(const db::CellDef& def, tech::PlaneId plane, const db::Rect& area,
                                        const tech::TypeMask& types, const db::TileVisitor& visit)>;
 
+/// "Redisplay order for layout windows" / font-labels "Font labels in
+/// bounding boxes and searches": a label is drawn for an area when its
+/// rectangle touches the area or, for a font label, its rendered bounding
+/// box does (the display search).
+[[nodiscard]] bool label_in_display_area(const SceneLabel& label, const db::Rect& area) noexcept;
+
 struct SceneOptions {
-  db::Rect area = db::whole_plane();               // root coordinates to include
+  /// Root coordinates to include: tiles touching the area grown by one unit,
+  /// labels per label_in_display_area() with the area grown by
+  /// `label_extent`, instances whose bounding box (labels included) touches it.
+  db::Rect area = db::whole_plane();
+  db::Coord label_extent = 0;                      // layout units
   tech::TypeMask visible = tech::TypeMask::all();  // `see` state (space is never hidden)
   ExpandedFn expanded;                             // empty = nothing but the root expanded
   bool show_labels = true;                         // `see labels`
@@ -152,6 +165,16 @@ struct SceneOptions {
 [[nodiscard]] diag::Outcome<LayoutScene> build_scene(const db::CellDef& root, const tech::Technology& tech,
                                                      const StyleSet& styles, const FontRegistry& fonts,
                                                      const SceneOptions& options);
+
+/// "Change-driven redisplay" for a retained scene: replaces what `scene`
+/// shows in `area` (root coordinates) by `partial`, a scene built with the
+/// same options except `SceneOptions::area = area`. Fills and outlines are
+/// cut at the area's edge (outside from `scene`, inside from `partial`);
+/// split tiles, labels (label_in_display_area) and unexpanded instances
+/// touching the area come from `partial`. Returns false, leaving `scene`
+/// unchanged, when a cut would change what is drawn (a `cross` fill draws a
+/// diagonal per rectangle): rebuild the whole scene instead.
+[[nodiscard]] bool splice_scene(LayoutScene& scene, LayoutScene partial, const db::Rect& area);
 
 /// The boundary of a set of non-overlapping rectangles: the parts of their
 /// edges not shared with another rectangle of the set (used for outlines).

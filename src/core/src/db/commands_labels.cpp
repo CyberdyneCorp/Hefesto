@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "db/command_util.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
@@ -111,6 +112,10 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
   }
   made->type = label_layer_for(*e.s.tech, made->type);
   recompute_bbox(*e.def, e.s.magic_compat);
+  // DBWLabelChanged (ui-windows-and-views "Change-driven redisplay"): the
+  // label's area, grown by one unit so that a point label has an area, with
+  // the window's label extent.
+  e.s.editor->windows.area_changed(*e.def, expand(e.area, 1), std::nullopt);
   return CommandResult::success();
 }
 

@@ -12,6 +12,7 @@
 #include <array>
 #include <sstream>
 
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
@@ -28,15 +29,40 @@ using cmd::Invocation;
 
 enum class Mode : std::uint8_t { selection, surround, overlap, all };
 
+/// The types an expansion change redisplays (cmdExpandFunc: DBAllButSpaceBits).
+tech::TypeMask all_but_space() {
+  tech::TypeMask m = tech::TypeMask::all();
+  m.set(tech::kSpace, false);
+  return m;
+}
+
+/// One expansion change: the bit, the cell read when it is expanded and
+/// unavailable, and cmdExpandFunc's redisplay of the instance in the window.
+/// Returns false when the cell is unavailable (not expanded).
+bool set_expansion(LayoutWindow& window, WindowManager& wm, const db::CellUse& use, bool next, CommandContext& ctx) {
+  if (next && !use.def->flags().available && wm.cell_reader() != nullptr) {
+    (void)wm.cell_reader()(ctx, *use.def);  // DBExpand reads the cell (database/DBexpand.c)
+  }
+  if (next && use.def->flags().not_found) {
+    return false;
+  }
+  const bool changed = window.is_expanded(use) != next;
+  window.set_expanded(use, next);
+  if (changed && use.parent != nullptr) {
+    wm.area_changed(*use.parent, use.bbox, all_but_space(), window.id());
+  }
+  return true;
+}
+
 struct ExpandWalk {
   LayoutWindow& window;
+  WindowManager& wm;
   db::Rect box;
   Mode mode;
   bool expand;  // false: unexpand
   bool toggle;
+  CommandContext& ctx;
   std::vector<std::string> unavailable;
-  CommandContext* ctx = nullptr;
-  WindowManager::CellReader reader = nullptr;
 
   [[nodiscard]] bool matches(const db::Rect& bbox) const {
     switch (mode) {
@@ -49,16 +75,10 @@ struct ExpandWalk {
   }
 
   void act(const db::CellUse& use) {
-    const bool now = window.is_expanded(use);
-    const bool next = toggle ? !now : expand;
-    if (next && !use.def->flags().available && reader != nullptr && ctx != nullptr) {
-      (void)reader(*ctx, *use.def);  // DBExpand reads the cell (database/DBexpand.c)
-    }
-    if (next && use.def->flags().not_found) {
+    const bool next = toggle ? !window.is_expanded(use) : expand;
+    if (!set_expansion(window, wm, use, next, ctx)) {
       unavailable.push_back(use.def->name());
-      return;
     }
-    window.set_expanded(use, next);
   }
 
   /// DBExpandAll: acts on every matching instance at any depth, descending
@@ -104,7 +124,63 @@ std::optional<ExpandArgs> parse_expand_args(const std::vector<std::string>& args
   return out;
 }
 
+void report_unavailable(CommandContext& ctx, const std::vector<std::string>& names) {
+  for (const auto& name : names) {
+    ctx.emit(diag::make(codes::kExpand, "Cell " + name + " is unavailable.  It could not be expanded."));
+  }
+}
+
+/// The instance an `expand instance` path names under `root`: use ids
+/// separated by '/', each optionally followed by an array subscript (the
+/// whole array is one instance), as hierarchical names are written.
+const db::CellUse* find_instance(const db::CellDef& root, std::string_view path) {
+  const db::CellDef* def = &root;
+  const db::CellUse* use = nullptr;
+  while (def != nullptr && !path.empty()) {
+    const std::size_t slash = path.find('/');
+    std::string_view id = path.substr(0, slash);
+    path = slash == std::string_view::npos ? std::string_view{} : path.substr(slash + 1);
+    if (const std::size_t bracket = id.find('['); bracket != std::string_view::npos && id.ends_with(']')) {
+      id = id.substr(0, bracket);
+    }
+    use = db::find_use(*def, id);
+    if (use == nullptr) {
+      return nullptr;
+    }
+    def = use->def;
+  }
+  return path.empty() ? use : nullptr;
+}
+
+/// Hefesto extension: `expand instance PATH [toggle]` / `unexpand instance
+/// PATH` act on the one instance PATH names, in the pointed window, without
+/// the box and without descending (the hierarchy browser's toggle).
+CommandResult instance_expansion(CommandContext& ctx, const Invocation& inv, bool expand) {
+  const bool toggle = expand && inv.args.size() == 3 && std::string_view("toggle").starts_with(inv.args[2]);
+  if (inv.args.size() != 2 && !toggle) {
+    return fail(codes::kUsage, expand ? "Usage: expand instance path [toggle]" : "Usage: unexpand instance path");
+  }
+  auto t = pointed(ctx);
+  if (!t) {
+    return failure(t.error());
+  }
+  LayoutWindow& w = t.value().window;
+  const db::CellUse* use = w.root() != nullptr ? find_instance(*w.root(), inv.args[1]) : nullptr;
+  if (use == nullptr || use->def == nullptr) {
+    return fail(codes::kInstance, "Instance " + inv.args[1] + " not found in this window.");
+  }
+  const bool next = toggle ? !w.is_expanded(*use) : expand;
+  if (!set_expansion(w, t.value().editor.windows, *use, next, ctx)) {
+    report_unavailable(ctx, {use->def->name()});
+  }
+  t.value().editor.windows.notify(w.id(), Change::expansion);
+  return CommandResult::success();
+}
+
 CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand) {
+  if (inv.args.size() >= 2 && inv.args[0] == "instance") {
+    return instance_expansion(ctx, inv, expand);
+  }
   const auto args = parse_expand_args(inv.args, expand ? Mode::overlap : Mode::surround, expand);
   if (!args) {
     return fail(codes::kUsage, expand ? "Usage: expand [selection|surround|overlap|all] [toggle]"
@@ -122,12 +198,9 @@ CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand)
   if (w.root() == nullptr) {
     return CommandResult::success();
   }
-  ExpandWalk walk{w, box.value_or(db::Rect{}), args->mode, expand, args->toggle, {}, &ctx,
-                  t.value().editor.windows.cell_reader()};
+  ExpandWalk walk{w, t.value().editor.windows, box.value_or(db::Rect{}), args->mode, expand, args->toggle, ctx, {}};
   walk.walk(*w.root(), db::kIdentity);
-  for (const auto& name : walk.unavailable) {
-    ctx.emit(diag::make(codes::kExpand, "Cell " + name + " is unavailable.  It could not be expanded."));
-  }
+  report_unavailable(ctx, walk.unavailable);
   t.value().editor.windows.notify(w.id(), Change::expansion);
   return CommandResult::success();
 }
@@ -228,6 +301,7 @@ CommandResult see_cmd(CommandContext& ctx, const Invocation& inv) {
     }
     apply_see(*t.value().editor.technology, w, req.value(), show);
   }
+  w.mark_redisplay_all();  // WindAreaChanged(w, NULL)
   t.value().editor.windows.notify(w.id(), Change::visibility);
   return CommandResult::success();
 }
@@ -324,10 +398,6 @@ CommandResult grid_cmd(CommandContext& ctx, const Invocation& inv) {
 
 // --- redraw / reset / updatedisplay ----------------------------------------------------
 
-void notify_all(editor::EditorState& ed, Change change) {
-  ed.windows.for_each([&](LayoutWindow& w) { ed.windows.notify(w.id(), change); });
-}
-
 CommandResult redraw_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
@@ -336,7 +406,8 @@ CommandResult redraw_cmd(CommandContext& ctx, const Invocation& inv) {
   if (!inv.args.empty()) {
     return fail(codes::kUsage, "Usage: redraw");
   }
-  notify_all(*e.value(), Change::content);
+  e.value()->windows.redisplay_all();
+  e.value()->windows.update_display();
   return CommandResult::success();
 }
 
@@ -361,8 +432,8 @@ CommandResult updatedisplay_cmd(CommandContext& ctx, const Invocation& inv) {
   if (which != 2) {
     wm.set_display_suspended(which == 0);
   }
-  if (!wm.display_suspended() && which != 0) {
-    notify_all(*e.value(), Change::content);
+  if (which != 0) {
+    wm.update_display();  // performs the pending redisplay unless suspended
   }
   return CommandResult::success();
 }
@@ -370,11 +441,11 @@ CommandResult updatedisplay_cmd(CommandContext& ctx, const Invocation& inv) {
 }  // namespace
 
 bool register_display_ops(cmd::CommandRegistry& registry) {
-  bool ok = add(registry, "expand", "expand [selection|surround|overlap|all] [toggle]",
-                "Expands (or toggles) the instances under the box in this window.",
+  bool ok = add(registry, "expand", "expand [selection|surround|overlap|all] [toggle] | expand instance path [toggle]",
+                "Expands (or toggles) the instances under the box, or one instance by path, in this window.",
                 [](CommandContext& c, const Invocation& i) { return expansion(c, i, true); });
-  ok = add(registry, "unexpand", "unexpand [selection|surround|overlap|all]",
-           "Unexpands the instances under the box in this window.",
+  ok = add(registry, "unexpand", "unexpand [selection|surround|overlap|all] | unexpand instance path",
+           "Unexpands the instances under the box, or one instance by path, in this window.",
            [](CommandContext& c, const Invocation& i) { return expansion(c, i, false); }) &&
        ok;
   ok = add(registry, "see", "see [no] layers|allSame", "Shows or hides layers, labels and subcells in the window.",

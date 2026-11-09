@@ -43,10 +43,18 @@ std::vector<render::LayeredRect> layered(const render::RectScene& scene) {
   return out;
 }
 
-display::SceneOptions scene_options(const view::LayoutWindow& window, const db::CellDef& root) {
+/// The options of a scene of `window`: everything the root holds (its
+/// bounding box includes its subcells, the extended one font-label text), or
+/// only `area` for a partial rebuild.
+display::SceneOptions scene_options(const view::LayoutWindow& window, const db::CellDef& root,
+                                    const std::optional<db::Rect>& area = std::nullopt) {
   display::SceneOptions options;
-  // Everything the root holds (its bounding box includes its subcells).
-  if (!root.bbox().is_null()) options.area = root.bbox();
+  const db::Rect all = db::include(root.bbox(), root.extended_bbox());
+  if (area) {
+    options.area = *area;
+  } else if (!all.is_null()) {
+    options.area = all;
+  }
   options.visible = window.visible_types();
   options.show_labels = window.labels_visible();
   options.expanded = [&window](const db::CellUse& use) { return window.is_expanded(use); };
@@ -144,6 +152,7 @@ void LayoutCanvas::refresh_scene() {
   synthetic_ = false;
   if (root == nullptr || !ed.styles || !ed.technology) {
     framed_root_ = nullptr;
+    have_scene_ = false;
     upload({}, {});
     upload_polygons({});
     overlay_state_.cells.clear();
@@ -158,15 +167,13 @@ void LayoutCanvas::refresh_scene() {
     ctx_.core.dispatcher().report(built.error());
     return;
   }
-  const display::LayoutScene& scene = built.value();
-  const render::LayoutBatches batches = render::to_batches(scene);
-  upload(layered(batches.rects), batches.styles);
-  upload_polygons(batches.polygons);
-  // The fit covers the drawn scene and the root's bounding box (subcells).
-  bounds_ = to_bounds(scene.bounds.is_null() ? root->bbox() : db::include(scene.bounds, root->bbox()));
-  controller_.set_bounds(bounds_);
-  set_scene_overlay(scene);
-  empty_hint_.clear();
+  scene_ = std::move(built).value();
+  have_scene_ = true;
+  built_root_ = root;
+  built_tech_ = ed.technology.get();
+  built_styles_ = true;
+  (void)win->take_redisplay();  // the whole scene covers whatever was pending
+  publish_scene(*root);
   // A new root takes the core's load frame (set_root moved the core mapping
   // there without a Change::view); keeping the old camera made the next core
   // zoom jump.
@@ -177,6 +184,54 @@ void LayoutCanvas::refresh_scene() {
     fit_view();
   }
   camera_changed(new_root);
+}
+
+void LayoutCanvas::publish_scene(const db::CellDef& root) {
+  const render::LayoutBatches batches = render::to_batches(scene_);
+  upload(layered(batches.rects), batches.styles);
+  upload_polygons(batches.polygons);
+  // The fit covers the drawn scene and the root's bounding box (subcells).
+  bounds_ = to_bounds(scene_.bounds.is_null() ? root.bbox() : db::include(scene_.bounds, root.bbox()));
+  controller_.set_bounds(bounds_);
+  set_scene_overlay(scene_);
+  empty_hint_.clear();
+}
+
+bool LayoutCanvas::needs_full_rebuild(const view::LayoutWindow& win) const {
+  const editor::EditorState& ed = ctx_.editor();
+  if (win.root() == nullptr) return true;  // the empty window or the first cell
+  return !have_scene_ || synthetic_ || win.root() != built_root_ || ed.technology.get() != built_tech_ ||
+         ed.styles.has_value() != built_styles_;
+}
+
+void LayoutCanvas::update_scene() {
+  ensure_window();
+  view::LayoutWindow* win = window();
+  if (have_scene_ && ctx_.editor().windows.display_suspended()) return;  // `updatedisplay suspend`
+  if (win == nullptr || needs_full_rebuild(*win)) {
+    refresh_scene();
+    return;
+  }
+  apply_redisplay(*win, win->take_redisplay());
+}
+
+void LayoutCanvas::apply_redisplay(view::LayoutWindow& win, const view::Redisplay& redisplay) {
+  if (redisplay.empty()) return;
+  if (redisplay.all) {
+    refresh_scene();
+    return;
+  }
+  editor::EditorState& ed = ctx_.editor();
+  const db::CellDef& root = *win.root();
+  for (const db::Rect& area : splice_areas(redisplay.areas)) {
+    auto partial = display::build_scene(root, *ed.technology, *ed.styles, ed.fonts, scene_options(win, root, area));
+    if (!partial || !display::splice_scene(scene_, std::move(partial).value(), area)) {
+      refresh_scene();  // a cut the retained scene cannot take
+      return;
+    }
+  }
+  publish_scene(root);
+  camera_changed(false);
 }
 
 void LayoutCanvas::fit_view() {
@@ -249,8 +304,13 @@ void LayoutCanvas::on_window_changed(view::WindowId id, view::Change change) {
       window_id_ = -1;
       refresh_scene();
       break;
+    case view::Change::grid:
+    case view::Change::caption:
+      refresh_overlay();
+      break;
     default:
-      refresh_scene();
+      // content, expansion, visibility, opened: the window holds the pending
+      // redisplay; the frame after the command performs it (update_scene).
       break;
   }
 }

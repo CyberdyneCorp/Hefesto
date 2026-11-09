@@ -1,0 +1,10 @@
+# UI-G-035: specialopen usage forms (hidden, unknown, short coordinates) and a layout window by prefix; the color window is ui-color-window (M2).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+specialopen *window
+specialopen foo
+specialopen
+specialopen 1 2 layout
+specialopen la c
+windownames all

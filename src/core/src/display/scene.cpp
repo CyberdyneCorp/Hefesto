@@ -208,6 +208,7 @@ class SceneBuilder {
   const StyleSet& styles_;
   const FontRegistry& fonts_;
   const SceneOptions& options_;
+  db::Rect label_area_ = db::whole_plane();  // options_.area grown by the label extent
   const db::CellDef* root_ = nullptr;
   LayoutScene scene_;
   std::vector<StyleSlot> slots_;
@@ -229,9 +230,9 @@ void SceneBuilder::prepare_styles() {
     StyleSlot slot;
     slot.types = drawn_types(tech_, layers);
     slot.normal_layer = scene_.layers.size();
-    scene_.layers.push_back(SceneLayer{resolve_style(styles_, index), false, {}, {}, {}});
+    scene_.layers.push_back(SceneLayer{resolve_style(styles_, index), false, {}, {}, {}, 2 * i});
     slot.pale_layer = scene_.layers.size();
-    scene_.layers.push_back(SceneLayer{resolve_style(styles_, table.pale_index(index)), true, {}, {}, {}});
+    scene_.layers.push_back(SceneLayer{resolve_style(styles_, table.pale_index(index)), true, {}, {}, {}, 2 * i + 1});
     for (std::size_t t = 0; t < tech::kMaxTileTypes; ++t) {
       if (slot.types.test(static_cast<tech::TileType>(t))) {
         slots_of_type_[t].push_back(slots_.size());
@@ -324,12 +325,15 @@ void SceneBuilder::visit(const db::CellDef& def, const db::Transform& to_root, i
 
 void SceneBuilder::visit_use(const db::CellUse& use, const db::Transform& to_root, int depth) {
   const db::Rect bbox = db::apply(to_root, use.bbox);
-  if (!db::touch(bbox, options_.area)) {
+  // The extended box holds the rendered text of font labels, which the
+  // label search finds by that text (display search).
+  const db::Rect reach = db::include(bbox, db::apply(to_root, use.extended));
+  if (!db::touch(reach, label_area_)) {
     return;
   }
   const bool expanded = options_.expanded && options_.expanded(use);
   if (!expanded) {
-    if (options_.show_cells) {
+    if (options_.show_cells && db::touch(bbox, options_.area)) {
       scene_.cells.push_back(SceneCell{bbox, use.def->name(), use.id, depth + 1, resolve_style(styles_, kStyleCellBox)});
       include(bbox);
     }
@@ -401,6 +405,11 @@ void SceneBuilder::add_label(const db::Label& label, const db::Transform& to_roo
     out.size = label.size;
     out.font_bbox = font_label_geometry(root_label, *font, options_.magic_compat).bbox;
     out.outline_polygons = font_label_polygons(root_label, *font);
+  }
+  if (!label_in_display_area(out, label_area_)) {
+    return;
+  }
+  if (out.font_label) {
     include(out.font_bbox);
   }
   include(db::Rect{out.rect.x0, out.rect.y0, std::max(out.rect.x1, out.rect.x0 + 1),
@@ -410,6 +419,7 @@ void SceneBuilder::add_label(const db::Label& label, const db::Transform& to_roo
 
 LayoutScene SceneBuilder::build(const db::CellDef& root) {
   root_ = &root;
+  label_area_ = clip_to_plane(db::expand(options_.area, std::max<db::Coord>(options_.label_extent, 0)));
   scene_.background = resolve_style(styles_, kStyleBackground);
   prepare_styles();
   visit(root, db::kIdentity, 0);

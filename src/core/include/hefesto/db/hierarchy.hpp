@@ -131,10 +131,18 @@ struct LabelHit {
   Transform to_root;
 };
 
+/// What a label search compares with the area: the attachment rectangle
+/// (connectivity, attachment), or for display also the rendered text box of
+/// an outline-font label (font-labels "Font labels in bounding boxes and
+/// searches"; Magic's TF_LABEL_DISPLAY).
+enum class LabelMatch : std::uint8_t { attach, display };
+
 /// "Hierarchical label search": labels of `root` touching `area`, then the
 /// labels of descended subcells overlapping `area` expanded by one unit,
-/// each subcell recursively. Return false from the visitor to stop.
+/// each subcell recursively. With LabelMatch::display a font label is also
+/// found when its `text_bbox` touches (root) or overlaps (subcells) the
+/// area. Return false from the visitor to stop.
 void search_labels(const CellDef& root, const Rect& area, const std::function<bool(const LabelHit&)>& visit,
-                   Descend descend = Descend::all);
+                   Descend descend = Descend::all, LabelMatch match = LabelMatch::attach);
 
 }  // namespace hefesto::db

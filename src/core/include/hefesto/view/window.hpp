@@ -123,8 +123,22 @@ struct GridState {
   std::optional<std::int32_t> multiple;  // `grid multiple m` (1..255), Q-UI-21
 };
 
-/// What changed, for observers ("Change-driven redisplay").
+/// What changed, for observers ("Change-driven redisplay"). `content`
+/// means the window has a pending redisplay (LayoutWindow::take_redisplay).
 enum class Change : std::uint8_t { opened, closed, view, content, expansion, visibility, grid, caption };
+
+/// The redisplay a window still owes ("Change-driven redisplay"): the whole
+/// window, or a list of areas. `areas` are in root coordinates and are not
+/// clipped to the screen (a host canvas keeps the content outside its screen
+/// area); `screen` holds the same areas on screen (WindSurfaceToScreen),
+/// clipped to the screen area and grown by the label extent where the rules
+/// say so, without the areas that fall off screen.
+struct Redisplay {
+  bool all = false;
+  std::vector<db::Rect> areas;
+  std::vector<ScreenRect> screen;
+  [[nodiscard]] bool empty() const noexcept { return !all && areas.empty(); }
+};
 
 class ViewObserver {
  public:
@@ -165,6 +179,25 @@ class LayoutWindow {
   /// The frame (screen area plus chrome) and chrome flags of the window.
   [[nodiscard]] const ScreenRect& frame() const noexcept { return frame_; }
   void set_frame(const ScreenRect& frame) noexcept { frame_ = frame; }
+
+  /// `grow` state (WindFullScreen): whether the window fills the screen, and
+  /// the frame and depth (0 = front) it returns to.
+  [[nodiscard]] bool full_screen() const noexcept { return full_screen_; }
+  [[nodiscard]] const ScreenRect& saved_frame() const noexcept { return saved_frame_; }
+  [[nodiscard]] std::size_t saved_depth() const noexcept { return saved_depth_; }
+
+  // "Change-driven redisplay". mark_redisplay() takes an area in root
+  // coordinates; `labels` grows its screen area by the label extent.
+  void mark_redisplay(const db::Rect& root_area, bool labels);
+  void mark_redisplay_all();
+  [[nodiscard]] const Redisplay& pending_redisplay() const noexcept { return redisplay_; }
+  /// Returns the pending redisplay and clears it.
+  [[nodiscard]] Redisplay take_redisplay();
+  /// The largest label extent seen in this window, as screen offsets added
+  /// to an area's corners (Magic's dbw_expandAmounts: x0/y0 <= 0, x1/y1 >= 0).
+  [[nodiscard]] const ScreenRect& label_extent() const noexcept { return label_extent_; }
+  /// Widens the label extent to include `amounts` (it never shrinks).
+  void include_label_extent(const ScreenRect& amounts) noexcept;
   [[nodiscard]] const ChromeFlags& chrome() const noexcept { return chrome_; }
   void set_chrome(const ChromeFlags& chrome) noexcept { chrome_ = chrome; }
 
@@ -208,6 +241,13 @@ class LayoutWindow {
   bool all_same_ = false;
   GridState grid_;
   std::optional<db::Point> crosshair_;
+  bool full_screen_ = false;
+  ScreenRect saved_frame_;
+  std::size_t saved_depth_ = 0;
+  Redisplay redisplay_;
+  ScreenRect label_extent_;
+
+  friend class WindowManager;  // full_screen() state
 };
 
 /// The open layout windows in front-to-back order.
@@ -240,6 +280,31 @@ class WindowManager {
   /// `over` / `underneath`: move a window to the front or the back.
   void raise(WindowId id);
   void lower(WindowId id);
+  /// `grow` (WindFullScreen): toggles the window between the whole screen
+  /// (`screen()`, depth 0) and the frame and depth it had before, keeping
+  /// the layout area it shows (WindMove of its surface area).
+  void toggle_full_screen(WindowId id);
+  /// The screen windows live on (GrScreenRect): the null display's screen
+  /// unless a host sets its own.
+  [[nodiscard]] const ScreenRect& screen() const noexcept { return screen_; }
+  void set_screen(const ScreenRect& screen) noexcept { screen_ = screen; }
+
+  /// "Change-driven redisplay" (DBWAreaChanged): `area` of `def` changed.
+  /// Every window showing `def` as its root, or through instances expanded
+  /// in that window, gets the area mapped up to its root (array rule:
+  /// the span of all elements when the area is more than half the cell's
+  /// width or height, else each element). `layers` are the changed types:
+  /// a window where none of them is visible skips the change; nullopt means
+  /// labels may have changed too, which grows the screen area by the
+  /// window's label extent. A zero-width or zero-height area changes nothing.
+  /// `only` restricts the change to one window (an expansion change).
+  void area_changed(const db::CellDef& def, const db::Rect& area, const std::optional<tech::TypeMask>& layers,
+                    std::optional<WindowId> only = std::nullopt);
+  /// `redraw`: every window's whole area.
+  void redisplay_all();
+  /// The update after a command: notifies Change::content for every window
+  /// with a pending redisplay, unless the display is suspended.
+  void update_display();
 
   /// Session chrome defaults copied by new windows ("Window chrome flags").
   [[nodiscard]] ChromeFlags& chrome_defaults() noexcept { return chrome_defaults_; }
@@ -278,8 +343,12 @@ class WindowManager {
   std::vector<std::unique_ptr<LayoutWindow>> windows_;  // front to back
   std::optional<WindowId> current_;
   std::vector<ViewObserver*> observers_;
+  void propagate_change(const db::CellDef& def, const db::Rect& area, std::uint32_t windows,
+                        const std::optional<tech::TypeMask>& layers);
+
   ChromeFlags chrome_defaults_;
   ChromeMetrics chrome_metrics_;
+  ScreenRect screen_ = kNullScreen;
   bool suspended_ = false;
   CellReader cell_reader_ = nullptr;
 };

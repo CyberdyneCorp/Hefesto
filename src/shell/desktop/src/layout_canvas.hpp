@@ -47,8 +47,13 @@ class LayoutCanvas final : public view::ViewObserver {
 
   /// Shows rectangles that are not a cell (the benchmark's synthetic layout).
   void show_rects(const std::vector<render::LayeredRect>& rects, const std::vector<render::LayerStyle>& styles);
-  /// Rebuilds the scene of the current window from the editor session.
+  /// Rebuilds the whole scene of the current window from the editor session.
   void refresh_scene();
+  /// Performs the window's pending redisplay ("Change-driven redisplay"):
+  /// rebuilds only the changed areas of the retained scene, the whole scene
+  /// when the root, technology or styles changed, nothing when nothing is
+  /// pending or the display is suspended.
+  void update_scene();
   /// Repaints the overlay (box or theme changed).
   void refresh_overlay();
   void pan_pixels(double dx, double dy);
@@ -75,6 +80,10 @@ class LayoutCanvas final : public view::ViewObserver {
   [[nodiscard]] view::LayoutWindow* window() const;
   void ensure_window();
   void upload(const std::vector<render::LayeredRect>& rects, const std::vector<render::LayerStyle>& styles);
+  [[nodiscard]] bool needs_full_rebuild(const view::LayoutWindow& win) const;
+  void apply_redisplay(view::LayoutWindow& win, const view::Redisplay& redisplay);
+  /// Uploads scene_ and refreshes the overlay's labels, cells and bounds.
+  void publish_scene(const db::CellDef& root);
   void set_scene_overlay(const display::LayoutScene& scene);
   /// Uploads the scene's triangles and glyphs (drawn merged with the rectangles by layer).
   void upload_polygons(render::PolygonScene polygons);
@@ -104,6 +113,12 @@ class LayoutCanvas final : public view::ViewObserver {
   // never dereferenced.
   const db::CellDef* framed_root_ = nullptr;
   bool synthetic_ = false;  // show_rects content stays until a cell is shown
+  // The retained scene and what it was built from (compared, never dereferenced).
+  display::LayoutScene scene_;
+  bool have_scene_ = false;
+  const db::CellDef* built_root_ = nullptr;
+  const tech::Technology* built_tech_ = nullptr;
+  bool built_styles_ = false;
   view::WindowId window_id_ = -1;
   std::optional<db::Point> cursor_;
   paint::OverlayState overlay_state_;

@@ -125,7 +125,7 @@ TEST_CASE("left ruler labels are compact and never wider than the ruler",
   }
 }
 
-TEST_CASE("label text is placed like Magic's GrPutText", "[cap:display-style-files][req:Label display]") {
+TEST_CASE("label text is placed like Magic's GrPutText", "[cap:ui-windows-and-views][req:Label display]") {
   const PixelRect r{100.0, 200.0, 20.0, 10.0};
   // Center: centered on the rectangle.
   const PixelPoint c = label_text_origin(r, db::kCenter, 30.0, 12.0);
@@ -145,7 +145,7 @@ TEST_CASE("label text is placed like Magic's GrPutText", "[cap:display-style-fil
   CHECK(sw.y == Approx(215.0));
 }
 
-TEST_CASE("font-label glyphs fill with the nonzero rule", "[cap:display-style-files][req:Label display]") {
+TEST_CASE("font-label glyphs fill with the nonzero rule", "[cap:ui-windows-and-views][req:Label display]") {
   // An outer square with an inner square of the opposite direction: a hole.
   const std::vector<PixelPoint> outer{{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}};
   const std::vector<PixelPoint> hole{{3.0, 3.0}, {3.0, 7.0}, {7.0, 7.0}, {7.0, 3.0}};
