@@ -99,7 +99,7 @@ diag::Outcome<std::size_t> cmap_size(const std::vector<std::string_view>& lines,
                                              "\"\nLast color read was index " + std::to_string(max));
     }
   }
-  if (max + 1 > static_cast<std::int64_t>(kMaxColors)) {
+  if (max >= static_cast<std::int64_t>(kMaxColors)) {  // not max + 1: max may be INT64_MAX (fuzz_cmap)
     return diag::make(dc::kCmapSyntax, "Color map file \"" + std::string(file_name) + "\" has too many colors");
   }
   return static_cast<std::size_t>(max + 1);

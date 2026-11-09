@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <set>
 #include <string>
 #include <string_view>
@@ -33,9 +34,12 @@ struct ReadState {
   [[nodiscard]] const tech::Technology& tech() const { return *ctx.tech; }
   void emit(std::string_view code, std::string text) const { ctx.sink.emit(diag::make(code, std::move(text))); }
   /// v * n (when n > 1), then / d (when d > 1), truncating toward zero.
+  /// The product saturates: v comes from the file and may be huge (fuzz_mag_reader).
   [[nodiscard]] std::int32_t scale(std::int64_t v) const noexcept {
     if (n > 1) {
-      v *= n;
+      constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
+      constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
+      v = v > kMax / n ? kMax : (v < kMin / n ? kMin : v * n);
     }
     if (d > 1) {
       v /= d;
