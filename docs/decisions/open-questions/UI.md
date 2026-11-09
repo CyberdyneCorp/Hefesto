@@ -86,6 +86,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windSend.c:200-230
 - Options: replicate | fix (print it)
 - Recommendation: replicate. Hefesto's own message wording is informative anyway.
+- Resolution: replicate — the message is unreachable in both builds (with messages on, the unknown-command branch returns -3 before it, and the `window is grabbing all input` line is equally dead), so Hefesto prints exactly Magic's output and the spec's no-extra-line scenario stands (verified against windows/windSend.c:WindSendCommand on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-10: Command-length and word-count limits
 - Kind: quirk
@@ -95,6 +96,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: textio/txCommands.c:1095-1153, utils/parser.c:140-155, textio/txCommands.c:1491-1520
 - Options: replicate | fix (no fixed limits)
 - Recommendation: fix. Use no practical limit, but keep error messages for scripts that test the limits.
+- Resolution: fix — the normative Tcl build (D-7) only raises errors above 200 words or at 2048 bytes and the byte truncation is non-Tcl-only, so lifting both limits in every mode only turns former errors into successes and no Magic script or PDK can depend on them; the two error messages are dropped rather than kept at some other limit (verified against textio/txCommands.c:TxTclDispatch and textio/txCommands.c:TxParseString_internal on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-11: Non-Tcl key macros ignore the focused window's client
 - Kind: quirk
@@ -110,15 +112,17 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: utils/macros.c:514-761
 - Options: embed an X11 keysym name table on all platforms | native key names
 - Recommendation: embed the keysym name table, so `.magicrc` files are portable. Map native key codes (macOS, iPadOS hardware keyboards, Wayland) to keysyms.
+- Resolution: replicate — `.magicrc` and PDK macro files name keys as X11 keysyms with `Meta_`/`Control_`/`Capslock_`/`Shift_` prefixes and 16-bit keysym masking, so Hefesto embeds the keysym name table on every platform and maps native key codes to it (note: Magic falls back to single-character/`^X`/`0x` names when no X display is open, which matters only for headless golden captures of `macro` listings) (verified against utils/macros.c:MacroName and utils/macros.c:MacroKey on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-13: Script line oddities
 - Kind: bug
 - Magic behavior:
   - A line continued with `\` keeps the backslash: `a \` + `b` gives `a \b`.
   - The non-Tcl reader strips the first character when the SECOND character is `;` (`inputLine[1] == ';'`), which was probably meant to test the first character.
-- Evidence: textio/txCommands.c:1364-1438
+- Evidence: textio/txCommands.c:1364-1418 (txGetFileCommand), tcltk/tclmagic.c:1290-1308 (the Tcl build's TxDispatch, which has no caller in the Tcl build), utils/main.c:899-1127 (startup files: Tcl_EvalFile in the Tcl build)
 - Options: replicate | fix (drop the backslash; strip only a leading `:` or `;`)
 - Recommendation: fix both. Scripts relying on them are unlikely. Golden case UI-G-021 records Magic's behavior.
+- Resolution: fix — evidence corrected: `txGetFileCommand` is reached only through the non-Tcl `source` command and non-Tcl startup files, while in the normative Tcl build (D-7) startup files and `source` go through Tcl, where `\`-newline is a standard continuation and there is no `;` test, so both quirks are informative non-Tcl behaviour and Hefesto follows Tcl (the spec's `\10` scenario must change accordingly) (verified against textio/txCommands.c:txGetFileCommand and tcltk/tclmagic.c:TxDispatch on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-14: Command log omits ':' on the box line
 - Kind: bug
@@ -126,6 +130,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: textio/txCommands.c:703-772
 - Options: replicate | fix
 - Recommendation: fix (prefix it like the other lines).
+- Resolution: other (n/a) — the `:` prefix is written only by the non-Tcl build; the normative Tcl build (D-7) writes the `#` header and the `view` and `box values` lines with no `:` at all, which the spec already requires, so there is nothing to fix (verified against textio/txCommands.c:TxLogStart on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-15: sleep and echo -n off-by-one effects
 - Kind: bug
@@ -133,6 +138,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: windows/windCmdSZ.c:319-362, windows/windCmdAM.c:646-688
 - Options: replicate | fix
 - Recommendation: fix `sleep` to sleep N seconds. Replicate `echo` (harmless).
+- Resolution: fix — `sleep` exists in both builds and its N−1 pause only changes timing, never output, so `sleep N` pauses N seconds; `echo` is a non-Tcl-only command, so its leading space is informative under D-7 rather than replicated (verified against windows/windCmdSZ.c:windSleepCmd and windows/windCmdAM.c:windEchoCmd on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-16: View numbers depend on the drawing-area pixel size
 - Kind: platform
@@ -200,6 +206,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: commands/CmdFI.c:198-235
 - Options: replicate | fix (also accept technology style names)
 - Recommendation: replicate the parsing, and accept technology style long names as an extension.
+- Resolution: replicate — the numeric-third-argument rule, the five short names and the error texts are kept as in Magic, and technology style long names (index ≥ 52, which `GrGetStyleFromName` finds but Magic rejects) are accepted as a superset, following the Q-UI-7 precedent that accepting what Magic rejects breaks no script (verified against commands/CmdFI.c:CmdFeedback and graphics/grDStyle.c:GrGetStyleFromName on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-24: `feedback save` loses information
 - Kind: quirk
@@ -207,6 +214,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: commands/CmdFI.c:415-445
 - Options: replicate | fix (write `i`-suffixed coordinates and the full style)
 - Recommendation: replicate the format, but suffix the coordinates with `i`. Magic accepts that suffix, so the files stay Magic-readable.
+- Resolution: fix — suffixing the saved `box` coordinates with `i` keeps the file Magic-readable (Magic's coordinate parser accepts the `i` suffix) and makes replay correct under any `units` setting, and no PDK or tool reads these files back other than as scripts (verified against commands/CmdFI.c:CmdFeedback and dbwind/DBWfdback.c:DBWFeedbackNth on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-25: Command-line file argument handling
 - Kind: quirk
@@ -316,6 +324,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 - Evidence: cmwind/CMWcmmnds.c:190-210, cmwind/CMWcmmnds.c:300-358
 - Options: replicate | fix (a real eyedropper over any window)
 - Recommendation: fix. Provide a cross-window eyedropper as an extension.
+- Resolution: other — replicate `pushbutton` as press-only, since every color-window action fires on press and the release handler is reached only after a press over the current-color box; drop the screen eyedropper rather than build it, because the Tcl build compiles picking out entirely and under the X-5 translucent OpenGL default a screen pixel is a blend of several styles, not one colormap entry, so any "pick a color from the layout" feature would have to pick a layer's display style instead and belongs to the design-system/UX scope, not to Magic compatibility (verified against cmwind/CMWcmmnds.c:cmwButtonDown and cmwind/CMWcmmnds.c:cmwPushbutton on 2026-11-09; approved 2026-11-09).
 
 ### Q-UI-38: Feedback "small areas become solid" claim
 - Kind: doc-mismatch

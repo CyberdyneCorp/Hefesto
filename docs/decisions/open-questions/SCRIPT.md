@@ -120,6 +120,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tools.tcl:30-50
 - Options: replicate | fix (raise `resume called without suspend`)
 - Recommendation: fix. The message is informative.
+- Resolution: fix — `resume called without suspend` is raised for any unmatched `resumeall`, which also covers a `resumeall` with no `suspendall` at all (the counter key never existed), a case the entry did not mention; the `<= 0` branch in Magic is unreachable because the key is unset at 0, and only error text changes (verified against tcltk/tools.tcl:magic::resumeall on 2026-11-09; approved 2026-11-09).
 
 ### Q-SCRIPT-16: `ruler` reads the box in the current units but draws in internal units
 - Kind: bug
@@ -127,6 +128,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tools.tcl:340-373
 - Options: replicate | fix (capture after `units internal`)
 - Recommendation: fix. Golden cases use `units internal` so that they pass either way.
+- Resolution: fix — `box values` prints in the current units (`dbwPrintValue0`) but `ruler` draws after `units internal`, so with lambda, micron or user units the ruler is drawn at the wrong scale; rulers are non-persistent display elements and golden cases use internal units, so no output or script depends on the bug (verified against tcltk/tools.tcl:magic::ruler and dbwind/DBWprocs.c:dbwPrintValue0 on 2026-11-09; approved 2026-11-09).
 
 ### Q-SCRIPT-17: `measure` multiplies current-unit values by the CIF scale
 - Kind: bug
@@ -134,6 +136,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: tcltk/tools.tcl:431-458
 - Options: replicate | fix
 - Recommendation: fix (measure in internal units).
+- Resolution: fix — `cif scale out` is microns per internal unit but the width comes from `box values` in the current units, so the label is wrong for every non-internal unit setting; measuring in internal units gives the same text as Magic in Magic's only correct case (default/internal units) (verified against tcltk/tools.tcl:magic::measure on 2026-11-09; approved 2026-11-09).
 
 ### Q-SCRIPT-18: Crash-backup interval documentation mismatch
 - Kind: doc-mismatch
