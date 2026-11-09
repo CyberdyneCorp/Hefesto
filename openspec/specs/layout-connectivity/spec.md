@@ -48,17 +48,31 @@ Compatibility: behavioral
 
 ### Requirement: Flat search cross-plane quirk
 
-The flat (single-cell) connectivity search SHALL, from a contact tile, look on each other plane of the contact for one tile of a connecting type overlapping the contact tile's rectangle expanded by one unit, and continue the search from that single tile.
-Compatibility: informative
+The flat (single-cell) connectivity search is used by the DEF writer (capability `def-write`) and by the netlist menu, so its result reaches written DEF. Magic's flat search, from a contact tile, looks on each other plane of the contact for one tile of a connecting type overlapping the contact tile's rectangle expanded by one unit, and continues the search from that single tile, which may be a tile that touches the contact only diagonally; the contact's own image on that plane may then not be visited if it is not adjacent to the picked tile.
 
-Consequences of Magic's implementation: material on the other plane that only touches the contact diagonally may be picked as the continuation, and the contact's own image on that plane may then not be visited if it is not adjacent to the picked tile. Hefesto SHALL implement the relation of requirement "Connectivity within one cell"; whether to reproduce this quirk is open (Q-MODEL-17).
+With `magic-compat` ON (the default), Hefesto's flat search SHALL take this single-tile step exactly as Magic does, including Magic's choice of the first matching tile, so that written DEF matches Magic's. With `magic-compat` OFF, it SHALL continue from the contact's own image on each other plane and from that image's edge neighbours of connecting types, so that the flat search gives the relation of requirement "Connectivity within one cell" (see Q-MODEL-17, resolution: replicate in magic-compat, fix in native).
 
-(Magic ref: database/DBconnect.c:640-668,348-361)
+On DRC-clean layouts both modes give the same nets, because a tile within one unit of the contact image that is not edge-adjacent to it touches it only at a corner, which spacing rules forbid; only DRC-dirty layouts differ.
 
-#### Scenario: Diagonal metal2 next to a via (verify against Magic)
-- **GIVEN** `metal1 (0,0)-(8,8)`, `via (5,5)-(8,8)` inside it, and `metal2 (8,8)-(12,12)` touching the via only at its corner
+Compatibility: exact
+
+(Magic ref: database/DBconnect.c:615-650, database/DBconnect.c:348-358, lef/defWrite.c:780,829,2631, netmenu/NMwiring.c:174,240,555,803; Hefesto decision: docs/decisions/open-questions/MODEL.md#Q-MODEL-17)
+
+#### Scenario: Diagonal metal2 next to a via with magic-compat ON
+- **GIVEN** `magic-compat` ON, `metal1 (0,0)-(8,8)`, `via (5,5)-(8,8)` inside it, and `metal2 (8,8)-(12,12)` touching the via only at its corner
 - **WHEN** the flat net containing `(1,1)` is traced
-- **THEN** Magic may include `metal2 (8,8)-(12,12)` although it only touches the via at a corner
+- **THEN** the net SHALL be the one Magic gives, which includes `metal2 (8,8)-(12,12)` when Magic's search picks that tile as the continuation
+
+#### Scenario: Diagonal metal2 next to a via with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same layout
+- **WHEN** the flat net containing `(1,1)` is traced
+- **THEN** the net SHALL contain the metal1 area and the via on both planes
+- **AND** it SHALL NOT contain `metal2 (8,8)-(12,12)`
+
+#### Scenario: DRC-clean layouts agree
+- **GIVEN** a DRC-clean cell
+- **WHEN** the flat net from any contact is traced with `magic-compat` ON and with it OFF
+- **THEN** both nets SHALL be identical
 
 ### Requirement: Hierarchical connectivity
 

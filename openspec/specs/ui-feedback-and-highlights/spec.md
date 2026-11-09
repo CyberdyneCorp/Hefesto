@@ -89,7 +89,7 @@ Compatibility: behavioral
 `feedback OPTION` SHALL accept the options below, matched by unique prefix. Other options SHALL report `X isn't a valid feedback option.  Try one of:` and the option names. A wrong argument count SHALL print `Wrong number of arguments for "feedback" command.` / `Type ":feedback help" for help.`.
 
 `add TEXT [STYLE] [x y …]`:
-- STYLE is one of `dotted`, `medium`, `outline`, `pale` (the default), `solid`, matched by unique prefix. Otherwise it is the long name of a display style with index 1–51. A long name with a technology style index SHALL be rejected with `Numbered styles must be between 1 and 51` (see Q-UI-23).
+- STYLE is one of `dotted`, `medium`, `outline`, `pale` (the default), `solid`, matched by unique prefix. Otherwise it is the long name of a display style, which SHALL be accepted whatever its index, including technology styles (index 52 and above). Magic rejects a technology style's long name with `Numbered styles must be between 1 and 51`; Hefesto accepts it as a superset, which breaks no script (see Q-UI-23, resolution: replicate, with the Q-UI-7 superset precedent). The numeric-third-argument rule, the five short names and the other error texts SHALL be as in Magic.
 - An unknown style SHALL report `S isn't a valid display style.  Try one of:`.
 - If the third argument is numeric, it SHALL start the point list instead of being a style.
 - Points SHALL be parsed as positions in 1/20 layout-unit precision (f = 20) and SHALL come in x y pairs.
@@ -107,16 +107,26 @@ Other options:
   - it SHALL place the box on the area's rounded rectangle and print `Feedback #n: TEXT`
   - with no areas it SHALL print `There are no feedback areas right now.`
 - `help` SHALL print each option synopsis.
-- `save FILE` SHALL write, for each area, the line `box %d %d %d %d` with the rounded rectangle, then `feedback add "TEXT"`. Every `"` in TEXT SHALL be preceded by `\`. If the style is one of the five named styles, its name SHALL follow after a space (see Q-UI-24).
+- `save FILE` SHALL write, for each area, the line `box %di %di %di %di` with the rounded rectangle in internal units, each coordinate suffixed with `i`, then `feedback add "TEXT"`. Every `"` in TEXT SHALL be preceded by `\`. If the style is one of the five named styles, its name SHALL follow after a space. Magic writes the coordinates without a suffix, so replaying the file under any `units` setting other than internal places the box wrongly; the `i` suffix keeps the file readable by Magic, whose coordinate parser accepts it, and makes replay correct under any setting (see Q-UI-24, resolution: fix).
 - `why` SHALL print, once each, the texts of all areas in the box's root whose rounded rectangle overlaps the box.
 
 Compatibility: behavioral (save-file content exact)
-(Magic ref: commands/CmdFI.c:80-81, commands/CmdFI.c:146-505)
+(Magic ref: commands/CmdFI.c:80-81, commands/CmdFI.c:146-505, graphics/grDStyle.c:GrGetStyleFromName, dbwind/DBWfdback.c:DBWFeedbackNth; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-23, docs/decisions/open-questions/UI.md#Q-UI-24)
 
 #### Scenario: Save quoting
 - **GIVEN** one area at (0,0)-(4,4) with text `bad "x"` and style medium
 - **WHEN** `feedback save f.txt` is executed
-- **THEN** f.txt SHALL contain `box 0 0 4 4` and then `feedback add "bad \"x\"" medium`
+- **THEN** f.txt SHALL contain `box 0i 0i 4i 4i` and then `feedback add "bad \"x\"" medium`
+
+#### Scenario: Saved feedback replays under other units
+- **GIVEN** `Λ = 2`, units `lambda`, and a file saved by `feedback save` with one area at (0,0)-(4,4) in internal units
+- **WHEN** the file is sourced
+- **THEN** a feedback area SHALL exist at (0,0)-(4,4) in internal units
+
+#### Scenario: Technology style long name accepted
+- **GIVEN** a technology whose display styles include a style with index 60 and long name `mystyle`
+- **WHEN** `feedback add "note" mystyle` is executed
+- **THEN** a feedback area SHALL be added over the box in that style, and no error SHALL be reported
 
 #### Scenario: Find cycles
 - **GIVEN** 2 feedback areas

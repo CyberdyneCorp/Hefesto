@@ -15,11 +15,13 @@ Defines the remaining layout-window commands that are not owned by another capab
 3. Unless `-nolabels` is given, source labels SHALL be copied into DEST with hierarchical names, as `flatten` does.
 4. The operation is not undoable.
 
-So identical same-type areas vanish, source-only areas appear, and DEST-only areas remain: the symmetric difference for one type. Where the two cells have different types, the source type wins (see Q-CMDEDIT-94). Option words must start with `-no` and be longer than 3 characters. Any other word before DEST is a usage error. Magic tests the 4th character of the **first** option for every option given (see Q-CMDEDIT-95).
+So identical same-type areas vanish, source-only areas appear, and DEST-only areas remain: the symmetric difference for one type. Where the two cells have different types, the source type wins, as in Magic, in both `magic-compat` modes: a tile holds one type per plane, so "both types" cannot be represented, and the `.mag` result is what golden case CMDEDIT-MISC-01 compares (see Q-CMDEDIT-94, resolution: replicate). Option words must start with `-no` and be longer than 3 characters. Any other word before DEST is a usage error.
+
+Option selection: Magic tests the 4th character of the **first** option for every option given, so `xor -nolabels -novendor b` applies `-nolabels` twice and still flattens vendor cells. With `magic-compat` ON (the default), Hefesto SHALL do the same; with it OFF, each option SHALL be selected by its own 4th character (see Q-CMDEDIT-95, resolution: replicate in magic-compat, fix in native).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdTZ.c:2421-2545)
+(Magic ref: commands/CmdTZ.c:2421-2545; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-94, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-95)
 
 #### Scenario: Xor of identical cells is empty
 - **GIVEN** cells `a` and `b` with identical paint, and `a` is the edit cell
@@ -30,6 +32,21 @@ Compatibility: exact
 - **GIVEN** the edit cell has metal1 (0,0)–(10,10), and `b` has metal1 (5,0)–(15,10)
 - **WHEN** `xor b` is run
 - **THEN** `b` SHALL contain metal1 at (0,0)–(5,10) and (10,0)–(15,10)
+
+#### Scenario: Different types, source wins
+- **GIVEN** the edit cell has ndiff (0,0)–(10,10), and `b` has pdiff (0,0)–(10,10) on the same plane
+- **WHEN** `xor b` is run
+- **THEN** `b` SHALL contain ndiff at (0,0)–(10,10) and no pdiff there
+
+#### Scenario: Several options with magic-compat ON
+- **GIVEN** `magic-compat` ON, an edit cell with a label and an instance of a vendor cell
+- **WHEN** `xor -nolabels -novendor b` is run
+- **THEN** labels SHALL not be copied, and the vendor cell SHALL be flattened into `b` as in Magic
+
+#### Scenario: Several options with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same edit cell
+- **WHEN** `xor -nolabels -novendor b` is run
+- **THEN** labels SHALL not be copied, and the vendor cell SHALL be copied into `b` as an instance
 
 ### Requirement: Random command
 

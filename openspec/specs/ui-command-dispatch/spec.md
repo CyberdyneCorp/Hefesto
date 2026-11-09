@@ -100,8 +100,10 @@ A text command SHALL be dispatched in these steps:
 
 A dispatched command whose argument count is zero SHALL be a no-op.
 
+Magic's `Did you point to the correct window?` message and its `window is grabbing all input` line are unreachable in both of its builds, so Hefesto SHALL NOT print them; the output for an unknown command SHALL be exactly Magic's (see Q-UI-9, resolution: replicate).
+
 Compatibility: behavioral (messages informative)
-(Magic ref: windows/windSend.c:86-352, windows/windSend.c:354-400)
+(Magic ref: windows/windSend.c:86-352, windows/windSend.c:354-400; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-9)
 
 #### Scenario: Unknown command
 - **WHEN** `foo` is typed in a layout window
@@ -145,12 +147,11 @@ A command line SHALL be split into commands and words as follows:
 - An empty command, such as between `;;`, is a no-op.
 
 Limits:
-- Each command SHALL be copied into a 2048-byte buffer before it is split. Text after the first 2047 bytes of the remaining line SHALL be silently dropped (see Q-UI-10).
-- More than 200 words SHALL report `Error: number of command arguments exceeds 200!`, and more than 2048 bytes in total SHALL report `Error: command length exceeds 2048 characters!` (see Q-UI-10).
-- Informative: Magic's non-Tcl build instead reports `Too many arguments.` and then `Unable to completely parse command line '<line>'` for a command reaching 200 words, and drops that command and all later commands on the line, so at most 199 words are accepted.
+- A command line SHALL have no length limit and a command SHALL have no word-count limit, in every mode: no text SHALL be truncated and no length or word-count error SHALL be reported (see Q-UI-10, resolution: fix).
+- Informative: Magic's Tcl build reports `Error: number of command arguments exceeds 200!` for more than 200 words and `Error: command length exceeds 2048 characters!` at 2048 bytes. Its non-Tcl build copies each command into a 2048-byte buffer, silently dropping text after the first 2047 bytes, and reports `Too many arguments.` and then `Unable to completely parse command line '<line>'` for a command reaching 200 words, dropping that command and all later commands on the line. Lifting these limits only turns former errors into successes, so no Magic script or PDK depends on them.
 
 Compatibility: exact
-(Magic ref: utils/parser.c:55-160, textio/txCommands.c:1095-1153, textio/txCommands.c:1491-1594, textio/txcommands.h:38-39)
+(Magic ref: utils/parser.c:55-160, textio/txCommands.c:1095-1153, textio/txCommands.c:1491-1594, textio/txcommands.h:38-39; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-10)
 
 #### Scenario: Two commands with quoting
 - **WHEN** the line `label "a;b" n ; box 0 0 1 1` is parsed
@@ -163,6 +164,11 @@ Compatibility: exact
 #### Scenario: Backslash inside quotes
 - **WHEN** `echo "say \"hi\""` is parsed
 - **THEN** the second word SHALL be `say "hi"`
+
+#### Scenario: Long command lines are not limited
+- **WHEN** a command of 300 words and 5000 bytes is parsed
+- **THEN** it SHALL be dispatched with all 300 words intact
+- **AND** no length or word-count error SHALL be reported
 
 ### Requirement: Interactive keystroke handling
 Keystrokes SHALL be handled as follows in a layout window, outside a pending text-entry line:
@@ -229,8 +235,10 @@ Display names SHALL be:
 - other ASCII characters: themselves
 - named keys: the modifier prefixes `Meta_`, `Control_`, `Capslock_`, `Shift_` (in that order), then `XK_`, then the keysym name
 
+Hefesto SHALL embed the X11 keysym name table, with Magic's `Meta_`/`Control_`/`Capslock_`/`Shift_` prefixes and 16-bit keysym masking, on every platform, and SHALL map each platform's native key codes to it, so that the key names in `.magicrc` and PDK macro files work unchanged (see Q-UI-12, resolution: replicate). Informative: Magic falls back to single-character, `^X` and `0x` names when no X display is open, which matters only for headless golden captures of `macro` listings.
+
 Compatibility: behavioral (key-name strings exact; host keysym mapping [platform], see Q-UI-12)
-(Magic ref: utils/macros.c:514-761, graphics/grTOGL1.c:550-603)
+(Magic ref: utils/macros.c:514-761, graphics/grTOGL1.c:550-603; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-12)
 
 #### Scenario: Control shorthand
 - **WHEN** `macro ^R "clockwise 180"` and `macro Control_r` are both used
@@ -281,21 +289,23 @@ Compatibility: behavioral
 ### Requirement: Script files and source
 `source FILE` SHALL be the `source` command of the scripting interpreter (capability `scripting-api`), as in Magic's Tcl build. Informative: Magic's non-Tcl build registers its own `source` command, which opens FILE through the path `.` and then the system library path, executes it as a command stream, and reports `Couldn't read from FILE.` if the file cannot be opened.
 
-Command files that are read through the command dispatcher SHALL be read with these rules:
-- A physical line ending in `\` + newline SHALL be joined with the next line. The `\` SHALL be kept and only the newline removed (see Q-UI-13).
+Startup files and `source`d files SHALL be read by the scripting interpreter with its standard rules, as in Magic's Tcl build, which is normative (D-7). Command files that Hefesto reads through the command dispatcher SHALL follow the same Tcl line rules:
+- A physical line ending in `\` + newline SHALL be joined with the next line as a standard Tcl continuation: the `\`, the newline and the leading whitespace of the next line SHALL be replaced by a single space (see Q-UI-13, resolution: fix).
 - Lines that are empty, or whose first non-blank character is `#`, SHALL be skipped.
-- A line beginning with a single `:` (not `::`, which is a namespace marker) SHALL have that character removed. Informative: Magic's non-Tcl build removes the first character of any line that begins with `:`, and also when the second character is `;` (see Q-UI-13).
+- A line beginning with a single `:` (not `::`, which is a namespace marker) SHALL have that character removed. There is no special test for a `;` after it.
 - Each remaining line SHALL be parsed as a command line.
+
+Informative: Magic's non-Tcl build reads command files with `txGetFileCommand`, which keeps the `\` of a continuation and removes only the newline, and removes the first character of any line that begins with `:`, also when the second character is `;`. That reader is reached only through the non-Tcl `source` command and non-Tcl startup files, so Hefesto does not reproduce these quirks (see Q-UI-13).
 
 Command lines from scripts SHALL NOT be written to the command log. A point forced by `setpoint` SHALL stay in effect for all later commands of the same script. An interrupt SHALL abort the script with `[Read-in of command file aborted]`. End of file SHALL end the script. End of input on the interactive terminal SHALL print `EOF encountered on input stream -- Magic exiting.` and exit with status 1.
 
 Compatibility: behavioral
-(Magic ref: windows/windCmdSZ.c:363-400, textio/txCommands.c:1364-1438, textio/txCommands.c:1595-1769)
+(Magic ref: windows/windCmdSZ.c:363-400, textio/txCommands.c:1364-1438, textio/txCommands.c:1364-1418, textio/txCommands.c:1595-1769, tcltk/tclmagic.c:1290-1308, utils/main.c:899-1127; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-13)
 
 #### Scenario: Continuation and comments
-- **GIVEN** a script whose lines are `# setup`, `:box 0 0 \`, `10 10`
-- **WHEN** it is read as a command file through the dispatcher
-- **THEN** a single `box` command SHALL run, with argv [`box`, `0`, `0`, `\10`, `10`]
+- **GIVEN** a script whose lines are `# setup`, `box 0 0 \`, `    10 10`
+- **WHEN** it is sourced, or read as a command file through the dispatcher
+- **THEN** a single `box` command SHALL run, with argv [`box`, `0`, `0`, `10`, `10`], whatever the `magic-compat` setting
 
 ### Requirement: Command logging
 `logcommands [start|stop|update|suspend|resume] [FILE]` SHALL control a command log. Keywords SHALL be matched by unique prefix. A non-keyword first argument SHALL be taken as the file name of `start`. With no argument, `logcommands` SHALL stop logging. `logcommands FILE update` SHALL start logging and turn on update mode.
@@ -312,12 +322,12 @@ Logging rules:
 - Commands whose name (after any `::`) starts with `logc`, or is `*bypass` or `setpoint`, SHALL NOT be logged. Neither SHALL `wire show`.
 - Button events SHALL be written as `pushbutton left|middle|right down|up`.
 - In update mode, `updatedisplay` SHALL follow each logged command.
-- Informative: in Magic's non-Tcl build, every logged line except the `box values` line starts with `:` (see Q-UI-14).
+- No logged line SHALL start with `:`; this includes the `#` header and the `view` and `box values` lines, as in Magic's Tcl build, which is normative (D-7). Informative: in Magic's non-Tcl build, every logged line except the `box values` line starts with `:`; Hefesto does not reproduce this (see Q-UI-14, resolution: other, nothing to fix).
 - `suspend` and `resume` SHALL pause and continue logging. `update` SHALL toggle update mode, printing `Forcing display refresh after logged commands.` or `No display refresh after logged commands.`.
 - `stop` SHALL print `Ending command logging to file.`.
 
 Compatibility: exact (log file content); behavioral (messages)
-(Magic ref: windows/windCmdAM.c:917-996, textio/txCommands.c:703-992)
+(Magic ref: windows/windCmdAM.c:917-996, textio/txCommands.c:703-992; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-14)
 
 #### Scenario: Logged quoting
 - **GIVEN** command logging to `log.txt`
@@ -344,20 +354,20 @@ Compatibility: behavioral
 - **THEN** the current tool SHALL receive a left press and release at window pixel (100,120)
 
 ### Requirement: sleep, echo and send
-`sleep N` SHALL pause for N−1 whole seconds when N ≥ 2, and SHALL NOT pause when N ≤ 1 (see Q-UI-15). An interrupt SHALL end the pause early. A wrong argument count SHALL report `Usage: sleep seconds`.
+`sleep N` SHALL pause for N whole seconds, and SHALL NOT pause when N ≤ 0, whatever the `magic-compat` setting. Magic pauses N−1 seconds (none for N ≤ 1); this only changes timing, never output, so Hefesto does not reproduce it (see Q-UI-15, resolution: fix). An interrupt SHALL end the pause early. A wrong argument count SHALL report `Usage: sleep seconds`.
 
-Informative: `echo` and `send` are Magic commands only in its non-Tcl build; in the Tcl build, which is normative, these names belong to the scripting environment. In the non-Tcl build, `echo [-n] words…` prints the words separated by single spaces and then a newline; if the first word is `-n`, the newline is suppressed, and the output starts with a space when more words follow (see Q-UI-15). `send TYPE command…` sends the command to the first window found of client TYPE (unique prefix; hidden clients refused), or with no window if none exists; a wrong usage prints `Usage: send type command` and the list of valid window types.
+Informative: `echo` and `send` are Magic commands only in its non-Tcl build; in the Tcl build, which is normative, these names belong to the scripting environment. In the non-Tcl build, `echo [-n] words…` prints the words separated by single spaces and then a newline; if the first word is `-n`, the newline is suppressed, and the output starts with a space when more words follow. Hefesto does not reproduce this leading space, because `echo` is not a Magic command in the normative Tcl build (see Q-UI-15). `send TYPE command…` sends the command to the first window found of client TYPE (unique prefix; hidden clients refused), or with no window if none exists; a wrong usage prints `Usage: send type command` and the list of valid window types.
 
 Compatibility: behavioral (sleep); informative (echo, send)
-(Magic ref: windows/windCmdSZ.c:319-362, windows/windCmdAM.c:646-688, windows/windCmdSZ.c:1055-1100)
+(Magic ref: windows/windCmdSZ.c:319-362, windows/windCmdAM.c:646-688, windows/windCmdSZ.c:1055-1100; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-15)
 
-#### Scenario: sleep of one second does not pause
+#### Scenario: sleep of one second pauses one second
 - **WHEN** `sleep 1` is executed
-- **THEN** the command SHALL return without pausing
+- **THEN** the command SHALL return after about 1 second
 
-#### Scenario: sleep off-by-one
+#### Scenario: sleep pauses the full count
 - **WHEN** `sleep 3` is executed
-- **THEN** the command SHALL return after about 2 seconds
+- **THEN** the command SHALL return after about 3 seconds
 
 ### Requirement: Command history
 With line-editing support, the command prompt SHALL keep a history of entered lines. History expansion SHALL follow GNU Readline rules. `history [n] [r] [NUM] [help]` SHALL list the last NUM entries, or all entries. Each entry SHALL be printed as tab, the index in `%4d`, a space and the line. `n` SHALL suppress the numbers, `r` SHALL reverse the order, and a zero or non-numeric NUM SHALL print usage. Without line editing there is no history, and the prompt supports only erase-char, kill-line, erase-word, reprint and literal-next.

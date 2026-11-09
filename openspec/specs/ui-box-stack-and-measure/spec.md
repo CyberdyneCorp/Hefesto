@@ -88,10 +88,10 @@ Compatibility: behavioral
 - **THEN** the window SHALL show `a` after the first pop and `top` after the second, each with the view it had before the corresponding push
 
 ### Requirement: Nested redraw suspension
-`suspendall` SHALL, for each layout window that has a window path, increment a per-top-level-frame counter (a frame whose top-level is the root uses the window path itself). When the counter becomes 1, it SHALL issue `<window> updatedisplay suspend`. `resumeall` SHALL decrement each counter. When a counter reaches ≤ 0, it SHALL delete the counter and issue `<window> updatedisplay resume`. If no windowing toolkit is present (`winfo` undefined), both commands SHALL be no-ops. Calls nest: redraw resumes only after as many `resumeall` as `suspendall`. An unmatched `resumeall` raises an error; see Q-SCRIPT-15 for its exact text. While a frame is suspended, toolbar rebuilds for that frame SHALL be skipped.
+`suspendall` SHALL, for each layout window that has a window path, increment a per-top-level-frame counter (a frame whose top-level is the root uses the window path itself). When the counter becomes 1, it SHALL issue `<window> updatedisplay suspend`. `resumeall` SHALL decrement each counter. When a counter reaches ≤ 0, it SHALL delete the counter and issue `<window> updatedisplay resume`. If no windowing toolkit is present (`winfo` undefined), both commands SHALL be no-ops. Calls nest: redraw resumes only after as many `resumeall` as `suspendall`. Any unmatched `resumeall`, including one with no `suspendall` at all, SHALL raise the error `resume called without suspend`, whatever the `magic-compat` setting. Magic unsets the counter when it reaches 0, so its intended message is unreachable and an unmatched `resumeall` fails with Tcl's `can't read "Winopts(...,suspend)": no such element in array`; only the error text differs (see Q-SCRIPT-15, resolution: fix). While a frame is suspended, toolbar rebuilds for that frame SHALL be skipped.
 Compatibility: behavioral
 
-(Magic ref: tcltk/tools.tcl:8-50, tcltk/toolbar.tcl:12-16, doc/html/suspendall.html, doc/html/updatedisplay.html)
+(Magic ref: tcltk/tools.tcl:8-50, tcltk/toolbar.tcl:12-16, doc/html/suspendall.html, doc/html/updatedisplay.html; Hefesto decision: docs/decisions/open-questions/SCRIPT.md#Q-SCRIPT-15)
 
 #### Scenario: Two-level nesting
 - **WHEN** `suspendall; suspendall; resumeall` runs
@@ -102,8 +102,13 @@ Compatibility: behavioral
 - **WHEN** `suspendall` runs
 - **THEN** it SHALL return without error and without effect
 
+#### Scenario: Unmatched resumeall
+- **GIVEN** a layout window with a window path and no pending `suspendall`
+- **WHEN** `resumeall` runs
+- **THEN** it SHALL raise the error `resume called without suspend`
+
 ### Requirement: Ruler annotation
-`ruler ?text? ?orient?` (orient ∈ `auto` (default), `horizontal`, `vertical`) SHALL draw a dimension marker inside the cursor box using drawing elements (see capability `cmd-labels-properties` for the `element` command). Let (llx,lly,urx,ury) be `box values` in the current units, w = urx−llx, h = ury−lly, mmx = (llx+urx)/2 and mmy = (lly+ury)/2, using integer division when the operands are integers. Then:
+`ruler ?text? ?orient?` (orient ∈ `auto` (default), `horizontal`, `vertical`) SHALL draw a dimension marker inside the cursor box using drawing elements (see capability `cmd-labels-properties` for the `element` command). Let (llx,lly,urx,ury) be the box values in internal units, whatever the current `units` setting, w = urx−llx, h = ury−lly, mmx = (llx+urx)/2 and mmy = (lly+ury)/2, using integer division when the operands are integers. Then:
 1. `auto` selects `horizontal` iff w > h, else `vertical`.
 2. Let k be a session counter: 0 for the first ruler, then +1 for each ruler.
 3. Let gap tclr = 4 for horizontal or 2 for vertical when text is non-empty, else 0.
@@ -113,28 +118,40 @@ Compatibility: behavioral
    - `l2_k` gets flag `arrowleft` if llx < mmx1 else `arrowright`; `l3_k` gets `arrowright` if urx > mmx2 else `arrowleft`.
 5. Vertical ruler: symmetric, with lines `l1_k` bottom edge and `l4_k` top edge, `l2_k`/`l3_k` on x = mmx, and flags `arrowbottom`/`arrowtop`.
 6. If tclr > 0, add text element `t_k` at (mmx,mmy) with the text.
-7. All elements are colored `black`. Coordinates are applied as internal units. See Q-SCRIPT-16.
+7. All elements are colored `black`. Coordinates are applied as internal units.
+
+Magic reads `box values` in the current units but draws after `units internal`, so with lambda, micron or user units its ruler is drawn at the wrong scale. Hefesto SHALL read the box in internal units in both `magic-compat` modes, which gives Magic's result in its only correct case (default or internal units); rulers are non-persistent display elements and golden cases use internal units (see Q-SCRIPT-16, resolution: fix).
 Compatibility: exact
 
-(Magic ref: tcltk/tools.tcl:322-425)
+(Magic ref: tcltk/tools.tcl:322-425, dbwind/DBWprocs.c:dbwPrintValue0; Hefesto decision: docs/decisions/open-questions/SCRIPT.md#Q-SCRIPT-16)
 
 #### Scenario: First horizontal ruler with text
 - **GIVEN** units `internal`, box (0,0)-(100,20), and no rulers yet
 - **WHEN** `ruler hello` runs
 - **THEN** the elements SHALL be: `l1_0` line (0,0)-(0,20), `l4_0` (100,0)-(100,20), `l2_0` (0,10)-(46,10) arrowleft, `l3_0` (54,10)-(100,10) arrowright, and text `t_0` at (50,10) `hello`
 
+#### Scenario: Ruler under lambda units
+- **GIVEN** `Λ = 2`, units `lambda`, box (0,0)-(100,20) in internal units, and no rulers yet
+- **WHEN** `ruler hello` runs
+- **THEN** the elements SHALL be the same as in "First horizontal ruler with text", at the same internal-unit coordinates
+
 ### Requirement: Measure and unmeasure
-`measure ?orient?` SHALL compute s = `cif scale out`, the box values in the current units, and the orientation as for `ruler`. It SHALL set text = `format "%g um" (s × w)` for horizontal or `(s × h)` for vertical, then call `ruler text orient`. See Q-SCRIPT-17 for the dependence on the current units.
+`measure ?orient?` SHALL compute s = `cif scale out` (microns per internal unit), the box values in internal units whatever the current `units` setting, and the orientation as for `ruler`. It SHALL set text = `format "%g um" (s × w)` for horizontal or `(s × h)` for vertical, then call `ruler text orient`. Magic multiplies box values in the current units by s, so its label is wrong for every non-internal unit setting; measuring in internal units gives the same text as Magic in Magic's only correct case (default or internal units), in both `magic-compat` modes (see Q-SCRIPT-17, resolution: fix).
 
 `unmeasure` SHALL list the elements in the box (`element inbox`) and collect ruler indices: from names matching regex `l[1-4]_[0-9]`, take the text from position 3; from names matching `t_[0-9]`, take the text from position 2. Matching is unanchored. It SHALL de-duplicate the indices and delete `t_k`, `l1_k`, `l2_k`, `l3_k` and `l4_k` for each.
 Compatibility: exact
 
-(Magic ref: tcltk/tools.tcl:427-486, doc/html/measure.html, doc/html/unmeasure.html)
+(Magic ref: tcltk/tools.tcl:427-486, doc/html/measure.html, doc/html/unmeasure.html; Hefesto decision: docs/decisions/open-questions/SCRIPT.md#Q-SCRIPT-17)
 
 #### Scenario: Measure text
 - **GIVEN** units `internal` and the box (0,0)-(250,10), with `cif scale out` = 0.01
 - **WHEN** `measure` runs
 - **THEN** the ruler text SHALL be `2.5 um` and the orientation horizontal
+
+#### Scenario: Measure under micron units
+- **GIVEN** units `microns`, the box (0,0)-(250,10) in internal units, and `cif scale out` = 0.01
+- **WHEN** `measure` runs
+- **THEN** the ruler text SHALL be `2.5 um`
 
 #### Scenario: Unmeasure removes the whole ruler
 - **GIVEN** ruler index 3 exists inside the box

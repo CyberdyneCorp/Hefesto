@@ -92,18 +92,27 @@ Compatibility: behavioral
 
 ### Requirement: History limit
 
-The system SHALL retain at least the 1000 most recent completed steps; when a new step boundary makes the number of retained steps exceed 1000 the oldest steps SHALL be discarded.
+The system SHALL retain the L most recent completed steps, where L is the undo history limit; when a new step boundary makes the number of retained steps exceed L the oldest steps SHALL be discarded. L SHALL be a user setting with Magic's value, 1000, as its default, in both `magic-compat` modes. A value below 1000 SHALL be rejected and the setting SHALL keep its previous value, so Hefesto never retains fewer steps than Magic. No script can observe the limit beyond running out of undo steps, so a larger setting changes no output (see Q-MODEL-21, resolution: other).
 Compatibility: behavioral
 
-- Magic's limit is fixed at 1000 steps. Hefesto MAY allow a larger configurable limit but SHALL NOT retain fewer than 1000 by default (Q-MODEL-21).
+- Magic's limit is fixed at 1000 steps.
 - Magic additionally supported an undo log file (unused); Hefesto need not.
 
-(Magic ref: utils/undo.c:46-59,546-547,811-836)
+(Magic ref: utils/undo.c:46-59,546-547,811-836; Hefesto decision: docs/decisions/open-questions/MODEL.md#Q-MODEL-21)
 
 #### Scenario: 1001st command
-- **GIVEN** 1001 consecutive paint commands
+- **GIVEN** the default undo history limit and 1001 consecutive paint commands
 - **WHEN** `undo` is executed 1001 times
-- **THEN** at least the last 1000 commands SHALL have been undone and the first paint MAY remain
+- **THEN** the last 1000 commands SHALL have been undone and the first paint SHALL remain
+
+#### Scenario: Larger configured limit
+- **GIVEN** the undo history limit set to 2000 and 1500 consecutive paint commands
+- **WHEN** `undo` is executed 1500 times
+- **THEN** all 1500 commands SHALL have been undone
+
+#### Scenario: Limit below Magic's is rejected
+- **WHEN** the undo history limit is set to 500
+- **THEN** the change SHALL be rejected and the limit SHALL stay at its previous value
 
 ### Requirement: undo command
 

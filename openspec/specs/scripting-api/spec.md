@@ -125,11 +125,11 @@ Compatibility: exact
 
 ### Requirement: Command status and error signalling
 A Magic command invoked from a script SHALL return error status only when dispatch itself fails:
-- more than 200 arguments, with the message `Error: number of command arguments exceeds 200!` on the error stream;
-- the arguments joined with separators reach 2048 characters, with the message `Error: command length exceeds 2048 characters!`;
 - the command is not valid for the window client that receives it;
 - the command name is ambiguous;
 - an input grab is in effect.
+
+Magic's Tcl build also fails dispatch for more than 200 arguments (`Error: number of command arguments exceeds 200!`) and for arguments that, joined with separators, reach 2048 characters (`Error: command length exceeds 2048 characters!`). Hefesto has no such limits in any mode, so these are not dispatch failures (capability `ui-command-dispatch`, requirement "Command line splitting and quoting"; Q-UI-10, resolution: fix).
 
 When dispatch fails through the script namespace, the diagnostic messages SHALL be suppressed (quiet dispatch), and the error result SHALL be empty unless a tag callback sets it.
 
@@ -363,7 +363,7 @@ The following commands SHALL return these results. "dist" means a value formatte
 - `instance list celldef|exists|self <i>` → name, or empty if `<i>` is not found in the edit cell. A name containing `/` is resolved hierarchically.
 - `instance list children <i>` → list. `instance list orientation` → one of `0 90 180 270 0h 90h 180h 270h`, or `N E S W FN FE FS FW` with `-def`. `instance list abutment` → `{llx lly urx ury}` (dist; from FIXED_BBOX if present, else the bounding box, transformed to the parent).
 - `what -list` → three lists: `{paint-types} {labels} {cells}`. Each label is `{text type cellname-or-{}}`. Each cell is `{use-id def-name}`.
-- `array -list count` → `{xlo xhi ylo yhi}` (integers) for each selected use; the last selected use wins. `array -list pitch` → `{xsep ysep}` (dist). `array -list position` → `{x y}` (dist).
+- `array -list count` → `{xlo xhi ylo yhi}` (integers) per use. `array -list pitch` → `{xsep ysep}` (dist). `array -list position` → `{x y}` (dist). With `magic-compat` ON the result is the flat list of the last use reported, as in Magic; with it OFF it is a list with one such sublist per selected array use (capability `cmd-selection`, requirement "Array command"; Q-CMDEDIT-63).
 - `getcell <name> ...` → the new instance id.
 - `goto <label>` → the long name of the tile type under the label, or empty if not found.
 - `port first` → lowest port index among ports, or -1. `port last` → the highest index among ALL labels, ports or not (Q-SCRIPT-6). `port <ref> next` → the next higher port index, or -1. `port <ref> name` → label text. `port <ref> index` → integer. `port <ref> exists` → boolean. `port <ref> class|use|shape` → keyword. A trailing `-quiet` suppresses "not found" diagnostics and yields an empty result.
