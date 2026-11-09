@@ -32,6 +32,7 @@ being read (an included file while inside an `include`).
 | `TECH-FILE-003` | error | A partial section reload was requested with no technology file loaded. |
 | `TECH-GRID-001` | error | `scalegrid` usage error (a and b must be strictly positive integers). |
 | `TECH-GRID-002` | error | The grid scaling is finer than the limit set by the CIF output style. |
+| `TECH-GRID-003` | info | The internal grid scale after `scalegrid` (`<I> Magic internal units = <L> Lambda`). |
 | `TECH-INCLUDE-001` | error | An `include` file was not found; the include line is discarded and the load fails. |
 | `TECH-INCLUDE-002` | warning | An `include` file was found only without the technology suffix (magic-compat off). |
 | `TECH-LINE-001` | error | A section line was rejected; the section is flagged and the load fails. |

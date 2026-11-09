@@ -46,13 +46,18 @@ Compatibility: native
 ### Requirement: Layer colors come from the PDK, not the theme
 The layout and 3D canvases SHALL draw layers with the colors, stipples and outlines of the PDK display styles (capabilities `display-style-files` and `hefesto-rendering`). Theme tokens SHALL NOT recolor layers. On the canvas:
 - selection SHALL be drawn in white (solid outline, with a dashed bounding box)
-- the box SHALL be drawn in white dashes
+- the box SHALL be drawn as capability `ui-windows-and-views` requirement "Box display" specifies (Magic's solid box in the display styles' highlight colors, white in Magic's styles); that requirement takes precedence over the reference mockups' dashed box
 
 Neither SHALL use a hue that could be confused with a layer. The ember accent SHALL be used for actions, focus and the active tool, and SHALL NOT be used for canvas geometry.
 
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-23)
+
+#### Scenario: Box drawn as in Magic
+- **GIVEN** the display styles of Magic's `mos` style file, where the solid-highlights style is white
+- **WHEN** a box larger than 4 × 4 pixels is shown over the edit cell
+- **THEN** it SHALL be drawn with solid white sides 2 pixels wide, not dashed
 
 #### Scenario: Selected wire on an orange-colored layer
 - **GIVEN** a PDK whose metal3 display style is orange
@@ -138,6 +143,8 @@ The main screens SHALL follow the structure of the reference mockups:
 
 Changes to these patterns SHALL be made in the design artifact first, and then reflected here.
 
+The desktop window SHALL NOT be made smaller than 1024 × 640 logical pixels, and at every width down to that minimum every enabled control of the desktop layout editor SHALL stay visible and reachable. When the top bar does not fit, it SHALL hide, in this order and only as far as needed: the disabled actions of later milestones, the DRC and LVS status chips, and then the editor-view tabs.
+
 Compatibility: native
 
 (Hefesto decision: docs/decisions/product.md#P-23)
@@ -145,3 +152,8 @@ Compatibility: native
 #### Scenario: New screen
 - **WHEN** a new major screen is designed
 - **THEN** a board SHALL be added to the design artifact, and a bullet to this requirement, before implementation starts
+
+#### Scenario: Top bar at the minimum window size
+- **GIVEN** the desktop window at 1024 × 640
+- **WHEN** the top bar is laid out
+- **THEN** the Open and PDKs buttons SHALL be fully visible, and the bar's content SHALL NOT be wider than the window

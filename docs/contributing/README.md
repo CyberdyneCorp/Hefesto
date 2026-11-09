@@ -35,6 +35,7 @@ ctest --preset macos-debug                 # everything registered with CTest
 ctest --preset macos-debug -L unit         # Catch2 unit tests only
 ctest --preset macos-debug -L golden       # golden replay of captured cases
 ctest --preset macos-debug -L golden-tools # unit tests of the golden comparators
+ctest --preset macos-debug -LE network     # everything except the PDK download test
 ctest --preset macos-debug -R 'Magic string hash'   # by test name
 ```
 
@@ -57,7 +58,7 @@ python3 scripts/check_requirement_coverage.py --milestone M0 --classes exact,beh
 
 The report also lists tags that name no existing requirement, which usually means a typo in the requirement name.
 
-Each M1 area (`tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`) builds one executable `hefesto_<area>_tests` from every `*_test.cpp` in `tests/unit/<area>/`, so a new test file needs no CMake edit (reconfigure picks it up). Header-only helpers shared by several areas live in `tests/unit/common/` (for example `reference_data.hpp`, which locates the pinned PDK and Magic data of `scripts/fetch_pdk.py`). Tests that need that data skip when it is absent.
+Each M1 area (`tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`) builds one executable `hefesto_<area>_tests` from every `*_test.cpp` in `tests/unit/<area>/`, so a new test file needs no CMake edit (reconfigure picks it up). Header-only helpers shared by several areas live in `tests/unit/common/` (for example `reference_data.hpp`, which locates the pinned PDK and Magic data of `scripts/fetch_pdk.py`). Tests that need that data skip when it is absent. The PDK install test over the network is a separate executable, `hefesto_pdk_network_tests`, with the label `network` instead of `unit`; `HEFESTO_SKIP_NETWORK_TESTS=1` makes it skip, and CI runs it on one leg only.
 
 ### Diagnostic codes
 
@@ -70,11 +71,13 @@ Golden cases compare `hefesto-cli` output with output captured from the pinned r
 - Replaying never needs the reference tools: `ctest -L golden` runs `hefesto-cli` on each captured case and compares with the canonical comparators.
 - Capturing (regenerating `expected/`) runs the reference tools in the pinned container, built only in CI by the capture workflow (`.github/workflows/golden-capture.yml`). On a pull request that adds or edits a `case.toml` or its `input/`, the workflow verifies the captured cases and captures every case without `expected/`; the new `expected/` directories come back as the `golden-expected` artifact, to review and commit. A manual run (`workflow_dispatch`) takes `mode` (`both`, `verify`, `capture`) and an optional list of cases. Do not edit files in `expected/` by hand.
 - Cases compared with Magic's console (`tool = "magic"`) run `hefesto-cli --diagnostics=magic`, and each command line of `commands.hef` matches one `puts` line of `commands.tcl`; the `magic-console` comparator drops Magic's startup preamble (`tools/golden/compare/magic_console.py`).
+- Masks (`tools/golden/compare/masks.py`) remove fields that never match by design: time stamps, and Magic output of features outside the milestone (`magic-tech-sections`: Magic's cifinput/cifoutput/extract messages at `tech load`; `mag-checkpaint`: the DRC check areas Magic writes into `.mag` files). The authoring generator adds both to every M1 case.
+- A case whose Magic output shows behavior Hefesto deliberately does not reproduce (a Magic bug fixed under decision X-2, or another resolved open question) is listed in `tests/golden/deviations.toml` with its decisions and the outputs allowed to differ. Replay reports it as a skipped DEVIATION; it fails if any other output differs, or if it starts to pass (then remove the entry). Never list a case there for a Hefesto bug.
 - CI runs the golden suite on every leg and fails if any platform's output differs from Linux x86_64, except for documented time-dependent fields (requirement "Cross-platform determinism checks").
 
 ### Fuzzing
 
-Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirement "Parser fuzzing"): the command-script reader, technology files, `.mag` cells, `.dstyle`, `.cmap`, glyph files, outline fonts, `hefesto.project`, the PDK catalog and manifests, and tar unpacking. libFuzzer needs LLVM Clang on Linux; Apple Clang does not ship it, so on macOS use the `macos-asan` preset for sanitizer coverage instead. Without `HEFESTO_BUILD_FUZZ`, every target is still built with a replay driver (`tests/fuzz/standalone_main.cpp`) and its seed corpus runs once as the CTest `fuzz-seeds.<target>` (label `fuzz-seeds`), on every platform.
+Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirement "Parser fuzzing"): the command-script reader, technology files, `.mag` cells, `.dstyle`, `.cmap`, glyph files, outline fonts, `hefesto.project`, the PDK catalog and manifests, tar unpacking, offline pack manifests and install progress text, crash backup and archive files, and the recent-projects list. libFuzzer needs LLVM Clang on Linux; Apple Clang does not ship it, so on macOS use the `macos-asan` preset for sanitizer coverage instead. Without `HEFESTO_BUILD_FUZZ`, every target is still built with a replay driver (`tests/fuzz/standalone_main.cpp`) and its seed corpus runs once as the CTest `fuzz-seeds.<target>` (label `fuzz-seeds`), on every platform.
 
 ```sh
 cmake --preset linux-fuzz

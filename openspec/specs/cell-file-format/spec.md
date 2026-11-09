@@ -507,7 +507,7 @@ Compatibility: exact
 - `<type>` is matched against `string`, `integer`, `dimension`, `double` by case-insensitive unique-prefix lookup. A token that matches none, or is ambiguous (for example `d`), ends the section and is processed as a body line.
 - A matching record with fewer than three fields prints `Skipping bad property line: <line>` and is skipped. This means a property with an empty value cannot be read (see Q-CELL-7).
 
-**Long values.** If the value fills the line buffer (2047 characters), further 2047-character chunks are appended until a chunk ends before its buffer is full. End of file during a chunk ends the section and discards the partial property.
+**Long values.** If the value fills the line buffer (2047 characters), further 2047-character chunks are appended until a chunk ends before its buffer is full. End of file during a chunk ends the section and discards the partial property. Magic keeps the LF of the last chunk in the value. Hefesto SHALL NOT: the value ends before the LF whatever its length (see Q-CELL-42).
 
 **Typed values.**
 - `integer`: whitespace-separated integers (base auto-detected, as in C `strtol` with base 0, when validating; stored using decimal `%d` parsing). Stored unscaled.

@@ -343,3 +343,11 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate | fix (reject such names at creation)
 - Recommendation: Reject whitespace in cell names, ids and paths, and newlines in labels and properties, at the editing layer.
 - Resolution: fix — names that cannot round-trip are refused when created: whitespace in cell names, instance ids and paths, and newlines in label texts and property values (X-2 tier 3, D-5, approved 2026-11-07, 2026-11-07).
+
+### Q-CELL-42: Long property values keep the line feed of their last chunk
+- Kind: bug
+- Magic behavior: when a property value fills the 2048-byte line buffer, the reader appends further chunks read with `dbFgets`, which keeps the line feed. The last chunk's LF is never removed, so the value gains a trailing newline. `property <key>` then prints the extra line, and the writer emits it before its own LF, producing an empty line in the `.mag` file; Magic reads that empty line back as a format error (Q-CELL-1). Each round trip changes the file. Shown by golden case CELL-RD-21 (a 5000-character value).
+- Evidence: database/DBio.c:3256-3295, database/DBio.c:4188-4214
+- Options: replicate | fix (strip the LF of the last chunk)
+- Recommendation: fix. The value read is the value written; values shorter than the buffer are unaffected.
+- Resolution: fix — data corruption on every round trip (X-2 tier 1, "data loss"): the LF that ends the line is not part of the value, whatever its length (recorded 2026-11-09 from the CELL-RD-21 capture).

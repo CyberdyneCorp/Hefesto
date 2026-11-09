@@ -96,10 +96,30 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `--theme dark\|light` | the UI theme (dark by default; the canvas stays dark in both) |
 | `--width PX`, `--height PX` | the initial window size |
 | `--console` | open the Console panel (command output) at startup |
+| `--run 'CMD; CMD ...'` | run these commands once the canvas has its size (after startup), e.g. `--run 'see no metal1; zoom 2'` |
 | `--pdk-manager` | open the PDK manager panel at startup |
 | `--capture FILE.ppm [--capture-frames N]` | render N frames (default 1), write the window to a PPM file and exit (screenshot checks of `docs/design/m1-ui-conformance.md`) |
 | `--no-vsync`, `--validation` | presentation without vsync; Vulkan validation layers |
 | `--rects N`, `--seed N`, `--bench-frames N`, `--bench-output FILE`, `--smoke-frames N`, `--expect-window-system` | benchmark and smoke-test modes (`docs/spikes/canvas-spike.md`, CI window tests) |
+
+The desktop installs the same host services as `hefesto-cli` (`src/platform_posix`: POSIX file locks, the crash-backup file host, the process runner for `curl`): a session holds a lock on its crash-backup file, `crashbackups` saves periodically, SIGTERM and SIGHUP save a backup before exiting, a normal exit removes it, and `-r` (or `crash recover`) restores the newest backup whose session is gone.
+
+### Managing PDKs
+
+The `pdk` command (both front ends; capability `hefesto-pdk-manager`) manages the installs under the PDK root:
+
+| Command | Meaning |
+|---|---|
+| `pdk list` | installed versions; the columns include the disk size and the projects (from the recent-projects list) that pin each version |
+| `pdk remote FAMILY ?-prereleases?` | versions available from the catalog |
+| `pdk install VARIANT ?VERSION\|latest? ?-lib NAME ...? ?-enable? ?-progress?` | download, verify (SHA-256) and unpack; `-progress` reports `PDK-PROGRESS-001` diagnostics (`phase=… part=i/n bytes=… total=… asset=…`) for a front end's progress bar |
+| `pdk updates ?-auto?` | newer stable versions of the installed families; `-auto` checks at most once a day and only when the setting `pdk-update-check` is on (default) |
+| `pdk uninstall FAMILY VERSION ?-force?` | refused with `PDK-UNINSTALL-001` while a recent project pins the version, unless forced |
+| `pdk export FAMILY VERSION ?-to DIR?` | write an offline pack (`pack.json` and the assets) |
+| `pdk import PACK ?-accept-unverified? ?-progress?` | install from an offline pack without network access; every asset is verified, and the install is recorded as unverified (packs are not signed yet) |
+| `pdk enable`, `pin`, `info`, `remove-library`, `root` | see the usage that `pdk` prints without arguments |
+
+Downloads use the system `curl` through the process runner; `GITHUB_TOKEN`, when set, is passed for the GitHub API.
 
 ## Reference data for tests
 
@@ -113,8 +133,11 @@ python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
 - `pdk`: the sky130A test subset of open_pdks at ciel version `0fe599b2afb6708d281543108caf8310912f54af` (`libs.tech/magic/` and `libs.ref/sky130_fd_sc_hd/mag/`), installed into `.cache/pdks/ciel/sky130/versions/<pin>/` by `hefesto-cli`'s own `pdk install` (about 134 MB downloaded, 6.5 MB kept) and verified against a pinned tree digest. Tests use only this exact version (`tests/unit/common/reference_data.hpp`), never another installed one.
 - `magic-ref`: a sparse, shallow checkout of Magic at `fc5daa9e` into `build/ref/magic` with only `scmos/` and `graphics/` (display styles, color maps, glyphs, the `.pt3` fonts, the scmos tech sources; about 4 MB). A full clone (`git clone https://github.com/RTimothyEdwards/magic build/ref/magic && git -C build/ref/magic checkout fc5daa9e`) works too and is what reading Magic's sources for porting needs.
 - `scmos.tech` is generated from `build/ref/magic/scmos` at configure time (`tests/data/tech/generate_scmos.cmake`, run by `tests/unit/tech/CMakeLists.txt`), so fetch `magic-ref` before configuring, or reconfigure afterwards.
+- Golden replay (`ctest -L golden`, `tools/golden/replay.py`) takes the outline fonts that `flabel` cases need from `build/ref/magic/graphics/` (`magic-sys` external inputs) and runs `hefesto-cli` with its own `CAD_ROOT`, so a `CAD_ROOT` set in your shell does not change the results; cases whose data is missing are skipped.
 
 Run one step with `scripts/fetch_pdk.py pdk` or `scripts/fetch_pdk.py magic-ref`; both are no-ops once the data is present and verified. CI runs them in the `build` job behind `actions/cache`, keyed on `scripts/fetch_pdk.py` (where the pins live).
+
+The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only.
 
 ## Dependencies and offline rebuilds
 
@@ -131,11 +154,12 @@ cmake --build --preset macos-debug
 |---|---|
 | `src/core/` | `hefesto_core`: layout database, algorithms, command API, diagnostics; no UI, GPU or process APIs |
 | `src/cli/` | `hefesto-cli`, the headless tool used by batch flows and golden tests |
+| `src/platform_posix/` | `hefesto_platform_posix`: POSIX host services the core must not contain (file locks, crash-backup file host, process runner); linked by the CLI and the desktop on Linux and macOS |
 | `src/render/vulkan/` | `hefesto_render_vk`, the Vulkan canvas renderer (desktop) |
 | `src/shell/desktop/` | `hefesto_shell_desktop` and the `hefesto` app; the only code that uses Raven |
 | `tests/unit/` | Catch2 unit tests, tagged with the capability and requirement they cover |
 | `tests/fuzz/` | libFuzzer targets (one per external-input reader) and their seed corpora in `corpus/<target>/` |
-| `tests/golden/` | golden-case inventories and captured cases |
+| `tests/golden/` | golden-case inventories, captured cases and the documented deviations (`deviations.toml`) |
 | `tools/golden/` | reference-tool container, capture runner and comparators |
 | `bench/canvas/` | canvas benchmark |
 

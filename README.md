@@ -7,9 +7,9 @@
 
 It is **data-compatible with [Magic VLSI](https://github.com/RTimothyEdwards/magic)**. Hefesto reads and writes the same files as Magic, and produces the same DRC results, GDS and netlists. So the open PDKs, sky130, gf180mcu and IHP sg13g2, work unchanged.
 
-> **Status: M0 (foundations) merged, with the Raven go/no-go still provisional; M1 (core model, formats, 2D viewer) in progress.**
+> **Status: M0 (foundations) merged, with the Raven go/no-go still provisional; M1 (core model, formats, 2D viewer) implemented, with its exit verification in progress.**
 > - **Specs:** 169 capabilities and 1,979 requirements. Milestones M0 and M1 pass the readiness gate.
-> - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (the sky130 standard-cell library round-trips byte-identical except two cells still under review), loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2) and starts up like Magic. `hefesto-cli` runs all of it; the desktop app shows the Desktop-Layout screen of the forge design system over Raven and the Vulkan canvas. Golden comparison with Magic waits for the first CI capture. Build instructions: [`docs/building.md`](docs/building.md).
+> - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (all 441 sky130 standard cells round-trip byte-identical), keeps crash backups and file locks like Magic, loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2; with progress, update checks and offline packs) and starts up like Magic. `hefesto-cli` runs all of it; the desktop app shows the Desktop-Layout screen of the forge design system over Raven and the Vulkan canvas. All 142 golden cases are captured from Magic: 122 match, 16 differ only where a documented decision says so ([`tests/golden/deviations.toml`](tests/golden/deviations.toml)), and 4 still fail on open bugs. Build instructions: [`docs/building.md`](docs/building.md).
 > - **Raven go/no-go:** provisional "GO, conditional"; see [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md).
 > - **Screenshots:** the images below are design mockups, not running software.
 
@@ -123,7 +123,7 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 | Milestone | Theme | Release |
 |---|---|---|
 | M0 | Foundations, Raven go/no-go, golden capture from Magic (merged; go/no-go provisional) | |
-| M1 | Core model, tech and `.mag` files, PDK manager, 2D viewer (in progress) | |
+| M1 | Core model, tech and `.mag` files, PDK manager, 2D viewer (implemented; exit verification in progress) | |
 | M2 | Interactive editing and design system | |
 | M3 | Design rule checking | |
 | M4 | Scripting and PDK integration | Desktop Alpha |
