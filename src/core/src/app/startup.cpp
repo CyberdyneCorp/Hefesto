@@ -154,12 +154,19 @@ class Startup {
   // Search paths: the project's (relative to its folder) and the library path.
   void configure_paths() {
     state_.path_variables.install_root = env_.install_root;
-    state_.path_variables.variable = [this](std::string_view name) -> std::optional<std::string> {
-      if (auto value = host_.environment(name)) {
-        return value;
+    // The lookup outlives this Startup object (later `load` and `path`
+    // commands use it), so it captures only the caller-owned host and values,
+    // never `this`.
+    pdk::InstallHost* const host = env_.host;
+    const Path install_root = env_.install_root;
+    state_.path_variables.variable = [host, install_root](std::string_view name) -> std::optional<std::string> {
+      if (host != nullptr) {
+        if (auto value = host->environment(name)) {
+          return value;
+        }
       }
-      if (name == "CAD_ROOT" && !env_.install_root.empty()) {
-        return env_.install_root.string();
+      if (name == "CAD_ROOT" && !install_root.empty()) {
+        return install_root.string();
       }
       return std::nullopt;
     };

@@ -306,3 +306,15 @@ TEST_CASE("an explicit PDK root becomes the session pdk-root setting",
   CHECK(root->value == (s.dir.path() / "pdks").string());
   CHECK(root->layer == app::SettingLayer::session);
 }
+
+// Regression: the path-variable lookup captured the temporary startup object,
+// so a `load` after startup crashed the desktop app (use after scope).
+TEST_CASE("path variables still resolve after startup returns", "[cap:app-startup][req:Startup file order]") {
+  Session s;
+  s.env.install_root = s.dir.path() / "cad";
+  REQUIRE(s.start({}).ok());
+  const auto cad_root = s.editor.path_variables.get("CAD_ROOT");
+  REQUIRE(cad_root.has_value());
+  CHECK(*cad_root == (s.dir.path() / "cad").string());
+  CHECK_FALSE(s.editor.path_variables.get("HEFESTO_UNSET_VARIABLE").has_value());
+}

@@ -107,7 +107,8 @@ struct StartupEnvironment {
   platform::Path home;
   platform::Path working_directory;
   /// Environment variables (PDK_ROOT, PDKPATH, path expansion) and symbolic
-  /// links; nullptr = none (iPadOS, tests without a host).
+  /// links; nullptr = none (iPadOS, tests without a host). Must outlive the
+  /// session: the editor's path-variable lookup keeps using it.
   pdk::InstallHost* host = nullptr;
   std::optional<platform::Path> project_folder;     // folder with hefesto.project
   std::optional<platform::Path> user_preferences;   // preferences JSON (user layer)
