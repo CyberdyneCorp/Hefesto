@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <array>
 #include <string_view>
 #include <vector>
 
@@ -55,18 +56,26 @@ void status_bar(ui::Painter& p, float w, float h, const StatusBarText& text, con
                 const ThemeTokens& t);
 void fill_rect(ui::Painter& p, float w, float h, const Rgba& c);
 
-/// What the canvas overlay draws on top of the layout (rulers, labels,
-/// subcell outlines, box, zoom control, minimap).
+/// What the canvas overlay draws on top of the layout (rulers, bitmap label
+/// text, subcell names, the box, zoom control, minimap). Everything that is
+/// layout geometry (fills, outlines, contact crosses, triangles, glyphs of
+/// font labels, label rectangles, cell boxes) is drawn by the renderer.
 struct OverlayState {
   render::Camera camera;
   double pixel_ratio = 1.0;
   double fit_pixels_per_unit = 0.0;
   UnitScale scale;
   std::optional<db::Rect> box;
+  /// The edit cell's bounding box in root coordinates when the window shows
+  /// it (medium highlights for a box outside it, "Box display").
+  std::optional<db::Rect> edit_bbox;
+  /// Colors of the highlight styles 1 (box), 2 (medium) and 6 (outline
+  /// highlights) from the display styles: white in Magic's styles.
+  std::array<Rgba, 3> highlight{Rgba{1.0F, 1.0F, 1.0F, 1.0F}, Rgba{1.0F, 1.0F, 1.0F, 1.0F},
+                                Rgba{1.0F, 1.0F, 1.0F, 1.0F}};
   db::Rect bounds;  // the root cell's bounding box (minimap); null: empty
-  std::vector<display::SceneLabel> labels;
+  std::vector<display::SceneLabel> labels;  // bitmap label text (glyphs of font labels are on the GPU)
   std::vector<display::SceneCell> cells;
-  std::vector<display::SceneLayer> crosses;  // layers drawn with a `cross` style (contacts)
   std::string empty_hint;  // shown when nothing is loaded
 };
 

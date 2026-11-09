@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -151,7 +152,12 @@ TEST_CASE("hierarchy rows expand and unexpand through core commands on the box",
   const auto collapsed = hierarchy_rows(top, [](const db::CellUse&) { return false; });
   REQUIRE(collapsed.size() == 2);
   CHECK(collapsed[0].toggle_command().empty());  // the root is always expanded
-  CHECK(collapsed[1].toggle_command() == "box values 100i 200i 150i 260i; expand surround");
+  // Expanding opens one level: the child (L1, at 100,200 in root coordinates) is unexpanded again.
+  CHECK(collapsed[1].toggle_command() ==
+        "box values 100i 200i 150i 260i; expand surround; box values 100i 200i 110i 220i; unexpand surround");
+  CHECK(collapsed[1].toggle_command(db::Rect{0, 0, 5, 5}) ==
+        "box values 100i 200i 150i 260i; expand surround; box values 100i 200i 110i 220i; unexpand surround; "
+        "box values 0i 0i 5i 5i");
 
   const auto open = hierarchy_rows(top, [x1](const db::CellUse& u) { return &u == x1; });
   REQUIRE(open.size() == 3);
@@ -345,11 +351,36 @@ TEST_CASE("hierarchy rows keep their suffix visible", "[cap:hefesto-app-ux][req:
   CHECK(rows[2].suffix == " (C1)");
 
   const HierarchyRowLayout narrow = hierarchy_row_layout(rows[1], 150.0F, monospace);
-  CHECK(narrow.name == "▸ sky130_fd…");  // 12 code points + the 3-code-point suffix fit 150
+  // Regression: the tail ellipsis kept only the shared library prefix
+  // ("▸ sky130_fd…"); the middle goes now, so the distinct tail shows.
+  CHECK(narrow.name == "▸ s…_nand2_2");  // 12 code points + the 3-code-point suffix fit 150
   CHECK(narrow.suffix_x == 120.0F);
   const HierarchyRowLayout wide = hierarchy_row_layout(rows[1], 1000.0F, monospace);
   CHECK(wide.name == "▸ sky130_fd_sc_hd__nand2_2");
   CHECK(wide.suffix_x == monospace(wide.name));
+  CHECK(wide.suffix == " ×2");
+
+  // Regression: a long instance id ellipsized the whole name to "…"; the
+  // name now keeps half the row and the id is ellipsized instead.
+  db::CellDef top2("top2", 4);
+  add_use(top2, conb, "sky130_fd_sc_hd__conb_1_0");
+  const auto long_id = hierarchy_rows(top2, [](const db::CellUse&) { return false; });
+  const HierarchyRowLayout l = hierarchy_row_layout(long_id[1], 200.0F, monospace);
+  CHECK(monospace(l.name) >= 90.0F);
+  CHECK(l.name.starts_with("▸ "));
+  CHECK(l.name.ends_with("conb_1"));
+  CHECK(monospace(l.name) + monospace(l.suffix) <= 200.0F);
+  CHECK(l.suffix.find("…") != std::string::npos);
+  CHECK(l.suffix.ends_with("_1_0)"));  // the distinct end of the id stays
+}
+
+TEST_CASE("sky130 rows that share the library prefix stay distinct when narrow",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  CHECK(ellipsize_middle("sky130_fd_sc_hd__nand2_1", 120.0F, monospace) == "sky…_nand2_1");
+  CHECK(ellipsize_middle("sky130_fd_sc_hd__nor2_1", 120.0F, monospace) == "sky…__nor2_1");
+  CHECK(ellipsize_middle("inv_1", 120.0F, monospace) == "inv_1");
+  CHECK(ellipsize_middle("abcdef", 5.0F, monospace) == "…");
+  CHECK(ellipsize_middle("", 0.0F, monospace).empty());
 }
 
 // Regression: a group with only some instances expanded showed ▸ like a
@@ -433,4 +464,31 @@ TEST_CASE("the box shows only in the window of its root cell", "[cap:hefesto-app
   CHECK_FALSE(visible_box(box, &old_cell, &new_cell).has_value());
   CHECK(visible_box(box, nullptr, &new_cell) == box);  // no root recorded: the edit cell's
   CHECK_FALSE(visible_box(std::nullopt, &new_cell, &new_cell).has_value());
+}
+
+TEST_CASE("a command line's status uses one format for raised problems",
+          "[cap:hefesto-design-system][req:Status is never color-only]") {
+  // Regression: a failed line read "■ Unrecognized layer…" while a problem
+  // raised by a successful line read "■ error: CODE: …".
+  const LineStatus error{StatusKind::error, "■ error: DB-PAINT-001: Unrecognized layer: q"};
+  CHECK(command_line_status(false, "Unrecognized layer: q", error).text == error.text);
+  CHECK(command_line_status(true, "ok", error).text == error.text);
+  const LineStatus warning{StatusKind::warning, "▲ warning: X-1: careful"};
+  CHECK(command_line_status(true, "ok", warning).kind == StatusKind::warning);
+  const LineStatus failed = command_line_status(false, "failed", warning);  // a warning never hides the failure
+  CHECK(failed.kind == StatusKind::error);
+  CHECK(failed.text == "■ failed");
+  CHECK(command_line_status(true, "ok", std::nullopt).text == "● ok");
+}
+
+TEST_CASE("the top bar hides groups only as far as needed",
+          "[cap:hefesto-design-system][req:Screen patterns follow the reference mockups]") {
+  // Regression: at the 1024 px minimum window the PDKs button was cut off and
+  // the later buttons were not visible.
+  const std::vector<float> groups = {290.0F, 230.0F, 330.0F};  // deferred actions, chips, view tabs
+  CHECK(top_bar_hidden_groups(1600.0F, 1500.0F, groups) == 0);
+  CHECK(top_bar_hidden_groups(1440.0F, 1500.0F, groups) == 1);
+  CHECK(top_bar_hidden_groups(1024.0F, 1500.0F, groups) == 2);
+  CHECK(top_bar_hidden_groups(600.0F, 1500.0F, groups) == 3);  // never more than the groups
+  CHECK(top_bar_hidden_groups(1024.0F, 1024.0F, groups) == 0);
 }

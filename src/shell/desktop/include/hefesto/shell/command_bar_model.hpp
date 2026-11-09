@@ -48,4 +48,10 @@ class CommandBarModel {
 /// (a multi-line result such as `help` gives one line per row; empty: none).
 [[nodiscard]] std::vector<std::string> console_lines(std::string_view command, std::string_view result);
 
+/// The Console text of a command line: every diagnostic it raised, one per
+/// line ("error: CODE: text", as Magic's console prints its messages), then
+/// its result, which is left out when the line raised diagnostics and the
+/// result is only "ok" or repeats one of them.
+[[nodiscard]] std::string console_result(const CommandOutcome& outcome, std::string_view result);
+
 }  // namespace hefesto::shell

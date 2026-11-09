@@ -3,8 +3,8 @@
 //
 // The center of the Desktop-Layout screen: the Vulkan canvas (a Raven
 // viewport in draw-callback mode) with the painted overlay on top of it
-// (dot grid, rulers, subcell outlines, labels, the box in white dashes, the
-// zoom control and the minimap).
+// (dot grid, rulers, subcell names, bitmap label text, the box as Magic
+// draws it, the zoom control and the minimap).
 //
 // The canvas shows the core's current layout window (design.md D5): it
 // observes `editor.windows`, maps the window's ViewMapping to the camera,
@@ -55,6 +55,8 @@ class LayoutCanvas final : public view::ViewObserver {
   void set_realtime(bool realtime);
 
   [[nodiscard]] std::size_t instance_count() const;
+  /// True once the viewport has its size (after the first layout).
+  [[nodiscard]] bool viewport_ready() const noexcept { return camera_.viewport_width() > 0; }
   /// The layout point under the pointer, in internal units.
   [[nodiscard]] const std::optional<db::Point>& cursor() const noexcept { return cursor_; }
   [[nodiscard]] UnitScale unit_scale() const;
@@ -74,6 +76,8 @@ class LayoutCanvas final : public view::ViewObserver {
   void ensure_window();
   void upload(const std::vector<render::LayeredRect>& rects, const std::vector<render::LayerStyle>& styles);
   void set_scene_overlay(const display::LayoutScene& scene);
+  /// Uploads the scene's triangles and glyphs (drawn merged with the rectangles by layer).
+  void upload_polygons(render::PolygonScene polygons);
   /// Publishes the camera to the render thread; `to_core` also writes it
   /// into the window's mapping (after a gesture or a resize).
   void camera_changed(bool to_core);
@@ -82,6 +86,7 @@ class LayoutCanvas final : public view::ViewObserver {
   void track_cursor(const CanvasInput& input);
   void draw(const ui::ViewportDraw& target);
   void paint_overlay(ui::Painter& p, float w, float h);
+  void fit_view();
 
   ScreenContext& ctx_;
   std::function<float()> pixel_ratio_;
@@ -93,7 +98,11 @@ class LayoutCanvas final : public view::ViewObserver {
   render::Camera camera_;
   CanvasController controller_{camera_};
   render::Bounds bounds_;
-  bool auto_fit_ = true;  // fit on resize until the user moves the view
+  bool auto_fit_ = true;  // refit on resize until the user moves the view
+  // The root the camera was last framed for: a new root (load, the first
+  // cell) frames as the core does, not the previous cell's camera. Compared,
+  // never dereferenced.
+  const db::CellDef* framed_root_ = nullptr;
   bool synthetic_ = false;  // show_rects content stays until a cell is shown
   view::WindowId window_id_ = -1;
   std::optional<db::Point> cursor_;
@@ -101,10 +110,12 @@ class LayoutCanvas final : public view::ViewObserver {
   std::string empty_hint_;
   std::function<void()> view_changed_;
 
-  mutable std::mutex view_mutex_;  // guards snapshot_ and index_ (the render thread reads them)
+  mutable std::mutex view_mutex_;  // guards snapshot_, index_ and polygons_ (the render thread reads them)
   Snapshot snapshot_;
   std::shared_ptr<const render::CanvasIndex> index_;
-  std::vector<render::LayerBatch> ranges_;  // render thread only
+  std::shared_ptr<const render::PolygonScene> polygons_;  // batches only (vertices are on the GPU)
+  std::vector<render::LayerBatch> ranges_;          // render thread only
+  std::vector<render::LayerBatch> polygon_ranges_;  // render thread only
 };
 
 }  // namespace hefesto::shell

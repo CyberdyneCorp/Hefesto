@@ -82,3 +82,17 @@ TEST_CASE("checkbox outline meets 3:1 non-text contrast", "[cap:hefesto-design-s
     CHECK(contrast_ratio(t.text_tertiary, t.surface1) >= 3.0);
   }
 }
+
+TEST_CASE("layer swatches composite to the same color in both themes",
+          "[cap:hefesto-design-system][req:Layer colors come from the PDK, not the theme]") {
+  // Regression: swatches were filled over the panel surface, so a translucent
+  // layer fill (dnwell at 0.2-0.6 alpha) read (164,165,10) dark but (238,238,82) light.
+  const Rgba dnwell{0.6F, 0.6F, 0.05F, 0.4F};
+  const Rgba dark = composite_over(dnwell, swatch_backdrop(theme_tokens(ThemeMode::dark)));
+  const Rgba light = composite_over(dnwell, swatch_backdrop(theme_tokens(ThemeMode::light)));
+  CHECK(dark.r == Approx(light.r));
+  CHECK(dark.g == Approx(light.g));
+  CHECK(dark.b == Approx(light.b));
+  const Rgba canvas = Rgba::hex(0x0B0C0E);
+  CHECK(swatch_backdrop(theme_tokens(ThemeMode::light)).r == Approx(canvas.r));
+}

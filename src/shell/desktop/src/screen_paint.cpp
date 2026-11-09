@@ -43,8 +43,10 @@ void stipple(ui::Painter& p, float x, float y, float w, float h, const Rgba& c) 
 void swatch(ui::Painter& p, float x, float y, const LayerRow& row, const ThemeTokens& t) {
   const auto w = static_cast<float>(kSwatchWidth);
   const auto h = static_cast<float>(kSwatchHeight);
+  // Every swatch sits on the canvas color, as the layer does on the canvas:
+  // over the panel, the translucent fills turned into pale tints in the light theme.
+  p.fill(x, y, w, h, 3.0F, swatch_backdrop(t));
   if (row.crossed) {
-    p.fill(x, y, w, h, 3.0F, t.canvas);  // the canvas behind a contact cross
     p.line(x + 5.0F, y + 3.0F, x + w - 5.0F, y + h - 3.0F, 1.2F, row.outline);
     p.line(x + w - 5.0F, y + 3.0F, x + 5.0F, y + h - 3.0F, 1.2F, row.outline);
   } else {
@@ -155,63 +157,41 @@ void subcell_captions(ui::Painter& p, const OverlayState& s) {
   }
 }
 
-/// `cross` styles (contacts): both diagonals of every rectangle.
-void contact_crosses(ui::Painter& p, float w, float h, const OverlayState& s) {
-  for (const display::SceneLayer& layer : s.crosses) {
-    const Rgba color = style_rgba(layer.style);
-    for (const db::Rect& rect : layer.rects) {
-      const PixelRect r = world_to_pixels(s.camera, rect, s.pixel_ratio);
-      if (outside(r, w, h) || r.w < 2.0 || r.h < 2.0) continue;
-      const auto x0 = static_cast<float>(r.x);
-      const auto y0 = static_cast<float>(r.y);
-      const auto x1 = static_cast<float>(r.x + r.w);
-      const auto y1 = static_cast<float>(r.y + r.h);
-      p.line(x0, y0, x1, y1, 1.0F, color);
-      p.line(x0, y1, x1, y0, 1.0F, color);
-    }
-  }
-}
-
-/// A font label: its glyph contours filled (nonzero rule) one pixel row at a time.
-void font_label(ui::Painter& p, float h, const display::SceneLabel& label, const OverlayState& s) {
-  std::vector<std::vector<PixelPoint>> polygons;
-  double top = 1e300;
-  double bottom = -1e300;
-  for (const auto& contour : label.outline_polygons) {
-    auto& poly = polygons.emplace_back();
-    for (const display::PointF& pt : contour) {
-      poly.push_back(world_point_to_pixels(s.camera, pt.x, pt.y, s.pixel_ratio));
-      top = std::min(top, poly.back().y);
-      bottom = std::max(bottom, poly.back().y);
-    }
-  }
-  const Rgba color = style_rgba(label.style);
-  const double first = std::max(std::floor(top), 0.0);
-  const double last = std::min(std::ceil(bottom), static_cast<double>(h));
-  for (double y = first; y < last; y += 1.0) {
-    for (const PixelSpan& span : nonzero_spans(polygons, y + 0.5)) {
-      p.fill(static_cast<float>(span.x0), static_cast<float>(y), static_cast<float>(span.x1 - span.x0), 1.0F, 0.0F,
-             color);
-    }
-  }
-}
-
-/// Labels as Magic draws them: rendered text placed by the label's
-/// justification (the label rectangle and port lines come from the renderer).
+/// Bitmap labels as Magic draws them: text in one of the four bitmap sizes
+/// chosen by the zoom, placed by the label's justification (the label
+/// rectangle, port lines and the glyphs of font labels come from the renderer).
 void labels(ui::Painter& p, float w, float h, const OverlayState& s) {
+  const double ppu = s.camera.pixels_per_unit() / (s.pixel_ratio > 0.0 ? s.pixel_ratio : 1.0);
+  const std::optional<double> size = bitmap_label_size(ppu);
+  if (!size) return;
+  const auto size_px = static_cast<float>(*size);
   for (const display::SceneLabel& label : s.labels) {
-    const PixelRect r = world_to_pixels(s.camera, label.font_label ? label.font_bbox : label.rect, s.pixel_ratio);
+    if (label.font_label || label.text.empty()) continue;
+    const PixelRect r = world_to_pixels(s.camera, label.rect, s.pixel_ratio);
     if (outside(r, w, h)) continue;
-    if (label.font_label) {
-      font_label(p, h, label, s);
-      continue;
-    }
-    const auto tw = static_cast<double>(p.text_width(TextRole::mono, label.text));
-    const auto th = static_cast<double>(p.line_height(TextRole::mono));
-    const PixelPoint at = label_text_origin(r, label.justification, tw, th);
-    p.text(TextRole::mono, static_cast<float>(at.x), static_cast<float>(at.y), label.text, style_rgba(label.style));
+    const auto [tw, th] = p.measure_px(TextRole::body, size_px, label.text);
+    const PixelPoint at = label_text_origin(r, label.justification, static_cast<double>(tw), static_cast<double>(th));
+    p.text_px(TextRole::body, size_px, static_cast<float>(at.x), static_cast<float>(at.y), label.text,
+              style_rgba(label.style));
   }
 }
+
+/// The box as DBWDrawBox draws it, in the highlight style's color (white).
+void box(ui::Painter& p, float w, float h, const OverlayState& s) {
+  if (!s.box) return;
+  const PixelRect r = world_to_pixels(s.camera, *s.box, s.pixel_ratio);
+  // Magic's pixel thresholds and widths are logical pixels (they scale with the HiDPI factor).
+  const display::BoxDrawing drawing = display::box_drawing(*s.box, std::llround(r.w), std::llround(r.h), s.edit_bbox);
+  const Rgba& color = drawing.style == display::kStyleBox
+                          ? s.highlight[0]
+                          : (drawing.style == display::kStyleMediumHighlights ? s.highlight[1] : s.highlight[2]);
+  for (const PixelRect& side : box_overlay(r, drawing.shape, static_cast<double>(w),
+                                           static_cast<double>(h))) {
+    p.fill(static_cast<float>(side.x), static_cast<float>(side.y), static_cast<float>(side.w),
+           static_cast<float>(side.h), 0.0F, color);
+  }
+}
+
 
 void zoom_control(ui::Painter& p, const OverlayLayout& l, const std::string& percent, const ThemeTokens& t) {
   const auto control = [&](const PixelRect& r) {
@@ -382,7 +362,7 @@ void hierarchy_row(ui::Painter& p, float w, float h, const HierarchyRow& row, Wi
   const HierarchyRowLayout layout = hierarchy_row_layout(row, w - x, measure);
   p.push_clip(0.0F, 0.0F, w, h);
   p.text_centered_y(TextRole::mono, x, h / 2.0F, layout.name, color);
-  p.text_centered_y(TextRole::mono, x + layout.suffix_x, h / 2.0F, row.suffix, color);
+  p.text_centered_y(TextRole::mono, x + layout.suffix_x, h / 2.0F, layout.suffix, color);
   p.pop_clip();
   if (s.focused) focus_ring(p, w, h, kRadius, t);
 }
@@ -447,14 +427,9 @@ void canvas_overlay(ui::Painter& p, float w, float h, const OverlayState& s, The
   // annotations (box, crosses, labels) would spill over the side panels.
   p.push_clip(0.0F, 0.0F, w, h);
   dot_grid(p, w, h, s);
-  contact_crosses(p, w, h, s);
   subcell_captions(p, s);
   labels(p, w, h, s);
-  if (s.box) {
-    const PixelRect r = world_to_pixels(s.camera, *s.box, s.pixel_ratio);
-    p.dashed_rect(static_cast<float>(r.x), static_cast<float>(r.y), static_cast<float>(r.w), static_cast<float>(r.h),
-                  1.0F, 4.0F, 4.0F, white());
-  }
+  box(p, w, h, s);
   if (!s.empty_hint.empty()) {
     p.text_centered_y(TextRole::body, centered_x(p, TextRole::body, w, s.empty_hint), h / 2.0F, s.empty_hint,
                       t.text_secondary);

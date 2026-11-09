@@ -181,6 +181,16 @@ void camera_from_mapping(const view::ViewMapping& m, render::Camera& camera) {
   camera.set_viewport(w, h);
 }
 
+void frame_root(const db::CellDef& root, render::Camera& camera) {
+  const int w = camera.viewport_width();
+  const int h = camera.viewport_height();
+  if (w <= 0 || h <= 0) {
+    return;
+  }
+  const db::Rect area = root.flags().not_found ? db::Rect{0, 0, 1, 1} : root.bbox();
+  camera_from_mapping(view::ViewMapping::fit(view::ScreenRect{0, 0, w - 1, h - 1}, view::load_frame(area)), camera);
+}
+
 view::ViewMapping mapping_from_camera(const render::Camera& camera) {
   const int w = camera.viewport_width();
   const int h = camera.viewport_height();
@@ -227,6 +237,57 @@ PixelPoint label_text_origin(const PixelRect& r, db::Position pos, double text_w
   const double x = h < 0 ? ax - kTextOffset - text_w : (h > 0 ? ax + kTextOffset : ax - text_w / 2.0);
   const double y = v > 0 ? ay - kTextOffset - text_h : (v < 0 ? ay + kTextOffset : ay - text_h / 2.0);
   return PixelPoint{x, y};
+}
+
+std::optional<double> bitmap_label_size(double pixels_per_unit) {
+  // DBWdisplay.c: from xlarge down, the first size whose B is below the
+  // scale; else small. No text when 3 × the scale does not exceed it.
+  const auto cap = [](double size) { return std::round(size * kCapHeightRatio); };
+  std::size_t i = kBitmapLabelSizes.size();
+  while (i > 0 && !(pixels_per_unit > cap(kBitmapLabelSizes[i - 1]))) --i;
+  const double size = kBitmapLabelSizes[i > 0 ? i - 1 : 0];
+  if (3.0 * pixels_per_unit <= cap(size)) return std::nullopt;
+  return size;
+}
+
+namespace {
+
+/// Adds `r` unless it lies entirely outside the canvas.
+void add_side(std::vector<PixelRect>& out, const PixelRect& r, double width, double height) {
+  if (r.x + r.w < 0.0 || r.y + r.h < 0.0 || r.x > width || r.y > height) return;
+  out.push_back(r);
+}
+
+std::vector<PixelRect> point_box(const PixelRect& r, double px) {
+  const double cross = 5.0 * px;  // GR_CROSSSIZE
+  std::vector<PixelRect> out{{r.x - cross, r.y, 2.0 * cross + px, px}, {r.x, r.y - cross, px, 2.0 * cross + px}};
+  // GEO_EXPAND by 1: a square one pixel larger on every side.
+  const PixelRect sq{r.x - px, r.y - px, 3.0 * px, 3.0 * px};
+  out.push_back({sq.x, sq.y, sq.w, px});
+  out.push_back({sq.x, sq.y + sq.h - px, sq.w, px});
+  out.push_back({sq.x, sq.y, px, sq.h});
+  out.push_back({sq.x + sq.w - px, sq.y, px, sq.h});
+  return out;
+}
+
+}  // namespace
+
+std::vector<PixelRect> box_overlay(const PixelRect& r, display::BoxShape shape, double width, double height) {
+  constexpr double px = 1.0;  // one Magic pixel: one logical pixel
+  if (shape == display::BoxShape::point) return point_box(r, px);
+  const double t = shape == display::BoxShape::thick ? 2.0 * px : px;
+  std::vector<PixelRect> out;
+  const bool has_w = r.w > 0.0;
+  const bool has_h = r.h > 0.0;
+  if (has_h || shape == display::BoxShape::outline) {
+    add_side(out, {r.x, r.y, t, r.h}, width, height);              // west
+    add_side(out, {r.x + r.w - t, r.y, t, r.h}, width, height);    // east
+  }
+  if (has_w || shape == display::BoxShape::outline) {
+    add_side(out, {r.x, r.y + r.h - t, r.w, t}, width, height);    // south (y down)
+    add_side(out, {r.x, r.y, r.w, t}, width, height);              // north
+  }
+  return out;
 }
 
 namespace {

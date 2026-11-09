@@ -64,6 +64,11 @@ using TextMeasure = std::function<float(std::string_view)>;
 /// code points) followed by "…" that fits, or "…" alone.
 [[nodiscard]] std::string ellipsize(std::string_view text, float max_width, const TextMeasure& measure);
 
+/// Like ellipsize, but the "…" replaces the middle: about a third of what
+/// fits is kept from the start and the rest from the end, so names sharing a
+/// long prefix ("sky130_fd_sc_hd__nand2_1", "…__nor2_1") stay distinct.
+[[nodiscard]] std::string ellipsize_middle(std::string_view text, float max_width, const TextMeasure& measure);
+
 /// `text` broken into lines of at most `columns` code points, after a space
 /// or a '/' when one falls in the second half of the line, else hard;
 /// continuation lines start with `indent` spaces. Embedded LFs start new lines.
@@ -107,6 +112,19 @@ struct StatusChip {
 
 /// A diagnostics-panel line: "<shape> <formatted diagnostic>".
 [[nodiscard]] std::string diagnostic_line(StatusKind kind, std::string_view text);
+
+/// A status-bar message with its shape.
+struct LineStatus {
+  StatusKind kind = StatusKind::info;
+  std::string text;  // "<shape> <text>"
+};
+
+/// The status-bar message of a command line, so that a raised problem reads
+/// the same whichever way the line ended ("■ error: CODE: text"): its first
+/// error problem, or its first warning when the line succeeded; else the
+/// result ("■ <message>" for a failure, "● <result>" for success).
+[[nodiscard]] LineStatus command_line_status(bool ok, std::string_view result,
+                                             const std::optional<LineStatus>& problem);
 
 /// Problems reported outside the command bar (style loading, startup, the
 /// canvas): counted by severity so the status bar can show them, since the
@@ -227,24 +245,43 @@ struct HierarchyRow {
   std::vector<db::Rect> boxes;    // each instance's bounding box in root coordinates
   std::string suffix;             // the tail of `text` that tells rows apart: " ×4 · 1 open", " (X1) [4×2]"
   bool partial = false;           // a group with some, not all, instances expanded
+  /// The direct children of the row's instance in root coordinates (for an
+  /// array: of its first element), unexpanded after an expansion so that a
+  /// row opens one level only.
+  std::vector<db::Rect> child_boxes;
 
   /// `text` without `suffix` (the marker and the cell name).
   [[nodiscard]] std::string_view name_part() const;
   /// `text` plus its state: ", expanded", ", collapsed" or ", partly expanded".
   [[nodiscard]] std::string accessible_name() const;
 
-  /// The commands that toggle the row's instances through the Dispatcher:
-  /// for each, the box is set to the instance (internal units) and
-  /// `expand surround` or `unexpand surround` acts on it (Magic's `expand`
-  /// works on the box). Empty for rows that cannot expand.
-  [[nodiscard]] std::string toggle_command() const;
+  /// The commands that toggle the row's instances through the Dispatcher
+  /// (Magic's `expand` / `unexpand` act on the box): for each instance the
+  /// box is set to it (internal units) and `expand surround` or
+  /// `unexpand surround` acts on it. `expand surround` expands every
+  /// instance inside the box at any depth (DBExpandAll), so an expansion is
+  /// followed by `unexpand surround` on each direct child's box: the row
+  /// opens one level, as Magic's `expand toggle` of a selected cell does.
+  /// `restore_box` (internal units), when given, is set back at the end.
+  /// Empty for rows that cannot expand.
+  [[nodiscard]] std::string toggle_command(const std::optional<db::Rect>& restore_box = std::nullopt) const;
 };
 
+/// How many leading top-bar groups to hide so the bar fits `available`
+/// logical pixels: `full_width` is the bar with every group shown and
+/// `group_widths` the widths the groups free, in the order they give way
+/// (the disabled deferred actions, the DRC/LVS chips, the view tabs). Open
+/// and PDKs are never hidden (hefesto-design-system "Screen patterns follow
+/// the reference mockups", minimum window size).
+[[nodiscard]] std::size_t top_bar_hidden_groups(float available, float full_width,
+                                                const std::vector<float>& group_widths);
+
 /// How a hierarchy row is drawn in `width` (after its indent): the name part,
-/// ellipsized so that the suffix always shows right after it.
+/// ellipsized in the middle so that the suffix always shows right after it.
 struct HierarchyRowLayout {
   std::string name;  // name_part(), possibly ellipsized
   float suffix_x = 0.0F;  // where the suffix starts, relative to the name
+  std::string suffix;     // the suffix, ellipsized only when it is wider than half the row
 };
 [[nodiscard]] HierarchyRowLayout hierarchy_row_layout(const HierarchyRow& row, float width, const TextMeasure& measure);
 

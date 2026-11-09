@@ -16,7 +16,9 @@ hefesto_add_unit_test(hefesto_shell_tests
     canvas_overlay_test.cpp
     command_bar_test.cpp
     design_tokens_test.cpp
+    host_services_test.cpp
     options_test.cpp
+    pdk_job_test.cpp
     pdk_panel_model_test.cpp
     public_headers_test.cpp
     theme_tokens_test.cpp

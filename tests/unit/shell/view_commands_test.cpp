@@ -6,6 +6,7 @@
 // M0 view commands are ordinary registered commands.
 
 #include <catch2/catch_test_macros.hpp>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,6 +15,7 @@
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/view_commands.hpp"
+#include "hefesto/shell/view_models.hpp"
 
 using namespace hefesto;
 using namespace hefesto::shell;
@@ -150,4 +152,87 @@ TEST_CASE("the desktop session keeps a rotating log and a command log",
   CHECK(log.find("info session start hefesto ") != std::string::npos);
   CHECK(log.find("info cmd[gui] echo logged -> ok") != std::string::npos);
   CHECK(log.find("CMD-DISPATCH-001") != std::string::npos);
+}
+
+TEST_CASE("a hierarchy row expands one instance one level through core commands",
+          "[cap:ui-windows-and-views][req:Per-window expansion state]") {
+  // Regression: the row ran `box values <bbox>; expand surround`, which
+  // expands every instance inside the box at any depth (the whole subtree).
+  CoreSession core(test_options());
+  editor::EditorState& ed = core.editor();
+  db::CellDef top("top", 4);
+  db::CellDef mid("mid", 4);
+  db::CellDef leaf("leaf", 4);
+  const auto add = [](db::CellDef& parent, db::CellDef& child, const char* id, db::Rect bbox, db::Transform t) {
+    auto use = std::make_unique<db::CellUse>();
+    use->id = id;
+    use->def = &child;
+    use->parent = &parent;
+    use->bbox = bbox;
+    use->transform = t;
+    parent.uses().push_back(std::move(use));
+    return parent.uses().back().get();
+  };
+  db::CellUse* inner = add(mid, leaf, "L1", db::Rect{0, 0, 10, 20}, db::kIdentity);
+  db::CellUse* x1 = add(top, mid, "X1", db::Rect{100, 200, 150, 260}, db::Transform{1, 0, 100, 0, 1, 200});
+  db::CellUse* x2 = add(top, mid, "X2", db::Rect{300, 200, 350, 260}, db::Transform{1, 0, 300, 0, 1, 200});
+  ed.edit_cell = &top;
+  ed.box = db::Rect{0, 0, 4, 4};
+  auto opened = ed.windows.open(&top, view::ScreenRect{0, 0, 999, 999});
+  REQUIRE(opened);
+  view::LayoutWindow& win = *opened.value();
+  ed.windows.set_current(win.id());
+
+  const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
+  REQUIRE(rows.size() == 3);
+  CoreCommandSink sink(core.dispatcher());
+  const CommandOutcome out = sink.submit(rows[1].toggle_command(ed.box));
+  INFO(out.message);
+  REQUIRE(out.status == OutcomeStatus::ok);
+  CHECK(win.is_expanded(*x1));
+  CHECK_FALSE(win.is_expanded(*inner));  // one level only
+  CHECK_FALSE(win.is_expanded(*x2));     // other instances untouched
+  CHECK(ed.box == db::Rect{0, 0, 4, 4});  // the user's box is back
+
+  const auto open = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
+  REQUIRE(sink.submit(open[1].toggle_command(ed.box)).status == OutcomeStatus::ok);
+  CHECK_FALSE(win.is_expanded(*x1));
+}
+
+TEST_CASE("a hierarchy row whose child covers it still expands",
+          "[cap:ui-windows-and-views][req:Per-window expansion state]") {
+  // Regression: a wrapper whose only child spans its whole bbox collapsed
+  // again, because the child's `unexpand surround` box surrounded the parent.
+  CoreSession core(test_options());
+  editor::EditorState& ed = core.editor();
+  db::CellDef top("top", 4);
+  db::CellDef wrap("wrap", 4);
+  db::CellDef leaf("leaf", 4);
+  const auto add = [](db::CellDef& parent, db::CellDef& child, const char* id, db::Rect bbox, db::Transform t) {
+    auto use = std::make_unique<db::CellUse>();
+    use->id = id;
+    use->def = &child;
+    use->parent = &parent;
+    use->bbox = bbox;
+    use->transform = t;
+    parent.uses().push_back(std::move(use));
+    return parent.uses().back().get();
+  };
+  (void)add(wrap, leaf, "L1", db::Rect{0, 0, 50, 60}, db::kIdentity);
+  db::CellUse* w1 = add(top, wrap, "W1", db::Rect{100, 200, 150, 260}, db::Transform{1, 0, 100, 0, 1, 200});
+  ed.edit_cell = &top;
+  ed.box = db::Rect{0, 0, 4, 4};
+  auto opened = ed.windows.open(&top, view::ScreenRect{0, 0, 999, 999});
+  REQUIRE(opened);
+  view::LayoutWindow& win = *opened.value();
+  ed.windows.set_current(win.id());
+
+  const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
+  REQUIRE(rows.size() == 2);
+  const std::string command = rows[1].toggle_command(ed.box);
+  CHECK(command.find("unexpand") == std::string::npos);  // the covering child is not collapsed over its parent
+  CoreCommandSink sink(core.dispatcher());
+  REQUIRE(sink.submit(command).status == OutcomeStatus::ok);
+  CHECK(win.is_expanded(*w1));
+  CHECK(ed.box == db::Rect{0, 0, 4, 4});
 }

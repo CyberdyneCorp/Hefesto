@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/app/startup.hpp"
 #include "hefesto/shell/options.hpp"
 
 using namespace hefesto::shell;
@@ -64,4 +65,27 @@ TEST_CASE("desktop asset, capture and panel options parse", "[cap:hefesto-archit
   CHECK(r.options->show_pdk_manager);
   CHECK_FALSE(parse({"--capture-frames", "0"}).options);
   CHECK_FALSE(parse({"--font-dir", "/x"}).options);  // replaced by the bundled fonts (--asset-dir)
+}
+
+TEST_CASE("a bad startup option prints Magic's usage line once", "[cap:app-startup][req:Command-line options]") {
+  // Regression: the app printed the diagnostic (whose text already ends with
+  // the usage line) and then the usage line again.
+  const std::vector<std::string_view> words{"--"};
+  const auto parsed = hefesto::app::parse_startup_options(words);
+  REQUIRE_FALSE(parsed);
+  const std::string text = hefesto::shell::startup_option_error(parsed.error());
+  const std::string_view usage = hefesto::app::startup_usage_line();
+  const auto first = text.find(usage);
+  REQUIRE(first != std::string::npos);
+  CHECK(text.find(usage, first + 1) == std::string::npos);
+  // A diagnostic without it still gets it.
+  const std::string other = hefesto::shell::startup_option_error(hefesto::diag::make("APP-OPTION-001", "bad"));
+  CHECK(other.find(usage) != std::string::npos);
+}
+
+TEST_CASE("the run option takes a command line", "[cap:hefesto-app-ux]") {
+  const std::vector<std::string_view> args{"--run", "load inv; zoom 2"};
+  const auto parsed = hefesto::shell::parse_shell_options(args);
+  REQUIRE(parsed.options);
+  CHECK(parsed.options->run == "load inv; zoom 2");
 }

@@ -57,6 +57,10 @@ class MainWindow {
   void show_layout(const std::vector<render::LayeredRect>& rects);
   /// Runs one command line as typed in the command bar (Console echo, status).
   void run_line(const std::string& line);
+  /// Runs `line` like run_line once the canvas has its size (the first
+  /// frames), so view commands (`zoom`, `view`) act on the real viewport
+  /// instead of being replaced by the initial fit (--run).
+  void run_when_ready(std::string line) { pending_run_ = std::move(line); }
   /// Applies refreshes requested since the last frame (call once per frame,
   /// on the UI thread, outside any widget callback).
   void on_frame();
@@ -73,8 +77,14 @@ class MainWindow {
 
  private:
   void build_top_bar();
-  void add_top_button(ui::Box& row, std::string_view label, std::string_view icon, paint::ButtonStyle style,
-                      std::string_view tooltip, std::function<void()> click);
+  struct TopButton {
+    ui::Widget* widget = nullptr;  // owned by painted_
+    float width = 0.0F;
+  };
+  TopButton add_top_button(ui::Box& row, std::string_view label, std::string_view icon, paint::ButtonStyle style,
+                           std::string_view tooltip, std::function<void()> click);
+  /// Hides top-bar groups that do not fit the window's width (on resize).
+  void fit_top_bar();
   void build_center();
   void build_command_bar();
   void build_status_bar();
@@ -107,6 +117,15 @@ class MainWindow {
   std::unique_ptr<ui::Painted> status_bar_;
   std::string status_accessible_name_;  // last name given to status_bar_
   ui::Painted* console_toggle_ = nullptr;  // owned by painted_
+  struct TopBarGroup {
+    float width = 0.0F;
+    std::vector<ui::Widget*> widgets;  // owned by painted_
+  };
+  std::vector<TopBarGroup> top_groups_;  // deferred actions, chips, view tabs (hidden in this order)
+  float top_full_width_ = 0.0F;          // the top bar with every group shown
+  float top_items_width_ = 0.0F;         // the always-shown buttons
+  std::size_t top_item_count_ = 0;
+  int top_fit_width_ = -1;               // the window width fit_top_bar last applied
 
   std::unique_ptr<LayoutCanvas> canvas_;
   std::unique_ptr<LeftPanel> left_;
@@ -128,6 +147,7 @@ class MainWindow {
   HeaderText header_;
   std::string message_;  // status-bar message, always "<shape> <text>"
   StatusKind message_kind_ = StatusKind::info;
+  std::string pending_run_;          // run_when_ready
   bool in_command_ = false;          // run_line is executing a command line
   std::string command_problem_;      // first warning raised by that command line
   StatusKind command_problem_kind_ = StatusKind::warning;
