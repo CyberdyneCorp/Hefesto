@@ -102,7 +102,9 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
     const std::scoped_lock lock{mutex_};
     flush_pending();
     if (diagnostic.severity == diag::Severity::error) {
-      pending_ = diagnostic;  // may turn out to be a command's result
+      // emplace, not assignment: GCC 14 reports a bogus -Wmaybe-uninitialized
+      // for optional<Diagnostic>::operator=.
+      pending_.emplace(diagnostic);  // may turn out to be a command's result
       return;
     }
     const bool printf_like = diagnostic.severity == diag::Severity::info || diagnostic.severity == diag::Severity::debug;

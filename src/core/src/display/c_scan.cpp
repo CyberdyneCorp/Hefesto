@@ -4,6 +4,7 @@
 #include "display/c_scan.hpp"
 
 #include <cstdlib>
+#include <limits>
 
 namespace hefesto::display::cscan {
 
@@ -110,8 +111,11 @@ std::optional<std::int64_t> Scanner::integer(int base) noexcept {
   }
   std::int64_t value = 0;
   const std::size_t first = p;
+  constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
   while (p < input_.size() && digit_value(input_[p]) < base) {
-    value = value * base + digit_value(input_[p]);
+    const std::int64_t digit = digit_value(input_[p]);
+    // Saturate like strtol instead of overflowing (found by fuzz_cmap).
+    value = value > (kMax - digit) / base ? kMax : value * base + digit;
     ++p;
   }
   if (p == first) {

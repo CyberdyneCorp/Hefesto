@@ -10,6 +10,8 @@
 
 #include "hefesto/app/startup.hpp"
 
+#include <algorithm>
+
 namespace hefesto::app {
 
 namespace {
@@ -94,7 +96,9 @@ std::optional<std::string> mag_technology(std::string_view text) {
     return std::nullopt;
   }
   std::string_view line = text.substr(first_end + 1);
-  line = line.substr(0, line.find('\n'));
+  // std::find, not string_view::find: GCC 11 reports a bogus
+  // -Wstringop-overread for memchr on the substring here.
+  line = std::string_view{line.begin(), std::find(line.begin(), line.end(), '\n')};
   if (!line.starts_with("tech ")) {
     return std::nullopt;
   }

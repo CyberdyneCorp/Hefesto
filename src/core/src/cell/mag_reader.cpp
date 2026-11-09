@@ -9,6 +9,7 @@
 // permissive license (THIRD_PARTY_NOTICES.md).
 
 #include <charconv>
+#include <limits>
 #include <optional>
 #include <set>
 
@@ -171,8 +172,11 @@ std::int64_t get_rect_int(MagInput& in, int& c) {
     c = in.getc();
   }
   std::int64_t n = 0;
+  constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
   for (; is_digit(c); c = in.getc()) {
-    n = n * 10 + (c - '0');
+    const std::int64_t digit = c - '0';
+    // Saturate instead of overflowing; the range check rejects it later.
+    n = n > (kMax - digit) / 10 ? kMax : n * 10 + digit;
   }
   return negative ? -n : n;
 }

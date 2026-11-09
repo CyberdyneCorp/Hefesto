@@ -132,12 +132,14 @@ struct Technology::Data {
   }
   /// SETPAINT / SETERASE of DBtpaint2.c: only default entries of types on the plane.
   void set_default_paint(TileType h, TileType t, std::size_t p, TileType r) noexcept {
-    if (!not_default_paint[h].test(t) && plane_types[p].test(h)) {
+    // p is out of range for a type without a home plane (found by fuzz_tech_file).
+    if (p < plane_types.size() && !not_default_paint[h].test(t) && plane_types[p].test(h)) {
       set_paint(h, t, p, r);
     }
   }
   void set_default_erase(TileType h, TileType t, std::size_t p, TileType r) noexcept {
-    if (!not_default_erase[h].test(t) && plane_types[p].test(h)) {
+    // p is out of range for a type without a home plane (found by fuzz_tech_file).
+    if (p < plane_types.size() && !not_default_erase[h].test(t) && plane_types[p].test(h)) {
       set_erase(h, t, p, r);
     }
   }

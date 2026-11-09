@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <optional>
 
@@ -68,7 +69,12 @@ std::optional<int> numeric(std::string_view token) {
   if (!v) {
     return std::nullopt;
   }
-  return static_cast<int>(std::round(*v));
+  const double rounded = std::round(*v);
+  // Out-of-range values would be undefined when converted (found by fuzz_font).
+  if (!(rounded >= std::numeric_limits<int>::min() && rounded <= std::numeric_limits<int>::max())) {
+    return std::nullopt;
+  }
+  return static_cast<int>(rounded);
 }
 
 std::optional<std::size_t> slot_of(std::string_view name) {
