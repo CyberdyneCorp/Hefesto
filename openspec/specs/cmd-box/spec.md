@@ -38,7 +38,7 @@ Parsing rules:
 2. A first argument that is ambiguous and starts with `h` (for example `h` or `he`) SHALL select `height`.
 3. A first argument that is not a recognized option SHALL select the **default form**: report the box (see "Default box report"). If exactly four arguments are given, it SHALL set the box from them (see "Setting the box directly").
 4. More than six arguments (seven words including `box`) SHALL print the option help.
-5. A recognized option with the wrong number of arguments SHALL print the option help and change nothing.
+5. A recognized option with the wrong number of arguments SHALL print the option help and change nothing. The exceptions are `box corner`, whose accepted forms are given in "Box corner command", and the cursor forms of "Box cursor forms".
 
 Compatibility: behavioral
 
@@ -183,7 +183,7 @@ When the last argument of `box move DIR`, `box corner DIR`, `box grow DIR` or `b
 
 - `box move DIR cursor` SHALL translate the box so the named corner lands on the pointer.
 - `box corner DIR cursor` SHALL move only the named corner to the pointer (see "Box corner dragging").
-- `box grow DIR cursor` and `box shrink DIR cursor` SHALL not change the box (see Q-CMDEDIT-11).
+- `box grow DIR cursor` and `box shrink DIR cursor` SHALL not change the box, and SHALL still be recorded in the command log as `box values` with the unchanged box, as in Magic, whose cursor branch handles only move and corner (see Q-CMDEDIT-11, resolution: replicate).
 
 If no box exists, a zero-size box at (0,0) in the pointer's window SHALL be used as the starting box. A Manhattan or `center` DIR leaves the reference corner undefined in Magic. Hefesto SHALL treat it as `sw` (see Q-CMDEDIT-10).
 
@@ -191,7 +191,7 @@ After a cursor form, the command SHALL be recorded in the command log as `box va
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdAB.c:765-790, commands/CmdAB.c:800-828, dbwind/DBWtools.c:868-940)
+(Magic ref: commands/CmdAB.c:765-790, commands/CmdAB.c:800-828, commands/CmdAB.c:858-892, dbwind/DBWtools.c:868-940; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-10, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-11)
 
 #### Scenario: Move upper-right corner to cursor
 - **GIVEN** a box (0,0)–(10,10), snap `internal`, and the pointer at root (30,40)
@@ -199,18 +199,37 @@ Compatibility: behavioral
 - **THEN** the box SHALL be (20,30)–(30,40)
 - **AND** the logged command SHALL be `box values 20i 30i 30i 40i`
 
+#### Scenario: Grow toward the cursor does nothing
+- **GIVEN** a box (0,0)–(10,10), snap `internal`, and the pointer at root (30,40)
+- **WHEN** `box grow ne cursor` is run
+- **THEN** the box SHALL remain (0,0)–(10,10)
+- **AND** the logged command SHALL be `box values 0i 0i 10i 10i`
+
 ### Requirement: Box corner command
 
-`box corner DIR X Y` SHALL be accepted with exactly two further arguments after DIR. The distance argument is parsed first as a relative distance. If it is zero, the command SHALL do nothing. Otherwise Magic parses the **direction word itself** as the x coordinate (which fails and yields 0) and the distance as the y coordinate, then moves the named corner to that point (see Q-CMDEDIT-9). Hefesto SHALL implement the documented intent: `box corner DIR X Y` moves the corner named by DIR to the absolute point (X, Y). Hefesto SHALL treat this as a deliberate deviation recorded in Q-CMDEDIT-9.
+`box corner DIR X Y` (five words) SHALL move the corner of the box named by DIR (`sw`/`bl`, `ne`/`tr`, `nw`/`tl` or `se`/`br`) to the absolute point (X, Y), with X parsed as an absolute x coordinate and Y as an absolute y coordinate. The corner dragging rules of "Box corner dragging" SHALL apply, so a box inverted by the move is normalized. `box corner DIR cursor` is specified in "Box cursor forms". Any other four-word form `box corner DIR ARG` SHALL print `Usage: box corner <direction> <x> <y> | box corner <direction> cursor` and change nothing. These rules SHALL hold whatever the `magic-compat` setting.
+
+Magic implements neither form usefully: it rejects the five-word form with the option help (its argument-count check requires four words), and for the four-word form `box corner DIR D` it parses D as a relative distance, returns if D is 0, and otherwise parses the direction word as the corner's x coordinate (reporting "Coordinate value cannot be parsed: assuming 0") and D as its absolute y, moving the corner to (0, D). Magic's help text and box.html give the form as `corner <direction> <distance>`. Hefesto's five-word form is therefore a superset of Magic, and the four-word form, which no script can use for a meaningful result, is a usage error (see Q-CMDEDIT-9, resolution: fix).
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdAB.c:1124-1145, doc/html/box.html)
+(Magic ref: commands/CmdAB.c:684-699, commands/CmdAB.c:849-920, commands/CmdAB.c:1165-1184, doc/html/box.html; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-9)
 
-#### Scenario: Corner to point (Hefesto intent)
+#### Scenario: Corner to an absolute point
 - **GIVEN** a box (0,0)–(10,10) and units `internal`
-- **WHEN** `box corner ne 20 30` is run in Hefesto
+- **WHEN** `box corner ne 20 30` is run
 - **THEN** the box SHALL be (0,0)–(20,30)
+
+#### Scenario: Corner past the opposite side
+- **GIVEN** a box (0,0)–(10,10) and units `internal`
+- **WHEN** `box corner ne -5 4` is run
+- **THEN** the box SHALL be (−5,0)–(0,4)
+
+#### Scenario: Four-word distance form prints the usage
+- **GIVEN** a box (0,0)–(10,10) and units `internal`
+- **WHEN** `box corner ne 5` is run
+- **THEN** `Usage: box corner <direction> <x> <y> | box corner <direction> cursor` SHALL be printed
+- **AND** the box SHALL remain (0,0)–(10,10)
 
 ### Requirement: Default box report
 
@@ -270,15 +289,20 @@ Compatibility: exact
 
 After any setter, the new box SHALL be applied in two steps: first translate the box so its lower-left is the new lower-left, then move the upper-right corner to the new upper-right. If the result is inverted on an axis, the two coordinates on that axis SHALL be swapped. Each step SHALL be a separate undoable box event within the same command.
 
-If either coordinate of the new lower-left corner is outside the range [−(2^30 − 6), 2^30 − 6] (the tile-plane infinity 2^30 − 4, less a margin of 2), the command SHALL report "Box out of bounds." and leave the box unchanged. Magic checks only the lower-left corner (see Q-CMDEDIT-12).
+If any coordinate of the new lower-left or upper-right corner is outside the range [−(2^30 − 6), 2^30 − 6] (the tile-plane infinity 2^30 − 4, less a margin of 2), the command SHALL report "Box out of bounds." and leave the box unchanged, whatever the `magic-compat` setting. Magic checks only the lower-left corner, so an upper-right corner outside the tile plane is accepted and later paint there is undefined; Hefesto does not reproduce this (see Q-CMDEDIT-12, resolution: fix).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdAB.c:1228-1279, dbwind/DBWtools.c:940-1066)
+(Magic ref: commands/CmdAB.c:1228-1279, commands/CmdAB.c:1298-1304, dbwind/DBWtools.c:940-1066; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-12)
 
 #### Scenario: Out of bounds
 - **WHEN** `box position 2000000000i 0` is run
 - **THEN** "Box out of bounds." SHALL be reported and the box SHALL not change
+
+#### Scenario: Upper-right corner out of bounds
+- **GIVEN** a box (0,0)–(10,10)
+- **WHEN** `box values 0 0 2000000000i 1` is run
+- **THEN** "Box out of bounds." SHALL be reported and the box SHALL remain (0,0)–(10,10)
 
 ### Requirement: Box remove and help
 
@@ -319,11 +343,11 @@ When the box tool is the active pointer tool, pointer buttons SHALL act as follo
 - **Both buttons**: when the second of the two buttons is pressed, the corner of the visible part of the box nearest to the pointer SHALL be chosen. The first button pressed determines the action (left = move whole box, right = move that corner). The action happens when the last button is released, at the release point. Nearest corner: the pointer is compared with the midpoint of the box clipped to the window, on each axis (lower half → bottom, otherwise top; left half → left, otherwise right).
 - **Middle button press**: paint or erase at the box, using the layers under the pointer (see the `paint cursor` behavior in capability `cmd-paint-erase`).
 
-On touch devices, Hefesto SHALL provide equivalent gestures for "move box by a corner" and "move one corner". The gestures follow the mode-based mapping of decision X-5 (one-finger drag = primary button, long press = secondary/tertiary actions, floating modifier key = middle/right-button semantics); remaining details are tracked in Q-CMDEDIT-13.
+On touch devices, Hefesto SHALL provide equivalent gestures for "move the box", "move one corner", "sweep a new box" and "paint or erase by example". They are specified in capability `hefesto-input-and-touch`, requirement "Box tool touch gestures"; each gesture SHALL issue the same `box` or `paint` command as the corresponding Magic button, so the rules of this capability apply to it (see Q-CMDEDIT-13, resolution: platform).
 
 Compatibility: behavioral
 
-(Magic ref: dbwind/DBWbuttons.c:416-490, dbwind/DBWtools.c:430-470)
+(Magic ref: dbwind/DBWbuttons.c:416-490, dbwind/DBWtools.c:430-470; Hefesto decision: docs/decisions/cross-cutting.md#X-5, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-13)
 
 #### Scenario: Left click moves the box
 - **GIVEN** a box (0,0)–(10,10), snap `internal`, and the box tool active

@@ -59,15 +59,21 @@ Compatibility: exact
 - Direction for `leg`: `dx` = distance from the point to the box in x (0 if within the x-span), `dy` likewise; horizontal if `dx > dy`, else vertical.
 - Horizontal: if the box height differs from w, the box is first recentered to a w×w square at its center (`mid = floor((lo+hi)/2)`, `lo = mid - h`). If `px > box.xtop`: leg x-span `[box.xbot, px + h]`, direction east; if `px < box.xbot`: `[px - h, box.xtop]`, west; otherwise nothing is painted. Leg y-span: `ybot = py - h` clamped to `[box.ybot, box.ytop - w]`, height w.
 - Vertical: symmetric.
-- The leg is painted with the current type (respecting the edit cell's paint rules), labels adjusted, DRC re-checked; the selection becomes the connected chunk of that type under the leg; the box becomes a w×w square at the tip of the leg (extended back to the selected chunk if shorter). Without a wiring type: `Can't add a new wire leg:  no wiring material selected.` (see Q-LEGACY-51; window handling Q-LEGACY-52); without a box: `No box!  Before wiring a leg, you must set the box` / `    to indicate where the leg starts.`.
+- The leg is painted with the current type (respecting the edit cell's paint rules), labels adjusted, DRC re-checked; the selection becomes the connected chunk of that type under the leg; the box becomes a w×w square at the tip of the leg (extended back to the selected chunk if shorter). Without a wiring type: `Can't add a new wire leg:  no wiring material selected.` (window handling Q-LEGACY-52). A session SHALL start with no wiring type, in both `magic-compat` modes, so a leg before any `wire type` (or `wire switch`/`increment`/`decrement`) reports that message and paints nothing. Magic initialises the wiring type to `TT_SELECTBASE-1` (the DRC error type `TT_ERROR_PS`), which passes its type-0 checks, so before any `wire type` it tries to paint a DRC error type into the edit cell; Hefesto does not reproduce this (see Q-LEGACY-51, resolution: fix); without a box: `No box!  Before wiring a leg, you must set the box` / `    to indicate where the leg starts.`.
 
 Compatibility: exact
-(Magic ref: wiring/wireOps.c:240-420, commands/CmdTZ.c:1800-1850, commands/CmdTZ.c:1950-1975)
+(Magic ref: wiring/wireOps.c:240-420, wiring/wireOps.c:48, wiring/wireOps.c:328, wiring/wireOps.c:574, database/database.h.in:130-136, commands/CmdTZ.c:1800-1850, commands/CmdTZ.c:1950-1975; Hefesto decision: docs/decisions/open-questions/LEGACY.md#Q-LEGACY-51, docs/decisions/open-questions/LEGACY.md#Q-LEGACY-52)
 
 #### Scenario: Horizontal leg to the right
 - **GIVEN** wire type metal1 width 4 and the box (48,0)-(52,4)
 - **WHEN** `wire horizontal to 80 2` is executed
 - **THEN** metal1 is painted over (48,0)-(82,4) and the box becomes (78,0)-(82,4)
+
+#### Scenario: Leg before any wire type
+- **GIVEN** a fresh session with an edit cell and the box (48,0)-(52,4), and no `wire` command run yet
+- **WHEN** `wire horizontal to 80 2` is executed
+- **THEN** `Can't add a new wire leg:  no wiring material selected.` SHALL be reported
+- **AND** the edit cell SHALL be unchanged
 
 ### Requirement: Contact placement (wire switch, increment, decrement)
 `wire switch [layer width]` (or `switch` using the type under the cursor, as `wire type`) SHALL change the wiring layer and place a contact at the end of the last leg (marked by the box): if the new type equals the old: `The new wiring layer is the same as the old one, so` / `    there's no need for a contact.`. The contact is the first wiring contact (in list order) connecting old→new as (layer1, layer2) — "up" — or (layer2, layer1) — "down"; none: `The technology file doesn't define a contact` / `    between "%s" and "%s".`. With all dimensions divided by scalefactor rounding up, `oldOverlap` = surround of the old layer, `newOverlap` = surround of the new layer:
@@ -98,13 +104,13 @@ Compatibility: behavioral
 
 ### Requirement: wire segment
 `wire segment layer width x1 y1 x2 y2 ... [-noendcap]` or `wire segment layer width filename [-noendcap]` SHALL paint a centerline path of the given width on every plane of the layer in the edit cell, without using the current wire state:
-- At least two points (argument count after the optional `-noendcap` must be even and >= 8, or exactly 5 for the file form); otherwise `Usage: wire segment layer width x1 x2 y1 y2` / ` (or)  wire segment layer width filename` (see Q-LEGACY-53). Non-numeric width: `Route segment width must be a numeric value`. No edit cell: `No cell being edited`.
+- At least two points (argument count after the optional `-noendcap` must be even and >= 8, or exactly 5 for the file form); otherwise `Usage: wire segment layer width x1 y1 x2 y2` / ` (or)  wire segment layer width filename`. Magic's usage text lists the coordinates as `x1 x2 y1 y2`, while its `wire help` table already says `x1 y1 x2 y2`; the message is informative text that no script parses, so Hefesto prints the correct order in both `magic-compat` modes (see Q-LEGACY-53, resolution: fix). Non-numeric width: `Route segment width must be a numeric value`. No edit cell: `No cell being edited`.
 - The file form reads one `x y` pair per line (whitespace separated); a missing coordinate reports `Bad coordinate pair at %s line %d` and aborts; unopenable file `No such file or error opening %s`.
 - Coordinates are parsed at twice the internal resolution so that centerlines on half-grid points are exact; the path is converted to polygons with the same wire-path algorithm used for CIF/GDS paths (capability `gds-read`): each segment is offset by half the width on both sides, mitred joints (mitre limited to 4× width), and, unless `-noendcap`, each end extended by half the width; resulting vertices are rounded to the internal grid.
 - The cell is marked modified and DRC is re-checked over the bounding box of the points expanded by `round(width × 1.414214)` half-units.
 
 Compatibility: exact
-(Magic ref: commands/CmdTZ.c:1995-2040, cif/CIFrdpt.c:300-700)
+(Magic ref: commands/CmdTZ.c:1995-2040, commands/CmdTZ.c:2036-2037, commands/CmdTZ.c:1718, cif/CIFrdpt.c:300-700; Hefesto decision: docs/decisions/open-questions/LEGACY.md#Q-LEGACY-53)
 
 #### Scenario: Horizontal segment with end caps
 - **GIVEN** layer metal1
@@ -114,6 +120,10 @@ Compatibility: exact
 #### Scenario: No end caps
 - **WHEN** `wire segment metal1 4 0 0 20 0 -noendcap` is executed
 - **THEN** metal1 is painted over (0,-2)-(20,2)
+
+#### Scenario: Usage lists coordinates in order
+- **WHEN** `wire segment metal1 4 0 0` is executed
+- **THEN** `Usage: wire segment layer width x1 y1 x2 y2` SHALL be printed and nothing painted
 
 ### Requirement: Wiring tool buttons
 When the wiring tool is the active tool, the pointer bindings SHALL provide this workflow: button 1 starts a wire (`wire type` at the cursor) and enters a tracking mode in which pointer motion continuously previews the next leg (`wire show`); while tracking, button 1 commits a leg (`wire leg`) and continues, button 2 commits a leg and then places a contact (`wire switch`) ending tracking, button 3 cancels tracking (clearing the preview); control-button 1 starts tracking with the current wire type/width (box set to a width×width square at the cursor); shift-button 1/3 = `wire increment type` / `wire decrement type` then `wire show`; shift-button 2 = `wire switch`; wheel up/down = `wire increment width` / `wire decrement width` then `wire show`. The wiring state (type, width, last direction) participates in undo/redo. These bindings are defined by the scripting layer and are behavioral; Hefesto MAY map them to touch gestures.

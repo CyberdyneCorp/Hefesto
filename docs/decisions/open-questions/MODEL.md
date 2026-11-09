@@ -132,9 +132,10 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 ### Q-MODEL-17: Flat connectivity cross-plane step picks a single tile
 - Kind: bug
 - Magic behavior: from a contact tile the flat search looks in a 1-expanded area on each other plane and continues from only the first matching tile, possibly a diagonal neighbour, possibly skipping the contact's own image.
-- Evidence: database/DBconnect.c:640-668
+- Evidence: database/DBconnect.c:615-650 (dbSrConnectFunc), database/DBconnect.c:348-358 (dbcFindTileFunc); callers lef/defWrite.c:780,829,2631, netmenu/NMwiring.c:174,240,555,803
 - Options: replicate | fix (continue from the contact image and its edge neighbours)
 - Recommendation: fix; affects only DEF/netlist-menu flat searches.
+- Resolution: replicate in magic-compat, fix in native — evidence corrected (the code is now at database/DBconnect.c:615-650, and its callers include the DEF writer, lef/defWrite.c:780,829,2631, as well as the netlist menu), so the result reaches written DEF; on DRC-clean layouts the single-tile step gives the same nets as a full search, because a tile within one unit that is not edge-adjacent to the contact image must touch it only at a corner, which spacing rules forbid, so only DRC-dirty layouts differ (verified against database/DBconnect.c:dbSrConnectFunc and database/DBconnect.c:dbcFindTileFunc on 2026-11-09; approved 2026-11-09).
 
 ### Q-MODEL-18: Port uses reset/scan/tieoff are not persisted
 - Kind: bug
@@ -166,6 +167,7 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Evidence: utils/undo.c:58-59,811-836
 - Options: replicate | configurable larger limit
 - Recommendation: configurable, default 1000.
+- Resolution: other — a configurable limit with Magic's 1000-step default, never fewer; no script can observe the cap beyond running out of undo steps, so a larger user setting changes no output (verified against utils/undo.c:undoFreeHead on 2026-11-09; approved 2026-11-09).
 
 ### Q-MODEL-22: Erase-valid ignores stacked types in the mask
 - Kind: quirk

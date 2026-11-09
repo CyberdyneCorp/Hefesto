@@ -142,7 +142,7 @@ Compatibility: exact
 
 1. With no argument, or a list equal to `space`, the set SHALL be `*,labels`.
 2. Space is removed. An empty set SHALL do nothing.
-3. **Paint**: for each user type in the set that is active, in increasing type order, that type SHALL be erased over the box using the technology's erase rules. For a contact whose residues are not all active, only its active residues are erased. Stacked contact types named directly in the set are not erased by this step (see Q-CMDEDIT-16).
+3. **Paint**: for each user type in the set that is active, in increasing type order, that type SHALL be erased over the box using the technology's erase rules. For a contact whose residues are not all active, only its active residues are erased. A stacked contact type named directly in the set (by its `stackable` alias, for example `v12`): with `magic-compat` ON (the default), it SHALL NOT be erased by this step, as in Magic, which loops only over user types below the number of user layers; with it OFF, it SHALL be erased as its residue contacts, mirroring how `paint` handles a named stacked type (see Q-CMDEDIT-16, resolution: replicate in magic-compat, fix in native).
 4. **Error layers**: DRC error types in the set SHALL be erased from the box with no activity filtering, in decreasing type order.
 5. **Labels**: a label SHALL be deleted if its rectangle is in the box area (label-area rule) and either:
    - the set contains the label pseudo-type, or
@@ -150,13 +150,13 @@ Compatibility: exact
 6. **Subcells**: if the set contains the subcell pseudo-type, every subcell use of the edit cell whose bounding box overlaps the box SHALL be deleted. An array use is deleted as a whole. The parent's DRC is queued over each deleted use's bounding box.
 7. DRC is not queued when only labels were erased.
 
-**Label-area rule**: a label rectangle L is in area A when A contains L (boundaries may touch). When A has zero area, L is also in A if L touches A and A is not strictly inside L's interior (see Q-CMDEDIT-20).
+**Label-area rule**: a label rectangle L is in area A when A contains L (boundaries may touch). When A has zero area, L is also in A if L touches A and A is not strictly inside L's interior, so a point box picks up the labels it touches. This is a deliberate rule of Magic and Hefesto SHALL apply it in both `magic-compat` modes, because it decides which labels `erase` and selection affect (see Q-CMDEDIT-20, resolution: replicate).
 
 More than one argument, other than `pick X Y`, SHALL report `Usage: erase [<layers> | cursor | pick x y]`. The documentation describes `$` as "paint and labels", but `$` means the types under the pointer (see Q-CMDEDIT-14).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdE.c:607-805, database/DBpaint2.c:333-417, database/DBlabel.c:263-323, utils/geometry.h:149-152)
+(Magic ref: commands/CmdE.c:607-805, database/DBpaint2.c:333-417, database/DBlabel.c:263-323, utils/geometry.h:149-152; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-14, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-16, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-20)
 
 #### Scenario: Erase everything
 - **GIVEN** the box (0,0)–(10,10) contains metal1, poly and a label `A` at (2,2)–(2,2) attached to metal1
@@ -172,6 +172,21 @@ Compatibility: exact
 - **GIVEN** two subcell uses whose bounding boxes overlap the box, and one that does not
 - **WHEN** `erase subcell` is run
 - **THEN** exactly the two overlapping uses SHALL be deleted
+
+#### Scenario: Named stacked contact with magic-compat ON
+- **GIVEN** `magic-compat` ON, a technology whose stacked contact `v12` stacks `via1` and `via2`, and `v12` painted over the box (0,0)–(10,10) in the edit cell
+- **WHEN** `erase v12` is run
+- **THEN** the edit cell SHALL be unchanged, as in Magic (golden case CMDEDIT-PAINT-09)
+
+#### Scenario: Named stacked contact with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same technology and paint
+- **WHEN** `erase v12` is run
+- **THEN** `v12` SHALL be erased as its residue contacts, leaving no `v12` in (0,0)–(10,10)
+
+#### Scenario: Point box picks up a touching label
+- **GIVEN** a label `A` with rectangle (0,0)–(4,4) attached to metal1, and the box is the point (4,2)–(4,2)
+- **WHEN** `erase labels` is run
+- **THEN** label `A` SHALL be deleted, whatever the `magic-compat` setting
 
 ### Requirement: Fill command
 
@@ -218,11 +233,11 @@ Tiles SHALL be collected exactly as for `fill D1`. For each tile, let `r` be the
 
 Both legs SHALL be clipped to B and transformed to edit coordinates. Each non-empty leg SHALL be painted with the tile's type. If the error condition holds for any tile, the command SHALL report "There's not enough room in the box for all the wires." The legs are still painted.
 
-With `bevel`, each wire SHALL instead be painted as one polygon with a 45-degree mitred bend, built from the same two legs reduced to the wire width (see Q-CMDEDIT-15 for the cell that receives it).
+With `bevel`, each wire SHALL instead be painted as one polygon with a 45-degree mitred bend, built from the same two legs reduced to the wire width. The polygon SHALL be painted into the edit cell, in edit coordinates, through the normal paint path (with the technology's paint and contact rules), and the edit cell SHALL be marked modified, whatever the `magic-compat` setting. Magic instead paints bevel paths directly into the planes of the edit window's root cell, so with a child edit cell it changes a different cell at the wrong place, without contact handling or a modified flag; Hefesto does not reproduce this (see Q-CMDEDIT-15, resolution: fix). When the edit cell is the root cell the result SHALL equal Magic's (golden case CMDEDIT-PAINT-10).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdCD.c:2863-3200, commands/CmdCD.c:3227-3729)
+(Magic ref: commands/CmdCD.c:2863-3200, commands/CmdCD.c:2970-3016, commands/CmdCD.c:3227-3729; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-15)
 
 #### Scenario: Corner north then east
 - **GIVEN** the box (0,0)–(20,20) and a metal1 wire at (4,−10)–(8,0)
@@ -237,6 +252,12 @@ Compatibility: exact
 - **GIVEN** the same box and wire
 - **WHEN** `corner n e metal1 bevel` is run
 - **THEN** a metal1 polygon with a 45-degree bend SHALL connect the entry at (4..8, 0) to the exit on the east side
+
+#### Scenario: Bevel corner in a child edit cell
+- **GIVEN** the window's root cell `top` contains an instance of `child` translated by (100,0), `child` is the edit cell, and the box and wire of the scenario above are in `top`'s coordinates translated by (100,0)
+- **WHEN** `corner n e metal1 bevel` is run
+- **THEN** the bevel polygon SHALL be painted into `child`, at the same place as the unbeveled corner in `child`'s coordinates, and `child` SHALL be marked modified
+- **AND** `top` SHALL gain no paint
 
 ### Requirement: Contact command
 
@@ -279,11 +300,11 @@ Compatibility: exact
 - The vertices are absolute coordinates in **edit-cell** coordinates. They are not transformed through the box or the root, and no box is required.
 - The polygon SHALL be implicitly closed. It SHALL be converted to Manhattan rectangles and 45-degree or arbitrary-angle triangles exactly as polygon records are converted on CIF/GDS input (see the MASK capabilities). It SHALL be painted on every plane where TYPE is painted, using the paint rules.
 
-The documentation states that only convex polygons are guaranteed (see Q-CMDEDIT-19). The cell is marked modified, its bounding box is recomputed and DRC is queued over the polygon's bounding box. The selection is not cleared and labels are not re-attached.
+The documentation states that only convex polygons are guaranteed. For non-convex or self-intersecting vertex lists, Hefesto SHALL produce the result of the same nonzero-winding strip decomposer that CIF and GDS polygon input use (capability `mask-input-styles`), as Magic does, whose `polygon` command calls that decomposer; Hefesto SHALL share one decomposer between this command and MASK input (see Q-CMDEDIT-19, resolution: replicate). The cell is marked modified, its bounding box is recomputed and DRC is queued over the polygon's bounding box. The selection is not cleared and labels are not re-attached.
 
 Compatibility: exact
 
-(Magic ref: commands/CmdLQ.c:1215-1270, cif/CIFrdpt.c:604-636)
+(Magic ref: commands/CmdLQ.c:1215-1270, cif/CIFrdpt.c:604-636; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-19)
 
 #### Scenario: Right triangle (verify against Magic)
 - **GIVEN** units `internal`
@@ -294,11 +315,16 @@ Compatibility: exact
 - **WHEN** `polygon metal1 0 0 10 0 0 10 5` is run (9 words)
 - **THEN** "Unpaired coordinate value" SHALL be reported and nothing painted
 
+#### Scenario: Self-intersecting polygon uses the MASK decomposer
+- **GIVEN** units `internal`
+- **WHEN** `polygon metal1 0 0 10 10 10 0 0 10` is run (a bow-tie)
+- **THEN** the edit cell SHALL contain the same metal1 tiles that CIF input produces for a polygon record with the same vertices
+
 ### Requirement: Splitpaint command
 
 `splitpaint DIR LAYER [LAYER2]` SHALL split the box diagonally. It SHALL paint LAYER in the right triangle whose right-angle vertex is the box corner named by DIR, and LAYER2 (if given) in the opposite triangle:
 
-- DIR is any direction or position name. For the corner, Manhattan names map as `north`→`nw`, `east`→`ne`, `south`→`se`, `west`→`sw`, and `center`→`nw` (see Q-CMDEDIT-21).
+- DIR names the corner: `ne`, `nw`, `se` or `sw` (or a synonym from capability `cmd-coordinates-and-units`). For a Manhattan name or `center`: with `magic-compat` ON (the default), it SHALL be mapped as Magic does, `north`→`nw`, `east`→`ne`, `south`→`se`, `west`→`sw` and `center`→`nw`, and Hefesto SHALL report the warning `Direction "<DIR>" is not a corner; using <corner>`; with it OFF, the command SHALL fail with `Direction "<DIR>" is not a corner; use ne, nw, se or sw` and change nothing (see Q-CMDEDIT-21, resolution: replicate in magic-compat, fix in native).
 - LAYER and LAYER2 are layer lists. Space is removed, and inactive types are removed from LAYER.
 - A zero-area box SHALL do nothing.
 - Every type in LAYER is painted as a triangle on each plane where it is painted, using the technology's paint rules for non-Manhattan tiles. The same applies to LAYER2 for the opposite triangle. Afterwards, adjacent compatible triangles are merged within the box area grown by 1.
@@ -307,7 +333,7 @@ Compatibility: exact
 
 Compatibility: exact
 
-(Magic ref: commands/CmdRS.c:3040-3115)
+(Magic ref: commands/CmdRS.c:3040-3115, commands/CmdRS.c:3087-3088; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-21)
 
 #### Scenario: NE triangle
 - **GIVEN** the box (0,0)–(10,10)
@@ -315,9 +341,21 @@ Compatibility: exact
 - **THEN** metal1 SHALL occupy the triangle (0,10),(10,10),(10,0)
 - **AND** poly SHALL occupy the triangle (0,0),(0,10),(10,0)
 
+#### Scenario: Manhattan direction with magic-compat ON
+- **GIVEN** `magic-compat` ON and the box (0,0)–(10,10)
+- **WHEN** `splitpaint east metal1` is run
+- **THEN** the warning `Direction "east" is not a corner; using ne` SHALL be reported
+- **AND** metal1 SHALL occupy the triangle (0,10),(10,10),(10,0)
+
+#### Scenario: Manhattan direction with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the box (0,0)–(10,10)
+- **WHEN** `splitpaint east metal1` is run
+- **THEN** the command SHALL fail with `Direction "east" is not a corner; use ne, nw, se or sw`
+- **AND** nothing SHALL be painted
+
 ### Requirement: Spliterase command
 
-`spliterase DIR [LAYER]` SHALL erase the types in LAYER from the right triangle of the box whose right-angle vertex is the corner named by DIR (same corner mapping as `splitpaint`):
+`spliterase DIR [LAYER]` SHALL erase the types in LAYER from the right triangle of the box whose right-angle vertex is the corner named by DIR (same corner names, Manhattan-name mapping, warning and `magic-compat` OFF error as `splitpaint`; see Q-CMDEDIT-21):
 
 - LAYER defaults to `*`. A list equal to `space` means `*,labels`. Space is removed. An empty set does nothing. Inactive types are removed.
 - A zero-area box does nothing.
@@ -326,7 +364,7 @@ Compatibility: exact
 
 Compatibility: exact
 
-(Magic ref: commands/CmdRS.c:3140-3214)
+(Magic ref: commands/CmdRS.c:3140-3214, commands/CmdRS.c:3184-3185; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-21)
 
 #### Scenario: Erase a triangle
 - **GIVEN** metal1 over the box (0,0)–(10,10)
@@ -338,22 +376,35 @@ Compatibility: exact
 `drop LAYERS` SHALL paint LAYERS into the cells (the edit cell and its descendants) that contain the paint now selected, at the places where that paint is:
 
 1. A box SHALL exist in a window on the edit cell. LAYERS SHALL parse.
-2. If the edit cell's window root is the selection's root cell, the edit cell itself SHALL be that root cell. Otherwise, the top cell of the current window SHALL be the selection's root cell. If the applicable condition fails, the command SHALL fail with "The selection does not match the edit cell." In the second case Magic still searches from the edit cell with an identity transform (see Q-CMDEDIT-17).
+2. The root cell of the edit cell's window SHALL be the selection's root cell. Otherwise the command SHALL fail with "The selection does not match the edit cell." and change nothing, whatever the `magic-compat` setting. Magic accepts the case where only the top cell of the current window is the selection's root, and then searches the edit cell's hierarchy with an identity transform using another cell's root coordinates, painting unrelated cells; Hefesto refuses it (see Q-CMDEDIT-17, resolution: fix).
 3. If the selection contains no paint (space and DRC types excluded), it SHALL do nothing.
-4. For each selected paint tile of type T (for split tiles, the type of the selected side), at area A in root coordinates: search the whole hierarchy under the edit cell for tiles of exactly type T overlapping A. All descendants are searched, whatever their expansion state. For every such tile found in a cell C, the tile area (in C's coordinates) clipped to A (transformed into C) SHALL be painted with every type in LAYERS, one type at a time, in C itself.
+4. For each selected paint tile of type T (for split tiles, the type of the selected side), at area A in root coordinates: search the whole hierarchy under the edit cell for tiles of exactly type T overlapping A (transformed into edit coordinates by the edit transform). All descendants are searched, whatever their expansion state. For every such tile found in a cell C, the tile area (in C's coordinates) clipped to A (transformed into C) SHALL be painted with every type in LAYERS, one type at a time, in C itself.
+   Before anything is painted, every cell C that step 4 would paint SHALL be checked for editability. If any is not editable (for example a read-only or locked cell), the command SHALL fail with `Cannot drop into non-editable cell <C>` and paint nothing in any cell. Magic never checks this (see Q-CMDEDIT-17).
 5. DRC is queued over the box area in the edit cell, and the bounding box is recomputed. The selection is NOT cleared.
 
-Every instance of a modified child cell sees the change, because the cell definition is modified (see Q-CMDEDIT-17).
+Every instance of a modified child cell sees the change, because the cell definition is modified. Hefesto SHALL keep these all-instances semantics, which Magic documents (see Q-CMDEDIT-17).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdCD.c:4614-4770, doc/html/drop.html)
+(Magic ref: commands/CmdCD.c:4614-4770, commands/CmdCD.c:4628-4693, commands/CmdCD.c:4769-4825, doc/html/drop.html; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-17)
 
 #### Scenario: Drop pwell into the cell owning the selected paint
 - **GIVEN** the edit cell `top` contains a use of `child`, `child` contains `dnwell` at (0,0)–(10,10), and `select area dnwell` selected it through the hierarchy
 - **WHEN** `drop pwell` is run
 - **THEN** `child` SHALL contain `pwell` at (0,0)–(10,10)
 - **AND** `top` SHALL gain no pwell
+
+#### Scenario: Selection root differs from the edit cell's root
+- **GIVEN** the selection was made in a window whose root is `top`, and the edit cell is in a window whose root is `other`
+- **WHEN** `drop pwell` is run
+- **THEN** the command SHALL fail with "The selection does not match the edit cell."
+- **AND** no cell SHALL change
+
+#### Scenario: Non-editable target cell
+- **GIVEN** the scenario "Drop pwell into the cell owning the selected paint", with `top` also containing selected `dnwell` of its own, and `child` read-only
+- **WHEN** `drop pwell` is run
+- **THEN** the command SHALL fail with `Cannot drop into non-editable cell child`
+- **AND** neither `top` nor `child` SHALL change
 
 ### Requirement: Paint commands in a non-editable context
 

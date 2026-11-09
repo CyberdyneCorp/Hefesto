@@ -8,7 +8,7 @@ Terminology used throughout the `cmd-*` capabilities:
 
 - **Internal unit (i)**: the integer database grid unit. All stored coordinates are integers in internal units.
 - **Lambda (l)**: the technology scale unit. The technology state holds a reduced fraction `Λ = L1 / L0`, the number of internal units per lambda (initially from the technology file, see capability `tech-loading-and-scaling`).
-- **U**: the size of one internal unit in nanometres, `U = 10·s / e`, computed in IEEE-754 single precision, where `s` and `e` are the scale factor and expander of the current CIF/GDS output style (see the MASK capabilities), rescaled to the current internal grid as Magic does on `scalegrid` and on a load at a scale other than 1:1: the style's values as read (per lambda), with `s` multiplied by `L0` and `e` by `L1`, reduced by their greatest common factor. When no output style is loaded, the conversion divisor is exactly 1.0 (see Q-CMDEDIT-3).
+- **U**: the size of one internal unit in nanometres, `U = 10·s / e`, computed in IEEE-754 single precision, where `s` and `e` are the scale factor and expander of the current CIF/GDS output style (see the MASK capabilities), rescaled to the current internal grid as Magic does on `scalegrid` and on a load at a scale other than 1:1: the style's values as read (per lambda), with `s` multiplied by `L0` and `e` by `L1`, reduced by their greatest common factor. When no output style is loaded, U is undefined and a metric operand is an error (see requirement "Unit suffixes" and Q-CMDEDIT-3).
 - **User grid**: the per-window rectangle `G = (gx0, gy0)–(gx1, gy1)` set by `grid`. Its width `gx1-gx0` and height `gy1-gy0` are the grid pitches. Default `(0,0)–(1,1)`.
 - **Root coordinates**: the coordinate system of the top cell shown in the window. **Edit coordinates**: the coordinate system of the current edit cell. The box is held in root coordinates.
 
@@ -119,11 +119,15 @@ The metric divisor `10·s / (e·k)` SHALL be evaluated in single precision befor
 
 A two-letter suffix `Xm` whose first letter is not `n`, `u`, `m` or `c` SHALL produce the error "Unknown metric prefix "Xm"; assuming internal units" and the value SHALL be taken as internal units. Any other unrecognized suffix SHALL produce "Unknown coordinate type at "…"; assuming internal units" and the value SHALL be taken as internal units.
 
-Grid units refer to the user grid of the window the command applies to. If no layout window can be determined, a `g` operand SHALL end the parse, and the value accumulated before that operand SHALL be returned (see Q-CMDEDIT-4). For a relative quantity (a size or distance), the origin SHALL NOT be added. For an absolute coordinate, it SHALL be added.
+Grid units refer to the user grid of the window the command applies to. For a relative quantity (a size or distance), the origin SHALL NOT be added. For an absolute coordinate, it SHALL be added.
+
+If no layout window can be determined, a `g` operand (or an un-suffixed operand whose effective input unit is the user grid under `units user`) SHALL make the argument invalid: Hefesto SHALL report the error `Grid units need a layout window` and the command SHALL fail and change nothing, as for division by zero (Q-CMDEDIT-5). Magic instead leaves the parse loop before the operand is accumulated and returns 0 or a partial sum; Hefesto does not reproduce this in either mode (see Q-CMDEDIT-4, resolution fix).
+
+If no CIF/GDS output style is loaded, a metric operand (`nm`, `um`, `u`, `micron…`, `mm`, `cm`, `centimicron…`, `cu`) SHALL make the argument invalid: Hefesto SHALL report the error `Metric units need a CIF/GDS output style` and the command SHALL fail and change nothing. Magic divides by a scale of 1.0, so `1nm`, `1um` and `1mm` all give 1 internal unit; Hefesto does not reproduce this in either mode (see Q-CMDEDIT-3, resolution fix).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdSubrs.c:168-240, cif/CIFmain.c:139-146)
+(Magic ref: commands/CmdSubrs.c:168-256, cif/CIFmain.c:139-146; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-3, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-4)
 
 #### Scenario: Microns with a 10 nm internal unit
 - **GIVEN** an output style with `U = 10` nm per internal unit
@@ -148,6 +152,18 @@ Compatibility: exact
 - **THEN** the error "Unknown metric prefix "km"; assuming internal units" SHALL be reported
 - **AND** the result SHALL be `5`
 
+#### Scenario: Metric operand without an output style
+- **GIVEN** no CIF/GDS output style is loaded and the box is (0,0)–(10,10)
+- **WHEN** `box width 1um` is run
+- **THEN** the error `Metric units need a CIF/GDS output style` SHALL be reported, whatever the `magic-compat` setting
+- **AND** the box SHALL be unchanged
+
+#### Scenario: Grid operand without a layout window
+- **GIVEN** no layout window can be determined for the command
+- **WHEN** an argument `5+2g` is parsed
+- **THEN** the error `Grid units need a layout window` SHALL be reported, whatever the `magic-compat` setting
+- **AND** the command SHALL fail and change nothing
+
 ### Requirement: Default unit of un-suffixed values
 
 An operand with no suffix that is followed by the end of the argument or by whitespace SHALL use the **effective input unit**:
@@ -155,13 +171,13 @@ An operand with no suffix that is followed by the end of the argument or by whit
 - If the `units` setting is `default`, the effective input unit SHALL be the current `snap` setting: `internal`, `lambda` or user grid.
 - Otherwise, it SHALL be the `units` setting: `internal`, `lambda`, `user` (grid) or `microns`.
 
-An operand with no suffix that is immediately followed by an operator character (`+ - * /`) SHALL be taken as internal units, whatever the settings (see Q-CMDEDIT-1).
+An operand with no suffix that is immediately followed by an operator character (`+ - * /`): with `magic-compat` ON (the default) it SHALL be taken as internal units, whatever the settings, as in Magic, whose suffix tests exempt the operator characters from the unknown-suffix check; with it OFF it SHALL use the effective input unit like any other un-suffixed operand (see Q-CMDEDIT-1, resolution: replicate in magic-compat, fix in native).
 
 At startup, `units` SHALL be `default` and `snap` SHALL be `lambda`, so un-suffixed values are lambda.
 
 Compatibility: exact
 
-(Magic ref: commands/CmdSubrs.c:153-206, dbwind/DBWtools.c:72-82)
+(Magic ref: commands/CmdSubrs.c:153-206, commands/CmdSubrs.c:251-252, dbwind/DBWtools.c:72-82; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-1)
 
 #### Scenario: Startup default is lambda
 - **GIVEN** a fresh session with `Λ = 2`
@@ -173,30 +189,52 @@ Compatibility: exact
 - **WHEN** `box width 2` is run
 - **THEN** the box width SHALL become `200` internal units
 
+#### Scenario: Un-suffixed operand before an operator with magic-compat ON
+- **GIVEN** `magic-compat` ON, `Λ = 2`, units `default` and snap `lambda`
+- **WHEN** `box width 3+1` is run
+- **THEN** the box width SHALL become `5` internal units: `3` is internal because it is followed directly by `+`, and `1` is lambda (2 internal)
+
+#### Scenario: Un-suffixed operand before an operator with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, `Λ = 2`, units `default` and snap `lambda`
+- **WHEN** `box width 3+1` is run
+- **THEN** the box width SHALL become `8` internal units: both operands are lambda
+
 ### Requirement: Coordinate expressions
 
 An argument MAY contain several operands joined by the binary operators `+`, `-`, `*`, `/`, with optional spaces or tabs around operators (spaces only arise when the argument is quoted as a single word). The expression SHALL be evaluated strictly left to right with no operator precedence, using 32-bit signed integer arithmetic on the already-rounded operands. Division SHALL truncate toward zero. A closing `}` or `"` SHALL end the expression.
 
-After an operand with a unit suffix, the parser does not skip the suffix. Any operator or text that follows a suffixed operand SHALL therefore end the expression, and the remainder SHALL be ignored silently (see Q-CMDEDIT-2). Any other character after an operand also ends the expression silently. Division by an operand that rounds to 0 is undefined in Magic. Hefesto SHALL reject it with an error (see Q-CMDEDIT-5).
+After an operand with a unit suffix, Magic's parser does not skip the suffix, so an operator that follows a suffixed operand ends the expression. With `magic-compat` ON (the default), Hefesto SHALL do the same: the expression SHALL end at the suffixed operand, its value SHALL be the value accumulated up to and including that operand, and Hefesto SHALL report the warning `Ignored text after unit suffix: "<rest>"`, where `<rest>` is the ignored remainder of the argument. With `magic-compat` OFF, the suffix SHALL be skipped and evaluation SHALL continue with the operator that follows it (see Q-CMDEDIT-2, resolution: replicate in magic-compat, fix in native). Any other character after an operand ends the expression silently in both modes. Division by an operand that rounds to 0 is undefined in Magic. Hefesto SHALL reject it with an error (see Q-CMDEDIT-5).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdSubrs.c:243-300)
+(Magic ref: commands/CmdSubrs.c:243-315; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-1, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-2, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-5)
 
 #### Scenario: Left-to-right evaluation
 - **GIVEN** `units internal`
 - **WHEN** `{2 + 3 * 4}` is parsed
 - **THEN** the result SHALL be `20`, not `14`
 
-#### Scenario: Operand directly before an operator is internal
-- **GIVEN** `Λ = 2` with units `default` and snap `lambda`
+#### Scenario: Operand directly before an operator is internal with magic-compat ON
+- **GIVEN** `magic-compat` ON, `Λ = 2` with units `default` and snap `lambda`
 - **WHEN** `100+5` is parsed
 - **THEN** the result SHALL be `110`: `100` is internal because it is followed directly by `+`, and `5` is lambda (10 internal)
 
-#### Scenario: Suffix ends the expression
-- **GIVEN** `U = 10` nm
+#### Scenario: Operand directly before an operator uses the input unit with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, `Λ = 2` with units `default` and snap `lambda`
+- **WHEN** `100+5` is parsed
+- **THEN** the result SHALL be `210`: both operands are lambda
+
+#### Scenario: Suffix ends the expression with magic-compat ON
+- **GIVEN** `magic-compat` ON and `U = 10` nm
 - **WHEN** `1um+2um` is parsed
 - **THEN** the result SHALL be `100` (the `+2um` part is ignored)
+- **AND** the warning `Ignored text after unit suffix: "+2um"` SHALL be reported
+
+#### Scenario: Suffixed operands continue the expression with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and `U = 10` nm
+- **WHEN** `1um+2um` is parsed
+- **THEN** the result SHALL be `300`
+- **AND** no warning SHALL be reported
 
 #### Scenario: Truncating division
 - **GIVEN** `units internal`
@@ -211,14 +249,14 @@ Compatibility: exact
 - `units T` (T = `internal`, `lambda`, `user`/`grid`, `microns`) SHALL set the type. The print flag SHALL keep its previous value, or stay clear if the previous type was `default`.
 - `units T print` / `units T noprint` SHALL set the type and set or clear the print flag. Any other third argument SHALL produce "Unrecognized units option" and leave the type set.
 - `units default` SHALL restore backward-compatible behavior: un-suffixed input follows `snap`, and reported values are plain internal-unit integers.
-- `units print` / `units noprint` given alone SHALL set or clear the print flag. If the current type is `default`, this SHALL also change the type to `microns` (see Q-CMDEDIT-6).
+- `units print` / `units noprint` given alone SHALL set or clear the print flag when the current type is not `default`. If the current type is `default`: with `magic-compat` ON (the default), the command SHALL also change the type to `microns`, as Magic does (Magic's own "Display units" menu sends these forms alone); with it OFF, the command SHALL report the error `set a unit type first` and change nothing (see Q-CMDEDIT-6, resolution: replicate in magic-compat, fix in native).
 - An unrecognized or ambiguous type SHALL print the usage `Usage: units [default | internal | lambda | microns | user] [print]` and change nothing.
 
 When the print flag is set, reported values SHALL carry a unit suffix (see "Reported value formatting").
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdTZ.c:862-1004, dbwind/dbwind.h:179-205)
+(Magic ref: commands/CmdTZ.c:862-1004, commands/CmdTZ.c:891-949, dbwind/dbwind.h:179-205, tcltk/wrapper.tcl:1333-1335; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-6)
 
 #### Scenario: Query in scripting mode
 - **GIVEN** `units microns print` was run
@@ -230,10 +268,17 @@ Compatibility: behavioral
 - **WHEN** `units internal` is run
 - **THEN** the setting SHALL be `internal print`
 
-#### Scenario: Bare print from default (verify against Magic)
-- **GIVEN** a fresh session (units `default`)
+#### Scenario: Bare print from default with magic-compat ON
+- **GIVEN** `magic-compat` ON and a fresh session (units `default`)
 - **WHEN** `units print` is run
 - **THEN** `units` SHALL subsequently report `microns print`
+- **AND** later un-suffixed values SHALL be read as microns
+
+#### Scenario: Bare print from default with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and a fresh session (units `default`)
+- **WHEN** `units print` is run
+- **THEN** the error `set a unit type first` SHALL be reported
+- **AND** `units` SHALL subsequently report `default`
 
 ### Requirement: Snap command
 
@@ -316,11 +361,11 @@ Compatibility: exact
 - `grid multiple [m]` SHALL set the minimum display multiple, an integer 1–255, or `off` (= 1). With no value it SHALL return the current multiple in scripting mode. Magic stores the value but never reads it when drawing (see capability `ui-windows-and-views`, requirement "Grid display and grid command", and Q-UI-21).
 - `grid xs [ys [xo yo]]` and `grid box xs [ys [xo yo]]` SHALL set the grid. `xs` is parsed as a relative x distance, `ys` as a relative y distance (default `ys = xs`), and `xo yo` as absolute coordinates (default 0 0). The result SHALL be `G = (xo, yo)–(xo+xs, yo+ys)`, and display SHALL be turned on. A spacing that is not greater than 0 SHALL produce "Grid spacing must be greater than zero." and change nothing. Exactly three numeric arguments, or more than four, SHALL produce a usage error.
 
-A value given to `grid multiple` outside 1–255 SHALL report a usage error. Magic still stores the value modulo 256 (see Q-CMDEDIT-7). The user grid is per window. A new window's grid SHALL be `(0,0)–(1,1)`, off.
+A value given to `grid multiple` outside 1–255 SHALL report a usage error and SHALL NOT be stored, whatever the `magic-compat` setting; the previous multiple SHALL remain. Magic stores such a value modulo 256, but the stored value is only read back by the query and never by drawing code, so Hefesto does not reproduce this (see Q-CMDEDIT-7, resolution fix, consistent with Q-UI-21). The user grid is per window. A new window's grid SHALL be `(0,0)–(1,1)`, off.
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdFI.c:1273-1469, dbwind/DBWprocs.c:114-117)
+(Magic ref: commands/CmdFI.c:1273-1469, commands/CmdFI.c:1407-1413, dbwind/DBWprocs.c:114-117; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-7)
 
 #### Scenario: Set grid with origin
 - **GIVEN** units `internal`
@@ -332,6 +377,12 @@ Compatibility: behavioral
 - **WHEN** `grid 0 5` is run
 - **THEN** "Grid spacing must be greater than zero." SHALL be reported
 - **AND** the grid SHALL be unchanged
+
+#### Scenario: Out-of-range grid multiple not stored
+- **GIVEN** `grid multiple 4` was run
+- **WHEN** `grid multiple 300` is run and then `grid multiple` is run in scripting mode
+- **THEN** a usage error SHALL be reported for `300`
+- **AND** the result of the query SHALL be `4`
 
 ### Requirement: Scalegrid command
 

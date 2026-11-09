@@ -159,9 +159,10 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 ### Q-LEGACY-51: Initial wiring type is not "none"
 - Kind: bug
 - Magic behavior: The current wiring type is initialised to the type number just below the first selectable type (an internal DRC type), while the "no wiring material selected" check tests for type 0, so `wire leg` before any `wire type` does not report the error and attempts to paint that internal type.
-- Evidence: wiring/wireOps.c:40-45, wiring/wireOps.c:270-275
+- Evidence: wiring/wireOps.c:48, wiring/wireOps.c:328, wiring/wireOps.c:574, database/database.h.in:130-136
 - Options: replicate | fix (initialise to "none" and report the error)
 - Recommendation: fix.
+- Resolution: fix — evidence corrected (the initialiser is wiring/wireOps.c:48, `TT_SELECTBASE-1` = 5 = `TT_ERROR_PS`, and the type-0 checks are at wiring/wireOps.c:328 and :574), so before any `wire type` Magic tries to paint a DRC error type into the edit cell, a meaningless result that no script can rely on; Hefesto starts with no wiring type and reports `no wiring material selected` (verified against wiring/wireOps.c:WireAddLeg on 2026-11-09; approved 2026-11-09).
 
 ### Q-LEGACY-52: Wiring operations dereference a missing window
 - Kind: bug
@@ -174,9 +175,10 @@ Each entry records a Magic behavior (at commit fc5daa9e) that looks accidental, 
 ### Q-LEGACY-53: wire segment usage message lists coordinates in the wrong order
 - Kind: doc-mismatch
 - Magic behavior: The usage message says `x1 x2 y1 y2` but the arguments are parsed as `x1 y1 x2 y2 ...`.
-- Evidence: commands/CmdTZ.c:2010-2012
+- Evidence: commands/CmdTZ.c:2036-2037 (usage text), commands/CmdTZ.c:1718 (help table, correct order)
 - Options: replicate text | fix text
 - Recommendation: fix the message (informative text).
+- Resolution: fix — evidence corrected (the usage text is at commands/CmdTZ.c:2036-2037; the `wire help` table at commands/CmdTZ.c:1718 already says `x1 y1 x2 y2`), and the message is informative text that no script parses (verified against commands/CmdTZ.c:CmdWire on 2026-11-09; approved 2026-11-09).
 
 ### Q-LEGACY-70: Netlist write order depends on platform word size and char signedness
 - Kind: quirk

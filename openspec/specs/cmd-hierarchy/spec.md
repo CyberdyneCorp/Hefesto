@@ -77,17 +77,29 @@ Compatibility: behavioral
 - If the chosen cell is not yet read, it SHALL be read. If it is read-only, the command SHALL report "File FILE is not writeable. Edit not set." and keep the old edit cell.
 - The edit-to-root transform SHALL become the instance's transform to the root. The edit change is recorded for undo. Without arguments, the command is logged as `edit USEID`.
 
-With INSTPATH, Magic does not update the edit-to-root transform (see Q-CMDEDIT-30). Hefesto SHALL use the instance's full transform.
+With INSTPATH, Magic changes only the edit cell use: the edit-to-root transform and the edit root cell keep their previous values (identity right after `load`), so box coordinates keep being mapped through the previous transform. With `magic-compat` ON (the default), Hefesto SHALL do the same, and whenever a command maps the box (or other root coordinates) into edit coordinates through a transform that no longer matches the edit instance's transform to the root, it SHALL report the warning `Warning: edit transform does not match instance <INSTPATH>; the box is mapped through the previous edit transform`. With it OFF, `edit INSTPATH` SHALL set the instance's full transform to the root and its edit root cell, as for the forms without arguments (see Q-CMDEDIT-30, resolution: replicate in magic-compat, fix in native, with the warning added by user decision).
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdE.c:82-250)
+(Magic ref: commands/CmdE.c:82-250; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-30)
 
 #### Scenario: Edit selected instance
 - **GIVEN** instance `x1` of `inv` at translation (100,0) is selected
 - **WHEN** `edit` is run
 - **THEN** `inv` SHALL be the edit cell, with edit-to-root transform = translate(100,0)
 - **AND** `paint metal1` with the root box (100,0)–(110,10) SHALL paint (0,0)–(10,10) in `inv`
+
+#### Scenario: Edit by instance path with magic-compat ON
+- **GIVEN** `magic-compat` ON, `load top` was just run, and `top` contains instance `x1` of `inv` at translation (100,0)
+- **WHEN** `edit x1` is run and then `paint metal1` with the root box (100,0)–(110,10)
+- **THEN** `inv` SHALL be the edit cell and metal1 SHALL be painted at (100,0)–(110,10) in `inv`, as in Magic
+- **AND** `paint` SHALL report `Warning: edit transform does not match instance x1; the box is mapped through the previous edit transform`
+
+#### Scenario: Edit by instance path with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same cells
+- **WHEN** `edit x1` is run and then `paint metal1` with the root box (100,0)–(110,10)
+- **THEN** metal1 SHALL be painted at (0,0)–(10,10) in `inv`
+- **AND** no warning SHALL be reported
 
 ### Requirement: Down command
 
@@ -386,11 +398,11 @@ Compatibility: informative
 - `read` loads the archive with every cell dereferenced.
 - `readref` loads the archive without dereferencing, so recorded file paths are honored.
 
-Reading appends `.mag` to the given name (see Q-CELL-34). The command SHALL require exactly two arguments. Magic prints usage on a wrong count but continues anyway (see Q-CMDEDIT-34). Hefesto SHALL stop.
+Reading appends `.mag` to the given name (see Q-CELL-34). The command SHALL require exactly two arguments. On a wrong count it SHALL print the usage and stop, changing nothing, whatever the `magic-compat` setting. Magic prints the usage and continues, but its option is still unset so it does nothing more; stopping is observably identical (see Q-CMDEDIT-34, resolution: fix).
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdAB.c:84-147, database/DBio.c:6382-6560)
+(Magic ref: commands/CmdAB.c:84-147, database/DBio.c:6382-6560; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-34)
 
 #### Scenario: Archive round trip
 - **GIVEN** cells `top` and `sub` in memory

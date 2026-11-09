@@ -68,6 +68,34 @@ Compatibility: native
 - **WHEN** the user sets the box by dragging, then picks a layer and taps "paint" in the context menu
 - **THEN** the same `paint` command SHALL be issued that Magic's middle-button action issues
 
+### Requirement: Box tool touch gestures
+On touch devices, with the box tool active, the mode-based mapping above SHALL give the box tool these gestures:
+- a one-finger drag that starts inside the box SHALL move the whole box by the drag offset;
+- a one-finger drag that starts on a corner handle of the box SHALL move that corner, following the corner dragging rules of capability `cmd-box`;
+- a one-finger drag that starts anywhere else SHALL sweep a new box from the touch-down point to the lift point;
+- paint or erase by example (Magic's middle button over the box) SHALL be an item of the long-press context menu.
+
+Points SHALL be snapped as for pointer input (capability `cmd-coordinates-and-units`). Each gesture SHALL issue the same `box` or `paint` command that the corresponding Magic button issues, so the rules of capability `cmd-box` (and `cmd-paint-erase` for paint by example) apply to it and the command log records the same command (see Q-CMDEDIT-13, resolution: platform).
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-5, docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-13; Magic ref: dbwind/DBWbuttons.c:DBWBoxHandler)
+
+#### Scenario: Drag inside the box moves it
+- **GIVEN** an iPad with no keyboard, the box tool active, snap `internal` and a box (0,0)–(10,10)
+- **WHEN** the user drags one finger from root (5,5) to root (25,15)
+- **THEN** the box SHALL be (20,10)–(30,20)
+
+#### Scenario: Drag on a corner handle moves that corner
+- **GIVEN** the same box
+- **WHEN** the user drags one finger from the upper-right corner handle to root (30,40)
+- **THEN** the box SHALL be (0,0)–(30,40)
+
+#### Scenario: Drag elsewhere sweeps a new box
+- **GIVEN** the same box
+- **WHEN** the user drags one finger from root (50,50) to root (60,70)
+- **THEN** the box SHALL be (50,50)–(60,70)
+
 ### Requirement: Command entry on every platform
 Every platform SHALL provide a command entry for typing any command of the command API. It SHALL support history and completion of command names, cell names and layer names.
 

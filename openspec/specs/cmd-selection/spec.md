@@ -28,20 +28,30 @@ Compatibility: behavioral
 
 ### Requirement: Select qualifiers
 
-`select` SHALL accept one leading qualifier. It is matched as a prefix of the qualifier word (the typed word must be a prefix), tested in this order: `more`, `less`, `nocycle`, `same`, `do`, `no`, `simple`, `top` (the last only when followed by `cell`):
+`select` SHALL accept one leading qualifier. With `magic-compat` ON (the default), it is matched as a prefix of the qualifier word (the typed word must be a prefix), tested in this order, and the first match wins: `more`, `less`, `nocycle`, `same`, `do`, `no`, `simple`, `top` (the last only when followed by `cell`). With `magic-compat` OFF, a typed word that equals a qualifier exactly SHALL select that qualifier first; otherwise the same prefix matching in the same order applies (see Q-CMDEDIT-60, resolution: replicate in magic-compat, fix in native):
 
 - `more`: add to the selection instead of replacing it.
 - `less`: remove matching items from the selection.
 - `nocycle`: do not cycle at the same point. Ignore subcell labels for this command, and reset type cycling.
 - `same`: treat this command as a repeat at the same place (enables cycling).
-- `do` / `no` / `simple`: label policy for net/region selection (also used by `select labels`). Because `no` is a prefix of `nocycle`, which is tested first, `no` behaves as `nocycle` (see Q-CMDEDIT-60).
+- `do` / `no` / `simple`: label policy for net/region selection (also used by `select labels`). With `magic-compat` ON, `no` is a prefix of `nocycle`, which is tested first, so `no` behaves as `nocycle` (turning off cycling and resetting the type counter), as in Magic; with it OFF, `no` is an exact match and selects the `no` label policy. In both modes `s` is a prefix of `same`, tested before `simple`, so `s` means `same` (see Q-CMDEDIT-60).
 - `top cell`: in `select top cell`, select the window's top cell itself.
 
 A trailing `at X Y` (the third-to-last word is exactly `at`) SHALL give the reference point in edit coordinates instead of the pointer. The point is transformed to root coordinates, and the reference area is the unit square at that point.
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdRS.c:840-960)
+(Magic ref: commands/CmdRS.c:840-960, commands/CmdRS.c:903-957; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-60)
+
+#### Scenario: no qualifier with magic-compat ON
+- **GIVEN** `magic-compat` ON
+- **WHEN** `select no net` is run
+- **THEN** the qualifier SHALL be `nocycle`: cycling is turned off, the type counter is reset, and the net is selected with the default label policy
+
+#### Scenario: no qualifier with magic-compat OFF
+- **GIVEN** `magic-compat` OFF
+- **WHEN** `select no net` is run
+- **THEN** the qualifier SHALL be the `no` label policy, and the net SHALL be selected with that policy
 
 #### Scenario: More qualifier
 - **GIVEN** metal1 at A selected
@@ -387,21 +397,31 @@ Compatibility: exact
 | `90`, `E` | clockwise 90 |
 | `180`, `S` | 180 |
 | `270`, `W` | clockwise 270 |
-| `h`, `0h`, `FN` | sideways (x' = −x) |
+| `h`, `0h`, `180v`, `FN` | sideways (x' = −x) |
 | `v`, `0v`, `180h`, `FS` | upside down (y' = −y) |
 | `90h`, `270v`, `FE` | x' = −y, y' = −x |
 | `270h`, `90v`, `FW` | x' = y, y' = x |
 
-An unknown or ambiguous name (for example `9`) SHALL print `Usage: orient [orientation]`. The orientation is applied relative to the current one, not set absolutely (see Q-CMDEDIT-62).
+An unknown or ambiguous name (for example `9`) SHALL print `Usage: orient [orientation]`. The orientation is applied relative to the current one (composed with it), not set absolutely, as Magic implements it. `180v` SHALL map to sideways, as `getcell` and `dump` map it, whatever the `magic-compat` setting; Magic lists `180v` in its keyword table but has no case for it and prints the usage, so accepting it only accepts a form Magic rejects (see Q-CMDEDIT-62, resolution: fix).
 
 Compatibility: exact
 
-(Magic ref: commands/CmdLQ.c:3077-3202)
+(Magic ref: commands/CmdLQ.c:3077-3202, commands/CmdLQ.c:3088-3167, commands/CmdCD.c:5344-5345; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-62)
 
 #### Scenario: FN is a horizontal flip
 - **GIVEN** metal1 selected at (10,10)–(30,20)
 - **WHEN** `orient FN` is run
 - **THEN** the metal1 SHALL still occupy (10,10)–(30,20), mirrored about the vertical axis
+
+#### Scenario: 180v is sideways
+- **GIVEN** metal1 selected at (10,10)–(30,20)
+- **WHEN** `orient 180v` is run
+- **THEN** the result SHALL be the same as for `orient FN`, and no usage SHALL be printed
+
+#### Scenario: Orientation is relative
+- **GIVEN** a selected instance with orientation `90`
+- **WHEN** `orient 90` is run
+- **THEN** the instance orientation SHALL be `180`
 
 ### Requirement: Array command
 
@@ -414,12 +434,13 @@ Compatibility: exact
 - Edit-cell **paint** SHALL be replicated `(|XHI−XLO|+1) × (|YHI−YLO|+1)` times, at offsets `(i·xsep, j·ysep)`.
 - Edit-cell **labels** SHALL be replicated the same way. In each copy, the first number in the label text is replaced by `n1 + i` and the second by `n2 + j`, where `n1` and `n2` are the numbers in the original text and `i`, `j` the column and row index. For a one-dimensional array, the single varying index increments both (verify against Magic). Text with no digits is copied unchanged.
 - The result replaces the originals and becomes the selection.
-- Queries: `array count`, `array width`, `array height`, `array pitch` and `array position`, with no values, SHALL report for each selected use its index ranges, x separation, y separation, both, or bounding-box lower-left. In scripting mode with `-list`, the result is a list holding the values of the last use reported (see Q-CMDEDIT-63). Setting `width`, `height`, `pitch` or `position` prints "Unimplemented function." and changes nothing.
+- Queries: `array count`, `array width`, `array height`, `array pitch` and `array position`, with no values, SHALL report for each selected use its index ranges, x separation, y separation, both, or bounding-box lower-left. In scripting mode with `-list`: with `magic-compat` ON (the default), the result SHALL be the flat list holding the values of the last use reported, as in Magic, where each use's query replaces the result; with it OFF, the result SHALL be a list with one sublist per selected array use, in the order the uses are reported, each sublist holding that use's values (see Q-CMDEDIT-63, resolution: replicate in magic-compat, fix in native).
+- Setting `width`, `height`, `pitch` or `position` SHALL print "Unimplemented function." and change nothing, whatever the `magic-compat` setting. With `magic-compat` OFF the decision calls for implementing these setters, but that part is not implemented; it is deferred to a later milestone by user decision, and M2 implements only the native list-of-lists query (see Q-CMDEDIT-63).
 - Bad arguments print the option help.
 
 Compatibility: exact
 
-(Magic ref: commands/CmdAB.c:197-560, select/selOps.c:1423-1630, netmenu/NMlabel.c:86-200)
+(Magic ref: commands/CmdAB.c:197-560, select/selOps.c:1423-1630, netmenu/NMlabel.c:86-200; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-63)
 
 #### Scenario: Array a cell
 - **GIVEN** a selected edit-cell use of `inv` with bounding box (0,0)–(10,20) and the box (0,0)–(12,25)
@@ -430,6 +451,22 @@ Compatibility: exact
 - **GIVEN** a selected label `D0` and the box width 10, height 10
 - **WHEN** `array 4 1` is run
 - **THEN** labels `D0`, `D1`, `D2`, `D3` SHALL exist at x offsets 0, 10, 20, 30
+
+#### Scenario: array -list with magic-compat ON
+- **GIVEN** `magic-compat` ON and two selected array uses, the first reported with indices 0..2 by 0..1 and the second reported with indices 0..3 by 0..0
+- **WHEN** `array -list count` is run in scripting mode
+- **THEN** the result SHALL be the flat list `0 3 0 0` of the last use reported
+
+#### Scenario: array -list with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same selection
+- **WHEN** `array -list count` is run in scripting mode
+- **THEN** the result SHALL be the list of lists `{0 2 0 1} {0 3 0 0}`
+- **AND** with only the first use selected, the result SHALL be `{0 2 0 1}`
+
+#### Scenario: Array setters are unimplemented
+- **GIVEN** a selected array use
+- **WHEN** `array width 20` is run, with `magic-compat` ON or OFF
+- **THEN** "Unimplemented function." SHALL be printed and the use SHALL not change
 
 ### Requirement: What command
 

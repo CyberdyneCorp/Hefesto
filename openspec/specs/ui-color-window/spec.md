@@ -35,9 +35,10 @@ In a color window, a button press SHALL act on the layout point under the cursor
 - On a bar, the component SHALL be set to (x − bar.xbot)/(bar.xtop − bar.xbot), with x clamped to the bar.
 - On a pump, the left button SHALL add the pump amount and any other button SHALL add 5× the amount. The amount is ±0.0078 for R, G and B, and ±0.01 for H, S and V.
 - Informative: in Magic's non-Tcl build, a press on the swatch starts a pick. The press prints `Release button over new color to edit.` (left) or `Release button over color to copy.` (other buttons). The release then reads the pixel value under the cursor. Left loads that color index for editing. Other buttons copy its RGB into the edited color. Magic's Tcl build, which is normative, does not start a pick from the swatch.
+- Hefesto SHALL NOT provide a screen-pixel color picker (eyedropper) in the color window, in either `magic-compat` mode. The normative Tcl build compiles picking out, and under the translucent OpenGL default of X-5 a screen pixel blends several styles rather than naming one colormap entry; picking a layer's display style from the layout belongs to the design-system and UX scope, not to Magic compatibility (see Q-UI-37, resolution: other).
 
 Compatibility: behavioral
-(Magic ref: cmwind/CMWcmmnds.c:141-298)
+(Magic ref: cmwind/CMWcmmnds.c:141-298, cmwind/CMWcmmnds.c:cmwButtonDown; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-37)
 
 #### Scenario: Click red bar midpoint
 - **GIVEN** a color window editing a color with RGB (0,0,0)
@@ -107,15 +108,21 @@ The color client SHALL register `color`, `load`, `pushbutton` and `save`.
 
 `load` and `save` SHALL accept exactly 0 or 3 arguments. Otherwise they print `Usage: <cmd> [techStyle displayStyle monitorType]`.
 
-`pushbutton left|middle|right` SHALL simulate a press of that button at the current point. No release is generated (see Q-UI-37).
+`pushbutton left|middle|right` SHALL simulate a press of that button at the current point. No release SHALL be generated, as in Magic: every color-window action fires on press, and the release handler is reached only after a press over the current-color swatch (see Q-UI-37, resolution: other, replicate press-only).
 
 Compatibility: behavioral
-(Magic ref: cmwind/CMWmain.c:411-437, cmwind/CMWcmmnds.c:300-540)
+(Magic ref: cmwind/CMWmain.c:411-437, cmwind/CMWcmmnds.c:300-540, cmwind/CMWcmmnds.c:cmwPushbutton; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-37)
 
 #### Scenario: Next wraps
 - **GIVEN** a 256-entry map and a color window on index 255
 - **WHEN** `color next` is executed
 - **THEN** the window SHALL edit index 0
+
+#### Scenario: pushbutton is press-only
+- **GIVEN** a color window editing a color with RGB (0,0,0) and the current point at layout point (6000,8500) on the red bar
+- **WHEN** `pushbutton left` is executed
+- **THEN** red SHALL become 128, as for a pointer press
+- **AND** no release event SHALL be delivered to the color window
 
 #### Scenario: Save default name
 - **GIVEN** styletype `mos`, the OpenGL display class and monitor `std`

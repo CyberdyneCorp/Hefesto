@@ -79,11 +79,11 @@ Compatibility: exact
 | `box` | `llx lly urx ury` (one or four words). Not allowed with `-default`. | the four values |
 | `help` | — | option list |
 
-In scripting mode a query SHALL append one element per selected label to the result list; with `-default` the query result is the default label's value, size and offset divided by 8 like the per-label queries (Q-MISC-23), the justification `*ILLEGAL*` and the layer `default` while they are unset. Values are formatted per `units`. Setting a value SHALL change only labels whose value differs, record undo, re-render, and mark the cell modified. The change is also applied to the selection's copy of each label. More than two value words (five for `box`) SHALL print usage. The four `box` coordinates are parsed as relative distances, so a grid origin is not added (see Q-CMDEDIT-91); a single `box` word holds four values or two (a point), anything else prints `Label box requires four coordinates.` Errors print Magic's messages and change nothing: an unknown or ambiguous option `Unknown setlabel option "<word>"`, a bad position the position-name list, an unknown layer `Unrecognized layer (type) name "<name>"`, a bad sticky word `Unknown sticky option "<word>"`, one offset word without a space `Usage:  setlabel offset <x> <y>`, `text` or `box` with `-default` `Cannot set a default label text.` / `Cannot set a default label box.`. A size that is not a positive number is ignored; a rotation that is not an integer sets 0.
+In scripting mode a query SHALL append one element per selected label to the result list; with `-default` the query result is the default label's value, size and offset divided by 8 like the per-label queries (Q-MISC-23), the justification `*ILLEGAL*` and the layer `default` while they are unset. Values are formatted per `units`. Setting a value SHALL change only labels whose value differs, record undo, re-render, and mark the cell modified. The change is also applied to the selection's copy of each label. More than two value words (five for `box`) SHALL print usage. The four `box` coordinates: with `magic-compat` ON (the default) they SHALL be parsed as relative distances, as in Magic, so `g` operands (and un-suffixed operands under `units user`) do not add the grid origin; with it OFF they SHALL be parsed as absolute coordinates, adding the grid origin (see Q-CMDEDIT-91, resolution: replicate in magic-compat, fix in native); a single `box` word holds four values or two (a point), anything else prints `Label box requires four coordinates.` Errors print Magic's messages and change nothing: an unknown or ambiguous option `Unknown setlabel option "<word>"`, a bad position the position-name list, an unknown layer `Unrecognized layer (type) name "<name>"`, a bad sticky word `Unknown sticky option "<word>"`, one offset word without a space `Usage:  setlabel offset <x> <y>`, `text` or `box` with `-default` `Cannot set a default label text.` / `Cannot set a default label box.`. A size that is not a positive number is ignored; a rotation that is not an integer sets 0.
 
 Compatibility: behavioral
 
-(Magic ref: commands/CmdRS.c:1660-2160, commands/CmdRS.c:2163-2672)
+(Magic ref: commands/CmdRS.c:1660-2160, commands/CmdRS.c:2163-2672, commands/CmdRS.c:2458-2517; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-91)
 
 #### Scenario: Query sizes
 - **GIVEN** two selected edit-cell labels of size 80 and 160 eighths, and units `internal`
@@ -93,6 +93,16 @@ Compatibility: behavioral
 #### Scenario: Change justification
 - **WHEN** `setlabel justify sw` is run with one selected label
 - **THEN** its justification SHALL be south-west and the cell SHALL be modified
+
+#### Scenario: Label box in grid units with magic-compat ON
+- **GIVEN** `magic-compat` ON, the user grid `(5,5)–(15,15)` and one selected label
+- **WHEN** `setlabel box 1g 1g 2g 2g` is run
+- **THEN** the label rectangle SHALL be (10,10)–(20,20), with no grid origin added
+
+#### Scenario: Label box in grid units with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same grid and label
+- **WHEN** `setlabel box 1g 1g 2g 2g` is run
+- **THEN** the label rectangle SHALL be (15,15)–(25,25)
 
 ### Requirement: Port command target
 
@@ -133,7 +143,7 @@ Compatibility: exact
 
 ### Requirement: Port make, numbering and directions
 
-- `port make [INDEX] [DIR…]` SHALL turn the target label into a port. If it already is one, the command reports "The selected label is already a port." Index: INDEX if given. An INDEX already used by a port with different text is an error. Otherwise the index is that of an existing port with the same text, or else one more than the highest existing port index (see Q-CMDEDIT-92 for order dependence). The first port gets index 1.
+- `port make [INDEX] [DIR…]` SHALL turn the target label into a port. If it already is one, the command reports "The selected label is already a port." Index: INDEX if given. An INDEX already used by a port with different text is an error. Otherwise the labels are scanned in label-list order: the first other port with the same text SHALL give its index and end the scan, so a same-text port always wins; if there is none, the index SHALL be one more than the highest existing port index. The only order dependence is between several same-text ports with different indices, where the first in the label list wins, as in Magic; Hefesto SHALL keep the label order read from the `.mag` file so that this choice matches Magic (see Q-CMDEDIT-92, resolution: replicate). The first port gets index 1.
 - **Directions**: each DIR is a Manhattan direction (transformed to edit orientation), ORed into the connection set N/E/S/W. With no DIR, the set is derived from the label justification: N→{N}, S→{S}, E→{E}, W→{W}, NE→{N,E}, NW→{N,W}, SE→{S,E}, SW→{S,W}, center→{N,E,S,W}.
 - `port makeall [INDEX] [DIR]` SHALL make every non-port label in the edit cell a port, as `make` does.
 - `port connections [DIR…]` SHALL query (`Directions = ` followed by a subset of `nesw`, in that order) or set the direction set.
@@ -146,7 +156,7 @@ All changes are undoable and mark the cell modified.
 
 Compatibility: exact
 
-(Magic ref: commands/CmdLQ.c:1980-2320)
+(Magic ref: commands/CmdLQ.c:1980-2320, commands/CmdLQ.c:2195-2215; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-92)
 
 #### Scenario: Auto index
 - **GIVEN** ports with indices 1 and 4 and a new label `C` under the box
@@ -154,9 +164,19 @@ Compatibility: exact
 - **THEN** `C` SHALL have index 5
 - **AND** its directions SHALL follow its justification
 
+#### Scenario: Same-text port wins
+- **GIVEN** ports `A` with index 2 and `B` with index 7, and a new label `A` under the box
+- **WHEN** `port make` is run
+- **THEN** the new port SHALL have index 2
+
+#### Scenario: First same-text port in label order wins
+- **GIVEN** a cell read from a `.mag` file whose label list holds port `A` with index 3 before port `A` with index 6, and a new label `A` under the box
+- **WHEN** `port make` is run
+- **THEN** the new port SHALL have index 3
+
 ### Requirement: Property command
 
-`property [list] [TYPE] [NAME [VALUE…]]` SHALL query or set properties of the **window's top cell** (or of the edit cell if there is no window, see Q-CMDEDIT-93). `cellname property CELL …` applies the same command to a named cell. TYPE is one of `string` (default), `integer`, `dimension`, `double`, `plane`, `compat`:
+`property [list] [TYPE] [NAME [VALUE…]]` SHALL query or set properties of the **window's top (root) cell**, or of the edit cell if there is no window, as Magic does in both `magic-compat` modes; Magic's PCell toolkit calls `property` right after `pushstack`, where the two coincide, and scripts use `cellname property` for an explicit target (see Q-CMDEDIT-93, resolution: replicate). `cellname property CELL …` applies the same command to a named cell. TYPE is one of `string` (default), `integer`, `dimension`, `double`, `plane`, `compat`:
 
 - `property` alone SHALL list all properties (scripting: a flat list of name/value pairs).
 - `property NAME` SHALL return the value, or report `Property name "NAME" is not defined` (silent with `list`).
@@ -170,7 +190,7 @@ Setting a property SHALL mark the cell modified.
 
 Compatibility: exact
 
-(Magic ref: commands/CmdLQ.c:2324-2830)
+(Magic ref: commands/CmdLQ.c:2324-2830; Hefesto decision: docs/decisions/open-questions/CMDEDIT.md#Q-CMDEDIT-93)
 
 #### Scenario: Fixed bbox
 - **GIVEN** units `internal`
@@ -180,6 +200,11 @@ Compatibility: exact
 #### Scenario: Delete
 - **WHEN** `property foo bar`, then `property foo ""`, then `property foo` are run
 - **THEN** the last command SHALL report that `foo` is not defined
+
+#### Scenario: Target is the window's root cell
+- **GIVEN** a window whose root cell is `top`, and `edit` has made a child cell `sub` the edit cell
+- **WHEN** `property foo bar` is run
+- **THEN** `top` SHALL have property `foo` = `bar` and `sub` SHALL not
 
 ### Requirement: Findlabel command
 
