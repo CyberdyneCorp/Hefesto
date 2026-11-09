@@ -351,3 +351,19 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate | fix (strip the LF of the last chunk)
 - Recommendation: fix. The value read is the value written; values shorter than the buffer are unaffected.
 - Resolution: fix — data corruption on every round trip (X-2 tier 1, "data loss"): the LF that ends the line is not part of the value, whatever its length (recorded 2026-11-09 from the CELL-RD-21 capture).
+
+### Q-CELL-43: Port record warnings without a line feed
+- Kind: bug
+- Magic behavior: the `.mag` reader prints `Ignoring unknown "port" use: <word>` and `Ignoring unknown "port" shape: <word>` with no trailing line feed, so consecutive warnings (and the next console message) run together on one line. An unknown class is reported with the use word (Q-CELL-6). Shown by golden case CELL-RD-18.
+- Evidence: database/DBio.c:4035, database/DBio.c:4060, database/DBio.c:4079
+- Options: replicate | fix (each warning on its own line)
+- Recommendation: fix. Every diagnostic is one record; the console prints one per line.
+- Resolution: fix — each warning is printed on its own line; the text is Magic's (recorded 2026-11-09 from the CELL-RD-18 capture; needs approval).
+
+### Q-CELL-44: Element styles unknown to the display style table are dropped
+- Kind: bug
+- Magic behavior: when an element record is read, each style name is looked up in the current display style table (`GrGetStyleFromName`). An unknown name yields -1, which `DBWElementStyle` takes as a query, so the style is silently dropped; when no style remains Magic prints `Warning:  Element <name> has no styles!` and later writes the element with an empty style list. Which names survive therefore depends on the display style file loaded (and on running with a display at all), and saving the cell loses them. Shown by golden cases CELL-RD-19 and CELL-WR-08 (`red` is not a long style name in `mos.7bit.dstyle`).
+- Evidence: database/DBio.c:3800-3815, graphics/grDStyle.c:136-148, dbwind/DBWelement.c:1100-1170
+- Options: replicate | fix (keep the style names as written)
+- Recommendation: fix. A `.mag` file's element styles should not depend on the display used to open it (X-2 tier 1, data loss).
+- Resolution: fix — element style names are kept as read and written back unchanged; no "has no styles" warning (recorded 2026-11-09 from the CELL-RD-19 / CELL-WR-08 captures; needs approval).

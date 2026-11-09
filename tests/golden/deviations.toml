@@ -69,6 +69,16 @@ decisions = ["Q-CELL-5"]
 outputs = ["a_out.mag"]
 reason = "label text longer than 99 characters is kept in full; Magic truncates it on read"
 
+[CELL-RD-18]
+decisions = ["Q-CELL-6", "Q-CELL-43"]
+outputs = ["stderr.txt", "a_out.mag"]
+reason = "a 3-token port record is accepted with its third token read as the class (Magic skips the line), and each unknown use/shape warning ends with a line feed"
+
+[CELL-RD-19]
+decisions = ["Q-CELL-11", "Q-CELL-44"]
+outputs = ["stdout.txt", "a_out.mag"]
+reason = "elements are written sorted by name (Magic: hash order), and the style name red, unknown to Magic's display styles, is kept instead of being dropped with a 'has no styles' warning"
+
 [CELL-RD-21]
 decisions = ["Q-CELL-42"]
 outputs = ["stdout.txt", "a_out.mag"]
@@ -78,6 +88,11 @@ reason = "a property value longer than the line buffer does not keep the line fe
 decisions = ["Q-CELL-12"]
 outputs = ["a_out.mag"]
 reason = "uses a1 and A1 are written in the total natural order (byte tie-break: A1 first); Magic's order depends on the host qsort"
+
+[CELL-WR-08]
+decisions = ["Q-CELL-11", "Q-CELL-44"]
+outputs = ["stdout.txt", "a_out.mag"]
+reason = "elements are written sorted by name (Magic: hash order), and the style name red, unknown to Magic's display styles, is kept instead of being dropped with a 'has no styles' warning"
 
 [CELL-WR-11]
 decisions = ["Q-CELL-14"]
