@@ -104,7 +104,7 @@ TEST_CASE("locking shows and sets the setting with unique prefixes",
 
 TEST_CASE("crashbackups disable then resume schedules nothing", "[cap:ui-gui-managers][req:Crash backup timer]") {
   Session s;
-  auto& session = s.editor.locks->session();
+  auto& session = s.editor.cell_session;
   REQUIRE(s.run("crashbackups").ok());
   CHECK(session.backup_timer == cell::CellSession::BackupTimer::running);
   REQUIRE(s.run("crashbackups", {"disable"}).ok());

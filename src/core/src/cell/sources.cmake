@@ -26,4 +26,5 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/paths.cpp
   ${CMAKE_CURRENT_LIST_DIR}/place_commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/search_path.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/session.cpp
   ${CMAKE_CURRENT_LIST_DIR}/timestamps.cpp)

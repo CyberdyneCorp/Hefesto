@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 
 #include "hefesto/app/startup.hpp"
 #include "hefesto/cell/crash.hpp"
@@ -22,6 +23,7 @@
 #include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/platform_net/http_fetcher.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
@@ -179,8 +181,9 @@ class Session {
     install_pdk_store();
     // cell-io-safety: POSIX locks and the crash-backup file host, before any command.
     editor_.locks = platform_posix::make_lock_service();
-    cell::cell_session(editor_).host = platform_posix::make_file_host();
-    cmd::register_all_commands(registry_);
+    editor_.cell_session.host = platform_posix::make_file_host();
+    cmd::register_all_commands(
+        registry_, pdk::CommandHosts{platform_net::http_fetcher_factory(install_host_->environment("GITHUB_TOKEN")), {}, {}});
     command_log_ = std::make_unique<cmd::CommandLog>(logger_);
     dispatcher_ = std::make_unique<cmd::Dispatcher>(registry_, services_.view(), project_, script_session_);
     dispatcher_->set_editor(&editor_);
@@ -215,7 +218,10 @@ class Session {
   // manager's installs (pinned, enabled, <root>/<name>, PDKPATH) under the root
   // of --pdk-root, PDK_ROOT or ~/.ciel. Before the dispatcher takes its view.
   void install_pdk_store() {
-    pdk_fetcher_ = pdk::make_process_fetcher(services_.view().processes, install_host_->environment("GITHUB_TOKEN"));
+    // hefesto-licensing D-13: in-process HTTPS (URLSession on macOS, libcurl on Linux).
+    platform_net::HttpFetcherOptions fetch;
+    fetch.github_token = install_host_->environment("GITHUB_TOKEN");
+    pdk_fetcher_ = platform_net::make_http_fetcher(std::move(fetch));
     pdk_manager_ = std::make_unique<pdk::PdkManager>(services_.files(), *install_host_, *pdk_fetcher_,
                                                      pdk::Catalog::builtin());
     pdk_manager_->set_root(pdk_manager_->resolve_root(options_.pdk_root));

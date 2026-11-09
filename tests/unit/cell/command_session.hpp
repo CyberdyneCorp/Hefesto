@@ -40,7 +40,7 @@ struct CommandSession {
       editor.locks = std::move(locks);
     }
     editor.technology = tiny_technology();
-    cell_session(editor).host = make_memory_file_host(files(), "/work");
+    editor.cell_session.host = make_memory_file_host(files(), "/work");
     editor.search_paths.path = {"/work"};
   }
 

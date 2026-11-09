@@ -8,7 +8,7 @@ Terminology used throughout the `cmd-*` capabilities:
 
 - **Internal unit (i)**: the integer database grid unit. All stored coordinates are integers in internal units.
 - **Lambda (l)**: the technology scale unit. The technology state holds a reduced fraction `Λ = L1 / L0`, the number of internal units per lambda (initially from the technology file, see capability `tech-loading-and-scaling`).
-- **U**: the size of one internal unit in nanometres, `U = 10·s / e`, computed in IEEE-754 single precision, where `s` and `e` are the scale factor and expander of the current CIF/GDS output style (see the MASK capabilities). When no output style is loaded, the conversion divisor is exactly 1.0 (see Q-CMDEDIT-3).
+- **U**: the size of one internal unit in nanometres, `U = 10·s / e`, computed in IEEE-754 single precision, where `s` and `e` are the scale factor and expander of the current CIF/GDS output style (see the MASK capabilities), rescaled to the current internal grid as Magic does on `scalegrid` and on a load at a scale other than 1:1: the style's values as read (per lambda), with `s` multiplied by `L0` and `e` by `L1`, reduced by their greatest common factor. When no output style is loaded, the conversion divisor is exactly 1.0 (see Q-CMDEDIT-3).
 - **User grid**: the per-window rectangle `G = (gx0, gy0)–(gx1, gy1)` set by `grid`. Its width `gx1-gx0` and height `gy1-gy0` are the grid pitches. Default `(0,0)–(1,1)`.
 - **Root coordinates**: the coordinate system of the top cell shown in the window. **Edit coordinates**: the coordinate system of the current edit cell. The box is held in root coordinates.
 

@@ -308,7 +308,7 @@ CommandResult locking_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) 
   if (!editor) {
     return CommandResult::failure(editor.error());
   }
-  CellSession& session = cell_session(*editor.value());
+  CellSession& session = editor.value()->cell_session;
   if (inv.args.empty()) {
     return CommandResult::success(Value{session.locking ? "enabled" : "disabled"});
   }
@@ -339,7 +339,7 @@ CommandResult crashbackups_cmd(cmd::CommandContext& ctx, const cmd::Invocation& 
   if (!editor) {
     return CommandResult::failure(editor.error());
   }
-  CellSession& s = cell_session(*editor.value());
+  CellSession& s = editor.value()->cell_session;
   static constexpr std::array<std::string_view, 5> kOptions = {"start", "resume", "stop", "cancel", "disable"};
   // tools.tcl matches the option exactly (a Tcl switch), not by prefix.
   const auto* match = inv.args.empty() ? kOptions.begin() : std::find(kOptions.begin(), kOptions.end(), inv.args[0]);

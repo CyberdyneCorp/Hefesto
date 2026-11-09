@@ -20,16 +20,6 @@
 
 namespace hefesto::cell {
 
-FileHost& CellSession::file_host() {
-  if (host) {
-    return *host;
-  }
-  if (!local_) {
-    local_ = make_local_file_host();
-  }
-  return *local_;
-}
-
 // --- in-process locks -------------------------------------------------------
 
 struct LockRegistry {

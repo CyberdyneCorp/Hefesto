@@ -12,6 +12,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdlib>
+#include <numeric>
 #include <string>
 #include <utility>
 
@@ -157,8 +158,13 @@ cmd::CoordinateUnits coordinate_units(const Session& s) {
       break;
   }
   if (const auto& cif = s.tech->cif_output_grid()) {
-    // The style as read; Magic also rescales it with `scalegrid` (open: M4 mask styles).
-    u.cif_scale = std::array<std::int64_t, 2>{cif->scale_factor, cif->expander};
+    // The style is kept as read (per lambda); Magic rescales it with every
+    // grid change (CIFTechOutputScale), i.e. by lambda/internal of the
+    // session grid, reduced.
+    const std::int64_t scale = cif->scale_factor * s.editor->grid.lambda;
+    const std::int64_t expander = cif->expander * s.editor->grid.internal;
+    const std::int64_t common = std::max<std::int64_t>(std::gcd(scale, expander), 1);
+    u.cif_scale = std::array<std::int64_t, 2>{scale / common, expander / common};
   }
   if (const view::LayoutWindow* w = s.editor->windows.current()) {
     const Rect g = w->grid().spacing;

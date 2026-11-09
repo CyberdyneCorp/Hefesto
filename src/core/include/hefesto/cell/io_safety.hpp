@@ -2,11 +2,12 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Cell file safety (capability cell-io-safety): advisory locks between
-// sessions, crash backup and archive files, crash recovery candidates and
-// the per-session CELL state.
-// The lock primitive is a host mechanism behind FileLockService (CLI:
-// src/cli/posix_lock_service.hpp, POSIX fcntl locks; tests and headless
-// runs: the in-process default). Desktop parts of hefesto-files-and-pdks
+// sessions, crash backup and archive files and crash recovery candidates.
+// The per-session CELL state is cell::CellSession (hefesto/cell/session.hpp),
+// held by editor::EditorState.
+// The lock primitive is a host mechanism behind FileLockService (Linux and
+// macOS: platform_posix::make_lock_service, POSIX fcntl locks; tests and
+// headless runs: the in-process default). Desktop parts of hefesto-files-and-pdks
 // "Locking and recovery replacements".
 // (Magic ref: utils/flock.c, database/DBio.c:1113-1333, database/DBio.c:6382-6533)
 //
@@ -15,74 +16,22 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "hefesto/cell/host.hpp"
-#include "hefesto/cell/timestamps.hpp"
+#include "hefesto/cell/session.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::cell {
 
-/// Host timer behind `crashbackups` (ui-gui-managers "Crash backup timer").
-/// The core keeps the schedule; a front end owns the clock. When the timer
-/// fires, the front end calls cell::run_backup_timer (hefesto/cell/crash.hpp)
-/// on the thread that runs commands. Headless sessions install none: the
-/// schedule is kept as state only.
-class BackupTimerHost {
- public:
-  BackupTimerHost() = default;
-  BackupTimerHost(const BackupTimerHost&) = delete;
-  BackupTimerHost& operator=(const BackupTimerHost&) = delete;
-  virtual ~BackupTimerHost() = default;
-
-  /// Arms the one-shot timer to fire once after `delay_ms` (> 0),
-  /// replacing a pending one.
-  virtual void schedule(std::int64_t delay_ms) = 0;
-  /// Cancels the pending timer, if any.
-  virtual void cancel() = 0;
-};
-
-/// Per-session CELL state. Kept in the session's FileLockService until
-/// editor::EditorState has a member for it (INTEGRATION open item).
-struct CellSession {
-  bool locking = true;                    // the `locking` setting
-  std::unique_ptr<FileHost> host;         // nullptr: the local disk
-  TimestampLog stamps;                    // pending mismatches
-  // Session crash backup target; empty: none chosen yet. A plain Path, not
-  // std::optional: GCC 14 reports a bogus -Wmaybe-uninitialized on
-  // optional<path>::emplace.
-  platform::Path backup_file;
-  bool backup_explicit = false;           // backup_file was named by `crash save FILE`
-  /// "Crash backup location and session lock"; empty: the platform
-  /// directory from the path variables (crash_backup_directory).
-  platform::Path backup_directory;
-  std::string session_id;                 // 32 lowercase hex digits, set on first backup
-  std::optional<std::int64_t> backup_interval_ms = 60000;  // nullopt: unset (`crashbackups disable`)
-  enum class BackupTimer : std::uint8_t { stopped, running, disabled } backup_timer = BackupTimer::stopped;
-  std::unique_ptr<BackupTimerHost> timer;  // nullptr: no host clock (headless)
-  /// "Crash recovery" confirmation `Recover from backup file <file>?`:
-  /// true answers `read`. Unset: `read` (the default answer, headless).
-  /// Must not capture references that can dangle: it lives with the session.
-  std::function<bool(const platform::Path& backup)> confirm_recovery;
-  /// "Import of Magic crash backups": also offer `$TMPDIR/MAG*` files
-  /// (desktop front ends set it; needs FileHost::process_running).
-  bool import_magic_backups = false;
-  std::set<const db::CellDef*> renamed_duplicates;  // Q-CELL-24 warning on save
-  /// The host to use: `host` or the local disk.
-  [[nodiscard]] FileHost& file_host();
-
- private:
-  std::unique_ptr<FileHost> local_;
-};
-
+/// Advisory file locks between sessions: a pure host mechanism with no
+/// session state (that is CellSession, held by editor::EditorState).
 class FileLockService {
  public:
   FileLockService() = default;
@@ -97,11 +46,6 @@ class FileLockService {
   virtual void release(const platform::Path& file) = 0;
   /// True while this session holds the lock on `file`.
   [[nodiscard]] virtual bool holds(const platform::Path& file) const = 0;
-
-  [[nodiscard]] CellSession& session() noexcept { return session_; }
-
- private:
-  CellSession session_;
 };
 
 /// Portable default: locks only within this process (a session never
