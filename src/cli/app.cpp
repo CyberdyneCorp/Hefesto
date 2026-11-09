@@ -102,9 +102,8 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
     const std::scoped_lock lock{mutex_};
     flush_pending();
     if (diagnostic.severity == diag::Severity::error) {
-      // emplace, not assignment: GCC 14 reports a bogus -Wmaybe-uninitialized
-      // for optional<Diagnostic>::operator=.
-      pending_.emplace(diagnostic);  // may turn out to be a command's result
+      pending_ = diagnostic;  // may turn out to be a command's result
+      has_pending_ = true;
       return;
     }
     const bool printf_like = diagnostic.severity == diag::Severity::info || diagnostic.severity == diag::Severity::debug;
@@ -117,10 +116,10 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
       flush_pending();  // startup commands are not script lines: no result printed
       return;
     }
-    const bool is_result = !result.ok() && pending_ && !result.diagnostics.empty() &&
-                           *pending_ == result.diagnostics.back() && (raises_tcl_error(result) || !result.value.is_none());
+    const bool is_result = !result.ok() && has_pending_ && !result.diagnostics.empty() &&
+                           pending_ == result.diagnostics.back() && (raises_tcl_error(result) || !result.value.is_none());
     if (is_result) {
-      pending_.reset();
+      has_pending_ = false;
     }
     flush_pending();
     print_line(out_, result_text(result, is_result));
@@ -141,15 +140,18 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
   }
 
   void flush_pending() {
-    if (pending_) {
-      print_line(err_, diag::format_magic(*pending_));
-      pending_.reset();
+    if (has_pending_) {
+      print_line(err_, diag::format_magic(pending_));
+      has_pending_ = false;
     }
   }
 
   std::FILE* out_;
   std::FILE* err_;
-  std::optional<diag::Diagnostic> pending_;
+  // A plain member plus a flag, not std::optional: GCC 14 reports a bogus
+  // -Wmaybe-uninitialized when an optional<Diagnostic> is assigned.
+  diag::Diagnostic pending_;
+  bool has_pending_ = false;
   std::mutex mutex_;
 };
 

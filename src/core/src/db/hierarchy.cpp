@@ -340,24 +340,36 @@ void make_array(CellUse& use, const Transform& root_to_child, const ArrayInfo& r
   }
 }
 
+/// `base + delta` held to the plane's coordinate range. Array extents come
+/// from files, so a corrupt one must not overflow (found by fuzz_mag_reader).
+Coord shifted(Coord base, std::int64_t delta) noexcept {
+  const std::int64_t v = std::clamp<std::int64_t>(std::int64_t{base} + delta, kMinusInfinity, kInfinity);
+  return static_cast<Coord>(v);
+}
+
+/// |sep * (hi - lo)| in 64 bits.
+std::int64_t array_extent(Coord sep, Coord lo, Coord hi) noexcept {
+  return std::abs(std::int64_t{sep} * (std::int64_t{hi} - std::int64_t{lo}));
+}
+
 void compute_use_bbox(CellUse& use) {
   if (use.def == nullptr) {
     return;
   }
   const ArrayInfo& a = use.array;
-  const Coord xdelta = std::abs(a.xsep * (a.xhi - a.xlo));
-  const Coord ydelta = std::abs(a.ysep * (a.yhi - a.ylo));
+  const std::int64_t xdelta = array_extent(a.xsep, a.xlo, a.xhi);
+  const std::int64_t ydelta = array_extent(a.ysep, a.ylo, a.yhi);
   const auto grow = [&](const Rect& box) {
     Rect r = box;
     if (a.xsep < 0) {
-      r.x0 -= xdelta;
+      r.x0 = shifted(r.x0, -xdelta);
     } else {
-      r.x1 += xdelta;
+      r.x1 = shifted(r.x1, xdelta);
     }
     if (a.ysep < 0) {
-      r.y0 -= ydelta;
+      r.y0 = shifted(r.y0, -ydelta);
     } else {
-      r.y1 += ydelta;
+      r.y1 = shifted(r.y1, ydelta);
     }
     return r;
   };
