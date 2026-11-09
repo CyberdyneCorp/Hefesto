@@ -146,7 +146,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdRS.c:2287-2300, database/DBlabel.c:1680-1688
 - Options: replicate | fix (skip loading if the file's font name already exists)
 - Recommendation: fix — font indices are not persisted (`.mag` stores names; GDS stores index & 3, see Q-MISC-27).
-- Resolution: replicate — the file is loaded again and gets a new index, as in Magic, in both modes: `setlabel fontlist` output and the GDS font index (index & 3, Q-MISC-27) then match Magic's for the same startup and scripts (golden case MISC-FL-04); recorded 2026-11-09 while implementing the `setlabel` font family; needs approval.
+- Resolution: replicate — the file is loaded again and gets a new index, as in Magic, in both modes: `setlabel fontlist` output and the GDS font index (index & 3, Q-MISC-27) then match Magic's for the same startup and scripts (golden case MISC-FL-04); recorded 2026-11-09 while implementing the `setlabel` font family; approved 2026-11-09.
 
 ### Q-MISC-27: GDS stores only two bits of font index
 - Kind: quirk
@@ -161,7 +161,7 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 - Evidence: commands/CmdRS.c:2276-2330
 - Options: replicate | fix (apply font N, or only print and change nothing)
 - Recommendation: fix (only print and change nothing): the documented use is "see the font name corresponding to a font number".
-- Resolution: replicate — Hefesto replicates Magic in both modes until the fix is approved, so scripts written for Magic change labels the same way (recorded 2026-11-09 while implementing the `setlabel` font family; needs approval).
+- Resolution: replicate in magic-compat (scripts written for Magic change labels the same way); fix in native mode, where `setlabel font <index>` only prints the font name and changes no label (approved 2026-11-09).
 
 ## plot-output
 

@@ -149,7 +149,7 @@ The system SHALL provide the following font-related forms (general command seman
 
 - `setlabel fontlist` lists the names of loaded fonts in load order (the result list).
 - `setlabel font` lists the font name of each selected label (`default` for −1), or with `-default` the default label's font.
-- `setlabel font <index>` (integer) prints the name of that font (`default` for −1), or reports `Font index out of range (0 to N)` (`No vector outline fonts are loaded.` when none is loaded). As in Magic, the font then applied to the selected labels (or the default label) is −1, the default font (Q-MISC-28); the same holds for `setlabel font <index> <scale>`.
+- `setlabel font <index>` (integer) prints the name of that font (`default` for −1), or reports `Font index out of range (0 to N)` (`No vector outline fonts are loaded.` when none is loaded). In magic-compat mode, as in Magic, the font then applied to the selected labels (or the default label) is −1, the default font; the same holds for `setlabel font <index> <scale>`. In native mode the command only prints the name and changes no label (Q-MISC-28).
 - `setlabel font <name> [scale]`: if no loaded font has that name (case-insensitive; `default` means −1), the argument is treated as a font file name, searched in the current directory and then the system path, and loaded with `scale` (default 1.0; a font already loaded from that file is loaded again, Q-MISC-26); a failure prints `Error loading font "<name>"`. The newly loaded font is then applied only if its name matches the argument; otherwise nothing more happens. A font found by name is applied to all selected labels in the edit cell (or to the default-label settings with `setlabel -default`). Applying a font to a label whose size is 0 sets its size to the integer numerator of the lambda-to-internal ratio (in 1/8 units, see Q-MISC-22; with `magic-compat` off, to 8 × that numerator). The label's rendered text box is recomputed.
 - `setlabel size`, `setlabel offset` and `setlabel rotate` (values in user units stored ×8; integer degrees; queries divide by 8) are specified in capability `cmd-labels-properties` requirements "Setlabel command" and "Label units and attributes" (see Q-MISC-23 and Q-CMDEDIT-90).
 - `label <text> <font> [size [rotation [offx offy [justification [layer]]]]]`, where `<font>` is a font name or index: size defaults to the lambda ratio numerator (in 1/8 units) unless defaults were set with `setlabel -default`, size/offset are user-unit values stored ×8. An unknown font name prints `Unknown vector outline font "<name>"` and makes no label; an index that is not loaded prints `Font value out of range (0 to N)` (`No vector outline fonts are loaded!` when none is) and makes a default-font label.
@@ -167,7 +167,7 @@ Compatibility: behavioral
 - **GIVEN** FreeSans loaded as font 0 and a selected FreeSans label
 - **WHEN** the user runs `setlabel font 0`
 - **THEN** `FreeSans` is printed
-- **AND** the selected label becomes a default-font label (Q-MISC-28)
+- **AND** in magic-compat mode the selected label becomes a default-font label, and in native mode it keeps FreeSans (Q-MISC-28)
 
 #### Scenario: Apply a font to a selected label
 - **GIVEN** FreeSans loaded, 1 internal unit per lambda, and a selected default-font label of size 0

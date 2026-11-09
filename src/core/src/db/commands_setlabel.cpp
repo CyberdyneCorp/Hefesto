@@ -198,7 +198,8 @@ CommandResult opt_text(const Call& c) {
 }
 
 // `setlabel font <index>` prints the font's name. Magic declares the index
-// in an inner block, so the font applied afterwards stays -1 (Q-MISC-28).
+// in an inner block, so the font applied afterwards stays -1; magic-compat
+// replicates that, native mode only prints (Q-MISC-28).
 void print_font_index(const Call& c, std::int32_t index) {
   const auto count = static_cast<std::int32_t>(c.s.editor->fonts.fonts.size());
   if (index < -1 || index >= count) {
@@ -231,6 +232,10 @@ std::optional<std::int32_t> resolve_font(const Call& c) {
 
 CommandResult opt_font(const Call& c) {
   std::int32_t font = -1;
+  if (!c.s.magic_compat && c.n() >= 2 && str_is_int(c.args[1])) {
+    print_font_index(c, c_atoi(c.args[1]));
+    return CommandResult::success();
+  }
   if (c.n() == 2 && str_is_int(c.args[1])) {
     print_font_index(c, c_atoi(c.args[1]));
   } else if (c.n() >= 2 && !str_is_int(c.args[1])) {

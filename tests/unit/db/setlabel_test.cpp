@@ -159,11 +159,12 @@ TEST_CASE("setlabel font gives a size-0 label the lambda numerator as size", FON
   CHECK_FALSE(s.label().text_bbox.has_value());
 }
 
-TEST_CASE("setlabel font <index> prints the name and applies the default font, as Magic does", FONTCMD) {
+TEST_CASE("setlabel font <index> prints the name and applies the default font in magic-compat", FONTCMD) {
   // Q-MISC-28: CmdSetLabel declares the index in an inner block, so the
   // font it applies to the labels afterwards is still -1.
   HEFESTO_REQUIRE_MT(mt);
   Session s(mt);
+  s.project.compat.magic_compat = true;
   s.load_font();
   REQUIRE(s.run("snap", {"internal"}).ok());
   s.quiet("box", {"2", "2", "2", "2"});
@@ -171,6 +172,20 @@ TEST_CASE("setlabel font <index> prints the name and applies the default font, a
   REQUIRE(s.label().font == 0);
   s.says("setlabel", {"font", "0"}, "Test");
   CHECK(s.label().font == -1);
+}
+
+TEST_CASE("setlabel font <index> only prints the name in native mode", FONTCMD) {
+  // Q-MISC-28 fix: native mode does not reset the labels' font.
+  HEFESTO_REQUIRE_MT(mt);
+  Session s(mt);
+  s.project.compat.magic_compat = false;
+  s.load_font();
+  REQUIRE(s.run("snap", {"internal"}).ok());
+  s.quiet("box", {"2", "2", "2", "2"});
+  s.quiet("label", {"A", "Test"});
+  REQUIRE(s.label().font == 0);
+  s.says("setlabel", {"font", "0"}, "Test");
+  CHECK(s.label().font == 0);
 }
 
 TEST_CASE("setlabel size, offset and rotate are stored in eighths and degrees", SETLABEL) {
