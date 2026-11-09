@@ -4,10 +4,14 @@
 // Host-side helpers of the PDK manager: the unsupported and curl-process
 // fetchers, the zstd decompressors and the local install host.
 
+#include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <system_error>
+#include <thread>
 #include <vector>
 
 #include "hefesto/diag/codes.hpp"
@@ -38,6 +42,56 @@ std::string first_line(const std::string& text) {
   return text.substr(0, text.find('\n'));
 }
 
+std::uint64_t size_or_zero(const platform::Path& path) {
+  std::error_code ec;
+  const std::uint64_t size = std::filesystem::file_size(path, ec);
+  return ec ? 0 : size;
+}
+
+// Reports the growing size of a file every 200 ms on a worker thread until
+// destroyed. The worker is joined in the destructor, so no call happens after.
+class FileGrowthReporter {
+ public:
+  FileGrowthReporter(platform::Path path, const std::function<void(std::uint64_t, std::uint64_t)>& progress)
+      : path_(std::move(path)), progress_(progress) {
+    if (progress_) {
+      worker_ = std::thread{[this] { poll(); }};
+    }
+  }
+  FileGrowthReporter(const FileGrowthReporter&) = delete;
+  FileGrowthReporter& operator=(const FileGrowthReporter&) = delete;
+  ~FileGrowthReporter() {
+    {
+      const std::scoped_lock lock{mutex_};
+      stop_ = true;
+    }
+    wake_.notify_all();
+    if (worker_.joinable()) {
+      worker_.join();
+    }
+  }
+
+ private:
+  void poll() {
+    std::uint64_t last = 0;
+    std::unique_lock lock{mutex_};
+    while (!wake_.wait_for(lock, std::chrono::milliseconds{200}, [this] { return stop_; })) {
+      const std::uint64_t size = size_or_zero(path_);
+      if (size != last) {
+        last = size;
+        progress_(size, 0);
+      }
+    }
+  }
+
+  platform::Path path_;
+  const std::function<void(std::uint64_t, std::uint64_t)>& progress_;
+  std::mutex mutex_;
+  std::condition_variable wake_;
+  bool stop_ = false;
+  std::thread worker_;
+};
+
 // curl through the platform ProcessRunner. HTTPS uses curl's system trust
 // store; `--proto =https,file` refuses plain HTTP and other schemes.
 class ProcessFetcher final : public Fetcher {
@@ -64,7 +118,10 @@ class ProcessFetcher final : public Fetcher {
         {"-fsSL", "--proto", "=https,file", "--retry", "3", "-C", "-", "-o", to.string(), std::string{url}},
         std::nullopt,
         {}};
-    auto output = runner_.run(request);
+    auto output = [&] {
+      const FileGrowthReporter reporter{to, progress};
+      return runner_.run(request);
+    }();
     if (!output) {
       return fetch_error(url, output.error().text);
     }
@@ -72,9 +129,8 @@ class ProcessFetcher final : public Fetcher {
       return fetch_error(url, "curl exit " + std::to_string(output.value().exit_code) + ": " +
                                   first_line(output.value().stderr_data));
     }
-    std::error_code ec;
-    const auto size = std::filesystem::file_size(to, ec);
-    if (progress && !ec) {
+    if (progress) {
+      const std::uint64_t size = size_or_zero(to);
       progress(size, size);
     }
     return diag::Done{};

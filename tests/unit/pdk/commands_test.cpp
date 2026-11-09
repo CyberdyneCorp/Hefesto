@@ -6,10 +6,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <filesystem>
 
 #include "fakes.hpp"
 #include "hefesto/app/project_file.hpp"
+#include "hefesto/app/recent_projects.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -191,4 +193,104 @@ TEST_CASE("pdk usage errors and uninstall", "[cap:hefesto-pdk-manager][req:Unins
               .ok());
   REQUIRE(s.run({"uninstall", "sky130", kHash}).ok());
   CHECK_FALSE(fs::exists(s.root / "ciel/sky130/versions" / kHash));
+}
+
+TEST_CASE("install -progress emits parseable PDK-PROGRESS-001 diagnostics",
+          "[cap:hefesto-pdk-manager][req:Headless and scripted operation]") {
+  Session s;
+  const auto quiet = s.run({"install", "sky130A", kHash, "-lib", "sky130_fd_sc_hd", "-source", kBase, "-accept-license",
+                            "-accept-unverified"});
+  REQUIRE(quiet.ok());
+  CHECK(std::none_of(quiet.diagnostics.begin(), quiet.diagnostics.end(),
+                     [](const hefesto::diag::Diagnostic& d) { return d.code == pdk::codes::kProgress; }));
+  REQUIRE(s.run({"remove-library", "sky130", kHash, "sky130_fd_sc_hd"}).ok());
+  const auto r = s.run({"install", "sky130A", kHash, "-lib", "sky130_fd_sc_hd", "-source", kBase, "-accept-license",
+                        "-accept-unverified", "-progress"});
+  REQUIRE(r.ok());
+  std::vector<pdk::InstallProgress> events;
+  for (const auto& d : r.diagnostics) {
+    if (d.code == pdk::codes::kProgress) {
+      const auto p = pdk::parse_install_progress(d);
+      REQUIRE(p);
+      events.push_back(*p);
+    }
+  }
+  REQUIRE(events.size() >= 4);
+  CHECK(events.front().phase == pdk::InstallPhase::download);
+  CHECK(events.front().asset == "sky130_fd_sc_hd.tar.zst");  // common is already installed
+  CHECK(events.back().phase == pdk::InstallPhase::finalize);
+  CHECK(events.back().parts == 1);
+}
+
+TEST_CASE("updates -auto honors the setting and the 24 h interval", "[cap:hefesto-pdk-manager][req:Updates]") {
+  Session s;
+  REQUIRE(s.run({"install", "sky130A", kHash, "-lib", "sky130_fd_sc_hd", "-source", kBase, "-accept-license",
+                 "-accept-unverified"})
+              .ok());
+  s.fetcher.requests.clear();
+  // No setting (or off): no network access at all.
+  CHECK(s.run({"updates", "-auto", "-source", kBase}).value.to_string().empty());
+  s.editor.settings.set(hefesto::app::SettingLayer::user, "pdk-update-check", "off");
+  CHECK(s.run({"updates", "-auto", "-source", kBase}).value.to_string().empty());
+  CHECK(s.fetcher.requests.empty());
+  s.editor.settings.set(hefesto::app::SettingLayer::user, "pdk-update-check", "on");
+  REQUIRE(s.run({"updates", "-auto", "-source", kBase}).ok());
+  CHECK(s.fetcher.requests.size() == 1);
+  CHECK(fs::exists(s.root / "ciel/.hefesto-update-check"));
+  REQUIRE(s.run({"updates", "-auto", "-source", kBase}).ok());  // within 24 h: skipped
+  CHECK(s.fetcher.requests.size() == 1);
+  REQUIRE(s.run({"updates", "-source", kBase}).ok());  // asked by the user: always checks
+  CHECK(s.fetcher.requests.size() == 2);
+}
+
+TEST_CASE("uninstall is refused for a version pinned by a recent project unless -force",
+          "[cap:hefesto-pdk-manager][req:Uninstall and cleanup]") {
+  Session s;
+  REQUIRE(s.run({"install", "sky130A", kHash, "-lib", "sky130_fd_sc_hd", "-source", kBase, "-accept-license",
+                 "-accept-unverified", "-enable"})
+              .ok());
+  const auto project = s.dir.path() / "proj";
+  fs::create_directories(project);
+  REQUIRE(s.run({"pin", "sky130A", kHash, "-project", project.string()}).ok());
+  hefesto::platform::LocalFileSystem files;
+  const auto recent = s.dir.path() / "recent-projects.json";
+  REQUIRE(hefesto::app::note_recent_project(files, recent, project).ok());
+  s.editor.settings.set(hefesto::app::SettingLayer::session, "recent-projects-file", recent.string());
+  // The list shows each version's disk size and the projects that pin it.
+  const auto list = s.run({"list"});
+  REQUIRE(list.ok());
+  CHECK(list.value.to_string().find("enabled sky130_fd_sc_hd ") != std::string::npos);
+  CHECK(list.value.to_string().find(project.string()) != std::string::npos);
+  const auto refused = s.run({"uninstall", "sky130", kHash});
+  REQUIRE_FALSE(refused.ok());
+  CHECK(refused.diagnostics.back().code == pdk::codes::kPinnedByProject);
+  CHECK(refused.diagnostics.back().text.find(project.string()) != std::string::npos);
+  CHECK(fs::exists(s.root / "ciel/sky130/versions" / kHash));
+  REQUIRE(s.run({"uninstall", "sky130", kHash, "-force"}).ok());
+  CHECK_FALSE(fs::exists(s.root / "ciel/sky130/versions" / kHash));
+  CHECK_FALSE(fs::exists(s.root / "sky130A"));
+}
+
+TEST_CASE("export and import through the command", "[cap:hefesto-pdk-manager][req:Headless and scripted operation]") {
+  Session s;
+  REQUIRE(s.run({"install", "sky130A", kHash, "-lib", "sky130_fd_sc_hd", "-source", kBase, "-accept-license",
+                 "-accept-unverified"})
+              .ok());
+  const auto out = s.dir.path() / "packs";
+  const auto exported = s.run({"export", "sky130", kHash, "-to", out.string()});
+  REQUIRE(exported.ok());
+  const std::string pack = exported.value.to_string();
+  CHECK(pack == (out / ("sky130-" + kHash + ".hefestopdk")).string());
+  REQUIRE(s.run({"uninstall", "sky130", kHash}).ok());
+  CHECK(s.run({"import"}).diagnostics.back().code == hefesto::diag::codes::kCmdUsage);
+  CHECK(s.run({"import", pack}).diagnostics.back().code == pdk::codes::kUnverified);
+  const auto imported = s.run({"import", pack, "-accept-unverified", "-enable", "-progress"});
+  REQUIRE(imported.ok());
+  CHECK(imported.value.to_string() == kHash);
+  CHECK(fs::exists(s.root / "sky130A/libs.ref/sky130_fd_sc_hd/mag/x.mag"));  // enabled
+  CHECK(std::any_of(imported.diagnostics.begin(), imported.diagnostics.end(), [](const hefesto::diag::Diagnostic& d) {
+    const auto p = pdk::parse_install_progress(d);
+    return p && p->phase == pdk::InstallPhase::finalize;
+  }));
+  CHECK(s.fetcher.downloads.size() == 2);  // only the original install downloaded
 }

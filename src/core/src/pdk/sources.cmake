@@ -12,7 +12,10 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/hosts.cpp
   ${CMAKE_CURRENT_LIST_DIR}/manager.cpp
   ${CMAKE_CURRENT_LIST_DIR}/sha256.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/tar_reader.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/packs.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/tar_reader.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/tar_writer.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/updates.cpp)
 
 # Zstandard (PDK `.tar.zst` assets, hefesto-licensing D-13): the pinned
 # decoder target from cmake/Dependencies.cmake.

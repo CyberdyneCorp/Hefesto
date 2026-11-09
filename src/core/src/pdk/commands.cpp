@@ -10,16 +10,21 @@
 #include "hefesto/pdk/commands.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cstdlib>
+#include <filesystem>
 #include <map>
 #include <set>
 
 #include "hefesto/app/project_file.hpp"
+#include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
+#include "hefesto/pdk/packs.hpp"
+#include "hefesto/pdk/updates.hpp"
 
 namespace hefesto::pdk {
 
@@ -29,14 +34,18 @@ using cmd::CommandResult;
 using cmd::Value;
 
 constexpr std::string_view kSynopsis =
-    "pdk root | list | remote FAMILY ?-prereleases? | install VARIANT ?VERSION|latest? ?-lib NAME ...? "
-    "?-accept-license? ?-accept-unverified? ?-enable? | enable FAMILY VERSION | uninstall FAMILY VERSION | "
-    "remove-library FAMILY VERSION LIBRARY | pin VARIANT ?VERSION? ?-lib NAME ...? ?-project DIR? | "
-    "info FAMILY VERSION  (common options: -root DIR, -source LOCATION, -only PREFIX, -unpack-factor N)";
+    "pdk root | list | remote FAMILY ?-prereleases? | updates ?-auto? | install VARIANT ?VERSION|latest? "
+    "?-lib NAME ...? ?-accept-license? ?-accept-unverified? ?-enable? ?-progress? | enable FAMILY VERSION | "
+    "uninstall FAMILY VERSION ?-force? | remove-library FAMILY VERSION LIBRARY | pin VARIANT ?VERSION? "
+    "?-lib NAME ...? ?-project DIR? | info FAMILY VERSION | export FAMILY VERSION ?-to DIR? | import PACK "
+    "?-accept-license? ?-accept-unverified? ?-enable? ?-progress?  (common options: -root DIR, -source LOCATION, "
+    "-only PREFIX, -unpack-factor N)";
 
-const std::set<std::string, std::less<>> kFlags = {"-accept-license", "-accept-unverified", "-enable", "-force",
-                                                   "-prereleases"};
-const std::set<std::string, std::less<>> kValued = {"-root", "-source", "-lib", "-only", "-project", "-unpack-factor"};
+const std::set<std::string, std::less<>> kFlags = {"-accept-license", "-accept-unverified", "-auto", "-enable",
+                                                   "-force", "-prereleases", "-progress"};
+const std::set<std::string, std::less<>> kValued = {"-root", "-source", "-lib", "-only", "-project", "-to",
+                                                    "-unpack-factor"};
+constexpr std::uint64_t kProgressStepBytes = 1024 * 1024;  // download step when the total is unknown
 
 CommandResult usage(std::string text = {}) {
   return CommandResult::failure(diag::make(diag::codes::kCmdUsage,
@@ -92,6 +101,102 @@ Value string_list(const std::vector<std::string>& items) {
   return out;
 }
 
+std::uint64_t directory_size(const platform::Path& dir) {
+  std::uint64_t total = 0;
+  std::error_code ec;
+  for (std::filesystem::recursive_directory_iterator it{dir, ec}, end; !ec && it != end; it.increment(ec)) {
+    if (it->is_regular_file(ec) && !it->is_symlink(ec)) {
+      total += it->file_size(ec);
+    }
+  }
+  return total;
+}
+
+// `pdk install|import -progress`: PDK-PROGRESS-001 diagnostics, every phase
+// change and, while downloading, every whole percent (or MiB when the total
+// is unknown) and the end.
+class ProgressEmitter {
+ public:
+  explicit ProgressEmitter(cmd::CommandContext& ctx) : ctx_(ctx) {}
+
+  void operator()(const InstallProgress& p) {
+    const bool same_step = p.phase == last_.phase && p.part == last_.part && p.phase == InstallPhase::download;
+    if (emitted_ && same_step && !significant(p)) {
+      return;
+    }
+    emitted_ = true;
+    last_ = p;
+    ctx_.emit(diag::make(codes::kProgress, format_install_progress(p)));
+  }
+
+ private:
+  [[nodiscard]] bool significant(const InstallProgress& p) const {
+    if (p.total == 0) {
+      return p.bytes >= last_.bytes + kProgressStepBytes;
+    }
+    return p.bytes >= p.total || percent(p) != percent(last_);
+  }
+  static int percent(const InstallProgress& p) {
+    return p.total == 0 ? 0 : static_cast<int>(100.0 * static_cast<double>(p.bytes) / static_cast<double>(p.total));
+  }
+
+  cmd::CommandContext& ctx_;
+  InstallProgress last_;
+  bool emitted_ = false;
+};
+
+// A decimal number; std::nullopt on junk or overflow.
+template <class T>
+std::optional<T> parse_number(std::string_view text) {
+  T value = 0;
+  const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+  return ec == std::errc{} && end == text.data() + text.size() ? std::optional<T>{value} : std::nullopt;
+}
+
+// "KEY=" prefix of `word`, or std::nullopt.
+std::optional<std::string_view> field(std::string_view word, std::string_view key) {
+  if (word.size() > key.size() && word.starts_with(key) && word[key.size()] == '=') {
+    return word.substr(key.size() + 1);
+  }
+  return std::nullopt;
+}
+
+// "PART/PARTS" into the progress event.
+bool parse_parts(std::string_view text, InstallProgress& out) {
+  const auto slash = text.find('/');
+  if (slash == std::string_view::npos) {
+    return false;
+  }
+  const auto part = parse_number<std::size_t>(text.substr(0, slash));
+  const auto parts = parse_number<std::size_t>(text.substr(slash + 1));
+  if (!part || !parts) {
+    return false;
+  }
+  out.part = *part;
+  out.parts = *parts;
+  return true;
+}
+
+// One "KEY=VALUE" word of a progress text; false when unknown or malformed.
+bool parse_progress_word(std::string_view word, InstallProgress& out) {
+  if (const auto phase = field(word, "phase")) {
+    const auto parsed = parse_install_phase(*phase);
+    out.phase = parsed.value_or(InstallPhase::download);
+    return parsed.has_value();
+  }
+  if (const auto parts = field(word, "part")) {
+    return parse_parts(*parts, out);
+  }
+  for (auto [key, target] : {std::pair{"bytes", &out.bytes}, std::pair{"total", &out.total}}) {
+    if (const auto value = field(word, key)) {
+      const auto number = parse_number<std::uint64_t>(*value);
+      *target = number.value_or(0);
+      return number.has_value();
+    }
+  }
+  return false;
+}
+
 std::string state_of(const InstalledVersion& v) {
   if (v.read_only) {
     return "read-only";
@@ -117,6 +222,7 @@ class PdkRun {
         {"root", &PdkRun::root},       {"list", &PdkRun::list},       {"remote", &PdkRun::remote},
         {"install", &PdkRun::install}, {"enable", &PdkRun::enable},   {"uninstall", &PdkRun::uninstall},
         {"pin", &PdkRun::pin},         {"info", &PdkRun::info},       {"remove-library", &PdkRun::remove_library},
+        {"updates", &PdkRun::updates}, {"export", &PdkRun::export_},  {"import", &PdkRun::import_},
     };
     const auto it = kSubcommands.find(sub);
     if (it == kSubcommands.end()) {
@@ -182,9 +288,19 @@ class PdkRun {
       return CommandResult::failure(installed.error());
     }
     Value::List rows;
+    std::map<std::string, std::vector<std::string>> pins;  // family + hash -> projects
     for (const auto& v : installed.value()) {
+      const std::string key = v.family + " " + v.version.hash;
+      if (!pins.contains(key)) {
+        std::vector<std::string> folders;
+        for (const auto& folder : pinning_projects(v.family, v.version.hash)) {
+          folders.push_back(folder.string());
+        }
+        pins[key] = std::move(folders);
+      }
       rows.emplace_back(Value::List{v.variant, v.version.hash, v.version.commit_date.value_or(""), state_of(v),
-                                    string_list(v.libraries)});
+                                    string_list(v.libraries), static_cast<std::int64_t>(directory_size(v.path)),
+                                    string_list(pins[key])});
     }
     return CommandResult::success(std::move(rows));
   }
@@ -244,6 +360,9 @@ class PdkRun {
     if (auto factor = args_.value("-unpack-factor")) {
       options.unpack_factor = std::max<std::uint64_t>(1, std::strtoull(factor->c_str(), nullptr, 10));
     }
+    if (args_.has("-progress")) {
+      options.progress = [emitter = &progress_](const InstallProgress& p) { (*emitter)(p); };
+    }
     return options;
   }
 
@@ -289,12 +408,95 @@ class PdkRun {
     return from_status(manager_.enable(*target.value().first, target.value().second), target.value().second);
   }
 
+  // "Uninstall and cleanup": refused while a project of the recent-projects
+  // list pins the version, unless -force.
   CommandResult uninstall() {
     auto target = family_and_hash();
     if (!target) {
       return CommandResult::failure(target.error());
     }
-    return from_status(manager_.uninstall(*target.value().first, target.value().second));
+    const auto& [family, hash] = target.value();
+    if (const auto pins = pinning_projects(family->name, hash); !pins.empty() && !args_.has("-force")) {
+      std::string names;
+      for (const auto& folder : pins) {
+        names += (names.empty() ? "" : ", ") + folder.string();
+      }
+      return CommandResult::failure(diag::make(codes::kPinnedByProject, family->name + " " + hash.substr(0, 7) +
+                                                                            " is pinned by " + names +
+                                                                            "; pass -force to uninstall it anyway"));
+    }
+    return from_status(manager_.uninstall(*family, hash));
+  }
+
+  // Projects of the recent-projects list (setting recent-projects-file) that pin the version.
+  std::vector<platform::Path> pinning_projects(std::string_view family, std::string_view hash) {
+    const auto* editor = ctx_.editor();
+    const auto file = editor == nullptr ? std::nullopt : editor->settings.effective(app::kRecentProjectsFile);
+    if (!file || file->value.empty()) {
+      return {};
+    }
+    auto folders = app::load_recent_projects(ctx_.services().files, platform::Path{file->value});
+    if (!folders) {
+      ctx_.emit(folders.error());
+      return {};
+    }
+    return app::projects_pinning(ctx_.services().files, folders.value(), family, hash);
+  }
+
+  // "Updates": newer stable versions per installed family. With -auto, only
+  // when the setting pdk-update-check allows it and no check ran in 24 h;
+  // otherwise an empty result and no network access.
+  CommandResult updates() {
+    const auto now = ctx_.services().clock.wall_now();
+    if (args_.has("-auto") && !auto_check_due(now)) {
+      return CommandResult::success(Value::List{});
+    }
+    auto offers = check_updates(manager_, source());
+    if (!offers) {
+      return CommandResult::failure(offers.error());
+    }
+    if (args_.has("-auto")) {
+      (void)record_update_check(manager_.root(), now);
+    }
+    Value::List rows;
+    for (const auto& o : offers.value()) {
+      rows.emplace_back(Value::List{o.family, o.installed.hash, o.installed.commit_date.value_or(""), o.offered.hash,
+                                    o.offered.commit_date.value_or("")});
+    }
+    return CommandResult::success(std::move(rows));
+  }
+
+  [[nodiscard]] bool auto_check_due(std::chrono::system_clock::time_point now) const {
+    const auto* editor = ctx_.editor();
+    const auto setting = editor == nullptr ? std::nullopt : editor->settings.effective(app::kPdkUpdateCheck);
+    const bool enabled = setting && setting->value != "off";
+    return !manager_.root().empty() && auto_update_check_due(enabled, last_update_check(manager_.root()), now);
+  }
+
+  CommandResult export_() {
+    auto target = family_and_hash();
+    if (!target) {
+      return CommandResult::failure(target.error());
+    }
+    auto path = export_pack(manager_, *target.value().first, target.value().second,
+                            platform::Path{args_.value("-to").value_or(".")}, ctx_.sink());
+    return path ? CommandResult::success(path.value().string()) : CommandResult::failure(path.error());
+  }
+
+  CommandResult import_() {
+    const auto file = positional(1);
+    if (!file) {
+      return usage("pdk import: missing pack file");
+    }
+    auto manifest = import_pack(manager_, platform::Path{*file}, install_options(PdkVersion{}), ctx_.sink());
+    if (!manifest) {
+      return CommandResult::failure(manifest.error());
+    }
+    diag::Status status = diag::Done{};
+    if (args_.has("-enable")) {
+      status = manager_.enable(*manager_.catalog().find_family(manifest.value().family), manifest.value().version);
+    }
+    return from_status(status, manifest.value().version);
   }
 
   CommandResult remove_library() {
@@ -388,9 +590,40 @@ class PdkRun {
   std::unique_ptr<Fetcher> fetcher_;
   std::unique_ptr<Decompressor> decompressor_;
   PdkManager manager_;
+  mutable ProgressEmitter progress_{ctx_};  // install progress state of this run
 };
 
 }  // namespace
+
+std::string format_install_progress(const InstallProgress& p) {
+  return "phase=" + std::string{install_phase_name(p.phase)} + " part=" + std::to_string(p.part) + "/" +
+         std::to_string(p.parts) + " bytes=" + std::to_string(p.bytes) + " total=" + std::to_string(p.total) +
+         " asset=" + p.asset;
+}
+
+std::optional<InstallProgress> parse_install_progress(const diag::Diagnostic& diagnostic) {
+  if (diagnostic.code != codes::kProgress) {
+    return std::nullopt;
+  }
+  const std::string_view text = diagnostic.text;
+  const auto asset_at = text.find(" asset=");
+  if (asset_at == std::string_view::npos) {
+    return std::nullopt;
+  }
+  InstallProgress out;
+  out.asset = std::string{text.substr(asset_at + 7)};
+  std::size_t seen = 0;
+  std::string_view rest = text.substr(0, asset_at);
+  while (!rest.empty()) {
+    const auto space = rest.find(' ');
+    const std::string_view word = rest.substr(0, space);
+    rest = space == std::string_view::npos ? std::string_view{} : rest.substr(space + 1);
+    if (parse_progress_word(word, out)) {
+      ++seen;
+    }
+  }
+  return seen == 4 ? std::optional<InstallProgress>{std::move(out)} : std::nullopt;
+}
 
 bool register_pdk_commands(cmd::CommandRegistry& registry, CommandHosts hosts) {
   auto handler = [hosts = std::move(hosts)](cmd::CommandContext& ctx, const cmd::Invocation& inv) {

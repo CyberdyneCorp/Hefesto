@@ -41,7 +41,10 @@ namespace hefesto::pdk {
 
 /// Downloads bytes. `get_text` fails with PDK-FETCH-002 for an HTTP 404 and
 /// PDK-FETCH-001 for any other failure. `download` resumes a partial file
-/// at `to` (HTTP range request) and replaces nothing else.
+/// at `to` (HTTP range request) and replaces nothing else; when `progress`
+/// is set it is called with (bytes in `to` so far, total or 0 when unknown),
+/// possibly from a worker thread, never concurrently and never after
+/// `download` returned.
 class Fetcher {
  public:
   Fetcher() = default;
@@ -128,6 +131,39 @@ struct CatalogSource {
   [[nodiscard]] bool is_github() const noexcept { return location.starts_with("github:"); }
 };
 
+/// Phases of one asset in PdkManager::install, in order. `finalize` is
+/// reported once per install, after the last asset, while the staged files
+/// move into the version directory.
+enum class InstallPhase : std::uint8_t { download, verify, unpack, finalize };
+
+[[nodiscard]] std::string_view install_phase_name(InstallPhase phase) noexcept;
+[[nodiscard]] std::optional<InstallPhase> parse_install_phase(std::string_view name) noexcept;
+
+/// One install progress event (InstallOptions::progress).
+///   download  bytes of the asset file so far; total = catalog size (0 = unknown)
+///   verify    0 at the start, `total` when the size and SHA-256 matched
+///   unpack    0 at the start, `total` (archive bytes) when unpacked
+///   finalize  part = parts; bytes = total = 0
+/// An asset found complete in the download cache reports one download event
+/// with bytes = total.
+struct InstallProgress {
+  InstallPhase phase = InstallPhase::download;
+  std::string asset;         // asset file name, e.g. "common.tar.zst"; empty for finalize
+  std::size_t part = 0;      // 1-based index of the asset in this install
+  std::size_t parts = 0;     // number of assets this install fetches
+  std::uint64_t bytes = 0;
+  std::uint64_t total = 0;
+
+  friend bool operator==(const InstallProgress&, const InstallProgress&) = default;
+};
+
+/// Receives InstallProgress events. Called on the thread running install(),
+/// except while a Fetcher downloads: a Fetcher may then call it from its own
+/// worker thread. Calls never overlap and all of them happen before
+/// install() returns, so the callback may capture the caller's locals by
+/// reference, but must not block for long (it slows the download).
+using InstallProgressFn = std::function<void(const InstallProgress&)>;
+
 struct InstallOptions {
   CatalogSource source;
   bool accept_license = false;     // headless: accept the family's upstream license
@@ -143,6 +179,8 @@ struct InstallOptions {
   /// empty = everything. A filtered install is recorded as partial in the
   /// provenance. Used to keep the test PDK cache small (design D1).
   std::vector<std::string> include_prefixes;
+  /// Optional progress observer (see InstallProgressFn).
+  InstallProgressFn progress;
 };
 
 /// "Licenses and provenance": what the manager recorded for an installed
@@ -171,6 +209,13 @@ struct PinnedVersion {
   std::string family;
   std::string variant;
   std::string hash;
+};
+
+/// An asset already on the local disk (offline pack import): it is verified
+/// against `asset.size` and `asset.sha256` in place and never downloaded.
+struct LocalAsset {
+  Asset asset;
+  platform::Path file;
 };
 
 /// The PDK manager over one PDK root.
@@ -206,6 +251,13 @@ class PdkManager {
   [[nodiscard]] diag::Status install(const Selection& selection, std::string_view hash,
                                      const std::vector<std::string>& libraries, const InstallOptions& options,
                                      diag::DiagnosticSink& sink);
+  /// Installs local assets of version `hash` ("Offline PDK packs"): parts
+  /// already present are skipped, the rest are verified (PDK-VERIFY-001 on
+  /// a size or SHA-256 mismatch, nothing installed), unpacked and committed
+  /// as by install(). The license and unverified-source consent rules apply.
+  [[nodiscard]] diag::Status install_local(const Family& family, std::string_view hash,
+                                           const std::vector<LocalAsset>& assets, const InstallOptions& options,
+                                           diag::DiagnosticSink& sink);
   [[nodiscard]] diag::Status enable(const Family& family, std::string_view hash);
   [[nodiscard]] diag::Status uninstall(const Family& family, std::string_view hash);
   /// Removes `libs.ref/<library>` under every variant of the version.
@@ -228,6 +280,8 @@ class PdkManager {
   [[nodiscard]] platform::Path family_dir(const Family& family) const;
   [[nodiscard]] diag::Status check_license(const Family& family, const InstallOptions& options);
   [[nodiscard]] diag::Status write_sources(const Family& family, std::string_view hash);
+  [[nodiscard]] bool part_present(const Family& family, std::string_view hash, std::string_view content) const;
+  [[nodiscard]] diag::Status check_consent(const Family& family, const InstallOptions& options);
 
   platform::FileSystem& fs_;
   InstallHost& host_;
@@ -243,5 +297,25 @@ class PdkManager {
 /// `$PDKPATH` when it names that variant's directory.
 [[nodiscard]] std::unique_ptr<platform::PdkStore> make_managed_pdk_store(const PdkManager& manager, InstallHost& host,
                                                                          std::optional<PinnedVersion> pin = std::nullopt);
+
+/// The PDK manager of one front-end session with its host mechanisms
+/// (hefesto-files-and-pdks "PDK store"): the local install host, a curl
+/// Fetcher when `runner` can run processes (else the unsupported one), the
+/// zstd decoder, and a manager whose root is `root`, else PDK_ROOT, else
+/// ~/.ciel. Keep it alive as long as the PortableServices that hold the
+/// store made from it:
+///
+///   pdk_ = pdk::make_session_pdk(services.files(), runner, pdk_root);
+///   services.set_pdk_store(pdk::make_managed_pdk_store(*pdk_.manager, *pdk_.host));
+///   // ... then take services.view()
+struct SessionPdk {
+  std::unique_ptr<InstallHost> host;
+  std::unique_ptr<Fetcher> fetcher;
+  std::unique_ptr<Decompressor> decompressor;
+  std::unique_ptr<PdkManager> manager;
+};
+
+[[nodiscard]] SessionPdk make_session_pdk(platform::FileSystem& fs, platform::ProcessRunner& runner,
+                                          const std::optional<platform::Path>& root = std::nullopt);
 
 }  // namespace hefesto::pdk

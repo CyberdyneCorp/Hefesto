@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <set>
 #include <system_error>
 
@@ -114,14 +115,22 @@ std::string join_url(std::string_view base, std::string_view rest) {
   return url + "/" + std::string{rest};
 }
 
-// The parts of an install: `common` and library names.
+// The parts of an install: `common` or a library name, with its asset and,
+// for an offline pack, the asset file already on disk.
 struct Part {
   std::string content;
-  const Asset* asset = nullptr;
+  Asset asset;
+  std::optional<Path> local;
 };
 
 void info(diag::DiagnosticSink& sink, std::string text) {
   sink.emit(diag::make(codes::kInfo, std::move(text)));
+}
+
+std::uint64_t file_size_or_zero(const Path& path) {
+  std::error_code ec;
+  const std::uint64_t size = stdfs::file_size(path, ec);
+  return ec ? 0 : size;
 }
 
 // One install run: download, verify, stage, commit. Removes its staging
@@ -149,11 +158,14 @@ class Installer {
     if (ec) {
       return io_error("cannot create " + staging_.string(), ec);
     }
-    for (const auto& part : parts) {
-      if (auto status = install_part(part, downloads); !status) {
+    parts_ = parts.size();
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+      if (auto status = install_part(parts[i], i + 1, downloads); !status) {
         return status;
       }
     }
+    asset_.clear();
+    report(InstallPhase::finalize, 0, 0);
     if (auto status = commit(version_dir); !status) {
       return status;
     }
@@ -162,32 +174,59 @@ class Installer {
   }
 
  private:
-  diag::Status install_part(const Part& part, const Path& downloads) {
+  void report(InstallPhase phase, std::uint64_t bytes, std::uint64_t total) const {
+    if (options_.progress) {
+      options_.progress(InstallProgress{phase, asset_, phase == InstallPhase::finalize ? parts_ : part_, parts_, bytes,
+                                        total});
+    }
+  }
+
+  diag::Status install_part(const Part& part, std::size_t index, const Path& downloads) {
     if (options_.cancelled && options_.cancelled()) {
       return diag::make(codes::kInstallIo, "install cancelled; nothing was installed");
     }
-    const Path archive = downloads / part.asset->filename;
-    if (auto status = fetch_verified(*part.asset, archive); !status) {
-      return status;
-    }
-    return unpack(*part.asset, archive);
+    asset_ = part.asset.filename;
+    part_ = index;
+    const Path archive = part.local ? *part.local : downloads / part.asset.filename;
+    auto status = part.local ? verify_reported(part.asset, archive) : fetch_verified(part.asset, archive);
+    return status ? unpack(part.asset, archive) : status;
   }
 
   diag::Status fetch_verified(const Asset& asset, const Path& archive) {
     if (exists_no_follow(archive) && verify(asset, archive, /*quiet=*/true).ok()) {
       info(sink_, "using the downloaded " + asset.filename);
+      const std::uint64_t size = file_size_or_zero(archive);
+      report(InstallPhase::download, size, size);
+      report(InstallPhase::verify, size, size);
       return diag::Done{};
     }
     info(sink_, "downloading " + asset.filename + (asset.size > 0 ? " (" + std::to_string(asset.size) + " bytes)" : ""));
-    if (auto status = fetcher_.download(asset.url, archive, {}); !status) {
+    report(InstallPhase::download, file_size_or_zero(archive), asset.size);
+    std::function<void(std::uint64_t, std::uint64_t)> on_bytes;
+    if (options_.progress) {
+      on_bytes = [this, expected = asset.size](std::uint64_t bytes, std::uint64_t total) {
+        report(InstallPhase::download, bytes, expected > 0 ? expected : total);
+      };
+    }
+    if (auto status = fetcher_.download(asset.url, archive, on_bytes); !status) {
       return status;
     }
-    auto verified = verify(asset, archive, /*quiet=*/false);
+    auto verified = verify_reported(asset, archive);
     if (!verified) {
       std::error_code ec;
       stdfs::remove(archive, ec);
     }
     return verified;
+  }
+
+  diag::Status verify_reported(const Asset& asset, const Path& archive) {
+    const std::uint64_t size = file_size_or_zero(archive);
+    report(InstallPhase::verify, 0, size);
+    auto status = verify(asset, archive, /*quiet=*/false);
+    if (status) {
+      report(InstallPhase::verify, size, size);
+    }
+    return status;
   }
 
   // "Download integrity verification": size, then SHA-256 of the whole file.
@@ -219,22 +258,30 @@ class Installer {
     if (decompressor_ == nullptr) {
       return diag::make(codes::kBadArchive, "no Zstandard decoder is available to unpack " + asset.filename);
     }
-    std::error_code ec;
-    const std::uint64_t base = asset.size > 0 ? asset.size : stdfs::file_size(archive, ec);
-    const std::uint64_t limit = base * options_.unpack_factor;
+    const std::uint64_t archive_size = file_size_or_zero(archive);
+    report(InstallPhase::unpack, 0, archive_size);
+    const std::uint64_t base = asset.size > 0 ? asset.size : archive_size;
+    const std::uint64_t limit = saturating_multiply(base, options_.unpack_factor);
     const Path tar = staging_.string() + ".tar";
     auto status = decompressor_->decompress(archive, tar, limit);
     if (status) {
       std::ifstream in{tar, std::ios::binary};
-      auto report = unpack_tar(in, staging_, limit, entry_filter());
-      status = report ? diag::Status{diag::Done{}} : diag::Status{report.error()};
-      if (report) {
-        report_skipped(report.value());
-        info(sink_, "unpacked " + asset.filename + ": " + std::to_string(report.value().files) + " files");
+      auto report_or = unpack_tar(in, staging_, limit, entry_filter());
+      status = report_or ? diag::Status{diag::Done{}} : diag::Status{report_or.error()};
+      if (report_or) {
+        report_skipped(report_or.value());
+        info(sink_, "unpacked " + asset.filename + ": " + std::to_string(report_or.value().files) + " files");
+        report(InstallPhase::unpack, archive_size, archive_size);
       }
     }
+    std::error_code ec;
     stdfs::remove(tar, ec);
     return status;
+  }
+
+  static std::uint64_t saturating_multiply(std::uint64_t a, std::uint64_t b) {
+    constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+    return (b != 0 && a > kMax / b) ? kMax : a * b;
   }
 
   [[nodiscard]] EntryFilter entry_filter() const {
@@ -272,6 +319,9 @@ class Installer {
   const InstallOptions& options_;
   diag::DiagnosticSink& sink_;
   Path staging_;
+  std::string asset_;
+  std::size_t part_ = 0;
+  std::size_t parts_ = 0;
 };
 
 diag::Outcome<std::vector<Part>> match_parts(const std::vector<std::string>& wanted, const std::vector<Asset>& assets,
@@ -286,7 +336,7 @@ diag::Outcome<std::vector<Part>> match_parts(const std::vector<std::string>& wan
       return diag::make(codes::kUnverified, it->filename + " has no known SHA-256; pass -accept-unverified to install "
                                                            "it from an unverified source");
     }
-    parts.push_back(Part{content, &*it});
+    parts.push_back(Part{content, *it, std::nullopt});
   }
   return parts;
 }
@@ -307,7 +357,8 @@ std::string provenance_json(const Family& family, std::string_view hash, const s
     doc["partial"] = options.include_prefixes;
   }
   for (const auto& part : parts) {
-    doc["assets"][part.asset->filename] = {{"sha256", part.asset->sha256}, {"size", part.asset->size}};
+    doc["assets"][part.asset.filename] = {
+        {"content", part.content}, {"sha256", part.asset.sha256}, {"size", part.asset.size}};
   }
   return doc.dump(2) + "\n";
 }
@@ -382,6 +433,28 @@ bool read_provenance(const Path& path, Provenance& out) {
   return true;
 }
 
+// Where one install goes, for run_install.
+struct InstallTarget {
+  Fetcher& fetcher;
+  Decompressor* decompressor;
+  const Family& family;
+  Path family_dir;
+  Path root;
+};
+
+// Downloads or verifies, unpacks and commits `parts`, then records the provenance.
+diag::Status run_install(const InstallTarget& target, std::string_view hash, const std::vector<Part>& parts,
+                         const InstallOptions& options, diag::DiagnosticSink& sink) {
+  Installer installer{target.fetcher, target.decompressor, options, sink};
+  if (auto status = installer.run(parts, target.family_dir, hash); !status) {
+    return status;
+  }
+  merge_provenance(target.family_dir / ".hefesto" / (std::string{hash} + ".json"),
+                   provenance_json(target.family, hash, parts, options));
+  info(sink, "installed " + target.family.name + " " + std::string{hash} + " under " + target.root.string());
+  return diag::Done{};
+}
+
 std::vector<std::string> libraries_of(const Path& variant_dir) {
   return subdirectory_names(variant_dir / "libs.ref");
 }
@@ -406,6 +479,29 @@ void scan_layout(const Path& tool_dir, const Family& family, bool read_only, std
 }
 
 }  // namespace
+
+std::string_view install_phase_name(InstallPhase phase) noexcept {
+  switch (phase) {
+    case InstallPhase::download:
+      return "download";
+    case InstallPhase::verify:
+      return "verify";
+    case InstallPhase::unpack:
+      return "unpack";
+    case InstallPhase::finalize:
+      return "finalize";
+  }
+  return "download";
+}
+
+std::optional<InstallPhase> parse_install_phase(std::string_view name) noexcept {
+  for (const auto phase : {InstallPhase::download, InstallPhase::verify, InstallPhase::unpack, InstallPhase::finalize}) {
+    if (install_phase_name(phase) == name) {
+      return phase;
+    }
+  }
+  return std::nullopt;
+}
 
 bool source_verified(const CatalogSource& /*source*/) noexcept {
   return false;
@@ -550,6 +646,28 @@ diag::Status PdkManager::write_sources(const Family& family, std::string_view ha
   return diag::Done{};
 }
 
+bool PdkManager::part_present(const Family& family, std::string_view hash, std::string_view content) const {
+  const Path version_dir = family_dir(family) / "versions" / std::string{hash};
+  if (content == "common") {
+    return is_dir(version_dir / family.variants.front().name / "libs.tech");
+  }
+  return std::any_of(family.variants.begin(), family.variants.end(), [&](const Variant& v) {
+    return is_dir(version_dir / v.name / "libs.ref" / std::string{content});
+  });
+}
+
+diag::Status PdkManager::check_consent(const Family& family, const InstallOptions& options) {
+  if (auto status = check_license(family, options); !status) {
+    return status;
+  }
+  if (!source_verified(options.source) && !options.accept_unverified) {
+    return diag::make(codes::kUnverified, "the PDK source " + options.source.location +
+                                              " is unverified (no Hefesto catalog signature); pass -accept-unverified "
+                                              "to install from it");
+  }
+  return diag::Done{};
+}
+
 diag::Status PdkManager::install(const Selection& selection, std::string_view hash,
                                  const std::vector<std::string>& libraries, const InstallOptions& options,
                                  diag::DiagnosticSink& sink) {
@@ -561,30 +679,18 @@ diag::Status PdkManager::install(const Selection& selection, std::string_view ha
   if (!libs) {
     return libs.error();
   }
-  const Path version_dir = family_dir(family) / "versions" / std::string{hash};
   std::vector<std::string> wanted;
-  if (!is_dir(version_dir / family.variants.front().name / "libs.tech")) {
+  if (!part_present(family, hash, "common")) {
     wanted.emplace_back("common");
   }
-  for (const auto& lib : libs.value()) {
-    const bool present = std::any_of(family.variants.begin(), family.variants.end(), [&](const Variant& v) {
-      return is_dir(version_dir / v.name / "libs.ref" / lib);
-    });
-    if (!present) {
-      wanted.push_back(lib);
-    }
-  }
+  std::copy_if(libs.value().begin(), libs.value().end(), std::back_inserter(wanted),
+               [&](const std::string& lib) { return !part_present(family, hash, lib); });
   if (wanted.empty()) {
     info(sink, family.name + " " + std::string{hash}.substr(0, 7) + " is already installed with the requested libraries");
     return write_sources(family, hash);
   }
-  if (auto status = check_license(family, options); !status) {
+  if (auto status = check_consent(family, options); !status) {
     return status;
-  }
-  if (!source_verified(options.source) && !options.accept_unverified) {
-    return diag::make(codes::kUnverified, "the PDK source " + options.source.location +
-                                              " is unverified (no Hefesto catalog signature); pass -accept-unverified "
-                                              "to install from it");
   }
   auto assets = version_assets(family, hash, options.source);
   if (!assets) {
@@ -594,13 +700,42 @@ diag::Status PdkManager::install(const Selection& selection, std::string_view ha
   if (!parts) {
     return parts.error();
   }
-  Installer installer{fetcher_, decompressor_, options, sink};
-  if (auto status = installer.run(parts.value(), family_dir(family), hash); !status) {
+  if (auto status = run_install(InstallTarget{fetcher_, decompressor_, family, family_dir(family), root_}, hash,
+                                parts.value(), options, sink);
+      !status) {
     return status;
   }
-  merge_provenance(family_dir(family) / ".hefesto" / (std::string{hash} + ".json"),
-                   provenance_json(family, hash, parts.value(), options));
-  info(sink, "installed " + family.name + " " + std::string{hash} + " under " + root_.string());
+  return write_sources(family, hash);
+}
+
+diag::Status PdkManager::install_local(const Family& family, std::string_view hash,
+                                       const std::vector<LocalAsset>& assets, const InstallOptions& options,
+                                       diag::DiagnosticSink& sink) {
+  if (!is_version_hash(hash)) {
+    return diag::make(codes::kSelect, "install needs a 40-hex version hash");
+  }
+  std::vector<Part> parts;
+  for (const auto& local : assets) {
+    if (part_present(family, hash, local.asset.content)) {
+      continue;
+    }
+    if (local.asset.sha256.empty() && !options.accept_unverified) {
+      return diag::make(codes::kUnverified, local.asset.filename + " has no known SHA-256; pass -accept-unverified");
+    }
+    parts.push_back(Part{local.asset.content, local.asset, local.file});
+  }
+  if (parts.empty()) {
+    info(sink, family.name + " " + std::string{hash}.substr(0, 7) + " is already installed with these parts");
+    return write_sources(family, hash);
+  }
+  if (auto status = check_consent(family, options); !status) {
+    return status;
+  }
+  if (auto status = run_install(InstallTarget{fetcher_, decompressor_, family, family_dir(family), root_}, hash, parts,
+                                options, sink);
+      !status) {
+    return status;
+  }
   return write_sources(family, hash);
 }
 
@@ -756,6 +891,19 @@ class ManagedPdkStore final : public platform::PdkStore {
 std::unique_ptr<platform::PdkStore> make_managed_pdk_store(const PdkManager& manager, InstallHost& host,
                                                            std::optional<PinnedVersion> pin) {
   return std::make_unique<ManagedPdkStore>(manager, host, std::move(pin));
+}
+
+SessionPdk make_session_pdk(platform::FileSystem& fs, platform::ProcessRunner& runner,
+                            const std::optional<platform::Path>& root) {
+  SessionPdk out;
+  out.host = make_local_install_host();
+  out.fetcher = runner.supported() ? make_process_fetcher(runner, out.host->environment("GITHUB_TOKEN"))
+                                   : make_unsupported_fetcher();
+  out.decompressor = make_default_decompressor(runner);
+  out.manager = std::make_unique<PdkManager>(fs, *out.host, *out.fetcher, Catalog::builtin());
+  out.manager->set_decompressor(out.decompressor.get());
+  out.manager->set_root(out.manager->resolve_root(root));
+  return out;
 }
 
 }  // namespace hefesto::pdk
