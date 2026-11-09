@@ -201,6 +201,34 @@ TEST_CASE("label, port and setlabel through commands (MODEL-G-038/043)", "[cap:l
   CHECK(s.editor.edit_cell->labels().back().port_index == 0);
 }
 
+TEST_CASE("port attributes take Magic's keywords and synonyms only",
+          "[cap:cmd-labels-properties][req:Port attributes][regression]") {
+  // Regression: `port use reset` was accepted (Magic prints its usage), and
+  // the synonyms digital, inout and feedthru were refused.
+  HEFESTO_REQUIRE_MT(mt);
+  Session s(mt);
+  s.editor.edit_cell->set_bboxes({0, 0, 30, 30}, {0, 0, 30, 30});
+  s.ok("snap internal");
+  s.ok("box 0 0 10 10");
+  s.ok("paint metal1");
+  s.ok("box 5 5 5 5");
+  s.ok("label B north metal1");
+  s.ok("port make");
+  const auto bad = s.run("port use reset");
+  CHECK(bad.ok());  // Magic prints the usage without a Tcl error
+  REQUIRE_FALSE(bad.diagnostics.empty());
+  CHECK(bad.diagnostics.back().text ==
+        "Usage:  port use <type>, where <type> is one of:\n    default\n    analog\n    signal\n    digital\n"
+        "    power\n    ground\n    clock");
+  CHECK(s.editor.edit_cell->labels().back().port_use == db::PortUse::default_use);
+  s.ok("port use digital");
+  CHECK(s.run("port use").value.to_string() == "signal");
+  s.ok("port class inout");
+  CHECK(s.run("port class").value.to_string() == "bidirectional");
+  s.ok("port shape feedthru");
+  CHECK(s.run("port shape").value.to_string() == "feedthrough");
+}
+
 TEST_CASE("setlabel font fills the label's text bounding box", "[cap:font-labels][req:Font labels in bounding boxes and searches]") {
   HEFESTO_REQUIRE_MT(mt);
   Session s(mt);

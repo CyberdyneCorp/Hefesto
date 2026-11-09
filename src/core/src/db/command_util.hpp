@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -79,6 +80,7 @@ void set_current_use(const Session& s, const CellUse* use);
 /// Magic's Lookup: exact match, else a unique prefix; the index, -1 when
 /// ambiguous, -2 when nothing matches.
 [[nodiscard]] int lookup(std::string_view word, std::initializer_list<std::string_view> choices);
+[[nodiscard]] int lookup_in(std::string_view word, std::span<const std::string_view> choices);
 
 /// Joins argument tokens from `first` with single spaces.
 [[nodiscard]] std::string join_args(const std::vector<std::string>& args, std::size_t first);

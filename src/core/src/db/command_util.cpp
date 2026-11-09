@@ -243,6 +243,10 @@ void set_current_use(const Session& s, const CellUse* use) {
 }
 
 int lookup(std::string_view word, std::initializer_list<std::string_view> choices) {
+  return lookup_in(word, std::span<const std::string_view>{choices.begin(), choices.size()});
+}
+
+int lookup_in(std::string_view word, std::span<const std::string_view> choices) {
   int found = -2;
   int index = 0;
   for (const std::string_view choice : choices) {

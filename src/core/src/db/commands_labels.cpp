@@ -328,50 +328,74 @@ std::optional<diag::Diagnostic> port_make(const CellDef& def, Label& lab, const 
   return std::nullopt;
 }
 
-template <typename E, std::size_t N>
-std::optional<E> lookup(const std::array<std::pair<std::string_view, E>, N>& table, std::string_view name) {
-  for (const auto& [n, v] : table) {
-    if (n == name) {
-      return v;
-    }
-  }
-  return std::nullopt;
-}
+/// One port attribute keyword of Magic's `port` command tables, synonyms
+/// included (Magic ref: commands/CmdLQ.c:1558-1625).
+template <typename E>
+struct PortWord {
+  std::string_view name;
+  E value;
+};
 
-template <typename E, std::size_t N>
-std::string_view name_of(const std::array<std::pair<std::string_view, E>, N>& table, E value) {
-  for (const auto& [n, v] : table) {
-    if (v == value) {
-      return n;
-    }
-  }
-  return "default";
-}
-
-constexpr std::array<std::pair<std::string_view, PortClass>, 6> kClasses = {{
+constexpr std::array<PortWord<PortClass>, 8> kClasses = {{
     {"default", PortClass::default_class}, {"input", PortClass::input}, {"output", PortClass::output},
     {"tristate", PortClass::tristate}, {"bidirectional", PortClass::bidirectional},
-    {"feedthrough", PortClass::feedthrough}}};
-constexpr std::array<std::pair<std::string_view, PortUse>, 9> kUses = {{
-    {"default", PortUse::default_use}, {"signal", PortUse::signal}, {"analog", PortUse::analog},
-    {"power", PortUse::power}, {"ground", PortUse::ground}, {"clock", PortUse::clock}, {"reset", PortUse::reset},
-    {"scan", PortUse::scan}, {"tieoff", PortUse::tieoff}}};
-constexpr std::array<std::pair<std::string_view, PortShape>, 4> kShapes = {{
+    {"inout", PortClass::bidirectional}, {"feedthrough", PortClass::feedthrough},
+    {"feedthru", PortClass::feedthrough}}};
+// reset, scan and tieoff are read from files (Q-CELL-6) but are not `port use` keywords.
+constexpr std::array<PortWord<PortUse>, 7> kUses = {{
+    {"default", PortUse::default_use}, {"analog", PortUse::analog}, {"signal", PortUse::signal},
+    {"digital", PortUse::signal}, {"power", PortUse::power}, {"ground", PortUse::ground},
+    {"clock", PortUse::clock}}};
+constexpr std::array<PortWord<PortShape>, 5> kShapes = {{
     {"default", PortShape::default_shape}, {"abutment", PortShape::abutment}, {"ring", PortShape::ring},
-    {"feedthrough", PortShape::feedthrough}}};
+    {"feedthrough", PortShape::feedthrough}, {"feedthru", PortShape::feedthrough}}};
 
+/// The first keyword of `value`'s synonym group; "" when the value has none
+/// (a use read from a file, such as reset: Magic returns nothing).
 template <typename E, std::size_t N>
-CommandResult port_enum(Label& lab, E& field, const std::array<std::pair<std::string_view, E>, N>& table,
-                        const std::vector<std::string>& args) {
+std::string_view name_of(const std::array<PortWord<E>, N>& table, E value) {
+  for (const auto& w : table) {
+    if (w.value == value) {
+      return w.name;
+    }
+  }
+  return {};
+}
+
+/// `port class|use|shape [value]` (Magic ref: commands/CmdLQ.c:1870-1990): a
+/// query returns the keyword; a value (Lookup: unique prefix) is set on every
+/// port of the cell with the same text and index; an unknown value prints
+/// the usage with the keywords and changes nothing. `changed` tells whether
+/// anything was set.
+template <typename E, std::size_t N>
+CommandResult port_enum(const cu::Session& s, CellDef& def, const Label& lab, E Label::*field,
+                        const std::array<PortWord<E>, N>& table, const std::vector<std::string>& args, bool& changed) {
   if (args.size() == 1) {
-    return CommandResult::success(Value{std::string{name_of(table, field)}});
+    return CommandResult::success(Value{std::string{name_of(table, lab.*field)}});
   }
-  const auto v = lookup(table, args[1]);
-  if (!v) {
-    return cu::fail(cu::bad_argument("bad value \"" + args[1] + "\""));
+  int idx = -1;
+  std::string usage = "Usage:  port " + args[0] + " <type>, where <type> is one of:";
+  {
+    std::vector<std::string_view> names;
+    for (const auto& w : table) {
+      names.push_back(w.name);
+      usage += "\n    " + std::string{w.name};
+    }
+    idx = cu::lookup_in(args[1], names);
   }
-  field = *v;
-  (void)lab;
+  if (idx < 0) {
+    cu::warn(s, usage);
+    return CommandResult::success();
+  }
+  const E value = table[static_cast<std::size_t>(idx)].value;
+  const std::string text = lab.text;
+  const std::uint32_t index = lab.port_index;
+  for (Label& other : def.labels()) {
+    if (other.is_port() && other.text == text && other.port_index == index) {
+      other.*field = value;
+    }
+  }
+  changed = true;
   return CommandResult::success();
 }
 
@@ -395,7 +419,8 @@ void port_remove(Label& lab) {
   lab.sticky = false;
 }
 
-CommandResult port_on_label(CellDef& def, Label& lab, const std::vector<std::string>& args) {
+CommandResult port_on_label(const cu::Session& s, CellDef& def, Label& lab, const std::vector<std::string>& args,
+                            bool& changed) {
   const std::string& op = args[0];
   if (op == "exists") {
     return CommandResult::success(Value{std::int64_t{lab.is_port() ? 1 : 0}});
@@ -412,13 +437,13 @@ CommandResult port_on_label(CellDef& def, Label& lab, const std::vector<std::str
     return port_index(lab, args);
   }
   if (op == "class") {
-    return port_enum(lab, lab.port_class, kClasses, args);
+    return port_enum(s, def, lab, &Label::port_class, kClasses, args, changed);
   }
   if (op == "use") {
-    return port_enum(lab, lab.port_use, kUses, args);
+    return port_enum(s, def, lab, &Label::port_use, kUses, args, changed);
   }
   if (op == "shape") {
-    return port_enum(lab, lab.port_shape, kShapes, args);
+    return port_enum(s, def, lab, &Label::port_shape, kShapes, args, changed);
   }
   return cu::fail(cu::bad_argument("unknown port option \"" + op + "\""));
 }
@@ -441,10 +466,11 @@ CommandResult cmd_port(CommandContext& ctx, const Invocation& inv) {
   if (labels.size() != 1) {
     return cu::fail(diag::make(codes::kNoLabel, labels.empty() ? "no label in the box" : "more than one label in the box"));
   }
-  CommandResult r = port_on_label(*e.def, *labels.front(), inv.args);
   const std::string& op = inv.args[0];
-  const bool changes = op == "make" || op == "remove" || (inv.args.size() > 1 && op != "exists");
-  if (r.ok() && changes) {
+  const bool attribute = op == "class" || op == "use" || op == "shape";
+  bool changed = !attribute && (op == "make" || op == "remove" || (inv.args.size() > 1 && op != "exists"));
+  CommandResult r = port_on_label(e.s, *e.def, *labels.front(), inv.args, changed);
+  if (r.ok() && changed) {
     mark_modified(*e.def);
   }
   return r;
