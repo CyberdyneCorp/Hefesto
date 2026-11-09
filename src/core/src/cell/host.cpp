@@ -6,11 +6,24 @@
 
 #include "hefesto/cell/host.hpp"
 
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <system_error>
 
 namespace hefesto::cell {
+
+bool FileHost::owned_by_current_user(const platform::Path& /*path*/) {
+  return true;
+}
+
+std::optional<std::int64_t> FileHost::change_time(const platform::Path& /*path*/) {
+  return std::nullopt;
+}
+
+std::optional<bool> FileHost::process_running(std::int64_t /*pid*/) {
+  return std::nullopt;
+}
 
 namespace {
 
@@ -68,6 +81,14 @@ class LocalFileHost final : public FileHost {
     return !ec;
   }
   std::optional<std::string> git_head(const platform::Path& /*directory*/) override { return std::nullopt; }
+  std::optional<std::int64_t> change_time(const platform::Path& path) override {
+    std::error_code ec;
+    const auto stamp = fs::last_write_time(path, ec);  // no portable ctime
+    if (ec) {
+      return std::nullopt;
+    }
+    return std::chrono::duration_cast<std::chrono::nanoseconds>(stamp.time_since_epoch()).count();
+  }
 };
 
 class MemoryFileHost final : public FileHost {

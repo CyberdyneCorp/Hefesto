@@ -195,7 +195,7 @@ TEST_CASE("two sessions in one process see each other's locks",
   CHECK(b->holds("c.mag"));
 }
 
-TEST_CASE("load finds cells through the search path and expands children",
+TEST_CASE("load finds cells through the search path; expansion reads children",
           "[cap:cell-library-resolution][req:Cell file lookup order][req:Cell file path bookkeeping]") {
   CellIo io;
   hefesto::platform::MemoryFileSystem& mem = dynamic_cast<hefesto::platform::MemoryFileSystem&>(io.ctx.fs);
@@ -210,6 +210,10 @@ TEST_CASE("load finds cells through the search path and expands children",
   CHECK(top.value()->file_path() == "/work/top");
   db::CellDef* inv = io.library.find("inv");
   REQUIRE(inv != nullptr);
+  // Magic's load does not expand: the child is a placeholder until needed.
+  CHECK_FALSE(inv->flags().available);
+  CHECK(inv->bbox() == db::Rect{0, 0, 4, 4});  // from the use line
+  cell::expand_all(io.ctx, *top.value());
   CHECK(inv->flags().available);
   CHECK(inv->file_path() == "/lib/inv");
   CHECK(io.stamps.empty());

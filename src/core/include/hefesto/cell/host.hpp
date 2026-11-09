@@ -50,6 +50,22 @@ class FileHost {
   /// git is unavailable or the directory is not in a work tree
   /// (inconclusive, Q-CELL-23).
   [[nodiscard]] virtual std::optional<std::string> git_head(const platform::Path& directory) = 0;
+
+  // Crash recovery ("Crash recovery", "Import of Magic crash backups").
+  // The defaults suit hosts without the facility; a POSIX host overrides
+  // them (src/platform_posix).
+
+  /// The file is owned by the current user. Default: true (the crash
+  /// backup directory is private to the user).
+  [[nodiscard]] virtual bool owned_by_current_user(const platform::Path& path);
+  /// The file's status-change time (any monotonic file time when the host
+  /// has no ctime), in nanoseconds since an arbitrary epoch; nullopt when
+  /// unknown.
+  [[nodiscard]] virtual std::optional<std::int64_t> change_time(const platform::Path& path);
+  /// Whether process `pid` is running, tested without affecting it
+  /// (kill(pid, 0)); nullopt when the host cannot tell, which disables the
+  /// import of Magic crash backups.
+  [[nodiscard]] virtual std::optional<bool> process_running(std::int64_t pid);
 };
 
 /// The local disk through std::filesystem. git_head is always inconclusive

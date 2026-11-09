@@ -76,6 +76,9 @@ struct ReadOptions {
   /// read_cell: the lookup follows the definition's dereference flag (false
   /// for the cell named on a load, which is never dereferenced itself).
   bool lookup_dereferenced = true;
+  /// read_cell: a missing file also prints the system error text (DBCellRead
+  /// called with an error pointer, as for the cell named on a load).
+  bool report_errno = false;
 };
 
 /// Reads `.mag` text into the definition `def` (normally empty; a backup
@@ -95,7 +98,8 @@ struct ReadOptions {
 
 /// Finds or creates the definition `name` (a trailing `.mag` stripped; a
 /// name with a directory part sets the recorded path) and reads it if
-/// needed; then reads every unavailable descendant (expansion).
+/// needed. Descendants are not read (Magic's `load` does not expand); call
+/// expand_all() when their contents are needed.
 [[nodiscard]] diag::Outcome<db::CellDef*> load_cell(CellIoContext& ctx, std::string_view name,
                                                     const ReadOptions& options = {});
 
@@ -105,6 +109,9 @@ void expand_all(CellIoContext& ctx, db::CellDef& def);
 
 struct WriteOptions {
   bool backup = false;  // backup/archive record: no out-of-date warning
+  /// The file being written (DBCellWrite sets cd_file to it first, and use
+  /// paths are relative to it); empty = the definition's recorded path.
+  std::string target_file;
 };
 
 /// Renders `def` as `.mag` text ("Writer ..." requirements, "Natural

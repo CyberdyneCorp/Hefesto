@@ -1,0 +1,5 @@
+1file a
+magic
+tech tiny
+<< end >>
+end
