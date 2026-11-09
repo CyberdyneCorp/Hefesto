@@ -70,4 +70,12 @@ std::vector<LayerStyle> spike_layer_styles() {
   };
 }
 
+void visible_polygon_batches(const PolygonScene& scene, double pixels_per_unit, std::vector<LayerBatch>& out) {
+  out.clear();
+  for (std::size_t i = 0; i < scene.batches.size(); ++i) {
+    const double min = i < scene.min_pixels_per_unit.size() ? scene.min_pixels_per_unit[i] : 0.0;
+    if (pixels_per_unit >= min) out.push_back(scene.batches[i]);
+  }
+}
+
 }  // namespace hefesto::render

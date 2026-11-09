@@ -50,15 +50,73 @@ TEST_CASE("scene layers become batches in redisplay order with PDK colors",
   CHECK(batches.rects.batches()[2].count == 8);  // two separate squares: 4 sides each
 }
 
-TEST_CASE("outline-only and cross styles draw no fill", "[cap:display-style-files][req:Outline and fill rendering semantics]") {
+TEST_CASE("outline-only styles draw no fill; cross styles draw diagonals in their line pattern",
+          "[cap:display-style-files][req:Outline and fill rendering semantics]") {
   display::LayoutScene scene;
   display::SceneLayer outline{style(52, display::FillKind::outline, 1.0F), false, {{0, 0, 4, 4}}, {}, {}};
-  outline.style.outline = 0xFF;
+  outline.style.outline = 0xCC;
   outline.outline = display::boundary_segments(outline.rects);
-  display::SceneLayer cross{style(53, display::FillKind::cross, 1.0F), false, {{0, 0, 4, 4}}, {}, {}};
+  display::SceneLayer cross{style(53, display::FillKind::cross, 1.0F), false, {{0, 0, 4, 4}, {8, 8, 12, 12}}, {}, {}};
+  cross.style.outline = 0xF0;
   scene.layers = {outline, cross};
   const auto batches = render::to_batches(scene);
-  CHECK(batches.kinds == std::vector<render::BatchKind>{render::BatchKind::outline});
+  CHECK(batches.kinds == std::vector<render::BatchKind>{render::BatchKind::outline, render::BatchKind::diagonals});
+  CHECK(batches.styles[0].dash == 0xCC);
+  CHECK_FALSE(batches.styles[0].diagonals);
+  CHECK(batches.styles[1].diagonals);
+  CHECK(batches.styles[1].dash == 0xF0);
+  CHECK(batches.styles[1].a == 1.0F);  // lines are opaque
+  REQUIRE(batches.rects.batches().size() == 2);
+  CHECK(batches.rects.batches()[1].count == 2);  // one instance per rectangle
+}
+
+TEST_CASE("split tiles become triangles in their layer's fill style",
+          "[cap:hefesto-rendering][req:Style-file-faithful 2D drawing]") {
+  display::LayoutScene scene;
+  display::SceneLayer poly{style(52, display::FillKind::stipple, 1.0F), false, {{0, 0, 10, 10}}, {}, {}};
+  poly.triangles.push_back({{10, 0, 20, 10}, hefesto::db::Diagonal::nw_se, false});
+  poly.triangles.push_back({{20, 0, 30, 10}, hefesto::db::Diagonal::ne_sw, true});
+  scene.layers = {poly};
+  scene.bounds = {0, 0, 30, 10};
+  const auto batches = render::to_batches(scene);
+  CHECK(batches.kinds == std::vector<render::BatchKind>{render::BatchKind::fill, render::BatchKind::triangles});
+  CHECK(batches.styles[1].stippled);
+  REQUIRE(batches.polygons.batches.size() == 1);
+  CHECK(batches.polygons.batches[0].layer == 1);
+  CHECK(batches.polygons.batches[0].count == 6);
+  const auto& v = batches.polygons.vertices;
+  // `\` left part: the lower-left triangle (10,0) (10,10) (20,0).
+  CHECK(v[0].x == 10.0F);
+  CHECK(v[0].y == 0.0F);
+  CHECK(v[1].x == 10.0F);
+  CHECK(v[1].y == 10.0F);
+  CHECK(v[2].x == 20.0F);
+  CHECK(v[2].y == 0.0F);
+  // `/` right part: the lower-right triangle (30,0) (20,0) (30,10).
+  CHECK(v[3].x == 30.0F);
+  CHECK(v[3].y == 0.0F);
+}
+
+TEST_CASE("font label glyphs are filled and skipped under 5 pixels of text height",
+          "[cap:font-labels][req:Font label rendering]") {
+  display::LayoutScene scene;
+  display::SceneLabel label;
+  label.rect = {0, 0, 0, 0};
+  label.style = style(display::kStyleLabels, display::FillKind::solid, 1.0F);
+  label.font_label = true;
+  label.size = 16;  // 2 units: the text is 5 pixels high from 2.5 pixels per unit
+  label.outline_polygons = {{{0, 0}, {4, 0}, {4, 4}, {0, 4}}};
+  scene.labels.push_back(label);
+  const auto batches = render::to_batches(scene);
+  CHECK(batches.kinds == std::vector<render::BatchKind>{render::BatchKind::label, render::BatchKind::glyphs});
+  REQUIRE(batches.polygons.batches.size() == 1);
+  CHECK(batches.polygons.batches[0].count == 6);  // one slab, one trapezoid
+  CHECK(batches.polygons.min_pixels_per_unit[0] == 2.5);
+  std::vector<render::LayerBatch> visible;
+  render::visible_polygon_batches(batches.polygons, 2.49, visible);
+  CHECK(visible.empty());
+  render::visible_polygon_batches(batches.polygons, 2.5, visible);
+  CHECK(visible.size() == 1);
 }
 
 TEST_CASE("labels, port lines and cell boxes are grouped per style", "[cap:ui-windows-and-views][req:Label display]") {

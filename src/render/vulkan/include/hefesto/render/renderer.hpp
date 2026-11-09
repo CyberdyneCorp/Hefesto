@@ -3,7 +3,8 @@
 //
 // Hefesto's Vulkan canvas renderer (desktop; MoltenVK on macOS).
 //
-// It draws a RectScene as instanced quads, one draw per layer, into a render
+// It draws a RectScene as instanced quads (or diagonals) and a PolygonScene
+// as triangles, one draw per layer, into a render
 // pass owned by someone else: the desktop shell's viewport draw callback, or
 // the offscreen target of the benchmark (hefesto/render/headless.hpp).
 //
@@ -90,13 +91,23 @@ class CanvasRenderer {
   /// thread while Raven records on its render thread).
   UploadStats upload(std::span<const RectInstance> instances);
 
+  /// Copies the filled triangles (PolygonScene::vertices, positions relative
+  /// to (base_x, base_y)) to the device, like upload(). Replaces the previous
+  /// polygons.
+  UploadStats upload_polygons(std::span<const PolygonVertex> vertices, std::int32_t base_x, std::int32_t base_y);
+
   /// Per-layer colors, indexed by layer; layers past the end use white.
   void set_layer_styles(std::span<const LayerStyle> styles);
 
-  /// Records the draw commands: one vkCmdDraw per range, ranges index the
-  /// uploaded instances (RectScene::batches() or CanvasIndex::visible_ranges()).
-  /// Builds the pipeline for `target.render_pass` on first use.
-  void record(const DrawTarget& target, const ViewTransform& view, std::span<const LayerBatch> draws);
+  /// Records the draw commands: one vkCmdDraw per range. `draws` index the
+  /// uploaded instances (RectScene::batches() or CanvasIndex::visible_ranges()),
+  /// `polygon_draws` the uploaded polygon vertices (PolygonScene::batches or
+  /// visible_polygon_batches()); both are in layer order and are drawn
+  /// merged by layer, so a layer's style decides how its range is drawn
+  /// (filled, stippled, dashed, diagonals). Builds the pipelines for
+  /// `target.render_pass` on first use.
+  void record(const DrawTarget& target, const ViewTransform& view, std::span<const LayerBatch> draws,
+              std::span<const LayerBatch> polygon_draws = {});
 
   /// Bytes of device memory the renderer holds (instance buffer).
   [[nodiscard]] std::uint64_t device_bytes() const noexcept;

@@ -59,7 +59,8 @@ class HeadlessCanvas {
 
   /// Clears the target, draws `draws` of the uploaded instances with `view`
   /// and waits for the GPU. The CPU time includes recording and submission.
-  FrameTiming render(const ViewTransform& view, std::span<const LayerBatch> draws);
+  FrameTiming render(const ViewTransform& view, std::span<const LayerBatch> draws,
+                     std::span<const LayerBatch> polygon_draws = {});
 
   /// Reads back the RGBA8 pixel at (x, y) of the last frame (tests only; slow).
   [[nodiscard]] std::uint32_t read_pixel(int x, int y);

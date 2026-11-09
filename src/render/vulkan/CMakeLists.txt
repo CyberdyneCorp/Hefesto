@@ -12,6 +12,7 @@ add_library(hefesto_render_vk STATIC
   src/canvas_index.cpp
   src/headless.cpp
   src/layout_scene.cpp
+  src/polygon_fill.cpp
   src/renderer.cpp
   src/scene.cpp
   src/synthetic_layout.cpp

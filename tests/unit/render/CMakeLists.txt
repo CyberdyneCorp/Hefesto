@@ -11,6 +11,7 @@ hefesto_add_unit_test(hefesto_render_tests
     canvas_index_test.cpp
     headless_gpu_test.cpp
     layout_scene_test.cpp
+    polygon_fill_test.cpp
     scene_test.cpp
     synthetic_layout_test.cpp
   LIBS
