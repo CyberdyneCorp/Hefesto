@@ -4,6 +4,9 @@
 #include "hefesto/shell/options.hpp"
 
 #include <charconv>
+#include <cmath>
+#include <cstdlib>
+#include <string>
 
 #include "hefesto/app/startup.hpp"
 #include "hefesto/diag/format.hpp"
@@ -72,8 +75,21 @@ bool apply_count(ShellOptions& o, std::string_view name, std::string_view value,
   return false;
 }
 
+/// A finite number filling all of `text` (strtod: from_chars<double> needs macOS 15+ libc++).
+std::optional<double> parse_double(std::string_view text) {
+  const std::string copy(text);
+  char* end = nullptr;
+  const double value = std::strtod(copy.c_str(), &end);
+  if (copy.empty() || *end != '\0' || !std::isfinite(value)) return std::nullopt;
+  return value;
+}
+
 bool apply_valued(ShellOptions& o, std::string_view name, std::string_view value) {
   if (name == "--theme") return parse_theme(value, o.theme);
+  if (name == "--pinch") {
+    o.pinch = parse_pinch_option(value);
+    return o.pinch.has_value();
+  }
   if (name == "--rects") return parse_value(value, o.rects);
   if (name == "--seed") return parse_value(value, o.seed);
   if (std::string* text = string_option(o, name)) {
@@ -122,11 +138,23 @@ ParseResult parse_shell_options(std::span<const std::string_view> args) {
   return {o, {}};
 }
 
+std::optional<PinchOption> parse_pinch_option(std::string_view text) {
+  const std::size_t a = text.find(',');
+  const std::size_t b = a == std::string_view::npos ? a : text.find(',', a + 1);
+  if (b == std::string_view::npos) return std::nullopt;
+  const auto x = parse_double(text.substr(0, a));
+  const auto y = parse_double(text.substr(a + 1, b - a - 1));
+  const auto factor = parse_double(text.substr(b + 1));
+  if (!x || !y || !factor || !(*factor > 0.0)) return std::nullopt;
+  return PinchOption{static_cast<float>(*x), static_cast<float>(*y), *factor};
+}
+
 std::string_view shell_usage() noexcept {
   return "usage: hefesto [-T tech] [-r] [-norcfile] [cell.mag ...]\n"
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
-         "               [--run 'CMD; CMD ...'] [--capture FILE.ppm [--capture-frames N]]\n"
+         "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR]\n"
+         "               [--capture FILE.ppm [--capture-frames N]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";
 }

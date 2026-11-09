@@ -24,6 +24,7 @@
 
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -90,6 +91,8 @@ class MainWindow {
   void build_status_bar();
   void register_view_commands();
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
+  /// --pinch: injects the trackpad pinch and prints the zoom before and after.
+  void run_pending_pinch();
   void on_problem(StatusKind kind, const std::string& panel_line, const std::string& status);
   void set_message(StatusKind kind, std::string text);
   /// Tells a screen reader of an error (assertive) or a warning (polite).
@@ -148,6 +151,7 @@ class MainWindow {
   std::string message_;  // status-bar message, always "<shape> <text>"
   StatusKind message_kind_ = StatusKind::info;
   std::string pending_run_;          // run_when_ready
+  std::optional<PinchOption> pending_pinch_;  // --pinch, after pending_run_
   bool in_command_ = false;          // run_line is executing a command line
   std::string command_problem_;      // first warning raised by that command line
   StatusKind command_problem_kind_ = StatusKind::warning;

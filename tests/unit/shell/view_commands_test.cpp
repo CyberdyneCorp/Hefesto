@@ -120,6 +120,31 @@ TEST_CASE("command bar lines run through the core Dispatcher with origin gui",
   CHECK(observer.seen[0].origin == cmd::Origin::gui);
 }
 
+// Regression (UI review): `help; paint nosuchlayer` showed only the paint
+// error in the Console; the help text was overwritten by the failure.
+TEST_CASE("the console keeps the results of a line's commands before a failure",
+          "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
+  CoreSession core(test_options());
+  CoreCommandSink sink(core.dispatcher());
+  const CommandOutcome help = sink.submit("help");
+  REQUIRE(help.ok());
+  CHECK(help.output.find("zoom factor") != std::string::npos);
+  CHECK(console_result(help, help.message) == help.output);  // printed once
+
+  const CommandOutcome line = sink.submit("help; paint nosuchlayer");
+  CHECK_FALSE(line.ok());
+  CHECK(line.output == help.output);
+  const std::string console = console_result(line, line.message);
+  CHECK(console.find("zoom factor") != std::string::npos);
+  REQUIRE_FALSE(line.message.empty());
+  CHECK(console.find(line.message) != std::string::npos);  // the failure follows the help text
+  CHECK(console.find("zoom factor") < console.find(line.message));
+
+  const CommandOutcome echoes = sink.submit("echo a; echo b");
+  CHECK(echoes.output == "a\nb");
+  CHECK(console_result(echoes, echoes.message) == "a\nb");
+}
+
 TEST_CASE("command bar failures carry core diagnostics",
           "[cap:hefesto-diagnostics][req:Command results and errors]") {
   CoreSession core(test_options());

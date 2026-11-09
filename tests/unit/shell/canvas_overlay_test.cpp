@@ -9,6 +9,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <optional>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -52,6 +54,74 @@ TEST_CASE("minimap fits the cell and outlines the visible window", "[cap:hefesto
   CHECK(center.x == 50);
   CHECK(center.y == 100);
   CHECK_FALSE(minimap_geometry(db::Rect{0, 0, -1, -1}, visible, 168, 112).has_value());
+}
+
+namespace {
+
+display::SceneLayer scene_layer(float r, float g, float b, display::FillKind fill, std::vector<db::Rect> rects) {
+  display::SceneLayer layer;
+  layer.style.r = r;
+  layer.style.g = g;
+  layer.style.b = b;
+  layer.style.a = 1.0F;
+  layer.style.fill = fill;
+  layer.rects = std::move(rects);
+  return layer;
+}
+
+/// The thumbnail's color at minimap pixel (x, y); nullopt where nothing is painted.
+std::optional<Rgba> thumbnail_at(const std::vector<MinimapFill>& fills, double x, double y) {
+  for (const MinimapFill& f : fills) {
+    if (f.rect.contains(x, y)) return f.color;
+  }
+  return std::nullopt;
+}
+
+}  // namespace
+
+// Regression (UI review): the minimap showed a grey rectangle and no layout.
+TEST_CASE("the minimap shows a thumbnail of the layout in the PDK colors",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  const db::Rect bounds{0, 0, 200, 100};
+  display::LayoutScene scene;
+  // Red on the left half, blue over the top-right quarter, an outline-only layer everywhere.
+  scene.layers.push_back(scene_layer(1.0F, 0.0F, 0.0F, display::FillKind::solid, {{0, 0, 100, 100}}));
+  scene.layers.push_back(scene_layer(0.0F, 0.0F, 1.0F, display::FillKind::solid, {{100, 50, 200, 100}}));
+  scene.layers.push_back(scene_layer(0.0F, 1.0F, 0.0F, display::FillKind::outline, {{0, 0, 200, 100}}));
+  const Rgba black{0.0F, 0.0F, 0.0F, 1.0F};
+  const auto fills = minimap_thumbnail(scene, bounds, black, kMinimapWidth, kMinimapHeight);
+  REQUIRE_FALSE(fills.empty());
+  const auto g = minimap_geometry(bounds, render::WorldWindow{}, kMinimapWidth, kMinimapHeight);
+  REQUIRE(g.has_value());
+  const double qx = g->content.w / 4.0;
+  const double qy = g->content.h / 4.0;
+  const auto left = thumbnail_at(fills, g->content.x + qx, g->content.y + 2.0 * qy);
+  const auto top_right = thumbnail_at(fills, g->content.x + 3.0 * qx, g->content.y + qy);
+  const auto bottom_right = thumbnail_at(fills, g->content.x + 3.0 * qx, g->content.y + 3.0 * qy);
+  REQUIRE(left.has_value());
+  CHECK(left->r == Approx(1.0F));
+  CHECK(left->b == Approx(0.0F));
+  REQUIRE(top_right.has_value());  // y up in the world: the top quarter is drawn at the top
+  CHECK(top_right->b == Approx(1.0F));
+  CHECK_FALSE(bottom_right.has_value());  // only the outline layer there: not drawn
+  for (const MinimapFill& f : fills) {
+    CHECK(f.rect.x >= g->content.x - 1e-9);
+    CHECK(f.rect.x + f.rect.w <= g->content.x + g->content.w + 1e-9);
+    CHECK(f.rect.y + f.rect.h <= g->content.y + g->content.h + 1e-9);
+  }
+  // Runs of one color are merged: a solid half is a few fills per row, not one per cell.
+  CHECK(fills.size() < static_cast<std::size_t>(g->content.h));
+
+  // Translucent and stippled layers blend over what is below them.
+  display::LayoutScene glass;
+  glass.layers.push_back(scene_layer(1.0F, 1.0F, 1.0F, display::FillKind::stipple, {{0, 0, 200, 100}}));
+  const auto half = minimap_thumbnail(glass, bounds, black, kMinimapWidth, kMinimapHeight);
+  REQUIRE_FALSE(half.empty());
+  CHECK(half.front().color.r == Approx(0.5F));
+  CHECK(half.front().color.a == Approx(1.0F));
+
+  CHECK(minimap_thumbnail(display::LayoutScene{}, bounds, black, kMinimapWidth, kMinimapHeight).empty());
+  CHECK(minimap_thumbnail(scene, db::Rect{0, 0, -1, -1}, black, kMinimapWidth, kMinimapHeight).empty());
 }
 
 TEST_CASE("zoom control and minimap sit where the mockup puts them", "[cap:hefesto-app-ux][req:Main window layout]") {
@@ -117,11 +187,29 @@ TEST_CASE("left ruler labels are compact and never wider than the ruler",
   CHECK(compact_ruler_label("-500") == "-500");
   CHECK(compact_ruler_label("0") == "0");
   CHECK(compact_ruler_label("2.7") == "2.7");
-  // A label that does not fit is stacked one character per line.
+  // Regression (UI review): zero was ".0" and "-0.1" was stacked one
+  // character per line ("-", ".", "1"), clipped in the 20 px ruler.
+  CHECK(compact_ruler_label("0.0") == "0");
+  CHECK(compact_ruler_label("-0.00") == "0");
+  CHECK(compact_ruler_label("-0.1") == "-.1");
+  // JetBrains Mono 10 (6 px advance) fits three characters in the 20 px ruler.
+  const std::size_t three = ruler_label_max_chars(20.0, 6.0);
+  CHECK(three == 3);
+  CHECK(ruler_label_max_chars(20.0, 0.0) == 1);
+  CHECK(ruler_label_max_chars(4.0, 6.0) == 1);
+  for (const char* label : {"-0.1", "0.1", "0.0", "2.7", "-0.5", "-2", "100"}) {
+    CHECK(ruler_label_lines(compact_ruler_label(label), three).size() == 1);
+  }
+  // A label that does not fit puts its sign on its own line, then the rest.
   CHECK(ruler_label_lines("0", 2) == std::vector<std::string>{"0"});
-  CHECK(ruler_label_lines("-500", 2) == std::vector<std::string>{"-", "5", "0", "0"});
+  CHECK(ruler_label_lines("-500", 3) == std::vector<std::string>{"-", "500"});
+  CHECK(ruler_label_lines("-1.5k", 3) == std::vector<std::string>{"-", "1.5", "k"});
+  CHECK(ruler_label_lines("1.25", 3) == std::vector<std::string>{"1.2", "5"});
+  CHECK(ruler_label_lines("ab", 0) == std::vector<std::string>{"a", "b"});
   for (const char* label : {"-500", "1.5k", "-.25", "12345"}) {
-    for (const std::string& line : ruler_label_lines(compact_ruler_label(label), 2)) CHECK(line.size() <= 2);
+    for (std::size_t width : {std::size_t{1}, std::size_t{2}, three}) {
+      for (const std::string& line : ruler_label_lines(compact_ruler_label(label), width)) CHECK(line.size() <= width);
+    }
   }
 }
 

@@ -65,6 +65,8 @@ class LayoutCanvas final : public view::ViewObserver {
   /// The layout point under the pointer, in internal units.
   [[nodiscard]] const std::optional<db::Point>& cursor() const noexcept { return cursor_; }
   [[nodiscard]] UnitScale unit_scale() const;
+  /// The zoom control's text ("400%": relative to the zoom that fits the cell).
+  [[nodiscard]] std::string zoom_text() const;
   /// Called when the cursor moves or the view changes (status bar).
   void on_view_changed(std::function<void()> callback) { view_changed_ = std::move(callback); }
 

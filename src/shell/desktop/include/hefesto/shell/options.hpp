@@ -17,6 +17,13 @@
 
 namespace hefesto::shell {
 
+/// A trackpad pinch injected after --run (scripted captures and tests).
+struct PinchOption {
+  float x = 0.0F;  // window point, logical pixels
+  float y = 0.0F;
+  double factor = 1.0;  // > 1 spreads the fingers (zooms in)
+};
+
 struct ShellOptions {
   ThemeMode theme = ThemeMode::dark;
   /// Rectangles of the synthetic spike layout shown in the canvas instead of
@@ -48,6 +55,10 @@ struct ShellOptions {
   /// ("load sky130_fd_sc_hd__inv_1; see no metal1; theme light"). Scripted
   /// checks and captures of interactive flows.
   std::string run;
+  /// --pinch X,Y,FACTOR: after `run`, a trackpad pinch at window point
+  /// (X, Y) through Raven's event injection, as the system sends one; the
+  /// app prints the zoom before and after it.
+  std::optional<PinchOption> pinch;
   /// Opens the PDK manager panel at startup.
   bool show_pdk_manager = false;
   /// Opens the Console / Diagnostics panel at startup (collapsed otherwise).
@@ -72,6 +83,9 @@ struct ParseResult {
 [[nodiscard]] ParseResult parse_shell_options(std::span<const std::string_view> args);
 
 [[nodiscard]] std::string_view shell_usage() noexcept;
+
+/// "X,Y,FACTOR" (X, Y finite, FACTOR > 0); nullopt otherwise.
+[[nodiscard]] std::optional<PinchOption> parse_pinch_option(std::string_view text);
 
 /// What the app prints for a bad Magic-compatible startup option: the
 /// diagnostic as text, followed by Magic's usage line unless the

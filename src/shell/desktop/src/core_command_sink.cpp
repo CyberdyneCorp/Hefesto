@@ -30,8 +30,13 @@ void append_diagnostics(CommandOutcome& outcome, const std::vector<diag::Diagnos
   }
 }
 
+void append_output(CommandOutcome& outcome, const std::string& value) {
+  if (value.empty()) return;
+  outcome.output += (outcome.output.empty() ? "" : "\n") + value;
+}
+
 CommandOutcome failure(const diag::Diagnostic& error) {
-  CommandOutcome outcome{OutcomeStatus::failed, error.text, {}};
+  CommandOutcome outcome{OutcomeStatus::failed, error.text, {}, {}};
   append_diagnostics(outcome, {error});
   return outcome;
 }
@@ -146,6 +151,7 @@ CommandOutcome CoreCommandSink::submit(std::string_view line) {
       break;
     }
     outcome.message = result.value.to_string();
+    append_output(outcome, outcome.message);
   }
   return outcome;
 }

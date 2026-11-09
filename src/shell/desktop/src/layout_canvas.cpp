@@ -72,7 +72,8 @@ LayoutCanvas::LayoutCanvas(ScreenContext& ctx, std::mutex& queue_mutex, std::fun
   // hit-tests the zoom control and the minimap itself (handle_overlay_click).
   painted_->set_hit_testable(false);
   viewport_->set_accessible_name("Layout canvas");
-  viewport_->set_tooltip("Layout canvas: wheel zooms, middle or right drag pans, F fits");
+  viewport_->set_tooltip(
+      "Layout canvas: wheel or pinch zooms, two-finger scroll or middle / right drag pans, F fits");
   overlay_.add(*viewport_);
   overlay_.add(*painted_);
   overlay_.set_accessible_name("Layout canvas");
@@ -156,6 +157,7 @@ void LayoutCanvas::refresh_scene() {
     upload({}, {});
     upload_polygons({});
     overlay_state_.cells.clear();
+    overlay_state_.minimap.clear();
     overlay_state_.labels.clear();
     empty_hint_ = root == nullptr ? "No cell loaded: open a .mag file (Open) or type  load <cell>"
                                   : "No display styles for this technology: layers cannot be drawn";
@@ -247,6 +249,9 @@ void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene) {
   overlay_state_.labels = scene.labels;
   overlay_state_.cells = scene.cells;
   overlay_state_.bounds = to_rect(bounds_);
+  // The canvas keeps the dark canvas color in both themes; so does the thumbnail.
+  overlay_state_.minimap = minimap_thumbnail(scene, overlay_state_.bounds, theme_tokens(ThemeMode::dark).canvas,
+                                             kMinimapWidth, kMinimapHeight);
 }
 
 void LayoutCanvas::upload_polygons(render::PolygonScene polygons) {
@@ -280,6 +285,12 @@ UnitScale LayoutCanvas::unit_scale() const {
   const editor::EditorState& ed = ctx_.editor();
   const auto cif = ed.technology ? ed.technology->cif_output_grid() : std::optional<tech::CifGridInfo>();
   return UnitScale{ed.grid.internal, ed.grid.lambda, microns_per_lambda(cif)};
+}
+
+std::string LayoutCanvas::zoom_text() const {
+  render::Camera fitted = camera_;
+  fitted.fit(bounds_);
+  return zoom_percent_text(camera_.pixels_per_unit(), fitted.pixels_per_unit());
 }
 
 void LayoutCanvas::on_window_changed(view::WindowId id, view::Change change) {

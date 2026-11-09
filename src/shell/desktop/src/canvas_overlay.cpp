@@ -7,6 +7,8 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <utility>
+#include <vector>
 
 namespace hefesto::shell {
 
@@ -70,12 +72,24 @@ std::vector<RulerTick> ruler_ticks(double world_start, double world_end, double 
   return ticks;
 }
 
+namespace {
+
+/// "0", "0.0", "-0.00": a zero however it was printed.
+bool is_zero_label(std::string_view digits) {
+  return !digits.empty() && digits.find_first_not_of("0.") == std::string_view::npos;
+}
+
+}  // namespace
+
 std::string compact_ruler_label(std::string_view label) {
   const bool negative = label.starts_with('-');
   std::string_view digits = negative ? label.substr(1) : label;
+  if (is_zero_label(digits)) {
+    return "0";  // not ".0" or "-.0"
+  }
   std::string out;
   const bool integer = !digits.empty() && digits.find_first_not_of("0123456789") == std::string_view::npos;
-  if (integer && digits.size() > 3 && digits != "0") {
+  if (integer && digits.size() > 3) {
     // Thousands: "1500" -> "1.5k", trailing zeros of the fraction dropped.
     std::string whole(digits.substr(0, digits.size() - 3));
     std::string frac(digits.substr(digits.size() - 3));
@@ -89,13 +103,25 @@ std::string compact_ruler_label(std::string_view label) {
   return negative ? "-" + out : out;
 }
 
+std::size_t ruler_label_max_chars(double ruler_px, double char_px) {
+  if (!(char_px > 0.0)) return 1;
+  const double usable = ruler_px - 2.0;  // a pixel of air on each side
+  return std::max<std::size_t>(1, static_cast<std::size_t>(std::floor(usable / char_px + 1e-6)));
+}
+
 std::vector<std::string> ruler_label_lines(std::string_view label, std::size_t max_chars) {
+  max_chars = std::max<std::size_t>(max_chars, 1);
   if (label.size() <= max_chars) {
     return {std::string(label)};
   }
   std::vector<std::string> lines;
-  lines.reserve(label.size());
-  for (const char c : label) lines.emplace_back(1, c);
+  if (label.starts_with('-')) {
+    lines.emplace_back("-");  // the sign alone, the number below it whole when it fits
+    label.remove_prefix(1);
+  }
+  for (std::size_t i = 0; i < label.size(); i += max_chars) {
+    lines.emplace_back(label.substr(i, max_chars));
+  }
   return lines;
 }
 
@@ -116,6 +142,130 @@ std::optional<MinimapGeometry> minimap_geometry(const db::Rect& bounds, const re
   const PixelRect view{px(visible.x0), py(visible.y1), (visible.x1 - visible.x0) * s, (visible.y1 - visible.y0) * s};
   g.view = clip(view, width, height);
   return g;
+}
+
+namespace {
+
+/// What one layer adds to a thumbnail cell: its color and opacity.
+struct Tint {
+  float r = 0.0F;
+  float g = 0.0F;
+  float b = 0.0F;
+  float a = 0.0F;  // 0: the layer is left out
+};
+
+Tint layer_tint(const display::SceneLayer& layer) {
+  if (layer.style.fill != display::FillKind::solid && layer.style.fill != display::FillKind::stipple) {
+    return {};
+  }
+  // The color the renderer blends (Q-UI-35), so the thumbnail matches the canvas.
+  const display::ResolvedStyle st = display::opengl_supercolor(layer.style);
+  float a = std::clamp(st.a, 0.0F, 1.0F);
+  if (st.fill == display::FillKind::stipple) a *= 0.5F;
+  if (layer.pale) a *= 0.5F;
+  return Tint{std::clamp(st.r, 0.0F, 1.0F), std::clamp(st.g, 0.0F, 1.0F), std::clamp(st.b, 0.0F, 1.0F), a};
+}
+
+/// The thumbnail's cells, row-major from the top-left, composited in place.
+class ThumbnailGrid {
+ public:
+  ThumbnailGrid(const db::Rect& bounds, const PixelRect& content, double cell_px, const Rgba& background)
+      : bounds_(bounds),
+        cell_(cell_px),
+        scale_(content.w / std::max(static_cast<double>(bounds.width()), 1.0)),
+        cols_(std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(content.w / cell_px)))),
+        rows_(std::max<std::size_t>(1, static_cast<std::size_t>(std::ceil(content.h / cell_px)))),
+        cells_(cols_ * rows_, Rgba{background.r, background.g, background.b, 0.0F}) {}
+
+  void paint(const db::Rect& r, const Tint& tint) {
+    const auto [c0, c1] = span(static_cast<double>(r.x0 - bounds_.x0), static_cast<double>(r.x1 - bounds_.x0), cols_);
+    const auto [r0, r1] = span(static_cast<double>(bounds_.y1 - r.y1), static_cast<double>(bounds_.y1 - r.y0), rows_);
+    for (std::size_t row = r0; row < r1; ++row) {
+      for (std::size_t col = c0; col < c1; ++col) blend(cells_[row * cols_ + col], tint);
+    }
+  }
+
+  /// Runs of one color on each row, offset by the content's corner.
+  [[nodiscard]] std::vector<MinimapFill> fills(const PixelRect& content) const {
+    std::vector<MinimapFill> out;
+    for (std::size_t row = 0; row < rows_; ++row) {
+      std::size_t col = 0;
+      while (col < cols_) {
+        const Rgba& c = cells_[row * cols_ + col];
+        std::size_t end = col + 1;
+        while (end < cols_ && same(cells_[row * cols_ + end], c)) ++end;
+        if (c.a > 0.0F) out.push_back(MinimapFill{cell_rect(content, row, col, end), Rgba{c.r, c.g, c.b, 1.0F}});
+        col = end;
+      }
+    }
+    return out;
+  }
+
+ private:
+  /// The cells [first, last) whose centers world offsets [lo, hi) cover
+  /// along an axis of `count` cells; a rectangle that covers no center
+  /// (thinner than a cell) takes the cell it starts in, so it still shows.
+  [[nodiscard]] std::pair<std::size_t, std::size_t> span(double lo, double hi, std::size_t count) const {
+    const double max = static_cast<double>(count);
+    const double a = lo * scale_ / cell_;
+    const double b = hi * scale_ / cell_;
+    double first = std::ceil(a - 0.5);
+    double last = std::floor(b - 0.5) + 1.0;
+    if (last <= first) {
+      first = std::floor(a);
+      last = first + 1.0;
+    }
+    first = std::clamp(first, 0.0, max - 1.0);
+    last = std::clamp(last, first + 1.0, max);
+    return {static_cast<std::size_t>(first), static_cast<std::size_t>(last)};
+  }
+
+  static void blend(Rgba& c, const Tint& t) {
+    c.r += (t.r - c.r) * t.a;
+    c.g += (t.g - c.g) * t.a;
+    c.b += (t.b - c.b) * t.a;
+    c.a = 1.0F;  // painted
+  }
+
+  /// Equal at 8 bits per channel (what the screen shows).
+  static bool same(const Rgba& x, const Rgba& y) {
+    const auto q = [](float v) { return std::lround(v * 255.0F); };
+    return (x.a > 0.0F) == (y.a > 0.0F) && q(x.r) == q(y.r) && q(x.g) == q(y.g) && q(x.b) == q(y.b);
+  }
+
+  [[nodiscard]] PixelRect cell_rect(const PixelRect& content, std::size_t row, std::size_t col,
+                                    std::size_t end) const {
+    const double x = content.x + static_cast<double>(col) * cell_;
+    const double y = content.y + static_cast<double>(row) * cell_;
+    const double right = std::min(content.x + static_cast<double>(end) * cell_, content.x + content.w);
+    const double bottom = std::min(y + cell_, content.y + content.h);
+    return PixelRect{x, y, right - x, bottom - y};
+  }
+
+  db::Rect bounds_;
+  double cell_;
+  double scale_;
+  std::size_t cols_;
+  std::size_t rows_;
+  std::vector<Rgba> cells_;  // a == 0: nothing painted
+};
+
+}  // namespace
+
+std::vector<MinimapFill> minimap_thumbnail(const display::LayoutScene& scene, const db::Rect& bounds,
+                                           const Rgba& background, double width, double height, double cell_px,
+                                           double padding) {
+  const auto g = minimap_geometry(bounds, render::WorldWindow{}, width, height, padding);
+  if (!g || !(cell_px > 0.0) || !(g->content.w > 0.0) || !(g->content.h > 0.0)) {
+    return {};
+  }
+  ThumbnailGrid grid(bounds, g->content, cell_px, background);
+  for (const display::SceneLayer& layer : scene.layers) {
+    const Tint tint = layer_tint(layer);
+    if (!(tint.a > 0.0F)) continue;
+    for (const db::Rect& r : layer.rects) grid.paint(r, tint);
+  }
+  return grid.fills(g->content);
 }
 
 db::Point minimap_to_world(const db::Rect& bounds, double width, double height, double px, double py,

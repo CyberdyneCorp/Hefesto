@@ -24,7 +24,7 @@ CommandOutcome CommandBarModel::submit(std::string_view text) {
   const std::string_view line = trim(text);
   if (line.empty()) {
     cursor_ = history_.size();
-    return CommandOutcome{OutcomeStatus::ok, {}, {}};
+    return CommandOutcome{OutcomeStatus::ok, {}, {}, {}};
   }
   if (history_.empty() || history_.back() != line) {
     history_.emplace_back(line);
@@ -70,13 +70,15 @@ std::vector<std::string> console_lines(std::string_view command, std::string_vie
 }
 
 std::string console_result(const CommandOutcome& outcome, std::string_view result) {
-  std::string out;
-  bool repeated = false;
+  // The commands' results first (`help` text), then the diagnostics, then
+  // the status line unless one of them already says it.
+  std::string out = outcome.output;
+  bool repeated = !result.empty() && out.find(result) != std::string::npos;
   for (const std::string& d : outcome.diagnostics) {
     out += (out.empty() ? "" : "\n") + d;
     repeated = repeated || (!result.empty() && d.find(result) != std::string::npos);
   }
-  if (outcome.diagnostics.empty() || (!repeated && result != "ok")) {
+  if (out.empty() || (!repeated && result != "ok")) {
     out += (out.empty() ? "" : "\n") + std::string(result);
   }
   return out;

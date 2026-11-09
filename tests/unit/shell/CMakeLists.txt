@@ -43,6 +43,16 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       LABELS "desktop-window;desktop-window-${_system}"
       ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
       TIMEOUT 120)
+    # A trackpad pinch injected through Raven reaches the canvas and zooms it
+    # (hefesto-input-and-touch "Desktop canvas gestures").
+    add_test(NAME "hefesto: trackpad pinch zooms the canvas (${_system})"
+             COMMAND hefesto --rects 1000 --pinch 700,450,2 --capture "${CMAKE_CURRENT_BINARY_DIR}/pinch-${_system}.ppm"
+                     --capture-frames 6 --no-vsync)
+    set_tests_properties("hefesto: trackpad pinch zooms the canvas (${_system})" PROPERTIES
+      LABELS "desktop-window;desktop-window-${_system}"
+      ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
+      PASS_REGULAR_EXPRESSION "pinch at 700,450 by 2: zoom 100% -> 200%"
+      TIMEOUT 120)
   endforeach()
 endif()
 

@@ -89,3 +89,19 @@ TEST_CASE("the run option takes a command line", "[cap:hefesto-app-ux]") {
   REQUIRE(parsed.options);
   CHECK(parsed.options->run == "load inv; zoom 2");
 }
+
+TEST_CASE("the pinch option injects a trackpad pinch at a window point",
+          "[cap:hefesto-input-and-touch][req:Desktop canvas gestures]") {
+  const std::vector<std::string_view> args{"--pinch", "800,450.5,2.5"};
+  const auto parsed = hefesto::shell::parse_shell_options(args);
+  REQUIRE(parsed.options);
+  REQUIRE(parsed.options->pinch.has_value());
+  CHECK(parsed.options->pinch->x == 800.0F);
+  CHECK(parsed.options->pinch->y == 450.5F);
+  CHECK(parsed.options->pinch->factor == 2.5);
+  for (const char* bad : {"800,450", "800,450,0", "800,450,-1", "a,b,c", "1,2,3,4", "", "1,,2"}) {
+    CHECK_FALSE(hefesto::shell::parse_pinch_option(bad).has_value());
+  }
+  const std::vector<std::string_view> wrong{"--pinch", "1,2"};
+  CHECK_FALSE(hefesto::shell::parse_shell_options(wrong).options);
+}
