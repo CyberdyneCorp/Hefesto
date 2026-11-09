@@ -200,6 +200,7 @@ No user data changes. The `units` settings-layer key becomes editor state (`cmd:
 
 ## Open Questions
 
-None blocking. Two choices are left to the user (tasks note the default):
-- Whether the golden capture container gains a virtual X display and an event injector so the interactive and screenshot UI cases (UI-G-015, 047, 082) can be captured. Default: no; they stay not authored with unit and `pushbutton` coverage.
-- Whether the M2 boards are added to the existing claude.ai design artifact by the user (it is the user's artifact) or proposed as local mockup files that the user then copies into it. Default: proposed locally under `docs/design/mockups/`, copied into the artifact by the user before the usability review.
+None. The user decided on 2026-11-09:
+- No virtual X display in the golden capture container: UI-G-015, 047 and 082 stay not authored, covered by unit tests and `pushbutton`-driven cases.
+- The M2 boards are drafted locally under `docs/design/mockups/`; the user copies them into the claude.ai design artifact before the usability review (task 2.3, signed off by the user).
+- The `tool` command ("Tool modes" in `ui-gui-managers`) is pulled forward into M2 scope, like the M1 design-system pull-forward; the rest of `ui-gui-managers` stays in M4.
