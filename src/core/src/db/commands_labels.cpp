@@ -576,6 +576,12 @@ CommandResult property_list(const cu::Session& s, const CellDef& def) {
   return CommandResult::success(Value{std::move(items)});
 }
 
+// GCC 14 reports a bogus -Wmaybe-uninitialized for the variant inside the
+// Value moved out of `values` below (not GCC 15 or Clang).
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 CommandResult property_get(const cu::Session& s, const CellDef& def, const PropertyArgs& p) {
   const PropertyValue* v = def.properties().find(p.words[0]);
   if (v == nullptr) {
@@ -590,6 +596,9 @@ CommandResult property_get(const cu::Session& s, const CellDef& def, const Prope
   }
   return CommandResult::success(Value{std::move(values)});
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 int reserved_type(std::string_view name, int type) {
   if (name == "GDS_START" || name == "GDS_END") {
