@@ -14,10 +14,11 @@
 //
 // Network robustness: a transient fetch failure (PDK-FETCH-001) is retried
 // up to kAttempts times with exponential backoff; when the network is
-// clearly unavailable (curl cannot resolve or connect to GitHub, before the
-// test or after the last attempt) the test is skipped, not failed. Any
-// other failure (a verification, unpack or HTTP error, or a fetch failure
-// that persists while GitHub is reachable) still fails the test.
+// clearly unavailable (curl cannot resolve or connect to GitHub, or GitHub
+// keeps answering with an HTTP 5xx server error, before the test or after
+// the last attempt) the test is skipped, not failed. Any other failure (a
+// verification or unpack error, an HTTP 4xx, or a fetch failure that
+// persists while GitHub is reachable and healthy) still fails the test.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -71,12 +72,18 @@ bool skipped() {
   return skip != nullptr && *skip != '\0' && std::string_view{skip} != "0";
 }
 
-constexpr int kAttempts = 3;
+constexpr int kAttempts = 4;
 
 // curl exit 6 (could not resolve host) and 7 (could not connect): no network.
+// curl exit 22 with an HTTP 5xx status: GitHub itself is failing (e.g. 504).
 bool network_unavailable(const hefesto::diag::Diagnostic& d) {
-  return d.code == pdk::codes::kFetch &&
-         (d.text.find("curl exit 6:") != std::string::npos || d.text.find("curl exit 7:") != std::string::npos);
+  if (d.code != pdk::codes::kFetch) {
+    return false;
+  }
+  const bool offline = d.text.find("curl exit 6:") != std::string::npos || d.text.find("curl exit 7:") != std::string::npos;
+  const bool server_error = d.text.find("curl exit 22:") != std::string::npos &&
+                            d.text.find("returned error: 5") != std::string::npos;
+  return offline || server_error;
 }
 
 void skip_if_offline(const hefesto::diag::Diagnostic& d) {
@@ -97,7 +104,7 @@ void require_network(hefesto::platform::ProcessRunner& runner) {
 }
 
 // Runs `op` until it succeeds, fails with something other than a fetch
-// error, or kAttempts runs failed to fetch; waits 2 s, then 4 s, between runs.
+// error, or kAttempts runs failed to fetch; waits 2 s, 4 s, then 6 s, between runs.
 template <typename Op>
 auto with_retries(Op op) -> decltype(op()) {
   auto result = op();
