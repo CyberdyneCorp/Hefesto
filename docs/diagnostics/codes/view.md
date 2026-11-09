@@ -20,6 +20,7 @@ fails when the two disagree.
 | `VIEW-COORD-001` | error | A view command argument is not a valid coordinate, integer or fraction. |
 | `VIEW-EXPAND-001` | warning | An instance under the box cannot be expanded because its cell is unavailable. |
 | `VIEW-GRID-001` | error | A `grid` spacing is not greater than zero, or `grid multiple` is outside 1..255. |
+| `VIEW-REPORT-001` | info | A view or window command prints a note (Magic's TxPrintf text) and returns no result. |
 | `VIEW-RESET-001` | info | `reset` does not apply: the host window system manages the display. |
 | `VIEW-SCALE-001` | warning | The requested view needs a scale below the minimum; the minimum scale is used (`At minimum scale!`). |
 | `VIEW-SCROLL-001` | error | A `scroll` amount is not a fraction, or its units are not `w` or `l`. |

@@ -18,7 +18,10 @@
 namespace hefesto::cmd {
 
 /// Which front end issued the command. Recorded in the command log.
-enum class Origin { cli, script, gui, key, touch, plugin };
+/// `internal`: issued by Hefesto itself, not by the user (e.g. the crash
+/// backup timer's `crash save`); written to the session log but kept out of
+/// the command history, so a replay never repeats it.
+enum class Origin { cli, script, gui, key, touch, plugin, internal };
 
 [[nodiscard]] std::string_view origin_name(Origin origin) noexcept;
 

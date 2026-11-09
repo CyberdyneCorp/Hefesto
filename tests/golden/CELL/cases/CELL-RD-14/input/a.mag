@@ -1,0 +1,36 @@
+magic
+tech scmos
+timestamp 100
+use leaf *l_lock
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use leaf l_un
+timestamp 100
+transform 1 0 20 0 1 0
+box 20 0 30 10
+use leaf
+timestamp 100
+transform 1 0 40 0 1 0
+box 40 0 50 10
+use leaf l_dup
+timestamp 100
+transform 1 0 60 0 1 0
+box 60 0 70 10
+use leaf l_dup
+timestamp 100
+transform 1 0 80 0 1 0
+box 80 0 90 10
+use leaf l_arr
+array 0 2 20 0 0 0
+timestamp 100
+transform 1 0 0 0 1 40
+box 0 40 50 50
+use leaf l_nots
+transform 1 0 0 0 1 80
+box 0 80 10 90
+use leaf l_degen
+timestamp 100
+transform 1 0 0 0 1 120
+box 5 5 5 5
+<< end >>

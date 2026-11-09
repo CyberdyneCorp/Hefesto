@@ -1,0 +1,7 @@
+# CELL-RD-17: rlabel sticky and not, flabel known/unknown font, old label form, 120-char and spaced text, unknown layer, contact layer.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+cellname list allcells
+save a_out

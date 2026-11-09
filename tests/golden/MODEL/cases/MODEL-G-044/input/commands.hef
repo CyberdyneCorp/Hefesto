@@ -1,0 +1,8 @@
+# MODEL-G-044: FreeSans flabels of sizes 8/64/128, every justification, rotation 45; parent use box (Q-MODEL-6).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load top
+box 0 0 0 0
+getcell input/f
+save top

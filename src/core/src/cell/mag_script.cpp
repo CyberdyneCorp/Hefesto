@@ -3,11 +3,15 @@
 //
 // The command-script save variant (cell-file-format "Command-script save
 // variant", "Command-script content", with the Q-CELL-14 fixes: each split
-// side with its own direction, label offsets converted like sizes, quoted
-// texts, port uses and dimension properties in internal units). Follows
+// side with its own direction, instance transforms, arrays, locks and
+// paths, label offsets converted like sizes, quoted texts, port use, class
+// and shape lines, and dimension properties in internal units). Follows
 // Magic 8.3.694 database/DBio.c (DBCellWriteCommandFile).
 
 #include <array>
+#include <cstdint>
+#include <string>
+#include <utility>
 
 #include "hefesto/cell/mag_io.hpp"
 #include "hefesto/db/labels.hpp"
@@ -55,11 +59,73 @@ void script_paint(std::string& out, const tech::Technology& tech, const db::Cell
   }
 }
 
+/// The getcell orientation keyword of a transform's rotation part
+/// (cmd-hierarchy "Placement reference syntax").
+std::string_view orientation_word(const db::Transform& t) {
+  struct Entry {
+    std::int32_t a, b, d, e;
+    std::string_view word;
+  };
+  static constexpr std::array<Entry, 8> kTable = {{{1, 0, 0, 1, "0"},
+                                                   {0, 1, -1, 0, "90"},
+                                                   {-1, 0, 0, -1, "180"},
+                                                   {0, -1, 1, 0, "270"},
+                                                   {1, 0, 0, -1, "v"},
+                                                   {-1, 0, 0, 1, "h"},
+                                                   {0, 1, 1, 0, "90v"},
+                                                   {0, -1, -1, 0, "270v"}}};
+  for (const Entry& e : kTable) {
+    if (e.a == t.a && e.b == t.b && e.d == t.d && e.e == t.e) {
+      return e.word;
+    }
+  }
+  return "0";
+}
+
+/// `array` in the parent frame: the indices as DBMakeArray swaps them for
+/// a rotated use, the spacing as the box size. A spacing that is negative
+/// in the parent frame cannot be given as a box size; its magnitude is used.
+void script_array(std::string& out, const db::CellUse& u) {
+  const db::ArrayInfo& a = u.array;
+  const db::Transform& t = u.transform;
+  const std::int64_t sx = a.xsep;  // 64-bit: no overflow on negation
+  const std::int64_t sy = a.ysep;
+  const std::int64_t xsep = t.a * sx + t.b * sy;
+  const std::int64_t ysep = t.d * sx + t.e * sy;
+  const bool swapped = t.a == 0;
+  const std::int32_t xlo = swapped ? a.ylo : a.xlo;
+  const std::int32_t xhi = swapped ? a.yhi : a.xhi;
+  const std::int32_t ylo = swapped ? a.xlo : a.ylo;
+  const std::int32_t yhi = swapped ? a.xhi : a.yhi;
+  out += "box values 0 0 " + std::to_string(xsep < 0 ? -xsep : xsep) + " " + std::to_string(ysep < 0 ? -ysep : ysep) +
+         "\n";
+  out += "array " + std::to_string(xlo) + " " + std::to_string(xhi) + " " + std::to_string(ylo) + " " +
+         std::to_string(yhi) + "\n";
+}
+
+/// Each instance with its exact transform: the child's origin lands on the
+/// translation, after the orientation about the origin. The cell is named
+/// by its recorded path when that has a directory, so getcell reads the
+/// same file.
 void script_uses(std::string& out, const db::CellDef& def) {
   for (const auto& u : def.uses()) {
-    out += "box position " + std::to_string(u->bbox.x0) + " " + std::to_string(u->bbox.y0) + "\n";
-    out += "getcell " + u->def->name() + "\n";
-    out += "identify " + u->id + "\n";
+    std::string recorded = u->def->file_path().generic_string();
+    if (recorded.size() > 4 && recorded.ends_with(".mag")) {
+      recorded.resize(recorded.size() - 4);
+    }
+    const std::string cell = recorded.find('/') != std::string::npos ? recorded : u->def->name();
+    out += "getcell " + cell + " child 0 0 parent " + std::to_string(u->transform.c) + " " +
+           std::to_string(u->transform.f);
+    if (const std::string_view orient = orientation_word(u->transform); orient != "0") {
+      out += " " + std::string{orient} + " 0 0";
+    }
+    out += "\nidentify " + u->id + "\n";
+    if (u->array.is_array()) {
+      script_array(out, *u);
+    }
+    if (u->locked) {
+      out += "instance lock " + u->id + "\n";
+    }
   }
 }
 
@@ -77,6 +143,13 @@ void script_port(std::string& out, const db::Label& lab) {
     }
   }
   out += "\n";
+  for (const auto& [word, attribute] : {std::pair{detail::use_word(lab.port_use), "use"},
+                                        std::pair{detail::class_word(lab.port_class), "class"},
+                                        std::pair{detail::shape_word(lab.port_shape), "shape"}}) {
+    if (!word.empty() && word != " default") {
+      out += "port " + index + " " + attribute + std::string{word} + "\n";
+    }
+  }
 }
 
 void script_labels(std::string& out, const tech::Technology& tech, const db::CellDef& def,

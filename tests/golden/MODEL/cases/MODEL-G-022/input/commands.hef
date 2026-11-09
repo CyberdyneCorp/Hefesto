@@ -1,0 +1,16 @@
+# MODEL-G-022: split nw then ne on 0 0 10 10 (a) and on a 1x5 box (b) (Q-MODEL-4).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 10 10
+splitpaint nw metal1
+box 0 0 10 10
+splitpaint ne metal1
+save a
+load b
+box 0 0 1 5
+splitpaint nw metal1
+box 0 0 1 5
+splitpaint ne metal1
+save b

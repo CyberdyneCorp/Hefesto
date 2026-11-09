@@ -1,0 +1,11 @@
+# UI-G-032: windowcaption; windowcaption off; openwindow; windowborder; windowscrollbars on.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+windowcaption
+windowcaption off
+openwindow
+windowcaption
+windowborder
+windowscrollbars on
+windowcaption on

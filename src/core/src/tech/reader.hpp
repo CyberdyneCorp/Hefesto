@@ -62,6 +62,8 @@ class LineReader {
   [[nodiscard]] std::optional<TechLine> next();
   /// True when an `include` was missing or a repeat block crossed a file.
   [[nodiscard]] bool failed() const noexcept { return failed_; }
+  /// techLineNumber after the top-level file ended (its last line + 1).
+  [[nodiscard]] std::uint32_t end_line() const noexcept { return end_line_; }
 
  private:
   struct File {
@@ -99,6 +101,7 @@ class LineReader {
   std::vector<Repeat> repeats_;  // one entry in magic-compat mode
   std::uint64_t next_file_id_ = 0;
   bool failed_ = false;
+  std::uint32_t end_line_ = 0;
 };
 
 /// Callbacks of the section scanner.

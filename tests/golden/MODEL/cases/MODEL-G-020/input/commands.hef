@@ -1,0 +1,10 @@
+# MODEL-G-020: metal1 0 5 10 10, then splitpaint nw metal1 on 0 0 10 10.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 5 10 10
+paint metal1
+box 0 0 10 10
+splitpaint nw metal1
+save a

@@ -1,0 +1,12 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+tri 0 0 10 10 nw
+tri 20 0 30 10 sw
+tri 40 0 50 10 se
+tri 60 0 70 10 ne
+tri 80 0 90 10 SE
+tri 100 0 110 10 n
+tri 120 0 130 10
+<< end >>

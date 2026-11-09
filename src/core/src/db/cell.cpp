@@ -96,22 +96,20 @@ CellDef* CellLibrary::find(std::string_view name) const {
 
 diag::Status CellLibrary::rename(CellDef& def, std::string_view new_name, bool force) {
   if (def.flags().internal) {
-    return diag::make(codes::kCellInternal, "cell \"" + def.name() + "\" is internal and cannot be renamed");
+    return diag::make(codes::kCellInternal, "Error:  Attempt to rename internal cell \"" + def.name() + "\"");
   }
   if (find(new_name) != nullptr) {
-    return diag::make(codes::kCellExists, "cell \"" + std::string{new_name} + "\" already exists");
+    return diag::make(codes::kCellExists, "Cannot rename; cell \"" + std::string{new_name} + "\" already exists!");
   }
   if (def.flags().vendor_gds) {
     if (!force) {
-      return diag::make(codes::kCellVendor, "cell \"" + def.name() + "\" is a vendor GDS cell; use -force");
+      return diag::make(codes::kCellVendor, "Error:  Attempt to rename read-only cell \"" + def.name() + "\"");
     }
     for (const char* reserved : {"GDS_FILE", "GDS_START", "GDS_END"}) {
       set_property(def, reserved, std::nullopt);
     }
   }
-  impl_->table.clear_value(def.name());
-  impl_->table.insert(std::string{new_name}, &def);
-  def.name_ = std::string{new_name};
+  (void)rename_definition(def, new_name);
   for (CellUse* use : def.instances()) {
     if (use->parent != nullptr) {
       mark_modified(*use->parent);
@@ -121,15 +119,31 @@ diag::Status CellLibrary::rename(CellDef& def, std::string_view new_name, bool f
   return diag::Done{};
 }
 
-diag::Status CellLibrary::remove(CellDef& def) {
+diag::Status CellLibrary::rename_definition(CellDef& def, std::string_view new_name) {
+  if (find(new_name) != nullptr) {
+    return diag::make(codes::kCellExists, "Magic error: there is already a cell named \"" + std::string{new_name} + "\"");
+  }
+  impl_->table.clear_value(def.name());
+  impl_->table.insert(std::string{new_name}, &def);
+  def.name_ = std::string{new_name};
+  return diag::Done{};
+}
+
+diag::Status CellLibrary::check_removable(const CellDef& def) const {
   if (def.flags().internal) {
-    return diag::make(codes::kCellInternal, "cell \"" + def.name() + "\" is internal and cannot be deleted");
+    return diag::make(codes::kCellInternal, "Attempt to delete internal cell \"" + def.name() + "\"");
   }
   for (const CellUse* use : def.instances()) {
     if (use->parent != nullptr && !use->parent->flags().internal) {
-      return diag::make(codes::kCellInUse, "cell \"" + def.name() + "\" is used by instance \"" + use->id +
-                                               "\" in cell \"" + use->parent->name() + "\"");
+      return diag::make(codes::kCellInUse, "Cell has non-top-level dependency in use \"" + use->id + "\"");
     }
+  }
+  return diag::Done{};
+}
+
+diag::Status CellLibrary::remove(CellDef& def) {
+  if (auto check = check_removable(def); !check) {
+    return check;
   }
   while (!def.instances().empty()) {
     (void)remove_use(*def.instances().front());

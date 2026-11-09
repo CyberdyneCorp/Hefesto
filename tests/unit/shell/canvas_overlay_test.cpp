@@ -172,3 +172,71 @@ TEST_CASE("world points map to canvas pixels like world rectangles", "[cap:hefes
   CHECK(p.x == Approx(r.x));
   CHECK(p.y == Approx(r.y));
 }
+
+TEST_CASE("bitmap label text size follows the zoom as Magic picks it", "[cap:ui-windows-and-views][req:Label display]") {
+  using hefesto::shell::bitmap_label_size;
+  // B heights: 7 (10 px), 10 (14 px), 13 (18 px), 17 (24 px).
+  CHECK_FALSE(bitmap_label_size(2.0));          // 3 × 2 <= 7: rectangle only
+  CHECK(bitmap_label_size(2.5) == 10.0);        // under every B: the smallest size
+  CHECK(bitmap_label_size(7.5) == 10.0);
+  CHECK(bitmap_label_size(10.5) == 14.0);
+  CHECK(bitmap_label_size(13.5) == 18.0);
+  CHECK(bitmap_label_size(100.0) == 24.0);
+}
+
+TEST_CASE("the box is drawn with Magic's shapes, sides inside the rectangle",
+          "[cap:ui-windows-and-views][req:Box display]") {
+  using hefesto::display::BoxShape;
+  using hefesto::shell::box_overlay;
+  using hefesto::shell::PixelRect;
+  // Thick: four 2-logical-pixel sides inside, whatever the HiDPI factor
+  // (regression: on Retina they were 2 device pixels, a 1-logical-pixel outline).
+  const auto thick = box_overlay(PixelRect{10, 10, 50, 40}, BoxShape::thick, 200, 200);
+  REQUIRE(thick.size() == 4);
+  CHECK(thick[0].x == 10.0);
+  CHECK(thick[0].w == 2.0);
+  CHECK(thick[1].x == 58.0);  // east side inside: 10 + 50 - 2
+  // A side outside the canvas is not drawn.
+  CHECK(box_overlay(PixelRect{-20, 10, 50, 40}, BoxShape::thick, 200, 200).size() == 3);
+  // A horizontal line box keeps its two (thick) long sides only.
+  CHECK(box_overlay(PixelRect{10, 10, 50, 0}, BoxShape::thick, 200, 200).size() == 2);
+  // Thin: a 1-device-pixel outline.
+  const auto thin = box_overlay(PixelRect{10, 10, 2, 40}, BoxShape::outline, 200, 200);
+  REQUIRE(thin.size() == 4);
+  CHECK(thin[0].w == 1.0);
+  // A point: a cross plus a 3x3 square (2 + 4 rectangles).
+  const auto point = box_overlay(PixelRect{10, 10, 0, 0}, BoxShape::point, 200, 200);
+  REQUIRE(point.size() == 6);
+  CHECK(point[0].w == 11.0);  // the cross spans ±5 logical pixels
+}
+
+TEST_CASE("a newly shown root is framed like the core's load frame",
+          "[cap:ui-windows-and-views][req:Loading a cell into a window]") {
+  // Regression: `load` of another cell kept the previous cell's camera while
+  // the core mapping moved to the new cell's load frame, so the next core
+  // zoom jumped. The canvas now frames a new root with frame_root().
+  db::CellDef a("a", 4);
+  a.set_bboxes(db::Rect{0, 0, 40, 20}, db::Rect{0, 0, 40, 20});
+  db::CellDef b("b", 4);
+  b.set_bboxes(db::Rect{-500, 100, 2500, 900}, db::Rect{-500, 100, 2500, 900});
+  view::LayoutWindow win(1, &a);
+  render::Camera camera;
+  camera.set_viewport(800, 600);
+  win.set_mapping(mapping_from_camera(camera));  // the canvas keeps the core screen = its viewport
+  win.set_root(&b);
+  render::Camera core_view;
+  core_view.set_viewport(800, 600);
+  camera_from_mapping(win.mapping(), core_view);
+  frame_root(b, camera);
+  CHECK(camera.pixels_per_unit() == Approx(core_view.pixels_per_unit()));
+  CHECK(camera.center_x() == Approx(core_view.center_x()).margin(1.0));
+  CHECK(camera.center_y() == Approx(core_view.center_y()).margin(1.0));
+
+  // A cell not found on disk frames (0,0)-(1,1) with Magic's 60-unit minimum.
+  db::CellDef missing("missing", 4);
+  missing.flags().not_found = true;
+  frame_root(missing, camera);
+  const render::WorldWindow w = camera.visible_window();
+  CHECK(w.x1 - w.x0 >= 60.0);
+  CHECK(w.y1 - w.y0 >= 60.0);
+}

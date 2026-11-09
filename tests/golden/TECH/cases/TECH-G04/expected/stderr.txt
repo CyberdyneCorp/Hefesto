@@ -1,0 +1,10 @@
+input/tiny.tech: line 71: section (none):
+	Bad section header line
+[Skipping to "end"]
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Section "drc" was missing from input/tiny.tech.

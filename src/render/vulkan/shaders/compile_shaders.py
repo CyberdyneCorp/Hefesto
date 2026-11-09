@@ -24,7 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 OUTPUT = HERE.parent / "src" / "generated" / "rect_spv.hpp"
-SHADERS = (("rect.vert", "kRectVertSpv"), ("rect.frag", "kRectFragSpv"))
+SHADERS = (("rect.vert", "kRectVertSpv"), ("poly.vert", "kPolyVertSpv"), ("rect.frag", "kRectFragSpv"))
 
 HEADER = """\
 // SPDX-License-Identifier: Apache-2.0

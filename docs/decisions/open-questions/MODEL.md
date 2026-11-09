@@ -237,3 +237,11 @@ Capabilities: `layout-geometry-model`, `layout-paint-semantics`, `layout-hierarc
 - Recommendation: replicate behind `magic-compat` (scripts may rely on `redo 0`/`undo 0` as a disable/enable idiom); with the setting off, treat 0 as a no-op.
 - Resolution: compat — decided by D-11 (2026-11-07). With `magic-compat` ON, `undo 0` resumes and `redo 0` suspends recording, silently; with it OFF, both are no-ops (capability `layout-undo`).
 
+
+### Q-MODEL-31: In-place flatten label renaming overflows its buffer and leaves labels unprefixed
+- Kind: bug
+- Magic behavior: `DBFlattenInPlace` allocates `strlen(text) + strlen(id) + 2` bytes for the new label text, then `sprintf`s `<id>[x][y]/<text>` (or `<id>[i]/<text>`) into it, a heap buffer overflow of up to the length of the index suffix plus its terminator. In the captured run (golden case MODEL-G-035, a 2x2 array flattened with `flatten -doinplace`) the four copied labels keep the plain text `out`, contrary to the documented `<id>[x][y]/<text>` naming.
+- Evidence: database/DBcellcopy.c:640-670, commands/CmdFI.c:2112-2140
+- Options: replicate | fix (size the buffer for the prefix; apply the documented names)
+- Recommendation: fix. The documented names are what the code intends; replicating a result that depends on heap corruption is not possible reliably.
+- Resolution: fix — undefined behavior (X-2 tier 1, "buffer overflows"): labels are renamed `<id>[x][y]/<text>` as `layout-hierarchy` "Flattening an instance in place" specifies (recorded 2026-11-09 from the MODEL-G-035 capture).

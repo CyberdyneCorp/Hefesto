@@ -55,12 +55,13 @@ class ReportSink final : public diag::DiagnosticSink {
 }  // namespace
 
 MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::mutex& queue_mutex, CoreSession& core)
-    : ctx_{runtime, core, options.theme, {}},
+    : ctx_{runtime, core, options.theme, {}, {}},
       options_(options),
       window_("Hefesto", options.width, options.height),
       command_bar_(ui::CommandBar::create("Type a command (help)")),
       core_sink_(core.dispatcher()) {
   ctx_.run = [this](const std::string& line) { run_line(line); };
+  ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   window_.set_min_size(1024, 640);
   ctx_.runtime.apply_theme(ctx_.mode);
   window_.set_clear_color(ctx_.tokens().surface0);
@@ -113,7 +114,8 @@ void MainWindow::on_problem(StatusKind kind, const std::string& panel_line, cons
   if (status.empty()) return;
   if (in_command_) {
     // The command line's own result decides the message (run_line).
-    if (command_problem_.empty()) {
+    // The first error, else the first warning, raised by the line.
+    if (command_problem_.empty() || (kind == StatusKind::error && command_problem_kind_ != StatusKind::error)) {
       command_problem_ = status;
       command_problem_kind_ = kind;
     }
@@ -177,9 +179,16 @@ void MainWindow::build_top_bar() {
     paint::header_title(p, size + 12.0F, h, header_, t);
     p.pop_clip();
   });
-  mark->set_size(300.0F, static_cast<float>(kTopBarHeight));
+  constexpr float kMarkWidth = 300.0F;
+  mark->set_size(kMarkWidth, static_cast<float>(kTopBarHeight));
   mark->set_role(ui::Role::heading);
   row.add(*mark);
+  // Groups that give way at narrow widths, in order (top_bar_hidden_groups).
+  top_groups_.assign(3, TopBarGroup{});
+  TopBarGroup& deferred = top_groups_[0];
+  TopBarGroup& chips = top_groups_[1];
+  TopBarGroup& view_tabs = top_groups_[2];
+  top_full_width_ = 2.0F * kBarPadX + kMarkWidth + kGap;  // padding, mark, and the spacer's gap
   painted_.push_back(std::move(mark));
 
   std::vector<std::string_view> tabs = {"Layout"};
@@ -187,7 +196,10 @@ void MainWindow::build_top_bar() {
   auto segmented = make_painted(ctx_, [tabs](ui::Painter& p, float w, float h, const ThemeTokens& t) {
     paint::segmented(p, w, h, tabs, t);
   });
-  segmented->set_size(paint::segmented_width(ctx_.runtime, tabs), 36.0F);
+  const float tabs_width = paint::segmented_width(ctx_.runtime, tabs);
+  segmented->set_size(tabs_width, 36.0F);
+  view_tabs.width = tabs_width;
+  view_tabs.widgets.push_back(segmented.get());
   segmented->set_role(ui::Role::tab_list);
   segmented->set_accessible_name("Editor view: Layout (Schematic arrives in M8, 3D in M10, Waveforms in M8)");
   segmented->set_tooltip("Layout is the M1 view; Schematic and Waveforms arrive in M8, 3D in M10");
@@ -200,7 +212,10 @@ void MainWindow::build_top_bar() {
     auto widget = make_painted(ctx_, [chip](ui::Painter& p, float w, float h, const ThemeTokens& t) {
       paint::chip(p, w, h, chip, t);
     });
-    widget->set_size(paint::chip_width(ctx_.runtime, chip), static_cast<float>(kChipHeight));
+    const float chip_width = paint::chip_width(ctx_.runtime, chip);
+    widget->set_size(chip_width, static_cast<float>(kChipHeight));
+    chips.width += chip_width;
+    chips.widgets.push_back(widget.get());
     widget->set_role(ui::Role::text);
     widget->set_accessible_name(chip.label());
     widget->set_tooltip(chip.text == "DRC not run" ? "DRC arrives in M3" : "LVS arrives in M9");
@@ -213,9 +228,17 @@ void MainWindow::build_top_bar() {
                  [this] { toggle_pdk_manager(); });
   for (const DeferredControl& c : deferred_actions()) {
     const bool agent = c.label == "Ask agent";
-    add_top_button(row, c.label, agent ? "agent" : "", agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary,
-                   c.tooltip, nullptr);
+    const TopButton b = add_top_button(row, c.label, agent ? "agent" : "",
+                                       agent ? paint::ButtonStyle::primary : paint::ButtonStyle::secondary, c.tooltip,
+                                       nullptr);
+    deferred.width += b.width;
+    deferred.widgets.push_back(b.widget);
   }
+  // Every item but the mark adds its width and one gap; hidden items are
+  // counted without their gaps (conservative if Raven keeps them).
+  top_full_width_ += top_items_width_ + deferred.width + chips.width + view_tabs.width +
+                     kGap * static_cast<float>(top_item_count_ + deferred.widgets.size() + chips.widgets.size() +
+                                               view_tabs.widgets.size());
   ui::Panel& panel = bar(&ThemeTokens::bar);
   panel.set_child(row);
   panel.set_size(-1.0F, static_cast<float>(kTopBarHeight));
@@ -225,14 +248,16 @@ void MainWindow::build_top_bar() {
   painted_.push_back(std::move(line));
 }
 
-void MainWindow::add_top_button(ui::Box& row, std::string_view label, std::string_view icon, paint::ButtonStyle style,
-                                std::string_view tooltip, std::function<void()> click) {
+MainWindow::TopButton MainWindow::add_top_button(ui::Box& row, std::string_view label, std::string_view icon,
+                                                 paint::ButtonStyle style, std::string_view tooltip,
+                                                 std::function<void()> click) {
   const bool enabled = static_cast<bool>(click);
   auto button = make_interactive(ctx_, [label, icon, style, enabled](ui::Painter& p, float w, float h,
                                                                      const ThemeTokens& t, bool hov, bool foc) {
     paint::button(p, w, h, label, icon, style, paint::WidgetState{hov, foc, enabled, false}, t);
   });
-  button->set_size(paint::button_width(ctx_.runtime, label, !icon.empty()), static_cast<float>(kButtonHeight));
+  const float width = paint::button_width(ctx_.runtime, label, !icon.empty());
+  button->set_size(width, static_cast<float>(kButtonHeight));
   button->set_role(ui::Role::button);
   button->set_accessible_name(label);
   button->set_tooltip(tooltip);
@@ -242,7 +267,25 @@ void MainWindow::add_top_button(ui::Box& row, std::string_view label, std::strin
     button->set_enabled(false);
   }
   row.add_centered(*button);
+  const TopButton placed{button.get(), width};
+  if (enabled) {
+    top_items_width_ += width;  // always shown
+    ++top_item_count_;
+  }
   painted_.push_back(std::move(button));
+  return placed;
+}
+
+void MainWindow::fit_top_bar() {
+  const int width = window_.logical_width();
+  if (width <= 0 || width == top_fit_width_) return;
+  top_fit_width_ = width;
+  std::vector<float> widths;
+  for (const TopBarGroup& g : top_groups_) widths.push_back(g.width);
+  const std::size_t hidden = top_bar_hidden_groups(static_cast<float>(width), top_full_width_, widths);
+  for (std::size_t i = 0; i < top_groups_.size(); ++i) {
+    for (ui::Widget* w : top_groups_[i].widgets) w->set_visible(i >= hidden);
+  }
 }
 
 // --- tool rail, center, panels ----------------------------------------------------
@@ -391,16 +434,14 @@ void MainWindow::run_line(const std::string& line) {
   const std::string& status = command_model_.status_text();
   // Every message carries its shape: ■ failure, ▲ a warning the command
   // raised, ● success ("Status is never color-only").
-  if (!outcome.ok()) {
-    set_message(StatusKind::error, diagnostic_line(StatusKind::error, status));
-    announce(StatusKind::error, message_);
-  } else if (!command_problem_.empty()) {
-    set_message(command_problem_kind_, command_problem_);
-    announce(command_problem_kind_, message_);
-  } else {
-    set_message(StatusKind::success, diagnostic_line(StatusKind::success, status));
-  }
-  append_console(line, outcome.ok() ? status : message_);
+  std::optional<LineStatus> problem;
+  if (!command_problem_.empty()) problem.emplace(LineStatus{command_problem_kind_, command_problem_});
+  LineStatus shown = command_line_status(outcome.ok(), status, problem);
+  const bool raised = shown.kind == StatusKind::error || shown.kind == StatusKind::warning;
+  set_message(shown.kind, std::move(shown.text));
+  if (raised) announce(message_kind_, message_);
+  // The line's diagnostics, not a bare "ok" for a line that raised errors.
+  append_console(line, console_result(outcome, status));
   dirty_ = true;
   window_.request_redraw();
   if (ctx_.core.quit_requested()) ctx_.runtime.quit();
@@ -414,6 +455,15 @@ void MainWindow::on_command(const cmd::Invocation& /*invocation*/, const cmd::Co
 }
 
 void MainWindow::on_frame() {
+  fit_top_bar();
+  if (pdk_->poll()) window_.request_redraw();  // a background install: keep frames coming
+  if (!pending_run_.empty() && canvas_->viewport_ready()) {
+    const std::string line = std::move(pending_run_);
+    pending_run_.clear();
+    run_line(line);
+  } else if (!pending_run_.empty()) {
+    window_.request_redraw();
+  }
   if (!dirty_) return;
   dirty_ = false;
   if (reveal_diagnostics_) {

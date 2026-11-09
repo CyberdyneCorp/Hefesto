@@ -1,0 +1,8 @@
+magic
+tech mt
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+<< labels >>
+rlabel metal1 5 5 5 5 0 out
+<< end >>

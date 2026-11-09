@@ -30,10 +30,16 @@ struct PushConstants {
   float offset[2];
   float min_size[2];
   float color[4];
-  std::uint32_t stipple[4];  // rows 0-3, rows 4-7, enabled, unused
-  std::int32_t anchor[4];    // left pixel column, bottom pixel row, unused, unused
+  std::uint32_t stipple[4];  // rows 0-3, rows 4-7, enabled, line pattern
+  std::int32_t anchor[4];    // left pixel column, bottom pixel row, width, height
+  std::int32_t base[4];      // polygon base x, y, mode (0 quads, 1 diagonals), unused
 };
-static_assert(sizeof(PushConstants) == 80);
+static_assert(sizeof(PushConstants) == 96);
+
+/// The three pipelines: instanced quads, instanced diagonals (line list) and
+/// plain triangles (polygons).
+enum class PipelineKind : std::uint8_t { quads, diagonals, polygons };
+constexpr std::size_t kPipelineCount = 3;
 
 constexpr VkShaderStageFlags kPushStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -97,7 +103,7 @@ struct PipelineState {
   VkDynamicState dynamic_states[2] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
   VkPipelineDynamicStateCreateInfo dynamic{};
 
-  PipelineState(VkShaderModule vert, VkShaderModule frag) {
+  PipelineState(VkShaderModule vert, VkShaderModule frag, PipelineKind kind) {
     for (auto& stage : stages) {
       stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
       stage.pName = "main";
@@ -106,7 +112,7 @@ struct PipelineState {
     stages[0].module = vert;
     stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     stages[1].module = frag;
-    init_vertex_input();
+    init_vertex_input(kind);
     init_raster_and_blend();
     viewport.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewport.viewportCount = 1;
@@ -118,20 +124,22 @@ struct PipelineState {
   PipelineState(const PipelineState&) = delete;
   PipelineState& operator=(const PipelineState&) = delete;
 
-  void init_vertex_input() {
+  void init_vertex_input(PipelineKind kind) {
+    const bool polygons = kind == PipelineKind::polygons;
     binding.binding = 0;
-    binding.stride = sizeof(RectInstance);
-    binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+    binding.stride = polygons ? sizeof(PolygonVertex) : sizeof(RectInstance);
+    binding.inputRate = polygons ? VK_VERTEX_INPUT_RATE_VERTEX : VK_VERTEX_INPUT_RATE_INSTANCE;
     attribute.location = 0;
     attribute.binding = 0;
-    attribute.format = VK_FORMAT_R32G32B32A32_SINT;
+    attribute.format = polygons ? VK_FORMAT_R32G32_SFLOAT : VK_FORMAT_R32G32B32A32_SINT;
     vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertex_input.vertexBindingDescriptionCount = 1;
     vertex_input.pVertexBindingDescriptions = &binding;
     vertex_input.vertexAttributeDescriptionCount = 1;
     vertex_input.pVertexAttributeDescriptions = &attribute;
     assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    assembly.topology =
+        kind == PipelineKind::diagonals ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   }
 
   void init_raster_and_blend() {
@@ -157,14 +165,37 @@ struct PipelineState {
   }
 };
 
-PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& style, const DrawTarget& target) {
+PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& style, const DrawTarget& target,
+                                  const std::int32_t (&base)[2]) {
   return PushConstants{{view.origin_x, view.origin_y},
                        {view.scale_x, view.scale_y},
                        {view.offset_x, view.offset_y},
                        {view.min_size_x, view.min_size_y},
                        {style.r, style.g, style.b, style.a},
-                       {pack_rows(style.stipple, 0), pack_rows(style.stipple, 4), style.stippled ? 1U : 0U, 0U},
-                       {target.x, target.y + target.height - 1, 0, 0}};
+                       {pack_rows(style.stipple, 0), pack_rows(style.stipple, 4), style.stippled ? 1U : 0U,
+                        std::uint32_t{style.dash}},
+                       {target.x, target.y + target.height - 1, target.width, target.height},
+                       {base[0], base[1], style.diagonals ? 1 : 0, 0}};
+}
+
+/// One draw of the merged rectangle and polygon draw lists.
+struct DrawStep {
+  const LayerBatch* batch = nullptr;
+  bool polygon = false;
+};
+
+/// Rectangle and polygon draws merged by layer (both lists are in layer
+/// order), rectangles first within a layer.
+std::vector<DrawStep> merge_draws(std::span<const LayerBatch> rects, std::span<const LayerBatch> polygons) {
+  std::vector<DrawStep> steps;
+  steps.reserve(rects.size() + polygons.size());
+  std::size_t i = 0;
+  std::size_t j = 0;
+  while (i < rects.size() || j < polygons.size()) {
+    const bool take_rect = j >= polygons.size() || (i < rects.size() && rects[i].layer <= polygons[j].layer);
+    steps.push_back(take_rect ? DrawStep{&rects[i++], false} : DrawStep{&polygons[j++], true});
+  }
+  return steps;
 }
 
 }  // namespace
@@ -181,13 +212,16 @@ struct CanvasRenderer::Impl {
   QueueLock queue_lock;
 
   VkShaderModule vert = VK_NULL_HANDLE;
+  VkShaderModule poly_vert = VK_NULL_HANDLE;
   VkShaderModule frag = VK_NULL_HANDLE;
   VkPipelineLayout layout = VK_NULL_HANDLE;
   VkRenderPass pipeline_pass = VK_NULL_HANDLE;
-  VkPipeline pipeline = VK_NULL_HANDLE;
+  std::array<VkPipeline, kPipelineCount> pipelines{};
 
-  std::mutex scene_mutex;  // guards instances, styles, retired, records
+  std::mutex scene_mutex;  // guards instances, polygons, styles, retired, records
   vk::Buffer instances;
+  vk::Buffer polygons;
+  std::int32_t polygon_base[2] = {0, 0};
   std::vector<LayerStyle> styles = spike_layer_styles();
   struct Retired {
     vk::Buffer buffer;
@@ -206,6 +240,7 @@ struct CanvasRenderer::Impl {
       throw VulkanError("CanvasRenderer: incomplete VulkanDevice");
     }
     vert = make_shader(device, spv::kRectVertSpv, sizeof(spv::kRectVertSpv));
+    poly_vert = make_shader(device, spv::kPolyVertSpv, sizeof(spv::kPolyVertSpv));
     frag = make_shader(device, spv::kRectFragSpv, sizeof(spv::kRectFragSpv));
     VkPushConstantRange range{kPushStages, 0, sizeof(PushConstants)};
     VkPipelineLayoutCreateInfo info{};
@@ -224,25 +259,39 @@ struct CanvasRenderer::Impl {
       vk::destroy_buffer(device, r.buffer);
     }
     vk::destroy_buffer(device, instances);
-    if (pipeline != VK_NULL_HANDLE) {
-      vkDestroyPipeline(device, pipeline, nullptr);
-    }
+    vk::destroy_buffer(device, polygons);
+    destroy_pipelines();
     vkDestroyPipelineLayout(device, layout, nullptr);
     vkDestroyShaderModule(device, frag, nullptr);
+    vkDestroyShaderModule(device, poly_vert, nullptr);
     vkDestroyShaderModule(device, vert, nullptr);
   }
   Impl(const Impl&) = delete;
   Impl& operator=(const Impl&) = delete;
 
-  void ensure_pipeline(VkRenderPass pass) {
-    if (pass == pipeline_pass && pipeline != VK_NULL_HANDLE) {
+  void destroy_pipelines() {
+    for (VkPipeline& p : pipelines) {
+      if (p != VK_NULL_HANDLE) vkDestroyPipeline(device, p, nullptr);
+      p = VK_NULL_HANDLE;
+    }
+  }
+
+  void ensure_pipelines(VkRenderPass pass) {
+    if (pass == pipeline_pass && pipelines[0] != VK_NULL_HANDLE) {
       return;
     }
-    if (pipeline != VK_NULL_HANDLE) {
-      vkDestroyPipeline(device, pipeline, nullptr);
-      pipeline = VK_NULL_HANDLE;
+    destroy_pipelines();
+    for (std::size_t i = 0; i < kPipelineCount; ++i) {
+      const auto kind = static_cast<PipelineKind>(i);
+      pipelines[i] = create_pipeline(pass, kind);
     }
-    PipelineState state(vert, frag);
+    pipeline_pass = pass;
+  }
+
+  [[nodiscard]] VkPipeline pipeline(PipelineKind kind) const { return pipelines[static_cast<std::size_t>(kind)]; }
+
+  VkPipeline create_pipeline(VkRenderPass pass, PipelineKind kind) {
+    PipelineState state(kind == PipelineKind::polygons ? poly_vert : vert, frag, kind);
     VkGraphicsPipelineCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.stageCount = 2;
@@ -256,9 +305,66 @@ struct CanvasRenderer::Impl {
     info.pDynamicState = &state.dynamic;
     info.layout = layout;
     info.renderPass = pass;
-    vk::check(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline),
+    VkPipeline created = VK_NULL_HANDLE;
+    vk::check(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &created),
               "vkCreateGraphicsPipelines");
-    pipeline_pass = pass;
+    return created;
+  }
+
+  /// Copies `bytes` of `src` to a new device-local vertex buffer (empty when bytes is 0).
+  vk::Buffer make_vertex_buffer(const void* src, VkDeviceSize bytes) {
+    vk::Buffer fresh;
+    if (bytes == 0) return fresh;
+    fresh = vk::create_buffer(physical, device, bytes,
+                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    copy_through_staging(static_cast<const std::uint8_t*>(src), bytes, fresh.buffer);
+    return fresh;
+  }
+
+  void clear_area(VkCommandBuffer cmd, const DrawTarget& target) const {
+    VkClearAttachment attachment{};
+    attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    attachment.colorAttachment = 0;
+    attachment.clearValue.color = {{target.clear_color.r, target.clear_color.g, target.clear_color.b,
+                                    target.clear_color.a}};
+    const VkClearRect rect{{{target.x, target.y},
+                            {static_cast<std::uint32_t>(target.width), static_cast<std::uint32_t>(target.height)}},
+                           0,
+                           1};
+    vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
+  }
+
+  /// Records one draw; binds its pipeline and buffer when they change.
+  void record_step(VkCommandBuffer cmd, const DrawStep& step, const ViewTransform& view, const DrawTarget& target,
+                   std::uint32_t& pushed_layer, VkPipeline& bound) {
+    const LayerBatch& batch = *step.batch;
+    const vk::Buffer& buffer = step.polygon ? polygons : instances;
+    const std::uint64_t capacity = buffer.size / (step.polygon ? sizeof(PolygonVertex) : sizeof(RectInstance));
+    if (batch.count == 0 || std::uint64_t{batch.first} + batch.count > capacity) {
+      return;  // never read past the buffer, even with stale ranges
+    }
+    static const LayerStyle fallback{};
+    const LayerStyle& style = batch.layer < styles.size() ? styles[batch.layer] : fallback;
+    const PipelineKind kind =
+        step.polygon ? PipelineKind::polygons : (style.diagonals ? PipelineKind::diagonals : PipelineKind::quads);
+    if (pipeline(kind) != bound) {
+      bound = pipeline(kind);
+      vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, bound);
+      const VkDeviceSize zero = 0;
+      vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.buffer, &zero);
+      pushed_layer = std::numeric_limits<std::uint32_t>::max();
+    }
+    if (batch.layer != pushed_layer) {
+      const PushConstants pc = make_push_constants(view, style, target, polygon_base);
+      vkCmdPushConstants(cmd, layout, kPushStages, 0, sizeof(pc), &pc);
+      pushed_layer = batch.layer;
+    }
+    switch (kind) {
+      case PipelineKind::quads: vkCmdDraw(cmd, 6, batch.count, 0, batch.first); break;
+      case PipelineKind::diagonals: vkCmdDraw(cmd, 4, batch.count, 0, batch.first); break;
+      case PipelineKind::polygons: vkCmdDraw(cmd, batch.count, 1, batch.first, 0); break;
+    }
   }
 
   /// Runs `record_fn` in a one-shot command buffer on the queue and waits for it.
@@ -347,19 +453,28 @@ CanvasRenderer& CanvasRenderer::operator=(CanvasRenderer&&) noexcept = default;
 
 UploadStats CanvasRenderer::upload(std::span<const RectInstance> instances) {
   const auto start = std::chrono::steady_clock::now();
-  vk::Buffer fresh;
   const VkDeviceSize bytes = instances.size_bytes();
-  if (bytes != 0) {
-    fresh = vk::create_buffer(impl_->physical, impl_->device, bytes,
-                              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    const auto* src = reinterpret_cast<const std::uint8_t*>(instances.data());
-    impl_->copy_through_staging(src, bytes, fresh.buffer);
-  }
+  vk::Buffer fresh = impl_->make_vertex_buffer(instances.data(), bytes);
   {
     const std::lock_guard guard(impl_->scene_mutex);
     impl_->retired.push_back({impl_->instances, impl_->records});
     impl_->instances = fresh;
+  }
+  const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
+  return UploadStats{elapsed.count(), bytes};
+}
+
+UploadStats CanvasRenderer::upload_polygons(std::span<const PolygonVertex> vertices, std::int32_t base_x,
+                                            std::int32_t base_y) {
+  const auto start = std::chrono::steady_clock::now();
+  const VkDeviceSize bytes = vertices.size_bytes();
+  vk::Buffer fresh = impl_->make_vertex_buffer(vertices.data(), bytes);
+  {
+    const std::lock_guard guard(impl_->scene_mutex);
+    impl_->retired.push_back({impl_->polygons, impl_->records});
+    impl_->polygons = fresh;
+    impl_->polygon_base[0] = base_x;
+    impl_->polygon_base[1] = base_y;
   }
   const std::chrono::duration<double> elapsed = std::chrono::steady_clock::now() - start;
   return UploadStats{elapsed.count(), bytes};
@@ -370,28 +485,19 @@ void CanvasRenderer::set_layer_styles(std::span<const LayerStyle> styles) {
   impl_->styles.assign(styles.begin(), styles.end());
 }
 
-void CanvasRenderer::record(const DrawTarget& target, const ViewTransform& view,
-                            std::span<const LayerBatch> draws) {
+void CanvasRenderer::record(const DrawTarget& target, const ViewTransform& view, std::span<const LayerBatch> draws,
+                            std::span<const LayerBatch> polygon_draws) {
   auto* cmd = vk::from_opaque<VkCommandBuffer>(target.command_buffer);
   const std::lock_guard guard(impl_->scene_mutex);
   ++impl_->records;
   impl_->free_retired_locked();
   if (target.clear) {
-    VkClearAttachment attachment{};
-    attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    attachment.colorAttachment = 0;
-    attachment.clearValue.color = {{target.clear_color.r, target.clear_color.g, target.clear_color.b,
-                                    target.clear_color.a}};
-    const VkClearRect rect{{{target.x, target.y},
-                            {static_cast<std::uint32_t>(target.width), static_cast<std::uint32_t>(target.height)}},
-                           0,
-                           1};
-    vkCmdClearAttachments(cmd, 1, &attachment, 1, &rect);
+    impl_->clear_area(cmd, target);
   }
-  if (impl_->instances.buffer == VK_NULL_HANDLE) {
+  if (impl_->instances.buffer == VK_NULL_HANDLE && impl_->polygons.buffer == VK_NULL_HANDLE) {
     return;
   }
-  impl_->ensure_pipeline(vk::from_opaque<VkRenderPass>(target.render_pass));
+  impl_->ensure_pipelines(vk::from_opaque<VkRenderPass>(target.render_pass));
   if (target.set_viewport) {
     const VkViewport vp{static_cast<float>(target.x), static_cast<float>(target.y),
                         static_cast<float>(target.width), static_cast<float>(target.height), 0.0F, 1.0F};
@@ -400,23 +506,10 @@ void CanvasRenderer::record(const DrawTarget& target, const ViewTransform& view,
     vkCmdSetViewport(cmd, 0, 1, &vp);
     vkCmdSetScissor(cmd, 0, 1, &scissor);
   }
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, impl_->pipeline);
-  const VkDeviceSize zero = 0;
-  vkCmdBindVertexBuffers(cmd, 0, 1, &impl_->instances.buffer, &zero);
-  const std::uint64_t capacity = impl_->instances.size / sizeof(RectInstance);
-  const LayerStyle fallback{};
   std::uint32_t pushed_layer = std::numeric_limits<std::uint32_t>::max();
-  for (const LayerBatch& batch : draws) {
-    if (batch.count == 0 || std::uint64_t{batch.first} + batch.count > capacity) {
-      continue;  // never read past the buffer, even with stale ranges
-    }
-    if (batch.layer != pushed_layer) {
-      const LayerStyle& style = batch.layer < impl_->styles.size() ? impl_->styles[batch.layer] : fallback;
-      const PushConstants pc = make_push_constants(view, style, target);
-      vkCmdPushConstants(cmd, impl_->layout, kPushStages, 0, sizeof(pc), &pc);
-      pushed_layer = batch.layer;
-    }
-    vkCmdDraw(cmd, 6, batch.count, 0, batch.first);
+  VkPipeline bound = VK_NULL_HANDLE;
+  for (const DrawStep& step : merge_draws(draws, polygon_draws)) {
+    impl_->record_step(cmd, step, view, target, pushed_layer, bound);
   }
 }
 

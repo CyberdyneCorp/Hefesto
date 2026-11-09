@@ -27,20 +27,7 @@ namespace hefesto::cell {
 namespace detail {
 
 std::vector<db::Rect> hint_tiles(const db::PlaneValue& value) {
-  db::Plane plane;
-  db::PaintRow row{};
-  row.fill(1);
-  for (const db::Rect& r : value.rects) {
-    if (r.x0 < r.x1 && r.y0 < r.y1) {
-      (void)plane.paint(r, row);
-    }
-  }
-  std::vector<db::Rect> out;
-  plane.enumerate(db::whole_plane(), tech::TypeMask::of(1), [&](const db::TileView& t) {
-    out.push_back(t.area);
-    return true;
-  });
-  return out;
+  return db::plane_property_tiles(value);
 }
 
 tech::TypeMask residues_of(const tech::Technology& tech, tech::TileType t) {
@@ -48,6 +35,62 @@ tech::TypeMask residues_of(const tech::Technology& tech, tech::TileType t) {
     return ci->residues;
   }
   return tech::TypeMask::of(t);
+}
+
+std::string_view use_word(db::PortUse u) {
+  switch (u) {
+    case db::PortUse::signal:
+      return " signal";
+    case db::PortUse::analog:
+      return " analog";
+    case db::PortUse::power:
+      return " power";
+    case db::PortUse::ground:
+      return " ground";
+    case db::PortUse::clock:
+      return " clock";
+    case db::PortUse::reset:
+      return " reset";  // Q-CELL-6
+    case db::PortUse::scan:
+      return " scan";
+    case db::PortUse::tieoff:
+      return " tieoff";
+    case db::PortUse::default_use:
+      return " default";
+  }
+  return {};
+}
+
+std::string_view class_word(db::PortClass c) {
+  switch (c) {
+    case db::PortClass::input:
+      return " input";
+    case db::PortClass::output:
+      return " output";
+    case db::PortClass::tristate:
+      return " tristate";
+    case db::PortClass::bidirectional:
+      return " bidirectional";
+    case db::PortClass::feedthrough:
+      return " feedthrough";
+    case db::PortClass::default_class:
+      return " default";
+  }
+  return {};
+}
+
+std::string_view shape_word(db::PortShape s) {
+  switch (s) {
+    case db::PortShape::abutment:
+      return " abutment";
+    case db::PortShape::ring:
+      return " ring";
+    case db::PortShape::feedthrough:
+      return " feedthrough";
+    case db::PortShape::default_shape:
+      return {};
+  }
+  return {};
 }
 
 }  // namespace detail
@@ -250,7 +293,7 @@ std::string parent_file_for_write(const db::CellDef& def) {
   return def.file_path().empty() ? def.name() : def.file_path().generic_string();
 }
 
-void write_uses(Writer& w) {
+void write_uses(Writer& w, const std::string& target_file) {
   std::vector<const db::CellUse*> uses;
   for (const auto& u : w.def.uses()) {
     uses.push_back(u.get());
@@ -259,7 +302,7 @@ void write_uses(Writer& w) {
     return util::compare_natural(a->id, b->id) < 0;
   });
   std::set<const db::CellDef*> written;
-  const std::string pf = parent_file_for_write(w.def);
+  const std::string pf = target_file.empty() ? parent_file_for_write(w.def) : target_file;
   for (const db::CellUse* u : uses) {
     const std::string cf = u->def->file_path().generic_string();
     const UsePathRequest req{cf, pf, written.contains(u->def), w.ctx.magic_compat};
@@ -279,62 +322,6 @@ void write_uses(Writer& w) {
   }
 }
 
-std::string_view use_word(db::PortUse u) {
-  switch (u) {
-    case db::PortUse::signal:
-      return " signal";
-    case db::PortUse::analog:
-      return " analog";
-    case db::PortUse::power:
-      return " power";
-    case db::PortUse::ground:
-      return " ground";
-    case db::PortUse::clock:
-      return " clock";
-    case db::PortUse::reset:
-      return " reset";  // Q-CELL-6
-    case db::PortUse::scan:
-      return " scan";
-    case db::PortUse::tieoff:
-      return " tieoff";
-    case db::PortUse::default_use:
-      return " default";
-  }
-  return {};
-}
-
-std::string_view class_word(db::PortClass c) {
-  switch (c) {
-    case db::PortClass::input:
-      return " input";
-    case db::PortClass::output:
-      return " output";
-    case db::PortClass::tristate:
-      return " tristate";
-    case db::PortClass::bidirectional:
-      return " bidirectional";
-    case db::PortClass::feedthrough:
-      return " feedthrough";
-    case db::PortClass::default_class:
-      return " default";
-  }
-  return {};
-}
-
-std::string_view shape_word(db::PortShape s) {
-  switch (s) {
-    case db::PortShape::abutment:
-      return " abutment";
-    case db::PortShape::ring:
-      return " ring";
-    case db::PortShape::feedthrough:
-      return " feedthrough";
-    case db::PortShape::default_shape:
-      return {};
-  }
-  return {};
-}
-
 std::string port_record(const db::Label& lab) {
   std::string dirs;
   if ((lab.port_directions & db::kPortNorth) != 0) {
@@ -352,9 +339,9 @@ std::string port_record(const db::Label& lab) {
   std::string rec = "port " + std::to_string(lab.port_index) + " " + dirs;
   if (lab.port_use != db::PortUse::default_use || lab.port_class != db::PortClass::default_class ||
       lab.port_shape != db::PortShape::default_shape) {
-    rec += use_word(lab.port_use);
-    rec += class_word(lab.port_class);
-    rec += shape_word(lab.port_shape);
+    rec += detail::use_word(lab.port_use);
+    rec += detail::class_word(lab.port_class);
+    rec += detail::shape_word(lab.port_shape);
   }
   return rec + "\n";
 }
@@ -480,7 +467,7 @@ std::string write_mag(const CellIoContext& ctx, const db::CellDef& def, const Wr
   }
   write_header(w);
   write_paint(w);
-  write_uses(w);
+  write_uses(w, options.target_file);
   write_labels(w);
   w.out += detail::element_section(def, w.r);
   write_properties(w);

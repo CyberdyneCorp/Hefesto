@@ -624,6 +624,19 @@ float Painter::text_width(TextRole role, std::string_view text) const {
   return w;
 }
 
+void Painter::text_px(TextRole role, float size_px, float x, float y, std::string_view text, const Rgba& c) {
+  const TextSpec spec = text_spec(role);
+  Rdraw_text(raven(p_), runtime_.font(spec.face), size_px, x, y, str(text).c_str(), c.r, c.g, c.b, c.a);
+}
+
+std::pair<float, float> Painter::measure_px(TextRole role, float size_px, std::string_view text) const {
+  const TextSpec spec = text_spec(role);
+  float w = 0.0F;
+  float h = 0.0F;
+  Rfont_measure_text(runtime_.font(spec.face), size_px, str(text).c_str(), &w, &h);
+  return {w, h};
+}
+
 float Painter::line_height(TextRole role) const {
   const TextSpec spec = text_spec(role);
   float w = 0.0F;
@@ -864,6 +877,13 @@ void Window::request_redraw() {
 
 float Window::scale() const {
   return Rwindow_get_scale(id_);
+}
+
+int Window::logical_width() const {
+  int width = 0;
+  int height = 0;
+  Rwindow_get_size(id_, &width, &height);
+  return width;
 }
 
 FrameStats Window::frame_stats() const {

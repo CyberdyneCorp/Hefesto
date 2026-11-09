@@ -47,8 +47,9 @@ The commands that change the defaults SHALL affect only windows created later:
 Values are matched by prefix against `on`, `off`.
 
 Query forms:
-- `windowborder` with no argument SHALL report the pointed window's border state as `Window border is on|off`.
-- `windowcaption` with no argument SHALL report the pointed window's caption as `Window caption is "<caption>"`.
+- `windowborder` with no argument SHALL return the pointed window's border state, `on` or `off`, as the command result (Magic's Tcl build; the non-Tcl build prints `Window border is on|off`).
+- `windowcaption` with no argument SHALL return the pointed window's caption as the command result (the non-Tcl build prints `Window caption is "<caption>"`).
+- The setting forms print their message and return an empty result.
 - With no window, either query SHALL report `No window specified for caption command` and print usage.
 - `windowscrollbars` requires exactly one argument.
 
@@ -197,12 +198,12 @@ Compatibility: behavioral
 ### Requirement: windowpositions and windownames
 `windowpositions [frame] [FILE]` SHALL report each window, in stacking order, as the line `specialopen %d %d %d %d %s` with llx lly urx ury and the client name. The rectangle is the screen area, or the frame area if `frame` is given. With FILE, the lines SHALL be written to that file. Magic writes them to the wrong stream (see Q-UI-17). In Tcl, each window's values replace the previous result, so only the last window is returned (see Q-UI-17). Hefesto SHALL write every line to FILE, and without FILE SHALL return one list per window.
 
-`windownames [all|TYPE]` SHALL report:
-- with no argument: the single layout window if exactly one exists (`Window ID = N` or `Window ID = N, Name = S`); otherwise all windows
-- with `all`: every window
-- with `TYPE`: every window of that client
+`windownames [all|TYPE]` SHALL return, as the command result (Magic's Tcl build with no window-name hook):
+- with no argument: the id of the single layout window if exactly one exists; otherwise the list of all windows' ids
+- with `all`: the list of every window's id
+- with `TYPE`: the list of the ids of every window of that client
 
-All-window listings SHALL print `Window ID` or `Window ID	Window Name` as a header and then one line per window.
+Lists run from the top (front) window down. Magic's non-Tcl build instead prints `Window ID = N` (`, Name = S`) for a single window, and a `Window ID` (or `Window ID	Window Name`) header followed by one line per window.
 
 Compatibility: behavioral
 (Magic ref: windows/windCmdSZ.c:1132-1238, windows/windCmdSZ.c:481-593)
@@ -216,8 +217,8 @@ Compatibility: behavioral
 `view` SHALL frame the root cell's bounding box B, expanded on each side by ⌊(B.w+1)/10⌋ in x and ⌊(B.h+1)/10⌋ in y, computed side by side in the order xbot, xtop, ybot, ytop. Each later expansion uses the already-expanded size.
 
 Other forms:
-- `view get` SHALL report the window's surface area as `(llx, lly) to (urx, ury)`, using the current print units.
-- `view bbox` SHALL report the root bounding box the same way.
+- `view get` SHALL return the window's surface area as the list `llx lly urx ury`, using the current print units (Magic's Tcl build; the non-Tcl build prints `(llx, lly) to (urx, ury)`).
+- `view bbox` SHALL return the root bounding box the same way.
 - `view llx lly urx ury` (or a single argument holding four space-separated values) SHALL frame that area. Coordinates are parsed with the unit rules Magic parses all four values of the single-argument form as x coordinates; Hefesto SHALL parse them as x, y, x, y (see Q-UI-18).
 - Any other form SHALL print `Usage: view [get|bbox|llx lly urx ury]`.
 - A non-scrollable window SHALL report `Sorry, can't zoom out this window.`.
@@ -438,8 +439,8 @@ When the grid is on and the window shows the edit cell, an origin square SHALL b
 `grid` command forms (summary; argument parsing, units and script results are owned by capability `cmd-coordinates-and-units`, requirement "Grid command"; this requirement owns the grid display):
 - `grid` SHALL toggle the grid. `grid toggle` is the same.
 - `grid on`, `grid off` and `grid 0` SHALL turn it on or off.
-- `grid state` SHALL report `Grid is on|off`.
-- `grid box` or `grid what` SHALL report `Grid unit box is (ox, oy) to (ox+sx, oy+sy)`.
+- `grid state` SHALL return `1` or `0` (Magic's Tcl build; the non-Tcl build prints `Grid is on|off`).
+- `grid box` or `grid what` SHALL return `ox oy ox+sx oy+sy` in internal units (the non-Tcl build prints `Grid unit box is (ox, oy) to (ox+sx, oy+sy)`).
 - `grid sx [sy [ox oy]]` and `grid box sx [sy [ox oy]]` SHALL set the grid and turn it on. Spacings are distances, origins are positions. sy defaults to sx and the origin to (0,0). A spacing ≤ 0 SHALL report `Grid spacing must be greater than zero.`. 3 or more than 4 values SHALL print usage.
 - `grid multiple [m|off]` SHALL store a value from 1–255. In Magic the value has no visible effect, and out-of-range values are stored with an error. Hefesto SHALL draw every m-th grid line when the lines would otherwise be too dense to draw, and SHALL reject out-of-range values without storing them (see Q-UI-21).
 - `grid help` SHALL print usage.
@@ -450,7 +451,7 @@ Compatibility: behavioral
 #### Scenario: Grid with origin
 - **WHEN** `grid 10 20 5 0` is executed
 - **THEN** vertical lines SHALL be at x = …, -5, 5, 15, … and horizontal lines at y = …, -20, 0, 20, …
-- **AND** `grid box` SHALL report `Grid unit box is (5, 0) to (15, 20)`
+- **AND** `grid box` SHALL return `5 0 15 20`
 
 #### Scenario: Toggle off
 - **GIVEN** the grid is on
@@ -465,8 +466,15 @@ The box SHALL be drawn only in windows whose root is the box's root cell.
 
 A side that falls outside the window SHALL NOT be drawn.
 
+On a high-density display the pixel counts above (the cross size, the 4-pixel threshold, the side width) SHALL be logical pixels: they scale with the display's scale factor, so the box looks as it does in Magic on a standard-density display.
+
 Compatibility: behavioral
 (Magic ref: dbwind/DBWtools.c:672-779)
+
+#### Scenario: Box on a high-density display
+- **GIVEN** a window on a display with scale factor 2
+- **WHEN** a box larger than 4 × 4 logical pixels is drawn
+- **THEN** each side SHALL be 2 logical pixels (4 device pixels) wide
 
 #### Scenario: Box outside edit cell
 - **GIVEN** the edit cell's bounding box is (0,0)-(100,100)

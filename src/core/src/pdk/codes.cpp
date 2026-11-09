@@ -30,9 +30,17 @@ constexpr std::array kPdkCodes = {
     CodeInfo{"PDK-LICENSE-001", error,
              "The upstream license of the PDK family has not been accepted; a headless install needs -accept-license."},
     CodeInfo{"PDK-MANIFEST-001", error, "A catalog manifest or release document is malformed."},
+    CodeInfo{"PDK-PACK-001", error,
+             "An offline PDK pack or its pack.json is malformed, or names an asset the pack does not contain; nothing was "
+             "installed."},
     CodeInfo{"PDK-PIN-001", warning,
              "A project is re-pinned to another PDK version; recorded DRC, extraction and sign-off results become stale."},
+    CodeInfo{"PDK-PROGRESS-001", info,
+             "Machine-readable install progress (`pdk install -progress`, `pdk import -progress`): phase, part, "
+             "bytes, total, asset."},
     CodeInfo{"PDK-SELECT-001", error, "The selector is not a valid PDK family or variant."},
+    CodeInfo{"PDK-UNINSTALL-001", error,
+             "The PDK version is pinned by a project in the recent-projects list; uninstalling it needs -force."},
     CodeInfo{"PDK-UNPACK-001", error, "An archive entry is absolute, contains '..' or leaves the version directory; the install was aborted."},
     CodeInfo{"PDK-UNPACK-002", error, "The unpacked size of an asset exceeds the configured limit; the install was aborted."},
     CodeInfo{"PDK-UNPACK-003", error, "An asset is not a valid (Zstandard-compressed) tar archive; the install was aborted."},

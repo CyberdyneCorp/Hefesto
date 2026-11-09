@@ -1,0 +1,45 @@
+magic
+tech mt
+timestamp 1794195322
+<< checkpaint >>
+rect 0 0 10 20
+rect 40 0 60 10
+rect 80 0 90 20
+rect 120 0 140 10
+rect 160 0 170 20
+rect 200 0 210 20
+rect 240 0 260 10
+rect 280 0 300 10
+use child  child_0
+timestamp 1794195322
+transform 1 0 0 0 1 0
+box 0 0 10 20
+use child  child_1
+timestamp 1794195322
+transform 0 1 40 -1 0 10
+box 0 0 10 20
+use child  child_2
+timestamp 1794195322
+transform -1 0 90 0 -1 20
+box 0 0 10 20
+use child  child_3
+timestamp 1794195322
+transform 0 -1 140 1 0 0
+box 0 0 10 20
+use child  child_4
+timestamp 1794195322
+transform 1 0 160 0 -1 20
+box 0 0 10 20
+use child  child_5
+timestamp 1794195322
+transform -1 0 210 0 1 0
+box 0 0 10 20
+use child  child_6
+timestamp 1794195322
+transform 0 1 240 1 0 0
+box 0 0 10 20
+use child  child_7
+timestamp 1794195322
+transform 0 -1 300 -1 0 10
+box 0 0 10 20
+<< end >>

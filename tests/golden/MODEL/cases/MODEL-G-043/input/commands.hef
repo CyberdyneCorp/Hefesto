@@ -1,0 +1,27 @@
+# MODEL-G-043: Ports b, A10, A2, VDD, vdd, VDD and non-port c; port renumber (Q-MODEL-9, Q-MODEL-10).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 1 1 1 1
+label b
+port make
+box 3 1 3 1
+label A10
+port make
+box 5 1 5 1
+label A2
+port make
+box 7 1 7 1
+label VDD
+port make
+box 9 1 9 1
+label vdd
+port make
+box 11 1 11 1
+label VDD
+port make
+box 20 1 20 1
+label c
+port renumber
+save a

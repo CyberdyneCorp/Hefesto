@@ -3,21 +3,24 @@
 //
 // Geometry of what the shell draws over the layout canvas (Desktop-Layout
 // mockup): rulers on the top and left edges, the zoom control (− / % / +)
-// at the bottom left, the 168×112 minimap at the bottom right, the box in
-// white dashes; and the mapping between the core window's ViewMapping and
+// at the bottom left, the 168×112 minimap at the bottom right, the box as
+// Magic draws it, bitmap label text sizes; and the mapping between the core window's ViewMapping and
 // the renderer's Camera (design.md D5). Toolkit-free and unit-tested.
 //
 // Owner: SHELL (openspec/changes/m1-core-viewer/design.md, D2, D5 and D6).
 
 #pragma once
 
+#include <array>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/transform.hpp"
+#include "hefesto/display/scene.hpp"
 #include "hefesto/render/camera.hpp"
 #include "hefesto/shell/view_models.hpp"
 #include "hefesto/view/window.hpp"
@@ -113,6 +116,12 @@ void camera_from_mapping(const view::ViewMapping& mapping, render::Camera& camer
 /// The mapping that shows what `camera` shows, in framebuffer pixels.
 [[nodiscard]] view::ViewMapping mapping_from_camera(const render::Camera& camera);
 
+/// Frames `root` in the camera as the core frames a cell loaded into a
+/// window (LayoutWindow::set_root, Magic's DBWloadWindow): load_frame() of
+/// its bounding box, (0,0)-(1,1) for a cell not found on disk, fitted to the
+/// camera's viewport. Does nothing while the viewport has no size.
+void frame_root(const db::CellDef& root, render::Camera& camera);
+
 /// The world rectangle of the box in canvas pixels (y down), for the white
 /// dashed outline.
 [[nodiscard]] PixelRect world_to_pixels(const render::Camera& camera, const db::Rect& rect, double pixel_ratio);
@@ -127,6 +136,31 @@ void camera_from_mapping(const view::ViewMapping& mapping, render::Camera& camer
 /// (db::kCenter .. db::kNorthWest): anchored at the side or corner named by
 /// `pos` and offset by Magic's TEXTOFFSET (5 px) away from it.
 [[nodiscard]] PixelPoint label_text_origin(const PixelRect& r, db::Position pos, double text_w, double text_h);
+
+/// Magic's four bitmap label fonts (X font pixel sizes small, medium, large,
+/// xlarge: graphics/grTkCommon.h), in logical pixels.
+inline constexpr std::array<double, 4> kBitmapLabelSizes{10.0, 14.0, 18.0, 24.0};
+/// Height of a capital B relative to the font size (Inter's cap height).
+inline constexpr double kCapHeightRatio = 0.727;
+
+/// The text size of bitmap (unfonted) labels at `pixels_per_unit` (logical
+/// pixels per internal unit), ui-windows-and-views "Label display": the
+/// largest of the four sizes whose `B` height is below pixels-per-unit, the
+/// smallest when none is; nullopt (rectangle only, no text) when 3 ×
+/// pixels-per-unit does not exceed that size's `B` height.
+[[nodiscard]] std::optional<double> bitmap_label_size(double pixels_per_unit);
+
+// --- box (ui-windows-and-views "Box display", Magic's DBWDrawBox) -----------------
+
+/// The filled rectangles (canvas logical pixels, y down) that draw the box
+/// `r` of shape `shape` on a canvas of `width` × `height` logical pixels:
+/// a point is a cross of ±5 pixels plus a 1-pixel-larger square, a thin box
+/// a 1-pixel outline, otherwise four sides 2 pixels wide inside the
+/// rectangle (only the sides of nonzero length). A side outside the canvas
+/// is not drawn. Magic's pixel counts are logical pixels: they scale with
+/// the HiDPI factor (ui-windows-and-views "Box display").
+[[nodiscard]] std::vector<PixelRect> box_overlay(const PixelRect& r, display::BoxShape shape, double width,
+                                                 double height);
 
 struct PixelSpan {
   double x0 = 0.0;

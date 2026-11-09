@@ -272,16 +272,28 @@ void set_use_locked(CellUse& use, bool locked) {
   use.locked = locked;
 }
 
+std::vector<CellUse*> uses_in_search_order(const CellDef& def) {
+  std::vector<CellUse*> out;
+  out.reserve(def.uses().size());
+  for (auto it = def.uses().rbegin(); it != def.uses().rend(); ++it) {
+    out.push_back(it->get());
+  }
+  return out;
+}
+
+// DBGenerateUniqueIds: dbFindNamesFunc then dbGenerateUniqueIdsFunc, both in
+// subcell enumeration order (database/DBcellname.c:2640-2770).
 std::size_t make_use_ids_unique(CellDef& parent, bool magic_compat) {
   std::set<std::string, std::less<>> names;
-  for (auto& u : parent.uses()) {
+  const std::vector<CellUse*> order = uses_in_search_order(parent);
+  for (CellUse* u : order) {
     if (!u->id.empty() && !names.insert(u->id).second) {
       u->id.clear();
     }
   }
   std::map<const CellDef*, std::int64_t> next_suffix;
   std::size_t assigned = 0;
-  for (auto& u : parent.uses()) {
+  for (CellUse* u : order) {
     if (!u->id.empty() || u->def == nullptr) {
       continue;
     }

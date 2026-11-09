@@ -104,7 +104,42 @@ struct LayerStyle {
   float a = 1.0F;
   bool stippled = false;
   std::array<std::uint8_t, 8> stipple{};
+  /// Line pattern of 1-pixel lines (Magic's outline pattern, drawn as
+  /// OpenGL's glLineStipple(1, dash | dash << 8)): bit i, least significant
+  /// first, paints pixel i mod 8 counted from the line's left or bottom
+  /// end. 0 and 0xFF draw solid lines.
+  std::uint8_t dash = 0;
+  /// Draws each instance's two diagonals as 1-pixel lines instead of a
+  /// filled rectangle (`cross` styles; skipped when the rectangle is under
+  /// 4 pixels in both directions, Magic's GR_THRESH).
+  bool diagonals = false;
 };
+
+/// A vertex of a filled polygon, relative to PolygonScene's base point.
+struct PolygonVertex {
+  float x = 0.0F;
+  float y = 0.0F;
+};
+static_assert(sizeof(PolygonVertex) == 8, "PolygonVertex is uploaded as-is to the GPU");
+
+/// Filled triangles (non-Manhattan tiles, glyphs of font labels) as a
+/// triangle list. Positions are relative to an integer base point so that
+/// float precision does not depend on the absolute coordinate. Batches index
+/// `vertices` (first / count in vertices) in increasing layer order and share
+/// the layer numbering of the RectScene drawn with them.
+struct PolygonScene {
+  std::int32_t base_x = 0;
+  std::int32_t base_y = 0;
+  std::vector<PolygonVertex> vertices;
+  std::vector<LayerBatch> batches;
+  /// Per batch: the zoom (pixels per internal unit) below which it is not
+  /// drawn (0: always drawn). Font labels whose text would be under 5
+  /// pixels high are skipped (font-labels "Font label rendering").
+  std::vector<double> min_pixels_per_unit;
+};
+
+/// Replaces `out` with the batches of `scene` to draw at `pixels_per_unit`.
+void visible_polygon_batches(const PolygonScene& scene, double pixels_per_unit, std::vector<LayerBatch>& out);
 
 /// A fixed 8-entry style table for the spike, loosely modeled on Magic's
 /// sky130 colors (diff, poly, li1, contact, met1, via, met2, met3). Real

@@ -1,0 +1,4 @@
+# TECH-G30: styletype naming a family that does not exist, in a -dnull session (Q-TECH-24).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+tech name

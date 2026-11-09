@@ -1,0 +1,10 @@
+# MODEL-G-028: Child lib/nand2 loaded through its path and placed twice (Q-MODEL-8).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load top
+box 0 0 0 0
+getcell input/lib/nand2
+box 20 0 20 0
+getcell input/lib/nand2
+save top

@@ -1,0 +1,16 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 40 40
+<< labels >>
+rlabel metal1 s 1 1 1 1 0 sticky
+rlabel metal1 2 2 2 2 0 plain
+flabel metal1 3 3 3 3 0 FreeSans 16 0 0 0 known
+rlabel metal1 4 4 4 4 0 unknown
+rlabel metal1 5 5 5 5 5 5 0 old
+rlabel metal1 6 6 6 6 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+rlabel metal1 7 7 7 7 0 inner text here
+rlabel space 8 8 8 8 0 badlayer
+rlabel m2contact 9 9 9 9 0 contact
+<< end >>

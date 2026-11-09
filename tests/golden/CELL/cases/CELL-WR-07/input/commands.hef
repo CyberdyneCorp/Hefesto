@@ -1,0 +1,26 @@
+# CELL-WR-07: Ports with use only, class only, all three attributes, use=reset; save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load a
+box 0 0 40 10
+paint metal1
+box 2 2 2 2
+label u
+port make
+port use power
+box 12 2 12 2
+label c
+port make
+port class input
+box 22 2 22 2
+label all
+port make
+port use ground
+port class output
+port shape abutment
+box 32 2 32 2
+label r
+port make
+port use reset
+save a

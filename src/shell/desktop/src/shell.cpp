@@ -4,7 +4,9 @@
 #include "hefesto/shell/shell.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <csignal>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -168,6 +170,35 @@ int run_capture(ui::Runtime& runtime, MainWindow& window, const ShellOptions& op
   return 0;
 }
 
+/// Set by SIGTERM / SIGHUP: the session saves a crash backup and exits
+/// without removing it (cell-io-safety "Termination request").
+std::atomic<bool> g_terminate{false};
+
+extern "C" void on_terminate_signal(int) {
+  g_terminate.store(true);
+}
+
+/// The interactive loop: frames on events, the crash-backup timer polled
+/// between them (it bounds the wait), and a termination request answered
+/// with `crash save` before leaving.
+int run_interactive(ui::Runtime& runtime, MainWindow& window, CoreSession& core) {
+  std::signal(SIGTERM, on_terminate_signal);
+  std::signal(SIGHUP, on_terminate_signal);
+  runtime.set_frame_callback([&window](double) { window.on_frame(); });
+  while (window.open() && !g_terminate.load()) {
+    const std::optional<double> timer = core.backup_timer_seconds();
+    // Wake at least every half second to notice a termination request.
+    const double wait = std::min(timer.value_or(0.5), 0.5);
+    if (!runtime.wait_frame(wait)) break;
+    if (core.poll_backup_timer()) window.on_frame();
+  }
+  runtime.set_frame_callback({});
+  if (g_terminate.load()) window.run_line("crash save");
+  std::signal(SIGTERM, SIG_DFL);
+  std::signal(SIGHUP, SIG_DFL);
+  return 0;
+}
+
 /// The core session lives in the per-user app storage (autosave, and the
 /// rotating session log in <storage>/logs/hefesto.log).
 platform::PortableOptions core_options() {
@@ -221,6 +252,10 @@ void run_startup(CoreSession& core, const app::StartupOptions& startup) {
   std::error_code ec;
   env.working_directory = std::filesystem::current_path(ec);
   env.pdk_root = env_path("PDK_ROOT");
+  // hefesto-files-and-pdks: environment and links through the session's
+  // install host; the recent-projects list guards `pdk uninstall`.
+  env.host = core.install_host();
+  env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
   ReportSink sink(core.dispatcher());
   auto result = app::run_startup(core.dispatcher(), core.project(), core.files(), startup, env, sink);
   if (!result) core.dispatcher().report(result.error());
@@ -232,7 +267,7 @@ int run_window(const ShellOptions& options) {
   std::vector<std::string_view> words(options.startup_args.begin(), options.startup_args.end());
   auto startup = app::parse_startup_options(words);
   if (!startup) {
-    std::fprintf(stderr, "%s\n%s\n", diag::format_text(startup.error()).c_str(), app::startup_usage_line().data());
+    std::fprintf(stderr, "%s\n", startup_option_error(startup.error()).c_str());
     return 1;
   }
   // Shared by Raven's render thread and the canvas renderer's uploads.
@@ -251,9 +286,10 @@ int run_window(const ShellOptions& options) {
   load_assets(*runtime, options);
   int status = 0;
   {
-    CoreSession core(core_options(), platform::default_storage_dir() / "logs");
+    CoreSession core(core_options(), platform::default_storage_dir() / "logs", HostServices{true, std::nullopt});
     MainWindow window(*runtime, options, queue_mutex, core);
     run_startup(core, startup.value());
+    if (!options.run.empty()) window.run_when_ready(options.run);
     if (options.rects > 0) {
       render::SyntheticLayoutParams params;
       params.count = options.rects;
@@ -267,11 +303,9 @@ int run_window(const ShellOptions& options) {
     } else if (!options.capture.empty()) {
       status = run_capture(*runtime, window, options);
     } else {
-      runtime->set_frame_callback([&window](double) { window.on_frame(); });
-      while (runtime->wait_frame(-1.0) && window.open()) {
-      }
-      runtime->set_frame_callback({});
+      status = run_interactive(*runtime, window, core);
     }
+    if (!g_terminate.load()) core.end_crash_session();  // normal exit
   }
   return status;
 }

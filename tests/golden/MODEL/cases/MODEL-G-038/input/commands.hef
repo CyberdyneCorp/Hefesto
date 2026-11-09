@@ -1,0 +1,16 @@
+# MODEL-G-038: Point labels at 2 2, 15 15, 28 28, 2 28 in a 30x30 cell, no justification.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 30 30
+paint metal1
+box 2 2 2 2
+label a
+box 15 15 15 15
+label b
+box 28 28 28 28
+label c
+box 2 28 2 28
+label d
+save a

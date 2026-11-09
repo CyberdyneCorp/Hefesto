@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 100
+<< via1 >>
+rect 0 0 4 4
+<< via2 >>
+rect 0 0 4 4
+<< labels >>
+rlabel via1+via2 2 2 2 2 0 S
+<< end >>

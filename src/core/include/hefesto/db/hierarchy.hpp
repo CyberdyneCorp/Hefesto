@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/diag/outcome.hpp"
@@ -50,6 +51,14 @@ struct PlaceOptions {
 
 /// Locks or unlocks a use; marks the parent modified (Q-MODEL-13, fix).
 void set_use_locked(CellUse& use, bool locked);
+
+/// Magic's subcell enumeration order (DBCellEnum, DBCellSrArea over the
+/// cell's BPlane): uses sit in the BPlane's in-box list, newest first, so a
+/// cell's uses are visited from the most recently linked one back to the
+/// first. (Magic ref: bplane/bpMain.c:114-170, bplane/bpEnum.c:80-100; bins
+/// are built only by partial-area searches on 10 or more uses, which M1
+/// does not do.)
+[[nodiscard]] std::vector<CellUse*> uses_in_search_order(const CellDef& def);
 
 /// DBGenerateUniqueIds: after reading a cell, the first use with a given id
 /// keeps it, later duplicates lose theirs, and every use without an id gets

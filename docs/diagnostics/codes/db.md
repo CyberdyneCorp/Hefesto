@@ -29,6 +29,8 @@ fails when the two disagree.
 | `DB-GEOM-001` | error | Geometry lies outside the usable plane (+-1073741818) and was rejected. |
 | `DB-LABEL-001` | error | A label needs non-empty text. |
 | `DB-PROP-001` | error | A property value cannot be parsed as the requested type. |
+| `DB-REPORT-001` | info | A report or note a command prints while it runs (Magic's TxPrintf text). |
+| `DB-REPORT-002` | warning | A warning a command prints while it still runs (Magic's TxError text). |
 | `DB-USE-001` | error | Placing the cell would make it contain itself. |
 | `DB-USE-002` | error | The instance identifier is already used in the parent. |
 | `DB-USE-003` | error | No instance with that identifier exists in the cell. |

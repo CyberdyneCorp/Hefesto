@@ -1,0 +1,10 @@
+magic
+tech tiny
+timestamp 100
+<< nolayer >>
+rect 0 0 1 1
+<< allm1 >>
+rect 2 2 4 4
+<< metal2 >>
+rect 5 5 6 6
+<< end >>

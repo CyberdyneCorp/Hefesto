@@ -1,0 +1,5 @@
+# TECH-G35: scalegrid 1 2, then tech load of a tech with a drc width rule of 3 (tech drc query not authored).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+scalegrid 1 2
+tech load input/tiny -noprompt
+tech lambda

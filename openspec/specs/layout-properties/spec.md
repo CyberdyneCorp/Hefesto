@@ -77,7 +77,7 @@ Compatibility: exact
 - Reading always converts reserved names to their forced types (requirement "Reserved-name type coercion") whatever keyword is present, so compat files round-trip.
 - The value text written is the same in both modes (dimension and plane values divided by the output reducer; see capability `cell-file-format`).
 - Properties are written in natural-sort order of their names (see capability `cell-file-format`, requirement "Natural ordering of names").
-- The compat flag is queried and set through the `property compat` command (capability `cmd-labels-properties`); accepted values: `disable, no, false, off, 0` / `enable, yes, true, on, 1`.
+- The compat flag is queried and set through the `property compat` command (capability `cmd-labels-properties`); accepted values: `disable, no, false, off, 0` / `enable, yes, true, on, 1`. Magic 8.3.694 defines the compat keyword's index as that of `plane`, so `property compat …` takes `compat` as a type keyword (querying or setting the next word as a property name) and `property plane …` is the compat switch. With `magic-compat` ON Hefesto SHALL reproduce this argument quirk (decision X-2, tier 2); with it OFF the documented keyword works.
 
 (Magic ref: database/DBprop.c:37-44, database/DBio.c:4918-4942,5022-5100, commands/CmdLQ.c:2343-2541)
 

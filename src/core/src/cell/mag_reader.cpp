@@ -155,6 +155,8 @@ void reconcile_scale(ReadState& st, const Header& h) {
   const bool limited = !tech::check_grid_limit(st.tech(), st.n, st.d).ok();
   if (!limited && st.d > 1 && st.ctx.rescale_database && st.ctx.rescale_database(st.d, 1)) {
     st.ctx.grid.internal *= st.d;
+    st.emit(codes::kReadNote, "Input cell " + st.def.name() + " scales magic internal geometry by factor of " +
+                                  std::to_string(st.d));
     st.d = 1;
   }
   if (st.d > 1) {  // Q-CELL-2: warned whenever a divisor remains
@@ -452,18 +454,19 @@ void assign_unique_ids(ReadState& st) {
   db::CellDef& def = st.def;
   std::set<std::string, std::less<>> seen;
   std::vector<const db::CellUse*> unnamed;
-  for (const auto& u : def.uses()) {
+  const std::vector<db::CellUse*> order = db::uses_in_search_order(def);  // DBCellEnum order
+  for (const db::CellUse* u : order) {
     if (u->id.empty()) {
-      unnamed.push_back(u.get());
+      unnamed.push_back(u);
     } else if (!seen.insert(u->id).second) {
-      st.emit(codes::kUseProblem, "Duplicate instance-id for cell " + u->def->name() + " (" + u->id +
+      st.emit(codes::kDuplicateId, "Duplicate instance-id for cell " + u->def->name() + " (" + u->id +
                                       ") will be renamed");
-      unnamed.push_back(u.get());
+      unnamed.push_back(u);
     }
   }
   (void)db::make_use_ids_unique(def, st.ctx.magic_compat);
-  for (const auto& u : def.uses()) {
-    if (std::find(unnamed.begin(), unnamed.end(), u.get()) != unnamed.end()) {
+  for (const db::CellUse* u : order) {
+    if (std::find(unnamed.begin(), unnamed.end(), u) != unnamed.end()) {
       st.emit(codes::kReadNote, "Setting instance-id of cell " + u->def->name() + " to " + u->id);
     }
   }
@@ -514,9 +517,16 @@ diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view tex
     detail::reconcile_scale(st, h);
     ok = detail::read_body(st);
   }
-  detail::finish(st, h.stamp);
+  // badfile: the message comes before the post-read steps (unique ids, zero
+  // timestamp), which run either way (Magic ref: database/DBio.c:1002-1062).
+  std::optional<diag::Diagnostic> format_error;
   if (!ok) {
-    return diag::make(codes::kFormatError, "File " + def.name() + " contained format error");
+    format_error = diag::make(codes::kFormatError, "File " + def.name() + " contained format error");
+    ctx.sink.emit(*format_error);
+  }
+  detail::finish(st, h.stamp);
+  if (format_error) {
+    return *format_error;
   }
   return diag::Done{};
 }

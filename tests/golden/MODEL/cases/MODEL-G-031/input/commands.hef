@@ -1,0 +1,26 @@
+# MODEL-G-031: Children: paint + point label, label only, empty, flabels; parent use boxes (Q-MODEL-6, Q-MODEL-19).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load c1
+box 0 0 10 10
+paint metal1
+box 15 15 15 15
+label p
+save c1
+load c2
+box 3 4 3 4
+label q
+save c2
+load c3
+save c3
+load top
+box 0 0 0 0
+getcell c1
+box 100 0 100 0
+getcell c2
+box 200 0 200 0
+getcell c3
+box 300 0 300 0
+getcell input/fl
+save top

@@ -1,0 +1,14 @@
+# TECH-G11: tech sections format 34, format 33, formatX 40, format abc, 'a b c' and none (extract query not authored).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/t34 -noprompt
+tech name
+tech load input/t33 -noprompt
+tech name
+tech load input/tx40 -noprompt
+tech name
+tech load input/tabc -noprompt
+tech name
+tech load input/tabc3 -noprompt
+tech name
+tech load input/tnone -noprompt
+tech name

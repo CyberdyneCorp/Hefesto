@@ -22,8 +22,12 @@ namespace db = hefesto::db;
 TEST_CASE("MODEL commands are registered", "[m1-model]") {
   hefesto::cmd::CommandRegistry registry;
   CHECK(db::register_db_commands(registry));
-  for (const char* name : {"box", "snap", "paint", "erase", "splitpaint", "getcell", "flatten", "label", "setlabel",
-                           "port", "property", "cellname", "instance", "array"}) {
+  for (const char* name : {"box", "snap", "paint", "erase", "splitpaint", "label", "setlabel", "port", "property",
+                           "cellname", "instance", "array"}) {
     CHECK(registry.find(name) != nullptr);
   }
+  // getcell and flatten may read cells from files: the CELL area registers
+  // them and calls db::getcell_command / db::flatten_command.
+  CHECK(registry.find("getcell") == nullptr);
+  CHECK(registry.find("flatten") == nullptr);
 }

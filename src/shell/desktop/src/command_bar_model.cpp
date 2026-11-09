@@ -69,4 +69,17 @@ std::vector<std::string> console_lines(std::string_view command, std::string_vie
   return lines;
 }
 
+std::string console_result(const CommandOutcome& outcome, std::string_view result) {
+  std::string out;
+  bool repeated = false;
+  for (const std::string& d : outcome.diagnostics) {
+    out += (out.empty() ? "" : "\n") + d;
+    repeated = repeated || (!result.empty() && d.find(result) != std::string::npos);
+  }
+  if (outcome.diagnostics.empty() || (!repeated && result != "ok")) {
+    out += (out.empty() ? "" : "\n") + std::string(result);
+  }
+  return out;
+}
+
 }  // namespace hefesto::shell

@@ -93,6 +93,39 @@ class MaskTest(unittest.TestCase):
         a, b = b"* Created 2020-01-01\nR1 a b 1k\n", b"* Created 2026-11-07\nR1 a b 1k\n"
         self.assertTrue(compare_bytes(a, b, "bytes", [r"regex:\d{4}-\d{2}-\d{2}"]).equal)
 
+    def test_magic_tech_sections_removes_only_listed_messages(self):
+        magic = (b"Input style lambda=1.0(gen): scaleFactor=100, multiplier=1\n"
+                 b"Contact size value ignored (using GDS generation rules).\n"
+                 b"\n"
+                 b"Warning: Extraction Style default\n"
+                 b"  Missing planeorder for plane(s):\n"
+                 b"    well, active, metal1, metal2,\n"
+                 b"  Magic will use the default planeorder for this style:\n"
+                 b"    well=0, active=1, metal1=2, metal2=3,\n"
+                 b"The following types are not handled by extraction and will be treated as "
+                 b"non-electrical types:\n"
+                 b"    nwell ntransistor pwell \n"
+                 b"Cell a couldn't be read\n"
+                 b"No such file or directory\n")
+        hefesto = b"Cell a couldn't be read\nNo such file or directory\n"
+        self.assertEqual(apply_masks(magic, ["magic-tech-sections"]), hefesto)
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["magic-tech-sections"]).equal)
+
+    def test_magic_tech_sections_keeps_other_differences(self):
+        # Lines that only resemble the masked messages stay, so a real
+        # difference in the M1 sections is still reported.
+        a = b"Input style lambda: scaleFactor=100\nWarning: snap setting\n  Missing planeorder\n"
+        self.assertEqual(apply_masks(a, ["magic-tech-sections"]), a)
+        self.assertFalse(compare_bytes(a + b"x\n", a, "bytes", ["magic-tech-sections"]).equal)
+
+    def test_mag_checkpaint(self):
+        magic = b"magic\ntech tiny\n<< checkpaint >>\nrect -14 -14 20 20\nrect 0 0 1 1\nuse c  c_0 input/lib\n"
+        hefesto = b"magic\ntech tiny\nuse c  c_0 input/lib\n"
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["mag-checkpaint"]).equal)
+        # Paint sections are untouched.
+        paint = b"<< metal1 >>\nrect 0 0 4 4\n"
+        self.assertEqual(apply_masks(paint, ["mag-checkpaint"]), paint)
+
     def test_unknown_mask_and_comparator(self):
         with self.assertRaises(ValueError):
             get_mask("nope")
@@ -121,6 +154,19 @@ class MagicConsoleTest(unittest.TestCase):
         self.assertFalse(compare_bytes(self.PREAMBLE + b"a\n\nb\n", b"a\nb\n", "magic-console").equal)
         # A preamble-looking line after script output is not removed.
         late = b"minimum\nUsing NULL graphics device.\n"
+        self.assertEqual(magic_console(late), late)
+
+    def test_preamble_of_the_first_container_capture_is_removed(self):
+        # Regression: the first CI capture (Magic in the pinned image) also printed the
+        # host fd-limit warning and the system .magicrc tool switches before the script.
+        magic = (b"\nMagic 8.3 revision 694 - Compiled on Mon Nov  9 02:03:20 UTC 2026.\n"
+                 b"Starting magic under Tcl interpreter\nUsing the terminal as the console.\n"
+                 b"WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues"
+                 b" [rlim_cur=65536]\nUsing NULL graphics device.\nProcessing system .magicrc file\n"
+                 b"Switching to WIRING tool.\nSwitching to NETLIST tool.\nSwitching to PICK tool.\n"
+                 b"Switching to BOX tool.\nLoading \"input/commands.tcl\" from command line.\n\ntiny\n")
+        self.assertTrue(compare_bytes(magic, b"\ntiny\n", "magic-console").equal)
+        late = b"tiny\nSwitching to BOX tool.\n"
         self.assertEqual(magic_console(late), late)
 
     def test_differences_in_script_output_are_reported(self):

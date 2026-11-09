@@ -91,7 +91,7 @@ struct TreeBuilder {
   /// One row for the leaf instances of one definition: open when all are,
   /// partial (collapsed marker, "· N open") when only some are.
   void add_group(const std::vector<const db::CellUse*>& uses, int depth, const db::Transform& to_root) {
-    HierarchyRow row{depth, {}, true, true, nullptr, {}, {}, false};
+    HierarchyRow row{depth, {}, true, true, nullptr, {}, {}, false, {}};
     std::size_t open = 0;
     for (const db::CellUse* use : uses) {
       open += is_open(*use) ? 1U : 0U;
@@ -110,8 +110,15 @@ struct TreeBuilder {
     const std::string name = use.def != nullptr ? use.def->name() : std::string("(missing)");
     const std::string marker = expandable ? (open ? "▾ " : "▸ ") : "";
     std::string suffix = " (" + use.id + ")" + array_suffix(use.array);
-    rows.push_back(HierarchyRow{depth, marker + name + suffix, expandable, open, &use, {db::apply(to_root, use.bbox)},
-                                std::move(suffix), false});
+    HierarchyRow row{depth, marker + name + suffix, expandable, open, &use, {db::apply(to_root, use.bbox)},
+                     std::move(suffix), false, {}};
+    if (use.def != nullptr) {
+      const db::Transform child_to_root = db::compose(to_root, use.transform);
+      for (const auto& child : use.def->uses()) {
+        if (child) row.child_boxes.push_back(db::apply(child_to_root, child->bbox));
+      }
+    }
+    rows.push_back(std::move(row));
     if (open && !use.def->uses().empty()) {
       add_children(*use.def, depth + 1, db::compose(to_root, use.transform));
     }
@@ -268,6 +275,33 @@ std::string ellipsize(std::string_view text, float max_width, const TextMeasure&
   return std::string(text.substr(0, starts[lo])) + "…";
 }
 
+std::string ellipsize_middle(std::string_view text, float max_width, const TextMeasure& measure) {
+  if (measure(text) <= max_width) {
+    return std::string(text);
+  }
+  const std::vector<std::size_t> starts = code_point_starts(text);
+  const std::size_t count = starts.size() - 1;
+  if (count == 0) {
+    return {};
+  }
+  const auto shortened = [&](std::size_t kept) {
+    const std::size_t head = kept / 3;
+    return std::string(text.substr(0, starts[head])) + "…" + std::string(text.substr(starts[count - (kept - head)]));
+  };
+  // Binary search for the most code points that fit with the ellipsis.
+  std::size_t lo = 0;
+  std::size_t hi = count - 1;
+  while (lo < hi) {
+    const std::size_t mid = (lo + hi + 1) / 2;
+    if (measure(shortened(mid)) <= max_width) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return shortened(lo);
+}
+
 std::vector<std::string> wrap_columns(std::string_view text, std::size_t columns, std::size_t indent) {
   const std::size_t width = std::max<std::size_t>(columns, indent + 8);
   return wrap_lines(text, indent, [width](std::string_view line) { return code_point_starts(line).size() - 1 <= width; });
@@ -308,6 +342,12 @@ std::optional<Announcement> problem_announcement(StatusKind kind, std::string_vi
 
 std::string diagnostic_line(StatusKind kind, std::string_view text) {
   return std::string(status_glyph(kind)) + " " + std::string(text);
+}
+
+LineStatus command_line_status(bool ok, std::string_view result, const std::optional<LineStatus>& problem) {
+  if (problem && (ok || problem->kind == StatusKind::error)) return *problem;
+  const StatusKind kind = ok ? StatusKind::success : StatusKind::error;
+  return LineStatus{kind, diagnostic_line(kind, result)};
 }
 
 std::string DiagnosticTally::note(StatusKind kind, std::string_view text) {
@@ -440,7 +480,7 @@ std::vector<HierarchyRow> hierarchy_rows(const db::CellDef& root, const Expanded
   TreeBuilder builder{expanded, max_rows, {}};
   const bool has_children = !root.uses().empty();
   builder.rows.push_back(
-      HierarchyRow{0, (has_children ? "▾ " : "") + root.name(), false, has_children, nullptr, {}, {}, false});
+      HierarchyRow{0, (has_children ? "▾ " : "") + root.name(), false, has_children, nullptr, {}, {}, false, {}});
   builder.add_children(root, 1, db::kIdentity);
   return builder.rows;
 }
@@ -459,25 +499,55 @@ std::string HierarchyRow::accessible_name() const {
   return text + (expanded ? ", expanded" : ", collapsed");
 }
 
+std::size_t top_bar_hidden_groups(float available, float full_width, const std::vector<float>& group_widths) {
+  std::size_t hidden = 0;
+  float width = full_width;
+  while (width > available && hidden < group_widths.size()) {
+    width -= group_widths[hidden];
+    ++hidden;
+  }
+  return hidden;
+}
+
 HierarchyRowLayout hierarchy_row_layout(const HierarchyRow& row, float width, const TextMeasure& measure) {
+  // The suffix stays whole while the name keeps at least half the width;
+  // a longer suffix (long instance ids) is ellipsized instead of the name.
   const float suffix_w = measure(row.suffix);
+  const float name_w = measure(row.name_part());
+  const float name_room = std::max(0.0F, width - suffix_w);
+  const float min_name = std::min(name_w, width / 2.0F);
   HierarchyRowLayout out;
-  out.name = ellipsize(row.name_part(), std::max(0.0F, width - suffix_w), measure);
+  out.name = ellipsize_middle(row.name_part(), std::max(name_room, min_name), measure);
   out.suffix_x = measure(out.name);
+  out.suffix = ellipsize_middle(row.suffix, std::max(0.0F, width - out.suffix_x), measure);
   return out;
 }
 
-std::string HierarchyRow::toggle_command() const {
+std::string HierarchyRow::toggle_command(const std::optional<db::Rect>& restore_box) const {
   if (!expandable) {
     return {};
   }
-  const auto i = [](db::Coord v) { return std::to_string(v) + "i"; };
+  const auto box = [](const db::Rect& b) {
+    const auto i = [](db::Coord v) { return std::to_string(v) + "i"; };
+    return "box values " + i(b.x0) + " " + i(b.y0) + " " + i(b.x1) + " " + i(b.y1);
+  };
   std::string out;
+  const auto add = [&out](const std::string& command) { out += (out.empty() ? "" : "; ") + command; };
   for (const db::Rect& b : boxes) {
-    if (!out.empty()) out += "; ";
-    out += "box values " + i(b.x0) + " " + i(b.y0) + " " + i(b.x1) + " " + i(b.y1) + "; " +
-           (expanded ? "unexpand surround" : "expand surround");
+    add(box(b) + "; " + (expanded ? "unexpand surround" : "expand surround"));
   }
+  if (!expanded) {
+    // A child box that surrounds a parent box would collapse the parent again
+    // (`unexpand surround` matches every use the box surrounds); such a child
+    // stays expanded until instance-addressed expansion exists in the core.
+    const auto surrounds_parent = [this](const db::Rect& c) {
+      return std::any_of(boxes.begin(), boxes.end(), [&c](const db::Rect& b) { return db::surround(c, b); });
+    };
+    for (const db::Rect& c : child_boxes) {
+      if (!surrounds_parent(c)) add(box(c) + "; unexpand surround");
+    }
+  }
+  if (restore_box && !out.empty()) add(box(*restore_box));
   return out;
 }
 

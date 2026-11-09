@@ -124,6 +124,7 @@ void install_builtin_defaults(SettingsStack& stack) {
   stack.set(SettingLayer::builtin, kVdd, "vdd!");
   stack.set(SettingLayer::builtin, kGnd, "gnd!");
   stack.set(SettingLayer::builtin, kGlobalNets, "");
+  stack.set(SettingLayer::builtin, kPdkUpdateCheck, "on");
 }
 
 void apply_project(SettingsStack& stack, const ProjectFile& project) {

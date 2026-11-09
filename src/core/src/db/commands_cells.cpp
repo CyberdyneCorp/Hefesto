@@ -7,11 +7,14 @@
 // (Magic ref: commands/CmdCD.c CmdCellname, commands/CmdAB.c CmdArray,
 // select/selOps.c SelectArray)
 
+#include <algorithm>
+#include <optional>
 #include <utility>
 
 #include "db/command_util.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/util/record_order.hpp"
 
 namespace hefesto::db {
 
@@ -34,53 +37,119 @@ bool is_top_cell(const CellDef& def) {
   return true;
 }
 
-CommandResult cellname_list(const cu::Session& s, std::string_view which) {
-  Value::List names;
+// CmdCellname's option table (Magic ref: commands/CmdCD.c:1140-1166).
+enum CellnameOption {
+  kChildren, kParents, kExists, kSelf, kInstances, kChildinst, kCelldef, kAllcells, kTopcells, kWindow,
+  kCreate, kDelete, kDereference, kFilepath, kFlags, kTimestamp, kLock, kUnlock, kProperty, kAbutment,
+  kOrientation, kPosition, kRename, kWriteable, kModified
+};
+
+int cellname_option(std::string_view word) {
+  return cu::lookup(word, {"children", "parents", "exists", "self", "instances", "childinst", "celldef", "allcells",
+                           "topcells", "window", "create", "delete", "dereference", "filepath", "flags", "timestamp",
+                           "lock", "unlock", "property", "abutment", "orientation", "position", "rename",
+                           "writeable", "modified"});
+}
+
+CommandResult cellname_usage() {
+  return cu::fail(cu::bad_argument(
+      "Usage: cellname [list] children|parents|self|exists|instances|celldef|delete [name]\n"
+      "or:    cellname [list] allcells|topcells|window\n"
+      "or:    cellname create name\n"
+      "or:    cellname rename name newname [-force]\n"
+      "or:    cellname [un]lock [name]\n"
+      "or:    cellname writeable [name] [true|false]"));
+}
+
+// DBCellPrint for ALLCELLS, TOPCELLS and MODIFIED: natural name order
+// (strcmpbynum); a list result with `list`, printed lines otherwise.
+// (Magic ref: database/DBcellname.c:750-880)
+CommandResult cellname_list(const cu::Session& s, int option, bool dolist) {
+  std::vector<std::string> names;
   s.editor->cells.for_each([&](CellDef& def) {
     if (def.flags().internal) {
       return;
     }
-    const bool take = which == "allcells" || (which == "modified" && def.flags().modified) ||
-                      (which == "topcells" && is_top_cell(def));
+    const bool take = option == kAllcells || (option == kModified && def.flags().modified) ||
+                      (option == kTopcells && is_top_cell(def));
     if (take) {
-      names.emplace_back(def.name());
+      names.push_back(def.name());
     }
   });
-  return CommandResult::success(Value{std::move(names)});
+  std::sort(names.begin(), names.end(),
+            [](const std::string& a, const std::string& b) { return util::compare_natural(a, b) < 0; });
+  if (dolist) {
+    return CommandResult::success(Value{Value::List{names.begin(), names.end()}});
+  }
+  std::string text = option == kAllcells ? "Cell currently loaded:" : (option == kModified ? "Modified cells:" : "Top level cells are:");
+  for (const std::string& n : names) {
+    text += "\n    " + n;
+  }
+  cu::print(s, std::move(text));
+  return CommandResult::success();
 }
 
 diag::Outcome<CellDef*> named_cell(const cu::Session& s, const std::string& name) {
   CellDef* def = s.editor->cells.find(name);
   if (def == nullptr) {
-    return diag::make(codes::kCellNotFound, "no cell named \"" + name + "\"");
+    return diag::make(codes::kCellNotFound, "No such cell \"" + name + "\"");
   }
   return def;
 }
 
-CommandResult cellname_rename(const cu::Session& s, const std::vector<std::string>& args) {
-  if (args.size() < 3 || args.size() > 4) {
-    return cu::fail(cu::bad_argument("usage: cellname rename old new ?-force?"));
+CommandResult cellname_rename(const cu::Session& s, const std::vector<std::string>& args, bool force) {
+  if (args.size() != 3) {
+    return cellname_usage();
   }
   auto def = named_cell(s, args[1]);
   if (!def.ok()) {
     return cu::fail(def.error());
   }
-  const bool force = args.size() == 4 && args[3] == "-force";
+  const bool vendor = def.value()->flags().vendor_gds;
   auto st = s.editor->cells.rename(*def.value(), args[2], force);
+  if (st.ok() && vendor) {
+    cu::print(s, "Warning:  Renaming read-only cell \"" + args[1] + "\"\n"
+                 "Read-only status will be revoked and GDS file pointer removed.");
+  }
   return st.ok() ? CommandResult::success() : cu::fail(st.error());
 }
 
+// DBCellDelete: a window showing the cell shows "(UNNAMED)" afterwards
+// (WindUnload). (Magic ref: database/DBcellname.c:228-341)
+void unload_windows(const cu::Session& s, const CellDef& doomed) {
+  s.editor->windows.for_each([&](view::LayoutWindow& w) {
+    if (w.root() != &doomed) {
+      return;
+    }
+    CellDef* unnamed = s.editor->cells.find("(UNNAMED)");
+    if (unnamed == nullptr || unnamed == &doomed) {
+      auto made = s.editor->cells.create("(UNNAMED)", s.tech->plane_count());
+      unnamed = made.ok() ? made.value() : nullptr;
+      if (unnamed != nullptr) {
+        unnamed->flags().available = true;
+      }
+    }
+    w.set_root(unnamed);
+  });
+}
+
 CommandResult cellname_delete(const cu::Session& s, const std::vector<std::string>& args) {
-  if (args.size() != 2) {
-    return cu::fail(cu::bad_argument("usage: cellname delete name"));
+  if (args.size() < 2 || (args.size() == 3 && args[2] != "-noprompt")) {
+    return cu::fail(cu::bad_argument("Delete cell command missing cellname"));
   }
   auto def = named_cell(s, args[1]);
   if (!def.ok()) {
     return cu::fail(def.error());
   }
   CellDef* doomed = def.value();
-  auto st = s.editor->cells.remove(*doomed);
-  if (!st.ok()) {
+  if (auto check = s.editor->cells.check_removable(*doomed); !check.ok()) {
+    return cu::fail(check.error());
+  }
+  if (doomed->name() == "(UNNAMED)") {
+    (void)s.editor->cells.rename(*doomed, "__UNNAMED__");
+  }
+  unload_windows(s, *doomed);
+  if (auto st = s.editor->cells.remove(*doomed); !st.ok()) {
     return cu::fail(st.error());
   }
   if (s.editor->edit_cell == doomed) {
@@ -94,27 +163,103 @@ CommandResult cellname_delete(const cu::Session& s, const std::vector<std::strin
   return CommandResult::success();
 }
 
-CommandResult cellname_flag(const cu::Session& s, const std::vector<std::string>& args) {
-  if (args.size() != 2) {
-    return cu::fail(cu::bad_argument("usage: cellname " + args[0] + " name"));
+// `cellname writeable [name] [true|false]` (Magic ref: commands/CmdCD.c IDX_READWRITE).
+CommandResult cellname_writeable(const cu::Session& s, const std::vector<std::string>& args, bool dolist) {
+  CellDef* def = args.size() >= 2 ? s.editor->cells.find(args[1]) : s.editor->edit_cell;
+  if (def == nullptr) {
+    return cu::fail(cu::bad_argument("Unknown cell " + (args.size() >= 2 ? args[1] : std::string{})));
   }
-  auto def = named_cell(s, args[1]);
-  if (!def.ok()) {
-    return cu::fail(def.error());
+  if (args.size() < 3) {
+    const char* state = def->flags().no_edit ? "read-only" : "writeable";
+    if (dolist) {
+      return CommandResult::success(Value{std::string{state}});
+    }
+    cu::print(s, state);
+    return CommandResult::success();
   }
-  const CellFlags& f = def.value()->flags();
-  const bool readonly = f.no_edit || f.vendor_gds;
-  const bool value = args[0] == "readonly" ? readonly : (args[0] == "writeable" ? !readonly : f.modified);
-  return CommandResult::success(Value{std::int64_t{value ? 1 : 0}});
+  const int yes = cu::lookup(args[2], {"no", "false", "off", "0", "yes", "true", "on", "1"});
+  if (yes < 0) {
+    return cellname_usage();
+  }
+  def->flags().no_edit = yes < 4;
+  return CommandResult::success();
 }
 
-// `cellname exists name` and `cellname create name`.
-CommandResult cellname_exists_or_create(const cu::Session& s, const std::string& op, const std::vector<std::string>& args) {
-  if (op == "exists") {
-    return CommandResult::success(Value{std::int64_t{args.size() == 2 && s.editor->cells.find(args[1]) != nullptr ? 1 : 0}});
+CommandResult cellname_exists(const cu::Session& s, const std::vector<std::string>& args) {
+  if (args.size() < 2) {
+    const CellDef* def = s.editor->edit_cell;
+    return CommandResult::success(Value{def != nullptr ? def->name() : std::string{}});
+  }
+  return CommandResult::success(Value{std::int64_t{s.editor->cells.find(args[1]) != nullptr ? 1 : 0}});
+}
+
+CommandResult cellname_create(const cu::Session& s, const std::vector<std::string>& args) {
+  if (args.size() != 2) {
+    return cellname_usage();
   }
   auto made = s.editor->cells.create(args[1], s.tech->plane_count());
-  return made.ok() ? CommandResult::success(Value{made.value()->name()}) : cu::fail(made.error());
+  if (!made.ok()) {
+    return cu::fail(made.error());
+  }
+  made.value()->flags().available = true;
+  return CommandResult::success();
+}
+
+struct CellnameArgs {
+  std::vector<std::string> args;  // option first
+  bool dolist = false;
+  bool force = false;
+};
+
+std::optional<CellnameArgs> split_cellname(const std::vector<std::string>& in) {
+  CellnameArgs c;
+  c.args = in;
+  if (!c.args.empty() && c.args.front() == "list") {
+    c.dolist = true;
+    c.args.erase(c.args.begin());
+  }
+  if (!c.args.empty() && c.args.back().starts_with('-')) {
+    const std::string& last = c.args.back();
+    if (last == "-list" || last == "-def" || last == "-force") {
+      c.dolist = c.dolist || last == "-list";
+      c.force = last == "-force";
+      c.args.pop_back();
+    }
+  }
+  if (c.args.empty() || c.args.size() > 4) {
+    return std::nullopt;
+  }
+  return c;
+}
+
+bool takes_name_only(int option) {
+  return option == kAllcells || option == kTopcells || option == kModified || option == kWindow;
+}
+
+CommandResult cellname_dispatch(const cu::Session& s, int option, const CellnameArgs& c) {
+  switch (option) {
+    case kAllcells:
+    case kTopcells:
+    case kModified:
+      return cellname_list(s, option, c.dolist);
+    case kExists:
+    case kSelf:
+      return cellname_exists(s, c.args);
+    case kCreate:
+      return cellname_create(s, c.args);
+    case kDelete:
+      return cellname_delete(s, c.args);
+    case kRename:
+      return cellname_rename(s, c.args, c.force);
+    case kWriteable:
+      return cellname_writeable(s, c.args, c.dolist);
+    case kLock:
+    case kUnlock:
+      return cu::fail(cu::bad_argument("Cell definitions cannot be locked.  Use \"instance\"?\n"
+                                       "  or do you mean \"cellname writeable\"?"));
+    default:
+      return cu::fail(cu::bad_argument("cellname " + c.args[0] + ": not available in this release"));
+  }
 }
 
 CommandResult cmd_cellname(CommandContext& ctx, const Invocation& inv) {
@@ -122,24 +267,19 @@ CommandResult cmd_cellname(CommandContext& ctx, const Invocation& inv) {
   if (!s.ok()) {
     return cu::fail(s.error());
   }
-  const auto& args = inv.args;
-  const std::string op = args.empty() ? std::string{"list"} : args[0];
-  if (op == "list") {
-    return cellname_list(s.value(), args.size() > 1 ? args[1] : "allcells");
+  const auto c = split_cellname(inv.args);
+  if (!c) {
+    return cellname_usage();
   }
-  if (op == "rename") {
-    return cellname_rename(s.value(), args);
+  const int option = cellname_option(c->args[0]);
+  const bool many = c->args.size() > 2 && option != kRename && option != kDelete && option != kDereference &&
+                    option != kWriteable && option != kProperty && option != kFilepath && option != kOrientation &&
+                    option != kTimestamp;
+  if (option < 0 || many || (c->args.size() > 3 && option != kProperty) ||
+      (c->args.size() > 1 && takes_name_only(option))) {
+    return cellname_usage();
   }
-  if (op == "delete") {
-    return cellname_delete(s.value(), args);
-  }
-  if (op == "exists" || (op == "create" && args.size() == 2)) {
-    return cellname_exists_or_create(s.value(), op, args);
-  }
-  if (op == "readonly" || op == "writeable" || op == "modified") {
-    return cellname_flag(s.value(), args);
-  }
-  return cu::fail(cu::bad_argument("unknown cellname option \"" + op + "\""));
+  return cellname_dispatch(s.value(), option, *c);
 }
 
 // --- instance ------------------------------------------------------------------

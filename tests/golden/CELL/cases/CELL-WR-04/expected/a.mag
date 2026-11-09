@@ -1,0 +1,20 @@
+magic
+tech scmos
+timestamp 1794195319
+<< checkpaint >>
+rect 32 29 64 30
+rect 6 24 64 29
+rect -14 -2 64 24
+rect -14 -6 62 -2
+rect -14 -9 60 -6
+rect -14 -14 24 -9
+rect 26 -10 60 -9
+rect 26 -14 58 -10
+<< metal1 >>
+rect 0 0 10 10
+rect 20 5 30 15
+rect 46 12 50 16
+rect 44 8 48 12
+rect 42 4 46 8
+rect 40 0 44 4
+<< end >>

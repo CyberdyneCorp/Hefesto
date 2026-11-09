@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1980 requirements, 2958 scenarios, 834 open questions.
+**Totals:** 169 capabilities, 1980 requirements, 2962 scenarios, 838 open questions.
 
 ## Hefesto product (native)
 
@@ -16,7 +16,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 7 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
-| [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 7 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
+| [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 9 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
 | [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 4 | 8 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 5 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
 | [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 3 | 3 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
@@ -47,12 +47,12 @@ Open questions: [32](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 | [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
 | [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 30 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
 | [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
-| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 18 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
+| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 19 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
 | [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |
 
 ## Cell files (.mag) (CELL)
 
-Open questions: [41](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
+Open questions: [44](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -63,7 +63,7 @@ Open questions: [41](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 ## Layout data model (MODEL)
 
-Open questions: [30](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
+Open questions: [31](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -288,7 +288,7 @@ Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 | [`ui-command-dispatch`](../openspec/specs/ui-command-dispatch/spec.md) | 17 | 29 | Defines how user actions become commands and reach the code that runs them. This covers: - the window-client model and per-client command tables - command lookup, prefix rules and … |
 | [`ui-feedback-and-highlights`](../openspec/specs/ui-feedback-and-highlights/spec.md) | 6 | 8 | Defines the highlight layer drawn over layout windows, and the feedback-area facility that subsystems and users use to mark areas with explanatory text. This covers: - the order of… |
 | [`ui-tools-and-input`](../openspec/specs/ui-tools-and-input/spec.md) | 8 | 13 | Defines pointer tools and the default input bindings: - the tool registry and the `tool` command - button semantics of the `box`, `wiring`, `netlist` and `rsim` tools, and the Tcl … |
-| [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 23 | 30 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |
+| [`ui-windows-and-views`](../openspec/specs/ui-windows-and-views/spec.md) | 23 | 31 | Defines windows and what is drawn in them: - the window model (ids, limits, stacking order, chrome flags) - the window commands `openwindow`, `closewindow`, `specialopen`, `over`, … |
 | [`ui-wizard-and-debug`](../openspec/specs/ui-wizard-and-debug/spec.md) | 4 | 4 | Documents Magic's wizard commands. These are the commands whose names begin with `*`. They exist for developers: debugging, statistics and internal dumps. They are listed here for … |
 
 ## Scripting, PCells, Tcl tools (SCRIPT)

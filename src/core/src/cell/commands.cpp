@@ -10,18 +10,15 @@
 
 #include "hefesto/cell/commands.hpp"
 
+#include <algorithm>
 #include <array>
-#include <cctype>
 #include <optional>
-#include <span>
 
+#include "crash_commands.hpp"
+#include "hefesto/cell/crash.hpp"
 #include "hefesto/cell/diag_codes.hpp"
-#include "hefesto/cell/io_safety.hpp"
-#include "hefesto/cell/mag_io.hpp"
 #include "hefesto/cmd/all_commands.hpp"
-#include "hefesto/cmd/context.hpp"
-#include "hefesto/editor/editor_state.hpp"
-#include "hefesto/tech/commands.hpp"
+#include "io_session.hpp"
 
 namespace hefesto::cell {
 
@@ -29,108 +26,14 @@ namespace {
 
 using cmd::CommandResult;
 using cmd::Value;
-
-CommandResult fail(std::string_view code, std::string text) {
-  return CommandResult::failure(diag::make(code, std::move(text)));
-}
+using detail::fail;
+using detail::IoSession;
+using detail::lookup;
+using detail::show_in_window;
+using detail::with_session;
 
 CommandResult usage(std::string text) {
   return fail(codes::kBadUsage, std::move(text));
-}
-
-/// Magic's Lookup(): case-insensitive unique prefix, exact match wins.
-int lookup(std::string_view word, std::span<const std::string_view> table) {
-  int match = -1;
-  int count = 0;
-  for (std::size_t i = 0; i < table.size(); ++i) {
-    const std::string_view entry = table[i];
-    if (word.empty() || word.size() > entry.size()) {
-      continue;
-    }
-    bool prefix = true;
-    for (std::size_t k = 0; k < word.size() && prefix; ++k) {
-      prefix = std::tolower(static_cast<unsigned char>(word[k])) == std::tolower(static_cast<unsigned char>(entry[k]));
-    }
-    if (prefix && word.size() == entry.size()) {
-      return static_cast<int>(i);
-    }
-    if (prefix) {
-      match = static_cast<int>(i);
-      ++count;
-    }
-  }
-  return count == 1 ? match : -1;
-}
-
-/// The per-session CELL state lives in the lock service (io_safety.hpp).
-CellSession& cell_session(editor::EditorState& ed) {
-  if (!ed.locks) {
-    ed.locks = make_in_process_lock_service();
-  }
-  return ed.locks->session();
-}
-
-bool property_compat(const editor::EditorState& ed) {
-  return ed.property_compat;
-}
-
-/// A CellIoContext bound to one command's editor session.
-struct IoSession {
-  IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
-      : ed(editor),
-        session(cell_session(editor)),
-        io{cmd_ctx.services().files,
-           cmd_ctx.services().clock,
-           editor.cells,
-           editor.technology.get(),
-           editor.grid,
-           editor.search_paths,
-           editor.path_variables,
-           cmd_ctx.sink(),
-           session.file_host(),
-           session.stamps,
-           session.locking ? editor.locks.get() : nullptr,
-           &editor.fonts,
-           cmd_ctx.project().compat.magic_compat,
-           property_compat(editor),
-           &session.renamed_duplicates,
-           {},
-           {}} {
-    io.rescale_database = [this](std::int64_t n, std::int64_t d) {
-      (void)tech::scale_layout(ed, n, d);
-      return true;
-    };
-  }
-  IoSession(const IoSession&) = delete;
-  IoSession& operator=(const IoSession&) = delete;
-
-  /// The safe point after a command: pending timestamp mismatches.
-  void process_mismatches() {
-    const MismatchReport report = cell::process_mismatches(session.stamps, [this](db::CellDef& def) {
-      ReadOptions opts;
-      opts.ignore_tech = true;
-      (void)read_cell(io, def, opts);
-    });
-    for (const std::string& line : report.messages()) {
-      io.sink.emit(diag::make(codes::kStampMismatch, line));
-    }
-  }
-
-  editor::EditorState& ed;
-  CellSession& session;
-  CellIoContext io;
-};
-
-template <typename Body>
-CommandResult with_session(cmd::CommandContext& ctx, Body&& body) {
-  auto editor = cmd::require_editor(ctx);
-  if (!editor) {
-    return CommandResult::failure(editor.error());
-  }
-  IoSession s{ctx, *editor.value()};
-  CommandResult result = body(s);
-  s.process_mismatches();
-  return result;
 }
 
 // --- load -------------------------------------------------------------------
@@ -168,11 +71,33 @@ std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
   return out;
 }
 
-void show_in_window(editor::EditorState& ed, db::CellDef& def) {
-  if (view::LayoutWindow* w = ed.windows.current()) {
-    w->set_root(&def);
+// Magic's "(UNNAMED)" cell: the root of a window that shows no cell. It is
+// created when first needed and, as in Magic's batch runs, stays in the
+// library after another cell is loaded over it (DBWloadWindow deletes it
+// only while the display runs). (Magic ref: dbwind/DBWprocs.c:321-345)
+diag::Outcome<db::CellDef*> unnamed_def(IoSession& s) {
+  if (db::CellDef* def = s.ed.cells.find("(UNNAMED)")) {
+    return def;
   }
-  ed.edit_cell = def.flags().no_edit ? nullptr : &def;
+  auto made = s.ed.cells.create("(UNNAMED)", s.ed.technology->plane_count());
+  if (!made) {
+    return made.error();
+  }
+  made.value()->flags().available = true;
+  return made.value();
+}
+
+// A window that shows no cell shows "(UNNAMED)" (Magic's startup window).
+diag::Status adopt_startup_root(IoSession& s) {
+  const view::LayoutWindow* w = s.ed.windows.current();
+  if (w == nullptr || w->root() != nullptr) {
+    return diag::Done{};
+  }
+  auto def = unnamed_def(s);
+  if (!def) {
+    return def.error();
+  }
+  return diag::Done{};
 }
 
 CommandResult load_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
@@ -181,25 +106,17 @@ CommandResult load_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
     return usage("Usage: load [name [-force] [-dereference] [-silent] [-nowindow] [-fail]]");
   }
   return with_session(ctx, [&](IoSession& s) {
-    db::CellDef* def = nullptr;
-    if (!args->name) {
-      def = s.ed.cells.find("(UNNAMED)");
-      if (def == nullptr) {
-        auto made = s.ed.cells.create("(UNNAMED)", s.ed.technology->plane_count());
-        if (!made) {
-          return CommandResult::failure(made.error());
-        }
-        def = made.value();
-        def->flags().available = true;
-      }
-    } else {
-      auto loaded = load_cell(s.io, *args->name, args->options);
-      if (!loaded) {
-        return CommandResult::failure(loaded.error());
-      }
-      def = loaded.value();
+    if (auto adopted = adopt_startup_root(s); !adopted) {
+      return CommandResult::failure(adopted.error());
     }
-    show_in_window(s.ed, *def);
+    auto loaded = args->name ? load_cell(s.io, *args->name, args->options) : unnamed_def(s);
+    if (!loaded && loaded.error().code == codes::kConflictingLocation) {
+      return CommandResult::success();  // DBWloadWindow printed the conflict and loads nothing
+    }
+    if (!loaded) {
+      return CommandResult::failure(loaded.error());
+    }
+    show_in_window(s.ed, *loaded.value());
     return CommandResult::success();
   });
 }
@@ -234,7 +151,7 @@ CommandResult save_as(IoSession& s, db::CellDef& def, const std::string& name) {
   }
   const std::string base = base_name(name);
   if (!script && base != def.name()) {
-    if (auto renamed = s.ed.cells.rename(def, base); !renamed) {
+    if (auto renamed = s.ed.cells.rename_definition(def, base); !renamed) {
       return CommandResult::failure(renamed.error());
     }
   }
@@ -405,31 +322,50 @@ CommandResult locking_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) 
   return CommandResult::success();
 }
 
+/// Applies the timer state to the host clock, if any.
+void arm_timer(CellSession& s) {
+  if (!s.timer) {
+    return;
+  }
+  if (s.backup_timer == CellSession::BackupTimer::running) {
+    s.timer->schedule(*s.backup_interval_ms);
+  } else {
+    s.timer->cancel();
+  }
+}
+
 CommandResult crashbackups_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   auto editor = cmd::require_editor(ctx);
   if (!editor) {
     return CommandResult::failure(editor.error());
   }
   CellSession& s = cell_session(*editor.value());
-  const std::string option = inv.args.empty() ? "start" : inv.args[0];
+  static constexpr std::array<std::string_view, 5> kOptions = {"start", "resume", "stop", "cancel", "disable"};
+  // tools.tcl matches the option exactly (a Tcl switch), not by prefix.
+  const auto* match = inv.args.empty() ? kOptions.begin() : std::find(kOptions.begin(), kOptions.end(), inv.args[0]);
+  const int option = match == kOptions.end() ? -1 : static_cast<int>(match - kOptions.begin());
   using Timer = CellSession::BackupTimer;
-  if (option == "start") {
-    if (!s.backup_interval_ms) {
-      s.backup_interval_ms = 600000;
-    }
-    s.backup_timer = *s.backup_interval_ms > 0 ? Timer::running : Timer::stopped;
-  } else if (option == "resume") {
-    if (s.backup_interval_ms && *s.backup_interval_ms > 0) {
-      s.backup_timer = Timer::running;
-    }
-  } else if (option == "stop" || option == "cancel") {
-    s.backup_timer = Timer::stopped;
-  } else if (option == "disable") {
-    s.backup_timer = Timer::disabled;
-    s.backup_interval_ms.reset();
-  } else {
-    return usage("Usage: crashbackups [start|resume|stop|cancel|disable]");
+  const bool interval_set = s.backup_interval_ms && *s.backup_interval_ms > 0;
+  switch (option) {
+    case 0:
+      s.backup_interval_ms = s.backup_interval_ms.value_or(600000);
+      s.backup_timer = *s.backup_interval_ms > 0 ? Timer::running : Timer::stopped;
+      break;
+    case 1:
+      s.backup_timer = interval_set ? Timer::running : s.backup_timer;
+      break;
+    case 2:
+    case 3:
+      s.backup_timer = Timer::stopped;
+      break;
+    case 4:
+      s.backup_timer = Timer::disabled;
+      s.backup_interval_ms.reset();
+      break;
+    default:
+      return usage("Usage: crashbackups [start|resume|stop|cancel|disable]");
   }
+  arm_timer(s);
   return CommandResult::success();
 }
 
@@ -438,7 +374,7 @@ CommandResult crashbackups_cmd(cmd::CommandContext& ctx, const cmd::Invocation& 
 bool register_cell_commands(cmd::CommandRegistry& registry) {
   const std::array<cmd::CommandSpec, 7> specs = {{
       {"load", "load [name] [-force] [-dereference] [-silent] [-nowindow] [-fail]",
-       "Loads a cell (reading it and its descendants through the search paths) and makes it the edit cell.",
+       "Loads a cell (reading it through the search paths; subcells are read when needed) and makes it the edit cell.",
        load_cmd},
       {"save", "save [file]", "Saves the edit cell, updating timestamps first; a .tcl name writes a command script.",
        save_cmd},
@@ -449,7 +385,8 @@ bool register_cell_commands(cmd::CommandRegistry& registry) {
       {"crashbackups", "crashbackups [start|resume|stop|cancel|disable]", "Controls periodic crash backups.",
        crashbackups_cmd},
   }};
-  bool ok = true;
+  bool ok = detail::register_crash_commands(registry);
+  ok = detail::register_place_commands(registry) && ok;
   for (const cmd::CommandSpec& spec : specs) {
     ok = !registry.add(spec).has_value() && ok;
   }

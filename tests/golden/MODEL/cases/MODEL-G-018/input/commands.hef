@@ -1,0 +1,13 @@
+# MODEL-G-018: via1 and via2 on 0 0 4 4, then erase via2.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 4 4
+paint via1
+box 0 0 4 4
+paint via2
+save a1
+box 0 0 4 4
+erase via2
+save a2

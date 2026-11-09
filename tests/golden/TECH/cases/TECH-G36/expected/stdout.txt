@@ -1,0 +1,77 @@
+
+Magic 8.3 revision 694 - Compiled on Mon Nov  9 03:30:56 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   6.000 x 5.000   (-3.000,  0.000), ( 3.000,  5.000)  30.000    
+lambda:        6 x 5       (    -3,  0    ), (     3,  5    )  30        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 5.000   ( 0.000,  0.000), ( 3.000,  5.000)  15.000    
+lambda:        3 x 5       (     0,  0    ), (     3,  5    )  15        
+
+2 Magic internal units = 1 Lambda
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  12.000 x 20.000  ( 0.000,  0.000), ( 12.000,  20.000)  240.000   
+lambda:     6.00 x 10.00   (  0.00,  0.00 ), (  6.00,  10.00)  60.00     
+internal:     12 x 20      (     0,  0    ), (    12,  20   )  240       
+
+
+1 Magic internal unit = 1 Lambda
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 5.000   ( 0.000,  0.000), ( 3.000,  5.000)  15.000    
+lambda:        3 x 5       (     0,  0    ), (     3,  5    )  15        
+
+Magic error: writing out-of-date timestamp for a1.
+
+2 Magic internal units = 1 Lambda
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  12.000 x 20.000  ( 0.000,  0.000), ( 12.000,  20.000)  240.000   
+lambda:     6.00 x 10.00   (  0.00,  0.00 ), (  6.00,  10.00)  60.00     
+internal:     12 x 20      (     0,  0    ), (    12,  20   )  240       
+
+6 Magic internal units = 1 Lambda
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  108.000 x 180.000  ( 0.000,  0.000), ( 108.000,  180.000)  19440.000 
+lambda:    18.00 x 30.00   (  0.00,  0.00 ), ( 18.00,  30.00)  540.00    
+internal:    108 x 180     (     0,  0    ), (   108,  180  )  19440     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  108.000 x 180.000  ( 0.000,  0.000), ( 108.000,  180.000)  19440.000 
+lambda:    18.00 x 30.00   (  0.00,  0.00 ), ( 18.00,  30.00)  540.00    
+internal:    108 x 180     (     0,  0    ), (   108,  180  )  19440     
+

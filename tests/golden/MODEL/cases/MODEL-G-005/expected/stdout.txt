@@ -1,0 +1,229 @@
+
+Magic 8.3 revision 694 - Compiled on Mon Nov  9 03:30:56 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   5.000 x 2.000   ( 30.000,  15.000), ( 35.000,  17.000)  10.000    
+lambda:        5 x 2       (    30,  15   ), (    35,  17   )  10        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 1.000   ( 34.000,  39.000), ( 37.000,  40.000)  3.000     
+lambda:        3 x 1       (    34,  39   ), (    37,  40   )  3         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   9.000 x 12.000  ( 26.000,  7.000), ( 35.000,  19.000)  108.000   
+lambda:        9 x 12      (    26,  7    ), (    35,  19   )  108       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   9.000 x 12.000  ( 46.000,  11.000), ( 55.000,  23.000)  108.000   
+lambda:        9 x 12      (    46,  11   ), (    55,  23   )  108       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 10.000  ( 46.000,  19.000), ( 49.000,  29.000)  30.000    
+lambda:        3 x 10      (    46,  19   ), (    49,  29   )  30        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 12.000  ( 42.000,  35.000), ( 45.000,  47.000)  36.000    
+lambda:        3 x 12      (    42,  35   ), (    45,  47   )  36        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  15.000 x 7.000   ( 18.000,  55.000), ( 33.000,  62.000)  105.000   
+lambda:       15 x 7       (    18,  55   ), (    33,  62   )  105       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 2.000   ( 26.000,  35.000), ( 29.000,  37.000)  6.000     
+lambda:        3 x 2       (    26,  35   ), (    29,  37   )  6         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   1.000 x 6.000   ( 2.000,  35.000), ( 3.000,  41.000)  6.000     
+lambda:        1 x 6       (     2,  35   ), (     3,  41   )  6         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   5.000 x 11.000  ( 42.000,  59.000), ( 47.000,  70.000)  55.000    
+lambda:        5 x 11      (    42,  59   ), (    47,  70   )  55        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  15.000 x 9.000   ( 26.000,  59.000), ( 41.000,  68.000)  135.000   
+lambda:       15 x 9       (    26,  59   ), (    41,  68   )  135       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 6.000   ( 54.000,  51.000), ( 57.000,  57.000)  18.000    
+lambda:        3 x 6       (    54,  51   ), (    57,  57   )  18        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 13.000  ( 14.000,  47.000), ( 17.000,  60.000)  39.000    
+lambda:        3 x 13      (    14,  47   ), (    17,  60   )  39        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 1.000   ( 26.000,  27.000), ( 30.000,  28.000)  4.000     
+lambda:        4 x 1       (    26,  27   ), (    30,  28   )  4         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  11.000 x 1.000   ( 2.000,  23.000), ( 13.000,  24.000)  11.000    
+lambda:       11 x 1       (     2,  23   ), (    13,  24   )  11        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 14.000  ( 34.000,  55.000), ( 36.000,  69.000)  28.000    
+lambda:        2 x 14      (    34,  55   ), (    36,  69   )  28        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   7.000 x 2.000   ( 42.000,  39.000), ( 49.000,  41.000)  14.000    
+lambda:        7 x 2       (    42,  39   ), (    49,  41   )  14        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   7.000 x 12.000  ( 14.000,  3.000), ( 21.000,  15.000)  84.000    
+lambda:        7 x 12      (    14,  3    ), (    21,  15   )  84        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 14.000  ( 18.000,  39.000), ( 28.000,  53.000)  140.000   
+lambda:       10 x 14      (    18,  39   ), (    28,  53   )  140       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  14.000 x 15.000  ( 30.000,  11.000), ( 44.000,  26.000)  210.000   
+lambda:       14 x 15      (    30,  11   ), (    44,  26   )  210       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 2.000   ( 58.000,  3.000), ( 60.000,  5.000)  4.000     
+lambda:        2 x 2       (    58,  3    ), (    60,  5    )  4         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  13.000 x 1.000   ( 42.000,  27.000), ( 55.000,  28.000)  13.000    
+lambda:       13 x 1       (    42,  27   ), (    55,  28   )  13        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 14.000  ( 42.000,  35.000), ( 52.000,  49.000)  140.000   
+lambda:       10 x 14      (    42,  35   ), (    52,  49   )  140       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 11.000  ( 38.000,  15.000), ( 41.000,  26.000)  33.000    
+lambda:        3 x 11      (    38,  15   ), (    41,  26   )  33        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   7.000 x 11.000  ( 18.000,  19.000), ( 25.000,  30.000)  77.000    
+lambda:        7 x 11      (    18,  19   ), (    25,  30   )  77        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 10.000  ( 38.000,  15.000), ( 40.000,  25.000)  20.000    
+lambda:        2 x 10      (    38,  15   ), (    40,  25   )  20        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 5.000   ( 2.000,  11.000), ( 4.000,  16.000)  10.000    
+lambda:        2 x 5       (     2,  11   ), (     4,  16   )  10        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 1.000   ( 10.000,  47.000), ( 13.000,  48.000)  3.000     
+lambda:        3 x 1       (    10,  47   ), (    13,  48   )  3         
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   6.000 x 8.000   ( 38.000,  15.000), ( 44.000,  23.000)  48.000    
+lambda:        6 x 8       (    38,  15   ), (    44,  23   )  48        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   6.000 x 5.000   ( 42.000,  59.000), ( 48.000,  64.000)  30.000    
+lambda:        6 x 5       (    42,  59   ), (    48,  64   )  30        
+
+
+

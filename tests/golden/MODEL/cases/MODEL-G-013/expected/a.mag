@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794195323
+<< checkpaint >>
+rect 0 0 15 10
+<< ndiffusion >>
+rect 0 0 5 10
+<< pdiffusion >>
+rect 5 0 15 10
+<< end >>

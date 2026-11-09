@@ -36,4 +36,8 @@ inline constexpr std::string_view kNoLabel = "DB-CMD-005";
 inline constexpr std::string_view kLabelEmpty = "DB-LABEL-001";
 inline constexpr std::string_view kPropertyValue = "DB-PROP-001";
 
+// Command output that is not the result (Magic's TxPrintf / TxError text)
+inline constexpr std::string_view kReport = "DB-REPORT-001";
+inline constexpr std::string_view kWarning = "DB-REPORT-002";
+
 }  // namespace hefesto::db::codes

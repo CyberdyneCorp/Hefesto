@@ -154,38 +154,58 @@ bool read_body(LineCursor& cur, std::string& body) {
 
 }  // namespace
 
-diag::Outcome<BackupFile> parse_backup_file(std::string_view text, std::string_view kind, std::string_view file_name) {
-  const std::string type{kind};
-  const std::string name{file_name};
+namespace {
+
+/// One `file` record starting at `line`: its location, cell name and body.
+diag::Status parse_record(LineCursor& cur, std::string_view line, const std::string& where, BackupFile& out) {
+  if (!line.starts_with("file")) {
+    return backup_error("Error in " + where + "; expected keyword \"file\", got \"" + std::string{line} + "\"!");
+  }
+  BackupEntry entry;
+  std::string_view location = line.substr(4);
+  while (!location.empty() && (location.front() == ' ' || location.front() == '\t')) {
+    location.remove_prefix(1);
+  }
+  entry.location = std::string{location};
+  entry.cell = backup_cell_name(location);
+  if (entry.cell.empty()) {
+    return backup_error("Error in " + where + "; empty cell name!");
+  }
+  if (!read_body(cur, entry.mag_text)) {
+    return backup_error("Error in " + where + "; partial restore only!");
+  }
+  out.entries.push_back(std::move(entry));
+  return diag::Done{};
+}
+
+}  // namespace
+
+diag::Status parse_backup_records(std::string_view text, std::string_view kind, std::string_view file_name,
+                                  BackupFile& out) {
+  const std::string where = std::string{kind} + " file " + std::string{file_name};
   LineCursor cur{text};
   std::string_view line;
   if (!cur.next(line)) {
-    return backup_error("Bad " + type + " file " + name + "; can't read!");
+    return backup_error("Bad " + where + "; can't read!");
   }
-  BackupFile out;
   while (!line.starts_with("end")) {
-    if (!line.starts_with("file")) {
-      return backup_error("Error in " + type + " file " + name + "; expected keyword \"file\", got \"" +
-                          std::string{line} + "\"!");
+    if (auto record = parse_record(cur, line, where, out); !record) {
+      return record;
     }
-    BackupEntry entry;
-    std::string_view location = line.substr(4);
-    while (!location.empty() && (location.front() == ' ' || location.front() == '\t')) {
-      location.remove_prefix(1);
-    }
-    entry.location = std::string{location};
-    entry.cell = backup_cell_name(location);
-    if (entry.cell.empty()) {
-      return backup_error("Error in " + type + " file " + name + "; empty cell name!");
-    }
-    const bool complete = read_body(cur, entry.mag_text);
-    out.entries.push_back(std::move(entry));
-    if (!complete || !cur.next(line)) {
-      return backup_error("Error in " + type + " file " + name + "; partial restore only!");
+    if (!cur.next(line)) {
+      return backup_error("Error in " + where + "; partial restore only!");
     }
   }
   if (line.size() > 4 && line[3] == ' ') {
     out.root_cell = std::string{line.substr(4)};
+  }
+  return diag::Done{};
+}
+
+diag::Outcome<BackupFile> parse_backup_file(std::string_view text, std::string_view kind, std::string_view file_name) {
+  BackupFile out;
+  if (auto parsed = parse_backup_records(text, kind, file_name, out); !parsed) {
+    return parsed.error();
   }
   return out;
 }

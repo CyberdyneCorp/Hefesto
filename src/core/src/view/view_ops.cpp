@@ -64,6 +64,12 @@ std::optional<db::Rect> view_area(const std::vector<std::string>& args, const te
   return db::Rect{v[0], v[1], v[2], v[3]};
 }
 
+// The Tcl result of `view get` / `view bbox`: the four coordinates as a list.
+cmd::Value rect_list(const db::Rect& r, const tech::GridScale& grid) {
+  return cmd::Value{cmd::Value::List{format_coord(r.x0, grid), format_coord(r.y0, grid), format_coord(r.x1, grid),
+                                     format_coord(r.y1, grid)}};
+}
+
 CommandResult view_cmd(CommandContext& ctx, const Invocation& inv) {
   auto t = pointed(ctx);
   if (!t) {
@@ -74,10 +80,10 @@ CommandResult view_cmd(CommandContext& ctx, const Invocation& inv) {
     return move(ctx, t.value(), view_frame(root_bbox(t.value().window)));
   }
   if (inv.args.size() == 1 && inv.args[0] == "get") {
-    return CommandResult::success(format_rect(t.value().window.mapping().surface, grid));
+    return CommandResult::success(rect_list(t.value().window.mapping().surface, grid));
   }
   if (inv.args.size() == 1 && inv.args[0] == "bbox") {
-    return CommandResult::success(format_rect(root_bbox(t.value().window), grid));
+    return CommandResult::success(rect_list(root_bbox(t.value().window), grid));
   }
   if (const auto area = view_area(inv.args, grid)) {
     return move(ctx, t.value(), *area);
@@ -175,7 +181,11 @@ CommandResult scroll_cmd(CommandContext& ctx, const Invocation& inv) {
   }
   const int pos = db::parse_position(inv.args[0], false);
   if (pos < 0) {
-    return fail(codes::kUsage, "\"" + inv.args[0] + "\" " + (pos == -1 ? "is ambiguous" : "is not a valid direction"));
+    // GeoNameToPos(name, FALSE, TRUE) (Magic ref: utils/geometry.c:410-445)
+    return fail(codes::kUsage, "\"" + inv.args[0] + "\" " + (pos == -1 ? "is ambiguous." : "is not a valid direction or position.") +
+                                   "\nLegal directions/positions are:\n\tbl,bottom,br,center,d,dl,down,dr,e,east,left,n,ne,"
+                                   "north,northeast,northwest,nw,right,s,se,south,southeast,southwest,sw,tl,top,tr,u,ul,up,"
+                                   "ur,w,west");
   }
   const auto amount = scroll_amount(t.value(), inv);
   if (!amount) {

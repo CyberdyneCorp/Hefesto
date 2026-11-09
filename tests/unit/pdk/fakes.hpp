@@ -18,6 +18,7 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
 #include "hefesto/pdk/manager.hpp"
+#include "hefesto/platform/process_runner.hpp"
 
 namespace hefesto::test {
 
@@ -27,8 +28,10 @@ class MapFetcher final : public pdk::Fetcher {
   std::vector<std::string> downloads;            // URLs downloaded, in order
   std::map<std::string, std::uint64_t> resumed_from;
   std::size_t fail_after_bytes = 0;  // >0: a download stops after this many bytes (connection loss)
+  std::vector<std::string> requests;  // URLs of get_text, in order
 
   diag::Outcome<std::string> get_text(std::string_view url) override {
+    requests.emplace_back(url);
     const auto it = documents.find(std::string{url});
     if (it == documents.end()) {
       return diag::make(pdk::codes::kFetchNotFound, "not found (HTTP 404): " + std::string{url});
@@ -37,10 +40,13 @@ class MapFetcher final : public pdk::Fetcher {
   }
 
   diag::Status download(std::string_view url, const platform::Path& to,
-                        const std::function<void(std::uint64_t, std::uint64_t)>& /*progress*/) override {
+                        const std::function<void(std::uint64_t, std::uint64_t)>& progress) override {
     const auto it = documents.find(std::string{url});
     if (it == documents.end()) {
       return diag::make(pdk::codes::kFetch, "cannot download " + std::string{url});
+    }
+    if (progress) {
+      progress(it->second.size() / 2, 0);  // a fetcher that does not know the total
     }
     downloads.emplace_back(url);
     std::error_code ec;
@@ -58,13 +64,21 @@ class MapFetcher final : public pdk::Fetcher {
       fail_after_bytes = 0;
       return diag::make(pdk::codes::kFetch, "connection lost");
     }
+    if (progress) {
+      progress(it->second.size(), it->second.size());
+    }
     return diag::Done{};
   }
 };
 
+// Test catalogs publish plain tar files as assets: they are copied. Real
+// Zstandard frames (rebuilt pack assets) go to the library decoder.
 class CopyDecompressor final : public pdk::Decompressor {
  public:
   diag::Status decompress(const platform::Path& in, const platform::Path& out, std::uint64_t max_bytes) override {
+    if (is_zstd(in)) {
+      return zstd_->decompress(in, out, max_bytes);
+    }
     std::error_code ec;
     if (std::filesystem::file_size(in, ec) > max_bytes) {
       return diag::make(pdk::codes::kUnpackLimit, "too large");
@@ -72,6 +86,17 @@ class CopyDecompressor final : public pdk::Decompressor {
     std::filesystem::copy_file(in, out, std::filesystem::copy_options::overwrite_existing, ec);
     return ec ? diag::Status{diag::make(pdk::codes::kBadArchive, ec.message())} : diag::Status{diag::Done{}};
   }
+
+ private:
+  static bool is_zstd(const platform::Path& path) {
+    std::ifstream file{path, std::ios::binary};
+    std::string magic(4, '\0');
+    file.read(magic.data(), 4);
+    return file && magic == std::string{"\x28\xB5\x2F\xFD", 4};
+  }
+
+  platform::UnsupportedProcessRunner no_processes_;
+  std::unique_ptr<pdk::Decompressor> zstd_ = pdk::make_default_decompressor(no_processes_);
 };
 
 class FakeHost final : public pdk::InstallHost {

@@ -1,0 +1,7 @@
+# CELL-RD-11: Unknown layer << nolayer >>; alias section allm1 (tiny).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+snap internal
+load input/a
+cellname list allcells
+save a_out

@@ -1,0 +1,10 @@
+# CELL-LIB-03: Technology mismatch with paint loaded (tiny vs a scmos cell); load -force.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+snap internal
+load a
+box 0 0 4 4
+paint metal1
+load input/s
+load input/s -force
+cellname list allcells

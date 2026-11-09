@@ -1,0 +1,60 @@
+input/tiny.tech: line 13: section (none):
+	Unrecognized section name: end
+[Skipping to "end"]
+input/tiny.tech: line 21: section (none):
+	Section types appears too early.
+	Missing prerequisite sections:
+		planes
+[Skipping to "end"]
+input/tiny.tech: line 34: section (none):
+	Section contact appears too early.
+	Missing prerequisite sections:
+		planes
+		types
+[Skipping to "end"]
+input/tiny.tech: line 41: section (none):
+	Section aliases appears too early.
+	Missing prerequisite sections:
+		planes
+		types
+		contact
+[Skipping to "end"]
+input/tiny.tech: line 45: section (none):
+	Section styles appears too early.
+	Missing prerequisite sections:
+		types
+[Skipping to "end"]
+input/tiny.tech: line 55: section (none):
+	Section compose appears too early.
+	Missing prerequisite sections:
+		planes
+		types
+		contact
+[Skipping to "end"]
+input/tiny.tech: line 59: section (none):
+	Section connect appears too early.
+	Missing prerequisite sections:
+		planes
+		types
+		contact
+[Skipping to "end"]
+input/tiny.tech: line 72: section (none):
+	Section drc appears too early.
+	Missing prerequisite sections:
+		planes
+		types
+[Skipping to "end"]
+input/tiny.tech: line 75: section (none):
+	Section extract appears too early.
+	Missing prerequisite sections:
+		types
+		connect
+[Skipping to "end"]
+Section "planes" was missing from input/tiny.tech.
+Section "types" was missing from input/tiny.tech.
+Section "styles" was missing from input/tiny.tech.
+Section "contact" was missing from input/tiny.tech.
+Section "compose" was missing from input/tiny.tech.
+Section "connect" was missing from input/tiny.tech.
+Section "drc" was missing from input/tiny.tech.
+Section "extract" was missing from input/tiny.tech.

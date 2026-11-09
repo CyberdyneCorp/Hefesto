@@ -20,7 +20,8 @@ namespace hefesto::cmd {
 class CommandLog final : public CommandObserver {
  public:
   /// `logger` may be null; when set, each command is also written to it as
-  /// "cmd[<origin>] <line> -> ok|failed".
+  /// "cmd[<origin>] <line> -> ok|failed". Commands with Origin::internal
+  /// are written to the logger only, never to the history.
   explicit CommandLog(platform::Logger* logger = nullptr) : logger_(logger) {}
 
   void on_command(const Invocation& invocation, const CommandResult& result) override;

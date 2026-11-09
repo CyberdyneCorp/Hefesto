@@ -12,6 +12,7 @@
 #include <string>
 
 #include "hefesto/app/startup.hpp"
+#include "hefesto/cell/crash.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/command_log.hpp"
 #include "hefesto/cmd/script.hpp"
@@ -21,10 +22,11 @@
 #include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/platform_posix/file_host.hpp"
+#include "hefesto/platform_posix/lock_service.hpp"
+#include "hefesto/platform_posix/process_runner.hpp"
 #include "hefesto/version.hpp"
 #include "options.hpp"
-#include "posix_lock_service.hpp"
-#include "posix_process_runner.hpp"
 
 namespace hefesto::cli {
 
@@ -173,9 +175,11 @@ class Session {
         values_(out),
         magic_console_(out, err) {
     log_warning_ = open_log();
-    services_.set_process_runner(std::make_unique<PosixProcessRunner>());
+    services_.set_process_runner(std::make_unique<platform_posix::PosixProcessRunner>());
     install_pdk_store();
-    editor_.locks = std::make_unique<PosixLockService>();
+    // cell-io-safety: POSIX locks and the crash-backup file host, before any command.
+    editor_.locks = platform_posix::make_lock_service();
+    cell::cell_session(editor_).host = platform_posix::make_file_host();
     cmd::register_all_commands(registry_);
     command_log_ = std::make_unique<cmd::CommandLog>(logger_);
     dispatcher_ = std::make_unique<cmd::Dispatcher>(registry_, services_.view(), project_, script_session_);
@@ -198,6 +202,7 @@ class Session {
     run_startup(startup);
     const bool ok = script_session_.quit_requested || run_sources();
     magic_console_.flush();
+    cell::end_crash_session(editor_, services_.files());  // normal exit: drop this session's backup and lock
     const int status = ok ? kExitOk : kExitFailure;
     log(diag::Severity::info, "session end exit=" + std::to_string(status));
     return status;
@@ -265,6 +270,7 @@ class Session {
     }
     env.pdk_root = options_.pdk_root;
     env.user_preferences = platform::default_storage_dir() / "preferences.json";
+    env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
     return env;
   }
 

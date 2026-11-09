@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "app.hpp"
+#include "hefesto/platform_posix/process_runner.hpp"
 #include "options.hpp"
-#include "posix_process_runner.hpp"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -284,7 +284,7 @@ TEST_CASE("help and diagnostic-codes options", CLI_TAGS) {
 }
 
 TEST_CASE("POSIX process runner", SERVICES_TAGS) {
-  cli::PosixProcessRunner runner;
+  hefesto::platform_posix::PosixProcessRunner runner;
   CHECK(runner.supported());
   const auto ok = runner.run({.program = "sh", .args = {"-c", "cat; echo err >&2; exit 3"}, .working_directory = {},
                               .stdin_data = "piped\n"});
@@ -326,7 +326,7 @@ int inheritable_pipe_count() {
 }  // namespace
 
 TEST_CASE("POSIX process runner: children inherit no pipe fds besides 0, 1 and 2", SERVICES_TAGS) {
-  cli::PosixProcessRunner runner;
+  hefesto::platform_posix::PosixProcessRunner runner;
   const std::string baseline = std::to_string(inheritable_pipe_count()) + "\n";
   const char* script =
       "n=0; for f in /dev/fd/*; do case $f in /dev/fd/0|/dev/fd/1|/dev/fd/2) ;; "

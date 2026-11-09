@@ -5,22 +5,20 @@
 // sky130_fd_sc_hd library reads and writes back byte-identically. Skips
 // when .cache/pdks or Magic's fonts (build/ref/magic) are absent.
 //
-// Two library files are not in the form Magic fc5daa9e writes, so the
-// spec'd writer cannot reproduce them byte for byte; they are checked as
-// documented exceptions (same lines in another order / a fixed point of
-// read+write) until the CELL-WR-10 golden capture settles them:
-//  - tapvpwrvgnd_1: MASKHINTS_PSDM precedes MASKHINTS_NSDM, but the writer
-//    sorts property keys with the natural comparator ("Writer properties").
-//  - a21bo_1: its pwell is not the maximal-horizontal-strip decomposition
-//    (rects 69 21 735 157 and 29 17 69 157 share the rows 21..157), which
-//    layout-geometry-model requires for every written rect.
+// Two library files are not in the form Magic fc5daa9e writes, and Magic
+// itself does not write them back unchanged: the golden case CELL-WR-10
+// captured Magic's own rewrite of both (tests/golden/CELL/cases/CELL-WR-10/
+// expected/), and Hefesto's output must equal those bytes:
+//  - tapvpwrvgnd_1: the file lists MASKHINTS_PSDM before MASKHINTS_NSDM;
+//    Magic (and Hefesto, "Writer properties") writes the keys in natural order.
+//  - a21bo_1: the file's pwell is not the maximal-horizontal-strip
+//    decomposition; Magic (and Hefesto, layout-geometry-model) re-splits it.
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <map>
 #include <set>
 #include <sstream>
 #include <vector>
@@ -38,18 +36,14 @@ std::optional<fs::path> sky130a_root() {
   return hefesto::test::pinned_sky130a();
 }
 
-const std::map<std::string, std::string_view> kExceptions = {
-    {"sky130_fd_sc_hd__tapvpwrvgnd_1.mag", "same lines"},
-    {"sky130_fd_sc_hd__a21bo_1.mag", "fixed point"},
+/// Library files whose expected output is Magic's own rewrite (CELL-WR-10).
+const std::set<std::string> kMagicRewrites = {
+    "sky130_fd_sc_hd__tapvpwrvgnd_1.mag",
+    "sky130_fd_sc_hd__a21bo_1.mag",
 };
 
-std::multiset<std::string> lines_of(const std::string& text) {
-  std::multiset<std::string> out;
-  std::istringstream in(text);
-  for (std::string line; std::getline(in, line);) {
-    out.insert(line);
-  }
-  return out;
+fs::path magic_rewrite(const std::string& file) {
+  return fs::path{HEFESTO_SOURCE_DIR} / "tests/golden/CELL/cases/CELL-WR-10/expected" / file;
 }
 
 std::string slurp(const fs::path& p) {
@@ -113,19 +107,14 @@ TEST_CASE("every sky130_fd_sc_hd cell round-trips byte-identically",
     INFO(file.filename().string());
     REQUIRE(status.ok());
     const std::string written = io.write(def);
-    const auto exception = kExceptions.find(file.filename().string());
-    if (written == original) {
-      CHECK(exception == kExceptions.end());  // an exception that now passes: drop it
+    const std::string expected =
+        kMagicRewrites.contains(file.filename().string()) ? slurp(magic_rewrite(file.filename().string())) : original;
+    REQUIRE_FALSE(expected.empty());
+    if (written == expected) {
       ++identical;
-    } else if (exception == kExceptions.end()) {
-      FAIL_CHECK(first_difference(original, written));
-    } else if (exception->second == "same lines") {
-      CHECK(lines_of(written) == lines_of(original));
     } else {
-      cell::test::CellIo again{tech.value(), &local};
-      REQUIRE(again.load_fonts());
-      CHECK(again.write(again.read(file.stem().string(), written)) == written);
+      FAIL_CHECK(first_difference(expected, written));
     }
   }
-  CHECK(identical == files.size() - kExceptions.size());
+  CHECK(identical == files.size());
 }

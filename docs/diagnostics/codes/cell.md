@@ -26,14 +26,15 @@ the specs quote them.
 |---|---|---|
 | `CELL-BACKUP-001` | error | A crash backup or archive file cannot be read or is malformed. |
 | `CELL-BACKUP-002` | info | Crash backup or archive progress (file created, recovered or removed). |
+| `CELL-BACKUP-003` | warning | A periodic crash backup failed, or periodic crash backups were halted. |
 | `CELL-CMD-001` | error | Invalid arguments to a cell file command. |
 | `CELL-CMD-002` | error | The cell named by a command does not exist or there is no edit cell. |
 | `CELL-EXT-001` | info | A HEFESTO_ property has a newer schema version; it is kept unchanged. |
-| `CELL-IO-001` | warning | The cell file is not writeable or is locked by another session; the cell is read-only. |
+| `CELL-IO-001` | info | The cell file is not writeable or is locked by another session; the cell is read-only. |
 | `CELL-IO-002` | error | The cell is read-only or locked and cannot be written. |
 | `CELL-IO-003` | error | Writing the cell file failed; the previous file is unchanged. |
 | `CELL-IO-004` | warning | A saved parent references a cell renamed after a duplicate-cell conflict. |
-| `CELL-IO-005` | warning | A cell is written while it still waits for a new timestamp. |
+| `CELL-IO-005` | info | A cell is written while it still waits for a new timestamp. |
 | `CELL-IO-006` | error | A name, identifier or path contains characters that cannot be written back. |
 | `CELL-IO-007` | info | A cell was saved in a non-default form (command script). |
 | `CELL-PATH-001` | warning | A cell was found somewhere other than its recorded path. |
@@ -42,6 +43,8 @@ the specs quote them.
 | `CELL-PATH-004` | warning | A use-line path names an undefined variable; the search paths are used. |
 | `CELL-PATH-005` | error | The cell was already read from a different, conflicting location. |
 | `CELL-PATH-006` | info | Standard-cell library directories were added to the cell library path. |
+| `CELL-PATH-007` | info | Automatic technology discovery is loading the technology a cell file names. |
+| `CELL-PATH-008` | error | Automatic technology discovery could not load the technology a cell file names. |
 | `CELL-READ-001` | error | The cell file contained a format error; the content read so far is kept. |
 | `CELL-READ-002` | error | The first line of a cell file is not "magic". |
 | `CELL-READ-003` | error | The "tech" line of a cell file is malformed. |
@@ -51,8 +54,9 @@ the specs quote them.
 | `CELL-READ-007` | warning | A record value is unknown (layer, port use/class/shape) and was replaced or ignored. |
 | `CELL-READ-008` | warning | Geometry may be lost because the internal grid cannot be refined. |
 | `CELL-READ-009` | info | Informational message while reading a cell (identifiers assigned, scaling). |
-| `CELL-READ-010` | warning | A use block was adjusted or ignored (duplicate id, circular use, degenerate box). |
+| `CELL-READ-010` | info | A use block was adjusted or ignored (circular use, degenerate box). |
 | `CELL-READ-011` | warning | The cell has a zero timestamp and should be written out. |
 | `CELL-READ-013` | error | A compressed cell file could not be decompressed. |
+| `CELL-READ-014` | warning | Two uses in a cell file share an instance identifier; one is renamed. |
 | `CELL-STAMP-001` | info | Timestamp mismatches were processed. |
 <!-- END DIAGNOSTIC CODES -->

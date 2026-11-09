@@ -77,16 +77,25 @@ class Flattener {
 
   // flatCopyAllLabels over `def` and its descended subtree. `path` is the
   // hierarchical prefix ("" at the top level of the flattened source).
-  void copy_labels(const CellDef& def, const Transform& t, const std::string& path, bool top) {
+  //
+  // DBTreeSrLabels visits a cell's labels, then its uses in subcell
+  // enumeration order. flatCopyAllLabels turns the separator before the
+  // label text into '.' in the shared path buffer and never restores it, so
+  // once a level has copied a label its separator stays '.' for the labels
+  // of the cells below it (commands/CmdFI.c:1990-2000).
+  void copy_labels(const CellDef& def, const Transform& t, std::string path, bool top) {
     for (const Label& lab : def.labels()) {
       if (!lab.text.empty()) {
         put_flat_label(lab, t, path, top);
+        if (!path.empty()) {
+          path.back() = '.';
+        }
       }
     }
     if (options_.labels == FlattenLabels::top_only) {
       return;
     }
-    for (const auto& u : def.uses()) {
+    for (const CellUse* u : uses_in_search_order(def)) {
       if (!descends(*u, options_.descend)) {
         continue;
       }

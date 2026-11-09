@@ -1,0 +1,8 @@
+# CELL-PW-01: Child in a subdirectory of the parent directory; save the parent.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load top
+box 0 0 0 0
+getcell input/lib/c
+save top

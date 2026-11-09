@@ -27,6 +27,7 @@ inline constexpr std::string_view kReadNote = "CELL-READ-009";
 inline constexpr std::string_view kUseProblem = "CELL-READ-010";
 inline constexpr std::string_view kZeroTimestamp = "CELL-READ-011";
 inline constexpr std::string_view kCompressed = "CELL-READ-013";
+inline constexpr std::string_view kDuplicateId = "CELL-READ-014";
 // Extensions (hefesto-mag-extensions)
 inline constexpr std::string_view kNewerExtension = "CELL-EXT-001";
 // Library resolution (cell-library-resolution)
@@ -36,6 +37,8 @@ inline constexpr std::string_view kUsePath = "CELL-PATH-003";
 inline constexpr std::string_view kUndefinedVariable = "CELL-PATH-004";
 inline constexpr std::string_view kConflictingLocation = "CELL-PATH-005";
 inline constexpr std::string_view kLibraryPath = "CELL-PATH-006";
+inline constexpr std::string_view kTechLoading = "CELL-PATH-007";
+inline constexpr std::string_view kTechLoadFailed = "CELL-PATH-008";
 // I/O safety (cell-io-safety)
 inline constexpr std::string_view kReadOnly = "CELL-IO-001";
 inline constexpr std::string_view kWriteRefused = "CELL-IO-002";
@@ -47,6 +50,7 @@ inline constexpr std::string_view kSaved = "CELL-IO-007";
 // Crash backups and archives (cell-io-safety)
 inline constexpr std::string_view kBackupRead = "CELL-BACKUP-001";
 inline constexpr std::string_view kBackupNote = "CELL-BACKUP-002";
+inline constexpr std::string_view kBackupTimer = "CELL-BACKUP-003";
 // Timestamps (cell-timestamps)
 inline constexpr std::string_view kStampMismatch = "CELL-STAMP-001";
 // Commands

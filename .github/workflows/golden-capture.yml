@@ -78,6 +78,37 @@ jobs:
           echo "${#cases[@]} case(s); mode $MODE"
           python3 tools/golden/capture.py --check "${cases[@]}"
 
+      # External inputs of the cases ([[external]] in case.toml, tools/golden/goldenlib/external.py):
+      # the pinned sky130A subset (.cache/pdks) and Magic's sources (build/ref/magic, for the generated
+      # scmos.tech). Same paths and key as ci.yml, so a cache saved by CI is reused here.
+      - uses: actions/cache@v4
+        id: refdata
+        with:
+          path: |
+            .cache/pdks
+            build/ref/magic
+          key: reference-data-${{ runner.os }}-${{ hashFiles('scripts/fetch_pdk.py') }}
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      # scripts/fetch_pdk.py installs the PDK subset with hefesto-cli's own `pdk install`; on a cache
+      # hit it only verifies the tree digest and needs no hefesto-cli.
+      - name: Build hefesto-cli for the PDK install (reference-data cache miss only)
+        if: steps.refdata.outputs.cache-hit != 'true'
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch the pinned sky130A test subset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py pdk --cli build/linux-release/src/cli/hefesto-cli
+
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
@@ -98,8 +129,11 @@ jobs:
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
           mapfile -t cases < cases.txt
+          # A case that fails (e.g. the reference tool crashes) must not drop the others' outputs:
+          # collect and upload what was captured, then fail the step.
+          status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --only-missing "${cases[@]}" | tee capture.log
+            --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
           # Collect the new expected/ directories, keeping their tests/golden/... paths.
           mkdir -p golden-expected
           git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
@@ -109,9 +143,11 @@ jobs:
           else
             echo "::notice::no case without expected/"
           fi
+          grep ': error: ' capture.log | sed 's/^/::error::/' || true
+          exit "$status"
 
       - uses: actions/upload-artifact@v4
-        if: env.MODE == 'both' || env.MODE == 'capture'
+        if: always() && (env.MODE == 'both' || env.MODE == 'capture')
         with:
           name: golden-expected
           path: golden-expected/

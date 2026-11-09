@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+<< properties >>
+string GDS_FILE v.gds
+string GDS_START 10
+string GDS_END 20
+<< end >>

@@ -9,15 +9,9 @@
 #include <memory>
 #include <string>
 
-#include "cell_fixture.hpp"
-#include "hefesto/cell/commands.hpp"
+#include "command_session.hpp"
 #include "hefesto/cell/diag_codes.hpp"
-#include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/paint.hpp"
-#include "hefesto/editor/editor_state.hpp"
-#include "hefesto/platform/services.hpp"
-#include "hefesto/settings/project_settings.hpp"
 
 namespace cell = hefesto::cell;
 namespace cmd = hefesto::cmd;
@@ -25,32 +19,10 @@ namespace db = hefesto::db;
 
 namespace {
 
-struct Session {
-  hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
-  hefesto::settings::ProjectSettings project;
-  cmd::ScriptSession script{project};
-  cmd::CommandRegistry registry;
-  hefesto::editor::EditorState editor;
-  std::unique_ptr<cmd::Dispatcher> dispatcher;
-
-  Session() {
-    REQUIRE(cell::register_cell_commands(registry));
-    dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
-    dispatcher->set_editor(&editor);
-    editor.technology = cell::test::tiny_technology();
-    editor.locks->session().host = cell::make_memory_file_host(files(), "/work");
-    editor.search_paths.path = {"/work"};
-  }
-
-  hefesto::platform::FileSystem& files() { return services.view().files; }
-
-  cmd::CommandResult run(std::string name, std::vector<std::string> args = {}) {
-    return dispatcher->execute(cmd::Invocation{std::move(name), std::move(args), cmd::Origin::script, std::nullopt});
-  }
-};
+using Session = hefesto::cell::test::CommandSession;
 
 std::string text_of(const cmd::CommandResult& r) {
-  return r.diagnostics.empty() ? std::string{} : r.diagnostics.back().text;
+  return hefesto::cell::test::last_text(r);
 }
 
 }  // namespace

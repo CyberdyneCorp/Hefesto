@@ -1,0 +1,15 @@
+magic
+tech mt
+timestamp 1794195325
+<< checkpaint >>
+rect 0 0 10 10
+rect 20 0 30 10
+use nand2  nand2_0 input/lib
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use nand2  nand2_1
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 10 10
+<< end >>

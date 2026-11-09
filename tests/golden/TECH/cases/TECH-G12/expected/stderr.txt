@@ -1,0 +1,12 @@
+input/tiny.tech: line 10: section version:
+	Error:  Magic version 8.3.700 is required by this techfile, but this version of magic is 8.3.694.
+input/tiny.tech: line 12: section version:
+	Badly formed magic version string, should be major.minor.rev
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+The following sections of input/tiny.tech contained errors:
+    version

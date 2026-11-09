@@ -1,0 +1,34 @@
+# MODEL-G-010: Child labels with the 8 justifications, placed 90 and v, flattened.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load child
+box 0 0 30 30
+paint metal1
+box 3 3 3 3
+label jn n
+box 6 6 6 6
+label jne ne
+box 9 9 9 9
+label je e
+box 12 12 12 12
+label jse se
+box 15 15 15 15
+label js s
+box 18 18 18 18
+label jsw sw
+box 21 21 21 21
+label jw w
+box 24 24 24 24
+label jnw nw
+save child
+load top
+box 0 0 0 0
+getcell child 90
+box 100 0 100 0
+getcell child v
+save top
+load top
+flatten flat
+load flat
+save flat

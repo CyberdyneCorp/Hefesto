@@ -26,6 +26,9 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_project_file     # hefesto.project (hefesto-settings)
   fuzz_pdk_manifest     # PDK catalog and manifests (hefesto-pdk-manager)
   fuzz_tar_reader       # PDK tar unpacking (hefesto-pdk-manager)
+  fuzz_pdk_pack         # offline pack manifests, install progress text (hefesto-pdk-manager)
+  fuzz_backup_file      # crash backup and archive files (cell-io-safety)
+  fuzz_recent_projects  # recent-projects list (hefesto-pdk-manager)
 )
 
 if(HEFESTO_BUILD_FUZZ)

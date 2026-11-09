@@ -83,10 +83,10 @@ TEST_CASE("view commands are registered, view and zoom apart", "[cap:ui-windows-
 TEST_CASE("view frames, reports and sets the view", "[cap:ui-windows-and-views][req:view, xview and zoom]") {
   Session s;
   auto& w = s.window(s.cell("inv", {0, 0, 100, 50}));
-  CHECK(text(s.run("view", {"get"})) == "(-11, -24) to (112, 75)");
+  CHECK(text(s.run("view", {"get"})) == "-11 -24 112 75");  // Tcl list
   REQUIRE(s.run("view").ok());
   CHECK(w.mapping().surface == view::ViewMapping::fit(w.mapping().screen, {-10, -5, 111, 55}).surface);
-  CHECK(text(s.run("view", {"bbox"})) == "(0, 0) to (100, 50)");
+  CHECK(text(s.run("view", {"bbox"})) == "0 0 100 50");
   REQUIRE(s.run("view", {"0", "0", "10", "20"}).ok());
   CHECK(w.mapping().surface == view::ViewMapping::fit(w.mapping().screen, {0, 0, 10, 20}).surface);
   REQUIRE(s.run("view", {"0 0 10 20"}).ok());  // one argument, parsed x y x y (Q-UI-18)
@@ -214,10 +214,10 @@ TEST_CASE("grid command forms", "[cap:ui-windows-and-views][req:Grid display and
   auto& w = s.window(s.cell("top", {0, 0, 10, 10}));
   REQUIRE(s.run("grid", {"10", "20", "5", "0"}).ok());
   CHECK(w.grid().visible);
-  CHECK(text(s.run("grid", {"box"})) == "Grid unit box is (5, 0) to (15, 20)");
-  CHECK(text(s.run("grid", {"state"})) == "Grid is on");
+  CHECK(text(s.run("grid", {"box"})) == "5 0 15 20");  // Tcl result: "%d %d %d %d"
+  CHECK(text(s.run("grid", {"state"})) == "1");  // Tcl_NewBooleanObj
   REQUIRE(s.run("grid").ok());
-  CHECK(text(s.run("grid", {"state"})) == "Grid is off");
+  CHECK(text(s.run("grid", {"state"})) == "0");
   REQUIRE(s.run("grid", {"on"}).ok());
   REQUIRE(s.run("grid", {"0"}).ok());
   CHECK_FALSE(w.grid().visible);
@@ -249,14 +249,15 @@ TEST_CASE("crosshair is shown in every window on the same root", "[cap:ui-window
 TEST_CASE("window chrome defaults affect only new windows", "[cap:ui-windows-and-views][req:Window chrome flags]") {
   Session s;
   auto& old = s.window(s.cell("top", {0, 0, 10, 10}));
-  CHECK(text(s.run("windowcaption", {"off"})) == "New windows will not have a title caption.");
+  CHECK(error(s.run("windowcaption", {"off"})) == "New windows will not have a title caption.");  // printed
   REQUIRE(s.run("openwindow").ok());
   CHECK_FALSE(s.editor.windows.current()->chrome().caption);
   CHECK(old.chrome().caption);
-  CHECK(text(s.run("windowborder", {"of"})) == "New windows will not have a border.");
-  CHECK(text(s.run("windowscrollbars", {"on"})) == "New windows will have scroll bars.");
+  CHECK(error(s.run("windowborder", {"of"})) == "New windows will not have a border.");
+  CHECK(error(s.run("windowscrollbars", {"on"})) == "New windows will have scroll bars.");
+  CHECK(text(s.run("windowscrollbars", {"on"})).empty());
   CHECK_FALSE(s.run("windowscrollbars").ok());
-  CHECK(text(s.run("windowborder")) == "Window border is on");
+  CHECK(text(s.run("windowborder")) == "on");  // Tcl result
 }
 
 TEST_CASE("captions name the edit cell", "[cap:ui-windows-and-views][req:Window captions]") {
@@ -270,9 +271,9 @@ TEST_CASE("captions name the edit cell", "[cap:ui-windows-and-views][req:Window 
   top->uses().push_back(std::move(use));
   s.editor.edit_cell = inv;
   s.window(nand2);
-  CHECK(text(s.run("windowcaption")) == "Window caption is \"nand2 [NOT BEING EDITED]\"");
+  CHECK(text(s.run("windowcaption")) == "nand2 [NOT BEING EDITED]");
   s.window(top);
-  CHECK(text(s.run("windowcaption")) == "Window caption is \"top EDITING inv\"");
+  CHECK(text(s.run("windowcaption")) == "top EDITING inv");
 }
 
 TEST_CASE("openwindow, closewindow and window listings",
@@ -286,9 +287,9 @@ TEST_CASE("openwindow, closewindow and window listings",
   REQUIRE(w != nullptr);
   CHECK(w->root() == inv);
   CHECK(w->mapping().surface == view::ViewMapping::fit(w->mapping().screen, {-5, -2, 105, 42}).surface);
-  CHECK(text(s.run("windownames")) == "Window ID = 0");
+  CHECK(text(s.run("windownames")) == "0");  // Tcl: the window id
   REQUIRE(s.run("openwindow", {"nand2", "second"}).ok());
-  CHECK(text(s.run("windownames", {"all"})) == "Window ID\tWindow Name\n1\tsecond\n0\t");
+  CHECK(text(s.run("windownames", {"all"})) == "1 0");  // ids, top window first
   REQUIRE(s.run("closewindow", {"second"}).ok());
   CHECK(error(s.run("closewindow", {"nosuch"})) == "Window named nosuch cannot be found");
   REQUIRE(s.run("openwindow").ok());

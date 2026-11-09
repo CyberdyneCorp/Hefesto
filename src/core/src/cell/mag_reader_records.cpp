@@ -326,7 +326,8 @@ void read_port(ReadState& st) {
 // --- elements --------------------------------------------------------------
 
 void read_element(ReadState& st) {
-  auto element = parse_element(st.line);
+  std::vector<std::string> flag_errors;
+  auto element = parse_element(st.line, &flag_errors);
   if (!element) {
     const char kind = st.line.front();
     const std::string_view keyword = kind == 'r' ? "rectangle" : (kind == 'l' ? "line" : "text");
@@ -337,6 +338,9 @@ void read_element(ReadState& st) {
   element->area = db::Rect{st.scale(element->area.x0), st.scale(element->area.y0), st.scale(element->area.x1),
                            st.scale(element->area.y1)};
   put_element(st.def, std::move(*element));
+  for (const std::string& message : flag_errors) {
+    st.emit(codes::kRecordValue, message);  // DBWElementParseFlags (Magic ref: dbwind/DBWelement.c:1016)
+  }
 }
 
 // --- properties ------------------------------------------------------------

@@ -1,0 +1,15 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+# c1
+rect 0 0 4 4
+use leaf leaf_0
+# c2
+timestamp 100
+transform 1 0 20 0 1 0
+box 20 0 30 10
+<< labels >>
+# c3
+rlabel metal1 1 1 1 1 0 x
+<< end >>

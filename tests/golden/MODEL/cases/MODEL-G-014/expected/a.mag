@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794195323
+<< checkpaint >>
+rect 0 0 20 10
+<< metal1 >>
+rect 10 0 20 10
+<< via1 >>
+rect 0 0 10 10
+<< end >>

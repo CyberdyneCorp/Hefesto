@@ -1,0 +1,17 @@
+magic
+tech scmos
+timestamp 1794195320
+<< checkpaint >>
+rect -14 -14 54 24
+<< metal1 >>
+rect 0 0 40 10
+<< labels >>
+rlabel metal1 2 2 2 2 2 u
+port 1 ne power default
+rlabel metal1 12 2 12 2 1 c
+port 2 n default input
+rlabel metal1 22 2 22 2 1 all
+port 3 n ground output abutment
+rlabel metal1 32 2 32 2 1 r
+port 4 n
+<< end >>

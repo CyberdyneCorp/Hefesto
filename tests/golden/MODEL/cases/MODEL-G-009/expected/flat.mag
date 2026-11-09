@@ -1,0 +1,22 @@
+magic
+tech mt
+timestamp 1794195322
+<< metal1 >>
+rect 0 0 10 20
+rect 40 0 60 10
+rect 80 0 90 20
+rect 120 0 140 10
+rect 160 0 170 20
+rect 200 0 210 20
+rect 240 0 260 10
+rect 280 0 300 10
+<< labels >>
+rlabel metal1 290 5 290 5 7 child_7.N
+rlabel metal1 250 5 250 5 3 child_6.N
+rlabel metal1 205 10 205 10 1 child_5.N
+rlabel metal1 165 10 165 10 5 child_4.N
+rlabel metal1 130 5 130 5 7 child_3.N
+rlabel metal1 85 10 85 10 5 child_2.N
+rlabel metal1 50 5 50 5 3 child_1.N
+rlabel metal1 5 10 5 10 1 child_0.N
+<< end >>

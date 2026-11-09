@@ -134,7 +134,9 @@ std::optional<platform::Path> find_in_dirs(platform::FileSystem& fs, std::string
     return direct;
   }
   for (const auto& dir : dirs) {
-    if (auto found = existing(fs, dir / full)) {
+    // PaOpen's "." entry names the file without a "./" prefix (TechFileName
+    // and every message show the name as given, e.g. "input/tiny.tech").
+    if (auto found = existing(fs, dir == platform::Path{"."} ? platform::Path{full} : dir / full)) {
       return found;
     }
   }
@@ -246,6 +248,9 @@ void LineReader::warn(std::string_view code, const diag::SourceLocation& where, 
 // line. magic-compat reproduces that; otherwise the physical count is kept.
 bool LineReader::read_physical(std::string& out, std::uint32_t& line_no) {
   while (!files_.empty() && files_.back().next == files_.back().lines.size()) {
+    if (files_.size() == 1) {
+      end_line_ = files_.back().line_no + 1;  // the EOF read counts (utils/tech.c:1009)
+    }
     files_.pop_back();  // end of an included file: continue after its include line
     if (!files_.empty() && options_.magic_compat) {
       files_.back().skip_count = true;

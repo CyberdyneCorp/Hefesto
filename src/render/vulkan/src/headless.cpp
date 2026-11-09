@@ -345,7 +345,8 @@ struct HeadlessCanvas::Impl {
     vk::check(vkResetFences(device, 1, &fence), "vkResetFences");
   }
 
-  void record_frame(const ViewTransform& view_transform, std::span<const LayerBatch> draws) {
+  void record_frame(const ViewTransform& view_transform, std::span<const LayerBatch> draws,
+                    std::span<const LayerBatch> polygon_draws) {
     if (queries != VK_NULL_HANDLE) {
       vkCmdResetQueryPool(cmd, queries, 0, 2);
       vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, queries, 0);
@@ -361,8 +362,7 @@ struct HeadlessCanvas::Impl {
     begin.pClearValues = &clear;
     vkCmdBeginRenderPass(cmd, &begin, VK_SUBPASS_CONTENTS_INLINE);
     renderer->record(DrawTarget{vk::to_opaque(cmd), vk::to_opaque(pass), 0, 0, width, height, true, false, {}},
-                     view_transform,
-                     draws);
+                     view_transform, draws, polygon_draws);
     vkCmdEndRenderPass(cmd);
     if (queries != VK_NULL_HANDLE) {
       vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queries, 1);
@@ -396,10 +396,11 @@ int HeadlessCanvas::height() const noexcept {
   return impl_->height;
 }
 
-FrameTiming HeadlessCanvas::render(const ViewTransform& view, std::span<const LayerBatch> draws) {
+FrameTiming HeadlessCanvas::render(const ViewTransform& view, std::span<const LayerBatch> draws,
+                                   std::span<const LayerBatch> polygon_draws) {
   const auto start = std::chrono::steady_clock::now();
   impl_->begin_commands();
-  impl_->record_frame(view, draws);
+  impl_->record_frame(view, draws, polygon_draws);
   impl_->submit_and_wait();
   const std::chrono::duration<double, std::milli> cpu = std::chrono::steady_clock::now() - start;
   return FrameTiming{cpu.count(), impl_->gpu_time_ms()};

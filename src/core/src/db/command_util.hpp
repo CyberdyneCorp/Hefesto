@@ -7,7 +7,9 @@
 #pragma once
 
 #include <cstdint>
+#include <initializer_list>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,7 +29,13 @@ struct Session {
   editor::EditorState* editor = nullptr;
   const tech::Technology* tech = nullptr;
   bool magic_compat = true;
+  cmd::CommandContext* ctx = nullptr;
 };
+
+/// Prints a report line (stdout, Magic's TxPrintf) / a warning (stderr,
+/// Magic's TxError) without failing the command.
+void print(const Session& s, std::string text);
+void warn(const Session& s, std::string text);
 
 [[nodiscard]] diag::Outcome<Session> session(cmd::CommandContext& ctx);
 [[nodiscard]] diag::Outcome<CellDef*> edit_cell(const Session& s);
@@ -39,6 +47,12 @@ using Snap = editor::SnapMode;
 [[nodiscard]] Snap snap_mode(const Session& s);
 void set_snap_mode(const Session& s, Snap mode);
 [[nodiscard]] std::string_view snap_name(Snap mode) noexcept;
+/// Magic's DBWUnits as far as M1 needs it: `default` (un-suffixed values
+/// follow the snap grid) until the deprecated `snap internal` switches it to
+/// `internal` (cmd-coordinates-and-units, "Snap command"). Kept in the
+/// session settings layer under "units" until the `units` command lands.
+[[nodiscard]] bool units_internal(const Session& s);
+void set_units_internal(const Session& s);
 
 /// A coordinate typed by the user: an integer with an optional unit suffix
 /// `i` (internal) or `l` (lambda); otherwise in the current snap unit.
@@ -62,6 +76,11 @@ void set_snap_mode(const Session& s, Snap mode);
 /// session settings layer under "model.current-use".
 [[nodiscard]] CellUse* current_use(const Session& s);
 void set_current_use(const Session& s, const CellUse* use);
+
+/// Magic's Lookup: exact match, else a unique prefix; the index, -1 when
+/// ambiguous, -2 when nothing matches.
+[[nodiscard]] int lookup(std::string_view word, std::initializer_list<std::string_view> choices);
+[[nodiscard]] int lookup_in(std::string_view word, std::span<const std::string_view> choices);
 
 /// Joins argument tokens from `first` with single spaces.
 [[nodiscard]] std::string join_args(const std::vector<std::string>& args, std::size_t first);

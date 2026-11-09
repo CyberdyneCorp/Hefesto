@@ -1,0 +1,1 @@
+1phase=unpack part=2/3 bytes=512 total=1024 asset=sky130_fd_sc_hd.tar.zst

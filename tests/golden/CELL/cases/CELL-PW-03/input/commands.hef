@@ -1,0 +1,14 @@
+# CELL-PW-03: Child in the same directory; two instances.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load c
+box 0 0 4 4
+paint metal1
+save c
+load top
+box 0 0 0 0
+getcell c
+box 10 0 10 0
+getcell c
+save top

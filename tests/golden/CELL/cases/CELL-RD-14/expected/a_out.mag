@@ -1,0 +1,42 @@
+magic
+tech scmos
+timestamp 100
+<< checkpaint >>
+rect -14 106 24 144
+rect -14 66 24 104
+rect -14 26 64 64
+rect -14 -14 104 24
+use leaf  l_arr input
+array 0 2 20 0 0 0
+timestamp 100
+transform 1 0 0 0 1 40
+box 0 0 10 10
+use leaf  l_degen
+timestamp 100
+transform 1 0 0 0 1 120
+box 0 0 10 10
+use leaf  l_dup
+timestamp 100
+transform 1 0 80 0 1 0
+box 0 0 10 10
+use leaf *l_lock
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use leaf  l_nots
+timestamp 100
+transform 1 0 0 0 1 80
+box 0 0 10 10
+use leaf  l_un
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 10 10
+use leaf  leaf_0
+timestamp 100
+transform 1 0 60 0 1 0
+box 0 0 10 10
+use leaf  leaf_1
+timestamp 100
+transform 1 0 40 0 1 0
+box 0 0 10 10
+<< end >>

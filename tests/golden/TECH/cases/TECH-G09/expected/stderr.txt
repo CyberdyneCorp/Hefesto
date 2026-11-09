@@ -1,0 +1,12 @@
+input/tiny.tech: line 63: section connect:
+	Warning: Couldn't find include file nothere.tech
+input/tiny.tech: line 63: section connect:
+	Unrecognized layer (type) name "include"
+input/tiny.tech: line 63: section connect:
+	Unrecognized layer (type) name "nothere.tech"
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,

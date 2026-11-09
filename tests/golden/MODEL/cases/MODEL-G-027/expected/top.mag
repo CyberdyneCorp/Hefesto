@@ -1,0 +1,20 @@
+magic
+tech mt
+timestamp 1794195325
+<< checkpaint >>
+rect 0 0 10 10
+rect 20 0 30 10
+rect 40 0 50 10
+use inv  inv_0
+timestamp 1794195325
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use inv  inv_1
+timestamp 1794195325
+transform 1 0 20 0 1 0
+box 0 0 10 10
+use inv  inv_2
+timestamp 1794195325
+transform 1 0 40 0 1 0
+box 0 0 10 10
+<< end >>

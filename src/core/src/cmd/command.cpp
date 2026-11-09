@@ -10,7 +10,7 @@
 namespace hefesto::cmd {
 
 std::string_view origin_name(Origin origin) noexcept {
-  constexpr std::array<std::string_view, 6> kNames = {"cli", "script", "gui", "key", "touch", "plugin"};
+  constexpr std::array<std::string_view, 7> kNames = {"cli", "script", "gui", "key", "touch", "plugin", "internal"};
   return kNames.at(static_cast<std::size_t>(origin));
 }
 

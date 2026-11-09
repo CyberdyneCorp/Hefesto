@@ -1,0 +1,16 @@
+magic
+tech mt
+timestamp 1794195323
+<< checkpaint >>
+rect 4 10 6 12
+rect 0 0 10 10
+rect 4 -2 6 0
+<< ndiffusion >>
+rect 0 0 4 10
+rect 6 0 10 10
+<< polysilicon >>
+rect 4 10 6 12
+rect 4 -2 6 0
+<< ntransistor >>
+rect 4 0 6 10
+<< end >>

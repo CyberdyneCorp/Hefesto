@@ -5,6 +5,9 @@
 
 #include <charconv>
 
+#include "hefesto/app/startup.hpp"
+#include "hefesto/diag/format.hpp"
+
 namespace hefesto::shell {
 
 namespace {
@@ -53,6 +56,7 @@ std::string* string_option(ShellOptions& o, std::string_view name) {
   if (name == "--bench-output") return &o.bench_output;
   if (name == "--capture") return &o.capture;
   if (name == "--asset-dir") return &o.asset_dir;
+  if (name == "--run") return &o.run;
   return nullptr;
 }
 
@@ -122,9 +126,19 @@ std::string_view shell_usage() noexcept {
   return "usage: hefesto [-T tech] [-r] [-norcfile] [cell.mag ...]\n"
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
-         "               [--capture FILE.ppm [--capture-frames N]]\n"
+         "               [--run 'CMD; CMD ...'] [--capture FILE.ppm [--capture-frames N]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";
+}
+
+std::string startup_option_error(const diag::Diagnostic& error) {
+  std::string text = diag::format_text(error);
+  const std::string_view usage = app::startup_usage_line();
+  if (text.find(usage) == std::string::npos) {
+    text += "\n";
+    text += usage;
+  }
+  return text;
 }
 
 }  // namespace hefesto::shell

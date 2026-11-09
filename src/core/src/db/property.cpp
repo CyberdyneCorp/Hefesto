@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "hefesto/db/diag_codes.hpp"
+#include "hefesto/db/plane.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::db {
@@ -241,6 +242,23 @@ diag::Outcome<PropertyValue> parse_property_value(std::string_view type, std::st
     return PropertyValue{DoubleList{std::move(v)}};
   }
   return bad();
+}
+
+std::vector<Rect> plane_property_tiles(const PlaneValue& value) {
+  Plane plane;
+  PaintRow row{};
+  row.fill(1);
+  for (const Rect& r : value.rects) {
+    if (r.x0 < r.x1 && r.y0 < r.y1) {
+      (void)plane.paint(r, row);
+    }
+  }
+  std::vector<Rect> out;
+  plane.enumerate(whole_plane(), tech::TypeMask::of(1), [&](const TileView& t) {
+    out.push_back(t.area);
+    return true;
+  });
+  return out;
 }
 
 }  // namespace hefesto::db

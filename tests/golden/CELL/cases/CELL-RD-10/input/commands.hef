@@ -1,0 +1,7 @@
+# CELL-RD-10: Sections << checkpaint >> and << error_p >> (drc why not authored).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+cellname list allcells
+save a_out

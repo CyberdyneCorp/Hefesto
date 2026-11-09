@@ -1,0 +1,4 @@
+# TECH-G38: cifoutput with options set-minimum-grid; tech lambda.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+tech lambda

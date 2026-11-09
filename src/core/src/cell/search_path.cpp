@@ -439,6 +439,30 @@ std::optional<platform::Path> find_technology_dir(platform::FileSystem& fs, File
   return tech_in(fs, host, root, tech, 0);
 }
 
+std::vector<platform::Path> technology_search_roots(const PathVariables& vars) {
+  std::vector<platform::Path> roots;
+  const auto add = [&roots](const std::string& root) {
+    if (!root.empty() && std::find(roots.begin(), roots.end(), platform::Path{root}) == roots.end()) {
+      roots.emplace_back(root);
+    }
+  };
+  for (const std::string_view name : {"PDK_PATH", "PDKPATH", "PDK_ROOT", "PDKROOT"}) {
+    add(vars.get(name).value_or(""));
+  }
+  add("/usr/local/share/pdk");
+  return roots;
+}
+
+std::optional<platform::Path> locate_technology_dir(platform::FileSystem& fs, FileHost& host,
+                                                    const PathVariables& vars, std::string_view tech) {
+  for (const platform::Path& root : technology_search_roots(vars)) {
+    if (auto dir = find_technology_dir(fs, host, root, tech)) {
+      return dir;
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<std::string> libs_ref_root(std::string_view tech_dir) {
   const std::size_t at = tech_dir.find("libs.tech");
   if (at == std::string_view::npos) {

@@ -221,6 +221,7 @@ Flattening a use in place SHALL, for each array element in order (x varying fast
 Compatibility: behavioral
 
 - Top-level child labels are re-created in the parent as non-port labels with text `<id>[x][y]/<text>` (2-D array), `<id>[x]/<text>` or `<id>[y]/<text>` (1-D), or `<id>/<text>`, and the unprefixed copies are removed. Note the `[x][y]` order differs from element naming (`[y,x]`); see Q-MODEL-7. With `magic-compat` OFF, the prefix SHALL be `<id>[y][x]/<text>`.
+- Magic sizes the renamed text without room for the index suffix (a heap overflow) and, in the captured run, leaves the labels unprefixed. Hefesto SHALL apply the names above (see Q-MODEL-31).
 - Flattening every selected use applies the same procedure to each and deletes them from the selection.
 
 (Magic ref: database/DBcellcopy.c:580-735,781-800, commands/CmdFI.c:2105-2140)

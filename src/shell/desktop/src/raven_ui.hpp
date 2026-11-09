@@ -23,6 +23,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
@@ -210,6 +211,11 @@ class Painter {
   void text_centered_y(TextRole role, float x, float cy, std::string_view text, const Rgba& c);
   [[nodiscard]] float text_width(TextRole role, std::string_view text) const;
   [[nodiscard]] float line_height(TextRole role) const;
+  /// Text in the family and weight of `role` at `size_px` (canvas label
+  /// text, whose size follows the zoom); not tracked.
+  void text_px(TextRole role, float size_px, float x, float y, std::string_view text, const Rgba& c);
+  /// Width and height of text_px's text.
+  [[nodiscard]] std::pair<float, float> measure_px(TextRole role, float size_px, std::string_view text) const;
   /// An icon of `assets/icons/`, tinted with `c`, in a `size` square.
   void icon(std::string_view name, float x, float y, float size, const Rgba& c);
   void push_clip(float x, float y, float w, float h);
@@ -340,6 +346,8 @@ class Window {
   void request_redraw();
   /// Logical-to-pixel scale of the window's monitor (Retina: 2).
   [[nodiscard]] float scale() const;
+  /// The window's width in logical pixels (0 when unknown).
+  [[nodiscard]] int logical_width() const;
   [[nodiscard]] FrameStats frame_stats() const;
   /// Saves the last rendered frame as a binary PPM; false on failure.
   bool capture_ppm(const std::string& path) const;

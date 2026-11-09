@@ -1,0 +1,10 @@
+# MODEL-G-017: pdc 0 0 4 4, then ndiff over it.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 4 4
+paint pdc
+box 0 0 4 4
+paint ndiff
+save a

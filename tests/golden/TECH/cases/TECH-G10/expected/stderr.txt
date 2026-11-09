@@ -1,0 +1,20 @@
+input/tiny.tech: line 64: section connect:
+	Line must contain exactly 2 lists of types
+input/tiny.tech: line 66: section connect:
+	Line must contain exactly 2 lists of types
+input/tiny.tech: line 68: section connect:
+	Line must contain exactly 2 lists of types
+input/tiny.tech: line 71: section connect:
+	Line must contain exactly 2 lists of types
+input/tiny.tech: line 73: section connect:
+	Error: "repeat" with invalid count x
+input/tiny.tech: line 74: section connect:
+	Line must contain exactly 2 lists of types
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+The following sections of input/tiny.tech contained errors:
+    connect

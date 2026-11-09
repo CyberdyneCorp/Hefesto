@@ -19,6 +19,7 @@ add_library(hefesto_shell_desktop STATIC
   src/layout_canvas.cpp
   src/main_window.cpp
   src/options.cpp
+  src/pdk_job.cpp
   src/pdk_panel.cpp
   src/pdk_panel_model.cpp
   src/raven_ui.cpp
@@ -30,6 +31,9 @@ add_library(hefesto_shell_desktop STATIC
   src/view_models.cpp)
 add_library(hefesto::shell_desktop ALIAS hefesto_shell_desktop)
 
+# POSIX host services (fcntl locks, file ownership/ctime, process liveness,
+# posix_spawn process runner): hefesto::platform_posix, added by the root
+# CMakeLists.txt.
 target_include_directories(hefesto_shell_desktop
   PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
 target_link_libraries(hefesto_shell_desktop
@@ -37,6 +41,7 @@ target_link_libraries(hefesto_shell_desktop
     hefesto::core
     hefesto::render_vk
   PRIVATE
+    hefesto::platform_posix
     raven::raven
     nlohmann_json::nlohmann_json)
 hefesto_set_warnings(hefesto_shell_desktop)

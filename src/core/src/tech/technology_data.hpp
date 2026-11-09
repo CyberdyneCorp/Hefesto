@@ -53,6 +53,9 @@ struct Technology::Data {
   // --- identity --------------------------------------------------------------
   std::string name;
   std::string file_name;
+  /// Magic's techLineNumber when the load ended (the file's last physical
+  /// line + 1): the line TechError reports for lookups after the load.
+  std::uint32_t end_line = 0;
   int format_version = 27;
   TechVersion version;
   bool magic_compat = true;  // lookups follow the mode the technology was loaded in

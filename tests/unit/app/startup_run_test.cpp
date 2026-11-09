@@ -13,6 +13,7 @@
 
 #include "hefesto/app/diag_codes.hpp"
 #include "hefesto/app/project_file.hpp"
+#include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/startup.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/script.hpp"
@@ -35,11 +36,15 @@ constexpr const char* kHashB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 // A session whose `tech`, `load` and `lef` commands only record their arguments.
 class Session {
  public:
-  Session()
+  explicit Session(bool with_crash = false)
       : services_(hefesto::platform::PortableOptions{.storage_root = "/storage", .pdk_roots = {}, .in_memory = true,
                                                      .inline_tasks = true}),
         dispatcher_(registry_, services_.view(), project_, script_session_) {
-    for (const char* name : {"tech", "load", "lef"}) {
+    std::vector<const char*> names{"tech", "load", "lef"};
+    if (with_crash) {
+      names.push_back("crash");
+    }
+    for (const char* name : names) {
       (void)registry_.add(cmd::CommandSpec{name, name, "recording fake", [this, name](cmd::CommandContext&, const cmd::Invocation& inv) {
                                              std::string line = name;
                                              for (const auto& a : inv.args) {
@@ -178,7 +183,17 @@ TEST_CASE("a .tcl argument is evaluated as a command script", "[cap:app-startup]
   CHECK(s.calls == std::vector<std::string>{"load fromscript"});
 }
 
-TEST_CASE("option r reports that crash recovery is not available yet", "[cap:app-startup][req:Crash recovery at startup]") {
+TEST_CASE("option r runs crash recovery instead of loading the files", "[cap:app-startup][req:Crash recovery at startup]") {
+  Session s{/*with_crash=*/true};
+  app::StartupOptions options = with_files({"a"});
+  options.recover = true;
+  REQUIRE(s.start(options).ok());
+  CHECK(s.calls == std::vector<std::string>{"crash recover"});
+  CHECK_FALSE(s.reported(app::codes::kRecoverUnavailable));
+}
+
+TEST_CASE("option r without a crash command reports that recovery is unavailable",
+          "[cap:app-startup][req:Crash recovery at startup]") {
   Session s;
   app::StartupOptions options = with_files({"a"});
   options.recover = true;
@@ -347,4 +362,20 @@ TEST_CASE("a technology outside an open_pdks tree leaves the library path alone"
   options.technology = (s.dir.path() / "tech/scmos.tech").string();
   REQUIRE(s.start(options).ok());
   CHECK_FALSE(s.reported(app::codes::kLibraryPath));
+}
+
+TEST_CASE("startup records the opened project in the recent-projects list",
+          "[cap:hefesto-pdk-manager][req:Uninstall and cleanup]") {
+  Session s;
+  const auto folder = s.dir.path() / "proj";
+  std::filesystem::create_directories(folder);
+  REQUIRE(app::save_project(s.fs, folder, app::ProjectFile{}).ok());
+  s.env.project_folder = folder;
+  s.env.recent_projects = s.dir.path() / "state/recent-projects.json";
+  REQUIRE(s.start({}).ok());
+  CHECK(s.editor.settings.effective("recent-projects-file")->value == s.env.recent_projects->string());
+  const auto list = app::load_recent_projects(s.fs, *s.env.recent_projects);
+  REQUIRE(list.ok());
+  CHECK(list.value() == std::vector<std::filesystem::path>{folder});
+  CHECK(s.editor.settings.effective("pdk-update-check")->value == "on");  // built-in default
 }

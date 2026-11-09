@@ -69,3 +69,15 @@ TEST_CASE("console lines echo the command and every result line",
   CHECK(console_lines("zoom 2", "") == std::vector<std::string>{"> zoom 2"});
   CHECK(console_lines("help", "a\n\nb\n") == std::vector<std::string>{"> help", "a", "", "b"});
 }
+
+TEST_CASE("the console shows the diagnostics of a line that raised errors",
+          "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
+  // Regression: a line that succeeded with an error diagnostic printed only "ok".
+  CommandOutcome raised{OutcomeStatus::ok, "", {"error: CELL-PATH-002: Cell x couldn't be read", "info: Creating new cell"}};
+  CHECK(console_result(raised, "ok") == "error: CELL-PATH-002: Cell x couldn't be read\ninfo: Creating new cell");
+  CommandOutcome failed{OutcomeStatus::failed, "Unrecognized layer: q", {"error: DB-PAINT-001: Unrecognized layer: q"}};
+  CHECK(console_result(failed, "Unrecognized layer: q") == "error: DB-PAINT-001: Unrecognized layer: q");
+  CommandOutcome valued{OutcomeStatus::ok, "3", {"warning: X-1: careful"}};
+  CHECK(console_result(valued, "3") == "warning: X-1: careful\n3");
+  CHECK(console_result(CommandOutcome{}, "ok") == "ok");
+}

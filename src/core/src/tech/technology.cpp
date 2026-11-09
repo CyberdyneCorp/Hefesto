@@ -139,6 +139,7 @@ Lookup<TileType> Technology::find_type(std::string_view name) const {
 diag::Outcome<TypeMask> Technology::parse_type_list(std::string_view text) const {
   diag::CollectingSink sink;
   Reporter rep(sink);
+  rep.locate_after_load(data_->file_name, data_->end_line);
   const TypeList list = name_mask(*data_, text, &rep, Noise::warning);
   const auto diagnostics = sink.take();
   if (list.errors && !diagnostics.empty()) {

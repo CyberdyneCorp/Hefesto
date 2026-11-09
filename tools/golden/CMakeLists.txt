@@ -47,7 +47,8 @@ foreach(_manifest IN LISTS _golden_manifests)
     COMMAND Python3::Interpreter replay.py --hefesto-cli $<TARGET_FILE:hefesto-cli>
             --skip-code 77 ${_case_dir}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-  # 77: the case needs a command this hefesto-cli lacks (reported as Skipped).
+  # 77 (reported as Skipped): the case needs a command this hefesto-cli lacks, or it is a documented
+  # deviation (tests/golden/deviations.toml, goldenlib/deviations.py).
   set_tests_properties(golden.${_case_id} PROPERTIES
     LABELS golden SKIP_RETURN_CODE 77 ENVIRONMENT "${_golden_env}")
 endforeach()

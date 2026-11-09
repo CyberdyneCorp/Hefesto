@@ -43,7 +43,7 @@ constexpr std::array<std::string_view, 12> kOptionHelp = {
     "help\t\t\tDisplay techinfo command options",
     "name\t\t\tShow current technology name",
     "filename\t\tShow current technology filename",
-    "version\t\t\tShow current technology version",
+    "version\t\tShow current technology version",
     "lambda\t\t\tShow internal units per lambda",
     "planes\t\t\tShow defined planes",
     "layers\t[<layer...>]\tShow defined layers",
@@ -177,6 +177,7 @@ TypeMask parse_layers_arg(const Technology& tech, const std::string& arg, const 
     return star;
   }
   Reporter rep(sink);
+  rep.locate_after_load(tech.data().file_name, tech.data().end_line);
   return name_mask(tech.data(), arg, &rep, Noise::warning).types;
 }
 
@@ -381,6 +382,11 @@ std::optional<std::pair<std::int64_t, std::int64_t>> parse_scalegrid(const std::
   return std::make_pair(n, d);
 }
 
+db::Rect scale_rect_copy(const db::Rect& r, std::int64_t n, std::int64_t d) {
+  return db::Rect{static_cast<db::Coord>(scale_value(r.x0, n, d)), static_cast<db::Coord>(scale_value(r.y0, n, d)),
+                  static_cast<db::Coord>(scale_value(r.x1, n, d)), static_cast<db::Coord>(scale_value(r.y1, n, d))};
+}
+
 std::string scale_report(const GridScale& grid) {
   return std::to_string(grid.internal) + " Magic internal unit" + (grid.internal == 1 ? "" : "s") + " = " +
          std::to_string(grid.lambda) + " Lambda";
@@ -403,10 +409,17 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     if (auto limit = check_grid_limit(*ed.technology, a, b); !limit) {
       return CommandResult::failure(limit.error());
     }
-    (void)scale_layout(ed, b, a);
+    (void)scale_layout(ed, b, a);  // DBScaleEverything, which also scales the box (ToolScaleBox)
     ed.grid = reduce(GridScale{ed.grid.internal * b, ed.grid.lambda * a});
+    if (ctx.project().compat.magic_compat && ed.box) {
+      // CmdScalegrid then rescales the box once more ("Rescale cursor box"),
+      // so Magic scales the box by (b/a)^2 (magic-compat; see step 8 of
+      // tech-loading-and-scaling "scalegrid command").
+      ed.box = scale_rect_copy(*ed.box, b, a);
+    }
   }
-  return CommandResult::success(scale_report(ed.grid));
+  ctx.emit(diag::make("TECH-GRID-003", scale_report(ed.grid)));
+  return CommandResult::success();
 }
 
 // --- session load ------------------------------------------------------------

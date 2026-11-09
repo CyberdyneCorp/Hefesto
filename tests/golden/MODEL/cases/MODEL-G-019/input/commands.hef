@@ -1,0 +1,13 @@
+# MODEL-G-019: ndiff 0 0 10 10, poly 4 -2 6 12, then erase poly 4 0 6 10.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 10 10
+paint ndiff
+box 4 -2 6 12
+paint poly
+save a1
+box 4 0 6 10
+erase poly
+save a2

@@ -16,6 +16,7 @@ inline constexpr std::string_view kBox = "VIEW-BOX-001";
 inline constexpr std::string_view kCoordinate = "VIEW-COORD-001";
 inline constexpr std::string_view kExpand = "VIEW-EXPAND-001";
 inline constexpr std::string_view kGrid = "VIEW-GRID-001";
+inline constexpr std::string_view kReport = "VIEW-REPORT-001";
 inline constexpr std::string_view kReset = "VIEW-RESET-001";
 inline constexpr std::string_view kMinimumScale = "VIEW-SCALE-001";
 inline constexpr std::string_view kScroll = "VIEW-SCROLL-001";

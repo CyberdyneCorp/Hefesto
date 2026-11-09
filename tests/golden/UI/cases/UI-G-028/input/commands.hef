@@ -1,0 +1,10 @@
+# UI-G-028: center 50 50; center h 0.25; center 1.5 2.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+center 50 50
+view get
+center h 0.25
+view get
+center 1.5 2
+view get

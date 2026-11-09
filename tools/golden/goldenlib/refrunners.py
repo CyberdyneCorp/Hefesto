@@ -94,11 +94,19 @@ class ContainerRunner:
         info = json.loads(proc.stdout)
         return {"image": self.image, "image_id": info.get("Id"), "image_repo_digests": info.get("RepoDigests", [])}
 
+    def argv(self, case: Case, work: Path) -> list[str]:
+        """``docker run`` command line. The tool runs as the host user that owns the work
+        directory: as root, Magic marks every input cell not owned by root and not group- or
+        world-writable as read-only (database/DBio.c file_is_not_writeable), which the
+        replay (run as the owner) never sees."""
+        env_flags = [flag for key, value in ENVIRONMENT.items() for flag in ("-e", f"{key}={value}")]
+        user = ["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []
+        return [self.engine, "run", "--rm", "-i", "--network=none", *user, *env_flags,
+                "-v", f"{work}:/work", "-w", "/work", self.image, *default_argv(case)]
+
     def run(self, case: Case, work: Path) -> RunResult:
         facts = self._image_facts()
-        env_flags = [flag for key, value in ENVIRONMENT.items() for flag in ("-e", f"{key}={value}")]
-        argv = [self.engine, "run", "--rm", "-i", "--network=none", *env_flags,
-                "-v", f"{work}:/work", "-w", "/work", self.image, *default_argv(case)]
+        argv = self.argv(case, work)
         proc = _run(argv, harness_stdin(case, work), work)
         return RunResult(proc.stdout, proc.stderr, proc.returncode, default_argv(case), facts)
 

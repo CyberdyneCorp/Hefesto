@@ -65,15 +65,18 @@ constexpr std::array<std::uint8_t, 33> kPositionValues = {6, 5, 4, 0, 5, 6, 5, 4
 constexpr std::array<std::string_view, 9> kPositionWords = {"CENTER", "NORTH",     "NORTHEAST", "EAST",     "SOUTHEAST",
                                                             "SOUTH",  "SOUTHWEST", "WEST",      "NORTHWEST"};
 
-void apply_text_flag(db::Element& e, std::string_view flag) {
+bool apply_text_flag(db::Element& e, std::string_view flag) {
   if (const int size = lookup(flag, kTextSizes); size >= 0) {
     e.text_size = static_cast<std::uint8_t>(size);
   } else if (const int pos = lookup(flag, kPositionNames); pos >= 0) {
     e.text_position = kPositionValues[static_cast<std::size_t>(pos)];
+  } else {
+    return false;
   }
+  return true;
 }
 
-void apply_line_flag(db::Element& e, std::string_view flag) {
+bool apply_line_flag(db::Element& e, std::string_view flag) {
   switch (lookup(flag, kLineFlags)) {
     case 0:
       e.half_x = true;
@@ -104,17 +107,23 @@ void apply_line_flag(db::Element& e, std::string_view flag) {
       e.arrow_right = false;
       break;
     default:
-      break;
+      return false;
   }
+  return true;
 }
 
-void apply_flag_list(db::Element& e, std::string_view flags) {
+/// dbReadElements: the flags are a comma-separated list; only leading
+/// blanks are skipped, so "NORTH small" is one (unknown) flag.
+void apply_flag_list(db::Element& e, std::string_view flags, std::vector<std::string>* errors) {
   while (!flags.empty() && is_space(static_cast<unsigned char>(flags.front()))) {
     flags.remove_prefix(1);
   }
   while (true) {
     const std::size_t comma = flags.find(',');
-    apply_element_flag(e, flags.substr(0, comma));
+    const std::string_view flag = flags.substr(0, comma);
+    if (!apply_element_flag(e, flag) && errors != nullptr) {
+      errors->push_back(unknown_element_flag(e, flag));
+    }
     if (comma == std::string_view::npos) {
       return;
     }
@@ -135,7 +144,8 @@ std::vector<std::string> split_styles(std::string_view styles) {
 }
 
 /// `rectangle|line <name> <styles> x1 y1 x2 y2 [flags]`.
-std::optional<db::Element> parse_box_element(std::string_view line, db::Element::Kind kind) {
+std::optional<db::Element> parse_box_element(std::string_view line, db::Element::Kind kind,
+                                             std::vector<std::string>* errors) {
   Scan s{line};
   db::Element e;
   e.kind = kind;
@@ -150,13 +160,13 @@ std::optional<db::Element> parse_box_element(std::string_view line, db::Element:
   e.styles = split_styles(styles);
   s.ws();
   if (std::string flags; s.rest(flags, 99)) {
-    apply_flag_list(e, flags);
+    apply_flag_list(e, flags, errors);
   }
   return e;
 }
 
 /// `text <name> <styles> x y "<text>" [flags]`.
-std::optional<db::Element> parse_text_element(std::string_view line) {
+std::optional<db::Element> parse_text_element(std::string_view line, std::vector<std::string>* errors) {
   Scan s{line};
   db::Element e;
   e.kind = db::Element::Kind::text;
@@ -176,7 +186,7 @@ std::optional<db::Element> parse_text_element(std::string_view line) {
   e.styles = split_styles(styles);
   Scan tail{line.substr(last + 1)};
   if (std::string flags; tail.rest(flags, 99)) {
-    apply_flag_list(e, flags);
+    apply_flag_list(e, flags, errors);
   }
   return e;
 }
@@ -225,35 +235,43 @@ std::string element_record(const db::Element& e, std::int64_t r) {
 
 }  // namespace
 
-std::optional<db::Element> parse_element(std::string_view line) {
+std::optional<db::Element> parse_element(std::string_view line, std::vector<std::string>* errors) {
   switch (line.empty() ? '\0' : line.front()) {
     case 'r':
-      return parse_box_element(line, db::Element::Kind::rectangle);
+      return parse_box_element(line, db::Element::Kind::rectangle, errors);
     case 'l':
-      return parse_box_element(line, db::Element::Kind::line);
+      return parse_box_element(line, db::Element::Kind::line, errors);
     case 't':
-      return parse_text_element(line);
+      return parse_text_element(line, errors);
     default:
       return std::nullopt;
   }
 }
 
-void apply_element_flag(db::Element& element, std::string_view flag) {
+bool apply_element_flag(db::Element& element, std::string_view flag) {
   switch (lookup(flag, kGeneral)) {
     case 0:
       element.persistent = true;
-      return;
+      return true;
     case 1:
       element.persistent = false;
-      return;
+      return true;
     default:
       break;
   }
   if (element.kind == db::Element::Kind::text) {
-    apply_text_flag(element, flag);
-  } else if (element.kind == db::Element::Kind::line) {
-    apply_line_flag(element, flag);
+    return apply_text_flag(element, flag);
   }
+  if (element.kind == db::Element::Kind::line) {
+    return apply_line_flag(element, flag);
+  }
+  return false;  // a rectangle has no other flags
+}
+
+std::string unknown_element_flag(const db::Element& element, std::string_view flag) {
+  static constexpr std::array<std::string_view, 3> kKinds = {"rect", "line", "text"};
+  return "No such " + std::string{kKinds[static_cast<std::size_t>(element.kind)]} + " element flag \"" +
+         std::string{flag} + "\"";
 }
 
 void put_element(db::CellDef& def, db::Element element) {

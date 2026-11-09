@@ -27,6 +27,7 @@ fails when the two disagree.
 | `APP-PIN-001` | warning | The PDK version pinned by the project is not installed; the `minimum` technology is used until it is installed. |
 | `APP-PROJECT-001` | error | The hefesto.project file is malformed. |
 | `APP-PROJECT-002` | error | The hefesto.project file cannot be read or written. |
+| `APP-RECENT-001` | warning | The recent-projects list is malformed or unreadable; it is treated as empty. |
 | `APP-RECOVER-001` | warning | Crash recovery (-r) is not available in this release; command-line files were not loaded. |
 | `APP-SETTINGS-001` | warning | The user preferences file is malformed; the user settings layer is left empty. |
 | `APP-STARTUP-001` | info | A startup file was found; its script commands run only once the Tcl binding exists (M4), its plain settings were applied. |

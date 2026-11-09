@@ -118,6 +118,18 @@ struct UsePathRequest {
 [[nodiscard]] std::optional<platform::Path> find_technology_dir(platform::FileSystem& fs, FileHost& host,
                                                                 const platform::Path& root, std::string_view tech);
 
+/// Step 1: the search roots in order, from the path variables (which hold
+/// the environment and, on hosts with an interpreter, its variables):
+/// `PDK_PATH`, `PDKPATH`, `PDK_ROOT`, `PDKROOT`, then
+/// `/usr/local/share/pdk`. Empty values and repeats are dropped (the
+/// interpreter variables share the table, so they add nothing new).
+[[nodiscard]] std::vector<platform::Path> technology_search_roots(const PathVariables& vars);
+
+/// Steps 1-2: the first directory holding `<tech>.tech` below a search
+/// root; nullopt when none does.
+[[nodiscard]] std::optional<platform::Path> locate_technology_dir(platform::FileSystem& fs, FileHost& host,
+                                                                  const PathVariables& vars, std::string_view tech);
+
 /// Step 6: a found `.../libs.tech/...` directory truncated to end at
 /// `libs.ref`; nullopt when it does not contain `libs.tech`.
 [[nodiscard]] std::optional<std::string> libs_ref_root(std::string_view tech_dir);

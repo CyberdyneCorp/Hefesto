@@ -69,6 +69,17 @@ struct ThemeTokens {
 /// so its overlay always uses the dark tokens, whatever `mode` is.
 [[nodiscard]] const ThemeTokens& canvas_overlay_tokens(ThemeMode mode) noexcept;
 
+/// What a layer swatch is drawn over: the canvas color, which no theme
+/// changes, so a translucent layer fill looks in the legend as it does on
+/// the canvas (hefesto-design-system "Layer colors come from the PDK").
+[[nodiscard]] constexpr const Rgba& swatch_backdrop(const ThemeTokens& tokens) noexcept { return tokens.canvas; }
+
+/// `top` composited over the opaque `bottom` (source-over).
+[[nodiscard]] constexpr Rgba composite_over(const Rgba& top, const Rgba& bottom) noexcept {
+  const auto mix = [&top](float t, float b) { return t * top.a + b * (1.0F - top.a); };
+  return Rgba{mix(top.r, bottom.r), mix(top.g, bottom.g), mix(top.b, bottom.b), 1.0F};
+}
+
 /// WCAG 2.x contrast ratio between two opaque colors (1 to 21).
 [[nodiscard]] double contrast_ratio(const Rgba& a, const Rgba& b) noexcept;
 

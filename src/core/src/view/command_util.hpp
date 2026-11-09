@@ -35,6 +35,8 @@ struct Target {
 /// The current window, or VIEW-WINDOW-003 with `no_window_text`.
 [[nodiscard]] diag::Outcome<Target> pointed(const cmd::CommandContext& ctx,
                                             std::string_view no_window_text = "Point to a window first.");
+/// Prints a note (Magic's TxPrintf: stdout) without failing the command.
+void print(cmd::CommandContext& ctx, std::string text);
 /// Converts a failed lookup into a command result.
 [[nodiscard]] cmd::CommandResult failure(const diag::Diagnostic& d);
 

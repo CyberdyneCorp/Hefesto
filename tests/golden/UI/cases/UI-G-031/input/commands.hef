@@ -1,0 +1,8 @@
+# UI-G-031: openwindow; closewindow; openwindow; windownames all.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+openwindow
+closewindow
+openwindow
+windownames all

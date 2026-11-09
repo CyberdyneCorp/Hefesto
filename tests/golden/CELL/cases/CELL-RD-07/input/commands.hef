@@ -1,0 +1,7 @@
+# CELL-RD-07: rect with a double space; a 3-number rect then a rect.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+cellname list allcells
+save a_out

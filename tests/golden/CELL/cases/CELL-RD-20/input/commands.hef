@@ -1,0 +1,11 @@
+# CELL-RD-20: Properties of every type, reserved bboxes and MASKHINTS (8 and 6 values), GDS_*; magscale 1 2.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+load input/a
+property FIXED_BBOX
+property MASKHINTS_A
+property GDS_START
+property d
+cellname list allcells
+save a_out

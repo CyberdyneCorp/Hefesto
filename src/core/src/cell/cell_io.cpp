@@ -40,7 +40,10 @@ std::string recorded_path_of(std::string name) {
   return name;
 }
 
-void report_missing(CellIoContext& ctx, db::CellDef& def) {
+// dbReadOpen's message when no file opens; `with_errno` adds the strerror
+// line DBCellRead prints when its caller asked for the error (a top-level
+// load). The lookup fails with ENOENT. (Magic ref: database/DBio.c:1581-1604)
+void report_missing(CellIoContext& ctx, db::CellDef& def, bool with_errno) {
   if (def.flags().not_found) {
     return;  // reported once per definition
   }
@@ -50,11 +53,28 @@ void report_missing(CellIoContext& ctx, db::CellDef& def) {
     emit(ctx, codes::kNotFound, "Cell " + def.name() + " couldn't be read");
     def.set_file_path(def.name() + std::string{kMag});
   }
+  if (with_errno) {
+    emit(ctx, codes::kNotFound, "No such file or directory");
+  }
   def.flags().not_found = true;
 }
 
+// "Recording the result" at full verbosity (Magic ref: database/DBio.c:1642-1654).
+void report_read_from(CellIoContext& ctx, const db::CellDef& def, std::string_view recorded) {
+  const std::size_t slash = recorded.rfind('/');
+  if (slash == std::string_view::npos) {
+    emit(ctx, codes::kReadNote, "Cell " + def.name() + " read from current working directory");
+  } else {
+    emit(ctx, codes::kReadNote, "Cell " + def.name() + " read from path " + std::string{recorded.substr(0, slash)});
+  }
+}
+
 /// "Read-only cell detection" and "Advisory locking between sessions".
-void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path& file) {
+/// `file` is the file opened; `named` the candidate name, which Magic tests
+/// for writability (file_is_not_writeable(filename)): for a compressed
+/// counterpart that is the uncompressed name, so `inv.mag.gz` alone reads
+/// as not writeable (Magic ref: database/DBio.c:1607-1625).
+void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path& file, const platform::Path& named) {
   std::string owner;
   bool locked = false;
   if (ctx.locks != nullptr && !ctx.locks->holds(file)) {
@@ -67,11 +87,11 @@ void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path
          "File " + file.generic_string() + " is already locked by " + owner + ".  Opening read-only.");
     return;
   }
-  const bool writable = ctx.host.writable(file);
+  const bool writable = ctx.fs.exists(named) && ctx.host.writable(named);
   def.flags().no_edit = !writable;
   if (!writable) {
     emit(ctx, codes::kReadOnly,
-         "Warning: cell <" + def.name() + "> from file " + file.generic_string() + " is not writeable");
+         "Warning: cell <" + def.name() + "> from file " + named.generic_string() + " is not writeable");
   }
 }
 
@@ -251,28 +271,57 @@ diag::Status read_cell(CellIoContext& ctx, db::CellDef& def, const ReadOptions& 
   const bool deref = options.lookup_dereferenced && def.flags().dereference;
   const auto found = find_cell_file(lookup, def.name(), def.file_path().generic_string(), deref);
   if (!found) {
-    report_missing(ctx, def);
+    report_missing(ctx, def, options.report_errno);
     return diag::make(codes::kNotFound, "Cell " + def.name() + " couldn't be read");
   }
   auto text = read_text(ctx, found->path);
   if (!text) {
-    report_missing(ctx, def);
+    report_missing(ctx, def, options.report_errno);
     return text.error();
   }
-  detect_read_only(ctx, def, found->path);
+  detect_read_only(ctx, def, found->path, found->recorded);
+  report_read_from(ctx, def, found->recorded);
   def.flags().not_found = false;
   def.set_file_path(recorded_path_of(found->recorded));
-  auto status = read_mag(ctx, def, text.value(), options);
-  if (!status && status.error().code == codes::kFormatError) {
-    ctx.sink.emit(status.error());
-  }
-  return status;
+  return read_mag(ctx, def, text.value(), options);  // a format error is reported by read_mag
 }
 
 void expand_all(CellIoContext& ctx, db::CellDef& def) {
   std::set<const db::CellDef*> seen;
   expand_from(ctx, def, seen);
 }
+
+namespace {
+
+// The outcome of reading the cell named on a load. DBCellRead failing on a
+// file that opened (technology mismatch, format error) leaves errno at
+// ENOENT from the probe of the missing compressed candidate, so
+// DBWloadWindow reports a new cell as for a missing file and keeps what was
+// read (Magic ref: dbwind/DBWprocs.c:491-498).
+diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Status& read, bool was_available) {
+  if (read.ok()) {
+    if (!was_available) {
+      db::recompute_bbox(def, ctx.magic_compat);
+    }
+    return diag::Done{};
+  }
+  const std::string_view code = read.error().code;
+  if (def.flags().available) {
+    if (code == codes::kTechMismatch || code == codes::kFormatError) {
+      emit(ctx, codes::kReadNote, "Creating new cell");
+    }
+    return diag::Done{};
+  }
+  if (code != codes::kNotFound && code != codes::kTechMismatch) {
+    return read.error();
+  }
+  emit(ctx, codes::kReadNote, "Creating new cell");
+  def.flags().not_found = false;
+  def.flags().available = true;
+  return diag::Done{};
+}
+
+}  // namespace
 
 diag::Outcome<db::CellDef*> load_cell(CellIoContext& ctx, std::string_view name, const ReadOptions& options) {
   const std::string root = root_name_of(name);
@@ -296,19 +345,14 @@ diag::Outcome<db::CellDef*> load_cell(CellIoContext& ctx, std::string_view name,
   }
   ReadOptions top = options;
   top.lookup_dereferenced = false;  // the named cell itself is never dereferenced
+  top.report_errno = true;
   const bool was_available = def->flags().available;
-  const auto read = read_cell(ctx, *def, top);
-  if (!read.ok() && !def->flags().available) {
-    if (read.error().code != codes::kNotFound) {
-      return read.error();
-    }
-    emit(ctx, codes::kReadNote, "Creating new cell");
-    def->flags().not_found = false;
-    def->flags().available = true;
-  } else if (!was_available) {
-    db::recompute_bbox(*def, ctx.magic_compat);
+  if (auto settled = settle_load(ctx, *def, read_cell(ctx, *def, top), was_available); !settled) {
+    return settled.error();
   }
-  expand_all(ctx, *def);
+  // DBWloadWindow without DBW_LOAD_EXPAND: descendants stay unread until
+  // something needs them (getcell, flatten, timestamp mismatches).
+  // (Magic ref: commands/CmdLQ.c:500-507, dbwind/DBWprocs.c:540-552)
   return def;
 }
 
@@ -336,7 +380,9 @@ diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view pa
   }
   update_timestamps(ctx.library, &def, stamp_from_time(ctx.clock.wall_now()));
   warn_renamed_children(ctx, def);
-  const std::string text = write_mag(ctx, def);
+  WriteOptions write;
+  write.target_file = recorded_path_of(file);
+  const std::string text = write_mag(ctx, def, write);
   const platform::Path old_file = def.file_path().generic_string() + std::string{kMag};
   if (auto written = write_file(ctx, file, text); !written) {
     return written;

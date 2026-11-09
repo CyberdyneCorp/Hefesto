@@ -1,0 +1,13 @@
+magic
+tech scmos
+timestamp 100
+use leaf l0
+timestamp 100
+transform 2 0 0 0 1 0
+box 0 0 10 10
+use leaf l1
+array 0 x 20
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

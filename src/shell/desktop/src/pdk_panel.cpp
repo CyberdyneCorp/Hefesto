@@ -5,6 +5,8 @@
 
 #include <utility>
 
+#include "hefesto/app/settings_layers.hpp"
+#include "hefesto/cmd/command.hpp"
 #include "hefesto/pdk/catalog.hpp"
 #include "side_panels.hpp"
 
@@ -51,6 +53,7 @@ PdkPanel::PdkPanel(ScreenContext& ctx, std::function<void()> close)
   // Read-only use: the panel lists installs; every change runs a `pdk` command.
   manager_ = std::make_unique<pdk::PdkManager>(ctx_.core.files(), *host_, *fetcher_, pdk::Catalog::builtin());
   manager_->set_root(manager_->resolve_root(std::nullopt));
+  shared_manager_ = ctx_.core.pdk_manager();
 
   auto header = make_painted(ctx_, [this](ui::Painter& p, float w, float, const ThemeTokens& t) {
     paint::section_label(p, kPad, 14.0F, "PDK manager", t);
@@ -127,8 +130,28 @@ PdkPanel::PdkPanel(ScreenContext& ctx, std::function<void()> close)
     fixed_.push_back(std::move(b));
   }
 
+  // Install progress (hefesto-design-system: track in the input color, fill
+  // in the accent, the phase and percentage as text: never color only).
+  auto progress = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
+    if (!has_progress_) return;
+    const float bar_w = w - 2.0F * kPad;
+    const float bar_y = h - 8.0F;
+    p.fill(kPad, bar_y, bar_w, 4.0F, 2.0F, t.input);
+    const auto fill_w = static_cast<float>(progress_view_.fraction) * bar_w;
+    if (fill_w > 0.0F) p.fill(kPad, bar_y, fill_w, 4.0F, 2.0F, job_failed_ ? t.danger_text : t.accent);
+    const auto small = [&p](std::string_view str) { return p.text_width(TextRole::small, str); };
+    p.text(TextRole::small, kPad, 2.0F, ellipsize(progress_view_.text, bar_w, small),
+           job_failed_ ? t.danger_text : t.text_secondary);
+  });
+  progress->set_size(-1.0F, 30.0F);
+  progress->set_role(ui::Role::text);
+  progress->set_accessible_name("Install progress");
+  progress_ = progress.get();
+
   column_.add(header_row);
   column_.add(list_, 1.0F);
+  column_.add(*progress);
+  fixed_.push_back(std::move(progress));
   column_.add(version_row);
   column_.add(toggles);
   for (ui::Box& row : actions) column_.add(row);
@@ -145,7 +168,9 @@ PdkPanel::PdkPanel(ScreenContext& ctx, std::function<void()> close)
   refresh();
 }
 
-PdkPanel::~PdkPanel() = default;
+PdkPanel::~PdkPanel() {
+  job_.wait();
+}
 
 std::unique_ptr<ui::Painted> PdkPanel::make_button(PdkAction action, paint::ButtonStyle style) {
   const std::string_view label = pdk_action_label(action);
@@ -190,16 +215,16 @@ std::unique_ptr<ui::Painted> PdkPanel::make_toggle(std::string label, bool* valu
 }
 
 void PdkPanel::refresh() {
-  root_text_ = "Root: " + manager_->root().string();
+  root_text_ = "Root: " + manager().root().string();
   root_error_.clear();
-  auto installed = manager_->installed();
+  auto installed = manager().installed();
   std::vector<pdk::InstalledVersion> versions;
   if (installed) {
     versions = installed.value();
   } else {
     root_error_ = diagnostic_line(StatusKind::error, installed.error().text);
   }
-  rows_ = pdk_rows(manager_->catalog(), versions);
+  rows_ = pdk_rows(manager().catalog(), versions);
   if (selected_ >= rows_.size()) selected_ = 0;
   layout_header();
   rebuild_rows();
@@ -251,8 +276,56 @@ void PdkPanel::run(PdkAction action) {
     ctx_.run("echo \"" + std::string(pdk_action_label(action)) + ": enter a version hash first (Browse versions lists them)\"");
     return;
   }
+  if (action == PdkAction::install) {
+    start_job(with_progress(*line));
+    return;
+  }
   ctx_.run(*line);
   refresh();
+}
+
+void PdkPanel::start_job(const std::string& line) {
+  if (job_.running()) {
+    ctx_.run("echo \"PDK manager: an install is already running\"");
+    return;
+  }
+  PdkJob::Setup setup;
+  setup.options = platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}};
+  setup.settings = ctx_.editor().settings;
+  if (shared_manager_ != nullptr) setup.settings.set(app::SettingLayer::session, app::kPdkRoot, manager().root().string());
+  // The session's process runner outlives the job (the panel waits for it).
+  platform::ProcessRunner* runner = &ctx_.core.services().processes;
+  std::optional<std::string> token = host_->environment("GITHUB_TOKEN");
+  setup.hosts.fetcher = [runner, token](platform::PlatformServices&) { return pdk::make_process_fetcher(*runner, token); };
+  job_failed_ = false;
+  if (!job_.start(line, std::move(setup))) return;
+  progress_view_ = PdkProgressView{0.0, "Starting: " + line};
+  has_progress_ = true;
+  if (ctx_.echo) ctx_.echo(line, "running in the background");
+  progress_->invalidate();
+}
+
+bool PdkPanel::poll() {
+  PdkJob::Finished finished;
+  if (job_.take_finished(finished)) {
+    const PdkJob::Finished* done = &finished;
+    const bool ok = done->result.ok();
+    job_failed_ = !ok;
+    const std::string line = cmd::format_command_line(done->invocation);
+    progress_view_ = ok ? PdkProgressView{1.0, "Installed: " + line}
+                        : PdkProgressView{progress_view_.fraction, "■ Failed: " + line};
+    has_progress_ = true;
+    ctx_.core.record_command(done->invocation, done->result);
+    if (ctx_.echo) ctx_.echo(line, ok ? done->result.value.to_string() : "failed");
+    progress_->invalidate();
+    refresh();
+    return false;
+  }
+  if (!job_.running()) return false;
+  pdk::InstallProgress p;
+  if (job_.progress(p)) progress_view_ = pdk_progress_view(p);
+  progress_->invalidate();
+  return true;
 }
 
 void PdkPanel::repaint() {

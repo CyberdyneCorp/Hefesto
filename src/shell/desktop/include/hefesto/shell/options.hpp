@@ -12,6 +12,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
 
 namespace hefesto::shell {
@@ -42,6 +43,11 @@ struct ShellOptions {
   /// The app's asset folder (fonts/, icons/); empty: found next to the
   /// executable (see find_asset_dir).
   std::string asset_dir;
+  /// Command lines run after startup as if typed in the command bar
+  /// (Console echo, Dispatcher, origin `gui`); `;` separates commands
+  /// ("load sky130_fd_sc_hd__inv_1; see no metal1; theme light"). Scripted
+  /// checks and captures of interactive flows.
+  std::string run;
   /// Opens the PDK manager panel at startup.
   bool show_pdk_manager = false;
   /// Opens the Console / Diagnostics panel at startup (collapsed otherwise).
@@ -66,5 +72,10 @@ struct ParseResult {
 [[nodiscard]] ParseResult parse_shell_options(std::span<const std::string_view> args);
 
 [[nodiscard]] std::string_view shell_usage() noexcept;
+
+/// What the app prints for a bad Magic-compatible startup option: the
+/// diagnostic as text, followed by Magic's usage line unless the
+/// diagnostic's text already ends with it (printed once).
+[[nodiscard]] std::string startup_option_error(const diag::Diagnostic& error);
 
 }  // namespace hefesto::shell

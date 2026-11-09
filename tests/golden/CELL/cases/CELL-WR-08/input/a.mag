@@ -1,0 +1,8 @@
+magic
+tech scmos
+timestamp 100
+<< elements >>
+rectangle r1 white 0 0 10 10
+line l1 black dashed arrowleft 0 0 10 10
+text t1 red 5 5 "hi" NORTH small
+<< end >>

@@ -73,7 +73,7 @@ LayoutCanvas::LayoutCanvas(ScreenContext& ctx, std::mutex& queue_mutex, std::fun
   viewport_->on_resize([this](int width, int height) {
     camera_.set_viewport(width, height);
     controller_.set_pixel_ratio(static_cast<double>(pixel_ratio_()));
-    if (auto_fit_) camera_.fit(bounds_);
+    if (auto_fit_) fit_view();
     camera_changed(true);
   });
   viewport_->on_input([this](const CanvasInput& input) { return handle_input(input); });
@@ -111,6 +111,7 @@ void LayoutCanvas::ensure_window() {
 void LayoutCanvas::show_rects(const std::vector<render::LayeredRect>& rects,
                               const std::vector<render::LayerStyle>& styles) {
   upload(rects, styles);
+  upload_polygons({});
   synthetic_ = true;
   overlay_state_ = paint::OverlayState{};
   overlay_state_.bounds = to_rect(bounds_);
@@ -142,16 +143,16 @@ void LayoutCanvas::refresh_scene() {
   if (root == nullptr && synthetic_) return;  // the benchmark's rectangles
   synthetic_ = false;
   if (root == nullptr || !ed.styles || !ed.technology) {
+    framed_root_ = nullptr;
     upload({}, {});
+    upload_polygons({});
     overlay_state_.cells.clear();
     overlay_state_.labels.clear();
-    overlay_state_.crosses.clear();
     empty_hint_ = root == nullptr ? "No cell loaded: open a .mag file (Open) or type  load <cell>"
                                   : "No display styles for this technology: layers cannot be drawn";
     refresh_overlay();
     return;
   }
-  const bool first = bounds_.empty();
   auto built = display::build_scene(*root, *ed.technology, *ed.styles, ed.fonts, scene_options(*win, *root));
   if (!built) {
     ctx_.core.dispatcher().report(built.error());
@@ -160,26 +161,45 @@ void LayoutCanvas::refresh_scene() {
   const display::LayoutScene& scene = built.value();
   const render::LayoutBatches batches = render::to_batches(scene);
   upload(layered(batches.rects), batches.styles);
+  upload_polygons(batches.polygons);
   // The fit covers the drawn scene and the root's bounding box (subcells).
   bounds_ = to_bounds(scene.bounds.is_null() ? root->bbox() : db::include(scene.bounds, root->bbox()));
   controller_.set_bounds(bounds_);
   set_scene_overlay(scene);
   empty_hint_.clear();
-  if (first) {
-    camera_.fit(bounds_);
+  // A new root takes the core's load frame (set_root moved the core mapping
+  // there without a Change::view); keeping the old camera made the next core
+  // zoom jump.
+  const bool new_root = root != framed_root_;
+  if (new_root) {
+    framed_root_ = root;
     auto_fit_ = true;
+    fit_view();
   }
-  camera_changed(first);
+  camera_changed(new_root);
+}
+
+void LayoutCanvas::fit_view() {
+  const view::LayoutWindow* win = window();
+  if (!synthetic_ && win != nullptr && win->root() != nullptr) {
+    frame_root(*win->root(), camera_);
+  } else {
+    camera_.fit(bounds_);
+  }
 }
 
 void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene) {
   overlay_state_.labels = scene.labels;
   overlay_state_.cells = scene.cells;
-  overlay_state_.crosses.clear();
-  for (const display::SceneLayer& layer : scene.layers) {
-    if (layer.style.fill == display::FillKind::cross && !layer.rects.empty()) overlay_state_.crosses.push_back(layer);
-  }
   overlay_state_.bounds = to_rect(bounds_);
+}
+
+void LayoutCanvas::upload_polygons(render::PolygonScene polygons) {
+  (void)renderer_->upload_polygons(polygons.vertices, polygons.base_x, polygons.base_y);
+  polygons.vertices.clear();  // on the GPU now; the render thread needs only the batches
+  auto shared = std::make_shared<const render::PolygonScene>(std::move(polygons));
+  const std::lock_guard guard(view_mutex_);
+  polygons_ = std::move(shared);
 }
 
 void LayoutCanvas::refresh_overlay() {
@@ -214,8 +234,14 @@ void LayoutCanvas::on_window_changed(view::WindowId id, view::Change change) {
   }
   switch (change) {
     case view::Change::view:
-      // A core command (zoom, view, findbox, scroll) moved the view.
-      if (const view::LayoutWindow* win = window()) camera_from_mapping(win->mapping(), camera_);
+      // A core command (zoom, view, findbox, scroll, load) moved the view.
+      // Build the scene first if the window has none yet, so its first fit
+      // cannot replace the command's view later.
+      if (const view::LayoutWindow* win = window()) {
+        const view::ViewMapping mapping = win->mapping();  // the first fit below writes the mapping
+        if (bounds_.empty()) refresh_scene();
+        camera_from_mapping(mapping, camera_);
+      }
       auto_fit_ = false;
       camera_changed(false);
       break;
@@ -295,6 +321,19 @@ void LayoutCanvas::paint_overlay(ui::Painter& p, float w, float h) {
   overlay_state_.scale = unit_scale();
   const editor::EditorState& ed = ctx_.editor();
   overlay_state_.box = visible_box(ed.box, ed.box_root, ed.edit_cell);
+  const view::LayoutWindow* win = window();
+  overlay_state_.edit_bbox.reset();
+  if (ed.edit_cell != nullptr && win != nullptr && win->root() == ed.edit_cell && !ed.edit_cell->bbox().is_null()) {
+    overlay_state_.edit_bbox = ed.edit_cell->bbox();
+  }
+  if (ed.styles) {
+    const std::size_t styles[3] = {display::kStyleBox, display::kStyleMediumHighlights,
+                                   display::kStyleOutlineHighlights};
+    for (std::size_t i = 0; i < 3; ++i) {
+      const display::ResolvedStyle r = display::resolve_style(*ed.styles, styles[i]);
+      overlay_state_.highlight[i] = Rgba{r.r, r.g, r.b, 1.0F};
+    }
+  }
   overlay_state_.empty_hint = empty_hint_;
   render::Camera fitted = camera_;
   fitted.fit(bounds_);
@@ -305,21 +344,28 @@ void LayoutCanvas::paint_overlay(ui::Painter& p, float w, float h) {
 void LayoutCanvas::draw(const ui::ViewportDraw& target) {
   Snapshot view;
   std::shared_ptr<const render::CanvasIndex> index;
+  std::shared_ptr<const render::PolygonScene> polygons;
   {
     const std::lock_guard guard(view_mutex_);
     view = snapshot_;
     index = index_;
+    polygons = polygons_;
   }
   if (index) {
     index->visible_ranges(view.window, view.units_per_pixel, ranges_);
   } else {
     ranges_.clear();
   }
+  if (polygons && view.units_per_pixel > 0.0) {
+    render::visible_polygon_batches(*polygons, 1.0 / view.units_per_pixel, polygon_ranges_);
+  } else {
+    polygon_ranges_.clear();
+  }
   // The canvas keeps the design-system "canvas" color in both themes.
   const Rgba& bg = theme_tokens(ThemeMode::dark).canvas;
   render::DrawTarget draw_target{target.command_buffer, target.render_pass, target.x, target.y, target.width,
                                  target.height, false, true, {bg.r, bg.g, bg.b, 1.0F}};
-  renderer_->record(draw_target, view.transform, ranges_);
+  renderer_->record(draw_target, view.transform, ranges_, polygon_ranges_);
 }
 
 }  // namespace hefesto::shell

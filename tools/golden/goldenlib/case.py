@@ -28,6 +28,11 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     requires_commands = []           # optional: commands the case needs (skip if unknown)
     m0_only = false                  # optional: uses a temporary M0-only command
 
+    [[external]]                     # optional: pinned data copied into input/ (goldenlib/external.py)
+    source = "pdk"                   # pdk | scmos | magic-sys
+    path = "sky130A/libs.tech/magic/sky130A.tech"
+    to = "sky130A.tech"
+
     [[outputs]]                      # one per compared output
     name = "stdout.txt"              # file name under expected/
     source = "stdout"                # stdout | stderr | a path relative to the work dir
@@ -39,6 +44,8 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from .external import External, parse_external
 
 REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
 STREAM_SOURCES = ("stdout", "stderr")
@@ -68,6 +75,7 @@ class Case:
     reference: dict = field(default_factory=dict)
     hefesto: dict = field(default_factory=dict)
     description: str = ""
+    externals: tuple[External, ...] = ()
 
     @property
     def input_dir(self) -> Path:
@@ -110,6 +118,16 @@ def _check_paths(case: Case) -> None:
         raise CaseError(f"{case.id}: missing input/ directory")
 
 
+def _parse_externals(data: dict, where: str) -> tuple[External, ...]:
+    raw = data.get("external", [])
+    if not isinstance(raw, list):
+        raise CaseError(f"{where}: 'external' must be an array of tables")
+    try:
+        return tuple(parse_external(entry, i) for i, entry in enumerate(raw))
+    except ValueError as error:
+        raise CaseError(f"{where}: {error}") from None
+
+
 def load_case(root: Path, known_comparators=None) -> Case:
     """Load and validate ``root/case.toml``; raise CaseError when malformed."""
     root = Path(root).resolve()
@@ -137,6 +155,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
         reference=data.get("reference", {}),
         hefesto=data.get("hefesto", {}),
         description=data.get("description", ""),
+        externals=_parse_externals(data, where),
     )
     if case.id != root.name:
         raise CaseError(f"{where}: id '{case.id}' does not match directory '{root.name}'")

@@ -1,0 +1,24 @@
+magic
+tech mt
+timestamp 1794195322
+<< metal1 >>
+rect 0 0 30 30
+rect 100 0 130 30
+<< labels >>
+rlabel metal1 103 27 103 27 5 child_1.jn
+rlabel metal1 106 24 106 24 4 child_1.jne
+rlabel metal1 109 21 109 21 3 child_1.je
+rlabel metal1 112 18 112 18 2 child_1.jse
+rlabel metal1 115 15 115 15 1 child_1.js
+rlabel metal1 118 12 118 12 8 child_1.jsw
+rlabel metal1 121 9 121 9 7 child_1.jw
+rlabel metal1 124 6 124 6 6 child_1.jnw
+rlabel metal1 3 27 3 27 3 child_0.jn
+rlabel metal1 6 24 6 24 4 child_0.jne
+rlabel metal1 9 21 9 21 5 child_0.je
+rlabel metal1 12 18 12 18 6 child_0.jse
+rlabel metal1 15 15 15 15 7 child_0.js
+rlabel metal1 18 12 18 12 8 child_0.jsw
+rlabel metal1 21 9 21 9 1 child_0.jw
+rlabel metal1 24 6 24 6 2 child_0.jnw
+<< end >>

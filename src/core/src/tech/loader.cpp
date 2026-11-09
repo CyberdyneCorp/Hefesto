@@ -344,6 +344,7 @@ RunResult run_load(const RunInput& in, Data start) {
   LoadClient client(s, sink, in.excluded);
   scan_sections(reader, client, sink, in.options.magic_compat);
   bool ok = account(client, in.file.string(), in.excluded, in.required_extra, sink) && !reader.failed();
+  s.d.end_line = reader.end_line();
   return RunResult{ok, std::move(s.d)};
 }
 
