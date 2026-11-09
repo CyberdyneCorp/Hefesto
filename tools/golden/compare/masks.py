@@ -17,6 +17,22 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     ``.mag`` header line ``timestamp <n>``: the number becomes ``0``.
 ``ext-timestamp``
     ``.ext`` header line ``timestamp <n>``: the number becomes ``0``.
+``magic-tech-sections``
+    Console output (stdout/stderr) of Magic's ``tech load`` that comes from
+    the cifinput, cifoutput and extract sections, which M1 reads but does
+    not interpret (openspec/changes/m1-core-viewer/design.md, Non-Goals:
+    DRC, extraction, mask output; capabilities mask-* and extract-*). Exactly
+    these Magic messages are removed, each line matched in full:
+    ``Input style <s>: scaleFactor=<n>, multiplier=<n>`` (cif/CIFrdtech.c:1102),
+    ``Contact size value ignored (using GDS generation rules).``
+    (extract/ExtTech.c:2296), ``The following types are not handled by
+    extraction ...`` with its type-list line (extract/ExtTech.c:3609-3618), and
+    the ``Warning: Extraction Style <s>`` block with its planeorder lines and
+    the blank line before it (extract/ExtTech.c:3822-3846).
+``mag-checkpaint``
+    ``.mag`` ``<< checkpaint >>`` section and its ``rect`` lines: the areas
+    Magic's DRC still has to check (database/DBio.c, DRC check plane). M1 has
+    no DRC (design.md Non-Goals; capability drc-engine, M3).
 ``regex:<pattern>``
     Every match of the Python bytes regex ``<pattern>`` is replaced with
     ``<masked>``. For one-off fields; prefer adding a named mask when a field
@@ -57,6 +73,49 @@ def mask_timestamp_line(data: bytes) -> bytes:
     return _TIMESTAMP_LINE.sub(rb"\g<1>0\g<2>", data)
 
 
+_TECH_LINE = re.compile(
+    rb"^(?:Input style .*: scaleFactor=\d+, multiplier=\d+"
+    rb"|Contact size value ignored \(using GDS generation rules\)\.)\r?$"
+)
+_EXTRACT_STYLE_BODY = re.compile(
+    rb"^(?:  (?:Missing|Conflicting) planeorder for plane\(s\):"
+    rb"|  Magic will use the default planeorder for this style:"
+    rb"|   (?: [^ ,]+,)+)\r?$"
+)
+
+
+def mask_magic_tech_sections(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if _TECH_LINE.match(line):
+            i += 1
+            continue
+        if line.startswith(b"The following types are not handled by extraction and will be treated as "
+                           b"non-electrical types:"):
+            i += 2  # the message and its type-list line
+            continue
+        if line.startswith(b"Warning: Extraction Style "):
+            if out and out[-1] == b"":
+                out.pop()  # TxError("\nWarning: ...")
+            i += 1
+            while i < len(lines) and _EXTRACT_STYLE_BODY.match(lines[i]):
+                i += 1
+            continue
+        out.append(line)
+        i += 1
+    return b"\n".join(out)
+
+
+_CHECKPAINT = re.compile(rb"^<< checkpaint >>\r?\n(?:rect -?\d+ -?\d+ -?\d+ -?\d+\r?\n)*", re.MULTILINE)
+
+
+def mask_mag_checkpaint(data: bytes) -> bytes:
+    return _CHECKPAINT.sub(b"", data)
+
+
 def _regex_mask(pattern: str) -> Mask:
     compiled = re.compile(pattern.encode())
     return lambda data: compiled.sub(b"<masked>", data)
@@ -66,6 +125,8 @@ _NAMED: dict[str, Mask] = {
     "gds-dates": mask_gds_dates,
     "mag-timestamp": mask_timestamp_line,
     "ext-timestamp": mask_timestamp_line,
+    "magic-tech-sections": mask_magic_tech_sections,
+    "mag-checkpaint": mask_mag_checkpaint,
 }
 
 

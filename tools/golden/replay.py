@@ -21,8 +21,11 @@ the layout scripts/compare_golden_outputs.py compares across platforms.
 A case is SKIPPED (not failed) when it lists [hefesto] requires_commands and
 hefesto-cli rejects one of them as unknown (diagnostic CMD-DISPATCH-001), or
 when one of its [[external]] inputs (goldenlib/external.py) is not present.
+A case listed in <root>/deviations.toml (goldenlib/deviations.py) whose only
+differing outputs are the listed ones is a DEVIATION: a documented, decided
+difference from Magic, counted like a skip. A listed case that passes fails.
 Exit status: 1 if any case failed or errored; else N (--skip-code, default 0)
-if any case was skipped; else 0. 2 on usage errors.
+if any case was skipped or a deviation; else 0. 2 on usage errors.
 """
 from __future__ import annotations
 
@@ -38,8 +41,9 @@ from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes
 from compare.masks import apply_masks
+from goldenlib import deviations
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case
-from goldenlib.external import ExternalUnavailable, stage
+from goldenlib.external import ExternalUnavailable, cad_root, stage
 from goldenlib.refrunners import ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -59,7 +63,7 @@ class OutputReport:
 class CaseReport:
     id: str
     area: str
-    status: str  # pass | fail | skip | error
+    status: str  # pass | fail | skip | deviation | error
     provisional_reference: bool = False
     detail: str = ""
     outputs: list[OutputReport] = field(default_factory=list)
@@ -83,7 +87,8 @@ def execute(cli: Path, case: Case, work: Path) -> Execution:
     """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent."""
     shutil.copytree(case.input_dir, work / "input")
     stage(case.externals, work / "input")
-    env = {**os.environ, **ENVIRONMENT}
+    # Hermetic: Magic's system files come only from the case's magic-sys inputs.
+    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work))}
     proc = subprocess.run(hefesto_argv(cli, case, work), capture_output=True, cwd=work,
                           env=env, timeout=TIMEOUT_S, check=False, stdin=subprocess.DEVNULL)
     files = {}
@@ -141,7 +146,8 @@ def is_provisional(case: Case) -> bool:
     return not prov.get("reference_captured", False)
 
 
-def replay_case(cli: Path, case: Case, output_dir: Path | None) -> CaseReport:
+def replay_case(cli: Path, case: Case, output_dir: Path | None,
+                deviation: deviations.Deviation | None = None) -> CaseReport:
     report = CaseReport(case.id, case.area, "error", is_provisional(case))
     with tempfile.TemporaryDirectory(prefix=f"replay-{case.id}-") as tmp:
         try:
@@ -156,10 +162,11 @@ def replay_case(cli: Path, case: Case, output_dir: Path | None) -> CaseReport:
         report.status, report.detail = "skip", f"hefesto-cli does not implement '{missing}'"
         return report
     report.outputs = compare_outputs(case, execution)
-    failed = any(o.status != "pass" for o in report.outputs)
-    report.status = "fail" if failed else "pass"
-    if failed and execution.returncode != 0:
-        report.detail = f"hefesto-cli exited {execution.returncode}: {execution.stderr.decode(errors='replace')[-500:]}"
+    failed = [o.name for o in report.outputs if o.status != "pass"]
+    report.status, report.detail = deviations.classify(deviation, failed)
+    if report.status == "fail" and failed and execution.returncode != 0:
+        exited = f"hefesto-cli exited {execution.returncode}: {execution.stderr.decode(errors='replace')[-500:]}"
+        report.detail = f"{report.detail}; {exited}" if report.detail else exited
     return report
 
 
@@ -169,12 +176,16 @@ def select_cases(args: argparse.Namespace) -> list[Path]:
     return [p for p in discover(args.root) if (p / "expected" / "provenance.json").is_file()]
 
 
-def run_one(cli: Path, case_dir: Path, output_dir: Path | None) -> CaseReport:
+def run_one(cli: Path, case_dir: Path, output_dir: Path | None,
+            known: dict[str, deviations.Deviation] | None = None) -> CaseReport:
     try:
         case = load_case(case_dir, COMPARATORS)
         if not case.is_captured:
             return CaseReport(case.id, case.area, "error", detail="not captured (no expected/provenance.json)")
-        return replay_case(cli, case, output_dir)
+        deviation = (known or {}).get(case.id)
+        if deviation is not None:
+            deviations.check(deviation, [o.name for o in case.outputs])
+        return replay_case(cli, case, output_dir, deviation)
     except (CaseError, OSError, subprocess.TimeoutExpired, ValueError) as error:
         return CaseReport(case_dir.name, case_dir.parent.parent.name, "error", detail=str(error))
 
@@ -191,7 +202,7 @@ def exit_code(reports: list[CaseReport], skip_code: int) -> int:
     statuses = {r.status for r in reports}
     if statuses & {"fail", "error"}:
         return 1
-    return skip_code if "skip" in statuses else 0
+    return skip_code if statuses & {"skip", "deviation"} else 0
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -211,11 +222,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
     args.hefesto_cli = args.hefesto_cli.resolve()  # cases run in scratch directories
-    reports = [run_one(args.hefesto_cli, case_dir, args.output_dir) for case_dir in select_cases(args)]
+    try:
+        known = deviations.load(args.root)
+    except (deviations.DeviationError, ValueError) as error:
+        print(f"replay.py: {error}", file=sys.stderr)
+        return 2
+    reports = [run_one(args.hefesto_cli, case_dir, args.output_dir, known) for case_dir in select_cases(args)]
     human = sys.stderr if str(args.json) == "-" else sys.stdout
     for report in reports:
         print_report(report, human)
-    totals = {s: sum(r.status == s for r in reports) for s in ("pass", "fail", "skip", "error")}
+    totals = {s: sum(r.status == s for r in reports) for s in ("pass", "fail", "skip", "deviation", "error")}
     print("golden: " + ", ".join(f"{n} {s}" for s, n in totals.items()), file=human)
     if args.json is not None:
         summary = json.dumps({"hefesto_cli": str(args.hefesto_cli), "totals": totals,

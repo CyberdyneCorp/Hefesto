@@ -29,7 +29,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     m0_only = false                  # optional: uses a temporary M0-only command
 
     [[external]]                     # optional: pinned data copied into input/ (goldenlib/external.py)
-    source = "pdk"                   # pdk | scmos
+    source = "pdk"                   # pdk | scmos | magic-sys
     path = "sky130A/libs.tech/magic/sky130A.tech"
     to = "sky130A.tech"
 

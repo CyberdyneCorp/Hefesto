@@ -28,22 +28,22 @@ to = "scmos.tech"
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "a1.mag"
 source = "a1.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "a2.mag"
 source = "a2.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]

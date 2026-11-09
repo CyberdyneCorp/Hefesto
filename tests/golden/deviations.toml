@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Documented deviations: captured cases whose Magic output shows behavior
+# Hefesto deliberately does not reproduce, each with the decision behind it
+# and the outputs allowed to differ. Format and rules:
+# tools/golden/goldenlib/deviations.py. replay.py reports these cases as
+# DEVIATION (skipped); a listed case fails if another output differs or if it
+# starts to pass. Add an entry only for a resolved decision, never for a bug.
+
+# --- TECH -------------------------------------------------------------------
+
+[TECH-G08]
+decisions = ["Q-TECH-2", "Q-TECH-10"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "a missing include is discarded and fails the load (no 'Bad section header' follow-on, so the next section is read); the failed load keeps the previous technology, where Magic keeps the partly loaded one"
+
+[TECH-G09]
+decisions = ["Q-TECH-2"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "a missing include inside a section fails the load instead of being parsed as a connect line"
+
+[TECH-G17]
+decisions = ["Q-TECH-10", "Q-TECH-11"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "a rejected types line leaves no names behind and the failed load keeps the previous technology, so m3 and foo do not resolve"
+
+[TECH-G30]
+decisions = ["Q-TECH-24"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "missing display files never fail a technology load (display resources are a platform concern, X-4)"
+
+[TECH-G43]
+decisions = ["Q-TECH-25"]
+outputs = ["stdout.txt"]
+reason = "tech revert * re-locks the layers locked in the technology file"
+
+# --- MODEL ------------------------------------------------------------------
+
+[MODEL-G-035]
+decisions = ["Q-MODEL-31"]
+outputs = ["top.mag"]
+reason = "in-place flatten renames the child's labels <id>[x][y]/<text>; Magic's renaming overflows its buffer and leaves them unprefixed"
+
+[MODEL-G-043]
+decisions = ["Q-CELL-12"]
+outputs = ["a.mag"]
+reason = "port renumber orders VDD and vdd by the total natural order (byte tie-break); Magic's comparator ties them and the order depends on the host qsort"
+
+# --- CELL -------------------------------------------------------------------
+
+[CELL-PR-10]
+decisions = ["Q-CELL-16"]
+outputs = ["stderr.txt", "x_out.mag"]
+reason = "when both x.mag and x.mag.gz exist, x.mag is read with a warning; Magic reads the compressed file"
+
+[CELL-PR-11]
+decisions = ["Q-CELL-12"]
+outputs = ["stdout.txt"]
+reason = "cellname list orders inv before inv_a (a natural prefix sorts first)"
+
+[CELL-RD-12]
+decisions = ["Q-CELL-1"]
+outputs = ["stdout.txt", "stderr.txt", "a_out.mag"]
+reason = "empty lines in a .mag file are skipped; Magic reports a format error and abandons the rest of the file"
+
+[CELL-RD-17]
+decisions = ["Q-CELL-5"]
+outputs = ["a_out.mag"]
+reason = "label text longer than 99 characters is kept in full; Magic truncates it on read"
+
+[CELL-RD-21]
+decisions = ["Q-CELL-42"]
+outputs = ["stdout.txt", "a_out.mag"]
+reason = "a property value longer than the line buffer does not keep the line feed of its last chunk"
+
+[CELL-WR-06]
+decisions = ["Q-CELL-12"]
+outputs = ["a_out.mag"]
+reason = "uses a1 and A1 are written in the total natural order (byte tie-break: A1 first); Magic's order depends on the host qsort"
+
+[CELL-WR-11]
+decisions = ["Q-CELL-14"]
+outputs = ["top.tcl"]
+reason = "the command-script writer keeps instance transforms and quotes label text (corrected writer), and writes no DRC checkpaint areas (no DRC in M1, design.md Non-Goals)"
+
+# --- UI ---------------------------------------------------------------------
+
+[UI-G-023]
+decisions = ["Q-UI-17"]
+outputs = ["stdout.txt"]
+reason = "windowpositions returns one list per window; Magic returns only the last window's values"
+
+[UI-G-040]
+decisions = ["Q-UI-21"]
+outputs = ["stdout.txt"]
+reason = "an out-of-range grid multiple is rejected without being stored"

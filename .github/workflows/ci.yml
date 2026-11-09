@@ -36,6 +36,9 @@ env:
   CTEST_PARALLEL_LEVEL: "4"
   # Leg whose golden outputs are the reference for the cross-platform determinism check.
   GOLDEN_REFERENCE_LEG: linux-x64-gcc-latest
+  # The PDK install test over the network (ctest label `network`, tests/unit/pdk/network_e2e.cpp) skips
+  # itself everywhere except the one leg that runs it on purpose (matrix `network`, step "PDK network test").
+  HEFESTO_SKIP_NETWORK_TESTS: "1"
 
 jobs:
   lint:
@@ -94,7 +97,7 @@ jobs:
         include:
           # Oldest supported GCC and Clang (hefesto-platform-targets "Supported toolchains").
           - { name: linux-x64-gcc-11, os: ubuntu-22.04, cc: gcc-11, cxx: g++-11, preset: ci-linux }
-          - { name: linux-x64-clang-14, os: ubuntu-22.04, cc: clang-14, cxx: clang++-14, preset: ci-linux }
+          - { name: linux-x64-clang-14, os: ubuntu-22.04, cc: clang-14, cxx: clang++-14, preset: ci-linux, network: true }
           # Newest GCC and Clang shipped on the runner image. Bump together with the image.
           # Both build the desktop shell and renderer, so Raven and the Vulkan code compile with GCC and Clang.
           - name: linux-x64-gcc-latest
@@ -201,6 +204,16 @@ jobs:
       - name: Test
         if: ${{ !matrix.desktop }}
         run: ctest --preset ${{ matrix.preset }}
+
+      # hefesto-pdk-manager (task 7.3): the real curl Fetcher installs the pinned sky130A common asset and one
+      # small library (about 6.4 MB, a few seconds) into a temporary root. One leg only, with the job token for
+      # the GitHub API listing; the other legs skip the test (HEFESTO_SKIP_NETWORK_TESTS above).
+      - name: PDK network test
+        if: matrix.network
+        env:
+          HEFESTO_SKIP_NETWORK_TESTS: "0"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ctest --preset ${{ matrix.preset }} -L network --output-on-failure
 
       # hefesto-build-and-distribution "Dependency policy": desktop shell tests run under X11 and Wayland.
       # Vulkan uses Mesa's software rasterizer (lavapipe); the runners have no GPU. Raven needs only libx11-dev

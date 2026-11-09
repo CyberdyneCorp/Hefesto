@@ -20,38 +20,43 @@ script = "input/commands.tcl"
 args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
 requires_commands = []
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "top.mag"
 source = "top.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "c1.mag"
 source = "c1.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "c2.mag"
 source = "c2.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "c3.mag"
 source = "c3.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]

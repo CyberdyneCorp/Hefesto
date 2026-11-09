@@ -48,6 +48,35 @@ class ExternalTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             external.parse_external({"source": "pdk", "to": "a", "path": "../x"}, 0)
         self.assertEqual(external.parse_external({"source": "scmos", "to": "s.tech"}, 0).source, "scmos")
+        with self.assertRaises(ValueError):
+            external.parse_external({"source": "magic-sys", "to": "F.pt3"}, 0)
+        with self.assertRaises(ValueError):
+            external.parse_external({"source": "magic-sys", "to": "F.pt3", "path": "/etc/F.pt3"}, 0)
+
+    def test_magic_sys_input_staged_under_the_replay_cad_root(self):
+        # Regression: replay read fonts only through the caller's $CAD_ROOT, so flabel cases
+        # failed wherever it was unset (CI). magic-sys inputs land in <work>/cadroot/magic/sys.
+        with tempfile.TemporaryDirectory() as tmp:
+            magic = Path(tmp) / "magic"
+            (magic / "graphics").mkdir(parents=True)
+            (magic / "graphics" / "F.pt3").write_text("font\n", encoding="utf-8")
+            work = Path(tmp) / "work"
+            (work / "input").mkdir(parents=True)
+            with mock.patch.dict(os.environ, {"HEFESTO_MAGIC_SRC": str(magic)}):
+                external.stage([external.External("magic-sys", "F.pt3", "graphics/F.pt3")], work / "input")
+            staged = external.cad_root(work) / "magic" / "sys" / "F.pt3"
+            self.assertEqual(staged.read_text(encoding="utf-8"), "font\n")
+            self.assertFalse((work / "input" / "F.pt3").exists())
+
+    def test_replay_sets_its_own_cad_root(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"CAD_ROOT": "/dev/elsewhere"}):
+            case = load_case(case_with(Path(tmp), ""))
+            work = Path(tmp) / "work"
+            work.mkdir()
+            with mock.patch.object(replay.subprocess, "run") as run:
+                run.return_value = mock.Mock(stdout=b"", stderr=b"", returncode=0)
+                replay.execute(Path("/bin/true"), case, work)
+            self.assertEqual(run.call_args.kwargs["env"]["CAD_ROOT"], str(external.cad_root(work)))
 
     def test_case_loads_external_entries(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -101,8 +130,33 @@ class AuthoringTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = casegen.write(spec, Path(tmp))
             case = load_case(root)
-            self.assertEqual([o.masks for o in case.outputs], [("mag-timestamp",), ()])
+            self.assertEqual([o.masks for o in case.outputs], [("mag-timestamp", "mag-checkpaint"), ()])
             self.assertEqual((root / "input" / "commands.tcl").read_text().splitlines()[-1], "quit -noprompt")
+
+    def test_case_toml_streams_mask_magic_tech_sections(self):
+        spec = casegen.Spec("CORE-X-2", "c", ["r"], "d", ["box 0 0 1 1"], outputs=["a.mag"],
+                            output_masks={"a.mag": []}, stream_masks=["magic-tech-sections"])
+        with tempfile.TemporaryDirectory() as tmp:
+            case = load_case(casegen.write(spec, Path(tmp)))
+            self.assertEqual([o.masks for o in case.outputs],
+                             [("magic-tech-sections",), ("magic-tech-sections",), ("mag-checkpaint",)])
+
+    def test_checkpaint_kept_when_an_input_has_a_checkpaint_section(self):
+        # Regression: the blanket mag-checkpaint mask hid the section CELL-RD-10 checks is persisted.
+        spec = casegen.Spec("CORE-X-3", "c", ["r"], "d", ["load a", "save b"], outputs=["b.mag"],
+                            files={"a.mag": "magic\n<< checkpaint >>\nrect 0 0 1 1\n<< end >>\n"}, streams=False)
+        with tempfile.TemporaryDirectory() as tmp:
+            case = load_case(casegen.write(spec, Path(tmp)))
+            self.assertEqual([o.masks for o in case.outputs], [("mag-timestamp",)])
+        rd10 = load_case(REPO / "tests" / "golden" / "CELL" / "cases" / "CELL-RD-10")
+        self.assertTrue(all("mag-checkpaint" not in o.masks for o in rd10.outputs))
+
+    def test_named_default_fonts_become_magic_sys_inputs(self):
+        spec = casegen.Spec("CORE-X-4", "c", ["r"], "d", ["load a"], files={"a.mag": "flabel m1 0 0 0 0 0 FreeSans 8"},
+                            fonts=["FreeMono"])
+        self.assertEqual([e["to"] for e in casegen.font_externals(spec)], ["FreeSans.pt3", "FreeMono.pt3"])
+        wr10 = load_case(REPO / "tests" / "golden" / "CELL" / "cases" / "CELL-WR-10")
+        self.assertIn(external.External("magic-sys", "FreeSans.pt3", "graphics/FreeSans.pt3"), wr10.externals)
 
     def test_dump_pairs_follow_shared_planes(self):
         text = ("tech\nt\nend\ntypes\n a poly,p\n m1 metal1\n -w pwell\n a pc\nend\n"

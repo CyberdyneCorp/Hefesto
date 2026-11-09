@@ -33,7 +33,7 @@ expected/        captured outputs + provenance.json   (written by capture.py onl
 
 The `case.toml` schema is documented at the top of `goldenlib/case.py`.
 
-Pinned data that is never committed (design D1: PDK data, and Magic's generated `scmos.tech`) is declared as `[[external]]` inputs (`goldenlib/external.py`): `source = "pdk"` copies `<pdk-root>/ciel/sky130/versions/<pin of scripts/fetch_pdk.py>/<path>` (root `$HEFESTO_PDK_ROOT` or `.cache/pdks`), `source = "scmos"` copies `$HEFESTO_SCMOS_TECH` or a `scmos.tech` generated once into `.cache/golden/` from `build/ref/magic`. Both tools read the copy in `<work>/input/`. A missing external input fails a capture and skips a replay; `golden-capture.yml` fetches both data sets (`scripts/fetch_pdk.py`, cached like `ci.yml`). Each output declares where it comes from (`stdout`, `stderr` or a file path in the work directory), a comparator and the masks to apply.
+Pinned data that is never committed (design D1: PDK data, and Magic's generated `scmos.tech`) is declared as `[[external]]` inputs (`goldenlib/external.py`): `source = "pdk"` copies `<pdk-root>/ciel/sky130/versions/<pin of scripts/fetch_pdk.py>/<path>` (root `$HEFESTO_PDK_ROOT` or `.cache/pdks`), `source = "scmos"` copies `$HEFESTO_SCMOS_TECH` or a `scmos.tech` generated once into `.cache/golden/` from `build/ref/magic`, and `source = "magic-sys"` copies `<path>` of the pinned Magic checkout (`$HEFESTO_MAGIC_SRC` or `build/ref/magic`, e.g. `graphics/FreeSans.pt3`) into `<work>/cadroot/magic/sys/`, the files Magic installs in `$CAD_ROOT/magic/sys`. Both tools read the copy in `<work>/input/`. `replay.py` always runs hefesto-cli with `CAD_ROOT=<work>/cadroot`, so a replay never depends on a developer's `CAD_ROOT`; `authoring/casegen.py` adds the `magic-sys` input of each default outline font (FreeSans, FreeSerif, FreeMono) a case's input files name. A `.mag` output gets the `mag-checkpaint` mask unless an input file has a `<< checkpaint >>` section (the case then checks that section is kept). A missing external input fails a capture and skips a replay; `golden-capture.yml` and `ci.yml` fetch these data sets (`scripts/fetch_pdk.py`, cached like `ci.yml`). Each output declares where it comes from (`stdout`, `stderr` or a file path in the work directory), a comparator and the masks to apply.
 
 `provenance.json` records the following:
 
@@ -119,7 +119,20 @@ Comparators are canonicalizers, each applied to both sides after masking (`compa
 - `bytes`: byte for byte. Use it for tile-order and name-keyed hash-order records, which Hefesto reproduces exactly.
 - `ext-cap`: `.ext` cap records are reordered so the smaller terminal name comes first and the records are sorted. Every other line, including `merge` groups, is compared byte for byte and in place. The rules are in `compare/ext_cap.py`.
 
-Masks (`compare/masks.py`) fix fields that are documented as time-dependent: `gds-dates` (BGNLIB/BGNSTR dates), `mag-timestamp`, `ext-timestamp`, and `regex:<pattern>` for one-off fields. A mask touches only its field, so it cannot hide a layout difference.
+Masks (`compare/masks.py`) fix fields that are documented as time-dependent: `gds-dates` (BGNLIB/BGNSTR dates), `mag-timestamp`, `ext-timestamp`, and `regex:<pattern>` for one-off fields. Two more remove Magic output of features outside M1 (design.md Non-Goals: DRC, extraction, mask output): `magic-tech-sections` drops exactly Magic's cifinput/cifoutput/extract messages printed by `tech load` (each pattern with its Magic source line), and `mag-checkpaint` drops the `<< checkpaint >>` section of a `.mag` file (areas Magic's DRC still has to check). A mask touches only its field, so it cannot hide a layout difference.
+
+## Documented deviations
+
+`tests/golden/deviations.toml` lists the captured cases whose Magic output shows behavior Hefesto deliberately does not reproduce: a Magic bug fixed under decision X-2, or another resolved open question. Each entry names the decisions (headings in `docs/decisions/`), the outputs allowed to differ and the reason (`goldenlib/deviations.py`):
+
+```toml
+[TECH-G43]
+decisions = ["Q-TECH-25"]
+outputs = ["stdout.txt"]
+reason = "tech revert * re-locks the layers locked in the technology file"
+```
+
+`replay.py` reports such a case as `DEVIATION`, counted like a skip (CTest shows it as skipped). It still fails when another output differs, and it fails when the case passes, so a stale entry is removed. `tests/test_deviations.py` checks that every entry names a captured case, its outputs and existing decisions. A Hefesto bug is never listed: fix it.
 
 To compare two files by hand:
 
@@ -144,7 +157,7 @@ So the case uses the options D8 allows:
 
 ## M1 case generator
 
-`authoring/m1_cases.py` writes the generated TECH, MODEL, CELL and viewer-related UI cases from the specs in `authoring/{tech,model,cell,ui}_cases.py` (never `expected/`); `--not-authored` lists the CASES.md rows left out and why (commands hefesto-cli does not have, environment-dependent setups, screenshots). Each command becomes `catch {cmd} result; puts $result` in `commands.tcl` and the same line in `commands.hef`; `.mag` outputs are compared byte for byte with the `mag-timestamp` mask. The paint/erase table dumps (TECH-G20, G23, G24, G25, G28) paint every type pair on its own 1x1 box and save one `.mag` per table (`authoring/paint_dump.py`, the method TECH/CASES.md asks to record). Edit a spec, re-run the generator, then `capture.py --check`.
+`authoring/m1_cases.py` writes the generated TECH, MODEL, CELL and viewer-related UI cases from the specs in `authoring/{tech,model,cell,ui}_cases.py` (never `expected/`); `--not-authored` lists the CASES.md rows left out and why (commands hefesto-cli does not have, environment-dependent setups, screenshots). Each command becomes `catch {cmd} result; puts $result` in `commands.tcl` and the same line in `commands.hef`; `.mag` outputs are compared byte for byte with the `mag-timestamp` and `mag-checkpaint` masks, and the console streams with `magic-tech-sections`. The paint/erase table dumps (TECH-G20, G23, G24, G25, G28) paint every type pair on its own 1x1 box and save one `.mag` per table (`authoring/paint_dump.py`, the method TECH/CASES.md asks to record). Edit a spec, re-run the generator, then `capture.py --check`.
 
 ## Adding a case
 

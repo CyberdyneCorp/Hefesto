@@ -242,7 +242,7 @@ def write_specs() -> list[Spec]:
              "Round trip of sky130_fd_sc_hd__tapvpwrvgnd_1 and __a21bo_1 (the two documented exceptions of task 4.2).",
              tech_load("sky130A") + [c for n in cells for c in (f"load input/{n}", f"save {n}")],
              outputs=[f"{n}.mag" for n in cells], output_masks={f"{n}.mag": [] for n in cells},
-             external=[SKY130_TECH_EXTERNAL] + [sky130_cell_external(n) for n in cells],
+             external=[SKY130_TECH_EXTERNAL] + [sky130_cell_external(n) for n in cells], fonts=["FreeSans"],
              notes=["Timestamps are not masked: an unmodified cell keeps its stamp (cell-timestamps)."]),
         scmos("CELL-WR-11", ["Command-script save variant", "Command-script content"],
               "save top.tcl of a cell with paint, a split tile, an instance, labels, ports and properties.",

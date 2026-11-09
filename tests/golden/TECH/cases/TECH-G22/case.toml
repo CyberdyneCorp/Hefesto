@@ -24,28 +24,28 @@ requires_commands = []
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "a.mag"
 source = "a.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "b.mag"
 source = "b.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "c.mag"
 source = "c.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]

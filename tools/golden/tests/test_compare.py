@@ -93,6 +93,39 @@ class MaskTest(unittest.TestCase):
         a, b = b"* Created 2020-01-01\nR1 a b 1k\n", b"* Created 2026-11-07\nR1 a b 1k\n"
         self.assertTrue(compare_bytes(a, b, "bytes", [r"regex:\d{4}-\d{2}-\d{2}"]).equal)
 
+    def test_magic_tech_sections_removes_only_listed_messages(self):
+        magic = (b"Input style lambda=1.0(gen): scaleFactor=100, multiplier=1\n"
+                 b"Contact size value ignored (using GDS generation rules).\n"
+                 b"\n"
+                 b"Warning: Extraction Style default\n"
+                 b"  Missing planeorder for plane(s):\n"
+                 b"    well, active, metal1, metal2,\n"
+                 b"  Magic will use the default planeorder for this style:\n"
+                 b"    well=0, active=1, metal1=2, metal2=3,\n"
+                 b"The following types are not handled by extraction and will be treated as "
+                 b"non-electrical types:\n"
+                 b"    nwell ntransistor pwell \n"
+                 b"Cell a couldn't be read\n"
+                 b"No such file or directory\n")
+        hefesto = b"Cell a couldn't be read\nNo such file or directory\n"
+        self.assertEqual(apply_masks(magic, ["magic-tech-sections"]), hefesto)
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["magic-tech-sections"]).equal)
+
+    def test_magic_tech_sections_keeps_other_differences(self):
+        # Lines that only resemble the masked messages stay, so a real
+        # difference in the M1 sections is still reported.
+        a = b"Input style lambda: scaleFactor=100\nWarning: snap setting\n  Missing planeorder\n"
+        self.assertEqual(apply_masks(a, ["magic-tech-sections"]), a)
+        self.assertFalse(compare_bytes(a + b"x\n", a, "bytes", ["magic-tech-sections"]).equal)
+
+    def test_mag_checkpaint(self):
+        magic = b"magic\ntech tiny\n<< checkpaint >>\nrect -14 -14 20 20\nrect 0 0 1 1\nuse c  c_0 input/lib\n"
+        hefesto = b"magic\ntech tiny\nuse c  c_0 input/lib\n"
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["mag-checkpaint"]).equal)
+        # Paint sections are untouched.
+        paint = b"<< metal1 >>\nrect 0 0 4 4\n"
+        self.assertEqual(apply_masks(paint, ["mag-checkpaint"]), paint)
+
     def test_unknown_mask_and_comparator(self):
         with self.assertRaises(ValueError):
             get_mask("nope")

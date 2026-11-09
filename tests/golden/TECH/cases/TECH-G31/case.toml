@@ -23,7 +23,7 @@ requires_commands = ["tech"]
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
@@ -32,4 +32,4 @@ comparator = "magic-console"
 # The directory list of "Could not find file ... in any of these directories:"
 # is Magic's SysLibPath as stored (". $CAD_ROOT/magic/sys ..."), an
 # installation detail; Hefesto lists its own search path. Only that line is masked.
-masks = ['regex:(?<=directories:\n)[^\n]*']
+masks = ['regex:(?<=directories:\n)[^\n]*', "magic-tech-sections"]

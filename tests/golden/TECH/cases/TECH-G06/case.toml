@@ -23,10 +23,10 @@ requires_commands = ["tech"]
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]

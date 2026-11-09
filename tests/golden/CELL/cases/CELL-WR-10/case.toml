@@ -36,26 +36,31 @@ source = "pdk"
 path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__a21bo_1.mag"
 to = "sky130_fd_sc_hd__a21bo_1.mag"
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = []
+masks = ["magic-tech-sections"]
 
 [[outputs]]
 name = "sky130_fd_sc_hd__tapvpwrvgnd_1.mag"
 source = "sky130_fd_sc_hd__tapvpwrvgnd_1.mag"
 comparator = "bytes"
-masks = []
+masks = ["mag-checkpaint"]
 
 [[outputs]]
 name = "sky130_fd_sc_hd__a21bo_1.mag"
 source = "sky130_fd_sc_hd__a21bo_1.mag"
 comparator = "bytes"
-masks = []
+masks = ["mag-checkpaint"]

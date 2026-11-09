@@ -30,10 +30,10 @@ to = "sky130A.tech"
 name = "paint_dump.mag"
 source = "paint_dump.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
 
 [[outputs]]
 name = "erase_dump.mag"
 source = "erase_dump.mag"
 comparator = "bytes"
-masks = ["mag-timestamp"]
+masks = ["mag-timestamp", "mag-checkpaint"]
