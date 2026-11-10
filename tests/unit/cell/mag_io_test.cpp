@@ -203,6 +203,17 @@ TEST_CASE("HEFESTO_ properties of a newer schema are kept and reported",
   CHECK(io.write(c) == text);
 }
 
+TEST_CASE("a HEFESTO_ schema version too long for an int is still a newer version",
+          "[cap:hefesto-mag-extensions][req:Extension values are versioned]") {
+  // Regression (libFuzzer fuzz_mag_reader): the version digits overflowed an int.
+  CellIo io;
+  const std::string text = "magic\ntech tiny\ntimestamp 1\n<< properties >>\n"
+                           "string HEFESTO_note v577777777777777777777777777:x\n<< end >>\n";
+  db::CellDef& c = io.read("c", text);
+  CHECK(io.has_code(cell::codes::kNewerExtension));
+  CHECK(io.write(c) == text);
+}
+
 TEST_CASE("gzip cell data is decompressed; plain data passes through",
           "[cap:cell-file-format][req:Compressed cell input]") {
   constexpr unsigned char kGzip[] = {
