@@ -35,7 +35,7 @@ Compatibility: exact
 - `cifarea L a h why`: solid list AREA rule, dist h, cdist a (mask units²).
 - `cifmaxwidth L w bends why`: solid list MAXWIDTH rule with variant bend_illegal / bend_ok (BENDS) / both (MAXWIDTH_BOTH); unknown bends report `unknown bend option <x>`.
 - An unknown layer reports `Unknown cif layer: <name>`.
-- Halo contribution: ceil(distance / σ) for cifwidth/cifspacing/cifmaxwidth and ceil(h / σ) for cifarea, then (as for all rules) multiplied by D/N of the DRC scalefactor with ceiling (see Q-DRC-2).
+- Halo contribution: ceil(distance / σ) for cifwidth/cifspacing/cifmaxwidth and ceil(h / σ) for cifarea, then, with the `magic-compat` setting ON (the default), multiplied by D/N of the DRC scalefactor with ceiling as for all rules, as in Magic; with it OFF the CIF contributions are not scaled and the halo is the maximum of them and the scaled tech-file-unit halo (see Q-DRC-2, resolution: replicate under magic-compat, fix with it off; capability `drc-rule-language` "Halo and step size").
 - New rules are pushed at the front of their list (last declared is evaluated first).
 - Mask-layer rule distances are rescaled with the mask style when the internal grid changes (multiplied by n/d with truncation).
 

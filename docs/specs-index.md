@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1987 requirements, 3044 scenarios, 843 open questions.
+**Totals:** 169 capabilities, 1987 requirements, 3079 scenarios, 843 open questions.
 
 ## Hefesto product (native)
 
@@ -82,10 +82,10 @@ Open questions: [23](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
-| [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 19 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
-| [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 14 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
-| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 29 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
-| [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 20 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
+| [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 26 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
+| [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 17 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
+| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 35 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
+| [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 30 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
 
 ## Mask generation, GDS, CIF (MASK)
 
@@ -97,7 +97,7 @@ Open questions: [139](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 | [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 83 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
 | [`gds-write`](../openspec/specs/gds-write/spec.md) | 28 | 64 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 43 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
-| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 41 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
+| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 42 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 39 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
 | [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 33 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |
 
@@ -313,7 +313,7 @@ Open questions: [34](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 |---|---|---|---|
 | [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 19 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
-| [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 13 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
+| [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 21 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
 | [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
 | [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 13 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 

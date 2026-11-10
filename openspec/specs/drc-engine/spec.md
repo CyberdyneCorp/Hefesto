@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the background (continuous) checker schedules and performs checks, how hierarchical interactions, arrays and exact overlaps are checked, how errors of subcells propagate into parents, and the flat check. The geometric rule checks themselves are defined in `drc-rule-semantics`; rule compilation in `drc-rule-language`. Hefesto MUST leave the same error tiles (type and geometry) in every cell's error plane as Magic 8.3.694 for the same tech, layout and sequence of checks.
+Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the background (continuous) checker schedules and performs checks, how hierarchical interactions, arrays and exact overlaps are checked, how errors of subcells propagate into parents, and the flat check. The geometric rule checks themselves are defined in `drc-rule-semantics`; rule compilation in `drc-rule-language`. Hefesto leaves the same error tiles (type and geometry) in every cell's error plane as Magic 8.3.694 for the same tech, layout and sequence of checks; where a rule-level quirk is resolved as *compat*, this holds with the `magic-compat` setting ON (the default), as stated in `drc-rule-language` and `drc-rule-semantics`.
 
 ## Requirements
 
 ### Requirement: DRC check and error planes
-Every cell definition SHALL carry two DRC planes: a check plane holding pending-check areas (type `checkpaint`, short `CP`; type `checksubcell`, `CS`, exists but is never painted by the checker, see Q-DRC-23) and an error plane holding error areas of types `error_p` (`EP`, errors found by checking the cell's own paint), `error_s` (`ES`, errors found in hierarchical interaction areas) and `error_ps` (`EPS`, both).
+Every cell definition SHALL carry two DRC planes: a check plane holding pending-check areas (type `checkpaint`, short `CP`; type `checksubcell`, `CS`, exists but is never painted by the checker, in either `magic-compat` setting, so `.mag` files only get `<< checkpaint >>` sections; a `checksubcell` area read from a file is still painted and checked; see Q-DRC-23, resolution: replicate) and an error plane holding error areas of types `error_p` (`EP`, errors found by checking the cell's own paint), `error_s` (`ES`, errors found in hierarchical interaction areas) and `error_ps` (`EPS`, both).
 Compatibility: exact
 
 Painting on the error plane composes as a 2-bit set: P over S or S over P gives PS; erasing P from PS leaves S and vice versa. Both planes are stored in maximal-horizontal-strip form (see capability `layout-geometry-model`). Check-plane and error-plane contents are written to and read from `.mag` files like paint (see capability `cell-file-format`); a `checkpaint` area read from a file schedules the cell for checking. Error tiles are excluded from paint-command output and from extraction, mask generation and selection of paint.
@@ -46,6 +46,14 @@ Compatibility: behavioral
 - Checking order matters for hierarchical results: children marked before their parents are checked first, so their error planes are current when parents copy them up.
 - `drc catchup` runs the checker to completion regardless of the enabled state (see `drc-commands`).
 
+Hefesto's mechanism (see Q-DRC-12, resolution: platform; the same on every platform, including iPadOS):
+- The background checker runs on a worker thread, never on the UI thread, and checks one step square at a time over an immutable snapshot of the hierarchy the square reads (paint, uses, mask hints and the DRC style taken when the square starts).
+- Squares are taken in Magic's order: pending cells in list order (children, appended before the parents that copy their errors up, are checked first), and within a cell its first `checkpaint` tile in area-enumeration order.
+- When the square is done, its result (the erase of `checkpaint`, `error_p` and `error_s` and the paint of the new errors, see "Step square processing") is committed on the editor's thread as one atomic update, and only if no edit (any database change, including undo/redo and file reads) has been made since the snapshot was taken that touches the cells the square read; otherwise the result is discarded and the square's check tiles stay for a retry. Edits are tracked with an edit-generation counter, so a discarded square leaves the check and error planes exactly as before it started, as in the scenario below.
+- A square is never committed while a command executes; commits happen between commands. A command that makes no edit does not discard the square in progress, which gives the same results as Magic's break-and-restart. A discarded square is abandoned at once, so a new edit's area can start being checked without waiting for it (`hefesto-performance` "Edit latency").
+- `drc catchup` runs the checker synchronously on the calling thread to completion, with the same order and results.
+- When the checker starts work on a non-empty pending list it emits `magic::drcstate busy`, and when the pending list becomes empty (or the checker stops) `magic::drcstate idle`, at the same transitions as Magic. They are delivered to the Tcl interpreter (capability `scripting-api`) and to the desktop shell, which shows them in its DRC status indicator; the `]` / `%` prompt switch of Magic's console is informative.
+
 (Magic ref: drc/DRCcontin.c:481-600, drc/DRCcontin.c:439-470, textio/txCommands.c:1535-1570, drc/DRCmain.c:1007-1025)
 
 #### Scenario: Interrupted check leaves no partial result
@@ -53,6 +61,21 @@ Compatibility: behavioral
 - **WHEN** the user issues a command before the square completes
 - **THEN** the cell's check and error planes are unchanged by the aborted square
 - **AND** the square is checked again later
+
+#### Scenario: Edit during a worker check discards the square
+- **GIVEN** background checking on and the worker checking a square of cell `inv` from a snapshot
+- **WHEN** the user paints into `inv` before the square completes
+- **THEN** the square's result is not committed, its `checkpaint` tiles remain, and the square is checked again from a new snapshot that includes the paint
+
+#### Scenario: Children before parents
+- **GIVEN** a paint change in `leaf`, used in `top`, with background checking on
+- **WHEN** the checker runs
+- **THEN** every square of `leaf` is committed before the first square of `top` starts, so `top` copies `leaf`'s new errors
+
+#### Scenario: Busy and idle transitions
+- **GIVEN** background checking on and an empty pending list
+- **WHEN** a paint command marks an area and the checker then empties the pending list
+- **THEN** `magic::drcstate busy` is emitted once when checking starts and `magic::drcstate idle` once when the list is empty
 
 ### Requirement: Step square processing
 For a check tile T in cell C, the checker SHALL compute the step square S = [fx, fx+s]×[fy, fy+s] where s is the step size and fx, fy are the floor multiples of s at or below LEFT(T), BOTTOM(T); compute the erase box B as the bounding box of all check tiles overlapping S, clipped to S; compute the check box B⁺ = (B expanded by halo h) clipped to S; run the interaction check of C over area S with erase box B into a temporary error plane; and then atomically erase `checkpaint` from B, erase `error_p` from B, erase `error_s` from B⁺, and paint the temporary errors into C's error plane.
@@ -227,7 +250,7 @@ Compatibility: exact
 Hefesto SHALL treat the following Magic host mechanism as reference only: Magic runs the background checker from the Tcl idle loop (Tcl builds) or before blocking for terminal input (non-Tcl builds), processes Tcl events between squares, and toggles a `drcstate busy|idle` callback and the prompt character (`]` while busy, `%` otherwise).
 Compatibility: informative
 
-Hefesto MAY use any scheduling mechanism (worker thread, run-loop idle source on iPadOS) provided the observable results of the "Pending list and background scheduling" requirement hold. See Q-DRC-12 [platform].
+Hefesto replaces this mechanism with the worker-thread checker specified in "Pending list and background scheduling" (see Q-DRC-12, resolution: platform): squares are checked on a worker over a snapshot instead of from the idle loop, a square is discarded when an edit lands in it instead of being broken by pending input, `drc catchup` runs synchronously, and `magic::drcstate busy|idle` are emitted at the same transitions.
 
 (Magic ref: drc/DRCcontin.c:481-560)
 
