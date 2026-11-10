@@ -48,6 +48,52 @@ Compatibility: native
 - **WHEN** the user keeps spreading two fingers
 - **THEN** the zoom SHALL stay at that limit and the point under the fingers SHALL not drift
 
+### Requirement: Desktop Paint, Label and Measure tools
+On Linux and macOS, the tool rail's Paint, Label and Measure buttons SHALL be modes of the box tool: choosing one issues `tool box` when another tool is current, and the rail shows the mode's button as the active tool. In a mode, the left button SHALL sweep an area instead of running the box tool's left-button macro; the other buttons and every key SHALL keep the box tool's bindings of capability `ui-tools-and-input`. While the button is held, the canvas SHALL draw the swept area, snapped to the tool grid, as a dashed preview. On release the desktop SHALL issue `box values X0i Y0i X1i Y1i` for the swept area (internal units), followed in the same command line by:
+- **Paint:** `paint L`, where L is the palette's paint layer (`palette paint L`); with Option (Alt) held at release, `erase L` instead. Without a paint layer, only the box is set.
+- **Label:** nothing; the command bar opens prefilled with `label `, so that the user types the text (and optionally the position and layer) and Enter issues `label TEXT …` on the new box. A click without a drag gives a zero-size box at the point.
+- **Measure:** `measure` (capability `ui-box-stack-and-measure`).
+
+Escape while the button is held SHALL cancel the sweep and issue nothing. Every command issued SHALL be logged like a typed command.
+
+Deferred to M4 (user decision 2026-11-10): the label text entry as a popover on the canvas (the board's design; Raven 0.2.2 has no anchored popover), Escape after a measure issuing `unmeasure` (until then `unmeasure` is typed or bound), and the Paint button disabled with the tooltip "Choose a layer to paint" while no paint layer is set.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-23, board `docs/design/mockups/M2-Tool-States.dc.html`, confirmed by the user 2026-11-10)
+
+#### Scenario: Paint tool drag
+- **GIVEN** the Paint tool is active and the palette's paint layer is `m1`
+- **WHEN** the user presses the left button at (30,40) internal units, drags to (5,8) and releases
+- **THEN** the desktop SHALL issue `box values 5i 8i 30i 40i ; paint m1`, and the box SHALL be (5,8)–(30,40)
+
+#### Scenario: Option-release erases
+- **GIVEN** the Paint tool is active and the paint layer is `m1`
+- **WHEN** the user drags from (0,0) to (2,2) and releases with Option held
+- **THEN** the desktop SHALL issue `box values 0i 0i 2i 2i ; erase m1`
+
+#### Scenario: Escape cancels a sweep
+- **GIVEN** the Paint tool is active and the left button is held after a press at (0,0)
+- **WHEN** the user presses Escape and then releases the button at (9,9)
+- **THEN** no command SHALL be issued
+
+#### Scenario: Label tool
+- **GIVEN** the Label tool is active
+- **WHEN** the user drags from (1,1) to (3,3) and releases
+- **THEN** the box SHALL be (1,1)–(3,3) and the command bar SHALL open with the text `label `
+- **WHEN** the user types `A` and presses Enter
+- **THEN** `label A` SHALL be issued, placing label A on that box
+
+#### Scenario: Measure tool
+- **GIVEN** the Measure tool is active
+- **WHEN** the user drags from (0,0) to (4,0) and releases
+- **THEN** the desktop SHALL issue `box values 0i 0i 4i 0i ; measure`
+
+#### Scenario: Other buttons keep the box tool bindings
+- **GIVEN** the Measure tool is active
+- **WHEN** the user presses the right button at (20,20)
+- **THEN** the box tool's right-button macro (`*bypass box corner ur cursor`) SHALL run, as with the plain box tool
+
 ### Requirement: Touch and Pencil mapping
 On iPadOS (SwiftUI/UIKit gesture recognizers), every tool action and every default key or button binding SHALL be reachable without a mouse or a hardware keyboard. The mapping SHALL be:
 - one-finger drag: the tool's primary action

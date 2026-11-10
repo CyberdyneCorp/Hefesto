@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1983 requirements, 3032 scenarios, 843 open questions.
+**Totals:** 169 capabilities, 1987 requirements, 3044 scenarios, 843 open questions.
 
 ## Hefesto product (native)
 
@@ -12,14 +12,14 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`hefesto-3d-visualization`](../openspec/specs/hefesto-3d-visualization/spec.md) | 5 | 6 | Defines Hefesto's 3D view of a layout's process stack. The baseline is parity with Magic's 3D window (capability `view-3d`). Beyond that, Hefesto adds interactive inspection, glTF/… |
-| [`hefesto-app-ux`](../openspec/specs/hefesto-app-ux/spec.md) | 5 | 6 | Defines the information architecture of Hefesto's modern GUI: the main window, panels, browsers and multi-window behavior on desktop and iPad. Magic's Tk wrapper GUI is specified s… |
+| [`hefesto-app-ux`](../openspec/specs/hefesto-app-ux/spec.md) | 8 | 12 | Defines the information architecture of Hefesto's modern GUI: the main window, panels, browsers and multi-window behavior on desktop and iPad. Magic's Tk wrapper GUI is specified s… |
 | [`hefesto-architecture`](../openspec/specs/hefesto-architecture/spec.md) | 6 | 7 | Defines how Hefesto is structured. A platform-independent C++20 core holds the layout database, all algorithms and the command API. Thin per-platform app shells provide windows, in… |
 | [`hefesto-build-and-distribution`](../openspec/specs/hefesto-build-and-distribution/spec.md) | 4 | 5 | Defines how Hefesto is built with CMake, how third-party dependencies are managed, what CI verifies, and how Hefesto is packaged on each platform. |
 | [`hefesto-collaboration-and-diff`](../openspec/specs/hefesto-collaboration-and-diff/spec.md) | 4 | 5 | Implements decision P-8. Hefesto provides: - structural and visual layout diff - a workflow that works with git: deterministic text formats and a merge helper - document sync throu… |
 | [`hefesto-design-system`](../openspec/specs/hefesto-design-system/spec.md) | 7 | 9 | Defines Hefesto's visual design system, "forge" (decision P-23): - design tokens: color, typography, spacing, radius, elevation and motion - the icon style - the component patterns… |
 | [`hefesto-diagnostics`](../openspec/specs/hefesto-diagnostics/spec.md) | 4 | 8 | Defines Hefesto's structured diagnostics model. Magic reports problems as free text, and the specs treat Magic's message wording as `informative`. Hefesto reports problems as struc… |
 | [`hefesto-files-and-pdks`](../openspec/specs/hefesto-files-and-pdks/spec.md) | 3 | 5 | Defines how Hefesto provides Magic's file-system behavior (cell search paths, PDK discovery, locking, crash backups) on all platforms. This includes the iPadOS app sandbox, which h… |
-| [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 5 | 9 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
+| [`hefesto-input-and-touch`](../openspec/specs/hefesto-input-and-touch/spec.md) | 6 | 15 | Defines how mouse, keyboard, trackpad, touch and Apple Pencil input map onto Magic's tools, macros and commands. Every interaction ends up as a command of the single command API (s… |
 | [`hefesto-ipad-feature-scope`](../openspec/specs/hefesto-ipad-feature-scope/spec.md) | 4 | 4 | Defines which features the first iPadOS release includes and which stay desktop-only (decision P-13). This list is authoritative: a capability not listed as desktop-only here SHALL… |
 | [`hefesto-licensing`](../openspec/specs/hefesto-licensing/spec.md) | 5 | 8 | Defines Hefesto's licensing obligations. Hefesto's specifications are derived from several sources: - Magic, under a UC Berkeley permissive notice - netgen, under the GPL - KLayout… |
 | [`hefesto-mag-extensions`](../openspec/specs/hefesto-mag-extensions/spec.md) | 3 | 3 | Defines how Hefesto stores data that Magic does not support in Magic's file formats without breaking Magic's ability to read them. Such data includes 3D view settings, annotations,… |

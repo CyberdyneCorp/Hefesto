@@ -46,7 +46,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Set up the repository, the build and CI, and a headless core. Prove that Raven can host a high-performance layout canvas. Build the capture setup for expected outputs.
 
-**Status (2026-11-10):** merged (OpenSpec change `m0-foundations`). Build, core and CLI, desktop shell and canvas spike, golden tooling and CI run on every Linux and macOS leg. M0 tasks 3.3, 3.6, 3.7 and 6.3 stay open: the Raven go/no-go is provisional "GO, conditional" until the reference-hardware frame-rate run and the Linux checks (M2 tasks 10.1 and 11.4); see `docs/decisions/raven-go-no-go.md`.
+**Status (2026-11-10):** merged (OpenSpec change `m0-foundations`). Build, core and CLI, desktop shell and canvas spike, golden tooling and CI run on every Linux and macOS leg. The Raven go/no-go is final: **GO** (user decision 2026-11-10, M2 task 11.4), on the Apple M3 Pro measurements and the Linux lavapipe CI job; the reference M1 frame-rate run, Linux X11/Wayland live input and Orca are M4 confirmation checks (see `docs/decisions/raven-go-no-go.md`). M0 tasks 3.7 and 6.3 are closed with it; 3.6 (the M1 Mac and Linux spike runs) moves to M4, and 3.3 stays open.
 
 **Capabilities:** `hefesto-platform-targets`, `hefesto-architecture`, `hefesto-build-and-distribution`, `hefesto-licensing`, `hefesto-diagnostics`, `hefesto-testing-strategy`, `hefesto-output-determinism`, `hefesto-magic-compat-mode`
 
@@ -95,7 +95,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Pull-forward:** the `ui-gui-managers` requirement "Tool modes" (the `tool` command) is implemented in M2 because the M2 tools need it; the rest of `ui-gui-managers` stays in M4.
 
-**Status (2026-11-10, implementation complete; exit pending the user):** OpenSpec change `openspec/changes/m2-interactive-editing`, three implementation rounds done (progress in its `tasks.md`). The editing command set, layout undo, selection and connectivity, hierarchy, labels, command dispatch (Magic's Tcl-build name rules, Q-UI-41), macros and tools, highlights and feedback, the color window and the wiring tool are implemented in the core and unit-tested. The desktop routes canvas input through Magic's macro tables and has a live tool rail, selection inspector, layer palette paint layer and menus, command history and completion popovers, undo/redo with an undo history, the color window screen, a key-binding sheet, docking and F6 focus cycling, and prompt dialogs. Golden: 264 cases, 226 pass, 38 differ only by an approved decision or a later milestone's feature (`deferred`), 0 fail. Requirement coverage is 163 of 163. Left for M2, all needing people or hardware: the M2 boards copied into the reference design artifact (task 2.1), the usability review with the user (2.3), the Raven checks on Linux X11/Wayland and with Orca and an audible VoiceOver run (10.1), the reference-hardware frame-rate run (11.4), and the board decisions for the Paint/Label/Measure tools (10.3). Shell items deferred with recorded gaps: floating panels and drag-to-dock, a per-area minimap update, the crash-dialog capture.
+**Status (2026-11-10, implementation complete; exit pending the user):** OpenSpec change `openspec/changes/m2-interactive-editing`, three implementation rounds done (progress in its `tasks.md`). The editing command set, layout undo, selection and connectivity, hierarchy, labels, command dispatch (Magic's Tcl-build name rules, Q-UI-41), macros and tools, highlights and feedback, the color window and the wiring tool are implemented in the core and unit-tested. The desktop routes canvas input through Magic's macro tables and has a live tool rail, selection inspector, layer palette paint layer and menus, command history and completion popovers, undo/redo with an undo history, the color window screen, a key-binding sheet, docking and F6 focus cycling, and prompt dialogs. Golden: 264 cases, 226 pass, 38 differ only by an approved decision or a later milestone's feature (`deferred`), 0 fail. Requirement coverage is 163 of 163. Decisions of 2026-11-10: the board behaviors (Paint/Label/Measure tools, dialog buttons, panel layout and F6, undo history) are confirmed and specified in `hefesto-input-and-touch` and `hefesto-app-ux`; the Raven go/no-go is final (GO), with the M1 frame-rate run, Linux X11/Wayland input and Orca moved to M4 as confirmation checks; the shell gaps listed under M4 "Carried from M2" move to M4. Left for M2, all needing the user: the M2 boards copied into the reference design artifact (task 2.1), the usability review (2.3) and an audible VoiceOver run by a person (10.1).
 
 **Capabilities:** `cmd-coordinates-and-units`, `cmd-box`, `cmd-paint-erase`, `cmd-selection`, `cmd-hierarchy`, `cmd-labels-properties`, `cmd-misc-edit`, `layout-undo`, `layout-connectivity`, `ui-command-dispatch`, `ui-tools-and-input`, `ui-feedback-and-highlights`, `ui-box-stack-and-measure`, `ui-color-window`, `ui-wizard-and-debug`, `hefesto-input-and-touch` (desktop), `hefesto-app-ux`, `hefesto-design-system`, `wiring-tool`
 
@@ -138,6 +138,19 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 - **Security:** consent before running PDK scripts.
 
 **Desktop Alpha:** open, edit, DRC-check and place PCells in real PDK designs on Linux and macOS.
+
+**Carried from M2** (user decision 2026-11-10; details in `docs/design/m2-ui-conformance.md` and the notes of m2-interactive-editing tasks 10.1 and 10.3-10.8):
+- Raven confirmation checks (`docs/decisions/raven-go-no-go.md`, "Decision (2026-11-10)"): the frame-rate run on the reference M1 Mac and on Linux with a discrete GPU (M0 task 3.6), live mouse, keyboard and trackpad input on Linux under X11 and Wayland, Orca on Linux, and filing the Raven issues upstream (function-key text, key repeat, custom-widget accessibility press and state, anchored popover).
+- Floating panels and drag-to-dock, with panel headers, the drop-zone highlight and collapsed edge strips (the shell moved onto Raven's dock area).
+- The panel layout (dock, size, collapsed, floating) saved per user in the settings and restored at launch.
+- The modal key-binding sheet: key capture, a conflict warning with Replace, Reset table and Load file.
+- The label tool's text entry as a popover on the canvas (needs an anchored popover in Raven); Escape after a measure issuing `unmeasure`; the Paint tool disabled until a paint layer is chosen.
+- Undo steps named after the user command that made them (a per-step command label in the undo log), and the undo history on press-and-hold of Undo.
+- A per-area minimap update instead of the deferred full rebuild.
+- A pixel-width box and selection outline in `render::highlight_batches` (Magic's 2-pixel sides).
+- The wiring tracking HUD, the "Wiring · tracking" mode chip and the Wire inspector.
+- The capture of the crash-recovery dialog.
+- VoiceOver press on custom-drawn controls (tool rail, layer rows), once Raven exposes an accessible press action.
 
 **Early de-risking (start here):** submit the App Review inquiry about running sandboxed Tcl on iPadOS (X-3 risk). The answer decides whether the M14 iPad app runs user-imported PDK scripts or curated packs.
 
