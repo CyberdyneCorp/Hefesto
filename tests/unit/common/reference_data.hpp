@@ -3,10 +3,14 @@
 //
 // Where the unit tests find the pinned, gitignored reference data fetched by
 // scripts/fetch_pdk.py (docs/building.md, "Reference data for tests"):
-//   - the sky130A test subset of open_pdks at kPdkVersion in .cache/pdks;
+//   - the PDK data sets in .cache/pdks/ciel/<family>/versions/<pin>/:
+//       sky130    sky130A tech files and sky130_fd_sc_hd .mag library;
+//       gf180mcu  gf180mcuD tech files and gf180mcu_fd_sc_mcu7t5v0 .mag library;
+//       ihp       ihp-sg13g2 tech files;
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
-// Only the exact pinned PDK version is used, never another installed one, so
-// a stale cache cannot silently change what a test checks. Owner: INTEGRATION.
+// Only the exact pinned versions are used, never another installed one, so a
+// stale cache cannot silently change what a test checks; a test whose data
+// set is missing skips. Owner: PDK (openspec/changes/m3-drc/design.md D2, D15).
 
 #pragma once
 
@@ -17,26 +21,75 @@
 
 namespace hefesto::test {
 
-/// The ciel/open_pdks version scripts/fetch_pdk.py installs (PDK_VERSION there).
+/// The open_pdks/ciel version of the sky130 and gf180mcu sets (OPEN_PDKS_PIN in scripts/fetch_pdk.py).
 inline constexpr std::string_view kPdkVersion = "0fe599b2afb6708d281543108caf8310912f54af";
+/// The IHP-Open-PDK/ciel version of the ihp set (IHP_PIN in scripts/fetch_pdk.py).
+inline constexpr std::string_view kIhpVersion = "ddb601a4a4473163e1ed6df416b885df18b4ac03";
+
+/// One pinned PDK data set: where it is installed and what a complete install holds.
+struct PinnedPdk {
+  std::string_view family;   // directory under .cache/pdks/ciel
+  std::string_view version;  // the pin
+  std::string_view variant;  // directory under the version directory
+  std::string_view tech;     // the tech file in libs.tech/magic
+  std::string_view library;  // the .mag library in libs.ref, or empty when the set has none
+};
+
+inline constexpr PinnedPdk kSky130A{"sky130", kPdkVersion, "sky130A", "sky130A.tech", "sky130_fd_sc_hd"};
+inline constexpr PinnedPdk kGf180mcuD{"gf180mcu", kPdkVersion, "gf180mcuD", "gf180mcuD.tech",
+                                      "gf180mcu_fd_sc_mcu7t5v0"};
+inline constexpr PinnedPdk kIhpSg13g2{"ihp-sg13", kIhpVersion, "ihp-sg13g2", "ihp-sg13g2.tech", ""};
+
+/// `.cache/pdks/ciel/<family>/versions/<version>/<variant>` when it holds the
+/// set's tech file and (if the set has one) its .mag library, else std::nullopt.
+inline std::optional<std::filesystem::path> pinned_variant(const PinnedPdk& pdk) {
+  const std::filesystem::path root = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" / "ciel" /
+                                     std::string{pdk.family} / "versions" / std::string{pdk.version} /
+                                     std::string{pdk.variant};
+  std::error_code ec;
+  if (!std::filesystem::exists(root / "libs.tech/magic" / std::string{pdk.tech}, ec)) {
+    return std::nullopt;
+  }
+  if (!pdk.library.empty() &&
+      !std::filesystem::is_directory(root / "libs.ref" / std::string{pdk.library} / "mag", ec)) {
+    return std::nullopt;
+  }
+  return root;
+}
+
+/// The set's pinned tech file, if fetched.
+inline std::optional<std::filesystem::path> pinned_tech(const PinnedPdk& pdk) {
+  const auto root = pinned_variant(pdk);
+  return root ? std::optional{*root / "libs.tech/magic" / std::string{pdk.tech}} : std::nullopt;
+}
+
+/// The set's pinned .mag library directory (`libs.ref/<library>/mag`), if fetched and the set has one.
+inline std::optional<std::filesystem::path> pinned_library(const PinnedPdk& pdk) {
+  const auto root = pinned_variant(pdk);
+  return root && !pdk.library.empty() ? std::optional{*root / "libs.ref" / std::string{pdk.library} / "mag"}
+                                      : std::nullopt;
+}
 
 /// `.cache/pdks/ciel/sky130/versions/<kPdkVersion>/sky130A` when it holds the
 /// tech files and the sky130_fd_sc_hd .mag library, else std::nullopt.
-inline std::optional<std::filesystem::path> pinned_sky130a() {
-  const std::filesystem::path root = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" / "ciel" /
-                                     "sky130" / "versions" / std::string{kPdkVersion} / "sky130A";
-  std::error_code ec;
-  if (std::filesystem::exists(root / "libs.tech/magic/sky130A.tech", ec) &&
-      std::filesystem::is_directory(root / "libs.ref/sky130_fd_sc_hd/mag", ec)) {
-    return root;
-  }
-  return std::nullopt;
-}
+inline std::optional<std::filesystem::path> pinned_sky130a() { return pinned_variant(kSky130A); }
 
 /// The pinned sky130A.tech, if fetched.
-inline std::optional<std::filesystem::path> pinned_sky130a_tech() {
-  const auto root = pinned_sky130a();
-  return root ? std::optional{*root / "libs.tech/magic/sky130A.tech"} : std::nullopt;
-}
+inline std::optional<std::filesystem::path> pinned_sky130a_tech() { return pinned_tech(kSky130A); }
+
+/// The pinned gf180mcuD variant directory (tech files and the 7t5v0 .mag library), if fetched.
+inline std::optional<std::filesystem::path> pinned_gf180mcud() { return pinned_variant(kGf180mcuD); }
+
+/// The pinned gf180mcuD.tech, if fetched.
+inline std::optional<std::filesystem::path> pinned_gf180mcud_tech() { return pinned_tech(kGf180mcuD); }
+
+/// The pinned gf180mcu_fd_sc_mcu7t5v0 .mag directory, if fetched.
+inline std::optional<std::filesystem::path> pinned_gf180mcu_7t5v0_mag() { return pinned_library(kGf180mcuD); }
+
+/// The pinned ihp-sg13g2 variant directory (tech files only), if fetched.
+inline std::optional<std::filesystem::path> pinned_ihp_sg13g2() { return pinned_variant(kIhpSg13g2); }
+
+/// The pinned ihp-sg13g2.tech, if fetched.
+inline std::optional<std::filesystem::path> pinned_ihp_sg13g2_tech() { return pinned_tech(kIhpSg13g2); }
 
 }  // namespace hefesto::test
