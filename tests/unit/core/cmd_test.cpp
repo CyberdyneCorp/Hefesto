@@ -180,11 +180,8 @@ TEST_CASE("built-in commands", CMD_API_TAGS) {
   CHECK(s.exec("version", {"x"}).diagnostics.at(0).code == codes::kCmdUsage);
   CHECK(s.exec("echo").value == Value{""});
 
-  const auto help = s.exec("help").value.to_string();
-  CHECK(help.find("hefesto::strict ?on|off?") != std::string::npos);
-  CHECK(help.find("setting ?get name") != std::string::npos);
-  CHECK(s.exec("help", {"quit"}).ok());
-  CHECK_FALSE(s.exec("help", {"nosuch"}).ok());
+  // `help` is the ui area's (ui-command-dispatch "help command"), not a built-in.
+  CHECK(s.registry().find("help") == nullptr);
 
   CHECK(s.exec("setting").value.to_string() == "magic-compat on netgen-compat on script-strict off");
   CHECK(s.exec("setting", {"set", "netgen-compat", "off"}).ok());
@@ -302,7 +299,7 @@ TEST_CASE("lambda, internal and grid suffixes", UNIT_TAGS) {
   CHECK(coord("3i", u) == 3.0);
   u.default_unit = hefesto::cmd::DefaultUnit::internal;
   CHECK(coord("3", u) == 3.0);
-  CHECK(coord("2g", u) == 0.0);  // no window: the parse ends (Q-CMDEDIT-4)
+  CHECK_FALSE(hefesto::cmd::parse_coordinate("2g", u).ok());  // no window: an error (Q-CMDEDIT-4/5)
   u.grid = std::array<std::int64_t, 4>{5, 5, 15, 25};
   CHECK(coord("2g", u) == 25.0);
   CHECK(coord("2g", u, hefesto::cmd::Axis::y, true) == 40.0);

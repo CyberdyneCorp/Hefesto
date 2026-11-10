@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "db/tech_masks.hpp"
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 
 namespace hefesto::db {
@@ -37,7 +38,60 @@ bool on_plane(tech::PlaneMask mask, std::size_t p) noexcept {
   return (mask & tech::plane_bit(static_cast<tech::PlaneId>(p))) != 0;
 }
 
-diag::Status apply_row(Plane& plane, const Rect& area, const PaintRow& row, const std::optional<TriangleSpec>& tri) {
+Rect clip(const Rect& a, const Rect& b) noexcept {
+  return Rect{std::max(a.x0, b.x0), std::max(a.y0, b.y0), std::min(a.x1, b.x1), std::min(a.y1, b.y1)};
+}
+
+// The change of one enumerated tile (or split side) whose type `row`
+// changes: a Manhattan tile clipped to `area`; a split side as the whole
+// triangle (painting its old type back over it restores it exactly, as
+// nothing outside `area` changed). `paint_side` is the triangle being
+// painted, if any: a Manhattan piece under it changes on that side only.
+TileChange tile_change(tech::PlaneId id, const TileView& t, const Rect& area, const PaintRow& row,
+                       const std::optional<TriangleSpec>& paint_side) {
+  TileChange c{id, clip(t.area, area), t.type, row[t.type], std::nullopt};
+  if (t.split) {
+    c.area = t.area;
+    c.triangle = TriangleSide{t.diagonal, t.right_side};
+  } else if (paint_side) {
+    c.triangle = TriangleSide{paint_side->diagonal, paint_side->right_side};
+  }
+  return c;
+}
+
+// Reports to the cell's recorder each tile (or split side) under `area`
+// (or under its triangle) whose type `row` changes (Magic's DBPaintPlane /
+// DBNMPaintPlane undo records; layout-undo "Recorded event kinds").
+void record_tiles(CellDef& def, tech::PlaneId id, const Rect& area, const PaintRow& row,
+                  const std::optional<TriangleSpec>& tri) {
+  ChangeRecorder* recorder = def.recorder();
+  if (recorder == nullptr || area.is_null()) {
+    return;
+  }
+  std::vector<TileChange> changes;
+  const auto collect = [&](const TileView& t) {
+    if (row[t.type] != t.type) {
+      changes.push_back(tile_change(id, t, area, row, tri));
+    }
+    return true;
+  };
+  const Plane& plane = def.plane(id);
+  if (tri) {
+    plane.enumerate_triangle(area, tri->diagonal, tri->right_side, tech::TypeMask::all(), collect);
+  } else {
+    plane.enumerate(area, tech::TypeMask::all(), collect);
+  }
+  for (const TileChange& change : changes) {
+    recorder->tile_changed(def, change);
+  }
+}
+
+diag::Status apply_row(CellDef& def, tech::PlaneId id, const Rect& area, const PaintRow& row,
+                       const std::optional<TriangleSpec>& tri) {
+  if (in_usable_plane(area)) {
+    record_tiles(def, id, area, row, tri);
+  }
+  Plane& plane = def.plane(id);
   if (tri) {
     return plane.paint_triangle(area, tri->diagonal, tri->right_side, row);
   }
@@ -226,7 +280,7 @@ diag::Status paint_type(CellDef& def, const tech::Technology& tech, const Rect& 
   for (std::size_t p = 1; p < def.plane_count(); ++p) {
     if (on_plane(planes, p)) {
       const auto id = static_cast<tech::PlaneId>(p);
-      if (auto s = apply_row(def.plane(id), area, paint_row(tech, id, type), triangle); !s.ok()) {
+      if (auto s = apply_row(def, id, area, paint_row(tech, id, type), triangle); !s.ok()) {
         return s;
       }
     }
@@ -249,7 +303,7 @@ diag::Status erase_type(CellDef& def, const tech::Technology& tech, const Rect& 
     if (space || on_plane(planes, p)) {
       const auto id = static_cast<tech::PlaneId>(p);
       const PaintRow row = space ? paint_row(tech, id, type) : erase_row(tech, id, type);
-      if (auto s = apply_row(def.plane(id), area, row, triangle); !s.ok()) {
+      if (auto s = apply_row(def, id, area, row, triangle); !s.ok()) {
         return s;
       }
     }
@@ -297,7 +351,7 @@ namespace {
 // One copied tile, transformed into the target and clipped to `target_area`
 // (a split tile is copied only when it lies wholly inside: clipped triangles
 // are not supported, as documented).
-diag::Status copy_tile(Plane& plane, const tech::Technology& tech, tech::PlaneId id, const TileView& tile,
+diag::Status copy_tile(CellDef& target, const tech::Technology& tech, tech::PlaneId id, const TileView& tile,
                        tech::TileType type, const Transform& transform, const Rect& target_area) {
   const Rect r = apply(transform, tile.area);
   std::optional<TriangleSpec> tri;
@@ -312,7 +366,7 @@ diag::Status copy_tile(Plane& plane, const tech::Technology& tech, tech::PlaneId
     clipped = Rect{std::max(r.x0, target_area.x0), std::max(r.y0, target_area.y0), std::min(r.x1, target_area.x1),
                    std::min(r.y1, target_area.y1)};
   }
-  return apply_row(plane, clipped, paint_row(tech, id, type), tri);
+  return apply_row(target, id, clipped, paint_row(tech, id, type), tri);
 }
 
 }  // namespace
@@ -337,7 +391,7 @@ diag::Status copy_paint(const CellDef& source, const Rect& area, const Transform
       return true;
     });
     for (const auto& [tile, type] : tiles) {
-      if (auto s = copy_tile(target.plane(id), tech, id, tile, type, transform, target_area); !s.ok()) {
+      if (auto s = copy_tile(target, tech, id, tile, type, transform, target_area); !s.ok()) {
         return s;
       }
     }

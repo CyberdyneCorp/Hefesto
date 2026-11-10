@@ -32,6 +32,10 @@ inline constexpr std::string_view kNoBox = "DB-CMD-002";
 inline constexpr std::string_view kBadLayer = "DB-CMD-003";
 inline constexpr std::string_view kBadArgument = "DB-CMD-004";
 inline constexpr std::string_view kNoLabel = "DB-CMD-005";
+inline constexpr std::string_view kBoxNotInEditWindow = "DB-CMD-006";
+inline constexpr std::string_view kBoxOutOfBounds = "DB-CMD-007";
+inline constexpr std::string_view kNotAvailable = "DB-CMD-008";
+inline constexpr std::string_view kNotEditable = "DB-CMD-009";
 // Labels and properties
 inline constexpr std::string_view kLabelEmpty = "DB-LABEL-001";
 inline constexpr std::string_view kPropertyValue = "DB-PROP-001";

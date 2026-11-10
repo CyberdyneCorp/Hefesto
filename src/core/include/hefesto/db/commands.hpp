@@ -21,13 +21,8 @@ namespace hefesto::db {
 
 /// Adds the MODEL commands to `registry`. Returns false if a name was taken.
 /// `getcell` and `flatten` are registered by the CELL area
-/// (cell::register_cell_commands), which first reads the cells they need
-/// from files and then calls the handlers below.
+/// (cell::register_cell_commands), which reads the cells they need from
+/// files.
 bool register_db_commands(cmd::CommandRegistry& registry);
-
-/// `getcell name [orientation]` for a definition already in memory.
-[[nodiscard]] cmd::CommandResult getcell_command(cmd::CommandContext& ctx, const cmd::Invocation& inv);
-/// `flatten [options] name` over cells already in memory.
-[[nodiscard]] cmd::CommandResult flatten_command(cmd::CommandContext& ctx, const cmd::Invocation& inv);
 
 }  // namespace hefesto::db

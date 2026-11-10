@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "hefesto/cmd/command.hpp"
+#include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/cell.hpp"
@@ -47,18 +48,30 @@ using Snap = editor::SnapMode;
 [[nodiscard]] Snap snap_mode(const Session& s);
 void set_snap_mode(const Session& s, Snap mode);
 [[nodiscard]] std::string_view snap_name(Snap mode) noexcept;
-/// Magic's DBWUnits as far as M1 needs it: `default` (un-suffixed values
-/// follow the snap grid) until the deprecated `snap internal` switches it to
-/// `internal` (cmd-coordinates-and-units, "Snap command"). Kept in the
-/// session settings layer under "units" until the `units` command lands.
+/// `units internal` is set (EditorState::units); the deprecated `snap
+/// internal` sets it while units are default (cmd-coordinates-and-units,
+/// "Snap command").
 [[nodiscard]] bool units_internal(const Session& s);
 void set_units_internal(const Session& s);
 
-/// A coordinate typed by the user: an integer with an optional unit suffix
-/// `i` (internal) or `l` (lambda); otherwise in the current snap unit.
+/// The units of the shared coordinate parser for this session: grid
+/// scale, effective input unit (`units`, else `snap`), output style,
+/// current window grid and magic-compat.
+[[nodiscard]] cmd::CoordinateUnits coordinate_units(const Session& s);
+
+/// A coordinate typed by the user that must be a number (cmd::parse_coordinate):
+/// fails when the word does not start with one, or lies outside the plane.
 [[nodiscard]] diag::Outcome<Coord> parse_coord(const Session& s, std::string_view text);
-/// A coordinate printed in the current snap unit.
-[[nodiscard]] cmd::Value coord_value(const Session& s, Coord value);
+/// A coordinate argument with Magic's cmdParseCoord rules (cmd::parse_distance):
+/// an unparseable word reports "assuming 0"; fails only on the invalid
+/// forms (metric without output style, grid without window, division by 0).
+[[nodiscard]] diag::Outcome<Coord> parse_distance(const Session& s, std::string_view text, cmd::Axis axis,
+                                                  bool relative);
+/// A reported value in the current `units` (cmd::format_value): an integer
+/// for default units (and internal without the print flag), else the text.
+[[nodiscard]] cmd::Value report_value(const Session& s, std::int64_t value, cmd::Axis axis,
+                                      cmd::ValueKind kind = cmd::ValueKind::length);
+[[nodiscard]] cmd::Value coord_value(const Session& s, Coord value, cmd::Axis axis = cmd::Axis::x);
 
 [[nodiscard]] diag::Outcome<std::int64_t> parse_int(std::string_view text);
 
@@ -112,8 +125,8 @@ void update_font_label(const Session& s, Label& label);
 [[nodiscard]] CellUse* current_use(const Session& s);
 void set_current_use(const Session& s, const CellUse* use);
 
-/// Magic's Lookup: exact match, else a unique prefix; the index, -1 when
-/// ambiguous, -2 when nothing matches.
+/// Magic's Lookup (cmd::lookup: case-insensitive, exact match, else a
+/// unique prefix); the index, -1 when ambiguous, -2 when nothing matches.
 [[nodiscard]] int lookup(std::string_view word, std::initializer_list<std::string_view> choices);
 [[nodiscard]] int lookup_in(std::string_view word, std::span<const std::string_view> choices);
 
@@ -123,8 +136,12 @@ void set_current_use(const Session& s, const CellUse* use);
 bool add(cmd::CommandRegistry& registry, std::string name, std::string synopsis, std::string help,
          cmd::Handler handler);
 
-// Command groups (commands.cpp, commands_labels.cpp, commands_cells.cpp).
+// Command groups (commands_box.cpp, commands_paint.cpp, commands.cpp,
+// commands_misc.cpp, commands_labels.cpp, commands_cells.cpp).
+bool register_box_commands(cmd::CommandRegistry& registry);
 bool register_paint_commands(cmd::CommandRegistry& registry);
+bool register_snap_command(cmd::CommandRegistry& registry);
+bool register_misc_commands(cmd::CommandRegistry& registry);
 bool register_label_commands(cmd::CommandRegistry& registry);
 bool register_cell_commands(cmd::CommandRegistry& registry);
 

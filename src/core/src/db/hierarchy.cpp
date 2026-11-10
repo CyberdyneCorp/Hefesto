@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 
 namespace hefesto::db {
@@ -235,6 +236,9 @@ diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOption
   CellUse* raw = use.get();
   parent.uses().push_back(std::move(use));
   child.instances().insert(child.instances().begin(), raw);
+  if (ChangeRecorder* r = parent.recorder()) {
+    r->use_placed(parent, *raw);
+  }
   mark_modified(parent);
   return raw;
 }
@@ -247,6 +251,9 @@ diag::Status remove_use(CellUse& use) {
   }
   if (parent == nullptr) {
     return diag::make(codes::kUseNotFound, "instance \"" + use.id + "\" has no parent");
+  }
+  if (ChangeRecorder* r = parent->recorder()) {
+    r->use_deleted(*parent, use);
   }
   mark_modified(*parent);
   auto& uses = parent->uses();
@@ -274,18 +281,27 @@ diag::Status rename_use(CellUse& use, std::string_view new_id) {
   if (use.parent != nullptr && find_use(*use.parent, new_id) != nullptr) {
     return diag::make(codes::kUseIdTaken, "instance \"" + std::string{new_id} + "\" already exists");
   }
-  if (use.parent != nullptr) {
-    use.parent->flags().modified = true;
-  }
+  const std::string old_id = std::move(use.id);
   use.id = std::string{new_id};
+  if (use.parent != nullptr) {
+    if (ChangeRecorder* r = use.parent->recorder()) {
+      r->use_id_cleared(*use.parent, use, old_id);
+      r->use_id_set(*use.parent, use, use.id);
+    }
+    set_modified_flag(*use.parent);
+  }
   return diag::Done{};
 }
 
 void set_use_locked(CellUse& use, bool locked) {
-  if (use.locked != locked && use.parent != nullptr) {
-    use.parent->flags().modified = true;  // Q-MODEL-13 (fix)
-  }
+  const bool changed = use.locked != locked;
   use.locked = locked;
+  if (changed && use.parent != nullptr) {
+    if (ChangeRecorder* r = use.parent->recorder()) {
+      r->use_locked(*use.parent, use, locked);
+    }
+    set_modified_flag(*use.parent);  // Q-MODEL-13 (fix)
+  }
 }
 
 std::vector<CellUse*> uses_in_search_order(const CellDef& def) {

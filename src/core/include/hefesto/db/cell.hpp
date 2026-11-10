@@ -34,6 +34,7 @@
 namespace hefesto::db {
 
 class CellDef;
+class ChangeRecorder;  // db/change_recorder.hpp
 
 /// Observable definition flags ("Cell definitions and the cell namespace").
 struct CellFlags {
@@ -157,8 +158,16 @@ class CellDef {
     extended_bbox_ = extended;
   }
 
+  /// The change recorder of the library that owns this definition
+  /// (CellLibrary::set_recorder); nullptr when none is installed or the
+  /// definition belongs to no library (e.g. the selection's internal cell).
+  /// The db primitives report each change to it (db/change_recorder.hpp).
+  [[nodiscard]] ChangeRecorder* recorder() const noexcept {
+    return recorder_slot_ != nullptr ? *recorder_slot_ : nullptr;
+  }
+
  private:
-  friend class CellLibrary;  // renames definitions
+  friend class CellLibrary;  // renames definitions, links the recorder
 
   std::string name_;
   CellFlags flags_;
@@ -172,14 +181,17 @@ class CellDef {
   std::vector<CellUse*> instances_;
   Rect bbox_{0, 0, 1, 1};
   Rect extended_bbox_{0, 0, 1, 1};
+  ChangeRecorder* const* recorder_slot_ = nullptr;  // CellLibrary::Impl::recorder
 };
 
 /// Marks the definition modified and needing a new timestamp (CDMODIFIED |
-/// CDGETNEWSTAMP), as every paint, label and instance change does.
-inline void mark_modified(CellDef& def) noexcept {
-  def.flags().modified = true;
-  def.flags().needs_new_timestamp = true;
-}
+/// CDGETNEWSTAMP), as every paint, label and instance change does. A change
+/// of the modified flag is reported to the change recorder.
+void mark_modified(CellDef& def);
+
+/// Sets only the modified flag (CDMODIFIED, no new timestamp), reporting
+/// the change to the change recorder.
+void set_modified_flag(CellDef& def);
 
 /// DBPropPut: puts (or with nullopt removes) a property, honoring the
 /// no-edit flag (silently ignored) and keeping the fixed-bbox and
@@ -230,6 +242,14 @@ class CellLibrary {
   /// visitor must not create, rename or remove definitions.
   void for_each(const std::function<void(CellDef&)>& visit) const;
   [[nodiscard]] std::size_t size() const noexcept;
+
+  /// Installs the observer every definition of this library reports its
+  /// primitive changes to (openspec/changes/m2-interactive-editing/design.md
+  /// D4; undo::DbRecorder in a session). Not owned; nullptr (the default)
+  /// records nothing at no cost. Definitions created before and after the
+  /// call both see the current recorder.
+  void set_recorder(ChangeRecorder* recorder) noexcept;
+  [[nodiscard]] ChangeRecorder* recorder() const noexcept;
 
  private:
   struct Impl;
