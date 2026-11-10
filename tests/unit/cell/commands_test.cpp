@@ -84,7 +84,7 @@ TEST_CASE("writeall force saves modified cells and skips read-only ones",
 // Regression (UI-G-033, UI-G-036): `openwindow PATH/NAME` reads the cell as
 // DBWloadWindow does: the cell is NAME, an existing one is reused, and the
 // edit cell stays.
-TEST_CASE("openwindow reads its cell through the search paths", "[cap:ui-windows-and-views][req:Opening windows]") {
+TEST_CASE("openwindow reads its cell through the search paths", "[cap:ui-windows-and-views][req:Opening and closing windows]") {
   Session s;
   REQUIRE(hefesto::view::register_view_commands(s.registry));
   REQUIRE(s.files().write_atomic("/work/lib/nand2.mag", "magic\ntech tiny\ntimestamp 5\n<< end >>\n").ok());

@@ -134,7 +134,7 @@ TEST_CASE("port make with an index used by another port is refused, and directio
 }
 
 TEST_CASE("port attributes set every port with the same text and index",
-          "[cap:cmd-labels-properties][req:Port attributes][golden:CMDEDIT-LBL-04]") {
+          "[cap:cmd-labels-properties][req:Port attributes][req:Port command target][golden:CMDEDIT-LBL-04]") {
   Session s;
   for (const db::Coord x : {0, 10}) {
     db::Label& p = s.label(*s.top, "A", Rect{x, 0, x, 0});

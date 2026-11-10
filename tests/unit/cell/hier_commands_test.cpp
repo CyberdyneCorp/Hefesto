@@ -224,7 +224,7 @@ TEST_CASE("the edit frame change is recorded as one undo event", "[cap:cmd-hiera
 
 // Regression (MODEL-G-050/057): dbwUndoChangeEdit prints the new edit cell
 // and its use when an edit cell change is undone or redone.
-TEST_CASE("undoing an edit cell change prints the new edit cell", "[cap:layout-undo][req:Undo and redo commands]") {
+TEST_CASE("undoing an edit cell change prints the new edit cell", "[cap:layout-undo][req:undo command][req:redo command]") {
   EditFixture f;
   hefesto::editor::EditorState& ed = f.s.editor;
   cell::set_edit_frame(ed, cell::EditFrame{f.inv, f.s.top, f.x1->transform});

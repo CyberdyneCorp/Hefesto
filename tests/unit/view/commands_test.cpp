@@ -230,7 +230,8 @@ TEST_CASE("grid command forms", "[cap:ui-windows-and-views][req:Grid display and
   CHECK(text(s.run("grid", {"multiple"})) == "4");
 }
 
-TEST_CASE("crosshair is shown in every window on the same root", "[cap:ui-windows-and-views][req:Crosshair]") {
+TEST_CASE("crosshair is shown in every window on the same root",
+          "[cap:ui-windows-and-views][req:Crosshair][cap:cmd-misc-edit][req:Crosshair command]") {
   Session s;
   db::CellDef* top = s.cell("top", {0, 0, 10, 10});
   db::CellDef* inv = s.cell("inv", {0, 0, 10, 10});

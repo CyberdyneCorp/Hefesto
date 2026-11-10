@@ -126,7 +126,9 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
   - Viewport: `Rviewport_set_draw_callback`, `Rviewport_set_resize_callback`, `Rviewport_set_realtime`.
   - Window: `Rwindow_create`, `Rwindow_destroy`, `Rwindow_set_content`, `Rwindow_set_title`, `Rwindow_set_min_size`, `Rwindow_set_clear_color`, `Rwindow_is_valid`, `Rwindow_request_redraw`, `Rwindow_get_scale`, `Rwindow_get_frame_stats`, `Rwindow_capture`, `Rwindow_get_native_handle` (window-system check of the smoke test), `Rpixels_free`.
 
-  The M0 dock (`Rdock_area_*`), label and tree-view calls are no longer used. The 43 functions added in M1 were not diffed against v0.2.0; they all exist at the v0.2.2 pin, which is what the build uses.
+  - Added in M2 (round 2, 114 functions in all): dialogs for `cmd::PromptHost` (`Rdialog_open`, `Rdialog_run`, `Rdialog_close`), real buttons (`Rbutton_create`, `Rbutton_set_style`, `Rbutton_set_clicked_callback`), labels (`Rlabel_create`, `Rlabel_set_text_size`, `Rlabel_set_wrap`), `Rtext_input_get_text` (Tab completion), `Raccessibility_announce`, `Rwidget_set_gesture_callback`, `Rwindow_get_size` and `Rwindow_inject_trackpad_gesture` (gesture tests); `Rwidget_set_cursor` is now also set on the viewport, and `R_WIDGET_SPACER` is used as a widget kind.
+
+  The M0 dock (`Rdock_area_*`) and tree-view calls are no longer used (label calls are used again since M2). The 43 functions added in M1 were not diffed against v0.2.0; they all exist at the v0.2.2 pin, which is what the build uses.
 
   Structures read: `RInitDesc`, `REvent`, `RViewportDrawInfo`, `RFrameStats`, `RNativeWindow` (only `system`).
 - **v0.2.0 → v0.2.2** (2026-10-30 → 2026-11-06, 145 commits), comparing the `RAVEN_API` declarations of `include/` at both tags:
@@ -146,7 +148,7 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
 
 ## M2 10.1 checks (macOS, 2026-11-10): results, not final
 
-This is the evidence recorded for m2-interactive-editing task 10.1. It does not change the summary table or the recommendation; INTEGRATION finalizes both in task 11.4.
+This is the evidence recorded for m2-interactive-editing task 10.1. It does not change the summary table or the recommendation; INTEGRATION finalizes both in task 11.4. The benchmark JSON files, the step log of the recorded session and the AX tree dump are kept in `docs/spikes/results/2026-11-10-apple-m3-pro-m2/`. The session was recorded before SHELL routed canvas buttons through Magic's macro tables (middle- and right-drag no longer pan; Option-drag does), so it must be repeated on the current build.
 
 **Setup:**
 

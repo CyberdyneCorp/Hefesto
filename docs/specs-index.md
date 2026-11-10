@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1983 requirements, 3023 scenarios, 839 open questions.
+**Totals:** 169 capabilities, 1983 requirements, 3026 scenarios, 842 open questions.
 
 ## Hefesto product (native)
 
@@ -273,12 +273,12 @@ Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASE
 | [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 27 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
 | [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 18 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
 | [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 14 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific command… |
-| [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 35 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
-| [`cmd-selection`](../openspec/specs/cmd-selection/spec.md) | 21 | 37 | Defines the selection model and the commands that create, inspect and operate on it: `select` (every option and qualifier, point-selection cycling, chunk/region/net growth, `short`… |
+| [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 36 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
+| [`cmd-selection`](../openspec/specs/cmd-selection/spec.md) | 21 | 38 | Defines the selection model and the commands that create, inspect and operate on it: `select` (every option and qualifier, point-selection cycling, chunk/region/net growth, `short`… |
 
 ## UI, display, startup (UI)
 
-Open questions: [40](decisions/open-questions/UI.md) · Golden cases: [CASES.md](../tests/golden/UI/CASES.md)
+Open questions: [43](decisions/open-questions/UI.md) · Golden cases: [CASES.md](../tests/golden/UI/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -333,4 +333,4 @@ Open questions: [60](decisions/open-questions/LEGACY.md) · Golden cases: [CASES
 | [`router-maze-iroute`](../openspec/specs/router-maze-iroute/spec.md) | 10 | 12 | Defines the `iroute` command: point-to-point routing with the maze router (capability `router-maze`), start/destination specification, endpoint layer selection, result codes, paint… |
 | [`router-net2ir`](../openspec/specs/router-net2ir/spec.md) | 3 | 4 | Defines `net2ir`, a standalone converter shipped with Magic that turns a saved feedback file (label locations produced by the netlist `find` command followed by `feedback save`) pl… |
 | [`scheme-interpreter`](../openspec/specs/scheme-interpreter/spec.md) | 3 | 3 | Documents Magic's optional built-in mini-Scheme interpreter (selected at build time with `--with-interpreter=scheme`, mutually exclusive with the Tcl interpreter). It is legacy: cu… |
-| [`wiring-tool`](../openspec/specs/wiring-tool/spec.md) | 8 | 11 | Defines Magic's wiring interface: the `wiring` technology section (contact definitions used for layer switches), the `wire` command and all its subcommands (type selection, legs, c… |
+| [`wiring-tool`](../openspec/specs/wiring-tool/spec.md) | 8 | 12 | Defines Magic's wiring interface: the `wiring` technology section (contact definitions used for layer switches), the `wire` command and all its subcommands (type selection, legs, c… |

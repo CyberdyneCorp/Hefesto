@@ -66,7 +66,7 @@ TEST_CASE("a pointer selection is logged with `at` and the point's root corner",
 }
 
 TEST_CASE("move, copy and stretch at the pointer are logged as `to` and direction forms",
-          "[cap:ui-command-dispatch][req:Command logging][cap:cmd-selection][req:Move command]") {
+          "[cap:ui-command-dispatch][req:Command logging][cap:cmd-selection][req:Copy and move displacement]") {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);
   s.paint({0, 0, 10, 10}, mt.m1);
