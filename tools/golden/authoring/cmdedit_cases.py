@@ -35,11 +35,11 @@ NOT_AUTHORED: dict[str, str] = {}
 
 def ed(cid: str, cap: str, reqs: list[str], desc: str, body: list[str], tech: str = "tiny",
        outputs: list[str] | None = None, files: dict | None = None, cell: str | None = "a",
-       notes: list[str] | None = None) -> Spec:
+       notes: list[str] | None = None, stream_masks: list[str] | None = None) -> Spec:
     """A case: load ``tech``, open cell ``cell`` (none for an (UNNAMED) start), run ``body``."""
     prefix = [f"tech load input/{tech} -noprompt"] + ([f"load {cell}"] if cell else [])
     return Spec(cid, cap, reqs, desc, prefix + body, files={f"{tech}.tech": TECHS[tech], **(files or {})},
-                outputs=outputs or [], notes=notes or [])
+                outputs=outputs or [], notes=notes or [], stream_masks=stream_masks or [])
 
 
 def backup_records(spec: Spec, output: str) -> Spec:
@@ -468,7 +468,7 @@ def misc_specs() -> list[Spec]:
            cell("b", m1) + cell("a", m1 + ["xor b"]) + cell("d", paint("metal1", 5, 0, 15, 10))
            + cell("c", m1 + ["xor d"]) + cell("f", paint("poly", 0, 0, 10, 10))
            + cell("e", m1 + label("E", 5, 5) + ["xor -nolabels -novendor f"]) + ["writeall force"],
-           outputs=["b.mag", "d.mag", "f.mag"]),
+           outputs=["b.mag", "d.mag", "f.mag"], stream_masks=["magic-stamp-note"]),
         ed("CMDEDIT-MISC-02", MISC, ["See command"], "see no metal1; select visible; see allSame; select visible.",
            m1 + paint("poly", 0, 0, 5, 5) + [box(0, 0, 10, 10), "see no metal1", "select visible", "what -list",
                                               "select clear", "see allSame", "select visible", "what -list"]),
