@@ -45,7 +45,7 @@ reason = "in-place flatten renames the child's labels <id>[x][y]/<text>; Magic's
 [MODEL-G-040]
 decisions = ["Q-MODEL-12"]
 outputs = ["stdout.txt"]
-reason = "undo replay marks the cell modified, so cellname list modified prints it, and the save in the same second as the previous one prints Magic's 'writing out-of-date timestamp' note for the pending stamp"
+reason = "undo replay marks the cell modified, so cellname list modified prints it"
 
 [MODEL-G-043]
 decisions = ["Q-CELL-12"]
@@ -170,11 +170,6 @@ reason = "feedback save writes the box coordinates with an i suffix so the file 
 decisions = ["Q-CMDEDIT-9"]
 outputs = ["stdout.txt"]
 reason = "box corner DIR X Y moves the corner to (X, Y); Magic rejects the five-word form with the box help and keeps the box"
-
-[CMDEDIT-PAINT-01]
-decisions = ["Q-MODEL-12"]
-outputs = ["stdout.txt"]
-reason = "undo replay marks the cell modified and pending a new timestamp; saving it in the same second as the previous save prints Magic's 'writing out-of-date timestamp' note, which Magic, whose paint replay marks nothing, does not reach"
 
 [CMDEDIT-PAINT-13]
 decisions = ["Q-CMDEDIT-21"]

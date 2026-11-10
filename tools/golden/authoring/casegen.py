@@ -106,7 +106,10 @@ def case_toml(spec: Spec) -> str:
     for ext in [*spec.external, *font_externals(spec)]:
         text += "\n[[external]]\n" + "".join(f"{k} = {_toml_str(v)}\n" for k, v in ext.items())
     if spec.streams:
-        stream_masks = _with_mask(spec.stream_masks, "magic-tech-sections")
+        # The stamp note depends on wall-clock time (Magic and Hefesto print it
+        # only when a save lands in the cell's previous stamp second).
+        masks = spec.stream_masks if "magic-stamp-note" in spec.stream_masks else ["magic-stamp-note", *spec.stream_masks]
+        stream_masks = _with_mask(masks, "magic-tech-sections")
         text += _output_block("stdout.txt", "stdout", "magic-console", stream_masks)
         text += _output_block("stderr.txt", "stderr", "magic-console", stream_masks)
     for source in spec.outputs:
