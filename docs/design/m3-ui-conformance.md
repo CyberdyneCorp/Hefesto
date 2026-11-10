@@ -20,17 +20,17 @@ To be filled by SHELL (task 9.5): platform, build, the commands driving each cap
 
 ## M3 boards (DESIGN)
 
-Owner of this section: DESIGN (task 2.1). `DRC-Browser.dc.html` updated with the M3 states and the new `M3-DRC-Status.dc.html`, rendered in both themes to `docs/images/ui/m3-*.png`. Each SHELL screen state of section 9 maps to a board:
+Owner of this section: DESIGN (task 2.1). `DRC-Browser.dc.html` updated with the M3 states and the new `M3-DRC-Status.dc.html`, rendered in both themes to `docs/images/ui/m3-*.png`. Each SHELL screen state of section 9 maps to a board. In this table, **drawn** means the board is drawn and rendered and waits for the user's review; it becomes **approved** after that review:
 
 | SHELL state (tasks.md section 9) | Board | Status |
 |---|---|---|
-| Top-bar DRC chip: not run, checking, clean, N errors, off | `M3-DRC-Status` | todo |
-| Status-bar DRC state (same five states) | `M3-DRC-Status` | todo |
-| Browser: empty, running, stale, populated | `DRC-Browser` | todo |
-| Errors grouped by why-text with counts; `#k of n` stepping | `DRC-Browser` | todo |
-| Error view on the canvas; `drc why` popover | `DRC-Browser` | todo |
-| Ignored rules; style selector | `DRC-Browser` | todo |
-| Later-milestone elements (Fix with agent M11, nets M7, measured vs required, sign-off M13) disabled or hidden | `DRC-Browser` | todo |
+| Top-bar DRC chip: not run, checking, clean, N errors, off | `M3-DRC-Status` | drawn (awaiting user review) |
+| Status-bar DRC state (same five states) | `M3-DRC-Status` | drawn (awaiting user review) |
+| Browser: empty, running, stale, populated | `DRC-Browser` | drawn (awaiting user review) |
+| Errors grouped by why-text with counts; `#k of n` stepping | `DRC-Browser` | drawn (awaiting user review) |
+| Error view on the canvas; `drc why` popover | `DRC-Browser` | drawn (awaiting user review) |
+| Ignored rules; style selector | `DRC-Browser` | drawn (awaiting user review) |
+| Later-milestone elements (Fix with agent M11, nets M7, measured vs required, sign-off M13) disabled or hidden | `DRC-Browser` | drawn (awaiting user review) |
 
 ## DRC status (top bar and status bar)
 
