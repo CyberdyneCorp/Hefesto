@@ -8,7 +8,7 @@ Defines the `color` window client. It edits one entry of the session color map i
 ### Requirement: Color window creation and layout
 `specialopen color [OCTAL]` SHALL open a color window that edits color index OCTAL. OCTAL is read as octal, ANDed with 0o377, and defaults to 0.
 
-The window SHALL have no scrolling, no scroll bars and no caption bar. Its surface SHALL always show the fixed area (0,1500)-(24000,17000). That area SHALL contain six labeled bars, each with a decrement pump `-` on its left and an increment pump `+` on its right:
+Its frame SHALL be the 250 × 200 pixels at the bottom right of the screen ((x1−250, 0)–(x1, 200)), replacing any frame `specialopen` was given (CMWcreate). The window SHALL have no scrolling, no scroll bars and no caption bar. Its surface SHALL always show the fixed area (0,1500)-(24000,17000). That area SHALL contain six labeled bars, each with a decrement pump `-` on its left and an increment pump `+` on its right:
 
 | Bar | Bar rectangle | Name rectangle | Pumps (−, +) |
 |---|---|---|---|
@@ -29,6 +29,11 @@ Compatibility: behavioral
 #### Scenario: Caption shows octal
 - **WHEN** `specialopen color 47` is executed
 - **THEN** the window SHALL edit color 39 and its caption SHALL be `COLOR = 047`
+
+#### Scenario: Frame at the bottom right of the screen
+- **GIVEN** a 512 × 512 screen (x1 = 511)
+- **WHEN** `specialopen 10 10 300 300 color` is executed
+- **THEN** the color window's frame SHALL be (261,0)-(511,200), not the frame given on the command line
 
 ### Requirement: Color window buttons
 In a color window, a button press SHALL act on the layout point under the cursor:

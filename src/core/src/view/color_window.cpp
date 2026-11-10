@@ -256,6 +256,36 @@ bool close_color_window(editor::EditorState& editor, WindowId id) {
   return true;
 }
 
+ScreenRect color_window_frame(const ScreenRect& screen) noexcept {
+  constexpr std::int32_t kWidth = 250;   // CMWcreate: GrScreenRect.r_xtop - 250
+  constexpr std::int32_t kHeight = 200;  // r_ybot = 0, r_ytop = 200
+  return ScreenRect{screen.x1 - kWidth, 0, screen.x1, kHeight};
+}
+
+namespace {
+
+bool holds(const ScreenRect& r, std::int32_t x, std::int32_t y) noexcept {
+  return x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1;  // GEO_ENCLOSE
+}
+
+}  // namespace
+
+std::optional<WindowAtPoint> window_at(editor::EditorState& editor, std::int32_t x, std::int32_t y) {
+  const auto& colors = editor.color_map.windows;
+  for (auto it = colors.rbegin(); it != colors.rend(); ++it) {
+    if (holds(it->frame, x, y)) {
+      return WindowAtPoint{it->id, true, holds(color_window_mapping(editor, *it).screen, x, y)};
+    }
+  }
+  std::optional<WindowAtPoint> found;
+  editor.windows.for_each([&found, x, y](LayoutWindow& w) {
+    if (!found && holds(w.frame(), x, y)) {
+      found = WindowAtPoint{w.id(), false, holds(w.mapping().screen, x, y)};
+    }
+  });
+  return found;
+}
+
 std::size_t color_count(const editor::EditorState& editor) noexcept {
   return editor.styles ? editor.styles->colors.entries.size() : 0;
 }

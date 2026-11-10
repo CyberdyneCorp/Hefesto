@@ -118,6 +118,26 @@ struct ColorMapState {
 /// Closes a color window and frees its id; false when `id` is none.
 bool close_color_window(editor::EditorState& editor, WindowId id);
 
+/// CMWcreate's frame: 250 x 200 pixels at the bottom right of `screen`
+/// ((x1 - 250, 0)-(x1, 200)). It replaces whatever frame `specialopen`
+/// computed or was given, as in Magic.
+[[nodiscard]] ScreenRect color_window_frame(const ScreenRect& screen) noexcept;
+
+/// The window under the screen pixel (x, y), as windSearchPoint finds it.
+struct WindowAtPoint {
+  WindowId id = 0;
+  bool color = false;   // a color window, else a layout window
+  bool inside = false;  // in the window's screen area, not on its chrome
+};
+/// The most recently opened color window whose frame holds the pixel, else
+/// the frontmost such layout window; nullopt when none does. Magic keeps one
+/// window stack; Hefesto keeps layout and color windows apart and takes
+/// color windows to be in front (it differs from Magic only for a layout
+/// window opened or raised over a color window). When `inside` is false
+/// WindSendCommand gives the command to the window client instead.
+/// Q-UI-43's default script point uses it with (100, 100).
+[[nodiscard]] std::optional<WindowAtPoint> window_at(editor::EditorState& editor, std::int32_t x, std::int32_t y);
+
 /// The view mapping of a color window: its screen area (the frame minus a
 /// border; CMWcreate removes the caption and scroll bars) showing
 /// kColorWindowSurface (WindMove(window, &colorWindowRect)). `setpoint`

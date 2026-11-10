@@ -128,7 +128,53 @@ TEST_CASE("color windows share the window ids and the 31-window limit", "[cap:ui
   CHECK(again.value()->id() == freed);
 }
 
-TEST_CASE("the color window shows six bars, twelve pumps and the swatch", "[cap:ui-color-window][req:Color window creation and layout]") {
+// Regression (M2 round 3): specialopen gave the color window the centred
+// 300 x 300 frame of a new layout window; CMWcreate always replaces it.
+TEST_CASE("a color window takes CMWcreate's frame at the bottom right of the screen",
+          "[cap:ui-color-window][req:Color window creation and layout]") {
+  ColorSession s;
+  CHECK(view::color_window_frame(view::kNullScreen) == view::ScreenRect{261, 0, 511, 200});
+  CHECK(s.open("1").frame == view::ScreenRect{261, 0, 511, 200});
+  // Explicit coordinates are replaced too.
+  REQUIRE(s.run("specialopen", {"10", "10", "400", "400", "color"}).ok());
+  CHECK(s.editor.color_map.windows.back().frame == view::ScreenRect{261, 0, 511, 200});
+}
+
+TEST_CASE("the window under a screen point is found as windSearchPoint finds it",
+          "[cap:ui-color-window][req:Color window creation and layout]") {
+  ColorSession s;
+  db::CellDef* top = s.cell("top", {0, 0, 10, 10});
+  CHECK_FALSE(view::window_at(s.editor, 100, 100).has_value());
+  auto layout = s.editor.windows.open_frame(top, view::kNullScreen);
+  REQUIRE(layout.ok());
+  const view::WindowId layout_id = layout.value()->id();
+  // Q-UI-43's default script point (100, 100) lies in the layout window,
+  // not in the color window at the bottom right.
+  const view::ColorWindow& c = s.open("2");
+  auto hit = view::window_at(s.editor, 100, 100);
+  REQUIRE(hit.has_value());
+  CHECK(hit->id == layout_id);
+  CHECK_FALSE(hit->color);
+  CHECK(hit->inside);
+  // Inside the color window's frame the color window wins (it is in front).
+  hit = view::window_at(s.editor, 400, 100);
+  REQUIRE(hit.has_value());
+  CHECK(hit->id == c.id);
+  CHECK(hit->color);
+  CHECK(hit->inside);
+  // Its border is in the frame but not in the screen area.
+  hit = view::window_at(s.editor, 261, 100);
+  REQUIRE(hit.has_value());
+  CHECK(hit->color);
+  CHECK_FALSE(hit->inside);
+  // The layout window's chrome (the caption at the top).
+  hit = view::window_at(s.editor, 100, 483);
+  REQUIRE(hit.has_value());
+  CHECK(hit->id == layout_id);
+  CHECK_FALSE(hit->inside);
+}
+
+TEST_CASE("the color window shows six bars, twelve pumps and the swatch","[cap:ui-color-window][req:Color window creation and layout]") {
   ColorSession s;
   CHECK(view::color_bars().size() == 6);
   CHECK(view::color_pumps().size() == 12);
