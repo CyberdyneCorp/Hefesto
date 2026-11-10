@@ -191,9 +191,12 @@ class Session {
     command_log_ = std::make_unique<cmd::CommandLog>(logger_);
     dispatcher_ = std::make_unique<cmd::Dispatcher>(registry_, services_.view(), project_, script_session_);
     dispatcher_->set_editor(&editor_);
+    dispatcher_->set_typed_abbreviations(false);  // scripts and -c lines: exact Tcl names (Q-UI-41)
+    dispatcher_->set_default_point(db::Point{100, 100});  // Magic's txCurrentPoint (Q-UI-43)
     ui::install_defaults(editor_);  // the tools and default key bindings (Magic's startup files)
     dispatcher_->add_observer(*command_log_);
     if (options.diagnostics == diag::Format::magic) {
+      script_session_.catch_lines = true;  // the reference scripts catch every line
       dispatcher_->add_sink(magic_console_);
       dispatcher_->add_observer(magic_console_);
     } else {

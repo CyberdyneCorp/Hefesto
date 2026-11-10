@@ -227,7 +227,7 @@ TEST_CASE("send runs a command in another client's table", "[cap:ui-command-disp
   const auto usage = s.run("send");
   CHECK(UiSession::first_error(usage).starts_with("UI-USAGE-001: Usage: send type command\nValid window types are:"));
   // help sent to a client lists that client's table.
-  CHECK(UiSession::printed(s.run("send color help")).find("\nColor Commands\n---------------\ncolor ?n?") !=
+  CHECK(UiSession::printed(s.run("send color help")).find("\nColor Commands\n---------------\ncolor [color-#]\t") !=
         std::string::npos);
 }
 
@@ -326,4 +326,62 @@ TEST_CASE("completion of command, cell and layer names",
   CHECK(std::is_sorted(layers.value().begin(), layers.value().end()));
   CHECK_FALSE(ui::complete("x", ui::CompletionContext{ui::CompletionKind::layer, nullptr, nullptr}).ok());
   CHECK_FALSE(ui::complete("x", ui::CompletionContext{ui::CompletionKind::command, nullptr, nullptr}).ok());
+}
+
+// --- Command counter and post-command update, end to end ------------------------------
+
+namespace {
+
+struct NoteEvent final : hefesto::undo::Event {
+  void undo(hefesto::editor::EditorState& /*editor*/) override {}
+  void redo(hefesto::editor::EditorState& /*editor*/) override {}
+  [[nodiscard]] std::string describe() const override { return "note"; }
+};
+
+// Records the command counter when the observers hear of a command.
+struct CountingObserver final : cmd::CommandObserver {
+  explicit CountingObserver(const hefesto::editor::EditorState& editor) : editor_(editor) {}
+  void on_command(const cmd::Invocation& inv, const cmd::CommandResult& /*result*/) override {
+    seen.push_back(inv.name + "@" + std::to_string(editor_.command_count));
+  }
+  std::vector<std::string> seen;
+
+ private:
+  const hefesto::editor::EditorState& editor_;
+};
+
+}  // namespace
+
+TEST_CASE("a typed line runs the post-command update after each command, in order",
+          "[cap:ui-command-dispatch][req:Command counter and post-command update]") {
+  UiSession s;
+  REQUIRE_FALSE(s.registry
+                    .add({"mark", "mark", "records one undo event",
+                          [](cmd::CommandContext& ctx, const cmd::Invocation&) {
+                            ctx.editor()->undo.record(std::make_unique<NoteEvent>());
+                            return cmd::CommandResult::success();
+                          }},
+                         "layout")
+                    .has_value());
+  CountingObserver observer{s.editor};
+  s.dispatcher->add_observer(observer);
+  std::vector<std::string> order;
+  ui::state(s.editor).update_handlers.push_back([&order](hefesto::editor::EditorState& e) {
+    order.push_back("update@" + std::to_string(e.command_count) + " steps=" + std::to_string(e.undo.step_count()) +
+                    " open=" + std::to_string(e.undo.open_event_count()));
+  });
+  const auto before = s.editor.command_count;
+  // Two commands on one line (the command bar's front end): each is logged and
+  // published first, then counted, its undo step closed, then the clients updated.
+  const auto results = ui::run_command_line(*s.dispatcher, "mark; *bypass mark", cmd::Origin::gui);
+  REQUIRE(results.size() == 2);
+  CHECK(observer.seen ==
+        std::vector<std::string>{"mark@" + std::to_string(before), "*bypass@" + std::to_string(before + 1)});
+  CHECK(order == std::vector<std::string>{"update@" + std::to_string(before + 1) + " steps=1 open=0",
+                                          "update@" + std::to_string(before + 1) + " steps=2 open=0"});
+  // An interrupt during a command is reported after it.
+  ui::request_interrupt(s.editor);
+  const auto interrupted = s.run("mark", cmd::Origin::gui);
+  REQUIRE_FALSE(interrupted.diagnostics.empty());
+  CHECK(interrupted.diagnostics.back().text == "[Interrupted]");
 }

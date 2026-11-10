@@ -60,7 +60,9 @@ Compatibility: behavioral
 - **THEN** they SHALL appear in the order `center`, `view`, `zoom`
 
 ### Requirement: Command name lookup
-A typed command word SHALL be matched against a table as follows. Only the part of each table entry before its first space SHALL count.
+A script line, a startup or `source`d file line, a macro's command line and every line of the headless CLI SHALL name a command exactly, as Magic's Tcl build resolves them (every command is a Tcl command with its full name): no abbreviation and no case folding. Registered aliases (`id` for `identify`, `ext` for `extract`) are their own entries and SHALL run. A word that names no command SHALL fail with the Tcl error `invalid command name "W"`, which is the line's result; nothing SHALL be printed on the error stream, and a script whose every line is caught (the golden reference scripts) SHALL go on with its next line (see Q-UI-41, resolution: replicate).
+
+A line typed in the desktop command bar MAY abbreviate. Its word SHALL be matched against a table as follows. Only the part of each table entry before its first space SHALL count.
 - Letters SHALL match case-insensitively. Other characters SHALL match exactly.
 - If the word equals an entry name, that entry SHALL be chosen at once, even if earlier entries matched as prefixes.
 - Otherwise, if the word is a prefix of exactly one entry name, that entry SHALL be chosen.
@@ -68,13 +70,29 @@ A typed command word SHALL be matched against a table as follows. Only the part 
 - If the word matches no entry, the result SHALL be "not found".
 - An empty word is a prefix of every entry, so it is ambiguous whenever the table has two or more entries.
 
-A leading `::magic::` or `magic::` SHALL be stripped before matching.
+This is a superset no script can observe. In both modes a leading `::magic::` or `magic::` SHALL be stripped before matching.
+
+With magic-compat on, a word that Magic's own lookup finds ambiguous SHALL fail with an empty result and print nothing, as Magic's quiet Tcl dispatch does: Magic's table entries `id<TAB>OR` and `get<TAB>OR` end the name at a tab, which its lookup does not treat as the end of a name, so `id` and `get` are prefixes of two entries each (`identify`, `getcell`). With magic-compat off they run `identify` and `getcell`.
 
 Compatibility: exact
-(Magic ref: utils/lookup.c:58-126)
+(Magic ref: tcltk/tclmagic.c:_tcl_dispatch, utils/lookup.c:58-126; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-41)
 
-#### Scenario: Unique abbreviation
-- **WHEN** `getc foo` is typed in a layout window
+#### Scenario: Script line needs the exact name
+- **WHEN** a script runs the line `getc foo`
+- **THEN** the line's result SHALL be `invalid command name "getc"` and nothing SHALL be printed on the error stream
+- **AND** the line `ZoOm 2` SHALL likewise give `invalid command name "ZoOm"`
+
+#### Scenario: Registered alias
+- **WHEN** a script runs `ext help`
+- **THEN** the `extract` command SHALL run with argument `help`
+
+#### Scenario: Alias Magic's lookup finds ambiguous
+- **GIVEN** magic-compat on
+- **WHEN** a script runs `id x1`
+- **THEN** the line's result SHALL be empty, nothing SHALL be printed and no instance SHALL be renamed
+
+#### Scenario: Unique abbreviation typed in the command bar
+- **WHEN** `getc foo` is typed in the desktop command bar with a layout window focused
 - **THEN** the `getcell` command SHALL run with argument `foo`
 
 #### Scenario: Exact name beats abbreviation
@@ -82,8 +100,8 @@ Compatibility: exact
 - **WHEN** `ext` is looked up
 - **THEN** `ext` SHALL be chosen and the lookup SHALL NOT be ambiguous
 
-#### Scenario: Case-insensitive
-- **WHEN** `ZOOM 2` is typed
+#### Scenario: Case-insensitive when typed
+- **WHEN** `ZOOM 2` is typed in the desktop command bar
 - **THEN** the `zoom` command SHALL run
 
 ### Requirement: Command dispatch across global and client tables
@@ -93,7 +111,7 @@ A text command SHALL be dispatched in these steps:
 3. While any mouse button is held, the client that received the first press SHALL receive all commands and button events until every button is up.
 4. Look up the word in the `*window` table, unless W exists and does not accept window commands. Also look up the word in C's table.
 5. If either lookup is ambiguous, report `That command abbreviation is ambiguous.` and stop.
-6. If both lookups are "not found", report `Unknown command:` followed by the command, and stop. If a button is held, also report `'C' window is waiting for B button to be released.`, where B is the first of left, right, middle that is held.
+6. If both lookups are "not found", the command fails, and stop. A word that is no command of any client fails with `invalid command name "W"` (Requirement: Command name lookup). A word that is a command of another client only (`color` sent to a layout window) is a Tcl command in Magic's Tcl build, which dispatches it quietly: it SHALL fail with an empty result and print nothing. Informative: Magic's non-Tcl build reports `Unknown command:` followed by the command and, if a button is held, `'C' window is waiting for B button to be released.`
 7. If the `*window` lookup found `help`, run `help` (see Requirement: help command).
 8. If only one table matched, run that table's command.
 9. If both matched, compare just the two entries with the rules of Requirement: Command name lookup. An exact name beats an abbreviation. If that is still ambiguous, report `That command abbreviation is ambiguous`. Otherwise prefer the client's command over the `*window` command.
@@ -106,9 +124,14 @@ Compatibility: behavioral (messages informative)
 (Magic ref: windows/windSend.c:86-352, windows/windSend.c:354-400; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-9)
 
 #### Scenario: Unknown command
-- **WHEN** `foo` is typed in a layout window
-- **THEN** `Unknown command:` and the command text SHALL be reported
+- **WHEN** a script runs `foo` with a layout window
+- **THEN** the result SHALL be `invalid command name "foo"`
 - **AND** no `Did you point to the correct window?` line SHALL follow (see Q-UI-9)
+
+#### Scenario: Command of another client
+- **GIVEN** a layout window under the command point
+- **WHEN** a script runs `color`
+- **THEN** the command SHALL fail with an empty result and nothing printed
 
 #### Scenario: Client overrides global
 - **GIVEN** both the `*window` client and the `wind3d` client register `zoom`
@@ -123,6 +146,8 @@ Compatibility: behavioral (messages informative)
 ### Requirement: help command
 `help [pattern]` SHALL print the `*window` table under the heading `Global Commands`. If the target client is not `*window`, it SHALL then print that client's table under the heading `<Client> Commands`, where the client name has its first letter capitalized. Each heading SHALL be followed by a line of 15 dashes.
 
+Each registered command that Magic's table for that client has SHALL be listed with Magic's help string (the text Magic 8.3.694's Tcl build registers for it, e.g. `zoom amount\t\tzoom window by amount`), in ascending byte order of those strings. A Hefesto command that Magic's table does not have (interpreter-level helpers such as `echo`, `tool` or `setting`, `hefesto::` commands, Hefesto's own commands) SHALL be listed with its own help string only when magic-compat is off.
+
 Selection rules:
 - Wizard entries SHALL be excluded.
 - With a pattern P, only entries whose full help string matches the glob `*P*` SHALL be listed. P is truncated to 195 characters.
@@ -134,7 +159,7 @@ Compatibility: behavioral (format informative)
 
 #### Scenario: Pattern help
 - **WHEN** `help window` is typed in a layout window
-- **THEN** the listing SHALL include the `closewindow`, `openwindow` and `windowborder` synopses and SHALL exclude `zoom`
+- **THEN** the listing SHALL include the `closewindow`, `openwindow` and `windowborder` help strings, and `zoom`'s (`zoom amount		zoom window by amount`), and SHALL exclude `redraw`
 
 ### Requirement: Command line splitting and quoting
 A command line SHALL be split into commands and words as follows:
@@ -339,6 +364,8 @@ Compatibility: exact (log file content); behavioral (messages)
 
 `setpoint [x y [WID|name]]` SHALL force the point and window id of following commands. In interactive use the forced point SHALL apply to the next command only. In a script it SHALL stay in effect until the script ends. The values are window pixel coordinates with y measured from the window's bottom edge.
 
+A command with no forced point and no pointer has no point, except in the headless CLI: like Magic's null display, which gives every script command the point (100, 100) (`txCurrentPoint`), the headless CLI SHALL give each command without a forced point the point at screen (100, 100) of the topmost window there (layout or color; the command then goes to that window's client), for that command only. The desktop shell, whose pointer is real, SHALL NOT (see Q-UI-43, resolution: replicate).
+
 With no arguments, `setpoint` SHALL report the current point. Formats:
 - the result SHALL be the list `x y X Y`
 - informative: Magic's non-Tcl build prints `Point is at screen coordinates (x, y) in window W.` then `Point is at layout coordinates (X, Y)` with a window, and `Point is at screen coordinates (x, y).` without one
@@ -346,7 +373,12 @@ With no arguments, `setpoint` SHALL report the current point. Formats:
 Non-integer x or y SHALL print `Usage: setpoint [x y [window ID|name]]`.
 
 Compatibility: behavioral
-(Magic ref: windows/windCmdNR.c:203-260, windows/windCmdSZ.c:214-294, textio/txCommands.c:1595-1769)
+(Magic ref: windows/windCmdNR.c:203-260, windows/windCmdSZ.c:214-294, textio/txCommands.c:1595-1769, textio/txCommands.c:96-98; Hefesto decision: docs/decisions/open-questions/UI.md#Q-UI-43)
+
+#### Scenario: Default point of a headless script
+- **GIVEN** the headless CLI with one layout window and no `setpoint`
+- **WHEN** a script runs `*winddebug` and then `box`
+- **THEN** `Sending command:` and ` 'box' at (100, 100)` SHALL be printed
 
 #### Scenario: Scripted click
 - **GIVEN** a layout window with id 0

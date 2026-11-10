@@ -27,6 +27,11 @@ struct ScriptSession {
   explicit ScriptSession(const settings::ProjectSettings& project) : strict(project.script_strict) {}
 
   bool strict = false;          // script strict mode for this interpreter
+  /// Each script line runs as if wrapped in Tcl's `catch`: an error (a
+  /// dispatch failure, a raised or, in strict mode, any failure) does not
+  /// stop the script. Set by hefesto-cli --diagnostics=magic, the console of
+  /// the golden reference scripts (`catch {cmd} result; puts $result`).
+  bool catch_lines = false;
   bool quit_requested = false;  // set by `quit`
   int exit_status = 0;          // the status `quit` asked for (0-255)
   /// Client exit checks (Magic's w_exit), run by `quit` without -noprompt;

@@ -31,7 +31,7 @@ constexpr std::string_view kInterpreterCommands[] = {
     "autoincr", "cancelselect", "clearstack", "echo",      "genkey",    "history",  "keepselect",
     "measure",  "peekbox",      "popbox",     "popstack",  "pushbox",   "pushstack", "resumeall",
     "ruler",    "send",         "setting",    "source",    "startselect", "suspendall", "tool",
-    "trackwire", "unmeasure",   "netlist"};
+    "trackwire", "unmeasure"};
 
 bool listed(std::span<const std::string_view> names, std::string_view name) {
   return std::find(names.begin(), names.end(), name) != names.end();
@@ -43,16 +43,6 @@ bool same_char(char table, char word) {
   const auto t = static_cast<unsigned char>(table);
   const auto w = static_cast<unsigned char>(word);
   return std::tolower(t) == std::tolower(w);
-}
-
-// The word without a leading "::magic::" or "magic::" qualifier.
-std::string_view strip_namespace(std::string_view word) {
-  for (const std::string_view prefix : {std::string_view{"::magic::"}, std::string_view{"magic::"}}) {
-    if (word.size() >= prefix.size() && word.substr(0, prefix.size()) == prefix) {
-      return word.substr(prefix.size());
-    }
-  }
-  return word;
 }
 
 enum class EntryMatch : std::uint8_t { none, prefix, exact };
@@ -71,6 +61,15 @@ EntryMatch match_entry(std::string_view word, std::string_view entry) {
 }
 
 }  // namespace
+
+std::string_view strip_namespace(std::string_view word) {
+  for (const std::string_view prefix : {std::string_view{"::magic::"}, std::string_view{"magic::"}}) {
+    if (word.size() >= prefix.size() && word.substr(0, prefix.size()) == prefix) {
+      return word.substr(prefix.size());
+    }
+  }
+  return word;
+}
 
 NameMatch match_name(std::string_view word, const std::vector<std::string_view>& names) {
   const std::string_view stripped = strip_namespace(word);
@@ -144,10 +143,14 @@ const CommandSpec* CommandRegistry::find(std::string_view name) const {
   return nullptr;
 }
 
-CommandLookup CommandRegistry::lookup(std::string_view word, std::string_view client) const {
+CommandLookup CommandRegistry::lookup(std::string_view word, std::string_view client, NameLookup mode) const {
   const Table* table = table_of(client);
   if (table == nullptr) {
     return {};
+  }
+  if (mode == NameLookup::exact) {
+    const auto it = table->find(strip_namespace(word));
+    return it == table->end() ? CommandLookup{} : CommandLookup{LookupStatus::found, &it->second, std::string{client}};
   }
   std::vector<std::string_view> names;
   std::vector<const CommandSpec*> specs;
@@ -164,11 +167,12 @@ CommandLookup CommandRegistry::lookup(std::string_view word, std::string_view cl
   return CommandLookup{LookupStatus::found, specs[m.index], std::string{client}};
 }
 
-CommandLookup CommandRegistry::resolve(std::string_view word, std::string_view client, bool window_commands) const {
-  const CommandLookup global = window_commands ? lookup(word, kWindowClient) : CommandLookup{};
+CommandLookup CommandRegistry::resolve(std::string_view word, std::string_view client, bool window_commands,
+                                       NameLookup mode) const {
+  const CommandLookup global = window_commands ? lookup(word, kWindowClient, mode) : CommandLookup{};
   // windSend.c: "If both command tables point to window commands, only do
   // the command once."
-  const CommandLookup own = client == kWindowClient ? CommandLookup{} : lookup(word, client);
+  const CommandLookup own = client == kWindowClient ? CommandLookup{} : lookup(word, client, mode);
   if (global.status == LookupStatus::ambiguous || own.status == LookupStatus::ambiguous) {
     return CommandLookup{LookupStatus::ambiguous, nullptr, {}};
   }

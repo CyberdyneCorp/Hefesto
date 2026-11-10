@@ -13,10 +13,15 @@
 // registrations did not change. The same name may exist in several tables
 // (the `color` client's `load` beside the layout `load`).
 //
-// Lookup follows Magic's Lookup() (utils/lookup.c): case-insensitive letters,
-// an exact name wins, otherwise a unique prefix; a leading `::magic::` or
-// `magic::` is ignored. resolve() applies the two-table dispatch rule of
-// WindSendCommand (windows/windSend.c:86-352).
+// Two lookup modes (Q-UI-41): NameLookup::exact is how Magic's Tcl build
+// resolves a script line (each command is a Tcl command with its full name:
+// no abbreviation, no case folding; registered aliases such as `id` are
+// their own entries); NameLookup::abbreviated follows Magic's Lookup()
+// (utils/lookup.c: case-insensitive letters, an exact name wins, otherwise a
+// unique prefix) and is kept for lines typed in the desktop command bar. In
+// both modes a leading `::magic::` or `magic::` is ignored. resolve()
+// applies the two-table dispatch rule of WindSendCommand
+// (windows/windSend.c:86-352).
 //
 // Owner: DISPATCH (openspec/changes/m2-interactive-editing/design.md D2).
 
@@ -55,6 +60,11 @@ inline constexpr std::string_view kColorClient = "color";
 
 enum class LookupStatus : std::uint8_t { found, ambiguous, not_found };
 
+/// How a command word is matched (Q-UI-41): `exact` for script lines and
+/// every non-typed origin (Tcl command names), `abbreviated` (Magic's
+/// Lookup(): unique prefixes, any letter case) for typed command-bar lines.
+enum class NameLookup : std::uint8_t { exact, abbreviated };
+
 /// The outcome of looking a command word up.
 struct CommandLookup {
   LookupStatus status = LookupStatus::not_found;
@@ -70,6 +80,10 @@ struct NameMatch {
   std::size_t index = 0;
 };
 [[nodiscard]] NameMatch match_name(std::string_view word, const std::vector<std::string_view>& names);
+
+/// The word without a leading "::magic::" or "magic::" qualifier (Magic's
+/// commands live in the `magic` Tcl namespace).
+[[nodiscard]] std::string_view strip_namespace(std::string_view word);
 
 class CommandRegistry {
  public:
@@ -90,14 +104,16 @@ class CommandRegistry {
   /// Exact name in one table.
   [[nodiscard]] const CommandSpec* find(std::string_view name, std::string_view client) const;
 
-  /// Magic's Lookup() in one table.
-  [[nodiscard]] CommandLookup lookup(std::string_view word, std::string_view client) const;
+  /// The word in one table: Magic's Lookup() (`abbreviated`) or the exact
+  /// name (`exact`, never ambiguous).
+  [[nodiscard]] CommandLookup lookup(std::string_view word, std::string_view client,
+                                     NameLookup mode = NameLookup::abbreviated) const;
   /// The dispatch rule of "Command dispatch across global and client
   /// tables" for a command sent to `client` (`*window` lookup first, unless
   /// `window_commands` is false, then the client's table; an exact name
   /// beats an abbreviation; otherwise the client's command wins).
-  [[nodiscard]] CommandLookup resolve(std::string_view word, std::string_view client,
-                                      bool window_commands = true) const;
+  [[nodiscard]] CommandLookup resolve(std::string_view word, std::string_view client, bool window_commands = true,
+                                      NameLookup mode = NameLookup::abbreviated) const;
 
   /// Every registered name once, in byte-wise order.
   [[nodiscard]] std::vector<std::string> names() const;

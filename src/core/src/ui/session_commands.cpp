@@ -9,6 +9,7 @@
 // windows/windCmdAM.c:917-996, commands/CmdFI.c:1472-1552,
 // textio/txCommands.c:703-865)
 
+#include <algorithm>
 #include <array>
 #include <optional>
 #include <cctype>
@@ -24,6 +25,7 @@
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/state.hpp"
 #include "ui/command_util.hpp"
+#include "hefesto/ui/magic_help.hpp"
 #include "view/command_util.hpp"
 
 namespace hefesto::ui::detail {
@@ -110,16 +112,34 @@ std::string capitalized(std::string_view name) {
   return out;
 }
 
+// The help strings of one client's table in strcmp order: Magic's text for
+// each registered command Magic's table has; a Hefesto command Magic does
+// not have in that table (Tcl-level helpers such as `echo` or `tool`,
+// `hefesto::` commands, native commands) only with magic-compat off.
+std::vector<std::string> help_strings(const cmd::CommandRegistry& registry, std::string_view client,
+                                      bool magic_compat) {
+  std::vector<std::string> out;
+  for (const cmd::CommandSpec* spec : registry.table(client)) {
+    const std::string_view magic = magic_help_text(client, spec->name);
+    if (!magic.empty()) {
+      out.emplace_back(magic);
+    } else if (!magic_compat) {
+      out.push_back(cmd::CommandRegistry::help_string(*spec));
+    }
+  }
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
 // windHelp(): one table's listing.
-std::string help_table(const cmd::CommandRegistry& registry, std::string_view client, std::string_view title,
+std::string help_table(const std::vector<std::string>& table, std::string_view title,
                        const std::vector<std::string>& args) {
   const bool wizard = args.size() == 1 && args[0] == "wizard";
   const std::string pattern = !wizard && args.size() == 1 ? "*" + args[0].substr(0, 195) + "*" : "*";
   std::string out = "\n";
   out += wizard ? "Wizard " + capitalized(title) + " Commands\n----------------------"
                 : capitalized(title) + " Commands\n---------------";
-  for (const cmd::CommandSpec* spec : registry.table(client)) {
-    const std::string help = cmd::CommandRegistry::help_string(*spec);
+  for (const std::string& help : table) {
     const bool is_wizard = !help.empty() && help.front() == '*';
     if (is_wizard == wizard && glob_match(pattern, help)) {
       out += '\n';
@@ -139,9 +159,10 @@ CommandResult help(CommandContext& ctx, const Invocation& inv) {
     }
     return result;
   }
-  std::string text = help_table(ctx.registry(), cmd::kWindowClient, "Global", inv.args);
+  const bool compat = ctx.project().compat.magic_compat;
+  std::string text = help_table(help_strings(ctx.registry(), cmd::kWindowClient, compat), "Global", inv.args);
   if (both) {
-    text += "\n" + help_table(ctx.registry(), client, client, inv.args);
+    text += "\n" + help_table(help_strings(ctx.registry(), client, compat), client, inv.args);
   }
   print(ctx, std::move(text));
   return CommandResult::success();

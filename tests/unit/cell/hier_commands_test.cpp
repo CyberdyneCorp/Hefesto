@@ -310,12 +310,32 @@ TEST_CASE("getcell sets the box and the selection to the new instance and refuse
   REQUIRE(s.editor.selection.def()->uses().size() == 1);
   CHECK(s.editor.selection.def()->uses().front()->id == "inv_0");
   s.box(30, 40, 31, 41);
-  const auto again = s.run("get inv");
+  const auto again = s.run("getcell inv");
   REQUIRE_FALSE(again.ok());
   CHECK(last_message(again) == "Can't place a cell on an exact copy of itself.");
   CHECK(last_message(s.run("getcell top")).find("circular") != std::string::npos);
   s.editor.edit_cell = nullptr;
   CHECK(last_message(s.run("getcell inv")) == "No cell def being edited; cannot place cell use!");
+}
+
+// Regression (round 3 review): `get` is ambiguous in Magic's Lookup() ("get<TAB>OR ..."),
+// so it fails quietly with magic-compat on and runs `getcell` with it off.
+TEST_CASE("get is an alias of getcell only with magic-compat off",
+          "[cap:cmd-hierarchy][req:Getcell command]") {
+  Session strict;
+  db::CellDef* inv = strict.cell("inv");
+  strict.paint(*inv, "metal1", Rect{0, 0, 10, 10});
+  strict.box(30, 40, 31, 41);
+  CHECK_FALSE(strict.run("get inv").ok());
+  CHECK(strict.top->uses().empty());
+
+  Session loose(false);
+  db::CellDef* inv2 = loose.cell("inv");
+  loose.paint(*inv2, "metal1", Rect{0, 0, 10, 10});
+  loose.box(30, 40, 31, 41);
+  const auto r = loose.run("get inv");
+  REQUIRE(r.ok());
+  CHECK(r.value.to_string() == "inv_0");
 }
 
 TEST_CASE("getcell through a non-identity edit transform places in edit coordinates",
