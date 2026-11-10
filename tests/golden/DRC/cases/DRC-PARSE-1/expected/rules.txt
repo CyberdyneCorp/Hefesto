@@ -1,0 +1,17 @@
+poly     space     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pdiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     nfet      2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pfet      2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     ndc       2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pdc       2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pc        2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+

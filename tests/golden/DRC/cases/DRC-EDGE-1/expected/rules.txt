@@ -1,0 +1,3 @@
+poly     space     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+

@@ -277,4 +277,10 @@ def m3_specs() -> list[Spec]:
                 "scmos.tech; tech drc width/spacing/surround/directional queries, a bad type and no option.",
                 tech_load("scmos") + queries, external=[SCMOS_EXTERNAL])
     spec.keep_checkpaint = True
+    # `tech drc width nosuch` prints TechError's stale "<file>: line <n>:" prefix, n being
+    # scmos.tech's line count + 1; the generated scmos.tech differs in blank lines between
+    # preprocessors (tests/data/tech/generate_scmos.cmake), so the number is masked.
+    spec.stream_masks = ["regex:scmos.tech: line [0-9]+:"]
+    spec.notes.append("The scmos.tech line number in TechError's prefix depends on the preprocessor that")
+    spec.notes.append("generated the file, so it is masked (regex mask).")
     return [spec]

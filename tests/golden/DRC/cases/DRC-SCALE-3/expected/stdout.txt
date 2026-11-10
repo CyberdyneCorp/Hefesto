@@ -1,0 +1,36 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 19:00:44 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell pwell ntransistor ptransistor via 
+
+
+
+
+2 Magic internal units = 1 Lambda
+
+
+1 Magic internal unit = 1 Lambda
+
+
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell pwell ntransistor ptransistor via 
+
+
+
+1 1
+
+2 Magic internal units = 1 Lambda
+
+
+DRC halo is 2 internal units (10 DRC units)
+

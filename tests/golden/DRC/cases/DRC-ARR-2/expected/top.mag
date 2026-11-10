@@ -1,0 +1,13 @@
+magic
+tech drctest
+timestamp 1794337713
+<< error_p >>
+rect 9 44 24 50
+rect 0 9 24 24
+rect 44 9 50 24
+use child  child_0
+array 0 2 15 0 2 15
+timestamp 1794337713
+transform 1 0 0 0 1 0
+box 0 0 20 20
+<< end >>

@@ -1,0 +1,14 @@
+magic
+tech drctest
+timestamp 1794337724
+<< error_s >>
+rect 0 0 10 10
+use a  a_0
+timestamp 1794337724
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use b  b_0
+timestamp 1794337724
+transform 1 0 3 0 1 0
+box 0 0 10 10
+<< end >>

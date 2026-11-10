@@ -1,0 +1,93 @@
+space    ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+space    poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+ndiff    space     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    pdiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    nfet      2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    pfet      2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    ndc       2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    pdc       2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+ndiff    pc        2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+
+pdiff    ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+pdiff    poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+poly     space     2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     pdiff     2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     nfet      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     pfet      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     ndc       2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     pdc       2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+poly     pc        2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           both-corners
+
+nfet     ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+nfet     poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+pfet     ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+pfet     poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+ndc      ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+ndc      poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+pdc      ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+pdc      poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+
+pc       ndiff     2 x 2   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+pc       poly      2 x 2   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,nfet,pfet,ndc,pdc,pc
+                           reverse both-corners
+

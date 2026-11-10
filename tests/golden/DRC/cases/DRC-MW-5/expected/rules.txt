@@ -1,0 +1,20 @@
+space    m1        0 x 0   m1 (metal1)
+                           m1
+                           maxwidth
+
+ndc      m1        0 x 0   m1 (metal1)
+                           m1
+                           maxwidth
+
+pdc      m1        0 x 0   m1 (metal1)
+                           m1
+                           maxwidth
+
+pc       m1        0 x 0   m1 (metal1)
+                           m1
+                           maxwidth
+
+m1c      m1        0 x 0   m1 (metal1)
+                           m1
+                           maxwidth
+

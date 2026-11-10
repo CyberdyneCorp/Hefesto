@@ -1,0 +1,61 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 19:00:44 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell pwell ntransistor ptransistor via 
+
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.070 x 0.100   ( 0.400,  0.000), ( 0.470,  0.100)  0.007     
+lambda:        7 x 10      (    40,  0    ), (    47,  10   )  70        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.110 x 0.100   ( 0.490,  0.000), ( 0.600,  0.100)  0.011     
+lambda:       11 x 10      (    49,  0    ), (    60,  10   )  110       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 0.100   ( 0.000,  0.200), ( 2.000,  0.300)  0.200     
+lambda:      200 x 10      (     0,  20   ), (   200,  30   )  2000      
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.020 x 1.180   ( 0.950,  0.320), ( 0.970,  1.500)  0.024     
+lambda:        2 x 118     (    95,  32   ), (    97,  150  )  236       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 0.100   ( 0.000,  1.400), ( 2.000,  1.500)  0.200     
+lambda:      200 x 10      (     0,  140  ), (   200,  150  )  2000      
+
+
+Topmost cell in the window
+
+
+after#2
+{m1 spacing < 3} {{49 0 50 10} {95 32 97 33}} {m1 width < 3} {{97 32 98 72} {97 72 98 120} {97 120 98 140}}
+3
+

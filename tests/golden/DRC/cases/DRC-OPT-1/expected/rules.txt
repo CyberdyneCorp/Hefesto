@@ -1,0 +1,76 @@
+space    ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+ndiff    space     1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    pdiff     1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    poly      1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+ndiff    nfet      1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    pfet      1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    ndc       1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    pdc       1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+ndiff    pc        1 x 1   space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc (active)
+                           space,pdiff,poly,nfet,pfet,ndc,pdc,pc
+                   3 x 3   ndiff (active)
+                           ndiff
+                           reverse
+
+pdiff    ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+poly     space     1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     ndiff     1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pdiff     1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     nfet      1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pfet      1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     ndc       1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pdc       1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+poly     pc        1 x 1   space,pdiff,poly,nfet,pfet,ndc,pdc,pc (active)
+                           space,ndiff,pdiff,nfet,pfet,ndc,pdc,pc
+
+nfet     ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+pfet     ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+ndc      ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+pdc      ndiff     3 x 3   ndiff (active)
+                           ndiff
+
+pc       ndiff     3 x 3   ndiff (active)
+                           ndiff
+

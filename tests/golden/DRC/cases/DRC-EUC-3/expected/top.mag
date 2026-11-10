@@ -1,0 +1,15 @@
+magic
+tech drctest
+timestamp 1794337719
+<< error_p >>
+rect 222 0 224 20
+<< m1contact >>
+rect 22 23 42 43
+rect 83 23 103 43
+rect 141 21 161 41
+rect 0 0 20 20
+rect 60 0 80 20
+rect 120 0 140 20
+rect 200 0 220 20
+rect 222 0 242 20
+<< end >>

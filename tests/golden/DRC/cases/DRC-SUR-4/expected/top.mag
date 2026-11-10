@@ -1,0 +1,24 @@
+magic
+tech drctest
+timestamp 1794337742
+<< error_p >>
+rect 28 -1 29 21
+<< metal1 >>
+rect -1 20 21 21
+rect -1 0 0 20
+rect 20 0 21 20
+rect -1 -1 21 0
+rect 28 20 51 21
+rect 28 0 30 20
+rect 50 0 51 20
+rect 28 -1 51 0
+<< via >>
+rect 60 0 64 4
+rect 70 0 74 4
+<< m1contact >>
+rect 0 0 20 20
+rect 30 0 50 20
+<< metal2 >>
+rect 59 -1 65 5
+rect 68 -1 75 5
+<< end >>

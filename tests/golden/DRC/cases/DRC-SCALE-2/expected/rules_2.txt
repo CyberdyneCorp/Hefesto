@@ -1,0 +1,46 @@
+space    m1        4 x 42   m1 (metal1)
+                           m1
+                           area
+                   5 x 5   m1 (metal1)
+                           m1
+                           maxwidth
+
+ndc      m1        4 x 42   m1 (metal1)
+                           m1
+                           area
+                   5 x 5   m1 (metal1)
+                           m1
+                           maxwidth
+
+pdc      m1        4 x 42   m1 (metal1)
+                           m1
+                           area
+                   5 x 5   m1 (metal1)
+                           m1
+                           maxwidth
+
+pc       m1        4 x 42   m1 (metal1)
+                           m1
+                           area
+                   5 x 5   m1 (metal1)
+                           m1
+                           maxwidth
+
+m1       space     5 x 5   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+m1       ndc       5 x 5   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+m1       pdc       5 x 5   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+m1       pc        5 x 5   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+m1       m1c       5 x 5   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+
+m1c      m1        4 x 42   m1 (metal1)
+                           m1
+                           area
+                   5 x 5   m1 (metal1)
+                           m1
+                           maxwidth
+

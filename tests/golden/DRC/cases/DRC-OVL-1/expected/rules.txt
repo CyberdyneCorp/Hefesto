@@ -1,0 +1,49 @@
+space    poly      2 x 2   poly (active)
+                           poly
+
+ndiff    poly      2 x 2   poly (active)
+                           poly
+
+pdiff    poly      2 x 2   poly (active)
+                           poly
+
+poly     space     2 x 2   poly (active)
+                           poly
+                           reverse
+poly     ndiff     2 x 2   poly (active)
+                           poly
+                           reverse
+poly     pdiff     2 x 2   poly (active)
+                           poly
+                           reverse
+poly     nfet      2 x 2   poly (active)
+                           poly
+                           reverse
+poly     pfet      2 x 2   poly (active)
+                           poly
+                           reverse
+poly     ndc       2 x 2   poly (active)
+                           poly
+                           reverse
+poly     pdc       2 x 2   poly (active)
+                           poly
+                           reverse
+poly     pc        2 x 2   poly (active)
+                           poly
+                           reverse
+
+nfet     poly      2 x 2   poly (active)
+                           poly
+
+pfet     poly      2 x 2   poly (active)
+                           poly
+
+ndc      poly      2 x 2   poly (active)
+                           poly
+
+pdc      poly      2 x 2   poly (active)
+                           poly
+
+pc       poly      2 x 2   poly (active)
+                           poly
+

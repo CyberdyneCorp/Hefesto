@@ -30,6 +30,11 @@ source = "pdk"
 path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag"
 to = "sky130_fd_sc_hd__inv_1.mag"
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

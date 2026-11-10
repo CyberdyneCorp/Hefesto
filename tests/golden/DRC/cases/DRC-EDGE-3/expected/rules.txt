@@ -1,0 +1,8 @@
+space    m1        3 x 0   space,m1c (metal2)
+                           <none>
+                           reverse both-corners
+
+m1       space     3 x 0   space,m1c (metal2)
+                           <none>
+                           both-corners
+

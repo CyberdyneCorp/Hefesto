@@ -1,0 +1,9 @@
+magic
+tech drctest
+timestamp 1794337714
+<< nwell >>
+rect 0 1300 1000 2000
+rect 0 0 1000 1000
+<< pwell >>
+rect 1400 0 2400 1000
+<< end >>

@@ -1,0 +1,13 @@
+magic
+tech drctest
+timestamp 1794337719
+<< error_p >>
+rect 72 0 73 10
+<< metal1 >>
+rect 0 0 10 10
+rect 12 0 22 10
+rect 60 0 70 10
+rect 72 0 82 10
+<< properties >>
+string MASKHINTS_SRAM -10 -10 40 30
+<< end >>

@@ -103,7 +103,7 @@ def wire45(layer: str, x0: int, y0: int, n: int, s: int) -> list[str]:
 def drc_case(cid: str, capability: str, reqs: list[str], desc: str, rules: list[str], body: list[str], *,
              outputs: list[str] | None = None, files: dict | None = None, notes: list[str] | None = None,
              requires: list[str] | None = None, prefix: list[str] | None = None, externals=None,
-             tech_name: str = "drctest") -> Spec:
+             tech_name: str = "drctest", fonts: list[str] | None = None) -> Spec:
     """A DRC case: load drctest.tech with ``rules``, ``drc off``, then ``body``."""
     start = [f"tech load input/{tech_name} -noprompt", "snap internal"] + (["drc off"] if prefix is None else prefix)
     all_files = {f"{tech_name}.tech": tech(rules, tech_name), **(files or {})} if rules is not None else dict(files or {})
@@ -111,6 +111,7 @@ def drc_case(cid: str, capability: str, reqs: list[str], desc: str, rules: list[
                 notes=notes or [], requires=requires or [], external=externals or [])
     spec.stream_comparator = CONSOLE
     spec.keep_checkpaint = True
+    spec.fonts = list(fonts or [])  # default fonts named by external (PDK) cells, e.g. sky130 flabels
     return spec
 
 
@@ -795,7 +796,7 @@ def pdk_specs() -> list[Spec]:
                  None, [f"load input/{inv}", *cap(save=False), "drc count", *paint("met1", 0, 0, 10, 300),
                         *paint("li1", 1000, 0, 1010, 50), *cap("inv_broken")],
                  prefix=pdk_prefix("sky130A"), externals=[SKY130_TECH_EXTERNAL, sky130_cell_external(inv)],
-                 outputs=["inv_broken.mag"], tech_name="sky130A"),
+                 outputs=["inv_broken.mag"], tech_name="sky130A", fonts=["FreeSans"]),
         drc_case("DRC-PDK-2", ENG, ["Step square processing", "Interaction check over an area"],
                  "gf180mcuD: a row of abutted gf180mcu_fd_sc_mcu7t5v0 cells (inv_1, nand2_1, dffq_1); CAP.",
                  None, [*(f"load input/{n}" for n in names), "load row", *row_placement(GF180_ROW), *cap("row")],

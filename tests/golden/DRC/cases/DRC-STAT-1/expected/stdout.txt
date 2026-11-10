@@ -1,0 +1,59 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 19:00:44 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+
+
+2 Magic internal units = 1 Lambda
+
+
+
+
+Total number of rules specifed in tech file: 250
+Edge rules optimized away: 105248
+Edge rules left in database: 39081
+Histogram of # edges vs. rules per edge:
+   0 rules/edge: 340.
+   1 rules/edge: 5195.
+   2 rules/edge: 174.
+   3 rules/edge: 719.
+   4 rules/edge: 657.
+   5 rules/edge: 280.
+   6 rules/edge: 292.
+   7 rules/edge: 373.
+   8 rules/edge: 365.
+   9 rules/edge: 231.
+  10 rules/edge: 183.
+ >10 rules/edge: 1022.
+
+Cell sky130_fd_sc_hd__inv_1 read from path input
+
+Topmost cell in the window
+
+
+Loading DRC CIF style.
+after#2
+No errors found.
+
+0
+Design-rule checker statistics (recent/total):
+    Squares processed: 4/4
+    Tiles processed: 970/970
+    Edges pieces processed: 1655/1655
+    Constraint areas checked: 8770/8770
+    Multi-tile constraints: 4270/4270
+    Interaction areas processed: 0/0
+    Tiles processed for interactions: 970/970
+    Tiles processed for arrays: 0/0
+

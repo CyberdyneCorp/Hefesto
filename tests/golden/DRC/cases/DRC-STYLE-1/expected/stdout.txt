@@ -1,0 +1,69 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 19:00:44 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell pwell ntransistor ptransistor via 
+
+
+
+sA sB
+sA
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.020 x 0.100   ( 0.000,  0.000), ( 0.020,  0.100)  0.002     
+lambda:        2 x 10      (     0,  0    ), (     2,  10   )  20        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.030 x 0.100   ( 0.200,  0.000), ( 0.230,  0.100)  0.003     
+lambda:        3 x 10      (    20,  0    ), (    23,  10   )  30        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.040 x 0.100   ( 0.400,  0.000), ( 0.440,  0.100)  0.004     
+lambda:        4 x 10      (    40,  0    ), (    44,  10   )  40        
+
+
+DRC style is now "sA"
+
+sA
+Topmost cell in the window
+
+
+after#2
+{poly width < 5} {{44 0 45 10}} {m1 width < 3} {{2 0 3 10}}
+2
+
+DRC style is now "sB"
+
+sB
+Topmost cell in the window
+
+
+after#4
+{m2 width < 4} {{23 0 24 10}} {poly width < 5} {{44 0 45 10}} {m1 width < 3} {{2 0 3 10}}
+3
+
+
+The current style is "sB".
+The DRC styles are: sA, sB.
+
+The current style is "sB".
+The DRC styles are: sA, sB.
+
