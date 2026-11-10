@@ -449,6 +449,28 @@ void check_existing_layout(const editor::EditorState& ed, std::size_t old_planes
 
 }  // namespace
 
+/// "Style loading triggered by styletype" after a technology load, where the
+/// startup looked (Magic reloads the styles of the new styletype, so its long
+/// names resolve, UI-G-067). Missing files keep the previous styles and
+/// never fail the load (Q-TECH-24).
+void reload_display_styles(editor::EditorState& editor, platform::FileSystem& files, bool magic_compat) {
+  display::StyleLoadOptions styles;
+  styles.magic_compat = magic_compat;
+  styles.library_dirs = editor.style_dirs;
+  if (editor.styles) {
+    styles.display_class = editor.styles->display_class;
+  }
+  diag::NullSink quiet;
+  auto loaded = display::load_style_set(files, *editor.technology, styles, quiet);
+  if (loaded.ok()) {
+    editor.styles = std::move(loaded).value();
+  }
+}
+
+std::string layer_names_text(const Technology& tech) {
+  return print_types_text(tech, all_but_space_and_drc());
+}
+
 diag::Status load_session_technology(editor::EditorState& editor, platform::PlatformServices& services,
                                      std::string_view name, const SessionLoadOptions& options,
                                      diag::DiagnosticSink& sink) {
@@ -481,6 +503,7 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   if (new_planes != old_planes) {
     editor.cells.for_each([new_planes](db::CellDef& def) { def.set_plane_count(new_planes); });
   }
+  reload_display_styles(editor, services.files, options.magic_compat);
   return diag::Done{};
 }
 

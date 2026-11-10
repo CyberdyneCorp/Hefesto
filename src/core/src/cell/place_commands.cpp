@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "db/command_util.hpp"
+#include "db/edit_util.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/db/diag_codes.hpp"
@@ -24,6 +25,7 @@
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/editor/edit_frame.hpp"
+#include "hefesto/select/selection.hpp"
 #include "io_session.hpp"
 #include "placement.hpp"
 
@@ -142,72 +144,12 @@ db::CellDef* placed_cell(IoSession& s, const cmd::Invocation& inv, CommandResult
   return def;
 }
 
-// --- the selection after a placement ---------------------------------------------------
-
-/// The selection after `getcell`/`dump` (SelectClear + SelectAndCopy2): the
-/// new items in root coordinates. Stands in for the SELECT area's API until
-/// it offers one (task 5.2).
-class NewSelection {
- public:
-  explicit NewSelection(editor::EditorState& ed) : ed_(ed) {
-    db::CellDef* root = ed.edit_root != nullptr ? ed.edit_root : ed.edit_cell;
-    const view::LayoutWindow* w = ed.windows.current();
-    if (w != nullptr && w->root() != nullptr) {
-      root = w->root();
-    }
-    ed.selection.set_root(root, ed.technology->plane_count());
-    ed.selection.clear();
-  }
-
-  void add_use(const db::CellUse& use) {
-    db::CellDef* sel = ed_.selection.def();
-    if (sel == nullptr || use.def == nullptr) {
-      return;
-    }
-    db::PlaceOptions po;
-    po.id = use.id;
-    po.transform = db::compose(ed_.edit_transform, use.transform);
-    po.array = use.array;
-    po.locked = use.locked;
-    if (auto copy = db::place(*sel, *use.def, po); copy.ok()) {
-      ed_.selection.provenance().push_back(
-          select::Provenance{select::Provenance::Kind::use, ed_.edit_cell, use.id, copy.value()->bbox});
-    }
-  }
-
-  void add_label(const db::Label& label) {
-    db::CellDef* sel = ed_.selection.def();
-    if (sel == nullptr) {
-      return;
-    }
-    db::Label copy = label;
-    copy.rect = db::apply(ed_.edit_transform, label.rect);
-    copy.justification = db::transform_position(ed_.edit_transform, label.justification);
-    ed_.selection.provenance().push_back(
-        select::Provenance{select::Provenance::Kind::label, ed_.edit_cell, {}, copy.rect});
-    sel->labels().push_back(std::move(copy));
-  }
-
-  void add_paint(const db::CellDef& source, const db::Rect& area, const db::Transform& to_edit) {
-    db::CellDef* sel = ed_.selection.def();
-    if (sel == nullptr) {
-      return;
-    }
-    const db::Transform to_root = db::compose(ed_.edit_transform, to_edit);
-    (void)db::copy_paint(source, area, to_root, *sel, *ed_.technology, all_but_space());
-    ed_.selection.provenance().push_back(
-        select::Provenance{select::Provenance::Kind::paint, ed_.edit_cell, {}, db::apply(to_root, area)});
-  }
-
-  static tech::TypeMask all_but_space() {
-    tech::TypeMask m = tech::TypeMask::all();
-    m.set(tech::kSpace, false);
-    return m;
-  }
-
- private:
-  editor::EditorState& ed_;
-};
+// Every type but space (the paint a dump copies).
+tech::TypeMask all_but_space() {
+  tech::TypeMask m = tech::TypeMask::all();
+  m.set(tech::kSpace, false);
+  return m;
+}
 
 // --- getcell ----------------------------------------------------------------------------
 
@@ -252,9 +194,10 @@ CommandResult getcell_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) 
     }
     db::recompute_bbox(edit, s.io.magic_compat);
     cu::set_current_use(cs.value(), use.value());
-    s.ed.box = editor::to_root(s.ed, use.value()->bbox);  // DBWSetBox(EditRootDef, ...)
-    s.ed.box_root = s.ed.edit_root;
-    NewSelection(s.ed).add_use(*use.value());
+    db::edit::set_box(s.ed, s.ed.edit_root, editor::to_root(s.ed, use.value()->bbox));  // DBWSetBox(EditRootDef)
+    select::EditCopies selection(s.ed);  // SelectClear + SelectAndCopy2
+    selection.add_use(*use.value());
+    selection.commit();
     return CommandResult::success(cmd::Value{use.value()->id});
   });
 }
@@ -265,9 +208,9 @@ CommandResult getcell_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) 
 // copied into the edit cell; the copies become the selection.
 void dump_contents(IoSession& s, const cu::Session& cs, const db::CellDef& child, const db::Transform& to_edit) {
   db::CellDef& edit = *s.ed.edit_cell;
-  NewSelection selection(s.ed);
+  select::EditCopies selection(s.ed);
   const db::Rect all = child.bbox();
-  (void)db::copy_paint(child, all, to_edit, edit, *s.ed.technology, NewSelection::all_but_space());
+  (void)db::copy_paint(child, all, to_edit, edit, *s.ed.technology, all_but_space());
   selection.add_paint(child, all, to_edit);
   for (const db::Label& l : child.labels()) {
     db::Label copy = l;
@@ -297,6 +240,7 @@ void dump_contents(IoSession& s, const cu::Session& cs, const db::CellDef& child
   }
   db::mark_modified(edit);
   db::recompute_bbox(edit, s.io.magic_compat);
+  selection.commit();
 }
 
 CommandResult dump_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {

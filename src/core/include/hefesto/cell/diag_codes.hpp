@@ -47,6 +47,7 @@ inline constexpr std::string_view kRenamedReference = "CELL-IO-004";
 inline constexpr std::string_view kOutOfDateStamp = "CELL-IO-005";
 inline constexpr std::string_view kInvalidName = "CELL-IO-006";
 inline constexpr std::string_view kSaved = "CELL-IO-007";
+inline constexpr std::string_view kSaveAbandoned = "CELL-IO-008";
 // Crash backups and archives (cell-io-safety)
 inline constexpr std::string_view kBackupRead = "CELL-BACKUP-001";
 inline constexpr std::string_view kBackupNote = "CELL-BACKUP-002";

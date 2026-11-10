@@ -14,6 +14,14 @@
 //   command bar 40 px  "%" prompt, input with history, hints
 //   status bar 26 px   cursor, box, edit cell, snap/units, message, DRC
 //
+// M2 (DESIGN boards docs/design/mockups/M2-*.dc.html): the live tool rail
+// (Magic's tools plus the Paint, Label and Measure modes), canvas buttons
+// and keys through the macro tables (InputRouter), undo/redo in the top bar,
+// Tab completion in the command bar, multi-line results summarized in the
+// status bar, the selection inspector, paint layer and lock toggles in the
+// palette, a Feedback tab, cmd::PromptHost questions as dialogs, and the
+// `panel` command that collapses the Layers, Inspector and Console panels.
+//
 // Every UI action runs a core command through the Dispatcher (origin `gui`),
 // so it is logged and replayable; the window refreshes after every command,
 // whatever its origin. Controls of later milestones are present but
@@ -25,10 +33,13 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/shell/editing_models.hpp"
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/options.hpp"
@@ -87,6 +98,20 @@ class MainWindow {
   /// Hides top-bar groups that do not fit the window's width (on resize).
   void fit_top_bar();
   void build_center();
+  void build_tool_rail(ui::Box& middle);
+  void rail_click(std::string_view icon);
+  void refresh_rail();
+  void add_undo_buttons(ui::Box& row);
+  /// cmd::PromptHost: a dialog (modal, or shown without waiting in a
+  /// scripted capture, which then takes the default answer).
+  std::size_t ask(std::string_view question, std::span<const std::string> answers, std::size_t default_answer);
+  [[nodiscard]] std::optional<std::string> complete(const std::string& text);
+  void show_prompt(const std::string& text);
+  bool set_panel(PanelId panel, std::optional<bool> show);
+  [[nodiscard]] bool panel_shown(PanelId panel) const;
+  std::optional<std::string> set_paint_layer(std::optional<std::string> name);
+  void clear_problems();
+  void refresh_feedback();
   void build_command_bar();
   void build_status_bar();
   void register_view_commands();
@@ -120,6 +145,23 @@ class MainWindow {
   std::unique_ptr<ui::Painted> status_bar_;
   std::string status_accessible_name_;  // last name given to status_bar_
   ui::Painted* console_toggle_ = nullptr;  // owned by painted_
+  struct RailButton {
+    ToolButton tool;
+    ui::Painted* widget = nullptr;  // owned by painted_
+  };
+  std::vector<RailButton> rail_;
+  ui::Painted* undo_button_ = nullptr;  // owned by painted_
+  ui::Painted* redo_button_ = nullptr;  // owned by painted_
+  UndoAffordance undo_state_;
+  ui::Painted* clear_button_ = nullptr;  // owned by painted_
+  class DialogPromptHost;
+  std::unique_ptr<cmd::PromptHost> prompt_host_;
+  bool capture_mode_ = false;  // --capture: dialogs do not wait
+  bool layers_visible_ = true;
+  bool inspector_visible_ = true;
+  bool result_has_more_ = false;  // the last result had more lines than the status bar shows
+  bool canvas_dirty_ = false;     // a `*bypass` command (motion): refresh the canvas and status only
+  const db::CellDef* shown_root_ = nullptr;  // problem count resets with a new document (compared only)
   struct TopBarGroup {
     float width = 0.0F;
     std::vector<ui::Widget*> widgets;  // owned by painted_
@@ -138,6 +180,8 @@ class MainWindow {
   ui::Tabs console_tabs_ = ui::Tabs::create();
   ui::ListPanel console_ = ui::ListPanel::create();  // command echo and full results
   ui::ListPanel diagnostics_ = ui::ListPanel::create();
+  ui::ListPanel feedback_ = ui::ListPanel::create();
+  std::vector<FeedbackRow> feedback_rows_;
   bool console_visible_ = false;
   // Diagnostics panel lines, problem counts and status messages.
   ProblemSink problems_{[this](StatusKind kind, const std::string& line, const std::string& status) {

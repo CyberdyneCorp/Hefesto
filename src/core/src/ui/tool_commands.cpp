@@ -21,6 +21,7 @@
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/tools.hpp"
+#include "hefesto/view/color_window.hpp"
 #include "ui/command_util.hpp"
 
 namespace hefesto::ui::detail {
@@ -124,22 +125,8 @@ CursorUnits default_cursor_units(const editor::EditorState& editor) {
   }
 }
 
-// ToolSnapToGrid with the `snap` grid.
 db::Point snapped(const editor::EditorState& editor, db::Point p) {
-  cmd::SnapGrid grid;
-  if (editor.snap == editor::SnapMode::internal) {
-    return p;
-  }
-  if (editor.snap == editor::SnapMode::lambda) {
-    const std::int64_t pitch = editor.grid.lambda > 0 ? editor.grid.internal / editor.grid.lambda : 1;
-    grid.pitch_x = grid.pitch_y = static_cast<db::Coord>(pitch > 0 ? pitch : 1);
-  } else if (const view::LayoutWindow* w = editor.windows.current()) {
-    const db::Rect s = w->grid().spacing;
-    grid.origin = db::Point{s.x0, s.y0};
-    grid.pitch_x = s.x1 - s.x0 > 0 ? s.x1 - s.x0 : 1;
-    grid.pitch_y = s.y1 - s.y0 > 0 ? s.y1 - s.y0 : 1;
-  }
-  return cmd::snap_point(p, grid);
+  return snap_to_tool_grid(editor, p);
 }
 
 cmd::InputUnit as_input_unit(CursorUnits u) {
@@ -204,10 +191,23 @@ const view::LayoutWindow* window_named(const editor::EditorState& editor, const 
   return editor.windows.find_named(word);
 }
 
-CommandResult report_point(CommandContext& ctx, const editor::EditorState& editor) {
+/// The color window `word` names (its id), or nullptr.
+const view::ColorWindow* color_window_named(editor::EditorState& editor, const std::string& word) {
+  const auto id = parse_int(word);
+  return id ? editor.color_map.find(static_cast<view::WindowId>(*id)) : nullptr;
+}
+
+CommandResult report_point(CommandContext& ctx, editor::EditorState& editor) {
   const db::Point px = state(editor).pointer_pixel;
   const view::LayoutWindow* w =
       editor.command_point ? editor.windows.find(editor.command_point->window) : editor.windows.current();
+  const view::ColorWindow* cw =
+      editor.command_point && w == nullptr ? editor.color_map.find(editor.command_point->window) : nullptr;
+  if (cw != nullptr) {
+    const db::Point p = view::color_window_mapping(editor, *cw).to_layout(px.x, px.y);
+    return CommandResult::success(cmd::Value::List{std::int64_t{px.x}, std::int64_t{px.y}, std::int64_t{p.x},
+                                                   std::int64_t{p.y}});
+  }
   if (w == nullptr) {
     print(ctx, "Point is at screen coordinates (" + std::to_string(px.x) + ", " + std::to_string(px.y) + ").");
     return CommandResult::success();
@@ -233,12 +233,19 @@ CommandResult setpoint(CommandContext& ctx, const Invocation& inv) {
     return usage("Usage: " + inv.name + " [x y [window ID|name]]");
   }
   const view::LayoutWindow* w = a.size() == 3 ? window_named(ed, a[2]) : ed.windows.current();
+  const view::ColorWindow* cw = a.size() == 3 && w == nullptr ? color_window_named(ed, a[2]) : nullptr;
   const auto px = static_cast<std::int32_t>(*x);
   const auto py = static_cast<std::int32_t>(*y);
   cmd::PointerState pointer;
   pointer.window = w == nullptr ? -1 : w->id();
   pointer.point = w == nullptr ? db::Point{px, py} : w->mapping().to_layout(px, py);
   pointer.pixel_area = w == nullptr ? db::Rect{px, py, px, py} : w->mapping().screen_to_surface({px, py, px, py});
+  if (cw != nullptr) {  // a color window: the following commands go to its client
+    const view::ViewMapping m = view::color_window_mapping(ed, *cw);
+    pointer.window = cw->id;
+    pointer.point = m.to_layout(px, py);
+    pointer.pixel_area = m.screen_to_surface({px, py, px, py});
+  }
   ed.command_point = pointer;
   state(ed).pointer_pixel = db::Point{px, py};
   state(ed).point_forced = true;
@@ -349,3 +356,25 @@ bool register_tool_commands(cmd::CommandRegistry& registry) {
 }
 
 }  // namespace hefesto::ui::detail
+
+namespace hefesto::ui {
+
+// ToolSnapToGrid with the `snap` grid.
+db::Point snap_to_tool_grid(const editor::EditorState& editor, db::Point p) {
+  cmd::SnapGrid grid;
+  if (editor.snap == editor::SnapMode::internal) {
+    return p;
+  }
+  if (editor.snap == editor::SnapMode::lambda) {
+    const std::int64_t pitch = editor.grid.lambda > 0 ? editor.grid.internal / editor.grid.lambda : 1;
+    grid.pitch_x = grid.pitch_y = static_cast<db::Coord>(pitch > 0 ? pitch : 1);
+  } else if (const view::LayoutWindow* w = editor.windows.current()) {
+    const db::Rect s = w->grid().spacing;
+    grid.origin = db::Point{s.x0, s.y0};
+    grid.pitch_x = s.x1 - s.x0 > 0 ? s.x1 - s.x0 : 1;
+    grid.pitch_y = s.y1 - s.y0 > 0 ? s.y1 - s.y0 : 1;
+  }
+  return cmd::snap_point(p, grid);
+}
+
+}  // namespace hefesto::ui

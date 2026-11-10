@@ -30,6 +30,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -157,6 +158,11 @@ class UndoLog {
   /// Reports that a replayed event changed `area` of `def` (an empty area:
   /// only the bounding box needs recomputing).
   void note_changed(db::CellDef& def, const db::Rect& area);
+  /// Queues a line a replayed event prints (TxPrintf from an undo client,
+  /// e.g. "Edit cell is now ..."); the undo/redo command reports them.
+  void note(std::string text) { notes_.push_back(std::move(text)); }
+  /// The lines queued by note() since the last call, oldest first.
+  [[nodiscard]] std::vector<std::string> take_notes() { return std::exchange(notes_, {}); }
 
  private:
   using Step = std::vector<std::unique_ptr<Event>>;
@@ -180,6 +186,7 @@ class UndoLog {
   bool replaying_ = false;
   std::unordered_set<const db::CellDef*> live_;
   std::vector<Changed> changed_;
+  std::vector<std::string> notes_;
 };
 
 /// Suspends recording for its lifetime ("Non-recorded operations": file

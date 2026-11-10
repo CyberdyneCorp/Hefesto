@@ -1,0 +1,14 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Cell a couldn't be read
+No such file or directory
+Cell top couldn't be read
+No such file or directory
+Cell z couldn't be read
+No such file or directory
+Cannot open archive file "arch.mag"
+Usage: archive write|writeall|read|readref filename

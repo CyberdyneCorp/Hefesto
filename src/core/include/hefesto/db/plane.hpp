@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/transform.hpp"
@@ -98,6 +99,20 @@ using PaintRow = std::array<tech::TileType, tech::kMaxTileTypes>;
 /// Return false to stop an enumeration early.
 using TileVisitor = std::function<bool(const TileView&)>;
 
+/// A split-tile structure change made by a paint (Magic's splitUE): a split
+/// tile cut into smaller split tiles (`join` false: the tile before the
+/// cut) or two split tiles merged back into one (`join` true: the merged
+/// tile). The geometry is unchanged either way.
+struct SplitEdit {
+  bool join = false;
+  Rect area;
+  Diagonal diagonal = Diagonal::nw_se;
+  tech::TileType left_type = tech::kSpace;
+  tech::TileType right_type = tech::kSpace;
+
+  friend bool operator==(const SplitEdit&, const SplitEdit&) = default;
+};
+
 class Plane {
  public:
   Plane();  // the whole plane is space
@@ -123,13 +138,19 @@ class Plane {
   [[nodiscard]] diag::Status paint_triangle(const Rect& area, Diagonal diagonal, bool right_side,
                                             const PaintRow& row, bool magic_compat = true);
 
+  /// While `log` is set, paint() and paint_triangle() append the split-tile
+  /// fractures and joins they make to it (dbSplitUndo / dbJoinUndo, for the
+  /// undo recorder); nullptr stops recording.
+  void record_splits(std::vector<SplitEdit>* log) noexcept;
+
   /// Visits the tiles overlapping `area` whose type is in `types`, in
   /// Magic's area-enumeration order ("Tile enumeration order",
   /// DBSrPaintArea). A split tile is reported once per matching side (left
   /// first) unless `area` lies entirely beyond its diagonal. Returns false
   /// when the visitor stopped early. A zero-width or zero-height `area`
   /// runs Magic's algorithm unchanged (used for point and line labels); an
-  /// inverted area visits nothing.
+  /// inverted area visits nothing; an area beyond the plane (out to
+  /// +-kInfinity) is clamped to whole_plane().
   bool enumerate(const Rect& area, const tech::TypeMask& types, const TileVisitor& visit) const;
 
   /// Like enumerate() but restricted to the triangle of `area` given by

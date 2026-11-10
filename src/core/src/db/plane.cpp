@@ -7,6 +7,7 @@
 
 #include "hefesto/db/plane.hpp"
 
+#include <algorithm>
 #include <string>
 
 #include "db/tile_plane.hpp"
@@ -90,7 +91,24 @@ diag::Status Plane::paint_triangle(const Rect& area, Diagonal diagonal, bool rig
   return diag::Done{};
 }
 
-bool Plane::enumerate(const Rect& area, const tech::TypeMask& types, const TileVisitor& visit) const {
+void Plane::record_splits(std::vector<SplitEdit>* log) noexcept {
+  impl_->tiles.set_split_log(log);
+}
+
+namespace {
+
+/// The search area clamped to the plane: the boundary tiles have no
+/// neighbours beyond them, so an area out to +-kInfinity must stop there.
+Rect clamp_to_plane(const Rect& area) noexcept {
+  const Rect plane = whole_plane();
+  return Rect{std::max(area.x0, plane.x0), std::max(area.y0, plane.y0), std::min(area.x1, plane.x1),
+              std::min(area.y1, plane.y1)};
+}
+
+}  // namespace
+
+bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, const TileVisitor& visit) const {
+  const Rect area = clamp_to_plane(unclamped);
   if (area.x0 > area.x1 || area.y0 > area.y1) {
     return true;
   }
@@ -98,8 +116,9 @@ bool Plane::enumerate(const Rect& area, const tech::TypeMask& types, const TileV
                               [&](detail::Tile* t, detail::Body dinfo) { return !visit(view_of(t, dinfo)); });
 }
 
-bool Plane::enumerate_triangle(const Rect& area, Diagonal diagonal, bool right_side, const tech::TypeMask& types,
+bool Plane::enumerate_triangle(const Rect& unclamped, Diagonal diagonal, bool right_side, const tech::TypeMask& types,
                                const TileVisitor& visit) const {
+  const Rect area = clamp_to_plane(unclamped);
   if (area.x0 > area.x1 || area.y0 > area.y1) {
     return true;
   }

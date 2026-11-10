@@ -1,0 +1,6 @@
+# UI-G-009: macro list and macro help with the default system startup file (box tool).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+macro list
+macro help

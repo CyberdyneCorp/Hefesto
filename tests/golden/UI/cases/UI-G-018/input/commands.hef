@@ -1,0 +1,6 @@
+# UI-G-018: setpoint 100 100 0, then setpoint with no arguments.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+setpoint 100 100 0
+setpoint

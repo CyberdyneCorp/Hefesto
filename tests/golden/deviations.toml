@@ -42,6 +42,11 @@ decisions = ["Q-MODEL-31"]
 outputs = ["top.mag"]
 reason = "in-place flatten renames the child's labels <id>[x][y]/<text>; Magic's renaming overflows its buffer and leaves them unprefixed"
 
+[MODEL-G-040]
+decisions = ["Q-MODEL-12"]
+outputs = ["stdout.txt"]
+reason = "undo replay marks the cell modified, so cellname list modified prints it, and the save in the same second as the previous one prints Magic's 'writing out-of-date timestamp' note for the pending stamp"
+
 [MODEL-G-043]
 decisions = ["Q-CELL-12"]
 outputs = ["a.mag"]
@@ -110,3 +115,55 @@ reason = "windowpositions returns one list per window; Magic returns only the la
 decisions = ["Q-UI-21"]
 outputs = ["stdout.txt"]
 reason = "an out-of-range grid multiple is rejected without being stored"
+
+[UI-G-065]
+decisions = ["Q-UI-24"]
+outputs = ["f.txt"]
+reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
+
+# --- CMDEDIT ----------------------------------------------------------------
+
+[CMDEDIT-MISC-03]
+decisions = ["Q-UI-24"]
+outputs = ["f.tcl"]
+reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
+
+[CMDEDIT-BOX-05]
+decisions = ["Q-CMDEDIT-9"]
+outputs = ["stdout.txt"]
+reason = "box corner DIR X Y moves the corner to (X, Y); Magic rejects the five-word form with the box help and keeps the box"
+
+[CMDEDIT-PAINT-01]
+decisions = ["Q-MODEL-12"]
+outputs = ["stdout.txt"]
+reason = "undo replay marks the cell modified and pending a new timestamp; saving it in the same second as the previous save prints Magic's 'writing out-of-date timestamp' note, which Magic, whose paint replay marks nothing, does not reach"
+
+[CMDEDIT-PAINT-13]
+decisions = ["Q-CMDEDIT-21"]
+outputs = ["stderr.txt"]
+reason = "with magic-compat ON a non-diagonal splitpaint direction is mapped as Magic maps it, with the warning 'Direction \"n\" is not a corner; using nw' (the .mag files match)"
+
+[CMDEDIT-BOX-08]
+decisions = ["Q-CMDEDIT-12"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "box values checks both corners against the coordinate limit, so 0 0 2000000000i 1 is refused with 'Box out of bounds.' and the box is kept; Magic tests only the lower-left corner"
+
+[CMDEDIT-COORD-03]
+decisions = ["Q-CMDEDIT-2"]
+outputs = ["stderr.txt"]
+reason = "1um+2um is evaluated as 1um as in Magic, and with magic-compat ON Hefesto warns that the trailing text was ignored"
+
+[CMDEDIT-COORD-11]
+decisions = ["Q-CMDEDIT-7", "Q-UI-21"]
+outputs = ["stdout.txt"]
+reason = "grid multiple 300 is rejected without being stored, so grid multiple returns 1; Magic stores 300 modulo 256 (44)"
+
+[CMDEDIT-SEL-14]
+decisions = ["Q-CMDEDIT-62"]
+outputs = ["stdout.txt", "stderr.txt", "a.mag"]
+reason = "orient 180v is sideways (as getcell maps it) where Magic prints the usage; orient is relative, so every later orientation and the saved transform differ by that flip"
+
+[CMDEDIT-HIER-11]
+decisions = ["Q-CELL-34"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "archive read X tries X before X.mag, so the archive just written as arch.mag is read back (with the reader's timestamp and duplicate-id notes); Magic looks for arch.mag.mag and reports 'Cannot open archive file'"

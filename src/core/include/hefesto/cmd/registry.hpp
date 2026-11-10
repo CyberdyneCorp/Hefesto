@@ -50,6 +50,8 @@ struct CommandSpec {
 inline constexpr std::string_view kWindowClient = "*window";
 /// The default client (layout windows, and commands with no window).
 inline constexpr std::string_view kLayoutClient = "layout";
+/// The color window client (ui-color-window).
+inline constexpr std::string_view kColorClient = "color";
 
 enum class LookupStatus : std::uint8_t { found, ambiguous, not_found };
 

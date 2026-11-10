@@ -1,0 +1,11 @@
+magic
+tech tiny
+timestamp 1794285342
+<< checkpaint >>
+rect 0 0 34 70
+use inv  inv_0
+array 0 2 12 3 1 25
+timestamp 1794285342
+transform 1 0 0 0 1 0
+box 0 0 10 20
+<< end >>

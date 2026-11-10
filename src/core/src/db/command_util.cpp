@@ -102,6 +102,13 @@ void print(const Session& s, std::string text) {
   }
 }
 
+void print_block(const Session& s, std::string text) {
+  if (text.ends_with('\n')) {
+    text.pop_back();
+  }
+  print(s, std::move(text));
+}
+
 void warn(const Session& s, std::string text) {
   if (s.ctx != nullptr) {
     s.ctx->emit(diag::make(codes::kWarning, std::move(text)));

@@ -30,6 +30,7 @@
 #include "hefesto/db/polygon.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/tech/commands.hpp"
 
 namespace hefesto::db {
 
@@ -64,7 +65,11 @@ LayerListContext layer_context(const cu::Session& s) {
 }
 
 diag::Outcome<LayerList> layers(const cu::Session& s, std::string_view text) {
-  return parse_layer_list(text, *s.tech, layer_context(s));
+  auto list = parse_layer_list(text, *s.tech, layer_context(s));
+  if (!list.ok() && is_bad_layer_name(list.error())) {
+    cu::print_block(s, tech::layer_names_text(*s.tech));
+  }
+  return list;
 }
 
 // Types that may be painted (active in the editor: not locked).
@@ -82,10 +87,20 @@ tech::TypeMask paintable(const cu::Session& s, const tech::TypeMask& types) {
   return out;
 }
 
-// DBPaintValid for each type of `types`, in increasing type order.
+// DBPaintValid of `types`: stacked contacts are first decomposed into their
+// residues, then each non-stacked type is painted once, in increasing type
+// order (a stacked type is never painted after the others, CMDEDIT-PAINT-02).
 diag::Status paint_all(const edit::Target& t, const Rect& area, const tech::TypeMask& types) {
-  for (std::size_t ty = 1; ty < t.s.tech->type_count(); ++ty) {
-    if (!types.test(static_cast<tech::TileType>(ty))) {
+  const tech::Technology& tech = *t.s.tech;
+  const TechMasks masks(tech, t.def->plane_count());
+  tech::TypeMask mask = types;
+  for (std::size_t ty = tech.user_type_end(); ty < tech.type_count(); ++ty) {
+    if (types.test(static_cast<tech::TileType>(ty))) {
+      mask |= masks.residues(static_cast<tech::TileType>(ty));
+    }
+  }
+  for (std::size_t ty = 1; ty < tech.user_type_end(); ++ty) {
+    if (!mask.test(static_cast<tech::TileType>(ty))) {
       continue;
     }
     if (auto st = paint(*t.def, *t.s.tech, area, static_cast<tech::TileType>(ty), edit::paint_options(t.s)); !st.ok()) {
@@ -223,10 +238,10 @@ CommandResult cmd_paint(CommandContext& ctx, const Invocation& inv) {
     return cu::fail(list.error());
   }
   if (list.value().labels) {
-    return cu::fail(cu::bad_argument("Label layer cannot be painted. Use the \"label\" command"));
+    return cu::fail(cu::bad_argument("Label layer cannot be painted.  Use the \"label\" command"));
   }
   if (list.value().subcells) {
-    return cu::fail(cu::bad_argument("Subcell layer cannot be painted. Use \"getcell\"."));
+    return cu::fail(cu::bad_argument("Subcell layer cannot be painted.  Use \"getcell\"."));
   }
   tech::TypeMask types = list.value().types;
   types.clear_type(tech::kSpace);
@@ -601,7 +616,7 @@ CommandResult cmd_contact(CommandContext& ctx, const Invocation& inv) {
   }
   const tech::ContactInfo* c = e.s.tech->contact(type.value());
   if (c == nullptr) {
-    return cu::fail(cu::bad_argument("Error: tile type \"" + name + "\" is not a contact."));
+    return cu::fail(cu::bad_argument("Error:  tile type \"" + name + "\" is not a contact."));
   }
   const auto st = erasing ? contact_erase(e, type.value(), *c) : contact_paint(e, type.value(), *c);
   if (!st.ok()) {
@@ -843,8 +858,11 @@ CommandResult cmd_drop(CommandContext& ctx, const Invocation& inv) {
     return cu::fail(list.error());
   }
   const select::Selection& sel = e.s.editor->selection;
-  if (sel.root() != edit::edit_root(*e.s.editor)) {
-    return cu::fail(diag::make(codes::kNotEditable, "The selection does not match the edit cell."));  // Q-CMDEDIT-17
+  // CmdDrop: the edit cell itself must be the selection's root (a child
+  // edited in place is refused, CMDEDIT-PAINT-15), and a selection made in
+  // another window's root is refused too (Q-CMDEDIT-17).
+  if (sel.root() != edit::edit_root(*e.s.editor) || sel.root() != e.def) {
+    return cu::fail(diag::make(codes::kNotEditable, "The selection does not match the edit cell."));
   }
   if (sel.def() == nullptr || sel.empty()) {
     return CommandResult::success();

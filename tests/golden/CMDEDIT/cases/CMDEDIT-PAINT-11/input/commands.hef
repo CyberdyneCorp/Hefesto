@@ -1,0 +1,14 @@
+# CMDEDIT-PAINT-11: metal1 and metal2 overlap; contact m2c; contact erase m2c; contact metal1.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 6 10
+paint metal1
+box 3 0 10 10
+paint metal2
+box 0 0 10 10
+contact m2c
+save c1
+contact erase m2c
+save c2
+contact metal1

@@ -1,0 +1,10 @@
+magic
+tech tiny
+timestamp 1794285339
+<< checkpaint >>
+rect 0 0 10 10
+<< polysilicon >>
+tri 0 0 10 10 sw
+<< metal1 >>
+tri 0 0 10 10 ne
+<< end >>

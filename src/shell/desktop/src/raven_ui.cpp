@@ -10,6 +10,8 @@
 
 #include "raven_ui.hpp"
 
+#include "hefesto/shell/input_router.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -176,21 +178,16 @@ PointerButton to_button(RMouseButton b) {
   }
 }
 
-CanvasKey to_key(RKey key) {
-  switch (key) {
-    case R_KEY_LEFT: return CanvasKey::left;
-    case R_KEY_RIGHT: return CanvasKey::right;
-    case R_KEY_UP: return CanvasKey::up;
-    case R_KEY_DOWN: return CanvasKey::down;
-    case R_KEY_EQUAL:
-    case R_KEY_KP_ADD: return CanvasKey::zoom_in;
-    case R_KEY_MINUS:
-    case R_KEY_KP_SUBTRACT: return CanvasKey::zoom_out;
-    case R_KEY_F:
-    case R_KEY_HOME: return CanvasKey::fit;
-    default: return CanvasKey::other;
-  }
-}
+// The shell's copies of Raven's key and modifier values (input_router.hpp).
+static_assert(R_KEY_SPACE == raven_key::kSpace && R_KEY_ESCAPE == raven_key::kEscape &&
+              R_KEY_ENTER == raven_key::kEnter && R_KEY_RIGHT == raven_key::kRight && R_KEY_UP == raven_key::kUp &&
+              R_KEY_PAGE_UP == raven_key::kPageUp && R_KEY_HOME == raven_key::kHome && R_KEY_PAUSE == raven_key::kPause &&
+              R_KEY_F1 == raven_key::kF1 && R_KEY_F12 == raven_key::kF12 && R_KEY_KP_0 == raven_key::kKp0 &&
+              R_KEY_KP_9 == raven_key::kKp9 && R_KEY_KP_ENTER == raven_key::kKpEnter &&
+              R_KEY_LEFT_SHIFT == raven_key::kLeftShift && R_KEY_RIGHT_SUPER == raven_key::kRightSuper &&
+              R_KEY_MENU == raven_key::kMenu);
+static_assert(static_cast<int>(R_MOD_SHIFT) == kModShift && static_cast<int>(R_MOD_CTRL) == kModCtrl &&
+              static_cast<int>(R_MOD_ALT) == kModAlt && static_cast<int>(R_MOD_SUPER) == kModSuper);
 
 InputKind to_kind(REventType type) {
   switch (type) {
@@ -214,7 +211,8 @@ CanvasInput to_canvas_input(const REvent& e) {
   in.wheel_y = static_cast<double>(e.wheel_y);
   in.precise_wheel = e.wheel_precise != kFalse;
   in.button = to_button(e.button);
-  in.key = to_key(e.key);
+  in.modifiers = static_cast<std::uint8_t>(e.modifiers & 0x0FU);
+  in.native_key = static_cast<int>(e.key);
   return in;
 }
 
@@ -768,6 +766,7 @@ void Painted::invalidate() {
 struct CommandBar::Callbacks {
   std::function<void(std::string)> commit;
   std::function<std::string(bool)> history;
+  std::function<std::optional<std::string>(std::string)> complete;
 
   static void on_commit(Rid /*input*/, const char* text, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
@@ -775,9 +774,13 @@ struct CommandBar::Callbacks {
   }
   static int on_event(Rid input, const REvent* e, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
-    if (e->type != R_EVENT_KEY_DOWN || !cb->history || (e->key != R_KEY_UP && e->key != R_KEY_DOWN)) {
-      return kFalse;
+    if (e->type != R_EVENT_KEY_DOWN) return kFalse;
+    if (e->key == R_KEY_TAB && e->modifiers == 0 && cb->complete) {
+      const char* text = Rtext_input_get_text(input);
+      if (const auto done = cb->complete(text != nullptr ? text : "")) Rtext_input_set_text(input, done->c_str());
+      return kTrue;  // Tab completes; it never moves the focus out of the command bar
     }
+    if (!cb->history || (e->key != R_KEY_UP && e->key != R_KEY_DOWN)) return kFalse;
     Rtext_input_set_text(input, cb->history(e->key == R_KEY_UP).c_str());
     return kTrue;
   }
@@ -804,6 +807,10 @@ void CommandBar::on_history(std::function<std::string(bool)> callback) {
 
 void CommandBar::set_text(std::string_view text) {
   Rtext_input_set_text(id_, str(text).c_str());
+}
+
+void CommandBar::on_complete(std::function<std::optional<std::string>(std::string)> callback) {
+  callbacks_->complete = std::move(callback);
 }
 
 // --- Viewport --------------------------------------------------------------
@@ -878,6 +885,19 @@ void Viewport::invalidate() {
   Rwidget_invalidate(id_);
 }
 
+void Viewport::set_cursor(CursorShape shape) {
+  RCursor cursor = R_CURSOR_ARROW;
+  switch (shape) {
+    case CursorShape::arrow: cursor = R_CURSOR_ARROW; break;
+    case CursorShape::crosshair: cursor = R_CURSOR_CROSSHAIR; break;
+    case CursorShape::ibeam: cursor = R_CURSOR_IBEAM; break;
+    case CursorShape::move: cursor = R_CURSOR_MOVE; break;
+    case CursorShape::resize_nesw: cursor = R_CURSOR_RESIZE_NESW; break;
+    case CursorShape::resize_nwse: cursor = R_CURSOR_RESIZE_NWSE; break;
+  }
+  Rwidget_set_cursor(id_, cursor);
+}
+
 // --- Window ----------------------------------------------------------------
 
 Window::Window(std::string_view title, int width, int height)
@@ -948,6 +968,52 @@ void Window::set_min_size(int width, int height) {
 
 void Window::set_clear_color(const Rgba& c) {
   Rwindow_set_clear_color(id_, c.r, c.g, c.b, c.a);
+}
+
+namespace {
+
+void close_dialog_with(Rid button, void* answer) {
+  Rdialog_close(button, static_cast<int>(reinterpret_cast<std::intptr_t>(answer)));
+}
+
+}  // namespace
+
+int Window::run_dialog(const PromptDialog& dialog, bool wait) const {
+  const Rid content = Rwidget_create(R_WIDGET_VBOX);
+  Rpanel_set_spacing(content, 12.0F);
+  Rwidget_set_min_size(content, 420.0F, 0.0F);
+  const Rid title = Rlabel_create(dialog.title.c_str());
+  Rlabel_set_text_size(title, 15.0F);
+  Rwidget_add_child(content, title);
+  if (dialog.text != dialog.title) {
+    const Rid text = Rlabel_create(dialog.text.c_str());
+    Rlabel_set_wrap(text, kTrue);
+    Rwidget_add_child(content, text);
+  }
+  const Rid row = Rwidget_create(R_WIDGET_HBOX);
+  Rpanel_set_spacing(row, 8.0F);
+  const Rid spacer = Rwidget_create(R_WIDGET_SPACER);
+  Rwidget_add_child(row, spacer);
+  Rslot_set_fill(spacer, 1.0F);
+  Rid primary = kNoWidget;
+  for (const DialogButton& b : dialog.buttons) {
+    const Rid button = Rbutton_create(b.label.c_str());
+    Rbutton_set_style(button, b.primary ? R_BUTTON_PRIMARY : R_BUTTON_DEFAULT);
+    Rwidget_set_accessible_name(button, b.label.c_str());
+    Rbutton_set_clicked_callback(button, &close_dialog_with,
+                                 reinterpret_cast<void*>(static_cast<std::intptr_t>(b.answer + 1)));
+    Rwidget_add_child(row, button);
+    if (b.primary) primary = button;
+  }
+  Rwidget_add_child(content, row);
+  Rwidget_set_accessible_name(content, dialog.title.c_str());
+  if (!wait) {
+    Rdialog_open(id_, content, nullptr, nullptr);
+    if (primary != kNoWidget) Rwidget_focus(primary);
+    return 0;
+  }
+  if (primary != kNoWidget) Rwidget_focus(primary);
+  return Rdialog_run(id_, content);
 }
 
 std::optional<std::string> Window::open_file_dialog(std::string_view title, std::string_view filter_name,

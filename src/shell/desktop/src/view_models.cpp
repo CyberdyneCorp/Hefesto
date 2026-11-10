@@ -424,22 +424,47 @@ const std::vector<DeferredControl>& deferred_actions() {
 
 const std::vector<ToolButton>& tool_rail() {
   static const std::vector<ToolButton> tools = {
-      {"box", "Box tool", true, "Box tool (active)"},
-      {"select", "Select", false, "Select: arrives in M2"},
-      {"paint", "Paint", false, "Paint: arrives in M2"},
-      {"wire", "Wire", false, "Wire: arrives in M2"},
-      {"label", "Label", false, "Label: arrives in M2"},
-      {"measure", "Measure", false, "Measure: arrives in M2"},
-      {"place", "Place device", false, "Place device: arrives in M2"},
-      {"fit", "Zoom to fit", true, "Zoom to fit (F)"},
+      {"box", "Box tool", true, "Box tool  Shift-Space · left moves, right resizes, middle paints"},
+      {"select", "Select", true, "Select (pick tool) · Space cycles tools"},
+      {"paint", "Paint", true, "Paint: drag a box, release paints the paint layer; Option erases"},
+      {"wire", "Wire", true, "Wire tool  Control-Space · left starts and commits legs, right cancels"},
+      {"label", "Label", true, "Label: click or drag, then type the text (as the l key)"},
+      {"measure", "Measure", true, "Measure: drag from point to point; the ruler stays"},
+      {"place", "Place device", false, "Place device: arrives in M4"},
+      {"fit", "Zoom to fit", true, "Zoom to fit (view)"},
   };
   return tools;
 }
 
 // --- layer palette ------------------------------------------------------------------
 
+std::string LayerRow::meta() const {
+  if (!visible) return "hidden";
+  if (paint && locked) return "paint · locked";
+  if (paint) return "paint";
+  if (locked) return "locked";
+  return plane;
+}
+
 std::string LayerRow::accessible_name() const {
-  return name + ", plane " + plane + (visible ? ", visible" : ", hidden");
+  return name + ", plane " + plane + (visible ? ", visible" : ", hidden") + (paint ? ", paint layer" : "") +
+         (locked ? ", locked" : "");
+}
+
+std::string LayerRow::lock_command() const {
+  return (locked ? "tech unlock " : "tech lock ") + name;
+}
+
+LayerRowIcons layer_row_icons(float width, float meta_width) noexcept {
+  const float eye = width - 8.0F - meta_width - 20.0F;
+  return LayerRowIcons{eye, eye - 20.0F};
+}
+
+LayerRowHit layer_row_hit(float x, float width, float meta_width) noexcept {
+  const LayerRowIcons icons = layer_row_icons(width, meta_width);
+  if (x >= icons.eye - 3.0F && x < icons.eye + 17.0F) return LayerRowHit::visibility;
+  if (x >= icons.lock - 3.0F && x < icons.eye - 3.0F) return LayerRowHit::lock;
+  return LayerRowHit::paint;
 }
 
 std::string LayerRow::toggle_command() const {
@@ -447,7 +472,7 @@ std::string LayerRow::toggle_command() const {
 }
 
 std::vector<LayerRow> layer_rows(const std::vector<display::LayerSwatch>& swatches, const tech::TypeMask& visible,
-                                 std::string_view filter) {
+                                 std::string_view filter, const tech::TypeMask& locked, std::string_view paint_layer) {
   const std::string needle = lower(filter);
   std::vector<LayerRow> rows;
   for (const display::LayerSwatch& swatch : swatches) {
@@ -460,6 +485,8 @@ std::vector<LayerRow> layer_rows(const std::vector<display::LayerSwatch>& swatch
     row.plane = swatch.plane;
     row.contact = swatch.contact;
     row.visible = visible.test(swatch.type);
+    row.locked = locked.test(swatch.type);
+    row.paint = !paint_layer.empty() && swatch.name == paint_layer;
     apply_styles(row, swatch.styles);
     rows.push_back(std::move(row));
   }
@@ -560,7 +587,8 @@ std::string layer_empty_hint(std::string_view technology, bool has_styles) {
 
 // --- inspector ------------------------------------------------------------------------
 
-InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell, const UnitScale& scale) {
+InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell, const UnitScale& scale,
+                             const db::CellDef* window_root) {
   InspectorView view;
   const std::string unit(scale.unit_name());
   if (box) {
@@ -574,6 +602,11 @@ InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellD
     return view;
   }
   view.section = "CELL";
+  if (cell == nullptr && window_root != nullptr) {
+    view.title = "Read-only: " + window_root->name();
+    view.subtitle = "locked or not editable";
+    return view;
+  }
   if (cell == nullptr) {
     view.title = "Nothing loaded";
     view.subtitle = "Open a .mag file or load a cell";

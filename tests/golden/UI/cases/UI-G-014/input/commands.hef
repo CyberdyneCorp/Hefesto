@@ -1,0 +1,5 @@
+# UI-G-014: macro wind3d L "level up" in a build without 3-D.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+macro wind3d L "level up"

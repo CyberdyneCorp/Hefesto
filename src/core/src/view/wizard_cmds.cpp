@@ -172,7 +172,7 @@ CommandResult winddebug_cmd(CommandContext& ctx, const Invocation& inv) {
   WindowManager& wm = s.value()->windows;
   wm.set_print_commands(!wm.print_commands());
   // Magic writes it with TxError (stderr) and fails nothing.
-  ctx.emit(diag::make(codes::kReport, std::string("Window command debugging set to ") +
+  ctx.emit(diag::make(codes::kErrorReport, std::string("Window command debugging set to ") +
                                           (wm.print_commands() ? "TRUE" : "FALSE")));
   return CommandResult::success();
 }
@@ -222,7 +222,7 @@ CommandResult files_cmd(CommandContext& ctx, const Invocation&) {
   unopen = kNumFd;
 #endif
   text += std::to_string(open) + " open files, " + std::to_string(unopen) + " unopened file descriptors left";
-  ctx.emit(diag::make(codes::kReport, std::move(text)));
+  ctx.emit(diag::make(codes::kErrorReport, std::move(text)));  // TxError, as Magic (UI-G-081)
   return CommandResult::success();
 }
 

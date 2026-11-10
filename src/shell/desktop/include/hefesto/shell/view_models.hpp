@@ -157,6 +157,8 @@ class ProblemSink final : public diag::DiagnosticSink {
   explicit ProblemSink(Listener listener) : listener_(std::move(listener)) {}
   void emit(const diag::Diagnostic& diagnostic) override;
   [[nodiscard]] const DiagnosticTally& tally() const noexcept { return tally_; }
+  /// Resets the problem count (the Diagnostics "Clear" action, a new document).
+  void clear_counts() noexcept { tally_.clear(); }
 
  private:
   Listener listener_;
@@ -203,8 +205,9 @@ struct ToolButton {
   std::string_view tooltip;
 };
 
-/// The tool rail of the mockup, top to bottom. M1 enables the box tool
-/// (active) and zoom to fit; the editing tools arrive in M2.
+/// The tool rail of the mockup, top to bottom: Box, Select, Paint, Wire,
+/// Label, Measure (live since M2: editing_models.hpp rail_action), Place
+/// device (disabled until M4), Zoom to fit.
 [[nodiscard]] const std::vector<ToolButton>& tool_rail();
 
 // --- layer palette ------------------------------------------------------------------
@@ -220,19 +223,39 @@ struct LayerRow {
   bool stippled = false;
   bool crossed = false;   // contact-style cross
   bool dashed = false;    // outline-only style (wells)
+  bool locked = false;    // a locked (inactive) type: `tech lock`
+  bool paint = false;     // the active paint layer (M2-Layer-Palette board)
 
-  /// The meta text at the right of the row: the plane, or "hidden".
-  [[nodiscard]] std::string meta() const { return visible ? plane : std::string("hidden"); }
-  /// "metal1, plane metal1, visible" (screen readers; hefesto-app-ux "VoiceOver on layer palette").
+  /// The meta text at the right of the row: "hidden", "paint · locked",
+  /// "paint", "locked", else the plane (status is never color-only).
+  [[nodiscard]] std::string meta() const;
+  /// "metal1, plane metal1, visible" plus ", paint layer" and ", locked"
+  /// (screen readers; hefesto-app-ux "VoiceOver on layer palette").
   [[nodiscard]] std::string accessible_name() const;
   /// The command a visibility toggle issues: "see metal1" or "see no metal1".
   [[nodiscard]] std::string toggle_command() const;
+  /// The command the lock toggle issues: "tech lock metal1" or "tech unlock metal1".
+  [[nodiscard]] std::string lock_command() const;
 };
 
 /// Rows for the palette from display::layer_palette(), in technology order,
-/// filtered by a case-insensitive substring of the name or plane.
+/// filtered by a case-insensitive substring of the name or plane; `locked`
+/// marks locked types and `paint_layer` the active paint layer.
 [[nodiscard]] std::vector<LayerRow> layer_rows(const std::vector<display::LayerSwatch>& swatches,
-                                               const tech::TypeMask& visible, std::string_view filter);
+                                               const tech::TypeMask& visible, std::string_view filter,
+                                               const tech::TypeMask& locked = {}, std::string_view paint_layer = {});
+
+/// Which control of a layer row a click at `x` hits: the eye (visibility)
+/// and lock toggles sit left of the meta text (`meta_width` wide) at the
+/// row's right end; anything else selects the row as the paint layer.
+enum class LayerRowHit : std::uint8_t { paint, visibility, lock };
+[[nodiscard]] LayerRowHit layer_row_hit(float x, float width, float meta_width) noexcept;
+/// The left edges of the eye and lock icons (14 px) in a row `width` wide.
+struct LayerRowIcons {
+  float eye = 0.0F;
+  float lock = 0.0F;
+};
+[[nodiscard]] LayerRowIcons layer_row_icons(float width, float meta_width) noexcept;
 
 // --- hierarchy ------------------------------------------------------------------------
 
@@ -320,8 +343,10 @@ struct InspectorView {
                                                   const db::CellDef* edit_cell);
 
 /// M1 inspects the box (or, without a box, the edit cell); selection is M2.
+/// Without an edit cell, `window_root` (the cell shown in the window, when
+/// any) is reported as read-only instead of "Nothing loaded".
 [[nodiscard]] InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell,
-                                           const UnitScale& scale);
+                                           const UnitScale& scale, const db::CellDef* window_root = nullptr);
 
 // --- status bar -------------------------------------------------------------------------
 

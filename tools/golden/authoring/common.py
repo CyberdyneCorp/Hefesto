@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 The Hefesto Authors
-"""Shared inputs and command helpers of the M1 case specs."""
+"""Shared inputs and command helpers of the M1 and M2 case specs."""
 from __future__ import annotations
 
 from casegen import GOLDEN
@@ -69,6 +69,15 @@ end
 extract
 end
 """
+
+# The `tech: fine` test technology of tests/golden/CMDEDIT/CASES.md (m2 design D9):
+# tiny.tech with an output style of 2 centimicrons per lambda and a 1 centimicron grid
+# limit, whose `set-minimum-grid` option makes lambda 2 internal units of U = 10 nm.
+# (`scalefactor 20 nanometers` with `gridlimit 10` makes Magic set lambda to 1:0 and
+# crash with SIGFPE on the next command.)
+FINE = TINY.replace("    tiny\nend", "    fine\nend", 1).replace(
+    "cifoutput\nend\n", "cifoutput\nstyle fine\n    scalefactor 2\n    gridlimit 1\n"
+    "    options set-minimum-grid\nend\n", 1)
 
 SCMOS_EXTERNAL = {"source": "scmos", "to": "scmos.tech"}
 SKY130_TECH_EXTERNAL = {"source": "pdk", "path": "sky130A/libs.tech/magic/sky130A.tech", "to": "sky130A.tech"}

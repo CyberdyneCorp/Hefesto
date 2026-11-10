@@ -1,0 +1,38 @@
+# CMDEDIT-PAINT-07: fill n; fill n metal1; fill s; fill e; fill w.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load f1
+box 2 -5 4 0
+paint poly
+box 6 5 8 8
+paint metal1
+box 0 0 10 20
+fill n
+save f1
+load f2
+box 2 -5 4 0
+paint poly
+box 6 5 8 8
+paint metal1
+box 0 0 10 20
+fill n metal1
+save f2
+load f3
+box 2 20 4 25
+paint poly
+box 0 0 10 20
+fill s
+save f3
+load f4
+box -5 2 0 4
+paint metal1
+box 0 0 10 20
+fill e
+save f4
+load f5
+box 10 2 15 4
+paint metal1
+box 0 0 10 20
+fill w
+save f5

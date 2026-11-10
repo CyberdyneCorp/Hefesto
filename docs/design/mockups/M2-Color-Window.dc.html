@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hefesto M2 color window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.hf{--s0:#121418;--s1:#181B20;--s2:#20242B;--bd:#2F343D;--tp:#E8EAED;--ts:#A4ABB6;--ac:#FF8A3D;--cv:#0B0C0E;
+--bar:#15181C;--in:#0F1114;--sel:#2A2F37;--cb:#3D434E;--tt:#8A919D;--ic:#C9CED6;--onac:#1A0F06;--acs:#FFB27A;
+--okt:#5FD3A0;--wat:#F0C661;--ert:#FF8784;--ift:#82BEF5;--ach:#FFA866;
+--act:rgba(255,138,61,.14);--acl:rgba(255,138,61,.6);--sh:0 8px 24px rgba(0,0,0,.5);--scrim:rgba(4,5,7,.6);
+font-family:Inter,system-ui,sans-serif;color:var(--tp);background:var(--s0);box-sizing:border-box;position:relative;overflow:hidden}
+.hf[data-theme=light]{--s0:#F6F7F9;--s1:#FFFFFF;--s2:#EEF0F3;--bd:#D9DDE3;--tp:#16191D;--ts:#4E5663;--ac:#C24E0C;
+--bar:#F0F2F5;--in:#FFFFFF;--sel:#E2E5EA;--cb:#C9CED6;--tt:#5E6673;--ic:#3A414C;--onac:#FFFFFF;--acs:#C24E0C;
+--okt:#12693F;--wat:#7A5400;--ert:#B2302D;--ift:#1A5E9E;--ach:#D65A12;
+--act:rgba(194,78,12,.10);--acl:rgba(194,78,12,.55);--sh:0 8px 24px rgba(0,0,0,.45);--scrim:rgba(22,25,29,.45)}
+/* the layout canvas and everything drawn on it keep the dark tokens in both themes */
+.hf .cv{--s1:#181B20;--s2:#20242B;--bd:#2F343D;--tp:#E8EAED;--ts:#A4ABB6;--bar:#15181C;--cb:#3D434E;--tt:#8A919D;
+--ic:#C9CED6;--in:#0F1114;--sh:0 8px 24px rgba(0,0,0,.5);--ac:#FF8A3D;--acs:#FFB27A;--act:rgba(255,138,61,.14);--acl:rgba(255,138,61,.6);background:#0B0C0E;color:var(--tp);position:relative;overflow:hidden}
+.hf *{box-sizing:border-box}
+.hf h1{margin:0;font-size:20px;font-weight:600}
+.hf h2{margin:0;font-size:15px;font-weight:600}
+.hf p{margin:0}
+.cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tt);margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.sec{color:var(--ts)}.ter{color:var(--tt)}.acc{color:var(--ac)}
+.btn{height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--cb);background:var(--s2);color:var(--tp);
+font:500 13px Inter,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn.sm{height:28px;font-size:12px;padding:0 10px}
+.btn.pri{background:var(--ac);border-color:transparent;color:var(--onac);font-weight:600}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ic)}
+.btn.dng{border-color:rgba(240,96,93,.5);background:rgba(240,96,93,.12);color:var(--ert)}
+.focus{outline:2px solid var(--ac);outline-offset:2px}
+.dis{opacity:.4}
+.ib{width:32px;height:32px;border-radius:6px;border:1px solid var(--cb);background:var(--s2);display:inline-flex;
+align-items:center;justify-content:center;color:var(--tp);flex:none;padding:0}
+.ib.sm{width:24px;height:24px;border-radius:4px}
+.ib.ghost{border-color:transparent;background:transparent;color:var(--ic)}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s14{width:14px;height:14px}svg.i.s18{width:18px;height:18px}svg.i.s12{width:12px;height:12px}
+.inp{height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--cb);background:var(--in);color:var(--tp);
+font:400 12px 'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden}
+.inp.sm{height:28px}
+.inp.ui{font-family:Inter,sans-serif}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font:500 12px Inter,sans-serif;white-space:nowrap}
+.chip.ok{background:rgba(63,178,127,.14);color:var(--okt)}.chip.wa{background:rgba(229,177,58,.14);color:var(--wat)}
+.chip.er{background:rgba(240,96,93,.14);color:var(--ert)}.chip.if{background:rgba(90,169,240,.14);color:var(--ift)}
+.chip.n{background:var(--s2);color:var(--ts);border:1px solid var(--bd)}
+.chip.a{background:var(--act);color:var(--acs);border:1px solid var(--acl)}
+.kbd{font:500 11px 'JetBrains Mono',monospace;padding:1px 6px;border-radius:4px;border:1px solid var(--cb);background:var(--in);color:var(--ic);white-space:nowrap}
+.pop{background:var(--s2);border:1px solid var(--cb);border-radius:8px;box-shadow:var(--sh)}
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:8px}
+.row{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:6px;font-size:13px;white-space:nowrap}
+.row.sel{background:var(--sel)}.row.hov{background:var(--s2)}
+.row.act{background:var(--sel);outline:1px solid var(--acl)}
+.sw{width:18px;height:14px;border-radius:3px;flex:none;display:inline-block}
+.grow{flex-grow:1;min-width:0}
+.dl{display:grid;grid-template-columns:96px 1fr;gap:9px 10px;font-size:12px;margin:0;align-items:center}
+.dl dt{color:var(--tt)}.dl dd{margin:0;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;padding:3px;border-radius:8px;background:var(--in);border:1px solid var(--bd)}
+.seg span{height:24px;padding:0 10px;border-radius:6px;display:inline-flex;align-items:center;font:500 12px Inter;color:var(--ts)}
+.seg span.on{background:var(--sel);color:var(--tp);font-weight:600}
+.ann{width:20px;height:20px;border-radius:50%;background:#B48CFF;color:#160B2B;font:700 11px Inter,sans-serif;display:inline-flex;
+align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 2px rgba(11,12,14,.6)}
+.annp{position:absolute;z-index:20}
+.notes{display:flex;flex-direction:column;gap:10px;font-size:12px;line-height:1.45;color:var(--ts)}
+.notes li{display:flex;gap:10px;list-style:none}
+.notes ul{margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.notes code,.c{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--tp)}
+.bh{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.bh .t{display:flex;flex-direction:column;gap:4px}
+.tip{position:absolute;z-index:30;padding:6px 10px;border-radius:6px;background:var(--s2);border:1px solid var(--cb);box-shadow:var(--sh);
+font:400 12px Inter,sans-serif;color:var(--tp);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.tabs{display:flex;gap:2px;align-items:center}
+.tabs span{height:28px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border-radius:6px 6px 0 0;font:500 12px Inter;color:var(--ts)}
+.tabs span.on{color:var(--tp);font-weight:600;box-shadow:inset 0 -2px 0 var(--ac)}
+.cnt{font:600 10px Inter;padding:1px 6px;border-radius:999px;background:var(--sel);color:var(--ts)}
+.th span.d,.hf[data-theme=light] .th span.l{background:var(--sel);color:var(--tp);font-weight:600}
+.hf[data-theme=light] .th span.d{background:none;color:var(--ts);font-weight:500}
+.sep{width:1px;align-self:stretch;background:var(--bd)}
+</style>
+</helmet>
+<!-- Theme: set data-theme="light" on the root element (the canvas keeps its dark tokens in both themes). -->
+<div class="hf" data-theme="dark" style="width:1440px;height:860px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-box" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/></symbol><symbol id="i-select" viewBox="0 0 24 24"><path d="M5 5l6 14 2-6 6-2z"/></symbol><symbol id="i-paint" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16z"/></symbol><symbol id="i-wire" viewBox="0 0 24 24"><path d="M4 18h6v-6h6V6"/><circle cx="16" cy="6" r="2"/></symbol><symbol id="i-label" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol><symbol id="i-measure" viewBox="0 0 24 24"><path d="M3 16L16 3l5 5L8 21z"/><path d="M7 12l2 2M10 9l2 2M13 6l2 2"/></symbol><symbol id="i-place" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M12 4v16M6 12h12"/></symbol><symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol><symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></symbol><symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><path d="M4 20L20 4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/></symbol><symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="0.5"/></symbol><symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v11a1 1 0 0 0 1 1h14.5a1 1 0 0 0 1-.8L21.5 11a1 1 0 0 0-1-1.2H7.5a1 1 0 0 0-1 .8L4 19"/></symbol><symbol id="i-pdk" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/><path d="M12 8v4l3 2"/></symbol><symbol id="i-chevd" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-chevr" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol><symbol id="i-chevu" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol><symbol id="i-chevl" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol><symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol><symbol id="i-undock" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol><symbol id="i-dock" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M15 4v16"/></symbol><symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.4"/></symbol><symbol id="i-console" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 10l3 2-3 2M12 15h5"/></symbol><symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></symbol><symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.6-1-2.6 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.5-4-8.2-9-8.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="i-port" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/></symbol><symbol id="i-cell" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="8" y="8" width="8" height="8" rx="0.5"/></symbol><symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol><symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></symbol><symbol id="i-flipx" viewBox="0 0 24 24"><path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 7L4 17h5zM15 7l5 10h-5z"/></symbol><symbol id="i-flipy" viewBox="0 0 24 24"><path d="M3 12h18" stroke-dasharray="2 2"/><path d="M7 9L17 4v5zM7 15l10 5v-5z"/></symbol><symbol id="i-net" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 12h5M12 6v12M12 6h5M12 18h5"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M20 20h-6M20 20v-6M4 4l6 6M20 20l-6-6"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol><symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol><symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol><symbol id="i-restore" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5h4"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol><symbol id="i-array" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="2.6"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/></symbol><pattern id="st-diff" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#3BB273" stroke-width="1"/></pattern><pattern id="st-poly" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 0L6 6" stroke="#E0524F" stroke-width="1"/></pattern><pattern id="st-fb" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#FFFFFF" stroke-width="1"/></pattern><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#2A2F37"/></pattern></defs></svg>
+<div style="padding:28px 40px;display:flex;flex-direction:column;gap:22px;height:100%">
+<header class="bh"><div class="t"><p class="cap" style="color:var(--acs)">M2 · Interactive editing</p><h1>Color window</h1><p style="font-size:13px;color:var(--ts);max-width:980px;line-height:1.5"><code class='c'>specialopen color 047</code> opens Magic's color editor as an undocked window. The drawing surface is Magic's fixed layout drawn by the renderer in the display styles (canvas, dark in both themes); Hefesto only adds forge chrome around it: the caption, an index stepper, Load/Save and a read-only value strip.</p></div><div class="seg th" role="radiogroup" aria-label="Board theme"><span class="d">Dark</span><span class="l">Light</span></div></header>
+<div style="display:flex;gap:40px;align-items:flex-start">
+<div style="width:722px;flex:none;border-radius:8px;border:1px solid var(--cb);background:var(--s1);box-shadow:var(--sh);overflow:hidden;position:relative">
+<div style="height:36px;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;background:var(--bar);border-bottom:1px solid var(--bd)">
+<svg class="i s14" style="color:var(--ic)" aria-hidden="true"><use href="#i-palette"/></svg><span class="mono" style="font-size:12px;font-weight:500">COLOR = 047</span>
+<span class="chip wa" style="height:20px;font-size:11px;margin-left:6px">▲ map modified</span>
+<span style="margin-left:auto;display:flex;gap:2px;color:var(--tt)"><span class="ib sm ghost" aria-label="Dock"><svg class="i s14" aria-hidden="true"><use href="#i-dock"/></svg></span><span class="ib sm ghost" aria-label="Close"><svg class="i s14" aria-hidden="true"><use href="#i-close"/></svg></span></span></div>
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--bd)">
+<span class="cap" style="font-size:10px">Index</span>
+<span class="ib sm" aria-label="Previous color (color last)"><svg class="i s12" aria-hidden="true"><use href="#i-chevl"/></svg></span>
+<div class="inp sm" style="width:64px">047</div>
+<span class="ib sm" aria-label="Next color (color next)"><svg class="i s12" aria-hidden="true"><use href="#i-chevr"/></svg></span>
+<span class="mono" style="font-size:11px;color:var(--tt);margin-left:6px">octal · 39 decimal</span>
+<span style="margin-left:auto;display:flex;gap:6px"><button type="button" class="btn sm"><svg class="i s14" aria-hidden="true"><use href="#i-open"/></svg>Load…</button><button type="button" class="btn sm pri"><svg class="i s14" aria-hidden="true"><use href="#i-save"/></svg>Save…</button></span></div>
+<div class="cv" style="height:465px"><svg width="720" height="465" viewBox="0 0 720 465"><rect width="720" height="465" fill="#0B0C0E"/><rect x="180" y="60" width="360" height="90" fill="#B84953" stroke="#FFFFFF" stroke-width="1"/><text x="360.0" y="34.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Color Being Edited</text><rect x="60" y="240" width="173" height="30" fill="#E0524F"/><rect x="60" y="240" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="180.0" y="214.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Red</text><rect x="15" y="240" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="30.0" y="259.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="315" y="240" width="30" height="30" fill="#2A2F37" stroke="#FFFFFF" stroke-width="2"/><text x="330.0" y="259.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text><rect x="60" y="330" width="69" height="30" fill="#3BB273"/><rect x="60" y="330" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="180.0" y="304.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Green</text><rect x="15" y="330" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="30.0" y="349.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="315" y="330" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="330.0" y="349.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text><rect x="60" y="420" width="78" height="30" fill="#4F8DE8"/><rect x="60" y="420" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="180.0" y="394.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Blue</text><rect x="15" y="420" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="30.0" y="439.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="315" y="420" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="330.0" y="439.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text><rect x="420" y="240" width="236" height="30" fill="#E6C83C"/><rect x="420" y="240" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="540.0" y="214.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Hue</text><rect x="375" y="240" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="390.0" y="259.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="675" y="240" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="690.0" y="259.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text><rect x="420" y="330" width="145" height="30" fill="#8A919D"/><rect x="420" y="330" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="540.0" y="304.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Saturation</text><rect x="375" y="330" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="390.0" y="349.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="675" y="330" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="690.0" y="349.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text><rect x="420" y="420" width="173" height="30" fill="#A8743C"/><rect x="420" y="420" width="240" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="540.0" y="394.2" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">Value</text><rect x="375" y="420" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="390.0" y="439.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">-</text><rect x="675" y="420" width="30" height="30" fill="none" stroke="#FFFFFF" stroke-width="1"/><text x="690.0" y="439.9" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="14" fill="#FFFFFF">+</text></svg><span class="ann annp" style="left:8px;top:8px">1</span><span class="ann annp" style="left:336px;top:220px">2</span></div>
+<div style="height:34px;display:flex;align-items:center;gap:18px;padding:0 12px;border-top:1px solid var(--bd);background:var(--in);font:400 11px 'JetBrains Mono',monospace;color:var(--ts)">
+<span>R 184  G 73  B 83</span><span>H 0.985  S 0.603  V 0.722</span><span>#B84953</span><span style="margin-left:auto;color:var(--tt)">u undo · U redo · + next · − last</span></div>
+<span class="ann annp" style="left:300px;top:8px">3</span></div>
+<div style="flex-grow:1;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;flex-direction:column;gap:10px"><p class="cap">Interaction</p>
+<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:10px;font-size:12px;color:var(--ts);line-height:1.5">
+<div style="display:flex;gap:10px"><span class="kbd">click bar</span><span>sets the component to the click fraction (<code class="c">pushbutton</code> at the point)</span></div>
+<div style="display:flex;gap:10px"><span class="kbd">L on pump</span><span>± 0.0078 (R G B) or ± 0.01 (H S V)</span></div>
+<div style="display:flex;gap:10px"><span class="kbd">M / R on pump</span><span>5 × the step</span></div>
+<div style="display:flex;gap:10px"><span class="kbd">swatch</span><span>no eyedropper (Q-UI-37): nothing happens</span></div></div></div>
+<div class="notes"><p class="cap">Notes for SHELL</p><ul><li><span class="ann">1</span><span>Surface: six bars with − / + pumps, swatch and the <em>Color Being Edited</em> title at Magic's coordinates (<code>ui-color-window</code> layout table), bar fills in the red, green, blue, yellow, gray and brown-1 styles, outlines and text in the bounding-box style. The pressed pump shows a 2 px outline while held.</span></li><li><span class="ann">2</span><span>Every change is one undo step of the color map; the window's <code>u</code>/<code>U</code> and the top-bar buttons undo it.</span></li><li><span class="ann">3</span><span>Caption is <code>COLOR = 0&lt;octal&gt;</code>. The ▲ chip appears once the map is modified; Load… and quit then ask the unsaved-color-map question (dialog board). Save… issues <code>save</code> with the chosen style names; Load… <code>load</code>.</span></li><li><span class="ann">4</span><span>Dockable like any panel (dock button) — docked, it opens as a tab of the right dock at its natural 720 × 465 surface, scaled down to fit.</span></li></ul></div>
+</div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

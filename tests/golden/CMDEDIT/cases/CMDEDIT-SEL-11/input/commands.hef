@@ -1,0 +1,10 @@
+# CMDEDIT-SEL-11: move origin e 10.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+move origin e 10
+box values
+save a

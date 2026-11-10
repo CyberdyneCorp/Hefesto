@@ -1,0 +1,13 @@
+# CMDEDIT-LBL-08: element add rectangle r1; configure flags persistent; save and reload; element names; element inbox.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+element add rectangle r1 white 0 0 10 10
+element configure r1 flags persistent
+element names
+save a
+load b
+load a
+element names
+box -1 -1 11 11
+element inbox

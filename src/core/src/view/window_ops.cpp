@@ -14,6 +14,7 @@
 #include <array>
 #include <optional>
 
+#include "hefesto/cell/commands.hpp"
 #include "hefesto/view/color_window.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
@@ -51,10 +52,12 @@ diag::Outcome<db::CellDef*> cell_named(editor::EditorState& e, std::string_view 
 
 /// WindCreate + DBWcreate: a layout window on the named cell, or on the
 /// box's cell framed on the box, or on "(UNNAMED)"; `name` is the host name.
-CommandResult open_layout(editor::EditorState& ed, const ScreenRect& frame, const std::vector<std::string>& args) {
+CommandResult open_layout(CommandContext& ctx, editor::EditorState& ed, const ScreenRect& frame,
+                          const std::vector<std::string>& args) {
   const bool on_box = args.empty() && ed.box && ed.edit_cell != nullptr;
-  auto root = cell_named(ed, !args.empty() ? std::string_view(args[0])
-                                           : (on_box ? std::string_view(ed.edit_cell->name()) : kUnnamed));
+  // A named cell is read as DBWloadWindow reads it (UI-G-033, UI-G-036).
+  auto root = !args.empty() ? cell::load_def(ctx, args[0])
+                            : cell_named(ed, on_box ? std::string_view(ed.edit_cell->name()) : kUnnamed);
   if (!root) {
     return failure(root.error());
   }
@@ -82,7 +85,7 @@ CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
   if (!e) {
     return failure(e.error());
   }
-  return open_layout(*e.value(), create_frame(), inv.args);
+  return open_layout(ctx, *e.value(), create_frame(), inv.args);
 }
 
 // --- specialopen (windSpecialOpenCmd, windows/windCmdSZ.c:404-460) ----------------------
@@ -173,7 +176,7 @@ CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
   if (*client != kLayoutClient) {
     return fail(codes::kClient, "The " + std::string(kClients[*client]) + " window is not available in this version.");
   }
-  return open_layout(ed, frame, std::vector<std::string>(a.begin() + static_cast<std::ptrdiff_t>(first) + 1, a.end()));
+  return open_layout(ctx, ed, frame, std::vector<std::string>(a.begin() + static_cast<std::ptrdiff_t>(first) + 1, a.end()));
 }
 
 LayoutWindow* window_named(const editor::EditorState& e, const std::string& name) {

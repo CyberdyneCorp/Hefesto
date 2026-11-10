@@ -12,6 +12,7 @@
 #include "command_session.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/view/commands.hpp"
 
 namespace cell = hefesto::cell;
 namespace cmd = hefesto::cmd;
@@ -80,6 +81,28 @@ TEST_CASE("writeall force saves modified cells and skips read-only ones",
   CHECK(s.files().read("/work/b.mag").value() == "magic\ntech tiny\ntimestamp 6\n<< end >>\n");
 }
 
+// Regression (UI-G-033, UI-G-036): `openwindow PATH/NAME` reads the cell as
+// DBWloadWindow does: the cell is NAME, an existing one is reused, and the
+// edit cell stays.
+TEST_CASE("openwindow reads its cell through the search paths", "[cap:ui-windows-and-views][req:Opening and closing windows]") {
+  Session s;
+  REQUIRE(hefesto::view::register_view_commands(s.registry));
+  REQUIRE(s.files().write_atomic("/work/lib/nand2.mag", "magic\ntech tiny\ntimestamp 5\n<< end >>\n").ok());
+  REQUIRE(s.files().write_atomic("/work/a.mag", "magic\ntech tiny\ntimestamp 5\n<< end >>\n").ok());
+  REQUIRE(s.run("load", {"a"}).ok());
+  db::CellDef* a = s.editor.cells.find("a");
+  const auto opened = s.run("openwindow", {"lib/nand2"});
+  REQUIRE(opened.ok());
+  db::CellDef* nand2 = s.editor.cells.find("nand2");
+  REQUIRE(nand2 != nullptr);
+  CHECK(nand2->flags().available);
+  CHECK(s.editor.cells.find("lib/nand2") == nullptr);
+  CHECK(s.editor.windows.current()->root() == nand2);
+  CHECK(s.editor.edit_cell == a);
+  REQUIRE(s.run("openwindow", {"a"}).ok());
+  CHECK(s.editor.windows.current()->root() == a);  // reused, not a new "a"
+}
+
 TEST_CASE("path and addpath show, set and append the search paths",
           "[cap:cell-library-resolution][req:Search path syntax and expansion]") {
   Session s;
@@ -89,6 +112,12 @@ TEST_CASE("path and addpath show, set and append the search paths",
   CHECK(s.run("path", {"search"}).value.to_string() == "/a /b /c");
   CHECK(s.run("path", {"cell"}).value.to_string() == "/lib");
   CHECK_FALSE(s.run("path", {"bogus", "x"}).ok());
+  // Regression (CMDEDIT-HIER-10): `path` alone prints three lines and
+  // returns nothing.
+  const auto all = s.run("path", {});
+  CHECK(all.value.is_none());
+  REQUIRE_FALSE(all.diagnostics.empty());
+  CHECK(all.diagnostics.back().text.starts_with("Search path for cells is \"/a /b /c\"\nCell library search path is \"/lib\"\n"));
 }
 
 TEST_CASE("locking shows and sets the setting with unique prefixes",

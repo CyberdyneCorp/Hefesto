@@ -101,6 +101,13 @@ class TilePlane {
   /// Visits every internal tile (for copy, statistics and tests).
   void for_each_tile(const std::function<void(const Tile*)>& visit) const;
 
+  /// The split-tile fractures and joins of the operations are appended to
+  /// `log` while it is set (Plane::record_splits).
+  void set_split_log(std::vector<SplitEdit>* log) noexcept { split_log_ = log; }
+  /// dbSplitUndo (`join` false, the tile before the cut) / dbJoinUndo
+  /// (`join` true, the merged tile) of split tile `body` over `area`.
+  void note_split(bool join, const Rect& area, Body body);
+
  private:
   Tile* alloc();
   void free_later(Tile* t) { pending_.push_back(t); }
@@ -114,6 +121,7 @@ class TilePlane {
   Tile* bottom_ = nullptr;
   Tile* infinity_ = nullptr;
   Tile* hint_ = nullptr;
+  std::vector<SplitEdit>* split_log_ = nullptr;
 };
 
 /// GOTOPOINT: the tile containing `p` (bottom and left edges inclusive).

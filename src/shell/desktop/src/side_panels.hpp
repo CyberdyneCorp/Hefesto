@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/shell/editing_models.hpp"
 #include "hefesto/shell/view_models.hpp"
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
@@ -49,6 +50,8 @@ class LeftPanel {
   void rebuild_layers();
   void rebuild_hierarchy(const view::LayoutWindow* window);
   void toggle_expansion(std::size_t index);
+  void layer_click(std::size_t index, float x);
+  void build_paint_footer();
 
   ScreenContext& ctx_;
   ui::Box root_ = ui::Box::horizontal();
@@ -58,6 +61,11 @@ class LeftPanel {
   std::unique_ptr<ui::TextInput> filter_;
   ui::ScrollBox layer_list_ = ui::ScrollBox::create();
   ui::Box layer_rows_box_ = ui::Box::vertical();
+  // "Paint layer ■ name  [Paint on box] [Erase on box]" (M2-Layer-Palette board).
+  ui::Box paint_footer_ = ui::Box::vertical();
+  std::unique_ptr<ui::Painted> paint_label_;
+  std::unique_ptr<ui::Painted> paint_button_;
+  std::unique_ptr<ui::Painted> erase_button_;
   std::unique_ptr<ui::Painted> divider_;
   std::unique_ptr<ui::Painted> hierarchy_title_;
   ui::ScrollBox tree_list_ = ui::ScrollBox::create();
@@ -76,14 +84,21 @@ class InspectorPanel {
  public:
   explicit InspectorPanel(ScreenContext& ctx);
   [[nodiscard]] ui::Widget& widget() noexcept { return root_; }
-  void refresh(const UnitScale& scale);
+  /// The selection in `window_root` when there is one, else the box or the cell.
+  void refresh(const UnitScale& scale, const db::CellDef* window_root = nullptr);
   void repaint();
 
  private:
+  void rebuild_actions(std::vector<InspectorAction> actions);
+
   ScreenContext& ctx_;
   ui::Box root_ = ui::Box::horizontal();
+  ui::Box column_ = ui::Box::vertical();
   std::unique_ptr<ui::Painted> edge_;
   std::unique_ptr<ui::Painted> body_;
+  ui::Box actions_box_ = ui::Box::vertical();
+  std::vector<InspectorAction> actions_;
+  std::vector<std::unique_ptr<ui::Painted>> action_widgets_;
   InspectorView view_;
 };
 

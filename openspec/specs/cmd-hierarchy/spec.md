@@ -303,7 +303,7 @@ Compatibility: behavioral
 |---|---|---|
 | `children` | child cell names of NAME | child instances of NAME's cell |
 | `parents` | cells that instantiate NAME | parent of the instance |
-| `exists`, `self` | true/false whether NAME is loaded, or the selected cell's name | the instance name |
+| `exists`, `self` | with `list`: NAME when it is loaded, else `0`; without `list`: prints "Cell NAME is currently loaded." or reports "Cell NAME is not currently loaded." with no result; without NAME, the selected cell's name | the instance name |
 | `instances` | instance names of cell NAME | the instance itself |
 | `childinst` | child instance names | child instances |
 | `celldef` | the cell name | cell name of the instance |
@@ -338,14 +338,15 @@ Compatibility: behavioral
 - **AND** without `-def` it SHALL be `180`
 
 #### Scenario: Exists
-- **WHEN** `cellname exists nosuch` is run in scripting mode
-- **THEN** the result SHALL be false
+- **WHEN** `cellname list exists nosuch` is run in scripting mode
+- **THEN** the result SHALL be `0`
+- **AND** `cellname exists nosuch` SHALL report "Cell nosuch is not currently loaded." and return no result
 
 ### Requirement: Search path commands
 
 `path [search|cell|sys|help] [[+]PATH]` SHALL query or set the cell search path, the cell library path and the system path:
 
-- `path` alone prints all three paths.
+- `path` alone prints all three paths, one line each ("Search path for cells is \"…\"", "Cell library search path is \"…\"", "System search path is \"…\""), and returns no result in every mode.
 - `path KIND` returns (scripting) or prints that path.
 - `path KIND PATH` replaces it. `path KIND +PATH` appends PATH to it (colon or space separated).
 - `path PATH` (a word that is not a keyword) sets the search path.

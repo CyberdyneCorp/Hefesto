@@ -295,6 +295,11 @@ TEST_CASE("inspector shows the box, else the edit cell", "[cap:hefesto-app-ux][r
   CHECK(c.section == "CELL");
   CHECK(c.title == "inverter_demo");
   CHECK(inspector_view(std::nullopt, nullptr, scale).title == "Nothing loaded");
+  // Regression (M2 review): a cell on screen without an edit cell (locked by
+  // another process) is shown as read-only, not as "Nothing loaded".
+  const InspectorView locked = inspector_view(std::nullopt, nullptr, scale, &cell);
+  CHECK(locked.title == "Read-only: inverter_demo");
+  CHECK(locked.subtitle == "locked or not editable");
 }
 
 TEST_CASE("problems outside the command bar are counted and shown with their shape",

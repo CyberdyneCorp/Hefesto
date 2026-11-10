@@ -1,0 +1,16 @@
+magic
+tech tiny
+timestamp 1794285342
+<< checkpaint >>
+rect 2 10 6 26
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< labels >>
+rlabel metal1 2 2 2 2 2 D0
+rlabel space 2 12 2 12 2 D1
+rlabel space 2 22 2 22 2 D2
+rlabel metal1 6 6 6 6 1 A[0][0]
+rlabel space 6 16 6 16 1 A[1][1]
+rlabel space 6 26 6 26 1 A[2][2]
+<< end >>

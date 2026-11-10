@@ -113,7 +113,11 @@ TEST_CASE("*coord prints the box, root and edit cell in root and edit coordinate
 
 TEST_CASE("*winddebug toggles command printing", "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {
   WizardSession s;
-  CHECK(all_text(s.run("*winddebug")) == "Window command debugging set to TRUE");
+  const auto on = s.run("*winddebug");
+  CHECK(all_text(on) == "Window command debugging set to TRUE");
+  // Regression (UI-G-081): Magic writes it with TxError, on the error stream.
+  REQUIRE_FALSE(on.diagnostics.empty());
+  CHECK(on.diagnostics.back().severity == hefesto::diag::Severity::warning);
   CHECK(s.editor.windows.print_commands());
   CHECK(all_text(s.run("*winddebug")) == "Window command debugging set to FALSE");
   CHECK_FALSE(s.editor.windows.print_commands());
@@ -127,6 +131,7 @@ TEST_CASE("*files reports the first 20 file descriptors", "[cap:ui-wizard-and-de
   const std::string out = all_text(r);
   CHECK(out.find(" open files, ") != std::string::npos);
   CHECK(out.ends_with(" unopened file descriptors left"));
+  CHECK(r.diagnostics.back().severity == hefesto::diag::Severity::warning);  // TxError (UI-G-081)
 }
 
 TEST_CASE("the wizard commands are registered by the view area", "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {

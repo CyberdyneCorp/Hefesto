@@ -15,9 +15,9 @@
 #include <string_view>
 #include <vector>
 
-#include "cell/io_session.hpp"
-#include "hefesto/cell/mag_io.hpp"
+#include "hefesto/cell/commands.hpp"
 #include "hefesto/db/diag_codes.hpp"
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/display/styles.hpp"
@@ -177,6 +177,9 @@ diag::Status take_at(Parsed& p, const Context& c) {
 CommandResult help(const Context& c) {
   std::string out = "Selection commands are:";
   for (const std::string_view line : kHelpLines) {
+    if (line.empty()) {
+      break;  // the NULL that ends cmdSelectMsg (the padding is for usage_error)
+    }
     out += "\n    select " + std::string{line};
   }
   cu::print(c.s, std::move(out));
@@ -197,9 +200,10 @@ std::optional<CommandResult> choose_option(Parsed& p, const Context& c) {
   }
   p.option = cu::lookup_in(p.argv[p.opt], kOptions);
   if (p.option < 0 && p.primargs != 2) {
+    // CmdSelect: TxError, the help and a normal return (no Tcl error), so a
+    // script goes on (CMDEDIT-SEL-07).
     cu::warn(c.s, "\"" + p.argv[1] + "\" isn't a valid select option.");
-    (void)help(c);
-    return fail_text(codes::kBadOption, "\"" + p.argv[1] + "\" isn't a valid select option.");
+    return help(c);
   }
   if (p.option < 0) {
     p.option = kDefault;
@@ -333,10 +337,7 @@ CommandResult save(const Context& c, CommandContext& ctx, const Parsed& p) {
   if (file.find('.') == std::string::npos) {
     file += ".mag";
   }
-  return cell::detail::with_session(ctx, [&](cell::detail::IoSession& io) {
-    const auto st = cell::save_cell(io.io, *def, file);
-    return st.ok() ? CommandResult::success() : cu::fail(st.error());
-  });
+  return cell::save_def_as(ctx, *def, file);
 }
 
 CommandResult feedback(const Context& c, const Parsed& p) {
@@ -480,9 +481,20 @@ struct Reference {
   bool degenerate = false;  // the box corner: retry one unit down-left
 };
 
+[[nodiscard]] bool is_box_kind(int option) noexcept {
+  return option == kBox || option == kChunk || option == kRegion || option == kNet;
+}
+
+/// The root area under the pointer (one unit at the point without pixels).
+db::Rect pointer_area(const cmd::PointerState& pointer) {
+  if (pointer.pixel_area.is_null()) {
+    return db::Rect{pointer.point.x, pointer.point.y, pointer.point.x + 1, pointer.point.y + 1};
+  }
+  return pointer.pixel_area;
+}
+
 diag::Outcome<Reference> reference(const Context& c, const Parsed& p) {
-  const bool box_kind = p.option == kBox || p.option == kChunk || p.option == kRegion || p.option == kNet;
-  if (box_kind) {
+  if (is_box_kind(p.option)) {
     const auto box = ops::root_box(c);
     if (!box) {
       return diag::make(codes::kNoBox, "Box tool must be present");
@@ -499,11 +511,21 @@ diag::Outcome<Reference> reference(const Context& c, const Parsed& p) {
   if (!pointer) {
     return diag::make(codes::kNoPointer, "Put the cursor in a layout window");
   }
-  db::Rect area = pointer->pixel_area;
-  if (area.is_null()) {
-    area = db::Rect{pointer->point.x, pointer->point.y, pointer->point.x + 1, pointer->point.y + 1};
+  return Reference{pointer_area(*pointer), pointer->point, false};
+}
+
+/// CmdSelect recasts a selection made at the pointer as the same command
+/// followed by `at Xi Yi` (the lower-left corner of the point's root area)
+/// so that the command log no longer depends on the pointer.
+void log_at_pointer(CommandResult& result, const Context& c, const Parsed& p, const Invocation& inv) {
+  if (is_box_kind(p.option) || p.at || !c.ed->command_point) {
+    return;
   }
-  return Reference{area, pointer->point, false};
+  const db::Rect area = pointer_area(*c.ed->command_point);
+  Invocation logged{inv.name, inv.args, inv.origin, std::nullopt};
+  logged.args.insert(logged.args.end(),
+                     {"at", std::to_string(area.x0) + "i", std::to_string(area.y0) + "i"});
+  result.logged_as = std::move(logged);
 }
 
 /// Same-place detection (MARGIN 2) and the command counter.
@@ -686,7 +708,7 @@ CommandResult cell_select(const Context& c, const Parsed& p, const Reference& re
     ops::select_cell(c, chosen, same && !named);
   }
   ops::set_root_box(c, element_box(c, chosen));
-  return CommandResult::success(Value{unescaped(chosen.use == nullptr ? c.root->name() : chosen.path)});
+  return CommandResult::success(Value{unescaped(chosen.use == nullptr ? std::string{cell::kTopUseId} : chosen.path)});
 }
 
 /// Paint selection at the reference (chunk / region / net), the layer list
@@ -773,8 +795,13 @@ CommandResult cmd_select(CommandContext& ctx, const Invocation& inv) {
     case kRegion:
     case kNet:
     case kDefault:
-    case kCell:
-      return point_select(c, p);
+    case kCell: {
+      CommandResult result = point_select(c, p);
+      if (result.ok()) {
+        log_at_pointer(result, c, p, inv);
+      }
+      return result;
+    }
     default:
       return utility(c, ctx, p);
   }

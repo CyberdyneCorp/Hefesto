@@ -36,6 +36,15 @@ Tile* TilePlane::alloc() {
   return &storage_.back();
 }
 
+void TilePlane::note_split(bool join, const Rect& area, Body body) {
+  if (split_log_ == nullptr) {
+    return;
+  }
+  split_log_->push_back(SplitEdit{join, area, direction(body) != 0 ? Diagonal::nw_se : Diagonal::ne_sw,
+                                  static_cast<tech::TileType>(left_type(body)),
+                                  static_cast<tech::TileType>(right_type(body))});
+}
+
 void TilePlane::end_operation() {
   free_.insert(free_.end(), pending_.begin(), pending_.end());
   pending_.clear();

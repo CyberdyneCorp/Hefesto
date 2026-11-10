@@ -15,19 +15,18 @@ from common import TINY, mag
 VIEWS = "ui-windows-and-views"
 
 NOT_AUTHORED = {
-    "UI-G-033": "needs edit (edit cell inside a child) and per-window command routing",
-    "UI-G-036": "needs what/select per window",
     "UI-G-041..045": "X11/OpenGL screenshots", "UI-G-050..059": "style-file dumps need a reader harness (no command)",
 }
 
 CELL = mag("tiny", "<< metal1 >>\nrect 0 0 100 50\n")
 LEAF = mag("tiny", "<< metal1 >>\nrect 0 0 10 10\n")
+NAND2 = mag("tiny", "<< metal2 >>\nrect 0 0 20 20\n")
 TOP = mag("tiny", "use leaf leaf_0\ntimestamp 100\ntransform 1 0 0 0 1 0\nbox 0 0 10 10\n<< metal1 >>\nrect 0 0 100 50\n")
 
 
 def ui(cid: str, reqs: list[str], desc: str, cmds: list[str], with_cell: bool = True) -> Spec:
     prefix = ["tech load input/tiny -noprompt", "load input/c"] if with_cell else []
-    files = {"tiny.tech": TINY, "c.mag": CELL, "top.mag": TOP, "leaf.mag": LEAF} if with_cell else {}
+    files = {"tiny.tech": TINY, "c.mag": CELL, "top.mag": TOP, "leaf.mag": LEAF, "nand2.mag": NAND2} if with_cell else {}
     return Spec(cid, VIEWS, reqs, desc, prefix + cmds, files=files)
 
 
@@ -56,6 +55,10 @@ def specs() -> list[Spec]:
         ui("UI-G-032", ["Window chrome flags"], "windowcaption; windowcaption off; openwindow; windowborder; "
            "windowscrollbars on.", ["windowcaption", "windowcaption off", "openwindow", "windowcaption", "windowborder",
                                     "windowscrollbars on", "windowcaption on"]),
+        ui("UI-G-033", ["Window captions"],
+           "Edit into leaf inside top (m2 edit); a second window on nand2; windowcaption in each window.",
+           ["load input/top", "windowcaption", "select cell leaf_0", "edit", "windowcaption", "openwindow input/nand2",
+            "windowcaption", "windownames all"]),
         ui("UI-G-034", ["Window captions"], "A 200-character cell name; load it; windowcaption.",
            [f"load {long_name}", "windowcaption"]),
         ui("UI-G-035", ["specialopen, over, underneath and grow"],
@@ -63,6 +66,10 @@ def specs() -> list[Spec]:
            "the color window is ui-color-window (M2).",
            ["specialopen *window", "specialopen foo", "specialopen", "specialopen 1 2 layout", "specialopen la c",
             "windownames all"]),
+        ui("UI-G-036", ["Per-window expansion state"],
+           "Two windows on top; expand in one; what -list of a box selection, then select cell at the child.",
+           ["load input/top", "openwindow input/top", "windownames all", "box 0 0 10 10", "expand", "select area",
+            "what -list", "select clear", "select cell at 5 5", "what -list"]),
         ui("UI-G-037", ["Per-window expansion state", "view, xview and zoom"],
            "expand t, expand toggle, unexpand, xview on a cell with a child.",
            ["load input/top", "box 0 0 10 10", "expand t", "expand toggle", "unexpand", "xview", "view get"]),

@@ -13,6 +13,8 @@
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/tools.hpp"
+#include "hefesto/view/color_window.hpp"
+#include "hefesto/view/commands.hpp"
 #include "hefesto/view/window.hpp"
 #include "ui_fixture.hpp"
 
@@ -281,4 +283,53 @@ TEST_CASE("touch gestures reach the same bindings", "[cap:ui-tools-and-input][re
   // Rebinding through the macro tables changes the gesture.
   s.run(R"(macro Button1 "box")");
   CHECK(ui::handle_key(s.editor, tap).text == "box");
+}
+
+// --- pushbutton and setpoint in a color window --------------------------------------
+
+TEST_CASE("setpoint into a color window sends the next commands to the color client",
+          "[cap:ui-command-dispatch][req:pushbutton and setpoint][cap:ui-color-window][req:Color window buttons]") {
+  UiSession s(false);
+  REQUIRE(hefesto::view::register_view_commands(s.registry));
+  s.editor.styles.emplace();
+  s.editor.styles->colors.entries.resize(256);
+  REQUIRE(s.run("specialopen color 5").ok());
+  REQUIRE(s.editor.color_map.windows.size() == 1);
+  const hefesto::view::ColorWindow& w = s.editor.color_map.windows.back();
+  const hefesto::view::ViewMapping m = hefesto::view::color_window_mapping(s.editor, w);
+  // The pixel over the middle of the red bar (surface (6000, 8500)).
+  const int px = m.screen_x(6000);
+  const int py = m.screen_y(8500);
+  REQUIRE(s.run("setpoint " + std::to_string(px) + " " + std::to_string(py) + " " + std::to_string(w.id)).ok());
+  REQUIRE(s.editor.command_point.has_value());
+  CHECK(s.editor.command_point->window == w.id);
+  const db::Point surface = s.editor.command_point->point;
+  CHECK(surface == m.to_layout(px, py));
+  // `setpoint` reports the window pixel and the color window's surface point.
+  CHECK(s.run("setpoint").value.to_string() == std::to_string(px) + " " + std::to_string(py) + " " +
+                                                   std::to_string(surface.x) + " " + std::to_string(surface.y));
+  // The color client's `pushbutton button` wins over the window client's.
+  REQUIRE(s.run("pushbutton left").ok());
+  CHECK(s.editor.styles->colors.entries[5].r > 100);
+  CHECK(UiSession::first_error(s.run("pushbutton left down")).find("Usage: pushbutton <button>") !=
+        std::string::npos);
+  // Back in a layout window, the window client's form applies again.
+  auto* def = s.editor.cells.create("top", 1).value();
+  auto lw = s.editor.windows.open(def, hefesto::view::ScreenRect{0, 0, 99, 99});
+  REQUIRE(lw.ok());
+  REQUIRE(s.run("setpoint 10 10 " + std::to_string(lw.value()->id())).ok());
+  CHECK(s.run("pushbutton left down").ok());
+}
+
+TEST_CASE("pointer snapping follows the snap mode for every front end",
+          "[cap:cmd-coordinates-and-units][req:Pointer snapping]") {
+  UiSession s;
+  (void)unit_window(s);
+  s.editor.grid = hefesto::tech::GridScale{4, 1};  // 1 lambda = 4 internal units
+  s.editor.snap = hefesto::editor::SnapMode::internal;
+  CHECK(ui::snap_to_tool_grid(s.editor, db::Point{5, 7}) == db::Point{5, 7});
+  s.editor.snap = hefesto::editor::SnapMode::lambda;
+  const db::Point p = ui::snap_to_tool_grid(s.editor, db::Point{5, 7});
+  CHECK(p.x % 4 == 0);
+  CHECK(p.y % 4 == 0);
 }

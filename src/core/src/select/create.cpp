@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "hefesto/db/diag_codes.hpp"
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/layer_list.hpp"
@@ -22,6 +23,7 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/tech/commands.hpp"
 #include "select/ops.hpp"
 
 namespace hefesto::select::ops {
@@ -385,6 +387,9 @@ tech::TypeMask paint_types(const tech::Technology& tech) {
 diag::Outcome<Layers> parse_layers(const Context& c, std::string_view text) {
   auto parsed = db::parse_layer_list(text, *c.tech);
   if (!parsed.ok()) {
+    if (db::is_bad_layer_name(parsed.error())) {
+      db::cmdutil::print_block(c.s, tech::layer_names_text(*c.tech));
+    }
     return parsed.error();
   }
   Layers out;
@@ -430,6 +435,7 @@ void select_area(const Context& c, const db::Rect& area, const Layers& layers, c
   if (!layers.types.empty()) {
     copy_tree_paint(c, *c.root, area, layers.types, c.descend, dest, &sel.provenance());
   }
+  sel.area_types = layers.types;  // SelectArea: "remember what types were requested"
   if (layers.labels) {
     copy_tree_labels(c, area, label_mask(c, layers.types), glob, dest, &sel.provenance());
   }
@@ -606,6 +612,20 @@ db::Point element_of(const db::CellUse& use, std::string_view name) {
 
 }  // namespace
 
+namespace {
+
+/// DBCellRead of a definition not read yet, through the windows' reader.
+void read_if_unavailable(const Context& c, db::CellDef* def) {
+  if (def == nullptr || def->flags().available || c.s.ctx == nullptr) {
+    return;
+  }
+  if (const auto read = c.ed->windows.cell_reader()) {
+    (void)read(*c.s.ctx, *def);
+  }
+}
+
+}  // namespace
+
 std::optional<UseRef> find_use_path(const Context& c, std::string_view path) {
   const db::CellDef* def = c.root;
   db::Transform to_root = db::kIdentity;
@@ -620,6 +640,7 @@ std::optional<UseRef> find_use_path(const Context& c, std::string_view path) {
     }
     UseRef ref{use, to_root, found ? found->path + "/" + std::string{name} : std::string{name}, element_of(*use, name)};
     to_root = db::compose(to_root, db::element_transform(*use, ref.element.x, ref.element.y));
+    read_if_unavailable(c, use->def);  // DBTreeFindUse reads each cell on the path (UI-G-033)
     def = use->def;
     found = std::move(ref);
   }
@@ -670,7 +691,7 @@ void select_cell(const Context& c, const UseRef& ref, bool replace) {
   db::CellUse* added = nullptr;
   if (ref.use == nullptr) {
     // The window's top cell itself (Magic selects the root use).
-    added = sel.add_use(*c.root, c.root->name(), db::kIdentity, db::ArrayInfo{});
+    added = sel.add_use(*c.root, std::string{cell::kTopUseId}, db::kIdentity, db::ArrayInfo{});
   } else {
     const db::CellUse& u = *ref.use;
     added = sel.add_use(*u.def, u.id, db::compose(ref.parent_to_root, u.transform), u.array, u.locked);

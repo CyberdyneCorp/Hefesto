@@ -1,0 +1,26 @@
+# CMDEDIT-SEL-17: Paint, a label and an instance: what, what -list, what -listall; a cell; nothing.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load leaf
+box 0 0 10 10
+paint metal1
+save leaf
+load a
+box 0 0 10 10
+paint metal1
+box 5 5 5 5
+label L
+box 20 0 20 0
+getcell leaf
+box -5 -5 40 15
+select area
+what
+what -list
+what -listall
+select cell leaf_0
+what
+what -list
+select clear
+what
+what -list

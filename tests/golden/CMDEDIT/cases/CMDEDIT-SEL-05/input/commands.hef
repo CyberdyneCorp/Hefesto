@@ -1,0 +1,30 @@
+# CMDEDIT-SEL-05: Nested t > a > b, expanded; select cell at a point x3; select cell a_0/b_0; select top cell.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load b
+box 0 0 10 10
+paint metal1
+save b
+load a
+box 0 0 0 0
+getcell b
+box 0 0 20 20
+paint metal2
+save a
+load t
+box 0 0 0 0
+getcell a
+box -5 -5 25 25
+expand
+select cell at 5 5
+select bbox
+select cell at 5 5
+select bbox
+select cell at 5 5
+select bbox
+select cell a_0/b_0
+select bbox
+box values
+select top cell at 5 5
+select bbox

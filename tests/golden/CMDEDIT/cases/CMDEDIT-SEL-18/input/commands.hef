@@ -1,0 +1,21 @@
+# CMDEDIT-SEL-18: identify buf1 on an instance; a duplicate; identify a/b; nothing selected.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load leaf
+box 0 0 10 10
+paint metal1
+save leaf
+load a
+box 0 0 0 0
+getcell leaf
+box 20 0 20 0
+getcell leaf
+select cell leaf_0
+identify buf1
+select cell leaf_1
+identify buf1
+identify a/b
+select clear
+identify x
+save a

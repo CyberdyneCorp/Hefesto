@@ -1,0 +1,28 @@
+# CMDEDIT-LBL-07: goto m1_n5_7#; goto x1/VDD; goto 1_11_14; goto nosuch -nocomplain.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load x
+box 0 0 10 10
+paint metal1
+box 5 5 5 5
+label VDD
+save x
+load a
+box 50 0 50 0
+getcell x
+select cell x_0
+identify x1
+select clear
+box -10 0 0 10
+paint metal1
+box 10 10 20 20
+paint poly
+goto m1_n5_7#
+box values
+goto x1/VDD
+box values
+goto 1_11_14
+box values
+goto nosuch -nocomplain
+box values

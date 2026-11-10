@@ -1,0 +1,9 @@
+# CMDEDIT-COORD-11: grid multiple 300; grid multiple; grid 0 5; grid 0; grid state (Q-CMDEDIT-7).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+grid multiple 300
+grid multiple
+grid 0 5
+grid 0
+grid state

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "CMDEDIT-PAINT-04",
+  "area": "CMDEDIT",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:c334d1b3474a6c6797bde2ef9ece595dd9dfd7bd35936429548862320456e307",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-10T04:29:48Z",
+  "outputs": {
+    "e1.mag": "33f5706490e4ec28fa35f0965231738c0c99edf3d6b19a24e073264a13e59c9d",
+    "e2.mag": "6ca360ff8b927766f216c808b0f489d7251bdc36979ca808124e0e249fcf8ac4",
+    "e3.mag": "d87bf6dfd41a9ed319b33404630b1fec287a2266f4e231a3de746db46ee09fba",
+    "e4.mag": "33f5706490e4ec28fa35f0965231738c0c99edf3d6b19a24e073264a13e59c9d",
+    "stderr.txt": "e1f4ad569bcea9809344e8a238e417e10a0787365d7c6cac51a340e191f4191f",
+    "stdout.txt": "91ed7fb653c04ccae162d10f02f64803b120edd46f8d39a309eccb0ca7112b07"
+  }
+}

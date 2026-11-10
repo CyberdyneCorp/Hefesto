@@ -1,0 +1,21 @@
+# MODEL-G-056: Move a use and undo (saved after each); move the box and undo.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load leaf
+box 0 0 10 10
+paint metal1
+save leaf
+load top
+box 0 0 0 0
+getcell leaf
+select cell leaf_0
+move 10 0
+save t1
+undo
+save t2
+box values 0 0 5 5
+box move e 10
+box values
+undo
+box values

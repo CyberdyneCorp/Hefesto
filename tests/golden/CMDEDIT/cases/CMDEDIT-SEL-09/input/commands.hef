@@ -1,0 +1,19 @@
+# CMDEDIT-SEL-09: copy e 20, 5 7, ne 3 4, to 100 100, 10.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+select area metal1
+copy e 20
+box values
+copy 5 7
+box values
+copy ne 3 4
+box values
+copy to 100 100
+box values
+copy 10
+box values
+save a

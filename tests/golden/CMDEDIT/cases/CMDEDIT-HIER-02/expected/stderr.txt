@@ -1,0 +1,23 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Cell a couldn't be read
+No such file or directory
+Cell pad couldn't be read
+No such file or directory
+Cell c couldn't be read
+No such file or directory
+Cell top couldn't be read
+No such file or directory
+Must provide two valid coordinates
+Usage: getcell cellName [child refPointChild] [parent refPointParent]
+       [transform [refPointTrans]],
+       where the refPoints are one of:
+	    'label' followed by a single label name,
+       or 'll' for lower left corner, 'lr' for lower right corner,
+       'ul' for upper left corner, 'ur' for upper right corner,
+       or a pair of coordinates.  The transform is one of:
+       90, 180, 270, v, 90v, 180v, 270v, h, 90h, 180h, or 270h.

@@ -118,6 +118,11 @@ struct EditFrame {
 
 [[nodiscard]] EditFrame edit_frame(const editor::EditorState& editor);
 
+/// The identifier of a window's root use (DBWloadWindow's topmost use),
+/// which `what`, `select cell` and edit-cell messages report for the top
+/// cell itself.
+inline constexpr std::string_view kTopUseId = "Topmost cell in the window";
+
 /// DBWUndoOldEdit/DBWUndoNewEdit: makes `frame` the session's edit frame
 /// (EditorState::edit_cell, edit_root, edit_transform) and records an edit
 /// cell undo event with the previous frame (undo::UndoLog::record) when

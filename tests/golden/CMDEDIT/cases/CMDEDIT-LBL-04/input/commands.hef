@@ -1,0 +1,28 @@
+# CMDEDIT-LBL-04: Ports 1 and 4; port make on C; port make 4 on D; class, connections, renumber, first/last/next (Q-CMDEDIT-92).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 40 10
+paint metal1
+box 1 1 1 1
+label A
+port make 1
+box 11 1 11 1
+label B
+port make 4
+box 21 1 21 1
+label C
+port make
+box 31 1 31 1
+label D
+port make 4
+port A class input
+port A class
+box 1 1 1 1
+select area labels
+port connections
+port renumber
+port first
+port last
+port next 1
+save a

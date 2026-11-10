@@ -1,0 +1,13 @@
+# CMDEDIT-HIER-10: path; path search +lib; addpath x; path cell; locking; locking disable; locking.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+path
+path search +lib
+path search
+addpath x
+path
+path cell
+locking
+locking disable
+locking

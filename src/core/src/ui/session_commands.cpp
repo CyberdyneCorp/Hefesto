@@ -24,6 +24,7 @@
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/state.hpp"
 #include "ui/command_util.hpp"
+#include "view/command_util.hpp"
 
 namespace hefesto::ui::detail {
 
@@ -311,6 +312,7 @@ CommandResult log_start(CommandContext& ctx, editor::EditorState& editor, const 
     return CommandResult::failure(diag::make(codes::kLog, "There is already a log file open!"));
   }
   std::string header = "# Magic command log file\n# Using technology: " + editor.technology->name() + "\n";
+  view::detail::refresh_captions(editor);  // the caption of the current edit state (UI-G-016)
   const view::LayoutWindow* window = editor.windows.current();
   if (window != nullptr) {
     header += "# Title: " + window->caption() + "\n";
@@ -357,6 +359,8 @@ std::optional<LogRequest> parse_log_request(const std::vector<std::string>& args
     const cmd::NameMatch m = cmd::match_name(args[0], kKeywords);
     if (m.status == cmd::LookupStatus::found) {
       req.action = static_cast<LogAction>(m.index);
+    } else if (args.size() == 1) {
+      return std::nullopt;  // CmdLogCommands: a file name alone matches no case (UI-G-016)
     } else {
       req.action = LogAction::start;
       req.file = args[0];
@@ -367,7 +371,7 @@ std::optional<LogRequest> parse_log_request(const std::vector<std::string>& args
       req.file = args[1];
     } else if (const cmd::NameMatch m = cmd::match_name(args[1], kKeywords);
                m.status == cmd::LookupStatus::found && m.index == 2) {
-      req.update = true;
+      req.update = true;  // the legacy `logcommands FILE update`
     } else {
       return std::nullopt;
     }

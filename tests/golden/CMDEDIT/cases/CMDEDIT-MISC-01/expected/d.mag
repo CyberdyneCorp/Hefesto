@@ -1,0 +1,9 @@
+magic
+tech tiny
+timestamp 1794285336
+<< checkpaint >>
+rect 5 0 15 10
+<< metal1 >>
+rect 0 0 5 10
+rect 10 0 15 10
+<< end >>

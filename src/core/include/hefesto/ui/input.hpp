@@ -94,6 +94,12 @@ void remember_command_line(editor::EditorState& editor, std::string_view line);
                                                                       bool down, std::optional<db::Rect> box,
                                                                       db::Point point);
 
+/// ui-tools-and-input "Pointer snapping" (ToolSnapToGrid): `p` snapped to
+/// the `snap` grid (internal: unchanged; lambda: the lambda pitch; user: the
+/// current window's grid). The `cursor` command and front ends computing
+/// `%X`/`%Y` or sweep corners use the same rule.
+[[nodiscard]] db::Point snap_to_tool_grid(const editor::EditorState& editor, db::Point p);
+
 /// The cursor glyphs of "Box tool buttons" (move: 6-9, resize: 2-5).
 [[nodiscard]] int corner_glyph(Corner corner, bool move) noexcept;
 

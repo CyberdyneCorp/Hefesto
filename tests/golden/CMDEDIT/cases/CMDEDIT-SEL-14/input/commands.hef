@@ -1,0 +1,59 @@
+# CMDEDIT-SEL-14: An instance selected; orient for every name, 180v and 9 (Q-CMDEDIT-62).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load leaf
+box 0 0 10 10
+paint metal1
+save leaf
+load a
+box 0 0 0 0
+getcell leaf
+select cell leaf_0
+orient 0
+instance orientation leaf_0
+orient 90
+instance orientation leaf_0
+orient 180
+instance orientation leaf_0
+orient 270
+instance orientation leaf_0
+orient v
+instance orientation leaf_0
+orient 0v
+instance orientation leaf_0
+orient 90v
+instance orientation leaf_0
+orient 180v
+instance orientation leaf_0
+orient 270v
+instance orientation leaf_0
+orient h
+instance orientation leaf_0
+orient 0h
+instance orientation leaf_0
+orient 90h
+instance orientation leaf_0
+orient 180h
+instance orientation leaf_0
+orient 270h
+instance orientation leaf_0
+orient N
+instance orientation leaf_0
+orient E
+instance orientation leaf_0
+orient S
+instance orientation leaf_0
+orient W
+instance orientation leaf_0
+orient FN
+instance orientation leaf_0
+orient FE
+instance orientation leaf_0
+orient FS
+instance orientation leaf_0
+orient FW
+instance orientation leaf_0
+orient 9
+instance orientation leaf_0
+save a

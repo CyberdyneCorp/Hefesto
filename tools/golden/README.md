@@ -16,7 +16,7 @@ tools/golden/
   replay.py              run hefesto-cli on each case and compare (run.py = alias)
   compare/               canonical comparators and time-field masks (python3 -m compare)
   goldenlib/             case model, pins, reference runners, hash-table model, external inputs
-  authoring/             generator of the M1 cases (m1_cases.py) and the paint/erase table dump
+  authoring/             generators of the M1 and M2 cases (m1_cases.py, m2_cases.py) and the paint/erase table dump
   harness/magic_hash/    driver around Magic's own utils/hash.c (magic-hash-harness)
   tests/                 unit tests (CTest label golden-tools)
 ```
@@ -158,6 +158,8 @@ So the case uses the options D8 allows:
 ## M1 case generator
 
 `authoring/m1_cases.py` writes the generated TECH, MODEL, CELL, viewer-related UI and MISC font-label cases from the specs in `authoring/{tech,model,cell,ui,misc}_cases.py` (never `expected/`); `--not-authored` lists the CASES.md rows left out and why (commands hefesto-cli does not have, environment-dependent setups, screenshots). Each command becomes `catch {cmd} result; puts $result` in `commands.tcl` and the same line in `commands.hef`; `.mag` outputs are compared byte for byte with the `mag-timestamp` and `mag-checkpaint` masks, and the console streams with `magic-tech-sections`. The paint/erase table dumps (TECH-G20, G23, G24, G25, G28) paint every type pair on its own 1x1 box and save one `.mag` per table (`authoring/paint_dump.py`, the method TECH/CASES.md asks to record). Edit a spec, re-run the generator, then `capture.py --check`.
+
+`authoring/m2_cases.py` (same options) writes the M2 cases of m2-interactive-editing design D9 from `authoring/{cmdedit,ui_dispatch,view}_cases.py`: the CMDEDIT cases and the UI command-dispatch, tools, feedback, color-window and wizard rows. The M2 additions to earlier areas (MODEL undo, select and move cases, TECH-G26, UI-G-033/036) stay in their M1 modules. `common.FINE` is the `tech: fine` test technology (U = 10 nm, lambda = 2: `scalefactor 2`, `gridlimit 1` and `options set-minimum-grid`). Point selections use Magic's `select ... at X Y` form, since `-dnull` has no cursor.
 
 ## Adding a case
 

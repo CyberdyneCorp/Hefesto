@@ -1,0 +1,12 @@
+box 0 0 4 4
+feedback add "a" pale
+box 0 0 10 10
+feedback add "b"
+box 1 1 1 1
+feedback add "c" outline
+box 0 0 10 10
+feedback add "p" solid
+box 0 0 10 10
+feedback add "t"
+box 0 0 4 4
+feedback add "say \"hi\"" dotted

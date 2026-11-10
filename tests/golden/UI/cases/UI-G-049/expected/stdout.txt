@@ -1,0 +1,26 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Cell c read from path input
+
+m move I {select more cell} ^A {select less visible} o openwindow p {paint } L {shell ls} ^D {erase $} M stretch r clockwise s select O closewindow , {select clear} u undo v view R {clockwise 270} / {select area; what ; select clear} w writeall S {select more} x expand ^L redraw U redo z {zoom .5} V xview W {writeall force} X unexpand ^P {magic::gencell {} ; raise .params} Z {zoom 2} ^R {clockwise 180} ^S {select less} ^X {expand toggle} b box a {select visible} ? {drc why} ^Z {findbox zoom} c copy d delete e edit A {select more visible} f sideways B findbox g grid { } tool ! {drc find; findbox zoom; zoom 16} i {select cell} G {grid 2} F upsidedown l {label }
+pick nettool wiring color box
+^A {select less visible} I {select more cell} m move o openwindow ^D {erase $} L {shell ls} p {paint } M stretch r clockwise O closewindow s select u undo , {select clear} R {clockwise 270} v view S {select more} w writeall / {select area; what ; select clear} ^L redraw x expand U redo V xview z {zoom .5} W {writeall force} ^P {magic::gencell {} ; raise .params} X unexpand ^R {clockwise 180} Z {zoom 2} ^S {select less} ^X {expand toggle} a {select visible} b box c copy ^Z {findbox zoom} ? {drc why} d delete A {select more visible} e edit B findbox f sideways g grid { } tool i {select cell} ! {drc find; findbox zoom; zoom 16} F upsidedown G {grid 2} l {label }
+u undo U redo
+Switching to WIRING tool.
+
+^A {select less visible} I {select more cell} m move o openwindow ^D {erase $} L {shell ls} p {paint } M stretch r clockwise O closewindow s select u undo , {select clear} R {clockwise 270} v view S {select more} w writeall / {select area; what ; select clear} ^L redraw x expand U redo V xview z {zoom .5} W {writeall force} ^P {magic::gencell {} ; raise .params} X unexpand ^R {clockwise 180} Z {zoom 2} ^S {select less} ^X {expand toggle} a {select visible} b box c copy ^Z {findbox zoom} ? {drc why} d delete A {select more visible} e edit B findbox f sideways g grid { } tool i {select cell} ! {drc find; findbox zoom; zoom 16} F upsidedown G {grid 2} l {label }
+Switching to BOX tool.
+

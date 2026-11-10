@@ -1,0 +1,55 @@
+magic
+tech tiny
+timestamp 1794285333
+<< checkpaint >>
+rect 100 0 120 10
+rect 300 0 310 20
+rect 340 0 360 10
+rect 380 0 390 20
+rect 420 0 440 10
+rect 460 0 470 20
+rect 500 0 510 20
+rect 540 0 560 10
+rect 580 0 600 10
+rect 190 -20 200 0
+use c  c_0
+timestamp 1794285333
+transform 0 1 100 -1 0 10
+box 0 0 10 20
+use c  c_1
+timestamp 1794285333
+transform 1 0 190 0 1 -20
+box 0 0 10 20
+use c  c_2
+timestamp 1794285333
+transform 1 0 300 0 1 0
+box 0 0 10 20
+use c  c_3
+timestamp 1794285333
+transform 0 1 340 -1 0 10
+box 0 0 10 20
+use c  c_4
+timestamp 1794285333
+transform -1 0 390 0 -1 20
+box 0 0 10 20
+use c  c_5
+timestamp 1794285333
+transform 0 -1 440 1 0 0
+box 0 0 10 20
+use c  c_6
+timestamp 1794285333
+transform 1 0 460 0 -1 20
+box 0 0 10 20
+use c  c_7
+timestamp 1794285333
+transform -1 0 510 0 1 0
+box 0 0 10 20
+use c  c_8
+timestamp 1794285333
+transform 0 1 540 1 0 0
+box 0 0 10 20
+use c  c_9
+timestamp 1794285333
+transform 0 -1 600 -1 0 10
+box 0 0 10 20
+<< end >>

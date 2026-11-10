@@ -126,10 +126,17 @@ Compatibility: exact
 - **THEN** `Usage: wire segment layer width x1 y1 x2 y2` SHALL be printed and nothing painted
 
 ### Requirement: Wiring tool buttons
-When the wiring tool is the active tool, the pointer bindings SHALL provide this workflow: button 1 starts a wire (`wire type` at the cursor) and enters a tracking mode in which pointer motion continuously previews the next leg (`wire show`); while tracking, button 1 commits a leg (`wire leg`) and continues, button 2 commits a leg and then places a contact (`wire switch`) ending tracking, button 3 cancels tracking (clearing the preview); control-button 1 starts tracking with the current wire type/width (box set to a width×width square at the cursor); shift-button 1/3 = `wire increment type` / `wire decrement type` then `wire show`; shift-button 2 = `wire switch`; wheel up/down = `wire increment width` / `wire decrement width` then `wire show`. The wiring state (type, width, last direction) participates in undo/redo. These bindings are defined by the scripting layer and are behavioral; Hefesto MAY map them to touch gestures.
+When the wiring tool is the active tool, the pointer bindings SHALL provide this workflow: button 1 starts a wire (`wire type` at the cursor) and enters a tracking mode in which pointer motion continuously previews the next leg (`wire show`); while tracking, button 1 commits a leg (`wire leg`) and continues, button 2 commits a leg (`wire leg`), clears the selection and ends tracking without placing a contact, button 3 cancels tracking (clearing the selection and the preview); outside tracking, button 2 places a contact (`wire switch`); control-button 1 starts tracking with the current wire type/width (box set to a width×width square at the cursor); shift-button 1/3 = `wire increment type` / `wire decrement type` then `wire show`; shift-button 2 = `wire switch`; wheel up/down = `wire increment width` / `wire decrement width` then `wire show`. The wiring state (type, width, last direction) participates in undo/redo. These bindings are defined by the scripting layer and are behavioral; Hefesto MAY map them to touch gestures.
 
 Compatibility: behavioral
-(Magic ref: tcltk/tools.tcl:545-640, wiring/wireUndo.c:80-170)
+(Magic ref: tcltk/tools.tcl:545-640, tcltk/tools.tcl:592-634, wiring/wireUndo.c:80-170; Hefesto decision: docs/decisions/audit/DECISIONS.md#D-7)
+
+Magic's Tcl build is normative (decision D-7): its `magic::trackwire` procedure runs `wire switch` only for button 2 outside tracking; while tracking, button 2 is `wire leg` followed by `select clear`.
+
+#### Scenario: Button 2 while tracking places no contact
+- **GIVEN** the wiring tool is active, `wire type metal1 4` with the box at (0,0)-(4,4), wiring contact `m2contact 4 metal1 0 metal2 0`, and tracking was started with button 1
+- **WHEN** the pointer is at (40,2) and button 2 is pressed
+- **THEN** a metal1 leg is painted to the pointer, no m2contact is painted, the selection is empty, tracking ends and the wire type stays metal1
 
 #### Scenario: Undo restores wiring state
 - **GIVEN** `wire type metal1 4` followed by `wire type metal2 6`

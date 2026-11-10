@@ -34,6 +34,8 @@ namespace hefesto::app {
 
 namespace {
 
+constexpr std::string_view kUnnamedCell = "(UNNAMED)";
+
 using platform::Path;
 
 // A host without environment, home or symbolic links (iPadOS, tests).
@@ -112,6 +114,9 @@ class Startup {
       load_files();
     }
     set_box();
+    // Magic's UndoFlush after the command-line files (utils/main.c:1236):
+    // the first `undo` of the session must not revert the startup loads.
+    state_.undo.clear();
     return std::move(result_);
   }
 
@@ -481,8 +486,31 @@ class Startup {
     }
     load_display_styles();
     if (state_.windows.current() == nullptr) {
+      adopt_unnamed_edit_cell();
       (void)state_.windows.open_frame(state_.edit_cell);
     }
+  }
+
+  // Magic's startup window shows "(UNNAMED)" and makes it the edit cell
+  // (DBWloadWindow with no name), so commands before any `load` paint into
+  // it and `save NAME` writes it (CMDEDIT-HIER-09), and undoing the first
+  // `load` makes it the edit cell again (MODEL-G-050). Not recorded.
+  void adopt_unnamed_edit_cell() {
+    if (state_.edit_cell != nullptr) {
+      return;
+    }
+    db::CellDef* unnamed = state_.cells.find(kUnnamedCell);
+    if (unnamed == nullptr) {
+      auto made = state_.cells.create(kUnnamedCell, state_.technology->plane_count());
+      if (!made) {
+        return;
+      }
+      unnamed = made.value();
+      unnamed->flags().available = true;
+    }
+    state_.edit_cell = unnamed;
+    state_.edit_root = unnamed;
+    state_.edit_transform = db::kIdentity;
   }
 
   void load_display_styles() {
@@ -491,6 +519,7 @@ class Startup {
     if (!env_.install_root.empty()) {
       styles.library_dirs = {env_.install_root / "magic" / "sys", env_.install_root / "magic" / "sys" / "current"};
     }
+    state_.style_dirs = styles.library_dirs;
     diag::NullSink quiet;  // missing display files are normal in a headless run
     auto loaded = display::load_style_set(fs_, *state_.technology, styles, quiet);
     if (loaded.ok()) {
@@ -500,7 +529,8 @@ class Startup {
 
   // Step 11: the box is the edit cell's bounding box.
   void set_box() {
-    if (state_.edit_cell != nullptr) {
+    // Magic's startup window on "(UNNAMED)" has no box (UI-G-003).
+    if (state_.edit_cell != nullptr && state_.edit_cell->name() != kUnnamedCell) {
       state_.box = state_.edit_cell->bbox();
       state_.box_root = state_.edit_cell;
     }

@@ -1,0 +1,97 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  90.000 x 90.000  ( 0.000,  0.000), ( 90.000,  90.000)  8100.000  
+lambda:       90 x 90      (     0,  0    ), (    90,  90   )  8100      
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 15.000,  15.000), ( 15.000,  15.000)
+lambda:        0 x 0       (    15,  15   ), (    15,  15   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 45.000,  15.000), ( 45.000,  15.000)
+lambda:        0 x 0       (    45,  15   ), (    45,  15   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 75.000,  15.000), ( 75.000,  15.000)
+lambda:        0 x 0       (    75,  15   ), (    75,  15   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 15.000,  45.000), ( 15.000,  45.000)
+lambda:        0 x 0       (    15,  45   ), (    15,  45   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 45.000,  45.000), ( 45.000,  45.000)
+lambda:        0 x 0       (    45,  45   ), (    45,  45   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 75.000,  45.000), ( 75.000,  45.000)
+lambda:        0 x 0       (    75,  45   ), (    75,  45   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 15.000,  75.000), ( 15.000,  75.000)
+lambda:        0 x 0       (    15,  75   ), (    15,  75   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 45.000,  75.000), ( 45.000,  75.000)
+lambda:        0 x 0       (    45,  75   ), (    45,  75   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 75.000,  75.000), ( 75.000,  75.000)
+lambda:        0 x 0       (    75,  75   ), (    75,  75   )
+
+Moving label "IN" from space to metal1 in cell a.
+
+

@@ -1,0 +1,31 @@
+# CMDEDIT-HIER-05: edit on an instance at translate 100 0; paint metal1; edit x1/x2; down (Q-CMDEDIT-30).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load c2
+box 0 0 10 10
+paint metal1
+save c2
+load c1
+box 0 0 0 0
+getcell c2
+select cell c2_0
+identify x2
+save c1
+load top
+box 100 0 100 0
+getcell c1
+select cell c1_0
+identify x1
+select cell x1
+edit
+box 100 0 110 10
+paint metal2
+windowcaption
+select clear
+edit x1/x2
+windowcaption
+select cell x1
+down
+windowcaption
+writeall force

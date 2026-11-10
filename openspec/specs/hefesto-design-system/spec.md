@@ -134,7 +134,9 @@ Compatibility: native
 
 ### Requirement: Screen patterns follow the reference mockups
 The main screens SHALL follow the structure of the reference mockups:
-- **Desktop layout editor:** tool rail, layer palette and hierarchy, canvas with rulers and minimap, inspector, command bar, status bar.
+- **Desktop layout editor:** tool rail, layer palette and hierarchy, canvas with rulers and minimap, inspector, command bar, status bar; with the editing states of the M2 boards: live tool rail with cursor glyphs, selection inspector (paint, label, port, instance, mixed), layer palette paint layer, visibility and lock, command bar completion and history popovers, undo/redo in the top bar, prompt dialogs, dockable and collapsible panels.
+- **Color window:** Magic's color editor surface drawn on the canvas, framed by a caption, an index stepper, Load/Save and a read-only value strip.
+- **Key-binding reference:** a modal sheet listing the macro tables by tool, with search, key capture and an inline conflict warning.
 - **Schematic editor:** symbol library, schematic canvas, waveform dock, instance properties with back-annotated operating point.
 - **DRC browser:** violation list grouped by rule, zoomed error view with measured versus required values, rule detail with suggested fix, sign-off summary.
 - **3D inspection:** layer stack, isometric view with overlay legend, cross-section, camera presets.

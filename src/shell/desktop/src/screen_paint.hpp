@@ -77,6 +77,11 @@ struct OverlayState {
   std::vector<MinimapFill> minimap;  // the layout thumbnail (minimap_thumbnail), minimap pixels
   std::vector<display::SceneLabel> labels;  // bitmap label text (glyphs of font labels are on the GPU)
   std::vector<display::SceneCell> cells;
+  /// Highlight text and point crosses (sized in pixels); the rest of the
+  /// highlights, the box included, is drawn by the renderer.
+  std::vector<display::HighlightItem> marks;
+  /// A Paint / Label / Measure sweep in progress (dashed preview).
+  std::optional<db::Rect> sweep;
   std::string empty_hint;  // shown when nothing is loaded
 };
 

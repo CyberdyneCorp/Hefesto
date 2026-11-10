@@ -30,6 +30,10 @@ struct CommandOutcome {
   /// The non-empty results of the line's commands that succeeded, in order,
   /// one per line (`help; paint x` keeps the help text when paint fails).
   std::string output;
+  /// What the line's commands printed (their info diagnostics' text: `help`,
+  /// `what`), one per line; the status bar summarizes it when there is no
+  /// result value.
+  std::string printed;
 
   [[nodiscard]] bool ok() const noexcept { return status == OutcomeStatus::ok; }
 };

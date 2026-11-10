@@ -1,0 +1,8 @@
+# CMDEDIT-COORD-06: grid 10 20 5 5; box values in grid units; grid what.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+grid 10 20 5 5
+box values 2g 2g 3g 3g
+box values
+grid what

@@ -1,0 +1,7 @@
+# UI-G-002: The ambiguous prefix e, then extr help vs ext help (unique prefixes of extract).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+e
+extr help
+ext help

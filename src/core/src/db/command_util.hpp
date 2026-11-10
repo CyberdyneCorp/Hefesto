@@ -36,6 +36,9 @@ struct Session {
 /// Prints a report line (stdout, Magic's TxPrintf) / a warning (stderr,
 /// Magic's TxError) without failing the command.
 void print(const Session& s, std::string text);
+/// print() of a text whose lines all end in a line feed (the last one is
+/// dropped, as print() adds it back).
+void print_block(const Session& s, std::string text);
 void warn(const Session& s, std::string text);
 
 [[nodiscard]] diag::Outcome<Session> session(cmd::CommandContext& ctx);

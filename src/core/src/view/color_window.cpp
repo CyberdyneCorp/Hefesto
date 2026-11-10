@@ -238,6 +238,13 @@ diag::Outcome<ColorWindow*> open_color_window(editor::EditorState& editor, std::
   return &editor.color_map.windows.back();
 }
 
+ViewMapping color_window_mapping(editor::EditorState& editor, const ColorWindow& window) {
+  ChromeFlags flags = editor.windows.chrome_defaults();
+  flags.caption = false;
+  flags.scrollbars = false;
+  return ViewMapping::fit(inner_area(window.frame, flags, editor.windows.chrome_metrics()), kColorWindowSurface);
+}
+
 bool close_color_window(editor::EditorState& editor, WindowId id) {
   auto& ws = editor.color_map.windows;
   const auto it = std::find_if(ws.begin(), ws.end(), [id](const ColorWindow& w) { return w.id == id; });

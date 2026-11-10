@@ -1,0 +1,10 @@
+magic
+tech mt
+timestamp 1794285343
+<< checkpaint >>
+rect -20 -20 20 20
+<< metal1 >>
+rect -20 -20 20 20
+<< labels >>
+flabel metal1 0 0 0 0 0 FreeSans 80 0 0 0 A
+<< end >>

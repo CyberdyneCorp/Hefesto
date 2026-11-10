@@ -22,7 +22,7 @@ Processing:
 2. `+` switches to add mode and `-` switches to remove mode. The mode persists until the next `+` or `-`.
 3. Each `name` is first resolved as a technology type name or alias, which may denote several types (see the technology capabilities). If it resolves, those types are added to or removed from the set.
 4. If the name is not a type, it SHALL be matched with the keyword-matching rule against the specials below. A match is added or removed like a type.
-5. If the name is ambiguous as a type, the command SHALL report "Ambiguous layer: NAME". If it matches neither a type nor a special, it SHALL report "Unrecognized layer: NAME". In both cases it SHALL list the legal type names and specials, and the command SHALL fail without effect.
+5. If the name is ambiguous as a type, the command SHALL report "Ambiguous layer: NAME". If it matches neither a type nor a special, it SHALL report "Unrecognized layer: NAME". In both cases it SHALL list the legal names and the command SHALL fail without effect: the type names as Magic's `DBTechPrintTypes` prints them ("Layer names are:", then one line per type such as "    m1 or metal1", built-in paintable types last) on standard output, and the specials ("    $", "    *", "    errors", "    labels", "    subcell", "    connect") after the error line on the error stream.
 
 | Special | Meaning |
 |---|---|
@@ -84,7 +84,7 @@ Compatibility: behavioral
 `paint LAYERS` SHALL paint every type in the parsed set over the whole box area (in edit coordinates):
 
 - Space is removed from the set.
-- If the set includes the label pseudo-type, the command SHALL fail with "Label layer cannot be painted. Use the "label" command". If it includes the subcell pseudo-type, it SHALL fail with "Subcell layer cannot be painted. Use "getcell"." In both cases nothing is painted.
+- If the set includes the label pseudo-type, the command SHALL fail with "Label layer cannot be painted.  Use the "label" command". If it includes the subcell pseudo-type, it SHALL fail with "Subcell layer cannot be painted.  Use "getcell"." (two spaces after each first period, as Magic prints them) In both cases nothing is painted.
 - Each stacked contact type in the set SHALL be replaced by its residue contact types.
 - Types that are not active in the technology SHALL be dropped.
 - For a contact type whose residues are not all active, only its active residues SHALL be painted, and the contact type itself SHALL NOT be.
@@ -263,7 +263,7 @@ Compatibility: exact
 
 `contact TYPE` SHALL paint the contact TYPE wherever its first two residue types overlap inside the box, in the edit cell only:
 
-1. TYPE SHALL be a contact type. Otherwise the command SHALL fail with "Error: tile type "TYPE" is not a contact."
+1. TYPE SHALL be a contact type. Otherwise the command SHALL fail with "Error:  tile type "TYPE" is not a contact." (two spaces after the colon, as Magic prints it)
 2. Let `R1` and `R2` be TYPE's two lowest-numbered residue types.
 3. For each tile of exact type `R1` in the edit cell that overlaps the box, clip it to the box (area `A`). For each tile of exact type `R2` that overlaps `A`, the intersection with `A` SHALL be painted with TYPE, if TYPE is active.
 4. Only paint in the edit cell is considered, not subcells. A residue already covered by another contact (so that its tile has a different type) is not found.
@@ -376,7 +376,7 @@ Compatibility: exact
 `drop LAYERS` SHALL paint LAYERS into the cells (the edit cell and its descendants) that contain the paint now selected, at the places where that paint is:
 
 1. A box SHALL exist in a window on the edit cell. LAYERS SHALL parse.
-2. The root cell of the edit cell's window SHALL be the selection's root cell. Otherwise the command SHALL fail with "The selection does not match the edit cell." and change nothing, whatever the `magic-compat` setting. Magic accepts the case where only the top cell of the current window is the selection's root, and then searches the edit cell's hierarchy with an identity transform using another cell's root coordinates, painting unrelated cells; Hefesto refuses it (see Q-CMDEDIT-17, resolution: fix).
+2. The edit cell SHALL be the selection's root cell, and so SHALL the root cell of the edit cell's window: a child edited in place (`edit` on an instance) is refused, as Magic compares the edit cell itself with the selection root. Otherwise the command SHALL fail with "The selection does not match the edit cell." and change nothing, whatever the `magic-compat` setting. Magic accepts the case where only the top cell of the current window is the selection's root, and then searches the edit cell's hierarchy with an identity transform using another cell's root coordinates, painting unrelated cells; Hefesto refuses it (see Q-CMDEDIT-17, resolution: fix).
 3. If the selection contains no paint (space and DRC types excluded), it SHALL do nothing.
 4. For each selected paint tile of type T (for split tiles, the type of the selected side), at area A in root coordinates: search the whole hierarchy under the edit cell for tiles of exactly type T overlapping A (transformed into edit coordinates by the edit transform). All descendants are searched, whatever their expansion state. For every such tile found in a cell C, the tile area (in C's coordinates) clipped to A (transformed into C) SHALL be painted with every type in LAYERS, one type at a time, in C itself.
    Before anything is painted, every cell C that step 4 would paint SHALL be checked for editability. If any is not editable (for example a read-only or locked cell), the command SHALL fail with `Cannot drop into non-editable cell <C>` and paint nothing in any cell. Magic never checks this (see Q-CMDEDIT-17).
@@ -396,6 +396,12 @@ Compatibility: exact
 
 #### Scenario: Selection root differs from the edit cell's root
 - **GIVEN** the selection was made in a window whose root is `top`, and the edit cell is in a window whose root is `other`
+- **WHEN** `drop pwell` is run
+- **THEN** the command SHALL fail with "The selection does not match the edit cell."
+- **AND** no cell SHALL change
+
+#### Scenario: Edit cell is a child of the selection root
+- **GIVEN** the selection was made in a window whose root is `top`, and `edit` made the instance `child_0` of `top` the edit cell
 - **WHEN** `drop pwell` is run
 - **THEN** the command SHALL fail with "The selection does not match the edit cell."
 - **AND** no cell SHALL change

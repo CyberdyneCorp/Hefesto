@@ -4,9 +4,9 @@
 
 Command forms are the subset hefesto-cli implements (design D8, MODEL): box, snap,
 paint, erase, splitpaint, getcell (with an orientation), flatten, label, port,
-property, cellname, instance, plus load/save. A row that needs another command
-(select, what, move, delete, undo, drc, extract, LEF/DEF) is not authored here; see
-NOT_AUTHORED.
+property, cellname, instance, plus load/save. M2 added undo, select, what and
+move (undo_specs, connectivity_specs). A row that needs another command (drc,
+extract, LEF/DEF, a Tcl proc) is not authored here; see NOT_AUTHORED.
 """
 from __future__ import annotations
 
@@ -22,9 +22,8 @@ ORIENTATIONS = ["0", "90", "180", "270", "v", "h", "90v", "90h"]
 
 NOT_AUTHORED = {
     "MODEL-G-006": "needs drc", "MODEL-G-045": "needs lef read",
-    "MODEL-G-049": "needs extract", "MODEL-G-051": "needs select/what",
-    "MODEL-G-052": "needs select/what", "MODEL-G-053": "needs select/what", "MODEL-G-054": "needs def write",
-    "MODEL-G-055": "needs Tcl proc + undo", "MODEL-G-056": "needs move + undo",
+    "MODEL-G-049": "needs extract", "MODEL-G-054": "needs def write (LEF/DEF, M6)",
+    "MODEL-G-055": "needs a Tcl proc (one command painting twice; Tcl binding, M4)",
 }
 
 
@@ -302,5 +301,39 @@ def undo_specs() -> list[Spec]:
     ]
 
 
+def connectivity_specs() -> list[Spec]:
+    """layout-connectivity cases through `select net` (m2-interactive-editing design D9, owner SELECT)."""
+    conn = "layout-connectivity"
+    net = ["select net", "what -list", "select bbox"]
+    ports = (cell("child", paint("metal1", 0, 0, 10, 10) + label("VDD", 1, 1) + ["port make 1"]
+                   + paint("metal1", 20, 0, 30, 10) + label("VDD", 21, 1) + ["port make 1"])
+             + ["load top", box(0, 0, 0, 0), "getcell child"] + paint("metal1", -10, 0, 0, 10)
+             + [box(-10, 0, 30, 10), "expand", box(-5, 5, -5, 5)])
+    return [
+        model("MODEL-G-051", conn, ["Connectivity within one cell"], "metal1 squares touching at a corner; select net at 1 1.",
+              ["load a"] + paint("metal1", 0, 0, 2, 2) + paint("metal1", 2, 2, 4, 4) + [box(1, 1, 1, 1)] + net, []),
+        model("MODEL-G-052", conn, ["Connectivity within one cell"], "metal1, via1 and metal2 in a run; select net from the metal1.",
+              ["load a"] + paint("metal1", 0, 0, 12, 4) + paint("via1", 8, 0, 12, 4) + paint("metal2", 8, 0, 30, 4)
+              + [box(1, 1, 1, 1)] + net, []),
+        model("MODEL-G-053", conn, ["Hierarchical connectivity"],
+              "Parent metal1 abutting a child whose two VDD ports share index 1 and are not connected; select net.",
+              ports + net, []),
+    ]
+
+
+def undo_move_specs() -> list[Spec]:
+    """MODEL-G-056 (layout-undo "Recorded event kinds"): moving a use and the box are undone."""
+    return [
+        model("MODEL-G-056", "layout-undo", ["Recorded event kinds"],
+              "Move a use and undo (saved after each); move the box and undo.",
+              cell("leaf", paint("metal1", 0, 0, 10, 10)) + ["load top", box(0, 0, 0, 0), "getcell leaf",
+                                                             "select cell leaf_0", "move 10 0", "save t1", "undo",
+                                                             "save t2", "box values 0 0 5 5", "box move e 10",
+                                                             "box values", "undo", "box values"],
+              ["t1.mag", "t2.mag"]),
+    ]
+
+
 def specs() -> list[Spec]:
-    return geometry_specs() + paint_specs() + hierarchy_specs() + label_specs() + undo_specs()
+    return (geometry_specs() + paint_specs() + hierarchy_specs() + label_specs() + undo_specs()
+            + connectivity_specs() + undo_move_specs())

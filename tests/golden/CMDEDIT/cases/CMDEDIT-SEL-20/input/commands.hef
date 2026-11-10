@@ -1,0 +1,14 @@
+# CMDEDIT-SEL-20: Labeled net A-B; select short A B; select bbox; select save sel1.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 30 4
+paint metal1
+box 1 2 1 2
+label A
+box 29 2 29 2
+label B
+select short A B
+select bbox
+what -list
+select save sel1

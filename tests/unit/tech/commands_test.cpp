@@ -397,3 +397,25 @@ TEST_CASE("technology loads from the PDK store", "[cap:tech-loading-and-scaling]
   const auto missing = tech::load_session_technology(s.editor, services_view, "nothere", options, sink);
   CHECK(missing.error().code == "TECH-FILE-001");
 }
+
+// Regression (UI-G-067): `tech load` reloads the new technology's display
+// styles from where the startup looked, so its dstyle long names resolve.
+TEST_CASE("tech load reloads the display styles of the new styletype",
+          "[cap:display-style-files][req:Style loading triggered by styletype]") {
+  const std::string magic = std::string{HEFESTO_MAGIC_REF_DIR};
+  const std::string dstyle = hefesto::tech::test::read_file(magic + "/scmos/mos.OpenGL.dstyle");
+  if (dstyle.empty()) {
+    SKIP("Magic sources (build/ref/magic) not available");
+  }
+  Session s;
+  s.file("/sys/mos.OpenGL.dstyle", dstyle);
+  s.file("/sys/mos.OpenGL.std.cmap", hefesto::tech::test::read_file(magic + "/scmos/mos.OpenGL.std.cmap"));
+  s.file("/sys/color.glyphs", hefesto::tech::test::read_file(magic + "/graphics/color.glyphs"));
+  s.editor.style_dirs = {"/sys"};
+  CHECK_FALSE(s.editor.styles.has_value());
+  s.load_tiny();  // styletype mos
+  REQUIRE(s.editor.styles.has_value());
+  s.editor.style_dirs = {"/nowhere"};
+  s.load_tiny();  // missing files keep the styles and do not fail the load (Q-TECH-24)
+  CHECK(s.editor.styles.has_value());
+}

@@ -1,0 +1,7 @@
+# CMDEDIT-COORD-02: tech fine; snap lambda; box values 0 0 100+5 1 (Q-CMDEDIT-1).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/fine -noprompt
+load a
+snap lambda
+box values 0 0 100+5 1
+box values

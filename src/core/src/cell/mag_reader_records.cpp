@@ -9,6 +9,7 @@
 // of the University of California, distributed under its permissive
 // license (THIRD_PARTY_NOTICES.md).
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <optional>
@@ -496,16 +497,18 @@ void check_extension(ReadState& st, const std::string& key, const std::string& v
     return;
   }
   const std::size_t colon = value.find(':');
+  // Saturated: any version above kExtensionVersion is "newer", however long.
+  constexpr int kSaturated = 1000000;
   int version = 0;
   for (std::size_t i = 1; i < colon && i < value.size(); ++i) {
     if (!is_digit(static_cast<unsigned char>(value[i]))) {
       return;
     }
-    version = version * 10 + (value[i] - '0');
+    version = std::min(kSaturated, version * 10 + (value[i] - '0'));
   }
   if (colon != std::string::npos && version > kExtensionVersion) {
-    st.emit(codes::kNewerExtension, "Cell " + st.def.name() + ": property " + key + " has schema version v" +
-                                        std::to_string(version) + "; it is kept unchanged");
+    st.emit(codes::kNewerExtension, "Cell " + st.def.name() + ": property " + key + " has schema version " +
+                                        value.substr(0, colon) + "; it is kept unchanged");
   }
 }
 

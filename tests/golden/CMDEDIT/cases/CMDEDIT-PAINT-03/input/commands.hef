@@ -1,0 +1,13 @@
+# CMDEDIT-PAINT-03: metal1+poly at 5 5 6 6; paint pick 5 5; paint pick 50 50.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 5 5 6 6
+paint metal1
+box 5 5 6 6
+paint poly
+box 20 0 30 10
+paint pick 5 5
+save p1
+paint pick 50 50
+save p2

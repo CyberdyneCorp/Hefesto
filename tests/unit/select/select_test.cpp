@@ -183,9 +183,17 @@ TEST_CASE("an unknown select option is reported with the help", OPT) {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);
   const auto r = s.run("select frobnicate metal1");
-  REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().text == "\"frobnicate\" isn't a valid select option.");
-  CHECK(all_text(r).find("Selection commands are:") != std::string::npos);
+  // Regression (CMDEDIT-SEL-07): reported once, the help printed, and no
+  // error result (Magic's CmdSelect returns normally, so a script goes on);
+  // the help ends at "select short" with no empty "select " lines.
+  REQUIRE(r.ok());
+  const std::string text = all_text(r);
+  const std::string warning = "\"frobnicate\" isn't a valid select option.";
+  CHECK(text.find(warning) != std::string::npos);
+  CHECK(text.find(warning) == text.rfind(warning));
+  CHECK(text.find("Selection commands are:") != std::string::npos);
+  CHECK(text.find("    select \n") == std::string::npos);
+  CHECK(text.ends_with("find shorting path between two labels\n"));
 }
 
 TEST_CASE("wrong argument counts print the option's usage", OPT) {
@@ -430,7 +438,8 @@ TEST_CASE("cell selection cycles through nested cells, then the top cell", CELL)
   w.value()->set_expanded(*a->uses().front(), true);
   CHECK(s.run("select cell at 1 1").value.to_string() == "a/b");
   CHECK(s.run("select cell at 1 1").value.to_string() == "a");
-  CHECK(s.run("select cell at 1 1").value.to_string() == "top");
+  // Regression (CMDEDIT-SEL-05): the top cell is its root use's identifier.
+  CHECK(s.run("select cell at 1 1").value.to_string() == "Topmost cell in the window");
   CHECK(s.run("select cell at 1 1").value.to_string() == "a/b");
   REQUIRE(s.selection().uses().size() == 1);  // each click replaces the previous cell
 }

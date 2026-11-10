@@ -1,0 +1,44 @@
+# CMDEDIT-COORD-09: tech fine; every units mode with and without print: box values 0 0 15 20000, box size, box values.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/fine -noprompt
+load a
+units internal
+box values 0 0 15 20000
+box size
+box values
+units internal print
+box values 0 0 15 20000
+box size
+box values
+units lambda
+box values 0 0 15 20000
+box size
+box values
+units lambda print
+box values 0 0 15 20000
+box size
+box values
+units user
+box values 0 0 15 20000
+box size
+box values
+units user print
+box values 0 0 15 20000
+box size
+box values
+units microns
+box values 0 0 15 20000
+box size
+box values
+units microns print
+box values 0 0 15 20000
+box size
+box values
+units default
+box values 0 0 15 20000
+box size
+box values
+units default print
+box values 0 0 15 20000
+box size
+box values

@@ -4,11 +4,7 @@
 tasks 8.2-8.4): the feedback, color window and wizard rows of tests/golden/UI/CASES.md
 and CMDEDIT-MISC-03 of tests/golden/CMDEDIT/CASES.md.
 
-Registered by INTEGRATION in the M2 driver (m2_cases.py, task 11.2). Until then the
-case directories are written with:
-
-    python3 -c "import sys; sys.path.insert(0, 'tools/golden/authoring'); \\
-        import casegen, view_cases; [casegen.write(s) for s in view_cases.specs()]"
+Registered in the M2 driver (m2_cases.py, task 11.2), which writes the case directories.
 
 Like ui_cases.py, the cases load tiny.tech (lambda 1, like scmos) and a small cell so
 that a layout window and the box exist.
@@ -23,21 +19,28 @@ COLOR = "ui-color-window"
 WIZARD = "ui-wizard-and-debug"
 
 NOT_AUTHORED = {
-    "UI-G-061": "needs setpoint/pushbutton (DISPATCH task 7.4) and the color client table (7.1); the red bar "
-                "midpoint pixel is derived from the color window's view mapping once they land",
-    "UI-G-062": "needs pushbutton (DISPATCH task 7.4) on the Hue + pump; same as UI-G-061",
+    "UI-G-061": "the red bar midpoint pixel for setpoint must be derived from the color window's view mapping "
+                "in Magic's 512x484 null screen (VIEW)",
+    "UI-G-062": "pushbutton on the Hue + pump needs the pump's pixel position; same as UI-G-061 (VIEW)",
     "UI-G-068": "needs extraction (M7)",
     "UI-G-082": "X11 screenshots (no virtual display in the capture container, design Open Questions)",
 }
 
 CELL = mag("tiny", "<< metal1 >>\nrect 0 0 100 50\n")
 
+# The display styles of tiny.tech's styletype `mos` that Magic's startup reads from
+# $CAD_ROOT/magic/sys (hefesto-cli reads the same files there; the OpenGL variant, X-5).
+MOS_STYLES = [{"source": "magic-sys", "path": path, "to": path.split("/")[1]}
+              for path in ("scmos/mos.OpenGL.dstyle", "scmos/mos.OpenGL.std.cmap", "graphics/color.glyphs")]
+
 
 def view(cid: str, capability: str, reqs: list[str], desc: str, cmds: list[str],
-         outputs: list[str] | None = None, notes: list[str] | None = None) -> Spec:
+         outputs: list[str] | None = None, notes: list[str] | None = None,
+         stream_masks: list[str] | None = None, external: list[dict] | None = None) -> Spec:
     prefix = ["tech load input/tiny -noprompt", "load input/c"]
     return Spec(cid, capability, reqs, desc, prefix + cmds, files={"tiny.tech": TINY, "c.mag": CELL},
-                outputs=outputs or [], notes=notes or [])
+                outputs=outputs or [], notes=notes or [], stream_masks=stream_masks or [],
+                external=external or [])
 
 
 def specs() -> list[Spec]:
@@ -71,10 +74,15 @@ def specs() -> list[Spec]:
         view("UI-G-067", FEEDBACK, ["feedback command"],
              "feedback add with a numeric third argument, an unknown style and a style long name.",
              ["box 0 0 4 4", "feedback add x 5 1 2", "feedback count", "feedback add x bogus", "feedback count",
-              "feedback add x solid_highlights", "feedback count", "feedback bogus", "feedback"]),
+              "feedback add x solid_highlights", "feedback count", "feedback bogus", "feedback"],
+             notes=["solid_highlights is a long name of the mos display styles, which both tools read at startup."],
+             external=MOS_STYLES),
         view("UI-G-081", WIZARD, ["Layout wizard commands", "Window-client wizard commands"],
              "*coord with a box set; *winddebug twice; *files.",
-             ["box 0 0 10 10", "*coord", "*winddebug", "*winddebug", "*files"]),
+             ["box 0 0 10 10", "*coord", "*winddebug", "*winddebug", "*files"],
+             notes=["*files prints each descriptor's inode number, which changes from run to run, and the",
+                    "type of descriptor 0, which is the runner's standard input: both masked."],
+             stream_masks=[r"regex:(?<=inode number )\d+", r"regex:(?<=file descriptor 0: open  \(type: \x27)[^\x27]+"]),
         view("CMDEDIT-MISC-03", "cmd-misc-edit", ["Feedback command"],
              "feedback add over the box and a triangle; count; why; save; clear x.",
              ["box 0 0 4 4", 'feedback add "x"', 'feedback add "p" solid 0 0 10 0 0 10', "feedback count",

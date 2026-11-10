@@ -11,6 +11,11 @@
 #include <vector>
 
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/ui/bindings.hpp"
+#include "hefesto/ui/commands.hpp"
+#include "hefesto/ui/input.hpp"
+#include "hefesto/ui/line.hpp"
+#include "hefesto/ui/macros.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "hefesto/wiring/wiring.hpp"
 #include "wire_fixture.hpp"
@@ -205,4 +210,66 @@ TEST_CASE("the first remembered values are Magic's", BUTTONS) {
   CHECK(state.width == 0);
   CHECK_FALSE(state.tracking);
   CHECK(state.remembered == wiring::WireParams{std::nullopt, 2, wiring::LegDirection::north});
+}
+
+namespace {
+
+/// Presses `key` the way a front end does: the macro of the window's
+/// current-tool table (ui::handle_key), run through the dispatcher.
+void press_through_macros(Session& s, std::string_view key) {
+  const auto parsed = hefesto::ui::parse_key_name(key);
+  REQUIRE(parsed.ok());
+  const hefesto::ui::KeyAction action = hefesto::ui::handle_key(s.editor, parsed.value());
+  REQUIRE(action.kind == hefesto::ui::KeyActionKind::run);
+  for (const auto& r : hefesto::ui::run_command_line(*s.dispatcher, action.text, hefesto::cmd::Origin::key)) {
+    INFO(action.text << " -> " << last_text(r));
+    CHECK(r.ok());
+  }
+}
+
+}  // namespace
+
+TEST_CASE("the wiring tool's buttons run through the wiring macro table", BUTTONS) {
+  Session s;
+  REQUIRE(hefesto::ui::register_ui_commands(s.registry));
+  hefesto::ui::install_defaults(s.editor);
+  s.ok("tool wiring");
+  REQUIRE(hefesto::ui::macro_table_for(s.editor, "layout") == "wiring");
+  s.paint("metal1", 0, 0, 50, 4);
+  s.paint("metal2", 70, -20, 90, 20);
+
+  s.point_at(40, 2);
+  press_through_macros(s, "Button1");  // trackwire pick: wire type at the cursor, tracking
+  CHECK(s.editor.wire.tracking);
+  CHECK(s.editor.wire.type == s.type("metal1"));
+  s.point_at(80, 2);
+  press_through_macros(s, "Button2");  // while tracking: a last leg, no contact (Tcl trackwire)
+  CHECK_FALSE(s.editor.wire.tracking);
+  CHECK(s.rects("metal1") == std::vector<Rect>{{0, 0, 82, 4}});
+  CHECK(s.rects("m2contact").empty());
+  CHECK(s.editor.wire.type == s.type("metal1"));
+  CHECK(s.editor.selection.empty());
+
+  press_through_macros(s, "Button2");  // not tracking: `wire switch` places the contact
+  CHECK_FALSE(s.rects("m2contact").empty());
+  CHECK(s.editor.wire.type == s.type("metal2"));
+  const auto width = s.editor.wire.width;
+  press_through_macros(s, "Button4");  // wire incr width ; wire show
+  CHECK(s.editor.wire.width == width + 1);
+}
+
+TEST_CASE("pushbutton reaches the box tool's handler whatever the macro tool", BUTTONS) {
+  // Magic's Tcl build: `tool` swaps macro tables only; a synthesized button
+  // (`pushbutton`) goes to the layout client's C button handler, the box tool.
+  Session s;
+  REQUIRE(hefesto::ui::register_ui_commands(s.registry));
+  hefesto::ui::install_defaults(s.editor);
+  s.ok("tool wiring");
+  s.ok("box 0 0 10 10");
+  s.point_at(40, 30);
+  s.ok("pushbutton left down");
+  s.ok("pushbutton left up");
+  CHECK_FALSE(s.editor.wire.tracking);
+  CHECK(s.editor.box->x0 == 40);  // box move bl cursor
+  CHECK(s.editor.box->y0 == 30);
 }

@@ -1,0 +1,44 @@
+# CMDEDIT-PAINT-04: metal1, poly and label A in the box: erase; erase poly; erase labels; erase space.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load e1
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+paint poly
+box 5 5 5 5
+label A
+box 0 0 10 10
+erase
+save e1
+load e2
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+paint poly
+box 5 5 5 5
+label A
+box 0 0 10 10
+erase poly
+save e2
+load e3
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+paint poly
+box 5 5 5 5
+label A
+box 0 0 10 10
+erase labels
+save e3
+load e4
+box 0 0 10 10
+paint metal1
+box 0 0 10 10
+paint poly
+box 5 5 5 5
+label A
+box 0 0 10 10
+erase space
+save e4

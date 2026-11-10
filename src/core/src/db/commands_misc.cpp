@@ -13,7 +13,6 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <random>
 #include <string>
 #include <vector>
 
@@ -174,17 +173,63 @@ CommandResult cmd_xor(CommandContext& ctx, const Invocation& inv) {
 
 // --- random -----------------------------------------------------------------------
 
-// The generator (Magic uses the C library's random()); one per process, so
-// a seed gives the same sequence within Hefesto.
-std::mt19937& generator() {
-  static std::mt19937 gen{1};
+// The generator: the additive-feedback generator of glibc's random()
+// (TYPE_3, degree 31, separation 3), which Magic calls, so a seed gives the
+// numbers Magic gives on Linux (CMDEDIT-MISC-05). One per process.
+class LibcRandom {
+ public:
+  LibcRandom() { seed(1); }
+
+  // srandom(): only the low 32 bits of the seed matter; 0 acts as 1.
+  void seed(std::uint32_t value) {
+    std::array<std::int32_t, kDeg> r{};
+    r[0] = value == 0 ? 1 : static_cast<std::int32_t>(value);
+    for (std::size_t i = 1; i < kDeg; ++i) {
+      // 16807 * r[i-1] % (2^31 - 1) without overflow (Schrage's method).
+      const std::int32_t hi = r[i - 1] / 127773;
+      const std::int32_t lo = r[i - 1] % 127773;
+      std::int32_t word = 16807 * lo - 2836 * hi;
+      if (word < 0) {
+        word += 2147483647;
+      }
+      r[i] = word;
+    }
+    for (std::size_t i = 0; i < kDeg; ++i) {
+      state_[i] = static_cast<std::uint32_t>(r[i]);
+    }
+    front_ = kSep;
+    rear_ = 0;
+    for (int i = 0; i < 10 * static_cast<int>(kDeg); ++i) {
+      static_cast<void>(next());
+    }
+  }
+
+  // random(): a value in [0, 2^31).
+  std::int64_t next() {
+    state_[front_] += state_[rear_];
+    const std::uint32_t result = state_[front_] >> 1U;
+    front_ = (front_ + 1) % kDeg;
+    rear_ = (rear_ + 1) % kDeg;
+    return static_cast<std::int64_t>(result);
+  }
+
+ private:
+  static constexpr std::size_t kDeg = 31;
+  static constexpr std::size_t kSep = 3;
+  std::array<std::uint32_t, kDeg> state_{};
+  std::size_t front_ = kSep;
+  std::size_t rear_ = 0;
+};
+
+LibcRandom& generator() {
+  static LibcRandom gen;
   return gen;
 }
 
 CommandResult cmd_random(CommandContext& ctx, const Invocation& inv) {
   const auto& a = inv.args;
   if (a.empty()) {
-    return CommandResult::success(Value{static_cast<std::int64_t>(generator()() >> 1U)});
+    return CommandResult::success(Value{generator().next()});
   }
   if (a.size() > 2 || a[0] != "seed" || (a.size() == 2 && !cu::str_is_int(a[1]))) {
     auto s = cu::session(ctx);

@@ -1,0 +1,16 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Cell a couldn't be read
+No such file or directory
+Cell p1 couldn't be read
+No such file or directory
+Cell p2 couldn't be read
+No such file or directory
+Cell p3 couldn't be read
+No such file or directory
+Usage:  polygon tiletype x1 y1 x2 y2 [x3 y3 ...] xn yn
+Usage:  polygon tiletype x1 y1 x2 y2 [x3 y3 ...] xn yn

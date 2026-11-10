@@ -25,6 +25,7 @@ inline constexpr std::string_view kFeedbackRange = "VIEW-FEEDBACK-002";
 inline constexpr std::string_view kFeedbackFile = "VIEW-FEEDBACK-003";
 inline constexpr std::string_view kGrid = "VIEW-GRID-001";
 inline constexpr std::string_view kReport = "VIEW-REPORT-001";
+inline constexpr std::string_view kErrorReport = "VIEW-REPORT-002";
 inline constexpr std::string_view kReset = "VIEW-RESET-001";
 inline constexpr std::string_view kMinimumScale = "VIEW-SCALE-001";
 inline constexpr std::string_view kScroll = "VIEW-SCROLL-001";

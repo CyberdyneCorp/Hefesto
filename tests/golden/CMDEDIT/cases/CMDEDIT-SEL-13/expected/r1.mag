@@ -1,0 +1,15 @@
+magic
+tech tiny
+timestamp 1794285342
+<< checkpaint >>
+rect 10 20 30 35
+rect 10 0 45 20
+<< metal1 >>
+rect 20 15 30 35
+use leaf  leaf_0
+timestamp 1794285342
+transform 0 1 10 -1 0 5
+box 0 0 5 5
+<< labels >>
+rlabel metal1 25 30 25 30 5 L
+<< end >>
