@@ -21,6 +21,12 @@
 // status bar, the selection inspector, paint layer and lock toggles in the
 // palette, a Feedback tab, cmd::PromptHost questions as dialogs, and the
 // `panel` command that collapses the Layers, Inspector and Console panels.
+// M2 round 3: popovers through Raven menus (command history and
+// completion, undo history, layer row and orientation menus), clickable
+// Feedback rows, the "undo off" chip and "Undid …" status, a Keys tab (the
+// key-binding sheet), the color window screen in the right dock, docking
+// the side panels left or right (`panel … dock`), F6 focus cycling, and the
+// text-field key fixes (TextKeyFilter).
 //
 // Every UI action runs a core command through the Dispatcher (origin `gui`),
 // so it is logged and replayable; the window refreshes after every command,
@@ -44,6 +50,8 @@
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/options.hpp"
 #include "hefesto/shell/view_commands.hpp"
+#include "color_panel.hpp"
+#include "hefesto/shell/screen_models.hpp"
 #include "layout_canvas.hpp"
 #include "pdk_panel.hpp"
 #include "raven_ui.hpp"
@@ -68,6 +76,8 @@ class MainWindow {
   /// Shows rectangles that are not a cell (the benchmark's synthetic layout).
   void show_layout(const std::vector<render::LayeredRect>& rects);
   /// Runs one command line as typed in the command bar (Console echo, status).
+  /// A line typed in the command bar: history-expanded, then run_line.
+  void run_typed_line(const std::string& text);
   void run_line(const std::string& line);
   /// Runs `line` like run_line once the canvas has its size (the first
   /// frames), so view commands (`zoom`, `view`) act on the real viewport
@@ -108,6 +118,23 @@ class MainWindow {
   [[nodiscard]] std::optional<std::string> complete(const std::string& text);
   void show_prompt(const std::string& text);
   bool set_panel(PanelId panel, std::optional<bool> show);
+  bool dock_panel(PanelId panel, DockSide side);
+  void reset_layout();
+  /// Places the side panels around the canvas in the middle row.
+  void arrange_middle();
+  /// Opens the shared popover menu at window point (x, y).
+  void open_menu(const std::string& title, std::vector<MenuEntry> entries, float x, float y);
+  /// The window point above the command bar where its popovers open.
+  [[nodiscard]] std::pair<float, float> above_command_bar(std::size_t rows) const;
+  void show_history();
+  void show_undo_history(float x, float y);
+  /// F6 / Shift-F6 and ^R in the command bar (the window's key hook).
+  bool on_shortcut(int key, std::uint8_t modifiers);
+  void cycle_focus(bool backward);
+  void refresh_keys();
+  void refresh_color_panel();
+  /// The right dock shows the PDK manager, else the color window, else the Inspector.
+  void update_right_dock();
   [[nodiscard]] bool panel_shown(PanelId panel) const;
   std::optional<std::string> set_paint_layer(std::optional<std::string> name);
   void clear_problems();
@@ -154,6 +181,14 @@ class MainWindow {
   ui::Painted* redo_button_ = nullptr;  // owned by painted_
   UndoAffordance undo_state_;
   ui::Painted* clear_button_ = nullptr;  // owned by painted_
+  ui::Painted* undo_off_chip_ = nullptr;  // owned by painted_: "▲ undo off" while recording is off
+  ui::PopupMenu menu_;                    // the shared popover (one open at a time)
+  std::vector<MenuEntry> menu_entries_;   // what menu_ shows
+  FocusRegion focus_region_ = FocusRegion::canvas;
+  ui::Box middle_ = ui::Box::horizontal();  // rail | docks and canvas
+  ui::Box center_ = ui::Box::vertical();    // canvas over the console tabs
+  DockSide layers_side_ = DockSide::left;
+  DockSide inspector_side_ = DockSide::right;
   class DialogPromptHost;
   std::unique_ptr<cmd::PromptHost> prompt_host_;
   bool capture_mode_ = false;  // --capture: dialogs do not wait
@@ -177,10 +212,16 @@ class MainWindow {
   std::unique_ptr<InspectorPanel> inspector_;
   std::unique_ptr<PdkPanel> pdk_;
   bool pdk_visible_ = false;
+  std::unique_ptr<ColorPanel> color_;
+  bool color_visible_ = false;  // a color window is open
   ui::Tabs console_tabs_ = ui::Tabs::create();
   ui::ListPanel console_ = ui::ListPanel::create();  // command echo and full results
   ui::ListPanel diagnostics_ = ui::ListPanel::create();
   ui::ListPanel feedback_ = ui::ListPanel::create();
+  ui::ListPanel keys_ = ui::ListPanel::create();  // the key-binding sheet (Keys tab)
+  std::vector<std::string> key_edits_;            // per Keys row: its `macro …` line (empty: a heading)
+  std::size_t keys_signature_ = 0;                // bindings shown (rebuilt when it changes)
+  bool keys_shown_ = false;                       // `panel keys show`
   std::vector<FeedbackRow> feedback_rows_;
   bool console_visible_ = false;
   // Diagnostics panel lines, problem counts and status messages.
@@ -196,6 +237,8 @@ class MainWindow {
   StatusKind message_kind_ = StatusKind::info;
   std::string pending_run_;          // run_when_ready
   std::optional<PinchOption> pending_pinch_;  // --pinch, after pending_run_
+  UndoMark undo_mark_;                        // the undo log after the last command
+  std::optional<std::string> undo_message_;  // "Undid … · N more steps", not shown yet
   bool in_command_ = false;          // run_line is executing a command line
   std::string command_problem_;      // first warning raised by that command line
   StatusKind command_problem_kind_ = StatusKind::warning;

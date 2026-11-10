@@ -24,6 +24,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
@@ -92,10 +93,21 @@ class Runtime {
   bool fonts_loaded_ = false;
 };
 
+/// A widget's bounds in its window, in logical units (after the last layout).
+struct Rect {
+  float x = 0.0F;
+  float y = 0.0F;
+  float width = 0.0F;
+  float height = 0.0F;
+};
+
 /// Base of the widget wrappers: a Raven handle plus common properties.
 class Widget {
  public:
   [[nodiscard]] WidgetId id() const noexcept { return id_; }
+  [[nodiscard]] Rect rect() const;
+  /// True while this widget has the window's keyboard focus.
+  [[nodiscard]] bool has_focus() const;
   void set_accessible_name(std::string_view name);
   void set_tooltip(std::string_view text);
   void set_font(WidgetId font);
@@ -121,6 +133,8 @@ class Box : public Widget {
   static Box horizontal();
   /// Adds a child; fill > 0 makes it take that share of the free space.
   void add(const Widget& child, float fill = 0.0F);
+  /// Puts `child` at `index` (moving it when it is already a child).
+  void insert(const Widget& child, int index, float fill = 0.0F);
   /// Adds a child centered across the box's direction.
   void add_centered(const Widget& child);
   void clear();
@@ -244,6 +258,9 @@ class Painted : public Widget {
   Painted& operator=(const Painted&) = delete;
 
   void on_click(std::function<void(float x, float y)> callback);
+  /// A right click (or the Menu key / Shift-F10 while focused): `callback`
+  /// gets the window point where a context menu opens.
+  void on_context(std::function<void(float x, float y)> callback);
   void set_role(Role role);
   void set_accessible_description(std::string_view text);
   [[nodiscard]] bool hovered() const;
@@ -264,9 +281,50 @@ class ListPanel : public Widget {
   void clear();
   /// Scrolls so that the last item is visible (log-style panels).
   void scroll_to_end();
+  /// `callback(index)` when the user picks a row (click, arrow keys, Enter).
+  void on_select(std::function<void(int)> callback);
+  /// Unselects every row (so the same row can be picked again).
+  void clear_selection();
 
  private:
   using Widget::Widget;
+  struct Select;
+  std::shared_ptr<Select> select_;  // shared by copies of the handle
+};
+
+class Window;
+
+/// One item of a PopupMenu.
+struct MenuItem {
+  std::string label;
+  bool checked = false;
+  bool enabled = true;
+  bool separator_before = false;
+};
+
+/// A Raven menu opened as a popover at a point of the window (command
+/// history and completion, undo history, layer row and orientation menus).
+/// Raven 0.2.2 has no anchored popover widget: its menus are the in-window
+/// popups that take the keyboard (arrows, Return, Escape) and that screen
+/// readers can press.
+class PopupMenu {
+ public:
+  PopupMenu();
+  ~PopupMenu();
+  PopupMenu(const PopupMenu&) = delete;
+  PopupMenu& operator=(const PopupMenu&) = delete;
+
+  /// Replaces the items; `on_choose(index)` runs when item `index` is chosen.
+  void set_items(std::string_view title, const std::vector<MenuItem>& items,
+                 std::function<void(std::size_t)> on_choose);
+  /// Opens the menu with its top-left corner at (x, y) of `window`
+  /// (logical units; Raven keeps it inside the window).
+  void open(const Window& window, float x, float y);
+  [[nodiscard]] std::size_t size() const noexcept;
+
+ private:
+  struct State;
+  std::unique_ptr<State> state_;
 };
 
 /// The single-line command input. Enter commits; Up/Down ask for history.
@@ -340,6 +398,15 @@ struct FrameStats {
 class Window {
  public:
   Window(std::string_view title, int width, int height);
+  [[nodiscard]] WidgetId id() const noexcept { return id_; }
+  /// Sees every key before the widgets (Raven's window event hook): drops
+  /// AppKit's function-key text, retypes a held key's text on macOS
+  /// (TextKeyFilter), and offers each key press to `shortcut(key,
+  /// modifiers)` (Raven key codes, kMod* bits), which consumes it by
+  /// returning true (F6 focus cycling).
+  void install_key_hook(std::function<bool(int, std::uint8_t)> shortcut);
+  /// Closes every open menu and popup.
+  void close_popups();
   ~Window();
   Window(const Window&) = delete;
   Window& operator=(const Window&) = delete;
@@ -379,6 +446,8 @@ class Window {
 
  private:
   WidgetId id_ = kNoWidget;
+  struct KeyHook;
+  std::unique_ptr<KeyHook> key_hook_;
 };
 
 }  // namespace hefesto::shell::ui

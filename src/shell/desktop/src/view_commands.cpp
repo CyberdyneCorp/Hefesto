@@ -54,13 +54,33 @@ std::optional<PanelId> panel_id(const std::string& word) {
   if (word == "layers") return PanelId::layers;
   if (word == "inspector") return PanelId::inspector;
   if (word == "console") return PanelId::console;
+  if (word == "keys") return PanelId::keys;
   return std::nullopt;
 }
 
+constexpr std::string_view kPanelUsage =
+    "panel layers|inspector|console|keys ?show|hide|toggle? | panel layers|inspector dock left|right | panel reset";
+
+cmd::CommandResult dock_panel(const ViewActions& actions, PanelId id, const cmd::Invocation& inv) {
+  const bool valid = inv.args.size() == 3 && (inv.args[2] == "left" || inv.args[2] == "right");
+  if (!valid || !actions.dock) return usage(kPanelUsage);
+  if (!actions.dock(id, inv.args[2] == "left" ? DockSide::left : DockSide::right)) {
+    return cmd::CommandResult::failure(
+        diag::make(diag::codes::kCmdUsage, "panel " + inv.args[0] + " cannot be docked (layers and inspector can)"));
+  }
+  return cmd::CommandResult::success("docked " + inv.args[2]);
+}
+
 cmd::CommandResult panel(const ViewActions& actions, const cmd::Invocation& inv) {
-  constexpr std::string_view kUsage = "panel layers|inspector|console ?show|hide|toggle?";
-  const auto id = !inv.args.empty() && inv.args.size() <= 2 ? panel_id(inv.args[0]) : std::nullopt;
+  constexpr std::string_view kUsage = kPanelUsage;
+  if (inv.args.size() == 1 && inv.args[0] == "reset" && actions.reset) {
+    actions.reset();
+    return cmd::CommandResult::success("default layout");
+  }
+  const auto id = !inv.args.empty() && inv.args.size() <= 3 ? panel_id(inv.args[0]) : std::nullopt;
   if (!id || !actions.panel || !actions.panel_shown) return usage(kUsage);
+  if (inv.args.size() >= 2 && inv.args[1] == "dock") return dock_panel(actions, *id, inv);
+  if (inv.args.size() == 3) return usage(kUsage);
   if (inv.args.size() == 1) return cmd::CommandResult::success(actions.panel_shown(*id) ? "shown" : "hidden");
   const std::string& action = inv.args[1];
   std::optional<bool> show;
@@ -101,8 +121,8 @@ bool register_view_commands(cmd::CommandRegistry& registry, const ViewActions& a
        ok;
   if (actions.panel) {
     ok = !registry
-              .add({"panel", "panel layers|inspector|console ?show|hide|toggle?",
-                    "Shows, hides (collapses) or toggles a panel of the main window.", bind(panel, actions)})
+              .add({"panel", std::string(kPanelUsage),
+                    "Shows, hides (collapses), toggles or docks a panel of the main window.", bind(panel, actions)})
               .has_value() &&
          ok;
   }

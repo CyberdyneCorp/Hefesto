@@ -16,6 +16,8 @@
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/ui/bindings.hpp"
+#include "hefesto/ui/history.hpp"
+#include "hefesto/ui/state.hpp"
 #include "hefesto/version.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
 
@@ -134,19 +136,18 @@ void CoreSession::end_crash_session() {
   cell::end_crash_session(editor_, services_.files());
 }
 
-namespace {
-
-std::size_t color_window_count(const cmd::Dispatcher& dispatcher) {
-  const editor::EditorState* editor = dispatcher.editor();
-  return editor != nullptr ? editor->color_map.windows.size() : 0;
+TypedLine expand_typed_line(editor::EditorState& editor, std::string_view line) {
+  ui::CommandHistory& history = ui::state(editor).history;
+  auto expanded = history.expand(line);
+  if (!expanded.ok()) {
+    return TypedLine{std::nullopt, {}, expanded.error()};
+  }
+  history.add(expanded.value().line);
+  if (expanded.value().print_only) {
+    return TypedLine{std::nullopt, expanded.value().line, std::nullopt};
+  }
+  return TypedLine{std::move(expanded.value().line), {}, std::nullopt};
 }
-
-// The desktop has no color window screen yet (task 10.6): a command that
-// opens one keeps its core state but says the window is not shown.
-constexpr std::string_view kColorWindowNotShown =
-    "The color window is not available in the desktop app yet; its commands still work from the command bar.";
-
-}  // namespace
 
 CommandOutcome CoreCommandSink::submit(std::string_view line) {
   const cmd::ParsedScript parsed = cmd::parse_script(line, kSourceName);
@@ -160,13 +161,8 @@ CommandOutcome CoreCommandSink::submit(std::string_view line) {
                                {command.words.begin() + 1, command.words.end()},
                                cmd::Origin::gui,
                                std::nullopt};
-    const std::size_t color_windows = color_window_count(dispatcher_);
     const cmd::CommandResult result = dispatcher_.execute(invocation);
     append_diagnostics(outcome, result.diagnostics);
-    if (color_window_count(dispatcher_) > color_windows) {
-      outcome.diagnostics.emplace_back(kColorWindowNotShown);
-      outcome.printed += (outcome.printed.empty() ? "" : "\n") + std::string(kColorWindowNotShown);
-    }
     for (const diag::Diagnostic& d : result.diagnostics) {
       if (d.severity == diag::Severity::info) outcome.printed += (outcome.printed.empty() ? "" : "\n") + d.text;
     }

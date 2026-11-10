@@ -111,6 +111,9 @@ struct PromptDialog {
 struct InspectorAction {
   std::string label;
   std::string command;
+  /// true: the button opens a menu of choices instead (`orient`: the eight
+  /// orientations, the current one checked).
+  bool menu = false;
 };
 
 /// What the inspector shows for the selection (DESIGN board M2-Selection):

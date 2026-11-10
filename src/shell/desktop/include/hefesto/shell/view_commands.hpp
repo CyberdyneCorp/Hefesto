@@ -7,9 +7,13 @@
 // command API"):
 //   theme dark|light     switch the UI theme
 //   pan <dx> <dy>        move the view by framebuffer pixels
-//   panel layers|inspector|console ?show|hide|toggle?
-//                        show, hide (collapse) or toggle a side panel; with
-//                        no action it reports "shown" or "hidden"
+//   panel layers|inspector|console|keys ?show|hide|toggle?
+//                        show, hide (collapse) or toggle a panel (keys: the
+//                        key-binding sheet); with no action it reports
+//                        "shown" or "hidden"
+//   panel layers|inspector dock left|right
+//                        dock a side panel on the left or right of the canvas
+//   panel reset          the default (M1) arrangement, every side panel shown
 //   palette paint ?LAYER|none?
 //                        set (or report) the layer palette's paint layer,
 //                        which the Paint tool and "Paint" / "Erase" use
@@ -32,7 +36,8 @@
 namespace hefesto::shell {
 
 /// The collapsible panels of the main window.
-enum class PanelId : std::uint8_t { layers, inspector, console };
+enum class PanelId : std::uint8_t { layers, inspector, console, keys };
+enum class DockSide : std::uint8_t { left, right };
 
 struct ViewActions {
   std::function<void(ThemeMode)> theme;
@@ -42,6 +47,11 @@ struct ViewActions {
   std::function<bool(PanelId, std::optional<bool>)> panel;
   /// Whether a panel is shown.
   std::function<bool(PanelId)> panel_shown;
+  /// Docks the layers or inspector panel on a side of the canvas; false for
+  /// a panel that cannot dock (console, keys). Unset: `dock` is refused.
+  std::function<bool(PanelId, DockSide)> dock;
+  /// `panel reset`: the default arrangement. Unset: refused.
+  std::function<void()> reset;
   /// Sets the paint layer (an empty name clears it) and returns it; with
   /// std::nullopt it only returns it. A layer the technology does not know
   /// is refused with an empty optional. Unset: `palette` is not registered.

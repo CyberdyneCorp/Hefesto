@@ -229,11 +229,34 @@ The run used `--run "expand all" --bench-frames 300` at 1440 × 900 on the Retin
 - the upstream reports for the key-text bug and the custom-widget accessibility gap;
 - dock/undock after 10.7.
 
+## M2 round 3 (SHELL, 2026-11-10): rerun on the current build and Raven issues
+
+**Rerun with real OS events on the current build** (Debug `build/macos-bench` of `m2-round3`, Apple M3 Pro, the same CGEvent helper with a new `keyhold` verb that posts auto-repeat key downs as AppKit does; window captures and AX focus per step under the session scratchpad `m3-shell/live/`):
+
+- Command bar: `echo abc`, ← ←, `X`, then Home, End, Page Up, Page Down and F1 ran `echo aXbc`: the caret moved and no U+F7xx character was inserted.
+- A held `k` (one press, eight auto-repeats) typed nine `k`s.
+- ^R in the command bar opened the history popover; Tab on `paint m` opened the completion popover (119 sky130A matches, the first 12 listed); a right click on Undo opened the undo history; a right click on a layer row opened its menu; Escape closed each.
+- F6 moved the focus canvas → Console → Command → Box tool → Filter layers → canvas (the Inspector is skipped when it has no action), Shift-F6 back.
+
+Both text-field bugs are fixed on Hefesto's side without patching Raven (the repository has no patch mechanism for pinned dependencies, and design.md R1 says to propose fixes upstream): `Window::install_key_hook` (Raven's public `Rwindow_set_event_hook`) runs every event through `shell::TextKeyFilter`, which drops text in U+F700-U+F8FF and, on Cocoa only, retypes a held key's text with `Rwindow_inject_text` on each repeat while a text field has the focus. Regression tests: `tests/unit/shell/text_key_filter_test.cpp`. The workaround can go once Raven fixes the backend.
+
+**Issues to file upstream** (texts ready to paste into https://github.com/oscar-soirey/Raven/issues; not filed from here):
+
+1. *Cocoa: function keys insert private-use characters in text inputs.* `src/platform/cocoa/cocoa_platform.m`, `keyDown:` passes `[event characters]` to `rvn_cocoa_emit_text`, which emits every UTF-16 unit as `RVN_PEVENT_TEXT`. For the arrow keys, Home, End, Page Up/Down, Delete-forward and F1-F35, AppKit's characters are in the function-key range U+F700-U+F8FF (`NSUpArrowFunctionKey` ...), so a `TextInput` moves its caret *and* inserts a glyph-less character (e.g. ← inserts U+F702). Expected: no text event for those keys. Proposed fix: skip U+F700-U+F8FF in `rvn_cocoa_emit_text` (C0 controls and DEL are already dropped by `rvn_textedit_input`). Repro: any `TextInput`, type `abc`, press ←: the text becomes `abc` + U+F702. Found at v0.2.2 (4a05d6f).
+2. *Cocoa: held keys do not auto-repeat text.* The same `keyDown:` emits text only `if (!e.repeat)`, so holding a letter in a `TextInput` types it once (X11 and Wayland repeat it). Expected: each auto-repeat inserts the text again, as `NSTextView` does. Proposed fix: emit the text for repeats too (the key event already carries `repeat`). Repro: hold `k` in a `TextInput`: one `k`.
+3. *Accessibility: custom widgets cannot be pressed and have no checked state.* `R_WIDGET_CUSTOM` widgets that handle clicks are exposed to NSAccessibility without `AXPress`, and there is no API for a custom widget's invoke action or toggle state; only built-in buttons, checkboxes, menu items and list/tree items are invokable. VoiceOver's VO-Space therefore cannot activate an application's painted controls (Hefesto's tool rail, layer rows, top-bar buttons). Request: `Rwidget_set_accessible_action(widget, callback)` (or treat a focusable custom widget that consumes Enter/Space as pressable) and `Rwidget_set_accessible_checked(widget, state)`.
+4. *An anchored popover widget.* Applications need a popover anchored to a widget (completion list under a text input, history list, a "label" editor on a canvas) that keeps the anchor's focus and can host arbitrary content (a filter field plus a list). Today only menus (`Rmenu_open`) and dialogs can float. Hefesto uses context menus for its popovers, which works for keyboard and screen readers but cannot show a filter field or two-column rows.
+5. *Documentation: `Rslot_set_fill(child, 0)` makes a zero-wide slot.* A coefficient of 0 keeps the slot a fill slot with no share, so a fixed-width child disappears; `Rslot_set_auto` is the way back. Worth one line in `raven_widget.h`.
+
+Correction to the M2 round-2 notes: `RListView` does have row activation (`Rlist_view_set_activated_callback`, double click or Enter) and selection callbacks; the Feedback and Keys tabs now use the selection callback, so that gap is closed.
+
+**Docking:** Raven 0.2.2 has a dock area (`Rdock_area_*`), but the shell keeps its own fixed Desktop-Layout boxes; `panel layers|inspector dock left|right` moves a side panel to either side of the canvas and `panel reset` restores the M1 arrangement. Dragging a panel out to float (board M2-Panels) needs the shell to move onto `Rdock_area`; not done in M2.
+
 ## Checklist to close the decision
 
 - [ ] Run `hefesto-bench-canvas` and `hefesto --bench-frames 600 --rects 10000000` on an M1 Mac, and commit the JSON (criterion 1).
 - [ ] Run the same on Linux x86_64 with a mid-range discrete GPU, under X11 and under Wayland (criterion 1).
-- [ ] Drive the live window: drag-pan, wheel and trackpad zoom, keys after a click, a live resize with the canvas animating, and docking or undocking the Layout panel; check for flicker (criterion 2). Most of this was done on macOS in the M2 10.1 checks above; still open are the arrow-key text bug, docking, and Linux.
+- [ ] Drive the live window: drag-pan, wheel and trackpad zoom, keys after a click, a live resize with the canvas animating, and docking or undocking the Layout panel; check for flicker (criterion 2). Most of this was done on macOS in the M2 10.1 checks above; the arrow-key text and key-repeat bugs are worked around on Hefesto's side (M2 round 3); still open are floating panels and Linux.
 - [x] Bundle Inter and JetBrains Mono (with their licenses) and load them through the bundled path (`--asset-dir`) (criterion 3, M1).
 - [ ] Resolve the embedded-Roboto conflict with `hefesto-licensing` (section 3): a Raven build option or pinned patch without embedded fonts, or a spec exception (criterion 3).
 - [ ] VoiceOver on macOS; Orca on Linux under X11 and Wayland (criterion 4). The macOS AX tree was checked in the M2 10.1 checks above; it has gaps, and neither a VoiceOver run nor Orca has been done.
