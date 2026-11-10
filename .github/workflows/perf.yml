@@ -1,0 +1,199 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# DRC performance (openspec/changes/m3-drc design D16, task 11.3; capability
+# hefesto-performance "Edit latency" and "Batch throughput relative to Magic").
+#
+#   drc-bench    One runner, one job: hefesto-cli (Release) and Magic 8.3.694 from the
+#                pinned reference image (tools/golden/container/Containerfile) run the same
+#                `drc check; drc catchup` scripts, single-threaded, over the 100 x 100
+#                sky130_fd_sc_hd__dfxtp_1 array and the all-cells block (bench/drc/drc_bench.py).
+#                Fails when Hefesto is slower than Magic beyond the noise band (--max-ratio) or
+#                the error counts differ. The background start latency benchmark (hidden test
+#                "[benchmark]" of hefesto_drc_engine_tests, target <= 100 ms) runs in the same
+#                job. Results: the job summary and the artifact "drc-bench"; they are recorded
+#                in docs/design/m3-ui-conformance.md "Performance".
+#   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
+#                Release build, timed. They also replay on every CI leg (ci.yml, golden replay).
+
+name: Performance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - src/core/include/hefesto/drc/**
+      - src/core/src/drc/**
+      - src/core/src/db/**
+      - bench/drc/**
+      - tests/unit/drc/engine/latency_bench_test.cpp
+      - tests/golden/DRC/cases/DRC-STD-*/**
+      - tools/golden/container/**
+      - .github/workflows/perf.yml
+  schedule:
+    - cron: "41 3 * * 2"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_VERSION: "3.31.6"
+  NINJA_VERSION: "1.11.1.4"
+  PYTHON_VERSION: "3.12"
+  CC: gcc-14
+  CXX: g++-14
+
+jobs:
+  drc-bench:
+    name: DRC throughput vs Magic and background start latency
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja and the OpenSSL headers for libcurl
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli and the engine benchmark (Release)
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli hefesto_drc_engine_tests
+
+      - name: Fetch or verify sky130
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Runner
+        run: |
+          {
+            echo "## DRC performance"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Background start latency (100 x 100 dfxtp_1 array)
+        run: |
+          build/linux-release/tests/unit/drc/engine/hefesto_drc_engine_tests \
+            "Background start latency after a paint on the 100 x 100 dfxtp_1 array" 2>&1 | tee latency.txt
+          {
+            echo
+            echo '```'
+            grep -A2 'background start latency' latency.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: drc check; drc catchup against Magic (same runner)
+        run: |
+          status=0
+          python3 bench/drc/drc_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --magic-image hefesto-golden:ci --repeat 3 --json drc-bench.json | tee drc-bench.txt || status=$?
+          {
+            echo
+            echo '```'
+            cat drc-bench.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drc-bench
+          path: |
+            drc-bench.json
+            latency.txt
+          if-no-files-found: ignore
+          retention-days: 90
+
+  golden-slow:
+    name: golden-slow corpus (Release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja and the OpenSSL headers for libcurl
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Restore gf180mcu
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_key }}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli (Release)
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify sky130 and gf180mcu
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 gf180mcu --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Run the golden-slow cases
+        run: |
+          start=$(date +%s)
+          ctest --test-dir build/linux-release -L golden-slow --output-on-failure --no-tests=error
+          echo "golden-slow: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"

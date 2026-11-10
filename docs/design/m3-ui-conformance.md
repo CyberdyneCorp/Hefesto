@@ -74,12 +74,18 @@ To be filled by SHELL: accessible names of the chip, browser rows and actions; k
 
 Owner of this section: ENGINE (task 6.8, design D16).
 
+Measured 2026-11-10 on an Apple M3 Pro (12 cores, macOS 27), branch `m3-round2`, Release builds (`-Werror`), sky130A at the pinned PDK version, `sky130A.tech` default DRC style with `scalegrid 1 2` and `drc euclidean on`. Magic 8.3.694 (`fc5daa9e`, Tcl build without OpenGL/Cairo, as in `tools/golden/container/Containerfile`) runs `-dnull -noconsole` in a Linux arm64 container on the same machine. The machine was otherwise idle for the recorded runs (load average below 8); runs taken while other builds loaded it varied by up to 2x and are not recorded.
+
 | Measurement | Target | Hefesto | Magic | Notes |
 |---|---|---|---|---|
-| Background start latency after a paint (100 × 100 `sky130_fd_sc_hd__dfxtp_1` array) | ≤ 100 ms | | — | |
-| `drc check; drc catchup`, dfxtp_1 array, single-threaded | no slower than Magic | | | |
-| `drc check; drc catchup`, all-cells block, single-threaded | no slower than Magic | | | |
+| Background start latency after a paint (100 × 100 `sky130_fd_sc_hd__dfxtp_1` array) | ≤ 100 ms | median 1.6 ms, max 3.6 ms (macOS); median 1.9 ms, max 5.4 ms (Linux arm64 container, GCC 14) | — | Met. From the end of the `paint` command to the worker's first kernel call, 20 paints of 60 × 40 m1 spread over the array, the worker hosted by `drc::BackgroundHost` with real rules. The square is then committed in median 38 ms (max 65 ms). Hidden test `[benchmark]` in `tests/unit/drc/engine/latency_bench_test.cpp`. |
+| `drc check; drc catchup`, dfxtp_1 array (FIXED_BBOX pitch), single-threaded | no slower than Magic | 0.068 s | 0.069 s | Met (parity). 81 errors in both. |
+| `drc check; drc catchup`, all-cells block (441 cells in rows of 40000 units, abutting at FIXED_BBOX), single-threaded | no slower than Magic | 1.19 s | 1.16 s | Within the 10 % noise band of the CI job (+2.6 %). 1292 errors in both. |
 | Pan and zoom frame times while the worker checks the all-cells block | interactive (`hefesto-architecture` "Concurrency model") | | — | SHELL, task 9.1 |
+
+Method (`bench/drc/drc_bench.py`): the same command script runs through `hefesto-cli --magic -dnull -noconsole` and `magic -dnull -noconsole`; the DRC time is (min of the script with 4 passes of `drc check; drc catchup` − min of the script with 1 pass) / 3 over 5 runs each, which cancels process start, technology and cell loading and container file-system cost; the error counts (`drc list count total`) must agree. CI: `.github/workflows/perf.yml` runs both tools on one GitHub runner (Hefesto native, Magic in the pinned reference image) and fails beyond `--max-ratio 1.10` or on a count mismatch.
+
+Gap plan: the block is at parity, not ahead. If the CI job shows Hefesto outside the band on its runner, the next steps are a profile of the block run split into basic check, interaction flattening and commit time per square, then the parallel mode of D16 (independent squares on several workers).
 
 ## Remaining gaps (open items)
 
