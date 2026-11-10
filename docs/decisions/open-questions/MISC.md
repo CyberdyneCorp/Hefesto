@@ -69,27 +69,33 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-11: cifinput templayer hints look up the wrong key
 - Kind: bug
-- Magic behavior: When adding a templayer hint, the existing property is looked up under the bare layer name instead of `MASKHINTS_<name>`; normally not found, so a new region replaces any existing hint of the same name instead of adding to it.
-- Evidence: cif/CIFrdcl.c:736-753
+- Status: approved (recommendation drafted and approved 2026-11-10)
+- Magic behavior: When adding a templayer hint, the existing property is looked up under the bare layer name instead of `MASKHINTS_<name>`; normally not found, so a new region replaces any existing hint of the same name instead of adding to it (and a property named exactly `<name>` is misused as a plane). See Q-MASK-308.
+- Evidence: cif/CIFrdcl.c:CIFPaintCurrent (:736-754)
 - Options: replicate | fix (look up `MASKHINTS_<name>` and union)
-- Recommendation: fix (union), the evident intent.
+- Recommendation: fix (union) everywhere, as drafted in Q-MASK-308.
 - Duplicate: tracked in Q-MASK-308, which is the canonical entry. Record the resolution there. (Consolidation audit, 2026-11-06.)
+- Resolution: fix (union) everywhere, as drafted in Q-MASK-308. Approved 2026-11-10.
 
 ### Q-MISC-12: `plane` property type keyword not accepted in .mag
 - Kind: quirk
-- Magic behavior: The `.mag` reader recognises only `string|integer|dimension|double`; a line starting with `plane` ends the properties section.
-- Evidence: database/DBio.c:3211-3240
-- Options: replicate | fix (accept `plane`)
-- Recommendation: replicate on read (never write `plane`).
+- Status: approved (recommendation drafted and approved 2026-11-10)
+- Magic behavior: `dbReadProperties` looks the type keyword up with `Lookup` in `string|integer|dimension|double` (unique prefix, case-insensitive: `str`, `STRING` are accepted). `plane` is missing from that table, so a `plane ...` line ends the properties section; the main reader then takes it for a use line and reports `Expected "use" line but saw: plane MASKHINTS_X ...` and `File <cell> contained format error`, keeping what was read so far (paint, earlier properties) and dropping the rest of the file. The switch's `case PROPERTY_TYPE_PLANE` (parse `MASKHINTS_*` as a hint, otherwise report `Plane type specified for property "<key>" but property is not a mask hint!`) is unreachable. Magic never writes `plane` (only `string` or `dimension`). Checked with Magic 8.3.694 (`plane`, `PLANE`, `str` lines).
+- Evidence: database/DBio.c:dbReadProperties (:3210-3243 type table and lookup, :3309-3320 dead `plane` case), database/DBio.c:dbCellReadDef (:852-857, :882-885, badfile at :1058-1062), database/DBio.c:dbReadUse ("Expected use line"), utils/lookup.c:Lookup
+- Options: replicate (format error, rest of file dropped) | fix (accept `plane` as the dead case intends) | replicate under magic-compat, fix with it off
+- Recommendation: replicate under magic-compat (X-2 tier 2: only files Magic never writes are affected, and the format error is observable); with magic-compat off accept `plane` exactly as the dead case does. Hefesto never writes `plane`.
+- Resolution: replicate under magic-compat (X-2 tier 2: only files Magic never writes are affected, and the format error is observable); with magic-compat off accept `plane` exactly as the dead case does. Hefesto never writes `plane`. Approved 2026-11-10.
 
 ### Q-MISC-13: DRC exception edge touching the hint boundary
-- Kind: ambiguity
-- Magic behavior: The test searches the hint plane with a zero-width rectangle at the edge; whether an edge lying exactly on a hint boundary counts as inside depends on the tile search's treatment of degenerate areas.
-- Evidence: drc/DRCbasic.c:935-946
-- Options: replicate (determine by golden test)
-- Recommendation: capture golden cases MISC-MH-08 and specify.
+- Kind: bug
+- Status: approved (recommendation drafted and approved 2026-11-10)
+- Magic behavior: The inside test passes the zero-width edge segment to `DBSrPaintArea`, whose contract excludes degenerate areas, so the result follows the tile walk, not geometry. Vertical edge at x over (b, t): inside iff the hint covers part of the unit column [x, x+1) × (b, t), so a hint touching from the right (or straddling) counts and one touching only from the left does not. Horizontal edge at y over (l, r): the walk starts at the hint-plane tile holding (l, y−1); if that tile's top is y the edge is outside, otherwise it is inside iff a hint tile covers part of the row [y−1, y) within (l, r). So a hint touching from above never counts, and whether a straddling hint counts depends on the strip decomposition: an L-shaped hint that fully covers the edge misses it when its strips break at y at x = l, and an unrelated hint far to the left with a corner at height y can break the start tile. Checked with Magic 8.3.694 (`width` under `exception X`, 2-unit wires; e.g. hint `5 -5 15 5` on bottom edge y=0, x 0..20: error; adding hint `-100 0 -90 10`: no error).
+- Evidence: drc/DRCbasic.c:drcTile (:921-957 vertical, :1381-1417 horizontal), database/DBtiles.c:DBSrPaintArea (start point (xbot, ytop−1), `while (TOP(tp) > rect->r_ybot)`), tiles/tile.h:GOTOPOINT
+- Options: replicate (emulate the walk on Magic's maximal-horizontal-strip hint plane) | fix (inside iff the closed hint region contains a positive-length part of the edge segment, i.e. the hint touches or straddles from either side)
+- Recommendation: replicate under magic-compat (X-2 tier 2: changes DRC results; needs the canonical strip decomposition), fix with it off; capture golden MISC-MH-08 with the cases above (left/right/above/below touch, L-shape, far corner).
 
 ## font-labels
+- Resolution: replicate under magic-compat (X-2 tier 2: changes DRC results; needs the canonical strip decomposition), fix with it off; capture golden MISC-MH-08 with the cases above (left/right/above/below touch, L-shape, far corner). Approved 2026-11-10.
 
 ### Q-MISC-20: Bounding-box rounding tests 7 bits instead of 3
 - Kind: bug
