@@ -1,0 +1,13 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Window command debugging set to TRUE
+Window command debugging set to FALSE
+file descriptor 0: open  (type: 'unknown', inode number 153643)
+file descriptor 1: open  (type: 'unknown', inode number 153644)
+file descriptor 2: open  (type: 'unknown', inode number 153645)
+file descriptor 3: open  (type: 'regular', inode number 7602185)
+4 open files, 16 unopened file descriptors left

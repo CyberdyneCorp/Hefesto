@@ -1,0 +1,69 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 10.000  ( 0.000,  0.000), ( 10.000,  10.000)  100.000   
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 5.000,  5.000), ( 5.000,  5.000)
+lambda:        0 x 0       (     5,  5    ), (     5,  5    )
+
+Moving label "L" from space to metal1 in cell a.
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 10.000  ( 0.000,  0.000), ( 10.000,  10.000)  100.000   
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+
+
+metal1 {{L metal1 {}}} {}
+
+metal1 {{L metal1 {}}} {}
+Selection includes subcell labels
+
+Selection commands are:
+    select [more | less | nocycle] [layers] [at x y]
+                                [de]select paint chunk/region/net under
+                                cursor, or [de]select subcell if cursor
+	                         over space
+    select [more | less] area [layers]     [de]select all info under box in layers
+    select [more | less] visible [layers]  [de]select all visible info under box in layers
+    select [more | less | top] cell [name] [de]select cell under cursor, or "name"
+    select [do | no] labels		 [do not] select subcell labels
+    select [more | less] intersection [layers]	[de]select intersection of layers
+    select clear                           clear selection
+    select flat				 flatten the contents of the selection
+    select help                            print this message
+    select keep                            copy the selection to the layout
+    select move                            move selection to a location in the layout
+    select pick                            delete selection from layout
+    select save file                       save selection on disk in file.mag
+    select feedback [style]		 copy selection to feedback
+    select bbox				 return the bounding box of the selection
+    select [more | less] box | chunk | region | net [layers]
+				 [de]select chunk/region/net specified by
+				 the lower left corner of the current box
+    select short name1 name2		 find shorting path between two labels
+
+metal1 {{L metal1 {}}} {}

@@ -1,0 +1,26 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, metal2=3,
+Cell a couldn't be read
+No such file or directory
+Cell sne couldn't be read
+No such file or directory
+Cell snw couldn't be read
+No such file or directory
+Cell sse couldn't be read
+No such file or directory
+Cell ssw couldn't be read
+No such file or directory
+Cell sn couldn't be read
+No such file or directory
+Cell se couldn't be read
+No such file or directory
+Cell ss couldn't be read
+No such file or directory
+Cell sw couldn't be read
+No such file or directory
+Cell scenter couldn't be read
+No such file or directory

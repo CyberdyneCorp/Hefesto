@@ -1,0 +1,12 @@
+magic
+tech tiny
+timestamp 1794285341
+<< checkpaint >>
+rect 0 0 33 10
+<< metal1 >>
+rect 3 0 13 10
+use c  c_0
+timestamp 1794285341
+transform 1 0 23 0 1 0
+box 0 0 10 10
+<< end >>

@@ -1,0 +1,503 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Cell c read from path input
+
+
+Global Commands
+---------------
+center [x y]		center window on the cursor or indicated coordinate
+closewindow [name]	close a window
+cursor			return magic coordinates of the cursor
+grow			blow a window up to full-screen size or back again
+help [pattern]		print out synopses for all commands valid
+			in the current window (or just those
+			containing pattern)
+imacro [char [string]] define or print an interactive macro called char
+logcommands [file [update]]
+			log all commands into a file
+macro [char [string]]  define or print a macro called char
+openwindow [cell][name]
+			open a new window with indicated name, bound to indicated cell
+over			move a window over (on top of) the rest
+pushbutton button act	push a mouse button
+quit			exit magic
+redo [count]		redo commands
+redraw			redraw the display
+reset			reset the display
+scroll dir [amount]	scroll the window
+setpoint [x y [WID]]	force to cursor (point) to x,y in window WID
+sleep seconds		sleep for a number of seconds
+specialopen [coords] type [args]
+			open a special window
+underneath		move a window underneath the rest
+undo [count]		undo commands
+updatedisplay [suspend|resume]
+			force display update, or suspend/resume updates
+version			print out version info
+view [get]              zoom window out so everything is visible
+windowborder [on|off]	toggle border drawing for new windows
+windowcaption [on|off]	toggle title caption for new windows
+windownames [all|type]	get name of current or all windows
+windowpositions [file]	print out window positions
+windowscrollbars [on|off]
+			toggle scroll bars for new windows
+xview               	zoom window out so everything is unexpanded
+zoom amount		zoom window by amount
+
+Layout Commands
+---------------
+addpath [path]		append to current search path
+antennacheck [path]	check for antenna violations
+archive write|read file
+			write or read the archive file "file".
+array xsize ysize	OR
+array xlo xhi ylo yhi
+			array everything in selection
+box [dir [amount]]	move box dist units in direction or (with
+			no arguments) show box size
+calma option		Calma GDS-II stream file processor; type
+			"calma help" for information on options
+cellname [list] children|parents|exists|self [name]	OR
+cellname [list] allcells|topcells
+			list cells by relationship to cell "name", or
+			the current selection if no name given.  "list"
+			returns result as a list. "exists + name" returns
+			true or false (also see command instance)
+channels		see channels (feedback) without doing routing
+cif option		CIF processor; type "cif help"
+			for information on options
+clockwise [deg]		rotate selection and box clockwise
+contact type		paint contact type on the intersection of its
+			residues
+copy [dir [amount]]	OR
+copy to x y		copy selection:  what used to be at box
+			lower-left will be copied at cursor location (or,
+			copy will appear amount units in dir from original);
+			second form will copy to location x y
+corner d1 d2 [layers]	make L-shaped wires inside box, filling
+			first in direction d1, then in d2
+crash save|recover [file]
+			recover the crash file "file", or the first
+			crash file discovered.
+crosshair x y | off	enable and move or disable the screen crosshair
+def [options]	DEF-format input; type "def help"
+			for information on options
+delete			delete everything in selection
+down			load selected cell into a window
+drc option		design rule checker; type "drc help"
+			for information on options
+drop layers		copy layers from edit cell into
+			subcells containing selected paint
+dump cell [child refPointC] [parent refPointP]
+			copy contents of cell into edit cell, so that
+			refPointC (or lower left) of cell is at refPointP
+			(or box lower-left); refPoints are either labels
+			or a pair of coordinates (e.g, 100 200)
+edit		use selected cell as new edit cell
+element option	add a generic drawing element to the layout
+erase [layers]|cursor		erase mask information
+expand [toggle]		expand everything under box, or toggle
+			expanded/unexpanded cells in selection
+ext option		OR
+ext2sim [args]	convert extracted file(s) to a sim format file; type
+			"ext2sim help" for information on options
+ext2spice [args]	convert extracted file(s) to a SPICE format file; type
+			"ext2spice help" for information on options
+extract option		circuit extractor; type "extract help"
+			for information on options
+extresist [args]	patch .ext file with resistance info
+exttosim [args]	convert extracted file(s) to a sim format file; type
+			"exttosim help" for information on options
+exttospice [args]	convert extracted file(s) to a SPICE format file; type
+			"exttospice help" for information on options
+feedback option		find out about problems; type "feedback help"
+			for information on options
+fill dir [layers]	fill layers from one side of box to other
+findbox [zoom]		center the window on the box and optionally zoom in
+findlabel lab		set the box to the location of this label
+flatten destname	flatten edit cell into cell destname
+flush [cellname]	flush changes to cellname (edit cell default)
+garoute [cmd [args]]	gate-array router
+gds option		alias for the "calma" command
+get	OR
+getcell cell [child refPointC] [parent refPointP]
+			get cell as a subcell of the edit cell, so that
+			refPointC (or lower left) of cell is at refPointP
+			(or box lower-left); refPoints are either labels
+			or a pair of coordinates (e.g, 100 200)
+getnode option		get node names of all selected paint
+goto nodename		goto the node named nodename
+grid [xSpacing [ySpacing [xOrigin yOrigin]]]
+			toggle grid on/off (and set parameters)
+id	OR
+identify use_id		set the use identifier of the selected cell
+instance [list] children|parents|exists|self [name]	OR
+instance [list] allcells|topcells
+			List cells by relationship to cell "name", or
+			the current selection if no name given.  "list"
+			returns result as a list. "exists + name" returns
+			true or false (also see command cellname)
+iroute [cmd [args]]	do interactive point to point route
+label str [pos [layer]]
+			place a label
+lef [options]	LEF-format input/output; type "lef help"
+			for information on options
+load [cellname]	load a cell into a window
+locking [enable|disable]	enable or disable file locking
+move [dir [amount]]	OR
+move to x y		move box and selection, either by amount
+			in dir, or pick up by box lower-left and put
+			down at cursor position; second form will
+			put box at location x y
+netlist option		netlist operation; type "netlist help"
+			for information on options
+orient [orientation]		orient selection and box
+paint layers|cursor		paint mask information
+path [search|cell|sys] [[+]path]
+			set or print search paths
+plot type [args]	hardcopy plotting; type "plot help"
+			for information on types and args
+plow option [args]	stretching and compaction; type "plow help"
+			for information on options
+polygon type x1 y1 x2 y2 [x3 y3. . .] xn yn
+			draw a polygon from a list of point pairs
+port [index] [direction...]
+			declare a label to be a subcircuit port
+property [name] [value]
+			add a property (string) to the edit cell
+random [seed [value]]		generate random number or set random seed
+rotate [+/-][deg]	rotate selection and box (counter)clockwise
+route			route the current cell
+save [filename]		save edit cell on disk
+scalegrid a b		scale magic units vs. lambda by a / b
+see [no] layers|allSame	change what's displayed in the window
+select [option]		change selection; type "select help"
+			for information on options
+setlabel [option [value]]	place a label
+shell [command]		execute a command in a subshell
+sideways		flip selection and box sideways
+snap [internal|lambda|user]
+			cause box to snap to the selected grid when moved
+			by the cursor
+spliterase dir [layer]	erase layers from diagonal corner dir of the
+			edit box
+splitpaint dir layer [layer2]
+			split box diagonally with layer in corner dir and
+			layer2 in the opposite corner (default layer2 is space)
+straighten direction	straighten jogs by pulling in direction
+stretch [dir [amount]]	stretch box and selection
+tech option	technology handling; type "tech help"
+			for information on options
+unexpand		unexpand subcells under box
+units [type]		set type of units parsed and displayed
+upsidedown		flip selection and box upside down
+what			print out information about what's selected
+wire option [args]	wiring-style user interface; type
+			"wire help" for information on options
+writeall [force]	write out all modified cells to disk
+xload [cellname]	load a cell into a window unexpanded
+xor destname		flatten current top level cell into destname
+			and xor with existing contents
+
+
+Global Commands
+---------------
+center [x y]		center window on the cursor or indicated coordinate
+closewindow [name]	close a window
+grow			blow a window up to full-screen size or back again
+help [pattern]		print out synopses for all commands valid
+			in the current window (or just those
+			containing pattern)
+openwindow [cell][name]
+			open a new window with indicated name, bound to indicated cell
+over			move a window over (on top of) the rest
+scroll dir [amount]	scroll the window
+setpoint [x y [WID]]	force to cursor (point) to x,y in window WID
+specialopen [coords] type [args]
+			open a special window
+underneath		move a window underneath the rest
+view [get]              zoom window out so everything is visible
+windowborder [on|off]	toggle border drawing for new windows
+windowcaption [on|off]	toggle title caption for new windows
+windownames [all|type]	get name of current or all windows
+windowpositions [file]	print out window positions
+windowscrollbars [on|off]
+			toggle scroll bars for new windows
+xview               	zoom window out so everything is unexpanded
+zoom amount		zoom window by amount
+
+Layout Commands
+---------------
+down			load selected cell into a window
+findbox [zoom]		center the window on the box and optionally zoom in
+load [cellname]	load a cell into a window
+see [no] layers|allSame	change what's displayed in the window
+xload [cellname]	load a cell into a window unexpanded
+
+
+Wizard Global Commands
+----------------------
+*bypass command	run command independently of the command line
+*crash			cause a core dump
+*files			print out currently open files
+*grstats		print out stats on graphics
+*pause	[args]		print args and wait for <cr>
+*winddebug		set debugging mode
+*winddump		print out debugging info
+
+Wizard Layout Commands
+----------------------
+*coord			show coordinates of various things
+*extract [args]	debug the circuit extractor
+*garoute [cmd [args]]	debug the gate-array router
+*groute [cmd [args]]	debug the global router
+*iroute [cmd [args]]	debug the interactive router
+*mzroute [cmd [args]]	debug the maze router
+*plow cmd [args]	debug plowing
+*psearch plane count	invoke point search over box area
+*seeflags [flag]	display channel flags over channel
+*showmem [file]	print internal memory usage
+*showtech [file]	print internal technology tables
+*tilestats [file]	print statistics on tile utilization
+*tsearch plane count	invoke area search over box area
+*watch [plane]		enable verbose tile plane redisplay
+
+
+
+Global Commands
+---------------
+center [x y]		center window on the cursor or indicated coordinate
+closewindow [name]	close a window
+cursor			return magic coordinates of the cursor
+grow			blow a window up to full-screen size or back again
+help [pattern]		print out synopses for all commands valid
+			in the current window (or just those
+			containing pattern)
+imacro [char [string]] define or print an interactive macro called char
+logcommands [file [update]]
+			log all commands into a file
+macro [char [string]]  define or print a macro called char
+openwindow [cell][name]
+			open a new window with indicated name, bound to indicated cell
+over			move a window over (on top of) the rest
+pushbutton button act	push a mouse button
+quit			exit magic
+redo [count]		redo commands
+redraw			redraw the display
+reset			reset the display
+scroll dir [amount]	scroll the window
+setpoint [x y [WID]]	force to cursor (point) to x,y in window WID
+sleep seconds		sleep for a number of seconds
+specialopen [coords] type [args]
+			open a special window
+underneath		move a window underneath the rest
+undo [count]		undo commands
+updatedisplay [suspend|resume]
+			force display update, or suspend/resume updates
+version			print out version info
+view [get]              zoom window out so everything is visible
+windowborder [on|off]	toggle border drawing for new windows
+windowcaption [on|off]	toggle title caption for new windows
+windownames [all|type]	get name of current or all windows
+windowpositions [file]	print out window positions
+windowscrollbars [on|off]
+			toggle scroll bars for new windows
+xview               	zoom window out so everything is unexpanded
+zoom amount		zoom window by amount
+
+Layout Commands
+---------------
+addpath [path]		append to current search path
+antennacheck [path]	check for antenna violations
+archive write|read file
+			write or read the archive file "file".
+array xsize ysize	OR
+array xlo xhi ylo yhi
+			array everything in selection
+box [dir [amount]]	move box dist units in direction or (with
+			no arguments) show box size
+calma option		Calma GDS-II stream file processor; type
+			"calma help" for information on options
+cellname [list] children|parents|exists|self [name]	OR
+cellname [list] allcells|topcells
+			list cells by relationship to cell "name", or
+			the current selection if no name given.  "list"
+			returns result as a list. "exists + name" returns
+			true or false (also see command instance)
+channels		see channels (feedback) without doing routing
+cif option		CIF processor; type "cif help"
+			for information on options
+clockwise [deg]		rotate selection and box clockwise
+contact type		paint contact type on the intersection of its
+			residues
+copy [dir [amount]]	OR
+copy to x y		copy selection:  what used to be at box
+			lower-left will be copied at cursor location (or,
+			copy will appear amount units in dir from original);
+			second form will copy to location x y
+corner d1 d2 [layers]	make L-shaped wires inside box, filling
+			first in direction d1, then in d2
+crash save|recover [file]
+			recover the crash file "file", or the first
+			crash file discovered.
+crosshair x y | off	enable and move or disable the screen crosshair
+def [options]	DEF-format input; type "def help"
+			for information on options
+delete			delete everything in selection
+down			load selected cell into a window
+drc option		design rule checker; type "drc help"
+			for information on options
+drop layers		copy layers from edit cell into
+			subcells containing selected paint
+dump cell [child refPointC] [parent refPointP]
+			copy contents of cell into edit cell, so that
+			refPointC (or lower left) of cell is at refPointP
+			(or box lower-left); refPoints are either labels
+			or a pair of coordinates (e.g, 100 200)
+edit		use selected cell as new edit cell
+element option	add a generic drawing element to the layout
+erase [layers]|cursor		erase mask information
+expand [toggle]		expand everything under box, or toggle
+			expanded/unexpanded cells in selection
+ext option		OR
+ext2sim [args]	convert extracted file(s) to a sim format file; type
+			"ext2sim help" for information on options
+ext2spice [args]	convert extracted file(s) to a SPICE format file; type
+			"ext2spice help" for information on options
+extract option		circuit extractor; type "extract help"
+			for information on options
+extresist [args]	patch .ext file with resistance info
+exttosim [args]	convert extracted file(s) to a sim format file; type
+			"exttosim help" for information on options
+exttospice [args]	convert extracted file(s) to a SPICE format file; type
+			"exttospice help" for information on options
+feedback option		find out about problems; type "feedback help"
+			for information on options
+fill dir [layers]	fill layers from one side of box to other
+findbox [zoom]		center the window on the box and optionally zoom in
+findlabel lab		set the box to the location of this label
+flatten destname	flatten edit cell into cell destname
+flush [cellname]	flush changes to cellname (edit cell default)
+garoute [cmd [args]]	gate-array router
+gds option		alias for the "calma" command
+get	OR
+getcell cell [child refPointC] [parent refPointP]
+			get cell as a subcell of the edit cell, so that
+			refPointC (or lower left) of cell is at refPointP
+			(or box lower-left); refPoints are either labels
+			or a pair of coordinates (e.g, 100 200)
+getnode option		get node names of all selected paint
+goto nodename		goto the node named nodename
+grid [xSpacing [ySpacing [xOrigin yOrigin]]]
+			toggle grid on/off (and set parameters)
+id	OR
+identify use_id		set the use identifier of the selected cell
+instance [list] children|parents|exists|self [name]	OR
+instance [list] allcells|topcells
+			List cells by relationship to cell "name", or
+			the current selection if no name given.  "list"
+			returns result as a list. "exists + name" returns
+			true or false (also see command cellname)
+iroute [cmd [args]]	do interactive point to point route
+label str [pos [layer]]
+			place a label
+lef [options]	LEF-format input/output; type "lef help"
+			for information on options
+load [cellname]	load a cell into a window
+locking [enable|disable]	enable or disable file locking
+move [dir [amount]]	OR
+move to x y		move box and selection, either by amount
+			in dir, or pick up by box lower-left and put
+			down at cursor position; second form will
+			put box at location x y
+netlist option		netlist operation; type "netlist help"
+			for information on options
+orient [orientation]		orient selection and box
+paint layers|cursor		paint mask information
+path [search|cell|sys] [[+]path]
+			set or print search paths
+plot type [args]	hardcopy plotting; type "plot help"
+			for information on types and args
+plow option [args]	stretching and compaction; type "plow help"
+			for information on options
+polygon type x1 y1 x2 y2 [x3 y3. . .] xn yn
+			draw a polygon from a list of point pairs
+port [index] [direction...]
+			declare a label to be a subcircuit port
+property [name] [value]
+			add a property (string) to the edit cell
+random [seed [value]]		generate random number or set random seed
+rotate [+/-][deg]	rotate selection and box (counter)clockwise
+route			route the current cell
+save [filename]		save edit cell on disk
+scalegrid a b		scale magic units vs. lambda by a / b
+see [no] layers|allSame	change what's displayed in the window
+select [option]		change selection; type "select help"
+			for information on options
+setlabel [option [value]]	place a label
+shell [command]		execute a command in a subshell
+sideways		flip selection and box sideways
+snap [internal|lambda|user]
+			cause box to snap to the selected grid when moved
+			by the cursor
+spliterase dir [layer]	erase layers from diagonal corner dir of the
+			edit box
+splitpaint dir layer [layer2]
+			split box diagonally with layer in corner dir and
+			layer2 in the opposite corner (default layer2 is space)
+straighten direction	straighten jogs by pulling in direction
+stretch [dir [amount]]	stretch box and selection
+tech option	technology handling; type "tech help"
+			for information on options
+unexpand		unexpand subcells under box
+units [type]		set type of units parsed and displayed
+upsidedown		flip selection and box upside down
+what			print out information about what's selected
+wire option [args]	wiring-style user interface; type
+			"wire help" for information on options
+writeall [force]	write out all modified cells to disk
+xload [cellname]	load a cell into a window unexpanded
+xor destname		flatten current top level cell into destname
+			and xor with existing contents
+
+
+Wizard Global Commands
+----------------------
+*bypass command	run command independently of the command line
+*crash			cause a core dump
+*files			print out currently open files
+*grstats		print out stats on graphics
+*pause	[args]		print args and wait for <cr>
+*winddebug		set debugging mode
+*winddump		print out debugging info
+
+Wizard Layout Commands
+----------------------
+*coord			show coordinates of various things
+*extract [args]	debug the circuit extractor
+*garoute [cmd [args]]	debug the gate-array router
+*groute [cmd [args]]	debug the global router
+*iroute [cmd [args]]	debug the interactive router
+*mzroute [cmd [args]]	debug the maze router
+*plow cmd [args]	debug plowing
+*psearch plane count	invoke point search over box area
+*seeflags [flag]	display channel flags over channel
+*showmem [file]	print internal memory usage
+*showtech [file]	print internal technology tables
+*tilestats [file]	print statistics on tile utilization
+*tsearch plane count	invoke area search over box area
+*watch [plane]		enable verbose tile plane redisplay
+

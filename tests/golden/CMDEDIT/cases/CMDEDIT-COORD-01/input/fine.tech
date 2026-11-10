@@ -64,8 +64,8 @@ end
 
 cifoutput
 style fine
-    scalefactor 20 nanometers
-    gridlimit 10
+    scalefactor 2
+    gridlimit 1
     options set-minimum-grid
 end
 

@@ -1,0 +1,29 @@
+file a
+magic
+tech tiny
+timestamp 1794285335
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file top.mag
+magic
+tech tiny
+timestamp 0
+<< checkpaint >>
+rect 0 0 10 10
+rect 20 0 30 10
+<< metal2 >>
+rect 20 0 30 10
+use a  a_0
+timestamp 1794285335
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>
+file (UNNAMED)
+magic
+tech tiny
+timestamp 0
+<< end >>
+end top

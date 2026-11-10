@@ -1,0 +1,11 @@
+magic
+tech tiny
+timestamp 1794285335
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< labels >>
+rlabel metal2 s 5 5 5 5 1 VDD
+flabel metal1 5 5 5 5 6 FreeSans 16 45 8 8 A
+<< end >>

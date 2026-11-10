@@ -1,0 +1,60 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Creating new cell
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 20.000  ( 0.000,  0.000), ( 10.000,  20.000)  200.000   
+lambda:       10 x 20      (     0,  0    ), (    10,  20   )  200       
+
+
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:        0 x 0       (     0,  0    ), (     0,  0    )
+
+inv_0
+inv_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  12.000 x 25.000  ( 0.000,  0.000), ( 12.000,  25.000)  300.000   
+lambda:       12 x 25      (     0,  0    ), (    12,  25   )  300       
+
+
+0 2 0 1
+    count 		[[xlo] xhi [ylo] yhi]	array subcells
+    width 		[value]			set or return array x-spacing
+    height 	[value]			set or return array y-spacing
+    pitch 		[x y]			set or return array spacing
+    position 	[x y]			set or return array origin
+    help					print help information
+
+
+    count 		[[xlo] xhi [ylo] yhi]	array subcells
+    width 		[value]			set or return array x-spacing
+    height 	[value]			set or return array y-spacing
+    pitch 		[x y]			set or return array spacing
+    position 	[x y]			set or return array origin
+    help					print help information
+
+

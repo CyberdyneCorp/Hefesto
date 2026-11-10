@@ -1,0 +1,7 @@
+# Magic command log file
+# Using technology: tiny
+# Title: c EDITING c
+# Date: Tue Nov 10 04:35:48 2026
+view -11i -32i 112i 83i
+box 0 0 1 1
+updatedisplay

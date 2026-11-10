@@ -1,0 +1,16 @@
+magic
+tech tiny
+timestamp 1794285335
+<< checkpaint >>
+rect 0 0 40 10
+<< metal1 >>
+rect 0 0 40 10
+<< labels >>
+rlabel metal1 1 1 1 1 2 A
+port 0 ne default input
+rlabel metal1 11 1 11 1 1 B
+port 1 n
+rlabel metal1 21 1 21 1 1 C
+port 2 n
+rlabel metal1 31 1 31 1 1 D
+<< end >>

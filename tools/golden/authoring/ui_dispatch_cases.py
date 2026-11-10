@@ -56,8 +56,11 @@ def dispatch_specs() -> list[Spec]:
            ["macro copy mytool", "tool mytool", "macro list"]),
         ui("UI-G-014", DISPATCH, ["macro and imacro commands"], 'macro wind3d L "level up" in a build without 3-D.',
            ['macro wind3d L "level up"']),
-        ui("UI-G-016", DISPATCH, ["Command logging"], 'logcommands log.txt; box; label "a b" n; setpoint 1 1; logcommands stop.',
-           ["logcommands log.txt", "box 0 0 10 10", 'label "a b" n', "setpoint 1 1", "logcommands stop"],
+        ui("UI-G-016", DISPATCH, ["Command logging"],
+           'logcommands log.txt (a usage error in Magic 8.3.694); logcommands start log.txt; box; label "a b" n; '
+           "setpoint 1 1; logcommands stop.",
+           ["logcommands log.txt", "logcommands start log.txt", "box 0 0 10 10", 'label "a b" n', "setpoint 1 1",
+            "logcommands stop"],
            outputs=["log.txt"]),
         ui("UI-G-017", DISPATCH, ["Command logging"], "logcommands log.txt update; box 0 0 1 1; logcommands.",
            ["logcommands log.txt update", "box 0 0 1 1", "logcommands"], outputs=["log.txt"]),

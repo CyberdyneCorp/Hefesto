@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "case": "CMDEDIT-PAINT-08",
+  "area": "CMDEDIT",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:c334d1b3474a6c6797bde2ef9ece595dd9dfd7bd35936429548862320456e307",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-10T04:29:48Z",
+  "outputs": {
+    "cen.mag": "d76580409375b1182abf4b1ab8fc4704724ddea1003e31a5acb18ac892526f8b",
+    "ces.mag": "79925abf27e69cd12fa54f8bf2f0e59ceb28b7ae883c17cb2f3dcde6ed2b3664",
+    "cne.mag": "a37b6ab06239f600376f4067adedc3f0b31835ccf82b60fd3339372bc3651d9a",
+    "cnw.mag": "11e3519ddb4ab21ac29211349d05b1b9d3dc01f80edc3b21be33d96dacc9a48b",
+    "cse.mag": "ca50731c0ff260e99f4b6531b58cb27bbaec11c01ab410e8e291cfdcfcccc8da",
+    "csw.mag": "5bbc870864dbad4ff52ea25d3df1b171c70dfe8a386d18815a42663144381d01",
+    "cwide.mag": "bc7905edf3bfceb4ba2dd53223ad57befe78b2652c244169ebed679f94d21420",
+    "cwn.mag": "14fcd950d0ad8e236a744b2efd2c5f89d29a5f74be7539d7f3ed73452cf6b873",
+    "cws.mag": "6115fe35e43477bc6fc8ef3998ae87fd14b05e0a267f6d8fe66884c8d4dd8502",
+    "stderr.txt": "e5a7c4d3061afac277488ee13898f39d2827a36e57edc22327547713e00d6f6b",
+    "stdout.txt": "16d3abc02db0f06450c883c10581705eef55770c075cd84b5dda97fb9144e462"
+  }
+}

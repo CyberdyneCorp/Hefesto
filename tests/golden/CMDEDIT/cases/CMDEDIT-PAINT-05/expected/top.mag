@@ -1,0 +1,14 @@
+magic
+tech tiny
+timestamp 1794285338
+<< checkpaint >>
+rect 5 10 25 15
+rect 0 5 30 10
+rect 0 0 10 5
+rect 20 0 30 5
+rect 40 0 50 10
+use leaf  leaf_2
+timestamp 1794285338
+transform 1 0 40 0 1 0
+box 0 0 10 10
+<< end >>

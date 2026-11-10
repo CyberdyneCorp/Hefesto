@@ -11,7 +11,7 @@ area = "UI"
 capability = "ui-command-dispatch"
 requirements = ["Command logging"]
 tool = "magic"
-description = "logcommands log.txt; box; label \"a b\" n; setpoint 1 1; logcommands stop."
+description = "logcommands log.txt (a usage error in Magic 8.3.694); logcommands start log.txt; box; label \"a b\" n; setpoint 1 1; logcommands stop."
 
 [reference]
 script = "input/commands.tcl"

@@ -1,0 +1,33 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:30:53 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell ntransistor pwell 
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 5.000   ( 0.000, -5.000), ( 4.000,  0.000)  20.000    
+lambda:        4 x 5       (     0, -5    ), (     4,  0    )  20        
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 10.000  ( 0.000,  0.000), ( 10.000,  10.000)  100.000   
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+
+
+
+

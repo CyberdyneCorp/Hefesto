@@ -71,10 +71,12 @@ end
 """
 
 # The `tech: fine` test technology of tests/golden/CMDEDIT/CASES.md (m2 design D9):
-# tiny.tech with an output style of 20 nm per lambda and a 10 nm grid limit, whose
-# `set-minimum-grid` option makes lambda 2 internal units of U = 10 nm.
+# tiny.tech with an output style of 2 centimicrons per lambda and a 1 centimicron grid
+# limit, whose `set-minimum-grid` option makes lambda 2 internal units of U = 10 nm.
+# (`scalefactor 20 nanometers` with `gridlimit 10` makes Magic set lambda to 1:0 and
+# crash with SIGFPE on the next command.)
 FINE = TINY.replace("    tiny\nend", "    fine\nend", 1).replace(
-    "cifoutput\nend\n", "cifoutput\nstyle fine\n    scalefactor 20 nanometers\n    gridlimit 10\n"
+    "cifoutput\nend\n", "cifoutput\nstyle fine\n    scalefactor 2\n    gridlimit 1\n"
     "    options set-minimum-grid\nend\n", 1)
 
 SCMOS_EXTERNAL = {"source": "scmos", "to": "scmos.tech"}
