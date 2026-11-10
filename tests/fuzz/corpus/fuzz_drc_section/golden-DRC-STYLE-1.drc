@@ -1,0 +1,6 @@
+    style s variant A,B
+    width m1 3 "m1 width < %d"
+    variant B
+    width m2 4 "m2 width < %d"
+    variant *
+    width poly 5 "poly width < %d"

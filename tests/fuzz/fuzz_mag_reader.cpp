@@ -50,7 +50,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   const auto host = cell::make_memory_file_host(fs, "/work");
   cell::TimestampLog stamps;
   cell::CellIoContext ctx{fs, clock, library, tech.get(), grid, paths, vars, sink, *host, stamps,
-                          nullptr, nullptr, true, true, nullptr, {}, {}};
+                          nullptr, nullptr, true, true, nullptr, {}, {}, {}};
   ctx.rescale_database = [](std::int64_t, std::int64_t) { return true; };
   auto created = library.create("fuzz", tech->plane_count());
   if (!created.ok()) {

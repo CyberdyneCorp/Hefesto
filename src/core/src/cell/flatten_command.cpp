@@ -22,6 +22,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/hints/hints.hpp"
 #include "io_session.hpp"
 #include "placement.hpp"
 
@@ -217,6 +218,10 @@ CommandResult flatten_box(IoSession& s, const db::CellDef& source, const Flatten
     return CommandResult::failure(flat.error());
   }
   copy_box_area(*flat.value(), *s.ed.box, *dest, *s.ed.technology);
+  // DBFlatCopyMaskHints over the box: the flattened copy holds the
+  // descendants' hints (never the source's own); keep their part in the box.
+  hints::copy_hints(*flat.value(), *dest, db::kIdentity, *s.ed.box);
+  s.ed.drc.pending.remove(*flat.value());  // DBCellDeleteDef: DRCRemovePending
   (void)s.ed.cells.remove(*flat.value());
   db::recompute_bbox(*dest, s.io.magic_compat);
   return CommandResult::success();

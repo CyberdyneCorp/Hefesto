@@ -1,0 +1,4 @@
+    width m1 3 "w %d"
+    spacing m1 m1 4 touching_ok "s %d c %c"
+    area m1 30 4 "a %a"
+    width m2 3 "m2 %d wide, %c long"

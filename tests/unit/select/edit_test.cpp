@@ -14,6 +14,8 @@
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
+#include "hefesto/db/property.hpp"
+#include "hefesto/hints/hints.hpp"
 #include "hefesto/select/diag_codes.hpp"
 #include "select_fixture.hpp"
 
@@ -205,6 +207,23 @@ TEST_CASE("move origin shifts the root cell's contents", "[cap:cmd-selection][re
   CHECK(rects_of(s.top(), mt.metal1, mt.m1) == std::vector<Rect>{{0, 10, 10, 20}});
   CHECK(s.top().labels().front().rect == Rect{2, 12, 2, 12});
   CHECK(*s.editor.box == Rect{0, 10, 10, 20});  // the box stays on the geometry
+}
+
+TEST_CASE("move origin moves the hints and dimension properties with the geometry",
+          "[cap:mask-hints][req:Copying, flattening and transforming hints]") {
+  // Regression: DBMoveCell's dbMoveProp moves every dimension and plane
+  // property; mask hints and FIXED_BBOX stayed behind.
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  s.paint({10, 10, 20, 20}, mt.m1);
+  db::set_property(s.top(), "MASKHINTS_SRAM", db::PropertyValue{hefesto::hints::HintRegion{Rect{10, 10, 20, 20}}});
+  db::set_property(s.top(), "FIXED_BBOX", db::PropertyValue{db::DimensionList{{10, 10, 20, 20}}});
+  db::set_property(s.top(), "NOTE", db::PropertyValue{std::string{"10 10"}});
+  s.ok("box 10 10 20 20");
+  s.ok("move origin e 10");
+  CHECK(hefesto::hints::find_hint(s.top(), "SRAM")->strips() == std::vector<Rect>{{0, 10, 10, 20}});
+  CHECK(*s.top().properties().find("FIXED_BBOX") == db::PropertyValue{db::DimensionList{{0, 10, 10, 20}}});
+  CHECK(*s.top().properties().find("NOTE") == db::PropertyValue{std::string{"10 10"}});
 }
 
 TEST_CASE("stretch extends the material behind the selection", "[cap:cmd-selection][req:Stretch command]") {

@@ -14,12 +14,18 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/drc/rules/query.hpp"
+#include "hefesto/drc/rules/style.hpp"
+#include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/wiring/wiring.hpp"
@@ -226,17 +232,23 @@ CommandResult tech_revert(editor::EditorState& ed, const cmd::Invocation& inv, d
   return CommandResult::success();
 }
 
-CommandResult tech_drc(const Technology& tech, const cmd::Invocation& inv) {
+/// `tech drc <rule> <layer> [<layer2>]` (CmdTech TECH_DRC): the value of the
+/// session's compiled rule set in display units (TECH-CMD-005 is retired).
+CommandResult tech_drc(cmd::CommandContext& ctx, const editor::EditorState& ed, const cmd::Invocation& inv) {
   if (inv.args.size() < 3) {
     return wrong_args();
   }
-  for (std::size_t i = 2; i < inv.args.size(); ++i) {
-    if (!tech.find_type(inv.args[i]).ok()) {
-      return fail("TECH-CMD-006", "Unrecognized layer (type) name \"" + inv.args[i] + "\"\nNo such layer " +
-                                      inv.args[i]);
-    }
+  const std::span<const std::string> query{inv.args.data() + 1, inv.args.size() - 1};
+  const auto value = drc::tech_drc_query(*ed.drc.rules, *ed.technology, query);
+  if (!value.ok()) {
+    return CommandResult::failure(value.error());
   }
-  return fail("TECH-CMD-005", "tech drc: the DRC rule set is not available in this version (drc-* capabilities, M3)");
+  const auto* internal = std::get_if<std::int64_t>(&value.value().data());
+  if (internal == nullptr) {
+    return CommandResult::success();  // an unknown rule keyword returns nothing
+  }
+  const bool magic_compat = ctx.project().compat.magic_compat;
+  return CommandResult::success(cmd::format_value(*internal, ed.units, editor::coordinate_units(ed, magic_compat)));
 }
 
 /// The Tcl result Magic's `tech load` sets when the load fails (CmdTZ.c:602-619,
@@ -327,7 +339,7 @@ CommandResult run_option(cmd::CommandContext& ctx, editor::EditorState& ed, cons
     case kLambda: return tech_lambda(ed, inv, ctx.project().compat.magic_compat);
     case kPlanes: return tech_planes(tech);
     case kLayers: return tech_layers(tech, inv, ctx.sink());
-    case kDrc: return tech_drc(tech, inv);
+    case kDrc: return tech_drc(ctx, ed, inv);
     case kLock:
     case kUnlock: return tech_lock(ed, inv, option, ctx.sink());
     case kRevert: return tech_revert(ed, inv, ctx.sink());
@@ -412,6 +424,8 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     }
     (void)scale_layout(ed, b, a);  // DBScaleEverything, which also scales the box (ToolScaleBox)
     ed.grid = reduce(GridScale{ed.grid.internal * b, ed.grid.lambda * a});
+    // CmdScalegrid's DRCTechScale(a, b): rules, halo and step size (Q-DRC-1).
+    drc::rescale_rules(ed, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b));
     if (ctx.project().compat.magic_compat && ed.box) {
       // CmdScalegrid then rescales the box once more ("Rescale cursor box"),
       // so Magic scales the box by (b/a)^2 (magic-compat; see step 8 of
@@ -497,6 +511,9 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   editor.grid = apply_post_load(*tech.value(), editor.grid, sink);
   check_existing_layout(editor, old_planes, new_planes, sink);
   set_technology(editor, std::move(tech.value()));
+  // The drc section is compiled into the session's rule set (m3-drc design
+  // D4/D5); Magic reads it before the wiring section, so its messages come first.
+  drc::reload_rules(editor, sink);
   // The `wiring` section is kept raw and read by the wiring area; reading it
   // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
   (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);

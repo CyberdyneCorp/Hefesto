@@ -1,0 +1,1 @@
+    extend nfet poly 3 exclusive "nfet extend < %d"

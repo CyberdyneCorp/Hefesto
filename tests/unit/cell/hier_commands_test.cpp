@@ -13,6 +13,7 @@
 #include "hefesto/cmd/prompt.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/editor/edit_frame.hpp"
+#include "hefesto/hints/hints.hpp"
 #include "hier_session.hpp"
 
 namespace cell = hefesto::cell;
@@ -414,6 +415,24 @@ TEST_CASE("flatten -dobox adds only the box area to the destination",
   s.box(0, 0, 5, 10);
   REQUIRE(s.run("flatten -dobox f4").ok());
   CHECK(s.editor.cells.find("f4")->bbox() == Rect{0, 0, 5, 10});
+}
+
+TEST_CASE("flatten -dobox copies the descendants' hints clipped to the box",
+          "[cap:mask-hints][req:Copying, flattening and transforming hints]") {
+  // Regression: CmdFlatten's DBFlatCopyMaskHints over the box area was missing.
+  Session s;
+  db::CellDef* leaf = s.cell("leaf");
+  s.paint(*leaf, "metal1", Rect{0, 0, 10, 10});
+  db::set_property(*leaf, "MASKHINTS_SRAM", db::PropertyValue{hefesto::hints::HintRegion{Rect{0, 0, 10, 10}}});
+  db::set_property(*s.top, "MASKHINTS_OWN", db::PropertyValue{hefesto::hints::HintRegion{Rect{0, 0, 10, 10}}});
+  s.place(*s.top, *leaf, db::translation(0, 0), "l");
+  s.cell("f5");
+  s.box(0, 0, 5, 10);
+  REQUIRE(s.run("flatten -dobox f5").ok());
+  const db::CellDef* f5 = s.editor.cells.find("f5");
+  REQUIRE(hefesto::hints::find_hint(*f5, "SRAM") != nullptr);
+  CHECK(hefesto::hints::find_hint(*f5, "SRAM")->strips() == std::vector<Rect>{{0, 0, 5, 10}});
+  CHECK(hefesto::hints::find_hint(*f5, "OWN") == nullptr);  // the source's own hints are not copied
 }
 
 TEST_CASE("flatten -doinplace replaces the instance and is not recorded with magic-compat ON",

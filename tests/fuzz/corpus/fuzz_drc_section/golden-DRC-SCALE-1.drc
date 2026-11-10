@@ -1,0 +1,4 @@
+    scalefactor 10
+    spacing m1 m1 25 touching_ok "m1 spacing < %d"
+    maxwidth m1 25 bend_illegal "m1 maxwidth > %d"
+    area m1 1050 20 "m1 area < %a"

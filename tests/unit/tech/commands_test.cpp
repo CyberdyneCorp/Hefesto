@@ -202,7 +202,9 @@ TEST_CASE("tech drc checks its arguments", "[cap:tech-command][req:tech drc]") {
   s.load_tiny();
   CHECK(says(s.run("tech", {"drc", "width"}), "wrong number of arguments"));
   CHECK(says(s.run("tech", {"drc", "width", "nosuch"}), "No such layer nosuch"));
-  CHECK(s.run("tech", {"drc", "width", "metal1"}).diagnostics.at(0).code == "TECH-CMD-005");
+  // TECH-CMD-005 is retired: the query answers from the compiled rule set
+  // (tests/unit/drc/rules/query_test.cpp checks the values).
+  CHECK(s.run("tech", {"drc", "width", "metal1"}).ok());
 }
 
 TEST_CASE("tech load options, confirmation, pre-check and failure", "[cap:tech-command][req:tech load]") {

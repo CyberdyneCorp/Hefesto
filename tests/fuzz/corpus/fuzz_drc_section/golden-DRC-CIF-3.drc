@@ -1,0 +1,3 @@
+    cifstyle drctest
+    cifspacing NW PW 600 touching_illegal "NW-PW spacing < %d"
+    cifspacing NW NW 600 touching_ok "NW spacing < %d"

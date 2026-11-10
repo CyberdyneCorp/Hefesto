@@ -15,6 +15,8 @@
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cell/hier.hpp"
+#include "hefesto/drc/engine/marking.hpp"
+#include "hefesto/drc/rules/style.hpp"
 #include "hefesto/tech/commands.hpp"
 
 namespace hefesto::cell::detail {
@@ -79,13 +81,24 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
          editor.property_compat,
          &session.renamed_duplicates,
          {},
+         {},
          {}} {
   // Both callbacks live in `io`, a member: they never outlive this object.
   io.rescale_database = [this](std::int64_t n, std::int64_t d) {
+    // dbReadOpen's finer-grid read: DRCTechScale(1, d) before DBScaleEverything(d, 1).
+    drc::rescale_rules(ed, static_cast<std::int32_t>(d), static_cast<std::int32_t>(n));
     (void)tech::scale_layout(ed, n, d);
     return true;
   };
   io.load_technology = [this](std::string_view name) { return discover_technology(name); };
+  io.on_read = [this](db::CellDef& def, bool format_error) {
+    if (ed.drc.worker) {
+      ed.drc.worker->bump_generation();  // a re-read invalidates a finished square
+    }
+    if (format_error) {
+      drc::check_this(ed, def, std::nullopt);  // dbCellReadDef's badfile path
+    }
+  };
 }
 
 void IoSession::emit(std::string_view code, std::string text) const {
@@ -104,6 +117,9 @@ void IoSession::process_mismatches() {
     opts.ignore_tech = true;
     (void)read_cell(io, def, opts);
   });
+  for (const RecheckArea& r : report.rechecks) {
+    drc::check_this(ed, *r.parent, r.area);  // DBFixMismatch, TT_CHECKSUBCELL
+  }
   const std::vector<std::string> lines = report.messages();
   for (std::size_t i = 1; i < lines.size(); ++i) {  // lines[0] is the banner
     emit(codes::kStampMismatch, lines[i]);

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/editor/post_command.hpp"
 #include "hefesto/ui/command_log.hpp"
@@ -114,6 +115,9 @@ void Dispatcher::set_editor(editor::EditorState* editor) noexcept {
   if (editor_ != nullptr && editor_->undo_recorder != nullptr) {
     editor_->undo_recorder->set_compat_source(&project_.compat);
   }
+  if (editor_ != nullptr) {
+    editor_->drc.compat = &project_.compat;  // the DRC engine reads magic-compat (m3-drc design D4)
+  }
 }
 
 std::string Dispatcher::target_client() const {
@@ -192,6 +196,18 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
   if (invocation.name.empty()) {
     return CommandResult::success();  // a command with no words is a no-op
   }
+  // hefesto-architecture "Concurrency model" (m3-drc design D4/D8): every
+  // command, its post-command update included, runs with the database lock
+  // held exclusively; re-entrant for nested commands (macros, `source`).
+  std::optional<db::DatabaseLock::Exclusive> writer;
+  // TxTclDispatch keeps DRCContinuous from running inside a command: the
+  // background state is "not set" until the command (nested ones included)
+  // returns, unless the command itself turned DRC on or off.
+  drc::BackgroundMode saved_drc = drc::BackgroundMode::off;
+  if (editor_ != nullptr) {
+    writer.emplace(editor_->database_lock);
+    saved_drc = drc::begin_command(*editor_);
+  }
   const db::Point saved_pixel = editor_ != nullptr ? ui::state(*editor_).pointer_pixel : db::Point{};
   const bool defaulted = place_default_point();
   const std::string client = target_client();
@@ -210,8 +226,14 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
     result = lookup_failure(found.status, invocation, registry_, client);
   }
   after_command(invocation, resolved, result);
-  if (defaulted && editor_ != nullptr) {
-    drop_default_point(saved_pixel);
+  if (editor_ != nullptr) {
+    if (defaulted) {
+      drop_default_point(saved_pixel);
+    }
+    drc::end_command(*editor_, saved_drc);
+    if (editor_->drc.worker) {
+      editor_->drc.worker->wake();  // Tcl_DoWhenIdle(drcContinuousIdleProc): checking resumes after the command
+    }
   }
   return result;
 }

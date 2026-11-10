@@ -29,10 +29,12 @@ using hefesto::undo::test::UndoSession;
 
 namespace {
 
-// Every non-space tile of every plane of `def`: the geometry to compare.
+// Every non-space tile of every plane of `def` but the DRC planes: the
+// geometry to compare. The DRC planes are left out: an edit and its undo both mark the
+// check plane (DRCCheckThis), which undo does not restore, as in Magic.
 std::map<tech::PlaneId, std::vector<db::TileView>> geometry(const db::CellDef& def) {
   std::map<tech::PlaneId, std::vector<db::TileView>> out;
-  for (std::size_t p = 1; p < def.plane_count(); ++p) {
+  for (std::size_t p = tech::kPlaneDrcError + 1; p < def.plane_count(); ++p) {
     const auto id = static_cast<tech::PlaneId>(p);
     out[id] = db::test::tiles(def.plane(id));
   }

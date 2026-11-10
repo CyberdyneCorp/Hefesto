@@ -77,6 +77,14 @@
       }
     },
     {
+      "name": "tsan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "HEFESTO_SANITIZERS": "thread"
+      }
+    },
+    {
       "name": "linux-debug",
       "displayName": "Linux Debug",
       "inherits": [
@@ -99,6 +107,17 @@
         "linux",
         "asan"
       ]
+    },
+    {
+      "name": "linux-tsan",
+      "displayName": "Linux Debug + TSan (background DRC)",
+      "inherits": [
+        "linux",
+        "tsan"
+      ],
+      "cacheVariables": {
+        "HEFESTO_BUILD_DESKTOP": "OFF"
+      }
     },
     {
       "name": "linux-bench",
@@ -255,6 +274,10 @@
       "configurePreset": "linux-asan"
     },
     {
+      "name": "linux-tsan",
+      "configurePreset": "linux-tsan"
+    },
+    {
       "name": "linux-fuzz",
       "configurePreset": "linux-fuzz"
     },
@@ -310,6 +333,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -321,6 +349,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -332,6 +365,27 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
+      }
+    },
+    {
+      "name": "linux-tsan",
+      "configurePreset": "linux-tsan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -354,6 +408,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -365,6 +424,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -376,6 +440,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -388,7 +457,12 @@
         "noTestsAction": "error",
         "stopOnFailure": false
       },
-      "configuration": "Debug"
+      "configuration": "Debug",
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
+      }
     },
     {
       "name": "ci-linux",
@@ -399,6 +473,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -410,6 +489,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -421,6 +505,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -432,6 +521,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -443,6 +537,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     },
     {
@@ -454,6 +553,11 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
+      },
+      "filter": {
+        "exclude": {
+          "label": "golden-slow"
+        }
       }
     }
   ]

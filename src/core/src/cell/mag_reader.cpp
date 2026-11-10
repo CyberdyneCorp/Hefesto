@@ -526,6 +526,9 @@ diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view tex
     format_error = diag::make(codes::kFormatError, "File " + def.name() + " contained format error");
     ctx.sink.emit(*format_error);
   }
+  if (ctx.on_read) {
+    ctx.on_read(def, format_error.has_value());
+  }
   detail::finish(st, h.stamp);
   if (format_error) {
     return *format_error;

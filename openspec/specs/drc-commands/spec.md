@@ -206,7 +206,7 @@ Compatibility: behavioral
 #### Scenario: List styles
 - **GIVEN** styles `drc(full)` and `drc(fast)`
 - **WHEN** `drc listall style` is executed
-- **THEN** the result is `{drc(full)} {drc(fast)}`
+- **THEN** the result is `drc(full) drc(fast)` (a Tcl list: parentheses need no braces)
 
 ### Requirement: drc printrules
 `drc printrules [file]` SHALL write the compiled rule table of the current style to the file (or standard output) in the format below; if the file cannot be opened it reports `Cannot write file <file>`.

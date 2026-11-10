@@ -1,0 +1,1 @@
+    extend nfet poly 3 exact_width "nfet extend != %d"
