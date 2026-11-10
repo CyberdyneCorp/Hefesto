@@ -3,10 +3,12 @@
 //
 // `setlabel [-default] option ?value?` (cmd-labels-properties "Setlabel
 // command", font-labels "Font-related label commands"). The labels changed
-// or queried are the edit cell's labels in the box (Magic: the selected
-// labels) until cmd-selection lands in M2; without an edit cell or a box no
-// label is addressed, so `setlabel font <file> <scale>` still loads fonts
-// from a startup script, as in Magic.
+// or queried are the edit-cell labels the selected labels stand for
+// (SelEnumLabels with editOnly, cell::selected_edit_labels); with no
+// selection no label is addressed, so `setlabel font <file> <scale>` still
+// loads fonts from a startup script, as in Magic. Each change is recorded
+// for undo as erase(old) + put(new) (db::replace_label) and mirrored into
+// the selection's copy (SelEnumLabelsMirror).
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) commands/CmdRS.c (CmdSetLabel
 // and its cmdLabel*Func callbacks). Magic is Copyright (C) 1985, 1990
 // Regents of the University of California (permissive license,
@@ -22,6 +24,8 @@
 
 #include "db/command_util.hpp"
 #include "hefesto/cell/fonts.hpp"
+#include "hefesto/cell/hier.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/display/font.hpp"
@@ -53,10 +57,9 @@ constexpr std::array<std::string_view, 11> kOptionHelp = {
 /// One `setlabel` invocation after `-default` was taken off.
 struct Call {
   Session s;
-  bool defaults = false;           // -default: the default label, not the labels
-  std::vector<std::string> args;   // the option word and its values
-  CellDef* def = nullptr;          // the edit cell; nullptr: no label is addressed
-  std::optional<Rect> area;        // the box
+  bool defaults = false;                 // -default: the default label, not the labels
+  std::vector<std::string> args;         // the option word and its values
+  std::vector<cell::SelectedLabel> targets;  // the selected edit-cell labels
 
   /// Magic's locargc - 1: the option word and its values.
   [[nodiscard]] std::size_t n() const noexcept { return args.size(); }
@@ -64,49 +67,57 @@ struct Call {
   [[nodiscard]] LabelDefaults& dl() const { return *s.editor->label_defaults; }
 };
 
-[[nodiscard]] bool addressed(const Call& c, const Label& l) {
-  return c.def != nullptr && c.area && label_in_area(l.rect, *c.area);
-}
+[[nodiscard]] Label& label_of(const cell::SelectedLabel& t) { return t.def->labels()[t.index]; }
 
 /// SelEnumLabels with a query callback: one result element per label.
 template <typename Get>
 CommandResult query_labels(const Call& c, Get get) {
   Value::List values;
-  if (c.def != nullptr) {
-    for (const Label& l : c.def->labels()) {
-      if (addressed(c, l)) {
-        values.push_back(get(l));
-      }
-    }
+  for (const cell::SelectedLabel& t : c.targets) {
+    values.push_back(get(label_of(t)));
   }
   return CommandResult::success(Value{std::move(values)});
 }
 
+/// The selection's copy of a changed label: the new attributes in root
+/// coordinates (SelEnumLabelsMirror).
+void mirror(const cell::SelectedLabel& t, const Label& changed) {
+  if (t.copy == nullptr) {
+    return;
+  }
+  Label copy = changed;
+  copy.rect = apply(t.to_root, changed.rect);
+  copy.justification = transform_position(t.to_root, changed.justification);
+  if (copy.text_bbox) {
+    copy.text_bbox = apply(t.to_root, *copy.text_bbox);
+  }
+  *t.copy = std::move(copy);
+}
+
 /// SelEnumLabelsMirror with a change callback returning whether the label
 /// changed: the rendered text box is recomputed (DBFontLabelSetBBox), the
-/// old and new areas are redisplayed and the cell is marked modified.
+/// change is recorded (erase + put), the old and new areas are redisplayed,
+/// the selection's copy follows and the cell is marked modified.
 template <typename Change>
 CommandResult change_labels(const Call& c, Change change) {
-  if (c.def == nullptr) {
-    return CommandResult::success();
-  }
-  bool any = false;
-  for (Label& l : c.def->labels()) {
-    if (!addressed(c, l)) {
+  CellDef* def = nullptr;
+  for (const cell::SelectedLabel& t : c.targets) {
+    Label& l = label_of(t);
+    Label updated = l;
+    if (!change(updated)) {
       continue;
     }
+    update_font_label(c.s, updated);
     const Label before = l;
-    if (!change(l)) {
-      continue;
-    }
-    update_font_label(c.s, l);
-    label_changed(c.s, *c.def, before);
-    label_changed(c.s, *c.def, l);
-    any = true;
+    replace_label(*t.def, l, std::move(updated));
+    label_changed(c.s, *t.def, before);
+    label_changed(c.s, *t.def, l);
+    mirror(t, l);
+    def = t.def;
   }
-  if (any) {
-    mark_modified(*c.def);
-    recompute_bbox(*c.def, c.s.magic_compat);
+  if (def != nullptr) {
+    mark_modified(*def);
+    recompute_bbox(*def, c.s.magic_compat);
   }
   return CommandResult::success();
 }
@@ -170,29 +181,30 @@ CommandResult opt_text(const Call& c) {
   if (c.query()) {
     return query_labels(c, [](const Label& l) { return Value{l.text}; });
   }
-  if (c.def == nullptr) {
-    return CommandResult::success();
-  }
   // cmdLabelTextFunc: a new label with the new text and the old attributes
   // is appended, then every label with the old rectangle and text is erased.
   const std::string& text = c.args[1];
-  std::vector<Label> renamed;
-  for (const Label& l : c.def->labels()) {
-    if (addressed(c, l) && l.text != text) {
-      renamed.push_back(l);
+  std::vector<std::pair<cell::SelectedLabel, Label>> renamed;
+  for (const cell::SelectedLabel& t : c.targets) {
+    if (label_of(t).text != text) {
+      renamed.emplace_back(t, label_of(t));
     }
   }
-  for (Label& fresh : renamed) {
+  for (auto& [t, fresh] : renamed) {
     const std::string old = fresh.text;
     fresh.text = text;
     update_font_label(c.s, fresh);
-    c.def->labels().push_back(fresh);
-    erase_labels_by_content(*c.def, fresh.rect, old);
-    label_changed(c.s, *c.def, fresh);
+    auto put = put_label(*t.def, fresh, false, c.s.editor->fonts.fonts.size());
+    if (!put.ok()) {
+      continue;
+    }
+    erase_labels_with_text(*t.def, fresh.rect, old);
+    label_changed(c.s, *t.def, fresh);
+    mirror(t, fresh);
   }
   if (!renamed.empty()) {
-    mark_modified(*c.def);
-    recompute_bbox(*c.def, c.s.magic_compat);
+    mark_modified(*renamed.front().first.def);
+    recompute_bbox(*renamed.front().first.def, c.s.magic_compat);
   }
   return CommandResult::success();
 }
@@ -444,7 +456,8 @@ CommandResult opt_layer(const Call& c) {
 
 // The rectangle of `setlabel box`: four words, or one word holding two
 // (a point) or four values; nullopt after "Label box requires four
-// coordinates." Coordinates are relative distances (Q-CMDEDIT-91).
+// coordinates." With magic-compat ON the coordinates are relative
+// distances, as in Magic; OFF they are absolute (Q-CMDEDIT-91).
 std::optional<Rect> parse_box(const Call& c) {
   std::vector<std::string_view> words;
   if (c.n() == 5) {
@@ -470,8 +483,9 @@ std::optional<Rect> parse_box(const Call& c) {
     warn(c.s, "Label box requires four coordinates.");
     return std::nullopt;
   }
-  return Rect{scaled_coord(c.s, words[0], 1, true), scaled_coord(c.s, words[1], 1, false),
-              scaled_coord(c.s, words[2], 1, true), scaled_coord(c.s, words[3], 1, false)};
+  const bool relative = c.s.magic_compat;
+  return Rect{scaled_coord(c.s, words[0], 1, true, relative), scaled_coord(c.s, words[1], 1, false, relative),
+              scaled_coord(c.s, words[2], 1, true, relative), scaled_coord(c.s, words[3], 1, false, relative)};
 }
 
 CommandResult opt_box(const Call& c) {
@@ -516,7 +530,7 @@ CommandResult setlabel_command(CommandContext& ctx, const Invocation& inv) {
   if (!s.ok()) {
     return fail(s.error());
   }
-  Call c{s.value(), false, inv.args, s.value().editor->edit_cell, s.value().editor->box};
+  Call c{s.value(), false, inv.args, {}};
   if (c.args.size() >= 2 && c.args[0].starts_with("-def")) {
     if (!s.value().editor->label_defaults) {
       s.value().editor->label_defaults = LabelDefaults{};
@@ -528,6 +542,13 @@ CommandResult setlabel_command(CommandContext& ctx, const Invocation& inv) {
   if (option < 0) {
     warn(c.s, "Unknown setlabel option \"" + c.args[0] + "\"");
     return CommandResult::success();
+  }
+  if (!c.defaults && option != kFontList && option != kHelp) {
+    std::vector<std::string> missing;
+    c.targets = cell::selected_edit_labels(*s.value().editor, &missing);
+    for (const std::string& text : missing) {
+      warn(c.s, "The selected label " + text + " is not in the layout.");
+    }
   }
   return kHandlers[static_cast<std::size_t>(option)](c);
 }

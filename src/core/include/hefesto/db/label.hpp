@@ -5,7 +5,7 @@
 // model"; font attributes from capability font-labels).
 // (Magic ref: database/database.h.in:219-319, database/DBlabel.c)
 //
-// Owner: MODEL (openspec/changes/m1-core-viewer/design.md, D2).
+// Owner: HIER (openspec/changes/m2-interactive-editing/design.md D2; MODEL in M1).
 
 #pragma once
 

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// `setlabel`, the font form of `label` and font labels through flattening,
+// `setlabel` (on the selected edit-cell labels), the font form of `label`
+// and font labels through flattening,
 // driven through the dispatcher as the golden scripts do (font-labels
 // "Font-related label commands", "Transforming font labels";
 // cmd-labels-properties "Setlabel command", "Label command").
@@ -103,6 +104,18 @@ struct Session {
   void load_font() { quiet("setlabel", {"font", "Test.pt3", "0.5"}); }
 
   db::Label& label() { return editor.edit_cell->labels().back(); }
+
+  /// Selects every label of the edit cell, as SELECT stores them (copies
+  /// in root coordinates); `setlabel` addresses the selected labels.
+  void select_labels() {
+    editor.selection.set_root(editor.edit_cell, editor.technology->plane_count());
+    editor.selection.clear();
+    for (const db::Label& l : editor.edit_cell->labels()) {
+      editor.selection.def()->labels().push_back(l);
+      editor.selection.provenance().push_back(
+          hefesto::select::Provenance{hefesto::select::Provenance::Kind::label, editor.edit_cell, {}, l.rect});
+    }
+  }
 };
 
 std::string result(const cmd::CommandResult& r) { return r.value.to_string(); }
@@ -142,6 +155,7 @@ TEST_CASE("setlabel font gives a size-0 label the lambda numerator as size", FON
   s.quiet("paint", {"metal1"});
   s.quiet("box", {"2", "2", "2", "2"});
   s.quiet("label", {"AA", "center", "metal1"});
+  s.select_labels();
   CHECK_FALSE(s.label().text_bbox.has_value());
   CHECK(result(s.quiet("setlabel", {"font"})) == "default");
   s.quiet("setlabel", {"font", "test"});  // DBNameToFont is case-insensitive
@@ -170,6 +184,7 @@ TEST_CASE("setlabel font <index> prints the name and applies the default font in
   s.quiet("box", {"2", "2", "2", "2"});
   s.quiet("label", {"A", "Test"});
   REQUIRE(s.label().font == 0);
+  s.select_labels();
   s.says("setlabel", {"font", "0"}, "Test");
   CHECK(s.label().font == -1);
 }
@@ -184,6 +199,7 @@ TEST_CASE("setlabel font <index> only prints the name in native mode", FONTCMD) 
   s.quiet("box", {"2", "2", "2", "2"});
   s.quiet("label", {"A", "Test"});
   REQUIRE(s.label().font == 0);
+  s.select_labels();
   s.says("setlabel", {"font", "0"}, "Test");
   CHECK(s.label().font == 0);
 }
@@ -196,6 +212,7 @@ TEST_CASE("setlabel size, offset and rotate are stored in eighths and degrees", 
   s.quiet("box", {"5", "5", "5", "5"});
   s.quiet("label", {"A", "Test", "10"});
   CHECK(s.label().size == 80);
+  s.select_labels();
   // Regression: `setlabel size` stored the typed value without the x8.
   s.quiet("setlabel", {"size", "3"});
   CHECK(s.label().size == 24);
@@ -226,6 +243,7 @@ TEST_CASE("setlabel justify, sticky, layer, box and text", SETLABEL) {
   s.quiet("paint", {"metal1"});
   s.quiet("box", {"4", "4", "4", "4"});
   s.quiet("label", {"A", "n", "metal1"});
+  s.select_labels();
   CHECK(result(s.quiet("setlabel", {"justify"})) == "NORTH");
   s.quiet("setlabel", {"justify", "sw"});
   CHECK(s.label().justification == db::kSouthWest);
@@ -268,7 +286,7 @@ TEST_CASE("setlabel usage: help, unknown and ambiguous options, too many values"
   CHECK(s.run("setlabel", {"text", "a", "b", "c"}).diagnostics.back().text == text);
   s.says("setlabel", {"nosuch"}, "Unknown setlabel option \"nosuch\"");
   s.says("setlabel", {"s", "1"}, "Unknown setlabel option \"s\"");  // size or sticky
-  // Without a box or an edit cell no label is addressed: queries are empty.
+  // Without a selection no label is addressed: queries are empty.
   CHECK(result(s.quiet("setlabel", {"text"})).empty());
   s.editor.edit_cell = nullptr;
   s.quiet("setlabel", {"rotate", "90"});

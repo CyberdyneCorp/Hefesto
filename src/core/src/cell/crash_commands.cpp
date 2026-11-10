@@ -36,7 +36,7 @@ void emit_note(const IoSession& s, std::string text) {
 /// (Magic ref: database/DBio.c:1301-1302).
 CommandResult backup_read_failure(diag::Diagnostic error) {
   if (error.code == codes::kFormatError) {
-    return CommandResult{cmd::Status::failed, {}, {}, false};
+    return CommandResult{cmd::Status::failed, {}, {}, false, std::nullopt};
   }
   return CommandResult::failure(std::move(error));
 }

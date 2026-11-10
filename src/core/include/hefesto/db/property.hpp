@@ -5,7 +5,7 @@
 // names per capability hefesto-mag-extensions).
 // (Magic ref: database/database.h.in:730-795, database/DBprop.c)
 //
-// Owner: MODEL (openspec/changes/m1-core-viewer/design.md, D2).
+// Owner: HIER (openspec/changes/m2-interactive-editing/design.md D2; MODEL in M1).
 
 #pragma once
 
@@ -22,6 +22,8 @@
 #include "hefesto/diag/outcome.hpp"
 
 namespace hefesto::db {
+
+class CellDef;
 
 struct IntegerList {
   std::vector<std::int32_t> values;
@@ -100,5 +102,14 @@ class PropertyStore {
 /// "string", "integer", "dimension", "double" (DB-PROP-001 when the text
 /// does not parse).
 [[nodiscard]] diag::Outcome<PropertyValue> parse_property_value(std::string_view type, std::string_view text);
+
+/// The recorded form of db::set_property (cell.hpp) used by commands: puts
+/// (or with nullopt removes) the property and reports the change to the
+/// library's db::ChangeRecorder (property_changed; design.md D4/D5). Does
+/// nothing on a read-only cell or when the value is unchanged; returns
+/// whether the property changed. File readers keep calling set_property,
+/// which records nothing (reads are never undoable). Does not mark the cell
+/// modified (the `property` command does).
+bool change_property(CellDef& def, std::string_view name, std::optional<PropertyValue> value);
 
 }  // namespace hefesto::db

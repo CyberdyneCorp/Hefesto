@@ -14,6 +14,7 @@
 #include <set>
 
 #include "hefesto/cell/diag_codes.hpp"
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/tech/commands.hpp"
@@ -506,6 +507,7 @@ void finish(ReadState& st, std::int32_t stamp) {
 }  // namespace detail
 
 diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view text, const ReadOptions& options) {
+  const db::ScopedRecorderDetach unrecorded(ctx.library);  // reads are never undoable
   detail::ReadState st{ctx, def, text, options};
   const detail::Header h = detail::read_header(st);
   if (h.result == detail::HeaderResult::tech_failed) {

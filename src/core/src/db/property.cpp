@@ -12,6 +12,8 @@
 #include <cstdint>
 #include <utility>
 
+#include "hefesto/db/cell.hpp"
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
@@ -259,6 +261,22 @@ std::vector<Rect> plane_property_tiles(const PlaneValue& value) {
     return true;
   });
   return out;
+}
+
+bool change_property(CellDef& def, std::string_view name, std::optional<PropertyValue> value) {
+  if (def.flags().no_edit) {
+    return false;  // DBPropPut ignores read-only cells
+  }
+  const PropertyValue* found = def.properties().find(name);
+  std::optional<PropertyValue> old_value = found != nullptr ? std::optional<PropertyValue>{*found} : std::nullopt;
+  if (old_value == value) {
+    return false;
+  }
+  if (ChangeRecorder* r = def.recorder()) {
+    r->property_changed(def, name, old_value, value);
+  }
+  set_property(def, name, std::move(value));
+  return true;
 }
 
 }  // namespace hefesto::db

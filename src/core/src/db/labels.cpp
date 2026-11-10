@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/util/record_order.hpp"
 #include "db/tech_masks.hpp"
@@ -317,6 +318,28 @@ bool same_text(std::string_view a, std::string_view b, bool case_sensitive) noex
          std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) { return lower(x) == lower(y); });
 }
 
+// The recorder calls of the label primitives (db/change_recorder.hpp): an
+// attribute change is reported as the old label erased, then the new one put.
+void record_put(CellDef& def, const Label& label) {
+  if (ChangeRecorder* r = def.recorder()) {
+    r->label_put(def, label);
+  }
+}
+
+void record_erased(CellDef& def, const Label& label) {
+  if (ChangeRecorder* r = def.recorder()) {
+    r->label_erased(def, label);
+  }
+}
+
+void record_changed(CellDef& def, const Label& before, const Label& after) {
+  if (before == after) {
+    return;
+  }
+  record_erased(def, before);
+  record_put(def, after);
+}
+
 }  // namespace
 
 Position auto_justification(const Rect& b, const Rect& rect) noexcept {
@@ -354,6 +377,7 @@ diag::Outcome<Label*> put_label(CellDef& def, Label label, bool auto_justify, st
   }
   def.labels().push_back(std::move(label));
   mark_modified(def);
+  record_put(def, def.labels().back());
   return &def.labels().back();
 }
 
@@ -385,6 +409,7 @@ bool adjust_labels(CellDef& def, const tech::Technology& tech, const Rect& area,
     if (new_type == lab.type || lab.sticky) {
       continue;
     }
+    const Label before = lab;
     const auto plane = tech.home_plane(lab.type);
     if (new_type == tech::kSpace && plane && *plane < def.plane_count()) {
       if (const auto r = remaining_label_area(def, *plane, lab)) {
@@ -392,6 +417,7 @@ bool adjust_labels(CellDef& def, const tech::Technology& tech, const Rect& area,
           messages->push_back("Adjusting size of label \"" + lab.text + "\" in cell " + def.name() + ".");
         }
         lab.rect = *r;
+        record_changed(def, before, lab);
         modified = true;
         continue;
       }
@@ -401,6 +427,7 @@ bool adjust_labels(CellDef& def, const tech::Technology& tech, const Rect& area,
                           " to " + std::string{tech.type_name(new_type)} + " in cell " + def.name() + ".");
     }
     lab.type = new_type;
+    record_changed(def, before, lab);
     modified = true;
   }
   if (modified) {
@@ -432,6 +459,11 @@ std::size_t erase_labels(CellDef& def, const tech::Technology& tech, const Rect&
   std::size_t n = 0;
   std::size_t i = 0;
   auto& labels = def.labels();
+  for (std::size_t k = 0; k < labels.size(); ++k) {
+    if (erase[k]) {
+      record_erased(def, labels[k]);
+    }
+  }
   labels.erase(std::remove_if(labels.begin(), labels.end(), [&](const Label&) { return erase[i++]; }), labels.end());
   n = static_cast<std::size_t>(std::count(erase.begin(), erase.end(), true));
   if (n > 0) {
@@ -473,10 +505,46 @@ void renumber_ports(CellDef& def, bool magic_compat) {
     if (last != nullptr && same_text(last->text, lab->text, magic_compat)) {
       --p;
     }
-    lab->port_index = p;
+    if (lab->port_index != p) {
+      Label updated = *lab;
+      updated.port_index = p;
+      record_changed(def, *lab, updated);
+      lab->port_index = p;
+    }
     last = lab;
     ++p;
   }
+}
+
+void replace_label(CellDef& def, Label& label, Label updated) {
+  if (label == updated) {
+    return;
+  }
+  record_changed(def, label, updated);
+  label = std::move(updated);
+  mark_modified(def);
+}
+
+void remove_label(CellDef& def, std::size_t index) {
+  auto& labels = def.labels();
+  if (index >= labels.size()) {
+    return;
+  }
+  record_erased(def, labels[index]);
+  labels.erase(labels.begin() + static_cast<std::ptrdiff_t>(index));
+  mark_modified(def);
+}
+
+std::size_t erase_labels_with_text(CellDef& def, const Rect& rect, std::string_view text) {
+  std::size_t n = 0;
+  for (std::size_t i = def.labels().size(); i > 0; --i) {
+    const Label& l = def.labels()[i - 1];
+    if (l.rect == rect && l.text == text) {
+      remove_label(def, i - 1);
+      ++n;
+    }
+  }
+  return n;
 }
 
 }  // namespace hefesto::db

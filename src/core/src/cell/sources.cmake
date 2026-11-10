@@ -12,7 +12,13 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/crash.cpp
   ${CMAKE_CURRENT_LIST_DIR}/crash_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/edit_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/element_command.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/find_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/flatten_command.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/flush_command.cpp
   ${CMAKE_CURRENT_LIST_DIR}/fonts.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/hier.cpp
   ${CMAKE_CURRENT_LIST_DIR}/host.cpp
   ${CMAKE_CURRENT_LIST_DIR}/io_safety.cpp
   ${CMAKE_CURRENT_LIST_DIR}/io_session.cpp
@@ -25,6 +31,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/mag_writer.cpp
   ${CMAKE_CURRENT_LIST_DIR}/paths.cpp
   ${CMAKE_CURRENT_LIST_DIR}/place_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/placement.cpp
   ${CMAKE_CURRENT_LIST_DIR}/search_path.cpp
   ${CMAKE_CURRENT_LIST_DIR}/session.cpp
   ${CMAKE_CURRENT_LIST_DIR}/timestamps.cpp)
