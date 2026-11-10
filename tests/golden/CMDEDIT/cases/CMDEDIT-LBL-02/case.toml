@@ -20,6 +20,21 @@ script = "input/commands.tcl"
 args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
 requires_commands = []
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSerif.pt3"
+to = "FreeSerif.pt3"
+
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeMono.pt3"
+to = "FreeMono.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

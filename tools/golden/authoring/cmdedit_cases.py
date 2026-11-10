@@ -42,6 +42,18 @@ def ed(cid: str, cap: str, reqs: list[str], desc: str, body: list[str], tech: st
                 outputs=outputs or [], notes=notes or [])
 
 
+def backup_records(spec: Spec, output: str) -> Spec:
+    """Compares ``output``, an archive file, with its records in canonical order (Q-CELL-28)."""
+    spec.output_comparators[output] = "mag-backup"
+    return spec
+
+
+def with_fonts(spec: Spec) -> Spec:
+    """Gives hefesto-cli Magic's default outline fonts, which the system startup file loads (font labels)."""
+    spec.fonts = ["FreeSans", "FreeSerif", "FreeMono"]
+    return spec
+
+
 def cell(name: str, body: list[str]) -> list[str]:
     """Create cell ``name``, run ``body`` in it and save it."""
     return [f"load {name}", *body, f"save {name}"]
@@ -390,9 +402,9 @@ def hier_specs_b() -> list[Spec]:
            "path; path search +lib; addpath x; path cell; locking; locking disable; locking.",
            ["path", "path search +lib", "path search", "addpath x", "path", "path cell", "locking", "locking disable",
             "locking"]),
-        ed("CMDEDIT-HIER-11", HIER, ["Archive command"], "archive writeall arch.mag; archive read into a fresh cell; archive write (Q-CMDEDIT-34).",
-           child + ["archive writeall arch.mag", "load z", "archive read arch.mag", "cellname list allcells",
-                    "archive write"], outputs=["arch.mag"]),
+        backup_records(ed("CMDEDIT-HIER-11", HIER, ["Archive command"], "archive writeall arch.mag; archive read into a fresh cell; archive write (Q-CMDEDIT-34).",
+                          child + ["archive writeall arch.mag", "load z", "archive read arch.mag",
+                                   "cellname list allcells", "archive write"], outputs=["arch.mag"]), "arch.mag"),
     ]
 
 
@@ -411,10 +423,11 @@ def label_specs() -> list[Spec]:
     return [
         ed("CMDEDIT-LBL-01", LBL, ["Label command"], "Cell bbox 0 0 90 90; label IN with the box in each of 9 regions.",
            paint("metal1", 0, 0, 90, 90) + [c for x, y in NINE for c in label("IN", x, y)] + ["save a"], outputs=["a.mag"]),
-        ed("CMDEDIT-LBL-02", LBL, ["Label command", "Label units and attributes"],
-           'label VDD n -metal2; label A 0 2 45 1 1 sw metal1; label "a b"; label x/y.',
-           paint("metal1", 0, 0, 10, 10) + [box(5, 5, 5, 5), "label VDD n -metal2", "label A 0 2 45 1 1 sw metal1",
-                                             'label "a b"', "label x/y", "save a"], outputs=["a.mag"]),
+        with_fonts(ed("CMDEDIT-LBL-02", LBL, ["Label command", "Label units and attributes"],
+                      'label VDD n -metal2; label A 0 2 45 1 1 sw metal1; label "a b"; label x/y.',
+                      paint("metal1", 0, 0, 10, 10) + [box(5, 5, 5, 5), "label VDD n -metal2",
+                                                        "label A 0 2 45 1 1 sw metal1", 'label "a b"', "label x/y",
+                                                        "save a"], outputs=["a.mag"])),
         ed("CMDEDIT-LBL-03", LBL, ["Setlabel command"],
            "Two selected labels: each setlabel query and some sets; setlabel -default size 2 then label (Q-CMDEDIT-90, 91).",
            two + [f"setlabel {q}" for q in queries] + ["setlabel justify ne", "setlabel rotate 90", "setlabel text Z",

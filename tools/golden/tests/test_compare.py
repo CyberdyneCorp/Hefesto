@@ -173,3 +173,28 @@ class MagicConsoleTest(unittest.TestCase):
         result = compare_bytes(self.PREAMBLE + b"minimum\n", b"tiny\n", "magic-console")
         self.assertFalse(result.equal)
         self.assertIn("minimum", result.detail)
+
+
+class MagBackupTest(unittest.TestCase):
+    """cap:cell-io-safety req:Crash backup file format (record order, Q-CELL-28)."""
+
+    MAGIC = (b"file a\nmagic\ntech t\n<< end >>\nfile top\nmagic\n<< end >>\n"
+             b"file (UNNAMED)\nmagic\n<< end >>\nend top\n")
+    HEFESTO = (b"file (UNNAMED)\nmagic\n<< end >>\nfile a\nmagic\ntech t\n<< end >>\n"
+               b"file top\nmagic\n<< end >>\nend top\n")
+
+    def test_record_order_is_canonical(self):
+        self.assertTrue(compare_bytes(self.MAGIC, self.HEFESTO, "mag-backup").equal)
+        self.assertFalse(compare_bytes(self.MAGIC, self.HEFESTO, "bytes").equal)
+
+    def test_record_content_still_compared(self):
+        changed = self.HEFESTO.replace(b"tech t", b"tech u")
+        self.assertFalse(compare_bytes(self.MAGIC, changed, "mag-backup").equal)
+
+    def test_end_line_compared(self):
+        changed = self.HEFESTO.replace(b"end top", b"end a")
+        self.assertFalse(compare_bytes(self.MAGIC, changed, "mag-backup").equal)
+
+    def test_file_without_end_unchanged(self):
+        from compare.mag_backup import canonicalize as backup
+        self.assertEqual(backup(b"file b\nfile a\n"), b"file b\nfile a\n")

@@ -28,13 +28,19 @@ NOT_AUTHORED = {
 
 CELL = mag("tiny", "<< metal1 >>\nrect 0 0 100 50\n")
 
+# The display styles of tiny.tech's styletype `mos` that Magic's startup reads from
+# $CAD_ROOT/magic/sys (hefesto-cli reads the same files there; the OpenGL variant, X-5).
+MOS_STYLES = [{"source": "magic-sys", "path": path, "to": path.split("/")[1]}
+              for path in ("scmos/mos.OpenGL.dstyle", "scmos/mos.OpenGL.std.cmap", "graphics/color.glyphs")]
+
 
 def view(cid: str, capability: str, reqs: list[str], desc: str, cmds: list[str],
          outputs: list[str] | None = None, notes: list[str] | None = None,
-         stream_masks: list[str] | None = None) -> Spec:
+         stream_masks: list[str] | None = None, external: list[dict] | None = None) -> Spec:
     prefix = ["tech load input/tiny -noprompt", "load input/c"]
     return Spec(cid, capability, reqs, desc, prefix + cmds, files={"tiny.tech": TINY, "c.mag": CELL},
-                outputs=outputs or [], notes=notes or [], stream_masks=stream_masks or [])
+                outputs=outputs or [], notes=notes or [], stream_masks=stream_masks or [],
+                external=external or [])
 
 
 def specs() -> list[Spec]:
@@ -68,12 +74,15 @@ def specs() -> list[Spec]:
         view("UI-G-067", FEEDBACK, ["feedback command"],
              "feedback add with a numeric third argument, an unknown style and a style long name.",
              ["box 0 0 4 4", "feedback add x 5 1 2", "feedback count", "feedback add x bogus", "feedback count",
-              "feedback add x solid_highlights", "feedback count", "feedback bogus", "feedback"]),
+              "feedback add x solid_highlights", "feedback count", "feedback bogus", "feedback"],
+             notes=["solid_highlights is a long name of the mos display styles, which both tools read at startup."],
+             external=MOS_STYLES),
         view("UI-G-081", WIZARD, ["Layout wizard commands", "Window-client wizard commands"],
              "*coord with a box set; *winddebug twice; *files.",
              ["box 0 0 10 10", "*coord", "*winddebug", "*winddebug", "*files"],
-             notes=["*files prints each descriptor's inode number, which changes from run to run: masked."],
-             stream_masks=[r"regex:(?<=inode number )\d+"]),
+             notes=["*files prints each descriptor's inode number, which changes from run to run, and the",
+                    "type of descriptor 0, which is the runner's standard input: both masked."],
+             stream_masks=[r"regex:(?<=inode number )\d+", r"regex:(?<=file descriptor 0: open  \(type: \x27)[^\x27]+"]),
         view("CMDEDIT-MISC-03", "cmd-misc-edit", ["Feedback command"],
              "feedback add over the box and a triangle; count; why; save; clear x.",
              ["box 0 0 4 4", 'feedback add "x"', 'feedback add "p" solid 0 0 10 0 0 10', "feedback count",

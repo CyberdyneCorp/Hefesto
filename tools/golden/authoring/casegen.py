@@ -43,6 +43,7 @@ class Spec:
     files: dict[str, str | bytes] = field(default_factory=dict)
     outputs: list[str] = field(default_factory=list)        # files written in the work dir
     output_masks: dict[str, list[str]] = field(default_factory=dict)
+    output_comparators: dict[str, str] = field(default_factory=dict)  # default "bytes"
     stream_masks: list[str] = field(default_factory=list)
     streams: bool = True
     external: list[dict] = field(default_factory=list)
@@ -112,7 +113,7 @@ def case_toml(spec: Spec) -> str:
         masks = spec.output_masks.get(source, ["mag-timestamp"] if source.endswith(".mag") else [])
         if source.endswith(".mag") and masks_checkpaint(spec):
             masks = _with_mask(masks, "mag-checkpaint")
-        text += _output_block(_output_name(source), source, "bytes", masks)
+        text += _output_block(_output_name(source), source, spec.output_comparators.get(source, "bytes"), masks)
     return text
 
 
