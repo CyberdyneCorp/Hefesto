@@ -118,6 +118,17 @@ class MaskTest(unittest.TestCase):
         self.assertEqual(apply_masks(a, ["magic-tech-sections"]), a)
         self.assertFalse(compare_bytes(a + b"x\n", a, "bytes", ["magic-tech-sections"]).equal)
 
+    def test_magic_stamp_note(self):
+        # Whether Magic prints the note depends on the save landing in the
+        # same second as the previous stamp (CMDEDIT-MISC-01 flaked on it).
+        magic = b"Writing 'b'\nMagic error: writing out-of-date timestamp for b.\nWriting 'c'\n"
+        hefesto = b"Writing 'b'\nWriting 'c'\n"
+        self.assertFalse(compare_bytes(magic, hefesto, "bytes", []).equal)
+        self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["magic-stamp-note"]).equal)
+        # Other "Magic error:" lines stay.
+        other = b"Magic error: something else for b.\n"
+        self.assertEqual(apply_masks(other, ["magic-stamp-note"]), other)
+
     def test_mag_checkpaint(self):
         magic = b"magic\ntech tiny\n<< checkpaint >>\nrect -14 -14 20 20\nrect 0 0 1 1\nuse c  c_0 input/lib\n"
         hefesto = b"magic\ntech tiny\nuse c  c_0 input/lib\n"

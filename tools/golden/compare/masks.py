@@ -116,6 +116,16 @@ def mask_mag_checkpaint(data: bytes) -> bytes:
     return _CHECKPAINT.sub(b"", data)
 
 
+# Magic prints this note (DBCellWrite via dbStampFunc) only when the cell is
+# saved in the same wall-clock second as its previous stamp, so whether it
+# appears depends on timing in Magic and in Hefesto alike.
+_STAMP_NOTE = re.compile(rb"^Magic error: writing out-of-date timestamp for [^\n]*\.\r?\n", re.MULTILINE)
+
+
+def mask_magic_stamp_note(data: bytes) -> bytes:
+    return _STAMP_NOTE.sub(b"", data)
+
+
 def _regex_mask(pattern: str) -> Mask:
     compiled = re.compile(pattern.encode())
     return lambda data: compiled.sub(b"<masked>", data)
@@ -127,6 +137,7 @@ _NAMED: dict[str, Mask] = {
     "ext-timestamp": mask_timestamp_line,
     "magic-tech-sections": mask_magic_tech_sections,
     "mag-checkpaint": mask_mag_checkpaint,
+    "magic-stamp-note": mask_magic_stamp_note,
 }
 
 
