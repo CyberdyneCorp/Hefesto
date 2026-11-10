@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For each keyword it gives the exact set of *primitive edge rules* (see capability `drc-rule-semantics`) that the keyword compiles into, the halo contribution, the ordering of rules in the rule table, and the post-load rule optimizations. Hefesto MUST compile the same tech file into a rule table that produces the same DRC errors and the same why-texts as Magic 8.3.694 (fc5daa9e).
+Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For each keyword it gives the exact set of *primitive edge rules* (see capability `drc-rule-semantics`) that the keyword compiles into, the halo contribution, the ordering of rules in the rule table, and the post-load rule optimizations. With the `magic-compat` setting ON (the default) Hefesto compiles the same tech file into a rule table that produces the same DRC errors and the same why-texts as Magic 8.3.694 (fc5daa9e). Where an approved decision resolves a Magic quirk as *compat* (replicate under magic-compat, fix with it off) the requirement states both modes; quirks resolved as *replicate* hold in both modes. Tech-file lint warnings named below are Hefesto diagnostics in both modes and never change Magic's console output.
 
 Terminology used throughout:
 
@@ -137,7 +137,9 @@ Compatibility: exact
 - For every primitive rule with `cdist > 0`: ceiling of `cdist·D'/N'`; for AREA rules the value is an area and uses `(D'/N')²` with ceiling.
 - Values ≤ 0 are not scaled (e.g. the `-1` "any" parity of `rectangle`).
 - The halo is `ceil(halo_file·D'/N')` (see "Halo and step size"). CIF-layer rules (capability `drc-cif-rules`) are not scaled by D'/N'.
-- On a later grid rescale, rules are first restored to file values using a stored per-rule remainder (one byte), then rescaled. See Q-DRC-1 for remainder overflow and area-remainder loss.
+- On a later grid rescale (`scalegrid`, or reading a `.mag`/GDS/CIF file on a finer grid) the result depends on the `magic-compat` setting (see Q-DRC-1, resolution: replicate under magic-compat, fix with it off):
+  - With it ON (the default), Magic's method is reproduced: each rule is first restored from its compiled value using a remainder stored per rule in one byte, then rescaled. The restore subtracts 1 when the stored remainder is non-zero, multiplies back by the reduced factor N and adds the remainder. A remainder of N > 256 wraps modulo 256, and one that wraps to 0 also skips the subtract-1. For AREA rules the stored value is `(area mod N²) / N` (integer division), so the restored area is `area − area mod N`, except that when `0 < area mod N² < N` the stored 0 skips the subtract-1 and the restored area is `ceil(area / N²)·N²`. With N = 1 nothing is stored and rescaling is exact.
+  - With it OFF, every distance is recomputed from its tech-file value and the current D'/N' with the rounding rules above.
 
 (Magic ref: drc/DRCtech.c:4068-4204, drc/DRCtech.c:4214-4230, drc/DRCtech.c:4550-4600)
 
@@ -160,6 +162,16 @@ Compatibility: exact
 - **GIVEN** no scalefactor, `width poly 2 "w"`, and the internal grid rescaled to 1/2 lambda (`scalegrid 1 2`)
 - **WHEN** rules are rescaled
 - **THEN** the poly width rule has dist 4 and cdist 4 internal units
+
+#### Scenario: Area remainder lost on rescale with magic-compat ON
+- **GIVEN** `magic-compat` ON, `scalefactor 10` and `area m1 1001 2 "a"` (compiled area ⌈1001/100⌉ = 11 internal units²)
+- **WHEN** `scalegrid 1 2` rescales the rules (reduced factor 5)
+- **THEN** the area is restored as 1100 (stored remainder 0) and recompiled as 1100/25 = 44 internal units² (golden DRC-SCALE-3)
+
+#### Scenario: Area recomputed on rescale with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the rule and rescale of the previous scenario
+- **WHEN** the rules are rescaled
+- **THEN** the area is ⌈1001/25⌉ = 41 internal units²
 
 ### Requirement: Why-text table
 Each rule's error explanation SHALL be stored in a per-style why-text table indexed from 1, where identical strings share one index and indices 1–5 are predefined.
@@ -205,7 +217,7 @@ Compatibility: exact
 
 Halo contributions (tech-file units): width d; spacing/touching variants max(d, d)=d; widespacing max(wwidth, d); corner_ok spacing d; edge/edge4way max(d, cdist); extend d; overhang d; surround d (the first distance); rect_only 1; rectangle maxwidth; area horizon; off_grid pitch; maxwidth d; angles 1; cif rules ceil(cifdist / cifscale) (see Q-DRC-2); no_overlap, exact_overlap, option, stepsize, exception, exemption, scalefactor 0.
 
-Halo = `ceil(maxContribution · D'/N')`. Step size: if `stepsize` was given (positive; values < 16 warn) it is used as an internal-unit value; otherwise 16·halo, or if halo is 0: `6400 / cifScale` when a CIF output style is loaded (cifScale = CIF units per internal unit, integer division) else 64. Subsequent grid rescales multiply halo by λd/λn with ceiling and step size with floor. A non-positive `stepsize` reports `Step size must be a positive integer.` and leaves the default.
+The halo depends on the `magic-compat` setting (see Q-DRC-2, resolution: replicate under magic-compat, fix with it off). With it ON (the default), as in Magic, the CIF contributions, which are already in internal units, are folded into maxContribution with the tech-file-unit ones and Halo = `ceil(maxContribution · D'/N')`, so with `scalefactor N` (N > 1) a halo set by a CIF rule is divided by N. With it OFF, Halo = max(`ceil(maxTechContribution · D'/N')`, maxCifContribution), where maxTechContribution excludes the CIF rules. Step size: if `stepsize` was given (positive; values < 16 warn) it is used as an internal-unit value; otherwise 16·halo, or if halo is 0: `6400 / cifScale` when a CIF output style is loaded (cifScale = CIF units per internal unit, integer division) else 64. Subsequent grid rescales multiply halo by λd/λn with ceiling and step size with floor. A non-positive `stepsize` reports `Step size must be a positive integer.` and leaves the default.
 
 (Magic ref: drc/DRCtech.c:1182-1190, drc/DRCtech.c:4228-4256, drc/DRCtech.c:3990-4010)
 
@@ -213,6 +225,16 @@ Halo = `ceil(maxContribution · D'/N')`. Step size: if `stepsize` was given (pos
 - **GIVEN** a style whose largest rule distance is a widespacing with wwidth 10, d 3, no scalefactor, no stepsize
 - **WHEN** loaded
 - **THEN** the halo is 10 and the step size is 160
+
+#### Scenario: Halo set by a mask-layer rule with magic-compat ON
+- **GIVEN** `magic-compat` ON, a drc style with `scalefactor 10`, `cifstyle` bound to a mask output style of scalefactor 10, and the single rule `cifwidth MET1 140 "w"` (contribution ⌈140/10⌉ = 14 internal units)
+- **WHEN** the style is loaded
+- **THEN** the halo is ⌈14 · 1/10⌉ = 2 (golden DRC-CIF-8)
+
+#### Scenario: Halo set by a mask-layer rule with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the style of the previous scenario
+- **WHEN** the style is loaded
+- **THEN** the halo is 14
 
 ### Requirement: width compilation
 `width S w [angles] why` SHALL compile, for every edge pair (A,B) on a plane of S with A∈~S and B∈S, into R[A][B] FWD dist w, cdist w, OK=S, CORNER=S, and for every pair with A∈S, B∈~S into R[A][B] REVERSE|SPLITTILE dist w, cdist w, OK=S, CORNER=S; with `angles` the forward rule also carries SPLITTILE.
@@ -232,7 +254,7 @@ S must be single-plane, else `All layers for "width" must be on same plane` and 
 `spacing S1 S2 d adjacency why` SHALL compile into primitive rules according to the adjacency keyword as specified below, where for each produced rule the check plane is the lowest plane of the *other* set and the edge plane is the lowest plane shared by the edge pair and the rule's own set.
 Compatibility: exact
 
-Plane validation: each set must be single-plane, or else its types must be partitioned across planes with no type present on two of those planes (`Types in first list must either be in one plane or else types must not share planes.`); such a *multiplane* rule is compiled only for the first (plane1, plane2) combination in ascending plane order (see Q-DRC-3).
+Plane validation: each set must be single-plane, or else its types must be partitioned across planes with no type present on two of those planes (`Types in first list must either be in one plane or else types must not share planes.`); such a *multiplane* rule is compiled according to the `magic-compat` setting (see Q-DRC-3, resolution: replicate under magic-compat, fix with it off): with it ON (the default) only for the first (plane1, plane2) combination that matches, in ascending plane order, as in Magic; with it OFF for every (plane1, plane2) combination. In both modes the loader emits a tech-file lint warning: a structured Hefesto diagnostic of severity `warning` with a stable code (capability `hefesto-diagnostics`), which is not Magic console output, naming the rule's line and the plane pairs that Magic does not compile.
 
 Let P1/P2 be the plane masks, d the distance, and define for a pair on plane p and check plane q: `OKx = PT(q) \ Sx` and `CRx = PT(p) ∩ Rx`.
 
@@ -339,7 +361,7 @@ Base rules (presence absence_ok, absence_illegal, exact_width): for A∈~S2, B�
 - If S1 and S2 share a plane: with X = ~(S1∪S2), for A∈S1, B∈X: R[A][B] FWD|BOTHCORNERS d cdist d OK=∅ CORNER=X and REVERSE mirror at R[B][A].
 - Otherwise: for A∈S1, B∈~S1 on S1's plane: R[A][B] FWD|BOTHCORNERS d cdist d OK=S2 CORNER=~S1, check plane plane(S2), and REVERSE mirror.
 
-`exact_width` (prefix `exact_`) adds (only when S1 and S2 share a plane, see Q-DRC-18), for A∈S1, B∈S2 sharing S1's plane: R[A][B] FWD|BOTHCORNERS|OUTSIDE d cdist d OK=~S2 CORNER=S2 and REVERSE mirror.
+`exact_width` (prefix `exact_`) adds, for A∈S1, B∈S2 sharing a plane among S1's coincident planes: R[A][B] FWD|BOTHCORNERS|OUTSIDE d cdist d OK=~S2 CORNER=S2 and REVERSE mirror. Contact types are on their residue planes, so the usual via-in-metal case gets these rules; pairs with no common plane (for example a well-plane outer layer around an active-plane inner layer) get only the absence_illegal rules. This holds in both `magic-compat` settings (see Q-DRC-18, resolution: replicate); when some (A, B) pair has no common plane the loader emits a tech-file lint warning: a structured Hefesto diagnostic of severity `warning` with a stable code (capability `hefesto-diagnostics`), which is not Magic console output naming the rule's line.
 
 `directional` (prefix): with R = S1∪S2, for A∈S1, B∈~S1 on S1's plane: R[A][B] = { FWD|TRIGGER dist d2 cdist 0 OK=S2 CORNER=∅ ; REVERSE|BOTHCORNERS dist d cdist d OK=R CORNER=all types } and R[B][A] = { REVERSE|TRIGGER d2 OK=S2 ; FWD|BOTHCORNERS d OK=R CORNER=all }, check plane plane(S2). d2 defaults to d; a non-integer d2 token reports `Incorrect arguments in directional "surround" rule`.
 
@@ -370,7 +392,7 @@ Compatibility: exact
 `area S a h why` SHALL compile into R[A][B] AREA|FWD dist h cdist a OK=S CORNER=S for A∈~S, B∈S; `maxwidth S w [bends [E]] why` SHALL compile into R[A][B] MAXWIDTH|flag dist w cdist w OK=S CORNER=S (or CORNER=E with check plane plane(E) when exclude types E are given) for A∈~S, B∈S; `off_grid S p why` SHALL compile into R[A][B] OFFGRID|FWD dist p OK=S and R[B][A] OFFGRID|REVERSE for every A∈~S, B∈S that share any plane.
 Compatibility: exact
 
-maxwidth flag: 4-token form → BENDS if w>0 else none; `bend_illegal` → none; `bend_ok` → BENDS; `both` → MAXWIDTH_BOTH; other → `unknown bend option <x>` and no rule. Exclude types must be single-plane; if they lie on S's plane a warning `Exclude types for "maxwidth" are on the same plane and so cannot be checked.` is printed. off_grid does not require S to be single-plane.
+maxwidth flag: 4-token form → BENDS if w>0 else none; `bend_illegal` → none; `bend_ok` → BENDS; `both` → MAXWIDTH_BOTH; other → `unknown bend option <x>` and no rule. Exclude types must be single-plane; if they lie on S's plane a warning `Exclude types for "maxwidth" are on the same plane and so cannot be checked.` is printed. Exclude types are honored only by the `bend_ok` (BENDS) variant; `bend_illegal` and `both` ignore them in both `magic-compat` settings (see Q-DRC-19, resolution: replicate), and when exclude types are combined with `bend_illegal` or `both` the loader emits a tech-file lint warning: a structured Hefesto diagnostic of severity `warning` with a stable code (capability `hefesto-diagnostics`), which is not Magic console output naming the rule's line. off_grid does not require S to be single-plane.
 
 (Magic ref: drc/DRCtech.c:1507-1580, drc/DRCtech.c:1587-1650, drc/DRCtech.c:1692-1815)
 
@@ -383,7 +405,7 @@ maxwidth flag: 4-token form → BENDS if w>0 else none; `bend_illegal` → none;
 `angles S 90|45|45<sep>only why` SHALL compile, for every type t∈S and every u∉S on t's plane (or space), into R[u][t] dist 1 cdist 1 OK=S CORNER=S flags=F and R[t][u] F|REVERSE, where F = ANGLES_90 for `90`, ANGLES_45|ANGLES_90 for `45`, and ANGLES_45 for `45` followed by any single separator character and `only`; for the 45-only form it SHALL additionally add rect_only-style corner rules: for A∈S, B∈~S: R[A][B] and R[B][A] (FWD/REVERSE) with F|BOTHCORNERS dist 1 cdist 1 OK=~S CORNER=PT(plane), and for A∈~S, B∈S: R[A][B], R[B][A] with F|BOTHCORNERS dist 1 cdist 1 OK=~{A} CORNER=PT(plane).
 Compatibility: exact
 
-Values other than 45/90 report `angles must be 45 or 90` and add nothing. Halo contribution 1. See Q-DRC-4 for the unterminated-suffix read.
+Values other than 45/90 report `angles must be 45 or 90` and add nothing. The token is never read past its end: `45` alone means 45 and 90 degrees, and only `45` followed by exactly one separator character and `only` means 45 only, in both `magic-compat` settings (Magic reads one byte past a bare `45`; see Q-DRC-4, resolution: fix). Halo contribution 1.
 
 (Magic ref: drc/DRCtech.c:1819-1995)
 
@@ -440,7 +462,7 @@ Compatibility: exact
 After loading, for each edge pair (A,B) the compiler SHALL detect rules that are violated by the edge itself and keep, for each edge plane, only the first such rule in list order (with its TRIGGER flag cleared), discarding all other rules of that edge pair on the same edge plane.
 Compatibility: exact
 
-A rule is "always violated" when it is not nonstandard (AREA, MAXWIDTH, RECTSIZE, ANGLES_90, OFFGRID) and not OUTSIDE, and the type adjacent on the checked side (B for FWD, A for REVERSE) is not space and is not in OK, and, when check plane ≠ edge plane, that adjacent type exists on the check plane. Rules of the pair on other edge planes are kept. This pruning changes error geometry (only the kept rule's region is flagged) and why-text and MUST be replicated.
+A rule is "always violated" when it is not nonstandard (AREA, MAXWIDTH, RECTSIZE, ANGLES_90, OFFGRID) and not OUTSIDE, and the type adjacent on the checked side (B for FWD, A for REVERSE) is not space and is not in OK, and, when check plane ≠ edge plane, that adjacent type exists on the check plane. Rules of the pair on other edge planes are kept. This pruning changes error geometry (only the kept rule's region is flagged) and why-text, and Hefesto replicates it in both `magic-compat` settings.
 
 (Magic ref: drc/DRCtech.c:4273-4350)
 
@@ -453,7 +475,9 @@ A rule is "always violated" when it is not nonstandard (AREA, MAXWIDTH, RECTSIZE
 After illegal-edge pruning, a rule X in a pair's list SHALL be removed when a later rule Y (not part of a trigger pair) in the same list covers it: Y.OK ⊆ X.OK, Y.CORNER = X.CORNER, X.dist ≤ Y.dist, X.cdist ≤ Y.cdist, same check plane, same exception tag, same direction, not (Y has BOTHCORNERS and X has not), Y standard, equal OUTSIDE flags when distances are equal, and equal SPLITTILE flags; when X is the rule triggered by a trigger, both the trigger and X are removed.
 Compatibility: exact
 
-Nonstandard rules are never removed or used as cover. Note the BOTHCORNERS condition is the inverse of the documented intent and edge planes are not compared (see Q-DRC-5); Hefesto MUST replicate the coded condition.
+Nonstandard rules are never removed or used as cover. The conditions depend on the `magic-compat` setting (see Q-DRC-5, resolution: replicate under magic-compat, fix with it off):
+- With it ON (the default), Magic's coded condition is reproduced as listed above: Y is skipped as cover when Y has BOTHCORNERS and X has not, the inverse of the documented intent ("if A is BOTHCORNERS then B must be, too"), so a BOTHCORNERS rule can be removed in favor of a single-corner rule; the edge plane and the MANHATTAN, RUNLENGTH and DERIVED_EDGE/DERIVED_TARGET flags are not compared.
+- With it OFF, Y covers X only if Y has BOTHCORNERS whenever X has it, and Y and X also have the same edge plane and the same MANHATTAN, RUNLENGTH, DERIVED_EDGE and DERIVED_TARGET flags.
 
 (Magic ref: drc/DRCtech.c:4352-4470)
 
@@ -461,6 +485,16 @@ Nonstandard rules are never removed or used as cover. Note the BOTHCORNERS condi
 - **GIVEN** `width m1 2 "small"` and later `width m1 3 "big"`
 - **WHEN** finalized
 - **THEN** in R[space][m1] the dist-2 forward rule is removed and only the "big" rule remains, so violations report "big"
+
+#### Scenario: BOTHCORNERS rule covered by a single-corner rule with magic-compat ON
+- **GIVEN** `magic-compat` ON, `edge4way space m1 2 m1 m1 2 "A"` (BOTHCORNERS) followed by `edge space m1 3 m1 m1 3 "B"` (single corner)
+- **WHEN** the rules are finalized
+- **THEN** in R[space][m1] the forward rule "A" is removed in favor of "B", so the second corner of "A" is no longer checked (golden DRC-OPT-3)
+
+#### Scenario: BOTHCORNERS rule kept with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the rules of the previous scenario
+- **WHEN** the rules are finalized
+- **THEN** rule "A" is kept, because "B" lacks BOTHCORNERS
 
 ### Requirement: Style selection at run time
 Selecting a DRC style SHALL re-read the drc section of the current tech file for that style, apply the current grid scale, and re-establish halo and step size; selecting by name uses unique-prefix matching over the style list.

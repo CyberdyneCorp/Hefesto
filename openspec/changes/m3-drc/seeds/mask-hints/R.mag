@@ -1,0 +1,10 @@
+magic
+tech t
+timestamp 0
+<< metal1 >>
+rect 0 0 4 4
+<< properties >>
+string FOO bar
+str MASKHINTS_X 0 0 10 10
+string BAZ qux
+<< end >>

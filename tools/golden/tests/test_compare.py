@@ -7,7 +7,9 @@ cap:hefesto-output-determinism req:Canonical comparison against Magic
 from __future__ import annotations
 
 import struct
+import tomllib
 import unittest
+from pathlib import Path
 
 from compare import compare_bytes
 from compare.ext_cap import canonicalize
@@ -128,6 +130,18 @@ class MaskTest(unittest.TestCase):
         # Other "Magic error:" lines stay.
         other = b"Magic error: something else for b.\n"
         self.assertEqual(apply_masks(other, ["magic-stamp-note"]), other)
+
+    def test_every_console_output_masks_the_stamp_note(self):
+        # TECH-G36 flaked in CI on the note after CMDEDIT-MISC-01 had opted
+        # in alone: any case that saves a cell can hit it, so every
+        # magic-console output carries the mask.
+        root = Path(__file__).resolve().parents[3] / "tests" / "golden"
+        missing = []
+        for case in sorted(root.glob("*/cases/*/case.toml")):
+            for out in tomllib.loads(case.read_text(encoding="utf-8")).get("outputs", []):
+                if out.get("comparator") == "magic-console" and "magic-stamp-note" not in out.get("masks", []):
+                    missing.append(f"{case.parent.name}/{out['name']}")
+        self.assertEqual(missing, [])
 
     def test_mag_checkpaint(self):
         magic = b"magic\ntech tiny\n<< checkpaint >>\nrect -14 -14 20 20\nrect 0 0 1 1\nuse c  c_0 input/lib\n"

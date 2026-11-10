@@ -39,13 +39,13 @@ to = "FreeMono.pt3"
 name = "stdout.txt"
 source = "stdout"
 comparator = "magic-console"
-masks = ["magic-tech-sections"]
+masks = ["magic-stamp-note", "magic-tech-sections"]
 
 [[outputs]]
 name = "stderr.txt"
 source = "stderr"
 comparator = "magic-console"
-masks = ["magic-tech-sections"]
+masks = ["magic-stamp-note", "magic-tech-sections"]
 
 [[outputs]]
 name = "child.mag"

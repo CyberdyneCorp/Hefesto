@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc list …` / `drc listall …`), including the error counting, error finding and "why" reporting semantics and the why-text substitution. The checks themselves are defined in `drc-engine`, `drc-rule-semantics` and `drc-cif-rules`. Hefesto MUST offer every option as a capability with the same semantics; exact text output is required where marked.
+Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc list …` / `drc listall …`), including the error counting, error finding and "why" reporting semantics and the why-text substitution. The checks themselves are defined in `drc-engine`, `drc-rule-semantics` and `drc-cif-rules`. Hefesto offers every option with the same semantics; exact text output is required where marked. Where an approved decision resolves a Magic quirk as *compat* (replicate under magic-compat, fix with it off), the requirement states both modes, and the `magic-compat` setting ON (the default) gives Magic's output.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ Compatibility: behavioral
 Options: `*flatcheck`, `*halo [d]`, `*showint radius`, `*stepsize [d]`, `catchup`, `check`, `count [total]`, `euclidean on|off`, `find [nth|text]`, `help [wizard]`, `ignore [text|none]`, `off`, `on`, `status`, `style [name]`, `printrules [file]`, `rulestats`, `statistics`, `why`.
 
 - Only `printrules`, `find`, `*showint`, `help`, `euclidean`, `*stepsize`, `*halo`, `count`, `style` and `ignore` accept an extra argument; extra arguments for other options print `Wrong arguments in "drc <arg>" command:`, `    drc <option table line>` and `Try "drc help" for more help.` and do nothing.
-- With no option: `No option given in ":drc" command.` followed by help (for `drc list` alone see Q-DRC-22).
+- With no option: `No option given in ":drc" command.` followed by help. `drc list` or `drc listall` with no option does the same, in both `magic-compat` settings (Magic then reads a missing argument; see Q-DRC-22, resolution: fix).
 - Options that operate on "the box" use the box of the window containing the box (capability `cmd-box`); if there is no such window the command does nothing.
 - Help output (exact): `DRC commands have the form ":drc [list|listall] option",` (informative: Magic's non-Tcl build prints `DRC commands have the form ":drc option",`), then ` where option is one of:` and one line `    <option table entry>` per option in the order above, skipping `*` entries unless `help wizard`.
 
@@ -60,7 +60,7 @@ Compatibility: exact
 
 Output and results:
 - Without `total`, for each cell with a non-zero count: `Cell <name> has <n> error tiles.` or, for n = 1, `Cell <name> has just one error tile.`; cells with zero errors are not listed. Magic's cell order comes from a table keyed by memory addresses, so Hefesto SHALL list the cells in the deterministic order of capability `hefesto-output-determinism` (by cell name; decision X-1), and golden comparison SHALL canonicalize that order.
-- Then, when not in list mode: with `total`, `Total DRC errors found: <sum>`; without `total`, if background DRC is not off, `Total DRC errors found: 0` is printed regardless of the per-cell counts (see Q-DRC-14).
+- Then, when not in list mode: with `total`, `Total DRC errors found: <sum>`; without `total`, if background DRC is not off, a total line is printed whose value depends on the `magic-compat` setting (see Q-DRC-14, resolution: replicate under magic-compat, fix with it off): with it ON (the default) `Total DRC errors found: 0` regardless of the per-cell counts, as in Magic; with it OFF `Total DRC errors found: <sum of the per-cell counts>`. With background DRC off nothing follows the per-cell lines.
 - List mode (Tcl): without `total`, the result is a list of `{cellname count}` pairs (only cells with count > 0); with `total`, the result is the integer sum.
 - Cells not yet loaded are not descended into.
 
@@ -77,11 +77,21 @@ Output and results:
 - **WHEN** `drc count` is executed (non-list)
 - **THEN** `Cell inv has just one error tile.` is printed
 
+#### Scenario: Count total line with magic-compat ON
+- **GIVEN** `magic-compat` ON, background DRC on, and a top cell `top` with 3 error tiles
+- **WHEN** `drc count` is executed (non-list)
+- **THEN** `Cell top has 3 error tiles.` and then `Total DRC errors found: 0` are printed (golden DRC-CNT-1)
+
+#### Scenario: Count total line with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the cell of the previous scenario
+- **WHEN** `drc count` is executed (non-list)
+- **THEN** `Cell top has 3 error tiles.` and then `Total DRC errors found: 3` are printed
+
 ### Requirement: drc find
 `drc find [nth|text]` SHALL locate an error tile of the root cell (its own error plane only, within its bounding box, in area-enumeration order starting from the top-left), move the box to that tile's rectangle, print `Error area #<k>:` (non-list mode) and report the why-texts in that area as `drc why` does; repeated calls without an argument step to the next error, wrapping to the first after the last.
 Compatibility: behavioral
 
-- The index is a persistent counter, initially 1. With an integer argument n, the counter is set to max(n,1) and that error is shown (no wrap: if there are fewer errors, `There aren't that many errors` is printed without a newline and the Tcl result is `-1`). Without an argument the counter is incremented before use, so the first `drc find` of a session shows error #2 when at least two exist (see Q-DRC-15); past the end it wraps to 1.
+- The index is a persistent counter. With an integer argument n, the counter is set to max(n,1) and that error is shown (no wrap: if there are fewer errors, `There aren't that many errors` is printed without a newline and the Tcl result is `-1`). Without an argument the counter is incremented before use; past the end it wraps to 1. Its initial value depends on the `magic-compat` setting (see Q-DRC-15, resolution: replicate under magic-compat, fix with it off): with it ON (the default) it starts at 1, as in Magic, so the first argument-less `drc find` of a session shows error #2 when at least two exist; with it OFF it starts at 0, so the first one shows error #1.
 - With a non-integer argument, only rules whose why-text contains the argument (case-sensitive substring) are considered: errors whose area yields no matching why are skipped by advancing the counter until one matches or the search returns to its starting index.
 - If the cell has no error tiles: `There are no errors in <cellname>.` and Tcl result `0`.
 - If the why recheck of the located area finds no (non-ignored) error, the counter advances and the next tile is tried.
@@ -97,6 +107,16 @@ Compatibility: behavioral
 - **GIVEN** a top cell with 2 error tiles
 - **WHEN** `drc find 5` is executed
 - **THEN** `There aren't that many errors` is printed and the box does not move
+
+#### Scenario: First find with magic-compat ON
+- **GIVEN** `magic-compat` ON, a fresh session and a top cell with 4 error tiles
+- **WHEN** `drc find` is executed without an argument
+- **THEN** `Error area #2:` is printed and the box is moved to the second error tile (golden DRC-FIND-1)
+
+#### Scenario: First find with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, a fresh session and a top cell with 4 error tiles
+- **WHEN** `drc find` is executed without an argument
+- **THEN** `Error area #1:` is printed and the box is moved to the first error tile
 
 ### Requirement: drc why
 `drc why` SHALL recompute DRC (not read the error plane) for the root cell over the box area using the interaction check with the box as both area and erase box, and report each distinct why-text (after substitution) once, in order of first discovery, for every reported error rectangle that overlaps the box with positive area, skipping ignored rules; if none is reported it SHALL print `No errors found.`
@@ -127,7 +147,7 @@ Compatibility: exact
 - Other units (see capability `cmd-coordinates-and-units`): internal → integer with `i`/`i^2` suffix when unit printing is enabled; lambda → `%.3f` (`%.6f`) with `l`/`l^2`; user grid → value divided by grid pitch with `gx`/`gy` (`gx*gy`).
 - For mask-layer rules (`drc-cif-rules`) the value is in mask units and is first converted to internal units.
 - The values are the compiled (scaled, rounded) values, not the tech-file literals.
-- Any other character after `%` is not a substitution; see Q-DRC-16 for the resulting text. Each substituted value is truncated to 19 characters.
+- Any other character after `%` is not a substitution: the `%` and that character are copied literally, and a trailing `%` is copied as is, in both `magic-compat` settings (Magic's output there is undefined: it may copy shifted or uninitialized bytes or end the string; see Q-DRC-16, resolution: fix). This matches Magic wherever Magic's output is defined. Each substituted value is truncated to 19 characters.
 
 (Magic ref: drc/DRCmain.c:183-270, dbwind/DBWprocs.c:680-925)
 
@@ -136,11 +156,16 @@ Compatibility: exact
 - **WHEN** reported with default units
 - **THEN** the text is `poly width < 0.15um`
 
+#### Scenario: Unknown escape copied literally
+- **GIVEN** the why-text `"m1 %d wide, 100%x done %"` for a rule with compiled dist 30 and 0.005 µm per internal unit
+- **WHEN** reported with default units
+- **THEN** the text is `m1 0.15um wide, 100%x done %`
+
 ### Requirement: drc ignore
-`drc ignore text` SHALL add to the ignore list every why index from 1 up to but excluding the last why index whose (unsubstituted) text contains `text` as a case-sensitive substring, `drc ignore none` (case-insensitive) SHALL clear the list, and `drc ignore` SHALL print each ignored why-text on its own line (most recently added first) or `(none)`.
+`drc ignore text` SHALL add to the ignore list every why index in the scanned range whose (unsubstituted) text contains `text` as a case-sensitive substring, `drc ignore none` (case-insensitive) SHALL clear the list, and `drc ignore` SHALL print each ignored why-text on its own line (most recently added first) or `(none)`. The scanned range, also used by `drc find text`, depends on the `magic-compat` setting (see Q-DRC-17, resolution: replicate under magic-compat, fix with it off): with it ON (the default) it is 1 up to but excluding the last why index, as in Magic, so the last registered why-text can never be ignored or searched; with it OFF it is 1 up to and including the last index.
 Compatibility: behavioral
 
-Ignored rules are suppressed from `drc why`, `drc list why` and `drc find` reporting but still produce error tiles. The exclusion of the last why index is a defect (see Q-DRC-17).
+Ignored rules are suppressed from `drc why`, `drc list why` and `drc find` reporting but still produce error tiles.
 
 (Magic ref: commands/CmdCD.c:4466-4512)
 
@@ -148,6 +173,16 @@ Ignored rules are suppressed from `drc why`, `drc list why` and `drc find` repor
 - **GIVEN** why-texts `"m1 spacing"` and `"m2 spacing"` (not the last-defined text)
 - **WHEN** `drc ignore spacing` is executed and `drc why` is run over violations of both
 - **THEN** neither text is printed and `No errors found.` is printed
+
+#### Scenario: Last why-text with magic-compat ON
+- **GIVEN** `magic-compat` ON and a style whose last registered why-text is `"m3 spacing"`
+- **WHEN** `drc ignore spacing` is executed and `drc why` is run over an m3 spacing violation
+- **THEN** `m3 spacing` is still printed (golden DRC-IGN-1)
+
+#### Scenario: Last why-text with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the style and layout of the previous scenario
+- **WHEN** `drc ignore spacing` is executed and `drc why` is run
+- **THEN** `No errors found.` is printed
 
 ### Requirement: drc euclidean
 `drc euclidean on` SHALL enable Euclidean corner checking (see `drc-rule-semantics`), `drc euclidean <anything else>` SHALL disable it, and `drc euclidean` SHALL print `DRC measurements are Euclidean.` or `DRC measurements are Manhattan.`; the default is Manhattan.
@@ -227,7 +262,7 @@ Compatibility: behavioral
 Hefesto SHALL expose the list-mode results (`list`/`listall` variants of count, find, why and style) through its scripting interface (capability `scripting-api`) with the same data structure (nested lists of strings and integers) on every platform, including iPadOS, where the sandboxed embedded Tcl interpreter provides it (decision X-3), and through any non-Tcl binding of the command API.
 Compatibility: behavioral
 
-See Q-DRC-12 [platform].
+The results are Tcl objects with Magic's structure in every `magic-compat` setting. Before the Tcl binding exists (M4) the command API returns the same nested-list value, and the CLI prints it in Tcl list syntax (see Q-DRC-12, resolution: platform).
 
 (Magic ref: commands/CmdCD.c:4197-4274, drc/DRCmain.c:646-720)
 

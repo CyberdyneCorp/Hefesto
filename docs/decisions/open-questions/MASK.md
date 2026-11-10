@@ -379,11 +379,13 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 
 ### Q-MASK-308: mask-hints input property lookup uses wrong key
 - Kind: bug
-- Magic behavior: The existing plane is looked up under `NAME` but stored under `MASKHINTS_NAME`; each templayer creates a fresh plane that replaces any earlier hints of the same name in the same cell.
-- Evidence: cif/CIFrdcl.c:736-753
-- Options: replicate | fix (look up MASKHINTS_NAME and merge)
-- Recommendation: fix (merge); only differs when two templayers target the same hint name.
+- Status: approved (recommendation drafted and approved 2026-11-10)
+- Magic behavior: After a cifinput templayer with `mask-hints NAME` yields geometry, the existing plane is looked up under the bare key `NAME` but stored under `MASKHINTS_NAME`. Normally nothing is found, so a fresh plane is stored and `DBPropPut` frees any earlier `MASKHINTS_NAME` of the cell: a second templayer with the same NAME replaces the first one's hints instead of adding to them. If the cell does hold a property named exactly `NAME`, its value is used as a plane whatever its type (a string read as a `Plane *`: undefined behavior) and nothing is stored under `MASKHINTS_NAME`. The `gds maskhints` path in the same function looks up `MASKHINTS_<layer>` and unions, which shows the intent.
+- Evidence: cif/CIFrdcl.c:CIFPaintCurrent (:736-754, lookup at :743; correct sibling lookup at :930-947), database/DBprop.c:DBPropPut (:107-124, frees the old plane)
+- Options: replicate (replace; reuse a same-named non-hint property) | fix (look up `MASKHINTS_NAME` and union)
+- Recommendation: fix everywhere (X-2 tier 1: discarded hint geometry plus undefined behavior on the bare-key hit). Golden output only differs when one style has two templayers with the same NAME, which no tech in the repo has; the mask-hints and mask-input-styles specs then describe the union.
 - Canonical entry for Q-MISC-11.
+- Resolution: fix everywhere (X-2 tier 1: discarded hint geometry plus undefined behavior on the bare-key hit). Golden output only differs when one style has two templayers with the same NAME, which no tech in the repo has; the mask-hints and mask-input-styles specs then describe the union. Approved 2026-11-10.
 
 ### Q-MASK-309: copyup ignored by the CIF reader
 - Kind: quirk

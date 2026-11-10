@@ -40,13 +40,20 @@ Compatibility: behavioral
 
 ### Requirement: Mask hints in .mag files
 
-The system SHALL write each mask hint in the `.mag` properties section as one line `string MASKHINTS_<name>` followed, for each strip of the region in enumeration order, by ` <x1> <y1> <x2> <y2>` (each value the internal coordinate divided by the file's scale reducer, decimal integer, single leading space), and SHALL read back a properties-section line whose type keyword is `string` and whose key starts with `MASKHINTS_` by parsing the value as integers in groups of four, multiplying each by the file scale-up factor and dividing (truncating) by the scale-down factor, and painting each group into the hint region. When property compat mode is turned off (`property compat false`) the type keyword written is `dimension` instead of `string`. A value containing a non-integer token reports "Mask-hint "<rest>" has non-integer values!" and the property is dropped; a count not divisible by four reports "Mask-hint property number of values is not divisible by four.  Truncated." and keeps the complete groups. Mask-hint coordinates participate in the greatest-common-factor computation that selects the file scale reducer. The type keyword `plane` is not accepted in a `.mag` properties section (see Q-MISC-12).
+The system SHALL write each mask hint in the `.mag` properties section as one line `string MASKHINTS_<name>` followed, for each strip of the region in enumeration order, by ` <x1> <y1> <x2> <y2>` (each value the internal coordinate divided by the file's scale reducer, decimal integer, single leading space), and SHALL read back a properties-section line whose key starts with `MASKHINTS_`, whatever its accepted type keyword (Q-MISC-10, resolution: fix), by parsing the value as integers in groups of four, multiplying each by the file scale-up factor and dividing (truncating) by the scale-down factor, and painting each group into the hint region. When property compat mode is turned off (`property compat false`) the type keyword written is `dimension` instead of `string`. A value containing a non-integer token reports "Mask-hint "<rest>" has non-integer values!" and the property is dropped; a count not divisible by four reports "Mask-hint property number of values is not divisible by four.  Truncated." and keeps the complete groups. Mask-hint coordinates participate in the greatest-common-factor computation that selects the file scale reducer.
+
+On read, the type keyword SHALL be matched case-insensitively by unique prefix against `string`, `integer`, `dimension` and `double` (an exact match wins), as Magic's `Lookup` does, so `str` and `STRING` read as `string`. A first word that matches none of them ends the properties section. The keyword `plane` (Q-MISC-12, resolution: replicate under magic-compat, accept with it off):
+- With the `magic-compat` setting ON (the default), `plane` is not a property type, as in Magic: the `plane …` line ends the properties section, the reader takes it for a use line and reports `Expected "use" line but saw: plane …` and `File <cell> contained format error` (capability `cell-file-format`), and the cell keeps what was read before that line (paint, labels, earlier properties) while the rest of the cell file is not read.
+- With it OFF, `plane` is accepted as a fifth type keyword (matched the same way): a `plane` line whose key starts with `MASKHINTS_` is read as a hint exactly like a `string` line, and any other key reports `Plane type specified for property "<key>" but property is not a mask hint!` and the line is skipped.
+- Hefesto never writes `plane`, in either mode.
 
 Compatibility: exact
 
 ```ebnf
 hint_line  = type_kw , " " , "MASKHINTS_" , name , { " " , int , " " , int , " " , int , " " , int } , "\n" ;
-type_kw    = "string" | "dimension" ;     (* "dimension" only written when property compat mode is off; see Q-MISC-10 *)
+type_kw    = "string" | "dimension" ;     (* written; "dimension" only when property compat mode is off; see Q-MISC-10 *)
+read_kw    = ? case-insensitive unique prefix of "string" | "integer" | "dimension" | "double",
+               or of "plane" as well with magic-compat OFF (Q-MISC-12) ? ;
 name       = ? non-blank characters, total key length <= 127 ? ;
 int        = [ "-" ] , digit , { digit } ;
 ```
@@ -76,6 +83,23 @@ string MASKHINTS_SRAM 5 10 15 15 0 5 15 10 0 0 10 5
 - **WHEN** the file is read
 - **THEN** an error is reported and no MASKHINTS_A property exists on the cell
 
+#### Scenario: Type keyword matched by prefix
+- **GIVEN** the properties line `STR MASKHINTS_A 0 0 10 10`
+- **WHEN** the file is read
+- **THEN** the hint region of MASKHINTS_A is (0,0)-(10,10)
+
+#### Scenario: plane keyword with magic-compat ON
+- **GIVEN** `magic-compat` ON and a cell file with metal1 (0,0)-(4,4), then a properties section with the lines `string FOO bar`, `plane MASKHINTS_X 0 0 10 10` and `string BAZ qux`
+- **WHEN** the file is read
+- **THEN** `Expected "use" line but saw: plane MASKHINTS_X 0 0 10 10` and `File <cell> contained format error` are reported
+- **AND** the cell has the metal1 paint and property FOO, and has neither MASKHINTS_X nor BAZ
+
+#### Scenario: plane keyword with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the cell file of the previous scenario
+- **WHEN** the file is read
+- **THEN** no error is reported, MASKHINTS_X is (0,0)-(10,10) and FOO and BAZ are present
+- **AND** saving the cell writes `string MASKHINTS_X 0 0 10 10`
+
 ### Requirement: Mask-hint output operator
 
 In a cifoutput layer definition, the operator `mask-hints <name>` SHALL union into the layer being generated, at that point of the operator sequence, the region of the property `MASKHINTS_<name>` of the cell whose geometry is being generated, each strip scaled from internal units to output units by multiplying every coordinate by the style's scalefactor; if the cell has no such property the operator leaves the layer unchanged. The operator takes exactly one argument. For hierarchical interaction distances, operators after a `mask-hints` operator in the same layer are not considered. When output geometry is generated for a flattened region (hierarchical interaction areas, `cif see`, and similar), the hint regions of the flattened subcells are first transformed into the flattened coordinate system and unioned into the flattened cell's hints of the same name.
@@ -100,7 +124,7 @@ mask_hints_op = "mask-hints" , ws , name ;
 
 ### Requirement: Mask hints from cifinput templayers
 
-When a cifinput `templayer` contains the operator `mask-hints <name>` and no `copyup` operator, the system SHALL, after computing that templayer's geometry for a cell being read, convert each resulting rectangle from input units to internal units (exact conversion, which may rescale the internal grid as described in capability `gds-read`) and store it in the cell's `MASKHINTS_<name>` property. Magic looks up an existing hint plane under the bare key `<name>` instead of `MASKHINTS_<name>`, so the lookup normally fails and each templayer creates a fresh property that replaces any earlier `MASKHINTS_<name>` of the same cell instead of adding to it (see Q-MISC-11 and Q-MASK-308). A templayer with no geometry creates no property.
+When a cifinput `templayer` contains the operator `mask-hints <name>` and no `copyup` operator, the system SHALL, after computing that templayer's geometry for a cell being read, convert each resulting rectangle from input units to internal units (exact conversion, which may rescale the internal grid as described in capability `gds-read`) and union it into the cell's `MASKHINTS_<name>` property, creating the property if the cell has none. A repeated templayer `mask-hints <name>` in the same style, or a hint the cell already had under that key, therefore adds to the existing region. A property named exactly `<name>` (without the prefix) is never consulted or changed. A templayer with no geometry creates no property and leaves an existing one unchanged. These rules hold whatever the `magic-compat` setting. Magic looks the existing hint up under the bare key `<name>`, so it normally replaces an earlier `MASKHINTS_<name>` instead of adding to it, and misuses a property named exactly `<name>` as a hint plane; Hefesto does not reproduce this (see Q-MASK-308 and Q-MISC-11, resolution: fix everywhere).
 
 Compatibility: exact
 
@@ -114,7 +138,11 @@ cifinput_mask_hints_op = "mask-hints" , ws , name ;   (* exactly one argument *)
 - **GIVEN** a cifinput style with `templayer SRAMH 81,2` followed by `mask-hints SRAM`, and a GDS cell with a boundary on 81/2 from (0,0) to (1000,1000) nm at 10 nm per internal unit
 - **WHEN** the GDS is read
 - **THEN** the cell has MASKHINTS_SRAM = (0,0)-(100,100)
-- **AND** a second templayer hint with the same name in the same cell replaces the existing region instead of adding to it (Magic behavior; see Q-MISC-11)
+
+#### Scenario: Repeated templayer name unions
+- **GIVEN** the cifinput style of the previous scenario plus `templayer SRAMH2 81,3` followed by `mask-hints SRAM`, and a GDS cell with a boundary on 81/2 from (0,0) to (1000,1000) nm and one on 81/3 from (1000,0) to (2000,500) nm
+- **WHEN** the GDS is read
+- **THEN** the cell has MASKHINTS_SRAM = the union of (0,0)-(100,100) and (100,0)-(200,50), in either `magic-compat` setting
 
 ### Requirement: Mask hints generated by gds maskhints
 
@@ -150,13 +178,39 @@ Compatibility: behavioral
 
 ### Requirement: Mask hints scope DRC exception and exemption rules
 
-A DRC rule declared under `exception <name>` SHALL be applied to an edge only if the edge segment touches the region of `MASKHINTS_<name>` of the cell being checked, and a rule declared under `exemption <name>` SHALL be applied only if it does not; when the property is absent, exception rules are never applied and exemption rules are always applied. The touch test uses the zero-width segment from (x, max(edge bottom, window bottom)) to (x, min(edge top, window top)). At most 126 distinct names are supported per DRC style. Whether an edge lying exactly on the hint boundary counts as touching is to be confirmed (see Q-MISC-13). Block grammar and rule semantics are owned by capability `drc-rule-language`.
+A DRC rule declared under `exception <name>` SHALL be applied to an edge segment only if the segment is *inside* the region of `MASKHINTS_<name>` of the cell being checked, and a rule declared under `exemption <name>` SHALL be applied only if it is not; when the property is absent, exception rules are never applied and exemption rules are always applied. The edge segment is the examined segment as clipped to the check rectangle (capability `drc-rule-semantics`, "Basic check scope"); the decision is made per segment, so a rule that applies reports over the whole segment, also where the segment runs outside the hint. The inside test depends on the `magic-compat` setting (Q-MISC-13, resolution: replicate under magic-compat, fix with it off):
+- With `magic-compat` ON (the default), the result is Magic's, which searches the hint plane with the zero-width segment and so depends on the side of the touch and on how the hint region is cut into maximal horizontal strips. A vertical segment is inside when a hint strip covers part of the unit column to its right, so a hint touching it from the right or straddling it counts and one touching only from the left does not. A horizontal segment at height Y is inside only when the hint-plane tile (hint or space) holding the unit square left-most below the segment extends above Y and some hint strip covers part of the unit row just below the segment, so a hint touching it from above never counts, one touching only from below does not count, and a straddling hint may or may not count depending on the strip decomposition, including strips of unrelated hint rectangles. The exact test is specified in capability `drc-rule-semantics`, "Exceptions and exemptions at check time"; Hefesto's hint region keeps Magic's maximal-horizontal-strip decomposition so that the result matches.
+- With it OFF, a segment is inside when the closed hint region contains a part of positive length of the segment, i.e. a hint touching the segment from either side or straddling it counts, whatever the strip decomposition.
+
+At most 126 distinct names are supported per DRC style. Block grammar and rule semantics are owned by capability `drc-rule-language`.
 
 Compatibility: exact
 
-(Magic ref: drc/DRCtech.c:420-455, drc/DRCtech.c:3858-3912, drc/DRCbasic.c:921-957, drc/DRCbasic.c:1381-1417)
+(Magic ref: drc/DRCtech.c:420-455, drc/DRCtech.c:3858-3912, drc/DRCbasic.c:921-957, drc/DRCbasic.c:1381-1417, database/DBtiles.c:DBSrPaintArea)
 
-#### Scenario: Exception rule only inside hint
-- **GIVEN** a rule `width m1 3` declared under `exception SRAM`, and a cell with a 2-wide metal1 wire half inside and half outside MASKHINTS_SRAM
-- **WHEN** DRC runs
-- **THEN** width errors are reported only for edges touching the SRAM hint region
+#### Scenario: Exception rule only for edges inside the hint
+- **GIVEN** a rule `width m1 3 "w"` declared under `exception SRAM` (its only checked edges are left and bottom edges of metal1, since the reverse width rule is evaluated only on diagonal edges), a cell with MASKHINTS_SRAM = (−5,10)-(5,30), a 2-wide metal1 wire A = (0,0)-(2,40) whose left edge crosses the hint, and a 2-wide metal1 wire B = (100,0)-(102,40) far from it
+- **WHEN** the cell is checked, in either `magic-compat` setting
+- **THEN** the error plane holds exactly the rectangle (2,0)-(3,40): the left edge of A is inside, so its width rule reports over the whole edge, also outside the hint's y range
+- **AND** the bottom edge of A and both edges of B are not inside and report nothing
+
+#### Scenario: Hint touching a bottom edge from below with magic-compat ON
+- **GIVEN** `magic-compat` ON, the rule of the previous scenario, a metal1 wire (0,0)-(20,2) and MASKHINTS_SRAM = (−10,−10)-(30,0)
+- **WHEN** the cell is checked
+- **THEN** no error is reported: the hint tile holding the unit square below (0,0) ends at y = 0, so the bottom edge is not inside
+
+#### Scenario: Hint touching a bottom edge from below with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the layout of the previous scenario
+- **WHEN** the cell is checked
+- **THEN** the bottom edge is inside and the error (0,2)-(20,3) is reported
+
+#### Scenario: Unrelated hint strip changes the result with magic-compat ON
+- **GIVEN** `magic-compat` ON, the rule above, a metal1 wire (0,0)-(20,2) and MASKHINTS_SRAM = (5,−5)-(15,5)
+- **WHEN** the cell is checked
+- **THEN** the error (0,2)-(20,3) is reported
+- **AND** when the hint also holds the far rectangle (−100,0)-(−90,10), no error is reported, because the strip holding the unit square below (0,0) now ends at y = 0
+
+#### Scenario: Unrelated hint strip has no effect with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the two hint variants of the previous scenario
+- **WHEN** the cell is checked
+- **THEN** both report the error (0,2)-(20,3)

@@ -122,7 +122,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Exit criteria**
 - The common exit criteria.
-- All 113 DRC golden cases pass.
+- All 113 DRC golden cases pass, except the six mask-layer check cases DRC-CIF-2..7, which pass in M5 (they need mask-layer generation).
 - The sky130 and gf180mcu standard cells are DRC-clean exactly where Magic reports them clean, with identical error sets elsewhere.
 
 ## M4 — Scripting and PDK integration → Desktop Alpha
@@ -169,6 +169,7 @@ Depends on `mask-hints`, which is completed in M3.
 **Exit criteria**
 - The common exit criteria.
 - The MASK golden cases pass.
+- The DRC mask-layer check cases DRC-CIF-2..7, deferred from M3, pass.
 - GDS output is byte-identical to Magic's, apart from the masked time fields.
 - Every sky130, gf180mcu and IHP library GDS round-trips.
 
