@@ -41,8 +41,8 @@ def dispatch_specs() -> list[Spec]:
         ui("UI-G-001", DISPATCH, ["Command name lookup"], "getc nonexist and getcell nonexist.",
            ["getc nonexist", "getcell nonexist"]),
         ui("UI-G-002", DISPATCH, ["Command name lookup", "Command dispatch across global and client tables"],
-           "The prefix e and the unique prefix extr are not command names in a script (Q-UI-41); the "
-           "registered alias id is (ext, the alias of extract, waits for the extractor).",
+           "The prefix e and the unique prefix extr are not command names in a script (Q-UI-41); the alias "
+           "id is, but Magic's lookup finds it ambiguous with identify (its entry is 'id<TAB>OR'): empty result.",
            ["e", "extr help", "id", "id x"]),
         ui("UI-G-003", DISPATCH, ["Command dispatch across global and client tables"], "foo in a layout window.",
            ["box values", "foo"]),

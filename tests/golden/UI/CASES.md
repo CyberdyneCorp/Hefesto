@@ -12,7 +12,7 @@ To be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. Unless
 | ID | capability | input description (tech, layout, commands) | what to capture | requirement(s) covered |
 |---|---|---|---|---|
 | UI-G-001 | ui-command-dispatch | `getc nonexist` and `getcell nonexist` | log; a script line needs the exact name (`invalid command name "getc"`, Q-UI-41) | Command name lookup |
-| UI-G-002 | ui-command-dispatch | the prefixes `e` and `extr`, then the registered alias `id` (`ext`, the alias of `extract`, waits for the extractor) | log (`invalid command name "e"`, Q-UI-41) | Command name lookup; Command dispatch across global and client tables |
+| UI-G-002 | ui-command-dispatch | the prefixes `e` and `extr`, then the alias `id`, which Magic's lookup finds ambiguous with `identify` (its table entry is `id<TAB>OR`), so it fails with an empty result | log (`invalid command name "e"`, Q-UI-41) | Command name lookup; Command dispatch across global and client tables |
 | UI-G-003 | ui-command-dispatch | `foo` in a layout window | full log of the unknown-command message (no "Did you point…" line) | Command dispatch across global and client tables |
 | UI-G-004 | ui-command-dispatch | `ZoOm 2`, then `view get` | view rectangle | Command name lookup |
 | UI-G-005 | ui-command-dispatch | `help`, `help window`, `help wizard` in layout and color windows | full listing text | help command |
