@@ -81,11 +81,14 @@ TEST_CASE("view commands are core commands dispatched from the command bar",
     CHECK(has_code(out, "CMD-USAGE-001"));
   }
 
+  // `help` prints Magic's per-client listing (ui-command-dispatch "help
+  // command") as a report, which the console shows.
   const CommandOutcome help = sink.submit("help");
   REQUIRE(help.ok());
-  CHECK(help.message.find("theme dark|light") != std::string::npos);
-  CHECK(help.message.find("zoom factor") != std::string::npos);  // the core's synopsis
-  CHECK(help.message.find("version") != std::string::npos);      // core built-ins are there too
+  const std::string listing = console_result(help, help.message);
+  CHECK(listing.find("theme dark|light") != std::string::npos);
+  CHECK(listing.find("zoom factor") != std::string::npos);  // the core's synopsis
+  CHECK(listing.find("version") != std::string::npos);      // core built-ins are there too
   CHECK_FALSE(register_view_commands(core.registry(), rec.actions()));  // names already taken
 }
 
@@ -126,19 +129,19 @@ TEST_CASE("the console keeps the results of a line's commands before a failure",
           "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
   CoreSession core(test_options());
   CoreCommandSink sink(core.dispatcher());
-  const CommandOutcome help = sink.submit("help");
-  REQUIRE(help.ok());
-  CHECK(help.output.find("zoom factor") != std::string::npos);
-  CHECK(console_result(help, help.message) == help.output);  // printed once
+  const CommandOutcome kept = sink.submit("echo kept text");
+  REQUIRE(kept.ok());
+  CHECK(kept.output == "kept text");
+  CHECK(console_result(kept, kept.message) == kept.output);  // printed once
 
-  const CommandOutcome line = sink.submit("help; paint nosuchlayer");
+  const CommandOutcome line = sink.submit("echo kept text; paint nosuchlayer");
   CHECK_FALSE(line.ok());
-  CHECK(line.output == help.output);
+  CHECK(line.output == kept.output);
   const std::string console = console_result(line, line.message);
-  CHECK(console.find("zoom factor") != std::string::npos);
+  CHECK(console.find("kept text") != std::string::npos);
   REQUIRE_FALSE(line.message.empty());
-  CHECK(console.find(line.message) != std::string::npos);  // the failure follows the help text
-  CHECK(console.find("zoom factor") < console.find(line.message));
+  CHECK(console.find(line.message) != std::string::npos);  // the failure follows the result
+  CHECK(console.find("kept text") < console.find(line.message));
 
   const CommandOutcome echoes = sink.submit("echo a; echo b");
   CHECK(echoes.output == "a\nb");

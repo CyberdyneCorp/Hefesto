@@ -27,6 +27,8 @@
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
+#include "hefesto/ui/bindings.hpp"
+#include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/version.hpp"
 #include "options.hpp"
 
@@ -82,7 +84,9 @@ class ValuePrinter final : public cmd::CommandObserver {
 /// or a dispatch failure (unknown or ambiguous command name).
 bool raises_tcl_error(const cmd::CommandResult& result) {
   return result.raises || std::any_of(result.diagnostics.begin(), result.diagnostics.end(),
-                                      [](const diag::Diagnostic& d) { return d.code == codes::kCmdDispatch; });
+                                      [](const diag::Diagnostic& d) {
+                                        return d.code == codes::kCmdDispatch || d.code == ui::codes::kAmbiguous;
+                                      });
 }
 
 /// --diagnostics=magic: the console of `magic -dnull -noconsole` running a
@@ -187,6 +191,7 @@ class Session {
     command_log_ = std::make_unique<cmd::CommandLog>(logger_);
     dispatcher_ = std::make_unique<cmd::Dispatcher>(registry_, services_.view(), project_, script_session_);
     dispatcher_->set_editor(&editor_);
+    ui::install_defaults(editor_);  // the tools and default key bindings (Magic's startup files)
     dispatcher_->add_observer(*command_log_);
     if (options.diagnostics == diag::Format::magic) {
       dispatcher_->add_sink(magic_console_);

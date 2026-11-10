@@ -2,7 +2,9 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The full command set every front end registers: the M0 built-ins plus
-// each M1 area's commands (tech, db, cell, view, pdk). Front ends call this
+// each M1 area's commands (tech, db, cell, view, pdk) and each M2 area's
+// (units, undo, select, ui, wiring; m2-interactive-editing design.md D3).
+// Front ends call this
 // instead of the per-area functions, so a workstream adds commands inside
 // its own directory without touching hefesto-cli or the desktop shell
 // (openspec/changes/m1-core-viewer/design.md, D4).

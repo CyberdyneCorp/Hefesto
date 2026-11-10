@@ -1,0 +1,5 @@
+ # All wiring values are in nanometers
+ scalefactor 10
+
+ contact pc 170 poly 50 80 metal1 0 80
+ contact m3c 1180 metal2 0 metal3 120

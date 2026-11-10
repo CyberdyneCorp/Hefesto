@@ -22,6 +22,7 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/tech/loader.hpp"
+#include "hefesto/wiring/wiring.hpp"
 #include "tech/build_state.hpp"
 
 namespace hefesto::tech {
@@ -474,6 +475,9 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   editor.grid = apply_post_load(*tech.value(), editor.grid, sink);
   check_existing_layout(editor, old_planes, new_planes, sink);
   set_technology(editor, std::move(tech.value()));
+  // The `wiring` section is kept raw and read by the wiring area; reading it
+  // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
+  (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);
   if (new_planes != old_planes) {
     editor.cells.for_each([new_planes](db::CellDef& def) { def.set_plane_count(new_planes); });
   }

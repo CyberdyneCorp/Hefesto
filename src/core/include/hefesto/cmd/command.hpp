@@ -44,12 +44,23 @@ struct CommandResult {
   /// A failure that raises a script error in both modes, not only in strict
   /// mode (e.g. a usage error that the spec says "SHALL raise a Tcl error").
   bool raises = false;
+  /// How the command is logged and replayed when it differs from what was
+  /// typed (Magic's TxRebuildCommand): a handler that read the pointer sets
+  /// the explicit form, e.g. `box values 10i 10i 20i 20i` for `box move bl
+  /// cursor`. The dispatcher writes it to the command log and passes it to
+  /// its observers; nullopt: the typed command.
+  std::optional<Invocation> logged_as;
 
   [[nodiscard]] bool ok() const noexcept { return status == Status::ok; }
 
-  [[nodiscard]] static CommandResult success(Value value = {}) { return {Status::ok, std::move(value), {}, false}; }
+  [[nodiscard]] static CommandResult success(Value value = {}) {
+    CommandResult result;
+    result.value = std::move(value);
+    return result;
+  }
   [[nodiscard]] static CommandResult failure(diag::Diagnostic error) {
-    CommandResult result{Status::failed, {}, {}, false};
+    CommandResult result;
+    result.status = Status::failed;
     result.diagnostics.push_back(std::move(error));
     return result;
   }

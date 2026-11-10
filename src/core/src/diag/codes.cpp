@@ -30,6 +30,7 @@ constexpr std::array kTable = {
     CodeInfo{"CMD-SESSION-001", error, "The command needs an editor session (technology, cells, windows) and none is attached."},
     CodeInfo{"CMD-USAGE-001", error, "Wrong number or form of command arguments."},
     CodeInfo{"CORE-NOTIMPL-001", error, "Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub)."},
+    CodeInfo{"CORE-NOTIMPL-002", error, "Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -56,8 +57,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 8>& areas() noexcept {
-  static const std::array<CodeArea, 8> table = {
+const std::array<CodeArea, 13>& areas() noexcept {
+  static const std::array<CodeArea, 13> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -66,6 +67,11 @@ const std::array<CodeArea, 8>& areas() noexcept {
       CodeArea{"view", "VIEW", "docs/diagnostics/codes/view.md", area_codes::view()},
       CodeArea{"pdk", "PDK", "docs/diagnostics/codes/pdk.md", area_codes::pdk()},
       CodeArea{"app", "APP", "docs/diagnostics/codes/app.md", area_codes::app()},
+      CodeArea{"undo", "UNDO", "docs/diagnostics/codes/undo.md", area_codes::undo()},
+      CodeArea{"select", "SELECT", "docs/diagnostics/codes/select.md", area_codes::select()},
+      CodeArea{"connect", "CONNECT", "docs/diagnostics/codes/connect.md", area_codes::connect()},
+      CodeArea{"ui", "UI", "docs/diagnostics/codes/ui.md", area_codes::ui()},
+      CodeArea{"wiring", "WIRE", "docs/diagnostics/codes/wire.md", area_codes::wiring()},
   };
   return table;
 }

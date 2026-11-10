@@ -133,6 +133,19 @@ the Magic sources it follows and keeps this notice by reference. In M1:
 | shared helpers | `src/core/src/util/record_order.cpp` (natural name order), `src/core/src/cmd/coordinates.cpp` (coordinate units) | `database/DBcellname.c` (`strcmpbynum`), `commands/CmdSubrs.c` (`cmdScaleCoord`) |
 | app startup | `src/core/src/app/` (startup order and options) | `utils/main.c`, `tcltk/tclmagic.c` |
 
+In M2 (`openspec/changes/m2-interactive-editing`):
+
+| Area | Hefesto files | Magic sources |
+|---|---|---|
+| keywords, coordinates, units | `src/core/src/cmd/{keywords,coordinates,units}.cpp` | `utils/lookup.c`, `utils/geometry.c` (`GeoNameToPos`), `commands/CmdSubrs.c`, `commands/CmdTZ.c` (`CmdUnits`), `dbwind/DBWprocs.c` (`DBWPrintValue`) |
+| box, paint and editing commands | `src/core/src/db/` (`commands_box`, `commands_paint`, `commands_misc`, `layer_list`, `polygon`, `edit_util`) | `commands/CmdAB.c` (`CmdBox`), `commands/CmdCD.c` (`CmdCorner`, `CmdContact`, `CmdDrop`), `commands/CmdE.c`, `commands/CmdFI.c` (`CmdFill`), `commands/CmdLQ.c`, `commands/CmdTZ.c` (`CmdXor`), `dbwind/DBWtools.c`, `cif/CIFrdpoly.c`, `cif/CIFrdutils.c` |
+| undo | `src/core/src/undo/` | `utils/undo.c`, `database/DBundo.c`, `windows/windCmdSZ.c` |
+| selection and connectivity | `src/core/src/select/`, `src/core/src/connect/` | `select/sel*.c`, `database/DBconnect.c`, `commands/CmdRS.c`, `commands/CmdTZ.c`, `commands/CmdWizard.c` |
+| hierarchy, labels and properties | `src/core/src/cell/` (`edit`, `down`, `xload`, placement, `flush`, `findlabel`, `goto`, `element`), `src/core/src/db/{labels,property,commands_labels,commands_setlabel}.cpp` | `commands/CmdCD.c`, `commands/CmdE.c`, `commands/CmdFI.c`, `commands/CmdLQ.c`, `commands/CmdRS.c`, `database/DBlabel.c`, `database/DBprop.c`, `dbwind/DBWelement.c` |
+| dispatch, macros, tools and script helpers | `src/core/src/ui/`, `src/core/src/cmd/{registry,dispatcher}.cpp` | `textio/txCommands.c`, `textio/txInput.c`, `windows/windClient.c`, `windows/windSend.c`, `windows/windCmdAM.c`, `windows/windCmdSZ.c`, `utils/macros.c`, `dbwind/DBWbuttons.c`, `tcltk/tools.tcl`, `tcltk/wrapper.tcl`, `tcltk/toolkit.tcl` |
+| highlights, feedback, color window, tile overlay | `src/core/src/view/{highlights,feedback,feedback_cmd,color_window,color_cmd,wizard_cmds}.cpp`, `src/render/vulkan/` (highlight batches) | `dbwind/DBWhlights.c`, `dbwind/DBWfdback.c`, `cmwind/CMW*.c`, `windows/windDebug.c`, `commands/CmdWizard.c`, `graphics/grMain.c` |
+| wiring tool | `src/core/src/wiring/` | `wiring/wireTech.c`, `wiring/wireOps.c`, `wiring/wireUndo.c`, `commands/CmdTZ.c` (`CmdWire`), `cif/CIFrdpt.c` (`CIFPaintWirePath`), `select/selCreate.c` (`selFindChunk`), `tcltk/tools.tcl` |
+
 Magic's license (`LICENSE` at the pinned commit):
 
 ```text
@@ -547,6 +560,60 @@ California makes no representations about the suitability of this software
 for any purpose.  It is provided "as is" without express or implied
 warranty.  Export of this software outside of the United States of America
 may require an export license.
+```
+
+## X11 keysym names
+
+`src/core/src/ui/keysyms.cpp` embeds the keysym names and values Magic's macro files use, as
+data from X11 `keysymdef.h` (design D7 of `openspec/changes/m2-interactive-editing`, Q-UI-12), so
+key names work on every platform without Xlib. Shipped in all packages (core). No X11 code or
+library is linked.
+
+```text
+Copyright 1987, 1994, 1998  The Open Group
+
+Permission to use, copy, modify, distribute, and sell this software and its
+documentation for any purpose is hereby granted without fee, provided that
+the above copyright notice appear in all copies and that both that
+copyright notice and this permission notice appear in supporting
+documentation.
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE OPEN GROUP BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the name of The Open Group shall
+not be used in advertising or otherwise to promote the sale, use or
+other dealings in this Software without prior written authorization
+from The Open Group.
+
+
+Copyright 1987 by Digital Equipment Corporation, Maynard, Massachusetts
+
+                        All Rights Reserved
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation, and that the name of Digital not be
+used in advertising or publicity pertaining to distribution of the
+software without specific, written prior permission.
+
+DIGITAL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
+ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
+DIGITAL BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR
+ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
+SOFTWARE.
 ```
 
 ## Components to be added in later milestones

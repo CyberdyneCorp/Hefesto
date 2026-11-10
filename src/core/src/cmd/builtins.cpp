@@ -28,35 +28,6 @@ CommandResult from_status(const diag::Status& status) {
   return status.ok() ? CommandResult::success() : CommandResult::failure(status.error());
 }
 
-// --- help -----------------------------------------------------------------
-
-constexpr std::string_view kHelpSynopsis = "help ?command?";
-
-CommandResult help_all(const CommandRegistry& registry) {
-  std::string text;
-  for (const auto& name : registry.names()) {
-    if (!text.empty()) {
-      text += '\n';
-    }
-    text += registry.find(name)->synopsis;
-  }
-  return CommandResult::success(std::move(text));
-}
-
-CommandResult help(CommandContext& ctx, const Invocation& inv) {
-  if (inv.args.empty()) {
-    return help_all(ctx.registry());
-  }
-  if (inv.args.size() != 1) {
-    return usage(kHelpSynopsis);
-  }
-  const CommandSpec* spec = ctx.registry().find(inv.args[0]);
-  if (spec == nullptr) {
-    return CommandResult::failure(diag::make(codes::kCmdUsage, "help: no command named \"" + inv.args[0] + "\""));
-  }
-  return CommandResult::success(spec->synopsis + "\n    " + spec->help);
-}
-
 // --- echo, version, quit ----------------------------------------------------
 
 CommandResult echo(CommandContext& /*ctx*/, const Invocation& inv) {
@@ -220,8 +191,6 @@ CommandResult hash_order(CommandContext& /*ctx*/, const Invocation& inv) {
 
 bool register_builtins(CommandRegistry& registry) {
   CommandSpec specs[] = {
-      {"help", std::string{kHelpSynopsis}, "Lists every command, or shows the synopsis and help of one command.",
-       help},
       {"echo", "echo ?word ...?", "Returns its arguments joined by single spaces.", echo},
       {"version", "version", "Returns the Hefesto version as major.minor.patch.", version},
       {"quit", "quit ?exit_status? ?-noprompt?",

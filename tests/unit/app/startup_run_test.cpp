@@ -239,6 +239,28 @@ TEST_CASE("settings layers: user preferences, project, session; compat handed to
   CHECK(s.project_.script_strict);        // session
 }
 
+TEST_CASE("the old units setting is read once into the units state", "[cap:cmd-coordinates-and-units][req:Units command]") {
+  Session s;
+  app::StartupOptions options;
+  options.session_settings = {{"units", "microns"}};
+  REQUIRE(s.start(options).ok());
+  CHECK(s.editor.units.unit == hefesto::cmd::InputUnit::microns);
+}
+
+TEST_CASE("the undo-history-limit setting sets the history limit", "[cap:layout-undo][req:History limit]") {
+  Session s;
+  app::StartupOptions options;
+  options.session_settings = {{"undo-history-limit", "2000"}};
+  REQUIRE(s.start(options).ok());
+  CHECK(s.editor.undo.limit() == 2000);
+
+  Session low;
+  app::StartupOptions rejected;
+  rejected.session_settings = {{"undo-history-limit", "500"}};
+  REQUIRE(low.start(rejected).ok());
+  CHECK(low.editor.undo.limit() == 1000);  // below Magic's 1000: rejected, the default stays
+}
+
 TEST_CASE("startup files are located and their plain settings applied", "[cap:hefesto-settings][req:Magic startup-file compatibility]") {
   Session s;
   write_file(s.env.home / ".magicrc", "set GND VSS\nmacro a \"box\"\n");

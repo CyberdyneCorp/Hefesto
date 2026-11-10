@@ -15,6 +15,7 @@
 #include "hefesto/platform_net/http_fetcher.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
+#include "hefesto/ui/bindings.hpp"
 #include "hefesto/version.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
 
@@ -98,6 +99,7 @@ CoreSession::CoreSession(platform::PortableOptions options, std::optional<platfo
   cell.timer = std::move(timer);
   cmd::register_all_commands(registry_, pdk_command_hosts(host, pdk_.host.get()));
   dispatcher_.set_editor(&editor_);
+  ui::install_defaults(editor_);  // the tools and default key bindings (Magic's startup files)
   dispatcher_.add_observer(command_log_);
   dispatcher_.add_observer(redisplay_);  // before the UI listener, which redraws
   dispatcher_.add_observer(forwarder_);
@@ -121,6 +123,7 @@ bool CoreSession::poll_backup_timer() {
 void CoreSession::record_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
   command_log_.on_command(invocation, result);
   redisplay_.on_command(invocation, result);
+  editor_.windows.update_display();  // a background job has no post-command update
   for (const diag::Diagnostic& d : result.diagnostics) {
     if (d.code != pdk::codes::kProgress) dispatcher_.report(d);
   }

@@ -79,11 +79,11 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `<cell>.mag`, `.lef`, `.def`, `.cif`, `.gds` | layout files loaded at startup, in command-line order; any other word is a script |
 | `--project=<dir>` | project folder (default: `.` when it holds `hefesto.project`); its PDK pin selects the technology |
 | `--pdk-root=<dir>` | PDK root (default: setting `pdk-root`, then `$PDK_ROOT`, then `~/.ciel`); the session's PDK store resolves through the PDK manager's installs there |
-| `--setting <name>=<value>` | a session setting (the highest settings layer) |
+| `--setting <name>=<value>` | a session setting (the highest settings layer); e.g. `undo-history-limit=2000` (undo steps kept, at least Magic's 1000) |
 | `--magic ...` | the rest is Magic's own command line (`-T`, `-d`, `-rcfile`, `-norcfile`, `-r`, cells, a `.tcl` script); commands are then read from standard input |
 | `-c <commands>` | run commands, e.g. `-c "tech load sky130A; tech layers"` |
 | `--diagnostics=text\|json\|magic` | diagnostic format on stderr; `magic` prints Magic's console text and each script command's result, as the golden reference scripts do (see `tools/golden/README.md`) |
-| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`) |
+| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`) |
 | `--log-dir=<dir>`, `--no-log` | session log location, or none |
 
 ### `hefesto` (desktop)
