@@ -1,0 +1,18 @@
+# DRC-PR-4: gf180mcuD under `scalegrid 1 10`: drc printrules of every DRC style (compared by digest).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/gf180mcuD -noprompt
+snap internal
+scalegrid 1 10
+drc off
+drc euclidean on
+snap internal
+drc listall style
+drc style drc(fast)
+drc printrules rules_0.txt
+drc style drc(full)
+drc printrules rules_1.txt
+drc style drc(routing)
+drc printrules rules_2.txt
+drc style empty
+drc printrules rules_3.txt
+drc list style

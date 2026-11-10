@@ -35,7 +35,7 @@ from pathlib import Path
 import sys
 
 from casegen import Spec
-from common import SKY130_TECH_EXTERNAL, box, paint, sky130_cell_external, split
+from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNAL, box, paint, sky130_cell_external, split
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from goldenlib import external  # noqa: E402
@@ -811,6 +811,58 @@ def pdk_specs() -> list[Spec]:
     ]
 
 
+# --- printrules of every style (RULES, tasks.md 4.11) -------------------------------
+
+# The DRC styles each technology declares (`drc listall style` in Magic 8.3.694).
+PR_STYLES = {
+    "scmos": ["default"],
+    "sky130A": ["drc(fast)", "drc(full)", "drc(routing)"],
+    "gf180mcuD": ["drc(fast)", "drc(full)", "drc(routing)", "empty"],
+    "ihp-sg13g2": ["drc(fast)", "drc(full)", "drc(routing)"],
+}
+PR_ALL_DIGEST = "derived:digest:rules_*.txt"
+
+
+def printrules_all(tech_name: str) -> list[str]:
+    """``drc style`` and ``drc printrules rules_<k>.txt`` for each declared style in turn."""
+    cmds: list[str] = []
+    for k, style in enumerate(PR_STYLES[tech_name]):
+        cmds += [f"drc style {style}", printrules(f"rules_{k}.txt")]
+    return cmds
+
+
+def printrules_specs() -> list[Spec]:
+    """DRC-PR-2..5: ``drc printrules`` of every style of scmos and the three PDKs (each file by
+    digest; sky130A's default style is also DRC-PR-1). Magic's ``drc listall style`` and
+    ``drc list style`` frame the run so a style-list change shows in the console."""
+    rows = [("DRC-PR-2", "scmos", ["snap internal", "drc off"], [SCMOS_EXTERNAL]),
+            ("DRC-PR-3", "sky130A", pdk_prefix("sky130A"), [SKY130_TECH_EXTERNAL]),
+            ("DRC-PR-4", "gf180mcuD", pdk_prefix("gf180mcuD"), [GF180_TECH]),
+            ("DRC-PR-5", "ihp-sg13g2", pdk_prefix("ihp-sg13g2"), [IHP_TECH])]
+    specs = []
+    for cid, tech_name, prefix, externals in rows:
+        grid = f" under `{PDK_GRID[tech_name]}`" if tech_name in PDK_GRID else ""
+        spec = drc_case(cid, CMD, ["drc printrules"],
+                        f"{tech_name}{grid}: drc printrules of every DRC style (compared by digest).",
+                        None, ["drc listall style", *printrules_all(tech_name), "drc list style"], prefix=prefix,
+                        externals=externals, outputs=[PR_ALL_DIGEST], tech_name=tech_name,
+                        notes=["Hefesto's output was compared byte for byte with Magic's for every style "
+                               "(tasks.md 4.11); the digest keeps the multi-megabyte files out of the tree."])
+        spec.output_names = {PR_ALL_DIGEST: "rules.digest"}
+        specs.append(spec)
+    return specs
+
+
+def rules_specs() -> list[Spec]:
+    """The RULES cases added in M3 round 2: DRC-PR-2..5 and DRC-PARSE-2 (a negative rule distance
+    fails ``tech load``, tasks.md 4.10). Only the load itself is compared: after the failure Magic
+    keeps the half-loaded technology and Hefesto the previous one (diagnostic TECH-LOAD-001)."""
+    parse2 = drc_case("DRC-PARSE-2", LANG, ["DRC section grammar"],
+                      "width m1 -2: tech load lists drc among the sections with errors and fails.",
+                      ['width m1 -2 "m1 width < %d"', 'width m2 3 "m2 width < %d"'], [], prefix=[])
+    return printrules_specs() + [parse2]
+
+
 # --- standard-cell corpus (design D14) ----------------------------------------------
 
 STD_LIBS = {
@@ -860,6 +912,6 @@ def std_specs() -> list[Spec]:
 
 
 def specs() -> list[Spec]:
-    """The 113 DRC cases of CASES.md (the corpus cases are std_specs())."""
+    """The 118 DRC cases of CASES.md (the corpus cases are std_specs())."""
     return (language_specs() + spacing_specs() + wide_specs() + edge_specs() + surround_specs() + shape_specs()
-            + exception_specs() + engine_specs() + command_specs() + cif_specs() + pdk_specs())
+            + exception_specs() + engine_specs() + command_specs() + cif_specs() + pdk_specs() + rules_specs())

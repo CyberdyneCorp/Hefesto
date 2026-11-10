@@ -1,0 +1,16 @@
+# DRC-PR-5: ihp-sg13g2 under `scalegrid 1 2`: drc printrules of every DRC style (compared by digest).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/ihp-sg13g2 -noprompt
+snap internal
+scalegrid 1 2
+drc off
+drc euclidean on
+snap internal
+drc listall style
+drc style drc(fast)
+drc printrules rules_0.txt
+drc style drc(full)
+drc printrules rules_1.txt
+drc style drc(routing)
+drc printrules rules_2.txt
+drc list style

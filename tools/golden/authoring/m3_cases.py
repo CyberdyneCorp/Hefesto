@@ -3,7 +3,7 @@
 # Copyright 2026 The Hefesto Authors
 """Write the generated M3 golden cases (DRC, mask hints and the cases DRC unblocked).
 
-Design D12 of openspec/changes/m3-drc. The specs live in ``drc_cases.py`` (the 113 DRC
+Design D12 of openspec/changes/m3-drc. The specs live in ``drc_cases.py`` (the 118 DRC
 cases of tests/golden/DRC/CASES.md and the standard-cell corpus cases of design D14)
 and in the ``m3_specs()`` of ``{misc,model,tech,cell}_cases.py`` (MISC-MH, MODEL-G-006,
 TECH-G44, the CELL cases that needed DRC); each module's ``M3_NOT_AUTHORED`` (DRC:
