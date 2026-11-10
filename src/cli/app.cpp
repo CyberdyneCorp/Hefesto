@@ -122,7 +122,14 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
       return;
     }
     const bool printf_like = diagnostic.severity == diag::Severity::info || diagnostic.severity == diag::Severity::debug;
-    print_line(printf_like ? out_ : err_, diag::format_magic(diagnostic));
+    std::FILE* stream = printf_like ? out_ : err_;
+    const std::string text = diag::format_magic(diagnostic);
+    if (diagnostic.no_newline) {
+      std::fwrite(text.data(), 1, text.size(), stream);  // the next output ends the line
+      std::fflush(stream);
+      return;
+    }
+    print_line(stream, text);
   }
 
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) override {

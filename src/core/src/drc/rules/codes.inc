@@ -18,3 +18,4 @@ HEFESTO_DRC_CODE("DRC-TECH-002", warning, "Warning for a `drc` section line (Mag
 HEFESTO_DRC_CODE("DRC-TECH-003", error, "Unknown or ambiguous DRC style (or cifoutput style) name.")
 HEFESTO_DRC_CODE("DRC-TECH-004", info, "`DRC style is now \"<name>\"`.")
 HEFESTO_DRC_CODE("DRC-TECH-005", error, "`tech drc surr` or `tech drc direc` without a second layer type.")
+HEFESTO_DRC_CODE("DRC-TECH-006", info, "`Loading DRC CIF style.`: the first check under a `cifstyle` naming a cifoutput style that is not current.")

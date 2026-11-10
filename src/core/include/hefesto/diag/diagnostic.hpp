@@ -70,6 +70,10 @@ struct Diagnostic {
   Location location;
   std::optional<ObjectRef> related;
   bool native_only = false;
+  /// Magic printed this text without a line end (a TxPrintf with no "\n"),
+  /// so the next console output continues its line. Only the `magic`
+  /// console honours it; `text` and `json` print whole lines.
+  bool no_newline = false;
 
   friend bool operator==(const Diagnostic&, const Diagnostic&) = default;
 };

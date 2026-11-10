@@ -123,15 +123,18 @@ void stamp_cell(db::CellDef& def, std::int64_t now) {
 
 MismatchReport process_mismatches(TimestampLog& log, const std::function<void(db::CellDef&)>& read_cell) {
   MismatchReport report;
-  std::set<const db::CellDef*> done;
+  for (const StampMismatch& m : log.entries()) {
+    m.def->flags().bbox_processed = false;  // DBFixMismatch clears CDPROCESSED first
+  }
   std::vector<std::string> order;
   while (!log.empty()) {
     report.processed = true;
     const StampMismatch m = log.pop();
-    if (!done.insert(m.def).second) {
+    if (m.def->flags().bbox_processed) {
       continue;
     }
     fix_mismatch(m, read_cell, report);
+    m.def->flags().bbox_processed = true;  // CDPROCESSED, kept afterwards ("cellname flags")
     order.push_back(m.def->name());
   }
   report.cells.assign(order.rbegin(), order.rend());

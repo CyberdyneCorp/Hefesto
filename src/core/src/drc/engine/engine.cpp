@@ -15,6 +15,7 @@
 // Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
 
 #include "hefesto/drc/engine/engine.hpp"
+#include "hefesto/drc/rules/style.hpp"
 
 #include <array>
 #include <string>
@@ -203,13 +204,16 @@ void commit(editor::EditorState& editor, const SquareResult& result) {
   editor.drc.events.publish_square(*result.cell, result.square);
 }
 
-diag::Status catchup(editor::EditorState& editor) {
+diag::Status catchup(editor::EditorState& editor, diag::DiagnosticSink* messages) {
   if (editor.drc.pending.empty()) {
     return diag::Done{};
   }
   editor.drc.events.publish_state(CheckerState::busy);
   while (std::optional<SquareResult> r = process_square(editor)) {
     commit(editor, *r);
+    if (!r->cell_done) {
+      after_basic_check(editor, messages);  // DRCBasicCheck ends with drcCifCheck
+    }
   }
   editor.drc.events.publish_state(CheckerState::idle);
   return diag::Done{};

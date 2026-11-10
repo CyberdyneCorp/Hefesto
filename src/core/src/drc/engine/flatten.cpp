@@ -81,7 +81,11 @@ void copy_tile(Context& ctx, const CopyTile& c, const db::Transform& t, const db
   if (!db::overlap(r, target_area)) {
     return;
   }
-  (void)plane.paint_triangle(r, side.diagonal, side.right_side, row, ctx.input.compat.magic_compat);
+  bool off_grid = false;
+  (void)plane.paint_triangle(r, side.diagonal, side.right_side, row, ctx.input.compat.magic_compat, &off_grid);
+  if (off_grid && ctx.flag_off_grid) {
+    ctx.report(clip(r, target_area), engine_rule(why::kOffGrid));  // DRCOffGridError
+  }
   if (!db::surround(target_area, r)) {
     erase_outside(plane, r, target_area);
   }

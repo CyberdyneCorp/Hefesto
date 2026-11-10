@@ -39,6 +39,7 @@
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/check/basic_check.hpp"
 #include "hefesto/drc/engine/background.hpp"
 #include "hefesto/drc/types.hpp"
@@ -101,8 +102,10 @@ void commit(editor::EditorState& editor, const SquareResult& result);
 
 /// `drc catchup` (DRCCatchUp): runs process_square()/commit()
 /// synchronously until the pending list is empty, regardless of the
-/// background state, publishing busy/idle when there was work.
-[[nodiscard]] diag::Status catchup(editor::EditorState& editor);
+/// background state, publishing busy/idle when there was work. After each
+/// checked square it runs drc::after_basic_check (drcCifCheck's style
+/// bookkeeping), whose message goes to `messages` when given.
+[[nodiscard]] diag::Status catchup(editor::EditorState& editor, diag::DiagnosticSink* messages = nullptr);
 
 /// Reads an unavailable cell (DBCellRead); false when it cannot be read.
 using CellReadFn = std::function<bool(db::CellDef&)>;

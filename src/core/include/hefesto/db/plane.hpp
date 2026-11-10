@@ -134,9 +134,12 @@ class Plane {
   /// Applies `row` to one side of the triangle obtained by splitting `area`
   /// along `diagonal` ("Non-Manhattan painting", DBNMPaintPlane), then
   /// merges split tiles. `magic_compat` false rounds both diagonals half up
-  /// (Q-MODEL-3).
+  /// (Q-MODEL-3). `off_grid`, when given, is set to whether a 1x1 area had
+  /// to be filled because the triangle could not be split on the grid
+  /// (DBNMPaintPlane0 returning 1; the DRC flattening reports it, why 5).
   [[nodiscard]] diag::Status paint_triangle(const Rect& area, Diagonal diagonal, bool right_side,
-                                            const PaintRow& row, bool magic_compat = true);
+                                            const PaintRow& row, bool magic_compat = true,
+                                            bool* off_grid = nullptr);
 
   /// While `log` is set, paint() and paint_triangle() append the split-tile
   /// fractures and joins they make to it (dbSplitUndo / dbJoinUndo, for the

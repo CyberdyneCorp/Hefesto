@@ -76,6 +76,11 @@ struct DrcSession {
   /// `drc statistics`' totals (Magic's drcTotal* counters): the sum of the
   /// counters printed so far in this session.
   CheckStatistics statistics_total;
+  /// The last Tcl `after` id DRC used. DRCContinuous evaluates `after idle
+  /// magic::drcstate busy` and `... idle` when it has work, so `drc catchup`
+  /// returns the second id (`after#N`) as its Tcl result; Magic's startup
+  /// takes `after#0`. The M4 binding replaces this with Tcl's own ids.
+  std::uint64_t tcl_after_id = 0;
 
   // ---- INTEGRATION --------------------------------------------------------
   /// The project's compatibility settings, set by cmd::Dispatcher::

@@ -200,7 +200,13 @@ TEST_CASE("tech locked, unlocked and revert", "[cap:tech-command][req:tech locke
 TEST_CASE("tech drc checks its arguments", "[cap:tech-command][req:tech drc]") {
   Session s;
   s.load_tiny();
-  CHECK(says(s.run("tech", {"drc", "width"}), "wrong number of arguments"));
+  // Regression (golden TECH-G44): CmdTech's wrongNumArgs prints the first
+  // line with TxPrintf (stdout) and only the usage hint with TxError.
+  const auto wrong = s.run("tech", {"drc", "width"});
+  REQUIRE(wrong.diagnostics.size() == 2);
+  CHECK(wrong.diagnostics[0].severity == hefesto::diag::Severity::info);
+  CHECK(wrong.diagnostics[0].text == "wrong number of arguments to command \"tech\"");
+  CHECK(wrong.diagnostics[1].text == "  Type \":tech help\" for help.");
   CHECK(says(s.run("tech", {"drc", "width", "nosuch"}), "No such layer nosuch"));
   // TECH-CMD-005 is retired: the query answers from the compiled rule set
   // (tests/unit/drc/rules/query_test.cpp checks the values).

@@ -185,6 +185,7 @@ db::CellUse* add_scratch_use(db::CellDef& dest, db::CellDef& child, const std::s
     }
   }
   auto use = std::make_unique<db::CellUse>();
+  use->serial = db::next_use_serial();  // DBCellNewUse order (db::recompute_bbox)
   use->id = id;
   use->def = &child;
   use->parent = &dest;

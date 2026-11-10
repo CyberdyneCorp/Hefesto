@@ -167,6 +167,12 @@ void print(Request& q, std::string text) {
   q.ctx.emit(diag::make(kReport, std::move(text)));
 }
 
+void print_unterminated(Request& q, std::string text) {
+  diag::Diagnostic d = diag::make(kReport, std::move(text));
+  d.no_newline = true;
+  q.ctx.emit(std::move(d));
+}
+
 void warn(Request& q, std::string text) {
   q.ctx.emit(diag::make(kWarning, std::move(text)));
 }

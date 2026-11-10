@@ -28,6 +28,7 @@ constexpr std::array kTechCodes = {
     CodeInfo{"TECH-CMD-004", error, "`tech lambda N [D]` is refused with magic-compat off; use `scalegrid`."},
     CodeInfo{"TECH-CMD-005", error, "Retired in M3, never reused. Was: `tech drc` needs the DRC rule set, which is not available before M3 (drc-*)."},
     CodeInfo{"TECH-CMD-006", error, "A layer name in a `tech` command does not resolve (`No such layer <n>`)."},
+    CodeInfo{"TECH-CMD-007", info, "`wrong number of arguments to command \"tech\"` (printed before the TECH-CMD-001 usage hint)."},
     CodeInfo{"TECH-FILE-001", error, "No technology file `X`, `X.tech` or `X.tech27` was found on the search path."},
     CodeInfo{"TECH-FILE-002", error,
              "The technology file cannot be read or does not begin with the `tech` section (readability pre-check)."},

@@ -127,6 +127,9 @@ struct Context {
   CheckStatistics* stats = &own_stats;  // the sink's counters when it has some
   db::CellDef yank;   // DRCdef: the flattening buffer, never in a library
   bool cancelled = false;
+  /// Set while yank_paint() runs for an interaction check
+  /// (DBCellCheckCopyAllPaint): an off-grid triangle fill reports why 5.
+  bool flag_off_grid = false;
 
   [[nodiscard]] const tech::Technology& tech() const noexcept { return *technology; }
   /// Polls the cancel token; latches `cancelled`.

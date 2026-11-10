@@ -246,6 +246,30 @@ void rescale_rules(editor::EditorState& editor, std::int32_t scale_n, std::int32
   }
 }
 
+void after_basic_check(editor::EditorState& editor, diag::DiagnosticSink* sink) {
+  DrcSession& drc = editor.drc;
+  const StyleDetails* details = drc.rules->details();
+  if (details == nullptr || details->cif_style.empty() || details->cif_bound) {
+    return;  // no cifstyle (drcNeedStyle == NULL), or drcCifStyle already set
+  }
+  diag::NullSink quiet;
+  diag::DiagnosticSink& out = sink != nullptr ? *sink : quiet;
+  out.emit(diag::make("DRC-TECH-006", "Loading DRC CIF style."));
+  const CifStyleInfo* saved = drc.cif.current();
+  const std::string saved_name = saved != nullptr ? saved->name : std::string{};
+  if (!drc.cif.select(details->cif_style).ok()) {
+    return;
+  }
+  drc.rules = load_style(*editor.technology, drc.style, editor.grid, drc.cif, drc.compat_settings(), out);
+  drc.halo_override.reset();
+  drc.step_size.reset();
+  const StyleDetails* reloaded = drc.rules->details();
+  if (reloaded != nullptr && !reloaded->mask_layer_rules.empty() && !saved_name.empty()) {
+    (void)drc.cif.select(saved_name);  // drcCifValid: CIFCurStyle = CIFSaveStyle
+  }
+  drc.events.publish_style(drc.style);
+}
+
 diag::Status select_cif_style(editor::EditorState& editor, std::string_view name, diag::DiagnosticSink& sink) {
   DrcSession& drc = editor.drc;
   if (auto selected = drc.cif.select(name); !selected) {

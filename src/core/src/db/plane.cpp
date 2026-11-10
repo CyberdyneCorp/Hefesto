@@ -82,11 +82,14 @@ diag::Status Plane::paint(const Rect& area, const PaintRow& row) {
 }
 
 diag::Status Plane::paint_triangle(const Rect& area, Diagonal diagonal, bool right_side, const PaintRow& row,
-                                   bool magic_compat) {
+                                   bool magic_compat, bool* off_grid) {
   if (auto status = check_area(area); !status.ok() || area.is_null()) {
     return status;
   }
-  detail::nm_paint_plane(impl_->tiles, exact_of(diagonal, right_side), area, row, magic_compat);
+  const bool filled = detail::nm_paint_plane(impl_->tiles, exact_of(diagonal, right_side), area, row, magic_compat);
+  if (off_grid != nullptr) {
+    *off_grid = filled;
+  }
   merge_after_paint(impl_->tiles, area);
   return diag::Done{};
 }

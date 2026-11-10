@@ -44,15 +44,20 @@ Output: the boolean `1`/`0` is returned as the command result (informative: Magi
 - **THEN** the result of `drc status` is `0`
 
 ### Requirement: drc catchup and drc check
-`drc catchup` SHALL run the background checker to completion (all pending cells and check areas) regardless of the enabled state and restore that state afterwards; `drc check` SHALL mark the box area for rechecking in every cell of the hierarchy under the box as defined in `drc-engine` ("Forced recheck of an area"), without running the check itself.
+`drc catchup` SHALL run the background checker to completion (all pending cells and check areas) regardless of the enabled state and restore that state afterwards; `drc check` SHALL mark the box area for rechecking in every cell of the hierarchy under the box as defined in `drc-engine` ("Forced recheck of an area"), without running the check itself. When `drc catchup` finds pending cells, its result is the Tcl `after` identifier `after#N` that Magic's checker leaves behind (it schedules `magic::drcstate busy` and `magic::drcstate idle` with `after idle`, so N grows by 2 per such run, starting at 2 in a fresh session); with nothing pending the result is empty.
 Compatibility: behavioral
 
-(Magic ref: drc/DRCmain.c:1007-1025, drc/DRCmain.c:784-860, commands/CmdCD.c:4186-4196)
+(Magic ref: drc/DRCmain.c:1007-1025, drc/DRCcontin.c:487-565, drc/DRCmain.c:784-860, commands/CmdCD.c:4186-4196)
 
 #### Scenario: Batch DRC
 - **GIVEN** a script running with background DRC off
 - **WHEN** it executes `select top cell`, `drc check`, `drc catchup`, `drc count total`
 - **THEN** the count reflects a complete check of the top cell
+
+#### Scenario: catchup result
+- **GIVEN** a fresh session with one edited cell pending
+- **WHEN** `drc catchup` is executed twice
+- **THEN** the first result is `after#2` and the second is empty
 
 ### Requirement: drc count
 `drc count [total]` SHALL count error tiles (tiles of any error type in the error plane, in maximal-horizontal-strip form, over the cell's whole bounding box) of the root cell of the command's window — or, in list-all mode, of the root cell and every loaded cell reached recursively through uses overlapping the window area (the window's visible area if the command came from a window, else the box) — each distinct cell counted once.
@@ -91,9 +96,9 @@ Output and results:
 `drc find [nth|text]` SHALL locate an error tile of the root cell (its own error plane only, within its bounding box, in area-enumeration order starting from the top-left), move the box to that tile's rectangle, print `Error area #<k>:` (non-list mode) and report the why-texts in that area as `drc why` does; repeated calls without an argument step to the next error, wrapping to the first after the last.
 Compatibility: behavioral
 
-- The index is a persistent counter. With an integer argument n, the counter is set to max(n,1) and that error is shown (no wrap: if there are fewer errors, `There aren't that many errors` is printed without a newline and the Tcl result is `-1`). Without an argument the counter is incremented before use; past the end it wraps to 1. Its initial value depends on the `magic-compat` setting (see Q-DRC-15, resolution: replicate under magic-compat, fix with it off): with it ON (the default) it starts at 1, as in Magic, so the first argument-less `drc find` of a session shows error #2 when at least two exist; with it OFF it starts at 0, so the first one shows error #1.
+- The index is a persistent counter. With an integer argument n, the counter is set to max(n,1) and that error is shown (no wrap: if there are fewer errors, `There aren't that many errors` is printed without a newline; the Tcl result is `-1` in list mode and empty otherwise, because Magic's console output replaces the result it set). Without an argument the counter is incremented before use; past the end it wraps to 1. Its initial value depends on the `magic-compat` setting (see Q-DRC-15, resolution: replicate under magic-compat, fix with it off): with it ON (the default) it starts at 1, as in Magic, so the first argument-less `drc find` of a session shows error #2 when at least two exist; with it OFF it starts at 0, so the first one shows error #1.
 - With a non-integer argument, only rules whose why-text contains the argument (case-sensitive substring) are considered: errors whose area yields no matching why are skipped by advancing the counter until one matches or the search returns to its starting index.
-- If the cell has no error tiles: `There are no errors in <cellname>.` and Tcl result `0`.
+- If the cell has no error tiles: `There are no errors in <cellname>.` (no output in list mode) and Tcl result `0` in list mode, empty otherwise.
 - If the why recheck of the located area finds no (non-ignored) error, the counter advances and the next tile is tried.
 
 (Magic ref: commands/CmdCD.c:4290-4412, drc/DRCmain.c:1056-1145)

@@ -64,8 +64,13 @@ CommandResult fail(std::string_view code, std::string text) {
   return CommandResult::failure(diag::make(code, std::move(text)));
 }
 
+// CmdTech's wrongNumArgs: the first line is TxPrintf (stdout), the usage
+// hint TxError (Magic ref: commands/CmdTZ.c:635-645).
 CommandResult wrong_args() {
-  return fail("TECH-CMD-001", "wrong number of arguments to command \"tech\"\n  Type \":tech help\" for help.");
+  CommandResult result = fail("TECH-CMD-001", "  Type \":tech help\" for help.");
+  result.diagnostics.insert(result.diagnostics.begin(),
+                            diag::make("TECH-CMD-007", "wrong number of arguments to command \"tech\""));
+  return result;
 }
 
 TypeMask range_mask(std::size_t from, std::size_t to) {

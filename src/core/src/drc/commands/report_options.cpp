@@ -161,14 +161,18 @@ CommandResult drc_find(Request& q) {
   switch (found.status) {
     case FindStatus::found:
       return CommandResult::success(q.list ? texts_value(found.attempts.back().why) : Value{});
+    // Magic sets -1 / 0 as the Tcl result, but its TxPrintf writes through
+    // the Tcl console, which replaces the result: only the list forms keep it.
     case FindStatus::out_of_range:
       if (!q.list) {
-        print(q, "There aren't that many errors");  // Magic prints no newline here
+        print_unterminated(q, "There aren't that many errors");
+        return CommandResult::success();
       }
       return CommandResult::success(Value{-1});
     case FindStatus::no_errors:
       if (!q.list) {
         print(q, "There are no errors in " + where->root->name() + ".");
+        return CommandResult::success();
       }
       return CommandResult::success(Value{0});
     case FindStatus::wrapped:

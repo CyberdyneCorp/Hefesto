@@ -498,6 +498,20 @@ TEST_CASE("flush refuses the parent of the edit instance", "[cap:cmd-hierarchy][
 
 // --- cellname / instance ---------------------------------------------------------------------
 
+TEST_CASE("cellname timestamp fixes the stamp only with magic-compat OFF", "[cap:cell-timestamps][req:Fixed timestamps]") {
+  // Regression (golden CELL-TS-05): Q-CELL-36 — Magic's flag expression only
+  // clears the pending flag, so with magic-compat ON the stamp is not fixed.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s{compat};
+    db::CellDef* leaf = s.cell("leaf");
+    s.ok("cellname timestamp leaf 5");
+    CHECK(leaf->timestamp() == 5);
+    CHECK_FALSE(leaf->flags().needs_new_timestamp);
+    CHECK(leaf->flags().fixed_timestamp == !compat);
+  }
+}
+
 TEST_CASE("cellname reports children, parents, instances, the window and cell data",
           "[cap:cmd-hierarchy][req:Cellname and instance commands][golden:CMDEDIT-HIER-08]") {
   EditFixture f;

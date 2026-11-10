@@ -49,6 +49,9 @@ struct Request {
 };
 
 void print(Request& q, std::string text);
+/// print() of a TxPrintf without a line end (Magic's console continues
+/// the line with the next output).
+void print_unterminated(Request& q, std::string text);
 void warn(Request& q, std::string text);
 /// Emits a failed status's diagnostic as Magic's TxError text: the command
 /// still succeeds.

@@ -403,7 +403,11 @@ CommandResult cellname_timestamp(const cu::Session& s, const CellnameArgs& c) {
   if (stamp != def->timestamp()) {
     def->set_timestamp(stamp);
     def->flags().needs_new_timestamp = false;
-    def->flags().fixed_timestamp = true;
+    // Q-CELL-36: Magic's `flags &= ~CDGETNEWSTAMP | CDFIXEDSTAMP` only clears
+    // the pending flag; with magic-compat OFF the stamp becomes fixed.
+    if (!s.magic_compat) {
+      def->flags().fixed_timestamp = true;
+    }
   }
   return CommandResult::success();
 }
@@ -414,11 +418,12 @@ CommandResult cellname_flags(const cu::Session& s, const CellnameArgs& c) {
     return unknown_cell(c.args);
   }
   const CellFlags& f = def->flags();
-  const std::array<std::pair<bool, std::string_view>, 11> kFlags = {{
+  const std::array<std::pair<bool, std::string_view>, 12> kFlags = {{
       {f.available, "available"}, {f.modified, "modified"}, {f.no_edit, "readonly"}, {f.internal, "internal"},
       {f.fixed_timestamp, "fixed-timestamp"}, {f.needs_new_timestamp, "timestamp-pending"},
       {f.child_timestamps_changed, "child-timestamp-changed"}, {f.fixed_bbox, "fixed-bbox"},
-      {f.child_bboxes_changed, "bbox-changed"}, {f.vendor_gds, "vendor-gds"}, {f.dereference, "dereference"},
+      {f.child_bboxes_changed, "bbox-changed"}, {f.bbox_processed, "bbox-processed"}, {f.vendor_gds, "vendor-gds"},
+      {f.dereference, "dereference"},
   }};
   Value::List out;
   for (const auto& [on, name] : kFlags) {

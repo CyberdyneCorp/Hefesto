@@ -135,6 +135,9 @@ TEST_CASE("a child edited out of context records a mismatch and is reported",
   REQUIRE(report.rechecks.size() == 2);
   CHECK(report.rechecks[0].area == db::Rect{0, 0, 8, 12});
   CHECK(report.rechecks[1].area == db::Rect{0, 0, 10, 12});
+  // Regression (golden CELL-TS-02): CDPROCESSED stays set ("bbox-processed").
+  CHECK(inv->flags().bbox_processed);
+  CHECK_FALSE(top.flags().bbox_processed);
 }
 
 TEST_CASE("a root cell is never mismatched", "[cap:cell-timestamps][req:Timestamps on cell read]") {

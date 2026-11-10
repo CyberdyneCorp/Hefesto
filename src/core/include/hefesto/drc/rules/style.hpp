@@ -97,6 +97,18 @@ struct DrcStyleList {
 /// Called by tech::load_session_technology.
 void reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink);
 
+/// drcCifCheck's style bookkeeping, run after every basic check (Magic
+/// calls drcCifCheck at the end of DRCBasicCheck; the mask-layer checks
+/// themselves come in M5). When the current style binds a `cifstyle` that
+/// is not the current cifoutput style (drcCifStyle == NULL), it prints
+/// `Loading DRC CIF style.` (DRC-TECH-006) to `sink` (if any), selects that
+/// cifoutput style and reloads the DRC style (CIFLoadStyle ->
+/// DRCReloadCurStyle, which drops the `*halo`/`*stepsize` overrides); when
+/// the reloaded style has mask-layer rules (drcCifValid) the previous
+/// cifoutput style is made current again. Otherwise it does nothing.
+/// Command thread only (it replaces editor.drc.rules).
+void after_basic_check(editor::EditorState& editor, diag::DiagnosticSink* sink);
+
 /// DRCTechScale after the internal grid was scaled by scale_n/scale_d
 /// (`scalegrid`, finer-grid `.mag`/CIF/GDS reads): replaces
 /// editor.drc.rules by rescale(). The call sites (commands/CmdRS.c

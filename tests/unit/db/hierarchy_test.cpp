@@ -242,6 +242,44 @@ TEST_CASE("arrayed use box and propagation to parents", HI "[req:Bounding box an
   CHECK(top->flags().child_bboxes_changed);
 }
 
+TEST_CASE("a parent keeps its box when the child was shown in a window before its placement",
+          HI "[req:Bounding box and extended bounding box]") {
+  // Regression (golden DRC-ENG-1, CELL-TS-02): dbReComputeBboxFunc's last
+  // recursion is guarded by the parent of the last cd_parents use; a window's
+  // root use, never freed and older than the placement, ends the list, so
+  // the parent's box is not recomputed with magic-compat ON.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    db::CellLibrary lib;
+    auto* top = make(lib, "top");
+    auto* child = make(lib, "child");
+    REQUIRE(db::put_label(*child, label("a", {0, 0, 10, 10})).ok());
+    db::recompute_bbox(*child, compat);
+    child->note_window_root();  // `load child` before the placement
+    auto* u = add_use(*top, *child, {});
+    db::recompute_bbox(*top, compat);
+    REQUIRE(top->bbox() == Rect{0, 0, 10, 10});
+    REQUIRE(db::put_label(*child, label("b", {0, 0, 20, 10})).ok());
+    db::recompute_bbox(*child, compat);
+    CHECK(u->bbox == Rect{0, 0, 20, 10});  // the use always follows its child
+    CHECK(top->bbox() == (compat ? Rect{0, 0, 10, 10} : Rect{0, 0, 20, 10}));
+  }
+}
+
+TEST_CASE("a parent follows its child when the placement is older than any window load",
+          HI "[req:Bounding box and extended bounding box]") {
+  db::CellLibrary lib;
+  auto* top = make(lib, "top");
+  auto* child = make(lib, "child");
+  REQUIRE(db::put_label(*child, label("a", {0, 0, 10, 10})).ok());
+  db::recompute_bbox(*child);
+  (void)add_use(*top, *child, {});
+  child->note_window_root();  // shown in a window after the placement
+  REQUIRE(db::put_label(*child, label("b", {0, 0, 20, 10})).ok());
+  db::recompute_bbox(*child);
+  CHECK(top->bbox() == Rect{0, 0, 20, 10});
+}
+
 TEST_CASE("outline-font text boxes extend the extended box", HI "[req:Bounding box and extended bounding box]") {
   db::CellLibrary lib;
   auto* d = make(lib, "f");

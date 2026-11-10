@@ -42,6 +42,7 @@ fails when the two disagree.
 | `DRC-TECH-003` | error | Unknown or ambiguous DRC style (or cifoutput style) name. |
 | `DRC-TECH-004` | info | `DRC style is now "<name>"`. |
 | `DRC-TECH-005` | error | `tech drc surr` or `tech drc direc` without a second layer type. |
+| `DRC-TECH-006` | info | `Loading DRC CIF style.`: the first check under a `cifstyle` naming a cifoutput style that is not current. |
 <!-- END DIAGNOSTIC CODES -->
 
 ## RULES
@@ -66,6 +67,10 @@ Rule compiler, rule table and cifoutput catalog (`drc-rule-language`,
 - **`DRC-TECH-005`.** `tech drc surr|direc <layer>` without the second
   layer: `Requires two layer types.` An unknown layer in `tech drc` is
   `TECH-CMD-006` (`No such layer <n>`); `TECH-CMD-005` is retired.
+- **`DRC-TECH-006`.** `Loading DRC CIF style.` (drcCifCheck): the first
+  check after a style whose `cifstyle` names a cifoutput style that is not
+  current selects that style and reloads the DRC style
+  (`drc::after_basic_check`); the mask-layer checks themselves are M5.
 - **`DRC-LINT-001`** (Q-DRC-3). A `spacing` rule whose type lists span
   several planes: Magic compiles only the first plane pair. The warning
   names the dropped pairs in both `magic-compat` modes; with it OFF they

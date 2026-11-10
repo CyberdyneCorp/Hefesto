@@ -363,6 +363,7 @@ void handle_path(ReadState& st, UseBlock& u, db::CellDef*& sub, bool first_use) 
 
 void place_use(ReadState& st, const UseBlock& u, db::CellDef& sub) {
   auto use = std::make_unique<db::CellUse>();
+  use->serial = db::next_use_serial();  // DBCellNewUse order (db::recompute_bbox)
   use->id = u.locked ? u.id.substr(1) : u.id;
   use->def = &sub;
   use->parent = &st.def;

@@ -179,16 +179,23 @@ CommandResult drc_stepsize(Request& q) {
 }
 
 // CATCHUP: DRCCatchUp runs the checker whatever the background state and
-// restores it.
+// restores it. With work pending (DRCHasWork), DRCContinuous evaluates
+// `after idle magic::drcstate busy` and `... idle`, which leaves the second
+// `after` id as the command's Tcl result.
 CommandResult drc_catchup(Request& q) {
   DrcSession& drc = q.editor.drc;
   const BackgroundMode saved = drc.background;
-  const diag::Status status = catchup(q.editor);
+  const bool had_work = !drc.pending.empty();
+  const diag::Status status = catchup(q.editor, &q.ctx.sink());
   drc.background = saved;
   if (!status.ok()) {
     report_failure(q, status.error());
   }
-  return CommandResult::success();
+  if (!had_work) {
+    return CommandResult::success();
+  }
+  drc.tcl_after_id += 2;
+  return CommandResult::success(cmd::Value{"after#" + std::to_string(drc.tcl_after_id)});
 }
 
 // CHECK: DRCCheck marks the box area in every cell under it.

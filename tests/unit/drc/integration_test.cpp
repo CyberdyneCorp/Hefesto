@@ -28,6 +28,7 @@
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/lock.hpp"
 #include "hefesto/drc/engine/engine.hpp"
+#include "hefesto/drc/rules/details.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
@@ -56,6 +57,22 @@ style first
     spacing m1 m1 4 touching_ok "m1 spacing < 4"
 style second
     width m1 5 "m1 width < 5"
+end
+
+extract
+end
+)";
+  return text;
+}
+
+// rules.tech whose drc style binds the cifoutput style "second", which is
+// not the current one.
+std::string cif_bound_tech() {
+  std::string text = read_text(std::filesystem::path{HEFESTO_SOURCE_DIR} / "tests/data/drc/rules/rules.tech");
+  text += R"(
+drc
+    cifstyle second
+    width m1 3 "m1 width < 3"
 end
 
 extract
@@ -242,4 +259,44 @@ TEST_CASE("drc statistics totals belong to the session", "[cap:drc-commands][req
   CHECK(again.find("Squares processed: 0/0") == std::string::npos);
   Session second;
   CHECK(statistics(second).find("Squares processed: 0/0") != std::string::npos);
+}
+
+TEST_CASE("drc catchup returns Magic's after id when it had work", "[cap:drc-commands][req:drc catchup and drc check]") {
+  // Golden captures record `after#N`: DRCContinuous schedules
+  // `magic::drcstate busy` and `idle` with `after idle`.
+  Session s;
+  REQUIRE(s.run("load top").ok());
+  REQUIRE(s.editor.windows.open_frame(s.editor.cells.find("top")).ok());
+  REQUIRE(s.run("box 0 0 2 10; paint m1").ok());  // CmdPaint marks unless DRC is off
+  REQUIRE_FALSE(s.editor.drc.pending.empty());
+  CHECK(s.value("drc catchup") == "after#2");
+  CHECK(s.value("drc catchup").empty());  // nothing pending
+  REQUIRE(s.run("box 20 0 30 2; paint m1").ok());
+  CHECK(s.value("drc catchup") == "after#4");
+}
+
+TEST_CASE("the first check under a cifstyle that is not current loads that output style",
+          "[cap:drc-rule-language][req:Style selection at run time]") {
+  // Regression (golden DRC-PDK-1..3, DRC-STAT-1, DRC-STD-*): drcCifCheck
+  // prints "Loading DRC CIF style." once, at the end of the first basic check.
+  Session s;
+  s.file("/t/cif.tech", cif_bound_tech());
+  REQUIRE(s.run("tech load /t/cif.tech -noprompt").ok());
+  REQUIRE(s.editor.drc.rules->details() != nullptr);
+  REQUIRE_FALSE(s.editor.drc.rules->details()->cif_bound);
+  REQUIRE(s.run("load top").ok());
+  REQUIRE(s.editor.windows.open_frame(s.editor.cells.find("top")).ok());
+  REQUIRE(s.run("box 0 0 2 10; paint m1").ok());
+  const auto first = s.run("drc catchup");
+  std::size_t loading = 0;
+  for (const auto& d : first.diagnostics) {
+    loading += d.text == "Loading DRC CIF style." ? 1U : 0U;
+  }
+  CHECK(loading == 1);
+  CHECK(s.editor.drc.rules->details()->cif_bound);  // reloaded under the bound style
+  CHECK(s.editor.drc.cif.current()->name == "second");  // no mask-layer rule: drcCifValid stays false
+  REQUIRE(s.run("box 20 0 22 10; paint m1").ok());
+  for (const auto& d : s.run("drc catchup").diagnostics) {
+    CHECK(d.text != "Loading DRC CIF style.");
+  }
 }

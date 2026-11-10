@@ -199,7 +199,9 @@ void flattened_check(Context& ctx, const db::CellDef& def, const db::Rect& erase
   ++ctx.stats->interactions;
   const db::Rect yank_area = db::expand(inter, ctx.halo);
   ctx.clear_yank();
+  ctx.flag_off_grid = true;  // DBCellCheckCopyAllPaint
   yank_paint(ctx, def, yank_area, db::kIdentity);
+  ctx.flag_off_grid = false;
   yank_hints(ctx, def, yank_area, db::kIdentity);
   if (!ctx.basic(ctx.yank, yank_area, inter)) {
     return;

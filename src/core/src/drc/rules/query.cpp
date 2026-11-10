@@ -302,13 +302,21 @@ std::int32_t default_wide_spacing(const RuleSet& rules, const tech::Technology& 
 namespace {
 
 /// DBTechNoisyNameType: the type, or the diagnostic with "No such layer".
+/// The lookup message is a TechError, so it carries Magic's stale
+/// `<file>: line <n>: section (none):` prefix (TechPrintLine after the load).
 diag::Outcome<TileType> query_layer(const tech::Technology& technology, const std::string& name) {
   const int type = tech::name_type(technology.data(), name);
   if (type >= 0) {
     return static_cast<TileType>(type);
   }
   const std::string what = type == tech::kAmbiguous ? "Ambiguous layer (type) name \"" : "Unrecognized layer (type) name \"";
-  return diag::make("TECH-CMD-006", what + name + "\"\nNo such layer " + name);
+  diag::Diagnostic d = diag::make("TECH-CMD-006", what + name + "\"\nNo such layer " + name);
+  const auto located = technology.parse_type_list(name);
+  if (!located.ok()) {
+    d.location = located.error().location;
+    d.related = located.error().related;
+  }
+  return d;
 }
 
 }  // namespace
