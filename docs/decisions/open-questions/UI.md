@@ -380,7 +380,7 @@ Magic reference: commit fc5daa9e (8.3.694).
 
 ### Q-UI-44: `id` and `get` are ambiguous in Magic's command lookup
 - Kind: quirk
-- Status: open (raised by DISPATCH while re-capturing golden UI-G-002, 2026-11-10)
+- Status: approved (raised by DISPATCH while re-capturing golden UI-G-002, 2026-11-10)
 - Magic behavior: The layout client registers the aliases as their own table entries, `id<TAB>OR` and `get<TAB>OR`. `Lookup()` ends a table name at a space only, so the names it compares are `id\tOR...` and `get\tOR...`: the word `id` is a prefix of both `id\t...` and `identify`, and `get` of both `get\t...` and `getcell`/`getnode`, so both words are ambiguous. In the Tcl build the quiet dispatch turns that into a Tcl error with an empty result and nothing printed; `identify`, `getcell` and every longer prefix work.
 - Evidence: golden UI-G-002 (`id` fails with an empty result, run 42803858356); utils/lookup.c:90-103 (Lookup), dbwind/DBWcommands.c:349 and :366 (the `get<TAB>OR` and `id<TAB>OR` entries), tcltk/tclmagic.c (quiet dispatch).
 - Options: replicate with magic-compat on (aliases fail quietly; with magic-compat off they run `identify` and `getcell`) | fix everywhere (`id` and `get` run `identify` and `getcell`; record UI-G-002 as a deviation)

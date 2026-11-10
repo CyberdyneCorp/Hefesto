@@ -1,6 +1,6 @@
 # Raven go/no-go (M0)
 
-- **Status:** open. Evaluation in progress, with a provisional recommendation (2026-11-07). The decision is taken at the M0 gate and then logged as a follow-up of P-11 in `docs/decisions/product.md`.
+- **Status:** decided (2026-11-10): **GO**, final for M2 (see "Decision (2026-11-10)" below). The provisional recommendation of 2026-11-07 and the evidence gathered since are kept below. Logged as a follow-up of P-11 in `docs/decisions/product.md`.
 - **Raven under evaluation:** v0.2.2, commit `4a05d6f11c79e5a6eae77d7fe26f702f5fea4331`, the pin in `cmake/Dependencies.cmake`.
 - **Criteria:** the five in `docs/roadmap.md` (M0 exit criteria), with the pass conditions of `openspec/changes/m0-foundations/design.md` D9. All five must hold for "go".
 - **Scope of a no-go:** only the desktop shell (`src/shell/desktop/`) would be replaced. The core, the CLI and the Vulkan renderer (`src/render/vulkan/`) do not depend on Raven.
@@ -33,6 +33,24 @@ The decision cannot be final until criteria 1 (M1 and Linux), 2 (live input) and
 1. fix upstream (P-11 mitigation);
 2. use texture mode instead of the draw callback for the canvas, which `hefesto_render_vk` already supports through its offscreen path;
 3. no-go for the shell only.
+
+## Decision (2026-11-10)
+
+**GO.** The user decided on 2026-11-10 that the go/no-go is final for M2, on this evidence:
+
+- **Frame rate (criterion 1):** the Apple M3 Pro measurements (13.3 ms median inside Raven with 10 M rectangles, section 1; the M2 run on the 100 x 100 `dfxtp_1` array, median 9.3 ms, files in `docs/spikes/results/2026-11-10-apple-m3-pro-m2/`).
+- **Embedding on Linux (criterion 2):** the Linux lavapipe CI job, which starts the real app and renders inside the Raven viewport under X11 (Xvfb) and Wayland (headless Weston), with GCC and Clang, on every pull request; the macOS live-input checks of M2 (sections "M2 10.1 checks" and "M2 round 3").
+- **Text and theming (criterion 3):** met in M1.
+- **Accessibility (criterion 4):** the macOS AX tree checks of M2; the custom-widget press gap is an upstream Raven issue (issue text 3 below), not a reason for a no-go.
+- **API stability (criterion 5):** met.
+
+These checks move to M4 (Desktop Alpha, `docs/roadmap.md` M4 "Carried from M2") as **confirmation checks** of the decision; a failure there starts the fallback order above rather than reopening M2:
+
+- the frame-rate run on the reference M1 Mac (and on Linux with a mid-range discrete GPU);
+- live mouse, keyboard and trackpad input on Linux under X11 and under Wayland;
+- Orca on Linux.
+
+An audible VoiceOver run by a person is part of the user's guided review of M2 (m2-interactive-editing task 10.1). The embedded-Roboto licensing item (section 3) and filing the Raven issues upstream stay open items; neither blocks the decision.
 
 ## 1. Canvas frame rate
 
@@ -148,7 +166,7 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
 
 ## M2 10.1 checks (macOS, 2026-11-10): results, not final
 
-This is the evidence recorded for m2-interactive-editing task 10.1. It does not change the summary table or the recommendation; INTEGRATION finalizes both in task 11.4. The benchmark JSON files, the step log of the recorded session and the AX tree dump are kept in `docs/spikes/results/2026-11-10-apple-m3-pro-m2/`. The session was recorded before SHELL routed canvas buttons through Magic's macro tables (middle- and right-drag no longer pan; Option-drag does), so it must be repeated on the current build.
+This is the evidence recorded for m2-interactive-editing task 10.1. It does not change the summary table; the decision was made final in task 11.4 (see "Decision (2026-11-10)"). The benchmark JSON files, the step log of the recorded session and the AX tree dump are kept in `docs/spikes/results/2026-11-10-apple-m3-pro-m2/`. The session was recorded before SHELL routed canvas buttons through Magic's macro tables (middle- and right-drag no longer pan; Option-drag does), so it must be repeated on the current build.
 
 **Setup:**
 
@@ -260,4 +278,4 @@ Correction to the M2 round-2 notes: `RListView` does have row activation (`Rlist
 - [x] Bundle Inter and JetBrains Mono (with their licenses) and load them through the bundled path (`--asset-dir`) (criterion 3, M1).
 - [ ] Resolve the embedded-Roboto conflict with `hefesto-licensing` (section 3): a Raven build option or pinned patch without embedded fonts, or a spec exception (criterion 3).
 - [ ] VoiceOver on macOS; Orca on Linux under X11 and Wayland (criterion 4). The macOS AX tree was checked in the M2 10.1 checks above; it has gaps, and neither a VoiceOver run nor Orca has been done.
-- [ ] Decide, and log the outcome as a P-11 follow-up in `docs/decisions/product.md`.
+- [x] Decide, and log the outcome as a P-11 follow-up in `docs/decisions/product.md`: GO, final for M2 (2026-11-10); the unchecked items above are M4 confirmation checks or open items, see "Decision (2026-11-10)".

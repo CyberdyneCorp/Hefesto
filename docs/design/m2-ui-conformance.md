@@ -79,9 +79,16 @@ Round 3 added rows for the layer row menu, the undo history, the color window ch
 
 - Floating panel header, drop-zone highlight while dragging a panel, collapsed edge strip (Docked panels row).
 
-### Board decisions that need confirmation
+### Board decisions (confirmed by the user 2026-11-10)
 
-The boards propose behavior that no spec states yet; each is also an open item of the DESIGN round:
+The boards proposed behavior that no spec stated; each was an open item of the DESIGN round. The user confirmed them on 2026-11-10, and they are now requirements, worded as built in M2, with the parts not built recorded as deferred to M4 (Desktop Alpha, `docs/roadmap.md` "Carried from M2"):
+
+- Paint, Label and Measure tools: `hefesto-input-and-touch` "Desktop Paint, Label and Measure tools". As built, Label opens the command bar prefilled with `label ` (the canvas popover is the M4 target) and Escape cancels a sweep in every mode (Escape issuing `unmeasure` after a measure is M4).
+- Dialog buttons: `hefesto-app-ux` "Prompt dialogs".
+- Panel layout, Reset layout and F6: `hefesto-app-ux` "Panel layout and focus cycling". Saving the layout per user is not built and moves to M4 with floating panels and drag-to-dock.
+- Undo history: `hefesto-app-ux` "Undo history" (right click or the Menu key; press-and-hold and steps named after the user command are M4).
+
+The board proposals as they were put to the user:
 
 - Paint tool: drag a box, release paints the active palette layer, Option-release erases it (`box values …` then `paint`/`erase`).
 - Label tool: click or drag, type in a canvas popover, Enter issues `label TEXT POS LAYER`; Measure tool: drag issues `measure` on release, Esc `unmeasure`.
@@ -93,7 +100,7 @@ The boards propose behavior that no spec states yet; each is also an open item o
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| Tool rail: box, select, paint, wire, label, measure live; place device disabled until M4 | `tool_rail()` (all live but Place device, tooltip "arrives in M4"); a click runs `rail_action()`: `tool box`, `tool pick`, `tool wiring`, `view`; Paint, Label and Measure are modes of the box tool (`InputRouter::set_mode`) | partial | Paint, Label and Measure follow the board decisions still awaiting confirmation (see DESIGN's list). The rail is built from painted widgets, so VoiceOver cannot press it (RAVEN-CHECK gap 1). |
+| Tool rail: box, select, paint, wire, label, measure live; place device disabled until M4 | `tool_rail()` (all live but Place device, tooltip "arrives in M4"); a click runs `rail_action()`: `tool box`, `tool pick`, `tool wiring`, `view`; Paint, Label and Measure are modes of the box tool (`InputRouter::set_mode`) | partial | Paint, Label and Measure follow the board decisions confirmed by the user on 2026-11-10 (see DESIGN's list). The rail is built from painted widgets, so VoiceOver cannot press it (RAVEN-CHECK gap 1). |
 | Active tool in ember | `active_rail_icon(tool, mode)` from `ui::ToolRegistry`; the active button gets the ember tint and its accessible name says "pressed" | done | Captures 02 (Select) and 03 (Wire) match the board's active state. |
 | Rail tooltip with the tool's key | tooltips name Shift-Space, Control-Space, Space and what each button does | partial | Raven tooltips are plain text: the key is not drawn as a key cap (board). |
 | Cursor glyph per tool (`ui::ToolRegistry`, `cursor`) | `cursor_shape(glyph, mode)` maps Magic's glyph to a system pointer: corner glyphs 2-9 to the diagonal resize / move pointers, wiring and nettool to the crosshair, the Paint and Measure modes to the crosshair, Label to the I-beam | partial | Raven has 10 system pointers and no custom cursor images, so Magic's glyph bitmaps (box corner, pick arrow with box) cannot be drawn. Raven gap. |
@@ -101,7 +108,7 @@ The boards propose behavior that no spec states yet; each is also an open item o
 | Box drawn as a highlight | the box client of `view::HighlightLayer` in the highlight pass (a second `render::CanvasRenderer` over the layout, `render::highlight_batches`); the M1 painted box overlay is retired | partial | The batch draws the box as a 1-framebuffer-pixel outline: Magic's 2-pixel "thick" sides (`display::box_drawing`) need a pixel-width outline in `render::highlight_batches` (VIEW open item). |
 | Selection highlight (white solid outlines) | the selection client in the same pass; highlight text and point crosses are drawn by the overlay | done | Captures 01-03. |
 | Move/copy previews | the pick tool's drag runs its `*bypass select move` motion command on each pointer move (tools.tcl's binding), `copy center 0` / `select keep` on the next press, as in Magic | partial | Live drag not yet exercised with OS events. |
-| Paint / Label / Measure sweep preview | dashed white rectangle in the overlay while the button is held; the release issues `box values … ; paint L` (Option: `erase L`), opens the command bar with `label `, or `box values … ; measure` | partial | Board decisions pending confirmation; the label canvas popover is the command bar instead. |
+| Paint / Label / Measure sweep preview | dashed white rectangle in the overlay while the button is held; the release issues `box values … ; paint L` (Option: `erase L`), opens the command bar with `label `, or `box values … ; measure` | partial | Board decisions confirmed by the user on 2026-11-10 (spec `hefesto-input-and-touch`); the label canvas popover is the command bar instead (popover moved to M4). |
 | Wiring tracking: preview leg, HUD, mode chip, Wire inspector | the preview leg is the wiring area's selection (capture 03); pointer motion runs `*bypass wire show` while `wire.tracking` | partial | No HUD next to the cursor, no "Wiring · tracking" chip and no Wire inspector yet. |
 | `*watch` tile overlay | `view::tile_overlay_scene` appended to the highlight pass (style 19, labels by the overlay) | partial | Not captured yet. |
 
@@ -194,7 +201,7 @@ Result: the database part of the edit-latency target (edit, recording, replay, b
 - Raven (issue texts in `docs/decisions/raven-go-no-go.md`, "M2 round 3"): custom cursor images (Magic's glyphs); an anchored popover widget; accessible states and press actions for custom widgets; the Cocoa function-key text and key-repeat bugs (worked around in `TextKeyFilter`). To be proposed upstream (design.md R1), not patched.
 - VIEW: a pixel-width outline for the box and selection in `render::highlight_batches` (Magic's 2-pixel sides; 1 framebuffer pixel is thin on Retina).
 - UNDO: a per-step label (the command that made the step) for the undo history and the "Undid …" message.
-- Not built in M2: floating panels and drag-to-dock, the modal key-binding sheet with key capture, the wiring HUD and Wire inspector, a per-area minimap update, the crash-dialog capture.
+- Not built in M2, moved to M4 by the user's decision of 2026-11-10 (`docs/roadmap.md`, M4 "Carried from M2"): floating panels and drag-to-dock, the panel layout saved per user, the modal key-binding sheet with key capture, the label canvas popover, the wiring HUD and Wire inspector, a per-area minimap update, the crash-dialog capture.
 
 ## Round 3 review fixes (INTEGRATION, 2026-11-10)
 
@@ -218,4 +225,6 @@ Checked by scripted captures of `build/m2` (macos-debug, desktop on) on the sky1
 | Next milestone readiness | `check_milestone_readiness.py --milestone M3`: 24 unresolved questions (DRC, MASK, MISC) to decide before M3 starts | reported |
 | `openspec validate --all --strict` | 172 passed, 0 failed | done |
 | Usability review (2.3), boards in the reference artifact (2.1) | need the user | open |
-| Raven go/no-go (10.1, 11.4): Linux X11/Wayland input, Orca, an audible VoiceOver run, reference-hardware frame-rate run | need people or other hardware | open |
+| Raven go/no-go (10.1, 11.4) | final GO for M2 (user decision 2026-11-10) on the Apple M3 Pro measurements and the Linux lavapipe CI job; the reference M1 frame-rate run, Linux X11/Wayland live input and Orca are M4 confirmation checks (`docs/decisions/raven-go-no-go.md`) | done |
+| Audible VoiceOver run by a person (10.1) | the user's guided review | open |
+| Board decisions for Paint/Label/Measure, dialogs, panels, undo history (10.3) | confirmed by the user 2026-11-10; specified in `hefesto-input-and-touch` and `hefesto-app-ux` | done |

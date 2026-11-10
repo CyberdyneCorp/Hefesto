@@ -24,6 +24,81 @@ Compatibility: native
 - **WHEN** the user selects a layer in the palette and invokes "paint"
 - **THEN** the `paint <layer>` command SHALL be issued for the box area
 
+### Requirement: Prompt dialogs
+On the desktop, every question a command asks through the prompt host (`cmd::PromptHost`: crash recovery, `flush` of a modified cell, an unsaved color map, `quit` with modified cells, overwriting a file) SHALL be shown as a modal dialog:
+- the title is the question's first sentence, and the rest of the question is the body
+- there is one button per answer of the prompt, and each button returns that answer by its index in the prompt's answer list
+- for a yes/no question whose consequence is known, the buttons are verbs: "yes" reads "Discard changes" (a question about throwing away or losing changes), "Overwrite", "Recover" or "Quit without saving", and "no" reads "Cancel"; other answers keep their words, capitalized
+- the default answer's button is last, primary and has the keyboard focus, so Enter gives the default answer
+- Escape, or closing the dialog, gives the default answer, as when a script runs without a prompt host
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-23, board `docs/design/mockups/M2-Dialogs.dc.html`, confirmed by the user 2026-11-10)
+
+#### Scenario: Flush of a modified cell
+- **GIVEN** cell `top` has unsaved changes
+- **WHEN** `flush` asks "Really throw away all changes made to cell top?" with the answers `no`, `yes` and the default `no`
+- **THEN** the dialog SHALL show the buttons "Discard changes" (answer 1, `yes`) and "Cancel" (answer 0, `no`), "Cancel" last, primary and focused
+- **WHEN** the user presses Escape
+- **THEN** the answer SHALL be `no` and the cell SHALL keep its changes
+
+#### Scenario: Answers without a known verb
+- **WHEN** a prompt asks "top has been modified." with the answers `write`, `flush`, `skip`, `abort`, `autowrite` and the default `write`
+- **THEN** the dialog SHALL show five buttons, "Flush" first and the default "Write" last
+
+### Requirement: Panel layout and focus cycling
+On the desktop:
+- the side panels (Layers, Inspector) and the bottom panels (Console, Keys) SHALL be collapsible with `panel layers|inspector|console|keys show|hide|toggle`; `panel NAME` alone reports "shown" or "hidden"
+- the Layers and Inspector panels SHALL dock on either side of the canvas with `panel layers|inspector dock left|right`, the panel's edge separator on the canvas side
+- `panel reset` (Reset layout) SHALL restore the default arrangement: Layers on the left, Inspector on the right, both shown
+- F6 SHALL move the keyboard focus to the next region and Shift-F6 to the previous one, in the order tool rail, Layers (filter field), canvas, Inspector (first action), Console, command bar, skipping hidden panels and an Inspector without an action
+
+The panel layout (dock side, size, collapsed state) SHALL be saved per user in the settings and restored at launch. This persistence, floating panels, drag-to-dock with a drop-zone highlight, panel headers and collapsed edge strips are deferred to M4 (user decision 2026-11-10); in M2 the layout lasts for the session.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-23, board `docs/design/mockups/M2-Panels.dc.html`, confirmed by the user 2026-11-10)
+
+#### Scenario: Dock and reset
+- **WHEN** the user runs `panel layers dock right` and then `panel inspector dock left`
+- **THEN** the Layers panel SHALL be right of the canvas and the Inspector left of it, each with its edge separator next to the canvas
+- **WHEN** the user runs `panel reset`
+- **THEN** the Layers panel SHALL be on the left and the Inspector on the right, both shown, and the command SHALL report "default layout"
+
+#### Scenario: F6 skips hidden panels
+- **GIVEN** the Layers panel is hidden (`panel layers hide`) and the focus is on the tool rail
+- **WHEN** the user presses F6
+- **THEN** the focus SHALL move to the canvas
+- **WHEN** the user presses Shift-F6
+- **THEN** the focus SHALL return to the tool rail
+
+### Requirement: Undo history
+On the desktop, the top bar SHALL have Undo and Redo buttons that run `undo` and `redo`, are enabled only when there is a step to undo or redo, and name the next step in their tooltips. A right click on Undo (or the Menu key while it has the focus) SHALL open the undo history, titled with the step count and the history limit ("Undo history · N steps · limit L"):
+- first the undone steps that can be redone, farthest first, each choosing `redo N`
+- then the undoable steps, newest first, each choosing `undo N`
+- at most 8 of each, each named by the description of its newest event (`undo print`)
+- while undo recording is off (`undo disable`), only the redo entries are enabled
+- with an empty log, the status bar says "nothing to undo or redo" instead
+
+After any command that moves the undo log, the status bar SHALL read "Undid STEP · N more steps" (or "Redid …").
+
+Opening the history by pressing and holding Undo, and naming steps after the user command that made them ("paint metal1"), are deferred to M4 (user decision 2026-11-10); the second needs a per-step command label in the undo log (capability `layout-undo`).
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-23, board `docs/design/mockups/M2-Undo-Redo.dc.html`, confirmed by the user 2026-11-10)
+
+#### Scenario: Undo two steps from the history
+- **GIVEN** three edits were made, each its own undo step, and none was undone
+- **WHEN** the user right-clicks Undo and chooses the second entry
+- **THEN** `undo 2` SHALL be issued, and the status bar SHALL read "Undid STEP · 1 more step", STEP naming the older of the two undone steps
+
+#### Scenario: Recording off
+- **GIVEN** `undo disable` was run after one undone step
+- **WHEN** the user opens the undo history
+- **THEN** the `redo 1` entry SHALL be enabled and every `undo N` entry SHALL be disabled
+
 ### Requirement: Functional parity with Magic's GUI managers
 Hefesto SHALL provide the following browsers and dialogs:
 - a cell manager and a library manager

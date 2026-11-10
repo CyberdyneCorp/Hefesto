@@ -214,5 +214,5 @@ No user data changes. The `units` settings-layer key becomes editor state (`cmd:
 
 None. The user decided on 2026-11-09:
 - No virtual X display in the golden capture container: UI-G-015, 047 and 082 stay not authored, covered by unit tests and `pushbutton`-driven cases.
-- The M2 boards are drafted locally under `docs/design/mockups/`; the user copies them into the claude.ai design artifact before the usability review (task 2.3, signed off by the user).
+- The M2 boards are drafted locally under `docs/design/mockups/`; the user copies them into the claude.ai design artifact before the usability review (task 2.3, signed off by the user). Resolved 2026-11-10: the boards stay in the repository, which becomes the source of truth for the mockups; the review was approved.
 - The `tool` command ("Tool modes" in `ui-gui-managers`) is pulled forward into M2 scope, like the M1 design-system pull-forward; the rest of `ui-gui-managers` stays in M4.
