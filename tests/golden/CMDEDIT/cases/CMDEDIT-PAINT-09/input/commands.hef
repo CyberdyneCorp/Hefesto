@@ -1,0 +1,18 @@
+# CMDEDIT-PAINT-09: Stacked contact pm12c: paint it; erase it; erase the user contact pc (Q-CMDEDIT-16).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load s1
+box 0 0 4 4
+paint pm12c
+save s1
+load s2
+box 0 0 4 4
+paint pm12c
+erase pm12c
+save s2
+load s3
+box 0 0 4 4
+paint pm12c
+erase pc
+save s3

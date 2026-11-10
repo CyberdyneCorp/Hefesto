@@ -21,7 +21,7 @@ COMPOSE = "tech-compose-and-connect"
 LOADING = "tech-loading-and-scaling"
 
 NOT_AUTHORED = {
-    "TECH-G26": "needs select net", "TECH-G29": "needs a graphics session (style mapping)",
+    "TECH-G29": "needs a graphics session (style mapping)",
     "TECH-G33": "partial state after a failed load differs by design (Q-TECH-10)",
     "TECH-G39": "startup .magicrc scripts do not run in hefesto-cli yet (app-startup, 4.3 deviation)",
     "TECH-G40": "needs PDK_ROOT in the environment of both tools",
@@ -215,6 +215,12 @@ def compose_specs() -> list[Spec]:
                                                 "paint", "paint_dump")
                   + dump_cmds(["pdc", "pdiff", "metal1"], [(h, t) for h in range(3) for t in range(3)], "erase", "erase_dump"),
                   files={"tiny.tech": TINY_CC}, reqs=["Contact compose and decompose rules", "Finalization step 4, saved contact rules"]),
+        Spec("TECH-G26", COMPOSE, ["connect section", "Connectivity finalization"],
+             "poly connected to pc, pc to metal1, poly touching metal1: select net from the poly, then from metal1.",
+             tech_load("tiny") + ["load a"] + paint("poly", 0, 0, 10, 4) + paint("pc", 10, 0, 14, 4)
+             + paint("metal1", 10, 0, 30, 4) + paint("poly", 30, 0, 40, 4)
+             + [box(1, 1, 1, 1), "select net", "what -list", "select bbox", "select clear", box(25, 2, 25, 2),
+                "select net", "what -list", "select bbox"], files={"tiny.tech": TINY}),
         cell_case("TECH-G27", ["Contact locking"], "tech locked pc; erase metal1 over a pc tile.",
                   ["tech locked pc"] + paint("pc", 0, 0, 4, 4) + erase("metal1", 0, 0, 4, 4)),
         dump_spec("TECH-G28", "tiny, then tiny with a contact compose rule, then tiny again: P/E dump (Q-TECH-19).",

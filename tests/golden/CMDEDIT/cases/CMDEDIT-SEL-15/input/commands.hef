@@ -1,0 +1,19 @@
+# CMDEDIT-SEL-15: Instance inv 0 0 10 20, box 0 0 12 25; array 3 2; array -list count; array 0 2 3 1 (Q-CMDEDIT-63).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load inv
+box 0 0 10 20
+paint metal1
+save inv
+load a
+box 0 0 0 0
+getcell inv
+select cell inv_0
+box 0 0 12 25
+array 3 2
+array -list count
+array -list
+array 0 2 3 1
+array -list
+save a

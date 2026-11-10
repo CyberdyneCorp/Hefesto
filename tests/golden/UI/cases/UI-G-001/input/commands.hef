@@ -1,0 +1,6 @@
+# UI-G-001: getc nonexist and getcell nonexist.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+getc nonexist
+getcell nonexist

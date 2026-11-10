@@ -1,0 +1,28 @@
+# CMDEDIT-LBL-03: Two selected labels: each setlabel query and some sets; setlabel -default size 2 then label (Q-CMDEDIT-90, 91).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 20 10
+paint metal1
+box 2 2 2 2
+label A
+box 12 2 12 2
+label B
+box 0 0 20 10
+select area labels
+setlabel text
+setlabel font
+setlabel justify
+setlabel size
+setlabel rotate
+setlabel offset
+setlabel layer
+setlabel sticky
+setlabel justify ne
+setlabel rotate 90
+setlabel text Z
+setlabel text
+setlabel -default size 2
+box 5 5 5 5
+label N
+save a

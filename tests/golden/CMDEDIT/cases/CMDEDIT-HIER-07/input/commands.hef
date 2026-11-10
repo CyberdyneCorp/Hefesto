@@ -1,0 +1,38 @@
+# CMDEDIT-HIER-07: expand, expand surround, unexpand, expand toggle, xload top; what -list of a box selection after each.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load a
+box 0 0 10 10
+paint metal1
+save a
+load top
+box 0 0 0 0
+getcell a
+box 20 0 30 10
+paint metal2
+box -5 -5 35 15
+expand
+select area
+what -list
+select clear
+box -5 -5 35 15
+expand surround
+select area
+what -list
+select clear
+box -5 -5 35 15
+unexpand
+select area
+what -list
+select clear
+box -5 -5 35 15
+expand toggle
+select area
+what -list
+select clear
+box -5 -5 35 15
+xload top
+select area
+what -list
+select clear

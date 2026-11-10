@@ -1,0 +1,9 @@
+# CMDEDIT-COORD-05: box width 5km; box width abc.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 10 10
+box width 5km
+box width
+box width abc
+box width

@@ -1,0 +1,18 @@
+# CMDEDIT-PAINT-05: Three instances, two overlapping the box; erase subcell.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load leaf
+box 0 0 10 10
+paint metal1
+save leaf
+load top
+box 0 0 0 0
+getcell leaf
+box 20 0 20 0
+getcell leaf
+box 40 0 40 0
+getcell leaf
+box 5 5 25 15
+erase subcell
+save top

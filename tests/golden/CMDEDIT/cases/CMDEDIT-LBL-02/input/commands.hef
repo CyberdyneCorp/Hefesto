@@ -1,0 +1,12 @@
+# CMDEDIT-LBL-02: label VDD n -metal2; label A 0 2 45 1 1 sw metal1; label "a b"; label x/y.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 10 10
+paint metal1
+box 5 5 5 5
+label VDD n -metal2
+label A 0 2 45 1 1 sw metal1
+label "a b"
+label x/y
+save a

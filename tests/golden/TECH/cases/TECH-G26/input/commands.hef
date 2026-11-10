@@ -1,0 +1,22 @@
+# TECH-G26: poly connected to pc, pc to metal1, poly touching metal1: select net from the poly, then from metal1.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+snap internal
+load a
+box 0 0 10 4
+paint poly
+box 10 0 14 4
+paint pc
+box 10 0 30 4
+paint metal1
+box 30 0 40 4
+paint poly
+box 1 1 1 1
+select net
+what -list
+select bbox
+select clear
+box 25 2 25 2
+select net
+what -list
+select bbox

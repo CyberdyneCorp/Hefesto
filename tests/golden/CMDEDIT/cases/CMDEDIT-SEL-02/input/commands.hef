@@ -1,0 +1,15 @@
+# CMDEDIT-SEL-02: labels VDD VSS IN; select area labels V*; what -list.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 30 10
+paint metal1
+box 2 2 2 2
+label VDD
+box 12 2 12 2
+label VSS
+box 22 2 22 2
+label IN
+box 0 0 30 10
+select area labels V*
+what -list

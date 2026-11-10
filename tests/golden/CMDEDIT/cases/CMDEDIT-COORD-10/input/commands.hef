@@ -1,0 +1,13 @@
+# CMDEDIT-COORD-10: metal1 -3 0 3 4, box 0 0 3 5; scalegrid 1 2; save; scalegrid 2 1; save.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box -3 0 3 4
+paint metal1
+box 0 0 3 5
+scalegrid 1 2
+box values
+save a1
+scalegrid 2 1
+box values
+save a2

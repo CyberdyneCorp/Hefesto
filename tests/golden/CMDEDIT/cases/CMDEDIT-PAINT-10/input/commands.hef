@@ -1,0 +1,22 @@
+# CMDEDIT-PAINT-10: corner n e metal1 bevel in the root cell, and in a child edit cell placed at 100 0 (Q-CMDEDIT-15).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load r
+box 5 -10 8 0
+paint metal1
+box 0 0 20 20
+corner n e metal1 bevel
+save r
+load child
+box 5 -10 8 0
+paint metal1
+save child
+load top
+box 100 0 100 0
+getcell child
+select cell child_0
+edit
+box 100 0 120 20
+corner n e metal1 bevel
+writeall force

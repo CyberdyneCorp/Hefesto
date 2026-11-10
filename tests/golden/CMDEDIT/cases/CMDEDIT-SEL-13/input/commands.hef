@@ -1,0 +1,38 @@
+# CMDEDIT-SEL-13: metal1, a label and an instance selected: clockwise, 180, rotate -90, 90 -orig, 45, sideways, upsidedown (Q-CMDEDIT-61).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+load leaf
+box 0 0 5 5
+paint poly
+save leaf
+load a
+box 10 10 30 20
+paint metal1
+box 15 15 15 15
+label L
+box 40 0 40 0
+getcell leaf
+box 0 0 60 30
+select area
+clockwise
+box values
+save r1
+clockwise 180
+box values
+save r2
+rotate -90
+box values
+save r3
+clockwise 90 -orig
+box values
+save r4
+clockwise 45
+box values
+save r5
+sideways
+box values
+save r6
+upsidedown
+box values
+save r7

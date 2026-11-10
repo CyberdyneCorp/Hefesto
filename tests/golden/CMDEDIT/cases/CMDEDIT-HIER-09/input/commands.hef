@@ -1,0 +1,15 @@
+# CMDEDIT-HIER-09: save adder from (UNNAMED); writeall force; flush a -noprompt.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+box 0 0 10 10
+paint metal1
+save adder
+load b
+box 0 0 5 5
+paint metal1
+writeall force
+load a
+box 0 0 5 5
+paint poly
+flush a -noprompt
+cellname list modified

@@ -1,0 +1,14 @@
+# UI-G-036: Two windows on top; expand in one; what -list of a box selection, then select cell at the child.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+load input/top
+openwindow input/top
+windownames all
+box 0 0 10 10
+expand
+select area
+what -list
+select clear
+select cell at 5 5
+what -list

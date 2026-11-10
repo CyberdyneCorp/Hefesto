@@ -1,0 +1,8 @@
+# CMDEDIT-BOX-03: box 0 0 100 50 under tiny (lambda 1) and under tech fine.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box 0 0 100 50
+tech load input/fine -noprompt
+load b
+box 0 0 100 50

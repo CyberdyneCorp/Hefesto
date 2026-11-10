@@ -1,0 +1,27 @@
+# MODEL-G-053: Parent metal1 abutting a child whose two VDD ports share index 1 and are not connected; select net.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load child
+box 0 0 10 10
+paint metal1
+box 1 1 1 1
+label VDD
+port make 1
+box 20 0 30 10
+paint metal1
+box 21 1 21 1
+label VDD
+port make 1
+save child
+load top
+box 0 0 0 0
+getcell child
+box -10 0 0 10
+paint metal1
+box -10 0 30 10
+expand
+box -5 5 -5 5
+select net
+what -list
+select bbox

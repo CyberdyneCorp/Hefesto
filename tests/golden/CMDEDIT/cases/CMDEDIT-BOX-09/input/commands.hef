@@ -1,0 +1,8 @@
+# CMDEDIT-BOX-09: Two box values, undo, box values.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box values 0 0 10 10
+box values 5 5 20 20
+undo
+box values

@@ -1,0 +1,20 @@
+# CMDEDIT-COORD-04: tech fine; units internal; box width with suffixed, fractional, negative and exponent literals.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/fine -noprompt
+load a
+units internal
+box values 0 0 10 10
+box width 1.5um
+box width
+box width 0.005um
+box width
+box width 25nm
+box width
+box width -0.005um
+box width
+box width 2.5
+box width
+box width -2.5
+box width
+box width 1e2
+box width

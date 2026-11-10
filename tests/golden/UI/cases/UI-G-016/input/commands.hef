@@ -1,0 +1,9 @@
+# UI-G-016: logcommands log.txt; box; label "a b" n; setpoint 1 1; logcommands stop.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+logcommands log.txt
+box 0 0 10 10
+label "a b" n
+setpoint 1 1
+logcommands stop

@@ -1,0 +1,8 @@
+# CMDEDIT-MISC-05: random seed 42; random; random seed 42; random.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+random seed 42
+random
+random seed 42
+random

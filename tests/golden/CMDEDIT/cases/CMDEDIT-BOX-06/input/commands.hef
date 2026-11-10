@@ -1,0 +1,9 @@
+# CMDEDIT-BOX-06: box exists; box remove; box exists; box width.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load a
+box values 0 0 10 10
+box exists
+box remove
+box exists
+box width

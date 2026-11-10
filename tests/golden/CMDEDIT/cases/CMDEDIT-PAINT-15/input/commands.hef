@@ -1,0 +1,20 @@
+# CMDEDIT-PAINT-15: Top with a child holding dnwell: select area dnwell; drop pwell; then with the child as edit cell (Q-CMDEDIT-17).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tinydw -noprompt
+load a
+load c
+box 0 0 20 20
+paint dnwell
+save c
+load top
+box 0 0 0 0
+getcell c
+box -5 -5 25 25
+select area dnwell
+drop pwell
+select clear
+select cell c_0
+edit
+select area dnwell
+drop pwell
+writeall force

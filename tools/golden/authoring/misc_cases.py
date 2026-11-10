@@ -17,7 +17,7 @@ FONT = "font-labels"
 DEFAULT_FONTS = ["FreeSans", "FreeSerif", "FreeMono"]
 
 NOT_AUTHORED = {
-    "MISC-FL-05": "needs gds write/read (M2)",
+    "MISC-FL-05": "needs gds write/read (MASK, M5)",
     "MISC-FL-06": "glyph contour dumps need a debug build (no command)",
 }
 

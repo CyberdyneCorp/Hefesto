@@ -4,11 +4,7 @@
 tasks 8.2-8.4): the feedback, color window and wizard rows of tests/golden/UI/CASES.md
 and CMDEDIT-MISC-03 of tests/golden/CMDEDIT/CASES.md.
 
-Registered by INTEGRATION in the M2 driver (m2_cases.py, task 11.2). Until then the
-case directories are written with:
-
-    python3 -c "import sys; sys.path.insert(0, 'tools/golden/authoring'); \\
-        import casegen, view_cases; [casegen.write(s) for s in view_cases.specs()]"
+Registered in the M2 driver (m2_cases.py, task 11.2), which writes the case directories.
 
 Like ui_cases.py, the cases load tiny.tech (lambda 1, like scmos) and a small cell so
 that a layout window and the box exist.
@@ -23,9 +19,9 @@ COLOR = "ui-color-window"
 WIZARD = "ui-wizard-and-debug"
 
 NOT_AUTHORED = {
-    "UI-G-061": "needs setpoint/pushbutton (DISPATCH task 7.4) and the color client table (7.1); the red bar "
-                "midpoint pixel is derived from the color window's view mapping once they land",
-    "UI-G-062": "needs pushbutton (DISPATCH task 7.4) on the Hue + pump; same as UI-G-061",
+    "UI-G-061": "the red bar midpoint pixel for setpoint must be derived from the color window's view mapping "
+                "in Magic's 512x484 null screen (VIEW)",
+    "UI-G-062": "pushbutton on the Hue + pump needs the pump's pixel position; same as UI-G-061 (VIEW)",
     "UI-G-068": "needs extraction (M7)",
     "UI-G-082": "X11 screenshots (no virtual display in the capture container, design Open Questions)",
 }
