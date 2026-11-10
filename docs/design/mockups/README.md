@@ -1,9 +1,9 @@
 # Hefesto UI mockups (design source)
 
-Sources of the reference design artifact cited by capability `hefesto-design-system`:
-https://claude.ai/artifact/9fWfmyGAx1EYtzhmgqyeeK ("Hefesto UI Mockups"). The artifact is the source of
-truth; these copies let code review and agents check the implementation against it offline. Re-copy them
-when the artifact changes (design changes go to the artifact first, per `hefesto-design-system`).
+The reference mockups cited by capability `hefesto-design-system`. Since 2026-11-10 these files are the source of
+truth (user decision, M2 task 2.1): design changes are made here first, with renders in `docs/images/ui/`. The M1
+boards were first drawn in the design artifact https://claude.ai/artifact/9fWfmyGAx1EYtzhmgqyeeK ("Hefesto UI
+Mockups"), which is no longer updated.
 
 | Board | File | Screen |
 |---|---|---|
@@ -18,10 +18,9 @@ when the artifact changes (design changes go to the artifact first, per `hefesto
 
 ## M2 boards (interactive editing)
 
-Design D8 of `openspec/changes/m2-interactive-editing`. These boards were drafted here first (the user decided on
-2026-11-09 to draft them locally); the user copies them into the reference design artifact before the M2 usability
-review (task 2.3), after which the artifact is again the source of truth. `canvas.json` already places them on the
-artifact canvas below the M1 boards.
+Design D8 of `openspec/changes/m2-interactive-editing`. These boards were drafted here (user decision 2026-11-09) and
+approved by the user on 2026-11-10 together with the M2 usability review (task 2.3); they were not copied into the
+old design artifact. `canvas.json` places them below the M1 boards.
 
 | Board | File | Screen states | Renders (`docs/images/ui/`) |
 |---|---|---|---|

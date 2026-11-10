@@ -6,7 +6,7 @@ Defines Hefesto's visual design system, "forge" (decision P-23):
 - the icon style
 - the component patterns shared by the desktop app (Raven themes) and the iPadOS app (SwiftUI)
 
-Reference mockups of the main screens are kept as a design artifact: https://claude.ai/artifact/9fWfmyGAx1EYtzhmgqyeeK (Hefesto UI Mockups). The guiding rule is that UI chrome stays neutral, so PDK layer colors own the canvas.
+Reference mockups of the main screens are kept in the repository under `docs/design/mockups/` (with renders in `docs/images/ui/`). The M1 boards were first drawn in the design artifact https://claude.ai/artifact/9fWfmyGAx1EYtzhmgqyeeK (Hefesto UI Mockups); since 2026-11-10 the repository copies are the source of truth (user decision, M2 task 2.1). The guiding rule is that UI chrome stays neutral, so PDK layer colors own the canvas.
 
 ## Requirements
 
@@ -143,7 +143,7 @@ The main screens SHALL follow the structure of the reference mockups:
 - **Agent proposal review:** request and steps, visual diff, verification gates, alternatives, accept / accept some / reject.
 - **iPad editor:** collapsible sidebar, full-bleed canvas, floating 52 pt tool palette, long-press action menu, floating modifier button.
 
-Changes to these patterns SHALL be made in the design artifact first, and then reflected here.
+Changes to these patterns SHALL be made in the reference mockups (`docs/design/mockups/`) first, and then reflected here.
 
 The desktop window SHALL NOT be made smaller than 1024 × 640 logical pixels, and at every width down to that minimum every enabled control of the desktop layout editor SHALL stay visible and reachable. When the top bar does not fit, it SHALL hide, in this order and only as far as needed: the disabled actions of later milestones, the DRC and LVS status chips, and then the editor-view tabs.
 
@@ -153,7 +153,7 @@ Compatibility: native
 
 #### Scenario: New screen
 - **WHEN** a new major screen is designed
-- **THEN** a board SHALL be added to the design artifact, and a bullet to this requirement, before implementation starts
+- **THEN** a board SHALL be added to the reference mockups (`docs/design/mockups/`), and a bullet to this requirement, before implementation starts
 
 #### Scenario: Top bar at the minimum window size
 - **GIVEN** the desktop window at 1024 × 640

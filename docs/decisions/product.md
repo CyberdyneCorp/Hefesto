@@ -207,7 +207,7 @@ Open decisions found by the spec audit are listed in `docs/decisions/audit/DECIS
   - light and dark themes
 - Desktop: implemented through Raven's theme system. iPadOS: implemented in SwiftUI.
 - Layout layer colors come from the PDK display styles. They are not part of the UI theme.
-- Capability: `hefesto-design-system`. Screen mockups are kept as design artifacts and linked from it.
+- Capability: `hefesto-design-system`. Screen mockups are kept in `docs/design/mockups/` (the source of truth since 2026-11-10) and linked from it.
 
 ## P-19: Advanced analog simulation
 

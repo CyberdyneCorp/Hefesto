@@ -26,9 +26,9 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 | Milestone | Theme | Capabilities | Requirements | Release |
 |---|---|---|---|---|
-| M0 | Foundations and Raven go/no-go | 8 | 33 |  |
-| M1 | Core model, formats, PDK manager, 2D viewer | 25 | 280 |  |
-| M2 | Interactive editing and design system | 19 | 186 |  |
+| M0 | Foundations and Raven go/no-go | 8 | 39 |  |
+| M1 | Core model, formats, PDK manager, 2D viewer | 25 | 284 |  |
+| M2 | Interactive editing and design system | 19 | 194 |  |
 | M3 | Design rule checking | 5 | 72 |  |
 | M4 | Scripting and PDK integration | 8 | 90 | **Desktop Alpha** |
 | M5 | Mask generation, GDS, CIF | 8 | 203 |  |
@@ -95,7 +95,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Pull-forward:** the `ui-gui-managers` requirement "Tool modes" (the `tool` command) is implemented in M2 because the M2 tools need it; the rest of `ui-gui-managers` stays in M4.
 
-**Status (2026-11-10, implementation complete; exit pending the user):** OpenSpec change `openspec/changes/m2-interactive-editing`, three implementation rounds done (progress in its `tasks.md`). The editing command set, layout undo, selection and connectivity, hierarchy, labels, command dispatch (Magic's Tcl-build name rules, Q-UI-41), macros and tools, highlights and feedback, the color window and the wiring tool are implemented in the core and unit-tested. The desktop routes canvas input through Magic's macro tables and has a live tool rail, selection inspector, layer palette paint layer and menus, command history and completion popovers, undo/redo with an undo history, the color window screen, a key-binding sheet, docking and F6 focus cycling, and prompt dialogs. Golden: 264 cases, 226 pass, 38 differ only by an approved decision or a later milestone's feature (`deferred`), 0 fail. Requirement coverage is 163 of 163. Decisions of 2026-11-10: the board behaviors (Paint/Label/Measure tools, dialog buttons, panel layout and F6, undo history) are confirmed and specified in `hefesto-input-and-touch` and `hefesto-app-ux`; the Raven go/no-go is final (GO), with the M1 frame-rate run, Linux X11/Wayland input and Orca moved to M4 as confirmation checks; the shell gaps listed under M4 "Carried from M2" move to M4. Left for M2, all needing the user: the M2 boards copied into the reference design artifact (task 2.1), the usability review (2.3) and an audible VoiceOver run by a person (10.1).
+**Status (complete, 2026-11-10; all tasks ticked):** OpenSpec change `openspec/changes/m2-interactive-editing`, three implementation rounds done (progress in its `tasks.md`). The editing command set, layout undo, selection and connectivity, hierarchy, labels, command dispatch (Magic's Tcl-build name rules, Q-UI-41), macros and tools, highlights and feedback, the color window and the wiring tool are implemented in the core and unit-tested. The desktop routes canvas input through Magic's macro tables and has a live tool rail, selection inspector, layer palette paint layer and menus, command history and completion popovers, undo/redo with an undo history, the color window screen, a key-binding sheet, docking and F6 focus cycling, and prompt dialogs. Golden: 264 cases, 226 pass, 38 differ only by an approved decision or a later milestone's feature (`deferred`), 0 fail. Requirement coverage is 163 of 163. Decisions of 2026-11-10: the board behaviors (Paint/Label/Measure tools, dialog buttons, panel layout and F6, undo history) are confirmed and specified in `hefesto-input-and-touch` and `hefesto-app-ux`; the Raven go/no-go is final (GO), with the M1 frame-rate run, Linux X11/Wayland input and Orca moved to M4 as confirmation checks; the shell gaps listed under M4 "Carried from M2" move to M4. The usability review was done and approved with the user (`docs/design/m2-ux-review.md`), including a VoiceOver pass; the M2 boards stay in `docs/design/mockups/`, now the mockups' source of truth.
 
 **Capabilities:** `cmd-coordinates-and-units`, `cmd-box`, `cmd-paint-erase`, `cmd-selection`, `cmd-hierarchy`, `cmd-labels-properties`, `cmd-misc-edit`, `layout-undo`, `layout-connectivity`, `ui-command-dispatch`, `ui-tools-and-input`, `ui-feedback-and-highlights`, `ui-box-stack-and-measure`, `ui-color-window`, `ui-wizard-and-debug`, `hefesto-input-and-touch` (desktop), `hefesto-app-ux`, `hefesto-design-system`, `wiring-tool`
 
@@ -108,7 +108,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 **Exit criteria**
 - The common exit criteria.
 - The CMDEDIT golden cases and the UI command cases pass.
-- An internal usability review of the M2 UX design artifact has been done.
+- An internal usability review of the M2 UX design has been done (`docs/design/m2-ux-review.md`).
 
 ## M3 — Design rule checking
 
