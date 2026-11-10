@@ -1,0 +1,11 @@
+# a few default-style bindings
+macro a "select visible"
+macro ^A "select less visible"
+imacro p "paint "
+macro Control_Shift_XK_q quit
+macro XK_KP_4 {stretch l 1i}
+macro color plus "color next"
+macro Shift_Button1 "*bypass box corner bl cursor"
+macro copy mytool
+macro mytool z "zoom .5" "zoom out"
+macro help mytool z "zoom out more"

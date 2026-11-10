@@ -12,6 +12,10 @@
 #   cell/    CELL                           (always)
 #   display/ view/  VIEWER                  (always)
 #   pdk/ app/       PDK                     (always)
+#   undo/    UNDO (M2)                      (always)
+#   select/ connect/  SELECT (M2)           (always)
+#   ui/      DISPATCH (M2)                  (always)
+#   wiring/  WIRE (M2)                      (always)
 #   render/  VIEWER                         (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
@@ -59,7 +63,7 @@ function(hefesto_add_area_tests area)
   target_include_directories(hefesto_${area}_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
 endfunction()
 
-foreach(_area IN ITEMS tech db cell display view pdk app)
+foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring)
   add_subdirectory(${_area})
 endforeach()
 

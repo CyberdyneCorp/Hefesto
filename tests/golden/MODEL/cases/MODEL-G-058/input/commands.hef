@@ -1,0 +1,14 @@
+# MODEL-G-058: Three paints in one box, undo twice, paint, redo (nothing to redo).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+box 0 0 10 10
+paint metal1
+paint metal2
+paint metal3
+undo
+undo
+paint ndiff
+redo
+save a

@@ -26,6 +26,10 @@ fails when the two disagree.
 | `DB-CMD-003` | error | Unknown or ambiguous layer name. |
 | `DB-CMD-004` | error | Invalid command argument value. |
 | `DB-CMD-005` | error | No label matches the request. |
+| `DB-CMD-006` | error | The box is not in a window on the edit cell. |
+| `DB-CMD-007` | error | The new box lies outside the usable plane (box out of bounds). |
+| `DB-CMD-008` | error | The command is not available in this build or on this platform. |
+| `DB-CMD-009` | error | A cell the command would change is not editable or does not match the edit cell. |
 | `DB-GEOM-001` | error | Geometry lies outside the usable plane (+-1073741818) and was rejected. |
 | `DB-LABEL-001` | error | A label needs non-empty text. |
 | `DB-PROP-001` | error | A property value cannot be parsed as the requested type. |

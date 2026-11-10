@@ -179,6 +179,85 @@ void add_glyphs(BatchBuilder& b, const std::vector<display::SceneLabel>& labels)
   }
 }
 
+// --- highlights ---------------------------------------------------------------
+
+/// The batch layers of one highlight run: consecutive items of the same
+/// resolved style share a fill, a line and a triangle layer (in that order).
+struct HighlightRun {
+  std::vector<RectInstance> fills;
+  std::vector<RectInstance> lines;
+  std::vector<const display::HighlightItem*> triangles;
+};
+
+void add_highlight_item(HighlightRun& run, const display::HighlightItem& it) {
+  const db::Rect& r = it.rect;
+  const bool has_outline = it.resolved.outline != 0;
+  switch (it.shape) {
+    case display::HighlightShape::box:
+      if (has_fill(it.resolved.fill)) run.fills.push_back(RectInstance{r.x0, r.y0, r.x1, r.y1});
+      if (has_outline || !has_fill(it.resolved.fill)) {
+        for (const auto& s : display::boundary_segments({r})) run.lines.push_back(line(s.a, s.b));
+      }
+      break;
+    case display::HighlightShape::outline:
+      run.lines.push_back(line({r.x0, r.y0}, {r.x1, r.y0}));
+      run.lines.push_back(line({r.x1, r.y0}, {r.x1, r.y1}));
+      run.lines.push_back(line({r.x0, r.y1}, {r.x1, r.y1}));
+      run.lines.push_back(line({r.x0, r.y0}, {r.x0, r.y1}));
+      break;
+    case display::HighlightShape::line:
+      run.lines.push_back(line(it.line.a, it.line.b));
+      break;
+    case display::HighlightShape::cross:
+      run.lines.push_back(RectInstance{r.x0, r.y0, r.x0, r.y0});
+      break;
+    case display::HighlightShape::triangle:
+      run.triangles.push_back(&it);
+      break;
+    case display::HighlightShape::text:
+      break;
+  }
+}
+
+void emit_highlight_run(BatchBuilder& b, const display::ResolvedStyle& style, const HighlightRun& run) {
+  if (!run.fills.empty() && b.begin(style, BatchKind::highlight, true)) {
+    for (const auto& r : run.fills) b.add(r);
+  }
+  if (!run.triangles.empty() && b.begin(style, BatchKind::highlight, true)) {
+    const std::size_t first = b.vertices().size();
+    for (const auto* t : run.triangles) {
+      append_triangle(t->rect, t->diagonal, t->right_side, b.base_x(), b.base_y(), b.vertices());
+    }
+    b.end_polygons(first);
+  }
+  if (!run.lines.empty()) {
+    LayerStyle ls = to_layer_style(style, false);
+    ls.dash = static_cast<std::uint8_t>(style.outline & 0xFF);
+    if (b.begin(ls, BatchKind::highlight, style.index)) {
+      for (const auto& r : run.lines) b.add(r);
+    }
+  }
+}
+
+void add_highlights(BatchBuilder& b, const display::HighlightScene& scene) {
+  std::size_t i = 0;
+  while (i < scene.items.size()) {
+    const display::ResolvedStyle& style = scene.items[i].resolved;
+    HighlightRun run;
+    for (; i < scene.items.size() && scene.items[i].resolved == style; ++i) {
+      add_highlight_item(run, scene.items[i]);
+    }
+    emit_highlight_run(b, style, run);
+  }
+}
+
+db::Point highlight_base(const display::HighlightScene& scene) {
+  for (const auto& it : scene.items) {
+    if (it.shape == display::HighlightShape::triangle) return {it.rect.x0, it.rect.y0};
+  }
+  return {0, 0};
+}
+
 }  // namespace
 
 LayerStyle to_layer_style(const display::ResolvedStyle& style, bool fill) {
@@ -197,9 +276,13 @@ LayerStyle to_layer_style(const display::ResolvedStyle& style, bool fill) {
   return out;
 }
 
-LayoutBatches to_batches(const display::LayoutScene& scene) {
+LayoutBatches to_batches(const display::LayoutScene& scene, const display::HighlightScene* highlights) {
   const db::Rect& bounds = scene.bounds;
-  BatchBuilder b(bounds.is_null() ? 0 : bounds.x0, bounds.is_null() ? 0 : bounds.y0);
+  db::Point base{bounds.is_null() ? 0 : bounds.x0, bounds.is_null() ? 0 : bounds.y0};
+  if (bounds.is_null() && highlights != nullptr) {
+    base = highlight_base(*highlights);
+  }
+  BatchBuilder b(base.x, base.y);
   for (const auto& layer : scene.layers) {
     add_layer(b, layer);
   }
@@ -209,6 +292,16 @@ LayoutBatches to_batches(const display::LayoutScene& scene) {
   if (!scene.cells.empty() && b.begin(scene.cells.front().style, BatchKind::cell_box, false)) {
     for (const auto& cell : scene.cells) b.add_outline(cell.bbox);
   }
+  if (highlights != nullptr) {
+    add_highlights(b, *highlights);
+  }
+  return b.finish();
+}
+
+LayoutBatches highlight_batches(const display::HighlightScene& highlights) {
+  const db::Point base = highlight_base(highlights);
+  BatchBuilder b(base.x, base.y);
+  add_highlights(b, highlights);
   return b.finish();
 }
 

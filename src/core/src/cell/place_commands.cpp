@@ -1,29 +1,40 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// `getcell` and `flatten`: the CELL side of the two MODEL commands that may
-// need cells from files. `load` reads only the named cell (Magic does not
-// expand on load), so getcell reads the cell it places and flatten reads
-// the edit cell's unavailable descendants before the MODEL handlers
-// (db::getcell_command, db::flatten_command) run on memory only.
-// Ported from Magic 8.3.694 commands/CmdCD.c (cmdDumpParseArgs) and
-// commands/CmdFI.c (CmdGetcell, CmdFlatten); Magic is (c) the Regents of
-// the University of California (THIRD_PARTY_NOTICES.md).
+// `getcell`/`get` and `dump` (cmd-hierarchy "Placement reference syntax for
+// getcell and dump", "Getcell command", "Dump command"). The cell placed or
+// copied is read from its file when needed (`load` reads only the named
+// cell), then placed through the edit frame.
+// Ported from Magic VLSI 8.3.694 (fc5daa9e) commands/CmdCD.c
+// (cmdDumpParseArgs, cmdDumpFunc, CmdDump), commands/CmdFI.c (CmdGetcell)
+// and select/selOps.c (SelectDump); Magic is (c) the Regents of the
+// University of California (THIRD_PARTY_NOTICES.md).
 
+#include <array>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <vector>
 
+#include "db/command_util.hpp"
 #include "hefesto/cell/diag_codes.hpp"
-#include "hefesto/db/commands.hpp"
+#include "hefesto/cell/hier.hpp"
+#include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/labels.hpp"
+#include "hefesto/db/paint.hpp"
+#include "hefesto/editor/edit_frame.hpp"
 #include "io_session.hpp"
+#include "placement.hpp"
 
 namespace hefesto::cell::detail {
 
 namespace {
 
 using cmd::CommandResult;
+namespace cu = db::cmdutil;
 
-struct GetcellName {
+struct CellName {
   std::string cell;  // the definition name (last path component, no .mag)
   std::string path;  // the name as given when it has a directory part
 };
@@ -35,7 +46,7 @@ std::string strip_mag(std::string name) {
   return name;
 }
 
-GetcellName split_getcell_name(const std::string& arg) {
+CellName split_cell_name(const std::string& arg) {
   const std::size_t slash = arg.rfind('/');
   if (slash == std::string::npos) {
     return {strip_mag(arg), {}};
@@ -43,13 +54,17 @@ GetcellName split_getcell_name(const std::string& arg) {
   return {strip_mag(arg.substr(slash + 1)), strip_mag(arg)};
 }
 
+db::CellDef* create_def(IoSession& s, const std::string& name) {
+  auto made = s.ed.cells.create(name, s.ed.technology->plane_count());
+  return made ? made.value() : nullptr;
+}
+
 // The path-mismatch rule of cmdDumpParseArgs: a definition that already
 // points elsewhere is not reused; a new one named <cell>_a, <cell>_b, ... is.
-db::CellDef* definition_for(IoSession& s, const GetcellName& n) {
+db::CellDef* definition_for(IoSession& s, const CellName& n, std::string_view command) {
   db::CellDef* def = s.ed.cells.find(n.cell);
   if (def == nullptr) {
-    auto made = s.ed.cells.create(n.cell, s.ed.technology->plane_count());
-    def = made ? made.value() : nullptr;
+    def = create_def(s, n.cell);
   }
   if (def == nullptr || n.path.empty()) {
     return def;
@@ -64,7 +79,7 @@ db::CellDef* definition_for(IoSession& s, const GetcellName& n) {
     return def;
   }
   s.emit(codes::kConflictingLocation, "Warning:  Cell file path mismatch.  Existing cell has path \"" + existing +
-                                          "\", while getcell path is \"" + n.path + "\".");
+                                          "\", while " + std::string{command} + " path is \"" + n.path + "\".");
   std::string renamed;
   for (char c = 'a'; c <= 'z'; ++c) {
     renamed = n.cell + "_" + c;
@@ -73,67 +88,261 @@ db::CellDef* definition_for(IoSession& s, const GetcellName& n) {
     }
   }
   s.emit(codes::kConflictingLocation, "Renaming cell to \"" + renamed + "\" to avoid conflict.");
-  auto made = s.ed.cells.create(renamed, s.ed.technology->plane_count());
-  if (!made) {
+  db::CellDef* made = create_def(s, renamed);
+  if (made != nullptr) {
+    made->set_file_path(n.path);
+  }
+  return made;
+}
+
+// DBIsAncestor(def, edit): `edit` is `def` or appears below it.
+bool is_ancestor(const db::CellDef& def, const db::CellDef& edit) {
+  if (&def == &edit) {
+    return true;
+  }
+  bool found = false;
+  db::walk_hierarchy(def, [&](const db::CellUse& use, const db::Transform&, int) {
+    found = found || use.def == &edit;
+    return !found;
+  });
+  return found;
+}
+
+/// The child cell of `getcell`/`dump`, read and checked; nullptr after an
+/// error was reported in `error`.
+db::CellDef* placed_cell(IoSession& s, const cmd::Invocation& inv, CommandResult& error) {
+  if (s.ed.edit_cell == nullptr) {
+    error = fail(db::codes::kNoEditCell, "No cell def being edited; cannot place cell use!");
     return nullptr;
   }
-  made.value()->set_file_path(n.path);
-  return made.value();
+  const CellName name = split_cell_name(inv.args[0]);
+  if (auto bad = illegal_chars(name.cell, "", "Cell name")) {
+    error = fail(codes::kInvalidName, *bad);
+    return nullptr;
+  }
+  db::CellDef* def = definition_for(s, name, inv.name == "dump" ? "dump" : "getcell");
+  if (def == nullptr) {
+    error = fail(codes::kNoCell, "Could not create cell \"" + inv.args[0] + "\"");
+    return nullptr;
+  }
+  def->flags().not_found = false;
+  ReadOptions read;
+  read.ignore_tech = true;
+  if (!read_cell(s.io, *def, read).ok() && !def->flags().available) {
+    error = CommandResult::success();  // dbReadOpen printed why; Magic places nothing
+    return nullptr;
+  }
+  db::recompute_bbox(*def, s.io.magic_compat);
+  if (is_ancestor(*def, *s.ed.edit_cell)) {
+    error = fail(codes::kBadUsage, "The edit cell is already a descendant of \"" + inv.args[0] +
+                                       "\",\n    which means that you're trying to create a circular\n"
+                                       "    structure.  This isn't legal.");
+    return nullptr;
+  }
+  return def;
+}
+
+// --- the selection after a placement ---------------------------------------------------
+
+/// The selection after `getcell`/`dump` (SelectClear + SelectAndCopy2): the
+/// new items in root coordinates. Stands in for the SELECT area's API until
+/// it offers one (task 5.2).
+class NewSelection {
+ public:
+  explicit NewSelection(editor::EditorState& ed) : ed_(ed) {
+    db::CellDef* root = ed.edit_root != nullptr ? ed.edit_root : ed.edit_cell;
+    const view::LayoutWindow* w = ed.windows.current();
+    if (w != nullptr && w->root() != nullptr) {
+      root = w->root();
+    }
+    ed.selection.set_root(root, ed.technology->plane_count());
+    ed.selection.clear();
+  }
+
+  void add_use(const db::CellUse& use) {
+    db::CellDef* sel = ed_.selection.def();
+    if (sel == nullptr || use.def == nullptr) {
+      return;
+    }
+    db::PlaceOptions po;
+    po.id = use.id;
+    po.transform = db::compose(ed_.edit_transform, use.transform);
+    po.array = use.array;
+    po.locked = use.locked;
+    if (auto copy = db::place(*sel, *use.def, po); copy.ok()) {
+      ed_.selection.provenance().push_back(
+          select::Provenance{select::Provenance::Kind::use, ed_.edit_cell, use.id, copy.value()->bbox});
+    }
+  }
+
+  void add_label(const db::Label& label) {
+    db::CellDef* sel = ed_.selection.def();
+    if (sel == nullptr) {
+      return;
+    }
+    db::Label copy = label;
+    copy.rect = db::apply(ed_.edit_transform, label.rect);
+    copy.justification = db::transform_position(ed_.edit_transform, label.justification);
+    ed_.selection.provenance().push_back(
+        select::Provenance{select::Provenance::Kind::label, ed_.edit_cell, {}, copy.rect});
+    sel->labels().push_back(std::move(copy));
+  }
+
+  void add_paint(const db::CellDef& source, const db::Rect& area, const db::Transform& to_edit) {
+    db::CellDef* sel = ed_.selection.def();
+    if (sel == nullptr) {
+      return;
+    }
+    const db::Transform to_root = db::compose(ed_.edit_transform, to_edit);
+    (void)db::copy_paint(source, area, to_root, *sel, *ed_.technology, all_but_space());
+    ed_.selection.provenance().push_back(
+        select::Provenance{select::Provenance::Kind::paint, ed_.edit_cell, {}, db::apply(to_root, area)});
+  }
+
+  static tech::TypeMask all_but_space() {
+    tech::TypeMask m = tech::TypeMask::all();
+    m.set(tech::kSpace, false);
+    return m;
+  }
+
+ private:
+  editor::EditorState& ed_;
+};
+
+// --- getcell ----------------------------------------------------------------------------
+
+bool exact_copy_exists(const db::CellDef& parent, const db::CellDef& child, const db::Transform& t) {
+  for (const auto& u : parent.uses()) {
+    if (u->def == &child && u->transform == t && !u->array.is_array()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 CommandResult getcell_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   if (inv.args.empty()) {
-    return fail(codes::kBadUsage, "Missing cell name in \"getcell\" command.");
+    return fail(codes::kBadUsage, std::string{"Missing cell name in \""} + inv.name + "\" command.\n" +
+                                      placement_usage(inv.name));
   }
   return with_session(ctx, [&](IoSession& s) {
-    if (s.ed.edit_cell == nullptr) {
-      return fail(codes::kNoCell, "No cell def being edited; cannot place cell use!");
+    CommandResult error = CommandResult::success();
+    db::CellDef* child = placed_cell(s, inv, error);
+    if (child == nullptr) {
+      return error;
     }
-    db::CellDef* def = definition_for(s, split_getcell_name(inv.args[0]));
-    if (def == nullptr) {
-      return fail(codes::kNoCell, "Could not create cell \"" + inv.args[0] + "\"");
+    auto cs = cu::session(ctx);
+    if (!cs.ok()) {
+      return CommandResult::failure(cs.error());
     }
-    def->flags().not_found = false;
-    ReadOptions read;
-    read.ignore_tech = true;
-    if (!read_cell(s.io, *def, read).ok() && !def->flags().available) {
-      return CommandResult::success();  // dbReadOpen printed why; Magic places nothing
+    auto placement = parse_placement(cs.value(), *child, inv);
+    if (!placement.ok()) {
+      return CommandResult::failure(placement.error());
     }
-    db::recompute_bbox(*def, s.io.magic_compat);
-    if (!s.ed.box) {
-      return fail(codes::kBadUsage, "The box's lower-left corner must point to the place\n"
-                                    "    in the edit cell where you'd like to put \"" + inv.args[0] + "\".");
+    db::CellDef& edit = *s.ed.edit_cell;
+    const db::Transform to_edit = db::compose(db::invert(s.ed.edit_transform), placement.value());
+    if (exact_copy_exists(edit, *child, to_edit)) {
+      return fail(codes::kBadUsage, "Can't place a cell on an exact copy of itself.");
     }
-    cmd::Invocation placed = inv;
-    placed.args[0] = def->name();
-    return db::getcell_command(s.command, placed);
+    db::PlaceOptions po;
+    po.transform = to_edit;
+    auto use = db::place(edit, *child, po);
+    if (!use.ok()) {
+      return CommandResult::failure(use.error());
+    }
+    db::recompute_bbox(edit, s.io.magic_compat);
+    cu::set_current_use(cs.value(), use.value());
+    s.ed.box = editor::to_root(s.ed, use.value()->bbox);  // DBWSetBox(EditRootDef, ...)
+    s.ed.box_root = s.ed.edit_root;
+    NewSelection(s.ed).add_use(*use.value());
+    return CommandResult::success(cmd::Value{use.value()->id});
   });
 }
 
-CommandResult flatten_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
-  return with_session(ctx, [&](IoSession& s) {
-    if (s.ed.edit_cell != nullptr) {
-      expand_all(s.io, *s.ed.edit_cell);  // DBTreeSrLabels/DBCellCopyAllPaint read as they descend
+// --- dump -------------------------------------------------------------------------------
+
+// SelectDump + SelectAndCopy2: the child's own paint, labels and instances
+// copied into the edit cell; the copies become the selection.
+void dump_contents(IoSession& s, const cu::Session& cs, const db::CellDef& child, const db::Transform& to_edit) {
+  db::CellDef& edit = *s.ed.edit_cell;
+  NewSelection selection(s.ed);
+  const db::Rect all = child.bbox();
+  (void)db::copy_paint(child, all, to_edit, edit, *s.ed.technology, NewSelection::all_but_space());
+  selection.add_paint(child, all, to_edit);
+  for (const db::Label& l : child.labels()) {
+    db::Label copy = l;
+    copy.rect = db::apply(to_edit, l.rect);
+    copy.justification = db::transform_position(to_edit, l.justification);
+    copy.rotation = db::transform_angle(to_edit, l.rotation, s.io.magic_compat);
+    auto put = db::put_label(edit, std::move(copy), false, s.ed.fonts.fonts.size());
+    if (put.ok()) {
+      cu::update_font_label(cs, *put.value());
+      selection.add_label(*put.value());
     }
-    return db::flatten_command(s.command, inv);
+  }
+  for (const auto& u : child.uses()) {
+    if (u->def == nullptr) {
+      continue;
+    }
+    db::PlaceOptions po;
+    if (db::find_use(edit, u->id) == nullptr) {
+      po.id = u->id;  // kept when free; otherwise a unique one is generated
+    }
+    po.transform = db::compose(to_edit, u->transform);
+    po.array = u->array;
+    po.locked = u->locked;
+    if (auto copy = db::place(edit, *u->def, po); copy.ok()) {
+      selection.add_use(*copy.value());
+    }
+  }
+  db::mark_modified(edit);
+  db::recompute_bbox(edit, s.io.magic_compat);
+}
+
+CommandResult dump_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
+  if (inv.args.empty()) {
+    return fail(codes::kBadUsage, "Missing cell name in \"dump\" command.\n" + placement_usage("dump"));
+  }
+  return with_session(ctx, [&](IoSession& s) {
+    CommandResult error = CommandResult::success();
+    db::CellDef* child = placed_cell(s, inv, error);
+    if (child == nullptr) {
+      return error;
+    }
+    auto cs = cu::session(ctx);
+    if (!cs.ok()) {
+      return CommandResult::failure(cs.error());
+    }
+    auto placement = parse_placement(cs.value(), *child, inv);
+    if (!placement.ok()) {
+      return CommandResult::failure(placement.error());
+    }
+    dump_contents(s, cs.value(), *child, db::compose(db::invert(s.ed.edit_transform), placement.value()));
+    return CommandResult::success();
   });
 }
 
 }  // namespace
 
 bool register_place_commands(cmd::CommandRegistry& registry) {
+  constexpr std::string_view kSynopsis =
+      " name [child refpoint] [parent refpoint] [orientation [refpoint]]";
   bool ok = !registry
-                 .add(cmd::CommandSpec{"getcell", "getcell name [orientation]",
-                                       "Places an instance of a cell (read from its file when needed) with its "
-                                       "lower-left corner at the box; the box then covers the instance.",
+                 .add(cmd::CommandSpec{"getcell", "getcell" + std::string{kSynopsis},
+                                       "Places an instance of a cell (read from its file when needed) at the box; "
+                                       "the box and the selection then cover the new instance.",
                                        getcell_cmd})
                  .has_value();
-  ok = !registry
-            .add(cmd::CommandSpec{"flatten", "flatten [options] name",
-                                  "Flattens the edit cell into a new cell (-doinplace: flattens an instance).",
-                                  flatten_cmd})
+  ok = !registry.add(cmd::CommandSpec{"get", "get" + std::string{kSynopsis}, "Synonym of getcell.", getcell_cmd})
             .has_value() &&
        ok;
+  ok = !registry
+            .add(cmd::CommandSpec{"dump", "dump" + std::string{kSynopsis},
+                                  "Copies the contents of a cell into the edit cell; the copies become the selection.",
+                                  dump_cmd})
+            .has_value() &&
+       ok;
+  ok = register_flatten_command(registry) && ok;
   return ok;
 }
 

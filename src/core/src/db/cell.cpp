@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
@@ -35,6 +36,20 @@ CellDef::CellDef(std::string name, std::size_t plane_count) : name_(std::move(na
 }
 
 CellDef::~CellDef() = default;
+
+void set_modified_flag(CellDef& def) {
+  if (!def.flags().modified) {
+    if (ChangeRecorder* r = def.recorder()) {
+      r->modified_changed(def, false);
+    }
+  }
+  def.flags().modified = true;
+}
+
+void mark_modified(CellDef& def) {
+  set_modified_flag(def);
+  def.flags().needs_new_timestamp = true;
+}
 
 void set_property(CellDef& def, std::string_view name, std::optional<PropertyValue> value) {
   if (def.flags().no_edit) {
@@ -66,6 +81,7 @@ bool is_subcircuit(const CellDef& def) {
 struct CellLibrary::Impl {
   util::MagicHashTable<CellDef*> table{kCellDefBuckets};
   std::vector<std::unique_ptr<CellDef>> owned;
+  ChangeRecorder* recorder = nullptr;  // every owned def points at this slot
 };
 
 CellLibrary::CellLibrary() : impl_(std::make_unique<Impl>()) {}
@@ -84,6 +100,7 @@ diag::Outcome<CellDef*> CellLibrary::create(std::string_view name, std::size_t p
   }
   auto def = std::make_unique<CellDef>(key, plane_count);
   CellDef* raw = def.get();
+  raw->recorder_slot_ = &impl_->recorder;
   entry.value = raw;
   impl_->owned.push_back(std::move(def));
   return raw;
@@ -109,6 +126,7 @@ diag::Status CellLibrary::rename(CellDef& def, std::string_view new_name, bool f
       set_property(def, reserved, std::nullopt);
     }
   }
+  const ScopedRecorderDetach unrecorded(*this);
   (void)rename_definition(def, new_name);
   for (CellUse* use : def.instances()) {
     if (use->parent != nullptr) {
@@ -145,6 +163,10 @@ diag::Status CellLibrary::remove(CellDef& def) {
   if (auto check = check_removable(def); !check) {
     return check;
   }
+  if (ChangeRecorder* r = recorder()) {
+    r->cell_removed(def);
+  }
+  const ScopedRecorderDetach unrecorded(*this);
   while (!def.instances().empty()) {
     (void)remove_use(*def.instances().front());
   }
@@ -169,6 +191,14 @@ void CellLibrary::for_each(const std::function<void(CellDef&)>& visit) const {
 
 std::size_t CellLibrary::size() const noexcept {
   return impl_->owned.size();
+}
+
+void CellLibrary::set_recorder(ChangeRecorder* recorder) noexcept {
+  impl_->recorder = recorder;
+}
+
+ChangeRecorder* CellLibrary::recorder() const noexcept {
+  return impl_->recorder;
 }
 
 }  // namespace hefesto::db

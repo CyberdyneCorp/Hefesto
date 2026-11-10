@@ -1,0 +1,16 @@
+# UI-G-063: feedback add over the box, a line and a point; count; find three times and find 5; why.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+box 0 0 4 4
+feedback add "a"
+feedback add "b" medium 0 0 10 10
+feedback add "c" outline 1 1
+feedback count
+feedback find
+box values
+feedback find
+box values
+feedback find 5
+box values
+feedback why

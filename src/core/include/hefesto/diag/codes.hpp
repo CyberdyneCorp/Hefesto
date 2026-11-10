@@ -56,14 +56,16 @@ inline constexpr std::string_view kCliUsage = "CLI-USAGE-001";
 inline constexpr std::string_view kCliScript = "CLI-SCRIPT-001";
 inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // Retired codes keep their table rows (never reused) but have no constant:
-// CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left).
+// CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
+// CORE-NOTIMPL-002 (M2: no stub left).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the
 /// area starts with ("TECH" for TECH-...); the core area has several prefixes
 /// and an empty `prefix`.
 struct CodeArea {
-  std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app"
+  std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app",
+                            // "undo", "select", "connect", "ui", "wiring"
   std::string_view prefix;  // required AREA part of each code; empty for "core"
   std::string_view doc;     // repository-relative path of the area's document
   std::span<const CodeInfo> codes;  // sorted by code

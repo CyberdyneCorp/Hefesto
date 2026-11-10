@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -72,8 +73,32 @@ cmd::CommandResult with_session(cmd::CommandContext& ctx, Body&& body) {
 }
 
 /// "Loading a cell into a window": the current window shows `def`, which
-/// becomes the edit cell unless it is read-only.
+/// becomes the edit cell (and the edit root, identity transform; recorded
+/// for undo) unless it is read-only, when there is no edit cell.
 void show_in_window(editor::EditorState& ed, db::CellDef& def);
+
+/// Loads cell `name` (nullopt: "(UNNAMED)") into the current window as its
+/// root and the edit cell (`load`, `xload`, `down`; dbwind/DBWprocs.c
+/// DBWloadWindow).
+/// `fail_if_missing` (`load -fail`): a cell neither in memory nor in a
+/// file is not created and the window is unchanged.
+[[nodiscard]] cmd::CommandResult load_into_window(IoSession& s, const std::optional<std::string>& name,
+                                                  const ReadOptions& options, bool fail_if_missing = false);
+
+/// `xload`, `edit`, `down` (edit_commands.cpp).
+bool register_edit_commands(cmd::CommandRegistry& registry);
+
+/// `flush` (flush_command.cpp).
+bool register_flush_command(cmd::CommandRegistry& registry);
+
+/// cmdFlushCell: clears `def` and reads it again from its file (dropping
+/// its recorded path first with `dereference`); false, with Magic's
+/// message, when `def` is the parent of the edit instance.
+bool flush_cell(IoSession& s, db::CellDef& def, bool dereference);
+
+/// `findlabel`, `goto` (find_commands.cpp) and `element` (element_command.cpp).
+bool register_find_commands(cmd::CommandRegistry& registry);
+bool register_element_command(cmd::CommandRegistry& registry);
 
 /// `getcell` and `flatten` (place_commands.cpp): read what they need, then
 /// run the MODEL handlers.

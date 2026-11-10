@@ -23,10 +23,12 @@
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/script.hpp"
+#include "hefesto/cmd/units.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/tech/loader.hpp"
+#include "hefesto/undo/undo_log.hpp"
 
 namespace hefesto::app {
 
@@ -138,7 +140,27 @@ class Startup {
       state_.settings.set(SettingLayer::session, name, value);
     }
     apply_effective(state_.settings, typed_);
+    apply_editor_settings();
     record_recent_project();
+  }
+
+  // Settings read once into editor state: the M1 `units` key (now the
+  // `units` command's cmd::UnitsState; m2 design "Migration Plan") and the
+  // undo history limit (layout-undo "History limit").
+  void apply_editor_settings() {
+    if (const auto units = state_.settings.effective("units")) {
+      for (const cmd::InputUnit unit : {cmd::InputUnit::default_units, cmd::InputUnit::internal,
+                                        cmd::InputUnit::lambda, cmd::InputUnit::user, cmd::InputUnit::microns}) {
+        if (cmd::units_name(unit) == units->value) {
+          state_.units = cmd::UnitsState{unit, false};
+        }
+      }
+    }
+    if (const auto limit = state_.settings.effective(undo::kHistoryLimitSetting)) {
+      if (auto status = undo::set_history_limit(state_.undo, limit->value); !status) {
+        sink_.emit(status.error());
+      }
+    }
   }
 
   // The recent-projects list: published for the `pdk` command and updated

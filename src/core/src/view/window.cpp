@@ -304,13 +304,10 @@ WindowManager::~WindowManager() = default;
 
 diag::Outcome<LayoutWindow*> WindowManager::insert(db::CellDef* root, const ScreenRect& frame,
                                                    const ScreenRect& screen) {
-  if (windows_.size() >= kMaxWindows) {
+  if (windows_.size() + reserved_.size() >= kMaxWindows) {
     return diag::make(codes::kWindowLimit, "Can't have more than 31 windows.");
   }
-  WindowId id = 0;
-  while (find(id) != nullptr) {
-    ++id;
-  }
+  const WindowId id = free_id();
   auto window = std::make_unique<LayoutWindow>(id, nullptr);
   window->set_frame(frame);
   window->set_chrome(chrome_defaults_);
@@ -352,6 +349,31 @@ void WindowManager::scale_all(const std::function<db::Point(db::Point)>& scale_p
     w->move_to(db::Rect{ll.x, ll.y, ur.x, ur.y});
     notify(w->id(), Change::view);
   }
+}
+
+WindowId WindowManager::free_id() const {
+  WindowId id = 0;
+  while (find(id) != nullptr || id_reserved(id)) {
+    ++id;
+  }
+  return id;
+}
+
+diag::Outcome<WindowId> WindowManager::reserve_id() {
+  if (windows_.size() + reserved_.size() >= kMaxWindows) {
+    return diag::make(codes::kWindowLimit, "Can't have more than 31 windows.");
+  }
+  const WindowId id = free_id();
+  reserved_.push_back(id);
+  return id;
+}
+
+void WindowManager::release_id(WindowId id) {
+  reserved_.erase(std::remove(reserved_.begin(), reserved_.end(), id), reserved_.end());
+}
+
+bool WindowManager::id_reserved(WindowId id) const {
+  return std::find(reserved_.begin(), reserved_.end(), id) != reserved_.end();
 }
 
 LayoutWindow* WindowManager::find(WindowId id) const {

@@ -7,11 +7,16 @@
 
 #include "hefesto/cell/commands.hpp"
 #include "hefesto/cmd/builtins.hpp"
+#include "hefesto/cmd/units.hpp"
 #include "hefesto/db/commands.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/pdk/commands.hpp"
+#include "hefesto/select/commands.hpp"
 #include "hefesto/tech/commands.hpp"
+#include "hefesto/ui/commands.hpp"
+#include "hefesto/undo/commands.hpp"
 #include "hefesto/view/commands.hpp"
+#include "hefesto/wiring/commands.hpp"
 
 namespace hefesto::cmd {
 
@@ -29,6 +34,12 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = view::register_view_commands(registry) && ok;
   ok = view::register_view_and_zoom(registry) && ok;
   ok = pdk::register_pdk_commands(registry, std::move(pdk_hosts)) && ok;
+  // M2 areas (openspec/changes/m2-interactive-editing/design.md D1/D3).
+  ok = register_units_commands(registry) && ok;
+  ok = undo::register_undo_commands(registry) && ok;
+  ok = select::register_select_commands(registry) && ok;
+  ok = ui::register_ui_commands(registry) && ok;
+  ok = wiring::register_wiring_commands(registry) && ok;
   return ok;
 }
 

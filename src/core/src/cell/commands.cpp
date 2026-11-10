@@ -12,64 +12,25 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "crash_commands.hpp"
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cell/diag_codes.hpp"
+#include "hefesto/cell/hier.hpp"
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/cmd/all_commands.hpp"
+#include "hefesto/db/hierarchy.hpp"
 #include "io_session.hpp"
 
 namespace hefesto::cell {
 
+namespace detail {
+
 namespace {
-
-using cmd::CommandResult;
-using cmd::Value;
-using detail::fail;
-using detail::IoSession;
-using detail::lookup;
-using detail::show_in_window;
-using detail::with_session;
-
-CommandResult usage(std::string text) {
-  return fail(codes::kBadUsage, std::move(text));
-}
-
-// --- load -------------------------------------------------------------------
-
-struct LoadArgs {
-  std::optional<std::string> name;
-  ReadOptions options;
-};
-
-std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
-  LoadArgs out;
-  static constexpr std::array<std::string_view, 6> kOptions = {"-force", "-dereference", "-silent",
-                                                               "-quiet",  "-nowindow",    "-fail"};
-  for (const std::string& a : args) {
-    if (a.empty() || a.front() != '-') {
-      if (out.name) {
-        return std::nullopt;
-      }
-      out.name = a;
-      continue;
-    }
-    switch (lookup(a, kOptions)) {
-      case 0:
-        out.options.ignore_tech = true;
-        break;
-      case 1:
-        out.options.dereference = true;
-        break;
-      case -1:
-        return std::nullopt;
-      default:
-        break;  // verbosity and window options do not change the database
-    }
-  }
-  return out;
-}
 
 // Magic's "(UNNAMED)" cell: the root of a window that shows no cell. It is
 // created when first needed and, as in Magic's batch runs, stays in the
@@ -100,24 +61,141 @@ diag::Status adopt_startup_root(IoSession& s) {
   return diag::Done{};
 }
 
+// The definition name of a cell argument: the last path component without
+// ".mag" / ".mag.gz".
+std::string definition_name(std::string_view name) {
+  if (const std::size_t slash = name.rfind('/'); slash != std::string_view::npos) {
+    name.remove_prefix(slash + 1);
+  }
+  for (const std::string_view suffix : {std::string_view{".gz"}, std::string_view{".mag"}}) {
+    if (name.ends_with(suffix)) {
+      name.remove_suffix(suffix.size());
+    }
+  }
+  return std::string{name};
+}
+
+// `load NAME -fail`: a cell neither in memory nor in a file is not created
+// (DBW_LOAD_FAIL). A cell read here is then loaded as one in memory.
+std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string& name, const ReadOptions& options) {
+  const std::string root = definition_name(name);
+  if (s.ed.cells.find(root) != nullptr) {
+    return std::nullopt;
+  }
+  auto made = s.ed.cells.create(root, s.ed.technology->plane_count());
+  if (!made) {
+    return cmd::CommandResult::failure(made.error());
+  }
+  db::CellDef& def = *made.value();
+  if (name.find('/') != std::string::npos) {
+    def.set_file_path(name.starts_with("./") ? name.substr(2) : name);  // as load_cell records it
+  }
+  if (read_cell(s.io, def, options).ok() || def.flags().available) {
+    db::recompute_bbox(def, s.io.magic_compat);
+    return std::nullopt;
+  }
+  (void)s.ed.cells.remove(def);
+  return fail(codes::kNotFound, "No file \"" + name + "\" found or readable.");
+}
+
+}  // namespace
+
+cmd::CommandResult load_into_window(IoSession& s, const std::optional<std::string>& name, const ReadOptions& options,
+                                    bool fail_if_missing) {
+  if (auto adopted = adopt_startup_root(s); !adopted) {
+    return cmd::CommandResult::failure(adopted.error());
+  }
+  if (name && fail_if_missing) {
+    if (auto refused = refuse_missing(s, *name, options)) {
+      return std::move(*refused);
+    }
+  }
+  auto loaded = name ? load_cell(s.io, *name, options) : unnamed_def(s);
+  if (!loaded && loaded.error().code == codes::kConflictingLocation) {
+    return cmd::CommandResult::success();  // DBWloadWindow printed the conflict and loads nothing
+  }
+  if (!loaded) {
+    return cmd::CommandResult::failure(loaded.error());
+  }
+  show_in_window(s.ed, *loaded.value());
+  return cmd::CommandResult::success();
+}
+
+}  // namespace detail
+
+namespace {
+
+using cmd::CommandResult;
+using cmd::Value;
+using detail::fail;
+using detail::IoSession;
+using detail::lookup;
+using detail::show_in_window;
+using detail::with_session;
+
+CommandResult usage(std::string text) {
+  return fail(codes::kBadUsage, std::move(text));
+}
+
+// --- load -------------------------------------------------------------------
+
+struct LoadArgs {
+  std::optional<std::string> name;
+  ReadOptions options;
+  bool fail = false;      // -fail: a missing file creates no cell
+  bool nowindow = false;  // -nowindow: read into memory, no window changes
+};
+
+std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
+  LoadArgs out;
+  static constexpr std::array<std::string_view, 6> kOptions = {"-force", "-dereference", "-silent",
+                                                               "-quiet",  "-nowindow",    "-fail"};
+  for (const std::string& a : args) {
+    if (a.empty() || a.front() != '-') {
+      if (out.name) {
+        return std::nullopt;
+      }
+      out.name = a;
+      continue;
+    }
+    switch (lookup(a, kOptions)) {
+      case 0:
+        out.options.ignore_tech = true;
+        break;
+      case 1:
+        out.options.dereference = true;
+        break;
+      case 4:
+        out.nowindow = true;
+        break;
+      case 5:
+        out.fail = true;
+        break;
+      case -1:
+        return std::nullopt;
+      default:
+        break;  // verbosity and window options do not change the database
+    }
+  }
+  return out;
+}
+
 CommandResult load_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   const auto args = parse_load(inv.args);
   if (!args) {
     return usage("Usage: load [name [-force] [-dereference] [-silent] [-nowindow] [-fail]]");
   }
+  if (args->name) {
+    if (auto bad = illegal_cell_name(*args->name)) {
+      return fail(codes::kInvalidName, *bad);
+    }
+  }
   return with_session(ctx, [&](IoSession& s) {
-    if (auto adopted = adopt_startup_root(s); !adopted) {
-      return CommandResult::failure(adopted.error());
+    if (args->nowindow && args->name) {
+      auto loaded = load_cell(s.io, *args->name, args->options);
+      return loaded ? CommandResult::success() : CommandResult::failure(loaded.error());
     }
-    auto loaded = args->name ? load_cell(s.io, *args->name, args->options) : unnamed_def(s);
-    if (!loaded && loaded.error().code == codes::kConflictingLocation) {
-      return CommandResult::success();  // DBWloadWindow printed the conflict and loads nothing
-    }
-    if (!loaded) {
-      return CommandResult::failure(loaded.error());
-    }
-    show_in_window(s.ed, *loaded.value());
-    return CommandResult::success();
+    return detail::load_into_window(s, args->name, args->options, args->fail);
   });
 }
 
@@ -162,6 +240,11 @@ CommandResult save_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   if (inv.args.size() > 1) {
     return usage("Usage: save [file]");
   }
+  if (!inv.args.empty()) {
+    if (auto bad = illegal_cell_name(inv.args[0])) {
+      return fail(codes::kInvalidName, *bad);
+    }
+  }
   return with_session(ctx, [&](IoSession& s) {
     db::CellDef* def = save_target(s);
     if (def == nullptr) {
@@ -183,55 +266,131 @@ CommandResult save_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
 }
 
 // --- writeall ---------------------------------------------------------------
+//
+// CmdWriteall and cmdWriteallFunc (Magic ref: commands/CmdTZ.c:2200-2372):
+// with no argument every changed cell is offered through the prompt host
+// (write, flush, skip, abort, autowrite; headless hosts answer "write");
+// `force`/`modified` write without asking; named cells are written exactly.
 
-bool needs_write(const db::CellDef& def) {
+enum class WriteAction : std::uint8_t { write, flush, skip, abort, autowrite };
+
+bool selected_by_flags(const db::CellDef& def, int option) {
   const db::CellFlags& f = def.flags();
-  return !f.internal && f.available && (f.modified || f.child_bboxes_changed || f.child_timestamps_changed);
+  if (option < 0) {
+    return f.modified || f.child_bboxes_changed || f.child_timestamps_changed;
+  }
+  return option == 0 || f.modified;  // force: every cell; modified: content changes only
 }
 
-void write_one(IoSession& s, db::CellDef& def) {
-  if (def.flags().no_edit) {
-    if (def.flags().modified) {
-      s.io.sink.emit(diag::make(codes::kWriteRefused,
-                                "Cell '" + def.name() + "' is not writeable;  modified cell not written."));
+/// Tracks whether the user chose `autowrite` during one command.
+struct WriteallRun {
+  IoSession& s;
+  std::vector<std::string> names;  // the named cells (only these are written)
+  bool option_only = false;        // `writeall force|modified`
+  bool autowrite = false;
+};
+
+WriteAction ask_writeall(WriteallRun& run, const db::CellDef& def) {
+  static const std::array<std::string, 5> kAnswers = {"write", "flush", "skip", "abort", "autowrite"};
+  static constexpr std::array<std::string_view, 4> kExplain = {"", "(bboxes)", "(timestamps)", "(bboxes/timestamps)"};
+  std::size_t explain = 0;
+  if (!def.flags().modified) {
+    explain = !def.flags().child_timestamps_changed ? 1 : (!def.flags().child_bboxes_changed ? 2 : 3);
+  }
+  const std::string question = def.name() + " " + std::string{kExplain[explain]} +
+                               ": write, autowrite, flush, skip, or abort command? ";
+  return static_cast<WriteAction>(cmd::ask(run.s.ed.prompt, question, kAnswers, 0));
+}
+
+WriteAction writeall_action(WriteallRun& run, const db::CellDef& def) {
+  if (run.option_only || run.autowrite) {
+    if (def.flags().no_edit) {
+      if (def.flags().modified) {
+        run.s.emit(codes::kWriteRefused,
+                   "Cell '" + def.name() + "' is not writeable;  modified cell not written.");
+      }
+      return WriteAction::skip;
     }
-    return;
+    if (!def.flags().modified && def.name() == "(UNNAMED)") {
+      return WriteAction::skip;
+    }
+    return WriteAction::autowrite;
   }
-  if (auto saved = save_cell(s.io, def); !saved) {
-    s.io.sink.emit(saved.error());
+  if (!run.names.empty()) {
+    return std::find(run.names.begin(), run.names.end(), def.name()) != run.names.end() ? WriteAction::write
+                                                                                        : WriteAction::skip;
   }
+  return ask_writeall(run, def);
+}
+
+// One cell; false when the command is aborted.
+bool writeall_one(WriteallRun& run, db::CellDef& def) {
+  switch (writeall_action(run, def)) {
+    case WriteAction::autowrite:
+      run.autowrite = true;
+      run.s.emit(codes::kSaved, "Writing '" + def.name() + "'");
+      [[fallthrough]];
+    case WriteAction::write:
+      if (auto saved = save_cell(run.s.io, def); !saved) {
+        run.s.io.sink.emit(saved.error());
+      }
+      return true;
+    case WriteAction::flush:
+      (void)detail::flush_cell(run.s, def, false);
+      return true;
+    case WriteAction::abort:
+      return false;
+    default:
+      return true;
+  }
+}
+
+// The named cells' timestamps are updated; false when none of them exists
+// ("No such cell" for each unknown one).
+bool stamp_named_cells(WriteallRun& run, std::int64_t now) {
+  std::size_t missing = 0;
+  for (const std::string& name : run.names) {
+    db::CellDef* def = run.s.ed.cells.find(name);
+    if (def == nullptr) {
+      run.s.emit(codes::kNoCell, "No such cell \"" + name + "\".");
+      ++missing;
+      continue;
+    }
+    update_timestamps(run.s.ed.cells, def, now);
+  }
+  return missing < run.names.size();
 }
 
 CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
-  std::vector<std::string> names = inv.args;
-  if (!names.empty() && lookup(names.front(), std::array<std::string_view, 2>{"force", "noupdate"}) >= 0) {
-    names.erase(names.begin());  // non-interactive: every write is forced
+  int option = -1;
+  if (!inv.args.empty()) {
+    option = lookup(inv.args[0], std::array<std::string_view, 2>{"force", "modified"});
+    if (option < 0) {
+      return usage("Usage: writeall [force|modified [cellname ...]]");
+    }
   }
   return with_session(ctx, [&](IoSession& s) {
     s.process_mismatches();
-    std::vector<db::CellDef*> cells;
-    for (const std::string& n : names) {
-      db::CellDef* def = s.ed.cells.find(n);
-      if (def == nullptr) {
-        return fail(codes::kNoCell, "No cell \"" + n + "\" found.");
-      }
-      cells.push_back(def);
+    WriteallRun run{s, {}, inv.args.size() == 1, false};
+    if (inv.args.size() > 1) {
+      run.names.assign(inv.args.begin() + 1, inv.args.end());
     }
     const std::int64_t now = stamp_from_time(s.io.clock.wall_now());
-    if (cells.empty()) {
+    if (run.names.empty()) {
       update_timestamps(s.ed.cells, nullptr, now);
-      s.ed.cells.for_each([&](db::CellDef& def) {
-        if (needs_write(def)) {
-          cells.push_back(&def);
-        }
-      });
-    } else {
-      for (db::CellDef* def : cells) {
-        update_timestamps(s.ed.cells, def, now);
-      }
+    } else if (!stamp_named_cells(run, now)) {
+      return CommandResult::success();
     }
+    std::vector<db::CellDef*> cells;
+    s.ed.cells.for_each([&](db::CellDef& def) {
+      if (!def.flags().internal && def.flags().available && selected_by_flags(def, option)) {
+        cells.push_back(&def);
+      }
+    });
     for (db::CellDef* def : cells) {
-      write_one(s, *def);
+      if (!writeall_one(run, *def)) {
+        break;
+      }
     }
     return CommandResult::success();
   });
@@ -378,7 +537,10 @@ bool register_cell_commands(cmd::CommandRegistry& registry) {
        load_cmd},
       {"save", "save [file]", "Saves the edit cell, updating timestamps first; a .tcl name writes a command script.",
        save_cmd},
-      {"writeall", "writeall [force] [cell ...]", "Saves every modified cell, or the named cells.", writeall_cmd},
+      {"writeall", "writeall [force|modified [cellname ...]]",
+       "Saves every changed cell (asking for each), or without asking every cell, the modified ones or the named "
+       "ones.",
+       writeall_cmd},
       {"path", "path [search|cell|sys] [[+]path]", "Shows, sets or appends to a cell search path.", path_cmd},
       {"addpath", "addpath path", "Appends to the cell search path.", addpath_cmd},
       {"locking", "locking [enable|disable]", "Shows or sets advisory file locking.", locking_cmd},
@@ -387,6 +549,10 @@ bool register_cell_commands(cmd::CommandRegistry& registry) {
   }};
   bool ok = detail::register_crash_commands(registry);
   ok = detail::register_place_commands(registry) && ok;
+  ok = detail::register_edit_commands(registry) && ok;
+  ok = detail::register_flush_command(registry) && ok;
+  ok = detail::register_find_commands(registry) && ok;
+  ok = detail::register_element_command(registry) && ok;
   for (const cmd::CommandSpec& spec : specs) {
     ok = !registry.add(spec).has_value() && ok;
   }

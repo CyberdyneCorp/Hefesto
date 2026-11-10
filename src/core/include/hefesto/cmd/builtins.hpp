@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// M0 built-in commands:
-//   help [<command>]                 list commands, or show one command's help
+// M0 built-in commands (`help` moved to the ui area in M2):
 //   echo [<word> ...]                return the words joined by single spaces
 //   version                          return the Hefesto version
 //   quit [<status>] [-noprompt]      stop the running script / session

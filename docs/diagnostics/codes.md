@@ -8,7 +8,8 @@ released; a retired code stays in this table marked as retired.
 The table below is the "core" area of the code table
 (`src/core/src/diag/codes.cpp`). Since M1 each area owns its own codes and
 document, so parallel work never edits the same table
-(`openspec/changes/m1-core-viewer/design.md` D3):
+(`openspec/changes/m1-core-viewer/design.md` D3; the M2 areas:
+`openspec/changes/m2-interactive-editing/design.md` D1):
 
 | Area | Prefix | Source | Document |
 |---|---|---|---|
@@ -20,6 +21,11 @@ document, so parallel work never edits the same table
 | view | VIEW | `src/core/src/view/codes.cpp` | [codes/view.md](codes/view.md) |
 | pdk | PDK | `src/core/src/pdk/codes.cpp` | [codes/pdk.md](codes/pdk.md) |
 | app | APP | `src/core/src/app/codes.cpp` | [codes/app.md](codes/app.md) |
+| undo | UNDO | `src/core/src/undo/codes.cpp` | [codes/undo.md](codes/undo.md) |
+| select | SELECT | `src/core/src/select/codes.cpp` | [codes/select.md](codes/select.md) |
+| connect | CONNECT | `src/core/src/connect/codes.cpp` | [codes/connect.md](codes/connect.md) |
+| ui | UI | `src/core/src/ui/codes.cpp` | [codes/ui.md](codes/ui.md) |
+| wiring | WIRE | `src/core/src/wiring/codes.cpp` | [codes/wire.md](codes/wire.md) |
 
 Regenerate the core table with:
 
@@ -61,6 +67,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CMD-SESSION-001` | error | The command needs an editor session (technology, cells, windows) and none is attached. |
 | `CMD-USAGE-001` | error | Wrong number or form of command arguments. |
 | `CORE-NOTIMPL-001` | error | Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub). |
+| `CORE-NOTIMPL-002` | error | Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

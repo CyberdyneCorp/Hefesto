@@ -23,6 +23,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
+#include "hefesto/select/commands.hpp"
 
 namespace cmd = hefesto::cmd;
 namespace db = hefesto::db;
@@ -42,6 +43,7 @@ struct Session {
   explicit Session(const db::test::MtTech& mt) {
     REQUIRE(db::register_db_commands(registry));
     REQUIRE(hefesto::cell::register_cell_commands(registry));  // getcell, flatten (they may read files)
+    REQUIRE(hefesto::select::register_select_commands(registry));  // array (moved to select in M2)
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
     editor.technology = mt.tech;
@@ -121,7 +123,9 @@ TEST_CASE("box and snap units", "[cap:layout-geometry-model][req:Integer databas
   s.ok("box size 4 6");
   CHECK(*s.editor.box == Rect{1, 1, 5, 7});
   CHECK(s.run("box width").value.to_string() == "4");
-  CHECK(code(s.run("box 0 0 x 1")) == db::codes::kBadArgument);
+  // cmd-coordinates-and-units "Numeric literal parsing": Magic assumes 0.
+  CHECK(s.run("box 0 0 x 1").ok());
+  CHECK(*s.editor.box == Rect{0, 0, 0, 1});
 }
 
 TEST_CASE("commands without an edit cell or box fail with MODEL codes", "[cap:layout-paint-semantics][req:Paint operation]") {
@@ -154,19 +158,25 @@ TEST_CASE("getcell ids, array and instance commands (MODEL-G-027/030)", "[cap:la
   REQUIRE(db::paint(*inv, *mt.tech, Rect{0, 0, 10, 10}, mt.metal1, db::PaintOptions{}).ok());
   db::recompute_bbox(*inv, true);  // getcell recomputes the child's box (DBReComputeBbox)
   s.ok("snap internal");
+  // Magic refuses a getcell onto an exact copy, so the box moves between them.
   s.ok("box 100 0 110 10");
   CHECK(s.run("getcell inv").value.to_string() == "inv_0");
+  s.ok("box 200 0 210 10");
   CHECK(s.run("getcell inv").value.to_string() == "inv_1");
+  s.ok("box 300 0 310 10");
   CHECK(s.run("getcell inv").value.to_string() == "inv_2");
   s.ok("instance delete inv_1");
-  CHECK(s.run("getcell inv 90").value.to_string() == "inv_1");
+  s.ok("box 100 0 110 10");
+  CHECK(s.run("getcell inv 90").value.to_string() == "inv_1");  // getcell selects it
   const db::CellUse* rotated = db::find_use(*s.editor.edit_cell, "inv_1");
   REQUIRE(rotated != nullptr);
   CHECK(rotated->transform == db::Transform{0, 1, 100, -1, 0, 10});
   CHECK(rotated->bbox == Rect{100, 0, 110, 10});
   CHECK(s.run("instance list").value.to_string() == "inv_0 inv_2 inv_1");
   s.ok("box 0 0 20 15");
-  s.ok("array 0 3 0 1");
+  s.ok("array 0 3 0 1");  // arrays the selection, replacing the use
+  rotated = db::find_use(*s.editor.edit_cell, "inv_1");
+  REQUIRE(rotated != nullptr);
   CHECK(rotated->array.xlo == 0);
   CHECK(rotated->array.yhi == 3);  // 90-degree orientation swaps the ranges
   s.ok("instance lock inv_0");
@@ -194,6 +204,8 @@ TEST_CASE("label, port and setlabel through commands (MODEL-G-038/043)", "[cap:l
   CHECK(s.editor.edit_cell->labels().back().port_directions == db::kPortNorth);
   s.ok("port use power");
   CHECK(s.run("port use").value.to_string() == "power");
+  s.ok("box 4 4 6 6");
+  s.ok("select area labels");  // setlabel addresses the selected labels
   s.ok("setlabel sticky 1");
   CHECK(s.editor.edit_cell->labels().back().sticky);
   CHECK(s.run("setlabel text").value.to_string() == "B");
@@ -322,6 +334,7 @@ currentdict end
   s.ok("paint metal1");
   s.ok("label AA center metal1");
   CHECK_FALSE(s.editor.edit_cell->labels().back().text_bbox.has_value());
+  s.ok("select area labels");  // setlabel addresses the selected labels
   s.ok("setlabel font Test");  // by name (DBNameToFont)
   s.ok("setlabel size 20");
   const auto& lab = s.editor.edit_cell->labels().back();

@@ -1,0 +1,8 @@
+scalefactor
+scalefactor x
+bogus 1
+contact m2c 4
+contact nope 4 metal1 0 metal2 0
+contact m2c x metal1 0 metal2 0
+contact m2c 4 metal1 0 e metal2 0 1
+contact m2c 4 metal1 0 1 metal2 0 -

@@ -18,11 +18,13 @@
 
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/coordinates.hpp"
+#include "hefesto/cmd/keywords.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/display/font.hpp"
+#include "hefesto/editor/coordinate_units.hpp"
 
 namespace hefesto::db::cmdutil {
 
@@ -106,15 +108,12 @@ void warn(const Session& s, std::string text) {
   }
 }
 
-constexpr std::string_view kUnitsSetting = "units";
-
 bool units_internal(const Session& s) {
-  const auto v = s.editor->settings.value_in(app::SettingLayer::session, kUnitsSetting);
-  return v && *v == "internal";
+  return s.editor->units.unit == cmd::InputUnit::internal;
 }
 
 void set_units_internal(const Session& s) {
-  s.editor->settings.set(app::SettingLayer::session, kUnitsSetting, "internal");
+  s.editor->units.unit = cmd::InputUnit::internal;
 }
 
 std::string_view snap_name(Snap mode) noexcept {
@@ -144,33 +143,16 @@ diag::Outcome<std::int64_t> parse_int(std::string_view text) {
 }
 
 cmd::CoordinateUnits coordinate_units(const Session& s) {
-  cmd::CoordinateUnits u;
-  u.internal_per = s.editor->grid.internal;
-  u.lambda_per = s.editor->grid.lambda;
-  switch (units_internal(s) ? Snap::internal : snap_mode(s)) {
-    case Snap::internal:
-      u.default_unit = cmd::DefaultUnit::internal;
-      break;
-    case Snap::user:
-      u.default_unit = cmd::DefaultUnit::user;
-      break;
-    case Snap::lambda:
-      break;
+  return editor::coordinate_units(*s.editor, s.magic_compat);
+}
+
+diag::Outcome<Coord> parse_distance(const Session& s, std::string_view text, cmd::Axis axis, bool relative) {
+  diag::DiagnosticSink* sink = s.ctx != nullptr ? &s.ctx->sink() : nullptr;
+  const auto v = cmd::parse_distance(text, coordinate_units(s), cmd::DistanceRequest{axis, relative, 1}, sink);
+  if (!v.ok()) {
+    return bad_argument(v.error().text);
   }
-  if (const auto& cif = s.tech->cif_output_grid()) {
-    // The style is kept as read (per lambda); Magic rescales it with every
-    // grid change (CIFTechOutputScale), i.e. by lambda/internal of the
-    // session grid, reduced.
-    const std::int64_t scale = cif->scale_factor * s.editor->grid.lambda;
-    const std::int64_t expander = cif->expander * s.editor->grid.internal;
-    const std::int64_t common = std::max<std::int64_t>(std::gcd(scale, expander), 1);
-    u.cif_scale = std::array<std::int64_t, 2>{scale / common, expander / common};
-  }
-  if (const view::LayoutWindow* w = s.editor->windows.current()) {
-    const Rect g = w->grid().spacing;
-    u.grid = std::array<std::int64_t, 4>{g.x0, g.y0, g.x1, g.y1};
-  }
-  return u;
+  return static_cast<Coord>(v.value());
 }
 
 diag::Outcome<Coord> parse_coord(const Session& s, std::string_view text) {
@@ -196,15 +178,13 @@ diag::Outcome<Coord> parse_coord(const Session& s, std::string_view text) {
 
 std::int32_t scaled_coord(const Session& s, std::string_view text, int scale, bool is_x, bool relative) {
   diag::DiagnosticSink* sink = s.ctx != nullptr ? &s.ctx->sink() : nullptr;
-  const auto value = cmd::parse_coordinate(text, coordinate_units(s), is_x ? cmd::Axis::x : cmd::Axis::y, relative,
-                                           sink);
+  const cmd::DistanceRequest request{is_x ? cmd::Axis::x : cmd::Axis::y, relative, scale};
+  const auto value = cmd::parse_distance(text, coordinate_units(s), request, sink);
   if (!value.ok()) {
-    warn(s, "Coordinate value cannot be parsed:  assuming 0");
+    warn(s, value.error().text);
     return 0;
   }
-  const double v = std::round(value.value() * static_cast<double>(scale));
-  constexpr auto kMax = static_cast<double>(INT32_MAX);
-  return static_cast<std::int32_t>(std::clamp(v, -kMax, kMax));
+  return value.value();
 }
 
 bool str_is_int(std::string_view text) noexcept {
@@ -252,15 +232,16 @@ void update_font_label(const Session& s, Label& label) {
   label.rotation = geo.rotation;
 }
 
-cmd::Value coord_value(const Session& s, Coord value) {
-  if (units_internal(s) || snap_mode(s) == Snap::internal) {
-    return cmd::Value{std::int64_t{value}};
+cmd::Value report_value(const Session& s, std::int64_t value, cmd::Axis axis, cmd::ValueKind kind) {
+  const cmd::UnitsState& u = s.editor->units;
+  if (u.unit == cmd::InputUnit::default_units || (u.unit == cmd::InputUnit::internal && !u.print)) {
+    return cmd::Value{value};
   }
-  const std::int64_t num = std::int64_t{value} * s.editor->grid.lambda;
-  if (num % s.editor->grid.internal == 0) {
-    return cmd::Value{num / s.editor->grid.internal};
-  }
-  return cmd::Value{static_cast<double>(num) / static_cast<double>(s.editor->grid.internal)};
+  return cmd::Value{cmd::format_value(value, u, coordinate_units(s), kind, axis)};
+}
+
+cmd::Value coord_value(const Session& s, Coord value, cmd::Axis axis) {
+  return report_value(s, value, axis, cmd::ValueKind::length);
 }
 
 diag::Outcome<tech::TypeMask> parse_layers(const tech::Technology& tech, std::string_view text) {
@@ -317,18 +298,16 @@ int lookup(std::string_view word, std::initializer_list<std::string_view> choice
 }
 
 int lookup_in(std::string_view word, std::span<const std::string_view> choices) {
-  int found = -2;
-  int index = 0;
-  for (const std::string_view choice : choices) {
-    if (choice == word) {
-      return index;
-    }
-    if (!word.empty() && choice.starts_with(word)) {
-      found = found == -2 ? index : -1;
-    }
-    ++index;
+  const cmd::LookupResult r = cmd::lookup(word, choices);
+  switch (r.match) {
+    case cmd::Match::found:
+      return static_cast<int>(r.index);
+    case cmd::Match::ambiguous:
+      return -1;
+    case cmd::Match::unrecognized:
+      break;
   }
-  return found;
+  return -2;
 }
 
 std::string join_args(const std::vector<std::string>& args, std::size_t first) {

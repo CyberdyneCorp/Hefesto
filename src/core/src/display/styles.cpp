@@ -504,6 +504,16 @@ Stipple StyleTable::stipple(std::int32_t number) const noexcept {
   return stipples[static_cast<std::size_t>(number)];
 }
 
+std::optional<std::size_t> style_from_name(const StyleTable& table, std::string_view name) {
+  for (std::size_t i = 0; i < table.styles.size(); ++i) {
+    const auto& long_name = table.styles[i].long_name;
+    if (long_name && *long_name == name) {
+      return i;
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<std::size_t> StyleTable::find_layout_style(std::string_view ref) const {
   const bool numeric = cscan::is_int(ref);
   const auto wanted = numeric ? cscan::atoi(ref) : 0;

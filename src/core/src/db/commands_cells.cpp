@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// MODEL commands, part 3: cellname, instance, array (minimal Magic forms;
-// `array` acts on the instance the last `getcell` placed, standing in for
-// the selection until cmd-selection lands in M2).
-// (Magic ref: commands/CmdCD.c CmdCellname, commands/CmdAB.c CmdArray,
-// select/selOps.c SelectArray)
+// MODEL commands, part 3: cellname and instance (cmd-hierarchy "Cellname
+// and instance commands"). `array` moved to the select area at the M2
+// scaffold (select/commands.cpp). Owner: HIER
+// (openspec/changes/m2-interactive-editing/design.md D2).
+// Ported from Magic VLSI 8.3.694 (fc5daa9e) commands/CmdCD.c (CmdCellname)
+// and database/DBcellname.c (DBCellPrint, DBUsePrint, DBLockUse,
+// DBOrientUse, DBAbutmentUse, DBPositionUse). Magic is Copyright (C) 1985,
+// 1990 Regents of the University of California (permissive license,
+// THIRD_PARTY_NOTICES.md).
 
 #include <algorithm>
+#include <array>
+#include <iterator>
+#include <string>
+#include <variant>
+#include <vector>
 #include <optional>
 #include <utility>
 
 #include "db/command_util.hpp"
+#include "db/hier_commands.hpp"
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/util/record_order.hpp"
@@ -51,14 +62,14 @@ int cellname_option(std::string_view word) {
                            "writeable", "modified"});
 }
 
-CommandResult cellname_usage() {
+CommandResult cellname_usage(const std::string& cmd = "cellname") {
   return cu::fail(cu::bad_argument(
-      "Usage: cellname [list] children|parents|self|exists|instances|celldef|delete [name]\n"
-      "or:    cellname [list] allcells|topcells|window\n"
-      "or:    cellname create name\n"
-      "or:    cellname rename name newname [-force]\n"
-      "or:    cellname [un]lock [name]\n"
-      "or:    cellname writeable [name] [true|false]"));
+      "Usage: " + cmd + " [list] children|parents|self|exists|instances|celldef|delete [name]\n"
+      "or:    " + cmd + " [list] allcells|topcells|window\n"
+      "or:    " + cmd + " create name\n"
+      "or:    " + cmd + " rename name newname [-force]\n"
+      "or:    " + cmd + " [un]lock [name]\n"
+      "or:    " + cmd + " writeable [name] [true|false]"));
 }
 
 // DBCellPrint for ALLCELLS, TOPCELLS and MODIFIED: natural name order
@@ -209,6 +220,7 @@ struct CellnameArgs {
   std::vector<std::string> args;  // option first
   bool dolist = false;
   bool force = false;
+  bool def_names = false;  // -def
 };
 
 std::optional<CellnameArgs> split_cellname(const std::vector<std::string>& in) {
@@ -223,6 +235,7 @@ std::optional<CellnameArgs> split_cellname(const std::vector<std::string>& in) {
     if (last == "-list" || last == "-def" || last == "-force") {
       c.dolist = c.dolist || last == "-list";
       c.force = last == "-force";
+      c.def_names = last == "-def";
       c.args.pop_back();
     }
   }
@@ -232,8 +245,197 @@ std::optional<CellnameArgs> split_cellname(const std::vector<std::string>& in) {
   return c;
 }
 
+// --- cellname: the per-cell queries --------------------------------------------------
+//
+// DBCellPrint / dbCellPrintInfo (Magic ref: database/DBcellname.c:457-880)
+// and the IDX_FILEPATH, IDX_TIMESTAMP, IDX_FLAGS, IDX_PROPERTY branches of
+// CmdCellname (commands/CmdCD.c:1290-1560).
+
+// The cell a per-cell option names: NAME, else the first selected
+// instance's cell, else the edit root (EditRootDef).
+CellDef* option_cell(const cu::Session& s, const std::vector<std::string>& args, bool use_selection) {
+  if (args.size() >= 2) {
+    return s.editor->cells.find(args[1]);
+  }
+  if (use_selection) {
+    const auto selected = cell::selected_instances(*s.editor);
+    if (!selected.empty()) {
+      return selected.front().use->def;
+    }
+  }
+  return s.editor->edit_root != nullptr ? s.editor->edit_root : s.editor->edit_cell;
+}
+
+CommandResult names_or_lines(const cu::Session& s, std::vector<std::string> names, bool dolist, std::string head) {
+  if (dolist) {
+    return CommandResult::success(Value{Value::List{names.begin(), names.end()}});
+  }
+  for (const std::string& n : names) {
+    head += "\n    " + n;
+  }
+  cu::print(s, std::move(head));
+  return CommandResult::success();
+}
+
+CommandResult unknown_cell(const std::vector<std::string>& args) {
+  return cu::fail(diag::make(codes::kCellNotFound, "Unknown cell " + (args.size() >= 2 ? args[1] : std::string{})));
+}
+
+// children: every definition (cell table order) with a use in `def`;
+// parents: the distinct non-internal parents of `def`'s uses (cd_parents order).
+std::vector<std::string> relatives(const cu::Session& s, const CellDef& def, bool children) {
+  std::vector<std::string> names;
+  if (children) {
+    s.editor->cells.for_each([&](CellDef& d) {
+      for (const CellUse* u : d.instances()) {
+        if (u->parent == &def) {
+          names.push_back(d.name());
+          break;
+        }
+      }
+    });
+    return names;
+  }
+  for (const CellUse* u : def.instances()) {
+    if (u->parent != nullptr && !u->parent->flags().internal &&
+        std::find(names.begin(), names.end(), u->parent->name()) == names.end()) {
+      names.push_back(u->parent->name());
+    }
+  }
+  return names;
+}
+
+// instances: the identifiers of `def`'s uses (cd_parents order, internal
+// parents skipped); childinst: the identifiers of the uses inside `def`.
+std::vector<std::string> use_names(const CellDef& def, bool inside) {
+  std::vector<std::string> names;
+  if (inside) {
+    for (const auto& u : def.uses()) {
+      names.push_back(u->id);
+    }
+    return names;
+  }
+  for (const CellUse* u : def.instances()) {
+    if (u->parent != nullptr && !u->parent->flags().internal) {
+      names.push_back(u->id);
+    }
+  }
+  return names;
+}
+
+CommandResult cellname_relation(const cu::Session& s, int option, const CellnameArgs& c) {
+  CellDef* def = option_cell(s, c.args, true);
+  if (def == nullptr) {
+    return c.dolist ? CommandResult::success(Value{Value::List{}}) : unknown_cell(c.args);
+  }
+  switch (option) {
+    case kChildren:
+      return names_or_lines(s, relatives(s, *def, true), c.dolist, "Cell " + def->name() + "'s children are:");
+    case kParents:
+      return names_or_lines(s, relatives(s, *def, false), c.dolist, "Cell " + def->name() + "'s parents are:");
+    case kInstances:
+      return names_or_lines(s, use_names(*def, false), c.dolist, "Names of cell instances:");
+    case kChildinst:
+      return names_or_lines(s, use_names(*def, true), c.dolist, "Def " + def->name() + "'s children are:");
+    default:  // celldef
+      return CommandResult::success(Value{def->name()});
+  }
+}
+
+CommandResult cellname_window(const cu::Session& s) {
+  const view::LayoutWindow* w = s.editor->windows.current();
+  if (w == nullptr || w->root() == nullptr) {
+    return cu::fail(cu::bad_argument("No window was selected for search."));
+  }
+  return CommandResult::success(Value{w->root()->name()});
+}
+
+CommandResult cellname_filepath(const cu::Session& s, const CellnameArgs& c) {
+  CellDef* def = option_cell(s, c.args, false);
+  if (def == nullptr) {
+    return unknown_cell(c.args);
+  }
+  if (c.args.size() <= 2) {
+    const std::string file = def->file_path().generic_string();
+    if (file.empty()) {
+      return CommandResult::success(Value{std::string{"default"}});
+    }
+    const std::size_t slash = file.rfind('/');
+    return CommandResult::success(Value{slash == std::string::npos ? file : file.substr(0, slash)});
+  }
+  const std::string& path = c.args[2];
+  if (path == "default") {
+    def->set_file_path({});
+  } else {
+    def->set_file_path(path + "/" + def->name());
+    def->flags().not_found = false;
+  }
+  return CommandResult::success();
+}
+
+CommandResult cellname_timestamp(const cu::Session& s, const CellnameArgs& c) {
+  CellDef* def = option_cell(s, c.args, false);
+  if (def == nullptr) {
+    return unknown_cell(c.args);
+  }
+  if (c.args.size() <= 2) {
+    return CommandResult::success(Value{std::int64_t{def->timestamp()}});
+  }
+  if (!cu::str_is_int(c.args[2])) {
+    return cu::fail(cu::bad_argument("Invalid timestamp \"" + c.args[2] + "\"."));
+  }
+  const std::int64_t stamp = cu::c_atoi(c.args[2]);
+  if (stamp != def->timestamp()) {
+    def->set_timestamp(stamp);
+    def->flags().needs_new_timestamp = false;
+    def->flags().fixed_timestamp = true;
+  }
+  return CommandResult::success();
+}
+
+CommandResult cellname_flags(const cu::Session& s, const CellnameArgs& c) {
+  CellDef* def = option_cell(s, c.args, false);
+  if (def == nullptr) {
+    return unknown_cell(c.args);
+  }
+  const CellFlags& f = def->flags();
+  const std::array<std::pair<bool, std::string_view>, 11> kFlags = {{
+      {f.available, "available"}, {f.modified, "modified"}, {f.no_edit, "readonly"}, {f.internal, "internal"},
+      {f.fixed_timestamp, "fixed-timestamp"}, {f.needs_new_timestamp, "timestamp-pending"},
+      {f.child_timestamps_changed, "child-timestamp-changed"}, {f.fixed_bbox, "fixed-bbox"},
+      {f.child_bboxes_changed, "bbox-changed"}, {f.vendor_gds, "vendor-gds"}, {f.dereference, "dereference"},
+  }};
+  Value::List out;
+  for (const auto& [on, name] : kFlags) {
+    if (on) {
+      out.emplace_back(std::string{name});
+    }
+  }
+  if (f.not_found) {
+    out.emplace_back(std::string{"not-found"});
+  }
+  return CommandResult::success(Value{std::move(out)});
+}
+
+CommandResult cellname_property(const cu::Session& s, const std::vector<std::string>& args) {
+  CellDef* def = args.size() >= 2 ? s.editor->cells.find(args[1]) : s.editor->edit_root;
+  if (def == nullptr) {
+    return unknown_cell(args);
+  }
+  const std::vector<std::string> rest(args.begin() + std::min<std::ptrdiff_t>(2, std::ssize(args)), args.end());
+  return cu::property_on(s, *def, rest);
+}
+
 bool takes_name_only(int option) {
   return option == kAllcells || option == kTopcells || option == kModified || option == kWindow;
+}
+
+// CmdCellname's argument-count checks (`n` words from the option on).
+bool too_many_args(int option, std::size_t n) {
+  const bool takes_more = option == kRename || option == kDelete || option == kDereference || option == kWriteable ||
+                          option == kProperty || option == kFilepath || option == kOrientation ||
+                          option == kTimestamp;
+  return (n > 2 && !takes_more) || (n > 3 && option != kProperty) || (n > 1 && takes_name_only(option));
 }
 
 CommandResult cellname_dispatch(const cu::Session& s, int option, const CellnameArgs& c) {
@@ -245,6 +447,14 @@ CommandResult cellname_dispatch(const cu::Session& s, int option, const Cellname
     case kExists:
     case kSelf:
       return cellname_exists(s, c.args);
+    case kChildren:
+    case kParents:
+    case kInstances:
+    case kChildinst:
+    case kCelldef:
+      return cellname_relation(s, option, c);
+    case kWindow:
+      return cellname_window(s);
     case kCreate:
       return cellname_create(s, c.args);
     case kDelete:
@@ -253,12 +463,27 @@ CommandResult cellname_dispatch(const cu::Session& s, int option, const Cellname
       return cellname_rename(s, c.args, c.force);
     case kWriteable:
       return cellname_writeable(s, c.args, c.dolist);
+    case kFilepath:
+      return cellname_filepath(s, c);
+    case kTimestamp:
+      return cellname_timestamp(s, c);
+    case kFlags:
+      return cellname_flags(s, c);
+    case kProperty:
+      return cellname_property(s, c.args);
     case kLock:
     case kUnlock:
       return cu::fail(cu::bad_argument("Cell definitions cannot be locked.  Use \"instance\"?\n"
                                        "  or do you mean \"cellname writeable\"?"));
-    default:
-      return cu::fail(cu::bad_argument("cellname " + c.args[0] + ": not available in this release"));
+    case kOrientation:
+      return cu::fail(cu::bad_argument("Cell definitions do not have orientations.  Use \"instance\"?"));
+    case kPosition:
+      return cu::fail(cu::bad_argument("Cell definitions do not have positions.  Use \"instance\"?"));
+    case kAbutment:
+      return cu::fail(cu::bad_argument("Use \"property get FIXED_BBOX\" to get the cell abutment box."));
+    default:  // dereference: re-read through the search paths (`flush -dereference`)
+      return cu::fail(cu::bad_argument("Use \"flush " + (c.args.size() >= 2 ? c.args[1] : std::string{"cell"}) +
+                                       " -dereference\" to dereference a cell."));
   }
 }
 
@@ -272,65 +497,181 @@ CommandResult cmd_cellname(CommandContext& ctx, const Invocation& inv) {
     return cellname_usage();
   }
   const int option = cellname_option(c->args[0]);
-  const bool many = c->args.size() > 2 && option != kRename && option != kDelete && option != kDereference &&
-                    option != kWriteable && option != kProperty && option != kFilepath && option != kOrientation &&
-                    option != kTimestamp;
-  if (option < 0 || many || (c->args.size() > 3 && option != kProperty) ||
-      (c->args.size() > 1 && takes_name_only(option))) {
+  if (option < 0 || too_many_args(option, c->args.size())) {
     return cellname_usage();
   }
   return cellname_dispatch(s.value(), option, *c);
 }
 
 // --- instance ------------------------------------------------------------------
+//
+// CmdCellname for instances (any command name containing "in"; Magic ref:
+// commands/CmdCD.c:1125-1700, database/DBcellname.c DBUsePrint, DBLockUse,
+// DBOrientUse, DBAbutmentUse, DBPositionUse). NAME is an instance of the
+// edit cell; without it the selected instances are used. Hefesto keeps the
+// M1 conveniences `instance list` (the edit cell's instance identifiers)
+// and `instance delete ID`.
 
-diag::Outcome<CellUse*> named_use(const cu::Session& s, const std::string& id) {
-  auto def = cu::edit_cell(s);
-  if (!def.ok()) {
-    return def.error();
+/// The instances an option applies to: NAME in the edit cell, else the
+/// selected instances.
+std::vector<CellUse*> option_uses(const cu::Session& s, const std::vector<std::string>& args) {
+  std::vector<CellUse*> out;
+  if (args.size() >= 2) {
+    if (s.editor->edit_cell != nullptr) {
+      if (CellUse* u = find_use(*s.editor->edit_cell, args[1])) {
+        out.push_back(u);
+      }
+    }
+    return out;
   }
-  CellUse* use = find_use(*def.value(), id);
-  if (use == nullptr) {
-    return diag::make(codes::kUseNotFound, "no instance \"" + id + "\" in the edit cell");
+  for (const cell::InstanceRef& ref : cell::selected_instances(*s.editor)) {
+    out.push_back(ref.use);
   }
-  return use;
+  return out;
 }
 
-CommandResult instance_list(const cu::Session& s) {
-  auto def = cu::edit_cell(s);
-  if (!def.ok()) {
-    return cu::fail(def.error());
-  }
-  Value::List ids;
-  for (const auto& u : def.value()->uses()) {
-    ids.emplace_back(u->id);
-  }
-  return CommandResult::success(Value{std::move(ids)});
+std::string_view orientation_word(const Transform& t, bool def_names) {
+  constexpr std::array<std::string_view, 8> kMagic = {"0", "180", "90", "270", "0h", "180h", "90h", "270h"};
+  constexpr std::array<std::string_view, 8> kDef = {"N", "S", "E", "W", "FN", "FS", "FE", "FW"};
+  const auto o = static_cast<std::size_t>(orientation(t));
+  return o < kMagic.size() ? (def_names ? kDef[o] : kMagic[o]) : std::string_view{};
 }
 
-CommandResult instance_on_use(const cu::Session& s, CellUse& use, const std::vector<std::string>& args) {
-  const std::string& op = args[0];
-  if (op == "rename" && args.size() == 3) {
-    auto st = rename_use(use, args[2]);
-    return st.ok() ? CommandResult::success() : cu::fail(st.error());
+Rect abutment_box(const CellUse& use) {
+  Rect box = use.def->bbox();
+  if (const auto* v = use.def->properties().find("FIXED_BBOX")) {
+    if (const auto* dims = std::get_if<DimensionList>(v); dims != nullptr && dims->values.size() == 4) {
+      box = Rect{dims->values[0], dims->values[1], dims->values[2], dims->values[3]};
+    }
   }
-  if ((op == "lock" || op == "unlock") && args.size() == 2) {
-    set_use_locked(use, op == "lock");
-    return CommandResult::success();
+  return apply(use.transform, box);
+}
+
+// One instance's answer to a query option, appended to `out`.
+void instance_query(const cu::Session& s, int option, const CellUse& use, bool def_names, Value::List& out) {
+  switch (option) {
+    case kChildren:
+    case kChildinst:
+      for (const auto& child : use.def->uses()) {
+        out.emplace_back(child->id);
+      }
+      break;
+    case kParents:
+      out.emplace_back(use.parent != nullptr ? use.parent->name() : std::string{});
+      break;
+    case kCelldef:
+      out.emplace_back(use.def->name());
+      break;
+    case kOrientation:
+      out.emplace_back(std::string{orientation_word(use.transform, def_names)});
+      break;
+    case kAbutment:
+      for (const Coord v : {abutment_box(use).x0, abutment_box(use).y0, abutment_box(use).x1, abutment_box(use).y1}) {
+        out.push_back(cu::coord_value(s, v));
+      }
+      break;
+    case kPosition: {
+      const Transform t = element_transform(use, use.array.xlo, use.array.ylo);
+      out.push_back(Value{Value::List{cu::coord_value(s, t.c), cu::coord_value(s, t.f)}});
+      break;
+    }
+    default:  // exists, self, instances
+      out.emplace_back(use.id);
+      break;
   }
-  if (op == "delete" && args.size() == 2) {
-    CellDef* parent = use.parent;
-    auto st = remove_use(use);
-    if (!st.ok()) {
+}
+
+CommandResult instance_unavailable(int option) {
+  switch (option) {
+    case kTopcells:
+      return cu::fail(cu::bad_argument("Instances do not have a top level.  Use \"cellname\"?"));
+    case kDelete:
+      return cu::fail(cu::bad_argument("Function unimplemented for instances.  Use \"delete\""));
+    case kCreate:
+      return cu::fail(cu::bad_argument("Function unimplemented for instances.  Use \"getcell\""));
+    case kRename:
+      return cu::fail(cu::bad_argument("Function unimplemented for instances.  Use \"identify\""));
+    default:
+      return cu::fail(cu::bad_argument("Function unimplemented for instances."));
+  }
+}
+
+bool instance_supported(int option) {
+  switch (option) {
+    case kTopcells: case kWindow: case kWriteable: case kFlags: case kProperty: case kFilepath:
+    case kModified: case kDereference: case kTimestamp: case kDelete: case kCreate: case kRename:
+      return false;
+    default:
+      return true;
+  }
+}
+
+CommandResult instance_lock(const cu::Session& s, const std::vector<CellUse*>& uses, bool lock) {
+  for (CellUse* use : uses) {
+    if (s.editor->edit_cell != nullptr && use->parent != s.editor->edit_cell) {
+      cu::warn(s, "Cell " + use->id + " (" + use->def->name() + ") isn't a child of the edit cell.");
+      continue;
+    }
+    if (use->locked != lock) {
+      set_use_locked(*use, lock);
+    }
+  }
+  return CommandResult::success();
+}
+
+// M1 conveniences: `instance list` and `instance delete ID`.
+std::optional<CommandResult> instance_extension(const cu::Session& s, const std::vector<std::string>& args) {
+  if (args.size() == 1 && args[0] == "list") {
+    auto def = cu::edit_cell(s);
+    if (!def.ok()) {
+      return cu::fail(def.error());
+    }
+    const std::vector<std::string> ids = use_names(*def.value(), true);
+    return CommandResult::success(Value{Value::List{ids.begin(), ids.end()}});
+  }
+  if (args.size() == 2 && args[0] == "delete") {
+    const auto uses = option_uses(s, args);
+    if (uses.empty()) {
+      return cu::fail(diag::make(codes::kUseNotFound, "no instance \"" + args[1] + "\" in the edit cell"));
+    }
+    CellDef* parent = uses.front()->parent;
+    if (auto st = remove_use(*uses.front()); !st.ok()) {
       return cu::fail(st.error());
     }
     recompute_bbox(*parent, s.magic_compat);
     return CommandResult::success();
   }
-  if (op == "cell" && args.size() == 2) {
-    return CommandResult::success(Value{use.def->name()});
+  return std::nullopt;
+}
+
+CommandResult instance_command(const cu::Session& s, int option, const CellnameArgs& c, bool def_names) {
+  if (!instance_supported(option)) {
+    return instance_unavailable(option);
   }
-  return cu::fail(cu::bad_argument("usage: instance list | rename id new | lock id | unlock id | delete id | cell id"));
+  if (option == kAllcells) {
+    return CommandResult::success();  // DBUsePrint ignores ALLCELLS
+  }
+  if (option == kOrientation && c.args.size() == 3) {
+    return cu::fail(cu::bad_argument("Cannot set orientation by name.  Use selection."));
+  }
+  const std::vector<CellUse*> uses = option_uses(s, c.args);
+  if (option == kLock || option == kUnlock) {
+    return instance_lock(s, uses, option == kLock);
+  }
+  if (uses.empty()) {
+    if (!c.dolist) {
+      cu::print(s, c.args.size() >= 2 ? "Cell " + c.args[1] + " is not currently loaded." : "No cells selected.");
+    }
+    return CommandResult::success();
+  }
+  Value::List out;
+  for (const CellUse* use : uses) {
+    instance_query(s, option, *use, def_names, out);
+  }
+  if (out.size() == 1) {
+    return CommandResult::success(std::move(out.front()));
+  }
+  return CommandResult::success(Value{std::move(out)});
 }
 
 CommandResult cmd_instance(CommandContext& ctx, const Invocation& inv) {
@@ -338,73 +679,18 @@ CommandResult cmd_instance(CommandContext& ctx, const Invocation& inv) {
   if (!s.ok()) {
     return cu::fail(s.error());
   }
-  if (inv.args.empty() || inv.args[0] == "list") {
-    return instance_list(s.value());
+  if (auto extension = instance_extension(s.value(), inv.args)) {
+    return std::move(*extension);
   }
-  if (inv.args.size() < 2) {
-    return cu::fail(cu::bad_argument("usage: instance option id ?value?"));
+  const auto c = split_cellname(inv.args);
+  if (!c) {
+    return cellname_usage("instance");
   }
-  auto use = named_use(s.value(), inv.args[1]);
-  if (!use.ok()) {
-    return cu::fail(use.error());
+  const int option = cellname_option(c->args[0]);
+  if (option < 0 || too_many_args(option, c->args.size())) {
+    return cellname_usage("instance");
   }
-  return instance_on_use(s.value(), *use.value(), inv.args);
-}
-
-// --- array ---------------------------------------------------------------------
-
-diag::Outcome<ArrayInfo> parse_array(const std::vector<std::string>& args, std::size_t first) {
-  std::vector<std::int64_t> n;
-  for (std::size_t i = first; i < args.size(); ++i) {
-    auto v = cu::parse_int(args[i]);
-    if (!v.ok()) {
-      return v.error();
-    }
-    n.push_back(v.value());
-  }
-  ArrayInfo a;
-  if (n.size() == 2) {
-    if (n[0] < 1 || n[1] < 1) {
-      return cu::bad_argument("array sizes must be positive");
-    }
-    a.xhi = static_cast<std::int32_t>(n[0] - 1);
-    a.yhi = static_cast<std::int32_t>(n[1] - 1);
-    return a;
-  }
-  if (n.size() == 4) {
-    a.xlo = static_cast<std::int32_t>(n[0]);
-    a.xhi = static_cast<std::int32_t>(n[1]);
-    a.ylo = static_cast<std::int32_t>(n[2]);
-    a.yhi = static_cast<std::int32_t>(n[3]);
-    return a;
-  }
-  return cu::bad_argument("usage: array ?count? xsize ysize | xlo xhi ylo yhi");
-}
-
-CommandResult cmd_array(CommandContext& ctx, const Invocation& inv) {
-  auto s = cu::session(ctx);
-  if (!s.ok()) {
-    return cu::fail(s.error());
-  }
-  CellUse* use = cu::current_use(s.value());
-  if (use == nullptr) {
-    return cu::fail(diag::make(codes::kUseNotFound, "no instance is selected (place one with getcell)"));
-  }
-  const std::size_t first = !inv.args.empty() && inv.args[0] == "count" ? 1 : 0;
-  auto a = parse_array(inv.args, first);
-  if (!a.ok()) {
-    return cu::fail(a.error());
-  }
-  auto b = cu::box(s.value());
-  if (!b.ok()) {
-    return cu::fail(b.error());
-  }
-  ArrayInfo info = a.value();
-  info.xsep = b.value().x1 - b.value().x0;
-  info.ysep = b.value().y1 - b.value().y0;
-  make_array(*use, invert(use->transform), info);
-  recompute_bbox(*use->parent, s.value().magic_compat);
-  return CommandResult::success();
+  return instance_command(s.value(), option, *c, c->def_names);
 }
 
 }  // namespace
@@ -412,12 +698,16 @@ CommandResult cmd_array(CommandContext& ctx, const Invocation& inv) {
 namespace cmdutil {
 
 bool register_cell_commands(cmd::CommandRegistry& registry) {
-  bool ok = add(registry, "cellname", "cellname list|rename|delete|create|exists|readonly|writeable|modified ?args?",
-                "Lists, renames, creates or deletes cell definitions.", cmd_cellname);
-  ok = add(registry, "instance", "instance list | rename|lock|unlock|delete|cell id ?value?",
-           "Lists or changes instances of the edit cell.", cmd_instance) && ok;
-  ok = add(registry, "array", "array ?count? xsize ysize | xlo xhi ylo yhi",
-           "Arrays the current instance; the box size gives the spacing.", cmd_array) && ok;
+  bool ok = add(registry, "cellname",
+                "cellname [list] children|parents|self|exists|instances|childinst|celldef|allcells|topcells|window|"
+                "create|delete|filepath|flags|timestamp|property|rename|writeable|modified [name] [args] "
+                "[-list|-force]",
+                "Queries, creates, renames or deletes cell definitions.", cmd_cellname);
+  ok = add(registry, "instance",
+           "instance [list] children|parents|self|exists|instances|childinst|celldef|lock|unlock|orientation|"
+           "abutment|position [name] [-list|-def]",
+           "Queries the named (or selected) instances of the edit cell, or locks and unlocks them.", cmd_instance) &&
+       ok;
   return ok;
 }
 

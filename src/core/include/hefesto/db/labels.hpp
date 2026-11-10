@@ -7,7 +7,12 @@
 // (Magic ref: database/DBlabel.c, commands/CmdLQ.c PORT_RENUMBER,
 // database/DBcellname.c strcmpbynum)
 //
-// Owner: MODEL (openspec/changes/m1-core-viewer/design.md, D2).
+// Every primitive here that changes a label reports it to the library's
+// db::ChangeRecorder (label_put / label_erased; an attribute change is
+// erase(old) + put(new)).
+//
+// Owner: HIER (openspec/changes/m2-interactive-editing/design.md D2; MODEL
+// in M1).
 
 #pragma once
 
@@ -61,6 +66,21 @@ std::size_t erase_labels(CellDef& def, const tech::Technology& tech, const Rect&
 /// The total natural order of cell-file-format "Natural ordering of names"
 /// (Q-MODEL-9, Q-CELL-12): negative, zero or positive.
 [[nodiscard]] int natural_compare(std::string_view a, std::string_view b) noexcept;
+
+/// A label attribute change: `label` (an element of def.labels()) becomes
+/// `updated`; recorded as label_erased(old) then label_put(new)
+/// (db/change_recorder.hpp) and the cell is marked modified. Nothing
+/// happens when the two are equal.
+void replace_label(CellDef& def, Label& label, Label updated);
+
+/// Removes the label at `index` of def.labels() (recorded; the cell is
+/// marked modified). An index out of range does nothing.
+void remove_label(CellDef& def, std::size_t index);
+
+/// DBEraseLabelsByContent(def, rect, -1, text): removes every label of
+/// `def` with exactly `rect` and `text`, of any type (each recorded).
+/// Returns how many.
+std::size_t erase_labels_with_text(CellDef& def, const Rect& rect, std::string_view text);
 
 /// "Port renumbering". Ties in the natural order keep creation order.
 /// `magic_compat` false shares indices case-insensitively (Q-MODEL-10).

@@ -29,6 +29,9 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_pdk_pack         # offline pack manifests, install progress text (hefesto-pdk-manager)
   fuzz_backup_file      # crash backup and archive files (cell-io-safety)
   fuzz_recent_projects  # recent-projects list (hefesto-pdk-manager)
+  fuzz_macro_file       # key-binding files (ui-command-dispatch, m2 design D7)
+  fuzz_wiring_section   # the technology `wiring` section (wiring-tool)
+  fuzz_wire_segment_file  # `wire segment` coordinate files (wiring-tool)
 )
 
 if(HEFESTO_BUILD_FUZZ)

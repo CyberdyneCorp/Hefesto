@@ -2,10 +2,26 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The dispatcher: the single entry point through which every front end runs
-// commands (capability hefesto-architecture, requirement "Single command API").
+// commands (capability hefesto-architecture, requirement "Single command API";
+// ui-command-dispatch "Command dispatch across global and client tables",
+// "Command counter and post-command update", "Command logging").
+//
+// A command word is resolved in the `*window` table and the table of the
+// target client (CommandRegistry::resolve): unique prefixes and any letter
+// case are accepted, an exact name wins. With an editor session attached,
+// every executed command is then written to the `logcommands` log (as
+// typed), published to the observers (with the resolved command name), and
+// followed by editor::post_command (counter, undo step, client updates,
+// highlights, redisplay); an interrupt during the command adds
+// `[Interrupted]`. A point forced by `setpoint` is dropped after the next
+// interactive (gui, key, touch) command.
+//
+// Owner: DISPATCH (openspec/changes/m2-interactive-editing/design.md D2).
 
 #pragma once
 
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/cmd/command.hpp"
@@ -30,7 +46,8 @@ class Dispatcher {
   Dispatcher(const CommandRegistry& registry, platform::PlatformServices services,
              settings::ProjectSettings& project, ScriptSession& session);
 
-  /// Runs one command. An unknown name fails with CMD-DISPATCH-001.
+  /// Runs one command. An unknown name fails with CMD-DISPATCH-001, an
+  /// ambiguous abbreviation with UI-DISPATCH-001; an empty name is a no-op.
   /// The result carries every diagnostic emitted while the command ran
   /// (emitted through the context first, then those the handler returned).
   /// Each diagnostic is also forwarded to the attached sinks and the logger.
@@ -59,21 +76,30 @@ class Dispatcher {
 
   /// Attaches the M1 session state passed to every handler (not owned; must
   /// outlive the dispatcher or be detached with nullptr).
-  void set_editor(editor::EditorState* editor) noexcept { editor_ = editor; }
+  /// Attaches the session state; its undo recorder then reads magic-compat
+  /// from this dispatcher's project settings.
+  void set_editor(editor::EditorState* editor) noexcept;
   [[nodiscard]] editor::EditorState* editor() const noexcept { return editor_; }
+
+  /// The client commands are sent to (`layout` by default; a front end sets
+  /// the client of the window that has the focus, e.g. `color`).
+  void set_client(std::string client) { client_ = std::move(client); }
+  [[nodiscard]] const std::string& client() const noexcept { return client_; }
 
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
  private:
-  CommandResult run_handler(const Invocation& invocation);
+  CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation);
   void publish(const Invocation& invocation, const CommandResult& result);
+  void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result);
 
   const CommandRegistry& registry_;
   platform::PlatformServices services_;
   settings::ProjectSettings& project_;
   ScriptSession& session_;
   editor::EditorState* editor_ = nullptr;
+  std::string client_{kLayoutClient};
   std::vector<CommandObserver*> observers_;
   std::vector<diag::DiagnosticSink*> sinks_;
   std::vector<diag::DiagnosticSink*> live_sinks_;

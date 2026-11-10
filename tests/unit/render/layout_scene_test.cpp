@@ -142,3 +142,65 @@ TEST_CASE("labels, port lines and cell boxes are grouped per style", "[cap:ui-wi
   CHECK(batches.style_index[2] == display::kStyleCellBox);
   CHECK(batches.rects.batches()[0].count == 1200);
 }
+
+namespace {
+
+display::HighlightItem highlight(display::HighlightShape shape, std::size_t index, const hefesto::db::Rect& r) {
+  display::HighlightItem it;
+  it.shape = shape;
+  it.style = index;
+  it.rect = r;
+  display::resolve_highlight(it, nullptr);  // no display styles: opaque white, solid outline
+  return it;
+}
+
+}  // namespace
+
+TEST_CASE("highlights become batches drawn after the layout, in client order",
+          "[cap:ui-feedback-and-highlights][req:Highlight layer and clients]") {
+  display::LayoutScene scene;
+  scene.layers = {display::SceneLayer{style(52, display::FillKind::solid, 1.0F), false, {{0, 0, 10, 10}}, {}, {}}};
+  scene.bounds = {0, 0, 10, 10};
+  display::HighlightScene hl;
+  hl.items.push_back(highlight(display::HighlightShape::outline, 1, {0, 0, 4, 4}));  // the box
+  display::HighlightItem selection = highlight(display::HighlightShape::line, 6, {});
+  selection.line = display::SceneSegment{{2, 2}, {8, 2}};
+  hl.items.push_back(selection);
+  hl.items.push_back(highlight(display::HighlightShape::text, 6, {2, 2, 8, 8}));  // text: the front end's
+  hl.items.push_back(highlight(display::HighlightShape::triangle, 3, {0, 0, 10, 10}));
+
+  const auto batches = render::to_batches(scene, &hl);
+  // layout fill, box lines, selection lines, triangle fill (text draws nothing).
+  REQUIRE(batches.kinds.size() == 4);
+  CHECK(batches.kinds[0] == render::BatchKind::fill);
+  CHECK(batches.kinds[1] == render::BatchKind::highlight);
+  CHECK(batches.style_index[1] == 1);
+  CHECK(batches.style_index[2] == 6);
+  CHECK(batches.style_index[3] == 3);
+  CHECK(batches.styles[2].r == 1.0F);  // white
+  CHECK(batches.styles[2].a == 1.0F);
+  REQUIRE(batches.rects.batches().size() == 3);
+  CHECK(batches.rects.batches()[1].count == 4);  // the box's four sides
+  CHECK(batches.rects.batches()[2].count == 1);  // one selection edge
+  CHECK(batches.polygons.batches.size() == 1);
+
+  // The same highlights alone (a separate pass over a retained layout).
+  const auto alone = render::highlight_batches(hl);
+  CHECK(alone.kinds.size() == 3);
+  CHECK(alone.rects.batches().front().layer == 0);
+}
+
+TEST_CASE("highlight boxes draw the style's fill and outline; crosses draw their point",
+          "[cap:ui-feedback-and-highlights][req:Feedback display]") {
+  display::HighlightScene hl;
+  display::HighlightItem pale = highlight(display::HighlightShape::box, 3, {0, 0, 10, 10});
+  pale.resolved.fill = display::FillKind::stipple;
+  pale.resolved.outline = 0;
+  hl.items.push_back(pale);
+  hl.items.push_back(highlight(display::HighlightShape::cross, 6, {5, 5, 5, 5}));
+  const auto batches = render::highlight_batches(hl);
+  REQUIRE(batches.kinds.size() == 2);  // pale fill only (no outline), the cross's point
+  CHECK(batches.styles[0].stippled);
+  REQUIRE(batches.rects.batches().size() == 2);
+  CHECK(batches.rects.instances()[1] == render::RectInstance{5, 5, 5, 5});
+}

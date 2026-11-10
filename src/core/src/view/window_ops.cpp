@@ -14,6 +14,7 @@
 #include <array>
 #include <optional>
 
+#include "hefesto/view/color_window.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
 
@@ -87,9 +88,10 @@ CommandResult openwindow_cmd(CommandContext& ctx, const Invocation& inv) {
 // --- specialopen (windSpecialOpenCmd, windows/windCmdSZ.c:404-460) ----------------------
 
 /// Magic's window clients in WindPrintClientList order (each WindAddClient
-/// prepends; the hidden "*window" client was added first). Only `layout`
-/// exists before M2: `color` is ui-color-window, `netlist` netlist-window.
+/// prepends; the hidden "*window" client was added first). `netlist` is
+/// netlist-window (M12) and stays unavailable.
 constexpr std::array<std::string_view, 4> kClients = {"netlist", "color", "layout", "*window"};
+constexpr std::size_t kColorClient = 1;
 constexpr std::size_t kLayoutClient = 2;
 
 /// WindGetClient(name, FALSE): a unique prefix, or nullopt.
@@ -129,6 +131,25 @@ ScreenRect explicit_frame(const std::vector<std::string>& args, WindowManager& w
   return ScreenRect{v(0), v(1), std::max(v(2), v(0) + min_w), std::max(v(3), v(1) + min_h)};
 }
 
+/// `specialopen color [OCTAL]` (ui-color-window "Color window creation and
+/// layout"); the first color window also installs the unsaved-map check
+/// that `quit` runs ("Unsaved color map protection").
+CommandResult open_color(CommandContext& ctx, editor::EditorState& ed, const ScreenRect& frame,
+                         std::string_view octal) {
+  auto opened = open_color_window(ed, octal, frame);
+  if (!opened) {
+    diag::Diagnostic d = opened.error();
+    d.text += "\nCould not create window";
+    return failure(d);
+  }
+  if (!ed.color_map.exit_check_installed) {
+    editor::EditorState* session_state = &ed;
+    ctx.session().exit_checks.emplace_back([session_state] { return check_color_map_written(*session_state); });
+    ed.color_map.exit_check_installed = true;
+  }
+  return CommandResult::success();
+}
+
 CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
@@ -144,11 +165,14 @@ CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
   if (!client || a[first].starts_with('*')) {
     return specialopen_usage(ctx);
   }
+  editor::EditorState& ed = *e.value();
+  const ScreenRect frame = coords ? explicit_frame(a, ed.windows) : create_frame();
+  if (*client == kColorClient) {
+    return open_color(ctx, ed, frame, a.size() > first + 1 ? std::string_view(a[first + 1]) : std::string_view());
+  }
   if (*client != kLayoutClient) {
     return fail(codes::kClient, "The " + std::string(kClients[*client]) + " window is not available in this version.");
   }
-  editor::EditorState& ed = *e.value();
-  const ScreenRect frame = coords ? explicit_frame(a, ed.windows) : create_frame();
   return open_layout(ed, frame, std::vector<std::string>(a.begin() + static_cast<std::ptrdiff_t>(first) + 1, a.end()));
 }
 

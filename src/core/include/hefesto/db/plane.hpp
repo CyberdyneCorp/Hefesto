@@ -47,6 +47,8 @@ enum class TriangleCorner : std::uint8_t { nw, sw, se, ne };
 struct TriangleSide {
   Diagonal diagonal = Diagonal::ne_sw;
   bool right_side = false;
+
+  friend constexpr bool operator==(const TriangleSide&, const TriangleSide&) = default;
 };
 [[nodiscard]] constexpr TriangleSide triangle_side(TriangleCorner corner) noexcept {
   switch (corner) {

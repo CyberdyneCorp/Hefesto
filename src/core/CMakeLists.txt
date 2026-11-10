@@ -18,16 +18,22 @@ add_library(hefesto_core STATIC
   src/cmd/command_log.cpp
   src/cmd/coordinates.cpp
   src/cmd/dispatcher.cpp
+  src/cmd/keywords.cpp
+  src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/script_parser.cpp
   src/cmd/script_runner.cpp
+  src/cmd/units.cpp
   src/cmd/value.cpp
   src/compat/compat_settings.cpp
   src/diag/codes.cpp
   src/diag/diagnostic.cpp
   src/diag/format.cpp
   src/diag/sink.cpp
+  src/editor/coordinate_units.cpp
+  src/editor/edit_frame.cpp
   src/editor/editor_state.cpp
+  src/editor/post_command.cpp
   src/platform/local_file_system.cpp
   src/platform/logger.cpp
   src/platform/memory_file_system.cpp
@@ -39,11 +45,14 @@ add_library(hefesto_core STATIC
   src/util/record_order.cpp)
 add_library(hefesto::core ALIAS hefesto_core)
 
-# M1 areas (openspec/changes/m1-core-viewer/design.md D2/D3). Each fragment
+# Areas (openspec/changes/m1-core-viewer/design.md D2/D3; M2:
+# openspec/changes/m2-interactive-editing/design.md D1/D2). Each fragment
 # calls target_sources(hefesto_core PRIVATE ...) for its own directory and is
 # edited only by the owning workstream:
-#   tech/ TECH   db/ MODEL   cell/ CELL   display/ view/ VIEWER   pdk/ app/ PDK
-set(HEFESTO_CORE_AREAS tech db cell display view pdk app)
+#   M1: tech/ TECH   db/ MODEL   cell/ CELL   display/ view/ VIEWER   pdk/ app/ PDK
+#   M2: db/ EDIT (HIER: label/property files)   cell/ HIER   undo/ UNDO
+#       select/ connect/ SELECT   ui/ DISPATCH   display/ view/ VIEW   wiring/ WIRE
+set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

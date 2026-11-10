@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// MODEL commands, part 2: label, setlabel, port, property (minimal Magic
-// forms; labels are addressed through the box instead of the selection
-// until cmd-selection lands in M2).
+// MODEL commands, part 2: label, setlabel (commands_setlabel.cpp), port,
+// property (cmd-labels-properties). Label changes are recorded for undo
+// through the db label primitives (db/labels.hpp). Owner: HIER
+// (openspec/changes/m2-interactive-editing/design.md D2).
 // Ported in part from Magic VLSI 8.3.694 (fc5daa9e) commands/CmdLQ.c
 // (CmdLabel, CmdPort: PORT_MAKE index and direction rules, CmdProperty).
 // Magic is Copyright (C) 1985, 1990 Regents of the University of California
@@ -22,6 +23,9 @@
 #include <utility>
 
 #include "db/command_util.hpp"
+#include "db/hier_commands.hpp"
+#include "hefesto/cell/hier.hpp"
+#include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -57,17 +61,12 @@ diag::Outcome<LabelTarget> label_target(CommandContext& ctx) {
   if (!b.ok()) {
     return b.error();
   }
-  return LabelTarget{s.value(), def.value(), b.value()};
-}
-
-std::vector<Label*> labels_in(CellDef& def, const Rect& area) {
-  std::vector<Label*> out;
-  for (Label& l : def.labels()) {
-    if (label_in_area(l.rect, area)) {
-      out.push_back(&l);
-    }
+  // ToolGetEditBox: the box in edit-cell coordinates (cmd-hierarchy "Edit
+  // command": warned when the edit transform matches no instance).
+  if (auto warning = cell::edit_transform_warning(*s.value().editor, s.value().magic_compat)) {
+    cu::warn(s.value(), *warning);
   }
-  return out;
+  return LabelTarget{s.value(), def.value(), editor::to_edit(*s.value().editor, b.value())};
 }
 
 // --- label -------------------------------------------------------------------
@@ -244,8 +243,11 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
     return CommandResult::success();
   }
   // CmdLabelProc: duplicates at the same place are erased whatever their type.
-  (void)cu::erase_labels_by_content(*e.def, e.area, a.lab.text);
+  (void)erase_labels_with_text(*e.def, e.area, a.lab.text);
   a.lab.rect = e.area;
+  if (a.lab.justification >= 0) {
+    a.lab.justification = transform_position(invert(e.s.editor->edit_transform), a.lab.justification);
+  }
   a.lab.type = a.type ? label_layer_for(*e.s.tech, *a.type) : tech::kSpace;
   const bool auto_justify = a.lab.justification < 0;
   auto put = put_label(*e.def, std::move(a.lab), auto_justify, e.s.editor->fonts.fonts.size());
@@ -272,6 +274,48 @@ CommandResult cmd_label(CommandContext& ctx, const Invocation& inv) {
 }
 
 // --- port --------------------------------------------------------------------
+//
+// CmdPort (Magic ref: commands/CmdLQ.c:1523-2320; cmd-labels-properties
+// "Port command target", "Port attributes", "Port make, numbering and
+// directions"). The target is the label named (text) or numbered (index)
+// by the first word, else the single label of the right kind under the box
+// (portFindLabel). Every change is recorded for undo (db::replace_label).
+
+enum PortOption {
+  kPortClass, kPortUse, kPortShape, kPortIndex, kPortEquivalent, kPortExists, kPortConnections, kPortFirst,
+  kPortNext, kPortLast, kPortMake, kPortMakeall, kPortName, kPortRemove, kPortRenumber, kPortHelp
+};
+
+constexpr std::array<std::string_view, 16> kPortOptions = {
+    "class", "use",  "shape", "index", "equivalent", "exists", "connections", "first",
+    "next",  "last", "make",  "makeall", "name",     "remove", "renumber",    "help"};
+
+constexpr std::array<std::string_view, 16> kPortOptionHelp = {
+    "class\t[type]\t\tget [set] port class type",
+    "use\t[type]\t\tget [set] port use type",
+    "shape\t[type]\t\tget [set] port shape type",
+    "index\t[number]\tget [set] port number",
+    "equivalent [number]\tmake port equivalent to another port",
+    "exists\t\t\treport if a label is a port or not",
+    "connections [dir...]\tget [set] port connection directions",
+    "first\t\t\treport the lowest port number used",
+    "next [number]\t\treport the next port number used",
+    "last\t\t\treport the highest port number used",
+    "make [index] [dir...]\tturn a label into a port",
+    "makeall [index] [dir]\tturn all labels into ports",
+    "name\t\t\treport the port name",
+    "remove\t\t\tturn a port back into a label",
+    "renumber\t\trenumber all ports",
+    "help\t\t\tprint this help information"};
+
+CommandResult port_usage(const cu::Session& s) {
+  std::string text = "Usage:  port [option], where [option] is one of:";
+  for (const std::string_view line : kPortOptionHelp) {
+    text += "\n    " + std::string{line};
+  }
+  cu::warn(s, text + "\n    <index> <directions>");
+  return CommandResult::success();
+}
 
 std::uint8_t directions_of(Position pos) {
   constexpr std::array<std::uint8_t, 9> kDirs = {
@@ -281,52 +325,82 @@ std::uint8_t directions_of(Position pos) {
   return pos >= 0 && pos <= 8 ? kDirs[static_cast<std::size_t>(pos)] : 0;
 }
 
-// CmdPort PORT_MAKE: the index a new port takes when none is given.
-std::uint32_t next_port_index(const CellDef& def, const Label& lab) {
-  std::int64_t idx = 0;
-  for (const Label& sl : def.labels()) {
-    if (&sl == &lab || !sl.is_port()) {
+/// One `port` invocation: the edit cell, the box in edit coordinates and
+/// the words after the target (the option first).
+struct PortCall {
+  cu::Session s;
+  CellDef* def = nullptr;
+  Rect box;
+  std::vector<std::string> args;
+  bool quiet = false;
+
+  [[nodiscard]] std::size_t argc() const noexcept { return args.size() + 1; }  // Magic's argc after the target
+};
+
+// portFindLabel(port, unique = TRUE): the single label of the wanted kind
+// overlapping (or, for zero-area labels, inside) the box; several are
+// narrowed to those inside the box. nullopt when none or not unique.
+std::optional<std::size_t> find_port_label(const CellDef& def, const Rect& box, bool want_port) {
+  std::optional<std::size_t> found;
+  for (std::size_t i = 0; i < def.labels().size(); ++i) {
+    const Label& l = def.labels()[i];
+    if (l.is_port() != want_port || !(overlap(box, l.rect) || surround(box, l.rect))) {
       continue;
     }
-    if (sl.text == lab.text) {
-      idx = std::int64_t{sl.port_index} - 1;
-      break;
+    if (!found) {
+      found = i;
+      continue;
     }
-    idx = std::max<std::int64_t>(idx, sl.port_index);
+    found.reset();
+    for (std::size_t k = 0; k < def.labels().size(); ++k) {
+      if (surround(box, def.labels()[k].rect)) {
+        if (found) {
+          return std::nullopt;
+        }
+        found = k;
+      }
+    }
+    return found;
   }
-  return static_cast<std::uint32_t>(idx + 1);
+  return found;
 }
 
-std::optional<diag::Diagnostic> port_make(const CellDef& def, Label& lab, const std::vector<std::string>& args) {
-  if (lab.is_port()) {
-    return cu::bad_argument("label \"" + lab.text + "\" is already a port");
-  }
-  std::size_t next = 1;
-  if (args.size() > 1 && cu::parse_int(args[1]).ok()) {
-    lab.port_index = static_cast<std::uint32_t>(cu::parse_int(args[1]).value());
-    next = 2;
-  } else {
-    lab.port_index = next_port_index(def, lab);
-  }
-  std::uint8_t dirs = 0;
-  if (next == args.size()) {
-    dirs = directions_of(lab.justification);
-  }
-  for (std::size_t i = next; i < args.size(); ++i) {
-    const int pos = parse_position(args[i], true);
-    if (pos < 0) {
-      return cu::bad_argument("bad direction \"" + args[i] + "\"");
+// The label named by the first word: a port with that index, or the label
+// with that text (a port among them preferred).
+std::optional<std::size_t> named_port_label(const CellDef& def, const std::string& word) {
+  std::optional<std::size_t> found;
+  const bool by_index = cu::str_is_int(word);
+  const std::int64_t index = by_index ? cu::c_atoi(word) : 0;
+  for (std::size_t i = 0; i < def.labels().size(); ++i) {
+    const Label& l = def.labels()[i];
+    if (by_index && l.is_port() && std::int64_t{l.port_index} == index) {
+      return i;
     }
-    if (pos != kCenter) {
-      dirs = static_cast<std::uint8_t>(dirs | directions_of(pos));
+    if (!by_index && l.text == word) {
+      found = i;
+      if (l.is_port()) {
+        return i;
+      }
     }
   }
-  lab.port_directions = dirs;
-  return std::nullopt;
+  return found;
 }
 
-/// One port attribute keyword of Magic's `port` command tables, synonyms
-/// included (Magic ref: commands/CmdLQ.c:1558-1625).
+/// Sets `field` to `value` on every port of the cell with the target's text
+/// and index (each change recorded).
+template <typename F>
+void update_equivalent_ports(CellDef& def, const Label& target, F update) {
+  const std::string text = target.text;
+  const std::uint32_t index = target.port_index;
+  for (Label& other : def.labels()) {
+    if (other.is_port() && other.text == text && other.port_index == index) {
+      Label changed = other;
+      update(changed);
+      replace_label(def, other, std::move(changed));
+    }
+  }
+}
+
 template <typename E>
 struct PortWord {
   std::string_view name;
@@ -359,118 +433,350 @@ std::string_view name_of(const std::array<PortWord<E>, N>& table, E value) {
   return {};
 }
 
-/// `port class|use|shape [value]` (Magic ref: commands/CmdLQ.c:1870-1990): a
-/// query returns the keyword; a value (Lookup: unique prefix) is set on every
-/// port of the cell with the same text and index; an unknown value prints
-/// the usage with the keywords and changes nothing. `changed` tells whether
-/// anything was set.
+/// `port class|use|shape [value]`: a query returns the keyword; a value
+/// (unique prefix) is set on the equivalent ports; an unknown value prints
+/// the usage with the keywords and changes nothing.
 template <typename E, std::size_t N>
-CommandResult port_enum(const cu::Session& s, CellDef& def, const Label& lab, E Label::*field,
-                        const std::array<PortWord<E>, N>& table, const std::vector<std::string>& args, bool& changed) {
-  if (args.size() == 1) {
+CommandResult port_enum(const PortCall& c, Label& lab, E Label::*field, const std::array<PortWord<E>, N>& table,
+                        std::string_view word) {
+  if (c.args.size() == 1) {
     return CommandResult::success(Value{std::string{name_of(table, lab.*field)}});
   }
-  int idx = -1;
-  std::string usage = "Usage:  port " + args[0] + " <type>, where <type> is one of:";
-  {
-    std::vector<std::string_view> names;
-    for (const auto& w : table) {
-      names.push_back(w.name);
-      usage += "\n    " + std::string{w.name};
-    }
-    idx = cu::lookup_in(args[1], names);
+  std::vector<std::string_view> names;
+  std::string usage = "Usage:  port " + std::string{word} + " <type>, where <type> is one of:";
+  for (const auto& w : table) {
+    names.push_back(w.name);
+    usage += "\n    " + std::string{w.name};
   }
+  const int idx = cu::lookup_in(c.args[1], names);
   if (idx < 0) {
-    cu::warn(s, usage);
+    cu::warn(c.s, usage);
     return CommandResult::success();
   }
   const E value = table[static_cast<std::size_t>(idx)].value;
-  const std::string text = lab.text;
-  const std::uint32_t index = lab.port_index;
-  for (Label& other : def.labels()) {
-    if (other.is_port() && other.text == text && other.port_index == index) {
-      other.*field = value;
-    }
-  }
-  changed = true;
+  update_equivalent_ports(*c.def, lab, [&](Label& l) { l.*field = value; });
+  mark_modified(*c.def);
   return CommandResult::success();
 }
 
-CommandResult port_index(Label& lab, const std::vector<std::string>& args) {
-  if (args.size() == 1) {
+CommandResult port_index(const PortCall& c, Label& lab) {
+  if (c.args.size() == 1) {
     return CommandResult::success(Value{std::int64_t{lab.port_index}});
   }
-  auto n = cu::parse_int(args[1]);
-  if (!n.ok()) {
-    return cu::fail(n.error());
+  if (!cu::str_is_int(c.args[1])) {
+    cu::warn(c.s, "Usage:  port index <integer>");
+    return CommandResult::success();
   }
-  lab.port_index = static_cast<std::uint32_t>(n.value());
+  const auto index = static_cast<std::uint32_t>(cu::c_atoi(c.args[1]));
+  update_equivalent_ports(*c.def, lab, [&](Label& l) { l.port_index = index; });
+  mark_modified(*c.def);
   return CommandResult::success();
 }
 
-void port_remove(Label& lab) {
-  lab.port_directions = 0;
-  lab.port_class = PortClass::default_class;
-  lab.port_use = PortUse::default_use;
-  lab.port_shape = PortShape::default_shape;
-  lab.sticky = false;
-}
-
-CommandResult port_on_label(const cu::Session& s, CellDef& def, Label& lab, const std::vector<std::string>& args,
-                            bool& changed) {
-  const std::string& op = args[0];
-  if (op == "exists") {
-    return CommandResult::success(Value{std::int64_t{lab.is_port() ? 1 : 0}});
+// `port equivalent [N]`: the index of port N, or of another port with the
+// same text.
+CommandResult port_equivalent(const PortCall& c, Label& lab) {
+  std::optional<std::uint32_t> index;
+  for (const Label& other : c.def->labels()) {
+    if (&other == &lab || !other.is_port()) {
+      continue;
+    }
+    const bool wanted = c.args.size() > 1 ? (cu::str_is_int(c.args[1]) &&
+                                             std::int64_t{other.port_index} == cu::c_atoi(c.args[1]))
+                                          : other.text == lab.text;
+    if (wanted) {
+      index = other.port_index;
+      break;
+    }
   }
-  if (op == "make") {
-    auto err = port_make(def, lab, args);
-    return err ? cu::fail(*err) : CommandResult::success();
-  }
-  if (op == "remove") {
-    port_remove(lab);
+  if (!index) {
+    cu::warn(c.s, "No equivalent port found.");
     return CommandResult::success();
   }
-  if (op == "index") {
-    return port_index(lab, args);
+  Label changed = lab;
+  changed.port_index = *index;
+  replace_label(*c.def, lab, std::move(changed));
+  return CommandResult::success();
+}
+
+std::string directions_text(std::uint8_t dirs) {
+  std::string out;
+  for (const auto& [bit, ch] : {std::pair{kPortNorth, 'n'}, std::pair{kPortEast, 'e'}, std::pair{kPortSouth, 's'},
+                                std::pair{kPortWest, 'w'}}) {
+    if ((dirs & bit) != 0) {
+      out += ch;
+    }
   }
-  if (op == "class") {
-    return port_enum(s, def, lab, &Label::port_class, kClasses, args, changed);
+  return out;
+}
+
+// The direction set of `words` (each a Manhattan direction in root
+// orientation), or of the justification when there are none; nullopt
+// after a bad direction (GeoNameToPos printed it).
+std::optional<std::uint8_t> parse_directions(const PortCall& c, const Label& lab, std::size_t first) {
+  if (first >= c.args.size()) {
+    return directions_of(lab.justification);
   }
-  if (op == "use") {
-    return port_enum(s, def, lab, &Label::port_use, kUses, args, changed);
+  std::uint8_t dirs = 0;
+  for (std::size_t i = first; i < c.args.size(); ++i) {
+    const int pos = parse_position(c.args[i], true);
+    if (pos < 0) {
+      cu::warn(c.s, position_error_text(c.args[i], true));
+      return std::nullopt;
+    }
+    const Position edit_pos = transform_position(invert(c.s.editor->edit_transform), pos);
+    if (edit_pos != kCenter) {
+      dirs = static_cast<std::uint8_t>(dirs | directions_of(edit_pos));
+    }
   }
-  if (op == "shape") {
-    return port_enum(s, def, lab, &Label::port_shape, kShapes, args, changed);
+  return dirs;
+}
+
+CommandResult port_connections(const PortCall& c, Label& lab) {
+  if (c.args.size() == 1) {
+    return CommandResult::success(Value{directions_text(lab.port_directions)});
   }
-  return cu::fail(cu::bad_argument("unknown port option \"" + op + "\""));
+  const auto dirs = parse_directions(c, lab, 1);
+  if (dirs) {
+    Label changed = lab;
+    changed.port_directions = *dirs;
+    replace_label(*c.def, lab, std::move(changed));
+  }
+  return CommandResult::success();
+}
+
+// CmdPort PORT_MAKE: the index a new port takes when none is given (a
+// same-text port wins, the first in label order; Q-CMDEDIT-92).
+std::uint32_t next_port_index(const CellDef& def, const Label& lab) {
+  std::int64_t idx = 0;
+  for (const Label& sl : def.labels()) {
+    if (&sl == &lab || !sl.is_port()) {
+      continue;
+    }
+    if (sl.text == lab.text) {
+      idx = std::int64_t{sl.port_index} - 1;
+      break;
+    }
+    idx = std::max<std::int64_t>(idx, sl.port_index);
+  }
+  return static_cast<std::uint32_t>(idx + 1);
+}
+
+// The index of `port make INDEX`; nullopt after "Port index N is already
+// used by port X" (a port with other text has it).
+std::optional<std::uint32_t> given_port_index(const PortCall& c, const Label& lab, std::int64_t idx) {
+  for (const Label& sl : c.def->labels()) {
+    if (&sl != &lab && sl.is_port() && std::int64_t{sl.port_index} == idx && sl.text != lab.text) {
+      const std::string n = std::to_string(idx);
+      cu::warn(c.s, "Port index " + n + " is already used by port " + sl.text + ".\nUse command \"port index " + n +
+                        "\" to force equivalence after defining the port.");
+      return std::nullopt;
+    }
+  }
+  return static_cast<std::uint32_t>(idx);
+}
+
+// One label of `port make|makeall`; false when the command must stop.
+bool make_port(const PortCall& c, Label& lab) {
+  std::size_t first = 1;
+  std::optional<std::uint32_t> index;
+  if (c.args.size() > 1 && cu::str_is_int(c.args[1])) {
+    index = given_port_index(c, lab, cu::c_atoi(c.args[1]));
+    if (!index) {
+      return false;
+    }
+    first = 2;
+  } else {
+    index = next_port_index(*c.def, lab);
+  }
+  const auto dirs = parse_directions(c, lab, first);
+  if (!dirs) {
+    return false;
+  }
+  Label changed = lab;
+  changed.port_index = *index;
+  changed.port_directions = *dirs;
+  replace_label(*c.def, lab, std::move(changed));
+  return true;
+}
+
+CommandResult port_make(const PortCall& c, Label& lab) {
+  if (lab.is_port()) {
+    if (!c.quiet) {
+      cu::warn(c.s, "The selected label is already a port.\nDo \"port help\" to get a list of options.");
+    }
+    return CommandResult::success();
+  }
+  (void)make_port(c, lab);
+  mark_modified(*c.def);
+  return CommandResult::success();
+}
+
+CommandResult port_makeall(const PortCall& c) {
+  for (std::size_t i = 0; i < c.def->labels().size(); ++i) {
+    Label& lab = c.def->labels()[i];
+    if (lab.is_port() || !overlap(c.box, lab.rect)) {
+      continue;
+    }
+    if (!make_port(c, lab)) {
+      break;
+    }
+  }
+  mark_modified(*c.def);
+  return CommandResult::success();
+}
+
+CommandResult port_name(const PortCall& c, std::size_t index) {
+  const Label lab = c.def->labels()[index];
+  if (c.args.size() == 1) {
+    return CommandResult::success(Value{lab.text});
+  }
+  // A duplicate of `setlabel text`: a new label, then the old one erased.
+  Label renamed = lab;
+  renamed.text = c.args[1];
+  (void)put_label(*c.def, std::move(renamed), false, c.s.editor->fonts.fonts.size());
+  erase_labels_with_text(*c.def, lab.rect, lab.text);
+  return CommandResult::success();
+}
+
+CommandResult port_remove(const PortCall& c, Label& lab) {
+  Label changed = lab;
+  changed.port_directions = 0;
+  changed.port_class = PortClass::default_class;
+  changed.port_use = PortUse::default_use;
+  changed.port_shape = PortShape::default_shape;
+  changed.port_index = 0;
+  changed.sticky = false;  // Magic clears every label flag
+  replace_label(*c.def, lab, std::move(changed));
+  return CommandResult::success();
+}
+
+// `port first|last` (lowest index of the ports / highest of all labels) and
+// `port next [N]`.
+CommandResult port_report_index(const PortCall& c, int option, const Label* lab) {
+  std::int64_t result = -1;
+  std::int64_t ref = lab != nullptr ? std::int64_t{lab->port_index} : -1;
+  if (option == kPortNext && c.args.size() > 1 && cu::str_is_int(c.args[1])) {
+    ref = cu::c_atoi(c.args[1]);
+  }
+  for (const Label& l : c.def->labels()) {
+    const std::int64_t idx = l.port_index;
+    if (option == kPortLast) {
+      result = std::max(result, idx);
+    } else if (l.is_port() && (option == kPortFirst || idx > ref) && (result == -1 || idx < result)) {
+      result = idx;
+    }
+  }
+  return CommandResult::success(Value{result});
+}
+
+CommandResult port_on_label(const PortCall& c, int option, std::size_t index) {
+  Label& lab = c.def->labels()[index];
+  switch (option) {
+    case kPortClass: return port_enum(c, lab, &Label::port_class, kClasses, "class");
+    case kPortUse: return port_enum(c, lab, &Label::port_use, kUses, "use");
+    case kPortShape: return port_enum(c, lab, &Label::port_shape, kShapes, "shape");
+    case kPortIndex: return port_index(c, lab);
+    case kPortEquivalent: return port_equivalent(c, lab);
+    case kPortConnections: return port_connections(c, lab);
+    case kPortNext: return port_report_index(c, option, &lab);
+    case kPortMake: return port_make(c, lab);
+    case kPortName: return port_name(c, index);
+    case kPortRemove: return port_remove(c, lab);
+    default: return port_usage(c.s);
+  }
+}
+
+bool needs_port(int option) {
+  return option != kPortMake && option != kPortMakeall && option != kPortExists && option != kPortRenumber &&
+         option != kPortLast && option != kPortFirst;
+}
+
+bool needs_label(int option) {
+  return option != kPortLast && option != kPortFirst && option != kPortMakeall && option != kPortRenumber;
+}
+
+CommandResult run_port_option(PortCall& c, int option, std::optional<std::size_t> target, bool named) {
+  if (!named && option != kPortLast && option != kPortFirst) {
+    target = find_port_label(*c.def, c.box, option != kPortMake);
+  }
+  if (option == kPortExists) {
+    return CommandResult::success(Value{std::int64_t{target && c.def->labels()[*target].is_port() ? 1 : 0}});
+  }
+  if (needs_label(option) && !target) {
+    if (option != kPortRemove) {
+      cu::warn(c.s, "Exactly one label may be present under the cursor box.\n"
+                    "Use \"port <name> ...\" to specify a unique port.");
+    }
+    return CommandResult::success();
+  }
+  if (needs_port(option) && !c.def->labels()[*target].is_port()) {
+    if (option != kPortRemove && !c.quiet) {
+      cu::warn(c.s, "The selected label is not a port.");
+    }
+    return CommandResult::success();
+  }
+  switch (option) {
+    case kPortFirst:
+    case kPortLast:
+      return port_report_index(c, option, nullptr);
+    case kPortMakeall:
+      return port_makeall(c);
+    case kPortRenumber:
+      renumber_ports(*c.def, c.s.magic_compat);
+      mark_modified(*c.def);
+      return CommandResult::success();
+    default:
+      return port_on_label(c, option, *target);
+  }
+}
+
+// "port <name>|<index> option ...": the label named by the first word when
+// the second is an option; nullopt (and `option` untouched) otherwise, an
+// error result when the label does not exist.
+std::optional<CommandResult> resolve_named_port(PortCall& c, int& option, std::optional<std::size_t>& target) {
+  if (c.args.size() < 2) {
+    return std::nullopt;
+  }
+  const int second = cu::lookup_in(c.args[1], kPortOptions);
+  if (second < 0 || second == kPortHelp) {
+    return std::nullopt;
+  }
+  target = named_port_label(*c.def, c.args[0]);
+  if (!target) {
+    if (!c.quiet) {
+      cu::warn(c.s, cu::str_is_int(c.args[0]) ? "No label found with index " + c.args[0] + "."
+                                              : "No port found with name " + c.args[0] + ".");
+    }
+    return CommandResult::success();
+  }
+  option = second;
+  c.args.erase(c.args.begin());
+  return std::nullopt;
 }
 
 CommandResult cmd_port(CommandContext& ctx, const Invocation& inv) {
-  if (inv.args.empty()) {
-    return cu::fail(cu::bad_argument("usage: port option ?args?"));
-  }
   auto t = label_target(ctx);
   if (!t.ok()) {
     return cu::fail(t.error());
   }
-  const LabelTarget& e = t.value();
-  if (inv.args[0] == "renumber") {
-    renumber_ports(*e.def, e.s.magic_compat);
-    mark_modified(*e.def);
-    return CommandResult::success();
+  PortCall c{t.value().s, t.value().def, t.value().area, inv.args, false};
+  if (!c.args.empty() && c.args.back() == "-quiet") {
+    c.quiet = true;
+    c.args.pop_back();
   }
-  const std::vector<Label*> labels = labels_in(*e.def, e.area);
-  if (labels.size() != 1) {
-    return cu::fail(diag::make(codes::kNoLabel, labels.empty() ? "no label in the box" : "more than one label in the box"));
+  if (c.args.empty() || c.args.size() > 5) {
+    return port_usage(c.s);
   }
-  const std::string& op = inv.args[0];
-  const bool attribute = op == "class" || op == "use" || op == "shape";
-  bool changed = !attribute && (op == "make" || op == "remove" || (inv.args.size() > 1 && op != "exists"));
-  CommandResult r = port_on_label(e.s, *e.def, *labels.front(), inv.args, changed);
-  if (r.ok() && changed) {
-    mark_modified(*e.def);
+  std::optional<std::size_t> target;
+  int option = cu::lookup_in(c.args[0], kPortOptions);
+  if (auto missing = resolve_named_port(c, option, target)) {
+    return std::move(*missing);
   }
-  return r;
+  if (option < 0 || option == kPortHelp) {
+    return port_usage(c.s);
+  }
+  return run_port_option(c, option, target, target.has_value());
 }
 
 // --- property ------------------------------------------------------------------
@@ -698,7 +1004,7 @@ diag::Outcome<PropertyValue> build_property(const cu::Session& s, int type, cons
 CommandResult property_put(const cu::Session& s, CellDef& def, const PropertyArgs& p) {
   const std::string& name = p.words[0];
   if (p.words[1].empty()) {
-    set_property(def, name, std::nullopt);
+    (void)change_property(def, name, std::nullopt);
   } else {
     const int type = reserved_type(name, p.type);
     const bool split = p.words.size() == 2;
@@ -712,10 +1018,27 @@ CommandResult property_put(const cu::Session& s, CellDef& def, const PropertyArg
     if (!v.ok()) {
       return cu::fail(v.error());
     }
-    set_property(def, name, std::move(v).value());
+    (void)change_property(def, name, std::move(v).value());
   }
   mark_modified(def);
   return CommandResult::success();
+}
+
+CommandResult property_command(const cu::Session& s, CellDef* def, const std::vector<std::string>& args) {
+  const PropertyArgs p = parse_property_args(args, s.magic_compat);
+  if (p.compat_switch) {
+    return property_compat(s, p);
+  }
+  if (def == nullptr) {
+    return cu::fail(diag::make(codes::kNoEditCell, "No cell to set a property on."));
+  }
+  if (p.words.empty()) {
+    return property_list(s, *def);
+  }
+  if (p.words.size() == 1) {
+    return property_get(s, *def, p);
+  }
+  return property_put(s, *def, p);
 }
 
 CommandResult cmd_property(CommandContext& ctx, const Invocation& inv) {
@@ -723,26 +1046,24 @@ CommandResult cmd_property(CommandContext& ctx, const Invocation& inv) {
   if (!s.ok()) {
     return cu::fail(s.error());
   }
-  const PropertyArgs p = parse_property_args(inv.args, s.value().magic_compat);
-  if (p.compat_switch) {
-    return property_compat(s.value(), p);
-  }
-  auto def = cu::edit_cell(s.value());
-  if (!def.ok()) {
-    return cu::fail(def.error());
-  }
-  if (p.words.empty()) {
-    return property_list(s.value(), *def.value());
-  }
-  if (p.words.size() == 1) {
-    return property_get(s.value(), *def.value(), p);
-  }
-  return property_put(s.value(), *def.value(), p);
+  return property_command(s.value(), cu::property_target(s.value()), inv.args);
 }
 
 }  // namespace
 
 namespace cmdutil {
+
+CommandResult property_on(const Session& s, CellDef& def, const std::vector<std::string>& args) {
+  return property_command(s, &def, args);
+}
+
+CellDef* property_target(const Session& s) {
+  const view::LayoutWindow* w = s.editor->windows.current();
+  if (w != nullptr && w->root() != nullptr) {
+    return w->root();  // CmdProperty: the window's root cell (Q-CMDEDIT-93)
+  }
+  return s.editor->edit_cell;
+}
 
 bool register_label_commands(cmd::CommandRegistry& registry) {
   bool ok = add(registry, "label",
@@ -750,12 +1071,14 @@ bool register_label_commands(cmd::CommandRegistry& registry) {
                 "Creates a label on the box (layer chosen from the paint when omitted).", cmd_label);
   ok = add(registry, "setlabel",
            "setlabel ?-default? box|font|fontlist|justify|layer|offset|rotate|size|sticky|text|help ?value?",
-           "Shows or changes attributes of the labels in the box, or the defaults of later labels.",
+           "Shows or changes attributes of the selected edit-cell labels, or the defaults of later labels.",
            setlabel_command) && ok;
-  ok = add(registry, "port", "port make|remove|renumber|index|class|use|shape|exists ?args?",
-           "Shows or changes port attributes of the label in the box.", cmd_port) && ok;
+  ok = add(registry, "port",
+           "port [name|index] class|use|shape|index|equivalent|exists|connections|first|next|last|make|makeall|"
+           "name|remove|renumber|help ?args?",
+           "Shows or changes port attributes of the named label or the label in the box.", cmd_port) && ok;
   ok = add(registry, "property", "property ?compat ?bool?? | ?type? ?name ?value??",
-           "Lists, shows or sets properties of the edit cell.", cmd_property) && ok;
+           "Lists, shows or sets properties of the window's root cell (the edit cell without a window).", cmd_property) && ok;
   return ok;
 }
 

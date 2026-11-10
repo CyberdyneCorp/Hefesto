@@ -39,6 +39,17 @@ ResolvedStyle resolve_style(const StyleSet& set, std::size_t index) {
   return style;
 }
 
+void resolve_highlight(HighlightItem& item, const StyleSet* styles) {
+  if (styles != nullptr) {
+    item.resolved = resolve_style(*styles, item.style);
+    return;
+  }
+  ResolvedStyle white;
+  white.index = item.style;
+  white.outline = 0xFF;
+  item.resolved = white;
+}
+
 ResolvedStyle opengl_supercolor(const ResolvedStyle& style) noexcept {
   if (style.a >= 1.0F) {
     return style;

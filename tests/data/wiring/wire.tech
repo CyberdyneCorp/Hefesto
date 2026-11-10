@@ -1,0 +1,76 @@
+# wire.tech -- test technology of the wiring-tool unit tests
+# (SPDX-License-Identifier: Apache-2.0). Three metals, poly and contacts,
+# a `wiring` section with seven- and nine-field contacts and DRC width
+# rules for the default wire widths.
+tech
+    format 35
+    wiretest
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+    metal3,m3
+end
+
+types
+    well    nwell,nw
+    active  polysilicon,poly,p
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal3  metal3,m3
+    active  polycontact,pcontact,pc
+    metal1  m2contact,m2c,via
+    metal2  m3contact,m3c,via2
+end
+
+contact
+    pc   poly  metal1
+    m2c  metal1 metal2
+    m3c  metal2 metal3
+end
+
+styles
+    styletype mos
+    poly 1
+    ndiff 2
+    metal1 20
+    metal2 21
+    metal3 22
+    pc 1 20 32
+end
+
+compose
+end
+
+connect
+    poly,pc      poly,pc
+    metal1,pc,m2c metal1,pc,m2c
+    metal2,m2c,m3c metal2,m2c,m3c
+    metal3,m3c   metal3,m3c
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+wiring
+    contact pc 2 poly 1 metal1 1
+    contact m2contact 4 metal1 0 metal2 0
+    contact m3c 2 metal2 1 1 metal3 1 2
+end
+
+drc
+    width poly 2 "poly width < 2"
+    width metal1,metal2 3 "metal width < 3"
+    width metal2 4 "metal2 width < 4"
+    width metal3 6 "metal3 width < 6"
+end
+
+extract
+end

@@ -11,17 +11,23 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/command_util.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/commands_box.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands_cells.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands_labels.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/commands_misc.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/commands_paint.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands_setlabel.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/edit_util.cpp
   ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
   ${CMAKE_CURRENT_LIST_DIR}/hierarchy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/labels.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/layer_list.cpp
   ${CMAKE_CURRENT_LIST_DIR}/nm_paint.cpp
   ${CMAKE_CURRENT_LIST_DIR}/nm_split.cpp
   ${CMAKE_CURRENT_LIST_DIR}/paint.cpp
   ${CMAKE_CURRENT_LIST_DIR}/paint_plane.cpp
   ${CMAKE_CURRENT_LIST_DIR}/plane.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/polygon.cpp
   ${CMAKE_CURRENT_LIST_DIR}/property.cpp
   ${CMAKE_CURRENT_LIST_DIR}/tile_plane.cpp
   ${CMAKE_CURRENT_LIST_DIR}/transform.cpp)

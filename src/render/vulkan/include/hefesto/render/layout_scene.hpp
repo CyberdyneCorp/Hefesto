@@ -19,7 +19,7 @@
 // in its overlay from LayoutScene::labels / cells (see
 // docs/design/m1-ui-conformance.md).
 //
-// Owner: VIEWER (openspec/changes/m1-core-viewer/design.md, D2).
+// Owner: VIEW (openspec/changes/m2-interactive-editing/design.md D2).
 
 #pragma once
 
@@ -32,7 +32,10 @@
 namespace hefesto::render {
 
 /// What a batch layer draws (for tests and the shell's legend).
-enum class BatchKind : std::uint8_t { fill, outline, label, port_line, cell_box, diagonals, triangles, glyphs };
+enum class BatchKind : std::uint8_t {
+  fill, outline, label, port_line, cell_box, diagonals, triangles, glyphs,
+  highlight,  // a highlight style's fills, outlines, lines, crosses and triangles
+};
 
 /// GPU batches in redisplay order plus one LayerStyle per batch layer index.
 struct LayoutBatches {
@@ -53,7 +56,17 @@ struct LayoutBatches {
 /// Builds the batches in redisplay order: for each scene layer its fill
 /// (solid or stipple rectangles, or the diagonals of a `cross` style), its
 /// triangles, then its outline; then label rectangles, port lines and glyphs;
-/// then cell boxes.
-[[nodiscard]] LayoutBatches to_batches(const display::LayoutScene& scene);
+/// then cell boxes; then, when given, the highlights over everything
+/// (ui-feedback-and-highlights "Highlight layer and clients": the box,
+/// feedback, elements, crosshair and the selection in white solid outlines,
+/// in client order). Highlight text items are the front end's (like label
+/// text); a cross is drawn as its point, since its 5-pixel arms depend on the
+/// zoom.
+[[nodiscard]] LayoutBatches to_batches(const display::LayoutScene& scene,
+                                       const display::HighlightScene* highlights = nullptr);
+
+/// The batches of a highlight scene alone (its own layer numbering), for a
+/// front end that draws highlights as a separate pass over a retained layout.
+[[nodiscard]] LayoutBatches highlight_batches(const display::HighlightScene& highlights);
 
 }  // namespace hefesto::render

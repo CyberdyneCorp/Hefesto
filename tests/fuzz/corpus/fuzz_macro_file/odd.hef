@@ -1,0 +1,9 @@
+macro 'x' ""
+macro wind3d L "level up"
+macro <del> {erase $}
+macro Meta_Capslock_XK_F12 "paint via"
+macro list
+imacro search paint
+macro Bogus_Key
+box 0 0 1 1
+macro "unterminated

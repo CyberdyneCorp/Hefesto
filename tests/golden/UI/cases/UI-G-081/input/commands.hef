@@ -1,0 +1,9 @@
+# UI-G-081: *coord with a box set; *winddebug twice; *files.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+box 0 0 10 10
+*coord
+*winddebug
+*winddebug
+*files

@@ -14,6 +14,7 @@
 
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cell/diag_codes.hpp"
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/tech/commands.hpp"
 
 namespace hefesto::cell::detail {
@@ -164,7 +165,8 @@ void show_in_window(editor::EditorState& ed, db::CellDef& def) {
   if (view::LayoutWindow* w = ed.windows.current()) {
     w->set_root(&def);
   }
-  ed.edit_cell = def.flags().no_edit ? nullptr : &def;
+  const bool editable = !def.flags().no_edit;
+  set_edit_frame(ed, EditFrame{editable ? &def : nullptr, editable ? &def : nullptr, db::kIdentity});
 }
 
 }  // namespace hefesto::cell::detail

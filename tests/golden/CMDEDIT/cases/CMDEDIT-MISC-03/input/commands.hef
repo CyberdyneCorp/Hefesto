@@ -1,0 +1,12 @@
+# CMDEDIT-MISC-03: feedback add over the box and a triangle; count; why; save; clear x.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/tiny -noprompt
+load input/c
+box 0 0 4 4
+feedback add "x"
+feedback add "p" solid 0 0 10 0 0 10
+feedback count
+feedback why
+feedback save f.tcl
+feedback clear x
+feedback count

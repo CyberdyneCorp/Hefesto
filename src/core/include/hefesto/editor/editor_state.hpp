@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The session state that M1 commands operate on, reachable from every
-// handler through cmd::CommandContext::editor(). One per session (CLI run,
-// desktop window set, test). Each member's type is owned by its area; this
+// The session state that commands operate on, reachable from every handler
+// through cmd::CommandContext::editor(). One per session (CLI run, desktop
+// window set, test). Each member's type is owned by its area; this
 // aggregate is shared and owned by INTEGRATION
-// (openspec/changes/m1-core-viewer/design.md, D2 and D4). Areas request new
-// members through their open items instead of editing it.
+// (openspec/changes/m1-core-viewer/design.md D2/D4;
+// openspec/changes/m2-interactive-editing/design.md D2/D4 for the M2
+// members). Areas request new members through their open items instead of
+// editing it.
 
 #pragma once
 
@@ -18,14 +20,36 @@
 #include "hefesto/app/settings_stack.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cell/session.hpp"
+#include "hefesto/cmd/pointer.hpp"
+#include "hefesto/cmd/units.hpp"
 #include "hefesto/db/cell.hpp"
+#include "hefesto/db/transform.hpp"
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
+#include "hefesto/select/selection.hpp"
 #include "hefesto/tech/technology.hpp"
+#include "hefesto/ui/macros.hpp"
+#include "hefesto/ui/stacks.hpp"
+#include "hefesto/ui/state.hpp"
+#include "hefesto/ui/tools.hpp"
+#include "hefesto/undo/undo_log.hpp"
+#include "hefesto/view/color_window.hpp"
+#include "hefesto/view/feedback.hpp"
+#include "hefesto/view/highlights.hpp"
+#include "hefesto/view/tile_overlay.hpp"
 #include "hefesto/view/window.hpp"
+#include "hefesto/wiring/wiring.hpp"
 
 namespace hefesto::cell {
 class FileLockService;
+}
+
+namespace hefesto::cmd {
+class PromptHost;
+}
+
+namespace hefesto::undo {
+class DbRecorder;
 }
 
 namespace hefesto::editor {
@@ -79,6 +103,57 @@ struct EditorState {
   // PDK / app: layered settings (the project's typed compat settings stay
   // in settings::ProjectSettings, reachable through CommandContext::project()).
   app::SettingsStack settings;
+
+  // ---- M2 (openspec/changes/m2-interactive-editing/design.md D4) ----
+
+  // EDIT: `units` (replaces the M1 settings-layer key "units").
+  cmd::UnitsState units;
+
+  // UNDO: the event log and the recorder installed on `cells`
+  // (db::CellLibrary::set_recorder) by the constructor, so every session
+  // records. The dispatcher points the recorder at the project's compat
+  // settings (cmd::Dispatcher::set_editor).
+  undo::UndoLog undo;
+  std::unique_ptr<undo::DbRecorder> undo_recorder;
+
+  // SELECT: the selection (internal root-coordinate cell plus provenance).
+  select::Selection selection;
+
+  // DISPATCH: macro tables (per tool / client), the tool registry, the
+  // box and edit stacks, the `suspendall` nesting depth, the pointer of the
+  // command being run (set by the shell before a button or key macro and
+  // by `setpoint`; nullopt: no pointer) and the command counter of
+  // editor::post_command; `ui` holds the rest of the ui session state
+  // (ui/state.hpp, read through ui::state()).
+  ui::MacroTables macros;
+  ui::ToolRegistry tools;
+  ui::BoxStack box_stack;
+  ui::EditStack edit_stack;
+  int suspend_depth = 0;
+  std::optional<cmd::PointerState> command_point;
+  std::uint64_t command_count = 0;
+  ui::UiState ui;
+
+  // VIEW: feedback areas, the highlight layer, the color map editing state
+  // and the `*watch` tile overlays.
+  view::FeedbackList feedback;
+  view::HighlightLayer highlights;
+  view::ColorMapState color_map;
+  view::TileOverlays tile_overlays;
+
+  // WIRE: the wiring tool state.
+  wiring::WireState wire;
+
+  // HIER: the edit frame. `edit_transform` maps edit-cell coordinates to
+  // the coordinates of `edit_root` (Magic's EditToRootTransform and
+  // EditRootDef; identity / nullptr while the edit cell is the root). Read
+  // through editor::to_edit / editor::to_root (editor/edit_frame.hpp).
+  db::Transform edit_transform;
+  db::CellDef* edit_root = nullptr;
+
+  // INTEGRATION: the front end's prompt host (cmd/prompt.hpp; not owned).
+  // nullptr: every prompt gets its default answer (headless).
+  cmd::PromptHost* prompt = nullptr;
 };
 
 }  // namespace hefesto::editor
