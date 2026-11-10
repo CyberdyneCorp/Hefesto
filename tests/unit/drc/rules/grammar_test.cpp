@@ -15,6 +15,9 @@ namespace drc = hefesto::drc;
 namespace tech = hefesto::tech;
 using drc::test::compile;
 using drc::test::rules_tech;
+using drc::test::compat_mode;
+using drc::test::FirstLoad;
+namespace diag = hefesto::diag;
 
 TEST_CASE("a unique keyword prefix selects the rule type", "[cap:drc-rule-language][req:DRC section grammar]") {
   const auto full = compile(R"(spacing poly poly 2 touching_ok "x")");
@@ -269,4 +272,34 @@ TEST_CASE("a negative rule distance fails the line", "[cap:drc-rule-language][re
 width m1 3 "m")");
   CHECK(c.rules->details()->line_failed);
   CHECK(c.rules->halo().value == 3);
+}
+
+// Regression (tasks.md 4.10): DRCTechAddRule returns FALSE for a negative
+// distance, so TechLoad lists drc among the sections with errors and the
+// load fails; the rules of the line are still kept (drcWidth adds them).
+TEST_CASE("a negative rule distance in the loaded style fails the technology load",
+          "[cap:drc-rule-language][req:DRC section grammar]") {
+  const auto technology = rules_tech(R"(width poly -2 "w"
+width m1 3 "m")");
+  diag::CollectingSink sink;
+  const drc::LoadedRules loaded = drc::read_rules(*technology, compat_mode(true), sink);
+  CHECK_FALSE(loaded.ok());
+  CHECK(sink.take().empty());  // atoi: the line itself prints nothing
+  const FirstLoad first(technology);
+  CHECK_FALSE(first.ok);
+  REQUIRE(first.editor.drc.rules != nullptr);
+  CHECK(first.editor.drc.rules->halo().value == 3);
+}
+
+TEST_CASE("a negative rule distance in a style not loaded keeps the load good",
+          "[cap:drc-rule-language][req:DRC section grammar]") {
+  const auto technology = rules_tech(R"(style a
+width m1 3 "m"
+style b
+width poly -2 "w")");
+  const FirstLoad first(technology);
+  CHECK(first.ok);
+  CHECK(first.editor.drc.style == "a");
+  diag::CollectingSink sink;
+  CHECK(drc::read_rules(*technology, compat_mode(false), sink).ok());
 }

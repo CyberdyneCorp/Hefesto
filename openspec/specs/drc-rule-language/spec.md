@@ -64,7 +64,7 @@ cifmaxwidth   = "cifmaxwidth" , ciflayer , int , bends , why ;
 why           = quoted_string ;
 ```
 
-Token counts (keyword included) are validated before dispatch: angles 4; edge/edge4way 8–10; exact_overlap 2; exception/exemption 2; extend 5–6; no_overlap 3; option 2; overhang 5; rect_only 3; spacing 6–7; stepsize 2; surround 6–7; width 4–5; widespacing 7–8; area 5; off_grid 4; maxwidth 4–6; cifstyle 2; cifwidth 4; cifspacing 6; cifarea 5; cifmaxwidth 5; rectangle 5. A count outside the range prints `Rule type "<kw>" usage: <kw> <usage>` and the line is ignored. Integer parameters are parsed like C `atoi` (leading integer prefix, 0 if none). Errors never abort tech loading.
+Token counts (keyword included) are validated before dispatch: angles 4; edge/edge4way 8–10; exact_overlap 2; exception/exemption 2; extend 5–6; no_overlap 3; option 2; overhang 5; rect_only 3; spacing 6–7; stepsize 2; surround 6–7; width 4–5; widespacing 7–8; area 5; off_grid 4; maxwidth 4–6; cifstyle 2; cifwidth 4; cifspacing 6; cifarea 5; cifmaxwidth 5; rectangle 5. A count outside the range prints `Rule type "<kw>" usage: <kw> <usage>` and the line is ignored. Integer parameters are parsed like C `atoi` (leading integer prefix, 0 if none). Errors never stop reading the section. A rule line of the style being loaded whose distance is negative keeps the rules it added but is a rejected line: `tech load` lists `drc` among the sections that contained errors and the load fails (capability `tech-file-format`; the previous technology stays in effect).
 
 Annotated example:
 
@@ -101,6 +101,12 @@ end
 - **GIVEN** the line `width poly "x"`
 - **WHEN** the section is read
 - **THEN** the message `Rule type "width" usage: width layers width why` is reported and no rule is added
+
+#### Scenario: Negative distance fails the technology load
+- **GIVEN** the default style contains `width m1 -2 "w"`
+- **WHEN** `tech load` reads the file
+- **THEN** the line keeps its rules, `The following sections of <file> contained errors:` is printed followed by `    drc`
+- **AND** the load fails with `Error in loading technology file` and the previous technology stays in effect
 
 ### Requirement: DRC styles and variants
 The drc section SHALL support multiple named styles; only the rules of the currently selected style are loaded, with the following selection rules.

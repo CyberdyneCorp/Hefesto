@@ -104,6 +104,41 @@ std::int32_t ceil_scale(std::int64_t value, std::int64_t mul, std::int64_t div) 
   return text::clamp_int((value * mul + div - 1) / div);
 }
 
+/// The distances of one rule list rescaled to `scale` (DRCTechScale's
+/// drcScaleUp/drcScaleDown; Q-DRC-1 per `magic_compat`).
+void rescale_list(std::vector<Rule>& list, ScaleFactor old, ScaleFactor scale, bool magic_compat) {
+  if (magic_compat) {  // restore with the one-byte remainders, then rescale
+    rules_detail::scale_up(list, old.n);
+    rules_detail::scale_down(list, old.d, true);
+  } else {  // recompute from the tech-file values
+    for (Rule& rule : list) {
+      rule.dist = rule.file_dist;
+      rule.cdist = rule.file_cdist;
+      rule.dist_mod = 0;
+      rule.cdist_mod = 0;
+    }
+  }
+  rules_detail::scale_up(list, scale.d);
+  rules_detail::scale_down(list, scale.n, magic_compat);
+}
+
+/// The style details with the mask-layer rule distances scaled by
+/// `cif_factor` (drcCifScale).
+std::optional<StyleDetails> scaled_details(const RuleSet& rules, std::pair<std::int32_t, std::int32_t> cif_factor) {
+  if (rules.details() == nullptr) {
+    return std::nullopt;
+  }
+  StyleDetails details = *rules.details();
+  const auto scale_value = [&](std::int32_t& v) {
+    v = v == 0 ? 0 : text::clamp_int(std::int64_t{v} * cif_factor.first / cif_factor.second);
+  };
+  for (MaskLayerRule& mask : details.mask_layer_rules) {
+    scale_value(mask.distance);
+    scale_value(mask.value2);
+  }
+  return details;
+}
+
 /// DRCTechScale (both Q-DRC-1 modes), with the mask-layer rule distances
 /// scaled by `cif_factor` (drcCifScale) when given.
 std::shared_ptr<const RuleSet> rescale_impl(const RuleSet& rules, std::int32_t scale_n, std::int32_t scale_d,
@@ -120,37 +155,13 @@ std::shared_ptr<const RuleSet> rescale_impl(const RuleSet& rules, std::int32_t s
   new_n /= gcf;
   const ScaleFactor scale{text::clamp_int(new_n), text::clamp_int(new_d)};
   const bool magic_compat = compat.magic_compat;
-  const auto transform = [&](std::vector<Rule>& list) {
-    if (magic_compat) {  // restore with the one-byte remainders, then rescale
-      rules_detail::scale_up(list, old.n);
-      rules_detail::scale_down(list, old.d, true);
-    } else {  // recompute from the tech-file values
-      for (Rule& rule : list) {
-        rule.dist = rule.file_dist;
-        rule.cdist = rule.file_cdist;
-        rule.dist_mod = 0;
-        rule.cdist_mod = 0;
-      }
-    }
-    rules_detail::scale_up(list, scale.d);
-    rules_detail::scale_down(list, scale.n, magic_compat);
-  };
+  const auto transform = [&](std::vector<Rule>& list) { rescale_list(list, old, scale, magic_compat); };
   Halo halo = rules.halo();
   halo.mask_contribution = ceil_scale(halo.mask_contribution, scale_d, scale_n);
   halo.value = magic_compat ? ceil_scale(halo.value, scale_d, scale_n)
                             : std::max(ceil_scale(halo.tech_contribution, scale.d, scale.n), halo.mask_contribution);
   const std::int32_t step = text::clamp_int(std::int64_t{rules.step_size()} * scale_d / scale_n);
-  std::optional<StyleDetails> details;
-  if (rules.details() != nullptr) {
-    details = *rules.details();
-    for (MaskLayerRule& mask : details->mask_layer_rules) {
-      const auto scale_value = [&](std::int32_t& v) {
-        v = v == 0 ? 0 : text::clamp_int(std::int64_t{v} * cif_factor.first / cif_factor.second);
-      };
-      scale_value(mask.distance);
-      scale_value(mask.value2);
-    }
-  }
+  const std::optional<StyleDetails> details = scaled_details(rules, cif_factor);
   return rebuild(rules, halo, step, scale, transform, details ? &*details : nullptr);
 }
 
@@ -204,29 +215,47 @@ diag::Outcome<std::string> select_style(const DrcStyleList& styles, std::string_
   return *match;
 }
 
-void reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink) {
-  DrcSession& drc = editor.drc;
-  const tech::Technology& technology = *editor.technology;
-  const compat::CompatSettings compat = drc.compat_settings();
-  drc.cif = CifCatalog::from_technology(technology, sink);
-  // The first load: the first declared style, at the unscaled grid; then
-  // TechLoad's post-load scaling of the cifoutput styles and the rules.
+bool LoadedRules::ok() const noexcept {
+  const StyleDetails* details = rules != nullptr ? rules->details() : nullptr;
+  return details == nullptr || !details->line_failed;
+}
+
+LoadedRules read_rules(const tech::Technology& technology, const compat::CompatSettings& compat,
+                       diag::DiagnosticSink& sink) {
+  LoadedRules out;
+  out.cif = CifCatalog::from_technology(technology, sink);
+  // The first load: the first declared style, at the unscaled grid.
   StyleMachine machine;
-  auto rules = compile(technology, StyleMachine{}, drc.cif, compat, sink, &machine);
-  drc.styles = DrcStyleList{machine.list()};
-  drc.style = rules->style_name();
+  out.rules = compile(technology, StyleMachine{}, out.cif, compat, sink, &machine);
+  out.styles = DrcStyleList{machine.list()};
+  return out;
+}
+
+void install_rules(editor::EditorState& editor, LoadedRules loaded) {
+  DrcSession& drc = editor.drc;
+  drc.cif = std::move(loaded.cif);
+  drc.styles = std::move(loaded.styles);
+  drc.style = loaded.rules->style_name();
+  // TechLoad's post-load scaling of the cifoutput styles and the rules.
   const auto lambda = static_cast<std::int32_t>(editor.grid.lambda);
   const auto internal = static_cast<std::int32_t>(editor.grid.internal);
   std::pair<std::int32_t, std::int32_t> cif_factor{1, 1};
   if (lambda != internal) {
     cif_factor = drc.cif.rescale(lambda, internal);
   }
-  drc.rules = rescale_impl(*rules, lambda, internal, compat, cif_factor);
+  drc.rules = rescale_impl(*loaded.rules, lambda, internal, drc.compat_settings(), cif_factor);
   // drcTechFinalStyle: DRCTechHalo and DRCStepSize take the style's values,
   // which drops a `drc *halo` / `drc *stepsize` override.
   drc.halo_override.reset();
   drc.step_size.reset();
   drc.events.publish_style(drc.style);
+}
+
+bool reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink) {
+  LoadedRules loaded = read_rules(*editor.technology, editor.drc.compat_settings(), sink);
+  const bool ok = loaded.ok();
+  install_rules(editor, std::move(loaded));
+  return ok;
 }
 
 void rescale_rules(editor::EditorState& editor, std::int32_t scale_n, std::int32_t scale_d) {
