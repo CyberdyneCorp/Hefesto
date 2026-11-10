@@ -11,8 +11,8 @@ To be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. Unless
 
 | ID | capability | input description (tech, layout, commands) | what to capture | requirement(s) covered |
 |---|---|---|---|---|
-| UI-G-001 | ui-command-dispatch | `getc nonexist` and `getcell nonexist` | log; confirm both run the same command | Command name lookup |
-| UI-G-002 | ui-command-dispatch | `ext` vs `extr`, plus an ambiguous prefix `e` | log (`That command abbreviation is ambiguous.`) | Command name lookup; Command dispatch across global and client tables |
+| UI-G-001 | ui-command-dispatch | `getc nonexist` and `getcell nonexist` | log; a script line needs the exact name (`invalid command name "getc"`, Q-UI-41) | Command name lookup |
+| UI-G-002 | ui-command-dispatch | the prefixes `e` and `extr`, then the registered alias `id` (`ext`, the alias of `extract`, waits for the extractor) | log (`invalid command name "e"`, Q-UI-41) | Command name lookup; Command dispatch across global and client tables |
 | UI-G-003 | ui-command-dispatch | `foo` in a layout window | full log of the unknown-command message (no "Did you point…" line) | Command dispatch across global and client tables |
 | UI-G-004 | ui-command-dispatch | `ZoOm 2`, then `view get` | view rectangle | Command name lookup |
 | UI-G-005 | ui-command-dispatch | `help`, `help window`, `help wizard` in layout and color windows | full listing text | help command |
@@ -58,7 +58,7 @@ To be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. Unless
 | UI-G-045 | ui-windows-and-views | box drawings: a point box, a 3-pixel-wide box, a box outside the edit bbox | PNG | Box display |
 | UI-G-046 | ui-tools-and-input | `tool ; tool ; tool ; tool ; tool foo ; tool w ; tool info ; tool type` (non-Tcl) | messages; current tool | tool command; Tool registry |
 | UI-G-047 | ui-tools-and-input | *interactive* X11: box at (0,0)-(10,10); left click at (20,30); right click at (25,5); left+right corner-move sequence | box values after each | Box tool buttons |
-| UI-G-048 | ui-tools-and-input | `cursor`, `cursor lambda`, `cursor window`, `cursor 22`, `cursor bogus` | outputs | cursor command |
+| UI-G-048 | ui-tools-and-input | `cursor 22`, `cursor bogus` (the `cursor` queries read the X pointer, uninitialised on Magic's null display: dropped, Q-UI-43) | outputs | cursor command |
 | UI-G-049 | ui-tools-and-input | the generated system `.magicrc` (new macros, Tcl and non-Tcl variants) | full `macro list` per tool and client | Default key bindings |
 | UI-G-050 | display-style-files | load `mos.OpenGL.dstyle`, `mos.24bit.dstyle` and `mos.7bit.dstyle`; dump the style table (index, mask, color, outline, fill, stipple, short and long name, num) | table dump | Style table model; Dstyle file grammar; Dstyle style-line field semantics |
 | UI-G-051 | display-style-files | mutated dstyle files: 51 display styles; pale count ≠ layout count; unknown section; `layout_styles` after `pale_styles`; bad fill; color by name; `version` without a number | error messages; load result; exit status | Dstyle section count validation; Dstyle file grammar |

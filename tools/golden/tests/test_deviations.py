@@ -41,6 +41,19 @@ class ParseTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(deviations.DeviationError):
                 deviations.parse(bad)
 
+    def test_deferred_entry(self):
+        dev = deviations.parse('[X-1]\ndeferred = "M3"\noutputs = ["stdout.txt"]\nreason = "r"\n')["X-1"]
+        self.assertEqual(dev.decisions, ())
+        self.assertEqual(dev.deferred, "M3")
+        self.assertIn("deferred to M3", dev.describe())
+        both = deviations.parse(ENTRY + 'deferred = "M4"\n')["X-1"]
+        self.assertEqual(both.basis(), "Q-TECH-25; deferred to M4")
+        for bad in ('[X-1]\ndeferred = "later"\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = 3\noutputs = ["a"]\nreason = "r"\n',
+                    '[X-1]\ndeferred = ""\noutputs = ["a"]\nreason = "r"\n'):
+            with self.subTest(bad=bad), self.assertRaises(deviations.DeviationError):
+                deviations.parse(bad)
+
     def test_check_rejects_unknown_outputs(self):
         dev = deviations.parse(ENTRY)["X-1"]
         deviations.check(dev, ["stdout.txt", "stderr.txt"])
@@ -81,6 +94,8 @@ class RepositoryFileTest(unittest.TestCase):
     def test_every_entry_names_a_captured_case_its_outputs_and_decisions(self):
         known = deviations.load(GOLDEN_ROOT)
         headings = decision_headings()
+        milestones = set(re.findall(r"^## (M\d+)\b", (REPO / "docs" / "roadmap.md").read_text(encoding="utf-8"),
+                                    re.MULTILINE))
         cases = {p.parent.name: p.parent for p in GOLDEN_ROOT.glob("*/cases/*/case.toml")}
         for case_id, dev in known.items():
             with self.subTest(case=case_id):
@@ -90,6 +105,8 @@ class RepositoryFileTest(unittest.TestCase):
                 deviations.check(dev, [o.name for o in case.outputs])
                 for decision in dev.decisions:
                     self.assertIn(decision, headings, f"{decision} is not a heading in docs/decisions")
+                if dev.deferred:
+                    self.assertIn(dev.deferred, milestones, f"{dev.deferred} is not a milestone of docs/roadmap.md")
 
 
 if __name__ == "__main__":

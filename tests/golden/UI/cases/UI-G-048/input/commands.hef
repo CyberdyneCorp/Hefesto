@@ -1,10 +1,7 @@
-# UI-G-048: cursor, cursor lambda, cursor window, cursor 22, cursor bogus.
+# UI-G-048: cursor 22, cursor bogus (the cursor queries read the X pointer, uninitialised on Magic's null display: dropped per Q-UI-43).
 # Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
 tech load input/tiny -noprompt
 load input/c
 setpoint 100 100 0
-cursor
-cursor lambda
-cursor window
 cursor 22
 cursor bogus

@@ -132,7 +132,16 @@ outputs = ["stdout.txt"]
 reason = "tech revert * re-locks the layers locked in the technology file"
 ```
 
-`replay.py` reports such a case as `DEVIATION`, counted like a skip (CTest shows it as skipped). It still fails when another output differs, and it fails when the case passes, so a stale entry is removed. `tests/test_deviations.py` checks that every entry names a captured case, its outputs and existing decisions. A Hefesto bug is never listed: fix it.
+A case whose Magic output needs a feature of a later milestone (a command or engine that does not exist yet) is listed with `deferred`, the milestone of `docs/roadmap.md` that brings it, instead of or beside `decisions`; its reason names the missing feature. Every entry needs at least one decision or a `deferred` milestone:
+
+```toml
+[CMDEDIT-LBL-07]
+deferred = "M3"
+outputs = ["stdout.txt"]
+reason = "goto ... reports the DRC check plane's checkpaint tile; the check plane arrives with the DRC engine"
+```
+
+`replay.py` reports such a case as `DEVIATION`, counted like a skip (CTest shows it as skipped). It still fails when another output differs, and it fails when the case passes, so a stale entry is removed. `tests/test_deviations.py` checks that every entry names a captured case, its outputs, existing decisions and a milestone heading of `docs/roadmap.md` for `deferred`. When the milestone lands, the case passes and the stale entry fails replay until it is removed. A Hefesto bug is never listed: fix it.
 
 To compare two files by hand:
 
@@ -174,6 +183,7 @@ Most M1 cases (TECH, CELL, MODEL, UI) run a Tcl script in Magic and the equivale
 
 - Every command line of `commands.tcl` is `puts [cmd]` or `catch {cmd} result; puts $result`, so each prints exactly one result line; `commands.hef` has the same commands, one per line, and `quit -noprompt` only in the Tcl script.
 - `[hefesto] args` include `--diagnostics=magic`: `hefesto-cli` then prints each script command's result (an empty line for an empty result). As in Magic's Tcl build, a failed command's error is TxError text on stderr and its result stays empty, except for an explicit result (`tech load` failures: `Technology file does not exist or is not readable\n`, `Error in loading technology file\n`) or a Tcl error (unknown command, raised usage error), whose text is the result. It renders diagnostics as Magic's text (`diag::format_magic`: technology-file messages get TechPrintLine's `<file>: line <n>: section <s>:` line; informational messages go to stdout like TxPrintf, the rest to stderr like TxError).
+- Like the reference script, which catches every line, `--diagnostics=magic` lets the script go on after an error (an unknown command included). As in Magic's Tcl build, script lines need exact command names (`getc` is `invalid command name "getc"`, Q-UI-41), and every command without a `setpoint` gets the point at screen (100, 100) of the window under it, as `magic -dnull` gives it (Q-UI-43).
 - Both streams use the `magic-console` comparator, which removes Magic's leading startup preamble (banner, NULL graphics, startup files) and compares everything else byte for byte. The patterns, each with its Magic source line, are in `compare/magic_console.py`; extend them only when a capture shows another preamble message.
 
 Capture in CI (`.github/workflows/golden-capture.yml`):
