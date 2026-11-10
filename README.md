@@ -11,7 +11,7 @@ It is **data-compatible with [Magic VLSI](https://github.com/RTimothyEdwards/mag
 > - **Specs:** 169 capabilities and 1,983 requirements. Milestones M0, M1 and M2 pass the readiness gate; M2 requirement coverage is 163 of 163.
 > - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (all 441 sky130 standard cells round-trip byte-identical), keeps crash backups and file locks like Magic, loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2; with progress, update checks and offline packs) and starts up like Magic. M2 adds Magic's editing command set (box, paint, erase, select, move, copy, stretch, arrays, hierarchy, labels, ports, properties), layout undo/redo, connectivity selection, the wiring tool, command dispatch with macros, key bindings and tools, highlights and feedback, and the color window. `hefesto-cli` runs all of it; the desktop app is an editor over Raven and the Vulkan canvas: canvas input through Magic's key and button bindings, a live tool rail, selection inspector, command history and completion, undo history, a key-binding sheet and dockable panels. Golden cases captured from Magic: 264; 226 match and 38 differ only where a documented decision or a later milestone's feature says so ([`tests/golden/deviations.toml`](tests/golden/deviations.toml)). Build instructions: [`docs/building.md`](docs/building.md).
 > - **Raven go/no-go:** provisional "GO, conditional"; see [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md).
-> - **Screenshots:** the images below are design mockups, not running software.
+> - **Screenshots:** [the running app at M2](#screenshots-running-app-m2) (desktop editor on sky130), followed by the [design mockups](#screenshots-design-mockups) of screens later milestones build.
 
 ## Features
 
@@ -68,6 +68,38 @@ mindmap
       Headless CLI
       Plugins and scripting
 ```
+
+## Screenshots (running app, M2)
+
+Captures of the current desktop app (macOS, Vulkan through MoltenVK) editing `sky130_fd_sc_hd__dfxtp_1` from the sky130A PDK. They were taken with the app's scripted capture option (`--run 'CMD; …' --capture FILE`), so they show the real program.
+
+### Selection and inspector
+
+`select area metal1` inside the box: the selection is outlined on the canvas and the inspector lists it, with actions that run `select net`, `what` and `delete`.
+
+![Selection and inspector](docs/images/app/m2-selection.png)
+
+### Light theme
+
+![Light theme](docs/images/app/m2-light.png)
+
+### Color window
+
+`specialopen color 47`: Magic's color window as a docked panel, with the RGB/HSV bars and pumps, load and save.
+
+![Color window](docs/images/app/m2-color.png)
+
+### Key bindings
+
+The Keys tab lists every macro table, the current tool's first; choosing a row puts the `macro` command in the command bar to edit it.
+
+![Key bindings](docs/images/app/m2-keys.png)
+
+### Hierarchy
+
+`sky130_fd_sc_hd__macro_sparecell` with its subcells expanded.
+
+![Expanded hierarchy](docs/images/app/m2-spare.png)
 
 ## Screenshots (design mockups)
 

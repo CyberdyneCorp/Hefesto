@@ -46,7 +46,7 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Set up the repository, the build and CI, and a headless core. Prove that Raven can host a high-performance layout canvas. Build the capture setup for expected outputs.
 
-**Status (2026-11-07):** in progress, OpenSpec change `m0-foundations`. Build, core and CLI, desktop shell and canvas spike, golden tooling and CI are implemented and pass locally on macOS arm64. Open: the first CI run on Linux, a reference-captured golden case, and the Raven go/no-go checks on the reference platforms. Progress: `openspec/changes/m0-foundations/tasks.md`.
+**Status (2026-11-10):** merged (OpenSpec change `m0-foundations`). Build, core and CLI, desktop shell and canvas spike, golden tooling and CI run on every Linux and macOS leg. M0 tasks 3.3, 3.6, 3.7 and 6.3 stay open: the Raven go/no-go is provisional "GO, conditional" until the reference-hardware frame-rate run and the Linux checks (M2 tasks 10.1 and 11.4); see `docs/decisions/raven-go-no-go.md`.
 
 **Capabilities:** `hefesto-platform-targets`, `hefesto-architecture`, `hefesto-build-and-distribution`, `hefesto-licensing`, `hefesto-diagnostics`, `hefesto-testing-strategy`, `hefesto-output-determinism`, `hefesto-magic-compat-mode`
 
