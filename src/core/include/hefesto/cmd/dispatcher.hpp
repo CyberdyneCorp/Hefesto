@@ -7,8 +7,12 @@
 // "Command counter and post-command update", "Command logging").
 //
 // A command word is resolved in the `*window` table and the table of the
-// target client (CommandRegistry::resolve): unique prefixes and any letter
-// case are accepted, an exact name wins. With an editor session attached,
+// target client (CommandRegistry::resolve). As in Magic's Tcl build, the
+// name must be exact (no abbreviation, no case folding; Q-UI-41), except for
+// a line typed in the desktop command bar (Origin::gui) while typed
+// abbreviations are on: that word may be a unique prefix in any letter case
+// (Magic's Lookup()). An unknown name fails with Tcl's message
+// `invalid command name "W"`. With an editor session attached,
 // every executed command is then written to the `logcommands` log (as
 // typed), published to the observers (with the resolved command name), and
 // followed by editor::post_command (counter, undo step, client updates,
@@ -20,15 +24,21 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/db/geometry.hpp"
 
 namespace hefesto::cmd {
+
+/// Tcl's error text for a word that names no command (Q-UI-41).
+[[nodiscard]] std::string invalid_command_name(std::string_view word);
 
 /// Notified after every executed command: command log, history, replay.
 class CommandObserver {
@@ -46,8 +56,9 @@ class Dispatcher {
   Dispatcher(const CommandRegistry& registry, platform::PlatformServices services,
              settings::ProjectSettings& project, ScriptSession& session);
 
-  /// Runs one command. An unknown name fails with CMD-DISPATCH-001, an
-  /// ambiguous abbreviation with UI-DISPATCH-001; an empty name is a no-op.
+  /// Runs one command. An unknown name fails with CMD-DISPATCH-001
+  /// (`invalid command name "W"`), an ambiguous abbreviation of a typed line
+  /// with UI-DISPATCH-001; an empty name is a no-op.
   /// The result carries every diagnostic emitted while the command ran
   /// (emitted through the context first, then those the handler returned).
   /// Each diagnostic is also forwarded to the attached sinks and the logger.
@@ -86,16 +97,40 @@ class Dispatcher {
   void set_client(std::string client) { client_ = std::move(client); }
   [[nodiscard]] const std::string& client() const noexcept { return client_; }
 
+  /// Q-UI-43: a script command with no point set by `setpoint` gets the
+  /// point at screen (x, y) of the window under it (the topmost, color or
+  /// layout), as Magic's Tcl dispatcher gives every command
+  /// txCurrentPoint = (100, 100). Only the headless CLI sets it: the
+  /// desktop shell's pointer is real. The point lasts for that one command.
+  void set_default_point(std::optional<db::Point> pixel) noexcept { default_point_ = pixel; }
+
+  /// Whether a line typed in the command bar (Origin::gui) may abbreviate a
+  /// command name (Q-UI-41; on by default). Every other origin always needs
+  /// the exact name; the headless CLI turns this off.
+  void set_typed_abbreviations(bool on) noexcept { typed_abbreviations_ = on; }
+  /// The lookup mode of a command from `origin`.
+  [[nodiscard]] NameLookup name_lookup(Origin origin) const noexcept {
+    return typed_abbreviations_ && origin == Origin::gui ? NameLookup::abbreviated : NameLookup::exact;
+  }
+
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
  private:
-  /// The client of the next command: `color` when the command point is in a
-  /// color window, else client().
+  /// The client of the next command: `*window` when the default point is on
+  /// a window's chrome, `color` when the command point is in a color window,
+  /// else client().
   [[nodiscard]] std::string target_client() const;
   CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation);
   void publish(const Invocation& invocation, const CommandResult& result);
   void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result);
+  /// Sets the default point (set_default_point) when no point is set; true
+  /// when it did, so that it is dropped after the command.
+  bool place_default_point();
+  void drop_default_point(const db::Point& saved_pixel);
+  void print_command(const Invocation& invocation);
+  /// magic-compat: Magic's Lookup() finds the word ambiguous (`id`, `get`).
+  [[nodiscard]] bool magic_ambiguous(const std::string& word, const std::string& client) const;
 
   const CommandRegistry& registry_;
   platform::PlatformServices services_;
@@ -103,6 +138,9 @@ class Dispatcher {
   ScriptSession& session_;
   editor::EditorState* editor_ = nullptr;
   std::string client_{kLayoutClient};
+  bool typed_abbreviations_ = true;
+  std::optional<db::Point> default_point_;
+  bool chrome_point_ = false;  // the default point is on a window's chrome
   std::vector<CommandObserver*> observers_;
   std::vector<diag::DiagnosticSink*> sinks_;
   std::vector<diag::DiagnosticSink*> live_sinks_;

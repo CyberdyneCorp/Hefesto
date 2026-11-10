@@ -169,10 +169,11 @@ CommandResult specialopen_cmd(CommandContext& ctx, const Invocation& inv) {
     return specialopen_usage(ctx);
   }
   editor::EditorState& ed = *e.value();
-  const ScreenRect frame = coords ? explicit_frame(a, ed.windows) : create_frame();
-  if (*client == kColorClient) {
-    return open_color(ctx, ed, frame, a.size() > first + 1 ? std::string_view(a[first + 1]) : std::string_view());
+  if (*client == kColorClient) {  // CMWcreate replaces any frame with its own
+    return open_color(ctx, ed, color_window_frame(ed.windows.screen()),
+                      a.size() > first + 1 ? std::string_view(a[first + 1]) : std::string_view());
   }
+  const ScreenRect frame = coords ? explicit_frame(a, ed.windows) : create_frame();
   if (*client != kLayoutClient) {
     return fail(codes::kClient, "The " + std::string(kClients[*client]) + " window is not available in this version.");
   }

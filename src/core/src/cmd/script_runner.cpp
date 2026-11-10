@@ -56,7 +56,8 @@ ScriptRun run_script(Dispatcher& dispatcher, std::string_view text, Origin origi
     ++run.commands_run;
     if (!result.ok()) {
       ++run.failures;
-      if (dispatcher.session().strict || result.raises || is_dispatch_failure(result)) {
+      const ScriptSession& session = dispatcher.session();
+      if (!session.catch_lines && (session.strict || result.raises || is_dispatch_failure(result))) {
         run.aborted = true;
         run.error = raised_error(result, invocation);
         return run;

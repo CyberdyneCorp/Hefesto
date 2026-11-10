@@ -121,6 +121,44 @@ decisions = ["Q-UI-24"]
 outputs = ["f.txt"]
 reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
 
+[UI-G-005]
+deferred = "M12"
+outputs = ["stdout.txt"]
+reason = "help prints Magic's help string of every registered command; the layout commands of later milestones are not registered yet (drc M3; calma, gds, cif M5; def, lef M6; extract, ext, ext2sim, ext2spice, exttosim, exttospice, extresist, antennacheck M7; plot, iroute, *iroute, *mzroute M10; channels, garoute, route, plow, getnode, *garoute, *groute, *seeflags M12)"
+
+[UI-G-009]
+decisions = ["Q-UI-12", "Q-UI-42"]
+deferred = "M4"
+outputs = ["stdout.txt"]
+reason = "Magic's null display defines only the single-character and ^X bindings; Hefesto's table also holds the keysym and button bindings (Q-UI-12), which grow its hash table, so the listing has more entries in another order (with only Magic's headless bindings Hefesto lists Magic's order: macro_test 'null-display bindings'); toolkit.tcl's ^P gencell binding arrives with pcell-toolkit (M4)"
+
+[UI-G-011]
+decisions = ["Q-UI-12", "Q-UI-42"]
+outputs = ["stdout.txt"]
+reason = "Control_r and Shift_a are keysym names, which Magic's null display cannot parse: Hefesto shows ^R's binding for Control_r and binds Shift_a (A) to box"
+
+[UI-G-012]
+decisions = ["Q-UI-12", "Q-UI-42"]
+outputs = ["stdout.txt"]
+reason = "Button1 is a keysym name: Magic's null display defines no button bindings, Hefesto shows the wiring and box tools' Button1 bindings"
+
+[UI-G-013]
+decisions = ["Q-UI-12", "Q-UI-42"]
+deferred = "M4"
+outputs = ["stdout.txt"]
+reason = "the copied table lists the box table's bindings: with the keysym bindings Hefesto adds (Q-UI-12) it has more entries in another hash order; toolkit.tcl's ^P gencell binding arrives with pcell-toolkit (M4)"
+
+[UI-G-046]
+decisions = ["Q-UI-12", "Q-UI-42"]
+outputs = ["stdout.txt"]
+reason = "tool info lists the button bindings, which Magic's null display cannot define (keysym names)"
+
+[UI-G-049]
+decisions = ["Q-UI-12", "Q-UI-42"]
+deferred = "M4"
+outputs = ["stdout.txt"]
+reason = "the box, wiring and color tables hold the keysym and button bindings Magic's null display cannot define, so they list more entries in another hash order (the wiring copy of Magic's headless table is reproduced exactly by macro_test 'null-display bindings'); toolkit.tcl's ^P gencell binding arrives with pcell-toolkit (M4)"
+
 # --- CMDEDIT ----------------------------------------------------------------
 
 [CMDEDIT-MISC-03]
@@ -167,3 +205,8 @@ reason = "orient 180v is sideways (as getcell maps it) where Magic prints the us
 decisions = ["Q-CELL-34"]
 outputs = ["stdout.txt", "stderr.txt"]
 reason = "archive read X tries X before X.mag, so the archive just written as arch.mag is read back (with the reader's timestamp and duplicate-id notes); Magic looks for arch.mag.mag and reports 'Cannot open archive file'"
+
+[CMDEDIT-LBL-07]
+deferred = "M3"
+outputs = ["stdout.txt"]
+reason = "goto on a point with no paint in the edit cell reports the DRC check plane's checkpaint tile left by the earlier paint; the check plane arrives with the DRC engine"

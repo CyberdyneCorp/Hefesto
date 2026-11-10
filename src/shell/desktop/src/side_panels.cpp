@@ -140,6 +140,9 @@ void LeftPanel::rebuild_layers() {
     row->set_tooltip("Click: paint layer · eye: " + layers_[i].toggle_command() + " · lock: " +
                      layers_[i].lock_command());
     row->on_click([this, i](float x, float) { layer_click(i, x); });
+    row->on_context([this, i](float x, float y) {
+      if (ctx_.menu && i < layers_.size()) ctx_.menu(layers_[i].name, layer_menu(layers_[i]), x, y);
+    });
     layer_rows_box_.add(*row);
     layer_widgets_.push_back(std::move(row));
   }
@@ -291,7 +294,12 @@ void InspectorPanel::rebuild_actions(std::vector<InspectorAction> actions) {
     button->set_role(ui::Role::button);
     button->set_accessible_name(label);
     button->set_tooltip(actions_[i].command);
-    button->on_click([this, i](float, float) {
+    ui::Painted* placed = button.get();
+    button->on_click([this, i, placed](float, float) {
+      if (actions_[i].menu) {
+        open_action_menu(i, *placed);
+        return;
+      }
       // A command that needs an argument goes to the command bar.
       const std::string& command = actions_[i].command;
       if (!command.empty() && command.back() == ' ') {
@@ -308,6 +316,16 @@ void InspectorPanel::rebuild_actions(std::vector<InspectorAction> actions) {
   if (!actions_.empty()) actions_box_.add(row);
 }
 
+void InspectorPanel::open_action_menu(std::size_t index, const ui::Widget& button) {
+  if (!ctx_.menu || actions_[index].command != "orient") return;
+  std::string current;
+  for (const InspectorRow& row : view_.rows) {
+    if (row.key == "Orientation") current = row.value;
+  }
+  const ui::Rect r = button.rect();
+  ctx_.menu("Orientation", orient_menu(current), r.x, r.y + r.height + 2.0F);
+}
+
 void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_root) {
   const editor::EditorState& ed = ctx_.editor();
   std::vector<InspectorAction> actions;
@@ -321,6 +339,12 @@ void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_r
   body_->set_accessible_description(view_.title + ". " + view_.subtitle);
   body_->set_tooltip(view_.title + " — " + view_.subtitle);  // the painted title and subtitle may be ellipsized
   body_->invalidate();
+}
+
+bool InspectorPanel::focus() {
+  if (action_widgets_.empty()) return false;
+  action_widgets_.front()->focus();
+  return true;
 }
 
 void InspectorPanel::repaint() {

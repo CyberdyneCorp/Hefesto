@@ -17,6 +17,7 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
+#include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "hefesto/shell/view_models.hpp"
 
@@ -44,6 +45,8 @@ struct Recorder {
                        },
                        [this](PanelId id, std::optional<bool> show) { return shown[id] = show.value_or(!shown[id]); },
                        [this](PanelId id) { return shown[id]; },
+                       {},
+                       {},
                        [this](std::optional<std::string> name) -> std::optional<std::string> {
                          if (name && *name == "nosuch") return std::nullopt;
                          if (name) paint = *name;
@@ -87,7 +90,7 @@ TEST_CASE("panel collapses and restores the main window's panels through the com
   CHECK_FALSE(sink.submit("panel layers sideways").ok());
   // Without panel actions (another front end) the command is not registered.
   CoreSession other(test_options());
-  REQUIRE(register_view_commands(other.registry(), ViewActions{[](ThemeMode) {}, [](double, double) {}, {}, {}, {}}));
+  REQUIRE(register_view_commands(other.registry(), ViewActions{[](ThemeMode) {}, [](double, double) {}, {}, {}, {}, {}, {}}));
   CHECK_FALSE(CoreCommandSink(other.dispatcher()).submit("panel layers").ok());
 }
 
@@ -133,13 +136,17 @@ TEST_CASE("view commands are core commands dispatched from the command bar",
   }
 
   // `help` prints Magic's per-client listing (ui-command-dispatch "help
-  // command") as a report, which the console shows.
+  // command") as a report, which the console shows: Magic's own help text
+  // with magic-compat on, the shell's commands too with it off.
   const CommandOutcome help = sink.submit("help");
   REQUIRE(help.ok());
   const std::string listing = console_result(help, help.message);
-  CHECK(listing.find("theme dark|light") != std::string::npos);
-  CHECK(listing.find("zoom factor") != std::string::npos);  // the core's synopsis
-  CHECK(listing.find("version") != std::string::npos);      // core built-ins are there too
+  CHECK(listing.find("zoom") != std::string::npos);
+  CHECK(listing.find("version") != std::string::npos);  // core built-ins are there too
+  core.project().compat.magic_compat = false;
+  const CommandOutcome native = sink.submit("help");
+  REQUIRE(native.ok());
+  CHECK(console_result(native, native.message).find("theme dark|light") != std::string::npos);
   CHECK_FALSE(register_view_commands(core.registry(), rec.actions()));  // names already taken
 }
 
@@ -321,14 +328,59 @@ TEST_CASE("a hierarchy row whose child covers it expands one level and keeps the
 }
 
 // Regression (M2 review): `specialopen color` succeeded silently in the
-// desktop app, which has no color window screen yet (task 10.6).
-TEST_CASE("opening a color window says the desktop does not show it yet",
+// desktop app; the color window screen (task 10.6) now shows the window it
+// opens, so the command no longer warns.
+TEST_CASE("opening a color window shows it on the color window screen",
           "[cap:ui-color-window][req:Color window creation and layout]") {
   CoreSession core(test_options());
+  core.editor().styles.emplace();
+  core.editor().styles->colors.entries.resize(8);
   CoreCommandSink sink(core.dispatcher());
-  const CommandOutcome opened = sink.submit("specialopen color");
+  const CommandOutcome opened = sink.submit("specialopen color 3");
   REQUIRE(opened.ok());
-  CHECK(opened.printed.find("color window is not available in the desktop app yet") != std::string::npos);
-  const CommandOutcome plain = sink.submit("echo x");
-  CHECK(plain.printed.find("color window") == std::string::npos);
+  CHECK(opened.printed.find("not available in the desktop app") == std::string::npos);
+  const auto shown = color_window_view(core.editor());
+  REQUIRE(shown.has_value());
+  CHECK(shown->caption == "COLOR = 003");
+}
+
+// D10 M1 gap: toggling a hierarchy row must not expand an overlapping
+// sibling (the M1 box-based `expand` expanded every instance under the box).
+TEST_CASE("a hierarchy row toggles its instance only, not an overlapping sibling",
+          "[cap:ui-windows-and-views][req:Instance-addressed expansion]") {
+  CoreSession core(test_options());
+  editor::EditorState& ed = core.editor();
+  db::CellDef top("top", 4);
+  db::CellDef a("a", 4);
+  db::CellDef b("b", 4);
+  const auto add = [&top](db::CellDef& child, const char* id, db::Rect bbox) {
+    auto use = std::make_unique<db::CellUse>();
+    use->id = id;
+    use->def = &child;
+    use->parent = &top;
+    use->bbox = bbox;
+    use->transform = db::Transform{1, 0, bbox.x0, 0, 1, bbox.y0};
+    top.uses().push_back(std::move(use));
+    return top.uses().back().get();
+  };
+  db::CellUse* x1 = add(a, "X1", db::Rect{100, 100, 200, 200});
+  db::CellUse* x2 = add(b, "X2", db::Rect{150, 150, 250, 250});  // overlaps X1
+  ed.edit_cell = &top;
+  auto opened = ed.windows.open(&top, view::ScreenRect{0, 0, 999, 999});
+  REQUIRE(opened);
+  view::LayoutWindow& win = *opened.value();
+  ed.windows.set_current(win.id());
+  const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
+  REQUIRE(rows.size() == 3);
+  const auto row_of = [&rows](const db::CellUse* use) {
+    return *std::find_if(rows.begin(), rows.end(), [use](const HierarchyRow& r) { return r.use == use; });
+  };
+  CoreCommandSink sink(core.dispatcher());
+  REQUIRE(sink.submit(row_of(x1).toggle_command()).status == OutcomeStatus::ok);
+  CHECK(win.is_expanded(*x1));
+  CHECK_FALSE(win.is_expanded(*x2));
+  REQUIRE(sink.submit(row_of(x2).toggle_command()).status == OutcomeStatus::ok);
+  REQUIRE(sink.submit(row_of(x1).toggle_command().replace(0, 6, "unexpand")).status == OutcomeStatus::ok);
+  CHECK_FALSE(win.is_expanded(*x1));
+  CHECK(win.is_expanded(*x2));  // collapsing X1 leaves its overlapping sibling open
 }

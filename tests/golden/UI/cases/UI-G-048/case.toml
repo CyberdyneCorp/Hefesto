@@ -11,7 +11,7 @@ area = "UI"
 capability = "ui-tools-and-input"
 requirements = ["cursor command"]
 tool = "magic"
-description = "cursor, cursor lambda, cursor window, cursor 22, cursor bogus."
+description = "cursor 22, cursor bogus (the cursor queries read the X pointer, uninitialised on Magic's null display: dropped per Q-UI-43)."
 
 [reference]
 script = "input/commands.tcl"

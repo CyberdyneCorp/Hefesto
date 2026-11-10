@@ -14,6 +14,7 @@ add_library(hefesto_shell_desktop STATIC
   src/assets.cpp
   src/canvas_controller.cpp
   src/canvas_overlay.cpp
+  src/color_panel.cpp
   src/command_bar_model.cpp
   src/core_command_sink.cpp
   src/editing_models.cpp
@@ -26,8 +27,10 @@ add_library(hefesto_shell_desktop STATIC
   src/pdk_panel_model.cpp
   src/raven_ui.cpp
   src/screen_paint.cpp
+  src/screen_models.cpp
   src/shell.cpp
   src/side_panels.cpp
+  src/text_key_filter.cpp
   src/theme_tokens.cpp
   src/view_commands.cpp
   src/view_models.cpp)

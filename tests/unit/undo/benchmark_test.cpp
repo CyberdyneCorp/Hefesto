@@ -3,7 +3,8 @@
 //
 // Undo recording cost (m2-interactive-editing task 4.6, design.md R2):
 // paint, erase, undo and redo of 10,000 rectangles in a cell holding a
-// 100 x 100 array of sky130_fd_sc_hd__dfxtp_1, against hefesto-performance
+// 100 x 100 array of sky130_fd_sc_hd__dfxtp_1, and one paint merging them
+// all (with its undo), against hefesto-performance
 // "Edit latency" (an edit of up to 10,000 rectangles updates the view
 // within 50 ms). The database work (edit + recording + replay + bounding
 // boxes) is timed; the view update itself is VIEW/SHELL's. Timings are
@@ -129,6 +130,24 @@ TEST_CASE("paint, erase, undo and redo of 10,000 rectangles over a 100x100 dfxtp
     REQUIRE(r.value().steps == 2);
   });
   CHECK(db::test::rects(top->plane(*tech.value()->home_plane(*m1.id))).empty());
+  // One `paint` command over the whole array that merges the 10,000
+  // rectangles into one (the "command affecting 10,000 rectangles" of the
+  // target), and its undo.
+  paint_all();
+  REQUIRE(editor.undo.close_step());
+  const double cover_ms = millis([&] {
+    REQUIRE(db::paint(*top, *tech.value(), span, *m1.id).ok());
+    REQUIRE(editor.undo.close_step());
+  });
+  CHECK(db::test::rects(top->plane(*tech.value()->home_plane(*m1.id))).size() == 1);
+  const double undo_cover_ms = millis([&] {
+    auto r = editor.undo.undo(editor);
+    REQUIRE(r.ok());
+    REQUIRE(r.value().steps == 1);
+  });
+  CHECK(db::test::rects(top->plane(*tech.value()->home_plane(*m1.id))) == painted);
+  REQUIRE(editor.undo.undo(editor).ok());
+  CHECK(db::test::rects(top->plane(*tech.value()->home_plane(*m1.id))).empty());
   // The same edits without a recorder: the cost of recording.
   editor.cells.set_recorder(nullptr);
   const double plain_paint_ms = millis(paint_all);
@@ -137,8 +156,11 @@ TEST_CASE("paint, erase, undo and redo of 10,000 rectangles over a 100x100 dfxtp
   WARN("undo benchmark (ms): paint 10k rects " << paint_ms << " (unrecorded " << plain_paint_ms << "), erase 10k "
                                               << erase_ms << " (unrecorded " << plain_erase_ms << "), undo erase "
                                               << undo_ms << ", redo erase " << redo_ms << ", undo erase+paint "
-                                              << undo_paint_ms);
+                                              << undo_paint_ms << ", paint over 10k " << cover_ms
+                                              << ", undo it " << undo_cover_ms);
 #ifdef NDEBUG
+  CHECK(cover_ms < 50.0);
+  CHECK(undo_cover_ms < 50.0);
   CHECK(erase_ms < 50.0);
   CHECK(undo_ms < 50.0);
   CHECK(redo_ms < 50.0);

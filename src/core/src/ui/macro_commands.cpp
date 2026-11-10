@@ -41,11 +41,19 @@ struct MacroRequest {
   bool named = false;  // the first word named a client or tool
   MacroOptions options;
   std::span<const std::string> rest;
+  /// The table a listing reads. Magic's listing looks the client's own name
+  /// up in MacroClients, which holds only tool and client tables, so
+  /// `macro layout list` names the layout client, finds no `layout` table
+  /// and returns the table names (windows/windCmdAM.c:windDoMacro).
+  std::string listed;
 };
 
 // The table named by the first word, if it names a client or a tool.
+// A client of an optional module Hefesto does not have (`wind3d`,
+// `netlist`) is not registered, as in a Magic build without the module, so
+// its name is no table: `macro wind3d L "level up"` silently does nothing.
 std::optional<std::string> named_table(const editor::EditorState& editor, const std::string& word) {
-  if (const ClientInfo* client = find_client_exact(word)) {
+  if (const ClientInfo* client = find_client_exact(word); client != nullptr && client_available(*client)) {
     return client->id == ClientId::layout ? macro_table_for(editor, "layout") : word;
   }
   if (editor.tools.find(word) != nullptr) {
@@ -103,20 +111,21 @@ std::string listing_line(const Macro& macro, const std::string& key, const std::
 }
 
 CommandResult list_table(const editor::EditorState& editor, const MacroRequest& req, bool interactive) {
-  if (!editor.macros.has_table(req.table)) {
+  if (!editor.macros.has_table(req.listed)) {
     cmd::Value::List known;
     for (std::string& name : editor.macros.table_names()) {
       known.emplace_back(std::move(name));
     }
-    CommandResult result = CommandResult::failure(
-        diag::make(codes::kMacroTable, "Cannot get macro list from current window."));
-    result.value = std::move(known);
+    // Magic prints the error (TxError) and returns the table names as an ok
+    // Tcl result (golden UI-G-049).
+    CommandResult result = CommandResult::success(std::move(known));
+    result.diagnostics.push_back(diag::make(codes::kMacroTable, "Cannot get macro list from current window."));
     return result;
   }
   cmd::Value::List pairs;
   std::string printed;
   bool any = false;
-  for (const auto& [key, macro] : editor.macros.entries(req.table)) {
+  for (const auto& [key, macro] : editor.macros.entries(req.listed)) {
     if (macro == nullptr) {
       break;  // Magic stops at a deleted entry
     }
@@ -277,7 +286,7 @@ CommandResult autoincr(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
 CommandResult macro_command(editor::EditorState& editor, std::span<const std::string> args, bool interactive,
                             std::string_view client) {
   ensure_defaults(editor);
-  MacroRequest req{macro_table_for(editor, client), false, {}, args};
+  MacroRequest req{macro_table_for(editor, client), false, {}, args, {}};
   if (!args.empty()) {
     if (auto table = named_table(editor, args[0])) {
       req.table = std::move(*table);
@@ -285,6 +294,8 @@ CommandResult macro_command(editor::EditorState& editor, std::span<const std::st
       req.rest = args.subspan(1);
     }
   }
+  const ClientInfo* named_client = req.named ? find_client_exact(args[0]) : nullptr;
+  req.listed = named_client != nullptr && named_client->id == ClientId::layout ? args[0] : req.table;
   return run_macro(editor, req, interactive);
 }
 

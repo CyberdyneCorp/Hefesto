@@ -491,11 +491,28 @@ TEST_CASE("identify renames the selected instance", ID) {
   REQUIRE_FALSE(dup.ok());
   CHECK(dup.diagnostics.back().code == sel::codes::kIdNotUnique);
   CHECK(db::find_use(s.top(), "inv_0") != nullptr);
-  s.ok("id buf2");
+  s.ok("identify buf2");
   CHECK(db::find_use(s.top(), "buf2") != nullptr);
   CHECK(s.selection().uses().front()->id == "buf2");
   CHECK(s.top().flags().modified);
   CHECK(s.run("identify a/b").diagnostics.back().code == sel::codes::kIdIllegal);
   s.ok("select clear");
   CHECK(s.run("identify x").diagnostics.back().text == "There isn't a selected subcell;  can't change ids.");
+}
+
+// Regression (round 3 review): Magic's Lookup() makes `id` ambiguous (its table entry is
+// "id<TAB>OR ..."), so with magic-compat on it fails quietly; with it off it is `identify`.
+TEST_CASE("id is an alias of identify only with magic-compat off", ID) {
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  db::CellDef* inv = s.cell("inv");
+  sel::test::paint(*inv, mt, {0, 0, 4, 4}, mt.m2);
+  s.place(*inv, "inv_0");
+  s.ok("box 0 0 4 4");
+  s.ok("select area subcell");
+  CHECK_FALSE(s.run("id buf2").ok());
+  CHECK(db::find_use(s.top(), "buf2") == nullptr);
+  s.project.compat.magic_compat = false;
+  s.ok("id buf2");
+  CHECK(db::find_use(s.top(), "buf2") != nullptr);
 }

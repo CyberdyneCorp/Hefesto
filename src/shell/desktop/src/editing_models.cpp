@@ -161,6 +161,8 @@ void use_view(InspectorView& view, const db::CellUse& use, std::vector<Inspector
   if (actions == nullptr) return;
   actions->push_back({"Identify…", "identify "});
   actions->push_back({"Rotate 90°", "clockwise 90"});
+  actions->push_back({"Orient…", "orient", true});
+  actions->push_back({"Array…", "array "});  // `array xsize ysize` or the bounds, in the command bar
   actions->push_back({"Expand", "expand selection"});
   actions->push_back({"Edit", "edit"});
 }

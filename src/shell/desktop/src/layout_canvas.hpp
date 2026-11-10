@@ -49,6 +49,8 @@ class LayoutCanvas final : public view::ViewObserver {
   LayoutCanvas& operator=(const LayoutCanvas&) = delete;
 
   [[nodiscard]] ui::Widget& widget() noexcept { return overlay_; }
+  /// Gives the canvas the keyboard focus (F6), so keys reach the macro tables.
+  void focus() { viewport_->focus(); }
 
   /// Shows rectangles that are not a cell (the benchmark's synthetic layout).
   void show_rects(const std::vector<render::LayeredRect>& rects, const std::vector<render::LayerStyle>& styles);

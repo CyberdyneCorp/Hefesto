@@ -11,6 +11,7 @@
 #include "raven_ui.hpp"
 
 #include "hefesto/shell/input_router.hpp"
+#include "hefesto/shell/text_key_filter.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -388,6 +389,16 @@ void announce(std::string_view text, bool assertive) {
   Raccessibility_announce(str(text).c_str(), assertive ? kTrue : kFalse);
 }
 
+Rect Widget::rect() const {
+  Rect r;
+  Rwidget_get_rect(id_, &r.x, &r.y, &r.width, &r.height);
+  return r;
+}
+
+bool Widget::has_focus() const {
+  return Rwidget_is_focused(id_) != kFalse;
+}
+
 void Widget::set_accessible_name(std::string_view name) {
   Rwidget_set_accessible_name(id_, str(name).c_str());
 }
@@ -445,6 +456,15 @@ void Box::add(const Widget& child, float fill) {
   }
 }
 
+void Box::insert(const Widget& child, int index, float fill) {
+  Rwidget_insert_child(id_, child.id(), index);  // moves it when it is already a child
+  if (fill > 0.0F) {
+    Rslot_set_fill(child.id(), fill);
+  } else {
+    Rslot_set_auto(child.id());  // a fill of 0 would be a zero-wide fill slot
+  }
+}
+
 void Box::add_centered(const Widget& child) {
   Rwidget_add_child(id_, child.id());
   Rslot_set_valign(child.id(), R_VALIGN_CENTER);
@@ -472,6 +492,27 @@ void ListPanel::add_item(std::string_view text) {
 
 void ListPanel::clear() {
   Rlist_view_clear_items(id_);
+}
+
+struct ListPanel::Select {
+  std::function<void(int)> callback;
+  bool quiet = false;  // clear_selection(): not a pick
+  static void on_change(Rid, int index, void* user) {
+    auto* self = static_cast<Select*>(user);
+    if (!self->quiet && index >= 0 && self->callback) self->callback(index);
+  }
+};
+
+void ListPanel::on_select(std::function<void(int)> callback) {
+  if (!select_) select_ = std::make_shared<Select>();
+  select_->callback = std::move(callback);
+  Rlist_view_set_selection_changed_callback(id_, &Select::on_change, select_.get());
+}
+
+void ListPanel::clear_selection() {
+  if (select_) select_->quiet = true;
+  Rlist_view_set_selected(id_, -1);
+  if (select_) select_->quiet = false;
 }
 
 void ListPanel::scroll_to_end() {
@@ -688,6 +729,13 @@ struct Painted::Callbacks {
   const Painted* widget = nullptr;
   StatefulPaintFn paint;
   std::function<void(float, float)> click;
+  std::function<void(float, float)> context;
+
+  static bool context_event(const REvent& e) {
+    if (e.type == R_EVENT_MOUSE_DOWN) return e.button == R_MOUSE_RIGHT;
+    return e.type == R_EVENT_KEY_DOWN &&
+           (e.key == R_KEY_MENU || (e.key == R_KEY_F10 && (e.modifiers & static_cast<Ruint>(R_MOD_SHIFT)) != 0U));
+  }
 
   static void on_paint(Rid /*widget*/, RPainter* painter, float width, float height, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
@@ -700,6 +748,18 @@ struct Painted::Callbacks {
     if (e->type == R_EVENT_MOUSE_ENTER || e->type == R_EVENT_MOUSE_LEAVE) {
       Rwidget_invalidate(widget);
       return kFalse;
+    }
+    if (cb->context && context_event(*e)) {
+      float x = e->x;
+      float y = e->y;
+      if (e->type == R_EVENT_KEY_DOWN) {  // under the widget, from the keyboard
+        float w = 0.0F;
+        float h = 0.0F;
+        Rwidget_get_rect(widget, &x, &y, &w, &h);
+        y += h;
+      }
+      cb->context(x, y);
+      return kTrue;
     }
     if (!cb->click || Rwidget_is_enabled(widget) == kFalse) return kFalse;
     if (e->type == R_EVENT_MOUSE_DOWN && e->button == R_MOUSE_LEFT) {
@@ -739,6 +799,10 @@ void Painted::on_click(std::function<void(float, float)> callback) {
   callbacks_->click = std::move(callback);
   Rwidget_set_focusable(id_, kTrue);
   Rwidget_set_cursor(id_, R_CURSOR_HAND);
+}
+
+void Painted::on_context(std::function<void(float, float)> callback) {
+  callbacks_->context = std::move(callback);
 }
 
 void Painted::set_role(Role role) {
@@ -898,7 +962,105 @@ void Viewport::set_cursor(CursorShape shape) {
   Rwidget_set_cursor(id_, cursor);
 }
 
+// --- PopupMenu ---------------------------------------------------------------
+
+struct PopupMenu::State {
+  struct Slot {
+    State* state = nullptr;
+    std::size_t index = 0;
+  };
+  Rid menu = kNoWidget;
+  std::vector<std::unique_ptr<Slot>> slots;
+  std::function<void(std::size_t)> on_choose;
+  static void clicked(Rid, void* user) {
+    const auto* slot = static_cast<Slot*>(user);
+    if (slot->state->on_choose) slot->state->on_choose(slot->index);
+  }
+};
+
+PopupMenu::PopupMenu() : state_(std::make_unique<State>()) {
+  state_->menu = Rwidget_create(R_WIDGET_MENU);
+}
+
+PopupMenu::~PopupMenu() {
+  if (state_->menu != kNoWidget) Rwidget_destroy(state_->menu);
+}
+
+void PopupMenu::set_items(std::string_view title, const std::vector<MenuItem>& items,
+                          std::function<void(std::size_t)> on_choose) {
+  Rwidget_clear_children(state_->menu);
+  state_->slots.clear();
+  state_->on_choose = std::move(on_choose);
+  Rmenu_set_title(state_->menu, str(title).c_str());
+  Rwidget_set_accessible_name(state_->menu, str(title).c_str());
+  for (std::size_t i = 0; i < items.size(); ++i) {
+    const MenuItem& item = items[i];
+    if (item.separator_before && i > 0) Rmenu_add_separator(state_->menu);
+    const Rid r = Rmenu_add_item(state_->menu, item.label.c_str());
+    if (item.checked) {
+      Rmenu_item_set_checkable(r, kTrue);
+      Rmenu_item_set_checked(r, kTrue);
+    }
+    Rwidget_set_enabled(r, item.enabled ? kTrue : kFalse);
+    state_->slots.push_back(std::make_unique<State::Slot>(State::Slot{state_.get(), i}));
+    Rmenu_item_set_clicked_callback(r, &State::clicked, state_->slots.back().get());
+  }
+}
+
+void PopupMenu::open(const Window& window, float x, float y) {
+  if (state_->slots.empty()) return;
+  Rmenu_open(state_->menu, window.id(), x, y);
+}
+
+std::size_t PopupMenu::size() const noexcept {
+  return state_->slots.size();
+}
+
 // --- Window ----------------------------------------------------------------
+
+/// The window's event hook (Window::install_key_hook).
+struct Window::KeyHook {
+  TextKeyFilter filter;
+  std::function<bool(int, std::uint8_t)> shortcut;
+
+  explicit KeyHook(bool repeat_text) : filter(repeat_text) {}
+
+  static bool text_focus(Rid window) {
+    const Rid focus = Rwindow_get_focused_widget(window);
+    return focus != kNoWidget && Rwidget_get_type(focus) == R_WIDGET_TEXT_INPUT;
+  }
+
+  static int on_event(Rid window, const REvent* e, void* user) {
+    auto* self = static_cast<KeyHook*>(user);
+    switch (e->type) {
+      case R_EVENT_TEXT:
+        return self->filter.text(e->codepoint) ? kFalse : kTrue;
+      case R_EVENT_KEY_UP:
+        self->filter.key_up(static_cast<int>(e->key));
+        return kFalse;
+      case R_EVENT_KEY_DOWN: {
+        const std::string again = self->filter.key_down(static_cast<int>(e->key), e->repeat != 0, text_focus(window));
+        if (!again.empty()) Rwindow_inject_text(window, again.c_str());
+        const bool used = self->shortcut && e->repeat == 0 &&
+                          self->shortcut(static_cast<int>(e->key), static_cast<std::uint8_t>(e->modifiers));
+        return used ? kTrue : kFalse;
+      }
+      default:
+        return kFalse;
+    }
+  }
+};
+
+void Window::install_key_hook(std::function<bool(int, std::uint8_t)> shortcut) {
+  key_hook_ = std::make_unique<KeyHook>(window_system() == "cocoa");
+  key_hook_->shortcut = std::move(shortcut);
+  Rwindow_set_event_hook(id_, &KeyHook::on_event, key_hook_.get());
+}
+
+void Window::close_popups() {
+  Rwindow_close_popups(id_);
+}
+
 
 Window::Window(std::string_view title, int width, int height)
     : id_(Rwindow_create(str(title).c_str(), width, height, R_WINDOW_DEFAULT)) {}
@@ -910,6 +1072,7 @@ Window::~Window() {
 void Window::destroy() {
   // Deleting the window waits for its last frames: no draw callback runs after.
   if (id_ != kNoWidget && valid()) {
+    Rwindow_set_event_hook(id_, nullptr, nullptr);
     Rwindow_destroy(id_);
   }
   id_ = kNoWidget;

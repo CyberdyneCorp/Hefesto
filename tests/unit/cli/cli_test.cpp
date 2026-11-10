@@ -119,20 +119,21 @@ TEST_CASE("exit status: 0 success, 1 command failure, 2 usage", CLI_TAGS) {
 TEST_CASE("results go to stdout, diagnostics to stderr", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "-c", "echo hello; setting get magic-compat; nosuch; echo never"});
   CHECK(r.out == "hello\non\n");
-  CHECK(r.err == "error: CMD-DISPATCH-001: unknown command \"nosuch\" at -c:1\n");
+  CHECK(r.err == "error: CMD-DISPATCH-001: invalid command name \"nosuch\" at -c:1\n");
 }
 
 TEST_CASE("JSON diagnostics option prints JSON lines", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "--diagnostics=json", "-c", "nosuch"});
   CHECK(r.err ==
-        "{\"severity\":\"error\",\"code\":\"CMD-DISPATCH-001\",\"text\":\"unknown command \\\"nosuch\\\"\","
+        "{\"severity\":\"error\",\"code\":\"CMD-DISPATCH-001\",\"text\":\"invalid command name \\\"nosuch\\\"\","
         "\"location\":{\"file\":\"-c\",\"line\":1},\"related\":null}\n");
 }
 
 TEST_CASE("Magic console diagnostics print each script command's result like puts", PRESENTATION_TAGS) {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "echo hello; setting get magic-compat; nosuch"});
-  // An unknown command is a Tcl error: its message is the result, on stdout (the script stops there).
-  CHECK(r.out == "hello\non\nunknown command \"nosuch\"\n");
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "echo hello; setting get magic-compat; nosuch; echo next"});
+  // An unknown command is a Tcl error: its message is the result, on stdout. Each reference line is
+  // caught (`catch {cmd} result; puts $result`), so the script goes on (Q-UI-41).
+  CHECK(r.out == "hello\non\ninvalid command name \"nosuch\"\nnext\n");
   CHECK(r.err.empty());
   CHECK(cli::parse_args(Args{"--diagnostics=magic"}).options.diagnostics == hefesto::diag::Format::magic);
 }
@@ -363,4 +364,47 @@ TEST_CASE("POSIX process runner: children inherit no pipe fds besides 0, 1 and 2
   const auto r = runner.run({.program = "sh", .args = {"-c", script}, .working_directory = {}, .stdin_data = {}});
   REQUIRE(r.ok());
   CHECK(r.value().stdout_data == baseline);
+}
+
+// Regression (golden UI-G-001..004, Q-UI-41): script and -c lines need the exact command name.
+TEST_CASE("the CLI resolves command names exactly, like Magic's Tcl build",
+          "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-004]") {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "vers; VERSION; magic::echo ok"});
+  CHECK(r.out == "invalid command name \"vers\"\ninvalid command name \"VERSION\"\nok\n");
+  CHECK(r.err.empty());
+}
+
+// Regression (golden UI-G-060, UI-G-081, Q-UI-43): with no `setpoint`, each script command has the
+// point at screen (100, 100) of the window under it, as Magic's null display gives every command.
+TEST_CASE("the CLI gives script commands Magic's default point (100, 100)",
+          "[cap:ui-command-dispatch][req:pushbutton and setpoint][golden:UI-G-081]") {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; setpoint; *winddebug; box; *winddebug"});
+  CHECK(r.out.find("\n100 100 ") != std::string::npos);
+  CHECK(r.out.find("Sending command:\n 'box' at (100, 100)\n") != std::string::npos);
+  CHECK(r.out.find("Sending command:\n '*winddebug' at (100, 100)\n") != std::string::npos);
+}
+
+// Regression (round 3 review): when the default point (100, 100) falls on a window's chrome (here the
+// frame of a layout window opened at 95..400), Magic sends the command to the `*window` client
+// (windSend.c), so a layout command such as `box` fails quietly with an empty result.
+TEST_CASE("a default point on a window's chrome sends the command to the window client",
+          "[cap:ui-command-dispatch][req:Command dispatch across global and client tables]") {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
+                         "load x; closewindow; specialopen 95 95 400 400 layout; box values; echo end"});
+  CHECK((r.out + r.err).find("Box tool must be present") == std::string::npos);
+  CHECK(r.out.find("invalid command name") == std::string::npos);
+  CHECK(r.out.find("end\n") != std::string::npos);
+  // The same command with the point inside the default window reaches the layout client.
+  const Run inside = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; box values"});
+  CHECK((inside.out + inside.err).find("Box tool must be present") != std::string::npos);
+}
+
+// Regression (round 3 review): a `magic::`-qualified name of another client's command fails quietly
+// (not `invalid command name`) and `*winddebug` echoes it with its qualifier, as Magic does.
+TEST_CASE("a namespaced command of another client fails quietly and is echoed",
+          "[cap:ui-command-dispatch][req:Command dispatch across global and client tables]") {
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; *winddebug; magic::color; echo end"});
+  CHECK(r.out.find("invalid command name") == std::string::npos);
+  CHECK(r.out.find("Sending command:\n 'magic::color' at (100, 100)\n") != std::string::npos);
+  CHECK(r.out.find("end\n") != std::string::npos);
 }

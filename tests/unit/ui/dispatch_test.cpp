@@ -16,6 +16,7 @@
 #include "hefesto/ui/client.hpp"
 #include "hefesto/ui/line.hpp"
 #include "hefesto/ui/state.hpp"
+#include "hefesto/ui/magic_help.hpp"
 #include "ui_fixture.hpp"
 
 namespace cmd = hefesto::cmd;
@@ -150,18 +151,65 @@ TEST_CASE("the dispatcher reports unknown and ambiguous words and resolves the r
   REQUIRE_FALSE(unknown.ok());
   CHECK(unknown.diagnostics.size() == 1);  // no "Did you point to the correct window?"
   CHECK(unknown.diagnostics[0].code == hefesto::diag::codes::kCmdDispatch);
-  const auto ambiguous = s.run("p");
+  // A line typed in the command bar may abbreviate (Q-UI-41).
+  const auto ambiguous = s.run("p", cmd::Origin::gui);
   REQUIRE_FALSE(ambiguous.ok());
   CHECK(UiSession::first_error(ambiguous) == "UI-DISPATCH-001: That command abbreviation is ambiguous.");
   // Abbreviation and case: the handler runs with the resolved name.
-  s.run("GETC foo");
+  s.run("GETC foo", cmd::Origin::gui);
   CHECK(s.calls_of("getcell") == std::vector<std::string>{"getcell foo"});
   // An empty command is a no-op.
   CHECK(s.dispatcher->execute(cmd::Invocation{}).ok());
-  // A script stops at an ambiguous word like at an unknown one.
-  const cmd::ScriptRun run = cmd::run_script(*s.dispatcher, "getcell a\np\ngetcell b", cmd::Origin::script);
-  CHECK(run.aborted);
+}
+
+// Regression (golden UI-G-001..004, Q-UI-41): Magic's Tcl build resolves a
+// script line by its exact Tcl command name.
+TEST_CASE("script lines need exact command names; typed lines may abbreviate",
+          "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-001][golden:UI-G-004]") {
+  UiSession s;
+  for (const cmd::Origin origin : {cmd::Origin::script, cmd::Origin::cli, cmd::Origin::key}) {
+    const auto r = s.run("getc a", origin);
+    REQUIRE_FALSE(r.ok());
+    CHECK(UiSession::first_error(r) == "CMD-DISPATCH-001: invalid command name \"getc\"");
+    CHECK(UiSession::first_error(s.run("GETCELL a", origin)) == "CMD-DISPATCH-001: invalid command name \"GETCELL\"");
+  }
+  CHECK(s.calls_of("getcell").empty());
+  // Exact names, with or without the magic:: namespace, run.
+  CHECK(s.run("getcell a").ok());
+  CHECK(s.run("::magic::getcell b").ok());
   CHECK(s.calls_of("getcell").size() == 2);
+  // The command bar abbreviates unless the front end turns it off (the CLI does).
+  CHECK(s.run("getc c", cmd::Origin::gui).ok());
+  s.dispatcher->set_typed_abbreviations(false);
+  CHECK_FALSE(s.run("getc d", cmd::Origin::gui).ok());
+  CHECK(s.dispatcher->name_lookup(cmd::Origin::gui) == cmd::NameLookup::exact);
+}
+
+// Regression (golden UI-G-060): a command of another client only is a Tcl
+// command in Magic, dispatched quietly: an empty error result.
+TEST_CASE("a command of another client fails with an empty result",
+          "[cap:ui-command-dispatch][req:Command dispatch across global and client tables][golden:UI-G-060]") {
+  UiSession s;
+  REQUIRE_FALSE(s.registry.add(named("hue"), "color").has_value());
+  const auto r = s.run("hue");
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.value.to_string().empty());
+  CHECK_FALSE(r.value.is_none());
+  CHECK(UiSession::first_error(r) == "CMD-DISPATCH-001: \"hue\" is not a command of the layout window");
+}
+
+TEST_CASE("a script stops at an unknown word unless each line is caught",
+          "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-001]") {
+  UiSession s;
+  cmd::ScriptRun run = cmd::run_script(*s.dispatcher, "getcell a\ngetc x\ngetcell b", cmd::Origin::script);
+  CHECK(run.aborted);
+  CHECK(s.calls_of("getcell").size() == 1);
+  // hefesto-cli --diagnostics=magic: every reference line is `catch {...}`.
+  s.script.catch_lines = true;
+  run = cmd::run_script(*s.dispatcher, "getcell a\ngetc x\ngetcell b", cmd::Origin::script);
+  CHECK_FALSE(run.aborted);
+  CHECK(run.failures == 1);
+  CHECK(s.calls_of("getcell").size() == 3);
 }
 
 // --- help command -------------------------------------------------------------------
@@ -176,13 +224,15 @@ TEST_CASE("help lists the global and the client table, by pattern or wizard",
   const std::string all = UiSession::printed(s.run("help"));
   CHECK(all.starts_with("\nGlobal Commands\n---------------\n"));
   CHECK(all.find("\nLayout Commands\n---------------\n") != std::string::npos);
-  CHECK(all.find("zoom ?args?") != std::string::npos);
-  // "Pattern help".
+  // Magic's help strings (golden UI-G-005).
+  CHECK(all.find("\nzoom amount\t\tzoom window by amount") != std::string::npos);
+  // "Pattern help": the pattern matches the whole help string.
   const std::string window = UiSession::printed(s.run("help window"));
   CHECK(window.find("closewindow") != std::string::npos);
   CHECK(window.find("openwindow") != std::string::npos);
   CHECK(window.find("windowborder") != std::string::npos);
-  CHECK(window.find("zoom") == std::string::npos);
+  CHECK(window.find("zoom amount") != std::string::npos);  // "zoom window by amount"
+  CHECK(window.find("redraw") == std::string::npos);
   const auto usage = s.run("help a b");
   REQUIRE_FALSE(usage.ok());
   CHECK(usage.diagnostics.size() == 2);  // once per table, as windHelp prints it
@@ -250,4 +300,41 @@ TEST_CASE("commands dispatch without a terminal or a scripting interpreter",
   REQUIRE(results.size() == 1);
   CHECK(results[0].ok());
   CHECK(s.calls_of("zoom") == std::vector<std::string>{"zoom 2"});
+}
+
+TEST_CASE("help lists Hefesto's own commands only with magic-compat off",
+          "[cap:ui-command-dispatch][req:help command][golden:UI-G-005]") {
+  UiSession s;
+  REQUIRE_FALSE(s.registry.add(named("hefesto::example"), "*window").has_value());
+  CHECK(UiSession::printed(s.run("help")).find("hefesto::example") == std::string::npos);
+  s.project.compat.magic_compat = false;
+  CHECK(UiSession::printed(s.run("help")).find("\nhefesto::example") != std::string::npos);
+}
+
+// Regression (golden UI-G-002): Magic's Lookup() ends a table entry's name at a space only, so
+// `id\tOR` and `get\tOR` are no exact names and `id`/`get` are ambiguous with `identify`/`getcell`;
+// the quiet Tcl dispatch makes them fail with an empty result. Replicated with magic-compat on.
+TEST_CASE("id and get fail quietly with magic-compat on, as Magic's lookup makes them ambiguous",
+          "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-002]") {
+  CHECK(hefesto::ui::magic_lookup_ambiguous("layout", "id"));
+  CHECK(hefesto::ui::magic_lookup_ambiguous("layout", "get"));
+  CHECK_FALSE(hefesto::ui::magic_lookup_ambiguous("layout", "identify"));
+  CHECK_FALSE(hefesto::ui::magic_lookup_ambiguous("layout", "ext"));
+  CHECK_FALSE(hefesto::ui::magic_lookup_ambiguous("*window", "grow"));
+  // No other Magic command name is ambiguous in its own table or the *window table.
+  for (const auto& e : hefesto::ui::magic_help_entries()) {
+    if (e.name != "id" && e.name != "get") {
+      INFO(e.client << " " << e.name);
+      CHECK_FALSE(hefesto::ui::magic_lookup_ambiguous(e.client, e.name));
+      CHECK_FALSE(hefesto::ui::magic_lookup_ambiguous("*window", e.name));
+    }
+  }
+  UiSession s;
+  REQUIRE_FALSE(s.registry.add(named("id"), "layout").has_value());
+  const auto quiet = s.run("id x");
+  REQUIRE_FALSE(quiet.ok());
+  CHECK(quiet.value.to_string().empty());
+  CHECK_FALSE(quiet.value.is_none());
+  s.project.compat.magic_compat = false;
+  CHECK(s.run("id x").ok());
 }

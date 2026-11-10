@@ -69,15 +69,25 @@ class MainWindow::DialogPromptHost final : public cmd::PromptHost {
 };
 
 MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::mutex& queue_mutex, CoreSession& core)
-    : ctx_{runtime, core, options.theme, {}, {}, {}, {}},
+    : ctx_{runtime, core, options.theme, {}, {}, {}, {}, {}},
       options_(options),
       window_("Hefesto", options.width, options.height),
       command_bar_(ui::CommandBar::create("Type a command (help)")),
       core_sink_(core.dispatcher()) {
+  // An undo or redo from any path (typed, `u`/`U` keys, the undo history),
+  // checked after the post-command update has closed the command's step:
+  // run_line shows the message, or on_frame when no line is running.
+  hefesto::ui::state(ctx_.editor()).update_handlers.emplace_back([this](editor::EditorState& ed) {
+    if (auto moved = undo_move_message(undo_mark_, ed.undo)) undo_message_ = std::move(moved);
+    undo_mark_ = undo_mark(ed.undo);
+  });
   ctx_.run = [this](const std::string& line) { run_line(line); };
   pending_pinch_ = options.pinch;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   ctx_.prompt = [this](const std::string& text) { show_prompt(text); };
+  ctx_.menu = [this](const std::string& title, const std::vector<MenuEntry>& entries, float x, float y) {
+    open_menu(title, entries, x, y);
+  };
   capture_mode_ = !options.capture.empty() || options.smoke_frames > 0 || options.bench_frames > 0;
   window_.set_min_size(1024, 640);
   ctx_.runtime.apply_theme(ctx_.mode);
@@ -88,12 +98,14 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   left_ = std::make_unique<LeftPanel>(ctx_);
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
+  color_ = std::make_unique<ColorPanel>(ctx_);
 
   build_top_bar();
   build_center();
   build_command_bar();
   build_status_bar();
   window_.set_content(root_);
+  window_.install_key_hook([this](int key, std::uint8_t modifiers) { return on_shortcut(key, modifiers); });
   register_view_commands();
 
   set_message(StatusKind::info, diagnostic_line(StatusKind::info, "ready"));
@@ -320,12 +332,8 @@ void MainWindow::fit_top_bar() {
 // --- tool rail, center, panels ----------------------------------------------------
 
 void MainWindow::build_center() {
-  ui::Box middle = ui::Box::horizontal();
-
-  build_tool_rail(middle);
-  middle.add(left_->widget());
-
-  ui::Box center = ui::Box::vertical();
+  build_tool_rail(middle_);
+  ui::Box& center = center_;
   center.add(canvas_->widget(), 1.0F);
   console_.set_font(ctx_.runtime.mono_font());
   console_.set_accessible_name("Console");
@@ -336,12 +344,58 @@ void MainWindow::build_center() {
   feedback_.set_font(ctx_.runtime.mono_font());
   feedback_.set_accessible_name("Feedback");
   console_tabs_.add(feedback_, "Feedback");
+  // A Feedback row moves the box to its area (`feedback find N`).
+  feedback_.on_select([this](int index) {
+    const auto i = static_cast<std::size_t>(index);
+    if (i < feedback_rows_.size()) run_line(feedback_rows_[i].find);
+  });
+  keys_.set_font(ctx_.runtime.mono_font());
+  keys_.set_accessible_name("Key bindings");
+  console_tabs_.add(keys_, "Keys");
+  // A binding row puts its `macro TABLE KEY "TEXT"` line in the command bar to edit.
+  keys_.on_select([this](int index) {
+    const auto i = static_cast<std::size_t>(index);
+    if (i < key_edits_.size() && !key_edits_[i].empty()) show_prompt(key_edits_[i]);
+  });
   console_tabs_.set_size(-1.0F, static_cast<float>(kConsoleHeight));
   center.add(console_tabs_);
-  middle.add(center, 1.0F);
-  middle.add(inspector_->widget());
-  middle.add(pdk_->widget());
-  root_.add(middle, 1.0F);
+  arrange_middle();
+  root_.add(middle_, 1.0F);
+}
+
+void MainWindow::arrange_middle() {
+  // rail, rail edge, then the docks: left panels, canvas, right panels.
+  int index = 2;
+  const auto place = [this, &index](ui::Widget& w, float fill) { middle_.insert(w, index++, fill); };
+  if (layers_side_ == DockSide::left) place(left_->widget(), 0.0F);
+  if (inspector_side_ == DockSide::left) place(inspector_->widget(), 0.0F);
+  place(center_, 1.0F);
+  if (layers_side_ == DockSide::right) place(left_->widget(), 0.0F);
+  if (inspector_side_ == DockSide::right) place(inspector_->widget(), 0.0F);
+  place(pdk_->widget(), 0.0F);
+  place(color_->widget(), 0.0F);
+  left_->set_dock_side(layers_side_);
+  inspector_->set_dock_side(inspector_side_);
+}
+
+bool MainWindow::dock_panel(PanelId panel, DockSide side) {
+  if (panel == PanelId::layers) {
+    layers_side_ = side;
+  } else if (panel == PanelId::inspector) {
+    inspector_side_ = side;
+  } else {
+    return false;
+  }
+  arrange_middle();
+  return true;
+}
+
+void MainWindow::reset_layout() {
+  layers_side_ = DockSide::left;
+  inspector_side_ = DockSide::right;
+  arrange_middle();
+  set_panel(PanelId::layers, true);
+  set_panel(PanelId::inspector, true);
 }
 
 void MainWindow::build_command_bar() {
@@ -364,7 +418,7 @@ void MainWindow::build_command_bar() {
   command_bar_->set_font_size(text_spec(TextRole::mono).size_px);
   command_bar_->set_size(-1.0F, static_cast<float>(kControlHeightMin));
   command_bar_->on_commit([this](const std::string& text) {
-    run_line(text);
+    run_typed_line(text);
     command_bar_->set_text("");
   });
   command_bar_->on_history([this](bool older) { return older ? command_model_.previous() : command_model_.next(); });
@@ -374,6 +428,19 @@ void MainWindow::build_command_bar() {
   input_box.set_padding(0.0F, 6.0F, 0.0F, 6.0F);
   input_box.add(*command_bar_);
   row.add(input_box, 1.0F);
+
+  // The clock button (and ^R) opens the history popover (M2-Command-Bar board).
+  auto history = make_interactive(ctx_, [](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
+                                           bool foc) {
+    paint::button(p, w, h, "", "history", paint::ButtonStyle::ghost, paint::WidgetState{hov, foc, true, false}, t);
+  });
+  history->set_size(28.0F, static_cast<float>(kInputHeight));
+  history->set_role(ui::Role::button);
+  history->set_accessible_name("Command history");
+  history->set_tooltip("Command history (^R in the command bar)");
+  history->on_click([this](float, float) { show_history(); });
+  row.add_centered(*history);
+  painted_.push_back(std::move(history));
 
   static constexpr std::string_view kHint = "⏎ run · ↑ history · ⇥ complete";
   auto hint = make_painted(ctx_, [](ui::Painter& p, float, float h, const ThemeTokens& t) {
@@ -438,14 +505,34 @@ void MainWindow::build_status_bar() {
 // --- commands ------------------------------------------------------------------------
 
 void MainWindow::register_view_commands() {
-  const ViewActions actions{[this](ThemeMode mode) { apply_theme(mode); },
-                            [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); },
-                            [this](PanelId panel, std::optional<bool> show) { return set_panel(panel, show); },
-                            [this](PanelId panel) { return panel_shown(panel); },
-                            [this](std::optional<std::string> name) { return set_paint_layer(std::move(name)); }};
+  ViewActions actions{[this](ThemeMode mode) { apply_theme(mode); },
+                      [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); },
+                      [this](PanelId panel, std::optional<bool> show) { return set_panel(panel, show); },
+                      [this](PanelId panel) { return panel_shown(panel); },
+                      [this](PanelId panel, DockSide side) { return dock_panel(panel, side); },
+                      [this] { reset_layout(); },
+                      [this](std::optional<std::string> name) { return set_paint_layer(std::move(name)); }};
   if (!shell::register_view_commands(ctx_.core.registry(), actions)) {
     std::fprintf(stderr, "hefesto: a view command name is already registered\n");
   }
+}
+
+void MainWindow::run_typed_line(const std::string& text) {
+  // History expansion (`!!`, `!n`, `^old^new^`) and the session's `history`.
+  const TypedLine typed = expand_typed_line(ctx_.editor(), trim(text));
+  if (typed.run) {
+    run_line(*typed.run);
+    return;
+  }
+  if (typed.error) {
+    set_message(StatusKind::error, diagnostic_line(StatusKind::error, typed.error->text));
+    append_console(std::string(trim(text)), diag::format_text(*typed.error));
+  } else {
+    set_message(StatusKind::info, diagnostic_line(StatusKind::info, typed.print));
+    append_console(std::string(trim(text)), typed.print);
+  }
+  dirty_ = true;
+  window_.request_redraw();
 }
 
 void MainWindow::run_line(const std::string& line) {
@@ -464,6 +551,12 @@ void MainWindow::run_line(const std::string& line) {
   const ResultLine summary = result_line(shown_text);
   result_has_more_ = summary.more_lines > 0;
   LineStatus shown = command_line_status(outcome.ok(), outcome.ok() ? summary.text() : status, problem);
+  // "Undid paint metal1 · 23 more steps" (M2-Undo-Redo board, tile 4), for
+  // any command of the line that moved the undo log (on_command).
+  if (undo_message_ && outcome.ok() && !problem) {
+    shown.text = diagnostic_line(StatusKind::success, *undo_message_);
+  }
+  undo_message_.reset();
   const bool raised = shown.kind == StatusKind::error || shown.kind == StatusKind::warning;
   set_message(shown.kind, std::move(shown.text));
   if (raised) announce(message_kind_, message_);
@@ -489,6 +582,10 @@ void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::Comman
 
 void MainWindow::on_frame() {
   fit_top_bar();
+  if (undo_message_ && !in_command_) {  // an undo outside run_line (the `u` and `U` keys)
+    set_message(StatusKind::success, diagnostic_line(StatusKind::success, *undo_message_));
+    undo_message_.reset();
+  }
   if (pdk_->poll()) window_.request_redraw();  // a background install: keep frames coming
   if (canvas_->idle()) window_.request_redraw();  // the minimap of a large scene is due
   if (!pending_run_.empty() && canvas_->viewport_ready()) {
@@ -542,9 +639,52 @@ void MainWindow::open_file() {
 
 void MainWindow::toggle_pdk_manager() {
   pdk_visible_ = !pdk_visible_;
-  pdk_->widget().set_visible(pdk_visible_);
-  inspector_->widget().set_visible(!pdk_visible_ && inspector_visible_);
+  update_right_dock();
   if (pdk_visible_) pdk_->refresh();
+}
+
+void MainWindow::update_right_dock() {
+  pdk_->widget().set_visible(pdk_visible_);
+  color_->widget().set_visible(!pdk_visible_ && color_visible_);
+  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && inspector_visible_);
+}
+
+void MainWindow::refresh_color_panel() {
+  const bool open = color_->refresh();
+  if (open == color_visible_) return;
+  color_visible_ = open;
+  update_right_dock();
+}
+
+void MainWindow::refresh_keys() {
+  // Rebuilt only when the bindings change (macro, imacro, a key file).
+  const ::hefesto::ui::MacroTables& macros = ctx_.editor().macros;
+  std::vector<std::string> lines;
+  std::vector<std::string> edits;
+  std::size_t signature = 0;
+  // The current tool's table first: it answers the canvas's keys and buttons.
+  std::vector<KeyBindingTable> tables = key_binding_tables(macros);
+  const hefesto::ui::Tool* tool = ctx_.editor().tools.current();
+  const std::string current = tool != nullptr ? tool->name : std::string("box");
+  std::stable_partition(tables.begin(), tables.end(),
+                        [&current](const KeyBindingTable& t) { return t.name == current; });
+  for (const KeyBindingTable& table : tables) {
+    const auto rows = key_binding_rows(macros, table.name);
+    lines.push_back("── " + table.label + " · " + table.name + " · " + std::to_string(rows.size()) + " bindings");
+    edits.emplace_back();
+    for (const KeyBindingRow& row : rows) {
+      std::string key = row.key;
+      if (key.size() < 14) key.resize(14, ' ');
+      lines.push_back("  " + key + row.command);
+      edits.push_back(row.edit);
+    }
+  }
+  for (const std::string& l : lines) signature = signature * 1000003U + std::hash<std::string>{}(l);
+  if (signature == keys_signature_ && !key_edits_.empty()) return;
+  keys_signature_ = signature;
+  key_edits_ = std::move(edits);
+  keys_.clear();
+  for (const std::string& l : lines) keys_.add_item(l);
 }
 
 void MainWindow::toggle_console() {
@@ -567,6 +707,7 @@ void MainWindow::apply_theme(ThemeMode mode) {
   left_->repaint();
   inspector_->repaint();
   pdk_->repaint();
+  color_->repaint();
   canvas_->refresh_overlay();
 }
 
@@ -606,6 +747,8 @@ void MainWindow::refresh_all() {
   refresh_header();
   refresh_rail();
   refresh_feedback();
+  refresh_color_panel();
+  if (keys_shown_) refresh_keys();
   refresh_status();
 }
 
@@ -720,17 +863,40 @@ void MainWindow::add_undo_buttons(ui::Box& row) {
       paint::button(p, w, h, label, redo ? "redo" : "undo", paint::ButtonStyle::ghost,
                     paint::WidgetState{hov, foc, enabled, false}, t);
     });
-    button->set_size(paint::button_width(ctx_.runtime, label, true), static_cast<float>(kButtonHeight));
+    const float width = paint::button_width(ctx_.runtime, label, true);
+    button->set_size(width, static_cast<float>(kButtonHeight));
+    // Always shown: the top bar's fit (fit_top_bar) must count them.
+    top_items_width_ += width;
+    ++top_item_count_;
     button->set_role(ui::Role::button);
     button->set_accessible_name(label);
     button->on_click([this, redo](float, float) {
       const bool enabled = redo ? undo_state_.can_redo : undo_state_.can_undo;
       if (enabled) run_line(redo ? "redo" : "undo");
     });
+    // Right-click (or the Menu key): the undo history (M2-Undo-Redo board).
+    button->on_context([this](float x, float y) { show_undo_history(x, y); });
     row.add_centered(*button);
     (redo ? redo_button_ : undo_button_) = button.get();
     painted_.push_back(std::move(button));
   }
+  // "▲ undo off" after `undo disable`; a click issues `undo enable`.
+  const StatusChip off{StatusKind::warning, "undo off"};
+  auto chip = make_interactive(ctx_, [off](ui::Painter& p, float w, float h, const ThemeTokens& t, bool, bool) {
+    paint::chip(p, w, h, off, t);
+  });
+  chip->set_size(paint::chip_width(ctx_.runtime, off), static_cast<float>(kChipHeight));
+  chip->set_role(ui::Role::button);
+  chip->set_accessible_name("Undo is off: enable undo");
+  chip->set_tooltip("Undo recording is off (undo disable): click to issue undo enable");
+  chip->on_click([this](float, float) { run_line("undo enable"); });
+  chip->set_visible(false);
+  row.add_centered(*chip);
+  undo_off_chip_ = chip.get();
+  // Counted as always shown, so that the top bar keeps room for it.
+  top_items_width_ += paint::chip_width(ctx_.runtime, off);
+  ++top_item_count_;
+  painted_.push_back(std::move(chip));
 }
 
 std::size_t MainWindow::ask(std::string_view question, std::span<const std::string> answers,
@@ -757,9 +923,92 @@ std::optional<std::string> MainWindow::complete(const std::string& text) {
       return all;
     }());
     status_bar_->invalidate();
+    // Several candidates: the completion popover above the command bar.
+    if (c.candidates.size() > 1) {
+      const auto entries = completion_entries(c.line, c);
+      const auto [x, y] = above_command_bar(entries.size());
+      open_menu("Completions", entries, x, y);
+    }
   }
   if (c.line == text) return std::nullopt;
   return c.line;
+}
+
+void MainWindow::open_menu(const std::string& title, std::vector<MenuEntry> entries, float x, float y) {
+  menu_entries_ = std::move(entries);
+  std::vector<ui::MenuItem> items;
+  for (const MenuEntry& e : menu_entries_) items.push_back({e.label, e.checked, e.enabled, e.separator_before});
+  menu_.set_items(title, items, [this](std::size_t index) {
+    if (index >= menu_entries_.size()) return;
+    const MenuEntry e = menu_entries_[index];  // a command may replace the entries
+    if (e.command.empty()) return;
+    if (e.prompt) {
+      show_prompt(e.command);
+    } else {
+      run_line(e.command);
+    }
+  });
+  menu_.open(window_, x, y);
+}
+
+std::pair<float, float> MainWindow::above_command_bar(std::size_t rows) const {
+  // Raven menu rows are the theme's row height plus the menu padding.
+  constexpr float kMenuRow = 28.0F;
+  constexpr float kMenuPad = 12.0F;
+  const ui::Rect bar = command_bar_->rect();
+  const float height = kMenuRow * static_cast<float>(rows) + kMenuPad;
+  return {bar.x, std::max(0.0F, bar.y - height - 4.0F)};
+}
+
+void MainWindow::show_history() {
+  const auto entries = history_entries(command_model_.history());
+  if (entries.empty()) {
+    set_message(StatusKind::info, diagnostic_line(StatusKind::info, "no commands in the history yet"));
+    status_bar_->invalidate();
+    return;
+  }
+  const auto [x, y] = above_command_bar(entries.size());
+  open_menu("Command history", entries, x, y);
+}
+
+void MainWindow::show_undo_history(float x, float y) {
+  UndoHistory h = undo_history(ctx_.editor().undo);
+  if (h.entries.empty()) {
+    set_message(StatusKind::info, diagnostic_line(StatusKind::info, "nothing to undo or redo"));
+    status_bar_->invalidate();
+    return;
+  }
+  open_menu("Undo history · " + h.title, std::move(h.entries), x, y);
+}
+
+bool MainWindow::on_shortcut(int key, std::uint8_t modifiers) {
+  constexpr int kF6 = raven_key::kF1 + 5;
+  if (key == kF6 && (modifiers & ~kModShift) == 0) {
+    cycle_focus((modifiers & kModShift) != 0);
+    return true;
+  }
+  if (key == 'R' && modifiers == kModCtrl && command_bar_->has_focus()) {
+    show_history();
+    return true;
+  }
+  return false;
+}
+
+void MainWindow::cycle_focus(bool backward) {
+  const FocusRegions shown{layers_visible_, inspector_visible_ && !pdk_visible_ && !color_visible_, console_visible_};
+  for (int tries = 0; tries < 6; ++tries) {
+    focus_region_ = next_focus_region(focus_region_, shown, backward);
+    switch (focus_region_) {
+      case FocusRegion::tools: rail_.front().widget->focus(); return;
+      case FocusRegion::layers: left_->focus(); return;
+      case FocusRegion::canvas: canvas_->focus(); return;
+      case FocusRegion::inspector:
+        if (inspector_->focus()) return;
+        break;  // no action to focus: on to the next region
+      case FocusRegion::console: console_.focus(); return;  // the tab strip itself takes no focus
+      case FocusRegion::command: command_bar_->focus(); return;
+    }
+  }
 }
 
 void MainWindow::show_prompt(const std::string& text) {
@@ -776,10 +1025,20 @@ bool MainWindow::set_panel(PanelId panel, std::optional<bool> show) {
       break;
     case PanelId::inspector:
       inspector_visible_ = now;
-      inspector_->widget().set_visible(now && !pdk_visible_);
+      update_right_dock();
       break;
     case PanelId::console:
       if (now != console_visible_) toggle_console();
+      break;
+    case PanelId::keys:
+      if (now) {
+        refresh_keys();
+        if (!console_visible_) toggle_console();
+        console_tabs_.show(3);
+      } else if (console_visible_) {
+        console_tabs_.show(0);
+      }
+      keys_shown_ = now;
       break;
   }
   return now;
@@ -803,6 +1062,7 @@ bool MainWindow::panel_shown(PanelId panel) const {
     case PanelId::layers: return layers_visible_;
     case PanelId::inspector: return inspector_visible_;
     case PanelId::console: return console_visible_;
+    case PanelId::keys: return console_visible_ && keys_shown_;
   }
   return false;
 }
@@ -818,9 +1078,12 @@ void MainWindow::clear_problems() {
 void MainWindow::refresh_feedback() {
   std::vector<FeedbackRow> rows = feedback_rows(ctx_.editor(), canvas_->unit_scale());
   undo_state_ = undo_affordance(ctx_.editor());
+  if (undo_off_chip_ != nullptr) undo_off_chip_->set_visible(!undo_state_.recording);
   for (ui::Painted* b : {undo_button_, redo_button_}) {
     if (b == nullptr) continue;
-    b->set_tooltip(b == undo_button_ ? undo_state_.undo_tooltip : undo_state_.redo_tooltip);
+    const std::string step = next_undo_step(ctx_.editor().undo, b == redo_button_);
+    b->set_tooltip((b == undo_button_ ? undo_state_.undo_tooltip : undo_state_.redo_tooltip) +
+                   (step.empty() ? std::string() : " · next: " + step) + " · right-click for history");
     b->set_accessible_name(b == undo_button_ ? (undo_state_.can_undo ? "Undo" : "Undo, unavailable")
                                              : (undo_state_.can_redo ? "Redo" : "Redo, unavailable"));
     b->invalidate();
@@ -831,6 +1094,7 @@ void MainWindow::refresh_feedback() {
     return;
   }
   feedback_rows_ = std::move(rows);
+  feedback_.clear_selection();
   feedback_.clear();
   if (feedback_rows_.empty()) feedback_.add_item("No feedback areas (feedback add, or a DRC/extract run)");
   for (const FeedbackRow& row : feedback_rows_) feedback_.add_item(row.text);

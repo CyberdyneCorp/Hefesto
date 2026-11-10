@@ -11,6 +11,7 @@
 #include <array>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/ui/client.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/macros.hpp"
 #include "hefesto/ui/tools.hpp"
@@ -275,6 +276,9 @@ void apply(editor::EditorState& editor, const StartupBinding& line) {
   if (!line.tool.empty()) {
     (void)editor.tools.set_current(line.tool);
     return;
+  }
+  if (const ClientInfo* client = find_client_exact(line.table); client != nullptr && !client_available(*client)) {
+    return;  // a module this build lacks (wind3d, netlist): Magic's `macro` ignores its bindings
   }
   const std::string table = line.table.empty() ? macro_table_for(editor, "layout") : std::string{line.table};
   define(editor, table, line.key, line.text, line.interactive);

@@ -352,27 +352,36 @@ Magic reference: commit fc5daa9e (8.3.694).
 
 ### Q-UI-41: Command names in a Tcl script resolve without abbreviation or case folding
 - Kind: behavior
-- Status: needs approval (raised by the M2 golden captures, 2026-11-10)
+- Status: approved (raised by the M2 golden captures, 2026-11-10)
 - Magic behavior: In the normative Tcl build (D-7) every command is a Tcl command with its full name, so a script line is resolved by Tcl, not by `windSend`'s unique-prefix lookup: `e` and `extr` give `invalid command name "e"` / `invalid command name "extr"` (only registered aliases such as `ext` run), `getc` is not `getcell`, `ZoOm 2` is `invalid command name "ZoOm"`, and the unknown word's message is the Tcl error `invalid command name "foo"`, printed as the result line with nothing on stderr; the next script line still runs. Interactive Tcl consoles add tclsh's own abbreviation of unique prefixes (`tcl_interactive`), but no case folding. The spec's "Command name lookup" (prefixes, case-insensitive) and "Unknown command" (`Unknown command:`) describe `windSend`, which the Tcl build reaches only after Tcl found the command.
 - Evidence: golden UI-G-001 (`getc`), UI-G-002 (`e`, `extr`, `ext`), UI-G-003 (`foo`), UI-G-004 (`ZoOm`); tcltk/tclmagic.c (command registration per client), windows/windSend.c:WindSendCommand, utils/lookup.c.
 - Options: replicate (script lines resolve exactly; unknown → `invalid command name "W"` result, script continues; abbreviation only for typed command-bar lines) | keep the `windSend` lookup everywhere (record UI-G-001..004 as deviations)
 - Recommendation: replicate for scripts and the headless CLI, keep unique-prefix completion for lines typed in the command bar (a superset no script can observe); the D7 sentence "Prefix lookup and case handling move into cmd::Registry (closes UI-G-001..004 gaps)" and the "Command name lookup" scenarios then need rewording.
-- Resolution: pending (cases UI-G-001..004 stay failing until approved)
+- Resolution: replicate for scripts and the headless CLI (exact names, unknown → `invalid command name "W"` result line, script continues); keep unique-prefix completion for lines typed in the desktop command bar. Approved 2026-11-10.
+- Implementation note (INTEGRATION, 2026-11-10; for the user to confirm, the Resolution above is unchanged): "script continues" holds where each line's error is caught, as in the golden harness and `hefesto-cli --diagnostics=magic`. A plain `hefesto-cli` script stops at the first error with exit status 1, which is what Magic does with a script file given on its command line: `magic -dnull script.tcl` with the lines `e` and `puts after` prints `Error parsing "script.tcl": invalid command name "e"` and never runs `puts after` (checked in the `hefesto-magic-only` container). If the user wants the plain CLI to continue too, amend the Resolution.
 
 ### Q-UI-42: Macro tables in headless golden captures lack the X keysym bindings
 - Kind: platform
-- Status: needs approval (raised by the M2 golden captures, 2026-11-10)
+- Status: approved (raised by the M2 golden captures, 2026-11-10)
 - Magic behavior: The golden captures run `magic -dnull`, where no X display is open, so `MacroKey` cannot parse `XK_*`/`Button*` names and keysym-modified names (`Control_r`, `Shift_a`): the system `.magicrc` bindings that use them are never defined, and `macro Button1`, `macro Control_r` and `tool info` show nothing. Q-UI-12 decided that Hefesto embeds the keysym table on every platform, so Hefesto's tables hold those bindings; the listings then differ in content and, through the different table population, in hash order. `macro layout list` (a client name) also lists the tool table names (`pick nettool wiring color box`) in Magic.
 - Evidence: golden UI-G-009, 011, 012, 013, 046, 049; utils/macros.c:MacroKey, MacroName (no-display fallback noted in Q-UI-12).
 - Options: record these cases as deviations under Q-UI-12 (after DISPATCH checks that every remaining difference is a keysym binding) | capture with a virtual X display (Xvfb in the capture container) so Magic defines the bindings | drop the listing commands from the cases
 - Recommendation: capture with Xvfb (it also unblocks UI-G-015/047/082), else deviations under Q-UI-12.
-- Resolution: pending (cases stay failing until approved)
+- Resolution: record the affected cases as deviations under Q-UI-12 (no virtual X display in the capture container, per the M2 plan); DISPATCH first checks that every remaining difference is a keysym binding. Approved 2026-11-10.
 
 ### Q-UI-43: The command point of script commands on Magic's null display
 - Kind: platform
-- Status: needs approval (raised by the M2 golden captures, 2026-11-10)
+- Status: approved (raised by the M2 golden captures, 2026-11-10)
 - Magic behavior: Under `-dnull` every script command carries a point at screen (100, 100) in the topmost window (`*winddebug` echoes `Sending command: '*winddebug' at (100, 100)`). So `*coord` prints a `Point:` line and the root cell of that window, and after `specialopen color` the topmost window is the color window and `color` goes to the color client (which, with no color map on the null display, prints nothing). `cursor` reads the X pointer position, which the null display leaves uninitialised (`cursor window` gave `-531539648 21889`), so its values are not reproducible at all. Hefesto's headless dispatcher has no command point until `setpoint`.
 - Evidence: golden UI-G-048 (`cursor`), UI-G-060 (`color` after `specialopen color`), UI-G-081 (`*coord`, `*winddebug`); windows/windSend.c, graphics/grNull.c.
 - Options: replicate a default script point (screen (100,100) of the topmost window, layout or color) in the headless CLI | keep "no point" and record the cases as deviations, dropping `cursor` from UI-G-048 (its Magic values are uninitialised memory)
 - Recommendation: replicate the default point in the headless CLI only (no effect on the desktop shell, whose pointer is real), and drop the `cursor` queries from UI-G-048.
-- Resolution: pending (cases stay failing until approved)
+- Resolution: replicate the default script point (screen (100,100) of the topmost window, layout or color) in the headless CLI only; drop the `cursor` queries from UI-G-048. Approved 2026-11-10.
+
+### Q-UI-44: `id` and `get` are ambiguous in Magic's command lookup
+- Kind: quirk
+- Status: open (raised by DISPATCH while re-capturing golden UI-G-002, 2026-11-10)
+- Magic behavior: The layout client registers the aliases as their own table entries, `id<TAB>OR` and `get<TAB>OR`. `Lookup()` ends a table name at a space only, so the names it compares are `id\tOR...` and `get\tOR...`: the word `id` is a prefix of both `id\t...` and `identify`, and `get` of both `get\t...` and `getcell`/`getnode`, so both words are ambiguous. In the Tcl build the quiet dispatch turns that into a Tcl error with an empty result and nothing printed; `identify`, `getcell` and every longer prefix work.
+- Evidence: golden UI-G-002 (`id` fails with an empty result, run 42803858356); utils/lookup.c:90-103 (Lookup), dbwind/DBWcommands.c:349 and :366 (the `get<TAB>OR` and `id<TAB>OR` entries), tcltk/tclmagic.c (quiet dispatch).
+- Options: replicate with magic-compat on (aliases fail quietly; with magic-compat off they run `identify` and `getcell`) | fix everywhere (`id` and `get` run `identify` and `getcell`; record UI-G-002 as a deviation)
+- Recommendation: replicate under magic-compat (X-2 tier 2: a cosmetic lookup quirk, observable in scripts), which is what the round-3 tree implements (`ui::magic_lookup_ambiguous`, tests "id is an alias of identify only with magic-compat off" and "get is an alias of getcell only with magic-compat off"); with magic-compat off the aliases work.

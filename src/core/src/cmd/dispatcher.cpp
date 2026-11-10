@@ -15,6 +15,9 @@
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/state.hpp"
 #include "hefesto/undo/db_recorder.hpp"
+#include "hefesto/view/color_window.hpp"
+#include "hefesto/view/window.hpp"
+#include "hefesto/ui/magic_help.hpp"
 
 namespace hefesto::cmd {
 
@@ -58,21 +61,49 @@ class LiveSink final : public diag::DiagnosticSink {
   const std::vector<diag::DiagnosticSink*>& live_;
 };
 
-// The failure of a word that names no command, or more than one.
-CommandResult lookup_failure(LookupStatus status, const Invocation& invocation) {
+// The failure of a word that names no command, or more than one. A word
+// that is a command of another client only (`color` sent to a layout
+// window) is a Tcl command in Magic's Tcl build, which dispatches it
+// quietly (_tcl_dispatch -> TxTclDispatch(..., quiet = TRUE)): the
+// WindSendCommand failure is a Tcl error with an empty result and nothing
+// printed. Hefesto keeps a diagnostic for its front ends but makes the empty
+// string the command's result.
+CommandResult lookup_failure(LookupStatus status, const Invocation& invocation, const CommandRegistry& registry,
+                             const std::string& client) {
   if (status == LookupStatus::ambiguous) {
     return CommandResult::failure(
         diag::make(ui::codes::kAmbiguous, "That command abbreviation is ambiguous.", location_of(invocation)));
   }
-  return CommandResult::failure(
-      diag::make(diag::codes::kCmdDispatch, "unknown command \"" + invocation.name + "\"", location_of(invocation)));
+  if (registry.find(strip_namespace(invocation.name)) == nullptr) {
+    return CommandResult::failure(diag::make(diag::codes::kCmdDispatch, invalid_command_name(invocation.name),
+                                             location_of(invocation)));
+  }
+  CommandResult result = CommandResult::failure(
+      diag::make(diag::codes::kCmdDispatch, "\"" + invocation.name + "\" is not a command of the " + client + " window",
+                 location_of(invocation)));
+  result.value = std::string{};
+  return result;
 }
 
 bool interactive(Origin origin) {
   return origin == Origin::gui || origin == Origin::key || origin == Origin::touch;
 }
 
+// magic-compat: Magic's Lookup() finds `id` and `get` ambiguous (their
+// table entries end the name with a tab), and its quiet Tcl dispatch turns
+// that into an empty error result with nothing printed.
+CommandResult quiet_ambiguity(const Invocation& invocation) {
+  CommandResult result = CommandResult::failure(
+      diag::make(ui::codes::kAmbiguous, "That command abbreviation is ambiguous.", location_of(invocation)));
+  result.value = std::string{};
+  return result;
+}
+
 }  // namespace
+
+std::string invalid_command_name(std::string_view word) {
+  return "invalid command name \"" + std::string{word} + "\"";
+}
 
 Dispatcher::Dispatcher(const CommandRegistry& registry, platform::PlatformServices services,
                        settings::ProjectSettings& project, ScriptSession& session)
@@ -86,9 +117,14 @@ void Dispatcher::set_editor(editor::EditorState* editor) noexcept {
 }
 
 std::string Dispatcher::target_client() const {
-  // "Command dispatch across global and client tables" steps 1-2: a command
-  // point in a color window (`setpoint x y ID`) sends the command to the
-  // `color` client; otherwise the front end's client applies.
+  // "Command dispatch across global and client tables" steps 1-2: a default
+  // point on a window's chrome (its frame, caption or scroll bars) sends the
+  // command to the `*window` client (windSend.c: rc = windClient); a command
+  // point in a color window (`setpoint x y ID`) sends it to the `color`
+  // client; otherwise the front end's client applies.
+  if (chrome_point_) {
+    return std::string{kWindowClient};
+  }
   if (editor_ != nullptr && editor_->command_point) {
     const view::WindowId id = editor_->command_point->window;
     if (editor_->windows.find(id) == nullptr && editor_->color_map.find(id) != nullptr) {
@@ -98,21 +134,85 @@ std::string Dispatcher::target_client() const {
   return client_;
 }
 
+bool Dispatcher::magic_ambiguous(const std::string& word, const std::string& client) const {
+  if (!project_.compat.magic_compat) {
+    return false;
+  }
+  const std::string_view name = strip_namespace(word);
+  return ui::magic_lookup_ambiguous(kWindowClient, name) || ui::magic_lookup_ambiguous(client, name);
+}
+
+bool Dispatcher::place_default_point() {
+  if (!default_point_ || editor_ == nullptr || editor_->command_point || ui::state(*editor_).point_forced) {
+    return false;
+  }
+  const db::Point px = *default_point_;
+  const auto at = view::window_at(*editor_, px.x, px.y);
+  if (!at) {
+    return false;  // no window there: Magic's windowless layout client
+  }
+  view::ViewMapping mapping;
+  if (at->color) {
+    mapping = view::color_window_mapping(*editor_, *editor_->color_map.find(at->id));
+  } else {
+    mapping = editor_->windows.find(at->id)->mapping();
+  }
+  editor_->command_point = PointerState{at->id, mapping.to_layout(px.x, px.y),
+                                        mapping.screen_to_surface({px.x, px.y, px.x, px.y})};
+  ui::state(*editor_).pointer_pixel = px;
+  chrome_point_ = !at->inside;
+  return true;
+}
+
+void Dispatcher::drop_default_point(const db::Point& saved_pixel) {
+  chrome_point_ = false;
+  ui::UiState& ui = ui::state(*editor_);
+  if (!ui.point_forced) {  // the command did not set a point of its own (`setpoint`)
+    editor_->command_point.reset();
+    ui.pointer_pixel = saved_pixel;
+  }
+}
+
+void Dispatcher::print_command(const Invocation& invocation) {
+  // `*winddebug` (windPrintCommands): WindSendCommand prints each command
+  // it is sent with its point (windows/windDebug.c:windPrintCommand).
+  if (editor_ == nullptr || !editor_->windows.print_commands()) {
+    return;
+  }
+  std::string text = "Sending command:\n '" + invocation.name + "'";
+  for (const auto& arg : invocation.args) {
+    text += " '" + arg + "'";
+  }
+  const db::Point px = ui::state(*editor_).pointer_pixel;
+  text += " at (" + std::to_string(px.x) + ", " + std::to_string(px.y) + ")";
+  report(diag::make(ui::codes::kReport, std::move(text)));
+}
+
 CommandResult Dispatcher::execute(const Invocation& invocation) {
   if (invocation.name.empty()) {
     return CommandResult::success();  // a command with no words is a no-op
   }
+  const db::Point saved_pixel = editor_ != nullptr ? ui::state(*editor_).pointer_pixel : db::Point{};
+  const bool defaulted = place_default_point();
   const std::string client = target_client();
-  const CommandLookup found = registry_.resolve(invocation.name, client);
+  const CommandLookup found = registry_.resolve(invocation.name, client, true, name_lookup(invocation.origin));
+  if (found.status == LookupStatus::found || registry_.find(strip_namespace(invocation.name)) != nullptr) {
+    print_command(invocation);
+  }
   Invocation resolved = invocation;
   CommandResult result;
-  if (found.status == LookupStatus::found) {
+  if (found.status == LookupStatus::found && magic_ambiguous(invocation.name, client)) {
+    result = quiet_ambiguity(invocation);
+  } else if (found.status == LookupStatus::found) {
     resolved.name = found.spec->name;
     result = run_handler(*found.spec, resolved);
   } else {
-    result = lookup_failure(found.status, invocation);
+    result = lookup_failure(found.status, invocation, registry_, client);
   }
   after_command(invocation, resolved, result);
+  if (defaulted && editor_ != nullptr) {
+    drop_default_point(saved_pixel);
+  }
   return result;
 }
 

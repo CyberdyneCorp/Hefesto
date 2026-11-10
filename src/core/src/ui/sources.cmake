@@ -18,6 +18,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/keysyms.cpp
   ${CMAKE_CURRENT_LIST_DIR}/line.cpp
   ${CMAKE_CURRENT_LIST_DIR}/macro_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/magic_help.cpp
   ${CMAKE_CURRENT_LIST_DIR}/macro_file.cpp
   ${CMAKE_CURRENT_LIST_DIR}/macros.cpp
   ${CMAKE_CURRENT_LIST_DIR}/measure_commands.cpp

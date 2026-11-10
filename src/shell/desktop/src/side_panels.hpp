@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "hefesto/shell/editing_models.hpp"
+#include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/view_models.hpp"
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
@@ -41,10 +42,14 @@ class LeftPanel {
  public:
   explicit LeftPanel(ScreenContext& ctx);
   [[nodiscard]] ui::Widget& widget() noexcept { return root_; }
+  /// Moves the edge separator to the canvas side of the dock (`panel ... dock`).
+  void set_dock_side(DockSide side) { root_.insert(*edge_, panel_edge_index(side)); }
 
   /// Rebuilds the layer rows and the hierarchy from the session.
   void refresh(const view::LayoutWindow* window);
   void repaint();
+  /// F6: the keyboard focus to the layer filter.
+  void focus() { filter_->focus(); }
 
  private:
   void rebuild_layers();
@@ -84,12 +89,17 @@ class InspectorPanel {
  public:
   explicit InspectorPanel(ScreenContext& ctx);
   [[nodiscard]] ui::Widget& widget() noexcept { return root_; }
+  /// Moves the edge separator to the canvas side of the dock (`panel ... dock`).
+  void set_dock_side(DockSide side) { root_.insert(*edge_, panel_edge_index(side)); }
   /// The selection in `window_root` when there is one, else the box or the cell.
   void refresh(const UnitScale& scale, const db::CellDef* window_root = nullptr);
   void repaint();
+  /// F6: the keyboard focus to the first action; false when there is none.
+  bool focus();
 
  private:
   void rebuild_actions(std::vector<InspectorAction> actions);
+  void open_action_menu(std::size_t index, const ui::Widget& button);
 
   ScreenContext& ctx_;
   ui::Box root_ = ui::Box::horizontal();

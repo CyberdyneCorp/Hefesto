@@ -21,7 +21,7 @@ constexpr auto kReportingEdits = std::to_array<std::string_view>({"paint", "eras
 
 /// Commands that notify windows themselves or draw nothing.
 constexpr auto kDisplayCommands = std::to_array<std::string_view>({
-    "*coord", "*files", "*watch", "*winddebug", "box", "center", "closewindow", "crosshair", "echo", "expand",
+    "*coord", "*crash", "*files", "*grstats", "*pause", "*watch", "*winddebug", "*winddump", "box", "center", "closewindow", "crosshair", "echo", "expand",
     "feedback", "findbox", "grid", "grow", "help",
     "openwindow", "over", "redraw", "reset", "scroll", "see", "snap", "specialopen", "underneath", "unexpand",
     "updatedisplay", "view", "windowborder", "windowcaption", "windownames", "windowpositions", "windowscrollbars",

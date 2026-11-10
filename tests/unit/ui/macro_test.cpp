@@ -169,6 +169,7 @@ TEST_CASE("macro lists a table, flat or reversed, filtered or help",
   const auto ghost = s.run("macro ghost");
   CHECK(UiSession::first_error(ghost) == "UI-MACRO-002: Cannot get macro list from current window.");
   CHECK(ghost.value.to_string().find("box") != std::string::npos);
+  CHECK(ghost.ok());  // Magic returns the table names as an ok Tcl result (golden UI-G-049)
 }
 
 TEST_CASE("client-qualified, unavailable-client and copied tables",
@@ -258,8 +259,13 @@ TEST_CASE("the default bindings of the system startup file and the tool setup",
   // The client tables.
   CHECK(run("Button2", "color") == "pushbutton middle");
   CHECK(run("minus", "color") == "color last");
-  CHECK(run("Button3", "netlist") == "pushbutton right");
-  CHECK(run("L", "wind3d") == "level up");
+  // Regression (golden UI-G-049, `macro layout list`): the clients of optional modules this build lacks
+  // (netlist, wind3d) are not registered, so their startup bindings define no table, as in Magic.
+  CHECK(run("Button3", "netlist") == "<none>");
+  CHECK(run("L", "wind3d") == "<none>");
+  CHECK_FALSE(s.editor.macros.has_table("wind3d"));
+  CHECK_FALSE(s.editor.macros.has_table("netlist"));
+  CHECK(s.run("macro layout list").value.to_string() == "pick nettool wiring color box");
   // Box tool current, glyph 0.
   REQUIRE(s.editor.tools.current() != nullptr);
   CHECK(s.editor.tools.current()->name == "box");
@@ -290,4 +296,57 @@ TEST_CASE("a key-binding file holds macro lines", "[cap:ui-command-dispatch][req
   const auto broken = ui::read_macro_file(s.editor, "macro y {unclosed", "bad.hef");
   CHECK(broken.applied == 0);
   CHECK_FALSE(broken.diagnostics.empty());
+}
+
+// Q-UI-42: Magic's golden captures run on the null display, where only
+// single-character and ^X key names parse (utils/macros.c:MacroKey), so the
+// system startup file defines just those bindings. Defined in the same
+// order (toolkit.tcl's ^P, then magic/proto.magicrc.in), Hefesto's table
+// lists them in exactly Magic's headless order (golden UI-G-009, line 1 of
+// `macro list`): the listing differences of UI-G-009/013/049 come only from
+// the keysym bindings Hefesto adds (Q-UI-12) and the hash growth they cause.
+TEST_CASE("the null-display bindings list in Magic's headless hash order",
+          "[cap:ui-command-dispatch][req:Macro tables][golden:UI-G-009]") {
+  struct Binding {
+    const char* key;
+    const char* text;
+  };
+  const Binding startup[] = {
+      {"^P", "magic::gencell {} ; raise .params"},  // toolkit.tcl, sourced before the startup file
+      {"a", "select visible"}, {"A", "select more visible"}, {"^A", "select less visible"},
+      {"b", "box"}, {"B", "findbox"}, {"c", "copy"}, {"d", "delete"}, {"^D", "erase $"}, {"e", "edit"},
+      {"f", "sideways"}, {"F", "upsidedown"}, {"g", "grid"}, {"G", "grid 2"}, {"i", "select cell"},
+      {"I", "select more cell"}, {"l", "label "}, {"L", "shell ls"}, {"^L", "redraw"}, {"m", "move"},
+      {"M", "stretch"}, {"^N", ""}, {"o", "openwindow"}, {"O", "closewindow"}, {"p", "paint "},
+      {"r", "clockwise"}, {"R", "clockwise 270"}, {"^R", "clockwise 180"}, {"s", "select"},
+      {"S", "select more"}, {"^S", "select less"}, {"u", "undo"}, {"U", "redo"}, {"v", "view"},
+      {"V", "xview"}, {"w", "writeall"}, {"W", "writeall force"}, {"x", "expand"}, {"X", "unexpand"},
+      {"^X", "expand toggle"}, {"z", "zoom .5"}, {"Z", "zoom 2"}, {"^Z", "findbox zoom"}, {"?", "drc why"},
+      {"!", "drc find; findbox zoom; zoom 16"}, {"/", "select area; what ; select clear"},
+      {",", "select clear"}, {" ", "tool"},
+  };
+  ui::MacroTables t;
+  for (const Binding& b : startup) {
+    const std::string text = b.text;
+    if (text.empty()) {
+      (void)t.erase("box", key(b.key));  // `macro ^N ""` deletes (nothing to delete)
+    } else {
+      t.define("box", key(b.key), text, std::nullopt, text == "label " || text == "paint ");
+    }
+  }
+  const auto order = [&t](std::string_view table) {
+    std::string out;
+    for (const auto& [k, macro] : t.entries(table)) {
+      if (macro != nullptr) {
+        out += (out.empty() ? "" : " ") + ui::key_display_name(k);
+      }
+    }
+    return out;
+  };
+  CHECK(order("box") ==
+        "m I ^A o p L ^D M r s O , u v R / w S x ^L U z V W X ^P Z ^R ^S ^X b a ? ^Z c d e A f B g   ! i G F l");
+  // tools.tcl's `macro copy wiring` (golden UI-G-049, `macro wiring list`).
+  t.copy("box", "wiring");
+  CHECK(order("wiring") ==
+        "^A I m o ^D L p M r O s u , R v S w / ^L x U V z W ^P X ^R Z ^S ^X a b c ^Z ? d A e B f g   i ! F G l");
 }

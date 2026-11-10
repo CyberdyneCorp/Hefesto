@@ -72,6 +72,8 @@ struct ScriptRun {
 ///     the script with that command's first error diagnostic;
 ///   - a dispatch failure (unknown command) and a failure marked
 ///     CommandResult::raises (e.g. `hefesto::strict maybe`) abort in both modes;
+///   - with session().catch_lines (each line wrapped in `catch`) no command
+///     failure aborts the script;
 ///   - a parse error aborts before any command runs.
 ScriptRun run_script(Dispatcher& dispatcher, std::string_view text, Origin origin, std::string_view source_name = {});
 

@@ -41,8 +41,9 @@ def dispatch_specs() -> list[Spec]:
         ui("UI-G-001", DISPATCH, ["Command name lookup"], "getc nonexist and getcell nonexist.",
            ["getc nonexist", "getcell nonexist"]),
         ui("UI-G-002", DISPATCH, ["Command name lookup", "Command dispatch across global and client tables"],
-           "The ambiguous prefix e, then extr help vs ext help (unique prefixes of extract).",
-           ["e", "extr help", "ext help"]),
+           "The prefix e and the unique prefix extr are not command names in a script (Q-UI-41); the alias "
+           "id is, but Magic's lookup finds it ambiguous with identify (its entry is 'id<TAB>OR'): empty result.",
+           ["e", "extr help", "id", "id x"]),
         ui("UI-G-003", DISPATCH, ["Command dispatch across global and client tables"], "foo in a layout window.",
            ["box values", "foo"]),
         ui("UI-G-004", DISPATCH, ["Command name lookup"], "ZoOm 2, then view get.", ["view get", "ZoOm 2", "view get"]),
@@ -80,8 +81,10 @@ def tool_specs() -> list[Spec]:
     return [
         ui("UI-G-046", TOOLS, ["tool command", "Tool registry"], "tool x4; tool foo; tool w; tool info; tool type (Tcl form).",
            ["tool", "tool", "tool", "tool", "tool foo", "tool w", "tool info", "tool type", "tool"]),
-        ui("UI-G-048", TOOLS, ["cursor command"], "cursor, cursor lambda, cursor window, cursor 22, cursor bogus.",
-           ["setpoint 100 100 0", "cursor", "cursor lambda", "cursor window", "cursor 22", "cursor bogus"]),
+        ui("UI-G-048", TOOLS, ["cursor command"],
+           "cursor 22, cursor bogus (the cursor queries read the X pointer, uninitialised on Magic's null "
+           "display: dropped per Q-UI-43).",
+           ["setpoint 100 100 0", "cursor 22", "cursor bogus"]),
         ui("UI-G-049", TOOLS, ["Default key bindings"], "macro list per tool and client (Tcl variant of the system startup file).",
            ["macro list", "macro layout list", "macro wiring list", "macro color list", "tool wiring", "macro list",
             "tool box"]),

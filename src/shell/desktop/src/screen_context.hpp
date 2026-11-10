@@ -11,8 +11,10 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "hefesto/shell/core_command_sink.hpp"
+#include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
 #include "raven_ui.hpp"
 
@@ -31,6 +33,9 @@ struct ScreenContext {
   /// Puts a command in the command bar without running it (an action that
   /// needs an argument, e.g. "label "), and focuses it. Set by the main window.
   std::function<void(const std::string&)> prompt;
+  /// Opens a popover menu at window point (x, y): choosing an entry runs
+  /// its command (or puts it in the command bar). Set by the main window.
+  std::function<void(const std::string& title, const std::vector<MenuEntry>& entries, float x, float y)> menu;
   /// The layer palette's active paint layer (empty: none).
   std::string paint_layer;
 

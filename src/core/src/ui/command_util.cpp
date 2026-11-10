@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "hefesto/cmd/all_commands.hpp"
+#include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -45,13 +46,15 @@ cmd::CommandResult run_nested(cmd::CommandContext& ctx, const std::vector<std::s
   if (words.empty()) {
     return cmd::CommandResult::success();
   }
-  const cmd::CommandLookup found = ctx.registry().resolve(words.front(), running_client(ctx));
+  // Bound and sent command lines are Tcl lines in Magic: exact names (Q-UI-41).
+  const cmd::CommandLookup found =
+      ctx.registry().resolve(words.front(), running_client(ctx), true, cmd::NameLookup::exact);
   if (found.status == cmd::LookupStatus::ambiguous) {
     return cmd::CommandResult::failure(diag::make(codes::kAmbiguous, "That command abbreviation is ambiguous."));
   }
   if (found.status == cmd::LookupStatus::not_found) {
     return cmd::CommandResult::failure(
-        diag::make(diag::codes::kCmdDispatch, "unknown command \"" + words.front() + "\""));
+        diag::make(diag::codes::kCmdDispatch, cmd::invalid_command_name(words.front())));
   }
   const cmd::Invocation inv{found.spec->name, {words.begin() + 1, words.end()}, origin, std::nullopt};
   return found.spec->handler(ctx, inv);

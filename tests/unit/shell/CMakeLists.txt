@@ -25,6 +25,8 @@ hefesto_add_unit_test(hefesto_shell_tests
     public_headers_test.cpp
     theme_tokens_test.cpp
     view_commands_test.cpp
+    screen_models_test.cpp
+    text_key_filter_test.cpp
     view_models_test.cpp
   LIBS
     hefesto::shell_desktop)

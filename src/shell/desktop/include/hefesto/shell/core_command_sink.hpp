@@ -17,6 +17,7 @@
 
 #include <functional>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "hefesto/cmd/command_log.hpp"
@@ -124,6 +125,20 @@ class CoreSession {
   cmd::Dispatcher dispatcher_;
   Forwarder forwarder_;
 };
+
+/// A line typed in the command bar after GNU Readline history expansion
+/// (ui-command-dispatch "Command history"; Magic's TxGetLine).
+struct TypedLine {
+  std::optional<std::string> run;  // the expanded line to run; absent on `:p` or an error
+  std::string print;               // `:p`: the expanded line, printed and not run
+  std::optional<diag::Diagnostic> error;  // UI-HISTORY-001 (`!x: event not found`, ...)
+};
+
+/// Expands a typed line against the session's command history
+/// (`ui::state(editor).history`) and adds the expanded line to it, so the
+/// `history` command and `!` designators see what the user typed. Lines the
+/// shell issues itself (buttons, menus) do not go through here.
+[[nodiscard]] TypedLine expand_typed_line(editor::EditorState& editor, std::string_view line);
 
 class CoreCommandSink final : public CommandSink {
  public:
