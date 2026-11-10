@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1987 requirements, 3080 scenarios, 843 open questions.
+**Totals:** 169 capabilities, 1987 requirements, 3081 scenarios, 847 open questions.
 
 ## Hefesto product (native)
 
@@ -63,7 +63,7 @@ Open questions: [44](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 ## Layout data model (MODEL)
 
-Open questions: [31](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
+Open questions: [32](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -77,14 +77,14 @@ Open questions: [31](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 
 ## Design rule checking (DRC)
 
-Open questions: [23](decisions/open-questions/DRC.md) · Golden cases: [CASES.md](../tests/golden/DRC/CASES.md)
+Open questions: [24](decisions/open-questions/DRC.md) · Golden cases: [CASES.md](../tests/golden/DRC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
 | [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 27 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
 | [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 17 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
-| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 35 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
+| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 36 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
 | [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 30 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
 
 ## Mask generation, GDS, CIF (MASK)
@@ -307,7 +307,7 @@ Open questions: [46](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 
-Open questions: [34](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
+Open questions: [36](decisions/open-questions/MISC.md) · Golden cases: [CASES.md](../tests/golden/MISC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
