@@ -41,22 +41,22 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "top.mag"
 source = "top.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "c1.mag"
 source = "c1.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "c2.mag"
 source = "c2.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "c3.mag"
 source = "c3.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]

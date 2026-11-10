@@ -36,4 +36,4 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "a2.mag"
 source = "a2.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]

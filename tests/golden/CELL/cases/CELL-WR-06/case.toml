@@ -40,4 +40,4 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "a_out.mag"
 source = "a_out.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]

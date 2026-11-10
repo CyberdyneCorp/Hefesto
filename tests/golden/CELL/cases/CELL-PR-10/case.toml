@@ -40,10 +40,10 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "x_out.mag"
 source = "x_out.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "y_out.mag"
 source = "y_out.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
