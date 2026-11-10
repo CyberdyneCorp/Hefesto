@@ -144,12 +144,95 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
 - **Raven's build warnings.** On macOS, Raven's Cocoa backend emits `NSUserNotification` deprecation warnings. They come from third-party code and are harmless.
 - **No Vulkan SDK locally.** The local machine has Homebrew MoltenVK but neither the LunarG SDK nor the `vulkan-headers` / `vulkan-loader` formulae. The builds used Khronos Vulkan-Headers v1.4.321 from a scratch clone (see `docs/spikes/canvas-spike.md`, "How to reproduce").
 
+## M2 10.1 checks (macOS, 2026-11-10): results, not final
+
+This is the evidence recorded for m2-interactive-editing task 10.1. It does not change the summary table or the recommendation; INTEGRATION finalizes both in task 11.4.
+
+**Setup:**
+
+- Apple M3 Pro, macOS 27.0.1, MoltenVK 1.4.2. This is not the reference M1.
+- Debug build of `m2-round2` at `24749a7`, with Raven at the pin.
+- Input was real OS events: a CGEvent helper posting at the HID event tap, which AppKit delivers as ordinary NSEvents. There was no Raven injection.
+- The reactions were observed in compositor window captures (`screencapture -l`) and through the macOS AX API.
+- This host already had the permissions to post events and record the screen; nothing extra had to be allowed.
+
+**Criterion 2: live input in a real window, macOS. Partial pass.**
+
+- **Passed:**
+  - hover updates the status x/y;
+  - right and middle drag pan;
+  - the wheel zooms at the cursor;
+  - a trackpad two-finger scroll pans (precise path);
+  - a trackpad pinch zooms through `magnifyWithEvent`. The pinch was synthesized with private CGS gesture fields, not a physical trackpad;
+  - a click focuses the canvas, then ← → ↓, +, − and F work;
+  - typing in the command bar plus Return runs the command;
+  - a layer row click toggles visibility;
+  - the wheel scrolls the layer list;
+  - the Console button works;
+  - a live corner-drag resize reflows. 20 captures during the drag showed no blank or torn frame. This is a sampling check, not frame-exact.
+- **Failed, a Raven bug at the pin:**
+  - In the command bar, ↑ (history) appends U+F700, and ← / → in a text field move the caret and also insert U+F702 / U+F703.
+  - Cause: `cocoa_platform.m` `keyDown:` passes `[event characters]` to `rvn_cocoa_emit_text`, which does not drop AppKit's function-key private-use range U+F700–U+F8FF.
+  - A physical key press produces the same NSEvent, so this is not an artifact of the synthetic events.
+  - `keyDown:` also emits no text for repeated keys, so held keys do not auto-repeat in text fields.
+  - Proposed upstream fix: skip U+F700–U+F8FF and C0 controls/DEL in `rvn_cocoa_emit_text`.
+- **Not done:**
+  - docking or undocking: M1 has no dock; dockable panels are task 10.7;
+  - input-to-photon latency;
+  - Linux under X11 and Wayland, which cannot be run on this Mac.
+
+**Criterion 4: accessibility, macOS AX tree. Partial.**
+
+VoiceOver was not switched on; this check read the NSAccessibility tree that VoiceOver consumes. Orca on Linux cannot be checked here.
+
+- **Present:**
+  - the window's role and title;
+  - named groups: Tools, Layers and hierarchy, Layout canvas, Inspector and Status;
+  - the "Command" `AXTextField`, whose value and focus can be set;
+  - per-layer buttons named with their plane and state ("nwell, plane well, visible"), with help text;
+  - tool buttons with "pressed" / `AXEnabled=0`;
+  - `AXFrame` on every element;
+  - `AXFocusedUIElement` following clicks and Tab / Shift-Tab through Open, PDKs, Zoom to fit, Filter layers and the layer rows;
+  - the Console / Diagnostics tabs, as `AXRadioButton` with a working `AXPress`;
+  - Space activating a focused layer row.
+- **Gaps:**
+  1. The shell's custom-painted controls do not expose `AXPress`, and `AXPress` on them does nothing. These are the layer rows, tool rail, Open, PDKs, Zoom to fit and the console toggle, so VoiceOver's VO-Space cannot activate them. Raven marks only its built-in buttons, checkboxes, menu items and list/tree items as invokable, and has no API for a custom widget's invoke action or checked state. The fix is upstream, or SHELL switches to `R_WIDGET_BUTTON` / checkbox.
+  2. Toggle state exists only as name text ("pressed", "visible/hidden"), not as an AX value.
+  3. Activating or clicking a layer row moves the focus to the window root (the shell rebuilds the list).
+  4. Minor:
+     - one unnamed static text;
+     - the canvas exposed as two nested groups that are both named "Layout canvas";
+     - no announcement of command results (`Raccessibility_announce` is unused).
+
+**Criterion 1: 100 × 100 `sky130_fd_sc_hd__dfxtp_1` array.**
+
+The run used `--run "expand all" --bench-frames 300` at 1440 × 900 on the Retina 2× framebuffer: 13,692,241 instances. The machine was loaded (load average about 11) by parallel builds.
+
+| Build | vsync | Median | p95 | p99 | Max |
+|---|---|---|---|---|---|
+| Debug | on | **9.30 ms** | 17.4 ms | 21.6 ms | 132 ms |
+| Debug | off | 3.53 ms | 10.0 ms | 13.9 ms | 78 ms |
+| Release, pre-M2 binary | on | 8.41 ms | 16.6 ms | 24.1 ms | 98 ms |
+
+- The median target is met on the M3 Pro.
+- The tails need a rerun on an idle machine.
+- `disable_vsync` now appears to be honored on macOS.
+- The reference M1 Mac and Linux are still pending.
+
+**Left for 10.1:**
+
+- Linux live input under X11 and Wayland;
+- Orca;
+- VoiceOver driven audibly on the layer palette and the command bar;
+- the upstream reports for the key-text bug and the custom-widget accessibility gap;
+- dock/undock after 10.7.
+
 ## Checklist to close the decision
 
 - [ ] Run `hefesto-bench-canvas` and `hefesto --bench-frames 600 --rects 10000000` on an M1 Mac, and commit the JSON (criterion 1).
 - [ ] Run the same on Linux x86_64 with a mid-range discrete GPU, under X11 and under Wayland (criterion 1).
-- [ ] Drive the live window: drag-pan, wheel and trackpad zoom, keys after a click, a live resize with the canvas animating, and docking or undocking the Layout panel; check for flicker (criterion 2).
+- [ ] Drive the live window: drag-pan, wheel and trackpad zoom, keys after a click, a live resize with the canvas animating, and docking or undocking the Layout panel; check for flicker (criterion 2). Most of this was done on macOS in the M2 10.1 checks above; still open are the arrow-key text bug, docking, and Linux.
 - [x] Bundle Inter and JetBrains Mono (with their licenses) and load them through the bundled path (`--asset-dir`) (criterion 3, M1).
 - [ ] Resolve the embedded-Roboto conflict with `hefesto-licensing` (section 3): a Raven build option or pinned patch without embedded fonts, or a spec exception (criterion 3).
-- [ ] VoiceOver on macOS; Orca on Linux under X11 and Wayland (criterion 4).
+- [ ] VoiceOver on macOS; Orca on Linux under X11 and Wayland (criterion 4). The macOS AX tree was checked in the M2 10.1 checks above; it has gaps, and neither a VoiceOver run nor Orca has been done.
 - [ ] Decide, and log the outcome as a P-11 follow-up in `docs/decisions/product.md`.

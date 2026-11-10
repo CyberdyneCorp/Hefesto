@@ -1,0 +1,22 @@
+01-start | focused: AXGroup | sky130_fd_sc_hd__dfxtp_1 — Hefesto
+02-mouse-move | focused: AXGroup | sky130_fd_sc_hd__dfxtp_1 — Hefesto
+03-right-drag-pan | focused: AXGroup | Layout canvas
+04-middle-drag-pan | focused: AXGroup | Layout canvas
+05-wheel-zoom-in | focused: AXGroup | Layout canvas
+06-wheel-zoom-out | focused: AXGroup | Layout canvas
+07-trackpad-scroll-pan | focused: AXGroup | Layout canvas
+08-trackpad-pinch-in | focused: AXGroup | Layout canvas
+09-trackpad-pinch-out | focused: AXGroup | Layout canvas
+10-click-focus-canvas | focused: AXGroup | Layout canvas
+11-keys-arrows | focused: AXGroup | Layout canvas
+12-key-plus | focused: AXGroup | Layout canvas
+13-key-minus | focused: AXGroup | Layout canvas
+14-key-f-fit | focused: AXGroup | Layout canvas
+15-type-command | focused: AXTextField | Command
+16-return-runs | focused: AXTextField | Command
+17-up-history | focused: AXTextField | Command
+18-left-arrow-in-text | focused: AXTextField | Command
+19-click-layer-row | focused: AXGroup | sky130_fd_sc_hd__dfxtp_1 — Hefesto
+20-wheel-layer-list | focused: AXGroup | sky130_fd_sc_hd__dfxtp_1 — Hefesto
+21-console-button | focused: AXButton | Console and diagnostics, pressed
+22-live-resize | focused: AXButton | Console and diagnostics, pressed
