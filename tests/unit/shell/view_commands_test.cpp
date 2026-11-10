@@ -7,6 +7,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <memory>
+#include <algorithm>
+#include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -30,11 +33,21 @@ struct Recorder {
   ThemeMode theme = ThemeMode::dark;
   double pan_x = 0.0;
   double pan_y = 0.0;
+  std::string paint;
+  std::map<PanelId, bool> shown{{PanelId::layers, true}, {PanelId::inspector, true}, {PanelId::console, false}};
 
   ViewActions actions() {
-    return ViewActions{[this](ThemeMode m) { theme = m; }, [this](double dx, double dy) {
+    return ViewActions{[this](ThemeMode m) { theme = m; },
+                       [this](double dx, double dy) {
                          pan_x = dx;
                          pan_y = dy;
+                       },
+                       [this](PanelId id, std::optional<bool> show) { return shown[id] = show.value_or(!shown[id]); },
+                       [this](PanelId id) { return shown[id]; },
+                       [this](std::optional<std::string> name) -> std::optional<std::string> {
+                         if (name && *name == "nosuch") return std::nullopt;
+                         if (name) paint = *name;
+                         return paint;
                        }};
   }
 };
@@ -57,6 +70,44 @@ bool has_code(const CommandOutcome& outcome, std::string_view code) {
 }
 
 }  // namespace
+
+TEST_CASE("panel collapses and restores the main window's panels through the command API",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  CoreSession core(test_options());
+  Recorder recorder;
+  REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  CoreCommandSink sink(core.dispatcher());
+  CHECK(sink.submit("panel layers hide").message == "hidden");
+  CHECK_FALSE(recorder.shown[PanelId::layers]);
+  CHECK(sink.submit("panel layers").message == "hidden");
+  CHECK(sink.submit("panel layers toggle").message == "shown");
+  CHECK(sink.submit("panel console show").message == "shown");
+  CHECK(sink.submit("panel inspector hide").message == "hidden");
+  CHECK_FALSE(sink.submit("panel nosuch").ok());
+  CHECK_FALSE(sink.submit("panel layers sideways").ok());
+  // Without panel actions (another front end) the command is not registered.
+  CoreSession other(test_options());
+  REQUIRE(register_view_commands(other.registry(), ViewActions{[](ThemeMode) {}, [](double, double) {}, {}, {}, {}}));
+  CHECK_FALSE(CoreCommandSink(other.dispatcher()).submit("panel layers").ok());
+}
+
+TEST_CASE("palette paint sets the paint layer through the command API",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  CoreSession core(test_options());
+  Recorder recorder;
+  REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  CoreCommandSink sink(core.dispatcher());
+  CHECK(sink.submit("palette paint").message == "none");
+  CHECK(sink.submit("palette paint metal2").message == "metal2");
+  CHECK(recorder.paint == "metal2");
+  CHECK_FALSE(sink.submit("palette paint nosuch").ok());
+  CHECK(recorder.paint == "metal2");
+  CHECK(sink.submit("palette paint none").message == "none");
+  CHECK_FALSE(sink.submit("palette color").ok());
+  // Logged and replayable like every UI action.
+  const auto log = core.command_log().history();
+  CHECK(std::find(log.begin(), log.end(), "palette paint metal2") != log.end());
+}
 
 TEST_CASE("view commands are core commands dispatched from the command bar",
           "[cap:hefesto-architecture][req:Single command API]") {

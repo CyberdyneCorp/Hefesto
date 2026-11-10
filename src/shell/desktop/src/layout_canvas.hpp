@@ -3,8 +3,9 @@
 //
 // The center of the Desktop-Layout screen: the Vulkan canvas (a Raven
 // viewport in draw-callback mode) with the painted overlay on top of it
-// (dot grid, rulers, subcell names, bitmap label text, the box as Magic
-// draws it, the zoom control and the minimap).
+// (dot grid, rulers, subcell names, bitmap label text, highlight text and
+// point crosses, the zoom control and the minimap). The box, the selection
+// and the other highlights are a second GPU pass over the layout.
 //
 // The canvas shows the core's current layout window (design.md D5): it
 // observes `editor.windows`, maps the window's ViewMapping to the camera,
@@ -12,11 +13,14 @@
 // render::to_batches when the window's content, expansion or visibility
 // changes, and writes the camera back into the window's mapping after a
 // gesture, so core commands see the view the user sees. Keys issue core
-// view commands (CanvasController); the zoom control issues `zoom`.
+// Buttons, keys and pointer motion go through the core's macro tables
+// (InputRouter); continuous gestures move the camera (CanvasController);
+// the zoom control issues `zoom`.
 // Raven-free: built from the raven_ui wrappers.
 
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -28,6 +32,7 @@
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
 #include "hefesto/shell/canvas_overlay.hpp"
+#include "hefesto/shell/input_router.hpp"
 #include "hefesto/view/window.hpp"
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
@@ -54,10 +59,17 @@ class LayoutCanvas final : public view::ViewObserver {
   /// when the root, technology or styles changed, nothing when nothing is
   /// pending or the display is suspended.
   void update_scene();
-  /// Repaints the overlay (box or theme changed).
+  /// Repaints the overlay (theme changed).
   void refresh_overlay();
+  /// Rebuilds the highlight pass (box, selection, feedback, elements,
+  /// crosshair, wiring preview, rulers, `*watch` tile overlay) when it
+  /// changed. Called after every command.
+  void refresh_highlights();
   void pan_pixels(double dx, double dy);
   void set_realtime(bool realtime);
+  /// Work deferred until the edits pause (the minimap of a large scene).
+  /// Call once per frame; true while some is still pending.
+  bool idle();
 
   [[nodiscard]] std::size_t instance_count() const;
   /// True once the viewport has its size (after the first layout).
@@ -69,6 +81,10 @@ class LayoutCanvas final : public view::ViewObserver {
   [[nodiscard]] std::string zoom_text() const;
   /// Called when the cursor moves or the view changes (status bar).
   void on_view_changed(std::function<void()> callback) { view_changed_ = std::move(callback); }
+  /// The canvas's button, key and motion path through the macro tables.
+  [[nodiscard]] InputRouter& router() noexcept { return router_; }
+  /// Shows the pointer shape of the current tool and cursor glyph.
+  void update_cursor();
 
   void on_window_changed(view::WindowId id, view::Change change) override;
 
@@ -85,14 +101,17 @@ class LayoutCanvas final : public view::ViewObserver {
   [[nodiscard]] bool needs_full_rebuild(const view::LayoutWindow& win) const;
   void apply_redisplay(view::LayoutWindow& win, const view::Redisplay& redisplay);
   /// Uploads scene_ and refreshes the overlay's labels, cells and bounds.
-  void publish_scene(const db::CellDef& root);
-  void set_scene_overlay(const display::LayoutScene& scene);
+  /// `full`: after a whole-scene build (the minimap is redone at once).
+  void publish_scene(const db::CellDef& root, bool full);
+  void set_scene_overlay(const display::LayoutScene& scene, bool full);
   /// Uploads the scene's triangles and glyphs (drawn merged with the rectangles by layer).
   void upload_polygons(render::PolygonScene polygons);
   /// Publishes the camera to the render thread; `to_core` also writes it
   /// into the window's mapping (after a gesture or a resize).
   void camera_changed(bool to_core);
   bool handle_input(const CanvasInput& input);
+  bool route_input(const CanvasInput& input);
+  [[nodiscard]] PointerContext pointer(double x, double y) const;
   bool handle_overlay_click(double x, double y);
   void track_cursor(const CanvasInput& input);
   void draw(const ui::ViewportDraw& target);
@@ -106,8 +125,14 @@ class LayoutCanvas final : public view::ViewObserver {
   std::unique_ptr<ui::Painted> painted_;
 
   std::unique_ptr<render::CanvasRenderer> renderer_;
+  // The highlights: a second instance set drawn over the layout
+  // (render::highlight_batches), rebuilt when a command changes them.
+  std::unique_ptr<render::CanvasRenderer> highlight_renderer_;
+  std::vector<display::HighlightItem> highlights_;  // what highlight_renderer_ holds
   render::Camera camera_;
   CanvasController controller_{camera_};
+  InputRouter router_;
+  std::optional<CanvasInput> last_pointer_;  // for keys: the pointer over the canvas
   render::Bounds bounds_;
   bool auto_fit_ = true;  // refit on resize until the user moves the view
   // The root the camera was last framed for: a new root (load, the first
@@ -125,6 +150,7 @@ class LayoutCanvas final : public view::ViewObserver {
   std::optional<db::Point> cursor_;
   paint::OverlayState overlay_state_;
   std::string empty_hint_;
+  std::optional<std::chrono::steady_clock::time_point> minimap_due_;
   std::function<void()> view_changed_;
 
   mutable std::mutex view_mutex_;  // guards snapshot_, index_ and polygons_ (the render thread reads them)
@@ -133,6 +159,10 @@ class LayoutCanvas final : public view::ViewObserver {
   std::shared_ptr<const render::PolygonScene> polygons_;  // batches only (vertices are on the GPU)
   std::vector<render::LayerBatch> ranges_;          // render thread only
   std::vector<render::LayerBatch> polygon_ranges_;  // render thread only
+  std::vector<render::LayerBatch> highlight_draws_;       // guarded by view_mutex_
+  std::vector<render::LayerBatch> highlight_poly_draws_;  // guarded by view_mutex_
+  std::vector<render::LayerBatch> highlight_ranges_;       // render thread only
+  std::vector<render::LayerBatch> highlight_poly_ranges_;  // render thread only
 };
 
 }  // namespace hefesto::shell

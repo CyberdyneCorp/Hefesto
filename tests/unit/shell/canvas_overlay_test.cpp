@@ -110,7 +110,7 @@ TEST_CASE("the minimap shows a thumbnail of the layout in the PDK colors",
     CHECK(f.rect.y + f.rect.h <= g->content.y + g->content.h + 1e-9);
   }
   // Runs of one color are merged: a solid half is a few fills per row, not one per cell.
-  CHECK(fills.size() < static_cast<std::size_t>(g->content.h));
+  CHECK(fills.size() < static_cast<std::size_t>(2.0 * g->content.h));  // at most ~4 runs per 2 px row
 
   // Translucent and stippled layers blend over what is below them.
   display::LayoutScene glass;
@@ -327,4 +327,41 @@ TEST_CASE("a newly shown root is framed like the core's load frame",
   const render::WorldWindow w = camera.visible_window();
   CHECK(w.x1 - w.x0 >= 60.0);
   CHECK(w.y1 - w.y0 >= 60.0);
+}
+
+TEST_CASE("the minimap draws outline-only and cross styles, labels and cell boxes",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  const db::Rect bounds{0, 0, 200, 100};
+  const Rgba black{0.0F, 0.0F, 0.0F, 1.0F};
+  display::LayoutScene scene;
+  scene.layers.push_back(scene_layer(0.0F, 1.0F, 0.0F, display::FillKind::outline, {{0, 0, 200, 100}}));
+  scene.layers.push_back(scene_layer(0.0F, 0.0F, 1.0F, display::FillKind::cross, {{150, 10, 190, 40}}));
+  display::SceneCell cell;
+  cell.bbox = db::Rect{20, 20, 80, 80};
+  cell.style.r = cell.style.g = cell.style.b = 1.0F;
+  cell.style.a = 1.0F;
+  scene.cells.push_back(cell);
+  display::SceneLabel label;
+  label.rect = db::Rect{120, 70, 120, 70};
+  label.style.r = 1.0F;
+  label.style.a = 1.0F;
+  scene.labels.push_back(label);
+  const auto fills = minimap_thumbnail(scene, bounds, black, kMinimapWidth, kMinimapHeight);
+  const auto g = minimap_geometry(bounds, render::WorldWindow{}, kMinimapWidth, kMinimapHeight);
+  REQUIRE(g.has_value());
+  const double s = g->content.w / 200.0;  // pixels per unit
+  const auto at = [&](double wx, double wy) { return thumbnail_at(fills, g->content.x + wx * s, g->content.y + (100.0 - wy) * s); };
+  // The well's edge shows, its inside does not.
+  REQUIRE(at(1.0, 50.0).has_value());
+  CHECK(at(1.0, 50.0)->g > 0.5F);
+  CHECK_FALSE(at(100.0, 10.0).has_value());
+  // The contact's cross fills its rectangle at half strength.
+  REQUIRE(at(170.0, 25.0).has_value());
+  CHECK(at(170.0, 25.0)->b > 0.2F);
+  // The cell box outline, not its inside.
+  REQUIRE(at(20.5, 50.0).has_value());
+  CHECK_FALSE(at(50.0, 50.0).has_value());
+  // The label point.
+  REQUIRE(at(120.0, 70.0).has_value());
+  CHECK(at(120.0, 70.0)->r > 0.8F);
 }

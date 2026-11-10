@@ -3,6 +3,7 @@
 
 #include "side_panels.hpp"
 
+#include <algorithm>
 #include <utility>
 
 #include "hefesto/display/scene.hpp"
@@ -85,9 +86,11 @@ LeftPanel::LeftPanel(ScreenContext& ctx)
   tree_list_.set_accessible_name("Cell hierarchy");
   tree_list_.set_size(-1.0F, kTreeHeight);
 
+  build_paint_footer();
   column_.add(*layers_title_);
   column_.add(filter_row);
   column_.add(layer_list_, 1.0F);
+  column_.add(paint_footer_);
   column_.add(*divider_);
   column_.add(*hierarchy_title_);
   column_.add(tree_list_);
@@ -102,11 +105,13 @@ void LeftPanel::refresh(const view::LayoutWindow* window) {
   window_ = window;
   rebuild_layers();
   rebuild_hierarchy(window);
+  for (ui::Painted* w : {paint_label_.get(), paint_button_.get(), erase_button_.get()}) w->invalidate();
 }
 
 void LeftPanel::repaint() {
   background_.set_fill(ctx_.tokens().surface1);
-  for (ui::Painted* w : {layers_title_.get(), hierarchy_title_.get(), divider_.get(), edge_.get()}) {
+  for (ui::Painted* w : {layers_title_.get(), hierarchy_title_.get(), divider_.get(), edge_.get(), paint_label_.get(),
+                        paint_button_.get(), erase_button_.get()}) {
     w->invalidate();
   }
   for (auto& w : layer_widgets_) w->invalidate();
@@ -121,7 +126,8 @@ void LeftPanel::rebuild_layers() {
   const editor::EditorState& ed = ctx_.editor();
   if (ed.technology && ed.styles) {
     const tech::TypeMask visible = window_ != nullptr ? window_->visible_types() : tech::TypeMask::all();
-    layers_ = layer_rows(display::layer_palette(*ed.technology, *ed.styles), visible, filter_text_);
+    layers_ = layer_rows(display::layer_palette(*ed.technology, *ed.styles), visible, filter_text_, ed.locked_types,
+                         ctx_.paint_layer);
   }
   for (std::size_t i = 0; i < layers_.size(); ++i) {
     auto row = make_interactive(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
@@ -131,8 +137,9 @@ void LeftPanel::rebuild_layers() {
     row->set_size(-1.0F, static_cast<float>(kLayerRowHeight));
     row->set_role(ui::Role::toggle_button);
     row->set_accessible_name(layers_[i].accessible_name());
-    row->set_tooltip(layers_[i].visible ? "Hide " + layers_[i].name + " (see no)" : "Show " + layers_[i].name + " (see)");
-    row->on_click([this, i](float, float) { ctx_.run(layers_[i].toggle_command()); });
+    row->set_tooltip("Click: paint layer · eye: " + layers_[i].toggle_command() + " · lock: " +
+                     layers_[i].lock_command());
+    row->on_click([this, i](float x, float) { layer_click(i, x); });
     layer_rows_box_.add(*row);
     layer_widgets_.push_back(std::move(row));
   }
@@ -146,6 +153,59 @@ void LeftPanel::rebuild_layers() {
     layer_rows_box_.add(*empty);
     layer_widgets_.push_back(std::move(empty));
   }
+}
+
+void LeftPanel::layer_click(std::size_t index, float x) {
+  if (index >= layers_.size()) return;
+  const LayerRow& row = layers_[index];
+  const float width = static_cast<float>(kLeftPanelWidth) - 12.0F;  // the rows box's 6 px padding on each side
+  const float meta_width = ctx_.runtime.text_width(TextRole::meta, row.meta());
+  // Enter / Space (x < 0) select the paint layer, like a click on the name.
+  switch (x < 0.0F ? LayerRowHit::paint : layer_row_hit(x, width, meta_width)) {
+    case LayerRowHit::visibility: ctx_.run(row.toggle_command()); return;
+    case LayerRowHit::lock: ctx_.run(row.lock_command()); return;
+    case LayerRowHit::paint:
+      // The paint layer chooses what the Paint tool and "Paint" / "Erase" paint.
+      ctx_.run(row.paint ? std::string("palette paint none") : "palette paint " + row.name);
+      return;
+  }
+}
+
+void LeftPanel::build_paint_footer() {
+  paint_footer_.set_padding(kPanelPadX, 8.0F, kPanelPadX, 10.0F);
+  paint_footer_.set_spacing(6.0F);
+  paint_label_ = make_painted(ctx_, [this](ui::Painter& p, float, float h, const ThemeTokens& t) {
+    const std::string name = ctx_.paint_layer.empty() ? std::string("none: click a layer") : ctx_.paint_layer;
+    p.text_centered_y(TextRole::meta, 0.0F, h / 2.0F, "Paint layer", t.text_tertiary);
+    p.text_centered_y(TextRole::mono, 76.0F, h / 2.0F, name,
+                      ctx_.paint_layer.empty() ? t.text_tertiary : t.text_primary);
+  });
+  paint_label_->set_size(-1.0F, 20.0F);
+  paint_label_->set_role(ui::Role::text);
+  paint_label_->set_accessible_name("Paint layer");
+  paint_footer_.add(*paint_label_);
+  ui::Box buttons = ui::Box::horizontal();
+  buttons.set_spacing(6.0F);
+  for (const bool erase : {false, true}) {
+    // The board's "Paint on box" / "Erase on box" do not fit the 240 px panel side by side.
+    const std::string_view label = erase ? "Erase" : "Paint";
+    auto button = make_interactive(ctx_, [this, erase, label](ui::Painter& p, float w, float h, const ThemeTokens& t,
+                                                             bool hov, bool foc) {
+      paint::button(p, w, h, label, erase ? "" : "paint",
+                    erase ? paint::ButtonStyle::secondary : paint::ButtonStyle::primary,
+                    paint::WidgetState{hov, foc, !ctx_.paint_layer.empty(), false}, t);
+    });
+    button->set_size(paint::button_width(ctx_.runtime, label, !erase), static_cast<float>(kButtonHeight));
+    button->set_role(ui::Role::button);
+    button->set_accessible_name(label);
+    button->set_tooltip(erase ? "erase <paint layer> on the box" : "paint <paint layer> on the box");
+    button->on_click([this, erase](float, float) {
+      if (!ctx_.paint_layer.empty()) ctx_.run((erase ? "erase " : "paint ") + ctx_.paint_layer);
+    });
+    buttons.add(*button);
+    (erase ? erase_button_ : paint_button_) = std::move(button);
+  }
+  paint_footer_.add(buttons);
 }
 
 void LeftPanel::rebuild_hierarchy(const view::LayoutWindow* window) {
@@ -194,14 +254,70 @@ InspectorPanel::InspectorPanel(ScreenContext& ctx) : ctx_(ctx) {
   });
   body_->set_role(ui::Role::pane);
   body_->set_accessible_name("Inspector");
+  actions_box_.set_padding(kPanelPadX, 0.0F, kPanelPadX, 12.0F);
+  actions_box_.set_spacing(6.0F);
+  column_.add(*body_, 1.0F);
+  column_.add(actions_box_);
   root_.add(*edge_);
-  root_.add(*body_, 1.0F);
+  root_.add(column_, 1.0F);
   root_.set_size(static_cast<float>(kInspectorWidth), -1.0F);
 }
 
-void InspectorPanel::refresh(const UnitScale& scale) {
+void InspectorPanel::rebuild_actions(std::vector<InspectorAction> actions) {
+  const bool same = actions.size() == actions_.size() &&
+                    std::equal(actions.begin(), actions.end(), actions_.begin(), [](const auto& a, const auto& b) {
+                      return a.label == b.label && a.command == b.command;
+                    });
+  if (same) return;
+  actions_box_.clear();
+  action_widgets_.clear();
+  actions_ = std::move(actions);
+  ui::Box row = ui::Box::horizontal();
+  float used = 0.0F;
+  constexpr float kRowWidth = static_cast<float>(kInspectorWidth) - 2.0F * kPanelPadX;
+  for (std::size_t i = 0; i < actions_.size(); ++i) {
+    const std::string label = actions_[i].label;
+    const float width = paint::button_width(ctx_.runtime, label, false);
+    if (used > 0.0F && used + width > kRowWidth) {
+      actions_box_.add(row);
+      row = ui::Box::horizontal();
+      used = 0.0F;
+    }
+    auto button = make_interactive(ctx_, [label](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
+                                                 bool foc) {
+      paint::button(p, w, h, label, "", paint::ButtonStyle::secondary, paint::WidgetState{hov, foc, true, false}, t);
+    });
+    button->set_size(width, static_cast<float>(kButtonHeight));
+    button->set_role(ui::Role::button);
+    button->set_accessible_name(label);
+    button->set_tooltip(actions_[i].command);
+    button->on_click([this, i](float, float) {
+      // A command that needs an argument goes to the command bar.
+      const std::string& command = actions_[i].command;
+      if (!command.empty() && command.back() == ' ') {
+        if (ctx_.prompt) ctx_.prompt(command);
+      } else {
+        ctx_.run(command);
+      }
+    });
+    row.add(*button);
+    used += width + 6.0F;
+    row.set_spacing(6.0F);
+    action_widgets_.push_back(std::move(button));
+  }
+  if (!actions_.empty()) actions_box_.add(row);
+}
+
+void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_root) {
   const editor::EditorState& ed = ctx_.editor();
-  view_ = inspector_view(visible_box(ed.box, ed.box_root, ed.edit_cell), ed.edit_cell, scale);
+  std::vector<InspectorAction> actions;
+  if (auto selection = selection_inspector_view(ed, window_root, scale, &actions)) {
+    view_ = std::move(*selection);
+  } else {
+    view_ = inspector_view(visible_box(ed.box, ed.box_root, ed.edit_cell), ed.edit_cell, scale);
+    actions.clear();
+  }
+  rebuild_actions(std::move(actions));
   body_->set_accessible_description(view_.title + ". " + view_.subtitle);
   body_->set_tooltip(view_.title + " — " + view_.subtitle);  // the painted title and subtitle may be ellipsized
   body_->invalidate();
@@ -210,6 +326,7 @@ void InspectorPanel::refresh(const UnitScale& scale) {
 void InspectorPanel::repaint() {
   edge_->invalidate();
   body_->invalidate();
+  for (auto& w : action_widgets_) w->invalidate();
 }
 
 }  // namespace hefesto::shell

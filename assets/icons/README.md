@@ -13,5 +13,6 @@ License: Apache-2.0 (Hefesto's own artwork).
 | box, select, paint, wire, label, measure, place | tool rail |
 | fit | zoom to fit |
 | eye, eye-off, lock | layer visibility and lock |
-| agent, 3d, undo | top bar / later milestones |
+| undo, redo | top bar: undo and redo (M2) |
+| agent, 3d | top bar / later milestones |
 | open, pdk | top bar: open a cell, PDK manager |

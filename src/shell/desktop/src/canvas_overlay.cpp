@@ -154,7 +154,34 @@ struct Tint {
   float a = 0.0F;  // 0: the layer is left out
 };
 
+/// How a layer shows in the thumbnail: filled, or only its rectangles' edges
+/// (outline-only styles: wells), or not at all.
+enum class ThumbShape : std::uint8_t { fill, edges, none };
+
+ThumbShape thumb_shape(const display::ResolvedStyle& style) {
+  switch (style.fill) {
+    case display::FillKind::solid:
+    case display::FillKind::stipple:
+    case display::FillKind::cross: return ThumbShape::fill;
+    case display::FillKind::outline: return ThumbShape::edges;
+    case display::FillKind::grid: break;
+  }
+  return ThumbShape::none;
+}
+
+Tint style_tint(const display::ResolvedStyle& style, float alpha) {
+  return Tint{std::clamp(style.r, 0.0F, 1.0F), std::clamp(style.g, 0.0F, 1.0F), std::clamp(style.b, 0.0F, 1.0F),
+              alpha};
+}
+
 Tint layer_tint(const display::SceneLayer& layer) {
+  if (layer.style.fill == display::FillKind::outline) {
+    return style_tint(layer.style, layer.pale ? 0.35F : 0.7F);  // the outline color, opaque enough to see
+  }
+  if (layer.style.fill == display::FillKind::cross) {
+    // A contact's cross: the cell takes the cross color at half strength.
+    return style_tint(display::opengl_supercolor(layer.style), layer.pale ? 0.25F : 0.5F);
+  }
   if (layer.style.fill != display::FillKind::solid && layer.style.fill != display::FillKind::stipple) {
     return {};
   }
@@ -183,6 +210,14 @@ class ThumbnailGrid {
     for (std::size_t row = r0; row < r1; ++row) {
       for (std::size_t col = c0; col < c1; ++col) blend(cells_[row * cols_ + col], tint);
     }
+  }
+
+  /// The cells along the four sides of `r` (outline-only styles, cell boxes).
+  void edges(const db::Rect& r, const Tint& tint) {
+    paint(db::Rect{r.x0, r.y0, r.x1, r.y0}, tint);
+    paint(db::Rect{r.x0, r.y1, r.x1, r.y1}, tint);
+    paint(db::Rect{r.x0, r.y0, r.x0, r.y1}, tint);
+    paint(db::Rect{r.x1, r.y0, r.x1, r.y1}, tint);
   }
 
   /// Runs of one color on each row, offset by the content's corner.
@@ -262,9 +297,20 @@ std::vector<MinimapFill> minimap_thumbnail(const display::LayoutScene& scene, co
   ThumbnailGrid grid(bounds, g->content, cell_px, background);
   for (const display::SceneLayer& layer : scene.layers) {
     const Tint tint = layer_tint(layer);
-    if (!(tint.a > 0.0F)) continue;
-    for (const db::Rect& r : layer.rects) grid.paint(r, tint);
+    const ThumbShape shape = thumb_shape(layer.style);
+    if (!(tint.a > 0.0F) || shape == ThumbShape::none) continue;
+    for (const db::Rect& r : layer.rects) {
+      if (shape == ThumbShape::edges) {
+        grid.edges(r, tint);
+      } else {
+        grid.paint(r, tint);
+      }
+    }
   }
+  // Labels as points of their style, unexpanded cells as their box outline,
+  // over the paint, in Magic's redisplay order.
+  for (const display::SceneLabel& label : scene.labels) grid.paint(label.rect, style_tint(label.style, 0.9F));
+  for (const display::SceneCell& cell : scene.cells) grid.edges(cell.bbox, style_tint(cell.style, 0.8F));
   return grid.fills(g->content);
 }
 

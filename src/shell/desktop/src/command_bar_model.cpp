@@ -24,7 +24,7 @@ CommandOutcome CommandBarModel::submit(std::string_view text) {
   const std::string_view line = trim(text);
   if (line.empty()) {
     cursor_ = history_.size();
-    return CommandOutcome{OutcomeStatus::ok, {}, {}, {}};
+    return CommandOutcome{OutcomeStatus::ok, {}, {}, {}, {}};
   }
   if (history_.empty() || history_.back() != line) {
     history_.emplace_back(line);

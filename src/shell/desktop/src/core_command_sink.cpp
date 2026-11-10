@@ -37,7 +37,7 @@ void append_output(CommandOutcome& outcome, const std::string& value) {
 }
 
 CommandOutcome failure(const diag::Diagnostic& error) {
-  CommandOutcome outcome{OutcomeStatus::failed, error.text, {}, {}};
+  CommandOutcome outcome{OutcomeStatus::failed, error.text, {}, {}, {}};
   append_diagnostics(outcome, {error});
   return outcome;
 }
@@ -148,6 +148,9 @@ CommandOutcome CoreCommandSink::submit(std::string_view line) {
                                std::nullopt};
     const cmd::CommandResult result = dispatcher_.execute(invocation);
     append_diagnostics(outcome, result.diagnostics);
+    for (const diag::Diagnostic& d : result.diagnostics) {
+      if (d.severity == diag::Severity::info) outcome.printed += (outcome.printed.empty() ? "" : "\n") + d.text;
+    }
     if (!result.ok()) {
       outcome.status = OutcomeStatus::failed;
       outcome.message = first_error_text(result);

@@ -49,6 +49,8 @@ struct RulerTick {
 /// Size of the left ruler's labels: the mockup's JetBrains Mono 10, which
 /// fits three characters ("-.5", "2.7") in the 20 px ruler.
 inline constexpr double kLeftRulerLabelSize = 10.0;
+/// Size of the top ruler's labels: the mockup's JetBrains Mono 10.
+inline constexpr double kTopRulerLabelSize = 10.0;
 
 /// How many characters of `char_px` fit across a ruler `ruler_px` wide with
 /// a pixel of air on each side (at least 1).
@@ -104,8 +106,10 @@ struct MinimapFill {
 /// into cells of `cell_px` pixels; each cell takes the PDK colors of the
 /// solid and stippled layers that cover it, composited in redisplay order
 /// over `background` at the styles' opacity (stipples and pale layers at
-/// half of it); outline-only and cross styles are left out. Adjacent cells
-/// of one color on a row are merged into one fill. Empty for an empty
+/// half of it); cross styles (contacts) at half strength, outline-only
+/// styles (wells) along their rectangles' edges, then the label rectangles
+/// and the boxes of unexpanded cells (M1 gap closed in M2, design.md D10).
+/// Adjacent cells of one color on a row are merged into one fill. Empty for an empty
 /// scene or null `bounds`.
 [[nodiscard]] std::vector<MinimapFill> minimap_thumbnail(const display::LayoutScene& scene, const db::Rect& bounds,
                                                          const Rgba& background, double width, double height,

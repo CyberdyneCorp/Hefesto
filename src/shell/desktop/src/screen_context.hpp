@@ -28,6 +28,11 @@ struct ScreenContext {
   /// Appends a command and its result to the Console without running it
   /// (results of background jobs). Set by the main window.
   std::function<void(const std::string&, const std::string&)> echo;
+  /// Puts a command in the command bar without running it (an action that
+  /// needs an argument, e.g. "label "), and focuses it. Set by the main window.
+  std::function<void(const std::string&)> prompt;
+  /// The layer palette's active paint layer (empty: none).
+  std::string paint_layer;
 
   [[nodiscard]] const ThemeTokens& tokens() const noexcept { return theme_tokens(mode); }
   [[nodiscard]] editor::EditorState& editor() noexcept { return core.editor(); }

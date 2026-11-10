@@ -5,19 +5,17 @@
 // moves. Toolkit-independent: the Raven wrapper translates its events into
 // CanvasInput, so the mapping is unit-tested without a window.
 //
-// Key bindings are commands (capability hefesto-architecture, "Single command
-// API"): each key issues `pan`, `zoom` or `view` through the core Dispatcher
-// with origin `key`, so it is logged and replayable like a typed command.
-// Continuous gestures (drag, wheel, trackpad) move the camera directly: one
-// command per input event would flood the command log. They are view state,
-// not document edits; design.md D6 records this M0 deviation.
+// Buttons and keys are not handled here: since M2 they go through the core's
+// macro tables (InputRouter, input_router.hpp), as in Magic, where the middle
+// and right buttons paint and resize the box. Continuous gestures (Option
+// drag, wheel, trackpad) move the camera directly: one command per input
+// event would flood the command log. They are view state, not document
+// edits; design.md D6 of m1-core-viewer records this M0 deviation.
 //
-// M0 bindings (provisional; hefesto-app-ux owns the final ones):
-//   middle or right drag ... pan            wheel ............ zoom at cursor
-//   trackpad two-finger .... pan            arrows ........... pan 1/8 view
-//   pinch (trackpad, touch)  zoom at the fingers, continuous
-//   + / = ................... zoom in       - ................ zoom out
-//   f / Home ................ fit the layout
+// Gestures:
+//   Option (Alt) + drag, any button .. pan     wheel ............ zoom at cursor
+//   trackpad two-finger .............. pan
+//   pinch (trackpad, touch) .......... zoom at the fingers, continuous
 //
 // A wheel event is told from two fingers on a trackpad by Raven's
 // REvent::wheel_precise (macOS: NSEvent hasPreciseScrollingDeltas): precise
@@ -31,7 +29,6 @@
 #include <string>
 #include <vector>
 
-#include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/render/camera.hpp"
 #include "hefesto/render/scene.hpp"
 
@@ -41,7 +38,8 @@ enum class InputKind : std::uint8_t { pointer_down, pointer_up, pointer_move, wh
 /// Phase of a pinch (Raven's RGesturePhase).
 enum class GesturePhase : std::uint8_t { begin, update, end };
 enum class PointerButton : std::uint8_t { left, right, middle, other };
-enum class CanvasKey : std::uint8_t { left, right, up, down, zoom_in, zoom_out, fit, other };
+/// Modifier bits of a native input event (Raven's RModifier values).
+enum NativeModifier : std::uint8_t { kModShift = 1U, kModCtrl = 2U, kModAlt = 4U, kModSuper = 8U };
 
 /// One input event in viewport-local logical pixels.
 struct CanvasInput {
@@ -59,7 +57,10 @@ struct CanvasInput {
   double scale = 1.0;
   GesturePhase phase = GesturePhase::update;
   PointerButton button = PointerButton::other;
-  CanvasKey key = CanvasKey::other;
+  /// NativeModifier bits held during the event.
+  std::uint8_t modifiers = 0;
+  /// key_down: the native key code (Raven's RKey; see input_router.hpp).
+  int native_key = 0;
 };
 
 class CanvasController {
@@ -81,25 +82,20 @@ class CanvasController {
   void set_bounds(const render::Bounds& bounds) noexcept { bounds_ = bounds; }
   /// Logical-to-framebuffer pixel ratio (Retina: 2).
   void set_pixel_ratio(double ratio) noexcept { ratio_ = ratio > 0.0 ? ratio : 1.0; }
-  /// Dispatcher that runs the key bindings (with the view commands
-  /// registered). Without one, keys are not handled.
-  void set_commands(cmd::Dispatcher* commands) noexcept { commands_ = commands; }
-
-  /// Applies `input`; returns true when the camera changed (or the event was consumed).
+  /// Applies `input`: an Option-drag pans, the wheel and a pinch zoom, the
+  /// trackpad pans. Returns true when the camera changed (or the event was
+  /// consumed). Buttons without Option and keys are not handled.
   bool handle(const CanvasInput& input);
 
   [[nodiscard]] bool dragging() const noexcept { return dragging_; }
 
  private:
-  bool handle_key(CanvasKey key);
-  bool run_command(std::string name, std::vector<std::string> args);
   bool handle_wheel(const CanvasInput& input) noexcept;
   bool handle_pinch(const CanvasInput& input) noexcept;
   /// Camera::zoom_at with the factor limited to the zoom range.
   void zoom_clamped(double factor, double x_px, double y_px) noexcept;
 
   render::Camera& camera_;
-  cmd::Dispatcher* commands_ = nullptr;
   render::Bounds bounds_;
   double ratio_ = 1.0;
   bool dragging_ = false;

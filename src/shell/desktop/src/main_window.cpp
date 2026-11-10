@@ -12,6 +12,7 @@
 #include "hefesto/display/styles.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/render/scene.hpp"
+#include "hefesto/ui/tools.hpp"
 
 namespace hefesto::shell {
 
@@ -54,8 +55,21 @@ class ReportSink final : public diag::DiagnosticSink {
 
 }  // namespace
 
+/// cmd::PromptHost through the window's dialogs (design.md D4).
+class MainWindow::DialogPromptHost final : public cmd::PromptHost {
+ public:
+  explicit DialogPromptHost(MainWindow& window) : window_(window) {}
+  [[nodiscard]] std::size_t ask(std::string_view question, std::span<const std::string> answers,
+                                std::size_t default_answer) override {
+    return window_.ask(question, answers, default_answer);
+  }
+
+ private:
+  MainWindow& window_;
+};
+
 MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::mutex& queue_mutex, CoreSession& core)
-    : ctx_{runtime, core, options.theme, {}, {}},
+    : ctx_{runtime, core, options.theme, {}, {}, {}, {}},
       options_(options),
       window_("Hefesto", options.width, options.height),
       command_bar_(ui::CommandBar::create("Type a command (help)")),
@@ -63,11 +77,14 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   ctx_.run = [this](const std::string& line) { run_line(line); };
   pending_pinch_ = options.pinch;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
+  ctx_.prompt = [this](const std::string& text) { show_prompt(text); };
+  capture_mode_ = !options.capture.empty() || options.smoke_frames > 0 || options.bench_frames > 0;
   window_.set_min_size(1024, 640);
   ctx_.runtime.apply_theme(ctx_.mode);
   window_.set_clear_color(ctx_.tokens().surface0);
   canvas_ = std::make_unique<LayoutCanvas>(ctx_, queue_mutex, [this] { return window_.scale(); });
   canvas_->on_view_changed([this] { refresh_status(); });
+  canvas_->router().on_prompt([this](const std::string& text) { show_prompt(text); });
   left_ = std::make_unique<LeftPanel>(ctx_);
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
@@ -84,6 +101,14 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   core.set_command_listener(
       [this](const cmd::Invocation& inv, const cmd::CommandResult& result) { on_command(inv, result); });
   if (core.log_warning()) core.dispatcher().report(*core.log_warning());
+  // Magic's TxDialog questions (flush, save over a file, color map, quit)
+  // and the crash-recovery confirmation become dialogs.
+  prompt_host_ = std::make_unique<DialogPromptHost>(*this);
+  core.editor().prompt = prompt_host_.get();
+  core.editor().cell_session.confirm_recovery = [this](const platform::Path& backup) {
+    static const std::vector<std::string> kAnswers = {"no", "yes"};
+    return ask("Recover from backup file " + backup.string() + "?", kAnswers, 1) == 1;
+  };
   pdk_visible_ = !options.show_pdk_manager;
   toggle_pdk_manager();
   console_visible_ = !options.show_console;
@@ -92,6 +117,8 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
 }
 
 MainWindow::~MainWindow() {
+  ctx_.core.editor().prompt = nullptr;
+  ctx_.core.editor().cell_session.confirm_recovery = {};
   ctx_.core.set_command_listener({});
   ctx_.core.dispatcher().remove_sink(problems_);
   // First stop Raven from rendering the window: the canvas draw callback
@@ -206,6 +233,7 @@ void MainWindow::build_top_bar() {
   segmented->set_tooltip("Layout is the M1 view; Schematic and Waveforms arrive in M8, 3D in M10");
   row.add_centered(*segmented);
   painted_.push_back(std::move(segmented));
+  add_undo_buttons(row);
 
   ui::Box spacer = ui::Box::horizontal();
   row.add(spacer, 1.0F);
@@ -294,36 +322,7 @@ void MainWindow::fit_top_bar() {
 void MainWindow::build_center() {
   ui::Box middle = ui::Box::horizontal();
 
-  ui::Box tools = ui::Box::vertical();
-  const float inset = static_cast<float>(kToolRailWidth - kToolButtonSize) / 2.0F;
-  tools.set_padding(inset, 10.0F, inset, 10.0F);
-  tools.set_spacing(6.0F);
-  for (const ToolButton& tool : tool_rail()) {
-    const bool active = tool.icon == "box";
-    auto button = make_interactive(ctx_, [tool, active](ui::Painter& p, float w, float h, const ThemeTokens& t,
-                                                        bool hov, bool foc) {
-      paint::tool(p, w, h, tool, paint::WidgetState{hov, foc, tool.enabled, active}, t);
-    });
-    button->set_size(static_cast<float>(kToolButtonSize), static_cast<float>(kToolButtonSize));
-    button->set_role(active ? ui::Role::toggle_button : ui::Role::button);
-    button->set_accessible_name(active ? toggle_accessible_name(tool.label, true) : std::string(tool.label));
-    button->set_tooltip(tool.tooltip);
-    if (tool.icon == "fit") {
-      button->on_click([this](float, float) { run_line("view"); });
-    } else if (!tool.enabled) {
-      button->set_enabled(false);
-    }
-    tools.add(*button);
-    painted_.push_back(std::move(button));
-  }
-  ui::Panel& rail = bar(&ThemeTokens::bar);
-  rail.set_child(tools);
-  rail.set_size(static_cast<float>(kToolRailWidth), -1.0F);
-  rail.set_accessible_name("Tools");
-  middle.add(rail);
-  auto rail_edge = make_separator(ctx_, true);
-  middle.add(*rail_edge);
-  painted_.push_back(std::move(rail_edge));
+  build_tool_rail(middle);
   middle.add(left_->widget());
 
   ui::Box center = ui::Box::vertical();
@@ -334,6 +333,9 @@ void MainWindow::build_center() {
   diagnostics_.set_accessible_name("Diagnostics");
   console_tabs_.add(console_, "Console");
   console_tabs_.add(diagnostics_, "Diagnostics");
+  feedback_.set_font(ctx_.runtime.mono_font());
+  feedback_.set_accessible_name("Feedback");
+  console_tabs_.add(feedback_, "Feedback");
   console_tabs_.set_size(-1.0F, static_cast<float>(kConsoleHeight));
   center.add(console_tabs_);
   middle.add(center, 1.0F);
@@ -366,13 +368,14 @@ void MainWindow::build_command_bar() {
     command_bar_->set_text("");
   });
   command_bar_->on_history([this](bool older) { return older ? command_model_.previous() : command_model_.next(); });
+  command_bar_->on_complete([this](const std::string& text) { return complete(text); });
   // The input takes the free space, vertically centered by its box padding.
   ui::Box input_box = ui::Box::vertical();
   input_box.set_padding(0.0F, 6.0F, 0.0F, 6.0F);
   input_box.add(*command_bar_);
   row.add(input_box, 1.0F);
 
-  static constexpr std::string_view kHint = "⏎ run · ↑ history";
+  static constexpr std::string_view kHint = "⏎ run · ↑ history · ⇥ complete";
   auto hint = make_painted(ctx_, [](ui::Painter& p, float, float h, const ThemeTokens& t) {
     p.text_centered_y(TextRole::mono_small, 0.0F, h / 2.0F, kHint, t.text_tertiary);
   });
@@ -390,6 +393,20 @@ void MainWindow::build_command_bar() {
   console_toggle->set_accessible_name(toggle_accessible_name(kConsoleToggleName, console_visible_));
   console_toggle->on_click([this](float, float) { toggle_console(); });
   console_toggle_ = console_toggle.get();
+  // Clears the Diagnostics list and resets the problem count (design.md D10).
+  auto clear = make_interactive(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,
+                                             bool foc) {
+    paint::button(p, w, h, "Clear problems", "", paint::ButtonStyle::ghost,
+                  paint::WidgetState{hov, foc, problems_.tally().chip().has_value(), false}, t);
+  });
+  clear->set_size(paint::button_width(ctx_.runtime, "Clear problems", false), static_cast<float>(kInputHeight));
+  clear->set_role(ui::Role::button);
+  clear->set_accessible_name("Clear problems");
+  clear->set_tooltip("Clears the Diagnostics list and the problem count");
+  clear->on_click([this](float, float) { clear_problems(); });
+  clear_button_ = clear.get();
+  row.add_centered(*clear);
+  painted_.push_back(std::move(clear));
   row.add_centered(*console_toggle);
   painted_.push_back(std::move(console_toggle));
 
@@ -411,7 +428,8 @@ void MainWindow::build_status_bar() {
   // Clicking (or Enter on) the bar opens the Diagnostics tab with the full text.
   status_bar_->on_click([this](float, float) {
     if (!console_visible_) toggle_console();
-    console_tabs_.show(1);
+    // The rest of a multi-line result is in the Console, problems in Diagnostics.
+    console_tabs_.show(result_has_more_ ? 0 : 1);
   });
   update_status_accessibility();
   root_.add(*status_bar_);
@@ -421,7 +439,10 @@ void MainWindow::build_status_bar() {
 
 void MainWindow::register_view_commands() {
   const ViewActions actions{[this](ThemeMode mode) { apply_theme(mode); },
-                            [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); }};
+                            [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); },
+                            [this](PanelId panel, std::optional<bool> show) { return set_panel(panel, show); },
+                            [this](PanelId panel) { return panel_shown(panel); },
+                            [this](std::optional<std::string> name) { return set_paint_layer(std::move(name)); }};
   if (!shell::register_view_commands(ctx_.core.registry(), actions)) {
     std::fprintf(stderr, "hefesto: a view command name is already registered\n");
   }
@@ -437,7 +458,12 @@ void MainWindow::run_line(const std::string& line) {
   // raised, ● success ("Status is never color-only").
   std::optional<LineStatus> problem;
   if (!command_problem_.empty()) problem.emplace(LineStatus{command_problem_kind_, command_problem_});
-  LineStatus shown = command_line_status(outcome.ok(), status, problem);
+  // A multi-line result: its first line, and how many more are in the Console.
+  const std::string& shown_text =
+      !outcome.output.empty() ? outcome.output : (!outcome.printed.empty() && status == "ok" ? outcome.printed : status);
+  const ResultLine summary = result_line(shown_text);
+  result_has_more_ = summary.more_lines > 0;
+  LineStatus shown = command_line_status(outcome.ok(), outcome.ok() ? summary.text() : status, problem);
   const bool raised = shown.kind == StatusKind::error || shown.kind == StatusKind::warning;
   set_message(shown.kind, std::move(shown.text));
   if (raised) announce(message_kind_, message_);
@@ -448,16 +474,23 @@ void MainWindow::run_line(const std::string& line) {
   if (ctx_.core.quit_requested()) ctx_.runtime.quit();
 }
 
-void MainWindow::on_command(const cmd::Invocation& /*invocation*/, const cmd::CommandResult& /*result*/) {
+void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& /*result*/) {
   // Widgets may be running the callback that issued this command: rebuild
-  // on the next frame (on_frame), never inside the callback.
-  dirty_ = true;
+  // on the next frame (on_frame), never inside the callback. A `*bypass`
+  // command (pointer motion: wiring preview, pick drag) needs only the
+  // canvas and the status bar.
+  if (invocation.name == "*bypass") {
+    canvas_dirty_ = true;
+  } else {
+    dirty_ = true;
+  }
   window_.request_redraw();
 }
 
 void MainWindow::on_frame() {
   fit_top_bar();
   if (pdk_->poll()) window_.request_redraw();  // a background install: keep frames coming
+  if (canvas_->idle()) window_.request_redraw();  // the minimap of a large scene is due
   if (!pending_run_.empty() && canvas_->viewport_ready()) {
     const std::string line = std::move(pending_run_);
     pending_run_.clear();
@@ -473,7 +506,13 @@ void MainWindow::on_frame() {
       console_tabs_.show(1);  // the Diagnostics tab
     }
     refresh_all();
+  } else if (canvas_dirty_) {
+    canvas_->update_scene();
+    canvas_->refresh_highlights();
+    canvas_->update_cursor();
+    refresh_status();
   }
+  canvas_dirty_ = false;
   // After the refresh: the first scene build frames the cell, which would
   // replace a pinch made before it.
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
@@ -504,7 +543,7 @@ void MainWindow::open_file() {
 void MainWindow::toggle_pdk_manager() {
   pdk_visible_ = !pdk_visible_;
   pdk_->widget().set_visible(pdk_visible_);
-  inspector_->widget().set_visible(!pdk_visible_);
+  inspector_->widget().set_visible(!pdk_visible_ && inspector_visible_);
   if (pdk_visible_) pdk_->refresh();
 }
 
@@ -551,10 +590,22 @@ void MainWindow::sync_styles() {
 
 void MainWindow::refresh_all() {
   sync_styles();
+  const view::LayoutWindow* win = ctx_.editor().windows.current();
+  const db::CellDef* root = win != nullptr ? win->root() : nullptr;
+  if (root != shown_root_) {
+    // A new document: the problem count starts again (design.md D10).
+    if (shown_root_ != nullptr && root != nullptr) clear_problems();
+    shown_root_ = root;
+  }
+  canvas_->router().set_paint_layer(ctx_.paint_layer);
   canvas_->update_scene();
-  left_->refresh(ctx_.editor().windows.current());
-  inspector_->refresh(canvas_->unit_scale());
+  canvas_->refresh_highlights();
+  canvas_->update_cursor();
+  left_->refresh(win);
+  inspector_->refresh(canvas_->unit_scale(), root);
   refresh_header();
+  refresh_rail();
+  refresh_feedback();
   refresh_status();
 }
 
@@ -585,9 +636,204 @@ void MainWindow::refresh_header() {
 }
 
 void MainWindow::refresh_status() {
+  // Called on every pointer move: the inspector refreshes after commands (refresh_all).
   update_status_accessibility();
   status_bar_->invalidate();
-  inspector_->refresh(canvas_->unit_scale());
+}
+
+// --- M2: tool rail, undo/redo, prompts, completion, panels -------------------------
+
+void MainWindow::build_tool_rail(ui::Box& middle) {
+  ui::Box tools = ui::Box::vertical();
+  const float inset = static_cast<float>(kToolRailWidth - kToolButtonSize) / 2.0F;
+  tools.set_padding(inset, 10.0F, inset, 10.0F);
+  tools.set_spacing(6.0F);
+  for (const ToolButton& tool : tool_rail()) {
+    const std::size_t index = rail_.size();
+    auto button = make_interactive(ctx_, [this, index](ui::Painter& p, float w, float h, const ThemeTokens& t,
+                                                       bool hov, bool foc) {
+      const RailButton& b = rail_[index];
+      const auto active = active_rail_icon(ctx_.editor().tools.current() != nullptr
+                                               ? std::string_view(ctx_.editor().tools.current()->name)
+                                               : std::string_view("box"),
+                                           canvas_->router().mode());
+      const bool enabled = b.tool.enabled && (b.tool.icon != "paint" || !ctx_.paint_layer.empty());
+      paint::tool(p, w, h, b.tool, paint::WidgetState{hov, foc, enabled, active && *active == b.tool.icon}, t);
+    });
+    button->set_size(static_cast<float>(kToolButtonSize), static_cast<float>(kToolButtonSize));
+    button->set_role(tool.icon == "fit" ? ui::Role::button : ui::Role::toggle_button);
+    button->set_accessible_name(tool.label);
+    button->set_tooltip(tool.tooltip);
+    if (tool.enabled) {
+      button->on_click([this, icon = tool.icon](float, float) { rail_click(icon); });
+    } else {
+      button->set_enabled(false);
+    }
+    tools.add(*button);
+    rail_.push_back(RailButton{tool, button.get()});
+    painted_.push_back(std::move(button));
+  }
+  ui::Panel& rail = bar(&ThemeTokens::bar);
+  rail.set_child(tools);
+  rail.set_size(static_cast<float>(kToolRailWidth), -1.0F);
+  rail.set_accessible_name("Tools");
+  middle.add(rail);
+  auto rail_edge = make_separator(ctx_, true);
+  middle.add(*rail_edge);
+  painted_.push_back(std::move(rail_edge));
+}
+
+void MainWindow::rail_click(std::string_view icon) {
+  if (icon == "paint" && ctx_.paint_layer.empty()) {
+    set_message(StatusKind::warning, diagnostic_line(StatusKind::warning, "choose a layer to paint in the Layers panel"));
+    status_bar_->invalidate();
+    return;
+  }
+  const hefesto::ui::Tool* tool = ctx_.editor().tools.current();
+  const auto action = rail_action(icon, tool != nullptr ? std::string_view(tool->name) : std::string_view("box"));
+  if (!action) return;
+  if (!action->command.empty()) run_line(action->command);
+  if (icon != "fit") canvas_->router().set_mode(action->mode);
+  canvas_->update_cursor();
+  refresh_rail();
+}
+
+void MainWindow::refresh_rail() {
+  const hefesto::ui::Tool* tool = ctx_.editor().tools.current();
+  const auto active =
+      active_rail_icon(tool != nullptr ? std::string_view(tool->name) : std::string_view("box"), canvas_->router().mode());
+  for (RailButton& b : rail_) {
+    if (b.tool.icon == "fit") continue;
+    const bool enabled = b.tool.enabled && (b.tool.icon != "paint" || !ctx_.paint_layer.empty());
+    b.widget->set_accessible_name(toggle_accessible_name(b.tool.label, active && *active == b.tool.icon));
+    b.widget->set_tooltip(rail_tooltip(b.tool, enabled));
+    b.widget->invalidate();
+  }
+}
+
+void MainWindow::add_undo_buttons(ui::Box& row) {
+  for (const bool redo : {false, true}) {
+    const std::string_view label = redo ? "Redo" : "Undo";
+    auto button = make_interactive(ctx_, [this, redo, label](ui::Painter& p, float w, float h, const ThemeTokens& t,
+                                                            bool hov, bool foc) {
+      const bool enabled = redo ? undo_state_.can_redo : undo_state_.can_undo;
+      paint::button(p, w, h, label, redo ? "redo" : "undo", paint::ButtonStyle::ghost,
+                    paint::WidgetState{hov, foc, enabled, false}, t);
+    });
+    button->set_size(paint::button_width(ctx_.runtime, label, true), static_cast<float>(kButtonHeight));
+    button->set_role(ui::Role::button);
+    button->set_accessible_name(label);
+    button->on_click([this, redo](float, float) {
+      const bool enabled = redo ? undo_state_.can_redo : undo_state_.can_undo;
+      if (enabled) run_line(redo ? "redo" : "undo");
+    });
+    row.add_centered(*button);
+    (redo ? redo_button_ : undo_button_) = button.get();
+    painted_.push_back(std::move(button));
+  }
+}
+
+std::size_t MainWindow::ask(std::string_view question, std::span<const std::string> answers,
+                            std::size_t default_answer) {
+  const std::vector<std::string> list(answers.begin(), answers.end());
+  const PromptDialog dialog = prompt_dialog(question, list, default_answer);
+  append_console("? " + dialog.title, "");
+  // A scripted capture shows the dialog and goes on with the default answer.
+  const int result = window_.run_dialog(dialog, !capture_mode_);
+  return dialog_answer(result, list.size(), default_answer);
+}
+
+std::optional<std::string> MainWindow::complete(const std::string& text) {
+  const Completion c = complete_command_line(text, ctx_.core.registry(), ctx_.editor());
+  if (!c.candidates.empty()) {
+    std::string listed;
+    for (std::size_t i = 0; i < c.candidates.size() && i < 12; ++i) listed += (i == 0 ? "" : " · ") + c.candidates[i];
+    if (c.candidates.size() > 12) listed += " …";
+    set_message(StatusKind::info, diagnostic_line(StatusKind::info, std::to_string(c.candidates.size()) +
+                                                                        " matches: " + listed));
+    append_console("⇥ " + text, [&c] {
+      std::string all;
+      for (const std::string& name : c.candidates) all += (all.empty() ? "" : "  ") + name;
+      return all;
+    }());
+    status_bar_->invalidate();
+  }
+  if (c.line == text) return std::nullopt;
+  return c.line;
+}
+
+void MainWindow::show_prompt(const std::string& text) {
+  command_bar_->set_text(text);
+  command_bar_->focus();
+}
+
+bool MainWindow::set_panel(PanelId panel, std::optional<bool> show) {
+  const bool now = show.value_or(!panel_shown(panel));
+  switch (panel) {
+    case PanelId::layers:
+      layers_visible_ = now;
+      left_->widget().set_visible(now);
+      break;
+    case PanelId::inspector:
+      inspector_visible_ = now;
+      inspector_->widget().set_visible(now && !pdk_visible_);
+      break;
+    case PanelId::console:
+      if (now != console_visible_) toggle_console();
+      break;
+  }
+  return now;
+}
+
+std::optional<std::string> MainWindow::set_paint_layer(std::optional<std::string> name) {
+  if (!name) return ctx_.paint_layer;
+  const editor::EditorState& ed = ctx_.editor();
+  if (!name->empty()) {
+    const auto found = ed.technology->find_type(*name);
+    if (!found.ok()) return std::nullopt;
+    *name = std::string(ed.technology->type_name(*found.id));  // the palette's long name
+  }
+  ctx_.paint_layer = std::move(*name);
+  canvas_->router().set_paint_layer(ctx_.paint_layer);
+  return ctx_.paint_layer;
+}
+
+bool MainWindow::panel_shown(PanelId panel) const {
+  switch (panel) {
+    case PanelId::layers: return layers_visible_;
+    case PanelId::inspector: return inspector_visible_;
+    case PanelId::console: return console_visible_;
+  }
+  return false;
+}
+
+void MainWindow::clear_problems() {
+  problems_.clear_counts();
+  diagnostics_.clear();
+  update_status_accessibility();
+  status_bar_->invalidate();
+  if (clear_button_ != nullptr) clear_button_->invalidate();
+}
+
+void MainWindow::refresh_feedback() {
+  std::vector<FeedbackRow> rows = feedback_rows(ctx_.editor(), canvas_->unit_scale());
+  undo_state_ = undo_affordance(ctx_.editor());
+  for (ui::Painted* b : {undo_button_, redo_button_}) {
+    if (b == nullptr) continue;
+    b->set_tooltip(b == undo_button_ ? undo_state_.undo_tooltip : undo_state_.redo_tooltip);
+    b->set_accessible_name(b == undo_button_ ? (undo_state_.can_undo ? "Undo" : "Undo, unavailable")
+                                             : (undo_state_.can_redo ? "Redo" : "Redo, unavailable"));
+    b->invalidate();
+  }
+  if (rows.size() == feedback_rows_.size() &&
+      std::equal(rows.begin(), rows.end(), feedback_rows_.begin(),
+                 [](const FeedbackRow& a, const FeedbackRow& b) { return a.text == b.text; })) {
+    return;
+  }
+  feedback_rows_ = std::move(rows);
+  feedback_.clear();
+  if (feedback_rows_.empty()) feedback_.add_item("No feedback areas (feedback add, or a DRC/extract run)");
+  for (const FeedbackRow& row : feedback_rows_) feedback_.add_item(row.text);
 }
 
 void MainWindow::show_layout(const std::vector<render::LayeredRect>& rects) {

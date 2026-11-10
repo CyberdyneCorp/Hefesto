@@ -3,17 +3,41 @@
 
 #include "layout_canvas.hpp"
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/render/layout_scene.hpp"
+#include "hefesto/ui/state.hpp"
+#include "hefesto/view/highlights.hpp"
+#include "hefesto/view/tile_overlay.hpp"
+#include "hefesto/ui/tools.hpp"
 
 namespace hefesto::shell {
 
 namespace {
 
+#if defined(__APPLE__)
+constexpr bool kMacOs = true;  // Key event normalization: any of Mod1-Mod5 is Meta
+#else
+constexpr bool kMacOs = false;
+#endif
+
+/// Scenes up to this many rectangles refresh the minimap with every edit.
+constexpr std::size_t kMinimapSyncRects = 1'000'000;
+/// How long the edits of a larger scene must pause before the minimap is redone.
+constexpr std::chrono::milliseconds kMinimapDelay{750};
+
+std::size_t scene_rect_count(const display::LayoutScene& scene) {
+  std::size_t n = 0;
+  for (const display::SceneLayer& layer : scene.layers) n += layer.rects.size();
+  return n;
+}
+
+/// Half the side of the area the highlight pass covers (internal units).
+constexpr db::Coord kHighlightReach = 1 << 28;
 
 render::Bounds to_bounds(const db::Rect& r) {
   if (r.is_null()) {
@@ -64,16 +88,23 @@ display::SceneOptions scene_options(const view::LayoutWindow& window, const db::
 }  // namespace
 
 LayoutCanvas::LayoutCanvas(ScreenContext& ctx, std::mutex& queue_mutex, std::function<float()> pixel_ratio)
-    : ctx_(ctx), pixel_ratio_(std::move(pixel_ratio)), viewport_(ui::Viewport::create()) {
+    : ctx_(ctx),
+      pixel_ratio_(std::move(pixel_ratio)),
+      viewport_(ui::Viewport::create()),
+      router_(ctx.core.dispatcher(), ctx.core.editor(), kMacOs) {
   render::QueueLock lock{[&queue_mutex] { queue_mutex.lock(); }, [&queue_mutex] { queue_mutex.unlock(); }};
+  render::QueueLock highlight_lock{[&queue_mutex] { queue_mutex.lock(); }, [&queue_mutex] { queue_mutex.unlock(); }};
   renderer_ = std::make_unique<render::CanvasRenderer>(ctx_.runtime.vulkan_device(), std::move(lock));
+  highlight_renderer_ =
+      std::make_unique<render::CanvasRenderer>(ctx_.runtime.vulkan_device(), std::move(highlight_lock));
   painted_ = ui::Painted::create(ctx_.runtime, [this](ui::Painter& p, float w, float h) { paint_overlay(p, w, h); });
   // The overlay never takes input: the viewport below gets every event and
   // hit-tests the zoom control and the minimap itself (handle_overlay_click).
   painted_->set_hit_testable(false);
   viewport_->set_accessible_name("Layout canvas");
   viewport_->set_tooltip(
-      "Layout canvas: wheel or pinch zooms, two-finger scroll or middle / right drag pans, F fits");
+      "Layout canvas: buttons and keys run the current tool's bindings; wheel or pinch zooms, two-finger "
+      "scroll or Option-drag pans");
   overlay_.add(*viewport_);
   overlay_.add(*painted_);
   overlay_.set_accessible_name("Layout canvas");
@@ -86,7 +117,6 @@ LayoutCanvas::LayoutCanvas(ScreenContext& ctx, std::mutex& queue_mutex, std::fun
     camera_changed(true);
   });
   viewport_->on_input([this](const CanvasInput& input) { return handle_input(input); });
-  controller_.set_commands(&ctx_.core.dispatcher());
   ctx_.editor().windows.add_observer(*this);
   ensure_window();
 }
@@ -175,7 +205,7 @@ void LayoutCanvas::refresh_scene() {
   built_tech_ = ed.technology.get();
   built_styles_ = true;
   (void)win->take_redisplay();  // the whole scene covers whatever was pending
-  publish_scene(*root);
+  publish_scene(*root, true);
   // A new root takes the core's load frame (set_root moved the core mapping
   // there without a Change::view); keeping the old camera made the next core
   // zoom jump.
@@ -188,14 +218,14 @@ void LayoutCanvas::refresh_scene() {
   camera_changed(new_root);
 }
 
-void LayoutCanvas::publish_scene(const db::CellDef& root) {
+void LayoutCanvas::publish_scene(const db::CellDef& root, bool full) {
   const render::LayoutBatches batches = render::to_batches(scene_);
   upload(layered(batches.rects), batches.styles);
   upload_polygons(batches.polygons);
   // The fit covers the drawn scene and the root's bounding box (subcells).
   bounds_ = to_bounds(scene_.bounds.is_null() ? root.bbox() : db::include(scene_.bounds, root.bbox()));
   controller_.set_bounds(bounds_);
-  set_scene_overlay(scene_);
+  set_scene_overlay(scene_, full);
   empty_hint_.clear();
 }
 
@@ -232,7 +262,7 @@ void LayoutCanvas::apply_redisplay(view::LayoutWindow& win, const view::Redispla
       return;
     }
   }
-  publish_scene(root);
+  publish_scene(root, false);
   camera_changed(false);
 }
 
@@ -245,13 +275,30 @@ void LayoutCanvas::fit_view() {
   }
 }
 
-void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene) {
+void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene, bool full) {
   overlay_state_.labels = scene.labels;
   overlay_state_.cells = scene.cells;
   overlay_state_.bounds = to_rect(bounds_);
+  // The thumbnail walks every rectangle of the scene (about 0.5 s for the
+  // 13.7 M rectangles of the 100 x 100 dfxtp_1 array in a Debug build): after
+  // an edit of a large scene it is redone once the edits pause (idle()).
+  if (!full && scene_rect_count(scene) > kMinimapSyncRects) {
+    minimap_due_ = std::chrono::steady_clock::now() + kMinimapDelay;
+    return;
+  }
+  minimap_due_.reset();
   // The canvas keeps the dark canvas color in both themes; so does the thumbnail.
   overlay_state_.minimap = minimap_thumbnail(scene, overlay_state_.bounds, theme_tokens(ThemeMode::dark).canvas,
                                              kMinimapWidth, kMinimapHeight);
+}
+
+bool LayoutCanvas::idle() {
+  if (!minimap_due_ || std::chrono::steady_clock::now() < *minimap_due_) return minimap_due_.has_value();
+  minimap_due_.reset();
+  overlay_state_.minimap = minimap_thumbnail(scene_, overlay_state_.bounds, theme_tokens(ThemeMode::dark).canvas,
+                                             kMinimapWidth, kMinimapHeight);
+  painted_->invalidate();
+  return false;
 }
 
 void LayoutCanvas::upload_polygons(render::PolygonScene polygons) {
@@ -345,12 +392,65 @@ bool LayoutCanvas::handle_input(const CanvasInput& input) {
       handle_overlay_click(input.x, input.y)) {
     return true;
   }
-  const bool changed = controller_.handle(input);
-  if (changed) {
-    auto_fit_ = false;
-    camera_changed(true);
+  // An Option-drag pans unless the tool binds Meta_ButtonN; the wheel, the
+  // trackpad and a pinch move the camera directly.
+  const bool pan_press = input.kind == InputKind::pointer_down && (input.modifiers & kModAlt) != 0 &&
+                         !router_.has_button_macro(static_cast<int>(input.button) + 1, input.modifiers) &&
+                         router_.mode() == EditMode::none;
+  const bool gesture = input.kind == InputKind::wheel || input.kind == InputKind::pinch || pan_press ||
+                       controller_.dragging();
+  if (gesture) {
+    const bool changed = controller_.handle(input);
+    if (changed) {
+      auto_fit_ = false;
+      camera_changed(true);
+    }
+    return changed;
   }
-  return changed;
+  return route_input(input);
+}
+
+PointerContext LayoutCanvas::pointer(double x, double y) const {
+  const view::LayoutWindow* win = window();
+  return pointer_at(camera_, static_cast<double>(pixel_ratio_()), x, y, window_id_,
+                    win != nullptr ? win->name() : std::string());
+}
+
+bool LayoutCanvas::route_input(const CanvasInput& input) {
+  if (window() == nullptr || synthetic_) return false;
+  bool used = false;
+  switch (input.kind) {
+    case InputKind::pointer_down:
+    case InputKind::pointer_up: {
+      const int button = input.button == PointerButton::left     ? 1
+                         : input.button == PointerButton::middle ? 2
+                         : input.button == PointerButton::right  ? 3
+                                                                 : 0;
+      used = router_.button(button, input.kind == InputKind::pointer_down, input.modifiers, pointer(input.x, input.y));
+      break;
+    }
+    case InputKind::pointer_move: used = router_.motion(pointer(input.x, input.y)); break;
+    case InputKind::key_down:
+      if (const auto event = key_event_for(input.native_key, input.modifiers)) {
+        std::optional<PointerContext> at;
+        if (last_pointer_) at = pointer(last_pointer_->x, last_pointer_->y);
+        used = router_.key(*event, at);
+      }
+      break;
+    default: break;
+  }
+  if (used) {
+    update_cursor();
+    painted_->invalidate();  // the sweep preview
+  }
+  return used;
+}
+
+void LayoutCanvas::update_cursor() {
+  const editor::EditorState& ed = ctx_.editor();
+  const hefesto::ui::Tool* tool = ed.tools.current();
+  const EditMode mode = tool == nullptr || tool->name == "box" ? router_.mode() : EditMode::none;
+  viewport_->set_cursor(cursor_shape(hefesto::ui::state(ed).cursor_glyph, mode));
 }
 
 bool LayoutCanvas::handle_overlay_click(double x, double y) {
@@ -380,6 +480,7 @@ bool LayoutCanvas::handle_overlay_click(double x, double y) {
 
 void LayoutCanvas::track_cursor(const CanvasInput& input) {
   if (input.kind != InputKind::pointer_move && input.kind != InputKind::pointer_down) return;
+  last_pointer_ = input;
   const double ratio = static_cast<double>(pixel_ratio_());
   cursor_ = db::Point{static_cast<db::Coord>(std::lround(camera_.world_x(input.x * ratio))),
                       static_cast<db::Coord>(std::lround(camera_.world_y(input.y * ratio)))};
@@ -391,7 +492,7 @@ void LayoutCanvas::paint_overlay(ui::Painter& p, float w, float h) {
   overlay_state_.pixel_ratio = static_cast<double>(pixel_ratio_());
   overlay_state_.scale = unit_scale();
   const editor::EditorState& ed = ctx_.editor();
-  overlay_state_.box = visible_box(ed.box, ed.box_root, ed.edit_cell);
+  overlay_state_.sweep = router_.sweep();
   const view::LayoutWindow* win = window();
   overlay_state_.edit_bbox.reset();
   if (ed.edit_cell != nullptr && win != nullptr && win->root() == ed.edit_cell && !ed.edit_cell->bbox().is_null()) {
@@ -437,6 +538,52 @@ void LayoutCanvas::draw(const ui::ViewportDraw& target) {
   render::DrawTarget draw_target{target.command_buffer, target.render_pass, target.x, target.y, target.width,
                                  target.height, false, true, {bg.r, bg.g, bg.b, 1.0F}};
   renderer_->record(draw_target, view.transform, ranges_, polygon_ranges_);
+  {
+    const std::lock_guard guard(view_mutex_);
+    highlight_ranges_ = highlight_draws_;
+    highlight_poly_ranges_ = highlight_poly_draws_;
+  }
+  // Recorded every frame (even empty), so the renderer retires replaced buffers.
+  draw_target.clear = false;
+  highlight_renderer_->record(draw_target, view.transform, highlight_ranges_, highlight_poly_ranges_);
+}
+
+void LayoutCanvas::refresh_highlights() {
+  editor::EditorState& ed = ctx_.editor();
+  view::LayoutWindow* win = window();
+  display::HighlightScene scene;
+  if (win != nullptr && win->root() != nullptr && !synthetic_) {
+    // Everything, not only the visible surface: gestures move the camera
+    // without a command, so the pass must cover what they may reveal.
+    const db::Rect everywhere{-kHighlightReach, -kHighlightReach, kHighlightReach, kHighlightReach};
+    scene = ed.highlights.build(ed, *win, everywhere);
+    display::HighlightScene tiles = view::tile_overlay_scene(ed, *win, everywhere);
+    for (display::HighlightItem& item : tiles.items) {
+      display::resolve_highlight(item, ed.styles ? &*ed.styles : nullptr);
+      scene.items.push_back(std::move(item));
+    }
+  }
+  if (scene.items == highlights_) return;
+  highlights_ = scene.items;
+  render::LayoutBatches batches = render::highlight_batches(scene);
+  highlight_renderer_->set_layer_styles(batches.styles);
+  (void)highlight_renderer_->upload(batches.rects.instances());
+  (void)highlight_renderer_->upload_polygons(batches.polygons.vertices, batches.polygons.base_x,
+                                             batches.polygons.base_y);
+  {
+    const std::lock_guard guard(view_mutex_);
+    highlight_draws_.assign(batches.rects.batches().begin(), batches.rects.batches().end());
+    highlight_poly_draws_ = batches.polygons.batches;
+  }
+  // Text and point crosses are the overlay's (their size is in pixels).
+  overlay_state_.marks.clear();
+  for (const display::HighlightItem& item : highlights_) {
+    if (item.shape == display::HighlightShape::text || item.shape == display::HighlightShape::cross) {
+      overlay_state_.marks.push_back(item);
+    }
+  }
+  viewport_->invalidate();
+  painted_->invalidate();
 }
 
 }  // namespace hefesto::shell

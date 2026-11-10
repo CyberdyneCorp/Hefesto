@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "hefesto/view/highlights.hpp"
+
 namespace hefesto::shell::paint {
 
 namespace {
@@ -89,7 +91,9 @@ void rulers(ui::Painter& p, float w, float h, const OverlayState& s, const Theme
     const auto x = static_cast<float>(tick.pixel);
     if (x < rs + 2.0F) continue;
     p.line(x, rs - 5.0F, x, rs, 1.0F, t.text_tertiary);
-    p.text(TextRole::mono_small, x + 3.0F, 3.0F, tick.label, t.text_tertiary);
+    // The mockup's JetBrains Mono 10 (M1 drew the 11 px role; design.md D10).
+    p.text_px(TextRole::mono_small, static_cast<float>(kTopRulerLabelSize), x + 3.0F, 4.0F, tick.label,
+              t.text_tertiary);
   }
   p.pop_clip();
   p.push_clip(0.0F, rs, rs, h - rs);
@@ -176,22 +180,33 @@ void labels(ui::Painter& p, float w, float h, const OverlayState& s) {
   }
 }
 
-/// The box as DBWDrawBox draws it, in the highlight style's color (white).
-void box(ui::Painter& p, float w, float h, const OverlayState& s) {
-  if (!s.box) return;
-  const PixelRect r = world_to_pixels(s.camera, *s.box, s.pixel_ratio);
-  // Magic's pixel thresholds and widths are logical pixels (they scale with the HiDPI factor).
-  const display::BoxDrawing drawing = display::box_drawing(*s.box, std::llround(r.w), std::llround(r.h), s.edit_bbox);
-  const Rgba& color = drawing.style == display::kStyleBox
-                          ? s.highlight[0]
-                          : (drawing.style == display::kStyleMediumHighlights ? s.highlight[1] : s.highlight[2]);
-  for (const PixelRect& side : box_overlay(r, drawing.shape, static_cast<double>(w),
-                                           static_cast<double>(h))) {
-    p.fill(static_cast<float>(side.x), static_cast<float>(side.y), static_cast<float>(side.w),
-           static_cast<float>(side.h), 0.0F, color);
+/// Highlight text (feedback, elements) centered in its rectangle and point
+/// crosses with Magic's GR_CROSSSIZE arms, in the item's resolved color.
+void highlight_marks(ui::Painter& p, float w, float h, const OverlayState& s) {
+  for (const display::HighlightItem& item : s.marks) {
+    const PixelRect r = world_to_pixels(s.camera, item.rect, s.pixel_ratio);
+    if (outside(r, w, h)) continue;
+    const Rgba c{item.resolved.r, item.resolved.g, item.resolved.b, 1.0F};
+    const auto cx = static_cast<float>(r.x + r.w / 2.0);
+    const auto cy = static_cast<float>(r.y + r.h / 2.0);
+    if (item.shape == display::HighlightShape::cross) {
+      constexpr auto kArm = static_cast<float>(view::kCrossSize);
+      p.line(cx - kArm, cy, cx + kArm, cy, 1.0F, c);
+      p.line(cx, cy - kArm, cx, cy + kArm, 1.0F, c);
+    } else if (!item.text.empty()) {
+      const float tw = p.text_width(TextRole::mono_small, item.text);
+      p.text_centered_y(TextRole::mono_small, cx - tw / 2.0F, cy, item.text, c);
+    }
   }
 }
 
+/// The rectangle a Paint / Label / Measure sweep covers, before its release.
+void sweep_preview(ui::Painter& p, const OverlayState& s) {
+  if (!s.sweep) return;
+  const PixelRect r = world_to_pixels(s.camera, *s.sweep, s.pixel_ratio);
+  p.dashed_rect(static_cast<float>(r.x), static_cast<float>(r.y), std::max(1.0F, static_cast<float>(r.w)),
+                std::max(1.0F, static_cast<float>(r.h)), 1.0F, 4.0F, 3.0F, white());
+}
 
 void zoom_control(ui::Painter& p, const OverlayLayout& l, const std::string& percent, const ThemeTokens& t) {
   const auto control = [&](const PixelRect& r) {
@@ -345,15 +360,25 @@ void section_label(ui::Painter& p, float x, float y, std::string_view text, cons
 }
 
 void layer_row(ui::Painter& p, float w, float h, const LayerRow& row, WidgetState s, const ThemeTokens& t) {
-  if (s.hovered) p.fill(0.0F, 0.0F, w, h, kRadius, alpha(t.row_selected, 0.6F));
+  if (row.paint) {
+    p.fill(0.0F, 0.0F, w, h, kRadius, alpha(t.accent, 0.10F));
+    p.stroke(0.0F, 0.0F, w, h, kRadius, 1.0F, alpha(t.accent, 0.7F));
+  } else if (s.hovered) {
+    p.fill(0.0F, 0.0F, w, h, kRadius, alpha(t.row_selected, 0.6F));
+  }
   swatch(p, 8.0F, (h - static_cast<float>(kSwatchHeight)) / 2.0F, row, t);
   const Rgba name_color = row.visible ? t.text_primary : t.text_tertiary;
   p.text_centered_y(TextRole::body, 36.0F, h / 2.0F, row.name, name_color);
   const std::string meta = row.meta();
   const float mw = p.text_width(TextRole::meta, meta);
-  p.text_centered_y(TextRole::meta, w - 8.0F - mw, h / 2.0F, meta, t.text_tertiary);
+  p.text_centered_y(TextRole::meta, w - 8.0F - mw, h / 2.0F, meta, row.paint ? t.accent_soft : t.text_tertiary);
+  // The toggles show on hover and stay while not in their default state.
+  const LayerRowIcons icons = layer_row_icons(w, mw);
   if (s.hovered || !row.visible) {
-    p.icon(row.visible ? "eye" : "eye-off", w - 8.0F - mw - 20.0F, (h - 14.0F) / 2.0F, 14.0F, t.text_tertiary);
+    p.icon(row.visible ? "eye" : "eye-off", icons.eye, (h - 14.0F) / 2.0F, 14.0F, t.text_tertiary);
+  }
+  if (s.hovered || row.locked) {
+    p.icon("lock", icons.lock, (h - 14.0F) / 2.0F, 14.0F, row.locked ? t.text_secondary : t.text_tertiary);
   }
   if (s.focused) focus_ring(p, w, h, kRadius, t);
 }
@@ -434,7 +459,8 @@ void canvas_overlay(ui::Painter& p, float w, float h, const OverlayState& s, The
   dot_grid(p, w, h, s);
   subcell_captions(p, s);
   labels(p, w, h, s);
-  box(p, w, h, s);
+  highlight_marks(p, w, h, s);
+  sweep_preview(p, s);
   if (!s.empty_hint.empty()) {
     p.text_centered_y(TextRole::body, centered_x(p, TextRole::body, w, s.empty_hint), h / 2.0F, s.empty_hint,
                       t.text_secondary);

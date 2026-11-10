@@ -16,6 +16,8 @@ add_library(hefesto_shell_desktop STATIC
   src/canvas_overlay.cpp
   src/command_bar_model.cpp
   src/core_command_sink.cpp
+  src/editing_models.cpp
+  src/input_router.cpp
   src/layout_canvas.cpp
   src/main_window.cpp
   src/options.cpp

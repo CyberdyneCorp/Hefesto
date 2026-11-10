@@ -27,7 +27,9 @@
 
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/shell/canvas_controller.hpp"
+#include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/design_tokens.hpp"
+#include "hefesto/shell/editing_models.hpp"
 #include "hefesto/shell/theme_tokens.hpp"
 
 namespace hefesto::shell::ui {
@@ -279,6 +281,8 @@ class CommandBar : public Widget {
   /// `callback(true)` for Up (older), `callback(false)` for Down; returns the text to show.
   void on_history(std::function<std::string(bool)> callback);
   void set_text(std::string_view text);
+  /// Tab: `callback(text)` returns the completed text (nullopt: unchanged).
+  void on_complete(std::function<std::optional<std::string>(std::string)> callback);
 
  private:
   explicit CommandBar(WidgetId id);
@@ -315,6 +319,8 @@ class Viewport : public Widget {
   /// true: redraw every frame (benchmark); false: redraw on invalidate().
   void set_realtime(bool realtime);
   void invalidate();
+  /// The pointer shape over the canvas (cursor glyphs, input_router.hpp).
+  void set_cursor(CursorShape shape);
 
  private:
   explicit Viewport(WidgetId id);
@@ -365,6 +371,11 @@ class Window {
   /// nullopt when cancelled.
   [[nodiscard]] std::optional<std::string> open_file_dialog(std::string_view title, std::string_view filter_name,
                                                             std::string_view patterns) const;
+  /// Shows a prompt dialog (title, wrapped text, one button per answer, the
+  /// primary one focused). `wait`: runs it modally and returns the clicked
+  /// button's answer + 1, or 0 when dismissed (Escape); otherwise opens it
+  /// and returns 0 at once (scripted captures).
+  int run_dialog(const PromptDialog& dialog, bool wait) const;
 
  private:
   WidgetId id_ = kNoWidget;
