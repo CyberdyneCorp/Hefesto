@@ -587,7 +587,8 @@ std::string layer_empty_hint(std::string_view technology, bool has_styles) {
 
 // --- inspector ------------------------------------------------------------------------
 
-InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell, const UnitScale& scale) {
+InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell, const UnitScale& scale,
+                             const db::CellDef* window_root) {
   InspectorView view;
   const std::string unit(scale.unit_name());
   if (box) {
@@ -601,6 +602,11 @@ InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellD
     return view;
   }
   view.section = "CELL";
+  if (cell == nullptr && window_root != nullptr) {
+    view.title = "Read-only: " + window_root->name();
+    view.subtitle = "locked or not editable";
+    return view;
+  }
   if (cell == nullptr) {
     view.title = "Nothing loaded";
     view.subtitle = "Open a .mag file or load a cell";

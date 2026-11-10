@@ -146,6 +146,10 @@ class Selection {
 
   /// `select do|no|simple labels` (Magic's SelectDoLabels).
   connect::LabelPolicy label_policy = connect::LabelPolicy::full;
+  /// The types the last area selection asked for (Magic's
+  /// SelectDef->cd_types; empty after clear()): editing the selection then
+  /// skips edit-cell paint of other types without a non-edit warning.
+  tech::TypeMask area_types;
   /// Point-selection cycling (`select` with no option).
   CycleState cycle;
 

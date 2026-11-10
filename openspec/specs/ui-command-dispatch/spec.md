@@ -335,7 +335,7 @@ Compatibility: exact (log file content); behavioral (messages)
 - **THEN** the log SHALL contain the line `label "my net" n`
 
 ### Requirement: pushbutton and setpoint
-`pushbutton BUTTON ACTION` SHALL synthesize a button event at the current command point. BUTTON is matched by prefix against `left`, `middle`, `right`, and ACTION against `down`, `up`. The event SHALL be dispatched as if it came from the pointer. Bad usage SHALL report `Usage: pushbutton button action`.
+`pushbutton BUTTON ACTION` SHALL synthesize a button event at the current command point. BUTTON is matched by prefix against `left`, `middle`, `right`, and ACTION against `down`, `up`. The event SHALL be dispatched as if it came from the pointer to the window's client: in a layout window it SHALL reach the box tool's button handler whatever tool's macro table is current (in Magic's Tcl build `tool` only swaps macro tables; the other tools act through their macros), and in a color window the color client's button handler. Bad usage SHALL report `Usage: pushbutton button action`.
 
 `setpoint [x y [WID|name]]` SHALL force the point and window id of following commands. In interactive use the forced point SHALL apply to the next command only. In a script it SHALL stay in effect until the script ends. The values are window pixel coordinates with y measured from the window's bottom edge.
 
@@ -351,7 +351,7 @@ Compatibility: behavioral
 #### Scenario: Scripted click
 - **GIVEN** a layout window with id 0
 - **WHEN** a script runs `setpoint 100 120 0` and then `pushbutton left down` and `pushbutton left up`
-- **THEN** the current tool SHALL receive a left press and release at window pixel (100,120)
+- **THEN** the box tool's button handler SHALL receive a left press and release at window pixel (100,120), also when the wiring tool's macro table is current
 
 ### Requirement: sleep, echo and send
 `sleep N` SHALL pause for N whole seconds, and SHALL NOT pause when N ≤ 0, whatever the `magic-compat` setting. Magic pauses N−1 seconds (none for N ≤ 1); this only changes timing, never output, so Hefesto does not reproduce it (see Q-UI-15, resolution: fix). An interrupt SHALL end the pause early. A wrong argument count SHALL report `Usage: sleep seconds`.

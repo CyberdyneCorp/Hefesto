@@ -329,3 +329,21 @@ TEST_CASE("clone copies every tile", GEO "[req:Plane model]") {
   CHECK(db::test::tiles(c) == db::test::tiles(p));
   CHECK(c.bounding_box() == Rect{0, 0, 30, 10});
 }
+
+TEST_CASE("enumerating out to the infinities visits the plane's tiles", GEO "[req:Tile enumeration order]") {
+  // Regression (M2 SHELL report): an area out to +-kInfinity reached past
+  // the boundary tiles and crashed; it is clamped to the plane.
+  db::Plane p;
+  paint(p, {0, 0, 10, 10});
+  tri(p, {20, 0, 30, 10}, db::TriangleCorner::sw);
+  const Rect everything{db::kMinusInfinity, db::kMinusInfinity, db::kInfinity, db::kInfinity};
+  std::vector<Rect> seen;
+  CHECK(p.enumerate(everything, tech::TypeMask::of(kM1), [&](const db::TileView& t) {
+    seen.push_back(t.area);
+    return true;
+  }));
+  CHECK(seen.size() == 2);
+  const db::TriangleSide side = db::triangle_side(db::TriangleCorner::sw);
+  CHECK(p.enumerate_triangle(everything, side.diagonal, side.right_side, tech::TypeMask::of(kM1),
+                             [](const db::TileView&) { return true; }));  // no crash
+}

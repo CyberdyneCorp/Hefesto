@@ -107,6 +107,23 @@ TEST_CASE("pointer context maps canvas pixels to the root and to Magic's window 
   CHECK(at.window_name == "layout3");
 }
 
+TEST_CASE("the pointer's pixel area follows the core's screen-to-surface rule at any zoom",
+          "[cap:hefesto-input-and-touch][req:Desktop input parity with Magic]") {
+  // Regression (M2 review): zoomed in, the area was zero units wide; zoomed
+  // out, two units narrower than WindScreenToSurface's units-per-pixel + 1.
+  hefesto::render::Camera close(100.0, 50.0, 4.0);  // 4 pixels per unit
+  close.set_viewport(400, 200);
+  const PointerContext in = pointer_at(close, 1.0, 200.0, 100.0, 1, "layout1");
+  CHECK(in.state.pixel_area == db::Rect{100, 49, 101, 50});
+  hefesto::render::Camera far(1000.0, 500.0, 0.1);  // 10 units per pixel
+  far.set_viewport(400, 200);
+  const PointerContext out = pointer_at(far, 1.0, 200.0, 100.0, 1, "layout1");
+  CHECK(out.state.pixel_area.width() == 11);
+  CHECK(out.state.pixel_area.height() == 11);
+  CHECK(out.state.pixel_area.x0 == 1000);
+  CHECK(out.state.pixel_area.y0 == 490);
+}
+
 TEST_CASE("left and right buttons run the box tool's macros at the pointer",
           "[cap:hefesto-input-and-touch][req:Desktop input parity with Magic]") {
   Fixture f;

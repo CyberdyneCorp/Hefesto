@@ -246,11 +246,11 @@ Compatibility: behavioral
 
 Operations that modify the layout through the selection (`delete`, `move`, `stretch`, rotations and flips, `orient`, `array`, `select pick`) SHALL act only on the parts of the selection that belong to the edit cell:
 
-- **Paint**: paint whose type is present in the edit cell at that place.
+- **Paint**: paint whose type is present in the edit cell at that place (a stacked contact counts as its residue on that plane). For a selection made by `select area <types>` (the requested types are remembered until the selection is cleared), edit-cell paint of a type outside `<types>` is left alone.
 - **Subcells**: uses that are direct children of the edit cell and not locked.
 - **Labels**: labels that exist in the edit cell with the same rectangle and text.
 
-When non-edit parts are skipped, the command SHALL warn that only edit-cell items were affected (paint, subcells and labels each have their own warning). `copy` and `select keep` copy the **whole** selection into the edit cell, including items that came from other cells.
+When non-edit parts are skipped, the command SHALL warn that only edit-cell items were affected (paint, subcells and labels each have their own warning). For paint the warning is given only when the edit-cell paint under a selected piece conflicts with it (Magic's compatibility test: painting the edit-cell type over the selected type does not give the selected type, nor a stacked type whose residues are both); types skipped because an area selection did not request them, space included, are never reported. `copy` and `select keep` copy the **whole** selection into the edit cell, including items that came from other cells.
 
 If there is no editable edit cell, these operations SHALL fail with "The current cell is not editable."
 
@@ -259,10 +259,16 @@ Compatibility: behavioral
 (Magic ref: select/selOps.c:99-170, select/selEnum.c:132-330, select/selOps.c:286-345)
 
 #### Scenario: Delete skips child paint
-- **GIVEN** the selection contains metal1 from the edit cell and poly from a child cell
+- **GIVEN** the selection, made without requested types (for example by `select net`), contains metal1 from the edit cell and poly from a child cell
 - **WHEN** `delete` is run
 - **THEN** only the metal1 SHALL be erased
 - **AND** a warning SHALL report that paint outside the edit cell was not deleted
+
+#### Scenario: Area selection over a contact moves without a warning
+- **GIVEN** edit-cell metal1 with a via1 contact inside it, selected with `select area metal1`
+- **WHEN** `move e 100` is run
+- **THEN** the metal1 outside the contact SHALL move, the contact SHALL stay
+- **AND** no warning about paint outside the edit cell SHALL be printed
 
 ### Requirement: Delete command
 

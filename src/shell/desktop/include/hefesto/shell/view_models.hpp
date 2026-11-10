@@ -343,8 +343,10 @@ struct InspectorView {
                                                   const db::CellDef* edit_cell);
 
 /// M1 inspects the box (or, without a box, the edit cell); selection is M2.
+/// Without an edit cell, `window_root` (the cell shown in the window, when
+/// any) is reported as read-only instead of "Nothing loaded".
 [[nodiscard]] InspectorView inspector_view(const std::optional<db::Rect>& box, const db::CellDef* cell,
-                                           const UnitScale& scale);
+                                           const UnitScale& scale, const db::CellDef* window_root = nullptr);
 
 // --- status bar -------------------------------------------------------------------------
 

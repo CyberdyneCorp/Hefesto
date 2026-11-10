@@ -320,3 +320,16 @@ TEST_CASE("setpoint into a color window sends the next commands to the color cli
   REQUIRE(s.run("setpoint 10 10 " + std::to_string(lw.value()->id())).ok());
   CHECK(s.run("pushbutton left down").ok());
 }
+
+TEST_CASE("pointer snapping follows the snap mode for every front end",
+          "[cap:cmd-coordinates-and-units][req:Pointer snapping]") {
+  UiSession s;
+  (void)unit_window(s);
+  s.editor.grid = hefesto::tech::GridScale{4, 1};  // 1 lambda = 4 internal units
+  s.editor.snap = hefesto::editor::SnapMode::internal;
+  CHECK(ui::snap_to_tool_grid(s.editor, db::Point{5, 7}) == db::Point{5, 7});
+  s.editor.snap = hefesto::editor::SnapMode::lambda;
+  const db::Point p = ui::snap_to_tool_grid(s.editor, db::Point{5, 7});
+  CHECK(p.x % 4 == 0);
+  CHECK(p.y % 4 == 0);
+}

@@ -125,22 +125,8 @@ CursorUnits default_cursor_units(const editor::EditorState& editor) {
   }
 }
 
-// ToolSnapToGrid with the `snap` grid.
 db::Point snapped(const editor::EditorState& editor, db::Point p) {
-  cmd::SnapGrid grid;
-  if (editor.snap == editor::SnapMode::internal) {
-    return p;
-  }
-  if (editor.snap == editor::SnapMode::lambda) {
-    const std::int64_t pitch = editor.grid.lambda > 0 ? editor.grid.internal / editor.grid.lambda : 1;
-    grid.pitch_x = grid.pitch_y = static_cast<db::Coord>(pitch > 0 ? pitch : 1);
-  } else if (const view::LayoutWindow* w = editor.windows.current()) {
-    const db::Rect s = w->grid().spacing;
-    grid.origin = db::Point{s.x0, s.y0};
-    grid.pitch_x = s.x1 - s.x0 > 0 ? s.x1 - s.x0 : 1;
-    grid.pitch_y = s.y1 - s.y0 > 0 ? s.y1 - s.y0 : 1;
-  }
-  return cmd::snap_point(p, grid);
+  return snap_to_tool_grid(editor, p);
 }
 
 cmd::InputUnit as_input_unit(CursorUnits u) {
@@ -370,3 +356,25 @@ bool register_tool_commands(cmd::CommandRegistry& registry) {
 }
 
 }  // namespace hefesto::ui::detail
+
+namespace hefesto::ui {
+
+// ToolSnapToGrid with the `snap` grid.
+db::Point snap_to_tool_grid(const editor::EditorState& editor, db::Point p) {
+  cmd::SnapGrid grid;
+  if (editor.snap == editor::SnapMode::internal) {
+    return p;
+  }
+  if (editor.snap == editor::SnapMode::lambda) {
+    const std::int64_t pitch = editor.grid.lambda > 0 ? editor.grid.internal / editor.grid.lambda : 1;
+    grid.pitch_x = grid.pitch_y = static_cast<db::Coord>(pitch > 0 ? pitch : 1);
+  } else if (const view::LayoutWindow* w = editor.windows.current()) {
+    const db::Rect s = w->grid().spacing;
+    grid.origin = db::Point{s.x0, s.y0};
+    grid.pitch_x = s.x1 - s.x0 > 0 ? s.x1 - s.x0 : 1;
+    grid.pitch_y = s.y1 - s.y0 > 0 ? s.y1 - s.y0 : 1;
+  }
+  return cmd::snap_point(p, grid);
+}
+
+}  // namespace hefesto::ui

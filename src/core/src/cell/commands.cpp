@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -217,16 +218,15 @@ bool apply_load_words(LoadArgs& out, const std::vector<std::string>& words) {
   return out.options.ignore_tech || out.nowindow || out.options.dereference;
 }
 
+/// CmdLoad takes options from the end of the line only: `load -x foo`
+/// names the cell `-x` and has no option.
 std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
   LoadArgs out;
-  std::vector<std::string> words;
-  for (const std::string& a : args) {
-    if (a.empty() || a.front() != '-') {
-      words.push_back(a);
-    } else {
-      apply_load_option(out, a);
-    }
+  std::size_t end = args.size();
+  for (; end > 0 && !args[end - 1].empty() && args[end - 1].front() == '-'; --end) {
+    apply_load_option(out, args[end - 1]);
   }
+  const std::vector<std::string> words(args.begin(), args.begin() + static_cast<std::ptrdiff_t>(end));
   if (!words.empty()) {
     out.name = words[0];
   }
@@ -307,7 +307,9 @@ db::CellDef* save_target(IoSession& s) {
 /// name; a headless host (and an empty answer) aborts the save. Returns the
 /// result to stop with, or nullopt to write.
 std::optional<CommandResult> check_new_name(IoSession& s, const db::CellDef& def, const std::string& name) {
-  const std::string base = base_name(name);
+  // Only ".mag" is removed for the comparison; a directory stays part of
+  // the name (cmdCheckNewName), so `save sub/foo` from `foo` still asks.
+  const std::string base = name.size() > 4 && name.ends_with(".mag") ? name.substr(0, name.size() - 4) : name;
   if (base == def.name()) {
     return std::nullopt;
   }

@@ -59,11 +59,50 @@ TEST_CASE("delete skips paint outside the edit cell", RESTRICT) {
   s.ok("box 0 0 10 10");
   s.ok("select area metal1,poly");
   REQUIRE(area_of(s.selection(), mt.active, mt.poly) == 100);  // the child's poly is selected
+  // An area selection skips edit-cell types it did not ask for (space
+  // included) without a warning, as Magic 8.3 does (selEnumPFunc2 SEA_AREA).
   const auto r = s.run("delete");
   REQUIRE(r.ok());
   CHECK(area_of(s.top(), mt.metal1, mt.m1) == 0);
   CHECK(area_of(*child, mt.active, mt.poly) == 100);
-  CHECK(all_text(r).find("You selected paint outside the edit cell.") != std::string::npos);
+  CHECK(all_text(r).find("outside the edit cell") == std::string::npos);
+  // Without requested types (a net or chunk-less selection) the empty edit
+  // cell under the child's poly is a conflict and is reported.
+  s.ok("box 0 0 10 10");
+  s.ok("select area poly");
+  s.editor.selection.area_types = tech::TypeMask{};
+  const auto again = s.run("delete");
+  REQUIRE(again.ok());
+  CHECK(area_of(*child, mt.active, mt.poly) == 100);
+  CHECK(all_text(again).find("You selected paint outside the edit cell.") != std::string::npos);
+}
+
+TEST_CASE("moving a metal1 area selection over a contact moves the metal1 without a warning", RESTRICT) {
+  // Regression (M2 review): edit-cell pieces were matched by exact type, so
+  // the via1 under a `select area metal1` raised the non-edit warning
+  // although the edit cell is the root (selEnumPFunc2 skips the types the
+  // area selection did not ask for, and warns only on real conflicts).
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  s.paint({0, 0, 30, 10}, mt.m1);
+  s.paint({10, 0, 20, 10}, mt.via1);
+  select_box(s, "0 0 30 10");
+  const auto r = s.run("move e 100");
+  REQUIRE(r.ok());
+  CHECK(all_text(r).find("outside the edit cell") == std::string::npos);
+  CHECK(area_of(s.top(), mt.metal1, mt.via1) == 100);  // the contact stays
+  CHECK(area_of(s.top(), mt.metal1, mt.m1) == 200);
+  CHECK(rects_of(s.top(), mt.metal1, mt.m1) == std::vector<Rect>{{100, 0, 110, 10}, {120, 0, 130, 10}});
+}
+
+TEST_CASE("an area selection forgets its types when cleared", RESTRICT) {
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  s.paint({0, 0, 10, 10}, mt.m1);
+  select_box(s, "0 0 10 10");
+  CHECK(s.editor.selection.area_types == tech::TypeMask::of(mt.m1));
+  s.ok("select clear");
+  CHECK(s.editor.selection.area_types.empty());
 }
 
 TEST_CASE("operations need an editable edit cell", RESTRICT) {

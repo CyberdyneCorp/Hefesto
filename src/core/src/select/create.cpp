@@ -435,6 +435,7 @@ void select_area(const Context& c, const db::Rect& area, const Layers& layers, c
   if (!layers.types.empty()) {
     copy_tree_paint(c, *c.root, area, layers.types, c.descend, dest, &sel.provenance());
   }
+  sel.area_types = layers.types;  // SelectArea: "remember what types were requested"
   if (layers.labels) {
     copy_tree_labels(c, area, label_mask(c, layers.types), glob, dest, &sel.provenance());
   }

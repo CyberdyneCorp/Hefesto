@@ -314,7 +314,7 @@ void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_r
   if (auto selection = selection_inspector_view(ed, window_root, scale, &actions)) {
     view_ = std::move(*selection);
   } else {
-    view_ = inspector_view(visible_box(ed.box, ed.box_root, ed.edit_cell), ed.edit_cell, scale);
+    view_ = inspector_view(visible_box(ed.box, ed.box_root, ed.edit_cell), ed.edit_cell, scale, window_root);
     actions.clear();
   }
   rebuild_actions(std::move(actions));

@@ -10,6 +10,7 @@
 #include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/cmd/script.hpp"
 #include "hefesto/ui/bindings.hpp"
+#include "hefesto/ui/input.hpp"
 #include "hefesto/ui/state.hpp"
 #include "hefesto/view/window.hpp"
 
@@ -135,15 +136,13 @@ PointerContext pointer_at(const render::Camera& camera, double pixel_ratio, doub
   at.state.window = window;
   at.state.point = db::Point{static_cast<db::Coord>(std::lround(camera.world_x(fx))),
                              static_cast<db::Coord>(std::lround(camera.world_y(fy)))};
-  // The root area under the screen pixel (point selection tolerance).
-  const double x0 = camera.world_x(std::floor(fx));
-  const double x1 = camera.world_x(std::floor(fx) + 1.0);
-  const double y1 = camera.world_y(std::floor(fy));
-  const double y0 = camera.world_y(std::floor(fy) + 1.0);
-  at.state.pixel_area = db::Rect{static_cast<db::Coord>(std::floor(x0)), static_cast<db::Coord>(std::floor(y0)),
-                                 static_cast<db::Coord>(std::ceil(x1)) - 1, static_cast<db::Coord>(std::ceil(y1)) - 1};
-  if (at.state.pixel_area.x1 < at.state.pixel_area.x0) at.state.pixel_area.x1 = at.state.pixel_area.x0;
-  if (at.state.pixel_area.y1 < at.state.pixel_area.y0) at.state.pixel_area.y1 = at.state.pixel_area.y0;
+  // The root area under the screen pixel, as the core's
+  // ViewMapping::screen_to_surface (WindScreenToSurface) computes it: the
+  // pixel's lower-left layout point, units-per-pixel + 1 wide and high.
+  const auto units_per_pixel = static_cast<db::Coord>(std::floor(camera.units_per_pixel()));
+  const auto x0 = static_cast<db::Coord>(std::floor(camera.world_x(std::floor(fx))));
+  const auto y0 = static_cast<db::Coord>(std::floor(camera.world_y(std::floor(fy) + 1.0)));
+  at.state.pixel_area = db::Rect{x0, y0, x0 + units_per_pixel + 1, y0 + units_per_pixel + 1};
   // Magic's window pixels count up from the bottom edge.
   at.pixel = db::Point{static_cast<db::Coord>(std::lround(fx)),
                        static_cast<db::Coord>(camera.viewport_height() - 1 - std::lround(fy))};
@@ -321,19 +320,7 @@ bool InputRouter::motion(const PointerContext& at) {
 }
 
 db::Point InputRouter::snapped(db::Point p) const {
-  // ui-tools-and-input "Pointer snapping" (the core's `cursor` uses the same grids).
-  cmd::SnapGrid grid;
-  if (editor_.snap == editor::SnapMode::internal) return p;
-  if (editor_.snap == editor::SnapMode::lambda) {
-    const std::int64_t pitch = editor_.grid.lambda > 0 ? editor_.grid.internal / editor_.grid.lambda : 1;
-    grid.pitch_x = grid.pitch_y = static_cast<db::Coord>(pitch > 0 ? pitch : 1);
-  } else if (const view::LayoutWindow* w = editor_.windows.current()) {
-    const db::Rect s = w->grid().spacing;
-    grid.origin = db::Point{s.x0, s.y0};
-    grid.pitch_x = s.x1 - s.x0 > 0 ? s.x1 - s.x0 : 1;
-    grid.pitch_y = s.y1 - s.y0 > 0 ? s.y1 - s.y0 : 1;
-  }
-  return cmd::snap_point(p, grid);
+  return ui::snap_to_tool_grid(editor_, p);  // ui-tools-and-input "Pointer snapping"
 }
 
 }  // namespace hefesto::shell

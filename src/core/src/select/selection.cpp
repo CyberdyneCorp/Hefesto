@@ -126,6 +126,7 @@ void Selection::clear() {
   }
   provenance_.clear();
   offset_.reset();
+  area_types = tech::TypeMask{};
 }
 
 void Selection::prune(const db::CellLibrary& library) {

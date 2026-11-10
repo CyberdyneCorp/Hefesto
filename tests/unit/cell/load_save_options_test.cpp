@@ -85,6 +85,34 @@ TEST_CASE("load reports an unknown option and goes on", "[cap:cmd-hierarchy][req
   CHECK(s.editor.windows.current()->root() == s.editor.cells.find("a"));
 }
 
+TEST_CASE("load takes options from the end of the line only", "[cap:cmd-hierarchy][req:Load command]") {
+  // Regression (M2 review): an option before the name was consumed as an
+  // option; CmdLoad strips options from the end only, so `-x` is the name.
+  Session s;
+  s.write("/work/a.mag", std::string{kSquare});
+  const auto r = s.run("load -x a");
+  CHECK_FALSE(mentions(r, "No such option"));
+  CHECK(s.editor.windows.current()->root() != s.editor.cells.find("a"));
+}
+
+TEST_CASE("save into a directory compares the name with its directory", "[cap:cmd-hierarchy][req:Save command]") {
+  // Regression (M2 review): the directory was stripped before comparing with
+  // the cell name, so `save sub/top` overwrote sub/top.mag without asking.
+  Session s;
+  s.paint(*s.top, "metal1", Rect{0, 0, 10, 10});
+  s.write("sub/top.mag", std::string{kSquare});
+  const auto r = s.run("save sub/top");
+  CHECK(mentions(r, "Cell not saved."));
+  CHECK(s.services.files().read("sub/top.mag").value() == kSquare);
+  AnswerHost host;
+  host.answer = 1;
+  s.editor.prompt = &host;
+  REQUIRE(s.run("save sub/top.mag").ok());
+  CHECK(host.asked == 1);
+  CHECK(s.services.files().read("sub/top.mag").value() != kSquare);
+  CHECK(s.top->name() == "top");
+}
+
 TEST_CASE("save NAME asks before overwriting another file and refuses a taken cell name",
           "[cap:cmd-hierarchy][req:Save command]") {
   Session s;

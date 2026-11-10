@@ -319,3 +319,16 @@ TEST_CASE("a hierarchy row whose child covers it expands one level and keeps the
   CHECK_FALSE(win.is_expanded(*l1));  // one level, although L1 covers W1
   CHECK_FALSE(ed.box.has_value());    // no box was created
 }
+
+// Regression (M2 review): `specialopen color` succeeded silently in the
+// desktop app, which has no color window screen yet (task 10.6).
+TEST_CASE("opening a color window says the desktop does not show it yet",
+          "[cap:ui-color-window][req:Color window creation and layout]") {
+  CoreSession core(test_options());
+  CoreCommandSink sink(core.dispatcher());
+  const CommandOutcome opened = sink.submit("specialopen color");
+  REQUIRE(opened.ok());
+  CHECK(opened.printed.find("color window is not available in the desktop app yet") != std::string::npos);
+  const CommandOutcome plain = sink.submit("echo x");
+  CHECK(plain.printed.find("color window") == std::string::npos);
+}

@@ -76,6 +76,61 @@ std::vector<PaintPiece> selected_paint(const Context& c) {
   return out;
 }
 
+/// Magic's DBResidueMask: the residues of a contact (the component contacts
+/// of a stacked type), the type itself otherwise.
+tech::TypeMask residue_mask(const tech::Technology& tech, tech::TileType type) {
+  const tech::ContactInfo* info = tech.contact(type);
+  return info != nullptr ? info->residues : tech::TypeMask::of(type);
+}
+
+/// The residue of the stacked type `type` whose home plane is `plane`.
+std::optional<tech::TileType> stacked_residue(const tech::Technology& tech, tech::TileType type, tech::PlaneId plane) {
+  const tech::TypeMask residues = residue_mask(tech, type);
+  for (std::size_t r = tech::kFirstUserType; r < tech.user_type_end(); ++r) {
+    const auto rt = static_cast<tech::TileType>(r);
+    if (residues.test(rt) && tech.home_plane(rt) == plane) {
+      return rt;
+    }
+  }
+  return std::nullopt;
+}
+
+/// True when the edit-cell type `have` under a selected `want` is a real
+/// conflict (selEnumPFunc2's compatibility test: painting `have` over
+/// `want` must give `want`, or a stacked type whose residues are both).
+bool conflicts(const tech::Technology& tech, tech::PlaneId plane, tech::TileType have, tech::TileType want) {
+  const tech::TileType chk = tech.paint_result(plane, want, have);
+  const tech::TypeMask cmask = residue_mask(tech, chk);
+  return chk < tech.user_type_end() || (have != chk && !cmask.test(have)) || !cmask.test(want);
+}
+
+/// The type selEnumPFunc2 reports for the edit-cell tile type `have` under
+/// a selected piece of `want` on `plane`, or nothing when the tile is
+/// skipped; sets `non_edit` when the skipped tile conflicts with `want`.
+std::optional<tech::TileType> matched_type(const Context& c, tech::PlaneId plane, tech::TileType have,
+                                           tech::TileType want, bool& non_edit) {
+  const tech::Technology& tech = *c.tech;
+  if (have != want && have >= tech.user_type_end()) {
+    have = stacked_residue(tech, have, plane).value_or(have);
+  }
+  const tech::TypeMask& asked = c.ed->selection.area_types;
+  if (have != want && !asked.empty() && !asked.test(have)) {
+    return std::nullopt;  // `select area <types>`: other types are not part of it
+  }
+  const bool space_under = have != want && have == tech::kSpace && tech.home_plane_types(plane).test(want);
+  if (space_under || tech.paint_result(plane, want, have) != want) {
+    non_edit = non_edit || space_under || conflicts(tech, plane, have, want);
+    return std::nullopt;
+  }
+  if (!tech.is_contact(have)) {
+    return have;
+  }
+  if (have < tech.user_type_end()) {
+    return tech.home_plane(have) == plane ? std::optional<tech::TileType>{have} : std::nullopt;
+  }
+  return stacked_residue(tech, have, plane);
+}
+
 /// The parts of `piece` present in the edit cell, in root coordinates
 /// (selEnumPFunc1/2); sets `non_edit` when some of it is not.
 std::vector<PaintPiece> edit_pieces(const Context& c, const PaintPiece& piece, bool& non_edit) {
@@ -83,8 +138,8 @@ std::vector<PaintPiece> edit_pieces(const Context& c, const PaintPiece& piece, b
   const db::CellDef& edit = *c.ed->edit_cell;
   const db::Transform to_edit = root_to_edit(c);
   const db::Rect er = db::apply(to_edit, piece.area);
-  const tech::TypeMask mask = tech::TypeMask::of(piece.type);
   if (piece.triangle) {
+    const tech::TypeMask mask = tech::TypeMask::of(piece.type);
     const db::TriangleSide et = db::transform_triangle(to_edit, piece.triangle->diagonal, piece.triangle->right_side);
     const bool found = !edit.plane(piece.plane).enumerate_triangle(er, et.diagonal, et.right_side, mask,
                                                                    [](const db::TileView&) { return false; });
@@ -95,19 +150,16 @@ std::vector<PaintPiece> edit_pieces(const Context& c, const PaintPiece& piece, b
     }
     return out;
   }
-  std::int64_t covered = 0;
-  edit.plane(piece.plane).enumerate(er, mask, [&](const db::TileView& t) {
+  edit.plane(piece.plane).enumerate(er, tech::TypeMask::all(), [&](const db::TileView& t) {
     if (t.split) {
+      non_edit = true;  // a triangle under a Manhattan piece is left alone
       return true;
     }
-    const db::Rect part = clip(t.area, er);
-    covered += part.width() * part.height();
-    out.push_back(PaintPiece{piece.plane, db::apply(c.ed->edit_transform, part), piece.type, std::nullopt});
+    if (const auto type = matched_type(c, piece.plane, t.type, piece.type, non_edit)) {
+      out.push_back(PaintPiece{piece.plane, db::apply(c.ed->edit_transform, clip(t.area, er)), *type, std::nullopt});
+    }
     return true;
   });
-  if (covered < piece.area.width() * piece.area.height()) {
-    non_edit = true;
-  }
   return out;
 }
 

@@ -114,6 +114,9 @@ class Startup {
       load_files();
     }
     set_box();
+    // Magic's UndoFlush after the command-line files (utils/main.c:1236):
+    // the first `undo` of the session must not revert the startup loads.
+    state_.undo.clear();
     return std::move(result_);
   }
 

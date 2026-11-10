@@ -149,7 +149,8 @@ class Plane {
   /// first) unless `area` lies entirely beyond its diagonal. Returns false
   /// when the visitor stopped early. A zero-width or zero-height `area`
   /// runs Magic's algorithm unchanged (used for point and line labels); an
-  /// inverted area visits nothing.
+  /// inverted area visits nothing; an area beyond the plane (out to
+  /// +-kInfinity) is clamped to whole_plane().
   bool enumerate(const Rect& area, const tech::TypeMask& types, const TileVisitor& visit) const;
 
   /// Like enumerate() but restricted to the triangle of `area` given by

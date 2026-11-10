@@ -8,6 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
+#include "hefesto/undo/undo_log.hpp"
 #include "temp_dir.hpp"
 
 namespace app = hefesto::app;
@@ -33,7 +35,16 @@ namespace {
 constexpr const char* kHashA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 constexpr const char* kHashB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-// A session whose `tech`, `load` and `lef` commands only record their arguments.
+// An undo event standing for the edit-cell change a real `load` records.
+class NoteEvent final : public hefesto::undo::Event {
+ public:
+  void undo(hefesto::editor::EditorState& /*editor*/) override {}
+  void redo(hefesto::editor::EditorState& /*editor*/) override {}
+  [[nodiscard]] std::string describe() const override { return "note"; }
+};
+
+// A session whose `tech`, `load` and `lef` commands only record their
+// arguments (and, except `tech`, an undo event as the real commands do).
 class Session {
  public:
   explicit Session(bool with_crash = false)
@@ -51,6 +62,9 @@ class Session {
                                                line += " " + a;
                                              }
                                              calls.push_back(line);
+                                             if (std::string_view{name} != "tech") {
+                                               editor.undo.record(std::make_unique<NoteEvent>());
+                                             }
                                              if (line.find("fail") != std::string::npos) {
                                                return cmd::CommandResult::failure(diag::make("CMD-USAGE-001", "fake failure"));
                                              }
@@ -170,6 +184,21 @@ TEST_CASE("files load in command-line order and the window ends on the first",
   Session s;
   REQUIRE(s.start(with_files({"a.mag", "b"})).ok());
   CHECK(s.calls == std::vector<std::string>{"load a", "load b", "load a"});
+}
+
+TEST_CASE("startup flushes the undo history after the command-line files",
+          "[cap:app-startup][req:Command-line file arguments][cap:layout-undo]") {
+  // Regression (M2 review): `undo` right after launch reverted the
+  // command-line load, leaving the window on a cell with no edit cell.
+  Session s;
+  REQUIRE(s.start(with_files({"a.mag", "b"})).ok());
+  REQUIRE(s.calls.size() == 3);
+  CHECK(s.editor.undo.step_count() == 0);
+  Session r{true};
+  app::StartupOptions options = with_files({"a.mag"});
+  options.recover = true;
+  REQUIRE(r.start(options).ok());
+  CHECK(r.editor.undo.step_count() == 0);
 }
 
 TEST_CASE("LEF files are read; unsupported types are reported and skipped",
