@@ -36,4 +36,4 @@ masks = ["magic-tech-sections"]
 name = "log.txt"
 source = "log.txt"
 comparator = "bytes"
-masks = []
+masks = ['regex:(?<=# Date: )[^\n]*']

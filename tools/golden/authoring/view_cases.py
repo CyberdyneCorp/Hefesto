@@ -30,10 +30,11 @@ CELL = mag("tiny", "<< metal1 >>\nrect 0 0 100 50\n")
 
 
 def view(cid: str, capability: str, reqs: list[str], desc: str, cmds: list[str],
-         outputs: list[str] | None = None, notes: list[str] | None = None) -> Spec:
+         outputs: list[str] | None = None, notes: list[str] | None = None,
+         stream_masks: list[str] | None = None) -> Spec:
     prefix = ["tech load input/tiny -noprompt", "load input/c"]
     return Spec(cid, capability, reqs, desc, prefix + cmds, files={"tiny.tech": TINY, "c.mag": CELL},
-                outputs=outputs or [], notes=notes or [])
+                outputs=outputs or [], notes=notes or [], stream_masks=stream_masks or [])
 
 
 def specs() -> list[Spec]:
@@ -70,7 +71,9 @@ def specs() -> list[Spec]:
               "feedback add x solid_highlights", "feedback count", "feedback bogus", "feedback"]),
         view("UI-G-081", WIZARD, ["Layout wizard commands", "Window-client wizard commands"],
              "*coord with a box set; *winddebug twice; *files.",
-             ["box 0 0 10 10", "*coord", "*winddebug", "*winddebug", "*files"]),
+             ["box 0 0 10 10", "*coord", "*winddebug", "*winddebug", "*files"],
+             notes=["*files prints each descriptor's inode number, which changes from run to run: masked."],
+             stream_masks=[r"regex:(?<=inode number )\d+"]),
         view("CMDEDIT-MISC-03", "cmd-misc-edit", ["Feedback command"],
              "feedback add over the box and a triangle; count; why; save; clear x.",
              ["box 0 0 4 4", 'feedback add "x"', 'feedback add "p" solid 0 0 10 0 0 10', "feedback count",

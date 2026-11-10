@@ -25,11 +25,15 @@ NOT_AUTHORED = {
 CELL = mag("tiny", "<< metal1 >>\nrect 0 0 100 50\n")
 
 
+# The command log header carries the wall-clock date (textio/txCommands.c TxLogStart).
+LOG_DATE_MASK = {"log.txt": [r"regex:(?<=# Date: )[^\n]*"]}
+
+
 def ui(cid: str, capability: str, reqs: list[str], desc: str, cmds: list[str],
        outputs: list[str] | None = None) -> Spec:
     prefix = ["tech load input/tiny -noprompt", "load input/c"]
     return Spec(cid, capability, reqs, desc, prefix + cmds, files={"tiny.tech": TINY, "c.mag": CELL},
-                outputs=outputs or [])
+                outputs=outputs or [], output_masks=LOG_DATE_MASK if outputs == ["log.txt"] else {})
 
 
 def dispatch_specs() -> list[Spec]:

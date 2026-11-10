@@ -110,3 +110,20 @@ reason = "windowpositions returns one list per window; Magic returns only the la
 decisions = ["Q-UI-21"]
 outputs = ["stdout.txt"]
 reason = "an out-of-range grid multiple is rejected without being stored"
+
+[UI-G-065]
+decisions = ["Q-UI-24"]
+outputs = ["f.txt"]
+reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
+
+# --- CMDEDIT ----------------------------------------------------------------
+
+[CMDEDIT-MISC-03]
+decisions = ["Q-UI-24"]
+outputs = ["f.tcl"]
+reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
+
+[CMDEDIT-BOX-05]
+decisions = ["Q-CMDEDIT-9"]
+outputs = ["stdout.txt"]
+reason = "box corner DIR X Y moves the corner to (X, Y); Magic rejects the five-word form with the box help and keeps the box"
