@@ -1,0 +1,21 @@
+# DRC-EXT-2: extend nfet poly 3 exact_width; gate length 4.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint ndiff
+box 3 -3 7 13
+paint poly
+box 20 0 30 10
+paint ndiff
+box 24 -3 27 13
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

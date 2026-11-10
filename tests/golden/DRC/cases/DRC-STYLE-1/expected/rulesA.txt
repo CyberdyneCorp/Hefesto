@@ -1,0 +1,76 @@
+space    poly      5 x 5   poly (active)
+                           poly
+space    m1        3 x 3   m1 (metal1)
+                           m1
+
+ndiff    poly      5 x 5   poly (active)
+                           poly
+
+pdiff    poly      5 x 5   poly (active)
+                           poly
+
+poly     space     5 x 5   poly (active)
+                           poly
+                           reverse
+poly     ndiff     5 x 5   poly (active)
+                           poly
+                           reverse
+poly     pdiff     5 x 5   poly (active)
+                           poly
+                           reverse
+poly     nfet      5 x 5   poly (active)
+                           poly
+                           reverse
+poly     pfet      5 x 5   poly (active)
+                           poly
+                           reverse
+poly     ndc       5 x 5   poly (active)
+                           poly
+                           reverse
+poly     pdc       5 x 5   poly (active)
+                           poly
+                           reverse
+poly     pc        5 x 5   poly (active)
+                           poly
+                           reverse
+
+nfet     poly      5 x 5   poly (active)
+                           poly
+
+pfet     poly      5 x 5   poly (active)
+                           poly
+
+ndc      poly      5 x 5   poly (active)
+                           poly
+ndc      m1        3 x 3   m1 (metal1)
+                           m1
+
+pdc      poly      5 x 5   poly (active)
+                           poly
+pdc      m1        3 x 3   m1 (metal1)
+                           m1
+
+pc       poly      5 x 5   poly (active)
+                           poly
+pc       m1        3 x 3   m1 (metal1)
+                           m1
+
+m1       space     3 x 3   m1 (metal1)
+                           m1
+                           reverse
+m1       ndc       3 x 3   m1 (metal1)
+                           m1
+                           reverse
+m1       pdc       3 x 3   m1 (metal1)
+                           m1
+                           reverse
+m1       pc        3 x 3   m1 (metal1)
+                           m1
+                           reverse
+m1       m1c       3 x 3   m1 (metal1)
+                           m1
+                           reverse
+
+m1c      m1        3 x 3   m1 (metal1)
+                           m1
+

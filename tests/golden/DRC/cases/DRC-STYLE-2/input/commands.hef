@@ -1,0 +1,11 @@
+# DRC-STYLE-2: Rules before any style line (implicit default), then style other; list styles, printrules both.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+drc list style
+drc listall style
+drc printrules rules_default.txt
+drc style other
+drc list style
+drc printrules rules_other.txt

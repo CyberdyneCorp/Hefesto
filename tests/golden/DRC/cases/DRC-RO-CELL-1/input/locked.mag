@@ -1,0 +1,6 @@
+magic
+tech drctest
+timestamp 100
+<< metal1 >>
+rect 0 0 2 10
+<< end >>

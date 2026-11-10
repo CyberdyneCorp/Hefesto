@@ -1,0 +1,26 @@
+# DRC-OVH-2: overhang m2 via 1 (different planes); m2 flush with a via on one side, via sticking out of m2; printrules; CAP.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box -1 -2 5 6
+paint m2
+box 0 0 4 4
+paint via
+box 10 -1 15 5
+paint m2
+box 10 0 14 4
+paint via
+box 21 -1 25 5
+paint m2
+box 20 0 24 4
+paint via
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

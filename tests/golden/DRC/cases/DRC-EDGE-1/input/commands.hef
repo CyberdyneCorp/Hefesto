@@ -1,0 +1,26 @@
+# DRC-EDGE-1: edge poly space 2 ~poly/active ~poly/active 2 "e" (one-way); printrules; CAP on L-shapes.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 3
+paint poly
+box 0 0 3 10
+paint poly
+box 4 5 10 10
+paint poly
+box 20 0 30 3
+paint poly
+box 27 0 30 10
+paint poly
+box 31 5 35 10
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

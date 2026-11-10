@@ -52,7 +52,10 @@ add_library(hefesto::core ALIAS hefesto_core)
 #   M1: tech/ TECH   db/ MODEL   cell/ CELL   display/ view/ VIEWER   pdk/ app/ PDK
 #   M2: db/ EDIT (HIER: label/property files)   cell/ HIER   undo/ UNDO
 #       select/ connect/ SELECT   ui/ DISPATCH   display/ view/ VIEW   wiring/ WIRE
-set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring)
+#   M3 (openspec/changes/m3-drc/design.md D1/D2): drc/ INTEGRATION (shared
+#       files; rules/ RULES, check/ CHECK, engine/ ENGINE, commands/ COMMANDS
+#       each with its own sources.cmake)   hints/ HINTS
+set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()
@@ -72,3 +75,12 @@ target_link_libraries(hefesto_core
 find_package(Threads REQUIRED)
 target_link_libraries(hefesto_core PUBLIC Threads::Threads)
 hefesto_set_warnings(hefesto_core)
+
+# Floating point (openspec/changes/m3-drc/design.md D3): no fused
+# multiply-add contraction, so the DRC Euclidean filter (float projection)
+# and diagonal offsets (double sqrt) round as Magic's x86_64 build and
+# identically on x86_64 and aarch64. PUBLIC so that inline code compiled
+# into tests and front ends follows the same rule. Never add -ffast-math.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(hefesto_core PUBLIC -ffp-contract=off)
+endif()

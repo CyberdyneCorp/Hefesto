@@ -1,0 +1,36 @@
+space    m1c       1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           trigger
+                   1 x 1   via (via1)
+                           via
+space    m2        1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           reverse trigger
+                   1 x 1   via (via1)
+                           via
+                           reverse
+
+m1c      space     1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           reverse trigger
+                   1 x 1   via (via1)
+                           via
+                           reverse
+m1c      m2        1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           reverse trigger
+                   1 x 1   via (via1)
+                           via
+                           reverse
+
+m2       space     1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           trigger
+                   1 x 1   via (via1)
+                           via
+m2       m1c       1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,m1,m1c,m2 (via1)
+                           <none>
+                           trigger
+                   1 x 1   via (via1)
+                           via
+

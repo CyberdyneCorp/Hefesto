@@ -16,6 +16,8 @@
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cmd/prompt.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/drc/engine/marking.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "io_session.hpp"
 
 namespace hefesto::cell::detail {
@@ -34,6 +36,16 @@ void clear_definition(db::CellDef& def) {
   db::clear_properties(def);
   while (!def.uses().empty()) {
     (void)db::remove_use(*def.uses().back());
+  }
+}
+
+/// cmdFlushCell: every parent rechecks the use's area (TT_CHECKSUBCELL).
+void mark_parents(editor::EditorState& editor, const db::CellDef& def) {
+  const std::vector<db::CellUse*> uses = def.instances();
+  for (const db::CellUse* u : uses) {
+    if (u->parent != nullptr) {
+      drc::check_this(editor, *u->parent, u->bbox);
+    }
   }
 }
 
@@ -59,6 +71,7 @@ bool flush_cell(IoSession& s, db::CellDef& def, bool dereference) {
     def.set_file_path({});
   }
   s.ed.windows.area_changed(def, def.bbox(), std::nullopt);
+  mark_parents(s.ed, def);
   clear_definition(def);
   def.flags().available = false;
   ReadOptions read;
@@ -69,6 +82,7 @@ bool flush_cell(IoSession& s, db::CellDef& def, bool dereference) {
   def.flags().modified = false;
   def.flags().needs_new_timestamp = false;
   s.ed.windows.area_changed(def, def.bbox(), std::nullopt);
+  mark_parents(s.ed, def);
   return true;
 }
 

@@ -77,6 +77,14 @@
       }
     },
     {
+      "name": "tsan",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "HEFESTO_SANITIZERS": "thread"
+      }
+    },
+    {
       "name": "linux-debug",
       "displayName": "Linux Debug",
       "inherits": [
@@ -99,6 +107,17 @@
         "linux",
         "asan"
       ]
+    },
+    {
+      "name": "linux-tsan",
+      "displayName": "Linux Debug + TSan (background DRC)",
+      "inherits": [
+        "linux",
+        "tsan"
+      ],
+      "cacheVariables": {
+        "HEFESTO_BUILD_DESKTOP": "OFF"
+      }
     },
     {
       "name": "linux-bench",
@@ -255,6 +274,10 @@
       "configurePreset": "linux-asan"
     },
     {
+      "name": "linux-tsan",
+      "configurePreset": "linux-tsan"
+    },
+    {
       "name": "linux-fuzz",
       "configurePreset": "linux-fuzz"
     },
@@ -326,6 +349,17 @@
     {
       "name": "linux-asan",
       "configurePreset": "linux-asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "linux-tsan",
+      "configurePreset": "linux-tsan",
       "output": {
         "outputOnFailure": true
       },

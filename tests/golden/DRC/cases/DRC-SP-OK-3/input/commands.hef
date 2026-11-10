@@ -1,0 +1,24 @@
+# DRC-SP-OK-3: spacing poly pc 2 touching_ok (S1 != S2, reverse rules); printrules; CAP.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint poly
+box 11 0 15 4
+paint pc
+box 10 6 14 10
+paint pc
+box 30 0 34 4
+paint pc
+box 35 0 40 10
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

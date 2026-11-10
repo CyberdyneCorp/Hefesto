@@ -1,0 +1,11 @@
+# MISC-MH-09: A properties section with the type keyword plane, PLANE or str before string BAZ qux (Q-MISC-12).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/t -noprompt
+snap internal
+drc off
+load input/P
+property
+load input/Q
+property
+load input/R
+property

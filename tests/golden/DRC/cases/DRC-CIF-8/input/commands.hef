@@ -1,0 +1,7 @@
+# DRC-CIF-8: scalefactor 10 drc section with only mask-layer rules (Q-DRC-2): drc *halo and *stepsize.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+drc *halo
+drc *stepsize

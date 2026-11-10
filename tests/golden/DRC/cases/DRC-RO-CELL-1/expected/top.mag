@@ -1,0 +1,12 @@
+magic
+tech drctest
+timestamp 1794337731
+use locked  locked_0 input
+timestamp 100
+transform 1 0 50 0 1 0
+box 0 0 3 10
+use vendor  vendor_0 input
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 3 10
+<< end >>

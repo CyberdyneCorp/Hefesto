@@ -1,0 +1,31 @@
+space    m1        4 x 4   m1 (metal1)
+                           m1
+
+ndc      m1        4 x 4   m1 (metal1)
+                           m1
+
+pdc      m1        4 x 4   m1 (metal1)
+                           m1
+
+pc       m1        4 x 4   m1 (metal1)
+                           m1
+
+m1       space     4 x 4   m1 (metal1)
+                           m1
+                           reverse
+m1       ndc       4 x 4   m1 (metal1)
+                           m1
+                           reverse
+m1       pdc       4 x 4   m1 (metal1)
+                           m1
+                           reverse
+m1       pc        4 x 4   m1 (metal1)
+                           m1
+                           reverse
+m1       m1c       4 x 4   m1 (metal1)
+                           m1
+                           reverse
+
+m1c      m1        4 x 4   m1 (metal1)
+                           m1
+

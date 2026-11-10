@@ -1,0 +1,10 @@
+magic
+tech t
+timestamp 1794337746
+<< checkpaint >>
+rect 17 -3 27 13
+<< metal1 >>
+rect 20 0 24 10
+<< properties >>
+string MASKHINTS_X 20 4 24 10
+<< end >>

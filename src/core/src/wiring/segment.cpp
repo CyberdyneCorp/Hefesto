@@ -22,6 +22,8 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/polygon.hpp"
+#include "hefesto/drc/engine/marking.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/wiring/diag_codes.hpp"
 #include "wiring/commands_internal.hpp"
 #include "wiring/text.hpp"
@@ -165,6 +167,7 @@ cmd::CommandResult segment_command(const WireSession& s, const std::vector<std::
   }
   s.ed->windows.area_changed(*def, changed_area(path, width), ~tech::TypeMask::of(tech::kSpace));
   db::recompute_bbox(*def, s.magic_compat);
+  drc::check_this(*s.ed, *def, changed_area(path, width));  // CmdWire segment
   return cmd::CommandResult::success();
 }
 

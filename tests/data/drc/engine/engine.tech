@@ -1,0 +1,55 @@
+# engine.tech -- test technology of the DRC engine unit tests
+# (SPDX-License-Identifier: Apache-2.0). Poly and diffusion on one plane,
+# two metals and their contacts; the tests build their rule sets with
+# drc::RuleSetBuilder, so the drc section is empty.
+tech
+    format 35
+    enginetest
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly,p
+    active  ndiffusion,ndiff
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal1  m2contact,m2c,via
+end
+
+contact
+    m2c  metal1 metal2
+end
+
+styles
+    styletype mos
+    poly 1
+    ndiff 2
+    metal1 20
+    metal2 21
+    m2c 32
+end
+
+compose
+end
+
+connect
+    metal1,m2c metal1,m2c
+    metal2,m2c metal2,m2c
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end

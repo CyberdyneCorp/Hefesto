@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "CELL-TS-05",
+  "area": "CELL",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:bb05e6ca0746634872afcecb6186f925e1daeb77f88596b8e4cafa780e49bcae",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-10T18:54:12Z",
+  "outputs": {
+    "a.mag": "88ad1b242fae70db35c9f3389b3265f5b986abb32656334c776cd5a9300d8fa9",
+    "b.mag": "ee096bd9b042e23740b21446bd3c63d9c268812769a5520b367738a07017c431",
+    "stderr.txt": "a244ebdd262eb58f9598bb34435744fb8cc1f0e47b775482feaaf30be9a120e7",
+    "stdout.txt": "5e476e4ca6d102e1f70a890a1ad7c38dda23618a1fd6ebacfe1a13507244cc0e"
+  }
+}

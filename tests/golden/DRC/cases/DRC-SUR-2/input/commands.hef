@@ -1,0 +1,19 @@
+# DRC-SUR-2: surround via m2 1 absence_illegal; via without m2; via surrounded by 1.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 4 4
+paint via
+box 9 -1 15 5
+paint m2
+box 10 0 14 4
+paint via
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

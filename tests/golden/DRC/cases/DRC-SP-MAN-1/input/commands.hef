@@ -1,0 +1,18 @@
+# DRC-SP-MAN-1: spacing m1 m1 5 manhattan_dist; diagonal neighbors dx=4, dy=3; drc euclidean on.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint m1
+box 14 13 24 23
+paint m1
+drc euclidean on
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

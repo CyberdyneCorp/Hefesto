@@ -169,7 +169,7 @@ TEST_CASE("matching git HEAD commits make two directories equivalent",
   CellIo io;
   GitHost host{io.ctx.fs, {{"/a", "c0ffee"}, {"/b", "c0ffee"}, {"/c", "decade"}}};
   cell::CellIoContext ctx{io.ctx.fs, io.clock, io.library, io.ctx.tech, io.grid,    io.paths, io.vars, io.sink,
-                          host,      io.stamps, nullptr,  nullptr,      true,  true, nullptr,  {},      {}};
+                          host,      io.stamps, nullptr,  nullptr,      true,  true, nullptr,  {},      {},  {}};
   REQUIRE(memory(io).write_atomic("/a/inv.mag", std::string{kInvA}).ok());
   REQUIRE(memory(io).write_atomic("/b/inv.mag", std::string{kInvB}).ok());
   REQUIRE(memory(io).write_atomic("/c/inv.mag", std::string{kInvB}).ok());

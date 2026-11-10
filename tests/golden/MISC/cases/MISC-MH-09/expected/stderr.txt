@@ -1,0 +1,19 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    metal1,
+  Magic will use the default planeorder for this style:
+    metal1=0,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Expected "use" line but saw: plane MASKHINTS_X 0 0 10 10
+File P contained format error
+"P" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Expected "use" line but saw: PLANE MASKHINTS_X 0 0 10 10
+File Q contained format error
+"Q" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+"R" has a zero timestamp; it should be written out
+    to establish a correct timestamp.

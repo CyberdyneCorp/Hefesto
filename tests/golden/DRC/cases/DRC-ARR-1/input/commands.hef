@@ -1,0 +1,21 @@
+# DRC-ARR-1: A 2x1 array of an m1 cell at pitch 12 (gap 2 across elements).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load child
+box 0 0 10 10
+paint m1
+load top
+box 0 0 0 0
+getcell child
+select cell child_0
+box 0 0 12 10
+array 2 1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+writeall force

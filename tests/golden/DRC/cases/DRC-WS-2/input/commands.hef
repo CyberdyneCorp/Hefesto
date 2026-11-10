@@ -1,0 +1,17 @@
+# DRC-WS-2: Same rule; block [0,8]x[0,30] with a line 2 away (no error).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 8 30
+paint m1
+box 10 0 26 2
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

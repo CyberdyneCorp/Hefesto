@@ -38,6 +38,7 @@ from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, load_case
+from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
 from goldenlib.refrunners import ENVIRONMENT, ContainerRunner, LocalHarnessRunner, ModelRunner, RunnerError, RunResult
@@ -58,10 +59,10 @@ def collect_outputs(case: Case, work: Path, result: RunResult) -> dict[str, byte
         if out.source in STREAM_SOURCES:
             outputs[out.name] = getattr(result, out.source)
             continue
-        path = work / out.source
-        if not path.is_file():
+        data = read_output(work, out.source)
+        if data is None:
             raise RunnerError(f"{case.id}: reference tool did not write '{out.source}'")
-        outputs[out.name] = path.read_bytes()
+        outputs[out.name] = data
     return outputs
 
 

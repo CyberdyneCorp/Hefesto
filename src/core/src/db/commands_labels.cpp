@@ -857,10 +857,12 @@ Value::List property_values(const cu::Session& s, const PropertyValue& v) {
       out.emplace_back(i);
     }
   } else if (const auto* plane = std::get_if<PlaneValue>(&v)) {
+    // printPlanePropFunc: x values with the x grid, y values with the y grid.
     for (const Rect& r : plane_property_tiles(*plane)) {
-      for (const Coord c : {r.x0, r.y0, r.x1, r.y1}) {
-        out.push_back(cu::coord_value(s, c));
-      }
+      out.push_back(cu::coord_value(s, r.x0, cmd::Axis::x));
+      out.push_back(cu::coord_value(s, r.y0, cmd::Axis::y));
+      out.push_back(cu::coord_value(s, r.x1, cmd::Axis::x));
+      out.push_back(cu::coord_value(s, r.y1, cmd::Axis::y));
     }
   }
   return out;
@@ -960,15 +962,38 @@ std::int64_t scan_integer(const cu::Session& s, const std::string& word, bool sp
   return negative ? -value : value;
 }
 
+// mask-hints "Setting mask hints with the property command": every value
+// is a cmdParseCoord coordinate (even positions x, odd positions y; a word
+// that is not a number reports and reads as 0), complete groups of four are
+// painted with the CIF paint table (an inverted rectangle paints nothing)
+// and trailing values are ignored.
+diag::Outcome<PropertyValue> build_hint_property(const cu::Session& s, const std::vector<std::string>& values) {
+  std::vector<Coord> coords;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    auto c = cu::parse_distance(s, values[i], i % 2 == 0 ? cmd::Axis::x : cmd::Axis::y, false);
+    if (!c.ok()) {
+      return c.error();
+    }
+    coords.push_back(c.value());
+  }
+  PlaneValue plane;
+  for (std::size_t i = 0; i + 3 < coords.size(); i += 4) {
+    plane.paint(Rect{coords[i], coords[i + 1], coords[i + 2], coords[i + 3]});
+  }
+  return PropertyValue{std::move(plane)};
+}
+
 diag::Outcome<PropertyValue> build_property(const cu::Session& s, int type, const std::vector<std::string>& values,
                                             bool split) {
   if (type == kString) {
     return PropertyValue{values.front()};
   }
+  if (type == kPlane) {
+    return build_hint_property(s, values);
+  }
   IntegerList ints;
   DimensionList dims;
   DoubleList dbl;
-  PlaneValue plane;
   std::vector<Coord> coords;
   for (const std::string& w : values) {
     if (type == kInteger) {
@@ -990,14 +1015,8 @@ diag::Outcome<PropertyValue> build_property(const cu::Session& s, int type, cons
   if (type == kDouble) {
     return PropertyValue{dbl};
   }
-  if (type == kDimension) {
-    dims.values.assign(coords.begin(), coords.end());
-    return PropertyValue{dims};
-  }
-  for (std::size_t i = 0; i + 3 < coords.size(); i += 4) {
-    plane.rects.push_back(canonical(Rect{coords[i], coords[i + 1], coords[i + 2], coords[i + 3]}));
-  }
-  return PropertyValue{plane};
+  dims.values.assign(coords.begin(), coords.end());
+  return PropertyValue{dims};
 }
 
 CommandResult property_put(const cu::Session& s, CellDef& def, const PropertyArgs& p) {

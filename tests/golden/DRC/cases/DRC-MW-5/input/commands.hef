@@ -1,0 +1,16 @@
+# DRC-MW-5: maxwidth m1 0 "x" (4 tokens, w=0); printrules; CAP.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 5 5
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

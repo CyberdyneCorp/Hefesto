@@ -1,0 +1,22 @@
+# DRC-SUR-6: surround m1c m1 1 absence_illegal with the VIA1 squares border; euclidean on.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box -1 -1 21 21
+paint m1
+box 0 0 20 20
+paint m1c
+box 30 0 51 21
+paint m1
+box 30 0 50 20
+paint m1c
+drc euclidean on
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

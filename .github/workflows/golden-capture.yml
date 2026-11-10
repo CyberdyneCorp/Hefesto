@@ -43,6 +43,7 @@ on:
       - tools/golden/goldenlib/**
       - tests/golden/**/case.toml
       - tests/golden/**/input/**
+      - scripts/fetch_pdk.py  # a PDK pin change alters the [[external]] pdk inputs
       - .github/workflows/golden-capture.yml
   schedule:
     - cron: "17 4 * * 1"
@@ -79,23 +80,44 @@ jobs:
           python3 tools/golden/capture.py --check "${cases[@]}"
 
       # External inputs of the cases ([[external]] in case.toml, tools/golden/goldenlib/external.py):
-      # the pinned sky130A subset (.cache/pdks) and Magic's sources (build/ref/magic, for the generated
-      # scmos.tech). Same paths and key as ci.yml, so a cache saved by CI is reused here.
-      - uses: actions/cache@v4
-        id: refdata
+      # the pinned PDK data sets (.cache/pdks) and Magic's sources (build/ref/magic, for the generated
+      # scmos.tech). Same cache entries as ci.yml (one per data set, keys from
+      # `scripts/fetch_pdk.py --cache-info`), so the sets saved by CI are reused here.
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        id: sky130
+        uses: actions/cache/restore@v4
         with:
-          path: |
-            .cache/pdks
-            build/ref/magic
-          key: reference-data-${{ runner.os }}-${{ hashFiles('scripts/fetch_pdk.py') }}
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Restore gf180mcu
+        id: gf180mcu
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_key }}
+      - name: Restore ihp
+        id: ihp
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_path }}
+          key: ${{ steps.keys.outputs.ihp_key }}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
 
       - name: Fetch the Magic reference sources (sparse, pinned)
         run: python3 scripts/fetch_pdk.py magic-ref
 
-      # scripts/fetch_pdk.py installs the PDK subset with hefesto-cli's own `pdk install`; on a cache
-      # hit it only verifies the tree digest and needs no hefesto-cli.
-      - name: Build hefesto-cli for the PDK install (reference-data cache miss only)
-        if: steps.refdata.outputs.cache-hit != 'true'
+      # scripts/fetch_pdk.py installs a PDK set with hefesto-cli's own `pdk install`; a restored set only
+      # has its tree digest verified and needs no hefesto-cli.
+      - name: Build hefesto-cli for the PDK install (cache miss only)
+        if: >-
+          steps.sky130.outputs.cache-hit != 'true' || steps.gf180mcu.outputs.cache-hit != 'true' ||
+          steps.ihp.outputs.cache-hit != 'true'
         env:
           CC: gcc-14
           CXX: g++-14
@@ -105,10 +127,29 @@ jobs:
           cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
           cmake --build --preset linux-release --target hefesto-cli
 
-      - name: Fetch the pinned sky130A test subset
+      - name: Fetch the pinned PDK data sets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/fetch_pdk.py pdk --cli build/linux-release/src/cli/hefesto-cli
+        run: python3 scripts/fetch_pdk.py sky130 gf180mcu ihp --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Save sky130
+        if: steps.sky130.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Save gf180mcu
+        if: steps.gf180mcu.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_key }}
+      - name: Save ihp
+        if: steps.ihp.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_path }}
+          key: ${{ steps.keys.outputs.ihp_key }}
 
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden

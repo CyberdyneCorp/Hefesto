@@ -15,6 +15,10 @@ output's masks. The outputs match when the canonical forms are identical.
 ``magic-console``
     stdout/stderr of a Magic run: Magic's leading startup preamble removed,
     everything else byte for byte. See magic_console.py.
+``drc-console``
+    A DRC case's stdout/stderr: ``magic-console``, then ``drc listall why`` texts,
+    ``drc list(all) count`` pairs and ``drc count`` lines in canonical order. See
+    drc_console.py.
 ``mag-backup``
     Crash-backup and ``archive write`` files: the ``file`` records put in
     canonical order (Magic: hash order, Hefesto: sorted by name), every byte
@@ -29,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from . import ext_cap, mag_backup, magic_console
+from . import drc_console, ext_cap, mag_backup, magic_console
 from .masks import apply_masks
 
 COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
@@ -37,6 +41,7 @@ COMPARATORS: dict[str, Callable[[bytes], bytes]] = {
     "ext-cap": ext_cap.canonicalize,
     "magic-console": magic_console.canonicalize,
     "mag-backup": mag_backup.canonicalize,
+    "drc-console": drc_console.canonicalize,
 }
 
 

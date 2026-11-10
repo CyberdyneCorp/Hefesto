@@ -1,0 +1,79 @@
+space    poly      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           reverse trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+ndiff    poly      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           reverse trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+pdiff    poly      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           reverse trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+poly     space     1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+poly     ndiff     1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+poly     pdiff     1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+poly     nfet      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+poly     pfet      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+poly     ndc       3 x 0   poly,m1 (metal1)
+                           <none>
+poly     pdc       3 x 0   poly,m1 (metal1)
+                           <none>
+poly     pc        3 x 0   poly,m1 (metal1)
+                           <none>
+
+nfet     poly      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           reverse trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+pfet     poly      1 x 0   space,CP,CS,EP,ES,EPS,mag,f,r,nw,pw,ndiff,pdiff,poly,nfet,pfet,ndc,pdc,pc,via,m1c,m2 (metal1)
+                           <none>
+                           reverse trigger
+                   3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+ndc      poly      3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+pdc      poly      3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+
+pc       poly      3 x 0   poly,m1 (metal1)
+                           <none>
+                           reverse
+

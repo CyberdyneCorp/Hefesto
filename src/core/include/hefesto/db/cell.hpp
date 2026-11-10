@@ -50,6 +50,7 @@ struct CellFlags {
   bool vendor_gds = false;
   bool dereference = false;
   bool fixed_timestamp = false;
+  bool bbox_processed = false;  // CDPROCESSED: handled by the last timestamp-mismatch pass
 
   friend bool operator==(const CellFlags&, const CellFlags&) = default;
 };
@@ -77,6 +78,9 @@ struct CellUse {
   bool locked = false;
   Rect bbox;                   // in parent coordinates, whole array
   Rect extended;               // extended bbox in parent coordinates, whole array
+  /// Creation order (db::next_use_serial), so the age of a use can be
+  /// compared with a window load (db::recompute_bbox).
+  std::uint64_t serial = 0;
 };
 
 /// A persistent display element kept with a cell (cell-file-format
@@ -166,6 +170,13 @@ class CellDef {
     return recorder_slot_ != nullptr ? *recorder_slot_ : nullptr;
   }
 
+  /// When the definition was first shown as a window's root
+  /// (db::next_use_serial; 0 = never). Magic creates a root use for every
+  /// window load and never frees it, so that use stays at the end of
+  /// cd_parents (db::recompute_bbox).
+  [[nodiscard]] std::uint64_t first_window_serial() const noexcept { return first_window_serial_; }
+  void note_window_root() noexcept;
+
  private:
   friend class CellLibrary;  // renames definitions, links the recorder
 
@@ -182,7 +193,12 @@ class CellDef {
   Rect bbox_{0, 0, 1, 1};
   Rect extended_bbox_{0, 0, 1, 1};
   ChangeRecorder* const* recorder_slot_ = nullptr;  // CellLibrary::Impl::recorder
+  std::uint64_t first_window_serial_ = 0;
 };
+
+/// The next value of the process-wide creation counter shared by cell uses
+/// and window root uses (thread-safe, starts at 1).
+[[nodiscard]] std::uint64_t next_use_serial() noexcept;
 
 /// Marks the definition modified and needing a new timestamp (CDMODIFIED |
 /// CDGETNEWSTAMP), as every paint, label and instance change does. A change

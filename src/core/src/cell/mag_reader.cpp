@@ -160,6 +160,13 @@ void reconcile_scale(ReadState& st, const Header& h) {
                                   std::to_string(st.d));
     st.d = 1;
   }
+  if (st.n > 1) {  // DBVerbose is DB_VERBOSE_ALL by default (Magic ref: database/DBio.c:818-833)
+    std::string text = "Scaled magic input cell " + st.def.name() + " geometry by factor of " + std::to_string(st.n);
+    if (st.d > 1) {
+      text += "/ " + std::to_string(st.d);
+    }
+    st.emit(codes::kReadNote, std::move(text));
+  }
   if (st.d > 1) {  // Q-CELL-2: warned whenever a divisor remains
     st.emit(codes::kGeometryLost, "Warning:  Geometry may be lost because internal grid cannot be reduced.");
   }
@@ -525,6 +532,9 @@ diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view tex
   if (!ok) {
     format_error = diag::make(codes::kFormatError, "File " + def.name() + " contained format error");
     ctx.sink.emit(*format_error);
+  }
+  if (ctx.on_read) {
+    ctx.on_read(def, format_error.has_value());
   }
   detail::finish(st, h.stamp);
   if (format_error) {

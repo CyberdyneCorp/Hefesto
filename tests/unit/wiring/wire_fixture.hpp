@@ -28,6 +28,7 @@
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
+#include "hefesto/drc/rules/style.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/wiring/commands.hpp"
 
@@ -98,6 +99,8 @@ struct Session {
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
     editor.technology = std::move(technology);
+    diag::NullSink quiet;
+    drc::reload_rules(editor, quiet);  // as `tech load`: the wire widths come from the drc style
     editor.snap = editor::SnapMode::internal;
     top = editor.cells.create("top", editor.technology->plane_count()).value();
     top->flags().available = true;

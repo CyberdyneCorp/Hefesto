@@ -1,0 +1,3 @@
+    scalefactor 10
+    cifstyle drctest
+    cifwidth MET1 140 "MET1 width < %d"

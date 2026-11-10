@@ -1,0 +1,31 @@
+# DRC-AREA-3: area m1,m1c 20 4; regions of m1 and m1c whose tiles start right of another set type (Q-DRC-21).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 3 3
+paint m1c
+box 3 0 5 3
+paint m1
+box 10 0 12 4
+paint m1c
+box 12 0 14 4
+paint m1
+box 20 0 22 6
+paint m1c
+box 22 0 24 6
+paint m1
+box 30 0 32 6
+paint m1
+box 32 0 34 6
+paint m1c
+box 34 2 36 4
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

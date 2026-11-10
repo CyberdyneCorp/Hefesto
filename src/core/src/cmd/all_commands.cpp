@@ -10,6 +10,7 @@
 #include "hefesto/cmd/units.hpp"
 #include "hefesto/db/commands.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/drc/commands/command.hpp"
 #include "hefesto/pdk/commands.hpp"
 #include "hefesto/select/commands.hpp"
 #include "hefesto/tech/commands.hpp"
@@ -40,6 +41,8 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = select::register_select_commands(registry) && ok;
   ok = ui::register_ui_commands(registry) && ok;
   ok = wiring::register_wiring_commands(registry) && ok;
+  // M3 areas (openspec/changes/m3-drc/design.md D1/D3).
+  ok = drc::register_drc_command(registry) && ok;
   return ok;
 }
 

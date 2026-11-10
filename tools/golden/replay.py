@@ -43,6 +43,7 @@ from compare import COMPARATORS, compare_bytes
 from compare.masks import apply_masks
 from goldenlib import deviations
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case
+from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage
 from goldenlib.refrunners import ENVIRONMENT
 
@@ -93,9 +94,10 @@ def execute(cli: Path, case: Case, work: Path) -> Execution:
                           env=env, timeout=TIMEOUT_S, check=False, stdin=subprocess.DEVNULL)
     files = {}
     for out in case.outputs:
-        path = work / out.source
-        if out.source not in STREAM_SOURCES and path.is_file():
-            files[out.source] = path.read_bytes()
+        if out.source not in STREAM_SOURCES:
+            data = read_output(work, out.source)
+            if data is not None:
+                files[out.source] = data
     return Execution(proc.stdout, proc.stderr, proc.returncode, files)
 
 

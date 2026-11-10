@@ -231,3 +231,16 @@ TEST_CASE("gzip cell data is decompressed; plain data passes through",
   CHECK(cell::maybe_decompress("magic\n").value() == "magic\n");
   CHECK_FALSE(cell::maybe_decompress(data.substr(0, 20)).ok());
 }
+
+TEST_CASE("a coarser file reports its scaling", "[cap:cell-file-format][req:Coordinate scaling on read]") {
+  // Regression (golden DRC-STD-GF180-7T5V0): Magic prints step 5's message
+  // at its default verbosity; the reader scaled the geometry silently.
+  CellIo io;
+  io.grid = hefesto::tech::GridScale{2, 1};  // internal = 2 lambda: n = 2
+  (void)io.read("c", "magic\ntech tiny\ntimestamp 1\n<< metal1 >>\nrect 0 0 3 5\n<< end >>\n");
+  bool reported = false;
+  for (const auto& d : io.sink.snapshot()) {
+    reported = reported || d.text == "Scaled magic input cell c geometry by factor of 2";
+  }
+  CHECK(reported);
+}

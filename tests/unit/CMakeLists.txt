@@ -16,6 +16,9 @@
 #   select/ connect/  SELECT (M2)           (always)
 #   ui/      DISPATCH (M2)                  (always)
 #   wiring/  WIRE (M2)                      (always)
+#   drc/     INTEGRATION (M3 shared tests); drc/rules/ RULES, drc/check/
+#            CHECK, drc/engine/ ENGINE, drc/commands/ COMMANDS   (always)
+#   hints/   HINTS (M3)                     (always)
 #   render/  VIEWER                         (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
@@ -49,21 +52,27 @@ endfunction()
 
 add_subdirectory(core)
 
-# hefesto_add_area_tests(<area>)
-#   One Catch2 executable hefesto_<area>_tests from tests/unit/<area>/*_test.cpp,
-#   linked to hefesto::core, with HEFESTO_SOURCE_DIR and HEFESTO_TEST_DATA_DIR
-#   (tests/data/<area>) defined for fixtures.
+# hefesto_add_area_tests(<area> [DATA_DIR <dir>])
+#   One Catch2 executable hefesto_<area>_tests from the *_test.cpp files of
+#   the current directory, linked to hefesto::core, with HEFESTO_SOURCE_DIR
+#   and HEFESTO_TEST_DATA_DIR (tests/data/<dir>, default tests/data/<area>)
+#   defined for fixtures. The M3 drc subdirectories use e.g.
+#   hefesto_add_area_tests(drc_rules DATA_DIR drc/rules).
 function(hefesto_add_area_tests area)
+  cmake_parse_arguments(PARSE_ARGV 1 ARG "" "DATA_DIR" "")
+  if(NOT ARG_DATA_DIR)
+    set(ARG_DATA_DIR "${area}")
+  endif()
   file(GLOB _sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
   hefesto_add_unit_test(hefesto_${area}_tests SOURCES ${_sources} LIBS hefesto::core)
   target_compile_definitions(hefesto_${area}_tests PRIVATE
     HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-    HEFESTO_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/${area}")
+    HEFESTO_TEST_DATA_DIR="${PROJECT_SOURCE_DIR}/tests/data/${ARG_DATA_DIR}")
   # common/: shared test helpers (reference_data.hpp: pinned PDK and Magic data).
   target_include_directories(hefesto_${area}_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
 endfunction()
 
-foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring)
+foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints)
   add_subdirectory(${_area})
 endforeach()
 

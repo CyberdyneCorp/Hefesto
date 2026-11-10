@@ -1,0 +1,12 @@
+magic
+tech drctest
+timestamp 1794337745
+use a  a_0
+timestamp 1794337745
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use b  b_0
+timestamp 1794337745
+transform 1 0 0 0 1 0
+box 0 0 4 4
+<< end >>

@@ -1,0 +1,16 @@
+magic
+tech drctest
+timestamp 1794337716
+<< error_p >>
+rect 2 0 3 10
+rect 22 0 23 10
+rect 42 0 43 10
+<< metal1 >>
+rect 0 0 2 10
+rect 20 0 22 10
+rect 40 0 42 10
+use child  child_0
+timestamp 1794337716
+transform 1 0 100 0 1 0
+box 0 0 3 10
+<< end >>

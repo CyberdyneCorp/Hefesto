@@ -55,8 +55,12 @@ class StreamSink final : public diag::DiagnosticSink {
   StreamSink(std::FILE* stream, diag::Format format) : stream_(stream), format_(format) {}
 
   void emit(const diag::Diagnostic& diagnostic) override {
+    const auto text = diag::render(diagnostic, format_);
+    if (!text) {
+      return;
+    }
     const std::scoped_lock lock{mutex_};
-    print_line(stream_, diag::format(diagnostic, format_));
+    print_line(stream_, *text);
   }
 
  private:
@@ -107,6 +111,9 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
   ~MagicConsole() override { flush(); }
 
   void emit(const diag::Diagnostic& diagnostic) override {
+    if (!diag::shown_in(diagnostic, diag::Format::magic)) {
+      return;  // a Hefesto-only diagnostic: Magic prints nothing
+    }
     const std::scoped_lock lock{mutex_};
     flush_pending();
     if (diagnostic.severity == diag::Severity::error) {
@@ -115,7 +122,14 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
       return;
     }
     const bool printf_like = diagnostic.severity == diag::Severity::info || diagnostic.severity == diag::Severity::debug;
-    print_line(printf_like ? out_ : err_, diag::format_magic(diagnostic));
+    std::FILE* stream = printf_like ? out_ : err_;
+    const std::string text = diag::format_magic(diagnostic);
+    if (diagnostic.no_newline) {
+      std::fwrite(text.data(), 1, text.size(), stream);  // the next output ends the line
+      std::fflush(stream);
+      return;
+    }
+    print_line(stream, text);
   }
 
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) override {

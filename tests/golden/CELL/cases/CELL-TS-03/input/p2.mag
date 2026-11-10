@@ -1,0 +1,8 @@
+magic
+tech scmos
+timestamp 20
+use child c0
+timestamp 222
+transform 1 0 0 0 1 0
+box 0 0 4 4
+<< end >>

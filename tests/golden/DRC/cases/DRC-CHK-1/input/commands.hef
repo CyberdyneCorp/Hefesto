@@ -1,0 +1,23 @@
+# DRC-CHK-1: drc check over a partial box of a checked hierarchy; checkpaint sections before catchup.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load child
+box 0 0 10 10
+paint m1
+load top
+box 0 0 0 0
+getcell child
+box 30 0 40 10
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+writeall force
+box 5 0 35 10
+drc check
+writeall force

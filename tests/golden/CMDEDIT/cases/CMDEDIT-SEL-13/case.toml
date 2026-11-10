@@ -36,40 +36,40 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "r1.mag"
 source = "r1.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r2.mag"
 source = "r2.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r3.mag"
 source = "r3.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r4.mag"
 source = "r4.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r5.mag"
 source = "r5.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r6.mag"
 source = "r6.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]
 
 [[outputs]]
 name = "r7.mag"
 source = "r7.mag"
 comparator = "bytes"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]

@@ -1,0 +1,41 @@
+space    m1c       1 x 2   space (via1)
+                           <none>
+
+ndc      m1c       1 x 2   space (via1)
+                           <none>
+
+pdc      m1c       1 x 2   space (via1)
+                           <none>
+
+pc       m1c       1 x 2   space (via1)
+                           <none>
+
+m1       m1c       1 x 2   space (via1)
+                           <none>
+
+via      space     2 x 2   space,ndc,pdc,pc,m1 (metal1)
+                           space
+                           derived-target
+
+m1c      space     2 x 2   space (via1)
+                           space,ndc,pdc,pc,m1
+                           derived-edge
+m1c      ndc       2 x 2   space (via1)
+                           space,ndc,pdc,pc,m1
+                           derived-edge
+m1c      pdc       2 x 2   space (via1)
+                           space,ndc,pdc,pc,m1
+                           derived-edge
+m1c      pc        2 x 2   space (via1)
+                           space,ndc,pdc,pc,m1
+                           derived-edge
+m1c      m1        2 x 2   space (via1)
+                           space,ndc,pdc,pc,m1
+                           derived-edge
+m1c      m2        2 x 2   space (via1)
+                           space,m2
+                           derived-edge
+
+m2       m1c       1 x 2   space (via1)
+                           <none>
+

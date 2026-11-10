@@ -118,11 +118,11 @@ void scale_properties(db::CellDef& def, std::int64_t n, std::int64_t d) {
       }
       scaled.emplace_back(std::string{name}, std::move(out));
     } else if (const auto* plane = std::get_if<db::PlaneValue>(&value)) {
-      db::PlaneValue out = *plane;
-      for (db::Rect& r : out.rects) {
+      std::vector<db::Rect> rects = plane->strips();
+      for (db::Rect& r : rects) {
         (void)scale_rect(r, n, d);
       }
-      scaled.emplace_back(std::string{name}, std::move(out));
+      scaled.emplace_back(std::string{name}, db::PlaneValue{std::span<const db::Rect>{rects}});
     }
   });
   for (auto& [name, value] : scaled) {

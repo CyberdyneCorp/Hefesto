@@ -72,7 +72,7 @@ TilePlane::TilePlane() {
   *top_ = Tile{kBoundaryBody, tile, left_, right_, infinity_, kMinf, kInf};
   *left_ = Tile{kBoundaryBody, bottom_, nullptr, tile, top_, kMinf, kMinf};
   *right_ = Tile{kBoundaryBody, bottom_, tile, infinity_, top_, kInf, kMinf};
-  hint_ = tile;
+  set_hint(tile);
 }
 
 Tile* TilePlane::split_x(Tile* tile, Coord x) {
@@ -153,8 +153,8 @@ void TilePlane::join_x(Tile* keep, Tile* gone) {
     keep->lb = gone->lb;
     keep->x = gone->x;
   }
-  if (hint_ == gone) {
-    hint_ = keep;
+  if (hint() == gone) {
+    set_hint(keep);
   }
   free_later(gone);
 }
@@ -181,8 +181,8 @@ void TilePlane::join_y(Tile* keep, Tile* gone) {
     keep->bl = gone->bl;
     keep->y = gone->y;
   }
-  if (hint_ == gone) {
-    hint_ = keep;
+  if (hint() == gone) {
+    set_hint(keep);
   }
   free_later(gone);
 }
@@ -203,7 +203,7 @@ void TilePlane::copy_from(const TilePlane& other) {
       {other.left_, left_}, {other.top_, top_}, {other.right_, right_}, {other.bottom_, bottom_},
       {other.infinity_, infinity_}, {nullptr, nullptr}};
   // The central tile of this fresh plane is reused for the first copied tile.
-  Tile* central = hint_;
+  Tile* central = hint();
   for (std::size_t i = 0; i < tiles.size(); ++i) {
     map.emplace(tiles[i], i == 0 ? central : alloc());
   }
@@ -218,7 +218,7 @@ void TilePlane::copy_from(const TilePlane& other) {
     dst->tr = map.at(boundary->tr);
     dst->rt = map.at(boundary->rt);
   }
-  hint_ = map.at(tiles.front());
+  set_hint(map.at(tiles.front()));
 }
 
 namespace {

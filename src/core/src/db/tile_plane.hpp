@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <vector>
@@ -87,8 +88,12 @@ class TilePlane {
   /// Deep copy of `other`'s tiles into this (fresh) plane.
   void copy_from(const TilePlane& other);
 
-  [[nodiscard]] Tile* hint() const noexcept { return hint_; }
-  void set_hint(Tile* t) noexcept { hint_ = t; }
+  /// The search hint (pl_hint). Searches update it even though they only
+  /// read the plane, so readers holding the database lock shared (the DRC
+  /// worker, scene building) race on it: it is a relaxed atomic. It only
+  /// speeds up point location; results never depend on it.
+  [[nodiscard]] Tile* hint() const noexcept { return hint_.load(std::memory_order_relaxed); }
+  void set_hint(Tile* t) noexcept { hint_.store(t, std::memory_order_relaxed); }
 
   Tile* split_x(Tile* tile, Coord x);  // TiSplitX: returns the new right tile
   Tile* split_y(Tile* tile, Coord y);  // TiSplitY: returns the new top tile
@@ -120,7 +125,7 @@ class TilePlane {
   Tile* right_ = nullptr;
   Tile* bottom_ = nullptr;
   Tile* infinity_ = nullptr;
-  Tile* hint_ = nullptr;
+  std::atomic<Tile*> hint_{nullptr};
   std::vector<SplitEdit>* split_log_ = nullptr;
 };
 
@@ -142,8 +147,9 @@ void paint_plane(TilePlane& plane, const Rect& area, const ResultRow& row);
 
 /// DBNMPaintPlane0: `exact` carries the diagonal, direction and side bits
 /// (0 = a Manhattan rectangle). `magic_compat` false rounds both diagonals
-/// half up (Q-MODEL-3).
-void nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat);
+/// half up (Q-MODEL-3). Returns true when a 1x1 area was filled because the
+/// triangle could not be quartered further (Magic returns 1: off grid).
+bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat);
 
 /// DBMergeNMTiles0 with mergeOnce = FALSE.
 void merge_nm_tiles(TilePlane& plane, const Rect& area);

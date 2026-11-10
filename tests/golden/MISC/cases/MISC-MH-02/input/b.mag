@@ -1,0 +1,9 @@
+magic
+tech t
+magscale 1 2
+timestamp 100
+<< metal1 >>
+rect 0 0 4 4
+<< properties >>
+string MASKHINTS_X 0 0 9 9
+<< end >>

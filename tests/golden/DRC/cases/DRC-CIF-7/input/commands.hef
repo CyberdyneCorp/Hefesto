@@ -1,0 +1,23 @@
+# DRC-CIF-7: cifstyle naming the non-current output style other; then cif ostyle other; load messages and CAP before and after.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 100 300
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+cif ostyle other
+drc *halo
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

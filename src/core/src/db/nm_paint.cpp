@@ -397,7 +397,10 @@ class NMPainter {
     width_ = area.width();
   }
 
-  void run() {
+  /// Paints; true when a 1x1 area had to be filled because a triangle could
+  /// not be quartered any further (DBNMPaintPlane0's "return 1", used by
+  /// the DRC flattening to flag an off-grid overlap).
+  bool run() {
     Fracturer(plane_, area_, row_).run();
     std::list<Rect> rects;
     search_area(plane_, area_, tech::TypeMask::all(), [&](Tile* t, Body dinfo) {
@@ -407,11 +410,12 @@ class NMPainter {
       return false;
     });
     if (rects.size() == 1 && single_tile(rects)) {
-      return;
+      return off_grid_;
     }
     for (auto it = rects.begin(); it != rects.end(); ++it) {
       process(rects, it);
     }
+    return off_grid_;
   }
 
  private:
@@ -449,6 +453,7 @@ class NMPainter {
     Rect& lr = rects.front();
     if (width_ == 1 || height_ == 1) {
       paint_plane(plane_, lr, row_);
+      off_grid_ = true;
       return true;
     }
     lr.x1 -= static_cast<Coord>(width_ >> 1);
@@ -541,7 +546,7 @@ class NMPainter {
       }
     }
     if (res == Res::diag) {
-      NMPainter(plane_, exact_, *it, row_, compat_).run();
+      off_grid_ = NMPainter(plane_, exact_, *it, row_, compat_).run() || off_grid_;  // result |=
     } else if ((res == Res::left && d_.side == 0) || (res == Res::right && d_.side != 0)) {
       paint_plane(plane_, *it, row_);
     }
@@ -555,6 +560,7 @@ class NMPainter {
   DiagInfo d_;
   std::int64_t height_ = 0;
   std::int64_t width_ = 0;
+  bool off_grid_ = false;
 };
 
 }  // namespace
@@ -563,12 +569,12 @@ void merge_nm_tiles(TilePlane& plane, const Rect& area) {
   NMMerger(plane, area).run();
 }
 
-void nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat) {
+bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat) {
   if ((exact & kDiagonalBit) == 0) {
     paint_plane(plane, area, row);
-    return;
+    return false;
   }
-  NMPainter(plane, exact, area, row, magic_compat).run();
+  return NMPainter(plane, exact, area, row, magic_compat).run();
 }
 
 }  // namespace hefesto::db::detail

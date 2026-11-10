@@ -16,9 +16,11 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "select/ops.hpp"
@@ -183,6 +185,7 @@ db::CellUse* add_scratch_use(db::CellDef& dest, db::CellDef& child, const std::s
     }
   }
   auto use = std::make_unique<db::CellUse>();
+  use->serial = db::next_use_serial();  // DBCellNewUse order (db::recompute_bbox)
   use->id = id;
   use->def = &child;
   use->parent = &dest;
@@ -445,6 +448,7 @@ void delete_selection(const Context& c, std::string_view verb, bool clear) {
   db::recompute_bbox(sel);
   db::recompute_bbox(edit, c.s.magic_compat);
   c.ed->windows.area_changed(edit, db::apply(to_edit, sel.extended_bbox()), std::nullopt);
+  drc::check_this(*c.ed, edit, db::apply(to_edit, sel.extended_bbox()));  // SelectDelete
   if (clear) {
     c.ed->selection.clear();
   }
@@ -504,6 +508,7 @@ void copy_into_edit(const Context& c, const db::CellDef& src) {
   db::CellDef& edit = *c.ed->edit_cell;
   const auto placed = paint_into_edit(c, src);
   finish_edit(c, src.extended_bbox());
+  drc::check_this(*c.ed, edit, db::apply(root_to_edit(c), src.bbox()));  // SelectAndCopy2
   // The new selection: the edit cell's paint under the scratch paint
   // (selACPaintFunc), the scratch labels and the placed uses.
   Selection& sel = c.ed->selection;
@@ -547,6 +552,7 @@ void keep_selection(const Context& c) {
   auto all = whole_selection(c, db::kIdentity);
   (void)paint_into_edit(c, *all);
   finish_edit(c, all->extended_bbox());
+  drc::check_this(*c.ed, *c.ed->edit_cell, db::apply(root_to_edit(c), all->bbox()));  // SelectAndCopy1
 }
 
 void transform_selection(const Context& c, const db::Transform& t) {
@@ -713,6 +719,9 @@ void stretch_selection(const Context& c, db::Coord dx, db::Coord dy) {
     return;
   }
   auto moved = edit_parts(c, db::translation(dx, dy), nullptr);
+  // SelectStretch: everything between the old and new selection changes.
+  const db::Rect modified =
+      db::apply(root_to_edit(c), db::include(moved->extended_bbox(), c.ed->selection.def()->extended_bbox()));
   delete_selection(c, "stretched", true);
   std::vector<PaintPiece> pieces;
   for (std::size_t p = tech::kFirstUserPlane; p < moved->plane_count(); ++p) {
@@ -736,6 +745,7 @@ void stretch_selection(const Context& c, db::Coord dx, db::Coord dy) {
     (void)db::paint(edit, *c.tech, it->area, it->type, paint_options(c));
   }
   copy_into_edit(c, *moved);
+  drc::check_this(*c.ed, edit, modified);
 }
 
 }  // namespace hefesto::select::ops

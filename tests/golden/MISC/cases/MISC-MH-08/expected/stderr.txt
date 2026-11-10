@@ -1,0 +1,47 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    metal1,
+  Magic will use the default planeorder for this style:
+    metal1=0,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell H0 couldn't be read
+No such file or directory
+Cell He couldn't be read
+No such file or directory
+Cell Ha couldn't be read
+No such file or directory
+Cell Hb couldn't be read
+No such file or directory
+Cell Hc couldn't be read
+No such file or directory
+Cell Hd couldn't be read
+No such file or directory
+Cell Hd2 couldn't be read
+No such file or directory
+Cell Hf couldn't be read
+No such file or directory
+Cell Ve couldn't be read
+No such file or directory
+Cell Va couldn't be read
+No such file or directory
+Cell Vb couldn't be read
+No such file or directory
+Cell Vc couldn't be read
+No such file or directory
+Cell Vd couldn't be read
+No such file or directory
+Cell Vf couldn't be read
+No such file or directory
+Cell Vh couldn't be read
+No such file or directory
+Cell Hg couldn't be read
+No such file or directory
+Cell Hh couldn't be read
+No such file or directory
+Cell Hi couldn't be read
+No such file or directory
+Cell Hj couldn't be read
+No such file or directory

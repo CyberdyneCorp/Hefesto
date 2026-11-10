@@ -57,10 +57,10 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "sky130_fd_sc_hd__tapvpwrvgnd_1.mag"
 source = "sky130_fd_sc_hd__tapvpwrvgnd_1.mag"
 comparator = "bytes"
-masks = ["mag-checkpaint"]
+masks = []
 
 [[outputs]]
 name = "sky130_fd_sc_hd__a21bo_1.mag"
 source = "sky130_fd_sc_hd__a21bo_1.mag"
 comparator = "bytes"
-masks = ["mag-checkpaint"]
+masks = []

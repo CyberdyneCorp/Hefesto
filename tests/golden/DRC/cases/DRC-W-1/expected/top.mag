@@ -1,0 +1,8 @@
+magic
+tech drctest
+timestamp 1794337742
+<< error_p >>
+rect 1 0 2 10
+<< polysilicon >>
+rect 0 0 1 10
+<< end >>

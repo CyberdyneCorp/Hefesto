@@ -11,7 +11,7 @@ area = "CELL"
 capability = "cell-file-format"
 requirements = ["Body section dispatch"]
 tool = "magic"
-description = "Sections << checkpaint >> and << error_p >> (drc why not authored)."
+description = "Sections << checkpaint >> and << error_p >>; drc why over the error (M3: the DRC state)."
 
 [reference]
 script = "input/commands.tcl"

@@ -1,0 +1,66 @@
+space    m1        10 x 4   m1 (metal1)
+                           m1
+                           trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           reverse both-corners
+
+ndc      m1        10 x 4   m1 (metal1)
+                           m1
+                           trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           reverse both-corners
+
+pdc      m1        10 x 4   m1 (metal1)
+                           m1
+                           trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           reverse both-corners
+
+pc       m1        10 x 4   m1 (metal1)
+                           m1
+                           trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           reverse both-corners
+
+m1       space     10 x 4   m1 (metal1)
+                           m1
+                           reverse trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           both-corners
+m1       ndc       10 x 4   m1 (metal1)
+                           m1
+                           reverse trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           both-corners
+m1       pdc       10 x 4   m1 (metal1)
+                           m1
+                           reverse trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           both-corners
+m1       pc        10 x 4   m1 (metal1)
+                           m1
+                           reverse trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           both-corners
+m1       m1c       10 x 4   m1 (metal1)
+                           m1
+                           reverse trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           both-corners
+
+m1c      m1        10 x 4   m1 (metal1)
+                           m1
+                           trigger maxwidth bends
+                   4 x 4   space,ndc,pdc,pc,m1c (metal1)
+                           space,ndc,pdc,pc,m1c
+                           reverse both-corners
+

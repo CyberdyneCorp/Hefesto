@@ -1,0 +1,2 @@
+    spacing m1 m1 3 touching_ok "m1 spacing < %d"
+    width m1 3 "m1 width < %d"

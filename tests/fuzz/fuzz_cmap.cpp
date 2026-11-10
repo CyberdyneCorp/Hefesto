@@ -17,7 +17,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   const auto [mode, text] = hefesto::fuzz::split_mode(hefesto::fuzz::as_text(data, size));
   const bool compat = (mode & 1U) != 0;
   const auto map = display::parse_color_map(text, "f.cmap", compat);
-  if (!map.ok()) {
+  // The write-back round trip is limited to realistic maps: a legal map of
+  // 2^24 entries written and read again exceeds libFuzzer's 2 GB limit under
+  // ASan (regression seed corpus/fuzz_cmap/regression-oom-large-index).
+  constexpr std::size_t kRoundTripEntries = std::size_t{1} << 16;
+  if (!map.ok() || map.value().entries.size() > kRoundTripEntries) {
     return 0;
   }
   const auto again = display::parse_color_map(display::write_color_map(map.value()), "f.cmap", compat);

@@ -1,0 +1,33 @@
+# DRC-CIF-5: cifmaxwidth MET2 3000 bend_ok, bend_illegal and both (one style each); CAP per style.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 3500 3500
+paint m2
+box 4000 0 4100 5000
+paint m2
+box 4000 4000 9000 4100
+paint m2
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+drc style bend_illegal
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+drc style both
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

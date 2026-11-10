@@ -133,19 +133,37 @@ Downloads run in process (capability `hefesto-licensing`, decision D-13; `src/pl
 
 ## Reference data for tests
 
-The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`). Without it they skip cleanly.
+The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`, D15 of `openspec/changes/m3-drc`). Without it they skip cleanly.
 
 ```sh
-# After building hefesto-cli (any preset):
+# After building hefesto-cli (any preset): every PDK data set, then Magic's sources.
 python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
 ```
 
-- `pdk`: the sky130A test subset of open_pdks at ciel version `0fe599b2afb6708d281543108caf8310912f54af` (`libs.tech/magic/` and `libs.ref/sky130_fd_sc_hd/mag/`), installed into `.cache/pdks/ciel/sky130/versions/<pin>/` by `hefesto-cli`'s own `pdk install` (about 134 MB downloaded, 6.5 MB kept) and verified against a pinned tree digest. Tests use only this exact version (`tests/unit/common/reference_data.hpp`), never another installed one.
+Each PDK data set is a subset of one ciel release, installed into `.cache/pdks/ciel/<family>/versions/<pin>/` by `hefesto-cli`'s own `pdk install … -only …` and verified against a pinned tree digest (SHA-256 over the sorted `path NUL sha256 LF` records of the subset's files). Tests use only these exact versions (`tests/unit/common/reference_data.hpp`), never another installed one.
+
+| Set | Release (pin) | Subset kept | Downloaded | Kept |
+|---|---|---|---|---|
+| `sky130` | `sky130-0fe599b2afb6708d281543108caf8310912f54af` (open_pdks) | `sky130A/libs.tech/magic/`, `sky130A/libs.ref/sky130_fd_sc_hd/mag/` | 134 MB | 6.5 MB, 485 files |
+| `gf180mcu` | `gf180mcu-0fe599b2afb6708d281543108caf8310912f54af` (open_pdks) | `gf180mcuD/libs.tech/magic/`, `gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/` | 569 MB (`common` 389 MB, `gf180mcu_fd_sc_mcu7t5v0` 180 MB) | 3.0 MB, 235 files (229 cells) |
+| `ihp` | `ihp-sg13g2-ddb601a4a4473163e1ed6df416b885df18b4ac03` (IHP-Open-PDK) | `ihp-sg13g2/libs.tech/magic/` | 332 MB (`common` 332 MB, `sg13g2_pr` 0.2 MB) | 0.4 MB, 9 files |
+
+- A cold cache downloads about 1.0 GB in all (0.9 GB for `gf180mcu` and `ihp`). `pdk install` keeps no archive after the install, but it decompresses each archive in full before filtering, so the `gf180mcu` install needs about 5.3 GB of free disk space for a moment (`ihp` about 0.9 GB).
+- `pdk install` needs at least one library: `ihp` installs `sg13g2_pr`, the smallest, and keeps none of its files.
 - `magic-ref`: a sparse, shallow checkout of Magic at `fc5daa9e` into `build/ref/magic` with only `scmos/` and `graphics/` (display styles, color maps, glyphs, the `.pt3` fonts, the scmos tech sources; about 4 MB). A full clone (`git clone https://github.com/RTimothyEdwards/magic build/ref/magic && git -C build/ref/magic checkout fc5daa9e`) works too and is what reading Magic's sources for porting needs.
 - `scmos.tech` is generated from `build/ref/magic/scmos` at configure time (`tests/data/tech/generate_scmos.cmake`, run by `tests/unit/tech/CMakeLists.txt`), so fetch `magic-ref` before configuring, or reconfigure afterwards.
 - Golden replay (`ctest -L golden`, `tools/golden/replay.py`) takes the outline fonts that `flabel` cases need from `build/ref/magic/graphics/` (`magic-sys` external inputs) and runs `hefesto-cli` with its own `CAD_ROOT`, so a `CAD_ROOT` set in your shell does not change the results; cases whose data is missing are skipped.
 
-Run one step with `scripts/fetch_pdk.py pdk` or `scripts/fetch_pdk.py magic-ref`; both are no-ops once the data is present and verified. CI runs them in the `build` job behind `actions/cache`, keyed on `scripts/fetch_pdk.py` (where the pins live).
+Run some steps only by naming them; every step is a no-op once its data is present and verified:
+
+```sh
+python3 scripts/fetch_pdk.py gf180mcu ihp --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py magic-ref
+python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an installed set
+python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
+```
+
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp` and `magic-ref`; `--root DIR` installs into another PDK root. In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-0fe599b2afb6-eb33076819a8e4b2`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 

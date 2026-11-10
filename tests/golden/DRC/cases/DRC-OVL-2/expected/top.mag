@@ -1,0 +1,14 @@
+magic
+tech drctest
+timestamp 1794337726
+<< error_s >>
+rect 5 0 6 10
+use fet  fet_0
+timestamp 1794337726
+transform 1 0 0 0 1 0
+box 0 -2 10 12
+use fet  fet_1
+timestamp 1794337726
+transform 1 0 1 0 1 0
+box 0 -2 10 12
+<< end >>

@@ -1,0 +1,9 @@
+    style bend_ok
+    cifstyle drctest
+    cifmaxwidth MET2 3000 bend_ok "MET2 too wide (bend_ok)"
+    style bend_illegal
+    cifstyle drctest
+    cifmaxwidth MET2 3000 bend_illegal "MET2 too wide (bend_illegal)"
+    style both
+    cifstyle drctest
+    cifmaxwidth MET2 3000 both "MET2 too wide (both)"

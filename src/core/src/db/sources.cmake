@@ -22,6 +22,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/hierarchy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/labels.cpp
   ${CMAKE_CURRENT_LIST_DIR}/layer_list.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/lock.cpp
   ${CMAKE_CURRENT_LIST_DIR}/nm_paint.cpp
   ${CMAKE_CURRENT_LIST_DIR}/nm_split.cpp
   ${CMAKE_CURRENT_LIST_DIR}/paint.cpp

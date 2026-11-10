@@ -1,0 +1,23 @@
+# DRC-RO-CELL-1: A vendor-GDS child (GDS_FILE property, read from input/) and a non-editable child, both with violations; modified flags after catchup.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load input/vendor
+load input/locked
+cellname writeable locked false
+load top
+box 0 0 0 0
+getcell vendor
+box 50 0 50 0
+getcell locked
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+cellname list modified
+cellname flags vendor
+cellname flags locked
+save top

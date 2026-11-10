@@ -232,6 +232,22 @@ TEST_CASE("triangle on an empty plane", NM "[req:Non-Manhattan painting]") {
   CHECK_FALSE(all[0].right_side);
 }
 
+TEST_CASE("an opposite triangle one unit wide is filled and reported off grid", NM "[req:Non-Manhattan painting]") {
+  // DBNMPaintPlane0 returns 1 when it has to fill a 1-wide area instead of
+  // quartering it; the DRC flattening turns that into a why-5 error
+  // (golden DRC-NMG-1).
+  db::Plane p;
+  const db::TriangleSide first = db::triangle_side(db::TriangleCorner::nw);
+  bool off_grid = true;
+  REQUIRE(p.paint_triangle({0, 0, 1, 4}, first.diagonal, first.right_side, paint_row_of(kM1), true, &off_grid).ok());
+  CHECK_FALSE(off_grid);
+  const db::TriangleSide opposite = db::triangle_side(db::TriangleCorner::ne);
+  REQUIRE(p.paint_triangle({0, 0, 1, 4}, opposite.diagonal, opposite.right_side, paint_row_of(kM1), true, &off_grid)
+              .ok());
+  CHECK(off_grid);
+  CHECK(rects(p) == std::vector<Rect>{{0, 0, 1, 4}});
+}
+
 TEST_CASE("triangle over existing paint splits at integer crossings", NM "[req:Non-Manhattan painting]") {
   db::Plane p;
   paint(p, {0, 5, 10, 10});

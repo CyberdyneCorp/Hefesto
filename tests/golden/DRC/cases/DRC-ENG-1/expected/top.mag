@@ -1,0 +1,10 @@
+magic
+tech drctest
+timestamp 1794337717
+<< checkpaint >>
+rect 97 47 113 63
+use mid  mid_0
+timestamp 1794337717
+transform 1 0 100 0 1 50
+box 0 0 10 10
+<< end >>

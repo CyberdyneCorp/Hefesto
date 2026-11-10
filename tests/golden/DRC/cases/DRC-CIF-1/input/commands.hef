@@ -1,0 +1,6 @@
+# DRC-CIF-1: cifwidth MET1 140 without cifstyle: load messages.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+drc printrules rules.txt

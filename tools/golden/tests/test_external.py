@@ -130,7 +130,8 @@ class AuthoringTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = casegen.write(spec, Path(tmp))
             case = load_case(root)
-            self.assertEqual([o.masks for o in case.outputs], [("mag-timestamp", "mag-checkpaint"), ()])
+            # m3-drc design D17: the mag-checkpaint mask is retired (casegen.CHECKPAINT_MASK_RETIRED).
+            self.assertEqual([o.masks for o in case.outputs], [("mag-timestamp",), ()])
             self.assertEqual((root / "input" / "commands.tcl").read_text().splitlines()[-1], "quit -noprompt")
 
     def test_case_toml_streams_mask_magic_tech_sections(self):
@@ -140,7 +141,7 @@ class AuthoringTest(unittest.TestCase):
             case = load_case(casegen.write(spec, Path(tmp)))
             self.assertEqual([o.masks for o in case.outputs],
                              [("magic-stamp-note", "magic-tech-sections"), ("magic-stamp-note", "magic-tech-sections"),
-                              ("mag-checkpaint",)])
+                              ()])
 
     def test_checkpaint_kept_when_an_input_has_a_checkpaint_section(self):
         # Regression: the blanket mag-checkpaint mask hid the section CELL-RD-10 checks is persisted.

@@ -1,0 +1,7 @@
+magic
+tech drctest
+timestamp 1794337724
+<< metal1 >>
+rect -2 3 0 5
+tri 0 0 10 10 se
+<< end >>

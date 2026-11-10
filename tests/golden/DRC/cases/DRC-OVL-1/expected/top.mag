@@ -1,0 +1,12 @@
+magic
+tech drctest
+timestamp 1794337726
+<< error_s >>
+rect 4 0 6 10
+<< polysilicon >>
+rect 4 -3 6 13
+use child  child_0
+timestamp 1794337726
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

@@ -21,6 +21,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/display/styles.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/select/diag_codes.hpp"
@@ -333,6 +334,7 @@ CommandResult save(const Context& c, CommandContext& ctx, const Parsed& p) {
   }
   (void)db::adjust_labels(*def, *c.tech, db::whole_plane());
   db::recompute_bbox(*def);
+  drc::paint_check_area(*c.tech, *def, def->bbox());  // SEL_SAVE: DRC check information is saved with it
   std::string file = *p.arg(1);
   if (file.find('.') == std::string::npos) {
     file += ".mag";

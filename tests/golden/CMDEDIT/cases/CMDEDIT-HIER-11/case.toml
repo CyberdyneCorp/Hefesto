@@ -36,4 +36,4 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "arch.mag"
 source = "arch.mag"
 comparator = "mag-backup"
-masks = ["mag-timestamp", "mag-checkpaint"]
+masks = ["mag-timestamp"]

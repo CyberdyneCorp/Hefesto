@@ -146,6 +146,16 @@ In M2 (`openspec/changes/m2-interactive-editing`):
 | highlights, feedback, color window, tile overlay | `src/core/src/view/{highlights,feedback,feedback_cmd,color_window,color_cmd,wizard_cmds}.cpp`, `src/render/vulkan/` (highlight batches) | `dbwind/DBWhlights.c`, `dbwind/DBWfdback.c`, `cmwind/CMW*.c`, `windows/windDebug.c`, `commands/CmdWizard.c`, `graphics/grMain.c` |
 | wiring tool | `src/core/src/wiring/` | `wiring/wireTech.c`, `wiring/wireOps.c`, `wiring/wireUndo.c`, `commands/CmdTZ.c` (`CmdWire`), `cif/CIFrdpt.c` (`CIFPaintWirePath`), `select/selCreate.c` (`selFindChunk`), `tcltk/tools.tcl` |
 
+In M3 (`openspec/changes/m3-drc`):
+
+| Area | Hefesto files | Magic sources |
+|---|---|---|
+| DRC rule compiler, cifoutput catalog, `tech drc` | `src/core/src/drc/rules/`, `src/core/src/wiring/wiring.cpp` (default width) | `drc/DRCtech.c`, `drc/DRCcif.c`, `drc/DRCprint.c`, `cif/CIFtech.c` (style, scale and `squares` reading, `CIFGetContactSize`), `utils/tech.c`, `utils/fraction.c`, `utils/lookup.c`, `commands/CmdTZ.c` (`tech drc`) |
+| DRC check kernel | `src/core/src/drc/check/` | `drc/DRCbasic.c`, `drc/DRCextend.c`, `utils/maxrect.c` |
+| DRC engine (marking, squares, interactions, arrays, background checker) | `src/core/src/drc/engine/`, the `drc::check_this` calls in `src/core/src/{db,select,cell,undo,wiring}/`, `src/core/src/cmd/dispatcher.cpp` (background state per command) | `drc/DRCcontin.c`, `drc/DRCsubcell.c`, `drc/DRCarray.c`, `drc/DRCmain.c`, `database/DBcellsrch.c`, `database/DBcellbox.c`, `database/DBcellcopy.c`, `database/DBio.c`, `textio/txCommands.c` (`TxTclDispatch`) |
+| `drc` command and reporting (including the option help text) | `src/core/src/drc/commands/` | `commands/CmdCD.c` (`CmdDrc`, `cmdDrcOption`), `drc/DRCmain.c`, `drc/DRCtech.c`, `dbwind/DBWprocs.c`, `dbwind/DBWtools.c`, `utils/lookup.c` |
+| mask hints | `src/core/src/hints/`, the hint paths of `src/core/src/db/{property,flatten,commands_labels}.cpp` and `src/core/src/cell/mag_reader_records.cpp` | `database/DBprop.c`, `database/DBio.c`, `database/DBcellcopy.c`, `database/DBcellsrch.c`, `database/DBtiles.c`, `drc/DRCbasic.c` (exception scoping), `cif/CIFgen.c` (`CIFOP_MASKHINTS`), `cif/CIFrdcl.c` (`gds maskhints`) |
+
 Magic's license (`LICENSE` at the pinned commit):
 
 ```text

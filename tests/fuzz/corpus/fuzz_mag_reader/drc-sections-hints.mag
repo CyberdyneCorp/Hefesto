@@ -1,0 +1,23 @@
+magic
+tech tiny
+timestamp 1000
+<< checkpaint >>
+rect -10 -10 30 30
+<< error_p >>
+rect 0 0 2 10
+<< error_s >>
+rect 5 0 6 10
+<< error_ps >>
+rect 2 2 3 3
+<< polysilicon >>
+rect 0 0 10 20
+<< properties >>
+string MASKHINTS_SRAM 0 0 10 10 5 5 15 15
+dimension MASKHINTS_HVI 0 0 20 20
+plane MASKHINTS_PLANE 1 1 2 2
+str MASKHINTS_SHORT 3 3 4 4
+PLANE MASKHINTS_UPPER 0 0 1 1
+string MASKHINTS_BAD 0 0 x 4
+string MASKHINTS_ODD 0 0 4
+plane OTHER 0 0 1 1
+<< end >>

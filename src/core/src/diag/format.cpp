@@ -121,4 +121,15 @@ std::string format(const Diagnostic& diagnostic, Format fmt) {
   return format_text(diagnostic);
 }
 
+bool shown_in(const Diagnostic& diagnostic, Format fmt) noexcept {
+  return !(diagnostic.native_only && fmt == Format::magic);
+}
+
+std::optional<std::string> render(const Diagnostic& diagnostic, Format fmt) {
+  if (!shown_in(diagnostic, fmt)) {
+    return std::nullopt;
+  }
+  return format(diagnostic, fmt);
+}
+
 }  // namespace hefesto::diag

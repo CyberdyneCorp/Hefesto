@@ -7,8 +7,8 @@
 // aggregate is shared and owned by INTEGRATION
 // (openspec/changes/m1-core-viewer/design.md D2/D4;
 // openspec/changes/m2-interactive-editing/design.md D2/D4 for the M2
-// members). Areas request new members through their open items instead of
-// editing it.
+// members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members).
+// Areas request new members through their open items instead of editing it.
 
 #pragma once
 
@@ -23,9 +23,11 @@
 #include "hefesto/cmd/pointer.hpp"
 #include "hefesto/cmd/units.hpp"
 #include "hefesto/db/cell.hpp"
+#include "hefesto/db/lock.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
+#include "hefesto/drc/session.hpp"
 #include "hefesto/select/selection.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/macros.hpp"
@@ -157,6 +159,18 @@ struct EditorState {
   // INTEGRATION: the front end's prompt host (cmd/prompt.hpp; not owned).
   // nullptr: every prompt gets its default answer (headless).
   cmd::PromptHost* prompt = nullptr;
+
+  // ---- M3 (openspec/changes/m3-drc/design.md D4) ----
+
+  // INTEGRATION: the reader/writer lock over `cells` (db/lock.hpp). The
+  // dispatcher holds it exclusively for every command; readers (scene
+  // building, the DRC worker) hold it shared.
+  db::DatabaseLock database_lock;
+
+  // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
+  // member's owner is named there). Declared last so that it is destroyed
+  // first: its worker stops before the cells it reads go away.
+  drc::DrcSession drc;
 };
 
 }  // namespace hefesto::editor

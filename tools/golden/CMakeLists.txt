@@ -49,6 +49,13 @@ foreach(_manifest IN LISTS _golden_manifests)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   # 77 (reported as Skipped): the case needs a command this hefesto-cli lacks, or it is a documented
   # deviation (tests/golden/deviations.toml, goldenlib/deviations.py).
+  # A manifest with `slow = true` (standard-cell corpus, m3-drc design D14) is labelled
+  # golden-slow instead: it runs in the golden job, not in the per-leg unit run.
+  file(STRINGS "${_case_dir}/case.toml" _golden_slow REGEX "^slow = true$")
+  set(_golden_label golden)
+  if(_golden_slow)
+    set(_golden_label golden-slow)
+  endif()
   set_tests_properties(golden.${_case_id} PROPERTIES
-    LABELS golden SKIP_RETURN_CODE 77 ENVIRONMENT "${_golden_env}")
+    LABELS ${_golden_label} SKIP_RETURN_CODE 77 ENVIRONMENT "${_golden_env}")
 endforeach()

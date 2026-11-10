@@ -1,0 +1,9 @@
+magic
+tech drctest
+timestamp 1794337733
+<< error_p >>
+rect 14 13 15 15
+<< metal1 >>
+rect 14 13 24 23
+rect 0 0 10 10
+<< end >>

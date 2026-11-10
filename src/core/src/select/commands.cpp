@@ -16,11 +16,15 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "db/command_util.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/db/property.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/select/diag_codes.hpp"
@@ -271,6 +275,20 @@ CommandResult cmd_copy(CommandContext& ctx, const Invocation& inv) {
 }
 
 /// DBMoveCell: the root cell's contents move by (-dx, -dy).
+/// dbMoveProp over every property: dimension values (FIXED_BBOX, OBS_BBOX,
+/// ...) and plane values (MASKHINTS_*) follow the geometry.
+void move_properties(db::CellDef& root, db::Coord dx, db::Coord dy) {
+  std::vector<std::pair<std::string, db::PropertyValue>> moved;
+  root.properties().for_each([&](std::string_view key, const db::PropertyValue& value) {
+    if (std::holds_alternative<db::DimensionList>(value) || std::holds_alternative<db::PlaneValue>(value)) {
+      moved.emplace_back(std::string{key}, db::translate_property(value, dx, dy));
+    }
+  });
+  for (auto& [key, value] : moved) {
+    db::set_property(root, key, std::move(value));
+  }
+}
+
 void move_origin(const Context& c, db::CellDef& root, db::Coord dx, db::Coord dy) {
   const db::Transform t = db::translation(-dx, -dy);
   db::CellDef moved("__MOVE__", root.plane_count());
@@ -292,6 +310,7 @@ void move_origin(const Context& c, db::CellDef& root, db::Coord dx, db::Coord dy
     u->transform = db::compose(t, u->transform);
     db::compute_use_bbox(*u);
   }
+  move_properties(root, -dx, -dy);  // DBMoveCell's DBPropEnum(dbMoveProp)
   db::mark_modified(root);
   db::recompute_bbox(root, c.s.magic_compat);
   c.ed->undo.clear();

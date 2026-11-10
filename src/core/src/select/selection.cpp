@@ -162,6 +162,7 @@ db::CellUse* Selection::add_use(db::CellDef& child, const std::string& id, const
     }
   }
   auto use = std::make_unique<db::CellUse>();
+  use->serial = db::next_use_serial();  // DBCellNewUse order (db::recompute_bbox)
   use->id = id.empty() || db::find_use(*def_, id) != nullptr ? std::string{} : id;
   if (use->id.empty()) {
     std::size_t k = 0;

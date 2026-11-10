@@ -13,6 +13,7 @@
 #include "hefesto/db/hierarchy.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdlib>
 #include <map>
 #include <set>
@@ -226,6 +227,7 @@ diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOption
     id = default_use_id(parent, last_component(child.name()));
   }
   auto use = std::make_unique<CellUse>();
+  use->serial = next_use_serial();
   use->id = std::move(id);
   use->def = &child;
   use->parent = &parent;
@@ -421,6 +423,34 @@ void compute_use_bbox(CellUse& use) {
   use.extended = apply(use.transform, grow(use.def->extended_bbox()));
 }
 
+namespace {
+
+std::atomic<std::uint64_t> g_use_serial{0};
+
+// Whether Magic's cd_parents list of `def` ends with a window's root use:
+// root uses are never freed, so this holds when `def` was shown in a window
+// before every use that still places it.
+bool window_use_is_oldest(const CellDef& def) {
+  const std::uint64_t window = def.first_window_serial();
+  if (window == 0) {
+    return false;
+  }
+  return std::all_of(def.instances().begin(), def.instances().end(),
+                     [window](const CellUse* use) { return use->parent == nullptr || use->serial > window; });
+}
+
+}  // namespace
+
+std::uint64_t next_use_serial() noexcept {
+  return g_use_serial.fetch_add(1, std::memory_order_relaxed) + 1;
+}
+
+void CellDef::note_window_root() noexcept {
+  if (first_window_serial_ == 0) {
+    first_window_serial_ = next_use_serial();
+  }
+}
+
 void recompute_bbox(CellDef& def, bool magic_compat) {
   BoxState s;
   include_uses(def, s);
@@ -433,18 +463,29 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
   fix_degenerate(s.area);
   fix_degenerate(s.extended);
   def.set_bboxes(s.area, s.extended);
-  std::vector<CellDef*> parents;
+  // dbReComputeBboxFunc walks cd_parents (most recent use first) and
+  // recomputes a parent when the next use has another one. Its final call is
+  // guarded by the parent of the *last* use: when that is a window's root
+  // use, the pending parent keeps its old bounding box (Magic ref:
+  // database/DBcellbox.c:755-775). Replicated with magic-compat ON; OFF
+  // recomputes it.
+  CellDef* last = nullptr;
   for (CellUse* use : def.instances()) {
     compute_use_bbox(*use);
-    if (use->parent != nullptr) {
-      use->parent->flags().child_bboxes_changed = true;
-      if (std::find(parents.begin(), parents.end(), use->parent) == parents.end()) {
-        parents.push_back(use->parent);
+    CellDef* parent = use->parent;
+    if (parent == nullptr) {
+      continue;
+    }
+    parent->flags().child_bboxes_changed = true;
+    if (last != parent) {
+      if (last != nullptr) {
+        recompute_bbox(*last, magic_compat);
       }
+      last = parent;
     }
   }
-  for (CellDef* parent : parents) {
-    recompute_bbox(*parent, magic_compat);
+  if (last != nullptr && (!magic_compat || !window_use_is_oldest(def))) {
+    recompute_bbox(*last, magic_compat);
   }
 }
 

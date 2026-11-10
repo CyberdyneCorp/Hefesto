@@ -1,0 +1,4 @@
+Tile type nfet can't overlap type nfet.
+Tile type nfet can't overlap type pfet.
+Tile type pfet can't overlap type nfet.
+Tile type pfet can't overlap type pfet.

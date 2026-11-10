@@ -1,0 +1,15 @@
+# DRC-CIF-2: cifstyle drctest + cifwidth MET1 140; a generated MET1 100 wide.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 100 300
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

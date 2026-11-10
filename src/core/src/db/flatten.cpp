@@ -5,8 +5,10 @@
 // instance in place").
 // Ported from Magic VLSI 8.3.694 (fc5daa9e): commands/CmdFI.c (CmdFlatten,
 // flatCopyAllLabels) and database/DBcellcopy.c (DBCellCopyAllPaint,
-// DBCellCopyAllLabels, DBCellCopyAllCells, DBFlattenInPlace). Mask hints
-// are not copied yet (capability mask-hints is later). Magic is Copyright
+// DBCellCopyAllLabels, DBCellCopyAllCells, DBFlattenInPlace,
+// DBCellCopyMaskHints, DBFlatCopyMaskHints; mask hints through
+// hints::copy_hints/flat_copy_hints, mask-hints "Copying, flattening and
+// transforming hints"). Magic is Copyright
 // (C) 1985, 1990 Regents of the University of California (permissive
 // license, THIRD_PARTY_NOTICES.md).
 
@@ -20,6 +22,7 @@
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/hints/hints.hpp"
 
 namespace hefesto::db {
 
@@ -274,6 +277,9 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
   if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
     return s.error();
   }
+  // DBFlatCopyMaskHints over the source's bounding box: the hints of the
+  // descendants (not the source's own), clipped to it.
+  hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend);
   if (options.labels != FlattenLabels::none) {
     f.copy_labels(source, kIdentity, std::string{}, true);
   }
@@ -297,6 +303,8 @@ diag::Status flatten_element(CellUse& use, std::int32_t x, std::int32_t y, const
     f.copy_labels(*use.def, t, std::string{}, true);
   }
   prefix_generated_labels(dest, f.generated(), in_place_prefix(use, x, y, options.magic_compat), options);
+  // DBCellCopyMaskHints: the element's own hints, whole, transformed.
+  hints::copy_hints(*use.def, dest, t, std::nullopt);
   return diag::Done{};
 }
 

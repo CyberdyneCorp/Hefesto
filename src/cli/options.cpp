@@ -182,7 +182,7 @@ std::string usage_text() {
          "  --no-log                  do not write a session log\n"
          "  --diagnostic-codes[=AREA] print a diagnostic code table (Markdown); AREA is\n"
          "                            core (default), tech, db, cell, display, view, pdk,\n"
-         "                            app, undo, select, connect, ui or wiring\n"
+         "                            app, undo, select, connect, ui, wiring, drc or hints\n"
          "  --version                 print the version and exit\n"
          "  -h, --help                print this help and exit\n"
          "\n"

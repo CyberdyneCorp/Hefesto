@@ -1,0 +1,18 @@
+# CELL-TS-08: A read-only child with a DRC violation (its DRC result pending a stamp) under a parent; check, catchup; modify the parent; writeall force.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+drc off
+load input/parent
+select top cell
+expand
+cellname writeable child false
+drc check
+drc catchup
+cellname flags child
+cellname list modified
+box 20 0 24 4
+paint metal1
+writeall force
+cellname flags child
+cellname flags parent

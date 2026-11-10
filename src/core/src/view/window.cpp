@@ -247,6 +247,7 @@ void LayoutWindow::set_root(db::CellDef* def) {
   if (def == nullptr) {
     root_use_.reset();
   } else {
+    def->note_window_root();  // DBWloadWindow's root use (never freed by Magic)
     root_use_ = std::make_unique<db::CellUse>();
     root_use_->def = def;
     root_use_->bbox = def->bbox();

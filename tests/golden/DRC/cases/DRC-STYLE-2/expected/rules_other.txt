@@ -1,0 +1,13 @@
+space    m2        2 x 2   m2 (metal2)
+                           m2
+
+m1c      m2        2 x 2   m2 (metal2)
+                           m2
+
+m2       space     2 x 2   m2 (metal2)
+                           m2
+                           reverse
+m2       m1c       2 x 2   m2 (metal2)
+                           m2
+                           reverse
+

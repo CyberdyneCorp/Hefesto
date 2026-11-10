@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "hefesto/cmd/keywords.hpp"
+#include "hefesto/drc/rules/query.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/wiring/diag_codes.hpp"
@@ -85,6 +86,11 @@ cmd::CommandResult bad_args(Option option) {
 }
 
 // DBTechNameType for `wire type|switch`: "doesn't exist" / "is ambiguous".
+/// DRCGetDefaultLayerWidth over the session's current DRC style.
+db::Coord session_layer_width(const WireSession& s, tech::TileType type) {
+  return drc::default_width(*s.ed->drc.rules, *s.tech, type);
+}
+
 diag::Outcome<tech::TileType> layer(const WireSession& s, const std::string& name) {
   const auto found = s.tech->find_type(name.substr(0, name.find('/')));
   if (found.ok()) {
@@ -117,7 +123,7 @@ cmd::CommandResult step_type(const WireSession& s, bool up) {
   if (!next) {
     return fail(codes::kNoContact, "No routing layer defined");
   }
-  const db::Coord min_width = default_layer_width(*s.tech, *next, s.ed->grid);
+  const db::Coord min_width = session_layer_width(s, *next);
   return add_contact(s, next, std::max(w.width, min_width));
 }
 
@@ -165,7 +171,7 @@ cmd::CommandResult type(const WireSession& s, const std::vector<std::string>& ar
     return cmd::CommandResult::failure(t.error());
   }
   const db::Coord width = args.size() == 2
-                              ? std::max(s.ed->wire.width, default_layer_width(*s.tech, t.value(), s.ed->grid))
+                              ? std::max(s.ed->wire.width, session_layer_width(s, t.value()))
                               : s.parse_coord(args[2], true, true);
   pick_type(s, t.value(), width);
   return cmd::CommandResult::success();

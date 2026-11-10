@@ -1,0 +1,8 @@
+magic
+tech tiny
+timestamp 0
+<< checksubcell >>
+rect 0 0 4 4
+<< properties >>
+string MASKHINTS_EMPTY 4 4 0 0
+<< end >>

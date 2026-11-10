@@ -1,0 +1,3 @@
+    exception SRAM
+    width m1 3 "m1 width < %d"
+    exception none

@@ -32,7 +32,9 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
 ``mag-checkpaint``
     ``.mag`` ``<< checkpaint >>`` section and its ``rect`` lines: the areas
     Magic's DRC still has to check (database/DBio.c, DRC check plane). M1 has
-    no DRC (design.md Non-Goals; capability drc-engine, M3).
+    no DRC (design.md Non-Goals; capability drc-engine, M3). The M3 DRC cases do
+    not use it; it is retired from the M1/M2 cases once the M3 engine marks every
+    edit as Magic does (authoring/casegen.py CHECKPAINT_MASK_RETIRED).
 ``regex:<pattern>``
     Every match of the Python bytes regex ``<pattern>`` is replaced with
     ``<masked>``. For one-off fields; prefer adding a named mask when a field

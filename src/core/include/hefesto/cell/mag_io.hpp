@@ -68,6 +68,11 @@ struct CellIoContext {
   /// the now-current technology (kept alive by the session), or nullptr
   /// when nothing was loaded. The reader then uses it through `tech`.
   std::function<const tech::Technology*(std::string_view tech)> load_technology;
+  /// Called at the end of every `.mag` read of `def` (dbCellReadDef's
+  /// `done` and `badfile` paths); `format_error` is true on the badfile
+  /// path, where Magic calls DRCCheckThis(def, TT_CHECKPAINT, NULL). The
+  /// session uses it for DRC (m3-drc design D7). Empty = nothing.
+  std::function<void(db::CellDef& def, bool format_error)> on_read;
 };
 
 struct ReadOptions {

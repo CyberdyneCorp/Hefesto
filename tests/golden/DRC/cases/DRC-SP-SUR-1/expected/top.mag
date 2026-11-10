@@ -1,0 +1,13 @@
+magic
+tech drctest
+timestamp 1794337734
+<< error_p >>
+rect 33 20 35 25
+rect 30 10 35 15
+<< nwell >>
+rect 0 0 30 30
+<< pdiffusion >>
+rect 33 20 38 25
+rect 10 10 15 15
+rect 25 10 35 15
+<< end >>

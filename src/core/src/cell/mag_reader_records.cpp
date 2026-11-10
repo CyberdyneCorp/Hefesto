@@ -16,6 +16,7 @@
 
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/labels.hpp"
+#include "hefesto/hints/hints.hpp"
 #include "mag_elements.hpp"
 #include "mag_reader.hpp"
 
@@ -350,10 +351,15 @@ void read_element(ReadState& st) {
 
 /// utils/lookup.c Lookup(): case-insensitive unique prefix, an exact match
 /// wins; -1 none, -2 ambiguous.
-int lookup_type(std::string_view token) {
-  static constexpr std::string_view kTypes[] = {"string", "integer", "dimension", "double"};
+/// Lookup over Magic's type table; `plane` (index 4) takes part only with
+/// magic-compat OFF (Q-MISC-12).
+constexpr int kPlaneType = 4;
+
+int lookup_type(std::string_view token, bool accept_plane) {
+  static constexpr std::string_view kTypes[] = {"string", "integer", "dimension", "double", "plane"};
   int match = -1;
-  for (int i = 0; i < 4; ++i) {
+  const int count = accept_plane ? 5 : 4;
+  for (int i = 0; i < count; ++i) {
     const std::string_view name = kTypes[i];
     if (token.size() > name.size()) {
       continue;
@@ -405,7 +411,7 @@ std::optional<std::int64_t> numeric_token(std::string_view t) {
   return scan.integer64(v) ? std::optional<std::int64_t>{v} : std::optional<std::int64_t>{0};
 }
 
-void put(ReadState& st, const std::string& key, db::PropertyValue value) {
+void put(ReadState& st, const std::string& key, std::optional<db::PropertyValue> value) {
   db::CellFlags& f = st.def.flags();
   const bool no_edit = f.no_edit;
   f.no_edit = false;  // properties are stored even on read-only cells
@@ -457,27 +463,20 @@ void store_bbox(ReadState& st, const std::string& key, const std::string& value)
   put(st, key, db::DimensionList{{st.scale(v[0]), st.scale(v[1]), st.scale(v[2]), st.scale(v[3])}});
 }
 
+// mask-hints "Mask hints in .mag files": the value parsed by
+// hints::parse_hint_value with the read scale. A non-integer token drops
+// the property (DBPropPut with NULL, which also removes an earlier value).
 void store_mask_hints(ReadState& st, const std::string& key, const std::string& value) {
-  db::PlaneValue plane;
-  std::int32_t r[4] = {};
-  int count = 0;
-  for (const auto t : value_tokens(value)) {
-    Scan s{t};
-    std::int32_t v = 0;
-    if (!s.integer(v)) {
-      st.emit(codes::kRecordValue, "Mask-hint \"" + std::string{t} + "\" has non-integer values!");
-      return;
-    }
-    r[count++] = st.scale(v);
-    if (count == 4) {
-      plane.rects.push_back(db::Rect{r[0], r[1], r[2], r[3]});
-      count = 0;
-    }
+  auto parsed = hints::parse_hint_value(value, st.n, st.d);
+  if (!parsed.ok()) {
+    st.emit(codes::kRecordValue, parsed.error().text);
+    put(st, key, std::nullopt);
+    return;
   }
-  if (count != 0) {
+  if (parsed.value().truncated) {
     st.emit(codes::kRecordValue, "Mask-hint property number of values is not divisible by four.  Truncated.");
   }
-  put(st, key, std::move(plane));
+  put(st, key, db::PropertyValue{std::move(parsed.value().region)});
 }
 
 void store_offset(ReadState& st, const std::string& key, const std::string& value) {
@@ -515,8 +514,6 @@ void check_extension(ReadState& st, const std::string& key, const std::string& v
 void store_string(ReadState& st, const std::string& key, const std::string& value) {
   if (key == "FIXED_BBOX" || key == "OBS_BBOX") {
     store_bbox(st, key, value);
-  } else if (key.starts_with("MASKHINTS_")) {
-    store_mask_hints(st, key, value);
   } else if (key.starts_with("GDS_START") || key.starts_with("GDS_BEGIN") || key.starts_with("GDS_END")) {
     store_offset(st, key, value);
   } else {
@@ -550,26 +547,39 @@ PropertyLine scan_property(std::string_view line) {
   return p;
 }
 
+/// A value line: `MASKHINTS_` keys are hints whatever the type keyword
+/// (Q-MISC-10); `plane` (magic-compat OFF only, Q-MISC-12) is accepted for
+/// hints and reported for other keys.
+void store_value(ReadState& st, int type, const std::string& key, const std::string& value) {
+  if (hints::hint_name(key)) {
+    store_mask_hints(st, key, value);
+  } else if (type == kPlaneType) {
+    st.emit(codes::kRecordValue, "Plane type specified for property \"" + key + "\" but property is not a mask hint!");
+  } else if (type == 0) {
+    store_string(st, key, value);
+  } else {
+    store_numeric(st, type, key, value);
+  }
+}
+
 /// One property line; false when the line ends the section.
 bool read_property(ReadState& st) {
   const PropertyLine p = scan_property(st.line);
-  const int type = p.ntok > 0 ? lookup_type(p.type) : -1;
+  const int type = p.ntok > 0 ? lookup_type(p.type, !st.ctx.magic_compat) : -1;
   if (p.ntok > 0 && type < 0) {
     return false;
   }
   if (p.ntok == 2 && !st.ctx.magic_compat) {
-    put(st, p.key, std::string{});  // Q-CELL-7: an empty value reads back as empty
+    // Q-CELL-7: an empty value reads back as empty (an empty hint region
+    // for a MASKHINTS_ key, which is how it was written).
+    put(st, p.key, hints::hint_name(p.key) ? db::PropertyValue{hints::HintRegion{}} : db::PropertyValue{std::string{}});
     return true;
   }
   if (p.ntok != 3) {
     st.emit(codes::kRecordSkipped, "Skipping bad property line: " + text_of(st.line));
     return true;
   }
-  if (type == 0) {
-    store_string(st, p.key, p.value);
-  } else {
-    store_numeric(st, type, p.key, p.value);
-  }
+  store_value(st, type, p.key, p.value);
   return true;
 }
 

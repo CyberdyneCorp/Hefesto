@@ -1,0 +1,2 @@
+    cifstyle drctest
+    cifarea VIA1 10000 50 "VIA1 area < %a"

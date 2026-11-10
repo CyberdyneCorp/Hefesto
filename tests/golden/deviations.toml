@@ -201,7 +201,32 @@ decisions = ["Q-CELL-34"]
 outputs = ["stdout.txt", "stderr.txt"]
 reason = "archive read X tries X before X.mag, so the archive just written as arch.mag is read back (with the reader's timestamp and duplicate-id notes); Magic looks for arch.mag.mag and reports 'Cannot open archive file'"
 
-[CMDEDIT-LBL-07]
-deferred = "M3"
-outputs = ["stdout.txt"]
-reason = "goto on a point with no paint in the edit cell reports the DRC check plane's checkpaint tile left by the earlier paint; the check plane arrives with the DRC engine"
+# --- DRC --------------------------------------------------------------------
+# m3-drc Resolved Question 1 / design D13: the mask-layer checks arrive in M5.
+# DRC-CIF-2 and DRC-CIF-3 already match Magic (no mask-layer error is reported
+# with the bound cifoutput style current), so they have no entry.
+
+[DRC-CIF-4]
+deferred = "M5"
+outputs = ["stdout.txt", "top.mag"]
+reason = "cifarea errors come from the mask-layer check of the generated VIA1 squares, which arrives with mask generation"
+
+[DRC-CIF-5]
+deferred = "M5"
+outputs = ["stdout.txt", "top.mag"]
+reason = "cifmaxwidth errors come from the mask-layer check of the generated MET2 layer, which arrives with mask generation"
+
+[DRC-CIF-6]
+deferred = "M5"
+outputs = ["stdout.txt", "top.mag"]
+reason = "mask-layer errors mapped to layout coordinates need cif ostyle and the mask-layer check, which arrive with mask generation"
+
+[DRC-CIF-7]
+deferred = "M5"
+outputs = ["stdout.txt", "top.mag"]
+reason = "switching the output style with cif ostyle and the mask-layer check arrive with mask generation"
+
+[DRC-CMD-1]
+decisions = ["Q-DRC-22"]
+outputs = ["stderr.txt"]
+reason = "drc list/listall without an option prints the help instead of reading a stale argument of the previous command (Magic prints 'wizard isn't a valid drc option.' and 'll isn't a valid drc option.')"

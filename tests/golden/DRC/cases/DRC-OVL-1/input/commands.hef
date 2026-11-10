@@ -1,0 +1,21 @@
+# DRC-OVL-1: Default illegal overlap: poly in the parent over ndiff in a child; CAP (error_s, why 2); printrules.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load child
+box 0 0 10 10
+paint ndiff
+load top
+box 0 0 0 0
+getcell child
+box 4 -3 6 13
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+writeall force
+drc printrules rules.txt

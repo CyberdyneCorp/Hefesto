@@ -1,0 +1,8 @@
+magic
+tech scmos
+timestamp 300
+use mid m0
+timestamp 200
+transform 1 0 0 0 1 0
+box 0 0 4 4
+<< end >>

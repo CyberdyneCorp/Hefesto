@@ -87,8 +87,116 @@ jobs:
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint -color
 
+  # Pinned reference data of the PDK and Magic-reference tests (design D15 of openspec/changes/m3-drc;
+  # docs/building.md, "Reference data for tests"). Each PDK data set (sky130, gf180mcu, ihp) is its own cache
+  # entry, keyed pdk-<set>-<pin>-<digest prefix> by `scripts/fetch_pdk.py --cache-info`. This job fetches the
+  # sets that are not cached yet, once, and saves them; the build legs only restore. A warm run fetches
+  # nothing, and changing one set's pin or digest refetches that set alone.
+  reference-data:
+    name: reference data (PDK sets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      sky130_key: ${{ steps.keys.outputs.sky130_key }}
+      sky130_path: ${{ steps.keys.outputs.sky130_path }}
+      gf180mcu_key: ${{ steps.keys.outputs.gf180mcu_key }}
+      gf180mcu_path: ${{ steps.keys.outputs.gf180mcu_path }}
+      ihp_key: ${{ steps.keys.outputs.ihp_key }}
+      ihp_path: ${{ steps.keys.outputs.ihp_path }}
+      magic_ref_key: ${{ steps.keys.outputs.magic_ref_key }}
+      magic_ref_path: ${{ steps.keys.outputs.magic_ref_path }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache keys of the data sets
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+
+      - name: Look up sky130
+        id: sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+          lookup-only: true
+      - name: Look up gf180mcu
+        id: gf180mcu
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_key }}
+          lookup-only: true
+      - name: Look up ihp
+        id: ihp
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_path }}
+          key: ${{ steps.keys.outputs.ihp_key }}
+          lookup-only: true
+
+      - name: List the sets to fetch
+        id: missing
+        env:
+          SKY130_HIT: ${{ steps.sky130.outputs.cache-hit }}
+          GF180MCU_HIT: ${{ steps.gf180mcu.outputs.cache-hit }}
+          IHP_HIT: ${{ steps.ihp.outputs.cache-hit }}
+        run: |
+          sets=""
+          [ "$SKY130_HIT" = "true" ] || sets="$sets sky130"
+          [ "$GF180MCU_HIT" = "true" ] || sets="$sets gf180mcu"
+          [ "$IHP_HIT" = "true" ] || sets="$sets ihp"
+          echo "sets=${sets# }" >> "$GITHUB_OUTPUT"
+          echo "::notice::reference data to fetch: ${sets:- none}"
+
+      # scripts/fetch_pdk.py installs each set with hefesto-cli's own `pdk install` (cold cache only).
+      - name: Build hefesto-cli for the PDK install
+        if: steps.missing.outputs.sets != ''
+        env:
+          CC: gcc-14
+          CXX: g++-14
+          # No compiler cache here: this build runs only when a data set's pin changes.
+          CMAKE_C_COMPILER_LAUNCHER: ""
+          CMAKE_CXX_COMPILER_LAUNCHER: ""
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch the missing data sets
+        if: steps.missing.outputs.sets != ''
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MISSING_SETS: ${{ steps.missing.outputs.sets }}
+        run: |
+          read -ra missing <<< "$MISSING_SETS"
+          python3 scripts/fetch_pdk.py "${missing[@]}" --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Save sky130
+        if: steps.sky130.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Save gf180mcu
+        if: steps.gf180mcu.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_key }}
+      - name: Save ihp
+        if: steps.ihp.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_path }}
+          key: ${{ steps.keys.outputs.ihp_key }}
+
   build:
     name: ${{ matrix.name }}
+    needs: reference-data
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -179,16 +287,29 @@ jobs:
           key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake') }}
           restore-keys: deps-${{ matrix.name }}-
 
-      # Pinned reference data of the PDK and Magic-reference tests (design D8; docs/building.md,
-      # "Reference data for tests"): the sky130A test subset of open_pdks in .cache/pdks and a sparse
-      # Magic checkout (scmos/, graphics/) in build/ref/magic. The pins live in scripts/fetch_pdk.py, so the
-      # cache key follows them; on a hit both fetch steps only verify (the PDK subset by its tree digest).
+      # Pinned reference data (job reference-data above; docs/building.md, "Reference data for tests"):
+      # the PDK data sets in .cache/pdks, one cache entry each, and a sparse Magic checkout (scmos/,
+      # graphics/) in build/ref/magic keyed on its commit. The fetch steps below only verify what was
+      # restored (each PDK set by its tree digest) and fetch whatever a restore missed.
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_path }}
+          key: ${{ needs.reference-data.outputs.sky130_key }}
+      - name: Restore gf180mcu
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_key }}
+      - name: Restore ihp
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_path }}
+          key: ${{ needs.reference-data.outputs.ihp_key }}
       - uses: actions/cache@v4
         with:
-          path: |
-            .cache/pdks
-            build/ref/magic
-          key: reference-data-${{ runner.os }}-${{ hashFiles('scripts/fetch_pdk.py') }}
+          path: ${{ needs.reference-data.outputs.magic_ref_path }}
+          key: ${{ needs.reference-data.outputs.magic_ref_key }}
 
       # Before Configure: tests/unit/tech generates scmos.tech from build/ref/magic at configure time.
       - name: Fetch the Magic reference sources (sparse, pinned)
@@ -200,15 +321,16 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
-      # Uses the hefesto-cli just built (its own `pdk install`); a no-op when the cached subset verifies.
-      - name: Fetch the pinned sky130A test subset
+      # Uses the hefesto-cli just built (its own `pdk install`); a no-op when every restored set verifies.
+      - name: Verify the pinned PDK data sets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/fetch_pdk.py pdk --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
+        run: python3 scripts/fetch_pdk.py sky130 gf180mcu ihp --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
 
+      # The standard-cell corpus cases (label golden-slow, m3-drc design D14) run in the golden replay below.
       - name: Test
         if: ${{ !matrix.desktop }}
-        run: ctest --preset ${{ matrix.preset }}
+        run: ctest --preset ${{ matrix.preset }} -LE golden-slow
 
       # hefesto-pdk-manager (task 7.3): the real Fetchers (in-process HTTPS: libcurl here; and the curl-process
       # fallback) install the pinned sky130A common asset and one small library (about 6.4 MB each, a few
@@ -231,7 +353,7 @@ jobs:
         env:
           RAVEN_WINDOW_SYSTEM: x11  # Raven's documented override of its window-system choice
         run: |
-          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -LE desktop-window
+          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -LE 'desktop-window|golden-slow'
           xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -L desktop-window-x11
 
       - name: Test under Wayland (headless Weston)
@@ -393,7 +515,43 @@ jobs:
           restore-keys: deps-linux-asan-
       - run: cmake --preset linux-asan
       - run: cmake --build --preset linux-asan
-      - run: ctest --preset linux-asan
+      - run: ctest --preset linux-asan -LE golden-slow
+
+  # m3-drc design D8 (Q-DRC-12): the background DRC worker reads the database under the shared lock while
+  # the command thread edits it; ThreadSanitizer runs the whole suite (the race tests of
+  # tests/unit/drc/engine/background_test.cpp and tests/unit/drc/integration_test.cpp included).
+  tsan:
+    name: linux-tsan (Clang, ThreadSanitizer)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CC: clang-18
+      CXX: clang++-18
+      TSAN_OPTIONS: halt_on_error=1 second_deadlock_stack=1
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake and Ninja
+        run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - name: Install the OpenSSL headers for libcurl
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      # ubuntu-24.04's 32-bit mmap randomisation breaks TSan's shadow memory layout ("unexpected memory mapping").
+      - name: Reduce address-space randomisation for TSan
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-tsan
+          max-size: 500M
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-linux-tsan-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-linux-tsan-
+      - run: cmake --preset linux-tsan
+      - run: cmake --build --preset linux-tsan
+      - run: ctest --preset linux-tsan -LE golden-slow
 
   # hefesto-testing-strategy "Parser fuzzing": every target runs for a bounded time on pull requests
   # (design D11: 60 s per target) and on every push to main.

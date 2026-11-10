@@ -17,6 +17,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     requirements = ["Magic string hash table"]
     tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness
     description = "..."
+    slow = true                      # optional: CTest label golden-slow instead of golden
 
     [reference]                      # how capture.py runs the reference tool
     script = "input/commands.tcl"    # fed to the tool (path relative to the case)
@@ -36,6 +37,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     [[outputs]]                      # one per compared output
     name = "stdout.txt"              # file name under expected/
     source = "stdout"                # stdout | stderr | a path relative to the work dir
+                                     # | derived:mag-drc-sections:<glob> (goldenlib/derived.py)
     comparator = "bytes"             # see compare/ (bytes, ext-cap)
     masks = []                       # time-dependent field masks (see compare/masks.py)
 """
@@ -45,6 +47,8 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .derived import is_derived
+from .derived import parse as parse_derived
 from .external import External, parse_external
 
 REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
@@ -106,7 +110,13 @@ def _parse_output(raw: dict, index: int, known_comparators) -> Output:
     if known_comparators is not None and comparator not in known_comparators:
         raise CaseError(f"{where}: unknown comparator '{comparator}'")
     masks = tuple(raw.get("masks", []))
-    return Output(name, _require(raw, "source", str, where), comparator, masks)
+    source = _require(raw, "source", str, where)
+    if is_derived(source):
+        try:
+            parse_derived(source)
+        except ValueError as error:
+            raise CaseError(f"{where}: {error}") from None
+    return Output(name, source, comparator, masks)
 
 
 def _check_paths(case: Case) -> None:

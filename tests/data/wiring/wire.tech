@@ -67,7 +67,8 @@ end
 
 drc
     width poly 2 "poly width < 2"
-    width metal1,metal2 3 "metal width < 3"
+    width metal1 3 "metal1 width < 3"
+    width metal2 3 "metal width < 3"
     width metal2 4 "metal2 width < 4"
     width metal3 6 "metal3 width < 6"
 end

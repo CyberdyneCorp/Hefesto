@@ -1,0 +1,91 @@
+# drctest.tech -- the synthetic technology of tests/golden/DRC/CASES.md (m3-drc design D12).
+# SPDX-License-Identifier: Apache-2.0
+# Planes well, active, metal1, via1, metal2; one internal unit = 1 lambda = 0.01 um
+# (cifoutput scalefactor 1). The via1 plane holds the plain cut type `via`; m1c is the
+# metal1/metal2 contact (residues m1, m2) and its mask layer VIA1 is a `squares` layer
+# with a 5-unit border. drc_cases.py replaces the empty drc section with each case's rules.
+tech
+    format 35
+    drctest
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    via1,v1
+    metal2,m2
+end
+
+types
+    well    nwell,nw
+    well    pwell,pw
+    active  ndiffusion,ndiff
+    active  pdiffusion,pdiff
+    active  polysilicon,poly
+    active  ntransistor,nfet
+    active  ptransistor,pfet
+    active  ndcontact,ndc
+    active  pdcontact,pdc
+    active  polycontact,pc
+    metal1  metal1,m1
+    via1    via
+    metal1  m1contact,m1c
+    metal2  metal2,m2
+end
+
+contact
+    ndc  ndiff metal1
+    pdc  pdiff metal1
+    pc   poly  metal1
+    m1c  metal1 metal2
+end
+
+styles
+    styletype mos
+end
+
+compose
+    compose nfet poly ndiff
+    compose pfet poly pdiff
+end
+
+connect
+    nwell        nwell
+    pwell        pwell
+    ndiff,ndc    ndiff,ndc
+    pdiff,pdc    pdiff,pdc
+    poly,pc      poly,pc
+    m1,ndc,pdc,pc,m1c  m1,ndc,pdc,pc,m1c
+    m2,m1c       m2,m1c
+end
+
+cifoutput
+style drctest
+    scalefactor 1
+    layer NW nwell
+    layer PW pwell
+    layer ACT ndiff,pdiff,nfet,pfet,ndc,pdc
+    layer POLY poly,nfet,pfet,pc
+    layer CONT ndc,pdc,pc
+        squares 2 4 4
+    layer MET1 m1,ndc,pdc,pc,m1c
+    layer VIA via
+    layer VIA1 m1c
+        squares 5 10 10
+    layer MET2 m2,m1c
+style other
+    scalefactor 1
+    layer MET1 m1,ndc,pdc,pc,m1c
+    layer MET2 m2,m1c
+end
+
+cifinput
+end
+
+drc
+    surround m1c m1 1 absence_illegal "m1 surround < %d"
+end
+
+extract
+end

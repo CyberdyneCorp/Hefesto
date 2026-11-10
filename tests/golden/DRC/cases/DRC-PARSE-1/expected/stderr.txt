@@ -1,0 +1,17 @@
+input/drctest.tech: line 88: section drc:
+	Bad DRC rule type "wid"
+Valid rule types are:
+angles, edge, edge4way, exact_overlap, exception, exemption, extend, no_overlap, option, overhang, rect_only, spacing, stepsize, surround, width, widespacing, area, off_grid, maxwidth, cifstyle, cifwidth, cifspacing, cifarea, cifmaxwidth, rectangle.
+input/drctest.tech: line 89: section drc:
+	Rule type "width" usage: width layers width why
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    well, active, metal1, via1, metal2,
+  Magic will use the default planeorder for this style:
+    well=0, active=1, metal1=2, via1=3, metal2=4,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell top couldn't be read
+No such file or directory

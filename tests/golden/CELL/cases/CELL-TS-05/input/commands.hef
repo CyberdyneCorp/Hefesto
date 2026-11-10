@@ -1,0 +1,20 @@
+# CELL-TS-05: cellname timestamp a 5 after the last edit, save (the file keeps stamp 5); cellname timestamp b 5, then modify b and save (a new stamp, masked).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+drc off
+load a
+box 0 0 4 4
+paint metal1
+cellname timestamp a 5
+save a
+cellname timestamp a
+cellname flags a
+load b
+box 0 0 4 4
+paint metal1
+cellname timestamp b 5
+box 10 0 14 4
+paint metal1
+save b
+cellname flags b

@@ -25,7 +25,6 @@ NOT_AUTHORED = {
     "TECH-G33": "partial state after a failed load differs by design (Q-TECH-10)",
     "TECH-G39": "startup .magicrc scripts do not run in hefesto-cli yet (app-startup, 4.3 deviation)",
     "TECH-G40": "needs PDK_ROOT in the environment of both tools",
-    "TECH-G44": "tech drc needs the DRC rule set (M3; TECH-CMD-005)",
 }
 
 TINY_DUMP_TYPES = ["nwell", "poly", "ndiff", "nfet", "metal1", "metal2", "pc", "ndc", "m2c", "pwell", "pm12c"]
@@ -264,3 +263,24 @@ def loading_specs() -> list[Spec]:
 
 def specs() -> list[Spec]:
     return format_specs() + compose_specs() + loading_specs()
+
+
+# --- M3 (m3-drc design D12, written by m3_cases.py) --------------------------------
+
+M3_NOT_AUTHORED: dict[str, str] = {}
+
+
+def m3_specs() -> list[Spec]:
+    queries = ["tech drc width m1", "tech drc spacing m1", "tech drc spacing m1 m2", "tech drc surround m2c m1",
+               "tech drc direc m2c m1", "tech drc surround m1", "tech drc width nosuch", "tech drc"]
+    spec = Spec("TECH-G44", "tech-command", ["tech drc"],
+                "scmos.tech; tech drc width/spacing/surround/directional queries, a bad type and no option.",
+                tech_load("scmos") + queries, external=[SCMOS_EXTERNAL])
+    spec.keep_checkpaint = True
+    # `tech drc width nosuch` prints TechError's stale "<file>: line <n>:" prefix, n being
+    # scmos.tech's line count + 1; the generated scmos.tech differs in blank lines between
+    # preprocessors (tests/data/tech/generate_scmos.cmake), so the number is masked.
+    spec.stream_masks = ["regex:scmos.tech: line [0-9]+:"]
+    spec.notes.append("The scmos.tech line number in TechError's prefix depends on the preprocessor that")
+    spec.notes.append("generated the file, so it is masked (regex mask).")
+    return [spec]

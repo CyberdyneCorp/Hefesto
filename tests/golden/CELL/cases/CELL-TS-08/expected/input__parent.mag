@@ -1,0 +1,12 @@
+magic
+tech scmos
+timestamp 1794337711
+<< error_p >>
+rect 2 0 3 10
+<< metal1 >>
+rect 20 0 24 4
+use child  c0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 3 10
+<< end >>

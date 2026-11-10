@@ -50,7 +50,7 @@ class CellIo {
         fs_(fs != nullptr ? fs : &memory_),
         host_(make_memory_file_host(*fs_, "/work")),
         ctx{*fs_, clock, library, tech_.get(), grid, paths, vars, sink, *host_, stamps, locks.get(), &fonts,
-            true, true, nullptr, {}, {}} {
+            true, true, nullptr, {}, {}, {}} {
     ctx.rescale_database = [](std::int64_t, std::int64_t) { return true; };
   }
   CellIo(const CellIo&) = delete;

@@ -1,0 +1,83 @@
+
+Magic 8.3 revision 694 - Compiled on Tue Nov 10 19:00:44 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+The following types are not handled by extraction and will be treated as non-electrical types:
+    nwell pwell ntransistor ptransistor via 
+
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.000,  0.000), ( 0.100,  0.100)  0.010     
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.120,  0.000), ( 0.220,  0.100)  0.010     
+lambda:       10 x 10      (    12,  0    ), (    22,  10   )  100       
+
+
+Topmost cell in the window
+No interactions in this area for that radius.
+
+0 0 22 10
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.000,  0.000), ( 0.100,  0.100)  0.010     
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:        0 x 0       (     0,  0    ), (     0,  0    )
+
+child_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.150,  0.000), ( 0.250,  0.100)  0.010     
+lambda:       10 x 10      (    15,  0    ), (    25,  10   )  100       
+
+
+Topmost cell in the window
+
+0 0 20 10
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.250 x 0.100   ( 0.000,  0.000), ( 0.250,  0.100)  0.025     
+lambda:       25 x 10      (     0,  0    ), (    25,  10   )  250       
+
+No interactions in this area for that radius.
+
+0 0 25 10
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.400,  0.400), ( 0.500,  0.500)  0.010     
+lambda:       10 x 10      (    40,  40   ), (    50,  50   )  100       
+
+No interactions in this area for that radius.
+
+40 40 50 50

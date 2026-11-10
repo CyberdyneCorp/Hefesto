@@ -28,6 +28,7 @@
 #include "hefesto/db/layer_list.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/polygon.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/tech/commands.hpp"
@@ -140,6 +141,7 @@ diag::Outcome<bool> erase_set(const edit::Target& t, const LayerList& list) {
       }
     }
     for (CellUse* u : doomed) {
+      drc::check_this(*t.s.editor, *t.def, u->bbox);  // CmdErase, TT_CHECKSUBCELL
       (void)remove_use(*u);
     }
   }
@@ -208,6 +210,7 @@ CommandResult by_example(CommandContext& ctx, const Invocation& inv, bool erasin
     return cu::fail(st.error());
   }
   edit::finish(e, e.area, list.types, edit::Effects{true, true, labels});
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdPaintEraseButton
   CommandResult result = CommandResult::success();
   if (inv.args[0] != "pick" && e.s.editor->command_point) {
     const Point p = editor::to_edit(*e.s.editor, e.s.editor->command_point->point);
@@ -245,13 +248,21 @@ CommandResult cmd_paint(CommandContext& ctx, const Invocation& inv) {
   }
   tech::TypeMask types = list.value().types;
   types.clear_type(tech::kSpace);
+  // CmdPaint marks the box, even when nothing was painted, unless DRC is off.
+  const auto mark = [&e] {
+    if (e.s.editor->drc.background != drc::BackgroundMode::off) {
+      drc::check_this(*e.s.editor, *e.def, e.area);
+    }
+  };
   if (e.area.is_null() || types.empty()) {
+    mark();
     return CommandResult::success();
   }
   if (auto st = paint_all(e, e.area, types); !st.ok()) {
     return cu::fail(st.error());
   }
   edit::finish(e, e.area, types);
+  mark();
   return CommandResult::success();
 }
 
@@ -282,6 +293,11 @@ CommandResult cmd_erase(CommandContext& ctx, const Invocation& inv) {
     return cu::fail(labels.error());
   }
   edit::finish(e, e.area, l.types, edit::Effects{true, true, labels.value() || l.subcells});
+  tech::TypeMask marked = l.types;  // CmdErase: no DRC when only labels were erased
+  marked.clear_type(kLabelsPseudoType);
+  if (!marked.empty() || l.subcells) {
+    drc::check_this(*e.s.editor, *e.def, e.area);
+  }
   return CommandResult::success();
 }
 
@@ -375,6 +391,7 @@ CommandResult cmd_fill(CommandContext& ctx, const Invocation& inv) {
     }
   }
   edit::finish(e, e.area, types.value());
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdFill
   return CommandResult::success();
 }
 
@@ -522,6 +539,7 @@ CommandResult cmd_corner(CommandContext& ctx, const Invocation& inv) {
     cu::warn(e.s, "There's not enough room in the box for all the wires.");
   }
   edit::finish(e, e.area, types.value());
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdCorner
   return CommandResult::success();
 }
 
@@ -623,6 +641,7 @@ CommandResult cmd_contact(CommandContext& ctx, const Invocation& inv) {
     return cu::fail(st.error());
   }
   edit::finish(e, e.area, c->residues | tech::TypeMask::of(type.value()), edit::Effects{false, false, false});
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdContact
   return CommandResult::success();
 }
 
@@ -676,6 +695,7 @@ CommandResult cmd_polygon(CommandContext& ctx, const Invocation& inv) {
   }
   recompute_bbox(*def, s.value().magic_compat);
   s.value().editor->windows.area_changed(*def, bbox, tech::TypeMask::of(type.value()));
+  drc::check_this(*s.value().editor, *def, bbox);  // CmdPolygon
   return CommandResult::success();
 }
 
@@ -781,6 +801,7 @@ CommandResult cmd_splitpaint(CommandContext& ctx, const Invocation& inv) {
     }
   }
   edit::finish(e, e.area, painted, edit::Effects{false, true, false});
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdSplit
   return CommandResult::success();
 }
 
@@ -813,6 +834,7 @@ CommandResult cmd_spliterase(CommandContext& ctx, const Invocation& inv) {
     }
   }
   edit::finish(e, e.area, types.value(), edit::Effects{false, true, false});
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdSplitErase
   return CommandResult::success();
 }
 
@@ -882,6 +904,7 @@ CommandResult cmd_drop(CommandContext& ctx, const Invocation& inv) {
     recompute_bbox(*site.def, e.s.magic_compat);
   }
   edit::finish(e, e.area, types, edit::Effects{false, false, false});
+  drc::check_this(*e.s.editor, *e.def, e.area);  // CmdDrop
   return CommandResult::success();
 }
 
