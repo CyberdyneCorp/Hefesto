@@ -6,6 +6,7 @@
 #include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/ui/diag_codes.hpp"
 
 namespace hefesto::cmd {
 
@@ -24,7 +25,9 @@ Invocation to_invocation(const ParsedCommand& command, Origin origin, std::strin
 
 bool is_dispatch_failure(const CommandResult& result) {
   return std::any_of(result.diagnostics.begin(), result.diagnostics.end(),
-                     [](const diag::Diagnostic& d) { return d.code == diag::codes::kCmdDispatch; });
+                     [](const diag::Diagnostic& d) {
+                       return d.code == diag::codes::kCmdDispatch || d.code == ui::codes::kAmbiguous;
+                     });
 }
 
 // The error a failed command raises: its first error diagnostic, or a
