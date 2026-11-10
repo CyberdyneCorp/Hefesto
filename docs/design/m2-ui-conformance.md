@@ -75,11 +75,9 @@ SHELL adds a row for each when it builds the screen (task 10.9):
 - Tool rail: tooltip with the tool's key (`Space` cycles, `^Space` wiring), the five button states (default, hover, active, focus, disabled).
 - Paint, Label and Measure tools as box-tool modes (canvas tiles 3, 5, 6 of the tools board).
 - Wiring tracking: preview leg outline with 18 % layer tint, HUD next to the cursor, "Wiring · tracking" mode chip, Wire inspector (type, width ±, technology layer stack).
-- Layer palette row context menu showing the command of each item.
-- Undo history popover (`undo N` / `redo N`), "undo off" chip, status bar "Undid …" message with Redo.
-- Color window chrome: caption `COLOR = 0<octal>`, index stepper (`color last` / `color next`), Load…/Save…, value strip.
-- Key-binding sheet: key capture, conflict warning, Reset table, Load file….
-- Floating panel header, drop-zone highlight while dragging a panel, collapsed edge strip.
+Round 3 added rows for the layer row menu, the undo history, the color window chrome and the key-binding sheet (sections below). Still without a row because they are not built:
+
+- Floating panel header, drop-zone highlight while dragging a panel, collapsed edge strip (Docked panels row).
 
 ### Board decisions that need confirmation
 
@@ -112,7 +110,7 @@ The boards propose behavior that no spec states yet; each is also an open item o
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
 | Inspector for paint, label, port, instance and mixed selections | `selection_inspector_view()`: SELECTION section, kind title, layers with tile counts, label text/layer/position/port index, instance cell/id/orientation/array, bounding box | partial | Capture 02 (mixed). The board's per-row editable fields are read-only rows; edits go through the action buttons. |
-| Inspector actions | buttons that run `select net`, `what`, `delete`, `clockwise 90`, `expand selection`, `edit`, `port make`; those needing an argument (`setlabel text `, `identify `, `port index `) put the command in the command bar | partial | `orient` and `array` setters are not on buttons yet. |
+| Inspector actions | buttons that run `select net`, `what`, `delete`, `clockwise 90`, `expand selection`, `edit`, `port make`; those needing an argument (`setlabel text `, `identify `, `port index `, `array `) put the command in the command bar; "Orient…" opens a menu of the eight orientations (`orient N` … `orient FW`, the current one checked) | done | Round 3: `orient_menu()`, `InspectorAction::menu`; tests in `screen_models_test.cpp`. |
 
 ## Layer palette
 
@@ -121,27 +119,27 @@ The boards propose behavior that no spec states yet; each is also an open item o
 | Active paint layer | a click on a row runs `palette paint LAYER` (new shell command, logged); ember outline and meta "paint"; footer "Paint layer NAME" with Paint / Erase buttons (`paint L` / `erase L` on the box) | partial | The footer buttons read "Paint" / "Erase": the board's "Paint on box" / "Erase on box" do not fit side by side in the 240 px panel. |
 | Visibility toggle | the eye zone of the row runs `see L` / `see no L`; shown on hover and while hidden | done | |
 | Lock toggle (locked types) | the lock zone runs `tech lock L` / `tech unlock L`; meta "locked" / "paint · locked" | done | Capture 02: sky130A's inactive types show as locked. |
-| Row context menu | — | todo | Raven 0.2.2 menus not wired yet. |
+| Row context menu | right click (or the Menu key / Shift-F10) on a row opens `layer_menu()`: Paint layer, Paint on box, Erase on box, Select on box, Hide/Show, Lock/Unlock, each label naming its command (`palette paint L`, `paint L`, `erase L`, `select area L`, `see no L`, `tech lock L`) | partial | A Raven context menu: themed by Raven's colors, not the board's popover card. No "show only this layer": `see no *` is not "all layers" in Magic either. |
 | Keyboard: ↑/↓ moves, Space selects | Tab/Shift-Tab move between rows, Space/Return select the paint layer | partial | Arrow-key navigation inside the list is not implemented; focus returns to the window after a row toggles (RAVEN-CHECK item 3). |
 
 ## Command bar
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| History | Up/Down walk the history (M1) | partial | No history popover: Raven 0.2.2 has no anchored popover; the Console keeps the full history. |
-| Tab completion of commands, cells and layers (`ui::complete`) | `complete_command_line()`: a unique match completes and adds a space; several extend to the common prefix and are listed in the status bar and the Console | partial | The board's completion popover is a status-bar list (no anchored popover in Raven). Text input arrow keys insert stray characters on macOS (RAVEN-CHECK live-input bug). |
+| History | Up/Down walk the history (M1); the clock button and ^R in the command bar open the history popover (`history_entries()`: the newest 12, numbered like `history`, choosing one puts it in the command bar) above the bar | partial | The popover is a Raven menu (no anchored popover in Raven 0.2.2): no filter field and no "↩ run · → edit" hints; choosing edits, Return runs. Checked with real OS events (round 3). |
+| Tab completion of commands, cells and layers (`ui::complete`) | `complete_command_line()`: a unique match completes and adds a space; several extend to the common prefix, are listed in the status bar and the Console, and open the completion popover above the bar (`completion_entries()`: 12 candidates then "… N more") | partial | A Raven menu: no "Layers matching m · 7" header or kind column. Arrow keys no longer insert U+F7xx text and held keys repeat (`TextKeyFilter`, round 3, checked with real OS events). Typed lines may abbreviate command names (Q-UI-41, DISPATCH); scripts need exact names. |
 | Multi-line results: first line in the status bar, expander to the Console | `result_line()`: "<first line> (+N lines, see Console)"; clicking the status bar opens the Console tab for a multi-line result, Diagnostics otherwise; `CommandOutcome::printed` collects what commands print (`help`, `what`) | done | |
 
 ## Undo, color window, feedback, dialogs, panels
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| Undo/redo affordances | Undo and Redo ghost buttons in the top bar (icons `undo`, `redo`), enabled from `undo_affordance()` (log position), tooltips with the step counts; they run `undo` / `redo` | partial | No history popover, no "undo off" chip, no "Undid …" status message yet. |
-| Color window screen | — | todo | Not built in this pass (`specialopen color` works in the core). |
-| Feedback list | a Feedback tab next to Console and Diagnostics: one row per area (`feedback_rows()`: index, corners, text) | partial | Rows cannot be clicked yet (Raven list rows have no activation callback in the wrapper); `feedback find N` must be typed. |
+| Undo/redo affordances | Undo and Redo ghost buttons in the top bar (icons `undo`, `redo`), enabled from `undo_affordance()` (log position), tooltips with the step counts and the next step; they run `undo` / `redo`. Right click (or the Menu key) opens the undo history (`undo_history()`: the redo tail, then the undoable steps newest first, `redo N` / `undo N`; only redo while recording is off). "▲ undo off" chip after `undo disable` (click: `undo enable`). After `undo` / `redo` the status bar reads "Undid STEP · N more steps" | partial | Steps are named by their newest event's description (`undo print`), not the user command ("paint metal1"): UndoLog keeps no command per step (open item UNDO). No press-and-hold, no "Current state" divider or per-step detail column, no "Redo ▸" link in the status bar. |
+| Color window screen | when `specialopen color` opens a color window, `ColorPanel` takes the right dock: caption `COLOR = 047` and "▲ map modified", ‹ › stepper (`color N`), "Color Being Edited" swatch, the six bars with − / + pumps and click-to-set (`setpoint X Y ID; pushbutton left` at Magic's pump or bar point, the `color` client's own path), the value strip (R G B, H S V, hex), Load… / Save… (`load ` / `save ` in the command bar), Close (`closewindow ID`) | partial | Captures `m3-shell/01-color`, `02-color-light`. The bars are drawn by the shell in the forge layout, not Magic's fixed surface through the renderer; pumps take the left button only (no M/R 5× step); no dock/undock button (the panel lives in the right dock). |
+| Feedback list | a Feedback tab next to Console and Diagnostics: one row per area (`feedback_rows()`: index, corners, text); clicking a row (or arrows / Enter) runs `feedback find N` | done | Round 3: `ListPanel::on_select`. |
 | Confirmation dialogs through `cmd::PromptHost` (crash recovery, `flush`, unsaved color map, `quit` with modified cells) | `MainWindow::DialogPromptHost` installs in `EditorState::prompt`; `prompt_dialog()` turns a question into a Raven dialog with one Raven button per answer, verbs for known questions ("Discard changes", "Overwrite", "Recover", "Quit without saving", "Cancel"), the default answer primary and focused; Escape gives the default; crash recovery through `CellSession::confirm_recovery` | done | Capture 05 (flush). In a scripted capture the dialog is shown without waiting and the command takes the default. |
-| Macro / key-binding reference | — | todo | `macro` lists bindings in the Console; the board's sheet is not built. |
-| Docked, undocked and collapsed panels | `panel layers\|inspector\|console show\|hide\|toggle` (new shell command) collapses and restores the panels | partial | Docking and floating panels (board M2-Panels) are not built: the window keeps the fixed Desktop-Layout arrangement. |
+| Macro / key-binding reference | a Keys tab (`panel keys show`): every macro table, the current tool's first, headed "Layout (box tool) · box · N bindings", one row per binding (key display name, command, "imacro:" for interactive macros); choosing a row puts `macro TABLE KEY "TEXT"` in the command bar to edit (`key_binding_rows()`, round-trips through `macro`) | partial | Capture `m3-shell/03-keys`. A list tab, not the board's modal sheet: no key capture, no conflict warning with Replace, no Reset table / Load file… buttons (`macro` and `source` in the command bar do these). |
+| Docked, undocked and collapsed panels | `panel layers\|inspector\|console\|keys show\|hide\|toggle` collapses and restores the panels; `panel layers\|inspector dock left\|right` docks a side panel on either side of the canvas; `panel reset` restores the M1 arrangement | partial | Capture `m3-shell/04-dock`. No floating panels, drag-to-dock, panel headers or collapsed edge strips (Raven's `Rdock_area` would need the shell rebuilt on it); the layout is not saved per user. |
 
 ## M1 gaps closed in M2 (design.md D10)
 
@@ -152,7 +150,7 @@ The boards propose behavior that no spec states yet; each is also an open item o
 | Status bar shows only the first line of a multi-line result | see Command bar | done | Capture 04. |
 | Minimap: outline-only and cross styles, labels and cell boxes; incremental rebuild | `minimap_thumbnail()` draws outline-only styles along their edges, cross styles at half strength, label points and unexpanded cell boxes. A partial redisplay of a scene over 1 M rectangles defers the thumbnail until edits pause (750 ms) | partial | Measured: the thumbnail of the expanded 100 × 100 dfxtp_1 array (13.7 M rectangles) takes 543 ms in a Debug build. Deferral keeps it off the edit path but it is still a full rebuild; a per-area update is the remaining work. |
 | Top ruler in JetBrains Mono 10 | `kTopRulerLabelSize` = 10 px mono | done | |
-| Hierarchy toggle on overlapping siblings | rows still issue `expand instance PATH` (M1) | todo | Not re-checked against `expand selection`. |
+| Hierarchy toggle on overlapping siblings | rows issue `expand instance PATH` / `unexpand instance PATH` on their own instance (no box involved) | done | Regression test "a hierarchy row toggles its instance only, not an overlapping sibling" (`view_commands_test.cpp`). |
 
 ## Accessibility and keyboard (10.7)
 
@@ -160,7 +158,9 @@ The boards propose behavior that no spec states yet; each is also an open item o
 |---|---|---|---|
 | Rail buttons, Undo/Redo, palette rows, inspector actions | accessible names with their state in the name ("Select, pressed", "Undo, unavailable", "metal2, plane metal2, visible, paint layer, locked") | partial | Raven 0.2.2 has no accessible state API and cannot press custom-drawn widgets (RAVEN-CHECK gap 1). |
 | Dialogs | Raven buttons (pressable by VoiceOver), the dialog named by its title | done | |
-| Canvas keys | every key goes through the macro tables when the canvas has focus (click to focus) | partial | F6 focus cycling across docks (board) is not built. |
+| Canvas keys | every key goes through the macro tables when the canvas has focus (click to focus) | done | |
+| F6 focus cycling | F6 / Shift-F6 (window key hook) cycle Tools → Layers (filter) → Canvas → Inspector (first action) → Console → Command, skipping hidden panels (`next_focus_region()`) | done | Checked with real OS events (round 3). |
+| Popovers and menus | Raven menus: keyboard (arrows, Return, Escape) and screen readers (menu items are pressable); opened from the keyboard with the Menu key or Shift-F10 on a focused row or button | done | |
 
 ## Performance (hefesto-performance interactive editing targets)
 
@@ -171,10 +171,51 @@ UNDO's benchmark (task 4.6), `tests/unit/undo/benchmark_test.cpp` (`[req:Edit la
 | UNDO round, Debug | M-series dev machine under load | — | 13-34 ms (6) | 17-34 ms | 17-35 ms | — |
 | SHELL, Debug, 3 runs, 2026-11-10 | M3 Pro, load average 44-46 (other agents' builds) | 627-2396 ms (1159-2721) | 5.5-32.8 ms (2.4-2.5) | 11.1-45.3 ms | 11.3-77.9 ms | 27.9-74.3 ms |
 
-Erase, undo and redo meet the 50 ms edit-latency target in the quietest run and exceed it under the heaviest load (redo 77.9 ms). Painting 10,000 rectangles in one command is not an interactive edit; its cost is the same with recording off, so it is the database, not the undo log. A Release run on an idle machine (CI, task 11.4) is still needed before the target is claimed; the test asserts the 50 ms limit only in optimized builds.
+Erase, undo and redo meet the 50 ms edit-latency target in the quietest run and exceed it under the heaviest load (redo 77.9 ms). Painting 10,000 rectangles in one command is not an interactive edit; its cost is the same with recording off, so it is the database, not the undo log. The test asserts the 50 ms limit only in optimized builds; the Release run below covers that.
+
+### Release run (task 4.6)
+
+CORE, 2026-11-10: `build/m3-rel` (macos-release preset, headless, `-DHEFESTO_WARNINGS_AS_ERRORS=ON`), `hefesto_undo_tests "[req:Edit latency]"`, 5 runs on an Apple M3 Pro with a load average of 31-58 (other agents' builds; no idle machine was available). The benchmark now also times one `paint` that merges the 10,000 rectangles into one, the "command affecting 10,000 rectangles" of the target, and its undo; the optimized build asserts the 50 ms limit on that paint, its undo, the erase, and the undo and redo of the erase.
+
+| Measure (10,000 rectangles) | Release, 5 runs | Debug, same machine | Target |
+|---|---|---|---|
+| one `paint` over all of them, recorded | 0.54-0.58 ms | 5.8 ms | 50 ms: met |
+| its undo | 3.09-3.14 ms | 12.1 ms | 50 ms: met |
+| one `erase` of all of them, recorded (unrecorded) | 0.44-0.47 ms (0.20-0.21) | 5.5 ms (2.3) | 50 ms: met |
+| undo of the erase | 3.07-3.27 ms | 11.1 ms | 50 ms: met |
+| redo of the erase | 2.94-3.09 ms | 11.2 ms | 50 ms: met |
+| undo of erase + paint (two steps, 20,000 events) | 11.4-16.5 ms | 27.6 ms | 50 ms: met |
+| 10,000 separate `db::paint` calls in one step (unrecorded) | 62.0-64.0 ms (60.2-61.7) | 628 ms (624) | not an interactive command |
+
+Result: the database part of the edit-latency target (edit, recording, replay, bounding boxes) is met with a margin of more than 15x for a single command affecting 10,000 rectangles, even under load. Recording costs about 0.25 ms per 10,000 tile changes. The 10,000-call loop is the only row above 50 ms. It is not one user command: no Magic command paints 10,000 separate boxes. Its cost is the same without recording, about 6 µs per `db::paint` call (not profiled further). Plan: if M3's DRC or M4's scripting paints many boxes in one command, add a batched paint primitive (one plane walk per command) and add that workload to this benchmark. The view update after the edit is SHELL's, measured by the canvas benchmark. The time for background DRC to start (100 ms) is M3's.
 
 ## Remaining gaps (open items)
 
-- Raven: custom cursor images (Magic's glyphs); anchored popovers (completion, history, undo history, palette menu); accessible states and press actions for custom widgets; arrow keys inserting U+F700-U+F8FF text in text fields (RAVEN-CHECK); list-row activation in `RListView`. To be proposed upstream (design.md R1), not patched.
-- VIEW: a pixel-width outline for the box in `render::highlight_batches` (Magic's 2-pixel sides).
-- Not built in this pass: color window screen, key-binding sheet, docking and floating panels, wiring HUD and Wire inspector, undo history popover, palette context menu, feedback row activation.
+- Raven (issue texts in `docs/decisions/raven-go-no-go.md`, "M2 round 3"): custom cursor images (Magic's glyphs); an anchored popover widget; accessible states and press actions for custom widgets; the Cocoa function-key text and key-repeat bugs (worked around in `TextKeyFilter`). To be proposed upstream (design.md R1), not patched.
+- VIEW: a pixel-width outline for the box and selection in `render::highlight_batches` (Magic's 2-pixel sides; 1 framebuffer pixel is thin on Retina).
+- UNDO: a per-step label (the command that made the step) for the undo history and the "Undid …" message.
+- Not built in M2: floating panels and drag-to-dock, the modal key-binding sheet with key capture, the wiring HUD and Wire inspector, a per-area minimap update, the crash-dialog capture.
+
+## Round 3 review fixes (INTEGRATION, 2026-11-10)
+
+Checked by scripted captures of `build/m2` (macos-debug, desktop on) on the sky130A `dfxtp_1` cell, one instance at a time:
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| Color window cut off at 1024 x 640 | `ColorPanel` column in a `ScrollBox` | capture `--width 1024 --height 640 --run 'specialopen color 47; panel keys show'`: the dock scrolls to the Value bar, value strip and file row |
+| "undo off" chip overflowed the top bar at 1600 px | Undo/Redo widths counted in `top_full_width_` | capture `--width 1600 --height 1000 --run 'undo disable'`: the deferred group gives way, nothing clipped |
+| Edge separators on the wrong side after re-docking | `panel_edge_index` (edge on the canvas side) | capture `--run 'panel layers dock right; panel inspector dock left'`; test "a docked panel's edge separator is on the canvas side" |
+| "Undid …" only for the exact lines `undo`/`redo` | `undo_move_message` in a post-command client update handler | capture `--run '...; paint metal2; undo 2'` shows "Undid paint …"; tests "any command that moves the undo log names the step it passed", "the undo message holds for an undo inside a multi-command line" |
+
+## M2 exit criteria evidence (task 11.6, 2026-11-10)
+
+| Criterion | Evidence | State |
+|---|---|---|
+| Unit tests green on every leg | `build/m2` macos-debug `-Werror` desktop on: `ctest -LE network` 100 % of 1562 (deviations counted as skipped); macos-release, macos-asan, macos-bench and macos-xcode presets configured, built and tested (task 11.1); CI legs of the round-3 pull request | see tasks.md 11.1, 11.6 |
+| Golden tests green | `tools/golden/replay.py`: 226 pass, 0 fail, 0 skip, 38 deviation, 0 error (every deviation names an approved decision or a `deferred` milestone); golden-capture verify runs 42803858356, 42805161830 | done |
+| Fuzz targets for the new readers | `fuzz_macro_file`, `fuzz_wiring_section`, `fuzz_wire_segment_file` with seed corpora; seed replays pass in ctest; CI libFuzzer job (60 s per target) | done |
+| Requirement coverage | `check_requirement_coverage.py --milestone M2`: 163 of 163 exact/behavioral requirements covered | done |
+| Next milestone readiness | `check_milestone_readiness.py --milestone M3`: 24 unresolved questions (DRC, MASK, MISC) to decide before M3 starts | reported |
+| `openspec validate --all --strict` | 172 passed, 0 failed | done |
+| Usability review (2.3), boards in the reference artifact (2.1) | need the user | open |
+| Raven go/no-go (10.1, 11.4): Linux X11/Wayland input, Orca, an audible VoiceOver run, reference-hardware frame-rate run | need people or other hardware | open |
