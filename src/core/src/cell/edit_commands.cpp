@@ -126,6 +126,16 @@ CommandResult edit_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
 
 // --- down -------------------------------------------------------------------------
 
+/// CmdDown recasts the selection form with the instance for the command
+/// log. Magic writes the new root use's id ("Topmost cell in the window"),
+/// which does not replay; the chosen instance path does.
+void log_down_target(CommandResult& result, const Chosen& c, const cmd::Invocation& inv) {
+  if (result.ok() && c.ref && inv.args.empty()) {
+    const std::string path = c.ref->path.empty() ? c.ref->use->id : c.ref->path;
+    result.logged_as = cmd::Invocation{"down", {path}, inv.origin, std::nullopt};
+  }
+}
+
 CommandResult down_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   if (inv.args.size() > 1) {
     return edit_usage();
@@ -144,7 +154,9 @@ CommandResult down_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
     }
     ReadOptions read;
     read.ignore_tech = true;  // DBW_LOAD_IGNORE_TECH
-    return load_into_window(s, target->name(), read);
+    CommandResult result = load_into_window(s, target->name(), read);
+    log_down_target(result, c, inv);
+    return result;
   });
 }
 

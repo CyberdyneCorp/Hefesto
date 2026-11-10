@@ -386,13 +386,18 @@ TEST_CASE("cellname rename, delete and list (MODEL-G-036/037)", "[cap:layout-hie
   inv->set_bboxes({0, 0, 1, 1}, {0, 0, 1, 1});
   CHECK(code(s.run("cellname rename a b")) == db::codes::kCellExists);
   s.ok("cellname rename a c");
-  CHECK(s.run("cellname exists c").value.to_string() == "1");
+  CHECK(s.run("cellname list exists c").value.to_string() == "c");
   s.ok("box 0 0 1 1");
   s.ok("getcell inv");
   CHECK(code(s.run("cellname delete inv")) == db::codes::kCellInUse);
   s.ok("instance delete inv_0");
   s.ok("cellname delete inv");
-  CHECK(s.run("cellname exists inv").value.to_string() == "0");
+  CHECK(s.run("cellname list exists inv").value.to_string() == "0");
+  // Regression (CMDEDIT-HIER-08): the plain form reports and returns nothing.
+  const auto missing = s.run("cellname exists inv");
+  CHECK(missing.value.is_none());
+  CHECK(missing.diagnostics.back().text == "Cell inv is not currently loaded.");
+  CHECK(s.run("cellname exists c").diagnostics.back().text == "Cell c is currently loaded.");
   const std::string all = s.run("cellname list allcells").value.to_string();
   CHECK(all.find("top") != std::string::npos);
   CHECK(all.find("inv") == std::string::npos);

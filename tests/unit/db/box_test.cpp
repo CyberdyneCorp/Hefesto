@@ -5,6 +5,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
 
 #include "edit_session.hpp"
@@ -12,6 +13,8 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/transform.hpp"
+#include "hefesto/view/highlights.hpp"
+#include "hefesto/view/window.hpp"
 
 namespace db = hefesto::db;
 using db::Rect;
@@ -38,6 +41,34 @@ TEST_CASE("box changes are undoable events", CAP "[req:Box state]") {
   CHECK(s.box() == Rect{0, 0, 10, 10});
   (void)s.editor.undo.redo(s.editor);
   CHECK(s.box() == Rect{5, 5, 20, 20});
+}
+
+TEST_CASE("a box change redraws the old and new box highlights", CAP "[req:Box state]") {
+  HEFESTO_REQUIRE_MT(mt);
+  Box s(mt);
+  auto w = s.editor.windows.open(s.editor.edit_cell, hefesto::view::ScreenRect{0, 0, 499, 499});
+  REQUIRE(w.ok());
+  w.value()->move_to(Rect{0, 0, 499, 499});
+  const hefesto::view::WindowId id = w.value()->id();
+  s.ok("box values 10 10 20 20");
+  const hefesto::view::HighlightFrame* frame = s.editor.highlights.frame(id);
+  REQUIRE(frame != nullptr);  // dbwRecordBoxArea(FALSE): the new box is drawn
+  CHECK(frame->erase.empty());
+  CHECK_FALSE(frame->redraw.empty());
+  CHECK_FALSE(frame->scene.items.empty());
+  (void)s.editor.highlights.take_frame(id);
+  s.ok("box values 100 100 120 120");
+  frame = s.editor.highlights.frame(id);
+  REQUIRE(frame != nullptr);  // the old box is erased, the new one drawn
+  CHECK_FALSE(frame->erase.empty());
+  const bool old_redrawn = std::any_of(frame->redraw.begin(), frame->redraw.end(), [](const Rect& r) {
+    return r.x0 <= 10 && r.y0 <= 10 && r.x1 >= 20 && r.y1 >= 20;
+  });
+  CHECK(old_redrawn);
+  (void)s.editor.highlights.take_frame(id);
+  s.editor.undo.close_step();
+  REQUIRE(s.editor.undo.undo(s.editor).ok());  // undo redraws as well
+  CHECK(s.editor.highlights.has_pending());
 }
 
 TEST_CASE("box option syntax", CAP "[req:Box command syntax]") {

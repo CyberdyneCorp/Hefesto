@@ -37,6 +37,7 @@ the specs quote them.
 | `CELL-IO-005` | info | A cell is written while it still waits for a new timestamp. |
 | `CELL-IO-006` | error | A name, identifier or path contains characters that cannot be written back. |
 | `CELL-IO-007` | info | A cell was saved in a non-default form (command script). |
+| `CELL-IO-008` | info | A save was abandoned: an existing file was not overwritten or the new name is taken. |
 | `CELL-PATH-001` | warning | A cell was found somewhere other than its recorded path. |
 | `CELL-PATH-002` | error | No file could be found or read for the cell. |
 | `CELL-PATH-003` | warning | A use-line path conflicts with an already loaded cell of the same name. |

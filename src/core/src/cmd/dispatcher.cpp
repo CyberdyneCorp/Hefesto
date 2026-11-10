@@ -85,11 +85,25 @@ void Dispatcher::set_editor(editor::EditorState* editor) noexcept {
   }
 }
 
+std::string Dispatcher::target_client() const {
+  // "Command dispatch across global and client tables" steps 1-2: a command
+  // point in a color window (`setpoint x y ID`) sends the command to the
+  // `color` client; otherwise the front end's client applies.
+  if (editor_ != nullptr && editor_->command_point) {
+    const view::WindowId id = editor_->command_point->window;
+    if (editor_->windows.find(id) == nullptr && editor_->color_map.find(id) != nullptr) {
+      return std::string{kColorClient};
+    }
+  }
+  return client_;
+}
+
 CommandResult Dispatcher::execute(const Invocation& invocation) {
   if (invocation.name.empty()) {
     return CommandResult::success();  // a command with no words is a no-op
   }
-  const CommandLookup found = registry_.resolve(invocation.name, client_);
+  const std::string client = target_client();
+  const CommandLookup found = registry_.resolve(invocation.name, client);
   Invocation resolved = invocation;
   CommandResult result;
   if (found.status == LookupStatus::found) {
@@ -133,7 +147,7 @@ CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation&
   CommandContext context{services_, project_, session_, sink, registry_, editor_};
   std::string saved_client;
   if (editor_ != nullptr) {
-    saved_client = std::exchange(ui::state(*editor_).client, client_);
+    saved_client = std::exchange(ui::state(*editor_).client, target_client());
   }
   CommandResult result;
   try {

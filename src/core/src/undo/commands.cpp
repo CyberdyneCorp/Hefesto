@@ -69,6 +69,13 @@ void report(CommandContext& ctx, std::string text) {
   ctx.emit(diag::make(codes::kReport, std::move(text)));
 }
 
+/// The lines the replayed events printed (UndoLog::note).
+void report_notes(CommandContext& ctx, editor::EditorState& editor) {
+  for (std::string& line : editor.undo.take_notes()) {
+    report(ctx, std::move(line));
+  }
+}
+
 /// `undo print N` / `redo print N` (shared by both commands).
 CommandResult print_log(CommandContext& ctx, const editor::EditorState& editor, const Invocation& inv,
                         bool before) {
@@ -89,6 +96,7 @@ CommandResult print_log(CommandContext& ctx, const editor::EditorState& editor, 
 CommandResult replay_undo(CommandContext& ctx, editor::EditorState& editor, std::size_t count) {
   const bool compat = ctx.project().compat.magic_compat;
   auto undone = editor.undo.undo(editor, count, compat);
+  report_notes(ctx, editor);
   if (!undone.ok()) {
     ctx.emit(undone.error());
   }
@@ -174,6 +182,7 @@ CommandResult redo_command(CommandContext& ctx, const Invocation& inv) {
     return CommandResult::success();
   }
   const auto redone = editor.undo.redo(editor, static_cast<std::size_t>(count), ctx.project().compat.magic_compat);
+  report_notes(ctx, editor);
   if (redone.steps == 0) {
     report(ctx, "Nothing more to redo");
   }

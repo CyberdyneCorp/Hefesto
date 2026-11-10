@@ -308,7 +308,7 @@ Compatibility: behavioral
 - **THEN** a single `box` command SHALL run, with argv [`box`, `0`, `0`, `10`, `10`], whatever the `magic-compat` setting
 
 ### Requirement: Command logging
-`logcommands [start|stop|update|suspend|resume] [FILE]` SHALL control a command log. Keywords SHALL be matched by unique prefix. A non-keyword first argument SHALL be taken as the file name of `start`. With no argument, `logcommands` SHALL stop logging. `logcommands FILE update` SHALL start logging and turn on update mode.
+`logcommands [start|stop|update|suspend|resume] [FILE]` SHALL control a command log. Keywords SHALL be matched by unique prefix. A non-keyword first argument is a file name only in the legacy form `logcommands FILE update`, which SHALL start logging and turn on update mode; `logcommands FILE` alone SHALL print the usage `Usage: logcommands [start|stop|update|suspend|resume [filename]]` and start nothing, as in Magic 8.3.694. With no argument, `logcommands` SHALL stop logging.
 
 Starting:
 - If a log is already open, report `There is already a log file open!`.

@@ -5,7 +5,8 @@
 // Manhattan pieces (layout-geometry-model "Non-Manhattan (split tile)
 // geometry", layout-paint-semantics "Non-Manhattan painting").
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) database/DBpaint.c: TiNMSplitY,
-// TiNMSplitX (without undo records), TiNMMergeRight, TiNMMergeLeft. Magic is
+// TiNMSplitX (their dbSplitUndo records go to TilePlane::note_split),
+// TiNMMergeRight, TiNMMergeLeft. Magic is
 // Copyright (C) 1985, 1990 Regents of the University of California
 // (permissive license, THIRD_PARTY_NOTICES.md).
 
@@ -60,8 +61,10 @@ void nm_split_y(TilePlane& plane, Tile*& oldtile, Tile*& newtile, Coord y, int d
   const Coord delx = rounded_offset(tmpdx, height);
   const Coord x = direction(oldtile->body) != 0 ? right(oldtile) - delx : left(oldtile) + delx;
 
+  const Rect before = tile_rect(oldtile);
   newtile = plane.split_y(oldtile, y);
   if (x > left(oldtile) && x < right(oldtile)) {
+    plane.note_split(false, before, oldtile->body);  // dbSplitUndo
     Tile* newxbot = plane.split_x(oldtile, x);
     Tile* newxtop = plane.split_x(newtile, x);
     const Body body = oldtile->body;
@@ -89,8 +92,10 @@ void nm_split_x(TilePlane& plane, Tile*& oldtile, Tile*& newtile, Coord x, int d
   const Coord dely = rounded_offset(tmpdy, width);
   const Coord y = direction(oldtile->body) != 0 ? top(oldtile) - dely : bottom(oldtile) + dely;
 
+  const Rect before = tile_rect(oldtile);
   newtile = plane.split_x(oldtile, x);
   if (y > bottom(oldtile) && y < top(oldtile)) {
+    plane.note_split(false, before, oldtile->body);  // dbSplitUndo
     Tile* newyleft = oldtile;
     oldtile = plane.split_y(newyleft, y);
     Tile* newyright = newtile;

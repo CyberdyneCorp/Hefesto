@@ -3,8 +3,8 @@
 //
 // The db::ChangeRecorder hook of the db primitives EDIT owns (layout-undo
 // "Recorded event kinds"; m2-interactive-editing tasks 1.4 and 3.7): paint
-// and erase (Manhattan, split tiles, triangles), use place/delete/id/lock
-// and the modified flag.
+// and erase (Manhattan, split tiles, triangles), split-tile fracture and
+// join, use place/delete/id/lock and the modified flag.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -146,4 +146,44 @@ TEST_CASE("the modified flag is recorded when it changes", "[cap:layout-undo][re
   db::mark_modified(*def);
   db::mark_modified(*def);  // already modified: nothing new
   CHECK(log.calls == std::vector<std::string>{"modified top was not"});
+}
+
+namespace {
+
+struct SplitLog final : db::NullChangeRecorder {
+  std::vector<db::SplitChange> splits;
+  void split_changed(db::CellDef&, const db::SplitChange& change) override { splits.push_back(change); }
+};
+
+}  // namespace
+
+TEST_CASE("cutting a split tile records its fracture, and the re-merge its join",
+          "[cap:layout-undo][req:Recorded event kinds]") {
+  HEFESTO_REQUIRE_MT(mt);
+  SplitLog log;
+  db::CellLibrary cells;
+  db::CellDef* def = cells.create("top", mt.tech->plane_count()).value();
+  REQUIRE(db::paint_triangle(*def, *mt.tech, db::Rect{0, 0, 10, 10}, db::Diagonal::ne_sw, true, mt.m1).ok());
+  cells.set_recorder(&log);
+  // Painting metal1 over the left half cuts the split tile at x = 5
+  // (TiNMSplitX): one fracture of the original tile, no join.
+  REQUIRE(db::paint(*def, *mt.tech, db::Rect{0, 0, 5, 10}, mt.m1).ok());
+  REQUIRE(log.splits.size() == 1);
+  CHECK(log.splits[0] == db::SplitChange{db::SplitChange::Kind::fracture, mt.metal1, db::Rect{0, 0, 10, 10},
+                                         db::Diagonal::ne_sw, tech::kSpace, mt.m1});
+
+  // Two split tiles along one diagonal with matching neighbors merge into
+  // one after the second paint (DBMergeNMTiles0: dbJoinUndo).
+  db::CellDef* other = cells.create("other", mt.tech->plane_count()).value();
+  REQUIRE(db::paint(*other, *mt.tech, db::Rect{5, 0, 10, 5}, mt.m1).ok());
+  REQUIRE(db::paint_triangle(*other, *mt.tech, db::Rect{0, 0, 5, 5}, db::Diagonal::ne_sw, true, mt.m1).ok());
+  log.splits.clear();
+  REQUIRE(db::paint_triangle(*other, *mt.tech, db::Rect{5, 5, 10, 10}, db::Diagonal::ne_sw, true, mt.m1).ok());
+  REQUIRE(log.splits.size() == 1);
+  CHECK(log.splits[0] == db::SplitChange{db::SplitChange::Kind::join, mt.metal1, db::Rect{0, 0, 10, 10},
+                                         db::Diagonal::ne_sw, tech::kSpace, mt.m1});
+  // Without a recorder nothing is collected.
+  cells.set_recorder(nullptr);
+  REQUIRE(db::paint(*other, *mt.tech, db::Rect{0, 0, 5, 10}, mt.m1).ok());
+  CHECK(log.splits.size() == 1);
 }

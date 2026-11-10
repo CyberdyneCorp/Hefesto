@@ -118,6 +118,12 @@ struct ColorMapState {
 /// Closes a color window and frees its id; false when `id` is none.
 bool close_color_window(editor::EditorState& editor, WindowId id);
 
+/// The view mapping of a color window: its screen area (the frame minus a
+/// border; CMWcreate removes the caption and scroll bars) showing
+/// kColorWindowSurface (WindMove(window, &colorWindowRect)). `setpoint`
+/// uses it to turn window pixels into surface coordinates.
+[[nodiscard]] ViewMapping color_window_mapping(editor::EditorState& editor, const ColorWindow& window);
+
 /// CMWloadWindow: the window edits `color` (caption updated).
 void load_color(ColorWindow& window, int color);
 

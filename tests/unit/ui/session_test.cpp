@@ -51,7 +51,10 @@ std::string without_date(const std::string& log) {
 
 TEST_CASE("logcommands writes the Tcl-build log", "[cap:ui-command-dispatch][req:Command logging][golden:UI-G-016]") {
   UiSession s;
-  const auto started = s.run("logcommands /app/log.txt");
+  // Regression (UI-G-016): a file name alone is a usage error in Magic 8.3.694.
+  CHECK(UiSession::first_error(s.run("logcommands /app/log.txt")).find(
+            "Usage: logcommands [start|stop|update|suspend|resume [filename]]") != std::string::npos);
+  const auto started = s.run("logcommands start /app/log.txt");
   REQUIRE(started.ok());
   CHECK(UiSession::printed(started) == R"(Logging commands to file "/app/log.txt")");
   s.run("box values 0 0 10 10");
@@ -61,7 +64,7 @@ TEST_CASE("logcommands writes the Tcl-build log", "[cap:ui-command-dispatch][req
   s.run("*bypass box values 1 1 2 2");
   s.run("wire show");
   s.run("wire leg");
-  CHECK(UiSession::first_error(s.run("logcommands /app/other.txt")) == "UI-LOG-001: There is already a log file open!");
+  CHECK(UiSession::first_error(s.run("logcommands start /app/other.txt")) == "UI-LOG-001: There is already a log file open!");
   CHECK(UiSession::printed(s.run("logcommands stop")) == "Ending command logging to file.");
   s.run("box");
   CHECK(without_date(read(s, "/app/log.txt")) ==
@@ -93,7 +96,7 @@ TEST_CASE("a command's logged form replaces what was typed in the log and for ob
     void on_command(const cmd::Invocation& inv, const cmd::CommandResult&) override { seen.push_back(inv); }
   } observer;
   s.dispatcher->add_observer(observer);
-  REQUIRE(s.run("logcommands /app/logged.txt").ok());
+  REQUIRE(s.run("logcommands start /app/logged.txt").ok());
   REQUIRE(s.run("pointed", cmd::Origin::key).ok());
   REQUIRE(s.run("logcommands stop").ok());
   CHECK(without_date(read(s, "/app/logged.txt")).ends_with("pointed at 3i 4i\n"));
@@ -128,10 +131,10 @@ TEST_CASE("the log writes the window view and box when a window exists",
   auto* def = s.editor.cells.create("top", s.editor.technology->plane_count()).value();
   auto w = s.editor.windows.open(def, hefesto::view::ScreenRect{0, 0, 99, 99});
   REQUIRE(w.ok());
-  w.value()->set_caption("top EDITING top");
+  s.editor.edit_cell = def;  // Regression (UI-G-016): the title is the caption of the edit state
   w.value()->move_to(hefesto::db::Rect{0, 0, 100, 100});
   s.editor.box = hefesto::db::Rect{1, 2, 3, 4};
-  s.run("logcommands /app/w.txt");
+  s.run("logcommands start /app/w.txt");
   const std::string log = read(s, "/app/w.txt");
   CHECK(log.find("# Title: top EDITING top\n") != std::string::npos);
   CHECK(log.find("\nview ") != std::string::npos);
@@ -141,7 +144,7 @@ TEST_CASE("the log writes the window view and box when a window exists",
 TEST_CASE("bypassed commands are not logged and do not count",
           "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {
   UiSession s;
-  s.run("logcommands /app/b.txt");
+  s.run("logcommands start /app/b.txt");
   const auto before = s.editor.command_count;
   // "Bypass not logged".
   s.run("*bypass box values 0 0 4 4", cmd::Origin::gui);
@@ -289,7 +292,7 @@ TEST_CASE("command files follow Tcl line rules", "[cap:ui-command-dispatch][req:
   UiSession s;
   REQUIRE(s.files().write_atomic("/app/script.tcl", "# setup\nbox values 0 0 \\\n    10 10\nsetpoint 1 2\ngetcell x\n")
               .ok());
-  s.run("logcommands /app/src.txt");
+  s.run("logcommands start /app/src.txt");
   REQUIRE(s.run("source /app/script.tcl").ok());
   CHECK(s.calls_of("box") == std::vector<std::string>{"box values 0 0 10 10"});
   CHECK(s.calls_of("getcell") == std::vector<std::string>{"getcell x"});

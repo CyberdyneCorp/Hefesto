@@ -41,8 +41,14 @@ struct LayerListContext {
 };
 
 /// Parses `text`; fails with "Ambiguous layer: NAME" or "Unrecognized layer:
-/// NAME" followed by the legal names.
+/// NAME" followed by the special names ("    $" ... "    connect"), Magic's
+/// TxError part. The type names Magic prints before them go to standard
+/// output: a command reports tech::layer_names_text() when
+/// is_bad_layer_name() holds for the error (CMDEDIT-PAINT-02).
 [[nodiscard]] diag::Outcome<LayerList> parse_layer_list(std::string_view text, const tech::Technology& tech,
                                                         const LayerListContext& context = {});
+
+/// Whether `d` is parse_layer_list's unknown or ambiguous name error.
+[[nodiscard]] bool is_bad_layer_name(const diag::Diagnostic& d);
 
 }  // namespace hefesto::db

@@ -504,6 +504,15 @@ void WindowManager::redisplay_all() {
   }
 }
 
+void WindowManager::translate(db::Coord dx, db::Coord dy) {
+  for (const auto& w : windows_) {
+    const db::Rect s = w->mapping().surface;
+    w->move_to(db::Rect{s.x0 - dx, s.y0 - dy, s.x1 - dx, s.y1 - dy});
+    w->mark_redisplay_all();
+    notify(w->id(), Change::view);
+  }
+}
+
 void WindowManager::update_display() {
   if (suspended_) {
     return;

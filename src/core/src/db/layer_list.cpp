@@ -28,20 +28,21 @@ bool is_separator(char c) noexcept {
   return c == ',' || c == '+' || c == '-' || c == ' ';
 }
 
-// The legal names listed after a bad one (DBTechPrintTypes, then the specials).
-std::string legal_names(const tech::Technology& tech) {
+constexpr std::string_view kUnrecognized = "Unrecognized layer";
+constexpr std::string_view kAmbiguous = "Ambiguous layer";
+
+// The special names listed after a bad one (TxError; the DBTechPrintTypes
+// part before them is TxPrintf, see is_bad_layer_name).
+std::string special_names() {
   std::string out;
-  for (std::size_t t = tech::kFirstUserType; t < tech.type_count(); ++t) {
-    out += "\n    " + std::string{tech.type_name(static_cast<tech::TileType>(t))};
-  }
   for (const std::string_view s : kSpecials) {
     out += "\n    " + std::string{s};
   }
   return out;
 }
 
-diag::Diagnostic bad_layer(const tech::Technology& tech, std::string_view why, std::string_view name) {
-  return diag::make(codes::kBadLayer, std::string{why} + ": " + std::string{name} + legal_names(tech));
+diag::Diagnostic bad_layer(std::string_view why, std::string_view name) {
+  return diag::make(codes::kBadLayer, std::string{why} + ": " + std::string{name} + special_names());
 }
 
 tech::TypeMask connected_to(const tech::Technology& tech, const tech::TypeMask& set) {
@@ -98,11 +99,11 @@ diag::Outcome<tech::TypeMask> name_mask(std::string_view name, const tech::Techn
     return tech::TypeMask::of(*found.id);
   }
   if (found.error == tech::LookupError::ambiguous) {
-    return bad_layer(tech, "Ambiguous layer", name);
+    return bad_layer(kAmbiguous, name);
   }
   const cmd::LookupResult r = cmd::lookup(name, kSpecials);
   if (r.match != cmd::Match::found) {
-    return bad_layer(tech, "Unrecognized layer", name);
+    return bad_layer(kUnrecognized, name);
   }
   return special_mask(static_cast<Special>(r.index), tech, set, context);
 }
@@ -153,6 +154,10 @@ diag::Outcome<LayerList> parse_layer_list(std::string_view text, const tech::Tec
     pos = end;
   }
   return as_list(set);
+}
+
+bool is_bad_layer_name(const diag::Diagnostic& d) {
+  return d.code == codes::kBadLayer && (d.text.starts_with(kUnrecognized) || d.text.starts_with(kAmbiguous));
 }
 
 }  // namespace hefesto::db

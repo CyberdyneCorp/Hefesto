@@ -22,6 +22,7 @@
 
 #include "db/command_util.hpp"
 #include "db/hier_commands.hpp"
+#include "hefesto/cell/commands.hpp"
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -196,12 +197,25 @@ CommandResult cellname_writeable(const cu::Session& s, const std::vector<std::st
   return CommandResult::success();
 }
 
-CommandResult cellname_exists(const cu::Session& s, const std::vector<std::string>& args) {
+/// `exists`/`self` NAME (dbCellPrintInfo SELF): the list form returns the
+/// name, or 0 when no such cell is loaded; the plain form prints "Cell NAME
+/// is currently loaded." or reports "Cell NAME is not currently loaded."
+/// with no result (CMDEDIT-HIER-08).
+CommandResult cellname_exists(const cu::Session& s, const std::vector<std::string>& args, bool dolist) {
   if (args.size() < 2) {
     const CellDef* def = s.editor->edit_cell;
     return CommandResult::success(Value{def != nullptr ? def->name() : std::string{}});
   }
-  return CommandResult::success(Value{std::int64_t{s.editor->cells.find(args[1]) != nullptr ? 1 : 0}});
+  const CellDef* def = s.editor->cells.find(args[1]);
+  if (dolist) {
+    return CommandResult::success(def != nullptr ? Value{def->name()} : Value{std::int64_t{0}});
+  }
+  if (def == nullptr) {
+    cu::warn(s, "Cell " + args[1] + " is not currently loaded.");
+  } else {
+    cu::print(s, "Cell " + def->name() + " is currently loaded.");
+  }
+  return CommandResult::success();
 }
 
 CommandResult cellname_create(const cu::Session& s, const std::vector<std::string>& args) {
@@ -438,6 +452,18 @@ bool too_many_args(int option, std::size_t n) {
   return (n > 2 && !takes_more) || (n > 3 && option != kProperty) || (n > 1 && takes_name_only(option));
 }
 
+// IDX_DEREFERENCE: cmdFlushCell(def, TRUE) then SelectClear.
+CommandResult cellname_dereference(const cu::Session& s, const std::vector<std::string>& args) {
+  if (args.size() != 2) {
+    return cu::fail(cu::bad_argument("Dereference cell command missing cellname"));
+  }
+  CellDef* def = s.editor->cells.find(args[1]);
+  if (def == nullptr) {
+    return cu::fail(cu::bad_argument("No such cell \"" + args[1] + "\""));
+  }
+  return cell::dereference_cell(*s.ctx, *def);
+}
+
 CommandResult cellname_dispatch(const cu::Session& s, int option, const CellnameArgs& c) {
   switch (option) {
     case kAllcells:
@@ -446,7 +472,7 @@ CommandResult cellname_dispatch(const cu::Session& s, int option, const Cellname
       return cellname_list(s, option, c.dolist);
     case kExists:
     case kSelf:
-      return cellname_exists(s, c.args);
+      return cellname_exists(s, c.args, c.dolist);
     case kChildren:
     case kParents:
     case kInstances:
@@ -481,9 +507,8 @@ CommandResult cellname_dispatch(const cu::Session& s, int option, const Cellname
       return cu::fail(cu::bad_argument("Cell definitions do not have positions.  Use \"instance\"?"));
     case kAbutment:
       return cu::fail(cu::bad_argument("Use \"property get FIXED_BBOX\" to get the cell abutment box."));
-    default:  // dereference: re-read through the search paths (`flush -dereference`)
-      return cu::fail(cu::bad_argument("Use \"flush " + (c.args.size() >= 2 ? c.args[1] : std::string{"cell"}) +
-                                       " -dereference\" to dereference a cell."));
+    default:
+      return cellname_dereference(s, c.args);
   }
 }
 

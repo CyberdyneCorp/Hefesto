@@ -652,13 +652,12 @@ CommandResult port_remove(const PortCall& c, Label& lab) {
 }
 
 // `port first|last` (lowest index of the ports / highest of all labels) and
-// `port next [N]`.
+// `port next`: the smallest port index above the target's. A word after
+// `next` is ignored, as in CmdPort (CMDEDIT-LBL-04); `port N next` names
+// the target by index.
 CommandResult port_report_index(const PortCall& c, int option, const Label* lab) {
   std::int64_t result = -1;
-  std::int64_t ref = lab != nullptr ? std::int64_t{lab->port_index} : -1;
-  if (option == kPortNext && c.args.size() > 1 && cu::str_is_int(c.args[1])) {
-    ref = cu::c_atoi(c.args[1]);
-  }
+  const std::int64_t ref = lab != nullptr ? std::int64_t{lab->port_index} : -1;
   for (const Label& l : c.def->labels()) {
     const std::int64_t idx = l.port_index;
     if (option == kPortLast) {

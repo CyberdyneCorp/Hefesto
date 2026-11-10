@@ -18,12 +18,17 @@
 #include <vector>
 
 #include "crash_commands.hpp"
+#include "db/command_util.hpp"
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cell/hier.hpp"
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/prompt.hpp"
 #include "hefesto/cmd/all_commands.hpp"
+#include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/diag/sink.hpp"
+#include "hefesto/tech/loader.hpp"
 #include "io_session.hpp"
 
 namespace hefesto::cell {
@@ -90,7 +95,13 @@ std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string
   if (name.find('/') != std::string::npos) {
     def.set_file_path(name.starts_with("./") ? name.substr(2) : name);  // as load_cell records it
   }
-  if (read_cell(s.io, def, options).ok() || def.flags().available) {
+  // DBTestOpen: a missing file is only reported as "No file ... found or
+  // readable.", without the reader's "couldn't be read" (CMDEDIT-HIER-04).
+  diag::NullSink quiet;
+  LookupContext lookup{s.io.fs, s.io.paths, s.io.vars, quiet};
+  const bool findable =
+      find_cell_file(lookup, def.name(), def.file_path().generic_string(), options.dereference).has_value();
+  if (findable && (read_cell(s.io, def, options).ok() || def.flags().available)) {
     db::recompute_bbox(def, s.io.magic_compat);
     return std::nullopt;
   }
@@ -125,6 +136,7 @@ cmd::CommandResult load_into_window(IoSession& s, const std::optional<std::strin
 
 namespace {
 
+namespace cu = db::cmdutil;
 using cmd::CommandResult;
 using cmd::Value;
 using detail::fail;
@@ -139,68 +151,6 @@ CommandResult usage(std::string text) {
 
 // --- load -------------------------------------------------------------------
 
-struct LoadArgs {
-  std::optional<std::string> name;
-  ReadOptions options;
-  bool fail = false;      // -fail: a missing file creates no cell
-  bool nowindow = false;  // -nowindow: read into memory, no window changes
-};
-
-std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
-  LoadArgs out;
-  static constexpr std::array<std::string_view, 6> kOptions = {"-force", "-dereference", "-silent",
-                                                               "-quiet",  "-nowindow",    "-fail"};
-  for (const std::string& a : args) {
-    if (a.empty() || a.front() != '-') {
-      if (out.name) {
-        return std::nullopt;
-      }
-      out.name = a;
-      continue;
-    }
-    switch (lookup(a, kOptions)) {
-      case 0:
-        out.options.ignore_tech = true;
-        break;
-      case 1:
-        out.options.dereference = true;
-        break;
-      case 4:
-        out.nowindow = true;
-        break;
-      case 5:
-        out.fail = true;
-        break;
-      case -1:
-        return std::nullopt;
-      default:
-        break;  // verbosity and window options do not change the database
-    }
-  }
-  return out;
-}
-
-CommandResult load_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
-  const auto args = parse_load(inv.args);
-  if (!args) {
-    return usage("Usage: load [name [-force] [-dereference] [-silent] [-nowindow] [-fail]]");
-  }
-  if (args->name) {
-    if (auto bad = illegal_cell_name(*args->name)) {
-      return fail(codes::kInvalidName, *bad);
-    }
-  }
-  return with_session(ctx, [&](IoSession& s) {
-    if (args->nowindow && args->name) {
-      auto loaded = load_cell(s.io, *args->name, args->options);
-      return loaded ? CommandResult::success() : CommandResult::failure(loaded.error());
-    }
-    return detail::load_into_window(s, args->name, args->options, args->fail);
-  });
-}
-
-// --- save -------------------------------------------------------------------
-
 std::string base_name(std::string_view name) {
   if (const std::size_t slash = name.rfind('/'); slash != std::string_view::npos) {
     name.remove_prefix(slash + 1);
@@ -211,6 +161,138 @@ std::string base_name(std::string_view name) {
   return std::string{name};
 }
 
+struct LoadArgs {
+  std::optional<std::string> name;
+  ReadOptions options;
+  bool fail = false;      // -fail: a missing file creates no cell
+  bool nowindow = false;  // -nowindow: read into memory, no window changes
+  tech::GridScale scale{1, 1};  // `scaled n [d]`: internal = n, lambda = d
+  std::vector<std::string> unknown;  // options reported as "No such option"
+  bool bad_scale = false;  // `scaled` with a wrong count: its own usage
+};
+
+constexpr std::string_view kLoadUsage =
+    "Usage: load name [scaled n [d]] [-force] [-nowindow] [-dereference] [-quiet] [-silent] [-fail]";
+
+void apply_load_option(LoadArgs& out, const std::string& word) {
+  static constexpr std::array<std::string_view, 6> kOptions = {"-force", "-dereference", "-silent",
+                                                               "-quiet",  "-nowindow",    "-fail"};
+  switch (lookup(word, kOptions)) {
+    case 0:
+      out.options.ignore_tech = true;
+      break;
+    case 1:
+      out.options.dereference = true;
+      break;
+    case 4:
+      out.nowindow = true;
+      break;
+    case 5:
+      out.fail = true;
+      break;
+    case -1:
+      out.unknown.push_back(word);  // CmdLoad: "No such option", then ignored
+      break;
+    default:
+      break;  // verbosity options do not change the database
+  }
+}
+
+/// CmdLoad's positional words after the name: `scale* n [d]`. Other extra
+/// words are a usage error unless -force, -nowindow or -dereference is given
+/// (Magic then ignores them).
+bool apply_load_words(LoadArgs& out, const std::vector<std::string>& words) {
+  if (words.size() <= 1) {
+    return true;
+  }
+  if (words.size() >= 3 && words[1].starts_with("scale") && cu::str_is_int(words[2])) {
+    if (words.size() > 4 || (words.size() == 4 && !cu::str_is_int(words[3]))) {
+      out.bad_scale = true;
+      return false;
+    }
+    out.scale.internal = cu::c_atoi(words[2]);
+    out.scale.lambda = words.size() == 4 ? cu::c_atoi(words[3]) : 1;
+    return true;
+  }
+  return out.options.ignore_tech || out.nowindow || out.options.dereference;
+}
+
+std::optional<LoadArgs> parse_load(const std::vector<std::string>& args) {
+  LoadArgs out;
+  std::vector<std::string> words;
+  for (const std::string& a : args) {
+    if (a.empty() || a.front() != '-') {
+      words.push_back(a);
+    } else {
+      apply_load_option(out, a);
+    }
+  }
+  if (!words.empty()) {
+    out.name = words[0];
+  }
+  if (!apply_load_words(out, words)) {
+    return out.bad_scale ? std::optional<LoadArgs>{out} : std::nullopt;
+  }
+  return out;
+}
+
+[[nodiscard]] bool scaled(const tech::GridScale& scale) noexcept {
+  return scale.internal > 1 || scale.lambda > 1;
+}
+
+/// `load name scaled n [d]`: reads the cell and its whole hierarchy with
+/// the read ratio multiplied by n/d, then divides it back (CmdLoad changes
+/// DBLambda around DBWloadWindow and DBExpandAll).
+CommandResult load_scaled(IoSession& s, const LoadArgs& args) {
+  tech::GridScale& grid = s.io.grid;
+  grid = tech::reduce(tech::GridScale{grid.internal * args.scale.internal, grid.lambda * args.scale.lambda});
+  CommandResult result = args.nowindow ? CommandResult::success()
+                                       : detail::load_into_window(s, args.name, args.options, args.fail);
+  db::CellDef* top = s.ed.cells.find(base_name(*args.name));
+  if (args.nowindow) {
+    auto loaded = load_cell(s.io, *args.name, args.options);
+    result = loaded ? CommandResult::success() : CommandResult::failure(loaded.error());
+    top = loaded ? loaded.value() : nullptr;
+  }
+  if (top != nullptr && result.ok()) {
+    s.emit(codes::kReadNote, "Recursively reading all cells at new scale.");
+    expand_all(s.io, *top);
+  }
+  grid = tech::reduce(tech::GridScale{grid.internal * args.scale.lambda, grid.lambda * args.scale.internal});
+  return result;
+}
+
+CommandResult load_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
+  const auto args = parse_load(inv.args);
+  if (!args) {
+    return usage(std::string{kLoadUsage});
+  }
+  if (args->bad_scale) {
+    return usage("Usage: load name scaled n [d] [-force] [-nowindow] [-dereference] [-quiet] [-silent] [-fail]");
+  }
+  if (args->name) {
+    if (auto bad = illegal_cell_name(*args->name)) {
+      return fail(codes::kInvalidName, *bad);
+    }
+  }
+  return with_session(ctx, [&](IoSession& s) {
+    for (const std::string& word : args->unknown) {
+      s.emit(codes::kBadUsage, "No such option \"" + word + "\".");
+    }
+    if (args->name && scaled(args->scale)) {
+      return load_scaled(s, *args);
+    }
+    if (args->nowindow && args->name) {
+      auto loaded = load_cell(s.io, *args->name, args->options);
+      return loaded ? CommandResult::success() : CommandResult::failure(loaded.error());
+    }
+    return detail::load_into_window(s, args->name, args->options, args->fail);
+  });
+}
+
+// --- save -------------------------------------------------------------------
+
+
 db::CellDef* save_target(IoSession& s) {
   if (s.ed.edit_cell != nullptr) {
     return s.ed.edit_cell;
@@ -219,8 +301,40 @@ db::CellDef* save_target(IoSession& s) {
   return w != nullptr ? w->root() : nullptr;
 }
 
+/// cmdCheckNewName for `save NAME` under a different name: an existing
+/// file is overwritten only when the user says so, and a cell already named
+/// NAME refuses the rename. A refusal leads Magic to ask for another file
+/// name; a headless host (and an empty answer) aborts the save. Returns the
+/// result to stop with, or nullopt to write.
+std::optional<CommandResult> check_new_name(IoSession& s, const db::CellDef& def, const std::string& name) {
+  const std::string base = base_name(name);
+  if (base == def.name()) {
+    return std::nullopt;
+  }
+  const std::string file = name.ends_with(".mag") ? name : name + ".mag";
+  bool refused = false;
+  if (s.io.fs.exists(file)) {
+    static const std::array<std::string, 2> kYesNo = {"no", "yes"};
+    const std::string question = "File " + file + " already exists.\n  Overwrite it with " + def.name() + "? ";
+    refused = cmd::ask(s.ed.prompt, question, kYesNo, 0) == 0;
+  }
+  if (!refused && s.ed.cells.find(base) != nullptr) {
+    s.emit(codes::kBadUsage,
+           "Can't rename cell '" + def.name() + "' to '" + base + "' because that cell already exists.");
+    refused = true;
+  }
+  if (!refused) {
+    return std::nullopt;
+  }
+  s.emit(codes::kSaveAbandoned, "Cell not saved.");
+  return CommandResult::success();
+}
+
 CommandResult save_as(IoSession& s, db::CellDef& def, const std::string& name) {
   const bool script = name.size() > 4 && name.ends_with(".tcl");
+  if (auto stop = script ? std::nullopt : check_new_name(s, def, name)) {
+    return std::move(*stop);
+  }
   if (!script) {
     def.flags().no_edit = false;  // "save as" writes a new file (Q-CELL-37)
   }
@@ -409,12 +523,13 @@ void set_or_append(std::vector<std::string>& path, std::string_view text) {
   path = split_search_path(text);
 }
 
-CommandResult path_report(const SearchPaths& p) {
-  return CommandResult::success(Value{Value::List{
-      Value{"Search path for cells is \"" + join_search_path(p.path) + "\""},
-      Value{"Cell library search path is \"" + join_search_path(p.library) + "\""},
-      Value{"System search path is \"" + join_search_path(p.system) + "\""},
-  }});
+/// CmdPath with no argument: three TxPrintf lines and no result, in every
+/// build (CMDEDIT-HIER-10).
+CommandResult path_report(cmd::CommandContext& ctx, const SearchPaths& p) {
+  ctx.emit(diag::make(::hefesto::db::codes::kReport, "Search path for cells is \"" + join_search_path(p.path) + "\"\n" +
+                                              "Cell library search path is \"" + join_search_path(p.library) +
+                                              "\"\nSystem search path is \"" + join_search_path(p.system) + "\""));
+  return CommandResult::success();
 }
 
 CommandResult path_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
@@ -427,7 +542,7 @@ CommandResult path_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
     return usage("Usage: path [search|cell|sys] [[+]path]");
   }
   if (inv.args.empty()) {
-    return path_report(paths);
+    return path_report(ctx, paths);
   }
   static constexpr std::array<std::string_view, 4> kOptions = {"search", "cell", "sys", "help"};
   const int option = lookup(inv.args[0], kOptions);
@@ -530,9 +645,28 @@ CommandResult crashbackups_cmd(cmd::CommandContext& ctx, const cmd::Invocation& 
 
 }  // namespace
 
+diag::Outcome<db::CellDef*> load_def(cmd::CommandContext& ctx, std::string_view name) {
+  diag::Outcome<db::CellDef*> out = diag::make(codes::kNoCell, "There is no editor session.");
+  (void)with_session(ctx, [&](IoSession& s) {
+    out = load_cell(s.io, name, ReadOptions{});
+    if (out) {
+      db::recompute_bbox(*out.value(), s.io.magic_compat);
+    }
+    return CommandResult::success();
+  });
+  return out;
+}
+
+CommandResult save_def_as(cmd::CommandContext& ctx, db::CellDef& def, std::string_view file) {
+  return with_session(ctx, [&](IoSession& s) {
+    const auto saved = save_cell(s.io, def, file);
+    return saved.ok() ? CommandResult::success() : CommandResult::failure(saved.error());
+  });
+}
+
 bool register_cell_commands(cmd::CommandRegistry& registry) {
   const std::array<cmd::CommandSpec, 7> specs = {{
-      {"load", "load [name] [-force] [-dereference] [-silent] [-nowindow] [-fail]",
+      {"load", "load [name [scaled n [d]]] [-force] [-dereference] [-quiet] [-silent] [-nowindow] [-fail]",
        "Loads a cell (reading it through the search paths; subcells are read when needed) and makes it the edit cell.",
        load_cmd},
       {"save", "save [file]", "Saves the edit cell, updating timestamps first; a .tcl name writes a command script.",

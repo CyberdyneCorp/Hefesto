@@ -148,7 +148,7 @@ Compatibility: exact
 - `port makeall [INDEX] [DIR]` SHALL make every non-port label in the edit cell a port, as `make` does.
 - `port connections [DIR…]` SHALL query (`Directions = ` followed by a subset of `nesw`, in that order) or set the direction set.
 - `port remove` SHALL turn the port back into a plain label (clearing the index and port attributes).
-- `port first` / `port last` SHALL report the lowest and highest port index in the edit cell. `port next [N]` SHALL report the smallest port index greater than the target's (or N's).
+- `port first` / `port last` SHALL report the lowest and highest port index in the edit cell. `port next` SHALL report the smallest port index greater than the target's; a word after `next` is ignored, as in Magic (`port N next` names the target by its index).
 - `port equivalent [N]` SHALL give the target the index of port N (or of another port with the same text), making them one electrical port.
 - `port renumber` SHALL reassign indices 1, 2, 3, … to the ports in sorted text order, with ports of identical text sharing one index (verify against Magic).
 

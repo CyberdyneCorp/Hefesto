@@ -222,6 +222,21 @@ TEST_CASE("the edit frame change is recorded as one undo event", "[cap:cmd-hiera
   CHECK(cell::edit_frame(f.s.editor) == before);
 }
 
+// Regression (MODEL-G-050/057): dbwUndoChangeEdit prints the new edit cell
+// and its use when an edit cell change is undone or redone.
+TEST_CASE("undoing an edit cell change prints the new edit cell", "[cap:layout-undo][req:Undo and redo commands]") {
+  EditFixture f;
+  hefesto::editor::EditorState& ed = f.s.editor;
+  cell::set_edit_frame(ed, cell::EditFrame{f.inv, f.s.top, f.x1->transform});
+  REQUIRE(ed.undo.close_step());
+  REQUIRE(ed.undo.undo(ed).ok());
+  CHECK(ed.undo.take_notes() == std::vector<std::string>{"Edit cell is now top (Topmost cell in the window)"});
+  CHECK(ed.edit_cell == f.s.top);
+  (void)ed.undo.redo(ed);
+  CHECK(ed.undo.take_notes() == std::vector<std::string>{"Edit cell is now inv (x1)"});
+  CHECK(ed.edit_cell == f.inv);
+}
+
 // --- getcell / dump ----------------------------------------------------------------------
 
 TEST_CASE("getcell places the child label at the box lower-left corner",
@@ -454,7 +469,7 @@ TEST_CASE("cellname reports children, parents, instances, the window and cell da
   CHECK(s.run("cellname list childinst top").value.to_string() == "x1");
   CHECK(s.run("cellname celldef inv").value.to_string() == "inv");
   CHECK(s.run("cellname window").value.to_string() == "top");
-  CHECK(s.run("cellname exists nosuch").value.to_string() == "0");
+  CHECK(s.run("cellname list exists nosuch").value.to_string() == "0");
   CHECK(s.run("cellname filepath inv").value.to_string() == "default");
   s.ok("cellname filepath inv /lib");
   CHECK(f.inv->file_path().generic_string() == "/lib/inv");

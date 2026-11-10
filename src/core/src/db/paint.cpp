@@ -86,16 +86,32 @@ void record_tiles(CellDef& def, tech::PlaneId id, const Rect& area, const PaintR
   }
 }
 
-diag::Status apply_row(CellDef& def, tech::PlaneId id, const Rect& area, const PaintRow& row,
-                       const std::optional<TriangleSpec>& tri) {
-  if (in_usable_plane(area)) {
-    record_tiles(def, id, area, row, tri);
-  }
-  Plane& plane = def.plane(id);
+diag::Status paint_plane_row(Plane& plane, const Rect& area, const PaintRow& row,
+                             const std::optional<TriangleSpec>& tri) {
   if (tri) {
     return plane.paint_triangle(area, tri->diagonal, tri->right_side, row);
   }
   return plane.paint(area, row);
+}
+
+diag::Status apply_row(CellDef& def, tech::PlaneId id, const Rect& area, const PaintRow& row,
+                       const std::optional<TriangleSpec>& tri) {
+  ChangeRecorder* recorder = in_usable_plane(area) ? def.recorder() : nullptr;
+  if (recorder == nullptr) {
+    return paint_plane_row(def.plane(id), area, row, tri);
+  }
+  record_tiles(def, id, area, row, tri);
+  // The split-tile fractures and joins of the paint (dbSplitUndo/dbJoinUndo).
+  std::vector<SplitEdit> splits;
+  Plane& plane = def.plane(id);
+  plane.record_splits(&splits);
+  diag::Status status = paint_plane_row(plane, area, row, tri);
+  plane.record_splits(nullptr);
+  for (const SplitEdit& e : splits) {
+    recorder->split_changed(def, SplitChange{e.join ? SplitChange::Kind::join : SplitChange::Kind::fracture, id,
+                                             e.area, e.diagonal, e.left_type, e.right_type});
+  }
+  return status;
 }
 
 struct Image {

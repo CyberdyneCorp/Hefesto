@@ -14,8 +14,11 @@
 #include <utility>
 
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/labels.hpp"
+#include "hefesto/db/paint.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/undo/undo_log.hpp"
+#include "hefesto/view/window.hpp"
 
 namespace hefesto::select {
 
@@ -37,15 +40,34 @@ bool same_placement(const db::CellUse& u, const db::CellDef& child, const db::Tr
   return u.def == &child && u.transform == t && u.array == a;
 }
 
+/// selRedisplay: erases the highlights of the selection `from` (its root
+/// and bounding box) and draws those of the editor's current selection.
+void request_redraw(editor::EditorState& editor, db::CellDef* old_root, const db::Rect& old_area) {
+  if (old_root != nullptr && !old_area.is_null()) {
+    editor.highlights.request(old_root, old_area, true);
+  }
+  const db::Rect now = editor.selection.bbox();
+  if (editor.selection.root() != nullptr && !now.is_null()) {
+    editor.highlights.request(editor.selection.root(), now, false);
+  }
+}
+
 /// One selection change: the contents before and after.
 class SelectionEvent final : public undo::Event {
  public:
   SelectionEvent(Snapshot before, Snapshot after) : before_(std::move(before)), after_(std::move(after)) {}
-  void undo(editor::EditorState& editor) override { editor.selection.restore(before_); }
-  void redo(editor::EditorState& editor) override { editor.selection.restore(after_); }
+  void undo(editor::EditorState& editor) override { replay(editor, before_); }
+  void redo(editor::EditorState& editor) override { replay(editor, after_); }
   [[nodiscard]] std::string describe() const override { return "selection change"; }
 
  private:
+  static void replay(editor::EditorState& editor, const Snapshot& to) {
+    db::CellDef* old_root = editor.selection.root();
+    const db::Rect old_area = editor.selection.bbox();
+    editor.selection.restore(to);
+    request_redraw(editor, old_root, old_area);
+  }
+
   Snapshot before_;
   Snapshot after_;
 };
@@ -196,6 +218,7 @@ Snapshot Selection::snapshot() const {
   Snapshot s;
   s.root = root_;
   s.offset = offset_;
+  s.bbox = bbox();
   s.provenance = provenance_;
   if (def_ == nullptr) {
     return s;
@@ -215,6 +238,11 @@ void Selection::restore(const Snapshot& snapshot) {
   offset_ = snapshot.offset;
   provenance_ = snapshot.provenance;
   if (snapshot.planes.empty()) {
+    if (def_ != nullptr) {
+      for (const auto& u : def_->uses()) {
+        unlink(*u);  // the definitions must not keep pointers to uses about to be destroyed
+      }
+    }
     def_.reset();
     return;
   }
@@ -229,7 +257,69 @@ void Selection::restore(const Snapshot& snapshot) {
   db::recompute_bbox(*def_);
 }
 
+EditCopies::EditCopies(editor::EditorState& editor) : editor_(editor), before_(editor.selection.snapshot()) {
+  db::CellDef* root = editor.edit_root != nullptr ? editor.edit_root : editor.edit_cell;
+  if (const view::LayoutWindow* w = editor.windows.current(); w != nullptr && w->root() != nullptr) {
+    root = w->root();
+  }
+  editor.selection.set_root(root, editor.technology->plane_count());
+  editor.selection.clear();
+}
+
+void EditCopies::add_use(const db::CellUse& use) {
+  db::CellDef* sel = editor_.selection.def();
+  if (sel == nullptr || use.def == nullptr) {
+    return;
+  }
+  db::PlaceOptions po;
+  po.id = use.id;
+  po.transform = db::compose(editor_.edit_transform, use.transform);
+  po.array = use.array;
+  po.locked = use.locked;
+  if (auto copy = db::place(*sel, *use.def, po); copy.ok()) {
+    editor_.selection.provenance().push_back(
+        Provenance{Provenance::Kind::use, editor_.edit_cell, use.id, copy.value()->bbox});
+  }
+}
+
+void EditCopies::add_label(const db::Label& label) {
+  db::CellDef* sel = editor_.selection.def();
+  if (sel == nullptr) {
+    return;
+  }
+  db::Label copy = label;
+  copy.rect = db::apply(editor_.edit_transform, label.rect);
+  copy.justification = db::transform_position(editor_.edit_transform, label.justification);
+  editor_.selection.provenance().push_back(Provenance{Provenance::Kind::label, editor_.edit_cell, {}, copy.rect});
+  sel->labels().push_back(std::move(copy));
+}
+
+void EditCopies::add_paint(const db::CellDef& source, const db::Rect& area, const db::Transform& to_edit) {
+  db::CellDef* sel = editor_.selection.def();
+  if (sel == nullptr) {
+    return;
+  }
+  tech::TypeMask types = tech::TypeMask::all();
+  types.set(tech::kSpace, false);
+  const db::Transform to_root = db::compose(editor_.edit_transform, to_edit);
+  (void)db::copy_paint(source, area, to_root, *sel, *editor_.technology, types);
+  editor_.selection.provenance().push_back(
+      Provenance{Provenance::Kind::paint, editor_.edit_cell, {}, db::apply(to_root, area)});
+}
+
+void EditCopies::commit() {
+  if (committed_) {
+    return;
+  }
+  committed_ = true;
+  if (db::CellDef* sel = editor_.selection.def()) {
+    db::recompute_bbox(*sel);
+  }
+  record_change(editor_, std::move(before_));
+}
+
 void record_change(editor::EditorState& editor, Snapshot before) {
+  request_redraw(editor, before.root, before.bbox);
   editor.undo.record(std::make_unique<SelectionEvent>(std::move(before), editor.selection.snapshot()));
 }
 

@@ -30,6 +30,7 @@ constexpr std::array kViewCodes = {
     CodeInfo{"VIEW-FEEDBACK-003", error, "`feedback save` cannot write its file."},
     CodeInfo{"VIEW-GRID-001", error, "A `grid` spacing is not greater than zero, or `grid multiple` is outside 1..255."},
     CodeInfo{"VIEW-REPORT-001", info, "A view or window command prints a note (Magic's TxPrintf text) and returns no result."},
+    CodeInfo{"VIEW-REPORT-002", warning, "A window wizard command reports on the error stream (Magic's TxError text) without failing."},
     CodeInfo{"VIEW-RESET-001", info, "`reset` does not apply: the host window system manages the display."},
     CodeInfo{"VIEW-SCALE-001", warning, "The requested view needs a scale below the minimum; the minimum scale is used (`At minimum scale!`)."},
     CodeInfo{"VIEW-SCROLL-001", error, "A `scroll` amount is not a fraction, or its units are not `w` or `l`."},

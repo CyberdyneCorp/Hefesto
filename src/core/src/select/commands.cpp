@@ -224,6 +224,19 @@ diag::Outcome<Displacement> displacement(const Context& c, const std::vector<std
   return Displacement{d.value(), false};
 }
 
+/// CmdCopy/CmdMove recast the pointer form (no arguments) as `VERB to Xi Yi`
+/// (the pointer in edit coordinates) so the command log no longer depends on
+/// the pointer.
+CommandResult logged_to_point(const Context& c, const Invocation& inv, std::string_view verb) {
+  CommandResult result = CommandResult::success();
+  if (inv.args.empty() && c.ed->command_point) {
+    const db::Point p = editor::to_edit(*c.ed, c.ed->command_point->point);
+    result.logged_as = Invocation{std::string{verb}, {"to", std::to_string(p.x) + "i", std::to_string(p.y) + "i"},
+                                  inv.origin, std::nullopt};
+  }
+  return result;
+}
+
 std::string copy_move_usage(std::string_view verb, bool origin) {
   const std::string v{verb};
   const std::string o = origin ? "[origin] " : "";
@@ -250,7 +263,7 @@ CommandResult cmd_copy_in(const Context& c, const Invocation& inv) {
   auto copied = ops::whole_selection(c, t);
   ops::copy_into_edit(c, *copied);
   ops::commit(c, std::move(before));
-  return CommandResult::success();
+  return logged_to_point(c, inv, "copy");
 }
 
 CommandResult cmd_copy(CommandContext& ctx, const Invocation& inv) {
@@ -304,6 +317,7 @@ CommandResult cmd_move_in(const Context& c, const Invocation& inv) {
     if (box) {
       ops::set_root_box(c, db::apply(db::translation(-delta.x, -delta.y), *box));
     }
+    c.ed->windows.translate(delta.x, delta.y);  // WindTranslate: the layout keeps its screen place
     return CommandResult::success();
   }
   const db::Transform t = db::translation(delta.x, delta.y);
@@ -311,7 +325,7 @@ CommandResult cmd_move_in(const Context& c, const Invocation& inv) {
   Snapshot before = c.ed->selection.snapshot();
   ops::transform_selection(c, t);
   ops::commit(c, std::move(before));
-  return CommandResult::success();
+  return logged_to_point(c, inv, "move");
 }
 
 CommandResult cmd_move(CommandContext& ctx, const Invocation& inv) {
@@ -343,6 +357,22 @@ diag::Outcome<db::Point> stretch_delta(const Context& c, const std::vector<std::
   return delta_of(dir, a.value(), a.value());
 }
 
+/// CmdStretch recasts the pointer form as `stretch DIR Ni` for the log.
+CommandResult logged_stretch(const Invocation& inv, const db::Point& d) {
+  CommandResult result = CommandResult::success();
+  std::string dir = "w";
+  db::Coord n = -d.x;
+  if (d.y != 0) {
+    dir = d.y > 0 ? "n" : "s";
+    n = d.y > 0 ? d.y : -d.y;
+  } else if (d.x > 0) {
+    dir = "e";
+    n = d.x;
+  }
+  result.logged_as = Invocation{"stretch", {dir, std::to_string(n) + "i"}, inv.origin, std::nullopt};
+  return result;
+}
+
 CommandResult cmd_stretch_in(const Context& c, const Invocation& inv) {
   if (inv.args.size() > 2) {
     return fail_text(codes::kUsage, "Usage: stretch [direction [amount]]");
@@ -359,7 +389,7 @@ CommandResult cmd_stretch_in(const Context& c, const Invocation& inv) {
   Snapshot before = c.ed->selection.snapshot();
   ops::stretch_selection(c, d.x, d.y);
   ops::commit(c, std::move(before));
-  return CommandResult::success();
+  return inv.args.empty() ? logged_stretch(inv, d) : CommandResult::success();
 }
 
 CommandResult cmd_stretch(CommandContext& ctx, const Invocation& inv) {

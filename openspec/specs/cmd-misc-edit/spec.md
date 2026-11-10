@@ -50,7 +50,7 @@ Compatibility: exact
 
 ### Requirement: Random command
 
-`random` SHALL return (scripting) or print a pseudo-random non-negative integer. `random seed [V]` SHALL seed the generator with integer V, or with the current time in seconds if V is omitted. Any other form prints `usage: random [seed [<value>]]`. Hefesto MAY use a different generator, but the same seed SHALL give the same sequence within Hefesto.
+`random` SHALL return (scripting) or print a pseudo-random non-negative integer. `random seed [V]` SHALL seed the generator with integer V, or with the current time in seconds if V is omitted. Any other form prints `usage: random [seed [<value>]]`. The generator SHALL be the additive-feedback generator of the GNU C library's `random()` (Magic on Linux), so a seed gives the numbers Magic gives (`random seed 42` then `random` gives 71876166).
 
 Compatibility: behavioral
 

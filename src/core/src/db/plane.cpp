@@ -90,6 +90,10 @@ diag::Status Plane::paint_triangle(const Rect& area, Diagonal diagonal, bool rig
   return diag::Done{};
 }
 
+void Plane::record_splits(std::vector<SplitEdit>* log) noexcept {
+  impl_->tiles.set_split_log(log);
+}
+
 bool Plane::enumerate(const Rect& area, const tech::TypeMask& types, const TileVisitor& visit) const {
   if (area.x0 > area.x1 || area.y0 > area.y1) {
     return true;

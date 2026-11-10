@@ -309,6 +309,11 @@ class WindowManager {
                     std::optional<WindowId> only = std::nullopt);
   /// `redraw`: every window's whole area.
   void redisplay_all();
+  /// WindTranslate (after `move origin` moved a root's contents by
+  /// (-dx, -dy)): every window's surface area moves by (-dx, -dy), so the
+  /// layout keeps its place on the screen; each window is notified of a
+  /// view change and redrawn.
+  void translate(db::Coord dx, db::Coord dy);
   /// The update after a command: notifies Change::content for every window
   /// with a pending redisplay, unless the display is suspended.
   void update_display();

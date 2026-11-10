@@ -90,6 +90,9 @@ class Dispatcher {
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
  private:
+  /// The client of the next command: `color` when the command point is in a
+  /// color window, else client().
+  [[nodiscard]] std::string target_client() const;
   CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation);
   void publish(const Invocation& invocation, const CommandResult& result);
   void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result);

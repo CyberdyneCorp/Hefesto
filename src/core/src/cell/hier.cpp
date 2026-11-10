@@ -257,12 +257,43 @@ void apply_frame(editor::EditorState& ed, const EditFrame& f) {
   ed.edit_transform = f.to_root;
 }
 
+/// The id of the use that `f` edits, as dbwUndoChangeEdit prints it: the
+/// window's root use ("Topmost cell in the window") or the instance of the
+/// edit cell under the edit root at the frame's transform.
+std::string frame_use_id(const EditFrame& f) {
+  if (f.root == nullptr || f.root == f.cell) {
+    return std::string{kTopUseId};
+  }
+  std::string id;
+  std::string any;
+  db::walk_hierarchy(*f.root, [&](const db::CellUse& use, const db::Transform& to_root, int /*depth*/) {
+    if (use.def == f.cell) {
+      if (any.empty()) {
+        any = use.id;
+      }
+      if (id.empty() && to_root == f.to_root) {
+        id = use.id;
+      }
+    }
+    return true;
+  });
+  return id.empty() ? any : id;
+}
+
+/// dbwUndoChangeEdit: makes `f` the edit frame and prints the new edit cell.
+void change_edit(editor::EditorState& ed, const EditFrame& f) {
+  apply_frame(ed, f);
+  if (f.cell != nullptr) {
+    ed.undo.note("Edit cell is now " + f.cell->name() + " (" + frame_use_id(f) + ")");
+  }
+}
+
 /// DBWUndoOldEdit + DBWUndoNewEdit as one event.
 class EditCellEvent final : public undo::Event {
  public:
   EditCellEvent(EditFrame before, EditFrame after) : before_(before), after_(after) {}
-  void undo(editor::EditorState& editor) override { apply_frame(editor, before_); }
-  void redo(editor::EditorState& editor) override { apply_frame(editor, after_); }
+  void undo(editor::EditorState& editor) override { change_edit(editor, before_); }
+  void redo(editor::EditorState& editor) override { change_edit(editor, after_); }
   [[nodiscard]] std::string describe() const override {
     const auto name = [](const db::CellDef* d) { return d != nullptr ? d->name() : std::string{"(none)"}; };
     return "edit cell " + name(before_.cell) + " -> " + name(after_.cell);

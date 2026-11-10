@@ -177,6 +177,11 @@ TEST_CASE("port first, last, next, remove, exists and renumber",
   CHECK(s.top->labels()[0].port_index == 1);  // b
   s.box(-1, -1, 1, 1);
   CHECK(s.run("port exists").value.to_string() == "1");
+  // Regression (CMDEDIT-LBL-04): the word after `next` is ignored. The
+  // target under the box is b (index 1), above which there is no port.
+  CHECK(s.run("port next").value.to_string() == "-1");
+  CHECK(s.run("port next 0").value.to_string() == "-1");
+  CHECK(s.run("port 0 next").value.to_string() == "1");  // the target named by index: a
 }
 
 TEST_CASE("port changes are recorded as erase and put", "[cap:cmd-labels-properties][req:Port make, numbering and directions]") {

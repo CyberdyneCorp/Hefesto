@@ -97,6 +97,9 @@ struct EditorState {
 
   // VIEWER: display styles (absent in a headless session), fonts, windows.
   std::optional<display::StyleSet> styles;
+  /// Where the styles were looked up at startup (the system library path);
+  /// `tech load` reloads the new technology's styletype from the same places.
+  std::vector<platform::Path> style_dirs;
   display::FontRegistry fonts;
   view::WindowManager windows;
 

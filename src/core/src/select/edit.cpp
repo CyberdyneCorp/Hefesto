@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
@@ -183,7 +184,13 @@ bool editable(const Context& c) {
 void finish_edit(const Context& c, const db::Rect& root_area) {
   db::CellDef& edit = *c.ed->edit_cell;
   const db::Rect area = db::apply(root_to_edit(c), root_area);
-  (void)db::adjust_labels(edit, *c.tech, area);
+  // SelectAndCopy1/2 call DBAdjustLabels, which prints its "Moving label"
+  // and "Adjusting size of label" notes (CMDEDIT-SEL-16).
+  std::vector<std::string> notes;
+  (void)db::adjust_labels(edit, *c.tech, area, &notes);
+  for (std::string& n : notes) {
+    cu::print(c.s, std::move(n));
+  }
   db::recompute_bbox(edit, c.s.magic_compat);
   c.ed->windows.area_changed(edit, area, std::nullopt);
 }

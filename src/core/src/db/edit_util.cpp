@@ -29,6 +29,14 @@ std::string describe_box(const CellDef* root, const std::optional<Rect>& area) {
          std::to_string(area->x1) + "," + std::to_string(area->y1) + ")";
 }
 
+// dbwRecordBoxArea: asks the highlight layer to erase (the old box) or draw
+// (the new box) in the windows showing the box root (DBWHLRedraw).
+void request_box_redraw(editor::EditorState& editor, bool erase) {
+  if (CellDef* root = box_root(editor); root != nullptr && editor.box) {
+    editor.highlights.request(root, *editor.box, erase);
+  }
+}
+
 // One box change: the old and new (root cell, rectangle) (cmd-box "Box state").
 class BoxEvent : public undo::Event {
  public:
@@ -43,8 +51,10 @@ class BoxEvent : public undo::Event {
 
  private:
   static void apply(editor::EditorState& editor, CellDef* root, const std::optional<Rect>& area) {
+    request_box_redraw(editor, true);
     editor.box = area;
     editor.box_root = area ? root : nullptr;
+    request_box_redraw(editor, false);
   }
 
   CellDef* old_root_;
@@ -79,8 +89,10 @@ void set_box(editor::EditorState& editor, CellDef* root, std::optional<Rect> are
   if (old_area == area && (!area || old_root == root)) {
     return;
   }
+  request_box_redraw(editor, true);
   editor.box = area;
   editor.box_root = area ? root : nullptr;
+  request_box_redraw(editor, false);
   editor.undo.record(std::make_unique<BoxEvent>(old_root, old_area, editor.box_root, area));
 }
 

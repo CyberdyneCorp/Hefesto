@@ -321,6 +321,24 @@ TEST_CASE("array numbers labels", ARRAY) {
   CHECK(got == std::vector<std::pair<std::string, db::Coord>>{{"D0", 1}, {"D1", 11}, {"D2", 21}, {"D3", 31}});
 }
 
+// Regression (CMDEDIT-SEL-16): SelectAndCopy2's DBAdjustLabels prints a note
+// for each copied label that lands on another layer.
+TEST_CASE("array reports labels moved to another layer", ARRAY) {
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  s.paint({0, 0, 10, 10}, mt.m1);
+  put_label(s.top(), "D0", mt.m1, {2, 2, 2, 2});
+  put_label(s.top(), "E0", mt.m1, {6, 6, 6, 6});
+  s.ok("box 0 0 10 10");
+  s.ok("select area labels");
+  const auto r = s.run("array 3 1");
+  REQUIRE(r.ok());
+  const std::string text = all_text(r);
+  CHECK(text.find("Moving label \"D1\" from metal1 to space in cell top.\n") != std::string::npos);
+  CHECK(text.find("Moving label \"E2\" from metal1 to space in cell top.\n") != std::string::npos);
+  CHECK(text.find("\"D0\"") == std::string::npos);
+}
+
 TEST_CASE("array replicates paint", ARRAY) {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);
@@ -387,10 +405,26 @@ TEST_CASE("what -list describes paint, labels and subcells", WHAT) {
   CHECK(s.run("what -list").value.to_string() == "metal1 {{A metal1 {}}} {{x1 inv}}");
   const auto printed = s.run("what");
   const std::string text = all_text(printed);
-  CHECK(text.find("Selected mask layers:\n    metal1   ( top )") != std::string::npos);
+  // The top cell is named by its root use (CMDEDIT-SEL-17).
+  CHECK(text.find("Selected mask layers:\n    metal1   ( Topmost cell in the window )") != std::string::npos);
   CHECK(text.find("\"A\" is attached to metal1 in cell def top") != std::string::npos);
   CHECK(text.find("Selected subcell(s):\n    Instance \"x1\" of cell \"inv\"") != std::string::npos);
   CHECK_FALSE(s.run("what -bogus extra").ok());
+}
+
+// Regression (MODEL-G-053): a selected label copied from a child keeps its
+// hierarchical name; selEnumLFunc2's relaxed match finds the layout label, so
+// `what` reports its own text and the instance holding it.
+TEST_CASE("what finds a child label selected under its hierarchical name", WHAT) {
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  db::CellDef* inv = s.cell("inv");
+  sel::test::paint(*inv, mt, {0, 0, 4, 4}, mt.m1);
+  put_label(*inv, "VDD", mt.m1, {1, 1, 1, 1});
+  s.place(*inv, "x1", 50, 50);
+  s.editor.selection.set_root(&s.top(), mt.tech->plane_count());
+  put_label(*s.editor.selection.def(), "x1/VDD", mt.m1, {51, 51, 51, 51});
+  CHECK(s.run("what -list").value.to_string() == "{} {{VDD metal1 x1}} {}");
 }
 
 TEST_CASE("what -listall names the cells holding each layer", WHAT) {
@@ -399,7 +433,8 @@ TEST_CASE("what -listall names the cells holding each layer", WHAT) {
   s.paint({0, 0, 10, 10}, mt.m1);
   s.ok("box 0 0 10 10");
   s.ok("select area metal1");
-  CHECK(s.run("what -listall").value.to_string() == "{{metal1 top}} {} {}");
+  // Regression (CMDEDIT-SEL-17): the top cell is its root use's identifier.
+  CHECK(s.run("what -listall").value.to_string() == "{{metal1 {{Topmost cell in the window}}}} {} {}");
 }
 
 #define ID "[cap:cmd-selection][req:Identify command]"

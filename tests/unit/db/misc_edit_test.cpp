@@ -113,6 +113,21 @@ TEST_CASE("random repeats after the same seed", CAP "[req:Random command]") {
   CHECK(EditSession::texts(usage).find("usage: random [seed [<value>]]") != std::string::npos);
 }
 
+// Regression (CMDEDIT-MISC-05): the numbers are glibc random()'s, as Magic
+// prints them on Linux.
+TEST_CASE("random gives the C library sequence of Magic", CAP "[req:Random command]") {
+  HEFESTO_REQUIRE_MT(mt);
+  Misc s(mt);
+  s.ok("random seed 42");
+  CHECK(s.value("random") == "71876166");
+  CHECK(s.value("random") == "708592740");
+  s.ok("random seed 1");
+  CHECK(s.value("random") == "1804289383");
+  CHECK(s.value("random") == "846930886");
+  s.ok("random seed 0");  // srandom(0) seeds as 1
+  CHECK(s.value("random") == "1804289383");
+}
+
 TEST_CASE("shell reports unavailability without process spawning", CAP "[req:Shell command]") {
   HEFESTO_REQUIRE_MT(mt);
   Misc s(mt);  // the portable services have no process runner (as on iPadOS)

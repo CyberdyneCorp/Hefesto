@@ -121,7 +121,14 @@ TEST_CASE("startup opens the layout window unless -nowindow", "[cap:app-startup]
   Session s;
   REQUIRE(s.start({}).ok());
   REQUIRE(s.editor.windows.current() != nullptr);  // a null-display frame, before any file is loaded
-  CHECK(s.editor.windows.current()->root() == nullptr);
+  // Regression (CMDEDIT-HIER-09, MODEL-G-050): like Magic's startup window it
+  // shows "(UNNAMED)", which is the edit cell, and there is no box yet.
+  REQUIRE(s.editor.windows.current()->root() != nullptr);
+  CHECK(s.editor.windows.current()->root()->name() == "(UNNAMED)");
+  CHECK(s.editor.edit_cell == s.editor.windows.current()->root());
+  CHECK(s.editor.edit_root == s.editor.edit_cell);
+  CHECK_FALSE(s.editor.box.has_value());
+  CHECK(s.editor.undo.step_count() == 0);  // not recorded
   CHECK_FALSE(s.editor.styles.has_value());  // the minimum technology names no styletype files here
   Session headless;
   app::StartupOptions options;

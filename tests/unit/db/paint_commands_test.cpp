@@ -87,6 +87,10 @@ TEST_CASE("layer list modes, specials and errors", CAP "[req:Layer list syntax]"
   REQUIRE_FALSE(bad.ok());
   CHECK(bad.error().text.starts_with("Unrecognized layer: foo\n"));
   CHECK(bad.error().text.find("    connect") != std::string::npos);
+  CHECK(db::is_bad_layer_name(bad.error()));
+  // Regression (CMDEDIT-PAINT-02): the type names are Magic's TxPrintf part
+  // and are not in the error, which lists only the special names.
+  CHECK(bad.error().text == "Unrecognized layer: foo\n    $\n    *\n    errors\n    labels\n    subcell\n    connect");
   CHECK_FALSE(db::parse_layer_list("$", t).ok());  // no pointer
   db::LayerListContext under;
   under.under_pointer = tech::TypeMask::of(mt.poly) | tech::TypeMask::of(tech::kErrorP);
@@ -116,9 +120,12 @@ TEST_CASE("paint paints each type over the box", CAP "[req:Paint command]") {
   CHECK(rects_of(s.top, mt.metal1, mt.m1) == std::vector<Rect>{{0, 0, 10, 20}});
   const auto labels = s.run("paint labels");
   REQUIRE_FALSE(labels.ok());
-  CHECK(labels.diagnostics.back().text == "Label layer cannot be painted. Use the \"label\" command");
+  CHECK(labels.diagnostics.back().text == "Label layer cannot be painted.  Use the \"label\" command");  // two spaces (CMDEDIT-PAINT-02)
   CHECK_FALSE(s.run("paint subcell").ok());
-  CHECK_FALSE(s.run("paint foo").ok());
+  const auto foo = s.run("paint foo");
+  CHECK_FALSE(foo.ok());
+  // Regression (CMDEDIT-PAINT-02): "Layer names are:" goes to standard output.
+  CHECK(EditSession::texts(foo).find("Layer names are:\n    ndiff\n") != std::string::npos);
   CHECK(s.run("paint a b").diagnostics.back().text == "Usage: paint <layers> | cursor | pick x y");
 }
 
@@ -241,6 +248,51 @@ TEST_CASE("named stacked contacts follow magic-compat", CAP "[req:Erase command]
   }
 }
 
+namespace {
+
+// The contacts of the golden `tiny` technology: pc and ndc on the active
+// plane and the stacked type pm12c = pc+m2c.
+std::shared_ptr<const tech::Technology> tiny_contacts() {
+  tech::TechnologyBuilder b;
+  b.set_name("tinyc");
+  bool ok = b.add_plane("active").ok() && b.add_plane("metal1").ok() && b.add_plane("metal2").ok();
+  ok = ok && b.add_type("active", "poly").ok() && b.add_type("active", "ndiff").ok() &&
+       b.add_type("metal1", "metal1").ok() && b.add_type("metal2", "metal2").ok() && b.add_type("active", "pc").ok() &&
+       b.add_type("active", "ndc").ok() && b.add_type("metal1", "m2c").ok();
+  const std::vector<std::string_view> pc{"poly", "metal1"};
+  const std::vector<std::string_view> ndc{"ndiff", "metal1"};
+  const std::vector<std::string_view> m2c{"metal1", "metal2"};
+  const std::vector<std::string_view> stack{"pc", "m2c", "pm12c"};
+  ok = ok && b.add_contact("pc", pc).ok() && b.add_contact("ndc", ndc).ok() && b.add_contact("m2c", m2c).ok() &&
+       b.add_stackable(stack).ok();
+  if (!ok) {
+    return nullptr;
+  }
+  auto t = b.finalize();
+  return t.ok() ? t.value() : nullptr;
+}
+
+}  // namespace
+
+// Regression (CMDEDIT-PAINT-02): a stacked type in the layer list adds its
+// residues to the set, and the set is painted once in type order, so pc is not
+// painted again after m2c.
+TEST_CASE("paint decomposes stacked types before painting in type order", CAP "[req:Paint command]") {
+  HEFESTO_REQUIRE_MT(mt);
+  const auto tech = tiny_contacts();
+  if (tech == nullptr || !tech->find_type("pm12c").ok()) {
+    SKIP("the tech contract cannot build a stackable alias");
+  }
+  const tech::PlaneId active = tech->find_plane("active").id.value();
+  Paint s(mt);
+  s.editor.technology = tech;
+  s.ok("box values 0 0 10 10");
+  s.ok("paint pc,ndc,pm12c");
+  // pc, ndc, then m2c: m2c on metal1 breaks ndc down to ndiff, as in Magic.
+  // Painting pc again for pm12c would leave pc.
+  CHECK(s.top.plane(active).type_at(Point{5, 5}) == *tech->find_type("ndiff").id);
+}
+
 TEST_CASE("a point box erases the labels it touches", CAP "[req:Erase command]") {
   HEFESTO_REQUIRE_MT(mt);
   for (const bool compat : {true, false}) {
@@ -341,7 +393,7 @@ TEST_CASE("contact paints where the residues overlap", CAP "[req:Contact command
   CHECK(s.at(mt.metal2, Point{4, 5}) == mt.m2);
   const auto r = s.run("contact metal1");
   REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().text == "Error: tile type \"metal1\" is not a contact.");
+  CHECK(r.diagnostics.back().text == "Error:  tile type \"metal1\" is not a contact.");  // two spaces (CMDEDIT-PAINT-11)
   CHECK(s.run("contact x via1").diagnostics.back().text == "Usage: contact erase <contact_type>");
 }
 
@@ -444,6 +496,25 @@ TEST_CASE("drop refuses a foreign selection and non-editable cells", CAP "[req:D
   REQUIRE(db::paint(*s.editor.selection.def(), *mt.tech, Rect{0, 0, 10, 10}, mt.m2).ok());
   child->flags().no_edit = true;
   CHECK(s.run("drop metal3").diagnostics.back().text == "Cannot drop into non-editable cell child");
+  CHECK(rects_of(*child, mt.metal3, mt.m3).empty());
+}
+
+// Regression (CMDEDIT-PAINT-15): Magic's CmdDrop compares the edit cell
+// itself with the selection root, so a child edited in place is refused.
+TEST_CASE("drop refuses when the edit cell is a child of the selection root", CAP "[req:Drop command]") {
+  HEFESTO_REQUIRE_MT(mt);
+  Paint s(mt);
+  db::CellDef* child = s.cell("child");
+  s.put(*child, Rect{0, 0, 10, 10}, mt.m2);
+  db::recompute_bbox(*child);
+  auto use = db::place(s.top, *child, db::PlaceOptions{});
+  REQUIRE(use.ok());
+  s.editor.selection.set_root(&s.top, mt.tech->plane_count());
+  REQUIRE(db::paint(*s.editor.selection.def(), *mt.tech, Rect{0, 0, 10, 10}, mt.m2).ok());
+  s.ok("box values 0 0 10 10");
+  s.editor.edit_root = &s.top;
+  s.editor.edit_cell = child;
+  CHECK(s.run("drop metal3").diagnostics.back().text == "The selection does not match the edit cell.");
   CHECK(rects_of(*child, mt.metal3, mt.m3).empty());
 }
 

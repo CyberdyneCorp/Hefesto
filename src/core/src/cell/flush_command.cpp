@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/cell/commands.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cmd/prompt.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -141,3 +142,16 @@ bool register_flush_command(cmd::CommandRegistry& registry) {
 }
 
 }  // namespace hefesto::cell::detail
+
+namespace hefesto::cell {
+
+cmd::CommandResult dereference_cell(cmd::CommandContext& ctx, db::CellDef& def) {
+  return detail::with_session(ctx, [&](detail::IoSession& s) {
+    if (detail::flush_cell(s, def, true)) {
+      s.ed.selection.clear();  // SelectClear
+    }
+    return cmd::CommandResult::success();
+  });
+}
+
+}  // namespace hefesto::cell

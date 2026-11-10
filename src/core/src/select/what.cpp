@@ -8,12 +8,14 @@
 // database/DBcellname.c:383-436 dbGetUseName)
 
 #include <algorithm>
-#include <cctype>
 #include <cstdio>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/transform.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/select/diag_codes.hpp"
 #include "select/commands_internal.hpp"
@@ -59,7 +61,8 @@ std::string use_id_of(const std::string& path) {
 }
 
 /// cmdFindWhatTileFunc: the cells holding `type` under the selected tiles
-/// (use identifiers, the root by its name), most recent first.
+/// (use identifiers, the top cell by its root use's identifier), most
+/// recent first.
 std::vector<std::string> cells_with(const Context& c, tech::TileType type) {
   std::vector<std::string> names;
   tech::TypeMask mask = tech::TypeMask::of(type);
@@ -71,7 +74,7 @@ std::vector<std::string> cells_with(const Context& c, tech::TileType type) {
     }
     sel.plane(plane).enumerate(db::whole_plane(), mask, [&](const db::TileView& t) {
       (void)connect::search_tree_tiles(*c.root, t.area, mask, {}, [&](const connect::TreeTile& found) {
-        const std::string name = found.path->empty() ? c.root->name() : use_id_of(*found.path);
+        const std::string name = found.path->empty() ? std::string{cell::kTopUseId} : use_id_of(*found.path);
         if (std::find(names.begin(), names.end(), name) == names.end()) {
           names.insert(names.begin(), name);
         }
@@ -89,21 +92,42 @@ struct LabelEntry {
   std::optional<std::string> cell;  // nullopt: the root (a "def")
 };
 
+/// selEnumLFunc (exact: same area, text and justification) or, when
+/// `relaxed`, selEnumLFunc2 (same area, text or justification may differ):
+/// the layout label of a selected one, with the text the layout has and the
+/// use holding it (none for the top cell or the edit root, cmdWhatLabelFunc).
+/// The selection keeps hierarchical names ("child_0/VDD") of labels copied
+/// from children, which only the relaxed search finds (MODEL-G-053).
+std::optional<LabelEntry> layout_label(const Context& c, const db::Label& want, bool relaxed) {
+  std::optional<LabelEntry> hit;
+  const db::CellDef* edit_root = c.ed->edit_root != nullptr ? c.ed->edit_root : c.ed->edit_cell;
+  (void)connect::search_tree_labels(*c.root, want.rect, tech::TypeMask::all(), {}, [&](const connect::TreeLabel& l) {
+    if (db::apply(l.to_root, l.label->rect) != want.rect) {
+      return true;
+    }
+    const bool same_text = l.label->text == want.text;
+    const bool same_just = db::transform_position(l.to_root, l.label->justification) == want.justification;
+    if (relaxed ? !same_text && !same_just : !same_text || !same_just) {
+      return true;
+    }
+    hit = LabelEntry{l.label->text, want.type, std::nullopt};
+    if (!l.path->empty() && l.def != edit_root) {
+      hit->cell = use_id_of(*l.path);
+    }
+    return false;
+  });
+  return hit;
+}
+
 /// SelEnumLabels(FALSE): each selected label with the use holding it.
 std::vector<LabelEntry> selected_labels(const Context& c) {
   std::vector<LabelEntry> out;
   for (const db::Label& want : c.ed->selection.def()->labels()) {
-    LabelEntry e{want.text, want.type, std::nullopt};
-    (void)connect::search_tree_labels(*c.root, want.rect, tech::TypeMask::all(), {}, [&](const connect::TreeLabel& l) {
-      if (l.label->text != want.text || db::apply(l.to_root, l.label->rect) != want.rect) {
-        return true;
-      }
-      if (!l.path->empty()) {
-        e.cell = use_id_of(*l.path);
-      }
-      return false;
-    });
-    out.push_back(std::move(e));
+    std::optional<LabelEntry> e = layout_label(c, want, false);
+    if (!e) {
+      e = layout_label(c, want, true);
+    }
+    out.push_back(e ? std::move(*e) : LabelEntry{want.text, want.type, std::nullopt});
   }
   // orderLabelFunc: text, then cell (when both have one), then type
   // descending.
@@ -256,22 +280,6 @@ CommandResult what_print(const Context& c) {
   return CommandResult::success();
 }
 
-/// CmdIllegalChars(id, ",/", "Cell use id").
-std::optional<std::string> illegal_char(const std::string& id) {
-  for (const char ch : id) {
-    const auto u = static_cast<unsigned char>(ch);
-    if (u > 127 || std::iscntrl(u) != 0) {
-      char buf[96];
-      std::snprintf(buf, sizeof buf, "Cell use id contains illegal control character 0x%x", u);
-      return std::string{buf};
-    }
-    if (ch == ',' || ch == '/') {
-      return "Cell use id contains illegal character \"" + std::string(1, ch) + "\"";
-    }
-  }
-  return std::nullopt;
-}
-
 }  // namespace
 
 CommandResult cmd_what(CommandContext& ctx, const Invocation& inv) {
@@ -303,7 +311,7 @@ CommandResult cmd_identify(CommandContext& ctx, const Invocation& inv) {
     return fail_text(codes::kUsage, "Usage: identify use_id");
   }
   const std::string& id = inv.args[0];
-  if (const auto bad = illegal_char(id)) {
+  if (const auto bad = cell::illegal_use_id(id)) {  // CmdIllegalChars(id, ",/", "Cell use id")
     return fail_text(codes::kIdIllegal, *bad);
   }
   db::CellDef* sel = c.ed->selection.def();

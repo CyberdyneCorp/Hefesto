@@ -89,6 +89,8 @@ struct Snapshot {
   std::vector<Use> uses;
   std::vector<Provenance> provenance;
   std::optional<db::Point> offset;
+  /// Selection::bbox() when taken (the highlight area to erase).
+  db::Rect bbox;
 };
 
 class Selection {
@@ -157,7 +159,38 @@ class Selection {
 };
 
 /// Records `before` and the editor's current selection as one undo event
-/// (selection changes restore their before/after contents on undo/redo).
+/// (selection changes restore their before/after contents on undo/redo),
+/// and asks the highlight layer to erase the old selection and draw the new
+/// one (selRedisplay; also on undo/redo).
 void record_change(editor::EditorState& editor, Snapshot before);
+
+/// The selection after an edit that copies items into the edit cell
+/// (`getcell`, `dump`: SelectClear, then SelectAndCopy2 of each new item):
+/// the constructor makes the current window's root (the edit root without a
+/// window) the selection root and clears the selection; the add_* calls copy
+/// edit-cell items into it in root coordinates with their provenance;
+/// commit() records the change for undo and requests the highlight redraw.
+class EditCopies {
+ public:
+  explicit EditCopies(editor::EditorState& editor);
+  EditCopies(const EditCopies&) = delete;
+  EditCopies& operator=(const EditCopies&) = delete;
+  ~EditCopies() = default;
+
+  /// A use of the edit cell.
+  void add_use(const db::CellUse& use);
+  /// A label of the edit cell.
+  void add_label(const db::Label& label);
+  /// The paint of `source` under `area`, placed in the edit cell through
+  /// `to_edit` (every type but space).
+  void add_paint(const db::CellDef& source, const db::Rect& area, const db::Transform& to_edit);
+  /// Records the change since construction (once).
+  void commit();
+
+ private:
+  editor::EditorState& editor_;
+  Snapshot before_;
+  bool committed_ = false;
+};
 
 }  // namespace hefesto::select

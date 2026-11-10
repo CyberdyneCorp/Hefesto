@@ -168,6 +168,7 @@ class NMMerger {
     }
     plane_.join_x(tile, tp);
     tile->body = ttype;
+    plane_.note_split(true, tile_rect(tile), ttype);  // dbJoinUndo
     return true;
   }
 

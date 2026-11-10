@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 #include "hefesto/cmd/registry.hpp"
@@ -34,6 +35,8 @@ struct EditorState;
 }
 
 namespace hefesto::tech {
+
+class Technology;
 
 /// Adds the TECH commands to `registry`. Returns false if a name was taken.
 bool register_tech_commands(cmd::CommandRegistry& registry);
@@ -62,6 +65,15 @@ struct SessionLoadOptions {
 /// available cell multiplied by n/d (floor, infinities kept). Returns
 /// whether any value did not scale exactly.
 bool scale_layout(editor::EditorState& editor, std::int64_t n, std::int64_t d);
+
+/// Reloads the display styles of the session's technology from
+/// EditorState::style_dirs (kept when the files are missing).
+void reload_display_styles(editor::EditorState& editor, platform::FileSystem& files, bool magic_compat);
+
+/// DBTechPrintTypes(DBAllButSpaceAndDRCBits, FALSE): "Layer names are:" and
+/// one line per type with its names ("    m1 or metal1"), each line ending in
+/// a line feed. The TxPrintf part of a bad layer-list report.
+[[nodiscard]] std::string layer_names_text(const Technology& tech);
 
 /// DBScaleValue: floor(v*n/d) in 64-bit arithmetic; |v| >= 2^30-6 is kept.
 [[nodiscard]] std::int64_t scale_value(std::int64_t v, std::int64_t n, std::int64_t d) noexcept;
