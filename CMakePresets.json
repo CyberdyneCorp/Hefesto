@@ -333,11 +333,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -349,11 +344,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -365,11 +355,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -381,11 +366,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -408,11 +388,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -424,11 +399,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -440,11 +410,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -457,12 +422,7 @@
         "noTestsAction": "error",
         "stopOnFailure": false
       },
-      "configuration": "Debug",
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
-      }
+      "configuration": "Debug"
     },
     {
       "name": "ci-linux",
@@ -473,11 +433,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -489,11 +444,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -505,11 +455,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -521,11 +466,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -537,11 +477,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     },
     {
@@ -553,11 +488,6 @@
       "execution": {
         "noTestsAction": "error",
         "stopOnFailure": false
-      },
-      "filter": {
-        "exclude": {
-          "label": "golden-slow"
-        }
       }
     }
   ]

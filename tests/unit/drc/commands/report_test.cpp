@@ -157,7 +157,10 @@ TEST_CASE("Index out of range", "[cap:drc-commands][req:drc find]") {
   const db::Rect before = *f.editor.box;
   const auto r = f.run("drc find 5");
   CHECK(DrcFixture::texts(r) == "There aren't that many errors\n");
-  CHECK(r.value.to_string() == "-1");
+  CHECK(r.diagnostics.back().no_newline);  // TxPrintf without a line end
+  // The message, printed through the Tcl console, replaces the -1 result
+  // (golden DRC-FIND-1); the list form keeps it.
+  CHECK(r.value.is_none());
   CHECK(f.editor.box == before);
   CHECK(f.value("drc list find 5") == "-1");
   CHECK(f.out("drc list find 5").empty());
@@ -193,7 +196,7 @@ TEST_CASE("drc find without errors and in list mode", "[cap:drc-commands][req:dr
   db::CellDef* top = shown_top(f);
   const auto none = f.run("drc find");
   CHECK(DrcFixture::texts(none) == "There are no errors in top.\n");
-  CHECK(none.value.to_string() == "0");
+  CHECK(none.value.is_none());  // the printed message replaces the 0 result
   CHECK(f.value("drc list find") == "0");
 
   error_row(*top, 1);
@@ -482,7 +485,12 @@ TEST_CASE("list results are nested values of strings and integers",
   db::CellDef* top = shown_top(f);
   error_row(*top, 2);
   using L = cmd::Value::List;
-  CHECK(f.run("drc list count").value == cmd::Value{L{L{"top", 2}}});
+  // One {cell count} pair per cell. Built step by step: `L{L{...}}` may pick
+  // the copy constructor instead of a one-element list (compilers differ).
+  L pairs;
+  pairs.emplace_back(L{"top", 2});
+  CHECK(f.run("drc list count").value == cmd::Value{pairs});
+  CHECK(f.value("drc list count") == "{top 2}");
   CHECK(f.run("drc list count total").value == cmd::Value{2});
   f.editor.drc.styles = drc::DrcStyleList{{"a b", "c"}};
   CHECK(f.run("drc listall style").value == cmd::Value{L{"a b", "c"}});
