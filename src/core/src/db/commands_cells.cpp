@@ -161,6 +161,7 @@ CommandResult cellname_delete(const cu::Session& s, const std::vector<std::strin
     (void)s.editor->cells.rename(*doomed, "__UNNAMED__");
   }
   unload_windows(s, *doomed);
+  s.editor->drc.pending.remove(*doomed);  // DBCellDeleteDef: DRCRemovePending
   if (auto st = s.editor->cells.remove(*doomed); !st.ok()) {
     return cu::fail(st.error());
   }

@@ -140,7 +140,8 @@ void UndoLog::begin_replay(editor::EditorState& editor) {
 void UndoLog::end_replay(editor::EditorState& editor, bool magic_compat) {
   // After a replay the changed cells' bounding boxes are recomputed and the
   // changed areas redisplayed (dbUndoCloseCell, DBReComputeBbox,
-  // DBWAreaChanged). DRC re-queueing arrives with DRC (M3).
+  // DBWAreaChanged). The events queue their DRC areas themselves as they
+  // replay (drc::check_this, db_recorder.cpp).
   std::vector<Changed> merged;
   for (const Changed& c : changed_) {
     auto it = std::find_if(merged.begin(), merged.end(), [&](const Changed& m) { return m.def == c.def; });

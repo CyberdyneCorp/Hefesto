@@ -24,6 +24,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/select/selection.hpp"
 #include "io_session.hpp"
@@ -193,6 +194,7 @@ CommandResult getcell_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) 
       return CommandResult::failure(use.error());
     }
     db::recompute_bbox(edit, s.io.magic_compat);
+    drc::check_this(s.ed, edit, use.value()->bbox);  // CmdGetcell, TT_CHECKSUBCELL
     cu::set_current_use(cs.value(), use.value());
     db::edit::set_box(s.ed, s.ed.edit_root, editor::to_root(s.ed, use.value()->bbox));  // DBWSetBox(EditRootDef)
     select::EditCopies selection(s.ed);  // SelectClear + SelectAndCopy2
@@ -240,6 +242,7 @@ void dump_contents(IoSession& s, const cu::Session& cs, const db::CellDef& child
   }
   db::mark_modified(edit);
   db::recompute_bbox(edit, s.io.magic_compat);
+  drc::check_this(s.ed, edit, db::apply(to_edit, all));  // SelectDump -> SelectAndCopy2
   selection.commit();
 }
 

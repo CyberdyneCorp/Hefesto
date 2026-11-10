@@ -20,6 +20,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/plane.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/editor_state.hpp"
 
 namespace hefesto::undo {
@@ -79,13 +80,16 @@ class PaintEvent final : public Event {
       return;
     }
     db::Rect area;
+    // dbUndoPaintForw/Back: DRCCheckThis over each replayed rectangle.
     if (backward) {
       for (auto it = changes_.rbegin(); it != changes_.rend(); ++it) {
         area = unite(area, set_type(*it, it->old_type));
+        drc::check_this(editor, *def_, it->area);
       }
     } else {
       for (const db::TileChange& change : changes_) {
         area = unite(area, set_type(change, change.new_type));
+        drc::check_this(editor, *def_, change.area);
       }
     }
     db::mark_modified(*def_);
@@ -218,6 +222,7 @@ class UseEvent final : public Event {
       const auto placed = db::place(*parent_, *state_.child, options);
       if (placed.ok()) {
         editor.undo.note_changed(*parent_, placed.value()->bbox);
+        drc::check_this(editor, *parent_, placed.value()->bbox);  // dbUndoCellForw/Back, TT_CHECKSUBCELL
       }
       return;
     }
@@ -228,6 +233,7 @@ class UseEvent final : public Event {
     const db::Rect area = use->bbox;
     if (db::remove_use(*use).ok()) {
       editor.undo.note_changed(*parent_, area);
+      drc::check_this(editor, *parent_, area);  // dbUndoCellForw/Back, TT_CHECKSUBCELL
     }
   }
 

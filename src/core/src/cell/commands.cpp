@@ -106,6 +106,7 @@ std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string
     db::recompute_bbox(def, s.io.magic_compat);
     return std::nullopt;
   }
+  s.ed.drc.pending.remove(def);  // a format error may have enqueued it (DRCRemovePending)
   (void)s.ed.cells.remove(def);
   return fail(codes::kNotFound, "No file \"" + name + "\" found or readable.");
 }

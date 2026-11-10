@@ -9,7 +9,6 @@
 // THIRD_PARTY_NOTICES.md). Owner: WIRE.
 //
 // Not yet reproduced (other milestones or workstreams):
-//  - DRCCheckThis after painting (DRC is M3);
 //  - the selection goes through select::Selection's storage directly; its
 //    undo events and label selection come with SELECT's area/chunk API.
 
@@ -28,6 +27,7 @@
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/wiring/diag_codes.hpp"
@@ -194,6 +194,7 @@ void finish_paint(const WireSession& s, const db::Rect& edit_area, const tech::T
   }
   db::recompute_bbox(def, s.magic_compat);
   s.ed->windows.area_changed(def, edit_area, labels ? std::nullopt : std::optional<tech::TypeMask>(layers));
+  drc::check_this(*s.ed, def, edit_area);  // WireAddLeg, WireAddContact
 }
 
 // The next type present in `mask` after `current`, cycling through the user
