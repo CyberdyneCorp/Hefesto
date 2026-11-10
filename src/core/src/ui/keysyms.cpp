@@ -23,6 +23,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string_view>
 
 #include "hefesto/ui/macros.hpp"
@@ -37,7 +38,7 @@ struct KeysymName {
 };
 
 // clang-format off
-constexpr std::array kKeysyms{
+constexpr KeysymName kKeysymTable[] = {
     KeysymName{"space", 0x20U},
     KeysymName{"exclam", 0x21U},
     KeysymName{"quotedbl", 0x22U},
@@ -376,6 +377,9 @@ constexpr std::array kKeysyms{
     KeysymName{"Hyper_R", 0xffeeU},
     KeysymName{"Delete", 0xffffU},
 };
+// A C array: deducing std::array over the whole table exceeds Clang's fold
+// expression limit with libstdc++.
+constexpr std::span<const KeysymName> kKeysyms{kKeysymTable};
 // clang-format on
 
 }  // namespace

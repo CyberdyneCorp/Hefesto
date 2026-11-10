@@ -40,7 +40,9 @@ constexpr StartupBinding wiring_bindings() {
 // then tools.tcl: the `+`/`-` auto-increment keys and magic::enable_tools.
 // An empty text deletes the binding.
 // clang-format off
-constexpr std::array kStartup{
+// A C array: deducing std::array over a table this long can exceed Clang's
+// fold-expression limit with libstdc++ (256 elements).
+constexpr StartupBinding kStartup[] = {
     macro("", "a", "select visible"),
     macro("", "A", "select more visible"),
     macro("", "^A", "select less visible"),
