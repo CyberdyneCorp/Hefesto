@@ -1,7 +1,7 @@
 # Diagnostic codes: view area
 
-Codes `VIEW-<TOPIC>-<NNN>` emitted by `src/core/src/view/` (owner: VIEWER,
-`openspec/changes/m1-core-viewer/design.md` D2/D3). Conventions and the
+Codes `VIEW-<TOPIC>-<NNN>` emitted by `src/core/src/view/` (owner: VIEW,
+`openspec/changes/m2-interactive-editing/design.md` D2). Conventions and the
 renderings are described in [../codes.md](../codes.md).
 
 The table below is generated from `src/core/src/view/codes.cpp`:
@@ -17,10 +17,16 @@ fails when the two disagree.
 | Code | Default severity | Meaning |
 |---|---|---|
 | `VIEW-BOX-001` | error | A view command needs the box and there is none, or the box is in another cell than the window's root. |
-| `VIEW-CLIENT-001` | error | `specialopen` names a window client that is not available yet (`color` arrives with ui-color-window, `netlist` with netlist-window). |
+| `VIEW-CLIENT-001` | error | `specialopen` names a window client that is not available yet (`netlist` arrives with netlist-window). |
+| `VIEW-COLOR-001` | error | A color window command names a color index outside the color map (`The colormap only has values from 0 to N (decimal).`). |
+| `VIEW-COLOR-002` | error | A color window command was run with no color window open or pointed at. |
+| `VIEW-COLOR-003` | error | The color window's `load` or `save` could not read or write the color map file. |
 | `VIEW-COORD-001` | error | A view command argument is not a valid coordinate, integer or fraction. |
 | `VIEW-EXPAND-001` | warning | An instance under the box cannot be expanded because its cell is unavailable. |
 | `VIEW-EXPAND-002` | error | `expand instance` / `unexpand instance` names an instance path that does not exist under the window's root. |
+| `VIEW-FEEDBACK-001` | error | `feedback` was given an unknown option, an unknown display style, or a style index below 1. |
+| `VIEW-FEEDBACK-002` | warning | `feedback find N` names an area that does not exist; area 1 is shown instead. |
+| `VIEW-FEEDBACK-003` | error | `feedback save` cannot write its file. |
 | `VIEW-GRID-001` | error | A `grid` spacing is not greater than zero, or `grid multiple` is outside 1..255. |
 | `VIEW-REPORT-001` | info | A view or window command prints a note (Magic's TxPrintf text) and returns no result. |
 | `VIEW-RESET-001` | info | `reset` does not apply: the host window system manages the display. |
@@ -28,6 +34,7 @@ fails when the two disagree.
 | `VIEW-SCROLL-001` | error | A `scroll` amount is not a fraction, or its units are not `w` or `l`. |
 | `VIEW-SEE-001` | error | A `see` layer list names an unknown layer. |
 | `VIEW-USAGE-001` | error | A view or window command was given the wrong number or form of arguments; the usage is printed. |
+| `VIEW-WATCH-001` | error | `*watch` names an unknown plane; the legal plane names are listed. |
 | `VIEW-WINDOW-001` | error | No more windows can be opened (`Can't have more than 31 windows.`). |
 | `VIEW-WINDOW-002` | error | The named or numbered window does not exist. |
 | `VIEW-WINDOW-003` | error | The command needs a window and none is open or pointed at (`Point to a window first`). |

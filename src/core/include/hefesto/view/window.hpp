@@ -124,8 +124,9 @@ struct GridState {
 };
 
 /// What changed, for observers ("Change-driven redisplay"). `content`
-/// means the window has a pending redisplay (LayoutWindow::take_redisplay).
-enum class Change : std::uint8_t { opened, closed, view, content, expansion, visibility, grid, caption };
+/// means the window has a pending redisplay (LayoutWindow::take_redisplay);
+/// `highlights` that its highlight frame changed (HighlightLayer::frame).
+enum class Change : std::uint8_t { opened, closed, view, content, expansion, visibility, grid, caption, highlights };
 
 /// The redisplay a window still owes ("Change-driven redisplay"): the whole
 /// window, or a list of areas. `areas` are in root coordinates and are not
@@ -269,6 +270,12 @@ class WindowManager {
   /// Closes a window; VIEW-WINDOW-002 when no window has that id.
   [[nodiscard]] diag::Status close(WindowId id);
   [[nodiscard]] LayoutWindow* find(WindowId id) const;
+  /// A window id for a window of another client (the color window): the
+  /// smallest id no window holds; it counts toward the 31-window limit
+  /// (VIEW-WINDOW-001) until release_id().
+  [[nodiscard]] diag::Outcome<WindowId> reserve_id();
+  void release_id(WindowId id);
+  [[nodiscard]] bool id_reserved(WindowId id) const;
   /// The window named `name` (LayoutWindow::name), or nullptr.
   [[nodiscard]] LayoutWindow* find_named(std::string_view name) const;
   /// The window commands apply to (the front window, or the one under the
@@ -318,6 +325,11 @@ class WindowManager {
   /// there (WindMove), so it shows the same layout after the database scale.
   void scale_all(const std::function<db::Point(db::Point)>& scale_point);
 
+  /// `*winddebug` (windPrintCommands): the dispatcher prints every command
+  /// it dispatches while set.
+  [[nodiscard]] bool print_commands() const noexcept { return print_commands_; }
+  void set_print_commands(bool on) noexcept { print_commands_ = on; }
+
   /// `updatedisplay suspend|resume`.
   [[nodiscard]] bool display_suspended() const noexcept { return suspended_; }
   void set_display_suspended(bool on) noexcept { suspended_ = on; }
@@ -341,6 +353,8 @@ class WindowManager {
                                                     const ScreenRect& screen);
 
   std::vector<std::unique_ptr<LayoutWindow>> windows_;  // front to back
+  std::vector<WindowId> reserved_;                      // ids of other clients' windows
+  [[nodiscard]] WindowId free_id() const;
   std::optional<WindowId> current_;
   std::vector<ViewObserver*> observers_;
   void propagate_change(const db::CellDef& def, const db::Rect& area, std::uint32_t windows,
@@ -350,6 +364,7 @@ class WindowManager {
   ChromeMetrics chrome_metrics_;
   ScreenRect screen_ = kNullScreen;
   bool suspended_ = false;
+  bool print_commands_ = false;
   CellReader cell_reader_ = nullptr;
 };
 

@@ -196,6 +196,44 @@ struct BoxDrawing {
 [[nodiscard]] BoxDrawing box_drawing(const db::Rect& box, std::int64_t box_px_width, std::int64_t box_px_height,
                                      const std::optional<db::Rect>& edit_bbox);
 
+// --- highlights (ui-feedback-and-highlights "Highlight layer and clients") --
+
+/// What a highlight item draws.
+enum class HighlightShape : std::uint8_t {
+  box,       // the rectangle drawn as its style defines (fill and/or outline)
+  outline,   // the rectangle's four sides only
+  line,      // one segment (`line`)
+  triangle,  // the triangle of `rect` on `diagonal` / `right_side`
+  cross,     // a point (`rect` has zero area) drawn as a cross
+  text,      // `text` centred in `rect` (drawn by the front end, like labels)
+};
+
+/// One highlight primitive in root coordinates, drawn over the layout.
+struct HighlightItem {
+  HighlightShape shape = HighlightShape::outline;
+  std::size_t style = kStyleOutlineHighlights;  // display style-table index
+  ResolvedStyle resolved;                       // `style` resolved (white without display styles)
+  db::Rect rect;
+  SceneSegment line;
+  db::Diagonal diagonal = db::Diagonal::nw_se;
+  bool right_side = false;
+  std::string text;
+
+  friend bool operator==(const HighlightItem&, const HighlightItem&) = default;
+};
+
+/// The highlights of one window in drawing order: the clients in
+/// registration order, each client's items in the order it emitted them
+/// (later items draw over earlier ones).
+struct HighlightScene {
+  std::vector<HighlightItem> items;
+  [[nodiscard]] bool empty() const noexcept { return items.empty(); }
+};
+
+/// Fills `item.resolved` from `styles`; without display styles (a headless
+/// session) every highlight resolves to opaque white with a solid outline.
+void resolve_highlight(HighlightItem& item, const StyleSet* styles);
+
 /// One entry of the layer palette shown by the desktop shell.
 struct LayerSwatch {
   tech::TileType type = tech::kSpace;

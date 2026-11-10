@@ -3,13 +3,18 @@
 
 #include "view/command_util.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <numeric>
 #include <cstdlib>
 #include <unordered_set>
 
 #include "hefesto/cmd/coordinates.hpp"
+#include "hefesto/cmd/keywords.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/view/diag_codes.hpp"
 
 namespace hefesto::view::detail {
@@ -93,19 +98,20 @@ std::string format_rect(const db::Rect& r, const tech::GridScale& grid) {
          format_coord(r.y1, grid) + ")";
 }
 
-int lookup(std::string_view word, std::initializer_list<std::string_view> choices) {
-  int found = -2;
-  int index = 0;
-  for (const std::string_view choice : choices) {
-    if (choice == word) {
-      return index;
-    }
-    if (!word.empty() && choice.starts_with(word)) {
-      found = found == -2 ? index : -1;
-    }
-    ++index;
+int lookup_nocase(std::string_view word, std::span<const std::string_view> choices) {
+  const cmd::LookupResult r = cmd::lookup(word, choices);
+  if (r.match == cmd::Match::found) {
+    return static_cast<int>(r.index);
   }
-  return found;
+  return r.match == cmd::Match::ambiguous ? -1 : -2;
+}
+
+int lookup(std::string_view word, std::initializer_list<std::string_view> choices) {
+  return lookup_nocase(word, std::span<const std::string_view>{choices.begin(), choices.size()});
+}
+
+cmd::CoordinateUnits coordinate_units(const editor::EditorState& e) {
+  return editor::coordinate_units(e);
 }
 
 std::optional<db::Rect> box_in_window(const editor::EditorState& editor, const LayoutWindow& window) {

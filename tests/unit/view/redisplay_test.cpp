@@ -288,9 +288,14 @@ TEST_CASE("specialopen opens layout windows and lists the window types", GROW) {
     CHECK(r.diagnostics[1].code == view::codes::kUsage);
     CHECK(r.diagnostics[1].text == "\tnetlist\n\tcolor\n\tlayout");
   }
-  const auto color = s.run("specialopen", {"color", "12"});
-  REQUIRE_FALSE(color.ok());
-  CHECK(color.diagnostics.back().code == view::codes::kClient);
+  // The color window (ui-color-window, M2) opens; `netlist` stays unavailable.
+  REQUIRE(s.run("specialopen", {"color", "12"}).ok());
+  REQUIRE(s.editor.color_map.windows.size() == 1);
+  CHECK(s.editor.color_map.windows.front().color == 012);
+  const auto netlist = s.run("specialopen", {"netlist"});
+  REQUIRE_FALSE(netlist.ok());
+  CHECK(netlist.diagnostics.back().code == view::codes::kClient);
+  CHECK(netlist.diagnostics.back().text == "The netlist window is not available in this version.");
   CHECK(s.editor.windows.size() == 3);
 }
 

@@ -12,6 +12,7 @@
 #include <array>
 #include <sstream>
 
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/view/diag_codes.hpp"
@@ -69,7 +70,7 @@ struct ExpandWalk {
       case Mode::all: return true;
       case Mode::overlap: return db::overlap(bbox, box);
       case Mode::surround: return db::surround(box, bbox);
-      case Mode::selection: return false;  // no selection before M2
+      case Mode::selection: return false;  // the selected instances are acted on directly
     }
     return false;
   }
@@ -177,6 +178,25 @@ CommandResult instance_expansion(CommandContext& ctx, const Invocation& inv, boo
   return CommandResult::success();
 }
 
+/// `expand|unexpand selection`: the selected instances of the window's
+/// hierarchy (SelectExpand), without the box and without descending.
+CommandResult selection_expansion(CommandContext& ctx, const ExpandArgs& args, bool expand) {
+  auto t = pointed(ctx);
+  if (!t) {
+    return failure(t.error());
+  }
+  LayoutWindow& w = t.value().window;
+  ExpandWalk walk{w, t.value().editor.windows, db::Rect{}, Mode::selection, expand, args.toggle, ctx, {}};
+  for (const cell::InstanceRef& ref : cell::selected_instances(t.value().editor)) {
+    if (ref.use != nullptr && ref.use->def != nullptr) {
+      walk.act(*ref.use);
+    }
+  }
+  report_unavailable(ctx, walk.unavailable);
+  t.value().editor.windows.notify(w.id(), Change::expansion);
+  return CommandResult::success();
+}
+
 CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand) {
   if (inv.args.size() >= 2 && inv.args[0] == "instance") {
     return instance_expansion(ctx, inv, expand);
@@ -185,6 +205,9 @@ CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand)
   if (!args) {
     return fail(codes::kUsage, expand ? "Usage: expand [selection|surround|overlap|all] [toggle]"
                                       : "Usage: unexpand [selection|surround|overlap|all]");
+  }
+  if (args->mode == Mode::selection) {
+    return selection_expansion(ctx, *args, expand);
   }
   auto t = pointed(ctx);
   if (!t) {

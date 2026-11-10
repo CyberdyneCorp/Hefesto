@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "hefesto/render/headless.hpp"
+#include "hefesto/render/layout_scene.hpp"
 
 using namespace hefesto::render;
 
@@ -200,4 +201,46 @@ TEST_CASE("polygons draw triangles and glyph fills merged in layer order",
   CHECK(channel(upper_right, 0) == 255);
   CHECK(channel(upper_right, 2) == 0);
   CHECK(channel(corner, 1) == 255);
+}
+
+TEST_CASE("the selection is drawn in white solid outlines over the layout on the GPU",
+          "[cap:cmd-selection][req:Selection model]") {
+  auto canvas = make_canvas();
+  // A red layout rectangle over the canvas, then the selection outline of
+  // (16,16)-(48,48) as highlight lines in outline highlights (6), resolved
+  // without display styles: opaque white, solid.
+  hefesto::display::LayoutScene scene;
+  hefesto::display::ResolvedStyle red;
+  red.index = 52;
+  red.r = 1.0F;
+  red.g = 0.0F;
+  red.b = 0.0F;
+  scene.layers = {hefesto::display::SceneLayer{red, false, {{0, 0, 64, 64}}, {}, {}}};
+  scene.bounds = {0, 0, 64, 64};
+  hefesto::display::HighlightScene hl;
+  for (const auto& seg : hefesto::display::boundary_segments({{16, 16, 48, 48}})) {
+    hefesto::display::HighlightItem it;
+    it.shape = hefesto::display::HighlightShape::line;
+    it.style = 6;
+    it.line = seg;
+    hefesto::display::resolve_highlight(it, nullptr);
+    hl.items.push_back(it);
+  }
+  const LayoutBatches batches = to_batches(scene, &hl);
+  canvas->renderer().upload(batches.rects.instances());
+  canvas->renderer().set_layer_styles(batches.styles);
+  Camera camera(32.0, 32.0, 1.0);
+  camera.set_viewport(64, 64);
+  const std::vector<LayerBatch> draws(batches.rects.batches().begin(), batches.rects.batches().end());
+  (void)canvas->render(camera.transform(), draws);
+  // The selection's left edge, x = 16, lands in pixel column 15 or 16.
+  const std::uint32_t a = canvas->read_pixel(15, 32);
+  const std::uint32_t b = canvas->read_pixel(16, 32);
+  const std::uint32_t edge = channel(a, 1) == 255 ? a : b;
+  const std::uint32_t inside = canvas->read_pixel(32, 32);  // world (32, 32): layout only
+  CHECK(channel(edge, 0) == 255);
+  CHECK(channel(edge, 1) == 255);
+  CHECK(channel(edge, 2) == 255);
+  CHECK(channel(inside, 0) == 255);
+  CHECK(channel(inside, 1) == 0);
 }

@@ -10,11 +10,13 @@
 #pragma once
 
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/outcome.hpp"
@@ -53,9 +55,15 @@ void print(cmd::CommandContext& ctx, std::string text);
 [[nodiscard]] std::optional<double> parse_number(std::string_view text, bool prefix_ok = false);
 /// Magic's StrIsInt + atoi.
 [[nodiscard]] std::optional<std::int64_t> parse_int(std::string_view text);
-/// Unique-prefix match of `word` against `choices` (Lookup): the index, -1
-/// when ambiguous, -2 when none.
+/// Magic's Lookup (cmd::lookup: case-insensitive, exact match wins, then a
+/// unique prefix) as an index: -1 when ambiguous, -2 when none.
 [[nodiscard]] int lookup(std::string_view word, std::initializer_list<std::string_view> choices);
+[[nodiscard]] int lookup_nocase(std::string_view word, std::span<const std::string_view> choices);
+
+/// The coordinate units of the session for cmd::parse_coordinate: grid
+/// scale, default unit (`units`, else `snap`), the CIF output scale and the
+/// current window's grid.
+[[nodiscard]] cmd::CoordinateUnits coordinate_units(const editor::EditorState& editor);
 
 /// The box in the window's root coordinates. The session keeps the box in
 /// edit-cell coordinates, so the box belongs to the window when the edit
@@ -72,5 +80,7 @@ bool register_view_ops(cmd::CommandRegistry& registry);    // xview scroll cente
 bool register_view_zoom(cmd::CommandRegistry& registry);   // view zoom
 bool register_window_ops(cmd::CommandRegistry& registry);  // openwindow closewindow window* over underneath crosshair
 bool register_display_ops(cmd::CommandRegistry& registry); // expand unexpand see grid redraw reset updatedisplay
+bool register_wizard_commands(cmd::CommandRegistry& registry);  // *watch *coord *winddebug *files
+bool register_feedback_command(cmd::CommandRegistry& registry);  // feedback
 
 }  // namespace hefesto::view::detail

@@ -121,6 +121,10 @@ struct StyleTable {
   [[nodiscard]] std::optional<std::size_t> find_layout_style(std::string_view ref) const;
 };
 
+/// GrGetStyleFromName: the first table index whose long name is `name`
+/// (any index, fixed or technology style); nullopt when none.
+[[nodiscard]] std::optional<std::size_t> style_from_name(const StyleTable& table, std::string_view name);
+
 /// Parses a .dstyle file. Color names are resolved through `colors`;
 /// `plane_mask` is the display's valid bit-plane mask. Warnings that do not
 /// fail the load go to `sink`; a failed load returns the error and leaves
