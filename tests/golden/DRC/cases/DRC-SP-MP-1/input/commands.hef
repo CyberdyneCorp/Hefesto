@@ -1,0 +1,26 @@
+# DRC-SP-MP-1: spacing ndiff,m1 poly,m2 3 touching_illegal (both lists over two planes, Q-DRC-3); printrules, CAP.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint ndiff
+box 12 0 20 10
+paint poly
+box 0 20 10 30
+paint m1
+box 12 20 20 30
+paint m2
+box 30 0 40 10
+paint m1
+box 42 0 50 10
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

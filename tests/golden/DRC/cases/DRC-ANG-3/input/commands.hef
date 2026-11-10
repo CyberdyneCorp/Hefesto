@@ -1,0 +1,21 @@
+# DRC-ANG-3: angles m1 45-only; Manhattan m1 rectangle with one beveled corner.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 7
+paint m1
+box 0 7 7 10
+paint m1
+box 7 7 10 10
+splitpaint sw m1
+box 20 0 30 10
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

@@ -1,0 +1,15 @@
+# DRC-CMD-1: drc c, drc halo, drc *halo, drc why extra, drc help, drc help wizard, drc, drc list, drc STATUS.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+drc c
+drc halo
+drc *halo
+drc why extra
+drc help
+drc help wizard
+drc
+drc list
+drc listall
+drc STATUS

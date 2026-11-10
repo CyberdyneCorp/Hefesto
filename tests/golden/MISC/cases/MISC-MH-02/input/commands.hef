@@ -1,0 +1,16 @@
+# MISC-MH-02: A hint 0 0 9 9 read at the default grid, then a file at magscale 1 2 with the same hint (the grid becomes 1/2), then scalegrid 1 2; the hint values after each step; writeall.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/t -noprompt
+snap internal
+drc off
+load input/a
+property MASKHINTS_X
+load input/b
+property MASKHINTS_X
+load input/a
+property MASKHINTS_X
+scalegrid 1 2
+property MASKHINTS_X
+load input/b
+property MASKHINTS_X
+writeall force

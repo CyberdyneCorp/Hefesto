@@ -1,0 +1,49 @@
+# DRC-EXC-3: exception SRAM width rule; a vertical 2-wide wire with a hint touching or straddling its left or right edge (Q-DRC-11), one cell each.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load l
+box 0 0 2 20
+paint m1
+property MASKHINTS_SRAM -10 -10 0 30
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save l
+load r
+box 0 0 2 20
+paint m1
+property MASKHINTS_SRAM 2 -10 10 30
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save r
+load ls
+box 0 0 2 20
+paint m1
+property MASKHINTS_SRAM -10 -10 1 30
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save ls
+load rs
+box 0 0 2 20
+paint m1
+property MASKHINTS_SRAM 1 -10 10 30
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save rs

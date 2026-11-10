@@ -1,0 +1,20 @@
+# DRC-EDGE-3: edge4way m1 space 3 ~m2/metal2 0 0 (OK types on another plane); printrules; m2 2 from m1.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint m1
+box 12 0 20 10
+paint m2
+box 0 14 10 20
+paint m2
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc printrules rules.txt

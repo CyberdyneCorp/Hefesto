@@ -1,0 +1,23 @@
+# DRC-ENG-2: A flat cell spanning several step squares (step 48) with a violation across a square boundary.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 40 0 47 10
+paint m1
+box 49 0 60 10
+paint m1
+box 0 20 200 30
+paint m1
+box 95 32 97 150
+paint m1
+box 0 140 200 150
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

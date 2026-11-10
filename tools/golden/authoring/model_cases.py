@@ -21,7 +21,7 @@ PROPS = "layout-properties"
 ORIENTATIONS = ["0", "90", "180", "270", "v", "h", "90v", "90h"]
 
 NOT_AUTHORED = {
-    "MODEL-G-006": "needs drc", "MODEL-G-045": "needs lef read",
+    "MODEL-G-045": "needs lef read",
     "MODEL-G-049": "needs extract", "MODEL-G-054": "needs def write (LEF/DEF, M6)",
     "MODEL-G-055": "needs a Tcl proc (one command painting twice; Tcl binding, M4)",
 }
@@ -337,3 +337,27 @@ def undo_move_specs() -> list[Spec]:
 def specs() -> list[Spec]:
     return (geometry_specs() + paint_specs() + hierarchy_specs() + label_specs() + undo_specs()
             + connectivity_specs() + undo_move_specs())
+
+
+# --- M3 (m3-drc design D12, written by m3_cases.py) --------------------------------
+
+M3_NOT_AUTHORED: dict[str, str] = {}
+
+
+def m3_specs() -> list[Spec]:
+    from drc_cases import tech as drc_tech  # the DRC test technology (drctest.tech)
+
+    # Each L-shaped m1 wraps a square's corner 2 away, so the spacing error region is an L.
+    def ell(x: int) -> list[str]:
+        return (paint("m1", x, 0, x + 10, 10) + paint("m1", x + 12, 0, x + 20, 12)
+                + paint("m1", x, 12, x + 20, 20))
+    spec = Spec("MODEL-G-006", GEO, ["Canonical maximal-horizontal-strip decomposition"],
+                "drctest; spacing m1 m1 3: two spacing violations whose error regions are L-shaped; drc count, "
+                "drc listall why and the error tiles of the saved cell.",
+                ["tech load input/drctest -noprompt", "snap internal", "drc off", "load a", *ell(0), *ell(40),
+                 "select top cell", "drc check", "drc catchup", "drc count", "drc listall why", "drc list count total",
+                 "save a"],
+                files={"drctest.tech": drc_tech(['spacing m1 m1 3 touching_ok "m1 spacing < %d"'])}, outputs=["a.mag"])
+    spec.stream_comparator = "drc-console"
+    spec.keep_checkpaint = True
+    return [spec]

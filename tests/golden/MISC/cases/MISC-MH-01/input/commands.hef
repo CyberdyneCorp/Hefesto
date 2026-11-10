@@ -1,0 +1,14 @@
+# MISC-MH-01: property MASKHINTS_SRAM with two overlapping rectangles; save; read back a file with a hint value.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/t -noprompt
+snap internal
+drc off
+load a
+box 0 0 4 4
+paint m1
+property MASKHINTS_SRAM 0 0 10 10 5 5 15 15
+property MASKHINTS_SRAM
+save a
+load input/r
+property MASKHINTS_SRAM
+property

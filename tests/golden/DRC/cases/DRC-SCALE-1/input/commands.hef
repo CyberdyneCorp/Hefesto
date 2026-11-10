@@ -1,0 +1,20 @@
+# DRC-SCALE-1: scalefactor 10: spacing 25, maxwidth 25 bend_illegal, area 1050 20; printrules, *halo, *stepsize, CAP.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 3 3
+paint m1
+box 5 0 8 3
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top
+drc *halo
+drc *stepsize
+drc printrules rules.txt

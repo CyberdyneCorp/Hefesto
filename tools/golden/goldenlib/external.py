@@ -9,6 +9,7 @@ needs such a file declares it in ``case.toml``::
 
     [[external]]
     source = "pdk"                                   # pdk | scmos | magic-sys
+    set = "sky130"                                   # pdk only: sky130 (default) | gf180mcu | ihp
     path = "sky130A/libs.tech/magic/sky130A.tech"    # pdk: path in the pinned version
     to = "sky130A.tech"                              # file name in the work copy of input/
 
@@ -19,9 +20,10 @@ for replay (:class:`ExternalUnavailable`).
 
 Sources:
 
-``pdk``    ``<pdk-root>/ciel/sky130/versions/<PDK_VERSION>/<path>``; the root is
-           ``$HEFESTO_PDK_ROOT`` or ``<repo>/.cache/pdks`` and the version is the pin of
-           ``scripts/fetch_pdk.py`` (which installs and verifies that subset).
+``pdk``    ``<pdk-root>/ciel/<family>/versions/<pin>/<path>``; the root is
+           ``$HEFESTO_PDK_ROOT`` or ``<repo>/.cache/pdks``. ``set`` names the data set of
+           ``scripts/fetch_pdk.py`` (``DATA_SETS``, m3-drc design D15) whose family and pin
+           are used: ``sky130`` (the default), ``gf180mcu`` or ``ihp``.
 ``scmos``  ``$HEFESTO_SCMOS_TECH``, else ``<repo>/.cache/golden/scmos.tech``, generated
            on first use from ``build/ref/magic`` (``scripts/fetch_pdk.py magic-ref``)
            with ``tests/data/tech/generate_scmos.cmake`` (needs cmake and a C++ compiler).
@@ -36,6 +38,7 @@ import importlib.util
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,11 +53,15 @@ class ExternalUnavailable(RuntimeError):
     """An external input is not present on this machine."""
 
 
+PDK_SETS = ("sky130", "gf180mcu", "ihp")  # the data sets of scripts/fetch_pdk.py (DATA_SETS)
+
+
 @dataclass(frozen=True)
 class External:
     source: str
     to: str
     path: str = ""
+    set: str = "sky130"
 
 
 def parse_external(raw: dict, index: int) -> External:
@@ -68,15 +75,28 @@ def parse_external(raw: dict, index: int) -> External:
     if source in ("pdk", "magic-sys") and (not isinstance(path, str) or not path or ".." in Path(path).parts
                                            or Path(path).is_absolute()):
         raise ValueError(f"{where}: a {source} input needs a relative 'path' inside the pinned version")
-    return External(source, to, path)
+    pdk_set = raw.get("set", "sky130")
+    if "set" in raw and source != "pdk":
+        raise ValueError(f"{where}: 'set' applies to pdk inputs only")
+    if pdk_set not in PDK_SETS:
+        raise ValueError(f"{where}: set must be one of {', '.join(PDK_SETS)}")
+    return External(source, to, path, pdk_set)
+
+
+def _fetch_pdk_module():
+    """scripts/fetch_pdk.py, the single source of truth of the PDK pins (loaded once)."""
+    name = "hefesto_fetch_pdk"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, REPO / "scripts" / "fetch_pdk.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module  # dataclasses resolve their module through sys.modules
+        spec.loader.exec_module(module)
+    return sys.modules[name]
 
 
 def pdk_version() -> str:
-    """The PDK pin of scripts/fetch_pdk.py (single source of truth)."""
-    spec = importlib.util.spec_from_file_location("hefesto_fetch_pdk", REPO / "scripts" / "fetch_pdk.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.PDK_VERSION
+    """The sky130 PDK pin of scripts/fetch_pdk.py."""
+    return _fetch_pdk_module().PDK_VERSION
 
 
 def pdk_root() -> Path:
@@ -84,10 +104,16 @@ def pdk_root() -> Path:
     return Path(env) if env else REPO / ".cache" / "pdks"
 
 
+def pdk_set_root(pdk_set: str) -> Path:
+    """``<pdk-root>/ciel/<family>/versions/<pin>`` of a PDK data set of scripts/fetch_pdk.py."""
+    data_set = _fetch_pdk_module().DATA_SETS[pdk_set]
+    return pdk_root() / "ciel" / data_set.family / "versions" / data_set.version
+
+
 def _resolve_pdk(ext: External) -> Path:
-    path = pdk_root() / "ciel" / "sky130" / "versions" / pdk_version() / ext.path
+    path = pdk_set_root(ext.set) / ext.path
     if not path.is_file():
-        raise ExternalUnavailable(f"{path} not found (run scripts/fetch_pdk.py pdk)")
+        raise ExternalUnavailable(f"{path} not found (run scripts/fetch_pdk.py {ext.set})")
     return path
 
 

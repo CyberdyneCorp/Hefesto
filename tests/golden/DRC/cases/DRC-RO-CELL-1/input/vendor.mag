@@ -1,0 +1,8 @@
+magic
+tech drctest
+timestamp 100
+<< metal1 >>
+rect 0 0 2 10
+<< properties >>
+string GDS_FILE vendor.gds
+<< end >>

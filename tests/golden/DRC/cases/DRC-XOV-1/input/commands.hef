@@ -1,0 +1,34 @@
+# DRC-XOV-1: exact_overlap m1c; sibling cells with m1c [0,4]^2 and [2,6]x[0,4]; the same cells abutting at x=24; an m1c cell over the m1 of a third cell.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load a
+box 0 0 4 4
+paint m1c
+load b
+box 0 0 4 4
+paint m1c
+load c
+box 0 0 10 10
+paint m1
+load top
+box 0 0 0 0
+getcell a
+box 2 0 2 0
+getcell b
+box 20 0 20 0
+getcell a
+box 24 0 24 0
+getcell b
+box 40 0 40 0
+getcell c
+box 42 2 42 2
+getcell a
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+writeall force

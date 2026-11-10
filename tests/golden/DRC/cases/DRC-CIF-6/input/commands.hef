@@ -1,0 +1,20 @@
+# DRC-CIF-6: Mask errors at negative coordinates and below one internal unit: output style fine (10 centimicrons per unit), cifwidth MET1 25.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+cif ostyle fine
+drc style default
+drc *halo
+load top
+box -30 -20 -28 -5
+paint m1
+box -10 -10 -7 10
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

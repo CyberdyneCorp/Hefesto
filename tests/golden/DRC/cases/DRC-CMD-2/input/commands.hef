@@ -1,0 +1,9 @@
+# DRC-CMD-2: drc status; drc off; drc status; drc on; drc status.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc status
+drc off
+drc status
+drc on
+drc status

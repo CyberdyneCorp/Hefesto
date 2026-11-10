@@ -15,7 +15,12 @@ and ``input/commands.hef`` (README.md, "M1: cases compared with Magic's console"
 * every ``.mag`` output is compared byte for byte with the ``mag-timestamp`` mask
   (wall-clock stamps, cell-timestamps), unless the spec lists other masks, and with
   ``mag-checkpaint`` (the DRC check areas Magic's edits create; M1 has no DRC) unless an
-  input file has a ``<< checkpaint >>`` section, which the case then checks is kept;
+  input file has a ``<< checkpaint >>`` section, which the case then checks is kept, the
+  spec sets ``keep_checkpaint`` (the M3 DRC cases) or ``CHECKPAINT_MASK_RETIRED`` is set
+  (m3-drc design D17);
+* ``stream_comparator`` picks the console comparator (``drc-console`` for DRC cases),
+  ``output_names`` names derived outputs (goldenlib/derived.py) and ``slow`` labels a
+  case ``golden-slow``;
 * a case whose input files name one of Magic's default outline fonts gets that font
   as a ``magic-sys`` external input (spec ``fonts`` adds fonts for external inputs);
 * the console streams always carry ``magic-tech-sections`` (Magic's messages from the
@@ -51,6 +56,10 @@ class Spec:
     requires: list[str] = field(default_factory=list)
     fonts: list[str] = field(default_factory=list)         # default fonts named by external inputs
     driver: str = "m1_cases.py"                            # the authoring driver that writes the case
+    stream_comparator: str = "magic-console"               # comparator of stdout and stderr
+    keep_checkpaint: bool = False                          # compare .mag checkpaint sections (DRC cases)
+    output_names: dict[str, str] = field(default_factory=dict)  # output name per source (default: derived)
+    slow: bool = False                                     # CTest label golden-slow (corpus cases)
 
     @property
     def area(self) -> str:
@@ -87,8 +96,18 @@ def font_externals(spec: Spec) -> list[dict]:
     return [{"source": "magic-sys", "path": f"graphics/{f}.pt3", "to": f"{f}.pt3"} for f in named]
 
 
+# m3-drc design D12/D17: the mask is retired now that ENGINE's marking sites are complete
+# (tasks.md 6.2): m1_cases.py and m2_cases.py were re-run and the 138 cases that carried
+# it replay without it.
+CHECKPAINT_MASK_RETIRED = True
+
+
 def masks_checkpaint(spec: Spec) -> bool:
-    """False when an input carries a checkpaint section (the case checks it is persisted)."""
+    """Whether ``.mag`` outputs get the ``mag-checkpaint`` mask: never for a case that
+    checks the DRC sections (``keep_checkpaint``, or an input carrying a checkpaint
+    section, which the case checks is persisted), and not once the mask is retired."""
+    if CHECKPAINT_MASK_RETIRED or spec.keep_checkpaint:
+        return False
     return not any("<< checkpaint >>" in t for t in _texts(spec))
 
 
@@ -98,7 +117,8 @@ def case_toml(spec: Spec) -> str:
              *(f"# {n}" for n in spec.notes), "",
              "schema = 1", f"id = {_toml_str(spec.id)}", f"area = {_toml_str(spec.area)}",
              f"capability = {_toml_str(spec.capability)}", f"requirements = {_toml_list(spec.requirements)}",
-             'tool = "magic"', f"description = {_toml_str(spec.description)}", "",
+             'tool = "magic"', f"description = {_toml_str(spec.description)}",
+             *(["slow = true"] if spec.slow else []), "",
              "[reference]", 'script = "input/commands.tcl"', "",
              "[hefesto]", 'args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]',
              f"requires_commands = {_toml_list(spec.requires)}"]
@@ -110,13 +130,14 @@ def case_toml(spec: Spec) -> str:
         # only when a save lands in the cell's previous stamp second).
         masks = spec.stream_masks if "magic-stamp-note" in spec.stream_masks else ["magic-stamp-note", *spec.stream_masks]
         stream_masks = _with_mask(masks, "magic-tech-sections")
-        text += _output_block("stdout.txt", "stdout", "magic-console", stream_masks)
-        text += _output_block("stderr.txt", "stderr", "magic-console", stream_masks)
+        text += _output_block("stdout.txt", "stdout", spec.stream_comparator, stream_masks)
+        text += _output_block("stderr.txt", "stderr", spec.stream_comparator, stream_masks)
     for source in spec.outputs:
         masks = spec.output_masks.get(source, ["mag-timestamp"] if source.endswith(".mag") else [])
         if source.endswith(".mag") and masks_checkpaint(spec):
             masks = _with_mask(masks, "mag-checkpaint")
-        text += _output_block(_output_name(source), source, spec.output_comparators.get(source, "bytes"), masks)
+        name = spec.output_names.get(source, _output_name(source))
+        text += _output_block(name, source, spec.output_comparators.get(source, "bytes"), masks)
     return text
 
 

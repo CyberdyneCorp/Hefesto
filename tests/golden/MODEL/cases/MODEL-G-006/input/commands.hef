@@ -1,0 +1,25 @@
+# MODEL-G-006: drctest; spacing m1 m1 3: two spacing violations whose error regions are L-shaped; drc count, drc listall why and the error tiles of the saved cell.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load a
+box 0 0 10 10
+paint m1
+box 12 0 20 12
+paint m1
+box 0 12 20 20
+paint m1
+box 40 0 50 10
+paint m1
+box 52 0 60 12
+paint m1
+box 40 12 60 20
+paint m1
+select top cell
+drc check
+drc catchup
+drc count
+drc listall why
+drc list count total
+save a

@@ -1,0 +1,17 @@
+# DRC-RO-1: rect_only m1c; L-shaped m1c.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 20 10
+paint m1c
+box 0 0 10 20
+paint m1c
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

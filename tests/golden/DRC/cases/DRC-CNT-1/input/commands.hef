@@ -1,0 +1,34 @@
+# DRC-CNT-1: A top cell with 3 error tiles and a child with 1: drc count [total] in every list mode; then drc on.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load child
+box 0 0 2 10
+paint m1
+load top
+box 100 0 100 0
+getcell child
+box 0 0 2 10
+paint m1
+box 20 0 22 10
+paint m1
+box 40 0 42 10
+paint m1
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+writeall force
+select top cell
+drc count
+drc count total
+drc list count
+drc listall count
+drc list count total
+drc listall count total
+drc on
+drc count
+drc count total

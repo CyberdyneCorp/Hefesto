@@ -1,0 +1,22 @@
+# CELL-TS-01: top > mid > leaf read from files; edit leaf; writeall force; cellname flags before and after.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+drc off
+load input/top
+select top cell
+expand
+cellname flags leaf
+cellname flags mid
+cellname flags top
+load leaf
+box 10 0 14 4
+paint metal1
+load top
+cellname flags leaf
+cellname flags mid
+cellname flags top
+writeall force
+cellname flags leaf
+cellname flags mid
+cellname flags top

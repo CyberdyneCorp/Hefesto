@@ -1,0 +1,23 @@
+# DRC-SP-CORN-1: spacing poly ndiff 2 corner_ok nfet; poly meeting ndiff at an nfet corner; a 1-unit poly-ndiff gap.
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/drctest -noprompt
+snap internal
+drc off
+load top
+box 0 0 10 10
+paint ndiff
+box 4 -3 6 13
+paint poly
+box 6 10 12 13
+paint poly
+box 30 0 40 10
+paint ndiff
+box 41 0 45 10
+paint poly
+select top cell
+box grow center 100
+drc check
+drc catchup
+drc listall why
+drc list count total
+save top

@@ -26,7 +26,7 @@ NOT_AUTHORED = {
     "CELL-PW-05": "needs a Tcl variable (PDK_ROOT)", "CELL-PW-06": "needs symbolic links",
     "CELL-LIB-01": "needs PDK_ROOT in the environment", "CELL-LIB-02": "needs PDK_ROOT in the environment",
     "CELL-IO-01..10": "need file modes/owners, two processes, strace, full filesystems, crash/archive commands",
-    "CELL-TS-01..03, 05..08": "need cellname timestamp/flags, LEF/GDS or DRC",
+    "CELL-TS-06": "needs lef read (LEF/DEF, M6)", "CELL-TS-07": "needs gds readonly (GDS, M5)",
 }
 
 FAKE = """\
@@ -133,8 +133,10 @@ def read_specs_1() -> list[Spec]:
                                                           for i, c in enumerate(["nw", "sw", "se", "ne", "SE", "n", ""])))),
         read_case("CELL-RD-09", ["Body section dispatch"], "fake tech; section << m3c2 >> with one rect.",
                   mag("fake", "<< m3c2 >>\nrect 0 0 4 4\n"), tech="fake"),
-        read_case("CELL-RD-10", ["Body section dispatch"], "Sections << checkpaint >> and << error_p >> (drc why not authored).",
-                  mag("scmos", "<< checkpaint >>\nrect -10 -10 20 20\n<< metal1 >>\nrect 0 0 4 4\n<< error_p >>\nrect 0 0 2 2\n")),
+        read_case("CELL-RD-10", ["Body section dispatch"],
+                  "Sections << checkpaint >> and << error_p >>; drc why over the error (M3: the DRC state).",
+                  mag("scmos", "<< checkpaint >>\nrect -10 -10 20 20\n<< metal1 >>\nrect 0 0 4 4\n<< error_p >>\nrect 0 0 2 2\n"),
+                  extra=["drc off", box(0, 0, 2, 2), "drc why", "drc list count total"]),
         read_case("CELL-RD-11", ["Body section dispatch"], "Unknown layer << nolayer >>; alias section allm1 (tiny).",
                   "magic\ntech tiny\ntimestamp 100\n<< nolayer >>\nrect 0 0 1 1\n<< allm1 >>\nrect 2 2 4 4\n"
                   "<< metal2 >>\nrect 5 5 6 6\n<< end >>\n", tech="tiny"),
@@ -298,3 +300,61 @@ def resolution_specs() -> list[Spec]:
 
 def specs() -> list[Spec]:
     return read_specs_1() + read_specs_2() + write_specs() + resolution_specs()
+
+
+# --- M3 (m3-drc design D12, written by m3_cases.py) --------------------------------
+
+STAMPS = "cell-timestamps"
+M3_NOT_AUTHORED: dict[str, str] = {}
+
+
+def _ts(cid: str, reqs: list[str], desc: str, cmds: list[str], files: dict, outputs=(), masks=None) -> Spec:
+    spec = scmos(cid, reqs, desc, ["drc off", *cmds], files, outputs, cap=STAMPS)
+    spec.keep_checkpaint = True
+    spec.output_masks = masks or {}
+    return spec
+
+
+def m3_specs() -> list[Spec]:
+    leaf = mag("scmos", "<< metal1 >>\nrect 0 0 4 4\n", timestamp=100)
+    mid = mag("scmos", use("leaf", "l0", bbox="0 0 4 4"), timestamp=200)
+    top = mag("scmos", use("mid", "m0", bbox="0 0 4 4").replace("timestamp 100", "timestamp 200"), timestamp=300)
+    hier = {"leaf.mag": leaf, "mid.mag": mid, "top.mag": top}
+    flags = ["cellname flags leaf", "cellname flags mid", "cellname flags top"]
+    p1 = mag("scmos", use("child", "c0", bbox="0 0 4 4").replace("timestamp 100", "timestamp 111"), timestamp=10)
+    p2 = mag("scmos", use("child", "c0", bbox="0 0 4 4").replace("timestamp 100", "timestamp 222"), timestamp=20)
+    child = mag("scmos", "<< metal1 >>\nrect 0 0 4 4\n", timestamp=333)
+    bad_child = mag("scmos", "<< metal1 >>\nrect 0 0 2 10\n", timestamp=100)
+    parent = mag("scmos", use("child", "c0", bbox="0 0 2 10"), timestamp=100)
+    return [
+        _ts("CELL-TS-01", ["Generating new stamps", "Marking cells for a new stamp"],
+            "top > mid > leaf read from files; edit leaf; writeall force; cellname flags before and after.",
+            ["load input/top", "select top cell", "expand", *flags, "load leaf", *paint("metal1", 10, 0, 14, 4),
+             "load top", *flags, "writeall force", *flags],
+            hier, ["input/leaf.mag", "input/mid.mag", "input/top.mag"]),
+        _ts("CELL-TS-02", ["Timestamps on cell read", "Deferred mismatch processing"],
+            "Edit leaf alone and save it; then load top (timestamp mismatch processing and the DRC check areas it "
+            "leaves); save top.",
+            ["load input/leaf", *paint("metal1", 10, 0, 14, 4), "save", "load input/top", "select top cell",
+             "expand", *flags, "writeall force"],
+            hier, ["input/top.mag", "input/mid.mag"]),
+        _ts("CELL-TS-03", ["Timestamps on instance read"],
+            "Two parents with use timestamps 111 and 222 for the same unread child (file stamp 333).",
+            ["load input/p1", "cellname timestamp child", "load input/p2", "cellname timestamp child",
+             "select top cell", "expand", "cellname timestamp child"],
+            {"p1.mag": p1, "p2.mag": p2, "child.mag": child}),
+        _ts("CELL-TS-05", ["Fixed timestamps"],
+            "cellname timestamp a 5 after the last edit, save (the file keeps stamp 5); cellname timestamp b 5, then "
+            "modify b and save (a new stamp, masked).",
+            ["load a", *paint("metal1", 0, 0, 4, 4), "cellname timestamp a 5", "save a", "cellname timestamp a",
+             "cellname flags a", "load b", *paint("metal1", 0, 0, 4, 4), "cellname timestamp b 5",
+             *paint("metal1", 10, 0, 14, 4), "save b", "cellname flags b"], {}, ["a.mag", "b.mag"],
+            masks={"a.mag": []}),
+        _ts("CELL-TS-08", ["Generating new stamps"],
+            "A read-only child with a DRC violation (its DRC result pending a stamp) under a parent; check, catchup; "
+            "modify the parent; writeall force.",
+            ["load input/parent", "select top cell", "expand", "cellname writeable child false", "drc check",
+             "drc catchup", "cellname flags child", "cellname list modified", *paint("metal1", 20, 0, 24, 4),
+             "writeall force", "cellname flags child", "cellname flags parent"],
+            {"parent.mag": parent, "child.mag": bad_child}, ["input/parent.mag", "input/child.mag"]),
+    ]
