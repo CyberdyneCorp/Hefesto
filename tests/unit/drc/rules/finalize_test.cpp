@@ -263,6 +263,20 @@ width m1 25 "w")");
   CHECK(none.rules->step_size() == 64);
 }
 
+// Regression (fuzz_drc_section, PR #29): 16 * halo overflowed int for a
+// saturated rule distance; the default step size saturates instead.
+TEST_CASE("the default step size of a huge halo saturates", "[cap:drc-rule-language][req:Halo and step size]") {
+  for (const bool compat : {true, false}) {
+    const auto c = compile(R"(surround m1c m1 99999999999999999999 absence_illegal "s")", compat);
+    CHECK(c.rules->halo().value == 2147483647);
+    CHECK(c.rules->step_size() == 2147483647);
+  }
+  const auto big = compile(R"(width m1 134217728 "w")");
+  CHECK(big.rules->step_size() == 2147483647);  // 16 * 2^27 = 2^31
+  const auto fits = compile(R"(width m1 134217727 "w")");
+  CHECK(fits.rules->step_size() == 2147483632);
+}
+
 TEST_CASE("the stepsize statement", "[cap:drc-rule-language][req:Halo and step size]") {
   CHECK(compile(R"(stepsize 500
 width m1 3 "w")").rules->step_size() == 500);
