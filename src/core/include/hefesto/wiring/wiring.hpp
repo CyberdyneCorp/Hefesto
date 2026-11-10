@@ -82,10 +82,11 @@ struct WiringSection {
                                                                 const tech::GridScale& grid = {},
                                                                 diag::DiagnosticSink* sink = nullptr);
 
-/// DRCGetDefaultLayerWidth until the DRC rule set exists (M3, drc-*): the
-/// largest `width` rule distance of the first `drc` style whose type list
-/// holds `type`, divided by the style's `scalefactor` (truncating) and
-/// scaled to the internal grid; 0 when there is none.
+/// DRCGetDefaultLayerWidth over a freshly compiled default `drc` style at
+/// `grid` (drc::default_width; 0 when there is none). The wire commands
+/// read the session's current style instead (drc::default_width on
+/// `editor.drc.rules`), as Magic reads DRCCurStyle; this overload serves
+/// callers without a session.
 [[nodiscard]] db::Coord default_layer_width(const tech::Technology& tech, tech::TileType type,
                                             const tech::GridScale& grid = {});
 

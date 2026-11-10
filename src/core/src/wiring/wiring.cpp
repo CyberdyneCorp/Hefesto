@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The `wiring` technology section, the DRC default width the wiring tool
-// needs before the DRC rule set exists, and the wiring undo event
+// The `wiring` technology section, the DRC default width of a layer (read
+// from the compiled DRC rule set, drc/rules/query.hpp), and the wiring undo event
 // (wiring-tool "wiring technology section", "Wiring tool buttons").
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) wiring/wireTech.c,
 // wiring/wireUndo.c and drc/DRCtech.c:4620-4664 (DRCGetDefaultLayerWidth),
@@ -15,6 +15,11 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/diag/sink.hpp"
+#include "hefesto/drc/rules/cif_catalog.hpp"
+#include "hefesto/drc/rules/query.hpp"
+#include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "hefesto/wiring/diag_codes.hpp"
@@ -118,33 +123,6 @@ db::Coord divide_up(db::Coord value, std::int64_t n) {
   return static_cast<db::Coord>(value % n != 0 ? q + 1 : q);
 }
 
-// --- DRC default width -----------------------------------------------------
-
-struct DrcScale {
-  std::int64_t n = 1;
-  std::int64_t d = 1;
-};
-
-void read_drc_scalefactor(const tech::RawLine& line, DrcScale& scale) {
-  const auto& t = line.tokens;
-  if (t.size() >= 2 && str_is_int(t[1]) && c_atoi(t[1]) > 0) {
-    scale.n = c_atoi(t[1]);
-    scale.d = t.size() >= 3 && str_is_int(t[2]) && c_atoi(t[2]) > 0 ? c_atoi(t[2]) : 1;
-  }
-}
-
-std::optional<std::int64_t> width_rule(const tech::RawLine& line, const tech::Technology& tech, tech::TileType type) {
-  const auto& t = line.tokens;
-  if (t.size() < 3 || t[0] != "width" || !str_is_int(t[2])) {
-    return std::nullopt;
-  }
-  const auto types = tech.parse_type_list(t[1]);
-  if (!types.ok() || !types.value().test(type)) {
-    return std::nullopt;
-  }
-  return c_atoi(t[2]);
-}
-
 // --- undo ------------------------------------------------------------------------
 
 class WireEvent final : public undo::Event {
@@ -208,28 +186,14 @@ diag::Outcome<WiringSection> parse_wiring_section(const tech::Technology& tech, 
 }
 
 db::Coord default_layer_width(const tech::Technology& tech, tech::TileType type, const tech::GridScale& grid) {
-  const auto drc = std::find_if(tech.raw_sections().begin(), tech.raw_sections().end(),
-                                [](const tech::RawSection& s) { return s.name == "drc"; });
-  if (drc == tech.raw_sections().end()) {
-    return 0;
-  }
-  DrcScale scale;
-  std::int64_t width = 0;
-  int styles = 0;
-  for (const tech::RawLine& line : drc->lines) {
-    if (line.tokens.empty()) {
-      continue;
-    }
-    if (line.tokens[0] == "style" && ++styles > 1) {
-      break;  // only the first (current) style
-    }
-    if (line.tokens[0] == "scalefactor") {
-      read_drc_scalefactor(line, scale);
-    } else if (const auto dist = width_rule(line, tech, type)) {
-      width = std::max(width, *dist * scale.d / scale.n);
-    }
-  }
-  return static_cast<db::Coord>(width * grid.internal / std::max<std::int64_t>(grid.lambda, 1));
+  // DRCGetDefaultLayerWidth over the compiled default style (m3-drc design
+  // D5): the session's rule set gives the same value without recompiling
+  // (drc::default_width(*editor.drc.rules, tech, type)).
+  diag::NullSink quiet;
+  const drc::CifCatalog cif = drc::CifCatalog::from_technology(tech, quiet);
+  const drc::DrcStyleList styles = drc::style_list(tech);
+  const auto rules = drc::load_style(tech, styles.default_style(), grid, cif, compat::CompatSettings{}, quiet);
+  return drc::default_width(*rules, tech, type);
 }
 
 std::unique_ptr<undo::Event> make_wire_event(const WireParams& before, const WireParams& after) {

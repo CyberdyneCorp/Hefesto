@@ -1,0 +1,262 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// Loading DRC styles (see style.hpp): the style list, the first load at
+// `tech load` (DRCTechInit ... DRCTechFinal), the reload of one style
+// (`drc style`, drcLoadStyle), grid rescaling (DRCTechScale, Q-DRC-1) and
+// run-time style selection (DRCSetStyle).
+//
+// Ported from Magic VLSI 8.3.694 drc/DRCtech.c (DRCSetStyle, drcLoadStyle,
+// DRCTechScale) and utils/tech.c (TechLoad's post-load scaling), Copyright
+// (C) 1985, 1990 Regents of the University of California (see
+// THIRD_PARTY_NOTICES.md).
+//
+// Deviations: the drc section is re-read from the technology in memory,
+// not from the file on disk; a repeated `drc` section is read as one
+// section (Magic re-initializes the rule table at each one).
+//
+// Owner: RULES (openspec/changes/m3-drc/design.md D2).
+
+#include "hefesto/drc/rules/style.hpp"
+
+#include <algorithm>
+#include <string>
+#include <utility>
+
+#include "drc/rules/compiler.hpp"
+#include "drc/rules/text_util.hpp"
+#include "hefesto/diag/codes.hpp"
+#include "hefesto/drc/rules/cif_catalog.hpp"
+#include "hefesto/drc/rules/details.hpp"
+#include "hefesto/editor/editor_state.hpp"
+
+namespace hefesto::drc {
+
+namespace {
+
+using rules_detail::StyleMachine;
+
+std::vector<const tech::RawLine*> drc_lines(const tech::Technology& technology) {
+  std::vector<const tech::RawLine*> lines;
+  for (const tech::RawSection& section : technology.raw_sections()) {
+    if (section.name == "drc") {
+      for (const tech::RawLine& line : section.lines) {
+        lines.push_back(&line);
+      }
+    }
+  }
+  return lines;
+}
+
+std::shared_ptr<const RuleSet> compile(const tech::Technology& technology, StyleMachine machine, const CifCatalog& cif,
+                                       const compat::CompatSettings& compat, diag::DiagnosticSink& sink,
+                                       StyleMachine* out_machine = nullptr) {
+  rules_detail::StyleCompiler compiler(rules_detail::CompileInput{technology, cif, compat, sink}, std::move(machine));
+  for (const tech::RawLine* line : drc_lines(technology)) {
+    compiler.line(*line);
+  }
+  auto rules = compiler.finish();
+  if (out_machine != nullptr) {
+    *out_machine = compiler.machine();
+  }
+  return rules;
+}
+
+/// The rules of `src` with every pair list passed through `transform`, and
+/// the given halo, step size and scale; everything else copied.
+template <typename Transform>
+std::shared_ptr<const RuleSet> rebuild(const RuleSet& src, const Halo& halo, std::int32_t step, const ScaleFactor& scale,
+                                       Transform&& transform, const StyleDetails* details) {
+  RuleSetBuilder builder(src.type_count());
+  builder.style_name(src.style_name());
+  std::vector<Rule> list;
+  for (std::size_t a = 0; a < src.type_count(); ++a) {
+    for (std::size_t b = 0; b < src.type_count(); ++b) {
+      const auto span = src.rules(static_cast<tech::TileType>(a), static_cast<tech::TileType>(b));
+      if (span.empty()) {
+        continue;
+      }
+      list.assign(span.begin(), span.end());
+      transform(list);
+      for (const Rule& rule : list) {
+        builder.add(static_cast<tech::TileType>(a), static_cast<tech::TileType>(b), rule);
+      }
+    }
+  }
+  builder.why() = src.why();
+  builder.exception_names({src.exception_names().begin(), src.exception_names().end()});
+  builder.halo(halo).step_size(step).options(src.options()).scale(scale);
+  const std::size_t planes = details != nullptr ? details->plane_count : 0;
+  for (std::size_t plane = 0; plane < planes; ++plane) {
+    for (std::size_t paint = 0; paint < src.type_count() && paint < tech::kMaxTileTypes; ++paint) {
+      builder.paint_row(static_cast<tech::PlaneId>(plane), static_cast<tech::TileType>(paint),
+                        src.paint_row(static_cast<tech::PlaneId>(plane), static_cast<tech::TileType>(paint)));
+    }
+  }
+  builder.exact_overlap_types(src.exact_overlap_types());
+  if (details != nullptr) {
+    builder.details(std::make_shared<const StyleDetails>(*details));
+  }
+  return builder.build();
+}
+
+std::int32_t ceil_scale(std::int64_t value, std::int64_t mul, std::int64_t div) {
+  return text::clamp_int((value * mul + div - 1) / div);
+}
+
+/// DRCTechScale (both Q-DRC-1 modes), with the mask-layer rule distances
+/// scaled by `cif_factor` (drcCifScale) when given.
+std::shared_ptr<const RuleSet> rescale_impl(const RuleSet& rules, std::int32_t scale_n, std::int32_t scale_d,
+                                            const compat::CompatSettings& compat,
+                                            std::pair<std::int32_t, std::int32_t> cif_factor) {
+  if (scale_n == scale_d || scale_n <= 0 || scale_d <= 0) {
+    return std::make_shared<const RuleSet>(rules);
+  }
+  const ScaleFactor old = rules.scale();
+  std::int64_t new_d = std::int64_t{old.d} * scale_d;
+  std::int64_t new_n = std::int64_t{old.n} * scale_n;
+  const std::int64_t gcf = text::find_gcf(new_d, new_n);
+  new_d /= gcf;
+  new_n /= gcf;
+  const ScaleFactor scale{text::clamp_int(new_n), text::clamp_int(new_d)};
+  const bool magic_compat = compat.magic_compat;
+  const auto transform = [&](std::vector<Rule>& list) {
+    if (magic_compat) {  // restore with the one-byte remainders, then rescale
+      rules_detail::scale_up(list, old.n);
+      rules_detail::scale_down(list, old.d, true);
+    } else {  // recompute from the tech-file values
+      for (Rule& rule : list) {
+        rule.dist = rule.file_dist;
+        rule.cdist = rule.file_cdist;
+        rule.dist_mod = 0;
+        rule.cdist_mod = 0;
+      }
+    }
+    rules_detail::scale_up(list, scale.d);
+    rules_detail::scale_down(list, scale.n, magic_compat);
+  };
+  Halo halo = rules.halo();
+  halo.mask_contribution = ceil_scale(halo.mask_contribution, scale_d, scale_n);
+  halo.value = magic_compat ? ceil_scale(halo.value, scale_d, scale_n)
+                            : std::max(ceil_scale(halo.tech_contribution, scale.d, scale.n), halo.mask_contribution);
+  const std::int32_t step = text::clamp_int(std::int64_t{rules.step_size()} * scale_d / scale_n);
+  std::optional<StyleDetails> details;
+  if (rules.details() != nullptr) {
+    details = *rules.details();
+    for (MaskLayerRule& mask : details->mask_layer_rules) {
+      const auto scale_value = [&](std::int32_t& v) {
+        v = v == 0 ? 0 : text::clamp_int(std::int64_t{v} * cif_factor.first / cif_factor.second);
+      };
+      scale_value(mask.distance);
+      scale_value(mask.value2);
+    }
+  }
+  return rebuild(rules, halo, step, scale, transform, details ? &*details : nullptr);
+}
+
+}  // namespace
+
+DrcStyleList style_list(const tech::Technology& technology) {
+  StyleMachine machine;
+  for (const tech::RawLine* line : drc_lines(technology)) {
+    if (line->tokens.empty()) {
+      continue;
+    }
+    if (line->tokens[0] == "style") {
+      (void)machine.style_line(line->tokens);
+    } else if (machine.list().empty()) {
+      (void)machine.admit_rule_line();  // the implicit `default` style
+    }
+  }
+  machine.ensure_default();
+  return DrcStyleList{machine.list()};
+}
+
+std::shared_ptr<const RuleSet> load_style(const tech::Technology& technology, std::string_view style,
+                                          const tech::GridScale& grid, const CifCatalog& cif,
+                                          const compat::CompatSettings& compat, diag::DiagnosticSink& sink) {
+  StyleMachine machine;
+  machine.begin_reload(style_list(technology).names, std::string{style});
+  auto rules = compile(technology, std::move(machine), cif, compat, sink);
+  return rescale_impl(*rules, static_cast<std::int32_t>(grid.lambda), static_cast<std::int32_t>(grid.internal),
+                      compat, {1, 1});
+}
+
+std::shared_ptr<const RuleSet> rescale(const RuleSet& rules, std::int32_t scale_n, std::int32_t scale_d,
+                                       const compat::CompatSettings& compat) {
+  return rescale_impl(rules, scale_n, scale_d, compat, {1, 1});
+}
+
+diag::Outcome<std::string> select_style(const DrcStyleList& styles, std::string_view name) {
+  const std::string* match = nullptr;
+  for (const std::string& style : styles.names) {
+    if (!text::strncmp_equal(name, style, name.size())) {
+      continue;
+    }
+    if (match != nullptr) {
+      return diag::make("DRC-TECH-003", "DRC style \"" + std::string{name} + "\" is ambiguous.");
+    }
+    match = &style;
+  }
+  if (match == nullptr) {
+    return diag::make("DRC-TECH-003", "\"" + std::string{name} + "\" is not one of the DRC styles Magic knows.");
+  }
+  return *match;
+}
+
+void reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink) {
+  DrcSession& drc = editor.drc;
+  const tech::Technology& technology = *editor.technology;
+  const compat::CompatSettings compat = drc.compat_settings();
+  drc.cif = CifCatalog::from_technology(technology, sink);
+  // The first load: the first declared style, at the unscaled grid; then
+  // TechLoad's post-load scaling of the cifoutput styles and the rules.
+  StyleMachine machine;
+  auto rules = compile(technology, StyleMachine{}, drc.cif, compat, sink, &machine);
+  drc.styles = DrcStyleList{machine.list()};
+  drc.style = rules->style_name();
+  const auto lambda = static_cast<std::int32_t>(editor.grid.lambda);
+  const auto internal = static_cast<std::int32_t>(editor.grid.internal);
+  std::pair<std::int32_t, std::int32_t> cif_factor{1, 1};
+  if (lambda != internal) {
+    cif_factor = drc.cif.rescale(lambda, internal);
+  }
+  drc.rules = rescale_impl(*rules, lambda, internal, compat, cif_factor);
+  // drcTechFinalStyle: DRCTechHalo and DRCStepSize take the style's values,
+  // which drops a `drc *halo` / `drc *stepsize` override.
+  drc.halo_override.reset();
+  drc.step_size.reset();
+  drc.events.publish_style(drc.style);
+}
+
+void rescale_rules(editor::EditorState& editor, std::int32_t scale_n, std::int32_t scale_d) {
+  DrcSession& drc = editor.drc;
+  if (scale_n == scale_d) {
+    return;
+  }
+  const auto cif_factor = drc.cif.rescale(scale_n, scale_d);
+  drc.rules = rescale_impl(*drc.rules, scale_n, scale_d, drc.compat_settings(), cif_factor);
+  // DRCTechScale also rescales the globals DRCTechHalo (rounded up) and
+  // DRCStepSize (rounded down), i.e. the `*halo` / `*stepsize` overrides.
+  if (drc.halo_override) {
+    drc.halo_override = ceil_scale(*drc.halo_override, scale_d, scale_n);
+  }
+  if (drc.step_size) {
+    drc.step_size = static_cast<std::int32_t>(static_cast<std::int64_t>(*drc.step_size) * scale_d / scale_n);
+  }
+}
+
+diag::Status select_cif_style(editor::EditorState& editor, std::string_view name, diag::DiagnosticSink& sink) {
+  DrcSession& drc = editor.drc;
+  if (auto selected = drc.cif.select(name); !selected) {
+    return selected;
+  }
+  const StyleDetails* details = drc.rules->details();
+  if (details != nullptr && !details->cif_style.empty()) {
+    drc.rules = load_style(*editor.technology, drc.style, editor.grid, drc.cif, drc.compat_settings(), sink);
+    drc.events.publish_style(drc.style);
+  }
+  return diag::Done{};
+}
+
+}  // namespace hefesto::drc

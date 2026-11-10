@@ -1,0 +1,68 @@
+# rules.tech -- test technology of the drc/rules unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes well, active, metal1, cut
+# and metal2; poly over ndiff composes nfet; ndc and m1c are contacts; a
+# cifoutput style with squares contact layers. The drc section is empty:
+# each test appends its own (fixture.hpp, with_drc()).
+tech
+    format 35
+    rulestest
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    cut,c
+    metal2,m2
+end
+
+types
+    well    nwell,nw
+    active  polysilicon,poly
+    active  ndiffusion,ndiff
+    active  pdiffusion,pdiff
+    active  ntransistor,nfet
+    active  ndcontact,ndc
+    metal1  metal1,m1
+    metal1  m2contact,m1c
+    cut     via
+    metal2  metal2,m2
+end
+
+contact
+    ndc  ndiff metal1
+    m1c  metal1 metal2
+end
+
+styles
+    styletype mos
+    poly 1
+end
+
+compose
+    compose nfet poly ndiff
+end
+
+connect
+    metal1,ndc,m1c metal1,ndc,m1c
+end
+
+cifoutput
+style lambda=1(test)
+    scalefactor 100
+    layer CWN nwell
+    layer CM1 metal1,ndc,m1c
+    layer CVA m1c
+        squares 20 40 40
+    layer CCA ndc
+        squares 10
+    layer CM2 metal2,m1c
+style second
+    scalefactor 10 nanometers
+    layer M1 metal1,ndc,m1c
+    layer VA m1c
+        squares-grid 0 170 170
+end
+
+cifinput
+end
