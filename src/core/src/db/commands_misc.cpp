@@ -195,7 +195,7 @@ CommandResult cmd_random(CommandContext& ctx, const Invocation& inv) {
   }
   const auto now = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch());
   const std::int64_t seed = a.size() == 2 ? cu::c_atoi(a[1]) : now.count();
-  generator().seed(static_cast<std::mt19937::result_type>(static_cast<std::uint64_t>(seed)));
+  generator().seed(static_cast<std::uint32_t>(seed));  // srandom() keeps the low 32 bits
   return CommandResult::success();
 }
 
