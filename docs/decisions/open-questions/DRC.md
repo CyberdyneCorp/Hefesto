@@ -99,6 +99,7 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Options: replicate | compat (replicate under `magic-compat`; native uses the vertical rule transposed — a hint covering a unit square on one fixed side of the edge) | fix (closed-interval overlap test)
 - Recommendation: compat — the horizontal result depends on tile structure, a clear defect, but it decides which rules apply (X-2 tier 2); the replica needs Hefesto's hint plane to keep Magic's maximal-horizontal-strip tiling. Confirm with golden DRC-EXC-3/4.
 - Resolution: compat — the horizontal result depends on tile structure, a clear defect, but it decides which rules apply (X-2 tier 2); the replica needs Hefesto's hint plane to keep Magic's maximal-horizontal-strip tiling. Confirm with golden DRC-EXC-3/4. Approved 2026-11-10.
+- Note: the native (magic-compat OFF) inside test is set by Q-MISC-13 — a hint touching or straddling the edge from either side makes it inside — not by the transposed vertical rule above (user decision 2026-11-10, M3 plan).
 
 ### Q-DRC-12: Background checker and scripting results without Tcl
 - Kind: platform
@@ -108,6 +109,7 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Options: platform alternative (worker thread on a snapshot with an edit-generation counter; or run-loop idle source)
 - Recommendation: platform — check one square at a time on a worker over an immutable snapshot, in Magic's pending order (children first, check tiles in area-enumeration order). Commit a square's errors only if the edit generation is unchanged, otherwise leave its check tile for a retry. `drc catchup` runs synchronously. Emit `magic::drcstate busy|idle` at the same transitions, and return list results as Tcl objects with Magic's structure.
 - Resolution: platform — check one square at a time on a worker over an immutable snapshot, in Magic's pending order (children first, check tiles in area-enumeration order). Commit a square's errors only if the edit generation is unchanged, otherwise leave its check tile for a retry. `drc catchup` runs synchronously. Emit `magic::drcstate busy|idle` at the same transitions, and return list results as Tcl objects with Magic's structure. Approved 2026-11-10.
+- Note: "immutable snapshot" is realized as a read of the live database under the reader/writer lock, not a copy: a copy would re-split tiles, and some DRC results depend on tile structure. A square's errors are committed only if the edit generation is unchanged (user decision 2026-11-10, M3 design).
 
 ### Q-DRC-13: Mask error coordinate mapping truncates toward zero
 - Kind: quirk
