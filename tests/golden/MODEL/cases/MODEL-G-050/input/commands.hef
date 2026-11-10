@@ -1,0 +1,8 @@
+# MODEL-G-050: property x 1; undo; property x (property changes are not recorded with magic-compat on).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/mt -noprompt
+snap internal
+load a
+property x 1
+undo
+property x

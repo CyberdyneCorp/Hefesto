@@ -21,11 +21,10 @@ PROPS = "layout-properties"
 ORIENTATIONS = ["0", "90", "180", "270", "v", "h", "90v", "90h"]
 
 NOT_AUTHORED = {
-    "MODEL-G-006": "needs drc", "MODEL-G-040": "needs undo", "MODEL-G-045": "needs lef read",
-    "MODEL-G-049": "needs extract", "MODEL-G-050": "needs undo", "MODEL-G-051": "needs select/what",
+    "MODEL-G-006": "needs drc", "MODEL-G-045": "needs lef read",
+    "MODEL-G-049": "needs extract", "MODEL-G-051": "needs select/what",
     "MODEL-G-052": "needs select/what", "MODEL-G-053": "needs select/what", "MODEL-G-054": "needs def write",
-    "MODEL-G-055": "needs Tcl proc + undo", "MODEL-G-056": "needs move + undo", "MODEL-G-057": "needs undo",
-    "MODEL-G-058": "needs undo/redo", "MODEL-G-059": "needs undo",
+    "MODEL-G-055": "needs Tcl proc + undo", "MODEL-G-056": "needs move + undo",
 }
 
 
@@ -270,5 +269,38 @@ def label_specs() -> list[Spec]:
     ]
 
 
+def undo_specs() -> list[Spec]:
+    """layout-undo cases (m2-interactive-editing task 4.4, owner UNDO).
+
+    In Magic a `box` command is an undo step of its own, so each script sets
+    the box once and the undo counts only cover the paint commands after it.
+    """
+    undo = "layout-undo"
+    flat_c = mag("mt", "<< metal1 >>\nrect 0 0 10 10\n")
+    toggles = [("paint" if i % 2 == 0 else "erase") + " metal1" for i in range(1001)]
+    return [
+        model("MODEL-G-040", undo, ["Undo and redo semantics"],
+              "Paint, save, undo; modified flag and the re-saved cell (Q-MODEL-12).",
+              ["load a"] + paint("metal1", 0, 0, 10, 10) + ["save a", "undo", "cellname list modified", "save a2"],
+              ["a2.mag"]),
+        model("MODEL-G-050", PROPS, ["Property changes and modification/undo"],
+              "property x 1; undo; property x (property changes are not recorded with magic-compat on).",
+              ["load a", "property x 1", "undo", "property x"], []),
+        model("MODEL-G-057", undo, ["Non-recorded operations"],
+              "Load a cell, undo; paint metal2, flatten -doinplace, undo (Q-MODEL-28).",
+              ["load input/c", "undo", "save c1", "load leaf"] + paint("metal1", 0, 0, 5, 5)
+              + ["save leaf", "load top", box(100, 0, 100, 0), "getcell leaf"] + paint("metal2", 0, 0, 4, 4)
+              + ["flatten -doinplace leaf_0", "undo", "save top"],
+              ["c1.mag", "top.mag"], files={"c.mag": flat_c}),
+        model("MODEL-G-058", undo, ["Undo and redo semantics", "undo command", "redo command"],
+              "Three paints in one box, undo twice, paint, redo (nothing to redo).",
+              ["load a", box(0, 0, 10, 10), "paint metal1", "paint metal2", "paint metal3", "undo", "undo",
+               "paint ndiff", "redo", "save a"], ["a.mag"]),
+        model("MODEL-G-059", undo, ["History limit"],
+              "1001 alternating paint/erase metal1 commands in one box; undo 1001 leaves the first paint.",
+              ["load a", box(0, 0, 10, 10)] + toggles + ["undo 1001", "save a"], ["a.mag"]),
+    ]
+
+
 def specs() -> list[Spec]:
-    return geometry_specs() + paint_specs() + hierarchy_specs() + label_specs()
+    return geometry_specs() + paint_specs() + hierarchy_specs() + label_specs() + undo_specs()
