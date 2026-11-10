@@ -125,6 +125,16 @@ TEST_CASE("property with an empty hint value removes it", "[cap:mask-hints][req:
   REQUIRE(s.hint("A") != nullptr);
   REQUIRE(s.run({"MASKHINTS_A", ""}).ok());
   CHECK(s.editor.edit_cell->properties().find("MASKHINTS_A") == nullptr);
+  CHECK(s.hint("A") == nullptr);
+  CHECK(s.run({}).value.to_string().find("MASKHINTS_A") == std::string::npos);
+  // An empty region (fewer than four values) is removed the same way, and
+  // removing an absent hint creates nothing (DBPropPut with NULL).
+  REQUIRE(s.run({"MASKHINTS_E", "1 2"}).ok());
+  REQUIRE(s.hint("E") != nullptr);
+  REQUIRE(s.run({"MASKHINTS_E", ""}).ok());
+  CHECK(s.hint("E") == nullptr);
+  REQUIRE(s.run({"MASKHINTS_Z", ""}).ok());
+  CHECK(s.hint("Z") == nullptr);
 }
 
 TEST_CASE("property lists hints as groups of four", SET) {

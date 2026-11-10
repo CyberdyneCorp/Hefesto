@@ -7,7 +7,6 @@
 // formulas (design D3: identical on x86_64 and aarch64).
 
 #include "check_fixture.hpp"
-#include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/check/euclidean.hpp"
 #include "hefesto/drc/rules/cif_catalog.hpp"
 
@@ -105,33 +104,22 @@ TEST_CASE("derived borders measure corners between contact cuts", EUCLID) {
   RuleSetBuilder b;
   add_spacing(b, mask_of({t.via}), t.metal1, 3, b.why("via"), drc::flags::kDerivedEdge | drc::flags::kDerivedTarget);
   const auto rules = b.build();
-  // Without a cifoutput style there is no border: the corner is an error.
+  // Without a cifoutput catalog there is no border: the corner is an error.
   CHECK(contains(run_check(l, *rules, Options{.euclidean = true}), Rect{12, 12, 13, 13}));
 
-  // With a `squares` border of 1 on each contact, (2+2)^2 * 2 >= (3+2)^2.
-  tech::TechnologyBuilder tb;
-  REQUIRE(tb.add_plane("metal1").ok());
-  REQUIRE(tb.add_plane("metal2").ok());
-  REQUIRE(tb.add_type("metal1", "m1").ok());
-  REQUIRE(tb.add_type("metal2", "m2").ok());
-  REQUIRE(tb.add_type("metal1", "via").ok());
-  const std::vector<std::string_view> residues{"m1", "m2"};
-  REQUIRE(tb.add_contact("via", residues).ok());
-  const std::vector<std::vector<std::string_view>> lines{
-      {"style", "test"}, {"scalefactor", "1"}, {"layer", "CV", "via"}, {"squares", "1", "2", "2"}};
-  for (const auto& line : lines) {
-    REQUIRE(tb.add_line("cifoutput", line).ok());
+  // With the fixture's `squares` border of 1 on each contact (style `test`,
+  // scalefactor 1), (2+2)^2 * 2 >= (3+2)^2: the corner is exempt.
+  const drc::CifCatalog& catalog = check_cif();
+  // The catalog keeps the border in CIF units over the scalefactor as the
+  // style rescales them (num / den = 1 internal unit).
+  const auto border = catalog.contact_border(t.via);
+  REQUIRE(border.has_value());
+  REQUIRE(border->num > 0);
+  REQUIRE(border->num == border->den);
+  for (const bool compat : {true, false}) {
+    CHECK_FALSE(any_overlaps(run_check(l, *rules, Options{.magic_compat = compat, .euclidean = true, .cif = &catalog}),
+                             Rect{12, 12, 13, 13}));
   }
-  auto with_cif = tb.finalize();
-  REQUIRE(with_cif.ok());
-  diag::CollectingSink sink;
-  const drc::CifCatalog catalog = drc::CifCatalog::from_technology(*with_cif.value(), sink);
-  const auto border = catalog.contact_border(with_cif.value()->find_type("via").id.value());
-  if (!border || with_cif.value()->find_type("via").id.value() != t.via) {
-    SKIP("the cifoutput catalog (RULES 4.1) does not provide contact borders yet");
-  }
-  CHECK_FALSE(any_overlaps(run_check(l, *rules, Options{.euclidean = true, .cif = &catalog}),
-                           Rect{12, 12, 13, 13}));
 }
 
 TEST_CASE("point-to-segment distances are pinned (single-precision projection)", EUCLID) {

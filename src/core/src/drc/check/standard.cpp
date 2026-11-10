@@ -110,73 +110,80 @@ bool Kernel::horizontal_region(const Edge& edge, const Rule& rule, std::int32_t 
   return rule.reverse() ? horizontal_reverse(edge, rule, c, search) : horizontal_forward(edge, rule, c, search);
 }
 
+TileView Kernel::top_probe(const Edge& edge, bool left_side, Coord limit) const {
+  const TileView& t = left_side ? *edge.outer : *edge.tile;
+  return t.area.y1 <= limit ? tile_at(*edge_plane_, left_side ? edge.at - 1 : edge.at, t.area.y1) : t;
+}
+
+TileView Kernel::bottom_probe(const Edge& edge, bool left_side, Coord limit) const {
+  const TileView& t = left_side ? *edge.outer : *edge.tile;
+  return t.area.y0 >= limit ? tile_at(*edge_plane_, left_side ? edge.at - 1 : edge.at, t.area.y0 - 1) : t;
+}
+
+void Kernel::extend_top(const Edge& edge, const Rule& rule, std::int32_t c, bool test_left, unsigned corner,
+                        Search& search) const {
+  Rect& e = search.region;
+  // Point (1) above-left of the top end or (4) above-right is tested; the
+  // other one checks that the edge does not continue.
+  const TileView tested = top_probe(edge, test_left, e.y1);
+  if (!rule.corner.test(bottom_type(tested))) {
+    return;
+  }
+  const TileView other = top_probe(edge, !test_left, e.y1);
+  if (edge_ends(test_left ? tested : other, test_left ? other : tested, *edge.outer, *edge.tile)) {
+    e.y1 += c;
+    mark(rule, corner, search);
+  }
+}
+
+void Kernel::extend_bottom(const Edge& edge, const Rule& rule, std::int32_t c, bool test_left, unsigned corner,
+                           Search& search) const {
+  Rect& e = search.region;
+  // Point (2) below-left of the bottom end or (3) below-right is tested.
+  const TileView tested = bottom_probe(edge, test_left, e.y0);
+  if (!rule.corner.test(top_type(tested))) {
+    return;
+  }
+  const TileView other = bottom_probe(edge, !test_left, e.y0);
+  if (edge_ends(test_left ? tested : other, test_left ? other : tested, *edge.outer, *edge.tile)) {
+    e.y0 -= c;
+    mark(rule, corner, search);
+  }
+}
+
 bool Kernel::vertical_forward(const Edge& edge, const Rule& rule, std::int32_t c, Search& search) {
   const TileView& tile = *edge.tile;
-  const TileView& outer = *edge.outer;
-  const Coord x = edge.at;
   Rect& e = search.region;
-  // Top corner: point (1) above-left of the top end, (4) for continuation.
-  const TileView top_left = outer.area.y1 <= e.y1 ? tile_at(*edge_plane_, x - 1, outer.area.y1) : outer;
-  if (rule.corner.test(bottom_type(top_left))) {
-    const TileView top_right = tile.area.y1 <= e.y1 ? tile_at(*edge_plane_, x, tile.area.y1) : tile;
-    if (edge_ends(top_left, top_right, outer, tile)) {
-      e.y1 += c;
-      mark(rule, radial::kNE, search);
-    }
-  }
+  // Top corner tests point (1), then the bottom corner point (2).
+  extend_top(edge, rule, c, true, radial::kNE, search);
   if (rule.has(flags::kBothCorners)) {
-    // Bottom corner: point (2) below-left of the bottom end, (3) for continuation.
-    const TileView low_left = outer.area.y0 >= e.y0 ? tile_at(*edge_plane_, x - 1, outer.area.y0 - 1) : outer;
-    if (rule.corner.test(top_type(low_left))) {
-      const TileView low_right = tile.area.y0 >= e.y0 ? tile_at(*edge_plane_, x, tile.area.y0 - 1) : tile;
-      if (edge_ends(low_left, low_right, outer, tile)) {
-        e.y0 -= c;
-        mark(rule, radial::kSE, search);
-      }
-    }
+    extend_bottom(edge, rule, c, true, radial::kSE, search);
   }
-  e.x1 = x + rule.dist + outside_extra(rule);
+  e.x1 = edge.at + rule.dist + outside_extra(rule);
   if (tile.area.x1 >= e.x1 && tile.area.y0 <= e.y0 && tile.area.y1 >= e.y1 && plane_ == rule.check_plane &&
       rule.ok.test(left_type(tile))) {
     return false;
   }
-  e.x0 = x + outside_offset(rule);
-  search.initial = &outer;
+  e.x0 = edge.at + outside_offset(rule);
+  search.initial = edge.outer;
   return true;
 }
 
 bool Kernel::vertical_reverse(const Edge& edge, const Rule& rule, std::int32_t c, Search& search) {
-  const TileView& tile = *edge.tile;
   const TileView& outer = *edge.outer;
-  const Coord x = edge.at;
   Rect& e = search.region;
-  // Bottom corner: point (3) below-right of the bottom end, (2) for continuation.
-  const TileView low_right = tile.area.y0 >= e.y0 ? tile_at(*edge_plane_, x, tile.area.y0 - 1) : tile;
-  if (rule.corner.test(top_type(low_right))) {
-    const TileView low_left = outer.area.y0 >= e.y0 ? tile_at(*edge_plane_, x - 1, outer.area.y0 - 1) : outer;
-    if (edge_ends(low_left, low_right, outer, tile)) {
-      e.y0 -= c;
-      mark(rule, radial::kSW, search);
-    }
-  }
+  // Bottom corner tests point (3), then the top corner point (4).
+  extend_bottom(edge, rule, c, false, radial::kSW, search);
   if (rule.has(flags::kBothCorners)) {
-    // Top corner: point (4) above-right of the top end, (1) for continuation.
-    const TileView top_right = tile.area.y1 <= e.y1 ? tile_at(*edge_plane_, x, tile.area.y1) : tile;
-    if (rule.corner.test(bottom_type(top_right))) {
-      const TileView top_left = outer.area.y1 <= e.y1 ? tile_at(*edge_plane_, x - 1, outer.area.y1) : outer;
-      if (edge_ends(top_left, top_right, outer, tile)) {
-        e.y1 += c;
-        mark(rule, radial::kNW, search);
-      }
-    }
+    extend_top(edge, rule, c, false, radial::kNW, search);
   }
-  e.x0 = x - rule.dist - outside_extra(rule);
+  e.x0 = edge.at - rule.dist - outside_extra(rule);
   if (outer.area.x0 <= e.x0 && outer.area.y0 <= e.y0 && outer.area.y1 >= e.y1 && plane_ == rule.check_plane &&
       rule.ok.test(right_type(outer))) {
     return false;
   }
-  e.x1 = x - outside_offset(rule);
-  search.initial = &tile;
+  e.x1 = edge.at - outside_offset(rule);
+  search.initial = edge.tile;
   return true;
 }
 

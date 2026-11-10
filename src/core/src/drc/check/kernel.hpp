@@ -169,6 +169,10 @@ class Kernel {
   void evaluate_edge(const Edge& edge, std::span<const Rule> rules);
   /// One rule of the pair list; false when the next rule must be skipped.
   bool evaluate_rule(const Edge& edge, const Rule& rule, RuleState& state);
+  /// The part of evaluate_rule after the rule passed its exception, kind
+  /// and edge-plane filters: area, maxwidth, rectangle size, off-grid or a
+  /// standard edge rule.
+  bool dispatch_rule(const Edge& edge, const Rule& rule, bool trigger, RuleState& state);
   bool evaluate_vertical_nonstandard(const Edge& edge, const Rule& rule);
   bool maxwidth_bends(const Edge& edge, const Rule& rule, bool trigger, RuleState& state);
   bool maxwidth_trigger(const Edge& edge, const Rule& rule, bool found, RuleState& state) const;
@@ -179,6 +183,16 @@ class Kernel {
   [[nodiscard]] std::int32_t corner_distance(const Edge& edge, const Rule& rule) const noexcept;
   void along_range(const Edge& edge, std::int32_t c, RuleState& state, Search& search);
   bool vertical_region(const Edge& edge, const Rule& rule, std::int32_t c, Search& search);
+  /// The corner probes of a vertical edge's top (bottom) end on its left
+  /// (outer) or right (tile) side, limited by the region's end `limit`.
+  [[nodiscard]] TileView top_probe(const Edge& edge, bool left_side, Coord limit) const;
+  [[nodiscard]] TileView bottom_probe(const Edge& edge, bool left_side, Coord limit) const;
+  /// Extends the region past the top (bottom) end by c when the probe on
+  /// the `test_left` side is a corner type and the edge ends there.
+  void extend_top(const Edge& edge, const Rule& rule, std::int32_t c, bool test_left, unsigned corner,
+                  Search& search) const;
+  void extend_bottom(const Edge& edge, const Rule& rule, std::int32_t c, bool test_left, unsigned corner,
+                     Search& search) const;
   bool vertical_forward(const Edge& edge, const Rule& rule, std::int32_t c, Search& search);
   bool vertical_reverse(const Edge& edge, const Rule& rule, std::int32_t c, Search& search);
   bool horizontal_region(const Edge& edge, const Rule& rule, std::int32_t c, Search& search);
