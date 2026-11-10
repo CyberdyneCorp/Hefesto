@@ -124,7 +124,7 @@ reason = "feedback save writes the box coordinates with an i suffix so the file 
 [UI-G-005]
 deferred = "M12"
 outputs = ["stdout.txt"]
-reason = "help prints Magic's help string of every registered command; the layout commands of later milestones are not registered yet (drc M3; calma, gds, cif M5; def, lef M6; extract, ext, ext2sim, ext2spice, exttosim, exttospice, extresist, antennacheck M7; plot, iroute, *iroute, *mzroute M10; channels, garoute, route, plow, getnode, *garoute, *groute, *seeflags M12), nor the informative *window wizard commands *crash, *grstats, *pause and *winddump (ui-wizard-and-debug)"
+reason = "help prints Magic's help string of every registered command; the layout commands of later milestones are not registered yet (drc M3; calma, gds, cif M5; def, lef M6; extract, ext, ext2sim, ext2spice, exttosim, exttospice, extresist, antennacheck M7; plot, iroute, *iroute, *mzroute M10; channels, garoute, route, plow, getnode, *garoute, *groute, *seeflags M12)"
 
 [UI-G-009]
 decisions = ["Q-UI-12", "Q-UI-42"]

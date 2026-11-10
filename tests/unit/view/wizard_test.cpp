@@ -2,12 +2,16 @@
 // Copyright 2026 The Hefesto Authors
 //
 // The wizard commands VIEW provides (capability ui-wizard-and-debug):
-// `*watch` and its tile overlay, `*coord`, `*winddebug`, `*files`.
+// `*watch` and its tile overlay, `*coord`, `*winddebug`, `*files`, `*grstats`,
+// `*pause`, `*winddump` and `*crash`.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
+#include <span>
 #include <string>
 
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "hefesto/view/tile_overlay.hpp"
@@ -141,4 +145,60 @@ TEST_CASE("the wizard commands are registered by the view area", "[cap:ui-wizard
     INFO(name);
     REQUIRE(registry.find(name) != nullptr);
   }
+  // ui-command-dispatch "Command registration and help text": the *window client registers
+  // every window wizard command (round 3 review: *crash, *grstats, *pause, *winddump were missing).
+  for (const char* name : {"*crash", "*files", "*grstats", "*pause", "*winddebug", "*winddump"}) {
+    INFO(name);
+    CHECK(registry.find(name, hefesto::cmd::kWindowClient) != nullptr);
+  }
+}
+
+namespace {
+
+class RecordingPrompt final : public hefesto::cmd::PromptHost {
+ public:
+  std::string question;
+  std::size_t ask(std::string_view q, std::span<const std::string>, std::size_t default_answer) override {
+    question = std::string{q};
+    return default_answer;
+  }
+};
+
+}  // namespace
+
+TEST_CASE("*grstats redraws the window and reports its statistics",
+          "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {
+  WizardSession s;
+  CHECK(all_text(s.run("*grstats")) == "Usage: grstats num [ style ]");
+  CHECK(all_text(s.run("*grstats", {"x"})) == "Count & style must be numeric");
+  CHECK(all_text(s.run("*grstats", {"2", "y"})) == "Count & style must be numeric");
+  const auto r = s.run("*grstats", {"3"});
+  REQUIRE(r.ok());
+  CHECK(all_text(r).find("\n0 rectangles, ") != std::string::npos);
+  CHECK(all_text(r).ends_with(" rects/sec"));
+}
+
+TEST_CASE("*pause prints its arguments and waits for a line through the prompt host",
+          "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {
+  WizardSession s;
+  RecordingPrompt prompt;
+  s.editor.prompt = &prompt;
+  const auto r = s.run("*pause", {"a", "b"});
+  REQUIRE(r.ok());
+  CHECK(all_text(r) == "a b  Pausing: type <cr> to continue: ");
+  CHECK(prompt.question == "a b  Pausing: type <cr> to continue: ");
+}
+
+TEST_CASE("*winddump prints the clients and the window list",
+          "[cap:ui-wizard-and-debug][req:Window-client wizard commands]") {
+  WizardSession s;
+  const auto r = s.run("*winddump");
+  REQUIRE(r.ok());
+  const std::string out = all_text(r);
+  CHECK(out.find("------------ Clients ----------") != std::string::npos);
+  CHECK(out.find("\nWindow " + std::to_string(s.win->id()) + ": '") != std::string::npos);
+  CHECK(out.find("  Frame area (") != std::string::npos);
+  CHECK(all_text(s.run("*winddump", {"x"})) == "Usage:  *winddump");
+  // *crash aborts the process (niceabort), so only its usage error is testable here.
+  CHECK(all_text(s.run("*crash", {"now"})) == "Usage:  *crash");
 }

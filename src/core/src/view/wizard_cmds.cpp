@@ -3,12 +3,18 @@
 //
 // The window-client and layout wizard commands VIEW provides (capability
 // ui-wizard-and-debug): `*watch` (tile structure overlay, drawn by
-// tile_overlay_scene), `*coord`, `*winddebug` and `*files`. Messages follow
+// tile_overlay_scene), `*coord`, `*winddebug`, `*files`, `*crash`,
+// `*grstats`, `*pause` and `*winddump`. Messages follow
 // Magic 8.3.694 commands/CmdWizard.c and windows/windCmdAM.c, Copyright (C)
 // 1985, 1990 Regents of the University of California, used under Magic's
 // permissive license (see THIRD_PARTY_NOTICES.md). Owner: VIEW.
 
+#include <algorithm>
+#include <array>
 #include <cerrno>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -17,7 +23,9 @@
 #define HEFESTO_HAVE_FSTAT 1
 #endif
 
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/view/color_window.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "hefesto/view/tile_overlay.hpp"
 #include "view/command_util.hpp"
@@ -226,6 +234,100 @@ CommandResult files_cmd(CommandContext& ctx, const Invocation&) {
   return CommandResult::success();
 }
 
+
+// --- *crash, *grstats, *pause, *winddump (windCmdAM.c, windCmdNR.c, windDebug.c) ---
+
+CommandResult crash_cmd(CommandContext& ctx, const Invocation& inv) {
+  if (!inv.args.empty()) {
+    return fail(codes::kUsage, "Usage:  *crash");
+  }
+  print(ctx, "OK -- crashing...");
+  std::fflush(nullptr);
+  std::abort();  // niceabort(): a deliberate core dump (it also exercises crash recovery)
+}
+
+std::string screen_text(const ScreenRect& r) {
+  return "(" + std::to_string(r.x0) + ", " + std::to_string(r.y0) + ") (" + std::to_string(r.x1) + ", " +
+         std::to_string(r.y1) + ")";
+}
+
+std::string surface_text(const db::Rect& r) {
+  return "(" + std::to_string(r.x0) + ", " + std::to_string(r.y0) + ") (" + std::to_string(r.x1) + ", " +
+         std::to_string(r.y1) + ")";
+}
+
+CommandResult grstats_cmd(CommandContext& ctx, const Invocation& inv) {
+  if (inv.args.empty() || inv.args.size() > 2) {
+    return fail(codes::kUsage, "Usage: grstats num [ style ]");
+  }
+  const auto count = detail::parse_int(inv.args[0]);
+  if (!count || (inv.args.size() == 2 && !detail::parse_int(inv.args[1]))) {
+    return fail(codes::kUsage, "Count & style must be numeric");
+  }
+  auto target = detail::pointed(ctx);
+  if (!target) {
+    return failure(target.error());
+  }
+  // The headless core has no graphics device: each pass marks the whole
+  // window for redisplay, and no clip boxes are counted.
+  const auto start = std::chrono::steady_clock::now();
+  for (std::int64_t i = 0; i < *count; ++i) {
+    target.value().window.mark_redisplay_all();
+  }
+  const auto us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start);
+  const long long elapsed = static_cast<long long>(us.count());
+  print(ctx, "[" + std::to_string(elapsed) + " uS elapsed]\n0 rectangles, " + std::to_string(elapsed) +
+                 " uS, " + std::to_string(elapsed) + " uS/rectangle, " +
+                 std::to_string(1000000 / std::max<long long>(1, elapsed)) + " rects/sec");
+  return CommandResult::success();
+}
+
+CommandResult pause_cmd(CommandContext& ctx, const Invocation& inv) {
+  auto s = detail::session(ctx);
+  if (!s) {
+    return failure(s.error());
+  }
+  std::string question;
+  for (std::size_t i = 0; i < inv.args.size(); ++i) {
+    question += inv.args[i] + (i + 1 == inv.args.size() ? "  " : " ");
+  }
+  question += "Pausing: type <cr> to continue: ";
+  print(ctx, question);
+  static const std::array<std::string, 1> kContinue{"continue"};
+  (void)cmd::ask(s.value()->prompt, question, kContinue, 0);  // TxGetLine: the front end waits
+  return CommandResult::success();
+}
+
+CommandResult winddump_cmd(CommandContext& ctx, const Invocation& inv) {
+  if (!inv.args.empty()) {
+    return fail(codes::kUsage, "Usage:  *winddump");
+  }
+  auto s = detail::session(ctx);
+  if (!s) {
+    return failure(s.error());
+  }
+  // windDump without the client function pointers, which mean nothing outside Magic.
+  std::string text = "\n\n------------ Clients ----------";
+  for (const std::string& client : ctx.registry().clients()) {
+    char line[64];
+    std::snprintf(line, sizeof line, "\n'%10s'", client.c_str());
+    text += line;
+  }
+  text += "\n";
+  s.value()->windows.for_each([&](LayoutWindow& w) {
+    const ViewMapping& m = w.mapping();
+    text += "\nWindow " + std::to_string(w.id()) + ": '" + w.caption() + "'\n  Client layout\n  Screen area " +
+            screen_text(m.screen) + "\n  Frame area " + screen_text(w.frame()) + "\n  Surface area " +
+            surface_text(m.surface) + " \n";
+  });
+  for (const ColorWindow& cw : s.value()->color_map.windows) {
+    text += "\nWindow " + std::to_string(cw.id) + ": '" + cw.caption + "'\n  Client color\n  Frame area " +
+            screen_text(cw.frame) + "\n";
+  }
+  print(ctx, std::move(text));
+  return CommandResult::success();
+}
+
 }  // namespace
 
 // --- tile overlay scene --------------------------------------------------------------
@@ -269,6 +371,12 @@ bool register_wizard_commands(cmd::CommandRegistry& registry) {
   ok = add(registry, "*coord", "*coord", "Prints the point, box, root and edit cell rectangles.", coord_cmd) && ok;
   ok = add(registry, "*winddebug", "*winddebug", "Toggles printing of every dispatched command.", winddebug_cmd) && ok;
   ok = add(registry, "*files", "*files", "Lists the status of the open file descriptors.", files_cmd) && ok;
+  ok = add(registry, "*crash", "*crash", "Prints OK -- crashing... and aborts with a core dump.", crash_cmd) && ok;
+  ok = add(registry, "*grstats", "*grstats num [style]", "Redraws the window num times and prints the time taken.",
+           grstats_cmd) &&
+       ok;
+  ok = add(registry, "*pause", "*pause [args]", "Prints the arguments and waits for a line.", pause_cmd) && ok;
+  ok = add(registry, "*winddump", "*winddump", "Prints the clients and the window list.", winddump_cmd) && ok;
   return ok;
 }
 
