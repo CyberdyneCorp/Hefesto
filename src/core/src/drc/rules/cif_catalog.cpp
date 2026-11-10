@@ -81,6 +81,16 @@ std::optional<tech::TypeMask> alias_mask(const tech::Technology& tech, std::stri
   return std::nullopt;
 }
 
+/// Whether `name` is a CIF layer other than the one being defined.
+bool other_cif_layer(const std::vector<std::string>& layers, std::size_t current_layer, std::string_view name) {
+  for (std::size_t i = 0; i < layers.size(); ++i) {
+    if (i != current_layer && layers[i] == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 LayerMasks parse_layers(const tech::Technology& tech, std::string_view list, const std::vector<std::string>& layers,
                         std::size_t current_layer) {
   LayerMasks out;
@@ -94,18 +104,13 @@ LayerMasks parse_layers(const tech::Technology& tech, std::string_view list, con
       continue;
     }
     const auto paint = paint_name(tech, name, all_residues);
-    bool cif = false;
-    for (std::size_t i = 0; i < layers.size(); ++i) {
-      cif = cif || (i != current_layer && layers[i] == name);
-    }
+    const bool cif = other_cif_layer(layers, current_layer, name);
     if (paint && !cif) {
       out.paint |= *paint;
     } else if (!paint && cif) {
       out.cif = true;
     } else if (!paint) {
-      if (const auto alias = alias_mask(tech, name)) {
-        out.paint |= *alias;
-      }
+      out.paint |= alias_mask(tech, name).value_or(tech::TypeMask{});
     }
   }
   return out;
@@ -448,23 +453,20 @@ std::optional<CifOpValues> StyleReader::parse_bloat(Tokens t) const {
   const tech::TypeMask own = layers_of(t[1]).paint;
   std::array<std::int32_t, tech::kMaxTileTypes> distances{};
   const bool bloat_or = t[0] == "bloat-or";
-  for (std::size_t k = 2; k + 1 < t.size(); k += 2) {
-    const tech::TypeMask mask = t[k] == "*" ? tech::TypeMask::all() : layers_of(t[k]).paint;
-    std::int32_t distance = text::c_atoi(t[k + 1]);
-    if (distance < 0 && bloat_or) {
-      distance = 0;  // "Bloat-or distances must not be negative."
-    }
+  const auto assign = [&distances](const tech::TypeMask& mask, std::int32_t distance) {
     for (std::size_t i = 0; i < tech::kMaxTileTypes; ++i) {
       if (mask.test(static_cast<tech::TileType>(i))) {
         distances[i] = distance;
       }
     }
+  };
+  for (std::size_t k = 2; k + 1 < t.size(); k += 2) {
+    const tech::TypeMask mask = t[k] == "*" ? tech::TypeMask::all() : layers_of(t[k]).paint;
+    const std::int32_t distance = text::c_atoi(t[k + 1]);
+    // bloat-or: "Bloat-or distances must not be negative."
+    assign(mask, distance < 0 && bloat_or ? 0 : distance);
   }
-  for (std::size_t i = 0; i < tech::kMaxTileTypes; ++i) {
-    if (own.test(static_cast<tech::TileType>(i))) {
-      distances[i] = 0;  // no bloating between tiles of the bloated types
-    }
-  }
+  assign(own, 0);  // no bloating between tiles of the bloated types
   CifOpValues op;
   op.kind = Kind::bloat;
   op.values = distinct_nonzero(distances);
@@ -495,41 +497,48 @@ std::optional<CifOpValues> StyleReader::parse_bloat_all(Tokens t) const {
 }
 
 /// CIFTechFinal: stacked contacts join the paint masks of their components.
+void join_stacked_contacts(const tech::Technology& tech, tech::TypeMask& paint) {
+  for (const tech::ContactInfo& contact : tech.contacts()) {
+    if (contact.stacked && (paint.test(contact.component_a) || paint.test(contact.component_b))) {
+      paint.set(contact.type);
+    }
+  }
+}
+
 void add_stacked_contacts(const tech::Technology& tech, CifStyleInfo& style) {
   for (auto& layer_ops : style.ops) {
     for (CifOpValues& op : layer_ops) {
-      if (!op.or_paint) {
-        continue;
-      }
-      for (const tech::ContactInfo& contact : tech.contacts()) {
-        if (!contact.stacked) {
-          continue;
-        }
-        if (op.or_paint->test(contact.component_a) || op.or_paint->test(contact.component_b)) {
-          op.or_paint->set(contact.type);
-        }
+      if (op.or_paint) {
+        join_stacked_contacts(tech, *op.or_paint);
       }
     }
   }
 }
 
+/// The values of one operator that CIFTechFinal's reducer loop considers.
+std::vector<std::int64_t> reducer_operands(const CifOpValues& op) {
+  std::vector<std::int64_t> out;
+  if (op.distance > 0) {
+    out.push_back(op.distance);
+  }
+  if (op.kind == Kind::slots) {
+    return out;  // slots: undefined behavior in Magic (header note)
+  }
+  for (std::size_t j = 0; j < op.values.size(); ++j) {
+    const bool halved = op.kind == Kind::squares && (j == 1 || j == 2);
+    out.push_back(halved ? op.values[j] >> 1 : op.values[j]);
+  }
+  return out;
+}
+
 /// The cs_reducer loop of CIFTechFinal.
 std::int32_t reducer_of(const CifStyleInfo& style) {
   std::int64_t min_reduce = style.scale_factor;
-  const auto consider = [&](std::int64_t value) {
-    if (value != 0) {
-      min_reduce = std::min(min_reduce, text::find_gcf(style.scale_factor, value));
-    }
-  };
   for (const auto& layer_ops : style.ops) {
     for (const CifOpValues& op : layer_ops) {
-      if (op.distance > 0) {
-        consider(op.distance);
-      }
-      for (std::size_t j = 0; j < op.values.size(); ++j) {
-        const bool halved = op.kind == Kind::squares && (j == 1 || j == 2);
-        if (op.kind != Kind::slots) {  // slots: undefined behavior in Magic (header note)
-          consider(halved ? op.values[j] >> 1 : op.values[j]);
+      for (const std::int64_t value : reducer_operands(op)) {
+        if (value != 0) {
+          min_reduce = std::min(min_reduce, text::find_gcf(style.scale_factor, value));
         }
       }
     }
@@ -537,27 +546,32 @@ std::int32_t reducer_of(const CifStyleInfo& style) {
   return static_cast<std::int32_t>(min_reduce);
 }
 
+/// The squares or slots operator after operator `i` of a layer, through
+/// `or` and `and-not` only (the operators that keep the relation between
+/// layers and cuts); nullptr when another operator comes first.
+const CifOpValues* cut_operator(const std::vector<CifOpValues>& layer_ops, std::size_t i) {
+  for (std::size_t k = i + 1; k < layer_ops.size(); ++k) {
+    const CifOpValues& sop = layer_ops[k];
+    if (sop.kind == Kind::squares || sop.kind == Kind::squares_grid || sop.kind == Kind::slots) {
+      return &sop;
+    }
+    if (!sop.keeps_cuts) {
+      return nullptr;
+    }
+  }
+  return nullptr;
+}
+
 std::optional<ContactBorder> find_contact_border(const CifStyleInfo& style, tech::TileType type) {
   for (const auto& layer_ops : style.ops) {
     // The leading run of `or` operators without CIF layers.
     for (std::size_t i = 0; i < layer_ops.size() && layer_ops[i].or_paint; ++i) {
-      if (!layer_ops[i].or_paint->test(type)) {
+      const CifOpValues* cut = layer_ops[i].or_paint->test(type) ? cut_operator(layer_ops, i) : nullptr;
+      if (cut == nullptr) {
         continue;
       }
-      for (std::size_t k = i + 1; k < layer_ops.size(); ++k) {
-        const CifOpValues& sop = layer_ops[k];
-        if (sop.kind == Kind::squares || sop.kind == Kind::squares_grid || sop.kind == Kind::slots) {
-          const std::int32_t border = sop.values[0];
-          if (border <= 0) {
-            return std::nullopt;
-          }
-          return ContactBorder{border, style.scale_factor};
-        }
-        // Only `or` and `and-not` keep the relation between layers and cuts.
-        if (!sop.keeps_cuts) {
-          break;
-        }
-      }
+      const std::int32_t border = cut->values[0];
+      return border > 0 ? std::optional{ContactBorder{border, style.scale_factor}} : std::nullopt;
     }
   }
   return std::nullopt;
@@ -597,31 +611,45 @@ bool halved_value(Kind kind, std::size_t j) {
   return (kind == Kind::squares && (j == 1 || j == 2)) || (kind == Kind::slots && (j == 1 || j == 2 || j == 4 || j == 5));
 }
 
+/// Multiplies the non-zero client value j of `op` by d; returns the value
+/// CIFTechOutputScale folds into lexpand, or nothing for a zero operand.
+std::optional<std::int64_t> scale_value(CifOpValues& op, std::size_t j, std::int64_t d, bool odd_space) {
+  if (op.values[j] == 0) {
+    return std::nullopt;
+  }
+  op.values[j] = text::clamp_int(op.values[j] * d);
+  std::int64_t value = op.values[j] < 0 ? -std::int64_t{op.values[j]} : op.values[j];
+  if (halved_value(op.kind, j)) {
+    value >>= 1;
+  }
+  if (odd_space && (op.kind == Kind::squares || op.kind == Kind::slots)) {
+    value >>= 1;
+  }
+  return value;
+}
+
+/// Multiplies every operand of `op` by d; returns the values folded into lexpand.
+std::vector<std::int64_t> scale_op(CifOpValues& op, std::int64_t d, bool odd_space) {
+  std::vector<std::int64_t> folded;
+  if (op.distance != 0) {
+    op.distance = text::clamp_int(op.distance * d);
+    folded.push_back(op.distance);
+  }
+  for (std::size_t j = 0; j < op.values.size(); ++j) {
+    if (const auto value = scale_value(op, j, d, odd_space)) {
+      folded.push_back(*value);
+    }
+  }
+  return folded;
+}
+
 /// Multiplies every operand by d and returns the expander reduction lexpand.
 std::int64_t scale_operands(CifStyleInfo& style, std::int64_t d, bool odd_space) {
   std::int64_t lexpand = style.expander;
-  const auto fold = [&](std::int64_t value) {
-    lexpand = text::find_gcf(lexpand, text::find_gcf(value, style.expander));
-  };
   for (auto& layer_ops : style.ops) {
     for (CifOpValues& op : layer_ops) {
-      if (op.distance != 0) {
-        op.distance = text::clamp_int(op.distance * d);
-        fold(op.distance);
-      }
-      for (std::size_t j = 0; j < op.values.size(); ++j) {
-        if (op.values[j] == 0) {
-          continue;
-        }
-        op.values[j] = text::clamp_int(op.values[j] * d);
-        std::int64_t value = op.values[j] < 0 ? -std::int64_t{op.values[j]} : op.values[j];
-        if (halved_value(op.kind, j)) {
-          value >>= 1;
-        }
-        if (odd_space && (op.kind == Kind::squares || op.kind == Kind::slots)) {
-          value >>= 1;
-        }
-        fold(value);
+      for (const std::int64_t value : scale_op(op, d, odd_space)) {
+        lexpand = text::find_gcf(lexpand, text::find_gcf(value, style.expander));
       }
     }
   }

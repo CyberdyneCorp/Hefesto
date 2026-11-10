@@ -1,0 +1,118 @@
+# Magic 8.3.694 (fc5daa9e) cifoutput values of scmos.tech: `cif listall ostyle`, then for
+# the style current after the load and for each style after `cif ostyle <style>`: CIFCurStyle's
+# cs_scaleFactor, cs_expander, cs_reducer and, for every contact type with a squares/slots
+# operator, CIFGetContactSize's border (CIF units). Read with a probe command loaded into
+# Magic's Tcl interpreter (tasks.md 4.1); compared by tests/unit/drc/rules/cif_magic_test.cpp.
+ostyles lambda=1.0(gen) lambda=1.0(nwell) lambda=1.0(pwell) lambda=0.8(gen) lambda=0.6(gen) lambda=0.6(nwell) lambda=0.6(pwell) plot
+loaded lambda=1.0(gen) 100 1 50
+contact polycontact 100
+contact ndcontact 100
+contact pdcontact 100
+contact capcontact 100
+contact electrodecontact 100
+contact collectorcontact 100
+contact emittercontact 100
+contact pbasecontact 100
+contact nbccdiffcontact 100
+contact m2contact 100
+contact psubstratepcontact 100
+contact nsubstratencontact 100
+style lambda=1.0(gen) 100 1 50
+contact polycontact 100
+contact ndcontact 100
+contact pdcontact 100
+contact capcontact 100
+contact electrodecontact 100
+contact collectorcontact 100
+contact emittercontact 100
+contact pbasecontact 100
+contact nbccdiffcontact 100
+contact m2contact 100
+contact psubstratepcontact 100
+contact nsubstratencontact 100
+style lambda=1.0(nwell) 100 1 50
+contact polycontact 100
+contact ndcontact 100
+contact pdcontact 100
+contact capcontact 100
+contact electrodecontact 100
+contact collectorcontact 100
+contact emittercontact 100
+contact pbasecontact 100
+contact nbccdiffcontact 100
+contact m2contact 100
+contact psubstratepcontact 100
+contact nsubstratencontact 100
+style lambda=1.0(pwell) 100 1 50
+contact polycontact 100
+contact ndcontact 100
+contact pdcontact 100
+contact capcontact 100
+contact electrodecontact 100
+contact collectorcontact 100
+contact emittercontact 100
+contact pbasecontact 100
+contact m2contact 100
+contact psubstratepcontact 100
+contact nsubstratencontact 100
+style lambda=0.8(gen) 80 1 40
+contact polycontact 80
+contact ndcontact 80
+contact pdcontact 80
+contact highvoltndcontact 160
+contact highvoltpdcontact 160
+contact capcontact 80
+contact electrodecontact 80
+contact collectorcontact 80
+contact emittercontact 80
+contact pbasecontact 80
+contact m2contact 80
+contact psubstratepcontact 80
+contact nsubstratencontact 80
+contact highvoltpsubcontact 160
+contact highvoltnsubcontact 160
+style lambda=0.6(gen) 60 1 30
+contact polycontact 60
+contact ndcontact 60
+contact pdcontact 60
+contact capcontact 60
+contact electrodecontact 60
+contact collectorcontact 60
+contact emittercontact 60
+contact pbasecontact 60
+contact nbccdiffcontact 60
+contact m2contact 60
+contact psubstratepcontact 60
+contact nsubstratencontact 60
+style lambda=0.6(nwell) 60 1 30
+contact polycontact 60
+contact ndcontact 60
+contact pdcontact 60
+contact capcontact 60
+contact electrodecontact 60
+contact collectorcontact 60
+contact emittercontact 60
+contact pbasecontact 60
+contact nbccdiffcontact 60
+contact m2contact 60
+contact psubstratepcontact 60
+contact nsubstratencontact 60
+style lambda=0.6(pwell) 60 1 30
+contact polycontact 60
+contact ndcontact 60
+contact pdcontact 60
+contact capcontact 60
+contact electrodecontact 60
+contact collectorcontact 60
+contact emittercontact 60
+contact pbasecontact 60
+contact m2contact 60
+contact psubstratepcontact 60
+contact nsubstratencontact 60
+style plot 100 1 50
+contact polycontact 100
+contact ndcontact 100
+contact pdcontact 100
+contact m2contact 100
+contact psubstratepcontact 100
+contact nsubstratencontact 100

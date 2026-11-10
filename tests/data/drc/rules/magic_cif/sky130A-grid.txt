@@ -1,0 +1,108 @@
+# Magic 8.3.694 (fc5daa9e) cifoutput values of sky130A.tech after `scalegrid 1 2`: `cif listall ostyle`, then for
+# the style current after the load and for each style after `cif ostyle <style>`: CIFCurStyle's
+# cs_scaleFactor, cs_expander, cs_reducer and, for every contact type with a squares/slots
+# operator, CIFGetContactSize's border (CIF units). Read with a probe command loaded into
+# Magic's Tcl interpreter (tasks.md 4.1); compared by tests/unit/drc/rules/cif_magic_test.cpp.
+ostyles gdsii drc density wafflefill() wafflefill(tiled)
+loaded gdsii 5 10 1
+contact ndiffc 0
+contact pdiffc 0
+contact mvndiffc 0
+contact mvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact mvpsubdiffcont 0
+contact mvnsubdiffcont 0
+contact polycont 0
+contact xpolycontact 80
+contact pdiodec 0
+contact ndiodec 0
+contact nndiodec 0
+contact mvpdiodec 0
+contact mvndiodec 0
+contact pdiodelvtc 0
+contact pdiodehvtc 0
+contact ndiodelvtc 0
+contact viali 0
+contact via1 55
+contact via2 40
+contact via3 60
+contact mimcapcontact 60
+contact via4 190
+contact mimcap2contact 190
+contact pc+v0 0
+contact ndc+v0 0
+contact pdc+v0 0
+contact nsc+v0 0
+contact psc+v0 0
+contact ndic+v0 0
+contact ndilvtc+v0 0
+contact nndic+v0 0
+contact pdic+v0 0
+contact pdilvtc+v0 0
+contact pdihvtc+v0 0
+contact xpc+v0 80
+contact mvndc+v0 0
+contact mvpdc+v0 0
+contact mvnsc+v0 0
+contact mvpsc+v0 0
+contact mvndic+v0 0
+contact mvpdic+v0 0
+contact v0+v 0
+contact obsli1c+v 55
+contact v+v2 55
+contact v2+v3 40
+contact v3+v4 60
+style gdsii 5 10 1
+contact ndiffc 0
+contact pdiffc 0
+contact mvndiffc 0
+contact mvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact mvpsubdiffcont 0
+contact mvnsubdiffcont 0
+contact polycont 0
+contact xpolycontact 80
+contact pdiodec 0
+contact ndiodec 0
+contact nndiodec 0
+contact mvpdiodec 0
+contact mvndiodec 0
+contact pdiodelvtc 0
+contact pdiodehvtc 0
+contact ndiodelvtc 0
+contact viali 0
+contact via1 55
+contact via2 40
+contact via3 60
+contact mimcapcontact 60
+contact via4 190
+contact mimcap2contact 190
+contact pc+v0 0
+contact ndc+v0 0
+contact pdc+v0 0
+contact nsc+v0 0
+contact psc+v0 0
+contact ndic+v0 0
+contact ndilvtc+v0 0
+contact nndic+v0 0
+contact pdic+v0 0
+contact pdilvtc+v0 0
+contact pdihvtc+v0 0
+contact xpc+v0 80
+contact mvndc+v0 0
+contact mvpdc+v0 0
+contact mvnsc+v0 0
+contact mvpsc+v0 0
+contact mvndic+v0 0
+contact mvpdic+v0 0
+contact v0+v 0
+contact obsli1c+v 55
+contact v+v2 55
+contact v2+v3 40
+contact v3+v4 60
+style drc 5 10 1
+style density 1 2 1
+style wafflefill() 5 10 1
+style wafflefill(tiled) 5 10 1

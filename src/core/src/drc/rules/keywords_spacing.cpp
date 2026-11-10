@@ -393,24 +393,43 @@ bool StyleCompiler::spacing_args(Tokens t, SpacingArgs& a) {
   return true;
 }
 
-int StyleCompiler::multiplane_spacing(SpacingArgs a) {
-  // Q-DRC-3: Magic returns after the first (plane1, plane2) combination.
+namespace {
+
+/// The (plane1, plane2) combinations of a multi-plane spacing rule, plane1-major.
+std::vector<std::pair<int, int>> plane_combos(PlaneMask pmask1, PlaneMask pmask2, int planes) {
+  const auto has = [](PlaneMask mask, int p) { return (mask & tech::plane_bit(static_cast<tech::PlaneId>(p))) != 0; };
   std::vector<std::pair<int, int>> combos;
-  for (int p = 0; p < plane_count(); ++p) {
-    for (int q = 0; q < plane_count(); ++q) {
-      if ((a.pmask1 & tech::plane_bit(static_cast<tech::PlaneId>(p))) != 0 &&
-          (a.pmask2 & tech::plane_bit(static_cast<tech::PlaneId>(q))) != 0) {
+  for (int p = 0; p < planes; ++p) {
+    if (!has(pmask1, p)) {
+      continue;
+    }
+    for (int q = 0; q < planes; ++q) {
+      if (has(pmask2, q)) {
         combos.emplace_back(p, q);
       }
     }
   }
+  return combos;
+}
+
+/// The plane pairs after the first, as DRC-LINT-001 lists them.
+std::string dropped_pairs(const tech::Technology& technology, const std::vector<std::pair<int, int>>& combos) {
+  std::string dropped;
+  for (std::size_t k = 1; k < combos.size(); ++k) {
+    dropped += (k == 1 ? "" : ", ") + plane_pair_text(technology, combos[k].first, combos[k].second);
+  }
+  return dropped;
+}
+
+}  // namespace
+
+int StyleCompiler::multiplane_spacing(SpacingArgs a) {
+  // Q-DRC-3: Magic returns after the first (plane1, plane2) combination.
+  const std::vector<std::pair<int, int>> combos = plane_combos(a.pmask1, a.pmask2, plane_count());
   if (combos.size() > 1) {
-    std::string dropped;
-    for (std::size_t k = 1; k < combos.size(); ++k) {
-      dropped += (k == 1 ? "" : ", ") + plane_pair_text(tech(), combos[k].first, combos[k].second);
-    }
     lint("DRC-LINT-001", std::string{"Multiplane spacing rule: Magic compiles only the plane pair "} +
-                             plane_pair_text(tech(), combos[0].first, combos[0].second) + " and drops " + dropped +
+                             plane_pair_text(tech(), combos[0].first, combos[0].second) + " and drops " +
+                             dropped_pairs(tech(), combos) +
                              (compat_.magic_compat ? " (magic-compat on: dropped here too)." : " (compiled here)."));
   }
   int result = 0;

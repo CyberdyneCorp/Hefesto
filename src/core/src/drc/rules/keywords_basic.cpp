@@ -317,50 +317,79 @@ int StyleCompiler::kw_rectangle(Tokens t) {
 
 // --- extend and overhang -----------------------------------------------------------
 
+void StyleCompiler::insert_triggered(TileType i, TileType j, const TriggeredRule& r) {
+  for (const RuleFlags dir : {flags::kForward, flags::kReverse}) {
+    const TileType a = dir == flags::kForward ? i : j;
+    const TileType b = dir == flags::kForward ? j : i;
+    lists().insert(a, b, r.distance,
+                   {make(1, r.trigger_ok, TypeMask{}, r.why, 0, dir | flags::kTrigger, r.check_plane, r.edge_plane),
+                    make(r.distance, r.ok, r.corner, r.why, r.cdist, dir, r.check_plane, r.edge_plane)});
+  }
+}
+
+PlaneMask StyleCompiler::one_plane(const Names& n, std::string_view which, std::string_view keyword) {
+  const PlaneMask pmask = coincident(n.types, n.planes);
+  if (pmask == 0) {
+    tech_error("All layers in " + std::string{which} + " set for \"" + std::string{keyword} +
+               "\" must be on the same plane");
+  }
+  return pmask;
+}
+
+namespace {
+
+enum class ExtendOption : std::uint8_t { none, exact_width, exclusive };
+
+/// The optional fifth argument of `extend` (Magic tests prefixes, so any
+/// other word is the why text).
+ExtendOption extend_option(std::string_view word) {
+  if (text::starts_with(word, "exact_")) {
+    return ExtendOption::exact_width;
+  }
+  return text::starts_with(word, "exclu") ? ExtendOption::exclusive : ExtendOption::none;
+}
+
+}  // namespace
+
 int StyleCompiler::kw_extend(Tokens t) {
   const std::int32_t distance = text::c_atoi(t[3]);
-  const bool exact = text::starts_with(t[4], "exact_");
-  const bool exclusive = !exact && text::starts_with(t[4], "exclu");
-  const WhyIndex reason = why(exact || exclusive ? arg(t, 5) : arg(t, 4));
+  const ExtendOption option = extend_option(t[4]);
+  const bool exact = option == ExtendOption::exact_width;
+  const bool exclusive = option == ExtendOption::exclusive;
+  const WhyIndex reason = why(arg(t, option == ExtendOption::none ? 4 : 5));
   const Names n1 = names(t[1]);
-  const PlaneMask pmask1 = coincident(n1.types, n1.planes);
+  const PlaneMask pmask1 = one_plane(n1, "first", "extend");
   if (pmask1 == 0) {
-    tech_error("All layers in first set for \"extend\" must be on the same plane");
     return 0;
   }
   const Names n2 = names(t[2]);
-  const PlaneMask pmask2 = coincident(n2.types, n2.planes);
+  const PlaneMask pmask2 = one_plane(n2, "second", "extend");
   if (pmask2 == 0) {
-    tech_error("All layers in second set for \"extend\" must be on the same plane");
     return 0;
   }
   const TypeMask set_m = exclusive ? n1.types : (n1.types | n2.types);
   const TypeMask set_n = ~n1.types;
   const TypeMask set_c = ~n2.types;
   const TypeMask none;
+  const auto same_plane_rules = [&](TileType i, TileType j, int plane) {
+    lists().insert(i, j, distance, {make(distance, set_m, none, reason, 0, flags::kForward, plane, plane)});
+    lists().insert(j, i, distance, {make(distance, set_m, none, reason, 0, flags::kReverse, plane, plane)});
+    if (exact) {
+      const RuleFlags out = flags::kOutside;
+      lists().insert(i, j, distance, {make(distance, set_n, none, reason, 0, flags::kForward | out, plane, plane)});
+      lists().insert(j, i, distance, {make(distance, set_n, none, reason, 0, flags::kReverse | out, plane, plane)});
+    }
+  };
+  const TriggeredRule multi{set_n, set_m, none, distance, 0, reason, lowest(pmask1), 0};
   for_pairs(pmask2, n2.types, TypeMask::all(), [&](TileType i, TileType j, PlaneMask pset) {
-    if ((pset & pmask1) != 0) {
-      if (!n2.types.test(i) || !n1.types.test(j)) {
-        return;
+    if ((pset & pmask1) == 0) {
+      if (n2.types.test(i) && set_c.test(j)) {  // multi-plane extend
+        TriggeredRule r = multi;
+        r.edge_plane = lowest(pset);
+        insert_triggered(i, j, r);
       }
-      const int plane = lowest(pset & pmask1);
-      lists().insert(i, j, distance, {make(distance, set_m, none, reason, 0, flags::kForward, plane, plane)});
-      lists().insert(j, i, distance, {make(distance, set_m, none, reason, 0, flags::kReverse, plane, plane)});
-      if (exact) {
-        const RuleFlags out = flags::kOutside;
-        lists().insert(i, j, distance, {make(distance, set_n, none, reason, 0, flags::kForward | out, plane, plane)});
-        lists().insert(j, i, distance, {make(distance, set_n, none, reason, 0, flags::kReverse | out, plane, plane)});
-      }
-    } else if (n2.types.test(i) && set_c.test(j)) {  // multi-plane extend
-      const int plane = lowest(pset);
-      const int plane2 = lowest(pmask1);
-      for (const RuleFlags dir : {flags::kForward, flags::kReverse}) {
-        const TileType a = dir == flags::kForward ? i : j;
-        const TileType b = dir == flags::kForward ? j : i;
-        lists().insert(a, b, distance,
-                       {make(1, set_n, none, reason, 0, dir | flags::kTrigger, plane2, plane),
-                        make(distance, set_m, none, reason, 0, dir, plane2, plane)});
-      }
+    } else if (n2.types.test(i) && n1.types.test(j)) {
+      same_plane_rules(i, j, lowest(pset & pmask1));
     }
   });
   return distance;
@@ -370,16 +399,14 @@ int StyleCompiler::kw_overhang(Tokens t) {
   const std::int32_t distance = text::c_atoi(t[3]);
   const WhyIndex reason = why(t[4]);
   const Names n1 = names(t[2]);  // layers1: the inside types
-  const PlaneMask pmask1 = coincident(n1.types, n1.planes);
+  const PlaneMask pmask1 = one_plane(n1, "first", "overhang");
   if (pmask1 == 0) {
-    tech_error("All layers in first set for \"overhang\" must be on the same plane");
     return 0;
   }
   const TypeMask set_n = ~n1.types;
   const Names n2 = names(t[1]);  // layers2: the overhanging types
-  const PlaneMask pmask2 = coincident(n2.types, n2.planes);
+  const PlaneMask pmask2 = one_plane(n2, "second", "overhang");
   if (pmask2 == 0) {
-    tech_error("All layers in second set for \"overhang\" must be on the same plane");
     return 0;
   }
   const TypeMask set2_inv = ~n2.types;
@@ -390,26 +417,19 @@ int StyleCompiler::kw_overhang(Tokens t) {
   const TypeMask set_m = n1.types | n2.types;
   TypeMask set2 = n2.types;
   set2.set(tech::kSpace);
-  const TypeMask none;
+  const RuleFlags bc = flags::kBothCorners;
+  const TriggeredRule multi{set_n, n1.types, n1.types, distance, distance, reason, lowest(pmask1), 0};
   for_pairs(pmask2, n1.types | set2, TypeMask::all(), [&](TileType i, TileType j, PlaneMask pset) {
-    if ((pset & pmask1) != 0) {
-      if (!n1.types.test(i) || !set2.test(j)) {
-        return;
+    const int plane = lowest(pset);
+    if ((pset & pmask1) == 0) {
+      if (set2.test(i) && set2_inv.test(j)) {  // multi-plane overhang
+        TriggeredRule r = multi;
+        r.edge_plane = plane;
+        insert_triggered(i, j, r);
       }
-      const int plane = lowest(pset);
-      const RuleFlags bc = flags::kBothCorners;
+    } else if (n1.types.test(i) && set2.test(j)) {
       lists().insert(i, j, distance, {make(distance, set_m, set_m, reason, distance, flags::kForward | bc, plane, plane)});
       lists().insert(j, i, distance, {make(distance, set_m, set_m, reason, distance, flags::kReverse | bc, plane, plane)});
-    } else if (set2.test(i) && set2_inv.test(j)) {  // multi-plane overhang
-      const int plane = lowest(pset);
-      const int plane2 = lowest(pmask1);
-      for (const RuleFlags dir : {flags::kForward, flags::kReverse}) {
-        const TileType a = dir == flags::kForward ? i : j;
-        const TileType b = dir == flags::kForward ? j : i;
-        lists().insert(a, b, distance,
-                       {make(1, set_n, none, reason, 0, dir | flags::kTrigger, plane2, plane),
-                        make(distance, n1.types, n1.types, reason, distance, dir, plane2, plane)});
-      }
     }
   });
   return distance;

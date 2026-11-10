@@ -1,0 +1,90 @@
+# Magic 8.3.694 (fc5daa9e) cifoutput values of ihp-sg13g2.tech: `cif listall ostyle`, then for
+# the style current after the load and for each style after `cif ostyle <style>`: CIFCurStyle's
+# cs_scaleFactor, cs_expander, cs_reducer and, for every contact type with a squares/slots
+# operator, CIFGetContactSize's border (CIF units). Read with a probe command loaded into
+# Magic's Tcl interpreter (tasks.md 4.1); compared by tests/unit/drc/rules/cif_magic_test.cpp.
+ostyles gdsii drc density patternfill() patternfill(tiled)
+loaded gdsii 10 10 1
+contact hvvarcontact 0
+contact ndiffc 0
+contact pdiffc 0
+contact hvndiffc 0
+contact hvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact hvpsubdiffcont 0
+contact hvnsubdiffcont 0
+contact polycont 0
+contact pdiodecont 0
+contact ndiodecont 0
+contact via1 5
+contact via2 5
+contact via3 5
+contact via4 5
+contact via5 5
+contact mimcapcontact 360
+contact via6 500
+contact pc+v 0
+contact ndc+v 0
+contact pdc+v 0
+contact nsc+v 0
+contact psc+v 0
+contact ndic+v 0
+contact pdic+v 0
+contact sdic+v 5
+contact nec+v 5
+contact hvnec+v 5
+contact hvndc+v 0
+contact hvpdc+v 0
+contact hvnsc+v 0
+contact hvpsc+v 0
+contact hvvc+v 0
+contact v+v2 5
+contact v2+v3 5
+contact v3+v4 5
+contact v4+v5 5
+contact v5+v6 5
+style gdsii 10 10 1
+contact hvvarcontact 0
+contact ndiffc 0
+contact pdiffc 0
+contact hvndiffc 0
+contact hvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact hvpsubdiffcont 0
+contact hvnsubdiffcont 0
+contact polycont 0
+contact pdiodecont 0
+contact ndiodecont 0
+contact via1 5
+contact via2 5
+contact via3 5
+contact via4 5
+contact via5 5
+contact mimcapcontact 360
+contact via6 500
+contact pc+v 0
+contact ndc+v 0
+contact pdc+v 0
+contact nsc+v 0
+contact psc+v 0
+contact ndic+v 0
+contact pdic+v 0
+contact sdic+v 5
+contact nec+v 5
+contact hvnec+v 5
+contact hvndc+v 0
+contact hvpdc+v 0
+contact hvnsc+v 0
+contact hvpsc+v 0
+contact hvvc+v 0
+contact v+v2 5
+contact v2+v3 5
+contact v3+v4 5
+contact v4+v5 5
+contact v5+v6 5
+style drc 10 10 1
+style density 1 1 1
+style patternfill() 10 10 1
+style patternfill(tiled) 10 10 1
