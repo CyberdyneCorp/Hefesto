@@ -91,6 +91,8 @@ class ArgParser {
     } else if (arg.starts_with("--diagnostic-codes=")) {
       o.show_codes = true;
       o.codes_area = std::string{arg.substr(std::string_view{"--diagnostic-codes="}.size())};
+    } else if (arg == "--interactive") {
+      o.interactive = true;
     } else if (arg == "--no-log") {
       o.no_log = true;
     } else if (arg == "--") {
@@ -174,6 +176,9 @@ std::string usage_text() {
          "  --magic ...               Magic's command line: -T, -d, -rcfile, -norcfile, -r,\n"
          "                            cells and a .tcl script; commands from standard input\n"
          "  -c <commands>             run commands, e.g. -c \"echo hi; version\"\n"
+         "  --interactive             then read commands from standard input at a prompt\n"
+         "                            ('%' idle, ']' while background DRC is busy); implied\n"
+         "                            by --magic on a terminal without -c or scripts\n"
          "  --diagnostics=text|json|magic\n"
          "                            diagnostic format on stderr (default text); magic prints\n"
          "                            Magic's console text and each script command's result\n"

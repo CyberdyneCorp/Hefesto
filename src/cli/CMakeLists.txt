@@ -8,6 +8,7 @@
 # Everything but main(), so unit tests can link the CLI logic.
 add_library(hefesto_cli_lib STATIC
   app.cpp
+  interactive.cpp
   options.cpp)
 target_include_directories(hefesto_cli_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(hefesto_cli_lib PUBLIC hefesto::core hefesto::platform_posix hefesto::platform_net)

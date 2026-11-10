@@ -11,6 +11,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/context.cpp
   ${CMAKE_CURRENT_LIST_DIR}/engine.cpp
   ${CMAKE_CURRENT_LIST_DIR}/flatten.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/host.cpp
   ${CMAKE_CURRENT_LIST_DIR}/interaction.cpp
   ${CMAKE_CURRENT_LIST_DIR}/marking.cpp
   ${CMAKE_CURRENT_LIST_DIR}/pending.cpp)
