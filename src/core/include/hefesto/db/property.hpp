@@ -20,6 +20,7 @@
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/hints/region.hpp"
 
 namespace hefesto::db {
 
@@ -39,11 +40,10 @@ struct DoubleList {
   std::vector<std::int64_t> values;
   friend bool operator==(const DoubleList&, const DoubleList&) = default;
 };
-/// A set of rectangles (MASKHINTS_* only).
-struct PlaneValue {
-  std::vector<Rect> rects;
-  friend bool operator==(const PlaneValue&, const PlaneValue&) = default;
-};
+/// A plane property (MASKHINTS_* only): a region in Magic's maximal
+/// horizontal strips, hints::HintRegion (mask-hints "Mask-hint property
+/// data model"; openspec/changes/m3-drc design.md D4/D10).
+using PlaneValue = hints::HintRegion;
 
 using PropertyValue = std::variant<std::string, IntegerList, DimensionList, DoubleList, PlaneValue>;
 
@@ -81,7 +81,8 @@ class PropertyStore {
 /// A plane property's region as Magic stores and enumerates it: the
 /// rectangles painted into a tile plane (merged into maximal horizontal
 /// strips), in the plane's area-enumeration order (DBSrPaintArea), which is
-/// the order `.mag` files and the `property` command show them.
+/// the order `.mag` files and the `property` command show them
+/// (value.strips()).
 [[nodiscard]] std::vector<Rect> plane_property_tiles(const PlaneValue& value);
 
 [[nodiscard]] PropertyValue coerce_reserved_property(std::string_view name, const PropertyValue& value);

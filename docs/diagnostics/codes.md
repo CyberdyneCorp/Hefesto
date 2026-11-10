@@ -9,7 +9,8 @@ The table below is the "core" area of the code table
 (`src/core/src/diag/codes.cpp`). Since M1 each area owns its own codes and
 document, so parallel work never edits the same table
 (`openspec/changes/m1-core-viewer/design.md` D3; the M2 areas:
-`openspec/changes/m2-interactive-editing/design.md` D1):
+`openspec/changes/m2-interactive-editing/design.md` D1; the M3 areas:
+`openspec/changes/m3-drc/design.md` D1):
 
 | Area | Prefix | Source | Document |
 |---|---|---|---|
@@ -26,6 +27,8 @@ document, so parallel work never edits the same table
 | connect | CONNECT | `src/core/src/connect/codes.cpp` | [codes/connect.md](codes/connect.md) |
 | ui | UI | `src/core/src/ui/codes.cpp` | [codes/ui.md](codes/ui.md) |
 | wiring | WIRE | `src/core/src/wiring/codes.cpp` | [codes/wire.md](codes/wire.md) |
+| drc | DRC | `src/core/src/drc/codes.cpp` (fragments `drc/<sub>/codes.inc`) | [codes/drc.md](codes/drc.md) |
+| hints | HINTS | `src/core/src/hints/codes.cpp` | [codes/hints.md](codes/hints.md) |
 
 Regenerate the core table with:
 
@@ -68,6 +71,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CMD-USAGE-001` | error | Wrong number or form of command arguments. |
 | `CORE-NOTIMPL-001` | error | Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub). |
 | `CORE-NOTIMPL-002` | error | Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it). |
+| `CORE-NOTIMPL-003` | error | Retired in M3, never reused. Was: not implemented yet (a `drc` option or M3 function stubbed by the M3 scaffold before its workstream landed it). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

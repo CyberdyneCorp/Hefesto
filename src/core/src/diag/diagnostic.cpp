@@ -41,7 +41,14 @@ Diagnostic make(std::string_view code, std::string text, Location location) {
       .text = std::move(text),
       .location = std::move(location),
       .related = std::nullopt,
+      .native_only = false,
   };
+}
+
+Diagnostic make_native(std::string_view code, std::string text, Location location) {
+  Diagnostic diagnostic = make(code, std::move(text), std::move(location));
+  diagnostic.native_only = true;
+  return diagnostic;
 }
 
 }  // namespace hefesto::diag

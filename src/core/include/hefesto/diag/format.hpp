@@ -39,4 +39,12 @@ enum class Format { text, json, magic };
 
 [[nodiscard]] std::string format(const Diagnostic& diagnostic, Format fmt);
 
+/// Whether a console in format `fmt` prints the diagnostic: always, except
+/// a `native_only` diagnostic in the `magic` format (Magic never prints it;
+/// openspec/changes/m3-drc/design.md D4).
+[[nodiscard]] bool shown_in(const Diagnostic& diagnostic, Format fmt) noexcept;
+
+/// format() for a console: std::nullopt when shown_in() is false.
+[[nodiscard]] std::optional<std::string> render(const Diagnostic& diagnostic, Format fmt);
+
 }  // namespace hefesto::diag

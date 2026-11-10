@@ -25,7 +25,7 @@ being read (an included file while inside an `include`).
 | `TECH-CMD-002` | error | `tech load` usage error (`Usage: tech load <filename> [-noprompt] [-override]`). |
 | `TECH-CMD-003` | error | `tech load` would invalidate painted layout and cannot ask for confirmation; use `-noprompt`. |
 | `TECH-CMD-004` | error | `tech lambda N [D]` is refused with magic-compat off; use `scalegrid`. |
-| `TECH-CMD-005` | error | `tech drc` needs the DRC rule set, which is not available before M3 (drc-*). |
+| `TECH-CMD-005` | error | Retired in M3, never reused. Was: `tech drc` needs the DRC rule set, which is not available before M3 (drc-*). |
 | `TECH-CMD-006` | error | A layer name in a `tech` command does not resolve (`No such layer <n>`). |
 | `TECH-FILE-001` | error | No technology file `X`, `X.tech` or `X.tech27` was found on the search path. |
 | `TECH-FILE-002` | error | The technology file cannot be read or does not begin with the `tech` section (readability pre-check). |

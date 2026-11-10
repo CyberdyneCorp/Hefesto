@@ -98,7 +98,7 @@ PropertyValue coerce_plane(const PropertyValue& value, const std::string& text) 
   }
   PlaneValue plane;
   for (std::size_t i = 0; i < v.size(); i += 4) {
-    plane.rects.push_back(canonical(Rect{v[i], v[i + 1], v[i + 2], v[i + 3]}));
+    plane.paint(Rect{v[i], v[i + 1], v[i + 2], v[i + 3]});  // an inverted rectangle paints nothing (DBPaintPlane)
   }
   return plane;
 }
@@ -158,7 +158,7 @@ std::string property_text(const PropertyValue& value) {
     std::string operator()(const DoubleList& l) const { return join(l.values); }
     std::string operator()(const PlaneValue& p) const {
       std::vector<std::int32_t> v;
-      for (const Rect& r : p.rects) {
+      for (const Rect& r : p.strips()) {
         v.insert(v.end(), {r.x0, r.y0, r.x1, r.y1});
       }
       return join(v);
@@ -181,13 +181,13 @@ PropertyValue map_points(const PropertyValue& value, F f) {
     return out;
   }
   if (const auto* pl = std::get_if<PlaneValue>(&value)) {
-    PlaneValue out;
-    for (const Rect& r : pl->rects) {
+    std::vector<Rect> rects;
+    for (const Rect& r : pl->strips()) {
       const Point a = f(Point{r.x0, r.y0});
       const Point b = f(Point{r.x1, r.y1});
-      out.rects.push_back(canonical(Rect{a.x, a.y, b.x, b.y}));
+      rects.push_back(canonical(Rect{a.x, a.y, b.x, b.y}));
     }
-    return out;
+    return PlaneValue{std::span<const Rect>{rects}};
   }
   return value;
 }
@@ -247,20 +247,7 @@ diag::Outcome<PropertyValue> parse_property_value(std::string_view type, std::st
 }
 
 std::vector<Rect> plane_property_tiles(const PlaneValue& value) {
-  Plane plane;
-  PaintRow row{};
-  row.fill(1);
-  for (const Rect& r : value.rects) {
-    if (r.x0 < r.x1 && r.y0 < r.y1) {
-      (void)plane.paint(r, row);
-    }
-  }
-  std::vector<Rect> out;
-  plane.enumerate(whole_plane(), tech::TypeMask::of(1), [&](const TileView& t) {
-    out.push_back(t.area);
-    return true;
-  });
-  return out;
+  return value.strips();
 }
 
 bool change_property(CellDef& def, std::string_view name, std::optional<PropertyValue> value) {

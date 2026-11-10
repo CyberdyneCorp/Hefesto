@@ -58,12 +58,18 @@ struct ObjectRef {
 
 /// One diagnostic. `code` has the form AREA-TOPIC-NNN and is declared in the
 /// code table (hefesto/diag/codes.hpp).
+///
+/// `native_only` marks a Hefesto-only diagnostic that Magic never prints
+/// (e.g. the tech-file lint warnings DRC-LINT-*, openspec/changes/m3-drc
+/// design.md D4): the `magic` format drops it, so golden console captures
+/// stay identical to Magic's, while `text` and `json` print it.
 struct Diagnostic {
   Severity severity = Severity::error;
   std::string code;
   std::string text;
   Location location;
   std::optional<ObjectRef> related;
+  bool native_only = false;
 
   friend bool operator==(const Diagnostic&, const Diagnostic&) = default;
 };
@@ -72,5 +78,8 @@ struct Diagnostic {
 /// An undeclared code is a programming error: it yields severity `error`
 /// and is caught by the code-table unit test.
 [[nodiscard]] Diagnostic make(std::string_view code, std::string text, Location location = {});
+
+/// make() with `native_only` set: a Hefesto-only diagnostic.
+[[nodiscard]] Diagnostic make_native(std::string_view code, std::string text, Location location = {});
 
 }  // namespace hefesto::diag
