@@ -1,0 +1,3 @@
+.subckt inv A Y
++VDD VSS 
+.ends
