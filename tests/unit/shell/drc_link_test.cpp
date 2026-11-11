@@ -150,7 +150,8 @@ TEST_CASE("the desktop host checks in the background and ends where drc catchup 
   CHECK_FALSE(win->pending_redisplay().empty());
   // The same errors as a synchronous `drc check; drc catchup`.
   const std::string background = s.value("box -20 -20 30 30; drc listall why");
-  CHECK(background == "{m1 width < 3} {{2 0 3 10}} {m1 spacing < 4} {{5 0 6 10}}");
+  // listall: DRCWhyAll's string hash table order (Q-SCRIPT-8), not discovery order.
+  CHECK(background == "{m1 spacing < 4} {{5 0 6 10}} {m1 width < 3} {{2 0 3 10}}");
   REQUIRE(s.run("drc off; box -20 -20 30 30; drc check; drc catchup").ok());
   CHECK(s.value("box -20 -20 30 30; drc listall why") == background);
   CHECK(s.value("drc list count total") == "2");

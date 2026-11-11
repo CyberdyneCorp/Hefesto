@@ -272,17 +272,20 @@ cmd::Value load_failure_result(std::string_view code) {
 
 struct LoadArgs {
   bool noprompt = false;
-  std::size_t words = 0;  // Magic's locargc after the flag scan
+  bool override_default = false;  // `-override`: lifts the -T override
+  std::size_t words = 0;          // Magic's locargc after the flag scan
 };
 
 LoadArgs scan_load_flags(const cmd::Invocation& inv) {
   // Magic counts "tech" itself: argv = tech load <file> [flags].
-  LoadArgs out{false, inv.args.size() + 1};
+  LoadArgs out{false, false, inv.args.size() + 1};
   while (out.words > 3 && inv.args[out.words - 2].starts_with("-")) {
     const std::string& flag = inv.args[out.words - 2];
     if (flag == "-noprompt") {
       out.noprompt = true;
-    } else if (flag != "-override" && flag != "-nooverride") {
+    } else if (flag == "-override") {
+      out.override_default = true;
+    } else if (flag != "-nooverride") {
       break;
     }
     --out.words;
@@ -292,8 +295,16 @@ LoadArgs scan_load_flags(const cmd::Invocation& inv) {
 
 CommandResult tech_load(cmd::CommandContext& ctx, editor::EditorState& ed, const cmd::Invocation& inv) {
   const LoadArgs args = scan_load_flags(inv);
+  if (args.override_default) {
+    ed.technology_override = false;  // Magic clears TechOverridesDefault while scanning
+  }
   if (args.words != 3) {
     return fail("TECH-CMD-002", "Usage: tech load <filename> [-noprompt] [-override]");
+  }
+  // A technology given with -T holds until startup ends: `tech load` in a
+  // startup script is then a silent no-op (Magic ref: commands/CmdTZ.c:574-579).
+  if (ed.technology_override) {
+    return CommandResult::success();
   }
   if (!args.noprompt && layout_has_paint(ed.cells, ed.technology->plane_count())) {
     return fail("TECH-CMD-003",

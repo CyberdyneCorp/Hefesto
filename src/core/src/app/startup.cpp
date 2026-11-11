@@ -27,6 +27,11 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/display/styles.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/binding/variables.hpp"
+#include "hefesto/script/pdk/startup.hpp"
+#include "hefesto/script/pdk/trust.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/undo/undo_log.hpp"
 
@@ -96,13 +101,18 @@ class Startup {
     configure_paths();
     const auto files = startup_files(fs_, options_, with_pdk_startup_file());
     result_.startup_files = files;
+    open_interpreter(files);
     auto next = files.begin();
     for (; next != files.end() && next->role == "pre"; ++next) {
-      apply_startup_file(*next);
+      run_startup_file(*next);
     }
     load_override_technology();
-    for (; next != files.end(); ++next) {
-      apply_startup_file(*next);
+    for (; next != files.end() && !quit_requested(); ++next) {
+      run_startup_file(*next);
+    }
+    state_.technology_override = false;  // Magic's main.c:1132: startup is done
+    if (quit_requested()) {
+      return std::move(result_);  // `quit` in a startup file ends startup (scripting-pdk-integration)
     }
     select_technology();
     discover_pdk_libraries();
@@ -272,25 +282,122 @@ class Startup {
     return env;
   }
 
-  // "Magic startup-file compatibility" before the Tcl binding: the plain
-  // settings land in the file's layer; script commands are not run (M4).
-  void apply_startup_file(const StartupFile& file) {
+  // ---- startup files as scripts (scripting-pdk-integration "Startup files
+  // are scripts"; design D7). Owner: PDKINT.
+
+  // The project's interpreter, created when the project opens (one per
+  // EditorState, hefesto-scripting "One interpreter per open project"),
+  // with the engine commands bound, the cross-PDK helper hook and the PDK
+  // store as the trust backend. A front end that opened it already keeps it.
+  void open_interpreter(const std::vector<StartupFile>& files) {
+    if (state_.script.interp == nullptr) {
+      (void)script::open_project_interpreter(state_, sandbox_policy(files));
+      const auto bound = script::bind_registry(*state_.script.interp, dispatcher_.registry(), dispatcher_);
+      for (const auto& d : bound.diagnostics) {
+        sink_.emit(d);  // the binding installs the Q-SCRIPT-41 helper-origin hook itself
+      }
+      // toolkit.tcl, which Magic sources in every session, refreshes an open
+      // gencell dialog after each `select` (Magic ref: tcltk/toolkit.tcl:117;
+      // pcell-toolkit "Selection-driven dialog refresh and key binding").
+      (void)state_.script.interp->evaluate(R"(magic::tag add select "magic::gencell_update %1")");
+      if (env_.configure_interpreter) {
+        env_.configure_interpreter(*state_.script.interp);
+      }
+    }
+    if (state_.script.pdk_trust.backend() == nullptr && env_.host != nullptr && !manager_.root().empty()) {
+      state_.script.pdk_trust.set_backend(script::make_pdk_store_trust(fs_, *env_.host, manager_.root()));
+    }
+  }
+
+  // Granted roots and the synthesized environment (D-31) of the project's
+  // interpreter; enforced by TCL's sandbox (design D5). Each startup file is
+  // granted itself (an explicitly chosen document), not its directory.
+  script::SandboxPolicy sandbox_policy(const std::vector<StartupFile>& files) const {
+    script::SandboxPolicy policy;
+    for (const StartupFile& file : files) {
+      policy.granted_roots.push_back(file.path);
+    }
+    for (const FileArgument& file : options_.files) {
+      if (file.kind == FileKind::script) {
+        policy.granted_roots.push_back(absolute(file.name));  // an explicitly named document (design D5)
+      }
+    }
+    for (const Path& root : {env_.working_directory, manager_.root(), env_.install_root}) {
+      if (!root.empty()) {
+        policy.granted_roots.push_back(root);
+      }
+    }
+    if (env_.project_folder) {
+      policy.granted_roots.push_back(*env_.project_folder);
+    }
+    if (!env_.install_root.empty()) {
+      policy.environment["CAD_ROOT"] = env_.install_root.string();
+    }
+    if (const auto pdk = pinned_variant_dir()) {
+      policy.environment["PDK_ROOT"] = script::pdk_root_for(*pdk).string();
+      policy.environment["PDK"] = pdk->filename().string();
+    } else if (!manager_.root().empty()) {
+      policy.environment["PDK_ROOT"] = manager_.root().string();
+    }
+    return policy;
+  }
+
+  [[nodiscard]] std::optional<Path> pinned_variant_dir() const {
+    const auto selection = pinned_selection();
+    if (!selection) {
+      return std::nullopt;
+    }
+    return manager_.variant_dir(*selection->family, selection->variant->name, result_.project->pdk->version);
+  }
+
+  [[nodiscard]] bool quit_requested() { return dispatcher_.session().quit_requested; }
+
+  script::StartupFile script_file(const StartupFile& file) const {
+    script::StartupFile out;
+    out.path = file.path;
+    out.legacy_name = file.deprecated_name || file.path.filename() == "magic_setup";
+    if (file.role == "pre") {
+      out.kind = script::StartupKind::pre;
+    } else if (file.role == "system") {
+      out.kind = script::StartupKind::system;
+    } else if (file.role == "pdk") {
+      out.kind = script::StartupKind::pdk;
+      out.pdk = script::pdk_identity_of(file.path);
+    } else {
+      out.kind = file.role == "user" ? script::StartupKind::user : script::StartupKind::local;
+      out.name = out.legacy_name ? file.path.filename().string() : options_.rc_name();
+      // A PDK's own rc file named with -rcfile is explicit startup of that
+      // PDK's scripts: it asks for consent too (design D7, hefesto-security).
+      out.pdk = script::pdk_identity_of(file.path);
+    }
+    return out;
+  }
+
+  // Evaluates one startup file in the project's interpreter (after consent
+  // for a PDK's rc file), with Magic's error texts.
+  void run_startup_file(const StartupFile& file) {
     if (file.deprecated_name) {
       report(codes::kStartupNote, deprecation_note(file));
     }
-    auto text = fs_.read(file.path);
-    if (!text) {
-      report(codes::kStartupFile, "Startup file \"" + file.path.string() + "\" not found or unreadable!");
-      return;
+    script::StartupPlan plan;
+    plan.files.push_back(script_file(file));
+    const auto run = script::run_startup_files(state_, plan);
+    for (const auto& d : run.diagnostics) {
+      if (quit_requested() && d.code == "SCRIPT-PDK-001") {
+        continue;  // the unwinding of `quit` (the binding stops the evaluation), not an error
+      }
+      sink_.emit(d);
+      if (d.code == "SCRIPT-TRUST-001" && file.role == "pdk") {
+        pdk_declined_ = true;
+      }
     }
-    const auto values = startup_file_settings(text.value());
-    for (const auto& [name, value] : values) {
-      state_.settings.set(layer_of_role(file.role), name, value);
+    if (file.role == "pdk" && !pdk_declined_) {
+      pdk_rc_ran_ = true;
     }
+    // VDD, GND, SUB and globals(...) set by the file seed its setting layer
+    // (hefesto-settings "Layered settings resolution"; BINDING's traces).
+    script::adopt_engine_variables(state_.settings, layer_of_role(file.role));
     apply_effective(state_.settings, typed_);
-    report(codes::kStartupFile, "Startup file \"" + file.path.string() + "\" (" + file.role + "): " +
-                                    std::to_string(values.size()) +
-                                    " plain setting(s) applied; its script commands run once the Tcl binding exists (M4).");
   }
 
   // Path of the technology file for `name`, or `name` itself for TECH's own search.
@@ -340,12 +447,15 @@ class Startup {
   void load_override_technology() {
     if (options_.technology) {
       tech_loaded_ = load_technology(*options_.technology);
+      state_.technology_override = tech_loaded_;  // a failed -T load revokes it
     }
   }
 
   // "Default technology selection" (after the startup files).
   void select_technology() {
-    if (tech_loaded_) {
+    // A startup file that loaded a technology (Magic's TechFileName set)
+    // decides it (Magic ref: utils/main.c:1141-1151).
+    if (tech_loaded_ || !state_.technology->file_name().empty()) {
       return;
     }
     std::optional<std::string> wanted = options_.technology;
@@ -369,6 +479,9 @@ class Startup {
   // do this) cannot run before the Tcl binding (M4), so the rule applies
   // whenever the technology was loaded from an open_pdks libs.tech directory.
   void discover_pdk_libraries() {
+    if (pdk_rc_ran_) {
+      return;  // the PDK's rc file set the search path (DBio.c: only without an rc file)
+    }
     const std::string& tech_file = loaded_tech_path_;
     const std::size_t at = tech_file.find("libs.tech");
     if (at == std::string::npos) {
@@ -392,8 +505,8 @@ class Startup {
   // "Per-project version pinning": the pinned version, never the enabled one.
   bool load_pinned_technology() {
     const auto selection = pinned_selection();
-    if (!selection) {
-      return false;
+    if (!selection || pdk_declined_) {
+      return false;  // declined PDK script: the minimum technology (hefesto-security)
     }
     const auto& pin = *result_.project->pdk;
     auto path = manager_.tech_file(*selection, pin.version);
@@ -465,7 +578,23 @@ class Startup {
     return ok;
   }
 
+  // A `.tcl` file argument: Tcl's `source` in the project's interpreter, with
+  // Magic's error text (Magic ref: utils/main.c:1212-1221).
   bool run_script_file(const FileArgument& file) {
+    if (state_.script.interp == nullptr) {
+      return run_placeholder_script(file);
+    }
+    const auto run = state_.script.interp->source(absolute(file.name));
+    result_.loaded_files.push_back(file.name);
+    if (!run.ok() && !quit_requested()) {
+      const std::string message = run.diagnostics.empty() ? std::string{} : run.diagnostics.front().text;
+      report("SCRIPT-PDK-001", "Error parsing \"" + file.name + "\": " + message);
+    }
+    return run.ok() || quit_requested();
+  }
+
+  // Without an interpreter (none could be created): the M0 placeholder reader.
+  bool run_placeholder_script(const FileArgument& file) {
     auto text = fs_.read(file.name);
     if (!text) {
       report(codes::kFileUnsupported, "Cannot read script \"" + file.name + "\": " + text.error().text);
@@ -474,6 +603,12 @@ class Startup {
     const auto run = cmd::run_script(dispatcher_, text.value(), cmd::Origin::script, file.name);
     result_.loaded_files.push_back(file.name);
     return run.ok();
+  }
+
+  // `name` made absolute against the session's working directory.
+  [[nodiscard]] Path absolute(const std::string& name) const {
+    const Path path{name};
+    return path.is_absolute() || env_.working_directory.empty() ? path : env_.working_directory / path;
   }
 
   // The startup layout window (a null-display frame until a front end gives it
@@ -551,6 +686,8 @@ class Startup {
   StartupResult result_;
   bool tech_loaded_ = false;
   bool pin_missing_ = false;
+  bool pdk_declined_ = false;  // the user declined the pinned PDK's rc file
+  bool pdk_rc_ran_ = false;    // the pinned PDK's rc file ran
 };
 
 }  // namespace

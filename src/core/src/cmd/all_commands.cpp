@@ -11,9 +11,14 @@
 #include "hefesto/db/commands.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/commands/command.hpp"
+#include "hefesto/gui/commands.hpp"
+#include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
+#include "hefesto/script/binding/commands.hpp"
+#include "hefesto/script/pdk/commands.hpp"
 #include "hefesto/select/commands.hpp"
 #include "hefesto/tech/commands.hpp"
+#include "hefesto/tools/commands.hpp"
 #include "hefesto/ui/commands.hpp"
 #include "hefesto/undo/commands.hpp"
 #include "hefesto/view/commands.hpp"
@@ -43,6 +48,12 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = wiring::register_wiring_commands(registry) && ok;
   // M3 areas (openspec/changes/m3-drc/design.md D1/D3).
   ok = drc::register_drc_command(registry) && ok;
+  // M4 areas (openspec/changes/m4-scripting/design.md D1/D3).
+  ok = script::register_binding_commands(registry) && ok;
+  ok = script::register_pdk_commands(registry) && ok;
+  ok = pcell::register_pcell_commands(registry) && ok;
+  ok = tools::register_tools_commands(registry) && ok;
+  ok = gui::register_gui_commands(registry) && ok;
   return ok;
 }
 

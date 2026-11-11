@@ -33,6 +33,9 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_wiring_section   # the technology `wiring` section (wiring-tool)
   fuzz_wire_segment_file  # `wire segment` coordinate files (wiring-tool)
   fuzz_drc_section      # the technology `drc` section under every style (drc-rule-language)
+  fuzz_tcl_sandbox      # the script sandbox (hefesto-scripting, hefesto-security; m4 design D19)
+  fuzz_readspice        # readspice's netlist reader (readspice)
+  fuzz_toolbar_presets  # layer toolbar presets and DRC report files read as data (ui-gui-managers)
 )
 
 if(HEFESTO_BUILD_FUZZ)

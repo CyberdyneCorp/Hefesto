@@ -87,11 +87,13 @@ jobs:
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint -color
 
-  # Pinned reference data of the PDK and Magic-reference tests (design D15 of openspec/changes/m3-drc;
-  # docs/building.md, "Reference data for tests"). Each PDK data set (sky130, gf180mcu, ihp) is its own cache
-  # entry, keyed pdk-<set>-<pin>-<digest prefix> by `scripts/fetch_pdk.py --cache-info`. This job fetches the
-  # sets that are not cached yet, once, and saves them; the build legs only restore. A warm run fetches
-  # nothing, and changing one set's pin or digest refetches that set alone.
+  # Pinned reference data of the PDK and Magic-reference tests (design D15 of openspec/changes/m3-drc and
+  # openspec/changes/m4-scripting; docs/building.md, "Reference data for tests"). Each PDK data set (sky130,
+  # gf180mcu, ihp) is its own cache entry, keyed pdk-<set>-<pin>-<digest prefix> by
+  # `scripts/fetch_pdk.py --cache-info` (M4 pins: ciel 5740c4a8 for sky130/gf180mcu, standing in for open_pdks
+  # c6df28c1, and IHP 5e6d592e). This job fetches the sets that are not cached yet, once (about 0.9 GB
+  # downloaded on a cold cache), and saves them; the build legs only restore. A warm run fetches nothing, and
+  # changing one set's pin or digest refetches that set alone.
   reference-data:
     name: reference data (PDK sets)
     runs-on: ubuntu-24.04
@@ -284,7 +286,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+          key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
           restore-keys: deps-${{ matrix.name }}-
 
       # Pinned reference data (job reference-data above; docs/building.md, "Reference data for tests"):
@@ -436,7 +438,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-lavapipe-${{ hashFiles('cmake/Dependencies.cmake') }}
+          key: deps-linux-lavapipe-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
           restore-keys: deps-linux-lavapipe-
       - name: Configure
         run: cmake --preset "$PRESET"
@@ -511,7 +513,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-asan-${{ hashFiles('cmake/Dependencies.cmake') }}
+          key: deps-linux-asan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
           restore-keys: deps-linux-asan-
       - run: cmake --preset linux-asan
       - run: cmake --build --preset linux-asan
@@ -552,7 +554,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-tsan-${{ hashFiles('cmake/Dependencies.cmake') }}
+          key: deps-linux-tsan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
           restore-keys: deps-linux-tsan-
       - run: cmake --preset linux-tsan
       - run: cmake --build --preset linux-tsan
@@ -591,7 +593,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake') }}
+          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
           restore-keys: deps-linux-fuzz-
       # The linux-fuzz preset uses the unversioned clang/clang++ (Clang 18 on ubuntu-24.04).
       - run: cmake --preset linux-fuzz
@@ -621,7 +623,8 @@ jobs:
               echo "::warning::no seed corpus in tests/fuzz/corpus/$name"
             fi
             echo "::group::$name"
-            "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 \
+            # -close_fd_mask=3: fuzz_tcl_sandbox's scripts may `puts` to stdout/stderr.
+            "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 -close_fd_mask=3 \
               -artifact_prefix="fuzz-artifacts/$name-" -print_final_stats=1 || status=1
             echo "::endgroup::"
           done

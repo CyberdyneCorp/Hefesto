@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <random>
 #include <sstream>
 #include <string>
@@ -407,4 +408,86 @@ TEST_CASE("a namespaced command of another client fails quietly and is echoed",
   CHECK(r.out.find("invalid command name") == std::string::npos);
   CHECK(r.out.find("Sending command:\n 'magic::color' at (100, 100)\n") != std::string::npos);
   CHECK(r.out.find("end\n") != std::string::npos);
+}
+
+// ---- M4: Tcl through the project's interpreter (m4-scripting tasks.md 13.2) --
+
+TEST_CASE("a .tcl file argument in --magic mode runs as Tcl with the magic commands",
+          "[cap:scripting-api][req:Global import of magic commands]") {
+  ScratchDir dir;
+  const auto script = dir.path() / "run.tcl";
+  std::ofstream(script) << "set n 0\n"
+                           "foreach w {a b c} { incr n }\n"
+                           "puts \"n=$n [expr {[llength [info commands ::magic::box]] == 1}]\"\n"
+                           "box 0 0 10 20\n"
+                           "puts [box values]\n"
+                           "puts -nonewline stdout \"[catch {nosuchcommand} message] \"\n"
+                           "puts $message\n"
+                           "puts stderr to-stderr\n"
+                           "puts \"tag=[magic::tag select]\"\n"
+                           "quit -noprompt\n"
+                           "puts never\n";
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc",
+                         script.string()});
+  INFO(r.err);
+  CHECK(r.status == cli::kExitOk);
+  // `puts` goes to the session's streams; engine commands print no result.
+  CHECK(r.out.find("n=3 1\n") != std::string::npos);
+  CHECK(r.out.find("\n0 0 10 20\n1 invalid command name \"nosuchcommand\"\n") != std::string::npos);
+  CHECK(r.out.find("never") == std::string::npos);  // `quit` unwinds the evaluation
+  CHECK(r.err.find("to-stderr\n") != std::string::npos);
+  // toolkit.tcl's select tag is installed with the interpreter (PCELL 7.3).
+  CHECK(r.out.find("tag=magic::gencell_update %1\n") != std::string::npos);
+}
+
+TEST_CASE("a Tcl error in a .tcl file argument prints Magic's error text",
+          "[cap:scripting-pdk-integration][req:Startup files are scripts]") {
+  ScratchDir dir;
+  const auto script = dir.path() / "bad.tcl";
+  std::ofstream(script) << "puts before\nerror boom\nputs after\n";
+  // -c: a source after startup, so standard input is not read.
+  const Run r = run_cli({"--no-log", "-c", "quit -noprompt", "--diagnostics=magic", "--magic", "-dnull", "-noconsole",
+                         "-norc", script.string()});
+  CHECK(r.out.find("before\n") != std::string::npos);
+  CHECK(r.out.find("after") == std::string::npos);
+  CHECK(r.err.find("Error parsing \"" + script.string() + "\": boom") != std::string::npos);
+}
+
+TEST_CASE("the trust option names the PDKs whose scripts may run in batch mode",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  const auto parsed = cli::parse_args(Args{"--trust-pdk", "sky130A", "--trust-pdk=gf180mcu", "--magic", "-dnull"});
+  REQUIRE_FALSE(parsed.error.has_value());
+  CHECK(parsed.options.trust_pdk == std::vector<std::string>{"sky130A", "gf180mcu"});
+  CHECK(cli::parse_args(Args{"--trust-pdk"}).error.has_value());
+
+  // A PDK's rc file given with -rcfile asks for consent: declined in batch
+  // mode unless --trust-pdk names the PDK.
+  ScratchDir dir;
+  const auto magic = dir.path() / "sky130A" / "libs.tech" / "magic";
+  std::filesystem::create_directories(magic);
+  const auto rc = magic / "sky130A.magicrc";
+  std::ofstream(rc) << "puts \"rc ran\"\nset VDD VPWR\n";
+  const auto script = dir.path() / "probe.tcl";
+  std::ofstream(script) << "puts \"VDD=$VDD\"\n";
+  const Run declined = run_cli(
+      {"--no-log", "-c", "quit -noprompt", "--magic", "-dnull", "-noconsole", "-rcfile", rc.string(), script.string()});
+  CHECK(declined.out.find("rc ran") == std::string::npos);
+  CHECK(declined.out.find("VDD=vdd!") != std::string::npos);
+  CHECK(declined.err.find("SCRIPT-TRUST-001") != std::string::npos);
+  const Run trusted = run_cli({"--no-log", "-c", "quit -noprompt", "--trust-pdk", "sky130A", "--magic", "-dnull",
+                               "-noconsole", "-rcfile", rc.string(), script.string()});
+  CHECK(trusted.out.find("rc ran\n") != std::string::npos);
+  CHECK(trusted.out.find("VDD=VPWR") != std::string::npos);
+  CHECK(trusted.err.find("SCRIPT-TRUST-001") == std::string::npos);
+}
+
+TEST_CASE("the reference-library stripper is a CLI option",
+          "[cap:scripting-auxiliary-tools][req:Reference-library stripper]") {
+  ScratchDir dir;
+  std::ofstream(dir.path() / "a.mag") << "magic\ntech scmos\nstring GDS_START 0\nstring GDS_END 10\n<< end >>\n";
+  const Run r = run_cli({"--no-log", "--strip-reflibs", dir.str()});
+  CHECK(r.status == cli::kExitOk);
+  std::ifstream in(dir.path() / "a.mag");
+  const std::string text{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
+  CHECK(text == "magic\ntech scmos\n<< end >>\n");
 }

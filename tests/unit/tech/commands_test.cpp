@@ -227,6 +227,27 @@ TEST_CASE("tech load options, confirmation, pre-check and failure", "[cap:tech-c
   CHECK(s.run("tech", {"load", "/t/tiny", "-override", "-noprompt"}).ok());
 }
 
+// Regression (m4-scripting round 1): startup files are now real Tcl, so a
+// `.magicrc`'s `tech load` ran over the -T technology. While the -T override
+// holds, `tech load` is a silent no-op unless `-override` lifts it
+// (Magic ref: commands/CmdTZ.c:546-579).
+TEST_CASE("tech load is a no-op while the -T override holds", "[cap:tech-command][req:tech load]") {
+  Session s;
+  s.load_tiny();
+  s.file("/t/other.tech", with(tiny(), "    tiny\n", "    other\n"));
+  s.editor.technology_override = true;
+  CHECK(s.run("tech", {"load", "/t/other", "-noprompt"}).ok());
+  CHECK(s.editor.technology->name() == "tiny");
+  CHECK(s.editor.technology_override);
+  // A usage error still reports, after `-override` cleared the flag.
+  CHECK(says(s.run("tech", {"load", "a", "b", "-override"}), "Usage: tech load"));
+  CHECK_FALSE(s.editor.technology_override);
+  s.editor.technology_override = true;
+  REQUIRE(s.run("tech", {"load", "/t/other", "-noprompt", "-override"}).ok());
+  CHECK(s.editor.technology->name() == "other");
+  CHECK_FALSE(s.editor.technology_override);
+}
+
 TEST_CASE("the readability pre-check refuses files not starting with tech",
           "[cap:tech-loading-and-scaling][req:Readability pre-check]") {
   Session s;

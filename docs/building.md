@@ -70,7 +70,7 @@ The desktop app (`hefesto`), its renderer and the canvas benchmark need Vulkan h
 
 ## Running the tools
 
-Both front ends run the same Magic-compatible startup (`app::run_startup`, capability `app-startup`): settings layers, startup files (located and reported; executed only once the Tcl binding exists, M4), the technology, then the layout files named on the command line, then the box. `CAD_ROOT` (environment) is the Magic installation root: its `magic/sys` directories are searched for technology, display-style and font files (FreeSans/FreeSerif/FreeMono `.pt3`, needed for `flabel` labels); without it there are no system files and the session starts on the built-in `minimum` technology.
+Both front ends run the same Magic-compatible startup (`app::run_startup`, capability `app-startup`): settings layers, the project's sandboxed Tcl interpreter, startup files (evaluated as Tcl; a PDK's rc file only after consent, see below), the technology, then the layout files named on the command line, then the box. `CAD_ROOT` (environment) is the Magic installation root: its `magic/sys` directories are searched for technology, display-style and font files (FreeSans/FreeSerif/FreeMono `.pt3`, needed for `flabel` labels); without it there are no system files and the session starts on the built-in `minimum` technology.
 
 ### `hefesto-cli`
 
@@ -82,11 +82,26 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `--pdk-root=<dir>` | PDK root (default: setting `pdk-root`, then `$PDK_ROOT`, then `~/.ciel`); the session's PDK store resolves through the PDK manager's installs there |
 | `--setting <name>=<value>` | a session setting (the highest settings layer); e.g. `undo-history-limit=2000` (undo steps kept, at least Magic's 1000) |
 | `--interactive` | after the scripts, read commands from standard input at a prompt (`%` idle, `]` while background DRC is busy; the background DRC worker runs only here); implied by `--magic` on a terminal without `-c` or scripts; give it before `--magic` |
-| `--magic ...` | the rest is Magic's own command line (`-T`, `-d`, `-rcfile`, `-norcfile`, `-r`, cells, a `.tcl` script); commands are then read from standard input (at the interactive prompt when it is a terminal) |
+| `--magic ...` | the rest is Magic's own command line (`-T`, `-d`, `-rcfile`, `-norcfile`, `-r`, cells, a `.tcl` script); the `.tcl` script is evaluated as Tcl in the project's sandboxed interpreter, then Tcl commands are read from standard input (at the interactive prompt when it is a terminal); only `puts` prints, as in Magic |
+| `--trust-pdk <selector>` | let this PDK's scripts run in this batch session (its `.magicrc`, given with `-rcfile` or by the project pin, and the device scripts it sources): a family (`sky130`), a variant (`sky130A`), `<variant>@<hash prefix>` or `<family>/<variant>@<version>`; repeatable, give it before `--magic`. Without it a batch run declines every PDK script the PDK store does not already trust (`SCRIPT-TRUST-001`), and the session keeps the `minimum` technology |
+| `--strip-reflibs <dir>` | remove the `string GDS_START`/`GDS_END` lines from every `.mag` file in `<dir>` (Magic's reference-library stripper) and exit |
 | `-c <commands>` | run commands, e.g. `-c "tech load sky130A; tech layers"` |
 | `--diagnostics=text\|json\|magic` | diagnostic format on stderr; `magic` prints Magic's console text and each script command's result, as the golden reference scripts do (see `tools/golden/README.md`) |
-| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`, `drc`, `hints`) |
+| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`, `drc`, `script`, `pcell`, `tools`, `gui`, `hints`) |
 | `--log-dir=<dir>`, `--no-log` | session log location, or none |
+
+Example: run the sky130A rc file of the pinned data set and a Tcl script that places a generated transistor.
+
+```sh
+V=.cache/pdks/ciel/sky130/versions/5740c4a81c42f9fe4af5ef2ee258a99151053d28
+build/macos-debug/src/cli/hefesto-cli --no-log --trust-pdk sky130A --pdk-root=$V \
+  --magic -dnull -noconsole -rcfile $V/sky130A/libs.tech/magic/sky130A.magicrc place_nfet.tcl
+# place_nfet.tcl:  load top -silent; box 0 0 0 0; magic::gencell sky130::sky130_fd_pr__nfet_01v8 nf1 w 1.0 l 0.15; writeall force; quit -noprompt
+```
+
+Scripts and `-c` lines outside `--magic` mode still go through the M0 command reader (no Tcl substitution) until the M1–M3 golden inputs move to Tcl at M4 exit.
+
+**Scripts and trust.** Tcl runs in a sandbox (capabilities `hefesto-scripting`, `hefesto-security`): no `exec`, `socket`, `load`, `exit` or command pipelines; file access only under the granted roots (the project folder, the PDK store, the startup files and the `.tcl` script named on the command line, the working directory and `CAD_ROOT`); a synthesized `env` with `PDK_ROOT`, `PDK` and `CAD_ROOT`. A PDK's scripts run only with consent: the desktop will ask (Don't run, Run once, Trust this version; the dialog lands with the M4 desktop screens); trusting a version records it in the PDK store (`Provenance::trusted`), so later sessions, batch ones included, run it without asking.
 
 ### `hefesto` (desktop)
 
@@ -137,7 +152,7 @@ Downloads run in process (capability `hefesto-licensing`, decision D-13; `src/pl
 
 ## Reference data for tests
 
-The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`, D15 of `openspec/changes/m3-drc`). Without it they skip cleanly.
+The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`, D15 of `openspec/changes/m3-drc` and of `openspec/changes/m4-scripting`). Without it they skip cleanly.
 
 ```sh
 # After building hefesto-cli (any preset): every PDK data set, then Magic's sources.
@@ -148,11 +163,13 @@ Each PDK data set is a subset of one ciel release, installed into `.cache/pdks/c
 
 | Set | Release (pin) | Subset kept | Downloaded | Kept |
 |---|---|---|---|---|
-| `sky130` | `sky130-0fe599b2afb6708d281543108caf8310912f54af` (open_pdks) | `sky130A/libs.tech/magic/`, `sky130A/libs.ref/sky130_fd_sc_hd/mag/` | 134 MB | 6.5 MB, 485 files |
-| `gf180mcu` | `gf180mcu-0fe599b2afb6708d281543108caf8310912f54af` (open_pdks) | `gf180mcuD/libs.tech/magic/`, `gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/` | 569 MB (`common` 389 MB, `gf180mcu_fd_sc_mcu7t5v0` 180 MB) | 3.0 MB, 235 files (229 cells) |
-| `ihp` | `ihp-sg13g2-ddb601a4a4473163e1ed6df416b885df18b4ac03` (IHP-Open-PDK) | `ihp-sg13g2/libs.tech/magic/` | 332 MB (`common` 332 MB, `sg13g2_pr` 0.2 MB) | 0.4 MB, 9 files |
+| `sky130` | `sky130-5740c4a81c42f9fe4af5ef2ee258a99151053d28` (open_pdks, stands in for `c6df28c1`) | `sky130A/libs.tech/magic/`, `sky130A/libs.ref/sky130_fd_sc_hd/mag/` | 134 MB (`common` 6.6 MB, `sky130_fd_sc_hd` 127 MB) | 6.8 MB, 502 files (446 cells) |
+| `gf180mcu` | `gf180mcu-5740c4a81c42f9fe4af5ef2ee258a99151053d28` (open_pdks, stands in for `c6df28c1`) | `gf180mcuD/libs.tech/magic/`, `gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/` | 350 MB (`common` 170 MB, `gf180mcu_fd_sc_mcu7t5v0` 180 MB) | 3.2 MB, 247 files (229 cells) |
+| `ihp` | `ihp-sg13g2-5e6d592e4002946a4616f798c357f0f3c06cf3b6` (IHP-Open-PDK) | `ihp-sg13g2/libs.tech/magic/` | 435 MB (`common` 434 MB, `sg13g2_pr` 0.2 MB) | 0.8 MB, 37 files |
 
-- A cold cache downloads about 1.0 GB in all (0.9 GB for `gf180mcu` and `ihp`). `pdk install` keeps no archive after the install, but it decompresses each archive in full before filtering, so the `gf180mcu` install needs about 5.3 GB of free disk space for a moment (`ihp` about 0.9 GB).
+- **Why `5740c4a8` for `c6df28c1`.** The specs and the SCRIPT golden cases pin open_pdks `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (Q-SCRIPT-9), for which ciel publishes no release. The next release, `5740c4a8` (2026-11-10), is three commits later and changes only `VERSION` and the sub-library `reference` blocks of `sky130.json`/`gf180mcu.json`; no Magic template, script or Makefile changes, so its `libs.tech/magic` files are those of `c6df28c1` except for the build stamps every release carries (the tech `version` line, `1.0.588-126-g5740c4a`, and the build directory in the fallback `PDK_ROOT`/`TECHPATH` of the `.magicrc` and `.tcl`). `scripts/fetch_pdk.py` names both (`OPEN_PDKS_SPEC_PIN`, `OPEN_PDKS_PIN`); design D15 of `openspec/changes/m4-scripting` records the check. The `ihp` set is IHP-Open-PDK `5e6d592e` itself; its `libs.tech/magic` files equal that commit's byte for byte.
+- The M4 pins replace open_pdks `0fe599b2` and IHP `ddb601a4` of M1–M3. Those older sets are not fetched any more; an old version directory left in `.cache/pdks` is ignored by the tests.
+- A cold cache downloads about 0.9 GB in all. `pdk install` keeps no archive after the install, but it decompresses each archive in full before filtering, so the `gf180mcu` install needs about 1.6 GB of free disk space for a moment (`ihp` about 1.2 GB).
 - `pdk install` needs at least one library: `ihp` installs `sg13g2_pr`, the smallest, and keeps none of its files.
 - `magic-ref`: a sparse, shallow checkout of Magic at `fc5daa9e` into `build/ref/magic` with only `scmos/` and `graphics/` (display styles, color maps, glyphs, the `.pt3` fonts, the scmos tech sources; about 4 MB). A full clone (`git clone https://github.com/RTimothyEdwards/magic build/ref/magic && git -C build/ref/magic checkout fc5daa9e`) works too and is what reading Magic's sources for porting needs.
 - `scmos.tech` is generated from `build/ref/magic/scmos` at configure time (`tests/data/tech/generate_scmos.cmake`, run by `tests/unit/tech/CMakeLists.txt`), so fetch `magic-ref` before configuring, or reconfigure afterwards.
@@ -167,13 +184,13 @@ python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an insta
 python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
 ```
 
-The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp` and `magic-ref`; `--root DIR` installs into another PDK root. In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-0fe599b2afb6-eb33076819a8e4b2`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp` and `magic-ref`; `--root DIR` installs into another PDK root. In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-6a3b1236bff022f7`; the M4 keys are `pdk-sky130-5740c4a81c42-b3ee85f299bccc6f`, `pdk-gf180mcu-5740c4a81c42-6a3b1236bff022f7` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 
 ## Dependencies and offline rebuilds
 
-All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and fetched with CMake FetchContent into `.cache/deps/<preset>`. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
+All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and `cmake/Tcl.cmake` (Tcl 8.6.16, by URL and SHA-256), and fetched with CMake FetchContent into `.cache/deps/<preset>`. Tcl is compiled by CMake with the preset's own toolchain and flags (no `configure` run; the platform settings are in `cmake/tcl/tclConfig.h`), statically, without Tk and without dynamic loading, and its `library/` scripts are embedded in the binary, so no Tcl file is read from the host. CI's dependency caches are keyed on both files. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
 
 ```sh
 cmake --preset macos-debug -DFETCHCONTENT_FULLY_DISCONNECTED=ON
