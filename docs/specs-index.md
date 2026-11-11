@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1987 requirements, 3085 scenarios, 849 open questions.
+**Totals:** 169 capabilities, 1987 requirements, 3088 scenarios, 849 open questions.
 
 ## Hefesto product (native)
 
@@ -69,7 +69,7 @@ Open questions: [33](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 |---|---|---|---|
 | [`layout-connectivity`](../openspec/specs/layout-connectivity/spec.md) | 5 | 9 | Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, a… |
 | [`layout-geometry-model`](../openspec/specs/layout-geometry-model/spec.md) | 9 | 21 | Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their pre… |
-| [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 21 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
+| [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 22 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
 | [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
 | [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 19 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
 | [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 10 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
@@ -84,7 +84,7 @@ Open questions: [25](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 | [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
 | [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 28 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
 | [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 17 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
-| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 36 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
+| [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 38 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
 | [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 30 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
 
 ## Mask generation, GDS, CIF (MASK)
