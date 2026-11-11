@@ -374,7 +374,7 @@ Whenever a PDK's generator scripts are not run (because a native generator is us
 - preserve those properties byte-for-byte;
 - compute the cell names of this spec exactly.
 
-For the native generators required by capability `hefesto-scripting` (Requirement "Native PCell generators validated against Tcl"), for every parameter set the generated cell SHALL be geometrically identical (same paint, labels, ports and properties) to the PDK script's output, and SHALL have the identical cell name. Identity includes:
+For the native generators required by capability `hefesto-scripting` (Requirement "Native PCell generators validated against Tcl"), for every parameter set the generated cell SHALL have the identical cell name, and its saved `.mag` file SHALL be byte-identical to the one saved from the PDK script's output except for the `timestamp` line (decision D-29). This implies the same paint, labels, ports and properties. Identity includes:
 - the corrections made by the device's `_check`, which run before naming;
 - the numeric results of the PDK helper procedures, including their defects (`magic::spice2float`, `u2i`, `i2u`, `3digitpastdecimal`; see `scripting-pdk-integration` and Q-SCRIPT-40);
 - for fixed (`nocell`) devices, the placed library cell and its array pitch;

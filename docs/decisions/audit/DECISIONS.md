@@ -311,6 +311,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) byte-identical except the `timestamp` line; (b) the `pcell-toolkit` identity (paint, labels, ports, properties, name); (c) generate both with a fixed timestamp in tests.
 - **Recommendation:** (a). It is the stronger check and easy to automate. Make `pcell-toolkit` refer to it.
 - **Priority:** blocks M4.
+- **Status:** resolved (2026-11-11): option a — native and Tcl generator output are compared as byte-identical saved `.mag` files except the `timestamp` line; `hefesto-scripting` "Native PCell generators validated against Tcl" states it and `pcell-toolkit` "Native generator equivalence" refers to it.
 
 ### D-30: Is the declarative PDK profile still needed? (Q-SCRIPT-46)
 
@@ -328,6 +329,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) a synthesized `env` array with `PDK_ROOT`, `PDK` and `CAD_ROOT` taken from the PDK store and settings, the same values `hefesto-pdk-manager` uses on desktop, where writes stay local to the interpreter; (b) an empty `env`, with the PDK scripts patched in curated packs.
 - **Recommendation:** (a), defined in `hefesto-scripting`, with the same path-variable table as Q-CELL-17.
 - **Priority:** blocks M4 (the iPad impact is in M14).
+- **Status:** resolved (2026-11-11): option a — the sandbox's `env` array is synthesized with `PDK_ROOT`, `PDK` and `CAD_ROOT` from the PDK store and settings (the Q-CELL-17 path-variable table), writes stay local to the interpreter, on every platform; defined in `hefesto-scripting` "Embedded sandboxed Tcl on all platforms".
 
 ### D-32: Tk menu writes by PDK scripts on iPadOS (Q-SCRIPT-34, Q-SCRIPT-42)
 
@@ -345,6 +347,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** allow `cd` within granted roots (project, PDK store, temporary area) and fail otherwise | forbid `cd`.
 - **Recommendation:** allow it within granted roots, and change the scenario to use a project subfolder.
 - **Priority:** blocks M4.
+- **Status:** resolved (2026-11-11): as recommended — `cd` is allowed within the granted roots (project, PDK store, temporary area) and fails otherwise (`hefesto-scripting`); the `scripting-api` scenario "Relative cell path survives cd" now uses a project subfolder.
 
 ### D-34: The `irsim`, `netgen` and `xcircuit` helper commands
 
@@ -353,6 +356,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** no-ops with a diagnostic | map `netgen` to the built-in LVS (P-5) | omit them.
 - **Recommendation:** `netgen` prints a diagnostic that names the built-in `lvs` command, and does not emulate it. `irsim` follows `irsim-interface` (desktop-only). `xcircuit` gives a "not available" diagnostic.
 - **Priority:** blocks M4.
+- **Status:** resolved (2026-11-11): as recommended — `netgen` prints a diagnostic naming the built-in `lvs` and does not emulate netgen, `irsim` follows `irsim-interface` (desktop only), `xcircuit` gives a "not available" diagnostic; specified in `scripting-api` "Generic Tcl helpers defined at startup".
 
 ### D-35: `getnode` on iPadOS
 
@@ -369,6 +373,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** abort loading the project and return to the project browser with a diagnostic | ignore `quit` and continue.
 - **Recommendation:** abort and return to the project browser. Define this in `app-startup`.
 - **Priority:** blocks M14 (the spec text is needed by M4).
+- **Status:** resolved (2026-11-11): as recommended — on iPadOS `quit` (including a PDK rc guard's `quit -noprompt`) aborts loading, returns to the project browser and shows a diagnostic; defined in `app-startup` "quit command and exit status".
 
 ### D-37: PNG export for reliability heat maps
 

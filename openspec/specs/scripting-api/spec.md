@@ -305,14 +305,14 @@ Compatibility: informative
 - **THEN** both commands SHALL execute
 
 ### Requirement: Directory change rebases cell paths
-The script-level `cd` SHALL be replaced by a version that calls the original `cd` (renamed `tcl_cd`) and, on success, rebases the stored file paths of loaded cells that were relative to the previous working directory, so that they remain valid.
+The script-level `cd` SHALL be replaced by a version that calls the original `cd` (renamed `tcl_cd`) and, on success, rebases the stored file paths of loaded cells that were relative to the previous working directory, so that they remain valid. In Hefesto `cd` is allowed only within the sandbox's granted roots (capability `hefesto-scripting`, decision D-33); outside them it fails and nothing is rebased.
 Compatibility: behavioral
 
 (Magic ref: tcltk/tclmagic.c:817-842,1635-1644)
 
 #### Scenario: Relative cell path survives cd
-- **GIVEN** cell `inv` was loaded from `./lib/inv.mag` with the working directory `/w`
-- **WHEN** the script runs `cd /tmp` and then `save inv`
+- **GIVEN** a project in `/w`, and cell `inv` was loaded from `./lib/inv.mag` with the working directory `/w`
+- **WHEN** the script runs `cd /w/sub` (a project subfolder) and then `save inv`
 - **THEN** the file `/w/lib/inv.mag` SHALL be written
 
 ### Requirement: Script variables read by the engine
@@ -457,7 +457,7 @@ Compatibility: exact
 ### Requirement: Generic Tcl helpers defined at startup
 The startup script SHALL define these globally:
 - `echo args`: equivalent to `puts stdout $args`.
-- `irsim`, `xcircuit`, `netgen`: each sources `$CAD_ROOT/irsim/tcl/irsim.tcl`, the highest-sorted `$CAD_ROOT/xcircuit*/xcircuit.tcl`, or `$CAD_ROOT/netgen/tcl/netgen.tcl` respectively, and prints a multi-line stderr help when the script is missing.
+- `irsim`, `xcircuit`, `netgen`: in Magic each sources `$CAD_ROOT/irsim/tcl/irsim.tcl`, the highest-sorted `$CAD_ROOT/xcircuit*/xcircuit.tcl`, or `$CAD_ROOT/netgen/tcl/netgen.tcl` respectively, and prints a multi-line stderr help when the script is missing. Those packages load native libraries, which the sandbox denies, so Hefesto defines them as follows (decision D-34): `netgen` prints a diagnostic that names Hefesto's built-in `lvs` command (capability `lvs-command`) and does not emulate netgen; `irsim` behaves as capability `irsim-interface` specifies (desktop only); `xcircuit` prints a "not available" diagnostic. None of them sources a file.
 - `magic::drcstate {option}`: a no-op, redefined by the GUI.
 - `UsingIRSIM`, `UsingXCircuit`, `UsingNetgen`: set to 1 when the namespaces `::irsim`, `::xcircuit` or `::netgen` already exist.
 

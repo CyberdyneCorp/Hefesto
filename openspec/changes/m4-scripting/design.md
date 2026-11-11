@@ -22,7 +22,7 @@ M4 runs as an early PDK pin step and the App Review inquiry, a scaffolding step 
 
 **Goals:**
 - The M4 exit criteria of docs/roadmap.md: the common exit criteria for the 8 M4 capabilities (unit tests tagged for every exact/behavioral requirement, 57 in M4 plus `mazeroute`'s in M10; fuzz targets for new readers; CI green on every leg; byte-identical output on Linux x86_64, Linux aarch64 and macOS arm64), the SCRIPT golden cases pass (D16), and the Desktop Alpha: on Linux and macOS, open a real sky130, gf180mcu and sg13g2 design with the PDK's startup script after consent, edit it, DRC-check it, and place PCells through the generator dialogs (D18).
-- PDK scripts run unchanged; native generators give the same cell names and `.mag` content as the Tcl generators (D10, D-29 pending).
+- PDK scripts run unchanged; native generators give the same cell names and `.mag` content as the Tcl generators (D10, D-29).
 - Nothing in an opened file or folder runs code without consent (X-3, `hefesto-security`, Q-SCRIPT-11).
 - The items carried from M2 are closed (D17).
 
@@ -101,7 +101,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 
 ### D5. Embedded Tcl and the sandbox (TCL; X-3, `hefesto-security`)
 
-- **One full interpreter per project, then removed capabilities.** A Tcl safe interpreter removes `source`, `file`, `glob`, `open`, `info script` and more that PDK scripts need; re-adding them as aliases changes error texts and `info script` semantics. Instead the project interpreter is a normal interpreter from which TCL deletes `exec`, `socket`, `load`, `unload`, `exit` (replaced by the engine's `quit` path), `interp create` without `-safe`, and `package require` of anything but Tcl's own pure-Tcl packages; `open` rejects command pipelines (`|…`); `cd` and `env` follow D-31/D-33 (Open Questions).
+- **One full interpreter per project, then removed capabilities.** A Tcl safe interpreter removes `source`, `file`, `glob`, `open`, `info script` and more that PDK scripts need; re-adding them as aliases changes error texts and `info script` semantics. Instead the project interpreter is a normal interpreter from which TCL deletes `exec`, `socket`, `load`, `unload`, `exit` (replaced by the engine's `quit` path), `interp create` without `-safe`, and `package require` of anything but Tcl's own pure-Tcl packages; `open` rejects command pipelines (`|…`); `cd` is allowed only within the granted roots (D-33), and `env` is a synthesized array holding `PDK_ROOT`, `PDK` and `CAD_ROOT` from the PDK store and settings (the Q-CELL-17 path-variable table), whose writes stay local to the interpreter and never reach the process environment (D-31).
 - **Filesystem layer.** A `Tcl_Filesystem` registered with `Tcl_FSRegister` sits in front of the native one: every path operation (`source`, `open`, `file *`, `glob`, `cd`, `load`) is resolved to a normalized absolute path and allowed only under a granted root of `hefesto-files-and-pdks` (the project folder, the PDK store, the session temporary area, explicitly opened documents). A denied access raises a Tcl error naming the operation and posts a `SCRIPT-SANDBOX-*` diagnostic with the script file and line (from `info frame`), which `catch` can absorb as Magic's PDK code expects (older rc `query_*` procedures).
 - **Enforced in the core.** The sandbox is set up by `script::create_project_interpreter`, which the shells cannot bypass; there is no API to obtain an unsandboxed interpreter outside unit tests (a test-only build flag).
 - **Resources.** A Tcl resource limit (`interp limit` command count and time) guards evaluation from the GUI so a runaway script can be interrupted (Cancel in the console and consent-run progress), mapped to the existing interrupt path.
@@ -123,6 +123,7 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 - **Consent and trust.** Explicit startup (a project pinned to a PDK, `-rcfile`) and implicit `<tech>.magicrc` from auto-discovery both go through `ConsentHost` unless the PDK version is trusted in the store (`Provenance::trusted`, recorded per PDK and version). Declined: the file opens read-only with the `minimum` tech (`hefesto-security`). CLI batch mode declines unless `--trust-pdk <id>` or the store already trusts it, so golden replay passes `--trust-pdk` for the pinned PDKs.
 - **Cross-PDK warning.** `proc` inside a `source` whose file lies under a PDK's `libs.tech/magic` records the PDK as the origin of each `magic::` procedure it defines; a redefinition from another PDK's file posts `SCRIPT-PDK-*` naming both (Q-SCRIPT-41).
 - **Widget interception (Q-SCRIPT-42/34, D-32).** `WidgetInterceptor` defines Tcl commands named by the window frame paths the binding announces (`.layoutN.titlebar…`), so `cget -height` errors (selecting `.pane.top`), `…drc.toolmenu add command` and `…file.toolmenu insert 4 …` edit the `MenuModel`, `tk_getOpenFile` asks `platform::FilePicker`; any other widget statement is skipped with a diagnostic and evaluation continues (the wrapper's `catch` no longer hides the rest of the menu setup). `closewrapper` renaming works because `closewrapper` is a real command.
+- **`quit` from a startup script (D-36).** `quit` goes through a core `QuitPolicy`: the desktop policy exits as before; the iPad policy stops evaluating the script, discards the project session (after the exit checks unless `-noprompt`) and returns to the project browser with a diagnostic naming the script and line. Both are unit-tested with test hosts; the iPad shell installs its policy in M14.
 - **Curated-pack refusal (Q-SCRIPT-46, D-30).** A core policy `script::CuratedPackPolicy` (unit-tested now, used by the iPad shell in M14) refuses a PDK without bundled scripts; there is no declarative profile.
 - **Older rc generation.** Runs unchanged; the sandbox denial in `query_*` is absorbed by `catch` (SCRIPT-PDK-18).
 
@@ -142,7 +143,7 @@ Magic implements gencell, readspice, the managers and `drc_save_report` in Tcl/T
 - **Scope in M4.** The MOSFET families (every device that delegates to the PDK's `mos_draw`: sky130 `sky130_fd_pr__{n,p}fet_*`, gf180mcu `{n,p}fet_*`, sg13g2 `sg13_{lv,hv}_{n,p}mos`) and the fixed (`nocell`) devices of the three PDKs (12 + 11 + 8). sg13g2 fixed devices wait for SCRIPT-PDK-14 to confirm Q-SCRIPT-45's derivation. Every other device uses its Tcl generator (allowed by "Native PCell generators validated against Tcl": native only when it exists for the installed PDK version).
 - **Versioned.** A native generator is registered for an exact PDK identity (family, variant, ciel version hash) and is used only for that version; another version falls back to Tcl with an informational diagnostic.
 - **Bit-identical arithmetic.** The PDK helpers (`spice2float` with its defects (Q-SCRIPT-40), `u2i`, `i2u`, `3digitpastdecimal`, sg13g2's `%.3f`/`round`) are reproduced in C++ with Tcl's double formatting and `expr` rounding; the `label … +layer` failure (Q-SCRIPT-39) is reproduced.
-- **Validation.** A CI job (`pcell-equivalence`, Linux x86_64) generates each native device over a parameter sweep (defaults, each parameter at its PDK bounds and one interior value, `nf`/`m` combinations; about 2,000 cells) natively and through Tcl in the same build and compares names and saved `.mag` files under D-29's rule (Open Question 1: until decided, byte-identical except the `timestamp` line, as D-29 recommends). The sweep definitions are data in `tests/data/pcell/sweeps/`.
+- **Validation.** A CI job (`pcell-equivalence`, Linux x86_64) generates each native device over a parameter sweep (defaults, each parameter at its PDK bounds and one interior value, `nf`/`m` combinations; about 2,000 cells) natively and through Tcl in the same build and compares names and saved `.mag` files under D-29: byte-identical except the `timestamp` line. The sweep definitions are data in `tests/data/pcell/sweeps/`.
 
 ### D11. readspice and auxiliary tools (TOOLS)
 
@@ -184,7 +185,7 @@ View models and commands, no widgets: wrapper construction and hook points (`Opt
 ### D16. Golden cases
 
 - **Authoring.** `tools/golden/authoring/script_cases.py` (the 89 SCRIPT cases and SCRIPT-PDK-18) and `m4_cases.py` (driver as `m3_cases.py`). The capture image builds Magic fc5daa9e with Tcl 8.6 and Tk and runs GUI cases (SCRIPT-GUI-*) under Xvfb; Hefesto replays GUI cases through the GUIMGR view models and `hefesto-cli` (no display), comparing the issued commands and files, not pixels.
-- **Other areas.** MODEL-G-055, CELL-PR-03, CELL-PW-05 and CELL-PR-12 (its `cd` per D-33) authored; UI-G-009, UI-G-013 and UI-G-049 lose `deferred = "M4"`; DRC-PDK-3 uses the IHP `cap_cmomf` generator through Tcl, its row reworded back.
+- **Other areas.** MODEL-G-055, CELL-PR-03, CELL-PW-05 and CELL-PR-12 (its `cd` into a project subfolder, D-33) authored; UI-G-009, UI-G-013 and UI-G-049 lose `deferred = "M4"`; DRC-PDK-3 uses the IHP `cap_cmomf` generator through Tcl, its row reworded back.
 - **Deviations.** Q-SCRIPT-3 (`%%`/`%d` tag: Magic hangs; captured with a timeout), Q-SCRIPT-4 (SCRIPT-API-13 and any `$name` message), Q-SCRIPT-32 (readspice message), each with its approved decision. Cases run in the default magic-compat ON mode; OFF modes are unit-tested.
 - **PDK cases.** Run with `--trust-pdk` for the pinned PDKs and `random seed 1` after startup (Q-SCRIPT-44).
 
@@ -253,21 +254,26 @@ The headers are the contract; each is documented. Key types and functions per ar
 - **R5. Tcl build portability.** Building Tcl from source for 8 CI legs, sanitizers, fuzzing and `ipados` can fail in ways unrelated to Hefesto. → One CMake module, a pinned tarball and hash, cached by preset; the `ipados` build is compile-only in M4.
 - **R6. App Review outcome.** A rejection forces curated packs on iPadOS. → Already decided (Q-SCRIPT-46); M4 code is the same either way (D20).
 - **R7. Scope.** 8 capabilities, 57 testable requirements, 90 SCRIPT golden cases, native generators for three PDKs, five new screens and twelve carried shell items. → Workstreams independent after the scaffold; native generators limited to MOSFETs and fixed devices; GUI cases compared by commands and files, not pixels.
-- **R8. Undecided audit items.** D-29, D-31, D-33, D-34 and D-36 change test expectations (`.mag` identity, `env`, `cd`, helper commands, `quit` on iPad). → Each workstream builds against the recommendation recorded in Open Question 1 and isolates it behind one function and one test, so a different decision is a small change.
+- **R8. Byte-identical PCell output (D-29).** Comparing whole `.mag` files (not geometry) also exposes differences in element order, property formatting and label attributes between the native and Tcl paths. → Both paths save through the same `.mag` writer; only the `timestamp` line is masked; the sweep runs on every PR touching `pcell/`.
 
 ## Migration Plan
 
 User data does not change. Projects with a PDK pin now run the PDK's startup script after consent instead of applying its literal `set` lines; a project that was opened before M4 keeps working when the user declines (read-only with the `minimum` tech, per `hefesto-security`) — this is a visible behavior change documented in the release notes and `docs/building.md`. Saved `.mag` files are unchanged; generated cells keep their names. `drc listall why` changes order (Magic's) and `port last`/path expansion change only with `magic-compat` OFF. The CI reference-data cache keys change once (new pins). `CORE-NOTIMPL-004` exists only during M4; the placeholder script reader and `fuzz_command_script` are removed at exit.
 
-## Open Questions
+## Resolved Questions
 
-1. **Audit decisions not settled by the approved answers** (docs/decisions/audit/DECISIONS.md; they block M4 and need the user):
-   - **D-29** native vs Tcl PCell identity: recommendation (a), byte-identical `.mag` except the `timestamp` line. D10's equivalence job uses (a) until decided.
-   - **D-31** `env` in the sandbox: recommendation (a), a synthesized `env` with `PDK_ROOT`, `PDK`, `CAD_ROOT` from the PDK store and settings, writes local to the interpreter. TCL builds the desktop interpreter with the real environment filtered to those names plus `HOME`/`USER` until decided.
-   - **D-33** `cd` in the sandbox: recommendation, allow `cd` within granted roots and change the `scripting-api` scenario to a project subfolder. TCL implements that; CELL-PR-12 is authored accordingly.
-   - **D-34** `irsim`, `netgen`, `xcircuit` helpers: recommendation, `netgen` names the built-in `lvs`, `irsim` follows `irsim-interface`, `xcircuit` reports "not available". BINDING implements the diagnostics.
-   - **D-36** `quit -noprompt` from a PDK rc on iPadOS: recommendation, abort loading and return to the project browser, defined in `app-startup`. M4 implements the desktop behavior (unchanged) and leaves the iPad text to the decision; the spec edit is an open item for INTEGRATION once decided.
-2. **App Review inquiry status.** Not submitted yet. INTEGRATION drafts it (D20); the user submits it and records the answer. It does not block M4 work.
-3. **Native generator scope.** D10 limits M4's native generators to the MOSFET families and fixed devices; every other device runs its Tcl generator. Confirm, or name more device families for M4.
-4. **Pin release substitute.** D15 uses ciel `5740c4a8…` for open_pdks `c6df28c1` because ciel has no `c6df28c1` release. Confirm that the spec pin stays `c6df28c1` (the Magic files are identical) rather than moving the spec references to `5740c4a8`.
-5. **Deferred questions (no decision needed now).** Q-SCRIPT-30 (`mazeroute`) is implemented with `router-maze-iroute` in M10; Q-SCRIPT-44's seed-pinning setting is decided with Q-MASK-211 in M5. Q-SCRIPT-43 (sg13g2 `$SUB` and `$[…]` in extraction) is handed to the EXT area for M7.
+The plan's open questions were answered by the user on 2026-11-11.
+
+1. **Audit decisions** (docs/decisions/audit/DECISIONS.md), all approved as recommended, with the spec edits made in the commit "Apply the user's answers to the M4 plan questions":
+   - **D-29**: native and Tcl generator output are byte-identical saved `.mag` files except the `timestamp` line (`hefesto-scripting`, `pcell-toolkit`); D10's equivalence job compares that way.
+   - **D-31**: the sandbox's `env` array is synthesized with `PDK_ROOT`, `PDK` and `CAD_ROOT` from the PDK store and settings, writes local to the interpreter, on every platform (`hefesto-scripting`); D5.
+   - **D-33**: `cd` is allowed within the granted roots and fails otherwise (`hefesto-scripting`); the `scripting-api` scenario "Relative cell path survives cd" uses a project subfolder; CELL-PR-12 is authored that way.
+   - **D-34**: `netgen` prints a diagnostic naming the built-in `lvs`, `irsim` follows `irsim-interface` (desktop only), `xcircuit` reports "not available" (`scripting-api` "Generic Tcl helpers defined at startup"); BINDING 5.3.
+   - **D-36**: on iPadOS `quit`, including a PDK rc guard's `quit -noprompt`, aborts loading, returns to the project browser and shows a diagnostic (`app-startup` "quit command and exit status"). D7: M4 implements it as a core quit policy with a desktop policy (exit, unchanged) and an iPad policy (abort to the project browser) unit-tested through a test host; the iPad shell uses it in M14.
+2. **Native generator scope**: confirmed as in D10, the MOSFET families plus the fixed devices; every other device runs its Tcl generator.
+3. **Pin release substitute**: confirmed as in D15. The spec pin stays open_pdks `c6df28c1`; ciel `5740c4a8…` is its documented stand-in in `fetch_pdk.py` and `docs/building.md`.
+
+Not blocking (no decision needed now):
+
+- **App Review inquiry.** Not submitted yet. INTEGRATION drafts it (D20, task 2.2); the user submits it through App Store Connect and records the answer. M4 does not depend on it; it decides only M14's mode.
+- **Deferred questions.** Q-SCRIPT-30 (`mazeroute`) is implemented with `router-maze-iroute` in M10; Q-SCRIPT-44's seed-pinning setting is decided with Q-MASK-211 in M5. Q-SCRIPT-43 (sg13g2 `$SUB` and `$[…]` in extraction) is handed to the EXT area for M7.

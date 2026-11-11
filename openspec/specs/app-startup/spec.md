@@ -258,6 +258,8 @@ Compatibility: behavioral (location and process checks [platform])
   - the netlist client asks about an unsaved netlist
 - On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS (default 0).
 
+On iPadOS an app cannot end its own process. There `quit`, with or without `-noprompt` (for example a PDK startup file's `quit -noprompt` after a technology-name mismatch), SHALL abort loading or close the current project instead: Hefesto stops evaluating the script, discards the project's session (after the exit checks unless `-noprompt`), returns to the project browser and shows a diagnostic naming the script and line that called `quit` (decision D-36). The desktop behavior is unchanged.
+
 Magic does not range-check STATUS, so the host truncates it to 8 bits. Hefesto SHALL reject a STATUS outside 0–255 with `Invalid exit_status` and SHALL NOT exit (see Q-UI-32).
 
 Exit statuses produced by the application itself SHALL be:
@@ -280,6 +282,11 @@ Compatibility: behavioral
 - **GIVEN** a modified cell
 - **WHEN** `quit` is executed and the user declines to discard changes
 - **THEN** the application SHALL keep running
+
+#### Scenario: PDK guard quit on iPadOS
+- **GIVEN** the iPadOS app opening a project whose PDK startup file runs `if {[tech name] != "sky130A"} {quit -noprompt}` and the loaded technology is not `sky130A`
+- **WHEN** that line runs
+- **THEN** the app SHALL keep running, return to the project browser without opening the project, and show a diagnostic naming the startup file and line
 
 ### Requirement: version command
 `version` SHALL print `Version V revision R.  Compiled on DATE.`. Any argument SHALL print `Usage: version`. Hefesto SHALL report its own version and SHALL state the Magic version it is compatible with (8.3.694 for this specification).

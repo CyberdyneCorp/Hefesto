@@ -145,13 +145,13 @@ Every row is approved (2026-11-11); the Decision column is the `Resolution:` rec
 |---|---|---|
 | D-30 | declarative PDK profile | **resolved** by Q-SCRIPT-46, option (b) |
 | D-32 | Tk menu writes by PDK scripts | **resolved** by Q-SCRIPT-42 and Q-SCRIPT-34, option (b) |
-| D-29 | native vs Tcl PCell identity (byte-identical `.mag` and the `timestamp` line) | open: needs the user |
-| D-31 | `env(PDK_ROOT)` and other variables in the sandboxed Tcl | open: needs the user |
-| D-33 | `cd` in the Tcl sandbox | open: needs the user |
-| D-34 | the `irsim`, `netgen` and `xcircuit` helper commands | open: needs the user |
-| D-36 | `quit -noprompt` from a PDK rc script on iPadOS | open: needs the user (spec text needed by M4) |
+| D-29 | native vs Tcl PCell identity (byte-identical `.mag` and the `timestamp` line) | **resolved** 2026-11-11, as recommended |
+| D-31 | `env(PDK_ROOT)` and other variables in the sandboxed Tcl | **resolved** 2026-11-11, as recommended |
+| D-33 | `cd` in the Tcl sandbox | **resolved** 2026-11-11, as recommended |
+| D-34 | the `irsim`, `netgen` and `xcircuit` helper commands | **resolved** 2026-11-11, as recommended |
+| D-36 | `quit -noprompt` from a PDK rc script on iPadOS | **resolved** 2026-11-11, as recommended |
 
-No approved Q-SCRIPT answer decides the five open items; they are carried as open questions into the M4 plan.
+No Q-SCRIPT answer decides D-29, D-31, D-33, D-34 or D-36; the user approved them as recommended on 2026-11-11 (see DECISIONS.md and the M4 plan's "Resolved Questions").
 
 ## Corrections made to entries
 
