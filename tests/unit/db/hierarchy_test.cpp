@@ -5,6 +5,7 @@
 // (layout-hierarchy).
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <string>
 #include <vector>
@@ -15,6 +16,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/hints/hints.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
 
@@ -400,6 +402,76 @@ TEST_CASE("no-subcircuit flatten keeps ported children as instances", HI "[req:D
   REQUIRE(flat.value()->uses().size() == 1);
   CHECK(flat.value()->uses()[0]->def == a);
   CHECK(label_texts(*flat.value()) == std::vector<std::string>{"b_0.Q"});
+}
+
+TEST_CASE("a restricting flatten tests the flattened cell itself under magic-compat",
+          HI "[req:Flattening into a new cell][req:Descend rules]") {
+  // Q-MODEL-33 (compat): Magic applies DBDescendSubcell to the edit cell's
+  // own use, so a top cell with ports (-nosubcircuits) or without the
+  // flatten property (-doproperty) flattens into an empty cell, except for
+  // the -dotoplabels copy. With magic-compat OFF the root is always copied.
+  HEFESTO_REQUIRE_MT(mt);
+  db::CellLibrary lib;
+  auto* top = lib.create("top", mt.tech->plane_count()).value();
+  auto* c = lib.create("c", mt.tech->plane_count()).value();
+  REQUIRE(db::paint(*top, *mt.tech, {0, 0, 10, 10}, mt.m1).ok());
+  REQUIRE(db::put_label(*top, label("P", {1, 1, 1, 1}, true)).ok());
+  REQUIRE(db::paint(*c, *mt.tech, {0, 0, 4, 4}, mt.m2).ok());
+  REQUIRE(db::put_label(*c, label("Q", {2, 2, 2, 2})).ok());
+  c->properties().put("flatten", std::string{"true"});
+  db::set_property(*c, hefesto::hints::property_key("X"), db::PropertyValue{hefesto::hints::HintRegion{Rect{0, 0, 2, 2}}});
+  db::recompute_bbox(*c);
+  db::PlaceOptions at;
+  at.id = "c_0";
+  at.transform = db::translation(20, 0);
+  add_use(*top, *c, at);
+  db::recompute_bbox(*top);
+  const db::Descend mode = GENERATE(db::Descend::no_subcircuit, db::Descend::property_flatten);
+  db::FlattenOptions o;
+  o.descend = mode;
+  SECTION("magic-compat on: nothing is copied") {
+    auto flat = db::flatten_to_new(lib, *top, "flat", *mt.tech, o);
+    REQUIRE(flat.ok());
+    CHECK(db::test::rects(flat.value()->plane(mt.metal1)).empty());
+    CHECK(db::test::rects(flat.value()->plane(mt.metal2)).empty());
+    CHECK(flat.value()->labels().empty());
+    CHECK(flat.value()->uses().empty());
+    CHECK(hefesto::hints::find_hint(*flat.value(), "X") == nullptr);
+  }
+  SECTION("magic-compat on: -dotoplabels still copies the top labels") {
+    o.labels = db::FlattenLabels::top_only;
+    auto flat = db::flatten_to_new(lib, *top, "flat", *mt.tech, o);
+    REQUIRE(flat.ok());
+    CHECK(label_texts(*flat.value()) == std::vector<std::string>{"P"});
+    CHECK(db::test::rects(flat.value()->plane(mt.metal1)).empty());
+    CHECK(flat.value()->uses().empty());
+  }
+  SECTION("magic-compat off: the root level is always copied") {
+    o.magic_compat = false;
+    auto flat = db::flatten_to_new(lib, *top, "flat", *mt.tech, o);
+    REQUIRE(flat.ok());
+    CHECK(db::test::rects(flat.value()->plane(mt.metal1)) == std::vector<Rect>{{0, 0, 10, 10}});
+    CHECK(label_texts(*flat.value()) == std::vector<std::string>{"P", "c_0.Q"});
+    CHECK(flat.value()->uses().empty());  // c is unported and has the property: flattened
+    CHECK(db::test::rects(flat.value()->plane(mt.metal2)) == std::vector<Rect>{{20, 0, 24, 4}});
+    CHECK(hefesto::hints::find_hint(*flat.value(), "X") != nullptr);  // the flattened level's hint (Q-MISC-15)
+  }
+}
+
+TEST_CASE("a restricting flatten of a cell that passes its own test copies it in both modes",
+          HI "[req:Flattening into a new cell]") {
+  // Q-MODEL-33: the root test only matters when it fails.
+  HEFESTO_REQUIRE_MT(mt);
+  db::CellLibrary lib;
+  auto* top = lib.create("top", mt.tech->plane_count()).value();
+  REQUIRE(db::paint(*top, *mt.tech, {0, 0, 10, 10}, mt.m1).ok());
+  top->properties().put("flatten", std::string{"true"});
+  db::FlattenOptions o;
+  o.descend = db::Descend::property_flatten;
+  o.magic_compat = GENERATE(true, false);
+  auto flat = db::flatten_to_new(lib, *top, "flat", *mt.tech, o);
+  REQUIRE(flat.ok());
+  CHECK(db::test::rects(flat.value()->plane(mt.metal1)) == std::vector<Rect>{{0, 0, 10, 10}});
 }
 
 TEST_CASE("in-place flatten of an arrayed use", HI "[req:Flattening an instance in place]") {

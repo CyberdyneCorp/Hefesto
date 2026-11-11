@@ -273,14 +273,22 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
   }
   CellDef& dest = *created.value();
   dest.flags().available = true;
+  // Magic's paint, hint, label and cell copies all apply DBDescendSubcell to
+  // the edit cell's own use first, so a source that fails a restricting mode
+  // copies nothing; only the -dotoplabels copy passes (CU_DESCEND_SPECIAL).
+  // Replicated under magic-compat; with it off the root is always copied
+  // (Q-MODEL-33, compat).
+  const bool copy_root = !options.magic_compat || descends(source, options.descend);
   Flattener f(dest, tech, options);
-  if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
-    return s.error();
+  if (copy_root) {
+    if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
+      return s.error();
+    }
+    // DBFlatCopyMaskHints over the source's bounding box: the hints of the
+    // descendants (not the source's own), clipped to it.
+    hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend, options.magic_compat);
   }
-  // DBFlatCopyMaskHints over the source's bounding box: the hints of the
-  // descendants (not the source's own), clipped to it.
-  hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend, options.magic_compat);
-  if (options.labels != FlattenLabels::none) {
+  if (options.labels == FlattenLabels::top_only || (copy_root && options.labels != FlattenLabels::none)) {
     f.copy_labels(source, kIdentity, std::string{}, true);
   }
   recompute_bbox(dest, options.magic_compat);

@@ -360,4 +360,22 @@ def m3_specs() -> list[Spec]:
                 files={"drctest.tech": drc_tech(['spacing m1 m1 3 touching_ok "m1 spacing < %d"'])}, outputs=["a.mag"])
     spec.stream_comparator = "drc-console"
     spec.keep_checkpaint = True
-    return [spec]
+    return [spec, _root_descend_spec()]
+
+
+def _root_descend_spec() -> Spec:
+    # MODEL-G-060 (Q-MODEL-33): Magic applies the restricting mode's test to the flattened
+    # cell itself. top has a port and no flatten property, so -nosubcircuits and -doproperty
+    # give an empty cell, and -dotoplabels keeps only top's labels; -novendor (top passes)
+    # is the control. c is unported and has the flatten property. (No mask hint: Hefesto's
+    # -novendor flatten would also copy it, Q-MISC-15, which MISC-MH-11 records.)
+    c = cell("c", paint("metal2", 0, 0, 4, 4) + label("Q", 2, 2) + ["property flatten true"])
+    top = cell("top", paint("metal1", 0, 0, 10, 10) + label("P", 5, 5) + ["port make", box(20, 0, 20, 0),
+                                                                          "getcell c"])
+    flats = (flatten_save("top", "f1", "-nosubcircuits") + flatten_save("top", "f2", "-doproperty")
+             + flatten_save("top", "f3", "-nosubcircuits", "-dotoplabels") + flatten_save("top", "f4", "-novendor"))
+    return model("MODEL-G-060", HIER, ["Flattening into a new cell", "Descend rules"],
+                 "top with a port and no flatten property, child c with the flatten property; flatten -nosubcircuits, "
+                 "-doproperty, -nosubcircuits -dotoplabels and -novendor (Q-MODEL-33: the first two are empty, the "
+                 "third has only top's label P).",
+                 c + top + flats, ["f1.mag", "f2.mag", "f3.mag", "f4.mag"])
