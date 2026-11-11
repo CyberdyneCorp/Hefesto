@@ -1,0 +1,4 @@
+* SPDX-License-Identifier: Apache-2.0
+* Top-level elements of a CDL file are seeded into the cell named after the file.
+*.PININFO a:I b:O
+XR9 a b res w=4
