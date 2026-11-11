@@ -16,8 +16,8 @@
 #   drc-profile  Manual (workflow_dispatch): where the time of `drc check; drc catchup` goes on
 #                the x86_64 runner. A Release build with debug info and frame pointers runs the
 #                block workload (bench/drc/drc_bench.py --emit) under `perf record`, and both
-#                tools run one pass under callgrind (Magic inside the reference image), so their
-#                instruction counts per function can be compared. A GCC 14 and a Clang build
+#                tools run one and two passes under callgrind (Magic inside the reference image):
+#                bench/drc/callgrind_pass_diff.py gives the instructions of one pass per function. A GCC 14 and a Clang build
 #                run drc_bench.py against Magic, to separate compiler from algorithm. Reports:
 #                the job summary and the artifact "drc-profile".
 #   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
@@ -211,15 +211,18 @@ jobs:
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
       - name: Scripts of the block workload
-        run: python3 bench/drc/drc_bench.py --emit profile --workload block --checks 4
+        run: |
+          python3 bench/drc/drc_bench.py --emit profile --workload block --checks 4
+          python3 bench/drc/drc_bench.py --emit profile --workload block --checks 2
+          mkdir -p drc-profile
 
       - name: perf record (GCC build, 4 passes of the block)
         shell: bash
+        continue-on-error: true
         run: |
-          mkdir -p drc-profile
           cd profile
           perf record -F 2999 -g -o ../perf.data ../build/linux-release/src/cli/hefesto-cli \
-            --no-log --magic -dnull -noconsole block-hefesto-4.tcl > /dev/null
+            --no-log --magic -dnull -noconsole block-hefesto-4.tcl > /dev/null 2>&1
           cd ..
           perf report -i perf.data --no-children --percent-limit 0.3 --stdio -g none \
             --sort symbol > drc-profile/perf-self.txt
@@ -227,36 +230,50 @@ jobs:
             --sort symbol > drc-profile/perf-children.txt
           perf report -i perf.data --no-children --percent-limit 2 --stdio -g caller,0.5,callee \
             --sort symbol > drc-profile/perf-callers.txt
+          grep -v '^#' drc-profile/perf-self.txt | sed '/^$/d' | head -40 | tee drc-profile/perf-top.txt
           {
             echo "## perf, block, GCC 14 (self)"
             echo '```'
-            grep -v '^#' drc-profile/perf-self.txt | sed '/^$/d' | head -40
+            cat drc-profile/perf-top.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: callgrind, one pass of the block (Hefesto GCC build and Magic)
+      - name: callgrind, instructions per pass of the block (Hefesto GCC build and Magic)
         shell: bash
+        continue-on-error: true
         run: |
           cd profile
-          valgrind --tool=callgrind --callgrind-out-file=../drc-profile/callgrind.hefesto \
-            ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole block-hefesto-1.tcl > /dev/null
-          docker run --rm -v "$PWD:/work" -v "$PWD/../drc-profile:/out" -w /work hefesto-golden:ci bash -c '
-            apt-get -o Acquire::Check-Valid-Until=false update > /dev/null &&
-            apt-get install -y --no-install-recommends valgrind > /dev/null &&
-            valgrind --tool=callgrind --callgrind-out-file=/out/callgrind.magic \
-              magic -dnull -noconsole block-magic-1.tcl > /dev/null &&
-            callgrind_annotate --inclusive=yes /out/callgrind.magic > /out/callgrind-magic-inclusive.txt &&
-            callgrind_annotate /out/callgrind.magic > /out/callgrind-magic-self.txt &&
-            chmod a+r /out/*' || echo "Magic callgrind failed" >> "$GITHUB_STEP_SUMMARY"
+          for passes in 1 2; do
+            valgrind --tool=callgrind --callgrind-out-file="../drc-profile/callgrind.hefesto.$passes" \
+              ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole \
+              "block-hefesto-$passes.tcl" > /dev/null 2>&1 &
+          done
+          wait
+          # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
+          docker run --rm -v "$PWD:/work" -v "$PWD/../drc-profile:/out" -v "$PWD/../bench/drc:/bench:ro" -w /work \
+            hefesto-golden:ci bash -c '
+              status=0
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1 || status=1
+              for passes in 1 2; do
+                mkdir -p "/tmp/cg$passes"
+                valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="/tmp/cg$passes/out.%p" \
+                  magic -dnull -noconsole "block-magic-$passes.tcl" > /dev/null 2>&1 || status=1
+                cp "$(ls -S /tmp/cg$passes/out.* | head -1)" "/out/callgrind.magic.$passes" || status=1
+              done
+              python3 /bench/callgrind_pass_diff.py /out/callgrind.magic.1 /out/callgrind.magic.2 \
+                > /out/callgrind-magic-pass.txt || status=1
+              chmod -R a+rwX /out
+              exit $status'
           cd ../drc-profile
-          callgrind_annotate --inclusive=yes callgrind.hefesto > callgrind-hefesto-inclusive.txt
-          callgrind_annotate callgrind.hefesto > callgrind-hefesto-self.txt
+          python3 ../bench/drc/callgrind_pass_diff.py callgrind.hefesto.1 callgrind.hefesto.2 > callgrind-hefesto-pass.txt
+          cat callgrind-hefesto-pass.txt callgrind-magic-pass.txt
           {
-            echo "## callgrind, one pass of the block (instructions)"
-            for f in callgrind-hefesto-self.txt callgrind-magic-self.txt; do
+            echo "## callgrind, instructions per pass of the block"
+            for f in callgrind-hefesto-pass.txt callgrind-magic-pass.txt; do
               echo "### $f"
               echo '```'
-              sed -n '1,45p' "$f" 2>/dev/null | cut -c1-180
+              cat "$f"
               echo '```'
             done
           } >> "$GITHUB_STEP_SUMMARY"
@@ -265,9 +282,10 @@ jobs:
         shell: bash
         run: |
           for build in linux-release linux-release-clang; do
+            echo "$build:" | tee "drc-profile/bench-$build.txt"
             python3 bench/drc/drc_bench.py --hefesto-cli "build/$build/src/cli/hefesto-cli" \
               --magic-image hefesto-golden:ci --repeat 3 --json "drc-profile/bench-$build.json" \
-              | tee "drc-profile/bench-$build.txt" || true
+              | tee -a "drc-profile/bench-$build.txt" || true
           done
           {
             echo "## drc_bench, GCC 14 then Clang"

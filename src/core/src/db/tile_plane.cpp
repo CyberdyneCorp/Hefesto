@@ -187,7 +187,7 @@ void TilePlane::join_y(Tile* keep, Tile* gone) {
   free_later(gone);
 }
 
-void TilePlane::for_each_tile(const std::function<void(const Tile*)>& visit) const {
+void TilePlane::for_each_tile(util::FunctionRef<void(const Tile*)> visit) const {
   const Rect all = whole_plane();
   Tile* tile = area_first(const_cast<TilePlane&>(*this), all);
   while (tile != nullptr) {
@@ -313,7 +313,7 @@ constexpr std::int64_t kDlongMin = std::numeric_limits<std::int64_t>::min();
 
 // The split-tile part of DBSrPaintArea: which sides are reported.
 bool visit_split_sides(Tile* tp, const Rect& rect, const tech::TypeMask& mask,
-                       const std::function<bool(Tile*, Body)>& visit) {
+                       TileFn visit) {
   const std::int64_t theight = std::int64_t{top(tp)} - bottom(tp);
   const std::int64_t twidth = std::int64_t{right(tp)} - left(tp);
   const std::int64_t f1 = rect.y0 > kMinf + 2 ? (std::int64_t{top(tp)} - rect.y0) * twidth : kDlongMax;
@@ -438,7 +438,7 @@ bool test_nm_interact(const Rect& r1, Body tt1, const Tile* t2, Body di2) noexce
 }
 
 bool visit_nm_tile(Tile* tp, Body ttype, const Rect& rect, const tech::TypeMask& mask,
-                   const std::function<bool(Tile*, Body)>& visit) {
+                   TileFn visit) {
   if (!is_split(tp->body)) {
     return mask.test(static_cast<tech::TileType>(tp->body)) && test_nm_interact(rect, ttype, tp, 0) &&
            visit(tp, 0);
@@ -454,7 +454,7 @@ bool visit_nm_tile(Tile* tp, Body ttype, const Rect& rect, const tech::TypeMask&
 }  // namespace
 
 bool search_area(TilePlane& plane, const Rect& area, const tech::TypeMask& mask,
-                 const std::function<bool(Tile*, Body)>& visit) {
+                 TileFn visit) {
   Tile* tp = area_first(plane, area);
   while (tp != nullptr) {
     plane.set_hint(tp);
@@ -470,8 +470,15 @@ bool search_area(TilePlane& plane, const Rect& area, const tech::TypeMask& mask,
   return false;
 }
 
+bool first_split_side(Tile* tp, const Rect& rect, Body& dinfo) {
+  return visit_split_sides(tp, rect, tech::TypeMask::all(), [&](Tile*, Body d) {
+    dinfo = d;
+    return true;
+  });
+}
+
 bool search_nm_area(TilePlane& plane, Body exact, const Rect& area, const tech::TypeMask& mask,
-                    const std::function<bool(Tile*, Body)>& visit) {
+                    TileFn visit) {
   if ((exact & kDiagonalBit) == 0) {
     return search_area(plane, area, mask, visit);
   }

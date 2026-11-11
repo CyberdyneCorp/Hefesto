@@ -24,6 +24,7 @@
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/plane.hpp"
+#include "hefesto/util/function_ref.hpp"
 
 namespace hefesto::db::detail {
 
@@ -69,6 +70,9 @@ struct Tile {
   return bottom(a) == bottom(b) && a->body == b->body && !is_split(a->body) && top(a) == top(b);
 }
 
+/// A search visitor: the tile and its side bits; true stops the search.
+using TileFn = util::FunctionRef<bool(Tile*, Body)>;
+
 /// One paint/erase result row indexed by the existing type.
 using ResultRow = PaintRow;
 
@@ -104,7 +108,7 @@ class TilePlane {
   void end_operation();
 
   /// Visits every internal tile (for copy, statistics and tests).
-  void for_each_tile(const std::function<void(const Tile*)>& visit) const;
+  void for_each_tile(util::FunctionRef<void(const Tile*)> visit) const;
 
   /// The split-tile fractures and joins of the operations are appended to
   /// `log` while it is set (Plane::record_splits).
@@ -165,11 +169,17 @@ Tile* nm_merge_left(TilePlane& plane, Tile* tile);
 /// The visitor gets the tile and 0, kDiagonalBit or kDiagonalBit|kSideBit.
 /// Return true from the visitor to stop. Returns true when stopped.
 bool search_area(TilePlane& plane, const Rect& area, const tech::TypeMask& mask,
-                 const std::function<bool(Tile*, Body)>& visit);
+                 TileFn visit);
+
+/// The first side of split tile `tp` that search_area() over `rect` with
+/// every type in the mask reports (DBSrPaintArea's outside-of-triangle
+/// test): kDiagonalBit (left) or kDiagonalBit|kSideBit (right) in `dinfo`;
+/// false when it reports neither.
+bool first_split_side(Tile* tp, const Rect& rect, Body& dinfo);
 
 /// DBSrPaintNMArea: like search_area but restricted to the triangle
 /// described by `exact` (falls back to search_area when not diagonal).
 bool search_nm_area(TilePlane& plane, Body exact, const Rect& area, const tech::TypeMask& mask,
-                    const std::function<bool(Tile*, Body)>& visit);
+                    TileFn visit);
 
 }  // namespace hefesto::db::detail
