@@ -86,6 +86,10 @@ struct DialogModel {
   std::vector<DialogButton> buttons;
   /// The last validation messages of `_check` (shown by the shell).
   std::vector<std::string> messages;
+  /// Incremented by every `raise .params` (Tk's raise; also the last step
+  /// of magic::gencell_dialog and the ^P macro): the shell brings the
+  /// dialog to the front and focuses it whenever the count changes.
+  std::uint32_t raise_count = 0;
 
   /// The values of every entry, checkbox and select widget in grid order
   /// (magic::gencell_getparams reads the script variables instead).

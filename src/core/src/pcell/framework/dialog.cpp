@@ -323,7 +323,11 @@ cmd::CommandResult open_dialog(Toolkit& tk, std::string instance, std::string ty
   }
   const cmd::CommandResult checks = add_check_callbacks(tk, spec.type, spec.library);
   sync_values(tk);
-  return checks.ok() ? cmd::CommandResult::success() : checks;
+  if (!checks.ok()) {
+    return checks;
+  }
+  ++tk.state().dialog->raise_count;  // raise .params
+  return cmd::CommandResult::success();
 }
 
 diag::Outcome<ParameterDict> dialog_parameters(Toolkit& tk) {

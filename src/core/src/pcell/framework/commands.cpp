@@ -12,9 +12,9 @@
 
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/context.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
+#include "hefesto/pcell/framework/hooks.hpp"
 #include "hefesto/pcell/framework/naming.hpp"
 #include "hefesto/pcell/framework/netlist.hpp"
 #include "hefesto/pcell/framework/tcl_list.hpp"
@@ -102,6 +102,13 @@ diag::Outcome<FrameworkState*> framework_state(CommandContext& ctx) {
   return &editor.value()->script.gencell;
 }
 
+// The menu bar rebuilds on a menu-model change (script::ScriptEvents).
+void menus_changed(CommandContext& ctx) {
+  if (auto editor = cmd::require_editor(ctx); editor.ok()) {
+    editor.value()->script.events.publish_menu_model_changed();
+  }
+}
+
 ToolkitMenu* find_menu(FrameworkState& state, const std::string& frame, const std::string& library) {
   for (auto& menu : state.menus.menus) {
     if (menu.frame == frame && menu.library == library) {
@@ -122,6 +129,7 @@ CommandResult add_menu_item(CommandContext& ctx, const std::string& frame, const
     return detail::script_error("invalid command name \"" + frame + ".titlebar.mbuttons." + library + ".toolmenu\"");
   }
   menu->items.push_back(std::move(item));
+  menus_changed(ctx);
   return CommandResult::success();
 }
 
@@ -135,6 +143,7 @@ CommandResult add_toolkit_menu(CommandContext& ctx, const std::vector<std::strin
     return detail::script_error("window name \"" + library + "\" already exists in parent");
   }
   state.value()->menus.menus.push_back({a[0], library, a[1], {}});
+  menus_changed(ctx);
   return CommandResult::success();
 }
 
@@ -332,6 +341,14 @@ bool register_pcell_commands(cmd::CommandRegistry& registry) {
   for (auto& spec : framework_commands()) {
     ok = !registry.add(std::move(spec), cmd::kScriptClient).has_value() && ok;
   }
+  // Tk's `raise`, for the ^P macro run as a command line (kGencellKeyMacro);
+  // in Tcl it is the global `::raise` of install_toolkit.
+  cmd::CommandSpec raise_spec{"raise", "raise window ?aboveThis?", "Tk raise for the parameter dialog .params.",
+                              [](CommandContext& ctx, const Invocation& inv) {
+                                auto state = framework_state(ctx);
+                                return state.ok() ? raise_window(*state.value(), inv.args) : raise(state.error());
+                              }};
+  ok = !registry.add(std::move(raise_spec), cmd::kScriptClient).has_value() && ok;
   return ok;
 }
 
