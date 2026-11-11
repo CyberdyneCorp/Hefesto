@@ -197,6 +197,9 @@ class TextInput : public Widget {
   TextInput(const TextInput&) = delete;
   TextInput& operator=(const TextInput&) = delete;
   void on_change(std::function<void(std::string)> callback);
+  /// Replaces the text (no change callback).
+  void set_text(std::string_view text);
+  [[nodiscard]] std::string text() const;
 
  private:
   explicit TextInput(WidgetId id);
@@ -209,6 +212,56 @@ enum class Role : std::uint8_t { none, group, text, heading, button, toggle_butt
 
 /// Has a screen reader read `text`; `assertive` interrupts what it is reading.
 void announce(std::string_view text, bool assertive);
+
+/// Runs `task` on the UI thread during the next frame and wakes the event
+/// loop (Rtask_post). Thread-safe: the background DRC worker's ready
+/// callback posts through it.
+void post_task(std::function<void()> task);
+
+/// Raven's Table in virtual mode (hefesto-app-ux "Desktop platform
+/// integration through Raven", Tables): it stores no rows and asks for the
+/// text of the cells it draws, so 200,000 rows cost no widget each. Sortable
+/// columns, keyboard (arrows, Return) and screen readers come with Raven.
+class Table : public Widget {
+ public:
+  static std::unique_ptr<Table> create();
+  ~Table();
+  Table(const Table&) = delete;
+  Table& operator=(const Table&) = delete;
+
+  /// Adds a column; `fill` > 0 takes that share of the free width.
+  void add_column(std::string_view header, float width, float fill, bool sortable);
+  /// Sets the row count and the cell text source (called for visible cells only).
+  void set_rows(int count, std::function<std::string(int row, int column)> text);
+  void set_selected(int row);
+  [[nodiscard]] int selected() const;
+  void scroll_to_row(int row);
+  /// Shows the sorted column (-1: none) without reordering anything.
+  void show_sort(int column, bool descending);
+  /// A row picked with the mouse or the arrow keys.
+  void on_select(std::function<void(int)> callback);
+  /// A row activated (double click, Return).
+  void on_activate(std::function<void(int)> callback);
+  /// A header click: the application sorts its data.
+  void on_sort(std::function<void(int column, bool descending)> callback);
+
+ private:
+  explicit Table(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// A short message over the content (Raven Toast), hidden after `seconds`.
+class Toast : public Widget {
+ public:
+  static Toast create();
+  void show(std::string_view text, StatusKind kind, double seconds);
+  /// Places it at the bottom center of its overlay parent, 16 px from the edge.
+  void place_bottom_center();
+
+ private:
+  using Widget::Widget;
+};
 
 /// Draws with Raven's painter in logical units; the only drawing surface the
 /// rest of the shell sees. Colors are forge tokens or PDK colors.
@@ -431,6 +484,13 @@ class Window {
   /// The window system Raven chose for this window: "x11", "wayland",
   /// "cocoa", "win32", or "none" (headless or unknown).
   [[nodiscard]] std::string window_system() const;
+  /// True while the window is the one the user works in (Rwindow_is_active).
+  [[nodiscard]] bool active() const;
+  /// The Dock (macOS) or launcher (Linux) progress: indeterminate while
+  /// `busy`, cleared otherwise. False where the system shows none.
+  bool set_busy_progress(bool busy) const;
+  /// Bounces the Dock icon / marks the window urgent when it is not active.
+  void request_attention() const;
   void set_title(std::string_view title);
   void set_min_size(int width, int height);
   void set_clear_color(const Rgba& color);

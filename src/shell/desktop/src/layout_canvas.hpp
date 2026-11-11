@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "hefesto/display/scene.hpp"
@@ -89,6 +90,13 @@ class LayoutCanvas final : public view::ViewObserver {
   void update_cursor();
 
   void on_window_changed(view::WindowId id, view::Change change) override;
+
+  /// Adds a widget over the canvas (the job-completion toast).
+  void add_overlay(const ui::Widget& child) { overlay_.add(child); }
+  /// The window point (logical units) just right of the top-right corner of
+  /// `rect` (root coordinates), clamped into the canvas: where the `drc why`
+  /// popover opens.
+  [[nodiscard]] std::pair<float, float> popover_point(const db::Rect& rect) const;
 
  private:
   struct Snapshot {

@@ -11,6 +11,7 @@
 
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/editor/editor_state.hpp"
 
 namespace hefesto::shell {
 
@@ -55,11 +56,12 @@ std::optional<PanelId> panel_id(const std::string& word) {
   if (word == "inspector") return PanelId::inspector;
   if (word == "console") return PanelId::console;
   if (word == "keys") return PanelId::keys;
+  if (word == "drc") return PanelId::drc;
   return std::nullopt;
 }
 
 constexpr std::string_view kPanelUsage =
-    "panel layers|inspector|console|keys ?show|hide|toggle? | panel layers|inspector dock left|right | panel reset";
+    "panel layers|inspector|console|keys|drc ?show|hide|toggle? | panel layers|inspector dock left|right | panel reset";
 
 cmd::CommandResult dock_panel(const ViewActions& actions, PanelId id, const cmd::Invocation& inv) {
   const bool valid = inv.args.size() == 3 && (inv.args[2] == "left" || inv.args[2] == "right");
@@ -107,6 +109,17 @@ cmd::CommandResult palette(const ViewActions& actions, const cmd::Invocation& in
   return cmd::CommandResult::success(now->empty() ? std::string("none") : *now);
 }
 
+// The `notifications` setting in the session layer; "on" when unset.
+cmd::CommandResult notifications(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
+  constexpr std::string_view kUsage = "hefesto::notifications ?on|off?";
+  editor::EditorState* editor = ctx.editor();
+  const bool valid = inv.args.empty() || (inv.args.size() == 1 && (inv.args[0] == "on" || inv.args[0] == "off"));
+  if (!valid || editor == nullptr) return usage(kUsage);
+  if (inv.args.size() == 1) editor->settings.set(app::SettingLayer::session, "notifications", inv.args[0]);
+  const auto value = editor->settings.effective("notifications");
+  return cmd::CommandResult::success(value && value->value == "off" ? "off" : "on");
+}
+
 using ViewHandler = cmd::CommandResult (*)(const ViewActions&, const cmd::Invocation&);
 
 cmd::Handler bind(ViewHandler handler, const ViewActions& actions) {
@@ -118,6 +131,13 @@ cmd::Handler bind(ViewHandler handler, const ViewActions& actions) {
 bool register_view_commands(cmd::CommandRegistry& registry, const ViewActions& actions) {
   bool ok = !registry.add({"theme", "theme dark|light", "Switches the UI theme.", bind(theme, actions)}).has_value();
   ok = !registry.add({"pan", "pan <dx> <dy>", "Moves the view by framebuffer pixels.", bind(pan, actions)}).has_value() &&
+       ok;
+  ok = !registry
+            .add({"hefesto::notifications", "hefesto::notifications ?on|off?",
+                  "Turns the job-completion notifications (a long DRC run finished while the window was not "
+                  "focused) on or off, or reports them.",
+                  notifications})
+            .has_value() &&
        ok;
   if (actions.panel) {
     ok = !registry

@@ -1227,4 +1227,149 @@ bool Window::capture_ppm(const std::string& path) const {
   return file != nullptr;
 }
 
+// --- M3: tasks, tables, toasts, Dock progress ------------------------------------
+
+namespace {
+
+void run_posted(void* user) {
+  std::unique_ptr<std::function<void()>> task(static_cast<std::function<void()>*>(user));
+  if (*task) (*task)();
+}
+
+RToastKind toast_kind(StatusKind kind) {
+  switch (kind) {
+    case StatusKind::success: return R_TOAST_SUCCESS;
+    case StatusKind::warning: return R_TOAST_WARNING;
+    case StatusKind::error: return R_TOAST_ERROR;
+    case StatusKind::info: return R_TOAST_INFO;
+  }
+  return R_TOAST_INFO;
+}
+
+}  // namespace
+
+void post_task(std::function<void()> task) {
+  Rtask_post(&run_posted, new std::function<void()>(std::move(task)));
+}
+
+struct Table::Callbacks {
+  std::function<std::string(int, int)> text;
+  std::function<void(int)> select;
+  std::function<void(int)> activate;
+  std::function<void(int, bool)> sort;
+  std::string buffer;  // the last cell text handed to Raven (valid until the next call)
+  bool quiet = false;  // set_selected(): not a pick
+
+  static const char* cell(Rid, int row, int column, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    cb->buffer = cb->text ? cb->text(row, column) : std::string();
+    return cb->buffer.c_str();
+  }
+  static void selected(Rid, int row, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (!cb->quiet && row >= 0 && cb->select) cb->select(row);
+  }
+  static void activated(Rid, int row, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (row >= 0 && cb->activate) cb->activate(row);
+  }
+  static void sorted(Rid, int column, int descending, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->sort) cb->sort(column, descending != kFalse);
+  }
+};
+
+Table::Table(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+Table::~Table() = default;
+
+std::unique_ptr<Table> Table::create() {
+  std::unique_ptr<Table> table(new Table(Rwidget_create(R_WIDGET_TABLE)));
+  Callbacks* cb = table->callbacks_.get();
+  Rtable_set_selection_changed_callback(table->id_, &Callbacks::selected, cb);
+  Rtable_set_activated_callback(table->id_, &Callbacks::activated, cb);
+  Rtable_set_sort_callback(table->id_, &Callbacks::sorted, cb);
+  Rtable_set_striped(table->id_, kFalse);
+  Rtable_set_grid_lines(table->id_, kFalse);
+  return table;
+}
+
+void Table::add_column(std::string_view header, float width, float fill, bool sortable) {
+  const int column = Rtable_add_column(id_, str(header).c_str(), width);
+  Rtable_set_column_fill(id_, column, fill);
+  Rtable_set_column_sortable(id_, column, sortable ? kTrue : kFalse);
+  if (fill <= 0.0F) Rtable_set_column_align(id_, column, 1.0F);
+}
+
+void Table::set_rows(int count, std::function<std::string(int, int)> text) {
+  callbacks_->text = std::move(text);
+  Rtable_set_virtual_rows(id_, count, &Callbacks::cell, callbacks_.get());
+}
+
+void Table::set_selected(int row) {
+  callbacks_->quiet = true;
+  Rtable_set_selected(id_, row);
+  callbacks_->quiet = false;
+}
+
+int Table::selected() const {
+  return Rtable_get_selected(id_);
+}
+
+void Table::scroll_to_row(int row) {
+  Rtable_scroll_to_row(id_, row);
+}
+
+void Table::show_sort(int column, bool descending) {
+  Rtable_sort(id_, column, descending ? kTrue : kFalse);
+}
+
+void Table::on_select(std::function<void(int)> callback) {
+  callbacks_->select = std::move(callback);
+}
+
+void Table::on_activate(std::function<void(int)> callback) {
+  callbacks_->activate = std::move(callback);
+}
+
+void Table::on_sort(std::function<void(int, bool)> callback) {
+  callbacks_->sort = std::move(callback);
+}
+
+Toast Toast::create() {
+  return Toast(Rwidget_create(R_WIDGET_TOAST));
+}
+
+void Toast::show(std::string_view text, StatusKind kind, double seconds) {
+  Rtoast_show_kind(id_, str(text).c_str(), toast_kind(kind), seconds);
+}
+
+void Toast::place_bottom_center() {
+  Rslot_set_halign(id_, R_HALIGN_CENTER);
+  Rslot_set_valign(id_, R_VALIGN_BOTTOM);
+  Rslot_set_padding(id_, 16.0F, 16.0F, 16.0F, 16.0F);
+}
+
+void TextInput::set_text(std::string_view text) {
+  Rtext_input_set_text(id_, str(text).c_str());
+}
+
+std::string TextInput::text() const {
+  const char* t = Rtext_input_get_text(id_);
+  return t != nullptr ? std::string(t) : std::string();
+}
+
+bool Window::active() const {
+  return id_ != kNoWidget && Rwindow_is_active(id_) != kFalse;
+}
+
+bool Window::set_busy_progress(bool busy) const {
+  if (id_ == kNoWidget) return false;
+  return Rwindow_set_taskbar_progress(id_, busy ? R_TASKBAR_PROGRESS_INDETERMINATE : R_TASKBAR_PROGRESS_NONE, 0.0F) !=
+         kFalse;
+}
+
+void Window::request_attention() const {
+  if (id_ != kNoWidget) (void)Rwindow_request_attention(id_, kFalse);
+}
+
 }  // namespace hefesto::shell::ui

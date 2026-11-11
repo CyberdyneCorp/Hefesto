@@ -7,16 +7,20 @@
 // command API"):
 //   theme dark|light     switch the UI theme
 //   pan <dx> <dy>        move the view by framebuffer pixels
-//   panel layers|inspector|console|keys ?show|hide|toggle?
+//   panel layers|inspector|console|keys|drc ?show|hide|toggle?
 //                        show, hide (collapse) or toggle a panel (keys: the
-//                        key-binding sheet); with no action it reports
-//                        "shown" or "hidden"
+//                        key-binding sheet; drc: the DRC results browser);
+//                        with no action it reports "shown" or "hidden"
 //   panel layers|inspector dock left|right
 //                        dock a side panel on the left or right of the canvas
 //   panel reset          the default (M1) arrangement, every side panel shown
 //   palette paint ?LAYER|none?
 //                        set (or report) the layer palette's paint layer,
 //                        which the Paint tool and "Paint" / "Erase" use
+//   hefesto::notifications ?on|off?
+//                        the job-completion notifications (hefesto-app-ux
+//                        "Desktop platform integration through Raven"): the
+//                        session layer of the `notifications` setting
 //
 // `view` and `zoom` are the core's (ui-windows-and-views, registered by
 // cmd::register_all_commands; design.md D5): they move the window's
@@ -36,7 +40,7 @@
 namespace hefesto::shell {
 
 /// The collapsible panels of the main window.
-enum class PanelId : std::uint8_t { layers, inspector, console, keys };
+enum class PanelId : std::uint8_t { layers, inspector, console, keys, drc };
 enum class DockSide : std::uint8_t { left, right };
 
 struct ViewActions {
@@ -58,7 +62,7 @@ struct ViewActions {
   std::function<std::optional<std::string>(std::optional<std::string>)> paint_layer;
 };
 
-/// Adds `theme`, `pan` and (with their actions) `panel` and `palette` to `registry`.
+/// Adds `theme`, `pan`, `hefesto::notifications` and (with their actions) `panel` and `palette` to `registry`.
 /// Returns false if a name was taken.
 /// The actions are copied into the handlers and must stay callable for as
 /// long as the registry is used.

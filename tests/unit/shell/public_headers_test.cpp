@@ -14,6 +14,8 @@
 #include "hefesto/shell/command_sink.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/design_tokens.hpp"
+#include "hefesto/shell/drc_link.hpp"
+#include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/editing_models.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/options.hpp"

@@ -18,6 +18,7 @@
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/screen_models.hpp"
+#include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "hefesto/shell/view_models.hpp"
 
@@ -92,6 +93,33 @@ TEST_CASE("panel collapses and restores the main window's panels through the com
   CoreSession other(test_options());
   REQUIRE(register_view_commands(other.registry(), ViewActions{[](ThemeMode) {}, [](double, double) {}, {}, {}, {}, {}, {}}));
   CHECK_FALSE(CoreCommandSink(other.dispatcher()).submit("panel layers").ok());
+}
+
+TEST_CASE("panel drc shows and hides the DRC results browser", "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
+  CoreSession core(test_options());
+  Recorder recorder;
+  REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  CoreCommandSink sink(core.dispatcher());
+  CHECK(sink.submit("panel drc show").message == "shown");
+  CHECK(recorder.shown[PanelId::drc]);
+  CHECK(sink.submit("panel drc").message == "shown");
+  CHECK(sink.submit("panel drc hide").message == "hidden");
+  CHECK(sink.submit("panel drc toggle").message == "shown");
+}
+
+TEST_CASE("hefesto::notifications sets the job-completion notification setting",
+          "[cap:hefesto-app-ux][req:Desktop platform integration through Raven]") {
+  CoreSession core(test_options());
+  Recorder recorder;
+  REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  CoreCommandSink sink(core.dispatcher());
+  CHECK(sink.submit("hefesto::notifications").message == "on");
+  CHECK(sink.submit("hefesto::notifications off").message == "off");
+  const auto value = core.editor().settings.effective("notifications");
+  REQUIRE(value);
+  CHECK_FALSE(notifications_enabled(value->value));
+  CHECK(sink.submit("hefesto::notifications on").message == "on");
+  CHECK_FALSE(sink.submit("hefesto::notifications maybe").ok());
 }
 
 TEST_CASE("palette paint sets the paint layer through the command API",

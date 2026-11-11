@@ -16,6 +16,8 @@ hefesto_add_unit_test(hefesto_shell_tests
     canvas_overlay_test.cpp
     command_bar_test.cpp
     design_tokens_test.cpp
+    drc_link_test.cpp
+    drc_models_test.cpp
     editing_models_test.cpp
     host_services_test.cpp
     input_router_test.cpp
