@@ -13,6 +13,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,7 +28,7 @@ namespace hefesto::shell {
 /// The panel's buttons. Download verification (size + SHA-256 of every
 /// asset, "Download integrity verification") is part of `install`; there is
 /// no separate verify command.
-enum class PdkAction : std::uint8_t { list, remote, install, enable, pin, uninstall };
+enum class PdkAction : std::uint8_t { list, remote, install, enable, pin, uninstall, trust, untrust };
 
 /// Explicit acceptances an install may need ("Headless and scripted
 /// operation": never a prompt; the flags are the `pdk install` options).
@@ -55,13 +56,25 @@ struct PdkRow {
   std::optional<std::string> installed_hash;     // its full 40-hex hash (for the commands)
   bool enabled = false;
   StatusChip state;  // "● enabled abcdef1", "◆ installed", "◆ not installed"
+  /// The scripts state of the installed version (M4): "● scripts trusted"
+  /// or "◆ scripts ask before running"; empty text when not installed.
+  bool scripts_trusted = false;
+  StatusChip scripts;
 
   [[nodiscard]] std::string title() const { return variant + "  (" + family + ")"; }
 };
 
+/// Whether an installed version's scripts are trusted (Provenance::trusted).
+using ScriptTrust = std::function<bool(const pdk::InstalledVersion&)>;
+
 /// One row per variant of `catalog`, in catalog order, with the state found
-/// in `installed`.
+/// in `installed` and, with `trusted`, the scripts state.
 [[nodiscard]] std::vector<PdkRow> pdk_rows(const pdk::Catalog& catalog,
-                                           const std::vector<pdk::InstalledVersion>& installed);
+                                           const std::vector<pdk::InstalledVersion>& installed,
+                                           const ScriptTrust& trusted = {});
+
+/// The trust button of a row: Revoke trust for trusted scripts, else Trust
+/// scripts; nullopt when the variant is not installed.
+[[nodiscard]] std::optional<PdkAction> trust_action(const PdkRow& row);
 
 }  // namespace hefesto::shell

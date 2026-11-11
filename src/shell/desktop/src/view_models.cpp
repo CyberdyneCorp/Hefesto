@@ -430,7 +430,7 @@ const std::vector<ToolButton>& tool_rail() {
       {"wire", "Wire", true, "Wire tool  Control-Space · left starts and commits legs, right cancels"},
       {"label", "Label", true, "Label: click or drag, then type the text (as the l key)"},
       {"measure", "Measure", true, "Measure: drag from point to point; the ruler stays"},
-      {"place", "Place device", false, "Place device: arrives in M4"},
+      {"place", "Place device", true, "Place device: the PDK's device generators"},
       {"fit", "Zoom to fit", true, "Zoom to fit (view)"},
   };
   return tools;

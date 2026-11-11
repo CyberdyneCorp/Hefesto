@@ -13,6 +13,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,11 @@ class PdkPanel {
   [[nodiscard]] pdk::PdkManager& manager() noexcept { return shared_manager_ != nullptr ? *shared_manager_ : *manager_; }
   std::unique_ptr<ui::Painted> make_button(PdkAction action, paint::ButtonStyle style);
   std::unique_ptr<ui::Painted> make_toggle(std::string label, bool* value);
+  // M4 script trust (board M4-Script-Consent tile 5).
+  std::unique_ptr<ui::Painted> make_trust_button();
+  [[nodiscard]] std::optional<PdkAction> selected_trust_action() const;
+  void update_trust_button();
+  [[nodiscard]] bool scripts_trusted(const pdk::InstalledVersion& version);
 
   ScreenContext& ctx_;
   std::function<void()> close_;
@@ -80,6 +86,7 @@ class PdkPanel {
   std::string root_text_;   // "Root: <path>" (ellipsized when painted; the tooltip is whole)
   std::string root_error_;  // "■ <error>" when the root cannot be listed; wrapped in danger_text
   ui::Painted* header_ = nullptr;  // owned by fixed_
+  ui::Painted* trust_button_ = nullptr;  // owned by fixed_
   PdkInstallFlags flags_;
 };
 

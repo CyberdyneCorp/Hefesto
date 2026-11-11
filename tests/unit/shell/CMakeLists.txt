@@ -32,6 +32,26 @@ hefesto_add_unit_test(hefesto_shell_tests
     view_models_test.cpp
   LIBS
     hefesto::shell_desktop)
+# M4 manager panels, text helper, toolbar, Tcl console and FilePicker host
+# (openspec/changes/m4-scripting tasks 10.4, 10.5).
+target_sources(hefesto_shell_tests PRIVATE
+  console_test.cpp
+  file_picker_host_test.cpp
+  manager_views_test.cpp
+  toolbar_views_test.cpp)
+# M4 menu bar, Place device and PCell dialog, script consent and trust
+# (openspec/changes/m4-scripting tasks 10.1-10.3, SHELL-A).
+target_sources(hefesto_shell_tests PRIVATE
+  m4_menu_bar_test.cpp
+  m4_pcell_dialog_test.cpp
+  m4_script_consent_test.cpp)
+# M2 items carried into M4 (openspec/changes/m4-scripting tasks 11.2-11.7, CARRY).
+target_sources(hefesto_shell_tests PRIVATE
+  key_bindings_sheet_test.cpp
+  label_tool_test.cpp
+  minimap_test.cpp
+  panels_layout_test.cpp
+  wiring_hud_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 

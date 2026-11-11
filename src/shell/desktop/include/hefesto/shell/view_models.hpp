@@ -209,7 +209,7 @@ struct ToolButton {
 
 /// The tool rail of the mockup, top to bottom: Box, Select, Paint, Wire,
 /// Label, Measure (live since M2: editing_models.hpp rail_action), Place
-/// device (disabled until M4), Zoom to fit.
+/// device (M4: the PDK device-menu popover, pcell_dialog_model.hpp), Zoom to fit.
 [[nodiscard]] const std::vector<ToolButton>& tool_rail();
 
 // --- layer palette ------------------------------------------------------------------

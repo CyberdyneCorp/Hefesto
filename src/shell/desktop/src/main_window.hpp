@@ -62,6 +62,16 @@
 #include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "layout_canvas.hpp"
+#include "hefesto/shell/menu_bar_model.hpp"
+#include "hefesto/shell/pcell_dialog_model.hpp"
+#include "hefesto/shell/script_consent_model.hpp"
+#include "pcell_dialog.hpp"
+#include "console_panel.hpp"
+#include "hefesto/shell/console_session.hpp"
+#include "hefesto/shell/file_picker_host.hpp"
+#include "hefesto/shell/tcl_console.hpp"
+#include "manager_panels.hpp"
+#include "utility_windows.hpp"
 #include "pdk_panel.hpp"
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
@@ -105,6 +115,19 @@ class MainWindow {
   /// After the background DRC pump ran BackgroundHost::service() (UI
   /// thread, between commands): redraws the committed squares.
   void on_drc_service(std::size_t committed);
+
+  /// M4 Tcl console (m4_managers_window.cpp, SHELL-B): attaches the console
+  /// and the manager procedures to the project's interpreter (startup's
+  /// app::StartupEnvironment::configure_interpreter).
+  void attach_interpreter(script::Interpreter& interp);
+
+  /// M4 (m4_window.cpp): the desktop's script::ConsentHost asks through
+  /// this window (board M4-Script-Consent). `host` must outlive the window.
+  void set_consent_host(DesktopConsentHost* host);
+  /// The consent prompt as a modal dialog; Escape answers Don't run. In a
+  /// scripted capture the dialog is shown without waiting and the scripts
+  /// are declined (nothing runs without an answer).
+  script::ConsentDecision ask_consent(const ConsentPromptView& view);
 
   /// Benchmark hooks: realtime redraw, and a programmatic pan in pixels.
   void set_realtime(bool realtime) { canvas_->set_realtime(realtime); }
@@ -168,6 +191,33 @@ class MainWindow {
   void show_why_popover();
   void post_drc_job_notice(double seconds);
   void register_view_commands();
+  // M4 screens (m4_window.cpp; SHELL-A, openspec/changes/m4-scripting tasks 10.1-10.3)
+  void build_m4();      // menu bar, script events, PCell dialog, declined banner
+  void teardown_m4();   // first thing of the destructor
+  void refresh_m4();    // after commands and between frames
+  void refresh_menu_bar();
+  void choose_menu_item(std::size_t menu, std::size_t entry);
+  void drain_script_events();
+  [[nodiscard]] bool scripts_declined() const;
+  [[nodiscard]] PlaceDeviceView place_device_state(std::string_view filter = {}) const;
+  void open_place_device();
+  void refresh_declined();
+  void review_scripts();
+  /// Runs an M4 screen's Tcl script (gui_script.hpp) with the Console echo.
+  cmd::CommandResult run_script_action(const std::string& script, cmd::Origin origin = cmd::Origin::gui);
+  // M4 managers and Tcl console (m4_managers_window.cpp; SHELL-B, tasks 10.4-10.5)
+  void build_m4b_console();  // in build_center: the Console tab's page
+  void build_m4b();          // managers, utility windows, Interrupt card, FilePicker host
+  void teardown_m4b();
+  void refresh_m4b();        // between frames
+  bool m4b_shortcut(int key, std::uint8_t modifiers);
+  /// A typed command-bar line runs in the project's interpreter through the
+  /// console (one interpreter, one transcript); false without an interpreter.
+  bool run_console_line(const std::string& line);
+  void note_m4b_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
+  void open_reorder();
+  /// The left dock's tabs: Layers, Cells, Libraries.
+  [[nodiscard]] ui::Widget& left_dock();
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
   /// --pinch: injects the trackpad pinch and prints the zoom before and after.
   void poll_background();
@@ -276,6 +326,35 @@ class MainWindow {
   bool drc_rows_changed_ = true;
   const db::CellDef* list_root_ = nullptr;  // compared, never dereferenced
   DrcLink::Stamp list_stamp_;
+
+  // M4 screens (SHELL-A).
+  std::unique_ptr<ui::MenuBar> menu_bar_;
+  MenuBarView menu_view_;
+  std::size_t menu_signature_ = 0;
+  bool menu_built_ = false;
+  bool menu_native_ = false;  // the system shows the bar (macOS)
+  ScriptEventCollector script_events_;
+  std::unique_ptr<PCellDialogWindow> pcell_dialog_;
+  ui::PopupMenu place_menu_;
+  std::vector<PlaceDeviceEntry> place_entries_;
+  std::string recent_device_;  // the last Place device script (listed last)
+  DesktopConsentHost* consent_host_ = nullptr;
+  ui::Box declined_bar_ = ui::Box::horizontal();  // banner over the canvas while scripts are declined
+  std::optional<ui::Label> declined_text_;
+  std::unique_ptr<ui::Button> review_button_;
+  bool declined_shown_ = false;
+
+  // M4 managers and Tcl console (SHELL-B).
+  std::unique_ptr<TclConsoleSession> console_session_;
+  std::unique_ptr<TclConsole> tcl_console_;
+  std::unique_ptr<ConsolePanel> console_panel_;
+  std::unique_ptr<ManagerPanels> managers_;
+  std::unique_ptr<TextHelperWindow> text_helper_;
+  std::unique_ptr<ReorderWindow> reorder_;
+  std::unique_ptr<DesktopFilePicker> file_picker_;
+  ui::Tabs left_tabs_ = ui::Tabs::create();  // Layers | Cells | Libraries
+  bool tech_shown_ = false;          // the technology manager in the right dock (`techmanager create`)
+  bool select_tag_pending_ = false;  // a `select` just ran: its tag refreshes, never opens, the text helper
 
   CoreCommandSink core_sink_;
   CommandBarModel command_model_{core_sink_};

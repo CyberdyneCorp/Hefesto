@@ -200,6 +200,8 @@ class TextInput : public Widget {
   TextInput(const TextInput&) = delete;
   TextInput& operator=(const TextInput&) = delete;
   void on_change(std::function<void(std::string)> callback);
+  /// Return pressed (M4 PCell dialog: an entry's handlers run on Return).
+  void on_commit(std::function<void(std::string)> callback);
   /// Replaces the text (no change callback).
   void set_text(std::string_view text);
   [[nodiscard]] std::string text() const;
@@ -241,6 +243,8 @@ class Table : public Widget {
   void scroll_to_row(int row);
   /// Shows the sorted column (-1: none) without reordering anything.
   void show_sort(int column, bool descending);
+  /// Hides the column headers (M4 console transcript: a log, not a table).
+  void set_header_visible(bool visible);
   /// A row picked with the mouse or the arrow keys.
   void on_select(std::function<void(int)> callback);
   /// A row activated (double click, Return).
@@ -253,6 +257,57 @@ class Table : public Widget {
   struct Callbacks;
   std::unique_ptr<Callbacks> callbacks_;
 };
+
+// --- M4 SHELL-B (tasks 10.4, 10.5): console input, file dialogs, frames ------------
+
+/// Raven's multi-line text editor as the Tcl console's input
+/// (M4-Console). Return and Shift-Return are decided by the window's key
+/// hook (TclConsole::press_return), not by the editor.
+class TextEditor : public Widget {
+ public:
+  static std::unique_ptr<TextEditor> create(std::string_view placeholder);
+  ~TextEditor();
+  TextEditor(const TextEditor&) = delete;
+  TextEditor& operator=(const TextEditor&) = delete;
+  /// Replaces the text and puts the cursor at its end (no change callback).
+  void set_text(std::string_view text);
+  [[nodiscard]] std::string text() const;
+  /// The cursor's line (0-based) and the line count, for ↑/↓ history.
+  [[nodiscard]] int cursor_line() const;
+  [[nodiscard]] int line_count() const;
+  void set_font(WidgetId font, float size);
+  void on_change(std::function<void(std::string)> callback);
+
+ private:
+  explicit TextEditor(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// One filter of a native file dialog: a name and ';'-separated patterns.
+struct FileDialogFilter {
+  std::string name;
+  std::string patterns;
+};
+
+/// A native open or save dialog (platform::FilePicker's desktop host).
+struct FileDialogOptions {
+  bool save = false;
+  std::string title;
+  std::string directory;
+  std::string file_name;
+  std::vector<FileDialogFilter> filters;
+  std::string default_extension;
+};
+
+/// The system's open or save dialog for `parent` (kNoWidget: none);
+/// nullopt when cancelled.
+[[nodiscard]] std::optional<std::string> file_dialog(WidgetId parent, const FileDialogOptions& options);
+
+/// Draws one frame from inside a long command (the console's pump): OS
+/// events, posted tasks, layout and paint. Only from a callback that runs
+/// outside Raven's frame update (an input event), as Rdialog_run does.
+void pump_frame();
 
 /// A short message over the content (Raven Toast), hidden after `seconds`.
 class Toast : public Widget {
@@ -501,6 +556,11 @@ class Window {
   /// nullopt when cancelled.
   [[nodiscard]] std::optional<std::string> open_file_dialog(std::string_view title, std::string_view filter_name,
                                                             std::string_view patterns) const;
+  /// M4 utility windows (PCell dialog): kept above the other windows.
+  void set_topmost(bool topmost);
+  /// The user asked to close the window (title bar): `callback` runs and the
+  /// window stays open (the owner destroys it).
+  void on_close_request(std::function<void()> callback);
   /// Shows a prompt dialog (title, wrapped text, one button per answer, the
   /// primary one focused). `wait`: runs it modally and returns the clicked
   /// button's answer + 1, or 0 when dismissed (Escape); otherwise opens it
@@ -511,6 +571,105 @@ class Window {
   WidgetId id_ = kNoWidget;
   struct KeyHook;
   std::unique_ptr<KeyHook> key_hook_;
+  struct CloseHook;
+  std::unique_ptr<CloseHook> close_hook_;
+};
+
+// --- M4 (openspec/changes/m4-scripting/design.md D13) -------------------------------
+
+/// One item of a MenuBar menu.
+struct MenuBarEntry {
+  std::string label;
+  bool separator = false;
+  bool checkable = false;
+  bool checked = false;
+  bool enabled = true;
+  std::string description;  // accessible description (the item's command)
+};
+
+struct MenuBarMenuSpec {
+  std::string title;
+  std::vector<MenuBarEntry> entries;
+};
+
+/// Raven's MenuBar: the system menu bar on macOS (the first MenuBar of the
+/// window, shown while it is active, taking no room), drawn in the window
+/// elsewhere (board M4-Menu-Bar).
+class MenuBar : public Widget {
+ public:
+  static std::unique_ptr<MenuBar> create();
+  ~MenuBar();
+  MenuBar(const MenuBar&) = delete;
+  MenuBar& operator=(const MenuBar&) = delete;
+
+  /// Replaces every menu; `on_choose(menu, entry)` runs when an item is chosen.
+  void set_menus(const std::vector<MenuBarMenuSpec>& menus, std::function<void(std::size_t, std::size_t)> on_choose);
+  /// True while the system shows the bar instead of the window.
+  [[nodiscard]] bool native() const;
+
+ private:
+  explicit MenuBar(WidgetId id);
+  struct State;
+  std::unique_ptr<State> state_;
+};
+
+/// A Raven text label.
+class Label : public Widget {
+ public:
+  static Label create(std::string_view text);
+  void set_text(std::string_view text);
+  void set_wrap(bool wrap);
+  void set_selectable(bool selectable);
+
+ private:
+  using Widget::Widget;
+};
+
+/// A Raven push button.
+class Button : public Widget {
+ public:
+  static std::unique_ptr<Button> create(std::string_view text, bool primary);
+  ~Button();
+  Button(const Button&) = delete;
+  Button& operator=(const Button&) = delete;
+  void on_click(std::function<void()> callback);
+
+ private:
+  explicit Button(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// A Raven checkbox.
+class CheckBox : public Widget {
+ public:
+  static std::unique_ptr<CheckBox> create(std::string_view text);
+  ~CheckBox();
+  CheckBox(const CheckBox&) = delete;
+  CheckBox& operator=(const CheckBox&) = delete;
+  void set_checked(bool checked);
+  void on_toggle(std::function<void(bool)> callback);
+
+ private:
+  explicit CheckBox(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// A Raven combo box (a select list).
+class ComboBox : public Widget {
+ public:
+  static std::unique_ptr<ComboBox> create(const std::vector<std::string>& items);
+  ~ComboBox();
+  ComboBox(const ComboBox&) = delete;
+  ComboBox& operator=(const ComboBox&) = delete;
+  void set_selected(int index);
+  void on_select(std::function<void(int)> callback);
+
+ private:
+  explicit ComboBox(WidgetId id);
+  struct Callbacks;
+  std::unique_ptr<Callbacks> callbacks_;
 };
 
 }  // namespace hefesto::shell::ui

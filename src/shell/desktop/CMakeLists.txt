@@ -40,6 +40,40 @@ add_library(hefesto_shell_desktop STATIC
   src/view_models.cpp)
 add_library(hefesto::shell_desktop ALIAS hefesto_shell_desktop)
 
+# M4 (openspec/changes/m4-scripting tasks 10.4, 10.5): the manager panels,
+# text helper, layer toolbar and reorder dialog, the Tcl console and the
+# native FilePicker host.
+target_sources(hefesto_shell_desktop PRIVATE
+  src/console_panel.cpp
+  src/console_session.cpp
+  src/file_picker_host.cpp
+  src/m4_managers_window.cpp
+  src/manager_panels.cpp
+  src/manager_views.cpp
+  src/tcl_console.cpp
+  src/text_helper_view.cpp
+  src/toolbar_views.cpp
+  src/utility_windows.cpp)
+
+# M4 (openspec/changes/m4-scripting tasks 10.1-10.3, SHELL-A): the menu
+# bar, Place device and the PCell dialog, script consent and trust.
+target_sources(hefesto_shell_desktop PRIVATE
+  src/gui_script.cpp
+  src/m4_window.cpp
+  src/menu_bar_model.cpp
+  src/pcell_dialog.cpp
+  src/pcell_dialog_model.cpp
+  src/script_consent_model.cpp)
+
+# M4 (openspec/changes/m4-scripting tasks 11.2-11.7, CARRY): panel layout,
+# key-binding sheet, label tool, minimap thumbnail, wiring HUD.
+target_sources(hefesto_shell_desktop PRIVATE
+  src/key_bindings_sheet.cpp
+  src/label_tool.cpp
+  src/minimap.cpp
+  src/panels_layout.cpp
+  src/wiring_hud.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root
