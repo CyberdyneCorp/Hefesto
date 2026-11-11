@@ -1,5 +1,7 @@
 # Tasks
 
+Status (2026-11-11): all 68 tasks are done; M3 complete pending merge (PR #29 and PR #30).
+
 Each task ends with how it is verified. Workstreams 4–10 run in parallel after the scaffold and edit only what design.md D2 assigns to them; shared-file needs are reported as open items. SHELL builds a screen only after DESIGN's board for it exists (design D11). Golden case inputs are authored by GOLDEN from the owning workstream's requirements (design D12); `expected/` is captured in CI. Unit tests carry `[cap:<capability>][req:<exact requirement heading>]`; requirements with a magic-compat dependence get one test per mode.
 
 ## 1. Scaffold
