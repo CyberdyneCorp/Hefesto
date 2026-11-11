@@ -192,4 +192,38 @@ def m3_specs() -> list[Spec]:
            "A properties section with the type keyword plane, PLANE or str before string BAZ qux (Q-MISC-12).",
            [c for name in MH09_KEYWORDS for c in (f"load input/{name}", "property")],
            files={f"{name}.mag": _mh09_mag(kw) for name, kw in MH09_KEYWORDS.items()}),
+        mh("MISC-MH-10", ["Copying, flattening and transforming hints"],
+           "Two-level hierarchy with a hint at each level (leaf X inside mid, mid Y); flatten -doinplace the mid "
+           "instance: Magic copies only Y, Hefesto also X (Q-MISC-14).",
+           _mh10_cells() + ["load top", "flatten -doinplace mid_0", "property MASKHINTS_X", "property MASKHINTS_Y",
+                            "save top"],
+           ["leaf.mag", "mid.mag", "top.mag"]),
+        mh("MISC-MH-11", ["Copying, flattening and transforming hints"],
+           "flatten -doproperty: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened "
+           "leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).",
+           _mh11_cells() + flatten_save("top", "flat", "-doproperty")
+           + ["property MASKHINTS_K", "property MASKHINTS_F", "property MASKHINTS_X"],
+           ["top.mag", "flat.mag"]),
     ]
+
+
+def _hinted_cell(name: str, rect: tuple, hint: str, extra: list[str] | None = None) -> list[str]:
+    return [f"load {name}", *paint("m1", *rect), f"property MASKHINTS_{hint}", *(extra or []), f"save {name}"]
+
+
+def _mh10_cells() -> list[str]:
+    # MISC-MH-10 (Q-MISC-14): leaf (hint X) placed in mid (hint Y) at (6,0); mid in top at (20,0).
+    return (_hinted_cell("leaf", (0, 0, 4, 4), "X 0 0 2 2")
+            + _hinted_cell("mid", (0, 0, 4, 4), "Y 0 0 3 3", [box(6, 0, 6, 0), "getcell leaf"])
+            + ["load top", *paint("m1", 0, 0, 4, 4), box(20, 0, 20, 0), "getcell mid", "save top"])
+
+
+def _mh11_cells() -> list[str]:
+    # MISC-MH-11 (Q-MISC-15): with -doproperty only cells with a `flatten` property are
+    # descended: fl and leaf are flattened, keep is kept as an instance.
+    flat_prop = "property flatten true"
+    return (_hinted_cell("leaf", (0, 0, 4, 4), "X 0 0 2 2", [flat_prop])
+            + _hinted_cell("keep", (0, 0, 4, 4), "K 0 0 2 2")
+            + _hinted_cell("fl", (0, 0, 4, 4), "F 0 0 3 3", [flat_prop, box(6, 0, 6, 0), "getcell leaf"])
+            + ["load top", *paint("m1", 0, 0, 4, 4), box(20, 0, 20, 0), "getcell keep", box(40, 0, 40, 0),
+               "getcell fl", "save top"])

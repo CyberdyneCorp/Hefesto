@@ -279,7 +279,7 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
   }
   // DBFlatCopyMaskHints over the source's bounding box: the hints of the
   // descendants (not the source's own), clipped to it.
-  hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend);
+  hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend, options.magic_compat);
   if (options.labels != FlattenLabels::none) {
     f.copy_labels(source, kIdentity, std::string{}, true);
   }
@@ -288,6 +288,24 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
 }
 
 namespace {
+
+// The hints of every level below `def` that the flattening descends into
+// (each array element, whole, mapped by its full transform `t`); the kept
+// instances keep their hints in their own cells. Magic's DBFlattenInPlace
+// copies only the flattened instance's own hints and loses these
+// (Q-MISC-14, fix in both modes, X-2 tier 1).
+void copy_descended_hints(const CellDef& def, const Transform& t, CellDef& dest, Descend mode) {
+  for (const auto& u : def.uses()) {
+    if (!descends(*u, mode)) {
+      continue;
+    }
+    for_each_element(*u, [&](std::int32_t x, std::int32_t y) {
+      const Transform te = compose(t, element_transform(*u, x, y));
+      hints::copy_hints(*u->def, dest, te, std::nullopt);
+      copy_descended_hints(*u->def, te, dest, mode);
+    });
+  }
+}
 
 // One array element of DBFlattenInPlace: paint, labels, kept instances and
 // the relabeling of the child's top-level labels.
@@ -303,8 +321,10 @@ diag::Status flatten_element(CellUse& use, std::int32_t x, std::int32_t y, const
     f.copy_labels(*use.def, t, std::string{}, true);
   }
   prefix_generated_labels(dest, f.generated(), in_place_prefix(use, x, y, options.magic_compat), options);
-  // DBCellCopyMaskHints: the element's own hints, whole, transformed.
+  // DBCellCopyMaskHints: the element's own hints, whole, transformed; then
+  // those of its flattened descendants (Q-MISC-14).
   hints::copy_hints(*use.def, dest, t, std::nullopt);
+  copy_descended_hints(*use.def, t, dest, options.descend);
   return diag::Done{};
 }
 

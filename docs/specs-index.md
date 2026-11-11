@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1987 requirements, 3081 scenarios, 847 open questions.
+**Totals:** 169 capabilities, 1987 requirements, 3085 scenarios, 848 open questions.
 
 ## Hefesto product (native)
 
@@ -69,7 +69,7 @@ Open questions: [32](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 |---|---|---|---|
 | [`layout-connectivity`](../openspec/specs/layout-connectivity/spec.md) | 5 | 9 | Specifies the electrical connectivity relation of the layout database as observable semantics: which pieces of paint are connected within a plane, across planes through contacts, a… |
 | [`layout-geometry-model`](../openspec/specs/layout-geometry-model/spec.md) | 9 | 21 | Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their pre… |
-| [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 20 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
+| [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 21 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
 | [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
 | [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 19 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
 | [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 10 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
@@ -77,12 +77,12 @@ Open questions: [32](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 
 ## Design rule checking (DRC)
 
-Open questions: [24](decisions/open-questions/DRC.md) · Golden cases: [CASES.md](../tests/golden/DRC/CASES.md)
+Open questions: [25](decisions/open-questions/DRC.md) · Golden cases: [CASES.md](../tests/golden/DRC/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
-| [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 27 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
+| [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 28 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
 | [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 17 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
 | [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 36 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
 | [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 30 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
@@ -313,7 +313,7 @@ Open questions: [36](decisions/open-questions/MISC.md) · Golden cases: [CASES.m
 |---|---|---|---|
 | [`antenna-check`](../openspec/specs/antenna-check/spec.md) | 9 | 19 | Defines the process-antenna (plasma-induced gate damage) check: the extract-section technology keywords that declare antenna rules (`antenna`, `model`, `tiedown`), the exact antenn… |
 | [`font-labels`](../openspec/specs/font-labels/spec.md) | 10 | 16 | Defines rendered ("font") labels: labels drawn with a vector outline font at a given size, rotation and offset, as opposed to default labels drawn with a fixed screen font. Covers … |
-| [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 21 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
+| [`mask-hints`](../openspec/specs/mask-hints/spec.md) | 8 | 23 | Defines mask hints: per-cell geometric annotations stored as cell properties whose key starts with `MASKHINTS_`. A mask hint is a set of rectangles (a Manhattan region) in the cell… |
 | [`plot-output`](../openspec/specs/plot-output/spec.md) | 14 | 18 | Defines hard-copy/plot output of layout: the `plot` command and its subcommands (`postscript`, `pnm`, `svg`, `versatec`, `parameters`, `help`, and the optional `gremlin`/`pixels`),… |
 | [`view-3d`](../openspec/specs/view-3d/spec.md) | 8 | 13 | Defines the 3D rendering view of a layout ("wind3d" window client): how it is opened and what it renders, its command set and key bindings, the cifoutput-section `render` statement… |
 

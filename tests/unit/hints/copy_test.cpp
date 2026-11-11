@@ -7,8 +7,10 @@
 // (MISC-MH-07 at unit level).
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "db_fixture.hpp"
@@ -91,20 +93,53 @@ TEST_CASE("flatten in place copies every array element's hints and unions them",
   CHECK(strips(*parent, "A") == Rects{{-10, 0, -5, 2}, {0, 0, 2, 2}, {10, 0, 12, 2}, {20, 0, 22, 2}});
 }
 
-TEST_CASE("flatten in place copies only the flattened instance's own hints", COPY) {
-  // DBFlattenInPlace calls DBCellCopyMaskHints on the instance's def only.
+TEST_CASE("flatten in place copies the hints of every flattened level", COPY) {
+  // Regression (Q-MISC-14, fix in both modes): DBFlattenInPlace copies only
+  // the instance's own hints (DBCellCopyMaskHints) and loses those of the
+  // flattened grandchildren, whose paint it keeps.
+  const bool compat = GENERATE(true, false);
   HEFESTO_REQUIRE_MT(mt);
   Layout l(mt);
   db::CellDef* leaf = l.cell("L", Rect{0, 0, 2, 2});
   db::CellDef* mid = l.cell("M", Rect{0, 0, 4, 4});
   db::CellDef* top = l.cell("T", Rect{0, 0, 1, 1});
   set_hint(*leaf, "DEEP", hints::HintRegion{Rect{0, 0, 2, 2}});
+  set_hint(*leaf, "OUT", hints::HintRegion{Rect{-50, 0, -40, 2}});  // outside every bbox: copied whole
   set_hint(*mid, "MID", hints::HintRegion{Rect{0, 0, 4, 4}});
-  Layout::place(*mid, *leaf, db::kIdentity);
+  Layout::place(*mid, *leaf, db::translation(1, 0), db::ArrayInfo{0, 1, 0, 0, 3, 0});
   db::CellUse* use = Layout::place(*top, *mid, db::translation(10, 0));
-  REQUIRE(db::flatten_in_place(*use, *l.tech).ok());
+  db::FlattenOptions options;
+  options.magic_compat = compat;
+  REQUIRE(db::flatten_in_place(*use, *l.tech, options).ok());
   CHECK(strips(*top, "MID") == Rects{{10, 0, 14, 4}});
-  CHECK(hints::find_hint(*top, "DEEP") == nullptr);
+  CHECK(strips(*top, "DEEP") == Rects{{11, 0, 13, 2}, {14, 0, 16, 2}});
+  CHECK(strips(*top, "OUT") == Rects{{-39, 0, -26, 2}});
+}
+
+TEST_CASE("flatten in place leaves the hints of kept instances in their cells", COPY) {
+  // Q-MISC-14: only the levels that are flattened contribute; a kept
+  // (not descended) instance is copied as an instance with its own hints.
+  const bool compat = GENERATE(true, false);
+  HEFESTO_REQUIRE_MT(mt);
+  Layout l(mt);
+  db::CellDef* leaf = l.cell("L", Rect{0, 0, 2, 2});
+  db::CellDef* vendor = l.cell("V", Rect{0, 0, 2, 2});
+  db::CellDef* mid = l.cell("M", Rect{0, 0, 4, 4});
+  db::CellDef* top = l.cell("T", Rect{0, 0, 1, 1});
+  set_hint(*leaf, "DEEP", hints::HintRegion{Rect{0, 0, 2, 2}});
+  set_hint(*vendor, "KEPT", hints::HintRegion{Rect{0, 0, 2, 2}});
+  db::set_property(*vendor, "GDS_FILE", db::PropertyValue{std::string{"v.gds"}});  // sets vendor_gds
+  Layout::place(*vendor, *leaf, db::kIdentity);
+  Layout::place(*mid, *vendor, db::translation(0, 10));
+  Layout::place(*mid, *leaf, db::translation(2, 0));
+  db::CellUse* use = Layout::place(*top, *mid, db::translation(10, 0));
+  db::FlattenOptions options;
+  options.descend = db::Descend::no_vendor;
+  options.magic_compat = compat;
+  REQUIRE(db::flatten_in_place(*use, *l.tech, options).ok());
+  CHECK(strips(*top, "DEEP") == Rects{{12, 0, 14, 2}});
+  CHECK(hints::find_hint(*top, "KEPT") == nullptr);
+  CHECK(strips(*vendor, "KEPT") == Rects{{0, 0, 2, 2}});
 }
 
 TEST_CASE("flatten into a new cell copies the descendants' hints clipped to the source", COPY) {
@@ -126,10 +161,13 @@ TEST_CASE("flatten into a new cell copies the descendants' hints clipped to the 
   CHECK(strips(*flat.value(), "WIDE") == Rects{{0, 50, 100, 60}});
 }
 
-TEST_CASE("hint flattening follows Magic's descend rules", COPY) {
-  // DBTreeSrCells: with a restricting mode a kept (not descended) instance
-  // is copied and not searched; a descended one is searched, not copied, so
-  // only the hints of kept instances reach the destination (Magic quirk).
+TEST_CASE("hint flattening copies every flattened level with a restricting mode", COPY) {
+  // Regression (Q-MISC-15): Magic's DBTreeSrCells with a restricting mode
+  // copies a kept instance and searches a descended one without copying
+  // it, so the flattened levels' hints are lost. Hefesto copies every
+  // descended element in both modes; the kept instance's own hints are
+  // copied as well only under magic-compat (tier 2).
+  const bool compat = GENERATE(true, false);
   HEFESTO_REQUIRE_MT(mt);
   Layout l(mt);
   db::CellDef* leaf = l.cell("L", Rect{0, 0, 10, 10});
@@ -145,15 +183,45 @@ TEST_CASE("hint flattening follows Magic's descend rules", COPY) {
   Layout::place(*top, *vendor, db::translation(20, 0));
   Layout::place(*top, *plain, db::translation(40, 0));
   db::CellDef* dest = l.lib.create("dest", l.tech->plane_count()).value();
-  hints::flat_copy_hints(*top, top->bbox(), db::kIdentity, *dest, db::Descend::no_vendor);
-  CHECK(strips(*dest, "V") == Rects{{20, 0, 21, 1}});
-  CHECK(hints::find_hint(*dest, "N") == nullptr);
-  CHECK(hints::find_hint(*dest, "L") == nullptr);  // L is descended too, so searched and never copied
+  hints::flat_copy_hints(*top, top->bbox(), db::kIdentity, *dest, db::Descend::no_vendor, compat);
+  CHECK(strips(*dest, "N") == Rects{{40, 0, 41, 1}});
+  CHECK(strips(*dest, "L") == Rects{{40, 0, 41, 1}});  // not the copy inside the kept V
+  if (compat) {
+    CHECK(strips(*dest, "V") == Rects{{20, 0, 21, 1}});
+  } else {
+    CHECK(hints::find_hint(*dest, "V") == nullptr);
+  }
   db::CellDef* all = l.lib.create("all", l.tech->plane_count()).value();
-  hints::flat_copy_hints(*top, top->bbox(), db::kIdentity, *all, db::Descend::all);
+  hints::flat_copy_hints(*top, top->bbox(), db::kIdentity, *all, db::Descend::all, compat);
   CHECK(strips(*all, "V") == Rects{{20, 0, 21, 1}});
   CHECK(strips(*all, "N") == Rects{{40, 0, 41, 1}});
   CHECK(strips(*all, "L") == Rects{{20, 0, 21, 1}, {40, 0, 41, 1}});
+}
+
+TEST_CASE("flatten -novendor into a new cell keeps the flattened levels' hints", COPY) {
+  // Q-MISC-15 through flatten_to_new (the `flatten -novendor` path).
+  const bool compat = GENERATE(true, false);
+  HEFESTO_REQUIRE_MT(mt);
+  Layout l(mt);
+  db::CellDef* leaf = l.cell("L", Rect{0, 0, 10, 10});
+  db::CellDef* vendor = l.cell("V", Rect{0, 0, 10, 10});
+  db::CellDef* top = l.cell("T", Rect{0, 0, 100, 100});
+  set_hint(*leaf, "L", hints::HintRegion{Rect{0, 0, 2, 2}});
+  set_hint(*vendor, "V", hints::HintRegion{Rect{0, 0, 2, 2}});
+  db::set_property(*vendor, "GDS_FILE", db::PropertyValue{std::string{"v.gds"}});
+  Layout::place(*top, *leaf, db::translation(30, 0));
+  Layout::place(*top, *vendor, db::translation(60, 0));
+  db::FlattenOptions options;
+  options.descend = db::Descend::no_vendor;
+  options.magic_compat = compat;
+  auto flat = db::flatten_to_new(l.lib, *top, "flat", *l.tech, options);
+  REQUIRE(flat.ok());
+  CHECK(strips(*flat.value(), "L") == Rects{{30, 0, 32, 2}});
+  if (compat) {
+    CHECK(strips(*flat.value(), "V") == Rects{{60, 0, 62, 2}});
+  } else {
+    CHECK(hints::find_hint(*flat.value(), "V") == nullptr);
+  }
 }
 
 TEST_CASE("interaction flattening copies only the instances overlapping the area", COPY) {

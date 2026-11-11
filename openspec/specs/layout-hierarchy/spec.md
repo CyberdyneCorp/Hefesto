@@ -212,7 +212,7 @@ Compatibility: behavioral
 - Paint is merged per plane through the paint tables (`layout-paint-semantics`, "Copying paint between cells").
 - Labels (default): every label of every level is copied with its rectangle and justification transformed; text becomes the hierarchical path with the last `/` replaced by `.` (e.g. a label `A` inside `x_0/y_1` becomes `x_0/y_1.A`); only labels of the top level keep their port flags and index; font, size, rotation and offset are copied untransformed (see Q-MODEL-20). With `magic-compat` OFF, rotation and offset SHALL be transformed as for hierarchical copies.
 - "Top labels only" copies only the labels of the root level. "No labels" copies none.
-- Properties other than `MASKHINTS_*` are not copied.
+- Properties other than `MASKHINTS_*` are not copied. Which instances' mask hints are copied is specified by capability `mask-hints`, "Copying, flattening and transforming hints" (Q-MISC-15).
 - The destination must not already exist unless a box-limited flatten is requested.
 
 (Magic ref: commands/CmdFI.c:1933-2010,2040-2250, database/DBcellcopy.c:284-305,551-560,1730-1790)
@@ -231,6 +231,7 @@ Compatibility: behavioral
 - Top-level child labels are re-created in the parent as non-port labels with text `<id>[x][y]/<text>` (2-D array), `<id>[x]/<text>` or `<id>[y]/<text>` (1-D), or `<id>/<text>`, and the unprefixed copies are removed. Note the `[x][y]` order differs from element naming (`[y,x]`); see Q-MODEL-7. With `magic-compat` OFF, the prefix SHALL be `<id>[y][x]/<text>`.
 - Magic sizes the renamed text without room for the index suffix (a heap overflow) and, in the captured run, leaves the labels unprefixed. Hefesto SHALL apply the names above (see Q-MODEL-31).
 - Flattening every selected use applies the same procedure to each and deletes them from the selection.
+- The mask hints copied are those of the element and of every descended level below it (capability `mask-hints`, "Copying, flattening and transforming hints"; Q-MISC-14).
 
 (Magic ref: database/DBcellcopy.c:580-735,781-800, commands/CmdFI.c:2105-2140)
 

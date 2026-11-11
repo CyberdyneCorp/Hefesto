@@ -109,9 +109,9 @@ struct Element {
 class FlatHintCopier {
  public:
   FlatHintCopier(const db::Rect& area, const db::Transform& to_destination, db::CellDef& destination,
-                 db::Descend mode)
+                 db::Descend mode, bool magic_compat)
       : area_(area), to_destination_(to_destination), clip_(db::apply(to_destination, area)),
-        destination_(destination), mode_(mode) {}
+        destination_(destination), mode_(mode), magic_compat_(magic_compat) {}
 
   // DBCellSrArea over `def` (reached by `to_root`), dbTreeCellSrFunc on
   // every element found.
@@ -138,9 +138,14 @@ class FlatHintCopier {
     }
   }
 
+  // Magic's dbTreeCellSrFunc copies a descended element only with
+  // CU_DESCEND_ALL and always copies a kept one, so a restricting mode loses
+  // the hints of the flattened levels. Hefesto copies every descended
+  // element in both modes (Q-MISC-15, fix, X-2 tier 1) and the kept
+  // element's own hints only under magic-compat (tier 2).
   void visit(const Element& e) {
     const bool descended = db::descends(*e.use, mode_);
-    if (!descended || mode_ == db::Descend::all) {
+    if (descended || magic_compat_) {
       copy_hints(*e.use->def, destination_, db::compose(to_destination_, e.to_root), clip_);
     }
     if (descended) {
@@ -153,6 +158,7 @@ class FlatHintCopier {
   db::Rect clip_;
   db::CellDef& destination_;
   db::Descend mode_;
+  bool magic_compat_;
 };
 
 }  // namespace
@@ -248,8 +254,8 @@ void copy_hints(const db::CellDef& source, db::CellDef& destination, const db::T
 }
 
 void flat_copy_hints(const db::CellDef& root, const db::Rect& area, const db::Transform& to_destination,
-                     db::CellDef& destination, db::Descend mode) {
-  FlatHintCopier copier{area, to_destination, destination, mode};
+                     db::CellDef& destination, db::Descend mode, bool magic_compat) {
+  FlatHintCopier copier{area, to_destination, destination, mode, magic_compat};
   copier.search(root, db::kIdentity);
 }
 

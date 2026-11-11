@@ -1,0 +1,28 @@
+# MISC-MH-10: Two-level hierarchy with a hint at each level (leaf X inside mid, mid Y); flatten -doinplace the mid instance: Magic copies only Y, Hefesto also X (Q-MISC-14).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/t -noprompt
+snap internal
+drc off
+load leaf
+box 0 0 4 4
+paint m1
+property MASKHINTS_X 0 0 2 2
+save leaf
+load mid
+box 0 0 4 4
+paint m1
+property MASKHINTS_Y 0 0 3 3
+box 6 0 6 0
+getcell leaf
+save mid
+load top
+box 0 0 4 4
+paint m1
+box 20 0 20 0
+getcell mid
+save top
+load top
+flatten -doinplace mid_0
+property MASKHINTS_X
+property MASKHINTS_Y
+save top
