@@ -276,6 +276,13 @@ class PdkManager {
   /// The recorded provenance of an installed version; PDK-INSTALL-004 when
   /// the version is not installed.
   [[nodiscard]] diag::Outcome<Provenance> provenance(const Family& family, std::string_view hash) const;
+  /// Records `trusted` in the provenance record of an installed version
+  /// (hefesto-security "Consent before implicit script execution": trust is
+  /// recorded per PDK and version; the user chose "trust this version" in
+  /// the consent prompt). A version installed by ciel or volare gets a
+  /// record with source "external". PDK-INSTALL-004 when the version is not
+  /// installed. Owner: PDKINT (openspec/changes/m4-scripting design.md D2).
+  [[nodiscard]] diag::Status set_trusted(const Family& family, std::string_view hash, bool trusted);
   /// The enabled hash of `family` (<root>/ciel/<family>/current), if any.
   [[nodiscard]] std::optional<std::string> current(const Family& family) const;
 

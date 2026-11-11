@@ -50,14 +50,6 @@ void apply_project(SettingsStack& stack, const ProjectFile& project);
 /// the typed project settings.
 void apply_effective(const SettingsStack& stack, settings::ProjectSettings& typed);
 
-/// "Magic startup-file compatibility" before the Tcl binding (M4): the plain
-/// settings of a startup file, i.e. top-level `set VDD|GND|SUB <word>` and
-/// `set globals(<name>) <word>` lines whose value is a literal (no `$`, `[`).
-/// Everything else (procedures, conditionals, commands) is script and is
-/// not run. Returns setting name/value pairs in file order; globals are
-/// folded into one sorted `globalNets` entry.
-[[nodiscard]] std::vector<std::pair<std::string, std::string>> startup_file_settings(std::string_view text);
-
 /// User preferences file (export/import format): a flat JSON object of
 /// string values, keys in byte order. A missing file is an empty layer;
 /// a malformed one fails with APP-SETTINGS-001.

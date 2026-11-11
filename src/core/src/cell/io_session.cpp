@@ -17,6 +17,9 @@
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/script/pdk/tech_rc.hpp"
+#include "hefesto/script/pdk/trust.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/tech/commands.hpp"
 
 namespace hefesto::cell::detail {
@@ -126,12 +129,18 @@ void IoSession::process_mismatches() {
   }
 }
 
-// Step 3 (the `T.magicrc` startup script) waits for the Tcl binding (M4):
-// the script is not run, so step 6 always applies, as in app startup
-// (tasks.md 4.3 deviation). Step 7 has no `tech load` callbacks to run yet.
+// Step 3 runs `<tech>.magicrc` as a script after consent (Q-SCRIPT-10,
+// hefesto-security "Consent before implicit script execution"); a declined
+// script loads nothing, so the cell keeps the current technology. Step 6
+// (libs.ref paths) applies only when no rc file ran. Step 7 has no `tech
+// load` callbacks to run yet (BINDING's tags).
 const tech::Technology* IoSession::discover_technology(std::string_view name) {
   const std::string tech_name{name};
   const auto dir = locate_technology_dir(io.fs, io.host, io.vars, tech_name);
+  const RcStep rc = dir ? run_technology_rc(*dir, tech_name) : RcStep::none;
+  if (rc == RcStep::declined) {
+    return nullptr;
+  }
   if (dir) {
     ed.search_paths.system.push_back(dir->generic_string());
   }
@@ -144,10 +153,23 @@ const tech::Technology* IoSession::discover_technology(std::string_view name) {
     emit(codes::kTechLoadFailed, "Error in loading technology file");
     return nullptr;
   }
-  if (dir) {
+  if (dir && rc == RcStep::none) {
     discover_libraries(dir->generic_string());
   }
   return ed.technology.get();
+}
+
+IoSession::RcStep IoSession::run_technology_rc(const platform::Path& dir, const std::string& tech_name) {
+  const platform::Path rc_file = dir / (tech_name + ".magicrc");
+  if (ed.script.interp == nullptr || !io.fs.exists(rc_file)) {
+    return RcStep::none;  // no script host (e.g. a bare command session): Magic's non-Tcl build
+  }
+  const auto pdk = script::pdk_identity_of(rc_file).value_or(script::PdkIdentity{tech_name, tech_name, ""});
+  const auto run = script::run_tech_magicrc(ed, pdk, rc_file, nullptr);
+  for (const auto& d : run.diagnostics) {
+    io.sink.emit(d);
+  }
+  return run.ok() ? RcStep::ran : RcStep::declined;
 }
 
 void IoSession::discover_libraries(const std::string& tech_dir) {

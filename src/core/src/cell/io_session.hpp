@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -51,6 +52,10 @@ class IoSession {
   /// Steps 1-7 of "Automatic technology discovery" for technology `name`.
   const tech::Technology* discover_technology(std::string_view name);
   void discover_libraries(const std::string& tech_dir);
+  /// Step 3: `<dir>/<tech>.magicrc` through the project's interpreter after
+  /// consent (owner: PDKINT, m4-scripting design D2/D7).
+  enum class RcStep : std::uint8_t { none, ran, declined };
+  RcStep run_technology_rc(const platform::Path& dir, const std::string& tech_name);
 };
 
 /// Runs `body(IoSession&)` with the command's editor session, then the
