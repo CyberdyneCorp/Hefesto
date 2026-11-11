@@ -71,6 +71,7 @@ class Dispatcher {
   /// Observers and sinks are not owned; each must stay alive until the
   /// dispatcher is destroyed or it is removed again.
   void add_observer(CommandObserver& observer) { observers_.push_back(&observer); }
+  void remove_observer(const CommandObserver& observer) { std::erase(observers_, &observer); }
   void add_sink(diag::DiagnosticSink& sink) { sinks_.push_back(&sink); }
   void remove_sink(const diag::DiagnosticSink& sink) { std::erase(sinks_, &sink); }
 
@@ -126,11 +127,13 @@ class Dispatcher {
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
- private:
   /// The client of the next command: `*window` when the default point is on
-  /// a window's chrome, `color` when the command point is in a color window,
-  /// else client().
+  /// a window's chrome (only while a command runs), `color` when the command
+  /// point is in a color window (`setpoint x y ID`), else client(). The Tcl
+  /// binding checks a command against it before dispatching.
   [[nodiscard]] std::string target_client() const;
+
+ private:
   CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation);
   void publish(const Invocation& invocation, const CommandResult& result);
   void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result);

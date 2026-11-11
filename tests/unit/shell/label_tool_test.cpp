@@ -14,6 +14,7 @@
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/label_tool.hpp"
 #include "hefesto/tech/loader.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto::shell;
 namespace db = hefesto::db;
@@ -40,6 +41,7 @@ struct Session {
   db::CellDef* top = nullptr;
 
   Session() {
+    (void)hefesto::shell::test::bind_interpreter(core);
     auto& ed = core.editor();
     ed.technology = tiny();
     top = ed.cells.create("top", ed.technology->plane_count()).value();

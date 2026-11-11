@@ -8,7 +8,6 @@
 
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cmd/all_commands.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
@@ -20,12 +19,11 @@
 #include "hefesto/ui/state.hpp"
 #include "hefesto/version.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
+#include "hefesto/shell/gui_script.hpp"
 
 namespace hefesto::shell {
 
 namespace {
-
-constexpr std::string_view kSourceName = "command bar";
 
 void append_diagnostics(CommandOutcome& outcome, const std::vector<diag::Diagnostic>& diagnostics) {
   for (const diag::Diagnostic& d : diagnostics) {
@@ -44,13 +42,17 @@ CommandOutcome failure(const diag::Diagnostic& error) {
   return outcome;
 }
 
-std::string first_error_text(const cmd::CommandResult& result) {
-  for (const diag::Diagnostic& d : result.diagnostics) {
-    if (d.severity == diag::Severity::error) {
+std::string first_reported_error(const std::vector<diag::Diagnostic>& diagnostics) {
+  for (const diag::Diagnostic& d : diagnostics) {
+    if (d.severity == diag::Severity::error && !d.text.empty()) {
       return d.text;
     }
   }
   return "failed";
+}
+
+std::string first_error_text(const cmd::CommandResult& result) {
+  return first_reported_error(result.diagnostics);
 }
 
 platform::SessionLog open_session_log(platform::PortableServices& services, const std::optional<platform::Path>& dir) {
@@ -150,29 +152,30 @@ TypedLine expand_typed_line(editor::EditorState& editor, std::string_view line) 
 }
 
 CommandOutcome CoreCommandSink::submit(std::string_view line) {
-  const cmd::ParsedScript parsed = cmd::parse_script(line, kSourceName);
-  if (parsed.error) {
-    dispatcher_.report(*parsed.error);
-    return failure(*parsed.error);
+  editor::EditorState* editor = dispatcher_.editor();
+  if (editor == nullptr) {
+    const diag::Diagnostic error = diag::make(diag::codes::kCmdSession, "the command bar has no editor session");
+    dispatcher_.report(error);
+    return failure(error);
   }
+  const GuiScriptRun run = run_gui_script_traced(*editor, dispatcher_, line, cmd::Origin::gui);
   CommandOutcome outcome;
-  for (const cmd::ParsedCommand& command : parsed.commands) {
-    cmd::Invocation invocation{command.words.front(),
-                               {command.words.begin() + 1, command.words.end()},
-                               cmd::Origin::gui,
-                               std::nullopt};
-    const cmd::CommandResult result = dispatcher_.execute(invocation);
-    append_diagnostics(outcome, result.diagnostics);
-    for (const diag::Diagnostic& d : result.diagnostics) {
-      if (d.severity == diag::Severity::info) outcome.printed += (outcome.printed.empty() ? "" : "\n") + d.text;
-    }
-    if (!result.ok()) {
-      outcome.status = OutcomeStatus::failed;
-      outcome.message = first_error_text(result);
-      break;
-    }
-    outcome.message = result.value.to_string();
-    append_output(outcome, outcome.message);
+  append_diagnostics(outcome, run.reported);
+  for (const diag::Diagnostic& d : run.reported) {
+    if (d.severity == diag::Severity::info) outcome.printed += (outcome.printed.empty() ? "" : "\n") + d.text;
+  }
+  if (!run.result.ok()) {
+    outcome.status = OutcomeStatus::failed;
+    outcome.message = first_error_text(run.result);
+    return outcome;
+  }
+  outcome.message = run.result.value.to_string();
+  append_output(outcome, outcome.message);
+  if (run.command_failed) {
+    // A quiet engine failure (Magic's non-strict convention): the Tcl
+    // result is ok, the line still shows as failed with the error it printed.
+    outcome.status = OutcomeStatus::failed;
+    outcome.message = first_reported_error(run.reported);
   }
   return outcome;
 }

@@ -207,9 +207,13 @@ TEST_CASE("the magic option takes Magic's command line", "[cap:app-startup][req:
   const Run display = run_cli({"--no-log", "--magic", "-d", "FOO"});
   CHECK(display.status == 1);
   CHECK(display.err.find("Use '-d NULL' if you don't need graphics.") != std::string::npos);
-  const Run missing = run_cli({"--no-log", "--magic", "-T"});
-  CHECK(missing.status == 1);
-  CHECK(missing.err == "-T requires a following technology\n");
+  // Magic's script host passes `-T` with the empty string (`lindex` past the
+  // end), so Magic 8.3.694's Tcl build fails to load technology "" and
+  // starts with "minimum" (checked with `magic -dnull -noconsole -T`).
+  const Run missing = run_cli({"--no-log", "-c", "tech name", "--magic", "-dnull", "-noconsole", "-T"});
+  CHECK(missing.status == 0);
+  CHECK(missing.err.find("Failed to load technology \"\"") != std::string::npos);
+  CHECK(missing.out == "minimum\n");
   const Run ok = run_cli({"--no-log", "-c", "tech name", "--magic", "-dnull", "-noconsole"});
   CHECK(ok.status == 0);
   CHECK(ok.out == "minimum\n");
@@ -219,6 +223,30 @@ TEST_CASE("the version option names the Magic compatibility version", "[cap:app-
   const Run r = run_cli({"--version"});
   CHECK(r.status == 0);
   CHECK(r.out.find("(Magic 8.3.694 compatible)") != std::string::npos);
+}
+
+// The script host's table (scripting-pdk-integration "Command-line options in
+// the script host", Q-SCRIPT-37) decides Magic's command line in --magic
+// mode; outputs checked against Magic 8.3.694's `magic -dnull -noconsole ...`.
+TEST_CASE("the magic option classifies its words with the script host's table",
+          "[cap:scripting-pdk-integration][req:Command-line options in the script host]") {
+  const Run version = run_cli({"--no-log", "--magic", "-dnull", "-noconsole", "-T", "scmos", "--version", "late"});
+  CHECK(version.status == 0);
+  CHECK(version.out == "8.3.694\n");
+  const Run commit = run_cli({"--no-log", "--magic", "-dnull", "--commit"});
+  CHECK(commit.status == 0);
+  CHECK(commit.out == "fc5daa9e2856b89a0a3056f296ded1fd4474e39e\n");
+  const Run prefix = run_cli({"--no-log", "--magic", "--prefix"});
+  CHECK(prefix.status == 0);
+  CHECK(prefix.err.empty());
+  // `-nowrapper` is the script host's and never reaches the engine's parser.
+  const Run nowrapper = run_cli({"--no-log", "-c", "tech name", "--magic", "-dnull", "-noconsole", "-nowrapper"});
+  CHECK(nowrapper.status == 0);
+  CHECK(nowrapper.out == "minimum\n");
+  // `^-n*` passes an unknown option to the engine, which rejects it.
+  const Run unknown = run_cli({"--no-log", "--magic", "-dnull", "-zz"});
+  CHECK(unknown.status == 1);
+  CHECK(unknown.err.starts_with("Unknown option: '-zz'"));
 }
 
 TEST_CASE("session settings from the command line", "[cap:hefesto-settings][req:Layered settings resolution]") {

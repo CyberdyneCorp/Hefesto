@@ -15,12 +15,16 @@
 #include <vector>
 
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/gui/managers.hpp"
+#include "hefesto/script/interp.hpp"
 #include "hefesto/shell/command_bar_model.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/drc_models.hpp"
+#include "hefesto/shell/manager_views.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "hefesto/shell/view_models.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto;
 using namespace hefesto::shell;
@@ -80,6 +84,7 @@ TEST_CASE("panel collapses and restores the main window's panels through the com
   CoreSession core(test_options());
   Recorder recorder;
   REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CHECK(sink.submit("panel layers hide").message == "hidden");
   CHECK_FALSE(recorder.shown[PanelId::layers]);
@@ -92,6 +97,7 @@ TEST_CASE("panel collapses and restores the main window's panels through the com
   // Without panel actions (another front end) the command is not registered.
   CoreSession other(test_options());
   REQUIRE(register_view_commands(other.registry(), ViewActions{[](ThemeMode) {}, [](double, double) {}, {}, {}, {}, {}, {}}));
+  (void)hefesto::shell::test::bind_interpreter(other);
   CHECK_FALSE(CoreCommandSink(other.dispatcher()).submit("panel layers").ok());
 }
 
@@ -99,6 +105,7 @@ TEST_CASE("panel drc shows and hides the DRC results browser", "[cap:hefesto-app
   CoreSession core(test_options());
   Recorder recorder;
   REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CHECK(sink.submit("panel drc show").message == "shown");
   CHECK(recorder.shown[PanelId::drc]);
@@ -112,6 +119,7 @@ TEST_CASE("hefesto::notifications sets the job-completion notification setting",
   CoreSession core(test_options());
   Recorder recorder;
   REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CHECK(sink.submit("hefesto::notifications").message == "on");
   CHECK(sink.submit("hefesto::notifications off").message == "off");
@@ -127,6 +135,7 @@ TEST_CASE("palette paint sets the paint layer through the command API",
   CoreSession core(test_options());
   Recorder recorder;
   REQUIRE(register_view_commands(core.registry(), recorder.actions()));
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CHECK(sink.submit("palette paint").message == "none");
   CHECK(sink.submit("palette paint metal2").message == "metal2");
@@ -149,6 +158,7 @@ TEST_CASE("view commands are core commands dispatched from the command bar",
   REQUIRE(core.registry().find("view") != nullptr);
   Recorder rec;
   REQUIRE(register_view_commands(core.registry(), rec.actions()));
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
 
   CHECK(sink.submit("theme light").ok());
@@ -186,6 +196,7 @@ TEST_CASE("the core zoom moves the current window, so the canvas follows it",
   REQUIRE(opened.ok());
   windows.set_current(opened.value()->id());
   const db::Rect before = windows.current()->mapping().surface;
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   REQUIRE(sink.submit("zoom 0.5").ok());
   CHECK(windows.current()->mapping().surface.width() < before.width());
@@ -197,16 +208,20 @@ TEST_CASE("command bar lines run through the core Dispatcher with origin gui",
   CoreSession core(test_options());
   OriginRecorder observer;
   core.dispatcher().add_observer(observer);
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CommandBarModel bar(sink);
 
-  const CommandOutcome echo = bar.submit("  echo a {b c}; echo last ");
-  REQUIRE(echo.ok());
-  CHECK(echo.message == "last");
+  // The line is Tcl (m4-scripting 13.2): `;` separates commands, braces
+  // group a word, and the result is the last command's, as in Magic's console.
+  const CommandOutcome line = bar.submit("  macro z {zoom 4}; snap ");
+  REQUIRE(line.ok());
+  CHECK(line.message == "lambda");
   REQUIRE(observer.seen.size() == 2);
-  CHECK(observer.seen[0].name == "echo");
-  CHECK(observer.seen[0].args == std::vector<std::string>{"a", "b c"});
+  CHECK(observer.seen[0].name == "macro");
+  CHECK(observer.seen[0].args == std::vector<std::string>{"z", "zoom 4"});
   CHECK(observer.seen[0].origin == cmd::Origin::gui);
+  CHECK(observer.seen[1].name == "snap");
 }
 
 // Regression (UI review): `help; paint nosuchlayer` showed only the paint
@@ -214,40 +229,45 @@ TEST_CASE("command bar lines run through the core Dispatcher with origin gui",
 TEST_CASE("the console keeps the results of a line's commands before a failure",
           "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
   CoreSession core(test_options());
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
-  const CommandOutcome kept = sink.submit("echo kept text");
+  // Tcl (m4-scripting 13.2): what a command prints stays; a command's
+  // result is replaced by the next one's (Magic's console shows the last).
+  const CommandOutcome kept = sink.submit("list kept text");
   REQUIRE(kept.ok());
   CHECK(kept.output == "kept text");
   CHECK(console_result(kept, kept.message) == kept.output);  // printed once
 
-  const CommandOutcome line = sink.submit("echo kept text; paint nosuchlayer");
-  CHECK_FALSE(line.ok());
-  CHECK(line.output == kept.output);
+  const CommandOutcome line = sink.submit("help box; paint nosuchlayer");
+  CHECK_FALSE(line.ok());  // `paint` failed quietly (Magic's convention); the line still shows it
   const std::string console = console_result(line, line.message);
-  CHECK(console.find("kept text") != std::string::npos);
+  CHECK(console.find("spliterase") != std::string::npos);  // help's text
   REQUIRE_FALSE(line.message.empty());
-  CHECK(console.find(line.message) != std::string::npos);  // the failure follows the result
-  CHECK(console.find("kept text") < console.find(line.message));
+  CHECK(console.find(line.message) != std::string::npos);  // the failure follows the printed text
+  CHECK(console.find("spliterase") < console.find(line.message));
 
-  const CommandOutcome echoes = sink.submit("echo a; echo b");
-  CHECK(echoes.output == "a\nb");
-  CHECK(console_result(echoes, echoes.message) == "a\nb");
+  const CommandOutcome last = sink.submit("list a; list b");
+  CHECK(last.output == "b");
+  CHECK(console_result(last, last.message) == "b");
 }
 
 TEST_CASE("command bar failures carry core diagnostics",
           "[cap:hefesto-diagnostics][req:Command results and errors]") {
   CoreSession core(test_options());
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
 
   // `paint` is a registered M1 command now; use a name no area registers.
   const CommandOutcome unknown = sink.submit("nosuchcommand m1; echo never");
   CHECK_FALSE(unknown.ok());
-  CHECK(has_code(unknown, "CMD-DISPATCH-001"));
-  CHECK(unknown.message.find("nosuchcommand") != std::string::npos);
+  // Tcl's errors (m4-scripting 13.2), as Magic's console reports them.
+  CHECK(has_code(unknown, "SCRIPT-TCL-001"));
+  CHECK(unknown.message == "invalid command name \"nosuchcommand\"");
 
   const CommandOutcome parse = sink.submit("echo \"unterminated");
   CHECK_FALSE(parse.ok());
-  CHECK(has_code(parse, "CMD-PARSE-001"));
+  CHECK(has_code(parse, "SCRIPT-TCL-001"));
+  CHECK(parse.message == "missing \"");
 
   CHECK_FALSE(core.quit_requested());
   CHECK(sink.submit("quit").ok());
@@ -258,14 +278,16 @@ TEST_CASE("the desktop session keeps a rotating log and a command log",
           "[cap:hefesto-diagnostics][req:Diagnostic presentation and logging]") {
   CoreSession core(test_options(), platform::Path{"/app/logs"});
   CHECK_FALSE(core.log_warning());
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
-  CHECK(sink.submit("echo logged").ok());
+  CHECK(sink.submit("snap internal").ok());
   CHECK_FALSE(sink.submit("nosuch").ok());
-  CHECK(core.command_log().history() == std::vector<std::string>{"echo logged", "nosuch"});
+  // The command log holds the engine commands; `nosuch` is Tcl's error (m4-scripting 13.2).
+  CHECK(core.command_log().history() == std::vector<std::string>{"snap internal"});
   const std::string log = core.files().read("/app/logs/hefesto.log").value();
   CHECK(log.find("info session start hefesto ") != std::string::npos);
-  CHECK(log.find("info cmd[gui] echo logged -> ok") != std::string::npos);
-  CHECK(log.find("CMD-DISPATCH-001") != std::string::npos);
+  CHECK(log.find("info cmd[gui] snap internal -> ok") != std::string::npos);
+  CHECK(log.find("invalid command name \"nosuch\"") != std::string::npos);
 }
 
 TEST_CASE("a hierarchy row expands one instance one level through core commands",
@@ -300,6 +322,7 @@ TEST_CASE("a hierarchy row expands one instance one level through core commands"
 
   const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
   REQUIRE(rows.size() == 3);
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   CHECK(rows[1].toggle_command() == "expand instance X1");
   const CommandOutcome out = sink.submit(rows[1].toggle_command());
@@ -348,6 +371,7 @@ TEST_CASE("a hierarchy row whose child covers it expands one level and keeps the
 
   const auto rows = hierarchy_rows(top, [&win](const db::CellUse& u) { return win.is_expanded(u); });
   REQUIRE(rows.size() == 2);
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   REQUIRE(sink.submit(rows[1].toggle_command()).status == OutcomeStatus::ok);
   CHECK(win.is_expanded(*w1));
@@ -363,6 +387,7 @@ TEST_CASE("opening a color window shows it on the color window screen",
   CoreSession core(test_options());
   core.editor().styles.emplace();
   core.editor().styles->colors.entries.resize(8);
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   const CommandOutcome opened = sink.submit("specialopen color 3");
   REQUIRE(opened.ok());
@@ -403,6 +428,7 @@ TEST_CASE("a hierarchy row toggles its instance only, not an overlapping sibling
   const auto row_of = [&rows](const db::CellUse* use) {
     return *std::find_if(rows.begin(), rows.end(), [use](const HierarchyRow& r) { return r.use == use; });
   };
+  (void)hefesto::shell::test::bind_interpreter(core);
   CoreCommandSink sink(core.dispatcher());
   REQUIRE(sink.submit(row_of(x1).toggle_command()).status == OutcomeStatus::ok);
   CHECK(win.is_expanded(*x1));
@@ -411,4 +437,41 @@ TEST_CASE("a hierarchy row toggles its instance only, not an overlapping sibling
   REQUIRE(sink.submit(row_of(x1).toggle_command().replace(0, 6, "unexpand")).status == OutcomeStatus::ok);
   CHECK_FALSE(win.is_expanded(*x1));
   CHECK(win.is_expanded(*x2));  // collapsing X1 leaves its overlapping sibling open
+}
+
+// m4-scripting tasks.md 13.2: ScreenContext::run (manager buttons, menus,
+// --run) sends its lines through CoreCommandSink, which evaluates them in
+// the project's interpreter, so the commands' Tcl tags fire as in Magic
+// (the cell manager's Load button and the `load` tag `clearstack;
+// cellmanager`). They did not while the lines went through the M0 reader.
+TEST_CASE("a manager button's line fires the command's Tcl tag",
+          "[cap:scripting-api][req:Command tag callbacks]") {
+  CoreSession core(test_options());
+  script::Interpreter& interp = hefesto::shell::test::bind_interpreter(core);
+  REQUIRE(interp.evaluate("magic::tag load {set ::loaded %1}").ok());
+  CoreCommandSink sink(core.dispatcher());
+  const gui::CellManagerRow row{"top", "top", "", 0};
+  const std::vector<std::string> lines = command_lines(gui::cell_manager_commands(gui::CellManagerAction::load, row, ""));
+  REQUIRE_FALSE(lines.empty());
+  for (const std::string& line : lines) {
+    INFO(line);
+    CHECK(sink.submit(line).ok());
+  }
+  const auto loaded = interp.get_var("::loaded");
+  REQUIRE(loaded.has_value());
+  CHECK(loaded->to_string() == "top");
+}
+
+TEST_CASE("command bar lines substitute like Tcl", "[cap:hefesto-architecture][req:Single command API]") {
+  CoreSession core(test_options());
+  (void)hefesto::shell::test::bind_interpreter(core);
+  CoreCommandSink sink(core.dispatcher());
+  REQUIRE(sink.submit("set s internal").ok());
+  CHECK(sink.submit("snap $s; snap").message == "internal");
+  CHECK(sink.submit("snap [string trim { lambda }]; snap").message == "lambda");
+  // Without a project interpreter nothing runs (SCRIPT-TCL-001).
+  CoreSession bare(test_options());
+  const CommandOutcome none = CoreCommandSink(bare.dispatcher()).submit("snap internal");
+  CHECK_FALSE(none.ok());
+  CHECK(has_code(none, "SCRIPT-TCL-001"));
 }

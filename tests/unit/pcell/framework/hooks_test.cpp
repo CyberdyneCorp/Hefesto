@@ -10,7 +10,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "framework_fixture.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/pcell/framework/hooks.hpp"
 #include "hefesto/script/binding/bind.hpp"
 #include "hefesto/script/events.hpp"
@@ -65,17 +64,10 @@ TEST_CASE("Control-P opens and raises the edit dialog of the selected device",
   SECTION("evaluated by the interpreter") {
     REQUIRE(s.tcl(pcell::kGencellKeyMacro).ok());
   }
-  SECTION("dispatched as the layout window's key macro (shell InputRouter::run)") {
-    const auto parsed = hefesto::cmd::parse_script(pcell::kGencellKeyMacro, "key");
-    REQUIRE_FALSE(parsed.error);
-    REQUIRE(parsed.commands.size() == 2);
-    for (const auto& c : parsed.commands) {
-      const hefesto::cmd::Invocation inv{c.words.front(), {c.words.begin() + 1, c.words.end()},
-                                         hefesto::cmd::Origin::key, std::nullopt};
-      const auto r = s.dispatcher.execute(inv);
-      INFO((r.diagnostics.empty() ? std::string{} : r.diagnostics.front().text));
-      REQUIRE(r.ok());
-    }
+  SECTION("evaluated as the layout window's key macro (shell InputRouter::run, origin key)") {
+    const auto r = s.interp->evaluate(pcell::kGencellKeyMacro, hefesto::cmd::Origin::key);
+    INFO((r.diagnostics.empty() ? std::string{} : r.diagnostics.front().text));
+    REQUIRE(r.ok());
   }
   CHECK(s.dialog().mode == pcell::DialogMode::edit_device);
   CHECK(s.dialog().instance == "x1");

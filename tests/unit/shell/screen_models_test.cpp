@@ -21,6 +21,7 @@
 #include "hefesto/ui/state.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "hefesto/tech/loader.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto::shell;
 namespace db = hefesto::db;
@@ -49,6 +50,7 @@ struct Session {
   db::CellDef* top = nullptr;
 
   Session() {
+    (void)hefesto::shell::test::bind_interpreter(core);
     auto& ed = core.editor();
     ed.technology = tiny();
     top = ed.cells.create("top", ed.technology->plane_count()).value();
@@ -286,7 +288,11 @@ TEST_CASE("the color window screen shows the edited color and issues Magic's but
   CHECK(ed.styles->colors.entries[39].g <= 129);
   CHECK(bar_click_line(ed, 6, 0.5).empty());
   // The stepper edits another entry.
-  REQUIRE(s.run("setpoint 10 10 " + std::to_string(v->window) + "; " + v->next));
+  // Tcl now (m4-scripting 13.2): the binding sends `color` to the color
+  // window under the `setpoint` point, as Magic's Tcl dispatcher does.
+  const CommandOutcome stepped = s.submit("setpoint 10 10 " + std::to_string(v->window) + "; " + v->next);
+  for (const std::string& d : stepped.diagnostics) UNSCOPED_INFO(d);
+  REQUIRE(stepped.ok());
   v = color_window_view(ed);
   REQUIRE(v.has_value());
   CHECK(v->caption == "COLOR = 050");
@@ -323,6 +329,7 @@ TEST_CASE("panels dock left or right and reset to the default layout",
   actions.reset = [&reset] { reset = true; };
   Session s;
   REQUIRE(register_view_commands(s.core.registry(), actions));
+  (void)hefesto::shell::test::bind_interpreter(s.core);  // binds `panel` too
   CHECK(s.submit("panel inspector dock left").ok());
   CHECK(s.submit("panel layers dock right").ok());
   REQUIRE(docked.size() == 2U);

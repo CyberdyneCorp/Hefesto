@@ -3,62 +3,49 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "hefesto/cmd/script.hpp"
 #include "test_session.hpp"
 
-using hefesto::cmd::parse_script;
-using Words = std::vector<std::string>;
-namespace codes = hefesto::diag::codes;
 
 #define CMD_API_TAGS "[cap:hefesto-architecture][req:Single command API]"
 #define STRICT_TAGS "[cap:hefesto-diagnostics][req:Script strict mode switch]"
 #define RESULT_TAGS "[cap:hefesto-diagnostics][req:Command results and errors]"
 
-namespace {
-std::vector<Words> words_of(std::string_view text) {
-  const auto parsed = parse_script(text);
-  REQUIRE_FALSE(parsed.error.has_value());
-  std::vector<Words> out;
-  for (const auto& c : parsed.commands) {
-    out.push_back(c.words);
-  }
-  return out;
-}
-}  // namespace
+// The M0 word splitter (cmd::parse_script) is gone (m4-scripting tasks.md
+// 13.2): every command line, script, key macro and key-binding file is Tcl.
+// What it was tested for is Tcl's command syntax now.
 
 TEST_CASE("commands split on semicolons and newlines", CMD_API_TAGS) {
-  CHECK(words_of("load inv; extract all;ext2spice\nquit") ==
-        std::vector<Words>{{"load", "inv"}, {"extract", "all"}, {"ext2spice"}, {"quit"}});
-  CHECK(words_of("  ;; \n\t ").empty());
+  hefesto::test::Session s;
+  REQUIRE(s.script("count; count;count\n\n  ;; \n\t count").ok());
+  CHECK(s.commands().count == 4);
 }
 
 TEST_CASE("quotes, braces, escapes and comments", CMD_API_TAGS) {
-  CHECK(words_of(R"(echo "a b;c" {x {y} z} "q\"\\\n")") ==
-        std::vector<Words>{{"echo", "a b;c", "x {y} z", "q\"\\\n"}});
-  CHECK(words_of("# comment ; still comment\necho hi # not a comment") ==
-        std::vector<Words>{{"echo", "hi", "#", "not", "a", "comment"}});
-  CHECK(words_of("echo a\\ b c\\;d") == std::vector<Words>{{"echo", "a b", "c;d"}});
-  CHECK(words_of("echo a \\\n  b") == std::vector<Words>{{"echo", "a", "b"}});
-  CHECK(words_of(R"(echo {a\}b})") == std::vector<Words>{{"echo", R"(a\}b)"}});
-  CHECK(words_of(R"(echo "" {})") == std::vector<Words>{{"echo", "", ""}});
+  hefesto::test::Session s;
+  // Each word of `words` as `set w` saw it, through `lindex` (no list formatting).
+  const auto word = [&s](std::string_view words, int i) {
+    return s.script("lindex [list " + std::string{words} + "] " + std::to_string(i)).value.to_string();
+  };
+  const std::string_view quoted = R"("a b;c" {x {y} z} "q\"\\")";
+  CHECK(word(quoted, 0) == "a b;c");
+  CHECK(word(quoted, 1) == "x {y} z");
+  CHECK(word(quoted, 2) == R"(q"\)");
+  CHECK(s.script("# comment ; still comment\nllength [list hi # a]").value.to_string() == "3");
+  CHECK(word(R"(a\ b c\;d)", 0) == "a b");
+  CHECK(word(R"(a\ b c\;d)", 1) == "c;d");
+  CHECK(s.script("llength [list a \\\n  b]").value.to_string() == "2");
+  CHECK(s.script(R"(llength [list "" {}])").value.to_string() == "2");
 }
 
-TEST_CASE("line numbers follow the source", CMD_API_TAGS) {
-  const auto parsed = parse_script("a\n\nb {x\ny}\nc");
-  REQUIRE(parsed.commands.size() == 3U);
-  CHECK(parsed.commands[0].line == 1U);
-  CHECK(parsed.commands[1].line == 3U);
-  CHECK(parsed.commands[2].line == 5U);
-}
-
-TEST_CASE("malformed scripts report a located error", RESULT_TAGS) {
-  const auto quote = parse_script("echo ok\necho \"open", "s.tcl");
-  REQUIRE(quote.error.has_value());
-  CHECK(quote.error->code == codes::kCmdParseQuote);
-  CHECK(std::get<hefesto::diag::SourceLocation>(quote.error->location) == hefesto::diag::SourceLocation{"s.tcl", 2});
-  CHECK(parse_script("echo {a {b}").error->code == codes::kCmdParseBrace);
-  CHECK(parse_script("echo {a}b").error->code == codes::kCmdParseExtra);
-  CHECK(parse_script("echo \"a\"b").error->code == codes::kCmdParseExtra);
+TEST_CASE("malformed scripts report a located Tcl error", RESULT_TAGS) {
+  hefesto::test::Session s;
+  const auto quote = s.script("count\ncount \"open");
+  REQUIRE_FALSE(quote.ok());
+  CHECK(quote.diagnostics.front().text == "missing \"");
+  CHECK(std::get<hefesto::diag::SourceLocation>(quote.diagnostics.front().location).line == 2U);
+  CHECK(s.script("count {a {b}").diagnostics.front().text == "missing close-brace");
+  CHECK(s.script("count {a}b").diagnostics.front().text == "extra characters after close-brace");
+  CHECK(s.script("count \"a\"b").diagnostics.front().text == "extra characters after close-quote");
 }
 
 // ---- Scripts are Tcl in the project's interpreter (m4-scripting 13.2) ----

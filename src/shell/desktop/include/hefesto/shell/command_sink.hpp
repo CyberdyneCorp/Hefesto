@@ -6,10 +6,9 @@
 // API"; design.md D5/D6). The shell never calls algorithms directly: the
 // command bar, menus and shortcuts all end up here.
 //
-// M0 binding: the core command API (hefesto/cmd/, design.md D6) is being
-// written in parallel, so the shell codes against this interface. Binding it
-// is one adapter class that splits the line into an Invocation with origin
-// `gui`, calls Dispatcher::execute and maps CommandResult to CommandOutcome.
+// The adapter to the core is CoreCommandSink (core_command_sink.hpp): it
+// evaluates the line as Tcl in the project's interpreter with origin `gui`
+// and maps the result and the diagnostics to a CommandOutcome.
 
 #pragma once
 
