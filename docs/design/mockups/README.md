@@ -16,6 +16,7 @@ Mockups"), which is no longer updated.
 | iPad — layout editing | `iPad.dc.html` | M14 |
 | M2 boards | `M2-*.dc.html` | see below |
 | M3 boards | `DRC-Browser.dc.html`, `M3-*.dc.html` | see below |
+| M4 boards | `M4-*.dc.html` | see below |
 
 ## M2 boards (interactive editing)
 
@@ -50,12 +51,28 @@ M1 render `drc-browser.png` shows the old drawing.
 | DRC results browser | `DRC-Browser.dc.html` | docked DRC panel populated (errors grouped by why-text with counts, rectangles, ignored rules, style selector, Re-check), `#k of n` stepping with Prev/Next, error tiles and box on the canvas, inspector for the error area with ignore; empty (not checked, clean), running and stale panel states; style menu | `m3-drc-browser.png`, `-light` |
 | DRC status | `M3-DRC-Status.dc.html` | top-bar chip and status-bar segment in the five states (not run, checking, clean, N errors, off), chip tooltip and DRC menu, `drc why` popover on the canvas, job-completion notification | `m3-drc-status.png`, `-light` |
 
-The M2 and M3 boards use the forge tokens as CSS variables on the root element: set `data-theme="light"` on it for the
+## M4 boards (scripting and PDK integration)
+
+Design D13 of `openspec/changes/m4-scripting`. Drafted here in the M2/M3 board format (shared token `<style>` block,
+numbered annotation pins, "Notes for SHELL"). They are waiting for the user's review (task 3.1), and SHELL builds a
+screen only after its board is approved. `canvas.json` places them below the M3 boards. Diagnostic codes shown as
+`SCRIPT-PDK-…` and `SCRIPT-SANDBOX-…` stand for codes that PDKINT and TCL have not assigned yet. Generated-cell
+suffixes are illustrative.
+
+| Board | File | Screen states | Renders (`docs/images/ui/`) |
+|---|---|---|---|
+| Menu bar | `M4-Menu-Bar.dc.html` | in-window menu bar (Linux) and native menu bar (macOS) with File/Edit/Cell/Window/Layers/Drc/Options; the sky130 Devices 1 menu open, with the hovered item's command in the status bar; the contents of every menu, with accelerators; the PDK-inserted `Import SPICE` and `DRC Routing` items; later-milestone items disabled; the skipped-statement report in Diagnostics | `m4-menu-bar.png`, `-light` |
+| Place device and PCell dialog | `M4-PCell-Dialog.dc.html` | Place device popover on the tool rail; parameter dialog for a new device (native generator), editing an instance, an invalid value corrected by `_check`, a dependency recomputed (Tcl generator); the error when no dialog opens | `m4-pcell-dialog.png`, `-light` |
+| Script consent | `M4-Script-Consent.dc.html` | consent prompt with the script origin and PDK version (store release and auto-discovered variant); trusted PDK versions in the PDK panel; declined read-only state with `minimum`; sandbox-denial diagnostics; a long-running script with Interrupt, and the interrupted result | `m4-script-consent.png`, `-light` |
+| Managers | `M4-Managers.dc.html` | cell manager (Cells tab), library manager (Libraries tab), technology manager, text helper, layer toolbar order, reorder dialog | `m4-managers.png`, `-light` |
+| Tcl console | `M4-Console.dc.html` | Console tab as a Tcl console: transcript with input, continuation lines, stdout, results, stderr and errors; multi-line input with an incomplete command; running with Interrupt; interrupted; window command entry | `m4-console.png`, `-light` |
+
+The M2, M3 and M4 boards use the forge tokens as CSS variables on the root element: set `data-theme="light"` on it for the
 light theme. The layout canvas and everything drawn on it keep the dark tokens in both themes (as the M1 shell does).
 Numbered purple pins are annotations, not UI; the "Notes for SHELL" under each board explain them. Each board says
 which command every control issues.
 
 Each `.dc.html` is self-contained HTML (inline styles; the M2 boards add one shared `<style>` block with the tokens):
-colors, sizes and spacing can be read directly. PNG renders are in `docs/images/ui/`: the M2 and M3 boards are rendered at
+colors, sizes and spacing can be read directly. PNG renders are in `docs/images/ui/`: the M2, M3 and M4 boards are rendered at
 1x in both themes (`<board>.png` dark, `<board>-light.png` light) with WebKit (macOS Quick Look for M2; a 1440 px
-WKWebView snapshot for M3, the light one with `data-theme="light"` on the root), fonts from `assets/fonts/`.
+WKWebView snapshot for M3 and M4, the light one with `data-theme="light"` on the root), fonts from `assets/fonts/`.
