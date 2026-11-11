@@ -651,17 +651,20 @@ CommandResult port_remove(const PortCall& c, Label& lab) {
   return CommandResult::success();
 }
 
-// `port first|last` (lowest index of the ports / highest of all labels) and
+// `port first|last` (lowest index of the ports / highest index) and
 // `port next`: the smallest port index above the target's. A word after
 // `next` is ignored, as in CmdPort (CMDEDIT-LBL-04); `port N next` names
-// the target by index.
+// the target by index. `port last` (scripting-api "Result formats of
+// commands used by scripts", Q-SCRIPT-6, resolution: compat): with
+// magic-compat ON the highest index stored on any label, ports or not, as
+// in Magic; with it OFF the highest index among the current ports, or -1.
 CommandResult port_report_index(const PortCall& c, int option, const Label* lab) {
   std::int64_t result = -1;
   const std::int64_t ref = lab != nullptr ? std::int64_t{lab->port_index} : -1;
   for (const Label& l : c.def->labels()) {
     const std::int64_t idx = l.port_index;
     if (option == kPortLast) {
-      result = std::max(result, idx);
+      result = c.s.magic_compat || l.is_port() ? std::max(result, idx) : result;
     } else if (l.is_port() && (option == kPortFirst || idx > ref) && (result == -1 || idx < result)) {
       result = idx;
     }

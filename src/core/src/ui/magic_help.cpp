@@ -15,6 +15,8 @@
 #include <cstdint>
 #include <iterator>
 
+#include "hefesto/script/binding/keyword_rule.hpp"
+
 namespace hefesto::ui {
 
 namespace {
@@ -170,17 +172,19 @@ const MagicHelpEntry kEntries[] = {
 enum class EntryMatch : std::uint8_t { none, prefix, exact };
 
 // One entry of Lookup(): letters match in either case, the name ends at a
-// space (not at a tab).
+// space (not at a tab) with magic-compat ON, at any whitespace with it OFF
+// (Q-SCRIPT-14, cmd::keyword_of).
 EntryMatch lookup_entry(std::string_view word, std::string_view entry) noexcept {
+  const std::string_view name = cmd::keyword_of(entry);
   std::size_t i = 0;
-  while (i < word.size() && i < entry.size() && entry[i] != ' ' &&
-         std::tolower(static_cast<unsigned char>(entry[i])) == std::tolower(static_cast<unsigned char>(word[i]))) {
+  while (i < word.size() && i < name.size() &&
+         std::tolower(static_cast<unsigned char>(name[i])) == std::tolower(static_cast<unsigned char>(word[i]))) {
     ++i;
   }
   if (i < word.size()) {
     return EntryMatch::none;
   }
-  return i == entry.size() || entry[i] == ' ' ? EntryMatch::exact : EntryMatch::prefix;
+  return i == name.size() ? EntryMatch::exact : EntryMatch::prefix;
 }
 
 }  // namespace

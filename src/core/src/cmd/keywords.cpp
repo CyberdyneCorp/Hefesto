@@ -5,7 +5,9 @@
 // cmd-coordinates-and-units, "Keyword matching", "Direction and position
 // names"). Ported from Magic VLSI 8.3.694 (fc5daa9e) utils/lookup.c (Lookup)
 // and utils/geometry.c (GeoNameToPos), Copyright (C) 1985, 1990 Regents of
-// the University of California (see THIRD_PARTY_NOTICES.md). Owner: EDIT.
+// the University of California (see THIRD_PARTY_NOTICES.md). Owner: EDIT;
+// the keyword-terminator rule (Q-SCRIPT-14, keyword_rule.hpp) is BINDING's
+// (openspec/changes/m4-scripting/design.md D2).
 
 #include "hefesto/cmd/keywords.hpp"
 
@@ -14,10 +16,14 @@
 #include <string>
 
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/script/binding/keyword_rule.hpp"
 
 namespace hefesto::cmd {
 
 namespace {
+
+// The rule of the thread's innermost KeywordTerminatorScope (Q-SCRIPT-14).
+thread_local KeywordTerminator t_terminator = KeywordTerminator::space;
 
 char lower(char c) noexcept {
   return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -38,7 +44,7 @@ std::string_view unqualified(std::string_view word) noexcept {
 // How `word` matches the leading word of `entry`: 0 = no, 1 = prefix,
 // 2 = exact.
 int match_entry(std::string_view word, std::string_view entry) noexcept {
-  const std::string_view key = entry.substr(0, entry.find(' '));
+  const std::string_view key = keyword_of(entry);
   if (word.size() > key.size()) {
     return 0;
   }
@@ -92,6 +98,33 @@ diag::Diagnostic direction_error(std::string_view word, std::string_view why, bo
 }
 
 }  // namespace
+
+KeywordTerminator keyword_terminator() noexcept {
+  return t_terminator;
+}
+
+bool ends_keyword(char c) noexcept {
+  if (t_terminator == KeywordTerminator::space) {
+    return c == ' ';
+  }
+  return std::isspace(static_cast<unsigned char>(c)) != 0;
+}
+
+std::string_view keyword_of(std::string_view entry) noexcept {
+  std::size_t end = 0;
+  while (end < entry.size() && !ends_keyword(entry[end])) {
+    ++end;
+  }
+  return entry.substr(0, end);
+}
+
+KeywordTerminatorScope::KeywordTerminatorScope(bool magic_compat) noexcept : previous_(t_terminator) {
+  t_terminator = magic_compat ? KeywordTerminator::space : KeywordTerminator::whitespace;
+}
+
+KeywordTerminatorScope::~KeywordTerminatorScope() {
+  t_terminator = previous_;
+}
 
 LookupResult lookup(std::string_view word, std::span<const std::string_view> table) {
   const std::string_view w = unqualified(word);
