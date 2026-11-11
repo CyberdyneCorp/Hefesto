@@ -57,6 +57,13 @@ inline constexpr std::string_view kWindowClient = "*window";
 inline constexpr std::string_view kLayoutClient = "layout";
 /// The color window client (ui-color-window).
 inline constexpr std::string_view kColorClient = "color";
+/// Magic's Tcl-library procedures implemented natively (toolkit.tcl,
+/// wrapper.tcl, the managers, readspice.tcl, ...; m4-scripting design.md
+/// D3/D8), and `tag`. In Magic they are Tcl procedures, outside every
+/// window command table, so they never take part in Lookup()'s
+/// abbreviation: resolve() finds them by exact name only, after the
+/// `*window` and client tables (hidden: never listed nor opened).
+inline constexpr std::string_view kScriptClient = "*script";
 
 enum class LookupStatus : std::uint8_t { found, ambiguous, not_found };
 
@@ -111,7 +118,9 @@ class CommandRegistry {
   /// The dispatch rule of "Command dispatch across global and client
   /// tables" for a command sent to `client` (`*window` lookup first, unless
   /// `window_commands` is false, then the client's table; an exact name
-  /// beats an abbreviation; otherwise the client's command wins).
+  /// beats an abbreviation; otherwise the client's command wins). A word
+  /// found in neither table is then looked up by exact name in
+  /// kScriptClient.
   [[nodiscard]] CommandLookup resolve(std::string_view word, std::string_view client, bool window_commands = true,
                                       NameLookup mode = NameLookup::abbreviated) const;
 

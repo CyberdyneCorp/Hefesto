@@ -32,6 +32,7 @@ constexpr std::array kTable = {
     CodeInfo{"CORE-NOTIMPL-001", error, "Retired in M1, never reused. Was: a declared feature not implemented yet (M1 scaffolding stub)."},
     CodeInfo{"CORE-NOTIMPL-002", error, "Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it)."},
     CodeInfo{"CORE-NOTIMPL-003", error, "Retired in M3, never reused. Was: not implemented yet (a `drc` option or M3 function stubbed by the M3 scaffold before its workstream landed it)."},
+    CodeInfo{"CORE-NOTIMPL-004", error, "Not implemented yet: an M4 command or function registered by the M4 scaffold before its workstream landed it (retired at M4 exit)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -58,8 +59,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 15>& areas() noexcept {
-  static const std::array<CodeArea, 15> table = {
+const std::array<CodeArea, 19>& areas() noexcept {
+  static const std::array<CodeArea, 19> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -76,6 +77,11 @@ const std::array<CodeArea, 15>& areas() noexcept {
       // M3 areas (openspec/changes/m3-drc/design.md D1).
       CodeArea{"drc", "DRC", "docs/diagnostics/codes/drc.md", area_codes::drc()},
       CodeArea{"hints", "HINTS", "docs/diagnostics/codes/hints.md", area_codes::hints()},
+      // M4 areas (openspec/changes/m4-scripting/design.md D1).
+      CodeArea{"script", "SCRIPT", "docs/diagnostics/codes/script.md", area_codes::script()},
+      CodeArea{"pcell", "PCELL", "docs/diagnostics/codes/pcell.md", area_codes::pcell()},
+      CodeArea{"tools", "TOOLS", "docs/diagnostics/codes/tools.md", area_codes::tools()},
+      CodeArea{"gui", "GUI", "docs/diagnostics/codes/gui.md", area_codes::gui()},
   };
   return table;
 }

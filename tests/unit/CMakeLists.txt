@@ -19,6 +19,11 @@
 #   drc/     INTEGRATION (M3 shared tests); drc/rules/ RULES, drc/check/
 #            CHECK, drc/engine/ ENGINE, drc/commands/ COMMANDS   (always)
 #   hints/   HINTS (M3)                     (always)
+#   script/  INTEGRATION (M4 shared tests); script/tcl/ TCL, script/binding/
+#            BINDING, script/pdk/ PDKINT    (always)
+#   pcell/   pcell/framework/, pcell/native/ PCELL (M4)   (always)
+#   tools/   TOOLS (M4)                     (always)
+#   gui/     GUIMGR (M4)                    (always)
 #   render/  VIEWER                         (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
@@ -72,7 +77,8 @@ function(hefesto_add_area_tests area)
   target_include_directories(hefesto_${area}_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
 endfunction()
 
-foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints)
+foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints
+                      script pcell tools gui)
   add_subdirectory(${_area})
 endforeach()
 

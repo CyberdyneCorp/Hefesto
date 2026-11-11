@@ -2,7 +2,8 @@
 # Copyright 2026 The Hefesto Authors
 #
 # hefesto_core: the platform-independent core (capability hefesto-architecture).
-# Depends only on the C++20 standard library, zlib and nlohmann/json.
+# Depends only on the C++20 standard library, zlib, nlohmann/json and, since
+# M4, the embedded Tcl (hefesto::tcl, decision X-3; only script/tcl/ uses it).
 # No windowing, GPU, OS-UI or process-spawning API may be used here.
 # Owner: INTEGRATION (openspec/changes/m1-core-viewer/design.md D2). The M1
 # areas add their sources in src/<area>/sources.cmake, never here (D3).
@@ -23,6 +24,7 @@ add_library(hefesto_core STATIC
   src/cmd/registry.cpp
   src/cmd/script_parser.cpp
   src/cmd/script_runner.cpp
+  src/cmd/stubs.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp
   src/compat/compat_settings.cpp
@@ -34,6 +36,7 @@ add_library(hefesto_core STATIC
   src/editor/edit_frame.cpp
   src/editor/editor_state.cpp
   src/editor/post_command.cpp
+  src/platform/file_picker.cpp
   src/platform/local_file_system.cpp
   src/platform/logger.cpp
   src/platform/memory_file_system.cpp
@@ -55,7 +58,12 @@ add_library(hefesto::core ALIAS hefesto_core)
 #   M3 (openspec/changes/m3-drc/design.md D1/D2): drc/ INTEGRATION (shared
 #       files; rules/ RULES, check/ CHECK, engine/ ENGINE, commands/ COMMANDS
 #       each with its own sources.cmake)   hints/ HINTS
-set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints)
+#   M4 (openspec/changes/m4-scripting/design.md D1/D2): script/ INTEGRATION
+#       (shared files; tcl/ TCL, binding/ BINDING, pdk/ PDKINT each with its
+#       own sources.cmake)   pcell/ INTEGRATION (framework/, native/ PCELL)
+#       tools/ TOOLS   gui/ GUIMGR
+set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
+                       script pcell tools gui)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()
@@ -71,6 +79,7 @@ target_compile_features(hefesto_core PUBLIC cxx_std_20)
 target_link_libraries(hefesto_core
   PRIVATE
     hefesto::zlib
+    hefesto::tcl
     nlohmann_json::nlohmann_json)
 find_package(Threads REQUIRED)
 target_link_libraries(hefesto_core PUBLIC Threads::Threads)

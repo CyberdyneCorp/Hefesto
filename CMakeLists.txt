@@ -80,6 +80,7 @@ endif()
 include(CompilerWarnings)
 include(Sanitizers)
 include(Dependencies)
+include(Tcl)  # hefesto::tcl, the embedded Tcl 8.6 (M4 design D3)
 
 # --- Areas (each directory is owned by one workstream, see design.md D2) --
 
