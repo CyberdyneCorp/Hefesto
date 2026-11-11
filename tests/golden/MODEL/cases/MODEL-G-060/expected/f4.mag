@@ -1,0 +1,12 @@
+magic
+tech mt
+timestamp 1794373749
+<< metal1 >>
+rect 0 0 10 10
+<< metal2 >>
+rect 20 0 24 4
+<< labels >>
+rlabel metal1 5 5 5 5 1 P
+port 1 n
+rlabel metal2 22 2 22 2 1 c_0.Q
+<< end >>
