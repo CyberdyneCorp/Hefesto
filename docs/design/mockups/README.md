@@ -54,8 +54,8 @@ M1 render `drc-browser.png` shows the old drawing.
 ## M4 boards (scripting and PDK integration)
 
 Design D13 of `openspec/changes/m4-scripting`. Drafted here in the M2/M3 board format (shared token `<style>` block,
-numbered annotation pins, "Notes for SHELL"). They are waiting for the user's review (task 3.1), and SHELL builds a
-screen only after its board is approved. `canvas.json` places them below the M3 boards. Diagnostic codes shown as
+numbered annotation pins, "Notes for SHELL"). The user approved them on 2026-11-11 (task 3.1); SHELL builds
+each screen from its board. `canvas.json` places them below the M3 boards. Diagnostic codes shown as
 `SCRIPT-PDK-…` and `SCRIPT-SANDBOX-…` stand for codes that PDKINT and TCL have not assigned yet. Generated-cell
 suffixes are illustrative.
 

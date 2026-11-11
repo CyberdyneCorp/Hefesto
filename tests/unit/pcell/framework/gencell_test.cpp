@@ -213,13 +213,12 @@ TEST_CASE("Draw errors do not abort", "[cap:pcell-toolkit][req:Create algorithm]
   CHECK(s.value("cellname list property " + cell + " parameters") == "w 1");
 }
 
-TEST_CASE("Box preserved", "[cap:pcell-toolkit][req:Create algorithm]") {
+TEST_CASE("Box on the new instance", "[cap:pcell-toolkit][req:Create algorithm]") {
   PcellSession s;
   // The box is restored before `getcell` (toolkit.tcl:1266-1268), which
   // then sets it to the new instance (CmdGetcell, commands/CmdFI.c:1106):
   // the instance sits at the saved box's lower-left and _draw's box
-  // changes do not leak. (The spec scenario's literal box is recorded as
-  // an open item: Magic ends with the instance's box.)
+  // changes do not leak.
   REQUIRE(s.run("box values 100 200 150 260").ok());
   CHECK_FALSE(s.value("magic::gencell_create res tpdk {w 2}").empty());
   CHECK(s.value("box values") == "100 200 120 210");
