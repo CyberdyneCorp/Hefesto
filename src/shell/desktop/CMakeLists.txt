@@ -69,10 +69,14 @@ target_sources(hefesto_shell_desktop PRIVATE
 # key-binding sheet, label tool, minimap thumbnail, wiring HUD.
 target_sources(hefesto_shell_desktop PRIVATE
   src/key_bindings_sheet.cpp
+  src/key_bindings_view.cpp
   src/label_tool.cpp
+  src/label_tool_view.cpp
   src/minimap.cpp
+  src/panels_host.cpp
   src/panels_layout.cpp
-  src/wiring_hud.cpp)
+  src/wiring_hud.cpp
+  src/wiring_hud_view.cpp)
 
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher

@@ -39,18 +39,18 @@ namespace hefesto::shell {
 /// The command line that binds `key` in `table` (`imacro` when
 /// `interactive`); an empty `text` deletes the binding. A non-empty `help`
 /// is passed as the third word.
-[[nodiscard]] std::string macro_command(std::string_view table, const ui::Key& key, std::string_view text,
+[[nodiscard]] std::string macro_command(std::string_view table, const ::hefesto::ui::Key& key, std::string_view text,
                                         bool interactive = false, std::string_view help = {});
 
 /// The commands that turn `table` of `current` into `table` of `target`:
 /// a binding missing from `target` is deleted, a new or different one is
 /// defined; in `target`'s order, deletions first.
-[[nodiscard]] std::vector<std::string> binding_changes(const ui::MacroTables& current,
-                                                       const ui::MacroTables& target, std::string_view table);
+[[nodiscard]] std::vector<std::string> binding_changes(const ::hefesto::ui::MacroTables& current,
+                                                       const ::hefesto::ui::MacroTables& target, std::string_view table);
 
 /// Reset table: the commands that restore `table` to its startup bindings
 /// (ui::install_defaults into a fresh session).
-[[nodiscard]] std::vector<std::string> reset_table_commands(const ui::MacroTables& current, std::string_view table);
+[[nodiscard]] std::vector<std::string> reset_table_commands(const ::hefesto::ui::MacroTables& current, std::string_view table);
 
 /// Load file…: what a key-binding file would change, as commands over every
 /// table it touches (tables in Magic's order), plus the file's diagnostics
@@ -59,7 +59,7 @@ struct LoadedBindings {
   std::vector<std::string> commands;
   std::vector<diag::Diagnostic> diagnostics;
 };
-[[nodiscard]] LoadedBindings load_file_commands(const ui::MacroTables& current, std::string_view text,
+[[nodiscard]] LoadedBindings load_file_commands(const ::hefesto::ui::MacroTables& current, std::string_view text,
                                                 std::string_view source_name);
 
 /// The sheet's add/edit state for one table.
@@ -76,7 +76,7 @@ class KeyBindingSheet {
   void begin_add();
   /// Edits the binding of `key` (its row): the command and flag are
   /// prefilled, then capture.
-  void begin_edit(const ui::Key& key, const ui::Macro& macro);
+  void begin_edit(const ::hefesto::ui::Key& key, const ::hefesto::ui::Macro& macro);
   /// The command field (the macro text).
   void set_text(std::string text) { text_ = std::move(text); }
   [[nodiscard]] const std::string& text() const noexcept { return text_; }
@@ -88,10 +88,10 @@ class KeyBindingSheet {
   /// captured key; when the table binds it to something else (and it is not
   /// the key being edited) the sheet enters `conflict`. Returns true when
   /// the event was used.
-  bool capture(const ui::KeyEvent& event, bool macos, const ui::MacroTables& macros);
+  bool capture(const ::hefesto::ui::KeyEvent& event, bool macos, const ::hefesto::ui::MacroTables& macros);
 
   /// The captured key and its display name ("Control_z").
-  [[nodiscard]] const std::optional<ui::Key>& key() const noexcept { return key_; }
+  [[nodiscard]] const std::optional<::hefesto::ui::Key>& key() const noexcept { return key_; }
   [[nodiscard]] std::string key_name() const;
 
   /// The inline warning in `conflict` ("▲ Control_z is bound to “undo” in
@@ -109,13 +109,13 @@ class KeyBindingSheet {
   void cancel();
 
   /// The command that deletes `key`'s binding (a row's delete button).
-  [[nodiscard]] std::string delete_command(const ui::Key& key) const;
+  [[nodiscard]] std::string delete_command(const ::hefesto::ui::Key& key) const;
 
  private:
   std::string table_;
   Mode mode_ = Mode::browse;
-  std::optional<ui::Key> editing_;  // the key of the edited row
-  std::optional<ui::Key> key_;
+  std::optional<::hefesto::ui::Key> editing_;  // the key of the edited row
+  std::optional<::hefesto::ui::Key> key_;
   std::string text_;
   bool interactive_ = false;
   std::string warning_;

@@ -94,10 +94,18 @@ struct PanelLayout {
   friend bool operator==(const PanelLayout&, const PanelLayout&) = default;
 };
 
-/// The default arrangement (`panel reset`, the M1 one): Layers left,
-/// Inspector and the DRC browser right (DRC collapsed), Console and Keys
-/// as bottom tabs (collapsed), default sizes, no strip.
+/// The default arrangement (`panel reset`, the M1 one): the Layers, Cells
+/// and Libraries tabs and the DRC browser left (Layers shown; the browser,
+/// collapsed, takes the Layers' place when shown, board M3-DRC-Browser),
+/// Inspector and the technology manager right (techmanager collapsed),
+/// Console and Keys as bottom tabs (collapsed), default sizes, no strip.
 [[nodiscard]] PanelLayout default_panel_layout();
+
+/// The panel whose strip shows `id` as a tab: "layers" for cells and
+/// libraries (the left dock's tabs), "console" for keys; else `id` itself.
+/// `panel ID dock|float` on a tab moves its whole strip (the tabs follow the
+/// leader, right after it), and showing a tab shows the strip.
+[[nodiscard]] std::string_view panel_group_leader(std::string_view id) noexcept;
 
 /// The result of a `panel` command on a layout.
 struct PanelCommandResult {

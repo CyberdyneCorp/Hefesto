@@ -41,8 +41,9 @@ DockGeometry geometry() {
 TEST_CASE("panel commands collapse, dock, float and reset the layout",
           "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
   PanelLayout layout = default_panel_layout();
-  CHECK(layout.in(DockZone::left) == std::vector<std::string>{"layers"});
-  CHECK(layout.in(DockZone::right) == std::vector<std::string>{"inspector", "drc"});
+  CHECK(layout.in(DockZone::left) == std::vector<std::string>{"layers", "cells", "libraries", "drc"});
+  CHECK(layout.in(DockZone::right) == std::vector<std::string>{"inspector", "techmanager"});
+  CHECK(layout.in(DockZone::bottom) == std::vector<std::string>{"console", "keys"});
   CHECK(run(layout, {"layers"}).message == "shown");
   CHECK(run(layout, {"layers", "hide"}).message == "hidden");
   CHECK(layout.find("layers")->collapsed);
@@ -51,8 +52,9 @@ TEST_CASE("panel commands collapse, dock, float and reset the layout",
   // The spec's scenario: dock and reset.
   CHECK(run(layout, {"layers", "dock", "right"}).message == "docked right");
   CHECK(run(layout, {"inspector", "dock", "left"}).message == "docked left");
-  CHECK(layout.in(DockZone::left) == std::vector<std::string>{"inspector"});
-  CHECK(layout.in(DockZone::right) == std::vector<std::string>{"drc", "layers"});  // a new tab at the end
+  CHECK(layout.in(DockZone::left) == std::vector<std::string>{"drc", "inspector"});
+  // A new tab at the end; the Cells and Libraries tabs follow their strip.
+  CHECK(layout.in(DockZone::right) == std::vector<std::string>{"techmanager", "layers", "cells", "libraries"});
   const PanelCommandResult reset = run(layout, {"reset"});
   CHECK(reset.ok);
   CHECK(reset.message == "default layout");
@@ -155,14 +157,14 @@ TEST_CASE("headers name their state and collapsed docks become edge strips at na
   const auto strips = edge_strips(narrow);
   REQUIRE(strips.size() == 1U);
   CHECK(strips[0].zone == DockZone::right);
-  CHECK(strips[0].panels == std::vector<std::string>{"inspector", "drc"});
+  CHECK(strips[0].panels == std::vector<std::string>{"inspector", "techmanager"});
   // Narrower still: the left one too.
   const PanelLayout tiny = fit_to_window(layout, 700.0F);
   CHECK(tiny.strip[0]);
   CHECK(tiny.strip[1]);
   // Showing a panel of a strip opens the strip.
   PanelLayout opened = narrow;
-  (void)run(opened, {"drc", "show"});
+  (void)run(opened, {"inspector", "show"});
   CHECK_FALSE(opened.strip[1]);
 }
 
@@ -194,11 +196,11 @@ TEST_CASE("the panel layout is saved per user and restored at launch",
   // A panel added by a later version appears where the defaults have it;
   // a panel the version no longer has is dropped.
   PanelLayout newer = default_panel_layout();
-  newer.panels.insert(newer.panels.begin() + 1, PanelPlacement{"cells", DockZone::left, DockZone::left, false, {}});
+  newer.panels.insert(newer.panels.begin() + 1, PanelPlacement{"future", DockZone::left, DockZone::left, false, {}});
   const auto merged = parse_panel_layout(panel_layout_json(layout), newer);
   REQUIRE(merged.has_value());
-  REQUIRE(merged->find("cells") != nullptr);
-  CHECK(merged->find("cells")->dock == DockZone::left);
+  REQUIRE(merged->find("future") != nullptr);
+  CHECK(merged->find("future")->dock == DockZone::left);
   PanelLayout older = default_panel_layout();
   std::erase_if(older.panels, [](const PanelPlacement& p) { return p.id == "keys"; });
   const auto trimmed = parse_panel_layout(panel_layout_json(layout), older);
@@ -213,4 +215,36 @@ TEST_CASE("the panel layout is saved per user and restored at launch",
   CHECK(bad.layout == default_panel_layout());
   CHECK_FALSE(parse_panel_layout("not json", default_panel_layout()).has_value());
   CHECK_FALSE(parse_panel_layout("{\"version\": 2, \"panels\": []}", default_panel_layout()).has_value());
+}
+
+TEST_CASE("the tabs of a strip move with it and showing a tab shows the strip",
+          "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
+  CHECK(panel_group_leader("cells") == "layers");
+  CHECK(panel_group_leader("libraries") == "layers");
+  CHECK(panel_group_leader("keys") == "console");
+  CHECK(panel_group_leader("inspector") == "inspector");
+
+  PanelLayout layout = default_panel_layout();
+  // Docking a tab docks its strip: Layers, Cells and Libraries together.
+  CHECK(run(layout, {"cells", "dock", "right"}).message == "docked right");
+  CHECK(layout.in(DockZone::left) == std::vector<std::string>{"drc"});
+  CHECK(layout.in(DockZone::right) ==
+        std::vector<std::string>{"inspector", "techmanager", "layers", "cells", "libraries"});
+  CHECK(layout.find("cells")->home == DockZone::right);
+  // Floating a tab floats the strip; the tabs keep its window.
+  CHECK(run(layout, {"keys", "float", "200", "200", "500", "300"}).message == "floating");
+  CHECK(layout.find("console")->dock == DockZone::floating);
+  CHECK(layout.find("keys")->dock == DockZone::floating);
+  CHECK(layout.find("keys")->floating == layout.find("console")->floating);
+  CHECK(layout.find("keys")->home == DockZone::bottom);
+
+  // Showing a tab of a collapsed strip shows the strip.
+  layout = default_panel_layout();
+  const PanelCommandResult shown = run(layout, {"keys", "show"});
+  CHECK(shown.message == "shown");
+  CHECK(shown.changed);
+  CHECK_FALSE(layout.find("console")->collapsed);
+  // Hiding a tab leaves the strip.
+  CHECK(run(layout, {"keys", "hide"}).message == "hidden");
+  CHECK_FALSE(layout.find("console")->collapsed);
 }

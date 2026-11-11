@@ -49,12 +49,13 @@ Compatibility: native
 
 ### Requirement: Panel layout and focus cycling
 On the desktop:
-- the side panels (Layers, Inspector) and the bottom panels (Console, Keys) SHALL be collapsible with `panel layers|inspector|console|keys show|hide|toggle`; `panel NAME` alone reports "shown" or "hidden"
-- the Layers and Inspector panels SHALL dock on either side of the canvas with `panel layers|inspector dock left|right`, the panel's edge separator on the canvas side
+- the panels (Layers, Cells and Libraries, the tabs of the left strip; DRC; Inspector; techmanager; Console and Keys, the tabs of the bottom strip) SHALL be collapsible with `panel NAME show|hide|toggle`; `panel NAME` alone reports "shown" or "hidden"; showing a tab shows its strip; a collapsed panel keeps its 32 px header row
+- every panel SHALL dock left or right of the canvas or under it with `panel NAME dock left|right|bottom`, the panel's edge separator on the canvas side, or float over the canvas with `panel NAME float ?X Y W H?` (window coordinates, kept inside the window); docking or floating a tab moves its whole strip; each panel's header SHALL have Collapse/Expand and Float buttons (Dock on a floating panel) with accessible names that carry the state ("Layers, collapsed"), and a context menu that docks, floats or resets
+- a side dock with no expanded panel, or one the window is too narrow for (the canvas below 600 px: the right dock first), SHALL show a 32 px edge strip whose entries show their panel
 - `panel reset` (Reset layout) SHALL restore the default arrangement: Layers on the left, Inspector on the right, both shown
 - F6 SHALL move the keyboard focus to the next region and Shift-F6 to the previous one, in the order tool rail, Layers (filter field), canvas, Inspector (first action), Console, command bar, skipping hidden panels and an Inspector without an action
 
-The panel layout (dock side, size, collapsed state) SHALL be saved per user in the settings and restored at launch. This persistence, floating panels, drag-to-dock with a drop-zone highlight, panel headers and collapsed edge strips are deferred to M4 (user decision 2026-11-10); in M2 the layout lasts for the session.
+The panel layout (dock, size, collapsed state, floating window) SHALL be saved per user (`panel-layout.json` in the user's storage folder) after each change and on quit, and restored at launch; a scripted capture or smoke run SHALL NOT save it. Dragging a panel header to a dock with a drop-zone highlight issues the same `panel` command; it is not on screen yet (the Raven wrapper has no pointer drag events; M4 task 11.2).
 
 Compatibility: native
 
@@ -72,6 +73,11 @@ Compatibility: native
 - **THEN** the focus SHALL move to the canvas
 - **WHEN** the user presses Shift-F6
 - **THEN** the focus SHALL return to the tool rail
+
+#### Scenario: Layout restored at launch
+- **GIVEN** the user ran `panel layers dock right` and `panel inspector float 900 200 300 420` and quit
+- **WHEN** Hefesto starts again
+- **THEN** the Layers, Cells and Libraries tabs SHALL be right of the canvas and the Inspector a floating card at that place
 
 ### Requirement: Undo history
 On the desktop, the top bar SHALL have Undo and Redo buttons that run `undo` and `redo`, are enabled only when there is a step to undo or redo, and name the next step in their tooltips. A right click on Undo (or the Menu key while it has the focus) SHALL open the undo history, titled with the step count and the history limit ("Undo history · N steps · limit L"):
