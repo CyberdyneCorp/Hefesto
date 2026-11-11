@@ -160,16 +160,32 @@ Compatibility: exact
 
 ### Requirement: Copying, flattening and transforming hints
 
-Hints SHALL follow their cell's geometry: (a) `flatten` copies the hints of every flattened descendant instance, transformed by the instance transform and clipped to the copied area, into the destination cell's hints of the same name (union); (b) `flatten -inplace` (instance flattening into the parent) copies each flattened instance's (and each array element's) complete hints into the parent with the instance transform; (c) when hierarchical DRC builds flattened interaction areas, the hints of the instances involved are copied in the same way so that exception/exemption scoping sees them; (d) when a cell's internal grid is rescaled by n/d, every hint region is rescaled with the same rule as paint; (e) when a cell's contents are translated (origin change), hint regions are translated by the same offset. Hints are not otherwise affected by editing paint.
+Hints SHALL follow their cell's geometry: (a) `flatten` copies the hints of every flattened descendant instance, transformed by the instance transform and clipped to the copied area, into the destination cell's hints of the same name (union); (b) `flatten -inplace` (instance flattening into the parent) copies the complete hints of each flattened instance (each array element) and of every level below it that is flattened with it into the parent, each with its full transform; (c) when hierarchical DRC builds flattened interaction areas, the hints of the instances involved are copied in the same way so that exception/exemption scoping sees them; (d) when a cell's internal grid is rescaled by n/d, every hint region is rescaled with the same rule as paint; (e) when a cell's contents are translated (origin change), hint regions are translated by the same offset. Hints are not otherwise affected by editing paint.
 
 Compatibility: behavioral
 
-(Magic ref: database/DBcellcopy.c:377-560, database/DBcellcopy.c:674, commands/CmdFI.c:2207, drc/DRCsubcell.c:938, drc/DRCsubcell.c:1001, drc/DRCarray.c:302, database/DBcellsrch.c:1855-1882, database/DBcellsrch.c:1911-1937, database/DBcellsrch.c:2083-2097, database/DBcellsrch.c:2285-2297)
+- The hints of an instance that a restricting mode (`-nosubcircuit`, `-novendor`, `-dopropflat`, and `-dobox` with one of them) keeps as an instance stay in its own cell, and the levels below it contribute nothing.
+- Magic's `flatten -doinplace` copies only the flattened instance's own hints and loses those of every deeper flattened level, whose paint it keeps. Hefesto SHALL copy them, in both `magic-compat` settings (see Q-MISC-14, resolution: fix).
+- Magic's `flatten` into a new cell with a restricting mode copies the hints of the kept instances and loses those of the flattened instances and their descendants. Hefesto SHALL copy the flattened levels' hints in both settings; with `magic-compat` ON the kept instances' own hints SHALL also be copied into the new cell, as in Magic, and with it OFF they SHALL NOT (see Q-MISC-15, resolution: fix for the lost hints, compat for the extra copy). With the default mode every descendant is flattened and the result is Magic's.
+- When the flattened cell itself fails the restricting mode's test, `magic-compat` ON copies no hints at all, as in Magic (capability `layout-hierarchy`, "Flattening into a new cell"; Q-MODEL-33, resolution: compat).
+
+(Magic ref: database/DBcellcopy.c:377-560, database/DBcellcopy.c:580-690, database/DBcellcopy.c:674, commands/CmdFI.c:2084-2097, commands/CmdFI.c:2207, database/DBcellsrch.c:825-903, drc/DRCsubcell.c:938, drc/DRCsubcell.c:1001, drc/DRCarray.c:302, database/DBcellsrch.c:1855-1882, database/DBcellsrch.c:1911-1937, database/DBcellsrch.c:2083-2097, database/DBcellsrch.c:2285-2297)
 
 #### Scenario: Flatten in place with a rotated instance
 - **GIVEN** child cell C with MASKHINTS_SRAM = (0,0)-(10,20), placed in parent P with the instance transform (x, y) → (−y + 100, x)
 - **WHEN** the instance is flattened in place
 - **THEN** P has MASKHINTS_SRAM = (80,0)-(100,10)
+
+#### Scenario: Flatten in place of a two-level instance
+- **GIVEN** leaf cell L with MASKHINTS_DEEP = (0,0)-(2,2), placed in cell M at offset (2,0), M with MASKHINTS_MID = (0,0)-(4,4), and M placed in parent P at offset (10,0)
+- **WHEN** the instance of M is flattened in place, in either `magic-compat` setting
+- **THEN** P has MASKHINTS_MID = (10,0)-(14,4) and MASKHINTS_DEEP = (12,0)-(14,2)
+
+#### Scenario: Flatten -novendor into a new cell
+- **GIVEN** cell T containing an instance of cell L (MASKHINTS_L = (0,0)-(2,2)) at offset (30,0) and an instance of vendor cell V (with a `GDS_FILE` property and MASKHINTS_V = (0,0)-(2,2)) at offset (60,0)
+- **WHEN** `flatten -novendor` copies T into a new cell F
+- **THEN** F has MASKHINTS_L = (30,0)-(32,2)
+- **AND** with `magic-compat` ON F also has MASKHINTS_V = (60,0)-(62,2); with it OFF F has no MASKHINTS_V
 
 #### Scenario: Grid rescale
 - **GIVEN** a cell with MASKHINTS_A = (0,0)-(5,5)

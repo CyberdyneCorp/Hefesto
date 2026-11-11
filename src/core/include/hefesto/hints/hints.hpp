@@ -102,14 +102,15 @@ void copy_hints(const db::CellDef& source, db::CellDef& destination, const db::T
 /// `destination` the hints of the array elements of `root`'s descendants
 /// that overlap `area` (in `root` coordinates), each clipped to `area` and
 /// mapped by `to_destination` composed with the element's transform to
-/// `root`. The root's own hints are not copied. With Descend::all every
-/// element found is copied and searched; otherwise an element that is not
-/// descended is copied and not searched, and a descended one is searched
-/// but not copied (Magic's xMask rules). Uses `flatten` (into a new cell)
-/// and the DRC interaction flattening (design D10, mask-hints "Copying,
-/// flattening and transforming hints" (a) and (c)).
+/// `root`. The root's own hints are not copied. Every descended element
+/// (each one with Descend::all) is copied and searched; an element that is
+/// not descended (kept as an instance) is not searched, and its own hints
+/// are copied only with `magic_compat` (Magic's xMask rules also skip the
+/// descended elements of a restricting mode; Q-MISC-15). Used by `flatten`
+/// into a new cell (mask-hints "Copying, flattening and transforming hints"
+/// (a), design D10).
 void flat_copy_hints(const db::CellDef& root, const db::Rect& area, const db::Transform& to_destination,
-                     db::CellDef& destination, db::Descend mode = db::Descend::all);
+                     db::CellDef& destination, db::Descend mode = db::Descend::all, bool magic_compat = true);
 
 /// dbMoveProp for hints: every hint region of `cell` translated by
 /// (dx, dy) (origin change; `move origin` passes the negated new origin).

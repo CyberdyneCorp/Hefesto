@@ -468,7 +468,7 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
   // guarded by the parent of the *last* use: when that is a window's root
   // use, the pending parent keeps its old bounding box (Magic ref:
   // database/DBcellbox.c:755-775). Replicated with magic-compat ON; OFF
-  // recomputes it.
+  // recomputes it (Q-MODEL-32, resolution: compat).
   CellDef* last = nullptr;
   for (CellUse* use : def.instances()) {
     compute_use_bbox(*use);
@@ -494,18 +494,19 @@ void update_bounding_boxes(CellDef& def, const tech::Technology& /*tech*/) {
 }
 
 bool descends(const CellUse& use, Descend mode) {
-  if (use.def == nullptr) {
-    return false;
-  }
+  return use.def != nullptr && descends(*use.def, mode);
+}
+
+bool descends(const CellDef& def, Descend mode) {
   switch (mode) {
     case Descend::all:
       return true;
     case Descend::no_subcircuit:
-      return !is_subcircuit(*use.def);
+      return !is_subcircuit(def);
     case Descend::no_vendor:
-      return !use.def->flags().vendor_gds;
+      return !def.flags().vendor_gds;
     case Descend::property_flatten:
-      return use.def->properties().find("flatten") != nullptr;
+      return def.properties().find("flatten") != nullptr;
   }
   return false;
 }

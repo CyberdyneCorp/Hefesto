@@ -138,7 +138,7 @@ The main screens SHALL follow the structure of the reference mockups:
 - **Color window:** Magic's color editor surface drawn on the canvas, framed by a caption, an index stepper, Load/Save and a read-only value strip.
 - **Key-binding reference:** a modal sheet listing the macro tables by tool, with search, key capture and an inline conflict warning.
 - **Schematic editor:** symbol library, schematic canvas, waveform dock, instance properties with back-annotated operating point.
-- **DRC browser:** violation list grouped by rule, zoomed error view with measured versus required values, rule detail with suggested fix, sign-off summary.
+- **DRC browser:** a docked DRC panel listing the root cell's errors grouped by why-text with counts and their rectangles, ignored rules, a style selector and Re-check; `#k of n` stepping with the error tiles and the box on the canvas; an inspector for the error area under the box; empty, running and stale states; a DRC status chip and status-bar segment (not run, checking, clean, N errors, off) and a `drc why` popover on the canvas. Measured versus required values, nets, suggested fix and the sign-off summary are later-milestone parts of this screen, shown disabled with their milestone.
 - **3D inspection:** layer stack, isometric view with overlay legend, cross-section, camera presets.
 - **Agent proposal review:** request and steps, visual diff, verification gates, alternatives, accept / accept some / reject.
 - **iPad editor:** collapsible sidebar, full-bleed canvas, floating 52 pt tool palette, long-press action menu, floating modifier button.

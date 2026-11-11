@@ -100,16 +100,22 @@ struct CellErrorCount {
   friend bool operator==(const CellErrorCount&, const CellErrorCount&) = default;
 };
 
-/// DRCCount: the error tiles (non-space tiles of the error plane over the
-/// cell's bounding box) of `root` and, with `recurse`, of every cell
-/// reached through uses overlapping `area` (root coordinates; unloaded
-/// cells are counted but not descended into), each cell once. Only cells
-/// with errors, sorted by name (X-1). Nothing when `root` is not loaded.
-[[nodiscard]] std::vector<CellErrorCount> count_errors(const db::CellDef& root, const db::Rect& area, bool recurse);
+/// Where `def`'s error tiles are searched (DRCCount, DRCFind): its bounding
+/// box, which covers the error plane with `magic_compat` (Q-MODEL-19); with
+/// it OFF the box covers paint only, so the error plane's extent is added.
+[[nodiscard]] db::Rect error_area(const db::CellDef& def, bool magic_compat);
 
-/// The error tiles of `cell`'s own error plane over its bounding box in
+/// DRCCount: the error tiles (non-space tiles of the error plane over
+/// error_area()) of `root` and, with `recurse`, of every cell reached
+/// through uses overlapping `area` (root coordinates; unloaded cells are
+/// counted but not descended into), each cell once. Only cells with errors,
+/// sorted by name (X-1). Nothing when `root` is not loaded.
+[[nodiscard]] std::vector<CellErrorCount> count_errors(const db::CellDef& root, const db::Rect& area, bool recurse,
+                                                       bool magic_compat);
+
+/// The error tiles of `cell`'s own error plane over error_area() in
 /// area-enumeration order (what DRCFind numbers from 1).
-[[nodiscard]] std::vector<db::Rect> error_tiles(const db::CellDef& cell);
+[[nodiscard]] std::vector<db::Rect> error_tiles(const db::CellDef& cell, bool magic_compat);
 
 /// DRCInteractionCheck(cell, area, area, sink): every error the check of
 /// `area` in `cell` (cell coordinates) reports.

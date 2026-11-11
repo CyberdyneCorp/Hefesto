@@ -125,7 +125,8 @@ CommandResult drc_count(Request& q) {
   if (!where) {
     return CommandResult::success();
   }
-  const std::vector<CellErrorCount> counts = count_errors(*where->root, where->area, q.listall);
+  const std::vector<CellErrorCount> counts = count_errors(*where->root, where->area, q.listall,
+                                                                  q.editor.drc.compat_settings().magic_compat);
   if (total) {
     if (q.list) {
       return CommandResult::success(Value{total_of(counts)});

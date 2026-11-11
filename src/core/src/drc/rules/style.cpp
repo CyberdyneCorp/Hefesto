@@ -139,6 +139,13 @@ std::optional<StyleDetails> scaled_details(const RuleSet& rules, std::pair<std::
   return details;
 }
 
+/// A step size times scale_d / scale_n, rounded down as DRCTechScale does
+/// but never below 1: Magic leaves 0 when the grid gets coarser by more than
+/// the step, and its checker then divides by zero (Q-DRC-25, fix).
+std::int32_t scaled_step(std::int32_t step, std::int32_t scale_n, std::int32_t scale_d) {
+  return std::max(1, text::clamp_int(std::int64_t{step} * scale_d / scale_n));
+}
+
 /// DRCTechScale (both Q-DRC-1 modes), with the mask-layer rule distances
 /// scaled by `cif_factor` (drcCifScale) when given.
 std::shared_ptr<const RuleSet> rescale_impl(const RuleSet& rules, std::int32_t scale_n, std::int32_t scale_d,
@@ -160,7 +167,9 @@ std::shared_ptr<const RuleSet> rescale_impl(const RuleSet& rules, std::int32_t s
   halo.mask_contribution = ceil_scale(halo.mask_contribution, scale_d, scale_n);
   halo.value = magic_compat ? ceil_scale(halo.value, scale_d, scale_n)
                             : std::max(ceil_scale(halo.tech_contribution, scale.d, scale.n), halo.mask_contribution);
-  const std::int32_t step = text::clamp_int(std::int64_t{rules.step_size()} * scale_d / scale_n);
+  // Rounded down as in Magic, but never to 0, which the checker would divide
+  // by (Q-DRC-25, fix in both modes).
+  const std::int32_t step = scaled_step(rules.step_size(), scale_n, scale_d);
   const std::optional<StyleDetails> details = scaled_details(rules, cif_factor);
   return rebuild(rules, halo, step, scale, transform, details ? &*details : nullptr);
 }
@@ -271,7 +280,7 @@ void rescale_rules(editor::EditorState& editor, std::int32_t scale_n, std::int32
     drc.halo_override = ceil_scale(*drc.halo_override, scale_d, scale_n);
   }
   if (drc.step_size) {
-    drc.step_size = static_cast<std::int32_t>(static_cast<std::int64_t>(*drc.step_size) * scale_d / scale_n);
+    drc.step_size = scaled_step(*drc.step_size, scale_n, scale_d);
   }
 }
 

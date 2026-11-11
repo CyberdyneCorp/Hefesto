@@ -39,6 +39,7 @@ detail::Body exact_of(Diagonal diagonal, bool right_side) noexcept {
 TileView view_of(const detail::Tile* t, detail::Body dinfo) {
   TileView v;
   v.area = detail::tile_rect(t);
+  v.tile = t;
   if (!detail::is_split(t->body)) {
     v.type = static_cast<tech::TileType>(t->body);
     return v;
@@ -110,7 +111,7 @@ Rect clamp_to_plane(const Rect& area) noexcept {
 
 }  // namespace
 
-bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, const TileVisitor& visit) const {
+bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, TileVisitorRef visit) const {
   const Rect area = clamp_to_plane(unclamped);
   if (area.x0 > area.x1 || area.y0 > area.y1) {
     return true;
@@ -120,13 +121,138 @@ bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, const 
 }
 
 bool Plane::enumerate_triangle(const Rect& unclamped, Diagonal diagonal, bool right_side, const tech::TypeMask& types,
-                               const TileVisitor& visit) const {
+                               TileVisitorRef visit) const {
   const Rect area = clamp_to_plane(unclamped);
   if (area.x0 > area.x1 || area.y0 > area.y1) {
     return true;
   }
   return !detail::search_nm_area(impl_->tiles, exact_of(diagonal, right_side), area, types,
                                  [&](detail::Tile* t, detail::Body dinfo) { return !visit(view_of(t, dinfo)); });
+}
+
+namespace {
+
+detail::Tile* start_tile(const TileView* near, const detail::TilePlane& tiles) noexcept {
+  // The plane's tiles are mutable stitch records; the walks only read them.
+  return near != nullptr && near->tile != nullptr
+             ? const_cast<detail::Tile*>(static_cast<const detail::Tile*>(near->tile))  // NOLINT
+             : tiles.hint();
+}
+
+/// How enumerate() over `rect` reports `t` first; false when it skips it
+/// (a split tile with `rect` beyond its diagonal on both sides).
+bool first_view(detail::Tile* t, const Rect& rect, TileView& out) {
+  detail::Body dinfo = 0;
+  if (detail::is_split(t->body) && !detail::first_split_side(t, rect, dinfo)) {
+    return false;
+  }
+  out = view_of(t, dinfo);
+  return true;
+}
+
+/// The one-unit strip beyond side `side` of `r` over [lo, hi).
+Rect side_strip(const Rect& r, Side side, Coord lo, Coord hi) noexcept {
+  switch (side) {
+    case Side::left:
+      return Rect{r.x0 - 1, lo, r.x0, hi};
+    case Side::right:
+      return Rect{r.x1, lo, r.x1 + 1, hi};
+    case Side::bottom:
+      return Rect{lo, r.y0 - 1, hi, r.y0};
+    case Side::top:
+      break;
+  }
+  return Rect{lo, r.y1, hi, r.y1 + 1};
+}
+
+bool vertical_side(Side side) noexcept { return side == Side::left || side == Side::right; }
+
+/// One side's stitch walk: where it starts (the tile beyond the side at
+/// one end of the strip), the stitch to the next tile, whether that tile
+/// still borders the strip, and whether it runs against the requested
+/// order (increasing y or x).
+struct SideWalk {
+  Point start;
+  detail::Tile* (*next)(const detail::Tile*) noexcept;
+  bool (*within)(const detail::Tile*, const Rect&) noexcept;
+  bool backwards;
+};
+
+SideWalk side_walk(Side side, const Rect& strip) noexcept {
+  switch (side) {
+    case Side::left:  // BL, then RT upwards
+      return {Point{strip.x0, strip.y0}, [](const detail::Tile* t) noexcept { return t->rt; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::bottom(t) < s.y1; }, false};
+    case Side::right:  // TR, then LB downwards
+      return {Point{strip.x0, strip.y1 - 1}, [](const detail::Tile* t) noexcept { return t->lb; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::top(t) > s.y0; }, true};
+    case Side::bottom:  // LB, then TR rightwards
+      return {Point{strip.x0, strip.y0}, [](const detail::Tile* t) noexcept { return t->tr; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::left(t) < s.x1; }, false};
+    case Side::top:
+      break;
+  }
+  // RT, then BL leftwards
+  return {Point{strip.x1 - 1, strip.y0}, [](const detail::Tile* t) noexcept { return t->bl; },
+          [](const detail::Tile* t, const Rect& s) noexcept { return detail::right(t) > s.x0; }, true};
+}
+
+void walk_side(detail::Tile* tile, Side side, const Rect& strip, std::vector<TileView>& out) {
+  const SideWalk walk = side_walk(side, strip);
+  TileView v;
+  for (detail::Tile* t = detail::goto_point(tile, walk.start); walk.within(t, strip); t = walk.next(t)) {
+    if (first_view(t, strip, v)) {
+      out.push_back(v);
+    }
+  }
+  if (walk.backwards) {
+    std::reverse(out.begin(), out.end());
+  }
+}
+
+}  // namespace
+
+TileView Plane::tile_at(Point p, const TileView* near) const {
+  const Rect square{p.x, p.y, p.x + 1, p.y + 1};
+  TileView found;
+  if (in_usable_plane(square)) {
+    detail::Tile* t = detail::goto_point(start_tile(near, impl_->tiles), p);
+    if (!detail::is_split(t->body)) {
+      return view_of(t, 0);
+    }
+    if (first_view(t, square, found)) {
+      return found;
+    }
+  }
+  enumerate(square, tech::TypeMask::all(), [&](const TileView& t) {
+    found = t;
+    return false;
+  });
+  return found;
+}
+
+void Plane::neighbors(const TileView& t, Side side, Coord lo, Coord hi, std::vector<TileView>& out) const {
+  out.clear();
+  if (lo >= hi) {
+    return;
+  }
+  const Rect strip = side_strip(t.area, side, lo, hi);
+  const bool within_side = vertical_side(side) ? t.area.y0 <= lo && hi <= t.area.y1 : t.area.x0 <= lo && hi <= t.area.x1;
+  if (t.tile != nullptr && within_side && in_usable_plane(strip)) {
+    walk_side(start_tile(&t, impl_->tiles), side, strip, out);
+    return;
+  }
+  // The same tiles by an area search of the strip (no stitch start).
+  enumerate(strip, tech::TypeMask::all(), [&](const TileView& n) {
+    if (out.empty() || !(out.back().area == n.area)) {
+      out.push_back(n);
+    }
+    return true;
+  });
+  const auto key = [&](const TileView& n) { return vertical_side(side) ? n.area.y0 : n.area.x0; };
+  std::sort(out.begin(), out.end(), [&](const TileView& a, const TileView& b) { return key(a) < key(b); });
+  out.erase(std::unique(out.begin(), out.end(), [](const TileView& a, const TileView& b) { return a.area == b.area; }),
+            out.end());
 }
 
 tech::TileType Plane::type_at(Point p) const {

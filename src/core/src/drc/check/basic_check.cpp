@@ -93,12 +93,6 @@ bool Kernel::visit_tile(const TileView& tile) {
 
 void Kernel::report(const Rect& area, const Rule& rule) { sink_.report(area, rule); }
 
-void Kernel::count(std::uint64_t CheckStatistics::* counter) const noexcept {
-  if (CheckStatistics* stats = sink_.statistics()) {
-    ++(stats->*counter);
-  }
-}
-
 const db::Plane* Kernel::plane_of(tech::PlaneId plane) const noexcept {
   return plane < cell_.plane_count() ? &cell_.plane(plane) : nullptr;
 }

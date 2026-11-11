@@ -28,6 +28,12 @@
 // the side panels left or right (`panel … dock`), F6 focus cycling, and the
 // text-field key fixes (TextKeyFilter).
 //
+// M3 (DESIGN boards docs/design/mockups/M3-DRC-Status and DRC-Browser): the
+// live DRC chip with its menu and the status-bar DRC segment (drc::DrcEvents
+// and the root cell's error-tile count), the DRC results browser and its
+// error-area inspector (`panel drc`), the `drc why` popover at the box, and
+// the job-completion notice and Dock progress of the background checker.
+//
 // Every UI action runs a core command through the Dispatcher (origin `gui`),
 // so it is logged and replayable; the window refreshes after every command,
 // whatever its origin. Controls of later milestones are present but
@@ -51,6 +57,9 @@
 #include "hefesto/shell/options.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "color_panel.hpp"
+#include "drc_panel.hpp"
+#include "hefesto/shell/drc_link.hpp"
+#include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "layout_canvas.hpp"
 #include "pdk_panel.hpp"
@@ -92,6 +101,10 @@ class MainWindow {
   [[nodiscard]] std::size_t canvas_instances() const { return canvas_->instance_count(); }
   bool capture(const std::string& path) const { return window_.capture_ppm(path); }
   [[nodiscard]] std::string window_system() const { return window_.window_system(); }
+
+  /// After the background DRC pump ran BackgroundHost::service() (UI
+  /// thread, between commands): redraws the committed squares.
+  void on_drc_service(std::size_t committed);
 
   /// Benchmark hooks: realtime redraw, and a programmatic pan in pixels.
   void set_realtime(bool realtime) { canvas_->set_realtime(realtime); }
@@ -141,9 +154,23 @@ class MainWindow {
   void refresh_feedback();
   void build_command_bar();
   void build_status_bar();
+  // M3 DRC (drc_window.cpp)
+  void build_drc_chip(ui::Box& row);  // into top_groups_[1] (the chips)
+  void open_drc_menu(float x, float y);
+  [[nodiscard]] DrcStatusInput drc_status_input(const db::CellDef* root) const;
+  [[nodiscard]] std::size_t count_root_errors(const db::CellDef* root) const;
+  /// The chip, status bar, Dock progress and DRC panel from the session.
+  void refresh_drc();
+  void refresh_drc_panel(const db::CellDef* root);
+  /// Rebuilds the browser's list: DRCWhyAll (`drc listall why`) over the root.
+  void rebuild_drc_list(const db::CellDef& root);
+  void note_drc_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
+  void show_why_popover();
+  void post_drc_job_notice(double seconds);
   void register_view_commands();
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
   /// --pinch: injects the trackpad pinch and prints the zoom before and after.
+  void poll_background();
   void run_pending_pinch();
   void on_problem(StatusKind kind, const std::string& panel_line, const std::string& status);
   void set_message(StatusKind kind, std::string text);
@@ -229,6 +256,26 @@ class MainWindow {
     on_problem(kind, line, status);
   }};
   std::unique_ptr<ui::CommandBar> command_bar_;
+
+  // M3 DRC.
+  std::unique_ptr<DrcLink> drc_link_;
+  std::unique_ptr<DrcPanel> drc_panel_;
+  ui::Painted* drc_chip_ = nullptr;  // owned by painted_
+  ui::Toast toast_ = ui::Toast::create();
+  DrcStatusView drc_view_;
+  bool drc_visible_ = false;
+  bool drc_progress_ = false;           // the Dock shows the indeterminate progress
+  std::size_t drc_errors_ = 0;          // the root's error tiles (read while idle)
+  std::uint64_t drc_serial_ = ~std::uint64_t{0};  // DrcLink::serial() last applied
+  std::optional<DrcFindReport> last_find_;  // the last `drc find` of the shown root
+  const db::CellDef* find_root_ = nullptr;  // the root last_find_ belongs to (compared only)
+  std::optional<db::Rect> find_box_;        // where last_find_ left the box (the canvas tag shows while it stays)
+  std::optional<DrcWhyPopover> pending_why_;  // a `drc why` to show at the box
+  bool why_open_ = false;
+  bool rebuild_requested_ = false;      // a `drc catchup` ran: rebuild the list even with DRC off
+  bool drc_rows_changed_ = true;
+  const db::CellDef* list_root_ = nullptr;  // compared, never dereferenced
+  DrcLink::Stamp list_stamp_;
 
   CoreCommandSink core_sink_;
   CommandBarModel command_model_{core_sink_};

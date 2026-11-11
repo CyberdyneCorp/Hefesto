@@ -16,77 +16,125 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 ## How this was checked
 
-To be filled by SHELL (task 9.5): platform, build, the commands driving each capture (every browser action is a `drc` command, design D11), and the board each capture is compared with.
+SHELL pass, 2026-11-10, macOS 27 arm64 (Apple M3 Pro, MoltenVK, Retina 2×, 1600×1000 logical), build `build/m3r2b-shell` (Debug, `-Werror`, desktop on), branch `m3-round2b`. Every capture is the product app on `sky130_fd_sc_hd__dfxtp_1.mag` (sky130A at the pinned PDK version, `drc(fast)` the default style) opened through the core `load` path and driven by `--run`, so every state is reached through the command API; two 0.10 × 0.10 µm metal1 squares 0.10 µm apart are painted first so that the cell has errors of several rules:
+
+```
+CAD_ROOT=<dir with magic/sys styles> \
+hefesto -T sky130A/libs.tech/magic/sky130A.tech sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__dfxtp_1.mag \
+        --width 1600 --height 1000 --run '<commands>' --capture out.ppm --capture-frames 30
+```
+
+`E` below is `box 0 0 10 10; paint m1; box 30 0 40 10; paint m1; drc check; drc catchup; panel drc show`. The captures are halved to 1600 × 990 PNG in `docs/images/app/`.
+
+| Capture | `--run` | Board |
+|---|---|---|
+| [m3-drc-not-run.png](../images/app/m3-drc-not-run.png) | `panel drc show` | M3-DRC-Status (Not run chip and status bar), DRC-Browser ("Empty · not checked") |
+| [m3-drc-browser.png](../images/app/m3-drc-browser.png) | `E; drc find 3; findbox zoom; zoom 0.25` | DRC-Browser (populated, stepping `#3 of 11`, inspector), M3-DRC-Status (N errors) |
+| [m3-drc-why.png](../images/app/m3-drc-why.png) | `E; drc find 3; findbox zoom; zoom 0.25; drc why` | M3-DRC-Status tile 4 (`drc why` popover) |
+| [m3-drc-light.png](../images/app/m3-drc-light.png) | `--theme light`, `E; drc ignore li.3; drc find 1; findbox zoom; zoom 0.25` | DRC-Browser (Ignored section, Ignore field prefilled with the rule tag), light theme |
+
+Not reachable from `--run` and covered by tests instead: the checking state (the worker is busy only between frames of a real session: `drc_link_test.cpp` drives the pump and observes busy → idle), the stale state (the list's stamp, `drc_link_test.cpp`), the chip menu and the style menu (right click; their entries are the `drc_chip_menu` / `drc_style_menu` view models, every entry run through a real Dispatcher and found in the command log in `drc_link_test.cpp`), table clicks and keys (Raven Table callbacks over `DrcBrowserModel`, `drc_models_test.cpp`), and the job notice (needs the window unfocused for 5 s; `drc_job_notice` tests and the `hefesto::notifications` setting test).
 
 ## M3 boards (DESIGN)
 
-Owner of this section: DESIGN (task 2.1). `DRC-Browser.dc.html` updated with the M3 states and the new `M3-DRC-Status.dc.html`, rendered in both themes to `docs/images/ui/m3-*.png`. Each SHELL screen state of section 9 maps to a board. In this table, **drawn** means the board is drawn and rendered and waits for the user's review; it becomes **approved** after that review:
+Owner of this section: DESIGN (task 2.1). `DRC-Browser.dc.html` updated with the M3 states and the new `M3-DRC-Status.dc.html`, rendered in both themes to `docs/images/ui/m3-*.png`. Each SHELL screen state of section 9 maps to a board. The user approved both boards as drawn on 2026-11-10 (chip precedence off > checking > not run > N errors > clean; N = `drc list count total` beside the per-group area counts; Re-check = `select top cell; drc check; drc catchup`). Status: **approved** = reviewed and approved; **implemented** = built by SHELL (rows of the sections below give the per-element status):
 
 | SHELL state (tasks.md section 9) | Board | Status |
 |---|---|---|
-| Top-bar DRC chip: not run, checking, clean, N errors, off | `M3-DRC-Status` | drawn (awaiting user review) |
-| Status-bar DRC state (same five states) | `M3-DRC-Status` | drawn (awaiting user review) |
-| Browser: empty, running, stale, populated | `DRC-Browser` | drawn (awaiting user review) |
-| Errors grouped by why-text with counts; `#k of n` stepping | `DRC-Browser` | drawn (awaiting user review) |
-| Error view on the canvas; `drc why` popover | `DRC-Browser` | drawn (awaiting user review) |
-| Ignored rules; style selector | `DRC-Browser` | drawn (awaiting user review) |
-| Later-milestone elements (Fix with agent M11, nets M7, measured vs required, sign-off M13) disabled or hidden | `DRC-Browser` | drawn (awaiting user review) |
+| Top-bar DRC chip: not run, checking, clean, N errors, off | `M3-DRC-Status` | approved, implemented |
+| Status-bar DRC state (same five states) | `M3-DRC-Status` | approved, implemented |
+| Browser: empty, running, stale, populated | `DRC-Browser` | approved, implemented |
+| Errors grouped by why-text with counts; `#k of n` stepping | `DRC-Browser` | approved, implemented |
+| Error view on the canvas; `drc why` popover | `DRC-Browser` | approved, implemented |
+| Ignored rules; style selector | `DRC-Browser` | approved, implemented |
+| Later-milestone elements (Fix with agent M11, nets M7, measured vs required, sign-off M13) disabled or hidden | `DRC-Browser` | approved, implemented |
 
 ## DRC status (top bar and status bar)
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| DRC chip with shape + text (replaces M1's static "◆ DRC not run", `drc_chip_m1`) | | todo | Driven by `drc::DrcEvents` and the root cell's error-tile count (design D11). |
-| Status-bar DRC state | | todo | |
+| DRC chip with shape + text (replaces M1's static "◆ DRC not run", `drc_chip_m1`) | `drc_status_view()` from `DrcStatusInput` (DrcLink busy/idle and checked-since-opened, `drc::count_errors` of the root over the current window's area, i.e. `drc list count total`, read only while idle; `DrcSession::background`, `style`); precedence off > checking > not run > N errors > clean; "■ 12,408 DRC errors" grouped, singular for 1; a button: click issues `panel drc show`, the ▾ zone or right click / Menu key opens the chip menu | done | Captures not-run, browser. The chip is sized for "88,888 DRC errors" so the bar does not shift. |
+| Chip menu (Open DRC panel, Check now, Find next, Why, Background checking, Style ▸) | `drc_chip_menu()`: `panel drc show`, `select top cell; drc check; drc catchup`, `drc find; findbox zoom`, `drc why`, `drc on`/`drc off` (checked while on), one checked "Style: <name>" per `DrcSession::styles` → `drc style <name>` | partial | Raven 0.2.2 menus have no submenu: the styles are flat entries after a separator. The key caps (`!`, `?`) are text in the label. |
+| Chip tooltip and accessible name | "12 error tiles in ota_5t · style drc(full) · ! next error"; name "DRC: 12 errors, style drc(full). Open the DRC panel"; state changes announced politely (`ui::announce`) | done | |
+| Status-bar DRC state | `StatusBarInput::drc = DrcStatusView::status_bar`: "■ DRC 12 errors · drc(full)", "◆ DRC checking… · drc(full)", "● DRC 0 errors · …", "◆ DRC off · 12 errors, last check", "◆ DRC not run"; colored by its kind, never color only | done | |
+| Dock indeterminate progress while checking | `Window::set_busy_progress` (`Rwindow_set_taskbar_progress`, INDETERMINATE while busy, NONE on idle) | partial | Seen in code paths and unit-tested state only; the Dock badge was not captured (no screenshot of the Dock). |
 
 ## DRC results browser
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| Error list grouped by why-text (virtual Raven Table, 200,000 rows) | | todo | Built from `drc listall why` over the root cell. |
-| Prev / Next and `#k of n` | | todo | Issues `drc find`. |
-| Re-check | | todo | Issues `drc check; drc catchup`. |
-| Ignore a rule | | todo | Issues `drc ignore`. |
-| Style selector | | todo | Issues `drc style`. |
-| Stale marking after edits | | todo | Until the worker goes idle. |
+| Error list grouped by why-text (virtual Raven Table, 200,000 rows) | `ui::Table` (Raven `Rtable_set_virtual_rows`: no widget per row) over `DrcBrowserModel`; columns Why-text / Areas (sortable: header click sorts by text or count, default count descending); groups collapsed, Return or double click expands them to their rectangles in discovery order; selecting a rectangle issues `box values <x0>i <y0>i <x1>i <y1>i; findbox zoom` (internal units, exact under any `units`); filter field; the row of the found error is selected: its rectangle row when its group is expanded, else its group row (`DrcBrowserModel::row_at`, board note 6) | partial | Capture browser. The list is DRCWhyAll over the root cell's bounding box (`drc::why_errors(all)`, the function behind `drc listall why`), run on the UI thread when the panel is shown and the checker is idle, without issuing `select top cell` (which would move the user's box and selection after every edit); user actions stay commands. The board says so since 2026-11-10 (user decision: direct refresh approved). Collapsed-group highlight test in `drc_models_test.cpp`. Raven Table has no tree rows or per-row dimming: groups use ▸/▾ prefixes and ignored rows ⊘. 200,000-row model test in `drc_models_test.cpp`. |
+| Summary: error tiles and areas | `DrcBrowserModel::summary`: "■ 11 error tiles · 35 areas · 6 why-texts · 1 ignored" (tiles = `drc list count total`, areas = rectangles of DRCWhyAll); ◆ before the cell was checked | done | Captures. |
+| Prev / Next and `#k of n` | `DrcStepper`: `drc find <k±1>; findbox zoom` with an explicit index, wrapping n→1 / 1→n, the first Next is `drc find 1` (Q-DRC-15); k from the last `Error area #k:` printed by any `drc find` (also `!` and the command bar), n = error tiles. Over the canvas, top right (16 px from the right edge, 32 px from the top, below the ruler) as on the board, while the DRC panel is shown: real focusable buttons in the canvas overlay (`Widget::place_top_right`), painted with the canvas tokens in both themes | done | Round 3 moved it out of the panel. Stepper commands in `drc_models_test.cpp`. |
+| Re-check | `select top cell; drc check; drc catchup` ("Check" before the root was checked); disabled while busy | done | |
+| Ignore a rule | inspector field prefilled with the rule tag of the found error (else the first group) → `drc ignore <text>` (braced when it has spaces); the Ignored heading row activates `drc ignore none`; ignored groups listed with ◆ counts | done | Capture light (`li.3` ignored). The chip count does not drop (tiles stay). |
+| Style selector | "Style <name> ▾" opens the `drc_style_menu` (checked current) → `drc style <name>`; disabled while busy | done | |
+| Stale marking after edits | the list's stamp (worker edit generation, commit epoch, style changes, `DrcLink::Stamp`) differs from the database's; the list rebuilds when the checker goes idle with DRC on, or after a `drc catchup` (Re-check) with DRC off | partial | No capture (the stale state lasts only while the worker is busy in a live session); state precedence in `drc_browser_state` tests. With DRC off, CmdPaint does not mark the area (Magic), so painting under `drc off` does not make the list stale; erasing does (CmdE.c marks either way). The M3-DRC-Status board's Off note says so since round 3. |
+| Empty · not checked, Empty · clean, Running notices | `drc_browser_notice`: ◆ "Not checked yet", ● "No DRC errors in <cell>", ◆ "Checking <cell>…" | done | Capture not-run. |
+| Inspector: error area under the box | right dock while the DRC panel is shown: "DRC ERROR AREA #k OF n", the found why-texts (■), Cell / Area / Size / Style, Zoom to (`findbox zoom`), Why here (`drc why`) | done | Captures browser and light. |
+| Later-milestone parts | Fix… (M11) disabled in the panel toolbar; Sign-off (M13) collapsed and disabled; Measured vs required (M11), Nets (M7), Suggested fix · Preview fix (M11) disabled rows with tooltips naming the milestone; the tech-file rule excerpt hidden | done | |
 
 ## Canvas and notifications
 
 | Board element | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| `drc why` result and the error tile under the box | | todo | |
-| Job-completion notification for a long `drc catchup` (window unfocused) | | todo | |
+| `drc why` result and the error tile under the box | any plain `drc why` (chip menu, Why here, `?`, the command bar) opens a popover beside the box with one ■ row per why-text in discovery order, "● No errors found." when clean; it closes on Esc or the next command. Error tiles are drawn by the scene in the technology's error styles (`error_waffle`) for the root only ("DRC error display") and redrawn per committed square | partial | Capture why. The popover is a Raven menu (no anchored popover widget, M2 gap) placed right of the box. |
+| Canvas tag "■ #k why-text" on the found tile | after a `drc find` (Prev/Next, `!`, the command bar) the canvas overlay draws the tag with the first why-text, 14 px right of and 12 px below the tile as on the board (left of it or above it near the canvas edges, kept inside the canvas), with a leader to the tile's corner, in the canvas tokens; it goes away when the box moves (`drc_canvas_tag`, `drc_tag_origin`) | done | Tests in `drc_models_test.cpp` and `canvas_overlay_test.cpp`. |
+| Job-completion notification for a long `drc catchup` (window unfocused) | a busy → idle run of at least 5 s that ends while the window is not active (`Window::active`) posts "DRC finished · <cell>" with "■ 12 errors · drc(full) · 48 s": the Dock icon asks for attention (`Rwindow_request_attention`), a Raven Toast waits on the canvas and the Console logs it; `hefesto::notifications off` (session layer of the `notifications` setting) turns it off | partial | Raven 0.2.2 has no system notification API (macOS Notification Center, freedesktop): open item for Raven. Clicking the notice to focus and open the panel needs that API too. |
 
 ## Background checker in the app loop
 
 | Item | Implemented as | Status | Gap / why |
 |---|---|---|---|
-| Worker started and stopped with `drc on` / `drc off` | | todo | `drc::BackgroundChecker` (design D8). |
-| Commits between commands from the event loop | | todo | `BackgroundChecker::commit_ready`. |
-| Scene building under the shared database lock | | todo | `db::DatabaseLock::Shared` (`editor::EditorState::database_lock`). |
-| Redisplay of committed square areas | | todo | `DrcObserver::on_square_committed`. |
+| Worker started and stopped with `drc on` / `drc off` | `DrcPump` owns the session's `drc::BackgroundHost`, constructed after startup in `run_window` and destroyed before the window; `drc on`/`off` switch DRCBackGround, which the worker reads | done | `drc_link_test.cpp`: off keeps it idle, on resumes it. |
+| Commits between commands from the event loop | the worker's ready callback calls `DrcPump::notify`, which posts one task (`ui::post_task` → `Rtask_post`, coalesced) running `BackgroundHost::service()` on the UI thread | done | `drc_link_test.cpp`: one task for repeated callbacks; the background result equals a later `drc check; drc catchup` on the same cell. |
+| Scene building under the shared database lock | `LayoutCanvas` builds whole and partial scenes holding `db::DatabaseLock::Shared`; the browser's DRCWhyAll and the error count hold the lock | done | |
+| Redisplay of committed square areas | `DrcLink::on_square_committed` → `WindowManager::area_changed(cell, square)`; `MainWindow::on_drc_service` runs `update_display` and the canvas splices the area | done | Test: a committed square leaves a pending redisplay in the window. |
 
 ## Accessibility and keyboard
 
-To be filled by SHELL: accessible names of the chip, browser rows and actions; keyboard stepping; screen-reader announcements of DRC state changes.
+| Item | Implemented as | Status | Gap / why |
+|---|---|---|---|
+| Chip | role button, name "DRC: <state>[, style <s>]. Open the DRC panel"; Enter/Space opens the panel, Menu key / Shift-F10 the menu; focus ring | done | |
+| State changes | announced politely with the status-bar text when the chip's state or count changes | done | |
+| Browser table | Raven Table: arrows move the selection (a rectangle row moves the box), Return expands a group or clears ignores on the heading; Raven reads the cell texts; name "DRC errors by why-text" | partial | Raven 0.2.2 has no per-row accessible description: the "expanded/collapsed" state and the area count are in the cell text, `row_accessible_name()` is ready for when Raven takes one. |
+| Panel buttons and fields | named buttons (Style, Re-check, Zoom to, Why here, Ignore; Prev and Next over the canvas, in the "DRC error stepper" group), "#3 of 11" also as "Error 3 of 11"; filter and ignore fields named | done | |
+| F6 | the left region focuses the DRC table while the DRC panel is shown | done | |
 
 ## Performance
 
 Owner of this section: ENGINE (task 6.8, design D16).
 
-Measured 2026-11-10 on an Apple M3 Pro (12 cores, macOS 27), branch `m3-round2`, Release builds (`-Werror`), sky130A at the pinned PDK version, `sky130A.tech` default DRC style with `scalegrid 1 2` and `drc euclidean on`. Magic 8.3.694 (`fc5daa9e`, Tcl build without OpenGL/Cairo, as in `tools/golden/container/Containerfile`) runs `-dnull -noconsole` in a Linux arm64 container on the same machine. The machine was otherwise idle for the recorded runs (load average below 8); runs taken while other builds loaded it varied by up to 2x and are not recorded.
+Workloads and method (`bench/drc/drc_bench.py`): sky130A at the pinned PDK version, `sky130A.tech` default DRC style with `scalegrid 1 2` and `drc euclidean on`; (a) the 100 × 100 `sky130_fd_sc_hd__dfxtp_1` array at its FIXED_BBOX pitch, (b) the all-cells block (441 cells in rows of 40000 units, abutting at FIXED_BBOX). The same command script runs through `hefesto-cli --magic -dnull -noconsole` and `magic -dnull -noconsole` (Magic 8.3.694 `fc5daa9e`, the Tcl build of `tools/golden/container/Containerfile`, in a container on the same machine); the DRC time is (min of the script with 4 passes of `drc check; drc catchup` − min of the script with 1 pass) / 3, which cancels process start, technology and cell loading and container file-system cost; the error counts (`drc list count total`) must agree. CI: `.github/workflows/perf.yml` `drc-bench` runs both tools on one GitHub runner (Hefesto native, Magic in the pinned reference image), single-threaded, and fails beyond `--max-ratio 1.10` or on a count mismatch. Its `drc-profile` job (manual, workflow_dispatch) profiles the block on the runner: perf of four passes, callgrind of one and two passes of both tools (instructions per pass by function, `bench/drc/callgrind_pass_diff.py`) and `drc_bench.py` with a GCC 14 and a Clang build; the scripts come from `drc_bench.py --emit`.
 
-| Measurement | Target | Hefesto | Magic | Notes |
+### Results (round 3, 2026-11-11, after the kernel speed work below)
+
+| Measurement | Target | x86_64 CI runner | Apple M3 Pro (arm64) | Result |
 |---|---|---|---|---|
-| Background start latency after a paint (100 × 100 `sky130_fd_sc_hd__dfxtp_1` array) | ≤ 100 ms | median 1.6 ms, max 3.6 ms (macOS); median 1.9 ms, max 5.4 ms (Linux arm64 container, GCC 14) | — | Met. From the end of the `paint` command to the worker's first kernel call, 20 paints of 60 × 40 m1 spread over the array, the worker hosted by `drc::BackgroundHost` with real rules. The square is then committed in median 38 ms (max 65 ms). Hidden test `[benchmark]` in `tests/unit/drc/engine/latency_bench_test.cpp`. |
-| `drc check; drc catchup`, dfxtp_1 array (FIXED_BBOX pitch), single-threaded | no slower than Magic | 0.068 s | 0.069 s | Met (parity). 81 errors in both. |
-| `drc check; drc catchup`, all-cells block (441 cells in rows of 40000 units, abutting at FIXED_BBOX), single-threaded | no slower than Magic | 1.19 s | 1.16 s | Within the 10 % noise band of the CI job (+2.6 %). 1292 errors in both. |
-| Pan and zoom frame times while the worker checks the all-cells block | interactive (`hefesto-architecture` "Concurrency model") | | — | SHELL, task 9.1 |
+| Background start latency after a paint (100 × 100 dfxtp_1 array) | ≤ 100 ms | median 3.3 ms, max 6.8 ms (until idle: median 49 ms, max 98 ms) | median 1.6 ms, max 3.6 ms (round 2) | Met |
+| `drc check; drc catchup`, dfxtp_1 array, single-threaded | ≤ 1.10 × Magic | 0.086 s vs Magic 0.120 s (**0.72 ×**) | 0.044 s vs 0.064 s (0.69 ×) | Met; 81 errors in both |
+| `drc check; drc catchup`, all-cells block, single-threaded | ≤ 1.10 × Magic | 1.42 s vs Magic 1.95 s (**0.73 ×**) | 0.77 s vs 1.18 s (0.65 ×) | Met; 1292 errors in both |
+| Pan and zoom frame times while the worker checks the all-cells block | interactive (`hefesto-architecture` "Concurrency model") | — | median 8.3 ms, p95 9.8 ms, p99 14.8 ms, max 21.4 ms (400 frames); DRC off: median 8.4 ms, p95 9.5 ms, p99 10.0 ms, max 20.3 ms | Met (SHELL, task 9.1, round 2b: Debug build, `--bench-frames 400 --no-vsync` over the block placement) |
 
-Method (`bench/drc/drc_bench.py`): the same command script runs through `hefesto-cli --magic -dnull -noconsole` and `magic -dnull -noconsole`; the DRC time is (min of the script with 4 passes of `drc check; drc catchup` − min of the script with 1 pass) / 3 over 5 runs each, which cancels process start, technology and cell loading and container file-system cost; the error counts (`drc list count total`) must agree. CI: `.github/workflows/perf.yml` runs both tools on one GitHub runner (Hefesto native, Magic in the pinned reference image) and fails beyond `--max-ratio 1.10` or on a count mismatch.
+x86_64: `drc-bench` of PR #30's Performance run [42957667072](https://github.com/CyberdyneCorp/Hefesto/actions/runs/42957667072) (commit `92712a8`), GitHub-hosted `ubuntu-24.04` x86_64 (Azure, kernel 7.0), `linux-release` with GCC 14, `--repeat 3`: array 1 pass 0.255 s / 4 passes 0.513 s (Magic 0.743 / 1.104 s, its container start included), block 3.020 / 7.284 s (Magic 3.005 / 8.850 s). arm64: `drc_bench.py --repeat 5` on an Apple M3 Pro (macOS 27, Apple Clang Release) with Magic in a Linux arm64 container (`hefesto-magic-only:local`), load average 5–7 during the run. Linux arm64 (GCC 14 Release in a container on the same Mac, best of 3 of 1 and 10 passes): block 0.83 s vs Magic 1.19 s, array 0.048 s vs 0.065 s.
 
-Gap plan: the block is at parity, not ahead. If the CI job shows Hefesto outside the band on its runner, the next steps are a profile of the block run split into basic check, interaction flattening and commit time per square, then the parallel mode of D16 (independent squares on several workers).
+Before the speed work (round 2b, commit `e0882ff`): x86_64 runner 1.2–1.7 × slower than Magic (PR #29 run 42923284311: array 0.104 s vs 0.061 s, block 1.83 s vs 1.37 s; PR #30 run 42947046848: array 0.14 s vs 0.12 s, block 2.35 s vs 1.99 s), Apple arm64 at parity (array 0.068 s vs 0.069 s, block 1.19 s vs 1.16 s), Linux arm64 GCC 14 block 1.29 s vs 1.19 s.
+
+### Where the time went and what changed
+
+Profiles: callgrind of one pass of the block (the difference of a one-pass and a two-pass run, `bench/drc/callgrind_pass_diff.py`, Linux arm64, GCC 14 Release), `sample` on macOS, and the manual `drc-profile` job of `perf.yml` (perf, callgrind of both tools and a GCC/Clang comparison on the x86_64 runner). Instructions per pass of the block: Hefesto 20.6 billion before, 11.8 billion after; Magic 11.5 billion (`drcTile` 48 %, `DBSrPaintArea` 36 %, `drcCheckArea` 6 %). On the x86_64 runner (`drc-profile` job of the same run 42957667072, which ran on pull requests until it was made manual): Hefesto 12.2 billion instructions per pass, Magic 10.9 billion; perf of four passes puts the remaining time in the plane search (`search_area` 19 %, `goto_point` 10 %) and the edge rules, as in Magic. GCC 14 and Clang builds on that runner: block 1.13 s and 1.06 s vs Magic 1.36 s, so the compiler was not the cause of the old gap; the abstraction overhead of the emulated stitch steps was.
+
+| Hotspot (before) | Share of the pass | Cause | Change |
+|---|---|---|---|
+| Corner probes of the standard rules (`tile_at`) | ~25 % (macOS samples) | each of Magic's O(1) stitch steps (BL/LB/TR/RT) was an area search of a unit square: a `std::function`, a point location from the plane's hint, the search loop, for every rule of every edge | `db::Plane::tile_at()` locates from the view's own tile (TileView carries an opaque tile handle, not part of its value); the kernel locates the four probe points of an edge once per edge instead of once per rule |
+| Edge neighbors (`left_neighbors`, `bottom_neighbors`) and the area/maxwidth flood | ~15 % (macOS samples) | an area search of the one-unit strip, then a sort | `db::Plane::neighbors()` walks the stitches (Magic's BL→RT, TR→LB, LB→TR, RT→BL loops); each tile is reported exactly as the strip search reports it first (split tiles included) |
+| `std::function` in every plane search | 27 % of the instructions (`Plane::enumerate` and its handler) | two type-erased calls per visited tile, an allocation for lambdas capturing more than two references (libstdc++) | `Plane::enumerate` and the internal searches take `util::FunctionRef` (non-owning, no allocation) |
+| Flood bookkeeping | 1 % | `std::unordered_set` node allocation per visited tile | an open-addressing set reused across floods |
+| `drcExactOverlapTile` masks | ~1 % | the stacked-type masks recomputed per tile with a linear contact lookup | cached per tile type in the check context |
+
+Results are unchanged: every DRC golden case, the `golden-slow` corpus and the unit suites pass; the walks have an equivalence test against the area searches (`tests/unit/db/plane_walk_test.cpp`, random planes with triangles, every side, sub-ranges and the plane's limits). The parallel mode of D16 was not needed and is not used: the benchmark compares single-threaded runs.
 
 ## Remaining gaps (open items)
 
-None recorded yet.
+- Raven (to be proposed upstream, not patched): a system notification API (Notification Center, freedesktop) with a click action; submenus in in-window menus; an anchored popover widget (M2 gap, again for `drc why`); per-row accessible descriptions and tree rows in Table.
+- Closed in round 3 (2026-11-10): the M3-DRC-Status "Off" note now says that paint does not mark areas under `drc off` and erase does; the DRC-Browser notes say the list is the `drc listall why` logic called directly on refresh (approved by the user), user actions remaining commands; the canvas tag, the stepper over the canvas and the collapsed-group highlight are implemented (renders `docs/images/ui/m3-drc-*.png` redone).

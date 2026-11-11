@@ -354,6 +354,19 @@ OverlayLayout overlay_layout(double width, double height) {
   return l;
 }
 
+PixelPoint drc_tag_origin(const PixelRect& tile, double tag_w, double tag_h, double canvas_w,
+                          double canvas_h) noexcept {
+  const double min_x = kRulerSize + kCanvasInset;
+  const double min_y = kRulerSize + kCanvasInset;
+  const double max_x = std::max(min_x, canvas_w - kCanvasInset - tag_w);
+  const double max_y = std::max(min_y, canvas_h - kCanvasInset - tag_h);
+  double x = tile.x + tile.w + kDrcTagGapX;
+  if (x > max_x) x = tile.x - kDrcTagGapX - tag_w;
+  double y = tile.y + tile.h + kDrcTagGapY;
+  if (y > max_y) y = tile.y - kDrcTagGapY - tag_h;
+  return PixelPoint{std::clamp(x, min_x, max_x), std::clamp(y, min_y, max_y)};
+}
+
 OverlayHit hit_test(const OverlayLayout& l, double x, double y) noexcept {
   if (l.zoom_out.contains(x, y)) return OverlayHit::zoom_out;
   if (l.zoom_in.contains(x, y)) return OverlayHit::zoom_in;

@@ -133,8 +133,9 @@ Compatibility: exact
 - The bounding box of a use is the child bounding box extended by the array span (`|xsep*(xhi-xlo)|` towards the sign of `xsep`, same for y) and then transformed; the extended box of a use is computed the same way from the child's extended box.
 - The `FIXED_BBOX` property does NOT change the computed bounding box (it is consulted by LEF/DEF/GDS writers; see `layout-properties`).
 - When a definition's box changes, every use of it is re-positioned, every parent is flagged "child boxes changed" (not modified), and the computation propagates upward. Hefesto MAY compute boxes lazily but MUST return identical values.
+- Magic recomputes the parents in the order of the definition's uses, most recent first, and recomputes the last pending parent only when the oldest use has a parent. Loading a definition into a window gives it a parentless root use that is never freed, so when the definition was loaded in a window before every placement that still uses it, the last pending parent keeps its old bounding box (its use of the definition is still re-positioned) until something else recomputes that parent; the stale box bounds the parent's DRC check areas, its `.mag` timestamp processing and the boxes of its own parents. This SHALL be replicated with `magic-compat` ON; with it OFF every parent SHALL be recomputed (see Q-MODEL-32, resolution: compat).
 
-(Magic ref: database/DBcellbox.c:244-280,553-735, database/DBbound.c:56-170, database/DBlabel.c:1352-1500)
+(Magic ref: database/DBcellbox.c:244-280,553-775, database/DBbound.c:56-170, database/DBlabel.c:1352-1500, database/DBcellname.c:2066-2097, dbwind/DBWprocs.c:545-547)
 
 #### Scenario: Paint plus point label
 - **GIVEN** a cell with `metal1 (0,0)-(10,10)` and a point label at `(20,20)`
@@ -151,6 +152,13 @@ Compatibility: exact
 - **WHEN** the use bounding box is computed
 - **THEN** it SHALL be `(0,0)-(70,25)`
 - **AND** with `xsep = -20` it SHALL be `(-60,0)-(10,25)`
+
+#### Scenario: Parent of a child loaded in a window before its placement
+- **GIVEN** a cell `child` whose only content is a label `(0,0)-(10,10)`, loaded in a window, and then a cell `top` with one use of `child` (so `top` has the box `(0,0)-(10,10)`)
+- **WHEN** a label `(0,0)-(20,10)` is added to `child`
+- **THEN** the use's box SHALL be `(0,0)-(20,10)` in either `magic-compat` setting
+- **AND** with `magic-compat` ON the box of `top` SHALL stay `(0,0)-(10,10)`; with it OFF it SHALL be `(0,0)-(20,10)`
+- **AND** had `top` placed `child` before the window load, its box SHALL be `(0,0)-(20,10)` in either setting
 
 ### Requirement: Locked instances
 
@@ -204,16 +212,24 @@ Compatibility: behavioral
 - Paint is merged per plane through the paint tables (`layout-paint-semantics`, "Copying paint between cells").
 - Labels (default): every label of every level is copied with its rectangle and justification transformed; text becomes the hierarchical path with the last `/` replaced by `.` (e.g. a label `A` inside `x_0/y_1` becomes `x_0/y_1.A`); only labels of the top level keep their port flags and index; font, size, rotation and offset are copied untransformed (see Q-MODEL-20). With `magic-compat` OFF, rotation and offset SHALL be transformed as for hierarchical copies.
 - "Top labels only" copies only the labels of the root level. "No labels" copies none.
-- Properties other than `MASKHINTS_*` are not copied.
+- Properties other than `MASKHINTS_*` are not copied. Which instances' mask hints are copied is specified by capability `mask-hints`, "Copying, flattening and transforming hints" (Q-MISC-15).
 - The destination must not already exist unless a box-limited flatten is requested.
+- The flattened cell itself is the root level. With `magic-compat` ON, as in Magic, a restricting descend mode (`-doproperty`, `-nosubcircuits`, `-novendor`) also applies its test to the root level: when the flattened cell has no `flatten` property, is a subcircuit (has ports) or is a vendor-GDS cell respectively, no paint, mask hints, path-named labels or kept instances are copied and the new cell is empty, except that "top labels only" still copies the root level's labels. With `magic-compat` OFF the root level is always copied and the mode applies only to the uses below it (see Q-MODEL-33, resolution: compat). `xor`, which flattens its source the same way, follows the same rule.
 
-(Magic ref: commands/CmdFI.c:1933-2010,2040-2250, database/DBcellcopy.c:284-305,551-560,1730-1790)
+(Magic ref: commands/CmdFI.c:1933-2010,2040-2250, database/DBcellcopy.c:284-305,551-560,1359,1435,1730-1790, database/DBcellsrch.c:245,586,845, database/DBcellsubr.c:61-108)
 
 #### Scenario: Hierarchical label naming
 - **GIVEN** `top` containing use `x_0` of `mid`, which contains use `y_1` of `leaf` with label `A` at `(1,1)`
 - **WHEN** `top` is flattened into `flat`
 - **THEN** `flat` SHALL contain a label with text `x_0/y_1.A`
 - **AND** that label SHALL NOT be a port
+
+#### Scenario: Restricting flatten of a root level that fails its own test
+- **GIVEN** `top` with a port label `P`, metal1 paint, no `flatten` property and an unported child use `c_0`
+- **WHEN** `top` is flattened into `flat` with `-nosubcircuits`, or with `-doproperty`
+- **THEN** with `magic-compat` ON `flat` SHALL be empty (no paint, labels or uses) (golden MODEL-G-060)
+- **AND** with `-dotoplabels` added, `flat` SHALL contain only the label `P`
+- **AND** with `magic-compat` OFF `flat` SHALL contain `top`'s paint and label `P`, and `c_0` flattened (`-nosubcircuits`) or kept as an instance (`-doproperty`)
 
 ### Requirement: Flattening an instance in place
 
@@ -223,6 +239,7 @@ Compatibility: behavioral
 - Top-level child labels are re-created in the parent as non-port labels with text `<id>[x][y]/<text>` (2-D array), `<id>[x]/<text>` or `<id>[y]/<text>` (1-D), or `<id>/<text>`, and the unprefixed copies are removed. Note the `[x][y]` order differs from element naming (`[y,x]`); see Q-MODEL-7. With `magic-compat` OFF, the prefix SHALL be `<id>[y][x]/<text>`.
 - Magic sizes the renamed text without room for the index suffix (a heap overflow) and, in the captured run, leaves the labels unprefixed. Hefesto SHALL apply the names above (see Q-MODEL-31).
 - Flattening every selected use applies the same procedure to each and deletes them from the selection.
+- The mask hints copied are those of the element and of every descended level below it (capability `mask-hints`, "Copying, flattening and transforming hints"; Q-MISC-14).
 
 (Magic ref: database/DBcellcopy.c:580-735,781-800, commands/CmdFI.c:2105-2140)
 

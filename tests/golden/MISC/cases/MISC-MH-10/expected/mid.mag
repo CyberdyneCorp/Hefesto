@@ -1,0 +1,14 @@
+magic
+tech t
+timestamp 1794363745
+<< checkpaint >>
+rect 3 -3 13 7
+<< metal1 >>
+rect 0 0 4 4
+use leaf  leaf_0
+timestamp 1794363745
+transform 1 0 6 0 1 0
+box 0 0 4 4
+<< properties >>
+string MASKHINTS_Y 0 0 3 3
+<< end >>

@@ -73,6 +73,7 @@ void Kernel::horizontal_edges(const TileView& tile) {
 
 void Kernel::evaluate_edge(const Edge& edge, std::span<const Rule> rules) {
   RuleState state;
+  probes_.known = 0;
   for (std::size_t i = 0; i < rules.size(); ++i) {
     if (!evaluate_rule(edge, rules[i], state)) {
       ++i;  // cptr = cptr->drcc_next: skip the triggered rule
@@ -138,8 +139,8 @@ bool Kernel::evaluate_vertical_nonstandard(const Edge& edge, const Rule& rule) {
   // (BL) and below its left end (LB) must not be in the rule's set.
   if (edge.first) {
     const TileView& tile = *edge.tile;
-    const TileView bl = tile_at(*edge_plane_, tile.area.x0 - 1, tile.area.y0);
-    const TileView lb = tile_at(*edge_plane_, tile.area.x0, tile.area.y0 - 1);
+    const TileView bl = tile_at(*edge_plane_, tile.area.x0 - 1, tile.area.y0, &tile);
+    const TileView lb = tile_at(*edge_plane_, tile.area.x0, tile.area.y0 - 1, &tile);
     if (!rule.ok.test(right_type(bl)) && !rule.ok.test(top_type(lb))) {
       check_rect_size(tile, rule);
     }

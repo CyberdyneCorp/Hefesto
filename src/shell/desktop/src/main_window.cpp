@@ -99,9 +99,18 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
   color_ = std::make_unique<ColorPanel>(ctx_);
+  drc_link_ = std::make_unique<DrcLink>(core.editor());
+  drc_panel_ = std::make_unique<DrcPanel>(ctx_);
 
   build_top_bar();
   build_center();
+  canvas_->add_overlay(toast_);
+  toast_.place_bottom_center();
+  // The DRC stepper over the canvas, top right, below the ruler (board: 16 px
+  // from the right edge, 32 px from the top).
+  canvas_->add_overlay(drc_panel_->stepper_widget());
+  drc_panel_->stepper_widget().place_top_right(static_cast<float>(kCanvasInset),
+                                               static_cast<float>(kRulerSize + 12));
   build_command_bar();
   build_status_bar();
   window_.set_content(root_);
@@ -188,6 +197,7 @@ StatusBarText MainWindow::status_text() {
   in.snap = ed.settings.value_in(app::SettingLayer::session, "snap").value_or("lambda");
   in.message = message_;
   in.problems = problems_.tally().chip();
+  in.drc = drc_view_.status_bar;
   return status_bar_text(in);
 }
 
@@ -249,7 +259,8 @@ void MainWindow::build_top_bar() {
 
   ui::Box spacer = ui::Box::horizontal();
   row.add(spacer, 1.0F);
-  for (const StatusChip& chip : {drc_chip_m1(), lvs_chip_m1()}) {
+  build_drc_chip(row);
+  for (const StatusChip& chip : {lvs_chip_m1()}) {
     auto widget = make_painted(ctx_, [chip](ui::Painter& p, float w, float h, const ThemeTokens& t) {
       paint::chip(p, w, h, chip, t);
     });
@@ -259,7 +270,7 @@ void MainWindow::build_top_bar() {
     chips.widgets.push_back(widget.get());
     widget->set_role(ui::Role::text);
     widget->set_accessible_name(chip.label());
-    widget->set_tooltip(chip.text == "DRC not run" ? "DRC arrives in M3" : "LVS arrives in M9");
+    widget->set_tooltip("LVS arrives in M9");
     row.add_centered(*widget);
     painted_.push_back(std::move(widget));
   }
@@ -369,11 +380,13 @@ void MainWindow::arrange_middle() {
   const auto place = [this, &index](ui::Widget& w, float fill) { middle_.insert(w, index++, fill); };
   if (layers_side_ == DockSide::left) place(left_->widget(), 0.0F);
   if (inspector_side_ == DockSide::left) place(inspector_->widget(), 0.0F);
+  place(drc_panel_->list_widget(), 0.0F);  // the DRC browser beside the canvas (board)
   place(center_, 1.0F);
   if (layers_side_ == DockSide::right) place(left_->widget(), 0.0F);
   if (inspector_side_ == DockSide::right) place(inspector_->widget(), 0.0F);
   place(pdk_->widget(), 0.0F);
   place(color_->widget(), 0.0F);
+  place(drc_panel_->inspector_widget(), 0.0F);
   left_->set_dock_side(layers_side_);
   inspector_->set_dock_side(inspector_side_);
 }
@@ -487,7 +500,7 @@ void MainWindow::build_status_bar() {
   status_bar_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
     const auto problems = problems_.tally().chip();
     const paint::StatusBarKinds kinds{message_kind_, problems ? problems->kind : StatusKind::error,
-                                      drc_chip_m1().kind};
+                                      drc_view_.status_bar.kind};
     paint::status_bar(p, w, h, status_text(), kinds, t);
   });
   status_bar_->set_size(-1.0F, static_cast<float>(kStatusBarHeight));
@@ -567,7 +580,8 @@ void MainWindow::run_line(const std::string& line) {
   if (ctx_.core.quit_requested()) ctx_.runtime.quit();
 }
 
-void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& /*result*/) {
+void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
+  note_drc_command(invocation, result);
   // Widgets may be running the callback that issued this command: rebuild
   // on the next frame (on_frame), never inside the callback. A `*bypass`
   // command (pointer motion: wiring preview, pick drag) needs only the
@@ -586,8 +600,7 @@ void MainWindow::on_frame() {
     set_message(StatusKind::success, diagnostic_line(StatusKind::success, *undo_message_));
     undo_message_.reset();
   }
-  if (pdk_->poll()) window_.request_redraw();  // a background install: keep frames coming
-  if (canvas_->idle()) window_.request_redraw();  // the minimap of a large scene is due
+  poll_background();
   if (!pending_run_.empty() && canvas_->viewport_ready()) {
     const std::string line = std::move(pending_run_);
     pending_run_.clear();
@@ -613,6 +626,16 @@ void MainWindow::on_frame() {
   // After the refresh: the first scene build frames the cell, which would
   // replace a pinch made before it.
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
+}
+
+// Work that finished off the event loop: a PDK install, the minimap, the
+// background DRC worker's committed squares and finished jobs.
+void MainWindow::poll_background() {
+  if (pdk_->poll()) window_.request_redraw();  // a background install: keep frames coming
+  if (canvas_->idle()) window_.request_redraw();  // the minimap of a large scene is due
+  if (drc_link_->serial() != drc_serial_ && !dirty_) refresh_drc();
+  if (const auto job = drc_link_->take_finished_job()) post_drc_job_notice(*job);
+  if (pending_why_ && !in_command_) show_why_popover();
 }
 
 void MainWindow::run_pending_pinch() {
@@ -644,9 +667,17 @@ void MainWindow::toggle_pdk_manager() {
 }
 
 void MainWindow::update_right_dock() {
+  // The PDK manager, else the color window, else the DRC error area while
+  // the DRC panel is shown, else the Inspector.
   pdk_->widget().set_visible(pdk_visible_);
   color_->widget().set_visible(!pdk_visible_ && color_visible_);
-  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && inspector_visible_);
+  const bool drc = !pdk_visible_ && !color_visible_ && drc_visible_ && inspector_visible_;
+  drc_panel_->inspector_widget().set_visible(drc);
+  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && !drc && inspector_visible_);
+  // While the DRC browser is shown it takes the Layers dock's place.
+  left_->widget().set_visible(layers_visible_ && !drc_visible_);
+  drc_panel_->list_widget().set_visible(drc_visible_);
+  drc_panel_->stepper_widget().set_visible(drc_visible_);
 }
 
 void MainWindow::refresh_color_panel() {
@@ -708,6 +739,7 @@ void MainWindow::apply_theme(ThemeMode mode) {
   inspector_->repaint();
   pdk_->repaint();
   color_->repaint();
+  drc_panel_->repaint();
   canvas_->refresh_overlay();
 }
 
@@ -749,6 +781,7 @@ void MainWindow::refresh_all() {
   refresh_feedback();
   refresh_color_panel();
   if (keys_shown_) refresh_keys();
+  refresh_drc();
   refresh_status();
 }
 
@@ -995,12 +1028,19 @@ bool MainWindow::on_shortcut(int key, std::uint8_t modifiers) {
 }
 
 void MainWindow::cycle_focus(bool backward) {
-  const FocusRegions shown{layers_visible_, inspector_visible_ && !pdk_visible_ && !color_visible_, console_visible_};
+  const FocusRegions shown{layers_visible_ || drc_visible_, inspector_visible_ && !pdk_visible_ && !color_visible_,
+                           console_visible_};
   for (int tries = 0; tries < 6; ++tries) {
     focus_region_ = next_focus_region(focus_region_, shown, backward);
     switch (focus_region_) {
       case FocusRegion::tools: rail_.front().widget->focus(); return;
-      case FocusRegion::layers: left_->focus(); return;
+      case FocusRegion::layers:
+        if (drc_visible_) {
+          drc_panel_->focus();
+        } else {
+          left_->focus();
+        }
+        return;
       case FocusRegion::canvas: canvas_->focus(); return;
       case FocusRegion::inspector:
         if (inspector_->focus()) return;
@@ -1021,7 +1061,13 @@ bool MainWindow::set_panel(PanelId panel, std::optional<bool> show) {
   switch (panel) {
     case PanelId::layers:
       layers_visible_ = now;
-      left_->widget().set_visible(now);
+      update_right_dock();
+      break;
+    case PanelId::drc:
+      drc_visible_ = now;
+      drc_rows_changed_ = true;
+      update_right_dock();
+      dirty_ = true;  // the list is built on the next refresh
       break;
     case PanelId::inspector:
       inspector_visible_ = now;
@@ -1063,6 +1109,7 @@ bool MainWindow::panel_shown(PanelId panel) const {
     case PanelId::inspector: return inspector_visible_;
     case PanelId::console: return console_visible_;
     case PanelId::keys: return console_visible_ && keys_shown_;
+    case PanelId::drc: return drc_visible_;
   }
   return false;
 }

@@ -26,6 +26,7 @@
 //
 // Owner: CHECK (openspec/changes/m3-drc/design.md D2).
 
+#include <algorithm>
 #include <cstdlib>
 
 #include "kernel.hpp"
@@ -68,19 +69,27 @@ bool Kernel::flood(const TileView& start, const tech::TypeMask& ok, Visit&& visi
 
 void Kernel::push_neighbors(const TileView& tile, const tech::TypeMask& ok) {
   const Rect& r = tile.area;
+  // In the area-enumeration order of each one-unit strip: top (left to
+  // right), left (top to bottom), bottom (left to right), right (top to
+  // bottom).
   const struct {
-    Rect strip;
+    db::Side side;
+    bool downwards;
     TileType (*facing)(const TileView&) noexcept;
   } sides[] = {
-      {Rect{r.x0, r.y1, r.x1, r.y1 + 1}, &bottom_type},  // top
-      {Rect{r.x0 - 1, r.y0, r.x0, r.y1}, &right_type},   // left
-      {Rect{r.x0, r.y0 - 1, r.x1, r.y0}, &top_type},     // bottom
-      {Rect{r.x1, r.y0, r.x1 + 1, r.y1}, &left_type},    // right
+      {db::Side::top, false, &bottom_type},
+      {db::Side::left, true, &right_type},
+      {db::Side::bottom, false, &top_type},
+      {db::Side::right, true, &left_type},
   };
   for (const auto& side : sides) {
-    tiles_in(*edge_plane_, side.strip, neighbors_);
+    const bool vertical = side.side == db::Side::left || side.side == db::Side::right;
+    edge_plane_->neighbors(tile, side.side, vertical ? r.y0 : r.x0, vertical ? r.y1 : r.x1, neighbors_);
+    if (side.downwards) {
+      std::reverse(neighbors_.begin(), neighbors_.end());
+    }
     for (const TileView& n : neighbors_) {
-      if (ok.test(side.facing(n)) && flood_seen_.insert(n.area).second) {
+      if (ok.test(side.facing(n)) && flood_seen_.insert(n.area)) {
         flood_stack_.push_back(n);
       }
     }
@@ -128,12 +137,12 @@ void Kernel::check_rect_size(const TileView& start, const Rule& rule) {
   const std::int32_t parity = rule.cdist;  // -1 any, 0 even, 1 odd
   TileView t = start;
   while (rule.ok.test(body_type(t)) && t.area.x1 < db::kPlaneMax) {
-    t = tile_at(*edge_plane_, t.area.x1, t.area.y1 - 1);  // TR
+    t = tile_at(*edge_plane_, t.area.x1, t.area.y1 - 1, &t);  // TR
   }
   const Coord width = t.area.x0 - start.area.x0;
   t = start;
   while (rule.ok.test(body_type(t)) && t.area.y1 < db::kPlaneMax) {
-    t = tile_at(*edge_plane_, t.area.x1 - 1, t.area.y1);  // RT
+    t = tile_at(*edge_plane_, t.area.x1 - 1, t.area.y1, &t);  // RT
   }
   const Coord height = t.area.y0 - start.area.y0;
   Coord error_width = width;

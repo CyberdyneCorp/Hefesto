@@ -97,6 +97,9 @@ enum class Descend : std::uint8_t { all, no_subcircuit, no_vendor, property_flat
 /// Whether hierarchical operations in `mode` descend into `use`.
 [[nodiscard]] bool descends(const CellUse& use, Descend mode);
 
+/// Whether hierarchical operations in `mode` descend into a use of `def`.
+[[nodiscard]] bool descends(const CellDef& def, Descend mode);
+
 /// Which labels flattening copies: `all` (flatCopyAllLabels: every
 /// descended label, prefixed with its path, rotation and offset copied
 /// untransformed in magic-compat, Q-MODEL-20), `top_only` (DBCellCopyAllLabels
@@ -120,6 +123,9 @@ struct FlattenOptions {
 /// "Flattening into a new cell": a copy of `source` with every descended
 /// level of hierarchy flattened, created in `library` under `new_name`
 /// (DB-CELL-001 if it exists). Non-descended uses are kept as instances.
+/// With `magic_compat`, a `source` that fails the descend test itself gives
+/// an empty cell, except for the labels of FlattenLabels::top_only
+/// (Q-MODEL-33).
 [[nodiscard]] diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& source,
                                                      std::string_view new_name, const tech::Technology& tech,
                                                      const FlattenOptions& options = {});

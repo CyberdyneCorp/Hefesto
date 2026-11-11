@@ -1,0 +1,14 @@
+magic
+tech t
+timestamp 1794364434
+<< metal1 >>
+rect 0 0 4 4
+rect 40 0 44 4
+rect 46 0 50 4
+use keep  keep_0
+timestamp 1794364434
+transform 1 0 20 0 1 0
+box 0 0 4 4
+<< properties >>
+string MASKHINTS_K 20 0 22 2
+<< end >>

@@ -40,13 +40,9 @@ tech::TypeMask residue_mask(const tech::Technology& tech, tech::TileType type) {
   return c->residues;
 }
 
-struct OverlapMasks {
-  tech::TypeMask type;     // typeMask: the type (and the stacked types containing it)
-  tech::TypeMask inverse;  // invMask
-};
-
-OverlapMasks overlap_masks(const tech::Technology& tech, tech::TileType type) {
-  OverlapMasks m{tech::TypeMask::of(type), {}};
+// typeMask (the type and the stacked types containing it) and invMask.
+OverlapMasks compute_overlap_masks(const tech::Technology& tech, tech::TileType type) {
+  OverlapMasks m{true, tech::TypeMask::of(type), {}};
   if (type < tech.user_type_end()) {
     for (std::size_t t = tech.user_type_end(); t < tech.type_count(); ++t) {
       const auto st = static_cast<tech::TileType>(t);
@@ -57,6 +53,17 @@ OverlapMasks overlap_masks(const tech::Technology& tech, tech::TileType type) {
     m.inverse = ~m.type;
   } else {
     m.inverse = ~(m.type | residue_mask(tech, type));
+  }
+  return m;
+}
+
+const OverlapMasks& overlap_masks(Context& ctx, tech::TileType type) {
+  if (ctx.overlap_masks.empty()) {
+    ctx.overlap_masks.resize(tech::kMaxTileTypes);
+  }
+  OverlapMasks& m = ctx.overlap_masks[type < tech::kMaxTileTypes ? type : 0];
+  if (!m.known) {
+    m = compute_overlap_masks(ctx.tech(), type);
   }
   return m;
 }
@@ -110,7 +117,7 @@ void exact_overlap_tile(Context& ctx, const db::CellDef& owner, tech::PlaneId pl
                         const db::Transform& to_yank, const db::Rect& clip_area, const Rule& rule) {
   const db::Rect r2 = db::apply(to_yank, tile.area);
   const db::Rect rex = clip(db::expand(r2, 1), clip_area);
-  const OverlapMasks m = overlap_masks(ctx.tech(), tile.type);
+  const OverlapMasks& m = overlap_masks(ctx, tile.type);
   std::vector<db::TileView> around;
   bool have_neighbors = false;
   for (std::size_t p = tech::kFirstUserPlane; p < ctx.yank.plane_count(); ++p) {

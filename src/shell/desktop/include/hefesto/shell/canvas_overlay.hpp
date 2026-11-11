@@ -137,6 +137,20 @@ struct OverlayLayout {
 [[nodiscard]] OverlayLayout overlay_layout(double width, double height);
 [[nodiscard]] OverlayHit hit_test(const OverlayLayout& layout, double x, double y) noexcept;
 
+// --- DRC tag on the found error (DRC-Browser board, note 6) ---------------------
+
+/// The tag's distance from the tile it labels (the board: 14 px right, 12 px below).
+inline constexpr double kDrcTagGapX = 14.0;
+inline constexpr double kDrcTagGapY = 12.0;
+
+/// Top-left corner of a `tag_w` × `tag_h` tag for the error tile `tile`
+/// (canvas pixels, y down) in a `canvas_w` × `canvas_h` canvas: below and
+/// right of the tile as on the board; left of it when it would leave the
+/// canvas on the right, above it when it would leave at the bottom; then
+/// kept inside the canvas (rulers and insets included).
+[[nodiscard]] PixelPoint drc_tag_origin(const PixelRect& tile, double tag_w, double tag_h, double canvas_w,
+                                        double canvas_h) noexcept;
+
 // --- view sync (design.md D5) -----------------------------------------------------
 
 /// Sets the camera's center and zoom from a core window's mapping

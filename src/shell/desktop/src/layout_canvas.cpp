@@ -3,6 +3,7 @@
 
 #include "layout_canvas.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -194,7 +195,12 @@ void LayoutCanvas::refresh_scene() {
     refresh_overlay();
     return;
   }
-  auto built = display::build_scene(*root, *ed.technology, *ed.styles, ed.fonts, scene_options(*win, *root));
+  // hefesto-architecture "Concurrency model": the scene is built as a
+  // database reader, beside the background DRC worker (m3-drc design D8).
+  auto built = [&] {
+    const db::DatabaseLock::Shared reading(ed.database_lock);
+    return display::build_scene(*root, *ed.technology, *ed.styles, ed.fonts, scene_options(*win, *root));
+  }();
   if (!built) {
     ctx_.core.dispatcher().report(built.error());
     return;
@@ -256,7 +262,10 @@ void LayoutCanvas::apply_redisplay(view::LayoutWindow& win, const view::Redispla
   editor::EditorState& ed = ctx_.editor();
   const db::CellDef& root = *win.root();
   for (const db::Rect& area : splice_areas(redisplay.areas)) {
-    auto partial = display::build_scene(root, *ed.technology, *ed.styles, ed.fonts, scene_options(win, root, area));
+    auto partial = [&] {
+      const db::DatabaseLock::Shared reading(ed.database_lock);
+      return display::build_scene(root, *ed.technology, *ed.styles, ed.fonts, scene_options(win, root, area));
+    }();
     if (!partial || !display::splice_scene(scene_, std::move(partial).value(), area)) {
       refresh_scene();  // a cut the retained scene cannot take
       return;
@@ -310,6 +319,12 @@ void LayoutCanvas::upload_polygons(render::PolygonScene polygons) {
 }
 
 void LayoutCanvas::refresh_overlay() {
+  painted_->invalidate();
+}
+
+void LayoutCanvas::set_drc_tag(std::optional<DrcCanvasTag> tag) {
+  if (tag == overlay_state_.drc_tag) return;
+  overlay_state_.drc_tag = std::move(tag);
   painted_->invalidate();
 }
 
@@ -584,6 +599,14 @@ void LayoutCanvas::refresh_highlights() {
   }
   viewport_->invalidate();
   painted_->invalidate();
+}
+
+std::pair<float, float> LayoutCanvas::popover_point(const db::Rect& rect) const {
+  const ui::Rect area = overlay_.rect();
+  const PixelRect r = world_to_pixels(camera_, rect, static_cast<double>(pixel_ratio_()));
+  const double x = std::clamp(r.x + r.w + 8.0, 0.0, std::max(0.0, static_cast<double>(area.width) - 280.0));
+  const double y = std::clamp(r.y, 0.0, std::max(0.0, static_cast<double>(area.height) - 120.0));
+  return {area.x + static_cast<float>(x), area.y + static_cast<float>(y)};
 }
 
 }  // namespace hefesto::shell

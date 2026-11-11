@@ -20,9 +20,11 @@
 // step of Magic's code is replaced by the tile that contains the unit
 // square the stitch points at (BL(t) = tile at (LEFT(t)-1, BOTTOM(t)),
 // LB(t) = (LEFT(t), BOTTOM(t)-1), TR(t) = (RIGHT(t), TOP(t)-1),
-// RT(t) = (RIGHT(t)-1, TOP(t))); neighbor walks are area enumerations of
-// the one-unit strip beside the tile. Tiles are identified by their
-// rectangle (unique within a plane).
+// RT(t) = (RIGHT(t)-1, TOP(t))), located from a nearby tile's view
+// (Plane::tile_at); neighbor walks are Plane::neighbors, the stitch walks
+// along one side, each tile as an area enumeration of the one-unit strip
+// beside the tile reports it. Tiles are identified by their rectangle
+// (unique within a plane).
 //
 // (Magic ref: drc/DRCbasic.c, drc/DRCextend.c, utils/maxrect.c)
 //
@@ -31,10 +33,10 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <unordered_set>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -83,11 +85,11 @@ inline void geo_clip(Rect& r, const Rect& area) noexcept {
   r.y1 = std::min(r.y1, area.y1);
 }
 
-/// The tile containing the unit square at (x, y) (GOTOPOINT).
-[[nodiscard]] TileView tile_at(const db::Plane& plane, Coord x, Coord y);
-/// The distinct tiles overlapping `area` in enumeration order (a split tile
-/// once, as first reported), appended to `out` after clearing it.
-void tiles_in(const db::Plane& plane, const Rect& area, std::vector<TileView>& out);
+/// The tile containing the unit square at (x, y) (GOTOPOINT), the point
+/// location starting at `near` (a tile of `plane`) when given.
+[[nodiscard]] inline TileView tile_at(const db::Plane& plane, Coord x, Coord y, const TileView* near = nullptr) {
+  return plane.tile_at(db::Point{x, y}, near);
+}
 /// Tiles abutting the left side of `t` with y overlapping [y0, y1), bottom
 /// to top (BL(t), then RT steps).
 void left_neighbors(const db::Plane& plane, const TileView& t, Coord y0, Coord y1, std::vector<TileView>& out);
@@ -137,16 +139,73 @@ struct RuleState {
   bool from_maxrects = false;  // mrd != NULL: triggered rectangles come from maxrects_
 };
 
-/// Hash of a tile rectangle (tile identity within a plane).
-struct RectHash {
-  std::size_t operator()(const Rect& r) const noexcept {
+/// The corner probes of one edge: vertical edges above/below the edge's
+/// top/bottom end on its left (outer) and right (tile) sides; horizontal
+/// edges use the same four slots for the points (1) to (4) of drcTile.
+enum class ProbeSlot : std::uint8_t { top_left, top_right, bottom_left, bottom_right };
+
+/// The probes located for the current edge (bit i of `known` set when
+/// views[i] holds slot i).
+struct ProbeCache {
+  std::array<TileView, 4> views{};
+  std::uint8_t known = 0;
+};
+
+/// The tiles a flood has reached, by rectangle (tile identity within a
+/// plane): an open-addressing set reused from flood to flood, so a flood
+/// allocates nothing once the table has grown to its size.
+class RectSet {
+ public:
+  /// Forgets every rectangle (only the slots in use are reset).
+  void clear() noexcept {
+    for (const std::size_t i : used_) {
+      slots_[i] = kEmpty;
+    }
+    used_.clear();
+  }
+  /// Adds `r`; false when it was already in the set.
+  bool insert(const Rect& r) {
+    if (2 * (used_.size() + 1) > slots_.size()) {
+      grow();
+    }
+    const std::size_t mask = slots_.size() - 1;
+    for (std::size_t i = hash(r) & mask;; i = (i + 1) & mask) {
+      if (slots_[i] == r) {
+        return false;
+      }
+      if (slots_[i] == kEmpty) {
+        slots_[i] = r;
+        used_.push_back(i);
+        return true;
+      }
+    }
+  }
+
+ private:
+  static constexpr Rect kEmpty{1, 1, 0, 0};  // inverted: never a tile
+  static std::size_t hash(const Rect& r) noexcept {
     constexpr auto kMix = static_cast<std::size_t>(0x9E3779B97F4A7C15ULL);
     std::size_t h = static_cast<std::uint32_t>(r.x0);
     h = h * kMix ^ static_cast<std::uint32_t>(r.y0);
     h = h * kMix ^ static_cast<std::uint32_t>(r.x1);
     h = h * kMix ^ static_cast<std::uint32_t>(r.y1);
-    return h;
+    return (h * kMix) >> 7U;
   }
+  void grow() {
+    std::vector<Rect> kept;
+    kept.reserve(used_.size());
+    for (const std::size_t i : used_) {
+      kept.push_back(slots_[i]);
+    }
+    slots_.assign(std::max<std::size_t>(64, 2 * slots_.size()), kEmpty);
+    used_.clear();
+    for (const Rect& r : kept) {
+      insert(r);
+    }
+  }
+
+  std::vector<Rect> slots_;       // a power of two in size, kEmpty when free
+  std::vector<std::size_t> used_;  // the occupied slots
 };
 
 class Kernel {
@@ -160,7 +219,11 @@ class Kernel {
   // basic_check.cpp
   bool visit_tile(const TileView& tile);
   void report(const Rect& area, const Rule& rule);
-  void count(std::uint64_t CheckStatistics::* counter) const noexcept;
+  void count(std::uint64_t CheckStatistics::* counter) const noexcept {
+    if (CheckStatistics* stats = sink_.statistics()) {
+      ++(stats->*counter);
+    }
+  }
   [[nodiscard]] const db::Plane* plane_of(tech::PlaneId plane) const noexcept;
 
   // edges.cpp
@@ -185,8 +248,12 @@ class Kernel {
   bool vertical_region(const Edge& edge, const Rule& rule, std::int32_t c, Search& search);
   /// The corner probes of a vertical edge's top (bottom) end on its left
   /// (outer) or right (tile) side, limited by the region's end `limit`.
-  [[nodiscard]] TileView top_probe(const Edge& edge, bool left_side, Coord limit) const;
-  [[nodiscard]] TileView bottom_probe(const Edge& edge, bool left_side, Coord limit) const;
+  [[nodiscard]] const TileView& top_probe(const Edge& edge, bool left_side, Coord limit) const;
+  [[nodiscard]] const TileView& bottom_probe(const Edge& edge, bool left_side, Coord limit) const;
+  /// The tile at (x, y), a corner probe of the current edge: the probe
+  /// points depend on the edge only, so each slot is located once per edge
+  /// (evaluate_edge() forgets them) however many rules test it.
+  [[nodiscard]] const TileView& probe(ProbeSlot slot, Coord x, Coord y, const TileView& near) const;
   /// Extends the region past the top (bottom) end by c when the probe on
   /// the `test_left` side is a corner type and the edge ends there.
   void extend_top(const Edge& edge, const Rule& rule, std::int32_t c, bool test_left, unsigned corner,
@@ -235,11 +302,13 @@ class Kernel {
   int entries_ = 0;          // dCD_entries
   std::vector<Rect> maxrects_;  // MaxRectsData::rlist of the last canonical maxwidth search
 
+  mutable ProbeCache probes_;  // the current edge's corner probes (mutable cache)
+
   // Scratch buffers (reused; one per walk so the walks can nest).
   std::vector<TileView> left_;
   std::vector<TileView> below_;
   std::vector<TileView> flood_stack_;
-  std::unordered_set<Rect, RectHash> flood_seen_;
+  RectSet flood_seen_;
   std::vector<TileView> neighbors_;
 };
 

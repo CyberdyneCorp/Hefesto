@@ -208,6 +208,36 @@ void sweep_preview(ui::Painter& p, const OverlayState& s) {
                 std::max(1.0F, static_cast<float>(r.h)), 1.0F, 4.0F, 3.0F, white());
 }
 
+/// "■ #3  Metal1 spacing < 0.14um (met1.2)" beside the found error tile,
+/// with a leader to the tile's corner (DRC-Browser board, note 6).
+void drc_tag(ui::Painter& p, float w, float h, const OverlayState& s, const ThemeTokens& t) {
+  if (!s.drc_tag) return;
+  constexpr float kPad = 10.0F;
+  constexpr float kGap = 8.0F;
+  constexpr float kHeight = 28.0F;
+  const std::string index = std::string(status_glyph(StatusKind::error)) + " " + s.drc_tag->index;
+  const std::string& why = s.drc_tag->why;
+  const float index_w = p.text_width(TextRole::body_strong, index);
+  const float why_w = why.empty() ? 0.0F : kGap + p.text_width(TextRole::body, why);
+  const float tag_w = kPad + index_w + why_w + kPad;
+  const PixelRect tile = world_to_pixels(s.camera, s.drc_tag->area, s.pixel_ratio);
+  const PixelPoint at = drc_tag_origin(tile, static_cast<double>(tag_w), static_cast<double>(kHeight),
+                                       static_cast<double>(w), static_cast<double>(h));
+  const auto x = static_cast<float>(at.x);
+  const auto y = static_cast<float>(at.y);
+  // The leader joins the tag's nearest corner to the tile's nearest corner.
+  const bool right = at.x >= tile.x + tile.w;
+  const bool below = at.y >= tile.y + tile.h;
+  const auto tile_x = static_cast<float>(right ? tile.x + tile.w : tile.x);
+  const auto tile_y = static_cast<float>(below ? tile.y + tile.h : tile.y);
+  p.line(right ? x : x + tag_w, below ? y : y + kHeight, tile_x, tile_y, 1.0F, t.control_border);
+  p.fill(x, y, tag_w, kHeight, kRadius, t.surface2);
+  p.stroke(x, y, tag_w, kHeight, kRadius, 1.0F, t.control_border);
+  const float cy = y + kHeight / 2.0F;
+  p.text_centered_y(TextRole::body_strong, x + kPad, cy, index, status_text_color(t, StatusKind::error));
+  if (!why.empty()) p.text_centered_y(TextRole::body, x + kPad + index_w + kGap, cy, why, t.text_primary);
+}
+
 void zoom_control(ui::Painter& p, const OverlayLayout& l, const std::string& percent, const ThemeTokens& t) {
   const auto control = [&](const PixelRect& r) {
     p.fill(static_cast<float>(r.x), static_cast<float>(r.y), static_cast<float>(r.w), static_cast<float>(r.h), kRadius,
@@ -461,6 +491,7 @@ void canvas_overlay(ui::Painter& p, float w, float h, const OverlayState& s, The
   labels(p, w, h, s);
   highlight_marks(p, w, h, s);
   sweep_preview(p, s);
+  drc_tag(p, w, h, s, t);
   if (!s.empty_hint.empty()) {
     p.text_centered_y(TextRole::body, centered_x(p, TextRole::body, w, s.empty_hint), h / 2.0F, s.empty_hint,
                       t.text_secondary);

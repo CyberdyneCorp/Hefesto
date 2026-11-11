@@ -13,6 +13,7 @@
 // Owner: INTEGRATION (openspec/changes/m3-drc/design.md D2).
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -154,6 +155,36 @@ TEST_CASE("scalegrid rescales the rules, the halo and the *halo and *stepsize ov
   CHECK(s.editor.drc.rules->halo().value == 2 * halo);
   CHECK(s.editor.drc.halo_override == 4);
   CHECK(s.editor.drc.step_size == 200);
+}
+
+TEST_CASE("a coarser grid never leaves a step size of 0", "[cap:drc-rule-language][req:Halo and step size]") {
+  // Q-DRC-25 (fix, both modes): DRCTechScale floors the style step and the
+  // *stepsize override; a grid 4 times coarser leaves 0 in Magic and its
+  // checker divides by zero. Hefesto keeps 1 and the check completes.
+  const bool compat = GENERATE(true, false);
+  INFO("magic-compat " << compat);
+  Session s;
+  s.project.compat.magic_compat = compat;
+  s.file("/t/step.tech", read_text(std::filesystem::path{HEFESTO_SOURCE_DIR} / "tests/data/drc/rules/rules.tech") +
+                             "\ndrc\n    stepsize 2\n    width m1 12 \"m1 width < 12\"\nend\n\nextract\nend\n");
+  REQUIRE(s.run("tech load /t/step.tech -noprompt").ok());
+  REQUIRE(s.editor.drc.rules->step_size() == 2);
+  REQUIRE(s.run("drc *stepsize 3").ok());
+  REQUIRE(s.run("scalegrid 4 1").ok());
+  CHECK(s.editor.drc.rules->step_size() == 1);
+  CHECK(s.editor.drc.step_size == 1);
+  CHECK(drc::current_step_size(s.editor) == 1);
+  REQUIRE(s.run("load top").ok());
+  hefesto::db::CellDef* top = s.editor.cells.find("top");
+  REQUIRE(top != nullptr);
+  REQUIRE(s.editor.windows.open_frame(top).ok());
+  REQUIRE(s.run("snap internal; box 0 0 2 10; paint m1; drc off; box -20 -20 30 30; drc check; drc catchup").ok());
+  // The 2-wide bar breaks the width rule (12 / 4 = 3); checked with the step of 1, one error
+  // area per unit square.
+  CHECK(s.value("drc listall why") ==
+        "{m1 width < 12} {{2 0 3 1} {2 1 3 2} {2 2 3 3} {2 3 3 4} {2 4 3 5} {2 5 3 6} {2 6 3 7} {2 7 3 8} "
+        "{2 8 3 9} {2 9 3 10}}");
+  CHECK(s.editor.drc.pending.empty());
 }
 
 TEST_CASE("tech load drops the *halo and *stepsize overrides", "[cap:drc-engine][req:Halo override]") {

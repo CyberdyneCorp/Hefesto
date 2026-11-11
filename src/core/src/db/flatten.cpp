@@ -273,14 +273,22 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
   }
   CellDef& dest = *created.value();
   dest.flags().available = true;
+  // Magic's paint, hint, label and cell copies all apply DBDescendSubcell to
+  // the edit cell's own use first, so a source that fails a restricting mode
+  // copies nothing; only the -dotoplabels copy passes (CU_DESCEND_SPECIAL).
+  // Replicated under magic-compat; with it off the root is always copied
+  // (Q-MODEL-33, compat).
+  const bool copy_root = !options.magic_compat || descends(source, options.descend);
   Flattener f(dest, tech, options);
-  if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
-    return s.error();
+  if (copy_root) {
+    if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
+      return s.error();
+    }
+    // DBFlatCopyMaskHints over the source's bounding box: the hints of the
+    // descendants (not the source's own), clipped to it.
+    hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend, options.magic_compat);
   }
-  // DBFlatCopyMaskHints over the source's bounding box: the hints of the
-  // descendants (not the source's own), clipped to it.
-  hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend);
-  if (options.labels != FlattenLabels::none) {
+  if (options.labels == FlattenLabels::top_only || (copy_root && options.labels != FlattenLabels::none)) {
     f.copy_labels(source, kIdentity, std::string{}, true);
   }
   recompute_bbox(dest, options.magic_compat);
@@ -288,6 +296,24 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
 }
 
 namespace {
+
+// The hints of every level below `def` that the flattening descends into
+// (each array element, whole, mapped by its full transform `t`); the kept
+// instances keep their hints in their own cells. Magic's DBFlattenInPlace
+// copies only the flattened instance's own hints and loses these
+// (Q-MISC-14, fix in both modes, X-2 tier 1).
+void copy_descended_hints(const CellDef& def, const Transform& t, CellDef& dest, Descend mode) {
+  for (const auto& u : def.uses()) {
+    if (!descends(*u, mode)) {
+      continue;
+    }
+    for_each_element(*u, [&](std::int32_t x, std::int32_t y) {
+      const Transform te = compose(t, element_transform(*u, x, y));
+      hints::copy_hints(*u->def, dest, te, std::nullopt);
+      copy_descended_hints(*u->def, te, dest, mode);
+    });
+  }
+}
 
 // One array element of DBFlattenInPlace: paint, labels, kept instances and
 // the relabeling of the child's top-level labels.
@@ -303,8 +329,10 @@ diag::Status flatten_element(CellUse& use, std::int32_t x, std::int32_t y, const
     f.copy_labels(*use.def, t, std::string{}, true);
   }
   prefix_generated_labels(dest, f.generated(), in_place_prefix(use, x, y, options.magic_compat), options);
-  // DBCellCopyMaskHints: the element's own hints, whole, transformed.
+  // DBCellCopyMaskHints: the element's own hints, whole, transformed; then
+  // those of its flattened descendants (Q-MISC-14).
   hints::copy_hints(*use.def, dest, t, std::nullopt);
+  copy_descended_hints(*use.def, t, dest, options.descend);
   return diag::Done{};
 }
 

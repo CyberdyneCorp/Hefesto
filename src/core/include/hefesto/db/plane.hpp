@@ -22,6 +22,7 @@
 #include "hefesto/db/transform.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/tech/types.hpp"
+#include "hefesto/util/function_ref.hpp"
 
 namespace hefesto::db {
 
@@ -88,9 +89,20 @@ struct TileView {
   bool right_side = false;              // split only: which triangle is reported
   tech::TileType left_type = tech::kSpace;   // split only
   tech::TileType right_type = tech::kSpace;  // split only
+  /// The plane's tile behind this view (opaque), set by the Plane that
+  /// reported it and valid until that plane next changes; a start for the
+  /// stitch walks of Plane::tile_at() and Plane::neighbors(). Not part of
+  /// the view's value (operator== ignores it).
+  const void* tile = nullptr;
 
-  friend bool operator==(const TileView&, const TileView&) = default;
+  friend bool operator==(const TileView& a, const TileView& b) noexcept {
+    return a.area == b.area && a.type == b.type && a.split == b.split && a.diagonal == b.diagonal &&
+           a.right_side == b.right_side && a.left_type == b.left_type && a.right_type == b.right_type;
+  }
 };
+
+/// A side of a tile (Plane::neighbors).
+enum class Side : std::uint8_t { left, right, bottom, top };
 
 /// Result of painting type `paint` over type `have`, for every `have`
 /// (one row of a tech paint/erase table, already selected for a plane).
@@ -98,6 +110,10 @@ using PaintRow = std::array<tech::TileType, tech::kMaxTileTypes>;
 
 /// Return false to stop an enumeration early.
 using TileVisitor = std::function<bool(const TileView&)>;
+/// The visitor parameter of Plane::enumerate(): a non-owning reference
+/// (no allocation per search), bound to any callable such as a lambda or a
+/// TileVisitor for the duration of the call.
+using TileVisitorRef = util::FunctionRef<bool(const TileView&)>;
 
 /// A split-tile structure change made by a paint (Magic's splitUE): a split
 /// tile cut into smaller split tiles (`join` false: the tile before the
@@ -154,12 +170,29 @@ class Plane {
   /// runs Magic's algorithm unchanged (used for point and line labels); an
   /// inverted area visits nothing; an area beyond the plane (out to
   /// +-kInfinity) is clamped to whole_plane().
-  bool enumerate(const Rect& area, const tech::TypeMask& types, const TileVisitor& visit) const;
+  bool enumerate(const Rect& area, const tech::TypeMask& types, TileVisitorRef visit) const;
 
   /// Like enumerate() but restricted to the triangle of `area` given by
   /// `diagonal`/`right_side` (DBSrPaintNMArea, overlap only).
   bool enumerate_triangle(const Rect& area, Diagonal diagonal, bool right_side, const tech::TypeMask& types,
-                          const TileVisitor& visit) const;
+                          TileVisitorRef visit) const;
+
+  /// The tile containing the unit square whose lower-left corner is `p`,
+  /// exactly as enumerate() over that square reports it first (for a split
+  /// tile, the first side it reports). The point location (GOTOPOINT) walks
+  /// the stitches from `near`'s tile when given (a view this plane reported
+  /// since its last change), else from the plane's hint; it does not move
+  /// the hint. The DRC kernel's corner probes (Magic's stitch steps).
+  [[nodiscard]] TileView tile_at(Point p, const TileView* near = nullptr) const;
+
+  /// The tiles across side `side` of `t` (a view this plane reported since
+  /// its last change) whose extent along that side overlaps [lo, hi), a
+  /// sub-range of the side: each exactly as enumerate() over the one-unit
+  /// strip beyond that part of the side reports it first, ordered by
+  /// increasing y (left, right) or x (bottom, top). Walks the corner
+  /// stitches (Magic's BL/RT, TR/LB, LB/TR, RT/BL loops); `out` is cleared
+  /// first. Empty when lo >= hi.
+  void neighbors(const TileView& t, Side side, Coord lo, Coord hi, std::vector<TileView>& out) const;
 
   /// The type of the unit square whose lower-left corner is `p` (for a
   /// split tile: the side of the diagonal holding the square's center).

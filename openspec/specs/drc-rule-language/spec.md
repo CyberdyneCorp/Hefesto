@@ -223,7 +223,9 @@ Compatibility: exact
 
 Halo contributions (tech-file units): width d; spacing/touching variants max(d, d)=d; widespacing max(wwidth, d); corner_ok spacing d; edge/edge4way max(d, cdist); extend d; overhang d; surround d (the first distance); rect_only 1; rectangle maxwidth; area horizon; off_grid pitch; maxwidth d; angles 1; cif rules ceil(cifdist / cifscale) (see Q-DRC-2); no_overlap, exact_overlap, option, stepsize, exception, exemption, scalefactor 0.
 
-The halo depends on the `magic-compat` setting (see Q-DRC-2, resolution: replicate under magic-compat, fix with it off). With it ON (the default), as in Magic, the CIF contributions, which are already in internal units, are folded into maxContribution with the tech-file-unit ones and Halo = `ceil(maxContribution · D'/N')`, so with `scalefactor N` (N > 1) a halo set by a CIF rule is divided by N. With it OFF, Halo = max(`ceil(maxTechContribution · D'/N')`, maxCifContribution), where maxTechContribution excludes the CIF rules. Step size: if `stepsize` was given (positive; values < 16 warn) it is used as an internal-unit value; otherwise 16·halo, or if halo is 0: `6400 / cifScale` when a CIF output style is loaded (cifScale = CIF units per internal unit, integer division) else 64. Subsequent grid rescales multiply halo by λd/λn with ceiling and step size with floor. A non-positive `stepsize` reports `Step size must be a positive integer.` and leaves the default.
+The halo depends on the `magic-compat` setting (see Q-DRC-2, resolution: replicate under magic-compat, fix with it off). With it ON (the default), as in Magic, the CIF contributions, which are already in internal units, are folded into maxContribution with the tech-file-unit ones and Halo = `ceil(maxContribution · D'/N')`, so with `scalefactor N` (N > 1) a halo set by a CIF rule is divided by N. With it OFF, Halo = max(`ceil(maxTechContribution · D'/N')`, maxCifContribution), where maxTechContribution excludes the CIF rules. Step size: if `stepsize` was given (positive; values < 16 warn) it is used as an internal-unit value; otherwise 16·halo, or if halo is 0: `6400 / cifScale` when a CIF output style is loaded (cifScale = CIF units per internal unit, integer division) else 64. Subsequent grid rescales multiply halo by λd/λn with ceiling and step size with floor, which also applies to a step size set with `drc *stepsize`. A non-positive `stepsize` reports `Step size must be a positive integer.` and leaves the default.
+
+A step size SHALL never be below 1 internal unit: the default `6400 / cifScale` and the floor of a rescaled step size (the style's and a `drc *stepsize` value) are raised to 1 where they would be 0, in both `magic-compat` settings. In Magic a scale factor above 6400 or a rescale that makes the internal grid coarser by more than the step size leaves a step size of 0, and the checker then divides by zero (a crash on x86-64) or never finishes (see Q-DRC-25, resolution: fix). The checker can therefore rely on a positive step size.
 
 (Magic ref: drc/DRCtech.c:1182-1190, drc/DRCtech.c:4228-4256, drc/DRCtech.c:3990-4010)
 
@@ -231,6 +233,17 @@ The halo depends on the `magic-compat` setting (see Q-DRC-2, resolution: replica
 - **GIVEN** a style whose largest rule distance is a widespacing with wwidth 10, d 3, no scalefactor, no stepsize
 - **WHEN** loaded
 - **THEN** the halo is 10 and the step size is 160
+
+#### Scenario: A rescale never leaves a step size of 0
+- **GIVEN** a style with `stepsize 2` and `drc *stepsize 3`, in either `magic-compat` setting
+- **WHEN** the internal grid is made 4 times coarser by `scalegrid 4 1`
+- **THEN** the style's step size and the `drc *stepsize` value are both 1, not 0
+- **AND** `drc check` completes
+
+#### Scenario: Default step size with a large mask scale factor
+- **GIVEN** a style with no rules (halo 0) and a loaded CIF output style whose scale factor is 10000 CIF units per internal unit
+- **WHEN** the style is loaded, in either `magic-compat` setting
+- **THEN** the step size is 1 (Magic's `6400 / 10000` is 0)
 
 #### Scenario: Halo set by a mask-layer rule with magic-compat ON
 - **GIVEN** `magic-compat` ON, a drc style with `scalefactor 10`, `cifstyle` bound to a mask output style of scalefactor 10, and the single rule `cifwidth MET1 140 "w"` (contribution ⌈140/10⌉ = 14 internal units)

@@ -101,6 +101,8 @@ struct StatusChip {
 
   /// "● DRC clean": the shape glyph, a space, the text.
   [[nodiscard]] std::string label() const;
+
+  friend bool operator==(const StatusChip&, const StatusChip&) = default;
 };
 
 /// M1 has no DRC (M3) or LVS (M9): the chips say so with the info shape.

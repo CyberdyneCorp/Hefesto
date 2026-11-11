@@ -7,6 +7,7 @@
 // drc::ScopedRecheck / WhyOptions::recheck (drc_fixture.hpp).
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <string>
 #include <vector>
@@ -41,7 +42,7 @@ void error_row(db::CellDef& def, int n) {
 /// A fake reporting `why` at every error tile of `def`.
 FakeRecheck errors_at_tiles(const db::CellDef& def, const std::vector<drc::WhyIndex>& whys) {
   FakeRecheck fake;
-  const auto tiles = drc::error_tiles(def);
+  const auto tiles = drc::error_tiles(def, true);
   for (std::size_t i = 0; i < tiles.size() && i < whys.size(); ++i) {
     fake.errors.push_back({&def, tiles[i], DrcFixture::rule(whys[i])});
   }
@@ -126,9 +127,32 @@ TEST_CASE("count_errors skips a root that is not loaded", "[cap:drc-commands][re
   db::CellDef* top = f.cell("top");
   f.paint(*top, db::Rect{0, 0, 40, 40});
   error_row(*top, 2);
-  CHECK(drc::count_errors(*top, top->bbox(), true).size() == 1);
+  CHECK(drc::count_errors(*top, top->bbox(), true, true).size() == 1);
   top->flags().available = false;
-  CHECK(drc::count_errors(*top, top->bbox(), true).empty());
+  CHECK(drc::count_errors(*top, top->bbox(), true, true).empty());
+}
+
+TEST_CASE("count and find reach error tiles beyond the paint in both modes",
+          "[cap:drc-commands][req:drc count][req:drc find]") {
+  // Regression: with magic-compat OFF the bounding box covers paint only
+  // (Q-MODEL-19), so an error area outside the paint (a width error, for
+  // instance) was neither counted nor found. ON, the box covers it as in Magic.
+  const bool compat = GENERATE(true, false);
+  INFO("magic-compat " << compat);
+  DrcFixture f;
+  f.compat(compat);
+  f.whys({"w"});
+  db::CellDef* top = shown_top(f);
+  DrcFixture::error(*top, db::Rect{50, 0, 52, 2});
+  db::recompute_bbox(*top, compat);
+  CHECK(top->bbox().x1 == (compat ? 52 : 40));
+  CHECK(drc::error_tiles(*top, compat) == std::vector<db::Rect>{{50, 0, 52, 2}});
+  CHECK(f.value("drc list count total") == "1");
+  FakeRecheck fake;
+  fake.errors = {{top, db::Rect{50, 0, 52, 2}, DrcFixture::rule(6)}};
+  const drc::ScopedRecheck scoped(fake.fn());
+  CHECK(f.out("drc find 1") == "Error area #1:\nw\n");
+  CHECK(f.editor.box == db::Rect{50, 0, 52, 2});
 }
 
 // --- drc find -------------------------------------------------------------------------------
@@ -141,7 +165,7 @@ TEST_CASE("Explicit index", "[cap:drc-commands][req:drc find]") {
   FakeRecheck fake = errors_at_tiles(*top, {6, 6, 6, 6});
   const drc::ScopedRecheck scoped(fake.fn());
   CHECK(f.out("drc find 3") == "Error area #3:\nw\n");
-  CHECK(f.editor.box == drc::error_tiles(*top)[2]);
+  CHECK(f.editor.box == drc::error_tiles(*top, true)[2]);
   CHECK(f.out("drc find") == "Error area #4:\nw\n");  // the next one
   CHECK(f.out("drc find") == "Error area #1:\nw\n");  // wraps
   CHECK(f.out("drc find 0") == "Error area #1:\nw\n");  // max(n, 1)
@@ -175,7 +199,7 @@ TEST_CASE("First find with magic-compat ON", "[cap:drc-commands][req:drc find]")
   FakeRecheck fake = errors_at_tiles(*top, {6, 6, 6, 6});
   const drc::ScopedRecheck scoped(fake.fn());
   CHECK(f.out("drc find") == "Error area #2:\nw\n");
-  CHECK(f.editor.box == drc::error_tiles(*top)[1]);
+  CHECK(f.editor.box == drc::error_tiles(*top, true)[1]);
 }
 
 TEST_CASE("First find with magic-compat OFF", "[cap:drc-commands][req:drc find]") {
@@ -187,7 +211,7 @@ TEST_CASE("First find with magic-compat OFF", "[cap:drc-commands][req:drc find]"
   FakeRecheck fake = errors_at_tiles(*top, {6, 6, 6, 6});
   const drc::ScopedRecheck scoped(fake.fn());
   CHECK(f.out("drc find") == "Error area #1:\nw\n");
-  CHECK(f.editor.box == drc::error_tiles(*top)[0]);
+  CHECK(f.editor.box == drc::error_tiles(*top, true)[0]);
 }
 
 TEST_CASE("drc find without errors and in list mode", "[cap:drc-commands][req:drc find]") {
@@ -201,8 +225,8 @@ TEST_CASE("drc find without errors and in list mode", "[cap:drc-commands][req:dr
 
   error_row(*top, 1);
   FakeRecheck fake;
-  fake.errors = {{top, drc::error_tiles(*top)[0], DrcFixture::rule(6)},
-                 {top, drc::error_tiles(*top)[0], DrcFixture::rule(7)}};
+  fake.errors = {{top, drc::error_tiles(*top, true)[0], DrcFixture::rule(6)},
+                 {top, drc::error_tiles(*top, true)[0], DrcFixture::rule(7)}};
   const drc::ScopedRecheck scoped(fake.fn());
   const auto listed = f.run("drc list find");
   CHECK(DrcFixture::texts(listed).empty());  // no `Error area` line in list mode

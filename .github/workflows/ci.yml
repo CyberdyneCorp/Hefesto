@@ -523,7 +523,7 @@ jobs:
   tsan:
     name: linux-tsan (Clang, ThreadSanitizer)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       CC: clang-18
       CXX: clang++-18
@@ -535,8 +535,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install CMake and Ninja
         run: python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
-      - name: Install the OpenSSL headers for libcurl
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+      - name: Install the OpenSSL headers for libcurl and the desktop shell's Vulkan and X11 packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev \
+            libvulkan-dev glslang-tools glslc spirv-tools \
+            libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev wayland-protocols libdecor-0-dev
       # ubuntu-24.04's 32-bit mmap randomisation breaks TSan's shadow memory layout ("unexpected memory mapping").
       - name: Reduce address-space randomisation for TSan
         run: sudo sysctl vm.mmap_rnd_bits=28
@@ -552,6 +557,15 @@ jobs:
       - run: cmake --preset linux-tsan
       - run: cmake --build --preset linux-tsan
       - run: ctest --preset linux-tsan -LE golden-slow
+      # The linux-tsan preset builds without the desktop shell, so the desktop host of the background checker
+      # (src/shell/desktop/src/drc_link.cpp: worker callback -> one event-loop task -> service(), task 9.1)
+      # is built here on its own, with the desktop on, and its threaded tests run under TSan.
+      - name: Desktop DRC host under TSan (shell tests)
+        run: |
+          cmake --preset linux-tsan -B build/linux-tsan-desktop -DHEFESTO_BUILD_DESKTOP=ON
+          cmake --build build/linux-tsan-desktop --target hefesto_shell_tests
+          build/linux-tsan-desktop/tests/unit/shell/hefesto_shell_tests "[req:Concurrency model]"
+          build/linux-tsan-desktop/tests/unit/shell/hefesto_shell_tests
 
   # hefesto-testing-strategy "Parser fuzzing": every target runs for a bounded time on pull requests
   # (design D11: 60 s per target) and on every push to main.

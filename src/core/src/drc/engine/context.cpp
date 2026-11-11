@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cassert>
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/drc/engine/kernel_hook.hpp"
@@ -42,7 +43,11 @@ std::int32_t current_halo(const editor::EditorState& editor) {
 
 std::int32_t current_step_size(const editor::EditorState& editor) {
   const std::int32_t step = editor.drc.step_size.value_or(editor.drc.rules->step_size());
-  return step > 0 ? step : 1;
+  // `drc *stepsize` never stores a value <= 0 (Q-DRC-24), and a grid rescale
+  // or the default step of a style without rules never computes one
+  // (Q-DRC-25): the checker divides by the step size.
+  assert(step > 0);
+  return step;
 }
 
 namespace detail {

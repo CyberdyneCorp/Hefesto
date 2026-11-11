@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
@@ -107,6 +108,14 @@ using KernelFn = CheckOutcome (*)(const CheckInput&, const db::Rect&, const db::
 /// drcOverlapCookie, drcSubcellCookie, drcInSubCookie, drcOffGridCookie).
 [[nodiscard]] const Rule& engine_rule(WhyIndex why) noexcept;
 
+/// The masks of drcExactOverlapTile for one tile type: the type with the
+/// stacked types containing it, and the types that must not overlap it.
+struct OverlapMasks {
+  bool known = false;
+  tech::TypeMask type;
+  tech::TypeMask inverse;
+};
+
 /// Everything one check reads, plus the scratch yank cell and the error
 /// type the current reports get (DRCErrorType). Built on the command thread
 /// or on the worker under the shared database lock.
@@ -130,6 +139,9 @@ struct Context {
   /// Set while yank_paint() runs for an interaction check
   /// (DBCellCheckCopyAllPaint): an off-grid triangle fill reports why 5.
   bool flag_off_grid = false;
+  /// exact_overlap_tile's type masks per tile type (array_overlap.cpp),
+  /// computed on first use; empty until then.
+  std::vector<OverlapMasks> overlap_masks;
 
   [[nodiscard]] const tech::Technology& tech() const noexcept { return *technology; }
   /// Polls the cancel token; latches `cancelled`.

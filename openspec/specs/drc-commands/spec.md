@@ -60,7 +60,7 @@ Compatibility: behavioral
 - **THEN** the first result is `after#2` and the second is empty
 
 ### Requirement: drc count
-`drc count [total]` SHALL count error tiles (tiles of any error type in the error plane, in maximal-horizontal-strip form, over the cell's whole bounding box) of the root cell of the command's window — or, in list-all mode, of the root cell and every loaded cell reached recursively through uses overlapping the window area (the window's visible area if the command came from a window, else the box) — each distinct cell counted once.
+`drc count [total]` SHALL count error tiles (tiles of any error type in the error plane, in maximal-horizontal-strip form, over the cell's whole bounding box, which with `magic-compat` OFF is extended by the error plane's extent because that box then covers paint only — Q-MODEL-19) of the root cell of the command's window — or, in list-all mode, of the root cell and every loaded cell reached recursively through uses overlapping the window area (the window's visible area if the command came from a window, else the box) — each distinct cell counted once.
 Compatibility: exact
 
 Output and results:
@@ -93,7 +93,7 @@ Output and results:
 - **THEN** `Cell top has 3 error tiles.` and then `Total DRC errors found: 3` are printed
 
 ### Requirement: drc find
-`drc find [nth|text]` SHALL locate an error tile of the root cell (its own error plane only, within its bounding box, in area-enumeration order starting from the top-left), move the box to that tile's rectangle, print `Error area #<k>:` (non-list mode) and report the why-texts in that area as `drc why` does; repeated calls without an argument step to the next error, wrapping to the first after the last.
+`drc find [nth|text]` SHALL locate an error tile of the root cell (its own error plane only, within its bounding box — extended by the error plane's extent with `magic-compat` OFF, as for `drc count` — in area-enumeration order starting from the top-left), move the box to that tile's rectangle, print `Error area #<k>:` (non-list mode) and report the why-texts in that area as `drc why` does; repeated calls without an argument step to the next error, wrapping to the first after the last.
 Compatibility: behavioral
 
 - The index is a persistent counter. With an integer argument n, the counter is set to max(n,1) and that error is shown (no wrap: if there are fewer errors, `There aren't that many errors` is printed without a newline; the Tcl result is `-1` in list mode and empty otherwise, because Magic's console output replaces the result it set). Without an argument the counter is incremented before use; past the end it wraps to 1. Its initial value depends on the `magic-compat` setting (see Q-DRC-15, resolution: replicate under magic-compat, fix with it off): with it ON (the default) it starts at 1, as in Magic, so the first argument-less `drc find` of a session shows error #2 when at least two exist; with it OFF it starts at 0, so the first one shows error #1.
@@ -240,8 +240,11 @@ rulestats: `Total number of rules specifed in tech file: %d`, `Edge rules optimi
 - **THEN** the first line is `Design-rule checker statistics (recent/total):`
 
 ### Requirement: drc *halo and drc *stepsize
-`drc *halo [d]` SHALL set the current halo to min(d, style halo) (d parsed as a distance in the current units) or print it, and `drc *stepsize [d]` SHALL set the current step size to d or print it, with the messages below.
+`drc *halo [d]` SHALL set the current halo to min(d, style halo) (d parsed as a distance in the current units) or print it, and `drc *stepsize [d]` SHALL set the current step size to d or print it, with the messages below; a step size d ≤ 0 SHALL be rejected.
 Compatibility: behavioral
+
+- A `*stepsize` value ≤ 0, including a word that does not start with a number (which parses as 0), prints `Step size must be a positive integer.` (the tech-file `stepsize` message), prints nothing else and keeps the current step size, in both `magic-compat` settings (Magic stores it and then divides by zero or never ends the check, a crash or a hang; see Q-DRC-24, resolution: fix). `drc style` and `tech load` restore the style's step size.
+- A grid rescale scales a `*stepsize` value as it scales the style's step size, rounding down but never below 1 (capability `drc-rule-language`, "Halo and step size"; Q-DRC-25, resolution: fix).
 
 Messages, with DRC units = internal·N/D (integer division): set halo below maximum: `Warning: rulechecking limited to halo of <h> internal units (<u> DRC units).`; otherwise `DRC checks all rules (halo of <h> internal units, or <u> DRC units)`; query: `DRC halo is <h> internal units (<u> DRC units)` plus `Maximum rule distance is <H> internal units (<U> DRC units)` if different. Step size set: `DRC step size is now <s> internal units (<u> DRC units))`; query: `DRC step size is <s> internal units (<u> DRC units)` plus `Recommended step size is <16·H> internal units (<…> DRC units)` when different.
 
@@ -251,6 +254,12 @@ Messages, with DRC units = internal·N/D (integer division): set halo below maxi
 - **GIVEN** a style halo of 20 and no scalefactor
 - **WHEN** `drc *halo 5` is executed
 - **THEN** `Warning: rulechecking limited to halo of 5 internal units (5 DRC units).` is printed
+
+#### Scenario: Step size of zero rejected
+- **GIVEN** a style step size of 320, no scalefactor, and `drc *stepsize 100` executed
+- **WHEN** `drc *stepsize 0`, `drc *stepsize -5` or `drc *stepsize abc` is executed, in either `magic-compat` setting
+- **THEN** only `Step size must be a positive integer.` is printed
+- **AND** `drc *stepsize` still reports `DRC step size is 100 internal units (100 DRC units)`
 
 ### Requirement: drc *flatcheck and drc *showint
 `drc *flatcheck` SHALL run the flat check of `drc-engine` over the box and print `<n> total errors found.`; `drc *showint radius` SHALL compute the interaction area (as in `drc-engine`) of the root cell within the box for the given radius and move the box to it, printing `No interactions in this area for that radius.` when there is none and `Radius must not be negative` for a negative radius.

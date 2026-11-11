@@ -289,6 +289,12 @@ int run_window(const ShellOptions& options) {
     CoreSession core(core_options(), platform::default_storage_dir() / "logs", HostServices{true, std::nullopt});
     MainWindow window(*runtime, options, queue_mutex, core);
     run_startup(core, startup.value());
+    // The background DRC checker (m3-drc design D8 "Hosts"): started once
+    // the editor is set up; its ready callback posts to Raven's event loop,
+    // which commits the square between commands. Stopped before the window.
+    DrcPump drc_pump(
+        core.editor(), [](std::function<void()> task) { ui::post_task(std::move(task)); },
+        [&window](std::size_t committed) { window.on_drc_service(committed); });
     if (!options.run.empty()) window.run_when_ready(options.run);
     if (options.rects > 0) {
       render::SyntheticLayoutParams params;

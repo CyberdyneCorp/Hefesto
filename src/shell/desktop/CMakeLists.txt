@@ -17,6 +17,10 @@ add_library(hefesto_shell_desktop STATIC
   src/color_panel.cpp
   src/command_bar_model.cpp
   src/core_command_sink.cpp
+  src/drc_link.cpp
+  src/drc_models.cpp
+  src/drc_panel.cpp
+  src/drc_window.cpp
   src/editing_models.cpp
   src/input_router.cpp
   src/layout_canvas.cpp
