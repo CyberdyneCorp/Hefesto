@@ -199,11 +199,13 @@ TEST_CASE("every DRC style of sky130A compiles", "[cap:drc-rule-language][req:DR
   const auto technology = load_file(*file);
   CHECK(drc::style_list(*technology).names == std::vector<std::string>{"drc(fast)", "drc(full)", "drc(routing)"});
   compile_every_style(technology, 3);
-  // The cifoutput styles Magic lists (`cif listall ostyle`); gdsii is current.
+  // The cifoutput styles Magic lists (`cif listall ostyle`); gdsii() is current. Since open_pdks
+  // c6df28c1 (M4 pins) the gdsii style has the variants () and (origfill).
   const auto c = drc::test::compile_tech(technology, true, "drc(full)");
-  REQUIRE_FALSE(c.cif.styles().empty());
-  CHECK(c.cif.current()->name == "gdsii");
-  CHECK(c.cif.styles()[1].name == "drc");
+  REQUIRE(c.cif.styles().size() > 2);
+  CHECK(c.cif.current()->name == "gdsii()");
+  CHECK(c.cif.styles()[1].name == "gdsii(origfill)");
+  CHECK(c.cif.styles()[2].name == "drc");
   // drc(full) binds `cifstyle drc`, which is not current: mask-layer rules
   // are skipped silently (DRC-CIF-1).
   CHECK(c.rules->details()->cif_style == "drc");

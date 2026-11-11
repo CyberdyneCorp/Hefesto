@@ -185,7 +185,8 @@ TEST_CASE("the pinned sky130A wiring section", SECTION_REQ) {
   }
   const auto& w = s.value();
   CHECK(w.scale_factor == 10);
-  REQUIRE(w.contacts.size() == 10);
+  // 11 contact lines since open_pdks c6df28c1 added `contact xpc 170 xpolyres 50 80 li 0 80` (M4 pins).
+  REQUIRE(w.contacts.size() == 11);
   // contact v1 260 m1 0 30 m2 0 30, scaled by 10 rounding up.
   const auto v1 = std::find_if(w.contacts.begin(), w.contacts.end(),
                                [&](const wiring::WiringContact& c) { return c.type == type_of(t, "v1"); });

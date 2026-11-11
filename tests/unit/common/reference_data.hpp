@@ -10,7 +10,7 @@
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
-// set is missing skips. Owner: PDK (openspec/changes/m3-drc/design.md D2, D15).
+// set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15).
 
 #pragma once
 
@@ -21,10 +21,11 @@
 
 namespace hefesto::test {
 
-/// The open_pdks/ciel version of the sky130 and gf180mcu sets (OPEN_PDKS_PIN in scripts/fetch_pdk.py).
-inline constexpr std::string_view kPdkVersion = "0fe599b2afb6708d281543108caf8310912f54af";
+/// The open_pdks/ciel version of the sky130 and gf180mcu sets (OPEN_PDKS_PIN in scripts/fetch_pdk.py):
+/// ciel release 5740c4a8, whose Magic files are those of the spec pin open_pdks c6df28c1 (Q-SCRIPT-9).
+inline constexpr std::string_view kPdkVersion = "5740c4a81c42f9fe4af5ef2ee258a99151053d28";
 /// The IHP-Open-PDK/ciel version of the ihp set (IHP_PIN in scripts/fetch_pdk.py).
-inline constexpr std::string_view kIhpVersion = "ddb601a4a4473163e1ed6df416b885df18b4ac03";
+inline constexpr std::string_view kIhpVersion = "5e6d592e4002946a4616f798c357f0f3c06cf3b6";
 
 /// One pinned PDK data set: where it is installed and what a complete install holds.
 struct PinnedPdk {

@@ -4,23 +4,24 @@
 """Fetch the pinned reference data of the PDK and Magic-reference tests.
 
 All data is gitignored and never committed (design D1, D8, D9 of
-openspec/changes/m1-core-viewer; design D15 of openspec/changes/m3-drc).
+openspec/changes/m1-core-viewer; design D15 of openspec/changes/m3-drc and of
+openspec/changes/m4-scripting).
 
 PDK data sets, each a subset of one ciel release installed into
 ``<root>/ciel/<family>/versions/<pin>/`` by Hefesto's own PDK manager
 (``hefesto-cli -c "pdk install ... -only ..."``):
 
-``sky130``    open_pdks 0fe599b2, release ``sky130-0fe599b2...``
-                sky130A/libs.tech/magic/                     tech files, startup file
+``sky130``    open_pdks 5740c4a8, release ``sky130-5740c4a8...`` (stands in for the spec pin c6df28c1)
+                sky130A/libs.tech/magic/                     tech files, startup file, device scripts
                 sky130A/libs.ref/sky130_fd_sc_hd/mag/        standard cells
-              about 134 MB downloaded, 6.5 MB kept.
-``gf180mcu``  open_pdks 0fe599b2, release ``gf180mcu-0fe599b2...``
+              134 MB downloaded (common 6.6 MB, sky130_fd_sc_hd 127 MB), 6.8 MB kept.
+``gf180mcu``  open_pdks 5740c4a8, release ``gf180mcu-5740c4a8...`` (stands in for c6df28c1)
                 gf180mcuD/libs.tech/magic/
                 gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/
-              569 MB downloaded (common 389 MB, 7t5v0 180 MB), 3.0 MB kept.
-``ihp``       IHP-Open-PDK ddb601a4, release ``ihp-sg13g2-ddb601a4...``
+              350 MB downloaded (common 170 MB, 7t5v0 180 MB), 3.2 MB kept.
+``ihp``       IHP-Open-PDK 5e6d592e, release ``ihp-sg13g2-5e6d592e...``
                 ihp-sg13g2/libs.tech/magic/
-              332 MB downloaded (common 332 MB, sg13g2_pr 0.2 MB), 0.4 MB kept.
+              435 MB downloaded (common 434 MB, sg13g2_pr 0.2 MB), 0.8 MB kept.
 
 After an install the set's tree digest (SHA-256 over the sorted
 "path NUL sha256 LF" records of every file in its subset, paths relative to the
@@ -80,22 +81,27 @@ class DataSet:
         return f"pdk-{self.name}-{self.version[:12]}-{self.tree_sha256[:16]}"
 
 
-OPEN_PDKS_PIN = "0fe599b2afb6708d281543108caf8310912f54af"
-IHP_PIN = "ddb601a4a4473163e1ed6df416b885df18b4ac03"
+# The spec pin is open_pdks c6df28c1fccb05c286aa0a15e9c4c7dcd8502607 (Q-SCRIPT-9). ciel publishes no
+# release for it; its stand-in is the next release, 5740c4a8, three commits later, which changes only
+# VERSION and the sub-library reference blocks of sky130.json/gf180mcu.json, so its libs.tech/magic
+# files are those of c6df28c1 byte for byte (m4-scripting design D15).
+OPEN_PDKS_SPEC_PIN = "c6df28c1fccb05c286aa0a15e9c4c7dcd8502607"
+OPEN_PDKS_PIN = "5740c4a81c42f9fe4af5ef2ee258a99151053d28"
+IHP_PIN = "5e6d592e4002946a4616f798c357f0f3c06cf3b6"
 
 DATA_SETS = {
     "sky130": DataSet(
         "sky130", "sky130", "sky130A", OPEN_PDKS_PIN, "sky130_fd_sc_hd",
         ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag"),
-        "b3d8b88e421f8ec1063880ac87a644d4a348e85b0554c73483927e650ea7705f"),
+        "b3ee85f299bccc6fb910a186bfd75993ec6594dff02362d60f813332f620bed5"),
     "gf180mcu": DataSet(
         "gf180mcu", "gf180mcu", "gf180mcuD", OPEN_PDKS_PIN, "gf180mcu_fd_sc_mcu7t5v0",
         ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag"),
-        "eb33076819a8e4b2ce915ce0fedbee2ecab211874a9f9d693abb857880f7d2fd"),
+        "6a3b1236bff022f7303deb6774fb686a10283fd1d3678f33d8dfbfb1d9a867eb"),
     "ihp": DataSet(
         "ihp", "ihp-sg13", "ihp-sg13g2", IHP_PIN, "sg13g2_pr",
         ("ihp-sg13g2/libs.tech/magic",),
-        "26d9fce9f6524aa13f31d34d92c6f0cf4e53841c094531855d9db036ba686640"),
+        "e01cd6e2db86f2d0a189f006f93f7f3098a2839f8034013f36037ec7a1d4a1d3"),
 }
 ALIASES = {"pdk": "sky130"}
 

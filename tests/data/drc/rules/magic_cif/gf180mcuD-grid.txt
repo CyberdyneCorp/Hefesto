@@ -1,8 +1,10 @@
-# Magic 8.3.694 (fc5daa9e) cifoutput values of gf180mcuD.tech after `scalegrid 1 10`: `cif listall ostyle`, then for
-# the style current after the load and for each style after `cif ostyle <style>`: CIFCurStyle's
-# cs_scaleFactor, cs_expander, cs_reducer and, for every contact type with a squares/slots
-# operator, CIFGetContactSize's border (CIF units). Read with a probe command loaded into
-# Magic's Tcl interpreter (tasks.md 4.1); compared by tests/unit/drc/rules/cif_magic_test.cpp.
+# Magic 8.3.694 (fc5daa9e) cifoutput values of gf180mcuD.tech at open_pdks c6df28c1 (ciel 5740c4a8) after `scalegrid 1 10`:
+# `cif listall ostyle`, then for the style current after the load and for each style after
+# `cif ostyle <style>`: CIFCurStyle's cs_scaleFactor, cs_expander, cs_reducer and, for every
+# contact type (DBIsContact), CIFGetContactSize's border in CIF units (0: no squares/slots
+# operator). Read with a probe command loaded into Magic's Tcl interpreter (m3-drc tasks.md 4.1;
+# re-read on the M4 pins, m4-scripting task 1.4, with a probe that reproduces the M3 files on
+# the M3 pins); compared by tests/unit/drc/rules/cif_magic_test.cpp.
 ostyles gdsii metfill drc
 loaded gdsii 5 10 1
 contact ndiffc 5
@@ -13,7 +15,14 @@ contact psubdiffcont 5
 contact nsubdiffcont 5
 contact mvpsubdiffcont 5
 contact mvnsubdiffcont 5
+contact ldndiffc 0
+contact ldpdiffc 0
+contact srammvndc 5
+contact srammvpdc 5
+contact sramndc 5
+contact srampdc 5
 contact polycontact 5
+contact schottkyc 0
 contact pdiodec 5
 contact ndiodec 5
 contact nndiodec 5
@@ -21,6 +30,7 @@ contact mvpdiodec 5
 contact mvndiodec 5
 contact mvnndiodec 5
 contact via1 0
+contact padl 0
 contact via2 10
 contact mimcapcontact 40
 contact via3 10
@@ -41,6 +51,10 @@ contact mvpsc+v 5
 contact mvndic+v 5
 contact mvpdic+v 5
 contact mvnndic+v 5
+contact srammvpdc+v 5
+contact srammvndc+v 5
+contact srampdc+v 5
+contact sramndc+v 5
 contact ldndc+v 0
 contact ldpdc+v 0
 contact v+v2 0
@@ -55,7 +69,14 @@ contact psubdiffcont 5
 contact nsubdiffcont 5
 contact mvpsubdiffcont 5
 contact mvnsubdiffcont 5
+contact ldndiffc 0
+contact ldpdiffc 0
+contact srammvndc 5
+contact srammvpdc 5
+contact sramndc 5
+contact srampdc 5
 contact polycontact 5
+contact schottkyc 0
 contact pdiodec 5
 contact ndiodec 5
 contact nndiodec 5
@@ -63,6 +84,7 @@ contact mvpdiodec 5
 contact mvndiodec 5
 contact mvnndiodec 5
 contact via1 0
+contact padl 0
 contact via2 10
 contact mimcapcontact 40
 contact via3 10
@@ -83,10 +105,120 @@ contact mvpsc+v 5
 contact mvndic+v 5
 contact mvpdic+v 5
 contact mvnndic+v 5
+contact srammvpdc+v 5
+contact srammvndc+v 5
+contact srampdc+v 5
+contact sramndc+v 5
 contact ldndc+v 0
 contact ldpdc+v 0
 contact v+v2 0
 contact v2+v3 10
 contact v3+v4 10
 style metfill 1 2 1
+contact ndiffc 0
+contact pdiffc 0
+contact mvndiffc 0
+contact mvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact mvpsubdiffcont 0
+contact mvnsubdiffcont 0
+contact ldndiffc 0
+contact ldpdiffc 0
+contact srammvndc 0
+contact srammvpdc 0
+contact sramndc 0
+contact srampdc 0
+contact polycontact 0
+contact schottkyc 0
+contact pdiodec 0
+contact ndiodec 0
+contact nndiodec 0
+contact mvpdiodec 0
+contact mvndiodec 0
+contact mvnndiodec 0
+contact via1 0
+contact padl 0
+contact via2 0
+contact mimcapcontact 0
+contact via3 0
+contact via4 0
+contact pc+v 0
+contact ndc+v 0
+contact pdc+v 0
+contact nsc+v 0
+contact psc+v 0
+contact ndic+v 0
+contact nndic+v 0
+contact pdic+v 0
+contact skdic+v 0
+contact mvndc+v 0
+contact mvpdc+v 0
+contact mvnsc+v 0
+contact mvpsc+v 0
+contact mvndic+v 0
+contact mvpdic+v 0
+contact mvnndic+v 0
+contact srammvpdc+v 0
+contact srammvndc+v 0
+contact srampdc+v 0
+contact sramndc+v 0
+contact ldndc+v 0
+contact ldpdc+v 0
+contact v+v2 0
+contact v2+v3 0
+contact v3+v4 0
 style drc 5 10 1
+contact ndiffc 0
+contact pdiffc 0
+contact mvndiffc 0
+contact mvpdiffc 0
+contact psubdiffcont 0
+contact nsubdiffcont 0
+contact mvpsubdiffcont 0
+contact mvnsubdiffcont 0
+contact ldndiffc 0
+contact ldpdiffc 0
+contact srammvndc 0
+contact srammvpdc 0
+contact sramndc 0
+contact srampdc 0
+contact polycontact 0
+contact schottkyc 0
+contact pdiodec 0
+contact ndiodec 0
+contact nndiodec 0
+contact mvpdiodec 0
+contact mvndiodec 0
+contact mvnndiodec 0
+contact via1 0
+contact padl 0
+contact via2 0
+contact mimcapcontact 0
+contact via3 0
+contact via4 0
+contact pc+v 0
+contact ndc+v 0
+contact pdc+v 0
+contact nsc+v 0
+contact psc+v 0
+contact ndic+v 0
+contact nndic+v 0
+contact pdic+v 0
+contact skdic+v 0
+contact mvndc+v 0
+contact mvpdc+v 0
+contact mvnsc+v 0
+contact mvpsc+v 0
+contact mvndic+v 0
+contact mvpdic+v 0
+contact mvnndic+v 0
+contact srammvpdc+v 0
+contact srammvndc+v 0
+contact srampdc+v 0
+contact sramndc+v 0
+contact ldndc+v 0
+contact ldpdc+v 0
+contact v+v2 0
+contact v2+v3 0
+contact v3+v4 0

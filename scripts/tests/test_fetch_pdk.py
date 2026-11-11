@@ -57,23 +57,37 @@ def quiet(fn, *args):
 
 
 class DataSetTable(unittest.TestCase):
-    def test_sky130_pin_and_digest_unchanged(self):
+    def test_sky130_pin_and_digest_of_m4_design_d15(self):
         sky = fetch.DATA_SETS["sky130"]
-        self.assertEqual(sky.version, "0fe599b2afb6708d281543108caf8310912f54af")
-        self.assertEqual(sky.tree_sha256, "b3d8b88e421f8ec1063880ac87a644d4a348e85b0554c73483927e650ea7705f")
+        self.assertEqual(sky.version, "5740c4a81c42f9fe4af5ef2ee258a99151053d28")
+        self.assertEqual(sky.tree_sha256, "b3ee85f299bccc6fb910a186bfd75993ec6594dff02362d60f813332f620bed5")
         self.assertEqual(sky.subset, ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag"))
         # The M1 names stay (tools/golden/goldenlib/external.py reads PDK_VERSION).
         self.assertEqual(fetch.PDK_VERSION, sky.version)
         self.assertEqual(fetch.PDK_TREE_SHA256, sky.tree_sha256)
 
+    def test_ciel_release_stands_in_for_the_spec_pin(self):
+        # Q-SCRIPT-9: the specs pin open_pdks c6df28c1; ciel has no release of it, 5740c4a8 is the stand-in.
+        self.assertEqual(fetch.OPEN_PDKS_SPEC_PIN, "c6df28c1fccb05c286aa0a15e9c4c7dcd8502607")
+        self.assertNotEqual(fetch.OPEN_PDKS_PIN, fetch.OPEN_PDKS_SPEC_PIN)
+        self.assertIn("c6df28c1", fetch.__doc__)
+
     def test_gf180_and_ihp_releases_of_design_d15(self):
         gf = fetch.DATA_SETS["gf180mcu"]
         ihp = fetch.DATA_SETS["ihp"]
         self.assertEqual(gf.version, fetch.DATA_SETS["sky130"].version)  # same open_pdks snapshot
+        self.assertEqual(gf.tree_sha256, "6a3b1236bff022f7303deb6774fb686a10283fd1d3678f33d8dfbfb1d9a867eb")
         self.assertEqual(gf.subset, ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag"))
-        self.assertEqual(ihp.version, "ddb601a4a4473163e1ed6df416b885df18b4ac03")
+        self.assertEqual(ihp.version, "5e6d592e4002946a4616f798c357f0f3c06cf3b6")
+        self.assertEqual(ihp.tree_sha256, "e01cd6e2db86f2d0a189f006f93f7f3098a2839f8034013f36037ec7a1d4a1d3")
         self.assertEqual(ihp.subset, ("ihp-sg13g2/libs.tech/magic",))
         self.assertEqual(ihp.family, "ihp-sg13")  # Hefesto's family directory for ihp-sg13g2
+
+    def test_cache_keys_of_the_m4_pins(self):
+        self.assertEqual([data.cache_key() for data in fetch.DATA_SETS.values()],
+                         ["pdk-sky130-5740c4a81c42-b3ee85f299bccc6f",
+                          "pdk-gf180mcu-5740c4a81c42-6a3b1236bff022f7",
+                          "pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0"])
 
     def test_every_set_has_a_full_digest_and_a_subset_inside_its_variant(self):
         for data in fetch.DATA_SETS.values():
@@ -89,7 +103,7 @@ class DataSetTable(unittest.TestCase):
 
     def test_install_script_names_variant_pin_library_and_each_subset(self):
         script = fetch.DATA_SETS["ihp"].install_script()
-        self.assertTrue(script.startswith("pdk install ihp-sg13g2 ddb601a4a4473163e1ed6df416b885df18b4ac03 "
+        self.assertTrue(script.startswith("pdk install ihp-sg13g2 5e6d592e4002946a4616f798c357f0f3c06cf3b6 "
                                           "-lib sg13g2_pr "))
         self.assertIn("-only ihp-sg13g2/libs.tech/magic/", script)
         self.assertEqual(fetch.DATA_SETS["gf180mcu"].install_script().count("-only "), 2)
