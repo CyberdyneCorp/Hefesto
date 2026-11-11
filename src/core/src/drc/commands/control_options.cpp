@@ -22,6 +22,8 @@
 
 #include "cell/io_session.hpp"
 #include "command_internal.hpp"
+#include "hefesto/cmd/coordinates.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/drc/rules/query.hpp"
 #include "hefesto/drc/rules/style.hpp"
@@ -81,6 +83,30 @@ CommandResult set_style(Request& q, const std::string& name) {
 /// cmdScaleCoord(w, text, FALSE, TRUE, 1) for *halo and *stepsize.
 diag::Outcome<db::Coord> distance(const Request& q, const std::string& text) {
   return db::cmdutil::parse_distance(q.s, text, cmd::Axis::x, false);
+}
+
+// DRC_STEPSIZE with a value. Magic stores any value, and one <= 0 divides
+// by zero or never ends the check-square loops (a crash or a hang); like the
+// tech-file `stepsize` statement, Hefesto rejects it and keeps the current
+// step size, in both magic-compat settings (Q-DRC-24, fix). A word that does
+// not start with a number reads as 0 and is rejected the same way; parse
+// warnings are reported only for an accepted value.
+CommandResult set_step_size(Request& q, const std::string& text) {
+  diag::CollectingSink parse_warnings;
+  const auto d = cmd::parse_distance(text, db::cmdutil::coordinate_units(q.s), cmd::DistanceRequest{}, &parse_warnings);
+  if (!d.ok()) {
+    return CommandResult::failure(db::cmdutil::bad_argument(d.error().text));
+  }
+  if (d.value() <= 0) {
+    warn(q, "Step size must be a positive integer.");
+    return CommandResult::success();
+  }
+  for (const diag::Diagnostic& w : parse_warnings.take()) {
+    q.ctx.emit(w);
+  }
+  q.editor.drc.step_size = d.value();
+  print(q, "DRC step size is now " + units_text(q, d.value()) + ")");
+  return CommandResult::success();
 }
 
 }  // namespace
@@ -160,13 +186,7 @@ CommandResult drc_showint(Request& q) {
 CommandResult drc_stepsize(Request& q) {
   DrcSession& drc = q.editor.drc;
   if (q.argc() == 3) {
-    const auto d = distance(q, q.argv(2));
-    if (!d.ok()) {
-      return CommandResult::failure(d.error());
-    }
-    drc.step_size = d.value();
-    print(q, "DRC step size is now " + units_text(q, d.value()) + ")");
-    return CommandResult::success();
+    return set_step_size(q, q.argv(2));
   }
   const std::int64_t step = current_step_size(q.editor);
   const std::int64_t recommended = 16 * std::int64_t{drc.rules->halo().value};

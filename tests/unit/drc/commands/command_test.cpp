@@ -12,6 +12,7 @@
 
 #include "drc_fixture.hpp"
 #include "hefesto/drc/commands/command.hpp"
+#include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/line.hpp"
@@ -317,6 +318,36 @@ TEST_CASE("drc *stepsize sets and reports the step size", "[cap:drc-commands][re
   CHECK(f.out("drc *stepsize") ==
         "DRC step size is 100 internal units (100 DRC units)\n"
         "Recommended step size is 320 internal units (320 DRC units)\n");
+}
+
+TEST_CASE("drc *stepsize rejects a step size that is not positive (Q-DRC-24, both modes)",
+          "[cap:drc-commands][req:drc *halo and drc *stepsize]") {
+  // Regression: Magic stores 0 or a negative value and then divides by it
+  // (SIGFPE) or loops forever; Hefesto kept it and silently checked with a
+  // step of 1. The value is rejected and the current step size kept.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    DrcFixture f;
+    f.compat(compat);
+    style(f, 20, 320);
+    CHECK(f.out("drc *stepsize 100") == "DRC step size is now 100 internal units (100 DRC units))\n");
+    for (const char* word : {"0", "-5", "abc", "-0"}) {
+      INFO(word);
+      const auto r = f.run(std::string{"drc *stepsize "} + word);
+      CHECK(r.ok());
+      CHECK(DrcFixture::texts(r) == "Step size must be a positive integer.\n");
+      CHECK(f.editor.drc.step_size == 100);
+      CHECK(drc::current_step_size(f.editor) == 100);
+    }
+    CHECK(f.out("drc *stepsize") ==
+          "DRC step size is 100 internal units (100 DRC units)\n"
+          "Recommended step size is 320 internal units (320 DRC units)\n");
+    // Without an earlier override the style's step size stays in effect.
+    f.editor.drc.step_size.reset();
+    CHECK(f.out("drc *stepsize 0") == "Step size must be a positive integer.\n");
+    CHECK_FALSE(f.editor.drc.step_size.has_value());
+    CHECK(f.out("drc *stepsize") == "DRC step size is 320 internal units (320 DRC units)\n");
+  }
 }
 
 // --- drc *flatcheck and drc *showint ---------------------------------------------------------

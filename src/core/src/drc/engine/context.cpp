@@ -42,6 +42,10 @@ std::int32_t current_halo(const editor::EditorState& editor) {
 
 std::int32_t current_step_size(const editor::EditorState& editor) {
   const std::int32_t step = editor.drc.step_size.value_or(editor.drc.rules->step_size());
+  // `drc *stepsize` never stores a value <= 0 (Q-DRC-24). A grid rescale
+  // that rounds the step down to 0, or a CIF scalefactor above 6400 for the
+  // default step, still can (Q-DRC-25, open): the guard keeps the checker
+  // from dividing by zero until that question is decided.
   return step > 0 ? step : 1;
 }
 
