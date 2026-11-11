@@ -244,6 +244,7 @@ rulestats: `Total number of rules specifed in tech file: %d`, `Edge rules optimi
 Compatibility: behavioral
 
 - A `*stepsize` value ≤ 0, including a word that does not start with a number (which parses as 0), prints `Step size must be a positive integer.` (the tech-file `stepsize` message), prints nothing else and keeps the current step size, in both `magic-compat` settings (Magic stores it and then divides by zero or never ends the check, a crash or a hang; see Q-DRC-24, resolution: fix). `drc style` and `tech load` restore the style's step size.
+- A grid rescale scales a `*stepsize` value as it scales the style's step size, rounding down but never below 1 (capability `drc-rule-language`, "Halo and step size"; Q-DRC-25, resolution: fix).
 
 Messages, with DRC units = internal·N/D (integer division): set halo below maximum: `Warning: rulechecking limited to halo of <h> internal units (<u> DRC units).`; otherwise `DRC checks all rules (halo of <h> internal units, or <u> DRC units)`; query: `DRC halo is <h> internal units (<u> DRC units)` plus `Maximum rule distance is <H> internal units (<U> DRC units)` if different. Step size set: `DRC step size is now <s> internal units (<u> DRC units))`; query: `DRC step size is <s> internal units (<u> DRC units)` plus `Recommended step size is <16·H> internal units (<…> DRC units)` when different.
 

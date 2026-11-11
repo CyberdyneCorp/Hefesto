@@ -219,8 +219,9 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 
 ### Q-DRC-25: A grid rescale or a large CIF scalefactor can leave a step size of 0
 - Kind: bug
-- Status: open
+- Status: approved (recommendation drafted and approved 2026-11-10)
 - Magic behavior: `DRCTechScale` rescales `DRCStepSize` and the style's step size with `*= scaled; /= scalen` (rounding down), so a rescale that makes the internal grid coarser by more than the step size leaves 0; the default step of a style without rules (`DRCTechHalo == 0`) is `6400 / CIFCurStyle->cs_scaleFactor`, which is 0 for a scale factor above 6400. A step size of 0 then divides by zero in `drcCheckTile` and `DRCInteractionCheck`, as in Q-DRC-24.
 - Evidence: drc/DRCtech.c:DRCTechScale (4586-4593), drc/DRCtech.c:drcTechFinalStyle (4244-4256), drc/DRCcontin.c:drcCheckTile (667-672), drc/DRCsubcell.c:DRCInteractionCheck (789-799). Hefesto: src/core/src/drc/rules/style.cpp (rescale of the style step and of the `*stepsize` override), src/core/src/drc/rules/cif_catalog.cpp:default_step_size; src/core/src/drc/engine/context.cpp:current_step_size keeps a guard that uses 1 for any value ≤ 0 (found while fixing Q-DRC-24, 2026-11-10).
 - Options: replicate (impossible: crash or hang) | fix (a rescaled or default step size never goes below 1) | fix (a step size that would be 0 falls back to 16 × halo, or 64 without a halo)
 - Recommendation: fix — never let a rescaled or default step size go below 1 (X-2 tier 1, "crashes"), clamped where it is computed (rescale and `default_step_size`) rather than at use, in both modes; `current_step_size` can then assert. No golden case (Magic crashes).
+- Resolution: fix — never let a rescaled or default step size go below 1 (X-2 tier 1, "crashes"), clamped where it is computed (the style and `drc *stepsize` rescale in src/core/src/drc/rules/style.cpp and `CifCatalog::default_step_size`), in both modes; `current_step_size` asserts a positive step. No golden case (Magic crashes). Approved 2026-11-10.

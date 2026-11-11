@@ -214,14 +214,22 @@ Compatibility: behavioral
 - "Top labels only" copies only the labels of the root level. "No labels" copies none.
 - Properties other than `MASKHINTS_*` are not copied. Which instances' mask hints are copied is specified by capability `mask-hints`, "Copying, flattening and transforming hints" (Q-MISC-15).
 - The destination must not already exist unless a box-limited flatten is requested.
+- The flattened cell itself is the root level. With `magic-compat` ON, as in Magic, a restricting descend mode (`-doproperty`, `-nosubcircuits`, `-novendor`) also applies its test to the root level: when the flattened cell has no `flatten` property, is a subcircuit (has ports) or is a vendor-GDS cell respectively, no paint, mask hints, path-named labels or kept instances are copied and the new cell is empty, except that "top labels only" still copies the root level's labels. With `magic-compat` OFF the root level is always copied and the mode applies only to the uses below it (see Q-MODEL-33, resolution: compat). `xor`, which flattens its source the same way, follows the same rule.
 
-(Magic ref: commands/CmdFI.c:1933-2010,2040-2250, database/DBcellcopy.c:284-305,551-560,1730-1790)
+(Magic ref: commands/CmdFI.c:1933-2010,2040-2250, database/DBcellcopy.c:284-305,551-560,1359,1435,1730-1790, database/DBcellsrch.c:245,586,845, database/DBcellsubr.c:61-108)
 
 #### Scenario: Hierarchical label naming
 - **GIVEN** `top` containing use `x_0` of `mid`, which contains use `y_1` of `leaf` with label `A` at `(1,1)`
 - **WHEN** `top` is flattened into `flat`
 - **THEN** `flat` SHALL contain a label with text `x_0/y_1.A`
 - **AND** that label SHALL NOT be a port
+
+#### Scenario: Restricting flatten of a root level that fails its own test
+- **GIVEN** `top` with a port label `P`, metal1 paint, no `flatten` property and an unported child use `c_0`
+- **WHEN** `top` is flattened into `flat` with `-nosubcircuits`, or with `-doproperty`
+- **THEN** with `magic-compat` ON `flat` SHALL be empty (no paint, labels or uses) (golden MODEL-G-060)
+- **AND** with `-dotoplabels` added, `flat` SHALL contain only the label `P`
+- **AND** with `magic-compat` OFF `flat` SHALL contain `top`'s paint and label `P`, and `c_0` flattened (`-nosubcircuits`) or kept as an instance (`-doproperty`)
 
 ### Requirement: Flattening an instance in place
 
