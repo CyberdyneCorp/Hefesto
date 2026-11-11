@@ -404,5 +404,5 @@ TEST_CASE("the ? and ! macros run drc why and drc find end to end",
   for (const auto& r : results) {
     CHECK(r.ok());
   }
-  CHECK(f.editor.box == drc::error_tiles(*top)[1]);
+  CHECK(f.editor.box == drc::error_tiles(*top, true)[1]);
 }

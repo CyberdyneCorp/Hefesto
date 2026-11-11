@@ -175,10 +175,10 @@ tech::TypeMask all_but_space() {
   return mask;
 }
 
-std::size_t error_tile_count(const db::CellDef& def) {
+std::size_t error_tile_count(const db::CellDef& def, bool magic_compat) {
   std::size_t count = 0;
   if (def.plane_count() > tech::kPlaneDrcError) {
-    def.plane(tech::kPlaneDrcError).enumerate(def.bbox(), all_but_space(), [&](const db::TileView&) {
+    def.plane(tech::kPlaneDrcError).enumerate(error_area(def, magic_compat), all_but_space(), [&](const db::TileView&) {
       ++count;
       return true;
     });
@@ -187,18 +187,18 @@ std::size_t error_tile_count(const db::CellDef& def) {
 }
 
 // drcCountFunc: each definition once (the first visit decides the descent).
-void count_in(const db::CellDef& def, const db::Rect& area, bool descend,
+void count_in(const db::CellDef& def, const db::Rect& area, bool descend, bool magic_compat,
               std::map<const db::CellDef*, std::size_t>& counts) {
   if (counts.contains(&def)) {
     return;  // seen before: neither counted nor searched again
   }
-  counts.emplace(&def, error_tile_count(def));
+  counts.emplace(&def, error_tile_count(def, magic_compat));
   if (!descend || !def.flags().available) {
     return;
   }
   for (const db::CellUse* use : db::uses_in_search_order(def)) {
     for_each_element(*use, area, [&](const db::Transform& et) {
-      count_in(*use->def, connect::to_local(et, area), true, counts);
+      count_in(*use->def, connect::to_local(et, area), true, magic_compat, counts);
     });
   }
 }
@@ -349,7 +349,7 @@ Located next_area(const std::vector<db::Rect>& tiles, FindSearch& search) {
 /// CmdDrc's FIND loop: try error `nth`, report its whys, step past areas
 /// that report nothing until one does or the search returns to its start.
 FindResult run_search(editor::EditorState& editor, const db::CellDef& root, FindSearch& search) {
-  const std::vector<db::Rect> tiles = error_tiles(root);
+  const std::vector<db::Rect> tiles = error_tiles(root, editor.drc.compat_settings().magic_compat);
   FindResult out;
   std::int64_t start = -1;
   for (;;) {
@@ -428,13 +428,24 @@ IgnoreList matching_whys(const WhyTable& why, std::string_view text, bool magic_
   return out;
 }
 
-std::vector<CellErrorCount> count_errors(const db::CellDef& root, const db::Rect& area, bool recurse) {
+db::Rect error_area(const db::CellDef& def, bool magic_compat) {
+  // With magic-compat ON the bounding box already covers the error plane
+  // (Q-MODEL-19), stale while a check is pending as in Magic; OFF it covers
+  // paint only, so error tiles beyond the paint would never be found.
+  if (magic_compat || def.plane_count() <= tech::kPlaneDrcError) {
+    return def.bbox();
+  }
+  return db::include(def.bbox(), def.plane(tech::kPlaneDrcError).bounding_box());
+}
+
+std::vector<CellErrorCount> count_errors(const db::CellDef& root, const db::Rect& area, bool recurse,
+                                         bool magic_compat) {
   std::vector<CellErrorCount> out;
   if (!root.flags().available) {
     return out;
   }
   std::map<const db::CellDef*, std::size_t> counts;
-  count_in(root, area, recurse, counts);
+  count_in(root, area, recurse, magic_compat, counts);
   for (const auto& [def, count] : counts) {
     if (count > 0) {
       out.push_back(CellErrorCount{def, count});
@@ -445,10 +456,11 @@ std::vector<CellErrorCount> count_errors(const db::CellDef& root, const db::Rect
   return out;
 }
 
-std::vector<db::Rect> error_tiles(const db::CellDef& cell) {
+std::vector<db::Rect> error_tiles(const db::CellDef& cell, bool magic_compat) {
   std::vector<db::Rect> out;
   if (cell.plane_count() > tech::kPlaneDrcError) {
-    cell.plane(tech::kPlaneDrcError).enumerate(cell.bbox(), all_but_space(), [&](const db::TileView& t) {
+    const db::Rect area = error_area(cell, magic_compat);
+    cell.plane(tech::kPlaneDrcError).enumerate(area, all_but_space(), [&](const db::TileView& t) {
       out.push_back(t.area);
       return true;
     });

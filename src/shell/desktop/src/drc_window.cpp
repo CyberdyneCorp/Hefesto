@@ -81,7 +81,8 @@ std::size_t MainWindow::count_root_errors(const db::CellDef* root) const {
   // `drc list count total`: DRCCount over the window's area (Magic's DRC=N).
   const db::DatabaseLock::Shared reading(ctx_.core.editor().database_lock);
   std::size_t total = 0;
-  for (const drc::CellErrorCount& c : drc::count_errors(*root, win->mapping().surface, false)) total += c.count;
+  const bool compat = ctx_.core.editor().drc.compat_settings().magic_compat;
+  for (const drc::CellErrorCount& c : drc::count_errors(*root, win->mapping().surface, false, compat)) total += c.count;
   return total;
 }
 
@@ -185,7 +186,8 @@ void MainWindow::rebuild_drc_list(const db::CellDef& root) {
     }
     drc::WhyOptions options;
     options.all = true;
-    for (drc::WhyGroup& g : drc::why_errors(ed, root, root.bbox(), options)) {
+    const db::Rect area = drc::error_area(root, ed.drc.compat_settings().magic_compat);
+    for (drc::WhyGroup& g : drc::why_errors(ed, root, area, options)) {
       const bool is_ignored = ignored.contains(g.text);
       groups.push_back(DrcGroup{std::move(g.text), std::move(g.areas), is_ignored});
     }
