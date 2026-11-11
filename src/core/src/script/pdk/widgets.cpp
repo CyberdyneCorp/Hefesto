@@ -22,24 +22,37 @@ namespace {
 
 constexpr std::string_view kSkipped = "SCRIPT-PDK-004";
 
+// `::hefesto::pdk::widget kind file line procedure words...`: where the words start.
+constexpr std::size_t kWordsAt = 4;
+
 // The Tcl side: every intercepted statement reaches the native
-// `::hefesto::pdk::widget <kind> <file> <line> <words...>`. The location is
-// the innermost frame Tcl knows a file for (TIP 280: also the body of a
-// procedure defined in a sourced file), else the file being sourced.
+// `::hefesto::pdk::widget <kind> <file> <line> <proc> <words...>`. The
+// location is the innermost frame Tcl knows a file for (TIP 280: also the
+// body of a procedure defined in a sourced file), else the file being
+// sourced; the procedure is the innermost procedure frame (`proc` key) that
+// is not one of the interception procedures.
 constexpr std::string_view kCommonScript = R"tcl(
 namespace eval ::hefesto::pdk {}
+proc ::hefesto::pdk::ours {name} {
+    if {$name eq "::unknown" || [string match ::hefesto::pdk::* $name]} {return 1}
+    return [string match "::hefesto::pdk::forward *" [string trim [info body $name]]]
+}
 proc ::hefesto::pdk::where {} {
+    set caller ""
     for {set level [expr {[info frame] - 1}]} {$level > 0} {incr level -1} {
         set frame [info frame $level]
+        set name [expr {[dict exists $frame proc] ? [dict get $frame proc] : ""}]
+        if {$name ne "" && [::hefesto::pdk::ours $name]} {continue}
+        if {$caller eq ""} {set caller $name}
         if {[dict exists $frame file] && [dict exists $frame line]} {
-            return [list [dict get $frame file] [dict get $frame line]]
+            return [list [dict get $frame file] [dict get $frame line] $caller]
         }
     }
-    return [list [info script] 0]
+    return [list [info script] 0 $caller]
 }
 proc ::hefesto::pdk::forward {kind words} {
-    lassign [::hefesto::pdk::where] file line
-    ::hefesto::pdk::widget $kind $file $line {*}$words
+    lassign [::hefesto::pdk::where] file line procedure
+    ::hefesto::pdk::widget $kind $file $line $procedure {*}$words
 }
 proc ::tk_getOpenFile {args} {
     return [::hefesto::pdk::open_file {*}$args]
@@ -180,19 +193,21 @@ WidgetInterceptor::WidgetInterceptor(MenuModel& menus, platform::FilePicker& pic
     : menus_(menus), picker_(picker), events_(events) {}
 
 void WidgetInterceptor::skipped(const cmd::Invocation& inv) {
-  // inv.args: kind, file, line, words...
-  const std::vector<std::string> words(inv.args.begin() + 3, inv.args.end());
-  SkippedStatement statement{tcl_list(words), ScriptLocation{inv.args[1], parse_line(inv.args[2])}};
+  // inv.args: kind, file, line, procedure, words...
+  const std::vector<std::string> words(inv.args.begin() + kWordsAt, inv.args.end());
+  SkippedStatement statement{tcl_list(words), ScriptLocation{inv.args[1], parse_line(inv.args[2])}, inv.args[3]};
   events_.publish_skipped_statement(statement);
   if (sink_ != nullptr) {
-    sink_->emit(diag::make(kSkipped,
-                           "Skipped widget statement (no Tk in Hefesto): " + statement.statement,
-                           statement.location));
+    std::string text = "Skipped widget statement (no Tk in Hefesto): " + statement.statement;
+    if (!statement.procedure.empty()) {
+      text += " (in " + statement.procedure + ")";
+    }
+    sink_->emit(diag::make(kSkipped, text, statement.location));
   }
 }
 
 cmd::CommandResult WidgetInterceptor::menu_command(std::string_view menu, const cmd::Invocation& inv) {
-  const std::vector<std::string> words(inv.args.begin() + 3, inv.args.end());  // path, subcommand, ...
+  const std::vector<std::string> words(inv.args.begin() + kWordsAt, inv.args.end());  // path, subcommand, ...
   if (words.size() >= 3 && words[1] == "add" && supported_type(words[2])) {
     menus_.append(menu, entry_item(words, 2));
     events_.publish_menu_model_changed();
@@ -239,7 +254,7 @@ void WidgetInterceptor::define_common(Interpreter& interp) {
     return;
   }
   interp.define_command("::hefesto::pdk::widget", [this](const cmd::Invocation& inv) {
-    if (inv.args.size() < 4) {
+    if (inv.args.size() <= kWordsAt) {
       return cmd::CommandResult::success();
     }
     const std::string& kind = inv.args[0];
@@ -249,8 +264,9 @@ void WidgetInterceptor::define_common(Interpreter& interp) {
     if (kind == "file") {
       return menu_command("File", inv);
     }
-    if (kind == "titlebar" && inv.args.size() >= 5 && inv.args[4] == "cget") {
-      return cmd::CommandResult::failure(diag::make("SCRIPT-TCL-001", "invalid command name \"" + inv.args[3] + "\""));
+    if (kind == "titlebar" && inv.args.size() > kWordsAt + 1 && inv.args[kWordsAt + 1] == "cget") {
+      return cmd::CommandResult::failure(
+          diag::make("SCRIPT-TCL-001", "invalid command name \"" + inv.args[kWordsAt] + "\""));
     }
     skipped(inv);
     return cmd::CommandResult::success();

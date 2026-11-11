@@ -34,6 +34,10 @@
 #include "hefesto/script/pdk/widgets.hpp"
 #include "hefesto/script/types.hpp"
 
+namespace hefesto::editor {
+struct EditorState;
+}
+
 namespace hefesto::shell {
 
 struct MenuBarItem {
@@ -94,6 +98,13 @@ struct MenuBarInputs {
 [[nodiscard]] MenuBarView menu_bar_view(const gui::WrapperMenuModel& wrapper, const script::MenuModel& pdk_menus,
                                         const pcell::ToolkitMenus& toolkit, const MenuBarInputs& inputs);
 
+/// The bar of the session's layout window, the wrapper frame `.layout1`
+/// (gui::adopt_wrapper): Magic's wrapper menus, the edits the PDK made
+/// through the frame's WidgetInterceptor (ProjectInterpreter::menu_model),
+/// the toolkit menus of every frame (the desktop has one layout window) and
+/// the check items' values from the project interpreter.
+[[nodiscard]] MenuBarView session_menu_bar(const editor::EditorState& editor, bool scripts_declined);
+
 /// The script choosing `item` runs: a command item its command; a check
 /// item first sets its variable to the toggled value (Tk's checkbutton
 /// -variable), then runs its command.
@@ -103,8 +114,9 @@ struct MenuBarInputs {
 [[nodiscard]] std::size_t menu_bar_signature(const MenuBarView& view);
 
 /// One Diagnostics row per statement WidgetInterceptor skipped (board tile
-/// 11): "▲ SCRIPT-PDK-004 skipped widget statement <file>:<line>" and the
-/// statement on the next line.
+/// 11): "▲ SCRIPT-PDK-004 skipped widget statement <file>:<line>", the
+/// statement on the next line and, when it ran in a procedure, "in
+/// <procedure> · evaluation continued" (without the leading `::`).
 [[nodiscard]] std::string skipped_statement_row(const script::SkippedStatement& statement);
 
 /// The status-bar message after a window opened with skipped statements:

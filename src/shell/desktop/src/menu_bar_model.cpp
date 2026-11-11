@@ -7,6 +7,11 @@
 #include <cctype>
 #include <functional>
 
+#include "hefesto/editor/editor_state.hpp"
+#include "hefesto/gui/wrapper.hpp"
+#include "hefesto/script/interp.hpp"
+#include "hefesto/shell/pcell_dialog_model.hpp"
+
 namespace hefesto::shell {
 
 namespace {
@@ -193,6 +198,20 @@ MenuBarView menu_bar_view(const gui::WrapperMenuModel& wrapper, const script::Me
   return view;
 }
 
+MenuBarView session_menu_bar(const editor::EditorState& editor, bool scripts_declined) {
+  script::Interpreter* interp = editor.script.interp.get();
+  MenuBarInputs inputs;
+  inputs.frame = {};  // the toolkit menus of every frame: the desktop has one layout window
+  inputs.scripts_declined = scripts_declined;
+  inputs.option = [interp](std::string_view variable) -> std::optional<bool> {
+    if (interp == nullptr) return std::nullopt;
+    const auto value = interp->get_var(variable);
+    if (!value) return std::nullopt;
+    return tcl_true(value->to_string());
+  };
+  return menu_bar_view(gui::wrapper_menus(".layout1"), editor.script.menu_model, editor.script.gencell.menus, inputs);
+}
+
 std::string menu_item_script(const MenuBarItem& item) {
   if (item.kind != Kind::check || item.variable.empty()) return item.script;
   const std::string set = "set ::" + item.variable + " " + (item.checked ? "0" : "1");
@@ -216,7 +235,13 @@ std::size_t menu_bar_signature(const MenuBarView& view) {
 std::string skipped_statement_row(const script::SkippedStatement& statement) {
   std::string where = file_name(statement.location.file);
   if (statement.location.line > 0) where += ":" + std::to_string(statement.location.line);
-  return "▲ SCRIPT-PDK-004 skipped widget statement " + where + "\n" + statement.statement;
+  std::string row = "▲ SCRIPT-PDK-004 skipped widget statement " + where + "\n" + statement.statement;
+  if (!statement.procedure.empty()) {
+    const std::string_view name = std::string_view{statement.procedure}.substr(
+        statement.procedure.starts_with("::") ? 2 : 0);
+    row += "\nin " + std::string{name} + " · evaluation continued";
+  }
+  return row;
 }
 
 std::string skipped_statements_message(const std::vector<script::SkippedStatement>& statements) {

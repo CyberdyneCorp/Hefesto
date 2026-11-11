@@ -152,6 +152,9 @@ TEST_CASE("Unknown widget statement", "[cap:scripting-pdk-integration][req:Wrapp
   REQUIRE(w.skips.seen.size() == 2);
   CHECK(w.skips.seen[0].statement == ".layout1.pane.top.titlebar.mbuttons.cell.toolmenu add command -label X -command y");
   CHECK(w.skips.seen[1].statement == "winfo exists .x");
+  // Board M4-Menu-Bar note 11: each row names the procedure the statement ran in.
+  CHECK(w.skips.seen[0].procedure == "::mypdk::addtechmenu");
+  CHECK(w.skips.seen[1].procedure == "::mypdk::addtechmenu");
   const auto diagnostics = w.sink.snapshot();
   REQUIRE(diagnostics.size() == 2);
   CHECK(diagnostics[0].code == "SCRIPT-PDK-004");
@@ -177,6 +180,36 @@ TEST_CASE("skipped statements while a script is sourced name its file and line",
         std::filesystem::weakly_canonical(dir.path() / "menu.tcl"));
   CHECK(w.skips.seen[0].location.line == 2);
   CHECK(w.skips.seen[1].location.line == 3);
+  CHECK(w.skips.seen[0].procedure.empty());  // the file's top level
+  CHECK(w.skips.seen[1].procedure.empty());
+}
+
+TEST_CASE("a skipped statement names the procedure it ran in",
+          "[cap:scripting-pdk-integration][req:Wrapper widget operations in PDK menu callbacks]") {
+  WidgetSession w;
+  TempDir dir;
+  // A procedure defined in a sourced file (TIP 280 location) and one defined
+  // without a file: both are named; the interception procedures never are.
+  write_file(dir.path() / "menus.tcl",
+             "namespace eval mypdk {}\n"
+             "proc mypdk::inner {f} {\n"
+             "   wm geometry $f 900x700\n"
+             "   ${f}.extra configure -x 1\n"
+             "}\n");
+  REQUIRE(w.s.tcl().source(dir.path() / "menus.tcl").ok());
+  w.s.eval("proc ::outer {} { bind . <Key> {} }");
+  w.s.eval("mypdk::inner .layout1");
+  w.s.eval("::outer");
+  const auto diagnostics = w.sink.snapshot();
+  REQUIRE(w.skips.seen.size() == 3);
+  CHECK(w.skips.seen[0].procedure == "::mypdk::inner");
+  CHECK(w.skips.seen[0].location.line == 3);
+  CHECK(w.skips.seen[1].procedure == "::mypdk::inner");  // through `unknown`
+  CHECK(w.skips.seen[1].location.line == 4);
+  CHECK(w.skips.seen[2].procedure == "::outer");
+  CHECK(w.skips.seen[2].statement == "bind . <Key> {}");
+  REQUIRE(diagnostics.size() == 3);
+  CHECK(diagnostics[0].text.find("(in ::mypdk::inner)") != std::string::npos);
 }
 
 TEST_CASE("unknown commands still fail through the chained handler",

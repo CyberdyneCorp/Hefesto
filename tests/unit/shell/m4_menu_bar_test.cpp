@@ -13,7 +13,27 @@
 #include <string>
 #include <vector>
 
+#include <unistd.h>
+
+#include <filesystem>
+#include <functional>
+#include <memory>
+
+#include "hefesto/app/project_file.hpp"
+#include "hefesto/app/startup.hpp"
+#include "hefesto/cmd/all_commands.hpp"
+#include "hefesto/cmd/dispatcher.hpp"
+#include "hefesto/cmd/registry.hpp"
+#include "hefesto/diag/sink.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gui/wrapper.hpp"
+#include "hefesto/platform/file_picker.hpp"
+#include "hefesto/platform/file_system.hpp"
+#include "hefesto/platform/services.hpp"
+#include "hefesto/script/events.hpp"
+#include "hefesto/script/project.hpp"
+#include "hefesto/settings/project_settings.hpp"
+#include "hefesto/shell/gui_script.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
 
 using namespace hefesto;
@@ -205,12 +225,194 @@ TEST_CASE("menu bar signature changes with the menus", "[cap:ui-gui-managers][re
 
 TEST_CASE("skipped widget statements become Diagnostics rows and one status message",
           "[cap:scripting-pdk-integration][req:Wrapper widget operations in PDK menu callbacks]") {
-  const script::SkippedStatement a{"wm geometry .layout1 900x700", {"/pdk/libs.tech/magic/mymenus.tcl", 57}};
+  const script::SkippedStatement a{"wm geometry .layout1 900x700", {"/pdk/libs.tech/magic/mymenus.tcl", 57}, {}};
   const script::SkippedStatement b{".layout1.titlebar.mbuttons.cell.toolmenu add command -label X -command y",
-                                   {"/pdk/libs.tech/magic/mymenus.tcl", 42}};
+                                   {"/pdk/libs.tech/magic/mymenus.tcl", 42}, "::sky130::addtechmenu"};
   CHECK(skipped_statement_row(a) == "▲ SCRIPT-PDK-004 skipped widget statement mymenus.tcl:57\nwm geometry .layout1 900x700");
+  // Board note 11: the procedure the statement ran in, as the board writes it.
+  CHECK(skipped_statement_row(b) ==
+        "▲ SCRIPT-PDK-004 skipped widget statement mymenus.tcl:42\n"
+        ".layout1.titlebar.mbuttons.cell.toolmenu add command -label X -command y\n"
+        "in sky130::addtechmenu · evaluation continued");
   CHECK(skipped_statements_message({a, b}) == "▲ 2 menu statements of mymenus.tcl were skipped");
   CHECK(skipped_statements_message({a}) == "▲ 1 menu statement of mymenus.tcl was skipped");
   CHECK(skipped_statements_message({}).empty());
   CHECK(collapse_spaces("Lock   Cell") == "Lock Cell");
+}
+
+// ---- the live menus of a real PDK startup ----------------------------------------------
+
+namespace {
+
+/// The sky130A reference version (tests/unit/common/reference_data.hpp
+/// kPdkVersion; that header is not on the shell tests' include path).
+constexpr std::string_view kPdkVersion = "5740c4a81c42f9fe4af5ef2ee258a99151053d28";
+
+/// True when scripts/fetch_pdk.py put the sky130A reference PDK in .cache/pdks.
+bool have_sky130a() {
+  const std::filesystem::path variant = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache/pdks/ciel/sky130/versions" /
+                                        std::string{kPdkVersion} / "sky130A";
+  std::error_code ec;
+  return std::filesystem::exists(variant / "libs.tech/magic/sky130A.magicrc", ec) &&
+         std::filesystem::exists(variant / "libs.tech/magic/sky130A.tech", ec);
+}
+
+/// What the script layer reports during the startup and the adoption.
+class Skips final : public script::ScriptObserver {
+ public:
+  void on_skipped_statement(const script::SkippedStatement& s) override { seen.push_back(s); }
+  std::vector<script::SkippedStatement> seen;
+};
+
+/// A desktop session as hefesto's window opens one (shell.cpp run_startup):
+/// a project pinned to the sky130A reference version, `app::run_startup`
+/// with the PDK store at .cache/pdks, then the window becomes the wrapper
+/// frame `.layout1` (gui::adopt_wrapper) and the bar is session_menu_bar.
+struct DesktopStartup {
+  platform::PortableServices services{platform::PortableOptions{{}, {}, false, true}};
+  settings::ProjectSettings project;
+  cmd::ScriptSession script_session{project};
+  cmd::CommandRegistry registry;
+  platform::ScriptedFilePicker picker;  // outlives the editor, which points at it
+  Skips skips;
+  editor::EditorState editor;
+  std::unique_ptr<cmd::Dispatcher> dispatcher;
+  std::filesystem::path dir = std::filesystem::temp_directory_path() /
+                              ("hefesto-shell-menus-" + std::to_string(::getpid()));
+  platform::LocalFileSystem fs;
+  app::StartupEnvironment env;
+  diag::CollectingSink sink;
+  std::function<cmd::CommandResult(cmd::CommandContext&)> probe;
+
+  DesktopStartup() {
+    REQUIRE(cmd::register_all_commands(registry));
+    REQUIRE_FALSE(registry
+                      .add({"shell_test_probe", "", "",
+                            [this](cmd::CommandContext& ctx, const cmd::Invocation&) { return probe(ctx); }})
+                      .has_value());
+    dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script_session);
+    dispatcher->set_editor(&editor);
+    editor.file_picker = &picker;
+    editor.script.events.add(skips);
+    std::filesystem::remove_all(dir);
+    env.home = dir / "home";
+    env.working_directory = dir / "work";
+    std::filesystem::create_directories(env.home);
+    std::filesystem::create_directories(env.working_directory);
+    env.pdk_root = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks";
+  }
+  ~DesktopStartup() {
+    editor.script.events.remove(skips);
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+  }
+  DesktopStartup(const DesktopStartup&) = delete;
+  DesktopStartup& operator=(const DesktopStartup&) = delete;
+
+  /// Opens the pinned project with its PDK scripts trusted, then adopts the window.
+  void open_trusted_project() {
+    app::ProjectFile file;
+    file.pdk = app::PdkPin{"sky130", "sky130A", std::string{kPdkVersion}, {}};
+    const auto folder = dir / "proj";
+    std::filesystem::create_directories(folder);
+    REQUIRE(app::save_project(fs, folder, file).ok());
+    env.project_folder = folder;
+    editor.script.pdk_trust.trust(script::PdkIdentity{"sky130", "sky130A", std::string{kPdkVersion}});
+    const auto started = app::run_startup(*dispatcher, project, fs, {}, env, sink);
+    for (const auto& d : sink.snapshot()) UNSCOPED_INFO(d.code << " " << d.text);
+    REQUIRE(started.ok());
+    REQUIRE(editor.script.interp != nullptr);
+    REQUIRE(editor.technology->name() == "sky130A");
+    REQUIRE(run("openwindow").ok());  // the desktop's layout window
+    probe = [](cmd::CommandContext& ctx) { return gui::adopt_wrapper(ctx, ".layout1"); };
+    REQUIRE(run("shell_test_probe").ok());
+  }
+
+  cmd::CommandResult run(std::string_view line) {
+    return dispatcher->execute(cmd::Invocation{std::string{line}, {}, cmd::Origin::gui, std::nullopt});
+  }
+};
+
+std::vector<std::string> menu_titles(const MenuBarView& view) {
+  std::vector<std::string> out;
+  for (const MenuBarMenu& m : view.menus) out.push_back(m.title);
+  return out;
+}
+
+}  // namespace
+
+TEST_CASE("the trusted sky130A startup puts its device menus on the menu bar",
+          "[cap:scripting-pdk-integration][req:Wrapper widget operations in PDK menu callbacks]") {
+  if (!have_sky130a()) {
+    SKIP("the sky130A reference PDK is not in .cache/pdks (scripts/fetch_pdk.py)");
+  }
+  DesktopStartup s;
+  s.open_trusted_project();
+  // Scenario "sky130 menus in a new window", as the desktop's bar shows it.
+  const MenuBarView view = session_menu_bar(s.editor, false);
+  CHECK(menu_titles(view) == std::vector<std::string>{"File", "Edit", "Cell", "Window", "Layers", "Drc", "Options",
+                                                 "Devices 1", "Devices 2"});
+  REQUIRE(view.divider == 7);
+  const MenuBarMenu& devices1 = menu(view, "Devices 1");
+  const MenuBarMenu& devices2 = menu(view, "Devices 2");
+  CHECK(devices1.pdk);
+  CHECK(devices2.pdk);
+  CHECK(devices1.source == "Devices 1 · pdk1");
+  const MenuBarItem* nmos = item(devices1, "nmos (MOSFET)");
+  REQUIRE(nmos != nullptr);
+  // toolkit.tcl's add_toolkit_command: `magic::gencell <lib>::<device> <args>` (no args: a trailing blank).
+  CHECK(nmos->script == "magic::gencell sky130::sky130_fd_pr__nfet_01v8 ");
+  CHECK(devices2.items.size() > 5);
+  // The intercepted wrapper-menu items: DRC Routing last in DRC, Import
+  // SPICE between two separators after Flush changes in File.
+  const MenuBarMenu& drc = menu(view, "Drc");
+  REQUIRE_FALSE(drc.items.empty());
+  CHECK(drc.items.back().label == "DRC Routing");
+  CHECK(drc.items.back().pdk);
+  CHECK(drc.items.back().script == "drc style drc(routing)");
+  const auto file = labels(menu(view, "File"));
+  const auto flush = std::find(file.begin(), file.end(), "Flush changes");
+  REQUIRE(std::distance(flush, file.end()) >= 5);
+  CHECK(std::vector<std::string>(flush, flush + 5) ==
+        std::vector<std::string>{"Flush changes", "-", "Import SPICE", "-", "Read GDS"});
+  // No skipped-statement diagnostic.
+  CHECK(s.skips.seen.empty());
+  for (const auto& d : s.sink.snapshot()) CHECK(d.code != "SCRIPT-PDK-004");
+
+  // Choosing the items runs them in the project's interpreter as the window
+  // does (origin `script`, S-01): Import SPICE asks the native picker, nmos
+  // opens the parameter dialog.
+  const MenuBarItem* spice = item(menu(view, "File"), "Import SPICE");
+  REQUIRE(spice != nullptr);
+  s.picker.push_answer(std::nullopt);  // cancelled
+  CHECK(run_gui_script(s.editor, *s.dispatcher, menu_item_script(*spice), cmd::Origin::script).ok());
+  CHECK(s.picker.requests().size() == 1);
+  const auto opened = run_gui_script(s.editor, *s.dispatcher, menu_item_script(*nmos), cmd::Origin::script);
+  INFO(gui_result_text(opened));
+  CHECK(opened.ok());
+  REQUIRE(s.editor.script.gencell.dialog.has_value());
+  CHECK(s.editor.script.gencell.dialog->device == "sky130_fd_pr__nfet_01v8");
+}
+
+TEST_CASE("declined sky130A scripts leave the bar without device menus",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  if (!have_sky130a()) {
+    SKIP("the sky130A reference PDK is not in .cache/pdks (scripts/fetch_pdk.py)");
+  }
+  DesktopStartup s;
+  app::ProjectFile file;
+  file.pdk = app::PdkPin{"sky130", "sky130A", std::string{kPdkVersion}, {}};
+  const auto folder = s.dir / "proj";
+  std::filesystem::create_directories(folder);
+  REQUIRE(app::save_project(s.fs, folder, file).ok());
+  s.env.project_folder = folder;
+  // No consent host: the untrusted version is declined (the batch default).
+  REQUIRE(app::run_startup(*s.dispatcher, s.project, s.fs, {}, s.env, s.sink).ok());
+  REQUIRE(s.run("openwindow").ok());
+  s.probe = [](cmd::CommandContext& ctx) { return gui::adopt_wrapper(ctx, ".layout1"); };
+  REQUIRE(s.run("shell_test_probe").ok());
+  const MenuBarView view = session_menu_bar(s.editor, true);
+  CHECK(view.divider == view.menus.size());
+  CHECK(menu_titles(view) == std::vector<std::string>{"File", "Edit", "Cell", "Window", "Layers", "Drc", "Options"});
+  CHECK(s.editor.script.gencell.menus.menus.empty());  // the PDK script never ran
 }

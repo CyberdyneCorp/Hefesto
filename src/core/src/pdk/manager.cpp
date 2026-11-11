@@ -10,6 +10,8 @@
 #include "hefesto/pdk/manager.hpp"
 
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -431,7 +433,19 @@ bool read_provenance(const Path& path, Provenance& out) {
     }
   }
   out.partial = json_strings(doc, "partial");
+  if (out.trusted && doc.contains("trusted_date") && doc["trusted_date"].is_string()) {
+    out.trusted_date = doc["trusted_date"].get<std::string>();
+  }
   return true;
+}
+
+// Today's date in UTC, `YYYY-MM-DD` (the trust date of set_trusted).
+std::string utc_today() {
+  const std::chrono::year_month_day day{std::chrono::floor<std::chrono::days>(std::chrono::system_clock::now())};
+  char text[16] = {};
+  (void)std::snprintf(text, sizeof text, "%04d-%02u-%02u", static_cast<int>(day.year()),
+                      static_cast<unsigned>(day.month()), static_cast<unsigned>(day.day()));
+  return text;
 }
 
 // Where one install goes, for run_install.
@@ -613,12 +627,13 @@ diag::Outcome<Provenance> PdkManager::provenance(const Family& family, std::stri
     return diag::make(codes::kNotInstalled, family.name + " version " + std::string{hash} + " is not installed");
   }
   Provenance out{family.name, family.upstream_repo, std::string{hash}, std::nullopt, "external", family.license,
-                 false, {}, {}};
+                 false, {}, {}, std::nullopt};
   (void)read_provenance(family_dir(family) / ".hefesto" / (std::string{hash} + ".json"), out);
   return out;
 }
 
-diag::Status PdkManager::set_trusted(const Family& family, std::string_view hash, bool trusted) {
+diag::Status PdkManager::set_trusted(const Family& family, std::string_view hash, bool trusted,
+                                     std::string_view date) {
   const Path version_dir = family_dir(family) / "versions" / std::string{hash};
   const Path legacy_dir = root_ / "volare" / family.name / "versions" / std::string{hash};
   if (!is_dir(version_dir) && !is_dir(legacy_dir)) {
@@ -634,7 +649,15 @@ diag::Status PdkManager::set_trusted(const Family& family, std::string_view hash
     doc = {{"family", family.name}, {"repository", family.upstream_repo}, {"version", std::string{hash}},
            {"source", "external"}, {"license", family.license}};
   }
+  const bool was_dated = doc.contains("trusted") && doc["trusted"] == true && doc.contains("trusted_date");
   doc["trusted"] = trusted;
+  if (trusted && !date.empty()) {
+    doc["trusted_date"] = std::string{date};
+  } else if (trusted && !was_dated) {
+    doc["trusted_date"] = utc_today();  // trusting again keeps the first date
+  } else if (!trusted) {
+    doc.erase("trusted_date");
+  }
   return write_text(record, doc.dump(2) + "\n");
 }
 

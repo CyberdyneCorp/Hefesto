@@ -58,7 +58,7 @@ class PdkPanel {
   std::unique_ptr<ui::Painted> make_trust_button();
   [[nodiscard]] std::optional<PdkAction> selected_trust_action() const;
   void update_trust_button();
-  [[nodiscard]] bool scripts_trusted(const pdk::InstalledVersion& version);
+  [[nodiscard]] ScriptTrustState scripts_trusted(const pdk::InstalledVersion& version);
 
   ScreenContext& ctx_;
   std::function<void()> close_;

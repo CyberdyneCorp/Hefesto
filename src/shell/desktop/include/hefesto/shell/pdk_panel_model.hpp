@@ -17,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/pdk/catalog.hpp"
@@ -60,12 +61,35 @@ struct PdkRow {
   /// or "◆ scripts ask before running"; empty text when not installed.
   bool scripts_trusted = false;
   StatusChip scripts;
+  /// When the scripts were trusted, as the board writes it ("11 Nov 2026";
+  /// Provenance::trusted_date); empty when unknown or not trusted.
+  std::string scripts_date;
+
+  /// The scripts state as one text: "● scripts trusted 11 Nov 2026".
+  [[nodiscard]] std::string scripts_label() const;
 
   [[nodiscard]] std::string title() const { return variant + "  (" + family + ")"; }
 };
 
-/// Whether an installed version's scripts are trusted (Provenance::trusted).
-using ScriptTrust = std::function<bool(const pdk::InstalledVersion&)>;
+/// An installed version's scripts state: trusted (Provenance::trusted) and
+/// since when (Provenance::trusted_date, `YYYY-MM-DD`).
+struct ScriptTrustState {
+  bool trusted = false;
+  std::optional<std::string> date;
+
+  ScriptTrustState() = default;
+  // Implicit from bool: a trust source that knows no date returns a bool.
+  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
+  ScriptTrustState(bool is_trusted, std::optional<std::string> since = std::nullopt)
+      : trusted(is_trusted), date(std::move(since)) {}
+};
+
+/// The scripts state of an installed version.
+using ScriptTrust = std::function<ScriptTrustState(const pdk::InstalledVersion&)>;
+
+/// `YYYY-MM-DD` as the board writes dates ("2026-11-11" -> "11 Nov 2026");
+/// any other text is returned unchanged.
+[[nodiscard]] std::string display_date(std::string_view iso_date);
 
 /// One row per variant of `catalog`, in catalog order, with the state found
 /// in `installed` and, with `trusted`, the scripts state.

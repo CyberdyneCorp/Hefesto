@@ -34,7 +34,7 @@ void paint_row(ui::Painter& p, float w, float h, const PdkRow& row, bool selecte
   p.text(TextRole::body_strong, 8.0F, 6.0F, row.title(), t.text_primary);
   std::string libs = std::to_string(row.default_libraries) + " default libraries";
   // M4 (board M4-Script-Consent tile 5): the scripts state of the installed version.
-  if (!row.scripts.text.empty()) libs += " · " + row.scripts.label();
+  if (!row.scripts.text.empty()) libs += " · " + row.scripts_label();
   // text_tertiary is below 4.5:1 on row_selected (dark): secondary on a highlighted row.
   const Rgba& meta = selected || s.hovered ? t.text_secondary : t.text_tertiary;
   p.text(TextRole::meta, 8.0F, 6.0F + p.line_height(TextRole::body_strong), libs, meta);
@@ -231,11 +231,12 @@ void PdkPanel::update_trust_button() {
   trust_button_->invalidate();
 }
 
-bool PdkPanel::scripts_trusted(const pdk::InstalledVersion& version) {
+ScriptTrustState PdkPanel::scripts_trusted(const pdk::InstalledVersion& version) {
   const pdk::Family* family = manager().catalog().find_family(version.family);
-  if (family == nullptr) return false;
+  if (family == nullptr) return {};
   auto provenance = manager().provenance(*family, version.version.hash);
-  return provenance.ok() && provenance.value().trusted;
+  if (!provenance.ok()) return {};
+  return ScriptTrustState{provenance.value().trusted, provenance.value().trusted_date};
 }
 
 /// A checkbox row: a square with a check mark, plus text (state is shape +
@@ -312,7 +313,8 @@ void PdkPanel::rebuild_rows() {
     row->set_size(-1.0F, kRowHeight);
     row->set_role(ui::Role::list_item);
     row->set_accessible_name(rows_[i].title() + ", " + rows_[i].state.text +
-                             (rows_[i].scripts.text.empty() ? std::string{} : ", " + rows_[i].scripts.text));
+                             (rows_[i].scripts.text.empty() ? std::string{} : ", " + rows_[i].scripts.text) +
+                             (rows_[i].scripts_date.empty() ? std::string{} : " " + rows_[i].scripts_date));
     row->on_click([this, i](float, float) {
       selected_ = i;
       for (auto& w : row_widgets_) w->invalidate();
