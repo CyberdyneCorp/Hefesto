@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
 #include <string>
 
 #include "rules_fixture.hpp"
@@ -290,6 +291,39 @@ width m1 3 "w")");
   // Rescaling floors the step size.
   const auto odd = compile("stepsize 101");
   CHECK(drc::rescale(*odd.rules, 2, 1, drc::test::compat_mode(true))->step_size() == 50);
+}
+
+// Q-DRC-25 (fix, both modes): Magic's DRCTechScale floors a step size of 2
+// rescaled by 1/4 to 0, and its checker then divides by it.
+TEST_CASE("a rescale never floors the step size to 0", "[cap:drc-rule-language][req:Halo and step size]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    const auto c = compile("stepsize 2", compat);
+    REQUIRE(c.rules->step_size() == 2);
+    CHECK(drc::rescale(*c.rules, 4, 1, drc::test::compat_mode(compat))->step_size() == 1);
+    CHECK(drc::rescale(*c.rules, 2, 1, drc::test::compat_mode(compat))->step_size() == 1);  // exact: 2 / 2
+    CHECK(drc::rescale(*c.rules, 1, 2, drc::test::compat_mode(compat))->step_size() == 4);
+  }
+}
+
+// Q-DRC-25 (fix, both modes): with no rule distance Magic's default step is
+// 6400 / cs_scaleFactor, which is 0 for a mask scale factor above 6400.
+TEST_CASE("the default step size of a large mask scale factor is 1", "[cap:drc-rule-language][req:Halo and step size]") {
+  std::string text = drc::test::read_text(std::filesystem::path{HEFESTO_TEST_DATA_DIR} / "rules.tech");
+  const std::string from = "style lambda=1(test)\n    scalefactor 100\n";
+  const auto at = text.find(from);
+  REQUIRE(at != std::string::npos);
+  text.replace(at, from.size(), "style lambda=1(test)\n    scalefactor 10000\n");
+  text += "\ndrc\n    exact_overlap m1c\nend\n\nextract\nend\n";
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    const auto c = drc::test::compile_tech(drc::test::load_tech_text(text), compat);
+    REQUIRE(c.cif.current() != nullptr);
+    CHECK(c.cif.current()->scale_factor == 10000);
+    CHECK(c.cif.default_step_size() == 1);
+    CHECK(c.rules->halo().value == 0);
+    CHECK(c.rules->step_size() == 1);
+  }
 }
 
 namespace {

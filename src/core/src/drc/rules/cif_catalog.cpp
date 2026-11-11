@@ -781,7 +781,9 @@ std::int32_t CifCatalog::default_step_size() const noexcept {
   if (style == nullptr || style->scale_factor <= 0) {
     return 64;
   }
-  return 6400 / style->scale_factor;
+  // Magic's 6400 / cs_scaleFactor is 0 above 6400, and the checker divides
+  // by the step size: never below 1 (Q-DRC-25, fix in both modes).
+  return std::max(1, 6400 / style->scale_factor);
 }
 
 std::pair<std::int32_t, std::int32_t> CifCatalog::rescale(std::int32_t n, std::int32_t d) {
