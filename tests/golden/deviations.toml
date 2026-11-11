@@ -203,14 +203,14 @@ reason = "archive read X tries X before X.mag, so the archive just written as ar
 
 # --- MISC -------------------------------------------------------------------
 #
+[MISC-MH-10]
+decisions = ["Q-MISC-14"]
+outputs = ["stdout.txt", "stderr.txt", "top.mag"]
+reason = "flatten -doinplace also copies the hints of the flattened grandchild (MASKHINTS_X); Magic copies only the flattened instance's own hints and loses them"
+
 # Pending capture: an entry must name a captured case (tools/golden/tests/
-# test_deviations.py), so these two stay commented out until MISC-MH-10 and
-# MISC-MH-11 have expected/ outputs; uncomment them with the capture.
-#
-# [MISC-MH-10]
-# decisions = ["Q-MISC-14"]
-# outputs = ["stdout.txt", "stderr.txt", "top.mag"]
-# reason = "flatten -doinplace also copies the hints of the flattened grandchild (MASKHINTS_X); Magic copies only the flattened instance's own hints and loses them"
+# test_deviations.py), so this one stays commented out until MISC-MH-11 has
+# expected/ outputs; uncomment it with the capture.
 #
 # [MISC-MH-11]
 # decisions = ["Q-MISC-15"]
