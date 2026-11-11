@@ -107,6 +107,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Background start latency (100 x 100 dfxtp_1 array)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
         run: |
           build/linux-release/tests/unit/drc/engine/hefesto_drc_engine_tests \
             "Background start latency after a paint on the 100 x 100 dfxtp_1 array" 2>&1 | tee latency.txt
@@ -118,6 +120,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: drc check; drc catchup against Magic (same runner)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
         run: |
           status=0
           python3 bench/drc/drc_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
@@ -193,6 +197,8 @@ jobs:
         run: python3 scripts/fetch_pdk.py sky130 gf180mcu --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Run the golden-slow cases
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
         run: |
           start=$(date +%s)
           ctest --test-dir build/linux-release -L golden-slow --output-on-failure --no-tests=error
