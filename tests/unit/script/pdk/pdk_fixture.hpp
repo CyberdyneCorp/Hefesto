@@ -117,9 +117,8 @@ struct PdkSession {
   cmd::CommandRegistry registry;
   editor::EditorState editor;
   std::unique_ptr<cmd::Dispatcher> dispatcher;
-  /// Diagnostics of the commands the stand-in binding ran.
+  /// Diagnostics of the commands the tests ran directly.
   std::vector<diag::Diagnostic> console;
-  bool stand_in_binding = false;
 
   /// `environment`: the interpreter's synthesized `env` array (D-31). The
   /// granted roots are the PDK reference data and the temporary directory.
@@ -174,34 +173,9 @@ struct PdkSession {
 
   void bind() {
     const auto bound = bind_registry(tcl(), registry, *dispatcher);
-    if (bound.ok()) {
-      return;
-    }
-    REQUIRE_FALSE(bound.diagnostics.empty());
-    REQUIRE(bound.diagnostics.front().code == diag::codes::kCoreNotImplemented);
-    stand_in_binding = true;
-    std::set<std::string> names;
-    for (const auto& client : registry.clients()) {
-      for (const cmd::CommandSpec* spec : registry.table(client)) {
-        names.insert(spec->name);
-      }
-    }
-    for (const std::string& name : names) {
-      const NativeCommand command = [this, name](const cmd::Invocation& inv) {
-        cmd::CommandResult result =
-            dispatcher->execute(cmd::Invocation{name, inv.args, cmd::Origin::script, std::nullopt});
-        console.insert(console.end(), result.diagnostics.begin(), result.diagnostics.end());
-        if (!result.ok() && result.raises) {
-          return result;
-        }
-        return cmd::CommandResult::success(result.ok() ? result.value : cmd::Value{});
-      };
-      tcl().define_command("::magic::" + name, command);
-      if (!tcl().has_command("::" + name)) {
-        tcl().define_command("::" + name, command);
-      }
-    }
+    REQUIRE(bound.ok());
   }
+
 };
 
 }  // namespace hefesto::script::test

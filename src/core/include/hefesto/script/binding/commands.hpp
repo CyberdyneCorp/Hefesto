@@ -16,7 +16,7 @@
 
 namespace hefesto::script {
 
-/// Registers `tag` and `cif`. SCAFFOLD: both are CORE-NOTIMPL-004 stubs.
+/// Registers `tag` and `cif`.
 bool register_binding_commands(cmd::CommandRegistry& registry);
 
 /// Registers `cif` in the layout client.

@@ -59,6 +59,16 @@ void init_wrapper_options(script::Interpreter& interp);
 /// `magic::closewrapper F` ("Window close and key overrides").
 [[nodiscard]] cmd::CommandResult close_wrapper(cmd::CommandContext& ctx, std::string_view frame);
 
+/// Makes the session's existing layout window the wrapper frame `frame`
+/// (".layout1") instead of opening a new one: the front end that draws its
+/// own window chrome (the desktop app) calls it once its startup files ran.
+/// The window is named `frame.pane.top.magic`, `lwindow` counts it, the
+/// PDK's widget statements for the frame are intercepted (the menu model,
+/// the file picker; script::WidgetInterceptor) and the wrapper's script
+/// hooks run (`Opts(callback)`, `Winopts(frame,callback)`), as openwrapper
+/// does. Fails when the session has no interpreter or no layout window.
+[[nodiscard]] cmd::CommandResult adopt_wrapper(cmd::CommandContext& ctx, std::string_view frame);
+
 /// "Wrapper menus" of frame `frame` (Q-SCRIPT-36: Rotate 90 degree runs
 /// `magic::clockwise 90`). `maze_helper` adds Options → Maze Router.
 [[nodiscard]] WrapperMenuModel wrapper_menus(std::string_view frame, bool maze_helper = false);

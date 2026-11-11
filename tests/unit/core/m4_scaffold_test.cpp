@@ -68,13 +68,12 @@ std::vector<std::string> m4_commands() {
 
 }  // namespace
 
-// --- tasks.md 2.4/2.5: code areas and CORE-NOTIMPL-004 ---------------------
+// --- tasks.md 2.4/2.5, 13.5: code areas; CORE-NOTIMPL-004 retired ---------
 
-TEST_CASE("CORE-NOTIMPL-004 exists and the M4 code areas are declared", "[m4-scaffold]") {
-  const auto code = diag::find_code(diag::codes::kCoreNotImplemented);
-  REQUIRE(code.has_value());
-  CHECK(code->code == "CORE-NOTIMPL-004");
-  CHECK(code->severity == diag::Severity::error);
+TEST_CASE("CORE-NOTIMPL-004 is retired and the M4 code areas are declared", "[m4-scaffold]") {
+  const auto code = diag::find_code("CORE-NOTIMPL-004");
+  REQUIRE(code.has_value());  // the row stays: a retired code is never reused
+  CHECK(code->summary.starts_with("Retired in M4"));
   for (const auto* area : {"script", "pcell", "tools", "gui"}) {
     INFO(area);
     CHECK(diag::find_code_area(area).has_value());

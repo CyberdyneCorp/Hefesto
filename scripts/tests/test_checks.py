@@ -12,6 +12,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -130,6 +131,21 @@ class RequirementCoverageTest(unittest.TestCase):
             uncovered = {(u["capability"], u["requirement"]) for u in data["uncovered"]}
             self.assertEqual(uncovered, {("cap-a", "Beta merge"), ("cap-b", "Alpha order")})
             self.assertEqual([u["requirement"] for u in data["unknown_tags"]], ["Alpha ordr"])
+
+    def test_deferred_requirement_is_reported_and_not_counted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            with mock.patch.dict(coverage.DEFERRED, {("cap-a", "Beta merge"): "M10"}, clear=True):
+                code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json"])
+                _, markdown = run_quiet(coverage.main, ["--root", str(root)])
+            self.assertEqual(code, 0)
+            data = json.loads(text)
+            self.assertEqual(data["total"], 3)
+            self.assertEqual(data["deferred"], [{"capability": "cap-a", "requirement": "Beta merge", "milestone": "M10"}])
+            self.assertNotIn(("cap-a", "Beta merge"),
+                             {(u["capability"], u["requirement"]) for u in data["uncovered"]})
+            self.assertIn("deferred (M10)", markdown)
 
     def test_milestone_filter_and_fail_under(self):
         with tempfile.TemporaryDirectory() as tmp:

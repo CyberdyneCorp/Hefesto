@@ -5,6 +5,7 @@ This page covers the day-to-day workflow: building, running each kind of test, a
 ## Before you start
 
 - Behavior is defined by the specs in `openspec/specs/`. Medium or large changes, and any change to a requirement, go through an OpenSpec change (`openspec/changes/<id>/`) with a proposal, design and tasks. Run `openspec validate --all --strict` before pushing.
+- Changes to scripting, the sandbox, consent or any command a script can reach follow [the scripting security model](security.md) (sandbox, trust, review findings, "Adding a command safely").
 - Hefesto is licensed under Apache-2.0 (decision P-9). Read the [clean-room rule](#clean-room-rule) before touching LVS, schematic or OASIS code.
 - Supported compilers: GCC 11+, Clang 14+, Apple Clang 15+ (Xcode 15). CMake 3.25+ and Ninja.
 
@@ -88,7 +89,7 @@ Every reader of external input has a libFuzzer target in `tests/fuzz/` (requirem
 cmake --preset linux-fuzz
 cmake --build --preset linux-fuzz
 mkdir -p /tmp/corpus
-build/linux-fuzz/tests/fuzz/fuzz_command_script /tmp/corpus -max_total_time=60
+build/linux-fuzz/tests/fuzz/fuzz_tcl_sandbox /tmp/corpus -max_total_time=60
 ```
 
 CI runs each target for 60 seconds on every pull request, and fails if any target with a seed corpus was not built. Seed corpora go in `tests/fuzz/corpus/<target>/`; a new target is added to `HEFESTO_FUZZ_TARGETS` in `tests/fuzz/CMakeLists.txt`, which refuses a target without a corpus. A crash found by fuzzing is fixed together with a regression test that replays the crashing input.

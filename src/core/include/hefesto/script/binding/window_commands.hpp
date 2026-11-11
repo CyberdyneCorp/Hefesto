@@ -20,7 +20,6 @@
 namespace hefesto::script {
 
 /// Registers one command per window path of `window_paths` in `interp`.
-/// SCAFFOLD: returns CORE-NOTIMPL-004 until BINDING task 5.1.
 [[nodiscard]] cmd::CommandResult register_window_commands(Interpreter& interp, cmd::Dispatcher& dispatcher,
                                                           std::span<const std::string> window_paths);
 

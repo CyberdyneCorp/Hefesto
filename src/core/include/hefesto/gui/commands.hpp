@@ -23,8 +23,7 @@ namespace hefesto::gui {
 [[nodiscard]] const std::vector<std::string>& gui_entry_command_names();
 
 /// Registers `drc_save_report`, `drc_load_report` and
-/// gui_entry_command_names(). SCAFFOLD: every command is a CORE-NOTIMPL-004
-/// stub.
+/// gui_entry_command_names().
 bool register_gui_commands(cmd::CommandRegistry& registry);
 
 }  // namespace hefesto::gui

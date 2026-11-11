@@ -6,7 +6,7 @@
 // scripting-pdk-integration "Command surface used by device generators",
 // "PDK startup file contract" step 5): `ext2spice scale` as a setting.
 // The rest of `ext2spice` arrives with extraction (M7) and answers
-// CORE-NOTIMPL-004 until then.
+// UI-CLIENT-002 (an optional module not available yet) until then.
 //
 // Owner: PDKINT (design D2).
 

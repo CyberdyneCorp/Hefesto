@@ -241,6 +241,9 @@ TEST_CASE("the default bindings of the system startup file and the tool setup",
   };
   // "s selects", "Ctrl-wheel zoom".
   CHECK(run("s") == "select");
+  // toolkit.tcl's gencell binding, defined before the system startup file (UI-G-049).
+  CHECK(run("^P") == "magic::gencell {} ; raise .params");
+  CHECK(run("^P", "wiring") == "magic::gencell {} ; raise .params");
   CHECK(run("Control_XK_Pointer_Button4") == "zoom 1.6");
   CHECK(run("^N") == "<none>");
   CHECK(run("Control_XK_i") == "select less cell");

@@ -53,6 +53,15 @@ DEFAULT_CLASSES = ("exact", "behavioral")
 ALL_CLASSES = ("exact", "behavioral", "informative", "native")
 CPP_SUFFIXES = {".cpp", ".cc", ".cxx", ".hpp", ".h", ".mm"}
 
+# Requirements whose tests move to a later milestone by an approved decision:
+# (capability, requirement) -> milestone. They are reported as deferred, not
+# uncovered, and do not count in the coverage share.
+DEFERRED = {
+    # Q-SCRIPT-30 (m4-scripting design D11): `mazeroute` arrives with
+    # router-maze-iroute, and its requirement's test with it.
+    ("scripting-auxiliary-tools", "Netlist maze-routing script"): "M10",
+}
+
 REQUIREMENT_HEADING = re.compile(r"^### Requirement:\s*(.+?)\s*$")
 COMPATIBILITY_LINE = re.compile(r"^Compatibility:\s*(.+)$")
 TEST_MACRO = re.compile(
@@ -85,13 +94,19 @@ class Report:
     unknown: list[TestRef] = field(default_factory=list)
 
     @property
+    def deferred(self) -> list[Requirement]:
+        return [r for r in self.requirements
+                if (r.capability, r.name) in DEFERRED and (r.capability, r.name) not in self.covered]
+
+    @property
     def uncovered(self) -> list[Requirement]:
-        return [r for r in self.requirements if (r.capability, r.name) not in self.covered]
+        return [r for r in self.requirements
+                if (r.capability, r.name) not in self.covered and (r.capability, r.name) not in DEFERRED]
 
     @property
     def percent(self) -> float:
-        total = len(self.requirements)
-        return 100.0 if total == 0 else 100.0 * (total - len(self.uncovered)) / total
+        total = len(self.requirements) - len(self.deferred)
+        return 100.0 if total <= 0 else 100.0 * (total - len(self.uncovered)) / total
 
 
 # --- Specs and roadmap -------------------------------------------------------
@@ -295,7 +310,7 @@ def build_report(requirements: list[Requirement], refs: list[TestRef], all_known
 
 
 def render_markdown(report: Report, scope: str) -> str:
-    total = len(report.requirements)
+    total = len(report.requirements) - len(report.deferred)
     uncovered = report.uncovered
     lines = [
         "# Requirement coverage",
@@ -306,6 +321,9 @@ def render_markdown(report: Report, scope: str) -> str:
     ]
     lines += markdown_table("Uncovered requirements", ["Capability", "Requirement", "Class"],
                             [[r.capability, r.name, ", ".join(r.classes)] for r in uncovered])
+    lines += markdown_table("Deferred requirements", ["Capability", "Requirement", "Milestone"],
+                            [[r.capability, r.name, f"deferred ({DEFERRED[(r.capability, r.name)]})"]
+                             for r in report.deferred])
     lines += markdown_table("Covered requirements", ["Capability", "Requirement", "Tests"],
                             [[cap, req, ", ".join(sources)] for (cap, req), sources in sorted(report.covered.items())])
     lines += markdown_table("Test tags naming no known requirement", ["Capability", "Requirement", "Source"],
@@ -327,11 +345,13 @@ def markdown_table(title: str, header: list[str], rows: list[list[str]]) -> list
 def render_json(report: Report, scope: str) -> str:
     data = {
         "scope": scope,
-        "total": len(report.requirements),
-        "covered": len(report.requirements) - len(report.uncovered),
+        "total": len(report.requirements) - len(report.deferred),
+        "covered": len(report.requirements) - len(report.deferred) - len(report.uncovered),
         "percent": round(report.percent, 2),
         "uncovered": [{"capability": r.capability, "requirement": r.name, "classes": list(r.classes)}
                       for r in report.uncovered],
+        "deferred": [{"capability": r.capability, "requirement": r.name,
+                      "milestone": DEFERRED[(r.capability, r.name)]} for r in report.deferred],
         "covered_requirements": [{"capability": cap, "requirement": req, "tests": sources}
                                  for (cap, req), sources in sorted(report.covered.items())],
         "unknown_tags": [{"capability": u.capability, "requirement": u.requirement, "source": u.source}

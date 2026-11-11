@@ -15,8 +15,8 @@
 
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/ui/diag_codes.hpp"
 
 namespace hefesto::script {
 
@@ -52,15 +52,22 @@ cmd::CommandResult scale(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   return cmd::CommandResult::success();
 }
 
+// The SPICE netlist writer is an optional module that arrives with
+// extraction (M7): UI-CLIENT-002, as `netlist` and `wind3d` do.
+cmd::CommandResult writer_unavailable() {
+  return cmd::CommandResult::failure(diag::make(ui::codes::kModuleUnavailable,
+                                                "ext2spice: the SPICE netlist writer is not available yet (ext2spice, M7)"));
+}
+
 cmd::CommandResult ext2spice(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
   if (inv.args.empty()) {
-    return cmd::not_implemented("ext2spice (run)");
+    return writer_unavailable();
   }
   const auto option = cmd::lookup(inv.args.front(), kOptions);
   if (option.match == cmd::Match::found && option.index == kScale) {
     return scale(ctx, inv);
   }
-  return cmd::not_implemented("ext2spice " + inv.args.front());
+  return writer_unavailable();
 }
 
 }  // namespace

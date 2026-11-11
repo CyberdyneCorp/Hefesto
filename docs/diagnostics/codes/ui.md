@@ -17,7 +17,7 @@ fails when the two disagree.
 | Code | Default severity | Meaning |
 |---|---|---|
 | `UI-CLIENT-001` | error | A window type (client) name is unknown, ambiguous or hidden; the valid window types are listed. |
-| `UI-CLIENT-002` | error | The command needs an optional module that is not available yet (`netlist` until M12, `wind3d` until M10, `rsim`). |
+| `UI-CLIENT-002` | error | The command needs an optional module that is not available yet (`netlist` until M12, `wind3d` until M10, `rsim`, `ext2spice` options other than `scale` until M7). |
 | `UI-DISPATCH-001` | error | The command word is an ambiguous abbreviation (`That command abbreviation is ambiguous.`); nothing was run. |
 | `UI-HISTORY-001` | error | A command-history expansion (`!...`, `^old^new`) names no matching event or word. |
 | `UI-INTERRUPT-001` | warning | The command was interrupted (`[Interrupted]`). |
