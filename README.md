@@ -7,11 +7,11 @@
 
 It is **data-compatible with [Magic VLSI](https://github.com/RTimothyEdwards/magic)**. Hefesto reads and writes the same files as Magic, and produces the same DRC results, GDS and netlists. So the open PDKs, sky130, gf180mcu and IHP sg13g2, work unchanged.
 
-> **Status: M0 (foundations) merged, Raven go/no-go final (GO); M1 (core model, formats, 2D viewer) complete; M2 (interactive editing and design system) complete.**
-> - **Specs:** 169 capabilities and 1,983 requirements. Milestones M0, M1 and M2 pass the readiness gate; M2 requirement coverage is 163 of 163.
-> - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (all 441 sky130 standard cells round-trip byte-identical), keeps crash backups and file locks like Magic, loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2; with progress, update checks and offline packs) and starts up like Magic. M2 adds Magic's editing command set (box, paint, erase, select, move, copy, stretch, arrays, hierarchy, labels, ports, properties), layout undo/redo, connectivity selection, the wiring tool, command dispatch with macros, key bindings and tools, highlights and feedback, and the color window. `hefesto-cli` runs all of it; the desktop app is an editor over Raven and the Vulkan canvas: canvas input through Magic's key and button bindings, a live tool rail, selection inspector, command history and completion, undo history, a key-binding sheet and dockable panels. Golden cases captured from Magic: 264; 226 match and 38 differ only where a documented decision or a later milestone's feature says so ([`tests/golden/deviations.toml`](tests/golden/deviations.toml)). Build instructions: [`docs/building.md`](docs/building.md).
+> **Status: M0 (foundations) merged, Raven go/no-go final (GO); M1 (core model, formats, 2D viewer) complete; M2 (interactive editing and design system) complete; M3 (design rule checking) implemented, in review.**
+> - **Specs:** 169 capabilities and 1,987 requirements. Milestones M0 to M3 pass the readiness gate; M3 requirement coverage is 69 of 69.
+> - **Code:** the headless core reads Magic technology files (including sky130A), holds layouts in a corner-stitched database with Magic's tile order, reads and writes `.mag` cells (all 441 sky130 standard cells round-trip byte-identical), keeps crash backups and file locks like Magic, loads `.dstyle`/`.cmap` styles and outline fonts, runs Magic's view commands, manages PDK installs (sky130, gf180mcu, IHP sg13g2; with progress, update checks and offline packs) and starts up like Magic. M2 adds Magic's editing command set (box, paint, erase, select, move, copy, stretch, arrays, hierarchy, labels, ports, properties), layout undo/redo, connectivity selection, the wiring tool, command dispatch with macros, key bindings and tools, highlights and feedback, and the color window. M3 adds Magic's DRC: the technology `drc` section compiled for every style, the edge-based check kernel with Magic's rule semantics (including Euclidean distances and mask-hint exceptions), hierarchical and array interaction checks, the background checker on a worker thread under the database's shared lock, and the `drc` command set; the sky130 and gf180mcu standard cells give Magic's error sets exactly. `hefesto-cli` runs all of it (`--interactive` runs the background checker at Magic's `%`/`]` prompt); the desktop app is an editor over Raven and the Vulkan canvas, with a live DRC status chip and a DRC results browser. Golden cases captured from Magic: 398; 355 match and 43 differ only where a documented decision or a later milestone's feature says so ([`tests/golden/deviations.toml`](tests/golden/deviations.toml)). Build instructions: [`docs/building.md`](docs/building.md).
 > - **Raven go/no-go:** GO, final for M2 (2026-11-10), on the Apple M3 Pro measurements and the Linux CI job; the reference M1 frame-rate run, Linux live input and Orca are M4 confirmation checks. See [`docs/decisions/raven-go-no-go.md`](docs/decisions/raven-go-no-go.md).
-> - **Screenshots:** [the running app at M2](#screenshots-running-app-m2) (desktop editor on sky130), followed by the [design mockups](#screenshots-design-mockups) of screens later milestones build.
+> - **Screenshots:** [the running app at M3](#screenshots-running-app-m3) (DRC on sky130) and [at M2](#screenshots-running-app-m2) (desktop editor on sky130), followed by the [design mockups](#screenshots-design-mockups) of screens later milestones build.
 
 ## Features
 
@@ -69,6 +69,30 @@ mindmap
       Plugins and scripting
 ```
 
+## Screenshots (running app, M3)
+
+Captures of the desktop app checking `sky130_fd_sc_hd__dfxtp_1` with two metal1 squares painted too close, taken with `--run 'CMD; …' --capture FILE` (commands in [`docs/design/m3-ui-conformance.md`](docs/design/m3-ui-conformance.md)).
+
+### DRC results browser
+
+After `drc check; drc catchup`: the DRC chip and status bar show the error count, the DRC panel groups the errors by why-text, and Prev/Next step through them in `drc find` order (`#3 of 11`), with the error area under the box in the inspector.
+
+![DRC results browser](docs/images/app/m3-drc-browser.png)
+
+### `drc why`
+
+![drc why at the box](docs/images/app/m3-drc-why.png)
+
+### Ignored rules, light theme
+
+`drc ignore li.3`: the ignored rule is listed apart and left out of the groups.
+
+![DRC panel with an ignored rule, light theme](docs/images/app/m3-drc-light.png)
+
+### Not run
+
+![DRC not run](docs/images/app/m3-drc-not-run.png)
+
 ## Screenshots (running app, M2)
 
 Captures of the current desktop app (macOS, Vulkan through MoltenVK) editing `sky130_fd_sc_hd__dfxtp_1` from the sky130A PDK. They were taken with the app's scripted capture option (`--run 'CMD; …' --capture FILE`), so they show the real program.
@@ -121,9 +145,9 @@ The layer stack built from the tech file, with a current-density overlay from si
 ![3D inspection](docs/images/ui/view3d.png)
 
 ### DRC results browser
-Violations grouped by rule, the measured value against the required value, a suggested fix, and the sign-off checklist for a shuttle.
+The approved M3 board: errors grouped by why-text with counts, `#k of n` stepping on the canvas, the error-area inspector, ignored rules and the style selector, and the DRC status chip. The measured value against the required value, nets, a suggested fix and the sign-off summary arrive in later milestones.
 
-![DRC results browser](docs/images/ui/drc-browser.png)
+![DRC results browser](docs/images/ui/m3-drc-browser.png)
 
 ### AI agent proposal review
 The agent works in a scratch copy and shows its steps, a visual diff, verification gates and alternatives. Nothing changes until you accept.

@@ -27,6 +27,7 @@ ctest --preset linux-debug
 | `macos-xcode` | macOS | an Xcode project (build and test with `--preset macos-xcode`, Debug configuration) |
 | `ipados` | macOS | an Xcode project for iPadOS 17, core only, plus the `hefesto_ios_link_probe` app that links the core (build it with `cmake --build build/ipados --target hefesto_ios_link_probe --config Debug -- CODE_SIGNING_ALLOWED=NO`) |
 | `linux-asan`, `macos-asan` | Linux / macOS | Debug with AddressSanitizer and UndefinedBehaviorSanitizer |
+| `linux-tsan` | Linux | Debug with ThreadSanitizer, desktop off (the background DRC worker and its race tests); add `-DHEFESTO_BUILD_DESKTOP=ON -B build/linux-tsan-desktop` to build the desktop DRC host's tests under TSan, as CI does |
 | `linux-fuzz` | Linux | Clang libFuzzer targets (Apple Clang has no libFuzzer) |
 | `ci-linux`, `ci-macos` | CI | RelWithDebInfo, warnings as errors; Linux takes the compiler from `CC`/`CXX` |
 | `linux-bench`, `macos-bench` | Linux / macOS | Release with the desktop app and canvas benchmark forced on (Vulkan required); reproduces the canvas spike |
@@ -84,7 +85,7 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `--magic ...` | the rest is Magic's own command line (`-T`, `-d`, `-rcfile`, `-norcfile`, `-r`, cells, a `.tcl` script); commands are then read from standard input (at the interactive prompt when it is a terminal) |
 | `-c <commands>` | run commands, e.g. `-c "tech load sky130A; tech layers"` |
 | `--diagnostics=text\|json\|magic` | diagnostic format on stderr; `magic` prints Magic's console text and each script command's result, as the golden reference scripts do (see `tools/golden/README.md`) |
-| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`) |
+| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`, `drc`, `hints`) |
 | `--log-dir=<dir>`, `--no-log` | session log location, or none |
 
 ### `hefesto` (desktop)
@@ -112,6 +113,8 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 **Undo.** Every editing command is undoable (`undo [N]`, `redo [N]`, the `u`/`U` keys, the Undo and Redo buttons; right-click either button for the undo history). `undo disable` stops recording (the top bar shows "undo off"; click it to issue `undo enable`). The number of steps kept is the setting `undo-history-limit` (default and minimum 1000, Magic's limit), e.g. `--setting undo-history-limit=5000` or in a settings file.
 
 **Desktop panels (M2).** `panel layers|inspector|console|keys show|hide|toggle`, `panel layers|inspector dock left|right`, `panel reset`; F6 / Shift-F6 move the keyboard focus between the tool rail, Layers, canvas, Inspector, Console and command bar. `specialopen color [INDEX]` shows Magic's color window in the right dock.
+
+**Design rule checking (M3).** Both front ends run Magic's `drc` command set (`drc check`, `catchup`, `count`, `find`, `why`, `listall`, `ignore`, `style`, `euclidean`, `printrules`, and the rest). The DRC settings are session state set by commands, as in Magic: `drc on|off` (the background checker; on by default), `drc style NAME` (the technology's DRC styles, e.g. `drc(fast)` and `drc(full)` in sky130A), `drc euclidean on|off`, `drc *halo N` and `drc *stepsize N` (a positive integer; 0, negative and non-numeric values are refused with `Step size must be a positive integer.`, decision Q-DRC-24). The background checker runs in the desktop app and in `hefesto-cli --interactive`; scripts, `-c` and piped input are batch and check only on `drc check; drc catchup`. In the desktop app the top-bar chip and the status bar show the DRC state (not run, checking, clean, N errors, off; N is `drc list count total`), and `panel drc show|hide|toggle` (or a click on the chip) opens the DRC panel: errors grouped by why-text, `#k of n` stepping (`drc find`), Re-check (`select top cell; drc check; drc catchup`), ignored rules and the style selector, each a logged command. When a long `drc catchup` ends while the window is not focused, the app requests the Dock's attention and posts a message in the window; `hefesto::notifications off` turns that off (setting `notifications`, on by default).
 
 The desktop installs the same host services as `hefesto-cli` (`src/platform_posix`: POSIX file locks, the crash-backup file host, the process runner; `src/platform_net`: the HTTPS Fetcher): a session holds a lock on its crash-backup file, `crashbackups` saves periodically, SIGTERM and SIGHUP save a backup before exiting, a normal exit removes it, and `-r` (or `crash recover`) restores the newest backup whose session is gone.
 

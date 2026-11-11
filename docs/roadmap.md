@@ -114,6 +114,8 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Run continuous and on-demand DRC whose errors are identical to Magic's.
 
+**Status (implemented, in review, 2026-11-10):** OpenSpec change `openspec/changes/m3-drc`, rounds 1, 2a and 2b (progress in its `tasks.md`). The rule compiler, check kernel, engine with the background checker (worker thread under the shared database lock, TSan-tested), the `drc` command set and mask hints are implemented and unit-tested; M3 requirement coverage is 69 of 69, and M0–M3 pass the readiness gate. The CLI hosts the background checker at Magic's interactive prompt and the desktop app hosts it with a live DRC status chip, a DRC results browser and `drc why` on the canvas (`docs/design/m3-ui-conformance.md`; boards approved 2026-11-10). Golden: all 120 DRC cases are captured (the 113 of `tests/golden/DRC/CASES.md`, five rule-printing and parse cases, and the two standard-cell corpus cases); every one passes except DRC-CIF-4..7, deferred to M5 as below (DRC-CIF-2 and DRC-CIF-3 already match, because Magic reports no mask-layer error on them), and DRC-CMD-1, which differs only by the approved fix Q-DRC-22. The sky130 `sky130_fd_sc_hd` and gf180mcu `gf180mcu_fd_sc_mcu7t5v0` cells give Magic's error sets exactly. Decisions of 2026-11-10: Q-MODEL-32 (compat), Q-DRC-24, Q-MISC-14 and Q-MISC-15 (fixes). Open at the time of writing: DRC throughput on the x86_64 CI runner is 1.3–1.7× Magic's (parity on Apple arm64; `docs/design/m3-ui-conformance.md` "Performance" has the numbers and the plan) and Q-DRC-25.
+
 **Capabilities:** `drc-rule-language`, `drc-rule-semantics`, `drc-engine`, `drc-commands`, `mask-hints`
 
 **Deliverables**
