@@ -37,6 +37,12 @@ struct Binding {
 };
 
 /// A Tcl error with `message` (empty: Magic's error with no message).
+/// The origin of an engine command a Tcl evaluation runs (security finding
+/// S-01): `script` when the evaluation is a script's or a script file is on
+/// the Tcl stack (a sourced file, a procedure a file defined), else the
+/// evaluation's own origin (a line typed in the console, a GUI action).
+[[nodiscard]] cmd::Origin command_origin(const Binding& b, const cmd::Invocation& call);
+
 [[nodiscard]] cmd::CommandResult tcl_error(std::string message);
 
 /// The native command `::magic::<name>` (and its global import): quiet

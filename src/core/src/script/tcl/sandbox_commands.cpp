@@ -27,6 +27,7 @@
 #include <tcl.h>
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <set>
 #include <string>
@@ -130,6 +131,13 @@ struct Guard {
 
 int guarded_call(ClientData data, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
   Guard& guard = *static_cast<Guard*>(data);
+  // S-06: the command runs with its own project's roots, whichever project
+  // services the thread's event queue (an `after` script of project A run by
+  // project B's `update`). S-05: Tcl caches which filesystem claimed a path
+  // object; a new epoch makes every path of this call checked again (a link
+  // moved into a path that was harmless when first checked).
+  const ActiveSession active{*guard.session};
+  Tcl_FSMountsChanged(nullptr);
   if (guard.pre != nullptr) {
     if (const auto refusal = guard.pre(guard, objc, objv)) {
       return guard.session->refuse(*refusal);
@@ -182,12 +190,93 @@ bool guard_command(SandboxSession& session, const std::string& name, Guard setti
 
 // ---- pre-checks and hooks --------------------------------------------------------
 
-std::optional<Refusal> check_open(Guard& /*guard*/, int objc, Tcl_Obj* const objv[]) {
+// S-03: a refusal when `path` resolves under a read-only root (the PDK store,
+// the install root) and under no granted root. A path outside every root is
+// left to the filesystem layer, which denies it.
+std::optional<Refusal> refuse_read_only(const Guard& guard, Tcl_Obj* path) {
+  Tcl_Obj* absolute = as_view(path).empty() ? nullptr : Tcl_FSGetNormalizedPath(nullptr, path);
+  if (absolute == nullptr) {
+    return std::nullopt;
+  }
+  const auto decision = guard.session->filesystem().check(guard.operation, as_view(absolute), "/");
+  if (!decision.allowed || decision.writable) {
+    return std::nullopt;
+  }
+  const std::string target = decision.normalized.string();
+  return Refusal{kPathDenied, guard.operation, target,
+                 guard.operation + ": \"" + target + "\" is read-only in the script sandbox"};
+}
+
+// True when an `open` access argument (`r+`, `w`, `{WRONLY CREAT}`, ...) can
+// change the file.
+bool opens_for_writing(std::string_view access) {
+  if (access.empty()) {
+    return false;
+  }
+  if (access.front() >= 'a' && access.front() <= 'z') {
+    return access.front() != 'r' || access.find('+') != std::string_view::npos;
+  }
+  for (const std::string_view flag : {"WRONLY", "RDWR", "CREAT", "TRUNC", "APPEND"}) {
+    if (access.find(flag) != std::string_view::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::optional<Refusal> check_open(Guard& guard, int objc, Tcl_Obj* const objv[]) {
   if (objc >= 2 && as_view(objv[1]).substr(0, 1) == "|") {
     return Refusal{kProcessDenied, "open |", std::string{as_view(objv[1])},
                    "open: process execution is not permitted in the script sandbox"};
   }
+  if (objc >= 3 && opens_for_writing(as_view(objv[2]))) {
+    return refuse_read_only(guard, objv[1]);
+  }
   return std::nullopt;
+}
+
+// Which words of a `file` subcommand name paths it changes (S-03).
+enum class Changes : std::uint8_t { paths, last, set_first };
+
+// The words of `file <sub>` after its options (`-force`, `--`).
+int first_operand(int objc, Tcl_Obj* const objv[]) {
+  int at = 1;
+  while (at < objc && as_view(objv[at]).substr(0, 1) == "-") {
+    if (as_view(objv[at++]) == "--") {
+      break;
+    }
+  }
+  return at;
+}
+
+std::optional<Refusal> check_changed_paths(Guard& guard, int objc, Tcl_Obj* const objv[], Changes changes) {
+  if (changes == Changes::set_first) {
+    // `file attributes name -opt value`, `file mtime name time`: a set.
+    const bool sets = guard.operation == "file attributes" ? objc >= 4 : objc >= 3;
+    return sets && objc >= 2 ? refuse_read_only(guard, objv[1]) : std::nullopt;
+  }
+  const int first = first_operand(objc, objv);
+  if (changes == Changes::last) {
+    return first < objc ? refuse_read_only(guard, objv[objc - 1]) : std::nullopt;
+  }
+  for (int i = first; i < objc; ++i) {
+    if (auto refusal = refuse_read_only(guard, objv[i])) {
+      return refusal;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<Refusal> check_write_paths(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  return check_changed_paths(guard, objc, objv, Changes::paths);
+}
+
+std::optional<Refusal> check_write_target(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  return check_changed_paths(guard, objc, objv, Changes::last);
+}
+
+std::optional<Refusal> check_write_setter(Guard& guard, int objc, Tcl_Obj* const objv[]) {
+  return check_changed_paths(guard, objc, objv, Changes::set_first);
 }
 
 // `source <path>`: a denied file is refused by name before Tcl tries it
@@ -222,7 +311,7 @@ std::optional<Refusal> check_link(Guard& guard, int objc, Tcl_Obj* const objv[])
   const platform::Path base = link != nullptr ? platform::Path{as_view(link)}.parent_path() : platform::Path{};
   const auto decision = guard.session->filesystem().check("file link", target.string(), base);
   if (link != nullptr && !base.empty() && decision.allowed) {
-    return std::nullopt;
+    return refuse_read_only(guard, objv[objc - 2]);
   }
   const PathDenial denial{"link", decision.normalized.string()};
   return path_refusal("file link", denial);
@@ -239,7 +328,7 @@ std::optional<Refusal> check_tempfile(Guard& guard, int objc, Tcl_Obj* const obj
     Tcl_IncrRefCount(directory);
     Tcl_Obj* absolute = Tcl_FSGetNormalizedPath(nullptr, directory);
     const bool allowed = absolute != nullptr &&
-                         guard.session->filesystem().check("file tempfile", as_view(absolute), "/").allowed;
+                         guard.session->filesystem().check("file tempfile", as_view(absolute), "/").writable;
     Tcl_DecrRefCount(directory);
     if (allowed) {
       return std::nullopt;
@@ -272,8 +361,30 @@ bool creates_safe(int objc, Tcl_Obj* const objv[]) {
   return false;
 }
 
+// S-07: Tcl's default recursion limit; a higher one lets recursion through a
+// command without NRE support (`lsort -command`) overflow the C stack.
+constexpr Tcl_WideInt kMaxRecursionLimit = 1000;
+
+// `<interp> recursionlimit ?n?` (`value` is n, or nullptr for the query).
+std::optional<Refusal> refuse_recursion_limit(std::string_view owner, Tcl_Obj* value) {
+  Tcl_WideInt limit = 0;
+  if (value == nullptr || Tcl_GetWideIntFromObj(nullptr, value, &limit) != TCL_OK || limit <= kMaxRecursionLimit) {
+    return std::nullopt;  // a query, Tcl's own error, or a limit at or below the default
+  }
+  const std::string operation = std::string{owner} + " recursionlimit";
+  return Refusal{kInterpDenied, operation, std::string{as_view(value)},
+                 operation + ": a limit above " + std::to_string(kMaxRecursionLimit) +
+                     " is not permitted in the script sandbox"};
+}
+
 std::optional<Refusal> check_child(Guard& guard, int objc, Tcl_Obj* const objv[]) {
-  return objc >= 2 ? refuse_hidden_access(guard.operation, as_view(objv[1])) : std::nullopt;
+  if (objc < 2) {
+    return std::nullopt;
+  }
+  if (abbreviates(as_view(objv[1]), "recursionlimit")) {
+    return refuse_recursion_limit(guard.operation, objc >= 3 ? objv[2] : nullptr);
+  }
+  return refuse_hidden_access(guard.operation, as_view(objv[1]));
 }
 
 std::optional<Refusal> check_interp(Guard& /*guard*/, int objc, Tcl_Obj* const objv[]) {
@@ -284,6 +395,9 @@ std::optional<Refusal> check_interp(Guard& /*guard*/, int objc, Tcl_Obj* const o
   if (abbreviates(sub, "create") && !creates_safe(objc, objv)) {
     return Refusal{kInterpDenied, "interp create", words_after(2, objc, objv),
                    "interp create: only safe interpreters (-safe) may be created in the script sandbox"};
+  }
+  if (abbreviates(sub, "recursionlimit")) {
+    return refuse_recursion_limit("interp", objc >= 4 ? objv[3] : nullptr);
   }
   return refuse_hidden_access("interp", sub);
 }
@@ -347,11 +461,42 @@ std::optional<Refusal> check_package(Guard& guard, int objc, Tcl_Obj* const objv
                      "\" is not a package of Tcl's embedded library; the script sandbox loads no other packages"};
 }
 
+// S-08: `encoding system NAME` and `encoding dirs LIST` change process-wide
+// state shared by every project's interpreter; reading them stays allowed.
+std::optional<Refusal> check_encoding(Guard& /*guard*/, int objc, Tcl_Obj* const objv[]) {
+  if (objc < 3) {
+    return std::nullopt;
+  }
+  for (const std::string_view name : {"system", "dirs"}) {
+    if (abbreviates(as_view(objv[1]), name)) {
+      const std::string operation = "encoding " + std::string{name};
+      return Refusal{kRemovedDenied, operation, std::string{as_view(objv[2])},
+                     operation + ": changes process-wide state; not permitted in the script sandbox"};
+    }
+  }
+  return std::nullopt;
+}
+
 // The `file` subcommands that read or change the filesystem.
 constexpr std::array kFileAccess = {"atime",  "attributes", "copy",  "delete",   "executable", "exists",
                                     "isdirectory", "isfile", "lstat", "mtime", "mkdir",
                                     "owned",  "readable",   "readlink", "rename", "size", "stat",
                                     "type",   "writable"};
+
+// The pre-check of the `file` subcommand `sub` that refuses changes under a
+// read-only root (S-03); nullptr for the ones that only read.
+PreCheck write_check(std::string_view sub) {
+  if (sub == "delete" || sub == "mkdir" || sub == "rename") {
+    return check_write_paths;
+  }
+  if (sub == "copy") {
+    return check_write_target;
+  }
+  if (sub == "attributes" || sub == "mtime" || sub == "atime") {
+    return check_write_setter;
+  }
+  return nullptr;
+}
 
 }  // namespace
 
@@ -369,8 +514,10 @@ void install_sandbox_commands(SandboxSession& session, const SandboxPolicy& poli
   guard_command(session, "source", Guard{nullptr, {}, "source", check_source, nullptr, true});
   guard_command(session, "::tcl::file::tempfile", Guard{nullptr, {}, "file tempfile", check_tempfile, nullptr, false});
   guard_command(session, "::tcl::file::link", Guard{nullptr, {}, "file link", check_link, nullptr, false});
+  guard_command(session, "encoding", Guard{nullptr, {}, "encoding", check_encoding, nullptr, false});
   for (const char* sub : kFileAccess) {
-    guard_command(session, std::string{"::tcl::file::"} + sub, Guard{nullptr, {}, std::string{"file "} + sub});
+    guard_command(session, std::string{"::tcl::file::"} + sub,
+                  Guard{nullptr, {}, std::string{"file "} + sub, write_check(sub), nullptr, false});
   }
 }
 

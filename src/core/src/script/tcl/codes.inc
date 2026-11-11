@@ -20,3 +20,4 @@ HEFESTO_SCRIPT_CODE("SCRIPT-SANDBOX-004", error, "The script sandbox refused a f
 HEFESTO_SCRIPT_CODE("SCRIPT-SANDBOX-005", error, "The script sandbox refused an unsafe interpreter operation.")
 HEFESTO_SCRIPT_CODE("SCRIPT-SANDBOX-006", error, "The script sandbox refused a package that Tcl's embedded library does not provide.")
 HEFESTO_SCRIPT_CODE("SCRIPT-SANDBOX-007", error, "The script sandbox refused a removed command.")
+HEFESTO_SCRIPT_CODE("SCRIPT-SANDBOX-008", error, "The script sandbox refused a command that changes PDK trust or the PDK store.")

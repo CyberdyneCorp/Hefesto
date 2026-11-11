@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <span>
@@ -50,6 +51,10 @@ struct Options {
   /// (script::BatchConsentHost; a family, variant, variant@hash or
   /// family/variant@version). Everything else is declined (design D7).
   std::vector<std::string> trust_pdk;
+  /// --script-time-limit <seconds>: the wall time one Tcl evaluation may run
+  /// before it is stopped with SCRIPT-TCL-003 (security finding S-14; 0, the
+  /// default, means no limit, as in Magic).
+  std::uint32_t script_time_limit = 0;
   /// --strip-reflibs <dir>: run the reference-library stripper on the `.mag`
   /// files of <dir> and exit (scripting-auxiliary-tools; tools::strip_reflibs).
   std::optional<std::filesystem::path> strip_reflibs;

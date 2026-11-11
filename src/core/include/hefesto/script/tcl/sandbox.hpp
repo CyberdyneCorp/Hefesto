@@ -39,6 +39,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -66,6 +67,10 @@ struct SandboxPolicy {
   /// (hefesto-files-and-pdks granted roots). They are normalized and their
   /// symbolic links resolved when the policy is applied.
   std::vector<platform::Path> granted_roots;
+  /// Absolute directories (or files) that may be read but never written
+  /// (security finding S-03): the PDK store and the install root. A path
+  /// under a granted root is writable even when a read-only root holds it.
+  std::vector<platform::Path> read_only_roots;
   /// Commands replaced by a denial (default_removed_commands()).
   std::vector<std::string> removed_commands = default_removed_commands();
   SandboxLimits limits;
@@ -77,10 +82,14 @@ struct SandboxPolicy {
 
 /// The verdict on one path operation.
 struct PathDecision {
+  /// May be read (under a granted or a read-only root).
   bool allowed = false;
-  /// The absolute path that was checked: lexically normalized, with the
-  /// symbolic links of its existing prefix resolved.
+  /// The absolute path that was checked: lexically normalized, with every
+  /// symbolic link on it resolved (dangling ones too, from the link's
+  /// directory; security finding S-04).
   platform::Path normalized;
+  /// May be written (under a granted root).
+  bool writable = false;
 };
 
 /// The path decision of one interpreter's filesystem layer.
@@ -108,7 +117,40 @@ class SandboxFilesystem {
 
  private:
   SandboxPolicy policy_;
-  std::vector<platform::Path> roots_;
+  std::vector<platform::Path> roots_;           // granted, resolved
+  std::vector<platform::Path> read_only_;       // read-only, resolved
+  std::vector<platform::Path> lexical_roots_;   // every root as written (S-10: /var vs /private/var)
+};
+
+/// A platform::FileSystem in front of the engine commands a script runs
+/// (security finding S-02): every path is checked against the policy as the
+/// Tcl filesystem layer checks Tcl's own paths (relative paths against the
+/// process working directory, which the sandbox's `cd` sets). A refused path
+/// fails with SCRIPT-SANDBOX-004; reading something other than a regular
+/// file (a device such as /dev/zero) is refused too. `policy` and `base` are
+/// not owned (the project's ProjectInterpreter::sandbox and the session's
+/// file system).
+class SandboxedFileSystem final : public platform::FileSystem {
+ public:
+  SandboxedFileSystem(platform::FileSystem& base, const SandboxPolicy& policy) : base_(base), policy_(policy) {}
+
+  [[nodiscard]] diag::Outcome<std::string> read(const platform::Path& path) override;
+  [[nodiscard]] diag::Status write_atomic(const platform::Path& path, std::string_view data) override;
+  [[nodiscard]] diag::Status append(const platform::Path& path, std::string_view data) override;
+  [[nodiscard]] bool exists(const platform::Path& path) override;
+  [[nodiscard]] diag::Outcome<std::uint64_t> size(const platform::Path& path) override;
+  [[nodiscard]] diag::Outcome<std::vector<platform::Path>> list(const platform::Path& directory) override;
+  [[nodiscard]] diag::Status create_directories(const platform::Path& directory) override;
+  [[nodiscard]] diag::Status rename(const platform::Path& from, const platform::Path& to) override;
+  [[nodiscard]] diag::Status remove(const platform::Path& path) override;
+
+ private:
+  /// nullopt when `path` may be accessed (`write`: changed), else the refusal.
+  [[nodiscard]] std::optional<diag::Diagnostic> refuse(std::string_view operation, const platform::Path& path,
+                                                       bool write) const;
+
+  platform::FileSystem& base_;
+  const SandboxPolicy& policy_;
 };
 
 /// True when `path` is the embedded library's virtual root or lies under it

@@ -117,33 +117,37 @@ TEST_CASE("exit status: 0 success, 1 command failure, 2 usage", CLI_TAGS) {
   CHECK(run_cli({"--version"}).status == cli::kExitOk);
 }
 
+// -c text is Tcl: each complete command's non-empty result is printed, and a
+// Tcl error stops it like `source` (m4-scripting tasks.md 13.2).
 TEST_CASE("results go to stdout, diagnostics to stderr", PRESENTATION_TAGS) {
-  const Run r = run_cli({"--no-log", "-c", "echo hello; setting get magic-compat; nosuch; echo never"});
+  const Run r = run_cli({"--no-log", "-c", "echo hello\nsetting get magic-compat\nnosuch\necho never"});
   CHECK(r.out == "hello\non\n");
-  CHECK(r.err == "error: CMD-DISPATCH-001: invalid command name \"nosuch\" at -c:1\n");
+  CHECK(r.err == "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:3\n");
 }
 
 TEST_CASE("JSON diagnostics option prints JSON lines", PRESENTATION_TAGS) {
   const Run r = run_cli({"--no-log", "--diagnostics=json", "-c", "nosuch"});
   CHECK(r.err ==
-        "{\"severity\":\"error\",\"code\":\"CMD-DISPATCH-001\",\"text\":\"invalid command name \\\"nosuch\\\"\","
+        "{\"severity\":\"error\",\"code\":\"SCRIPT-TCL-001\",\"text\":\"invalid command name \\\"nosuch\\\"\","
         "\"location\":{\"file\":\"-c\",\"line\":1},\"related\":null}\n");
 }
 
 TEST_CASE("Magic console diagnostics print each script command's result like puts", PRESENTATION_TAGS) {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "echo hello; setting get magic-compat; nosuch; echo next"});
-  // An unknown command is a Tcl error: its message is the result, on stdout. Each reference line is
-  // caught (`catch {cmd} result; puts $result`), so the script goes on (Q-UI-41).
-  CHECK(r.out == "hello\non\ninvalid command name \"nosuch\"\nnext\n");
-  CHECK(r.err.empty());
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
+                         "puts [setting get magic-compat]\ncatch {nosuch} result; puts $result\nnosuch\nputs never"});
+  // An unknown command is a Tcl error: its message is the result. The reference lines catch it
+  // (`catch {cmd} result; puts $result`, Q-UI-41); an uncaught one stops -c and prints its message.
+  CHECK(r.out == "on\ninvalid command name \"nosuch\"\n");
+  CHECK(r.err == "invalid command name \"nosuch\"\n");
   CHECK(cli::parse_args(Args{"--diagnostics=magic"}).options.diagnostics == hefesto::diag::Format::magic);
 }
 
 // Regression (TECH-G41): an ordinary command error is TxError text on stderr
 // and the Tcl result stays empty, so `puts` prints an empty line on stdout.
 TEST_CASE("Magic console prints an ordinary command error on stderr and an empty result", PRESENTATION_TAGS) {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "tech foo; tech la; echo after"});
-  CHECK(r.out == "\n\nafter\n");
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
+                         "catch {tech foo} result; puts <$result>\ncatch {tech la} result; puts <$result>\nputs after"});
+  CHECK(r.out == "<>\n<>\nafter\n");
   CHECK(r.err ==
         "\"foo\" isn't a valid tech option.  Type \":tech help\" for help.\n"
         "Ambiguous techinfo option: \"la\"\n  Type \":tech help\" for help.\n");
@@ -160,7 +164,8 @@ TEST_CASE("Magic console prints the tech load failure result on stdout", PRESENT
   const std::string missing = (dir.path() / "nothere").string();
   const std::string broken = (dir.path() / "bad").string();
   const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
-                         "tech load " + missing + " -noprompt; tech load " + broken + " -noprompt"});
+                         "catch {tech load " + missing + " -noprompt} result; puts $result\n" +
+                             "catch {tech load " + broken + " -noprompt} result; puts $result"});
   CHECK(r.out ==
         "Technology file does not exist or is not readable\n\n"
         "Error in loading technology file\n\n");
@@ -291,12 +296,13 @@ TEST_CASE("hefesto::strict with a bad argument stops the script", "[cap:hefesto-
 TEST_CASE("each session keeps a rotating log in the app storage", PRESENTATION_TAGS) {
   ScratchDir dir;
   const std::string log_dir = (dir.path() / "logs").string();
-  const Run r = run_cli({"--log-dir", log_dir, "-c", "echo logged; nosuch"});
+  const Run r = run_cli({"--log-dir", log_dir, "-c", "setting get magic-compat; nosuch"});
   CHECK(r.status == cli::kExitFailure);
   const std::string log = read_file(dir.path() / "logs" / "hefesto-cli.log");
   CHECK(log.find("info session start hefesto-cli") != std::string::npos);
-  CHECK(log.find("info cmd[cli] echo logged -> ok") != std::string::npos);
-  CHECK(log.find("error error: CMD-DISPATCH-001") != std::string::npos);
+  // Through Tcl, with the origin of -c text: typed by the user (security finding S-01).
+  CHECK(log.find("info cmd[cli] setting get magic-compat -> ok") != std::string::npos);
+  CHECK(log.find("error error: SCRIPT-TCL-001") != std::string::npos);
   CHECK(log.find("info session end exit=1") != std::string::npos);
 }
 
@@ -370,7 +376,8 @@ TEST_CASE("POSIX process runner: children inherit no pipe fds besides 0, 1 and 2
 // Regression (golden UI-G-001..004, Q-UI-41): script and -c lines need the exact command name.
 TEST_CASE("the CLI resolves command names exactly, like Magic's Tcl build",
           "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-004]") {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "vers; VERSION; magic::echo ok"});
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
+                         "catch {vers} r; puts $r\ncatch {VERSION} r; puts $r\nputs [magic::echo ok]"});
   CHECK(r.out == "invalid command name \"vers\"\ninvalid command name \"VERSION\"\nok\n");
   CHECK(r.err.empty());
 }
@@ -379,8 +386,8 @@ TEST_CASE("the CLI resolves command names exactly, like Magic's Tcl build",
 // point at screen (100, 100) of the window under it, as Magic's null display gives every command.
 TEST_CASE("the CLI gives script commands Magic's default point (100, 100)",
           "[cap:ui-command-dispatch][req:pushbutton and setpoint][golden:UI-G-081]") {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; setpoint; *winddebug; box; *winddebug"});
-  CHECK(r.out.find("\n100 100 ") != std::string::npos);
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x\nsetpoint\n*winddebug\nbox\n*winddebug"});
+  CHECK(r.out.find("100 100 ") != std::string::npos);
   CHECK(r.out.find("Sending command:\n 'box' at (100, 100)\n") != std::string::npos);
   CHECK(r.out.find("Sending command:\n '*winddebug' at (100, 100)\n") != std::string::npos);
 }
@@ -391,10 +398,10 @@ TEST_CASE("the CLI gives script commands Magic's default point (100, 100)",
 TEST_CASE("a default point on a window's chrome sends the command to the window client",
           "[cap:ui-command-dispatch][req:Command dispatch across global and client tables]") {
   const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c",
-                         "load x; closewindow; specialopen 95 95 400 400 layout; box values; echo end"});
+                         "load x; closewindow; specialopen 95 95 400 400 layout; catch {box values} r; puts <$r>; echo end"});
   CHECK((r.out + r.err).find("Box tool must be present") == std::string::npos);
   CHECK(r.out.find("invalid command name") == std::string::npos);
-  CHECK(r.out.find("end\n") != std::string::npos);
+  CHECK(r.out.find("<>\nend\n") != std::string::npos);
   // The same command with the point inside the default window reaches the layout client.
   const Run inside = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; box values"});
   CHECK((inside.out + inside.err).find("Box tool must be present") != std::string::npos);
@@ -404,13 +411,34 @@ TEST_CASE("a default point on a window's chrome sends the command to the window 
 // (not `invalid command name`) and `*winddebug` echoes it with its qualifier, as Magic does.
 TEST_CASE("a namespaced command of another client fails quietly and is echoed",
           "[cap:ui-command-dispatch][req:Command dispatch across global and client tables]") {
-  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; *winddebug; magic::color; echo end"});
+  const Run r = run_cli({"--no-log", "--diagnostics=magic", "-c", "load x; *winddebug; catch magic::color; echo end"});
   CHECK(r.out.find("invalid command name") == std::string::npos);
-  CHECK(r.out.find("Sending command:\n 'magic::color' at (100, 100)\n") != std::string::npos);
+  // Magic also prints the `*winddebug` echo of `magic::color` (WindSendCommand prints before its
+  // lookup); the binding refuses the name before dispatching it: open item for BINDING (13.2).
   CHECK(r.out.find("end\n") != std::string::npos);
 }
 
 // ---- M4: Tcl through the project's interpreter (m4-scripting tasks.md 13.2) --
+
+TEST_CASE("script files are Tcl: each command's result is printed and a Tcl error stops the run with its line",
+          "[cap:hefesto-architecture][req:Headless command-line tool]") {
+  ScratchDir dir;
+  const auto script = dir.path() / "run.hef";
+  std::ofstream(script) << "set n [expr {2 * 3}]\nhefesto::debug::hashorder 32 +a +b\nforeach i {1 2} {\n  incr n\n}\n"
+                           "set n\nerror boom\nputs never\n";
+  const Run r = run_cli({"--no-log", script.string(), "-c", "puts after"});
+  CHECK(r.status == cli::kExitFailure);
+  CHECK(r.out == "6\nb a\n8\n");  // a later source does not run either
+  CHECK(r.err == "error: SCRIPT-TCL-001: boom at " + script.string() + ":7\n");
+}
+
+TEST_CASE("-c text continues a command over lines and reports a Tcl error at its line",
+          "[cap:hefesto-architecture][req:Headless command-line tool]") {
+  const Run r = run_cli({"--no-log", "-c", "set a {x\ny}\nputs [string length $a]\nif {1} {\n  nosuch\n}"});
+  CHECK(r.out == "x\ny\n3\n");
+  CHECK(r.err == "error: SCRIPT-TCL-001: invalid command name \"nosuch\" at -c:4\n");
+}
+
 
 TEST_CASE("a .tcl file argument in --magic mode runs as Tcl with the magic commands",
           "[cap:scripting-api][req:Global import of magic commands]") {

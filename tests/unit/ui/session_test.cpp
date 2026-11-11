@@ -9,9 +9,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/ui/command_log.hpp"
 #include "hefesto/ui/complete.hpp"
 #include "hefesto/ui/history.hpp"
@@ -288,19 +292,33 @@ TEST_CASE("command files follow Tcl line rules", "[cap:ui-command-dispatch][req:
         std::vector<std::vector<std::string>>{{"box", "0", "0", "10", "10"}});
   CHECK(lines[1] == "getcell a");
   CHECK(lines[2] == "::magic::zoom 2");
-  // `source` runs a file through the script reader, nested (not logged).
+  // `source` is Tcl's `source` in the project's interpreter (m4-scripting
+  // tasks.md 13.2): the file is read through the sandbox, nested, not logged.
   UiSession s;
-  REQUIRE(s.files().write_atomic("/app/script.tcl", "# setup\nbox values 0 0 \\\n    10 10\nsetpoint 1 2\ngetcell x\n")
-              .ok());
-  s.run("logcommands start /app/src.txt");
-  REQUIRE(s.run("source /app/script.tcl").ok());
+  CHECK(UiSession::first_error(s.run("source /app/none.tcl")) == "UI-SOURCE-001: Couldn't read from /app/none.tcl.");
+  const std::filesystem::path dir = std::filesystem::temp_directory_path() / "hefesto-ui-source-test";
+  std::filesystem::create_directories(dir);
+  const std::string script = (dir / "script.tcl").string();
+  std::ofstream(script) << "# setup\nbox values 0 0 \\\n    10 10\nsetpoint 1 2\ngetcell x\n";
+  hefesto::script::SandboxPolicy policy;
+  policy.granted_roots.push_back(dir);
+  hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(s.editor, policy);
+  REQUIRE(hefesto::script::bind_registry(interp, s.registry, *s.dispatcher).ok());
+  // Typed, not from a script: a script's commands see only the sandbox's
+  // granted roots (security finding S-02), and /app is not one.
+  s.run("logcommands start /app/src.txt", cmd::Origin::cli);
+  REQUIRE(s.run("source " + script).ok());
   CHECK(s.calls_of("box") == std::vector<std::string>{"box values 0 0 10 10"});
   CHECK(s.calls_of("getcell") == std::vector<std::string>{"getcell x"});
-  CHECK(without_date(read(s, "/app/src.txt")).ends_with("source /app/script.tcl\n"));
+  CHECK(without_date(read(s, "/app/src.txt")).ends_with("source " + script + "\n"));
   // The point forced inside the script survives its later commands.
   CHECK(s.editor.command_point.has_value());
-  CHECK(UiSession::first_error(s.run("source /app/none.tcl")) == "UI-SOURCE-001: Couldn't read from /app/none.tcl.");
+  const auto missing = s.run("source " + (dir / "none.tcl").string());
+  CHECK_FALSE(missing.ok());
+  CHECK(missing.raises);
   CHECK(UiSession::first_error(s.run("source")) == "UI-USAGE-001: Usage: source filename");
+  hefesto::script::close_project_interpreter(s.editor);
+  std::filesystem::remove_all(dir);
 }
 
 // --- Command entry on every platform ----------------------------------------------------------

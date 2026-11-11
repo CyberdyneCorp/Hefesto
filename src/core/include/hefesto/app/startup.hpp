@@ -29,6 +29,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/script/tcl/sandbox.hpp"
 #include "hefesto/settings/project_settings.hpp"
 
 namespace hefesto::script {
@@ -112,6 +113,17 @@ struct StartupEnvironment {
   platform::Path install_root;     // CAD_ROOT (empty: no system files); see resolve_install_root
   platform::Path home;
   platform::Path working_directory;
+  /// Whether the working directory becomes a granted root of the project's
+  /// script sandbox (the command-line front end; security finding S-11). It
+  /// never does when it is "/", the home folder or a folder above it. The
+  /// desktop app does not set it: it grants the project folder only.
+  bool grant_working_directory = false;
+  /// The session's temporary area, a granted root of the script sandbox
+  /// (design D5); empty: none.
+  platform::Path temporary_folder;
+  /// The evaluation limits of the project's interpreter (security finding
+  /// S-14; hefesto-cli --script-time-limit). Default: none.
+  script::SandboxLimits script_limits;
   /// Environment variables (PDK_ROOT, PDKPATH, path expansion) and symbolic
   /// links; nullptr = none (iPadOS, tests without a host). Must outlive the
   /// session: the editor's path-variable lookup keeps using it.

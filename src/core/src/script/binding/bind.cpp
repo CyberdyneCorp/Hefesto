@@ -23,6 +23,7 @@
 #include "hefesto/script/binding/variables.hpp"
 #include "hefesto/script/binding/window_commands.hpp"
 #include "hefesto/script/pdk/helper_origins.hpp"
+#include "hefesto/script/tcl/sandbox.hpp"
 
 namespace hefesto::script {
 
@@ -379,6 +380,24 @@ cmd::CommandResult install_hooks(const Binding& b) {
 
 }  // namespace
 
+namespace {
+
+// Security finding S-02: the engine commands a script runs see the project's
+// sandboxed file system (kept for the editor's lifetime, so the dispatcher's
+// pointer stays valid across reopened interpreters).
+void install_script_files(cmd::Dispatcher& dispatcher) {
+  editor::EditorState* editor = dispatcher.editor();
+  if (editor == nullptr) {
+    return;
+  }
+  if (editor->script.script_files == nullptr) {
+    editor->script.script_files = std::make_unique<SandboxedFileSystem>(dispatcher.files(), editor->script.sandbox);
+  }
+  dispatcher.set_script_files(editor->script.script_files.get());
+}
+
+}  // namespace
+
 cmd::CommandResult bind_registry(Interpreter& interp, const cmd::CommandRegistry& registry,
                                  cmd::Dispatcher& dispatcher) {
   const Binding b{interp, registry, dispatcher};
@@ -397,6 +416,7 @@ cmd::CommandResult bind_registry(Interpreter& interp, const cmd::CommandRegistry
     return setup;
   }
   define_commands(b, true);
+  install_script_files(dispatcher);
   return install_hooks(b);
 }
 

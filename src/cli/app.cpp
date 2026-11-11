@@ -4,11 +4,13 @@
 #include "app.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -16,7 +18,6 @@
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/command_log.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -38,6 +39,7 @@
 #include "hefesto/version.hpp"
 #include "interactive.hpp"
 #include "options.hpp"
+#include "tcl_lines.hpp"
 
 #include <unistd.h>
 
@@ -78,24 +80,46 @@ class StreamSink final : public diag::DiagnosticSink {
   std::mutex mutex_;
 };
 
-/// Prints the non-empty value of each successful command to stdout.
-/// Off while Tcl runs (startup files, a `.tcl` script, Tcl from standard
-/// input): a command's value is then its Tcl result, printed only by `puts`.
-class ValuePrinter final : public cmd::CommandObserver {
+/// Counts the commands that failed and remembers the last error text that
+/// was reported, so the CLI can fail the run on a quiet command failure
+/// (Magic's convention: the script goes on) and print a Tcl error only when
+/// the failing command has not reported it already.
+class RunMonitor final : public diag::DiagnosticSink, public cmd::CommandObserver {
  public:
-  explicit ValuePrinter(std::FILE* stream) : stream_(stream) {}
-
-  void on_command(const cmd::Invocation& /*invocation*/, const cmd::CommandResult& result) override {
-    if (echo_ && result.ok() && !result.value.is_none()) {
-      print_line(stream_, result.value.to_string());
+  void emit(const diag::Diagnostic& diagnostic) override {
+    if (diagnostic.severity == diag::Severity::error) {
+      const std::scoped_lock lock{mutex_};
+      last_error_ = diagnostic.text;
     }
   }
 
-  void set_echo(bool echo) noexcept { echo_ = echo; }
+  void on_command(const cmd::Invocation& /*invocation*/, const cmd::CommandResult& result) override {
+    if (!result.ok()) {
+      const std::scoped_lock lock{mutex_};
+      ++failures_;
+    }
+  }
+
+  [[nodiscard]] std::size_t failures() const {
+    const std::scoped_lock lock{mutex_};
+    return failures_;
+  }
+
+  /// True when `text` is the last error a command reported since forget().
+  [[nodiscard]] bool reported(const std::string& text) const {
+    const std::scoped_lock lock{mutex_};
+    return last_error_ && *last_error_ == text;
+  }
+
+  void forget() {
+    const std::scoped_lock lock{mutex_};
+    last_error_.reset();
+  }
 
  private:
-  std::FILE* stream_;
-  bool echo_ = true;
+  mutable std::mutex mutex_;
+  std::size_t failures_ = 0;
+  std::optional<std::string> last_error_;
 };
 
 /// A failure that is a Tcl error in Magic's interpreter: a raised usage error
@@ -108,15 +132,14 @@ bool raises_tcl_error(const cmd::CommandResult& result) {
 }
 
 /// --diagnostics=magic: the console of `magic -dnull -noconsole` running a
-/// golden reference script in which every command line is `puts [cmd]` or
-/// `catch {cmd} result; puts $result` (tools/golden/README.md). Each script
-/// command prints its result on stdout, an empty line for an empty result.
-/// As in Magic's Tcl dispatcher (scripting-api "Command result and error
-/// conventions"), a failed command's diagnostics are TxError text on stderr
-/// and its result stays empty, except when the command set an explicit result
-/// (`tech load`), which replaces its last diagnostic, or raised a Tcl error,
-/// whose message becomes the result. Other diagnostics are TxError (stderr)
-/// or, for informational ones, TxPrintf (stdout) text.
+/// golden reference script (tools/golden/README.md). Commands print nothing
+/// themselves; the script's `puts` prints their Tcl results. As in Magic's
+/// Tcl dispatcher (scripting-api "Command result and error conventions"), a
+/// failed command's diagnostics are TxError text on stderr, except when the
+/// command set an explicit result (`tech load`), which replaces its last
+/// diagnostic, or raised a Tcl error, whose message becomes the result: that
+/// diagnostic is then the Tcl result, not console text. Other diagnostics are
+/// TxError (stderr) or, for informational ones, TxPrintf (stdout) text.
 class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObserver {
  public:
   MagicConsole(std::FILE* out, std::FILE* err) : out_(out), err_(err) {}
@@ -146,10 +169,14 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
     print_line(stream, text);
   }
 
+  /// Set while a Tcl chunk runs: its commands have Tcl results even when
+  /// their origin is `cli` (-c text, standard input).
+  void set_in_tcl(bool on) noexcept { in_tcl_ = on; }
+
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) override {
     const std::scoped_lock lock{mutex_};
-    if (!invocation.source) {
-      flush_pending();  // startup commands are not script lines: no result printed
+    if (!in_tcl_ && !invocation.source && invocation.origin != cmd::Origin::script) {
+      flush_pending();  // commands of the startup sequence itself have no Tcl result
       return;
     }
     const bool is_result = !result.ok() && has_pending_ && !result.diagnostics.empty() &&
@@ -158,9 +185,6 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
       has_pending_ = false;  // it is the command's Tcl result (or error), not TxError text
     }
     flush_pending();
-    if (echo_) {
-      print_line(out_, result_text(result, is_result));
-    }
   }
 
   void flush() {
@@ -168,22 +192,7 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
     flush_pending();
   }
 
-  /// Off while Tcl runs: Magic's console prints nothing for a command; the
-  /// script's own `puts` does (tools/golden/authoring/tclcase.py).
-  void set_echo(bool echo) {
-    const std::scoped_lock lock{mutex_};
-    echo_ = echo;
-  }
-
  private:
-  // The Tcl result `puts` prints for one command line.
-  static std::string result_text(const cmd::CommandResult& result, bool is_result) {
-    if (result.ok() || !result.value.is_none()) {
-      return result.value.to_string();
-    }
-    return is_result ? result.diagnostics.back().text : std::string{};
-  }
-
   void flush_pending() {
     if (has_pending_) {
       print_line(err_, diag::format_magic(pending_));
@@ -193,11 +202,11 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
 
   std::FILE* out_;
   std::FILE* err_;
+  bool in_tcl_ = false;
   // A plain member plus a flag, not std::optional: GCC 14 reports a bogus
   // -Wmaybe-uninitialized when an optional<Diagnostic> is assigned.
   diag::Diagnostic pending_;
   bool has_pending_ = false;
-  bool echo_ = true;
   std::mutex mutex_;
 };
 
@@ -218,7 +227,6 @@ class Session {
         err_(err),
         services_(platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}}),
         sink_(err, options.diagnostics),
-        values_(out),
         magic_console_(out, err) {
     log_warning_ = open_log();
     services_.set_process_runner(std::make_unique<platform_posix::PosixProcessRunner>());
@@ -238,14 +246,14 @@ class Session {
     dispatcher_->set_default_point(db::Point{100, 100});  // Magic's txCurrentPoint (Q-UI-43)
     ui::install_defaults(editor_);  // the tools and default key bindings (Magic's startup files)
     dispatcher_->add_observer(*command_log_);
+    dispatcher_->add_observer(monitor_);
     if (options.diagnostics == diag::Format::magic) {
-      script_session_.catch_lines = true;  // the reference scripts catch every line
       dispatcher_->add_sink(magic_console_);
       dispatcher_->add_observer(magic_console_);
     } else {
       dispatcher_->add_sink(sink_);
-      dispatcher_->add_observer(values_);
     }
+    dispatcher_->add_sink(monitor_);
   }
 
   Session(const Session&) = delete;
@@ -315,29 +323,11 @@ class Session {
     if (startup.technology) {
       log(diag::Severity::info, "tech " + *startup.technology);
     }
-    const EchoOff tcl{*this};  // startup files and the `.tcl` argument are Tcl
     const auto result =
         app::run_startup(*dispatcher_, project_, services_.files(), startup, environment(), console_sink());
     if (!result) {
       dispatcher_->report(result.error());
     }
-  }
-
-  // Command values are printed only by Tcl's `puts` while one lives.
-  class EchoOff {
-   public:
-    explicit EchoOff(Session& session) : session_(session) { session_.set_echo(false); }
-    ~EchoOff() { session_.set_echo(true); }
-    EchoOff(const EchoOff&) = delete;
-    EchoOff& operator=(const EchoOff&) = delete;
-
-   private:
-    Session& session_;
-  };
-
-  void set_echo(bool echo) {
-    values_.set_echo(echo);
-    magic_console_.set_echo(echo);
   }
 
   // The CLI's console in the project's interpreter: `puts` to stdout and
@@ -387,6 +377,8 @@ class Session {
     env.home = install_host_->home_directory();
     std::error_code ec;
     env.working_directory = std::filesystem::current_path(ec);
+    env.grant_working_directory = true;  // a batch run's files live in its working directory (S-11 limits it)
+    env.script_limits.time_limit = std::chrono::seconds{options_.script_time_limit};  // S-14
     env.project_folder = options_.project;
     if (!env.project_folder && services_.files().exists(env.working_directory / std::string{app::kProjectFileName})) {
       env.project_folder = env.working_directory;
@@ -396,6 +388,36 @@ class Session {
     env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
     env.configure_interpreter = [this](script::Interpreter& interp) { install_console(interp); };
     return env;
+  }
+
+  // One source of Tcl input and how the CLI runs it.
+  struct TclSource {
+    std::string name;        // "-c", the file name or "-" (error locations)
+    bool echo;               // print each chunk's non-empty result (a console)
+    bool keep_going;         // a Tcl error does not stop the source (tclsh's loop)
+    bool count_failures;     // a quiet command failure fails the run
+    /// `cli` for text the user typed (-c, standard input), `script` for a
+    /// script file: a file's engine commands see only the sandbox's granted
+    /// roots and never run a process (security findings S-01, S-02).
+    cmd::Origin origin = cmd::Origin::script;
+  };
+
+  // How each source runs: `-c` text and script files print each command's
+  // result and stop at a Tcl error, like `source` (a quiet command failure
+  // still fails the run, Hefesto's CLI status convention); in --magic mode
+  // standard input is Magic's console without a terminal (tclsh's
+  // non-interactive loop: an error prints its message and the next command
+  // runs, nothing else is echoed, the status comes from `quit`).
+  [[nodiscard]] TclSource tcl_source(const ScriptSource& source) const {
+    using Kind = ScriptSource::Kind;
+    const cmd::Origin origin = source.kind == Kind::file ? cmd::Origin::script : cmd::Origin::cli;
+    if (source.kind == Kind::inline_text) {
+      return {"-c", true, false, true, origin};
+    }
+    if (options_.magic_mode) {
+      return {source.value, false, true, false, origin};
+    }
+    return {source.value, true, false, true, origin};
   }
 
   // Runs every source in order; stops at an aborted script or `quit`.
@@ -416,74 +438,110 @@ class Session {
       }
     }
     if (interactive) {
-      // The background checker runs only here, never in batch mode (m3-drc design D8).
-      const InteractiveRun run = run_interactive(*dispatcher_, editor_, 0, out_, true);
-      ok = ok && run.ok;
+      ok = run_prompt() && ok;
     }
     return ok;
   }
 
-  // -c text and scripts outside --magic mode use the M0 command reader
-  // until the M1-M3 golden cases move to Tcl (m4-scripting tasks.md 13.2);
-  // in --magic mode a script (standard input) is Tcl, as in Magic.
-  cmd::ScriptRun run_source(const ScriptSource& source) {
-    using Kind = ScriptSource::Kind;
-    if (source.kind == Kind::inline_text) {
-      return cmd::run_script(*dispatcher_, source.value, cmd::Origin::cli, "-c");
-    }
-    const auto text = load_source(source);
-    if (!text) {
-      cmd::ScriptRun failed;
-      failed.aborted = true;
-      return failed;
-    }
-    if (options_.magic_mode && editor_.script.interp != nullptr) {
-      return run_tcl_lines(*editor_.script.interp, *text);
-    }
-    return cmd::run_script(*dispatcher_, *text, cmd::Origin::script, source.value);
+  // The interactive prompt: each complete command is evaluated as typed at
+  // a console (its result printed, an error reported, the next one read).
+  // The background checker runs only here, never in batch mode (m3-drc
+  // design D8).
+  bool run_prompt() {
+    const TclSource console{"-", true, true, true};
+    const std::size_t failures = monitor_.failures();
+    const InteractiveRun run = run_interactive(*dispatcher_, editor_, 0, out_, true, [&](const TclChunk& chunk) {
+      SourceRun ignored;
+      return evaluate_chunk(*editor_.script.interp, chunk, console, ignored);
+    });
+    return run.ok && monitor_.failures() == failures;
   }
 
-  // Magic's console without a terminal (tclsh's non-interactive loop): each
-  // complete command is evaluated in turn; an error prints its message on
-  // stderr and the next command runs; nothing else is echoed.
-  cmd::ScriptRun run_tcl_lines(script::Interpreter& interp, std::string_view text) {
-    const EchoOff tcl{*this};
-    cmd::ScriptRun run;
-    std::string command;
-    std::size_t start = 0;
-    while (start < text.size() && !script_session_.quit_requested) {
-      const std::size_t end = std::min(text.find('\n', start), text.size());
-      command.append(text.substr(start, end - start));
-      command += '\n';
-      start = end + 1;
-      if (start < text.size() && !complete(interp, command)) {
-        continue;
+  // The result of running one source.
+  struct SourceRun {
+    std::size_t failures = 0;  // Tcl errors, plus quiet command failures where they count
+    bool aborted = false;      // stopped by a Tcl error or an unreadable source
+    bool quit = false;         // stopped by `quit`
+
+    [[nodiscard]] bool ok() const noexcept { return failures == 0 && !aborted; }
+  };
+
+  SourceRun run_source(const ScriptSource& source) {
+    const auto text =
+        source.kind == ScriptSource::Kind::inline_text ? std::optional<std::string>{source.value} : load_source(source);
+    if (!text) {
+      return SourceRun{0, true, false};
+    }
+    return run_tcl(*editor_.script.interp, *text, tcl_source(source));
+  }
+
+  // Evaluates `text` one complete command at a time (see TclSource).
+  SourceRun run_tcl(script::Interpreter& interp, std::string_view text, const TclSource& source) {
+    const std::size_t failures = monitor_.failures();
+    SourceRun run;
+    ChunkReader reader{interp, text};
+    while (!script_session_.quit_requested) {
+      const auto chunk = reader.next();
+      if (!chunk) {
+        break;
       }
-      evaluate_command(interp, std::exchange(command, std::string{}), run);
+      if (!evaluate_chunk(interp, *chunk, source, run) && !source.keep_going) {
+        run.aborted = true;
+        break;
+      }
+    }
+    if (source.count_failures) {
+      run.failures += monitor_.failures() - failures;
     }
     run.quit = script_session_.quit_requested;
     return run;
   }
 
-  static bool complete(script::Interpreter& interp, const std::string& command) {
-    const auto r = interp.evaluate("::info complete " + script::quote_list_element(command));
-    return !r.ok() || r.value.to_string() == "1";
-  }
-
-  void evaluate_command(script::Interpreter& interp, const std::string& command, cmd::ScriptRun& run) {
-    ++run.commands_run;
-    const auto result = interp.evaluate(command);
-    if (result.ok() || script_session_.quit_requested) {
-      return;  // `quit` unwinds the evaluation: not an error
+  // Evaluates one chunk; prints its result or reports its Tcl error. False
+  // on a Tcl error (`quit` unwinds the evaluation: not an error).
+  bool evaluate_chunk(script::Interpreter& interp, const TclChunk& chunk, const TclSource& source, SourceRun& run) {
+    monitor_.forget();
+    magic_console_.set_in_tcl(true);
+    const auto result = interp.evaluate(chunk.text, source.origin);
+    magic_console_.set_in_tcl(false);
+    if (script_session_.quit_requested) {
+      return true;
+    }
+    if (result.ok()) {
+      print_result(result.value, source.echo);
+      return true;
     }
     ++run.failures;
-    for (const auto& d : result.diagnostics) {
-      if (options_.diagnostics == diag::Format::magic) {
-        magic_console_.flush();
-        print_line(err_, d.text);  // tclsh prints the error message
-      } else {
-        dispatcher_->report(d);
-      }
+    report_tcl_error(result, located_error(result, source.name, chunk.line));
+    return false;
+  }
+
+  void print_result(const cmd::Value& value, bool echo) {
+    if (!echo || value.is_none()) {
+      return;
+    }
+    const std::string text = value.to_string();
+    if (!text.empty()) {
+      magic_console_.flush();
+      print_line(out_, text);
+    }
+  }
+
+  // A Tcl error: tclsh prints its message (the Magic console, nothing
+  // else); the other formats report it as a located diagnostic unless the
+  // failing command reported the same error already, then the sandbox's
+  // diagnostics of the evaluation.
+  void report_tcl_error(const cmd::CommandResult& result, const diag::Diagnostic& error) {
+    if (options_.diagnostics == diag::Format::magic) {
+      magic_console_.flush();
+      print_line(err_, error.text);
+      return;
+    }
+    if (!monitor_.reported(error.text)) {
+      dispatcher_->report(error);
+    }
+    for (std::size_t i = 1; i < result.diagnostics.size(); ++i) {
+      dispatcher_->report(result.diagnostics[i]);
     }
   }
 
@@ -519,7 +577,7 @@ class Session {
   std::unique_ptr<pdk::PdkManager> pdk_manager_;  // outlives every use of the store (the dispatcher dies first)
   StreamSink sink_;
   std::unique_ptr<cmd::CommandLog> command_log_;
-  ValuePrinter values_;
+  RunMonitor monitor_;
   MagicConsole magic_console_;
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
 };

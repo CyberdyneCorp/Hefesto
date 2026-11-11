@@ -22,11 +22,11 @@
 #include "hefesto/cell/host.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/cmd/units.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/display/styles.hpp"
+#include "hefesto/pcell/framework/hooks.hpp"
 #include "hefesto/script/binding/bind.hpp"
 #include "hefesto/script/binding/variables.hpp"
 #include "hefesto/script/pdk/startup.hpp"
@@ -117,6 +117,7 @@ class Startup {
     select_technology();
     discover_pdk_libraries();
     result_.technology = state_.technology->name();
+    const drc::BackgroundMode drc_state = defer_drc();
     open_startup_window();
     if (options_.recover && !options_.no_window) {
       recover();
@@ -124,6 +125,7 @@ class Startup {
       load_files();
     }
     set_box();
+    resume_drc(drc_state);
     // Magic's UndoFlush after the command-line files (utils/main.c:1236):
     // the first `undo` of the session must not revert the startup loads.
     state_.undo.clear();
@@ -296,10 +298,13 @@ class Startup {
       for (const auto& d : bound.diagnostics) {
         sink_.emit(d);  // the binding installs the Q-SCRIPT-41 helper-origin hook itself
       }
-      // toolkit.tcl, which Magic sources in every session, refreshes an open
-      // gencell dialog after each `select` (Magic ref: tcltk/toolkit.tcl:117;
-      // pcell-toolkit "Selection-driven dialog refresh and key binding").
-      (void)state_.script.interp->evaluate(R"(magic::tag add select "magic::gencell_update %1")");
+      // toolkit.tcl's session hooks (Magic ref: tcltk/toolkit.tcl:111-117;
+      // pcell-toolkit "Selection-driven dialog refresh and key binding"): the
+      // `select` tag that refreshes an open gencell dialog and Tk's `raise`
+      // for `.params`, before any startup or PDK script.
+      for (const auto& d : pcell::install_toolkit(*state_.script.interp, state_).diagnostics) {
+        sink_.emit(d);
+      }
       if (env_.configure_interpreter) {
         env_.configure_interpreter(*state_.script.interp);
       }
@@ -312,6 +317,9 @@ class Startup {
   // Granted roots and the synthesized environment (D-31) of the project's
   // interpreter; enforced by TCL's sandbox (design D5). Each startup file is
   // granted itself (an explicitly chosen document), not its directory.
+  // Security findings S-11 and S-03: the PDK store and the install root are
+  // read-only; the working directory is granted only when the front end asks
+  // for it and it is not "/", the home folder or a folder above it.
   script::SandboxPolicy sandbox_policy(const std::vector<StartupFile>& files) const {
     script::SandboxPolicy policy;
     for (const StartupFile& file : files) {
@@ -320,16 +328,25 @@ class Startup {
     for (const FileArgument& file : options_.files) {
       if (file.kind == FileKind::script) {
         policy.granted_roots.push_back(absolute(file.name));  // an explicitly named document (design D5)
+      } else if (const Path folder = absolute(file.name).parent_path(); grantable_folder(folder)) {
+        policy.granted_roots.push_back(folder);  // the folder of an opened layout: its project
       }
     }
-    for (const Path& root : {env_.working_directory, manager_.root(), env_.install_root}) {
+    if (env_.grant_working_directory && grantable_folder(env_.working_directory)) {
+      policy.granted_roots.push_back(env_.working_directory);
+    }
+    for (const Path& root : {manager_.root(), env_.install_root}) {
       if (!root.empty()) {
-        policy.granted_roots.push_back(root);
+        policy.read_only_roots.push_back(root);
       }
     }
     if (env_.project_folder) {
       policy.granted_roots.push_back(*env_.project_folder);
     }
+    if (!env_.temporary_folder.empty()) {
+      policy.granted_roots.push_back(env_.temporary_folder);
+    }
+    policy.limits = env_.script_limits;
     if (!env_.install_root.empty()) {
       policy.environment["CAD_ROOT"] = env_.install_root.string();
     }
@@ -340,6 +357,24 @@ class Startup {
       policy.environment["PDK_ROOT"] = manager_.root().string();
     }
     return policy;
+  }
+
+  // A folder that may become a granted root implicitly: not "/", not the home
+  // folder and not a folder above it (S-11: a desktop app launched from the
+  // Finder runs in "/", a shell often in $HOME).
+  [[nodiscard]] bool grantable_folder(const Path& folder) const {
+    if (folder.empty() || !folder.is_absolute()) {
+      return false;
+    }
+    const Path normal = folder.lexically_normal();
+    if (normal == normal.root_path()) {
+      return false;
+    }
+    if (env_.home.empty()) {
+      return true;
+    }
+    const Path relative = env_.home.lexically_normal().lexically_relative(normal);
+    return !relative.empty() && *relative.begin() == "..";  // home is not at or below `folder`
   }
 
   [[nodiscard]] std::optional<Path> pinned_variant_dir() const {
@@ -578,12 +613,10 @@ class Startup {
     return ok;
   }
 
-  // A `.tcl` file argument: Tcl's `source` in the project's interpreter, with
-  // Magic's error text (Magic ref: utils/main.c:1212-1221).
+  // A `.tcl` file argument: Tcl's `source` in the project's interpreter
+  // (opened by run() before any file argument), with Magic's error text
+  // (Magic ref: utils/main.c:1212-1221).
   bool run_script_file(const FileArgument& file) {
-    if (state_.script.interp == nullptr) {
-      return run_placeholder_script(file);
-    }
     const auto run = state_.script.interp->source(absolute(file.name));
     result_.loaded_files.push_back(file.name);
     if (!run.ok() && !quit_requested()) {
@@ -593,16 +626,39 @@ class Startup {
     return run.ok() || quit_requested();
   }
 
-  // Without an interpreter (none could be created): the M0 placeholder reader.
-  bool run_placeholder_script(const FileArgument& file) {
-    auto text = fs_.read(file.name);
-    if (!text) {
-      report(codes::kFileUnsupported, "Cannot read script \"" + file.name + "\": " + text.error().text);
+  // Steps 10 and 15 of "Script-host startup sequence": the DRC state the
+  // startup files left is saved and background DRC is off while the window
+  // opens and the command-line files load, then turned back on if it was on
+  // (Magic ref: tcltk/magic.tcl.in:355-356,467-470). Only in wrapper mode
+  // (a display other than NULL named with -d): with NULL graphics, or no
+  // -d, Magic's C startup loads the files before that step, with DRC as the
+  // startup files left it (utils/main.c:1189-1225). Not dispatched, so the
+  // startup's command log holds only what the user asked for. Owner: PDKINT.
+  [[nodiscard]] bool wrapper_mode() const {
+    if (!options_.display_type) {
       return false;
     }
-    const auto run = cmd::run_script(dispatcher_, text.value(), cmd::Origin::script, file.name);
-    result_.loaded_files.push_back(file.name);
-    return run.ok();
+    const auto display = resolve_display(options_.display_type, true);
+    return display.ok() && !display.value().headless;
+  }
+
+  drc::BackgroundMode defer_drc() {
+    const drc::BackgroundMode saved = state_.drc.background;
+    if (!wrapper_mode()) {
+      return saved;
+    }
+    state_.drc.background = drc::BackgroundMode::off;
+    return saved;
+  }
+
+  void resume_drc(drc::BackgroundMode saved) {
+    if (saved == drc::BackgroundMode::off || state_.drc.background != drc::BackgroundMode::off) {
+      return;  // was off, or a file argument turned it on itself
+    }
+    state_.drc.background = drc::BackgroundMode::on;  // `drc on`
+    if (state_.drc.worker != nullptr) {
+      state_.drc.worker->wake();
+    }
   }
 
   // `name` made absolute against the session's working directory.

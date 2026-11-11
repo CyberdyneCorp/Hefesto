@@ -8,6 +8,7 @@
 #include <exception>
 #include <utility>
 
+#include "hefesto/cmd/host_access.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -270,7 +271,15 @@ void Dispatcher::after_command(const Invocation& typed, const Invocation& resolv
 CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation& invocation) {
   diag::CollectingSink collected;
   LiveSink sink{collected, live_sinks_};
-  CommandContext context{services_, project_, session_, sink, registry_, editor_};
+  // Security finding S-02: the engine commands of a script (or of a key
+  // macro, which a script may have defined) see the sandboxed file system,
+  // so their C++ file I/O stays within the granted roots.
+  const platform::PlatformServices services =
+      script_files_ != nullptr && !may_reach_host(invocation.origin)
+          ? platform::PlatformServices{*script_files_,     services_.pdks,  services_.autosave, services_.clock,
+                                       services_.logger,   services_.tasks, services_.processes}
+          : services_;
+  CommandContext context{services, project_, session_, sink, registry_, editor_};
   std::string saved_client;
   if (editor_ != nullptr) {
     saved_client = std::exchange(ui::state(*editor_).client, target_client());

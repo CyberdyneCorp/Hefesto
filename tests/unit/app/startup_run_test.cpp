@@ -17,7 +17,6 @@
 #include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/startup.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
@@ -495,4 +494,67 @@ TEST_CASE("platform startup surface: a default PDK technology loads before an op
   CHECK(r.value().startup_files.empty());
   CHECK(s.calls == std::vector<std::string>{"tech load sky130A", "load inv"});
   REQUIRE(s.editor.windows.current() != nullptr);  // the opened cell is shown in the startup window
+}
+
+// ---- the script sandbox's granted roots (security finding S-11, S-03) -----------------------
+
+namespace {
+
+bool has_root(const std::vector<std::filesystem::path>& roots, const std::filesystem::path& root) {
+  return std::find(roots.begin(), roots.end(), root) != roots.end();
+}
+
+}  // namespace
+
+TEST_CASE("the working directory is granted only when asked for and not / or the home folder",
+          "[cap:hefesto-security][req:Script sandbox enforcement]") {
+  {
+    Session s;  // the desktop: no working directory
+    REQUIRE(s.start({}).ok());
+    REQUIRE(s.editor.script.interp != nullptr);
+    CHECK_FALSE(has_root(s.editor.script.sandbox.granted_roots, s.env.working_directory));
+  }
+  {
+    Session s;  // the command line
+    s.env.grant_working_directory = true;
+    REQUIRE(s.start({}).ok());
+    CHECK(has_root(s.editor.script.sandbox.granted_roots, s.env.working_directory));
+  }
+  for (const char* which : {"root", "home", "above home"}) {
+    INFO(which);
+    Session s;
+    s.env.grant_working_directory = true;
+    const std::string_view name{which};
+    s.env.working_directory = name == "root" ? std::filesystem::path{"/"}
+                              : name == "home" ? s.env.home
+                                               : s.env.home.parent_path();
+    REQUIRE(s.start({}).ok());
+    CHECK_FALSE(has_root(s.editor.script.sandbox.granted_roots, s.env.working_directory));
+  }
+}
+
+TEST_CASE("the install root and the PDK store are read-only roots of the script sandbox",
+          "[cap:hefesto-security][req:Script sandbox enforcement]") {
+  Session s;
+  s.env.install_root = s.dir.path() / "install";
+  s.env.pdk_root = s.dir.path() / "pdks";
+  std::filesystem::create_directories(*s.env.pdk_root);
+  REQUIRE(s.start({}).ok());
+  const auto& policy = s.editor.script.sandbox;
+  CHECK(has_root(policy.read_only_roots, s.env.install_root));
+  CHECK_FALSE(has_root(policy.granted_roots, s.env.install_root));
+  CHECK_FALSE(has_root(policy.granted_roots, *s.env.pdk_root));
+}
+
+TEST_CASE("the folder of an opened layout is granted, unless it is the home folder",
+          "[cap:hefesto-security][req:Script sandbox enforcement]") {
+  Session s;
+  const auto project = s.dir.path() / "project";
+  std::filesystem::create_directories(project);
+  app::StartupOptions options;
+  options.files.push_back(app::FileArgument{(project / "inv").string(), app::FileKind::cell});
+  options.files.push_back(app::FileArgument{(s.env.home / "top").string(), app::FileKind::cell});
+  REQUIRE(s.start(options).ok());
+  CHECK(has_root(s.editor.script.sandbox.granted_roots, project));
+  CHECK_FALSE(has_root(s.editor.script.sandbox.granted_roots, s.env.home));
 }
