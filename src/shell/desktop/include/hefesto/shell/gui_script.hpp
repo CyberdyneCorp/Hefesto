@@ -63,6 +63,22 @@ struct GuiScriptRun {
 [[nodiscard]] GuiScriptRun run_gui_script_traced(editor::EditorState& editor, cmd::Dispatcher& dispatcher,
                                                  std::string_view script, cmd::Origin origin = cmd::Origin::gui);
 
+/// While it exists, run_gui_script runs nothing and answers SCRIPT-TCL-004:
+/// the window holds one while it draws a frame from a running script's
+/// progress report, so a click, a key macro or a menu item chosen in that
+/// frame cannot start a command inside the running script (boards
+/// M4-Console note 8 and M4-Script-Consent tile 7: the layout takes no
+/// input until the script ends; the Interrupt card and Ctrl-C do not run
+/// commands). UI thread only.
+class ScriptInputBlock {
+ public:
+  ScriptInputBlock() noexcept;
+  ~ScriptInputBlock();
+  ScriptInputBlock(const ScriptInputBlock&) = delete;
+  ScriptInputBlock& operator=(const ScriptInputBlock&) = delete;
+  [[nodiscard]] static bool active() noexcept;
+};
+
 /// The text a result shows in the Console: its value, else its first diagnostic.
 [[nodiscard]] std::string gui_result_text(const cmd::CommandResult& result);
 

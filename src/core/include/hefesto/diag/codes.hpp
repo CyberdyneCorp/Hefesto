@@ -34,9 +34,6 @@ inline constexpr std::string_view kCmdDispatch = "CMD-DISPATCH-001";
 inline constexpr std::string_view kCmdUsage = "CMD-USAGE-001";
 inline constexpr std::string_view kCmdInternal = "CMD-INTERNAL-001";
 inline constexpr std::string_view kCmdRegistryDuplicate = "CMD-REGISTRY-001";
-inline constexpr std::string_view kCmdParseQuote = "CMD-PARSE-001";
-inline constexpr std::string_view kCmdParseBrace = "CMD-PARSE-002";
-inline constexpr std::string_view kCmdParseExtra = "CMD-PARSE-003";
 inline constexpr std::string_view kCmdSession = "CMD-SESSION-001";
 // Platform services
 inline constexpr std::string_view kPlatformUnsupported = "PLATFORM-UNSUPPORTED-001";
@@ -59,7 +56,8 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
 // is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
-// `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7).
+// `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7), CMD-PARSE-001..003
+// (M4: command lines are Tcl, the M0 command-script reader is removed).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the

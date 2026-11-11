@@ -83,6 +83,9 @@ struct MenuBarInputs {
   std::function<std::optional<bool>(std::string_view variable)> option;
   /// The project's PDK scripts were declined: no PDK items or menus.
   bool scripts_declined = false;
+  /// The window's root cell is read-only (a declined layout, board
+  /// M4-Script-Consent tile 6): File › Save… and Save as… are disabled.
+  bool layout_read_only = false;
 };
 
 /// Magic's labels with runs of spaces collapsed ("Mirror   Up/Down" ->
@@ -93,6 +96,9 @@ struct MenuBarInputs {
 /// disabled in M4 (Read/Write GDS: M5, Netlist Window: M12, 3D Display:
 /// M10); nullopt for the others.
 [[nodiscard]] std::optional<std::string_view> later_milestone(std::string_view command);
+
+/// True for the wrapper commands that write the layout (File › Save…, Save as…).
+[[nodiscard]] bool saves_layout(std::string_view command);
 
 /// The bar for one layout window.
 [[nodiscard]] MenuBarView menu_bar_view(const gui::WrapperMenuModel& wrapper, const script::MenuModel& pdk_menus,

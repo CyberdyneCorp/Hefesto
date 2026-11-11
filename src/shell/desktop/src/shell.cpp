@@ -163,9 +163,11 @@ int run_capture(ui::Runtime& runtime, MainWindow& window, const ShellOptions& op
     if (++frames >= options.capture_frames) runtime.quit();
   });
   window.set_realtime(true);
+  if (options.capture_running) window.capture_when_card_shows(options.capture);
   while (runtime.wait_frame(0.0) && window.open()) {
   }
   runtime.set_frame_callback({});
+  if (options.capture_running && window.card_captured()) return 0;
   if (!window.capture(options.capture)) {
     std::fprintf(stderr, "hefesto: could not capture the window to %s\n", options.capture.c_str());
     return 1;

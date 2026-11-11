@@ -21,6 +21,7 @@
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/drc_models.hpp"
+#include "hefesto/shell/gui_script.hpp"
 #include "hefesto/shell/manager_views.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "hefesto/shell/view_models.hpp"
@@ -474,4 +475,20 @@ TEST_CASE("command bar lines substitute like Tcl", "[cap:hefesto-architecture][r
   const CommandOutcome none = CoreCommandSink(bare.dispatcher()).submit("snap internal");
   CHECK_FALSE(none.ok());
   CHECK(has_code(none, "SCRIPT-TCL-001"));
+}
+
+TEST_CASE("input in a frame drawn while a script runs starts no command",
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
+  CoreSession core(test_options());
+  (void)hefesto::shell::test::bind_interpreter(core);
+  {
+    const ScriptInputBlock frame;  // the window draws a frame from a progress report
+    const auto blocked = run_gui_script(core.editor(), core.dispatcher(), "set ::ran 1");
+    REQUIRE_FALSE(blocked.ok());
+    CHECK(blocked.diagnostics.front().code == "SCRIPT-TCL-004");
+    CHECK_FALSE(run_gui_script_traced(core.editor(), core.dispatcher(), "set ::ran 1").ok());
+  }
+  CHECK_FALSE(ScriptInputBlock::active());
+  CHECK(run_gui_script(core.editor(), core.dispatcher(), "info exists ::ran").value.to_string() == "0");
+  CHECK(run_gui_script(core.editor(), core.dispatcher(), "set ::ran 1").ok());
 }

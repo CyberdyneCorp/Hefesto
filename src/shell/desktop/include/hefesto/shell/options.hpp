@@ -40,6 +40,10 @@ struct ShellOptions {
   /// in benchmark mode, otherwise after `capture_frames` frames.
   std::string capture;
   int capture_frames = 30;
+  /// --capture-running: the capture is taken in the frame a running script
+  /// draws when its Interrupt card first shows (board M4-Script-Consent
+  /// tile 7), instead of after `capture_frames` frames.
+  bool capture_running = false;
   /// > 0: smoke-test mode. Opens the main window through Raven, renders this
   /// many frames, prints the window system and exits (CI runs it under X11
   /// and Wayland).

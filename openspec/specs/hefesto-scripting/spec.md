@@ -24,7 +24,7 @@ Compatibility: native
 
 ### Requirement: Embedded sandboxed Tcl on all platforms
 Hefesto SHALL embed a Tcl interpreter on Linux, macOS and iPadOS, exposing the `magic::` command namespace, so that unmodified open_pdks startup files and PCell generator scripts for sky130, gf180mcu and IHP sg13g2 run. The interpreter SHALL be sandboxed. It SHALL NOT provide:
-- process execution (`exec`, `open |`)
+- process execution (`exec`, `open |`, and the engine command `shell`, which is refused for every origin, typed lines included; capability `cmd-misc-edit` "Shell command")
 - sockets
 - loading of native extensions (`load` of shared libraries)
 - file access outside the paths granted by capability `hefesto-files-and-pdks`
@@ -69,6 +69,28 @@ Compatibility: native
 - **GIVEN** project A uses sky130A and project B uses ihp-sg13g2, both open in one Hefesto process, and each has run its PDK's startup and device scripts
 - **WHEN** `magic::i2u 34` is evaluated in each project
 - **THEN** project A SHALL get the sky130A helper's result and project B the sg13g2 helper's result, and no redefinition warning SHALL be printed
+
+### Requirement: Long-running script progress and interrupt
+While a script evaluation runs (a PDK startup or device script, a menu callback, a console or command-bar line), the interpreter SHALL report its progress to the front end about every 50 ms, including inside a loop that runs no engine command and while `after` sleeps: the file it sources, the file and line of the command being executed, and the time it has run, and once more when it ends. The evaluation SHALL run on the thread that owns the project's interpreter (the UI thread on the desktop); the front end draws its frames from these reports, and once the evaluation has run for 2 s it SHALL show a non-modal card with the current file and line and an Interrupt action (also Ctrl-C). Interrupt SHALL stop the evaluation at its next command with `SCRIPT-TCL-002`, which `catch` cannot absorb; a time limit of the sandbox policy SHALL still stop it with `SCRIPT-TCL-003`. While it runs, lines typed in the console or the command bar SHALL be queued and run after it, in order, and other input SHALL NOT start a command (the layout takes no input until it ends; `SCRIPT-TCL-004`). The edits an interrupted console or command-bar command made before the interrupt SHALL be kept and SHALL form one undo step named after that command (capability `layout-undo`, Requirement "Event log and command grouping"); the console SHALL report the interrupt as Tcl reports it (Tcl 8.6's text for an unwinding cancel is `eval unwound`; the board shows `eval canceled`), with the line when known and the number of edits kept.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3; boards `docs/design/mockups/M4-Script-Consent.dc.html` tile 7 and `M4-Console.dc.html` tiles 6-8)
+
+#### Scenario: Input while a script runs
+- **GIVEN** a menu callback has run for 3 s and the front end draws a frame from its progress report
+- **WHEN** the user clicks the canvas or chooses another menu item in that frame
+- **THEN** no command SHALL run (`SCRIPT-TCL-004`), and the Interrupt card SHALL still stop the callback
+
+#### Scenario: Interrupting a long console command
+- **GIVEN** the console runs `ring 100000`, a procedure that paints in a loop
+- **WHEN** the user presses Interrupt after 4 s
+- **THEN** the loop SHALL stop, the console SHALL show Tcl's cancel text, the line and the number of edits kept, and one `undo` SHALL revert every edit the command made
+
+#### Scenario: Progress of a PDK script
+- **GIVEN** a PDK startup script that runs for more than 2 s
+- **WHEN** it is running
+- **THEN** the window SHALL keep drawing and SHALL show a card naming the script, the file and line being executed and the time it has run, with Interrupt
 
 ### Requirement: Native PCell generators validated against Tcl
 For each supported PDK device, Hefesto SHALL provide native C++ generator implementations. Their cell names, parameters, properties and geometry SHALL be identical to those of the PDK's Tcl generator for the same parameters: the generated cells SHALL have the same name, and their saved `.mag` files SHALL be byte-identical except for the `timestamp` line, which records the save time (decision D-29). Hefesto SHALL use a native generator only when it exists for the installed PDK version, and SHALL otherwise fall back to the Tcl generator. CI SHALL check native and Tcl outputs against each other over a parameter sweep.

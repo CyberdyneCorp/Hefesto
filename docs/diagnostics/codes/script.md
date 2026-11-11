@@ -27,22 +27,35 @@ Evaluation results (`script::Interpreter::evaluate` and `source`):
 - `SCRIPT-TCL-001` carries the message of a Tcl error, located at Tcl's
   error line and, for `source`, the file.
 - `SCRIPT-TCL-002`: the evaluation was stopped by `request_interrupt` (the
-  console's Cancel). `catch` cannot absorb it.
+  console's and the canvas card's Interrupt, Ctrl-C). `catch` cannot absorb
+  it. The console reports it as `eval canceled · <file>:<line> ·
+  interrupted by the user (N edits kept; undo reverts them as one step)`.
 - `SCRIPT-TCL-003`: the evaluation ran more commands or longer than the
   project's `SandboxLimits` allow (Tcl's resource limits); `catch` cannot
   absorb it. The limits apply again from zero to the next evaluation.
+- `SCRIPT-TCL-004`: the desktop drew a frame from a running script's
+  progress report and the user clicked, pressed a key macro or chose a menu
+  item in it: nothing runs (the layout takes no input until the script
+  ends; the Interrupt card and Ctrl-C still work, and typed console and
+  command-bar lines are queued instead).
 
 Sandbox denials. Each raises a Tcl error whose message starts with the
 operation (`exec:`, `open:`, `cd:`, `file delete:`, ...), which `catch` can
 absorb as Magic's PDK code expects; the diagnostic is reported either way,
 with the script file and line (Tcl's `info frame`), together with a
-`script::DeniedOperation` event (`ScriptEvents::publish_denied`):
+`script::DeniedOperation` event (`ScriptEvents::publish_denied`). The events
+are published when the top-level evaluation ends: a denial the script
+absorbed and went on from has `caught` set and its diagnostic text ends with
+` · caught by the script's catch` (board M4-Script-Consent tile 6):
 
 - `SCRIPT-SANDBOX-001`: `exec`, or `open` of a command pipeline
   (`open |cmd`): process execution is not permitted. Also the engine
-  commands that run a process or download when a script, a key macro or a
-  plugin runs them: `shell`, and `pdk install`, `remote`, `updates` and
-  `import` (security finding S-01).
+  command `shell` from every origin, typed console, command-bar and
+  hefesto-cli lines included (`shell: process execution is not permitted
+  (Hefesto runs no external programs)`; user decision 2026-11-11), and the
+  engine commands that download when a script, a key macro or a plugin
+  runs them: `pdk install`, `remote`, `updates` and `import` (security
+  finding S-01).
 - `SCRIPT-SANDBOX-002`: `socket` (client or server).
 - `SCRIPT-SANDBOX-003`: `load` or `unload` of a native extension.
 - `SCRIPT-SANDBOX-004`: a file access outside the granted roots (the project
@@ -128,9 +141,19 @@ design D7; tasks.md section 6).
   `SCRIPT-TRUST-004` after `pdk untrust <variant> <version>`;
   `SCRIPT-TRUST-003` when either could not be saved in the PDK store's
   provenance record (the session keeps the change).
+- `SCRIPT-TRUST-005`: a cell opened read-only because its PDK scripts were
+  declined is never written: `save`, `save <other name>`, `writeall` and a
+  `save` after `cellname writeable <cell> true` are refused (the cell holds
+  only what `minimum` could read, so writing it would drop the PDK's
+  layers). Such a cell is also read-only when it is read with the
+  technology ignored (`load -force`, subcell expansion, `flush`).
+- `SCRIPT-TRUST-006`: "Review scripts..." got a yes and the PDK's script
+  ran, but its technology could not be loaded (neither by the script nor
+  by technology auto-discovery); the decline is restored and the cells
+  stay read-only.
 
-The M4 boards show placeholder codes; these are the codes they stand for
-(board text → code):
+The M4 boards carry these codes (until round 3 they showed placeholders
+such as `SCRIPT-SANDBOX-…`); board text → code:
 
 | Board | Row | Code |
 |---|---|---|
@@ -174,7 +197,7 @@ fails when the two disagree.
 | `SCRIPT-PDK-007` | error | A command-line file argument the script host cannot load (`don't know how to load file ...`). |
 | `SCRIPT-PDK-008` | error | A PDK script could not run: the project has no interpreter. |
 | `SCRIPT-PDK-009` | info | Curated-pack mode uses the bundled curated scripts of a PDK; the imported pack's own scripts are not executed. |
-| `SCRIPT-SANDBOX-001` | error | The script sandbox refused to run a process (exec, or open of a command pipeline). |
+| `SCRIPT-SANDBOX-001` | error | The script sandbox refused to run a process (exec, open of a command pipeline, or shell from any origin). |
 | `SCRIPT-SANDBOX-002` | error | The script sandbox refused to open a network socket. |
 | `SCRIPT-SANDBOX-003` | error | The script sandbox refused to load or unload a native extension. |
 | `SCRIPT-SANDBOX-004` | error | The script sandbox refused a file access outside the granted roots. |
@@ -185,8 +208,11 @@ fails when the two disagree.
 | `SCRIPT-TCL-001` | error | A Tcl script raised an error; the text is Tcl's error message. |
 | `SCRIPT-TCL-002` | error | A script evaluation was interrupted. |
 | `SCRIPT-TCL-003` | error | A script evaluation exceeded its command count or time limit. |
+| `SCRIPT-TCL-004` | warning | Input that would run a command was ignored because a script evaluation is running. |
 | `SCRIPT-TRUST-001` | warning | A PDK script was declined; the layout opens read-only with the `minimum` technology. |
 | `SCRIPT-TRUST-002` | info | A PDK version is now trusted; its scripts run without asking. |
 | `SCRIPT-TRUST-003` | warning | The trust record of a PDK version could not be saved in the PDK store. |
 | `SCRIPT-TRUST-004` | info | A PDK version is no longer trusted (`pdk untrust`); its scripts ask before running. |
+| `SCRIPT-TRUST-005` | error | A cell opened read-only because its PDK scripts were declined cannot be written. |
+| `SCRIPT-TRUST-006` | error | After Review scripts, the PDK's technology could not be loaded; the declined cells stay read-only. |
 <!-- END DIAGNOSTIC CODES -->

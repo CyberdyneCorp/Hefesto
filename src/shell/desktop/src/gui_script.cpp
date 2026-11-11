@@ -15,7 +15,9 @@ namespace hefesto::shell {
 namespace {
 
 constexpr std::string_view kNoInterpreterCode = "SCRIPT-TCL-001";
+constexpr std::string_view kInputBlockedCode = "SCRIPT-TCL-004";
 
+int input_blocks = 0;  // ScriptInputBlock nesting (UI thread only)
 
 /// Collects what the Dispatcher reports and runs while a script evaluates.
 class Trace final : public diag::DiagnosticSink, public cmd::CommandObserver {
@@ -48,8 +50,24 @@ bool already_reported(const GuiScriptRun& run, const diag::Diagnostic& error) {
 
 }  // namespace
 
+ScriptInputBlock::ScriptInputBlock() noexcept {
+  ++input_blocks;
+}
+
+ScriptInputBlock::~ScriptInputBlock() {
+  --input_blocks;
+}
+
+bool ScriptInputBlock::active() noexcept {
+  return input_blocks > 0;
+}
+
 cmd::CommandResult run_gui_script(editor::EditorState& editor, cmd::Dispatcher& /*dispatcher*/,
                                   std::string_view script, cmd::Origin origin) {
+  if (ScriptInputBlock::active()) {
+    return cmd::CommandResult::failure(diag::make(
+        kInputBlockedCode, "a script is running: the layout takes no input until it ends (Interrupt stops it)"));
+  }
   if (editor.script.interp == nullptr) {
     return cmd::CommandResult::failure(
         diag::make(kNoInterpreterCode, "no project is open: there is no script interpreter to run the command"));

@@ -15,6 +15,7 @@
 
 #include "binding_fixture.hpp"
 #include "hefesto/script/binding/window_commands.hpp"
+#include "hefesto/script/events.hpp"
 
 namespace script = hefesto::script;
 namespace cmd = hefesto::cmd;
@@ -112,6 +113,24 @@ TEST_CASE("Cell load with dotted directory", "[cap:scripting-api][req:Name colli
   // (and creates the missing cell, as `load` does).
   CHECK(f.eval("load ../lib.v2/inv").ok());
   CHECK(f.editor.cells.find("inv") != nullptr);
+}
+
+TEST_CASE("a cell load records no sandbox denial", "[cap:scripting-api][req:Name collisions with Tcl built-ins]") {
+  // Regression: `load inv` tried the sandbox's `tcl_load` first, so a
+  // typed `load <cell>` showed "Sandbox blocked load" in the status bar.
+  struct Denials final : script::ScriptObserver {
+    int count = 0;
+    void on_denied(const script::DeniedOperation&) override { ++count; }
+  } denials;
+  BindingFixture f;
+  f.editor.script.events.add(denials);
+  CHECK(f.eval("load inv").ok());
+  CHECK(f.eval("load cells/inv2.mag").ok());
+  CHECK(denials.count == 0);
+  CHECK(f.editor.cells.find("inv") != nullptr);
+  CHECK_FALSE(f.error("load /opt/x/libfoo.so").empty());
+  CHECK(denials.count == 1);
+  f.editor.script.events.remove(denials);
 }
 
 TEST_CASE("Compressed cell", "[cap:scripting-api][req:Name collisions with Tcl built-ins]") {

@@ -94,7 +94,7 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   window_.set_clear_color(ctx_.tokens().surface0);
   canvas_ = std::make_unique<LayoutCanvas>(ctx_, queue_mutex, [this] { return window_.scale(); });
   canvas_->on_view_changed([this] { refresh_status(); });
-  canvas_->router().on_prompt([this](const std::string& text) { show_prompt(text); });
+  canvas_->router().on_prompt([this](const std::string& text) { route_prompt(text); });
   left_ = std::make_unique<LeftPanel>(ctx_);
   inspector_ = std::make_unique<InspectorPanel>(ctx_);
   pdk_ = std::make_unique<PdkPanel>(ctx_, [this] { toggle_pdk_manager(); });
@@ -111,6 +111,9 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   canvas_->add_overlay(drc_panel_->stepper_widget());
   drc_panel_->stepper_widget().place_top_right(static_cast<float>(kCanvasInset),
                                                static_cast<float>(kRulerSize + 12));
+  build_label_popover();  // CARRY: the Label tool's popover over the canvas
+  build_key_sheet();      // CARRY: the key-binding sheet (`panel keys show`)
+  build_wiring_views();   // CARRY: the wiring HUD and the Wire inspector
   build_command_bar();
   build_status_bar();
   build_m4();
@@ -134,12 +137,13 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   };
   pdk_visible_ = !options.show_pdk_manager;
   toggle_pdk_manager();
-  console_visible_ = !options.show_console;
-  toggle_console();
+  // --console shows the Console whatever the saved layout says.
+  if (options.show_console && !console_visible_) toggle_console();
   refresh_all();
 }
 
 MainWindow::~MainWindow() {
+  save_panels();  // the panel layout as the user leaves it (not in a scripted capture)
   teardown_m4();
   teardown_m4b();
   ctx_.core.editor().prompt = nullptr;
@@ -231,6 +235,7 @@ void MainWindow::build_top_bar() {
     paint::app_mark(p, 0.0F, (h - size) / 2.0F, size, t);
     p.push_clip(size + 12.0F, 0.0F, w - size - 12.0F, h);
     paint::header_title(p, size + 12.0F, h, header_, t);
+    if (layout_read_only_) paint_read_only_chip(p, size + 12.0F, h, t);
     p.pop_clip();
   });
   constexpr float kMarkWidth = 300.0F;
@@ -264,6 +269,7 @@ void MainWindow::build_top_bar() {
   ui::Box spacer = ui::Box::horizontal();
   row.add(spacer, 1.0F);
   build_drc_chip(row);
+  build_wiring_chip(row);  // CARRY: "Wiring · tracking"
   for (const StatusChip& chip : {lvs_chip_m1()}) {
     auto widget = make_painted(ctx_, [chip](ui::Painter& p, float w, float h, const ThemeTokens& t) {
       paint::chip(p, w, h, chip, t);
@@ -376,45 +382,8 @@ void MainWindow::build_center() {
   console_tabs_.set_size(-1.0F, static_cast<float>(kConsoleHeight));
   center.add(console_tabs_);
   arrange_middle();
+  build_panels();  // CARRY: the panels in their frames, as the saved layout has them
   root_.add(middle_, 1.0F);
-}
-
-void MainWindow::arrange_middle() {
-  // rail, rail edge, then the docks: left panels, canvas, right panels.
-  int index = 2;
-  const auto place = [this, &index](ui::Widget& w, float fill) { middle_.insert(w, index++, fill); };
-  if (layers_side_ == DockSide::left) place(left_dock(), 0.0F);
-  if (inspector_side_ == DockSide::left) place(inspector_->widget(), 0.0F);
-  place(drc_panel_->list_widget(), 0.0F);  // the DRC browser beside the canvas (board)
-  place(center_, 1.0F);
-  if (layers_side_ == DockSide::right) place(left_dock(), 0.0F);
-  if (inspector_side_ == DockSide::right) place(inspector_->widget(), 0.0F);
-  place(pdk_->widget(), 0.0F);
-  place(color_->widget(), 0.0F);
-  place(drc_panel_->inspector_widget(), 0.0F);
-  place(managers_->tech_widget(), 0.0F);  // M4 technology manager (right dock)
-  left_->set_dock_side(layers_side_);
-  inspector_->set_dock_side(inspector_side_);
-}
-
-bool MainWindow::dock_panel(PanelId panel, DockSide side) {
-  if (panel == PanelId::layers) {
-    layers_side_ = side;
-  } else if (panel == PanelId::inspector) {
-    inspector_side_ = side;
-  } else {
-    return false;
-  }
-  arrange_middle();
-  return true;
-}
-
-void MainWindow::reset_layout() {
-  layers_side_ = DockSide::left;
-  inspector_side_ = DockSide::right;
-  arrange_middle();
-  set_panel(PanelId::layers, true);
-  set_panel(PanelId::inspector, true);
 }
 
 void MainWindow::build_command_bar() {
@@ -524,16 +493,15 @@ void MainWindow::build_status_bar() {
 // --- commands ------------------------------------------------------------------------
 
 void MainWindow::register_view_commands() {
-  ViewActions actions{[this](ThemeMode mode) { apply_theme(mode); },
-                      [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); },
-                      [this](PanelId panel, std::optional<bool> show) { return set_panel(panel, show); },
-                      [this](PanelId panel) { return panel_shown(panel); },
-                      [this](PanelId panel, DockSide side) { return dock_panel(panel, side); },
-                      [this] { reset_layout(); },
-                      [this](std::optional<std::string> name) { return set_paint_layer(std::move(name)); }};
+  // `panel` is the panel layout's (panels_host.cpp), not the M2 one of ViewActions.
+  ViewActions actions;
+  actions.theme = [this](ThemeMode mode) { apply_theme(mode); };
+  actions.pan = [this](double dx, double dy) { canvas_->pan_pixels(dx, dy); };
+  actions.paint_layer = [this](std::optional<std::string> name) { return set_paint_layer(std::move(name)); };
   if (!shell::register_view_commands(ctx_.core.registry(), actions)) {
     std::fprintf(stderr, "hefesto: a view command name is already registered\n");
   }
+  register_panel_command();
 }
 
 void MainWindow::run_typed_line(const std::string& text) {
@@ -589,6 +557,7 @@ void MainWindow::run_line(const std::string& line) {
 
 void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
   note_drc_command(invocation, result);
+  note_tool_command(invocation);  // CARRY: a Measure sweep arms Escape
   note_m4b_command(invocation, result);  // M4 managers' tags, the console run's pump
   // Widgets may be running the callback that issued this command: rebuild
   // on the next frame (on_frame), never inside the callback. A `*bypass`
@@ -604,6 +573,7 @@ void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::Comman
 
 void MainWindow::on_frame() {
   fit_top_bar();
+  fit_panels();
   if (undo_message_ && !in_command_) {  // an undo outside run_line (the `u` and `U` keys)
     set_message(StatusKind::success, diagnostic_line(StatusKind::success, *undo_message_));
     undo_message_.reset();
@@ -636,6 +606,8 @@ void MainWindow::on_frame() {
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
   refresh_m4();
   refresh_m4b();
+  refresh_tools();
+  refresh_wiring();
 }
 
 // Work that finished off the event loop: a PDK install, the minimap, the
@@ -681,19 +653,17 @@ void MainWindow::toggle_pdk_manager() {
 }
 
 void MainWindow::update_right_dock() {
-  // The PDK manager, else the color window, else the DRC error area while
-  // the DRC panel is shown, else the Inspector.
+  // The Inspector's slot shows the PDK manager, else the color window, else
+  // the DRC error area while the DRC panel is shown, else the Inspector.
   pdk_->widget().set_visible(pdk_visible_);
   color_->widget().set_visible(!pdk_visible_ && color_visible_);
   const bool drc = !pdk_visible_ && !color_visible_ && drc_visible_ && inspector_visible_;
   drc_panel_->inspector_widget().set_visible(drc);
-  const bool tech = !pdk_visible_ && !color_visible_ && !drc && tech_shown_;
-  managers_->tech_widget().set_visible(tech);
-  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && !drc && !tech && inspector_visible_);
-  // While the DRC browser is shown it takes the Layers dock's place.
-  left_dock().set_visible(layers_visible_ && !drc_visible_);
-  drc_panel_->list_widget().set_visible(drc_visible_);
+  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && !drc && !wire_box_shown_ && inspector_visible_);
   drc_panel_->stepper_widget().set_visible(drc_visible_);
+  // The frames, docks and strips (panels_host.cpp): the DRC browser, the
+  // technology manager, the Layers tabs and the Console as the layout has them.
+  arrange_middle();
 }
 
 void MainWindow::refresh_color_panel() {
@@ -736,7 +706,7 @@ void MainWindow::refresh_keys() {
 
 void MainWindow::toggle_console() {
   console_visible_ = !console_visible_;
-  console_tabs_.set_visible(console_visible_);
+  arrange_middle();  // the Console frame (panels_host.cpp)
   if (console_toggle_ != nullptr) {
     console_toggle_->set_accessible_name(toggle_accessible_name(kConsoleToggleName, console_visible_));
   }
@@ -757,6 +727,9 @@ void MainWindow::apply_theme(ThemeMode mode) {
   color_->repaint();
   drc_panel_->repaint();
   canvas_->refresh_overlay();
+  arrange_middle();  // panel cards take the new tokens
+  for (auto& f : frames_) f->header->invalidate();
+  for (auto& s : strips_) s->invalidate();
 }
 
 // --- refresh ---------------------------------------------------------------------------
@@ -817,14 +790,37 @@ void MainWindow::refresh_header() {
   }
   in.magic_compat = ctx_.core.project().compat.magic_compat;
   header_ = header_text(in);
+  // M4: a read-only layout (board M4-Script-Consent tile 6) gets the chip
+  // after the cell name and "read-only" in the subtitle.
+  layout_read_only_ = win != nullptr && win->root() != nullptr && win->root()->flags().no_edit;
+  float chip_w = 0.0F;
+  if (layout_read_only_) {
+    header_.subtitle = read_only_subtitle(header_.subtitle);
+    chip_w = kTitleChipGap + paint::chip_width(ctx_.runtime, read_only_chip());
+  }
   // The title block is as wide as its text; the tabs follow 24 px further
   // (the mockup's margin-left: 24px on top of the 16 px gap).
-  const float text_w = std::max(ctx_.runtime.text_width(TextRole::cell_title, header_.title),
+  const float text_w = std::max(ctx_.runtime.text_width(TextRole::cell_title, header_.title) + chip_w,
                                 ctx_.runtime.text_width(TextRole::cell_subtitle, header_.subtitle));
   painted_.front()->set_size(static_cast<float>(kAppMarkSize) + 12.0F + text_w + 24.0F,
                              static_cast<float>(kTopBarHeight));
   window_.set_title(in.cell.empty() ? std::string("Hefesto") : in.cell + " — Hefesto");
   for (auto& w : painted_) w->invalidate();
+}
+
+void MainWindow::paint_read_only_chip(ui::Painter& p, float x, float h, const ThemeTokens& t) const {
+  // Board M4-Script-Consent tile 6: a 20 px warning chip on the title line,
+  // 8 px after the cell name.
+  const StatusChip chip = read_only_chip();
+  constexpr float kChipH = 20.0F;
+  const float title_h = p.line_height(TextRole::cell_title);
+  const float top = (h - title_h - p.line_height(TextRole::cell_subtitle)) / 2.0F;
+  const float cx = x + ctx_.runtime.text_width(TextRole::cell_title, header_.title) + kTitleChipGap;
+  const float cy = top + (title_h - kChipH) / 2.0F;
+  Rgba tint = status_color(t, chip.kind);
+  tint.a = kChipTintAlpha;
+  p.fill(cx, cy, paint::chip_width(ctx_.runtime, chip), kChipH, kChipH / 2.0F, tint);
+  p.text_centered_y(TextRole::chip, cx + 10.0F, cy + kChipH / 2.0F, chip.label(), status_text_color(t, chip.kind));
 }
 
 void MainWindow::refresh_status() {
@@ -849,7 +845,8 @@ void MainWindow::build_tool_rail(ui::Box& middle) {
                                                ? std::string_view(ctx_.editor().tools.current()->name)
                                                : std::string_view("box"),
                                            canvas_->router().mode());
-      const bool enabled = b.tool.enabled && (b.tool.icon != "paint" || !ctx_.paint_layer.empty());
+      const bool enabled =
+          !rail_tool_locked(b.tool.icon) && (b.tool.icon == "paint" ? paint_state(b.tool).enabled : b.tool.enabled);
       paint::tool(p, w, h, b.tool, paint::WidgetState{hov, foc, enabled, active && *active == b.tool.icon}, t);
     });
     button->set_size(static_cast<float>(kToolButtonSize), static_cast<float>(kToolButtonSize));
@@ -875,14 +872,18 @@ void MainWindow::build_tool_rail(ui::Box& middle) {
   painted_.push_back(std::move(rail_edge));
 }
 
+bool MainWindow::rail_tool_locked(std::string_view icon) const {
+  return layout_read_only_ && rail_tool_edits(icon);
+}
+
 void MainWindow::rail_click(std::string_view icon) {
-  if (icon == "place") {  // M4: a popover of the PDK's device menus, not a tool mode
-    open_place_device();
+  if (rail_tool_locked(icon)) {  // board M4-Script-Consent tile 6: editing tools are off
+    set_message(StatusKind::warning, diagnostic_line(StatusKind::warning, "The layout is read-only"));
+    status_bar_->invalidate();
     return;
   }
-  if (icon == "paint" && ctx_.paint_layer.empty()) {
-    set_message(StatusKind::warning, diagnostic_line(StatusKind::warning, "choose a layer to paint in the Layers panel"));
-    status_bar_->invalidate();
+  if (icon == "place") {  // M4: a popover of the PDK's device menus, not a tool mode
+    open_place_device();
     return;
   }
   const hefesto::ui::Tool* tool = ctx_.editor().tools.current();
@@ -900,9 +901,26 @@ void MainWindow::refresh_rail() {
       active_rail_icon(tool != nullptr ? std::string_view(tool->name) : std::string_view("box"), canvas_->router().mode());
   for (RailButton& b : rail_) {
     if (b.tool.icon == "fit") continue;
-    const bool enabled = b.tool.enabled && (b.tool.icon != "paint" || !ctx_.paint_layer.empty());
+    if (rail_tool_locked(b.tool.icon)) {
+      b.widget->set_enabled(false);
+      b.widget->set_tooltip(read_only_tool_tooltip(b.tool.label));
+      b.widget->set_accessible_name(read_only_tool_tooltip(b.tool.label));
+      b.widget->invalidate();
+      continue;
+    }
+    if (b.tool.icon == "paint") {
+      // Disabled with "Choose a layer to paint" until the palette has a paint layer.
+      const PaintToolState paint = paint_state(b.tool);
+      b.widget->set_enabled(paint.enabled);
+      b.widget->set_tooltip(paint.tooltip);
+      b.widget->set_accessible_name(paint.enabled ? toggle_accessible_name(b.tool.label, active && *active == "paint")
+                                                  : paint.accessible_name);
+      b.widget->invalidate();
+      continue;
+    }
+    b.widget->set_enabled(b.tool.enabled);
     b.widget->set_accessible_name(toggle_accessible_name(b.tool.label, active && *active == b.tool.icon));
-    b.widget->set_tooltip(rail_tooltip(b.tool, enabled));
+    b.widget->set_tooltip(rail_tooltip(b.tool, b.tool.enabled));
     b.widget->invalidate();
   }
 }
@@ -1035,6 +1053,7 @@ void MainWindow::show_undo_history(float x, float y) {
 }
 
 bool MainWindow::on_shortcut(int key, std::uint8_t modifiers) {
+  if (tool_shortcut(key, modifiers)) return true;  // CARRY: Escape closes the label popover, unmeasure
   if (m4b_shortcut(key, modifiers)) return true;  // the Tcl console's Return, history and Ctrl-C
   constexpr int kF6 = raven_key::kF1 + 5;
   if (key == kF6 && (modifiers & ~kModShift) == 0) {
@@ -1077,40 +1096,6 @@ void MainWindow::show_prompt(const std::string& text) {
   command_bar_->focus();
 }
 
-bool MainWindow::set_panel(PanelId panel, std::optional<bool> show) {
-  const bool now = show.value_or(!panel_shown(panel));
-  switch (panel) {
-    case PanelId::layers:
-      layers_visible_ = now;
-      update_right_dock();
-      break;
-    case PanelId::drc:
-      drc_visible_ = now;
-      drc_rows_changed_ = true;
-      update_right_dock();
-      dirty_ = true;  // the list is built on the next refresh
-      break;
-    case PanelId::inspector:
-      inspector_visible_ = now;
-      update_right_dock();
-      break;
-    case PanelId::console:
-      if (now != console_visible_) toggle_console();
-      break;
-    case PanelId::keys:
-      if (now) {
-        refresh_keys();
-        if (!console_visible_) toggle_console();
-        console_tabs_.show(3);
-      } else if (console_visible_) {
-        console_tabs_.show(0);
-      }
-      keys_shown_ = now;
-      break;
-  }
-  return now;
-}
-
 std::optional<std::string> MainWindow::set_paint_layer(std::optional<std::string> name) {
   if (!name) return ctx_.paint_layer;
   const editor::EditorState& ed = ctx_.editor();
@@ -1122,17 +1107,6 @@ std::optional<std::string> MainWindow::set_paint_layer(std::optional<std::string
   ctx_.paint_layer = std::move(*name);
   canvas_->router().set_paint_layer(ctx_.paint_layer);
   return ctx_.paint_layer;
-}
-
-bool MainWindow::panel_shown(PanelId panel) const {
-  switch (panel) {
-    case PanelId::layers: return layers_visible_;
-    case PanelId::inspector: return inspector_visible_;
-    case PanelId::console: return console_visible_;
-    case PanelId::keys: return console_visible_ && keys_shown_;
-    case PanelId::drc: return drc_visible_;
-  }
-  return false;
 }
 
 void MainWindow::clear_problems() {

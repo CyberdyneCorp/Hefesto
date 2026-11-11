@@ -19,8 +19,9 @@ constexpr float kPadX = 12.0F;
 constexpr float kHeaderHeight = 28.0F;
 constexpr float kHintHeight = 18.0F;
 constexpr float kEditorHeight = 40.0F;
-constexpr float kCardWidth = 300.0F;
+constexpr float kCardWidth = 380.0F;
 constexpr float kCardHeight = 64.0F;
+constexpr float kCardButtonWidth = 108.0F;
 
 bool shift_only(std::uint8_t modifiers) {
   return modifiers == kModShift;
@@ -40,26 +41,65 @@ ConsolePanel::ConsolePanel(ScreenContext& ctx, TclConsole& console, SavePath sav
   build_input();
   card_ = make_interactive(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov, bool foc) {
     const auto& run = console_.current_run();
-    if (!run) return;
+    if (!run) {
+      if (const auto card = script_card_ ? script_card_() : std::nullopt) paint_script_card(p, *card, t, hov, foc);
+      return;
+    }
     p.fill(0.0F, 0.0F, w, h, 8.0F, t.surface2);
     p.stroke(0.0F, 0.0F, w, h, 8.0F, 1.0F, t.border);
     p.text(TextRole::body_strong, kPadX, 10.0F, run->header_text(ConsoleClock::now()), t.text_primary);
     p.text(TextRole::mono_small, kPadX, 32.0F, "% " + run->command().substr(0, run->command().find('\n')),
            t.text_secondary);
     const std::string label = run->interrupt_requested() ? "Stopping…" : "Interrupt ⌃C";
-    paint::button(p, 96.0F, 28.0F, label, "", paint::ButtonStyle::primary,
-                  paint::WidgetState{hov, foc, !run->interrupt_requested(), false}, t);
-    (void)w;
+    paint::button_at(p, w - kCardButtonWidth - kPadX, (h - 28.0F) / 2.0F, kCardButtonWidth, 28.0F, label,
+                     paint::ButtonStyle::primary, paint::WidgetState{hov, foc, !run->interrupt_requested(), false}, t);
   });
   card_->set_size(kCardWidth, kCardHeight);
   card_->set_role(ui::Role::button);
   card_->set_accessible_name("Interrupt the running Tcl command");
-  card_->on_click([this](float, float) { console_.interrupt(); });
+  card_->on_click([this](float, float) { interrupt_shown(); });
   card_->set_visible(false);
   refresh();
 }
 
 ConsolePanel::~ConsolePanel() = default;
+
+void ConsolePanel::set_script_card(ScriptCard card, std::function<void()> interrupt) {
+  script_card_ = std::move(card);
+  script_interrupt_ = std::move(interrupt);
+}
+
+bool ConsolePanel::card_wanted() const {
+  const auto& run = console_.current_run();
+  if (run) return run->card_visible(ConsoleClock::now());
+  return script_card_ && script_card_().has_value();
+}
+
+void ConsolePanel::interrupt_shown() {
+  if (console_.running()) {
+    (void)console_.interrupt();
+    return;
+  }
+  if (script_interrupt_ && script_card_ && script_card_()) {
+    script_interrupt_requested_ = true;
+    script_interrupt_();
+  }
+}
+
+void ConsolePanel::paint_script_card(ui::Painter& p, const InterruptCardView& card, const ThemeTokens& t, bool hov,
+                                     bool foc) const {
+  // Board M4-Script-Consent tile 7: "Running <script> · N s", the file and
+  // line being executed, Interrupt (Ctrl-C).
+  const float w = kCardWidth;
+  const float h = kCardHeight;
+  p.fill(0.0F, 0.0F, w, h, 8.0F, t.surface2);
+  p.stroke(0.0F, 0.0F, w, h, 8.0F, 1.0F, t.border);
+  p.text(TextRole::body_strong, kPadX, 10.0F, card.title, t.text_primary);
+  p.text(TextRole::mono_small, kPadX, 32.0F, card.detail, t.text_secondary);
+  const std::string label = script_interrupt_requested_ ? "Stopping…" : card.action + " ⌃C";
+  paint::button_at(p, w - kCardButtonWidth - kPadX, (h - 28.0F) / 2.0F, kCardButtonWidth, 28.0F, label,
+                   paint::ButtonStyle::primary, paint::WidgetState{hov, foc, !script_interrupt_requested_, false}, t);
+}
 
 void ConsolePanel::build_header() {
   header_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
@@ -144,6 +184,10 @@ void ConsolePanel::focus() {
 
 bool ConsolePanel::on_key(int key, std::uint8_t modifiers) {
   if (key == 'C' && modifiers == kModCtrl && console_.running()) return console_.interrupt();
+  if (key == 'C' && modifiers == kModCtrl && card_shown_) {
+    interrupt_shown();
+    return true;
+  }
   if (!input_focused()) return false;
   console_.set_input(input_->text());
   if (key == raven_key::kEnter || key == raven_key::kKpEnter) {
@@ -197,8 +241,8 @@ void ConsolePanel::refresh() {
     hint_->invalidate();
     for (const auto& b : buttons_) b->invalidate();
   }
-  const auto& run = console_.current_run();
-  const bool card = run && run->card_visible(ConsoleClock::now());
+  const bool card = card_wanted();
+  if (!card) script_interrupt_requested_ = false;
   if (card != card_shown_) {
     card_shown_ = card;
     card_->set_visible(card);

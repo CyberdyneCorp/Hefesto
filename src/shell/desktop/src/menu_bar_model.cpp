@@ -51,6 +51,9 @@ MenuBarItem from_wrapper(const gui::WrapperMenuItem& w, const MenuBarInputs& inp
   if (const auto later = later_milestone(w.command)) {
     item.enabled = false;
     item.tooltip = item.label + ": arrives in " + std::string{*later};
+  } else if (inputs.layout_read_only && saves_layout(w.command)) {
+    item.enabled = false;
+    item.tooltip = item.label + ": off, the layout is read-only";
   }
   return item;
 }
@@ -174,6 +177,10 @@ std::string collapse_spaces(std::string_view label) {
   return out;
 }
 
+bool saves_layout(std::string_view command) {
+  return command == "magic::promptsave magic" || command == "magic::prompt_dialog save";
+}
+
 std::optional<std::string_view> later_milestone(std::string_view command) {
   if (command == "magic::promptload gds" || command == "magic::promptsave gds") return "M5";
   if (command == "magic::specialopen netlist") return "M12";
@@ -203,6 +210,8 @@ MenuBarView session_menu_bar(const editor::EditorState& editor, bool scripts_dec
   MenuBarInputs inputs;
   inputs.frame = {};  // the toolkit menus of every frame: the desktop has one layout window
   inputs.scripts_declined = scripts_declined;
+  const view::LayoutWindow* window = editor.windows.current();
+  inputs.layout_read_only = window != nullptr && window->root() != nullptr && window->root()->flags().no_edit;
   inputs.option = [interp](std::string_view variable) -> std::optional<bool> {
     if (interp == nullptr) return std::nullopt;
     const auto value = interp->get_var(variable);

@@ -499,6 +499,9 @@ class Startup {
     }
     if (!wanted && !pin_missing_ && !options_.files.empty()) {
       wanted = technology_of_file(options_.files.front());
+      if (wanted && state_.script.pdk_trust.declined_variant(*wanted)) {
+        wanted.reset();  // declined PDK scripts: minimum and read-only (hefesto-security)
+      }
     }
     if (wanted) {
       tech_loaded_ = load_technology(*wanted);

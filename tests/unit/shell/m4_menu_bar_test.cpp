@@ -35,6 +35,7 @@
 #include "hefesto/settings/project_settings.hpp"
 #include "hefesto/shell/gui_script.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
+#include "reference_data.hpp"
 
 using namespace hefesto;
 using namespace hefesto::shell;
@@ -213,6 +214,19 @@ TEST_CASE("declined PDK scripts leave no PDK menus", "[cap:hefesto-security][req
   CHECK(item(menu(view, "Drc"), "DRC Routing") == nullptr);
 }
 
+TEST_CASE("a read-only layout disables File Save", "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  MenuBarInputs read_only;
+  read_only.layout_read_only = true;
+  const MenuBarView view = menu_bar_view(gui::wrapper_menus(".layout1"), {}, {}, read_only);
+  const MenuBarItem* save = item(menu(view, "File"), "Save...");
+  REQUIRE(save != nullptr);
+  CHECK_FALSE(save->enabled);
+  CHECK(save->tooltip == "Save...: off, the layout is read-only");
+  CHECK(item(menu(view, "File"), "Open...")->enabled);
+  const MenuBarView editable = menu_bar_view(gui::wrapper_menus(".layout1"), {}, {}, {});
+  CHECK(item(menu(editable, "File"), "Save...")->enabled);
+}
+
 TEST_CASE("menu bar signature changes with the menus", "[cap:ui-gui-managers][req:Wrapper menus]") {
   const auto plain = menu_bar_view(gui::wrapper_menus(".layout1"), {}, {}, {});
   const auto pdk = menu_bar_view(gui::wrapper_menus(".layout1"), sky130_edits(), sky130_toolkit(), {});
@@ -244,17 +258,13 @@ TEST_CASE("skipped widget statements become Diagnostics rows and one status mess
 
 namespace {
 
-/// The sky130A reference version (tests/unit/common/reference_data.hpp
-/// kPdkVersion; that header is not on the shell tests' include path).
-constexpr std::string_view kPdkVersion = "5740c4a81c42f9fe4af5ef2ee258a99151053d28";
+using hefesto::test::kPdkVersion;
 
-/// True when scripts/fetch_pdk.py put the sky130A reference PDK in .cache/pdks.
+/// True when scripts/fetch_pdk.py put the sky130A reference PDK (with its rc file) in .cache/pdks.
 bool have_sky130a() {
-  const std::filesystem::path variant = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache/pdks/ciel/sky130/versions" /
-                                        std::string{kPdkVersion} / "sky130A";
+  const auto variant = hefesto::test::pinned_sky130a();
   std::error_code ec;
-  return std::filesystem::exists(variant / "libs.tech/magic/sky130A.magicrc", ec) &&
-         std::filesystem::exists(variant / "libs.tech/magic/sky130A.tech", ec);
+  return variant && std::filesystem::exists(*variant / "libs.tech/magic/sky130A.magicrc", ec);
 }
 
 /// What the script layer reports during the startup and the adoption.
