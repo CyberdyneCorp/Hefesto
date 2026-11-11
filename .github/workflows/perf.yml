@@ -13,6 +13,13 @@
 #                "[benchmark]" of hefesto_drc_engine_tests, target <= 100 ms) runs in the same
 #                job. Results: the job summary and the artifact "drc-bench"; they are recorded
 #                in docs/design/m3-ui-conformance.md "Performance".
+#   drc-profile  Manual (workflow_dispatch): where the time of `drc check; drc catchup` goes on
+#                the x86_64 runner. A Release build with debug info and frame pointers runs the
+#                block workload (bench/drc/drc_bench.py --emit) under `perf record`, and both
+#                tools run one pass under callgrind (Magic inside the reference image), so their
+#                instruction counts per function can be compared. A GCC 14 and a Clang build
+#                run drc_bench.py against Magic, to separate compiler from algorithm. Reports:
+#                the job summary and the artifact "drc-profile".
 #   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
 #                Release build, timed. They also replay on every CI leg (ci.yml, golden replay).
 
@@ -143,6 +150,140 @@ jobs:
             latency.txt
           if-no-files-found: ignore
           retention-days: 90
+
+  drc-profile:
+    name: DRC profile (perf, callgrind, GCC vs Clang)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers, perf and valgrind
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libssl-dev valgrind linux-tools-common \
+            "linux-tools-$(uname -r)" || sudo apt-get install -y --no-install-recommends linux-tools-azure
+          sudo sysctl -w kernel.perf_event_paranoid=-1 kernel.kptr_restrict=0
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli, GCC 14 and Clang (Release, debug info, frame pointers)
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+          CC=clang CXX=clang++ cmake --preset linux-release -B build/linux-release-clang -DHEFESTO_BUILD_DESKTOP=OFF \
+            -DHEFESTO_BUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build build/linux-release-clang --target hefesto-cli
+
+      - name: Fetch or verify sky130
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Scripts of the block workload
+        run: python3 bench/drc/drc_bench.py --emit profile --workload block --checks 4
+
+      - name: perf record (GCC build, 4 passes of the block)
+        shell: bash
+        run: |
+          mkdir -p drc-profile
+          cd profile
+          perf record -F 2999 -g -o ../perf.data ../build/linux-release/src/cli/hefesto-cli \
+            --no-log --magic -dnull -noconsole block-hefesto-4.tcl > /dev/null
+          cd ..
+          perf report -i perf.data --no-children --percent-limit 0.3 --stdio -g none \
+            --sort symbol > drc-profile/perf-self.txt
+          perf report -i perf.data --children --percent-limit 1 --stdio -g none \
+            --sort symbol > drc-profile/perf-children.txt
+          perf report -i perf.data --no-children --percent-limit 2 --stdio -g caller,0.5,callee \
+            --sort symbol > drc-profile/perf-callers.txt
+          {
+            echo "## perf, block, GCC 14 (self)"
+            echo '```'
+            grep -v '^#' drc-profile/perf-self.txt | sed '/^$/d' | head -40
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, one pass of the block (Hefesto GCC build and Magic)
+        shell: bash
+        run: |
+          cd profile
+          valgrind --tool=callgrind --callgrind-out-file=../drc-profile/callgrind.hefesto \
+            ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole block-hefesto-1.tcl > /dev/null
+          docker run --rm -v "$PWD:/work" -v "$PWD/../drc-profile:/out" -w /work hefesto-golden:ci bash -c '
+            apt-get -o Acquire::Check-Valid-Until=false update > /dev/null &&
+            apt-get install -y --no-install-recommends valgrind > /dev/null &&
+            valgrind --tool=callgrind --callgrind-out-file=/out/callgrind.magic \
+              magic -dnull -noconsole block-magic-1.tcl > /dev/null &&
+            callgrind_annotate --inclusive=yes /out/callgrind.magic > /out/callgrind-magic-inclusive.txt &&
+            callgrind_annotate /out/callgrind.magic > /out/callgrind-magic-self.txt &&
+            chmod a+r /out/*' || echo "Magic callgrind failed" >> "$GITHUB_STEP_SUMMARY"
+          cd ../drc-profile
+          callgrind_annotate --inclusive=yes callgrind.hefesto > callgrind-hefesto-inclusive.txt
+          callgrind_annotate callgrind.hefesto > callgrind-hefesto-self.txt
+          {
+            echo "## callgrind, one pass of the block (instructions)"
+            for f in callgrind-hefesto-self.txt callgrind-magic-self.txt; do
+              echo "### $f"
+              echo '```'
+              sed -n '1,45p' "$f" 2>/dev/null | cut -c1-180
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: GCC 14 and Clang against Magic (same runner)
+        shell: bash
+        run: |
+          for build in linux-release linux-release-clang; do
+            python3 bench/drc/drc_bench.py --hefesto-cli "build/$build/src/cli/hefesto-cli" \
+              --magic-image hefesto-golden:ci --repeat 3 --json "drc-profile/bench-$build.json" \
+              | tee "drc-profile/bench-$build.txt" || true
+          done
+          {
+            echo "## drc_bench, GCC 14 then Clang"
+            echo '```'
+            cat drc-profile/bench-*.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: drc-profile
+          path: |
+            drc-profile
+          if-no-files-found: ignore
+          retention-days: 30
 
   golden-slow:
     name: golden-slow corpus (Release)

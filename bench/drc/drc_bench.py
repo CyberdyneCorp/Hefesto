@@ -23,6 +23,9 @@ counts must agree.
   python3 bench/drc/drc_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \\
       --magic-image hefesto-golden:ci --json drc-bench.json
 
+--emit DIR only writes the technology, the library and both tools' scripts
+(<workload>-<tool>-<passes>.tcl) into DIR, for the profiling job.
+
 Exit status: 0 when every Hefesto time is within --max-ratio of Magic's (or no
 Magic was given), 1 when a workload is slower than that or the counts differ,
 2 on a setup error. Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
@@ -152,10 +155,16 @@ def last_count(stdout: str) -> str:
     return numbers[-1] if numbers else ""
 
 
-def measure(tool: str, workload: Workload, args: argparse.Namespace, work: Path) -> Timing:
-    short, long = f"{workload.name}-{tool}-1.tcl", f"{workload.name}-{tool}-{args.checks}.tcl"
+def write_scripts(tool: str, workload: Workload, checks: int, work: Path) -> tuple[str, str]:
+    """The one-pass and `checks`-pass scripts of `tool` in `work`: <workload>-<tool>-<passes>.tcl."""
+    short, long = f"{workload.name}-{tool}-1.tcl", f"{workload.name}-{tool}-{checks}.tcl"
     (work / short).write_text(PREAMBLE + workload.placement + CHECK + COUNT[tool] + QUIT)
-    (work / long).write_text(PREAMBLE + workload.placement + CHECK * args.checks + COUNT[tool] + QUIT)
+    (work / long).write_text(PREAMBLE + workload.placement + CHECK * checks + COUNT[tool] + QUIT)
+    return short, long
+
+
+def measure(tool: str, workload: Workload, args: argparse.Namespace, work: Path) -> Timing:
+    short, long = write_scripts(tool, workload, args.checks, work)
     timing = Timing(args.checks)
     for _ in range(args.repeat):
         elapsed, stdout = run_once(tool_argv(tool, args, work, short), work)
@@ -170,7 +179,7 @@ def measure(tool: str, workload: Workload, args: argparse.Namespace, work: Path)
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--hefesto-cli", required=True)
+    parser.add_argument("--hefesto-cli", help="the hefesto-cli executable (required unless --emit)")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--magic", help="a native magic executable")
     group.add_argument("--magic-image", help="a container image with magic on its PATH (e.g. hefesto-golden:ci)")
@@ -183,9 +192,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--max-ratio", type=float, default=1.10,
                         help="fail when Hefesto's DRC time exceeds Magic's by more than this factor (noise band)")
     parser.add_argument("--json", help="write the results here")
+    parser.add_argument("--emit", metavar="DIR",
+                        help="only write the technology, the library and the scripts of both tools into DIR "
+                             "(for profiling runs, .github/workflows/perf.yml drc-profile) and exit")
     args = parser.parse_args(argv)
     if args.checks < 2:
         parser.error("--checks must be at least 2")
+    if not args.hefesto_cli and not args.emit:
+        parser.error("--hefesto-cli is required")
     return args
 
 
@@ -201,8 +215,33 @@ def compare(results: dict, max_ratio: float) -> list[str]:
     return failures
 
 
+def selected_workloads(args: argparse.Namespace, mag_dir: Path) -> list[Workload]:
+    workloads = []
+    if args.workload in ("array", "all"):
+        workloads.append(array_workload(mag_dir, args.array_size))
+    if args.workload in ("block", "all"):
+        workloads.append(block_workload(mag_dir))
+    return workloads
+
+
+def emit(args: argparse.Namespace) -> int:
+    work = Path(args.emit).resolve()
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        mag_dir = prepare(work, Path(args.pdk_root))
+    except FileNotFoundError as error:
+        print(f"drc_bench: {error}", file=sys.stderr)
+        return 2
+    for workload in selected_workloads(args, mag_dir):
+        for tool in COUNT:
+            print(*write_scripts(tool, workload, args.checks, work))
+    return 0
+
+
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
+    if args.emit:
+        return emit(args)
     use_magic = bool(args.magic or args.magic_image)
     with tempfile.TemporaryDirectory(prefix="hefesto-drc-bench-") as tmp:
         work = Path(tmp)
@@ -211,11 +250,7 @@ def main(argv: list[str]) -> int:
         except FileNotFoundError as error:
             print(f"drc_bench: {error}", file=sys.stderr)
             return 2
-        workloads = []
-        if args.workload in ("array", "all"):
-            workloads.append(array_workload(mag_dir, args.array_size))
-        if args.workload in ("block", "all"):
-            workloads.append(block_workload(mag_dir))
+        workloads = selected_workloads(args, mag_dir)
         results: dict[str, dict] = {}
         for workload in workloads:
             row: dict = {}
