@@ -468,7 +468,7 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
   // guarded by the parent of the *last* use: when that is a window's root
   // use, the pending parent keeps its old bounding box (Magic ref:
   // database/DBcellbox.c:755-775). Replicated with magic-compat ON; OFF
-  // recomputes it.
+  // recomputes it (Q-MODEL-32, resolution: compat).
   CellDef* last = nullptr;
   for (CellUse* use : def.instances()) {
     compute_use_bbox(*use);

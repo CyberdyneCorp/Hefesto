@@ -133,8 +133,9 @@ Compatibility: exact
 - The bounding box of a use is the child bounding box extended by the array span (`|xsep*(xhi-xlo)|` towards the sign of `xsep`, same for y) and then transformed; the extended box of a use is computed the same way from the child's extended box.
 - The `FIXED_BBOX` property does NOT change the computed bounding box (it is consulted by LEF/DEF/GDS writers; see `layout-properties`).
 - When a definition's box changes, every use of it is re-positioned, every parent is flagged "child boxes changed" (not modified), and the computation propagates upward. Hefesto MAY compute boxes lazily but MUST return identical values.
+- Magic recomputes the parents in the order of the definition's uses, most recent first, and recomputes the last pending parent only when the oldest use has a parent. Loading a definition into a window gives it a parentless root use that is never freed, so when the definition was loaded in a window before every placement that still uses it, the last pending parent keeps its old bounding box (its use of the definition is still re-positioned) until something else recomputes that parent; the stale box bounds the parent's DRC check areas, its `.mag` timestamp processing and the boxes of its own parents. This SHALL be replicated with `magic-compat` ON; with it OFF every parent SHALL be recomputed (see Q-MODEL-32, resolution: compat).
 
-(Magic ref: database/DBcellbox.c:244-280,553-735, database/DBbound.c:56-170, database/DBlabel.c:1352-1500)
+(Magic ref: database/DBcellbox.c:244-280,553-775, database/DBbound.c:56-170, database/DBlabel.c:1352-1500, database/DBcellname.c:2066-2097, dbwind/DBWprocs.c:545-547)
 
 #### Scenario: Paint plus point label
 - **GIVEN** a cell with `metal1 (0,0)-(10,10)` and a point label at `(20,20)`
@@ -151,6 +152,13 @@ Compatibility: exact
 - **WHEN** the use bounding box is computed
 - **THEN** it SHALL be `(0,0)-(70,25)`
 - **AND** with `xsep = -20` it SHALL be `(-60,0)-(10,25)`
+
+#### Scenario: Parent of a child loaded in a window before its placement
+- **GIVEN** a cell `child` whose only content is a label `(0,0)-(10,10)`, loaded in a window, and then a cell `top` with one use of `child` (so `top` has the box `(0,0)-(10,10)`)
+- **WHEN** a label `(0,0)-(20,10)` is added to `child`
+- **THEN** the use's box SHALL be `(0,0)-(20,10)` in either `magic-compat` setting
+- **AND** with `magic-compat` ON the box of `top` SHALL stay `(0,0)-(10,10)`; with it OFF it SHALL be `(0,0)-(20,10)`
+- **AND** had `top` placed `child` before the window load, its box SHALL be `(0,0)-(20,10)` in either setting
 
 ### Requirement: Locked instances
 

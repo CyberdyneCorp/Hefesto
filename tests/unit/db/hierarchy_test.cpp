@@ -268,16 +268,21 @@ TEST_CASE("a parent keeps its box when the child was shown in a window before it
 
 TEST_CASE("a parent follows its child when the placement is older than any window load",
           HI "[req:Bounding box and extended bounding box]") {
-  db::CellLibrary lib;
-  auto* top = make(lib, "top");
-  auto* child = make(lib, "child");
-  REQUIRE(db::put_label(*child, label("a", {0, 0, 10, 10})).ok());
-  db::recompute_bbox(*child);
-  (void)add_use(*top, *child, {});
-  child->note_window_root();  // shown in a window after the placement
-  REQUIRE(db::put_label(*child, label("b", {0, 0, 20, 10})).ok());
-  db::recompute_bbox(*child);
-  CHECK(top->bbox() == Rect{0, 0, 20, 10});
+  // Q-MODEL-32 (compat): only a window load older than every placement
+  // leaves the parent stale; here both modes recompute it.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    db::CellLibrary lib;
+    auto* top = make(lib, "top");
+    auto* child = make(lib, "child");
+    REQUIRE(db::put_label(*child, label("a", {0, 0, 10, 10})).ok());
+    db::recompute_bbox(*child, compat);
+    (void)add_use(*top, *child, {});
+    child->note_window_root();  // shown in a window after the placement
+    REQUIRE(db::put_label(*child, label("b", {0, 0, 20, 10})).ok());
+    db::recompute_bbox(*child, compat);
+    CHECK(top->bbox() == Rect{0, 0, 20, 10});
+  }
 }
 
 TEST_CASE("outline-font text boxes extend the extended box", HI "[req:Bounding box and extended bounding box]") {
