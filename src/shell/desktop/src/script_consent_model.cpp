@@ -174,6 +174,36 @@ DeclinedView declined_view(const script::PdkIdentity& pdk, std::string_view docu
   return view;
 }
 
+StatusChip read_only_chip() {
+  return StatusChip{StatusKind::warning, "read-only"};
+}
+
+std::string read_only_subtitle(std::string_view subtitle) {
+  // header_text: "<technology>[ · <version>] · magic-compat on|off".
+  constexpr std::string_view kCompat = " · magic-compat";
+  const std::size_t at = subtitle.rfind(kCompat);
+  if (at == std::string_view::npos) return std::string{subtitle} + " · read-only";
+  return std::string{subtitle.substr(0, at)} + " · read-only" + std::string{subtitle.substr(at)};
+}
+
+bool rail_tool_edits(std::string_view icon) noexcept {
+  return icon == "paint" || icon == "wire" || icon == "label" || icon == "place";
+}
+
+std::string read_only_tool_tooltip(std::string_view label) {
+  return std::string{label} + ": off, the layout is read-only";
+}
+
+ReviewPlan review_plan(const script::PdkIdentity& pdk, ConsentDecision decision) {
+  ReviewPlan plan;
+  if (decision == ConsentDecision::decline) return plan;
+  plan.reopen = true;
+  if (decision == ConsentDecision::trust_version && !pdk.version.empty()) {
+    plan.trust_command = "pdk trust " + pdk_name(pdk) + " " + pdk.version;
+  }
+  return plan;
+}
+
 std::string denial_status(const script::DeniedOperation& denied) {
   return "■ Sandbox blocked " + denied.operation + " in " + where(denied.location);
 }
@@ -187,8 +217,19 @@ std::optional<InterruptCardView> interrupt_card(const RunningScript& running) {
   if (!running.current_file.empty()) {
     card.detail = "source " + file_name(running.current_file);
     if (running.line > 0) card.detail += " · line " + std::to_string(running.line);
+  } else if (running.line > 0) {
+    card.detail = "line " + std::to_string(running.line);  // typed text
   }
   return card;
+}
+
+RunningScript running_script(const script::ScriptProgress& progress) {
+  RunningScript running;
+  running.script = progress.script;
+  running.current_file = progress.location.file;
+  running.line = progress.location.line;
+  running.elapsed = progress.elapsed;
+  return running;
 }
 
 }  // namespace hefesto::shell

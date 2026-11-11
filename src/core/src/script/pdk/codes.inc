@@ -23,3 +23,5 @@ HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-001", warning, "A PDK script was declined; the
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-002", info, "A PDK version is now trusted; its scripts run without asking.")
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-003", warning, "The trust record of a PDK version could not be saved in the PDK store.")
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-004", info, "A PDK version is no longer trusted (`pdk untrust`); its scripts ask before running.")
+HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-005", error, "A cell opened read-only because its PDK scripts were declined cannot be written.")
+HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-006", error, "After Review scripts, the PDK's technology could not be loaded; the declined cells stay read-only.")

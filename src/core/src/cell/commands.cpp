@@ -342,8 +342,8 @@ CommandResult save_as(IoSession& s, db::CellDef& def, const std::string& name) {
   if (auto stop = script ? std::nullopt : check_new_name(s, def, name)) {
     return std::move(*stop);
   }
-  if (!script) {
-    def.flags().no_edit = false;  // "save as" writes a new file (Q-CELL-37)
+  if (!script && !s.session.declined.contains(def)) {
+    def.flags().no_edit = false;  // "save as" writes a new file (Q-CELL-37); a declined cell stays read-only
   }
   if (auto saved = save_cell(s.io, def, name); !saved) {
     return CommandResult::failure(saved.error());

@@ -57,6 +57,17 @@ struct SessionLoadOptions {
                                                    platform::PlatformServices& services, std::string_view name,
                                                    const SessionLoadOptions& options, diag::DiagnosticSink& sink);
 
+/// Makes the built-in `minimum` technology the session's, with the same
+/// post-load steps as load_session_technology (grid report, "Effect on
+/// existing layout", DRC rules, plane counts, display styles); nothing
+/// changes when it is already current. The TECH entry point of the declined
+/// path of hefesto-security "Consent before implicit script execution": a
+/// layout whose PDK scripts were declined opens with `minimum` even when
+/// another technology was loaded (m4-scripting design D7).
+[[nodiscard]] diag::Status load_builtin_technology(editor::EditorState& editor,
+                                                   platform::PlatformServices& services,
+                                                   const SessionLoadOptions& options, diag::DiagnosticSink& sink);
+
 /// "Effect on existing layout" paint check: a non-internal cell has a tile
 /// on a plane in 3..plane_limit-1.
 [[nodiscard]] bool layout_has_paint(const db::CellLibrary& cells, std::size_t plane_limit);

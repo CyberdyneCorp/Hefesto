@@ -178,6 +178,34 @@ TEST_CASE("the PDK panel shows and changes script trust", "[cap:hefesto-pdk-mana
   CHECK(pdk_rows(catalog, installed)[0].scripts.label() == "◆ scripts ask before running");
 }
 
+TEST_CASE("the PDK panel shows when the scripts were trusted",
+          "[cap:hefesto-pdk-manager][req:Script trust for managed PDKs]") {
+  // Board M4-Script-Consent tile 5: "● scripts trusted 11 Nov 2026".
+  pdk::Family sky130;
+  sky130.name = "sky130";
+  sky130.variants = {pdk::Variant{"sky130A", {}, {}}, pdk::Variant{"sky130B", {}, {}}};
+  const pdk::Catalog catalog({sky130});
+  std::vector<pdk::InstalledVersion> installed(2);
+  installed[0].family = installed[1].family = "sky130";
+  installed[0].variant = "sky130A";
+  installed[1].variant = "sky130B";
+  installed[0].version.hash = installed[1].version.hash = kHash;
+  const auto rows = pdk_rows(catalog, installed, [](const pdk::InstalledVersion& v) {
+    return v.variant == "sky130A" ? ScriptTrustState{true, "2026-11-11"} : ScriptTrustState{false, "2026-10-02"};
+  });
+  REQUIRE(rows.size() == 2);
+  CHECK(rows[0].scripts_date == "11 Nov 2026");
+  CHECK(rows[0].scripts_label() == "● scripts trusted 11 Nov 2026");
+  CHECK(rows[1].scripts_date.empty());  // a date without trust is not shown
+  CHECK(rows[1].scripts_label() == "◆ scripts ask before running");
+  // A version trusted before dates were recorded shows no date.
+  CHECK(pdk_rows(catalog, installed, [](const pdk::InstalledVersion&) { return true; })[0].scripts_label() ==
+        "● scripts trusted");
+  CHECK(display_date("2026-10-02") == "2 Oct 2026");
+  CHECK(display_date("2026-13-02") == "2026-13-02");
+  CHECK(display_date("yesterday") == "yesterday");
+}
+
 TEST_CASE("declined scripts open the layout read-only", "[cap:hefesto-security][req:Consent before implicit script execution]") {
   const DeclinedView view = declined_view(kSky130, "ota_5t");
   CHECK(view.chip == "▲ read-only");
@@ -188,7 +216,49 @@ TEST_CASE("declined scripts open the layout read-only", "[cap:hefesto-security][
   CHECK(view.place_device_tooltip == "No PDK device scripts (the sky130A scripts were not run)");
 }
 
-TEST_CASE("sandbox denials are announced in the status bar", "[cap:hefesto-scripting][req:Script sandbox enforcement]") {
+TEST_CASE("a read-only layout shows the chip and turns the editing tools off",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  // Board M4-Script-Consent tile 6: "▲ read-only" after the cell name,
+  // "minimum · read-only · magic-compat on" under it.
+  CHECK(read_only_chip().label() == "▲ read-only");
+  CHECK(read_only_subtitle("minimum · magic-compat on") == "minimum · read-only · magic-compat on");
+  CHECK(read_only_subtitle("sky130A · 1.0.588 · magic-compat off") == "sky130A · 1.0.588 · read-only · magic-compat off");
+  CHECK(read_only_subtitle("minimum") == "minimum · read-only");
+  for (const char* icon : {"paint", "wire", "label", "place"}) CHECK(rail_tool_edits(icon));
+  for (const char* icon : {"box", "select", "measure", "fit"}) CHECK_FALSE(rail_tool_edits(icon));
+  CHECK(read_only_tool_tooltip("Paint tool") == "Paint tool: off, the layout is read-only");
+}
+
+TEST_CASE("Review scripts asks again and reopens the layout on yes",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  CHECK_FALSE(review_plan(kSky130, ConsentDecision::decline).reopen);
+  const ReviewPlan once = review_plan(kSky130, ConsentDecision::run_once);
+  CHECK(once.reopen);
+  CHECK_FALSE(once.trust_command.has_value());
+  const ReviewPlan trust = review_plan(kSky130, ConsentDecision::trust_version);
+  CHECK(trust.reopen);
+  CHECK(trust.trust_command == "pdk trust sky130A " + kHash);
+  // A script outside the store has no version to trust.
+  CHECK_FALSE(review_plan({"sky130", "sky130A", ""}, ConsentDecision::trust_version).trust_command.has_value());
+
+  // The desktop host asks again after forget(); a failed reopen counts as
+  // declined again.
+  int asked = 0;
+  DesktopConsentHost host([&asked](const ConsentPromptView&) {
+    ++asked;
+    return asked == 1 ? ConsentDecision::decline : ConsentDecision::run_once;
+  }, [](const platform::Path&) { return true; });
+  CHECK(host.ask(kSky130, kRc) == ConsentDecision::decline);
+  REQUIRE(host.declined() == kSky130);
+  host.forget(kSky130);
+  CHECK(host.ask(kSky130, kRc) == ConsentDecision::run_once);
+  CHECK_FALSE(host.declined().has_value());
+  host.restore_decline(kSky130);
+  CHECK(host.declined() == kSky130);
+  CHECK(asked == 2);
+}
+
+TEST_CASE("sandbox denials are announced in the status bar", "[cap:hefesto-security][req:Script sandbox enforcement]") {
   const script::DeniedOperation socket{"socket", "example.com 80", {"/p/fetch_models.tcl", 12}};
   CHECK(denial_status(socket) == "■ Sandbox blocked socket in fetch_models.tcl:12");
   CHECK(denial_status({"exec", "curl", {}}) == "■ Sandbox blocked exec in typed text");
@@ -206,7 +276,7 @@ TEST_CASE("sandbox denials are announced in the status bar", "[cap:hefesto-scrip
 }
 
 TEST_CASE("a long-running script shows the Interrupt card after 2 s",
-          "[cap:hefesto-scripting][req:Script sandbox enforcement]") {
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
   using namespace std::chrono_literals;
   RunningScript running{"/pdk/sky130A.tcl", "/pdk/sky130A-res.tcl", 2378, 1900ms};
   CHECK_FALSE(interrupt_card(running).has_value());

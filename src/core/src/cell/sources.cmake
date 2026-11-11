@@ -12,6 +12,7 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/crash.cpp
   ${CMAKE_CURRENT_LIST_DIR}/crash_commands.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/declined.cpp
   ${CMAKE_CURRENT_LIST_DIR}/edit_commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/element_command.cpp
   ${CMAKE_CURRENT_LIST_DIR}/find_commands.cpp
