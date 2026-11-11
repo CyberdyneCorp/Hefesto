@@ -32,7 +32,7 @@ struct PushConstants {
   float color[4];
   std::uint32_t stipple[4];  // rows 0-3, rows 4-7, enabled, line pattern
   std::int32_t anchor[4];    // left pixel column, bottom pixel row, width, height
-  std::int32_t base[4];      // polygon base x, y, mode (0 quads, 1 diagonals), unused
+  std::int32_t base[4];      // polygon base x, y, mode (0 quads, 1 diagonals), line width and shift
 };
 static_assert(sizeof(PushConstants) == 96);
 
@@ -165,6 +165,15 @@ struct PipelineState {
   }
 };
 
+/// `View.base.w` of rect.vert: the line width in pixels (bits 0-7) and the
+/// line shift in half pixels along x (bits 8-15) and y (bits 16-23), each
+/// offset by 128.
+std::int32_t pack_line(const LayerStyle& style) {
+  const auto offset = [](std::int8_t v) { return static_cast<std::int32_t>(v) + 128; };
+  return static_cast<std::int32_t>(style.line_width) | (offset(style.line_shift_x) << 8) |
+         (offset(style.line_shift_y) << 16);
+}
+
 PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& style, const DrawTarget& target,
                                   const std::int32_t (&base)[2]) {
   return PushConstants{{view.origin_x, view.origin_y},
@@ -175,7 +184,7 @@ PushConstants make_push_constants(const ViewTransform& view, const LayerStyle& s
                        {pack_rows(style.stipple, 0), pack_rows(style.stipple, 4), style.stippled ? 1U : 0U,
                         std::uint32_t{style.dash}},
                        {target.x, target.y + target.height - 1, target.width, target.height},
-                       {base[0], base[1], style.diagonals ? 1 : 0, 0}};
+                       {base[0], base[1], style.diagonals ? 1 : 0, pack_line(style)}};
 }
 
 /// One draw of the merged rectangle and polygon draw lists.

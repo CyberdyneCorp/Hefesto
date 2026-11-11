@@ -4,6 +4,8 @@
 #include "hefesto/render/layout_scene.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -219,7 +221,8 @@ void add_highlight_item(HighlightRun& run, const display::HighlightItem& it) {
   }
 }
 
-void emit_highlight_run(BatchBuilder& b, const display::ResolvedStyle& style, const HighlightRun& run) {
+void emit_highlight_run(BatchBuilder& b, const display::ResolvedStyle& style, const HighlightRun& run,
+                        std::uint8_t line_width) {
   if (!run.fills.empty() && b.begin(style, BatchKind::highlight, true)) {
     for (const auto& r : run.fills) b.add(r);
   }
@@ -233,21 +236,63 @@ void emit_highlight_run(BatchBuilder& b, const display::ResolvedStyle& style, co
   if (!run.lines.empty()) {
     LayerStyle ls = to_layer_style(style, false);
     ls.dash = static_cast<std::uint8_t>(style.outline & 0xFF);
+    ls.line_width = line_width;
     if (b.begin(ls, BatchKind::highlight, style.index)) {
       for (const auto& r : run.lines) b.add(r);
     }
   }
 }
 
-void add_highlights(BatchBuilder& b, const display::HighlightScene& scene) {
+/// The box drawn with thick sides (display::box_drawing, BoxShape::thick):
+/// the box client's outline item in the box or medium-highlights style.
+bool thick_box(const display::HighlightItem& it) {
+  return it.shape == display::HighlightShape::outline &&
+         (it.style == display::kStyleBox || it.style == display::kStyleMediumHighlights);
+}
+
+/// DBWDrawBox's thick box: each side `width` pixels wide inside the box, one
+/// batch layer per side (the shift that keeps a side inside depends on it).
+void emit_thick_box(BatchBuilder& b, const display::HighlightItem& it, std::uint8_t width) {
+  struct Side {
+    db::Point a;
+    db::Point b;
+    int dx;  // inward direction along x
+    int dy;  // and along y
+  };
+  const db::Rect& r = it.rect;
+  const std::array<Side, 4> sides{{{{r.x0, r.y0}, {r.x0, r.y1}, 1, 0},
+                                   {{r.x1, r.y0}, {r.x1, r.y1}, -1, 0},
+                                   {{r.x0, r.y0}, {r.x1, r.y0}, 0, 1},
+                                   {{r.x0, r.y1}, {r.x1, r.y1}, 0, -1}}};
+  // Moving a centred line by half its width puts it inside: `width` half pixels.
+  const int shift = std::min<int>(width, std::numeric_limits<std::int8_t>::max());
+  for (const Side& side : sides) {
+    LayerStyle ls = to_layer_style(it.resolved, false);
+    ls.dash = static_cast<std::uint8_t>(it.resolved.outline & 0xFF);
+    ls.line_width = width;
+    ls.line_shift_x = static_cast<std::int8_t>(side.dx * shift);
+    ls.line_shift_y = static_cast<std::int8_t>(side.dy * shift);
+    if (b.begin(ls, BatchKind::highlight, it.resolved.index)) {
+      b.add(line(side.a, side.b));
+    }
+  }
+}
+
+void add_highlights(BatchBuilder& b, const display::HighlightScene& scene, const HighlightOptions& options) {
+  const std::uint8_t width = highlight_line_width(options);
   std::size_t i = 0;
   while (i < scene.items.size()) {
+    if (thick_box(scene.items[i])) {
+      emit_thick_box(b, scene.items[i], static_cast<std::uint8_t>(2 * width));
+      ++i;
+      continue;
+    }
     const display::ResolvedStyle& style = scene.items[i].resolved;
     HighlightRun run;
-    for (; i < scene.items.size() && scene.items[i].resolved == style; ++i) {
+    for (; i < scene.items.size() && scene.items[i].resolved == style && !thick_box(scene.items[i]); ++i) {
       add_highlight_item(run, scene.items[i]);
     }
-    emit_highlight_run(b, style, run);
+    emit_highlight_run(b, style, run, width);
   }
 }
 
@@ -276,7 +321,14 @@ LayerStyle to_layer_style(const display::ResolvedStyle& style, bool fill) {
   return out;
 }
 
-LayoutBatches to_batches(const display::LayoutScene& scene, const display::HighlightScene* highlights) {
+std::uint8_t highlight_line_width(const HighlightOptions& options) noexcept {
+  // At most 63 so that the box's sides (twice as wide) fit the shift range.
+  const double ratio = std::clamp(options.pixel_ratio, 1.0, 63.0);
+  return static_cast<std::uint8_t>(std::lround(ratio));
+}
+
+LayoutBatches to_batches(const display::LayoutScene& scene, const display::HighlightScene* highlights,
+                         const HighlightOptions& options) {
   const db::Rect& bounds = scene.bounds;
   db::Point base{bounds.is_null() ? 0 : bounds.x0, bounds.is_null() ? 0 : bounds.y0};
   if (bounds.is_null() && highlights != nullptr) {
@@ -293,15 +345,15 @@ LayoutBatches to_batches(const display::LayoutScene& scene, const display::Highl
     for (const auto& cell : scene.cells) b.add_outline(cell.bbox);
   }
   if (highlights != nullptr) {
-    add_highlights(b, *highlights);
+    add_highlights(b, *highlights, options);
   }
   return b.finish();
 }
 
-LayoutBatches highlight_batches(const display::HighlightScene& highlights) {
+LayoutBatches highlight_batches(const display::HighlightScene& highlights, const HighlightOptions& options) {
   const db::Point base = highlight_base(highlights);
   BatchBuilder b(base.x, base.y);
-  add_highlights(b, highlights);
+  add_highlights(b, highlights, options);
   return b.finish();
 }
 

@@ -270,6 +270,36 @@ Correction to the M2 round-2 notes: `RListView` does have row activation (`Rlist
 
 **Docking:** Raven 0.2.2 has a dock area (`Rdock_area_*`), but the shell keeps its own fixed Desktop-Layout boxes; `panel layers|inspector dock left|right` moves a side panel to either side of the canvas and `panel reset` restores the M1 arrangement. Dragging a panel out to float (board M2-Panels) needs the shell to move onto `Rdock_area`; not done in M2.
 
+## M4 confirmation checks (CARRY, 2026-11-11)
+
+The checks the decision of 2026-11-10 moved to M4 (`openspec/changes/m4-scripting/tasks.md` 11.1). Only what this Mac can run was run; the rest is manual and stays open.
+
+**Setup:** Apple M3 Pro (not the reference M1), macOS 27.0.1 (26A434), MoltenVK 1.4.2, Raven at the pin (v0.2.2, 4a05d6f). Debug build of `m4-round2` (`build/m4r2-carry`, macos-debug, `-Werror`, desktop on). The machine was heavily loaded by other builds (load average 120-126 during the runs), so the tails are pessimistic. The JSON files are kept in the session scratchpad, not committed; the numbers are below.
+
+**Criterion 1, frame rate inside Raven** (`hefesto --rects 10000000 --bench-frames 600 --width 1440 --height 900`, Retina 2x framebuffer, 19,485,051 canvas instances, pan at full-chip zoom):
+
+| vsync | Median | p95 | p99 | Max | Raven layout + paint (median) |
+|---|---|---|---|---|---|
+| on | **8.54 ms** | 10.2 ms | 13.6 ms | 151 ms | — |
+| off | **8.49 ms** | 10.1 ms | 14.8 ms | 219 ms | 0.20 ms |
+
+The median target (16.7 ms) still holds on the M3 Pro in a Debug build under load, with the highlight shader of this round (lines widened per layer, `rect.vert`). The maxima are scheduling stalls of the loaded machine. Not run: the reference M1 Mac (no M1 here) and Linux with a discrete GPU.
+
+**Criterion 2, live input:** not rerun. Driving the window means posting system-wide CGEvents into the user's live session, which this unattended run does not do; the macOS results of "M2 10.1 checks" and "M2 round 3" stand. Linux X11 and Wayland live input cannot be run on this Mac.
+
+**Criterion 4, accessibility:** VoiceOver was not switched on (an audible run needs a person). Checked in the Raven source at the pin instead: a node is pressable only for Raven's built-in buttons, menu items, checkboxes and list/tree items (`src/core/accessibility.c` sets `RVN_A11Y_INVOKABLE` by widget class), `accessibilityPerformPress` and `isAccessibilitySelectorAllowed` (`src/platform/cocoa/cocoa_platform.m`) follow that flag, and `raven_accessibility.h` has no call to give a custom widget an action or a checked state. Hefesto's painted controls therefore still cannot be pressed with VO-Space; this is recorded as a gap at M4 exit (`docs/design/m2-ui-conformance.md`, "M4 closing notes") and issue 3 below. Orca cannot be run here.
+
+**Crash-recovery dialog:** captured with the product app (`crash save FILE`, then `hefesto --run "crash recover FILE" --capture`): the prompt dialog reads "Recover from backup file …?" with Cancel and the primary, focused Recover, as the M2-Dialogs board. Noted: a long backup path widens the dialog to the path's length instead of wrapping.
+
+**Still open (manual):** the M1 frame-rate run; Linux x86_64 with a mid-range discrete GPU under X11 and Wayland (frame rate and live mouse, keyboard and trackpad input); Orca; an audible VoiceOver run; filing the issues below.
+
+### Raven issues to file (drafts, not filed)
+
+Issues 1-5 of "M2 round 3" above are still current at the pin and ready to paste into https://github.com/oscar-soirey/Raven/issues. Issue 3 is restated with the M4 detail, and one is added:
+
+3. *(restated)* *Accessibility: custom widgets cannot be pressed and have no checked state.* In `src/core/accessibility.c`, `RVN_A11Y_INVOKABLE` / `RVN_A11Y_CHECKABLE` are set by widget class only (`R_WIDGET_BUTTON`, `R_WIDGET_MENU_ITEM`, `R_WIDGET_CHECKBOX`, list and tree items), so `accessibilityPerformPress` on Cocoa (and `DoAction` over AT-SPI, `src/platform/atspi.c`) is unavailable for an `R_WIDGET_CUSTOM` widget even when its role is set to `R_ROLE_BUTTON` or `R_ROLE_TOGGLE_BUTTON` with `Rwidget_set_accessible_role`. Request: `Rwidget_set_accessible_action(Rid widget, void (*press)(Rid, void*), void* user_data)` that marks the node invokable and calls back on press, and `Rwidget_set_accessible_checked(Rid widget, int checked)` (with `-1` for "not checkable") so toggle buttons report their state as a value rather than in their name. Repro: a custom widget with role `R_ROLE_BUTTON` and a click handler; VoiceOver VO-Space does nothing and Accessibility Inspector lists no `AXPress`.
+6. *Dock area: float a panel inside the main window.* `Rdock_area_float_panel` takes a panel to an OS window of its own. Applications whose design keeps floating panels inside the main window (a card above the content that can be dragged back to a dock, with the dock's drop-zone highlight while dragging) cannot get that from `Rdock_area`. Request: an option (`Rdock_area_set_float_mode(area, R_DOCK_FLOAT_IN_WINDOW)`) or `Rdock_area_float_panel_in_window(area, panel, x, y, w, h)` that keeps the floating panel in the dock area's window, clamped to it, with the same drag-to-dock behaviour and `Rdock_area_save_layout` support.
+
 ## Checklist to close the decision
 
 - [ ] Run `hefesto-bench-canvas` and `hefesto --bench-frames 600 --rects 10000000` on an M1 Mac, and commit the JSON (criterion 1).

@@ -113,6 +113,15 @@ struct LayerStyle {
   /// filled rectangle (`cross` styles; skipped when the rectangle is under
   /// 4 pixels in both directions, Magic's GR_THRESH).
   bool diagonals = false;
+  /// Width of the lines (zero-width instances) in framebuffer pixels,
+  /// at least 1: a highlight outline is one logical pixel (the display's
+  /// pixel ratio) and the box's sides two (render::highlight_batches).
+  std::uint8_t line_width = 1;
+  /// Moves the lines by this many half framebuffer pixels along world x and
+  /// y (positive: towards larger coordinates), so that a wide line lies on
+  /// one side of its coordinate: the box's sides are drawn inside the box.
+  std::int8_t line_shift_x = 0;
+  std::int8_t line_shift_y = 0;
 };
 
 /// A vertex of a filled polygon, relative to PolygonScene's base point.

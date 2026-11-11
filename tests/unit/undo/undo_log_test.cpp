@@ -372,3 +372,94 @@ TEST_CASE("a testbench edit is one step that restores and saves the previous con
   step(editor.undo, trace, {1});
   CHECK(editor.undo.redo(editor).steps == 0);
 }
+
+// --- per-step command labels (M4 CARRY, task 11.5) ------------------------------
+
+TEST_CASE("a step is named after the user command that closed it",
+          "[cap:layout-undo][req:Event log and command grouping]") {
+  EditorState editor;
+  std::vector<int> trace;
+  editor.undo.record(std::make_unique<TraceEvent>(trace, 1));
+  editor.undo.record(std::make_unique<TraceEvent>(trace, 2));
+  REQUIRE(editor.undo.close_step(undo::command_label("paint", {"metal1"})));
+  editor.undo.record(std::make_unique<TraceEvent>(trace, 3));
+  REQUIRE(editor.undo.close_step());  // no label: the newest event names it
+  CHECK(editor.undo.step_label(0) == "paint metal1");
+  CHECK(editor.undo.step_label(1) == "trace 3");
+  CHECK(editor.undo.step_label(2).empty());
+  // `undo print` keeps the event descriptions (the label is Hefesto's).
+  CHECK(editor.undo.print(0, true) == "(delimiter)\ntrace 3\n(delimiter)\ntrace 2\ntrace 1\n");
+  // A command without events closes no step, so it names nothing.
+  CHECK_FALSE(editor.undo.close_step("what"));
+  CHECK(editor.undo.step_count() == 2);
+}
+
+TEST_CASE("step labels follow the redo-discard rule, the limit and clear",
+          "[cap:layout-undo][req:Undo and redo semantics]") {
+  EditorState editor;
+  std::vector<int> trace;
+  for (int i = 1; i <= 3; ++i) {
+    editor.undo.record(std::make_unique<TraceEvent>(trace, i));
+    REQUIRE(editor.undo.close_step("cmd " + std::to_string(i)));
+  }
+  CHECK(undo_n(editor, 2) == 2);
+  CHECK(editor.undo.step_label(1) == "cmd 2");  // undone steps keep their names for redo
+  editor.undo.record(std::make_unique<TraceEvent>(trace, 4));
+  REQUIRE(editor.undo.close_step("cmd 4"));
+  CHECK(editor.undo.step_count() == 2);
+  CHECK(editor.undo.step_label(0) == "cmd 1");
+  CHECK(editor.undo.step_label(1) == "cmd 4");
+  editor.undo.clear();
+  CHECK(editor.undo.step_label(0).empty());
+}
+
+TEST_CASE("step labels drop with the oldest steps beyond the history limit",
+          "[cap:layout-undo][req:History limit]") {
+  EditorState editor;
+  std::vector<int> trace;
+  const std::size_t limit = undo::kDefaultHistoryLimit;
+  for (std::size_t i = 0; i <= limit; ++i) {
+    editor.undo.record(std::make_unique<TraceEvent>(trace, static_cast<int>(i)));
+    REQUIRE(editor.undo.close_step("step " + std::to_string(i)));
+  }
+  CHECK(editor.undo.step_count() == limit);
+  CHECK(editor.undo.step_label(0) == "step 1");
+  CHECK(editor.undo.step_label(limit - 1) == "step " + std::to_string(limit));
+}
+
+TEST_CASE("command_label spells the command as typed", "[cap:layout-undo][req:Event log and command grouping]") {
+  CHECK(undo::command_label("paint", {"metal1"}) == "paint metal1");
+  CHECK(undo::command_label("box", {"values", "0i", "0i", "2i", "2i"}) == "box values 0i 0i 2i 2i");
+  CHECK(undo::command_label("label", {"VDD pin", "n"}) == "label \"VDD pin\" n");
+  CHECK(undo::command_label("*bypass", {"select", "move", "10", "0"}) == "select move 10 0");
+  CHECK(undo::command_label("undo", {}) == "undo");
+  const std::string long_label = undo::command_label("label", {std::string(80, 'x')});
+  CHECK(long_label.size() <= undo::kMaxStepLabelLength);
+  CHECK(long_label.ends_with("…"));
+}
+
+TEST_CASE("the undo history names each step after its command", "[cap:hefesto-app-ux][req:Undo history]") {
+  // "Undo two steps from the history": three edits, each its own step.
+  EditorState editor;
+  std::vector<int> trace;
+  for (const char* name : {"metal1", "metal2", "poly"}) {
+    editor.undo.record(std::make_unique<TraceEvent>(trace, 1));
+    REQUIRE(editor.undo.close_step(undo::command_label("paint", {name})));
+  }
+  auto h = undo::history(editor.undo);
+  REQUIRE(h.size() == 3U);
+  CHECK(h[0] == undo::HistoryEntry{"paint poly", "undo 1", false});
+  CHECK(h[1] == undo::HistoryEntry{"paint metal2", "undo 2", false});  // the second entry
+  CHECK(h[2] == undo::HistoryEntry{"paint metal1", "undo 3", false});
+  CHECK(undo_n(editor, 2) == 2);
+  // The redo tail, farthest first, then what can still be undone.
+  h = undo::history(editor.undo);
+  REQUIRE(h.size() == 3U);
+  CHECK(h[0] == undo::HistoryEntry{"paint poly", "redo 2", true});
+  CHECK(h[1] == undo::HistoryEntry{"paint metal2", "redo 1", true});
+  CHECK(h[2] == undo::HistoryEntry{"paint metal1", "undo 1", false});
+  // At most `max_each` of each.
+  CHECK(undo::history(editor.undo, 1).size() == 2U);
+  editor.undo.clear();
+  CHECK(undo::history(editor.undo).empty());
+}
