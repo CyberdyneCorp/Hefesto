@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from casegen import Spec
 from common import MT, box, erase, flatten_save, label, mag, paint, split, tech_load
+from tclcase import TclCase, p
 
 GEO = "layout-geometry-model"
 PAINT = "layout-paint-semantics"
@@ -23,7 +24,6 @@ ORIENTATIONS = ["0", "90", "180", "270", "v", "h", "90v", "90h"]
 NOT_AUTHORED = {
     "MODEL-G-045": "needs lef read",
     "MODEL-G-049": "needs extract", "MODEL-G-054": "needs def write (LEF/DEF, M6)",
-    "MODEL-G-055": "needs a Tcl proc (one command painting twice; Tcl binding, M4)",
 }
 
 
@@ -379,3 +379,21 @@ def _root_descend_spec() -> Spec:
                  "-doproperty, -nosubcircuits -dotoplabels and -novendor (Q-MODEL-33: the first two are empty, the "
                  "third has only top's label P).",
                  c + top + flats, ["f1.mag", "f2.mag", "f3.mag", "f4.mag"])
+
+
+# --- M4: the row that needed Tcl (m4-scripting design D16) -----------------------------
+
+M4_NOT_AUTHORED: dict[str, str] = {}
+
+
+def m4_specs() -> list[TclCase]:
+    """MODEL-G-055: one Tcl procedure (a single command of the script) paints two metal1
+    rectangles and adds a label; one undo. commands.tcl is run by both tools (tclcase.py)."""
+    body = "\n".join([
+        "tech load input/mt -noprompt", "snap internal", "load a",
+        "proc two_rects {} {", "    box 0 0 10 10", "    paint m1", "    box 20 0 30 10", "    paint m1",
+        "    box 5 5 5 5", "    label L c m1", "}",
+        p("two_rects", "select area", "what -list", "undo", "select area", "what -list", "save a")])
+    return [TclCase("MODEL-G-055", "layout-undo", ["Event log and command grouping"],
+                    "one Tcl proc (single command) that paints two metal1 rects and adds a label; one undo.",
+                    body, files={"mt.tech": MT}, outputs=["a.mag"])]

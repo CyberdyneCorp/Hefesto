@@ -1,0 +1,16 @@
+* netlist_to_layout input (SCRIPT-PCELL-12)
+.subckt sub1 a vout[0] b
+C1 a b 1p
+R1 a vout[0] 1k
+L1 b
++ 0 1n
+.ends
+.subckt sub2 x y
+.ends
+.subckt top in out vdd
+X1 in out vdd sub1 M=2
+X2 in out sub2
+.ends
+.control
+op
+.endc

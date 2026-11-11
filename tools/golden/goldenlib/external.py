@@ -11,7 +11,7 @@ needs such a file declares it in ``case.toml``::
     source = "pdk"                                   # pdk | scmos | magic-sys
     set = "sky130"                                   # pdk only: sky130 (default) | gf180mcu | ihp
     path = "sky130A/libs.tech/magic/sky130A.tech"    # pdk: path in the pinned version
-    to = "sky130A.tech"                              # file name in the work copy of input/
+    to = "sky130A.tech"                              # path in the work copy of input/
 
 ``capture.py`` and ``replay.py`` copy every external file into ``<work>/input/``
 (``magic-sys`` files into ``<work>/cadroot/magic/sys/``) before the tool runs, so the reference tool (in a container without network) and
@@ -19,6 +19,10 @@ hefesto-cli read the same bytes. A missing file is an error for capture and a sk
 for replay (:class:`ExternalUnavailable`).
 
 Sources:
+
+``to`` is a file name or a relative path (``pdk/sky130A/libs.tech/magic``: the SCRIPT
+cases rebuild a PDK tree under ``input/pdk`` for ``PDK_ROOT``); a ``pdk`` ``path`` that
+names a directory is copied whole.
 
 ``pdk``    ``<pdk-root>/ciel/<family>/versions/<pin>/<path>``; the root is
            ``$HEFESTO_PDK_ROOT`` or ``<repo>/.cache/pdks``. ``set`` names the data set of
@@ -70,8 +74,8 @@ def parse_external(raw: dict, index: int) -> External:
     source, to, path = raw.get("source"), raw.get("to"), raw.get("path", "")
     if source not in SOURCES:
         raise ValueError(f"{where}: source must be one of {', '.join(SOURCES)}")
-    if not isinstance(to, str) or "/" in to or to in ("", ".", ".."):
-        raise ValueError(f"{where}: 'to' must be a plain file name")
+    if not _is_relative_inside(to):
+        raise ValueError(f"{where}: 'to' must be a relative path inside the work copy of input/")
     if source in ("pdk", "magic-sys") and (not isinstance(path, str) or not path or ".." in Path(path).parts
                                            or Path(path).is_absolute()):
         raise ValueError(f"{where}: a {source} input needs a relative 'path' inside the pinned version")
@@ -81,6 +85,12 @@ def parse_external(raw: dict, index: int) -> External:
     if pdk_set not in PDK_SETS:
         raise ValueError(f"{where}: set must be one of {', '.join(PDK_SETS)}")
     return External(source, to, path, pdk_set)
+
+
+def _is_relative_inside(path) -> bool:
+    """A non-empty relative path without ``..`` (a file name, or ``pdk/sky130A/...``)."""
+    return (isinstance(path, str) and path not in ("", ".") and not Path(path).is_absolute()
+            and ".." not in Path(path).parts)
 
 
 def _fetch_pdk_module():
@@ -112,7 +122,7 @@ def pdk_set_root(pdk_set: str) -> Path:
 
 def _resolve_pdk(ext: External) -> Path:
     path = pdk_set_root(ext.set) / ext.path
-    if not path.is_file():
+    if not path.exists():
         raise ExternalUnavailable(f"{path} not found (run scripts/fetch_pdk.py {ext.set})")
     return path
 
@@ -178,4 +188,9 @@ def stage(externals, input_copy: Path) -> None:
         if ext.source == "magic-sys":
             target_dir = cad_root(input_copy.parent) / SYS_SUBDIR
             target_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(resolve(ext), target_dir / ext.to)
+        source, target = resolve(ext), target_dir / ext.to
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_dir():
+            shutil.copytree(source, target, dirs_exist_ok=True)
+        else:
+            shutil.copyfile(source, target)

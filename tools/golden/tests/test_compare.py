@@ -194,6 +194,18 @@ class MagicConsoleTest(unittest.TestCase):
         late = b"tiny\nSwitching to BOX tool.\n"
         self.assertEqual(magic_console(late), late)
 
+    def test_preamble_of_the_tk_wrapper_under_xvfb_is_removed(self):
+        # GUI cases (m4-scripting design D16): `magic -d X11 -noconsole` under Xvfb, captured
+        # with the hefesto-magic-gui:local image; the file-entry line is compared.
+        magic = (b"Use closewrapper to remove a new GUI-based layout window\n\n"
+                 b"Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:39:14 UTC 2026.\n"
+                 b"Starting magic under Tcl interpreter\nUsing the terminal as the console.\n"
+                 b"Using TrueColor, VisualID 0x21 depth 24\nProcessing system .magicrc file\n"
+                 b"Switching to BOX tool.\nNew windows will not have a title caption.\n"
+                 b"New windows will not have scroll bars.\nNew windows will not have a border.\n"
+                 b"Handling file entry input/commands.tcl extension .tcl\nx\n")
+        self.assertEqual(magic_console(magic), b"Handling file entry input/commands.tcl extension .tcl\nx\n")
+
     def test_differences_in_script_output_are_reported(self):
         result = compare_bytes(self.PREAMBLE + b"minimum\n", b"tiny\n", "magic-console")
         self.assertFalse(result.equal)

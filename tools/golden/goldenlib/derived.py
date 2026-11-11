@@ -21,6 +21,13 @@ is one line ``<sha256> <size> <relative path>`` per matching file, for outputs t
 to commit (``drc printrules`` of a PDK technology is 26 MB); a difference fails the case
 without showing where, so use it only where a small case covers the same records.
 
+    derived:files:<glob>
+
+is every matching file in turn, each preceded by a line ``file <relative path>``, for
+cases whose saved cells have names fixed only at run time (the generated-cell names of
+the M4 Desktop Alpha cases, m4-scripting design D18). The output's masks (for example
+``mag-timestamp``) apply to every file in it.
+
 A source that matches no file yields no output (the case then fails as if a plain file
 were missing).
 """
@@ -31,7 +38,7 @@ import re
 from pathlib import Path
 
 PREFIX = "derived:"
-_REDUCERS = ("mag-drc-sections", "digest")
+_REDUCERS = ("mag-drc-sections", "digest", "files")
 _DRC_SECTIONS = (b"checkpaint", b"error_p", b"error_s", b"error_ps")
 _SECTION = re.compile(rb"^<< (\S+) >>\r?$")
 
@@ -73,7 +80,11 @@ def _digest_entry(name: bytes, data: bytes) -> bytes:
     return hashlib.sha256(data).hexdigest().encode() + b" " + str(len(data)).encode() + b" " + name + b"\n"
 
 
-_ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry}
+def _file_entry(name: bytes, data: bytes) -> bytes:
+    return b"file " + name + b"\n" + data
+
+
+_ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry, "files": _file_entry}
 
 
 def build(work: Path, source: str) -> bytes | None:

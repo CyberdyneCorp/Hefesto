@@ -1,0 +1,7 @@
+// spectre netlist
+inline subckt inv (A	 Y
+* comment
++  VDD VSS) W=1
+ends inv
+subckt notloaded (a b)
+ends notloaded

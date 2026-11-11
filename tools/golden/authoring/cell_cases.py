@@ -12,18 +12,19 @@ from __future__ import annotations
 import gzip
 
 from casegen import Spec
-from common import (SCMOS_EXTERNAL, SKY130_TECH_EXTERNAL, TINY, box, label, mag, paint, sky130_cell_external, split,
+from common import (SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, TINY, box, label, mag, paint, sky130_cell_external, split,
                     tech_load)
+from tclcase import TclCase, p
 
 FORMAT = "cell-file-format"
 RESOLUTION = "cell-library-resolution"
 
 NOT_AUTHORED = {
-    "CELL-PR-02": "needs HOME=/home/alice and absolute paths", "CELL-PR-03": "needs a Tcl variable (PDK_ROOT)",
+    "CELL-PR-02": "needs HOME=/home/alice and absolute paths",
     "CELL-PR-04": "needs absolute /a and /b directories", "CELL-PR-05": "needs absolute /b",
     "CELL-PR-06": "needs symbolic links in input/", "CELL-PR-07": "needs a git work tree in the work dir",
-    "CELL-PR-12": "needs Tcl cd", "CELL-PW-02": "needs HOME", "CELL-PW-04": "needs HOME and /tmp",
-    "CELL-PW-05": "needs a Tcl variable (PDK_ROOT)", "CELL-PW-06": "needs symbolic links",
+    "CELL-PW-02": "needs HOME", "CELL-PW-04": "needs HOME and /tmp",
+    "CELL-PW-06": "needs symbolic links",
     "CELL-LIB-01": "needs PDK_ROOT in the environment", "CELL-LIB-02": "needs PDK_ROOT in the environment",
     "CELL-IO-01..10": "need file modes/owners, two processes, strace, full filesystems, crash/archive commands",
     "CELL-TS-06": "needs lef read (LEF/DEF, M6)", "CELL-TS-07": "needs gds readonly (GDS, M5)",
@@ -244,7 +245,7 @@ def write_specs() -> list[Spec]:
              "Round trip of sky130_fd_sc_hd__tapvpwrvgnd_1 and __a21bo_1 (the two documented exceptions of task 4.2).",
              tech_load("sky130A") + [c for n in cells for c in (f"load input/{n}", f"save {n}")],
              outputs=[f"{n}.mag" for n in cells], output_masks={f"{n}.mag": [] for n in cells},
-             external=[SKY130_TECH_EXTERNAL] + [sky130_cell_external(n) for n in cells], fonts=["FreeSans"],
+             external=SKY130_TECH_EXTERNALS + [sky130_cell_external(n) for n in cells], fonts=["FreeSans"],
              notes=["Timestamps are not masked: an unmodified cell keeps its stamp (cell-timestamps)."]),
         scmos("CELL-WR-11", ["Command-script save variant", "Command-script content"],
               "save top.tcl of a cell with paint, a split tile, an instance, labels, ports and properties.",
@@ -358,3 +359,41 @@ def m3_specs() -> list[Spec]:
              "writeall force", "cellname flags child", "cellname flags parent"],
             {"parent.mag": parent, "child.mag": bad_child}, ["input/parent.mag", "input/child.mag"]),
     ]
+
+
+# --- M4: the rows that needed Tcl (m4-scripting design D16) ----------------------------
+
+M4_NOT_AUTHORED: dict[str, str] = {}
+UNSET_ENV = "catch {unset env(PDK_ROOT)}"  # hermetic: only the script variable is set
+
+
+def m4_specs() -> list[TclCase]:
+    """CELL-PR-03, CELL-PR-12 (its cd into a project subfolder, D-33) and CELL-PW-05: one
+    commands.tcl run by Magic and hefesto-cli (tclcase.py)."""
+    def use(cell: str, path: str) -> str:
+        return f"use {cell} {cell}_0 {path}\ntimestamp 100\ntransform 1 0 0 0 1 0\nbox 0 0 4 4\n"
+
+    leaf = mag("scmos", "<< metal1 >>\nrect 0 0 4 4\n")
+    pr03 = TclCase("CELL-PR-03", RESOLUTION, ["Reading instance paths"],
+                   "use path $PDK_ROOT/lib with the Tcl variable PDK_ROOT set (top1), then unset (top2).",
+                   "\n".join([UNSET_ENV, "set PDK_ROOT [pwd]/input", "load top1",
+                               p("cellname list filepath leaf1", "cellname list flags leaf1"), "unset PDK_ROOT",
+                               "load top2", p("cellname list filepath leaf2", "cellname list flags leaf2",
+                                              "cellname list allcells")]),
+                   files={"lib/leaf1.mag": leaf, "lib/leaf2.mag": leaf,
+                          "top1.mag": mag("scmos", use("leaf1", "$PDK_ROOT/lib")),
+                          "top2.mag": mag("scmos", use("leaf2", "$PDK_ROOT/lib"))}, tech="scmos")
+    pr12 = TclCase("CELL-PR-12", RESOLUTION, ["Rebasing paths on working-directory change"],
+                   "relative use path ../b from input/a, then Tcl cd ../b: cellname filepath before and after.",
+                   "\n".join(["cd input/a", "load top", p("cellname list filepath top", "cellname list filepath leaf"),
+                               "cd ../b", p("cellname list filepath top", "cellname list filepath leaf", "pwd"),
+                               "cd ../.."]),
+                   files={"a/top.mag": mag("scmos", use("leaf", "../b")), "b/leaf.mag": leaf}, tech="scmos",
+                   notes=["Decision D-33: cd into a subfolder of the project (the work directory)."])
+    pw05 = TclCase("CELL-PW-05", RESOLUTION, ["Path variable substitution on write"],
+                   "children under $PDK_ROOT (Tcl variable) and under pdk2, whose path has PDK_ROOT's value as a "
+                   "character prefix: the use paths written.",
+                   "\n".join([UNSET_ENV, "set PDK_ROOT [pwd]/input/pdk", "load top", "box 0 0 0 0",
+                               p("getcell [pwd]/input/pdk/lib/c1", "getcell [pwd]/input/pdk2/lib/c2", "save top")]),
+                   files={"pdk/lib/c1.mag": leaf, "pdk2/lib/c2.mag": leaf}, outputs=["top.mag"], tech="scmos")
+    return [pr03, pr12, pw05]

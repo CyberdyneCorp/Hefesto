@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import magic_hash_model
-from .case import Case
+from .case import Case, substitute_env
 from .pins import tool_pin
 
 ENVIRONMENT = {"TZ": "UTC", "LC_ALL": "C"}
@@ -47,8 +47,20 @@ class RunResult:
     facts: dict = field(default_factory=dict)  # runner-specific provenance
 
 
+# GUI cases (m4-scripting design D16): Magic's Tk wrapper needs an X display; the
+# image runs Xvfb through xvfb-run (Debian package xvfb) with a fixed screen.
+XVFB_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24"]
+CONTAINER_WORK = "/work"
+
+
 def default_argv(case: Case) -> list[str]:
     """Command line of the reference tool, relative to the work directory."""
+    ref = case.reference
+    prefix = XVFB_PREFIX if ref.get("display") == "xvfb" else []
+    return prefix + _tool_argv(case)
+
+
+def _tool_argv(case: Case) -> list[str]:
     ref = case.reference
     if "argv" in ref:
         return list(ref["argv"])
@@ -67,7 +79,11 @@ def default_argv(case: Case) -> list[str]:
 
 
 def harness_stdin(case: Case, work: Path) -> bytes:
-    """magic-hash-harness reads its script on stdin; other tools get nothing."""
+    """magic-hash-harness reads its script on stdin; ``[reference] stdin`` names the
+    standard input of another tool (SCRIPT-API-14: Magic without a console reads its
+    commands there); other runs get nothing."""
+    if "stdin" in case.reference:
+        return (work / case.reference["stdin"]).read_bytes()
     if case.tool != "magic-hash-harness":
         return b""
     return (work / case.reference["script"]).read_bytes()
@@ -99,10 +115,14 @@ class ContainerRunner:
         directory: as root, Magic marks every input cell not owned by root and not group- or
         world-writable as read-only (database/DBio.c file_is_not_writeable), which the
         replay (run as the owner) never sees."""
-        env_flags = [flag for key, value in ENVIRONMENT.items() for flag in ("-e", f"{key}={value}")]
+        env = {**ENVIRONMENT, **substitute_env(case.env, CONTAINER_WORK)}
+        env_flags = [flag for key, value in env.items() for flag in ("-e", f"{key}={value}")]
         user = ["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []
-        return [self.engine, "run", "--rm", "-i", "--network=none", *user, *env_flags,
-                "-v", f"{work}:/work", "-w", "/work", self.image, *default_argv(case)]
+        # xvfb-run waits for Xvfb's SIGUSR1 and reaps it: as PID 1 of the container it never
+        # returns (measured: the GUI cases hung until killed), so display cases get an init.
+        init = ["--init"] if case.reference.get("display") else []
+        return [self.engine, "run", "--rm", "-i", *init, "--network=none", *user, *env_flags,
+                "-v", f"{work}:{CONTAINER_WORK}", "-w", CONTAINER_WORK, self.image, *default_argv(case)]
 
     def run(self, case: Case, work: Path) -> RunResult:
         facts = self._image_facts()

@@ -29,6 +29,30 @@ to = "gf180mcuD.tech"
 [[external]]
 source = "pdk"
 set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-cifout.tech"
+to = "gf180mcuD-cifout.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-cifin.tech"
+to = "gf180mcuD-cifin.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-drc.tech"
+to = "gf180mcuD-drc.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-extract.tech"
+to = "gf180mcuD-extract.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
 path = "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/gf180mcu_fd_sc_mcu7t5v0__inv_1.mag"
 to = "gf180mcu_fd_sc_mcu7t5v0__inv_1.mag"
 

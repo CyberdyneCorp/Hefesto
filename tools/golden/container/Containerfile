@@ -19,6 +19,10 @@
 # netgen as `netgen -batch`, ngspice as `ngspice -b`, xschem with `-x --no_x`.
 # Tcl/Tk and X11 *development* packages are still needed to compile the Tcl
 # builds of Magic, netgen and xschem (the Tcl build of Magic is normative).
+# The GUI cases of M4 (SCRIPT-GUI-*, m4-scripting design D16) run Magic's Tk
+# wrapper (`magic -d X11 -noconsole`) under Xvfb: xvfb-run (package xvfb), xauth
+# and the core X fonts Tk needs. case.toml `[reference] display = "xvfb"`
+# selects it (goldenlib/refrunners.py); nothing else uses a display.
 
 ARG BASE_IMAGE=docker.io/library/debian:trixie-20261020-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad
 FROM ${BASE_IMAGE}
@@ -53,7 +57,8 @@ RUN set -eux; \
         ca-certificates git build-essential pkg-config m4 tcsh python3 \
         autoconf automake libtool bison flex \
         tcl8.6-dev tk8.6-dev libx11-dev libxext-dev zlib1g-dev libreadline-dev \
-        libxpm-dev libcairo2-dev libxrender-dev libx11-xcb-dev libxcb1-dev; \
+        libxpm-dev libcairo2-dev libxrender-dev libx11-xcb-dev libxcb1-dev \
+        xvfb xauth xfonts-base; \
     rm -rf /var/lib/apt/lists/*
 
 # fetch_commit DIR REPO SHA [BRANCH]: shallow fetch by SHA when the server allows
@@ -72,7 +77,8 @@ test "$(git -C "$dir" rev-parse HEAD)" = "$sha"
 EOF
 RUN chmod +x /usr/local/bin/fetch_commit
 
-# Magic 8.3.694, Tcl build without OpenGL/Cairo; run with -dnull -noconsole.
+# Magic 8.3.694, Tcl/Tk build without OpenGL/Cairo (X11 display only); run with
+# -dnull -noconsole, or -d X11 -noconsole under Xvfb for the GUI cases.
 RUN set -eux; \
     fetch_commit /opt/src/magic "${MAGIC_REPO}" "${MAGIC_COMMIT}"; \
     cd /opt/src/magic; \

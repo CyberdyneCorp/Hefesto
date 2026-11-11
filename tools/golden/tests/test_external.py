@@ -43,8 +43,10 @@ class ExternalTest(unittest.TestCase):
     def test_parse_rejects_unknown_source_and_paths(self):
         with self.assertRaises(ValueError):
             external.parse_external({"source": "web", "to": "a"}, 0)
-        with self.assertRaises(ValueError):
-            external.parse_external({"source": "pdk", "to": "a/b", "path": "x"}, 0)
+        for bad_to in ("../a", "/abs/a", "", "."):
+            with self.assertRaises(ValueError):
+                external.parse_external({"source": "pdk", "to": bad_to, "path": "x"}, 0)
+        self.assertEqual(external.parse_external({"source": "pdk", "to": "pdk/a/b", "path": "x"}, 0).to, "pdk/a/b")
         with self.assertRaises(ValueError):
             external.parse_external({"source": "pdk", "to": "a", "path": "../x"}, 0)
         self.assertEqual(external.parse_external({"source": "scmos", "to": "s.tech"}, 0).source, "scmos")

@@ -1,0 +1,12 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 30 10
+<< labels >>
+rlabel metal1 0 0 0 0 0 D<0>
+port 1 nsew
+rlabel metal1 10 0 10 0 0 d<1>
+port 2 nsew
+rlabel metal1 20 0 20 0 0 CLK
+<< end >>

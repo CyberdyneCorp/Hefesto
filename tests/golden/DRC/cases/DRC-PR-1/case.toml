@@ -26,6 +26,26 @@ source = "pdk"
 path = "sky130A/libs.tech/magic/sky130A.tech"
 to = "sky130A.tech"
 
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-cifout.tech"
+to = "sky130A-cifout.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-cifin.tech"
+to = "sky130A-cifin.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-drc.tech"
+to = "sky130A-drc.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-extract.tech"
+to = "sky130A-extract.tech"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

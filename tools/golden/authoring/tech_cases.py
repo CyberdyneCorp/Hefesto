@@ -7,7 +7,7 @@ The table dumps (G20, G23, G24, G25, G28) use paint_dump.py (method recorded the
 from __future__ import annotations
 
 from casegen import Spec
-from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNAL, TINY, box, erase, paint, tech_load
+from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, TINY, box, erase, paint, tech_load
 from paint_dump import TechType, dump_cmds, pairs, tech_types
 
 import sys
@@ -153,7 +153,7 @@ def big_dump(tech: str, types: list[TechType]) -> list[str]:
 def dump_spec(cid: str, desc: str, cmds: list[str], files=None, ext=None, reqs=None) -> Spec:
     return Spec(cid, COMPOSE, reqs or ["Finalization step 3a, painting over a contact", "Finalization step 3c, stacked types as applied types", "Default paint and erase rules"],
                 desc, cmds, files=files or {}, outputs=["paint_dump.mag", "erase_dump.mag"], streams=False,
-                external=[ext] if ext else [], notes=["Table dump through paint/erase/save: authoring/paint_dump.py."])
+                external=(ext if isinstance(ext, list) else [ext]) if ext else [], notes=["Table dump through paint/erase/save: authoring/paint_dump.py."])
 
 
 def _external_types(ext: dict) -> list[TechType]:
@@ -208,7 +208,7 @@ def compose_specs() -> list[Spec]:
         dump_spec("TECH-G23", "scmos.tech (generated from Magic's sources): P/E dump of intersecting-plane pairs.",
                   big_dump("scmos", _external_types(SCMOS_EXTERNAL)), ext=SCMOS_EXTERNAL),
         dump_spec("TECH-G24", "sky130A.tech: P/E dump of intersecting-plane pairs (connect table not authored).",
-                  big_dump("sky130A", _external_types(SKY130_TECH_EXTERNAL)), ext=SKY130_TECH_EXTERNAL),
+                  big_dump("sky130A", _external_types(SKY130_TECH_EXTERNALS[0])), ext=SKY130_TECH_EXTERNALS),
         dump_spec("TECH-G25", "tiny.tech plus pdc and 'compose pdc pdiff m1': P/E dump of pdc, pdiff, metal1.",
                   tech_load("tiny") + dump_cmds(["pdc", "pdiff", "metal1"], [(h, t) for h in range(3) for t in range(3)],
                                                 "paint", "paint_dump")

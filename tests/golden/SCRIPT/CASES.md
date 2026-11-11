@@ -10,7 +10,7 @@ Techs: `scmos` (bundled), `sky130A` and `gf180mcuD` (open_pdks @ c6df28c1, insta
 | SCRIPT-API-02 | scripting-api | `catch {magic::bo values} e` | code=1 and the error text | Command registration in the magic namespace |
 | SCRIPT-API-03 | scripting-api | `array set a {x 1}; array get a`; select an instance arrayed 1×4, then `array -list count` | built-in result; `0 0 0 3` | Name collisions with Tcl built-ins |
 | SCRIPT-API-04 | scripting-api | `catch {load /nonexistent/libfoo.so} e`; `load ../lib.v2/inv`; `load cells/inv.mag.gz` | which handler ran; error text; loaded cell | Name collisions with Tcl built-ins |
-| SCRIPT-API-05 | scripting-api | `cellname list top`; `units MICRONS`; `tech layer *`; `tech lock poly; tech locked`; `cif scale out` | each result | Option keyword matching; Result formats |
+| SCRIPT-API-05 | scripting-api | `cellname list top`; `units MICRONS`; `tech layer *`; `tech lock poly; tech locked`; `cif scale out` | each result | Option keyword matching; Result formats of commands used by scripts |
 | SCRIPT-API-06 | scripting-api | `catch {box frobnicate}`; `catch {load nosuch -fail -silent}`; `catch {magic::shownet}` | status codes, results, stderr | Command status and error signalling |
 | SCRIPT-API-07 | scripting-api | `tag select`; `magic::tag add select {puts A}`; `magic::tag add select {puts B}`; `tag select`; `magic::tag select {}` | tag strings after each step | Command tag callbacks |
 | SCRIPT-API-08 | scripting-api | `magic::tag box {puts "W=%W 1=%1 2=%2 r=%r"}`; `box`; `box values`; `box 0 0 10 10` | printed substitution for each call | Tag callback execution and substitution |
@@ -47,9 +47,10 @@ Techs: `scmos` (bundled), `sky130A` and `gf180mcuD` (open_pdks @ c6df28c1, insta
 | SCRIPT-PDK-15 | scripting-pdk-integration | ihp-sg13g2 bipolar generator: labels and ports present in the generated `npn13G2` cell; stderr | the `Unknown layer: +m2` messages and the resulting label/port set | Generator drawing conventions (Q-SCRIPT-39) |
 | SCRIPT-PDK-16 | scripting-pdk-integration | sky130A: create `sky130_fd_pr__npn_05v5_W1p00L1p00` with `nx 2 ny 3 deltax 1`; then open the edit dialog (Xvfb) and dump `magic::gencell_getparams` plus the parameters passed to `_dialog`; Apply without changes | array count/pitch before and after; presence of `pitchx`/`pitchy` | PDK device-script contract (Q-SCRIPT-38) |
 | SCRIPT-PDK-17 | scripting-pdk-integration | each PDK: GUI start under Xvfb with the rc file; dump the `File` and `DRC` menu entries and the `pdk1`/`pdk2` menu entries of `.layout1` | menu labels in order | PDK device-script contract (Q-SCRIPT-42) |
+| SCRIPT-PDK-18 | scripting-pdk-integration | older rc generation (design D15): source the `0fe599b2` sky130A `.magicrc` and the `ddb601a4` `ihp-sg13g2.magicrc` (copies in the case input, Apache-2.0) against the new-pin tech files; print `$VDD $GND $SUB [tech name] [tech lambda] [snap] [path search]` after each | values; stdout/stderr (sandbox denials in `query_*` absorbed by `catch`) | PDK startup file contract; Startup files are scripts |
 | SCRIPT-PCELL-15 | pcell-toolkit | sg13g2: `magic::gencell sg13g2::rm6 R1` | stderr (`invalid command name "sg13g2::rm6_check"`), the created cell and its properties | Library and device procedure contract |
 | SCRIPT-PCELL-16 | pcell-toolkit | pure Tcl: `magic::normalize_value` on the sky130 nfet default `compatible` list; `magic::get_gencell_hash` on the full sky130 nfet default dictionary | strings and suffix | Parameter value normalization for naming; Parameter dictionary model |
-| SCRIPT-API-13 | scripting-api | fresh session: `info commands magic::spice2float`; then source the sky130A device script and run `magic::3digitpastdecimal 0.12345`, `catch {3digitpastdecimal 1}` | empty; `0.123`; code and message of the bare call | Script-defined procedures in the engine namespace |
+| SCRIPT-API-25 | scripting-api | fresh session: `info commands magic::spice2float`; then source the sky130A device script and run `magic::3digitpastdecimal 0.12345`, `catch {3digitpastdecimal 1}` | empty; `0.123`; code and message of the bare call | Script-defined procedures in the engine namespace |
 | SCRIPT-PCELL-01 | pcell-toolkit | pure Tcl: `magic::normalize_value` over {2, 2.0, 2e0, 0.1500, 1.23456, -0.5, 0.0004, 10.5, 0x10, " 3 ", abc, inf} | outputs or errors | Parameter value normalization for naming |
 | SCRIPT-PCELL-02 | pcell-toolkit | pure Tcl: `magic::murmur3_32` over {"", a, ab, abc, abcd, hello, 0.15;1;1;, "é;"} | hex values | Deterministic generated-cell naming |
 | SCRIPT-PCELL-03 | pcell-toolkit | pure Tcl: `magic::get_gencell_hash` over 200 random dicts, including a dict with non-ASCII values | suffixes | Deterministic generated-cell naming |
@@ -95,3 +96,16 @@ Techs: `scmos` (bundled), `sky130A` and `gf180mcuD` (open_pdks @ c6df28c1, insta
 | SCRIPT-AUX-02 | scripting-auxiliary-tools | `mazeroute f.net` with iroute stubbed to log its arguments | call sequence | Netlist maze-routing script |
 | SCRIPT-AUX-03 | scripting-auxiliary-tools | default start; `info commands magic::add_menu`; check for a listener on 12946; `set batch_mode` under `-dnull -noconsole` | empty; not listening; `true` | Socket command server is opt-in; BSI menu helpers; Interpreter launchers |
 | SCRIPT-AUX-04 | scripting-auxiliary-tools | source `toolkit_rev0.tcl` in a fresh interpreter with a toy rev-0 library; create two devices | cell names, per-parameter properties | Legacy gencell toolkit revision 0 |
+
+## Authoring status (M4)
+
+Case directories under `cases/` hold the inputs; `expected/` comes from the CI capture (golden-capture.yml).
+Generated by `tools/golden/authoring/m4_cases.py` (`script_cases.py`, 90): every row above. Magic and hefesto-cli run the same `input/commands.tcl` (`tools/golden/authoring/tclcase.py`): `magic <options> input/commands.tcl` and `hefesto-cli --no-log --diagnostics=magic [--trust-pdk <pdk>] --magic <options> input/commands.tcl`.
+
+- PDK cases copy the PDK's `libs.tech/magic` into `input/pdk/<variant>/`, set `PDK_ROOT` to it and start from its rc file. A row that names several PDKs (SCRIPT-PDK-01, 07, 09, 11, 17) runs them in one session: the first through `-rcfile`, each further one by `tech load <tech> -noprompt` and sourcing its rc file.
+- GUI rows run Magic's Tk wrapper (`-d X11`) under Xvfb (`[reference] display = "xvfb"`); the script prints the widget names, menu entries and issued commands that are compared.
+- SCRIPT-API-11 (Q-SCRIPT-3) is captured with a 20 s timeout (Magic loops on `%%`/`%d`); SCRIPT-API-14 feeds the script on standard input.
+- SCRIPT-PDK-04 covers `--version` only (Magic exits there); SCRIPT-PDK-10 writes its broken rc file at run time and sources it.
+- SCRIPT-API-25 was a second SCRIPT-API-13 row (renumbered in M4).
+- SCRIPT-PDK-07 and SCRIPT-PDK-09 generate the fixed (`nocell`) devices, whose cells live in `libs.ref/*_fd_pr/mag`, outside the pinned data sets of `scripts/fetch_pdk.py`: those devices report the missing cell until the data sets include it.
+

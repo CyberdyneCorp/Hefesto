@@ -12,7 +12,7 @@ area = "DRC"
 capability = "drc-engine"
 requirements = ["Step square processing", "Interaction check over an area", "Copying subcell errors"]
 tool = "magic"
-description = "Every sky130_fd_sc_hd cell (441) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells."
+description = "Every sky130_fd_sc_hd cell (446) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells."
 slow = true
 
 [reference]
@@ -29,6 +29,26 @@ to = "sky130A.tech"
 
 [[external]]
 source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-cifout.tech"
+to = "sky130A-cifout.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-cifin.tech"
+to = "sky130A-cifin.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-drc.tech"
+to = "sky130A-drc.tech"
+
+[[external]]
+source = "pdk"
+path = "sky130A/libs.tech/magic/sky130A-extract.tech"
+to = "sky130A-extract.tech"
+
+[[external]]
+source = "pdk"
 set = "sky130"
 path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__decap_12.mag"
 to = "sky130_ef_sc_hd__decap_12.mag"
@@ -36,8 +56,38 @@ to = "sky130_ef_sc_hd__decap_12.mag"
 [[external]]
 source = "pdk"
 set = "sky130"
+path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__decap_20_12.mag"
+to = "sky130_ef_sc_hd__decap_20_12.mag"
+
+[[external]]
+source = "pdk"
+set = "sky130"
+path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__decap_40_12.mag"
+to = "sky130_ef_sc_hd__decap_40_12.mag"
+
+[[external]]
+source = "pdk"
+set = "sky130"
+path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__decap_60_12.mag"
+to = "sky130_ef_sc_hd__decap_60_12.mag"
+
+[[external]]
+source = "pdk"
+set = "sky130"
+path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__decap_80_12.mag"
+to = "sky130_ef_sc_hd__decap_80_12.mag"
+
+[[external]]
+source = "pdk"
+set = "sky130"
 path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__fill_12.mag"
 to = "sky130_ef_sc_hd__fill_12.mag"
+
+[[external]]
+source = "pdk"
+set = "sky130"
+path = "sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_ef_sc_hd__fill_2.mag"
+to = "sky130_ef_sc_hd__fill_2.mag"
 
 [[external]]
 source = "pdk"

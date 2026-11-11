@@ -33,18 +33,27 @@ PREAMBLE = b"Magic 8.3 revision 694 - Compiled on Tue Nov 10 04:39:14 UTC 2026.\
 
 
 class DrcConsoleTest(unittest.TestCase):
-    """drc listall why texts, drc list(all) count pairs and drc count lines in canonical order."""
+    """drc list(all) count pairs and drc count lines in canonical order; drc listall why as printed."""
 
     MAGIC = (b"No errors found.\n{m1 width < 3} {{2 0 3 10} {7 0 8 10}} {a 30} {{0 0 2 10}}\n3\n"
              b"Cell b has 2 error tiles.\nCell a has just one error tile.\nTotal DRC errors found: 3\n"
              b"{b 2} {a 1}\n")
-    HEFESTO = (b"No errors found.\n{a 30} {{0 0 2 10}} {m1 width < 3} {{2 0 3 10} {7 0 8 10}}\n3\n"
+    HEFESTO = (b"No errors found.\n{m1 width < 3} {{2 0 3 10} {7 0 8 10}} {a 30} {{0 0 2 10}}\n3\n"
                b"Cell a has just one error tile.\nCell b has 2 error tiles.\nTotal DRC errors found: 3\n"
                b"{a 1} {b 2}\n")
 
-    def test_why_texts_and_cell_orders_are_canonical(self):
+    def test_cell_orders_are_canonical(self):
         self.assertTrue(compare_bytes(self.MAGIC, self.HEFESTO, "drc-console").equal)
         self.assertFalse(compare_bytes(self.MAGIC, self.HEFESTO, "magic-console").equal)
+
+    def test_why_text_order_is_compared(self):
+        """Q-SCRIPT-8 (replicate): the why texts keep Magic's string-hash order, so a result listing
+        them in another order (the first-discovery or sorted order of M3) is a difference."""
+        sorted_order = self.HEFESTO.replace(b"{m1 width < 3} {{2 0 3 10} {7 0 8 10}} {a 30} {{0 0 2 10}}",
+                                            b"{a 30} {{0 0 2 10}} {m1 width < 3} {{2 0 3 10} {7 0 8 10}}")
+        self.assertFalse(compare_bytes(self.MAGIC, sorted_order, "drc-console").equal)
+        line = b"{s < 0.03um} {{0.12 0 0.13 0.1}} {a} {{1 2 3 4}}"
+        self.assertEqual(canonicalize(line), line)
 
     def test_rectangle_order_within_a_text_is_kept(self):
         swapped = self.HEFESTO.replace(b"{{2 0 3 10} {7 0 8 10}}", b"{{7 0 8 10} {2 0 3 10}}")
@@ -59,9 +68,7 @@ class DrcConsoleTest(unittest.TestCase):
         text = b"Cell b has 2 error tiles.\nx\nCell a has 2 error tiles.\n"
         self.assertEqual(canonicalize(text), text)
 
-    def test_micron_rectangles_and_single_pairs(self):
-        line = b"{s < 0.03um} {{0.12 0 0.13 0.1}} {a} {{1 2 3 4}}"
-        self.assertEqual(canonicalize(line), b"{a} {{1 2 3 4}} {s < 0.03um} {{0.12 0 0.13 0.1}}")
+    def test_single_count_pair(self):
         self.assertEqual(canonicalize(b"{top 3}"), b"{top 3}")
 
     def test_other_lists_and_malformed_lines_untouched(self):
