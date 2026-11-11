@@ -233,6 +233,25 @@ class StyleCompiler {
   void surround_exact(const SurroundArgs& a);
   void surround_presence(const SurroundArgs& a);
 
+  // extend and overhang (keywords_basic.cpp)
+  /// The rules of a multi-plane extend/overhang between i and j: a trigger
+  /// on the edge plane and the rule it guards on `check_plane`, forward
+  /// (i, j) then reverse (j, i).
+  struct TriggeredRule {
+    tech::TypeMask trigger_ok;
+    tech::TypeMask ok;
+    tech::TypeMask corner;
+    std::int32_t distance = 0;
+    std::int32_t cdist = 0;
+    WhyIndex why = 0;
+    int check_plane = 0;
+    int edge_plane = 0;
+  };
+  void insert_triggered(tech::TileType i, tech::TileType j, const TriggeredRule& r);
+  /// CoincidentPlanes of `n`, with the "must be on the same plane" error
+  /// (`which` set of `keyword`) when they share none.
+  [[nodiscard]] tech::PlaneMask one_plane(const Names& n, std::string_view which, std::string_view keyword);
+
   // edge (keywords_shapes.cpp)
   [[nodiscard]] std::optional<tech::PlaneMask> edge_ok_planes(const Names& ok, const std::string& ok_types,
                                                               tech::PlaneMask edge_planes, int plane_arg);

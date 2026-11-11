@@ -43,6 +43,7 @@
 
 #include "hefesto/compat/compat_settings.hpp"
 #include "hefesto/diag/outcome.hpp"
+#include "hefesto/drc/rules/cif_catalog.hpp"
 #include "hefesto/drc/types.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -55,8 +56,6 @@ struct EditorState;
 }
 
 namespace hefesto::drc {
-
-class CifCatalog;
 
 /// The DRC styles a technology declares (DRCStyleList).
 struct DrcStyleList {
@@ -90,12 +89,37 @@ struct DrcStyleList {
 
 // --- Session hooks (called by other areas; RULES implements them) -----------
 
-/// After `tech load` (DRCTechInit ... DRCTechFinal): rebuilds editor.drc's
-/// cifoutput catalog, style list, current style (the default one) and rule
-/// set from editor.technology under editor.grid, with Magic's load
-/// messages to `sink`, and publishes the style through editor.drc.events.
-/// Called by tech::load_session_technology.
-void reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink);
+/// The drc section as `tech load` reads it (DRCTechInit ... DRCTechFinal),
+/// before the session takes it: the cifoutput catalog, the declared styles
+/// and the default style compiled at the unscaled grid.
+struct LoadedRules {
+  CifCatalog cif;
+  DrcStyleList styles;
+  std::shared_ptr<const RuleSet> rules;
+
+  /// False when a rule line of the loaded style failed (a negative
+  /// distance: DRCTechAddRule returns FALSE). TechLoad then lists `drc`
+  /// among the sections that contained errors and the load fails.
+  [[nodiscard]] bool ok() const noexcept;
+};
+
+/// Reads `technology`'s cifoutput catalog and drc section for a first load
+/// (the first declared style), with Magic's load messages to `sink`.
+/// Touches no session state, so `tech load` can fail before installing it.
+[[nodiscard]] LoadedRules read_rules(const tech::Technology& technology, const compat::CompatSettings& compat,
+                                     diag::DiagnosticSink& sink);
+
+/// Installs `loaded` into editor.drc: TechLoad's post-load scaling of the
+/// cifoutput styles and the rules to editor.grid, the style list and
+/// current style; drops the `*halo`/`*stepsize` overrides and publishes the
+/// style through editor.drc.events. Emits no message.
+void install_rules(editor::EditorState& editor, LoadedRules loaded);
+
+/// install_rules(editor, read_rules(*editor.technology, ...)): rebuilds
+/// editor.drc from editor.technology under editor.grid, with Magic's load
+/// messages to `sink`. Returns LoadedRules::ok() (false: the technology
+/// load must fail, as Magic's does).
+bool reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink);
 
 /// drcCifCheck's style bookkeeping, run after every basic check (Magic
 /// calls drcCifCheck at the end of DRCBasicCheck; the mask-layer checks

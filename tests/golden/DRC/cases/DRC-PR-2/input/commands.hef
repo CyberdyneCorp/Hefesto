@@ -1,0 +1,10 @@
+# DRC-PR-2: scmos: drc printrules of every DRC style (compared by digest).
+# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
+tech load input/scmos -noprompt
+snap internal
+snap internal
+drc off
+drc listall style
+drc style default
+drc printrules rules_0.txt
+drc list style

@@ -37,6 +37,11 @@ struct Options {
   /// file arguments, `.tcl` script), parsed by app::parse_startup_options;
   /// commands are then read from standard input.
   bool magic_mode = false;
+  /// --interactive: after the scripts, read commands line by line from
+  /// standard input at a prompt, with the background DRC checker running
+  /// while it waits (m3-drc design D8). Implied in --magic mode without
+  /// -c or scripts when standard input is a terminal.
+  bool interactive = false;
   std::vector<std::string> magic_args;
   std::optional<std::filesystem::path> project;   // --project=<dir> (default: . when it has hefesto.project)
   std::optional<std::filesystem::path> pdk_root;  // --pdk-root=<dir>

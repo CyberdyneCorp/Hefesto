@@ -30,7 +30,10 @@
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/version.hpp"
+#include "interactive.hpp"
 #include "options.hpp"
+
+#include <unistd.h>
 
 namespace hefesto::cli {
 
@@ -190,6 +193,7 @@ class Session {
  public:
   Session(const Options& options, std::FILE* out, std::FILE* err)
       : options_(options),
+        out_(out),
         services_(platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}}),
         sink_(err, options.diagnostics),
         values_(out),
@@ -306,9 +310,11 @@ class Session {
 
   // Runs every source in order; stops at an aborted script or `quit`.
   // In --magic mode without -c or scripts, commands come from standard input.
+  // With --interactive (or --magic on a terminal), the prompt follows.
   bool run_sources() {
     std::vector<ScriptSource> sources = options_.sources;
-    if (options_.magic_mode && sources.empty()) {
+    const bool interactive = options_.interactive || (options_.magic_mode && sources.empty() && ::isatty(0) == 1);
+    if (options_.magic_mode && sources.empty() && !interactive) {
       sources.push_back({ScriptSource::Kind::standard_input, "-"});
     }
     bool ok = true;
@@ -316,8 +322,13 @@ class Session {
       const auto run = run_source(source);
       ok = ok && run.ok();
       if (run.aborted || run.quit) {
-        break;
+        return ok;
       }
+    }
+    if (interactive) {
+      // The background checker runs only here, never in batch mode (m3-drc design D8).
+      const InteractiveRun run = run_interactive(*dispatcher_, editor_, 0, out_, true);
+      ok = ok && run.ok;
     }
     return ok;
   }
@@ -353,6 +364,7 @@ class Session {
   }
 
   const Options& options_;
+  std::FILE* out_;
   platform::PortableServices services_;
   platform::Logger* logger_ = nullptr;
   std::optional<diag::Diagnostic> log_warning_;

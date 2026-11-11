@@ -5,7 +5,8 @@
 // technologies, and every DRC style of scmos, sky130A, gf180mcuD and
 // ihp-sg13g2 compiled (tasks.md 4.9, 4.11). The PDK cases skip when their
 // data set is not installed (scripts/fetch_pdk.py); the Magic printrules
-// comparisons are golden cases (DRC-PR-1, DRC-PDK-1..3).
+// comparisons are golden cases (DRC-PR-1..5), the cifoutput values are
+// compared with Magic's in cif_magic_test.cpp.
 
 #include <catch2/catch_test_macros.hpp>
 

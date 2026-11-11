@@ -146,6 +146,7 @@ struct FirstLoad {
   compat::CompatSettings settings;
   editor::EditorState editor;
   std::vector<diag::Diagnostic> messages;
+  bool ok = true;  // reload_rules: false when the technology load must fail
 
   explicit FirstLoad(std::shared_ptr<const tech::Technology> technology, bool magic_compat = true,
                      tech::GridScale grid = {}) {
@@ -154,7 +155,7 @@ struct FirstLoad {
     editor.grid = grid;
     editor.drc.compat = &settings;
     diag::CollectingSink sink;
-    reload_rules(editor, sink);
+    ok = reload_rules(editor, sink);
     messages = sink.take();
   }
 };

@@ -157,32 +157,66 @@ std::size_t eliminate_covered(std::vector<Rule>& rules, bool magic_compat) {
 
 // --- drcScaleDown / drcScaleUp --------------------------------------------------------
 
+namespace {
+
+void scale_down_dist(Rule& rule, std::int32_t factor, bool magic_compat) {
+  const std::int32_t dist = rule.dist;
+  rule.dist /= factor;
+  rule.dist_mod = static_cast<std::uint8_t>(dist % factor);
+  // Magic tests the stored byte: a remainder that wraps to 0 loses the
+  // ceiling (Q-DRC-1, magic-compat ON); OFF tests the true remainder.
+  const bool remainder = magic_compat ? rule.dist_mod != 0 : dist % factor != 0;
+  if (remainder && !rule.has(flags::kMaxWidth)) {
+    ++rule.dist;
+  }
+}
+
+void scale_down_cdist(Rule& rule, std::int32_t factor) {
+  const bool area = rule.has(flags::kArea);
+  const std::int64_t locscale = area ? std::int64_t{factor} * factor : factor;
+  const std::int64_t dist = rule.cdist;
+  rule.cdist = static_cast<std::int32_t>(dist / locscale);
+  const std::int64_t cmod = dist % locscale;
+  if (cmod != 0) {
+    ++rule.cdist;
+    rule.cdist_mod = static_cast<std::uint8_t>(area ? cmod / factor : cmod);
+  }
+}
+
+void scale_up_dist(Rule& rule, std::int32_t factor) {
+  if (rule.dist_mod != 0 && !rule.has(flags::kMaxWidth)) {
+    --rule.dist;
+  }
+  rule.dist = text::clamp_int(std::int64_t{rule.dist} * factor + rule.dist_mod);
+  rule.dist_mod = 0;
+}
+
+void scale_up_cdist(Rule& rule, std::int32_t factor) {
+  if (rule.cdist_mod != 0) {
+    --rule.cdist;
+  }
+  std::int64_t cdist = std::int64_t{rule.cdist} * factor;
+  if (rule.has(flags::kArea)) {
+    cdist = cdist * factor + std::int64_t{rule.cdist_mod} * factor;
+  } else {
+    cdist += rule.cdist_mod;
+  }
+  rule.cdist = text::clamp_int(cdist);
+  rule.cdist_mod = 0;
+}
+
+}  // namespace
+
 void scale_down(std::vector<Rule>& rules, std::int32_t factor, bool magic_compat) {
   if (factor <= 1) {
     return;
   }
   for (Rule& rule : rules) {
     if (rule.dist > 0) {
-      const std::int32_t dist = rule.dist;
-      rule.dist /= factor;
-      rule.dist_mod = static_cast<std::uint8_t>(dist % factor);
-      // Magic tests the stored byte: a remainder that wraps to 0 loses the
-      // ceiling (Q-DRC-1, magic-compat ON); OFF tests the true remainder.
-      const bool remainder = magic_compat ? rule.dist_mod != 0 : dist % factor != 0;
-      if (remainder && !rule.has(flags::kMaxWidth)) {
-        ++rule.dist;
-      }
+      scale_down_dist(rule, factor, magic_compat);
     }
     if (rule.cdist > 0) {
-      const bool area = rule.has(flags::kArea);
-      const std::int64_t locscale = area ? std::int64_t{factor} * factor : factor;
-      const std::int64_t dist = rule.cdist;
-      rule.cdist = static_cast<std::int32_t>(dist / locscale);
-      const std::int64_t cmod = dist % locscale;
-      if (cmod != 0) {
-        ++rule.cdist;
-        rule.cdist_mod = static_cast<std::uint8_t>(area ? cmod / factor : cmod);
-      }
+      scale_down_cdist(rule, factor);
     }
   }
 }
@@ -193,24 +227,10 @@ void scale_up(std::vector<Rule>& rules, std::int32_t factor) {
   }
   for (Rule& rule : rules) {
     if (rule.dist > 0) {
-      if (rule.dist_mod != 0 && !rule.has(flags::kMaxWidth)) {
-        --rule.dist;
-      }
-      rule.dist = text::clamp_int(std::int64_t{rule.dist} * factor + rule.dist_mod);
-      rule.dist_mod = 0;
+      scale_up_dist(rule, factor);
     }
     if (rule.cdist > 0) {
-      if (rule.cdist_mod != 0) {
-        --rule.cdist;
-      }
-      std::int64_t cdist = std::int64_t{rule.cdist} * factor;
-      if (rule.has(flags::kArea)) {
-        cdist = cdist * factor + std::int64_t{rule.cdist_mod} * factor;
-      } else {
-        cdist += rule.cdist_mod;
-      }
-      rule.cdist = text::clamp_int(cdist);
-      rule.cdist_mod = 0;
+      scale_up_cdist(rule, factor);
     }
   }
 }

@@ -10,11 +10,12 @@ Mockups"), which is no longer updated.
 | Design system — tokens & components | `Main.dc.html` | forge tokens, type scale, components |
 | Desktop — layout editor | `Desktop-Layout.dc.html` | layer palette, hierarchy, canvas, inspector, command bar, status bar |
 | Desktop — schematic + waveforms | `Schematic.dc.html` | M8 |
-| Desktop — DRC results browser | `DRC-Browser.dc.html` | M3 |
+| Desktop — DRC results browser | `DRC-Browser.dc.html` | M3 (redrawn with the M3 states; see below) |
 | Desktop — 3D inspection | `View3D.dc.html` | M10 |
 | Desktop — AI agent proposal review | `Agent-Review.dc.html` | M11 |
 | iPad — layout editing | `iPad.dc.html` | M14 |
 | M2 boards | `M2-*.dc.html` | see below |
+| M3 boards | `DRC-Browser.dc.html`, `M3-*.dc.html` | see below |
 
 ## M2 boards (interactive editing)
 
@@ -36,12 +37,25 @@ old design artifact. `canvas.json` places them below the M1 boards.
 | Dockable panels | `M2-Panels.dc.html` | docked, collapsed, floating panel, drag with drop zone, edge strip | `m2-panels.png`, `-light` |
 | Key bindings | `M2-Key-Bindings.dc.html` | macro tables by tool, key capture, conflict warning | `m2-key-bindings.png`, `-light` |
 
-The M2 boards use the forge tokens as CSS variables on the root element: set `data-theme="light"` on it for the
+## M3 boards (design rule checking)
+
+Design D11 of `openspec/changes/m3-drc`. Drafted here in the M2 board format (shared token `<style>` block, numbered
+annotation pins, "Notes for SHELL"); waiting for the user's review (task 2.1). `DRC-Browser.dc.html` replaces the M1
+drawing of the same board: its later-milestone parts (measured versus required, nets, suggested fix, Fix with agent,
+sign-off) are kept as disabled rows naming M7, M11 or M13. `canvas.json` places both boards below the M2 boards. The
+M1 render `drc-browser.png` shows the old drawing.
+
+| Board | File | Screen states | Renders (`docs/images/ui/`) |
+|---|---|---|---|
+| DRC results browser | `DRC-Browser.dc.html` | docked DRC panel populated (errors grouped by why-text with counts, rectangles, ignored rules, style selector, Re-check), `#k of n` stepping with Prev/Next, error tiles and box on the canvas, inspector for the error area with ignore; empty (not checked, clean), running and stale panel states; style menu | `m3-drc-browser.png`, `-light` |
+| DRC status | `M3-DRC-Status.dc.html` | top-bar chip and status-bar segment in the five states (not run, checking, clean, N errors, off), chip tooltip and DRC menu, `drc why` popover on the canvas, job-completion notification | `m3-drc-status.png`, `-light` |
+
+The M2 and M3 boards use the forge tokens as CSS variables on the root element: set `data-theme="light"` on it for the
 light theme. The layout canvas and everything drawn on it keep the dark tokens in both themes (as the M1 shell does).
 Numbered purple pins are annotations, not UI; the "Notes for SHELL" under each board explain them. Each board says
 which command every control issues.
 
 Each `.dc.html` is self-contained HTML (inline styles; the M2 boards add one shared `<style>` block with the tokens):
-colors, sizes and spacing can be read directly. PNG renders are in `docs/images/ui/`: the M2 boards are rendered at
-1x in both themes (`<board>.png` dark, `<board>-light.png` light) with WebKit (macOS Quick Look), fonts from
-`assets/fonts/`.
+colors, sizes and spacing can be read directly. PNG renders are in `docs/images/ui/`: the M2 and M3 boards are rendered at
+1x in both themes (`<board>.png` dark, `<board>-light.png` light) with WebKit (macOS Quick Look for M2; a 1440 px
+WKWebView snapshot for M3, the light one with `data-theme="light"` on the root), fonts from `assets/fonts/`.

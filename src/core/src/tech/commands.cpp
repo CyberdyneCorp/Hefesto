@@ -18,6 +18,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -511,14 +512,23 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   if (!tech) {
     return tech.error();
   }
+  // The drc section is compiled while the technology is read (m3-drc design
+  // D4/D5): Magic reads it before the wiring section and before the
+  // post-load scaling, so its messages come first, and a rejected rule line
+  // fails the load with the previous technology kept (TECH-LOAD-001).
+  drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
+  if (!rules.ok()) {
+    const std::string file = path.value().string();
+    sink.emit(diag::make("TECH-SECTION-007", "The following sections of " + file + " contained errors:\n    drc",
+                         diag::SourceLocation{file, 0}));
+    return diag::make("TECH-LOAD-001", "Error in loading technology file", diag::SourceLocation{file, 0});
+  }
   const std::size_t old_planes = editor.technology->plane_count();
   const std::size_t new_planes = tech.value()->plane_count();
   editor.grid = apply_post_load(*tech.value(), editor.grid, sink);
   check_existing_layout(editor, old_planes, new_planes, sink);
   set_technology(editor, std::move(tech.value()));
-  // The drc section is compiled into the session's rule set (m3-drc design
-  // D4/D5); Magic reads it before the wiring section, so its messages come first.
-  drc::reload_rules(editor, sink);
+  drc::install_rules(editor, std::move(rules));
   // The `wiring` section is kept raw and read by the wiring area; reading it
   // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
   (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);

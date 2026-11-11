@@ -9,6 +9,7 @@
 hefesto_add_unit_test(hefesto_cli_tests
   SOURCES
     cli_test.cpp
+    interactive_test.cpp
   LIBS
     hefesto_cli_lib)
 

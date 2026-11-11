@@ -12,101 +12,241 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
 <style>
 body{margin:0}
-a{color:#FF8A3D}a:hover{color:#FFA866}
+.hf{--s0:#121418;--s1:#181B20;--s2:#20242B;--bd:#2F343D;--tp:#E8EAED;--ts:#A4ABB6;--ac:#FF8A3D;--cv:#0B0C0E;
+--bar:#15181C;--in:#0F1114;--sel:#2A2F37;--cb:#3D434E;--tt:#8A919D;--ic:#C9CED6;--onac:#1A0F06;--acs:#FFB27A;
+--okt:#5FD3A0;--wat:#F0C661;--ert:#FF8784;--ift:#82BEF5;--ach:#FFA866;
+--act:rgba(255,138,61,.14);--acl:rgba(255,138,61,.6);--sh:0 8px 24px rgba(0,0,0,.5);--scrim:rgba(4,5,7,.6);
+font-family:Inter,system-ui,sans-serif;color:var(--tp);background:var(--s0);box-sizing:border-box;position:relative;overflow:hidden}
+.hf[data-theme=light]{--s0:#F6F7F9;--s1:#FFFFFF;--s2:#EEF0F3;--bd:#D9DDE3;--tp:#16191D;--ts:#4E5663;--ac:#C24E0C;
+--bar:#F0F2F5;--in:#FFFFFF;--sel:#E2E5EA;--cb:#C9CED6;--tt:#5E6673;--ic:#3A414C;--onac:#FFFFFF;--acs:#C24E0C;
+--okt:#12693F;--wat:#7A5400;--ert:#B2302D;--ift:#1A5E9E;--ach:#D65A12;
+--act:rgba(194,78,12,.10);--acl:rgba(194,78,12,.55);--sh:0 8px 24px rgba(0,0,0,.45);--scrim:rgba(22,25,29,.45)}
+/* the layout canvas and everything drawn on it keep the dark tokens in both themes */
+.hf .cv{--s1:#181B20;--s2:#20242B;--bd:#2F343D;--tp:#E8EAED;--ts:#A4ABB6;--bar:#15181C;--cb:#3D434E;--tt:#8A919D;
+--ic:#C9CED6;--in:#0F1114;--sh:0 8px 24px rgba(0,0,0,.5);--ac:#FF8A3D;--acs:#FFB27A;--act:rgba(255,138,61,.14);--acl:rgba(255,138,61,.6);background:#0B0C0E;color:var(--tp);position:relative;overflow:hidden}
+.hf *{box-sizing:border-box}
+.hf h1{margin:0;font-size:20px;font-weight:600}
+.hf h2{margin:0;font-size:15px;font-weight:600}
+.hf p{margin:0}
+.cap{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--tt);margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.sec{color:var(--ts)}.ter{color:var(--tt)}.acc{color:var(--ac)}
+.btn{height:32px;padding:0 14px;border-radius:6px;border:1px solid var(--cb);background:var(--s2);color:var(--tp);
+font:500 13px Inter,sans-serif;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn.sm{height:28px;font-size:12px;padding:0 10px}
+.btn.pri{background:var(--ac);border-color:transparent;color:var(--onac);font-weight:600}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ic)}
+.btn.dng{border-color:rgba(240,96,93,.5);background:rgba(240,96,93,.12);color:var(--ert)}
+.focus{outline:2px solid var(--ac);outline-offset:2px}
+.dis{opacity:.4}
+.ib{width:32px;height:32px;border-radius:6px;border:1px solid var(--cb);background:var(--s2);display:inline-flex;
+align-items:center;justify-content:center;color:var(--tp);flex:none;padding:0}
+.ib.sm{width:24px;height:24px;border-radius:4px}
+.ib.ghost{border-color:transparent;background:transparent;color:var(--ic)}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s14{width:14px;height:14px}svg.i.s18{width:18px;height:18px}svg.i.s12{width:12px;height:12px}
+.inp{height:32px;padding:0 10px;border-radius:6px;border:1px solid var(--cb);background:var(--in);color:var(--tp);
+font:400 12px 'JetBrains Mono',monospace;display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden}
+.inp.sm{height:28px}
+.inp.ui{font-family:Inter,sans-serif}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font:500 12px Inter,sans-serif;white-space:nowrap}
+.chip.ok{background:rgba(63,178,127,.14);color:var(--okt)}.chip.wa{background:rgba(229,177,58,.14);color:var(--wat)}
+.chip.er{background:rgba(240,96,93,.14);color:var(--ert)}.chip.if{background:rgba(90,169,240,.14);color:var(--ift)}
+.chip.n{background:var(--s2);color:var(--ts);border:1px solid var(--bd)}
+.chip.a{background:var(--act);color:var(--acs);border:1px solid var(--acl)}
+.kbd{font:500 11px 'JetBrains Mono',monospace;padding:1px 6px;border-radius:4px;border:1px solid var(--cb);background:var(--in);color:var(--ic);white-space:nowrap}
+.pop{background:var(--s2);border:1px solid var(--cb);border-radius:8px;box-shadow:var(--sh)}
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:8px}
+.row{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:6px;font-size:13px;white-space:nowrap}
+.row.sel{background:var(--sel)}.row.hov{background:var(--s2)}
+.row.act{background:var(--sel);outline:1px solid var(--acl)}
+.sw{width:18px;height:14px;border-radius:3px;flex:none;display:inline-block}
+.grow{flex-grow:1;min-width:0}
+.dl{display:grid;grid-template-columns:96px 1fr;gap:9px 10px;font-size:12px;margin:0;align-items:center}
+.dl dt{color:var(--tt)}.dl dd{margin:0;font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:inline-flex;padding:3px;border-radius:8px;background:var(--in);border:1px solid var(--bd)}
+.seg span{height:24px;padding:0 10px;border-radius:6px;display:inline-flex;align-items:center;font:500 12px Inter;color:var(--ts)}
+.seg span.on{background:var(--sel);color:var(--tp);font-weight:600}
+.ann{width:20px;height:20px;border-radius:50%;background:#B48CFF;color:#160B2B;font:700 11px Inter,sans-serif;display:inline-flex;
+align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 2px rgba(11,12,14,.6)}
+.annp{position:absolute;z-index:20}
+.notes{display:flex;flex-direction:column;gap:10px;font-size:12px;line-height:1.45;color:var(--ts)}
+.notes li{display:flex;gap:10px;list-style:none}
+.notes ul{margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.notes code,.c{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--tp)}
+.bh{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+.bh .t{display:flex;flex-direction:column;gap:4px}
+.tip{position:absolute;z-index:30;padding:6px 10px;border-radius:6px;background:var(--s2);border:1px solid var(--cb);box-shadow:var(--sh);
+font:400 12px Inter,sans-serif;color:var(--tp);white-space:nowrap;display:flex;align-items:center;gap:8px}
+.tabs{display:flex;gap:2px;align-items:center}
+.tabs span{height:28px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border-radius:6px 6px 0 0;font:500 12px Inter;color:var(--ts)}
+.tabs span.on{color:var(--tp);font-weight:600;box-shadow:inset 0 -2px 0 var(--ac)}
+.cnt{font:600 10px Inter;padding:1px 6px;border-radius:999px;background:var(--sel);color:var(--ts)}
+.th span.d,.hf[data-theme=light] .th span.l{background:var(--sel);color:var(--tp);font-weight:600}
+.hf[data-theme=light] .th span.d{background:none;color:var(--ts);font-weight:500}
+.sep{width:1px;align-self:stretch;background:var(--bd)}
+.hf .cv{position:relative}
 </style>
 </helmet>
-<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #121418; color: #E8EAED; font-family: Inter, system-ui, sans-serif; overflow: hidden">
+<!-- Theme: set data-theme="light" on the root element (the canvas keeps its dark tokens in both themes). -->
+<div class="hf" data-theme="dark" style="width:1440px;height:1700px">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-box" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/></symbol><symbol id="i-select" viewBox="0 0 24 24"><path d="M5 5l6 14 2-6 6-2z"/></symbol><symbol id="i-paint" viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16z"/></symbol><symbol id="i-wire" viewBox="0 0 24 24"><path d="M4 18h6v-6h6V6"/><circle cx="16" cy="6" r="2"/></symbol><symbol id="i-label" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol><symbol id="i-measure" viewBox="0 0 24 24"><path d="M3 16L16 3l5 5L8 21z"/><path d="M7 12l2 2M10 9l2 2M13 6l2 2"/></symbol><symbol id="i-place" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="16" rx="1"/><path d="M12 4v16M6 12h12"/></symbol><symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol><symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></symbol><symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><path d="M4 20L20 4"/></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 7.6-1.7"/></symbol><symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6" rx="0.5"/></symbol><symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1"/><path d="M3 7v11a1 1 0 0 0 1 1h14.5a1 1 0 0 0 1-.8L21.5 11a1 1 0 0 0-1-1.2H7.5a1 1 0 0 0-1 .8L4 19"/></symbol><symbol id="i-pdk" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4z"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/><path d="M12 8v4l3 2"/></symbol><symbol id="i-chevd" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol><symbol id="i-chevr" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol><symbol id="i-chevu" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol><symbol id="i-chevl" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol><symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol><symbol id="i-undock" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol><symbol id="i-dock" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M15 4v16"/></symbol><symbol id="i-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" stroke-width="2.4"/></symbol><symbol id="i-console" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 10l3 2-3 2M12 15h5"/></symbol><symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h12l-2.5 4L17 12H5"/></symbol><symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.3-1-1.6-1-2.6 0-.9.7-1.5 1.7-1.5H17a4 4 0 0 0 4-4c0-4.5-4-8.2-9-8.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol><symbol id="i-port" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1"/><path d="M12 3v5M12 16v5M3 12h5M16 12h5"/></symbol><symbol id="i-cell" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5"/><rect x="8" y="8" width="8" height="8" rx="0.5"/></symbol><symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol><symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol><symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></symbol><symbol id="i-flipx" viewBox="0 0 24 24"><path d="M12 3v18" stroke-dasharray="2 2"/><path d="M9 7L4 17h5zM15 7l5 10h-5z"/></symbol><symbol id="i-flipy" viewBox="0 0 24 24"><path d="M3 12h18" stroke-dasharray="2 2"/><path d="M7 9L17 4v5zM7 15l10 5v-5z"/></symbol><symbol id="i-net" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 12h5M12 6v12M12 6h5M12 18h5"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 4h6M4 4v6M20 20h-6M20 20v-6M4 4l6 6M20 20l-6-6"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol><symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/></symbol><symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol><symbol id="i-restore" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v5h4"/></symbol><symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></symbol><symbol id="i-array" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol><symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="2.6"/></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3 3H7l3-3z"/><path d="M12 13v7"/></symbol><pattern id="st-diff" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#3BB273" stroke-width="1"/></pattern><pattern id="st-poly" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 0L6 6" stroke="#E0524F" stroke-width="1"/></pattern><pattern id="st-fb" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 6L6 0" stroke="#FFFFFF" stroke-width="1"/></pattern><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#2A2F37"/></pattern></defs></svg>
+<div style="padding:28px 40px 18px;display:flex;flex-direction:column;gap:6px">
+<header class="bh"><div class="t"><p class="cap" style="color:var(--acs)">M3 · Design rule checking</p><h1>DRC results browser</h1><p style="font-size:13px;color:var(--ts);max-width:1040px;line-height:1.5">The DRC panel docks beside the canvas and lists the root cell's errors grouped by why-text, as Magic's DRC manager does (<code class="c">select top cell</code> + <code class="c">drc listall why</code>). Every control issues a <code class="c">drc</code> command, so it is logged and replayable. The inspector shows the error area under the box. Later-milestone parts of the M1 board (measured versus required, nets, suggested fix, Fix with agent, sign-off) stay visible but disabled, each naming its milestone.</p></div><div class="seg th" role="radiogroup" aria-label="Board theme"><span class="d">Dark</span><span class="l">Light</span></div></header>
+</div>
+<p class="cap" style="padding:0 40px 8px">Populated · stepping with Next (<code class="c">drc find 3</code>)</p>
+<div style="margin:0 40px;border:1px solid var(--bd);border-radius:8px;overflow:hidden;height:800px;display:flex;flex-direction:column;position:relative">
+<header style="height:48px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px solid var(--bd);background:var(--bar)">
+<svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"/><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"/><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"/></svg>
+<div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:13px;font-weight:600">ota_5t</span><span style="font-size:11px;color:var(--tt)">sky130A · 1.0.471 · magic-compat on</span></div>
+<button type="button" class="btn sm" style="margin-left:8px"><svg class="i s14" aria-hidden="true"><use href="#i-open"/></svg>Open</button>
+<button type="button" class="btn sm"><svg class="i s14" aria-hidden="true"><use href="#i-pdk"/></svg>PDKs</button>
+<span class="sep" style="margin:10px 2px"></span>
+<div style="display:flex;gap:2px" role="group" aria-label="Undo and redo"><button type="button" class="ib ghost" aria-label="Undo"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg></button><button type="button" class="ib ghost" aria-label="Redo"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg></button></div>
+<div role="tablist" aria-label="Editor view" class="seg" style="margin-left:12px"><span class="on" style="height:26px;padding:0 14px">Layout</span></div>
+<div style="flex-grow:1"></div>
+<span class="chip er" role="button" aria-label="DRC: 12 errors. Open the DRC panel" style="box-shadow:inset 0 0 0 1px rgba(240,96,93,.45)">■ 12 DRC errors</span><span class="chip n">◆ LVS not run</span>
+</header>
+<div style="flex-grow:1;display:flex;min-height:0">
+<nav aria-label="Tools" style="width:52px;flex:none;border-right:1px solid var(--bd);background:var(--bar);display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px">
+<button type="button" aria-label="Box tool" aria-pressed="true" style="width:36px;height:36px;border-radius:8px;border:1px solid var(--acl);background:var(--act);display:flex;align-items:center;justify-content:center;color:var(--acs);padding:0"><svg class="i s18" aria-hidden="true"><use href="#i-box"/></svg></button>
+<button type="button" aria-label="Select tool" class="ib ghost" style="width:36px;height:36px"><svg class="i s18" aria-hidden="true"><use href="#i-select"/></svg></button>
+<button type="button" aria-label="Paint tool" class="ib ghost" style="width:36px;height:36px"><svg class="i s18" aria-hidden="true"><use href="#i-paint"/></svg></button>
+<button type="button" aria-label="Wire tool" class="ib ghost" style="width:36px;height:36px"><svg class="i s18" aria-hidden="true"><use href="#i-wire"/></svg></button>
+<button type="button" aria-label="Label tool" class="ib ghost" style="width:36px;height:36px"><svg class="i s18" aria-hidden="true"><use href="#i-label"/></svg></button>
+<button type="button" aria-label="Measure tool" class="ib ghost" style="width:36px;height:36px"><svg class="i s18" aria-hidden="true"><use href="#i-measure"/></svg></button>
+</nav>
+<aside aria-label="DRC results" style="width:380px;flex:none;border-right:1px solid var(--bd);background:var(--s1);display:flex;flex-direction:column;position:relative">
+<div style="display:flex;align-items:center;gap:6px;height:32px;padding:0 8px 0 10px"><span style="color:var(--tt);display:flex"><svg class="i s14" aria-hidden="true"><use href="#i-grip"/></svg></span><h3 class="cap" style="margin:0">DRC</h3><span style="margin-left:auto;display:flex;gap:2px;color:var(--tt)"><span class="ib sm ghost" aria-label="Undock DRC"><svg class="i s14" aria-hidden="true"><use href="#i-undock"/></svg></span><span class="ib sm ghost" aria-label="Collapse DRC"><svg class="i s14" aria-hidden="true"><use href="#i-chevd"/></svg></span></span></div>
+<div style="display:flex;gap:6px;padding:0 12px 10px;align-items:center">
+<div class="inp sm ui" role="combobox" aria-label="DRC style" style="width:150px;gap:6px"><span style="color:var(--tt)">Style</span><span class="mono" style="color:var(--tp)">drc(full)</span><svg class="i s14" style="margin-left:auto;color:var(--tt)" aria-hidden="true"><use href="#i-chevd"/></svg></div>
+<button type="button" class="btn sm"><svg class="i s14" aria-hidden="true"><use href="#i-rotate"/></svg>Re-check</button>
+<button type="button" class="btn sm dis" aria-disabled="true" title="Fix with agent arrives in M11"><svg class="i s14" aria-hidden="true"><use href="#i-agent"/></svg>Fix…</button>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px;font-size:12px;color:var(--ts)"><span class="chip er" style="height:22px">■ 12 error tiles</span><span>23 areas · 5 why-texts · 1 ignored</span></div>
+<div style="padding:0 12px 8px"><div class="inp sm ui" style="color:var(--tt)"><svg class="i s14" aria-hidden="true"><use href="#i-search"/></svg>Filter why-text</div></div>
+<div role="treegrid" aria-label="DRC errors by why-text" style="display:flex;flex-direction:column;border-top:1px solid var(--bd)">
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:26px;align-items:center;font-size:11px;font-weight:600;color:var(--tt);border-bottom:1px solid var(--bd)"><span></span><span>Why-text</span><span style="text-align:right">Areas ▾</span></div>
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:30px;align-items:center;font-size:12px;background:var(--sel)"><svg class="i s14" style="color:var(--ic)" aria-hidden="true"><use href="#i-chevd"/></svg><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Metal1 spacing &lt; 0.14um (met1.2)</span><span class="mono" style="text-align:right;color:var(--ert)">■ 9</span></div>
+<div style="display:grid;grid-template-columns:18px 26px 1fr;gap:6px;padding:0 12px 0 30px;height:24px;align-items:center;font:400 11px 'JetBrains Mono',monospace;color:var(--ts)"><span></span><span class="ter">1</span><span>11.420 3.860 11.540 4.410</span></div>
+<div style="display:grid;grid-template-columns:18px 26px 1fr;gap:6px;padding:0 12px 0 30px;height:24px;align-items:center;font:400 11px 'JetBrains Mono',monospace;color:var(--ts)"><span></span><span class="ter">2</span><span>11.420 5.020 11.540 5.720</span></div>
+<div style="display:grid;grid-template-columns:18px 26px 1fr;gap:6px;padding:0 12px 0 30px;height:24px;align-items:center;font:400 11px 'JetBrains Mono',monospace;color:var(--tp);background:var(--act);box-shadow:inset 2px 0 0 var(--ac)"><span style="color:var(--acs)">▸</span><span class="ter">3</span><span>12.180 3.860 12.300 4.410</span></div>
+<div style="display:grid;grid-template-columns:18px 26px 1fr;gap:6px;padding:0 12px 0 30px;height:24px;align-items:center;font:400 11px 'JetBrains Mono',monospace;color:var(--ts)"><span></span><span class="ter">4</span><span>12.180 5.020 12.300 5.720</span></div>
+<div style="padding:0 12px 0 54px;height:22px;display:flex;align-items:center;font-size:11px;color:var(--tt)">… 5 more areas</div>
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:30px;align-items:center;font-size:12px"><svg class="i s14" style="color:var(--ic)" aria-hidden="true"><use href="#i-chevr"/></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Local interconnect spacing &lt; 0.17um (li.3)</span><span class="mono" style="text-align:right;color:var(--ert)">■ 6</span></div>
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:30px;align-items:center;font-size:12px"><svg class="i s14" style="color:var(--ic)" aria-hidden="true"><use href="#i-chevr"/></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Metal1 overlap of local interconnect contact &lt; 0.03um (met1.4)</span><span class="mono" style="text-align:right;color:var(--ert)">■ 4</span></div>
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:30px;align-items:center;font-size:12px"><svg class="i s14" style="color:var(--ic)" aria-hidden="true"><use href="#i-chevr"/></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">mcon.spacing &lt; 0.19um (mcon.2)</span><span class="mono" style="text-align:right;color:var(--ert)">■ 2</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:30px;margin-top:4px;border-top:1px solid var(--bd)"><p class="cap">Ignored</p><span class="cnt">1</span><button type="button" class="btn sm ghost" style="margin-left:auto;height:24px;font-size:11px">Clear ignores</button></div>
+<div style="display:grid;grid-template-columns:18px 1fr 52px;gap:6px;padding:0 12px;height:30px;align-items:center;font-size:12px;color:var(--tt)"><svg class="i s14" aria-hidden="true"><use href="#i-eyeoff"/></svg><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">poly width &lt; 0.15um (poly.1a)</span><span class="mono" style="text-align:right">◆ 2</span></div>
+</div>
+<div style="margin-top:auto;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;height:34px;padding:0 12px" class="dis" title="Sign-off checklist arrives in M13"><svg class="i s14" style="color:var(--tt)" aria-hidden="true"><use href="#i-chevr"/></svg><p class="cap">Sign-off</p><span class="chip n" style="height:20px;font-size:11px;margin-left:auto">M13</span></div>
+<span class="ann annp" style="left:60px;top:6px">1</span><span class="ann annp" style="left:350px;top:76px">2</span><span class="ann annp" style="left:340px;top:244px">3</span><span class="ann annp" style="left:112px;top:413px">4</span><span class="ann annp" style="left:340px;top:520px">7</span>
+</aside>
+<main aria-label="Layout canvas" class="cv" style="flex-grow:1;min-width:0">
+<svg width="660" height="534" viewBox="0 0 660 534" role="img" aria-label="Metal1 strap and two metal1 bars 0.12 um apart, the spacing error tiles in Magic's white waffle stipple, and the box on error area 3">
+<defs><pattern id="waffle" width="8" height="8" patternUnits="userSpaceOnUse"><rect x="0" y="2" width="2" height="2" fill="#FFFFFF"/><rect x="4" y="2" width="2" height="2" fill="#FFFFFF"/><rect x="0" y="6" width="2" height="2" fill="#FFFFFF"/><rect x="4" y="6" width="2" height="2" fill="#FFFFFF"/></pattern></defs>
+<rect width="660" height="534" fill="url(#dots)"/>
+<rect width="660" height="20" fill="#15181C"/><rect width="20" height="534" fill="#15181C"/>
+<g font-family="JetBrains Mono, monospace" font-size="10" fill="#8A919D"><text x="60" y="14">11.20</text><text x="236" y="14">12.00</text><text x="412" y="14">12.80</text><text x="588" y="14">13.60</text></g>
+<rect x="80" y="40" width="80" height="470" fill="rgba(155,107,214,0.45)" stroke="#9B6BD6"/>
+<rect x="60" y="56" width="148" height="440" fill="rgba(79,141,232,0.40)" stroke="#4F8DE8"/>
+<g stroke="#E8EAED" stroke-width="1.2" fill="#0B0C0E"><rect x="113" y="120" width="14" height="14"/><path d="M113 120l14 14M127 120l-14 14"/><rect x="113" y="300" width="14" height="14"/><path d="M113 300l14 14M127 300l-14 14"/></g>
+<rect x="234" y="104" width="390" height="120" fill="rgba(79,141,232,0.40)" stroke="#4F8DE8"/>
+<rect x="234" y="300" width="300" height="150" fill="rgba(79,141,232,0.40)" stroke="#4F8DE8"/>
+<rect x="208" y="104" width="26" height="120" fill="url(#waffle)"/>
+<rect x="208" y="300" width="26" height="150" fill="url(#waffle)"/>
+<rect x="207" y="103" width="28" height="122" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+<g transform="translate(250 236)"><rect width="300" height="28" rx="6" fill="#20242B" stroke="#3D434E"/><text x="10" y="18" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#FF8784">■ #3</text><text x="48" y="18" font-family="Inter, sans-serif" font-size="12" fill="#E8EAED">Metal1 spacing &lt; 0.14um (met1.2)</text></g>
+<path d="M236 236L226 226" stroke="#3D434E"/>
+<g font-family="JetBrains Mono, monospace" font-size="12" font-weight="500" fill="#FFFFFF"><text x="68" y="80">vout</text><text x="246" y="128">vbias</text><text x="246" y="324">vss</text></g>
+</svg>
+<div style="position:absolute;right:16px;top:32px;display:flex;gap:6px;align-items:center">
+<button type="button" class="btn sm" aria-label="Previous error (drc find 2)" style="background:#20242B;border-color:#3D434E;color:#E8EAED">◂ Prev</button>
+<span role="status" style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:6px;background:#20242B;border:1px solid #3D434E;font:500 12px 'JetBrains Mono',monospace;color:#E8EAED">#3 of 12</span>
+<button type="button" class="btn sm" aria-label="Next error (drc find 4)" style="background:#20242B;border-color:#3D434E;color:#E8EAED">Next ▸</button>
+</div>
+<div style="position:absolute;left:36px;bottom:14px;display:flex;gap:6px">
+<span class="ib" style="background:#20242B;border-color:#3D434E"><svg class="i s14" aria-hidden="true"><use href="#i-minus"/></svg></span>
+<span style="height:32px;padding:0 10px;display:inline-flex;align-items:center;border-radius:6px;background:#20242B;border:1px solid #3D434E;font:500 12px 'JetBrains Mono',monospace;color:#C9CED6">1600%</span>
+<span class="ib" style="background:#20242B;border-color:#3D434E"><svg class="i s14" aria-hidden="true"><use href="#i-plus"/></svg></span></div>
+<span class="ann annp" style="left:400px;top:36px">5</span><span class="ann annp" style="left:200px;top:96px">6</span>
+</main>
+<aside aria-label="Inspector" style="width:284px;flex:none;border-left:1px solid var(--bd);background:var(--s1);display:flex;flex-direction:column;position:relative">
+<div style="display:flex;align-items:center;gap:6px;height:32px;padding:0 8px 0 10px"><span style="color:var(--tt);display:flex"><svg class="i s14" aria-hidden="true"><use href="#i-grip"/></svg></span><h3 class="cap" style="margin:0">Inspector</h3><span style="margin-left:auto;display:flex;gap:2px;color:var(--tt)"><span class="ib sm ghost" aria-label="Undock Inspector"><svg class="i s14" aria-hidden="true"><use href="#i-undock"/></svg></span><span class="ib sm ghost" aria-label="Collapse Inspector"><svg class="i s14" aria-hidden="true"><use href="#i-chevd"/></svg></span></span></div>
+<div style="padding:4px 14px 14px;display:flex;flex-direction:column;gap:12px;flex-grow:1">
+<div style="display:flex;flex-direction:column;gap:4px"><p class="cap">DRC error area #3 of 12</p><p style="font-size:14px;font-weight:600;color:var(--ert);line-height:1.35">■ Metal1 spacing &lt; 0.14um (met1.2)</p><p style="font-size:11px;color:var(--tt)">why-texts under the box, as <code class="c">drc why</code> reports them</p></div>
+<dl class="dl" style="grid-template-columns:64px 1fr"><dt>Cell</dt><dd>ota_5t</dd><dt>Area</dt><dd>12.180 3.860 12.300 4.410</dd><dt>Size</dt><dd>0.120 × 0.550 um</dd><dt>Style</dt><dd>drc(full)</dd></dl>
+<div style="display:flex;gap:6px"><button type="button" class="btn sm" style="flex:1"><svg class="i s14" aria-hidden="true"><use href="#i-fit"/></svg>Zoom to</button><button type="button" class="btn sm" style="flex:1">Why here</button></div>
+<div style="display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:8px;border:1px solid var(--bd);background:var(--s0)"><span style="font-size:12px;font-weight:600">Ignore rules whose text contains</span><div style="display:flex;gap:6px"><div class="inp sm grow">met1.2</div><button type="button" class="btn sm">Ignore</button></div><span style="font-size:11px;color:var(--tt);line-height:1.4">Ignored rules are left out of why, find and this list, but still mark error tiles: the chip keeps counting them.</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;margin-top:auto"><p class="cap" style="margin-bottom:4px">Later milestones</p>
+<div class="row dis" title="Measured versus required values arrive with the AI agent in M11" style="height:28px;padding:0 4px;font-size:12px"><span class="grow">Measured vs required</span><span class="chip n" style="height:20px;font-size:11px">M11</span></div>
+<div class="row dis" title="Net names arrive with extraction in M7" style="height:28px;padding:0 4px;font-size:12px"><span class="grow">Nets</span><span class="chip n" style="height:20px;font-size:11px">M7</span></div>
+<div class="row dis" title="Suggested fixes arrive with the AI agent in M11" style="height:28px;padding:0 4px;font-size:12px"><span class="grow">Suggested fix · Preview fix</span><span class="chip n" style="height:20px;font-size:11px">M11</span></div>
+</div>
+</div>
+<span class="ann annp" style="left:104px;top:6px">8</span><span class="ann annp" style="left:250px;top:236px">9</span><span class="ann annp" style="left:250px;top:426px">10</span>
+</aside>
+</div>
+<section aria-label="Console" style="height:118px;flex:none;border-top:1px solid var(--bd);background:var(--s1);display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--bd);height:32px"><div class="tabs"><span class="on"><svg class="i s14" aria-hidden="true"><use href="#i-console"/></svg>Console</span><span>Diagnostics <span class="cnt">0</span></span><span><svg class="i s14" aria-hidden="true"><use href="#i-flag"/></svg>Feedback <span class="cnt">0</span></span></div></div>
+<div style="padding:8px 14px;font:400 12px/1.55 'JetBrains Mono',monospace;color:var(--ts)"><div><span class="acc">%</span> drc find 3</div><div style="color:var(--tp)">Error area #3:</div><div style="color:var(--tp)">Metal1 spacing &lt; 0.14um (met1.2)</div></div>
+</section>
+<div style="height:40px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-top:1px solid var(--bd);background:var(--bar)"><span style="font:500 12px 'JetBrains Mono',monospace;color:var(--ac)">%</span><div class="inp sm grow" style="border-color:var(--bd);color:var(--tt)">Type a command</div><span style="font:400 11px 'JetBrains Mono',monospace;color:var(--tt)">⏎ run · ↑ history · tab complete</span></div>
+<footer style="height:26px;flex:none;display:flex;align-items:center;gap:22px;padding:0 14px;background:var(--in);border-top:1px solid var(--bd);font:400 11px 'JetBrains Mono',monospace;color:var(--ts);white-space:nowrap;overflow:hidden"><span>x 12.240  y 4.100 um</span><span>box 0.120 × 0.550</span><span>edit: ota_5t</span><span>snap: lambda · units: um</span><span>tool: box</span><span style="margin-left:auto;color:var(--ert)">■ DRC 12 errors · drc(full)</span></footer>
+</div>
 
-  <header style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 16px; padding: 0 14px; border-bottom: 1px solid #2F343D; background: #15181C">
-    <svg width="26" height="26" viewBox="0 0 44 44" aria-hidden="true"><rect x="1" y="1" width="42" height="42" rx="10" fill="#1E2127" stroke="#2F343D"></rect><path d="M11 27h22l-3 5H14z" fill="#FF8A3D"></path><path d="M15 27V19h14v8" fill="none" stroke="#E8EAED" stroke-width="2.2"></path></svg>
-    <div style="display: flex; flex-direction: column">
-      <span style="font-size: 13px; font-weight: 600">ota_5t · DRC results</span>
-      <span style="font-size: 11px; color: #8A919D">gf180mcuD · Magic-compatible DRC · style drc(full)</span>
-    </div>
-    <div style="flex-grow: 1"></div>
-    <span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: rgba(240,96,93,0.14); color: #FF8784; font: 500 12px Inter, sans-serif">■ 7 errors · 3 rules</span>
-    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 13px Inter, sans-serif">Re-check</button>
-    <button type="button" style="height: 32px; padding: 0 14px; border-radius: 6px; border: none; background: #FF8A3D; color: #1A0F06; font: 600 13px Inter, sans-serif">Fix with agent…</button>
-  </header>
+<div style="padding:26px 40px 0;display:flex;gap:24px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:8px;width:250px"><p class="cap">Empty · not checked</p>
+<div class="panel" style="height:250px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;gap:6px;padding:10px 10px 8px;align-items:center;border-bottom:1px solid var(--bd)"><div class="inp sm ui" style="flex:1;gap:6px"><span style="color:var(--tt)">Style</span><span class="mono">drc(full)</span></div><button type="button" class="btn sm">Check</button></div>
+<div style="flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center"><span style="font-size:22px;color:var(--ts)">◆</span><p style="font-size:13px;font-weight:600">Not checked yet</p><p style="font-size:11px;color:var(--ts);line-height:1.45">Background DRC is off, or the cell has not been checked. Check runs <code class="c">select top cell; drc check; drc catchup</code>.</p></div></div>
+<p style="font-size:11px;color:var(--ts);line-height:1.45">Chip and status bar: ◆ DRC not run, or ◆ DRC off.</p></div>
 
-  <div style="flex-grow: 1; display: flex; min-height: 0">
-    <aside aria-label="Violations" style="width: 340px; flex-shrink: 0; border-right: 1px solid #2F343D; background: #181B20; display: flex; flex-direction: column">
-      <div style="padding: 12px 14px; display: flex; gap: 8px; border-bottom: 1px solid #2F343D">
-        <label for="drc-filter" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Filter violations</label>
-        <input id="drc-filter" placeholder="Filter by rule or text" style="flex-grow: 1; height: 30px; box-sizing: border-box; padding: 0 10px; border-radius: 6px; border: 1px solid #3D434E; background: #0F1114; color: #E8EAED; font: 400 12px Inter, sans-serif">
-      </div>
-      <ol style="list-style: none; margin: 0; padding: 8px; display: flex; flex-direction: column; gap: 4px; overflow: hidden">
-        <li style="padding: 10px; border-radius: 8px; background: #2A2F37; outline: 1px solid rgba(255,138,61,0.55); display: flex; flex-direction: column; gap: 4px">
-          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>M1.2a · metal1 spacing</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×3</span></span>
-          <span style="font-size: 12px; color: #C9CED6">Metal1 spacing &lt; 0.23 um</span>
-          <span style="font: 400 11px 'JetBrains Mono', monospace; color: #A4ABB6">#1 of 3 · at (12.40, 3.86)</span>
-        </li>
-        <li style="padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
-          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>V1.3 · via1 enclosure</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×2</span></span>
-          <span style="font-size: 12px; color: #C9CED6">Metal2 must enclose Via1 by 0.01 um</span>
-        </li>
-        <li style="padding: 10px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px">
-          <span style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 600"><span>PL.5 · poly extension</span><span style="font-family: 'JetBrains Mono', monospace; color: #FF8784">×2</span></span>
-          <span style="font-size: 12px; color: #C9CED6">Poly overhang of Diff &lt; 0.22 um</span>
-        </li>
-      </ol>
-      <div style="margin-top: auto; padding: 14px; border-top: 1px solid #2F343D; display: flex; flex-direction: column; gap: 8px">
-        <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Sign-off (wafer.space)</h2>
-        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Magic DRC</span><span style="color: #FF8784">■ 7</span></span>
-        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>LVS</span><span style="color: #5FD3A0">● match</span></span>
-        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Antenna</span><span style="color: #5FD3A0">● clean</span></span>
-        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>KLayout decks (external)</span><span style="color: #F0C661">▲ run on desktop</span></span>
-        <span style="font-size: 12px; display: flex; justify-content: space-between"><span>Density / fill</span><span style="color: #A4ABB6">○ pending</span></span>
-      </div>
-    </aside>
+<div style="display:flex;flex-direction:column;gap:8px;width:250px"><p class="cap">Empty · clean</p>
+<div class="panel" style="height:250px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;gap:6px;padding:10px 10px 8px;align-items:center;border-bottom:1px solid var(--bd)"><div class="inp sm ui" style="flex:1;gap:6px"><span style="color:var(--tt)">Style</span><span class="mono">drc(full)</span></div><button type="button" class="btn sm">Re-check</button></div>
+<div style="flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;text-align:center"><span style="font-size:22px;color:var(--okt)">●</span><p style="font-size:13px;font-weight:600">No DRC errors in ota_5t</p><p style="font-size:11px;color:var(--ts);line-height:1.45">0 error tiles under drc(full). <code class="c">drc listall why</code> printed <code class="c">No errors found.</code></p></div></div>
+<p style="font-size:11px;color:var(--ts);line-height:1.45">Ignored rules with tiles keep the list: they show under Ignored.</p></div>
 
-    <main aria-label="Error location" style="flex-grow: 1; min-width: 0; background: #0B0C0E; position: relative">
-      <svg width="816" height="852" viewBox="0 0 816 852" role="img" aria-label="Zoomed view of two metal1 wires closer than the minimum spacing, with the violation area hatched in red">
-        <defs>
-          <pattern id="g2" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#262A31"></circle></pattern>
-          <pattern id="err" width="8" height="8" patternUnits="userSpaceOnUse"><path d="M0 8L8 0" stroke="#F0605D" stroke-width="2"></path></pattern>
-        </defs>
-        <rect width="816" height="852" fill="url(#g2)"></rect>
-        <rect x="120" y="160" width="240" height="520" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
-        <rect x="392" y="240" width="300" height="140" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
-        <rect x="392" y="480" width="220" height="200" fill="rgba(79,141,232,0.38)" stroke="#4F8DE8"></rect>
-        <rect x="360" y="240" width="32" height="140" fill="url(#err)" stroke="#F0605D" stroke-width="2"></rect>
-        <path d="M360 410h32" stroke="#FFFFFF" stroke-width="1.5"></path>
-        <path d="M360 404v12M392 404v12" stroke="#FFFFFF" stroke-width="1.5"></path>
-        <text x="352" y="436" font-family="JetBrains Mono, monospace" font-size="12" fill="#FFFFFF">0.18 um</text>
-        <rect x="430" y="404" width="300" height="72" rx="8" fill="#20242B" stroke="#F0605D"></rect>
-        <text x="446" y="430" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#FF8784">Metal1 spacing &lt; 0.23 um</text>
-        <text x="446" y="454" font-family="JetBrains Mono, monospace" font-size="11" fill="#A4ABB6">measured 0.18 · need 0.23 · Δ 0.05 um</text>
-        <g font-family="JetBrains Mono, monospace" font-size="12" fill="#C9CED6">
-          <text x="132" y="186">net vout</text><text x="404" y="266">net vbias</text><text x="404" y="506">net vss</text>
-        </g>
-      </svg>
-      <div style="position: absolute; left: 16px; top: 16px; display: flex; gap: 6px">
-        <button type="button" aria-label="Previous error" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">◀ Prev</button>
-        <button type="button" aria-label="Next error" style="height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Next ▶</button>
-      </div>
-    </main>
+<div style="display:flex;flex-direction:column;gap:8px;width:250px"><p class="cap">Running</p>
+<div class="panel" style="height:250px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;gap:6px;padding:10px 10px 8px;align-items:center;border-bottom:1px solid var(--bd)"><div class="inp sm ui dis" style="flex:1;gap:6px"><span style="color:var(--tt)">Style</span><span class="mono">drc(full)</span></div><button type="button" class="btn sm dis">Re-check</button></div>
+<div role="status" style="display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:rgba(90,169,240,.10);border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--ift);font-weight:600">◆ Checking ota_5t…</span><div style="height:4px;border-radius:2px;background:var(--sel);overflow:hidden"><div style="width:38%;height:4px;margin-left:24%;border-radius:2px;background:var(--ift)"></div></div></div>
+<div style="opacity:.45;display:flex;flex-direction:column;padding:4px 0;font-size:12px"><div style="display:flex;justify-content:space-between;padding:0 12px;height:28px;align-items:center"><span>Metal1 spacing &lt; 0.14um…</span><span class="mono">■ 9</span></div><div style="display:flex;justify-content:space-between;padding:0 12px;height:28px;align-items:center"><span>Local interconnect spacing…</span><span class="mono">■ 6</span></div><div style="display:flex;justify-content:space-between;padding:0 12px;height:28px;align-items:center"><span>Metal1 overlap of local…</span><span class="mono">■ 4</span></div></div></div>
+<p style="font-size:11px;color:var(--ts);line-height:1.45">Worker busy (or a Re-check's <code class="c">drc catchup</code>). The last list stays, dimmed; it is rebuilt when the checker goes idle.</p></div>
 
-    <aside aria-label="Rule details" style="width: 284px; flex-shrink: 0; border-left: 1px solid #2F343D; background: #181B20; padding: 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
-      <h2 style="margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8A919D">Rule</h2>
-      <code style="display: block; padding: 10px; border-radius: 6px; background: #0F1114; border: 1px solid #2F343D; font: 400 11px/1.6 'JetBrains Mono', monospace; color: #C9CED6; white-space: pre-wrap">spacing metal1 metal1 0.23um touching_ok \
-  "Metal1 spacing &lt; %d (M1.2a)"</code>
-      <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; font-size: 12px">
-        <dt style="color: #8A919D">Cell</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">ota_5t</dd>
-        <dt style="color: #8A919D">Area</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">0.18 × 0.70</dd>
-        <dt style="color: #8A919D">Nets</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">vout · vbias</dd>
-      </dl>
-      <div style="padding: 12px; border-radius: 8px; background: rgba(255,138,61,0.08); border: 1px solid rgba(255,138,61,0.35); display: flex; flex-direction: column; gap: 8px">
-        <span style="font-size: 12px; font-weight: 600; color: #FFB27A">Suggested fix</span>
-        <span style="font-size: 12px; line-height: 1.5; color: #C9CED6">Move the vbias strap right by 0.05 um. No new violations within the halo.</span>
-        <button type="button" style="height: 30px; border-radius: 6px; border: 1px solid #3D434E; background: #20242B; color: #E8EAED; font: 500 12px Inter, sans-serif">Preview fix</button>
-      </div>
-      <button type="button" style="height: 32px; border-radius: 6px; border: none; background: transparent; color: #A4ABB6; font: 500 12px Inter, sans-serif; text-align: left">Ignore this rule (drc ignore)…</button>
-    </aside>
-  </div>
+<div style="display:flex;flex-direction:column;gap:8px;width:250px"><p class="cap">Stale</p>
+<div class="panel" style="height:250px;display:flex;flex-direction:column;overflow:hidden">
+<div style="display:flex;gap:6px;padding:10px 10px 8px;align-items:center;border-bottom:1px solid var(--bd)"><div class="inp sm ui" style="flex:1;gap:6px"><span style="color:var(--tt)">Style</span><span class="mono">drc(full)</span></div><button type="button" class="btn sm">Re-check</button></div>
+<div role="status" style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:rgba(229,177,58,.12);border-bottom:1px solid var(--bd)"><span style="font-size:12px;color:var(--wat);font-weight:600">▲ Out of date</span><span style="font-size:11px;color:var(--ts);line-height:1.4">The layout changed after this list was built. It refreshes when checking finishes; with DRC off, use Re-check.</span></div>
+<div style="opacity:.6;display:flex;flex-direction:column;padding:4px 0;font-size:12px"><div style="display:flex;justify-content:space-between;padding:0 12px;height:28px;align-items:center"><span>Metal1 spacing &lt; 0.14um…</span><span class="mono">■ 9</span></div><div style="display:flex;justify-content:space-between;padding:0 12px;height:28px;align-items:center"><span>Local interconnect spacing…</span><span class="mono">■ 6</span></div></div></div>
+<p style="font-size:11px;color:var(--ts);line-height:1.45">Rows still navigate; the stepper keeps working on the live error tiles.</p></div>
+
+<div style="display:flex;flex-direction:column;gap:8px;width:250px;position:relative"><p class="cap">Style selector</p>
+<div class="inp sm ui" style="gap:6px;border-color:var(--ac)"><span style="color:var(--tt)">Style</span><span class="mono">drc(full)</span><svg class="i s14" style="margin-left:auto;color:var(--tt)" aria-hidden="true"><use href="#i-chevu"/></svg></div>
+<div class="pop" role="listbox" aria-label="DRC styles" style="padding:4px">
+<div class="row" style="height:28px;font:400 12px 'JetBrains Mono',monospace"><span style="width:14px"></span><span class="grow">drc(fast)</span></div>
+<div class="row sel" style="height:28px;font:400 12px 'JetBrains Mono',monospace"><svg class="i s14" style="color:var(--acs)" aria-hidden="true"><use href="#i-check"/></svg><span class="grow">drc(full)</span></div>
+<div class="row" style="height:28px;font:400 12px 'JetBrains Mono',monospace"><span style="width:14px"></span><span class="grow">drc(routing)</span></div>
+<div style="border-top:1px solid var(--bd);margin-top:4px;padding:8px 8px 4px;font-size:11px;color:var(--tt);line-height:1.45">From <code class="c">drc listall style</code>, in tech-file order. Choosing one issues <code class="c">drc style &lt;name&gt;</code>.</div></div>
+<span class="ann annp" style="left:-28px;top:-4px">1</span></div>
+</div>
+
+<div style="padding:26px 40px 28px"><div class="notes"><p class="cap">Notes for SHELL</p><ul style="display:grid;grid-template-columns:1fr 1fr;gap:9px 40px">
+<li><span class="ann">1</span><span>Style selector lists <code>drc listall style</code> and issues <code>drc style &lt;name&gt;</code>. Error tiles were made under the previous style, so the list then marks itself stale. Re-check issues <code>select top cell; drc check; drc catchup</code> (Magic's DRC manager also selects the top cell first). Disabled while the checker is busy.</span></li>
+<li><span class="ann">2</span><span>Summary: error tiles are the root cell's <code>drc list count total</code>, the number Magic's title bar shows (<code>DRC=12</code>). Areas are the rectangles of <code>drc listall why</code>, which can be more than the tiles. Both are shown so neither looks wrong.</span></li>
+<li><span class="ann">3</span><span>Virtual Raven Table built from <code>select top cell</code> + <code>drc listall why</code> (200,000-row scenario). Groups are why-texts with their area count, sortable by text or count; their order from Magic is unspecified, so the default sort is by count. Expanding a group lists its rectangles in discovery order. Clicking one issues <code>box values …</code> + <code>findbox zoom</code>, as Magic's DRC manager does.</span></li>
+<li><span class="ann">4</span><span>Ignored: <code>drc listall why</code> still returns ignored texts, so they are listed here, dimmed, with ◆ counts. Clear ignores issues <code>drc ignore none</code>; Magic has no command to unignore one rule. With magic-compat on, the last why-text of the style cannot be ignored (Q-DRC-17): it stays in the main list.</span></li>
+<li><span class="ann">5</span><span>Prev/Next issue <code>drc find k−1</code> / <code>drc find k+1</code> with an explicit index (wrapping n→1), so the first Next does not jump to #2 under magic-compat (Q-DRC-15). <code>#k of n</code>: k from the last <code>drc find</code>, n = error tiles. Keys stay Magic's (<code>!</code> = <code>drc find; findbox zoom; zoom 16</code>).</span></li>
+<li><span class="ann">6</span><span>Canvas: error tiles in Magic's <code>error_waffle</code> style (white offset waffle, stipple 4), the box on the found tile, and a canvas-token tag with <code>#k</code> and the why-text of <code>drc find</code>. The group and rectangle rows that overlap the box are highlighted.</span></li>
+<li><span class="ann">7</span><span>Sign-off summary of the M1 board: collapsed and disabled until M13 (tooltip names it). Fix with agent (toolbar) is disabled until M11.</span></li>
+<li><span class="ann">8</span><span>Inspector shows the error area under the box: the why-texts that <code>drc find</code> printed (or <code>drc why</code> for a clicked rectangle), cell, area, size and style. Zoom to issues <code>findbox zoom</code>; Why here issues <code>drc why</code>.</span></li>
+<li><span class="ann">9</span><span>Ignore issues <code>drc ignore &lt;text&gt;</code> (case-sensitive substring of the unsubstituted why-text), prefilled with the rule tag in parentheses. The chip count does not drop: ignored rules still make tiles.</span></li>
+<li><span class="ann">10</span><span>Measured versus required, nets and suggested fix (with Preview fix) of the M1 board are disabled rows naming M11 / M7 / M11 in their tooltips. The M1 tech-file rule excerpt is hidden: no <code>drc</code> command reports a rule's source.</span></li>
+</ul></div></div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
 class Component extends DCLogic {
   renderVals() { return {}; }
 }

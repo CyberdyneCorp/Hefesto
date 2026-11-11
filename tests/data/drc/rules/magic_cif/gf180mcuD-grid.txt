@@ -1,0 +1,92 @@
+# Magic 8.3.694 (fc5daa9e) cifoutput values of gf180mcuD.tech after `scalegrid 1 10`: `cif listall ostyle`, then for
+# the style current after the load and for each style after `cif ostyle <style>`: CIFCurStyle's
+# cs_scaleFactor, cs_expander, cs_reducer and, for every contact type with a squares/slots
+# operator, CIFGetContactSize's border (CIF units). Read with a probe command loaded into
+# Magic's Tcl interpreter (tasks.md 4.1); compared by tests/unit/drc/rules/cif_magic_test.cpp.
+ostyles gdsii metfill drc
+loaded gdsii 5 10 1
+contact ndiffc 5
+contact pdiffc 5
+contact mvndiffc 5
+contact mvpdiffc 5
+contact psubdiffcont 5
+contact nsubdiffcont 5
+contact mvpsubdiffcont 5
+contact mvnsubdiffcont 5
+contact polycontact 5
+contact pdiodec 5
+contact ndiodec 5
+contact nndiodec 5
+contact mvpdiodec 5
+contact mvndiodec 5
+contact mvnndiodec 5
+contact via1 0
+contact via2 10
+contact mimcapcontact 40
+contact via3 10
+contact via4 10
+contact pc+v 5
+contact ndc+v 5
+contact pdc+v 5
+contact nsc+v 5
+contact psc+v 5
+contact ndic+v 5
+contact nndic+v 5
+contact pdic+v 5
+contact skdic+v 0
+contact mvndc+v 5
+contact mvpdc+v 5
+contact mvnsc+v 5
+contact mvpsc+v 5
+contact mvndic+v 5
+contact mvpdic+v 5
+contact mvnndic+v 5
+contact ldndc+v 0
+contact ldpdc+v 0
+contact v+v2 0
+contact v2+v3 10
+contact v3+v4 10
+style gdsii 5 10 1
+contact ndiffc 5
+contact pdiffc 5
+contact mvndiffc 5
+contact mvpdiffc 5
+contact psubdiffcont 5
+contact nsubdiffcont 5
+contact mvpsubdiffcont 5
+contact mvnsubdiffcont 5
+contact polycontact 5
+contact pdiodec 5
+contact ndiodec 5
+contact nndiodec 5
+contact mvpdiodec 5
+contact mvndiodec 5
+contact mvnndiodec 5
+contact via1 0
+contact via2 10
+contact mimcapcontact 40
+contact via3 10
+contact via4 10
+contact pc+v 5
+contact ndc+v 5
+contact pdc+v 5
+contact nsc+v 5
+contact psc+v 5
+contact ndic+v 5
+contact nndic+v 5
+contact pdic+v 5
+contact skdic+v 0
+contact mvndc+v 5
+contact mvpdc+v 5
+contact mvnsc+v 5
+contact mvpsc+v 5
+contact mvndic+v 5
+contact mvpdic+v 5
+contact mvnndic+v 5
+contact ldndc+v 0
+contact ldpdc+v 0
+contact v+v2 0
+contact v2+v3 10
+contact v3+v4 10
+style metfill 1 2 1
+style drc 5 10 1

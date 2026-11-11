@@ -566,7 +566,9 @@ std::shared_ptr<const RuleSet> StyleCompiler::freeze() {
   const Halo halo = final_halo();
   std::int32_t step = step_size_;
   if (step == 0) {
-    step = halo.value == 0 ? cif_.default_step_size() : 16 * halo.value;
+    // Magic's `16 * DRCTechHalo` overflows int for a halo above 2^27 (UB);
+    // the step saturates instead, like the distances read with c_atoi.
+    step = halo.value == 0 ? cif_.default_step_size() : text::clamp_int(std::int64_t{16} * halo.value);
   }
   RuleSetBuilder builder(types_);
   builder.style_name(machine_.current().value_or("default"));

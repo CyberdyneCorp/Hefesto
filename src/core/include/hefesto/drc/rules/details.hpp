@@ -72,8 +72,8 @@ struct StyleDetails {
   /// A rule line returned a negative distance (e.g. `width m1 -2 ...`):
   /// Magic's DRCTechAddRule then fails the line, and TechLoad reports "The
   /// following sections of <file> contained errors: drc" and fails the
-  /// load. Hefesto compiles the technology before the rules, so the flag
-  /// is recorded for the loader (open item) instead.
+  /// load. Hefesto reads the technology before the rules, so the flag is
+  /// recorded here and `tech load` fails on LoadedRules::ok() (style.hpp).
   bool line_failed = false;
 };
 

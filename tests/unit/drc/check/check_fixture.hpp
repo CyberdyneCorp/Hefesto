@@ -2,7 +2,8 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Shared fixture of the basic check tests (drc-rule-semantics): a small
-// technology (planes well, active, metal1, metal2), a flat cell to paint
+// technology (planes well, active, metal1, metal2; a cifoutput style with a
+// `squares` contact border for `via`), a flat cell to paint
 // in, and rule builders that produce the primitive rules Magic's DRCtech.c
 // compiles for each statement (drcWidth, drcMaskSpacing, drcMaxwidth,
 // drcArea, drcOffGrid, drcRectangle, drcAngles), so the tests use
@@ -24,8 +25,12 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/property.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/check/basic_check.hpp"
+#include "hefesto/drc/rules/cif_catalog.hpp"
 #include "hefesto/hints/hints.hpp"
+#include "hefesto/platform/file_system.hpp"
+#include "hefesto/tech/loader.hpp"
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::drc::test {
@@ -50,27 +55,77 @@ struct CheckTech {
   TileType via = 0;
 };
 
+/// The check technology. Its `cifoutput` style gives `via` a `squares`
+/// border of 1 (scalefactor 1), which the Euclidean derived-border tests read
+/// through check_cif(); every other test runs without a catalog.
+inline constexpr std::string_view kCheckTechText = R"(tech
+    format 35
+    drccheck
+end
+
+planes
+    well
+    active
+    metal1
+    metal2
+end
+
+types
+    well    nwell
+    active  pdiff
+    active  poly
+    active  pmc
+    metal1  m1
+    metal2  m2
+    metal1  via
+end
+
+contact
+    via  m1 m2
+end
+
+styles
+    styletype mos
+end
+
+compose
+end
+
+connect
+end
+
+cifoutput
+style test
+    scalefactor 1
+    layer CM1 m1,via
+    layer CV via
+        squares 1 2 2
+    layer CM2 m2,via
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+end
+)";
+
 inline const CheckTech& check_tech() {
   static const CheckTech instance = [] {
     CheckTech t;
-    tech::TechnologyBuilder b;
-    b.set_name("drccheck");
-    REQUIRE(b.add_plane("well").ok());
-    REQUIRE(b.add_plane("active").ok());
-    REQUIRE(b.add_plane("metal1").ok());
-    REQUIRE(b.add_plane("metal2").ok());
-    REQUIRE(b.add_type("well", "nwell").ok());
-    REQUIRE(b.add_type("active", "pdiff").ok());
-    REQUIRE(b.add_type("active", "poly").ok());
-    REQUIRE(b.add_type("active", "pmc").ok());
-    REQUIRE(b.add_type("metal1", "m1").ok());
-    REQUIRE(b.add_type("metal2", "m2").ok());
-    REQUIRE(b.add_type("metal1", "via").ok());
-    const std::vector<std::string_view> via{"m1", "m2"};
-    REQUIRE(b.add_contact("via", via).ok());
-    auto finalized = b.finalize();
-    REQUIRE(finalized.ok());
-    t.tech = finalized.value();
+    platform::MemoryFileSystem fs;
+    diag::CollectingSink sink;
+    auto loaded = tech::load_technology_text(kCheckTechText, "/t/drccheck.tech", fs, tech::LoadOptions{}, sink);
+    if (!loaded.ok()) {
+      for (const auto& d : sink.take()) {
+        UNSCOPED_INFO(d.code << ": " << d.text);
+      }
+    }
+    REQUIRE(loaded.ok());
+    t.tech = loaded.value();
     t.well = t.tech->find_plane("well").id.value();
     t.active = t.tech->find_plane("active").id.value();
     t.metal1 = t.tech->find_plane("metal1").id.value();
@@ -83,6 +138,15 @@ inline const CheckTech& check_tech() {
     t.m2 = t.tech->find_type("m2").id.value();
     t.via = t.tech->find_type("via").id.value();
     return t;
+  }();
+  return instance;
+}
+
+/// The check technology's cifoutput catalog (style `test`).
+inline const CifCatalog& check_cif() {
+  static const CifCatalog instance = [] {
+    diag::CollectingSink sink;
+    return CifCatalog::from_technology(*check_tech().tech, sink);
   }();
   return instance;
 }

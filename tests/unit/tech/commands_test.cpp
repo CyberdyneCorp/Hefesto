@@ -255,7 +255,29 @@ TEST_CASE("a failed load keeps the previous technology", "[cap:tech-loading-and-
   CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
 }
 
-TEST_CASE("post-load scaling report at a doubled grid", "[cap:tech-loading-and-scaling][req:Post-load adjustments]") {
+// Regression (m3-drc tasks.md 4.10, TECH-G44): a negative rule distance makes
+// DRCTechAddRule return FALSE, so TechLoad lists drc among the sections with
+// errors and the load fails with the previous technology kept.
+TEST_CASE("a negative drc rule distance fails tech load and keeps the previous technology",
+          "[cap:tech-loading-and-scaling][req:Full technology load]") {
+  Session s;
+  s.load_tiny();
+  s.file("/t/negative.tech", with(tiny(), "drc\nend", "drc\n    width m1 -2 \"w\"\nend"));
+  const auto r = s.run("tech", {"load", "/t/negative", "-noprompt"});
+  CHECK_FALSE(r.ok());
+  CHECK(says(r, "The following sections of /t/negative.tech contained errors:\n    drc"));
+  CHECK(r.value.to_string() == "Error in loading technology file\n");
+  CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
+
+  hefesto::diag::CollectingSink sink;
+  auto services_view = s.services.view();
+  const auto status = tech::load_session_technology(s.editor, services_view, "/t/negative.tech", {}, sink);
+  REQUIRE_FALSE(status.ok());
+  CHECK(status.error().code == "TECH-LOAD-001");
+  CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
+}
+
+TEST_CASE("post-load scaling report at a doubled grid","[cap:tech-loading-and-scaling][req:Post-load adjustments]") {
   Session s;
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
   s.file("/t/tiny.tech", tiny());

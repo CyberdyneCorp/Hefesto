@@ -96,6 +96,10 @@ bool Kernel::evaluate_rule(const Edge& edge, const Rule& rule, RuleState& state)
   if (state.triggered == 0) {
     state.from_maxrects = false;
   }
+  return dispatch_rule(edge, rule, trigger, state);
+}
+
+bool Kernel::dispatch_rule(const Edge& edge, const Rule& rule, bool trigger, RuleState& state) {
   if (edge.vertical && rule.has(flags::kArea)) {
     if (edge.first) {
       check_area(*edge.tile, rule);
