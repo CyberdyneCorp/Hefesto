@@ -170,10 +170,12 @@ No approved Q-SCRIPT answer decides the five open items; they are carried as ope
 - **Q-SCRIPT-38**: the PDKs do read `pitchx`/`pitchy` (`fixed_dialog`), so spacing is not lost. Changed to replicate with no upstream report. The spec text in `pcell-toolkit` and `scripting-pdk-integration` needs correcting.
 - **Q-SCRIPT-45**: added a static derivation (the edit stack is safe; fixed devices reset the edit cell to the root).
 
-## Spec follow-ups (not edited)
+## Spec follow-ups (applied 2026-11-11)
 
-- `scripting-api` line 374: `drc listall why` order is "unspecified". It should cite X-1 if Q-SCRIPT-8 is approved.
-- `pcell-toolkit` line 45 and the fixed-device note in `scripting-pdk-integration` (line 181): they say the PDKs never read `pitchx`/`pitchy` (Q-SCRIPT-38).
-- `cmd-labels-properties` `label` requirement: it should name the font word `default` (Q-SCRIPT-31).
-- `ui-gui-managers` line 254: the Q-SCRIPT-31 note describes a non-defect.
-- `readspice` line 27: it should mention the token join (Q-SCRIPT-32).
+All applied in "Align the M4 specs with the approved decisions":
+
+- `scripting-api` "Result formats": `drc listall why` follows Magic's string-hash order (X-1, Q-SCRIPT-8); `drc-commands` "drc why" says the same.
+- `pcell-toolkit` "Parameter dictionary model" and the fixed-device note in `scripting-pdk-integration`: the PDKs' `fixed_dialog` reads `pitchx`/`pitchy` (Q-SCRIPT-38).
+- `cmd-labels-properties` "Label command": the font word `default` is the default font (Q-SCRIPT-31).
+- `ui-gui-managers` "Text helper": the Q-SCRIPT-31 note no longer describes a defect.
+- `readspice` "Line preprocessing": the token join, in both `magic-compat` settings (Q-SCRIPT-32).

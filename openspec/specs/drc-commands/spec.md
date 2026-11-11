@@ -129,7 +129,7 @@ Compatibility: exact
 
 - Errors with why index 4 (copied from a subcell) are resolved by re-running the check, with the error rectangle as area, in every cell of the subtree under that rectangle (transformed to each cell's coordinates); the text `See error definition in the subcell` is reported only if that resolution reports no non-ignored error.
 - Non-list mode prints each text on its own line. `drc list why` (Tcl) returns the list of distinct texts.
-- `drc listall why` (Tcl) returns a flat list alternating why-text and a list of `{llx lly urx ury}` rectangles (root coordinates, each formatted in the current display units, integers for default units) of every reported error of that text, ignoring the ignore list; the order of texts is unspecified (hash order) and rectangles are in discovery order with duplicates kept. If nothing is reported it prints `No errors found.`
+- `drc listall why` (Tcl) returns a flat list alternating why-text and a list of `{llx lly urx ury}` rectangles (root coordinates, each formatted in the current display units, integers for default units) of every reported error of that text, ignoring the ignore list; the texts are in the iteration order of a Magic string hash table (capability `hefesto-output-determinism`, requirement "Magic string hash table"; requested size 16) keyed by the substituted why text and filled in discovery order, and rectangles are in discovery order with duplicates kept (Q-SCRIPT-8, resolution: replicate; decision X-1). If nothing is reported it prints `No errors found.`
 - Because `drc why` rechecks, its output can differ from the error plane after edits not yet rechecked.
 
 (Magic ref: drc/DRCmain.c:569-760, drc/DRCmain.c:285-490, commands/CmdCD.c:4595-4608)

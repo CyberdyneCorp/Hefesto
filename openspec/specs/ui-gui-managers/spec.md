@@ -8,7 +8,7 @@ Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). I
 - the layer toolbar and its reordering presets;
 - file prompts, the crash-backup timer and tool (button-binding) modes.
 
-Most visual details are `informative`. Hefesto's GUI on Linux/macOS/iPadOS MAY look and behave differently, but the commands these components issue, the hooks they expose to scripts, and any files they read or write are specified so that scripts and data remain compatible. Platform alternatives are logged as Q-SCRIPT-34.
+Most visual details are `informative`. Hefesto's GUI on Linux/macOS/iPadOS MAY look and behave differently, but the commands these components issue, the hooks they expose to scripts, and any files they read or write are specified so that scripts and data remain compatible. Hefesto's managers, menus and dialogs are native in both shells (desktop and iPad). They provide the `magic::add_toolkit_*` hooks and the dialog builder API natively and do not emulate Tk path names in general; the widget operations of PDK menu callbacks are intercepted as specified in capability `scripting-pdk-integration`, Requirement "Wrapper widget operations in PDK menu callbacks" (Q-SCRIPT-34, resolution: platform; Q-SCRIPT-42).
 
 ## Requirements
 
@@ -33,7 +33,7 @@ Compatibility: behavioral
 ### Requirement: Wrapper hook points for scripts
 After building a wrapper, `openwrapper` SHALL evaluate the following in its own scope, where the local variables `framename`, `layoutframe`, `winname` and `cell` are visible:
 1. The script in `Opts(callback)`, if defined. Errors are caught and ignored.
-2. The script in the per-window element `Winopts(<frame>, callback)`. Note the space in the key; see Q-SCRIPT-13.
+2. The script in the per-window element `Winopts(<frame>, callback)`, with a space in the key, as Magic reads it; then the script in `Winopts(<frame>,callback)` if that element exists (Q-SCRIPT-13, resolution: fix; Magic never runs the key without the space).
 
 Then, if `Opts(autobuttontext)` is true (default 1), it SHALL set each menu item's accelerator text to `(<key>)`, where `<key>` is the key macro whose text equals the item's command after stripping `magic::` and surrounding blanks. The key names are mapped: `Control_`→`^`, `XK_`→`` (removed), `less`→`<`, `more`→`>`, `comma`→`,`, `question`→`?`. PDK scripts use `Opts(callback)` to add device menus to every new wrapper window. The script typically references `$framename` or `$layoutframe`.
 Compatibility: behavioral
@@ -45,13 +45,18 @@ Compatibility: behavioral
 - **WHEN** `openwrapper` creates `.layout2`
 - **THEN** `sky130::addtechmenu .layout2` SHALL be evaluated
 
+#### Scenario: Per-window callback
+- **GIVEN** `set Winopts(.layout2,callback) {set ::seen $framename}`
+- **WHEN** `openwrapper` creates `.layout2`
+- **THEN** `::seen` SHALL be `.layout2`
+
 ### Requirement: Wrapper menus
 The wrapper SHALL provide menu buttons File, Edit, Cell, Window, Layers, Drc and Options. Each item issues the listed command:
 
 | Menu | Items (label → command) |
 |---|---|
 | File | Open... → `promptload magic`; Save... → `promptsave magic`; Flush changes → `magic::flush`; Read GDS → `promptload gds`; Write GDS → `promptsave gds`; Save All and Quit → `saveallandquit`; Quit → `magic::quit` |
-| Edit | Delete → `delete`; Select Area → `select area`; Select Clear → `select clear`; Undo/Redo → `magic::undo`/`magic::redo`; Rotate 90 degree → `magic::clock` (Q-SCRIPT-36); Mirror Up/Down → `upsidedown`; Mirror Left/Right → `sideways`; Move Right/Left/Up/Down → `move <dir> 1`; Stretch Right/Left/Up/Down → `stretch <dir> 1`; Text ... → open the text helper |
+| Edit | Delete → `delete`; Select Area → `select area`; Select Clear → `select clear`; Undo/Redo → `magic::undo`/`magic::redo`; Rotate 90 degree → `magic::clockwise 90` (Q-SCRIPT-36, resolution: fix; Magic's item runs the non-existent `magic::clock`); Mirror Up/Down → `upsidedown`; Mirror Left/Right → `sideways`; Move Right/Left/Up/Down → `move <dir> 1`; Stretch Right/Left/Up/Down → `stretch <dir> 1`; Text ... → open the text helper |
 | Cell | New... → `prompt_dialog new`; Save as... → `prompt_dialog save`; Select → `select cell`; Place Instance → `promptload getcell`; Down/Up hierarchy → `pushstack`/`popstack`; Edit → `edit`; Delete → `cellname delete [cellname list window]`; Expand Toggle → `expand toggle`; Expand → `expand`; Unexpand → `unexpand`; Lock/Unlock Cell → `instance lock`/`instance unlock` |
 | Window | Clone → `openwrapper [cellname list window]`; New → `openwrapper`; Set Editable → `pushbox; select top cell; edit; popbox`; Close → `closewrapper F`; Full View → `view`; Redraw → `redraw`; Zoom Out → `zoom 2`; Zoom In → `zoom 0.5`; Zoom Box → `findbox zoom`; Grid on/off → `grid on|off`; Snap-to-grid on/off → `snap on|off`; Measure box → `box`; Report internal/lambda/micron/grid units → `units internal|lambda|microns|grid`; Display units (check) → `units print|noprint`; Set grid 0.05um … 10.0um → `grid <v>um` for v ∈ {0.05, 0.10, 0.50, 1.00, 5.00, 10.0} |
 | Layers | Protect Base Layers → `tech revert`; Unlock Base Layers → `tech unlock *`; Clear Feedback → `feedback clear`; Reorder layers → layer-reorder dialog |
@@ -156,7 +161,7 @@ Compatibility: informative
 ### Requirement: Layer toolbar
 `maketoolbar L` SHALL rebuild the vertical, scrollable layer toolbar of layout frame L, unless the frame's redraw is suspended. The steps are:
 1. The layer list is `errors labels subcell` (unless `Opts(hidespecial)`) followed by `tech layer *`, or by `tech unlocked` when `Opts(hidelocked)` is set.
-2. If `./<techname>_toolbars.tcl` exists in the current directory, it SHALL be sourced as a script and its `current_toolbar` list used instead (Q-SCRIPT-11).
+2. If `./<techname>_toolbars.tcl` exists in the current directory, it SHALL be read as data and never evaluated: only lines of the form `set <name> {<layer> …}` or `set <name> "<layers>"` are read, every other statement is reported with a diagnostic naming the file and line and ignored, and the `current_toolbar` list, if the file sets it, is used instead (Q-SCRIPT-11, resolution: fix in both `magic-compat` settings; Magic sources the file as a script).
 3. Each layer row has an icon (the layer's image, or a pale image if locked) and its name.
 
 Row bindings, which issue commands to `L.magic`:
@@ -174,8 +179,13 @@ Compatibility: informative
 - **WHEN** the user middle-clicks the `poly` row in `.layout1`
 - **THEN** `.layout1.pane.top.magic paint poly` SHALL execute
 
+#### Scenario: Toolbar file is not executed
+- **GIVEN** `sky130A_toolbars.tcl` contains the lines `set current_toolbar {m1 m2}` and `file delete x.mag`
+- **WHEN** the toolbar of a sky130A window is built
+- **THEN** the order SHALL be `m1 m2`, `x.mag` SHALL still exist, and a diagnostic SHALL name the second line
+
 ### Requirement: Toolbar order presets file
-The file `<techname>_toolbars.tcl` in the current directory SHALL be a script of `set <preset> {layer ...}` lines. `current_toolbar` is the active order. The reorder dialog SHALL list presets as the variables newly defined by sourcing the file, or `default_toolbar` if the file is absent. Saving a chosen preset SHALL rewrite every line matching the regex `set current_toolbar \{.*\}` (per line) with `set current_toolbar {<layers>}`. Without a file, the order applies only in memory. See Q-SCRIPT-28.
+The file `<techname>_toolbars.tcl` in the current directory SHALL be a file of `set <preset> {layer ...}` lines, read as data as in "Layer toolbar". `current_toolbar` is the active order. The reorder dialog SHALL list presets as the names the file sets, or `default_toolbar` if the file is absent. Load SHALL read the chosen preset from that file through the host file API, and its error text SHALL name `<techname>_toolbars.tcl`. Saving a chosen preset SHALL rewrite every line matching the regex `set current_toolbar \{.*\}` (per line) with `set current_toolbar {<layers>}`. Without a file, the order applies only in memory. The file format and the rewrite are Magic's (Q-SCRIPT-28, resolution: fix; Magic's Load sources `$CAD_ROOT/magic/tcl/toolbar.tcl` instead and always fails, names `<tech>_toolbar.tcl` in its error, and reads the file with `exec cat`, which the sandbox denies).
 Compatibility: informative
 
 (Magic ref: tcltk/reorderLayers.tcl:1-316)
@@ -205,13 +215,13 @@ Compatibility: informative
 - **THEN** the edit stack SHALL be empty
 
 ### Requirement: Library manager
-`libmanager ?create|update?` SHALL maintain `.libmgr` with one tree node per directory in `path search` and then in `path cell`. The `path cell` entries are variable-substituted. Directory nodes are labelled `<dir>/`, and only the first is opened. Under each directory it lists the `*.mag` files, sorted, whose first line is exactly `magic` and whose second line is exactly `tech <name>`, with `<name>` shown in the Technology column. When the `Filter` option is on (default), only files whose tech equals `tech name` are listed. Buttons:
+`libmanager ?create|update?` SHALL maintain `.libmgr` with one tree node per directory in `path search` and then in `path cell`. The `path cell` entries have their path variables expanded from the path-variable table (Q-CELL-17), never by script substitution. Directory nodes are labelled `<dir>/`, and only the first is opened. Under each directory it lists the `*.mag` files, sorted, whose first line is exactly `magic` and whose second line is exactly `tech <name>`, with `<name>` shown in the Technology column. When the `Filter` option is on (default), only files whose tech equals `tech name` are listed. Buttons:
 - Load → `load <cell>`.
 - Place → `getcell <cell> child 0 0`.
 - Pick → switch to the pick tool, place, and start a move.
 - Refresh.
 
-It SHALL refresh after `addpath`, `path`, `save` and `writeall`. Nested calls are ignored. See Q-SCRIPT-27.
+It SHALL refresh after `addpath`, `path`, `save` and `writeall`. Nested calls are ignored. A refresh compares normalized directory paths, so directories that did not change keep their nodes, and every file opened for the header check is closed (Q-SCRIPT-27, resolution: fix).
 Compatibility: informative
 
 (Magic ref: tcltk/libmgr.tcl:1-249)
@@ -231,11 +241,11 @@ Compatibility: informative
 1. Optionally load `cell`, select the top cell, and run `drc check`.
 2. Line 1: `<cell> <drc list count result>`.
 3. A separator line of 40 `-`.
-4. For each rule in `drc listall why` order: the rule text; the separator; one line per box formatted as ` %.3f %.3f %.3f %.3f` (leading space), giving each coordinate × `cif scale out`; the separator.
+4. For each rule in `drc listall why` order (capability `scripting-api`; Q-SCRIPT-8): the rule text; the separator; one line per box formatted as ` %.3f %.3f %.3f %.3f` (leading space), giving each coordinate in internal units × `cif scale out`; the separator. The coordinates are collected with units set to internal, and the user's units are restored afterwards.
 5. A final empty line.
 6. Reload the original cell if one was given.
 
-See Q-SCRIPT-26 for the count line and the units assumption.
+Line 1 keeps Magic's form: the cell name, then the `drc list count` result, which is the list of `{cell n}` pairs in the cell order of capability `drc-commands` (decision X-1). The file is byte-identical to Magic's whenever the units are default or internal (Q-SCRIPT-26, resolution: fix the units, keep the format; Magic multiplies coordinates printed in the current units, so its values are wrong with lambda, micron or user units, and the report fails with the units print flag).
 
 `magic::drc_load_report ?file drc.out?` SHALL read such a file:
 - Every line beginning with a space and holding four tokens adds feedback `<last rule text>` with style `vert_highlights`, as the polygon (llx,lly) (llx,ury) (urx,ury) (urx,lly) in µm.
@@ -249,9 +259,14 @@ Compatibility: exact
 - **WHEN** `drc_save_report` runs
 - **THEN** `drc.out` SHALL contain the lines `inv {inv 1}`, 40×`-`, `Metal1 spacing < 0.14um`, 40×`-`, ` 0.000 0.000 0.140 0.200`, 40×`-` and an empty line (verify against Magic)
 
+#### Scenario: Report with micron units
+- **GIVEN** the cell and error of the previous scenario, with units `microns` and the units print flag on
+- **WHEN** `drc_save_report` runs
+- **THEN** `drc.out` SHALL be identical to the file of the previous scenario, and the units SHALL again be `microns` with the print flag on
+
 ### Requirement: Text helper
 The text helper `.texthelper` SHALL edit label attributes. Its defaults are: text empty, font `FreeSans`, size 1, justification center, rotation 0, offset `0 0`, port 0. It reads the selected label with `setlabel text|justify|font|rotate|offset|layer|sticky|size` and `port exists|index`, in microns. Applying to a selected label SHALL issue `setlabel` for each non-empty field (`default` font or justification → `-1`), set sticky, and then `port make <n>`, `port index <n>` or `port remove`. Creating a new label SHALL issue one of:
-- `label <text> <just>` when the font is default (Q-SCRIPT-31);
+- `label <text> <just>` when the font is default. `<just>` may be the word `default`, which `label` reads as the font name `default`, the default font (capability `cmd-labels-properties`), so the label gets the default font and the automatic justification, as intended (Q-SCRIPT-31, resolution: replicate; there is no defect);
 - `label <text> <font> <size>um <rot> <offx offy> ?<just>?`;
 - `label <text> <font> <size>um <rot> <offx offy> <just|center> <layer>` when a layer is given (prefixed `-` when sticky).
 

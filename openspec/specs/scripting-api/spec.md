@@ -3,7 +3,7 @@
 ## Purpose
 Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding and namespaces, command results, error signalling, name-collision handling, command tag callbacks, window-directed commands, the Tcl global variables that the layout engine reads, output and prompt routing, and the result formats that third-party scripts depend on. The most important of these scripts are the open-PDK startup files and device generators (see capabilities `scripting-pdk-integration` and `pcell-toolkit`).
 
-Hefesto hosts the scripts in an embedded, sandboxed Tcl interpreter on every platform, including iPadOS (decision X-3; capability `hefesto-scripting`). Any script written against Magic's Tcl API MUST observe the results, side effects and variables specified here, except for operations the sandbox denies (process execution, sockets, loading native extensions; capability `hefesto-security`). Command semantics (what `box`, `paint`, `select` and so on do to the database) belong to the command capabilities. This spec covers only how those commands bind to the scripting layer and what values they return to it.
+Hefesto hosts the scripts in an embedded, sandboxed Tcl interpreter on every platform, including iPadOS (decision X-3; capability `hefesto-scripting`). Any script written against Magic's Tcl API MUST observe the results, side effects and variables specified here, except for operations the sandbox denies (process execution, sockets, loading native extensions; capability `hefesto-security`). Command semantics (what `box`, `paint`, `select` and so on do to the database) belong to the command capabilities. This spec covers only how those commands bind to the scripting layer and what values they return to it. Where an approved decision resolves a Magic quirk as *compat* (replicate under magic-compat, fix with it off), the requirement states both modes, and the `magic-compat` setting ON (the default) gives Magic's behavior.
 
 PDK references have the form `(PDK ref: <repo> <path>:<line>)` and were verified against open_pdks `RTimothyEdwards/open_pdks` @ `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (`open_pdks` paths are relative to the repository root) and IHP-Open-PDK `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`IHP` paths are relative to `ihp-sg13g2/libs.tech/magic/`), as in capability `scripting-pdk-integration`.
 
@@ -102,7 +102,7 @@ Compatibility: informative
 
 ### Requirement: Option keyword matching
 Inside every Magic command, option keywords (for example `cellname list top`, `cif scale out`, `tech layer`, `tech lock`) SHALL be matched against the command's option table as follows:
-- An entry's significant part is the text up to its first space character. A tab does NOT end it.
+- An entry's significant part is the text up to its first space character. Whether a tab also ends it depends on the `magic-compat` setting (Q-SCRIPT-14, resolution: compat): with it ON (the default) a tab does NOT end it, as in Magic; with it OFF any whitespace ends it.
 - Matching is case-insensitive.
 - An exact match of the significant part wins immediately.
 - Otherwise a unique prefix matches.
@@ -110,7 +110,9 @@ Inside every Magic command, option keywords (for example `cellname list top`, `c
 - No match is an error.
 - A leading `::magic::` or `magic::` on the keyword is ignored.
 
-Scripts rely on this, for example `cellname list top` selects `topcells`, `cif scale out` selects `output`, `tech layer "*"` selects `layers`, `tech lock X` selects `locked`, and `tech unlock X` selects `unlocked`. See Q-SCRIPT-14 for entries whose keyword is followed by a tab.
+Scripts rely on this, for example `cellname list top` selects `topcells`, `cif scale out` selects `output`, `tech layer "*"` selects `layers`, `tech lock X` selects `locked`, and `tech unlock X` selects `unlocked`.
+
+Only two entries of Magic's tables have a tab after the keyword and a prefix sibling: the layout-window aliases `get` (of `getcell`) and `id` (of `identify`). With `magic-compat` ON both are ambiguous (`get` is a prefix of `get`, `getcell` and `getnode`; `id` of `id` and `identify`), so `get` and `id` always fail as ambiguous command names, and `magic::get` and `magic::id` always return error status. With it OFF they are exact matches and run `getcell` and `identify`. Every other tab-terminated keyword behaves the same in both settings.
 Compatibility: exact
 
 (Magic ref: utils/lookup.c:58-125, commands/CmdCD.c:1139-1166, commands/CmdTZ.c:184-196)
@@ -122,6 +124,16 @@ Compatibility: exact
 #### Scenario: Case-insensitive keyword
 - **WHEN** a script runs `units MICRONS`
 - **THEN** units SHALL be set to microns
+
+#### Scenario: Tab-terminated alias with magic-compat ON
+- **GIVEN** `magic-compat` ON and one selected instance `x1`
+- **WHEN** a script runs `magic::id x2`
+- **THEN** the command SHALL return error status as an ambiguous command name and `x1` SHALL keep its name
+
+#### Scenario: Tab-terminated alias with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and one selected instance `x1`
+- **WHEN** a script runs `magic::id x2`
+- **THEN** it SHALL run as `identify x2` and the instance SHALL be named `x2`
 
 ### Requirement: Command status and error signalling
 A Magic command invoked from a script SHALL return error status only when dispatch itself fails:
@@ -194,13 +206,15 @@ Compatibility: exact
 - **THEN** `magic::tag load` SHALL return the empty string and no callback SHALL run after `load`
 
 ### Requirement: Tag callback execution and substitution
-After a script-dispatched command completes with ok status, the system SHALL evaluate its tag script, if any. Before evaluation, each `%` escape in the script SHALL be substituted from left to right. Substitution restarts at the beginning of the string after each replacement, so substituted text is itself rescanned.
-- `%W`: the Tk path of the window the command applied to. If unknown and exactly one on-screen layout window exists, that window's path. Otherwise `{}`.
-- `%r`: the command's current result enclosed in double quotes (`"<result>"`, with no escaping of the result's contents).
+After a script-dispatched command completes with ok status, the system SHALL evaluate its tag script, if any. Before evaluation, the `%` escapes in the script SHALL be substituted in one left-to-right pass. Substituted text SHALL NOT be rescanned. Each substituted value SHALL be inserted as one list element, quoted as the script language's `list` command quotes it, so a value containing spaces, `$`, `[`, `]`, `"` or `\` stays one word and is not evaluated:
+- `%W`: the Tk path of the window the command applied to. If unknown and exactly one on-screen layout window exists, that window's path. Otherwise the empty string, inserted as `{}`.
+- `%r`: the command's current result.
 - `%R`: like `%r`, and in addition the tag script's own result SHALL replace the command's result.
-- `%0`..`%5`: argument N of the command, where `%0` is the command name. If N is not less than the argument count, substitute `{}`.
+- `%0`..`%5`: argument N of the command, where `%0` is the command name. If N is not less than the argument count, the empty string, inserted as `{}`.
 - `%%`: a single `%`.
-- Any other `%x`: left unchanged.
+- Any other `%x`, and a `%` at the end of the script: copied unchanged.
+
+This is Q-SCRIPT-3, resolution: fix in both `magic-compat` settings. Magic inserts `%r` as `"<result>"` with no escaping and the arguments and window path raw, restarts scanning at the beginning of the string after each replacement, and loops forever (the editor hangs) on `%%` or on any other `%x`. For every value without `"`, `$`, `[`, `]`, `\` or `%`, Hefesto inserts the word Magic's substitution produces, so a tag script that works in Magic keeps its meaning.
 
 The command's result SHALL be preserved across a successful tag evaluation unless `%R` was used. If the tag script raises an error, the command SHALL return error status with the tag's error message. The command sequence number SHALL be restored after the tag runs. Commands dispatched through a window path SHALL substitute `%W` with that path and SHALL number `%0` from the command name, excluding the path. See Q-SCRIPT-3 for the unescaped `%r` quoting and for rescanning.
 Compatibility: exact
@@ -218,6 +232,16 @@ Compatibility: exact
 - **WHEN** `cellname list top` returns `{inv nand2}`
 - **THEN** after the tag runs, the result seen by the caller SHALL still be `inv nand2`
 
+#### Scenario: Result with spaces stays one word
+- **GIVEN** `tag cellname` is `set ::r %r`
+- **WHEN** `cellname list top` returns `inv nand2`
+- **THEN** `::r` SHALL be `inv nand2`
+
+#### Scenario: Literal percent in a tag script
+- **GIVEN** `tag box` is `set ::p 50%%`
+- **WHEN** a script runs `box`
+- **THEN** `::p` SHALL be `50%` and the command SHALL complete (Magic hangs; golden deviation)
+
 #### Scenario: Tag error propagates
 - **GIVEN** `tag paint` is `error boom`
 - **WHEN** `paint m1` runs successfully
@@ -234,7 +258,7 @@ Compatibility: behavioral
 - **THEN** the result SHALL be the box values with respect to that window's root cell
 
 ### Requirement: Output, flushing and escaping
-All engine text output SHALL be emitted as a script-level `puts -nonewline stdout "<text>"` or `puts -nonewline stderr "<text>"` call, so that scripts or consoles that redefine `puts` capture it. Before emission, the characters `"`, `[`, `]` and `\` in the text SHALL be backslash-escaped. A `$` SHALL be escaped unless the text after it, up to the next space, names an existing script variable. Output is evaluated in the console interpreter only when the `printf` runtime flag is set. Flushing SHALL call the original Tcl `flush` (`::tcl_flush stdout|stderr`), not the Magic `flush` command, and SHALL preserve the interpreter result. See Q-SCRIPT-4 for the variable-dependent `$` escaping.
+All engine text output SHALL be emitted as a script-level `puts -nonewline stdout "<text>"` or `puts -nonewline stderr "<text>"` call, so that scripts or consoles that redefine `puts` capture it. Before emission, the characters `"`, `[`, `]`, `\` and `$` in the text SHALL be backslash-escaped, so the text prints literally whether or not a script variable named after a `$` exists (Q-SCRIPT-4, resolution: fix in both `magic-compat` settings; Magic leaves `$<name>` unescaped when a variable `<name>` exists in the printing interpreter, so the variable's value is printed). Output is evaluated in the console interpreter only when the `printf` runtime flag is set. Flushing SHALL call the original Tcl `flush` (`::tcl_flush stdout|stderr`), not the Magic `flush` command, and SHALL preserve the interpreter result.
 Compatibility: informative
 
 (Magic ref: tcltk/tclmagic.c:1335-1490,1504-1550)
@@ -243,6 +267,11 @@ Compatibility: informative
 - **GIVEN** no Tcl variable `abc` exists
 - **WHEN** the engine prints `cell a$abc`
 - **THEN** the text `cell a$abc` SHALL appear unchanged on stdout
+
+#### Scenario: Dollar naming an existing variable
+- **GIVEN** `set VDD VPWR`
+- **WHEN** the engine prints `net $VDD`
+- **THEN** the text `net $VDD` SHALL appear unchanged on stdout
 
 ### Requirement: Prompts and dialogs through the script layer
 When the engine needs a line of user input:
@@ -300,7 +329,7 @@ The engine SHALL read these global script variables at the moment of use:
 | `Opts(tool)` | Name of the active macro/button table. |
 | `batch_mode` | If defined at init, interrupt handling is set up for batch operation. |
 
-In addition, `$NAME` and `${NAME}` in search paths and file names SHALL be expanded from the script variable of that name, and from `CAD_ROOT`'s compiled default as a last resort. Each name is looked up only once per session and the value is cached (Q-SCRIPT-5). Unresolvable names are left unexpanded.
+In addition, `$NAME` and `${NAME}` in search paths and file names SHALL be expanded from the script variable of that name, and from `CAD_ROOT`'s compiled default as a last resort. Whether a later change of the variable is seen depends on the `magic-compat` setting (Q-SCRIPT-5, resolution: compat): with it ON (the default) the first resolved value of each name is cached for the session, as in Magic, and a name that does not resolve is retried on its next use; with it OFF each expansion reads the current value from the path-variable table (Q-CELL-17). In both settings, when an expansion finds that a name's current value differs from its first resolved value, Hefesto SHALL warn once per name. Unresolvable names are left unexpanded.
 Compatibility: behavioral
 
 (Magic ref: tcltk/tclmagic.c:1658-1669, utils/path.c:268-330, database/DBio.c:600-700,2585-2610,6065-6090, extract/ExtBasic.c:900-916,2655-2665, ext2spice/ext2spice.c:950-1050, extflat/EFname.c:95-150, lef/lefWrite.c:1085-1100, lef/defWrite.c:320-345, dbwind/DBWbuttons.c:265-277, utils/main.c:612-617, tcltk/magicdnull.c:39-43)
@@ -318,6 +347,16 @@ Compatibility: behavioral
 - **GIVEN** `set PDKPATH /pdk/sky130A`
 - **WHEN** `addpath $PDKPATH/libs.ref/mag/sky130_fd_sc_hd` runs
 - **THEN** the search path SHALL contain `/pdk/sky130A/libs.ref/mag/sky130_fd_sc_hd`
+
+#### Scenario: Changed path variable with magic-compat ON
+- **GIVEN** `magic-compat` ON, `set LIB /a`, and a cell has been read whose `use` line names the file `$LIB/c`
+- **WHEN** `set LIB /b` runs and a cell is read whose `use` line names `$LIB/d`
+- **THEN** the child SHALL be read from `/a/d`, and a warning naming `LIB` SHALL be printed once
+
+#### Scenario: Changed path variable with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the session of the previous scenario
+- **WHEN** `set LIB /b` runs and a cell is read whose `use` line names `$LIB/d`
+- **THEN** the child SHALL be read from `/b/d`, and a warning naming `LIB` SHALL be printed once
 
 ### Requirement: Numeric value formatting in results
 Every result value that is a layout distance or coordinate SHALL be formatted according to the current `units` setting, as follows:
@@ -366,12 +405,12 @@ The following commands SHALL return these results. "dist" means a value formatte
 - `array -list count` → `{xlo xhi ylo yhi}` (integers) per use. `array -list pitch` → `{xsep ysep}` (dist). `array -list position` → `{x y}` (dist). With `magic-compat` ON the result is the flat list of the last use reported, as in Magic; with it OFF it is a list with one such sublist per selected array use (capability `cmd-selection`, requirement "Array command"; Q-CMDEDIT-63).
 - `getcell <name> ...` → the new instance id.
 - `goto <label>` → the long name of the tile type under the label, or empty if not found.
-- `port first` → lowest port index among ports, or -1. `port last` → the highest index among ALL labels, ports or not (Q-SCRIPT-6). `port <ref> next` → the next higher port index, or -1. `port <ref> name` → label text. `port <ref> index` → integer. `port <ref> exists` → boolean. `port <ref> class|use|shape` → keyword. A trailing `-quiet` suppresses "not found" diagnostics and yields an empty result.
+- `port first` → lowest port index among ports, or -1. `port last` → depends on the `magic-compat` setting (Q-SCRIPT-6, resolution: compat): with it ON (the default), the highest port index stored on any label of the edit cell, ports or not, as in Magic (a label that never was a port has index 0, and a removed port keeps its index until the cell is reloaded); with it OFF, the highest index among the current ports, or -1. `port <ref> next` → the next higher port index, or -1. `port <ref> name` → label text. `port <ref> index` → integer. `port <ref> exists` → boolean. `port <ref> class|use|shape` → keyword. A trailing `-quiet` suppresses "not found" diagnostics and yields an empty result.
 - `property <key>` → value, or empty with an error message if undefined. `property` → all properties. Values: string as-is, integers as an int or list, dimensions as dist (list), doubles as wide integers.
 - `tech name` → name. `tech version` → the version string followed by the description appended as one list element. `tech lambda` → `{num den}` integers. `tech layers *` → a space-separated list of type names: for each type, its longest non-alias name, tech-dependent types first. `tech locked` / `tech unlocked` → lists.
-- `cif scale output|input` → a double: the single-precision quotient 10·scalefactor/(expander·1000) widened to double (Q-SCRIPT-7). `cif list istyle|ostyle` → current style. `cif listall istyle|ostyle` → list.
+- `cif scale output|input` → a double. With `magic-compat` ON (the default) it is the single-precision quotient 10·scalefactor/(expander·1000) widened to double, as in Magic; with it OFF it is the same quotient computed in double precision (Q-SCRIPT-7, resolution: compat). The PDK helpers round the value to four decimals, so PDK geometry and generated cell names are the same in both settings. `cif list istyle|ostyle` → current style. `cif listall istyle|ostyle` → list.
 - `extract list|listall style`, `drc list|listall style` → current style / list.
-- `drc status` → boolean. `drc list count` → list of `{cell count}`. `drc list count total` → integer. `drc listall why` → flat list `{rule {{llx lly urx ury} ...} rule ...}` in unspecified order (Q-SCRIPT-8).
+- `drc status` → boolean. `drc list count` → list of `{cell count}`. `drc list count total` → integer. `drc listall why` → flat list `{rule {{llx lly urx ury} ...} rule ...}`. The rules are in the iteration order of a Magic string hash table (capability `hefesto-output-determinism`, requirement "Magic string hash table"; requested size 16) keyed by the substituted why text and filled in the order the errors are found, and each rule's rectangles are in the order found (Q-SCRIPT-8, resolution: replicate; decision X-1).
 - `macro list ?-reverse?` → flat list `key text ...` (`text key ...` with `-reverse`). `macro list <key>` → that macro's text.
 - `windownames <client>` → list of window paths. `windownames` → a single path if exactly one layout window, else a list.
 - `windowcaption` → the caption string.
@@ -397,9 +436,23 @@ Compatibility: exact
 - **WHEN** `what -list` runs
 - **THEN** the result SHALL be `metal1 {{A metal1 {}}} {{x1 inv}}` (verify against Magic)
 
-#### Scenario: port last counts non-port labels
-- **GIVEN** a cell with a single non-port label and no ports
+#### Scenario: port last with magic-compat ON
+- **GIVEN** `magic-compat` ON and a cell with a single non-port label and no ports
 - **THEN** `port first` SHALL return `-1` and `port last` SHALL return `0`
+
+#### Scenario: port last with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and a cell with a single non-port label and no ports
+- **THEN** `port first` SHALL return `-1` and `port last` SHALL return `-1`
+
+#### Scenario: cif scale with magic-compat ON
+- **GIVEN** `magic-compat` ON and a cifoutput style with 0.01 µm per internal unit
+- **WHEN** `cif scale out` runs
+- **THEN** the result SHALL be `0.009999999776482582`
+
+#### Scenario: cif scale with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the same style
+- **WHEN** `cif scale out` runs
+- **THEN** the result SHALL be `0.01`
 
 ### Requirement: Generic Tcl helpers defined at startup
 The startup script SHALL define these globally:
@@ -418,7 +471,7 @@ Compatibility: informative
 - **THEN** it SHALL fail as an unknown command and SHALL NOT run `/bin/ls`
 
 ### Requirement: Script-defined procedures in the engine namespace
-Scripts SHALL be able to create procedures and variables inside the engine namespace `magic`, either with `proc magic::<name>` or with `namespace eval magic`. Such definitions SHALL be callable as `magic::<name>`. They are not callable as a bare `<name>`, because the global import (see "Global import of magic commands") runs before any startup file and imports only the commands that exist at that moment (verify against Magic). The PDKs always use the qualified names. The editor SHALL NOT define engine commands or framework procedures with the names that the verified PDKs define there: `u2l`, `l2u`, `i2u`, `u2i`, `float2spice`, `spice2float`, `3digitpastdecimal`, `searchcellondisk`, `iscellnameunique`, `query_mylib_ip`, `query_my_projects`, `magceil`, `magfloor`. A PDK redefinition of a framework procedure SHALL replace it for the rest of the session, as a Tcl `proc` does. A later definition replaces an earlier one with no warning (Q-SCRIPT-41).
+Scripts SHALL be able to create procedures and variables inside the engine namespace `magic`, either with `proc magic::<name>` or with `namespace eval magic`. Such definitions SHALL be callable as `magic::<name>`. They are not callable as a bare `<name>`, because the global import (see "Global import of magic commands") runs before any startup file and imports only the commands that exist at that moment (verify against Magic). The PDKs always use the qualified names. The editor SHALL NOT define engine commands or framework procedures with the names that the verified PDKs define there: `u2l`, `l2u`, `i2u`, `u2i`, `float2spice`, `spice2float`, `3digitpastdecimal`, `searchcellondisk`, `iscellnameunique`, `query_mylib_ip`, `query_my_projects`, `magceil`, `magfloor`. A PDK redefinition of a framework procedure SHALL replace it for the rest of the session, as a Tcl `proc` does. Inside one interpreter a later definition replaces an earlier one, as in Tcl. Each open project has its own interpreter (capability `hefesto-scripting`, Requirement "One interpreter per open project"), so two projects never share these definitions. When a script sourced from one PDK's directory redefines a `magic::` procedure that a script of a different PDK defined in the same interpreter, Hefesto SHALL warn, naming the procedure and both PDKs, and the new definition SHALL take effect (Q-SCRIPT-41, resolution: replicate Tcl semantics, one interpreter per open project).
 
 Writes to undeclared namespace variables, such as `set magic::ctot_val 1`, SHALL create the variable.
 Compatibility: behavioral
@@ -429,6 +482,11 @@ Compatibility: behavioral
 - **GIVEN** the sky130A device script (with `common/pdk.tcl` appended) has been sourced
 - **WHEN** a script evaluates `magic::3digitpastdecimal 0.12345`
 - **THEN** the result SHALL be `0.123`
+
+#### Scenario: Cross-PDK helper redefinition
+- **GIVEN** the sky130A device script has been sourced into a project's interpreter
+- **WHEN** the sg13g2 helper file `ihp-sg13g2-util.tcl` is sourced into the same interpreter
+- **THEN** `magic::i2u 34` SHALL return the sg13g2 result, and a warning naming `magic::i2u`, sky130A and sg13g2 SHALL be printed
 
 #### Scenario: Helper name not reserved
 - **GIVEN** a fresh session with no PDK loaded

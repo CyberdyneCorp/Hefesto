@@ -42,12 +42,12 @@ Compatibility: exact
 ### Requirement: Parameter dictionary model
 A parameter set SHALL be an ordered key/value dictionary of strings, using Tcl dict semantics. The effective parameters of a device SHALL be `merge(<type>_defaults, given)`, where later values override earlier ones and default keys keep their positions. The arguments to `magic::gencell` after the instance name SHALL be key/value pairs. An odd count is an error (the dict-creation error). Two keys are special:
 - `gencell`: if present after merging, it SHALL change the device type to its value before the type's `_defaults`, `_check` and `_draw` are used. It SHALL be removed from the dictionary before naming and storage.
-- `nocell`: if present, the device is a "fixed" device. Its `_draw` procedure places an instance of a pre-existing cell and returns the instance name. No generated cell or properties are created. When an existing nocell instance is opened for editing, the framework sets `nx = xhi−xlo+1`, `ny = yhi−ylo+1`, and `pitchx`/`pitchy` from `array -list pitch` (dist) on the dialog parameters. The verified PDKs describe the array with the keys `nx`, `ny`, `deltax`, `deltay`, `xstep` and `ystep` instead (pitch = step + delta, see capability `scripting-pdk-integration`). They never read `pitchx`/`pitchy`, and those keys have no dialog widget, so they are dropped on Apply (Q-SCRIPT-38).
+- `nocell`: if present, the device is a "fixed" device. Its `_draw` procedure places an instance of a pre-existing cell and returns the instance name. No generated cell or properties are created. When an existing nocell instance is opened for editing, the framework sets `nx = xhi−xlo+1`, `ny = yhi−ylo+1`, and `pitchx`/`pitchy` from `array -list pitch` (dist) on the dialog parameters. The verified PDKs describe the array with the keys `nx`, `ny`, `deltax`, `deltay`, `xstep` and `ystep` (pitch = step + delta, see capability `scripting-pdk-integration`). Their `fixed_dialog` reads `pitchx`/`pitchy` when present and converts them to `deltax`/`deltay`, so the dialog shows the instance's spacing and Apply keeps it. `pitchx`/`pitchy` stay in the dictionary passed to `_check` and `_draw`, which ignore them (Q-SCRIPT-38, resolution: replicate; framework and PDKs agree).
 
 Parameter values MAY be lists or non-numeric words. For example, the sky130 MOSFET defaults contain `class mosfet` and `compatible {sky130_fd_pr__nfet_01v8 sky130_fd_pr__nfet_01v8_lvt …}`. Such values are stored and hashed as their string form.
 Compatibility: exact
 
-(Magic ref: tcltk/toolkit.tcl:686,1528-1532,1218-1246,1253-1258,1642-1653) (PDK ref: open_pdks sky130/magic/sky130-fet.tcl:91-102, open_pdks sky130/magic/sky130-fix.tcl:10-92,254-282)
+(Magic ref: tcltk/toolkit.tcl:686,1528-1532,1218-1246,1253-1258,1642-1653) (PDK ref: open_pdks sky130/magic/sky130-fet.tcl:91-102, open_pdks sky130/magic/sky130-fix.tcl:10-92,166-203,254-282)
 
 #### Scenario: Defaults merge
 - **GIVEN** `_defaults` returns `w 1 l 0.15 nf 1`
@@ -64,7 +64,7 @@ For naming, each parameter value v SHALL be normalized as follows:
 1. If v is a strict double string (Tcl `string is double -strict`: decimal, exponent and hexadecimal-integer forms with optional surrounding whitespace), let x = double(v). If |x − round(x)| < 1e−9, the result is `%d` of round(x). Rounding is half away from zero.
 2. Otherwise, format x with `%.3f` and then delete the leftmost match of the regular expression `\.?0+$`.
 3. A non-numeric v is used verbatim.
-See Q-SCRIPT-21 for values that are infinite or NaN. A list value such as `{a b}` is not a strict double, so it is used verbatim as its string form (`a b`).
+4. A strict double string whose value is infinite or NaN (`inf`, `-inf`, `nan` in any letter case, with optional sign and surrounding whitespace) is used verbatim, like non-numeric text, in both `magic-compat` settings (Q-SCRIPT-21, resolution: fix; in Magic `round()` raises a Tcl error and no cell is created). The device's `_check` still receives the original value. A list value such as `{a b}` is not a strict double, so it is used verbatim as its string form (`a b`).
 Compatibility: exact
 
 (Magic ref: tcltk/toolkit.tcl:1848-1869)
@@ -77,13 +77,17 @@ Compatibility: exact
 - **WHEN** the value `sky130_fd_pr__nfet_01v8 sky130_fd_pr__nfet_01v8_lvt` (a two-element list) is normalized
 - **THEN** the result SHALL be the same string, unchanged
 
+#### Scenario: Infinite value
+- **WHEN** the value `inf` is normalized
+- **THEN** the result SHALL be `inf`, and a device created with it SHALL get a generated cell name
+
 ### Requirement: Deterministic generated-cell naming
 The generated cell for device type T with final parameters P SHALL be named `T_<suffix>`. The suffix is computed as follows:
 1. Sort the keys of P in ascending code-point order (Tcl `lsort`, ASCII). Build S by concatenating `normalize(value) + ";"` for each key in that order. Keys themselves do not take part.
 2. Compute h = MurmurHash3_x86_32(S, seed 0) as specified below.
 3. For i = 0..5, let c = (h >> 5i) & 31 and map it to a character: c<8 → `'2'+c`; 8≤c<16 → `'A'+(c−8)`; 16≤c<21 → `'J'+(c−16)`; c≥21 → `'P'+(c−21)`. The alphabet is `23456789ABCDEFGHJKLMNPQRSTUVWXYZ`, which excludes 0, 1, I and O. The characters are appended in order i = 0..5, least-significant group first. Bits 30-31 of h are unused.
 
-The MurmurHash3 input SHALL be S taken as a sequence of characters, each contributing its code point modulo 256 as one byte (Q-SCRIPT-22). The length is the character count. The algorithm:
+The MurmurHash3 input SHALL be S taken as a sequence of characters, each contributing its code point modulo 256 as one byte. The length is the character count. These are the semantics of Magic's Tcl 8.6 build, kept in both `magic-compat` settings so that names match cells Magic already generated (Q-SCRIPT-22, resolution: replicate). Hefesto SHALL compute them directly, not through the embedded interpreter's `binary scan`, so the result does not depend on the Tcl version (Magic's Tcl 9 build rejects characters above U+00FF). The algorithm:
 - Process blocks of 4 bytes as little-endian 32-bit k: k·=0xcc9e2d51; k=rotl(k,15); k·=0x1b873593; h^=k; h=rotl(h,13); h=h·5+0xe6546b64.
 - Process the tail of 1-3 bytes in the standard way.
 - Finalize: h^=len; h^=h>>16; h·=0x85ebca6b; h^=h>>13; h·=0xc2b2ae35; h^=h>>16.
@@ -132,7 +136,9 @@ Compatibility: exact
 | `lib::type` | names an existing instance | non-empty | non-interactive change: select it; P = merge(defaults, stored parameters of its cell); in SPICE mode args = `_convert(args)`; P = merge(P, args); run the change algorithm |
 | `lib::type` | not an existing instance | any | non-interactive create: in SPICE mode args = `_convert(args)`; P = merge(defaults, args); run the create algorithm; select the new instance and rename it to `<instname>` |
 
-The procedure SHALL return `0` on success. See Q-SCRIPT-23 for the undefined variables in the nocell change path.
+The procedure SHALL return `0` on success.
+
+For an existing fixed (`nocell`) instance, both the interactive and the non-interactive call SHALL first set nx = xhi−xlo+1, ny = yhi−ylo+1 and `pitchx`/`pitchy` from `array -list pitch`, as the dialog does (see "Parameter dictionary model"). In the non-interactive call `deltax`/`deltay` come from the arguments or the device defaults. The change then proceeds as specified (Q-SCRIPT-23, resolution: fix in both `magic-compat` settings; Magic reads the undefined variables `delx`/`dely`, raises a Tcl error and changes nothing).
 Compatibility: behavioral
 
 (Magic ref: tcltk/toolkit.tcl:641-779)
@@ -145,6 +151,11 @@ Compatibility: behavioral
 #### Scenario: SPICE parameters
 - **WHEN** `magic::gencell sky130::nfet M2 -spice w 1.0 l 0.15 mult 2` runs
 - **THEN** `sky130::nfet_convert` SHALL receive `w 1.0 l 0.15 mult 2` and its returned dictionary SHALL be merged over the defaults
+
+#### Scenario: Scripted change of a fixed device
+- **GIVEN** a sky130 fixed device instance `Q1` of `sky130_fd_pr__npn_05v5_W1p00L1p00`, not arrayed
+- **WHEN** `magic::gencell sky130::sky130_fd_pr__npn_05v5_W1p00L1p00 Q1 nx 2` runs in batch mode
+- **THEN** no error SHALL be raised, the result SHALL be `0`, and `Q1` SHALL be arrayed 2 × 1
 
 ### Requirement: Create algorithm
 Creating a gencell with type T, library L, parameters P and orientation O (default `0`) SHALL proceed as follows:
@@ -175,7 +186,7 @@ Compatibility: behavioral
 ### Requirement: Change algorithm
 Changing instance I, of type T and library L, to parameters P SHALL proceed as follows:
 1. Suspend redraw. If P is empty, P = merge(`T_defaults`, dialog values).
-2. Read the dialog's instance-name entry. Magic does this unconditionally, even when no dialog exists (Q-SCRIPT-29). If it is `(default)` or names an existing instance, keep I. Otherwise the new name is that entry.
+2. Read the dialog's instance-name entry. If no dialog exists (batch mode, or a script call before any dialog was opened), keep I, as if the entry were `(default)` (Q-SCRIPT-29, resolution: fix in both `magic-compat` settings; Magic reads the missing entry, raises a Tcl error and leaves redraw suspended). If it is `(default)` or names an existing instance, keep I. Otherwise the new name is that entry.
 3. Apply the `gencell` override. P = `T_check(P)`, with errors printed. Push P to the dialog. Remove `gencell`.
 4. Let G_old = I's cell and G = `T_<suffix(P)>`. If the instance name changed, rename I.
 5. If G is empty or G == G_old, resume and return. Only the name changed, if anything.
@@ -193,6 +204,11 @@ The old cell SHALL be retained if any other instance still uses it.
 Compatibility: behavioral
 
 (Magic ref: tcltk/toolkit.tcl:867-1042)
+
+#### Scenario: Headless change keeps the instance name
+- **GIVEN** batch mode, no parameter dialog has been opened, and instance `M1` of a sky130 nfet generated cell exists
+- **WHEN** `magic::gencell sky130::sky130_fd_pr__nfet_01v8 M1 w 2.0` runs
+- **THEN** `M1` SHALL keep its name and use the generated cell for the new parameters, and redraw SHALL not remain suspended
 
 #### Scenario: Shared cell retained
 - **GIVEN** instances `x1` and `x2` both use `nfet_XCJNSH`
@@ -276,7 +292,7 @@ Compatibility: behavioral
 - Entries: on Return and on focus-out.
 - Checkboxes and choice items: on change.
 
-Without pnames, the intent is to attach to every default parameter (Q-SCRIPT-25). `magic::update_dialog` SHALL compute P = merge(defaults, dialog) with the `gencell` override applied, then P = `_check(P)` with errors printed, then P = `callback(pname, P)` if a callback is given, and finally push P to the dialog. The default bounds check SHALL be attached to every parameter widget after the device dialog is built. Its callback is empty.
+Without pnames, the handlers SHALL be attached to every parameter of `<lib>::<type>_defaults`, which is called for its keys (Q-SCRIPT-25, resolution: fix in both `magic-compat` settings; Magic takes the procedure's name as the dictionary and raises an error). `magic::update_dialog` SHALL compute P = merge(defaults, dialog) with the `gencell` override applied, then P = `_check(P)` with errors printed, then P = `callback(pname, P)` if a callback is given, and finally push P to the dialog. The default bounds check SHALL be attached to every parameter widget after the device dialog is built. Its callback is empty.
 Compatibility: behavioral
 
 (Magic ref: tcltk/toolkit.tcl:1308-1412)
@@ -353,7 +369,7 @@ Compatibility: behavioral
 - **THEN** the created label text SHALL be exactly `vout[0]` with no backslashes
 
 ### Requirement: Native generator equivalence
-Whenever a PDK's generator scripts are not run (because a native generator is used, or in the iPadOS curated-pack fallback of capability `hefesto-scripting`), Hefesto SHALL still:
+Whenever a PDK's generator scripts are not run (because a native generator is used, because the user declined to trust the PDK's scripts, or because the PDK is refused in the iPadOS curated-pack mode of capability `hefesto-scripting`), Hefesto SHALL still:
 - read, display, edit, save and extract cells that carry `library`/`gencell`/`parameters` properties;
 - preserve those properties byte-for-byte;
 - compute the cell names of this spec exactly.
