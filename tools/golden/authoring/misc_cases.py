@@ -199,8 +199,9 @@ def m3_specs() -> list[Spec]:
                             "save top"],
            ["leaf.mag", "mid.mag", "top.mag"]),
         mh("MISC-MH-11", ["Copying, flattening and transforming hints"],
-           "flatten -doproperty: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened "
-           "leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).",
+           "flatten -doproperty of a top cell with the flatten property: a kept instance (keep, hint K) and a "
+           "flattened one (fl, hint F, with a flattened leaf, hint X): Magic copies only K, Hefesto F and X as well "
+           "(Q-MISC-15).",
            _mh11_cells() + flatten_save("top", "flat", "-doproperty")
            + ["property MASKHINTS_K", "property MASKHINTS_F", "property MASKHINTS_X"],
            ["top.mag", "flat.mag"]),
@@ -220,10 +221,12 @@ def _mh10_cells() -> list[str]:
 
 def _mh11_cells() -> list[str]:
     # MISC-MH-11 (Q-MISC-15): with -doproperty only cells with a `flatten` property are
-    # descended: fl and leaf are flattened, keep is kept as an instance.
+    # descended: fl and leaf are flattened, keep is kept as an instance. Magic applies the
+    # test to the root use too (DBDescendSubcell on the edit cell's use), so top carries
+    # the property as well; without it Magic copies nothing at all (Q-MODEL-33).
     flat_prop = "property flatten true"
     return (_hinted_cell("leaf", (0, 0, 4, 4), "X 0 0 2 2", [flat_prop])
             + _hinted_cell("keep", (0, 0, 4, 4), "K 0 0 2 2")
             + _hinted_cell("fl", (0, 0, 4, 4), "F 0 0 3 3", [flat_prop, box(6, 0, 6, 0), "getcell leaf"])
             + ["load top", *paint("m1", 0, 0, 4, 4), box(20, 0, 20, 0), "getcell keep", box(40, 0, 40, 0),
-               "getcell fl", "save top"])
+               "getcell fl", flat_prop, "save top"])

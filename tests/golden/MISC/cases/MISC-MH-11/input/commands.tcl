@@ -1,4 +1,4 @@
-# MISC-MH-11: flatten -doproperty: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).
+# MISC-MH-11: flatten -doproperty of a top cell with the flatten property: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).
 # Reference script (Magic, Tcl): one result line per command.
 catch {tech load input/t -noprompt} result; puts $result
 catch {snap internal} result; puts $result
@@ -29,6 +29,7 @@ catch {box 20 0 20 0} result; puts $result
 catch {getcell keep} result; puts $result
 catch {box 40 0 40 0} result; puts $result
 catch {getcell fl} result; puts $result
+catch {property flatten true} result; puts $result
 catch {save top} result; puts $result
 catch {load top} result; puts $result
 catch {flatten -doproperty flat} result; puts $result

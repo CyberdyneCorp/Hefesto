@@ -1,4 +1,4 @@
-# MISC-MH-11: flatten -doproperty: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).
+# MISC-MH-11: flatten -doproperty of a top cell with the flatten property: a kept instance (keep, hint K) and a flattened one (fl, hint F, with a flattened leaf, hint X): Magic copies only K, Hefesto F and X as well (Q-MISC-15).
 # Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
 tech load input/t -noprompt
 snap internal
@@ -29,6 +29,7 @@ box 20 0 20 0
 getcell keep
 box 40 0 40 0
 getcell fl
+property flatten true
 save top
 load top
 flatten -doproperty flat
