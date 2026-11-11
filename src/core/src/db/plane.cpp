@@ -167,45 +167,47 @@ Rect side_strip(const Rect& r, Side side, Coord lo, Coord hi) noexcept {
 
 bool vertical_side(Side side) noexcept { return side == Side::left || side == Side::right; }
 
-/// The stitch walk along one side: BL then RT (left), TR then LB (right,
-/// downwards), LB then TR (bottom), RT then BL (top, leftwards).
-void walk_side(detail::Tile* tile, Side side, const Rect& strip, std::vector<TileView>& out) {
-  TileView v;
+/// One side's stitch walk: where it starts (the tile beyond the side at
+/// one end of the strip), the stitch to the next tile, whether that tile
+/// still borders the strip, and whether it runs against the requested
+/// order (increasing y or x).
+struct SideWalk {
+  Point start;
+  detail::Tile* (*next)(const detail::Tile*) noexcept;
+  bool (*within)(const detail::Tile*, const Rect&) noexcept;
+  bool backwards;
+};
+
+SideWalk side_walk(Side side, const Rect& strip) noexcept {
   switch (side) {
-    case Side::left:
-      for (detail::Tile* t = detail::goto_point(tile, Point{strip.x0, strip.y0}); detail::bottom(t) < strip.y1;
-           t = t->rt) {
-        if (first_view(t, strip, v)) {
-          out.push_back(v);
-        }
-      }
-      return;
-    case Side::right:
-      for (detail::Tile* t = detail::goto_point(tile, Point{strip.x0, strip.y1 - 1}); detail::top(t) > strip.y0;
-           t = t->lb) {
-        if (first_view(t, strip, v)) {
-          out.push_back(v);
-        }
-      }
-      break;
-    case Side::bottom:
-      for (detail::Tile* t = detail::goto_point(tile, Point{strip.x0, strip.y0}); detail::left(t) < strip.x1;
-           t = t->tr) {
-        if (first_view(t, strip, v)) {
-          out.push_back(v);
-        }
-      }
-      return;
+    case Side::left:  // BL, then RT upwards
+      return {Point{strip.x0, strip.y0}, [](const detail::Tile* t) noexcept { return t->rt; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::bottom(t) < s.y1; }, false};
+    case Side::right:  // TR, then LB downwards
+      return {Point{strip.x0, strip.y1 - 1}, [](const detail::Tile* t) noexcept { return t->lb; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::top(t) > s.y0; }, true};
+    case Side::bottom:  // LB, then TR rightwards
+      return {Point{strip.x0, strip.y0}, [](const detail::Tile* t) noexcept { return t->tr; },
+              [](const detail::Tile* t, const Rect& s) noexcept { return detail::left(t) < s.x1; }, false};
     case Side::top:
-      for (detail::Tile* t = detail::goto_point(tile, Point{strip.x1 - 1, strip.y0}); detail::right(t) > strip.x0;
-           t = t->bl) {
-        if (first_view(t, strip, v)) {
-          out.push_back(v);
-        }
-      }
       break;
   }
-  std::reverse(out.begin(), out.end());
+  // RT, then BL leftwards
+  return {Point{strip.x1 - 1, strip.y0}, [](const detail::Tile* t) noexcept { return t->bl; },
+          [](const detail::Tile* t, const Rect& s) noexcept { return detail::right(t) > s.x0; }, true};
+}
+
+void walk_side(detail::Tile* tile, Side side, const Rect& strip, std::vector<TileView>& out) {
+  const SideWalk walk = side_walk(side, strip);
+  TileView v;
+  for (detail::Tile* t = detail::goto_point(tile, walk.start); walk.within(t, strip); t = walk.next(t)) {
+    if (first_view(t, strip, v)) {
+      out.push_back(v);
+    }
+  }
+  if (walk.backwards) {
+    std::reverse(out.begin(), out.end());
+  }
 }
 
 }  // namespace
