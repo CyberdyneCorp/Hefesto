@@ -1,0 +1,19 @@
+magic
+tech t
+timestamp 1794364434
+<< checkpaint >>
+rect 17 -3 27 7
+rect 37 -3 53 7
+<< metal1 >>
+rect 0 0 4 4
+use fl  fl_0
+timestamp 1794364434
+transform 1 0 40 0 1 0
+box 0 0 10 4
+use keep  keep_0
+timestamp 1794364434
+transform 1 0 20 0 1 0
+box 0 0 4 4
+<< properties >>
+string flatten true
+<< end >>

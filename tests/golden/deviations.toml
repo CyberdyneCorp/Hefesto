@@ -202,20 +202,16 @@ outputs = ["stdout.txt", "stderr.txt"]
 reason = "archive read X tries X before X.mag, so the archive just written as arch.mag is read back (with the reader's timestamp and duplicate-id notes); Magic looks for arch.mag.mag and reports 'Cannot open archive file'"
 
 # --- MISC -------------------------------------------------------------------
-#
+
 [MISC-MH-10]
 decisions = ["Q-MISC-14"]
 outputs = ["stdout.txt", "stderr.txt", "top.mag"]
 reason = "flatten -doinplace also copies the hints of the flattened grandchild (MASKHINTS_X); Magic copies only the flattened instance's own hints and loses them"
 
-# Pending capture: an entry must name a captured case (tools/golden/tests/
-# test_deviations.py), so this one stays commented out until MISC-MH-11 has
-# expected/ outputs; uncomment it with the capture.
-#
-# [MISC-MH-11]
-# decisions = ["Q-MISC-15"]
-# outputs = ["stdout.txt", "stderr.txt", "flat.mag"]
-# reason = "flatten -doproperty also copies the hints of the flattened instances and their flattened descendants (MASKHINTS_F, MASKHINTS_X); Magic copies only the kept instance's hints (MASKHINTS_K, kept under magic-compat)"
+[MISC-MH-11]
+decisions = ["Q-MISC-15"]
+outputs = ["stdout.txt", "stderr.txt", "flat.mag"]
+reason = "flatten -doproperty also copies the hints of the flattened instances and their flattened descendants (MASKHINTS_F, MASKHINTS_X); Magic copies only the kept instance's hints (MASKHINTS_K, kept under magic-compat)"
 
 # --- DRC --------------------------------------------------------------------
 # m3-drc Resolved Question 1 / design D13: the mask-layer checks arrive in M5.
