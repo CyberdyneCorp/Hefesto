@@ -1,6 +1,6 @@
 # M4 decision table: the 34 open SCRIPT questions
 
-M4 ("Scripting and PDK integration", docs/roadmap.md) is blocked by 34 entries in `docs/decisions/open-questions/SCRIPT.md` that have no `Resolution:` line (`python3 scripts/check_milestone_readiness.py --milestone M4`). Each recommendation below was checked against Magic 8.3.694 (fc5daa9e, `build/ref/magic`) and, for PDK entries, against open_pdks @ c6df28c1 and IHP-Open-PDK @ 5e6d592e (fetched read-only) and the installed PDKs in `.cache/pdks/ciel`. The full reasoning is in each entry's `Recommendation:` line. Nothing here is approved yet.
+M4 ("Scripting and PDK integration", docs/roadmap.md) is blocked by 34 entries in `docs/decisions/open-questions/SCRIPT.md` that have no `Resolution:` line (`python3 scripts/check_milestone_readiness.py --milestone M4`). Each recommendation below was checked against Magic 8.3.694 (fc5daa9e, `build/ref/magic`) and, for PDK entries, against open_pdks @ c6df28c1 and IHP-Open-PDK @ 5e6d592e (fetched read-only) and the installed PDKs in `.cache/pdks/ciel`. The full reasoning is in each entry's `Recommendation:` line. **All 34 were approved on 2026-11-11**: the five judgement items below with the option the user chose (each the recommended one), the other 29 as drafted. Each entry now carries a `Resolution:` line, and `python3 scripts/check_milestone_readiness.py --milestone M4` reports `M4: ready`.
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
@@ -10,20 +10,22 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 - **platform**: a Hefesto platform decision (X-3/X-4).
 - **other**: none of the above.
 
-## Needs your judgement
+## Judgement items (decided 2026-11-11)
 
-These five involve product or security trade-offs. Each lists the options, with the recommended one first.
+These five involve product or security trade-offs. Each lists the options, with the recommended one first, and the user's decision.
 
 1. **Q-SCRIPT-42 and Q-SCRIPT-34: PDK menu code that writes to Tk widgets (same as D-32).** The sky130, gf180mcu and sg13g2 `addtechmenu` callbacks write to `${frame}.titlebar.mbuttons.*` menus, call `tk_getOpenFile`, and probe `titlebar cget`. Under X-3 they run on iPadOS too.
    - (b) **Recommended.** Intercept the few known operations and map them to native menu actions in both shells, and report the statements that were skipped. This is little work and the PDK menus appear, but a PDK that adds a new widget call silently loses that item until mapped.
    - (a) A Tk-compatible widget shim with Magic's path names. This is the most compatible option, but a pseudo-Tk layer has to be maintained on two shells.
    - (c) Skip the callbacks and report them. This is the simplest option, but the PDK "Devices" menus and "Import SPICE" are missing.
+   - **Decision (2026-11-11): (b)**, in both shells (desktop and iPad), with skipped statements reported. Settles D-32.
 2. **Q-SCRIPT-46: keep a declarative (non-script) PDK profile? (same as D-30).**
    - (b) **Recommended.** Drop it. iPadOS curated-pack mode refuses PDKs without bundled scripts.
    - (a) Keep it for uncurated PDKs, but only if App Review rejects imported scripts.
    - (c) Also use it when the user declines script consent. This contradicts `hefesto-security`, which opens the file read-only with the `minimum` tech.
 
    The choice depends on the outcome of the App Review inquiry (X-3 risk).
+   - **Decision (2026-11-11): (b).** Settles D-30.
 3. **Q-SCRIPT-9: which PDK revision is the reference.** The unit tests use open_pdks `0fe599b2` (2024-08) and IHP `ddb601a4` (2025-01), set in `scripts/fetch_pdk.py`. The spec and the SCRIPT golden cases pin open_pdks `c6df28c1` (2026-11) and IHP `5e6d592e` (2026-09). The rc files differ between the two generations:
    - the older ones read `MAGTYPE` and call `query_mylib_ip`/`query_my_projects`;
    - gf180mcuD lists 5 libraries instead of 9;
@@ -33,21 +35,24 @@ These five involve product or security trade-offs. Each lists the options, with 
    - (a) **Recommended.** Move `fetch_pdk.py` to the spec pins for M4, re-run the M1–M3 PDK-based tests on them, and add one smoke case for the older rc form.
    - (b) Keep the old pins and re-derive the spec's PDK contract from them. The spec would then describe PDKs that are two years old.
    - (c) Keep both pins permanently. Both generations stay covered, but at twice the capture and CI cost.
+   - **Decision (2026-11-11): (a).** Any M1–M3 result that changes on the new pins is fixed or recorded through an approved decision.
 4. **Q-SCRIPT-41: scope of the Tcl interpreter.** PDKs define different `magic::i2u`/`u2i`/`spice2float` with the same names, so loading a second PDK silently changes the first PDK's generated geometry.
    - (a) **Recommended if Hefesto can hold several projects in one process.** One interpreter per open project, with Tcl semantics unchanged inside each and a warning on cross-PDK redefinition.
    - (b) One interpreter per process, as in Magic, with the warning, and document "one PDK per session".
    - (c) Per-PDK namespaces for the helpers. This is rejected because it deviates from Tcl semantics and breaks unmodified PDK scripts.
+   - **Decision (2026-11-11): (a).** One interpreter per open project, Tcl semantics unchanged inside each, a warning on cross-PDK redefinition of `magic::` helpers.
 5. **Q-SCRIPT-11: `./<tech>_toolbars.tcl` in the working directory (security).**
    - (a) **Recommended.** Parse it as data: only `set <name> {layers}` lines are read, and anything else is reported and ignored.
    - (b) `source` it inside the X-3 sandbox, as Magic does. This is compatible with hand-written files that contain other Tcl, but a file in any opened folder then runs code without the consent prompt that PDK scripts get.
+   - **Decision (2026-11-11): (a).**
 
 ## Decision table
 
-Confidence: **high** means the evidence decides the answer. **needs-user-judgement** means one of the items above.
+Every row is approved (2026-11-11); the Decision column is the `Resolution:` recorded in SCRIPT.md. Confidence: **high** means the evidence decided the answer. **user decision** means one of the judgement items above.
 
 ### Tag callbacks and substitution
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
 | Q-SCRIPT-3 | Tag `%`-substitution: results and arguments are inserted unescaped, the string is rescanned, and an unknown `%x` or `%%` makes Magic hang | **fix**: single pass, each value inserted as one quoted word | The hang is crash-class (tier 1). Well-formed values give the same words as in Magic; only text that Magic would evaluate changes. | high |
 | Q-SCRIPT-4 | Output escaping: `$name` prints the variable's value when such a variable exists | **fix**: always print literally | Text only, like the approved Q-SCRIPT-15/16/17. Golden stdout cases with `$names` get a deviation entry. Compat is the alternative if stdout parity matters more. | high |
@@ -56,27 +61,27 @@ Confidence: **high** means the evidence decides the answer. **needs-user-judgeme
 
 ### Sandbox and security
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
-| Q-SCRIPT-11 | The toolbar code `source`s `./<tech>_toolbars.tcl` from the working directory | **fix**: parse it as data | Running code from any opened folder without consent goes against X-3 and `hefesto-security`. Files the dialog writes round-trip. | needs-user-judgement (item 5) |
-| Q-SCRIPT-46 | Keep a declarative PDK profile under X-3? | **platform**: drop it (b), unless App Review forces curated packs plus profiles | Every platform runs Tcl, and a declined consent is already handled by `hefesto-security`. | needs-user-judgement (item 2) |
+| Q-SCRIPT-11 | The toolbar code `source`s `./<tech>_toolbars.tcl` from the working directory | **fix**: parse it as data (option a) | Running code from any opened folder without consent goes against X-3 and `hefesto-security`. Files the dialog writes round-trip. | user decision (item 5) |
+| Q-SCRIPT-46 | Keep a declarative PDK profile under X-3? | **platform**: drop it (b); curated-pack mode refuses PDKs without bundled scripts | Every platform runs Tcl, and a declined consent is already handled by `hefesto-security`. | user decision (item 2) |
 
 ### PDK scripts and menus
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
-| Q-SCRIPT-9 | Is the PDK script inventory verified, and against which PDK revision? | **other**: accept the static inventory, move the dynamic trace to golden capture (X-6), choose one pin | The spec pins and the test pins differ, and the rc files differ between them. | needs-user-judgement (item 3) |
+| Q-SCRIPT-9 | Is the PDK script inventory verified, and against which PDK revision? | **other**: accept the static inventory, move the dynamic trace to golden capture (X-6); (a) move `fetch_pdk.py` to the spec pins, re-run M1–M3 PDK tests, one smoke case for the older rc form | The spec pins and the test pins differ, and the rc files differ between them. | user decision (item 3) |
 | Q-SCRIPT-33 | The startup call `techmanager initall` is not a valid option, so it does nothing | **replicate** (no-op) | No effect in Magic. Hefesto's technology manager is native. | high |
 | Q-SCRIPT-37 | Command-line regex quirks (`-rcover`, `^-n*` takes every unknown `-x`, `-dnullx`) | **replicate** | It only decides which arguments are options or files, and launchers and PDK flows depend on these spellings. | high |
 | Q-SCRIPT-39 | sg13g2 calls `label … +m2`, which Magic rejects, so no label is made | **replicate**, and report upstream to IHP | PDK code runs unchanged, and native generators must produce identical cells. | high |
 | Q-SCRIPT-40 | `magic::spice2float` mishandles `n`, `a` and the `*F` suffixes | **replicate** bit for bit, and report upstream | PDK code. X-3 validates native generators against the Tcl output. | high |
-| Q-SCRIPT-41 | Two PDKs overwrite each other's `magic::` helpers | **replicate** within an interpreter and warn on redefinition; one interpreter per project if multi-project | Tcl semantics must hold for unmodified PDK scripts. | needs-user-judgement (item 4) |
-| Q-SCRIPT-42 | PDK `addtechmenu` writes to Tk widget paths | **platform**: (b) intercept and map in both shells, and report what was skipped | Consistent with X-3 and D-32. The earlier "desktop only" predates X-3. | needs-user-judgement (item 1) |
+| Q-SCRIPT-41 | Two PDKs overwrite each other's `magic::` helpers | **replicate** within an interpreter and warn on cross-PDK redefinition; (a) one interpreter per open project | Tcl semantics must hold for unmodified PDK scripts. | user decision (item 4) |
+| Q-SCRIPT-42 | PDK `addtechmenu` writes to Tk widget paths | **platform**: (b) intercept and map in both shells (desktop and iPad), and report what was skipped | Consistent with X-3 and D-32. The earlier "desktop only" predates X-3. | user decision (item 1) |
 | Q-SCRIPT-44 | rc files seed `random` from the clock, so GDS prefixes vary between runs | **replicate**; the golden harness runs `random seed 1` | Session state, not a quirk. A seed-pinning setting belongs with Q-MASK-211 (M5). | high |
 
 ### PCells
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
 | Q-SCRIPT-21 | `inf`/`nan` parameter values abort cell creation | **fix**: hash them as text | Magic makes no cell, so there is nothing to match. | high |
 | Q-SCRIPT-22 | The cell-name hash uses only the low 8 bits of non-ASCII characters | **replicate** | Names must match cells that Magic already generated. | high |
@@ -88,25 +93,25 @@ Confidence: **high** means the evidence decides the answer. **needs-user-judgeme
 
 ### readspice
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
 | Q-SCRIPT-19 | `readspice` uses the Tcl `case` command, which Tcl 9 removed | **fix**: use `switch` | Same result as Tcl 8, and it runs on any Tcl version. | high |
 | Q-SCRIPT-32 | `+` continuation spacing, and "port order was modified" always printed | **compat** for the spacing (it can join two tokens) and **fix** for the message | A joined token changes pin matching (tier 2). The message is text only and always printed. | high |
 
 ### GUI managers
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
 | Q-SCRIPT-26 | `drc_save_report` writes a raw count list and coordinates that are wrong outside internal units | **fix** the units, keep the file format | Byte-identical in Magic's only correct case, as in Q-SCRIPT-16/17. | high |
 | Q-SCRIPT-27 | The library manager rebuilds every node on each refresh, leaks files, and `subst`s paths | **fix** (native manager) | GUI only. `subst` on a path evaluates code. | high |
 | Q-SCRIPT-28 | The reorder dialog's Load always fails, names the wrong file, and uses `exec cat` | **fix**, keep the file format | Magic's Load never works, and `exec` is denied by the sandbox. | high |
 | Q-SCRIPT-31 | The text helper passes `default` as the label position | **replicate**: there is no defect | Corrected: `label t default` reads `default` as the default font, which gives the intended label. | high |
-| Q-SCRIPT-34 | Tk path names of the GUI managers on native shells | **platform**: native hooks and dialog API, no general Tk paths | Under X-3, PDK scripts also run on iPadOS. The widget calls themselves are handled by Q-SCRIPT-42/D-32. | needs-user-judgement (item 1) |
+| Q-SCRIPT-34 | Tk path names of the GUI managers on native shells | **platform**: native hooks and dialog API, no general Tk paths | Under X-3, PDK scripts also run on iPadOS. The widget calls themselves are handled by Q-SCRIPT-42/D-32. | user decision (item 1) |
 | Q-SCRIPT-36 | Edit > "Rotate 90 degree" calls the non-existent `magic::clock` | **fix**: `magic::clockwise 90` | Always fails in Magic. Same effect as `rotate 90`. | high |
 
 ### Misc (command API)
 
-| ID | Question | Recommendation | Why | Confidence |
+| ID | Question | Decision | Why | Confidence |
 |---|---|---|---|---|
 | Q-SCRIPT-6 | `port last` counts non-port and removed-port labels | **compat** | It seeds new port indices written to `.mag` (tier 2). `readspice` is affected only in the removed-port case. | high |
 | Q-SCRIPT-7 | `cif scale` returns a float widened to double (0.009999999776…) | **compat** | Visible to scripts (tier 2). The PDK helpers round it, so PDK cells are the same in both modes. | high |
@@ -134,7 +139,19 @@ Confidence: **high** means the evidence decides the answer. **needs-user-judgeme
 
 ## Also blocking M4 outside SCRIPT.md
 
-`docs/decisions/audit/DECISIONS.md` lists D-29 (native vs Tcl PCell identity), D-30 (= Q-SCRIPT-46), D-31 (`env` in the sandbox), D-32 (= Q-SCRIPT-34/42), D-33 (`cd` in the sandbox), D-34 (`irsim`/`netgen`/`xcircuit` helpers) and D-36 (`quit -noprompt` on iPadOS) as blocking M4. They have no `Status:` line yet. `check_milestone_readiness.py` does not check them.
+`docs/decisions/audit/DECISIONS.md` lists seven items as blocking M4. `check_milestone_readiness.py` does not check them.
+
+| Item | Subject | State (2026-11-11) |
+|---|---|---|
+| D-30 | declarative PDK profile | **resolved** by Q-SCRIPT-46, option (b) |
+| D-32 | Tk menu writes by PDK scripts | **resolved** by Q-SCRIPT-42 and Q-SCRIPT-34, option (b) |
+| D-29 | native vs Tcl PCell identity (byte-identical `.mag` and the `timestamp` line) | open: needs the user |
+| D-31 | `env(PDK_ROOT)` and other variables in the sandboxed Tcl | open: needs the user |
+| D-33 | `cd` in the Tcl sandbox | open: needs the user |
+| D-34 | the `irsim`, `netgen` and `xcircuit` helper commands | open: needs the user |
+| D-36 | `quit -noprompt` from a PDK rc script on iPadOS | open: needs the user (spec text needed by M4) |
+
+No approved Q-SCRIPT answer decides the five open items; they are carried as open questions into the M4 plan.
 
 ## Corrections made to entries
 

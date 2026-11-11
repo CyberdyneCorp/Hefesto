@@ -319,6 +319,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) keep it for uncurated PDKs if App Review rejects imported scripts; (b) drop it; (c) also use it when the user declines script consent.
 - **Recommendation:** (b), and revisit only if the M4 App Review inquiry rejects imported scripts.
 - **Priority:** blocks M4.
+- **Status:** resolved (2026-11-11): option b, by the approved resolution of Q-SCRIPT-46 (docs/decisions/open-questions/SCRIPT.md) — the declarative PDK profile is dropped; iPadOS curated-pack mode refuses PDKs without bundled scripts, and a declined consent keeps the read-only `minimum`-tech fallback of `hefesto-security`.
 
 ### D-31: `env(PDK_ROOT)` and other environment variables in the sandboxed Tcl on iPadOS
 
@@ -335,6 +336,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) a Tk-compatible widget shim; (b) intercept the known operations and map them to native menu actions, in both shells; (c) skip them and report.
 - **Recommendation:** (b) on every platform, with a report of the statements that were skipped.
 - **Priority:** blocks M4.
+- **Status:** resolved (2026-11-11): option b, by the approved resolutions of Q-SCRIPT-42 and Q-SCRIPT-34 (docs/decisions/open-questions/SCRIPT.md) — the known widget operations are intercepted and mapped to native menu actions in both shells (desktop and iPad), and every other widget statement is skipped and reported.
 
 ### D-33: `cd` in the Tcl sandbox
 
