@@ -1,9 +1,0 @@
-# DRC-PR-1: sky130A: drc printrules into a file (compared by digest: 26 MB).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/sky130A -noprompt
-snap internal
-scalegrid 1 2
-drc off
-drc euclidean on
-snap internal
-drc printrules rules.txt

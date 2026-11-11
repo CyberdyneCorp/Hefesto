@@ -16,7 +16,6 @@
 # Seed corpora live in corpus/<target>/; every target must have one.
 
 set(HEFESTO_FUZZ_TARGETS
-  fuzz_command_script   # M0 command-script reader (m0 design D6)
   fuzz_tech_file        # technology files (tech-file-format)
   fuzz_mag_reader       # .mag cell files (cell-file-format)
   fuzz_dstyle           # display styles (display-style-files)

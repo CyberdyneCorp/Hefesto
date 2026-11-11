@@ -1,8 +1,0 @@
-# UI-G-002: The prefix e and the unique prefix extr are not command names in a script (Q-UI-41); the alias id is, but Magic's lookup finds it ambiguous with identify (its entry is 'id<TAB>OR'): empty result.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-e
-extr help
-id
-id x

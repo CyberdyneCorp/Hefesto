@@ -11,7 +11,8 @@
 #include <vector>
 
 #include "hefesto/cmd/registry.hpp"
-#include "hefesto/cmd/script.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/ui/client.hpp"
 #include "hefesto/ui/line.hpp"
@@ -201,15 +202,17 @@ TEST_CASE("a command of another client fails with an empty result",
 TEST_CASE("a script stops at an unknown word unless each line is caught",
           "[cap:ui-command-dispatch][req:Command name lookup][golden:UI-G-001]") {
   UiSession s;
-  cmd::ScriptRun run = cmd::run_script(*s.dispatcher, "getcell a\ngetc x\ngetcell b", cmd::Origin::script);
-  CHECK(run.aborted);
+  hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(s.editor, {});
+  REQUIRE(hefesto::script::bind_registry(interp, s.registry, *s.dispatcher).ok());
+  // Scripts are Tcl (m4-scripting tasks.md 13.2): an inexact name is not a command.
+  const cmd::CommandResult stopped = interp.evaluate("getcell a\ngetc x\ngetcell b");
+  REQUIRE_FALSE(stopped.ok());
+  CHECK(stopped.diagnostics.front().text == "invalid command name \"getc\"");
   CHECK(s.calls_of("getcell").size() == 1);
-  // hefesto-cli --diagnostics=magic: every reference line is `catch {...}`.
-  s.script.catch_lines = true;
-  run = cmd::run_script(*s.dispatcher, "getcell a\ngetc x\ngetcell b", cmd::Origin::script);
-  CHECK_FALSE(run.aborted);
-  CHECK(run.failures == 1);
+  // The golden reference scripts catch every line, so the script goes on.
+  CHECK(interp.evaluate("catch {getcell a}\ncatch {getc x}\ncatch {getcell b}").ok());
   CHECK(s.calls_of("getcell").size() == 3);
+  hefesto::script::close_project_interpreter(s.editor);
 }
 
 // --- help command -------------------------------------------------------------------

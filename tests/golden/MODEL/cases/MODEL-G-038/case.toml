@@ -17,7 +17,7 @@ description = "Point labels at 2 2, 15 15, 28 28, 2 28 in a 30x30 cell, no justi
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

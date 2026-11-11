@@ -2,9 +2,10 @@
 // Copyright 2026 The Hefesto Authors
 //
 // Links the core's main entry points into an iOS executable (see
-// CMakeLists.txt). It runs one command script through the Dispatcher over the
-// portable services, so the command API, diagnostics, platform services,
-// settings and the Magic hash table all have to resolve at link time.
+// CMakeLists.txt). It evaluates one Tcl script in a project interpreter whose
+// commands run through the Dispatcher over the portable services, so Tcl, the
+// binding, the command API, diagnostics, platform services, settings and the
+// Magic hash table all have to resolve at link time.
 
 #include <cstdio>
 #include <string>
@@ -12,10 +13,12 @@
 #include "hefesto/cmd/builtins.hpp"
 #include "hefesto/cmd/command_log.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/format.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/settings/project_settings.hpp"
 #include "hefesto/version.hpp"
 
@@ -29,9 +32,12 @@ int main() {
   cmd::CommandLog log;
   cmd::Dispatcher dispatcher(registry, services.view(), project, session);
   dispatcher.add_observer(log);
-  const cmd::ScriptRun run =
-      cmd::run_script(dispatcher, "version; hefesto::debug::hashorder 8 +a +b; setting", cmd::Origin::script);
-  std::printf("hefesto %s: %zu commands, %s\n", std::string{version()}.c_str(), run.commands_run,
-              run.error ? diag::format_text(*run.error).c_str() : "ok");
+  editor::EditorState editor;
+  script::Interpreter& interp = script::open_project_interpreter(editor, {});
+  (void)script::bind_registry(interp, registry, dispatcher);
+  const cmd::CommandResult run = interp.evaluate("version; hefesto::debug::hashorder 8 +a +b; setting");
+  std::printf("hefesto %s: %zu commands, %s\n", std::string{version()}.c_str(), log.history().size(),
+              run.ok() ? "ok" : diag::format_text(run.diagnostics.front()).c_str());
+  script::close_project_interpreter(editor);
   return run.ok() ? 0 : 1;
 }

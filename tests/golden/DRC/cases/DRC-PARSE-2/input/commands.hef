@@ -1,4 +1,0 @@
-# DRC-PARSE-2: width m1 -2: tech load lists drc among the sections with errors and fails.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/drctest -noprompt
-snap internal

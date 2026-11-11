@@ -1,6 +1,0 @@
-# MODEL-G-042: A .mag with a label on via1+via2; load and save.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/mt -noprompt
-snap internal
-load input/s
-save s

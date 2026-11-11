@@ -16,7 +16,7 @@ description = "requires 8.3.700, magic-8.2.1 and 8.3."
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = ["tech"]
 
 [[outputs]]

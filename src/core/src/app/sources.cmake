@@ -9,6 +9,7 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/project_file.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/quit_policy.cpp
   ${CMAKE_CURRENT_LIST_DIR}/recent_projects.cpp
   ${CMAKE_CURRENT_LIST_DIR}/settings_layers.cpp
   ${CMAKE_CURRENT_LIST_DIR}/settings_stack.cpp

@@ -17,7 +17,7 @@ description = "goto m1_n5_7#; goto x1/VDD; goto 1_11_14; goto nosuch -nocomplain
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

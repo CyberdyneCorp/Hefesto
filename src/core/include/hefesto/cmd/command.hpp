@@ -72,8 +72,9 @@ struct CommandResult {
   }
 };
 
-/// Renders an invocation as one command line that the script reader parses
-/// back into the same name and arguments (used by the command log for replay).
+/// Renders an invocation as one Tcl command line (the words as a Tcl list)
+/// that the project's interpreter evaluates back into the same name and
+/// arguments (used by the command log for replay).
 [[nodiscard]] std::string format_command_line(const Invocation& invocation);
 
 }  // namespace hefesto::cmd

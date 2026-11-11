@@ -1,9 +1,0 @@
-# CMDEDIT-MISC-04: box 0 0 200 100; findbox zoom; view.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load a
-box 0 0 300 300
-paint metal1
-box 0 0 200 100
-findbox zoom
-view get

@@ -23,6 +23,7 @@ inline constexpr std::string_view kOptionMissing = "APP-OPTION-004";
 inline constexpr std::string_view kPinMissing = "APP-PIN-001";
 inline constexpr std::string_view kProjectFormat = "APP-PROJECT-001";
 inline constexpr std::string_view kProjectIo = "APP-PROJECT-002";
+inline constexpr std::string_view kQuitClosedProject = "APP-QUIT-001";
 inline constexpr std::string_view kRecentProjects = "APP-RECENT-001";
 inline constexpr std::string_view kRecoverUnavailable = "APP-RECOVER-001";
 inline constexpr std::string_view kSettingsFile = "APP-SETTINGS-001";

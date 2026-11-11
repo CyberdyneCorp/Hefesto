@@ -20,6 +20,7 @@ struct EditorState;
 namespace hefesto::cmd {
 
 class CommandRegistry;
+class QuitPolicy;
 
 /// Per-interpreter state. In M0 there is one session per CLI run or test;
 /// the Tcl binding (X-3) creates one per interpreter.
@@ -27,13 +28,12 @@ struct ScriptSession {
   explicit ScriptSession(const settings::ProjectSettings& project) : strict(project.script_strict) {}
 
   bool strict = false;          // script strict mode for this interpreter
-  /// Each script line runs as if wrapped in Tcl's `catch`: an error (a
-  /// dispatch failure, a raised or, in strict mode, any failure) does not
-  /// stop the script. Set by hefesto-cli --diagnostics=magic, the console of
-  /// the golden reference scripts (`catch {cmd} result; puts $result`).
-  bool catch_lines = false;
-  bool quit_requested = false;  // set by `quit`
+  bool quit_requested = false;  // set by `quit` (the running script stops)
   int exit_status = 0;          // the status `quit` asked for (0-255)
+  /// What an accepted `quit` does (D-36, hefesto/cmd/quit_policy.hpp); null
+  /// is the desktop and CLI policy, ending the session with exit_status.
+  /// Not owned; the front end that installs it outlives the session.
+  QuitPolicy* quit_policy = nullptr;
   /// Client exit checks (Magic's w_exit), run by `quit` without -noprompt;
   /// any one returning false cancels the quit (e.g. a front end asking
   /// whether to discard modified cells). Headless sessions install none.

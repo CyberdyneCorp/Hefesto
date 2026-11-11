@@ -17,7 +17,7 @@ description = "box 0 0 3 5 and a tile edge at x=-3; scalegrid 1 2; scalegrid 2 1
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

@@ -1,7 +1,0 @@
-# MODEL-G-032: A .mag with a locked use (*inv_0); load and save (instance lock crashed Magic in capture: exit 139; move/delete not authored).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/mt -noprompt
-snap internal
-load input/top
-cellname list modified
-save top_out

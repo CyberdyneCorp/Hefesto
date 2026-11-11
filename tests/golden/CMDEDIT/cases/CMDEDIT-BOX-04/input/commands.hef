@@ -1,7 +1,0 @@
-# CMDEDIT-BOX-04: box north 5 (Q-CMDEDIT-8).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load a
-box 0 0 10 10
-box north 5
-box values

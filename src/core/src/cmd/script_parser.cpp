@@ -206,42 +206,10 @@ class Parser {
   ParsedScript result_;
 };
 
-constexpr std::string_view kWordSpecials = " \t\r\n;\"{}\\";
-
 }  // namespace
 
 ParsedScript parse_script(std::string_view text, std::string_view source_name) {
   return Parser{text, source_name}.run();
-}
-
-std::string quote_word(std::string_view word) {
-  const bool plain = !word.empty() && word.front() != '#' && word.find_first_of(kWordSpecials) == std::string_view::npos;
-  if (plain) {
-    return std::string{word};
-  }
-  std::string out = "\"";
-  for (const char c : word) {
-    switch (c) {
-      case '\n':
-        out += "\\n";
-        break;
-      case '\t':
-        out += "\\t";
-        break;
-      case '\r':
-        out += "\\r";
-        break;
-      case '"':
-      case '\\':
-        out += '\\';
-        out += c;
-        break;
-      default:
-        out += c;
-    }
-  }
-  out += '"';
-  return out;
 }
 
 }  // namespace hefesto::cmd

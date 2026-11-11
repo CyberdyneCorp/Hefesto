@@ -1,9 +1,0 @@
-# UI-G-038: see no metal1; see allSame; see no allSame; see no a b c.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-see no metal1
-see allSame
-see no allSame
-see no a b c
-see

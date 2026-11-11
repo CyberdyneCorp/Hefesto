@@ -3,8 +3,8 @@
 //
 // Command logging (capability hefesto-architecture, requirement "Single
 // command API": every action is loggable and replayable). The log keeps each
-// executed command as a script line; feeding history_script() back through
-// run_script() replays the session.
+// executed command as a Tcl command line; evaluating history_script() in a
+// project's interpreter replays the session.
 
 #pragma once
 

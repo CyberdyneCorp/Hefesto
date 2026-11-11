@@ -1,9 +1,0 @@
-# MODEL-G-025: tech locked metal2, then paint via1.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/mt -noprompt
-snap internal
-load a
-tech locked metal2
-box 0 0 4 4
-paint via1
-save a

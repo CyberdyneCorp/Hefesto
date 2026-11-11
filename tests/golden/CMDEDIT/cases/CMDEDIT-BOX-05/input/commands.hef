@@ -1,7 +1,0 @@
-# CMDEDIT-BOX-05: box corner ne 20 30 (Q-CMDEDIT-9).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load a
-box 0 0 10 10
-box corner ne 20 30
-box values

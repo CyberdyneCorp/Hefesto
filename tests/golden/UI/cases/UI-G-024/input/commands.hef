@@ -1,5 +1,0 @@
-# UI-G-024: Load a cell with bbox 0 0 100 50; view get.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-view get

@@ -1,7 +1,0 @@
-# UI-G-017: logcommands log.txt update; box 0 0 1 1; logcommands.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-logcommands log.txt update
-box 0 0 1 1
-logcommands
