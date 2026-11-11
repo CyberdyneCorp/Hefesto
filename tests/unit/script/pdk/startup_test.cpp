@@ -233,6 +233,12 @@ TEST_CASE("a PDK rc file in the startup sequence runs only after consent",
   REQUIRE(host.requests().size() == 1);
   CHECK(host.requests().front().pdk == script::PdkIdentity{"sky130", "sky130A", "abc"});
 
+  // Asked once per version and session: declined again without a prompt
+  // until the decline is forgotten ("Review scripts...").
+  run = script::run_startup_files(s.editor, plan);
+  CHECK(s.eval("info exists ::pdk_rc") == "0");
+  CHECK(host.requests().size() == 1);
+  s.editor.script.pdk_trust.forget_decline(script::PdkIdentity{"sky130", "sky130A", "abc"});
   host.push_answer(script::ConsentDecision::run_once);
   run = script::run_startup_files(s.editor, plan);
   CHECK(s.eval("set ::pdk_rc") == "ran");

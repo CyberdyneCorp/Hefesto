@@ -63,11 +63,20 @@ struct CellIoContext {
   /// Rescales the whole database by n/d (scalegrid step 6, including the
   /// box) when a finer file refines the grid; returns false when it cannot.
   std::function<bool(std::int64_t n, std::int64_t d)> rescale_database;
+  /// What load_technology did for a mismatched file.
+  struct TechnologySwitch {
+    /// The now-current technology (kept alive by the session), or nullptr
+    /// when nothing was loaded. The reader then uses it through `tech`.
+    const tech::Technology* tech = nullptr;
+    /// The technology's PDK startup script was declined (hefesto-security
+    /// "Consent before implicit script execution"): the reader reads the
+    /// cell anyway with the current (`minimum`) technology and marks it
+    /// read-only (owner: PDKINT, m4-scripting design D7/D14).
+    bool read_only = false;
+  };
   /// Automatic technology discovery and loading for a mismatched file
-  /// (cell-library-resolution "Automatic technology discovery"); returns
-  /// the now-current technology (kept alive by the session), or nullptr
-  /// when nothing was loaded. The reader then uses it through `tech`.
-  std::function<const tech::Technology*(std::string_view tech)> load_technology;
+  /// (cell-library-resolution "Automatic technology discovery").
+  std::function<TechnologySwitch(std::string_view tech)> load_technology;
   /// Called at the end of every `.mag` read of `def` (dbCellReadDef's
   /// `done` and `badfile` paths); `format_error` is true on the badfile
   /// path, where Magic calls DRCCheckThis(def, TT_CHECKPAINT, NULL). The
@@ -84,6 +93,16 @@ struct ReadOptions {
   /// read_cell: a missing file also prints the system error text (DBCellRead
   /// called with an error pointer, as for the cell named on a load).
   bool report_errno = false;
+  /// Magic's DBVerbose for the reading command: `load -quiet` prints only
+  /// errors, `load -silent` nothing (generators' `load <cell> -silent`;
+  /// owner PDKINT, m4-scripting design D14). Messages at a level above it
+  /// are not printed. (Magic ref: commands/CmdLQ.c:436-441,500-508,
+  /// database/DBio.c:1581-1660, dbwind/DBWprocs.c:312,494)
+  enum class Verbosity : std::uint8_t { none, errors, warnings, all };
+  Verbosity verbosity = Verbosity::all;
+
+  /// True when a message of `level` is printed.
+  [[nodiscard]] bool prints(Verbosity level) const noexcept { return verbosity >= level; }
 };
 
 /// Reads `.mag` text into the definition `def` (normally empty; a backup

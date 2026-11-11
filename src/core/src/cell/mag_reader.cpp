@@ -52,8 +52,14 @@ bool check_technology(ReadState& st, const std::string& file_tech) {
     return true;
   }
   if (st.ctx.load_technology && !tech::layout_has_paint(st.ctx.library, st.tech().plane_count())) {
-    if (const tech::Technology* loaded = st.ctx.load_technology(file_tech)) {
-      st.ctx.tech = loaded;
+    const CellIoContext::TechnologySwitch loaded = st.ctx.load_technology(file_tech);
+    if (loaded.tech != nullptr) {
+      st.ctx.tech = loaded.tech;
+    }
+    if (loaded.read_only) {  // declined PDK script (hefesto-security): read-only with the current technology
+      st.def.flags().no_edit = true;
+      st.emit(codes::kReadNote, "Will attempt to read cell anyway.");
+      return true;
     }
   }
   if (file_tech == st.tech().name()) {
@@ -154,20 +160,23 @@ void reconcile_scale(ReadState& st, const Header& h) {
   st.n = ratio.internal;
   st.d = ratio.lambda;
   const bool limited = !tech::check_grid_limit(st.tech(), st.n, st.d).ok();
+  const bool all = st.options.prints(ReadOptions::Verbosity::all);  // `load -quiet|-silent` (DBVerbose)
   if (!limited && st.d > 1 && st.ctx.rescale_database && st.ctx.rescale_database(st.d, 1)) {
     st.ctx.grid.internal *= st.d;
-    st.emit(codes::kReadNote, "Input cell " + st.def.name() + " scales magic internal geometry by factor of " +
-                                  std::to_string(st.d));
+    if (all) {
+      st.emit(codes::kReadNote, "Input cell " + st.def.name() + " scales magic internal geometry by factor of " +
+                                    std::to_string(st.d));
+    }
     st.d = 1;
   }
-  if (st.n > 1) {  // DBVerbose is DB_VERBOSE_ALL by default (Magic ref: database/DBio.c:818-833)
+  if (st.n > 1 && all) {  // DBVerbose is DB_VERBOSE_ALL by default (Magic ref: database/DBio.c:818-833)
     std::string text = "Scaled magic input cell " + st.def.name() + " geometry by factor of " + std::to_string(st.n);
     if (st.d > 1) {
       text += "/ " + std::to_string(st.d);
     }
     st.emit(codes::kReadNote, std::move(text));
   }
-  if (st.d > 1) {  // Q-CELL-2: warned whenever a divisor remains
+  if (st.d > 1 && st.options.prints(ReadOptions::Verbosity::warnings)) {  // Q-CELL-2: warned whenever a divisor remains
     st.emit(codes::kGeometryLost, "Warning:  Geometry may be lost because internal grid cannot be reduced.");
   }
 }
