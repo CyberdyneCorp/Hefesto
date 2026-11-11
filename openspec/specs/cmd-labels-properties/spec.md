@@ -36,7 +36,7 @@ Compatibility: exact
 
 `label TEXT [POS [LAYER]]` or `label TEXT FONT [SIZE [ROTATION [OFFX OFFY [POS [LAYER]]]]]` SHALL create a label in the edit cell, with its rectangle equal to the box (edit coordinates):
 
-- The second word is taken as POS if it is a direction name. Otherwise it is FONT: an integer font index (an out-of-range index is reported), or a font name (unknown names fail).
+- The second word is taken as POS if it is a direction name. Otherwise it is FONT: an integer font index (an out-of-range index is reported), or a font name. The name `default` is the default font (−1), as for `setlabel font`; other unknown names fail. The text helper relies on this (capability `ui-gui-managers`, Q-SCRIPT-31).
 - POS is transformed from root to edit orientation.
 - OFFX and OFFY may also be given as one word "x y". Non-numeric offsets fail.
 - A LAYER prefixed with `-` makes the label **sticky**. An unknown LAYER fails with "Unknown layer".
@@ -60,6 +60,10 @@ Compatibility: exact
 #### Scenario: Sticky layer
 - **WHEN** `label VDD n -metal2` is run
 - **THEN** the label SHALL be attached to metal2, justified north, and sticky
+
+#### Scenario: Default font word
+- **WHEN** `label A default` is run
+- **THEN** a label `A` SHALL be created with font −1 and automatic justification, and no error SHALL be reported
 
 ### Requirement: Setlabel command
 

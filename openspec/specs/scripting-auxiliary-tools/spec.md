@@ -68,7 +68,7 @@ Compatibility: informative
 2. Treat blank lines as net separators.
 3. Within each net, route consecutive terminal pairs as a chain: for each terminal after the first, run `iroute route -dlabel <previous> -slabel <current> -timeout 3`.
 
-The script also defines an interactive "maze helper" window, with lists of unrouted and routed nets, route/rip-up/verify actions, and saving and loading of failed nets. It is reachable from the wrapper's Options menu as `Maze Router`. See Q-SCRIPT-30.
+The script also defines an interactive "maze helper" window, with lists of unrouted and routed nets, route/rip-up/verify actions, and saving and loading of failed nets. It is reachable from the wrapper's Options menu as `Maze Router`. The `.net` fallback and the chain order are reproduced in both `magic-compat` settings (Q-SCRIPT-30, resolution: replicate). The script drives `iroute` (capability `router-maze-iroute`), so it is provided and tested together with that capability.
 Compatibility: behavioral
 
 (Magic ref: tcltk/mazeroute.tcl:1-675)

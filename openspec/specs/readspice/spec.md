@@ -24,7 +24,9 @@ Compatibility: exact
 The reader SHALL split the file into lines and process them as follows:
 1. In CDL mode, a line starting with `*.` whose characters 2-8 equal `pininfo` (case-insensitive) SHALL have its leading `*` removed.
 2. Any other line starting with `*` SHALL be discarded.
-3. A line starting with `+` SHALL be appended to the current logical line. Before appending, one space SHALL be appended to the logical line unless the continuation line itself ends with a space. This test looks at the continuation line, not at the logical line (Q-SCRIPT-32). The text appended is the continuation line without its `+`.
+3. A line starting with `+` SHALL be appended to the current logical line, without its `+`. Whether one space is first appended to the logical line depends on the `magic-compat` setting (Q-SCRIPT-32, resolution: compat for the tokenization):
+   - ON (the default), as in Magic: one space is appended unless the continuation line itself ends with a space. This tests the continuation line, not the logical line, so when the logical line does not end with a space and a continuation such as `+c d ` has no space after `+` and ends with one, the last token of the logical line and the first token of the continuation are joined (`…b` and `+c d ` give `…bc d `).
+   - OFF: one space is appended unless the logical line already ends with a space, so a `+` line always starts a new token.
 4. Every other line starts a new logical line.
 
 Comment lines do not break continuations. Tokens SHALL be produced by splitting on single spaces, so consecutive spaces yield empty tokens, which are later skipped.
@@ -34,7 +36,15 @@ Compatibility: exact
 
 #### Scenario: Continuation across a comment
 - **GIVEN** lines `.subckt inv A Y`, `* comment` and `+ VDD VSS`
-- **THEN** the logical line SHALL be `.subckt inv A Y  VDD VSS`, which has two spaces between Y and VDD and so yields one empty token
+- **THEN** the logical line SHALL be `.subckt inv A Y  VDD VSS`, which has two spaces between Y and VDD and so yields one empty token, in both `magic-compat` settings
+
+#### Scenario: Continuation joins tokens with magic-compat ON
+- **GIVEN** `magic-compat` ON and lines `.subckt inv A Y` and `+VDD VSS ` (ending with a space)
+- **THEN** the logical line SHALL be `.subckt inv A YVDD VSS `, whose pin candidates are `A`, `YVDD`, `VSS` and an empty token
+
+#### Scenario: Continuation starts a token with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and the lines of the previous scenario
+- **THEN** the logical line SHALL be `.subckt inv A Y VDD VSS `, whose pin candidates are `A`, `Y`, `VDD`, `VSS` and an empty token
 
 ### Requirement: Subcircuit recognition
 The keyword of a logical line is its first token in lower case. A keyword `.subckt` SHALL begin a subcircuit with cell name = token 1 and pin candidates = tokens 2..end. A Spectre line whose keyword is `inline` and whose token 1 is `subckt` (case-insensitive) SHALL be re-tokenized by splitting on space, tab, `(` and `)`. Its first token is dropped and it is then treated as `.subckt`. A keyword `.ends` SHALL end the subcircuit. If the cell is not loaded (`cellname list exists` returns 0), the reader SHALL print `Cell <name> in netlist has not been loaded.` and skip the subcircuit. The whole run SHALL be wrapped in nested redraw suspension.
@@ -55,9 +65,9 @@ For a loaded cell C with pin candidates T (tokens 2..end of the `.subckt` line),
    - Stop at the first token containing `=` (parameters follow).
    - Skip empty tokens.
    - Find the port index by name t. If not found, try t with `[`/`]` mapped to `<`/`>`. If still not found, try `<`/`>` mapped to `[`/`]`. If still not found, try a case-insensitive comparison against each port name for indices 0..`port last`. If still not found, try a case-insensitive match against the collected label texts: on a match, `goto` that label and `port <label> make n`.
-   - If a port was found or created, set its index to n, mark the cell changed if the old index ≠ n, increment n, and record the mapping t → matched name.
-   - If nothing matched, run `goto t`. If that returns a layer, `port t make n`, increment n and mark changed. Record t → t.
-5. If changed, print `Cell <C> port order was modified.` Because step 2 moves every pre-existing port, any cell that already had named ports is always reported as changed (Q-SCRIPT-32).
+   - If a port was found or created, set its index to n, increment n, and record the mapping t → matched name.
+   - If nothing matched, run `goto t`. If that returns a layer, `port t make n` and increment n. Record t → t.
+5. If some port's final index differs from its index before step 2, or a port was created in step 4, print `Cell <C> port order was modified.` This holds in both `magic-compat` settings (Q-SCRIPT-32, resolution: fix for the message). Magic compares each pin's index after step 2 with n, so it reports every cell that already had named ports.
 
 Ports of C that are absent from the netlist SHALL keep the high indices assigned in step 2.
 Compatibility: exact
@@ -69,10 +79,10 @@ Compatibility: exact
 - **WHEN** a netlist line `.subckt inv A Y VDD VSS` is read
 - **THEN** after annotation, A=1, Y=2, VDD=3, VSS=4, and `Cell inv port order was modified.` SHALL be printed
 
-#### Scenario: Already-ordered ports still reported
+#### Scenario: Already-ordered ports not reported
 - **GIVEN** cell `inv` has ports A=1, Y=2, VDD=3, VSS=4
 - **WHEN** a netlist line `.subckt inv A Y VDD VSS` is read
-- **THEN** the indices SHALL be unchanged and `Cell inv port order was modified.` SHALL still be printed
+- **THEN** the indices SHALL be unchanged and `Cell inv port order was modified.` SHALL NOT be printed (Magic prints it; golden deviation)
 
 #### Scenario: Bus-bracket mapping
 - **GIVEN** cell `reg` has port `D<0>` and the netlist pin is `D[0]`
@@ -83,7 +93,7 @@ Compatibility: exact
 - **THEN** BODY SHALL end with an index above 4 (verify against Magic)
 
 ### Requirement: Port direction from PININFO
-A `.PININFO` line inside a loaded subcircuit SHALL be processed token by token. Each token has the form `name:dir`. If `name` was recorded for this subcircuit and the port's current class is `default`, the class SHALL be set according to dir: `B` → `inout`, `I` → `input`, `O` → `output`. Other values are ignored, and so are ports whose class is not `default`. An unrecorded non-empty name SHALL print `.PININFO error:  Pin <name> not found.` on stderr. See Q-SCRIPT-19 for the Tcl 9 incompatibility.
+A `.PININFO` line inside a loaded subcircuit SHALL be processed token by token. Each token has the form `name:dir`. If `name` was recorded for this subcircuit and the port's current class is `default`, the class SHALL be set according to dir: `B` → `inout`, `I` → `input`, `O` → `output`. Other values are ignored, and so are ports whose class is not `default`. An unrecorded non-empty name SHALL print `.PININFO error:  Pin <name> not found.` on stderr. The direction letter is matched case-sensitively against the three literals with `switch`, which gives the result of Magic's Tcl 8 `case` on any embedded Tcl version (Q-SCRIPT-19, resolution: fix; Tcl 9 removed `case`).
 Compatibility: exact
 
 (Magic ref: tcltk/readspice.tcl:227-247)

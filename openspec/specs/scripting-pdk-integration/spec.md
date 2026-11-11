@@ -12,7 +12,7 @@ This capability specifies:
 - automatic technology discovery from layout files;
 - the PDK path conventions in saved files.
 
-Result formats are specified in `scripting-api`. The full startup-file search order is owned by capability `app-startup`. The PDK file contents described here are not part of the Magic tree. They were verified against open_pdks @ `c6df28c1` (sky130, gf180mcu templates and `common/pdk.tcl`) and IHP-Open-PDK @ `5e6d592e` (`ihp-sg13g2/libs.tech/magic`); see Q-SCRIPT-9. PDK references have the form `(PDK ref: <repo> <path>:<line>)`, where `open_pdks` paths are relative to the repository root and `IHP` paths are relative to `ihp-sg13g2/libs.tech/magic/`. The templates contain preprocessor tokens (`TECHNAME`, `STAGING_PATH`, `MAGIC_CURRENT`, `#ifdef`) that open_pdks replaces at install time: `TECHNAME` becomes the PDK variant name (for example `sky130A`), and `MAGIC_CURRENT` becomes `libs.tech/magic`.
+Result formats are specified in `scripting-api`. The full startup-file search order is owned by capability `app-startup`. The PDK file contents described here are not part of the Magic tree. They were verified against open_pdks @ `c6df28c1` (sky130, gf180mcu templates and `common/pdk.tcl`) and IHP-Open-PDK @ `5e6d592e` (`ihp-sg13g2/libs.tech/magic`). These are also the pins of the reference PDK data that unit tests and golden capture use (Q-SCRIPT-9, resolution: the static inventory is accepted at these pins; the dynamic command trace SCRIPT-PDK-09 and the values marked "(verify against Magic)" are confirmed by golden capture). PDK references have the form `(PDK ref: <repo> <path>:<line>)`, where `open_pdks` paths are relative to the repository root and `IHP` paths are relative to `ihp-sg13g2/libs.tech/magic/`. The templates contain preprocessor tokens (`TECHNAME`, `STAGING_PATH`, `MAGIC_CURRENT`, `#ifdef`) that open_pdks replaces at install time: `TECHNAME` becomes the PDK variant name (for example `sky130A`), and `MAGIC_CURRENT` becomes `libs.tech/magic`.
 
 ## Requirements
 
@@ -34,7 +34,7 @@ Startup SHALL proceed in this order:
 14. Run `crash recover` if `-r` was given.
 15. Unset the temporary globals `celllist`, `nlist` and `do_recover`. Turn DRC back on if it was on.
 
-See Q-SCRIPT-33 for `techmanager initall`.
+`techmanager initall` matches no option of `techmanager` and does nothing, in Magic and in Hefesto in both `magic-compat` settings; Hefesto's native technology manager builds its style menus from the current technology when it opens (Q-SCRIPT-33, resolution: replicate).
 Compatibility: behavioral
 
 (Magic ref: tcltk/magic.tcl.in:1-470)
@@ -66,7 +66,7 @@ The script host SHALL classify each argument with the following regular expressi
 | `^-D`, `^-n*` | pass through. Because `n*` may match zero characters, `^-n*` matches every remaining argument that begins with `-`, so unknown options are never treated as files |
 | anything else | a file to load, also passed through |
 
-Because the patterns are tested in this order, `-noc...` (console) is consumed by the launcher before this table applies, and `-rcfile` is matched by the `^-rc(file)?$` row and not as recovery. See Q-SCRIPT-37 for the ordering hazard with `-r`.
+Because the patterns are tested in this order, `-noc...` (console) is consumed by the launcher before this table applies, and `-rcfile` is matched by the `^-rc(file)?$` row and not as recovery. The table and its order are reproduced in both `magic-compat` settings, including the spellings it accepts by accident: `-rcover` is taken as recovery, `^-n*` passes every unknown `-x` to the engine instead of loading it as a file, and `-dnullx` disables the wrapper as `-dnull` does (Q-SCRIPT-37, resolution: replicate).
 Compatibility: behavioral
 
 (Magic ref: tcltk/magic.tcl.in:158-237, tcltk/magic.sh.in:33-72)
@@ -121,7 +121,7 @@ The editor SHALL execute each PDK `.magicrc` listed below unchanged, giving ever
 | 1 | Banner `puts stdout "Sourcing design .magicrc for technology <tech> ..."` | yes | yes | yes |
 | 2 | `set scalefac [tech lambda]`; if `[lindex $scalefac 1] < D`, run `scalegrid 1 D` | D = 2 | D = 10 | D = 2 |
 | 3 | `drc euclidean on` | yes | yes | yes |
-| 4 | `catch {random seed}` (time-based seed; see Q-SCRIPT-44) | yes | yes | yes |
+| 4 | `catch {random seed}` (time-based seed, replicated; the golden harness runs `random seed 1` after startup; Q-SCRIPT-44) | yes | yes | yes |
 | 5 | `ext2spice scale off` | yes | — | yes |
 | 6 | `if {[catch {set PDK_ROOT [file nativename $env(PDK_ROOT)]}]} {set PDK_ROOT <install root>}` | yes | yes | — (commented out) |
 | 7 | `tech load <file>` | `$PDK_ROOT/<tech>/libs.tech/magic/<tech>.tech` (the full-tech variant loads `<tech>-F.tech`) | `$PDK_ROOT/<tech>/libs.tech/magic/<tech>.tech` | `[file dirname [file normalize [info script]]]/ihp-sg13g2.tech` |
@@ -133,6 +133,8 @@ The editor SHALL execute each PDK `.magicrc` listed below unchanged, giving ever
 | 13 | `addpath ${PDK_ROOT}/<tech>/libs.ref/<lib>/mag` for each standard library | 14 libraries | 9 libraries | — |
 
 The startup files do not wrap `tech load` in `suspendall`/`resumeall`, do not set a DRC style or run `drc on`, do not read `MAGTYPE`, and do not call `magic::query_mylib_ip` or `magic::query_my_projects`. Those two procedures are defined by `common/pdk.tcl` but nothing in the PDKs calls them.
+
+Earlier generations of these files, such as open_pdks `0fe599b2` and IHP-Open-PDK `ddb601a4`, differ: the sky130 and gf180mcu files read `MAGTYPE` (default `mag`) to choose between `libs.ref/${MAGTYPE}/<lib>` and `libs.ref/<lib>/${MAGTYPE}`, list 5 gf180mcu libraries, and end with `catch {magic::query_mylib_ip}` and `catch {magic::query_my_projects}`; the IHP file does not source its device script, sets `SUB` to `VSUB` and adds four `libs.ref/sg13g2_*/${MAGTYPE}` paths. The editor SHALL run them unchanged too. The two `query_*` procedures `glob` under `/home/$USER/design`; the sandbox denies that access, and their `catch` absorbs the error (Q-SCRIPT-9; golden smoke case SCRIPT-PDK-18).
 
 To run these files, the editor SHALL provide:
 - `env` as an array of process environment variables, and `catch`, `if`, `lindex`, `info exists`;
@@ -158,6 +160,11 @@ Compatibility: behavioral
 - **WHEN** the rc file runs
 - **THEN** `quit -noprompt` SHALL end the process with status 0, and the device generator SHALL NOT be sourced
 
+#### Scenario: Older rc generation
+- **GIVEN** the sky130A `.magicrc` of open_pdks `0fe599b2`, with `MAGTYPE` unset
+- **WHEN** it runs as the startup file
+- **THEN** every line SHALL run, `tech name` SHALL be `sky130A`, and the denied file access in `magic::query_mylib_ip` and `magic::query_my_projects` SHALL be absorbed by their `catch` without stopping the file
+
 #### Scenario: Grid rescale for gf180mcu
 - **GIVEN** `tech lambda` returns `1 1` after the gf180mcu technology is loaded
 - **WHEN** step 2 runs
@@ -171,17 +178,17 @@ A PDK device-generator script SHALL be supported when it is structured as follow
 - **Close behaviour.** If a command `closewrapper` exists, it is renamed to `closewrapperonly` and replaced by a procedure. That procedure calls `magic::quit` when `[llength [windownames all]] <= 1`, and otherwise calls `closewrapperonly`.
 - **Locked layers.** `catch {tech lock fence,magnet,rotate}` hides the maze-router layers from the toolbar.
 - **Namespace.** A namespace `<ns>` holds a rule dictionary `<ns>::ruleset`, built with `dict set` (layer widths, spacings and surrounds in µm), and uses `namespace path {::tcl::mathop ::tcl::mathfunc}`, so that `+ - * / < >` and math functions can be used as commands.
-- **Menus.** `<ns>::addtechmenu {framename}` chooses the layout frame. If `${framename}.titlebar cget -height` raises an error, the frame is `${framename}.pane.top` (Magic 8.1.126 and later). Otherwise it is `framename`. It then builds menus with `magic::add_toolkit_menu`, `magic::add_toolkit_command` and `magic::add_toolkit_separator`. The menus are `Devices 1` (`pdk1`) and `Devices 2` (`pdk2`) for sky130 and gf180mcu, and `pdk1` only for sg13g2. It also edits the wrapper's own menus directly (Q-SCRIPT-42):
+- **Menus.** `<ns>::addtechmenu {framename}` chooses the layout frame. If `${framename}.titlebar cget -height` raises an error, the frame is `${framename}.pane.top` (Magic 8.1.126 and later). Otherwise it is `framename`. It then builds menus with `magic::add_toolkit_menu`, `magic::add_toolkit_command` and `magic::add_toolkit_separator`. The menus are `Devices 1` (`pdk1`) and `Devices 2` (`pdk2`) for sky130 and gf180mcu, and `pdk1` only for sg13g2. It also edits the wrapper's own menus directly. Hefesto intercepts these widget operations and maps them to native menu actions (Requirement "Wrapper widget operations in PDK menu callbacks"; Q-SCRIPT-42):
   - it appends `DRC Routing` → `drc style drc(routing)` to `<frame>.titlebar.mbuttons.drc.toolmenu`;
   - it inserts at index 4 of `<frame>.titlebar.mbuttons.file.toolmenu` an `Import SPICE` item running `<ns>::importspice`, and then a separator at index 4. `<ns>::importspice` asks for a file with `tk_getOpenFile` and calls `magic::netlist_to_layout <file> <ns>`;
   - it sets `Winopts(<framename>,cmdentry)` from `Opts(cmdentry)` (default 0) and calls `addcommandentry <framename>` when that value is 1.
 - **Menu items.** A menu item either runs `magic::gencell <ns>::<device>` (opening the new-device dialog) or calls a direct drawing procedure `<ns>::<name>_draw` with no arguments. Direct drawing procedures (substrate contacts, guard rings, wells, via stacks) paint at the cursor box into the edit cell and create no generated cell.
 - **Part files.** The script computes `script_path` as `[file dirname [info script]]` and sources `<tech>-util.tcl`, `-misc`, `-via`, `-fet`, `-cap`, `-res`, `-dio`, followed by `-fix` (sky130), `-bjt` (gf180mcu), or `-bjt`, `-dio`, `-fix`, `-var`, `-ind`, `-pad` (sg13g2). sg13g2 also stores the path in `sg13g2::script_path` for later use by generators.
 - **Device procedures.** Each device has `<ns>::<device>_defaults|_convert|_dialog|_check|_draw`, as specified in `pcell-toolkit`. Device names follow the PDK model names, for example `sky130_fd_pr__nfet_01v8`, `nfet_03v3`, `sg13_lv_nmos`. Shared implementations live in procedures named by device family (`mos_draw`, `res_check`, `fixed_draw`, ...), and each device procedure delegates to them. Some devices lack `_check` (sg13g2 `rm6`, `rm7`); the framework tolerates this (see `pcell-toolkit`).
-- **Fixed-layout devices.** Vendor BJTs, inductors, VPP capacitors and ESD cells have defaults `{nx 1 ny 1 deltax 0 deltay 0 nocell 1 xstep <µm> ystep <µm> class <class>}`. Their `_draw` runs `getcell <cell>`. When `nx > 1` or `ny > 1`, it runs `box size (xstep+deltax)um (ystep+deltay)um` followed by `array nx ny`. Values pass through `magic::spice2float`. It then runs `select cell <inst>` and `expand`, and returns the instance name. The array pitch therefore comes from the box size (see capability `cmd-selection`). See Q-SCRIPT-38 for the `pitchx`/`pitchy` keys that the framework adds when editing such a device.
+- **Fixed-layout devices.** Vendor BJTs, inductors, VPP capacitors and ESD cells have defaults `{nx 1 ny 1 deltax 0 deltay 0 nocell 1 xstep <µm> ystep <µm> class <class>}`. Their `_draw` runs `getcell <cell>`. When `nx > 1` or `ny > 1`, it runs `box size (xstep+deltax)um (ystep+deltay)um` followed by `array nx ny`. Values pass through `magic::spice2float`. It then runs `select cell <inst>` and `expand`, and returns the instance name. The array pitch therefore comes from the box size (see capability `cmd-selection`). When an existing fixed device is opened for editing, the framework adds `pitchx`/`pitchy` from `array -list pitch` to the dialog parameters (see `pcell-toolkit`). Each verified PDK's `<ns>::fixed_dialog` reads them when present, converts them with `magic::i2u`, and sets `deltax`/`deltay` to `3digitpastdecimal(pitch − step)`, clamped at 0, before it builds the `deltax`/`deltay` entries, so the dialog shows the instance's spacing and Apply keeps it. `array -list pitch` prints in the current display units while `fixed_dialog` treats the value as internal units, so the derived spacing is wrong when the units are neither default nor internal. This is PDK code: it runs unchanged under Tcl and native generators reproduce it, in both `magic-compat` settings (Q-SCRIPT-38, resolution: replicate).
 Compatibility: behavioral
 
-(Magic ref: tcltk/toolkit.tcl:23-105,379-402,1642-1653, tcltk/wrapper.tcl:1219-1221,1495-1500, tcltk/toolbar.tcl:31-37) (PDK ref: open_pdks sky130/magic/sky130.tcl:12-257, open_pdks gf180mcu/magic/gf180mcu.tcl:12-256, IHP ihp-sg13g2.tcl:91-302, open_pdks sky130/magic/sky130-fix.tcl:54-92,254-282, IHP ihp-sg13g2-fix.tcl:52-95,446-476)
+(Magic ref: tcltk/toolkit.tcl:23-105,379-402,1642-1653, tcltk/wrapper.tcl:1219-1221,1495-1500, tcltk/toolbar.tcl:31-37) (PDK ref: open_pdks sky130/magic/sky130.tcl:12-257, open_pdks gf180mcu/magic/gf180mcu.tcl:12-256, IHP ihp-sg13g2.tcl:91-302, open_pdks sky130/magic/sky130-fix.tcl:54-92,166-203,254-282, IHP ihp-sg13g2-fix.tcl:52-95,158-200,446-476)
 
 #### Scenario: Menu registration survives multiple windows
 - **GIVEN** the sky130A script ran `set Opts(callback) [subst {sky130::addtechmenu \$framename; $Opts(callback)}]` on an empty `Opts(callback)`
@@ -216,7 +223,7 @@ The PDK scripts define helper procedures inside the engine's `magic::` namespace
 | `magic::query_mylib_ip`, `magic::query_my_projects` | `addpath` for `~/design/ip/*/<version>/maglef` and `~/design/*/mag` directories whose `.config/techdir` link matches `TECHPATH` | absent |
 | `magic::magceil v`, `magic::magfloor v` | rounding away from zero, and toward zero | sg13g2 only |
 
-Generators use these helpers to turn dialog strings into numbers (`spice2float`) and microns into internal units (`u2i`, `i2u`). A native generator re-implementation (see `pcell-toolkit`) SHALL reproduce their exact numeric results, including the defects noted in Q-SCRIPT-40. Two PDKs loaded in one session overwrite each other's definitions (Q-SCRIPT-41).
+Generators use these helpers to turn dialog strings into numbers (`spice2float`) and microns into internal units (`u2i`, `i2u`). A native generator re-implementation (see `pcell-toolkit`) SHALL reproduce their exact numeric results bit for bit, including the defects of `magic::spice2float` (Q-SCRIPT-40, resolution: replicate; the PDK code runs unchanged under Tcl). Two PDK scripts sourced into one interpreter overwrite each other's definitions, as in Tcl. Hefesto gives each open project its own interpreter and warns on a cross-PDK redefinition (capability `scripting-api`, Requirement "Script-defined procedures in the engine namespace"; Q-SCRIPT-41).
 Compatibility: behavioral
 
 (Magic ref: tcltk/tclmagic.c:1603-1673, cif/CIFmain.c:139-146) (PDK ref: open_pdks common/pdk.tcl:12-271, open_pdks sky130/Makefile.in:1060, open_pdks gf180mcu/Makefile.in:834, IHP ihp-sg13g2-util.tcl:668-835)
@@ -236,10 +243,10 @@ PDK `_draw` procedures follow the conventions below. The editor SHALL give the l
 2. **Unit context.** A draw saves the input context and sets its own. sky130 and gf180mcu run `set savesnap [snap]` and `snap internal`, and restore with `snap $savesnap`; `snap` with no argument SHALL return `internal`, `lambda` or `user`. sg13g2 runs `set curunits [units]` and `units internal` (or `units microns`), and restores with `units {*}$curunits`. In both cases, un-suffixed numbers are internal units, and generators append `um` to computed micron values (for example `box grow n ${s}um`). Un-suffixed values follow `snap` only while `units` is `default` (see capability `cmd-coordinates-and-units`).
 3. **Box stack.** `pushbox` and `popbox` (with no argument) are paired, 490 times or more across the three PDKs. A draw leaves the box stack as it found it.
 4. **Box arithmetic.** The box is moved and grown with `box move n|s|e|w <d>`, `box grow n|s|e|w|c <d>`, `box size <w> <h>`, `box position <x> <y>`, `box values ?…?`, `box width` and `box height`.
-5. **Ports.** Pins are made with `label <text> c <layer>` (justification `c`, attached to a layer), followed by `select area label` (`label` is a prefix of the special `labels`) and `port make`. Port indices are allocated automatically. sg13g2 also uses the long form `label <text> FreeSans <size> <rot> <offx> <offy> c -<layer>` (sticky). Its forms `label … c +<layer>` raise `Unknown layer` (Q-SCRIPT-39).
+5. **Ports.** Pins are made with `label <text> c <layer>` (justification `c`, attached to a layer), followed by `select area label` (`label` is a prefix of the special `labels`) and `port make`. Port indices are allocated automatically. sg13g2 also uses the long form `label <text> FreeSans <size> <rot> <offx> <offy> c -<layer>` (sticky). Its forms `label … c +<layer>` fail with `Unknown layer: +<layer>` and create no label, so the following `port make` acts on whatever label is under the box. Hefesto reproduces this in both `magic-compat` settings and in native generators, so sg13g2 cells are identical to Magic's (Q-SCRIPT-39, resolution: replicate).
 6. **Properties.** `property FIXED_BBOX [box values]` sets the abutment box to the box in internal units. sg13g2 sets `MASKHINTS_CONTBAR` and `MASKHINTS_PWELLBLK` with micron-suffixed coordinates (see capability `mask-hints`). Generated-cell properties are set by the framework, except for sg13g2 fixed cells (item 8).
 7. **Other geometry commands.** `paint`, `erase`, `polygon <type> x1 y1 x2 y2 …` (sg13g2), `wire segment <type> <width> x1 y1 … ?-noendcap?` (sg13g2 inductors and pads), `copy n <d>` and `delete` (sg13g2 inductor), `select area <types>`, `select clear`, `select top cell`, and `getcell <cell> child 0 0` (sg13g2 bipolar).
-8. **On-demand library cells (sg13g2).** Before placing a fixed cell that is not in memory (`cellname list exists <c>` is `0`), sg13g2 builds it. It saves `cellname list window` (or `cellname list self`) and `box values`, saves `tag load` and runs `tag load {}`, then `load <c> -silent` and `tech unlock *`. It sources a script that paints the cell in internal units, runs `view`, and sets `property gencell <c>`, `property library sg13g2` and, when the variable `parameters` exists, `property parameters`. Finally it reloads the saved cell with `load`, restores the tag, runs `tech revert`, and restores the box. The editor SHALL allow `load` to change the window's root cell during a gencell draw and back again (Q-SCRIPT-45).
+8. **On-demand library cells (sg13g2).** Before placing a fixed cell that is not in memory (`cellname list exists <c>` is `0`), sg13g2 builds it. It saves `cellname list window` (or `cellname list self`) and `box values`, saves `tag load` and runs `tag load {}`, then `load <c> -silent` and `tech unlock *`. It sources a script that paints the cell in internal units, runs `view`, and sets `property gencell <c>`, `property library sg13g2` and, when the variable `parameters` exists, `property parameters`. Finally it reloads the saved cell with `load`, restores the tag, runs `tech revert`, and restores the box. The editor SHALL allow `load` to change the window's root cell during a gencell draw and back again. `load` does not change the framework's edit stack, so `popstack` after the draw returns to the window and view saved by `pushstack`. Fixed devices are not `pushstack`ed, and each `load` makes the loaded cell the edit cell, so a fixed device placed while a subcell is being edited is placed in the root cell and the view is reset. Native sg13g2 generators SHALL reproduce this (Q-SCRIPT-45, resolution: replicate; confirmed by golden SCRIPT-PDK-14).
 9. **Suspension.** Direct drawing procedures and on-demand builders wrap their work in `suspendall` … `resumeall` (see capability `ui-box-stack-and-measure`).
 Compatibility: behavioral
 
@@ -295,7 +302,7 @@ The editor SHALL provide every engine command, framework procedure and script va
 | Direct drawing menu entries | 13 | 7 | 14 |
 | Fixed (`nocell`) devices | 12 | 11 | 8 |
 
-Every engine command in this table is specified by a command capability: `cmd-box`, `cmd-coordinates-and-units`, `cmd-paint-erase`, `cmd-labels-properties`, `cmd-selection`, `cmd-hierarchy`, `cmd-misc-edit` (`random`), `tech-command`, `drc-commands`, `netlist-spice-options` (`ext2spice scale`), `wiring-tool` (`wire segment`), `gds-read`/`gds-write`, `ui-windows-and-views` (`windownames`, `view`), `ui-command-dispatch` (`quit`), `ui-box-stack-and-measure` and `scripting-api` (`tag`). The wrapper widget paths are not specified (Q-SCRIPT-42).
+Every engine command in this table is specified by a command capability: `cmd-box`, `cmd-coordinates-and-units`, `cmd-paint-erase`, `cmd-labels-properties`, `cmd-selection`, `cmd-hierarchy`, `cmd-misc-edit` (`random`), `tech-command`, `drc-commands`, `netlist-spice-options` (`ext2spice scale`), `wiring-tool` (`wire segment`), `gds-read`/`gds-write`, `ui-windows-and-views` (`windownames`, `view`), `ui-command-dispatch` (`quit`), `ui-box-stack-and-measure` and `scripting-api` (`tag`). Hefesto does not provide these widget paths; the operations the PDKs perform on them are intercepted as specified in "Wrapper widget operations in PDK menu callbacks" (Q-SCRIPT-42).
 Compatibility: behavioral
 
 (Magic ref: tcltk/toolkit.tcl:61-117,1285-1517, tcltk/tools.tcl:14-265, tcltk/wrapper.tcl:1219-1221,1495-1500,1541-1565) (PDK ref: open_pdks sky130/magic/*.tcl and sky130.magicrc, open_pdks gf180mcu/magic/*.tcl and gf180mcu.magicrc, open_pdks common/pdk.tcl, IHP *.tcl and ihp-sg13g2.magicrc)
@@ -304,6 +311,37 @@ Compatibility: behavioral
 - **GIVEN** a trace of every command invoked while each PDK's rc file runs and each generator runs with default parameters (case SCRIPT-PDK-09)
 - **WHEN** the traced command names are compared with the table
 - **THEN** every traced engine command and framework procedure SHALL appear in the table
+
+### Requirement: Wrapper widget operations in PDK menu callbacks
+Hefesto's menus are native in both shells (desktop and iPad) and no Tk widget exists. When a PDK menu callback (`<ns>::addtechmenu`, run through `Opts(callback)`) or a procedure it installs performs one of the following widget operations, Hefesto SHALL intercept it and act as listed, on every platform:
+
+| Operation in the PDK script | Hefesto action |
+|---|---|
+| `${f}.titlebar cget -height` | raises an error, so the PDK selects `${f}.pane.top` as the layout frame |
+| `<frame>.titlebar.mbuttons.drc.toolmenu add command -label <l> -command <c>` | appends item `<l>` running `<c>` to the native DRC menu of that window |
+| `<frame>.titlebar.mbuttons.file.toolmenu insert 4 command …` and `insert 4 separator` | inserts the item or separator in the native File menu at the position that index 4 has in Magic's File menu, whose entries are Open..., Save..., a separator, Flush changes, a separator, Read GDS, … (the sky130 calls therefore give Flush changes, a separator, Import SPICE, a separator, Read GDS) |
+| `tk_getOpenFile ?options?` | opens the native file picker and returns the chosen path, or the empty string if cancelled |
+
+Every other statement that addresses a Tk widget path or a Tk command (`winfo`, `wm`, `bind`, other widget subcommands) SHALL be skipped, with one diagnostic per skipped statement naming the script file, the line and the statement, and evaluation SHALL continue with the next statement. `Winopts(<frame>,cmdentry)` and `addcommandentry` keep their meaning (the window command entry, capability `ui-gui-managers`). `suspendall` and `resumeall` are native, so their `winfo` use does not arise. Item order and labels in the native menus follow the PDK's calls. A Tk-compatible widget layer is not provided (Q-SCRIPT-42, resolution: platform, option b; decision D-32).
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3; D-32) (Magic ref: tcltk/wrapper.tcl:1219-1221,1495-1500,1541-1565) (PDK ref: open_pdks sky130/magic/sky130.tcl:36-47,83-243, IHP ihp-sg13g2.tcl:115-126,162-282)
+
+#### Scenario: sky130 menus in a new window
+- **GIVEN** the sky130A startup and device scripts have run
+- **WHEN** a layout window opens
+- **THEN** the window SHALL have the `Devices 1` and `Devices 2` menus, a `DRC Routing` item at the end of its DRC menu, and an `Import SPICE` item between two separators after `Flush changes` in its File menu, and no skipped-statement diagnostic SHALL be printed
+
+#### Scenario: Import SPICE uses the native picker
+- **GIVEN** the sky130A menus of the previous scenario
+- **WHEN** the user chooses File > Import SPICE and picks `inv.spice`
+- **THEN** `magic::netlist_to_layout inv.spice sky130` SHALL run
+
+#### Scenario: Unknown widget statement
+- **GIVEN** a PDK callback that runs `${frame}.titlebar.mbuttons.cell.toolmenu add command -label X -command y` and then `magic::add_toolkit_menu $layoutframe Extra`
+- **WHEN** a layout window opens
+- **THEN** the first statement SHALL be skipped with a diagnostic naming the script and line, and the `Extra` menu SHALL still be created
 
 ### Requirement: Technology auto-discovery from layout files
 When a cell file declares a technology different from the current one, the reader is not told to ignore the mismatch, and no cell in memory contains paint, the editor SHALL search for `<tech>.tech` in these places, in order:
@@ -334,25 +372,14 @@ Compatibility: exact
 - **WHEN** the parent is saved
 - **THEN** the stored path SHALL begin with `$PDKPATH/libs.ref/sky130_fd_sc_hd/mag`
 
-### Requirement: Sessions without PDK script execution
-When the iPadOS build runs in curated-pack mode and a PDK's startup script is not among the bundled scripts (capability `hefesto-scripting`, Requirement "App Store fallback for iPadOS"), Hefesto SHALL support a declarative PDK profile instead. A script the user declines to trust is handled by capability `hefesto-security`, not by this profile. See Q-SCRIPT-46. The profile provides the effects of a PDK `.magicrc`:
-- the grid rescale rule (`scalegrid 1 D` when the lambda denominator is below D);
-- the Euclidean DRC setting;
-- the random seed (time-based in the PDKs; a fixed value for reproducible GDS output, see Q-SCRIPT-44);
-- the `ext2spice scale` setting;
-- the technology file path and the expected technology name. A mismatch aborts the session, as `quit -noprompt` does;
-- the snap setting;
-- `VDD`/`GND`/`SUB`;
-- cell search paths;
-- the device library namespace, which replaces the effect of sourcing `<tech>.tcl` (see `pcell-toolkit`).
-
-The editor SHALL apply these effects in the order the `.magicrc` would (see "PDK startup file contract"). The editor SHALL NOT silently ignore a PDK `.magicrc`. It SHALL report which statements were not applied. Device generators that are unavailable SHALL leave existing generated cells editable as ordinary cells (see `pcell-toolkit`).
+### Requirement: PDKs without bundled scripts in curated-pack mode
+When the iPadOS build runs in curated-pack mode (capability `hefesto-scripting`, Requirement "App Store fallback for iPadOS"), a PDK whose startup and device scripts are not among the bundled curated scripts SHALL be refused: Hefesto SHALL NOT activate it in the PDK store or run its scripts, and SHALL report that only curated PDKs run in this mode. Hefesto SHALL NOT apply a declarative (non-script) substitute for a PDK `.magicrc`; there is no declarative PDK profile (Q-SCRIPT-46, resolution: platform, option b; decision D-30). A script the user declines to trust is handled by capability `hefesto-security` (the file opens read-only with the `minimum` tech). Generated cells of a PDK whose generators do not run stay editable as ordinary cells (see `pcell-toolkit`).
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/cross-cutting.md#X-3)
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3; D-30)
 
-#### Scenario: Declarative profile equivalence
-- **GIVEN** a profile equivalent to the sky130A `.magicrc`
-- **WHEN** a session starts on iPadOS in curated-pack mode without the sky130A scripts
-- **THEN** `tech name` SHALL be `sky130A`, `$VDD` (or its equivalent query) SHALL be `VPWR`, and the cell search path SHALL equal the desktop session's
+#### Scenario: Uncurated PDK refused
+- **GIVEN** the iPadOS build in curated-pack mode, with curated packs for sky130A and gf180mcuD only
+- **WHEN** the user imports an ihp-sg13g2 pack and opens a layout whose `tech` line is `ihp-sg13g2`
+- **THEN** no ihp-sg13g2 script SHALL run, the PDK SHALL not be activated, and a diagnostic SHALL state that only curated PDKs run in this mode
