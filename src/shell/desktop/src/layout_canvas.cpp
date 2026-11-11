@@ -322,6 +322,12 @@ void LayoutCanvas::refresh_overlay() {
   painted_->invalidate();
 }
 
+void LayoutCanvas::set_drc_tag(std::optional<DrcCanvasTag> tag) {
+  if (tag == overlay_state_.drc_tag) return;
+  overlay_state_.drc_tag = std::move(tag);
+  painted_->invalidate();
+}
+
 void LayoutCanvas::pan_pixels(double dx, double dy) {
   camera_.pan_pixels(dx, dy);
   auto_fit_ = false;

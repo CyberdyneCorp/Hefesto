@@ -140,6 +140,28 @@ TEST_CASE("zoom control and minimap sit where the mockup puts them", "[cap:hefes
   CHECK(zoom_percent_text(1.0, 0.0) == "100%");
 }
 
+TEST_CASE("the DRC tag sits below right of the found tile and stays inside the canvas",
+          "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
+  // DRC-Browser board: tile 208..236 x 104..224, tag at (250, 236).
+  const PixelRect tile{208.0, 104.0, 28.0, 120.0};
+  const PixelPoint p = drc_tag_origin(tile, 300.0, 28.0, 1000.0, 700.0);
+  CHECK(p.x == Approx(250.0));
+  CHECK(p.y == Approx(236.0));
+  // No room on the right: left of the tile.
+  const PixelPoint left = drc_tag_origin(PixelRect{900.0, 104.0, 28.0, 20.0}, 300.0, 28.0, 1000.0, 700.0);
+  CHECK(left.x == Approx(900.0 - kDrcTagGapX - 300.0));
+  // No room below: above the tile.
+  const PixelPoint above = drc_tag_origin(PixelRect{208.0, 650.0, 28.0, 30.0}, 300.0, 28.0, 1000.0, 700.0);
+  CHECK(above.y == Approx(650.0 - kDrcTagGapY - 28.0));
+  // A tile off the canvas: the tag is clamped inside (rulers and insets kept clear).
+  const PixelPoint off = drc_tag_origin(PixelRect{-500.0, -500.0, 10.0, 10.0}, 300.0, 28.0, 1000.0, 700.0);
+  CHECK(off.x == Approx(static_cast<double>(kRulerSize + kCanvasInset)));
+  CHECK(off.y == Approx(static_cast<double>(kRulerSize + kCanvasInset)));
+  const PixelPoint far = drc_tag_origin(PixelRect{5000.0, 5000.0, 10.0, 10.0}, 300.0, 28.0, 1000.0, 700.0);
+  CHECK(far.x == Approx(1000.0 - kCanvasInset - 300.0));
+  CHECK(far.y == Approx(700.0 - kCanvasInset - 28.0));
+}
+
 TEST_CASE("the camera follows the core window's view mapping", "[cap:ui-windows-and-views][req:View mapping]") {
   render::Camera camera(500.0, 250.0, 0.5);
   camera.set_viewport(800, 600);

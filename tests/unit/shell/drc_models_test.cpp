@@ -232,6 +232,48 @@ TEST_CASE("the browser groups errors by why-text with counts, ignored rules apar
   }
 }
 
+TEST_CASE("the found error highlights its group row while the group is collapsed",
+          "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
+  // DRC-Browser board note 6: the rows overlapping the box are highlighted;
+  // a collapsed group stands for its areas.
+  DrcBrowserModel m;
+  m.set_units(lambda_scale());
+  DrcGroup spacing{"Metal1 spacing < 0.14um (met1.2)", {{0, 0, 5, 5}, {100, 0, 105, 5}, {200, 0, 205, 5}}, false};
+  DrcGroup width{"Metal1 width < 0.14um (met1.1)", {{300, 0, 305, 5}}, false};
+  DrcGroup poly{"poly width < 0.15um (poly.1a)", {{400, 0, 405, 5}}, true};
+  m.set_list({spacing, width, poly});
+  REQUIRE(m.row_count() == 4);  // spacing, width, Ignored heading, poly
+  CHECK(m.row_at(db::Rect{101, 1, 102, 2}) == std::size_t{0});  // collapsed spacing group
+  CHECK(m.row_at(db::Rect{301, 1, 302, 2}) == std::size_t{1});  // collapsed width group
+  CHECK(m.row_at(db::Rect{401, 1, 402, 2}) == std::size_t{3});  // ignored groups never expand
+  CHECK_FALSE(m.row_at(db::Rect{50, 50, 60, 60}));
+  // Expanded, the area row is highlighted, not the group row.
+  REQUIRE(m.toggle(0));
+  CHECK(m.row_at(db::Rect{101, 1, 102, 2}) == std::size_t{2});
+  CHECK(m.row_at(db::Rect{301, 1, 302, 2}) == std::size_t{4});
+}
+
+TEST_CASE("the canvas tag shows #k and the why-text while the box stays on the found error",
+          "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
+  const DrcFindReport found{3, {"Metal1 spacing < 0.14um (met1.2)", "Metal1 width < 0.14um (met1.1)"}};
+  const db::Rect area{10, 20, 30, 40};
+  const auto tag = drc_canvas_tag(found, area, area);
+  REQUIRE(tag);
+  CHECK(tag->index == "#3");
+  CHECK(tag->why == "Metal1 spacing < 0.14um (met1.2)");  // the first why-text, as on the board
+  CHECK(tag->area == area);
+  // Gone once the box moves, before any find, or without a box.
+  CHECK_FALSE(drc_canvas_tag(found, area, db::Rect{0, 0, 1, 1}));
+  CHECK_FALSE(drc_canvas_tag(std::nullopt, area, area));
+  CHECK_FALSE(drc_canvas_tag(found, area, std::nullopt));
+  CHECK_FALSE(drc_canvas_tag(found, std::nullopt, area));
+  // A find that printed no why-text still tags the area with its index.
+  const auto bare = drc_canvas_tag(DrcFindReport{1, {}}, area, area);
+  REQUIRE(bare);
+  CHECK(bare->index == "#1");
+  CHECK(bare->why.empty());
+}
+
 TEST_CASE("200,000 errors are virtual rows of the DRC browser",
           "[cap:hefesto-app-ux][req:Desktop platform integration through Raven]") {
   DrcBrowserModel m;

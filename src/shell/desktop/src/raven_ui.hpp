@@ -120,6 +120,9 @@ class Widget {
   void set_enabled(bool enabled);
   void set_hit_testable(bool hit_testable);
   void set_font_size(float size);
+  /// In an Overlay: anchors the widget to the top-right corner, `right` and
+  /// `top` logical units from the edges (call after adding it).
+  void place_top_right(float right, float top);
 
  protected:
   explicit Widget(WidgetId id) noexcept : id_(id) {}

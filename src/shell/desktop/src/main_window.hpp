@@ -269,6 +269,7 @@ class MainWindow {
   std::uint64_t drc_serial_ = ~std::uint64_t{0};  // DrcLink::serial() last applied
   std::optional<DrcFindReport> last_find_;  // the last `drc find` of the shown root
   const db::CellDef* find_root_ = nullptr;  // the root last_find_ belongs to (compared only)
+  std::optional<db::Rect> find_box_;        // where last_find_ left the box (the canvas tag shows while it stays)
   std::optional<DrcWhyPopover> pending_why_;  // a `drc why` to show at the box
   bool why_open_ = false;
   bool rebuild_requested_ = false;      // a `drc catchup` ran: rebuild the list even with DRC off

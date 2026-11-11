@@ -106,6 +106,11 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   build_center();
   canvas_->add_overlay(toast_);
   toast_.place_bottom_center();
+  // The DRC stepper over the canvas, top right, below the ruler (board: 16 px
+  // from the right edge, 32 px from the top).
+  canvas_->add_overlay(drc_panel_->stepper_widget());
+  drc_panel_->stepper_widget().place_top_right(static_cast<float>(kCanvasInset),
+                                               static_cast<float>(kRulerSize + 12));
   build_command_bar();
   build_status_bar();
   window_.set_content(root_);
@@ -672,6 +677,7 @@ void MainWindow::update_right_dock() {
   // While the DRC browser is shown it takes the Layers dock's place.
   left_->widget().set_visible(layers_visible_ && !drc_visible_);
   drc_panel_->list_widget().set_visible(drc_visible_);
+  drc_panel_->stepper_widget().set_visible(drc_visible_);
 }
 
 void MainWindow::refresh_color_panel() {

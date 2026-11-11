@@ -104,8 +104,13 @@ void MainWindow::refresh_drc() {
   drc_link_->set_root(root);
   if (root != find_root_) {
     last_find_.reset();
+    find_box_.reset();
     find_root_ = root;
   }
+  // Board note 6: "■ #k why-text" on the found tile while the box stays there.
+  const editor::EditorState& ed = ctx_.editor();
+  const bool box_shown = ed.box && root != nullptr && ed.box_root == root;
+  canvas_->set_drc_tag(drc_canvas_tag(last_find_, find_box_, box_shown ? ed.box : std::nullopt));
   // The count is read while idle, as Magic's `magic::drcstate idle` does.
   if (!drc_link_->busy()) drc_errors_ = count_root_errors(root);
   const DrcStatusView view = drc_status_view(drc_status_input(root));
@@ -203,6 +208,7 @@ void MainWindow::note_drc_command(const cmd::Invocation& invocation, const cmd::
     if (auto report = parse_find_report(printed)) {
       last_find_ = std::move(report);
       find_root_ = shown_root(ctx_.editor());
+      find_box_ = ctx_.editor().box;  // `drc find` moved the box onto the error
     }
   }
   if (auto popover = drc_why_popover(invocation.name, invocation.args, printed)) pending_why_ = std::move(popover);

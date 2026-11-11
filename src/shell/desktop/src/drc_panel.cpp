@@ -19,6 +19,8 @@ constexpr float kTitleHeight = 28.0F;
 constexpr float kLineHeight = 22.0F;
 constexpr float kNoticeHeight = 96.0F;
 constexpr float kInspectorRow = 22.0F;
+constexpr float kStepperGap = 6.0F;           // the board's gap between Prev, #k of n and Next
+constexpr float kStepperLabelWidth = 120.0F;  // "#12,408 of 12,408" in JetBrains Mono 11
 
 std::unique_ptr<ui::Painted> title_row(ScreenContext& ctx, std::string_view text) {
   auto title = make_painted(ctx, [text](ui::Painter& p, float, float h, const ThemeTokens& t) {
@@ -79,9 +81,11 @@ DrcPanel::DrcPanel(ScreenContext& ctx)
 
 std::unique_ptr<ui::Painted> DrcPanel::make_button(std::string label, std::string tooltip,
                                                    std::function<bool()> enabled,
-                                                   std::function<void(float, float)> click) {
-  auto button = make_interactive(ctx_, [label, enabled](ui::Painter& p, float w, float h, const ThemeTokens& t,
-                                                        bool hov, bool foc) {
+                                                   std::function<void(float, float)> click, bool on_canvas) {
+  auto button = make_interactive(ctx_, [this, label, enabled, on_canvas](ui::Painter& p, float w, float h,
+                                                                          const ThemeTokens& theme, bool hov, bool foc) {
+    // Over the canvas the controls keep the dark canvas tokens in both themes.
+    const ThemeTokens& t = on_canvas ? canvas_overlay_tokens(ctx_.mode) : theme;
     paint::button(p, w, h, label, "", paint::ButtonStyle::secondary, paint::WidgetState{hov, foc, enabled(), false}, t);
   });
   button->set_size(paint::button_width(ctx_.runtime, label, false), static_cast<float>(kButtonHeight));
@@ -149,27 +153,7 @@ void DrcPanel::build_list() {
   summary_->set_role(ui::Role::text);
   list_column_.add(*summary_);
 
-  // ◂ Prev  #k of n  Next ▸ (explicit `drc find k±1`, Q-DRC-15)
-  ui::Box stepper = ui::Box::horizontal();
-  stepper.set_padding(kPadX, 4.0F, kPadX, 4.0F);
-  stepper.set_spacing(6.0F);
-  auto prev = make_button("◂ Prev", "drc find k−1 (wraps to the last error)",
-                          [this] { return state_.stepper.enabled(); },
-                          [this](float, float) { ctx_.run(state_.stepper.prev_command()); });
-  stepper.add_centered(*prev);
-  painted_.push_back(std::move(prev));
-  stepper_label_ = make_painted(ctx_, [this](ui::Painter& p, float, float h, const ThemeTokens& t) {
-    p.text_centered_y(TextRole::mono_small, 6.0F, h / 2.0F, state_.stepper.label(), t.text_primary);
-  });
-  stepper_label_->set_size(96.0F, static_cast<float>(kButtonHeight));
-  stepper_label_->set_role(ui::Role::text);
-  stepper.add_centered(*stepper_label_);
-  auto next = make_button("Next ▸", "drc find k+1 (wraps to the first error); keys: ! is drc find; findbox zoom",
-                          [this] { return state_.stepper.enabled(); },
-                          [this](float, float) { ctx_.run(state_.stepper.next_command()); });
-  stepper.add_centered(*next);
-  painted_.push_back(std::move(next));
-  list_column_.add(stepper);
+  build_stepper();
 
   notice_ = make_painted(ctx_, [this](ui::Painter& p, float w, float, const ThemeTokens& t) {
     if (const auto n = drc_browser_notice(state_.browser, state_.cell, state_.style)) paint_notice(p, w, *n, t);
@@ -226,6 +210,37 @@ void DrcPanel::build_list() {
   list_root_.set_size(kListWidth, -1.0F);
   list_root_.set_accessible_name("DRC results");
   reset_rows();
+}
+
+void DrcPanel::build_stepper() {
+  // ◂ Prev  #k of n  Next ▸ over the canvas, top right (board; explicit
+  // `drc find k±1`, Q-DRC-15). Real buttons: focusable and named.
+  stepper_.set_spacing(kStepperGap);
+  stepper_.set_accessible_name("DRC error stepper");
+  auto prev = make_button("◂ Prev", "drc find k−1 (wraps to the last error)",
+                          [this] { return state_.stepper.enabled(); },
+                          [this](float, float) { ctx_.run(state_.stepper.prev_command()); }, true);
+  float width = paint::button_width(ctx_.runtime, "◂ Prev", false);
+  stepper_.add_centered(*prev);
+  painted_.push_back(std::move(prev));
+  stepper_label_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens&) {
+    const ThemeTokens& t = canvas_overlay_tokens(ctx_.mode);
+    p.fill(0.0F, 0.0F, w, h, static_cast<float>(kRadiusControl), t.surface2);
+    p.stroke(0.0F, 0.0F, w, h, static_cast<float>(kRadiusControl), 1.0F, t.control_border);
+    const std::string label = state_.stepper.label();
+    const float tw = p.text_width(TextRole::mono_small, label);
+    p.text_centered_y(TextRole::mono_small, (w - tw) / 2.0F, h / 2.0F, label, t.text_primary);
+  });
+  stepper_label_->set_size(kStepperLabelWidth, static_cast<float>(kButtonHeight));
+  stepper_label_->set_role(ui::Role::text);
+  stepper_.add_centered(*stepper_label_);
+  auto next = make_button("Next ▸", "drc find k+1 (wraps to the first error); keys: ! is drc find; findbox zoom",
+                          [this] { return state_.stepper.enabled(); },
+                          [this](float, float) { ctx_.run(state_.stepper.next_command()); }, true);
+  width += kStepperGap + kStepperLabelWidth + kStepperGap + paint::button_width(ctx_.runtime, "Next ▸", false);
+  stepper_.add_centered(*next);
+  painted_.push_back(std::move(next));
+  stepper_.set_size(width, static_cast<float>(kButtonHeight));
 }
 
 void DrcPanel::build_inspector() {

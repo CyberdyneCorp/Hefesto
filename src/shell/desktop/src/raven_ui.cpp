@@ -1343,6 +1343,12 @@ void Toast::show(std::string_view text, StatusKind kind, double seconds) {
   Rtoast_show_kind(id_, str(text).c_str(), toast_kind(kind), seconds);
 }
 
+void Widget::place_top_right(float right, float top) {
+  Rslot_set_halign(id_, R_HALIGN_RIGHT);
+  Rslot_set_valign(id_, R_VALIGN_TOP);
+  Rslot_set_padding(id_, 0.0F, top, right, 0.0F);
+}
+
 void Toast::place_bottom_center() {
   Rslot_set_halign(id_, R_HALIGN_CENTER);
   Rslot_set_valign(id_, R_VALIGN_BOTTOM);

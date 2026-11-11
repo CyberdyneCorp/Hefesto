@@ -363,12 +363,38 @@ std::optional<std::string> DrcBrowserModel::command(std::size_t index) const {
          internal_word(a.y1) + "; " + std::string(kDrcZoomCommand);
 }
 
+bool DrcBrowserModel::row_overlaps(const DrcRow& r, const db::Rect& box) const {
+  switch (r.kind) {
+    case DrcRowKind::area: return db::overlap(groups_[r.group].areas[r.area], box);
+    case DrcRowKind::group:
+    case DrcRowKind::ignored_group: {
+      // A collapsed group stands for its areas (an expanded one has area rows).
+      if (r.kind == DrcRowKind::group && expanded_[r.group]) return false;
+      const std::vector<db::Rect>& areas = groups_[r.group].areas;
+      return std::any_of(areas.begin(), areas.end(), [&box](const db::Rect& a) { return db::overlap(a, box); });
+    }
+    case DrcRowKind::ignored_heading: return false;
+  }
+  return false;
+}
+
 std::optional<std::size_t> DrcBrowserModel::row_at(const db::Rect& box) const {
   for (std::size_t i = 0; i < rows_.size(); ++i) {
-    const DrcRow& r = rows_[i];
-    if (r.kind == DrcRowKind::area && db::overlap(groups_[r.group].areas[r.area], box)) return i;
+    if (row_overlaps(rows_[i], box)) return i;
   }
   return std::nullopt;
+}
+
+std::optional<DrcCanvasTag> drc_canvas_tag(const std::optional<DrcFindReport>& found,
+                                          const std::optional<db::Rect>& found_box,
+                                          const std::optional<db::Rect>& box) {
+  // Only while the box is still where that `drc find` put it.
+  if (!found || !found_box || !box || *found_box != *box) return std::nullopt;
+  DrcCanvasTag tag;
+  tag.index = "#" + std::to_string(found->index);
+  if (!found->whys.empty()) tag.why = found->whys.front();
+  tag.area = *box;
+  return tag;
 }
 
 std::size_t DrcBrowserModel::area_count() const noexcept {

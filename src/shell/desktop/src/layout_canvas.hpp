@@ -91,8 +91,10 @@ class LayoutCanvas final : public view::ViewObserver {
 
   void on_window_changed(view::WindowId id, view::Change change) override;
 
-  /// Adds a widget over the canvas (the job-completion toast).
+  /// Adds a widget over the canvas (the job-completion toast, the DRC stepper).
   void add_overlay(const ui::Widget& child) { overlay_.add(child); }
+  /// The tag on the found DRC error tile (nullopt: none); repaints when it changed.
+  void set_drc_tag(std::optional<DrcCanvasTag> tag);
   /// The window point (logical units) just right of the top-right corner of
   /// `rect` (root coordinates), clamped into the canvas: where the `drc why`
   /// popover opens.

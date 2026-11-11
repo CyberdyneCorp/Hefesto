@@ -16,6 +16,7 @@
 
 #include "hefesto/display/scene.hpp"
 #include "hefesto/shell/canvas_overlay.hpp"
+#include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/view_models.hpp"
 #include "raven_ui.hpp"
 
@@ -82,6 +83,8 @@ struct OverlayState {
   std::vector<display::HighlightItem> marks;
   /// A Paint / Label / Measure sweep in progress (dashed preview).
   std::optional<db::Rect> sweep;
+  /// The tag on the error tile the last `drc find` put the box on.
+  std::optional<DrcCanvasTag> drc_tag;
   std::string empty_hint;  // shown when nothing is loaded
 };
 

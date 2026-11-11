@@ -8,10 +8,11 @@
 //   list dock (left of the canvas, in place of Layers while shown)
 //     DRC title · Style ▾ · Re-check · Fix… (M11, disabled)
 //     summary "■ 12 error tiles · 23 areas · 5 why-texts · 1 ignored"
-//     ◂ Prev  #3 of 12  Next ▸
 //     empty / running / stale notice
 //     filter · virtual Raven Table grouped by why-text (Why-text | Areas)
 //     Sign-off (M13, disabled)
+//   stepper over the canvas, top right (the main window adds it to the
+//   canvas overlay): ◂ Prev  #3 of 12  Next ▸
 //   inspector dock (right, in place of the Inspector while shown)
 //     DRC ERROR AREA #k OF n, why-texts, Cell / Area / Size / Style,
 //     Zoom to · Why here, "Ignore rules whose text contains", Later milestones
@@ -54,6 +55,8 @@ class DrcPanel {
   explicit DrcPanel(ScreenContext& ctx);
   [[nodiscard]] ui::Widget& list_widget() noexcept { return list_root_; }
   [[nodiscard]] ui::Widget& inspector_widget() noexcept { return inspector_root_; }
+  /// Prev / #k of n / Next, shown over the canvas while the panel is.
+  [[nodiscard]] ui::Widget& stepper_widget() noexcept { return stepper_; }
   [[nodiscard]] DrcBrowserModel& model() noexcept { return model_; }
 
   /// Repaints with `state`; the table's rows are reset only when the model
@@ -67,8 +70,10 @@ class DrcPanel {
  private:
   void build_list();
   void build_inspector();
+  void build_stepper();
+  /// `on_canvas`: painted with the canvas tokens (dark in both themes).
   std::unique_ptr<ui::Painted> make_button(std::string label, std::string tooltip, std::function<bool()> enabled,
-                                           std::function<void(float, float)> click);
+                                           std::function<void(float, float)> click, bool on_canvas = false);
   void reset_rows();
   void on_row_selected(int row);
   void on_row_activated(int row);
@@ -81,6 +86,7 @@ class DrcPanel {
   ui::Box list_column_ = ui::Box::vertical();
   ui::Box inspector_root_ = ui::Box::horizontal();
   ui::Box inspector_column_ = ui::Box::vertical();
+  ui::Box stepper_ = ui::Box::horizontal();
   std::vector<std::unique_ptr<ui::Painted>> painted_;
   std::unique_ptr<ui::Painted> summary_;
   std::unique_ptr<ui::Painted> stepper_label_;

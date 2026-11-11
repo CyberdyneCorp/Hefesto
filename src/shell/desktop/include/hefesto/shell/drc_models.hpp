@@ -199,8 +199,9 @@ class DrcBrowserModel {
   /// findbox zoom`, the heading's `drc ignore none`; nullopt for a group
   /// (activating it toggles it).
   [[nodiscard]] std::optional<std::string> command(std::size_t row) const;
-  /// The first area row overlapping `box` (expanded groups only), for the
-  /// highlight of the found error.
+  /// The first row overlapping `box`, for the highlight of the found error
+  /// (board note 6): an area row of an expanded group, or the group row of a
+  /// collapsed (or ignored) group one of whose areas overlaps it.
   [[nodiscard]] std::optional<std::size_t> row_at(const db::Rect& box) const;
 
   [[nodiscard]] std::size_t area_count() const noexcept;
@@ -213,6 +214,7 @@ class DrcBrowserModel {
 
  private:
   void rebuild();
+  [[nodiscard]] bool row_overlaps(const DrcRow& row, const db::Rect& box) const;
   [[nodiscard]] bool listed(std::size_t group, bool ignored) const;  // in its section and the filter
   [[nodiscard]] std::vector<std::size_t> ordered(bool ignored) const;
 
@@ -225,6 +227,21 @@ class DrcBrowserModel {
   std::string filter_;
   bool has_list_ = false;
 };
+
+/// The canvas tag on the found error tile (board note 6): "■ #3" and the
+/// first why-text of the last `drc find`, beside the box.
+struct DrcCanvasTag {
+  std::string index;  // "#3"
+  std::string why;    // the first why-text (empty when the find printed none)
+  db::Rect area;      // the box the find left, root coordinates
+
+  friend bool operator==(const DrcCanvasTag&, const DrcCanvasTag&) = default;
+};
+/// The tag while the box is still where the last `drc find` put it
+/// (`found_box`); nullopt before any find or once the box has moved.
+[[nodiscard]] std::optional<DrcCanvasTag> drc_canvas_tag(const std::optional<DrcFindReport>& found,
+                                                         const std::optional<db::Rect>& found_box,
+                                                         const std::optional<db::Rect>& box);
 
 /// Precedence: running (checker busy) > not checked (no list, or DRC off
 /// without one) > stale > clean (nothing but ignored groups) > populated.
