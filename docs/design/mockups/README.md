@@ -55,9 +55,10 @@ M1 render `drc-browser.png` shows the old drawing.
 
 Design D13 of `openspec/changes/m4-scripting`. Drafted here in the M2/M3 board format (shared token `<style>` block,
 numbered annotation pins, "Notes for SHELL"). The user approved them on 2026-11-11 (task 3.1); SHELL builds
-each screen from its board. `canvas.json` places them below the M3 boards. Diagnostic codes shown as
-`SCRIPT-PDK-…` and `SCRIPT-SANDBOX-…` stand for codes that PDKINT and TCL have not assigned yet. Generated-cell
-suffixes are illustrative.
+each screen from its board. `canvas.json` places them below the M3 boards. The diagnostic codes on the boards
+are the assigned ones (`SCRIPT-PDK-004`, `SCRIPT-SANDBOX-001`, `SCRIPT-SANDBOX-002`; round 3 replaced the
+`SCRIPT-PDK-…` / `SCRIPT-SANDBOX-…` placeholders in the HTML, and the PNG renders still show the placeholders until
+they are re-rendered). Generated-cell suffixes are illustrative.
 
 | Board | File | Screen states | Renders (`docs/images/ui/`) |
 |---|---|---|---|

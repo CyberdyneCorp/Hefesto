@@ -128,13 +128,14 @@ TEST_CASE("random gives the C library sequence of Magic", CAP "[req:Random comma
   CHECK(s.value("random") == "1804289383");
 }
 
-TEST_CASE("shell reports unavailability without process spawning", CAP "[req:Shell command]") {
+TEST_CASE("shell is refused without process spawning", CAP "[req:Shell command]") {
   HEFESTO_REQUIRE_MT(mt);
-  Misc s(mt);  // the portable services have no process runner (as on iPadOS)
+  Misc s(mt);
   const auto r = s.run("shell ls");
   REQUIRE_FALSE(r.ok());
-  CHECK(r.diagnostics.back().code == db::codes::kNotAvailable);
-  CHECK(r.diagnostics.back().text.find("unavailable on this platform") != std::string::npos);
+  CHECK(r.diagnostics.back().code == "SCRIPT-SANDBOX-001");
+  CHECK(r.diagnostics.back().text == "shell: process execution is not permitted (Hefesto runs no external programs)");
+  CHECK_FALSE(s.run("shell").ok());  // no words: refused all the same
 }
 
 TEST_CASE("straighten checks its arguments, then needs plowing", CAP "[req:Straighten command surface]") {

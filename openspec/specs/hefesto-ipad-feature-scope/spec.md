@@ -37,7 +37,9 @@ These features SHALL be desktop-only in the first iPadOS release:
 - the netlist window (`netlist-window`)
 - IRSIM (`irsim-interface`)
 - the Scheme interpreter (`scheme-interpreter`) and OpenAccess (`openaccess`), if they are ever implemented. Both capabilities are informative and Hefesto does not implement them on any platform (roadmap M12), so they are listed here only to keep them off iPadOS.
-- the `shell` command, and git integration (the git parts of `hefesto-collaboration-and-diff`)
+- git integration (the git parts of `hefesto-collaboration-and-diff`)
+
+The `shell` command is not on this list: it runs no process on any platform (capability `cmd-misc-edit` "Shell command").
 
 Compatibility: native
 

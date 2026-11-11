@@ -308,3 +308,4 @@ Area key `CMDEDIT` covers capabilities `cmd-coordinates-and-units`, `cmd-box`, `
 - Options: platform alternative (unavailable on iPadOS; native on desktop)
 - Recommendation: provide on Linux/macOS only.
 - Resolution: n/a (platform). Answered by P-13 and capability `hefesto-ipad-feature-scope`: `shell` is desktop-only.
+- Superseded (user decision 2026-11-11, M4 security finding S-01; X-3 no process execution): `shell` runs no process on any platform and from any origin, typed console, command-bar and hefesto-cli lines included; it fails with `SCRIPT-SANDBOX-001` (capability `cmd-misc-edit` "Shell command").

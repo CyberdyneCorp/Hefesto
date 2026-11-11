@@ -273,3 +273,31 @@ TEST_CASE("the technology manager shows the description as a list element",
   CHECK(model.version == "(version 1.0)");
   CHECK(model.description == "SkyWater SKY130: {demo} process");
 }
+
+// Regression (round 3): a description with an unbalanced brace is
+// backslash-quoted in Magic's `tech version` string (`SkyWater\ \{demo`);
+// `lindex` reads it back unquoted, which brace matching alone did not.
+TEST_CASE("the technology manager reads a backslash-quoted description as Tcl does",
+          "[cap:ui-gui-managers][req:Technology manager]") {
+  Session s;
+  std::ifstream in{std::string{HEFESTO_SOURCE_DIR} + "/tests/data/tech/tiny.tech"};
+  std::string text{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
+  const std::string from = "\"Tiny demo process\"";
+  REQUIRE(text.find(from) != std::string::npos);
+  text.replace(text.find(from), from.size(), "\"SkyWater {demo process\"");
+  hefesto::diag::CollectingSink sink;
+  auto loaded = hefesto::tech::load_technology_text(text, "/t/tiny.tech", s.services.files(),
+                                                    hefesto::tech::LoadOptions{}, sink);
+  REQUIRE(loaded.ok());
+  s.editor.technology = loaded.value();
+  // Magic's string (magic-compat ON): the description element is quoted with backslashes.
+  CHECK(s.run("tech version").value.to_string() == "1.0 SkyWater\\ \\{demo\\ process");
+  gui::TechManagerModel model;
+  REQUIRE(s.in_command([&](hefesto::cmd::CommandContext& ctx) {
+               model = gui::tech_manager_model(ctx);
+               return hefesto::cmd::CommandResult::success();
+             })
+              .ok());
+  CHECK(model.version == "(version 1.0)");
+  CHECK(model.description == "SkyWater {demo process");
+}
