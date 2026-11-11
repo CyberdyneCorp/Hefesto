@@ -16,8 +16,15 @@
 // SCRIPT-TCL-002 (interrupted through request_interrupt) or SCRIPT-TCL-003
 // (a SandboxLimits limit was exceeded); `catch` cannot absorb the last two.
 // The SCRIPT-SANDBOX-* diagnostics of the denials the evaluation caused
-// follow, also in an ok result (a denial the script caught). Native commands
-// receive the Origin of the evaluate call that runs them.
+// follow, also in an ok result (a denial the script caught, its text ending
+// in " · caught by the script's catch"); their DeniedOperation events are
+// published when the top-level evaluation ends, with `caught` set. Native
+// commands receive the Origin of the evaluate call that runs them.
+//
+// Progress: while a top-level evaluation runs, the interpreter calls
+// `editor.script.progress.handler` (script/progress.hpp) every interval from
+// its time-limit handler, on the evaluating thread, with the file and line
+// being executed, and once more with `done` when it ends.
 //
 // Owner: TCL (design D2).
 

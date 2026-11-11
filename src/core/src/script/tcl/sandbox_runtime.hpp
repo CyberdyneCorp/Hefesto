@@ -26,6 +26,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -74,6 +75,17 @@ class SandboxSession {
   /// (empty: the filesystem call).
   void report_unclaimed(std::string_view operation, std::string_view file, std::size_t mark = 0);
 
+  /// While deferring (one top-level evaluation runs), DeniedOperation events
+  /// are held back until end_deferral() knows whether the script caught
+  /// them. Outside an evaluation they are published at once.
+  void begin_deferral() noexcept { deferring_ = true; }
+  /// Publishes the held events: a denial raised as a Tcl error is `caught`
+  /// unless it is the newest one whose message is `uncaught_message` (the
+  /// error the evaluation ended with; nullopt when it ended without one).
+  /// A caught denial's diagnostic gets kCaughtSuffix. No-op when not
+  /// deferring.
+  void end_deferral(const std::optional<std::string>& uncaught_message);
+
   /// The diagnostics reported since `mark` (a size of diagnostics()).
   [[nodiscard]] std::vector<diag::Diagnostic> diagnostics_since(std::size_t mark) const;
   [[nodiscard]] std::size_t diagnostic_count() const noexcept { return diagnostics_.size(); }
@@ -81,14 +93,27 @@ class SandboxSession {
   void reset() noexcept;
 
  private:
-  void publish(const Refusal& refusal, const diag::SourceLocation& location);
+  // A DeniedOperation held back while deferring.
+  struct HeldDenial {
+    DeniedOperation event;
+    std::size_t diagnostic = 0;  // index into diagnostics_
+    std::string message;         // the Tcl error text it raised
+    bool raised = false;         // raised as a Tcl error (refuse), not only recorded
+  };
+
+  void publish(const Refusal& refusal, const diag::SourceLocation& location, bool raised);
 
   Tcl_Interp* interp_;
   SandboxFilesystem filesystem_;
   ScriptEvents* events_;
   std::vector<PathDenial> pending_;
   std::vector<diag::Diagnostic> diagnostics_;
+  std::vector<HeldDenial> held_;
+  bool deferring_ = false;
 };
+
+/// Appended to the diagnostic of a denial the script caught.
+inline constexpr std::string_view kCaughtSuffix = " \u00b7 caught by the script's catch";
 
 class ActiveSession {
  public:

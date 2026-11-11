@@ -33,6 +33,7 @@
 #include "hefesto/script/pdk/helper_origins.hpp"
 #include "hefesto/script/pdk/trust.hpp"
 #include "hefesto/script/pdk/widgets.hpp"
+#include "hefesto/script/progress.hpp"
 #include "hefesto/script/tcl/sandbox.hpp"
 
 namespace hefesto::editor {
@@ -69,6 +70,10 @@ struct ProjectInterpreter {
 
   // ---- INTEGRATION ---------------------------------------------------------
   ScriptEvents events;  // denied operations, skipped statements, consent, ...
+  /// The progress hook of long-running evaluations (script/progress.hpp):
+  /// set by the front end (the desktop pumps a frame for the Interrupt
+  /// card), read by `interp` at the start of each top-level evaluation.
+  ProgressReporting progress;
   /// The file system of the engine commands a script runs (security finding
   /// S-02; script::SandboxedFileSystem over `sandbox`), created by
   /// bind_registry and kept while the editor lives.

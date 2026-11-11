@@ -526,7 +526,7 @@ std::vector<PathDenial> SandboxSession::claim(std::size_t mark) {
 }
 
 int SandboxSession::refuse(const Refusal& refusal) {
-  publish(refusal, current_location(interp_));
+  publish(refusal, current_location(interp_), true);
   Tcl_SetObjResult(interp_, Tcl_NewStringObj(refusal.message.data(), tcl_length(refusal.message)));
   const std::string code{refusal.code};
   Tcl_SetErrorCode(interp_, "HEFESTO", "SANDBOX", code.c_str(), nullptr);
@@ -539,7 +539,7 @@ void SandboxSession::report_unclaimed(std::string_view operation, std::string_vi
     const std::string name = operation.empty() ? denial.access : std::string{operation};
     publish(Refusal{"SCRIPT-SANDBOX-004", name, denial.path,
                     name + ": \"" + denial.path + "\" is outside the sandbox's granted roots"},
-            location);
+            location, false);
   }
 }
 
@@ -553,12 +553,44 @@ std::vector<diag::Diagnostic> SandboxSession::diagnostics_since(std::size_t mark
 void SandboxSession::reset() noexcept {
   pending_.clear();
   diagnostics_.clear();
+  held_.clear();
 }
 
-void SandboxSession::publish(const Refusal& refusal, const diag::SourceLocation& location) {
+void SandboxSession::publish(const Refusal& refusal, const diag::SourceLocation& location, bool raised) {
   diagnostics_.push_back(diag::make(refusal.code, refusal.message, location));
-  if (events_ != nullptr) {
-    events_->publish_denied(DeniedOperation{refusal.operation, refusal.target, location});
+  DeniedOperation event{refusal.operation, refusal.target, location};
+  if (deferring_) {
+    held_.push_back(HeldDenial{std::move(event), diagnostics_.size() - 1, refusal.message, raised});
+  } else if (events_ != nullptr) {
+    events_->publish_denied(event);
+  }
+}
+
+void SandboxSession::end_deferral(const std::optional<std::string>& uncaught_message) {
+  if (!deferring_) {
+    return;
+  }
+  deferring_ = false;
+  // The evaluation ended with the error of the newest denial raising that
+  // message; every other raised denial was absorbed by the script.
+  std::size_t uncaught = held_.size();
+  for (std::size_t i = held_.size(); uncaught_message && i > 0; --i) {
+    if (held_[i - 1].raised && held_[i - 1].message == *uncaught_message) {
+      uncaught = i - 1;
+      break;
+    }
+  }
+  std::vector<HeldDenial> held = std::move(held_);
+  held_.clear();
+  for (std::size_t i = 0; i < held.size(); ++i) {
+    HeldDenial& denial = held[i];
+    denial.event.caught = denial.raised && i != uncaught;
+    if (denial.event.caught && denial.diagnostic < diagnostics_.size()) {
+      diagnostics_[denial.diagnostic].text += kCaughtSuffix;
+    }
+    if (events_ != nullptr) {
+      events_->publish_denied(denial.event);
+    }
   }
 }
 

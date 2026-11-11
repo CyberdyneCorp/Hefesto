@@ -229,8 +229,14 @@ std::vector<std::string> ConsoleRun::take_queued() {
   return out;
 }
 
-std::string interrupt_report(std::string_view tcl_message, std::size_t edits) {
+std::string interrupt_report(std::string_view tcl_message, std::size_t edits, std::string_view where) {
+  // The interpreter wraps Tcl's own message (board note 8: "as Tcl reports it").
+  constexpr std::string_view kWrapper = "script evaluation interrupted (";
+  if (tcl_message.starts_with(kWrapper) && tcl_message.ends_with(')')) {
+    tcl_message = tcl_message.substr(kWrapper.size(), tcl_message.size() - kWrapper.size() - 1);
+  }
   std::string text = tcl_message.empty() ? std::string{"eval canceled"} : std::string{tcl_message};
+  if (!where.empty()) text += " · " + std::string{where};
   text += " · interrupted by the user";
   if (edits > 0) {
     text += " (" + std::to_string(edits) + (edits == 1 ? " edit" : " edits") +
@@ -259,11 +265,8 @@ ConsoleReturn TclConsole::press_return(bool shift) {
   std::string command = std::move(input_);
   input_.clear();
   history_.reset();
-  if (run_) {
-    transcript_.add_input(command);
-    transcript_.add(ConsoleLineKind::info, "queued until it ends");
-    run_->queue(std::move(command));
-    touch();
+  if (run_ || evaluator_.busy()) {
+    hold(command, true);
     return ConsoleReturn::queued;
   }
   (void)run(command);
@@ -284,16 +287,35 @@ void TclConsole::history_newer() {
   }
 }
 
-std::optional<ConsoleEvaluation> TclConsole::run(const std::string& command, bool echo_input) {
-  if (run_) {  // the command bar while a command runs: queued as well
-    if (echo_input) {
-      transcript_.add_input(command);
-      transcript_.add(ConsoleLineKind::info, "queued until it ends");
-    }
+void TclConsole::hold(const std::string& command, bool echo_input) {
+  if (echo_input) {
+    transcript_.add_input(command);
+    transcript_.add(ConsoleLineKind::info, "queued until it ends");
+  }
+  if (run_) {
     run_->queue(command);
-    touch();
+  } else {
+    held_.push_back(command);
+  }
+  touch();
+}
+
+std::size_t TclConsole::run_held() {
+  if (run_ || evaluator_.busy() || held_.empty()) return 0;
+  std::vector<std::string> lines = std::move(held_);
+  held_.clear();
+  for (const std::string& line : lines) (void)run(line, false);
+  return lines.size();
+}
+
+std::optional<ConsoleEvaluation> TclConsole::run(const std::string& command, bool echo_input) {
+  // The command bar while a command runs, or a line typed in a frame that
+  // another evaluation pumps: queued until it ends.
+  if (run_ || evaluator_.busy()) {
+    hold(command, echo_input);
     return std::nullopt;
   }
+  (void)run_held();  // lines held earlier run first, in order
   if (echo_input) transcript_.add_input(command);
   run_.emplace(command, clock_(), evaluator_.undo_steps());
   touch();
@@ -305,7 +327,7 @@ std::optional<ConsoleEvaluation> TclConsole::run(const std::string& command, boo
   run_.reset();
   ConsoleEvaluation shown = evaluation;
   shown.interrupted = evaluation.interrupted || (by_user && !evaluation.result.ok());
-  show_result(shown, after > before ? after - before : 0);
+  show_result(shown, evaluation.edits.value_or(after > before ? after - before : 0));
   touch();
   for (const std::string& line : queued) (void)run(line, false);
   return shown;
@@ -341,7 +363,7 @@ void TclConsole::show_result(const ConsoleEvaluation& evaluation, std::size_t ed
   for (const diag::Diagnostic& d : result.diagnostics) {
     if (d.severity != diag::Severity::error) continue;
     if (evaluation.interrupted || d.code == kInterruptedCode) {
-      transcript_.add(ConsoleLineKind::error, interrupt_report(d.text, edits));
+      transcript_.add(ConsoleLineKind::error, interrupt_report(d.text, edits, evaluation.where));
     } else {
       transcript_.add(ConsoleLineKind::error, d.text + " · " + std::string{code.empty() ? d.code : code});
     }

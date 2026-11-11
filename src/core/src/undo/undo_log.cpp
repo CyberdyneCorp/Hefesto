@@ -80,6 +80,7 @@ void UndoLog::apply_limit() {
   while (steps_.size() > limit_) {
     steps_.pop_front();
     labels_.pop_front();
+    ++dropped_;
     if (position_ > 0) {
       --position_;
     }
@@ -249,6 +250,40 @@ void UndoLog::clear() {
   labels_.clear();
   open_.clear();
   position_ = 0;
+  ++generation_;
+}
+
+StepMark UndoLog::mark() const noexcept {
+  return StepMark{generation_, dropped_, position_};
+}
+
+std::size_t UndoLog::merge_since(const StepMark& mark, std::string_view label) {
+  if (suspended() || mark.generation != generation_) {
+    return 0;
+  }
+  (void)close_step(label);
+  // Steps the history limit dropped since the mark were the oldest ones.
+  const std::uint64_t gone = dropped_ - mark.dropped;
+  const std::size_t first = gone >= mark.position ? 0 : mark.position - static_cast<std::size_t>(gone);
+  if (position_ <= first) {
+    return 0;
+  }
+  const std::size_t count = position_ - first;
+  Step merged;
+  for (std::size_t i = first; i < position_; ++i) {
+    for (auto& event : steps_[i]) {
+      merged.push_back(std::move(event));
+    }
+  }
+  const auto begin = steps_.begin() + static_cast<std::ptrdiff_t>(first);
+  const auto end = steps_.begin() + static_cast<std::ptrdiff_t>(position_);
+  steps_.erase(begin + 1, end);
+  labels_.erase(labels_.begin() + static_cast<std::ptrdiff_t>(first) + 1,
+                labels_.begin() + static_cast<std::ptrdiff_t>(position_));
+  steps_[first] = std::move(merged);
+  labels_[first] = std::string{label};
+  position_ = first + 1;
+  return count;
 }
 
 void UndoLog::cell_deleted(const db::CellDef& def) {
@@ -270,6 +305,19 @@ std::string label_word(const std::string& word) {
   return spaced ? '"' + word + '"' : word;
 }
 
+// At most kMaxStepLabelLength bytes, cut with "…".
+std::string cut_label(std::string label) {
+  if (label.size() > kMaxStepLabelLength) {
+    // Room for the 3-byte ellipsis, cut at a UTF-8 character boundary.
+    std::size_t cut = kMaxStepLabelLength - 3;
+    while (cut > 0 && (static_cast<unsigned char>(label[cut]) & 0xC0U) == 0x80U) {
+      --cut;
+    }
+    label = label.substr(0, cut) + "\u2026";
+  }
+  return label;
+}
+
 }  // namespace
 
 std::string command_label(std::string_view name, const std::vector<std::string>& args) {
@@ -287,15 +335,25 @@ std::string command_label(std::string_view name, const std::vector<std::string>&
     }
     label += word;
   }
-  if (label.size() > kMaxStepLabelLength) {
-    // Room for the 3-byte ellipsis, cut at a UTF-8 character boundary.
-    std::size_t cut = kMaxStepLabelLength - 3;
-    while (cut > 0 && (static_cast<unsigned char>(label[cut]) & 0xC0U) == 0x80U) {
-      --cut;
+  return cut_label(std::move(label));
+}
+
+std::string script_label(std::string_view text) {
+  std::string label;
+  bool space = false;
+  for (const char c : text) {
+    const bool blank = c == ' ' || c == '\t' || c == '\n' || c == '\r';
+    if (blank) {
+      space = !label.empty();
+      continue;
     }
-    label = label.substr(0, cut) + "\u2026";
+    if (space) {
+      label += ' ';
+      space = false;
+    }
+    label += c;
   }
-  return label;
+  return cut_label(std::move(label));
 }
 
 std::vector<HistoryEntry> history(const UndoLog& log, std::size_t max_each) {

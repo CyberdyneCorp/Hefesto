@@ -82,6 +82,14 @@ struct ReplayResult {
   std::size_t steps = 0;  // steps replayed; 0: "Nothing more to undo/redo"
 };
 
+/// A point in the log taken before a run of commands (UndoLog::mark), so
+/// the steps the run made can be merged into one (UndoLog::merge_since).
+struct StepMark {
+  std::uint64_t generation = 0;  // clear() count when taken
+  std::uint64_t dropped = 0;     // steps dropped by the history limit when taken
+  std::size_t position = 0;      // done steps when taken
+};
+
 class UndoLog {
  public:
   UndoLog();
@@ -147,6 +155,18 @@ class UndoLog {
   /// Forgets every step, the open one included.
   void clear();
 
+  /// The current point of the log, for merge_since().
+  [[nodiscard]] StepMark mark() const noexcept;
+  /// Closes the open step, then merges the done steps made since `mark`
+  /// into one step named `label` (hefesto-app-ux "Undo history"; the edits
+  /// of an interrupted console command, layout-undo "Event log and command
+  /// grouping"), so one `undo` reverts them all. Undone steps after the
+  /// done ones are kept as they are. Returns the number of steps merged
+  /// (0: nothing was made since `mark`, the log was cleared since, or the
+  /// steps were undone back past it). While recording is suspended nothing
+  /// is closed or merged.
+  std::size_t merge_since(const StepMark& mark, std::string_view label);
+
   /// "Deleting the cell whose events are being recorded clears the whole
   /// history": clears the log when an event references `def`. Called
   /// before `def` is destroyed; ignored during a replay (a native event
@@ -190,6 +210,8 @@ class UndoLog {
   std::deque<Step> steps_;
   std::deque<std::string> labels_;  // one per closed step, parallel to steps_
   std::size_t position_ = 0;
+  std::uint64_t generation_ = 0;  // bumped by clear()
+  std::uint64_t dropped_ = 0;     // steps dropped by apply_limit, ever
   Step open_;
   int suspend_depth_ = 0;
   std::size_t limit_ = kDefaultHistoryLimit;
@@ -229,6 +251,11 @@ class ScopedSuspend {
 /// kMaxStepLabelLength bytes, cut with "…".
 inline constexpr std::size_t kMaxStepLabelLength = 60;
 [[nodiscard]] std::string command_label(std::string_view name, const std::vector<std::string>& args);
+
+/// The undo-step label of a script typed as text (a console command): its
+/// words with every run of white space as one space, cut like
+/// command_label ("for {set i 0} {$i < 9} {incr i} { paint m1 }").
+[[nodiscard]] std::string script_label(std::string_view text);
 
 /// One entry of the undo history (hefesto-app-ux "Undo history"): a step
 /// named by its label (UndoLog::step_label) and the command that reaches it
