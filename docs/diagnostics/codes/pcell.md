@@ -37,9 +37,31 @@ C++; tasks.md 7.1-7.4).
 
 ## Native generators
 
-No code yet (tasks.md 7.5-7.7). The PDK helpers report a call they cannot
-reproduce bit for bit by returning no value, and the caller runs the Tcl
-generator; no native generator is built in yet.
+The native generators (`pcell/native/`, design D10; tasks.md 7.5-7.7) are
+C++ ports of the PDKs' MOSFET and fixed-device procedures, registered for
+one exact PDK release each: open_pdks ciel `5740c4a8` (sky130A: 15 MOS
+devices and 12 fixed devices; gf180mcuD: 21 and 11) and IHP-Open-PDK
+`5e6d592e` (sg13g2: 8 MOSFETs; its fixed devices wait for SCRIPT-PDK-14).
+The framework uses one in place of the device's Tcl `_defaults`, `_check`
+and `_draw` when the PDK device scripts are loaded and the PDK that defined
+`magic::spice2float` is that release; the generated cell name and the saved
+`.mag` are those of the Tcl generator except the `timestamp` lines (D-29;
+`scripts/pcell_equivalence.py` checks the sweeps of
+`tests/data/pcell/sweeps/`). A parameter the port does not reproduce
+exactly (a value outside Tcl's number subset, a `_check` loop that never
+ends in Tcl) runs the Tcl generator without a message. Setting the Tcl
+variable `::hefesto::native_generators` to `0` runs the Tcl generators for
+every device.
+
+- `PCELL-NATIVE-001` (info): the installed PDK release is not the one a
+  device's native generator was validated against (another version of the
+  same variant); its Tcl generator runs. Reported once per device and
+  session.
+- The ports print what the PDK procedures print, through the interpreter's
+  `puts` (`Mos width must be >= 0.42 um`, `Diagnostic: Device bounding box
+  ...`), and report a Tcl error of the procedure (for example gf180mcu's
+  `can't read "doports"` for `nfet_06v0_nvt`) as `PCELL-GEN-002`, as the
+  framework does for the Tcl generator.
 
 ## Table
 
@@ -57,5 +79,6 @@ fails when the two disagree.
 | `PCELL-GEN-002` | warning | A device procedure failed inside the framework; its message is printed and generation continues. |
 | `PCELL-GEN-003` | error | The project has no script interpreter to run the device procedures. |
 | `PCELL-LIST-001` | error | A Tcl list or dictionary value is malformed. |
+| `PCELL-NATIVE-001` | info | No native generator for this PDK version; the device's Tcl generator runs. |
 | `PCELL-NETLIST-001` | info | SPICE netlist seeding report. |
 <!-- END DIAGNOSTIC CODES -->

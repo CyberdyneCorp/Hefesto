@@ -24,6 +24,7 @@
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/pcell/framework/parameters.hpp"
 #include "hefesto/pcell/framework/state.hpp"
+#include "hefesto/pcell/native/registry.hpp"
 
 namespace hefesto::script {
 class Interpreter;
@@ -72,6 +73,18 @@ class Toolkit {
                                                          std::string_view suffix, const ParameterDict& parameters);
   /// `catch {set P [<lib>::<type>_check $P]} err; puts stderr $err`.
   [[nodiscard]] ParameterDict checked(std::string_view library, std::string_view type, const ParameterDict& parameters);
+  /// `<library>::<type>_draw $parameters`.
+  [[nodiscard]] cmd::CommandResult draw_device(std::string_view library, std::string_view type,
+                                               const ParameterDict& parameters);
+
+  /// The native generator that replaces the device's Tcl `_defaults`,
+  /// `_check` and `_draw` (pcell/framework/native_bridge.cpp), or nullptr.
+  [[nodiscard]] const NativeGenerator* native(std::string_view library, std::string_view type);
+  /// The native `_check` of the device; nullopt when there is none or it
+  /// cannot reproduce `parameters` (the Tcl `_check` runs then).
+  [[nodiscard]] std::optional<diag::Outcome<ParameterDict>> native_check(std::string_view library,
+                                                                        std::string_view type,
+                                                                        const ParameterDict& parameters);
 
   /// Evaluates `script` in the interpreter (global level).
   [[nodiscard]] cmd::CommandResult evaluate(std::string_view script);

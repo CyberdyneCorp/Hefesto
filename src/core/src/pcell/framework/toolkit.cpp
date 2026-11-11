@@ -88,6 +88,9 @@ bool Toolkit::has_device(std::string_view library, std::string_view type, std::s
 }
 
 diag::Outcome<ParameterDict> Toolkit::device_defaults(std::string_view library, std::string_view type) {
+  if (const NativeGenerator* generator = native(library, type)) {
+    return generator->defaults();
+  }
   const cmd::CommandResult r = device(library, type, "defaults", {});
   if (!r.ok()) {
     return diag::make(codes::kScriptError, error_text(r));
@@ -105,6 +108,13 @@ diag::Outcome<ParameterDict> Toolkit::device_dict(std::string_view library, std:
 }
 
 ParameterDict Toolkit::checked(std::string_view library, std::string_view type, const ParameterDict& parameters) {
+  if (auto native_result = native_check(library, type, parameters)) {
+    if (!native_result->ok()) {
+      print_error(native_result->error().text);
+      return parameters;
+    }
+    return std::move(*native_result).value();
+  }
   auto result = device_dict(library, type, "check", parameters);
   if (!result.ok()) {
     print_error(result.error().text);

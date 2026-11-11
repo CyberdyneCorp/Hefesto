@@ -1,0 +1,70 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Parameter sweep of the native gf180mcu generators (m4-scripting design D10,
+# D-29), run by scripts/pcell_equivalence.py natively and through the PDK's
+# Tcl generators. Every device is generated with its defaults, with each
+# `values` entry (one parameter changed: the PDK bounds, out-of-bounds values
+# that `_check` corrects, and interior values) and with each `combos` entry.
+# Values stay numbers: other text runs the Tcl generator by design.
+
+set = "gf180mcu"
+library = "gf180mcu"
+rcfile = "libs.tech/magic/gf180mcuD.magicrc"
+trust = "gf180mcuD"
+
+[[group]]
+name = "mosfet"
+devices = [
+  "nfet_03v3", "pfet_03v3", "pfet_05v0", "pfet_06v0", "nfet_05v0", "nfet_06v0", "nfet_06v0_nvt",
+  "nfet_03v3_dss", "pfet_03v3_dss", "pfet_06v0_dss", "nfet_06v0_dss", "nfet_10v0_asym", "pfet_10v0_asym",
+  "nmoscap_3p3", "nmoscap_6p0", "pmoscap_3p3", "pmoscap_6p0",
+  "nvaractor_3p3", "nvaractor_6p0", "pvaractor_3p3", "pvaractor_6p0",
+]
+values.w = ["0.1", "0.22", "0.3", "0.5", "1.0", "4.0", "10.0"]
+values.l = ["0.1", "0.28", "0.5", "0.6", "1.0", "1.8", "5.0"]
+values.nf = ["0", "2", "3", "6"]
+values.m = ["0", "2", "4"]
+values.diffcov = ["10", "20", "55", "100", "150"]
+values.polycov = ["10", "20", "60", "150"]
+values.guard = ["0"]
+values.glc = ["0"]
+values.grc = ["0"]
+values.gtc = ["1"]
+values.gbc = ["1"]
+values.tbcov = ["0", "40"]
+values.rlcov = ["0", "60"]
+values.topc = ["0"]
+values.botc = ["0"]
+values.poverlap = ["1"]
+values.doverlap = ["0"]
+values.full_metal = ["0"]
+values.viasrc = ["100", "50", "+50", "-50"]
+values.viadrn = ["100", "+40", "-40"]
+values.viagate = ["100", "+70", "-70", "30"]
+values.viagb = ["50", "+50", "-50", "100"]
+values.viagt = ["100", "+30"]
+values.viagr = ["60", "-60"]
+values.viagl = ["100", "+80"]
+values.doports = ["0"]
+values.lmax = ["0.8"]
+combos = [
+  "nf 2 m 2", "nf 3 m 3", "nf 4 m 2 poverlap 1", "nf 2 m 3 doverlap 0", "nf 2 m 2 topc 0", "nf 2 m 2 botc 0",
+  "w 0.22 nf 2", "w 0.22 topc 0", "w 0.22 l 0.28 nf 3 m 2", "nf 2 m 2 doports 0", "nf 3 m 2 poverlap 1 doverlap 0",
+  "nf 2 m 2 guard 0", "w 2.0 l 0.5 nf 5 m 4", "nf 2 diffcov 50 polycov 50", "nf 2 m 2 viasrc 100 viadrn 100 viagate 100",
+  "m 3 poverlap 1 topc 0", "nf 2 m 2 viagate 100", "nf 1.5", "m 2.5", "w 40 l 0.5", "w 0.5 l 30 nf 4",
+  "nf 3 m 2 viagb 100 viagt 100 viagr 100 viagl 100", "m 20 w 3", "nf 30",
+]
+
+[[group]]
+name = "fixed"
+fixed = true
+devices = [
+  "npn_05p00x05p00", "npn_00p54x02p00", "npn_10p00x10p00", "npn_00p54x10p00", "eFuse", "npn_00p54x04p00",
+  "npn_00p54x08p00", "pnp_05p00x05p00", "pnp_05p00x00p42", "pnp_10p00x10p00", "pnp_10p00x00p42",
+]
+values.nx = ["0", "2", "5", "1.5"]
+values.ny = ["0", "3", "2.5"]
+values.deltax = ["0.5", "-1", "2u", "0.0004"]
+values.deltay = ["1.25", "-0.5"]
+combos = ["nx 2 ny 2", "nx 3 ny 2 deltax 1 deltay 2", "nx 2 ny 2 deltax 0.123456", "nx 4 deltay 3"]

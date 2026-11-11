@@ -23,5 +23,8 @@ inline constexpr std::string_view kDeviceMessage = "PCELL-GEN-002";
 inline constexpr std::string_view kNoInterpreter = "PCELL-GEN-003";
 /// netlist_to_layout progress and skip messages (toolkit.tcl `puts`).
 inline constexpr std::string_view kNetlistReport = "PCELL-NETLIST-001";
+/// The installed PDK version has no native generator of a device that has
+/// one for another version: its Tcl generator runs (pcell/native/codes.inc).
+inline constexpr std::string_view kNativeFallback = "PCELL-NATIVE-001";
 
 }  // namespace hefesto::pcell::codes

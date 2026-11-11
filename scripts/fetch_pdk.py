@@ -14,14 +14,17 @@ PDK data sets, each a subset of one ciel release installed into
 ``sky130``    open_pdks 5740c4a8, release ``sky130-5740c4a8...`` (stands in for the spec pin c6df28c1)
                 sky130A/libs.tech/magic/                     tech files, startup file, device scripts
                 sky130A/libs.ref/sky130_fd_sc_hd/mag/        standard cells
-              134 MB downloaded (common 6.6 MB, sky130_fd_sc_hd 127 MB), 6.8 MB kept.
+                sky130A/libs.ref/sky130_fd_pr/mag/           fixed-layout devices (PCell `nocell` cells)
+              148 MB downloaded (common 6.6 MB, sky130_fd_sc_hd 127 MB, sky130_fd_pr 14 MB), 15 MB kept.
 ``gf180mcu``  open_pdks 5740c4a8, release ``gf180mcu-5740c4a8...`` (stands in for c6df28c1)
                 gf180mcuD/libs.tech/magic/
                 gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/
-              350 MB downloaded (common 170 MB, 7t5v0 180 MB), 3.2 MB kept.
+                gf180mcuD/libs.ref/gf180mcu_fd_pr/mag/       fixed-layout devices (PCell `nocell` cells)
+              350 MB downloaded (common 170 MB, 7t5v0 180 MB, gf180mcu_fd_pr 0.05 MB), 3.4 MB kept.
 ``ihp``       IHP-Open-PDK 5e6d592e, release ``ihp-sg13g2-5e6d592e...``
                 ihp-sg13g2/libs.tech/magic/
-              435 MB downloaded (common 434 MB, sg13g2_pr 0.2 MB), 0.8 MB kept.
+              435 MB downloaded (common 434 MB, sg13g2_pr 0.2 MB), 0.8 MB kept. sg13g2_pr has no
+              mag/ directory: the sg13g2 fixed devices build their cells with the PDK's cell scripts.
 
 After an install the set's tree digest (SHA-256 over the sorted
 "path NUL sha256 LF" records of every file in its subset, paths relative to the
@@ -65,7 +68,7 @@ class DataSet:
     family: str      # directory under <root>/ciel (Hefesto's family name)
     variant: str     # `pdk install` variant
     version: str     # ciel release hash (the pin)
-    library: str     # the one `-lib` installed (`pdk install` needs at least one)
+    libraries: tuple[str, ...]  # the `-lib` libraries installed (`pdk install` needs at least one)
     subset: tuple[str, ...]  # `-only` prefixes, relative to the version directory
     tree_sha256: str
 
@@ -74,7 +77,8 @@ class DataSet:
 
     def install_script(self) -> str:
         only = " ".join(f"-only {sub}/" for sub in self.subset)
-        return (f"pdk install {self.variant} {self.version} -lib {self.library} -accept-license "
+        libs = " ".join(f"-lib {lib}" for lib in self.libraries)
+        return (f"pdk install {self.variant} {self.version} {libs} -accept-license "
                 f"-accept-unverified -unpack-factor 32 {only}")
 
     def cache_key(self) -> str:
@@ -91,15 +95,16 @@ IHP_PIN = "5e6d592e4002946a4616f798c357f0f3c06cf3b6"
 
 DATA_SETS = {
     "sky130": DataSet(
-        "sky130", "sky130", "sky130A", OPEN_PDKS_PIN, "sky130_fd_sc_hd",
-        ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag"),
-        "b3ee85f299bccc6fb910a186bfd75993ec6594dff02362d60f813332f620bed5"),
+        "sky130", "sky130", "sky130A", OPEN_PDKS_PIN, ("sky130_fd_sc_hd", "sky130_fd_pr"),
+        ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag", "sky130A/libs.ref/sky130_fd_pr/mag"),
+        "8aedf059155765efbb926f5098dc552834c2de243f094c3d25b4b5d94e4b4b71"),
     "gf180mcu": DataSet(
-        "gf180mcu", "gf180mcu", "gf180mcuD", OPEN_PDKS_PIN, "gf180mcu_fd_sc_mcu7t5v0",
-        ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag"),
-        "6a3b1236bff022f7303deb6774fb686a10283fd1d3678f33d8dfbfb1d9a867eb"),
+        "gf180mcu", "gf180mcu", "gf180mcuD", OPEN_PDKS_PIN, ("gf180mcu_fd_sc_mcu7t5v0", "gf180mcu_fd_pr"),
+        ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag",
+         "gf180mcuD/libs.ref/gf180mcu_fd_pr/mag"),
+        "354c55418060a14c5891c3b5b8af338012097440167d3d69fac0032022919637"),
     "ihp": DataSet(
-        "ihp", "ihp-sg13", "ihp-sg13g2", IHP_PIN, "sg13g2_pr",
+        "ihp", "ihp-sg13", "ihp-sg13g2", IHP_PIN, ("sg13g2_pr",),
         ("ihp-sg13g2/libs.tech/magic",),
         "e01cd6e2db86f2d0a189f006f93f7f3098a2839f8034013f36037ec7a1d4a1d3"),
 }

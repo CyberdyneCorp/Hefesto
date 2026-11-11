@@ -33,7 +33,7 @@ fetch = load()
 
 def make_set(**changes):
     """A small data set for tests, with a digest filled in by populate()."""
-    fields = dict(name="toy", family="toyfam", variant="toyA", version="ab" * 20, library="toy_lib",
+    fields = dict(name="toy", family="toyfam", variant="toyA", version="ab" * 20, libraries=("toy_lib",),
                   subset=("toyA/libs.tech/magic", "toyA/libs.ref/toy_lib/mag"), tree_sha256="0" * 64)
     fields.update(changes)
     return fetch.DataSet(**fields)
@@ -60,8 +60,11 @@ class DataSetTable(unittest.TestCase):
     def test_sky130_pin_and_digest_of_m4_design_d15(self):
         sky = fetch.DATA_SETS["sky130"]
         self.assertEqual(sky.version, "5740c4a81c42f9fe4af5ef2ee258a99151053d28")
-        self.assertEqual(sky.tree_sha256, "b3ee85f299bccc6fb910a186bfd75993ec6594dff02362d60f813332f620bed5")
-        self.assertEqual(sky.subset, ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag"))
+        self.assertEqual(sky.tree_sha256, "8aedf059155765efbb926f5098dc552834c2de243f094c3d25b4b5d94e4b4b71")
+        # sky130_fd_pr holds the fixed-layout devices of the native PCell generators (M4 round 2).
+        self.assertEqual(sky.subset, ("sky130A/libs.tech/magic", "sky130A/libs.ref/sky130_fd_sc_hd/mag",
+                                      "sky130A/libs.ref/sky130_fd_pr/mag"))
+        self.assertEqual(sky.libraries, ("sky130_fd_sc_hd", "sky130_fd_pr"))
         # The M1 names stay (tools/golden/goldenlib/external.py reads PDK_VERSION).
         self.assertEqual(fetch.PDK_VERSION, sky.version)
         self.assertEqual(fetch.PDK_TREE_SHA256, sky.tree_sha256)
@@ -76,17 +79,19 @@ class DataSetTable(unittest.TestCase):
         gf = fetch.DATA_SETS["gf180mcu"]
         ihp = fetch.DATA_SETS["ihp"]
         self.assertEqual(gf.version, fetch.DATA_SETS["sky130"].version)  # same open_pdks snapshot
-        self.assertEqual(gf.tree_sha256, "6a3b1236bff022f7303deb6774fb686a10283fd1d3678f33d8dfbfb1d9a867eb")
-        self.assertEqual(gf.subset, ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag"))
+        self.assertEqual(gf.tree_sha256, "354c55418060a14c5891c3b5b8af338012097440167d3d69fac0032022919637")
+        self.assertEqual(gf.subset, ("gf180mcuD/libs.tech/magic", "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag",
+                                     "gf180mcuD/libs.ref/gf180mcu_fd_pr/mag"))
+        self.assertEqual(gf.libraries, ("gf180mcu_fd_sc_mcu7t5v0", "gf180mcu_fd_pr"))
         self.assertEqual(ihp.version, "5e6d592e4002946a4616f798c357f0f3c06cf3b6")
         self.assertEqual(ihp.tree_sha256, "e01cd6e2db86f2d0a189f006f93f7f3098a2839f8034013f36037ec7a1d4a1d3")
-        self.assertEqual(ihp.subset, ("ihp-sg13g2/libs.tech/magic",))
+        self.assertEqual(ihp.subset, ("ihp-sg13g2/libs.tech/magic",))  # sg13g2_pr has no mag/ directory
         self.assertEqual(ihp.family, "ihp-sg13")  # Hefesto's family directory for ihp-sg13g2
 
     def test_cache_keys_of_the_m4_pins(self):
         self.assertEqual([data.cache_key() for data in fetch.DATA_SETS.values()],
-                         ["pdk-sky130-5740c4a81c42-b3ee85f299bccc6f",
-                          "pdk-gf180mcu-5740c4a81c42-6a3b1236bff022f7",
+                         ["pdk-sky130-5740c4a81c42-8aedf059155765ef",
+                          "pdk-gf180mcu-5740c4a81c42-354c55418060a14c",
                           "pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0"])
 
     def test_every_set_has_a_full_digest_and_a_subset_inside_its_variant(self):
@@ -106,7 +111,9 @@ class DataSetTable(unittest.TestCase):
         self.assertTrue(script.startswith("pdk install ihp-sg13g2 5e6d592e4002946a4616f798c357f0f3c06cf3b6 "
                                           "-lib sg13g2_pr "))
         self.assertIn("-only ihp-sg13g2/libs.tech/magic/", script)
-        self.assertEqual(fetch.DATA_SETS["gf180mcu"].install_script().count("-only "), 2)
+        gf_script = fetch.DATA_SETS["gf180mcu"].install_script()
+        self.assertEqual(gf_script.count("-only "), 3)
+        self.assertIn("-lib gf180mcu_fd_sc_mcu7t5v0 -lib gf180mcu_fd_pr ", gf_script)
 
 
 class TreeDigest(unittest.TestCase):
