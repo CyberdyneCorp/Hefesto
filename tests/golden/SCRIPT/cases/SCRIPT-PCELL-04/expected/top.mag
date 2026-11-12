@@ -1,0 +1,10 @@
+magic
+tech scmos
+timestamp 1794467921
+<< checkpaint >>
+rect -14 -14 29 214
+use nfet_FBERKF  M2
+timestamp 0
+transform 1 0 0 0 1 0
+box 0 0 15 200
+<< end >>

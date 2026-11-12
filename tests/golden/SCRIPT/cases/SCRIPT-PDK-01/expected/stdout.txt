@@ -1,0 +1,42 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 07:11:13 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+VPWR VGND VSUBS sky130A {1 2} lambda {. /work/input/pdk/sky130A/libs.ref/sky130_fd_pr/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_io/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hdll/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hs/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hvl/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_lp/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ls/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ms/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc_t18/mag /work/input/pdk/sky130A/libs.ref/sky130_ml_xx_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_bd_sram/mag /work/input/pdk/sky130A/libs.ref/sky130_sram_macros/mag input} /work/input/pdk/sky130A 1 {callback {sky130::addtechmenu $framename; }} {obswell scntransistor sramnfet srampassfet scptransistor srampfet mvntransistoresd mvptransistoresd scpfethvt scnfetlvt nsonos corenvaractor corepvaractor fomfill obsactive mvobsactive polyfill corelocali obsli1 obsli1c lifill obsm1 m1fill obsm2 m2fill obsm3 m3fill obsm4 m4fill obsm5 m5fill obsmrdl glass fillblock obscomment magnet fence rotate}
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Sourcing design .magicrc for technology gf180mcuD ...
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+VDD VSS VSUBS gf180mcuD {1 2} lambda {. /work/input/pdk/sky130A/libs.ref/sky130_fd_pr/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_io/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hdll/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hs/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hvl/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_lp/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ls/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ms/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc_t18/mag /work/input/pdk/sky130A/libs.ref/sky130_ml_xx_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_bd_sram/mag /work/input/pdk/sky130A/libs.ref/sky130_sram_macros/mag input /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_pr/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu9t5v0/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_io/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_as_sc_mcu7t3v3/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_io/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_ip_sram/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_sc_rt12t3v3/mag} /work/input/pdk/sky130A 1 {callback {gf180mcu::addtechmenu $framename; sky130::addtechmenu $framename; }} {obswell obsactive mvobsactive srammvnfet srammvpfet srammvndiff srammvpdiff srammvndc srammvpdc sramnfet srampfet sramndiff srampdiff sramndc srampdc nmoscap pmoscap mvnmoscap mvpmoscap filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 lvstext obscomment magnet fence rotate}
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+VDD VSS sub! ihp-sg13g2 {1 2} lambda {. /work/input/pdk/sky130A/libs.ref/sky130_fd_pr/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_io/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hdll/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hs/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hvl/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_lp/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ls/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_ms/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc/mag /work/input/pdk/sky130A/libs.ref/sky130_osu_sc_t18/mag /work/input/pdk/sky130A/libs.ref/sky130_ml_xx_hd/mag /work/input/pdk/sky130A/libs.ref/sky130_fd_bd_sram/mag /work/input/pdk/sky130A/libs.ref/sky130_sram_macros/mag input /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_pr/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu9t5v0/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_io/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_ip_sram/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_as_sc_mcu7t3v3/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_io/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_ip_sram/mag /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_ocd_sc_rt12t3v3/mag} /work/input/pdk/sky130A 1 {callback {sg13g2::addtechmenu $framename; gf180mcu::addtechmenu $framename; sky130::addtechmenu $framename; }} {obswell hvntransistoresd hvptransistoresd sealcont difffill obsactive obspoly polyfill obsm1 m1fill iprobe diffprobe sealvia1 obsm2 m2fill sealvia2 obsm3 m3fill sealvia3 obsm4 m4fill sealvia4 obsm5 m5fill sealvia5 obsm6 m6fill sealvia6 obsm7 m7fill pillar solder seal magnet fence rotate}
