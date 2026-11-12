@@ -554,7 +554,7 @@ def gui_bodies() -> dict[str, dict]:
             "update", p(".layout1.titlebar.pos cget -text"),
             "event generate .layout1.pane.top.magic <Motion> -x 50 -y 60", "update",
             p(".layout1.titlebar.pos cget -text"))),
-        "SCRIPT-GUI-05": dict(gui=True, env={"PDK_ROOT": "{work}/input/pdkroot"},
+        "SCRIPT-GUI-05": dict(gui=True, stream_masks=["magic-tech-menu-order"], env={"PDK_ROOT": "{work}/input/pdkroot"},
                               files={"pdkroot/x/libs.tech/magic/x.tech": "tech\n    format 35\n    x\nend\n"},
                               body=lines(p("techmanager create"),
                                          "set m .techmgr.title.tname.menu",
