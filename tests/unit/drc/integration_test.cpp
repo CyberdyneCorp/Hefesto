@@ -332,3 +332,59 @@ TEST_CASE("the first check under a cifstyle that is not current loads that outpu
     CHECK(d.text != "Loading DRC CIF style.");
   }
 }
+
+namespace {
+
+// The layout of the `drc listall why` regressions (Desktop Alpha, sky130
+// met1.6 and sg13g2 M2.d): one step square holds an interaction near the
+// origin (use `a` abutting top paint) and the uses `c` above it and, with
+// `below`, `d` below it, each holding a 2-wide m1 bar at its own origin.
+// Magic 8.3.694 run on the same tech and commands gives the expected values.
+void build_resolution_layout(Session& s, bool below) {
+  REQUIRE(s.run("drc off; load c; box 0 0 2 10; paint m1").ok());
+  REQUIRE(s.run("load d; box 0 0 2 10; paint m1").ok());
+  REQUIRE(s.run("load a; box 0 0 10 10; paint m1").ok());
+  REQUIRE(s.run("load top").ok());
+  REQUIRE(s.editor.windows.open_frame(s.editor.cells.find("top")).ok());
+  REQUIRE(s.run("box 0 0 0 0; getcell a; box 10 0 20 10; paint m1; box 0 100 0 100; getcell c").ok());
+  if (below) {
+    REQUIRE(s.run("box 0 -100 0 -100; getcell d").ok());
+  }
+  REQUIRE(s.run("drc *stepsize 1000; select top cell; drc check; drc catchup").ok());
+}
+
+}  // namespace
+
+TEST_CASE("drc listall why reports a subcell's flattened errors at its own coordinates as Magic does",
+          "[cap:drc-commands][req:drc why]") {
+  // Regression (Desktop Alpha sky130, met1.6): resolving c's copied error
+  // re-enters the check and leaves DRCDummyUse on c, so the flattened check
+  // of the interaction near the origin yanks c's paint unmoved.
+  Session s;
+  build_resolution_layout(s, false);
+  CHECK(s.value("drc listall why") == "{m1 width < 3} {{2 100 3 110} {2 0 3 10}}");
+  CHECK(s.value("drc list why") == "{m1 width < 3}");
+}
+
+TEST_CASE("drc listall why misses the errors of a later strip's subcells as Magic does",
+          "[cap:drc-commands][req:drc why]") {
+  // Regression (Desktop Alpha sg13g2, M2.d): after the strip above resolves
+  // c's error, the strip below copies the errors of c's children, not top's,
+  // so d's error is never reported.
+  Session s;
+  build_resolution_layout(s, true);
+  CHECK(s.value("drc listall why") == "{m1 width < 3} {{2 100 3 110} {2 0 3 10}}");
+}
+
+TEST_CASE("with magic-compat OFF drc listall why reports every subcell error once at root coordinates",
+          "[cap:drc-engine][req:Interaction check over an area]") {
+  Session s;
+  const hefesto::compat::CompatSettings off{false, true};
+  s.editor.drc.compat = &off;
+  build_resolution_layout(s, true);
+  // Both copied errors, at root coordinates, and nothing of c's paint near
+  // the origin. (OFF, the width error rechecked in the copied rectangle only
+  // touches it, so the copied text stands.)
+  CHECK(s.value("drc listall why") == "{See error definition in the subcell} {{2 100 3 110} {2 -100 3 -90}}");
+  s.editor.drc.compat = nullptr;
+}

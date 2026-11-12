@@ -119,7 +119,14 @@ else:
 
 `R ⊕ h` is R expanded by h on all sides. The left and right strips use the y-extent of I as computed before clipping I to B ⊕ h.
 
-(Magic ref: drc/DRCsubcell.c:766-965)
+With `magic-compat` ON, `copyChildErrors`, `arrayChecks`, `flatten` and `exactOverlapCheck` act on the scan cell, Magic's `DRCDummyUse` def, not on C: each square sets the scan cell to C, but an error function that re-enters the interaction check from a report (the why-4 resolution of `drc why` and `drc listall why`, drc-commands "drc why") leaves it on the last cell that re-entered check processed. The rest of that square then copies the errors of that cell's children (errors of C's other children in later strips are missed) and flattens that cell's paint with the identity transform, so its own errors are reported at its own coordinates as if they were C's. With `magic-compat` OFF the scan cell is always C. The background checker reports into the error plane without re-entering, so it is unaffected.
+
+(Magic ref: drc/DRCsubcell.c:766-965, drc/DRCsubcell.c:428, drc/DRCmain.c:403-438)
+
+#### Scenario: A why resolution retargets the rest of the square
+- **GIVEN** magic-compat ON, step 1000, a parent with a use `a` abutting parent paint at the origin (an interaction area) and a use of `c` at (0,100) and of `d` at (0,−100), `c` and `d` each holding a too-narrow bar at their own origin with an `error_p` tile
+- **WHEN** `drc listall why` runs over the parent with the box covering it
+- **THEN** it reports `c`'s error at root coordinates and again at `c`'s own coordinates, and not `d`'s error; with magic-compat OFF it reports `c`'s and `d`'s errors once each at root coordinates
 
 #### Scenario: Cell without subcells
 - **GIVEN** a cell with only paint, step 1000, and erase box B = [10,20]×[10,20]

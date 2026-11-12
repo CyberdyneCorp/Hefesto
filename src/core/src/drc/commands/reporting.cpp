@@ -20,7 +20,9 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
+#include <functional>
 #include <map>
+#include <utility>
 
 #include "db/command_util.hpp"
 #include "hefesto/connect/tree.hpp"
@@ -205,6 +207,19 @@ void count_in(const db::CellDef& def, const db::Rect& area, bool descend, bool m
 
 // --- drc why ------------------------------------------------------------------------
 
+/// An ErrorSink that hands each error to a function as it is reported.
+class ReportingSink final : public ErrorSink {
+ public:
+  using Report = std::function<void(const db::Rect&, const Rule&)>;
+  explicit ReportingSink(Report report) : report_(std::move(report)) {}
+
+ protected:
+  void on_error(const db::Rect& area, const Rule& rule) override { report_(area, rule); }
+
+ private:
+  Report report_;
+};
+
 /// DRCWhy / DRCWhyAll state: DRCErrorList (per why index: 0 not yet
 /// reported, n reported n times, -1 ignored), DRCErrorCount, the groups.
 class WhyCollector {
@@ -216,14 +231,15 @@ class WhyCollector {
     init_error_list();
   }
 
-  /// drcWhyFunc / drcWhyAllFunc: the recheck of `area` in `def`.
+  /// drcWhyFunc / drcWhyAllFunc: the recheck of `area` in `def`. Each
+  /// error is reported as the check finds it, as Magic's error function
+  /// is called: a copied child error is resolved inside the check, which
+  /// matters to the rest of the check with magic-compat ON (interaction.cpp
+  /// scan_cell()).
   void check(const db::CellDef& def, const db::Rect& area, const db::Transform& to_root) {
-    CollectingErrorSink sink;
+    ReportingSink sink([&](const db::Rect& rect, const Rule& rule) { report(def, area, to_root, rect, rule); });
     sink.set_statistics(&editor_.drc.statistics);
     options_.recheck(editor_, def, area, sink);
-    for (const CollectingErrorSink::Error& e : sink.errors()) {
-      report(def, area, to_root, e.area, e.rule);
-    }
   }
 
   [[nodiscard]] std::vector<WhyGroup> take() { return std::move(groups_); }
