@@ -76,6 +76,10 @@ struct ShellOptions {
   /// event injection (a panel header to a dock); the app prints the panel
   /// command the drop issued.
   std::optional<DragOption> drag;
+  /// --input 'STEP; STEP ...': after `run` (and --drag), pointer and key
+  /// events through Raven's event injection, played frame by frame with
+  /// their waits (input_script.hpp); a capture waits for the last step.
+  std::string input;
   /// Opens the PDK manager panel at startup.
   bool show_pdk_manager = false;
   /// Opens the Console / Diagnostics panel at startup (collapsed otherwise).

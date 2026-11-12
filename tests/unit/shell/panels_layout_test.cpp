@@ -132,6 +132,35 @@ TEST_CASE("dragging a panel header highlights the drop zone and issues a panel c
   CHECK(layout.find("layers")->dock == DockZone::floating);
 }
 
+TEST_CASE("the drop band names the dock and the dock a floating panel came from",
+          "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
+  const DockGeometry g = geometry();
+  PanelPlacement inspector{"inspector", DockZone::floating, DockZone::right, false, LayoutRect{600.0F, 100.0F, 280.0F, 200.0F}};
+  // Board M2-Panels tile 2: the floating Inspector dragged back over the right dock.
+  CHECK(drop_band_text(DropTarget{DockZone::right, g.right}, inspector, "Inspector") ==
+        DropBandText{"Drop to dock on the right", "Inspector was undocked from here"});
+  CHECK(drop_band_text(DropTarget{DockZone::left, g.left}, inspector, "Inspector") ==
+        DropBandText{"Drop to dock on the left", ""});
+  CHECK(drop_band_text(DropTarget{DockZone::bottom, g.bottom}, inspector, "Inspector").caption ==
+        "Drop to dock at the bottom");
+  // Still docked at home: nothing was undocked from there.
+  inspector.dock = DockZone::right;
+  CHECK(drop_band_text(DropTarget{DockZone::right, g.right}, inspector, "Inspector").note.empty());
+  // An empty dock's band strip previews the dock it would open; a docked
+  // dock is its own box.
+  const PanelLayout layout = default_panel_layout();
+  CHECK(drop_band_rect(DropTarget{DockZone::right, LayoutRect{1352.0F, 48.0F, kDockBand, 760.0F}}, layout) ==
+        LayoutRect{1400.0F - layout.right_width, 48.0F, layout.right_width, 760.0F});
+  CHECK(drop_band_rect(DropTarget{DockZone::left, LayoutRect{288.0F, 48.0F, kDockBand, 760.0F}}, layout) ==
+        LayoutRect{288.0F, 48.0F, layout.left_width, 760.0F});
+  CHECK(drop_band_rect(DropTarget{DockZone::bottom, LayoutRect{288.0F, 760.0F, 1000.0F, kDockBand}}, layout) ==
+        LayoutRect{288.0F, 808.0F - layout.bottom_height, 1000.0F, layout.bottom_height});
+  CHECK(drop_band_rect(DropTarget{DockZone::right, g.right}, layout) == g.right);
+  // A floating target draws only the window's outline.
+  CHECK(drop_band_text(DropTarget{DockZone::floating, LayoutRect{1.0F, 2.0F, 3.0F, 4.0F}}, inspector, "Inspector") ==
+        DropBandText{});
+}
+
 TEST_CASE("a header press becomes a drag once it moves; a still press is a click",
           "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
   // Painted::on_drag drives this from the header's mouse events (board

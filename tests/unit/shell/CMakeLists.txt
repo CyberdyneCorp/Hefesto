@@ -47,6 +47,7 @@ target_sources(hefesto_shell_tests PRIVATE
   m4_script_consent_test.cpp)
 # M2 items carried into M4 (openspec/changes/m4-scripting tasks 11.2-11.7, CARRY).
 target_sources(hefesto_shell_tests PRIVATE
+  input_script_test.cpp
   key_bindings_sheet_test.cpp
   label_tool_test.cpp
   minimap_test.cpp
@@ -79,6 +80,19 @@ if(HEFESTO_TEST_DESKTOP_WINDOW)
       LABELS "desktop-window;desktop-window-${_system}"
       ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
       PASS_REGULAR_EXPRESSION "pinch at 700,450 by 2: zoom 100% -> 200%"
+      TIMEOUT 120)
+    # A panel docked back after floating fills its dock (it kept the floating
+    # card's overlay placement and sat inside a dock as wide as the canvas
+    # offset; hefesto-app-ux "Panel layout and focus cycling"). The --input
+    # script prints each panel's frame when it ends.
+    add_test(NAME "hefesto: a panel docked after floating fills its dock (${_system})"
+             COMMAND hefesto --rects 1000 --run "panel inspector float 700 150 300 300; panel inspector dock right"
+                     --input "wait 100" --capture "${CMAKE_CURRENT_BINARY_DIR}/redock-${_system}.ppm"
+                     --capture-frames 6 --no-vsync)
+    set_tests_properties("hefesto: a panel docked after floating fills its dock (${_system})" PROPERTIES
+      LABELS "desktop-window;desktop-window-${_system}"
+      ENVIRONMENT "RAVEN_WINDOW_SYSTEM=${_system}"
+      PASS_REGULAR_EXPRESSION "panel inspector 1156 [0-9]+ 284 [0-9][0-9][0-9]"
       TIMEOUT 120)
   endforeach()
 endif()
