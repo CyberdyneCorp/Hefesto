@@ -17,7 +17,9 @@ namespace hefesto::shell {
 namespace {
 
 constexpr float kPad = 14.0F;
-constexpr float kLabelWidth = 110.0F;
+constexpr float kLabelWidth = 130.0F;
+constexpr float kTextSize = 12.0F;  // board M4-Managers tiles 4 and 6: 12 px rows
+constexpr float kJustifySize = 26.0F;  // the 3×3 justification buttons
 
 std::vector<std::string> split_words(std::string_view text) {
   std::vector<std::string> out;
@@ -38,22 +40,37 @@ long long to_number(const std::string& text) {
   }
 }
 
-/// "Label   [field]" on one row.
-ui::Box field_row(std::string_view label, ui::Widget& field) {
+ui::Label muted_label(std::string_view text, const ScreenContext& ctx, float size = kTextSize) {
+  ui::Label label = ui::Label::create(text);
+  label.set_font_size(size);
+  label.set_color(ctx.tokens().text_secondary);
+  return label;
+}
+
+/// "Label   [field]" on one row; `fill` lets the field take the rest.
+ui::Box field_row(std::string_view label, ui::Widget& field, const ScreenContext& ctx, float fill = 1.0F) {
   ui::Box row = ui::Box::horizontal();
   row.set_spacing(8.0F);
-  ui::Label text = ui::Label::create(label);
+  ui::Label text = muted_label(label, ctx);
   text.set_size(kLabelWidth, -1.0F);
   row.add_centered(text);
-  row.add(field, 1.0F);
+  row.add(field, fill);
   return row;
 }
 
-std::unique_ptr<ui::TextInput> input(std::string_view accessible) {
+/// A mono 12 px entry; `width` > 0 fixes its width (short values).
+std::unique_ptr<ui::TextInput> input(std::string_view accessible, const ScreenContext& ctx, float width = -1.0F) {
   auto in = ui::TextInput::create("");
-  in->set_size(-1.0F, static_cast<float>(kInputHeight));
+  in->set_size(width, static_cast<float>(kInputHeight));
+  in->set_font(ctx.runtime.mono_font());
+  in->set_font_size(kTextSize);
   in->set_accessible_name(accessible);
   return in;
+}
+
+/// Empty space that takes the free room of a row.
+ui::Box gap() {
+  return ui::Box::horizontal();
 }
 
 }  // namespace
@@ -83,16 +100,16 @@ void TextHelperWindow::update() {
 }
 
 void TextHelperWindow::build() {
-  window_ = std::make_unique<ui::Window>("Text helper", 380, 470);
+  window_ = std::make_unique<ui::Window>("Text helper", 440, 600);
   window_->set_topmost(true);
   window_->on_close_request([this] { close(); });
   root_ = ui::Box::vertical();
   root_.set_padding(kPad, kPad, kPad, kPad);
   root_.set_spacing(8.0F);
-  title_.emplace(ui::Label::create("New label"));
+  title_.emplace(muted_label("New label", ctx_, 11.0F));
   root_.add(*title_);
-  text_ = input("Text string");
-  root_.add(field_row("Text string", *text_));
+  text_ = input("Text string", ctx_);
+  root_.add(field_row("Text string", *text_, ctx_));
   fonts_ = {"default"};
   for (std::string& f : split_words(engine_query(ctx_.core, {"setlabel", "fontlist"}))) fonts_.push_back(std::move(f));
   font_ = ui::ComboBox::create(fonts_);
@@ -101,9 +118,10 @@ void TextHelperWindow::build() {
     if (i >= 0 && static_cast<std::size_t>(i) < fonts_.size()) view_.model().font = fonts_[static_cast<std::size_t>(i)];
     preview_->set_text(view_.preview(port_exists_, units_));
   });
-  root_.add(field_row("Font", *font_));
-  size_ = input("Size in microns");
-  root_.add(field_row("Size (um)", *size_));
+  font_->set_font_size(kTextSize);
+  root_.add(field_row("Font", *font_, ctx_));
+  size_ = input("Size in microns", ctx_, 90.0F);
+  root_.add(field_row("Size (um)", *size_, ctx_, 0.0F));
   // The justification grid: NW N NE / W center E / SW S SE, then center and default.
   ui::Box grid = ui::Box::vertical();
   grid.set_spacing(4.0F);
@@ -115,23 +133,26 @@ void TextHelperWindow::build() {
       const std::string_view just = choices[r * 3 + c];
       auto b = ui::Button::create(just == "center" && r == 1 ? "c" : just, false);
       b->set_accessible_name("Justification " + std::string{just});
+      b->set_font_size(11.0F);
+      // the 3×3 grid as small squares; center / default as two wider buttons
+      b->set_size(r < 3 ? kJustifySize + 16.0F : kJustifySize * 2.0F + 36.0F, kJustifySize);
       b->on_click([this, just] {
         fields_to_model();
         view_.set_justification(just);
         preview_->set_text(view_.preview(port_exists_, units_));
       });
-      row.add(*b, 1.0F);
+      row.add(*b);
       buttons_.push_back(std::move(b));
     }
     grid.add(row);
   }
-  root_.add(field_row("Justification", grid));
-  rotation_ = input("Rotation in degrees");
-  root_.add(field_row("Rotation", *rotation_));
-  offset_ = input("Offset from reference, x y");
-  root_.add(field_row("Offset", *offset_));
-  layer_ = input("Attach to layer");
-  root_.add(field_row("Attach to layer", *layer_));
+  root_.add(field_row("Justification", grid, ctx_, 0.0F));
+  rotation_ = input("Rotation in degrees", ctx_, 90.0F);
+  root_.add(field_row("Rotation", *rotation_, ctx_, 0.0F));
+  offset_ = input("Offset from reference, x y", ctx_, 140.0F);
+  root_.add(field_row("Offset from reference", *offset_, ctx_, 0.0F));
+  layer_ = input("Attach to layer", ctx_, 140.0F);
+  root_.add(field_row("Attach to layer", *layer_, ctx_, 0.0F));
   ui::Box checks = ui::Box::horizontal();
   checks.set_spacing(12.0F);
   default_layer_ = ui::CheckBox::create("default");
@@ -140,10 +161,15 @@ void TextHelperWindow::build() {
   checks.add(*sticky_);
   root_.add(checks);
   port_ = ui::CheckBox::create("Port enable");
-  port_index_ = input("Port index");
-  root_.add(field_row("Port", *port_index_));
-  root_.add(*port_);
-  preview_.emplace(ui::Label::create(""));
+  port_index_ = input("Port index", ctx_, 90.0F);
+  ui::Box port = ui::Box::horizontal();
+  port.set_spacing(8.0F);
+  port.add_centered(*port_);
+  port.add(*port_index_);
+  root_.add(field_row("Port", port, ctx_, 0.0F));
+  // The command Apply / Okay issue (board: mono, muted).
+  preview_.emplace(muted_label("", ctx_, 11.0F));
+  preview_->set_font(ctx_.runtime.mono_font());
   preview_->set_wrap(true);
   preview_->set_selectable(true);
   root_.add(*preview_);
@@ -166,6 +192,7 @@ void TextHelperWindow::build() {
     apply();
     close();
   });
+  actions.add(gap(), 1.0F);  // Cancel on the right (board)
   add("Cancel", false, [this] { close(); });
   root_.add(actions);
   window_->set_content(root_);
@@ -264,7 +291,7 @@ void ReorderWindow::show(const gui::ToolbarModel& toolbar) {
 }
 
 void ReorderWindow::build() {
-  window_ = std::make_unique<ui::Window>("Reorder layers", 360, 520);
+  window_ = std::make_unique<ui::Window>("Reorder layers", 500, 480);
   window_->set_topmost(true);
   window_->on_close_request([this] { close(); });
   root_ = ui::Box::vertical();
@@ -276,17 +303,27 @@ void ReorderWindow::build() {
     search_ = text;
     reset_rows();
   });
-  root_.add(*search_input_);
+  search_input_->set_font_size(kTextSize);
+  // Search and Preset on one row (board tile 6).
+  ui::Box top = ui::Box::horizontal();
+  top.set_spacing(8.0F);
+  top.add(*search_input_, 1.0F);
   presets_ = ui::ComboBox::create(model_->presets());
   presets_->set_accessible_name("Preset");
+  presets_->set_font_size(kTextSize);
+  presets_->set_size(170.0F, -1.0F);
   presets_->on_select([this](int i) { preset_ = static_cast<std::size_t>(std::max(i, 0)); });
-  root_.add(field_row("Preset", *presets_));
+  top.add(*presets_);
+  root_.add(top);
   table_ = ui::Table::create();
-  table_->add_column("Layer", 180.0F, 1.0F, false);
+  table_->add_column("Layer", 160.0F, 1.0F, false);
   table_->add_column("Toolbar row", 90.0F, 0.0F, false);
   table_->set_accessible_name("Toolbar order");
-  root_.add(*table_, 1.0F);
-  ui::Box edit = ui::Box::horizontal();
+  // The table with the edit buttons in a column at its right.
+  ui::Box middle = ui::Box::horizontal();
+  middle.set_spacing(8.0F);
+  middle.add(*table_, 1.0F);
+  ui::Box edit = ui::Box::vertical();
   edit.set_spacing(6.0F);
   ui::Box files = ui::Box::horizontal();
   files.set_spacing(6.0F);
@@ -296,26 +333,38 @@ void ReorderWindow::build() {
     row.add(*b);
     buttons_.push_back(std::move(b));
   };
-  add(edit, "Move up", false, [this] { move_selected(-1); });
-  add(edit, "Move down", false, [this] { move_selected(1); });
-  add(edit, "Group with above", false, [this] {
+  const auto add_wide = [&](ui::Box& column, std::string_view label, std::function<void()> click) {
+    auto b = ui::Button::create(label, false);
+    b->set_size(130.0F, -1.0F);
+    b->on_click(std::move(click));
+    column.add(*b);
+    buttons_.push_back(std::move(b));
+  };
+  add_wide(edit, "Move up", [this] { move_selected(-1); });
+  add_wide(edit, "Move down", [this] { move_selected(1); });
+  add_wide(edit, "Group with above", [this] {
     const auto at = selected_layer();
     if (!at || *at == 0) return;
     model_->set_selection({*at - 1, *at});
     model_->group_selected();
     reset_rows();
   });
-  add(edit, "Delete layer", false, [this] {
+  add_wide(edit, "Delete layer", [this] {
     if (const auto at = selected_layer()) model_->set_selection({*at});
     model_->delete_selected();
     reset_rows();
   });
-  root_.add(edit);
-  note_.emplace(ui::Label::create("Presets come from <tech>_toolbars.tcl, read as data (only set <name> {...} lines)."));
+  middle.add(edit);
+  root_.add(middle, 1.0F);
+  note_.emplace(muted_label(
+      "◆ Presets come from <tech>_toolbars.tcl, read as data (only set <name> {...} lines). Save rewrites its "
+      "set current_toolbar line.",
+      ctx_, 11.0F));
   note_->set_wrap(true);
   root_.add(*note_);
   add(files, "Load", false, [this] { load_preset(); });
   add(files, "Save", false, [this] { save_preset(); });
+  files.add(gap(), 1.0F);  // Confirm on the right (board)
   add(files, "Confirm", true, [this] {
     if (confirm_) confirm_(model_->layers());
     close();

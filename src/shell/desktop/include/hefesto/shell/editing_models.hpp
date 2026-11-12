@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -86,10 +87,27 @@ struct DialogButton {
   bool primary = false;    // the default answer: focused, Return and Escape give it
 };
 
+/// One row of a dialog's detail block (board M4-Script-Consent tile 2): the
+/// key, a monospace value, then an optional status chip and a muted note.
+struct DialogDetail {
+  enum class Tone : std::uint8_t { neutral, ok, warning };
+  std::string key;
+  std::string value;    // monospace; may be empty (a chip alone)
+  std::string chip;     // "● digest verified"; empty: none
+  Tone tone = Tone::neutral;
+  std::string note;     // "+ 8 part files (device generators)"
+  std::string tooltip;  // the whole text when the value is shortened
+};
+
 struct PromptDialog {
   std::string title;
   std::string text;
   std::vector<DialogButton> buttons;  // in display order, the default last
+  /// M4 alert style (board M4-Script-Consent note 1); all optional:
+  std::string icon;                    // assets/icons/<icon>.svg in a 32 px box left of the title
+  std::vector<DialogDetail> details;   // the inset block under the text
+  float width = 0.0F;                  // the content width; 0: measured (at least 420)
+  std::size_t leading_buttons = 0;     // buttons kept at the left, before the gap
 };
 
 /// The dialog for a PromptHost question: the title is the question's first

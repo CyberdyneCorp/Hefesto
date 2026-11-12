@@ -86,6 +86,9 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   pending_pinch_ = options.pinch;
   pending_drag_ = options.drag;
   if (!options.input.empty()) pending_input_.emplace(parse_input_script(options.input).steps);
+  pending_press_ = options.press;
+  menu_in_window_ = options.menu_bar_in_window;
+  capture_window_ = options.capture_window;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   ctx_.prompt = [this](const std::string& text) { show_prompt(text); };
   ctx_.menu = [this](const std::string& title, const std::vector<MenuEntry>& entries, float x, float y) {
@@ -620,6 +623,8 @@ void MainWindow::on_frame() {
       play_pending_input();
     }
   }
+  // A press opens a menu of the bar: wait until the bar has stopped changing.
+  if (pending_press_ && !pending_drag_ && pending_run_.empty() && menu_quiet_frames_ >= 3) run_pending_press();
   refresh_m4();
   refresh_m4b();
   refresh_tools();
@@ -667,6 +672,32 @@ void MainWindow::play_pending_input() {
   if (pending_input_->done()) report_panel_rects();  // scripted checks read where the panels ended up
   // Keep frames coming through the waits (a hold's timer, a popover's frame).
   window_.request_redraw();
+}
+
+void MainWindow::run_pending_press() {
+  const DragOption press = *pending_press_;
+  pending_press_.reset();
+  window_.inject_left_press(press.x0, press.y0);
+  std::printf("hefesto: press at %g,%g\n", static_cast<double>(press.x0), static_cast<double>(press.y0));
+  std::fflush(stdout);
+  window_.request_redraw();
+}
+
+bool MainWindow::capture(const std::string& path) const {
+  if (capture_window_ == "main") return window_.capture_ppm(path);
+  const ui::Window* utility = utility_window(capture_window_);
+  if (utility == nullptr) {
+    std::fprintf(stderr, "hefesto: the %s window is not open\n", capture_window_.c_str());
+    return false;
+  }
+  return utility->capture_ppm(path);
+}
+
+const ui::Window* MainWindow::utility_window(std::string_view name) const {
+  if (name == "pcell") return pcell_dialog_ ? pcell_dialog_->window() : nullptr;
+  if (name == "texthelper") return text_helper_ ? text_helper_->window() : nullptr;
+  if (name == "reorder") return reorder_ ? reorder_->window() : nullptr;
+  return nullptr;
 }
 
 void MainWindow::append_console(const std::string& command, const std::string& result) {

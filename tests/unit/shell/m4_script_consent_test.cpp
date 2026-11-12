@@ -66,7 +66,18 @@ TEST_CASE("the consent prompt shows the script's origin and three answers",
   CHECK(dialog.title == view.title);
   REQUIRE(dialog.buttons.size() == 3);
   CHECK(dialog.buttons[2].primary);
-  CHECK(dialog.text.find("Script:  ") != std::string::npos);
+  // Board tile 1: a shield alert, the origin as a detail block, Don't run on the left.
+  CHECK(dialog.text == view.body);
+  CHECK(dialog.icon == "shield");
+  CHECK(dialog.leading_buttons == 1);
+  REQUIRE(dialog.details.size() == 4);
+  CHECK(dialog.details[0].key == "Script");
+  CHECK(dialog.details[0].tooltip == kRc);  // the whole path
+  CHECK(dialog.details[0].value.ends_with("sky130A.magicrc"));
+  CHECK(dialog.details[0].value.size() < kRc.size());
+  CHECK(dialog.details[2].value == "ciel 5740c4a");
+  CHECK(dialog.details[2].chip == "● digest verified");
+  CHECK(dialog.details[2].tone == DialogDetail::Tone::ok);
   CHECK(consent_decision(view, 0) == ConsentDecision::decline);  // dismissed (Escape)
   CHECK(consent_decision(view, 1) == ConsentDecision::decline);
   CHECK(consent_decision(view, 2) == ConsentDecision::trust_version);
@@ -89,6 +100,34 @@ TEST_CASE("a script outside the PDK store has no Trust answer",
   CHECK(view.origin[3].first == "Found via");
   CHECK(answer_labels(view) == std::vector<std::string>{"Don't run*", "Run once"});
   CHECK(view.default_decision() == ConsentDecision::decline);
+  // Board tile 4: the narrower alert, the release row a warning chip.
+  const PromptDialog dialog = consent_dialog(view, "/Users/me");
+  CHECK(dialog.width < consent_dialog(consent_prompt({kSky130, kRc, false}, ConsentContext{})).width);
+  CHECK(dialog.details[0].value.starts_with("~/"));
+  CHECK(dialog.details[2].value.empty());
+  CHECK(dialog.details[2].chip == "▲ not in the PDK store · not verified");
+  CHECK(dialog.details[2].tone == DialogDetail::Tone::warning);
+}
+
+TEST_CASE("the consent alert splits each origin row into value, chip and note",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  const DialogDetail then_runs = consent_detail("Then runs", "sky130A.tcl + 8 part files (device generators)");
+  CHECK(then_runs.value == "sky130A.tcl");
+  CHECK(then_runs.note == "+ 8 part files (device generators)");
+  CHECK(then_runs.chip.empty());
+  const DialogDetail unchecked = consent_detail("Release", "ciel 5740c4a · ◆ digest not checked");
+  CHECK(unchecked.value == "ciel 5740c4a");
+  CHECK(unchecked.chip == "◆ digest not checked");
+  CHECK(unchecked.tone == DialogDetail::Tone::neutral);
+  const DialogDetail plain = consent_detail("PDK", "sky130A · 5740c4a");
+  CHECK(plain.value == "sky130A · 5740c4a");
+  CHECK(plain.chip.empty());
+  CHECK(plain.note.empty());
+  // The script path from the home folder.
+  CHECK(home_relative("/Users/me/pdk/a.magicrc", "/Users/me") == "~/pdk/a.magicrc");
+  CHECK(home_relative("/Users/me/pdk/a.magicrc", "/Users/me/") == "~/pdk/a.magicrc");
+  CHECK(home_relative("/Users/meg/a.magicrc", "/Users/me") == "/Users/meg/a.magicrc");
+  CHECK(home_relative("/Users/me/a.magicrc", "") == "/Users/me/a.magicrc");
 }
 
 TEST_CASE("the desktop ConsentHost asks once per PDK version",

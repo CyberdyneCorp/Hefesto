@@ -11,6 +11,7 @@
 // Owner: SHELL (SHELL-A).
 
 #include <algorithm>
+#include <cstdlib>
 
 #include "hefesto/script/project.hpp"
 #include "hefesto/shell/gui_script.hpp"
@@ -61,6 +62,7 @@ void MainWindow::build_m4() {
   // The menu bar under the top bar: the system menu bar on macOS (no room
   // taken in the window), a 30 px bar in the window elsewhere.
   menu_bar_ = ui::MenuBar::create();
+  if (menu_in_window_) menu_bar_->set_native(false);
   menu_bar_->set_size(-1.0F, kMenuBarHeight);
   root_.insert(*menu_bar_, 2);
   ctx_.editor().script.events.add(script_events_);
@@ -100,13 +102,33 @@ void MainWindow::set_consent_host(DesktopConsentHost* host) {
   if (host != nullptr) editor.script.events.add(*host);
 }
 
+ui::DialogLook MainWindow::dialog_look(std::string_view icon) const {
+  const ThemeTokens& t = ctx_.tokens();
+  ui::DialogLook look;
+  look.icon = icon.empty() ? ui::kNoWidget : ctx_.runtime.icon(icon);
+  look.title_font = ctx_.runtime.font(FontFace{FontFamily::ui, 600});
+  look.mono = ctx_.runtime.mono_font();
+  look.inset = t.surface1;
+  look.border = t.border;
+  look.icon_color = t.icon;
+  look.muted = t.text_tertiary;
+  look.body = t.text_secondary;
+  look.ok = t.success;
+  look.ok_text = t.success_text;
+  look.warning = t.warning;
+  look.warning_text = t.warning_text;
+  return look;
+}
+
 script::ConsentDecision MainWindow::ask_consent(const ConsentPromptView& view) {
-  const PromptDialog dialog = consent_dialog(view);
+  const char* home = std::getenv("HOME");
+  const PromptDialog dialog = consent_dialog(view, home != nullptr ? home : "");
+  const ui::DialogLook look = dialog_look(dialog.icon);
   if (capture_mode_) {
-    (void)window_.run_dialog(dialog, false);  // shown for the capture; nothing runs without an answer
+    (void)window_.run_dialog(dialog, false, look);  // shown for the capture; nothing runs without an answer
     return ConsentPromptView::escape_decision();
   }
-  return consent_decision(view, window_.run_dialog(dialog, true));
+  return consent_decision(view, window_.run_dialog(dialog, true, look));
 }
 
 // --- per frame --------------------------------------------------------------------------
@@ -146,10 +168,14 @@ void MainWindow::refresh_menu_bar() {
     menu_bar_->set_hit_testable(!native);
   }
   const std::size_t signature = menu_bar_signature(view);
-  if (menu_built_ && signature == menu_signature_) return;
+  if (menu_built_ && signature == menu_signature_) {
+    ++menu_quiet_frames_;
+    return;
+  }
   menu_view_ = std::move(view);
   menu_signature_ = signature;
   menu_built_ = true;
+  menu_quiet_frames_ = 0;
   menu_bar_->set_menus(menu_specs(menu_view_), [this](std::size_t menu, std::size_t entry) {
     choose_menu_item(menu, entry);
   });

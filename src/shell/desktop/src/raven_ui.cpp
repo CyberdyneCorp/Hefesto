@@ -1306,27 +1306,93 @@ void close_dialog_with(Rid button, void* answer) {
   Rdialog_close(button, static_cast<int>(reinterpret_cast<std::intptr_t>(answer)));
 }
 
-}  // namespace
+// A label color left to the theme.
+constexpr Rgba kThemeColor{0.0F, 0.0F, 0.0F, 0.0F};
 
-int Window::run_dialog(const PromptDialog& dialog, bool wait) const {
-  const Rid content = Rwidget_create(R_WIDGET_VBOX);
-  Rpanel_set_spacing(content, 12.0F);
-  Rwidget_set_min_size(content, 420.0F, 0.0F);
-  const Rid title = Rlabel_create(dialog.title.c_str());
-  Rlabel_set_text_size(title, 15.0F);
-  Rwidget_add_child(content, title);
-  if (dialog.text != dialog.title) {
-    const Rid text = Rlabel_create(dialog.text.c_str());
-    Rlabel_set_wrap(text, kTrue);
-    Rwidget_add_child(content, text);
-  }
+void set_label_color(Rid label, const Rgba& c) {
+  Rlabel_set_color(label, c.r, c.g, c.b, c.a);
+}
+
+Rid dialog_label(const std::string& text, const Rgba& color, WidgetId font, float size) {
+  const Rid label = Rlabel_create(text.c_str());
+  if (color.a > 0.0F) set_label_color(label, color);
+  if (font != kNoWidget) Rlabel_set_font(label, font);
+  if (size > 0.0F) Rlabel_set_text_size(label, size);
+  return label;
+}
+
+// The icon of an M4 alert in a 32 px bordered box (board M4-Script-Consent note 1).
+Rid dialog_icon(const DialogLook& look) {
+  const Rid box = Rwidget_create(R_WIDGET_BORDER);
+  Rborder_set_padding(box, 7.0F, 7.0F, 7.0F, 7.0F);
+  Rborder_set_background(box, look.inset.r, look.inset.g, look.inset.b, look.inset.a);
+  Rborder_set_outline(box, 1.0F, look.border.r, look.border.g, look.border.b, look.border.a);
+  Rborder_set_corner_radius(box, 8.0F, 8.0F, 8.0F, 8.0F);
+  const Rid image = Rwidget_create(R_WIDGET_IMAGE);
+  Rimage_set_texture(image, look.icon);
+  Rimage_set_tint_color(image, look.icon_color.r, look.icon_color.g, look.icon_color.b, look.icon_color.a);
+  Rwidget_set_size(image, 18.0F, 18.0F);
+  Rwidget_add_child(box, image);
+  Rwidget_set_size(box, 32.0F, 32.0F);
+  return box;
+}
+
+Rid dialog_chip(const DialogDetail& detail, const DialogLook& look) {
+  const bool ok = detail.tone == DialogDetail::Tone::ok;
+  const bool warning = detail.tone == DialogDetail::Tone::warning;
+  const Rgba fill = ok ? look.ok : warning ? look.warning : look.border;
+  const Rgba text = ok ? look.ok_text : warning ? look.warning_text : look.muted;
+  const Rid chip = Rwidget_create(R_WIDGET_BORDER);
+  Rborder_set_padding(chip, 6.0F, 1.0F, 6.0F, 1.0F);
+  Rborder_set_background(chip, fill.r, fill.g, fill.b, 0.14F);
+  Rborder_set_corner_radius(chip, 9.0F, 9.0F, 9.0F, 9.0F);
+  Rwidget_add_child(chip, dialog_label(detail.chip, text, kNoWidget, 10.0F));
+  return chip;
+}
+
+// One row of the detail block: key | value, chip, note.
+void add_dialog_detail(Rid grid, int row, const DialogDetail& detail, const DialogLook& look) {
+  const Rid key = dialog_label(detail.key, look.muted, kNoWidget, 12.0F);
+  Rwidget_add_child(grid, key);
+  Rslot_set_grid(key, 0, row);
+  Rslot_set_valign(key, R_VALIGN_CENTER);
+  const Rid cell = Rwidget_create(R_WIDGET_HBOX);
+  Rpanel_set_spacing(cell, 6.0F);
+  if (!detail.value.empty()) Rwidget_add_child(cell, dialog_label(detail.value, kThemeColor, look.mono, 12.0F));
+  if (!detail.chip.empty()) Rwidget_add_child(cell, dialog_chip(detail, look));
+  if (!detail.note.empty()) Rwidget_add_child(cell, dialog_label(detail.note, look.muted, look.mono, 12.0F));
+  if (!detail.tooltip.empty()) Rwidget_set_tooltip(cell, detail.tooltip.c_str());
+  Rwidget_add_child(grid, cell);
+  Rslot_set_grid(cell, 1, row);
+  Rslot_set_valign(cell, R_VALIGN_CENTER);
+}
+
+Rid dialog_details(const std::vector<DialogDetail>& details, const DialogLook& look) {
+  const Rid block = Rwidget_create(R_WIDGET_BORDER);
+  Rborder_set_padding(block, 12.0F, 10.0F, 12.0F, 10.0F);
+  Rborder_set_background(block, look.inset.r, look.inset.g, look.inset.b, look.inset.a);
+  Rborder_set_outline(block, 1.0F, look.border.r, look.border.g, look.border.b, look.border.a);
+  Rborder_set_corner_radius(block, 8.0F, 8.0F, 8.0F, 8.0F);
+  const Rid grid = Rwidget_create(R_WIDGET_GRID);
+  Rpanel_set_spacing(grid, 8.0F);
+  Rgrid_set_column_fill(grid, 1, 1.0F);
+  for (std::size_t i = 0; i < details.size(); ++i) add_dialog_detail(grid, static_cast<int>(i), details[i], look);
+  Rwidget_add_child(block, grid);
+  return block;
+}
+
+// The answer buttons: `leading` of them on the left, the others after a gap.
+Rid dialog_buttons(const PromptDialog& dialog, Rid& primary) {
   const Rid row = Rwidget_create(R_WIDGET_HBOX);
   Rpanel_set_spacing(row, 8.0F);
-  const Rid spacer = Rwidget_create(R_WIDGET_SPACER);
-  Rwidget_add_child(row, spacer);
-  Rslot_set_fill(spacer, 1.0F);
-  Rid primary = kNoWidget;
-  for (const DialogButton& b : dialog.buttons) {
+  const std::size_t leading = std::min(dialog.leading_buttons, dialog.buttons.size());
+  for (std::size_t i = 0; i < dialog.buttons.size(); ++i) {
+    if (i == leading) {
+      const Rid spacer = Rwidget_create(R_WIDGET_SPACER);
+      Rwidget_add_child(row, spacer);
+      Rslot_set_fill(spacer, 1.0F);
+    }
+    const DialogButton& b = dialog.buttons[i];
     const Rid button = Rbutton_create(b.label.c_str());
     Rbutton_set_style(button, b.primary ? R_BUTTON_PRIMARY : R_BUTTON_DEFAULT);
     Rwidget_set_accessible_name(button, b.label.c_str());
@@ -1335,7 +1401,46 @@ int Window::run_dialog(const PromptDialog& dialog, bool wait) const {
     Rwidget_add_child(row, button);
     if (b.primary) primary = button;
   }
-  Rwidget_add_child(content, row);
+  return row;
+}
+
+// Title, text, details and buttons in one column.
+Rid dialog_column(const PromptDialog& dialog, const DialogLook& look, Rid& primary) {
+  const Rid column = Rwidget_create(R_WIDGET_VBOX);
+  Rpanel_set_spacing(column, dialog.details.empty() ? 12.0F : 10.0F);
+  Rwidget_add_child(column, dialog_label(dialog.title, kThemeColor, look.title_font, 15.0F));
+  if (dialog.text != dialog.title) {
+    const Rid text = dialog_label(dialog.text, look.body, kNoWidget, 0.0F);
+    Rlabel_set_wrap(text, kTrue);
+    Rwidget_add_child(column, text);
+  }
+  if (!dialog.details.empty()) Rwidget_add_child(column, dialog_details(dialog.details, look));
+  const Rid buttons = dialog_buttons(dialog, primary);
+  Rwidget_add_child(column, buttons);
+  if (!dialog.details.empty()) Rslot_set_padding(buttons, 0.0F, 4.0F, 0.0F, 0.0F);
+  return column;
+}
+
+}  // namespace
+
+int Window::run_dialog(const PromptDialog& dialog, bool wait, const DialogLook& look) const {
+  Rid primary = kNoWidget;
+  const Rid column = dialog_column(dialog, look, primary);
+  Rid content = column;
+  if (!dialog.icon.empty() && look.icon != kNoWidget) {
+    content = Rwidget_create(R_WIDGET_HBOX);
+    Rpanel_set_spacing(content, 14.0F);
+    const Rid icon = dialog_icon(look);
+    Rwidget_add_child(content, icon);
+    Rslot_set_valign(icon, R_VALIGN_TOP);
+    Rwidget_add_child(content, column);
+    Rslot_set_fill(column, 1.0F);
+  }
+  if (dialog.width > 0.0F) {
+    Rwidget_set_size(content, dialog.width, -1.0F);
+  } else {
+    Rwidget_set_min_size(content, 420.0F, 0.0F);
+  }
   Rwidget_set_accessible_name(content, dialog.title.c_str());
   if (!wait) {
     Rdialog_open(id_, content, nullptr, nullptr);
@@ -1410,6 +1515,11 @@ void Window::inject_input(const InputStep& step) {
     case ScriptKind::wait:
       break;
   }
+}
+
+void Window::inject_left_press(float x, float y) {
+  Rwindow_inject_mouse_move(id_, x, y);
+  Rwindow_inject_mouse_button(id_, R_MOUSE_LEFT, kTrue);
 }
 
 bool Window::capture_ppm(const std::string& path) const {
@@ -1657,6 +1767,12 @@ void Widget::place_fill() {
   Rslot_set_padding(id_, 0.0F, 0.0F, 0.0F, 0.0F);
 }
 
+void Widget::place_top_center(float top) {
+  Rslot_set_halign(id_, R_HALIGN_CENTER);
+  Rslot_set_valign(id_, R_VALIGN_TOP);
+  Rslot_set_padding(id_, 0.0F, top, 0.0F, 0.0F);
+}
+
 void Toast::place_bottom_center() {
   Rslot_set_halign(id_, R_HALIGN_CENTER);
   Rslot_set_valign(id_, R_VALIGN_BOTTOM);
@@ -1751,12 +1867,20 @@ bool MenuBar::native() const {
   return Rmenu_bar_is_native(id_) != kFalse;
 }
 
+void MenuBar::set_native(bool native) {
+  Rmenu_bar_set_native(id_, native ? kTrue : kFalse);
+}
+
 Label Label::create(std::string_view text) {
   return Label(Rlabel_create(str(text).c_str()));
 }
 
 void Label::set_text(std::string_view text) {
   Rlabel_set_text(id_, str(text).c_str());
+}
+
+void Label::set_color(const Rgba& color) {
+  Rlabel_set_color(id_, color.r, color.g, color.b, color.a);
 }
 
 void Label::set_wrap(bool wrap) {

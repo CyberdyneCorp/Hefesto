@@ -52,6 +52,8 @@ bool apply_flag(ShellOptions& o, std::string_view name) {
     o.show_console = true;
   } else if (name == "--capture-running") {
     o.capture_running = true;
+  } else if (name == "--menu-bar-in-window") {
+    o.menu_bar_in_window = true;
   } else {
     return false;
   }
@@ -102,6 +104,14 @@ bool apply_valued(ShellOptions& o, std::string_view name, std::string_view value
   if (name == "--input") {
     o.input = value;
     return parse_input_script(value).error.empty();
+  }
+  if (name == "--press") {
+    o.press = parse_press_option(value);
+    return o.press.has_value();
+  }
+  if (name == "--capture-window") {
+    o.capture_window = std::string(value);
+    return is_capture_window(value);
   }
   if (name == "--rects") return parse_value(value, o.rects);
   if (name == "--seed") return parse_value(value, o.seed);
@@ -175,13 +185,25 @@ std::optional<DragOption> parse_drag_option(std::string_view text) {
   return DragOption{v[0], v[1], v[2], v[3]};
 }
 
+std::optional<DragOption> parse_press_option(std::string_view text) {
+  if (std::ranges::count(text, ',') != 1) return std::nullopt;
+  const std::string both = std::string(text) + "," + std::string(text);
+  return parse_drag_option(both);
+}
+
+bool is_capture_window(std::string_view name) noexcept {
+  return name == "main" || name == "pcell" || name == "texthelper" || name == "reorder";
+}
+
 std::string_view shell_usage() noexcept {
   return "usage: hefesto [-T tech] [-r] [-norcfile] [cell.mag ...]\n"
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
-         "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR] [--drag X0,Y0,X1,Y1]\n"
+         "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR] [--drag X0,Y0,X1,Y1] [--press X,Y]\n"
          "               [--input 'move X,Y; down X,Y; up X,Y; key [MOD+]NAME; text T; wait MS']\n"
-         "               [--capture FILE.ppm [--capture-frames N | --capture-running]]\n"
+         "               [--menu-bar-in-window]\n"
+         "               [--capture FILE.ppm [--capture-frames N | --capture-running]\n"
+         "                [--capture-window main|pcell|texthelper|reorder]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";
 }
