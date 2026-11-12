@@ -808,6 +808,7 @@ def m4_specs() -> list[TclCase]:
                    "ihp-sg13g2: two MiM capacitors of the PDK's cap_cmim generator (no cap_cmomf generator in "
                    "IHP-Open-PDK) with the plates 0.4 um apart (MIM.b 0.6 um); CAP.",
                    body, outputs=["mim.mag"], pdk="ihp-sg13g2", stream_comparator=CONSOLE,
+                   external=[{"source": "magic-sys", "path": "graphics/FreeSans.pt3", "to": "FreeSans.pt3"}],
                    notes=["Replaces the cap_cmomf row of DRC/CASES.md: IHP-Open-PDK 5e6d592e has no cap_cmomf "
                           "generator (m4-scripting tasks.md 12.3)."])
     return [case]

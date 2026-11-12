@@ -40,6 +40,11 @@ QUALIFIER = re.compile(r"\s*\(Q-[A-Z]+-\d+\)$")
 SPECS = GOLDEN.parents[1] / "openspec" / "specs"
 
 
+
+# The outline font the PDK cell scripts and toy labels name: Magic installs it in
+# $CAD_ROOT/magic/sys, which replay rebuilds under the work directory (casegen.font_inputs).
+FREESANS = {"source": "magic-sys", "path": "graphics/FreeSans.pt3", "to": "FreeSans.pt3"}
+
 def rows() -> dict[str, tuple[str, list[str], str]]:
     """``{id: (capability, requirements, input description)}`` of CASES.md."""
     out = {}
@@ -321,7 +326,7 @@ def pdk_bodies() -> dict[str, dict]:
             p("tech name", "cellname list filepath sky130_fd_sc_hd__inv_1"))),
         "SCRIPT-PDK-06": dict(pdk="sky130A", pdk_cells=sky_cell, outputs=["parent.mag"], body=lines(
             "load parent", "box 0 0 0 0", p("getcell sky130_fd_sc_hd__inv_1"), p("save parent"))),
-        "SCRIPT-PDK-07": dict(pdk="sky130A", also=["gf180mcuD", "ihp-sg13g2"], body=lines(
+        "SCRIPT-PDK-07": dict(pdk="sky130A", also=["gf180mcuD", "ihp-sg13g2"], external=[FREESANS], body=lines(
             _devices("sky130A"), GENERATE_ALL, _switch("gf180mcuD"), _devices("gf180mcuD"),
             GENERATE_ALL.replace("top_", "gtop_"), _switch("ihp-sg13g2"), _devices("ihp-sg13g2"),
             GENERATE_ALL.replace("top_", "itop_"))),
@@ -363,7 +368,7 @@ def pdk_bodies() -> dict[str, dict]:
             p("snap", "tech unlocked", "llength $boxstack"),
             "load empty", "box 0 0 0 0", p("label B c li", "select area label", "port make", "port first",
                                            "setlabel text", "setlabel layer", "port B index"))),
-        "SCRIPT-PDK-14": dict(pdk="ihp-sg13g2", body=lines(
+        "SCRIPT-PDK-14": dict(pdk="ihp-sg13g2", external=[FREESANS], body=lines(
             "load top", p("magic::gencell sg13g2::npn13g2 Q1", "magic::gencell sg13g2::diodevdd_2kv D1",
                           "cellname list window", "cellname list self", "cellname list children top"),
             "foreach c [cellname list allcells] { probe [list cellname list property $c] }")),
@@ -442,7 +447,7 @@ def pcell_bodies() -> dict[str, dict]:
             TOY_START, p("magic::gencell toy::fixed F1", "cellname list children top", "select cell F1",
                          "array -list count", "array -list pitch"),
             "magic::gencell {}", p("magic::gencell_getparams"))),
-        "SCRIPT-PCELL-12": dict(files={**TOY_FILES, "top.spice": NETLIST, "sub2.mag": LEAF},
+        "SCRIPT-PCELL-12": dict(files={**TOY_FILES, "top.spice": NETLIST, "sub2.mag": LEAF}, external=[FREESANS],
                                 outputs=["sub1.mag", "top.mag"], body=lines(
             "source input/toy.tcl", p("magic::netlist_to_layout input/top.spice toy", "cellname list allcells"),
             "foreach c [lsort [cellname list allcells]] { load $c; select top cell; probe {port first}; "
