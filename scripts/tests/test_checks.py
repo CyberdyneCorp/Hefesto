@@ -227,6 +227,22 @@ class CompareGoldenOutputsTest(unittest.TestCase):
             self.assertIn("unexpected: MISC/c1/extra.txt", text)
             self.assertIn("missing: MISC/c1/out.txt", text)
 
+    def test_reports_areas_and_fails_on_a_required_area_without_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "ref/MISC/c1/out.txt", "a\n")
+            write(root, "ref/MISC/c2/out.txt", "a\n")
+            write(root, "leg/MISC/c1/out.txt", "a\n")
+            write(root, "leg/MISC/c2/out.txt", "a\n")
+            code, text = run_quiet(golden.main, [str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 0)
+            self.assertIn("reference cases: MISC 2", text)
+            code, _ = run_quiet(golden.main, ["--require-area", "MISC", str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 0)
+            code, text = run_quiet(golden.main, ["--require-area", "SCRIPT", str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 1)
+            self.assertIn("no SCRIPT case in the reference outputs", text)
+
 
 DEPENDENCIES = """
 FetchContent_Declare(hefesto_zlib
