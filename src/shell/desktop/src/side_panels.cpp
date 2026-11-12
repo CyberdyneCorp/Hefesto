@@ -276,7 +276,7 @@ InspectorPanel::InspectorPanel(ScreenContext& ctx) : ctx_(ctx) {
   edge_ = make_separator(ctx_, true);
   body_ = make_painted(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t) {
     paint::fill_rect(p, w, h, t.surface1);
-    paint::inspector(p, w, h, view_, t);
+    paint::inspector(p, w, h, view_, nearby_, t);
   });
   body_->set_role(ui::Role::pane);
   body_->set_accessible_name("Inspector");
@@ -349,8 +349,9 @@ void InspectorPanel::open_action_menu(std::size_t index, const ui::Widget& butto
   ctx_.menu("Orientation", orient_menu(current), r.x, r.y + r.height + 2.0F);
 }
 
-void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_root) {
+void InspectorPanel::refresh(const UnitScale& scale, const db::CellDef* window_root, NearbyRulesView nearby) {
   const editor::EditorState& ed = ctx_.editor();
+  nearby_ = std::move(nearby);
   std::vector<InspectorAction> actions;
   if (auto selection = selection_inspector_view(ed, window_root, scale, &actions)) {
     view_ = std::move(*selection);

@@ -24,6 +24,7 @@ namespace {
 using display::HighlightItem;
 using display::HighlightScene;
 using display::HighlightShape;
+using display::TextPlace;
 
 db::Rect widened(db::Rect r) noexcept {
   if (r.x0 >= r.x1) {
@@ -74,9 +75,11 @@ HighlightItem line_item(std::size_t style, db::Point a, db::Point b) {
   return it;
 }
 
-HighlightItem text_item(std::size_t style, const db::Rect& rect, std::string text) {
+HighlightItem text_item(std::size_t style, const db::Rect& rect, std::string text,
+                        TextPlace place = TextPlace::center) {
   HighlightItem it = item(HighlightShape::text, style, rect);
   it.text = std::move(text);
+  it.place = place;
   return it;
 }
 
@@ -205,9 +208,9 @@ void selection_uses(const db::CellDef& def, const db::Rect& area, db::Point d, H
     const db::Rect r = shifted(use->bbox, d);
     out.items.push_back(item(HighlightShape::outline, kStyleOutlineHighlights, r));
     // selRedisplayCellFunc: the definition name and the instance id in the
-    // solid-highlights style.
-    out.items.push_back(text_item(kStyleSolidHighlights, r, use->def->name()));
-    out.items.push_back(text_item(kStyleSolidHighlights, r, use->id));
+    // solid-highlights style, at 2/3 and 1/3 of the height (not both centred).
+    out.items.push_back(text_item(kStyleSolidHighlights, r, use->def->name(), TextPlace::cell_name));
+    out.items.push_back(text_item(kStyleSolidHighlights, r, use->id, TextPlace::cell_id));
   }
 }
 

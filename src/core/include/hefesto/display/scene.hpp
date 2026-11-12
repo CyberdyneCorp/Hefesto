@@ -208,6 +208,12 @@ enum class HighlightShape : std::uint8_t {
   text,      // `text` centred in `rect` (drawn by the front end, like labels)
 };
 
+/// Where a `text` highlight sits in its rectangle: centred, or as a cell's
+/// captions (selRedisplayCellFunc, dbwBBoxFunc): the definition name
+/// centred on the line at 2/3 of the height, the instance id on the line at
+/// 1/3 of the height of the rectangle clipped to the window.
+enum class TextPlace : std::uint8_t { center, cell_name, cell_id };
+
 /// One highlight primitive in root coordinates, drawn over the layout.
 struct HighlightItem {
   HighlightShape shape = HighlightShape::outline;
@@ -218,6 +224,7 @@ struct HighlightItem {
   db::Diagonal diagonal = db::Diagonal::nw_se;
   bool right_side = false;
   std::string text;
+  TextPlace place = TextPlace::center;  // `text` only
 
   friend bool operator==(const HighlightItem&, const HighlightItem&) = default;
 };

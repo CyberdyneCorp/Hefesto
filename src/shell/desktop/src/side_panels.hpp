@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/shell/drc_models.hpp"
 #include "hefesto/shell/editing_models.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/view_models.hpp"
@@ -99,7 +100,8 @@ class InspectorPanel {
   /// Moves the edge separator to the canvas side of the dock (`panel ... dock`).
   void set_dock_side(DockSide side) { root_.insert(*edge_, panel_edge_index(side)); }
   /// The selection in `window_root` when there is one, else the box or the cell.
-  void refresh(const UnitScale& scale, const db::CellDef* window_root = nullptr);
+  /// `nearby`: the "Design rules nearby" card under the details.
+  void refresh(const UnitScale& scale, const db::CellDef* window_root = nullptr, NearbyRulesView nearby = {});
   void repaint();
   /// F6: the keyboard focus to the first action; false when there is none.
   bool focus();
@@ -117,6 +119,7 @@ class InspectorPanel {
   std::vector<InspectorAction> actions_;
   std::vector<std::unique_ptr<ui::Painted>> action_widgets_;
   InspectorView view_;
+  NearbyRulesView nearby_;
 };
 
 }  // namespace hefesto::shell

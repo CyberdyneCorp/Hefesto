@@ -764,7 +764,7 @@ void MainWindow::refresh_all() {
   canvas_->refresh_highlights();
   canvas_->update_cursor();
   left_->refresh(win);
-  inspector_->refresh(canvas_->unit_scale(), root);
+  inspector_->refresh(canvas_->unit_scale(), root, nearby_rules(root));
   refresh_header();
   refresh_rail();
   refresh_feedback();

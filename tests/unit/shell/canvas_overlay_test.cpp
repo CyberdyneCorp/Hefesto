@@ -387,3 +387,22 @@ TEST_CASE("the minimap draws outline-only and cross styles, labels and cell boxe
   REQUIRE(at(120.0, 70.0).has_value());
   CHECK(at(120.0, 70.0)->r > 0.8F);
 }
+
+TEST_CASE("cell box captions sit on the thirds of the box like Magic's dbwBBoxFunc",
+          "[cap:cmd-selection][req:Selection model]") {
+  // Regression (Desktop Alpha): the selected top cell's name and id overlapped.
+  const PixelRect r{100.0, 60.0, 300.0, 90.0};
+  const auto name = cell_caption_center(r, 400.0, CellCaption::name, 28.0);
+  const auto id = cell_caption_center(r, 400.0, CellCaption::id, 28.0);
+  REQUIRE(name);
+  REQUIRE(id);
+  CHECK(name->x == Approx(250.0));
+  CHECK(name->y == Approx(90.0));   // 1/3 down (Magic: 2/3 up)
+  CHECK(id->y == Approx(120.0));    // 2/3 down
+  CHECK(id->y - name->y >= 20.0);   // apart by more than a caption line
+  // The id's line is taken from the box clipped to the window; the name's is not.
+  const PixelRect tall{0.0, -300.0, 200.0, 900.0};
+  CHECK(cell_caption_center(tall, 300.0, CellCaption::name, 28.0)->y == Approx(0.0));
+  CHECK(cell_caption_center(tall, 300.0, CellCaption::id, 28.0)->y == Approx(200.0));
+  CHECK_FALSE(cell_caption_center(PixelRect{0.0, 0.0, 100.0, 20.0}, 300.0, CellCaption::name, 28.0));
+}

@@ -86,6 +86,22 @@ std::size_t MainWindow::count_root_errors(const db::CellDef* root) const {
   return total;
 }
 
+NearbyRulesView MainWindow::nearby_rules(const db::CellDef* root) const {
+  const editor::EditorState& ed = ctx_.core.editor();
+  const std::optional<db::Rect> box = visible_box(ed.box, ed.box_root, ed.edit_cell);
+  const DrcState state = drc_state(drc_status_input(root));
+  std::size_t under = 0;
+  if (root != nullptr && (state == DrcState::errors || state == DrcState::clean)) {
+    // `drc list count total` over the box (or the cell): DRCCount of the root only.
+    const db::DatabaseLock::Shared reading(ctx_.core.editor().database_lock);
+    const bool compat = ed.drc.compat_settings().magic_compat;
+    for (const drc::CellErrorCount& c : drc::count_errors(*root, box.value_or(root->bbox()), false, compat)) {
+      under += c.count;
+    }
+  }
+  return nearby_rules_view(state, under, box.has_value());
+}
+
 DrcStatusInput MainWindow::drc_status_input(const db::CellDef* root) const {
   const editor::EditorState& ed = ctx_.core.editor();
   DrcStatusInput in;
@@ -122,6 +138,8 @@ void MainWindow::refresh_drc() {
     drc_chip_->set_tooltip(view.tooltip + " · click: DRC panel · right-click or ▾: menu");
     drc_chip_->invalidate();
     if (state_changed) ui::announce(view.announcement, false);  // polite (board note 1)
+    // The inspector's "Design rules nearby" card follows the checker too.
+    if (state_changed) inspector_->refresh(canvas_->unit_scale(), root, nearby_rules(root));
     update_status_accessibility();
     status_bar_->invalidate();
   }

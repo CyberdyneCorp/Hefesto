@@ -95,6 +95,36 @@ struct DrcStatusView {
 [[nodiscard]] DrcState drc_state(const DrcStatusInput& in) noexcept;
 [[nodiscard]] DrcStatusView drc_status_view(const DrcStatusInput& in);
 
+// --- the DRC manager -------------------------------------------------------------------
+
+/// What `magic::drcmanager create` (also Options › DRC Manager, which sets
+/// Opts(drcmgr) first) does to the DRC panel, Magic's DRC manager on the
+/// approved boards: Magic's menu check deiconifies and raises `.drcmgr`
+/// when Opts(drcmgr) is set and withdraws it when cleared.
+enum class DrcManagerRequest : std::uint8_t { none, show, hide };
+
+/// `opts_drcmgr`: the value of Opts(drcmgr), when set.
+[[nodiscard]] DrcManagerRequest drc_manager_request(std::string_view command, const std::vector<std::string>& args,
+                                                    std::optional<std::string_view> opts_drcmgr);
+
+// --- inspector "Design rules nearby" card ---------------------------------------------
+
+/// The card under the selection inspector (Desktop-Layout board): the M3
+/// DRC result under the box. Rule-by-rule margins (the board's "li.1 width
+/// >= 0.17 um" rows) are the DRC-Browser board's "Measured vs required",
+/// which arrives with the agent in M11.
+struct NearbyRulesView {
+  StatusKind kind = StatusKind::info;
+  std::string status;  // "■ 3 DRC error tiles under the box"
+  std::string later = "Rule margins arrive with the agent (M11)";
+
+  friend bool operator==(const NearbyRulesView&, const NearbyRulesView&) = default;
+};
+
+/// `state` is the window root's drc_state(); `errors_under_box` the root's
+/// `drc list count total` over the box (`has_box`), else over the cell.
+[[nodiscard]] NearbyRulesView nearby_rules_view(DrcState state, std::size_t errors_under_box, bool has_box);
+
 struct DrcMenuInput {
   bool has_root = false;
   bool busy = false;

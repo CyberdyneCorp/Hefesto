@@ -12,6 +12,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -181,6 +182,18 @@ void frame_root(const db::CellDef& root, render::Camera& camera);
 /// (db::kCenter .. db::kNorthWest): anchored at the side or corner named by
 /// `pos` and offset by Magic's TEXTOFFSET (5 px) away from it.
 [[nodiscard]] PixelPoint label_text_origin(const PixelRect& r, db::Position pos, double text_w, double text_h);
+
+/// Which caption of a cell box (dbwBBoxFunc, selRedisplayCellFunc).
+enum class CellCaption : std::uint8_t { name, id };
+
+/// The centre of a cell box caption in canvas pixels (y down) for the box
+/// `r` in a window `win_h` pixels tall: the definition name on the line 1/3
+/// down from the top of `r`, the instance id on the line 2/3 down from the
+/// top of `r` clipped to the window (Magic computes the id's line after
+/// GeoClip to the screen area). std::nullopt when `r` is under
+/// `min_height` pixels tall (Magic's "BBB" tiny-box test).
+[[nodiscard]] std::optional<PixelPoint> cell_caption_center(const PixelRect& r, double win_h, CellCaption which,
+                                                            double min_height);
 
 /// Magic's four bitmap label fonts (X font pixel sizes small, medium, large,
 /// xlarge: graphics/grTkCommon.h), in logical pixels.

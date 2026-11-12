@@ -188,6 +188,10 @@ class MainWindow {
   void open_drc_menu(float x, float y);
   [[nodiscard]] DrcStatusInput drc_status_input(const db::CellDef* root) const;
   [[nodiscard]] std::size_t count_root_errors(const db::CellDef* root) const;
+  /// The inspector's "Design rules nearby" card for the window's root.
+  [[nodiscard]] NearbyRulesView nearby_rules(const db::CellDef* root) const;
+  /// `magic::drcmanager create`: shows and focuses (or hides) the DRC panel.
+  void apply_drc_manager_request(const cmd::Invocation& invocation);
   /// The chip, status bar, Dock progress and DRC panel from the session.
   void refresh_drc();
   void refresh_drc_panel(const db::CellDef* root);

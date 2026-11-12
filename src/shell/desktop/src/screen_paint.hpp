@@ -50,7 +50,8 @@ void tool(ui::Painter& p, float w, float h, const ToolButton& tool, WidgetState 
 void section_label(ui::Painter& p, float x, float y, std::string_view text, const ThemeTokens& t);
 void layer_row(ui::Painter& p, float w, float h, const LayerRow& row, WidgetState s, const ThemeTokens& t);
 void hierarchy_row(ui::Painter& p, float w, float h, const HierarchyRow& row, WidgetState s, const ThemeTokens& t);
-void inspector(ui::Painter& p, float w, float h, const InspectorView& view, const ThemeTokens& t);
+void inspector(ui::Painter& p, float w, float h, const InspectorView& view, const NearbyRulesView& nearby,
+               const ThemeTokens& t);
 /// The shapes of the status bar's message, problem count and DRC state (their text colors).
 struct StatusBarKinds {
   StatusKind message = StatusKind::info;

@@ -364,3 +364,36 @@ TEST_CASE("a long check finished while unfocused posts a notice unless turned of
   CHECK(notifications_enabled(std::nullopt));
   CHECK(notifications_enabled(std::string("on")));
 }
+
+TEST_CASE("the inspector's Design rules nearby card shows the DRC result under the box",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  // Regression (Desktop Alpha): the card still read "Arrives with DRC (M3)".
+  const NearbyRulesView errors = nearby_rules_view(DrcState::errors, 3, true);
+  CHECK(errors.kind == StatusKind::error);
+  CHECK(errors.status == "3 DRC error tiles under the box");
+  CHECK(errors.later == "Rule margins arrive with the agent (M11)");
+  CHECK(nearby_rules_view(DrcState::errors, 1, false).status == "1 DRC error tile in the cell");
+  const NearbyRulesView clean = nearby_rules_view(DrcState::errors, 0, true);
+  CHECK(clean.kind == StatusKind::success);
+  CHECK(clean.status == "No DRC errors under the box");
+  CHECK(nearby_rules_view(DrcState::not_run, 0, true).status == "DRC not run · Check now");
+  CHECK(nearby_rules_view(DrcState::off, 0, true).status == "DRC off · drc on to check");
+  CHECK(nearby_rules_view(DrcState::checking, 0, true).kind == StatusKind::info);
+  for (DrcState st : {DrcState::off, DrcState::checking, DrcState::not_run, DrcState::clean, DrcState::errors}) {
+    CHECK(nearby_rules_view(st, 0, true).status.find("M3") == std::string::npos);
+  }
+}
+
+TEST_CASE("magic::drcmanager create shows the DRC panel, Magic's DRC manager",
+          "[cap:hefesto-app-ux][req:Main window layout]") {
+  // Regression (Desktop Alpha): `magic::drcmanager create` showed nothing.
+  using R = DrcManagerRequest;
+  CHECK(drc_manager_request("magic::drcmanager", {"create"}, std::nullopt) == R::show);
+  CHECK(drc_manager_request("drcmanager", {"create"}, std::nullopt) == R::show);
+  CHECK(drc_manager_request("::magic::drcmanager", {"create"}, std::string_view{"1"}) == R::show);
+  // Options › DRC Manager unchecked: `set ::Opts(drcmgr) 0 ; magic::drcmanager create` withdraws it.
+  CHECK(drc_manager_request("magic::drcmanager", {"create"}, std::string_view{"0"}) == R::hide);
+  CHECK(drc_manager_request("magic::drcmanager", {}, std::nullopt) == R::none);  // update
+  CHECK(drc_manager_request("magic::drcmanager", {"update"}, std::nullopt) == R::none);
+  CHECK(drc_manager_request("magic::cellmanager", {"create"}, std::nullopt) == R::none);
+}
