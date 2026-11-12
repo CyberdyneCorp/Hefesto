@@ -254,10 +254,11 @@ Compatibility: behavioral (location and process checks [platform])
 - `-noprompt` SHALL be recognized only as the last word.
 - STATUS is an integer. A non-integer SHALL report `Invalid exit_status: X`, and the word stays as an extra argument.
 - Any remaining extra argument SHALL report `Usage: quit [exit_status] [-noprompt]` and quitting SHALL be cancelled.
-- Without `-noprompt`, every client's exit check SHALL run first. Any check MAY veto the quit:
-  - the layout client asks whether to discard modified cells
-  - the color client asks about an unsaved color map
+- Without `-noprompt`, every client's exit check SHALL run first, in Magic's client order (netlist, color, layout). Any check MAY veto the quit:
   - the netlist client asks about an unsaved netlist
+  - the color client asks about an unsaved color map (capability `ui-color-window` "Unsaved color map protection")
+  - the layout client counts the non-internal cells that are modified or whose child bounding boxes or timestamps changed and, when there are any, asks `N Magic cell(s) has/have been modified.` / `  Do you want to exit magic and lose it/them? ` with the answers `no` (default) and `yes`; `no` vetoes
+- A check whose question cannot be asked (no prompt host, a headless session, or a script session whose `tk_dialog` gives no integer) SHALL let the quit go ahead with `magic-compat` ON, as Magic's TxDialog -1 does, and SHALL veto it with `magic-compat` OFF (Q-SCRIPT-48).
 - On exit the application SHALL close graphics, remove its crash backup, flush output, restore the terminal, and exit with STATUS (default 0).
 
 On iPadOS an app cannot end its own process. There `quit`, with or without `-noprompt` (for example a PDK startup file's `quit -noprompt` after a technology-name mismatch), SHALL abort loading or close the current project instead: Hefesto stops evaluating the script, discards the project's session (after the exit checks unless `-noprompt`), returns to the project browser and shows a diagnostic naming the script and line that called `quit` (decision D-36). The desktop behavior is unchanged.
@@ -274,7 +275,7 @@ Exit statuses produced by the application itself SHALL be:
 | 255 | `minimum` technology failure after the startup files |
 
 Compatibility: behavioral
-(Magic ref: windows/windCmdNR.c:262-334, utils/main.c:190-252, utils/main.c:1286-1317, graphics/grTOGL1.c:600-610)
+(Magic ref: windows/windCmdNR.c:262-334, dbwind/DBWprocs.c:653-656, commands/CmdSubrs.c:1188-1217, utils/main.c:190-252, utils/main.c:1286-1317, graphics/grTOGL1.c:600-610)
 
 #### Scenario: Quit with status
 - **WHEN** `quit 3 -noprompt` is executed with modified cells
@@ -284,6 +285,11 @@ Compatibility: behavioral
 - **GIVEN** a modified cell
 - **WHEN** `quit` is executed and the user declines to discard changes
 - **THEN** the application SHALL keep running
+
+#### Scenario: Modified cells and nobody to ask
+- **GIVEN** a modified cell in a session that cannot ask
+- **WHEN** `quit` is executed
+- **THEN** with `magic-compat` ON the application SHALL quit (on iPadOS: close the project, D-36), and with it OFF it SHALL keep running
 
 #### Scenario: PDK guard quit on iPadOS
 - **GIVEN** the iPadOS app opening a project whose PDK startup file runs `if {[tech name] != "sky130A"} {quit -noprompt}` and the loaded technology is not `sky130A`

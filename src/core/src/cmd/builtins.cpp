@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/cell/commands.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/quit_policy.hpp"
 #include "hefesto/diag/codes.hpp"
@@ -63,6 +64,19 @@ std::optional<int> parse_exit_status(std::string_view word) {
   return value;
 }
 
+// windQuitCmd's client exit checks in Magic's client order (each
+// WindAddClient prepends): the installed ones (the color client's), then the
+// layout client's modified-cells question when an editor is attached.
+bool may_exit(CommandContext& ctx) {
+  for (const auto& check : ctx.session().exit_checks) {
+    if (check && !check()) {
+      return false;
+    }
+  }
+  editor::EditorState* editor = ctx.editor();
+  return editor == nullptr || cell::check_cells_written(*editor, ctx.project().compat.magic_compat);
+}
+
 CommandResult quit(CommandContext& ctx, const Invocation& inv) {
   std::vector<std::string> args = inv.args;
   bool check_first = true;
@@ -86,12 +100,8 @@ CommandResult quit(CommandContext& ctx, const Invocation& inv) {
     return result;
   }
   ScriptSession& session = ctx.session();
-  if (check_first) {
-    for (const auto& may_exit : session.exit_checks) {
-      if (may_exit && !may_exit()) {
-        return CommandResult::success();  // vetoed: the application keeps running
-      }
-    }
+  if (check_first && !may_exit(ctx)) {
+    return CommandResult::success();  // vetoed: the application keeps running
   }
   const QuitRequest request{status, !check_first};
   if (session.quit_policy != nullptr) {

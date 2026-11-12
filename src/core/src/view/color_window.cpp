@@ -327,13 +327,14 @@ bool press_button(editor::EditorState& editor, const ColorWindow& window, db::Po
   return false;  // Q-UI-37: no pick from the swatch (the Tcl build has none)
 }
 
-bool check_color_map_written(editor::EditorState& editor) {
+// CMWCheckWritten stores TxDialog's answer in a bool, so the Tcl build's -1
+// (no `tk_dialog`) loses the changes like "yes" (cmwind/CMWcmmnds.c:648-658).
+bool check_color_map_written(editor::EditorState& editor, bool magic_compat) {
   if (!editor.color_map.modified) {
     return true;
   }
-  const std::array<std::string, 2> answers{"no", "yes"};
-  return cmd::ask(editor.prompt, "The color map has been modified.\n  Do you want to lose the changes? ", answers,
-                  0) == 1;
+  return cmd::confirm(editor.prompt, "The color map has been modified.\n  Do you want to lose the changes? ",
+                      magic_compat);
 }
 
 display::HighlightScene color_window_scene(const editor::EditorState& editor, const ColorWindow& window) {

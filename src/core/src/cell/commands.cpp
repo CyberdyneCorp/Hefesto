@@ -751,6 +751,28 @@ CommandResult save_def_as(cmd::CommandContext& ctx, db::CellDef& def, std::strin
   });
 }
 
+// CmdWarnWrite counts the non-internal cells with CDMODIFIED, CDBOXESCHANGED
+// or CDSTAMPSCHANGED; DBWexit goes ahead on any answer but "no", so the Tcl
+// build's -1 (no `tk_dialog`) quits (commands/CmdSubrs.c:1188-1217,
+// dbwind/DBWprocs.c:653-656).
+bool check_cells_written(editor::EditorState& editor, bool magic_compat) {
+  int count = 0;
+  editor.cells.for_each([&count](db::CellDef& def) {
+    const db::CellFlags& f = def.flags();
+    if (!f.internal && (f.modified || f.child_bboxes_changed || f.child_timestamps_changed)) {
+      ++count;
+    }
+  });
+  if (count == 0) {
+    return true;
+  }
+  const bool one = count == 1;
+  const std::string question = std::to_string(count) + " Magic cell" + (one ? " has" : "s have") +
+                               " been modified.\n  Do you want to exit magic and lose " + (one ? "it" : "them") +
+                               "? ";
+  return cmd::confirm(editor.prompt, question, magic_compat);
+}
+
 bool register_cell_commands(cmd::CommandRegistry& registry) {
   const std::array<cmd::CommandSpec, 7> specs = {{
       {"load", "load [name [scaled n [d]]] [-force] [-dereference] [-quiet] [-silent] [-nowindow] [-fail]",
