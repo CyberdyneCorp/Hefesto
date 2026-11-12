@@ -1,0 +1,28 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Creating new cell
+0 {(UNNAMED) top}
+0 {}
+0 {microns noprint}
+0 {pwell nwell capwell highvoltnwell highvoltpwell polysilicon electrode capacitor wellcapacitor ndiffusion pdiffusion highvoltndiffusion highvoltpdiffusion metal1 metal2 metal3 ntransistor ptransistor entransistor eptransistor doublentransistor doubleptransistor highvoltntransistor highvoltptransistor collector emitter pbase bccdiffusion nbccdiffusion polycontact ndcontact pdcontact highvoltndcontact highvoltpdcontact capcontact electrodecontact collectorcontact emittercontact pbasecontact nbccdiffcontact m2contact m3contact psubstratepcontact nsubstratencontact psubstratepdiff nsubstratendiff highvoltpsubcontact highvoltnsubcontact highvoltpsubdiff highvoltnsubdiff nplusdoping pplusdoping genericcontact substrateopen pdiffusionstop pad glass magnet fence rotate}
+0 {}
+0 polysilicon
+0 1.0

@@ -1,0 +1,168 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+
+
+2 Magic internal units = 1 Lambda
+
+
+
+
+Creating new cell
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   8.500 x 0.600   ( 0.000,  0.000), ( 8.500,  0.600)  5.100     
+lambda:   850.00 x 60.00   (  0.00,  0.00 ), ( 850.00,  60.00)  51000.00  
+internal:   1700 x 120     (     0,  0    ), (  1700,  120  )  204000    
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   8.500 x 0.600   ( 0.000,  5.400), ( 8.500,  6.000)  5.100     
+lambda:   850.00 x 60.00   (  0.00,  540.00), ( 850.00,  600.00)  51000.00  
+internal:   1700 x 120     (     0,  1080 ), (  1700,  1200 )  204000    
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 0.000,  0.600), ( 0.400,  4.600)  1.600     
+lambda:    40.00 x 400.00  (  0.00,  60.00), ( 40.00,  460.00)  16000.00  
+internal:     80 x 800     (     0,  120  ), (    80,  920  )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 0.800,  1.400), ( 1.200,  5.400)  1.600     
+lambda:    40.00 x 400.00  ( 80.00,  140.00), ( 120.00,  540.00)  16000.00  
+internal:     80 x 800     (   160,  280  ), (   240,  1080 )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 1.600,  0.600), ( 2.000,  4.600)  1.600     
+lambda:    40.00 x 400.00  ( 160.00,  60.00), ( 200.00,  460.00)  16000.00  
+internal:     80 x 800     (   320,  120  ), (   400,  920  )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 2.400,  1.400), ( 2.800,  5.400)  1.600     
+lambda:    40.00 x 400.00  ( 240.00,  140.00), ( 280.00,  540.00)  16000.00  
+internal:     80 x 800     (   480,  280  ), (   560,  1080 )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 3.200,  0.600), ( 3.600,  4.600)  1.600     
+lambda:    40.00 x 400.00  ( 320.00,  60.00), ( 360.00,  460.00)  16000.00  
+internal:     80 x 800     (   640,  120  ), (   720,  920  )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 4.000,  1.400), ( 4.400,  5.400)  1.600     
+lambda:    40.00 x 400.00  ( 400.00,  140.00), ( 440.00,  540.00)  16000.00  
+internal:     80 x 800     (   800,  280  ), (   880,  1080 )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 4.800,  0.600), ( 5.200,  4.600)  1.600     
+lambda:    40.00 x 400.00  ( 480.00,  60.00), ( 520.00,  460.00)  16000.00  
+internal:     80 x 800     (   960,  120  ), (  1040,  920  )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 5.600,  1.400), ( 6.000,  5.400)  1.600     
+lambda:    40.00 x 400.00  ( 560.00,  140.00), ( 600.00,  540.00)  16000.00  
+internal:     80 x 800     (  1120,  280  ), (  1200,  1080 )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 6.400,  0.600), ( 6.800,  4.600)  1.600     
+lambda:    40.00 x 400.00  ( 640.00,  60.00), ( 680.00,  460.00)  16000.00  
+internal:     80 x 800     (  1280,  120  ), (  1360,  920  )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 7.200,  1.400), ( 7.600,  5.400)  1.600     
+lambda:    40.00 x 400.00  ( 720.00,  140.00), ( 760.00,  540.00)  16000.00  
+internal:     80 x 800     (  1440,  280  ), (  1520,  1080 )  64000     
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   8.500 x 0.600   ( 0.000,  0.000), ( 8.500,  0.600)  5.100     
+lambda:   850.00 x 60.00   (  0.00,  0.00 ), ( 850.00,  60.00)  51000.00  
+internal:   1700 x 120     (     0,  0    ), (  1700,  120  )  204000    
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   8.500 x 0.600   ( 0.000,  5.400), ( 8.500,  6.000)  5.100     
+lambda:   850.00 x 60.00   (  0.00,  540.00), ( 850.00,  600.00)  51000.00  
+internal:   1700 x 120     (     0,  1080 ), (  1700,  1200 )  204000    
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.500 x 0.400   ( 0.200,  0.100), ( 0.700,  0.500)  0.200     
+lambda:    50.00 x 40.00   ( 20.00,  10.00), ( 70.00,  50.00)  2000.00   
+internal:    100 x 80      (    40,  20   ), (   140,  100  )  8000      
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.500 x 0.400   ( 0.200,  5.500), ( 0.700,  5.900)  0.200     
+lambda:    50.00 x 40.00   ( 20.00,  550.00), ( 70.00,  590.00)  2000.00   
+internal:    100 x 80      (    40,  1100 ), (   140,  1180 )  8000      
+
+
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 7.700,  0.600), ( 8.100,  4.600)  1.600     
+lambda:    40.00 x 400.00  ( 770.00,  60.00), ( 810.00,  460.00)  16000.00  
+internal:     80 x 800     (  1540,  120  ), (  1620,  920  )  64000     
+
+
+Topmost cell in the window
+
+
+Loading DRC CIF style.
+after#2
+{Metal1 > 0.3um with runlength > 1.0um spacing to unrelated m1 < 44 (M1.e)} {{1540 120 1564 920} {1496 280 1520 1080}} {Metal1 spacing < 36 (M1.b)} {{1540 244 1556 280} {1504 920 1520 956} {1540 244 1556 920} {1504 280 1520 956}}
+2
+
