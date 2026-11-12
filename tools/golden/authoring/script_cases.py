@@ -23,13 +23,12 @@ Never touches expected/. Re-run ``m4_cases.py``, then ``capture.py --check``.
 """
 from __future__ import annotations
 
-import gzip
 import re
 import sys
 from pathlib import Path
 
 from casegen import GOLDEN
-from common import mag
+from common import gzip_bytes, mag
 from tclcase import TclCase, lines, p
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -188,8 +187,8 @@ def api_bodies() -> dict[str, dict]:
         "SCRIPT-API-03": dict(files={"child.mag": LEAF}, body=lines(
             p("array set a {x 1}", "array get a"), "load top", "box 0 0 0 0", "getcell child", "array 1 4",
             "select top cell", "select cell child_0", p("array -list count"))),
-        "SCRIPT-API-04": dict(files={"lib.v2/inv.mag": INV, "cells/inv2.mag.gz": gzip.compress(
-            INV.encode(), mtime=0)}, body=p("load /nonexistent/libfoo.so", "load input/lib.v2/inv",
+        "SCRIPT-API-04": dict(files={"lib.v2/inv.mag": INV, "cells/inv2.mag.gz": gzip_bytes(
+            INV.encode())}, body=p("load /nonexistent/libfoo.so", "load input/lib.v2/inv",
                                              "cellname list top", "load input/cells/inv2.mag.gz",
                                              "cellname list top", "info commands tcl_load")),
         "SCRIPT-API-05": dict(body=lines("load top", p("cellname list top", "units MICRONS", "units",

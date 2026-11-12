@@ -9,10 +9,8 @@ Default technology: scmos (generated from Magic's sources, external input).
 """
 from __future__ import annotations
 
-import gzip
-
 from casegen import Spec
-from common import (SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, TINY, box, label, mag, paint, sky130_cell_external, split,
+from common import (SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, TINY, box, gzip_bytes, label, mag, paint, sky130_cell_external, split,
                     tech_load)
 from tclcase import TclCase, p
 
@@ -195,7 +193,7 @@ def read_specs_2() -> list[Spec]:
                   mag("scmos", "<< properties >>\nstring long " + "v" * 5000 + "\n"), extra=["property long"]),
         Spec("CELL-RD-22", FORMAT, ["Compressed cell input"], "Only inv.mag.gz present (gzip); load inv.",
              tech_load("scmos") + ["load input/inv", *DUMP, "save inv_out"],
-             files={"inv.mag.gz": gzip.compress(LEAF.encode(), mtime=0)}, outputs=["inv_out.mag"],
+             files={"inv.mag.gz": gzip_bytes(LEAF.encode())}, outputs=["inv_out.mag"],
              external=[SCMOS_EXTERNAL]),
     ]
 
@@ -277,8 +275,8 @@ def resolution_specs() -> list[Spec]:
               ["top2_out.mag"], cap=RESOLUTION),
         scmos("CELL-PR-10", ["Cell file lookup order"], "x.mag and x.mag.gz with different content; locking on and off.",
               ["load input/x", "save x_out", "locking disable", "load input/y", "save y_out"],
-              {"x.mag": inv, "x.mag.gz": gzip.compress(inv_b.encode(), mtime=0), "y.mag": inv,
-               "y.mag.gz": gzip.compress(inv_b.encode(), mtime=0)}, ["x_out.mag", "y_out.mag"], cap=RESOLUTION),
+              {"x.mag": inv, "x.mag.gz": gzip_bytes(inv_b.encode()), "y.mag": inv,
+               "y.mag.gz": gzip_bytes(inv_b.encode())}, ["x_out.mag", "y_out.mag"], cap=RESOLUTION),
         scmos("CELL-PR-11", ["Path conflicts on explicit load and placement"],
               "load b/inv after a/inv was loaded; getcell b/inv.",
               ["load input/a/inv", "load input/b/inv", "load top", "getcell input/b/inv", *DUMP],

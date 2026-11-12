@@ -460,7 +460,7 @@ TEST_CASE("script files are Tcl: each command's result is printed and a Tcl erro
   CHECK(r.err == "error: SCRIPT-TCL-001: boom at " + script.string() + ":7\n");
 }
 
-TEST_CASE("-c text continues a command over lines and reports a Tcl error at its line",
+TEST_CASE("Text given to -c continues a command over lines and reports a Tcl error at its line",
           "[cap:hefesto-architecture][req:Headless command-line tool]") {
   const Run r = run_cli({"--no-log", "-c", "set a {x\ny}\nputs [string length $a]\nif {1} {\n  nosuch\n}"});
   CHECK(r.out == "x\ny\n3\n");
