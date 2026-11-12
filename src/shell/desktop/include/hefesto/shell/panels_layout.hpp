@@ -212,6 +212,22 @@ class PanelDrag {
   std::optional<DropTarget> target_;
 };
 
+/// What the drop band says (board M2-Panels tile 2): "Drop to dock on the
+/// right", and under it "Inspector was undocked from here" over the dock the
+/// dragged panel left (its home, while it is not docked there). Empty for a
+/// floating target: only the window's outline is drawn.
+struct DropBandText {
+  std::string caption;
+  std::string note;
+  friend bool operator==(const DropBandText&, const DropBandText&) = default;
+};
+/// Where the band is drawn: the target dock, or for an empty dock (whose
+/// drop zone is the kDockBand strip at the canvas edge) the dock it would
+/// open, at the layout's dock size; a floating target's window outline.
+[[nodiscard]] LayoutRect drop_band_rect(const DropTarget& target, const PanelLayout& layout);
+[[nodiscard]] DropBandText drop_band_text(const DropTarget& target, const PanelPlacement& panel,
+                                          std::string_view title);
+
 // --- saved per user -------------------------------------------------------------------------
 
 /// The layout file in the user's storage folder (platform::default_storage_dir()).

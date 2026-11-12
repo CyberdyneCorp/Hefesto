@@ -12,6 +12,7 @@
 
 #include "hefesto/app/startup.hpp"
 #include "hefesto/diag/format.hpp"
+#include "hefesto/shell/input_script.hpp"
 
 namespace hefesto::shell {
 
@@ -98,6 +99,10 @@ bool apply_valued(ShellOptions& o, std::string_view name, std::string_view value
     o.drag = parse_drag_option(value);
     return o.drag.has_value();
   }
+  if (name == "--input") {
+    o.input = value;
+    return parse_input_script(value).error.empty();
+  }
   if (name == "--rects") return parse_value(value, o.rects);
   if (name == "--seed") return parse_value(value, o.seed);
   if (std::string* text = string_option(o, name)) {
@@ -175,6 +180,7 @@ std::string_view shell_usage() noexcept {
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
          "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR] [--drag X0,Y0,X1,Y1]\n"
+         "               [--input 'move X,Y; down X,Y; up X,Y; key [MOD+]NAME; text T; wait MS']\n"
          "               [--capture FILE.ppm [--capture-frames N | --capture-running]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";

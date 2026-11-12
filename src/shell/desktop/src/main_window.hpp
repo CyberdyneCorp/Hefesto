@@ -119,6 +119,8 @@ class MainWindow {
   /// script draws with its Interrupt card shown.
   void capture_when_card_shows(std::string path) { card_capture_ = std::move(path); }
   [[nodiscard]] bool card_captured() const noexcept { return card_captured_; }
+  /// --input: steps or waits are left to play (a capture waits for them).
+  [[nodiscard]] bool input_pending() const noexcept { return pending_input_ && !pending_input_->done(); }
   [[nodiscard]] std::string window_system() const { return window_.window_system(); }
 
   /// After the background DRC pump ran BackgroundHost::service() (UI
@@ -264,6 +266,10 @@ class MainWindow {
   // Raven's drag, the docks, the canvas column and the strips take it.
   [[nodiscard]] std::optional<ui::Painted::DragData> begin_panel_drag(const std::string& id, float x, float y);
   bool panel_drop(ui::DropZone::Phase phase, float x, float y, std::string_view type);
+  void end_panel_drag();
+  void report_panel_rects() const;
+  void build_drop_band();
+  void paint_drop_band(ui::Painter& p) const;
   [[nodiscard]] DockGeometry dock_geometry() const;
   void fit_panels();  // per frame: the edge strips the window width needs
   [[nodiscard]] LayoutRect panel_window_rect() const;
@@ -301,6 +307,7 @@ class MainWindow {
   void poll_background();
   void run_pending_pinch();
   void run_pending_drag();
+  void play_pending_input();
   void on_problem(StatusKind kind, const std::string& panel_line, const std::string& status);
   void set_message(StatusKind kind, std::string text);
   /// Tells a screen reader of an error (assertive) or a warning (polite).
@@ -445,6 +452,8 @@ class MainWindow {
   ui::Box right_stack_ = ui::Box::vertical();  // Inspector, PDK manager, color window, DRC error area (one shown)
   std::array<ui::Box, 2> side_docks_{ui::Box::vertical(), ui::Box::vertical()};  // left, right: frames stacked
   std::optional<PanelDrag> panel_drag_;                 // the header drag in progress
+  ui::Overlay window_root_ = ui::Overlay::create();     // root_ under the drop band
+  std::unique_ptr<ui::Painted> drop_band_;              // the dashed ember drop zone of a header drag
   std::vector<std::unique_ptr<ui::DropZone>> drop_zones_;  // where a header drag can end
   int panels_fit_width_ = -1;                  // the window width fit_panels last applied
   bool narrow_left_ = false;                   // fit_to_window turned the left dock into its strip
@@ -515,6 +524,8 @@ class MainWindow {
   std::string pending_run_;          // run_when_ready
   std::optional<PinchOption> pending_pinch_;  // --pinch, after pending_run_
   std::optional<DragOption> pending_drag_;    // --drag, after pending_run_
+  std::optional<InputPlayer> pending_input_;  // --input, after pending_drag_
+  int input_settle_frames_ = 10;              // frames before the first --input step
   UndoMark undo_mark_;                        // the undo log after the last command
   std::optional<std::string> undo_message_;  // "Undid … · N more steps", not shown yet
   bool in_command_ = false;          // run_line is executing a command line

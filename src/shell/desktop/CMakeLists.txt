@@ -67,8 +67,9 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/script_consent_model.cpp)
 
 # M4 (openspec/changes/m4-scripting tasks 11.2-11.7, CARRY): panel layout,
-# key-binding sheet, label tool, minimap thumbnail, wiring HUD.
+# key-binding sheet, label tool, minimap thumbnail, wiring HUD, scripted input.
 target_sources(hefesto_shell_desktop PRIVATE
+  src/input_script.cpp
   src/key_bindings_sheet.cpp
   src/key_bindings_view.cpp
   src/label_tool.cpp

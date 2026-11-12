@@ -377,6 +377,38 @@ std::optional<std::string> PanelDrag::drop_command() const {
          std::to_string(rounded(r.w)) + " " + std::to_string(rounded(r.h));
 }
 
+LayoutRect drop_band_rect(const DropTarget& target, const PanelLayout& layout) {
+  LayoutRect r = target.highlight;
+  switch (target.zone) {
+    case DockZone::left:
+      r.w = std::max(r.w, layout.left_width);
+      break;
+    case DockZone::right: {
+      const float w = std::max(r.w, layout.right_width);
+      r.x += r.w - w;
+      r.w = w;
+      break;
+    }
+    case DockZone::bottom: {
+      const float h = std::max(r.h, layout.bottom_height);
+      r.y += r.h - h;
+      r.h = h;
+      break;
+    }
+    case DockZone::floating: break;
+  }
+  return r;
+}
+
+DropBandText drop_band_text(const DropTarget& target, const PanelPlacement& panel, std::string_view title) {
+  if (target.zone == DockZone::floating) return {};
+  const std::string where =
+      target.zone == DockZone::bottom ? std::string("at the bottom") : "on the " + std::string(dock_zone_name(target.zone));
+  DropBandText text{"Drop to dock " + where, {}};
+  if (panel.home == target.zone && panel.dock != target.zone) text.note = std::string(title) + " was undocked from here";
+  return text;
+}
+
 // --- saved per user -------------------------------------------------------------------------
 
 std::string panel_layout_json(const PanelLayout& layout) {

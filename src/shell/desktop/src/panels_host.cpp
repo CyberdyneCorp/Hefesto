@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <utility>
 
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
@@ -279,6 +280,7 @@ void MainWindow::arrange_middle() {
     PanelFrame* f = frame(id);
     if (f == nullptr) continue;
     center_.add(*f->card);  // moves it to the end
+    f->card->place_fill();  // a panel that floated keeps its overlay placement otherwise
     f->card->set_fill(ctx_.tokens().surface1);
     f->card->set_padding(0.0F, 0.0F, 0.0F, 0.0F);
     f->card->set_size(-1.0F, id == "console" ? static_cast<float>(kConsoleHeight) : panels_.bottom_height);
@@ -326,6 +328,7 @@ void MainWindow::place_side(DockZone zone, int& index) {
     const FrameState state = frame_state(f->id);
     // Expanded panels share the dock's height; a collapsed one keeps its header row.
     dock.insert(*f->card, row++, state == FrameState::expanded ? 1.0F : 0.0F);
+    f->card->place_fill();  // a panel that floated keeps its overlay placement otherwise
     f->card->set_fill(ctx_.tokens().surface1);
     f->card->set_padding(0.0F, 0.0F, 0.0F, 0.0F);
     f->card->set_size(state == FrameState::header ? width : -1.0F, -1.0F);
@@ -453,18 +456,94 @@ std::optional<ui::Painted::DragData> MainWindow::begin_panel_drag(const std::str
   return ui::Painted::DragData{std::string(kPanelDragType), id, frame_title(id)};
 }
 
+// Raven's drop zones only report where the pointer is: they refuse the
+// drop, so Raven draws no highlight of its own (it would tint the whole dock
+// or canvas column) and the band is the board's; the release ends the drag
+// through the window hook (end_panel_drag).
 bool MainWindow::panel_drop(ui::DropZone::Phase phase, float x, float y, std::string_view type) {
-  if (type != kPanelDragType || !panel_drag_ || phase == ui::DropZone::Phase::leave) return false;
-  (void)panel_drag_->move(x, y, dock_geometry());
-  if (phase != ui::DropZone::Phase::drop) return true;
+  if (type != kPanelDragType || !panel_drag_) return false;
+  drop_band_->invalidate();
+  if (phase == ui::DropZone::Phase::leave) {  // no band until the pointer is over a zone again
+    panel_drag_->cancel();
+  } else {
+    (void)panel_drag_->move(x, y, dock_geometry());
+  }
+  return false;
+}
+
+void MainWindow::end_panel_drag() {
+  if (!panel_drag_) return;
   const std::optional<std::string> command = panel_drag_->drop_command();
   panel_drag_.reset();
-  // After Raven's drop callback returns: the command rearranges the widgets.
+  drop_band_->invalidate();
+  // After Raven's event returns: the command rearranges the widgets.
   if (command) {
     run_when_ready(*command);
     window_.request_redraw();
   }
-  return true;
+}
+
+// After an --input script: "hefesto: input done", then each shown panel's
+// frame in window units, for scripted checks (desktop-window tests).
+void MainWindow::report_panel_rects() const {
+  std::printf("hefesto: input done\n");
+  for (const auto& f : frames_) {
+    if (frame_state(f->id) == FrameState::hidden) continue;
+    const ui::Rect r = f->card->rect();
+    std::printf("hefesto: panel %s %.0f %.0f %.0f %.0f\n", f->id.c_str(), static_cast<double>(r.x),
+                static_cast<double>(r.y), static_cast<double>(r.width), static_cast<double>(r.height));
+  }
+  std::fflush(stdout);
+}
+
+// Board M2-Panels tile 2: the target dock as a dashed ember zone with a 14 %
+// ember tint, its caption and, over the dock the panel left, a note; a
+// floating target as the window's dashed outline. Drawn over the whole
+// window (the docks lie outside the canvas) and never hit.
+void MainWindow::build_drop_band() {
+  drop_band_ = ui::Painted::create(ctx_.runtime, [this](ui::Painter& p, float, float) { paint_drop_band(p); });
+  drop_band_->set_hit_testable(false);
+  window_root_.add(root_);
+  window_root_.add(*drop_band_);
+  window_.on_drag_release([this](float, float) { end_panel_drag(); });
+}
+
+void MainWindow::paint_drop_band(ui::Painter& p) const {
+  if (!panel_drag_ || !panel_drag_->target() || !window_.drag_active()) return;
+  const DropTarget& target = *panel_drag_->target();
+  const PanelPlacement* placement = panels_.find(panel_drag_->id());
+  const LayoutRect r = drop_band_rect(target, panels_);
+  const ThemeTokens& t = ctx_.tokens();
+  const float inset = 4.0F;
+  const float x = r.x + inset;
+  const float y = r.y + inset;
+  const float w = r.w - 2.0F * inset;
+  const float h = r.h - 2.0F * inset;
+  if (target.zone == DockZone::floating || placement == nullptr) {
+    p.dashed_rect(x, y, w, h, 1.0F, 6.0F, 4.0F, t.accent);
+    return;
+  }
+  // The zone covers the dock (or the canvas edge it would take): it reads
+  // as an empty dock, as on the board, with the 14 % ember tint over it.
+  Rgba base = t.surface0;
+  base.a = 0.92F;
+  Rgba tint = t.accent;
+  tint.a = 0.14F;
+  p.fill(x, y, w, h, 6.0F, base);
+  p.fill(x, y, w, h, 6.0F, tint);
+  p.dashed_rect(x, y, w, h, 1.0F, 6.0F, 4.0F, t.accent);
+  const DropBandText text = drop_band_text(target, *placement, frame_title(panel_drag_->id()));
+  float cy = y + h / 2.0F - 24.0F;
+  const float ix = x + (w - 16.0F) / 2.0F;  // the dock glyph of the board: a panel with its side bar
+  p.stroke(ix, cy, 16.0F, 14.0F, 2.0F, 1.25F, t.accent);
+  p.line(ix + 10.0F, cy, ix + 10.0F, cy + 14.0F, 1.25F, t.accent);
+  cy += 24.0F;
+  for (const auto& [line, color] : {std::pair{text.caption, t.accent}, std::pair{text.note, t.text_secondary}}) {
+    if (line.empty()) continue;
+    const float lw = p.text_width(TextRole::small, line);
+    p.text(TextRole::small, x + (w - std::min(lw, w)) / 2.0F, cy, line, color);
+    cy += p.line_height(TextRole::small) + 4.0F;
+  }
 }
 
 DockGeometry MainWindow::dock_geometry() const {

@@ -1159,6 +1159,7 @@ std::size_t PopupMenu::size() const noexcept {
 struct Window::KeyHook {
   TextKeyFilter filter;
   std::function<bool(int, std::uint8_t)> shortcut;
+  std::function<void(float, float)> drag_release;
 
   explicit KeyHook(bool repeat_text) : filter(repeat_text) {}
 
@@ -1174,6 +1175,11 @@ struct Window::KeyHook {
         return self->filter.text(e->codepoint) ? kFalse : kTrue;
       case R_EVENT_KEY_UP:
         self->filter.key_up(static_cast<int>(e->key));
+        return kFalse;
+      case R_EVENT_MOUSE_UP:
+        if (e->button == R_MOUSE_LEFT && self->drag_release && Rdrag_is_active(window) != kFalse) {
+          self->drag_release(e->x, e->y);
+        }
         return kFalse;
       case R_EVENT_KEY_DOWN: {
         const std::string again = self->filter.key_down(static_cast<int>(e->key), e->repeat != 0, text_focus(window));
@@ -1192,6 +1198,10 @@ void Window::install_key_hook(std::function<bool(int, std::uint8_t)> shortcut) {
   key_hook_ = std::make_unique<KeyHook>(window_system() == "cocoa");
   key_hook_->shortcut = std::move(shortcut);
   Rwindow_set_event_hook(id_, &KeyHook::on_event, key_hook_.get());
+}
+
+void Window::on_drag_release(std::function<void(float, float)> release) {
+  if (key_hook_) key_hook_->drag_release = std::move(release);
 }
 
 void Window::close_popups() {
@@ -1373,6 +1383,33 @@ void Window::inject_left_drag(float x0, float y0, float x1, float y1, int steps)
     Rwindow_inject_mouse_move(id_, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
   }
   Rwindow_inject_mouse_button(id_, R_MOUSE_LEFT, kFalse);
+}
+
+bool Window::drag_active() const {
+  return Rdrag_is_active(id_) != kFalse;
+}
+
+void Window::inject_input(const InputStep& step) {
+  const auto button = static_cast<RMouseButton>(step.button);
+  switch (step.kind) {
+    case ScriptKind::move:
+      Rwindow_inject_mouse_move(id_, step.x, step.y);
+      break;
+    case ScriptKind::down:
+    case ScriptKind::up:
+      Rwindow_inject_mouse_move(id_, step.x, step.y);
+      Rwindow_inject_mouse_button(id_, button, step.kind == ScriptKind::down ? kTrue : kFalse);
+      break;
+    case ScriptKind::key:
+      Rwindow_inject_key(id_, static_cast<RKey>(step.key), kTrue, step.modifiers);
+      Rwindow_inject_key(id_, static_cast<RKey>(step.key), kFalse, step.modifiers);
+      break;
+    case ScriptKind::text:
+      Rwindow_inject_text(id_, step.text.c_str());
+      break;
+    case ScriptKind::wait:
+      break;
+  }
 }
 
 bool Window::capture_ppm(const std::string& path) const {
@@ -1612,6 +1649,12 @@ void Widget::place_top_right(float right, float top) {
   Rslot_set_halign(id_, R_HALIGN_RIGHT);
   Rslot_set_valign(id_, R_VALIGN_TOP);
   Rslot_set_padding(id_, 0.0F, top, right, 0.0F);
+}
+
+void Widget::place_fill() {
+  Rslot_set_halign(id_, R_HALIGN_FILL);
+  Rslot_set_valign(id_, R_VALIGN_FILL);
+  Rslot_set_padding(id_, 0.0F, 0.0F, 0.0F, 0.0F);
 }
 
 void Toast::place_bottom_center() {
