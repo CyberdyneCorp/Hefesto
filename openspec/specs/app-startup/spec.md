@@ -57,6 +57,8 @@ The core option parser SHALL accept the following. Options that take an argument
 | `-now…` | no initial window |
 | `-nor…` | read no user startup files |
 
+`-rcfile FILE` and `-norcfile` set the same startup file name: the later of the two on the command line wins, so `-norc -rcfile FILE` reads FILE.
+
 `-n` with fewer than 4 characters SHALL report `Ambiguous option -n…:  use -nowindow, -noconsole, or -norcfile` and fail with status 1. Any other option SHALL report `Unknown option: '-X'` and a usage line, and fail with status 1.
 
 Compatibility: behavioral (option letters exact)

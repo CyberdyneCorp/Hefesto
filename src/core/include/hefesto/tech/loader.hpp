@@ -27,6 +27,10 @@ struct LoadOptions {
   bool magic_compat = true;                 // the project's magic-compat setting
   /// "File search rules": the system library path, searched after ".".
   std::vector<platform::Path> search_path;
+  /// The system library path as the session holds it (`path sys`, with its
+  /// `$CAD_ROOT` words unexpanded), printed after "Could not find file" as
+  /// Magic prints SysLibPath; empty: "." and `search_path`.
+  std::string search_path_text;
   /// Suffix appended to `include` names: ".tech", or ".tech27" when the file
   /// was found through the legacy fallback (resolve_tech_file sets it).
   std::string include_suffix = ".tech";
@@ -83,7 +87,11 @@ struct LoadOptions {
 
 /// "Grid limit check" for a scale change by n/d against the technology's
 /// CIF output style; passes when there is none. Fails with TECH-GRID-002.
-[[nodiscard]] diag::Status check_grid_limit(const Technology& tech, std::int64_t n, std::int64_t d);
+/// `current` is the session's grid scaling: Magic scales the CIF output
+/// style with every `scalegrid` and with the tech load's rescale
+/// (CIFTechOutputScale), so the limit applies to the scaled style.
+[[nodiscard]] diag::Status check_grid_limit(const Technology& tech, std::int64_t n, std::int64_t d,
+                                            const GridScale& current = GridScale{});
 
 /// Reduces a fraction (utils/fraction.c): gcd divided out. A non-positive
 /// part yields 1:1.

@@ -34,7 +34,9 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cctype>
 #include <climits>
+#include <cstdlib>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -91,13 +93,41 @@ bool earlier(const Tcl_Time& a, const Tcl_Time& b) {
   return a.sec < b.sec || (a.sec == b.sec && a.usec < b.usec);
 }
 
+// The system encoding Tcl's Unix startup derives from the locale
+// (TclpSetInitialEncodings): `C`/`POSIX` is iso8859-1 and a `.UTF-8` locale
+// is utf-8, on every platform, so a script is read the same way as by Magic
+// on Linux (macOS Tcl would read UTF-8 under `C`). Empty when no locale
+// variable is set: Tcl's platform default then stays.
+std::string locale_encoding() {
+  const char* locale = nullptr;
+  for (const char* name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
+    const char* value = std::getenv(name);  // NOLINT(concurrency-mt-unsafe): once, at process start
+    if (value != nullptr && *value != '\0') {
+      locale = value;
+      break;
+    }
+  }
+  if (locale == nullptr) {
+    return {};
+  }
+  std::string text{locale};
+  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  if (text == "c" || text == "posix") {
+    return "iso8859-1";
+  }
+  return text.find("utf-8") != std::string::npos || text.find("utf8") != std::string::npos ? "utf-8" : std::string{};
+}
+
 // Tcl's process-wide initialization, once: the executable name (none), the
-// encoding search path under the embedded root, and the sandbox's filesystem
-// layer.
+// system encoding of the locale, the encoding search path under the
+// embedded root, and the sandbox's filesystem layer.
 void initialize_process() {
   static std::once_flag once;
   std::call_once(once, [] {
     Tcl_FindExecutable(nullptr);
+    if (const std::string encoding = locale_encoding(); !encoding.empty()) {
+      static_cast<void>(Tcl_SetSystemEncoding(nullptr, encoding.c_str()));
+    }
     Tcl_Obj* path = Tcl_NewListObj(0, nullptr);
     Tcl_ListObjAppendElement(nullptr, path, new_string(std::string{kVirtualLibraryRoot} + "/encoding"));
     Tcl_SetEncodingSearchPath(path);

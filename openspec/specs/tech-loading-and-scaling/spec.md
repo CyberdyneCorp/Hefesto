@@ -24,6 +24,8 @@ The default system library path is `. $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/cu
 
 (Magic ref: utils/path.c:647-800, utils/paths.h:40, utils/main.c:583)
 
+`tech load` searches the session's system library path (`path sys`), and when nothing is found it reports `Could not find file '<name>.tech' in any of these directories:` followed by that path as it is written (`. $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/current` by default).
+
 #### Scenario: Relative name found in the working directory
 - **GIVEN** a file `./tiny.tech` in the working directory
 - **WHEN** the technology `tiny` is opened with suffix `.tech`
@@ -289,6 +291,7 @@ The grid-limit check for a scale change by factor (n, d) SHALL use the current C
 Compatibility: exact
 
 - If there is no current output style, the check passes.
+- The style's scaleFactor and expander are those of the style as scaled to the session's internal grid: every `scalegrid` and the rescale of a technology load scale them (Magic's CIFTechOutputScale), so with I internal units per L lambda the check uses scaleFactor·L and expander·I.
 - Otherwise let g = max(gridLimit, 1)·expander·d and s = scaleFactor·n·10.
 - The check fails if ⌊s/g⌋ = 0 or if s mod g ≠ 0. Otherwise it passes.
 
@@ -299,6 +302,11 @@ Compatibility: exact
 - **WHEN** `scalegrid 1 2` is checked
 - **THEN** g = 10 and s = 50, so ⌊s/g⌋ = 5 and s mod g = 0, and the check passes
 - **AND** for `scalegrid 1 20`, g = 100 and s = 50, so ⌊s/g⌋ = 0 and the check fails
+
+#### Scenario: The limit applies to the scaled style
+- **GIVEN** an output style with scaleFactor 50, expander 10 and gridLimit 1, after `scalegrid 1 2` (2 internal units per lambda)
+- **WHEN** `scalegrid 1 10` is checked
+- **THEN** g = 1·(10·2)·10 = 200 and s = 50·1·10 = 500, so s mod g ≠ 0 and the check fails with `Grid scaling is finer than limit set by the process!`
 
 ### Requirement: Built-in technologies
 

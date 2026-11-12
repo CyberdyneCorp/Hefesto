@@ -93,6 +93,18 @@ TEST_CASE("option r recovers, option rcfile names the startup file", "[cap:app-s
   CHECK(parse({"-D"}).value().debug);
 }
 
+// Regression (SCRIPT-PDK-02): `-norc -rcfile FILE` skipped FILE; Magic's
+// RCFileName is set by whichever of the two options comes last.
+TEST_CASE("the last of -rcfile and -norcfile decides the startup file", "[cap:app-startup][req:Command-line options]") {
+  const auto rc_last = parse({"-norc", "-rcfile", "bad.magicrc"});
+  REQUIRE(rc_last.ok());
+  CHECK_FALSE(rc_last.value().no_rc);
+  CHECK(rc_last.value().rc_name() == "bad.magicrc");
+  const auto norc_last = parse({"-rcfile", "bad.magicrc", "-norc"});
+  REQUIRE(norc_last.ok());
+  CHECK(norc_last.value().no_rc);
+}
+
 TEST_CASE("file arguments: .mag stripped, exact extensions, .tcl ends processing",
           "[cap:app-startup][req:Command-line file arguments]") {
   using K = app::FileKind;

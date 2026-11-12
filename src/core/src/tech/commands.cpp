@@ -22,6 +22,7 @@
 #include <variant>
 #include <vector>
 
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/drc/rules/query.hpp"
@@ -436,7 +437,7 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     const GridScale factor = reduce(GridScale{parsed->first, parsed->second});
     const std::int64_t a = factor.internal;
     const std::int64_t b = factor.lambda;
-    if (auto limit = check_grid_limit(*ed.technology, a, b); !limit) {
+    if (auto limit = check_grid_limit(*ed.technology, a, b, ed.grid); !limit) {
       return CommandResult::failure(limit.error());
     }
     (void)scale_layout(ed, b, a);  // DBScaleEverything, which also scales the box (ToolScaleBox)
@@ -467,6 +468,22 @@ diag::Outcome<platform::Path> locate(platform::PlatformServices& services, std::
   }
   sink.emit(path.error());
   return path.error();
+}
+
+// TechLoad's PaOpen(..., SysLibPath): the session's system path (`path
+// sys`) is searched after ".", and printed as written when nothing is found.
+void set_system_path(const editor::EditorState& ed, LoadOptions& load) {
+  std::string text;
+  for (const std::string& entry : ed.search_paths.system) {
+    text += (text.empty() ? "" : " ") + entry;
+    if (entry == ".") {
+      continue;
+    }
+    if (const auto dir = cell::expand_entry(entry, ed.path_variables); dir && !dir->empty()) {
+      load.search_path.emplace_back(*dir);
+    }
+  }
+  load.search_path_text = std::move(text);
 }
 
 void check_existing_layout(const editor::EditorState& ed, std::size_t old_planes, std::size_t new_planes,
@@ -533,6 +550,7 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
                                      diag::DiagnosticSink& sink) {
   LoadOptions load;
   load.magic_compat = options.magic_compat;
+  set_system_path(editor, load);
   auto path = locate(services, name, load, sink);
   if (!path) {
     if (options.precheck) {
