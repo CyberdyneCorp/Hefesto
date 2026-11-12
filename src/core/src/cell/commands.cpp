@@ -56,7 +56,13 @@ diag::Outcome<db::CellDef*> unnamed_def(IoSession& s) {
   return made.value();
 }
 
-// A window that shows no cell shows "(UNNAMED)" (Magic's startup window).
+// A window that shows no cell shows "(UNNAMED)": Magic's DBWcreate loads it
+// into every new layout window (DBWloadWindow with no name), so the window a
+// front end opened before the first `load` (the desktop canvas, before the
+// command-line cell) has it as its root and the load below deletes it while
+// the display runs. Creating it without showing it left "(UNNAMED)" in the
+// Cells manager next to the command-line cell. Not recorded.
+// (Magic ref: dbwind/DBWprocs.c:131-154,321-345)
 diag::Status adopt_startup_root(IoSession& s) {
   const view::LayoutWindow* w = s.ed.windows.current();
   if (w == nullptr || w->root() != nullptr) {
@@ -66,6 +72,8 @@ diag::Status adopt_startup_root(IoSession& s) {
   if (!def) {
     return def.error();
   }
+  const undo::ScopedSuspend quiet(s.ed.undo);
+  show_in_window(s.ed, *def.value());
   return diag::Done{};
 }
 
