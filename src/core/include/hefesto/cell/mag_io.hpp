@@ -131,6 +131,13 @@ struct ReadOptions {
 /// definition stays an unavailable placeholder when no file is found.
 [[nodiscard]] diag::Status read_cell(CellIoContext& ctx, db::CellDef& def, const ReadOptions& options = {});
 
+/// DBWloadWindow's name handling: a leading `./` dropped, then a `.gz` and
+/// a `.mag` extension of the last path component removed (Magic cuts them
+/// in place, so the recorded path loses them too). `load_name("a/inv.mag")`
+/// is "a/inv"; load_definition_name() is its last component ("inv").
+[[nodiscard]] std::string load_name(std::string_view name);
+[[nodiscard]] std::string load_definition_name(std::string_view name);
+
 /// Finds or creates the definition `name` (a trailing `.mag` stripped; a
 /// name with a directory part sets the recorded path) and reads it if
 /// needed. Descendants are not read (Magic's `load` does not expand); call

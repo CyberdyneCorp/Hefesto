@@ -30,6 +30,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/tech/loader.hpp"
+#include "hefesto/undo/undo_log.hpp"
 #include "io_session.hpp"
 
 namespace hefesto::cell {
@@ -67,24 +68,53 @@ diag::Status adopt_startup_root(IoSession& s) {
   return diag::Done{};
 }
 
-// The definition name of a cell argument: the last path component without
-// ".mag" / ".mag.gz".
-std::string definition_name(std::string_view name) {
-  if (const std::size_t slash = name.rfind('/'); slash != std::string_view::npos) {
-    name.remove_prefix(slash + 1);
+// DBWloadWindow's deleteDef: the current window's "(UNNAMED)" root, when
+// the display runs (not NULL graphics, not `updatedisplay suspend`) and the
+// cell was never touched; loading another cell deletes it. With NULL
+// graphics Magic keeps it, so batch runs list it after a load.
+// (Magic ref: dbwind/DBWprocs.c:321-331,608-617)
+db::CellDef* disposable_unnamed(const IoSession& s) {
+  if (!s.ed.display_running || s.ed.windows.display_suspended()) {
+    return nullptr;
   }
-  for (const std::string_view suffix : {std::string_view{".gz"}, std::string_view{".mag"}}) {
-    if (name.ends_with(suffix)) {
-      name.remove_suffix(suffix.size());
+  const view::LayoutWindow* w = s.ed.windows.current();
+  db::CellDef* root = w != nullptr ? w->root() : nullptr;
+  if (root == nullptr || root->name() != "(UNNAMED)") {
+    return nullptr;
+  }
+  const db::CellFlags& f = root->flags();
+  const bool touched = f.modified || f.child_bboxes_changed || f.child_timestamps_changed;
+  return touched ? nullptr : root;
+}
+
+// DBCellDelete(UNNAMED, TRUE) after the load: renamed first so that another
+// window showing it gets a fresh "(UNNAMED)" (WindUnload); not recorded.
+// (Magic ref: database/DBcellname.c:228-341)
+void delete_unnamed(IoSession& s, db::CellDef& doomed) {
+  if (!s.ed.cells.check_removable(doomed).ok()) {
+    return;
+  }
+  const undo::ScopedSuspend quiet(s.ed.undo);
+  (void)s.ed.cells.rename(doomed, "__UNNAMED__");
+  s.ed.windows.for_each([&](view::LayoutWindow& w) {
+    if (w.root() == &doomed) {
+      if (auto fresh = unnamed_def(s)) {
+        w.set_root(fresh.value());
+      }
     }
+  });
+  s.ed.drc.pending.remove(doomed);
+  if (s.ed.box_root == &doomed) {
+    s.ed.box_root = nullptr;
+    s.ed.box.reset();
   }
-  return std::string{name};
+  (void)s.ed.cells.remove(doomed);
 }
 
 // `load NAME -fail`: a cell neither in memory nor in a file is not created
 // (DBW_LOAD_FAIL). A cell read here is then loaded as one in memory.
 std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string& name, const ReadOptions& options) {
-  const std::string root = definition_name(name);
+  const std::string root = load_definition_name(name);
   if (s.ed.cells.find(root) != nullptr) {
     return std::nullopt;
   }
@@ -93,8 +123,8 @@ std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string
     return cmd::CommandResult::failure(made.error());
   }
   db::CellDef& def = *made.value();
-  if (name.find('/') != std::string::npos) {
-    def.set_file_path(name.starts_with("./") ? name.substr(2) : name);  // as load_cell records it
+  if (const std::string recorded = load_name(name); recorded != root) {
+    def.set_file_path(recorded);  // as load_cell records it
   }
   // DBTestOpen: a missing file is only reported as "No file ... found or
   // readable.", without the reader's "couldn't be read" (CMDEDIT-HIER-04).
@@ -123,6 +153,7 @@ cmd::CommandResult load_into_window(IoSession& s, const std::optional<std::strin
       return std::move(*refused);
     }
   }
+  db::CellDef* doomed = disposable_unnamed(s);
   auto loaded = name ? load_cell(s.io, *name, options) : unnamed_def(s);
   if (!loaded && loaded.error().code == codes::kConflictingLocation) {
     return cmd::CommandResult::success();  // DBWloadWindow printed the conflict and loads nothing
@@ -130,7 +161,16 @@ cmd::CommandResult load_into_window(IoSession& s, const std::optional<std::strin
   if (!loaded) {
     return cmd::CommandResult::failure(loaded.error());
   }
-  show_in_window(s.ed, *loaded.value());
+  if (doomed == nullptr || doomed == loaded.value()) {
+    show_in_window(s.ed, *loaded.value());
+    return cmd::CommandResult::success();
+  }
+  {
+    // With a cell to delete, Magic records no edit-cell change (DBWUndoOldEdit).
+    const undo::ScopedSuspend quiet(s.ed.undo);
+    show_in_window(s.ed, *loaded.value());
+  }
+  delete_unnamed(s, *doomed);
   return cmd::CommandResult::success();
 }
 

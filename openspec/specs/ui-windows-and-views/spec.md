@@ -143,7 +143,7 @@ When a cell is loaded into a layout window, the system SHALL:
 1. Make the cell the window's root and expand the root in that window.
 2. Frame the cell's bounding box B with a margin. In x the margin is max(0, ⌊(60 − B.w)/2⌋) + ⌊(B.w + 1)/10⌋, and y is analogous. A cell that does not exist on disk SHALL be framed as (0,0)-(1,1) before the margin.
 3. If no other window shows the current edit cell, make the loaded cell the edit cell, unless it is marked non-editable.
-4. Delete the previously shown `(UNNAMED)` cell if it was never modified.
+4. Delete the previously shown `(UNNAMED)` cell if it was never modified, while a display runs (not with NULL graphics or a suspended display; see capability `cmd-hierarchy`, Requirement "Load command").
 5. Update all captions.
 
 Compatibility: behavioral

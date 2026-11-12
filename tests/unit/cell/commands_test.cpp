@@ -143,3 +143,59 @@ TEST_CASE("crashbackups disable then resume schedules nothing", "[cap:ui-gui-man
   REQUIRE(s.run("crashbackups", {"start"}).ok());
   CHECK(session.backup_interval_ms == 600000);
 }
+
+// DBWloadWindow deletes the window's untouched "(UNNAMED)" only while the
+// display runs: with NULL graphics (`magic -dnull`, hefesto-cli) Magic keeps
+// it, under X11 `cellname list topcells` no longer lists it after `load top`
+// (both checked in Magic 8.3.694). Regression: the desktop's Cells manager
+// listed "(UNNAMED)" next to the loaded cell.
+TEST_CASE("load deletes an untouched (UNNAMED) while the display runs", "[cap:cmd-hierarchy][req:Load command]") {
+  Session s;
+  REQUIRE(s.editor.windows.open_frame(nullptr).ok());
+  REQUIRE(s.run("load").ok());
+  REQUIRE(s.editor.windows.current()->root() == s.editor.cells.find("(UNNAMED)"));
+
+  SECTION("display running") {
+    s.editor.display_running = true;
+    REQUIRE(s.run("load", {"top"}).ok());
+    db::CellDef* top = s.editor.cells.find("top");
+    REQUIRE(top != nullptr);
+    CHECK(s.editor.cells.find("(UNNAMED)") == nullptr);
+    CHECK(s.editor.cells.find("__UNNAMED__") == nullptr);
+    CHECK(s.editor.windows.current()->root() == top);
+    CHECK(s.editor.edit_cell == top);
+  }
+  SECTION("NULL graphics keeps it") {
+    REQUIRE(s.run("load", {"top"}).ok());
+    CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
+  }
+  SECTION("a modified (UNNAMED) is kept") {
+    s.editor.display_running = true;
+    s.editor.cells.find("(UNNAMED)")->flags().modified = true;
+    REQUIRE(s.run("load", {"top"}).ok());
+    CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
+  }
+  SECTION("a suspended display keeps it") {
+    s.editor.display_running = true;
+    s.editor.windows.set_display_suspended(true);
+    REQUIRE(s.run("load", {"top"}).ok());
+    CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
+  }
+}
+
+// DBWloadWindow cuts `.gz` and `.mag` off the name in place, so the path it
+// records (and prints when the file is missing) has neither (Magic 8.3.694:
+// `magic -dnull /w/inv.mag.gz` prints "File /w/inv couldn't be read").
+TEST_CASE("load records a missing cell's path without its .mag.gz extension",
+          "[cap:cell-library-resolution][req:Missing cell handling]") {
+  Session s;
+  const auto r = s.run("load", {"/work/sub/inv.mag.gz"});
+  REQUIRE(r.ok());
+  CHECK(hefesto::cell::test::has_text(r, "File /work/sub/inv couldn't be read"));
+  db::CellDef* inv = s.editor.cells.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK(inv->file_path().generic_string() == "/work/sub/inv");
+  // A name with only `.mag` is a plain cell name: no recorded path.
+  const auto plain = s.run("load", {"nand.mag"});
+  CHECK(hefesto::cell::test::has_text(plain, "Cell nand couldn't be read"));
+}

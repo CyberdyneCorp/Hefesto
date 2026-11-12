@@ -20,6 +20,7 @@
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cell/fonts.hpp"
 #include "hefesto/cell/host.hpp"
+#include "hefesto/cell/mag_io.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/units.hpp"
@@ -583,7 +584,10 @@ class Startup {
     (void)dispatcher_.execute(cmd::Invocation{"crash", {"recover"}, cmd::Origin::cli, std::nullopt});
   }
 
-  // Q-UI-25: command-line order; the window ends on the first layout cell.
+  // Q-UI-25: command-line order; the window ends on the first layout cell,
+  // shown again by its definition name: the cell is in memory now, so this
+  // reads nothing and prints nothing (by its path, a cell whose file was
+  // missing would report a conflicting location).
   void load_files() {
     std::optional<std::string> first_cell;
     std::optional<std::string> last_cell;
@@ -595,7 +599,8 @@ class Startup {
       }
     }
     if (first_cell && last_cell != first_cell) {
-      (void)dispatcher_.execute(cmd::Invocation{"load", {*first_cell}, cmd::Origin::cli, std::nullopt});
+      const std::string name = cell::load_definition_name(*first_cell);
+      (void)dispatcher_.execute(cmd::Invocation{"load", {name}, cmd::Origin::cli, std::nullopt});
     }
   }
 
@@ -678,6 +683,8 @@ class Startup {
     if (options_.no_window) {
       return;
     }
+    const auto display = resolve_display(options_.display_type, env_.display_available);
+    state_.display_running = display.ok() && !display.value().headless;
     load_display_styles();
     if (state_.windows.current() == nullptr) {
       adopt_unnamed_edit_cell();
