@@ -17,6 +17,7 @@ namespace {
 
 constexpr float kPad = 14.0F;
 constexpr float kRowHeight = 44.0F;
+constexpr float kScriptsLine = 16.0F;  // M4: the scripts-state line of an installed version
 constexpr float kHeaderHeight = 80.0F;  // section label, heading and the root line
 constexpr float kRootY = 56.0F;
 
@@ -32,15 +33,22 @@ void paint_row(ui::Painter& p, float w, float h, const PdkRow& row, bool selecte
     p.fill(0.0F, 0.0F, w, h, static_cast<float>(kRadiusControl), alpha(t.row_selected, 0.6F));
   }
   p.text(TextRole::body_strong, 8.0F, 6.0F, row.title(), t.text_primary);
-  std::string libs = std::to_string(row.default_libraries) + " default libraries";
-  // M4 (board M4-Script-Consent tile 5): the scripts state of the installed version.
-  if (!row.scripts.text.empty()) libs += " · " + row.scripts_label();
   // text_tertiary is below 4.5:1 on row_selected (dark): secondary on a highlighted row.
   const Rgba& meta = selected || s.hovered ? t.text_secondary : t.text_tertiary;
-  p.text(TextRole::meta, 8.0F, 6.0F + p.line_height(TextRole::body_strong), libs, meta);
+  // Board M4-Script-Consent tile 5: the install state, then for an installed
+  // version its scripts state on a line of its own (on the board's one line
+  // they do not fit the dock with the version and date); the library count
+  // right of the title.
+  const std::string libs = std::to_string(row.default_libraries) + " default libraries";
+  p.text_centered_y(TextRole::meta, w - 8.0F - p.text_width(TextRole::meta, libs),
+                    6.0F + p.line_height(TextRole::body_strong) / 2.0F, libs, meta);
+  const float y2 = 6.0F + p.line_height(TextRole::body_strong);
   const std::string state = row.state.label();
-  const float sw = p.text_width(TextRole::meta, state);
-  p.text_centered_y(TextRole::meta, w - 8.0F - sw, h / 2.0F, state, status_text_color(t, row.state.kind));
+  p.text(TextRole::meta, 8.0F, y2, state, status_text_color(t, row.state.kind));
+  if (!row.scripts.text.empty()) {
+    p.text(TextRole::meta, 8.0F, y2 + kScriptsLine, row.scripts_label(),
+           row.scripts_trusted ? status_text_color(t, row.scripts.kind) : meta);
+  }
   if (s.focused) p.stroke(0.0F, 0.0F, w, h, static_cast<float>(kRadiusControl), 2.0F, t.accent);
 }
 
@@ -310,7 +318,8 @@ void PdkPanel::rebuild_rows() {
                                                 bool focused) {
       paint_row(p, w, h, rows_[i], i == selected_, paint::WidgetState{hovered, focused, true, false}, t);
     });
-    row->set_size(-1.0F, kRowHeight);
+    // An installed version has a third line: its scripts state.
+    row->set_size(-1.0F, rows_[i].scripts.text.empty() ? kRowHeight : kRowHeight + kScriptsLine);
     row->set_role(ui::Role::list_item);
     row->set_accessible_name(rows_[i].title() + ", " + rows_[i].state.text +
                              (rows_[i].scripts.text.empty() ? std::string{} : ", " + rows_[i].scripts.text) +

@@ -123,6 +123,8 @@ class Widget {
   /// In an Overlay: anchors the widget to the top-right corner, `right` and
   /// `top` logical units from the edges (call after adding it).
   void place_top_right(float right, float top);
+  /// In an Overlay: centred across, `top` logical units from the top edge.
+  void place_top_center(float top);
 
  protected:
   explicit Widget(WidgetId id) noexcept : id_(id) {}
@@ -545,6 +547,23 @@ struct FrameStats {
   std::uint64_t frame_index = 0;
 };
 
+/// What a PromptDialog's M4 alert parts are drawn with (the theme's
+/// tokens and the loaded icon and fonts); left empty, they are not drawn.
+struct DialogLook {
+  WidgetId icon = kNoWidget;   // texture of PromptDialog::icon
+  WidgetId title_font = kNoWidget;
+  WidgetId mono = kNoWidget;   // detail values
+  Rgba inset;                  // detail block and icon box fill (surface1)
+  Rgba border;                 // their outline
+  Rgba icon_color;
+  Rgba muted;                  // keys, notes
+  Rgba body;                   // the text under the title
+  Rgba ok;                     // chip fill (14 %) and text
+  Rgba ok_text;
+  Rgba warning;
+  Rgba warning_text;
+};
+
 class Window {
  public:
   Window(std::string_view title, int width, int height);
@@ -581,6 +600,9 @@ class Window {
   /// A left-button drag from (x0, y0) to (x1, y1) in `steps` moves, as the
   /// system sends one (scripted checks of header drags).
   void inject_left_drag(float x0, float y0, float x1, float y1, int steps);
+  /// The left button pressed at (x, y) and kept down (scripted captures of
+  /// an open menu of the in-window bar).
+  void inject_left_press(float x, float y);
   /// The window system Raven chose for this window: "x11", "wayland",
   /// "cocoa", "win32", or "none" (headless or unknown).
   [[nodiscard]] std::string window_system() const;
@@ -607,7 +629,8 @@ class Window {
   /// primary one focused). `wait`: runs it modally and returns the clicked
   /// button's answer + 1, or 0 when dismissed (Escape); otherwise opens it
   /// and returns 0 at once (scripted captures).
-  int run_dialog(const PromptDialog& dialog, bool wait) const;
+  /// `look` draws the M4 alert parts (icon, detail block); default: none.
+  int run_dialog(const PromptDialog& dialog, bool wait, const DialogLook& look = {}) const;
 
  private:
   WidgetId id_ = kNoWidget;
@@ -648,6 +671,9 @@ class MenuBar : public Widget {
   void set_menus(const std::vector<MenuBarMenuSpec>& menus, std::function<void(std::size_t, std::size_t)> on_choose);
   /// True while the system shows the bar instead of the window.
   [[nodiscard]] bool native() const;
+  /// false keeps the bar in the window on every system (Raven's
+  /// Rmenu_bar_set_native): `--menu-bar-in-window` captures and tests.
+  void set_native(bool native);
 
  private:
   explicit MenuBar(WidgetId id);
@@ -662,6 +688,7 @@ class Label : public Widget {
   void set_text(std::string_view text);
   void set_wrap(bool wrap);
   void set_selectable(bool selectable);
+  void set_color(const Rgba& color);
 
  private:
   using Widget::Widget;

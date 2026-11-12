@@ -42,6 +42,8 @@ class PCellDialogWindow {
   /// dialog model (closes it when the model is gone).
   void sync();
   [[nodiscard]] bool open() const noexcept { return window_ != nullptr; }
+  /// The open window (--capture-window); nullptr when closed.
+  [[nodiscard]] const ui::Window* window() const noexcept { return window_.get(); }
 
  private:
   [[nodiscard]] pcell::DialogModel* model() noexcept;

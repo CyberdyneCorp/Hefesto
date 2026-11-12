@@ -46,6 +46,8 @@ class TextHelperWindow {
   /// The selection changed (the `select` tag): re-read while open.
   void update();
   [[nodiscard]] bool open() const noexcept { return window_ != nullptr; }
+  /// The open window (--capture-window); nullptr when closed.
+  [[nodiscard]] const ui::Window* window() const noexcept { return window_.get(); }
   void close();
 
  private:
@@ -88,6 +90,8 @@ class ReorderWindow {
   /// Opens the dialog on `toolbar` (gui::build_toolbar's order).
   void show(const gui::ToolbarModel& toolbar);
   [[nodiscard]] bool open() const noexcept { return window_ != nullptr; }
+  /// The open window (--capture-window); nullptr when closed.
+  [[nodiscard]] const ui::Window* window() const noexcept { return window_.get(); }
   void close();
 
  private:
