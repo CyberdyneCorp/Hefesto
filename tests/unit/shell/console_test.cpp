@@ -7,6 +7,7 @@
 // project interpreter.
 
 #include <catch2/catch_test_macros.hpp>
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -140,6 +141,97 @@ TEST_CASE("input completeness follows Tcl's word rules",
   CHECK(console_input_status("puts a \\\n").continued);
   CHECK(console_input_status("set x \\{").complete);  // an escaped brace
   CHECK(console_input_status("foreach v {VDD GND SUB} {\n  puts \"$v = [set $v]\"\n}").complete);
+}
+
+TEST_CASE("Tab finds the command, procedure or variable word before the cursor",
+          "[cap:scripting-auxiliary-tools][req:Console integration]") {
+  // Board M4-Console note 5: Tab completes commands, procedures and variables.
+  auto word = tcl_completion_word("magic::gen", 10);
+  CHECK(word.kind == TclWordKind::command);
+  CHECK(word.prefix == "magic::gen");
+  CHECK(word.start == 0);
+  word = tcl_completion_word("box 0 0; pai", 12);
+  CHECK(word.kind == TclWordKind::command);
+  CHECK(word.prefix == "pai");
+  CHECK(word.start == 9);
+  CHECK(tcl_completion_word("set x [ex", 9).kind == TclWordKind::command);
+  CHECK(tcl_completion_word("foreach v {a} {\n  pu", 20).kind == TclWordKind::command);
+  word = tcl_completion_word("puts $PDK", 9);
+  CHECK(word.kind == TclWordKind::variable);
+  CHECK(word.prefix == "PDK");
+  CHECK(word.start == 6);
+  CHECK(tcl_completion_word("puts ${PDK", 10).kind == TclWordKind::variable);
+  CHECK(tcl_completion_word("paint m", 7).kind == TclWordKind::none);  // an argument
+  CHECK(tcl_completion_word("", 0).kind == TclWordKind::none);
+  CHECK(tcl_completion_word("box ", 4).kind == TclWordKind::none);
+  word = tcl_completion_word("pai m1", 3);  // the cursor inside the line
+  CHECK(word.prefix == "pai");
+  CHECK(tcl_prefix_glob("a*b?[c]\\") == "a\\*b\\?\\[c\\]\\\\*");
+  CHECK(tcl_prefix_glob("magic::gen") == "magic::gen*");
+  CHECK(text_offset("ab\ncde\nf", 1, 2) == 5);
+  CHECK(text_offset("ab\ncde", 1, 99) == 6);
+  CHECK(text_offset("ab", 5, 0) == 2);
+  CHECK(text_position("ab\ncde\nf", 5) == std::pair<int, int>{1, 2});
+  CHECK(text_position("ab\n", 3) == std::pair<int, int>{1, 0});
+}
+
+TEST_CASE("Tab completes from the names given and lists several",
+          "[cap:scripting-auxiliary-tools][req:Console integration]") {
+  const std::vector<std::string> commands{"paint", "pack", "puts", "::magic::gencell", "::magic::gencell_create"};
+  auto c = complete_tcl_word("pai", 3, tcl_completion_word("pai", 3), commands);
+  CHECK(c.text == "paint ");  // one command: a space for its arguments
+  CHECK(c.cursor == 6);
+  CHECK(c.candidates == std::vector<std::string>{"paint"});
+  c = complete_tcl_word("pai m1", 3, tcl_completion_word("pai m1", 3), commands);
+  CHECK(c.text == "paint m1");  // inside a line: no extra space
+  CHECK(c.cursor == 5);
+  c = complete_tcl_word("magic::gen", 10, tcl_completion_word("magic::gen", 10), commands);
+  CHECK(c.text == "magic::gencell");  // as typed (info commands answers ::magic::…), longest common prefix
+  CHECK(c.candidates == std::vector<std::string>{"magic::gencell", "magic::gencell_create"});
+  c = complete_tcl_word("p", 1, tcl_completion_word("p", 1), commands);
+  CHECK(c.text == "p");
+  CHECK(c.candidates.size() == 3);
+  CHECK(completion_listing(c.candidates) == "3 matches: pack · paint · puts");
+  CHECK(completion_listing(c.candidates, 2) == "3 matches: pack · paint …");
+  c = complete_tcl_word("puts $PDK", 9, tcl_completion_word("puts $PDK", 9), {"PDKPATH", "PDK_ROOT", "x"});
+  CHECK(c.text == "puts $PDK");
+  CHECK(c.candidates == std::vector<std::string>{"PDKPATH", "PDK_ROOT"});
+  c = complete_tcl_word("puts $PDKP", 10, tcl_completion_word("puts $PDKP", 10), {"PDKPATH", "PDK_ROOT"});
+  CHECK(c.text == "puts $PDKPATH");  // a variable gets no space
+  CHECK(complete_tcl_word("zz", 2, tcl_completion_word("zz", 2), commands).candidates.empty());
+}
+
+TEST_CASE("Tab in the console completes from the project interpreter",
+          "[cap:scripting-auxiliary-tools][req:Console integration]") {
+  ConsoleFixture f;
+  f.console.run("proc ring_of_vias {n} { return $n }; set PDKPATH /pdk/sky130A; set PDK_ROOT /pdk");
+  const std::size_t lines = f.console.transcript().lines().size();
+  f.console.set_input("ring_of");
+  auto c = f.console.complete_input(7);
+  REQUIRE(c.has_value());
+  CHECK(f.console.input() == "ring_of_vias ");  // a procedure
+  f.console.set_input("magic::bo");
+  c = f.console.complete_input(9);
+  REQUIRE(c.has_value());  // magic:: commands bound in the interpreter, as typed
+  CHECK(std::ranges::find(c->candidates, "magic::box") != c->candidates.end());
+  CHECK(f.console.input().starts_with("magic::bo"));
+  f.console.set_input("puts $PDK");
+  c = f.console.complete_input(9);
+  REQUIRE(c.has_value());
+  CHECK(c->candidates == std::vector<std::string>{"PDKPATH", "PDK_ROOT"});
+  CHECK(f.console.input() == "puts $PDK");
+  // Several names and nothing to add: listed once in the transcript.
+  CHECK(f.console.transcript().lines().size() == lines + 1);
+  CHECK(f.console.transcript().lines().back().kind == ConsoleLineKind::info);
+  CHECK(f.console.transcript().lines().back().text == "2 matches: PDKPATH · PDK_ROOT");
+  f.console.set_input("paint m");
+  CHECK_FALSE(f.console.complete_input(7).has_value());  // an argument
+  CHECK(f.console.input() == "paint m");
+  f.console.set_input("no_such_command_zz");
+  CHECK_FALSE(f.console.complete_input(18).has_value());
+  // Glob characters typed in the word match literally.
+  f.console.set_input("ring*");
+  CHECK_FALSE(f.console.complete_input(5).has_value());
 }
 
 TEST_CASE("Up and Down walk the history shared with the command bar",

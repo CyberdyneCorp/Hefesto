@@ -98,8 +98,8 @@ void MainWindow::open_label_popover(const db::Rect& box) {
   label_layer_->set_text(label_popover_.layer());
   label_position_->set_selected(0);
   label_layer_->set_enabled(false);
-  // Right of the box (flipped and kept on the canvas: popover_point).
-  const auto [x, y] = canvas_->popover_point(box);
+  // Right of the box, flipped to its left at the canvas edge (label_popover_point).
+  const auto [x, y] = canvas_->label_point(box);
   const ui::Rect area = canvas_->widget().rect();
   const float w = static_cast<float>(kLabelPopoverWidth);
   label_card_->place_top_right(std::max(0.0F, area.x + area.width - x - w), std::max(0.0F, y - area.y));

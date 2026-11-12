@@ -8,6 +8,18 @@ release notices.
 
 ### Changed
 
+- **Desktop: the undo history names each step after the command that made
+  it** ("↶ paint metal1", "Undid paint metal1 · 3 more steps"), and pressing
+  and holding Undo for half a second opens it (a shorter press still
+  undoes).
+- **Desktop: Tab completes in the Tcl console** the command, procedure or
+  `$variable` name before the cursor from the project's interpreter; several
+  matches are listed in the transcript.
+- **Desktop: a script that runs longer than 2 s dims the canvas** under its
+  Interrupt card, and the canvas shows the script's edits as it goes. The
+  script-consent prompt names what the startup file runs next ("sky130A.tcl +
+  8 part files") and whether the store release's digest verified.
+
 - **`hefesto-cli` runs `-c`, script files, standard input and
   `--interactive` as Tcl outside `--magic` mode too.** Each complete command
   runs in the project's sandboxed interpreter and its non-empty result is

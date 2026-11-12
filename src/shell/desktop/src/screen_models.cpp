@@ -24,32 +24,16 @@ bool contains(std::string_view haystack, std::string_view needle) {
   return needle.empty() || lower(haystack).find(lower(needle)) != std::string::npos;
 }
 
-/// Splits `undo print` output into steps: entries between "(delimiter)" lines.
-std::vector<std::vector<std::string>> split_steps(const std::string& printed) {
-  std::vector<std::vector<std::string>> steps(1);
-  std::size_t start = 0;
-  while (start < printed.size()) {
-    const std::size_t end = printed.find('\n', start);
-    const std::string line = printed.substr(start, end == std::string::npos ? std::string::npos : end - start);
-    start = end == std::string::npos ? printed.size() : end + 1;
-    if (line == "(delimiter)") {
-      steps.emplace_back();
-    } else if (!line.empty()) {
-      steps.back().push_back(line);
-    }
-  }
-  return steps;
-}
-
-/// A step's name: its first described event, "+N" when it has more.
-std::string step_name(const std::vector<std::string>& events) {
-  if (events.empty()) return "(empty step)";
-  // Event descriptions name the cell and the areas: kept to a menu's width.
-  constexpr std::size_t kMaxName = 48;
-  std::string name = events.front();
-  if (name.size() > kMaxName) name = name.substr(0, kMaxName - 1) + "…";
-  if (events.size() > 1) name += "  +" + std::to_string(events.size() - 1);
-  return name;
+/// A step's name as a menu shows it: its label (UndoLog::step_label), cut
+/// to a menu's width (an unlabelled step is named by its newest event, which
+/// names the cell and the areas).
+std::string menu_step_name(const std::string& label) {
+  constexpr std::size_t kMaxName = 60;  // undo::kMaxStepLabelLength
+  if (label.empty()) return "(empty step)";
+  if (label.size() <= kMaxName) return label;
+  std::size_t cut = kMaxName - 3;  // room for "…"; never inside a UTF-8 sequence
+  while (cut > 0 && (static_cast<unsigned char>(label[cut]) & 0xC0U) == 0x80U) --cut;
+  return label.substr(0, cut) + "…";
 }
 
 std::string quote_macro(std::string_view text) {
@@ -142,29 +126,18 @@ UndoHistory undo_history(const undo::UndoLog& log, std::size_t max_each) {
   UndoHistory h;
   h.title = std::to_string(log.step_count()) + (log.step_count() == 1 ? " step" : " steps") + " · limit " +
             std::to_string(log.limit());
-  // `redo print`: the nearest undone step first; shown farthest first so
-  // the list reads top to bottom towards the current state.
-  const auto redo_steps = split_steps(log.print(0, false));
-  std::vector<MenuEntry> redo;
-  for (std::size_t i = 0; i < redo_steps.size() && redo.size() < max_each; ++i) {
-    if (redo_steps[i].empty()) continue;
-    redo.push_back(MenuEntry{"↷ " + step_name(redo_steps[i]), "redo " + std::to_string(redo.size() + 1)});
-  }
-  std::reverse(redo.begin(), redo.end());
-  h.entries = std::move(redo);
-  // `undo print`: the open step first (empty after a command), then the
-  // newest closed step.
-  const auto undo_steps = split_steps(log.print(0, true));
-  bool first = true;
-  std::size_t n = 0;
-  for (std::size_t i = 1; i < undo_steps.size() && n < max_each; ++i) {
-    MenuEntry e{"↶ " + step_name(undo_steps[i]), "undo " + std::to_string(++n)};
-    e.separator_before = first && !h.entries.empty();
-    first = false;
+  // Each step named after the user command that made it ("paint metal1",
+  // UndoLog::step_label; hefesto-app-ux "Undo history"): the redo tail
+  // farthest first, then the undoable steps newest first.
+  bool first_undo = true;
+  for (const undo::HistoryEntry& step : undo::history(log, max_each)) {
+    MenuEntry e{(step.redo ? "↷ " : "↶ ") + menu_step_name(step.label), step.command};
+    if (!step.redo) {
+      e.separator_before = first_undo && !h.entries.empty();
+      first_undo = false;
+      e.enabled = !log.suspended();  // Magic refuses undo while recording is off
+    }
     h.entries.push_back(std::move(e));
-  }
-  if (log.suspended()) {
-    for (MenuEntry& e : h.entries) e.enabled = e.command.starts_with("redo");  // Magic refuses undo then
   }
   return h;
 }
@@ -179,11 +152,11 @@ std::optional<std::string> undo_status_message(bool redo, std::string_view step,
 }
 
 std::string next_undo_step(const undo::UndoLog& log, bool redo) {
-  const auto steps = split_steps(log.print(0, !redo));
-  // undo: steps[0] is the open step, steps[1] the newest closed one; redo: steps[0] the nearest.
-  const std::size_t index = redo ? 0 : 1;
-  if (index >= steps.size() || steps[index].empty()) return {};
-  return step_name(steps[index]);
+  // undo: the newest closed step before the position; redo: the nearest undone one.
+  const std::size_t position = log.position();
+  if (redo ? position >= log.step_count() : position == 0) return {};
+  const std::string label = log.step_label(redo ? position : position - 1);
+  return label.empty() ? std::string{} : menu_step_name(label);
 }
 
 UndoMark undo_mark(const undo::UndoLog& log) noexcept { return UndoMark{log.position(), log.step_count()}; }
@@ -192,13 +165,10 @@ std::optional<std::string> undo_move_message(const UndoMark& before, const undo:
   const std::size_t now = log.position();
   if (log.step_count() != before.steps || now == before.position) return std::nullopt;  // a new step: no move
   const bool redo = now > before.position;
-  const std::size_t moved = redo ? now - before.position : before.position - now;
-  // Undo: the redo tail lists the undone steps nearest first, the newest
-  // undone at moved - 1. Redo: `undo print` lists the open step, then the
-  // redone steps newest first, the oldest redone at `moved`.
-  const auto steps = split_steps(log.print(0, redo));
-  const std::size_t index = redo ? moved : moved - 1;
-  const std::string name = index < steps.size() && !steps[index].empty() ? step_name(steps[index]) : std::string();
+  // Undo names the newest step it undid (the one before the old position),
+  // redo the oldest one it redid (the one at the old position).
+  const std::string label = log.step_label(redo ? before.position : before.position - 1);
+  const std::string name = label.empty() ? std::string{} : menu_step_name(label);
   return undo_status_message(redo, name, redo ? log.step_count() - now : now);
 }
 

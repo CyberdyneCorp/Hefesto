@@ -65,6 +65,7 @@ class ConsolePanel {
   void build_header();
   void build_input();
   void sync_input_from_model();
+  void complete_input();  // Tab (board M4-Console note 5)
   void save_transcript();
   void reset_rows();
   void paint_script_card(ui::Painter& p, const InterruptCardView& card, const ThemeTokens& t, bool hov, bool foc) const;
