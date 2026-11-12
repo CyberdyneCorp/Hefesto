@@ -248,8 +248,8 @@ Compatibility: exact
 - Timestamps are updated before writing.
 - With NAME, the cell is written to NAME (adding `.mag`) and then renamed to NAME, unless NAME ends in `.tcl` or a cell named NAME already exists ("there is already a cell named"). If the cell is the edit cell, the window captions are updated.
 - Without NAME, the cell is written to its known file. A cell `(UNNAMED)` or a cell with no file requires a name ("Must specify name for cell (UNNAMED)."). In interactive mode the user is asked for one.
-- Writing over an existing different file asks for confirmation in interactive mode.
-- When the name is refused (an existing file not to be overwritten, or a cell already named NAME: `Can't rename cell 'C' to 'NAME' because that cell already exists.`), the user SHALL be asked for another file name with `File for cell C: [hit return to abort save] ` and one line of input (capability `scripting-api`, "Prompts and dialogs through the script layer"); the answer is checked like NAME, and an empty answer or the end of input abandons the save with `Cell not saved.` (Magic's cmdCheckNewName).
+- Writing over an existing different file asks `File F already exists.\n  Overwrite it with C? ` (no/yes, default no); only the answer `no` refuses the name. When the question cannot be asked (no prompt host, a headless session, or a script session without `tk_dialog`), the file SHALL be overwritten with `magic-compat` ON, as Magic's TxDialog result -1 does, and the name refused with it OFF (Q-SCRIPT-48).
+- When the name is refused (an existing file not to be overwritten, or a cell already named NAME: `Can't rename cell 'C' to 'NAME' because that cell already exists.`), the user SHALL be asked for another file name with `File for cell C: [hit return to abort save] ` and one line of input (capability `scripting-api`, "Prompts and dialogs through the script layer"); the answer is checked like NAME, and an empty answer or the end of input abandons the save with `Cell not saved.` (Magic's cmdCheckNewName). With `magic-compat` ON only the first 7 characters of the answer are the name, as in Magic, which reads it into `sizeof` a pointer; with it OFF the whole line is the name (Q-CELL-47).
 - On success the cell's modified flag SHALL be cleared. A write failure SHALL report "Could not write file. Cell not written."
 
 The file writing (including locks and the backup/temporary-file protocol) is defined in capability `cell-file-format`.
@@ -262,6 +262,16 @@ Compatibility: behavioral
 - **GIVEN** the edit cell `(UNNAMED)` with paint
 - **WHEN** `save adder` is run
 - **THEN** `adder.mag` SHALL be written and the cell SHALL be renamed `adder`
+
+#### Scenario: Overwrite question that cannot be asked
+- **GIVEN** a `-dnull` script session (no `tk_dialog`), the edit cell `top` with paint and an existing file `other.mag`
+- **WHEN** `save other` is run
+- **THEN** with `magic-compat` ON `other.mag` SHALL be overwritten and the cell renamed `other`
+- **AND** with `magic-compat` OFF `other.mag` SHALL be kept and the file name asked for
+
+#### Scenario: Long file name answer
+- **GIVEN** a refused `save other` whose file-name prompt is answered `abcdefghij`
+- **THEN** with `magic-compat` ON the cell SHALL be written to `abcdefg.mag`, and with it OFF to `abcdefghij.mag`
 
 ### Requirement: Writeall command
 
@@ -287,7 +297,7 @@ Compatibility: behavioral
 
 `flush [CELL] [-noprompt] [-dereference]` SHALL discard the in-memory changes of CELL (default: the edit cell, or the window's top cell) and re-read it from its file:
 
-- If the cell has changes and `-noprompt` is not given, the user SHALL be asked `Really throw away all changes made to cell CELL?` and answering `no` cancels.
+- If the cell has changes and `-noprompt` is not given, the user SHALL be asked `Really throw away all changes made to cell CELL?` and answering `no` cancels. A question that cannot be asked goes ahead with `magic-compat` ON (Magic's TxDialog -1) and cancels with it OFF (Q-SCRIPT-48).
 - A cell whose instance is the parent of the current edit instance SHALL not be flushed ("Cannot flush cell whose subcell is being edited.").
 - `-dereference` drops the stored file path and re-reads via the search paths.
 - The undo history SHALL be discarded. The cell is cleared, re-read, its bounding box recomputed and its modified flag cleared. DRC is queued in all parents over the instance areas. The selection is cleared.
@@ -314,7 +324,7 @@ Compatibility: behavioral
 | `parents` | cells that instantiate NAME | parent of the instance |
 | `exists`, `self` | with `list`: NAME when it is loaded, else `0`; without `list`: prints "Cell NAME is currently loaded." or reports "Cell NAME is not currently loaded." with no result; without NAME, the cells with an instance in the selection (their names, or one "Cell C is currently loaded." line each), else the edit root's | the instance name |
 | `instances` | instance names of cell NAME; an arrayed instance is named with its first indices, backslash-escaped (`x2\[0\]`, `x3\[0,1\]`) | the instance itself |
-| `childinst` | child instance names | child instances |
+| `childinst` | child instance names (an arrayed instance with its first indices, as for `instances`); with `magic-compat` ON in Magic's instance-identifier hash order (a string hash table of 16 buckets whose entries stay when an instance is deleted or renamed, so the order depends on the placement, rename and delete history), with it OFF in placement order (Q-CELL-46) | child instances, in the same order |
 | `celldef` | the cell name | cell name of the instance |
 | `allcells` | all cell names (internal cells excluded) | — |
 | `topcells` | cells with no parents | error "Instances do not have a top level" |

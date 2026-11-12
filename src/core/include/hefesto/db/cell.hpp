@@ -30,6 +30,7 @@
 #include "hefesto/db/transform.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/tech/types.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::db {
 
@@ -177,6 +178,19 @@ class CellDef {
   [[nodiscard]] std::uint64_t first_window_serial() const noexcept { return first_window_serial_; }
   void note_window_root() noexcept;
 
+  /// Magic's cd_idHash: the instance identifiers linked in this definition,
+  /// in Magic's string-hash order (16 buckets at creation). A linked id
+  /// (DBSetUseIdHash) keeps its entry when it is unlinked (DBUnLinkCell
+  /// clears the value), so the order depends on the whole link history.
+  /// `cellname list childinst` reads it with magic-compat ON (Q-CELL-46).
+  /// Maintained by db::place, db::remove_use, db::rename_use and
+  /// db::make_use_ids_unique; reset by clear_use_ids (DBCellClearDef).
+  void link_use_id(const std::string& id) { use_ids_.insert(id, true); }
+  void unlink_use_id(const std::string& id) { (void)use_ids_.clear_value(id); }
+  void clear_use_ids() { use_ids_ = util::MagicHashTable<bool>{kUseIdBuckets}; }
+  /// The linked identifiers in hash-table order.
+  [[nodiscard]] std::vector<std::string> linked_use_ids() const;
+
  private:
   friend class CellLibrary;  // renames definitions, links the recorder
 
@@ -194,6 +208,8 @@ class CellDef {
   Rect extended_bbox_{0, 0, 1, 1};
   ChangeRecorder* const* recorder_slot_ = nullptr;  // CellLibrary::Impl::recorder
   std::uint64_t first_window_serial_ = 0;
+  static constexpr std::size_t kUseIdBuckets = 16;  // DBCellNewDef: HashInit(&cd_idHash, 16, ...)
+  util::MagicHashTable<bool> use_ids_{kUseIdBuckets};
 };
 
 /// The next value of the process-wide creation counter shared by cell uses

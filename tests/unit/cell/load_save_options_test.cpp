@@ -98,7 +98,8 @@ TEST_CASE("load takes options from the end of the line only", "[cap:cmd-hierarch
 TEST_CASE("save into a directory compares the name with its directory", "[cap:cmd-hierarchy][req:Save command]") {
   // Regression (M2 review): the directory was stripped before comparing with
   // the cell name, so `save sub/top` overwrote sub/top.mag without asking.
-  Session s;
+  // magic-compat OFF: the question nobody can answer is declined (Q-SCRIPT-48).
+  Session s{false};
   s.paint(*s.top, "metal1", Rect{0, 0, 10, 10});
   s.write("sub/top.mag", std::string{kSquare});
   const auto r = s.run("save sub/top");
@@ -115,10 +116,10 @@ TEST_CASE("save into a directory compares the name with its directory", "[cap:cm
 
 TEST_CASE("save NAME asks before overwriting another file and refuses a taken cell name",
           "[cap:cmd-hierarchy][req:Save command]") {
-  Session s;
+  Session s{false};
   s.paint(*s.top, "metal1", Rect{0, 0, 10, 10});
   s.write("other.mag", std::string{kSquare});
-  // Headless: the default answer "no" abandons the save.
+  // No one to ask, magic-compat OFF: declined, so the save is abandoned.
   auto r = s.run("save other");
   CHECK(mentions(r, "Cell not saved."));
   CHECK(s.top->name() == "top");
@@ -141,6 +142,29 @@ TEST_CASE("save NAME asks before overwriting another file and refuses a taken ce
   CHECK(mentions(r, "Cell not saved."));
   CHECK_FALSE(s.services.files().exists("taken.mag"));
   CHECK(s.top->name() == "other");
+}
+
+// Regression (SCRIPT-PCELL-12, Q-SCRIPT-48): Magic's cmdCheckNewName stops
+// only on "no", and its TxDialog gives -1 under -dnull, so `save other` over
+// an existing other.mag overwrites it; a cell already named that way is then
+// refused and the file name is asked for.
+TEST_CASE("save NAME overwrites another file with magic-compat ON when it cannot ask",
+          "[cap:cmd-hierarchy][req:Save command]") {
+  Session s{true};
+  s.paint(*s.top, "metal1", Rect{0, 0, 10, 10});
+  s.write("other.mag", std::string{kSquare});
+  REQUIRE(s.run("save other").ok());
+  CHECK(s.top->name() == "other");
+  CHECK(s.services.files().read("other.mag").value() != kSquare);
+
+  AnswerHost host;  // an explicit "no" still declines
+  host.answer = 0;
+  s.editor.prompt = &host;
+  s.write("third.mag", std::string{kSquare});
+  const auto r = s.run("save third");
+  CHECK(host.asked == 1);
+  CHECK(mentions(r, "Cell not saved."));
+  CHECK(s.services.files().read("third.mag").value() == kSquare);
 }
 
 TEST_CASE("cellname dereference re-reads a cell through the search paths",

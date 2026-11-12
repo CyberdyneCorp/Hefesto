@@ -78,6 +78,16 @@ bool is_subcircuit(const CellDef& def) {
   return std::any_of(def.labels().begin(), def.labels().end(), [](const Label& l) { return l.is_port(); });
 }
 
+std::vector<std::string> CellDef::linked_use_ids() const {
+  std::vector<std::string> ids;
+  use_ids_.for_each([&](const util::MagicHashTable<bool>::Entry& e) {
+    if (e.value) {
+      ids.push_back(e.key);
+    }
+  });
+  return ids;
+}
+
 struct CellLibrary::Impl {
   util::MagicHashTable<CellDef*> table{kCellDefBuckets};
   std::vector<std::unique_ptr<CellDef>> owned;

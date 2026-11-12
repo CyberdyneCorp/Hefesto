@@ -37,6 +37,7 @@ void clear_definition(db::CellDef& def) {
   while (!def.uses().empty()) {
     (void)db::remove_use(*def.uses().back());
   }
+  def.clear_use_ids();  // "Reduce clutter by reinitializing the id hash table"
 }
 
 /// cmdFlushCell: every parent rechecks the use's area (TT_CHECKSUBCELL).
@@ -130,9 +131,10 @@ CommandResult flush_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
     }
     const bool changed = has_changes(*def);
     if (!a.noprompt && changed) {
-      static const std::array<std::string, 2> kAnswers = {"no", "yes"};
+      // Magic stops only on `no`; an unaskable question goes ahead with
+      // magic-compat ON (Q-SCRIPT-48).
       const std::string question = "Really throw away all changes made to cell " + def->name() + "? ";
-      if (cmd::ask(s.ed.prompt, question, kAnswers, 0) == 0) {
+      if (!cmd::confirm(s.ed.prompt, question, s.io.magic_compat)) {
         return CommandResult::success();
       }
     }

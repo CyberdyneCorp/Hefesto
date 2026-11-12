@@ -25,6 +25,7 @@
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/drc/rules/query.hpp"
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
@@ -294,6 +295,23 @@ LoadArgs scan_load_flags(const cmd::Invocation& inv) {
   return out;
 }
 
+/// The confirmation of a reload over painted layout (Magic's TxDialog; the
+/// command stops only on `no`). A session that cannot ask goes ahead with
+/// magic-compat ON, as Magic's -1 does, and is refused with TECH-CMD-003
+/// with it OFF (Q-SCRIPT-48). nullopt to go ahead.
+std::optional<CommandResult> confirm_reload(const editor::EditorState& ed, bool magic_compat) {
+  static constexpr std::string_view kQuestion =
+      "Technology file (re)loading may invalidate the existing layout.  Continue? ";
+  const std::optional<bool> answer = cmd::try_confirm(ed.prompt, kQuestion);
+  if (answer.value_or(magic_compat)) {
+    return std::nullopt;
+  }
+  if (answer) {
+    return CommandResult::success();  // answered `no`: nothing is loaded, nothing reported
+  }
+  return fail("TECH-CMD-003", std::string{kQuestion} + "(no: this session cannot ask; use -noprompt)");
+}
+
 CommandResult tech_load(cmd::CommandContext& ctx, editor::EditorState& ed, const cmd::Invocation& inv) {
   const LoadArgs args = scan_load_flags(inv);
   if (args.override_default) {
@@ -307,13 +325,14 @@ CommandResult tech_load(cmd::CommandContext& ctx, editor::EditorState& ed, const
   if (ed.technology_override) {
     return CommandResult::success();
   }
+  const bool magic_compat = ctx.project().compat.magic_compat;
   if (!args.noprompt && layout_has_paint(ed.cells, ed.technology->plane_count())) {
-    return fail("TECH-CMD-003",
-                "Technology file (re)loading may invalidate the existing layout.  Continue? (no: this session cannot "
-                "ask; use -noprompt)");
+    if (auto declined = confirm_reload(ed, magic_compat)) {
+      return *declined;
+    }
   }
   SessionLoadOptions options;
-  options.magic_compat = ctx.project().compat.magic_compat;
+  options.magic_compat = magic_compat;
   auto status = load_session_technology(ed, ctx.services(), inv.args[1], options, ctx.sink());
   if (status) {
     return CommandResult::success();

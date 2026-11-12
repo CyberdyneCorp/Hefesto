@@ -376,3 +376,21 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate | compat (replicate with `magic-compat` ON, the directory with it OFF) | fix (the directory in both forms, as the help text says)
 - Recommendation: compat. Scripts written against Magic may split the result themselves; the intended result is the directory.
 - Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON `cellname list filepath` returns the whole stored path, as Magic does; with it OFF it returns the directory, like the printed form in both settings (X-2 tier 2). `cmd-hierarchy` "Cellname and instance commands" and `scripting-api` "Result formats of commands used by scripts" updated. Approved 2026-11-12.
+
+### Q-CELL-46: `cellname list childinst` order
+- Kind: quirk
+- Status: approved (recorded 2026-11-12; approved 2026-11-12)
+- Magic behavior: `cellname childinst <c>` (and `instance children`) walks the parent's `cd_idHash`, a string hash table of 16 buckets keyed by instance identifier. An identifier is linked when a use is placed or renamed (`DBLinkCell`, `DBReLinkCell`) or when a cell is read (`DBGenerateUniqueIds`, in subcell enumeration order); unlinking (`DBUnLinkCell`, on delete and rename) only clears the value, so the entry keeps its place and a later use with the same identifier takes it again. `flush` reinitializes the table. Each use is named by `dbGetUseName`, with the first array indices.
+- Evidence: database/DBcellname.c:524-535, 2395-2450, 2511-2531, 2690-2830; database/DBcellsubr.c:204-205; database/DBio.c:1013
+- Options: replicate | compat (Magic's hash order with `magic-compat` ON, placement order with it OFF) | fix (placement order)
+- Recommendation: compat.
+- Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON the list follows Magic's id-hash order, reproduced with the history above (`db::CellDef::linked_use_ids`, the "Magic string hash table" of `hefesto-output-determinism`); with it OFF it is the placement order (X-2 tier 2). Both list arrayed uses as `dbGetUseName` does (`x2\[0\]`). `cmd-hierarchy` "Cellname and instance commands" updated. Approved 2026-11-12.
+
+### Q-CELL-47: The file name answered to `save` keeps 7 characters
+- Kind: bug
+- Status: approved (recorded 2026-11-12; approved 2026-11-12)
+- Magic behavior: when `save NAME` is refused, cmdCheckNewName asks `File for cell <c>: [hit return to abort save] ` and reads the answer with `TxGetLine(returnname, sizeof returnname)`. `returnname` is a pointer (to a 1024-byte buffer), so the size is 8 and the answer is cut to its first 7 characters.
+- Evidence: commands/CmdSubrs.c:849-851
+- Options: replicate | compat (7 characters with `magic-compat` ON, the whole line with it OFF) | fix
+- Recommendation: compat.
+- Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON the answer keeps its first 7 characters, as in Magic; with it OFF the whole line is the name (X-2 tier 2). `cmd-hierarchy` "Save command" updated. Approved 2026-11-12.
