@@ -106,8 +106,13 @@ class Selection {
   /// first ("Selection model").
   void set_root(db::CellDef* root, std::size_t plane_count);
 
+  /// Creates the (empty) selection cell when there is none yet, leaving the
+  /// root unset: Magic's SelectDef exists from start-up, so the selection
+  /// commands see an empty selection before anything was ever selected.
+  void ensure_cell(std::size_t plane_count);
+
   /// The internal cell holding the selected items in root coordinates;
-  /// nullptr until set_root(). Never in a CellLibrary (no change recorder).
+  /// nullptr until set_root() or ensure_cell(). Never in a CellLibrary (no change recorder).
   [[nodiscard]] db::CellDef* def() noexcept { return def_.get(); }
   [[nodiscard]] const db::CellDef* def() const noexcept { return def_.get(); }
 

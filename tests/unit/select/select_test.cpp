@@ -62,6 +62,23 @@ TEST_CASE("the selection is an internal root-coordinate cell", MODEL) {
   CHECK(selection.provenance().front().source == &s.top());  // each item remembers its cell
 }
 
+TEST_CASE("selection commands before anything was ever selected see an empty selection", MODEL) {
+  // Regression (golden SCRIPT-PCELL-11): with no selection cell yet, delete, move, copy,
+  // stretch, the rotations and array dereferenced a null cell and hefesto-cli crashed.
+  HEFESTO_SELECT_MT(mt);
+  for (const char* line : {"delete", "move e 1", "copy e 1", "stretch e 1", "upsidedown", "sideways", "clockwise",
+                           "array 2 3"}) {
+    Session s(mt);
+    s.paint({0, 0, 20, 20}, mt.m1);
+    s.ok("box 0 0 4 4");
+    REQUIRE(s.editor.selection.def() == nullptr);
+    INFO(line);
+    CHECK(s.run(line).ok());
+    CHECK(s.editor.selection.empty());
+    CHECK(rects_of(s.top(), mt.metal1, mt.m1) == std::vector<db::Rect>{{0, 0, 20, 20}});
+  }
+}
+
 TEST_CASE("undo restores the previous selection", MODEL) {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);
