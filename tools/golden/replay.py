@@ -45,7 +45,7 @@ from goldenlib import deviations
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, substitute_env
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage
-from goldenlib.refrunners import CONTAINER_WORK, ENVIRONMENT
+from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TIMEOUT_S = 300
@@ -108,10 +108,13 @@ def with_container_work(data: bytes, work: Path) -> bytes:
 
     The reference ran in ``/work``; hefesto-cli runs in a temporary directory, so an absolute
     path a case prints (``path search``, ``info script``, a PDK_ROOT under ``{work}``) differs
-    only by that prefix. Both spellings of the directory are rewritten (macOS resolves
+    only by that prefix. The replay's CAD_ROOT (``cad_root(work)``) is first written as the
+    image's (``/opt/ref/lib``): a case that lists the cell path prints Magic's library
+    directories under it. Both spellings of each directory are rewritten (macOS resolves
     ``/var`` to ``/private/var``); nothing else changes."""
-    for spelling in sorted({str(work.resolve()), str(work)}, key=len, reverse=True):
-        data = data.replace(spelling.encode(), CONTAINER_WORK.encode())
+    for root, spelled in ((cad_root(work), CONTAINER_CAD_ROOT), (work, CONTAINER_WORK)):
+        for spelling in sorted({str(root.resolve()), str(root)}, key=len, reverse=True):
+            data = data.replace(spelling.encode(), spelled.encode())
     return data
 
 

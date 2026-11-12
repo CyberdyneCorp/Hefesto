@@ -34,6 +34,15 @@
 
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/gui/managers.hpp"
+#include "hefesto/platform/file_picker.hpp"
+
+namespace hefesto::cmd {
+class CommandContext;
+}
+
+namespace hefesto::editor {
+struct EditorState;
+}
 
 namespace hefesto::script {
 class Interpreter;
@@ -68,6 +77,35 @@ namespace hefesto::gui {
 /// the frame is suspended.
 [[nodiscard]] cmd::CommandResult build_toolbar_widgets(script::Interpreter& interp, std::string_view layoutframe,
                                                        const std::function<ToolbarModel()>& toolbar);
+
+/// The manager windows of the model.
+enum class ManagerWindow : unsigned char { cell, library, technology };
+
+/// `cellmanager`, `libmanager` and `techmanager` with `option`: `create`
+/// builds `.cellmgr`, `.libmgr` or `.techmgr` once (withdrawn, as Magic's
+/// scripts do), and every option fills it from cell_manager_model(),
+/// library_manager_model() (the `filtered` variable of its Filter button)
+/// or tech_manager_model(); nothing happens while the window does not exist.
+[[nodiscard]] cmd::CommandResult update_manager_widgets(cmd::CommandContext& ctx, script::Interpreter& interp,
+                                                        ManagerWindow window, std::string_view option);
+
+/// The file dialogs of the model: Tk's `tk_getOpenFile` / `tk_getSaveFile`
+/// in `editor`'s interpreter with wrapper.tcl's arguments (`-filetypes
+/// {{Magic {.mag {.mag}}} {"All files" {*}}}`, `-title`), so a script that
+/// defines them answers the prompts; their default answers "" (cancelled).
+class TkFilePicker final : public platform::FilePicker {
+ public:
+  explicit TkFilePicker(editor::EditorState& editor) : editor_(editor) {}
+  [[nodiscard]] std::optional<platform::Path> pick(const platform::FilePickerRequest& request) override;
+
+ private:
+  editor::EditorState& editor_;
+};
+
+/// wrapper.tcl's `-filetypes` word for `types`: `{<desc> {<patterns> {<patterns>}}}`
+/// per type, `{<desc> {*}}` for the catch-all, a description with a blank in
+/// double quotes.
+[[nodiscard]] std::string tk_file_types(const std::vector<std::pair<std::string, std::string>>& types);
 
 /// The wrapper's own procedures that magic.tcl.in imports into the global
 /// namespace in wrapper mode (wrapper.tcl, cellmgr.tcl, libmgr.tcl,

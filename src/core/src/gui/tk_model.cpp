@@ -13,6 +13,7 @@
 #include <array>
 #include <functional>
 
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gui/commands.hpp"
 #include "hefesto/script/binding/tags.hpp"
 #include "hefesto/script/interp.hpp"
@@ -75,7 +76,11 @@ proc ::hefesto::tk::node {cls w args} {
       set entries($w) {}
       if {![info exists opt($w\ -tearoff)] || $opt($w\ -tearoff)} {lappend entries($w) {type tearoff}}
    }
-   if {$cls eq "Treeview"} {set serial($w) 0; set opt($w\ {}) {}}
+   if {$cls eq "Treeview"} {
+      set serial($w) 0
+      set root "$w "
+      set opt($root) {}
+   }
    return $w
 }
 proc ::hefesto::tk::create {cls w args} {
@@ -749,6 +754,113 @@ if {![llength [info commands ::magic::techrebuild]]} {
 }
 )tcl";
 
+// The manager windows (cellmgr.tcl:84-150,248-290, libmgr.tcl:47-120,206-263,
+// wrapper.tcl:305-531), filled from the view models: `create` builds a
+// window once (withdrawn); any other option is ignored until it exists.
+constexpr std::string_view kManagers = R"tcl(
+proc ::hefesto::tk::manager_window {w option} {
+   if {[exists $w]} {return [expr {$option ne "create"}]}
+   if {$option ne "create"} {return 0}
+   create Toplevel $w
+   wm withdraw $w
+   return 1
+}
+proc ::hefesto::tk::target_bar {w} {
+   create Label $w.target.name -text "Target window:"
+   create Menubutton $w.target.list -text default -menu $w.target.list.winmenu
+}
+proc ::hefesto::tk::cellmanager {option rows} {
+   set w .cellmgr
+   set new [expr {![exists $w]}]
+   if {![manager_window $w $option]} return
+   if {$new} {
+      foreach f {actionbar box target} {create Frame $w.$f}
+      create Treeview $w.box.view -show tree -selectmode browse -columns 1
+      create Scrollbar $w.box.vert -orient vertical -command "$w.box.view yview"
+      foreach {b text action} {done Zoom zoom edit Edit edit load Load load expand Expand expand place Place place} {
+         create Button $w.actionbar.$b -text $text -command "magic::instcallback $action"
+      }
+      create Button $w.actionbar.refresh -text Refresh -command {magic::cellmanager update}
+      target_bar $w
+   }
+   foreach row $rows {
+      lassign $row id text instance parent
+      if {![$w.box.view exists $id]} {
+         $w.box.view insert $parent end -id $id -text $text
+         $w.box.view item $id -values [list $instance]
+      }
+   }
+}
+proc ::hefesto::tk::libmanager {option dirs rows} {
+   if {$option ni {update create save}} return
+   set w .libmgr
+   set new [expr {![exists $w]}]
+   if {![manager_window $w $option]} return
+   if {$new} {
+      set ::filtered 1
+      foreach f {actionbar box target} {create Frame $w.$f}
+      create Treeview $w.box.view -selectmode browse -columns 0
+      create Scrollbar $w.box.vert -orient vertical -command "$w.box.view yview"
+      foreach {b text action} {load Load load place Place place pick Pick pick} {
+         create Button $w.actionbar.$b -text $text -command "magic::libcallback $action"
+      }
+      create Button $w.actionbar.refresh -text Refresh -command {magic::libmanager update}
+      create Checkbutton $w.actionbar.filter -text Filter -variable filtered -command {magic::libmanager update}
+      target_bar $w
+   }
+   $w.box.view delete [$w.box.view children {}]
+   foreach dir $dirs {
+      if {![$w.box.view exists $dir]} {$w.box.view insert {} end -id $dir -text $dir}
+   }
+   foreach row $rows {
+      lassign $row dir cell tech
+      if {![$w.box.view exists $dir$cell.mag]} {
+         $w.box.view insert $dir end -id $dir$cell.mag -text $cell -values [list $tech]
+      }
+   }
+}
+proc ::hefesto::tk::techmanager {option menus labels} {
+   set w .techmgr
+   set new [expr {![exists $w]}]
+   if {![manager_window $w $option]} return
+   if {$new} {
+      create Frame $w.title
+      create Label $w.title.tlab -text "Technology: "
+      create Menubutton $w.title.tname -text "(none)" -menu $w.title.tname.menu
+      create Label $w.title.tvers -text ""
+      create Label $w.subtitle -text ""
+      create Frame $w.lambda0
+      create Label $w.lambda0.llab -text "Microns per lambda (CIF): "
+      create Label $w.lambda0.lval -text 1
+      create Frame $w.lambda1
+      create Label $w.lambda1.llab -text "Internal units per lambda: "
+      create Entry $w.lambda1.lval0 -width 3
+      create Label $w.lambda1.ldiv -text " / "
+      create Entry $w.lambda1.lval1 -width 3
+      foreach {f text} {cif0 "CIF input style: " cif1 "CIF output style: "} {
+         create Frame $w.$f
+         create Label $w.$f.llab -text $text
+         create Menubutton $w.$f.lstyle -text "" -menu $w.$f.lstyle.menu
+         create Label $w.$f.llab2 -text " Microns/lambda="
+         create Label $w.$f.llambda -text ""
+      }
+      foreach {f text} {extract "Extract style: " drc "DRC style: "} {
+         create Frame $w.$f
+         create Label $w.$f.llab -text $text
+         create Menubutton $w.$f.lstyle -text "" -menu $w.$f.lstyle.menu
+      }
+      foreach m {title.tname cif0.lstyle cif1.lstyle extract.lstyle drc.lstyle} {create Menu $w.$m.menu -tearoff 0}
+   }
+   if {$option in {init create}} {
+      foreach {m entries} $menus {
+         if {$option eq "init"} {$w.$m.menu delete 0 end}
+         foreach entry $entries {$w.$m.menu add command -label [lindex $entry 0] -command [lindex $entry 1]}
+      }
+   }
+   foreach {label text} $labels {$label configure -text $text}
+}
+)tcl";
+
 constexpr std::string_view kInstalled = "::hefesto::tk::class(.)";
 
 std::string tcl_list(const std::vector<std::string>& words) {
@@ -795,7 +907,7 @@ cmd::CommandResult install_tk_model(script::Interpreter& interp) {
   if (has_tk_model(interp)) {
     return cmd::CommandResult::success();
   }
-  for (const std::string_view part : {kTree, kCommands, kWidgets, kMenus, kItems, kWrapper, kTagProcs}) {
+  for (const std::string_view part : {kTree, kCommands, kWidgets, kMenus, kItems, kWrapper, kTagProcs, kManagers}) {
     cmd::CommandResult r = interp.evaluate(part, cmd::Origin::internal);
     if (!r.ok()) {
       return r;
@@ -829,6 +941,108 @@ cmd::CommandResult build_toolbar_widgets(script::Interpreter& interp, std::strin
   return interp.evaluate(
       tcl_list({"::hefesto::tk::toolbar", frame, tcl_list(model.layers), tcl_list(model.locked)}),
       cmd::Origin::internal);
+}
+
+namespace {
+
+std::string cell_rows(const CellManagerModel& model) {
+  std::vector<std::string> rows;
+  for (const CellManagerRow& row : model.rows) {
+    const std::size_t slash = row.id.rfind('/');
+    const std::string parent = slash == std::string::npos ? std::string{} : row.id.substr(0, slash);
+    rows.push_back(tcl_list({row.id, row.cell, row.instance, parent}));
+  }
+  return tcl_list(rows);
+}
+
+std::string library_rows(const LibraryManagerModel& model) {
+  std::vector<std::string> rows;
+  for (const LibraryManagerRow& row : model.rows) {
+    rows.push_back(tcl_list({row.directory, row.cell, row.technology}));
+  }
+  return tcl_list(rows);
+}
+
+// A style menu's entries: `magic::<command> <style> ;  magic::techmanager update`.
+std::string style_entries(const std::vector<std::string>& styles, const std::string& command) {
+  std::vector<std::string> entries;
+  for (const std::string& style : styles) {
+    entries.push_back(tcl_list({style, "magic::" + command + " " + style + " ;  magic::techmanager update"}));
+  }
+  return tcl_list(entries);
+}
+
+std::string tech_menus(const TechManagerModel& model) {
+  std::vector<std::string> techs;
+  for (const TechMenuEntry& entry : model.tech_menu) {
+    const std::string command = entry.command.starts_with("tech ") ? "magic::" + entry.command : entry.command;
+    techs.push_back(tcl_list({entry.label, command + " ;  magic::techmanager update"}));
+  }
+  return tcl_list({"title.tname", tcl_list(techs), "cif0.lstyle", style_entries(model.cif_input_styles, "cif istyle"),
+                   "cif1.lstyle", style_entries(model.cif_output_styles, "cif ostyle"), "extract.lstyle",
+                   style_entries(model.extract_styles, "extract style"), "drc.lstyle",
+                   style_entries(model.drc_styles, "drc style")});
+}
+
+std::string tech_labels(const TechManagerModel& model) {
+  return tcl_list({".techmgr.title.tname", model.technology, ".techmgr.title.tvers", model.version,
+                   ".techmgr.subtitle", model.description, ".techmgr.lambda0.lval", model.microns_per_lambda,
+                   ".techmgr.cif0.lstyle", model.cif_input_style, ".techmgr.cif1.lstyle", model.cif_output_style,
+                   ".techmgr.cif1.llambda", model.microns_per_lambda, ".techmgr.extract.lstyle",
+                   model.extract_style, ".techmgr.drc.lstyle", model.drc_style});
+}
+
+}  // namespace
+
+cmd::CommandResult update_manager_widgets(cmd::CommandContext& ctx, script::Interpreter& interp,
+                                          ManagerWindow window, std::string_view option) {
+  const std::string opt{option};
+  std::string script;
+  switch (window) {
+    case ManagerWindow::cell:
+      script = tcl_list({"::hefesto::tk::cellmanager", opt, cell_rows(cell_manager_model(ctx))});
+      break;
+    case ManagerWindow::library: {
+      const auto filtered = interp.get_var("filtered");
+      const LibraryManagerModel model = library_manager_model(ctx, !filtered || filtered->to_string() != "0");
+      script = tcl_list({"::hefesto::tk::libmanager", opt, tcl_list(model.directories), library_rows(model)});
+      break;
+    }
+    case ManagerWindow::technology: {
+      const TechManagerModel model = tech_manager_model(ctx);
+      script = tcl_list({"::hefesto::tk::techmanager", opt, tech_menus(model), tech_labels(model)});
+      break;
+    }
+  }
+  return interp.evaluate(script, cmd::Origin::internal);
+}
+
+std::string tk_file_types(const std::vector<std::pair<std::string, std::string>>& types) {
+  std::string out;
+  for (const auto& [description, patterns] : types) {
+    const std::string desc = description.find(' ') == std::string::npos ? description : '"' + description + '"';
+    out += out.empty() ? "{" : " {";
+    out += desc + (patterns == "*" ? " {*}}" : " {" + patterns + " {" + patterns + "}}}");
+  }
+  return "{" + out + "}";
+}
+
+std::optional<platform::Path> TkFilePicker::pick(const platform::FilePickerRequest& request) {
+  script::Interpreter* interp = editor_.script.interp.get();
+  if (interp == nullptr) {
+    return std::nullopt;
+  }
+  const bool open = request.mode == platform::FilePickerRequest::Mode::open;
+  std::string script = std::string{open ? "tk_getOpenFile" : "tk_getSaveFile"} + " -filetypes " +
+                       tk_file_types(request.file_types);
+  if (!request.title.empty()) {
+    script += " -title " + script::quote_list_element(request.title);
+  }
+  const cmd::CommandResult chosen = interp->evaluate(script, cmd::Origin::internal);
+  if (!chosen.ok() || chosen.value.to_string().empty()) {
+    return std::nullopt;
+  }
+  return platform::Path{chosen.value.to_string()};
 }
 
 const std::vector<std::string>& wrapper_global_commands() {

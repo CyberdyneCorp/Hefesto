@@ -64,12 +64,26 @@ CommandResult cmd_closewrapper(CommandContext& ctx, const Invocation& inv) {
   return close_wrapper(ctx, inv.args[0]);
 }
 
+// hefesto-cli's headless widget model (wrapper mode): the manager's window.
+CommandResult manager_widgets(CommandContext& ctx, std::optional<ManagerWindow> window, const std::string& option) {
+  script::Interpreter* interp = ctx.editor() != nullptr ? ctx.editor()->script.interp.get() : nullptr;
+  if (!window || interp == nullptr || !has_tk_model(*interp)) {
+    return CommandResult::success();
+  }
+  CommandResult r = update_manager_widgets(ctx, *interp, *window, option);
+  if (!r.ok()) {
+    const std::string text = r.diagnostics.empty() ? std::string{} : r.diagnostics.front().text;
+    return CommandResult::raised(diag::make(codes::kTkError, text));
+  }
+  return CommandResult::success();
+}
+
 // `<manager> ?option?`: `create` installs the tags of the manager's script
 // once (Magic installs them when the script is sourced); every option is
 // otherwise answered by SHELL, which renders the model (techmanager
 // initall included: Q-SCRIPT-33).
 CommandResult manager(CommandContext& ctx, const Invocation& inv, std::string_view usage,
-                      std::optional<GuiScript> script) {
+                      std::optional<GuiScript> script, std::optional<ManagerWindow> window = std::nullopt) {
   if (inv.args.size() > 1) {
     return detail::wrong_args(usage);
   }
@@ -81,7 +95,7 @@ CommandResult manager(CommandContext& ctx, const Invocation& inv, std::string_vi
       install_gui_tags(tags, *script);
     }
   }
-  return CommandResult::success();
+  return manager_widgets(ctx, window, inv.args.empty() ? std::string{"update"} : inv.args[0]);
 }
 
 // texthelper.tcl's `proc magic::make_texthelper { mgrpath }`: one argument.
@@ -168,9 +182,10 @@ bool register_gui_commands(cmd::CommandRegistry& registry) {
               .has_value() &&
          ok;
   };
-  const auto managed = [](std::string usage, std::optional<GuiScript> script) {
-    return [usage = std::move(usage), script](CommandContext& ctx, const Invocation& inv) {
-      return manager(ctx, inv, usage, script);
+  const auto managed = [](std::string usage, std::optional<GuiScript> script,
+                          std::optional<ManagerWindow> window = std::nullopt) {
+    return [usage = std::move(usage), script, window](CommandContext& ctx, const Invocation& inv) {
+      return manager(ctx, inv, usage, script, window);
     };
   };
   add("drc_save_report", "drc_save_report [<cell> [<file>]]", "Write the DRC errors of a cell to a report file.",
@@ -180,13 +195,13 @@ bool register_gui_commands(cmd::CommandRegistry& registry) {
   add("openwrapper", "openwrapper [<cell> [<frame>]]", "Open a layout window in a wrapper frame.", cmd_openwrapper);
   add("closewrapper", "closewrapper <frame>", "Close a wrapper frame and its layout window.", cmd_closewrapper);
   add("techmanager", "techmanager [create|init|update]", "Technology manager.",
-      managed("magic::techmanager ?option?", std::nullopt));
+      managed("magic::techmanager ?option?", std::nullopt, ManagerWindow::technology));
   add("promptload", "promptload magic|gds|cif|getcell", "Load a file chosen in a file dialog.", cmd_promptload);
   add("promptsave", "promptsave magic|force|gds|cif", "Save to a file chosen in a file dialog.", cmd_promptsave);
   add("cellmanager", "cellmanager [create|update]", "Cell manager.",
-      managed("magic::cellmanager ?option?", GuiScript::cell_manager));
+      managed("magic::cellmanager ?option?", GuiScript::cell_manager, ManagerWindow::cell));
   add("libmanager", "libmanager [create|update]", "Library manager.",
-      managed("magic::libmanager ?option?", GuiScript::library_manager));
+      managed("magic::libmanager ?option?", GuiScript::library_manager, ManagerWindow::library));
   add("drcmanager", "drcmanager [create|update]", "DRC manager.",
       managed("magic::drcmanager ?option?", GuiScript::drc_manager));
   add("make_texthelper", "make_texthelper <window>", "Text helper.",

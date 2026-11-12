@@ -419,6 +419,8 @@ class Session {
         return script::register_window_commands(*editor_.script.interp, *dispatcher_, inv.args);
       });
       ready = gui::import_wrapper_commands(interp);
+      file_picker_ = std::make_unique<gui::TkFilePicker>(editor_);
+      editor_.file_picker = file_picker_.get();
     }
     for (const auto& diagnostic : ready.diagnostics) {
       dispatcher_->report(diagnostic);
@@ -634,6 +636,7 @@ class Session {
   MagicConsole magic_console_;
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
   bool wrapper_display_ = false;  // -d names a display other than NULL (wrapper mode)
+  std::unique_ptr<platform::FilePicker> file_picker_;  // wrapper mode: Tk's file dialogs
 };
 
 int report_usage_error(const std::string& text, std::FILE* err) {
