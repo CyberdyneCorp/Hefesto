@@ -272,3 +272,8 @@ reason = "tag %r inserts the result as one list-quoted word; Magic wraps it in u
 decisions = ["Q-SCRIPT-41"]
 outputs = ["stderr.txt"]
 reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
+
+[SCRIPT-GUI-02]
+decisions = ["Q-SCRIPT-13"]
+outputs = ["stdout.txt"]
+reason = "openwrapper also runs Winopts(<frame>,callback), the key without the space; Magic reads only Winopts(<frame>, callback), so the per-window callback the case sets never runs there"

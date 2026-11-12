@@ -1,0 +1,219 @@
+Use openwrapper to create a new GUI-based layout window
+Use closewrapper to remove a new GUI-based layout window
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 07:11:13 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using TrueColor, VisualID 0x21 depth 24
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+New windows will not have a title caption.
+New windows will not have scroll bars.
+New windows will not have a border.
+Handling file entry input/commands.tcl extension .tcl
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+1 {bad window path name ".layout1.toolbar"}
+.layout1.pane.top.toolbar
+.layout1.pane.top.toolbar.canvas
+.layout1.pane.top.toolbar.canvas.frame
+.layout1.pane.top.toolbar.canvas.frame.fbccdiffusion
+.layout1.pane.top.toolbar.canvas.frame.fbccdiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fbccdiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fcapacitor
+.layout1.pane.top.toolbar.canvas.frame.fcapacitor.b
+.layout1.pane.top.toolbar.canvas.frame.fcapacitor.l
+.layout1.pane.top.toolbar.canvas.frame.fcapcontact
+.layout1.pane.top.toolbar.canvas.frame.fcapcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fcapcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fcapwell
+.layout1.pane.top.toolbar.canvas.frame.fcapwell.b
+.layout1.pane.top.toolbar.canvas.frame.fcapwell.l
+.layout1.pane.top.toolbar.canvas.frame.fcollector
+.layout1.pane.top.toolbar.canvas.frame.fcollector.b
+.layout1.pane.top.toolbar.canvas.frame.fcollector.l
+.layout1.pane.top.toolbar.canvas.frame.fcollectorcontact
+.layout1.pane.top.toolbar.canvas.frame.fcollectorcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fcollectorcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fdoublentransistor
+.layout1.pane.top.toolbar.canvas.frame.fdoublentransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fdoublentransistor.l
+.layout1.pane.top.toolbar.canvas.frame.fdoubleptransistor
+.layout1.pane.top.toolbar.canvas.frame.fdoubleptransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fdoubleptransistor.l
+.layout1.pane.top.toolbar.canvas.frame.felectrode
+.layout1.pane.top.toolbar.canvas.frame.felectrode.b
+.layout1.pane.top.toolbar.canvas.frame.felectrode.l
+.layout1.pane.top.toolbar.canvas.frame.felectrodecontact
+.layout1.pane.top.toolbar.canvas.frame.felectrodecontact.b
+.layout1.pane.top.toolbar.canvas.frame.felectrodecontact.l
+.layout1.pane.top.toolbar.canvas.frame.femitter
+.layout1.pane.top.toolbar.canvas.frame.femitter.b
+.layout1.pane.top.toolbar.canvas.frame.femitter.l
+.layout1.pane.top.toolbar.canvas.frame.femittercontact
+.layout1.pane.top.toolbar.canvas.frame.femittercontact.b
+.layout1.pane.top.toolbar.canvas.frame.femittercontact.l
+.layout1.pane.top.toolbar.canvas.frame.fentransistor
+.layout1.pane.top.toolbar.canvas.frame.fentransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fentransistor.l
+.layout1.pane.top.toolbar.canvas.frame.feptransistor
+.layout1.pane.top.toolbar.canvas.frame.feptransistor.b
+.layout1.pane.top.toolbar.canvas.frame.feptransistor.l
+.layout1.pane.top.toolbar.canvas.frame.ferrors
+.layout1.pane.top.toolbar.canvas.frame.ferrors.b
+.layout1.pane.top.toolbar.canvas.frame.ferrors.l
+.layout1.pane.top.toolbar.canvas.frame.ffence
+.layout1.pane.top.toolbar.canvas.frame.ffence.b
+.layout1.pane.top.toolbar.canvas.frame.ffence.l
+.layout1.pane.top.toolbar.canvas.frame.fgenericcontact
+.layout1.pane.top.toolbar.canvas.frame.fgenericcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fgenericcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fglass
+.layout1.pane.top.toolbar.canvas.frame.fglass.b
+.layout1.pane.top.toolbar.canvas.frame.fglass.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndcontact
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndiffusion
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltndiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubcontact
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubdiff
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubdiff.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnsubdiff.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltntransistor
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltntransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltntransistor.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnwell
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnwell.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltnwell.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdcontact
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdiffusion
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpdiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubcontact
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubdiff
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubdiff.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpsubdiff.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltptransistor
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltptransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltptransistor.l
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpwell
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpwell.b
+.layout1.pane.top.toolbar.canvas.frame.fhighvoltpwell.l
+.layout1.pane.top.toolbar.canvas.frame.flabels
+.layout1.pane.top.toolbar.canvas.frame.flabels.b
+.layout1.pane.top.toolbar.canvas.frame.flabels.l
+.layout1.pane.top.toolbar.canvas.frame.fm2contact
+.layout1.pane.top.toolbar.canvas.frame.fm2contact.b
+.layout1.pane.top.toolbar.canvas.frame.fm2contact.l
+.layout1.pane.top.toolbar.canvas.frame.fm3contact
+.layout1.pane.top.toolbar.canvas.frame.fm3contact.b
+.layout1.pane.top.toolbar.canvas.frame.fm3contact.l
+.layout1.pane.top.toolbar.canvas.frame.fmagnet
+.layout1.pane.top.toolbar.canvas.frame.fmagnet.b
+.layout1.pane.top.toolbar.canvas.frame.fmagnet.l
+.layout1.pane.top.toolbar.canvas.frame.fmetal1
+.layout1.pane.top.toolbar.canvas.frame.fmetal1.b
+.layout1.pane.top.toolbar.canvas.frame.fmetal1.l
+.layout1.pane.top.toolbar.canvas.frame.fmetal2
+.layout1.pane.top.toolbar.canvas.frame.fmetal2.b
+.layout1.pane.top.toolbar.canvas.frame.fmetal2.l
+.layout1.pane.top.toolbar.canvas.frame.fmetal3
+.layout1.pane.top.toolbar.canvas.frame.fmetal3.b
+.layout1.pane.top.toolbar.canvas.frame.fmetal3.l
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffcontact
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffusion
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fnbccdiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fndcontact
+.layout1.pane.top.toolbar.canvas.frame.fndcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fndcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fndiffusion
+.layout1.pane.top.toolbar.canvas.frame.fndiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fndiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fnplusdoping
+.layout1.pane.top.toolbar.canvas.frame.fnplusdoping.b
+.layout1.pane.top.toolbar.canvas.frame.fnplusdoping.l
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratencontact
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratencontact.b
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratencontact.l
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratendiff
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratendiff.b
+.layout1.pane.top.toolbar.canvas.frame.fnsubstratendiff.l
+.layout1.pane.top.toolbar.canvas.frame.fntransistor
+.layout1.pane.top.toolbar.canvas.frame.fntransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fntransistor.l
+.layout1.pane.top.toolbar.canvas.frame.fnwell
+.layout1.pane.top.toolbar.canvas.frame.fnwell.b
+.layout1.pane.top.toolbar.canvas.frame.fnwell.l
+.layout1.pane.top.toolbar.canvas.frame.fpad
+.layout1.pane.top.toolbar.canvas.frame.fpad.b
+.layout1.pane.top.toolbar.canvas.frame.fpad.l
+.layout1.pane.top.toolbar.canvas.frame.fpbase
+.layout1.pane.top.toolbar.canvas.frame.fpbase.b
+.layout1.pane.top.toolbar.canvas.frame.fpbase.l
+.layout1.pane.top.toolbar.canvas.frame.fpbasecontact
+.layout1.pane.top.toolbar.canvas.frame.fpbasecontact.b
+.layout1.pane.top.toolbar.canvas.frame.fpbasecontact.l
+.layout1.pane.top.toolbar.canvas.frame.fpdcontact
+.layout1.pane.top.toolbar.canvas.frame.fpdcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fpdcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusion
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusion.b
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusion.l
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusionstop
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusionstop.b
+.layout1.pane.top.toolbar.canvas.frame.fpdiffusionstop.l
+.layout1.pane.top.toolbar.canvas.frame.fpolycontact
+.layout1.pane.top.toolbar.canvas.frame.fpolycontact.b
+.layout1.pane.top.toolbar.canvas.frame.fpolycontact.l
+.layout1.pane.top.toolbar.canvas.frame.fpolysilicon
+.layout1.pane.top.toolbar.canvas.frame.fpolysilicon.b
+.layout1.pane.top.toolbar.canvas.frame.fpolysilicon.l
+.layout1.pane.top.toolbar.canvas.frame.fpplusdoping
+.layout1.pane.top.toolbar.canvas.frame.fpplusdoping.b
+.layout1.pane.top.toolbar.canvas.frame.fpplusdoping.l
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepcontact
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepcontact.b
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepcontact.l
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepdiff
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepdiff.b
+.layout1.pane.top.toolbar.canvas.frame.fpsubstratepdiff.l
+.layout1.pane.top.toolbar.canvas.frame.fptransistor
+.layout1.pane.top.toolbar.canvas.frame.fptransistor.b
+.layout1.pane.top.toolbar.canvas.frame.fptransistor.l
+.layout1.pane.top.toolbar.canvas.frame.fpwell
+.layout1.pane.top.toolbar.canvas.frame.fpwell.b
+.layout1.pane.top.toolbar.canvas.frame.fpwell.l
+.layout1.pane.top.toolbar.canvas.frame.frotate
+.layout1.pane.top.toolbar.canvas.frame.frotate.b
+.layout1.pane.top.toolbar.canvas.frame.frotate.l
+.layout1.pane.top.toolbar.canvas.frame.fsubcell
+.layout1.pane.top.toolbar.canvas.frame.fsubcell.b
+.layout1.pane.top.toolbar.canvas.frame.fsubcell.l
+.layout1.pane.top.toolbar.canvas.frame.fsubstrateopen
+.layout1.pane.top.toolbar.canvas.frame.fsubstrateopen.b
+.layout1.pane.top.toolbar.canvas.frame.fsubstrateopen.l
+.layout1.pane.top.toolbar.canvas.frame.fwellcapacitor
+.layout1.pane.top.toolbar.canvas.frame.fwellcapacitor.b
+.layout1.pane.top.toolbar.canvas.frame.fwellcapacitor.l
+.layout1.pane.top.toolbar.vscroll
