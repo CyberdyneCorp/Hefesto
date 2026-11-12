@@ -10,6 +10,9 @@ Regression (m4-scripting closing round): the M4 sky130A.tech `include`s its
 drc, cifout, cifin and extract sections from part files beside it; the bench
 copied sky130A.tech alone, so Magic loaded a technology without a drc section
 and segfaulted on `drc check` (perf.yml drc-bench: "docker exited 139").
+Since M4 hefesto-cli runs scripts through Tcl and, like Magic, prints a result
+only through `puts`: the bench's bare `drc list count total` printed nothing,
+so Hefesto's error count read as empty.
 """
 
 import importlib.util
@@ -51,6 +54,14 @@ class BenchPinTest(unittest.TestCase):
             drc_bench.prepare(work, root)
             for name in parts:
                 self.assertEqual((work / name).read_text(), name)
+
+    def test_drc_bench_scripts_print_the_count_with_puts(self):
+        drc_bench = load("bench_count_drc_bench", REPO / "bench" / "drc" / "drc_bench.py")
+        workload = drc_bench.Workload("probe", "load top\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            for tool in ("hefesto", "magic"):
+                for script in drc_bench.write_scripts(tool, workload, 2, Path(tmp)):
+                    self.assertIn("puts [drc list count total]\n", (Path(tmp) / script).read_text())
 
 
 if __name__ == "__main__":

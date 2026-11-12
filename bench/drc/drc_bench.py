@@ -76,8 +76,8 @@ CHECK = """select top cell
 drc check
 drc catchup
 """
-# The error count: a Magic script prints a result only through `puts`; hefesto-cli prints every value.
-COUNT = {"hefesto": "drc list count total\n", "magic": "puts [drc list count total]\n"}
+# The error count: a script prints a result only through `puts`, in Magic and (since M4's Tcl) in hefesto-cli.
+COUNT = {"hefesto": "puts [drc list count total]\n", "magic": "puts [drc list count total]\n"}
 QUIT = "quit -noprompt\n"
 
 
