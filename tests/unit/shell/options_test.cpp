@@ -122,3 +122,25 @@ TEST_CASE("the pinch option injects a trackpad pinch at a window point",
   const std::vector<std::string_view> wrong{"--pinch", "1,2"};
   CHECK_FALSE(hefesto::shell::parse_shell_options(wrong).options);
 }
+
+TEST_CASE("captures can show the menu bar in the window, an open menu and a utility window",
+          "[cap:hefesto-app-ux][req:Desktop platform integration through Raven]") {
+  const std::vector<std::string_view> args{"--menu-bar-in-window", "--press", "385,63", "--capture-window", "pcell"};
+  const auto parsed = parse(args);
+  REQUIRE(parsed.options);
+  CHECK(parsed.options->menu_bar_in_window);
+  REQUIRE(parsed.options->press.has_value());
+  CHECK(parsed.options->press->x0 == 385.0F);
+  CHECK(parsed.options->press->y0 == 63.0F);
+  CHECK(parsed.options->press->x1 == 385.0F);
+  CHECK(parsed.options->capture_window == "pcell");
+  // Defaults: the system bar on macOS, the main window captured.
+  const auto plain = parse({});
+  REQUIRE(plain.options);
+  CHECK_FALSE(plain.options->menu_bar_in_window);
+  CHECK_FALSE(plain.options->press.has_value());
+  CHECK(plain.options->capture_window == "main");
+  for (const char* name : {"main", "pcell", "texthelper", "reorder"}) CHECK(is_capture_window(name));
+  CHECK_FALSE(parse({"--capture-window", "console"}).options);
+  for (const char* bad : {"1", "1,2,3", "a,b", ""}) CHECK_FALSE(parse_press_option(bad).has_value());
+}

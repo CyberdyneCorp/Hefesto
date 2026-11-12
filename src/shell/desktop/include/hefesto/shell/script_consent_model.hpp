@@ -106,7 +106,17 @@ struct ConsentPromptView {
 /// The prompt as the shell's question dialog: one button per answer, the
 /// default answer primary. `run_dialog`'s result (answer index + 1, 0 when
 /// dismissed) maps back through consent_decision().
-[[nodiscard]] PromptDialog consent_dialog(const ConsentPromptView& view);
+/// One origin row as a dialog detail: "ciel 5740c4a · ● digest verified" is
+/// the value and an ok chip, "▲ not in the PDK store · not verified" a
+/// warning chip, "sky130A.tcl + 8 part files (…)" the value and a note.
+[[nodiscard]] DialogDetail consent_detail(const std::string& key, const std::string& text);
+/// The prompt as an M4 alert: shield icon, body, origin block, Don't run on
+/// the left (board M4-Script-Consent tiles 1-4).
+/// The script path is shown from `home` as "~/…" and shortened in the
+/// middle to one line of the block; the whole path is the row's tooltip.
+[[nodiscard]] PromptDialog consent_dialog(const ConsentPromptView& view, std::string_view home = {});
+/// `path` under `home` written as "~/rest"; otherwise unchanged.
+[[nodiscard]] std::string home_relative(std::string_view path, std::string_view home);
 [[nodiscard]] script::ConsentDecision consent_decision(const ConsentPromptView& view, int dialog_result) noexcept;
 
 // --- the desktop ConsentHost ------------------------------------------------------------

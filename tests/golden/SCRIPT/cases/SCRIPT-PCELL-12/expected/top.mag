@@ -1,0 +1,29 @@
+magic
+tech scmos
+timestamp 1794493353
+<< checkpaint >>
+rect -14 16 15 20
+rect -17 14 17 16
+rect -17 -18 19 14
+rect -17 -19 17 -18
+<< metal1 >>
+rect 0 0 1 1
+rect 0 -2 1 -1
+rect 0 -4 1 -3
+use sub1  X1
+array 0 0 1 0 1 5
+timestamp 1794493353
+transform 1 0 0 0 1 0
+box 0 -4 1 1
+use sub2  X2 input
+timestamp 100
+transform 1 0 1 0 1 -4
+box 0 0 4 4
+<< labels >>
+flabel metal1 0 0 1 1 0 FreeSans 8 0 0 0 in
+port 0 nsew
+flabel metal1 0 -2 1 -1 0 FreeSans 8 0 0 0 out
+port 1 nsew
+flabel metal1 0 -4 1 -3 0 FreeSans 8 0 0 0 vdd
+port 2 nsew
+<< end >>

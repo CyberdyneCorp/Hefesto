@@ -236,6 +236,7 @@ diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOption
   use->locked = options.locked;
   compute_use_bbox(*use);
   CellUse* raw = use.get();
+  parent.link_use_id(raw->id);  // DBLinkCell
   parent.uses().push_back(std::move(use));
   child.instances().insert(child.instances().begin(), raw);
   if (ChangeRecorder* r = parent.recorder()) {
@@ -258,6 +259,7 @@ diag::Status remove_use(CellUse& use) {
     r->use_deleted(*parent, use);
   }
   mark_modified(*parent);
+  parent->unlink_use_id(use.id);  // DBUnLinkCell
   auto& uses = parent->uses();
   uses.erase(std::remove_if(uses.begin(), uses.end(), [&](const auto& u) { return u.get() == &use; }), uses.end());
   return diag::Done{};
@@ -286,6 +288,8 @@ diag::Status rename_use(CellUse& use, std::string_view new_id) {
   const std::string old_id = std::move(use.id);
   use.id = std::string{new_id};
   if (use.parent != nullptr) {
+    use.parent->unlink_use_id(old_id);  // DBReLinkCell
+    use.parent->link_use_id(use.id);
     if (ChangeRecorder* r = use.parent->recorder()) {
       r->use_id_cleared(*use.parent, use, old_id);
       r->use_id_set(*use.parent, use, use.id);
@@ -322,13 +326,18 @@ std::size_t make_use_ids_unique(CellDef& parent, bool magic_compat) {
   const std::vector<CellUse*> order = uses_in_search_order(parent);
   for (CellUse* u : order) {
     if (!u->id.empty() && !names.insert(u->id).second) {
+      parent.unlink_use_id(u->id);  // dbFindNamesFunc
       u->id.clear();
     }
   }
   std::map<const CellDef*, std::int64_t> next_suffix;
   std::size_t assigned = 0;
   for (CellUse* u : order) {
-    if (!u->id.empty() || u->def == nullptr) {
+    if (!u->id.empty()) {
+      parent.link_use_id(u->id);  // dbGenerateUniqueIdsFunc's setHash
+      continue;
+    }
+    if (u->def == nullptr) {
       continue;
     }
     const std::string_view base = magic_compat ? std::string_view{u->def->name()} : last_component(u->def->name());
@@ -344,6 +353,7 @@ std::size_t make_use_ids_unique(CellDef& parent, bool magic_compat) {
       names.insert(name);  // distinct children may share a base name
     }
     u->id = std::move(name);
+    parent.link_use_id(u->id);
     next_suffix[u->def] = suffix + 1;
     ++assigned;
   }

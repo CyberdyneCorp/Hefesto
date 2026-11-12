@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "binding_fixture.hpp"
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/script/binding/output.hpp"
 
 namespace script = hefesto::script;
@@ -105,6 +106,30 @@ TEST_CASE("Multiple-choice questions use tk_dialog", "[cap:scripting-api][req:Pr
   CHECK(f.value("set ::dialog") == ".dialog Dialog {Quit $x?} {} 0 no yes");
   f.value("proc tk_dialog {args} {return nope}");
   CHECK(host.ask("Really?", answers, 1) == 1);
+}
+
+// Regression (SCRIPT-PDK-07, SCRIPT-PCELL-12; Q-SCRIPT-48): TxDialog gives -1
+// when tk_dialog gives no integer, and Magic's callers that stop only on "no"
+// go ahead. try_ask() tells that case apart; cmd::confirm() goes ahead with
+// magic-compat ON and declines with it OFF.
+TEST_CASE("A confirmation that cannot be asked", "[cap:scripting-api][req:Prompts and dialogs through the script layer]") {
+  BindingFixture f;
+  script::ScriptPromptHost host{*f.interp};
+  const std::array<std::string, 2> answers{"no", "yes"};
+  CHECK_FALSE(host.try_ask("Really?", answers, 0).has_value());  // no tk_dialog without Tk
+  CHECK(hefesto::cmd::confirm(&host, "Really?", true));
+  CHECK_FALSE(hefesto::cmd::confirm(&host, "Really?", false));
+  CHECK(hefesto::cmd::confirm(nullptr, "Really?", true));
+  CHECK_FALSE(hefesto::cmd::confirm(nullptr, "Really?", false));
+  hefesto::cmd::HeadlessPromptHost headless;
+  CHECK_FALSE(hefesto::cmd::try_confirm(&headless, "Really?").has_value());
+  CHECK(headless.ask("Really?", answers, 0) == 0);  // plain questions keep their default
+  f.value("proc tk_dialog {args} {return -1}");
+  CHECK_FALSE(host.try_ask("Really?", answers, 0).has_value());
+  f.value("proc tk_dialog {args} {return 0}");
+  CHECK_FALSE(hefesto::cmd::confirm(&host, "Really?", true));  // an answered "no" declines in both settings
+  f.value("proc tk_dialog {args} {return 1}");
+  CHECK(hefesto::cmd::confirm(&host, "Really?", false));
 }
 
 TEST_CASE("Piped startup commands are not lost", "[cap:scripting-api][req:Terminal input queue without console]") {

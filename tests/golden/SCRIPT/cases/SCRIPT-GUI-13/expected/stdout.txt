@@ -1,0 +1,103 @@
+Use openwrapper to create a new GUI-based layout window
+Use closewrapper to remove a new GUI-based layout window
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 14:13:52 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using TrueColor, VisualID 0x21 depth 24
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+New windows will not have a title caption.
+New windows will not have scroll bars.
+New windows will not have a border.
+Handling file entry input/commands.tcl extension .tcl
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+0 after#1
+Switching to WIRING tool.
+0 {}
+Switching to BOX tool.
+0 {}
+0 box
+0 282
+Current tool is box.
+Button command bindings:
+Macro 'XK_Pointer_Button1' contains "*bypass box move bl cursor"
+Macro 'XK_Pointer_Button2' contains "*bypass paint cursor"
+Macro 'XK_Pointer_Button3' contains "*bypass box corner ur cursor"
+Macro 'Shift_XK_Pointer_Button1' contains "*bypass box corner bl cursor"
+Macro 'Shift_XK_Pointer_Button2' contains "*bypass erase cursor"
+Macro 'Shift_XK_Pointer_Button3' contains "*bypass box move ur cursor"
+Macro 'Control_XK_Pointer_Button1' contains "*bypass box move bl cursor"
+Macro 'Control_XK_Pointer_Button2' contains "*bypass paint cursor"
+Macro 'Control_XK_Pointer_Button3' contains "*bypass box corner ur cursor"
+Macro 'XK_Pointer_Button4' contains "scroll u .05 w"
+Macro 'XK_Pointer_Button5' contains "scroll d .05 w"
+0 {}
+Switching to WIRING tool.
+0 {}
+0 wiring
+0 282
+Current tool is wiring.
+Button command bindings:
+Macro 'XK_Pointer_Button1' contains "magic::trackwire %W pick"
+Macro 'XK_Pointer_Button2' contains "magic::trackwire %W done"
+Macro 'XK_Pointer_Button3' contains "magic::trackwire %W cancel"
+Macro 'Shift_XK_Pointer_Button1' contains "wire incr type ; wire show"
+Macro 'Shift_XK_Pointer_Button2' contains "wire switch"
+Macro 'Shift_XK_Pointer_Button3' contains "wire decr type ; wire show"
+Macro 'Control_XK_Pointer_Button1' contains "magic::trackwire %W current"
+Macro 'Control_XK_Pointer_Button2' contains "*bypass paint cursor"
+Macro 'Control_XK_Pointer_Button3' contains "*bypass box corner ur cursor"
+Macro 'XK_Pointer_Button4' contains "wire incr width ; wire show"
+Macro 'XK_Pointer_Button5' contains "wire decr width ; wire show"
+0 {}
+0 {}
+0 wiring
+0 282
+Current tool is wiring.
+Button command bindings:
+Macro 'XK_Pointer_Button1' contains "magic::trackwire %W pick"
+Macro 'XK_Pointer_Button2' contains "magic::trackwire %W done"
+Macro 'XK_Pointer_Button3' contains "magic::trackwire %W cancel"
+Macro 'Shift_XK_Pointer_Button1' contains "wire incr type ; wire show"
+Macro 'Shift_XK_Pointer_Button2' contains "wire switch"
+Macro 'Shift_XK_Pointer_Button3' contains "wire decr type ; wire show"
+Macro 'Control_XK_Pointer_Button1' contains "magic::trackwire %W current"
+Macro 'Control_XK_Pointer_Button2' contains "*bypass paint cursor"
+Macro 'Control_XK_Pointer_Button3' contains "*bypass box corner ur cursor"
+Macro 'XK_Pointer_Button4' contains "wire incr width ; wire show"
+Macro 'XK_Pointer_Button5' contains "wire decr width ; wire show"
+0 {}
+Switching to PICK tool.
+0 {}
+0 pick
+0 282
+Current tool is pick.
+Button command bindings:
+Macro 'XK_Pointer_Button1' contains "magic::keepselect %W"
+Macro 'XK_Pointer_Button2' contains "magic::startselect %W pick"
+Macro 'XK_Pointer_Button3' contains "magic::cancelselect %W"
+Macro 'Shift_XK_Pointer_Button1' contains "box corner bl cursor"
+Macro 'Shift_XK_Pointer_Button2' contains "magic::startselect %W copy"
+Macro 'Shift_XK_Pointer_Button3' contains "box move ur cursor"
+Macro 'Control_XK_Pointer_Button1' contains "*bypass box move bl cursor"
+Macro 'Control_XK_Pointer_Button2' contains "*bypass paint cursor"
+Macro 'Control_XK_Pointer_Button3' contains "*bypass box corner ur cursor"
+Macro 'XK_Pointer_Button4' contains "scroll u .05 w"
+Macro 'XK_Pointer_Button5' contains "scroll d .05 w"
+0 {}

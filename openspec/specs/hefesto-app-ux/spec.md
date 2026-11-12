@@ -55,7 +55,7 @@ On the desktop:
 - `panel reset` (Reset layout) SHALL restore the default arrangement: Layers on the left, Inspector on the right, both shown
 - F6 SHALL move the keyboard focus to the next region and Shift-F6 to the previous one, in the order tool rail, Layers (filter field), canvas, Inspector (first action), Console, command bar, skipping hidden panels and an Inspector without an action
 
-The panel layout (dock, size, collapsed state, floating window) SHALL be saved per user (`panel-layout.json` in the user's storage folder) after each change and on quit, and restored at launch; a scripted capture or smoke run SHALL NOT save it. Dragging a panel header (a press that moves 4 or more units; a still press stays a click) SHALL carry the panel's title with the pointer; over a dock, the canvas column or an edge strip the target SHALL be highlighted, and the release SHALL issue the same `panel` command (`panel NAME dock ZONE`, or `panel NAME float X Y W H` over the canvas). Escape SHALL cancel the drag and change nothing.
+The panel layout (dock, size, collapsed state, floating window) SHALL be saved per user (`panel-layout.json` in the user's storage folder) after each change and on quit, and restored at launch; a scripted capture or smoke run SHALL NOT save it. Dragging a panel header (a press that moves 4 or more units; a still press stays a click) SHALL carry the panel's title with the pointer; over a dock or an edge strip the target dock SHALL be shown as a dashed ember drop zone with "Drop to dock on the left|right|at the bottom" (and "NAME was undocked from here" over the dock a floating panel came from; an empty dock previewed at its width), over the canvas the floating window's outline, and the release SHALL issue the same `panel` command (`panel NAME dock ZONE`, or `panel NAME float X Y W H` over the canvas). Escape SHALL cancel the drag and change nothing.
 
 Compatibility: native
 
@@ -73,6 +73,11 @@ Compatibility: native
 - **THEN** the focus SHALL move to the canvas
 - **WHEN** the user presses Shift-F6
 - **THEN** the focus SHALL return to the tool rail
+
+#### Scenario: Docking a floating panel again
+- **GIVEN** the user ran `panel inspector float 700 150 300 300`
+- **WHEN** the user runs `panel inspector dock right` (or drops its header on the right dock)
+- **THEN** the Inspector SHALL fill the right dock at the dock's width and full height, as before it floated
 
 #### Scenario: Layout restored at launch
 - **GIVEN** the user ran `panel layers dock right` and `panel inspector float 900 200 300 420` and quit

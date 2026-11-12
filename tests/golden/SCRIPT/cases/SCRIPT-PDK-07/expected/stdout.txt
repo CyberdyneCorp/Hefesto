@@ -1,0 +1,603 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 14:13:52 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+Creating new cell
+Diagnostic: Device bounding box e -0.36499999184161425 -0.6499999854713678 0.36499999184161425 0.6499999854713678 (um)
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__nfet_01v8_BXHNFL.
+0 0
+0 {}
+Creating new cell
+Diagnostic: Device bounding box e -0.36499999184161425 -0.6949999844655395 0.36499999184161425 0.6949999844655395 (um)
+Moving label "B" from nsubdiff to nsubdiffcont in cell sky130_fd_pr__pfet_01v8_FQ5XRT.
+0 0
+0 sky130_fd_pr__pfet_01v8_FQ5XRT
+0 {{gencell sky130_fd_pr__pfet_01v8} {FIXED_BBOX -158 -208 158 208} {parameters {w 0.42 l 0.15 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.15 wmin 0.42 class mosfet compatible {sky130_fd_pr__pfet_01v8  sky130_fd_pr__pfet_01v8_lvt sky130_fd_pr__pfet_01v8_hvt  sky130_fd_pr__pfet_g5v0d10v5} full_metal 1 conn_gates 0 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1}} {library sky130}}
+File for cell top_2: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Diagnostic: Device bounding box e -2.2449999498203397 -2.939999934285879 0.8199999816715717 2.939999934285879 (um)
+Moving label "B" from mvpsubdiff to mvpsubdiffcont in cell sky130_fd_pr__nfet_g5v0d16v0_XNCHUA.
+0 0
+0 sky130_fd_pr__nfet_g5v0d16v0_XNCHUA
+0 {{gencell sky130_fd_pr__nfet_g5v0d16v0} {FIXED_BBOX -640 -833 640 833} {parameters {w 5.00 l 1.055 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 0 lmin 1.050 wmin 5.00 full_metal 1 conn_gates 0 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1}} {library sky130}}
+File for cell top_3: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Diagnostic: Device bounding box e -1.8449999587610364 -2.9849999332800508 0.8149999817833304 2.9849999332800508 (um)
+Moving label "B" from mvnsubdiff to mvnsubdiffcont in cell sky130_fd_pr__pfet_g5v0d16v0_VMPBJP.
+0 0
+0 sky130_fd_pr__pfet_g5v0d16v0_VMPBJP
+0 {{gencell sky130_fd_pr__pfet_g5v0d16v0} {FIXED_BBOX -599 -833 599 833} {parameters {w 5.00 l 1.050 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 0 lmin 1.050 wmin 5.00 class mosfet full_metal 1 conn_gates 0 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1}} {library sky130}}
+File for cell top_4: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D2" from psubdiff to psubdiffcont in cell sky130_fd_pr__diode_pw2nd_05v5_95G5CE.
+Moving label "D1" from ndiode to ndiodec in cell sky130_fd_pr__diode_pw2nd_05v5_95G5CE.
+0 0
+0 sky130_fd_pr__diode_pw2nd_05v5_95G5CE
+0 {{gencell sky130_fd_pr__diode_pw2nd_05v5} {FIXED_BBOX -130 -130 130 130} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 doverlap 0 compatible {sky130_fd_pr__diode_pw2nd_05v5 sky130_fd_pr__diode_pw2nd_05v5_lvt  sky130_fd_pr__diode_pw2nd_05v5_nvt sky130_fd_pr__diode_pw2nd_11v0} full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_5: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D2" from nsubdiff to nsubdiffcont in cell sky130_fd_pr__diode_pd2nw_05v5_PABBBD.
+Moving label "D1" from pdiode to pdiodec in cell sky130_fd_pr__diode_pd2nw_05v5_PABBBD.
+0 0
+0 sky130_fd_pr__diode_pd2nw_05v5_PABBBD
+0 {{gencell sky130_fd_pr__diode_pd2nw_05v5} {FIXED_BBOX -130 -130 130 130} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 glc 1 grc 1 gtc 1 gbc 1 doverlap 0 compatible {sky130_fd_pr__diode_pd2nw_05v5 sky130_fd_pr__diode_pd2nw_05v5_lvt  sky130_fd_pr__diode_pd2nw_05v5_hvt sky130_fd_pr__diode_pd2nw_11v0} full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_6: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__photodiode_MN62CG
+0 {{gencell sky130_fd_pr__photodiode} {FIXED_BBOX -2094 -2094 2094 2094} {parameters {nx 1 ny 1 deltax 0 deltay 0 xstep 8.0 ystep 8.0 class diode}} {library sky130}}
+File for cell top_7: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Diagnostic: Device bounding box e -0.754999983124435 -0.9549999786540866 0.754999983124435 0.9549999786540866 (um)
+0 0
+0 sky130_fd_pr__cap_var_lvt_RWRFT5
+0 {{gencell sky130_fd_pr__cap_var_lvt} {FIXED_BBOX -208 -248 208 248} {parameters {w 1.0 l 0.18 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.18 wmin 1.0 class mosfet compatible {sky130_fd_pr__cap_var_lvt  sky130_fd_pr__cap_var_hvt sky130_fd_pr__cap_var} full_metal 1 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 gshield 1}} {library sky130}}
+File for cell top_8: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_generic_nd_4WA2BH.
+Moving label "R1" from ndiff to ndiffc in cell sky130_fd_pr__res_generic_nd_4WA2BH.
+Moving label "R2" from ndiff to ndiffc in cell sky130_fd_pr__res_generic_nd_4WA2BH.
+0 0
+0 sky130_fd_pr__res_generic_nd_4WA2BH
+0 {{gencell sky130_fd_pr__res_generic_nd} {FIXED_BBOX -147 -418 147 418} {parameters {w 0.420 l 2.100 m 1 nx 1 wmin 0.42 lmin 2.10 class resistor rho 120 val 612.393 dummy 0 dw 0.0085 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 vias 1 doports 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sky130}}
+File for cell top_17: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from nsubdiff to nsubdiffcont in cell sky130_fd_pr__res_generic_pd_EJU6QV.
+Moving label "R1" from pdiff to pdiffc in cell sky130_fd_pr__res_generic_pd_EJU6QV.
+Moving label "R2" from pdiff to pdiffc in cell sky130_fd_pr__res_generic_pd_EJU6QV.
+0 0
+0 sky130_fd_pr__res_generic_pd_EJU6QV
+0 {{gencell sky130_fd_pr__res_generic_pd} {FIXED_BBOX -147 -418 147 418} {parameters {w 0.420 l 2.100 m 1 nx 1 wmin 0.42 lmin 2.10 class resistor rho 197 val 989.712 dummy 0 dw 0.002 term 0.0 sterm 0.0 caplen 0.60 snake 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 vias 1 doports 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sky130}}
+File for cell top_18: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from mvpsubdiff to mvpsubdiffcont in cell sky130_fd_pr__res_generic_nd__hv_4WA2BH.
+Moving label "R1" from mvndiff to mvndiffc in cell sky130_fd_pr__res_generic_nd__hv_4WA2BH.
+Moving label "R2" from mvndiff to mvndiffc in cell sky130_fd_pr__res_generic_nd__hv_4WA2BH.
+0 0
+0 sky130_fd_pr__res_generic_nd__hv_4WA2BH
+0 {{gencell sky130_fd_pr__res_generic_nd__hv} {FIXED_BBOX -159 -430 159 430} {parameters {w 0.420 l 2.100 m 1 nx 1 wmin 0.42 lmin 2.10 class resistor rho 120 val 612.393 dummy 0 dw 0.0085 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 vias 1 doports 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sky130}}
+File for cell top_19: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from mvnsubdiff to mvnsubdiffcont in cell sky130_fd_pr__res_generic_pd__hv_EJU6QV.
+Moving label "R1" from mvpdiff to mvpdiffc in cell sky130_fd_pr__res_generic_pd__hv_EJU6QV.
+Moving label "R2" from mvpdiff to mvpdiffc in cell sky130_fd_pr__res_generic_pd__hv_EJU6QV.
+0 0
+0 sky130_fd_pr__res_generic_pd__hv_EJU6QV
+0 {{gencell sky130_fd_pr__res_generic_pd__hv} {FIXED_BBOX -159 -430 159 430} {parameters {w 0.420 l 2.100 m 1 nx 1 wmin 0.42 lmin 2.10 class resistor rho 197 val 989.712 dummy 0 dw 0.002 term 0.0 sterm 0.0 caplen 0.60 snake 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 vias 1 doports 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sky130}}
+File for cell top_20: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+Moving label "R1" from poly to polycont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+Moving label "R2" from poly to polycont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+0 0
+0 sky130_fd_pr__res_generic_po_QJMCKK
+0 {{gencell sky130_fd_pr__res_generic_po} {FIXED_BBOX -146 -708 146 708} {parameters {w 0.330 l 1.650 m 1 nx 1 wmin 0.330 lmin 1.650 class resistor rho 48.2 val 241.0 dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 hv_guard 0 n_guard 0 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_21: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_high_po_0p35_TD68X4.
+0 0
+0 sky130_fd_pr__res_high_po_0p35_TD68X4
+0 {{gencell sky130_fd_pr__res_high_po_0p35} {FIXED_BBOX -148 -579 148 579} {parameters {w 0.350 l 0.50 m 1 nx 1 wmin 0.350 lmin 0.50 class resistor rho 319.8 val 1.57k dummy 0 dw 0.0 term 194.82 sterm 0.0 caplen 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 compatible {sky130_fd_pr__res_high_po_0p35  sky130_fd_pr__res_high_po_0p69 sky130_fd_pr__res_high_po_1p41  sky130_fd_pr__res_high_po_2p85 sky130_fd_pr__res_high_po_5p73} snake 0 full_metal 1 wmax 0.350 vias 1 n_guard 0 hv_guard 0 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_22: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_xhigh_po_0p35_JF7MNF.
+0 0
+0 sky130_fd_pr__res_xhigh_po_0p35_JF7MNF
+0 {{gencell sky130_fd_pr__res_xhigh_po_0p35} {FIXED_BBOX -148 -579 148 579} {parameters {w 0.350 l 0.50 m 1 nx 1 wmin 0.350 lmin 0.50 class resistor rho 2000 val 3.932k dummy 0 dw 0.0 term 188.2 sterm 0.0 caplen 0 wmax 0.350 guard 1 glc 1 grc 1 gtc 1 gbc 1 compatible {sky130_fd_pr__res_xhigh_po_0p35  sky130_fd_pr__res_xhigh_po_0p69 sky130_fd_pr__res_xhigh_po_1p41  sky130_fd_pr__res_xhigh_po_2p85 sky130_fd_pr__res_xhigh_po_5p73} snake 0 full_metal 1 n_guard 0 hv_guard 0 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_23: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from nsubdiff to nsubdiffcont in cell sky130_fd_pr__res_iso_pw_VDLDNF.
+Moving label "R1" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_iso_pw_VDLDNF.
+Moving label "R2" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_iso_pw_VDLDNF.
+0 0
+0 sky130_fd_pr__res_iso_pw_VDLDNF
+0 {{gencell sky130_fd_pr__res_iso_pw} {FIXED_BBOX -408 -2951 408 2951} {parameters {w 2.650 l 26.50 m 1 nx 1 wmin 2.650 lmin 26.50 class resistor rho 3050 val 33.677k dummy 0 dw 0.25 term 1.0 guard 1 endcov 100 full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sky130}}
+File for cell top_24: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_l1_TV5DTF
+0 {{gencell sky130_fd_pr__res_generic_l1} {parameters {w 0.170 l 0.170 m 1 nx 1 wmin 0.17 lmin 0.17 class resistor rho 12.8 val 12.8 dummy 0 dw 0.0 term 0.0 snake 0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_25: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_m1_NX92XM
+0 {{gencell sky130_fd_pr__res_generic_m1} {parameters {w 0.140 l 0.140 m 1 nx 1 wmin 0.14 lmin 0.14 class resistor rho 0.125 val 125.0m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_26: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_m2_NX92XM
+0 {{gencell sky130_fd_pr__res_generic_m2} {parameters {w 0.140 l 0.140 m 1 nx 1 wmin 0.14 lmin 0.14 class resistor rho 0.125 val 125.0m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_27: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_m3_5VRV4L
+0 {{gencell sky130_fd_pr__res_generic_m3} {parameters {w 0.300 l 0.300 m 1 nx 1 wmin 0.30 lmin 0.30 class resistor rho 0.047 val 47.0m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_28: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_m4_5VRV4L
+0 {{gencell sky130_fd_pr__res_generic_m4} {parameters {w 0.300 l 0.300 m 1 nx 1 wmin 0.30 lmin 0.30 class resistor rho 0.047 val 47.0m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_29: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sky130_fd_pr__res_generic_m5_KD9WJ6
+0 {{gencell sky130_fd_pr__res_generic_m5} {parameters {w 1.600 l 1.600 m 1 nx 1 wmin 1.60 lmin 1.60 class resistor rho 0.029 val 29.0m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sky130}}
+File for cell top_30: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "C2" from metal3 to via3 in cell sky130_fd_pr__cap_mim_m3_1_4V3HYR.
+Moving label "C1" from metal4 to mimcapcontact in cell sky130_fd_pr__cap_mim_m3_1_4V3HYR.
+0 0
+0 sky130_fd_pr__cap_mim_m3_1_4V3HYR
+0 {{gencell sky130_fd_pr__cap_mim_m3_1} {FIXED_BBOX -416 -240 64 240} {parameters {w 2.00 l 2.00 val 9.52 carea 2.00 cperi 0.19 class capacitor nx 1 ny 1 dummy 0 square 0 lmin 2.00 wmin 2.00 lmax 30.0 wmax 30.0 dc 0 bconnect 1 tconnect 1 ccov 100 stack 1 doports 1}} {library sky130}}
+File for cell top_31: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "C2" from metal4 to via4 in cell sky130_fd_pr__cap_mim_m3_2_B68646.
+Moving label "C1" from metal5 to mimcap2contact in cell sky130_fd_pr__cap_mim_m3_2_B68646.
+0 0
+0 sky130_fd_pr__cap_mim_m3_2_B68646
+0 {{gencell sky130_fd_pr__cap_mim_m3_2} {FIXED_BBOX -549 -280 11 280} {parameters {w 2.00 l 2.00 val 9.52 carea 2.00 cperi 0.19 class capacitor nx 1 ny 1 dummy 0 square 0 lmin 2.00 wmin 2.00 lmax 30.0 wmax 30.0 dc 0 bconnect 1 tconnect 1 ccov 100 doports 1}} {library sky130}}
+File for cell top_32: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Sourcing design .magicrc for technology gf180mcuD ...
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Creating new cell
+0 0
+0 nfet_03v3_QQRGJ8
+0 {{gencell nfet_03v3} {FIXED_BBOX -45 -38 45 38} {parameters {w 0.220 l 0.280 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 class mosfet full_metal 1 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 compatible {nfet_03v3 nfet_05v0 nfet_06v0 nfet_06v0_nvt}}} {library gf180mcu}}
+File for cell gtop_1: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 pfet_03v3_A6XN3D
+0 {{gencell pfet_03v3} {FIXED_BBOX -45 -38 45 38} {parameters {w 0.220 l 0.280 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 class mosfet full_metal 1 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 compatible {pfet_03v3 pfet_05v0 pfet_06v0}}} {library gf180mcu}}
+File for cell gtop_2: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D" from ndiffc to metal1 in cell nfet_03v3_dss_PN85XQ.
+Moving label "S" from ndiffc to metal1 in cell nfet_03v3_dss_PN85XQ.
+0 0
+0 nfet_03v3_dss_PN85XQ
+0 {{gencell nfet_03v3_dss} {FIXED_BBOX -45 -38 45 38} {parameters {w 0.220 l 0.280 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 class mosfet full_metal 1 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 compatible {nfet_03v3_dss nfet_06v0_dss}}} {library gf180mcu}}
+File for cell gtop_3: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D" from pdiffc to metal1 in cell pfet_03v3_dss_VK6SPP.
+Moving label "S" from pdiffc to metal1 in cell pfet_03v3_dss_VK6SPP.
+0 0
+0 pfet_03v3_dss_VK6SPP
+0 {{gencell pfet_03v3_dss} {FIXED_BBOX -45 -38 45 38} {parameters {w 0.220 l 0.280 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 class mosfet full_metal 1 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 compatible {pfet_03v3_dss pfet_05v0 pfet_06v0_dss}}} {library gf180mcu}}
+File for cell gtop_4: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D" from mvndiffc to ldndiffc in cell nfet_10v0_asym_FXAK3N.
+0 0
+0 nfet_10v0_asym_FXAK3N
+0 {{gencell nfet_10v0_asym} {FIXED_BBOX -52 -118 52 118} {parameters {w 4.0 l 0.6 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.6 wmin 4.0 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 full_metal 1}} {library gf180mcu}}
+File for cell gtop_5: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D" from mvpdiffc to ldpdiffc in cell pfet_10v0_asym_5CBX48.
+0 0
+0 pfet_10v0_asym_5CBX48
+0 {{gencell pfet_10v0_asym} {FIXED_BBOX -52 -118 52 118} {parameters {w 4.0 l 0.6 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.6 wmin 4.0 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 class mosfet full_metal 1}} {library gf180mcu}}
+File for cell gtop_6: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 diode_nd2ps_03v3_7DV3HH
+0 {{gencell diode_nd2ps_03v3} {FIXED_BBOX -29 -29 29 29} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 doverlap 0 full_metal 1 compatible {diode_nd2ps_03v3 diode_nd2ps_06v0}}} {library gf180mcu}}
+File for cell gtop_7: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 diode_pd2nw_03v3_QVAVDW
+0 {{gencell diode_pd2nw_03v3} {FIXED_BBOX -29 -29 29 29} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 glc 1 grc 1 gtc 0 gbc 0 doverlap 0 full_metal 1 compatible {diode_pd2nw_03v3 diode_pd2nw_06v0}}} {library gf180mcu}}
+File for cell gtop_8: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 {}
+Creating new cell
+0 0
+0 nmoscap_3p3_KUUAED
+0 {{gencell nmoscap_3p3} {FIXED_BBOX -58 -51 58 51} {parameters {w 1.0 l 1.0 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 class mosfet full_metal 1 compatible {nmoscap_3p3 nmoscap_6p0}}} {library gf180mcu}}
+File for cell gtop_20: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 pmoscap_3p3_SD5U9U
+0 {{gencell pmoscap_3p3} {FIXED_BBOX -58 -51 58 51} {parameters {w 1.0 l 1.0 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 class mosfet full_metal 1 compatible {pmoscap_3p3 pmoscap_6p0}}} {library gf180mcu}}
+File for cell gtop_21: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 nvaractor_3p3_Z9K4CS
+0 {{gencell nvaractor_3p3} {FIXED_BBOX -63 -56 63 56} {parameters {w 1.0 l 1.0 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 class mosfet full_metal 1 compatible {nvaractor_3p3 nvaractor_6p0}}} {library gf180mcu}}
+File for cell gtop_22: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 pvaractor_3p3_EA2UWH
+0 {{gencell pvaractor_3p3} {FIXED_BBOX -65 -66 65 66} {parameters {w 1.0 l 1.0 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 class mosfet full_metal 1 compatible {pvaractor_3p3 pvaractor_6p0}}} {library gf180mcu}}
+File for cell gtop_23: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 ppolyf_s_UHSZA2
+0 {{gencell ppolyf_s} {FIXED_BBOX -40 -53 40 53} {parameters {w 0.80 l 1.00 m 1 nx 1 wmin 0.80 lmin 1.00 class resistor rho 7 val 8.75 dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 guard_type pwell glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_24: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 nplus_u_S9TL6Y
+0 {{gencell nplus_u} {FIXED_BBOX -45 -71 45 71} {parameters {w 1.000 l 1.000 m 1 nx 1 wmin 1.00 lmin 1.00 class resistor rho 85 val 85.858 dummy 0 dw 0.01 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_25: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 pplus_u_BDW4XZ
+0 {{gencell pplus_u} {FIXED_BBOX -45 -71 45 71} {parameters {w 1.000 l 1.000 m 1 nx 1 wmin 1.00 lmin 1.00 class resistor rho 128 val 128.707 dummy 0 dw 0.0055 term 0.0 sterm 0.0 caplen 0.60 snake 0 guard 1 glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_26: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 nplus_u_6p0_S9TL6Y
+0 {{gencell nplus_u_6p0} {FIXED_BBOX -45 -71 45 71} {parameters {w 1.000 l 1.000 m 1 nx 1 wmin 1.00 lmin 1.00 class resistor rho 85 val 85.858 dummy 0 dw 0.01 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_27: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 pplus_u_6p0_BDW4XZ
+0 {{gencell pplus_u_6p0} {FIXED_BBOX -45 -71 45 71} {parameters {w 1.000 l 1.000 m 1 nx 1 wmin 1.00 lmin 1.00 class resistor rho 128 val 128.707 dummy 0 dw 0.0055 term 0.0 sterm 0.0 caplen 0.60 snake 0 guard 1 glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_28: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 npolyf_u_C3MLQP
+0 {{gencell npolyf_u} {FIXED_BBOX -47 -72 47 72} {parameters {w 0.80 l 1.00 m 1 nx 1 wmin 0.80 lmin 1.00 class resistor rho 300 val 401.606 dummy 0 dw 0.053 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 guard_type pwell glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_29: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 ppolyf_u_9E2Y98
+0 {{gencell ppolyf_u} {FIXED_BBOX -47 -72 47 72} {parameters {w 0.80 l 1.00 m 1 nx 1 wmin 0.80 lmin 1.00 class resistor rho 315 val 423.956 dummy 0 dw 0.057 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 guard_type pwell glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1}} {library gf180mcu}}
+File for cell gtop_30: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 ppolyf_u_1k_VW3KA2
+0 {{gencell ppolyf_u_1k} {FIXED_BBOX -55 -100 55 100} {parameters {w 1.000 l 2.000 m 1 nx 1 wmin 1.000 lmin 1.000 class resistor rho 1000 val 2.061k dummy 0 dw 0.0296 term 0.0 sterm 0.0 caplen 0.4 snake 0 glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1 guard 1 guard_type pwell compatible {ppolyf_u_1k ppolyf_u_1k_6p0}}} {library gf180mcu}}
+File for cell gtop_31: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+1 {No import routine for gf180mcu library cell nwell_3p3!}
+0 {}
+Creating new cell
+0 0
+0 rm1_EFU9S6
+0 {{gencell rm1} {parameters {w 0.230 l 0.10 m 1 nx 1 wmin 0.23 lmin 0.1 class resistor rho 0.090 val 39.13m dummy 0 dw 0.0 term 0.0 roverlap 0}} {library gf180mcu}}
+File for cell gtop_33: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 rm2_PKRDKV
+0 {{gencell rm2} {parameters {w 0.280 l 0.10 m 1 nx 1 wmin 0.28 lmin 0.10 class resistor rho 0.090 val 32.142m dummy 0 dw 0.0 term 0.0 roverlap 0}} {library gf180mcu}}
+File for cell gtop_34: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 rm3_PKRDKV
+0 {{gencell rm3} {parameters {w 0.280 l 0.100 m 1 nx 1 wmin 0.28 lmin 0.10 class resistor rho 0.090 val 32.142m dummy 0 dw 0.0 term 0.0 roverlap 0}} {library gf180mcu}}
+File for cell gtop_35: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 rm4_PKRDKV
+0 {{gencell rm4} {parameters {w 0.280 l 0.100 m 1 nx 1 wmin 0.28 lmin 0.10 class resistor rho 0.090 val 32.142m dummy 0 dw 0.0 term 0.0 roverlap 0}} {library gf180mcu}}
+File for cell gtop_36: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 rm5_2FH85N
+0 {{gencell rm5} {parameters {w 0.440 l 0.100 m 1 nx 1 wmin 0.44 lmin 0.10 class resistor rho 0.040 val 9.09m dummy 0 dw 0.0 term 0.0 roverlap 0}} {library gf180mcu}}
+File for cell gtop_37: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 cap_mim_2p0fF_B77ELW
+0 {{gencell cap_mim_2p0fF} {FIXED_BBOX -148 -124 100 124} {parameters {w 5.00 l 5.00 val 54.516 carea 1.99 cperi 0.2383 class capacitor nx 1 ny 1 dummy 0 square 0 lmin 5.00 wmin 5.00 lmax 100.0 wmax 100.0 dc 0 bconnect 1 tconnect 1}} {library gf180mcu}}
+File for cell gtop_38: [hit return to abort save] Cell not saved.
+0 {}
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Creating new cell
+0 0
+0 sg13_lv_nmos_THEM42
+0 {{gencell sg13_lv_nmos} {parameters {w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 guard 0 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_nmos sg13_hv_nmos} full_metal 1 conn_gates 0 gate_ring 0 doports 1 viasrc 100 viadrn 100 viagate 100 ccols 1 viagb 0 viagr 0 viagl 0 viagt 0}} {library sg13g2}}
+File for cell itop_1: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 sg13_lv_pmos_YG5ZJG
+0 {{gencell sg13_lv_pmos} {parameters {w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 guard 0 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_pmos sg13_hv_pmos} full_metal 1 conn_gates 0 gate_ring 0 ccols 1 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1}} {library sg13g2}}
+File for cell itop_2: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell sg13_lv_rfnmos_XEEHEB.
+0 0
+0 sg13_lv_rfnmos_XEEHEB
+0 {{gencell sg13_lv_rfnmos} {FIXED_BBOX -205 -178 205 178} {parameters {w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_rfnmos sg13_hv_rfnmos} full_metal 1 doports 1 viasrc 100 viadrn 100 viagate 100 ccols 1 viagb 0 viagr 0 viagl 0 viagt 0}} {library sg13g2}}
+File for cell itop_3: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from nsubdiff to nsubdiffcont in cell sg13_lv_rfpmos_L8WQYV.
+0 0
+0 sg13_lv_rfpmos_L8WQYV
+0 {{gencell sg13_lv_rfpmos} {FIXED_BBOX -205 -178 205 178} {parameters {w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_rfpmos sg13_hv_rfpmos} full_metal 1 ccols 1 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1}} {library sg13g2}}
+File for cell itop_4: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D2" from psubdiff to psubdiffcont in cell dantenna_YV6LAD.
+Moving label "D1" from ndiode to ndiodecont in cell dantenna_YV6LAD.
+0 0
+0 dantenna_YV6LAD
+0 {{gencell dantenna} {FIXED_BBOX -117 -117 117 117} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 doverlap 0 doports 1 full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sg13g2}}
+File for cell itop_5: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "D2" from nsubdiff to nsubdiffcont in cell dpantenna_YV6LAD.
+Moving label "D1" from pdiode to pdiodecont in cell dpantenna_YV6LAD.
+0 0
+0 dpantenna_YV6LAD
+0 {{gencell dpantenna} {FIXED_BBOX -117 -117 117 117} {parameters {w 0.45 l 0.45 area 202.5m peri 1.8 nx 1 ny 1 dummy 0 lmin 0.45 wmin 0.45 class diode elc 1 erc 1 etc 1 ebc 1 doverlap 0 doports 1 full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sg13g2}}
+File for cell itop_6: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 schottky
+0 {{gencell schottky} {parameters {nx 1 ny 1 deltax 0 deltay 0 nocell 1 xstep 5.5 ystep 6.0 class diode}} {MASKHINTS_PWELLBLK -326 510 566 670 -326 -130 -160 510 400 -130 566 510 -326 -368 566 -130} {library sg13g2}}
+File for cell itop_7: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 npn13g2_76WR72
+0 {{gencell npn13g2} {FIXED_BBOX -580 -658 580 584} {parameters {w 0.07 l 0.9 area 0.063 peri 1.94 class bjt lmin 0.9 lmax 0.9 nx 1 nxmax 10 compatible {npn13g2 npn13g2l npn13g2v} elc 1 erc 1 etc 1 ebc 1 doports 1}} {library sg13g2}}
+File for cell itop_8: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from nsubdiff to space in cell pnpMPA_H4YLST.
+Moving label "E" from pdiff to space in cell pnpMPA_H4YLST.
+Moving label "C" from nsubdiff to nsubdiffcont in cell pnpMPA_H4YLST.
+Moving label "B" from space to pwell in cell pnpMPA_H4YLST.
+Moving label "E" from space to pwell in cell pnpMPA_H4YLST.
+Moving label "C" from nsubdiffcont to psubdiffcont in cell pnpMPA_H4YLST.
+Moving label "B" from pwell to nbase in cell pnpMPA_H4YLST.
+Moving label "B" from nsubdiff to nsubdiffcont in cell pnpMPA_H4YLST.
+Moving label "E" from pwell to nbase in cell pnpMPA_H4YLST.
+Moving label "E" from pdiff to pdiffc in cell pnpMPA_H4YLST.
+0 0
+0 pnpMPA_H4YLST
+0 {{gencell pnpMPA} {FIXED_BBOX -272 -142 272 142} {parameters {w 2.0 l 0.7 area 1.4 peri 5.4 nx 1 ny 1 dummy 0 lmin 0.7 wmin 2.0 class bjt elc 1 erc 1 etc 1 ebc 1 doverlap 0 doports 1 full_metal 1 vias 1 viagb 0 viagt 0 viagl 0 viagr 0}} {library sg13g2}}
+File for cell itop_9: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell rsil_DZRRNV.
+Moving label "R1" from poly to polycont in cell rsil_DZRRNV.
+Moving label "R2" from poly to polycont in cell rsil_DZRRNV.
+0 0
+0 rsil_DZRRNV
+0 {{gencell rsil} {FIXED_BBOX -162 -382 162 382} {parameters {w 0.50 l 2.00 m 1 nx 1 wmin 0.50 lmin 0.50 class resistor rho 7.0 val 28.0 dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0 snake 0 guard 1 bar 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 hv_guard 0 n_guard 0 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sg13g2} {MASKHINTS_CONTBAR -50 -270 50 270}}
+File for cell itop_10: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell rppd_B7QGM3.
+Moving label "R1" from poly to polycont in cell rppd_B7QGM3.
+Moving label "R2" from poly to polycont in cell rppd_B7QGM3.
+0 0
+0 rppd_B7QGM3
+0 {{gencell rppd} {FIXED_BBOX -162 -398 162 398} {parameters {w 0.50 l 2.00 m 1 nx 1 wmin 0.50 lmin 0.50 class resistor rho 260.0 val 1.04k dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0 guard 1 glc 1 grc 1 gtc 1 gbc 1 snake 0 full_metal 1 vias 1 n_guard 0 hv_guard 0 bar 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sg13g2} {MASKHINTS_CONTBAR -50 -286 50 286}}
+File for cell itop_11: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "B" from psubdiff to psubdiffcont in cell rhigh_9YT2CT.
+Moving label "R1" from poly to polycont in cell rhigh_9YT2CT.
+Moving label "R2" from poly to polycont in cell rhigh_9YT2CT.
+0 0
+0 rhigh_9YT2CT
+0 {{gencell rhigh} {FIXED_BBOX -162 -398 162 398} {parameters {w 0.50 l 2.00 m 1 nx 1 wmin 0.50 lmin 0.50 class resistor rho 1360 val 5.44k dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0 bar 1 guard 1 glc 1 grc 1 gtc 1 gbc 1 snake 0 full_metal 1 n_guard 0 hv_guard 0 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1}} {library sg13g2} {MASKHINTS_CONTBAR -50 -286 50 286}}
+File for cell itop_12: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 rm1_89X4US
+0 {{gencell rm1} {parameters {w 0.160 l 0.100 m 1 nx 1 wmin 0.16 lmin 0.005 class resistor compatible {rm1 rm2 rm3 rm4 rm5 rm6 rm7} rho 0.110 val 68.75m dummy 0 dw 0.0 term 0.0 roverlap 0 doports 1}} {library sg13g2}}
+File for cell itop_13: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+Moving label "C1" from metal6 to mimcapcontact in cell cap_cmim_YW4SB7.
+0 0
+0 cap_cmim_YW4SB7
+0 {{gencell cap_cmim} {FIXED_BBOX -320 -320 320 320} {parameters {w 2.00 l 2.00 val 7.52 carea 1.50 cperi 0.19 class capacitor compatible {cap_cmim cap_rfcmim} nx 1 ny 1 dummy 0 square 0 lmin 2.00 wmin 2.00 lmax 30.0 wmax 30.0 dc 0 tabwidth 1.0 upcontact 0 bconnect 1 tconnect 1 ccov 100 doports 1}} {library sg13g2}}
+File for cell itop_14: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 via_GQ9R9N
+0 {{gencell via} {parameters {metalbot metal1 metaltop metal2 nxcuts 1 nycuts 1 orient default pattern none}} {library sg13g2}}
+File for cell itop_15: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 diodevdd_2kv
+0 {{gencell diodevdd_2kv} {parameters {nx 1 ny 1 deltax 0 deltay 0 nocell 1 compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv} xstep 13.3 ystep 35.67 class diode}} {library sg13g2}}
+File for cell itop_16: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 nmoscl_2
+0 {{gencell nmoscl_2} {parameters {nx 1 ny 1 deltax 0 deltay 0 nocell 1 compatible {nmoscl_2 nmoscl_4} xstep 35.76 ystep 24 class mosfet}} {library sg13g2}}
+File for cell itop_17: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 scr1
+0 {{gencell scr1} {parameters {nx 1 ny 1 deltax 0 deltay 0 nocell 1 xstep 16.8 ystep 31.2 class diode}} {library sg13g2}}
+File for cell itop_18: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 SVaricap_TESUP6
+0 {{gencell SVaricap} {parameters {w 3.74 l 0.30 class varactor nx 1 ny 1 lmin 0.30 wmin 3.74 lmax 0.80 wmax 9.74 nxmax 10 nymax 1 doports 1}} {library sg13g2}}
+File for cell itop_19: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 inductor2_2DDUHH
+0 {{gencell inductor2} {parameters {diameter 25.35 width 2.0 space 2.1 turns 1 class inductor wmin 2.0 smin 2.1 dmin 25.35 compatible {inductor2 inductor3} doports 1}} {library sg13g2}}
+File for cell itop_20: [hit return to abort save] Cell not saved.
+0 {}
+Creating new cell
+0 0
+0 bondpad_LGCKWJ
+0 {{gencell bondpad} {parameters {height 80 width 80 depth 5 class special shape octagon}} {library sg13g2}}
+File for cell itop_21: [hit return to abort save] Cell not saved.
+0 {}

@@ -160,7 +160,8 @@ int run_capture(ui::Runtime& runtime, MainWindow& window, const ShellOptions& op
   int frames = 0;
   runtime.set_frame_callback([&](double) {
     window.on_frame();
-    if (++frames >= options.capture_frames) runtime.quit();
+    // --input: the capture waits for the last step and wait.
+    if (++frames >= options.capture_frames && !window.input_pending()) runtime.quit();
   });
   window.set_realtime(true);
   if (options.capture_running) window.capture_when_card_shows(options.capture);

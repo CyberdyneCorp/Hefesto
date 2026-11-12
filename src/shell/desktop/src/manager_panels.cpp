@@ -133,7 +133,7 @@ void ManagerPanels::build_cells() {
   cells_root_.add(*cells_target_);
   cells_table_ = ui::Table::create();
   cells_table_->add_column("Cell", 150.0F, 1.0F, false);
-  cells_table_->add_column("Instance", 90.0F, 0.0F, false);
+  cells_table_->add_column("Instance", 74.0F, 0.0F, false);  // "(top cell)", "xM3": room for the cell name
   cells_table_->set_accessible_name("Cells: top cells and their children");
   cells_table_->on_select([this](int row) { cells_.select(static_cast<std::size_t>(row)); });
   // Return or a double click opens or closes a node (the keyboard's tree control).

@@ -4,6 +4,7 @@
 #include "main_window.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <utility>
@@ -84,6 +85,10 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   ctx_.run = [this](const std::string& line) { run_line(line); };
   pending_pinch_ = options.pinch;
   pending_drag_ = options.drag;
+  if (!options.input.empty()) pending_input_.emplace(parse_input_script(options.input).steps);
+  pending_press_ = options.press;
+  menu_in_window_ = options.menu_bar_in_window;
+  capture_window_ = options.capture_window;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   ctx_.prompt = [this](const std::string& text) { show_prompt(text); };
   ctx_.menu = [this](const std::string& title, const std::vector<MenuEntry>& entries, float x, float y) {
@@ -119,8 +124,9 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   build_status_bar();
   build_m4();
   build_m4b();
-  window_.set_content(root_);
   window_.install_key_hook([this](int key, std::uint8_t modifiers) { return on_shortcut(key, modifiers); });
+  build_drop_band();  // CARRY: over root_, the window's content (after the key hook: the drop)
+  window_.set_content(window_root_);
   register_view_commands();
 
   set_message(StatusKind::info, diagnostic_line(StatusKind::info, "ready"));
@@ -606,6 +612,19 @@ void MainWindow::on_frame() {
   // replace a pinch made before it.
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
   if (pending_drag_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_drag();
+  if (input_pending() && !pending_drag_ && pending_run_.empty() && canvas_->viewport_ready()) {
+    // The first frames still lay the window out (on macOS the in-window menu
+    // bar takes 30 px until the native one replaces it): let it settle so
+    // that a scripted press lands on the widget drawn under it.
+    if (input_settle_frames_ > 0) {
+      --input_settle_frames_;
+      window_.request_redraw();
+    } else {
+      play_pending_input();
+    }
+  }
+  // A press opens a menu of the bar: wait until the bar has stopped changing.
+  if (pending_press_ && !pending_drag_ && pending_run_.empty() && menu_quiet_frames_ >= 3) run_pending_press();
   refresh_m4();
   refresh_m4b();
   refresh_tools();
@@ -645,6 +664,40 @@ void MainWindow::run_pending_drag() {
   std::fflush(stdout);
   dirty_ = true;
   window_.request_redraw();
+}
+
+void MainWindow::play_pending_input() {
+  const double now = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  for (const InputStep& step : pending_input_->take_due(now)) window_.inject_input(step);
+  if (pending_input_->done()) report_panel_rects();  // scripted checks read where the panels ended up
+  // Keep frames coming through the waits (a hold's timer, a popover's frame).
+  window_.request_redraw();
+}
+
+void MainWindow::run_pending_press() {
+  const DragOption press = *pending_press_;
+  pending_press_.reset();
+  window_.inject_left_press(press.x0, press.y0);
+  std::printf("hefesto: press at %g,%g\n", static_cast<double>(press.x0), static_cast<double>(press.y0));
+  std::fflush(stdout);
+  window_.request_redraw();
+}
+
+bool MainWindow::capture(const std::string& path) const {
+  if (capture_window_ == "main") return window_.capture_ppm(path);
+  const ui::Window* utility = utility_window(capture_window_);
+  if (utility == nullptr) {
+    std::fprintf(stderr, "hefesto: the %s window is not open\n", capture_window_.c_str());
+    return false;
+  }
+  return utility->capture_ppm(path);
+}
+
+const ui::Window* MainWindow::utility_window(std::string_view name) const {
+  if (name == "pcell") return pcell_dialog_ ? pcell_dialog_->window() : nullptr;
+  if (name == "texthelper") return text_helper_ ? text_helper_->window() : nullptr;
+  if (name == "reorder") return reorder_ ? reorder_->window() : nullptr;
+  return nullptr;
 }
 
 void MainWindow::append_console(const std::string& command, const std::string& result) {

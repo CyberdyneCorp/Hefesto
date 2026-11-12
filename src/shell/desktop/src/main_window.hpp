@@ -114,11 +114,14 @@ class MainWindow {
   [[nodiscard]] bool open() const { return window_.valid(); }
   [[nodiscard]] ui::FrameStats frame_stats() const { return window_.frame_stats(); }
   [[nodiscard]] std::size_t canvas_instances() const { return canvas_->instance_count(); }
-  bool capture(const std::string& path) const { return window_.capture_ppm(path); }
+  /// Saves the window --capture-window names (the main one by default).
+  bool capture(const std::string& path) const;
   /// --capture-running: capture to `path` in the first frame a running
   /// script draws with its Interrupt card shown.
   void capture_when_card_shows(std::string path) { card_capture_ = std::move(path); }
   [[nodiscard]] bool card_captured() const noexcept { return card_captured_; }
+  /// --input: steps or waits are left to play (a capture waits for them).
+  [[nodiscard]] bool input_pending() const noexcept { return pending_input_ && !pending_input_->done(); }
   [[nodiscard]] std::string window_system() const { return window_.window_system(); }
 
   /// After the background DRC pump ran BackgroundHost::service() (UI
@@ -137,6 +140,8 @@ class MainWindow {
   /// scripted capture the dialog is shown without waiting and the scripts
   /// are declined (nothing runs without an answer).
   script::ConsentDecision ask_consent(const ConsentPromptView& view);
+  /// The theme's tokens, `icon` and fonts for a PromptDialog's M4 alert parts.
+  [[nodiscard]] ui::DialogLook dialog_look(std::string_view icon) const;
 
   /// Benchmark hooks: realtime redraw, and a programmatic pan in pixels.
   void set_realtime(bool realtime) { canvas_->set_realtime(realtime); }
@@ -264,6 +269,10 @@ class MainWindow {
   // Raven's drag, the docks, the canvas column and the strips take it.
   [[nodiscard]] std::optional<ui::Painted::DragData> begin_panel_drag(const std::string& id, float x, float y);
   bool panel_drop(ui::DropZone::Phase phase, float x, float y, std::string_view type);
+  void end_panel_drag();
+  void report_panel_rects() const;
+  void build_drop_band();
+  void paint_drop_band(ui::Painter& p) const;
   [[nodiscard]] DockGeometry dock_geometry() const;
   void fit_panels();  // per frame: the edge strips the window width needs
   [[nodiscard]] LayoutRect panel_window_rect() const;
@@ -301,6 +310,10 @@ class MainWindow {
   void poll_background();
   void run_pending_pinch();
   void run_pending_drag();
+  void play_pending_input();
+  void run_pending_press();
+  /// The open M4 utility window --capture-window names; nullptr if closed.
+  [[nodiscard]] const ui::Window* utility_window(std::string_view name) const;
   void on_problem(StatusKind kind, const std::string& panel_line, const std::string& status);
   void set_message(StatusKind kind, std::string text);
   /// Tells a screen reader of an error (assertive) or a warning (polite).
@@ -445,6 +458,8 @@ class MainWindow {
   ui::Box right_stack_ = ui::Box::vertical();  // Inspector, PDK manager, color window, DRC error area (one shown)
   std::array<ui::Box, 2> side_docks_{ui::Box::vertical(), ui::Box::vertical()};  // left, right: frames stacked
   std::optional<PanelDrag> panel_drag_;                 // the header drag in progress
+  ui::Overlay window_root_ = ui::Overlay::create();     // root_ under the drop band
+  std::unique_ptr<ui::Painted> drop_band_;              // the dashed ember drop zone of a header drag
   std::vector<std::unique_ptr<ui::DropZone>> drop_zones_;  // where a header drag can end
   int panels_fit_width_ = -1;                  // the window width fit_panels last applied
   bool narrow_left_ = false;                   // fit_to_window turned the left dock into its strip
@@ -515,6 +530,12 @@ class MainWindow {
   std::string pending_run_;          // run_when_ready
   std::optional<PinchOption> pending_pinch_;  // --pinch, after pending_run_
   std::optional<DragOption> pending_drag_;    // --drag, after pending_run_
+  std::optional<InputPlayer> pending_input_;  // --input, after pending_drag_
+  int input_settle_frames_ = 10;              // frames before the first --input step
+  std::optional<DragOption> pending_press_;   // --press, after pending_drag_
+  bool menu_in_window_ = false;               // --menu-bar-in-window
+  int menu_quiet_frames_ = 0;  // frames since the menu bar was last rebuilt (a rebuild closes an open menu)
+  std::string capture_window_ = "main";       // --capture-window
   UndoMark undo_mark_;                        // the undo log after the last command
   std::optional<std::string> undo_message_;  // "Undid … · N more steps", not shown yet
   bool in_command_ = false;          // run_line is executing a command line

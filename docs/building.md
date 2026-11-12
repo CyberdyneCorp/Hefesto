@@ -117,6 +117,11 @@ Outside `--magic` mode, `-c`, script files, standard input and `--interactive` a
 | `--pdk-manager` | open the PDK manager panel at startup |
 | `--capture FILE.ppm [--capture-frames N]` | render N frames (default 1), write the window to a PPM file and exit (screenshot checks of `docs/design/m1-ui-conformance.md`) |
 | `--capture FILE.ppm --capture-running` | write the window in the first frame a running script draws with its Interrupt card shown (a `--run` line that runs over 2 s), then exit when it ends (`docs/design/m4-ui-conformance.md`) |
+| `--capture-window main\|pcell\|texthelper\|reorder` | with `--capture`, save that window instead of the main one (the PCell dialog, text helper or reorder dialog once a `--run` line opened it) |
+| `--drag X0,Y0,X1,Y1`, `--pinch X,Y,FACTOR` | after `--run`, a left-button drag or a pinch at window points (scripted checks) |
+| `--input 'STEP; STEP ...'` | after `--run`, play pointer and key events frame by frame: `move X,Y`, `down X,Y`, `up X,Y`, `key [MOD+]NAME`, `text T`, `wait MS`; prints each panel's position and size at the end (`docs/design/m2-ui-conformance.md` "M4 polish round") |
+| `--press X,Y` | after `--run`, press and hold the left button at a window point (opens a menu of the in-window bar for a capture) |
+| `--menu-bar-in-window` | draw the menu bar inside the window on macOS too (the system menu bar is the default), so captures see it |
 | `--no-vsync`, `--validation` | presentation without vsync; Vulkan validation layers |
 | `--rects N`, `--seed N`, `--bench-frames N`, `--bench-output FILE`, `--smoke-frames N`, `--expect-window-system` | benchmark and smoke-test modes (`docs/spikes/canvas-spike.md`, CI window tests) |
 

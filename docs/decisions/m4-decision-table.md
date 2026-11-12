@@ -187,3 +187,21 @@ Taken on the captures of golden-capture runs 43151033297 and 43173319299; each e
 - **Q-CELL-45** (new): `cellname list filepath` returns Magic's whole stored path with `magic-compat` ON (its `TCL_STATIC` result sees the `/` put back) and the directory with it OFF. **compat.**
 - **Q-SCRIPT-47** (new): `readspice`'s `string map {[ < ] >]}` never matches `D[0]` to `D<0>` with `magic-compat` ON; OFF maps `]` to `>`. **compat.**
 - **Q-SCRIPT-45** (changed from replicate): the native sg13g2 fixed devices reproduce Magic's recorded sequence (SCRIPT-PDK-14: the first device of a kind is not placed when there was no box, and the edit cell becomes the window's cell) with `magic-compat` ON, and put back the edit context with it OFF. **compat.**
+
+## User decisions of 2026-11-12 (polish round)
+
+Taken on the captures of golden-capture run 43234885440; each entry's `Resolution:` line is in `open-questions/`.
+
+1. The usual rule (`magic-compat` ON copies Magic, OFF gives the intended behavior):
+   - **Q-SCRIPT-48**: a no/yes confirmation that cannot be asked (`tech load` over painted layout, `save NAME` over another file, `flush`) goes ahead with ON, as TxDialog's -1 does in Magic, and is declined with OFF. **compat.** The `scripting-api` and `tech-command` specs no longer disagree.
+   - **Q-CELL-46** (new): `cellname list childinst` in Magic's id-hash order with ON, placement order with OFF. **compat.**
+   - **Q-CELL-47** (new): the `save` file-name answer cut to 7 characters (`sizeof` a pointer) with ON, the whole line with OFF. **compat.**
+   - SCRIPT-PCELL-12 passes; SCRIPT-PDK-07 is committed with its Q-SCRIPT-41 deviation (cross-PDK redefinition warnings).
+2. Accepted as recorded deviations or deferrals, with their reasons in `tests/golden/deviations.toml`:
+   - **Q-DRC-26** (new): DRC-PDK-3 uses IHP's `cap_cmim` generator; IHP-Open-PDK has no `cap_cmomf` generator (task 12.3).
+   - **Q-SCRIPT-52** (new): the `magic-compat` ON text of a refused native `load` (Tcl's dlopen text, SCRIPT-API-04).
+   - **Q-SCRIPT-49** (new): the command inventories of SCRIPT-API-01 and SCRIPT-PDK-09 differ by design.
+   - SCRIPT-API-20 deferred to M7 (`extract style`), with the Q-UI-12 macro set.
+   - **Q-SCRIPT-50** (new): SCRIPT-GUI-05's technology menu order is not reproducible.
+   - **Q-SCRIPT-51** (new): SCRIPT-GUI-12/-13 keep native crash backups and tool enabling.
+3. The DRC throughput target is judged by callgrind instruction count, not wall time: one block pass at most the M3 baseline of 12.14 billion + 2 % (12.38 billion). By count Hefesto is 12.25 billion against Magic's 10.98 billion (1.12 ×). The timed ratio is kept as information. `perf.yml` `drc-profile` gates it with `bench/drc/instruction_gate.py`; see `docs/design/m3-ui-conformance.md` "Performance".

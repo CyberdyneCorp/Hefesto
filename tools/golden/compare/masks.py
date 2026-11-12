@@ -35,6 +35,17 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     no DRC (design.md Non-Goals; capability drc-engine, M3). The M3 DRC cases do
     not use it; it is retired from the M1/M2 cases once the M3 engine marks every
     edit as Magic does (authoring/casegen.py CHECKPAINT_MASK_RETIRED).
+``magic-crash-file``
+    Console line ``Created database crash recovery file /tmp/MAG<pid>.<XXXXXX>``
+    (Magic's crash backups, database/DBio.c via mkstemp): the process id and
+    the random suffix become ``<masked>``.
+``magic-tech-menu-order``
+    Lines ``<i> <name> {magic::tech load <name> ;  magic::techmanager update}``
+    (the technology manager's menu, tcltk/techbuilder.tcl): Magic lists the
+    example technologies of its system directory in ``glob`` order, which is
+    the directory order of the file system the reference image was built on,
+    so each run of such lines is sorted by name and its indexes become
+    ``<i>``.
 ``regex:<pattern>``
     Every match of the Python bytes regex ``<pattern>`` is replaced with
     ``<masked>``. For one-off fields; prefer adding a named mask when a field
@@ -128,6 +139,32 @@ def mask_magic_stamp_note(data: bytes) -> bytes:
     return _STAMP_NOTE.sub(b"", data)
 
 
+# Magic names its crash backup with the process id and a mkstemp suffix.
+_CRASH_FILE = re.compile(rb"(crash recovery file \S*/MAG)\d+\.\w+")
+
+
+def mask_magic_crash_file(data: bytes) -> bytes:
+    return _CRASH_FILE.sub(rb"\1<masked>", data)
+
+
+# The technology manager lists Magic's example technologies in directory order.
+_TECH_MENU_LINE = re.compile(rb"^\d+ (\S+) \{magic::tech load \1 ;  magic::techmanager update\}\r?$")
+
+
+def mask_magic_tech_menu_order(data: bytes) -> bytes:
+    lines = data.split(b"\n")
+    out: list[bytes] = []
+    run: list[bytes] = []
+    for line in lines + [b""]:
+        if _TECH_MENU_LINE.match(line):
+            run.append(re.sub(rb"^\d+", b"<i>", line))
+            continue
+        out.extend(sorted(run))
+        run = []
+        out.append(line)
+    return b"\n".join(out[:-1])
+
+
 def _regex_mask(pattern: str) -> Mask:
     compiled = re.compile(pattern.encode())
     return lambda data: compiled.sub(b"<masked>", data)
@@ -140,6 +177,8 @@ _NAMED: dict[str, Mask] = {
     "magic-tech-sections": mask_magic_tech_sections,
     "mag-checkpaint": mask_mag_checkpaint,
     "magic-stamp-note": mask_magic_stamp_note,
+    "magic-crash-file": mask_magic_crash_file,
+    "magic-tech-menu-order": mask_magic_tech_menu_order,
 }
 
 

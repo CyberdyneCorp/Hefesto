@@ -226,7 +226,7 @@ Compatibility: behavioral
 
 These are the results of Magic's Tcl build, which Hefesto follows (capability `scripting-api`, "Command result and error conventions"). Magic's non-Tcl build prints `Technology file does not exist or is not readable.` (with a period) and `Error in loading technology file` as error text instead. Hefesto's own diagnostic stream (text or JSON) carries the failure as diagnostic `TECH-FILE-002` or `TECH-LOAD-001` with the non-Tcl wording. With `--diagnostics=magic`, only the result is printed, as Magic does.
 
-Hefesto SHALL present the confirmation in a way that suits the platform. A non-interactive session SHALL treat it as declined unless `-noprompt` was given.
+Hefesto SHALL present the confirmation in a way that suits the platform. A session that cannot ask (no prompt host, a headless session, or a script session whose `tk_dialog` gives no integer, capability `scripting-api` "Prompts and dialogs through the script layer") SHALL go ahead with `magic-compat` ON, as Magic's Tcl build does with TxDialog's -1, and SHALL treat it as declined with `magic-compat` OFF, reporting TECH-CMD-003 (`Technology file (re)loading may invalidate the existing layout.  Continue? (no: this session cannot ask; use -noprompt)`), unless `-noprompt` was given (Q-SCRIPT-48). An answered `no` cancels without a message in both settings.
 
 (Magic ref: commands/CmdTZ.c:544-622)
 
@@ -234,6 +234,12 @@ Hefesto SHALL present the confirmation in a way that suits the platform. A non-i
 - **GIVEN** a session with painted layout
 - **WHEN** `tech load tiny -noprompt` is executed
 - **THEN** no confirmation is asked and the technology is reloaded
+
+#### Scenario: Reload in a session that cannot ask
+- **GIVEN** a `-dnull` script session with painted layout
+- **WHEN** `tech load tiny` is executed without `-noprompt`
+- **THEN** with `magic-compat` ON the technology is reloaded and `Existing layout may be invalid.` is reported
+- **AND** with `magic-compat` OFF nothing is loaded and TECH-CMD-003 is reported
 
 #### Scenario: Unknown flag
 - **GIVEN** any session

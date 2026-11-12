@@ -157,3 +157,21 @@ TEST_CASE("save asks for another file name when the name is taken", "[cap:cmd-hi
   CHECK(contains(printed, "Can't rename cell 'top' to 'other' because that cell already exists."));
   CHECK(contains(printed, "Cell not saved."));
 }
+
+// Q-CELL-47: cmdCheckNewName reads the file name with `sizeof returnname`,
+// the size of a pointer, so Magic keeps the first 7 characters of the
+// answer; with magic-compat OFF the whole line is the name.
+TEST_CASE("the file name answered to save keeps 7 characters with magic-compat ON",
+          "[cap:cmd-hierarchy][req:Save command]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    BindingFixture f{compat, true, true};
+    REQUIRE(f.eval("proc magic::dialog {args} { return \"abcdefghij\\n\" }").ok());
+    REQUIRE(f.eval("cellname create other").ok());
+    (void)f.take_printed();
+    REQUIRE(f.eval("save other").ok());
+    // The fixture's working directory is not writable: the name shows in the
+    // write error.
+    CHECK(contains(f.take_printed(), compat ? "writing file abcdefg.mag" : "writing file abcdefghij.mag"));
+  }
+}

@@ -108,11 +108,57 @@ ConsentPromptView consent_prompt(const script::ConsentRequest& request, const Co
   return view;
 }
 
-PromptDialog consent_dialog(const ConsentPromptView& view) {
+DialogDetail consent_detail(const std::string& key, const std::string& text) {
+  DialogDetail detail{key, text, {}, DialogDetail::Tone::neutral, {}, {}};
+  if (text.starts_with("▲")) {  // outside the store: the release row is a warning chip
+    detail.value.clear();
+    detail.chip = text;
+    detail.tone = DialogDetail::Tone::warning;
+    return detail;
+  }
+  for (const auto& [mark, tone] : {std::pair{std::string_view{" · ●"}, DialogDetail::Tone::ok},
+                                   std::pair{std::string_view{" · ◆"}, DialogDetail::Tone::neutral}}) {
+    if (const std::size_t at = text.find(mark); at != std::string::npos) {
+      detail.value = text.substr(0, at);
+      detail.chip = text.substr(at + 4);  // " · " is 4 bytes
+      detail.tone = tone;
+      return detail;
+    }
+  }
+  if (const std::size_t plus = text.find(" + "); plus != std::string::npos) {
+    detail.value = text.substr(0, plus);
+    detail.note = text.substr(plus + 1);
+  }
+  return detail;
+}
+
+std::string home_relative(std::string_view path, std::string_view home) {
+  while (home.size() > 1 && home.ends_with('/')) home.remove_suffix(1);
+  if (home.size() <= 1 || !path.starts_with(home)) return std::string{path};
+  const std::string_view rest = path.substr(home.size());
+  if (!rest.empty() && rest.front() != '/') return std::string{path};
+  return "~" + std::string{rest};
+}
+
+PromptDialog consent_dialog(const ConsentPromptView& view, std::string_view home) {
   PromptDialog dialog;
   dialog.title = view.title;
-  dialog.text = view.body + "\n";
-  for (const auto& [key, value] : view.origin) dialog.text += "\n" + key + ":  " + value;
+  dialog.text = view.body;
+  dialog.icon = "shield";
+  // Board tile 1 (600 px) and tile 4 (436 px), less the sheet's padding.
+  dialog.width = view.warning ? 400.0F : 560.0F;
+  dialog.leading_buttons = 1;  // Don't run on the left
+  for (const auto& [key, value] : view.origin) {
+    DialogDetail detail = consent_detail(key, value);
+    if (key == "Script") {
+      // One mono line in the block: JetBrains Mono 12 px is about 7.25 px a
+      // character, and the icon, padding and key column take about 150 px.
+      const auto chars = static_cast<std::size_t>((dialog.width - 150.0F) / 7.25F);
+      detail.value = middle_ellipsis(home_relative(view.script_path, home), chars);
+      detail.tooltip = view.script_path;
+    }
+    dialog.details.push_back(std::move(detail));
+  }
   for (std::size_t i = 0; i < view.answers.size(); ++i) {
     dialog.buttons.push_back({view.answers[i].label, i, view.answers[i].primary});
   }

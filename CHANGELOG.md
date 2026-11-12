@@ -8,6 +8,20 @@ release notices.
 
 ### Changed
 
+- **Confirmations that cannot be asked follow `magic-compat`.** In a
+  session with nobody to answer (a `-dnull` script, a headless run),
+  `tech load` over painted layout, `save NAME` over another existing file
+  and `flush` of a changed cell go ahead with it ON, as Magic does, and are
+  declined with it OFF. An answered "no" declines in both.
+- **`cellname list childinst` and the `save` file-name answer follow
+  `magic-compat`.** With it ON the children are listed in Magic's
+  instance-identifier hash order and an answered file name keeps its first
+  7 characters, as in Magic; with it OFF the list is in placement order and
+  the whole answer is the name.
+- **DRC throughput is gated on instruction count.** CI fails when one DRC
+  pass of the reference block takes more than the M3 baseline of 12.14
+  billion instructions + 2 %; the time ratio to Magic is reported for
+  information.
 - **`cellname list filepath` and `readspice` bus brackets follow
   `magic-compat`.** With it ON, `cellname list filepath` returns the whole
   stored path, as Magic does, and a netlist pin `D[0]` never matches the
@@ -19,6 +33,25 @@ release notices.
 - **GUI scripts run headless in `hefesto-cli --magic -d X11`.** A model of
   Tk's widget tree stands in for the wrapper window, so wrapper.tcl's tags,
   menus and dialogs work without a display.
+
+- **Desktop: dragging a panel header shows where it will dock.** A dashed
+  band at the dock edge ("Drop to dock on the right"), the outline of a
+  floating target, and the dock the panel came from. A panel docked again
+  after floating now takes its dock's size and position (it sat offset in
+  an oversized dock before).
+- **Desktop: the script consent prompt is an alert sheet.** It has the
+  shield icon, the PDK's origin in an inset block, and Don't run on the
+  left. The Interrupt card sits at the top centre of the canvas. In the
+  PDK panel, each row's install state no longer covers its scripts state.
+- **Desktop: the PCell dialog, text helper, reorder dialog and Cells
+  manager follow their design boards** (compact keys, monospaced values,
+  buttons on the right; the Cells list fits the cell name).
+- **Desktop: scripted input and captures for checks.** `--input 'move X,Y;
+  down X,Y; up X,Y; key [MOD+]NAME; text T; wait MS'` plays pointer and key
+  events and prints where each panel ended up. `--press X,Y` holds the left
+  button (to open a menu). `--menu-bar-in-window` draws the menu bar inside
+  the window on macOS. `--capture-window pcell|texthelper|reorder` saves a
+  utility window.
 
 - **Desktop: the undo history names each step after the command that made
   it** ("↶ paint metal1", "Undid paint metal1 · 3 more steps"), and pressing

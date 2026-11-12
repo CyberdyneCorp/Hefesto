@@ -11,10 +11,13 @@
 #include <cstdint>
 #include <variant>
 #include <memory>
+#include <span>
+#include <string_view>
 #include <string>
 #include <vector>
 
 #include "hefesto/cmd/dispatcher.hpp"
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/commands.hpp"
@@ -221,10 +224,47 @@ TEST_CASE("tech load options, confirmation, pre-check and failure", "[cap:tech-c
   CHECK(s.editor.technology->name() == "minimum");
   REQUIRE(s.run("tech", {"load", "/t/tiny"}).ok());  // nothing painted: no confirmation needed
   (void)s.painted_cell(8, 13, db::Rect{0, 0, 4, 4});
+  s.project.compat.magic_compat = false;
   r = s.run("tech", {"load", "/t/tiny"});
-  CHECK(r.diagnostics.at(0).code == "TECH-CMD-003");  // non-interactive: declined
+  CHECK(r.diagnostics.at(0).code == "TECH-CMD-003");  // cannot ask, magic-compat OFF: declined
+  s.project.compat.magic_compat = true;
   CHECK(s.run("tech", {"load", "/t/tiny", "-noprompt"}).ok());
   CHECK(s.run("tech", {"load", "/t/tiny", "-override", "-noprompt"}).ok());
+}
+
+namespace {
+struct NoHost final : hefesto::cmd::PromptHost {
+  int asked = 0;
+  std::size_t ask(std::string_view, std::span<const std::string>, std::size_t) override {
+    ++asked;
+    return 0;
+  }
+};
+}  // namespace
+
+// Regression (SCRIPT-PDK-07, Q-SCRIPT-48): Magic's `tech load` stops only on
+// "no", and TxDialog gives -1 when it cannot ask (`-dnull`), so a PDK rc
+// file's `tech load` without -noprompt reloads over painted layout.
+TEST_CASE("tech load goes ahead with magic-compat ON when it cannot ask", "[cap:tech-command][req:tech load]") {
+  Session s;
+  s.file("/t/tiny.tech", tiny());
+  REQUIRE(s.run("tech", {"load", "/t/tiny"}).ok());
+  (void)s.painted_cell(8, 13, db::Rect{0, 0, 4, 4});
+  s.file("/t/other.tech", with(tiny(), "    tiny\n", "    other\n"));
+  auto r = s.run("tech", {"load", "/t/other"});
+  REQUIRE(r.ok());
+  CHECK(s.editor.technology->name() == "other");
+  CHECK(std::any_of(r.diagnostics.begin(), r.diagnostics.end(),
+                    [](const auto& d) { return d.code == "TECH-LOAD-004"; }));  // Existing layout may be invalid.
+  // An explicit "no" cancels without a message in both settings.
+  NoHost no;
+  s.editor.prompt = &no;
+  r = s.run("tech", {"load", "/t/tiny"});
+  CHECK(r.ok());
+  CHECK(r.diagnostics.empty());
+  CHECK(no.asked == 1);
+  CHECK(s.editor.technology->name() == "other");
+  s.editor.prompt = nullptr;
 }
 
 // Regression (m4-scripting round 1): startup files are now real Tcl, so a

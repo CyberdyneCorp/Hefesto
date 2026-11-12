@@ -131,6 +131,33 @@ class MaskTest(unittest.TestCase):
         other = b"Magic error: something else for b.\n"
         self.assertEqual(apply_masks(other, ["magic-stamp-note"]), other)
 
+    def test_magic_crash_file(self):
+        # Regression (SCRIPT-GUI-12): Magic's crash backup file name carries the
+        # process id and a mkstemp suffix, so a fresh capture never matched.
+        first = b"0 2\nCreated database crash recovery file /tmp/MAG1.J4DCBc\n0 1\n"
+        second = b"0 2\nCreated database crash recovery file /tmp/MAG1.POEaZB\n0 1\n"
+        self.assertFalse(compare_bytes(first, second, "bytes", []).equal)
+        self.assertTrue(compare_bytes(first, second, "bytes", ["magic-crash-file"]).equal)
+        self.assertEqual(apply_masks(first, ["magic-crash-file"]),
+                         b"0 2\nCreated database crash recovery file /tmp/MAG<masked>\n0 1\n")
+
+    def test_magic_tech_menu_order(self):
+        # Regression (SCRIPT-GUI-05): the golden-capture verify differed only in
+        # the order of Magic's example technologies (directory order of the
+        # reference image's file system).
+        tail = b"7 x {source /w/x.magicrc ;  magic::techmanager update}\n"
+        first = (b"0 {}\n0 nmos {magic::tech load nmos ;  magic::techmanager update}\n"
+                 b"1 gdsquery {magic::tech load gdsquery ;  magic::techmanager update}\n" + tail)
+        second = (b"0 {}\n0 gdsquery {magic::tech load gdsquery ;  magic::techmanager update}\n"
+                  b"1 nmos {magic::tech load nmos ;  magic::techmanager update}\n" + tail)
+        self.assertFalse(compare_bytes(first, second, "bytes", []).equal)
+        self.assertTrue(compare_bytes(first, second, "bytes", ["magic-tech-menu-order"]).equal)
+        self.assertEqual(apply_masks(first, ["magic-tech-menu-order"]),
+                         b"0 {}\n<i> gdsquery {magic::tech load gdsquery ;  magic::techmanager update}\n"
+                         b"<i> nmos {magic::tech load nmos ;  magic::techmanager update}\n" + tail)
+        other = b"0 {}\n1 nmos {magic::tech load scmos ;  magic::techmanager update}\n"
+        self.assertEqual(apply_masks(other, ["magic-tech-menu-order"]), other)
+
     def test_every_console_output_masks_the_stamp_note(self):
         # TECH-G36 flaked in CI on the note after CMDEDIT-MISC-01 had opted
         # in alone: any case that saves a cell can hit it, so every

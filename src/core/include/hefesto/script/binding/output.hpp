@@ -95,14 +95,17 @@ class ScriptOutputSink final : public diag::DiagnosticSink {
 
 /// cmd::PromptHost answered by the script layer (TxDialog): evaluates
 /// `tk_dialog .dialog "Dialog" "<escaped prompt>" {} <default> "<choice>" ...`
-/// and returns its integer result, or the default when the result is not an
-/// integer in range (Magic's -1) or the evaluation fails.
+/// and returns its integer result. try_ask() gives nullopt when the
+/// evaluation fails or the result is not a non-negative integer (Magic's -1,
+/// Q-SCRIPT-48); ask() then gives the default, as for an integer out of range.
 class ScriptPromptHost final : public cmd::PromptHost {
  public:
   explicit ScriptPromptHost(Interpreter& interp) : interp_(interp) {}
 
   [[nodiscard]] std::size_t ask(std::string_view question, std::span<const std::string> answers,
                                 std::size_t default_answer) override;
+  [[nodiscard]] std::optional<std::size_t> try_ask(std::string_view question, std::span<const std::string> answers,
+                                                   std::size_t default_answer) override;
 
  private:
   Interpreter& interp_;

@@ -76,6 +76,22 @@ struct ShellOptions {
   /// event injection (a panel header to a dock); the app prints the panel
   /// command the drop issued.
   std::optional<DragOption> drag;
+  /// --input 'STEP; STEP ...': after `run` (and --drag), pointer and key
+  /// events through Raven's event injection, played frame by frame with
+  /// their waits (input_script.hpp); a capture waits for the last step.
+  std::string input;
+  /// --press X,Y: after `run` (and a drag), the left button pressed at
+  /// window point (X, Y) through Raven's event injection and kept down (no
+  /// release): opens a menu of the in-window bar for a capture.
+  std::optional<DragOption> press;
+  /// --menu-bar-in-window: the menu bar is drawn in the window on every
+  /// system (on macOS it is the system bar otherwise, outside the window's
+  /// frames), so captures and scripted checks can see it.
+  bool menu_bar_in_window = false;
+  /// --capture-window: which window --capture saves: "main" (default), or
+  /// the M4 utility window "pcell" (PCell dialog), "texthelper" or
+  /// "reorder", once it is open.
+  std::string capture_window = "main";
   /// Opens the PDK manager panel at startup.
   bool show_pdk_manager = false;
   /// Opens the Console / Diagnostics panel at startup (collapsed otherwise).
@@ -105,6 +121,10 @@ struct ParseResult {
 [[nodiscard]] std::optional<PinchOption> parse_pinch_option(std::string_view text);
 /// `X0,Y0,X1,Y1` (four numbers) for --drag.
 [[nodiscard]] std::optional<DragOption> parse_drag_option(std::string_view text);
+/// `X,Y` for --press (x0, y0 = x1, y1).
+[[nodiscard]] std::optional<DragOption> parse_press_option(std::string_view text);
+/// The names --capture-window takes.
+[[nodiscard]] bool is_capture_window(std::string_view name) noexcept;
 
 /// What the app prints for a bad Magic-compatible startup option: the
 /// diagnostic as text, followed by Magic's usage line unless the

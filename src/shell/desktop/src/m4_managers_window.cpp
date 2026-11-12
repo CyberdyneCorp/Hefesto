@@ -103,7 +103,8 @@ void MainWindow::build_m4b() {
   // The Tcl console needs room for its transcript (board: the bottom dock, expanded).
   console_tabs_.set_size(-1.0F, kTclConsoleHeight);
   canvas_->add_overlay(console_panel_->card_widget());
-  console_panel_->card_widget().place_top_right(static_cast<float>(kCanvasInset), static_cast<float>(kRulerSize + 56));
+  // Board M4-Script-Consent tile 7: the Interrupt card at the canvas's top centre.
+  console_panel_->card_widget().place_top_center(static_cast<float>(kRulerSize + 12));
   // promptload / promptsave and intercepted tk_getOpenFile ask the native dialog.
   file_picker_ = std::make_unique<DesktopFilePicker>(
       [this](const NativeFileDialogRequest& request) { return ui::file_dialog(window_.id(), dialog_options(request)); });

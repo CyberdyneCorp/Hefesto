@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/shell/design_tokens.hpp"
 
 namespace hefesto::shell {
 
@@ -16,17 +17,36 @@ constexpr int kDialogHeight = 640;
 constexpr float kPad = 16.0F;
 constexpr float kLabelWidth = 200.0F;
 constexpr float kEntryWidth = 150.0F;  // board note 4: 150 px mono inputs
+constexpr float kSelectWidth = 195.0F;  // the board's select list
+constexpr float kKeyWidth = 90.0F;
+constexpr float kTextSize = 12.0F;  // board: 12 px labels and values
 
-ui::Box header_line(std::string_view key, std::string_view value) {
+ui::Label key_label(std::string_view text, const ScreenContext& ctx) {
+  ui::Label key = ui::Label::create(text);
+  key.set_size(kKeyWidth, -1.0F);
+  key.set_font_size(kTextSize);
+  key.set_color(ctx.tokens().text_tertiary);
+  return key;
+}
+
+// "Library:  sky130": a muted key and a selectable mono value (board tile 3).
+ui::Box header_line(std::string_view key, std::string_view value, const ScreenContext& ctx) {
   ui::Box line = ui::Box::horizontal();
   line.set_spacing(8.0F);
-  ui::Label k = ui::Label::create(key);
-  k.set_size(90.0F, -1.0F);
-  line.add(k);
+  line.add(key_label(key, ctx));
   ui::Label v = ui::Label::create(value);
   v.set_selectable(true);
-  line.add(v, 1.0F);
+  v.set_font(ctx.runtime.mono_font());
+  v.set_font_size(kTextSize);
+  line.add(v);
   return line;
+}
+
+// The 1 px rule between the header, the body and the buttons.
+ui::Panel divider(const ScreenContext& ctx) {
+  ui::Panel rule = ui::Panel::create(ctx.tokens().border);
+  rule.set_size(-1.0F, 1.0F);
+  return rule;
 }
 
 }  // namespace
@@ -83,6 +103,7 @@ void PCellDialogWindow::build(const pcell::DialogModel& m) {
   column.set_padding(kPad, kPad, kPad, kPad);
   column.set_spacing(10.0F);
   add_header(column, view);
+  column.add(divider(ctx_));
   if (!view.banner.empty()) {
     ui::Label banner = ui::Label::create(view.banner);
     banner.set_wrap(true);
@@ -96,6 +117,7 @@ void PCellDialogWindow::build(const pcell::DialogModel& m) {
   for (const PCellRow& row : view.rows) add_row(rows, row);
   body.add(rows);
   column.add(body, 1.0F);  // the body scrolls; header and buttons stay
+  column.add(divider(ctx_));
   add_buttons(column, view);
   column.set_accessible_name("Device parameters");
   window_->set_content(column);
@@ -103,17 +125,21 @@ void PCellDialogWindow::build(const pcell::DialogModel& m) {
 }
 
 void PCellDialogWindow::add_header(ui::Box& column, const PCellDialogView& view) {
-  column.add(header_line(view.mode, view.device + "    " + view.generator.label()));
-  column.add(header_line("Library:", view.library));
-  column.add(header_line("Cellname:", view.cell_name));
+  ui::Box device = header_line(view.mode, view.device, ctx_);
+  ui::Label chip = ui::Label::create(view.generator.label());  // "● native generator" in its status color
+  chip.set_font_size(11.0F);
+  chip.set_color(status_text_color(ctx_.tokens(), view.generator.kind));
+  device.add(chip);
+  column.add(device);
+  column.add(header_line("Library:", view.library, ctx_));
+  column.add(header_line("Cellname:", view.cell_name, ctx_));
   ui::Box line = ui::Box::horizontal();
   line.set_spacing(8.0F);
-  ui::Label key = ui::Label::create("Instance:");
-  key.set_size(90.0F, -1.0F);
-  line.add(key);
+  line.add_centered(key_label("Instance:", ctx_));
   auto instance = ui::TextInput::create("(default)");
   instance->set_text(view.instance);
   instance->set_font(ctx_.runtime.mono_font());
+  instance->set_font_size(kTextSize);
   instance->set_size(kEntryWidth + 30.0F, -1.0F);
   instance->set_accessible_name("Instance name");
   // The instance name is read by the next Create / Apply (not a command itself).
@@ -134,13 +160,16 @@ void PCellDialogWindow::add_row(ui::Box& body, const PCellRow& row) {
   ui::Label label = ui::Label::create(row.label);
   label.set_size(kLabelWidth, -1.0F);
   label.set_wrap(true);
-  line.add(label);
+  label.set_font_size(kTextSize);
+  label.set_color(ctx_.tokens().text_secondary);
+  line.add_centered(label);
   const std::string p = row.parameter;
   switch (row.kind) {
     case pcell::WidgetKind::entry: {
       auto input = ui::TextInput::create({});
       input->set_text(row.value);
       input->set_font(ctx_.runtime.mono_font());
+      input->set_font_size(kTextSize);
       input->set_size(kEntryWidth, -1.0F);
       input->set_accessible_name(row.label);
       input->on_change([this, p](std::string text) { pending_[p] = std::move(text); });
@@ -163,6 +192,9 @@ void PCellDialogWindow::add_row(ui::Box& body, const PCellRow& row) {
       auto combo = ui::ComboBox::create(row.choices);
       combo->set_selected(row.choice ? static_cast<int>(*row.choice) : -1);
       combo->set_accessible_name(row.label);
+      combo->set_font(ctx_.runtime.mono_font());
+      combo->set_font_size(kTextSize);
+      combo->set_size(kSelectWidth, -1.0F);
       const bool by_index = row.kind == pcell::WidgetKind::selectindex;
       combo->on_select([this, p, by_index, choices = row.choices](int index) {
         if (index < 0 || static_cast<std::size_t>(index) >= choices.size()) return;
@@ -173,8 +205,11 @@ void PCellDialogWindow::add_row(ui::Box& body, const PCellRow& row) {
       break;
     }
     case pcell::WidgetKind::message: {
+      // add_message rows: read-only text in the warning color (board note 4).
       ui::Label text = ui::Label::create(row.value);
       text.set_wrap(true);
+      text.set_font_size(kTextSize);
+      text.set_color(ctx_.tokens().warning_text);
       line.add(text, 1.0F);
       break;
     }
@@ -183,9 +218,14 @@ void PCellDialogWindow::add_row(ui::Box& body, const PCellRow& row) {
   if (row.corrected) {
     ui::Label typed = ui::Label::create("▲ you typed " + row.typed);
     typed.set_accessible_name(row.label + ": you typed " + row.typed + ", corrected to " + row.value);
+    typed.set_font_size(11.0F);
+    typed.set_color(ctx_.tokens().warning_text);
     body.add(typed);
   } else if (row.updated) {
-    body.add(ui::Label::create("◆ updated to " + row.value));
+    ui::Label updated = ui::Label::create("◆ updated to " + row.value);
+    updated.set_font_size(11.0F);
+    updated.set_color(ctx_.tokens().text_tertiary);
+    body.add(updated);
   }
 }
 

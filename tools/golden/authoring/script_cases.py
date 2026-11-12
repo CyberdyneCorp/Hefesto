@@ -554,7 +554,7 @@ def gui_bodies() -> dict[str, dict]:
             "update", p(".layout1.titlebar.pos cget -text"),
             "event generate .layout1.pane.top.magic <Motion> -x 50 -y 60", "update",
             p(".layout1.titlebar.pos cget -text"))),
-        "SCRIPT-GUI-05": dict(gui=True, env={"PDK_ROOT": "{work}/input/pdkroot"},
+        "SCRIPT-GUI-05": dict(gui=True, stream_masks=["magic-tech-menu-order"], env={"PDK_ROOT": "{work}/input/pdkroot"},
                               files={"pdkroot/x/libs.tech/magic/x.tech": "tech\n    format 35\n    x\nend\n"},
                               body=lines(p("techmanager create"),
                                          "set m .techmgr.title.tname.menu",
@@ -598,7 +598,7 @@ def gui_bodies() -> dict[str, dict]:
             "proc tk_getOpenFile {args} { puts [list open {*}$args]; return [file normalize input/inv.mag] }",
             "proc tk_getSaveFile {args} { puts [list save {*}$args]; return [file normalize saved.mag] }",
             p("promptload magic", "cellname list window", "promptsave magic", "file exists saved.mag"))),
-        "SCRIPT-GUI-12": dict(body=lines(
+        "SCRIPT-GUI-12": dict(stream_masks=["magic-crash-file"], body=lines(
             "load top", "box 0 0 10 10", "paint m1", "set Opts(backupinterval) 1000",
             p("crashbackups start", "llength [after info]"), "after 2500 {set done 1}", "vwait done",
             p("crashbackups stop", "llength [after info]", "crashbackups disable", "crashbackups resume",
