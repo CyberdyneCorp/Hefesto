@@ -31,6 +31,9 @@ styles
     styletype mos
 end
 
+compose
+end
+
 connect
     ndiff ndc
     metal1 ndc

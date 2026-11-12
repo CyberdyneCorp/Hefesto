@@ -119,6 +119,8 @@ TOY_FILES = {"toy.tcl": TOY_LIB, "fixedcap.mag": FIXEDCAP}
 TOY_START = "load top\nsource input/toy.tcl"
 
 # The tech of SCRIPT-API-16: tiny.tech with an extract section whose substrate node is $SUB.
+# The empty compose section is required: without it Magic fc5daa9e loads the tech (only noting
+# "Section compose was missing") but crashes with SIGSEGV in DBCellWriteFile on `save`.
 SUB_TECH = """\
 tech
     format 35
@@ -146,6 +148,9 @@ end
 
 styles
     styletype mos
+end
+
+compose
 end
 
 connect
