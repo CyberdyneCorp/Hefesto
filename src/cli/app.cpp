@@ -407,6 +407,9 @@ class Session {
       install_console(interp);
       if (options_.magic_mode) {
         set_launcher_variables(interp);
+        // Magic's Tcl build has no readline `history` (CmdHistory needs
+        // USE_READLINE): `history` is Tcl's own, as in `magic -dnull`.
+        static_cast<void>(interp.evaluate("catch {rename ::magic::history {}}"));
       }
     };
     return env;
