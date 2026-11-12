@@ -248,11 +248,15 @@ TEST_CASE("reading a link whose name holds a NUL character fails as a missing fi
   // with a NULL native path for such a name and crashed.
   SandboxedProject p;
   const std::string root = p.project.str();
+  const std::string raw_nul(1, '\0');
   for (const std::string command : {"file link", "file readlink"}) {
-    const auto result = p.run(command + " \"" + root + "/a\\0b\"");
-    REQUIRE_FALSE(result.ok());
-    CHECK(error_text(result).find("could not read link") != std::string::npos);
-    CHECK(error_text(result).find("no such file or directory") != std::string::npos);
+    // The \0 escape and a NUL byte in the script source itself.
+    for (const std::string& name : {root + "/a\\0b", root + "/a" + raw_nul + "b"}) {
+      const auto result = p.run(command + " \"" + name + "\"");
+      REQUIRE_FALSE(result.ok());
+      CHECK(error_text(result).find("could not read link") != std::string::npos);
+      CHECK(error_text(result).find("no such file or directory") != std::string::npos);
+    }
   }
 }
 

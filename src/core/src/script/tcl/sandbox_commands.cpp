@@ -133,11 +133,18 @@ struct Guard {
   bool reads_link = false;
 };
 
-// Tcl's answer to reading the link NAME when NAME holds a NUL character (in
-// Tcl's string form, the two bytes C0 80): no such file, as for any other
-// command given such a path, instead of the crash in TclpObjLink.
+// True when `text` holds a NUL character: Tcl's string form writes one as the
+// two bytes C0 80 (a `\0` escape), but a NUL byte in the script source stays a
+// raw zero byte in the word.
+bool holds_nul(std::string_view text) {
+  return text.find('\0') != std::string_view::npos || text.find("\xC0\x80") != std::string_view::npos;
+}
+
+// Tcl's answer to reading the link NAME when NAME holds a NUL character: no
+// such file, as for any other command given such a path, instead of the crash
+// in TclpObjLink.
 std::optional<int> fail_nul_link_read(const Guard& guard, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
-  if (!guard.reads_link || objc != 2 || as_view(objv[1]).find("\xC0\x80") == std::string_view::npos) {
+  if (!guard.reads_link || objc != 2 || !holds_nul(as_view(objv[1]))) {
     return std::nullopt;
   }
   Tcl_SetErrno(ENOENT);
