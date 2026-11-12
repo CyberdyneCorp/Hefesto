@@ -135,13 +135,13 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 | Criterion | Result | Evidence |
 |---|---|---|
-| Unit, property and fuzz tests green on every leg | met | CI RUN_CI: Linux x86_64 GCC 11/latest and Clang 14/latest, Linux aarch64 GCC and Clang, macOS arm64 latest and Xcode oldest, ASan/UBSan, TSan, lavapipe, fuzz (60 s per target), `pcell-equivalence`; macOS presets debug, asan, bench, xcode locally (2728/2728) |
-| Golden cases pass (Magic 8.3.694) | met | 496 captured: 433 pass, 63 differ only where an approved decision or a later milestone says so; all 90 SCRIPT cases committed (72 pass, 18 recorded); the three Desktop Alpha cases pass on every leg; golden-capture verify RUN_GOLDEN |
-| Output byte-identical on Linux x86_64, Linux aarch64, macOS arm64 | met | determinism job of CI RUN_CI with `--require-area SCRIPT --require-area DESKTOP` |
+| Unit, property and fuzz tests green on every leg | met | CI 43287048713: Linux x86_64 GCC 11/latest and Clang 14/latest, Linux aarch64 GCC and Clang, macOS arm64 latest and Xcode oldest, ASan/UBSan, TSan, lavapipe, fuzz (60 s per target), `pcell-equivalence`; macOS presets debug, asan, bench, xcode locally (2728/2728) |
+| Golden cases pass (Magic 8.3.694) | met | 496 captured: 433 pass, 63 differ only where an approved decision or a later milestone says so; all 90 SCRIPT cases committed (72 pass, 18 recorded); the three Desktop Alpha cases pass on every leg; golden-capture verify 43287048743 |
+| Output byte-identical on Linux x86_64, Linux aarch64, macOS arm64 | met | determinism job of CI 43287048713 with `--require-area SCRIPT --require-area DESKTOP` |
 | M4 requirement coverage | met | 57 of 57 (`mazeroute`'s requirement deferred to M10, Q-SCRIPT-30) |
 | Open questions resolved; readiness | met | M0–M4 ready; `--milestone M5` reports M5's 105 blocking entries |
-| `openspec validate --all --strict` | met | 174 passed (OpenSpec RUN_OS) |
-| DRC throughput (instruction count, decision 2026-11-12) | met | 12.25 billion instructions per block pass ≤ 12.38 (M3 12.14 + 2 %); Magic 10.98 (1.12 ×); timed ratio 0.76 × block, 0.74 × array, counts equal (Performance RUN_PERF) |
+| `openspec validate --all --strict` | met | 174 passed (OpenSpec 43287049001) |
+| DRC throughput (instruction count, decision 2026-11-12) | met | 12.25 billion instructions per block pass ≤ 12.38 (M3 12.14 + 2 %); Magic 10.98 (1.12 ×); instruction gate in Performance 43287048659; timed ratio (information) 0.76 × block, 0.74 × array, counts equal 1314/81 (Performance 43272005414) |
 | M2 carry-over (D17) | met, except 11.1 | 11.2–11.8 captured on macOS and compared with the M2 boards; 11.1 is the reference-hardware and Linux live-input checks (manual) |
 | Desktop Alpha checklist on Linux and macOS | **user** | not signed off; see below |
 
