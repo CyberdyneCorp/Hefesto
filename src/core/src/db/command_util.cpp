@@ -83,7 +83,8 @@ diag::Outcome<CellDef*> edit_cell(const Session& s) {
 
 diag::Outcome<Rect> box(const Session& s) {
   if (!s.editor->box) {
-    return diag::make(codes::kNoBox, "Box tool must be present");
+    // ToolGetEditBox's text (dbwind/DBWtools.c), as label and port print it.
+    return diag::make(codes::kNoBox, "Box must be present");
   }
   return *s.editor->box;
 }
