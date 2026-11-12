@@ -15,6 +15,7 @@ Compatibility: behavioral
 - A command that records no event creates no step; `undo` then undoes the previous step.
 - Steps are undone and redone as units; partial undo of a step is not possible.
 - When the log is played back, events of a step are replayed backwards (undo) or forwards (redo) in recording order.
+- Hefesto: when the user interrupts a console or command-bar command while it runs (capability `hefesto-scripting`, Requirement "Long-running script progress and interrupt"), the steps its commands made are merged into one step named after the interrupted command, so one `undo` reverts them all. Magic cannot interrupt a Tcl script this way; a command that ends normally keeps one step per engine command, as in Magic.
 
 (Magic ref: utils/undo.c:58-59,77-176,465-548, windows/windClient.c:640-660, dbwind/DBWprocs.c:990-1009, commands/CmdLQ.c:1050-1060)
 
@@ -22,6 +23,11 @@ Compatibility: behavioral
 - **GIVEN** a command that paints `metal1` at two rectangles and adds a label
 - **WHEN** `undo` is executed once
 - **THEN** both rectangles and the label SHALL be removed together
+
+#### Scenario: Interrupted console command
+- **GIVEN** a console command that has painted 412 times when the user interrupts it
+- **WHEN** `undo` is executed once
+- **THEN** all 412 paints SHALL be removed together, and the step SHALL be named after the console command
 
 #### Scenario: Command without events
 - **GIVEN** step S1 = paint, followed by a command that only prints information

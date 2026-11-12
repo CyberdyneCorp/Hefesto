@@ -8,19 +8,32 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
+#include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/script/binding/bind.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/shell/console_session.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
+#include "hefesto/shell/script_consent_model.hpp"
 #include "hefesto/shell/tcl_console.hpp"
+#include "hefesto/undo/undo_log.hpp"
 
 using namespace hefesto;
 using namespace hefesto::shell;
 
 namespace {
+
+/// A console evaluation of `result` (GCC wants every member of an aggregate).
+ConsoleEvaluation shown_as(cmd::CommandResult result, bool interrupted = false) {
+  ConsoleEvaluation evaluation;
+  evaluation.result = std::move(result);
+  evaluation.interrupted = interrupted;
+  return evaluation;
+}
 
 /// A scripted evaluator: completeness by the console's own scan, results
 /// from a callback, a fake clock.
@@ -31,14 +44,14 @@ class FakeEvaluator final : public ConsoleEvaluator {
     evaluated.emplace_back(command);
     if (during) during();
     if (command == "boom") {
-      return {cmd::CommandResult::failure(diag::make("SCRIPT-TCL-001", "invalid command name \"boom\"")), false};
+      return shown_as(cmd::CommandResult::failure(diag::make("SCRIPT-TCL-001", "invalid command name \"boom\"")));
     }
     if (interrupted) {
       interrupted = false;  // the next evaluation runs normally
       steps += 412;
-      return {cmd::CommandResult::failure(diag::make("SCRIPT-TCL-002", "eval canceled")), true};
+      return shown_as(cmd::CommandResult::failure(diag::make("SCRIPT-TCL-002", "eval unwound")), true);
     }
-    return {cmd::CommandResult::success(cmd::Value{"r:" + std::string{command}}), false};
+    return shown_as(cmd::CommandResult::success(cmd::Value{"r:" + std::string{command}}));
   }
   void interrupt() noexcept override { interrupted = true; }
   std::size_t undo_steps() const override { return steps; }
@@ -171,7 +184,7 @@ TEST_CASE("a long run shows the Interrupt card after 2 s, queues input and repor
   CHECK_FALSE(console.running());
   const auto lines = shown(console.transcript());
   CHECK(lines == std::vector<std::string>{"% ring 100000", "% box", "queued until it ends",
-                                          "■ eval canceled · interrupted by the user (412 edits kept; "
+                                          "■ eval unwound · interrupted by the user (412 edits kept; "
                                           "undo reverts them as one step)",
                                           "r:box"});
   CHECK(evaluator.evaluated == std::vector<std::string>{"ring 100000", "box"});
@@ -269,12 +282,140 @@ TEST_CASE("the console pumps frames between the commands of a long run",
 
 TEST_CASE("a console line's outcome summarizes the result for the status bar",
           "[cap:scripting-auxiliary-tools][req:Console integration]") {
-  const CommandOutcome ok = TclConsoleSession::outcome_of({cmd::CommandResult::success(cmd::Value{"42"}), false});
+  const CommandOutcome ok = TclConsoleSession::outcome_of(shown_as(cmd::CommandResult::success(cmd::Value{"42"})));
   CHECK(ok.ok());
   CHECK(ok.message == "42");
   const CommandOutcome failed = TclConsoleSession::outcome_of(
-      {cmd::CommandResult::failure(diag::make("SCRIPT-TCL-001", "invalid command name \"x\"")), false});
+      shown_as(cmd::CommandResult::failure(diag::make("SCRIPT-TCL-001", "invalid command name \"x\""))));
   CHECK_FALSE(failed.ok());
   CHECK(failed.message == "invalid command name \"x\"");
   CHECK(failed.diagnostics.size() == 1);
+}
+
+// ---- long-running scripts (script/progress.hpp; M4 round 3) ------------------------------
+
+namespace {
+
+/// An edit the way a magic:: command makes one: an undo event, then the
+/// step closed after the command (editor::post_command).
+class EditEvent final : public undo::Event {
+ public:
+  void undo(editor::EditorState&) override {}
+  void redo(editor::EditorState&) override {}
+  [[nodiscard]] std::string describe() const override { return "edit"; }
+};
+
+void define_edit(ConsoleFixture& f) {
+  f.core.editor().script.interp->define_command("::edit", [&f](const cmd::Invocation&) {
+    f.core.editor().undo.record(std::make_unique<EditEvent>());
+    (void)f.core.editor().undo.close_step("edit");
+    return cmd::CommandResult::success();
+  });
+}
+
+}  // namespace
+
+TEST_CASE("a pure Tcl loop draws frames; Interrupt from a frame keeps its edits as one step",
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
+  ConsoleFixture f;
+  define_edit(f);
+  f.core.editor().undo.record(std::make_unique<EditEvent>());
+  (void)f.core.editor().undo.close_step("paint m1");  // an edit before the command
+  int pumps = 0;
+  f.session.set_pump(
+      [&] {
+        ++pumps;
+        CHECK(f.console.running());
+        REQUIRE(f.session.progress().has_value());
+        if (pumps == 3) CHECK(f.console.interrupt());  // the card's button, in a frame
+      },
+      std::chrono::milliseconds{5});
+  // No engine command runs between the edits' frames: only the interpreter's
+  // progress reports draw them.
+  f.console.run("while 1 {\n  edit\n  for {set i 0} {$i < 2000} {incr i} {}\n}");
+  CHECK(pumps >= 3);
+  CHECK_FALSE(f.console.running());
+  CHECK_FALSE(f.session.progress().has_value());  // the run ended
+  const auto& log = f.core.editor().undo;
+  REQUIRE(log.step_count() == 2);
+  CHECK(log.step_label(0) == "paint m1");
+  CHECK(log.step_label(1) == "while 1 { edit for {set i 0} {$i < 2000} {incr i} {} }");
+  const std::string last = shown(f.console.transcript()).back();
+  INFO(last);
+  CHECK(last.starts_with("■ eval unwound · line "));  // Tcl's own text for an unwinding cancel
+  CHECK(last.find(" · interrupted by the user (") != std::string::npos);
+  CHECK(last.ends_with(" kept; undo reverts them as one step)"));
+  // One undo reverts every edit of the interrupted command.
+  const auto undone = f.core.editor().undo.undo(f.core.editor(), 1);
+  REQUIRE(undone.ok());
+  CHECK(undone.value().steps == 1);
+  CHECK(log.position() == 1);
+}
+
+TEST_CASE("a line typed while another script runs waits for it",
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
+  ConsoleFixture f;
+  bool typed = false;
+  std::optional<RunningScript> running;
+  f.session.set_pump(
+      [&] {
+        if (typed) return;
+        typed = true;
+        // A PDK menu callback runs (not the console's): the console is busy.
+        CHECK(f.session.busy());
+        running = running_script(*f.session.progress());
+        CHECK_FALSE(f.console.run("set typed yes").has_value());
+      },
+      std::chrono::milliseconds{5});
+  script::Interpreter& interp = *f.core.editor().script.interp;
+  const auto ran = interp.evaluate("set t 1\nafter 100", cmd::Origin::script);
+  INFO((ran.diagnostics.empty() ? std::string{} : ran.diagnostics.front().text));
+  REQUIRE(ran.ok());
+  REQUIRE(typed);
+  REQUIRE(running.has_value());
+  CHECK(running->script.empty());
+  CHECK(running->line == 2);
+  CHECK(f.console.held() == 1);
+  CHECK_FALSE(interp.get_var("typed").has_value());
+  CHECK(f.console.run_held() == 1);
+  CHECK(interp.get_var("typed").has_value());
+  CHECK(shown(f.console.transcript()) ==
+        std::vector<std::string>{"% set typed yes", "queued until it ends", "yes"});
+}
+
+TEST_CASE("the interrupt report names the line as Tcl reports it",
+          "[cap:scripting-auxiliary-tools][req:Console integration]") {
+  CHECK(interrupt_report("script evaluation interrupted (eval unwound)", 412, "sky130A.tcl:2378") ==
+        "eval unwound · sky130A.tcl:2378 · interrupted by the user (412 edits kept; undo reverts them as one step)");
+  CHECK(interrupt_report("eval unwound", 1) == "eval unwound · interrupted by the user (1 edit kept; undo "
+                                                "reverts them as one step)");
+  // Without a message from Tcl, Tcl's own text (user decision 2026-11-11);
+  // never the board's earlier wording.
+  CHECK(interrupt_report("", 0, "line 3") == "eval unwound · line 3 · interrupted by the user");
+  CHECK(interrupt_report("script evaluation interrupted ()", 0) == "eval unwound · interrupted by the user");
+  CHECK(script_where({"/pdk/sky130A/libs.tech/magic/sky130A.tcl", 2378}) == "sky130A.tcl:2378");
+  CHECK(script_where({"", 3}) == "line 3");
+  CHECK(script_where({"/pdk/x.tcl", 0}).empty());
+}
+
+TEST_CASE("the canvas Interrupt card follows the interpreter's progress",
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
+  script::ScriptProgress progress;
+  progress.script = "/pdk/sky130A.tcl";
+  progress.location = {"/pdk/sky130A-res.tcl", 2378};
+  progress.elapsed = std::chrono::seconds{14};
+  const auto card = interrupt_card(running_script(progress));
+  REQUIRE(card.has_value());
+  CHECK(card->title == "Running sky130A.tcl · 14 s");
+  CHECK(card->detail == "source sky130A-res.tcl · line 2378");
+  progress.elapsed = std::chrono::milliseconds{1999};
+  CHECK_FALSE(interrupt_card(running_script(progress)).has_value());
+  // Typed text has no file: the card names the line.
+  script::ScriptProgress typed;
+  typed.location = {"", 4};
+  typed.elapsed = std::chrono::seconds{3};
+  const auto typed_card = interrupt_card(running_script(typed));
+  REQUIRE(typed_card.has_value());
+  CHECK(typed_card->title == "Running a script · 3 s");
+  CHECK(typed_card->detail == "line 4");
 }

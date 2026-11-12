@@ -54,6 +54,7 @@ target_sources(hefesto_shell_tests PRIVATE
   wiring_hud_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
 
 # Window smoke tests (capability hefesto-build-and-distribution, "Dependency
 # policy": Linux CI runs the desktop shell's tests under X11 and Wayland).

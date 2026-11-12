@@ -7,7 +7,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstdint>
+#include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hefesto/ui/bindings.hpp"
@@ -287,6 +290,7 @@ TEST_CASE("a key-binding file holds macro lines", "[cap:ui-command-dispatch][req
                                      "box 0 0 1 1\n"
                                      "macro Bogus_Name\n",
                                      "keys.hef");
+  for (const auto& d : r.diagnostics) UNSCOPED_INFO(d.code + ": " + d.text);
   CHECK(r.applied == 3);
   REQUIRE(s.editor.macros.find("box", key("z")) != nullptr);
   CHECK(s.editor.macros.find("box", key("z"))->text == "zoom 4");
@@ -299,6 +303,39 @@ TEST_CASE("a key-binding file holds macro lines", "[cap:ui-command-dispatch][req
   const auto broken = ui::read_macro_file(s.editor, "macro y {unclosed", "bad.hef");
   CHECK(broken.applied == 0);
   CHECK_FALSE(broken.diagnostics.empty());
+}
+
+// m4-scripting tasks.md 13.2: the file is Tcl (as a startup file's macro
+// lines are), read in a safe child interpreter where only `macro` and
+// `imacro` exist: every other command, also a substituted one, is reported
+// and does nothing.
+TEST_CASE("a key-binding file is Tcl in which only macro lines run",
+          "[cap:ui-command-dispatch][req:macro and imacro commands]") {
+  UiSession s;
+  const auto r = ui::read_macro_file(s.editor,
+                                     "macro z {zoom 4}; macro y \"box \\\n"
+                                     "  grow\"\n"
+                                     "set x 1\n"
+                                     "macro w [exec touch /tmp/hefesto-macro-file]\n"
+                                     "::tcl::mathop::+ 1 2\n"
+                                     "macro v $nosuch\n"
+                                     "macro u {select}\n",
+                                     "keys.tcl");
+  CHECK(r.applied == 4);  // z, y, w (with an empty text: `exec` ran nothing) and u
+  REQUIRE(s.editor.macros.find("box", key("y")) != nullptr);
+  CHECK(s.editor.macros.find("box", key("y"))->text == "box  grow");  // Tcl: backslash-newline-blanks is one space
+  CHECK(s.editor.macros.find("box", key("u")) != nullptr);
+  std::vector<std::pair<std::string, std::uint32_t>> seen;
+  for (const auto& d : r.diagnostics) {
+    seen.emplace_back(d.text, std::get<hefesto::diag::SourceLocation>(d.location).line);
+  }
+  using Seen = std::vector<std::pair<std::string, std::uint32_t>>;
+  CHECK(seen == Seen{{"a key-binding file holds only macro and imacro lines, not \"set\"", 3},
+                     {"a key-binding file holds only macro and imacro lines, not \"exec\"", 4},
+                     {"a key-binding file holds only macro and imacro lines, not \"::tcl::mathop::+\"", 5},
+                     {"can't read \"nosuch\": no such variable", 6}});
+  CHECK_FALSE(std::filesystem::exists("/tmp/hefesto-macro-file"));
+  CHECK(s.editor.script.interp == nullptr);  // the session's interpreter is not involved
 }
 
 // Q-UI-42: Magic's golden captures run on the null display, where only

@@ -44,6 +44,13 @@ struct DeniedOperation {
   std::string operation;  // "exec", "socket", "open", "file delete", "cd", "source", ...
   std::string target;     // the normalized path or command line; empty when none
   ScriptLocation location;
+  /// The script absorbed the Tcl error (`catch`, `try`) and went on: the
+  /// evaluation did not end with this denial's error. Known when the
+  /// top-level evaluation ends, which is when the event is published
+  /// (board M4-Script-Consent: the row is marked "caught"). False for a
+  /// denial no command raised as an error (a path the filesystem layer
+  /// refused under a command that ignores it, such as `file exists`).
+  bool caught = false;
 
   friend bool operator==(const DeniedOperation&, const DeniedOperation&) = default;
 };
@@ -53,6 +60,9 @@ struct DeniedOperation {
 struct SkippedStatement {
   std::string statement;  // the command words as evaluated
   ScriptLocation location;
+  /// The fully qualified procedure the statement ran in ("::sky130::addtechmenu";
+  /// board M4-Menu-Bar note 11); empty at a script's top level.
+  std::string procedure{};
 
   friend bool operator==(const SkippedStatement&, const SkippedStatement&) = default;
 };

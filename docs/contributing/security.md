@@ -15,7 +15,7 @@ Normative sources:
 Some PDK files come from the internet: a downloaded PDK, or a project folder that carries its own `.magicrc` or `<tech>.magicrc`. Their scripts are untrusted until the user says otherwise. The sandbox must hold even after the user lets a script run. "Run once" means "let it set up my PDK", not "let it own my machine".
 
 Goals:
-1. A script never runs a process, opens a socket or loads native code.
+1. A script never runs a process, opens a socket or loads native code. No other origin runs a process either: `shell` is refused for typed lines too (S-01, user decision 2026-11-11).
 2. A script reads and writes only under the granted roots: the project folder, the PDK store, the session's temporary area, and documents the user opened explicitly.
 3. A script never changes the trust decisions of the user.
 4. A shell cannot bypass the sandbox. It is enforced in the core, in `script::create_project_interpreter`, and no API returns an unsandboxed interpreter.
@@ -51,7 +51,7 @@ The thread's current session (`ActiveSession`) tells the filesystem layer which 
 ### Engine commands inside Tcl
 
 `script::bind_registry` makes every engine command a Tcl command (`::magic::<name>`, imported globally). These commands do their I/O in C++ through `platform::FileSystem` and `platform::ProcessRunner`, not through Tcl, so the Tcl filesystem layer does not see them. Two rules cover them instead:
-- **Origin.** A command run from Tcl gets the origin `script` when the evaluation is a script's or a script file is on the Tcl stack (a sourced file, a procedure a file defined; `script::detail::command_origin`), else the evaluation's own origin (a line the user typed: `cli` for hefesto-cli `-c` and standard input, `gui` for the console and command bar). The shell runs a PDK's menu items and device entries as `script`. Commands that run processes or change trust (`shell`, the `pdk` subcommands that download or change the store) refuse `script`, `key` and `plugin` origins (`cmd::refuse_host_access`, S-01, S-03).
+- **Origin.** A command run from Tcl gets the origin `script` when the evaluation is a script's or a script file is on the Tcl stack (a sourced file, a procedure a file defined; `script::detail::command_origin`), else the evaluation's own origin (a line the user typed: `cli` for hefesto-cli `-c` and standard input, `gui` for the console and command bar). The shell runs a PDK's menu items and device entries as `script`. Commands that download or change trust (the `pdk` subcommands that download or change the store) refuse `script`, `key` and `plugin` origins (`cmd::refuse_host_access`, S-01, S-03). `shell` is refused for every origin, typed console, command-bar and hefesto-cli lines included (`cmd::refuse_process_execution`, SCRIPT-SANDBOX-001; user decision 2026-11-11): Hefesto runs no external process (X-3).
 - **Files.** The dispatcher gives commands of those origins `script::SandboxedFileSystem` instead of the session's file system (`Dispatcher::set_script_files`, installed by `bind_registry`, S-02): every path is checked as the Tcl layer checks Tcl's own, writes under a read-only root are refused, and only regular files are read.
 
 ## Consent and trust
@@ -67,7 +67,7 @@ Flow:
    - Desktop: a dialog with Don't run, Run once and Trust this version. Return means Run once and Esc means Don't run. A script outside the PDK store gets no Trust button, and Don't run is its default.
    - CLI batch: `BatchConsentHost` runs only PDKs named by `--trust-pdk` (a family, a variant, `variant@version-prefix` or `family/variant@version`), and declines the rest.
    - No host: decline.
-4. If declined, the layout opens read-only with the `minimum` technology and SCRIPT-TRUST-001 is reported. Other cells of the same variant follow without asking again.
+4. If declined, the layout opens read-only with the `minimum` technology (`tech::load_builtin_technology` replaces another loaded technology) and SCRIPT-TRUST-001 is reported. Other cells of the same variant follow without asking again, also when read with the technology ignored (`load -force`, subcell expansion, `flush`). The session records them (`cell::DeclinedCells`, per definition and file) and nothing writes them, not even after `cellname writeable` or `save <other name>` (SCRIPT-TRUST-005): they hold only what `minimum` could read. "Review scripts..." asks again; a yes runs the script, loads the PDK's technology and reads the cells again, editable (`cell::reopen_declined`; SCRIPT-TRUST-006 and the decline kept when the technology cannot be loaded).
 5. Trust this version records `trusted: true` in the provenance record. `pdk trust` and `pdk untrust` change it from the GUI or a typed line; a script cannot run them (SCRIPT-SANDBOX-008), and the store is a read-only root for scripts, so no script can write the record either (S-03).
 
 Two rules matter for the code. A trust decision must stay out of reach of the scripts it governs (findings S-03 and S-09). A script that runs through "Run once" has exactly the same sandbox as a trusted one.
@@ -112,11 +112,11 @@ These are accepted by design D5 ("As landed in round 1") and were re-checked in 
 - `cd` changes the process-wide working directory: with two projects open, one project's `cd` affects the other.
 - Added by this review:
   - With no time limit set (app startup sets none by default), a script the user chose to run can loop until it is interrupted. hefesto-cli has `--script-time-limit <seconds>` (S-14); the desktop interrupts from the console.
-  - `--trust-pdk <family|variant>` also runs a PDK found outside the store (S-12, accepted): batch runs name the PDK on purpose, and discovery only searches places the user's own environment names (`PDK_ROOT`, `PDKPATH`, `-rcfile`, ...); the golden cases rely on it for their copied PDK trees.
+  - `--trust-pdk <family|variant>` also runs a PDK found outside the store (S-12; accepted by the user on 2026-11-11 as a documented limit): batch runs name the PDK on purpose, and discovery only searches places the user's own environment names (`PDK_ROOT`, `PDKPATH`, `-rcfile`, ...); the golden cases rely on it for their copied PDK trees.
   - The cell file host (`cell/host.cpp`: permissions, `chmod` of a loaded cell's file, symlink tests) and the PDK manager's own stream I/O (`pdk/manager.cpp`, `packs.cpp`, `updates.cpp`) do not go through `platform::FileSystem`. A script reaches them only through cells it could load and through `pdk list`, `info`, `root`, which read the store (S-02, remainder).
-  - A typed console or command-bar line keeps its origin, so the user can still run `shell` there (S-01; waiting for the user's decision).
   - The command limit does not count loops that compile to bytecode only (`while 1 {}`); the time limit and the interrupt do stop them.
   - Memory is not limited: a huge allocation makes Tcl panic, and the process aborts.
+  - `pdk install` and `pdk updates` typed by the user start the downloader and decompressor processes (`pdk/commands.cpp` through `ProcessRunner`). Accepted by the user on 2026-11-11 as the only exception to "no process execution": built-in commands only, only from a typed line; the same commands from a script, macro or plugin are refused (S-01, S-03).
 
 ## Review results (M4, 2026-11-11)
 
@@ -145,7 +145,7 @@ The review found 15 weaknesses. Each fix has a regression test named "security f
 
 | ID | Severity | Finding | Disposition |
 |---|---|---|---|
-| S-01 | Critical | The engine command `shell` ran `/bin/sh -c` for any script. | Fixed. `shell` and the `pdk` subcommands that download refuse `script`, `key` and `plugin` origins with SCRIPT-SANDBOX-001 (`cmd/host_access.hpp`); commands run from Tcl are `script` whenever a script file is on the stack (`binding/dispatch.cpp`); hefesto-cli `-c` and standard input are `cli`, script files `script`; the desktop runs PDK menu items and device entries as `script`. Open for the user: a typed console line may still run `shell`. |
+| S-01 | Critical | The engine command `shell` ran `/bin/sh -c` for any script. | Fixed. `shell` and the `pdk` subcommands that download refuse `script`, `key` and `plugin` origins with SCRIPT-SANDBOX-001 (`cmd/host_access.hpp`); commands run from Tcl are `script` whenever a script file is on the stack (`binding/dispatch.cpp`); hefesto-cli `-c` and standard input are `cli`, script files `script`; the desktop runs PDK menu items and device entries as `script`. User decision 2026-11-11: `shell` is refused for every origin, typed console, command-bar and hefesto-cli lines included (`cmd::refuse_process_execution`; test "security fix S-01: shell is refused for a typed line too"). |
 | S-11 | Critical | The working directory and the install root were granted read-write. | Fixed. Install root and PDK store are read-only roots; the working directory only for hefesto-cli and never `/`, home or above; layout file folders under the same rule (tests in `tests/unit/app/startup_run_test.cpp`). |
 | S-03 | High | Any script could mark a PDK version trusted. | Fixed. `SandboxPolicy::read_only_roots` (Tcl writes refused by guards on `open`, `file delete|mkdir|rename|copy|link|attributes|mtime|atime|tempfile`; engine writes by `SandboxedFileSystem`); `pdk trust|untrust|uninstall|enable|pin|remove-library|export` refuse scripts (SCRIPT-SANDBOX-008). The record stays in the store (it is out of every script's write reach). |
 | S-02 | High | Engine commands with path arguments bypassed the filesystem layer. | Fixed for `platform::FileSystem` I/O: `script::SandboxedFileSystem` for `script`/`key`/`plugin` commands, which also refuses non-regular files. Remainder accepted (see "Accepted limits"): the cell file host and the PDK manager's own streams. |
@@ -155,7 +155,7 @@ The review found 15 weaknesses. Each fix has a regression test named "security f
 | S-07 | Medium | `interp recursionlimit` above the C stack crashed the app. | Fixed. Limits above 1000 refused (SCRIPT-SANDBOX-005), also through a child's command. |
 | S-09 | Medium | Trust followed a path pattern, not a location. | Fixed. `TrustBackend::covers`; `TrustStore::trusted(pdk, script)`; the desktop's `in_pdk_store` compares canonical paths. |
 | S-08 | Medium | `encoding system|dirs` changed process-wide state. | Fixed. Refused with an argument (SCRIPT-SANDBOX-007). |
-| S-12 | Medium | `--trust-pdk <variant>` matched copies outside the store. | Accepted limit (flagged for the user): see "Accepted limits". |
+| S-12 | Medium | `--trust-pdk <variant>` matched copies outside the store. | Accepted limit, confirmed by the user on 2026-11-11: see "Accepted limits". |
 | S-10 | Low | `file mkdir` failed under a root named through a link. | Fixed. Roots are kept as written too for the ancestor test. |
 | S-13 | Low | The fuzz audit missed link-following escapes and engine I/O. | Fixed for links: the audit also checks each allowed path with its links followed and that nothing appears next to the root; the review's attacks seed the corpus. Engine commands are not bound in the fuzz target (covered by the unit tests above). |
 | S-14 | Low | No time limit; the CLI could not be interrupted. | Fixed for the CLI: `--script-time-limit <seconds>` (default none, as in Magic). |
@@ -168,7 +168,7 @@ Not a security issue, noted for BINDING: in `hefesto-cli` the `clock` command is
 Before you register a new engine command, Tcl command or `magic::` procedure:
 
 1. **Paths.** Do all I/O through `ctx.services().files`, never with `std::fstream`, `fopen` or `std::filesystem` writes. Script invocations get the sandboxed file system automatically (S-02). Do not add a way around it, such as a cached `LocalFileSystem` or a path given to another service.
-2. **Processes and network.** Do not call `ctx.services().processes` or a fetcher from a command a script can reach. If you must, refuse with `cmd::refuse_host_access` (S-01) and add a denial test.
+2. **Processes and network.** Do not run a process from any command: Hefesto runs no external program from any origin (X-3; `shell` answers `cmd::refuse_process_execution`). Do not call a fetcher from a command a script can reach; if you must, refuse with `cmd::refuse_host_access` (S-01) and add a denial test.
 3. **Trust and settings that grant power.** Commands that change trust, the PDK store root, granted roots or limits refuse with `cmd::refuse_host_access(..., HostAccess::trust)`.
 4. **Building Tcl text.** Never concatenate user data into Tcl source. Pass words as a `std::vector<std::string>`, or quote each one with `script::quote_list_element`. Data files (toolbar presets, key bindings) are parsed, never sourced.
 5. **New Tcl commands in `script/tcl`.**

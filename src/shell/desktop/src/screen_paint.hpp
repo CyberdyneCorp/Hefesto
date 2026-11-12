@@ -41,6 +41,10 @@ void chip(ui::Painter& p, float w, float h, const StatusChip& chip, const ThemeT
 [[nodiscard]] float chip_width(const ui::Runtime& rt, const StatusChip& chip);
 void button(ui::Painter& p, float w, float h, std::string_view label, std::string_view icon, ButtonStyle style,
             WidgetState s, const ThemeTokens& t);
+/// A button drawn at (x, y) inside a larger painted widget (the Interrupt
+/// card); the widget draws its own focus ring.
+void button_at(ui::Painter& p, float x, float y, float w, float h, std::string_view label, ButtonStyle style,
+               WidgetState s, const ThemeTokens& t);
 [[nodiscard]] float button_width(const ui::Runtime& rt, std::string_view label, bool with_icon);
 void tool(ui::Painter& p, float w, float h, const ToolButton& tool, WidgetState s, const ThemeTokens& t);
 void section_label(ui::Painter& p, float x, float y, std::string_view text, const ThemeTokens& t);

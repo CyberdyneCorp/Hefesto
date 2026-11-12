@@ -23,6 +23,8 @@ namespace hefesto::cell {
 namespace {
 
 constexpr std::string_view kMag = ".mag";
+/// A declined cell cannot be written (script/pdk/codes.inc).
+constexpr std::string_view kDeclinedWrite = "SCRIPT-TRUST-005";
 
 void emit(const CellIoContext& ctx, std::string_view code, std::string text) {
   ctx.sink.emit(diag::make(code, std::move(text)));
@@ -204,6 +206,12 @@ std::string target_name(const CellIoContext& ctx, const db::CellDef& def, std::s
 }
 
 diag::Status check_refusal(CellIoContext& ctx, const db::CellDef& def, const std::string& file) {
+  if (const auto declined = ctx.declined != nullptr ? ctx.declined->technology_of(def) : std::nullopt) {
+    // hefesto-security "Consent before implicit script execution": the cell
+    // holds only what `minimum` could read; writing it would drop the PDK's layers.
+    return diag::make(kDeclinedWrite, "Cell " + def.name() + " was opened read-only because the " + *declined +
+                                          " scripts were not run; it cannot be written.");
+  }
   if (def.flags().no_edit) {
     const bool locked = ctx.locks != nullptr && !ctx.locks->holds(file) && ctx.fs.exists(file);
     return diag::make(codes::kWriteRefused,

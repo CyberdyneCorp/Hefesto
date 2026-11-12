@@ -25,7 +25,6 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/editor/editor_state.hpp"
-#include "hefesto/platform/process_runner.hpp"
 
 namespace hefesto::db {
 
@@ -247,34 +246,11 @@ CommandResult cmd_random(CommandContext& ctx, const Invocation& inv) {
 
 // --- shell --------------------------------------------------------------------------
 
-CommandResult cmd_shell(CommandContext& ctx, const Invocation& inv) {
-  platform::ProcessRunner& runner = ctx.services().processes;
-  if (!runner.supported()) {
-    return cu::fail(diag::make(codes::kNotAvailable, "shell: unavailable on this platform"));  // Q-CMDEDIT-96
-  }
-  // Security finding S-01: a script (or a key macro a script may have
-  // defined) never runs a process (X-3).
-  if (auto refused = cmd::refuse_host_access(inv, "shell: process execution")) {
-    return *refused;
-  }
-  if (inv.args.empty()) {
-    return CommandResult::success();
-  }
-  platform::ProcessRequest req;
-  req.program = "/bin/sh";
-  req.args = {"-c", cu::join_args(inv.args, 0)};
-  auto out = runner.run(req);
-  if (!out.ok()) {
-    return cu::fail(out.error());
-  }
-  std::string text = out.value().stdout_data + out.value().stderr_data;
-  while (!text.empty() && text.back() == '\n') {
-    text.pop_back();
-  }
-  if (!text.empty()) {
-    ctx.emit(diag::make(codes::kReport, std::move(text)));
-  }
-  return CommandResult::success();
+// Magic runs the words through system(). Hefesto runs no external process
+// from any origin, typed lines included (X-3; user decision 2026-11-11 on
+// security finding S-01), so `shell` only reports the refusal.
+CommandResult cmd_shell(CommandContext& /*ctx*/, const Invocation& /*inv*/) {
+  return cmd::refuse_process_execution("shell");
 }
 
 // --- straighten -----------------------------------------------------------------------
@@ -331,7 +307,7 @@ bool register_misc_commands(cmd::CommandRegistry& registry) {
                 "Paints the exclusive-or of the edit cell into another cell.", cmd_xor);
   ok = add(registry, "random", "random ?seed ?value??", "Returns a pseudo-random number or seeds the generator.",
            cmd_random) && ok;
-  ok = add(registry, "shell", "shell command ?args?", "Runs a shell command.", cmd_shell) && ok;
+  ok = add(registry, "shell", "shell command ?args?", "Refused: Hefesto runs no external programs.", cmd_shell) && ok;
   ok = add(registry, "straighten", "straighten direction", "Straightens jogs in the box (needs plowing).",
            cmd_straighten) && ok;
   for (const Unavailable& u : kUnavailable) {

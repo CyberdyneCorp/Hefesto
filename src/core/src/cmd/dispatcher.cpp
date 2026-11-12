@@ -302,7 +302,10 @@ CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation&
 }
 
 void Dispatcher::report(const diag::Diagnostic& diagnostic) {
-  for (auto* sink : sinks_) {
+  // A copy: a sink or observer may run a command that adds or removes one
+  // (a GUI script run inside a command listener, shell/gui_script.hpp).
+  const std::vector<diag::DiagnosticSink*> sinks = sinks_;
+  for (auto* sink : sinks) {
     sink->emit(diagnostic);
   }
   services_.logger.log(diagnostic);
@@ -312,7 +315,8 @@ void Dispatcher::publish(const Invocation& invocation, const CommandResult& resu
   for (const auto& d : result.diagnostics) {
     report(d);
   }
-  for (auto* observer : observers_) {
+  const std::vector<CommandObserver*> observers = observers_;  // see report()
+  for (auto* observer : observers) {
     observer->on_command(invocation, result);
   }
 }

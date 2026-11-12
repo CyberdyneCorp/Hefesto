@@ -15,6 +15,7 @@
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/key_bindings_sheet.hpp"
 #include "hefesto/ui/bindings.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto::shell;
 namespace ui = hefesto::ui;
@@ -28,6 +29,7 @@ hefesto::platform::PortableOptions test_options() {
 
 struct Session {
   CoreSession core{test_options()};
+  Session() { (void)hefesto::shell::test::bind_interpreter(core); }
   ui::MacroTables& macros() { return core.editor().macros; }
   void run_all(const std::vector<std::string>& lines) {
     for (const std::string& line : lines) {

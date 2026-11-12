@@ -23,6 +23,7 @@
 #include "hefesto/shell/drc_link.hpp"
 #include "hefesto/shell/drc_models.hpp"
 #include "hefesto/ui/line.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto;
 using namespace hefesto::shell;
@@ -79,6 +80,7 @@ struct DrcSession {
   CoreSession core{test_options()};
 
   DrcSession() {
+    (void)hefesto::shell::test::bind_interpreter(core);
     REQUIRE(core.files().write_atomic("/t/rules.tech", rules_tech()).ok());
     REQUIRE(run("tech load /t/rules.tech -noprompt").ok());
     REQUIRE(run("load top").ok());

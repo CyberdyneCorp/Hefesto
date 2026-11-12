@@ -18,6 +18,7 @@
 #include <set>
 #include <string>
 
+#include "hefesto/cell/declined.hpp"
 #include "hefesto/cell/host.hpp"
 #include "hefesto/cell/timestamps.hpp"
 #include "hefesto/db/cell.hpp"
@@ -76,6 +77,9 @@ struct CellSession {
   /// (desktop front ends set it; needs FileHost::process_running).
   bool import_magic_backups = false;
   std::set<const db::CellDef*> renamed_duplicates;  // Q-CELL-24 warning on save
+  /// Cells read read-only with `minimum` because their PDK scripts were
+  /// declined (hefesto/cell/declined.hpp); never written.
+  DeclinedCells declined;
   /// The host to use: `host` or the local disk.
   [[nodiscard]] FileHost& file_host();
 

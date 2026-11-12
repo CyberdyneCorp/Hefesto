@@ -34,6 +34,10 @@
 #include "hefesto/script/pdk/widgets.hpp"
 #include "hefesto/script/types.hpp"
 
+namespace hefesto::editor {
+struct EditorState;
+}
+
 namespace hefesto::shell {
 
 struct MenuBarItem {
@@ -79,6 +83,9 @@ struct MenuBarInputs {
   std::function<std::optional<bool>(std::string_view variable)> option;
   /// The project's PDK scripts were declined: no PDK items or menus.
   bool scripts_declined = false;
+  /// The window's root cell is read-only (a declined layout, board
+  /// M4-Script-Consent tile 6): File › Save… and Save as… are disabled.
+  bool layout_read_only = false;
 };
 
 /// Magic's labels with runs of spaces collapsed ("Mirror   Up/Down" ->
@@ -90,9 +97,19 @@ struct MenuBarInputs {
 /// M10); nullopt for the others.
 [[nodiscard]] std::optional<std::string_view> later_milestone(std::string_view command);
 
+/// True for the wrapper commands that write the layout (File › Save…, Save as…).
+[[nodiscard]] bool saves_layout(std::string_view command);
+
 /// The bar for one layout window.
 [[nodiscard]] MenuBarView menu_bar_view(const gui::WrapperMenuModel& wrapper, const script::MenuModel& pdk_menus,
                                         const pcell::ToolkitMenus& toolkit, const MenuBarInputs& inputs);
+
+/// The bar of the session's layout window, the wrapper frame `.layout1`
+/// (gui::adopt_wrapper): Magic's wrapper menus, the edits the PDK made
+/// through the frame's WidgetInterceptor (ProjectInterpreter::menu_model),
+/// the toolkit menus of every frame (the desktop has one layout window) and
+/// the check items' values from the project interpreter.
+[[nodiscard]] MenuBarView session_menu_bar(const editor::EditorState& editor, bool scripts_declined);
 
 /// The script choosing `item` runs: a command item its command; a check
 /// item first sets its variable to the toggled value (Tk's checkbutton
@@ -103,8 +120,9 @@ struct MenuBarInputs {
 [[nodiscard]] std::size_t menu_bar_signature(const MenuBarView& view);
 
 /// One Diagnostics row per statement WidgetInterceptor skipped (board tile
-/// 11): "▲ SCRIPT-PDK-004 skipped widget statement <file>:<line>" and the
-/// statement on the next line.
+/// 11): "▲ SCRIPT-PDK-004 skipped widget statement <file>:<line>", the
+/// statement on the next line and, when it ran in a procedure, "in
+/// <procedure> · evaluation continued" (without the leading `::`).
 [[nodiscard]] std::string skipped_statement_row(const script::SkippedStatement& statement);
 
 /// The status-bar message after a window opened with skipped statements:

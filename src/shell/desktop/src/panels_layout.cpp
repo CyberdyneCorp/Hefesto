@@ -112,6 +112,25 @@ LayoutRect drop_zone(const LayoutRect& dock, const LayoutRect& canvas, DockZone 
   return dock;
 }
 
+/// The tabs of `leader`'s strip take its dock, home and floating window,
+/// right after it in the dock order.
+void follow_leader(PanelLayout& layout, const std::string& leader) {
+  std::vector<PanelPlacement> members;
+  std::erase_if(layout.panels, [&](PanelPlacement& p) {
+    if (p.id == leader || panel_group_leader(p.id) != leader) return false;
+    members.push_back(std::move(p));
+    return true;
+  });
+  auto at = std::find_if(layout.panels.begin(), layout.panels.end(), [&](const auto& p) { return p.id == leader; });
+  if (at == layout.panels.end()) return;
+  for (PanelPlacement& m : members) {
+    m.dock = at->dock;
+    m.home = at->home;
+    m.floating = at->floating;
+  }
+  layout.panels.insert(at + 1, std::make_move_iterator(members.begin()), std::make_move_iterator(members.end()));
+}
+
 int rounded(float v) { return static_cast<int>(std::lround(v)); }
 
 nlohmann::json rect_json(const LayoutRect& r) { return nlohmann::json::array({r.x, r.y, r.w, r.h}); }
@@ -215,10 +234,17 @@ std::vector<std::string> PanelLayout::in(DockZone zone) const {
 
 PanelLayout default_panel_layout() {
   PanelLayout layout;
-  layout.panels = {placement("layers", DockZone::left, false), placement("inspector", DockZone::right, false),
-                   placement("drc", DockZone::right, true), placement("console", DockZone::bottom, true),
-                   placement("keys", DockZone::bottom, true)};
+  layout.panels = {placement("layers", DockZone::left, false),        placement("cells", DockZone::left, true),
+                   placement("libraries", DockZone::left, true),     placement("drc", DockZone::left, true),
+                   placement("inspector", DockZone::right, false),   placement("techmanager", DockZone::right, true),
+                   placement("console", DockZone::bottom, true),     placement("keys", DockZone::bottom, true)};
   return layout;
+}
+
+std::string_view panel_group_leader(std::string_view id) noexcept {
+  if (id == "cells" || id == "libraries") return "layers";
+  if (id == "keys") return "console";
+  return id;
 }
 
 std::string_view panel_command_usage() noexcept {
@@ -236,9 +262,27 @@ PanelCommandResult run_panel_command(PanelLayout& layout, const std::vector<std:
   PanelPlacement* p = args.empty() ? nullptr : layout.find(args[0]);
   if (p == nullptr) return usage();
   if (args.size() == 1) return shown_result(*p, false);
-  if (args[1] == "dock") return args.size() == 3 ? dock(layout, *p, args[2]) : usage();
-  if (args[1] == "float") return float_panel(layout, *p, args, window);
-  return args.size() == 2 ? set_shown(layout, *p, args[1]) : usage();
+  const std::string id = p->id;
+  PanelPlacement* leader = layout.find(panel_group_leader(id));
+  if (leader == nullptr) leader = p;
+  const std::string leader_id = leader->id;  // dock() and float_panel() move the placements
+  PanelCommandResult result;
+  if (args[1] == "dock") {
+    result = args.size() == 3 ? dock(layout, *leader, args[2]) : usage();
+  } else if (args[1] == "float") {
+    result = float_panel(layout, *leader, args, window);
+  } else {
+    if (args.size() != 2) return usage();
+    result = set_shown(layout, *p, args[1]);
+    // Showing a tab of a strip shows the strip.
+    if (result.ok && !layout.find(id)->collapsed && leader != p && leader->collapsed) {
+      leader->collapsed = false;
+      result.changed = true;
+    }
+    return result;
+  }
+  if (result.ok) follow_leader(layout, leader_id);
+  return result;
 }
 
 LayoutRect clamp_floating(const LayoutRect& r, const LayoutRect& window) noexcept {

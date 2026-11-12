@@ -133,10 +133,11 @@ struct ScriptHostCommandLine {
 /// How one file argument is loaded ("Command-line file arguments").
 struct FileEntry {
   /// The command to run (`lef read <f>`, `source <f>`, `magic::load <f>`,
-  /// ...); empty when the file cannot be loaded.
+  /// `load <f>`, ...); empty when the file cannot be loaded.
   std::string command;
-  /// Console lines in order: SCRIPT-PDK-006 (`handling file entry ...`,
-  /// stdout) and SCRIPT-PDK-007 (stderr) diagnostics.
+  /// Console lines in order: SCRIPT-PDK-006 (stdout: `Handling file entry
+  /// ...` in wrapper mode, `Loading "<f>" from command line.` in NULL
+  /// graphics) and SCRIPT-PDK-007 (stderr, wrapper mode only) diagnostics.
   std::vector<diag::Diagnostic> messages;
 };
 
@@ -144,8 +145,11 @@ struct FileEntry {
 /// empty.
 [[nodiscard]] std::string file_extension(std::string_view file);
 
-/// The handling of `file` in wrapper mode (`wrapper` true) or in NULL
-/// graphics (magic.tcl.in:363-439).
+/// The handling of `file` in wrapper mode (`wrapper` true,
+/// magic.tcl.in:363-411) or in NULL graphics, where Magic's C startup loads
+/// it (utils/main.c:383-440,1189-1225; `.mag` stripped, no `handling file
+/// entry` line; CIF and GDS read and exact extensions as in app-startup,
+/// Q-UI-25).
 [[nodiscard]] FileEntry script_host_file_entry(std::string_view file, bool wrapper);
 
 }  // namespace hefesto::script

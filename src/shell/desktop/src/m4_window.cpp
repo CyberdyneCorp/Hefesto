@@ -12,8 +12,7 @@
 
 #include <algorithm>
 
-#include "hefesto/gui/wrapper.hpp"
-#include "hefesto/script/interp.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/shell/gui_script.hpp"
 #include "main_window.hpp"
 
@@ -21,8 +20,6 @@ namespace hefesto::shell {
 
 namespace {
 
-/// The wrapper frame of the desktop's layout window (Magic's first wrapper).
-constexpr std::string_view kFrame = ".layout1";
 constexpr float kMenuBarHeight = 30.0F;  // board note 1 (Linux)
 
 std::vector<ui::MenuBarMenuSpec> menu_specs(const MenuBarView& view) {
@@ -137,19 +134,7 @@ cmd::CommandResult MainWindow::run_script_action(const std::string& script, cmd:
 
 void MainWindow::refresh_menu_bar() {
   if (!menu_bar_) return;
-  editor::EditorState& editor = ctx_.core.editor();
-  script::Interpreter* interp = editor.script.interp.get();
-  MenuBarInputs inputs;
-  inputs.frame = {};  // the toolkit menus of every frame: the desktop has one layout window
-  inputs.scripts_declined = scripts_declined();
-  inputs.option = [interp](std::string_view variable) -> std::optional<bool> {
-    if (interp == nullptr) return std::nullopt;
-    const auto value = interp->get_var(variable);
-    if (!value) return std::nullopt;
-    return tcl_true(value->to_string());
-  };
-  MenuBarView view =
-      menu_bar_view(gui::wrapper_menus(kFrame), editor.script.menu_model, editor.script.gencell.menus, inputs);
+  MenuBarView view = session_menu_bar(ctx_.core.editor(), scripts_declined());
   // The system menu bar (macOS) takes no room in the window; Raven decides
   // once the bar is in a shown window.
   const bool native = menu_bar_->native();
@@ -230,33 +215,74 @@ void MainWindow::open_place_device() {
 
 // --- declined ---------------------------------------------------------------------------
 
+std::optional<script::PdkIdentity> MainWindow::declined_pdk() const {
+  if (scripts_declined()) return consent_host_->declined();
+  // A layout of a PDK declined without this window's prompt (another
+  // window's answer, `pdk untrust`): the cell names its technology.
+  const editor::EditorState& editor = ctx_.core.editor();
+  const view::LayoutWindow* win = editor.windows.current();
+  if (win == nullptr || win->root() == nullptr) return std::nullopt;
+  const auto tech = editor.cell_session.declined.technology_of(*win->root());
+  if (!tech || !cell::is_declined(editor, *win->root())) return std::nullopt;
+  return script::PdkIdentity{*tech, *tech, ""};
+}
+
 void MainWindow::refresh_declined() {
-  // Shown once declined and kept until the project is reopened: the session
-  // stays on the minimum technology even when Review scripts... says yes.
-  if (declined_shown_ || !scripts_declined()) return;
-  declined_shown_ = true;
-  const DeclinedView view = declined_view(*consent_host_->declined(), header_.title);
-  declined_text_->set_text(view.banner);
-  declined_text_->set_accessible_name(view.banner);
-  ui::announce(view.banner, false);
-  declined_bar_.set_visible(true);
+  // Board M4-Script-Consent tile 6: the banner stays while the scripts are
+  // declined or the window's layout was opened without them; Review
+  // scripts... that reopens the layout hides it.
+  const auto pdk = declined_pdk();
+  const std::string banner = pdk ? declined_view(*pdk, header_.title).banner : std::string{};
+  if (banner == declined_banner_) return;
+  declined_banner_ = banner;
+  declined_bar_.set_visible(!banner.empty());
+  if (banner.empty()) return;
+  declined_text_->set_text(banner);
+  declined_text_->set_accessible_name(banner);
+  ui::announce(banner, false);
 }
 
 void MainWindow::review_scripts() {
-  if (consent_host_ == nullptr || !consent_host_->declined()) return;
+  if (consent_host_ == nullptr || !consent_host_->declined()) {
+    set_message(StatusKind::warning,
+                diagnostic_line(StatusKind::warning, "Reopen the project to be asked about its PDK scripts again"));
+    return;
+  }
   const script::PdkIdentity pdk = *consent_host_->declined();
   const auto script = consent_host_->script_of(pdk);
   if (!script) return;
-  consent_host_->forget(pdk);
-  ctx_.core.editor().script.pdk_trust.forget_decline(pdk);
-  const script::ConsentDecision decision = consent_host_->ask(pdk, *script);
-  if (decision == script::ConsentDecision::decline) return;
-  if (decision == script::ConsentDecision::trust_version) {
-    run_line("pdk trust " + pdk.variant + " " + pdk.version);
+  consent_host_->forget(pdk);  // ask again; the core's TrustStore keeps the decline until reopen_declined
+  const ReviewPlan plan = review_plan(pdk, consent_host_->ask(pdk, *script));
+  if (!plan.reopen) return;  // Don't run again: nothing changes
+  if (plan.trust_command) run_line(*plan.trust_command);  // logged, as the PDK panel's Trust scripts
+  reopen_declined_layout(pdk, *script);
+}
+
+void MainWindow::reopen_declined_layout(const script::PdkIdentity& pdk, const platform::Path& script) {
+  // The PDK's script runs and the declined cells are read again with its
+  // technology (cell::reopen_declined); messages go to the Diagnostics panel.
+  class Report final : public diag::DiagnosticSink {
+   public:
+    explicit Report(cmd::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
+    void emit(const diag::Diagnostic& d) override { dispatcher_.report(d); }
+
+   private:
+    cmd::Dispatcher& dispatcher_;
+  };
+  CoreSession& core = ctx_.core;
+  Report sink(core.dispatcher());
+  cmd::CommandContext context(core.services(), core.project(), core.dispatcher().session(), sink, core.registry(),
+                              &core.editor());
+  const cmd::CommandResult result = cell::reopen_declined(context, pdk, script);
+  for (const diag::Diagnostic& d : result.diagnostics) core.dispatcher().report(d);
+  if (result.ok()) {
+    set_message(StatusKind::info, diagnostic_line(StatusKind::info, "Reopened with the " + pdk.variant + " scripts"));
+  } else {
+    consent_host_->restore_decline(pdk);
+    set_message(StatusKind::error, diagnostic_line(StatusKind::error, gui_result_text(result)));
   }
-  // The scripts run when the project opens again (the session keeps the answer).
-  set_message(StatusKind::warning,
-              diagnostic_line(StatusKind::warning, "Reopen the project to run the " + pdk.variant + " scripts"));
+  dirty_ = true;
+  window_.request_redraw();
 }
 
 }  // namespace hefesto::shell

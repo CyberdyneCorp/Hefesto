@@ -184,8 +184,32 @@ TEST_CASE("the PDK store records script trust in the version's provenance",
   REQUIRE(provenance.ok());
   CHECK(provenance.value().trusted);
   CHECK(provenance.value().source == "external");
+  // The trust date (board M4-Script-Consent tile 5): today, `YYYY-MM-DD`.
+  REQUIRE(provenance.value().trusted_date.has_value());
+  CHECK(provenance.value().trusted_date->size() == 10);
   REQUIRE(manager.set_trusted(*family, kSky130.version, false).ok());
   CHECK_FALSE(manager.provenance(*family, kSky130.version).value().trusted);
+  CHECK_FALSE(manager.provenance(*family, kSky130.version).value().trusted_date.has_value());
+}
+
+TEST_CASE("the trust date is recorded once and removed with the trust",
+          "[cap:hefesto-pdk-manager][req:Script trust for managed PDKs]") {
+  TempDir dir;
+  write_file(dir.path() / "ciel/sky130/versions" / kSky130.version / "sky130A/libs.tech/magic/sky130A.tech", "tech\n");
+  hefesto::platform::LocalFileSystem fs;
+  NoHost host;
+  auto fetcher = hefesto::pdk::make_unsupported_fetcher();
+  hefesto::pdk::PdkManager manager{fs, host, *fetcher, hefesto::pdk::Catalog::builtin()};
+  manager.set_root(dir.path());
+  const auto* family = manager.catalog().find_family("sky130");
+  REQUIRE(family != nullptr);
+  REQUIRE(manager.set_trusted(*family, kSky130.version, true, "2026-11-11").ok());
+  CHECK(manager.provenance(*family, kSky130.version).value().trusted_date == "2026-11-11");
+  REQUIRE(manager.set_trusted(*family, kSky130.version, true).ok());  // trusting again keeps the date
+  CHECK(manager.provenance(*family, kSky130.version).value().trusted_date == "2026-11-11");
+  REQUIRE(manager.set_trusted(*family, kSky130.version, false).ok());
+  REQUIRE(manager.set_trusted(*family, kSky130.version, true, "2026-12-01").ok());
+  CHECK(manager.provenance(*family, kSky130.version).value().trusted_date == "2026-12-01");
 }
 
 TEST_CASE("the batch policy runs only the PDKs named by --trust-pdk",

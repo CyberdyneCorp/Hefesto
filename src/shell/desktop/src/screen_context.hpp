@@ -3,9 +3,10 @@
 //
 // What every part of the Desktop-Layout screen shares: the Raven runtime
 // (fonts, icons), the current forge theme, the core session, and the way a
-// UI action runs a command (through the core Dispatcher, origin `gui`, echoed
-// in the Console like a typed command; hefesto-architecture "Single command
-// API"). Raven-free.
+// UI action runs a command (Tcl in the project's interpreter, origin `gui`,
+// so its engine commands go through the core Dispatcher and their tags fire;
+// echoed in the Console like a typed command; hefesto-architecture "Single
+// command API", m4-scripting tasks.md 13.2). Raven-free.
 
 #pragma once
 
@@ -24,8 +25,9 @@ struct ScreenContext {
   ui::Runtime& runtime;
   CoreSession& core;
   ThemeMode mode = ThemeMode::dark;
-  /// Runs one command line as if typed in the command bar (Console echo,
-  /// history, status bar). Set by the main window.
+  /// Runs one Tcl command line as if typed in the command bar (Console
+  /// echo, history, status bar), through CoreCommandSink. Set by the main
+  /// window.
   std::function<void(const std::string&)> run;
   /// Appends a command and its result to the Console without running it
   /// (results of background jobs). Set by the main window.

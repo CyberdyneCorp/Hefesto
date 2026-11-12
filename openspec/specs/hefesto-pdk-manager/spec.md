@@ -394,7 +394,7 @@ Compatibility: native
 - **THEN** the manager SHALL show `open_pdks`, the full hash, the commit date, the catalog URL and the SHA-256 of every installed asset
 
 ### Requirement: Script trust for managed PDKs
-A version installed from the signed Hefesto catalog, or from a signed offline pack, SHALL be recorded as trusted for that exact version in the PDK store (capability `hefesto-security`). A version installed from an unverified source, found in an external `PDK_ROOT`, or imported from an unsigned pack SHALL require the one-time consent prompt before its startup or device scripts run. Updating to a new version SHALL NOT carry trust over from the old version unless the new version also comes from a signed source.
+A version installed from the signed Hefesto catalog, or from a signed offline pack, SHALL be recorded as trusted for that exact version in the PDK store (capability `hefesto-security`). A version installed from an unverified source, found in an external `PDK_ROOT`, or imported from an unsigned pack SHALL require the one-time consent prompt before its startup or device scripts run. Updating to a new version SHALL NOT carry trust over from the old version unless the new version also comes from a signed source. The record SHALL keep the date the user first trusted the version (removed when trust is revoked), and the PDK panel SHALL show it with the trusted state.
 
 Compatibility: native
 

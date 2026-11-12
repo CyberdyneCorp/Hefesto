@@ -6,11 +6,13 @@
 #include <algorithm>
 #include <cmath>
 #include <mutex>
+#include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/settings/project_settings.hpp"
 
 namespace hefesto::shell {
@@ -136,10 +138,13 @@ PdkJob::~PdkJob() {
 }
 
 bool PdkJob::start(std::string_view line, Setup setup) {
-  const cmd::ParsedScript parsed = cmd::parse_script(line, "PDK manager");
-  if (parsed.error || parsed.commands.size() != 1 || parsed.commands.front().words.empty()) return false;
-  const auto& words = parsed.commands.front().words;
-  cmd::Invocation invocation{words.front(), {words.begin() + 1, words.end()}, cmd::Origin::gui, std::nullopt};
+  // One command, its words as a Tcl list (the panel's lines: pdk_command,
+  // with_progress); the worker has no interpreter, so no substitution.
+  if (line.find_first_of(";\n") != std::string_view::npos) return false;
+  const auto words = pcell::split_tcl_list(line);
+  if (!words || words.value().empty()) return false;
+  const std::vector<std::string>& w = words.value();
+  cmd::Invocation invocation{w.front(), {w.begin() + 1, w.end()}, cmd::Origin::gui, std::nullopt};
   {
     const std::lock_guard guard(state_->mutex);
     if (state_->running) return false;  // never blocks the UI thread

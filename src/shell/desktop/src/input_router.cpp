@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "hefesto/cmd/coordinates.hpp"
-#include "hefesto/cmd/script.hpp"
+#include "hefesto/shell/gui_script.hpp"
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/input.hpp"
 #include "hefesto/ui/state.hpp"
@@ -195,17 +195,9 @@ bool InputRouter::run(const std::string& line, const PointerContext* at) {
   if (at != nullptr) set_point(*at);
   const std::string text = at != nullptr ? ui::substitute_window(line, at->window_name) : line;
   issued_.push_back(text);
-  const cmd::ParsedScript parsed = cmd::parse_script(text, "key");
-  if (parsed.error) {
-    dispatcher_.report(*parsed.error);
-    return false;
-  }
-  for (const cmd::ParsedCommand& c : parsed.commands) {
-    const cmd::Invocation invocation{c.words.front(), {c.words.begin() + 1, c.words.end()}, cmd::Origin::key,
-                                     std::nullopt};
-    if (!dispatcher_.execute(invocation).ok()) return false;
-  }
-  return true;
+  // A macro is Tcl, as in Magic's Tcl build (`magic::gencell {} ; raise
+  // .params`), evaluated in the project's interpreter (shell/gui_script.hpp).
+  return run_gui_script_traced(editor_, dispatcher_, text, cmd::Origin::key).ok();
 }
 
 bool InputRouter::has_button_macro(int button, std::uint8_t modifiers) const {

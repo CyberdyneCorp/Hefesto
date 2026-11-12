@@ -42,6 +42,7 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -63,6 +64,10 @@
 #include "hefesto/shell/screen_models.hpp"
 #include "layout_canvas.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
+#include "hefesto/shell/key_bindings_sheet.hpp"
+#include "hefesto/shell/label_tool.hpp"
+#include "hefesto/shell/panels_layout.hpp"
+#include "hefesto/shell/wiring_hud.hpp"
 #include "hefesto/shell/pcell_dialog_model.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 #include "pcell_dialog.hpp"
@@ -110,6 +115,10 @@ class MainWindow {
   [[nodiscard]] ui::FrameStats frame_stats() const { return window_.frame_stats(); }
   [[nodiscard]] std::size_t canvas_instances() const { return canvas_->instance_count(); }
   bool capture(const std::string& path) const { return window_.capture_ppm(path); }
+  /// --capture-running: capture to `path` in the first frame a running
+  /// script draws with its Interrupt card shown.
+  void capture_when_card_shows(std::string path) { card_capture_ = std::move(path); }
+  [[nodiscard]] bool card_captured() const noexcept { return card_captured_; }
   [[nodiscard]] std::string window_system() const { return window_.window_system(); }
 
   /// After the background DRC pump ran BackgroundHost::service() (UI
@@ -146,6 +155,7 @@ class MainWindow {
   void build_center();
   void build_tool_rail(ui::Box& middle);
   void rail_click(std::string_view icon);
+  [[nodiscard]] bool rail_tool_locked(std::string_view icon) const;
   void refresh_rail();
   void add_undo_buttons(ui::Box& row);
   /// cmd::PromptHost: a dialog (modal, or shown without waiting in a
@@ -153,10 +163,7 @@ class MainWindow {
   std::size_t ask(std::string_view question, std::span<const std::string> answers, std::size_t default_answer);
   [[nodiscard]] std::optional<std::string> complete(const std::string& text);
   void show_prompt(const std::string& text);
-  bool set_panel(PanelId panel, std::optional<bool> show);
-  bool dock_panel(PanelId panel, DockSide side);
-  void reset_layout();
-  /// Places the side panels around the canvas in the middle row.
+  /// Places the panels as the layout has them (panels_host.cpp).
   void arrange_middle();
   /// Opens the shared popover menu at window point (x, y).
   void open_menu(const std::string& title, std::vector<MenuEntry> entries, float x, float y);
@@ -171,7 +178,6 @@ class MainWindow {
   void refresh_color_panel();
   /// The right dock shows the PDK manager, else the color window, else the Inspector.
   void update_right_dock();
-  [[nodiscard]] bool panel_shown(PanelId panel) const;
   std::optional<std::string> set_paint_layer(std::optional<std::string> name);
   void clear_problems();
   void refresh_feedback();
@@ -203,6 +209,9 @@ class MainWindow {
   void open_place_device();
   void refresh_declined();
   void review_scripts();
+  /// The PDK whose scripts the window's layout lacks (nullopt: none).
+  [[nodiscard]] std::optional<script::PdkIdentity> declined_pdk() const;
+  void reopen_declined_layout(const script::PdkIdentity& pdk, const platform::Path& script);
   /// Runs an M4 screen's Tcl script (gui_script.hpp) with the Console echo.
   cmd::CommandResult run_script_action(const std::string& script, cmd::Origin origin = cmd::Origin::gui);
   // M4 managers and Tcl console (m4_managers_window.cpp; SHELL-B, tasks 10.4-10.5)
@@ -218,6 +227,63 @@ class MainWindow {
   void open_reorder();
   /// The left dock's tabs: Layers, Cells, Libraries.
   [[nodiscard]] ui::Widget& left_dock();
+  // CARRY panel layout on screen (panels_host.cpp; m4-scripting task 11.2,
+  // board M2-Panels): every panel in a frame with its header, docked left,
+  // right or bottom, or floating over the canvas; collapsed docks as edge
+  // strips; the layout restored at launch and saved on change and on quit.
+  struct PanelFrame {
+    std::string id;                 // the strip leader's `panel` word
+    ui::Widget* content = nullptr;  // the panel's widget (not owned)
+    std::optional<ui::Panel> card;  // holds `box` (a Panel has one child)
+    ui::Box box = ui::Box::vertical();
+    std::unique_ptr<ui::Painted> header;
+  };
+  enum class FrameState : std::uint8_t { hidden, header, expanded };
+  void build_panels();  // in build_center: frames, strips, the restored layout
+  void register_panel_command();
+  [[nodiscard]] cmd::CommandResult panel_command(const std::vector<std::string>& args);
+  void sync_panels_from_flags();
+  void apply_panel_flags(const std::vector<std::string>& args);
+  [[nodiscard]] FrameState frame_state(const std::string& id) const;
+  [[nodiscard]] bool same_dock(std::string_view a, std::string_view b) const;
+  [[nodiscard]] std::string frame_title(const std::string& id) const;
+  [[nodiscard]] PanelFrame* frame(std::string_view id);
+  void place_side(DockZone zone, int& index);
+  void place_floating(PanelFrame& f);
+  void header_click(const std::string& id, float x);
+  void open_panel_menu(const std::string& id, float x, float y);
+  void strip_click(std::size_t zone, float y);
+  void fit_panels();  // per frame: the edge strips the window width needs
+  [[nodiscard]] LayoutRect panel_window_rect() const;
+  void save_panels();
+  // CARRY tool states (label_tool_view.cpp; task 11.4, board M2-Tool-States).
+  void build_label_popover();
+  /// InputRouter's prompt: the Label sweep opens the popover, others fill the command bar.
+  void route_prompt(const std::string& text);
+  void open_label_popover(const db::Rect& box);
+  void commit_label();
+  void close_label_popover();
+  bool tool_shortcut(int key, std::uint8_t modifiers);  // Escape: the popover, `unmeasure`
+  void note_tool_command(const cmd::Invocation& invocation);
+  void refresh_tools();  // between frames
+  [[nodiscard]] PaintToolState paint_state(const ToolButton& tool) const;
+  // CARRY key-binding sheet (key_bindings_view.cpp; task 11.3, board M2-Key-Bindings).
+  void build_key_sheet();
+  void open_key_sheet();  // `panel keys show`
+  void close_key_sheet();
+  [[nodiscard]] bool keys_sheet_open() const { return key_card_.has_value() && keys_shown_; }
+  void select_key_table(const std::string& table);
+  void refresh_key_sheet();
+  void edit_key_row(int row);
+  void issue_key_commands(const std::vector<std::string>& lines);
+  void load_key_file();
+  bool key_sheet_shortcut(int key, std::uint8_t modifiers);
+  // CARRY wiring feedback (wiring_hud_view.cpp; task 11.7, board M2-Wiring).
+  void build_wiring_chip(ui::Box& row);  // in build_top_bar, after the DRC chip
+  void build_wiring_views();             // the HUD over the canvas, the Wire inspector
+  [[nodiscard]] bool wiring_tool_current() const;
+  void refresh_wiring();  // between frames: chip, HUD, Wire inspector
+  void refresh_wire_inspector();
   void on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result);
   /// --pinch: injects the trackpad pinch and prints the zoom before and after.
   void poll_background();
@@ -236,6 +302,9 @@ class MainWindow {
   void sync_styles();
   void refresh_all();
   void refresh_header();
+  /// The ▲ read-only chip after the cell name in the title block (M4).
+  void paint_read_only_chip(ui::Painter& p, float x, float h, const ThemeTokens& t) const;
+  static constexpr float kTitleChipGap = 8.0F;
   void refresh_status();
   void append_console(const std::string& command, const std::string& result);
   [[nodiscard]] ui::Panel& bar(const Rgba ThemeTokens::*token);
@@ -263,12 +332,12 @@ class MainWindow {
   std::vector<MenuEntry> menu_entries_;   // what menu_ shows
   FocusRegion focus_region_ = FocusRegion::canvas;
   ui::Box middle_ = ui::Box::horizontal();  // rail | docks and canvas
-  ui::Box center_ = ui::Box::vertical();    // canvas over the console tabs
-  DockSide layers_side_ = DockSide::left;
-  DockSide inspector_side_ = DockSide::right;
+  ui::Box center_ = ui::Box::vertical();    // canvas over the bottom dock
   class DialogPromptHost;
   std::unique_ptr<cmd::PromptHost> prompt_host_;
-  bool capture_mode_ = false;  // --capture: dialogs do not wait
+  bool capture_mode_ = false;
+  std::string card_capture_;  // --capture-running
+  bool card_captured_ = false;  // --capture: dialogs do not wait
   bool layers_visible_ = true;
   bool inspector_visible_ = true;
   bool result_has_more_ = false;  // the last result had more lines than the status bar shows
@@ -342,7 +411,7 @@ class MainWindow {
   ui::Box declined_bar_ = ui::Box::horizontal();  // banner over the canvas while scripts are declined
   std::optional<ui::Label> declined_text_;
   std::unique_ptr<ui::Button> review_button_;
-  bool declined_shown_ = false;
+  std::string declined_banner_;  // the banner text shown (empty: hidden)
 
   // M4 managers and Tcl console (SHELL-B).
   std::unique_ptr<TclConsoleSession> console_session_;
@@ -354,11 +423,78 @@ class MainWindow {
   std::unique_ptr<DesktopFilePicker> file_picker_;
   ui::Tabs left_tabs_ = ui::Tabs::create();  // Layers | Cells | Libraries
   bool tech_shown_ = false;          // the technology manager in the right dock (`techmanager create`)
+
+  // CARRY panel layout (panels_host.cpp).
+  PanelLayout panels_ = default_panel_layout();  // the saved layout (collapsed states mirror the flags)
+  std::vector<std::unique_ptr<PanelFrame>> frames_;
+  std::array<std::unique_ptr<ui::Painted>, 3> strips_;      // left, right, bottom edge strips
+  std::array<std::vector<std::string>, 3> strip_panels_;    // what each strip lists
+  ui::Box right_stack_ = ui::Box::vertical();  // Inspector, PDK manager, color window, DRC error area (one shown)
+  std::array<ui::Box, 2> side_docks_{ui::Box::vertical(), ui::Box::vertical()};  // left, right: frames stacked
+  int panels_fit_width_ = -1;                  // the window width fit_panels last applied
+  bool narrow_left_ = false;                   // fit_to_window turned the left dock into its strip
+  bool narrow_right_ = false;
+
+  // CARRY tool states (label_tool_view.cpp).
+  LabelPopover label_popover_;
+  MeasureEscape measure_escape_;
+  bool measure_armed_ = false;  // a Measure sweep's `measure` ran: arm measure_escape_ after its line
+  std::optional<ui::Panel> label_card_;  // the popover card in the canvas overlay
+  std::optional<ui::Panel> label_inner_;
+  ui::Box label_box_ = ui::Box::vertical();
+  std::optional<ui::Label> label_title_;
+  std::unique_ptr<ui::TextInput> label_text_;
+  std::unique_ptr<ui::ComboBox> label_position_;
+  std::unique_ptr<ui::TextInput> label_layer_;
+  std::unique_ptr<ui::Button> label_cancel_;
+  std::unique_ptr<ui::Button> label_ok_;
+
+  // CARRY key-binding sheet (key_bindings_view.cpp).
+  std::optional<KeyBindingSheet> key_sheet_;
+  std::optional<ui::Panel> key_card_;
+  std::optional<ui::Panel> key_inner_;
+  ui::Box key_box_ = ui::Box::vertical();
+  ui::Box key_table_host_ = ui::Box::horizontal();
+  std::optional<ui::Label> key_title_;
+  std::unique_ptr<ui::ComboBox> key_table_choice_;
+  std::vector<std::unique_ptr<ui::ComboBox>> key_old_choices_;  // hidden choosers of earlier table lists
+  std::vector<std::string> key_tables_;                         // the chooser's tables, in order
+  std::vector<std::string> key_table_labels_;
+  std::unique_ptr<ui::Table> key_list_;
+  std::vector<std::pair<::hefesto::ui::Key, ::hefesto::ui::Macro>> key_rows_;
+  std::vector<std::unique_ptr<ui::Button>> key_buttons_;
+  std::optional<ui::Label> key_capture_;
+  std::unique_ptr<ui::TextInput> key_command_;
+  std::unique_ptr<ui::Button> key_save_;
+  std::unique_ptr<ui::Button> key_cancel_;
+  std::optional<ui::Label> key_warning_;
+  std::unique_ptr<ui::Button> key_replace_;
+
+  // CARRY wiring feedback (wiring_hud_view.cpp).
+  ui::Painted* wiring_chip_ = nullptr;  // owned by painted_
+  std::string wiring_chip_text_;
+  std::unique_ptr<ui::Painted> wiring_hud_;
+  std::string wiring_hud_line_;
+  ui::Box wire_box_ = ui::Box::vertical();  // the Wire inspector, in right_stack_
+  bool wire_box_shown_ = false;
+  std::optional<ui::Label> wire_section_;
+  std::optional<ui::Label> wire_type_;
+  std::optional<ui::Label> wire_width_;
+  std::optional<ui::Label> wire_stack_label_;
+  std::vector<std::unique_ptr<ui::Button>> wire_buttons_;
+  ui::ListPanel wire_stack_ = ui::ListPanel::create();
+  WireInspectorView wire_view_;
+  const tech::Technology* wiring_tech_ = nullptr;  // compared only
+  wiring::WiringSection wiring_section_;
   bool select_tag_pending_ = false;  // a `select` just ran: its tag refreshes, never opens, the text helper
 
   CoreCommandSink core_sink_;
   CommandBarModel command_model_{core_sink_};
   HeaderText header_;
+  /// The window's layout is read-only (its root cell is: locked, not
+  /// writeable, or declined PDK scripts; board M4-Script-Consent tile 6):
+  /// the ▲ read-only chip and the editing tools off.
+  bool layout_read_only_ = false;
   std::string message_;  // status-bar message, always "<shape> <text>"
   StatusKind message_kind_ = StatusKind::info;
   std::string pending_run_;          // run_when_ready

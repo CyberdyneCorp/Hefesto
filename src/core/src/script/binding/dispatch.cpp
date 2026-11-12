@@ -44,7 +44,7 @@ bool is_dispatch_failure(const cmd::CommandResult& result) {
 // not one of Lookup()'s ambiguous tab-terminated aliases under magic-compat
 // (`get`, `id`; Q-SCRIPT-14).
 bool dispatchable(const Binding& b, const std::string& name) {
-  const std::string& client = b.dispatcher.client();
+  const std::string client = b.dispatcher.target_client();  // the color window's under `setpoint x y ID`
   const cmd::CommandLookup found = b.registry.resolve(name, client, true, cmd::NameLookup::exact);
   if (found.status != cmd::LookupStatus::found) {
     return false;

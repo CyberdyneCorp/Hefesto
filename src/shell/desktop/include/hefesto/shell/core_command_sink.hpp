@@ -10,8 +10,9 @@
 // log (every command, whatever its origin), project settings, the script
 // session, the registry (built-ins plus whatever the shell registers) and
 // the Dispatcher.
-// CoreCommandSink turns each command-bar line into Invocations with origin
-// `gui` and runs them through that Dispatcher.
+// CoreCommandSink evaluates each command-bar line as Tcl in the project's
+// interpreter with origin `gui` (shell/gui_script.hpp), so its engine
+// commands run through that Dispatcher and the binding (tags fire).
 
 #pragma once
 
@@ -144,10 +145,12 @@ class CoreCommandSink final : public CommandSink {
  public:
   explicit CoreCommandSink(cmd::Dispatcher& dispatcher) : dispatcher_(dispatcher) {}
 
-  /// Parses `line` with the M0 script reader (so `a; b` runs two commands)
-  /// and executes each command until one fails. The outcome's message is the
-  /// last result's string form, or the first error's text on failure; every
-  /// diagnostic is rendered as text.
+  /// Evaluates `line` as Tcl in the project's interpreter (so `a; b` runs
+  /// two commands, `[...]` and `$v` substitute; run_gui_script_traced). The
+  /// outcome's message is the Tcl result's string form, or the first error's
+  /// text when the evaluation fails or one of its engine commands failed
+  /// (also quietly); every diagnostic reported while it ran is rendered as
+  /// text. Without an interpreter nothing runs (SCRIPT-TCL-001).
   CommandOutcome submit(std::string_view line) override;
 
  private:

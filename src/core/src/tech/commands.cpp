@@ -498,6 +498,32 @@ void reload_display_styles(editor::EditorState& editor, platform::FileSystem& fi
   }
 }
 
+namespace {
+
+/// The steps after a successful load that make `tech` the session's
+/// technology: "Post-load adjustments" (grid), "Effect on existing layout",
+/// the locked types, the DRC rules, the wiring section's report, the plane
+/// count of every cell and the display styles.
+void install_technology(editor::EditorState& editor, platform::FileSystem& files,
+                        std::shared_ptr<const Technology> tech, drc::LoadedRules rules, bool magic_compat,
+                        diag::DiagnosticSink& sink) {
+  const std::size_t old_planes = editor.technology->plane_count();
+  const std::size_t new_planes = tech->plane_count();
+  editor.grid = apply_post_load(*tech, editor.grid, sink);
+  check_existing_layout(editor, old_planes, new_planes, sink);
+  set_technology(editor, std::move(tech));
+  drc::install_rules(editor, std::move(rules));
+  // The `wiring` section is kept raw and read by the wiring area; reading it
+  // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
+  (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);
+  if (new_planes != old_planes) {
+    editor.cells.for_each([new_planes](db::CellDef& def) { def.set_plane_count(new_planes); });
+  }
+  reload_display_styles(editor, files, magic_compat);
+}
+
+}  // namespace
+
 std::string layer_names_text(const Technology& tech) {
   return print_types_text(tech, all_but_space_and_drc());
 }
@@ -534,19 +560,21 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
                          diag::SourceLocation{file, 0}));
     return diag::make("TECH-LOAD-001", "Error in loading technology file", diag::SourceLocation{file, 0});
   }
-  const std::size_t old_planes = editor.technology->plane_count();
-  const std::size_t new_planes = tech.value()->plane_count();
-  editor.grid = apply_post_load(*tech.value(), editor.grid, sink);
-  check_existing_layout(editor, old_planes, new_planes, sink);
-  set_technology(editor, std::move(tech.value()));
-  drc::install_rules(editor, std::move(rules));
-  // The `wiring` section is kept raw and read by the wiring area; reading it
-  // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
-  (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);
-  if (new_planes != old_planes) {
-    editor.cells.for_each([new_planes](db::CellDef& def) { def.set_plane_count(new_planes); });
+  install_technology(editor, services.files, std::move(tech.value()), std::move(rules), options.magic_compat, sink);
+  return diag::Done{};
+}
+
+diag::Status load_builtin_technology(editor::EditorState& editor, platform::PlatformServices& services,
+                                     const SessionLoadOptions& options, diag::DiagnosticSink& sink) {
+  std::shared_ptr<const Technology> minimum = builtin_technology();
+  if (editor.technology == minimum) {
+    return diag::Done{};  // already current: nothing is reloaded
   }
-  reload_display_styles(editor, services.files, options.magic_compat);
+  drc::LoadedRules rules = drc::read_rules(*minimum, editor.drc.compat_settings(), sink);
+  if (!rules.ok()) {  // the built-in text has no drc section; kept as a guard
+    return diag::make("TECH-LOAD-001", "Error in loading technology file");
+  }
+  install_technology(editor, services.files, std::move(minimum), std::move(rules), options.magic_compat, sink);
   return diag::Done{};
 }
 

@@ -17,6 +17,7 @@
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/input_router.hpp"
 #include "hefesto/ui/state.hpp"
+#include "shell_fixture.hpp"
 
 using namespace hefesto::shell;
 namespace db = hefesto::db;
@@ -36,6 +37,7 @@ struct Fixture {
   hefesto::view::WindowId window = -1;
 
   Fixture() {
+    (void)hefesto::shell::test::bind_interpreter(core);
     auto& ed = core.editor();
     db::CellDef* top = ed.cells.create("top", ed.technology->plane_count()).value();
     ed.edit_cell = top;
@@ -156,6 +158,22 @@ TEST_CASE("a button without a macro goes to the tool's handler as pushbutton",
   CHECK(f.box() == db::Rect{20, 30, 30, 40});  // released: moved, not resized
   CHECK(ui::state(f.core.editor()).cursor_glyph == 0);
   CHECK(router.issued() == std::vector<std::string>{"pushbutton left down", "pushbutton left up"});
+}
+
+// m4-scripting tasks.md 13.2: a macro is Tcl, evaluated in the project's
+// interpreter with origin key, as Magic's Tcl build evaluates it
+// (toolkit.tcl's `magic::gencell {} ; raise .params`).
+TEST_CASE("a button macro is Tcl in the project's interpreter",
+          "[cap:hefesto-input-and-touch][req:Desktop input parity with Magic]") {
+  Fixture f;
+  REQUIRE(f.run("macro Button1 {set ::w 7; *bypass box size [expr {$::w * 2}] $::w}"));
+  InputRouter router(f.core.dispatcher(), f.core.editor());
+  CHECK(router.button(1, true, 0, f.at(20, 30)));
+  CHECK(f.box() == db::Rect{0, 0, 14, 7});
+  // A Tcl error stops the macro; the router reports the run as failed.
+  REQUIRE(f.run("macro Button3 {box size 3 3; error stop; box size 9 9}"));
+  CHECK(router.button(3, true, 0, f.at(20, 30)));
+  CHECK(f.box() == db::Rect{0, 0, 3, 3});
 }
 
 TEST_CASE("keys run the current tool's macros; `:` and imacros open the command bar",

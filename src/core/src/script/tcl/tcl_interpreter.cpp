@@ -16,7 +16,16 @@
 // Every call into Tcl makes the session current (ActiveSession). A top-level
 // evaluation applies the policy's limits and can be interrupted from another
 // thread; its result carries the SCRIPT-SANDBOX-* diagnostics of the denials
-// it caused, also those a `catch` absorbed.
+// it caused, also those a `catch` absorbed (marked caught, with their
+// DeniedOperation events published when it ends).
+//
+// Progress (script/progress.hpp): with a ProgressReporting handler set, a
+// top-level evaluation arms Tcl's time limit at "now + interval" (or the
+// policy's deadline when sooner). Tcl checks it every few commands and
+// bytecode instructions and while `after` sleeps; the limit handler moves it
+// one interval on, so the evaluation never stops for it, and reports the
+// file and line being executed. Only the policy's own deadline is left in
+// place, which then stops the evaluation with SCRIPT-TCL-003.
 
 #include "hefesto/script/tcl/tcl_interpreter.hpp"
 
@@ -24,6 +33,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <climits>
 #include <cstddef>
 #include <cstdint>
@@ -36,6 +46,7 @@
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/script/progress.hpp"
 #include "hefesto/script/tcl/embedded_library.hpp"
 #include "hefesto/script/tcl/value_conversion.hpp"
 #include "script/tcl/sandbox_runtime.hpp"
@@ -59,6 +70,22 @@ constexpr std::string_view kLimitExceeded = "SCRIPT-TCL-003";
 
 Tcl_Obj* new_string(std::string_view text) {
   return Tcl_NewStringObj(text.data(), tcl_length(text));
+}
+
+// `time` + `span` (Tcl's wall-clock time of the limits).
+Tcl_Time later(Tcl_Time time, std::chrono::milliseconds span) {
+  const auto milliseconds = span.count();
+  time.sec += static_cast<long>(milliseconds / 1000);
+  time.usec += static_cast<long>((milliseconds % 1000) * 1000);
+  if (time.usec >= 1000000) {
+    time.sec += 1;
+    time.usec -= 1000000;
+  }
+  return time;
+}
+
+bool earlier(const Tcl_Time& a, const Tcl_Time& b) {
+  return a.sec < b.sec || (a.sec == b.sec && a.usec < b.usec);
 }
 
 // Tcl's process-wide initialization, once: the executable name (none), the
@@ -98,16 +125,18 @@ struct NativeBinding {
 
 class TclInterpreter final : public Interpreter {
  public:
-  TclInterpreter(const SandboxPolicy& policy, ScriptEvents* events)
+  TclInterpreter(const SandboxPolicy& policy, ScriptEvents* events, const ProgressReporting* progress)
       : interp_(Tcl_CreateInterp()),
         session_(std::make_unique<SandboxSession>(interp_, policy, events)),
-        limits_(policy.limits) {
+        limits_(policy.limits),
+        progress_(progress) {
     try {
       const ActiveSession active{*session_};
       tcl_detail::synthesize_environment(interp_, policy);
       initialize_library();
       tcl_detail::install_sandbox_commands(*session_, policy);
       limit_module_paths();
+      Tcl_LimitAddHandler(interp_, TCL_LIMIT_TIME, on_time_limit, this, nullptr);
       session_->reset();
     } catch (...) {
       Tcl_DeleteInterp(interp_);
@@ -124,13 +153,13 @@ class TclInterpreter final : public Interpreter {
   TclInterpreter& operator=(const TclInterpreter&) = delete;
 
   cmd::CommandResult evaluate(std::string_view script, cmd::Origin origin) override {
-    Evaluation evaluation{*this, origin};
+    Evaluation evaluation{*this, origin, ""};
     const int code = Tcl_EvalEx(interp_, script.data(), tcl_length(script), TCL_EVAL_GLOBAL);
     return evaluation.finish(code, "", "");
   }
 
   cmd::CommandResult source(const platform::Path& path) override {
-    Evaluation evaluation{*this, cmd::Origin::script};
+    Evaluation evaluation{*this, cmd::Origin::script, path.string()};
     Tcl_Obj* file = new_string(path.string());
     Tcl_IncrRefCount(file);
     const int code = Tcl_FSEvalFileEx(interp_, file, nullptr);
@@ -224,7 +253,7 @@ class TclInterpreter final : public Interpreter {
   // One evaluation (nested ones too); the outermost applies the limits.
   class Evaluation {
    public:
-    Evaluation(TclInterpreter& owner, cmd::Origin origin)
+    Evaluation(TclInterpreter& owner, cmd::Origin origin, std::string_view script)
         : owner_(owner),
           active_(*owner.session_),
           saved_origin_(owner.origin_),
@@ -234,6 +263,8 @@ class TclInterpreter final : public Interpreter {
       owner_.origin_ = origin;
       if (top_) {
         owner_.interrupted_.store(false);
+        owner_.session_->begin_deferral();
+        owner_.start_progress(origin, script);
         owner_.apply_limits();
       }
     }
@@ -241,12 +272,16 @@ class TclInterpreter final : public Interpreter {
     ~Evaluation() {
       if (top_) {
         Tcl_LimitTypeReset(owner_.interp_, TCL_LIMIT_COMMANDS);
-        Tcl_LimitTypeReset(owner_.interp_, TCL_LIMIT_TIME);
+        owner_.disarm_time_limit();
         // Tcl_EvalEx leaves an unwinding cancellation set at level 0.
         static_cast<void>(TclResetCancellation(owner_.interp_, 1));
+        owner_.session_->end_deferral(std::nullopt);  // finish() did unless it threw
       }
       owner_.origin_ = saved_origin_;
       owner_.depth_.fetch_sub(1);
+      if (top_) {
+        owner_.end_progress();
+      }
     }
 
     Evaluation(const Evaluation&) = delete;
@@ -258,6 +293,10 @@ class TclInterpreter final : public Interpreter {
       Tcl_Interp* interp = owner_.interp_;
       SandboxSession& session = *owner_.session_;
       session.report_unclaimed(operation, file, pending_mark_);
+      if (top_) {
+        const bool failed = code == TCL_ERROR;
+        session.end_deferral(failed ? std::optional<std::string>{Tcl_GetStringResult(interp)} : std::nullopt);
+      }
       auto sandbox = session.diagnostics_since(diagnostics_mark_);
       cmd::CommandResult result;
       if (code == TCL_OK || code == TCL_RETURN) {
@@ -339,6 +378,90 @@ class TclInterpreter final : public Interpreter {
 
   static void delete_native(ClientData data) { std::unique_ptr<NativeBinding> owned{static_cast<NativeBinding*>(data)}; }
 
+  // ---- progress (script/progress.hpp) ----
+
+  // A top-level evaluation starts: takes the project's handler as it is now.
+  void start_progress(cmd::Origin origin, std::string_view script) {
+    handler_ = progress_ != nullptr ? progress_->handler : ProgressHandler{};
+    interval_ = std::max(progress_ != nullptr ? progress_->interval : std::chrono::milliseconds{0},
+                         std::chrono::milliseconds{1});
+    progress_state_ = ScriptProgress{};
+    progress_state_.script = std::string{script};
+    progress_state_.origin = origin;
+    started_ = std::chrono::steady_clock::now();
+    reported_ = false;
+  }
+
+  // The top-level evaluation ended: the last report, when there were others.
+  void end_progress() noexcept {
+    if (reported_ && handler_) {
+      progress_state_.done = true;
+      progress_state_.elapsed = std::chrono::steady_clock::now() - started_;
+      call_handler();
+    }
+    handler_ = {};
+    reported_ = false;
+  }
+
+  // Tcl's time limit was reached (TCL_LIMIT_TIME handler).
+  static void on_time_limit(ClientData data, Tcl_Interp* /*interp*/) {
+    static_cast<TclInterpreter*>(data)->time_limit_reached();
+  }
+
+  void time_limit_reached() {
+    Tcl_Time now;
+    Tcl_GetTime(&now);
+    if (depth_.load() == 0 || !handler_ || (has_deadline_ && !earlier(now, deadline_))) {
+      return;  // the policy's own limit: the evaluation stops (SCRIPT-TCL-003)
+    }
+    // Moving the limit on clears Tcl's "exceeded" state, so the location
+    // query below and the rest of the script run.
+    Tcl_Time limit = next_time_limit(now);
+    Tcl_LimitSetTime(interp_, &limit);
+    if (in_handler_) {
+      return;
+    }
+    progress_state_.location = tcl_detail::current_location(interp_);
+    progress_state_.elapsed = std::chrono::steady_clock::now() - started_;
+    reported_ = true;
+    call_handler();
+  }
+
+  // The handler runs the front end's frame; nothing it throws crosses Tcl.
+  void call_handler() noexcept {
+    in_handler_ = true;
+    try {
+      handler_(progress_state_);
+    } catch (...) {
+      static_cast<void>(0);  // a failing frame must not stop the script
+    }
+    in_handler_ = false;
+  }
+
+  // Ends the time limit of a top-level evaluation. Tcl keeps the limit's
+  // timer and time after Tcl_LimitTypeReset, and `after N` in a later
+  // evaluation without a time limit then busy-waits for N ms (AfterDelay
+  // sees an expired limit time); moving the time far ahead avoids that.
+  void disarm_time_limit() {
+    if (Tcl_LimitTypeEnabled(interp_, TCL_LIMIT_TIME) != 0) {
+      Tcl_Time now;
+      Tcl_GetTime(&now);
+      Tcl_Time far = later(now, std::chrono::hours{24 * 365});
+      Tcl_LimitSetTime(interp_, &far);
+    }
+    Tcl_LimitTypeReset(interp_, TCL_LIMIT_TIME);
+  }
+
+  // The next moment the limit handler runs: one interval on, or the
+  // policy's deadline when that comes first.
+  [[nodiscard]] Tcl_Time next_time_limit(const Tcl_Time& now) const {
+    if (!handler_) {
+      return deadline_;
+    }
+    const Tcl_Time tick = later(now, interval_);
+    return has_deadline_ && earlier(deadline_, tick) ? deadline_ : tick;
+  }
+
   // The policy's limits for one top-level evaluation (Tcl resource limits:
   // the command limit is absolute, so it is set from the current count).
   void apply_limits() {
@@ -356,17 +479,15 @@ class TclInterpreter final : public Interpreter {
       Tcl_LimitSetCommands(interp_, static_cast<int>(std::min<Tcl_WideInt>(limit, INT_MAX)));
       Tcl_LimitTypeSet(interp_, TCL_LIMIT_COMMANDS);
     }
-    if (limits_.time_limit.count() > 0) {
-      Tcl_Time deadline;
-      Tcl_GetTime(&deadline);
-      const auto milliseconds = limits_.time_limit.count();
-      deadline.sec += static_cast<long>(milliseconds / 1000);
-      deadline.usec += static_cast<long>((milliseconds % 1000) * 1000);
-      if (deadline.usec >= 1000000) {
-        deadline.sec += 1;
-        deadline.usec -= 1000000;
-      }
-      Tcl_LimitSetTime(interp_, &deadline);
+    Tcl_Time now;
+    Tcl_GetTime(&now);
+    has_deadline_ = limits_.time_limit.count() > 0;
+    if (has_deadline_) {
+      deadline_ = later(now, limits_.time_limit);
+    }
+    if (has_deadline_ || handler_) {
+      Tcl_Time limit = next_time_limit(now);
+      Tcl_LimitSetTime(interp_, &limit);
       Tcl_LimitTypeSet(interp_, TCL_LIMIT_TIME);
     }
   }
@@ -403,16 +524,26 @@ class TclInterpreter final : public Interpreter {
   Tcl_Interp* interp_;
   std::unique_ptr<SandboxSession> session_;
   SandboxLimits limits_;
+  const ProgressReporting* progress_;
   cmd::Origin origin_ = cmd::Origin::script;
   std::atomic<int> depth_{0};
   std::atomic<bool> interrupted_{false};
+  // The running top-level evaluation (command thread only).
+  bool has_deadline_ = false;
+  Tcl_Time deadline_{};
+  ProgressHandler handler_;
+  std::chrono::milliseconds interval_{50};
+  ScriptProgress progress_state_;
+  std::chrono::steady_clock::time_point started_{};
+  bool reported_ = false;
+  bool in_handler_ = false;
 };
 
 }  // namespace
 
 std::unique_ptr<Interpreter> create_project_interpreter(editor::EditorState& editor, const SandboxPolicy& policy) {
   initialize_process();
-  return std::make_unique<TclInterpreter>(policy, &editor.script.events);
+  return std::make_unique<TclInterpreter>(policy, &editor.script.events, &editor.script.progress);
 }
 
 ScriptLocation current_script_location(const Interpreter& interpreter) {

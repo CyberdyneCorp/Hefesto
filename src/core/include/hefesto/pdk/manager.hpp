@@ -201,6 +201,10 @@ struct Provenance {
   bool trusted = false;     // signed catalog or pack ("Script trust for managed PDKs")
   std::vector<std::pair<std::string, std::string>> assets;  // file name, SHA-256 ("" = unverified)
   std::vector<std::string> partial;                         // include prefixes of a filtered install
+  /// When the user trusted this version's scripts (`YYYY-MM-DD`, UTC;
+  /// set_trusted), shown with "scripts trusted" in the PDK panel; nullopt
+  /// when not trusted or trusted before the date was recorded.
+  std::optional<std::string> trusted_date;
 };
 
 /// True when `source` carries a verified Hefesto catalog signature. No
@@ -280,9 +284,12 @@ class PdkManager {
   /// (hefesto-security "Consent before implicit script execution": trust is
   /// recorded per PDK and version; the user chose "trust this version" in
   /// the consent prompt). A version installed by ciel or volare gets a
-  /// record with source "external". PDK-INSTALL-004 when the version is not
-  /// installed. Owner: PDKINT (openspec/changes/m4-scripting design.md D2).
-  [[nodiscard]] diag::Status set_trusted(const Family& family, std::string_view hash, bool trusted);
+  /// record with source "external". Trusting also records the date
+  /// (Provenance::trusted_date: `date`, else today in UTC); revoking removes
+  /// it. PDK-INSTALL-004 when the version is not installed. Owner: PDKINT
+  /// (openspec/changes/m4-scripting design.md D2).
+  [[nodiscard]] diag::Status set_trusted(const Family& family, std::string_view hash, bool trusted,
+                                         std::string_view date = {});
   /// The enabled hash of `family` (<root>/ciel/<family>/current), if any.
   [[nodiscard]] std::optional<std::string> current(const Family& family) const;
 

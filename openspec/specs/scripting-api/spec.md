@@ -64,6 +64,8 @@ Before the import, the startup script SHALL rename these Tcl/Tk built-ins, skipp
 4. Otherwise reset the result and run the Magic command.
 
 A name qualified as `magic::load` (and so on) SHALL go directly to the Magic command.
+
+In Hefesto the sandboxed `tcl_load` always fails (loading native extensions is denied, capability `hefesto-security`), so for `load` whose first argument is not a file with an extension other than `mag` and `gz`, the Magic command SHALL run without invoking `tcl_load`; the outcome is Magic's, and no sandbox denial is recorded for a cell name.
 Compatibility: exact
 
 (Magic ref: tcltk/magic.tcl.in:324-329, tcltk/tclmagic.c:390-499)
@@ -85,6 +87,10 @@ Compatibility: exact
 #### Scenario: Cell load with dotted directory
 - **WHEN** a script runs `load ../lib.v2/inv` and the built-in fails
 - **THEN** because the final component `inv` has no dot, the Magic `load` SHALL load cell `inv`
+
+#### Scenario: Cell load records no sandbox denial
+- **WHEN** a script or a typed line runs `load inv`
+- **THEN** the Magic `load` SHALL load cell `inv` and no `SCRIPT-SANDBOX-*` denial SHALL be recorded
 
 #### Scenario: Compressed cell
 - **WHEN** a script runs `load cells/inv.mag.gz`

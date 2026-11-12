@@ -147,25 +147,27 @@ constexpr std::array<Conflict, 6> kConflicts{{{"clockwise", "orig_clock"},
 
 // _tcl_dispatch's conflict rule for the global `<name>`: the renamed
 // built-in first (in the caller's frame, so `array set a` inside a
-// procedure sets the local array); its result when it succeeds; for `load`
-// its error when the file's last component has an extension other than
-// `mag` and `gz`; otherwise the Magic command.
+// procedure sets the local array); its result when it succeeds; otherwise
+// the Magic command.
+//
+// `load`: the sandbox's `tcl_load` always fails (native extensions are
+// denied), so its error is returned when the file's last component has an
+// extension other than `mag` and `gz`, and for any other name the Magic
+// command runs without trying it: the outcome is Magic's, and a cell name
+// does not record a sandbox denial.
 std::string conflict_proc(const Conflict& c) {
-  std::string body = "proc ::" + std::string{c.name} + " {args} {\n" +
-                     "   if {![catch {uplevel 1 [list ::" + std::string{c.builtin} +
-                     " {*}$args]} result]} {return $result}\n";
+  const std::string magic_call = "   uplevel 1 [list ::magic::" + std::string{c.name} + " {*}$args]\n}\n";
   if (c.name == "load") {
-    body +=
-        "   if {[llength $args] >= 1} {\n"
-        "      set tail [lindex [split [lindex $args 0] /] end]\n"
-        "      set dot [string last . $tail]\n"
-        "      if {$dot >= 0 && [string range $tail [expr {$dot + 1}] end] ni {mag gz}} {\n"
-        "         return -code error $result\n"
-        "      }\n"
-        "   }\n";
+    return "proc ::load {args} {\n"
+           "   if {[llength $args] >= 1} {\n"
+           "      set tail [lindex [split [lindex $args 0] /] end]\n"
+           "      set dot [string last . $tail]\n"
+           "      if {$dot >= 0 && [string range $tail [expr {$dot + 1}] end] ni {mag gz}} {\n"
+           "         return [uplevel 1 [list ::" +
+           std::string{c.builtin} + " {*}$args]]\n" + "      }\n" + "   }\n" + magic_call;
   }
-  body += "   uplevel 1 [list ::magic::" + std::string{c.name} + " {*}$args]\n}\n";
-  return body;
+  return "proc ::" + std::string{c.name} + " {args} {\n" + "   if {![catch {uplevel 1 [list ::" + std::string{c.builtin} +
+         " {*}$args]} result]} {return $result}\n" + magic_call;
 }
 
 // The conflict procedures of the colliding commands that exist; a

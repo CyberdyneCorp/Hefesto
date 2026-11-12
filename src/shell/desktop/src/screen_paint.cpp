@@ -373,6 +373,16 @@ void button(ui::Painter& p, float w, float h, std::string_view label, std::strin
   if (s.focused) focus_ring(p, w, h, kRadius, t);
 }
 
+void button_at(ui::Painter& p, float x, float y, float w, float h, std::string_view label, ButtonStyle style,
+               WidgetState s, const ThemeTokens& t) {
+  const float a = s.enabled ? 1.0F : kDisabledAlpha;
+  if (style != ButtonStyle::ghost || s.hovered) p.fill(x, y, w, h, kRadius, alpha(button_fill(style, s, t), a));
+  if (style == ButtonStyle::secondary) p.stroke(x, y, w, h, kRadius, 1.0F, alpha(t.control_border, a));
+  const Rgba fg = alpha(style == ButtonStyle::primary ? t.accent_text : t.text_primary, a);
+  const float text_x = x + std::max(10.0F, (w - p.text_width(TextRole::button, label)) / 2.0F);
+  p.text_centered_y(TextRole::button, text_x, y + h / 2.0F, label, fg);
+}
+
 void tool(ui::Painter& p, float w, float h, const ToolButton& tool, WidgetState s, const ThemeTokens& t) {
   if (s.active) {
     p.fill(0.0F, 0.0F, w, h, kRadius, alpha(t.accent, 0.14F));

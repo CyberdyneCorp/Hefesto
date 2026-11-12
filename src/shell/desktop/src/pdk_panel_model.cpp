@@ -3,6 +3,9 @@
 
 #include "hefesto/shell/pdk_panel_model.hpp"
 
+#include <algorithm>
+#include <array>
+
 namespace hefesto::shell {
 
 namespace {
@@ -81,9 +84,15 @@ void set_installed(PdkRow& row, const pdk::InstalledVersion& found, const Script
   row.enabled = found.enabled;
   row.state = found.enabled ? StatusChip{StatusKind::success, "enabled " + *row.installed_version}
                             : StatusChip{StatusKind::info, "installed " + *row.installed_version};
-  row.scripts_trusted = trusted && trusted(found);
+  const ScriptTrustState state = trusted ? trusted(found) : ScriptTrustState{};
+  row.scripts_trusted = state.trusted;
   row.scripts = row.scripts_trusted ? StatusChip{StatusKind::success, "scripts trusted"}
                                     : StatusChip{StatusKind::info, "scripts ask before running"};
+  row.scripts_date = state.trusted && state.date ? display_date(*state.date) : std::string{};
+}
+
+bool all_digits(std::string_view text) {
+  return !text.empty() && std::all_of(text.begin(), text.end(), [](char c) { return c >= '0' && c <= '9'; });
 }
 
 }  // namespace
@@ -106,6 +115,25 @@ std::vector<PdkRow> pdk_rows(const pdk::Catalog& catalog, const std::vector<pdk:
     }
   }
   return rows;
+}
+
+std::string display_date(std::string_view iso_date) {
+  static constexpr std::array<std::string_view, 12> kMonths = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                                                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+  const bool shaped = iso_date.size() == 10 && iso_date[4] == '-' && iso_date[7] == '-' &&
+                      all_digits(iso_date.substr(0, 4)) && all_digits(iso_date.substr(5, 2)) &&
+                      all_digits(iso_date.substr(8, 2));
+  if (!shaped) return std::string{iso_date};
+  const int month = (iso_date[5] - '0') * 10 + (iso_date[6] - '0');
+  const int day = (iso_date[8] - '0') * 10 + (iso_date[9] - '0');
+  if (month < 1 || month > 12 || day < 1 || day > 31) return std::string{iso_date};
+  return std::to_string(day) + " " + std::string{kMonths[static_cast<std::size_t>(month - 1)]} + " " +
+         std::string{iso_date.substr(0, 4)};
+}
+
+std::string PdkRow::scripts_label() const {
+  if (scripts.text.empty()) return {};
+  return scripts_date.empty() ? scripts.label() : scripts.label() + " " + scripts_date;
 }
 
 std::optional<PdkAction> trust_action(const PdkRow& row) {

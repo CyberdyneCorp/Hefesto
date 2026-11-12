@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 
+#include "hefesto/cell/declined.hpp"
 #include "hefesto/cell/host.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cell/timestamps.hpp"
@@ -82,6 +83,16 @@ struct CellIoContext {
   /// path, where Magic calls DRCCheckThis(def, TT_CHECKPAINT, NULL). The
   /// session uses it for DRC (m3-drc design D7). Empty = nothing.
   std::function<void(db::CellDef& def, bool format_error)> on_read;
+  /// The session's declined cells (hefesto/cell/declined.hpp): the reader
+  /// records a cell read read-only for a declined PDK, the writer refuses
+  /// them (SCRIPT-TRUST-005). nullptr = not tracked.
+  DeclinedCells* declined = nullptr;
+  /// True when the PDK scripts of technology `tech` were declined in this
+  /// session. A cell of that technology read with the technology ignored
+  /// (`load -force`, subcell expansion, `flush`) is read-only and declined
+  /// too: it would otherwise be editable without the PDK's layers. Empty =
+  /// nothing is declined.
+  std::function<bool(std::string_view tech)> technology_declined = {};
 };
 
 struct ReadOptions {

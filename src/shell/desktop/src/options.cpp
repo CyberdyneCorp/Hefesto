@@ -47,6 +47,8 @@ bool apply_flag(ShellOptions& o, std::string_view name) {
     o.show_pdk_manager = true;
   } else if (name == "--console") {
     o.show_console = true;
+  } else if (name == "--capture-running") {
+    o.capture_running = true;
   } else {
     return false;
   }
@@ -154,7 +156,7 @@ std::string_view shell_usage() noexcept {
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
          "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR]\n"
-         "               [--capture FILE.ppm [--capture-frames N]]\n"
+         "               [--capture FILE.ppm [--capture-frames N | --capture-running]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";
 }

@@ -12,6 +12,9 @@
 // script/binding/dispatch.cpp. Key macros can be defined by scripts, so they
 // count as scripts here.
 //
+// `shell` is refused for every origin, typed lines included: Hefesto runs no
+// external process (X-3; user decision 2026-11-11 on finding S-01).
+//
 // Owner: INTEGRATION (design D2, cmd/ other files).
 
 #pragma once
@@ -40,5 +43,10 @@ enum class HostAccess : std::uint8_t {
 /// `invocation` may reach the host.
 [[nodiscard]] std::optional<CommandResult> refuse_host_access(const Invocation& invocation, std::string_view what,
                                                               HostAccess access = HostAccess::process);
+
+/// The refusal of `what` (e.g. "shell") for every origin: Hefesto runs no
+/// external process (SCRIPT-SANDBOX-001), raised as a Tcl error whatever the
+/// strict mode.
+[[nodiscard]] CommandResult refuse_process_execution(std::string_view what);
 
 }  // namespace hefesto::cmd

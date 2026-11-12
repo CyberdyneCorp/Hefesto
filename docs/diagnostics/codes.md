@@ -68,9 +68,9 @@ between the markers below. Area codes follow the same steps in the area's
 | `CLI-USAGE-001` | error | Invalid command-line option or option argument. |
 | `CMD-DISPATCH-001` | error | Unknown command name; the command was not run. |
 | `CMD-INTERNAL-001` | error | A command handler raised an unexpected internal error; the command failed. |
-| `CMD-PARSE-001` | error | Command script has an unterminated double quote. |
-| `CMD-PARSE-002` | error | Command script has an unterminated brace group. |
-| `CMD-PARSE-003` | error | Extra characters after a closing quote or brace in a command script. |
+| `CMD-PARSE-001` | error | Retired in M4, never reused. Was: command script has an unterminated double quote (M0 command-script reader; lines are Tcl now). |
+| `CMD-PARSE-002` | error | Retired in M4, never reused. Was: command script has an unterminated brace group (M0 command-script reader; lines are Tcl now). |
+| `CMD-PARSE-003` | error | Retired in M4, never reused. Was: extra characters after a closing quote or brace in a command script (M0 command-script reader; lines are Tcl now). |
 | `CMD-REGISTRY-001` | error | A command with the same name is already registered. |
 | `CMD-SESSION-001` | error | The command needs an editor session (technology, cells, windows) and none is attached. |
 | `CMD-USAGE-001` | error | Wrong number or form of command arguments. |

@@ -94,6 +94,10 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
     return true;
   };
   io.load_technology = [this](std::string_view name) { return discover_technology(name); };
+  io.declined = &session.declined;
+  io.technology_declined = [this](std::string_view name) {
+    return ed.script.pdk_trust.declined_variant(name);
+  };
   io.on_read = [this](db::CellDef& def, bool format_error) {
     if (ed.drc.worker) {
       ed.drc.worker->bump_generation();  // a re-read invalidates a finished square
@@ -165,10 +169,15 @@ CellIoContext::TechnologySwitch IoSession::discover_technology(std::string_view 
   return {ed.technology.get(), false};
 }
 
-// The session keeps its technology: `minimum` in the bare session the
-// auto-discovery runs in (no paint in memory). Switching another loaded
-// technology back to `minimum` needs a TECH entry point (open item).
-CellIoContext::TechnologySwitch IoSession::declined_technology() const {
+// The session switches to `minimum` (TECH's load_builtin_technology; a
+// no-op when it is current). The reader asks only when no paint is in
+// memory, so another loaded technology (a PDK trusted earlier, `tech load`)
+// is replaced without losing layout.
+CellIoContext::TechnologySwitch IoSession::declined_technology() {
+  tech::SessionLoadOptions options;
+  options.magic_compat = io.magic_compat;
+  options.precheck = false;
+  (void)tech::load_builtin_technology(ed, command.services(), options, io.sink);  // never fails
   return {ed.technology.get(), true};
 }
 

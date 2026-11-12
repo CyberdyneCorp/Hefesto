@@ -62,16 +62,18 @@ Compatibility: behavioral
 
 ### Requirement: Shell command
 
-`shell [COMMAND…]` SHALL run COMMAND (the remaining words joined by spaces) in an operating-system shell and show its output. This is host-specific (process spawning). On platforms without process spawning (iPadOS), Hefesto SHALL report that the command is unavailable (see Q-CMDEDIT-96).
+`shell [COMMAND…]` is recognized but SHALL NOT run anything, on any platform and from any origin: scripts, key macros, plugins, and lines the user types in the console, the command bar or hefesto-cli (`-c`, standard input, `--interactive`). Magic runs COMMAND in an operating-system shell; Hefesto runs no external process (decision X-3, capability `hefesto-security` "Script sandbox enforcement"; user decision of 2026-11-11 on security finding S-01). The command SHALL fail with the error `shell: process execution is not permitted (Hefesto runs no external programs)` (code `SCRIPT-SANDBOX-001`), raised as a Tcl error whatever the strict mode, with or without words.
 
-Compatibility: informative
+Compatibility: native
 
 (Magic ref: commands/CmdRS.c:2736-2780)
 
-#### Scenario: Unavailable platform
-- **GIVEN** Hefesto on iPadOS
-- **WHEN** `shell ls` is run
-- **THEN** an "unavailable on this platform" error SHALL be reported and nothing else SHALL happen
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3)
+
+#### Scenario: Typed shell line
+- **GIVEN** Hefesto on Linux, macOS or iPadOS
+- **WHEN** the user types `shell ls` in the console
+- **THEN** the process-execution error SHALL be reported with code `SCRIPT-SANDBOX-001` and no process SHALL be started
 
 ### Requirement: See command
 

@@ -32,6 +32,7 @@
 #include "hefesto/script/binding/tags.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/script/pdk/consent.hpp"
+#include "hefesto/script/pdk/startup.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/tools/auxiliary.hpp"
 #include "hefesto/ui/bindings.hpp"
@@ -53,6 +54,8 @@ using platform::Path;
 /// The Magic release this Hefesto build is compatible with (app-startup
 /// "Tcl launcher options": --version names it).
 constexpr std::string_view kMagicCompatVersion = "8.3.694";
+/// Its source revision (`--commit` in --magic mode prints it, as Magic does).
+constexpr std::string_view kMagicCompatCommit = "fc5daa9e2856b89a0a3056f296ded1fd4474e39e";
 
 void print_line(std::FILE* stream, std::string_view text) {
   std::fwrite(text.data(), 1, text.size(), stream);
@@ -623,13 +626,29 @@ int run_strip_reflibs(const Options& options, std::FILE* out, std::FILE* err) {
   return problems.empty() ? kExitOk : kExitFailure;
 }
 
-// The startup options: Magic's command line in --magic mode, else -T and
-// the layout files. A Magic option or display error prints Magic's text
-// and fails with status 1 (app-startup "Command-line options").
-std::optional<app::StartupOptions> startup_options(const Options& options, std::FILE* err) {
+// --magic mode: Magic's command line as its script host classifies it
+// (scripting-pdk-integration "Command-line options in the script host";
+// magic.tcl.in's argument loop, with Q-SCRIPT-37's spellings): `--version`,
+// `--commit` and `--prefix` print and exit 0, `-r`/`-re`/`-recover` (and
+// `-rcover`) request recovery, `-now...` is dropped, and the rest goes to
+// the engine's option parser in order (an option missing its argument
+// passes the empty string, as `lindex` does).
+script::ScriptHostCommandLine script_host_line(const Options& options) {
+  const auto cad_root = app::resolve_install_root(pdk::make_local_install_host()->environment("CAD_ROOT"), Path{});
+  const script::ScriptHostInfo info{std::string{kMagicCompatVersion}, std::string{kMagicCompatCommit},
+                                    cad_root.string()};
+  return script::classify_command_line(options.magic_args, info);
+}
+
+// The startup options: Magic's command line in --magic mode (`host`, the
+// script host's classification), else -T and the layout files. A Magic
+// option or display error prints Magic's text and fails with status 1
+// (app-startup "Command-line options").
+std::optional<app::StartupOptions> startup_options(const Options& options, const script::ScriptHostCommandLine& host,
+                                                   std::FILE* err) {
   app::StartupOptions startup;
   if (options.magic_mode) {
-    const std::vector<std::string_view> words(options.magic_args.begin(), options.magic_args.end());
+    const std::vector<std::string_view> words(host.engine_args.begin(), host.engine_args.end());
     auto parsed = app::parse_startup_options(words);
     auto display = parsed ? app::resolve_display(parsed.value().display_type, false)
                           : diag::Outcome<app::DisplayChoice>{parsed.error()};
@@ -638,6 +657,7 @@ std::optional<app::StartupOptions> startup_options(const Options& options, std::
       return std::nullopt;
     }
     startup = std::move(parsed).value();
+    startup.recover = startup.recover || host.recover;
   } else {
     startup.technology = options.tech;
     for (const auto& file : options.files) {
@@ -661,7 +681,13 @@ int run(std::span<const std::string_view> args, std::FILE* out, std::FILE* err) 
   if (parsed.options.strip_reflibs) {
     return run_strip_reflibs(parsed.options, out, err);
   }
-  const auto startup = startup_options(parsed.options, err);
+  const script::ScriptHostCommandLine host =
+      parsed.options.magic_mode ? script_host_line(parsed.options) : script::ScriptHostCommandLine{};
+  if (host.print_and_exit) {
+    print_line(out, *host.print_and_exit);
+    return kExitOk;
+  }
+  const auto startup = startup_options(parsed.options, host, err);
   if (!startup) {
     return kExitFailure;
   }

@@ -35,8 +35,10 @@
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/script/events.hpp"
 #include "hefesto/script/pdk/consent.hpp"
+#include "hefesto/script/progress.hpp"
 #include "hefesto/script/types.hpp"
 #include "hefesto/shell/editing_models.hpp"
+#include "hefesto/shell/view_models.hpp"
 
 namespace hefesto::shell {
 
@@ -115,6 +117,9 @@ class DesktopConsentHost final : public script::ConsentHost, public script::Scri
   [[nodiscard]] std::optional<platform::Path> script_of(const script::PdkIdentity& pdk) const;
   /// The PDK whose scripts were declined last (nullopt: none declined).
   [[nodiscard]] const std::optional<script::PdkIdentity>& declined() const noexcept { return declined_; }
+  /// Review scripts... said yes but the layout could not be reopened: the
+  /// PDK counts as declined again (the core's TrustStore declines it too).
+  void restore_decline(const script::PdkIdentity& pdk) { declined_ = pdk; }
 
  private:
   Ask ask_;
@@ -136,6 +141,31 @@ struct DeclinedView {
 };
 
 [[nodiscard]] DeclinedView declined_view(const script::PdkIdentity& pdk, std::string_view document);
+
+/// The ▲ read-only chip next to the cell name (board tile 6), shown while
+/// the window's layout is read-only.
+[[nodiscard]] StatusChip read_only_chip();
+
+/// The top bar's subtitle with " · read-only" after the technology
+/// ("minimum · read-only · magic-compat on"; board tile 6).
+[[nodiscard]] std::string read_only_subtitle(std::string_view subtitle);
+
+/// The tool-rail buttons that edit the layout (Paint, Wire, Label, Place
+/// device): disabled while the layout is read-only; Box, Select, Measure
+/// and Zoom to fit stay.
+[[nodiscard]] bool rail_tool_edits(std::string_view icon) noexcept;
+/// The tooltip of an editing tool disabled by a read-only layout.
+[[nodiscard]] std::string read_only_tool_tooltip(std::string_view label);
+
+/// What Review scripts... does with the new answer (board note 6): nothing
+/// on Don't run; otherwise the logged `pdk trust <variant> <version>` for
+/// Trust (a store version only), then reopen the declined layout
+/// (cell::reopen_declined: the PDK's script runs, the cells are read again).
+struct ReviewPlan {
+  bool reopen = false;
+  std::optional<std::string> trust_command;
+};
+[[nodiscard]] ReviewPlan review_plan(const script::PdkIdentity& pdk, script::ConsentDecision decision);
 
 /// The status-bar text of a sandbox denial ("■ Sandbox blocked socket in
 /// fetch_models.tcl:12"), the Show link opening the Diagnostics tab.
@@ -176,5 +206,11 @@ struct InterruptCardView {
 
 /// The card, shown only once the script ran for `kLongRunning`.
 [[nodiscard]] std::optional<InterruptCardView> interrupt_card(const RunningScript& running);
+
+/// The running script of a progress report of the project's interpreter
+/// (script::ProgressReporting; TclConsoleSession::progress): the sourced
+/// file, the file and line being executed, the time it has run. The
+/// Interrupt button and Ctrl-C call script::Interpreter::request_interrupt.
+[[nodiscard]] RunningScript running_script(const script::ScriptProgress& progress);
 
 }  // namespace hefesto::shell

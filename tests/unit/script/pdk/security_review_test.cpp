@@ -219,13 +219,25 @@ TEST_CASE("security fix S-01: a script's procedure called from a typed line is s
   CHECK(s.programs.empty());
 }
 
-TEST_CASE("security fix S-01: a line the user typed in the console may still run shell", ENFORCED) {
-  // Pending the user's decision (docs/contributing/security.md, S-01): a
-  // typed console or command-bar line keeps its own origin.
+TEST_CASE("security fix S-01: shell is refused for a typed line too", ENFORCED) {
+  // User decision 2026-11-11 (docs/contributing/security.md, S-01): no
+  // origin runs a process, typed console, command-bar and hefesto-cli lines
+  // included. Before it, a typed line ran /bin/sh.
   TempDir project;
   EngineSession s{project.path()};
-  (void)s.editor.script.interp->evaluate("shell id", cmd::Origin::gui);
-  CHECK(s.programs == std::vector<std::string>{"/bin/sh"});
+  for (const auto origin : {cmd::Origin::gui, cmd::Origin::cli}) {
+    // The Tcl error a console shows (SCRIPT-TCL-001 carries the command's message).
+    const auto typed = s.editor.script.interp->evaluate("shell id", origin);
+    REQUIRE_FALSE(typed.ok());
+    REQUIRE_FALSE(typed.diagnostics.empty());
+    CHECK(typed.diagnostics.back().text ==
+          "shell: process execution is not permitted (Hefesto runs no external programs)");
+    // The command's own refusal, as the dispatcher reports it.
+    const auto direct = s.dispatcher->execute(cmd::Invocation{"shell", {"id"}, origin, std::nullopt});
+    REQUIRE_FALSE(direct.diagnostics.empty());
+    CHECK(direct.diagnostics.back().code == "SCRIPT-SANDBOX-001");
+  }
+  CHECK(s.programs.empty());
 }
 
 TEST_CASE("security fix S-03: pdk subcommands that change trust or the store refuse a script", CONSENT) {

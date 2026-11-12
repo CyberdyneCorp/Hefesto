@@ -64,6 +64,8 @@ TEST_CASE("desktop asset, capture and panel options parse", "[cap:hefesto-archit
   CHECK(r.options->capture_frames == 5);
   CHECK(r.options->show_pdk_manager);
   CHECK_FALSE(parse({"--capture-frames", "0"}).options);
+  CHECK_FALSE(r.options->capture_running);
+  CHECK(parse({"--capture", "card.ppm", "--capture-running"}).options->capture_running);
   CHECK_FALSE(parse({"--font-dir", "/x"}).options);  // replaced by the bundled fonts (--asset-dir)
 }
 

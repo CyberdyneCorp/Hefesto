@@ -58,7 +58,7 @@ class IoSession {
   RcStep run_technology_rc(const platform::Path& dir, const std::string& tech_name);
   /// The declined path (hefesto-security "Consent before implicit script
   /// execution"): the cell is read read-only with the `minimum` technology.
-  CellIoContext::TechnologySwitch declined_technology() const;
+  CellIoContext::TechnologySwitch declined_technology();
 };
 
 /// Runs `body(IoSession&)` with the command's editor session, then the

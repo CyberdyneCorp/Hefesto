@@ -208,3 +208,28 @@ TEST_CASE("the panel's install job shows live download progress with the asset c
   REQUIRE(job.take_finished(done));
   CHECK(done.result.ok());
 }
+
+// m4-scripting tasks.md 13.2: the job's line is one command whose words are
+// a Tcl list (the worker has no interpreter); several commands or a
+// malformed list start nothing.
+TEST_CASE("a PDK job takes one command whose words are a Tcl list",
+          "[cap:hefesto-pdk-manager][req:Headless and scripted operation]") {
+  PdkJob job;
+  CHECK_FALSE(job.start("pdk list; pdk list", PdkJob::Setup{}));
+  CHECK_FALSE(job.start("pdk list\npdk list", PdkJob::Setup{}));
+  CHECK_FALSE(job.start("pdk list {unclosed", PdkJob::Setup{}));
+  CHECK_FALSE(job.start("   ", PdkJob::Setup{}));
+  CHECK_FALSE(job.running());
+  // A braced word is one word. The job's registry has only the PDK
+  // commands, so this one fails at once (nothing is fetched or written).
+  PdkJob::Setup setup;
+  setup.options = platform::PortableOptions{.storage_root = "/app", .pdk_roots = {}, .in_memory = true,
+                                            .inline_tasks = true};
+  REQUIRE(job.start("nosuch {sky 130} x", std::move(setup)));
+  job.wait();
+  PdkJob::Finished finished;
+  REQUIRE(job.take_finished(finished));
+  CHECK(finished.invocation.name == "nosuch");
+  CHECK(finished.invocation.args == std::vector<std::string>{"sky 130", "x"});
+  CHECK_FALSE(finished.result.ok());
+}

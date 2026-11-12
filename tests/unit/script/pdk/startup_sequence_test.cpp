@@ -9,12 +9,16 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include "hefesto/app/startup.hpp"
+#include "hefesto/cell/declined.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/script/pdk/consent.hpp"
 #include "pdk_fixture.hpp"
 
 namespace app = hefesto::app;
@@ -142,4 +146,32 @@ TEST_CASE("DRC turned off by a startup file stays off", "[cap:scripting-pdk-inte
   REQUIRE(s.start(options).ok());
   CHECK(s.eval("set ::drc_during") == "0");
   CHECK(s.editor.drc.background == hefesto::drc::BackgroundMode::off);
+}
+
+TEST_CASE("a PDK rc file declined at startup opens the file argument with minimum, read-only",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  // Regression: -rcfile naming a PDK's own rc file, declined, still loaded
+  // the PDK technology named by the first file argument (`tech tiny`).
+  StartupSession s;
+  std::ifstream tech_in{std::string{HEFESTO_SOURCE_DIR} + "/tests/data/tech/tiny.tech"};
+  const std::string tech{std::istreambuf_iterator<char>{tech_in}, {}};
+  const auto magic_dir = s.dir.path() / "pdk/tiny/libs.tech/magic";
+  write_file(magic_dir / "tiny.magicrc", "set ::tiny_rc ran\n");
+  write_file(s.env.working_directory / "tiny.tech", tech);  // found by name without the rc file
+  write_file(s.env.working_directory / "inv.mag",
+             "magic\ntech tiny\ntimestamp 0\n<< metal1 >>\nrect 0 0 4 4\n<< end >>\n");
+  hefesto::script::TestConsentHost host;  // declines
+  s.editor.script.pdk_trust.set_consent_host(&host);
+  app::StartupOptions options;
+  options.rc_file = (magic_dir / "tiny.magicrc").string();
+  options.files = {app::FileArgument{(s.env.working_directory / "inv").string(), app::FileKind::cell}};
+  const auto run = s.start(options);
+  s.dump();
+  REQUIRE(run.ok());
+  REQUIRE(host.requests().size() == 1);
+  CHECK(s.eval("info exists ::tiny_rc") == "0");
+  CHECK(s.editor.technology->name() == "minimum");
+  const auto* inv = s.editor.cells.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK(hefesto::cell::is_declined(s.editor, *inv));
 }

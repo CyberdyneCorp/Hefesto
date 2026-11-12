@@ -30,4 +30,9 @@ std::optional<CommandResult> refuse_host_access(const Invocation& invocation, st
   return CommandResult::raised(diag::make(code, std::string{what} + " is not permitted in the script sandbox"));
 }
 
+CommandResult refuse_process_execution(std::string_view what) {
+  return CommandResult::raised(diag::make(
+      kProcessDenied, std::string{what} + ": process execution is not permitted (Hefesto runs no external programs)"));
+}
+
 }  // namespace hefesto::cmd

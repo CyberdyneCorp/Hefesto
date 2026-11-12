@@ -23,7 +23,6 @@ add_library(hefesto_core STATIC
   src/cmd/keywords.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
-  src/cmd/script_parser.cpp
   src/cmd/quit_policy.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp

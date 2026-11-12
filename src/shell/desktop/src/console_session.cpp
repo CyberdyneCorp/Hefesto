@@ -9,8 +9,10 @@
 #include <vector>
 
 #include "hefesto/diag/format.hpp"
+#include "hefesto/platform/file_system.hpp"
 #include "hefesto/script/binding/tags.hpp"
 #include "hefesto/script/interp.hpp"
+#include "hefesto/undo/undo_log.hpp"
 
 namespace hefesto::shell {
 
@@ -39,10 +41,22 @@ class TclConsoleSession::Capture final : public diag::DiagnosticSink {
   TclConsoleSession& owner_;
 };
 
-TclConsoleSession::TclConsoleSession(editor::EditorState& editor, cmd::Dispatcher& dispatcher)
-    : editor_(editor), dispatcher_(dispatcher) {}
+std::string script_where(const script::ScriptLocation& location) {
+  if (location.line == 0) return {};
+  const std::string line = std::to_string(location.line);
+  if (location.file.empty()) return "line " + line;
+  return platform::Path{location.file}.filename().string() + ":" + line;
+}
 
-TclConsoleSession::~TclConsoleSession() = default;
+TclConsoleSession::TclConsoleSession(editor::EditorState& editor, cmd::Dispatcher& dispatcher)
+    : editor_(editor), dispatcher_(dispatcher) {
+  editor_.script.progress.handler = [this](const script::ScriptProgress& p) { on_progress(p); };
+  editor_.script.progress.interval = pump_interval_;
+}
+
+TclConsoleSession::~TclConsoleSession() {
+  editor_.script.progress.handler = {};
+}
 
 script::Interpreter* TclConsoleSession::interpreter() const noexcept {
   return editor_.script.interp.get();
@@ -59,13 +73,28 @@ bool TclConsoleSession::attach(script::Interpreter& interp) {
 void TclConsoleSession::set_pump(std::function<void()> pump, std::chrono::milliseconds interval) {
   pump_ = std::move(pump);
   pump_interval_ = interval;
+  editor_.script.progress.interval = interval;
 }
 
 void TclConsoleSession::on_command() {
-  if (depth_ == 0 || !pump_ || pumping_) return;
-  const auto now = std::chrono::steady_clock::now();
-  if (now - last_pump_ < pump_interval_) return;
-  last_pump_ = now;
+  if (depth_ == 0 && !progress_) return;
+  if (std::chrono::steady_clock::now() - last_pump_ < pump_interval_) return;
+  pump_now();
+}
+
+void TclConsoleSession::on_progress(const script::ScriptProgress& progress) {
+  if (progress.done) {
+    last_where_ = script_where(progress.location);
+    progress_.reset();
+    return;
+  }
+  progress_ = progress;
+  pump_now();  // the interpreter already spaces its reports by the interval
+}
+
+void TclConsoleSession::pump_now() {
+  if (!pump_ || pumping_) return;
+  last_pump_ = std::chrono::steady_clock::now();
   pumping_ = true;  // a command the frame runs must not pump again
   pump_();
   pumping_ = false;
@@ -88,6 +117,8 @@ ConsoleEvaluation TclConsoleSession::evaluate(std::string_view command) {
   }
   ++depth_;
   last_pump_ = std::chrono::steady_clock::now();
+  last_where_.clear();
+  const undo::StepMark mark = editor_.undo.mark();
   {
     const Capture capture(*this);
     out.result = interp->evaluate(command, cmd::Origin::gui);
@@ -96,6 +127,12 @@ ConsoleEvaluation TclConsoleSession::evaluate(std::string_view command) {
   if (!pending_out_.empty()) write(pending_kind_, "", true);  // end a `puts -nonewline` line
   for (const diag::Diagnostic& d : out.result.diagnostics) {
     if (d.code == kInterruptedCode) out.interrupted = true;
+  }
+  if (out.interrupted) {
+    // The edits made before the interrupt stay, as one step named after the
+    // command (board M4-Console tile 8).
+    out.edits = editor_.undo.merge_since(mark, undo::script_label(command));
+    out.where = last_where_;
   }
   return out;
 }

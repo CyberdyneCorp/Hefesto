@@ -19,6 +19,8 @@
 
 #include "hefesto/gui/toolbar_presets.hpp"
 #include "hefesto/script/interp.hpp"
+#include "hefesto/shell/gui_script.hpp"
+#include "hefesto/shell/script_consent_model.hpp"
 #include "main_window.hpp"
 #include "manager_panels.hpp"
 
@@ -56,10 +58,26 @@ void MainWindow::build_m4b_console() {
   });
   // The run draws frames between its commands so the Interrupt card, Ctrl-C
   // and the canvas stay live (Rdraw_frame from the key event that started it).
+  // Input that would run a command waits until the script ends (board
+  // M4-Console note 8): ScriptInputBlock while the frame is drawn.
   console_session_->set_pump([this] {
+    const ScriptInputBlock no_input;
     console_panel_->refresh();
     ui::pump_frame();
+    if (!card_capture_.empty() && console_panel_->card_shown()) {
+      card_captured_ = capture(card_capture_);
+      card_capture_.clear();
+    }
   });
+  // A script that is not the console's (menu callbacks, PDK files) gets the
+  // same card from its progress report (board M4-Script-Consent tile 7).
+  console_panel_->set_script_card(
+      [this]() -> std::optional<InterruptCardView> {
+        const auto& progress = console_session_->progress();
+        if (!progress || progress->done || console_session_->evaluating()) return std::nullopt;
+        return interrupt_card(running_script(*progress));
+      },
+      [this] { console_session_->interrupt(); });
   // The left dock's tabs (board: Hierarchy becomes Cells, new Libraries tab)
   // and the technology manager of the right dock.
   managers_ = std::make_unique<ManagerPanels>(ctx_);
@@ -184,6 +202,11 @@ void MainWindow::note_m4b_command(const cmd::Invocation& invocation, const cmd::
 
 void MainWindow::refresh_m4b() {
   if (managers_) managers_->refresh();
+  // Lines typed while another script ran (ConsoleEvaluator::busy) run once it ended.
+  if (tcl_console_ && !ScriptInputBlock::active() && tcl_console_->run_held() > 0) {
+    dirty_ = true;
+    window_.request_redraw();
+  }
   if (console_panel_) console_panel_->refresh();
 }
 

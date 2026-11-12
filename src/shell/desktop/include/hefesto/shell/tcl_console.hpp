@@ -17,7 +17,12 @@
 //     says it is complete, Shift-Return always inserts a line.
 //   - ConsoleRun: a running evaluation: elapsed time, the Interrupt card
 //     after 2 s, input queued meanwhile (Magic's terminal input queue), the
-//     interrupt report.
+//     interrupt report ("eval unwound · file:line · interrupted by the
+//     user (N edits kept; undo reverts them as one step)"). The evaluator
+//     keeps the frames coming while it runs (script/progress.hpp: the
+//     interpreter's progress handler pumps one every 50 ms, also inside a
+//     pure Tcl loop) and merges the edits of an interrupted command into
+//     one undo step named after it.
 //   - TclConsole: the transcript, input, shared history and run state
 //     together; evaluation goes through a ConsoleEvaluator (TclConsoleSession
 //     in the app, a fake in tests).
@@ -172,17 +177,28 @@ class ConsoleRun {
   std::vector<std::string> queued_;
 };
 
-/// The transcript line of an interrupted evaluation: "eval canceled ·
-/// interrupted by the user (N edits kept; undo reverts them as one step)",
-/// or without the edits part when nothing changed (board tile 8).
-[[nodiscard]] std::string interrupt_report(std::string_view tcl_message, std::size_t edits);
+/// The transcript line of an interrupted evaluation: "eval unwound ·
+/// rc.tcl:12 · interrupted by the user (N edits kept; undo reverts them as
+/// one step)", without the location when `where` is empty and without the
+/// edits part when nothing changed (board tile 8 and note 8). Tcl's message
+/// is taken out of the interpreter's "script evaluation interrupted (…)";
+/// without one, Tcl's own text for an unwinding cancel, "eval unwound".
+[[nodiscard]] std::string interrupt_report(std::string_view tcl_message, std::size_t edits,
+                                           std::string_view where = {});
 
 // --- the console --------------------------------------------------------------------------
 
 /// What an evaluation produced, as the console shows it.
 struct ConsoleEvaluation {
   cmd::CommandResult result;
-  bool interrupted = false;  // stopped by request_interrupt (SCRIPT-TCL-003)
+  bool interrupted = false;  // stopped by request_interrupt (SCRIPT-TCL-002)
+  /// The undo steps the command made, when the evaluator knows them (an
+  /// interrupted command's, merged into one step); nullopt: the console
+  /// counts the closed steps itself.
+  std::optional<std::size_t> edits;
+  /// "file:line" (or "line N") of the last command the run reported while
+  /// it ran; empty when unknown.
+  std::string where;
 };
 
 /// Runs a console command in the project's interpreter. The app's
@@ -198,6 +214,10 @@ class ConsoleEvaluator {
   virtual void interrupt() noexcept = 0;
   /// The undo log's closed-step count (edits kept by an interrupt).
   [[nodiscard]] virtual std::size_t undo_steps() const = 0;
+  /// True while another evaluation runs in the interpreter (a menu
+  /// callback, the PDK startup) and the console is reached from a frame it
+  /// pumps: a command typed then is held until it ends.
+  [[nodiscard]] virtual bool busy() const { return false; }
 
  protected:
   ConsoleEvaluator() = default;
@@ -242,6 +262,12 @@ class TclConsole {
   [[nodiscard]] const std::optional<ConsoleRun>& current_run() const noexcept { return run_; }
   /// Interrupt (header button, the card, Ctrl-C): only while running.
   bool interrupt();
+  /// Commands held while another evaluation was busy (ConsoleEvaluator::busy).
+  [[nodiscard]] std::size_t held() const noexcept { return held_.size(); }
+  /// Runs the held commands, in order, once the evaluator is no longer busy
+  /// (the shell calls it from its frame; run() calls it first too). Returns
+  /// the number run.
+  std::size_t run_held();
 
   /// Window command entry (Options › Window Command Entry): lines go to
   /// `<window> <command>` with prompt `<window>>`; empty = the project console.
@@ -259,6 +285,7 @@ class TclConsole {
 
  private:
   void show_result(const ConsoleEvaluation& evaluation, std::size_t edits);
+  void hold(const std::string& command, bool echo_input);
   void touch() noexcept { ++revision_; }
 
   ConsoleEvaluator& evaluator_;
@@ -267,6 +294,7 @@ class TclConsole {
   ConsoleTranscript transcript_;
   std::string input_;
   std::optional<ConsoleRun> run_;
+  std::vector<std::string> held_;  // typed while another evaluation was busy
   std::string target_;
   ConsoleFilter filter_ = ConsoleFilter::all;
   std::uint64_t revision_ = 0;

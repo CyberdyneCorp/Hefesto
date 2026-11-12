@@ -40,6 +40,19 @@ std::string text_of(std::string_view line) {
   return std::string{chomp(line)};
 }
 
+/// A cell of a technology whose PDK scripts were declined (hefesto-security
+/// "Consent before implicit script execution"): read anyway with the
+/// current (`minimum`) technology, read-only and recorded as declined, so
+/// that it is never written without the PDK's layers.
+bool read_declined(ReadState& st, const std::string& file_tech) {
+  st.def.flags().no_edit = true;
+  if (st.ctx.declined != nullptr) {
+    st.ctx.declined->mark(st.def, file_tech);
+  }
+  st.emit(codes::kReadNote, "Will attempt to read cell anyway.");
+  return true;
+}
+
 /// "Technology check on read"; true when the read may continue.
 bool check_technology(ReadState& st, const std::string& file_tech) {
   if (file_tech == st.tech().name()) {
@@ -48,6 +61,9 @@ bool check_technology(ReadState& st, const std::string& file_tech) {
   st.emit(codes::kTechMismatch, "Cell " + st.def.name() + " has technology \"" + file_tech +
                                     "\", but current technology is \"" + st.tech().name() + "\"");
   if (st.options.ignore_tech) {
+    if (st.ctx.technology_declined && st.ctx.technology_declined(file_tech)) {
+      return read_declined(st, file_tech);
+    }
     st.emit(codes::kReadNote, "Will attempt to read cell anyway.");
     return true;
   }
@@ -56,10 +72,8 @@ bool check_technology(ReadState& st, const std::string& file_tech) {
     if (loaded.tech != nullptr) {
       st.ctx.tech = loaded.tech;
     }
-    if (loaded.read_only) {  // declined PDK script (hefesto-security): read-only with the current technology
-      st.def.flags().no_edit = true;
-      st.emit(codes::kReadNote, "Will attempt to read cell anyway.");
-      return true;
+    if (loaded.read_only) {
+      return read_declined(st, file_tech);
     }
   }
   if (file_tech == st.tech().name()) {
@@ -524,6 +538,9 @@ void finish(ReadState& st, std::int32_t stamp) {
 
 diag::Status read_mag(CellIoContext& ctx, db::CellDef& def, std::string_view text, const ReadOptions& options) {
   const db::ScopedRecorderDetach unrecorded(ctx.library);  // reads are never undoable
+  if (ctx.declined != nullptr) {
+    ctx.declined->forget(def);  // the technology check of this read decides again
+  }
   detail::ReadState st{ctx, def, text, options};
   const detail::Header h = detail::read_header(st);
   if (h.result == detail::HeaderResult::tech_failed) {
