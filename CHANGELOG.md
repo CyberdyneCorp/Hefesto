@@ -34,6 +34,25 @@ release notices.
   Tk's widget tree stands in for the wrapper window, so wrapper.tcl's tags,
   menus and dialogs work without a display.
 
+- **Desktop: dragging a panel header shows where it will dock.** A dashed
+  band at the dock edge ("Drop to dock on the right"), the outline of a
+  floating target, and the dock the panel came from. A panel docked again
+  after floating now takes its dock's size and position (it sat offset in
+  an oversized dock before).
+- **Desktop: the script consent prompt is an alert sheet.** It has the
+  shield icon, the PDK's origin in an inset block, and Don't run on the
+  left. The Interrupt card sits at the top centre of the canvas. In the
+  PDK panel, each row's install state no longer covers its scripts state.
+- **Desktop: the PCell dialog, text helper, reorder dialog and Cells
+  manager follow their design boards** (compact keys, monospaced values,
+  buttons on the right; the Cells list fits the cell name).
+- **Desktop: scripted input and captures for checks.** `--input 'move X,Y;
+  down X,Y; up X,Y; key [MOD+]NAME; text T; wait MS'` plays pointer and key
+  events and prints where each panel ended up. `--press X,Y` holds the left
+  button (to open a menu). `--menu-bar-in-window` draws the menu bar inside
+  the window on macOS. `--capture-window pcell|texthelper|reorder` saves a
+  utility window.
+
 - **Desktop: the undo history names each step after the command that made
   it** ("↶ paint metal1", "Undid paint metal1 · 3 more steps"), and pressing
   and holding Undo for half a second opens it (a shorter press still
