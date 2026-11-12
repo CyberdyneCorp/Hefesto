@@ -279,3 +279,51 @@ TEST_CASE("an origin change translates every hint", COPY) {
   CHECK(strips(c, "B") == Rects{{5, 13, 15, 23}});
   CHECK(*c.properties().find("OTHER") == db::PropertyValue{std::string{"0 0 5 5"}});
 }
+
+TEST_CASE("a hint batch gives the regions of the copies one by one", COPY) {
+  // HintBatch (the DRC yank and flat_copy_hints paint every element's hints
+  // at once): the same regions and properties as a copy_hints() call per
+  // element, with overlapping, abutting, clipped-away and rotated copies.
+  HEFESTO_REQUIRE_MT(mt);
+  Layout l(mt);
+  db::CellDef* src = l.cell("S", Rect{0, 0, 1, 1});
+  db::CellDef* other = l.cell("O", Rect{0, 0, 1, 1});
+  set_hint(*src, "A", hints::HintRegion{Rect{0, 0, 10, 4}, Rect{0, 4, 4, 10}});
+  set_hint(*src, "B", hints::HintRegion{Rect{2, 2, 6, 6}});
+  set_hint(*other, "B", hints::HintRegion{Rect{0, 0, 3, 3}});
+  set_hint(*other, "C", hints::HintRegion{Rect{500, 500, 510, 510}});
+  const Rect clip{-50, -50, 60, 40};
+  struct Copy {
+    const db::CellDef* source;
+    db::Transform transform;
+  };
+  std::vector<Copy> copies;
+  for (int i = 0; i < 6; ++i) {
+    copies.push_back({src, db::translation(i * 9, i % 2)});  // overlapping and abutting
+  }
+  copies.push_back({src, db::Transform{0, -1, 30, 1, 0, 30}});  // rotated
+  copies.push_back({other, db::translation(-2, -2)});  // C is clipped away
+  const auto run = [&](db::CellDef& dst, bool batched) {
+    set_hint(dst, "B", hints::HintRegion{Rect{-40, -40, -30, -30}});
+    hints::HintBatch batch;
+    for (const Copy& c : copies) {
+      if (batched) {
+        batch.add(*c.source, c.transform, clip);
+      } else {
+        hints::copy_hints(*c.source, dst, c.transform, clip);
+      }
+    }
+    batch.commit(dst);
+  };
+  db::CellDef* one_by_one = l.cell("D1", Rect{0, 0, 1, 1});
+  db::CellDef* batched = l.cell("D2", Rect{0, 0, 1, 1});
+  run(*one_by_one, false);
+  run(*batched, true);
+  for (const char* name : {"A", "B", "C"}) {
+    CAPTURE(name);
+    CHECK(strips(*batched, name) == strips(*one_by_one, name));
+  }
+  REQUIRE(hints::find_hint(*batched, "C") != nullptr);
+  CHECK(hints::find_hint(*batched, "C")->empty());
+  CHECK(strips(*batched, "B").size() > 1);
+}
