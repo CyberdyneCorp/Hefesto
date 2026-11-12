@@ -32,12 +32,14 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/script/events.hpp"
 #include "hefesto/script/pdk/consent.hpp"
 #include "hefesto/script/progress.hpp"
 #include "hefesto/script/types.hpp"
 #include "hefesto/shell/editing_models.hpp"
+#include "hefesto/shell/theme_tokens.hpp"
 #include "hefesto/shell/view_models.hpp"
 
 namespace hefesto::shell {
@@ -85,6 +87,22 @@ struct ConsentPromptView {
 
 [[nodiscard]] ConsentPromptView consent_prompt(const script::ConsentRequest& request, const ConsentContext& context);
 
+/// The store release's digest verified (board note 2): the version was
+/// installed by the PDK manager (not "external") and every recorded asset
+/// has the SHA-256 that `pdk install` checked; a version installed by ciel
+/// or volare, or with an asset of unknown digest, is not verified.
+[[nodiscard]] bool release_digest_verified(const pdk::Provenance& provenance) noexcept;
+
+/// The "Then runs" row (board tile 2): "<main> + N part files (device
+/// generators)", "<main>" without parts, empty without a main script.
+[[nodiscard]] std::string then_runs_text(std::string_view main_script, std::size_t part_files);
+
+/// What a PDK startup file `script` runs next, read from the folder that
+/// holds it: the PDK's device script `<variant>.tcl` and its part files
+/// `<variant>-*.tcl` (sky130A.tcl sources sky130A-util.tcl … sky130A-fix.tcl).
+/// Nothing is evaluated; empty when there is no `<variant>.tcl` there.
+[[nodiscard]] std::string startup_then_runs(const platform::Path& script, std::string_view variant);
+
 /// The prompt as the shell's question dialog: one button per answer, the
 /// default answer primary. `run_dialog`'s result (answer index + 1, 0 when
 /// dismissed) maps back through consent_decision().
@@ -102,8 +120,12 @@ class DesktopConsentHost final : public script::ConsentHost, public script::Scri
  public:
   using Ask = std::function<script::ConsentDecision(const ConsentPromptView&)>;
   using InStore = std::function<bool(const platform::Path&)>;
+  /// Fills what the prompt says about a store script's release (digest,
+  /// Then runs); called only for a script in the store.
+  using Origin = std::function<void(const script::PdkIdentity&, const platform::Path&, ConsentContext&)>;
 
   DesktopConsentHost(Ask ask, InStore in_store) : ask_(std::move(ask)), in_store_(std::move(in_store)) {}
+  void set_origin(Origin origin) { origin_ = std::move(origin); }
 
   [[nodiscard]] script::ConsentDecision ask(const script::PdkIdentity& pdk, const platform::Path& script) override;
   /// ScriptEvents: the request about to be asked (it carries `implicit`).
@@ -124,6 +146,7 @@ class DesktopConsentHost final : public script::ConsentHost, public script::Scri
  private:
   Ask ask_;
   InStore in_store_;
+  Origin origin_;
   std::string document_;
   std::map<script::PdkIdentity, script::ConsentDecision> answers_;
   std::map<script::PdkIdentity, platform::Path> scripts_;
@@ -168,7 +191,8 @@ struct ReviewPlan {
 [[nodiscard]] ReviewPlan review_plan(const script::PdkIdentity& pdk, script::ConsentDecision decision);
 
 /// The status-bar text of a sandbox denial ("■ Sandbox blocked socket in
-/// fetch_models.tcl:12"), the Show link opening the Diagnostics tab.
+/// fetch_models.tcl:12 · Show"); clicking the status bar (Show) opens the
+/// Diagnostics tab with the denial's row.
 [[nodiscard]] std::string denial_status(const script::DeniedOperation& denied);
 
 /// Collects what the script layer reports for the window (denials, skipped
@@ -206,6 +230,14 @@ struct InterruptCardView {
 
 /// The card, shown only once the script ran for `kLongRunning`.
 [[nodiscard]] std::optional<InterruptCardView> interrupt_card(const RunningScript& running);
+
+/// Board M4-Script-Consent note 8: while the card of a long-running script
+/// shows, the canvas is dimmed (the layout drawn at 35 %, as on the board)
+/// and takes no input (ScriptInputBlock). The scrim is the canvas color,
+/// which no theme changes, at 65 % over everything the canvas draws.
+inline constexpr float kScriptDimAlpha = 0.65F;
+/// The scrim over the canvas, or nullopt when the canvas is not dimmed.
+[[nodiscard]] std::optional<Rgba> script_dim(bool card_shown, const ThemeTokens& canvas_tokens) noexcept;
 
 /// The running script of a progress report of the project's interpreter
 /// (script::ProgressReporting; TclConsoleSession::progress): the sourced

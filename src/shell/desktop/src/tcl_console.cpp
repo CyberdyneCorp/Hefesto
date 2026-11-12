@@ -287,6 +287,21 @@ void TclConsole::history_newer() {
   }
 }
 
+std::optional<ConsoleCompletion> TclConsole::complete_input(std::size_t cursor) {
+  if (running()) return std::nullopt;
+  const TclCompletionWord word = tcl_completion_word(input_, cursor);
+  if (word.kind == TclWordKind::none) return std::nullopt;
+  ConsoleCompletion completion =
+      complete_tcl_word(input_, cursor, word, evaluator_.names(word.kind, tcl_prefix_glob(word.prefix)));
+  if (completion.candidates.empty()) return std::nullopt;
+  if (completion.candidates.size() > 1 && completion.text == input_) {
+    transcript_.add(ConsoleLineKind::info, completion_listing(completion.candidates));
+    touch();
+  }
+  input_ = completion.text;
+  return completion;
+}
+
 void TclConsole::hold(const std::string& command, bool echo_input) {
   if (echo_input) {
     transcript_.add_input(command);

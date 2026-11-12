@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,6 +17,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
+#include "hefesto/shell/press_hold.hpp"
 #include "hefesto/shell/screen_models.hpp"
 #include "hefesto/shell/view_commands.hpp"
 #include "hefesto/ui/state.hpp"
@@ -137,6 +139,54 @@ TEST_CASE("the undo history issues undo N and redo N",
   REQUIRE(s.run("undo disable"));
   for (const MenuEntry& e : undo_history(log).entries) CHECK(e.enabled == e.command.starts_with("redo"));
   REQUIRE(s.run("undo enable"));
+}
+
+TEST_CASE("the undo history names each step after the command that made it",
+          "[cap:hefesto-app-ux][req:Undo history]") {
+  Session s;
+  REQUIRE(s.run("box 0 0 10 10"));
+  REQUIRE(s.run("paint metal1"));
+  REQUIRE(s.run("box 0 0 4 4"));
+  REQUIRE(s.run("erase metal1"));
+  const hefesto::undo::UndoLog& log = s.core.editor().undo;
+  UndoHistory h = undo_history(log);
+  REQUIRE(h.entries.size() >= 2U);
+  CHECK(h.entries[0].label == "↶ erase metal1");
+  CHECK(h.entries[0].command == "undo 1");
+  CHECK(next_undo_step(log, false) == "erase metal1");
+  REQUIRE(s.run("undo"));
+  h = undo_history(log);
+  CHECK(h.entries[0].label == "↷ erase metal1");
+  CHECK(h.entries[0].command == "redo 1");
+  CHECK(next_undo_step(log, true) == "erase metal1");
+  // Scenario "Undo two steps from the history": the message names a step by its command.
+  REQUIRE(s.run("redo"));
+  const UndoMark mark = undo_mark(log);
+  REQUIRE(s.run("undo 2"));
+  const auto moved = undo_move_message(mark, log);
+  REQUIRE(moved.has_value());
+  CHECK(moved->starts_with("Undid erase metal1"));
+}
+
+TEST_CASE("pressing and holding Undo opens the history; a short press undoes",
+          "[cap:hefesto-app-ux][req:Undo history]") {
+  STATIC_REQUIRE(kHoldDelay == std::chrono::milliseconds{500});
+  PressHold hold;
+  // A press released before the delay is a click (Undo runs `undo`).
+  hold.press();
+  CHECK(hold.pending());
+  CHECK(hold.release());
+  CHECK_FALSE(hold.elapse(true));  // the delay of a released press does nothing
+  // Held past the delay: the history opens and the release is not a click.
+  hold.press();
+  CHECK(hold.elapse(true));
+  CHECK(hold.held());
+  CHECK_FALSE(hold.release());
+  CHECK_FALSE(hold.held());
+  // The button came up elsewhere (no release on the widget): no history.
+  hold.press();
+  CHECK_FALSE(hold.elapse(false));
+  CHECK_FALSE(hold.release());
 }
 
 TEST_CASE("after an undo the status bar names the step",

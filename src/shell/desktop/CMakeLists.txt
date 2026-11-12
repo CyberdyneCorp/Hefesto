@@ -50,6 +50,7 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/m4_managers_window.cpp
   src/manager_panels.cpp
   src/manager_views.cpp
+  src/tcl_completion.cpp
   src/tcl_console.cpp
   src/text_helper_view.cpp
   src/toolbar_views.cpp

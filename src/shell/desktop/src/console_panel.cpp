@@ -202,6 +202,10 @@ bool ConsolePanel::on_key(int key, std::uint8_t modifiers) {
   }
   const bool first_line = input_->cursor_line() == 0;
   const bool last_line = input_->cursor_line() >= input_->line_count() - 1;
+  if (key == raven_key::kTab && modifiers == 0) {
+    complete_input();
+    return true;  // Tab never leaves the console's input or inserts a tab
+  }
   if (key == raven_key::kUp && modifiers == 0 && first_line) {
     console_.history_older();
     sync_input_from_model();
@@ -213,6 +217,16 @@ bool ConsolePanel::on_key(int key, std::uint8_t modifiers) {
     return true;
   }
   return false;
+}
+
+void ConsolePanel::complete_input() {
+  const auto [line, column] = input_->cursor();
+  const auto completion = console_.complete_input(text_offset(console_.input(), line, column));
+  if (!completion) return;
+  sync_input_from_model();
+  const auto [new_line, new_column] = text_position(completion->text, completion->cursor);
+  input_->set_cursor(new_line, new_column);
+  refresh();
 }
 
 void ConsolePanel::sync_input_from_model() {

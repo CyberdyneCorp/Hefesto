@@ -168,6 +168,7 @@ void MainWindow::drain_script_events() {
     // Board M4-Script-Consent tile 7: the Diagnostics row is the
     // SCRIPT-SANDBOX diagnostic; the status bar names the last denial.
     set_message(StatusKind::error, denial_status(script_events_.denied.back()));
+    result_has_more_ = false;  // Show (a click on the bar) opens Diagnostics, not the Console
     announce(StatusKind::error, message_);
     script_events_.denied.clear();
   }

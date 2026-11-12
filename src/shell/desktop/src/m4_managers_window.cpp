@@ -63,6 +63,7 @@ void MainWindow::build_m4b_console() {
   console_session_->set_pump([this] {
     const ScriptInputBlock no_input;
     console_panel_->refresh();
+    show_script_progress();
     ui::pump_frame();
     if (!card_capture_.empty() && console_panel_->card_shown()) {
       card_captured_ = capture(card_capture_);
@@ -229,7 +230,23 @@ void MainWindow::refresh_m4b() {
     dirty_ = true;
     window_.request_redraw();
   }
-  if (console_panel_) console_panel_->refresh();
+  if (console_panel_) {
+    console_panel_->refresh();
+    canvas_->set_dim(script_dim(console_panel_->card_shown(), canvas_overlay_tokens(ctx_.mode)));
+  }
+}
+
+void MainWindow::show_script_progress() {
+  canvas_->set_dim(script_dim(console_panel_->card_shown(), canvas_overlay_tokens(ctx_.mode)));
+  // The edits so far (board tile 7 shows the layout under the card). Only
+  // the canvas and the header: the panels rebuild their widgets, which the
+  // callback that started the script may own, so they wait for on_frame
+  // (dirty_ stays set).
+  if (dirty_ || canvas_dirty_) {
+    canvas_->update_scene();
+    canvas_->refresh_highlights();
+    refresh_header();
+  }
 }
 
 }  // namespace hefesto::shell

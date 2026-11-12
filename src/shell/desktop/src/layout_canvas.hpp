@@ -34,6 +34,8 @@
 #include "hefesto/shell/canvas_controller.hpp"
 #include "hefesto/shell/canvas_overlay.hpp"
 #include "hefesto/shell/input_router.hpp"
+#include "hefesto/shell/label_tool.hpp"
+#include "hefesto/shell/minimap.hpp"
 #include "hefesto/view/window.hpp"
 #include "raven_ui.hpp"
 #include "screen_context.hpp"
@@ -93,12 +95,19 @@ class LayoutCanvas final : public view::ViewObserver {
 
   /// Adds a widget over the canvas (the job-completion toast, the DRC stepper).
   void add_overlay(const ui::Widget& child) { overlay_.add(child); }
+  /// Dims the canvas under the card of a long-running script (board
+  /// M4-Script-Consent note 8; script_dim): nullopt removes the scrim.
+  void set_dim(std::optional<Rgba> scrim);
   /// The tag on the found DRC error tile (nullopt: none); repaints when it changed.
   void set_drc_tag(std::optional<DrcCanvasTag> tag);
   /// The window point (logical units) just right of the top-right corner of
   /// `rect` (root coordinates), clamped into the canvas: where the `drc why`
   /// popover opens.
   [[nodiscard]] std::pair<float, float> popover_point(const db::Rect& rect) const;
+  /// The window point (logical units) of the Label popover's top-left corner
+  /// for the box `rect` (root coordinates): right of it, flipped to its left
+  /// when it would leave the canvas (label_popover_point).
+  [[nodiscard]] std::pair<float, float> label_point(const db::Rect& rect) const;
 
  private:
   struct Snapshot {
@@ -114,8 +123,14 @@ class LayoutCanvas final : public view::ViewObserver {
   void apply_redisplay(view::LayoutWindow& win, const view::Redisplay& redisplay);
   /// Uploads scene_ and refreshes the overlay's labels, cells and bounds.
   /// `full`: after a whole-scene build (the minimap is redone at once).
-  void publish_scene(const db::CellDef& root, bool full);
-  void set_scene_overlay(const display::LayoutScene& scene, bool full);
+  /// `areas`: the areas spliced into scene_ (a partial update; the minimap
+  /// redoes only the cells under them).
+  void publish_scene(const db::CellDef& root, bool full, const std::vector<db::Rect>& areas = {});
+  void set_scene_overlay(const display::LayoutScene& scene, bool full, const std::vector<db::Rect>& areas);
+  [[nodiscard]] MinimapFrame minimap_frame() const;
+  /// Updates the thumbnail's cells under `areas` from the edited layout;
+  /// false when it needs a rebuild (not built for the current bounds).
+  bool update_minimap(const std::vector<db::Rect>& areas);
   /// Uploads the scene's triangles and glyphs (drawn merged with the rectangles by layer).
   void upload_polygons(render::PolygonScene polygons);
   /// Publishes the camera to the render thread; `to_core` also writes it
@@ -141,6 +156,7 @@ class LayoutCanvas final : public view::ViewObserver {
   // (render::highlight_batches), rebuilt when a command changes them.
   std::unique_ptr<render::CanvasRenderer> highlight_renderer_;
   std::vector<display::HighlightItem> highlights_;  // what highlight_renderer_ holds
+  double highlight_ratio_ = 0.0;                    // the pixel ratio they were built for
   render::Camera camera_;
   CanvasController controller_{camera_};
   InputRouter router_;
@@ -162,7 +178,9 @@ class LayoutCanvas final : public view::ViewObserver {
   std::optional<db::Point> cursor_;
   paint::OverlayState overlay_state_;
   std::string empty_hint_;
+  std::optional<Rgba> dim_;  // the long-running script's scrim
   std::optional<std::chrono::steady_clock::time_point> minimap_due_;
+  MinimapThumbnail minimap_;  // composited cells, updated per edited area
   std::function<void()> view_changed_;
 
   mutable std::mutex view_mutex_;  // guards snapshot_, index_ and polygons_ (the render thread reads them)

@@ -288,6 +288,20 @@ bool in_pdk_store(CoreSession& core, const platform::Path& script) {
          (root.back() == '/' || path[root.size()] == '/');
 }
 
+// The release facts of the consent prompt (board M4-Script-Consent note 2)
+// for a script in the store: its digest from the version's provenance, what
+// the startup file runs next from the folder that holds it.
+void describe_store_script(CoreSession& core, const script::PdkIdentity& pdk, const platform::Path& script,
+                           ConsentContext& context) {
+  context.then_runs = startup_then_runs(script, pdk.variant);
+  const pdk::PdkManager* manager = core.pdk_manager();
+  if (manager == nullptr || pdk.version.empty()) return;
+  const pdk::Family* family = manager->catalog().find_family(pdk.family);
+  if (family == nullptr) return;
+  const auto provenance = manager->provenance(*family, pdk.version);
+  context.digest_verified = provenance.ok() && release_digest_verified(provenance.value());
+}
+
 int run_window(const ShellOptions& options) {
   // Magic-compatible startup words: a bad option exits 1 before any window
   // (app-startup "Command-line options").
@@ -323,6 +337,9 @@ int run_window(const ShellOptions& options) {
           return asking != nullptr ? asking->ask_consent(view) : script::ConsentDecision::decline;
         },
         [&core](const platform::Path& script) { return in_pdk_store(core, script); });
+    consent.set_origin([&core](const script::PdkIdentity& pdk, const platform::Path& script, ConsentContext& context) {
+      describe_store_script(core, pdk, script, context);
+    });
     if (!startup.value().files.empty()) consent.set_document(startup.value().files.front().name);
     MainWindow window(*runtime, options, queue_mutex, core);
     asking = &window;

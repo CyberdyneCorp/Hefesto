@@ -64,8 +64,9 @@ struct MenuEntry {
 
 /// The undo history popover (board M2-Undo-Redo, tile 3): the redo tail
 /// (nearest last, `redo N`), then the steps that can be undone (newest
-/// first, `undo N`); each step is named by its newest event's description
-/// (`undo print`). `title` reads "24 steps · limit 1000".
+/// first, `undo N`); each step is named after the user command that made it
+/// ("paint metal1", UndoLog::step_label; an unlabelled step by its newest
+/// event's description). `title` reads "24 steps · limit 1000".
 struct UndoHistory {
   std::string title;
   std::vector<MenuEntry> entries;
@@ -77,8 +78,8 @@ struct UndoHistory {
 [[nodiscard]] std::optional<std::string> undo_status_message(bool redo, std::string_view step,
                                                              std::size_t remaining);
 
-/// The name of the step `undo` would undo (`redo`: redo), from the log's
-/// `undo print`; empty when there is none.
+/// The name of the step `undo` would undo (`redo`: redo), its
+/// UndoLog::step_label; empty when there is none.
 [[nodiscard]] std::string next_undo_step(const undo::UndoLog& log, bool redo);
 
 /// The undo log's position and step count, taken after each command so that

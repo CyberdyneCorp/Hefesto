@@ -224,14 +224,14 @@ void LayoutCanvas::refresh_scene() {
   camera_changed(new_root);
 }
 
-void LayoutCanvas::publish_scene(const db::CellDef& root, bool full) {
+void LayoutCanvas::publish_scene(const db::CellDef& root, bool full, const std::vector<db::Rect>& areas) {
   const render::LayoutBatches batches = render::to_batches(scene_);
   upload(layered(batches.rects), batches.styles);
   upload_polygons(batches.polygons);
   // The fit covers the drawn scene and the root's bounding box (subcells).
   bounds_ = to_bounds(scene_.bounds.is_null() ? root.bbox() : db::include(scene_.bounds, root.bbox()));
   controller_.set_bounds(bounds_);
-  set_scene_overlay(scene_, full);
+  set_scene_overlay(scene_, full, areas);
   empty_hint_.clear();
 }
 
@@ -261,7 +261,8 @@ void LayoutCanvas::apply_redisplay(view::LayoutWindow& win, const view::Redispla
   }
   editor::EditorState& ed = ctx_.editor();
   const db::CellDef& root = *win.root();
-  for (const db::Rect& area : splice_areas(redisplay.areas)) {
+  const std::vector<db::Rect> areas = splice_areas(redisplay.areas);
+  for (const db::Rect& area : areas) {
     auto partial = [&] {
       const db::DatabaseLock::Shared reading(ed.database_lock);
       return display::build_scene(root, *ed.technology, *ed.styles, ed.fonts, scene_options(win, root, area));
@@ -271,7 +272,7 @@ void LayoutCanvas::apply_redisplay(view::LayoutWindow& win, const view::Redispla
       return;
     }
   }
-  publish_scene(root, false);
+  publish_scene(root, false, areas);
   camera_changed(false);
 }
 
@@ -284,28 +285,63 @@ void LayoutCanvas::fit_view() {
   }
 }
 
-void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene, bool full) {
+MinimapFrame LayoutCanvas::minimap_frame() const {
+  // The canvas keeps the dark canvas color in both themes; so does the thumbnail.
+  MinimapFrame frame;
+  frame.bounds = overlay_state_.bounds;
+  frame.background = theme_tokens(ThemeMode::dark).canvas;
+  frame.width = static_cast<double>(kMinimapWidth);
+  frame.height = static_cast<double>(kMinimapHeight);
+  return frame;
+}
+
+void LayoutCanvas::set_scene_overlay(const display::LayoutScene& scene, bool full,
+                                     const std::vector<db::Rect>& areas) {
   overlay_state_.labels = scene.labels;
   overlay_state_.cells = scene.cells;
   overlay_state_.bounds = to_rect(bounds_);
+  // An edit inside the same bounds redoes only the thumbnail cells under its
+  // areas (task 11.6: 10.6 ms against 1475 ms for a rebuild of 2 M rectangles).
+  if (!full && !minimap_due_ && update_minimap(areas)) return;
   // The thumbnail walks every rectangle of the scene (about 0.5 s for the
   // 13.7 M rectangles of the 100 x 100 dfxtp_1 array in a Debug build): after
-  // an edit of a large scene it is redone once the edits pause (idle()).
+  // an edit of a large scene that grew the bounds it is redone once the
+  // edits pause (idle()).
   if (!full && scene_rect_count(scene) > kMinimapSyncRects) {
     minimap_due_ = std::chrono::steady_clock::now() + kMinimapDelay;
     return;
   }
   minimap_due_.reset();
-  // The canvas keeps the dark canvas color in both themes; so does the thumbnail.
-  overlay_state_.minimap = minimap_thumbnail(scene, overlay_state_.bounds, theme_tokens(ThemeMode::dark).canvas,
-                                             kMinimapWidth, kMinimapHeight);
+  minimap_.rebuild(scene, minimap_frame());
+  overlay_state_.minimap = minimap_.fills();
+}
+
+bool LayoutCanvas::update_minimap(const std::vector<db::Rect>& areas) {
+  view::LayoutWindow* win = window();
+  editor::EditorState& ed = ctx_.editor();
+  if (areas.empty() || win == nullptr || win->root() == nullptr || !minimap_.built_for(minimap_frame())) return false;
+  const db::CellDef& root = *win->root();
+  for (const db::Rect& area : areas) {
+    const std::optional<db::Rect> dirty = minimap_.dirty_area(area);
+    if (!dirty) continue;  // the area misses the thumbnail
+    // Every whole rectangle touching the dirty cells (build_scene over an
+    // area keeps the rectangles that touch it uncut).
+    auto partial = [&] {
+      const db::DatabaseLock::Shared reading(ed.database_lock);
+      return display::build_scene(root, *ed.technology, *ed.styles, ed.fonts, scene_options(*win, root, *dirty));
+    }();
+    if (!partial) return false;
+    minimap_.update(partial.value(), area);
+  }
+  overlay_state_.minimap = minimap_.fills();
+  return true;
 }
 
 bool LayoutCanvas::idle() {
   if (!minimap_due_ || std::chrono::steady_clock::now() < *minimap_due_) return minimap_due_.has_value();
   minimap_due_.reset();
-  overlay_state_.minimap = minimap_thumbnail(scene_, overlay_state_.bounds, theme_tokens(ThemeMode::dark).canvas,
-                                             kMinimapWidth, kMinimapHeight);
+  minimap_.rebuild(scene_, minimap_frame());
+  overlay_state_.minimap = minimap_.fills();
   painted_->invalidate();
   return false;
 }
@@ -526,6 +562,14 @@ void LayoutCanvas::paint_overlay(ui::Painter& p, float w, float h) {
   fitted.fit(bounds_);
   overlay_state_.fit_pixels_per_unit = fitted.pixels_per_unit();
   paint::canvas_overlay(p, w, h, overlay_state_, ctx_.mode);
+  if (dim_) p.fill(0.0F, 0.0F, w, h, 0.0F, *dim_);
+}
+
+void LayoutCanvas::set_dim(std::optional<Rgba> scrim) {
+  // The scrim is the canvas color, which no theme changes: only on/off matters.
+  if (dim_.has_value() == scrim.has_value()) return;
+  dim_ = scrim;
+  painted_->invalidate();
 }
 
 void LayoutCanvas::draw(const ui::ViewportDraw& target) {
@@ -578,9 +622,13 @@ void LayoutCanvas::refresh_highlights() {
       scene.items.push_back(std::move(item));
     }
   }
-  if (scene.items == highlights_) return;
+  // One-logical-pixel outlines (task 11.6): the batches depend on the ratio,
+  // which changes when the window moves to a display of another scale.
+  const double ratio = static_cast<double>(pixel_ratio_());
+  if (scene.items == highlights_ && ratio == highlight_ratio_) return;
   highlights_ = scene.items;
-  render::LayoutBatches batches = render::highlight_batches(scene);
+  highlight_ratio_ = ratio;
+  render::LayoutBatches batches = render::highlight_batches(scene, render::HighlightOptions{ratio});
   highlight_renderer_->set_layer_styles(batches.styles);
   (void)highlight_renderer_->upload(batches.rects.instances());
   (void)highlight_renderer_->upload_polygons(batches.polygons.vertices, batches.polygons.base_x,
@@ -607,6 +655,14 @@ std::pair<float, float> LayoutCanvas::popover_point(const db::Rect& rect) const 
   const double x = std::clamp(r.x + r.w + 8.0, 0.0, std::max(0.0, static_cast<double>(area.width) - 280.0));
   const double y = std::clamp(r.y, 0.0, std::max(0.0, static_cast<double>(area.height) - 120.0));
   return {area.x + static_cast<float>(x), area.y + static_cast<float>(y)};
+}
+
+std::pair<float, float> LayoutCanvas::label_point(const db::Rect& rect) const {
+  const ui::Rect area = overlay_.rect();
+  const PixelRect r = world_to_pixels(camera_, rect, static_cast<double>(pixel_ratio_()));
+  const PopoverPoint p = label_popover_point(r.x, r.y, r.w, static_cast<double>(area.width),
+                                             static_cast<double>(area.height));
+  return {area.x + static_cast<float>(p.x), area.y + static_cast<float>(p.y)};
 }
 
 }  // namespace hefesto::shell
