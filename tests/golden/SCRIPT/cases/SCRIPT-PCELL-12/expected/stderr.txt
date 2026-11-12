@@ -1,0 +1,4 @@
+Cell capacitor couldn't be read
+Cell resistor couldn't be read
+Cell inductor couldn't be read
+Can't rename cell 'top' to 'sub1' because that cell already exists.

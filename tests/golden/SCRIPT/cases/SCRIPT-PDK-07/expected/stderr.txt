@@ -1,0 +1,341 @@
+Cell top_1 couldn't be read
+No such file or directory
+Box tool must be present
+Box tool must be present
+The box is in cell "sky130_fd_pr__nfet_01v8_BXHNFL", not in the edit cell "top_1"
+The box isn't in the same window as the cursor.
+Cell Topmost cell in the window (top_1) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_2 couldn't be read
+No such file or directory
+Can't rename cell 'top_2' to 'sky130_fd_pr__pfet_01v8_FQ5XRT' because that cell already exists.
+Cell top_3 couldn't be read
+No such file or directory
+Can't rename cell 'top_3' to 'sky130_fd_pr__nfet_g5v0d16v0_XNCHUA' because that cell already exists.
+Cell top_4 couldn't be read
+No such file or directory
+Can't rename cell 'top_4' to 'sky130_fd_pr__pfet_g5v0d16v0_VMPBJP' because that cell already exists.
+Cell top_5 couldn't be read
+No such file or directory
+Can't rename cell 'top_5' to 'sky130_fd_pr__diode_pw2nd_05v5_95G5CE' because that cell already exists.
+Cell top_6 couldn't be read
+No such file or directory
+Can't rename cell 'top_6' to 'sky130_fd_pr__diode_pd2nw_05v5_PABBBD' because that cell already exists.
+Cell top_7 couldn't be read
+No such file or directory
+Can't rename cell 'top_7' to 'sky130_fd_pr__photodiode_MN62CG' because that cell already exists.
+Cell top_8 couldn't be read
+No such file or directory
+Can't rename cell 'top_8' to 'sky130_fd_pr__cap_var_lvt_RWRFT5' because that cell already exists.
+Cell top_9 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_npn_05v5_W1p00L1p00 couldn't be read
+Cell Topmost cell in the window (top_9) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_10 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_npn_05v5_W1p00L2p00 couldn't be read
+Cell Topmost cell in the window (top_10) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_11 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_pnp_05v5_W0p68L0p68 couldn't be read
+Cell Topmost cell in the window (top_11) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_12 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_pnp_05v5_W3p40L3p40 couldn't be read
+Cell Topmost cell in the window (top_12) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_13 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_npn_11v0_W1p00L1p00 couldn't be read
+Cell Topmost cell in the window (top_13) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_14 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_test_coil1 couldn't be read
+Cell Topmost cell in the window (top_14) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_15 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_test_coil2 couldn't be read
+Cell Topmost cell in the window (top_15) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_16 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__rf_test_coil3 couldn't be read
+Cell Topmost cell in the window (top_16) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_17 couldn't be read
+No such file or directory
+Can't rename cell 'top_17' to 'sky130_fd_pr__res_generic_nd_4WA2BH' because that cell already exists.
+Cell top_18 couldn't be read
+No such file or directory
+Can't rename cell 'top_18' to 'sky130_fd_pr__res_generic_pd_EJU6QV' because that cell already exists.
+Cell top_19 couldn't be read
+No such file or directory
+Can't rename cell 'top_19' to 'sky130_fd_pr__res_generic_nd__hv_4WA2BH' because that cell already exists.
+Cell top_20 couldn't be read
+No such file or directory
+Can't rename cell 'top_20' to 'sky130_fd_pr__res_generic_pd__hv_EJU6QV' because that cell already exists.
+Cell top_21 couldn't be read
+No such file or directory
+Can't rename cell 'top_21' to 'sky130_fd_pr__res_generic_po_QJMCKK' because that cell already exists.
+Cell top_22 couldn't be read
+No such file or directory
+Can't rename cell 'top_22' to 'sky130_fd_pr__res_high_po_0p35_TD68X4' because that cell already exists.
+Cell top_23 couldn't be read
+No such file or directory
+Can't rename cell 'top_23' to 'sky130_fd_pr__res_xhigh_po_0p35_JF7MNF' because that cell already exists.
+Cell top_24 couldn't be read
+No such file or directory
+Can't rename cell 'top_24' to 'sky130_fd_pr__res_iso_pw_VDLDNF' because that cell already exists.
+Cell top_25 couldn't be read
+No such file or directory
+Can't rename cell 'top_25' to 'sky130_fd_pr__res_generic_l1_TV5DTF' because that cell already exists.
+Cell top_26 couldn't be read
+No such file or directory
+Can't rename cell 'top_26' to 'sky130_fd_pr__res_generic_m1_NX92XM' because that cell already exists.
+Cell top_27 couldn't be read
+No such file or directory
+Can't rename cell 'top_27' to 'sky130_fd_pr__res_generic_m2_NX92XM' because that cell already exists.
+Cell top_28 couldn't be read
+No such file or directory
+Can't rename cell 'top_28' to 'sky130_fd_pr__res_generic_m3_5VRV4L' because that cell already exists.
+Cell top_29 couldn't be read
+No such file or directory
+Can't rename cell 'top_29' to 'sky130_fd_pr__res_generic_m4_5VRV4L' because that cell already exists.
+Cell top_30 couldn't be read
+No such file or directory
+Can't rename cell 'top_30' to 'sky130_fd_pr__res_generic_m5_KD9WJ6' because that cell already exists.
+Cell top_31 couldn't be read
+No such file or directory
+Can't rename cell 'top_31' to 'sky130_fd_pr__cap_mim_m3_1_4V3HYR' because that cell already exists.
+Cell top_32 couldn't be read
+No such file or directory
+Can't rename cell 'top_32' to 'sky130_fd_pr__cap_mim_m3_2_B68646' because that cell already exists.
+Cell top_33 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3m4_shieldl1m5 couldn't be read
+Cell Topmost cell in the window (top_33) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_34 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield couldn't be read
+Cell Topmost cell in the window (top_34) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_35 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__cap_vpp_08p6x07p8_m1m2_shieldl1 couldn't be read
+Cell Topmost cell in the window (top_35) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell top_36 couldn't be read
+No such file or directory
+Cell sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_shieldl1 couldn't be read
+Cell Topmost cell in the window (top_36) isn't a child of the edit cell.
+    Cell identifier not changed.
+Warning:  Number of planes has changed.  Existing layout may be invalid.
+Grid scaling is finer than limit set by the process!
+Existing layout may be invalid.
+Cell gtop_1 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_1' to 'nfet_03v3_QQRGJ8' because that cell already exists.
+Cell gtop_2 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_2' to 'pfet_03v3_A6XN3D' because that cell already exists.
+Cell gtop_3 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_3' to 'nfet_03v3_dss_PN85XQ' because that cell already exists.
+Cell gtop_4 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_4' to 'pfet_03v3_dss_VK6SPP' because that cell already exists.
+Cell gtop_5 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_5' to 'nfet_10v0_asym_FXAK3N' because that cell already exists.
+Cell gtop_6 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_6' to 'pfet_10v0_asym_5CBX48' because that cell already exists.
+Cell gtop_7 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_7' to 'diode_nd2ps_03v3_7DV3HH' because that cell already exists.
+Cell gtop_8 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_8' to 'diode_pd2nw_03v3_QVAVDW' because that cell already exists.
+Cell gtop_9 couldn't be read
+No such file or directory
+Cell npn_10p00x10p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_9) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_10 couldn't be read
+No such file or directory
+Cell npn_05p00x05p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_10) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_11 couldn't be read
+No such file or directory
+Cell npn_00p54x04p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_11) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_12 couldn't be read
+No such file or directory
+Cell npn_00p54x10p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_12) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_13 couldn't be read
+No such file or directory
+Cell npn_npn_00p54x08p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_13) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_14 couldn't be read
+No such file or directory
+Cell npn_00p54x02p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_14) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_15 couldn't be read
+No such file or directory
+Cell pnp_10p00x10p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_15) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_16 couldn't be read
+No such file or directory
+Cell pnp_05p00x05p00_0 couldn't be read
+Cell Topmost cell in the window (gtop_16) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_17 couldn't be read
+No such file or directory
+Cell pnp_10p00x00p42_0 couldn't be read
+Cell Topmost cell in the window (gtop_17) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_18 couldn't be read
+No such file or directory
+Cell pnp_05p00x00p42_0 couldn't be read
+Cell Topmost cell in the window (gtop_18) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_19 couldn't be read
+No such file or directory
+Cell eFuse_0 couldn't be read
+Cell Topmost cell in the window (gtop_19) isn't a child of the edit cell.
+    Cell identifier not changed.
+Cell gtop_20 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_20' to 'nmoscap_3p3_KUUAED' because that cell already exists.
+Cell gtop_21 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_21' to 'pmoscap_3p3_SD5U9U' because that cell already exists.
+Cell gtop_22 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_22' to 'nvaractor_3p3_Z9K4CS' because that cell already exists.
+Cell gtop_23 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_23' to 'pvaractor_3p3_EA2UWH' because that cell already exists.
+Cell gtop_24 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_24' to 'ppolyf_s_UHSZA2' because that cell already exists.
+Cell gtop_25 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_25' to 'nplus_u_S9TL6Y' because that cell already exists.
+Cell gtop_26 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_26' to 'pplus_u_BDW4XZ' because that cell already exists.
+Cell gtop_27 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_27' to 'nplus_u_6p0_S9TL6Y' because that cell already exists.
+Cell gtop_28 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_28' to 'pplus_u_6p0_BDW4XZ' because that cell already exists.
+Cell gtop_29 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_29' to 'npolyf_u_C3MLQP' because that cell already exists.
+Cell gtop_30 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_30' to 'ppolyf_u_9E2Y98' because that cell already exists.
+Cell gtop_31 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_31' to 'ppolyf_u_1k_VW3KA2' because that cell already exists.
+Cell gtop_32 couldn't be read
+No such file or directory
+Cell gtop_33 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_33' to 'rm1_EFU9S6' because that cell already exists.
+Cell gtop_34 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_34' to 'rm2_PKRDKV' because that cell already exists.
+Cell gtop_35 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_35' to 'rm3_PKRDKV' because that cell already exists.
+Cell gtop_36 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_36' to 'rm4_PKRDKV' because that cell already exists.
+Cell gtop_37 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_37' to 'rm5_2FH85N' because that cell already exists.
+Cell gtop_38 couldn't be read
+No such file or directory
+Can't rename cell 'gtop_38' to 'cap_mim_2p0fF_B77ELW' because that cell already exists.
+Warning:  Number of planes has changed.  Existing layout may be invalid.
+Existing layout may be invalid.
+Cell itop_1 couldn't be read
+No such file or directory
+Can't rename cell 'itop_1' to 'sg13_lv_nmos_THEM42' because that cell already exists.
+Cell itop_2 couldn't be read
+No such file or directory
+Can't rename cell 'itop_2' to 'sg13_lv_pmos_YG5ZJG' because that cell already exists.
+Cell itop_3 couldn't be read
+No such file or directory
+Can't rename cell 'itop_3' to 'sg13_lv_rfnmos_XEEHEB' because that cell already exists.
+Cell itop_4 couldn't be read
+No such file or directory
+Can't rename cell 'itop_4' to 'sg13_lv_rfpmos_L8WQYV' because that cell already exists.
+Cell itop_5 couldn't be read
+No such file or directory
+Can't rename cell 'itop_5' to 'dantenna_YV6LAD' because that cell already exists.
+Cell itop_6 couldn't be read
+No such file or directory
+Can't rename cell 'itop_6' to 'dpantenna_YV6LAD' because that cell already exists.
+Cell itop_7 couldn't be read
+No such file or directory
+Can't rename cell 'itop_7' to 'schottky' because that cell already exists.
+Cell itop_8 couldn't be read
+No such file or directory
+Unknown layer: +comment
+Can't rename cell 'itop_8' to 'npn13g2_76WR72' because that cell already exists.
+Cell itop_9 couldn't be read
+No such file or directory
+Can't rename cell 'itop_9' to 'pnpMPA_H4YLST' because that cell already exists.
+Cell itop_10 couldn't be read
+No such file or directory
+Can't rename cell 'itop_10' to 'rsil_DZRRNV' because that cell already exists.
+Cell itop_11 couldn't be read
+No such file or directory
+Can't rename cell 'itop_11' to 'rppd_B7QGM3' because that cell already exists.
+Cell itop_12 couldn't be read
+No such file or directory
+Can't rename cell 'itop_12' to 'rhigh_9YT2CT' because that cell already exists.
+Cell itop_13 couldn't be read
+No such file or directory
+Can't rename cell 'itop_13' to 'rm1_89X4US' because that cell already exists.
+Cell itop_14 couldn't be read
+No such file or directory
+Can't rename cell 'itop_14' to 'cap_cmim_YW4SB7' because that cell already exists.
+Cell itop_15 couldn't be read
+No such file or directory
+Can't rename cell 'itop_15' to 'via_GQ9R9N' because that cell already exists.
+Cell itop_16 couldn't be read
+No such file or directory
+Can't rename cell 'itop_16' to 'diodevdd_2kv' because that cell already exists.
+Cell itop_17 couldn't be read
+No such file or directory
+Can't rename cell 'itop_17' to 'nmoscl_2' because that cell already exists.
+Cell itop_18 couldn't be read
+No such file or directory
+Can't rename cell 'itop_18' to 'scr1' because that cell already exists.
+Cell itop_19 couldn't be read
+No such file or directory
+Can't rename cell 'itop_19' to 'SVaricap_TESUP6' because that cell already exists.
+Cell itop_20 couldn't be read
+No such file or directory
+Can't rename cell 'itop_20' to 'inductor2_2DDUHH' because that cell already exists.
+Cell itop_21 couldn't be read
+No such file or directory
+Can't rename cell 'itop_21' to 'bondpad_LGCKWJ' because that cell already exists.

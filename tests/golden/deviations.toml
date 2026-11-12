@@ -307,3 +307,41 @@ reason = "the non-interactive change of M2 keeps its name without a dialog and r
 decisions = ["Q-SCRIPT-13"]
 outputs = ["stdout.txt"]
 reason = "openwrapper also runs Winopts(<frame>,callback), the key without the space; Magic reads only Winopts(<frame>, callback), so the per-window callback the case sets never runs there"
+
+# User decisions of 2026-11-12 (m4-polish): recorded deviations and deferrals.
+
+[SCRIPT-PDK-07]
+decisions = ["Q-SCRIPT-41"]
+outputs = ["stderr.txt"]
+reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently. The reloads over painted layout follow Magic (Q-SCRIPT-48)"
+
+[SCRIPT-API-01]
+decisions = ["Q-SCRIPT-49"]
+outputs = ["stdout.txt"]
+reason = "info commands ::magic::* lists the commands Hefesto registers: later milestones' commands arrive with their engines and Hefesto-only commands are listed"
+
+[SCRIPT-PDK-09]
+decisions = ["Q-SCRIPT-49"]
+outputs = ["stdout.txt"]
+reason = "the traced engine-command counts differ by design: native sky130/gf180mcu/sg13g2 generators (D-29) and the C++ toolkit call fewer engine commands than Magic's Tcl generators"
+
+[SCRIPT-API-20]
+decisions = ["Q-UI-12"]
+deferred = "M7"
+outputs = ["stdout.txt"]
+reason = "extract style (and its list form) needs the extractor, which arrives with extraction; macro list also shows the keysym bindings Hefesto defines without an X display, which Magic -dnull cannot parse"
+
+[SCRIPT-GUI-05]
+decisions = ["Q-SCRIPT-50"]
+outputs = ["stdout.txt"]
+reason = "the technology menu lists what Hefesto can load; Magic first lists the example technologies of its installed system directory in directory order"
+
+[SCRIPT-GUI-12]
+decisions = ["Q-SCRIPT-51"]
+outputs = ["stdout.txt"]
+reason = "crash backups are written by the native session, so crashbackups returns no Tcl after identifier and after info lists none"
+
+[SCRIPT-GUI-13]
+decisions = ["Q-SCRIPT-51"]
+outputs = ["stdout.txt"]
+reason = "tool enabling is native, so magic::enable_tools is not a Tcl procedure and the tool switches it prints in Magic do not happen"
