@@ -1,0 +1,152 @@
+# Diagnostic codes: script area
+
+Codes `SCRIPT-<TOPIC>-<NNN>` emitted by `src/core/src/script/` (the
+embedded Tcl, its sandbox, the `magic::` command binding, PDK startup and
+consent; `openspec/changes/m4-scripting/design.md` D1/D2). Conventions and
+the renderings are described in [../codes.md](../codes.md).
+
+The area's table is assembled by `src/core/src/script/codes.cpp` (owner:
+INTEGRATION) from one fragment per workstream, each owned by that
+workstream. The topics of the fragments interleave, so the rows are sorted
+while compiling (`src/core/src/diag/sorted_codes.hpp`):
+
+| Fragment | Topics | Owner |
+|---|---|---|
+| `src/core/src/script/tcl/codes.inc` | `SCRIPT-TCL-*`, `SCRIPT-SANDBOX-*` | TCL |
+| `src/core/src/script/binding/codes.inc` | `SCRIPT-BIND-*` | BINDING |
+| `src/core/src/script/pdk/codes.inc` | `SCRIPT-PDK-*`, `SCRIPT-TRUST-*` | PDKINT |
+
+## TCL
+
+Codes of the embedded Tcl and its sandbox (`src/core/src/script/tcl/`;
+design D5, capabilities `hefesto-scripting` "Embedded sandboxed Tcl on all
+platforms" and `hefesto-security` "Script sandbox enforcement").
+
+Evaluation results (`script::Interpreter::evaluate` and `source`):
+
+- `SCRIPT-TCL-001` carries the message of a Tcl error, located at Tcl's
+  error line and, for `source`, the file.
+- `SCRIPT-TCL-002`: the evaluation was stopped by `request_interrupt` (the
+  console's Cancel). `catch` cannot absorb it.
+- `SCRIPT-TCL-003`: the evaluation ran more commands or longer than the
+  project's `SandboxLimits` allow (Tcl's resource limits); `catch` cannot
+  absorb it. The limits apply again from zero to the next evaluation.
+
+Sandbox denials. Each raises a Tcl error whose message starts with the
+operation (`exec:`, `open:`, `cd:`, `file delete:`, ...), which `catch` can
+absorb as Magic's PDK code expects; the diagnostic is reported either way,
+with the script file and line (Tcl's `info frame`), together with a
+`script::DeniedOperation` event (`ScriptEvents::publish_denied`):
+
+- `SCRIPT-SANDBOX-001`: `exec`, or `open` of a command pipeline
+  (`open |cmd`): process execution is not permitted.
+- `SCRIPT-SANDBOX-002`: `socket` (client or server).
+- `SCRIPT-SANDBOX-003`: `load` or `unload` of a native extension.
+- `SCRIPT-SANDBOX-004`: a file access outside the granted roots (the project
+  folder, the PDK store, the session's temporary area, opened documents):
+  `open`, `source`, `glob`, `cd`, the `file` subcommands that read or change
+  the filesystem, `file tempfile` without a granted directory, `file link`
+  to a target outside, or any other path Tcl resolves through the
+  filesystem layer. Paths are compared after `.`/`..`, `~` and symbolic
+  links are resolved. Tcl's own library code probing host paths (for
+  example `clock`'s time-zone directories) is denied silently instead.
+- `SCRIPT-SANDBOX-005`: `interp create` without `-safe`, and `interp
+  invokehidden`, `expose` or `marktrusted` (also through a child
+  interpreter's command).
+- `SCRIPT-SANDBOX-006`: `package require` of a package that Tcl's embedded
+  library does not provide and no script has provided (`package provide`).
+- `SCRIPT-SANDBOX-007`: another removed command, such as `exit` (scripts end
+  the program with `quit`).
+
+## BINDING
+
+The command binding (`script::bind_registry`, tasks.md section 5) reports
+through the dispatcher's sinks; Tcl errors of bound commands carry
+`SCRIPT-TCL-001` (an empty message for Magic's quiet dispatch failures).
+
+- `SCRIPT-BIND-001` (warning, native only): a `$NAME` path variable's
+  value changed after its first expansion (scripting-api "Script variables
+  read by the engine", Q-SCRIPT-5). Printed once per name; with
+  magic-compat ON the first value is still used, with it OFF the new one.
+- `SCRIPT-BIND-002` (error): a `cif` option other than `scale`, `lambda`,
+  `istyle`, `ostyle` and `help` (the CIF reader and writer arrive in M5).
+- `SCRIPT-BIND-003`, `SCRIPT-BIND-004`, `SCRIPT-BIND-005` (info): the
+  startup helpers `netgen`, `xcircuit` and `irsim` (decision D-34): Hefesto
+  sources no package; `netgen` names the built-in `lvs` command.
+
+The cross-PDK redefinition warning of a `magic::` procedure (Q-SCRIPT-41)
+is PDKINT's `SCRIPT-PDK-003`; the binding installs its hook and reports it.
+
+## PDKINT
+
+PDK startup, consent and the PDK menu interception (`src/core/src/script/pdk/`,
+design D7; tasks.md section 6).
+
+- `SCRIPT-PDK-001` is Magic's text for an error in a startup file
+  (`Error parsing pre-startup file "<path>": <message>`, `Error parsing
+  system startup file ...`, `Error parsing user "<rc name>": ...`, `Error
+  parsing "<rc name>": ...`, `Error parsing local ".magic": ...`); the rest
+  of that file is skipped and startup continues with the next file. A local
+  file adds `SCRIPT-PDK-002` (`Bad local startup file "<rc name>",
+  continuing without.`).
+- `SCRIPT-PDK-003` warns when a `magic::` procedure defined by one PDK's
+  script is redefined by a script of another PDK (or PDK version) in the
+  same project interpreter (Q-SCRIPT-41); the new definition takes effect.
+- `SCRIPT-PDK-004` reports one skipped Tk widget statement of a PDK menu
+  callback, with the script file and line (Q-SCRIPT-42, D-32).
+- `SCRIPT-PDK-005` and `SCRIPT-PDK-009` are the curated-pack policy
+  (Q-SCRIPT-46, D-30): a PDK without bundled scripts is refused; a curated
+  PDK uses its bundled scripts, never an imported pack's.
+- `SCRIPT-PDK-006` and `SCRIPT-PDK-007` are the script host's file-argument
+  lines (`handling file entry <f> extension <ext>`, `don't know how to load
+  file <f>`, `only compressed .mag and .gds are handled.`).
+- `SCRIPT-PDK-008`: a startup file or `<tech>.magicrc` could not run
+  because the project has no interpreter.
+- `SCRIPT-TRUST-001` is printed when a PDK script was not run for lack of
+  consent (the user declined, or batch mode without `--trust-pdk`);
+  `SCRIPT-TRUST-002` when the user trusted a PDK version;
+  `SCRIPT-TRUST-003` when that trust could not be recorded in the PDK
+  store's provenance record.
+
+## Table
+
+Generated from the fragments:
+
+```sh
+hefesto-cli --diagnostic-codes=script
+```
+
+The unit test `each area's code table matches its document and prefix`
+fails when the two disagree.
+
+<!-- BEGIN DIAGNOSTIC CODES (generated by `hefesto-cli --diagnostic-codes=script`) -->
+| Code | Default severity | Meaning |
+|---|---|---|
+| `SCRIPT-BIND-001` | warning | A path variable's value changed after its first use; the expansion keeps the first value (magic-compat ON) or uses the new one (OFF). |
+| `SCRIPT-BIND-002` | error | This `cif` option needs the CIF reader and writer, which arrive in M5. |
+| `SCRIPT-BIND-003` | info | `netgen` is not available; Hefesto's built-in `lvs` command compares netlists. |
+| `SCRIPT-BIND-004` | info | `xcircuit` is not available in Hefesto. |
+| `SCRIPT-BIND-005` | info | `irsim` is not available on this host or in this milestone. |
+| `SCRIPT-PDK-001` | error | A startup file raised a Tcl error; Magic's `Error parsing ...` text, the rest of that file is skipped. |
+| `SCRIPT-PDK-002` | info | A local startup file failed; startup continues without it (Magic's `Bad local startup file`). |
+| `SCRIPT-PDK-003` | warning | A `magic::` procedure defined by one PDK's script was redefined by another PDK's script. |
+| `SCRIPT-PDK-004` | warning | A Tk widget statement in a PDK menu callback was skipped; evaluation continues. |
+| `SCRIPT-PDK-005` | error | Curated-pack mode refused a PDK without bundled scripts. |
+| `SCRIPT-PDK-006` | info | A command-line file argument handled by the script host (`handling file entry ...`). |
+| `SCRIPT-PDK-007` | error | A command-line file argument the script host cannot load (`don't know how to load file ...`). |
+| `SCRIPT-PDK-008` | error | A PDK script could not run: the project has no interpreter. |
+| `SCRIPT-PDK-009` | info | Curated-pack mode uses the bundled curated scripts of a PDK; the imported pack's own scripts are not executed. |
+| `SCRIPT-SANDBOX-001` | error | The script sandbox refused to run a process (exec, or open of a command pipeline). |
+| `SCRIPT-SANDBOX-002` | error | The script sandbox refused to open a network socket. |
+| `SCRIPT-SANDBOX-003` | error | The script sandbox refused to load or unload a native extension. |
+| `SCRIPT-SANDBOX-004` | error | The script sandbox refused a file access outside the granted roots. |
+| `SCRIPT-SANDBOX-005` | error | The script sandbox refused an unsafe interpreter operation. |
+| `SCRIPT-SANDBOX-006` | error | The script sandbox refused a package that Tcl's embedded library does not provide. |
+| `SCRIPT-SANDBOX-007` | error | The script sandbox refused a removed command. |
+| `SCRIPT-TCL-001` | error | A Tcl script raised an error; the text is Tcl's error message. |
+| `SCRIPT-TCL-002` | error | A script evaluation was interrupted. |
+| `SCRIPT-TCL-003` | error | A script evaluation exceeded its command count or time limit. |
+| `SCRIPT-TRUST-001` | warning | A PDK script was declined; the layout opens read-only with the `minimum` technology. |
+| `SCRIPT-TRUST-002` | info | A PDK version is now trusted; its scripts run without asking. |
+| `SCRIPT-TRUST-003` | warning | The trust record of a PDK version could not be saved in the PDK store. |
+<!-- END DIAGNOSTIC CODES -->

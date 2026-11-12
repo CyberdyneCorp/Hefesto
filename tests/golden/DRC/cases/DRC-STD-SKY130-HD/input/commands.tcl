@@ -1,4 +1,4 @@
-# DRC-STD-SKY130-HD: Every sky130_fd_sc_hd cell (441) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells.
+# DRC-STD-SKY130-HD: Every sky130_fd_sc_hd cell (446) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells.
 # Reference script (Magic, Tcl): one result line per command.
 catch {tech load input/sky130A -noprompt} result; puts $result
 catch {snap internal} result; puts $result
@@ -13,7 +13,42 @@ catch {drc catchup} result; puts $result
 catch {drc listall why} result; puts $result
 catch {drc list count total} result; puts $result
 catch {save} result; puts $result
+catch {load input/sky130_ef_sc_hd__decap_20_12} result; puts $result
+catch {select top cell} result; puts $result
+catch {drc check} result; puts $result
+catch {drc catchup} result; puts $result
+catch {drc listall why} result; puts $result
+catch {drc list count total} result; puts $result
+catch {save} result; puts $result
+catch {load input/sky130_ef_sc_hd__decap_40_12} result; puts $result
+catch {select top cell} result; puts $result
+catch {drc check} result; puts $result
+catch {drc catchup} result; puts $result
+catch {drc listall why} result; puts $result
+catch {drc list count total} result; puts $result
+catch {save} result; puts $result
+catch {load input/sky130_ef_sc_hd__decap_60_12} result; puts $result
+catch {select top cell} result; puts $result
+catch {drc check} result; puts $result
+catch {drc catchup} result; puts $result
+catch {drc listall why} result; puts $result
+catch {drc list count total} result; puts $result
+catch {save} result; puts $result
+catch {load input/sky130_ef_sc_hd__decap_80_12} result; puts $result
+catch {select top cell} result; puts $result
+catch {drc check} result; puts $result
+catch {drc catchup} result; puts $result
+catch {drc listall why} result; puts $result
+catch {drc list count total} result; puts $result
+catch {save} result; puts $result
 catch {load input/sky130_ef_sc_hd__fill_12} result; puts $result
+catch {select top cell} result; puts $result
+catch {drc check} result; puts $result
+catch {drc catchup} result; puts $result
+catch {drc listall why} result; puts $result
+catch {drc list count total} result; puts $result
+catch {save} result; puts $result
+catch {load input/sky130_ef_sc_hd__fill_2} result; puts $result
 catch {select top cell} result; puts $result
 catch {drc check} result; puts $result
 catch {drc catchup} result; puts $result

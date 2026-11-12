@@ -1,0 +1,11 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 4 4
+<< properties >>
+string GDS_START 100
+string GDS_END 200
+string GDS_FILE /x/y.gds
+string FIXED_BBOX 0 0 4 4
+<< end >>

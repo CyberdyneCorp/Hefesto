@@ -1,0 +1,17 @@
+* SPDX-License-Identifier: Apache-2.0
+* Seeding test netlist for magic::netlist_to_layout (pcell-toolkit).
+.subckt inv A Y VDD VSS
+X1 A Y VDD VSS somecell
+.ends
+.subckt amp in out vout[0] vss
+XR1 in out res w=2 l='3*1'
++ nf=2
+C1 out vss 10f
+V1 in vss 1.8
+XQ out vss nosuchdevice M=2
+.ends
+.command
+XIGNORED a b res
+.endc
+.global vdd
+.end

@@ -1,0 +1,12 @@
+magic
+tech scmos
+timestamp 100
+use inv x1
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 40
+use inv x2
+timestamp 100
+transform 1 0 50 0 1 0
+box 0 0 10 40
+<< end >>

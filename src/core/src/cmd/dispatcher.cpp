@@ -12,6 +12,7 @@
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/editor/post_command.hpp"
+#include "hefesto/script/binding/keyword_rule.hpp"
 #include "hefesto/ui/command_log.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/state.hpp"
@@ -208,6 +209,9 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
     writer.emplace(editor_->database_lock);
     saved_drc = drc::begin_command(*editor_);
   }
+  // Q-SCRIPT-14: every keyword lookup of this command (typed, GUI and
+  // script lines alike) ends keywords by the project's magic-compat rule.
+  const KeywordTerminatorScope keywords{project_.compat.magic_compat};
   const db::Point saved_pixel = editor_ != nullptr ? ui::state(*editor_).pointer_pixel : db::Point{};
   const bool defaulted = place_default_point();
   const std::string client = target_client();

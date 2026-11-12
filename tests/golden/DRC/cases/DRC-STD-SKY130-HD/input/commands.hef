@@ -1,4 +1,4 @@
-# DRC-STD-SKY130-HD: Every sky130_fd_sc_hd cell (441) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells.
+# DRC-STD-SKY130-HD: Every sky130_fd_sc_hd cell (446) under sky130A's default DRC style: check, catchup, listall why, count, save; the DRC sections of the saved cells.
 # Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
 tech load input/sky130A -noprompt
 snap internal
@@ -13,7 +13,42 @@ drc catchup
 drc listall why
 drc list count total
 save
+load input/sky130_ef_sc_hd__decap_20_12
+select top cell
+drc check
+drc catchup
+drc listall why
+drc list count total
+save
+load input/sky130_ef_sc_hd__decap_40_12
+select top cell
+drc check
+drc catchup
+drc listall why
+drc list count total
+save
+load input/sky130_ef_sc_hd__decap_60_12
+select top cell
+drc check
+drc catchup
+drc listall why
+drc list count total
+save
+load input/sky130_ef_sc_hd__decap_80_12
+select top cell
+drc check
+drc catchup
+drc listall why
+drc list count total
+save
 load input/sky130_ef_sc_hd__fill_12
+select top cell
+drc check
+drc catchup
+drc listall why
+drc list count total
+save
+load input/sky130_ef_sc_hd__fill_2
 select top cell
 drc check
 drc catchup

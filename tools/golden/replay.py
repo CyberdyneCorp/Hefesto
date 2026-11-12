@@ -42,10 +42,10 @@ from pathlib import Path
 from compare import COMPARATORS, compare_bytes
 from compare.masks import apply_masks
 from goldenlib import deviations
-from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case
+from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, substitute_env
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage
-from goldenlib.refrunners import ENVIRONMENT
+from goldenlib.refrunners import CONTAINER_WORK, ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TIMEOUT_S = 300
@@ -89,16 +89,30 @@ def execute(cli: Path, case: Case, work: Path) -> Execution:
     shutil.copytree(case.input_dir, work / "input")
     stage(case.externals, work / "input")
     # Hermetic: Magic's system files come only from the case's magic-sys inputs.
-    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work))}
+    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **substitute_env(case.env, str(work))}
+    stdin = (work / case.hefesto["stdin"]).read_bytes() if "stdin" in case.hefesto else b""
     proc = subprocess.run(hefesto_argv(cli, case, work), capture_output=True, cwd=work,
-                          env=env, timeout=TIMEOUT_S, check=False, stdin=subprocess.DEVNULL)
+                          env=env, timeout=TIMEOUT_S, check=False, input=stdin)
     files = {}
     for out in case.outputs:
         if out.source not in STREAM_SOURCES:
             data = read_output(work, out.source)
             if data is not None:
-                files[out.source] = data
-    return Execution(proc.stdout, proc.stderr, proc.returncode, files)
+                files[out.source] = with_container_work(data, work)
+    return Execution(with_container_work(proc.stdout, work), with_container_work(proc.stderr, work),
+                     proc.returncode, files)
+
+
+def with_container_work(data: bytes, work: Path) -> bytes:
+    """``data`` with the replay's work directory written as the capture container's ``/work``.
+
+    The reference ran in ``/work``; hefesto-cli runs in a temporary directory, so an absolute
+    path a case prints (``path search``, ``info script``, a PDK_ROOT under ``{work}``) differs
+    only by that prefix. Both spellings of the directory are rewritten (macOS resolves
+    ``/var`` to ``/private/var``); nothing else changes."""
+    for spelling in sorted({str(work.resolve()), str(work)}, key=len, reverse=True):
+        data = data.replace(spelling.encode(), CONTAINER_WORK.encode())
+    return data
 
 
 def actual_output(execution: Execution, source: str) -> bytes | None:

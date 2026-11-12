@@ -21,6 +21,8 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
+#include "hefesto/script/pdk/consent.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "temp_dir.hpp"
 
@@ -57,6 +59,9 @@ class Session {
     }
     for (const char* name : names) {
       (void)registry_.add(cmd::CommandSpec{name, name, "recording fake", [this, name](cmd::CommandContext&, const cmd::Invocation& inv) {
+                                             if (std::string_view{name} == "tech" && editor.technology_override) {
+                                               return cmd::CommandResult::success();  // the real `tech load`'s -T no-op
+                                             }
                                              std::string line = name;
                                              for (const auto& a : inv.args) {
                                                line += " " + a;
@@ -297,17 +302,21 @@ TEST_CASE("the undo-history-limit setting sets the history limit", "[cap:layout-
   CHECK(low.editor.undo.limit() == 1000);  // below Magic's 1000: rejected, the default stays
 }
 
-TEST_CASE("startup files are located and their plain settings applied", "[cap:hefesto-settings][req:Magic startup-file compatibility]") {
+// M4 (scripting-pdk-integration "Startup files are scripts"): startup files
+// are evaluated as Tcl; an error stops that file with Magic's text and the
+// variables it set before the error land in its setting layer.
+TEST_CASE("startup files are located and run as scripts", "[cap:hefesto-settings][req:Magic startup-file compatibility]") {
   Session s;
-  write_file(s.env.home / ".magicrc", "set GND VSS\nmacro a \"box\"\n");
+  write_file(s.env.home / ".magicrc", "set GND VSS\nfrobnicate \"box\"\nset VDD notreached\n");
   write_file(s.env.working_directory / ".magic", "set SUB VSUBS\n");
   const auto r = s.start({});
   REQUIRE(r.ok());
   REQUIRE(r.value().startup_files.size() == 2);
   CHECK(s.editor.settings.effective("gnd")->value == "VSS");
   CHECK(s.editor.settings.effective("gnd")->layer == app::SettingLayer::user);
+  CHECK(s.editor.settings.effective("vdd")->value == "vdd!");
   CHECK(s.editor.settings.effective("sub")->value == "VSUBS");
-  CHECK(s.reported(app::codes::kStartupFile, "1 plain setting(s) applied"));
+  CHECK(s.reported("SCRIPT-PDK-001", R"(Error parsing user ".magicrc": invalid command name "frobnicate")"));
   CHECK(s.reported(app::codes::kStartupNote,
                    R"(Note:  Use of the file name ".magic" is deprecated.  Please change this to ".magicrc".)"));
 }
@@ -326,6 +335,9 @@ TEST_CASE("a project opens with its pinned version, not the enabled one",
   REQUIRE(app::save_project(s.fs, folder, project).ok());
   s.env.project_folder = folder;
   s.env.pdk_root = root;
+  // M4: the PDK's rc file is a script and runs after consent (hefesto-security).
+  hefesto::script::TestConsentHost consent{hefesto::script::ConsentDecision::run_once};
+  s.editor.script.pdk_trust.set_consent_host(&consent);
   const auto r = s.start({});
   REQUIRE(r.ok());
   REQUIRE(s.calls.size() == 1);

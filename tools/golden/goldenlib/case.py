@@ -23,10 +23,16 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     script = "input/commands.tcl"    # fed to the tool (path relative to the case)
     tech = "input/min.tech"          # optional (magic: passed with -T)
     argv = ["magic", "-dnull", ...]  # optional; overrides the tool's default argv
+    display = "xvfb"                 # optional: run under a virtual X server (GUI cases, Tk)
+    stdin = "input/commands.tcl"     # optional: the tool's standard input (path relative to the case)
+
+    [env]                            # optional: environment of BOTH runs (reference and replay);
+    PDK_ROOT = "{work}/input/pdk"    # {work} = the work directory (/work in the container)
 
     [hefesto]                        # how replay.py runs hefesto-cli
     args = ["{input}/commands.hef"]  # {input} = work copy of input/, {work} = work dir
     requires_commands = []           # optional: commands the case needs (skip if unknown)
+    stdin = "input/commands.tcl"     # optional: hefesto-cli's standard input (default: none)
     m0_only = false                  # optional: uses a temporary M0-only command
 
     [[external]]                     # optional: pinned data copied into input/ (goldenlib/external.py)
@@ -43,6 +49,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
 """
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -80,6 +87,7 @@ class Case:
     hefesto: dict = field(default_factory=dict)
     description: str = ""
     externals: tuple[External, ...] = ()
+    env: dict = field(default_factory=dict)
 
     @property
     def input_dir(self) -> Path:
@@ -120,12 +128,32 @@ def _parse_output(raw: dict, index: int, known_comparators) -> Output:
 
 
 def _check_paths(case: Case) -> None:
-    for key in ("script", "tech"):
-        rel = case.reference.get(key)
+    for table, key in (("reference", "script"), ("reference", "tech"), ("reference", "stdin"), ("hefesto", "stdin")):
+        rel = getattr(case, table).get(key)
         if rel is not None and not (case.root / rel).is_file():
-            raise CaseError(f"{case.id}: reference.{key} '{rel}' does not exist")
+            raise CaseError(f"{case.id}: {table}.{key} '{rel}' does not exist")
     if not case.input_dir.is_dir():
         raise CaseError(f"{case.id}: missing input/ directory")
+
+
+ENV_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+DISPLAYS = ("xvfb",)
+
+
+def _parse_env(data: dict, where: str) -> dict:
+    """The ``[env]`` table: upper-case names, string values (``{work}`` substituted per run)."""
+    raw = data.get("env", {})
+    if not isinstance(raw, dict):
+        raise CaseError(f"{where}: 'env' must be a table")
+    for name, value in raw.items():
+        if not ENV_NAME.match(name) or not isinstance(value, str):
+            raise CaseError(f"{where}: env.{name} must be an upper-case name with a string value")
+    return dict(raw)
+
+
+def substitute_env(env: dict, work: str) -> dict:
+    """``env`` with ``{work}`` replaced by the run's work directory."""
+    return {name: value.replace("{work}", work) for name, value in env.items()}
 
 
 def _parse_externals(data: dict, where: str) -> tuple[External, ...]:
@@ -166,7 +194,11 @@ def load_case(root: Path, known_comparators=None) -> Case:
         hefesto=data.get("hefesto", {}),
         description=data.get("description", ""),
         externals=_parse_externals(data, where),
+        env=_parse_env(data, where),
     )
+    display = case.reference.get("display")
+    if display is not None and display not in DISPLAYS:
+        raise CaseError(f"{where}: reference.display must be one of {', '.join(DISPLAYS)}")
     if case.id != root.name:
         raise CaseError(f"{where}: id '{case.id}' does not match directory '{root.name}'")
     if root.parent.name != "cases" or root.parent.parent.name != case.area:

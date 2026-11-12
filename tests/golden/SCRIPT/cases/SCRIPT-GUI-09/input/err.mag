@@ -1,0 +1,9 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 2 10
+rect 4 0 10 10
+<< polysilicon >>
+rect 20 0 21 10
+<< end >>

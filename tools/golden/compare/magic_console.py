@@ -27,7 +27,18 @@ pattern                                                     Magic source
 ``Using technology "<name>"[, version <v>.]``               utils/main.c:892-894
 ``Sourcing design .magicrc for technology <name> ...``      sys/.magicrc of the installed tree
 ``Loading "<file>" from command line.``                     utils/main.c:1197
+``Using <visual class>, VisualID 0x<id> depth <n>``          graphics/grTk1.c:537 (X server visual;
+                                                            GUI cases under Xvfb, M4)
+``New windows will not have a title caption.``              windows/windCmdAM.c:188 (wrapper.tcl)
+``New windows will not have scroll bars.``                  windows/windCmdSZ.c:1022 (wrapper.tcl)
+``New windows will not have a border.``                     windows/windCmdAM.c:121 (wrapper.tcl)
+``Use closewrapper to remove a new GUI-based layout window`` tcltk/wrapper.tcl:1584
 ==========================================================  ======================================
+
+The GUI rows are the Tk wrapper's own startup (``magic -d X11 -noconsole`` under Xvfb,
+m4-scripting design D16); ``Handling file entry <file> extension <ext>``
+(tcltk/magic.tcl.in:380) is not preamble: it is the command-line file handling a case
+checks (scripting-pdk-integration "Command-line file arguments").
 
 The table is the whole rule: extend it (with the Magic source line) when a
 first capture shows another preamble message, never with a pattern that could
@@ -49,6 +60,9 @@ _PREAMBLE = re.compile(
     rb'|Using technology "[^"]*"(?:, version .*)?'
     rb"|Sourcing design \.magicrc for technology .*"
     rb'|Loading "[^"]*" from command line\.'
+    rb"|Using \w+, VisualID 0x[0-9a-f]+ depth \d+"
+    rb"|New windows will not have (?:a title caption|scroll bars|a border)\."
+    rb"|Use closewrapper to remove a new GUI-based layout window"
     rb")\r?$"
 )
 

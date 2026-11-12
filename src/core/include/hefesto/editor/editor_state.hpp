@@ -7,7 +7,8 @@
 // aggregate is shared and owned by INTEGRATION
 // (openspec/changes/m1-core-viewer/design.md D2/D4;
 // openspec/changes/m2-interactive-editing/design.md D2/D4 for the M2
-// members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members).
+// members; openspec/changes/m3-drc/design.md D2/D4 for the M3 members;
+// openspec/changes/m4-scripting/design.md D4 for the M4 member).
 // Areas request new members through their open items instead of editing it.
 
 #pragma once
@@ -28,6 +29,8 @@
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/drc/session.hpp"
+#include "hefesto/platform/file_picker.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/select/selection.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/macros.hpp"
@@ -166,6 +169,26 @@ struct EditorState {
   // dispatcher holds it exclusively for every command; readers (scene
   // building, the DRC worker) hold it shared.
   db::DatabaseLock database_lock;
+
+  // ---- M4 (openspec/changes/m4-scripting/design.md D4) ----
+
+  // TCL / BINDING / PDKINT / PCELL: the project's interpreter and script
+  // state (script/project.hpp; each member's owner is named there). One
+  // EditorState is one open project, so each open project has its own
+  // interpreter (script::open_project_interpreter / close_project_interpreter).
+  // The destructor closes the interpreter before any member is destroyed
+  // (its drcstate bridge is registered in `drc.events`).
+  script::ProjectInterpreter script;
+
+  // INTEGRATION: Magic's TechOverridesDefault. Set by app::run_startup while
+  // the startup files run after a successful `-T` load, so their
+  // `tech load` is a no-op unless given `-override` (app-startup "Startup
+  // technology"; Magic ref: utils/main.c:872-882,1132, commands/CmdTZ.c:555-579).
+  bool technology_override = false;
+
+  // INTEGRATION: the front end's file picker (platform/file_picker.hpp; not
+  // owned). nullptr: `promptload`/`promptsave` act as a cancelled dialog.
+  platform::FilePicker* file_picker = nullptr;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed

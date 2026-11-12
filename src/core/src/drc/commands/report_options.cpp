@@ -11,7 +11,9 @@
 // Copyright (C) 1985, 1990 Regents of the University of California
 // (Magic's license; see THIRD_PARTY_NOTICES.md).
 //
-// Owner: COMMANDS (openspec/changes/m3-drc/design.md D2).
+// Owner: COMMANDS (openspec/changes/m3-drc/design.md D2); the `drc listall
+// why` order (Q-SCRIPT-8) is BINDING's (openspec/changes/m4-scripting/
+// design.md D2/D14).
 
 #include <algorithm>
 #include <cctype>
@@ -20,6 +22,7 @@
 
 #include "command_internal.hpp"
 #include "hefesto/drc/commands/reporting.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::drc::detail {
 
@@ -77,10 +80,32 @@ Value rect_value(const Request& q, const db::Rect& r) {
                            db::cmdutil::report_value(q.s, r.y1, cmd::Axis::y)}};
 }
 
-/// DRCWhyAll's result: text, {rect ...}, text, {rect ...}, ...
+/// The requested size of DRCWhyAll's DRCErrorTable (HashInit(&DRCErrorTable,
+/// 16, HT_STRINGKEYS); Magic ref: drc/DRCmain.c:666).
+constexpr std::size_t kWhyAllTableSize = 16;
+
+/// The groups (first-discovery order) in the iteration order of DRCWhyAll's
+/// string hash table keyed by the substituted why text and filled in
+/// discovery order (scripting-api "Result formats of commands used by
+/// scripts", `drc listall why`; Q-SCRIPT-8, resolution: replicate, both
+/// magic-compat settings; hefesto-output-determinism "Magic string hash
+/// table").
+std::vector<const WhyGroup*> magic_hash_order(const std::vector<WhyGroup>& groups) {
+  util::MagicHashTable<std::size_t> table{kWhyAllTableSize};
+  for (std::size_t i = 0; i < groups.size(); ++i) {
+    table.insert(groups[i].text, i);
+  }
+  std::vector<const WhyGroup*> ordered;
+  ordered.reserve(groups.size());
+  table.for_each([&](const auto& entry) { ordered.push_back(&groups[*entry.value]); });
+  return ordered;
+}
+
+/// DRCWhyAll's result: text, {rect ...}, text, {rect ...}, ... in hash order.
 Value why_all_value(const Request& q, const std::vector<WhyGroup>& groups) {
   Value::List out;
-  for (const WhyGroup& g : groups) {
+  for (const WhyGroup* group : magic_hash_order(groups)) {
+    const WhyGroup& g = *group;
     Value::List rects;
     for (const db::Rect& r : g.areas) {
       rects.push_back(rect_value(q, r));

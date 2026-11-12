@@ -34,6 +34,7 @@ Magic was given), 1 when a workload is slower than that or the counts differ,
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import platform
@@ -47,7 +48,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-PDK_VERSION = "0fe599b2afb6708d281543108caf8310912f54af"  # tests/unit/common/reference_data.hpp kPdkVersion
+
+
+def _pinned_pdk_version() -> str:
+    """The sky130 reference-data pin of scripts/fetch_pdk.py (also tests/unit/common/reference_data.hpp)."""
+    spec = importlib.util.spec_from_file_location("hefesto_fetch_pdk", REPO / "scripts" / "fetch_pdk.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules.setdefault(spec.name, module)
+    spec.loader.exec_module(module)
+    return module.PDK_VERSION
+
+
+PDK_VERSION = _pinned_pdk_version()
 LIBRARY = "sky130_fd_sc_hd"
 ARRAY_CELL = "sky130_fd_sc_hd__dfxtp_1"
 ROW_WIDTH = 40000  # internal units (magscale 1 2) per row of the block

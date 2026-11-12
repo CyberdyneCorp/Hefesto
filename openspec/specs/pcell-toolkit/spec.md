@@ -178,10 +178,11 @@ Compatibility: behavioral
 - **WHEN** a create runs
 - **THEN** `bad layer` SHALL be printed on stderr, cell N SHALL still exist with the three properties, and an instance SHALL still be placed
 
-#### Scenario: Box preserved
+#### Scenario: Box on the new instance
 - **GIVEN** the box is (100,200)-(150,260) in internal units
 - **WHEN** a create completes
-- **THEN** the box SHALL again be (100,200)-(150,260)
+- **THEN** the instance SHALL be placed at (100,200), and the box SHALL be the bounding box of the placed instance, as Magic's `getcell` sets it after the saved box is restored (user decision 2026-11-11)
+- **AND** for a fixed device drawn without a cell (`nocell`), the box SHALL again be (100,200)-(150,260)
 
 ### Requirement: Change algorithm
 Changing instance I, of type T and library L, to parameters P SHALL proceed as follows:

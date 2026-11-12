@@ -306,7 +306,9 @@ TEST_CASE("drc why lists distinct texts in discovery order", "[cap:drc-commands]
   CHECK(f.out("drc why") == "b\na\n");
   CHECK(f.value("drc list why") == "b a");
   CHECK(f.out("drc list why").empty());
-  CHECK(f.value("drc listall why") == "b {{0 0 1 1} {4 0 5 1}} a {{2 0 3 1}}");
+  // listall: DRCWhyAll's string hash table order (Q-SCRIPT-8): `b` and `a`
+  // share bucket 11 of 16, and the later insertion `a` heads the chain.
+  CHECK(f.value("drc listall why") == "a {{2 0 3 1}} b {{0 0 1 1} {4 0 5 1}}");
 }
 
 TEST_CASE("drc why resolves errors copied from subcells", "[cap:drc-commands][req:drc why]") {
@@ -439,7 +441,8 @@ TEST_CASE("Ignore a rule class", "[cap:drc-commands][req:drc ignore]") {
   CHECK(f.out("drc ignore spacing").empty());
   CHECK(f.out("drc ignore") == "m2 spacing\nm1 spacing\n");
   CHECK(f.out("drc why") == "No errors found.\n");
-  CHECK(f.value("drc listall why") == "{m1 spacing} {{0 0 1 1}} {m2 spacing} {{2 0 3 1}}");  // listall ignores nothing
+  // listall ignores nothing; hash order (Q-SCRIPT-8): bucket 2 before bucket 6.
+  CHECK(f.value("drc listall why") == "{m2 spacing} {{2 0 3 1}} {m1 spacing} {{0 0 1 1}}");
   CHECK(f.out("drc ignore NONE").empty());
   CHECK(f.out("drc ignore") == "(none)\n");
   CHECK(f.out("drc why") == "m1 spacing\nm2 spacing\n");

@@ -27,6 +27,30 @@ set = "gf180mcu"
 path = "gf180mcuD/libs.tech/magic/gf180mcuD.tech"
 to = "gf180mcuD.tech"
 
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-cifout.tech"
+to = "gf180mcuD-cifout.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-cifin.tech"
+to = "gf180mcuD-cifin.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-drc.tech"
+to = "gf180mcuD-drc.tech"
+
+[[external]]
+source = "pdk"
+set = "gf180mcu"
+path = "gf180mcuD/libs.tech/magic/gf180mcuD-extract.tech"
+to = "gf180mcuD-extract.tech"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

@@ -35,7 +35,7 @@ from pathlib import Path
 import sys
 
 from casegen import Spec
-from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNAL, box, paint, sky130_cell_external, split
+from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, box, paint, pdk_tech_externals, sky130_cell_external, split
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from goldenlib import external  # noqa: E402
@@ -666,14 +666,14 @@ def command_specs() -> list[Spec]:
                          "drc euclidean on", "drc euclidean off", "drc euclidean"]),
         _digest(drc_case("DRC-PR-1", CMD, ["drc printrules"],
                          "sky130A: drc printrules into a file (compared by digest: 26 MB).",
-                         None, [printrules()], prefix=pdk_prefix("sky130A"), externals=[SKY130_TECH_EXTERNAL],
+                         None, [printrules()], prefix=pdk_prefix("sky130A"), externals=SKY130_TECH_EXTERNALS,
                          outputs=[PR_DIGEST], tech_name="sky130A",
                          notes=["The printrules records themselves are compared by the drctest cases."])),
         drc_case("DRC-STAT-1", CMD, ["drc rulestats and statistics"],
                  "sky130A: drc rulestats; check sky130_fd_sc_hd__inv_1; drc statistics.",
                  None, ["drc rulestats", "load input/sky130_fd_sc_hd__inv_1", *cap(save=False), "drc statistics"],
                  prefix=pdk_prefix("sky130A"),
-                 externals=[SKY130_TECH_EXTERNAL, sky130_cell_external("sky130_fd_sc_hd__inv_1")], tech_name="sky130A"),
+                 externals=[*SKY130_TECH_EXTERNALS, sky130_cell_external("sky130_fd_sc_hd__inv_1")], tech_name="sky130A"),
         drc_case("DRC-SHOWINT-1", CMD, ["drc *flatcheck and drc *showint"],
                  "drc *showint 10 on a flat and on a hierarchical layout; the box after each.",
                  rules, ["load flat", *two, "select top cell", "drc *showint 10", "box values",
@@ -740,10 +740,8 @@ def cif_specs() -> list[Spec]:
 
 SKY130_LIB = "sky130A/libs.ref/sky130_fd_sc_hd/mag"
 GF180_LIB = "gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag"
-GF180_TECH = {"source": "pdk", "set": "gf180mcu", "path": "gf180mcuD/libs.tech/magic/gf180mcuD.tech",
-              "to": "gf180mcuD.tech"}
-IHP_TECH = {"source": "pdk", "set": "ihp", "path": "ihp-sg13g2/libs.tech/magic/ihp-sg13g2.tech",
-            "to": "ihp-sg13g2.tech"}
+GF180_TECH = pdk_tech_externals("gf180mcu", "gf180mcuD")
+IHP_TECH = pdk_tech_externals("ihp", "ihp-sg13g2")
 # (cell, FIXED_BBOX width in internal units after the 1/10 grid of gf180mcuD.magicrc)
 GF180_ROW = [("gf180mcu_fd_sc_mcu7t5v0__inv_1", 448), ("gf180mcu_fd_sc_mcu7t5v0__nand2_1", 560),
              ("gf180mcu_fd_sc_mcu7t5v0__dffq_1", 3248)]
@@ -795,19 +793,19 @@ def pdk_specs() -> list[Spec]:
                  "width violation; CAP of each.",
                  None, [f"load input/{inv}", *cap(save=False), "drc count", *paint("met1", 0, 0, 10, 300),
                         *paint("li1", 1000, 0, 1010, 50), *cap("inv_broken")],
-                 prefix=pdk_prefix("sky130A"), externals=[SKY130_TECH_EXTERNAL, sky130_cell_external(inv)],
+                 prefix=pdk_prefix("sky130A"), externals=[*SKY130_TECH_EXTERNALS, sky130_cell_external(inv)],
                  outputs=["inv_broken.mag"], tech_name="sky130A", fonts=["FreeSans"]),
         drc_case("DRC-PDK-2", ENG, ["Step square processing", "Interaction check over an area"],
                  "gf180mcuD: a row of abutted gf180mcu_fd_sc_mcu7t5v0 cells (inv_1, nand2_1, dffq_1); CAP.",
                  None, [*(f"load input/{n}" for n in names), "load row", *row_placement(GF180_ROW), *cap("row")],
                  prefix=pdk_prefix("gf180mcuD"),
-                 externals=[GF180_TECH, *(pdk_cell("gf180mcu", GF180_LIB, n) for n in names)],
+                 externals=[*GF180_TECH, *(pdk_cell("gf180mcu", GF180_LIB, n) for n in names)],
                  outputs=["row.mag"], tech_name="gf180mcuD"),
         drc_case("DRC-PDK-3", ENG, ["Step square processing"],
                  "ihp-sg13g2: a metal1 MOM finger capacitor drawn with box/paint (stand-in for the cap_cmomf "
                  "generator, design D12) with one finger too close; CAP.",
                  None, ["load mom", *mom_fingers(), *cap("mom")], prefix=pdk_prefix("ihp-sg13g2"),
-                 externals=[IHP_TECH], outputs=["mom.mag"], tech_name="ihp-sg13g2"),
+                 externals=IHP_TECH, outputs=["mom.mag"], tech_name="ihp-sg13g2"),
     ]
 
 
@@ -836,9 +834,9 @@ def printrules_specs() -> list[Spec]:
     digest; sky130A's default style is also DRC-PR-1). Magic's ``drc listall style`` and
     ``drc list style`` frame the run so a style-list change shows in the console."""
     rows = [("DRC-PR-2", "scmos", ["snap internal", "drc off"], [SCMOS_EXTERNAL]),
-            ("DRC-PR-3", "sky130A", pdk_prefix("sky130A"), [SKY130_TECH_EXTERNAL]),
-            ("DRC-PR-4", "gf180mcuD", pdk_prefix("gf180mcuD"), [GF180_TECH]),
-            ("DRC-PR-5", "ihp-sg13g2", pdk_prefix("ihp-sg13g2"), [IHP_TECH])]
+            ("DRC-PR-3", "sky130A", pdk_prefix("sky130A"), SKY130_TECH_EXTERNALS),
+            ("DRC-PR-4", "gf180mcuD", pdk_prefix("gf180mcuD"), GF180_TECH),
+            ("DRC-PR-5", "ihp-sg13g2", pdk_prefix("ihp-sg13g2"), IHP_TECH)]
     specs = []
     for cid, tech_name, prefix, externals in rows:
         grid = f" under `{PDK_GRID[tech_name]}`" if tech_name in PDK_GRID else ""
@@ -866,7 +864,7 @@ def rules_specs() -> list[Spec]:
 # --- standard-cell corpus (design D14) ----------------------------------------------
 
 STD_LIBS = {
-    "DRC-STD-SKY130-HD": ("sky130", "sky130A", SKY130_LIB, SKY130_TECH_EXTERNAL),
+    "DRC-STD-SKY130-HD": ("sky130", "sky130A", SKY130_LIB, SKY130_TECH_EXTERNALS),
     "DRC-STD-GF180-7T5V0": ("gf180mcu", "gf180mcuD", GF180_LIB, GF180_TECH),
 }
 STD_SOURCE = "derived:mag-drc-sections:input/*.mag"
@@ -898,7 +896,7 @@ def std_spec(cid: str) -> Spec | None:
                     f"Every {lib.split('/')[2]} cell ({len(cells)}) under {tech_name}'s default DRC style: "
                     "check, catchup, listall why, count, save; the DRC sections of the saved cells.",
                     None, body, prefix=pdk_prefix(tech_name), tech_name=tech_name,
-                    externals=[tech_ext, *(pdk_cell(pdk_set, lib, n) for n in cells)],
+                    externals=[*tech_ext, *(pdk_cell(pdk_set, lib, n) for n in cells)],
                     outputs=[STD_SOURCE],
                     notes=["Standard-cell exit check (m3-drc design D14): generated by drc_cases.py from the "
                            "installed library, one block per cell in sorted order."])

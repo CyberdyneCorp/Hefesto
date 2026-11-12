@@ -21,12 +21,18 @@
 #include "hefesto/diag/format.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pdk/manager.hpp"
+#include "hefesto/platform/file_system.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
 #include "hefesto/platform_net/http_fetcher.hpp"
 #include "hefesto/platform_posix/file_host.hpp"
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
+#include "hefesto/script/binding/tags.hpp"
+#include "hefesto/script/interp.hpp"
+#include "hefesto/script/pdk/consent.hpp"
+#include "hefesto/script/project.hpp"
+#include "hefesto/tools/auxiliary.hpp"
 #include "hefesto/ui/bindings.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/version.hpp"
@@ -73,18 +79,23 @@ class StreamSink final : public diag::DiagnosticSink {
 };
 
 /// Prints the non-empty value of each successful command to stdout.
+/// Off while Tcl runs (startup files, a `.tcl` script, Tcl from standard
+/// input): a command's value is then its Tcl result, printed only by `puts`.
 class ValuePrinter final : public cmd::CommandObserver {
  public:
   explicit ValuePrinter(std::FILE* stream) : stream_(stream) {}
 
   void on_command(const cmd::Invocation& /*invocation*/, const cmd::CommandResult& result) override {
-    if (result.ok() && !result.value.is_none()) {
+    if (echo_ && result.ok() && !result.value.is_none()) {
       print_line(stream_, result.value.to_string());
     }
   }
 
+  void set_echo(bool echo) noexcept { echo_ = echo; }
+
  private:
   std::FILE* stream_;
+  bool echo_ = true;
 };
 
 /// A failure that is a Tcl error in Magic's interpreter: a raised usage error
@@ -144,15 +155,24 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
     const bool is_result = !result.ok() && has_pending_ && !result.diagnostics.empty() &&
                            pending_ == result.diagnostics.back() && (raises_tcl_error(result) || !result.value.is_none());
     if (is_result) {
-      has_pending_ = false;
+      has_pending_ = false;  // it is the command's Tcl result (or error), not TxError text
     }
     flush_pending();
-    print_line(out_, result_text(result, is_result));
+    if (echo_) {
+      print_line(out_, result_text(result, is_result));
+    }
   }
 
   void flush() {
     const std::scoped_lock lock{mutex_};
     flush_pending();
+  }
+
+  /// Off while Tcl runs: Magic's console prints nothing for a command; the
+  /// script's own `puts` does (tools/golden/authoring/tclcase.py).
+  void set_echo(bool echo) {
+    const std::scoped_lock lock{mutex_};
+    echo_ = echo;
   }
 
  private:
@@ -177,6 +197,7 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
   // -Wmaybe-uninitialized when an optional<Diagnostic> is assigned.
   diag::Diagnostic pending_;
   bool has_pending_ = false;
+  bool echo_ = true;
   std::mutex mutex_;
 };
 
@@ -194,6 +215,7 @@ class Session {
   Session(const Options& options, std::FILE* out, std::FILE* err)
       : options_(options),
         out_(out),
+        err_(err),
         services_(platform::PortableOptions{.storage_root = platform::default_storage_dir(), .pdk_roots = {}}),
         sink_(err, options.diagnostics),
         values_(out),
@@ -204,6 +226,9 @@ class Session {
     // cell-io-safety: POSIX locks and the crash-backup file host, before any command.
     editor_.locks = platform_posix::make_lock_service();
     editor_.cell_session.host = platform_posix::make_file_host();
+    // hefesto-security "Consent before implicit script execution": batch mode
+    // runs a PDK's scripts only for --trust-pdk (or a version the store trusts).
+    editor_.script.pdk_trust.set_consent_host(&consent_);
     cmd::register_all_commands(
         registry_, pdk::CommandHosts{platform_net::http_fetcher_factory(install_host_->environment("GITHUB_TOKEN")), {}, {}});
     command_log_ = std::make_unique<cmd::CommandLog>(logger_);
@@ -222,6 +247,12 @@ class Session {
       dispatcher_->add_observer(values_);
     }
   }
+
+  Session(const Session&) = delete;
+  Session& operator=(const Session&) = delete;
+  // The interpreter's commands refer to the dispatcher, which is destroyed
+  // before the editor: close the project's interpreter first.
+  ~Session() { script::close_project_interpreter(editor_); }
 
   int run(const app::StartupOptions& startup) {
     log(diag::Severity::info, "session start hefesto-cli " + std::string{version()});
@@ -284,11 +315,69 @@ class Session {
     if (startup.technology) {
       log(diag::Severity::info, "tech " + *startup.technology);
     }
+    const EchoOff tcl{*this};  // startup files and the `.tcl` argument are Tcl
     const auto result =
         app::run_startup(*dispatcher_, project_, services_.files(), startup, environment(), console_sink());
     if (!result) {
       dispatcher_->report(result.error());
     }
+  }
+
+  // Command values are printed only by Tcl's `puts` while one lives.
+  class EchoOff {
+   public:
+    explicit EchoOff(Session& session) : session_(session) { session_.set_echo(false); }
+    ~EchoOff() { session_.set_echo(true); }
+    EchoOff(const EchoOff&) = delete;
+    EchoOff& operator=(const EchoOff&) = delete;
+
+   private:
+    Session& session_;
+  };
+
+  void set_echo(bool echo) {
+    values_.set_echo(echo);
+    magic_console_.set_echo(echo);
+  }
+
+  // The CLI's console in the project's interpreter: `puts` to stdout and
+  // stderr writes to this session's streams (in order with the diagnostics);
+  // other channels go to Tcl's own `puts`, kept as ::hefesto::tcl_puts.
+  void install_console(script::Interpreter& interp) {
+    const auto renamed = interp.evaluate("namespace eval ::hefesto {}; rename ::puts ::hefesto::tcl_puts");
+    if (!renamed.ok()) {
+      return;  // keep Tcl's own puts
+    }
+    interp.define_command("::puts", [this, &interp](const cmd::Invocation& inv) { return console_puts(interp, inv); });
+  }
+
+  // `puts ?-nonewline? ?channelId? string` (Tcl's argument rules).
+  cmd::CommandResult console_puts(script::Interpreter& interp, const cmd::Invocation& inv) {
+    const auto& a = inv.args;
+    const bool nonewline = (a.size() == 2 || a.size() == 3) && a.front() == "-nonewline";
+    const std::size_t first = nonewline ? 1 : 0;
+    if (a.size() - first == 0 || a.size() - first > 2) {
+      return cmd::CommandResult::failure(
+          diag::make("SCRIPT-TCL-001", R"(wrong # args: should be "puts ?-nonewline? ?channelId? string")"));
+    }
+    const std::string channel = a.size() - first == 2 ? a[first] : "stdout";
+    if (channel != "stdout" && channel != "stderr") {
+      std::string script = "::hefesto::tcl_puts";
+      for (const auto& word : a) {
+        script += ' ';
+        script += script::quote_list_element(word);
+      }
+      return interp.evaluate(script);
+    }
+    const std::string& text = a.back();
+    std::FILE* stream = channel == "stdout" ? out_ : err_;
+    magic_console_.flush();  // a pending TxError line comes first
+    std::fwrite(text.data(), 1, text.size(), stream);
+    if (!nonewline) {
+      std::fputc('\n', stream);
+    }
+    std::fflush(stream);
+    return cmd::CommandResult::success();
   }
 
   app::StartupEnvironment environment() {
@@ -305,6 +394,7 @@ class Session {
     env.pdk_root = options_.pdk_root;
     env.user_preferences = platform::default_storage_dir() / "preferences.json";
     env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
+    env.configure_interpreter = [this](script::Interpreter& interp) { install_console(interp); };
     return env;
   }
 
@@ -333,6 +423,9 @@ class Session {
     return ok;
   }
 
+  // -c text and scripts outside --magic mode use the M0 command reader
+  // until the M1-M3 golden cases move to Tcl (m4-scripting tasks.md 13.2);
+  // in --magic mode a script (standard input) is Tcl, as in Magic.
   cmd::ScriptRun run_source(const ScriptSource& source) {
     using Kind = ScriptSource::Kind;
     if (source.kind == Kind::inline_text) {
@@ -344,7 +437,54 @@ class Session {
       failed.aborted = true;
       return failed;
     }
+    if (options_.magic_mode && editor_.script.interp != nullptr) {
+      return run_tcl_lines(*editor_.script.interp, *text);
+    }
     return cmd::run_script(*dispatcher_, *text, cmd::Origin::script, source.value);
+  }
+
+  // Magic's console without a terminal (tclsh's non-interactive loop): each
+  // complete command is evaluated in turn; an error prints its message on
+  // stderr and the next command runs; nothing else is echoed.
+  cmd::ScriptRun run_tcl_lines(script::Interpreter& interp, std::string_view text) {
+    const EchoOff tcl{*this};
+    cmd::ScriptRun run;
+    std::string command;
+    std::size_t start = 0;
+    while (start < text.size() && !script_session_.quit_requested) {
+      const std::size_t end = std::min(text.find('\n', start), text.size());
+      command.append(text.substr(start, end - start));
+      command += '\n';
+      start = end + 1;
+      if (start < text.size() && !complete(interp, command)) {
+        continue;
+      }
+      evaluate_command(interp, std::exchange(command, std::string{}), run);
+    }
+    run.quit = script_session_.quit_requested;
+    return run;
+  }
+
+  static bool complete(script::Interpreter& interp, const std::string& command) {
+    const auto r = interp.evaluate("::info complete " + script::quote_list_element(command));
+    return !r.ok() || r.value.to_string() == "1";
+  }
+
+  void evaluate_command(script::Interpreter& interp, const std::string& command, cmd::ScriptRun& run) {
+    ++run.commands_run;
+    const auto result = interp.evaluate(command);
+    if (result.ok() || script_session_.quit_requested) {
+      return;  // `quit` unwinds the evaluation: not an error
+    }
+    ++run.failures;
+    for (const auto& d : result.diagnostics) {
+      if (options_.diagnostics == diag::Format::magic) {
+        magic_console_.flush();
+        print_line(err_, d.text);  // tclsh prints the error message
+      } else {
+        dispatcher_->report(d);
+      }
+    }
   }
 
   std::optional<std::string> load_source(const ScriptSource& source) {
@@ -365,12 +505,14 @@ class Session {
 
   const Options& options_;
   std::FILE* out_;
+  std::FILE* err_;
   platform::PortableServices services_;
   platform::Logger* logger_ = nullptr;
   std::optional<diag::Diagnostic> log_warning_;
   settings::ProjectSettings project_;
   cmd::ScriptSession script_session_{project_};
   cmd::CommandRegistry registry_;
+  script::BatchConsentHost consent_{options_.trust_pdk};  // the editor's trust store points at it
   editor::EditorState editor_;
   std::unique_ptr<pdk::InstallHost> install_host_ = pdk::make_local_install_host();
   std::unique_ptr<pdk::Fetcher> pdk_fetcher_;
@@ -404,6 +546,23 @@ std::optional<int> run_informational(const Options& options, std::FILE* out) {
     return kExitOk;
   }
   return std::nullopt;
+}
+
+// --strip-reflibs <dir> (scripting-auxiliary-tools "Reference-library
+// stripper"): strips every `.mag` file of the directory, printing Magic's
+// error text for each file it cannot rewrite.
+int run_strip_reflibs(const Options& options, std::FILE* out, std::FILE* err) {
+  platform::LocalFileSystem files;
+  const auto problems = tools::strip_reflibs(files, *options.strip_reflibs);
+  for (const auto& d : problems) {
+    // Magic's script prints its error on stdout (strip_reflibs.tcl:23).
+    if (options.diagnostics == diag::Format::magic) {
+      print_line(out, diag::format_magic(d));
+    } else if (const auto text = diag::render(d, options.diagnostics)) {
+      print_line(err, *text);
+    }
+  }
+  return problems.empty() ? kExitOk : kExitFailure;
 }
 
 // The startup options: Magic's command line in --magic mode, else -T and
@@ -440,6 +599,9 @@ int run(std::span<const std::string_view> args, std::FILE* out, std::FILE* err) 
   }
   if (const auto status = run_informational(parsed.options, out)) {
     return *status;
+  }
+  if (parsed.options.strip_reflibs) {
+    return run_strip_reflibs(parsed.options, out, err);
   }
   const auto startup = startup_options(parsed.options, err);
   if (!startup) {

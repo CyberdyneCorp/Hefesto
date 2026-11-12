@@ -46,6 +46,13 @@ struct Options {
   std::optional<std::filesystem::path> project;   // --project=<dir> (default: . when it has hefesto.project)
   std::optional<std::filesystem::path> pdk_root;  // --pdk-root=<dir>
   std::vector<std::pair<std::string, std::string>> settings;  // --setting <name>=<value> (session layer)
+  /// --trust-pdk <selector>: PDK scripts allowed to run in this batch session
+  /// (script::BatchConsentHost; a family, variant, variant@hash or
+  /// family/variant@version). Everything else is declined (design D7).
+  std::vector<std::string> trust_pdk;
+  /// --strip-reflibs <dir>: run the reference-library stripper on the `.mag`
+  /// files of <dir> and exit (scripting-auxiliary-tools; tools::strip_reflibs).
+  std::optional<std::filesystem::path> strip_reflibs;
   diag::Format diagnostics = diag::Format::text;
   std::optional<std::filesystem::path> log_dir;
   bool no_log = false;

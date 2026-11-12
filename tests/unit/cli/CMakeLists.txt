@@ -69,3 +69,12 @@ add_test(NAME "hefesto-cli: quit 3 -noprompt exits 3"
                  "-DARGS=--no-log;--magic;-dnull;-noconsole" "-DSTDIN=quit 3 -noprompt\n"
                  -P "${CMAKE_CURRENT_SOURCE_DIR}/expect_exit.cmake")
 set_tests_properties("hefesto-cli: quit 3 -noprompt exits 3" PROPERTIES LABELS "unit;cli")
+
+# [cap:scripting-api][req:Terminal input queue without console]: in --magic
+# mode without a script, standard input is read as Tcl, one complete command
+# at a time; an error prints its message and the next command runs.
+add_test(NAME "hefesto-cli: --magic reads Tcl commands from standard input"
+         COMMAND sh -c "printf 'set x 4\\nputs [expr {$x * 2}]\\nnosuch\\nforeach i {1 2} {\\n  puts -nonewline $i\\n}\\nputs {}\\n' | \"$<TARGET_FILE:hefesto-cli>\" --no-log --diagnostics=magic --magic -dnull -noconsole -norc")
+set_tests_properties("hefesto-cli: --magic reads Tcl commands from standard input" PROPERTIES
+  LABELS "unit;cli"
+  PASS_REGULAR_EXPRESSION "8\ninvalid command name \"nosuch\"\n12\n")

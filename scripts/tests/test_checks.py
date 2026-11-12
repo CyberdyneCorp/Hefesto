@@ -224,6 +224,15 @@ FetchContent_Declare(hefesto_curl
   SYSTEM)
 """
 
+TCL_DECLARATION = """
+FetchContent_Declare(hefesto_tcl
+  URL https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz
+      https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz
+  URL_HASH SHA256=91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5
+  SOURCE_SUBDIR hefesto-sources-only)
+"""
+TCL_SHA = "91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5"
+
 
 class ThirdPartyNoticesTest(unittest.TestCase):
     def test_declarations(self):
@@ -243,6 +252,19 @@ class ThirdPartyNoticesTest(unittest.TestCase):
         self.assertEqual(len(found), 5)
         self.assertTrue(any("pin v1.3.1" in f for f in found))
         self.assertTrue(any("oscar-soirey/Raven not listed" in f for f in found))
+
+    def test_archive_outside_github_is_named_by_file_and_hash(self):
+        self.assertEqual(notices.declarations(TCL_DECLARATION),
+                         [("hefesto_tcl", "tcl8.6.16-src.tar.gz", TCL_SHA)])
+        self.assertEqual(notices.problems(TCL_DECLARATION, f"`tcl8.6.16-src.tar.gz`, SHA-256 `{TCL_SHA}`"), [])
+        found = notices.problems(TCL_DECLARATION, "Tcl 8.6.15")
+        self.assertEqual(len(found), 2)
+        self.assertTrue(any("tcl8.6.16-src.tar.gz not listed" in f for f in found))
+
+    def test_repository_notices_cover_every_cmake_module(self):
+        code, output = run_quiet(notices.main, [])
+        self.assertEqual(code, 0, output)
+        self.assertIn("7 dependencies checked", output)
 
 
 if __name__ == "__main__":

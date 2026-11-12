@@ -8,6 +8,7 @@
 #include <span>
 
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/script/binding/keyword_rule.hpp"
 
 namespace hefesto::cmd {
 
@@ -48,7 +49,7 @@ bool same_char(char table, char word) {
 enum class EntryMatch : std::uint8_t { none, prefix, exact };
 
 EntryMatch match_entry(std::string_view word, std::string_view entry) {
-  const std::string_view name = entry.substr(0, entry.find(' '));
+  const std::string_view name = keyword_of(entry);  // Q-SCRIPT-14 (keyword_rule.hpp)
   if (word.size() > name.size()) {
     return EntryMatch::none;
   }
@@ -177,6 +178,10 @@ CommandLookup CommandRegistry::resolve(std::string_view word, std::string_view c
     return CommandLookup{LookupStatus::ambiguous, nullptr, {}};
   }
   if (global.status == LookupStatus::not_found) {
+    if (own.status == LookupStatus::not_found) {
+      // Tcl-side procedures: exact names only (strip_namespace applied by lookup).
+      return lookup(word, kScriptClient, NameLookup::exact);
+    }
     return own;
   }
   if (own.status == LookupStatus::not_found) {

@@ -7,14 +7,16 @@
 // "Startup file order", "Default technology selection", "Display type
 // selection", "Batch and headless operation", "Crash recovery at startup",
 // "Platform startup surface"; hefesto-settings "Magic startup-file
-// compatibility" — until the Tcl binding (M4) startup files are located,
-// their plain settings applied and their script commands reported, not run).
+// compatibility"; scripting-pdk-integration "Startup files are scripts":
+// startup files and a `.tcl` file argument are evaluated in the project's
+// sandboxed Tcl interpreter, m4-scripting design D7).
 //
 // Owner: PDK (openspec/changes/m1-core-viewer/design.md, D2).
 
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -28,6 +30,10 @@
 #include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/settings/project_settings.hpp"
+
+namespace hefesto::script {
+class Interpreter;
+}
 
 namespace hefesto::cmd {
 class Dispatcher;
@@ -118,6 +124,10 @@ struct StartupEnvironment {
   /// project folder is recorded in it and the session setting
   /// `recent-projects-file` names it for the `pdk` command.
   std::optional<platform::Path> recent_projects;
+  /// Called once the project's interpreter is created and bound, before any
+  /// startup file runs: the front end attaches its console (e.g. hefesto-cli's
+  /// `puts` to its output streams). Not called when the interpreter existed.
+  std::function<void(script::Interpreter&)> configure_interpreter;
 };
 
 /// "Installation root and search paths": the environment variable
@@ -152,7 +162,9 @@ struct StartupResult {
 /// Runs steps 6–11 of "Startup sequence" on the dispatcher's editor
 /// session: built-in technology, settings layers (defaults, PDK, user,
 /// project, session; the effective compat settings are copied into
-/// `project_settings`), startup files (located, plain settings applied),
+/// `project_settings`), the project's interpreter (granted roots: the startup
+/// files, the `.tcl` file argument, working directory, project, PDK store and
+/// CAD_ROOT), startup files (evaluated as Tcl, a PDK's after consent),
 /// technology selection (-T, project pin, first file argument, `minimum`),
 /// crash recovery (-r) or the file arguments (through the `load` command),
 /// and the box. Fails only without an editor session (CMD-SESSION-001);

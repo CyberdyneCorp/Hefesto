@@ -618,6 +618,26 @@ diag::Outcome<Provenance> PdkManager::provenance(const Family& family, std::stri
   return out;
 }
 
+diag::Status PdkManager::set_trusted(const Family& family, std::string_view hash, bool trusted) {
+  const Path version_dir = family_dir(family) / "versions" / std::string{hash};
+  const Path legacy_dir = root_ / "volare" / family.name / "versions" / std::string{hash};
+  if (!is_dir(version_dir) && !is_dir(legacy_dir)) {
+    return diag::make(codes::kNotInstalled, family.name + " version " + std::string{hash} + " is not installed");
+  }
+  const Path record = family_dir(family) / ".hefesto" / (std::string{hash} + ".json");
+  nlohmann::json doc = nlohmann::json::object();
+  if (std::ifstream in{record}) {
+    doc = nlohmann::json::parse(in, nullptr, false);
+  }
+  if (doc.is_discarded() || !doc.is_object() || doc.empty()) {
+    // An install made outside Hefesto (ciel, volare): no record yet.
+    doc = {{"family", family.name}, {"repository", family.upstream_repo}, {"version", std::string{hash}},
+           {"source", "external"}, {"license", family.license}};
+  }
+  doc["trusted"] = trusted;
+  return write_text(record, doc.dump(2) + "\n");
+}
+
 std::optional<std::string> PdkManager::current(const Family& family) const {
   return read_first_word(family_dir(family) / "current");
 }

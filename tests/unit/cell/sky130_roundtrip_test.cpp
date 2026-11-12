@@ -83,6 +83,11 @@ TEST_CASE("every sky130_fd_sc_hd cell round-trips byte-identically",
   if (!cell::test::magic_font_dir()) {
     SKIP("Magic's default fonts (build/ref/magic/graphics) not present");
   }
+  // The M4 pin move dropped CELL-WR-10's expected/ for its CI re-capture
+  // (m4-scripting tasks.md 1.4/1.5); until then Magic's rewrites are unknown.
+  if (!fs::exists(magic_rewrite(""))) {
+    SKIP("CELL-WR-10 not captured at the current PDK pin (tests/golden/CELL/cases/CELL-WR-10/expected)");
+  }
   hefesto::platform::LocalFileSystem local;
   hefesto::diag::CollectingSink tech_sink;
   auto tech = hefesto::tech::load_technology(local, (*root / "libs.tech/magic/sky130A.tech").string(),

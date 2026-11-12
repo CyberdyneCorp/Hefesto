@@ -137,7 +137,8 @@ TEST_CASE("tech load, drc check and drc catchup find width and spacing errors en
   REQUIRE(s.run("box 0 0 2 10; paint m1; box 5 0 10 10; paint m1").ok());
   REQUIRE(s.run("drc off; box -20 -20 30 30; drc check; drc catchup").ok());
   // The 2-wide bar breaks the width rule; the 3-unit gap breaks the spacing rule.
-  CHECK(s.value("drc listall why") == "{m1 width < 3} {{2 0 3 10}} {m1 spacing < 4} {{5 0 6 10}}");
+  // In DRCWhyAll's hash table order (Q-SCRIPT-8): bucket 0, then bucket 5.
+  CHECK(s.value("drc listall why") == "{m1 spacing < 4} {{5 0 6 10}} {m1 width < 3} {{2 0 3 10}}");
   CHECK(s.value("drc list count total") == "2");
   CHECK(s.value("drc listall count") == "{top 2}");
   CHECK(s.editor.drc.pending.empty());

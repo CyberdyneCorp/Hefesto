@@ -46,6 +46,13 @@ bundled: they are read at run time from a Magic installation (`$CAD_ROOT/magic/s
 (`.cache/pdks`) and Magic's display-style files used by tests (`build/ref/magic`) are fetched by
 `scripts/fetch_pdk.py` and never committed or shipped.
 
+## Components in M4
+
+| Component | Version / pin | License | Shipped in | Source |
+|---|---|---|---|---|
+| Tcl | 8.6.16, release archive `tcl8.6.16-src.tar.gz`, SHA-256 `91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5` | Tcl/Tk license (BSD-style, TCL) | all packages (core) | https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz (https://www.tcl-lang.org) |
+| ↳ LibTomMath (in Tcl) | as bundled by Tcl 8.6.16 | Unlicense (public domain) | all packages (core) | https://github.com/libtom/libtommath |
+
 ## libcurl
 
 The Linux CLI and desktop download PDK catalogs and assets over HTTPS with libcurl
@@ -76,6 +83,89 @@ OR OTHER DEALINGS IN THE SOFTWARE.
 Except as contained in this notice, the name of a copyright holder shall not
 be used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization of the copyright holder.
+```
+
+## Tcl
+
+The embedded, sandboxed script interpreter (decision X-3; `cmake/Tcl.cmake`, target
+`hefesto::tcl`; `openspec/changes/m4-scripting/design.md` D3, D5). Tcl's C sources are compiled
+into the core without Tk and without dynamic loading, and Tcl's own `library/` scripts
+(init.tcl, clock.tcl, msgcat, http, opt, platform, tcltest, msgs, tzdata, encodings) are compiled
+into the binary. Its regular-expression engine (Henry Spencer's, as modified for Tcl) is covered
+by the same terms. The bundled zlib copy is not used (Hefesto's zlib above is linked instead).
+
+```text
+This software is copyrighted by the Regents of the University of
+California, Sun Microsystems, Inc., Scriptics Corporation, ActiveState
+Corporation and other parties.  The following terms apply to all files
+associated with the software unless explicitly disclaimed in
+individual files.
+
+The authors hereby grant permission to use, copy, modify, distribute,
+and license this software and its documentation for any purpose, provided
+that existing copyright notices are retained in all copies and that this
+notice is included verbatim in any distributions. No written agreement,
+license, or royalty fee is required for any of the authorized uses.
+Modifications to this software may be copyrighted by their authors
+and need not follow the licensing terms described here, provided that
+the new terms are clearly indicated on the first page of each file where
+they apply.
+
+IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY
+FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES
+ARISING OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY
+DERIVATIVES THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
+INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.  THIS SOFTWARE
+IS PROVIDED ON AN "AS IS" BASIS, AND THE AUTHORS AND DISTRIBUTORS HAVE
+NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR
+MODIFICATIONS.
+
+GOVERNMENT USE: If you are acquiring this software on behalf of the
+U.S. government, the Government shall have only "Restricted Rights"
+in the software and related documentation as defined in the Federal
+Acquisition Regulations (FARs) in Clause 52.227.19 (c) (2).  If you
+are acquiring the software on behalf of the Department of Defense, the
+software shall be classified as "Commercial Computer Software" and the
+Government shall have only "Restricted Rights" as defined in Clause
+252.227-7014 (b) (3) of DFARs.  Notwithstanding the foregoing, the
+authors grant the U.S. Government and others acting in its behalf
+permission to use and distribute the software in accordance with the
+terms specified in this license.
+```
+
+LibTomMath, the arbitrary-precision integer library inside Tcl (`libtommath/`):
+
+```text
+                          The LibTom license
+
+This is free and unencumbered software released into the public domain.
+
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <http://unlicense.org/>
 ```
 
 ## Zstandard
@@ -572,6 +662,25 @@ warranty.  Export of this software outside of the United States of America
 may require an export license.
 ```
 
+## PDK script excerpts in test inputs (not shipped)
+
+A few test inputs are verbatim copies or excerpts of PDK Tcl files, each under the Apache License
+2.0 and carrying its origin in a header comment where the file format allows one:
+
+| File(s) | Origin | Copyright |
+|---|---|---|
+| `tests/data/pcell/native/helpers_sky130.tcl` | open_pdks `c6df28c1` (ciel `5740c4a8`) `sky130A.tcl:279-353` | the open_pdks authors (Tim Edwards / efabless) |
+| `tests/data/pcell/native/helpers_sg13g2.tcl` | IHP-Open-PDK `5e6d592e` `ihp-sg13g2-util.tcl:688-787` | IHP GmbH (IHP PDK Authors) |
+| `tests/data/script/binding/pdk_root/sky130A/libs.tech/magic/sky130A.tcl` | open_pdks `c6df28c1` `sky130A.tcl:282-284,350-353` | the open_pdks authors |
+| `tests/data/script/binding/pdk_root/ihp-sg13g2/libs.tech/magic/ihp-sg13g2-util.tcl` | IHP-Open-PDK `5e6d592e` `ihp-sg13g2-util.tcl:691-694` | IHP GmbH (IHP PDK Authors) |
+| `tests/golden/SCRIPT/cases/SCRIPT-PDK-18/input/old/sky130A.magicrc` | open_pdks `0fe599b2` `sky130A/libs.tech/magic/sky130A.magicrc` (the M3 pin; design D15 "Older rc smoke") | the open_pdks authors |
+| `tests/golden/SCRIPT/cases/SCRIPT-PDK-18/input/old/ihp-sg13g2.magicrc` | IHP-Open-PDK `ddb601a4` `ihp-sg13g2/libs.tech/magic/ihp-sg13g2.magicrc` | IHP GmbH (IHP PDK Authors) |
+
+The two `.magicrc` files are kept byte for byte (the case compares Magic's and Hefesto's runs of
+them), so their notice is this entry. The Apache License 2.0 text is in `LICENSE`. The golden PDK
+cases' other PDK inputs are not committed: they are external inputs copied from `.cache/pdks` at
+capture and replay time (`tools/golden/goldenlib/external.py`).
+
 ## X11 keysym names
 
 `src/core/src/ui/keysyms.cpp` embeds the keysym names and values Magic's macro files use, as
@@ -635,7 +744,6 @@ networking and data formats" and "Bundled fonts and PDK data licensing" of `hefe
 | Component | Expected license | Where | Notes |
 |---|---|---|---|
 | Magic scmos tech files (including the scmos MOSIS notice) | UC Berkeley permissive notice + MOSIS notice | all, if bundled | M1 tests generate scmos.tech from build/ref/magic; not shipped |
-| Tcl | Tcl/Tk license (BSD-style) | all | X-3 |
 | ngspice | modified BSD | all | GPL parts excluded |
 | ↳ KLU, numparam | LGPLv2 / LGPLv2+ | all | static linking on iPadOS: Q-SIM-1 |
 | ↳ OSDI | MPL-2.0 | all | plus each compact model compiled in (Q-SIM-2) |

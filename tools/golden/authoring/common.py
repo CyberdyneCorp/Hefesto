@@ -80,7 +80,22 @@ FINE = TINY.replace("    tiny\nend", "    fine\nend", 1).replace(
     "    options set-minimum-grid\nend\n", 1)
 
 SCMOS_EXTERNAL = {"source": "scmos", "to": "scmos.tech"}
-SKY130_TECH_EXTERNAL = {"source": "pdk", "path": "sky130A/libs.tech/magic/sky130A.tech", "to": "sky130A.tech"}
+# The `include` part files of a PDK technology file (open_pdks since c6df28c1; m4-scripting
+# design D15): Magic reads them from the directory of the main file, so every case that
+# copies a PDK tech file in also copies its parts.
+TECH_PARTS = ("cifout", "cifin", "drc", "extract")
+
+
+def pdk_tech_externals(pdk_set: str, variant: str) -> list[dict]:
+    """The ``[[external]]`` inputs of ``<variant>.tech`` and its part files (``set`` omitted
+    for the default sky130 data set)."""
+    base = {} if pdk_set == "sky130" else {"set": pdk_set}
+    directory = f"{variant}/libs.tech/magic"
+    names = [f"{variant}.tech", *(f"{variant}-{part}.tech" for part in TECH_PARTS)]
+    return [{"source": "pdk", **base, "path": f"{directory}/{name}", "to": name} for name in names]
+
+
+SKY130_TECH_EXTERNALS = pdk_tech_externals("sky130", "sky130A")
 
 
 def sky130_cell_external(cell: str) -> dict:

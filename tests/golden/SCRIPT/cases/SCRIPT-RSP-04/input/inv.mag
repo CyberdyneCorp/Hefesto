@@ -1,0 +1,17 @@
+magic
+tech scmos
+timestamp 100
+<< metal1 >>
+rect 0 0 10 40
+<< polysilicon >>
+rect 20 0 22 40
+<< labels >>
+rlabel metal1 0 0 0 0 0 Y
+port 1 nsew
+rlabel polysilicon 20 0 20 0 0 A
+port 2 nsew
+rlabel metal1 0 40 0 40 0 VDD
+port 3 nsew
+rlabel metal1 10 0 10 0 0 VSS
+port 4 nsew
+<< end >>

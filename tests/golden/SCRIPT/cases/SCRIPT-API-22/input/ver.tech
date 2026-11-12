@@ -1,0 +1,59 @@
+tech
+    format 35
+    vertech
+end
+
+version
+    version 1.0 beta 2
+    description "a test"
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+end
+
+types
+    well    pwell,pw
+    active  ndiffusion,ndiff
+    active  polysilicon,poly
+    active  ntransistor,nfet
+    metal1  metal1,m1
+    active  ndcontact,ndc
+end
+
+contact
+    ndc ndiff metal1
+end
+
+styles
+    styletype mos
+end
+
+connect
+    ndiff ndc
+    metal1 ndc
+end
+
+cifoutput
+end
+
+cifinput
+end
+
+drc
+end
+
+extract
+    style default
+    lambda 100
+    step 100
+    sidehalo 0
+    planeorder well 0
+    planeorder active 1
+    planeorder metal1 2
+    substrate *pw,space well $SUB
+    resist ndiff,ndc 1000
+    resist metal1 50
+end

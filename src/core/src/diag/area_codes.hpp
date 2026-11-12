@@ -8,9 +8,13 @@
 // returned span must refer to storage with static duration (a namespace-scope
 // constexpr std::array), sorted by code, and every code must start with the
 // area prefix declared in diag/codes.cpp (TECH-, DB-, CELL-, DISPLAY-, VIEW-,
-// PDK-, APP-, UNDO-, SELECT-, CONNECT-, UI-, WIRE-, DRC-, HINTS-). The drc
-// area's table is assembled by src/core/src/drc/codes.cpp from one fragment
-// per workstream (drc/<sub>/codes.inc; openspec/changes/m3-drc design.md D1).
+// PDK-, APP-, UNDO-, SELECT-, CONNECT-, UI-, WIRE-, DRC-, HINTS-, SCRIPT-,
+// PCELL-, TOOLS-, GUI-). The drc area's table is assembled by
+// src/core/src/drc/codes.cpp from one fragment per workstream
+// (drc/<sub>/codes.inc; openspec/changes/m3-drc design.md D1); the script and
+// pcell tables likewise from script/<sub>/codes.inc and pcell/<sub>/codes.inc
+// (openspec/changes/m4-scripting/design.md D1), sorted at compile time by
+// diag/sorted_codes.hpp.
 
 #pragma once
 
@@ -36,5 +40,10 @@ namespace hefesto::diag::area_codes {
 // M3 areas (openspec/changes/m3-drc/design.md D1).
 [[nodiscard]] std::span<const CodeInfo> drc() noexcept;
 [[nodiscard]] std::span<const CodeInfo> hints() noexcept;
+// M4 areas (openspec/changes/m4-scripting/design.md D1).
+[[nodiscard]] std::span<const CodeInfo> script() noexcept;
+[[nodiscard]] std::span<const CodeInfo> pcell() noexcept;
+[[nodiscard]] std::span<const CodeInfo> tools() noexcept;
+[[nodiscard]] std::span<const CodeInfo> gui() noexcept;
 
 }  // namespace hefesto::diag::area_codes

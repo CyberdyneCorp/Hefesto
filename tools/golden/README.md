@@ -46,6 +46,17 @@ Pinned data that is never committed (design D1: PDK data, and Magic's generated 
 - the SHA-256 of every output
 - `reference_captured`, which is `false` only for the `model` runner
 
+## M4: cases run by both tools from one Tcl script
+
+From M4 hefesto-cli embeds Tcl, so a case can have a single `input/commands.tcl` that Magic and `hefesto-cli --no-log --diagnostics=magic [--trust-pdk <pdk>] --magic <Magic options>` both run (`authoring/tclcase.py`, driver `authoring/m4_cases.py`; m4-scripting design D16). The manifest supports:
+
+- `[env]`: environment of both runs; `{work}` is the work directory (`/work` in the container). Replay writes its own work directory as `/work` in every output, so absolute paths compare.
+- `[reference] display = "xvfb"`: Magic's Tk wrapper under `xvfb-run` (the container gets `--init`; xvfb-run as PID 1 never returns).
+- `[reference] stdin` / `[hefesto] stdin`: a file fed on standard input.
+- `[reference] allow_nonzero_exit = true`: keep the output of a run killed by `timeout` (SCRIPT-API-11, Q-SCRIPT-3).
+- `[[external]]` `to` may be a relative path and a `pdk` `path` may be a directory (a PDK tree under `input/pdk` for `PDK_ROOT`).
+- `derived:files:<glob>`: every matching file preceded by `file <path>` (cells named only at run time).
+
 ## Building the reference image (CI, not developer machines)
 
 ```sh
@@ -118,7 +129,7 @@ Comparators are canonicalizers, each applied to both sides after masking (`compa
 
 - `bytes`: byte for byte. Use it for tile-order and name-keyed hash-order records, which Hefesto reproduces exactly.
 - `ext-cap`: `.ext` cap records are reordered so the smaller terminal name comes first and the records are sorted. Every other line, including `merge` groups, is compared byte for byte and in place. The rules are in `compare/ext_cap.py`.
-- `drc-console`: `magic-console`, then the `drc listall why` result sorted by why text (rectangles of a text keep their discovery order), `drc list(all) count` pairs sorted, and each run of `drc count` cell lines sorted (Magic: hash order; Hefesto: discovery and name order, m3-drc design D12). The rules are in `compare/drc_console.py`.
+- `drc-console`: `magic-console`, then `drc list(all) count` pairs sorted and each run of `drc count` cell lines sorted (Magic: address-keyed hash order; Hefesto: name order, m3-drc design D12). A `drc listall why` result is compared as printed: Hefesto reproduces Magic's string-hash order of the why texts (Q-SCRIPT-8; M3 sorted them here). The rules are in `compare/drc_console.py`.
 
 Masks (`compare/masks.py`) fix fields that are documented as time-dependent: `gds-dates` (BGNLIB/BGNSTR dates), `mag-timestamp`, `ext-timestamp`, and `regex:<pattern>` for one-off fields. Two more remove Magic output of features outside M1 (design.md Non-Goals: DRC, extraction, mask output): `magic-tech-sections` drops exactly Magic's cifinput/cifoutput/extract messages printed by `tech load` (each pattern with its Magic source line), and `mag-checkpaint` drops the `<< checkpaint >>` section of a `.mag` file (areas Magic's DRC still has to check; DRC cases never carry it, and `CHECKPAINT_MASK_RETIRED` in `authoring/casegen.py` retires it from the M1/M2 cases once the M3 engine marks every edit as Magic does, m3-drc design D17). `magic-stamp-note` drops Magic's "writing out-of-date timestamp for CELL." note, which Magic and Hefesto print only when a save lands in the same wall-clock second as the cell's previous stamp; every `magic-console` output carries it by default (`authoring/casegen.py`), because any case that saves a cell can hit it (CMDEDIT-MISC-01 and TECH-G36 did in CI). A mask touches only its field, so it cannot hide a layout difference.
 

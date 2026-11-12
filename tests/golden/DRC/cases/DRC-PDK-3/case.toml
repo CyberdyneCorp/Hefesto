@@ -26,6 +26,30 @@ set = "ihp"
 path = "ihp-sg13g2/libs.tech/magic/ihp-sg13g2.tech"
 to = "ihp-sg13g2.tech"
 
+[[external]]
+source = "pdk"
+set = "ihp"
+path = "ihp-sg13g2/libs.tech/magic/ihp-sg13g2-cifout.tech"
+to = "ihp-sg13g2-cifout.tech"
+
+[[external]]
+source = "pdk"
+set = "ihp"
+path = "ihp-sg13g2/libs.tech/magic/ihp-sg13g2-cifin.tech"
+to = "ihp-sg13g2-cifin.tech"
+
+[[external]]
+source = "pdk"
+set = "ihp"
+path = "ihp-sg13g2/libs.tech/magic/ihp-sg13g2-drc.tech"
+to = "ihp-sg13g2-drc.tech"
+
+[[external]]
+source = "pdk"
+set = "ihp"
+path = "ihp-sg13g2/libs.tech/magic/ihp-sg13g2-extract.tech"
+to = "ihp-sg13g2-extract.tech"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

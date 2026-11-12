@@ -74,6 +74,11 @@ class ArgParser {
       set_value(arg, "--pdk-root", [this](std::string_view v) { result_.options.pdk_root = std::filesystem::path{v}; });
     } else if (is_option(arg, "--setting")) {
       set_value(arg, "--setting", [this](std::string_view v) { add_setting(v); });
+    } else if (is_option(arg, "--trust-pdk")) {
+      set_value(arg, "--trust-pdk", [this](std::string_view v) { result_.options.trust_pdk.emplace_back(v); });
+    } else if (is_option(arg, "--strip-reflibs")) {
+      set_value(arg, "--strip-reflibs",
+                [this](std::string_view v) { result_.options.strip_reflibs = std::filesystem::path{v}; });
     } else {
       fail("unknown option '" + std::string{arg} + "'");
     }
@@ -173,8 +178,13 @@ std::string usage_text() {
          "  --project=<dir>           project folder (default: . when it has hefesto.project)\n"
          "  --pdk-root=<dir>          PDK root (default: setting pdk-root, $PDK_ROOT, ~/.ciel)\n"
          "  --setting <name>=<value>  session setting (highest settings layer)\n"
+         "  --trust-pdk <selector>    let this PDK's scripts run (rc files, device scripts);\n"
+         "                            a family (sky130), variant (sky130A), variant@hash or\n"
+         "                            family/variant@version; repeatable. Batch runs decline\n"
+         "                            every other PDK script unless the PDK store trusts it\n"
          "  --magic ...               Magic's command line: -T, -d, -rcfile, -norcfile, -r,\n"
-         "                            cells and a .tcl script; commands from standard input\n"
+         "                            cells and a .tcl script, evaluated as Tcl in the\n"
+         "                            sandboxed interpreter; Tcl commands from standard input\n"
          "  -c <commands>             run commands, e.g. -c \"echo hi; version\"\n"
          "  --interactive             then read commands from standard input at a prompt\n"
          "                            ('%' idle, ']' while background DRC is busy); implied\n"
@@ -183,11 +193,14 @@ std::string usage_text() {
          "                            diagnostic format on stderr (default text); magic prints\n"
          "                            Magic's console text and each script command's result\n"
          "                            (golden replay against Magic)\n"
+         "  --strip-reflibs <dir>     remove the GDS_START/GDS_END lines of every .mag\n"
+         "                            file in <dir> (reference-library stripper) and exit\n"
          "  --log-dir=<dir>           session log directory (default: app storage)\n"
          "  --no-log                  do not write a session log\n"
          "  --diagnostic-codes[=AREA] print a diagnostic code table (Markdown); AREA is\n"
          "                            core (default), tech, db, cell, display, view, pdk,\n"
-         "                            app, undo, select, connect, ui, wiring, drc or hints\n"
+         "                            app, undo, select, connect, ui, wiring, drc, script,\n"
+         "                            pcell, tools, gui or hints\n"
          "  --version                 print the version and exit\n"
          "  -h, --help                print this help and exit\n"
          "\n"
