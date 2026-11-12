@@ -277,7 +277,7 @@ The framework SHALL provide these builders. Each appends a row (label in column 
 - `magic::add_selectindex pname text values P ?ival 0?`: choice menu whose variable holds the 0-based index, fallback `ival`. Widget `<pname>_sel`.
 - `magic::add_message pname text P ?color blue?`: read-only text. Widget `<pname>_txt`.
 
-`magic::gencell_getparams` SHALL return a dictionary of `pname → magic::<pname>_val` for every `_ent`, `_chk` and `_sel` widget in grid order. `magic::gencell_setparams P` SHALL write P into those widgets. It writes `_txt` only if the key exists, skips the pseudo-widget `gencell_sel`, and does nothing if no dialog exists.
+`magic::gencell_getparams` SHALL return a dictionary of `pname → magic::<pname>_val` for every `_ent`, `_chk` and `_sel` widget in the order Tk's `grid slaves` lists them: the last row first. `magic::gencell_setparams P` SHALL write P into those widgets. It writes `_txt` only if the key exists, skips the pseudo-widget `gencell_sel`, and does nothing if no dialog exists.
 
 The verified PDKs use `add_entry`, `add_checkbox`, `add_selectlist`, `add_message` and `add_dependency`, but not `add_selectindex`. `add_selectlist gencell "Device type" <compatible list> P <type>` provides the type switch (see "Parameter dictionary model"). PDK `_check` procedures also write the message variables directly, inside `catch`: `magic::ctot_val`, `atot_val`, `ptot_val`, `ltot_val`, `minfo_val`. When no dialog exists these writes create plain namespace variables and have no visible effect. The variables SHALL be ordinary script variables in the `magic` namespace, so that the writes never raise an error.
 Compatibility: behavioral

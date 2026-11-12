@@ -144,6 +144,12 @@ struct StartupEnvironment {
   /// startup file runs: the front end attaches its console (e.g. hefesto-cli's
   /// `puts` to its output streams). Not called when the interpreter existed.
   std::function<void(script::Interpreter&)> configure_interpreter;
+  /// Wrapper mode only (-d names a display other than NULL): called once the
+  /// startup layout window is open, before the command-line files load, as
+  /// Magic's magic.tcl.in calls `magic::openwrapper` there. The front end
+  /// wraps the window (gui::adopt_wrapper); hefesto-cli also installs its
+  /// headless widget model (gui::install_tk_model).
+  std::function<void()> open_wrapper;
 };
 
 /// "Installation root and search paths": the environment variable

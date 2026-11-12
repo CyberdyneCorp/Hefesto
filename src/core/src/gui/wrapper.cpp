@@ -16,6 +16,8 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gui/diag_codes.hpp"
+#include "hefesto/gui/tk_model.hpp"
+#include "hefesto/gui/toolbar_presets.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/script/pdk/widgets.hpp"
 #include "hefesto/script/project.hpp"
@@ -269,6 +271,24 @@ void intercept_widgets(editor::EditorState& editor, script::Interpreter& interp,
   project.interceptors.push_back(std::move(interceptor));
 }
 
+ToolbarOptions toolbar_options(const script::Interpreter& interp) {
+  return ToolbarOptions{var_text(interp, "Opts(hidespecial)") == "1", var_text(interp, "Opts(hidelocked)") == "1"};
+}
+
+// hefesto-cli's headless widget model (tk_model.hpp): the frame's widgets,
+// then the toolbar when `Winopts(F,toolbar)` is 1 (wrapper.tcl:1461-1464).
+void build_widgets(cmd::CommandContext& ctx, script::Interpreter& interp, const std::string& framename) {
+  CommandResult built = build_wrapper_widgets(interp, framename, wrapper_menu_model(ctx, framename));
+  if (built.ok() && var_text(interp, "Winopts(" + framename + ",toolbar)") == "1") {
+    built = build_toolbar_widgets(interp, framename + ".pane.top",
+                                  [&] { return build_toolbar(ctx, toolbar_options(interp)); });
+  }
+  if (!built.ok()) {
+    ctx.emit(diag::make_native(codes::kWrapperHook, "Wrapper widgets failed (ignored): " +
+                                                        (built.diagnostics.empty() ? std::string{} : built.diagnostics[0].text)));
+  }
+}
+
 // The common tail of openwrapper and adopt_wrapper (wrapper.tcl:1495-1584):
 // per-frame options, the window keys, widget interception, the hooks.
 void finish_wrapper(cmd::CommandContext& ctx, editor::EditorState& editor, script::Interpreter& interp,
@@ -280,7 +300,11 @@ void finish_wrapper(cmd::CommandContext& ctx, editor::EditorState& editor, scrip
     (void)interp.set_var("Winopts(" + framename + ",cmdentry)", cmd::Value{var_text(interp, "Opts(cmdentry)")});
   }
   override_window_keys(ctx);
-  intercept_widgets(editor, interp, framename);
+  if (has_tk_model(interp)) {
+    build_widgets(ctx, interp, framename);
+  } else {
+    intercept_widgets(editor, interp, framename);
+  }
   run_hooks(ctx, interp, {framename, framename + ".pane.top", wrapper_window_name(framename), std::string{cell}});
 }
 

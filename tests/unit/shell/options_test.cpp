@@ -92,6 +92,21 @@ TEST_CASE("the run option takes a command line", "[cap:hefesto-app-ux]") {
   CHECK(parsed.options->run == "load inv; zoom 2");
 }
 
+TEST_CASE("the drag option injects a left-button drag between window points",
+          "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
+  const std::vector<std::string_view> args{"--drag", "120,96.5,1400,300"};
+  const auto parsed = hefesto::shell::parse_shell_options(args);
+  REQUIRE(parsed.options);
+  REQUIRE(parsed.options->drag.has_value());
+  CHECK(parsed.options->drag->x0 == 120.0F);
+  CHECK(parsed.options->drag->y0 == 96.5F);
+  CHECK(parsed.options->drag->x1 == 1400.0F);
+  CHECK(parsed.options->drag->y1 == 300.0F);
+  for (const char* bad : {"1,2,3", "1,2,3,4,5", "a,b,c,d", "", "1,,2,3"}) {
+    CHECK_FALSE(hefesto::shell::parse_drag_option(bad).has_value());
+  }
+}
+
 TEST_CASE("the pinch option injects a trackpad pinch at a window point",
           "[cap:hefesto-input-and-touch][req:Desktop canvas gestures]") {
   const std::vector<std::string_view> args{"--pinch", "800,450.5,2.5"};

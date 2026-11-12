@@ -99,11 +99,6 @@ decisions = ["Q-CELL-42"]
 outputs = ["stdout.txt", "a_out.mag"]
 reason = "a property value longer than the line buffer does not keep the line feed of its last chunk"
 
-[CELL-PW-05]
-decisions = ["Q-CELL-20"]
-outputs = ["top.mag"]
-reason = "a PDK variable is substituted only when its value is followed by / or the end of the path, so a child under pdk2 is written with its full path; Magic writes $PDK_ROOT2/lib"
-
 [CELL-WR-06]
 decisions = ["Q-CELL-12"]
 outputs = ["a_out.mag"]
@@ -307,3 +302,8 @@ reason = "magic::normalize_value returns inf verbatim; Magic's round() raises 'i
 decisions = ["Q-SCRIPT-29"]
 outputs = ["stdout.txt"]
 reason = "the non-interactive change of M2 keeps its name without a dialog and replaces the generated cell; Magic's gencell_change reads .params.title.ient and fails with 'invalid command name'"
+
+[SCRIPT-GUI-02]
+decisions = ["Q-SCRIPT-13"]
+outputs = ["stdout.txt"]
+reason = "openwrapper also runs Winopts(<frame>,callback), the key without the space; Magic reads only Winopts(<frame>, callback), so the per-window callback the case sets never runs there"

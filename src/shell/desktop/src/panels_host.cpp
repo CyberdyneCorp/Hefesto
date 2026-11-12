@@ -19,9 +19,11 @@
 //   - the layout is restored at launch from panel-layout.json in the user's
 //     storage folder and saved after each change and on quit (not in a
 //     scripted capture, which must not touch the user's settings).
-// Dragging a header to a dock needs pointer press/move/release on a painted
-// widget, which the Raven wrapper does not expose yet (raven_ui.hpp; open
-// item in the m4-scripting tasks 11.2): the model's PanelDrag is ready for it.
+//   - dragging a header (Painted::on_drag, Raven's in-application drag with
+//     the title following the pointer) over a dock, the canvas column or an
+//     edge strip shows Raven's drop highlight there; the release issues the
+//     PanelDrag's `panel ID dock ZONE` or `panel ID float X Y W H`, Escape
+//     cancels and nothing changes.
 //
 // Owner: CARRY (openspec/changes/m4-scripting/design.md D2).
 
@@ -46,6 +48,11 @@ std::size_t zone_slot(DockZone zone) { return static_cast<std::size_t>(zone); }
 
 /// The frames' panel words, in build order (strip leaders only).
 constexpr std::array<std::string_view, 5> kFrameIds{"layers", "drc", "inspector", "techmanager", "console"};
+
+/// The type of a header drag (Raven's drag type; its data is the panel word).
+constexpr std::string_view kPanelDragType = "hefesto/panel";
+
+LayoutRect layout_rect(const ui::Rect& r) { return LayoutRect{r.x, r.y, r.width, r.height}; }
 
 /// Draws a header button's glyph (the icon set has no chevrons or dock glyphs).
 void header_glyph(ui::Painter& p, std::string_view icon, float x, float y, const Rgba& c) {
@@ -106,6 +113,7 @@ void MainWindow::build_panels() {
     frame->header->set_accessible_description("Enter collapses or expands; the context menu docks or floats it");
     frame->header->on_click([this, word](float x, float) { header_click(word, x); });
     frame->header->on_context([this, word](float x, float y) { open_panel_menu(word, x, y); });
+    frame->header->on_drag([this, word](float x, float y) { return begin_panel_drag(word, x, y); });
     frame->box.add(*frame->header);
     frame->box.add(*frame->content, 1.0F);
     frame->card->set_child(frame->box);
@@ -134,6 +142,14 @@ void MainWindow::build_panels() {
     strip->set_visible(false);
     strips_[slot] = std::move(strip);
   }
+  const auto drop = [this](ui::DropZone::Phase phase, float x, float y, std::string_view type, std::string_view) {
+    return panel_drop(phase, x, y, type);
+  };
+  for (const ui::Widget* zone : {static_cast<const ui::Widget*>(&side_docks_[0]),
+                                 static_cast<const ui::Widget*>(&side_docks_[1]), static_cast<const ui::Widget*>(&center_)}) {
+    drop_zones_.push_back(std::make_unique<ui::DropZone>(*zone, drop));
+  }
+  for (const auto& strip : strips_) drop_zones_.push_back(std::make_unique<ui::DropZone>(*strip, drop));
   // The saved layout of the last session (first launch: the default).
   const platform::Path file = platform::default_storage_dir() / std::string(kPanelLayoutFile);
   RestoredLayout restored = restore_panel_layout(ctx_.core.files(), file);
@@ -426,6 +442,53 @@ void MainWindow::strip_click(std::size_t zone, float y) {
     top = bottom;
   }
   run_line("panel " + ids.back() + " show");
+}
+
+// --- dragging a header ---------------------------------------------------------------------------
+
+std::optional<ui::Painted::DragData> MainWindow::begin_panel_drag(const std::string& id, float x, float y) {
+  const PanelFrame* f = frame(id);
+  if (f == nullptr || panels_.find(id) == nullptr) return std::nullopt;
+  panel_drag_.emplace(id, x, y, layout_rect(f->card->rect()));
+  return ui::Painted::DragData{std::string(kPanelDragType), id, frame_title(id)};
+}
+
+bool MainWindow::panel_drop(ui::DropZone::Phase phase, float x, float y, std::string_view type) {
+  if (type != kPanelDragType || !panel_drag_ || phase == ui::DropZone::Phase::leave) return false;
+  (void)panel_drag_->move(x, y, dock_geometry());
+  if (phase != ui::DropZone::Phase::drop) return true;
+  const std::optional<std::string> command = panel_drag_->drop_command();
+  panel_drag_.reset();
+  // After Raven's drop callback returns: the command rearranges the widgets.
+  if (command) {
+    run_when_ready(*command);
+    window_.request_redraw();
+  }
+  return true;
+}
+
+DockGeometry MainWindow::dock_geometry() const {
+  DockGeometry g;
+  g.window = panel_window_rect();
+  g.canvas = layout_rect(canvas_->widget().rect());
+  // A side dock is its box, or its edge strip while it shows one (a drop on
+  // the strip docks there); an empty dock is the band at the canvas edge.
+  const auto dock = [this](DockZone zone) {
+    const std::size_t slot = zone_slot(zone);
+    if (strip_panels_[slot].empty()) return LayoutRect{};
+    const LayoutRect strip = layout_rect(strips_[slot]->rect());
+    return strip.w > 0.0F ? strip : layout_rect(side_docks_[slot].rect());
+  };
+  g.left = dock(DockZone::left);
+  g.right = dock(DockZone::right);
+  for (const std::string& id : panels_.in(DockZone::bottom)) {
+    const auto it = std::find_if(frames_.begin(), frames_.end(), [&](const auto& f) { return f->id == id; });
+    if (it != frames_.end() && frame_state(id) != FrameState::hidden) {
+      const LayoutRect r = layout_rect((*it)->card->rect());
+      g.bottom = g.bottom.w > 0.0F ? LayoutRect{g.bottom.x, g.bottom.y, g.bottom.w, g.bottom.h + r.h} : r;
+    }
+  }
+  return g;
 }
 
 // --- saving ------------------------------------------------------------------------------------

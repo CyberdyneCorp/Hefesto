@@ -55,6 +55,8 @@ XVFB_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24"]
 # "Fontconfig error: No writable cache directories", which Hefesto has no reason to print.
 DISPLAY_ENVIRONMENT = {"XDG_CACHE_HOME": "/tmp/.cache"}
 CONTAINER_WORK = "/work"
+# Magic's CAD_ROOT in the image: its install prefix (Containerfile PREFIX=/opt/ref) + /lib.
+CONTAINER_CAD_ROOT = "/opt/ref/lib"
 
 
 def default_argv(case: Case) -> list[str]:

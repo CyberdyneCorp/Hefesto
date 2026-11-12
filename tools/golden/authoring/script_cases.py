@@ -525,6 +525,13 @@ def box_bodies() -> dict[str, dict]:
     }
 
 
+# The display styles of scmos's styletype `mos` that hefesto-cli reads from
+# $CAD_ROOT/magic/sys in wrapper mode, as Magic under X11 does (`feedback add`
+# with a long style name, SCRIPT-GUI-09; the OpenGL variant, X-5).
+MOS_STYLES = [{"source": "magic-sys", "path": path, "to": path.split("/")[1]}
+              for path in ("scmos/mos.OpenGL.dstyle", "scmos/mos.OpenGL.std.cmap", "graphics/color.glyphs")]
+
+
 def gui_bodies() -> dict[str, dict]:
     return {
         "SCRIPT-GUI-01": dict(gui=True, body=p("winfo children .layout1.pane.top", "windownames layout",
@@ -574,7 +581,7 @@ def gui_bodies() -> dict[str, dict]:
             p("libmanager create"), "catch {.libmgr.title.path delete 0 end; .libmgr.title.path insert 0 input/lib}",
             "update", "catch {magic::libmanager update}",
             "catch {foreach c [.libmgr.box.view children {}] { puts [.libmgr.box.view item $c -text] }}")),
-        "SCRIPT-GUI-09": dict(gui=True, outputs=["drc.out"], files={"err.mag": cell(
+        "SCRIPT-GUI-09": dict(gui=True, outputs=["drc.out"], external=list(MOS_STYLES), files={"err.mag": cell(
             "<< metal1 >>\nrect 0 0 2 10\nrect 4 0 10 10\n<< polysilicon >>\nrect 20 0 21 10\n")}, body=lines(
             "load err", "select top cell", "drc check", "drc catchup",
             p("drc listall why", "drc_save_report err drc.out", "feedback clear", "drc_load_report drc.out",

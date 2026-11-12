@@ -3,6 +3,8 @@
 
 #include "hefesto/shell/options.hpp"
 
+#include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <cstdlib>
@@ -92,6 +94,10 @@ bool apply_valued(ShellOptions& o, std::string_view name, std::string_view value
     o.pinch = parse_pinch_option(value);
     return o.pinch.has_value();
   }
+  if (name == "--drag") {
+    o.drag = parse_drag_option(value);
+    return o.drag.has_value();
+  }
   if (name == "--rects") return parse_value(value, o.rects);
   if (name == "--seed") return parse_value(value, o.seed);
   if (std::string* text = string_option(o, name)) {
@@ -151,11 +157,24 @@ std::optional<PinchOption> parse_pinch_option(std::string_view text) {
   return PinchOption{static_cast<float>(*x), static_cast<float>(*y), *factor};
 }
 
+std::optional<DragOption> parse_drag_option(std::string_view text) {
+  std::array<float, 4> v{};
+  for (std::size_t i = 0; i < v.size(); ++i) {
+    const std::size_t comma = i + 1 < v.size() ? text.find(',') : text.size();
+    if (comma == std::string_view::npos) return std::nullopt;
+    const auto value = parse_double(text.substr(0, comma));
+    if (!value) return std::nullopt;
+    v[i] = static_cast<float>(*value);
+    text.remove_prefix(std::min(comma + 1, text.size()));
+  }
+  return DragOption{v[0], v[1], v[2], v[3]};
+}
+
 std::string_view shell_usage() noexcept {
   return "usage: hefesto [-T tech] [-r] [-norcfile] [cell.mag ...]\n"
          "               [--theme dark|light] [--width PX] [--height PX] [--asset-dir DIR]\n"
          "               [--pdk-manager] [--console] [--no-vsync] [--validation]\n"
-         "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR]\n"
+         "               [--run 'CMD; CMD ...'] [--pinch X,Y,FACTOR] [--drag X0,Y0,X1,Y1]\n"
          "               [--capture FILE.ppm [--capture-frames N | --capture-running]]\n"
          "               [--rects N] [--seed N] [--bench-frames N] [--bench-output FILE]\n"
          "               [--smoke-frames N [--expect-window-system x11|wayland|cocoa]]\n";
