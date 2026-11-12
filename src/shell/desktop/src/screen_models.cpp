@@ -165,9 +165,10 @@ std::optional<std::string> undo_move_message(const UndoMark& before, const undo:
   const std::size_t now = log.position();
   if (log.step_count() != before.steps || now == before.position) return std::nullopt;  // a new step: no move
   const bool redo = now > before.position;
-  // Undo names the newest step it undid (the one before the old position),
-  // redo the oldest one it redid (the one at the old position).
-  const std::string label = log.step_label(redo ? before.position : before.position - 1);
+  // hefesto-app-ux "Undo two steps from the history": the message names the
+  // last step the log passed, i.e. the oldest step an undo undid (the one at
+  // the new position) and the newest step a redo redid (the one before it).
+  const std::string label = log.step_label(redo ? now - 1 : now);
   const std::string name = label.empty() ? std::string{} : menu_step_name(label);
   return undo_status_message(redo, name, redo ? log.step_count() - now : now);
 }

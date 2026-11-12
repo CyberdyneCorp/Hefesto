@@ -159,13 +159,14 @@ TEST_CASE("the undo history names each step after the command that made it",
   CHECK(h.entries[0].label == "↷ erase metal1");
   CHECK(h.entries[0].command == "redo 1");
   CHECK(next_undo_step(log, true) == "erase metal1");
-  // Scenario "Undo two steps from the history": the message names a step by its command.
+  // Scenario "Undo two steps from the history": the message names the older of the two
+  // undone steps by its command.
   REQUIRE(s.run("redo"));
   const UndoMark mark = undo_mark(log);
   REQUIRE(s.run("undo 2"));
   const auto moved = undo_move_message(mark, log);
   REQUIRE(moved.has_value());
-  CHECK(moved->starts_with("Undid erase metal1"));
+  CHECK(moved->starts_with("Undid " + next_undo_step(log, true)));
 }
 
 TEST_CASE("pressing and holding Undo opens the history; a short press undoes",
@@ -450,11 +451,12 @@ TEST_CASE("any command that moves the undo log names the step it passed",
   CHECK_FALSE(undo_move_message(mark, log).has_value());
   mark = undo_mark(log);
   const std::string top = next_undo_step(log, false);
-  // `undo 2`: names the newest undone step, counts the steps left.
+  // `undo 2`: names the older undone step (the next one to redo), counts the steps left.
   REQUIRE(s.run("undo 2"));
   const auto undid = undo_move_message(mark, log);
   REQUIRE(undid.has_value());
-  CHECK(undid->starts_with("Undid " + top));
+  CHECK(undid->starts_with("Undid " + next_undo_step(log, true)));
+  CHECK_FALSE(undid->starts_with("Undid " + top));
   CHECK(undid->find(std::to_string(log.position()) + " more step") != std::string::npos);
   // `redo` through a multi-command line: names the step it redid.
   mark = undo_mark(log);
