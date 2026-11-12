@@ -37,8 +37,9 @@ step children {lsort [cellname list children alpha]}
 step drc {select top cell; drc check; drc catchup}
 step why {drc listall why}
 step count {drc list count total}
-# Save the design and every generated cell: all modified cells (the library cells are not).
+# Save the design and every generated cell: the modified cells only. `writeall force`
+# would also write the unmodified library cells (Magic does so for any writable file).
 select top cell
-step save {writeall force}
+step save {writeall modified}
 step saved {lsort [glob -nocomplain *.mag]}
 quit -noprompt

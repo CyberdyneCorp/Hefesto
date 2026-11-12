@@ -205,3 +205,30 @@ TEST_CASE("select save writes the selection as a cell file", "[cap:cmd-selection
   CHECK(text.value().find("rect 0 0 10 10") != std::string::npos);
   CHECK(s.editor.cells.find("picked") == nullptr);  // the selection cell stays internal
 }
+
+TEST_CASE("placing, moving and listing the abutment of a library instance leave the library cell unmodified",
+          "[cap:cmd-hierarchy][req:Writeall command]") {
+  // Regression (Desktop Alpha save step): the CELL-IO-003 errors on the
+  // PDK's nand2_1.mag came from `writeall force`, which writes every
+  // writable cell in Magic too, not from a modified flag on the library cell.
+  Session s;
+  REQUIRE(hefesto::select::register_select_commands(s.registry));
+  s.write("/work/lib/nand.mag", "magic\ntech tiny\ntimestamp 5\n<< metal1 >>\nrect 0 0 10 10\n<< end >>\n");
+  s.editor.search_paths.path.push_back("/work/lib");
+  s.box(0, 0, 0, 0);
+  s.ok("getcell nand");
+  hefesto::db::CellDef* nand = s.editor.cells.find("nand");
+  REQUIRE(nand != nullptr);
+  CHECK_FALSE(nand->flags().modified);
+  s.ok("move e 5");
+  (void)s.run("instance list abutment nand_0");
+  CHECK_FALSE(nand->flags().modified);
+  CHECK(s.top->flags().modified);
+  s.top->set_file_path("/work/top");
+  const auto modified = s.run("writeall modified");
+  REQUIRE(modified.ok());
+  CHECK(mentions(modified, "Writing 'top'"));
+  CHECK_FALSE(mentions(modified, "Writing 'nand'"));
+  // `writeall force` writes every writable cell, unmodified ones too (Magic's cmdWriteallFunc).
+  CHECK(mentions(s.run("writeall force"), "Writing 'nand'"));
+}
