@@ -239,3 +239,36 @@ reason = "switching the output style with cif ostyle and the mask-layer check ar
 decisions = ["Q-DRC-22"]
 outputs = ["stderr.txt"]
 reason = "drc list/listall without an option prints the help instead of reading a stale argument of the previous command (Magic prints 'wizard isn't a valid drc option.' and 'll isn't a valid drc option.')"
+
+# --- SCRIPT -----------------------------------------------------------------
+
+[SCRIPT-API-16]
+deferred = "M7"
+outputs = ["stdout.txt", "top.ext", "top2.ext"]
+reason = "the case reads $SUB through extract all, and the extractor arrives with extraction (the extraction-side scenarios of \"Script variables read by the engine\" are M7's)"
+
+[SCRIPT-AUX-02]
+decisions = ["Q-SCRIPT-30"]
+deferred = "M10"
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "mazeroute drives iroute, so it is implemented with the maze router; until then it reports that it arrives with router-maze-iroute"
+
+[SCRIPT-RSP-02]
+decisions = ["Q-SCRIPT-32"]
+outputs = ["stdout.txt"]
+reason = "readspice reports 'port order was modified' only when an index changed; Magic compares each pin's moved-out index with n and reports every cell that already had named ports"
+
+[SCRIPT-API-08]
+decisions = ["Q-SCRIPT-3"]
+outputs = ["stdout.txt"]
+reason = "tag %-substitution inserts each value as one list-quoted word in one pass; Magic pastes the window path and arguments raw, so its tag script fails with 'extra characters after close-quote'"
+
+[SCRIPT-API-11]
+decisions = ["Q-SCRIPT-3"]
+outputs = ["stdout.txt"]
+reason = "tag %r inserts the result as one list-quoted word; Magic wraps it in unescaped double quotes, so a result with quotes or brackets breaks its tag script ('extra characters after close-quote')"
+
+[SCRIPT-PDK-11]
+decisions = ["Q-SCRIPT-41"]
+outputs = ["stderr.txt"]
+reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"

@@ -1,0 +1,41 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+1 {No stack}
+1 {No stack}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   5.000 x 5.000   ( 0.000,  0.000), ( 5.000,  5.000)  25.000    
+lambda:        5 x 5       (     0,  0    ), (     5,  5    )  25        
+0 {}
+0 {0 0 5 5}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   1.000 x 1.000   ( 1.000,  1.000), ( 2.000,  2.000)  1.000     
+lambda:        1 x 1       (     1,  1    ), (     2,  2    )  1         
+0 {}
+0 {0 0 5 5}
+0 {1 1 6 6}
+0 {10 10 30 50}
+0 {10 10 30 50}
+1 {No stack}

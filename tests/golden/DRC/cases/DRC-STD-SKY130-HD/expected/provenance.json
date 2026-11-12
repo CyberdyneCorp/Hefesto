@@ -9,7 +9,7 @@
   "runner": "container",
   "reference_captured": true,
   "image": "hefesto-golden:ci",
-  "image_id": "sha256:343cdbc692f8acf53610ac02fb455f0f0e3b64d6acc8afd9162ab1fa7aab6fdf",
+  "image_id": "sha256:95e9279d119285873d94a2c370794f4c6f0f4fd06a94291b03df13d34dfc7b56",
   "image_repo_digests": [],
   "command": [
     "magic",
@@ -21,10 +21,10 @@
     "TZ": "UTC",
     "LC_ALL": "C"
   },
-  "captured_at": "2026-11-12T02:49:00Z",
+  "captured_at": "2026-11-12T02:53:58Z",
   "outputs": {
     "drc_sections.txt": "7446161c21b8a6ee7aa5b024ef11d9103cc22ede1cb19e2336681a1d248ca829",
     "stderr.txt": "14d6f4b66b4da3096399694e1db3fd9585745db1f5d3054d3091bf526c5d01ee",
-    "stdout.txt": "e718c1c78489b1f66536f24aecdf5eaf864a020467028198988ae175cec1ddc2"
+    "stdout.txt": "a9adcc869ee87c33e84a988aad1af0403f36118eef0be4726324860079d52998"
   }
 }

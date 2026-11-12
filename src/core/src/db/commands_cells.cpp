@@ -223,6 +223,11 @@ CommandResult cellname_create(const cu::Session& s, const std::vector<std::strin
   if (args.size() != 2) {
     return cellname_usage();
   }
+  // CmdCellname IDX_CREATE: an existing cell is left as it is, silently (gencell
+  // re-creates a generated cell whose parameters hash to the same name).
+  if (s.editor->cells.find(args[1]) != nullptr) {
+    return CommandResult::success();
+  }
   auto made = s.editor->cells.create(args[1], s.tech->plane_count());
   if (!made.ok()) {
     return cu::fail(made.error());

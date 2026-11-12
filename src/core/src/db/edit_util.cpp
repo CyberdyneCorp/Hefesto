@@ -99,7 +99,9 @@ void set_box(editor::EditorState& editor, CellDef* root, std::optional<Rect> are
 diag::Outcome<Rect> edit_box(const cmdutil::Session& s) {
   const editor::EditorState& ed = *s.editor;
   if (!ed.box) {
-    return diag::make(codes::kNoBox, "Box tool must be present");
+    // ToolGetEditBox's text (dbwind/DBWtools.c); "Box tool must be present" is ToolGetBox's
+    // callers' (box, select box|chunk|region|net, element inbox).
+    return diag::make(codes::kNoBox, "Box must be present");
   }
   if (ed.edit_cell == nullptr || box_root(ed) != edit_root(ed)) {
     return diag::make(codes::kBoxNotInEditWindow, "The box isn't in a window on the edit cell.");

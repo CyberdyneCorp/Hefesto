@@ -25,17 +25,16 @@ CASES = {
     "DESKTOP-ALPHA-SKY130": ("sky130", "sky130A", [
         "libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag",
         "libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__nand2_1.mag",
-        "libs.ref/sky130_fd_pr/mag/sky130_fd_pr__npn_05v5_W1p00L1p00.mag"]),
+        "libs.ref/sky130_fd_pr/mag/sky130_fd_pr__rf_npn_05v5_W1p00L1p00.mag"]),
     "DESKTOP-ALPHA-GF180MCU": ("gf180mcu", "gf180mcuD", [
         "libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/gf180mcu_fd_sc_mcu7t5v0__inv_1.mag",
         "libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag/gf180mcu_fd_sc_mcu7t5v0__nand2_1.mag",
         "libs.ref/gf180mcu_fd_pr/mag/npn_10p00x10p00_0.mag"]),
     "DESKTOP-ALPHA-SG13G2": ("sg13g2", "ihp-sg13g2", []),
 }
-# The fixed-device cells live in libs.ref/<pdk>_fd_pr/mag, which the pinned data sets of
-# scripts/fetch_pdk.py do not include yet (m4-scripting tasks.md 12.6 open item).
-NOTE_FD_PR = ("Needs the fixed-device library (libs.ref/*_fd_pr/mag) in the pinned data set "
-              "(scripts/fetch_pdk.py); capture fails until it is added.")
+# The fixed devices place a libs.ref/<pdk>_fd_pr/mag cell with `getcell`; sky130's
+# sky130_fd_pr__npn_05v5_W1p00L1p00 draws sky130_fd_pr__rf_npn_05v5_W1p00L1p00 (sky130A-fix.tcl).
+NOTE_FD_PR = "Reads the fixed device's cell from libs.ref/*_fd_pr/mag of the pinned data set (scripts/fetch_pdk.py)."
 
 M4_NOT_AUTHORED: dict[str, str] = {}
 

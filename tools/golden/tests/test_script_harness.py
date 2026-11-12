@@ -81,6 +81,15 @@ class DisplayTest(unittest.TestCase):
             self.assertIn("--init", ContainerRunner("img").argv(gui, Path(tmp)))
             self.assertNotIn("--init", ContainerRunner("img").argv(plain, Path(tmp)))
 
+    def test_display_cases_get_a_writable_fontconfig_cache(self):
+        # Regression: the GUI captures' stderr began with Fontconfig's "No writable cache
+        # directories" (the container user's HOME is /).
+        with tempfile.TemporaryDirectory() as tmp:
+            gui = load_case(case_with(Path(tmp) / "a", "", 'display = "xvfb"\n'))
+            plain = load_case(case_with(Path(tmp) / "b", ""))
+            self.assertIn("XDG_CACHE_HOME=/tmp/.cache", ContainerRunner("img").argv(gui, Path(tmp)))
+            self.assertNotIn("XDG_CACHE_HOME=/tmp/.cache", ContainerRunner("img").argv(plain, Path(tmp)))
+
     def test_unknown_display_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(CaseError):

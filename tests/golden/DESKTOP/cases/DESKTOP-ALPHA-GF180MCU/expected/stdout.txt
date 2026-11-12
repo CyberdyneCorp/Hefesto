@@ -1,0 +1,84 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology gf180mcuD ...
+10 Magic internal units = 1 Lambda
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 10 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+tech 0 gf180mcuD
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+Cell gf180mcu_fd_sc_mcu7t5v0__inv_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+inv 0 gf180mcu_fd_sc_mcu7t5v0__inv_1_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 5.000,  0.000), ( 5.000,  0.000)
+lambda:     0.00 x 0.00    ( 100.00,  0.00 ), ( 100.00,  0.00 )
+internal:      0 x 0       (  1000,  0    ), (  1000,  0    )
+Cell gf180mcu_fd_sc_mcu7t5v0__nand2_1 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+nand 0 gf180mcu_fd_sc_mcu7t5v0__nand2_1_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 0.500   ( 0.000, -3.000), ( 4.000, -2.500)  2.000     
+lambda:    80.00 x 10.00   (  0.00, -60.00), ( 80.00, -50.00)  800.00    
+internal:    800 x 100     (     0, -600  ), (   800, -500  )  80000     
+paint 0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000, -2.750), ( 0.000, -2.750)
+lambda:     0.00 x 0.00    (  0.00, -55.00), (  0.00, -55.00)
+internal:      0 x 0       (     0, -550  ), (     0, -550  )
+label 0 {}
+move 0 {1200 0 1760 784}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 20.000,  10.000), ( 20.000,  10.000)
+lambda:     0.00 x 0.00    ( 400.00,  200.00), ( 400.00,  200.00)
+internal:      0 x 0       (  4000,  2000 ), (  4000,  2000 )
+mosfet 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 40.000,  10.000), ( 40.000,  10.000)
+lambda:     0.00 x 0.00    ( 800.00,  200.00), ( 800.00,  200.00)
+internal:      0 x 0       (  8000,  2000 ), (  8000,  2000 )
+Cell npn_10p00x10p00_0 read from path /work/input/pdk/gf180mcuD/libs.ref/gf180mcu_fd_pr/mag
+fixed 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 60.000,  10.000), ( 60.000,  10.000)
+lambda:     0.00 x 0.00    ( 1200.00,  200.00), ( 1200.00,  200.00)
+internal:      0 x 0       ( 12000,  2000 ), ( 12000,  2000 )
+tcl-only 0 0
+children 0 {gf180mcu_fd_sc_mcu7t5v0__inv_1 gf180mcu_fd_sc_mcu7t5v0__nand2_1 nfet_03v3_QQRGJ8 npn_10p00x10p00_0 ppolyf_u_9E2Y98}
+Loading DRC CIF style.
+drc 0 after#2
+why 0 {{This layer can't abut or partially overlap between subcells} {{12449 2173 12509 2636} {12463 2636 12509 4786} {12449 2173 12509 2636} {12463 2636 12509 4786} {12449 2080 12495 2173} {12449 2173 12509 2636} {12449 2080 12495 2173} {12449 2173 12509 2636}} {Deep N-well spacing to P-well < 1.5um (LPW.11)} {{11640 2776 11944 3076} {11640 2584 11940 3076}} {Deep N-well surround P-well < 2.5um (LPW.3)} {{11940 2584 11944 2776} {11940 2584 11944 2776}} {Metal1 minimum area < 0.1444um^2 (M1.3)} {{4188 2255 4199 2301} {4104 2163 4115 2209} {4272 2163 4283 2209} {4188 2071 4199 2117}} {Diffusion contact spacing < 0.24um (CO.2a - 2 * CO.6)} {{11979 2080 12023 2113} {11979 2080 12023 2113} {11979 2080 12023 2113}}}
+count 0 9
+Writing 'ppolyf_u_9E2Y98'
+Writing 'alpha'
+Writing 'nfet_03v3_QQRGJ8'
+save 0 {}
+saved 0 {alpha.mag nfet_03v3_QQRGJ8.mag ppolyf_u_9E2Y98.mag}

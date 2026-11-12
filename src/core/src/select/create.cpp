@@ -333,6 +333,9 @@ diag::Outcome<Context> context(cmd::CommandContext& ctx) {
   c.ed = c.s.editor;
   c.tech = c.s.tech;
   c.ed->selection.prune(c.ed->cells);
+  // The edit operations walk the selection cell: before the first selection it must exist
+  // (empty), or `delete`, `move`, `array`, ... dereferenced a null cell (SCRIPT-PCELL-11).
+  c.ed->selection.ensure_cell(c.tech->plane_count());
   if (const view::LayoutWindow* w = c.ed->windows.current(); w != nullptr && w->root() != nullptr) {
     c.root = w->root();
     c.descend = [w](const db::CellUse& u) { return w->is_expanded(u); };

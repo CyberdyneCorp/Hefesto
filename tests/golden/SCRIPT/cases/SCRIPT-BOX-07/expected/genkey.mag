@@ -1,0 +1,11 @@
+magic
+tech scmos
+timestamp 1794452661
+<< checkpaint >>
+rect -14 -14 18 18
+rect -14 -114 20 -80
+<< polysilicon >>
+rect 0 0 4 4
+<< metal1 >>
+rect 0 -100 6 -94
+<< end >>

@@ -1,0 +1,178 @@
+file alpha.mag
+magic
+tech gf180mcuD
+magscale 1 5
+timestamp 1794452603
+<< error_s >>
+rect 5820 1292 5972 1538
+rect 6231 1318 6254 2393
+rect 2094 1127 2099 1150
+rect 2052 1081 2057 1104
+rect 2136 1081 2141 1104
+rect 6224 1086 6254 1318
+rect 2094 1035 2099 1058
+rect 5989 1040 6011 1056
+rect 6224 1040 6247 1086
+<< metal1 >>
+rect 0 -300 400 -250
+use gf180mcu_fd_sc_mcu7t5v0__inv_1  gf180mcu_fd_sc_mcu7t5v0__inv_1_0 $PDKPATH/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+timestamp 2126843039
+transform 1 0 0 0 1 0
+box -43 -43 267 435
+use gf180mcu_fd_sc_mcu7t5v0__nand2_1  gf180mcu_fd_sc_mcu7t5v0__nand2_1_0 $PDKPATH/libs.ref/gf180mcu_fd_sc_mcu7t5v0/mag
+timestamp 573212467
+transform 1 0 600 0 1 0
+box -43 -43 323 435
+use nfet_03v3_QQRGJ8  M1
+timestamp 1794452603
+transform 1 0 2111 0 1 1093
+box -141 -123 141 123
+use npn_10p00x10p00_0  Q1 $PDKPATH/libs.ref/gf180mcu_fd_pr/mag
+timestamp 233019928
+transform 1 0 4632 0 1 1632
+box -632 -632 1632 1632
+use ppolyf_u_9E2Y98  R1
+timestamp 1794452603
+transform 1 0 6118 0 1 1179
+box -148 -209 148 209
+<< labels >>
+rlabel metal1 0 -275 0 -275 0 VIN
+<< end >>
+file nfet_03v3_QQRGJ8.mag
+magic
+tech gf180mcuD
+magscale 1 10
+timestamp 1794452603
+<< error_p >>
+rect -34 69 -23 115
+rect -118 -23 -107 23
+rect 50 -23 61 23
+rect -34 -115 -23 -69
+<< pwell >>
+rect -282 -246 282 246
+<< nmos >>
+rect -28 -22 28 22
+<< ndiff >>
+rect -120 23 -48 36
+rect -120 -23 -107 23
+rect -61 22 -48 23
+rect 48 23 120 36
+rect 48 22 61 23
+rect -61 -22 -28 22
+rect 28 -22 61 22
+rect -61 -23 -48 -22
+rect -120 -36 -48 -23
+rect 48 -23 61 -22
+rect 107 -23 120 23
+rect 48 -36 120 -23
+<< ndiffc >>
+rect -107 -23 -61 23
+rect 61 -23 107 23
+<< psubdiff >>
+rect -258 150 258 222
+rect -258 106 -186 150
+rect -258 -106 -245 106
+rect -199 -106 -186 106
+rect 186 106 258 150
+rect -258 -150 -186 -106
+rect 186 -106 199 106
+rect 245 -106 258 106
+rect 186 -150 258 -106
+rect -258 -222 258 -150
+<< psubdiffcont >>
+rect -245 -106 -199 106
+rect 199 -106 245 106
+<< polysilicon >>
+rect -36 115 36 128
+rect -36 69 -23 115
+rect 23 69 36 115
+rect -36 56 36 69
+rect -28 22 28 56
+rect -28 -56 28 -22
+rect -36 -69 36 -56
+rect -36 -115 -23 -69
+rect 23 -115 36 -69
+rect -36 -128 36 -115
+<< polycontact >>
+rect -23 69 23 115
+rect -23 -115 23 -69
+<< metal1 >>
+rect -245 163 245 209
+rect -245 106 -199 163
+rect -34 69 -23 115
+rect 23 69 34 115
+rect 199 106 245 163
+rect -118 -23 -107 23
+rect -61 -23 -50 23
+rect 50 -23 61 23
+rect 107 -23 118 23
+rect -245 -163 -199 -106
+rect -34 -115 -23 -69
+rect 23 -115 34 -69
+rect 199 -163 245 -106
+rect -245 -209 245 -163
+<< labels >>
+rlabel ndiffc -84 0 -84 0 0 D
+port 1 nsew
+rlabel ndiffc 84 0 84 0 0 S
+port 2 nsew
+rlabel polycontact 0 92 0 92 0 G
+port 3 nsew
+<< properties >>
+string FIXED_BBOX -222 -186 222 186
+string gencell nfet_03v3
+string library gf180mcu
+string parameters w 0.220 l 0.280 m 1 nf 1 diffcov 100 polycov 100 guard 1 glc 1 grc 1 gtc 0 gbc 0 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.28 wmin 0.22 class mosfet full_metal 1 viasrc 0 viadrn 0 viagate 0 viagb 0 viagr 0 viagl 0 viagt 0 doports 1 compatible {nfet_03v3 nfet_05v0 nfet_06v0 nfet_06v0_nvt}
+<< end >>
+file ppolyf_u_9E2Y98.mag
+magic
+tech gf180mcuD
+magscale 1 10
+timestamp 1794452603
+<< pwell >>
+rect -296 -418 296 418
+<< psubdiff >>
+rect -272 322 272 394
+rect -272 278 -200 322
+rect -272 -278 -259 278
+rect -213 -278 -200 278
+rect 200 278 272 322
+rect -272 -322 -200 -278
+rect 200 -278 213 278
+rect 259 -278 272 278
+rect 200 -322 272 -278
+rect -272 -394 272 -322
+<< psubdiffcont >>
+rect -259 -278 -213 278
+rect 213 -278 259 278
+<< polysilicon >>
+rect -80 189 80 202
+rect -80 143 -67 189
+rect 67 143 80 189
+rect -80 100 80 143
+rect -80 -143 80 -100
+rect -80 -189 -67 -143
+rect 67 -189 80 -143
+rect -80 -202 80 -189
+<< polycontact >>
+rect -67 143 67 189
+rect -67 -189 67 -143
+<< ppolyres >>
+rect -80 -100 80 100
+<< metal1 >>
+rect -259 335 259 381
+rect -259 278 -213 335
+rect 213 278 259 335
+rect -78 143 -67 189
+rect 67 143 78 189
+rect -78 -189 -67 -143
+rect 67 -189 78 -143
+rect -259 -335 -213 -278
+rect 213 -335 259 -278
+rect -259 -381 259 -335
+<< properties >>
+string FIXED_BBOX -236 -358 236 358
+string gencell ppolyf_u
+string library gf180mcu
+string parameters w 0.80 l 1.00 m 1 nx 1 wmin 0.80 lmin 1.00 class resistor rho 315 val 423.956 dummy 0 dw 0.057 term 0.0 sterm 0.0 caplen 0.4 snake 0 guard 1 guard_type pwell glc 1 grc 1 gtc 0 gbc 0 roverlap 0 endcov 100 full_metal 1
+<< end >>
