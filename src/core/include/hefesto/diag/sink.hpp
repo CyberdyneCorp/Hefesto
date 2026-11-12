@@ -31,6 +31,9 @@ class CollectingSink final : public DiagnosticSink {
   /// Moves the collected diagnostics out and leaves the sink empty.
   [[nodiscard]] std::vector<Diagnostic> take();
   [[nodiscard]] std::vector<Diagnostic> snapshot() const;
+  /// The diagnostics collected from index `first` on (none when there are
+  /// fewer).
+  [[nodiscard]] std::vector<Diagnostic> snapshot_from(std::size_t first) const;
   [[nodiscard]] bool has_errors() const;
 
  private:

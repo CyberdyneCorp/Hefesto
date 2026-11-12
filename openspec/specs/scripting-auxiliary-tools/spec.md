@@ -101,7 +101,7 @@ The `magic` launcher script SHALL choose the interpreter as follows:
 2. With `-noconsole`, it SHALL exec `magicexec`, a Tk shell whose startup file is `magic.tcl`.
 3. With `-noconsole -dnull`, `--version`, `--commit` or `--prefix`, it SHALL exec `magicdnull -nowrapper <args>`, a plain Tcl shell whose startup file is `magic.tcl` and which sets the global `batch_mode` to `true`.
 
-Arguments SHALL be passed with their quoting preserved.
+Arguments SHALL be passed with their quoting preserved. The interpreter's globals `argv` and `argc` are therefore: for tkcon, the words without `-dnull` and `-noc…`; for `magicexec`, every word; for `magicdnull`, `-nowrapper` followed by every word. `hefesto-cli --magic` starts its interpreter with the same `argv`, `argc` and `batch_mode` for its Magic options.
 Compatibility: informative
 
 (Magic ref: tcltk/magic.sh.in:1-72, tcltk/magicdnull.c:25-61, tcltk/magicexec.c:60-87)
@@ -109,6 +109,10 @@ Compatibility: informative
 #### Scenario: Batch mode flag
 - **WHEN** `magic -dnull -noconsole` starts
 - **THEN** the global `batch_mode` SHALL be `true`
+
+#### Scenario: Batch argv
+- **WHEN** `magic -dnull -noconsole -norc s.tcl a.gds` starts
+- **THEN** the global `argv` SHALL be `-nowrapper -dnull -noconsole -norc s.tcl a.gds`
 
 ### Requirement: Legacy gencell toolkit revision 0
 `toolkit_rev0.tcl` is installed but not loaded. It is superseded by `toolkit.tcl`. Its contract SHALL be documented for migration only. Each device provides `<lib>::<type>_params`, `_check` and `_draw`, all taking the cell name `gname`. Parameters are stored as individual cell properties (`cellname property gname <pname> <value>`) and not as one dictionary. Generated cells are named `<type>_<n>`, where n is the first integer, counting up from 1, for which no loaded cell has that name. Control-P is bound to `magic::gen_params`. Hefesto SHALL be able to open cells produced by it as ordinary cells with properties.

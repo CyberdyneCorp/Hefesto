@@ -336,6 +336,18 @@ class Session {
   // The CLI's console in the project's interpreter: `puts` to stdout and
   // stderr writes to this session's streams (in order with the diagnostics);
   // other channels go to Tcl's own `puts`, kept as ::hefesto::tcl_puts.
+  // The globals the `magic` launcher's Tcl shell starts with (`argv`,
+  // `argc`, and `batch_mode` under `-dnull -noconsole`).
+  void set_launcher_variables(script::Interpreter& interp) const {
+    const tools::LauncherVariables vars = tools::launcher_variables(options_.magic_args);
+    cmd::Value::List words(vars.argv.begin(), vars.argv.end());
+    static_cast<void>(interp.set_var("::argc", cmd::Value{static_cast<std::int64_t>(words.size())}));
+    static_cast<void>(interp.set_var("::argv", cmd::Value{std::move(words)}));
+    if (vars.batch_mode) {
+      static_cast<void>(interp.set_var("::batch_mode", cmd::Value{"true"}));
+    }
+  }
+
   void install_console(script::Interpreter& interp) {
     const auto renamed = interp.evaluate("namespace eval ::hefesto {}; rename ::puts ::hefesto::tcl_puts");
     if (!renamed.ok()) {
@@ -364,7 +376,8 @@ class Session {
     }
     const std::string& text = a.back();
     std::FILE* stream = channel == "stdout" ? out_ : err_;
-    magic_console_.flush();  // a pending TxError line comes first
+    dispatcher_->flush_running();  // the running command's messages so far come first
+    magic_console_.flush();        // a pending TxError line comes first
     std::fwrite(text.data(), 1, text.size(), stream);
     if (!nonewline) {
       std::fputc('\n', stream);
@@ -390,7 +403,12 @@ class Session {
     env.pdk_root = options_.pdk_root;
     env.user_preferences = platform::default_storage_dir() / "preferences.json";
     env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
-    env.configure_interpreter = [this](script::Interpreter& interp) { install_console(interp); };
+    env.configure_interpreter = [this](script::Interpreter& interp) {
+      install_console(interp);
+      if (options_.magic_mode) {
+        set_launcher_variables(interp);
+      }
+    };
     return env;
   }
 

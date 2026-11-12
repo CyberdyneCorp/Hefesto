@@ -222,15 +222,16 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
   }
   Invocation resolved = invocation;
   CommandResult result;
+  std::size_t reported = 0;
   if (found.status == LookupStatus::found && magic_ambiguous(invocation.name, client)) {
     result = quiet_ambiguity(invocation);
   } else if (found.status == LookupStatus::found) {
     resolved.name = found.spec->name;
-    result = run_handler(*found.spec, resolved);
+    result = run_handler(*found.spec, resolved, reported);
   } else {
     result = lookup_failure(found.status, invocation, registry_, client);
   }
-  after_command(invocation, resolved, result);
+  after_command(invocation, resolved, result, reported);
   if (editor_ != nullptr) {
     if (defaulted) {
       drop_default_point(saved_pixel);
@@ -243,7 +244,8 @@ CommandResult Dispatcher::execute(const Invocation& invocation) {
   return result;
 }
 
-void Dispatcher::after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result) {
+void Dispatcher::after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result,
+                               std::size_t reported) {
   if (editor_ != nullptr && ui::state(*editor_).interrupt_pending.exchange(false)) {
     result.diagnostics.push_back(diag::make(ui::codes::kInterrupted, "[Interrupted]"));
   }
@@ -256,7 +258,7 @@ void Dispatcher::after_command(const Invocation& typed, const Invocation& resolv
   if (editor_ != nullptr) {
     ui::log_command(*editor_, services_.files, result.logged_as ? logged : typed);
   }
-  publish(logged, result);
+  publish(logged, result, reported);
   if (editor_ == nullptr) {
     return;
   }
@@ -268,7 +270,17 @@ void Dispatcher::after_command(const Invocation& typed, const Invocation& resolv
   }
 }
 
-CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation& invocation) {
+void Dispatcher::flush_running() {
+  for (Running& r : running_) {
+    for (const diag::Diagnostic& d : r.collected->snapshot_from(r.reported)) {
+      report(d);
+      ++r.reported;
+    }
+  }
+}
+
+CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation& invocation, std::size_t& reported) {
+  flush_running();
   diag::CollectingSink collected;
   LiveSink sink{collected, live_sinks_};
   // Security finding S-02: the engine commands of a script (or of a key
@@ -285,12 +297,15 @@ CommandResult Dispatcher::run_handler(const CommandSpec& spec, const Invocation&
     saved_client = std::exchange(ui::state(*editor_).client, target_client());
   }
   CommandResult result;
+  running_.push_back(Running{&collected, 0});
   try {
     result = spec.handler(context, invocation);
   } catch (const std::exception& e) {
     result = CommandResult::failure(diag::make(diag::codes::kCmdInternal,
                                                "command '" + invocation.name + "' failed internally: " + e.what()));
   }
+  reported = running_.back().reported;
+  running_.pop_back();
   if (editor_ != nullptr) {
     ui::state(*editor_).client = std::move(saved_client);
   }
@@ -311,9 +326,9 @@ void Dispatcher::report(const diag::Diagnostic& diagnostic) {
   services_.logger.log(diagnostic);
 }
 
-void Dispatcher::publish(const Invocation& invocation, const CommandResult& result) {
-  for (const auto& d : result.diagnostics) {
-    report(d);
+void Dispatcher::publish(const Invocation& invocation, const CommandResult& result, std::size_t reported) {
+  for (std::size_t i = reported; i < result.diagnostics.size(); ++i) {
+    report(result.diagnostics[i]);
   }
   const std::vector<CommandObserver*> observers = observers_;  // see report()
   for (auto* observer : observers) {

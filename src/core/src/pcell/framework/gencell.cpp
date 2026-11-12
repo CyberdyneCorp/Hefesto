@@ -69,11 +69,12 @@ cmd::CommandResult edit_selection(Toolkit& tk) {
   const std::vector<std::string> pair = first_selected(tk);
   const std::string instance = !pair.empty() ? pair[0] : std::string{};
   const std::string cell = pair.size() > 1 ? pair[1] : std::string{};
-  std::string library = tk.query({"cellname", "list", "property", cell, "library"});
+  // Printed like Magic ("Unknown cell " when nothing is selected).
+  std::string library = tk.engine({"cellname", "list", "property", cell, "library"});
   if (library.empty()) {
     library = "toolkit";
   }
-  std::string type = tk.query({"cellname", "list", "property", cell, "gencell"});
+  std::string type = tk.engine({"cellname", "list", "property", cell, "gencell"});
   if (type.empty()) {
     std::smatch m;
     if (!std::regex_match(cell, m, std::regex{"^(.*)_[0-9]*$"})) {
@@ -90,6 +91,14 @@ cmd::CommandResult edit_selection(Toolkit& tk) {
     return raise_outcome(parameters.error());
   }
   return detail::open_dialog(tk, instance, type, library, parameters.value());
+}
+
+// magic::gencell calls the toolkit's Tcl procedures by name, so a script
+// that redefines one (toolkit_rev0.tcl) or traces it sees the call: the
+// procedure is evaluated in the interpreter, and its Tcl error is raised.
+cmd::CommandResult call_procedure(Toolkit& tk, const std::vector<std::string>& words) {
+  const cmd::CommandResult r = tk.evaluate(merge_tcl_list(words));
+  return r.ok() ? r : detail::script_error(detail::error_text(r));
 }
 
 diag::Outcome<ParameterDict> converted(Dispatch& d) {
@@ -122,7 +131,8 @@ cmd::CommandResult change_existing(Dispatch& d, const std::string& cell) {
   if (!args.ok()) {
     return raise_outcome(args.error());
   }
-  const cmd::CommandResult r = change(d.tk.context(), d.instance, d.type, d.library, p.merged(args.value()));
+  const cmd::CommandResult r =
+      call_procedure(d.tk, {"magic::gencell_change", d.instance, d.type, d.library, p.merged(args.value()).to_tcl()});
   return r.ok() ? cmd::CommandResult::success(0) : r;
 }
 
@@ -135,7 +145,8 @@ cmd::CommandResult create_named(Dispatch& d) {
   if (!parameters.ok()) {
     return raise_outcome(parameters.error());
   }
-  const cmd::CommandResult made = create(d.tk.context(), d.type, d.library, parameters.value());
+  const cmd::CommandResult made =
+      call_procedure(d.tk, {"magic::gencell_create", d.type, d.library, parameters.value().to_tcl()});
   if (!made.ok()) {
     return made;
   }
@@ -252,7 +263,7 @@ std::vector<std::string> box_values_command(const std::vector<std::string>& valu
 
 diag::Outcome<std::string> place_device(Toolkit& tk, const std::string& library, const std::string& type,
                                         const ParameterDict& parameters, const std::string& orientation) {
-  const auto savebox = tk.query_list({"box", "values"});
+  const auto savebox = tk.engine_list({"box", "values"});
   focus_pointer(tk);
   std::string instance;
   if (parameters.contains("nocell")) {
@@ -351,7 +362,7 @@ void replace_fixed_device(Toolkit& tk, ChangeState& s, const std::string& librar
 void regenerate(Toolkit& tk, ChangeState& s, const std::string& library, const std::string& type,
                 const ParameterDict& parameters) {
   const detail::InternalUnits units{tk};
-  const auto savebox = tk.query_list({"box", "values"});
+  const auto savebox = tk.engine_list({"box", "values"});
   focus_pointer(tk);
   if (parameters.contains("nocell")) {
     replace_fixed_device(tk, s, library, type, parameters);

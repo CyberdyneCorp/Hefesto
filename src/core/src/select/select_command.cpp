@@ -674,13 +674,18 @@ diag::Outcome<std::optional<ops::UseRef>> pick_cell(const Context& c, const Pars
                                                     bool& same, bool& named) {
   const bool with_name = p.option == kCell && p.primargs == 3;
   if (with_name && !(p.isqual == 1 && !p.more && !p.less)) {
+    named = true;
+    same = false;
+    c.ed->selection.cycle.last_area = db::Rect{-1000, -1000, -1000, -1000};
+    if (p.arg(1)->empty()) {
+      // DBTreeFindUse("") answers the window's root use (`select cell ""`,
+      // what toolkit.tcl does after a failed getcell).
+      return std::optional<ops::UseRef>{};
+    }
     auto found = ops::find_use_path(c, *p.arg(1));
     if (!found) {
       return diag::make(codes::kNoSuchUse, "Couldn't find a cell use named \"" + *p.arg(1) + "\"");
     }
-    named = true;
-    same = false;
-    c.ed->selection.cycle.last_area = db::Rect{-1000, -1000, -1000, -1000};
     return std::optional<ops::UseRef>{std::move(found)};
   }
   if (p.dotop || with_name) {
@@ -710,7 +715,9 @@ CommandResult cell_select(const Context& c, const Parsed& p, const Reference& re
     ops::select_cell(c, chosen, same && !named);
   }
   ops::set_root_box(c, element_box(c, chosen));
-  return CommandResult::success(Value{unescaped(chosen.use == nullptr ? std::string{cell::kTopUseId} : chosen.path)});
+  // A named selection prints the name as given (printPath = optionArgs[1]).
+  const std::string printed = chosen.use != nullptr ? chosen.path : named ? *p.arg(1) : std::string{cell::kTopUseId};
+  return CommandResult::success(Value{unescaped(printed)});
 }
 
 /// Paint selection at the reference (chunk / region / net), the layer list

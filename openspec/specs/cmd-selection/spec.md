@@ -176,7 +176,7 @@ Compatibility: exact
 
 `select [more|less|top] cell [NAME]` SHALL select a subcell use:
 
-- **With NAME**: find the use by its hierarchical instance path from the window's top cell. If it is not found, report `Couldn't find a cell use named "NAME"`. The use (with all array elements) SHALL be selected, and the box SHALL be set to its bounding box.
+- **With NAME**: find the use by its hierarchical instance path from the window's top cell. If it is not found, report `Couldn't find a cell use named "NAME"`. The use (with all array elements) SHALL be selected, and the box SHALL be set to its bounding box. An empty NAME (`select cell {}`) names the window's top cell itself (Magic's DBTreeFindUse): it is selected, the box is set to its bounding box and the result is the empty string. The gencell toolkit relies on this after a failed `getcell`.
 - **Without NAME** (or as the fallback of point selection): among the uses whose area contains the reference point, consider expanded uses and unexpanded uses all of whose ancestors are expanded. Visit them in order of increasing area. Each repeated invocation at the same place selects the next one, replacing the previous cell in the selection. After the largest, it wraps to the window's top cell, then starts over. For an array, the element under the point is identified by its indices.
 - `select top cell` SHALL select the window's top cell.
 

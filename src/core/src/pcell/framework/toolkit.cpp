@@ -62,6 +62,11 @@ std::string Toolkit::engine(const std::vector<std::string>& words) {
   return r.ok() ? value_text(r.value) : std::string{};
 }
 
+std::vector<std::string> Toolkit::engine_list(const std::vector<std::string>& words) {
+  auto split = split_tcl_list(engine(words));
+  return split.ok() ? std::move(split).value() : std::vector<std::string>{};
+}
+
 std::string Toolkit::query(const std::vector<std::string>& words) {
   // A context whose sink drops what the query prints.
   diag::NullSink quiet;

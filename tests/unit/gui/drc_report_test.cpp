@@ -99,7 +99,10 @@ TEST_CASE("drc_save_report loads the named cell and reloads the original",
   REQUIRE(r.ok());
   CHECK(DrcFixture::texts(r).find("loading inv\n") != std::string::npos);
   CHECK(s.report().starts_with("inv "));
-  CHECK(s.f.value("cellname list self") == "other");
+  CHECK(s.f.value("cellname list window") == "other");
+  // The top cell selected for the check stays selected, as in Magic, so
+  // `cellname list self` names it (DBCellPrint SELF).
+  CHECK(s.f.value("cellname list self") == "inv");
 }
 
 TEST_CASE("drc_load_report adds feedback per box in microns",
