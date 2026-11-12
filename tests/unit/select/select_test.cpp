@@ -18,6 +18,7 @@
 namespace db = hefesto::db;
 namespace sel = hefesto::select;
 namespace tech = hefesto::tech;
+namespace cmd = hefesto::cmd;
 using db::Rect;
 using sel::test::all_text;
 using sel::test::area_of;
@@ -436,6 +437,32 @@ TEST_CASE("the chunk search window grows past large material", CHUNK) {
 }
 
 #define CELL "[cap:cmd-selection][req:Cell selection]"
+
+TEST_CASE("select cell with an empty name selects the top cell", CELL) {
+  // Regression (golden SCRIPT-PDK-14): DBTreeFindUse walks no component of an empty
+  // path and returns the window's root use; the sg13g2 fixed devices run
+  // `select cell $instname` with an empty name when getcell failed.
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  db::CellDef* inv = s.cell("inv");
+  sel::test::paint(*inv, mt, {0, 0, 10, 10}, mt.ndiff);
+  db::recompute_bbox(*inv);
+  s.place(*inv, "x1", 100, 0);
+  REQUIRE(s.editor.windows.open_frame(&s.top()).ok());
+  const auto picked = s.dispatcher->execute(cmd::Invocation{"select", {"cell", ""}, cmd::Origin::script, std::nullopt});
+  REQUIRE(picked.ok());
+  CHECK(picked.value.to_string().empty());
+  REQUIRE(s.selection().uses().size() == 1U);
+  CHECK(s.selection().uses().front()->def == &s.top());
+  // cmd-hierarchy "Cellname and instance commands": `cellname list self` names the
+  // definitions with a use in the selection, and the edit root only when there is none.
+  CHECK(s.run("cellname list self").value.to_string() == "top");
+  s.ok("select cell x1");
+  CHECK(s.run("cellname list self").value.to_string() == "inv");
+  CHECK(s.run("cellname list exists").value.to_string() == "inv");
+  s.ok("select clear");
+  CHECK(s.run("cellname list self").value.to_string() == "top");
+}
 
 TEST_CASE("cell selection cycles through nested cells, then the top cell", CELL) {
   HEFESTO_SELECT_MT(mt);

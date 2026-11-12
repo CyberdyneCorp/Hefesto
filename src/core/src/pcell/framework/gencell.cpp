@@ -252,7 +252,9 @@ std::vector<std::string> box_values_command(const std::vector<std::string>& valu
 
 diag::Outcome<std::string> place_device(Toolkit& tk, const std::string& library, const std::string& type,
                                         const ParameterDict& parameters, const std::string& orientation) {
-  const auto savebox = tk.query_list({"box", "values"});
+  // `set savebox [box values]`: a plain engine call, so a missing box prints
+  // "Box tool must be present" as in Magic (SCRIPT-PDK-14).
+  const auto savebox = tk.engine_list({"box", "values"});
   focus_pointer(tk);
   std::string instance;
   if (parameters.contains("nocell")) {
@@ -351,7 +353,9 @@ void replace_fixed_device(Toolkit& tk, ChangeState& s, const std::string& librar
 void regenerate(Toolkit& tk, ChangeState& s, const std::string& library, const std::string& type,
                 const ParameterDict& parameters) {
   const detail::InternalUnits units{tk};
-  const auto savebox = tk.query_list({"box", "values"});
+  // `set savebox [box values]`: a plain engine call, so a missing box prints
+  // "Box tool must be present" as in Magic (SCRIPT-PDK-14).
+  const auto savebox = tk.engine_list({"box", "values"});
   focus_pointer(tk);
   if (parameters.contains("nocell")) {
     replace_fixed_device(tk, s, library, type, parameters);

@@ -207,6 +207,9 @@ class LayoutWindow {
   [[nodiscard]] bool is_expanded(const db::CellUse& use) const;
   void set_expanded(const db::CellUse& use, bool expanded);
   void clear_expansion() { expanded_.clear(); }
+  /// The expanded uses (the root use excepted), to put back with set_expanded_uses().
+  [[nodiscard]] const std::unordered_set<const db::CellUse*>& expanded_uses() const noexcept { return expanded_; }
+  void set_expanded_uses(std::unordered_set<const db::CellUse*> uses) { expanded_ = std::move(uses); }
 
   // "Layer visibility (see)".
   [[nodiscard]] const tech::TypeMask& visible_types() const noexcept { return visible_; }

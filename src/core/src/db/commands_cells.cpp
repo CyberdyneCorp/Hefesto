@@ -202,10 +202,33 @@ CommandResult cellname_writeable(const cu::Session& s, const std::vector<std::st
 /// name, or 0 when no such cell is loaded; the plain form prints "Cell NAME
 /// is currently loaded." or reports "Cell NAME is not currently loaded."
 /// with no result (CMDEDIT-HIER-08).
+// DBCellPrint SELF without a name: every definition with a use in the
+// selection cell (the selected instances, or the window's root use when the
+// top cell is selected), in cell table order; with none, the edit root.
+// (Magic ref: database/DBcellname.c:880-925)
+CommandResult selected_or_edit_root(const cu::Session& s) {
+  Value::List names;
+  if (const CellDef* selection = s.editor->selection.def()) {
+    s.editor->cells.for_each([&](CellDef& def) {
+      const auto& uses = selection->uses();
+      if (std::any_of(uses.begin(), uses.end(), [&](const auto& use) { return use->def == &def; })) {
+        names.emplace_back(def.name());
+      }
+    });
+  }
+  if (names.size() == 1) {
+    return CommandResult::success(std::move(names.front()));
+  }
+  if (!names.empty()) {
+    return CommandResult::success(Value{std::move(names)});
+  }
+  const CellDef* root = s.editor->edit_root != nullptr ? s.editor->edit_root : s.editor->edit_cell;
+  return CommandResult::success(Value{root != nullptr ? root->name() : std::string{}});
+}
+
 CommandResult cellname_exists(const cu::Session& s, const std::vector<std::string>& args, bool dolist) {
   if (args.size() < 2) {
-    const CellDef* def = s.editor->edit_cell;
-    return CommandResult::success(Value{def != nullptr ? def->name() : std::string{}});
+    return selected_or_edit_root(s);
   }
   const CellDef* def = s.editor->cells.find(args[1]);
   if (dolist) {

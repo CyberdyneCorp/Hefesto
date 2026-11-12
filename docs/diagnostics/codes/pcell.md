@@ -41,7 +41,8 @@ The native generators (`pcell/native/`, design D10; tasks.md 7.5-7.7) are
 C++ ports of the PDKs' MOSFET and fixed-device procedures, registered for
 one exact PDK release each: open_pdks ciel `5740c4a8` (sky130A: 15 MOS
 devices and 12 fixed devices; gf180mcuD: 21 and 11) and IHP-Open-PDK
-`5e6d592e` (sg13g2: 8 MOSFETs; its fixed devices wait for SCRIPT-PDK-14).
+`5e6d592e` (sg13g2: 8 MOSFETs and 8 fixed devices, which build their cell
+from the PDK's layout script on first use; Q-SCRIPT-45).
 The framework uses one in place of the device's Tcl `_defaults`, `_check`
 and `_draw` when the PDK device scripts are loaded and the PDK that defined
 `magic::spice2float` is that release; the generated cell name and the saved

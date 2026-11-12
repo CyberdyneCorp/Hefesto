@@ -17,7 +17,12 @@
 // logged, a failure raising only when Magic's status convention raises it
 // (a raising command, or any failure in strict mode).
 
+#include <functional>
+#include <optional>
+#include <unordered_set>
+
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/pcell/native/registry.hpp"
 #include "hefesto/script/binding/output.hpp"
 #include "hefesto/script/interp.hpp"
@@ -37,12 +42,36 @@ class ToolkitHost final : public NativeHost {
  public:
   explicit ToolkitHost(Toolkit& tk) : tk_(tk) {}
 
+  // The engine command as the PDK's Tcl calls it: `::magic::<name> ...`
+  // evaluated by the interpreter, so its messages print when it runs (in
+  // order with the PDK's own Tcl, as in Magic) and its tag fires.
   std::string run(const std::vector<std::string>& words) override {
-    const cmd::CommandResult r = ui::detail::run_forwarded(tk_.context(), words);
-    if (!r.ok() && (r.raises || tk_.context().session().strict)) {
+    if (words.empty()) {
+      return {};
+    }
+    std::vector<std::string> call{words};
+    if (call.front().find("::") == std::string::npos) {
+      call.front() = "::magic::" + call.front();
+    }
+    return evaluate(merge_tcl_list(call));
+  }
+
+  std::string evaluate(std::string_view script) override {
+    const cmd::CommandResult r = tk_.interp().evaluate(std::string{script});
+    if (!r.ok()) {
       throw native::TclError{error_text(r)};
     }
-    return r.ok() ? value_text(r.value) : std::string{};
+    return value_text(r.value);
+  }
+
+  [[nodiscard]] bool magic_compat() const override { return tk_.context().project().compat.magic_compat; }
+
+  [[nodiscard]] std::function<void()> keep_edit_context() override {
+    editor::EditorState* editor = tk_.context().editor();
+    if (editor == nullptr) {
+      return {};
+    }
+    return detail::keep_edit_context(*editor);
   }
 
   void puts(bool to_stderr, std::string_view text) override {
@@ -61,6 +90,44 @@ class ToolkitHost final : public NativeHost {
  private:
   Toolkit& tk_;
 };
+
+}  // namespace
+
+// The editor state a `load` of another cell replaces: the current window's
+// cell, view and expanded uses, the edit cell and its frame, and the box.
+std::function<void()> keep_edit_context(editor::EditorState& editor) {
+  view::LayoutWindow* window = editor.windows.current();
+  struct Saved {
+    view::WindowId id{};
+    db::CellDef* root = nullptr;
+    view::ViewMapping mapping;
+    std::unordered_set<const db::CellUse*> expanded;
+  };
+  std::optional<Saved> shown;
+  if (window != nullptr) {
+    shown = Saved{window->id(), window->root(), window->mapping(), window->expanded_uses()};
+  }
+  return [&editor, shown, edit_cell = editor.edit_cell, edit_root = editor.edit_root,
+          edit_transform = editor.edit_transform, box = editor.box, box_root = editor.box_root] {
+    if (shown) {
+      if (view::LayoutWindow* w = editor.windows.find(shown->id)) {
+        if (w->root() != shown->root) {
+          w->set_root(shown->root);
+        }
+        w->set_mapping(shown->mapping);
+        w->set_expanded_uses(shown->expanded);
+        w->mark_redisplay_all();
+      }
+    }
+    editor.edit_cell = edit_cell;
+    editor.edit_root = edit_root;
+    editor.edit_transform = edit_transform;
+    editor.box = box;
+    editor.box_root = box_root;
+  };
+}
+
+namespace {
 
 bool switched_off(script::Interpreter& interp) {
   const auto value = interp.get_var(kSwitch);
