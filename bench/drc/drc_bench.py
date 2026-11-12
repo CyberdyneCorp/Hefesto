@@ -76,8 +76,8 @@ CHECK = """select top cell
 drc check
 drc catchup
 """
-# The error count: a Magic script prints a result only through `puts`; hefesto-cli prints every value.
-COUNT = {"hefesto": "drc list count total\n", "magic": "puts [drc list count total]\n"}
+# The error count: a script prints a result only through `puts`, in Magic and (since M4's Tcl) in hefesto-cli.
+COUNT = {"hefesto": "puts [drc list count total]\n", "magic": "puts [drc list count total]\n"}
 QUIT = "quit -noprompt\n"
 
 
@@ -131,13 +131,19 @@ def block_workload(mag_dir: Path) -> Workload:
 
 
 def prepare(work: Path, pdk_root: Path) -> Path:
-    """Copies the technology and the library into `work` (container mounts need real files)."""
+    """Copies the technology and the library into `work` (container mounts need real files).
+
+    The technology file `include`s its part files (sky130A-drc, -cifout, -cifin, -extract) by name
+    from its own directory: every *.tech file beside it is copied, or Magic loads a technology
+    without a drc section and crashes on `drc check`.
+    """
     variant = pdk_root / "ciel" / "sky130" / "versions" / PDK_VERSION / "sky130A"
-    tech = variant / "libs.tech" / "magic" / "sky130A.tech"
+    tech_dir = variant / "libs.tech" / "magic"
     mags = variant / "libs.ref" / LIBRARY / "mag"
-    if not tech.is_file() or not mags.is_dir():
+    if not (tech_dir / "sky130A.tech").is_file() or not mags.is_dir():
         raise FileNotFoundError(f"sky130A not found under {pdk_root} (run scripts/fetch_pdk.py sky130)")
-    shutil.copy(tech, work / "sky130A.tech")
+    for tech in tech_dir.glob("*.tech"):
+        shutil.copy(tech, work / tech.name)
     shutil.copytree(mags, work / "mag", dirs_exist_ok=True)
     return work / "mag"
 

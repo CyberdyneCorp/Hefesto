@@ -1,0 +1,4035 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:50:05 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+
+
+2 Magic internal units = 1 Lambda
+
+
+
+
+Cell sky130_ef_sc_hd__decap_12 read from path input
+
+Topmost cell in the window
+
+Loading DRC CIF style.
+after#2
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__decap_20_12 read from path input
+
+Topmost cell in the window
+
+after#4
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__decap_40_12 read from path input
+
+Topmost cell in the window
+
+after#6
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__decap_60_12 read from path input
+
+Topmost cell in the window
+
+after#8
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__decap_80_12 read from path input
+
+Topmost cell in the window
+
+after#10
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__fill_12 read from path input
+
+Topmost cell in the window
+
+after#12
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__fill_2 read from path input
+
+Topmost cell in the window
+
+after#14
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__fill_4 read from path input
+
+Topmost cell in the window
+
+after#16
+No errors found.
+
+0
+
+Cell sky130_ef_sc_hd__fill_8 read from path input
+
+Topmost cell in the window
+
+after#18
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111o_1 read from path input
+
+Topmost cell in the window
+
+after#20
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111o_2 read from path input
+
+Topmost cell in the window
+
+after#22
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111o_4 read from path input
+
+Topmost cell in the window
+
+after#24
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111oi_0 read from path input
+
+Topmost cell in the window
+
+after#26
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111oi_1 read from path input
+
+Topmost cell in the window
+
+after#28
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111oi_2 read from path input
+
+Topmost cell in the window
+
+after#30
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2111oi_4 read from path input
+
+Topmost cell in the window
+
+after#32
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211o_1 read from path input
+
+Topmost cell in the window
+
+after#34
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211o_2 read from path input
+
+Topmost cell in the window
+
+after#36
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211o_4 read from path input
+
+Topmost cell in the window
+
+after#38
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211oi_1 read from path input
+
+Topmost cell in the window
+
+after#40
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211oi_2 read from path input
+
+Topmost cell in the window
+
+after#42
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a211oi_4 read from path input
+
+Topmost cell in the window
+
+after#44
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21bo_1 read from path input
+
+Topmost cell in the window
+
+after#46
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21bo_2 read from path input
+
+Topmost cell in the window
+
+after#48
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21bo_4 read from path input
+
+Topmost cell in the window
+
+after#50
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21boi_0 read from path input
+
+Topmost cell in the window
+
+after#52
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21boi_1 read from path input
+
+Topmost cell in the window
+
+after#54
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21boi_2 read from path input
+
+Topmost cell in the window
+
+after#56
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21boi_4 read from path input
+
+Topmost cell in the window
+
+after#58
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21o_1 read from path input
+
+Topmost cell in the window
+
+after#60
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21o_2 read from path input
+
+Topmost cell in the window
+
+after#62
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21o_4 read from path input
+
+Topmost cell in the window
+
+after#64
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21oi_1 read from path input
+
+Topmost cell in the window
+
+after#66
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21oi_2 read from path input
+
+Topmost cell in the window
+
+after#68
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a21oi_4 read from path input
+
+Topmost cell in the window
+
+after#70
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221o_1 read from path input
+
+Topmost cell in the window
+
+after#72
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221o_2 read from path input
+
+Topmost cell in the window
+
+after#74
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221o_4 read from path input
+
+Topmost cell in the window
+
+after#76
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221oi_1 read from path input
+
+Topmost cell in the window
+
+after#78
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221oi_2 read from path input
+
+Topmost cell in the window
+
+after#80
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a221oi_4 read from path input
+
+Topmost cell in the window
+
+after#82
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a222oi_1 read from path input
+
+Topmost cell in the window
+
+after#84
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22o_1 read from path input
+
+Topmost cell in the window
+
+after#86
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22o_2 read from path input
+
+Topmost cell in the window
+
+after#88
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22o_4 read from path input
+
+Topmost cell in the window
+
+after#90
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22oi_1 read from path input
+
+Topmost cell in the window
+
+after#92
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22oi_2 read from path input
+
+Topmost cell in the window
+
+after#94
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a22oi_4 read from path input
+
+Topmost cell in the window
+
+after#96
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2o_1 read from path input
+
+Topmost cell in the window
+
+after#98
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2o_2 read from path input
+
+Topmost cell in the window
+
+after#100
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2o_4 read from path input
+
+Topmost cell in the window
+
+after#102
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2oi_1 read from path input
+
+Topmost cell in the window
+
+after#104
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2oi_2 read from path input
+
+Topmost cell in the window
+
+after#106
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a2bb2oi_4 read from path input
+
+Topmost cell in the window
+
+after#108
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311o_1 read from path input
+
+Topmost cell in the window
+
+after#110
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311o_2 read from path input
+
+Topmost cell in the window
+
+after#112
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311o_4 read from path input
+
+Topmost cell in the window
+
+after#114
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311oi_1 read from path input
+
+Topmost cell in the window
+
+after#116
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311oi_2 read from path input
+
+Topmost cell in the window
+
+after#118
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a311oi_4 read from path input
+
+Topmost cell in the window
+
+after#120
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31o_1 read from path input
+
+Topmost cell in the window
+
+after#122
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31o_2 read from path input
+
+Topmost cell in the window
+
+after#124
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31o_4 read from path input
+
+Topmost cell in the window
+
+after#126
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31oi_1 read from path input
+
+Topmost cell in the window
+
+after#128
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31oi_2 read from path input
+
+Topmost cell in the window
+
+after#130
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a31oi_4 read from path input
+
+Topmost cell in the window
+
+after#132
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32o_1 read from path input
+
+Topmost cell in the window
+
+after#134
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32o_2 read from path input
+
+Topmost cell in the window
+
+after#136
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32o_4 read from path input
+
+Topmost cell in the window
+
+after#138
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32oi_1 read from path input
+
+Topmost cell in the window
+
+after#140
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32oi_2 read from path input
+
+Topmost cell in the window
+
+after#142
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a32oi_4 read from path input
+
+Topmost cell in the window
+
+after#144
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41o_1 read from path input
+
+Topmost cell in the window
+
+after#146
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41o_2 read from path input
+
+Topmost cell in the window
+
+after#148
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41o_4 read from path input
+
+Topmost cell in the window
+
+after#150
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41oi_1 read from path input
+
+Topmost cell in the window
+
+after#152
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41oi_2 read from path input
+
+Topmost cell in the window
+
+after#154
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__a41oi_4 read from path input
+
+Topmost cell in the window
+
+after#156
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2_0 read from path input
+
+Topmost cell in the window
+
+after#158
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2_1 read from path input
+
+Topmost cell in the window
+
+after#160
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2_2 read from path input
+
+Topmost cell in the window
+
+after#162
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2_4 read from path input
+
+Topmost cell in the window
+
+after#164
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2b_1 read from path input
+
+Topmost cell in the window
+
+after#166
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2b_2 read from path input
+
+Topmost cell in the window
+
+after#168
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and2b_4 read from path input
+
+Topmost cell in the window
+
+after#170
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3_1 read from path input
+
+Topmost cell in the window
+
+after#172
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3_2 read from path input
+
+Topmost cell in the window
+
+after#174
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3_4 read from path input
+
+Topmost cell in the window
+
+after#176
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3b_1 read from path input
+
+Topmost cell in the window
+
+after#178
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3b_2 read from path input
+
+Topmost cell in the window
+
+after#180
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and3b_4 read from path input
+
+Topmost cell in the window
+
+after#182
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4_1 read from path input
+
+Topmost cell in the window
+
+after#184
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4_2 read from path input
+
+Topmost cell in the window
+
+after#186
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4_4 read from path input
+
+Topmost cell in the window
+
+after#188
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4b_1 read from path input
+
+Topmost cell in the window
+
+after#190
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4b_2 read from path input
+
+Topmost cell in the window
+
+after#192
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4b_4 read from path input
+
+Topmost cell in the window
+
+after#194
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4bb_1 read from path input
+
+Topmost cell in the window
+
+after#196
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4bb_2 read from path input
+
+Topmost cell in the window
+
+after#198
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__and4bb_4 read from path input
+
+Topmost cell in the window
+
+after#200
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_1 read from path input
+
+Topmost cell in the window
+
+after#202
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_12 read from path input
+
+Topmost cell in the window
+
+after#204
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_16 read from path input
+
+Topmost cell in the window
+
+after#206
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_2 read from path input
+
+Topmost cell in the window
+
+after#208
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_4 read from path input
+
+Topmost cell in the window
+
+after#210
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_6 read from path input
+
+Topmost cell in the window
+
+after#212
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__buf_8 read from path input
+
+Topmost cell in the window
+
+after#214
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__bufbuf_16 read from path input
+
+Topmost cell in the window
+
+after#216
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__bufbuf_8 read from path input
+
+Topmost cell in the window
+
+after#218
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__bufinv_16 read from path input
+
+Topmost cell in the window
+
+after#220
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__bufinv_8 read from path input
+
+Topmost cell in the window
+
+after#222
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkbuf_1 read from path input
+
+Topmost cell in the window
+
+after#224
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkbuf_16 read from path input
+
+Topmost cell in the window
+
+after#226
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkbuf_2 read from path input
+
+Topmost cell in the window
+
+after#228
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkbuf_4 read from path input
+
+Topmost cell in the window
+
+after#230
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkbuf_8 read from path input
+
+Topmost cell in the window
+
+after#232
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s15_1 read from path input
+
+Topmost cell in the window
+
+after#234
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s15_2 read from path input
+
+Topmost cell in the window
+
+after#236
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s18_1 read from path input
+
+Topmost cell in the window
+
+after#238
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s18_2 read from path input
+
+Topmost cell in the window
+
+after#240
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s25_1 read from path input
+
+Topmost cell in the window
+
+after#242
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s25_2 read from path input
+
+Topmost cell in the window
+
+after#244
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s50_1 read from path input
+
+Topmost cell in the window
+
+after#246
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkdlybuf4s50_2 read from path input
+
+Topmost cell in the window
+
+after#248
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinv_1 read from path input
+
+Topmost cell in the window
+
+after#250
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinv_16 read from path input
+
+Topmost cell in the window
+
+after#252
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinv_2 read from path input
+
+Topmost cell in the window
+
+after#254
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinv_4 read from path input
+
+Topmost cell in the window
+
+after#256
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinv_8 read from path input
+
+Topmost cell in the window
+
+after#258
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinvlp_2 read from path input
+
+Topmost cell in the window
+
+after#260
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__clkinvlp_4 read from path input
+
+Topmost cell in the window
+
+after#262
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__conb_1 read from path input
+
+Topmost cell in the window
+
+after#264
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__decap_12 read from path input
+
+Topmost cell in the window
+
+after#266
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__decap_3 read from path input
+
+Topmost cell in the window
+
+after#268
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__decap_4 read from path input
+
+Topmost cell in the window
+
+after#270
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__decap_6 read from path input
+
+Topmost cell in the window
+
+after#272
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__decap_8 read from path input
+
+Topmost cell in the window
+
+after#274
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfbbn_1 read from path input
+
+Topmost cell in the window
+
+after#276
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfbbn_2 read from path input
+
+Topmost cell in the window
+
+after#278
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfbbp_1 read from path input
+
+Topmost cell in the window
+
+after#280
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrbp_1 read from path input
+
+Topmost cell in the window
+
+after#282
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrbp_2 read from path input
+
+Topmost cell in the window
+
+after#284
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrtn_1 read from path input
+
+Topmost cell in the window
+
+after#286
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrtp_1 read from path input
+
+Topmost cell in the window
+
+after#288
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrtp_2 read from path input
+
+Topmost cell in the window
+
+after#290
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfrtp_4 read from path input
+
+Topmost cell in the window
+
+after#292
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfsbp_1 read from path input
+
+Topmost cell in the window
+
+after#294
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfsbp_2 read from path input
+
+Topmost cell in the window
+
+after#296
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfstp_1 read from path input
+
+Topmost cell in the window
+
+after#298
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfstp_2 read from path input
+
+Topmost cell in the window
+
+after#300
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfstp_4 read from path input
+
+Topmost cell in the window
+
+after#302
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfxbp_1 read from path input
+
+Topmost cell in the window
+
+after#304
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfxbp_2 read from path input
+
+Topmost cell in the window
+
+after#306
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfxtp_1 read from path input
+
+Topmost cell in the window
+
+after#308
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfxtp_2 read from path input
+
+Topmost cell in the window
+
+after#310
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dfxtp_4 read from path input
+
+Topmost cell in the window
+
+after#312
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__diode_2 read from path input
+
+Topmost cell in the window
+
+after#314
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlclkp_1 read from path input
+
+Topmost cell in the window
+
+after#316
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlclkp_2 read from path input
+
+Topmost cell in the window
+
+after#318
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlclkp_4 read from path input
+
+Topmost cell in the window
+
+after#320
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrbn_1 read from path input
+
+Topmost cell in the window
+
+after#322
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrbn_2 read from path input
+
+Topmost cell in the window
+
+after#324
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrbp_1 read from path input
+
+Topmost cell in the window
+
+after#326
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrbp_2 read from path input
+
+Topmost cell in the window
+
+after#328
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtn_1 read from path input
+
+Topmost cell in the window
+
+after#330
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtn_2 read from path input
+
+Topmost cell in the window
+
+after#332
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtn_4 read from path input
+
+Topmost cell in the window
+
+after#334
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtp_1 read from path input
+
+Topmost cell in the window
+
+after#336
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtp_2 read from path input
+
+Topmost cell in the window
+
+after#338
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlrtp_4 read from path input
+
+Topmost cell in the window
+
+after#340
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxbn_1 read from path input
+
+Topmost cell in the window
+
+after#342
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxbn_2 read from path input
+
+Topmost cell in the window
+
+after#344
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxbp_1 read from path input
+
+Topmost cell in the window
+
+after#346
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxtn_1 read from path input
+
+Topmost cell in the window
+
+after#348
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxtn_2 read from path input
+
+Topmost cell in the window
+
+after#350
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxtn_4 read from path input
+
+Topmost cell in the window
+
+after#352
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlxtp_1 read from path input
+
+Topmost cell in the window
+
+after#354
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlygate4sd1_1 read from path input
+
+Topmost cell in the window
+
+after#356
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlygate4sd2_1 read from path input
+
+Topmost cell in the window
+
+after#358
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlygate4sd3_1 read from path input
+
+Topmost cell in the window
+
+after#360
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlymetal6s2s_1 read from path input
+
+Topmost cell in the window
+
+after#362
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlymetal6s4s_1 read from path input
+
+Topmost cell in the window
+
+after#364
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__dlymetal6s6s_1 read from path input
+
+Topmost cell in the window
+
+after#366
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ebufn_1 read from path input
+
+Topmost cell in the window
+
+after#368
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ebufn_2 read from path input
+
+Topmost cell in the window
+
+after#370
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ebufn_4 read from path input
+
+Topmost cell in the window
+
+after#372
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ebufn_8 read from path input
+
+Topmost cell in the window
+
+after#374
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__edfxbp_1 read from path input
+
+Topmost cell in the window
+
+after#376
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__edfxtp_1 read from path input
+
+Topmost cell in the window
+
+after#378
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvn_0 read from path input
+
+Topmost cell in the window
+
+after#380
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvn_1 read from path input
+
+Topmost cell in the window
+
+after#382
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvn_2 read from path input
+
+Topmost cell in the window
+
+after#384
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvn_4 read from path input
+
+Topmost cell in the window
+
+after#386
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvn_8 read from path input
+
+Topmost cell in the window
+
+after#388
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvp_1 read from path input
+
+Topmost cell in the window
+
+after#390
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvp_2 read from path input
+
+Topmost cell in the window
+
+after#392
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvp_4 read from path input
+
+Topmost cell in the window
+
+after#394
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__einvp_8 read from path input
+
+Topmost cell in the window
+
+after#396
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fa_1 read from path input
+
+Topmost cell in the window
+
+after#398
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fa_2 read from path input
+
+Topmost cell in the window
+
+after#400
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fa_4 read from path input
+
+Topmost cell in the window
+
+after#402
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fah_1 read from path input
+
+Topmost cell in the window
+
+after#404
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fahcin_1 read from path input
+
+Topmost cell in the window
+
+after#406
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fahcon_1 read from path input
+
+Topmost cell in the window
+
+after#408
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fill_1 read from path input
+
+Topmost cell in the window
+
+after#410
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fill_2 read from path input
+
+Topmost cell in the window
+
+after#412
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fill_4 read from path input
+
+Topmost cell in the window
+
+after#414
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__fill_8 read from path input
+
+Topmost cell in the window
+
+after#416
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ha_1 read from path input
+
+Topmost cell in the window
+
+after#418
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ha_2 read from path input
+
+Topmost cell in the window
+
+after#420
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__ha_4 read from path input
+
+Topmost cell in the window
+
+after#422
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_1 read from path input
+
+Topmost cell in the window
+
+after#424
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_12 read from path input
+
+Topmost cell in the window
+
+after#426
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_16 read from path input
+
+Topmost cell in the window
+
+after#428
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_2 read from path input
+
+Topmost cell in the window
+
+after#430
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_4 read from path input
+
+Topmost cell in the window
+
+after#432
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_6 read from path input
+
+Topmost cell in the window
+
+after#434
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__inv_8 read from path input
+
+Topmost cell in the window
+
+after#436
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_bleeder_1 read from path input
+
+Topmost cell in the window
+
+after#438
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkbufkapwr_1 read from path input
+
+Topmost cell in the window
+
+after#440
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkbufkapwr_16 read from path input
+
+Topmost cell in the window
+
+after#442
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkbufkapwr_2 read from path input
+
+Topmost cell in the window
+
+after#444
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkbufkapwr_4 read from path input
+
+Topmost cell in the window
+
+after#446
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkbufkapwr_8 read from path input
+
+Topmost cell in the window
+
+after#448
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkinvkapwr_1 read from path input
+
+Topmost cell in the window
+
+after#450
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkinvkapwr_16 read from path input
+
+Topmost cell in the window
+
+after#452
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkinvkapwr_2 read from path input
+
+Topmost cell in the window
+
+after#454
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkinvkapwr_4 read from path input
+
+Topmost cell in the window
+
+after#456
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_clkinvkapwr_8 read from path input
+
+Topmost cell in the window
+
+after#458
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_decapkapwr_12 read from path input
+
+Topmost cell in the window
+
+after#460
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_decapkapwr_3 read from path input
+
+Topmost cell in the window
+
+after#462
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_decapkapwr_4 read from path input
+
+Topmost cell in the window
+
+after#464
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_decapkapwr_6 read from path input
+
+Topmost cell in the window
+
+after#466
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_decapkapwr_8 read from path input
+
+Topmost cell in the window
+
+after#468
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_inputiso0n_1 read from path input
+
+Topmost cell in the window
+
+after#470
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_inputiso0p_1 read from path input
+
+Topmost cell in the window
+
+after#472
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_inputiso1n_1 read from path input
+
+Topmost cell in the window
+
+after#474
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_inputiso1p_1 read from path input
+
+Topmost cell in the window
+
+after#476
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_inputisolatch_1 read from path input
+
+Topmost cell in the window
+
+after#478
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrc_1 read from path input
+
+Topmost cell in the window
+
+after#480
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrc_16 read from path input
+
+Topmost cell in the window
+
+after#482
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrc_2 read from path input
+
+Topmost cell in the window
+
+after#484
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrc_4 read from path input
+
+Topmost cell in the window
+
+after#486
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrc_8 read from path input
+
+Topmost cell in the window
+
+after#488
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_isobufsrckapwr_16 read from path input
+
+Topmost cell in the window
+
+after#490
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_hl_isowell_tap_1 read from path input
+
+Topmost cell in the window
+
+after#492
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_hl_isowell_tap_2 read from path input
+
+Topmost cell in the window
+
+after#494
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_hl_isowell_tap_4 read from path input
+
+Topmost cell in the window
+
+after#496
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_isowell_4 read from path input
+
+Topmost cell in the window
+
+after#498
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_isowell_tap_1 read from path input
+
+Topmost cell in the window
+
+after#500
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_isowell_tap_2 read from path input
+
+Topmost cell in the window
+
+after#502
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__lpflow_lsbuf_lh_isowell_tap_4 read from path input
+
+Topmost cell in the window
+
+after#504
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__macro_sparecell read from path input
+
+Topmost cell in the window
+Cell sky130_fd_sc_hd__nor2_2 read from path input
+Cell sky130_fd_sc_hd__nand2_2 read from path input
+
+after#506
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__maj3_1 read from path input
+
+Topmost cell in the window
+
+after#508
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__maj3_2 read from path input
+
+Topmost cell in the window
+
+after#510
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__maj3_4 read from path input
+
+Topmost cell in the window
+
+after#512
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2_1 read from path input
+
+Topmost cell in the window
+
+after#514
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2_2 read from path input
+
+Topmost cell in the window
+
+after#516
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2_4 read from path input
+
+Topmost cell in the window
+
+after#518
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2_8 read from path input
+
+Topmost cell in the window
+
+after#520
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2i_1 read from path input
+
+Topmost cell in the window
+
+after#522
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2i_2 read from path input
+
+Topmost cell in the window
+
+after#524
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux2i_4 read from path input
+
+Topmost cell in the window
+
+after#526
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux4_1 read from path input
+
+Topmost cell in the window
+
+after#528
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux4_2 read from path input
+
+Topmost cell in the window
+
+after#530
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__mux4_4 read from path input
+
+Topmost cell in the window
+
+after#532
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2_1 read from path input
+
+Topmost cell in the window
+
+after#534
+No errors found.
+
+0
+
+
+Topmost cell in the window
+
+after#536
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2_4 read from path input
+
+Topmost cell in the window
+
+after#538
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2_8 read from path input
+
+Topmost cell in the window
+
+after#540
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2b_1 read from path input
+
+Topmost cell in the window
+
+after#542
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2b_2 read from path input
+
+Topmost cell in the window
+
+after#544
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand2b_4 read from path input
+
+Topmost cell in the window
+
+after#546
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3_1 read from path input
+
+Topmost cell in the window
+
+after#548
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3_2 read from path input
+
+Topmost cell in the window
+
+after#550
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3_4 read from path input
+
+Topmost cell in the window
+
+after#552
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3b_1 read from path input
+
+Topmost cell in the window
+
+after#554
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3b_2 read from path input
+
+Topmost cell in the window
+
+after#556
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand3b_4 read from path input
+
+Topmost cell in the window
+
+after#558
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4_1 read from path input
+
+Topmost cell in the window
+
+after#560
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4_2 read from path input
+
+Topmost cell in the window
+
+after#562
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4_4 read from path input
+
+Topmost cell in the window
+
+after#564
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4b_1 read from path input
+
+Topmost cell in the window
+
+after#566
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4b_2 read from path input
+
+Topmost cell in the window
+
+after#568
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4b_4 read from path input
+
+Topmost cell in the window
+
+after#570
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4bb_1 read from path input
+
+Topmost cell in the window
+
+after#572
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4bb_2 read from path input
+
+Topmost cell in the window
+
+after#574
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nand4bb_4 read from path input
+
+Topmost cell in the window
+
+after#576
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2_1 read from path input
+
+Topmost cell in the window
+
+after#578
+No errors found.
+
+0
+
+
+Topmost cell in the window
+
+after#580
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2_4 read from path input
+
+Topmost cell in the window
+
+after#582
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2_8 read from path input
+
+Topmost cell in the window
+
+after#584
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2b_1 read from path input
+
+Topmost cell in the window
+
+after#586
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2b_2 read from path input
+
+Topmost cell in the window
+
+after#588
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor2b_4 read from path input
+
+Topmost cell in the window
+
+after#590
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3_1 read from path input
+
+Topmost cell in the window
+
+after#592
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3_2 read from path input
+
+Topmost cell in the window
+
+after#594
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3_4 read from path input
+
+Topmost cell in the window
+
+after#596
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3b_1 read from path input
+
+Topmost cell in the window
+
+after#598
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3b_2 read from path input
+
+Topmost cell in the window
+
+after#600
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor3b_4 read from path input
+
+Topmost cell in the window
+
+after#602
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4_1 read from path input
+
+Topmost cell in the window
+
+after#604
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4_2 read from path input
+
+Topmost cell in the window
+
+after#606
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4_4 read from path input
+
+Topmost cell in the window
+
+after#608
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4b_1 read from path input
+
+Topmost cell in the window
+
+after#610
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4b_2 read from path input
+
+Topmost cell in the window
+
+after#612
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4b_4 read from path input
+
+Topmost cell in the window
+
+after#614
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4bb_1 read from path input
+
+Topmost cell in the window
+
+after#616
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4bb_2 read from path input
+
+Topmost cell in the window
+
+after#618
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__nor4bb_4 read from path input
+
+Topmost cell in the window
+
+after#620
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111a_1 read from path input
+
+Topmost cell in the window
+
+after#622
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111a_2 read from path input
+
+Topmost cell in the window
+
+after#624
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111a_4 read from path input
+
+Topmost cell in the window
+
+after#626
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111ai_1 read from path input
+
+Topmost cell in the window
+
+after#628
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111ai_2 read from path input
+
+Topmost cell in the window
+
+after#630
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2111ai_4 read from path input
+
+Topmost cell in the window
+
+after#632
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211a_1 read from path input
+
+Topmost cell in the window
+
+after#634
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211a_2 read from path input
+
+Topmost cell in the window
+
+after#636
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211a_4 read from path input
+
+Topmost cell in the window
+
+after#638
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211ai_1 read from path input
+
+Topmost cell in the window
+
+after#640
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211ai_2 read from path input
+
+Topmost cell in the window
+
+after#642
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o211ai_4 read from path input
+
+Topmost cell in the window
+
+after#644
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21a_1 read from path input
+
+Topmost cell in the window
+
+after#646
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21a_2 read from path input
+
+Topmost cell in the window
+
+after#648
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21a_4 read from path input
+
+Topmost cell in the window
+
+after#650
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ai_0 read from path input
+
+Topmost cell in the window
+
+after#652
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ai_1 read from path input
+
+Topmost cell in the window
+
+after#654
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ai_2 read from path input
+
+Topmost cell in the window
+
+after#656
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ai_4 read from path input
+
+Topmost cell in the window
+
+after#658
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ba_1 read from path input
+
+Topmost cell in the window
+
+after#660
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ba_2 read from path input
+
+Topmost cell in the window
+
+after#662
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21ba_4 read from path input
+
+Topmost cell in the window
+
+after#664
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21bai_1 read from path input
+
+Topmost cell in the window
+
+after#666
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21bai_2 read from path input
+
+Topmost cell in the window
+
+after#668
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o21bai_4 read from path input
+
+Topmost cell in the window
+
+after#670
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221a_1 read from path input
+
+Topmost cell in the window
+
+after#672
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221a_2 read from path input
+
+Topmost cell in the window
+
+after#674
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221a_4 read from path input
+
+Topmost cell in the window
+
+after#676
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221ai_1 read from path input
+
+Topmost cell in the window
+
+after#678
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221ai_2 read from path input
+
+Topmost cell in the window
+
+after#680
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o221ai_4 read from path input
+
+Topmost cell in the window
+
+after#682
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22a_1 read from path input
+
+Topmost cell in the window
+
+after#684
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22a_2 read from path input
+
+Topmost cell in the window
+
+after#686
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22a_4 read from path input
+
+Topmost cell in the window
+
+after#688
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22ai_1 read from path input
+
+Topmost cell in the window
+
+after#690
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22ai_2 read from path input
+
+Topmost cell in the window
+
+after#692
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o22ai_4 read from path input
+
+Topmost cell in the window
+
+after#694
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2a_1 read from path input
+
+Topmost cell in the window
+
+after#696
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2a_2 read from path input
+
+Topmost cell in the window
+
+after#698
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2a_4 read from path input
+
+Topmost cell in the window
+
+after#700
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2ai_1 read from path input
+
+Topmost cell in the window
+
+after#702
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2ai_2 read from path input
+
+Topmost cell in the window
+
+after#704
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o2bb2ai_4 read from path input
+
+Topmost cell in the window
+
+after#706
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311a_1 read from path input
+
+Topmost cell in the window
+
+after#708
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311a_2 read from path input
+
+Topmost cell in the window
+
+after#710
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311a_4 read from path input
+
+Topmost cell in the window
+
+after#712
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311ai_0 read from path input
+
+Topmost cell in the window
+
+after#714
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311ai_1 read from path input
+
+Topmost cell in the window
+
+after#716
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311ai_2 read from path input
+
+Topmost cell in the window
+
+after#718
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o311ai_4 read from path input
+
+Topmost cell in the window
+
+after#720
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31a_1 read from path input
+
+Topmost cell in the window
+
+after#722
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31a_2 read from path input
+
+Topmost cell in the window
+
+after#724
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31a_4 read from path input
+
+Topmost cell in the window
+
+after#726
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31ai_1 read from path input
+
+Topmost cell in the window
+
+after#728
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31ai_2 read from path input
+
+Topmost cell in the window
+
+after#730
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o31ai_4 read from path input
+
+Topmost cell in the window
+
+after#732
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32a_1 read from path input
+
+Topmost cell in the window
+
+after#734
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32a_2 read from path input
+
+Topmost cell in the window
+
+after#736
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32a_4 read from path input
+
+Topmost cell in the window
+
+after#738
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32ai_1 read from path input
+
+Topmost cell in the window
+
+after#740
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32ai_2 read from path input
+
+Topmost cell in the window
+
+after#742
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o32ai_4 read from path input
+
+Topmost cell in the window
+
+after#744
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41a_1 read from path input
+
+Topmost cell in the window
+
+after#746
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41a_2 read from path input
+
+Topmost cell in the window
+
+after#748
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41a_4 read from path input
+
+Topmost cell in the window
+
+after#750
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41ai_1 read from path input
+
+Topmost cell in the window
+
+after#752
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41ai_2 read from path input
+
+Topmost cell in the window
+
+after#754
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__o41ai_4 read from path input
+
+Topmost cell in the window
+
+after#756
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2_0 read from path input
+
+Topmost cell in the window
+
+after#758
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2_1 read from path input
+
+Topmost cell in the window
+
+after#760
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2_2 read from path input
+
+Topmost cell in the window
+
+after#762
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2_4 read from path input
+
+Topmost cell in the window
+
+after#764
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2b_1 read from path input
+
+Topmost cell in the window
+
+after#766
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2b_2 read from path input
+
+Topmost cell in the window
+
+after#768
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or2b_4 read from path input
+
+Topmost cell in the window
+
+after#770
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3_1 read from path input
+
+Topmost cell in the window
+
+after#772
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3_2 read from path input
+
+Topmost cell in the window
+
+after#774
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3_4 read from path input
+
+Topmost cell in the window
+
+after#776
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3b_1 read from path input
+
+Topmost cell in the window
+
+after#778
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3b_2 read from path input
+
+Topmost cell in the window
+
+after#780
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or3b_4 read from path input
+
+Topmost cell in the window
+
+after#782
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4_1 read from path input
+
+Topmost cell in the window
+
+after#784
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4_2 read from path input
+
+Topmost cell in the window
+
+after#786
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4_4 read from path input
+
+Topmost cell in the window
+
+after#788
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4b_1 read from path input
+
+Topmost cell in the window
+
+after#790
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4b_2 read from path input
+
+Topmost cell in the window
+
+after#792
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4b_4 read from path input
+
+Topmost cell in the window
+
+after#794
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4bb_1 read from path input
+
+Topmost cell in the window
+
+after#796
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4bb_2 read from path input
+
+Topmost cell in the window
+
+after#798
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__or4bb_4 read from path input
+
+Topmost cell in the window
+
+after#800
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__probe_p_8 read from path input
+
+Topmost cell in the window
+
+after#802
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__probec_p_8 read from path input
+
+Topmost cell in the window
+
+after#804
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfbbn_1 read from path input
+
+Topmost cell in the window
+
+after#806
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfbbn_2 read from path input
+
+Topmost cell in the window
+
+after#808
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfbbp_1 read from path input
+
+Topmost cell in the window
+
+after#810
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrbp_1 read from path input
+
+Topmost cell in the window
+
+after#812
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrbp_2 read from path input
+
+Topmost cell in the window
+
+after#814
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrtn_1 read from path input
+
+Topmost cell in the window
+
+after#816
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrtp_1 read from path input
+
+Topmost cell in the window
+
+after#818
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrtp_2 read from path input
+
+Topmost cell in the window
+
+after#820
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfrtp_4 read from path input
+
+Topmost cell in the window
+
+after#822
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfsbp_1 read from path input
+
+Topmost cell in the window
+
+after#824
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfsbp_2 read from path input
+
+Topmost cell in the window
+
+after#826
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfstp_1 read from path input
+
+Topmost cell in the window
+
+after#828
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfstp_2 read from path input
+
+Topmost cell in the window
+
+after#830
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfstp_4 read from path input
+
+Topmost cell in the window
+
+after#832
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfxbp_1 read from path input
+
+Topmost cell in the window
+
+after#834
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfxbp_2 read from path input
+
+Topmost cell in the window
+
+after#836
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfxtp_1 read from path input
+
+Topmost cell in the window
+
+after#838
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfxtp_2 read from path input
+
+Topmost cell in the window
+
+after#840
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdfxtp_4 read from path input
+
+Topmost cell in the window
+
+after#842
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdlclkp_1 read from path input
+
+Topmost cell in the window
+
+after#844
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdlclkp_2 read from path input
+
+Topmost cell in the window
+
+after#846
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sdlclkp_4 read from path input
+
+Topmost cell in the window
+
+after#848
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sedfxbp_1 read from path input
+
+Topmost cell in the window
+
+after#850
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sedfxbp_2 read from path input
+
+Topmost cell in the window
+
+after#852
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sedfxtp_1 read from path input
+
+Topmost cell in the window
+
+after#854
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sedfxtp_2 read from path input
+
+Topmost cell in the window
+
+after#856
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__sedfxtp_4 read from path input
+
+Topmost cell in the window
+
+after#858
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__tap_1 read from path input
+
+Topmost cell in the window
+
+after#860
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__tap_2 read from path input
+
+Topmost cell in the window
+
+after#862
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__tapvgnd2_1 read from path input
+
+Topmost cell in the window
+
+after#864
+{Metal1 minimum area < 3320 (met1.6)} {{17 391 75 397} {17 357 29 391} {17 351 75 357}}
+3
+
+Cell sky130_fd_sc_hd__tapvgnd_1 read from path input
+
+Topmost cell in the window
+
+after#866
+{Metal1 minimum area < 3320 (met1.6)} {{17 459 75 465} {17 425 29 459} {17 419 75 425}}
+3
+
+Cell sky130_fd_sc_hd__tapvpwrvgnd_1 read from path input
+
+Topmost cell in the window
+
+after#868
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor2_1 read from path input
+
+Topmost cell in the window
+
+after#870
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor2_2 read from path input
+
+Topmost cell in the window
+
+after#872
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor2_4 read from path input
+
+Topmost cell in the window
+
+after#874
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor3_1 read from path input
+
+Topmost cell in the window
+
+after#876
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor3_2 read from path input
+
+Topmost cell in the window
+
+after#878
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xnor3_4 read from path input
+
+Topmost cell in the window
+
+after#880
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor2_1 read from path input
+
+Topmost cell in the window
+
+after#882
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor2_2 read from path input
+
+Topmost cell in the window
+
+after#884
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor2_4 read from path input
+
+Topmost cell in the window
+
+after#886
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor3_1 read from path input
+
+Topmost cell in the window
+
+after#888
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor3_2 read from path input
+
+Topmost cell in the window
+
+after#890
+No errors found.
+
+0
+
+Cell sky130_fd_sc_hd__xor3_4 read from path input
+
+Topmost cell in the window
+
+after#892
+No errors found.
+
+0
+

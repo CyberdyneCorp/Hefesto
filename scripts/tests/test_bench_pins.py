@@ -5,10 +5,19 @@
 Regression (m4-scripting round 1): bench/drc/drc_bench.py hard-coded the M3
 sky130 pin, so after the M4 pin move perf.yml's drc-bench job could not find
 the sky130A install that fetch_pdk.py had put in the cache.
+
+Regression (m4-scripting closing round): the M4 sky130A.tech `include`s its
+drc, cifout, cifin and extract sections from part files beside it; the bench
+copied sky130A.tech alone, so Magic loaded a technology without a drc section
+and segfaulted on `drc check` (perf.yml drc-bench: "docker exited 139").
+Since M4 hefesto-cli runs scripts through Tcl and, like Magic, prints a result
+only through `puts`: the bench's bare `drc list count total` printed nothing,
+so Hefesto's error count read as empty.
 """
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -29,6 +38,30 @@ class BenchPinTest(unittest.TestCase):
         drc_bench = load("bench_pin_drc_bench", REPO / "bench" / "drc" / "drc_bench.py")
         self.assertEqual(drc_bench.PDK_VERSION, fetch_pdk.PDK_VERSION)
         self.assertEqual(drc_bench.PDK_VERSION, fetch_pdk.OPEN_PDKS_PIN)
+
+    def test_drc_bench_copies_the_tech_part_files(self):
+        drc_bench = load("bench_parts_drc_bench", REPO / "bench" / "drc" / "drc_bench.py")
+        parts = ["sky130A.tech", "sky130A-drc.tech", "sky130A-cifout.tech", "sky130A-cifin.tech",
+                 "sky130A-extract.tech"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root, work = Path(tmp) / "pdks", Path(tmp) / "work"
+            variant = root / "ciel" / "sky130" / "versions" / drc_bench.PDK_VERSION / "sky130A"
+            (variant / "libs.tech" / "magic").mkdir(parents=True)
+            (variant / "libs.ref" / drc_bench.LIBRARY / "mag").mkdir(parents=True)
+            for name in parts:
+                (variant / "libs.tech" / "magic" / name).write_text(name)
+            work.mkdir()
+            drc_bench.prepare(work, root)
+            for name in parts:
+                self.assertEqual((work / name).read_text(), name)
+
+    def test_drc_bench_scripts_print_the_count_with_puts(self):
+        drc_bench = load("bench_count_drc_bench", REPO / "bench" / "drc" / "drc_bench.py")
+        workload = drc_bench.Workload("probe", "load top\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            for tool in ("hefesto", "magic"):
+                for script in drc_bench.write_scripts(tool, workload, 2, Path(tmp)):
+                    self.assertIn("puts [drc list count total]\n", (Path(tmp) / script).read_text())
 
 
 if __name__ == "__main__":
