@@ -3,7 +3,22 @@
 """Shared inputs and command helpers of the M1 and M2 case specs."""
 from __future__ import annotations
 
+import gzip
+import io
+
 from casegen import GOLDEN
+
+
+def gzip_bytes(data: bytes) -> bytes:
+    """``data`` gzip-compressed with a header that is the same on every platform.
+
+    ``gzip.compress(..., mtime=0)`` hands the header to zlib on Python 3.11-3.12, which
+    stamps the build's OS byte (3 on Linux, 19 on macOS); GzipFile always writes 255.
+    """
+    buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=buffer, mode="wb", compresslevel=9, mtime=0) as stream:
+        stream.write(data)
+    return buffer.getvalue()
 
 # tiny.tech: capability tech-file-format, requirement "Complete annotated example"
 # (the same file as the hand-written TECH cases).

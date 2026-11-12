@@ -72,11 +72,14 @@ Tcl_Obj* new_string(std::string_view text) {
   return Tcl_NewStringObj(text.data(), tcl_length(text));
 }
 
-// `time` + `span` (Tcl's wall-clock time of the limits).
+// `time` + `span` (Tcl's wall-clock time of the limits). The span is counted
+// in Tcl_Time's own field type: that is std::chrono's rep on Linux (long) but
+// not on macOS (long long), so an explicit cast is useless on one of them.
 Tcl_Time later(Tcl_Time time, std::chrono::milliseconds span) {
-  const auto milliseconds = span.count();
-  time.sec += static_cast<long>(milliseconds / 1000);
-  time.usec += static_cast<long>((milliseconds % 1000) * 1000);
+  using TclMilliseconds = std::chrono::duration<decltype(Tcl_Time::sec), std::milli>;
+  const auto milliseconds = std::chrono::duration_cast<TclMilliseconds>(span).count();
+  time.sec += milliseconds / 1000;
+  time.usec += (milliseconds % 1000) * 1000;
   if (time.usec >= 1000000) {
     time.sec += 1;
     time.usec -= 1000000;
@@ -154,7 +157,12 @@ class TclInterpreter final : public Interpreter {
 
   cmd::CommandResult evaluate(std::string_view script, cmd::Origin origin) override {
     Evaluation evaluation{*this, origin, ""};
-    const int code = Tcl_EvalEx(interp_, script.data(), tcl_length(script), TCL_EVAL_GLOBAL);
+    // A NUL-terminated copy: Tcl 8.6.16's parser reads the byte after the
+    // given length (Tcl_ParseQuotedString looks there for the closing quote
+    // of a quoted word that runs to the end), and a string_view need not be
+    // terminated.
+    const std::string text{script};
+    const int code = Tcl_EvalEx(interp_, text.c_str(), tcl_length(text), TCL_EVAL_GLOBAL);
     return evaluation.finish(code, "", "");
   }
 
@@ -549,6 +557,10 @@ std::unique_ptr<Interpreter> create_project_interpreter(editor::EditorState& edi
 ScriptLocation current_script_location(const Interpreter& interpreter) {
   const auto* tcl = dynamic_cast<const TclInterpreter*>(&interpreter);
   return tcl != nullptr ? tcl->location() : ScriptLocation{};
+}
+
+void release_thread_tcl_state() noexcept {
+  Tcl_FinalizeThread();
 }
 
 }  // namespace hefesto::script

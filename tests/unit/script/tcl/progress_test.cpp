@@ -118,38 +118,52 @@ TEST_CASE("an interrupt asked from a progress report stops the script on the sam
   CHECK(p.value("expr {1+1}") == "2");
 }
 
+// The two tests below count reports, not milliseconds: a sleep on a loaded
+// runner can last several intervals, so how many reports fit in a given span
+// of wall-clock time is not fixed. What is fixed is that `after` checks the
+// limit (and so reports) each time a slice of its sleep ends, and that an
+// interrupt or the policy's deadline ends the evaluation.
+
 TEST_CASE("sleeping in after reports progress and can be interrupted", PROGRESS) {
   SandboxedProject p;
-  Reports reports;
-  reports.install(p);
-  REQUIRE(p.run("after 120").ok());
-  CHECK(reports.running() >= 3);
+  p.state.script.progress.interval = 10ms;
+  std::size_t running = 0;
+  bool done = false;
   p.state.script.progress.handler = [&](const script::ScriptProgress& r) {
-    if (!r.done) p.interp->request_interrupt();
+    done = done || r.done;
+    if (!r.done && ++running == 3) {
+      p.interp->request_interrupt();
+    }
   };
-  const auto started = std::chrono::steady_clock::now();
-  const auto result = p.run("after 5000");
-  CHECK(std::chrono::steady_clock::now() - started < 2s);
+  // Ten minutes: only the interrupt asked from the third report ends it.
+  const auto result = p.run("after 600000");
   REQUIRE_FALSE(result.ok());
   CHECK(codes(result).front() == "SCRIPT-TCL-002");
+  CHECK(running == 3);  // `after` stops at the interrupt, before its next slice
+  CHECK(done);
+  CHECK(p.value("expr {1+1}") == "2");
 }
 
 TEST_CASE("progress reports do not lift the policy's time limit", PROGRESS) {
   script::SandboxPolicy policy;
-  policy.limits.time_limit = 150ms;
+  policy.limits.time_limit = 300ms;
   SandboxedProject p{policy};
   Reports reports;
-  reports.install(p, 20ms);
-  const auto started = std::chrono::steady_clock::now();
-  const auto result = p.run("catch {while 1 {}}");
-  CHECK(std::chrono::steady_clock::now() - started < 2s);
-  REQUIRE_FALSE(result.ok());
-  CHECK(codes(result).front() == "SCRIPT-TCL-003");
-  CHECK(reports.running() >= 3);
-  // The next evaluation has its own limit and still reports.
-  reports.all.clear();
-  REQUIRE(p.run("after 100").ok());
-  CHECK(reports.running() >= 2);
+  reports.install(p, 10ms);
+  // An endless loop and an endless sleep: only the deadline ends them, though
+  // every report moves Tcl's limit one interval on.
+  for (const char* script : {"catch {while 1 {}}", "catch {after 600000}"}) {
+    INFO(script);
+    reports.all.clear();
+    const auto result = p.run(script);
+    REQUIRE_FALSE(result.ok());
+    CHECK(codes(result).front() == "SCRIPT-TCL-003");
+    CHECK(reports.running() >= 1);
+    REQUIRE_FALSE(reports.all.empty());
+    CHECK(reports.all.back().done);
+  }
+  // Each evaluation has its own deadline: the expired one does not stop the next.
+  CHECK(p.value("expr {1+1}") == "2");
 }
 
 TEST_CASE("a handler that throws or evaluates does not stop the script", PROGRESS) {

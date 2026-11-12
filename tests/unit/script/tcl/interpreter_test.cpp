@@ -123,6 +123,19 @@ TEST_CASE("Tcl errors are SCRIPT-TCL-001 with the script line", BINDING) {
   CHECK(p.run("return 7").value == cmd::Value{"7"});
 }
 
+TEST_CASE("an evaluated view ends at its length, also inside an open quoted word", BINDING) {
+  // Regression (fuzz_tcl_sandbox): Tcl's parser looked at the byte after the
+  // view for the closing quote; here that byte is one, so the unterminated
+  // word must not be read as closed.
+  SandboxedProject p;
+  const std::string buffer = "set a \"x\"; set b 1";
+  const auto result = p.run(std::string_view{buffer}.substr(0, 8));  // set a "x
+  REQUIRE_FALSE(result.ok());
+  CHECK(error_text(result) == "missing \"");
+  CHECK(p.value("info exists a") == "0");
+  CHECK(p.value("info exists b") == "0");
+}
+
 TEST_CASE("source names the file in info script and locates its errors", BINDING) {
   SandboxedProject p;
   const auto file = p.project.write("lib/setup.tcl", "set inside [info script]\n\nnosuchcommand\n");

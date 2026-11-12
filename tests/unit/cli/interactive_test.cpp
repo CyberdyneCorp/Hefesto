@@ -26,6 +26,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/binding/bind.hpp"
 #include "hefesto/script/project.hpp"
+#include "hefesto/script/tcl/tcl_interpreter.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
 #include "hefesto/tech/technology.hpp"
@@ -65,7 +66,10 @@ struct Console {
   std::FILE* prompt = std::tmpfile();
   int fds[2] = {-1, -1};
 
-  Console() {
+  /// `with_interpreter` false leaves the project's interpreter to
+  /// open_interpreter() on the thread that runs the prompt: a Tcl interpreter
+  /// belongs to the thread that creates it.
+  explicit Console(bool with_interpreter = true) {
     hefesto::tech::TechnologyBuilder b;
     b.set_name("clit");
     REQUIRE(b.add_plane("metal1").ok());
@@ -79,11 +83,16 @@ struct Console {
     REQUIRE(cmd::register_all_commands(registry));
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
-    // Typed commands are Tcl in the project's interpreter (m4-scripting 13.2).
-    hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(editor, {});
-    REQUIRE(hefesto::script::bind_registry(interp, registry, *dispatcher).ok());
+    if (with_interpreter) {
+      REQUIRE(open_interpreter());
+    }
     REQUIRE(prompt != nullptr);
     REQUIRE(::pipe(fds) == 0);
+  }
+  /// Typed commands are Tcl in the project's interpreter (m4-scripting 13.2).
+  [[nodiscard]] bool open_interpreter() {
+    hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(editor, {});
+    return hefesto::script::bind_registry(interp, registry, *dispatcher).ok();
   }
   ~Console() {
     hefesto::script::close_project_interpreter(editor);
@@ -162,9 +171,20 @@ TEST_CASE("The interactive prompt shows the busy prompt while the background che
     g.open = false;
   }
   const drc::ScopedKernel kernel(&gated_kernel);
-  Console console;
+  Console console{false};
   cli::InteractiveRun result;
-  std::thread loop([&] { result = cli::run_interactive(*console.dispatcher, console.editor, console.fds[0], console.prompt, true); });
+  bool bound = false;
+  // The prompt's thread is the command thread: it creates, uses and deletes the
+  // interpreter, then releases Tcl's data of the thread (LeakSanitizer reports
+  // it otherwise).
+  std::thread loop([&] {
+    bound = console.open_interpreter();
+    if (bound) {
+      result = cli::run_interactive(*console.dispatcher, console.editor, console.fds[0], console.prompt, true);
+    }
+    hefesto::script::close_project_interpreter(console.editor);
+    hefesto::script::release_thread_tcl_state();
+  });
 
   REQUIRE(eventually([&] { return console.prompt_text() == "% "; }));  // idle, waiting for input
   // The worker runs between commands: the paint marks the box and the
@@ -184,6 +204,7 @@ TEST_CASE("The interactive prompt shows the busy prompt while the background che
   CHECK(eventually([&] { return console.prompt_text().ends_with("\b\b  \b\b% "); }));
   console.type("quit -noprompt\n");
   loop.join();
+  REQUIRE(bound);
   CHECK(result.quit);
   CHECK(result.ok);
   CHECK(console.editor.drc.pending.empty());
