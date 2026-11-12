@@ -122,6 +122,19 @@ TEST_CASE("Bezier curves are flattened at t = k/6", "[cap:font-labels][req:Bezie
   CHECK(font.glyph('B').contours.front().size() > 3);
 }
 
+TEST_CASE("Bezier flattening of far-apart points wraps as Magic's int arithmetic does",
+          "[cap:font-labels][req:Bezier flattening]") {
+  // fuzz_font: 600000000 - -2088888888 overflowed a signed Coord (UBSan).
+  const db::Point p0{-2088888888, 0};
+  const db::Point p1{600000000, 0};
+  const auto points = display::flatten_bezier(p0, p1, p1, {2100000000, 0});
+  REQUIRE(points.size() <= 6);
+  CHECK(points.back() == db::Point{2100000000, 0});
+  for (const auto& p : points) {
+    CHECK(p.y == 0);
+  }
+}
+
 TEST_CASE("font label geometry of a centred label", "[cap:font-labels][req:Font label geometry]") {
   const auto text = free_sans();
   if (!text) {
