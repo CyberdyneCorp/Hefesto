@@ -8,6 +8,18 @@ release notices.
 
 ### Changed
 
+- **`cellname list filepath` and `readspice` bus brackets follow
+  `magic-compat`.** With it ON, `cellname list filepath` returns the whole
+  stored path, as Magic does, and a netlist pin `D[0]` never matches the
+  layout port `D<0>` (Magic's bracket-map typo). With it OFF, the first
+  returns the directory and the bracket map works as intended.
+- **The eight IHP sg13g2 fixed devices are native generators.** With
+  `magic-compat` ON the result is Magic's; with it OFF the device is placed
+  in the edit cell and the window, edit cell and box are kept.
+- **GUI scripts run headless in `hefesto-cli --magic -d X11`.** A model of
+  Tk's widget tree stands in for the wrapper window, so wrapper.tcl's tags,
+  menus and dialogs work without a display.
+
 - **Desktop: the undo history names each step after the command that made
   it** ("↶ paint metal1", "Undid paint metal1 · 3 more steps"), and pressing
   and holding Undo for half a second opens it (a shorter press still
@@ -66,6 +78,16 @@ release notices.
   owned utility windows.
 
 ### Fixed
+
+- **DRC on sky130 standard cells is fast again.** Copying mask hints into
+  the DRC's interaction area cost quadratic time in the number of hinted
+  cells; a block check is back to about 0.7 × Magic's time on x86.
+- **Tag scripts run in the frame of the code that ran the command**, as in
+  Magic: a tag fired from a procedure sees `info level` and its locals.
+  GUI sessions no longer print "Box tool must be present" twice when a
+  PCell is placed without a box.
+- **`array`, `delete`, `copy`, `move`, `stretch`, `clockwise`, the flips and
+  `orient` without a box print "Box must be present"**, as Magic does.
 
 - **Moving, copying, deleting, rotating or arraying before anything was
   ever selected no longer crashes.** `box 0 0 0 0; delete` in a fresh
