@@ -17,7 +17,7 @@ description = "widespacing m1 10 20 m1 4 touching_ok (runlength 20); vertical pa
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

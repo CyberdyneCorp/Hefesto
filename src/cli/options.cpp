@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
+#include <system_error>
 #include <utility>
 
 namespace hefesto::cli {
@@ -76,12 +78,24 @@ class ArgParser {
       set_value(arg, "--setting", [this](std::string_view v) { add_setting(v); });
     } else if (is_option(arg, "--trust-pdk")) {
       set_value(arg, "--trust-pdk", [this](std::string_view v) { result_.options.trust_pdk.emplace_back(v); });
+    } else if (is_option(arg, "--script-time-limit")) {
+      set_value(arg, "--script-time-limit", [this](std::string_view v) { set_time_limit(v); });
     } else if (is_option(arg, "--strip-reflibs")) {
       set_value(arg, "--strip-reflibs",
                 [this](std::string_view v) { result_.options.strip_reflibs = std::filesystem::path{v}; });
     } else {
       fail("unknown option '" + std::string{arg} + "'");
     }
+  }
+
+  void set_time_limit(std::string_view text) {
+    std::uint32_t seconds = 0;
+    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), seconds);
+    if (error != std::errc{} || end != text.data() + text.size()) {
+      fail("--script-time-limit: not a number of seconds: '" + std::string{text} + "'");
+      return;
+    }
+    result_.options.script_time_limit = seconds;
   }
 
   // Options without an argument; false when `arg` is not one of them.
@@ -182,6 +196,7 @@ std::string usage_text() {
          "                            a family (sky130), variant (sky130A), variant@hash or\n"
          "                            family/variant@version; repeatable. Batch runs decline\n"
          "                            every other PDK script unless the PDK store trusts it\n"
+         "  --script-time-limit <s>   stop a Tcl evaluation after <s> seconds (default: none)\n"
          "  --magic ...               Magic's command line: -T, -d, -rcfile, -norcfile, -r,\n"
          "                            cells and a .tcl script, evaluated as Tcl in the\n"
          "                            sandboxed interpreter; Tcl commands from standard input\n"

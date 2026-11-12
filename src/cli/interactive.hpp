@@ -11,12 +11,17 @@
 // The prompt is Magic's console prompt (drc::BackgroundHost::prompt_char):
 // "% " when idle, "] " while the checker is busy; a busy/idle transition
 // while waiting rewrites it in place (TxUnPrompt's backspaces, then
-// TxPrompt). A line that leaves a brace group, a quote or a
-// backslash-newline open continues on the next line.
+// TxPrompt). Each complete command is Tcl, evaluated in the project's
+// interpreter (m4-scripting tasks.md 13.2): a line that leaves a brace
+// group, a quote, a bracket or a backslash-newline open continues on the
+// next line (`info complete`).
 
 #pragma once
 
 #include <cstdio>
+#include <functional>
+
+#include "tcl_lines.hpp"
 
 namespace hefesto::cmd {
 class Dispatcher;
@@ -33,11 +38,16 @@ struct InteractiveRun {
   bool quit = false;  // ended by `quit` (otherwise by end of input)
 };
 
+/// Evaluates one complete command typed at the prompt and prints its result
+/// or error; false when it raised a Tcl error.
+using ChunkEvaluator = std::function<bool(const TclChunk&)>;
+
 /// Runs the interactive prompt on `input_fd` until end of input or `quit`.
-/// The prompt goes to `prompt_out` when `show_prompt` is set (the command
-/// results and diagnostics go wherever the dispatcher's observers print).
+/// The prompt goes to `prompt_out` when `show_prompt` is set. Each complete
+/// command goes to `evaluate`; without one, it is evaluated in
+/// `editor.script.interp` (which must be open) and its result dropped.
 /// Hosts the background checker over `editor` for its duration.
 [[nodiscard]] InteractiveRun run_interactive(cmd::Dispatcher& dispatcher, editor::EditorState& editor, int input_fd,
-                                             std::FILE* prompt_out, bool show_prompt);
+                                             std::FILE* prompt_out, bool show_prompt, ChunkEvaluator evaluate = {});
 
 }  // namespace hefesto::cli

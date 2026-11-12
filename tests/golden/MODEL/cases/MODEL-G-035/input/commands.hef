@@ -1,7 +1,0 @@
-# MODEL-G-035: 2x2 array of a child with label out; flatten -doinplace inv_0 (Q-MODEL-7).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/mt -noprompt
-snap internal
-load input/top
-flatten -doinplace inv_0
-save top

@@ -1,6 +1,0 @@
-# CELL-WR-08: Persistent elements (rectangle, line with flags, text); load and save.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-save a_out

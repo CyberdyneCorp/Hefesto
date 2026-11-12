@@ -170,23 +170,24 @@ TEST_CASE("highlights become batches drawn after the layout, in client order",
   hl.items.push_back(highlight(display::HighlightShape::triangle, 3, {0, 0, 10, 10}));
 
   const auto batches = render::to_batches(scene, &hl);
-  // layout fill, box lines, selection lines, triangle fill (text draws nothing).
-  REQUIRE(batches.kinds.size() == 4);
+  // layout fill, the box's four thick sides (one layer each), selection
+  // lines, triangle fill (text draws nothing).
+  REQUIRE(batches.kinds.size() == 7);
   CHECK(batches.kinds[0] == render::BatchKind::fill);
   CHECK(batches.kinds[1] == render::BatchKind::highlight);
-  CHECK(batches.style_index[1] == 1);
-  CHECK(batches.style_index[2] == 6);
-  CHECK(batches.style_index[3] == 3);
-  CHECK(batches.styles[2].r == 1.0F);  // white
-  CHECK(batches.styles[2].a == 1.0F);
-  REQUIRE(batches.rects.batches().size() == 3);
-  CHECK(batches.rects.batches()[1].count == 4);  // the box's four sides
-  CHECK(batches.rects.batches()[2].count == 1);  // one selection edge
+  for (std::size_t i = 1; i <= 4; ++i) CHECK(batches.style_index[i] == 1);
+  CHECK(batches.style_index[5] == 6);
+  CHECK(batches.style_index[6] == 3);
+  CHECK(batches.styles[5].r == 1.0F);  // white
+  CHECK(batches.styles[5].a == 1.0F);
+  REQUIRE(batches.rects.batches().size() == 6);
+  for (std::size_t i = 1; i <= 4; ++i) CHECK(batches.rects.batches()[i].count == 1);  // one side each
+  CHECK(batches.rects.batches()[5].count == 1);  // one selection edge
   CHECK(batches.polygons.batches.size() == 1);
 
   // The same highlights alone (a separate pass over a retained layout).
   const auto alone = render::highlight_batches(hl);
-  CHECK(alone.kinds.size() == 3);
+  CHECK(alone.kinds.size() == 6);
   CHECK(alone.rects.batches().front().layer == 0);
 }
 
@@ -203,4 +204,74 @@ TEST_CASE("highlight boxes draw the style's fill and outline; crosses draw their
   CHECK(batches.styles[0].stippled);
   REQUIRE(batches.rects.batches().size() == 2);
   CHECK(batches.rects.instances()[1] == render::RectInstance{5, 5, 5, 5});
+}
+
+// --- pixel-width highlight outlines (M4 CARRY, task 11.6) ----------------------------
+
+TEST_CASE("highlight outlines are one logical pixel wide at any pixel ratio",
+          "[cap:hefesto-rendering][req:High-DPI and color management]") {
+  display::HighlightScene hl;
+  hl.items.push_back(highlight(display::HighlightShape::outline, 6, {0, 0, 10, 10}));  // a selection outline
+  display::HighlightItem edge = highlight(display::HighlightShape::line, 6, {});
+  edge.line = display::SceneSegment{{0, 0}, {10, 0}};
+  hl.items.push_back(edge);
+  const auto standard = render::highlight_batches(hl);
+  REQUIRE(standard.styles.size() == 1);
+  CHECK(standard.styles[0].line_width == 1);
+  CHECK(standard.styles[0].line_shift_x == 0);
+  CHECK(standard.styles[0].line_shift_y == 0);
+  const auto retina = render::highlight_batches(hl, render::HighlightOptions{2.0});
+  REQUIRE(retina.styles.size() == 1);
+  CHECK(retina.styles[0].line_width == 2);  // two framebuffer pixels = one logical pixel
+  CHECK(retina.rects.batches()[0].count == 5);
+  CHECK(render::highlight_line_width(render::HighlightOptions{0.5}) == 1);
+  CHECK(render::highlight_line_width(render::HighlightOptions{1.5}) == 2);
+  CHECK(render::highlight_line_width(render::HighlightOptions{500.0}) == 63);
+}
+
+TEST_CASE("the thick box draws two-pixel sides inside the box",
+          "[cap:ui-windows-and-views][req:Box display]") {
+  display::HighlightScene hl;
+  hl.items.push_back(highlight(display::HighlightShape::outline, display::kStyleBox, {0, 0, 40, 20}));
+  const auto batches = render::highlight_batches(hl, render::HighlightOptions{2.0});
+  REQUIRE(batches.styles.size() == 4);
+  const auto& rects = batches.rects.instances();
+  REQUIRE(rects.size() == 4);
+  // left, right, bottom, top; each 4 framebuffer pixels (2 logical) wide,
+  // moved inward by half its width (4 half pixels).
+  CHECK(rects[0] == render::RectInstance{0, 0, 0, 20});
+  CHECK(rects[1] == render::RectInstance{40, 0, 40, 20});
+  CHECK(rects[2] == render::RectInstance{0, 0, 40, 0});
+  CHECK(rects[3] == render::RectInstance{0, 20, 40, 20});
+  for (const auto& style : batches.styles) CHECK(style.line_width == 4);
+  CHECK(batches.styles[0].line_shift_x == 4);
+  CHECK(batches.styles[0].line_shift_y == 0);
+  CHECK(batches.styles[1].line_shift_x == -4);
+  CHECK(batches.styles[2].line_shift_y == 4);
+  CHECK(batches.styles[3].line_shift_y == -4);
+
+  // Outside the edit cell (medium highlights) the box is thick too; a thin
+  // box (outline highlights, under 4 pixels) is a plain one-pixel outline.
+  display::HighlightScene medium;
+  medium.items.push_back(highlight(display::HighlightShape::outline, display::kStyleMediumHighlights, {0, 0, 4, 4}));
+  CHECK(render::highlight_batches(medium).styles.size() == 4);
+  display::HighlightScene thin;
+  thin.items.push_back(highlight(display::HighlightShape::outline, display::kStyleOutlineHighlights, {0, 0, 1, 4}));
+  const auto plain = render::highlight_batches(thin);
+  REQUIRE(plain.styles.size() == 1);
+  CHECK(plain.styles[0].line_width == 1);
+  CHECK(plain.rects.batches()[0].count == 4);
+}
+
+TEST_CASE("the thick box keeps its place in the client order",
+          "[cap:ui-feedback-and-highlights][req:Highlight layer and clients]") {
+  display::HighlightScene hl;
+  hl.items.push_back(highlight(display::HighlightShape::outline, 6, {0, 0, 2, 2}));
+  hl.items.push_back(highlight(display::HighlightShape::outline, display::kStyleBox, {0, 0, 10, 10}));
+  hl.items.push_back(highlight(display::HighlightShape::outline, 6, {5, 5, 8, 8}));
+  const auto batches = render::highlight_batches(hl);
+  REQUIRE(batches.style_index.size() == 6);
+  CHECK(batches.style_index[0] == 6);
+  for (std::size_t i = 1; i <= 4; ++i) CHECK(batches.style_index[i] == display::kStyleBox);
+  CHECK(batches.style_index[5] == 6);
 }

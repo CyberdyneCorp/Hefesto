@@ -9,7 +9,7 @@ namespace {
 
 bool needs_version(PdkAction action) noexcept {
   return action == PdkAction::install || action == PdkAction::enable || action == PdkAction::pin ||
-         action == PdkAction::uninstall;
+         action == PdkAction::uninstall || action == PdkAction::trust || action == PdkAction::untrust;
 }
 
 std::string_view verb(PdkAction action) noexcept {
@@ -20,6 +20,8 @@ std::string_view verb(PdkAction action) noexcept {
     case PdkAction::enable: return "enable";
     case PdkAction::pin: return "pin";
     case PdkAction::uninstall: return "uninstall";
+    case PdkAction::trust: return "trust";
+    case PdkAction::untrust: return "untrust";
   }
   return "list";
 }
@@ -45,6 +47,8 @@ std::string_view pdk_action_label(PdkAction action) noexcept {
     case PdkAction::enable: return "Enable";
     case PdkAction::pin: return "Pin to project";
     case PdkAction::uninstall: return "Uninstall";
+    case PdkAction::trust: return "Trust scripts";
+    case PdkAction::untrust: return "Revoke trust";
   }
   return "";
 }
@@ -69,7 +73,23 @@ std::optional<std::string> pdk_command(PdkAction action, std::string_view family
   return line;
 }
 
-std::vector<PdkRow> pdk_rows(const pdk::Catalog& catalog, const std::vector<pdk::InstalledVersion>& installed) {
+namespace {
+
+void set_installed(PdkRow& row, const pdk::InstalledVersion& found, const ScriptTrust& trusted) {
+  row.installed_version = found.version.short_form();
+  row.installed_hash = found.version.hash;
+  row.enabled = found.enabled;
+  row.state = found.enabled ? StatusChip{StatusKind::success, "enabled " + *row.installed_version}
+                            : StatusChip{StatusKind::info, "installed " + *row.installed_version};
+  row.scripts_trusted = trusted && trusted(found);
+  row.scripts = row.scripts_trusted ? StatusChip{StatusKind::success, "scripts trusted"}
+                                    : StatusChip{StatusKind::info, "scripts ask before running"};
+}
+
+}  // namespace
+
+std::vector<PdkRow> pdk_rows(const pdk::Catalog& catalog, const std::vector<pdk::InstalledVersion>& installed,
+                             const ScriptTrust& trusted) {
   std::vector<PdkRow> rows;
   for (const pdk::Family& family : catalog.families()) {
     for (const pdk::Variant& variant : family.variants) {
@@ -77,20 +97,20 @@ std::vector<PdkRow> pdk_rows(const pdk::Catalog& catalog, const std::vector<pdk:
       row.family = family.name;
       row.variant = variant.name;
       row.default_libraries = variant.default_libraries.size();
-      const pdk::InstalledVersion* found = newest_installed(installed, variant.name);
-      if (found == nullptr) {
-        row.state = StatusChip{StatusKind::info, "not installed"};
+      if (const pdk::InstalledVersion* found = newest_installed(installed, variant.name)) {
+        set_installed(row, *found, trusted);
       } else {
-        row.installed_version = found->version.short_form();
-        row.installed_hash = found->version.hash;
-        row.enabled = found->enabled;
-        row.state = found->enabled ? StatusChip{StatusKind::success, "enabled " + *row.installed_version}
-                                   : StatusChip{StatusKind::info, "installed " + *row.installed_version};
+        row.state = StatusChip{StatusKind::info, "not installed"};
       }
       rows.push_back(std::move(row));
     }
   }
   return rows;
+}
+
+std::optional<PdkAction> trust_action(const PdkRow& row) {
+  if (!row.installed_hash) return std::nullopt;
+  return row.scripts_trusted ? PdkAction::untrust : PdkAction::trust;
 }
 
 }  // namespace hefesto::shell

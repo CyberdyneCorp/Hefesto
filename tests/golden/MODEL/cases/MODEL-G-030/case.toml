@@ -17,7 +17,7 @@ description = "Arrays: 4x2 of a 10x10 child, negative x separation, rotated 90; 
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

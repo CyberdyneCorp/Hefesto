@@ -3,6 +3,8 @@
 
 #include "side_panels.hpp"
 
+#include "hefesto/shell/toolbar_views.hpp"
+
 #include <algorithm>
 #include <utility>
 
@@ -14,6 +16,20 @@
 namespace hefesto::shell {
 
 namespace {
+
+/// M4 layer toolbar order (toolbar_views.hpp): the rows in `order` first.
+void apply_toolbar_order(std::vector<LayerRow>& rows, const std::vector<std::string>& order) {
+  if (order.empty()) return;
+  gui::ToolbarModel toolbar;
+  toolbar.layers = order;
+  std::vector<std::string> names;
+  names.reserve(rows.size());
+  for (const LayerRow& row : rows) names.push_back(row.name);
+  std::vector<LayerRow> sorted;
+  sorted.reserve(rows.size());
+  for (const std::size_t i : toolbar_order(names, toolbar)) sorted.push_back(std::move(rows[i]));
+  rows = std::move(sorted);
+}
 
 constexpr float kPanelPadX = 14.0F;  // the mockup's 14 px panel padding
 constexpr float kTitleHeight = 28.0F;  // 12 px top padding + 11 px label + gap
@@ -118,6 +134,12 @@ void LeftPanel::repaint() {
   for (auto& w : tree_widgets_) w->invalidate();
 }
 
+void LeftPanel::set_hierarchy_visible(bool visible) {
+  divider_->set_visible(visible);
+  hierarchy_title_->set_visible(visible);
+  tree_list_.set_visible(visible);
+}
+
 void LeftPanel::rebuild_layers() {
   // Raven deletes the row widgets first; their callbacks go after.
   layer_rows_box_.clear();
@@ -128,6 +150,7 @@ void LeftPanel::rebuild_layers() {
     const tech::TypeMask visible = window_ != nullptr ? window_->visible_types() : tech::TypeMask::all();
     layers_ = layer_rows(display::layer_palette(*ed.technology, *ed.styles), visible, filter_text_, ed.locked_types,
                          ctx_.paint_layer);
+    apply_toolbar_order(layers_, toolbar_order_);
   }
   for (std::size_t i = 0; i < layers_.size(); ++i) {
     auto row = make_interactive(ctx_, [this, i](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hov,

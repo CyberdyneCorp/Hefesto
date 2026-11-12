@@ -1,9 +1,0 @@
-# CMDEDIT-BOX-08: box position and values past the coordinate limit (Q-CMDEDIT-12).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load a
-box 0 0 10 10
-box position 2000000000i 0
-box values
-box values 0 0 2000000000i 1
-box values

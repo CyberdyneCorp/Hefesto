@@ -17,7 +17,7 @@ description = "scalefactor 10: spacing 25, maxwidth 25 bend_illegal, area 1050 2
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

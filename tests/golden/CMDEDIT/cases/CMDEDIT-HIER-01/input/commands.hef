@@ -1,7 +1,0 @@
-# CMDEDIT-HIER-01: Edit cell holding inv_0 and inv_2; getcell inv.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/top
-box 50 0 50 0
-getcell inv
-save top

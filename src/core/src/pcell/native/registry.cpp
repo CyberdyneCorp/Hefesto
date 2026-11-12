@@ -17,10 +17,24 @@ const NativeGenerator* NativeRegistry::find(const script::PdkIdentity& pdk, std:
   return it == generators_.end() ? nullptr : it->second.get();
 }
 
-const NativeRegistry& builtin_generators() {
-  // SCAFFOLD (PCELL tasks 7.5/7.6): no native generator yet.
-  static const NativeRegistry kRegistry;
-  return kRegistry;
+bool NativeRegistry::has_other_version(const script::PdkIdentity& pdk, std::string_view device) const {
+  for (const auto& [key, generator] : generators_) {
+    const auto& [identity, name] = key;
+    if (name == device && identity.family == pdk.family && identity.variant == pdk.variant &&
+        identity.version != pdk.version) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::vector<std::tuple<script::PdkIdentity, std::string>> NativeRegistry::keys() const {
+  std::vector<Key> out;
+  out.reserve(generators_.size());
+  for (const auto& [key, generator] : generators_) {
+    out.push_back(key);
+  }
+  return out;
 }
 
 }  // namespace hefesto::pcell

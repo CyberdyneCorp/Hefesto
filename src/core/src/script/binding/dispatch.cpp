@@ -17,6 +17,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/script/binding/keyword_rule.hpp"
 #include "hefesto/script/binding/tags.hpp"
+#include "hefesto/script/tcl/tcl_interpreter.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/magic_help.hpp"
 #include "hefesto/ui/state.hpp"
@@ -138,6 +139,15 @@ bool Binding::magic_compat() const {
   return state == nullptr || state->drc.compat_settings().magic_compat;
 }
 
+cmd::Origin command_origin(const Binding& b, const cmd::Invocation& call) {
+  if (call.origin == cmd::Origin::script) {
+    return cmd::Origin::script;
+  }
+  // A procedure a script file defined keeps its file in `info frame`, so
+  // only commands the user's own typed line runs keep the line's origin.
+  return current_script_location(b.interp).file.empty() ? call.origin : cmd::Origin::script;
+}
+
 cmd::CommandResult tcl_error(std::string message) {
   return cmd::CommandResult::failure(diag::make(kTclError, std::move(message)));
 }
@@ -146,7 +156,7 @@ cmd::CommandResult dispatch_command(const Binding& b, const std::string& name, c
   if (!dispatchable(b, name)) {
     return tcl_error({});  // quiet dispatch: an error with an empty result
   }
-  cmd::Invocation invocation{name, call.args, cmd::Origin::script, call.source};
+  cmd::Invocation invocation{name, call.args, command_origin(b, call), call.source};
   cmd::CommandResult result = execute(b, std::move(invocation));
   if (is_dispatch_failure(result)) {
     return tcl_error({});
@@ -158,7 +168,7 @@ cmd::CommandResult dispatch_command(const Binding& b, const std::string& name, c
 }
 
 cmd::CommandResult dispatch_procedure(const Binding& b, const std::string& name, const cmd::Invocation& call) {
-  cmd::CommandResult result = execute(b, cmd::Invocation{name, call.args, cmd::Origin::script, call.source});
+  cmd::CommandResult result = execute(b, cmd::Invocation{name, call.args, command_origin(b, call), call.source});
   if (!result.ok()) {
     return tcl_error(error_message(result));
   }
@@ -178,7 +188,8 @@ cmd::CommandResult dispatch_window(const Binding& b, const std::string& path, co
     report_lookup_failure(b, found, word);
   } else {
     const WindowPoint point{b.editor(), path};
-    cmd::CommandResult result = execute(b, cmd::Invocation{found.spec->name, args, cmd::Origin::script, call.source});
+    cmd::CommandResult result =
+        execute(b, cmd::Invocation{found.spec->name, args, command_origin(b, call), call.source});
     if (!result.ok() && !is_dispatch_failure(result) && (result.raises || b.dispatcher.session().strict)) {
       return tcl_error(error_message(result));
     }

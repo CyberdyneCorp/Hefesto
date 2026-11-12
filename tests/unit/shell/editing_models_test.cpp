@@ -73,10 +73,12 @@ TEST_CASE("the rail shows Magic's current tool and the box tool's modes",
   CHECK(rail_action("paint", "box")->mode == EditMode::paint);
   CHECK(rail_action("label", "wiring")->command == "tool box");
   CHECK(rail_action("fit", "box")->command == "view");
+  // Place device is not a tool mode: the window opens its device popover
+  // (M4, pcell_dialog_model.hpp), so it has no rail action.
   CHECK_FALSE(rail_action("place", "box").has_value());
-  // Every rail tool but Place device is live; its tooltip names M4.
+  // Every rail tool is live since M4.
   for (const ToolButton& b : tool_rail()) {
-    CHECK(b.enabled == (b.icon != "place"));
+    CHECK(b.enabled);
     CHECK_FALSE(b.tooltip.empty());
   }
   const ToolButton& paint = tool_rail()[2];

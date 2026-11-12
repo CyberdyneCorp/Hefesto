@@ -50,6 +50,12 @@ class LeftPanel {
   void repaint();
   /// F6: the keyboard focus to the layer filter.
   void focus() { filter_->focus(); }
+  /// M4: the Hierarchy section moves to the left dock's Cells tab
+  /// (M4-Managers); false hides it here.
+  void set_hierarchy_visible(bool visible);
+  /// M4: the palette doubles as Magic's layer toolbar: rows follow this
+  /// order (the reorder dialog's Confirm); empty: the technology's order.
+  void set_toolbar_order(std::vector<std::string> order) { toolbar_order_ = std::move(order); }
 
  private:
   void rebuild_layers();
@@ -77,6 +83,7 @@ class LeftPanel {
   ui::Box tree_rows_box_ = ui::Box::vertical();
   std::unique_ptr<ui::Painted> edge_;
 
+  std::vector<std::string> toolbar_order_;  // M4 reorder dialog (empty: the technology's order)
   std::string filter_text_;
   const view::LayoutWindow* window_ = nullptr;
   std::vector<LayerRow> layers_;

@@ -7,6 +7,9 @@
 // hefesto/render/camera.hpp).
 //
 // Mode 0 (triangle list, six vertices per instance): the filled rectangle.
+// Lines (zero-width instances) are widened to LayerStyle::line_width pixels
+// and moved by its shift (render::highlight_batches: pixel-width outlines,
+// the box's sides inside the box).
 // Mode 1 (line list, four vertices per instance): its two diagonals, the
 // `cross` style of contacts, skipped when the rectangle is under 4 pixels in
 // both directions (Magic's GR_THRESH in graphics/grClip.c).
@@ -22,7 +25,7 @@ layout(push_constant) uniform View {
   vec4 color;
   uvec4 stipple;  // x: rows 0-3, y: rows 4-7 (row 0 in the low byte), z: enabled, w: line pattern
   ivec4 anchor;   // x: left pixel column, y: bottom pixel row, z: width, w: height of the drawing area
-  ivec4 base;     // xy: polygon base point, z: mode
+  ivec4 base;     // xy: polygon base point, z: mode, w: line width and shift (see line_width)
 } view;
 
 layout(location = 0) out vec4 out_color;
@@ -44,6 +47,16 @@ void diagonals(vec2 a, vec2 b, vec2 px) {
   out_along = (v & 1) == 0 ? 0.0 : length((b - a) * px);
 }
 
+// The width of lines in pixels (at least 1) and their shift in half pixels
+// along world x and y: base.w packs width | (shift_x + 128) << 8 |
+// (shift_y + 128) << 16 (LayerStyle::line_width, line_shift_x/y).
+float line_width() {
+  return max(1.0, float(view.base.w & 0xFF));
+}
+vec2 line_shift() {
+  return vec2(float(((view.base.w >> 8) & 0xFF) - 128), float(((view.base.w >> 16) & 0xFF) - 128));
+}
+
 void main() {
   vec2 a = vec2(in_rect.xy - view.origin) * view.scale + view.offset;
   vec2 b = vec2(in_rect.zw - view.origin) * view.scale + view.offset;
@@ -58,7 +71,10 @@ void main() {
   // Rectangles smaller than a pixel are drawn one pixel wide, as Magic does
   // at low zoom, instead of vanishing.
   vec2 center = 0.5 * (lo + hi);
-  vec2 half_size = max(0.5 * (hi - lo), 0.5 * view.min_size);
+  vec2 half_size = max(0.5 * (hi - lo), 0.5 * view.min_size * line_width());
+  // A wide line moves to one side of its coordinate (world direction to NDC
+  // through the sign of the scale).
+  center += 0.5 * line_shift() * view.min_size * sign(view.scale);
   vec2 corner = kCorners[gl_VertexIndex];
   vec2 p = mix(center - half_size, center + half_size, corner);
   gl_Position = vec4(p, 0.0, 1.0);

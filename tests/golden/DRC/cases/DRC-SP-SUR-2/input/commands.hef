@@ -1,6 +1,0 @@
-# DRC-SP-SUR-2: spacing poly ndiff 2 surround_ok (same plane): tech-load warning, printrules.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/drctest -noprompt
-snap internal
-drc off
-drc printrules rules.txt

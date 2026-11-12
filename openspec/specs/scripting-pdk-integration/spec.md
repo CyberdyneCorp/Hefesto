@@ -298,7 +298,7 @@ The editor SHALL provide every engine command, framework procedure and script va
 | Global variables set | `PDK_ROOT TECHPATH PDKPATH PDKNAME PDKNAMESPACE VDD GND SUB scalefac script_file script_path Opts(callback) Opts(hidelocked) Opts(hidespecial) Winopts(<f>,cmdentry)` | same | same without `PDK_ROOT`, plus `sg13g2::script_path` |
 | Global variables read | `env(PDK_ROOT) Opts(callback) Opts(cmdentry) CAD_ROOT` | same | same |
 | Wrapper widget paths | `<f>.titlebar`, `<f>.titlebar.mbuttons.drc.toolmenu`, `<f>.titlebar.mbuttons.file.toolmenu` | same | same |
-| Generated-cell devices (`magic::gencell` menu entries) | 36 | 39 | 21 |
+| Generated-cell devices (`magic::gencell` menu entries) | 36 | 35 (39 menu lines, 4 commented out in `gf180mcuD.tcl`) | 21 |
 | Direct drawing menu entries | 13 | 7 | 14 |
 | Fixed (`nocell`) devices | 12 | 11 | 8 |
 

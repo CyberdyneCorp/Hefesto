@@ -19,12 +19,12 @@ add_library(hefesto_core STATIC
   src/cmd/command_log.cpp
   src/cmd/coordinates.cpp
   src/cmd/dispatcher.cpp
+  src/cmd/host_access.cpp
   src/cmd/keywords.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/script_parser.cpp
-  src/cmd/script_runner.cpp
-  src/cmd/stubs.cpp
+  src/cmd/quit_policy.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp
   src/compat/compat_settings.cpp

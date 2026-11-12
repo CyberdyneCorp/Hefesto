@@ -17,7 +17,7 @@ description = "cifoutput scalefactor 5, gridlimit 5; scalegrid 1 2 and 1 20."
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

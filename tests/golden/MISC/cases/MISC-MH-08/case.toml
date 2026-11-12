@@ -17,7 +17,7 @@ description = "exception X width rule; a 2-unit wire per cell with hints touchin
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

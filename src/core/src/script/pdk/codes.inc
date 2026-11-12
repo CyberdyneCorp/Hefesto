@@ -22,3 +22,4 @@ HEFESTO_SCRIPT_CODE("SCRIPT-PDK-009", info, "Curated-pack mode uses the bundled 
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-001", warning, "A PDK script was declined; the layout opens read-only with the `minimum` technology.")
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-002", info, "A PDK version is now trusted; its scripts run without asking.")
 HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-003", warning, "The trust record of a PDK version could not be saved in the PDK store.")
+HEFESTO_SCRIPT_CODE("SCRIPT-TRUST-004", info, "A PDK version is no longer trusted (`pdk untrust`); its scripts ask before running.")

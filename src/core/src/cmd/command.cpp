@@ -4,8 +4,9 @@
 #include "hefesto/cmd/command.hpp"
 
 #include <array>
+#include <utility>
 
-#include "hefesto/cmd/script.hpp"
+#include "hefesto/cmd/value.hpp"
 
 namespace hefesto::cmd {
 
@@ -14,13 +15,16 @@ std::string_view origin_name(Origin origin) noexcept {
   return kNames.at(static_cast<std::size_t>(origin));
 }
 
+// A Tcl list of the words is a Tcl command that calls them unchanged (Tcl's
+// list quoting: braces, or backslashes when braces cannot hold the word).
 std::string format_command_line(const Invocation& invocation) {
-  std::string line = quote_word(invocation.name);
+  Value::List words;
+  words.reserve(invocation.args.size() + 1);
+  words.emplace_back(invocation.name);
   for (const auto& arg : invocation.args) {
-    line += ' ';
-    line += quote_word(arg);
+    words.emplace_back(arg);
   }
-  return line;
+  return Value{std::move(words)}.to_string();
 }
 
 }  // namespace hefesto::cmd

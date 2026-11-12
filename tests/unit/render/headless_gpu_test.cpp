@@ -244,3 +244,41 @@ TEST_CASE("the selection is drawn in white solid outlines over the layout on the
   CHECK(channel(inside, 0) == 255);
   CHECK(channel(inside, 1) == 0);
 }
+
+TEST_CASE("the thick box's sides are drawn inside the box, two logical pixels wide, on the GPU",
+          "[cap:ui-windows-and-views][req:Box display]") {
+  auto canvas = make_canvas();
+  for (const double ratio : {1.0, 2.0}) {
+    INFO("pixel ratio " << ratio);
+    const int width = static_cast<int>(2.0 * ratio);  // framebuffer pixels
+    hefesto::display::HighlightScene hl;
+    hefesto::display::HighlightItem box;
+    box.shape = hefesto::display::HighlightShape::outline;
+    box.style = hefesto::display::kStyleBox;
+    box.rect = {16, 16, 48, 48};
+    hefesto::display::resolve_highlight(box, nullptr);  // opaque white
+    hl.items.push_back(box);
+    const LayoutBatches batches = highlight_batches(hl, HighlightOptions{ratio});
+    canvas->renderer().upload(batches.rects.instances());
+    canvas->renderer().set_layer_styles(batches.styles);
+    Camera camera(32.0, 32.0, 1.0);
+    camera.set_viewport(64, 64);
+    const std::vector<LayerBatch> draws(batches.rects.batches().begin(), batches.rects.batches().end());
+    (void)canvas->render(camera.transform(), draws);
+    const auto white = [&](int x, int y) { return channel(canvas->read_pixel(x, y), 1) > 200; };
+    // Left side (world x = 16, pixel column 16): columns 16 .. 16 + width - 1.
+    CHECK_FALSE(white(15, 32));
+    for (int i = 0; i < width; ++i) CHECK(white(16 + i, 32));
+    CHECK_FALSE(white(16 + width, 32));
+    // Right side (x = 48): columns 48 - width .. 47.
+    CHECK_FALSE(white(48, 32));
+    for (int i = 1; i <= width; ++i) CHECK(white(48 - i, 32));
+    CHECK_FALSE(white(47 - width, 32));
+    // Top side (world y = 48, pixel row 16) and bottom side (y = 16, row 48), inside too.
+    CHECK_FALSE(white(32, 15));
+    for (int i = 0; i < width; ++i) CHECK(white(32, 16 + i));
+    CHECK_FALSE(white(32, 48));
+    for (int i = 1; i <= width; ++i) CHECK(white(32, 48 - i));
+    CHECK_FALSE(white(32, 32));  // the inside stays clear
+  }
+}

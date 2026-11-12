@@ -186,17 +186,21 @@ void apply_load_option(LoadArgs& out, const std::string& word) {
     case 1:
       out.options.dereference = true;
       break;
+    case 2:
+      out.options.verbosity = ReadOptions::Verbosity::none;  // DB_VERBOSE_NONE
+      break;
+    case 3:
+      out.options.verbosity = ReadOptions::Verbosity::errors;  // DB_VERBOSE_ERR
+      break;
     case 4:
       out.nowindow = true;
       break;
     case 5:
       out.fail = true;
       break;
-    case -1:
+    default:
       out.unknown.push_back(word);  // CmdLoad: "No such option", then ignored
       break;
-    default:
-      break;  // verbosity options do not change the database
   }
 }
 

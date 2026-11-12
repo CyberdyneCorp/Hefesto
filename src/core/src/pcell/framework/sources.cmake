@@ -10,7 +10,9 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp
   ${CMAKE_CURRENT_LIST_DIR}/dialog.cpp
   ${CMAKE_CURRENT_LIST_DIR}/gencell.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/hooks.cpp
   ${CMAKE_CURRENT_LIST_DIR}/naming.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/native_bridge.cpp
   ${CMAKE_CURRENT_LIST_DIR}/netlist.cpp
   ${CMAKE_CURRENT_LIST_DIR}/parameters.cpp
   ${CMAKE_CURRENT_LIST_DIR}/tcl_list.cpp

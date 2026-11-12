@@ -23,13 +23,16 @@
 
 #include "hefesto/app/startup.hpp"
 #include "hefesto/diag/format.hpp"
+#include "hefesto/gui/wrapper.hpp"
 #include "hefesto/platform/session_log.hpp"
 #include "hefesto/shell/assets.hpp"
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/render/synthetic_layout.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
 #include "hefesto/shell/options.hpp"
+#include "hefesto/shell/script_consent_model.hpp"
 #include "main_window.hpp"
+#include "manager_panels.hpp"
 #include "raven_ui.hpp"
 
 namespace hefesto::shell {
@@ -245,7 +248,8 @@ std::optional<platform::Path> env_path(const char* name) {
 /// Steps 6-11 of app-startup "Startup sequence" on the window's session:
 /// technology, settings layers, startup files, file arguments. Problems are
 /// reported to the Diagnostics panel; the window stays open.
-void run_startup(CoreSession& core, const app::StartupOptions& startup) {
+void run_startup(CoreSession& core, const app::StartupOptions& startup,
+                 std::function<void(script::Interpreter&)> configure_interpreter = {}) {
   app::StartupEnvironment env;
   env.install_root = env_path("CAD_ROOT").value_or(platform::Path());
   env.home = env_path("HOME").value_or(platform::Path());
@@ -256,9 +260,30 @@ void run_startup(CoreSession& core, const app::StartupOptions& startup) {
   // install host; the recent-projects list guards `pdk uninstall`.
   env.host = core.install_host();
   env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
+  // M4: the window's Tcl console and manager procedures (SHELL-B).
+  env.configure_interpreter = std::move(configure_interpreter);
   ReportSink sink(core.dispatcher());
   auto result = app::run_startup(core.dispatcher(), core.project(), core.files(), startup, env, sink);
   if (!result) core.dispatcher().report(result.error());
+  // The window is the wrapper frame .layout1: the PDK's wrapper hooks run on
+  // it (its device menus, the intercepted File and DRC menu items), as in
+  // Magic's Tk wrapper (SHELL-A round 2, open item 1).
+  if (core.editor().script.interp != nullptr) {
+    with_command_context(core, [](cmd::CommandContext& c) { (void)gui::adopt_wrapper(c, ".layout1"); });
+  }
+}
+
+/// True when `script` lies under the managed PDK store (a Trust answer is offered).
+bool in_pdk_store(CoreSession& core, const platform::Path& script) {
+  const pdk::PdkManager* manager = core.pdk_manager();
+  if (manager == nullptr || manager->root().empty()) return false;
+  // Canonical forms (security finding S-09): a link or `..` must not make a
+  // file outside the store look like one of its scripts.
+  std::error_code ec;
+  const std::string root = std::filesystem::weakly_canonical(manager->root(), ec).string();
+  const std::string path = std::filesystem::weakly_canonical(script, ec).string();
+  return path.size() > root.size() && path.compare(0, root.size(), root) == 0 &&
+         (root.back() == '/' || path[root.size()] == '/');
 }
 
 int run_window(const ShellOptions& options) {
@@ -287,8 +312,20 @@ int run_window(const ShellOptions& options) {
   int status = 0;
   {
     CoreSession core(core_options(), platform::default_storage_dir() / "logs", HostServices{true, std::nullopt});
+    // M4 consent (hefesto-security "Consent before implicit script
+    // execution"; board M4-Script-Consent): PDK scripts run after the
+    // window's prompt. Outlives the window, which unregisters it first.
+    MainWindow* asking = nullptr;
+    DesktopConsentHost consent(
+        [&asking](const ConsentPromptView& view) {
+          return asking != nullptr ? asking->ask_consent(view) : script::ConsentDecision::decline;
+        },
+        [&core](const platform::Path& script) { return in_pdk_store(core, script); });
+    if (!startup.value().files.empty()) consent.set_document(startup.value().files.front().name);
     MainWindow window(*runtime, options, queue_mutex, core);
-    run_startup(core, startup.value());
+    asking = &window;
+    window.set_consent_host(&consent);
+    run_startup(core, startup.value(), [&window](script::Interpreter& interp) { window.attach_interpreter(interp); });
     // The background DRC checker (m3-drc design D8 "Hosts"): started once
     // the editor is set up; its ready callback posts to Raven's event loop,
     // which commits the square between commands. Stopped before the window.

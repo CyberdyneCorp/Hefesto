@@ -1,7 +1,0 @@
-# CELL-RD-05: magscale 1 2 under a cifoutput gridlimit that forbids refinement; odd and negative coordinates.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tinyg -noprompt
-snap internal
-load input/a
-cellname list allcells
-save a_out

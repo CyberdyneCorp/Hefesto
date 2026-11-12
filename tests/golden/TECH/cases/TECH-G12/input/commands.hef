@@ -1,6 +1,0 @@
-# TECH-G12: requires 8.3.700, magic-8.2.1 and 8.3.
-# Hefesto script (hefesto-cli --diagnostics=magic): each command's result is printed
-# on stdout as `puts` prints it in commands.tcl; errors go to stderr.
-# No state query follows the failed load: Magic keeps its partly loaded tables and
-# Hefesto loads atomically (tech-loading-and-scaling, Q-TECH-10), so they differ by design.
-tech load input/tiny -noprompt

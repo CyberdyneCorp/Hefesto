@@ -1,7 +1,0 @@
-# CELL-RD-09: fake tech; section << m3c2 >> with one rect.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/fake -noprompt
-snap internal
-load input/a
-cellname list allcells
-save a_out

@@ -1,6 +1,0 @@
-# CELL-RD-15: Illegal transform 2 0 0 0 1 0; malformed array line.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-cellname list allcells

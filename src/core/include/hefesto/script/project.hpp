@@ -22,6 +22,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "hefesto/pcell/framework/state.hpp"
 #include "hefesto/script/binding/output.hpp"
@@ -68,6 +69,15 @@ struct ProjectInterpreter {
 
   // ---- INTEGRATION ---------------------------------------------------------
   ScriptEvents events;  // denied operations, skipped statements, consent, ...
+  /// The file system of the engine commands a script runs (security finding
+  /// S-02; script::SandboxedFileSystem over `sandbox`), created by
+  /// bind_registry and kept while the editor lives.
+  std::unique_ptr<platform::FileSystem> script_files;
+  /// The widget interceptors of the wrapper frames opened in this project
+  /// (one per frame; gui::open_wrapper, gui::adopt_wrapper) and the file
+  /// picker they ask, which forwards to the front end's picker.
+  std::vector<std::unique_ptr<WidgetInterceptor>> interceptors;
+  std::unique_ptr<platform::FilePicker> session_picker;
 };
 
 /// Creates the interpreter of `editor`'s project with `policy` (the project

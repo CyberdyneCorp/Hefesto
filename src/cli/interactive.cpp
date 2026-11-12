@@ -4,12 +4,14 @@
 // hefesto-cli's interactive prompt (m3-drc design D8 "Hosts"). POSIX:
 // poll() waits on the input descriptor and on a self-pipe the background
 // checker's ready callback writes to, so finished squares are committed on
-// this (the command) thread between commands.
+// this (the command) thread between commands. Commands are Tcl, evaluated
+// in the project's interpreter.
 
 #include "interactive.hpp"
 
 #include <array>
 #include <cerrno>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -17,10 +19,9 @@
 
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/script.hpp"
-#include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/engine/host.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/script/interp.hpp"
 
 #include <fcntl.h>
 #include <poll.h>
@@ -140,17 +141,6 @@ class Prompt {
   char shown_ = '\0';
 };
 
-/// True while `text` needs another line: an open brace group or quote, or
-/// a backslash-newline at its end.
-bool incomplete(std::string_view text) {
-  if (text.ends_with("\\\n")) {
-    return true;
-  }
-  const auto parsed = cmd::parse_script(text);
-  return parsed.error &&
-         (parsed.error->code == diag::codes::kCmdParseBrace || parsed.error->code == diag::codes::kCmdParseQuote);
-}
-
 /// Waits for input or a finished square; nullopt when poll failed for
 /// good, else whether the input is readable.
 std::optional<bool> wait_for_event(const LineReader& input, const WakePipe& wake) {
@@ -170,8 +160,10 @@ std::optional<bool> wait_for_event(const LineReader& input, const WakePipe& wake
 class InteractiveLoop {
  public:
   InteractiveLoop(cmd::Dispatcher& dispatcher, editor::EditorState& editor, int input_fd, std::FILE* prompt_out,
-                  bool show_prompt)
+                  bool show_prompt, ChunkEvaluator evaluate)
       : dispatcher_(dispatcher),
+        interp_(*editor.script.interp),
+        evaluate_(std::move(evaluate)),
         host_(editor, [this] { wake_.notify(); }),
         input_(input_fd),
         prompt_(prompt_out, show_prompt) {}
@@ -196,7 +188,8 @@ class InteractiveLoop {
     prompt_.consumed();
     text_ += line;
     text_ += '\n';
-    if (!incomplete(text_)) {
+    ++lines_;
+    if (is_complete(interp_, text_)) {
       execute();
     }
   }
@@ -205,9 +198,11 @@ class InteractiveLoop {
     if (text_.empty()) {
       return;
     }
-    const cmd::ScriptRun result = cmd::run_script(dispatcher_, std::exchange(text_, std::string{}), cmd::Origin::cli);
-    run_.ok = run_.ok && result.failures == 0;
-    run_.quit = result.quit || dispatcher_.session().quit_requested;
+    const TclChunk chunk{std::exchange(text_, std::string{}), first_line_};
+    first_line_ = lines_ + 1;
+    const bool ok = evaluate_ ? evaluate_(chunk) : interp_.evaluate(chunk.text, cmd::Origin::cli).ok();
+    run_.quit = dispatcher_.session().quit_requested;
+    run_.ok = run_.ok && (ok || run_.quit);
   }
 
   // Shows the prompt and blocks until input or a finished square.
@@ -223,19 +218,23 @@ class InteractiveLoop {
   }
 
   cmd::Dispatcher& dispatcher_;
+  script::Interpreter& interp_;
+  ChunkEvaluator evaluate_;
   WakePipe wake_;  // declared before host_: the worker's callback writes to it until host_ is gone
   drc::BackgroundHost host_;
   LineReader input_;
   Prompt prompt_;
   InteractiveRun run_;
   std::string text_;  // the command being assembled over continuation lines
+  std::uint32_t lines_ = 0;       // lines read so far
+  std::uint32_t first_line_ = 1;  // the line text_ starts on
 };
 
 }  // namespace
 
 InteractiveRun run_interactive(cmd::Dispatcher& dispatcher, editor::EditorState& editor, int input_fd,
-                               std::FILE* prompt_out, bool show_prompt) {
-  InteractiveLoop loop(dispatcher, editor, input_fd, prompt_out, show_prompt);
+                               std::FILE* prompt_out, bool show_prompt, ChunkEvaluator evaluate) {
+  InteractiveLoop loop(dispatcher, editor, input_fd, prompt_out, show_prompt, std::move(evaluate));
   return loop.run();
 }
 

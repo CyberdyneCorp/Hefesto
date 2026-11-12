@@ -27,6 +27,7 @@ Interpreter& open_project_interpreter(editor::EditorState& editor, SandboxPolicy
 
 void close_project_interpreter(editor::EditorState& editor) noexcept {
   editor.script.interp.reset();
+  editor.script.interceptors.clear();  // their commands lived in the interpreter
 }
 
 }  // namespace hefesto::script

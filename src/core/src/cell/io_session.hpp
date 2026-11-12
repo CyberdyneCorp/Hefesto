@@ -50,12 +50,15 @@ class IoSession {
 
  private:
   /// Steps 1-7 of "Automatic technology discovery" for technology `name`.
-  const tech::Technology* discover_technology(std::string_view name);
+  CellIoContext::TechnologySwitch discover_technology(std::string_view name);
   void discover_libraries(const std::string& tech_dir);
   /// Step 3: `<dir>/<tech>.magicrc` through the project's interpreter after
   /// consent (owner: PDKINT, m4-scripting design D2/D7).
   enum class RcStep : std::uint8_t { none, ran, declined };
   RcStep run_technology_rc(const platform::Path& dir, const std::string& tech_name);
+  /// The declined path (hefesto-security "Consent before implicit script
+  /// execution"): the cell is read read-only with the `minimum` technology.
+  CellIoContext::TechnologySwitch declined_technology() const;
 };
 
 /// Runs `body(IoSession&)` with the command's editor session, then the

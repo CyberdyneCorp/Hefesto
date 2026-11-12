@@ -25,7 +25,6 @@ namespace hefesto::script {
 
 /// Registers every command of `registry` in `interp` (see above), executing
 /// through `dispatcher`, whose editor session is the interpreter's project.
-/// SCAFFOLD: returns CORE-NOTIMPL-004 until BINDING task 5.1.
 [[nodiscard]] cmd::CommandResult bind_registry(Interpreter& interp, const cmd::CommandRegistry& registry,
                                                cmd::Dispatcher& dispatcher);
 

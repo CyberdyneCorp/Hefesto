@@ -1,8 +1,0 @@
-# UI-G-012: tool wiring; macro Button1; tool box; macro Button1.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-tool wiring
-macro Button1
-tool box
-macro Button1

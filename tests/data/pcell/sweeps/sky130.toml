@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 The Hefesto Authors
+#
+# Parameter sweep of the native sky130 generators (m4-scripting design D10,
+# D-29), run by scripts/pcell_equivalence.py natively and through the PDK's
+# Tcl generators. Every device is generated with its defaults, with each
+# `values` entry (one parameter changed: the PDK bounds, out-of-bounds values
+# that `_check` corrects, and interior values) and with each `combos` entry.
+# Values stay numbers: other text runs the Tcl generator by design.
+
+set = "sky130"                                   # data set of scripts/fetch_pdk.py
+library = "sky130"                               # Tcl namespace of the device procedures
+rcfile = "libs.tech/magic/sky130A.magicrc"       # relative to the variant directory
+trust = "sky130A"                                # hefesto-cli --trust-pdk
+
+[[group]]
+name = "mosfet"
+devices = [
+  "sky130_fd_pr__nfet_01v8", "sky130_fd_pr__nfet_01v8_lvt", "sky130_fd_bs_flash__special_sonosfet_star",
+  "sky130_fd_pr__nfet_g5v0d10v5", "sky130_fd_pr__nfet_05v0_nvt", "sky130_fd_pr__nfet_03v3_nvt",
+  "sky130_fd_pr__pfet_01v8", "sky130_fd_pr__pfet_01v8_lvt", "sky130_fd_pr__pfet_01v8_hvt",
+  "sky130_fd_pr__pfet_g5v0d10v5", "sky130_fd_pr__nfet_g5v0d16v0", "sky130_fd_pr__pfet_g5v0d16v0",
+  "sky130_fd_pr__cap_var_lvt", "sky130_fd_pr__cap_var_hvt", "sky130_fd_pr__cap_var",
+]
+values.w = ["0.1", "0.3", "0.42", "0.65", "1.0", "2.5", "5.0", "7.0"]
+values.l = ["0.1", "0.15", "0.18", "0.25", "0.5", "1.0", "1.05", "4.0"]
+values.nf = ["0", "2", "3", "6"]
+values.m = ["0", "2", "4"]
+values.diffcov = ["10", "20", "55", "100", "150"]
+values.polycov = ["10", "20", "60", "150"]
+values.guard = ["0"]
+values.glc = ["0"]
+values.grc = ["0"]
+values.gtc = ["0"]
+values.gbc = ["0"]
+values.tbcov = ["0", "40"]
+values.rlcov = ["0", "60"]
+values.topc = ["0"]
+values.botc = ["0"]
+values.poverlap = ["1"]
+values.doverlap = ["0"]
+values.full_metal = ["0"]
+values.conn_gates = ["1"]
+values.viasrc = ["0", "50", "+50", "-50", "150"]
+values.viadrn = ["0", "+40", "-40"]
+values.viagate = ["0", "+70", "-70", "30"]
+values.viagb = ["50", "+50", "-50", "100"]
+values.viagt = ["100", "+30"]
+values.viagr = ["60", "-60"]
+values.viagl = ["100", "+80"]
+values.doports = ["0"]
+values.gshield = ["0", "1"]
+combos = [
+  "nf 2 m 2", "nf 3 m 3", "nf 4 m 2 poverlap 1", "nf 2 m 3 doverlap 0", "nf 3 conn_gates 1",
+  "nf 4 l 0.15", "nf 4 l 0.15 conn_gates 1", "nf 3 l 0.15 m 2", "nf 2 m 2 topc 0", "nf 2 m 2 botc 0",
+  "w 0.3 nf 2", "w 0.3 topc 0", "w 0.3 l 0.15 nf 3 m 2", "nf 2 m 2 doports 0", "nf 3 m 2 poverlap 1 doverlap 0",
+  "nf 2 m 2 guard 0", "w 2.0 l 0.5 nf 5 m 4", "nf 2 diffcov 50 polycov 50", "nf 2 m 2 viasrc 0 viadrn 0 viagate 0",
+  "m 3 poverlap 1 topc 0", "nf 4 conn_gates 1 viagate 50", "nf 1.5", "m 2.5", "w 15 l 0.5", "w 0.5 l 9 nf 4",
+]
+
+[[group]]
+name = "fixed"
+fixed = true
+devices = [
+  "sky130_fd_pr__npn_05v5_W1p00L1p00", "sky130_fd_pr__npn_05v5_W1p00L2p00", "sky130_fd_pr__pnp_05v5_W0p68L0p68",
+  "sky130_fd_pr__pnp_05v5_W3p40L3p40", "sky130_fd_pr__npn_11v0_W1p00L1p00", "sky130_fd_pr__rf_test_coil1",
+  "sky130_fd_pr__rf_test_coil2", "sky130_fd_pr__rf_test_coil3", "sky130_fd_pr__cap_vpp_11p5x11p7_m1m2m3m4_shieldl1m5",
+  "sky130_fd_pr__cap_vpp_11p5x11p7_m1m2_noshield", "sky130_fd_pr__cap_vpp_08p6x07p8_m1m2_shieldl1",
+  "sky130_fd_pr__cap_vpp_04p4x04p6_m1m2_shieldl1",
+]
+values.nx = ["0", "2", "5", "1.5"]
+values.ny = ["0", "3", "2.5"]
+values.deltax = ["0.5", "-1", "2u", "0.0004"]
+values.deltay = ["1.25", "-0.5"]
+combos = ["nx 2 ny 2", "nx 3 ny 2 deltax 1 deltay 2", "nx 2 ny 2 deltax 0.123456", "nx 4 deltay 3"]

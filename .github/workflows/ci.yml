@@ -196,6 +196,67 @@ jobs:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
 
+  # Native PCell generators against the PDKs' Tcl generators (m4-scripting design D10, D-29; risk R3):
+  # scripts/pcell_equivalence.py over tests/data/pcell/sweeps/ generates every sweep case natively and
+  # through Tcl in the same hefesto-cli build and compares the cell names and the saved .mag files with
+  # only the `timestamp` line masked. It runs on every pull request (a superset of "every PR touching
+  # pcell/"), about 15-20 minutes on one runner.
+  pcell-equivalence:
+    name: pcell-equivalence (native vs Tcl generators)
+    needs: reference-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CC: gcc-14
+      CXX: g++-14
+      CMAKE_C_COMPILER_LAUNCHER: ""
+      CMAKE_CXX_COMPILER_LAUNCHER: ""
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install CMake, Ninja and the OpenSSL headers
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+      - uses: actions/cache@v4
+        with:
+          path: .cache/deps
+          key: deps-pcell-equivalence-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          restore-keys: deps-pcell-equivalence-
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_path }}
+          key: ${{ needs.reference-data.outputs.sky130_key }}
+      - name: Restore gf180mcu
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_key }}
+      - name: Restore ihp
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_path }}
+          key: ${{ needs.reference-data.outputs.ihp_key }}
+      - name: Build hefesto-cli
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+      - name: Verify the pinned PDK data sets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 gf180mcu ihp --cli build/linux-release/src/cli/hefesto-cli
+      - name: Native and Tcl generators agree
+        run: python3 scripts/pcell_equivalence.py --cli build/linux-release/src/cli/hefesto-cli --work pcell-equivalence --jobs "$(nproc)"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pcell-equivalence
+          path: pcell-equivalence/
+          if-no-files-found: ignore
+
   build:
     name: ${{ matrix.name }}
     needs: reference-data

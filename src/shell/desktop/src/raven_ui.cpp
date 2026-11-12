@@ -584,9 +584,14 @@ void Tabs::show(int index) {
 
 struct TextInput::Callbacks {
   std::function<void(std::string)> change;
+  std::function<void(std::string)> commit;
   static void on_change(Rid /*input*/, const char* text, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
     if (cb->change) cb->change(text != nullptr ? text : "");
+  }
+  static void on_commit(Rid /*input*/, const char* text, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->commit) cb->commit(text != nullptr ? text : "");
   }
 };
 
@@ -597,7 +602,12 @@ std::unique_ptr<TextInput> TextInput::create(std::string_view placeholder) {
   std::unique_ptr<TextInput> input(new TextInput(Rwidget_create(R_WIDGET_TEXT_INPUT)));
   Rtext_input_set_placeholder(input->id_, str(placeholder).c_str());
   Rtext_input_set_changed_callback(input->id_, &Callbacks::on_change, input->callbacks_.get());
+  Rtext_input_set_committed_callback(input->id_, &Callbacks::on_commit, input->callbacks_.get());
   return input;
+}
+
+void TextInput::on_commit(std::function<void(std::string)> callback) {
+  callbacks_->commit = std::move(callback);
 }
 
 void TextInput::on_change(std::function<void(std::string)> callback) {
@@ -1062,6 +1072,25 @@ void Window::close_popups() {
 }
 
 
+struct Window::CloseHook {
+  std::function<void()> callback;
+  static int on_close(Rid /*window*/, void* self) {
+    auto* hook = static_cast<CloseHook*>(self);
+    if (hook->callback) hook->callback();
+    return kFalse;  // the owner destroys the window
+  }
+};
+
+void Window::set_topmost(bool topmost) {
+  if (id_ != kNoWidget) (void)Rwindow_set_topmost(id_, topmost ? kTrue : kFalse);
+}
+
+void Window::on_close_request(std::function<void()> callback) {
+  if (!close_hook_) close_hook_ = std::make_unique<CloseHook>();
+  close_hook_->callback = std::move(callback);
+  if (id_ != kNoWidget) Rwindow_set_close_callback(id_, &CloseHook::on_close, close_hook_.get());
+}
+
 Window::Window(std::string_view title, int width, int height)
     : id_(Rwindow_create(str(title).c_str(), width, height, R_WINDOW_DEFAULT)) {}
 
@@ -1073,6 +1102,7 @@ void Window::destroy() {
   // Deleting the window waits for its last frames: no draw callback runs after.
   if (id_ != kNoWidget && valid()) {
     Rwindow_set_event_hook(id_, nullptr, nullptr);
+    if (close_hook_) Rwindow_set_close_callback(id_, nullptr, nullptr);
     Rwindow_destroy(id_);
   }
   id_ = kNoWidget;
@@ -1323,6 +1353,10 @@ void Table::show_sort(int column, bool descending) {
   Rtable_sort(id_, column, descending ? kTrue : kFalse);
 }
 
+void Table::set_header_visible(bool visible) {
+  Rtable_set_header_visible(id_, visible ? kTrue : kFalse);
+}
+
 void Table::on_select(std::function<void(int)> callback) {
   callbacks_->select = std::move(callback);
 }
@@ -1333,6 +1367,88 @@ void Table::on_activate(std::function<void(int)> callback) {
 
 void Table::on_sort(std::function<void(int, bool)> callback) {
   callbacks_->sort = std::move(callback);
+}
+
+// --- M4 SHELL-B: console input, file dialogs, frames -----------------------------
+
+struct TextEditor::Callbacks {
+  std::function<void(std::string)> change;
+  bool quiet = false;  // set_text(): not an edit
+
+  static void on_change(Rid editor, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->quiet || !cb->change) return;
+    const char* t = Rtext_editor_get_text(editor);
+    cb->change(t != nullptr ? std::string(t) : std::string());
+  }
+};
+
+TextEditor::TextEditor(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+
+TextEditor::~TextEditor() = default;
+
+std::unique_ptr<TextEditor> TextEditor::create(std::string_view placeholder) {
+  std::unique_ptr<TextEditor> editor(new TextEditor(Rtext_editor_create("")));
+  Rtext_editor_set_placeholder(editor->id_, str(placeholder).c_str());
+  Rtext_editor_set_line_numbers(editor->id_, kFalse);
+  Rtext_editor_set_word_wrap(editor->id_, kTrue);
+  Rtext_editor_set_changed_callback(editor->id_, &Callbacks::on_change, editor->callbacks_.get());
+  return editor;
+}
+
+void TextEditor::set_text(std::string_view text) {
+  callbacks_->quiet = true;
+  Rtext_editor_set_text(id_, str(text).c_str());
+  const int last = std::max(Rtext_editor_get_line_count(id_) - 1, 0);
+  const auto newline = text.rfind('\n');
+  const std::size_t column = newline == std::string_view::npos ? text.size() : text.size() - newline - 1;
+  Rtext_editor_set_cursor(id_, last, static_cast<int>(column));
+  callbacks_->quiet = false;
+}
+
+std::string TextEditor::text() const {
+  const char* t = Rtext_editor_get_text(id_);
+  return t != nullptr ? std::string(t) : std::string();
+}
+
+int TextEditor::cursor_line() const {
+  int line = 0;
+  int column = 0;
+  Rtext_editor_get_cursor(id_, &line, &column);
+  return line;
+}
+
+int TextEditor::line_count() const {
+  return Rtext_editor_get_line_count(id_);
+}
+
+void TextEditor::set_font(WidgetId font, float size) {
+  Rtext_editor_set_font(id_, font, size);
+}
+
+void TextEditor::on_change(std::function<void(std::string)> callback) {
+  callbacks_->change = std::move(callback);
+}
+
+std::optional<std::string> file_dialog(WidgetId parent, const FileDialogOptions& options) {
+  std::vector<RFileFilter> filters;
+  filters.reserve(options.filters.size());
+  for (const FileDialogFilter& f : options.filters) filters.push_back(RFileFilter{f.name.c_str(), f.patterns.c_str()});
+  RFileDialogDesc desc{};
+  desc.parent = parent;  // kNoWidget is Raven's invalid id: no parent window
+  desc.title = options.title.empty() ? nullptr : options.title.c_str();
+  desc.directory = options.directory.empty() ? nullptr : options.directory.c_str();
+  desc.file_name = options.file_name.empty() ? nullptr : options.file_name.c_str();
+  desc.filters = filters.empty() ? nullptr : filters.data();
+  desc.filter_count = static_cast<int>(filters.size());
+  desc.default_extension = options.default_extension.empty() ? nullptr : options.default_extension.c_str();
+  const char* path = options.save ? Rfile_dialog_save(&desc) : Rfile_dialog_open(&desc);
+  if (path == nullptr) return std::nullopt;
+  return std::string(path);
+}
+
+void pump_frame() {
+  (void)Rdraw_frame();
 }
 
 Toast Toast::create() {
@@ -1376,6 +1492,161 @@ bool Window::set_busy_progress(bool busy) const {
 
 void Window::request_attention() const {
   if (id_ != kNoWidget) (void)Rwindow_request_attention(id_, kFalse);
+}
+
+// --- M4 widgets -------------------------------------------------------------------------
+
+struct MenuBar::State {
+  struct Slot {
+    State* state = nullptr;
+    std::size_t menu = 0;
+    std::size_t entry = 0;
+  };
+  std::vector<std::unique_ptr<Slot>> slots;
+  std::function<void(std::size_t, std::size_t)> on_choose;
+  static void clicked(Rid, void* user) {
+    const auto* slot = static_cast<Slot*>(user);
+    if (slot->state->on_choose) slot->state->on_choose(slot->menu, slot->entry);
+  }
+};
+
+MenuBar::MenuBar(WidgetId id) : Widget(id), state_(std::make_unique<State>()) {}
+MenuBar::~MenuBar() = default;
+
+std::unique_ptr<MenuBar> MenuBar::create() {
+  std::unique_ptr<MenuBar> bar(new MenuBar(Rwidget_create(R_WIDGET_MENU_BAR)));
+  Rwidget_set_accessible_name(bar->id_, "Menu bar");
+  return bar;
+}
+
+namespace {
+
+// One command or check entry of a menu (not a separator).
+Rid add_menu_entry(Rid menu, const MenuBarEntry& entry) {
+  const Rid item = Rmenu_add_item(menu, entry.label.c_str());
+  if (entry.checkable) {
+    Rmenu_item_set_checkable(item, kTrue);
+    Rmenu_item_set_checked(item, entry.checked ? kTrue : kFalse);
+  }
+  Rwidget_set_enabled(item, entry.enabled ? kTrue : kFalse);
+  if (!entry.description.empty()) Rwidget_set_accessible_description(item, entry.description.c_str());
+  return item;
+}
+
+}  // namespace
+
+void MenuBar::set_menus(const std::vector<MenuBarMenuSpec>& menus,
+                        std::function<void(std::size_t, std::size_t)> on_choose) {
+  Rwidget_clear_children(id_);
+  state_->slots.clear();
+  state_->on_choose = std::move(on_choose);
+  for (std::size_t m = 0; m < menus.size(); ++m) {
+    const Rid menu = Rmenu_add_menu(id_, menus[m].title.c_str());
+    for (std::size_t e = 0; e < menus[m].entries.size(); ++e) {
+      const MenuBarEntry& entry = menus[m].entries[e];
+      if (entry.separator) {
+        (void)Rmenu_add_separator(menu);
+        continue;
+      }
+      const Rid item = add_menu_entry(menu, entry);
+      state_->slots.push_back(std::make_unique<State::Slot>(State::Slot{state_.get(), m, e}));
+      Rmenu_item_set_clicked_callback(item, &State::clicked, state_->slots.back().get());
+    }
+  }
+}
+
+bool MenuBar::native() const {
+  return Rmenu_bar_is_native(id_) != kFalse;
+}
+
+Label Label::create(std::string_view text) {
+  return Label(Rlabel_create(str(text).c_str()));
+}
+
+void Label::set_text(std::string_view text) {
+  Rlabel_set_text(id_, str(text).c_str());
+}
+
+void Label::set_wrap(bool wrap) {
+  Rlabel_set_wrap(id_, wrap ? kTrue : kFalse);
+}
+
+void Label::set_selectable(bool selectable) {
+  Rlabel_set_selectable(id_, selectable ? kTrue : kFalse);
+}
+
+struct Button::Callbacks {
+  std::function<void()> click;
+  static void clicked(Rid, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->click) cb->click();
+  }
+};
+
+Button::Button(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+Button::~Button() = default;
+
+std::unique_ptr<Button> Button::create(std::string_view text, bool primary) {
+  std::unique_ptr<Button> button(new Button(Rbutton_create(str(text).c_str())));
+  Rbutton_set_style(button->id_, primary ? R_BUTTON_PRIMARY : R_BUTTON_DEFAULT);
+  Rwidget_set_accessible_name(button->id_, str(text).c_str());
+  Rbutton_set_clicked_callback(button->id_, &Callbacks::clicked, button->callbacks_.get());
+  return button;
+}
+
+void Button::on_click(std::function<void()> callback) {
+  callbacks_->click = std::move(callback);
+}
+
+struct CheckBox::Callbacks {
+  std::function<void(bool)> toggle;
+  static void changed(Rid, int checked, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->toggle) cb->toggle(checked != kFalse);
+  }
+};
+
+CheckBox::CheckBox(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+CheckBox::~CheckBox() = default;
+
+std::unique_ptr<CheckBox> CheckBox::create(std::string_view text) {
+  std::unique_ptr<CheckBox> box(new CheckBox(Rcheckbox_create(str(text).c_str())));
+  Rcheckbox_set_changed_callback(box->id_, &Callbacks::changed, box->callbacks_.get());
+  return box;
+}
+
+void CheckBox::set_checked(bool checked) {
+  Rcheckbox_set_checked(id_, checked ? kTrue : kFalse);
+}
+
+void CheckBox::on_toggle(std::function<void(bool)> callback) {
+  callbacks_->toggle = std::move(callback);
+}
+
+struct ComboBox::Callbacks {
+  std::function<void(int)> select;
+  static void changed(Rid, int index, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (cb->select) cb->select(index);
+  }
+};
+
+ComboBox::ComboBox(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
+ComboBox::~ComboBox() = default;
+
+std::unique_ptr<ComboBox> ComboBox::create(const std::vector<std::string>& items) {
+  std::unique_ptr<ComboBox> box(new ComboBox(Rwidget_create(R_WIDGET_COMBO_BOX)));
+  for (const std::string& item : items) (void)Rcombo_box_add_item(box->id_, item.c_str());
+  Rcombo_box_set_changed_callback(box->id_, &Callbacks::changed, box->callbacks_.get());
+  return box;
+}
+
+void ComboBox::set_selected(int index) {
+  Rcombo_box_set_selected(id_, index);
+}
+
+void ComboBox::on_select(std::function<void(int)> callback) {
+  callbacks_->select = std::move(callback);
 }
 
 }  // namespace hefesto::shell::ui

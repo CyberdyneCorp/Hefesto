@@ -1,8 +1,0 @@
-# CELL-WR-10: Round trip of sky130_fd_sc_hd__tapvpwrvgnd_1 and __a21bo_1 (the two documented exceptions of task 4.2).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/sky130A -noprompt
-snap internal
-load input/sky130_fd_sc_hd__tapvpwrvgnd_1
-save sky130_fd_sc_hd__tapvpwrvgnd_1
-load input/sky130_fd_sc_hd__a21bo_1
-save sky130_fd_sc_hd__a21bo_1

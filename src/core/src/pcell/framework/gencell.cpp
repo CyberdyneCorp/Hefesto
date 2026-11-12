@@ -234,7 +234,7 @@ void draw_generated_cell(Toolkit& tk, const std::string& name, const std::string
                          const std::string& type, const ParameterDict& parameters) {
   tk.engine({"cellname", "create", name});
   tk.engine({"pushstack", name});
-  const cmd::CommandResult drawn = tk.device(library, type, "draw", {parameters.to_tcl()});
+  const cmd::CommandResult drawn = tk.draw_device(library, type, parameters);
   if (!drawn.ok()) {
     tk.print_error(detail::error_text(drawn));
   }
@@ -256,7 +256,7 @@ diag::Outcome<std::string> place_device(Toolkit& tk, const std::string& library,
   focus_pointer(tk);
   std::string instance;
   if (parameters.contains("nocell")) {
-    const cmd::CommandResult drawn = tk.device(library, type, "draw", {parameters.to_tcl()});
+    const cmd::CommandResult drawn = tk.draw_device(library, type, parameters);
     if (!drawn.ok()) {
       tk.print_error(detail::error_text(drawn));
       return diag::make(codes::kScriptError, "can't read \"instname\": no such variable");
@@ -341,7 +341,7 @@ void replace_fixed_device(Toolkit& tk, ChangeState& s, const std::string& librar
   }
   // toolkit.tcl stores the drawn instance in `newinst`; the final
   // `identify $newinstname` then gives it the changed instance's name.
-  const cmd::CommandResult drawn = tk.device(library, type, "draw", {parameters.to_tcl()});
+  const cmd::CommandResult drawn = tk.draw_device(library, type, parameters);
   if (!drawn.ok()) {
     tk.print_error(detail::error_text(drawn));
   }

@@ -1,7 +1,0 @@
-# CMDEDIT-COORD-01: tech fine; units internal; box values with {2 + 3 * 4}.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/fine -noprompt
-load a
-units internal
-box values 0 0 {2 + 3 * 4} 1
-box values

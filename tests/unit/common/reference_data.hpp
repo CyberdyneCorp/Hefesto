@@ -4,13 +4,16 @@
 // Where the unit tests find the pinned, gitignored reference data fetched by
 // scripts/fetch_pdk.py (docs/building.md, "Reference data for tests"):
 //   - the PDK data sets in .cache/pdks/ciel/<family>/versions/<pin>/:
-//       sky130    sky130A tech files and sky130_fd_sc_hd .mag library;
-//       gf180mcu  gf180mcuD tech files and gf180mcu_fd_sc_mcu7t5v0 .mag library;
-//       ihp       ihp-sg13g2 tech files;
+//       sky130    sky130A tech files, the sky130_fd_sc_hd .mag library and the
+//                 sky130_fd_pr .mag cells (fixed-layout PCell devices);
+//       gf180mcu  gf180mcuD tech files, the gf180mcu_fd_sc_mcu7t5v0 .mag library
+//                 and the gf180mcu_fd_pr .mag cells;
+//       ihp       ihp-sg13g2 tech files (sg13g2_pr has no .mag cells);
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
-// set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15).
+// set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15); the
+// device libraries were added by NATIVE in M4 round 2.
 
 #pragma once
 
@@ -34,15 +37,18 @@ struct PinnedPdk {
   std::string_view variant;  // directory under the version directory
   std::string_view tech;     // the tech file in libs.tech/magic
   std::string_view library;  // the .mag library in libs.ref, or empty when the set has none
+  std::string_view devices;  // the primitive-device .mag library in libs.ref, or empty
 };
 
-inline constexpr PinnedPdk kSky130A{"sky130", kPdkVersion, "sky130A", "sky130A.tech", "sky130_fd_sc_hd"};
+inline constexpr PinnedPdk kSky130A{"sky130", kPdkVersion, "sky130A", "sky130A.tech", "sky130_fd_sc_hd",
+                                    "sky130_fd_pr"};
 inline constexpr PinnedPdk kGf180mcuD{"gf180mcu", kPdkVersion, "gf180mcuD", "gf180mcuD.tech",
-                                      "gf180mcu_fd_sc_mcu7t5v0"};
-inline constexpr PinnedPdk kIhpSg13g2{"ihp-sg13", kIhpVersion, "ihp-sg13g2", "ihp-sg13g2.tech", ""};
+                                      "gf180mcu_fd_sc_mcu7t5v0", "gf180mcu_fd_pr"};
+inline constexpr PinnedPdk kIhpSg13g2{"ihp-sg13", kIhpVersion, "ihp-sg13g2", "ihp-sg13g2.tech", "", ""};
 
 /// `.cache/pdks/ciel/<family>/versions/<version>/<variant>` when it holds the
-/// set's tech file and (if the set has one) its .mag library, else std::nullopt.
+/// set's tech file and (if the set has them) its .mag libraries, else std::nullopt
+/// (a cache fetched before the device libraries were added is incomplete).
 inline std::optional<std::filesystem::path> pinned_variant(const PinnedPdk& pdk) {
   const std::filesystem::path root = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" / "ciel" /
                                      std::string{pdk.family} / "versions" / std::string{pdk.version} /
@@ -53,6 +59,10 @@ inline std::optional<std::filesystem::path> pinned_variant(const PinnedPdk& pdk)
   }
   if (!pdk.library.empty() &&
       !std::filesystem::is_directory(root / "libs.ref" / std::string{pdk.library} / "mag", ec)) {
+    return std::nullopt;
+  }
+  if (!pdk.devices.empty() &&
+      !std::filesystem::is_directory(root / "libs.ref" / std::string{pdk.devices} / "mag", ec)) {
     return std::nullopt;
   }
   return root;
@@ -71,8 +81,16 @@ inline std::optional<std::filesystem::path> pinned_library(const PinnedPdk& pdk)
                                       : std::nullopt;
 }
 
+/// The set's pinned primitive-device .mag directory (`libs.ref/<devices>/mag`), if fetched and
+/// the set has one: the cells the fixed-layout (`nocell`) PCell devices place.
+inline std::optional<std::filesystem::path> pinned_devices(const PinnedPdk& pdk) {
+  const auto root = pinned_variant(pdk);
+  return root && !pdk.devices.empty() ? std::optional{*root / "libs.ref" / std::string{pdk.devices} / "mag"}
+                                      : std::nullopt;
+}
+
 /// `.cache/pdks/ciel/sky130/versions/<kPdkVersion>/sky130A` when it holds the
-/// tech files and the sky130_fd_sc_hd .mag library, else std::nullopt.
+/// tech files and the sky130_fd_sc_hd and sky130_fd_pr .mag libraries, else std::nullopt.
 inline std::optional<std::filesystem::path> pinned_sky130a() { return pinned_variant(kSky130A); }
 
 /// The pinned sky130A.tech, if fetched.

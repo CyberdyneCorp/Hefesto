@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// Test double: a complete headless command session over in-memory services.
+// Test double: a complete headless command session over in-memory services,
+// with a project interpreter whose `magic::` commands run through its
+// dispatcher (scripts are Tcl; m4-scripting tasks.md 13.2).
 
 #pragma once
 
@@ -11,9 +13,11 @@
 #include "hefesto/cmd/builtins.hpp"
 #include "hefesto/cmd/command_log.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 
 namespace hefesto::test {
 
@@ -48,12 +52,23 @@ class Session {
     log_ = std::make_unique<cmd::CommandLog>(logger_);
     dispatcher_->add_observer(*log_);
   }
+  ~Session() { script::close_project_interpreter(editor_); }
+  Session(const Session&) = delete;
+  Session& operator=(const Session&) = delete;
 
   cmd::CommandResult exec(std::string name, std::vector<std::string> args = {}) {
     return dispatcher_->execute({std::move(name), std::move(args), cmd::Origin::script, std::nullopt});
   }
-  cmd::ScriptRun script(std::string_view text, std::string_view source = {}) {
-    return cmd::run_script(*dispatcher_, text, cmd::Origin::script, source);
+  /// Evaluates `text` as Tcl in this session's interpreter (opened on first
+  /// use, every registry command bound; the dispatcher has no editor).
+  cmd::CommandResult script(std::string_view text) { return interp().evaluate(text); }
+
+  script::Interpreter& interp() {
+    if (editor_.script.interp == nullptr) {
+      script::Interpreter& opened = script::open_project_interpreter(editor_, {});
+      (void)script::bind_registry(opened, registry_, *dispatcher_);
+    }
+    return *editor_.script.interp;
   }
 
   cmd::Dispatcher& dispatcher() { return *dispatcher_; }
@@ -74,6 +89,7 @@ class Session {
   TestCommands commands_;
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
   std::unique_ptr<cmd::CommandLog> log_;
+  editor::EditorState editor_;  // holds the interpreter only
 };
 
 }  // namespace hefesto::test

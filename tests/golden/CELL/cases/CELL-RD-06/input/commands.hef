@@ -1,7 +1,0 @@
-# CELL-RD-06: CRLF line endings and # comment lines inside sections.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-cellname list allcells
-save a_out

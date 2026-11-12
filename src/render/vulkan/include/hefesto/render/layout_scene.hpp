@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "hefesto/display/scene.hpp"
@@ -48,6 +49,16 @@ struct LayoutBatches {
   bool truncated = false;
 };
 
+/// How highlight lines are sized on screen.
+struct HighlightOptions {
+  /// Framebuffer pixels per logical pixel (2 on a Retina display).
+  double pixel_ratio = 1.0;
+};
+
+/// The line width of highlight outlines in framebuffer pixels: one logical
+/// pixel (`pixel_ratio` rounded, at least 1, at most 63).
+[[nodiscard]] std::uint8_t highlight_line_width(const HighlightOptions& options) noexcept;
+
 /// Converts a resolved display style to a GPU layer style: fill stipple
 /// included when the style's fill is `stipple`; translucent fills get the
 /// OpenGL color compensation of Q-UI-35 (display::opengl_supercolor).
@@ -63,10 +74,18 @@ struct LayoutBatches {
 /// text); a cross is drawn as its point, since its 5-pixel arms depend on the
 /// zoom.
 [[nodiscard]] LayoutBatches to_batches(const display::LayoutScene& scene,
-                                       const display::HighlightScene* highlights = nullptr);
+                                       const display::HighlightScene* highlights = nullptr,
+                                       const HighlightOptions& options = {});
 
 /// The batches of a highlight scene alone (its own layer numbering), for a
 /// front end that draws highlights as a separate pass over a retained layout.
-[[nodiscard]] LayoutBatches highlight_batches(const display::HighlightScene& highlights);
+/// Lines are one logical pixel wide (`options.pixel_ratio` framebuffer
+/// pixels), so that the selection outline does not thin out on a Retina
+/// display; the box drawn thick (display::box_drawing: an outline item in the
+/// box style or, outside the edit cell, the medium-highlights style) has
+/// sides two logical pixels wide inside the box, as Magic's DBWDrawBox draws
+/// its 2-pixel sides. Each of the box's four sides is its own batch layer.
+[[nodiscard]] LayoutBatches highlight_batches(const display::HighlightScene& highlights,
+                                              const HighlightOptions& options = {});
 
 }  // namespace hefesto::render

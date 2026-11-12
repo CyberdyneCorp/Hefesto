@@ -18,7 +18,6 @@
 #include <thread>
 #include <utility>
 
-#include "hefesto/cmd/script.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/ui/client.hpp"
@@ -205,34 +204,25 @@ CommandResult netlist(CommandContext& /*ctx*/, const Invocation& /*inv*/) {
 
 // --- source ----------------------------------------------------------------
 
+// Tcl's `source` in the project's interpreter (m4-scripting tasks.md 13.2:
+// no script runs through the M0 reader any more); the binding imports
+// Tcl's own `source` globally, so this is `magic::source` and the command
+// as typed in a front end's command line.
 CommandResult source(CommandContext& ctx, const Invocation& inv) {
   if (inv.args.size() != 1) {
     return usage("Usage: source filename");
   }
-  const auto text = ctx.services().files.read(inv.args[0]);
-  if (!text.ok()) {
+  editor::EditorState* editor = ctx.editor();
+  if (editor == nullptr || editor->script.interp == nullptr) {
     return CommandResult::failure(diag::make(codes::kSource, "Couldn't read from " + inv.args[0] + "."));
   }
-  const cmd::ParsedScript parsed = cmd::parse_script(text.value(), inv.args[0]);
-  if (parsed.error) {
-    return CommandResult::raised(*parsed.error);
+  const bool sticky = std::exchange(state(*editor).point_sticky, true);
+  CommandResult result = editor->script.interp->source(inv.args[0]);
+  state(*editor).point_sticky = sticky;
+  if (!result.ok()) {
+    result.raises = true;  // a Tcl error in the file stops the calling script
   }
-  editor::EditorState* editor = ctx.editor();
-  const bool sticky = editor != nullptr && std::exchange(state(*editor).point_sticky, true);
-  CommandResult last = CommandResult::success();
-  for (const cmd::ParsedCommand& command : parsed.commands) {
-    last = run_forwarded(ctx, command.words);
-    if (!last.ok() && (ctx.session().strict || last.raises)) {
-      break;
-    }
-    if (ctx.session().quit_requested) {
-      break;
-    }
-  }
-  if (editor != nullptr) {
-    state(*editor).point_sticky = sticky;
-  }
-  return last;
+  return result;
 }
 
 // --- sleep -------------------------------------------------------------------

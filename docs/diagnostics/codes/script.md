@@ -39,7 +39,10 @@ with the script file and line (Tcl's `info frame`), together with a
 `script::DeniedOperation` event (`ScriptEvents::publish_denied`):
 
 - `SCRIPT-SANDBOX-001`: `exec`, or `open` of a command pipeline
-  (`open |cmd`): process execution is not permitted.
+  (`open |cmd`): process execution is not permitted. Also the engine
+  commands that run a process or download when a script, a key macro or a
+  plugin runs them: `shell`, and `pdk install`, `remote`, `updates` and
+  `import` (security finding S-01).
 - `SCRIPT-SANDBOX-002`: `socket` (client or server).
 - `SCRIPT-SANDBOX-003`: `load` or `unload` of a native extension.
 - `SCRIPT-SANDBOX-004`: a file access outside the granted roots (the project
@@ -48,15 +51,26 @@ with the script file and line (Tcl's `info frame`), together with a
   the filesystem, `file tempfile` without a granted directory, `file link`
   to a target outside, or any other path Tcl resolves through the
   filesystem layer. Paths are compared after `.`/`..`, `~` and symbolic
-  links are resolved. Tcl's own library code probing host paths (for
-  example `clock`'s time-zone directories) is denied silently instead.
+  links are resolved (dangling links too, from the link's directory).
+  Writes under a read-only root (the PDK store, the install root) are
+  refused the same way ("is read-only in the script sandbox"). Engine
+  commands run from a script (`save`, `load`, `feedback save`, `readspice`,
+  ...) read and write through the same check (security finding S-02).
+  Tcl's own library code probing host paths (for example `clock`'s
+  time-zone directories) is denied silently instead.
 - `SCRIPT-SANDBOX-005`: `interp create` without `-safe`, and `interp
   invokehidden`, `expose` or `marktrusted` (also through a child
-  interpreter's command).
+  interpreter's command), and a recursion limit above Tcl's default of 1000
+  (security finding S-07).
 - `SCRIPT-SANDBOX-006`: `package require` of a package that Tcl's embedded
   library does not provide and no script has provided (`package provide`).
 - `SCRIPT-SANDBOX-007`: another removed command, such as `exit` (scripts end
-  the program with `quit`).
+  the program with `quit`), and `encoding system` or `encoding dirs` with an
+  argument, which change process-wide state (security finding S-08).
+- `SCRIPT-SANDBOX-008`: a command that changes which PDK scripts are
+  trusted or what the PDK store holds, run by a script, a key macro or a
+  plugin: `pdk trust`, `untrust`, `install`, `uninstall`, `enable`, `pin`,
+  `remove-library`, `import` and `export` (security finding S-03).
 
 ## BINDING
 
@@ -103,10 +117,34 @@ design D7; tasks.md section 6).
 - `SCRIPT-PDK-008`: a startup file or `<tech>.magicrc` could not run
   because the project has no interpreter.
 - `SCRIPT-TRUST-001` is printed when a PDK script was not run for lack of
-  consent (the user declined, or batch mode without `--trust-pdk`);
-  `SCRIPT-TRUST-002` when the user trusted a PDK version;
-  `SCRIPT-TRUST-003` when that trust could not be recorded in the PDK
-  store's provenance record.
+  consent (the user declined, or batch mode without `--trust-pdk`). The
+  layout then opens read-only with the `minimum` technology. A declined
+  version is not asked again in the session (the prompt is shown once per
+  PDK version); every later script of it, and every cell whose technology
+  is that PDK variant, is declined with this code until `pdk trust`,
+  `pdk untrust` or "Review scripts..." forgets the decline.
+  `SCRIPT-TRUST-002` is printed when the user trusted a PDK version (the
+  prompt's "Trust this version", or `pdk trust <variant> <version>`);
+  `SCRIPT-TRUST-004` after `pdk untrust <variant> <version>`;
+  `SCRIPT-TRUST-003` when either could not be saved in the PDK store's
+  provenance record (the session keeps the change).
+
+The M4 boards show placeholder codes; these are the codes they stand for
+(board text → code):
+
+| Board | Row | Code |
+|---|---|---|
+| `M4-Menu-Bar` | Feedback row "skipped widget statement" | `SCRIPT-PDK-004` |
+| `M4-Script-Consent` | Diagnostics row "socket is not permitted" | `SCRIPT-SANDBOX-002` |
+| `M4-Script-Consent` | Diagnostics row "process execution (exec) is not permitted" | `SCRIPT-SANDBOX-001` |
+| `M4-Console` | `exec ls` → "process execution (exec) is not permitted" | `SCRIPT-SANDBOX-001` |
+| `M4-Script-Consent` | declined banner and read-only chip | `SCRIPT-TRUST-001` |
+
+The other sandbox denials a diagnostics row can show are `SCRIPT-SANDBOX-003`
+(`load`/`unload`), `-004` (a file outside the granted roots), `-005`
+(`interp create` without `-safe` and the hidden-command operations), `-006`
+(`package require` outside Tcl's embedded library) and `-007` (`exit` and
+other removed commands); see the TCL section.
 
 ## Table
 
@@ -143,10 +181,12 @@ fails when the two disagree.
 | `SCRIPT-SANDBOX-005` | error | The script sandbox refused an unsafe interpreter operation. |
 | `SCRIPT-SANDBOX-006` | error | The script sandbox refused a package that Tcl's embedded library does not provide. |
 | `SCRIPT-SANDBOX-007` | error | The script sandbox refused a removed command. |
+| `SCRIPT-SANDBOX-008` | error | The script sandbox refused a command that changes PDK trust or the PDK store. |
 | `SCRIPT-TCL-001` | error | A Tcl script raised an error; the text is Tcl's error message. |
 | `SCRIPT-TCL-002` | error | A script evaluation was interrupted. |
 | `SCRIPT-TCL-003` | error | A script evaluation exceeded its command count or time limit. |
 | `SCRIPT-TRUST-001` | warning | A PDK script was declined; the layout opens read-only with the `minimum` technology. |
 | `SCRIPT-TRUST-002` | info | A PDK version is now trusted; its scripts run without asking. |
 | `SCRIPT-TRUST-003` | warning | The trust record of a PDK version could not be saved in the PDK store. |
+| `SCRIPT-TRUST-004` | info | A PDK version is no longer trusted (`pdk untrust`); its scripts ask before running. |
 <!-- END DIAGNOSTIC CODES -->

@@ -1,9 +1,0 @@
-# UI-G-019: setpoint 120 100 0; pushbutton left down; pushbutton left up; box (box tool).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load input/c
-box 0 0 10 10
-setpoint 120 100 0
-pushbutton left down
-pushbutton left up
-box values

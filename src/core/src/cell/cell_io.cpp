@@ -43,24 +43,33 @@ std::string recorded_path_of(std::string name) {
 // dbReadOpen's message when no file opens; `with_errno` adds the strerror
 // line DBCellRead prints when its caller asked for the error (a top-level
 // load). The lookup fails with ENOENT. (Magic ref: database/DBio.c:1581-1604)
-void report_missing(CellIoContext& ctx, db::CellDef& def, bool with_errno) {
+void report_missing(CellIoContext& ctx, db::CellDef& def, const ReadOptions& options) {
   if (def.flags().not_found) {
     return;  // reported once per definition
   }
+  const bool print = options.prints(ReadOptions::Verbosity::errors);  // DB_VERBOSE_ERR
   if (!def.file_path().empty()) {
-    emit(ctx, codes::kNotFound, "File " + def.file_path().generic_string() + " couldn't be read");
+    if (print) {
+      emit(ctx, codes::kNotFound, "File " + def.file_path().generic_string() + " couldn't be read");
+    }
   } else {
-    emit(ctx, codes::kNotFound, "Cell " + def.name() + " couldn't be read");
+    if (print) {
+      emit(ctx, codes::kNotFound, "Cell " + def.name() + " couldn't be read");
+    }
     def.set_file_path(def.name() + std::string{kMag});
   }
-  if (with_errno) {
+  if (options.report_errno && print) {
     emit(ctx, codes::kNotFound, "No such file or directory");
   }
   def.flags().not_found = true;
 }
 
 // "Recording the result" at full verbosity (Magic ref: database/DBio.c:1642-1654).
-void report_read_from(CellIoContext& ctx, const db::CellDef& def, std::string_view recorded) {
+void report_read_from(CellIoContext& ctx, const db::CellDef& def, std::string_view recorded,
+                      const ReadOptions& options) {
+  if (!options.prints(ReadOptions::Verbosity::all)) {
+    return;
+  }
   const std::size_t slash = recorded.rfind('/');
   if (slash == std::string_view::npos) {
     emit(ctx, codes::kReadNote, "Cell " + def.name() + " read from current working directory");
@@ -74,7 +83,8 @@ void report_read_from(CellIoContext& ctx, const db::CellDef& def, std::string_vi
 /// for writability (file_is_not_writeable(filename)): for a compressed
 /// counterpart that is the uncompressed name, so `inv.mag.gz` alone reads
 /// as not writeable (Magic ref: database/DBio.c:1607-1625).
-void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path& file, const platform::Path& named) {
+void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path& file, const platform::Path& named,
+                      const ReadOptions& options) {
   std::string owner;
   bool locked = false;
   if (ctx.locks != nullptr && !ctx.locks->holds(file)) {
@@ -89,7 +99,7 @@ void detect_read_only(CellIoContext& ctx, db::CellDef& def, const platform::Path
   }
   const bool writable = ctx.fs.exists(named) && ctx.host.writable(named);
   def.flags().no_edit = !writable;
-  if (!writable) {
+  if (!writable && options.prints(ReadOptions::Verbosity::warnings)) {
     emit(ctx, codes::kReadOnly,
          "Warning: cell <" + def.name() + "> from file " + named.generic_string() + " is not writeable");
   }
@@ -271,16 +281,16 @@ diag::Status read_cell(CellIoContext& ctx, db::CellDef& def, const ReadOptions& 
   const bool deref = options.lookup_dereferenced && def.flags().dereference;
   const auto found = find_cell_file(lookup, def.name(), def.file_path().generic_string(), deref);
   if (!found) {
-    report_missing(ctx, def, options.report_errno);
+    report_missing(ctx, def, options);
     return diag::make(codes::kNotFound, "Cell " + def.name() + " couldn't be read");
   }
   auto text = read_text(ctx, found->path);
   if (!text) {
-    report_missing(ctx, def, options.report_errno);
+    report_missing(ctx, def, options);
     return text.error();
   }
-  detect_read_only(ctx, def, found->path, found->recorded);
-  report_read_from(ctx, def, found->recorded);
+  detect_read_only(ctx, def, found->path, found->recorded, options);
+  report_read_from(ctx, def, found->recorded, options);
   def.flags().not_found = false;
   def.set_file_path(recorded_path_of(found->recorded));
   return read_mag(ctx, def, text.value(), options);  // a format error is reported by read_mag
@@ -298,7 +308,10 @@ namespace {
 // ENOENT from the probe of the missing compressed candidate, so
 // DBWloadWindow reports a new cell as for a missing file and keeps what was
 // read (Magic ref: dbwind/DBWprocs.c:491-498).
-diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Status& read, bool was_available) {
+// "Creating new cell" is not printed for `-quiet` or `-silent` (beQuiet).
+diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Status& read, bool was_available,
+                         const ReadOptions& options) {
+  const bool quiet = !options.prints(ReadOptions::Verbosity::warnings);
   if (read.ok()) {
     if (!was_available) {
       db::recompute_bbox(def, ctx.magic_compat);
@@ -307,7 +320,7 @@ diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Statu
   }
   const std::string_view code = read.error().code;
   if (def.flags().available) {
-    if (code == codes::kTechMismatch || code == codes::kFormatError) {
+    if (!quiet && (code == codes::kTechMismatch || code == codes::kFormatError)) {
       emit(ctx, codes::kReadNote, "Creating new cell");
     }
     return diag::Done{};
@@ -315,7 +328,9 @@ diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Statu
   if (code != codes::kNotFound && code != codes::kTechMismatch) {
     return read.error();
   }
-  emit(ctx, codes::kReadNote, "Creating new cell");
+  if (!quiet) {
+    emit(ctx, codes::kReadNote, "Creating new cell");
+  }
   def.flags().not_found = false;
   def.flags().available = true;
   return diag::Done{};
@@ -347,7 +362,7 @@ diag::Outcome<db::CellDef*> load_cell(CellIoContext& ctx, std::string_view name,
   top.lookup_dereferenced = false;  // the named cell itself is never dereferenced
   top.report_errno = true;
   const bool was_available = def->flags().available;
-  if (auto settled = settle_load(ctx, *def, read_cell(ctx, *def, top), was_available); !settled) {
+  if (auto settled = settle_load(ctx, *def, read_cell(ctx, *def, top), was_available, top); !settled) {
     return settled.error();
   }
   // DBWloadWindow without DBW_LOAD_EXPAND: descendants stay unread until

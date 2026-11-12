@@ -17,7 +17,7 @@ description = "ndiff 0 0 10 10, poly 4 -2 6 12, then erase poly 4 0 6 10."
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

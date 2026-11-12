@@ -1,7 +1,0 @@
-# CELL-RD-14: Use blocks: locked, unlocked, no id, duplicate id, array, missing timestamp, degenerate box.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-cellname list allcells
-save a_out

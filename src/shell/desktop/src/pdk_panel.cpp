@@ -32,7 +32,9 @@ void paint_row(ui::Painter& p, float w, float h, const PdkRow& row, bool selecte
     p.fill(0.0F, 0.0F, w, h, static_cast<float>(kRadiusControl), alpha(t.row_selected, 0.6F));
   }
   p.text(TextRole::body_strong, 8.0F, 6.0F, row.title(), t.text_primary);
-  const std::string libs = std::to_string(row.default_libraries) + " default libraries";
+  std::string libs = std::to_string(row.default_libraries) + " default libraries";
+  // M4 (board M4-Script-Consent tile 5): the scripts state of the installed version.
+  if (!row.scripts.text.empty()) libs += " · " + row.scripts.label();
   // text_tertiary is below 4.5:1 on row_selected (dark): secondary on a highlighted row.
   const Rgba& meta = selected || s.hovered ? t.text_secondary : t.text_tertiary;
   p.text(TextRole::meta, 8.0F, 6.0F + p.line_height(TextRole::body_strong), libs, meta);
@@ -156,6 +158,15 @@ PdkPanel::PdkPanel(ScreenContext& ctx, std::function<void()> close)
   column_.add(version_row);
   column_.add(toggles);
   for (ui::Box& row : actions) column_.add(row);
+  // M4: Trust scripts / Revoke trust for the selected installed version
+  // (`pdk trust|untrust <variant> <version>`, logged).
+  ui::Box trust_row = ui::Box::horizontal();
+  trust_row.set_padding(kPad, 4.0F, kPad, 4.0F);
+  auto trust = make_trust_button();
+  trust_button_ = trust.get();
+  trust_row.add(*trust, 1.0F);
+  fixed_.push_back(std::move(trust));
+  column_.add(trust_row);
   ui::Box bottom = ui::Box::vertical();
   bottom.set_size(-1.0F, static_cast<float>(kSpacing[2]));
   column_.add(bottom);
@@ -185,6 +196,46 @@ std::unique_ptr<ui::Painted> PdkPanel::make_button(PdkAction action, paint::Butt
   button->set_accessible_name(label);
   button->on_click([this, action](float, float) { run(action); });
   return button;
+}
+
+std::unique_ptr<ui::Painted> PdkPanel::make_trust_button() {
+  auto button = make_interactive(ctx_, [this](ui::Painter& p, float w, float h, const ThemeTokens& t, bool hovered,
+                                              bool focused) {
+    const auto action = selected_trust_action();
+    const std::string_view label = pdk_action_label(action.value_or(PdkAction::trust));
+    paint::button(p, w, h, label, "", paint::ButtonStyle::secondary,
+                  paint::WidgetState{hovered, focused, action.has_value(), false}, t);
+  });
+  button->set_size(-1.0F, static_cast<float>(kButtonHeight));
+  button->set_min_size(paint::button_width(ctx_.runtime, pdk_action_label(PdkAction::untrust), false),
+                       static_cast<float>(kButtonHeight));
+  button->set_role(ui::Role::button);
+  button->set_accessible_name(pdk_action_label(PdkAction::trust));
+  button->set_tooltip("Trust is kept per PDK and version: a new version asks again");
+  button->on_click([this](float, float) {
+    if (const auto action = selected_trust_action()) run(*action);
+  });
+  return button;
+}
+
+std::optional<PdkAction> PdkPanel::selected_trust_action() const {
+  if (selected_ >= rows_.size()) return std::nullopt;
+  return trust_action(rows_[selected_]);
+}
+
+void PdkPanel::update_trust_button() {
+  if (trust_button_ == nullptr) return;
+  const auto action = selected_trust_action();
+  trust_button_->set_accessible_name(pdk_action_label(action.value_or(PdkAction::trust)));
+  trust_button_->set_enabled(action.has_value());
+  trust_button_->invalidate();
+}
+
+bool PdkPanel::scripts_trusted(const pdk::InstalledVersion& version) {
+  const pdk::Family* family = manager().catalog().find_family(version.family);
+  if (family == nullptr) return false;
+  auto provenance = manager().provenance(*family, version.version.hash);
+  return provenance.ok() && provenance.value().trusted;
 }
 
 /// A checkbox row: a square with a check mark, plus text (state is shape +
@@ -225,10 +276,12 @@ void PdkPanel::refresh() {
   } else {
     root_error_ = diagnostic_line(StatusKind::error, installed.error().text);
   }
-  rows_ = pdk_rows(manager().catalog(), versions);
+  rows_ = pdk_rows(manager().catalog(), versions,
+                   [this](const pdk::InstalledVersion& v) { return scripts_trusted(v); });
   if (selected_ >= rows_.size()) selected_ = 0;
   layout_header();
   rebuild_rows();
+  update_trust_button();
 }
 
 float PdkPanel::header_text_width() const {
@@ -258,10 +311,12 @@ void PdkPanel::rebuild_rows() {
     });
     row->set_size(-1.0F, kRowHeight);
     row->set_role(ui::Role::list_item);
-    row->set_accessible_name(rows_[i].title() + ", " + rows_[i].state.text);
+    row->set_accessible_name(rows_[i].title() + ", " + rows_[i].state.text +
+                             (rows_[i].scripts.text.empty() ? std::string{} : ", " + rows_[i].scripts.text));
     row->on_click([this, i](float, float) {
       selected_ = i;
       for (auto& w : row_widgets_) w->invalidate();
+      update_trust_button();
     });
     rows_box_.add(*row);
     row_widgets_.push_back(std::move(row));

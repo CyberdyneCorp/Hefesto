@@ -41,6 +41,10 @@ class MemoryBackend final : public script::TrustBackend {
     recorded.insert(pdk);
     return hefesto::diag::Done{};
   }
+  hefesto::diag::Status forget(const PdkIdentity& pdk) override {
+    recorded.erase(pdk);
+    return hefesto::diag::Done{};
+  }
   std::set<PdkIdentity> recorded;
 };
 
@@ -86,6 +90,32 @@ TEST_CASE("trust is recorded per PDK and version", "[cap:hefesto-security][req:C
   CHECK(host.requests().size() == 2);
 }
 
+TEST_CASE("a declined version is asked once per session", "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  script::TrustStore store;
+  script::ScriptEvents events;
+  Recorder recorder;
+  events.add(recorder);
+  script::TestConsentHost host;  // declines, then would run
+  host.push_answer(ConsentDecision::decline);
+  host.push_answer(ConsentDecision::run_once);
+  CHECK_FALSE(script::request_consent(store, events, &host, kSky130, "/x/sky130A.magicrc", false).run);
+  CHECK(store.declined(kSky130));
+  CHECK(store.declined_variant("sky130A"));
+  CHECK_FALSE(store.declined_variant("sky130B"));
+  // The board's prompt is shown once per PDK version: the decline holds.
+  const auto again = script::request_consent(store, events, &host, kSky130, "/x/sky130A.magicrc", true);
+  CHECK_FALSE(again.run);
+  REQUIRE(again.diagnostics.size() == 1);
+  CHECK(again.diagnostics.front().code == "SCRIPT-TRUST-001");
+  CHECK(host.requests().size() == 1);
+  CHECK(recorder.requests.size() == 1);
+  // "Review scripts..." forgets the decline and asks again.
+  store.forget_decline(kSky130);
+  CHECK(script::request_consent(store, events, &host, kSky130, "/x/sky130A.magicrc", true).run);
+  CHECK(host.requests().size() == 2);
+  events.remove(recorder);
+}
+
 TEST_CASE("run once does not trust the version", "[cap:hefesto-security][req:Consent before implicit script execution]") {
   script::TrustStore store;
   script::ScriptEvents events;
@@ -109,9 +139,11 @@ TEST_CASE("no consent host declines", "[cap:hefesto-security][req:Consent before
   REQUIRE(outcome.diagnostics.size() == 1);
   CHECK(outcome.diagnostics.front().code == "SCRIPT-TRUST-001");
   CHECK(outcome.diagnostics.front().text.find("read-only with the minimum technology") != std::string::npos);
-  // The store's own host is used when the caller passes none.
+  // The store's own host is used when the caller passes none (after the
+  // decline is forgotten: a declined version is not asked again).
   script::TestConsentHost host{ConsentDecision::run_once};
   store.set_consent_host(&host);
+  store.forget_decline(kSky130);
   CHECK(script::request_consent(store, events, nullptr, kSky130, "/x/sky130A.magicrc", true).run);
 }
 
@@ -195,7 +227,7 @@ struct Discovery {
     std::ifstream tech{std::string{HEFESTO_SOURCE_DIR} + "/tests/data/tech/tiny.tech"};
     write_file(magic_dir / "tiny.tech", std::string{std::istreambuf_iterator<char>{tech}, {}});
     write_file(magic_dir / "tiny.magicrc", "set ::tiny_rc [info script]\n");
-    write_file(dir.path() / "work/inv.mag", "magic\ntech tiny\ntimestamp 0\n<< end >>\n");
+    write_file(dir.path() / "work/inv.mag", "magic\ntech tiny\ntimestamp 0\n<< metal1 >>\nrect 0 0 4 4\n<< properties >>\nstring FIXED_BBOX 0 0 4 4\n<< end >>\n");
     const std::string root = (dir.path() / "pdk").string();
     s.editor.path_variables.variable = [root](std::string_view name) -> std::optional<std::string> {
       return name == "PDK_ROOT" ? std::optional<std::string>{root} : std::nullopt;
@@ -208,18 +240,75 @@ struct Discovery {
   }
 };
 
+bool has_code(const hefesto::cmd::CommandResult& result, std::string_view code) {
+  for (const auto& d : result.diagnostics) {
+    if (d.code == code) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 TEST_CASE("Unknown PDK script", "[cap:hefesto-security][req:Consent before implicit script execution]") {
   Discovery d;
   script::TestConsentHost host;  // declines
   d.s.editor.script.pdk_trust.set_consent_host(&host);
-  (void)d.load();
-  CHECK(d.s.editor.technology->name() == "minimum");  // nothing loaded (read-only open: open item)
+  const auto loaded = d.load();
+  CHECK(loaded.ok());
+  CHECK(d.s.editor.technology->name() == "minimum");
   CHECK(d.s.eval("info exists ::tiny_rc") == "0");
   REQUIRE(host.requests().size() == 1);
   CHECK(host.requests().front().script == (d.magic_dir / "tiny.magicrc").string());
   CHECK(host.requests().front().pdk.variant == "tiny");
+  // The file opens read-only with the minimum technology (which has no
+  // layers, so the paint is not drawn; the rest of the file is read): the
+  // cell is shown but is not the edit cell.
+  auto* inv = d.s.editor.cells.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK(inv->flags().available);
+  CHECK(inv->flags().no_edit);
+  CHECK(d.s.editor.edit_cell == nullptr);
+  CHECK(d.s.eval("cellname list window") == "inv");
+  CHECK(inv->properties().find("FIXED_BBOX") != nullptr);
+  CHECK(has_code(loaded, "SCRIPT-TRUST-001"));
+  CHECK_FALSE(d.s.dispatcher->execute({"paint", {"m1"}, hefesto::cmd::Origin::script, std::nullopt}).ok());
+
+  // Another cell of the declined PDK opens read-only without a second prompt.
+  write_file(d.dir.path() / "work/nand.mag", "magic\ntech tiny\ntimestamp 0\n<< end >>\n");
+  (void)d.s.dispatcher->execute(hefesto::cmd::Invocation{
+      "load", {(d.dir.path() / "work/nand").string()}, hefesto::cmd::Origin::script, std::nullopt});
+  CHECK(host.requests().size() == 1);
+  REQUIRE(d.s.editor.cells.find("nand") != nullptr);
+  CHECK(d.s.editor.cells.find("nand")->flags().no_edit);
+}
+
+TEST_CASE("a declined pinned PDK opens the project's cells read-only",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  // The startup's decline of the project's pinned rc file (run_startup_file)
+  // is remembered by the trust store; a cell of that PDK found nowhere on
+  // the discovery path still opens read-only instead of as a new cell.
+  Discovery d;
+  d.s.editor.path_variables.variable = [](std::string_view) { return std::optional<std::string>{}; };
+  d.s.editor.script.pdk_trust.decline({"tiny", "tiny", "abc"});
+  const auto loaded = d.load();
+  CHECK(loaded.ok());
+  auto* inv = d.s.editor.cells.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK(inv->flags().no_edit);
+  CHECK(d.s.editor.technology->name() == "minimum");
+}
+
+TEST_CASE("a cell of an undeclined technology that cannot be found keeps Magic's mismatch",
+          "[cap:scripting-pdk-integration][req:Technology auto-discovery from layout files]") {
+  Discovery d;
+  d.s.editor.path_variables.variable = [](std::string_view) { return std::optional<std::string>{}; };
+  (void)d.load();
+  auto* inv = d.s.editor.cells.find("inv");
+  REQUIRE(inv != nullptr);
+  CHECK_FALSE(inv->flags().no_edit);  // DBWloadWindow's "Creating new cell"
+  CHECK(d.s.editor.edit_cell == inv);
 }
 
 TEST_CASE("Opening a cell runs the technology's rc file after consent",
@@ -247,6 +336,7 @@ TEST_CASE("run_tech_magicrc reports a declined script", "[cap:scripting-pdk-inte
   auto declined = script::run_tech_magicrc(s.editor, {"x", "x", ""}, dir.path() / "x.magicrc", &host);
   CHECK_FALSE(declined.ok());
   CHECK(declined.diagnostics.front().code == "SCRIPT-TRUST-001");
+  s.editor.script.pdk_trust.forget_decline({"x", "x", ""});
   host.push_answer(ConsentDecision::run_once);
   write_file(dir.path() / "bad.magicrc", "set ::x 1\nfrobnicate\n");
   CHECK(script::run_tech_magicrc(s.editor, {"x", "x", ""}, dir.path() / "bad.magicrc", &host).ok());  // errors ignored

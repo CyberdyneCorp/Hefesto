@@ -17,7 +17,7 @@ description = "sky130A: sky130_fd_sc_hd__inv_1 as installed, then the same cell 
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[external]]

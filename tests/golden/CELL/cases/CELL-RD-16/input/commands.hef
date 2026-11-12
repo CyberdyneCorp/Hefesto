@@ -1,7 +1,0 @@
-# CELL-RD-16: Self use (a uses a); mutual use b and c.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-load input/b
-cellname list allcells

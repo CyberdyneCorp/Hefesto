@@ -1,9 +1,0 @@
-# CMDEDIT-PAINT-01: Empty cell, box 0 0 10 20; paint poly,metal1; save; undo; save.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny -noprompt
-load a
-box 0 0 10 20
-paint poly,metal1
-save p1
-undo
-save p2

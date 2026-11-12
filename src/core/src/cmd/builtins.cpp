@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/cmd/quit_policy.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
 #include "hefesto/version.hpp"
@@ -92,9 +93,12 @@ CommandResult quit(CommandContext& ctx, const Invocation& inv) {
       }
     }
   }
-  session.exit_status = status;
-  session.quit_requested = true;
-  return CommandResult::success();
+  const QuitRequest request{status, !check_first};
+  if (session.quit_policy != nullptr) {
+    return session.quit_policy->quit(ctx, inv, request);
+  }
+  ExitQuitPolicy exit;
+  return exit.quit(ctx, inv, request);
 }
 
 // --- setting ----------------------------------------------------------------

@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+
+#include "hefesto/shell/script_consent_model.hpp"
+
+#include <algorithm>
+
+namespace hefesto::shell {
+
+namespace {
+
+using script::ConsentDecision;
+
+std::string file_name(std::string_view path) {
+  const std::size_t slash = path.find_last_of('/');
+  return std::string{slash == std::string_view::npos ? path : path.substr(slash + 1)};
+}
+
+std::string where(const script::ScriptLocation& location) {
+  std::string text = file_name(location.file);
+  if (text.empty()) text = "typed text";
+  if (location.line > 0) text += ":" + std::to_string(location.line);
+  return text;
+}
+
+std::string pdk_name(const script::PdkIdentity& pdk) {
+  return pdk.variant.empty() ? pdk.family : pdk.variant;
+}
+
+std::string store_body(const script::PdkIdentity& pdk, const ConsentContext& context) {
+  const std::string name = pdk_name(pdk);
+  const std::string opening = context.document.empty() ? "This project" : "Opening " + context.document;
+  return opening + " needs the " + name +
+         " technology. Its startup file and device scripts are Tcl code shipped with the PDK. Hefesto runs them in "
+         "the sandbox: no programs, no network, and files only in this project, the PDK store and a temporary "
+         "folder.";
+}
+
+std::string outside_body(const script::PdkIdentity& pdk, const script::ConsentRequest& request,
+                         const ConsentContext& context) {
+  const std::string name = pdk_name(pdk);
+  const std::string document = context.document.empty() ? "The layout" : context.document;
+  return document + " declares technology " + name + ". Hefesto found " + file_name(request.script) +
+         (request.implicit ? " by technology auto-discovery" : "") +
+         ", outside the PDK store. This script is not part of a verified release.";
+}
+
+std::vector<std::pair<std::string, std::string>> origin_rows(const script::ConsentRequest& request,
+                                                             const ConsentContext& context) {
+  std::vector<std::pair<std::string, std::string>> rows;
+  rows.emplace_back("Script", middle_ellipsis(request.script, 72));
+  rows.emplace_back("PDK", pdk_name(request.pdk) + " · " + short_version(request.pdk.version));
+  if (context.in_store) {
+    rows.emplace_back("Release", "ciel " + short_version(request.pdk.version) +
+                                     (context.digest_verified ? " · ● digest verified" : " · ◆ digest not checked"));
+    if (!context.then_runs.empty()) rows.emplace_back("Then runs", context.then_runs);
+  } else {
+    rows.emplace_back("Release", "▲ not in the PDK store · not verified");
+    if (request.implicit) rows.emplace_back("Found via", "technology auto-discovery");
+  }
+  return rows;
+}
+
+}  // namespace
+
+// --- consent prompt ---------------------------------------------------------------------
+
+ConsentDecision ConsentPromptView::default_decision() const {
+  for (const ConsentAnswer& a : answers) {
+    if (a.primary) return a.decision;
+  }
+  return ConsentDecision::decline;
+}
+
+std::string short_version(std::string_view version) {
+  if (version.empty()) return "version unknown";
+  return std::string{version.substr(0, std::min<std::size_t>(version.size(), 7))};
+}
+
+std::string middle_ellipsis(std::string_view path, std::size_t max) {
+  if (path.size() <= max || max < 5) return std::string{path};
+  const std::size_t keep = max - 1;  // "…" counts as one character
+  const std::size_t tail = keep / 2 + keep % 2;
+  const std::size_t head = keep - tail;
+  return std::string{path.substr(0, head)} + "…" + std::string{path.substr(path.size() - tail)};
+}
+
+ConsentPromptView consent_prompt(const script::ConsentRequest& request, const ConsentContext& context) {
+  ConsentPromptView view;
+  const std::string name = pdk_name(request.pdk);
+  view.script_path = request.script;
+  view.origin = origin_rows(request, context);
+  view.warning = !context.in_store;
+  if (context.in_store) {
+    view.title = "Run the " + name + " PDK scripts?";
+    view.body = store_body(request.pdk, context);
+    view.answers = {{"Don't run", ConsentDecision::decline, false},
+                    {"Trust " + name + " " + short_version(request.pdk.version), ConsentDecision::trust_version, false},
+                    {"Run once", ConsentDecision::run_once, true}};
+  } else {
+    // Trust is recorded only for a PDK version in the store (board tile 4).
+    view.title = "Run a startup script from a downloaded folder?";
+    view.body = outside_body(request.pdk, request, context);
+    view.answers = {{"Don't run", ConsentDecision::decline, true}, {"Run once", ConsentDecision::run_once, false}};
+  }
+  return view;
+}
+
+PromptDialog consent_dialog(const ConsentPromptView& view) {
+  PromptDialog dialog;
+  dialog.title = view.title;
+  dialog.text = view.body + "\n";
+  for (const auto& [key, value] : view.origin) dialog.text += "\n" + key + ":  " + value;
+  for (std::size_t i = 0; i < view.answers.size(); ++i) {
+    dialog.buttons.push_back({view.answers[i].label, i, view.answers[i].primary});
+  }
+  return dialog;
+}
+
+ConsentDecision consent_decision(const ConsentPromptView& view, int dialog_result) noexcept {
+  if (dialog_result <= 0 || static_cast<std::size_t>(dialog_result) > view.answers.size()) {
+    return ConsentPromptView::escape_decision();
+  }
+  return view.answers[static_cast<std::size_t>(dialog_result) - 1].decision;
+}
+
+// --- the desktop ConsentHost ----------------------------------------------------------------
+
+ConsentDecision DesktopConsentHost::ask(const script::PdkIdentity& pdk, const platform::Path& script) {
+  if (const auto known = answers_.find(pdk); known != answers_.end()) return known->second;
+  // request_consent publishes the request (with `implicit`) before asking.
+  const bool implicit = pending_ && pending_->pdk == pdk && pending_->script == script.string() && pending_->implicit;
+  pending_.reset();
+  const script::ConsentRequest request{pdk, script.string(), implicit};
+  ConsentContext context;
+  context.document = document_;
+  context.in_store = in_store_ ? in_store_(script) : false;
+  const ConsentPromptView view = consent_prompt(request, context);
+  const ConsentDecision decision = ask_ ? ask_(view) : ConsentDecision::decline;
+  answers_[pdk] = decision;
+  scripts_[pdk] = script;
+  if (decision == ConsentDecision::decline) {
+    declined_ = pdk;
+  } else if (declined_ == pdk) {
+    declined_.reset();
+  }
+  return decision;
+}
+
+std::optional<ConsentDecision> DesktopConsentHost::answer(const script::PdkIdentity& pdk) const {
+  const auto found = answers_.find(pdk);
+  if (found == answers_.end()) return std::nullopt;
+  return found->second;
+}
+
+std::optional<platform::Path> DesktopConsentHost::script_of(const script::PdkIdentity& pdk) const {
+  const auto found = scripts_.find(pdk);
+  if (found == scripts_.end()) return std::nullopt;
+  return found->second;
+}
+
+// --- declined, denials and long-running scripts ---------------------------------------------
+
+DeclinedView declined_view(const script::PdkIdentity& pdk, std::string_view document) {
+  const std::string name = pdk_name(pdk);
+  const std::string doc = document.empty() ? std::string{"the layout"} : std::string{document};
+  DeclinedView view;
+  view.chip = "▲ read-only";
+  view.banner = "▲ The " + name + " scripts were not run, so " + doc +
+                " opened read-only with the minimum technology. Its " + name +
+                " layers are not shown, and editing and saving are off.";
+  view.action = "Review scripts...";
+  view.place_device_tooltip = "No PDK device scripts (the " + name + " scripts were not run)";
+  return view;
+}
+
+std::string denial_status(const script::DeniedOperation& denied) {
+  return "■ Sandbox blocked " + denied.operation + " in " + where(denied.location);
+}
+
+std::optional<InterruptCardView> interrupt_card(const RunningScript& running) {
+  if (running.elapsed < kLongRunning) return std::nullopt;
+  const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(running.elapsed).count();
+  InterruptCardView card;
+  const std::string name = running.script.empty() ? std::string{"a script"} : file_name(running.script);
+  card.title = "Running " + name + " · " + std::to_string(seconds) + " s";
+  if (!running.current_file.empty()) {
+    card.detail = "source " + file_name(running.current_file);
+    if (running.line > 0) card.detail += " · line " + std::to_string(running.line);
+  }
+  return card;
+}
+
+}  // namespace hefesto::shell

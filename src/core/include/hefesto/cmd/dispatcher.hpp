@@ -113,6 +113,16 @@ class Dispatcher {
     return typed_abbreviations_ && origin == Origin::gui ? NameLookup::abbreviated : NameLookup::exact;
   }
 
+  /// The file system that commands with origin `script` see instead of the
+  /// session's (not owned; nullptr: the session's). The project's script
+  /// binding installs a sandboxed one (script::SandboxedFileSystem; security
+  /// finding S-02), so an engine command run from Tcl reads and writes only
+  /// within the interpreter's granted roots.
+  void set_script_files(platform::FileSystem* files) noexcept { script_files_ = files; }
+  [[nodiscard]] platform::FileSystem* script_files() const noexcept { return script_files_; }
+  /// The session's own file system.
+  [[nodiscard]] platform::FileSystem& files() const noexcept { return services_.files; }
+
   [[nodiscard]] ScriptSession& session() noexcept { return session_; }
   [[nodiscard]] const CommandRegistry& registry() const noexcept { return registry_; }
 
@@ -134,6 +144,7 @@ class Dispatcher {
 
   const CommandRegistry& registry_;
   platform::PlatformServices services_;
+  platform::FileSystem* script_files_ = nullptr;
   settings::ProjectSettings& project_;
   ScriptSession& session_;
   editor::EditorState* editor_ = nullptr;

@@ -17,7 +17,7 @@ description = "setlabel fontlist; setlabel font FreeSans.pt3 0.58 twice; font in
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[external]]

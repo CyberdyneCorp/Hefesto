@@ -21,7 +21,7 @@ using enum Severity;
 // Keep sorted by code. Never renumber or reuse a code once released.
 constexpr std::array kCodes{
     CodeInfo{"UI-CLIENT-001", error, "A window type (client) name is unknown, ambiguous or hidden; the valid window types are listed."},
-    CodeInfo{"UI-CLIENT-002", error, "The command needs an optional module that is not available yet (`netlist` until M12, `wind3d` until M10, `rsim`)."},
+    CodeInfo{"UI-CLIENT-002", error, "The command needs an optional module that is not available yet (`netlist` until M12, `wind3d` until M10, `rsim`, `ext2spice` options other than `scale` until M7)."},
     CodeInfo{"UI-DISPATCH-001", error, "The command word is an ambiguous abbreviation (`That command abbreviation is ambiguous.`); nothing was run."},
     CodeInfo{"UI-HISTORY-001", error, "A command-history expansion (`!...`, `^old^new`) names no matching event or word."},
     CodeInfo{"UI-INTERRUPT-001", warning, "The command was interrupted (`[Interrupted]`)."},

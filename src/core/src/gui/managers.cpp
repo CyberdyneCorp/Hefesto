@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <string_view>
+#include <variant>
 
 #include "gui/gui_util.hpp"
 #include "hefesto/cmd/context.hpp"
@@ -332,18 +334,62 @@ Commands library_manager_commands(LibraryManagerAction action, std::string_view 
 
 // --- technology manager ------------------------------------------------------------------
 
+namespace {
+
+// The elements of the Tcl list `text` as `lindex` reads them (braces and
+// double quotes group, one level). Magic's technology manager shows
+// `[lindex [tech version] 0]` and `[lindex [tech version] 1]` (wrapper.tcl).
+// The end of the braced or quoted element that opens at `start` (one past
+// its closing character).
+std::size_t grouped_end(std::string_view text, std::size_t start) {
+  const char open = text[start];
+  const char close = open == '{' ? '}' : '"';
+  int depth = 1;
+  std::size_t end = start + 1;
+  for (; end < text.size() && depth > 0; ++end) {
+    if (open == '{' && text[end] == '{') {
+      ++depth;
+    } else if (text[end] == close) {
+      --depth;
+    }
+  }
+  return end;
+}
+
+std::vector<std::string> tcl_list_elements(std::string_view text) {
+  constexpr std::string_view kSpace = " \t\n";
+  std::vector<std::string> out;
+  for (std::size_t i = text.find_first_not_of(kSpace); i != std::string_view::npos;) {
+    std::size_t end = 0;
+    if (text[i] == '{' || text[i] == '"') {
+      end = grouped_end(text, i);
+      out.emplace_back(text.substr(i + 1, end - i - 2));
+    } else {
+      end = std::min(text.find_first_of(kSpace, i), text.size());
+      out.emplace_back(text.substr(i, end - i));
+    }
+    i = text.find_first_not_of(kSpace, end);
+  }
+  return out;
+}
+
+}  // namespace
+
 TechManagerModel tech_manager_model(CommandContext& ctx) {
   TechManagerModel model;
   if (ctx.editor() == nullptr) {
     return model;
   }
   model.technology = run(ctx, {"tech", "name"});
-  const std::vector<std::string> version = detail::words_of(detail::run_value(ctx, {"tech", "version"}));
+  const cmd::Value value = detail::run_value(ctx, {"tech", "version"});
+  const std::vector<std::string> version = std::holds_alternative<cmd::Value::List>(value.data())
+                                               ? detail::words_of(value)
+                                               : tcl_list_elements(value.to_string());
   if (!version.empty()) {
     model.version = "(version " + version.front() + ")";
-    for (std::size_t i = 1; i < version.size(); ++i) {
-      model.description += (i > 1 ? " " : "") + version[i];
-    }
+  }
+  if (version.size() > 1) {
+    model.description = version[1];  // a list element: no braces (SHELL-B open item 3)
   }
   fill_lambda(ctx, model);
   fill_styles(ctx, model);

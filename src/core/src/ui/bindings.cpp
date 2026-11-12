@@ -44,6 +44,7 @@ constexpr StartupBinding wiring_bindings() {
 // A C array: deducing std::array over a table this long can exceed Clang's
 // fold-expression limit with libstdc++ (256 elements).
 constexpr StartupBinding kStartup[] = {
+    macro("", "^P", "magic::gencell {} ; raise .params"),  // toolkit.tcl:111, sourced before the system startup file
     macro("", "a", "select visible"),
     macro("", "A", "select more visible"),
     macro("", "^A", "select less visible"),

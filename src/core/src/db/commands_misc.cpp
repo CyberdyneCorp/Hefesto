@@ -19,6 +19,7 @@
 #include "db/command_util.hpp"
 #include "db/edit_util.hpp"
 #include "db/tech_masks.hpp"
+#include "hefesto/cmd/host_access.hpp"
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -250,6 +251,11 @@ CommandResult cmd_shell(CommandContext& ctx, const Invocation& inv) {
   platform::ProcessRunner& runner = ctx.services().processes;
   if (!runner.supported()) {
     return cu::fail(diag::make(codes::kNotAvailable, "shell: unavailable on this platform"));  // Q-CMDEDIT-96
+  }
+  // Security finding S-01: a script (or a key macro a script may have
+  // defined) never runs a process (X-3).
+  if (auto refused = cmd::refuse_host_access(inv, "shell: process execution")) {
+    return *refused;
   }
   if (inv.args.empty()) {
     return CommandResult::success();

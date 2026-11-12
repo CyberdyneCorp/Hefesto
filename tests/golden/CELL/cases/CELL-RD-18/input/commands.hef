@@ -1,7 +1,0 @@
-# CELL-RD-18: Port records with 2..5 tokens, a port before any label, a second port, unknown use/class/shape.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-cellname list allcells
-save a_out

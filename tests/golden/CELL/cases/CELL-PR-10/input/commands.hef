@@ -1,9 +1,0 @@
-# CELL-PR-10: x.mag and x.mag.gz with different content; locking on and off.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/x
-save x_out
-locking disable
-load input/y
-save y_out

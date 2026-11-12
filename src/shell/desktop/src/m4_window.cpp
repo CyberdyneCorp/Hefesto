@@ -1,0 +1,262 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright 2026 The Hefesto Authors
+//
+// The M4 screens of the main window (openspec/changes/m4-scripting/design.md
+// D13; tasks 10.1-10.3): the menu bar (board M4-Menu-Bar), Place device and
+// the PCell dialog (M4-PCell-Dialog), the consent prompt, the declined
+// banner and sandbox-denial status (M4-Script-Consent). Every action runs a
+// Tcl script in the project's interpreter (gui_script.hpp), so it is a
+// logged command. Raven-free: built from the raven_ui wrappers.
+//
+// Owner: SHELL (SHELL-A).
+
+#include <algorithm>
+
+#include "hefesto/gui/wrapper.hpp"
+#include "hefesto/script/interp.hpp"
+#include "hefesto/shell/gui_script.hpp"
+#include "main_window.hpp"
+
+namespace hefesto::shell {
+
+namespace {
+
+/// The wrapper frame of the desktop's layout window (Magic's first wrapper).
+constexpr std::string_view kFrame = ".layout1";
+constexpr float kMenuBarHeight = 30.0F;  // board note 1 (Linux)
+
+std::vector<ui::MenuBarMenuSpec> menu_specs(const MenuBarView& view) {
+  std::vector<ui::MenuBarMenuSpec> specs;
+  for (const MenuBarMenu& menu : view.menus) {
+    ui::MenuBarMenuSpec spec{menu.title, {}};
+    for (const MenuBarItem& item : menu.items) {
+      ui::MenuBarEntry entry;
+      entry.separator = item.kind == MenuBarItem::Kind::separator;
+      entry.label = item.pdk && !menu.pdk ? item.label + "  (PDK)" : item.label;
+      entry.checkable = item.kind == MenuBarItem::Kind::check;
+      entry.checked = item.checked;
+      entry.enabled = item.enabled;
+      entry.description = item.enabled ? item.description() : item.tooltip;
+      spec.entries.push_back(std::move(entry));
+    }
+    specs.push_back(std::move(spec));
+  }
+  return specs;
+}
+
+std::vector<ui::MenuItem> place_items(const PlaceDeviceView& view) {
+  std::vector<ui::MenuItem> items;
+  for (const PlaceDeviceEntry& e : view.entries) {
+    ui::MenuItem item;
+    item.label = e.heading ? e.label : "    " + e.label;
+    item.enabled = !e.heading;
+    item.separator_before = (e.heading || e.recent) && !items.empty();
+    items.push_back(std::move(item));
+  }
+  return items;
+}
+
+}  // namespace
+
+// --- setup ------------------------------------------------------------------------------
+
+void MainWindow::build_m4() {
+  // The menu bar under the top bar: the system menu bar on macOS (no room
+  // taken in the window), a 30 px bar in the window elsewhere.
+  menu_bar_ = ui::MenuBar::create();
+  menu_bar_->set_size(-1.0F, kMenuBarHeight);
+  root_.insert(*menu_bar_, 2);
+  ctx_.editor().script.events.add(script_events_);
+  pcell_dialog_ = std::make_unique<PCellDialogWindow>(
+      ctx_, [this](const std::string& script) { return run_script_action(script); });
+
+  // The declined banner over the canvas (hidden until the scripts are declined).
+  declined_bar_.set_padding(16.0F, 8.0F, 16.0F, 8.0F);
+  declined_bar_.set_spacing(12.0F);
+  declined_text_.emplace(ui::Label::create({}));
+  declined_text_->set_wrap(true);
+  declined_bar_.add(*declined_text_, 1.0F);
+  review_button_ = ui::Button::create("Review scripts...", false);
+  review_button_->on_click([this] { review_scripts(); });
+  declined_bar_.add(*review_button_);
+  declined_bar_.set_visible(false);
+  center_.insert(declined_bar_, 0);
+  refresh_menu_bar();
+}
+
+void MainWindow::teardown_m4() {
+  editor::EditorState& editor = ctx_.core.editor();
+  if (consent_host_ != nullptr) {
+    editor.script.events.remove(*consent_host_);
+    if (editor.script.pdk_trust.consent_host() == consent_host_) editor.script.pdk_trust.set_consent_host(nullptr);
+    consent_host_ = nullptr;
+  }
+  editor.script.events.remove(script_events_);
+  pcell_dialog_.reset();
+}
+
+void MainWindow::set_consent_host(DesktopConsentHost* host) {
+  editor::EditorState& editor = ctx_.core.editor();
+  if (consent_host_ != nullptr) editor.script.events.remove(*consent_host_);
+  consent_host_ = host;
+  editor.script.pdk_trust.set_consent_host(host);
+  if (host != nullptr) editor.script.events.add(*host);
+}
+
+script::ConsentDecision MainWindow::ask_consent(const ConsentPromptView& view) {
+  const PromptDialog dialog = consent_dialog(view);
+  if (capture_mode_) {
+    (void)window_.run_dialog(dialog, false);  // shown for the capture; nothing runs without an answer
+    return ConsentPromptView::escape_decision();
+  }
+  return consent_decision(view, window_.run_dialog(dialog, true));
+}
+
+// --- per frame --------------------------------------------------------------------------
+
+void MainWindow::refresh_m4() {
+  drain_script_events();
+  refresh_menu_bar();
+  if (pcell_dialog_) pcell_dialog_->sync();
+  refresh_declined();
+}
+
+cmd::CommandResult MainWindow::run_script_action(const std::string& script, cmd::Origin origin) {
+  const cmd::CommandResult result = run_gui_script(ctx_.core.editor(), ctx_.core.dispatcher(), script, origin);
+  append_console(script, gui_result_text(result));
+  if (!result.ok()) {
+    // Board M4-PCell-Dialog tile 9: a failure goes to the Console and the status bar.
+    set_message(StatusKind::error, diagnostic_line(StatusKind::error, gui_result_text(result)));
+  }
+  dirty_ = true;
+  window_.request_redraw();
+  return result;
+}
+
+// --- menu bar ---------------------------------------------------------------------------
+
+void MainWindow::refresh_menu_bar() {
+  if (!menu_bar_) return;
+  editor::EditorState& editor = ctx_.core.editor();
+  script::Interpreter* interp = editor.script.interp.get();
+  MenuBarInputs inputs;
+  inputs.frame = {};  // the toolkit menus of every frame: the desktop has one layout window
+  inputs.scripts_declined = scripts_declined();
+  inputs.option = [interp](std::string_view variable) -> std::optional<bool> {
+    if (interp == nullptr) return std::nullopt;
+    const auto value = interp->get_var(variable);
+    if (!value) return std::nullopt;
+    return tcl_true(value->to_string());
+  };
+  MenuBarView view =
+      menu_bar_view(gui::wrapper_menus(kFrame), editor.script.menu_model, editor.script.gencell.menus, inputs);
+  // The system menu bar (macOS) takes no room in the window; Raven decides
+  // once the bar is in a shown window.
+  const bool native = menu_bar_->native();
+  if (!menu_built_ || native != menu_native_) {
+    menu_native_ = native;
+    menu_bar_->set_size(-1.0F, native ? 0.0F : kMenuBarHeight);
+  }
+  const std::size_t signature = menu_bar_signature(view);
+  if (menu_built_ && signature == menu_signature_) return;
+  menu_view_ = std::move(view);
+  menu_signature_ = signature;
+  menu_built_ = true;
+  menu_bar_->set_menus(menu_specs(menu_view_), [this](std::size_t menu, std::size_t entry) {
+    choose_menu_item(menu, entry);
+  });
+}
+
+void MainWindow::choose_menu_item(std::size_t menu, std::size_t entry) {
+  if (menu >= menu_view_.menus.size() || entry >= menu_view_.menus[menu].items.size()) return;
+  const MenuBarItem item = menu_view_.menus[menu].items[entry];  // a copy: the script may rebuild the bar
+  if (item.kind == MenuBarItem::Kind::separator || !item.enabled) return;
+  set_message(StatusKind::info, diagnostic_line(StatusKind::info, item.description()));
+  // A PDK's menu text runs as a script (S-01); Magic's own wrapper items as GUI actions.
+  (void)run_script_action(menu_item_script(item), item.pdk ? cmd::Origin::script : cmd::Origin::gui);
+}
+
+// --- script events ----------------------------------------------------------------------
+
+void MainWindow::drain_script_events() {
+  if (!script_events_.denied.empty()) {
+    // Board M4-Script-Consent tile 7: the Diagnostics row is the
+    // SCRIPT-SANDBOX diagnostic; the status bar names the last denial.
+    set_message(StatusKind::error, denial_status(script_events_.denied.back()));
+    announce(StatusKind::error, message_);
+    script_events_.denied.clear();
+  }
+  if (!script_events_.skipped.empty()) {
+    for (const script::SkippedStatement& s : script_events_.skipped) diagnostics_.add_item(skipped_statement_row(s));
+    set_message(StatusKind::warning, skipped_statements_message(script_events_.skipped));
+    script_events_.skipped.clear();
+  }
+  script_events_.menus_changed = false;  // refresh_menu_bar compares the whole bar
+}
+
+// --- Place device -----------------------------------------------------------------------
+
+bool MainWindow::scripts_declined() const {
+  return consent_host_ != nullptr && consent_host_->declined().has_value();
+}
+
+PlaceDeviceView MainWindow::place_device_state(std::string_view filter) const {
+  editor::EditorState& editor = ctx_.core.editor();
+  return place_device_view(editor.script.gencell.menus, editor.technology->name(), scripts_declined(), filter,
+                           recent_device_);
+}
+
+void MainWindow::open_place_device() {
+  const PlaceDeviceView view = place_device_state();
+  if (!view.enabled) {
+    set_message(StatusKind::warning, diagnostic_line(StatusKind::warning, view.tooltip));
+    status_bar_->invalidate();
+    return;
+  }
+  place_entries_ = view.entries;
+  place_menu_.set_items(view.title, place_items(view), [this](std::size_t index) {
+    if (index >= place_entries_.size() || place_entries_[index].heading) return;
+    const std::string script = place_entries_[index].script;
+    recent_device_ = script;
+    (void)run_script_action(script, cmd::Origin::script);  // a PDK's device entry (S-01)
+  });
+  float x = static_cast<float>(kToolRailWidth);
+  float y = 0.0F;
+  for (const RailButton& b : rail_) {
+    if (b.tool.icon == "place") y = b.widget->rect().y;
+  }
+  place_menu_.open(window_, x, y);
+}
+
+// --- declined ---------------------------------------------------------------------------
+
+void MainWindow::refresh_declined() {
+  // Shown once declined and kept until the project is reopened: the session
+  // stays on the minimum technology even when Review scripts... says yes.
+  if (declined_shown_ || !scripts_declined()) return;
+  declined_shown_ = true;
+  const DeclinedView view = declined_view(*consent_host_->declined(), header_.title);
+  declined_text_->set_text(view.banner);
+  declined_text_->set_accessible_name(view.banner);
+  ui::announce(view.banner, false);
+  declined_bar_.set_visible(true);
+}
+
+void MainWindow::review_scripts() {
+  if (consent_host_ == nullptr || !consent_host_->declined()) return;
+  const script::PdkIdentity pdk = *consent_host_->declined();
+  const auto script = consent_host_->script_of(pdk);
+  if (!script) return;
+  consent_host_->forget(pdk);
+  ctx_.core.editor().script.pdk_trust.forget_decline(pdk);
+  const script::ConsentDecision decision = consent_host_->ask(pdk, *script);
+  if (decision == script::ConsentDecision::decline) return;
+  if (decision == script::ConsentDecision::trust_version) {
+    run_line("pdk trust " + pdk.variant + " " + pdk.version);
+  }
+  // The scripts run when the project opens again (the session keeps the answer).
+  set_message(StatusKind::warning,
+              diagnostic_line(StatusKind::warning, "Reopen the project to run the " + pdk.variant + " scripts"));
+}
+
+}  // namespace hefesto::shell

@@ -1,6 +1,0 @@
-# CMDEDIT-COORD-03: tech fine; box values 0 0 1um+2um 1um (Q-CMDEDIT-2).
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/fine -noprompt
-load a
-box values 0 0 1um+2um 1um
-box values

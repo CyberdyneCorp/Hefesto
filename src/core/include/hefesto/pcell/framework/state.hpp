@@ -11,6 +11,8 @@
 #pragma once
 
 #include <optional>
+#include <set>
+#include <string>
 
 #include "hefesto/pcell/framework/dialog.hpp"
 #include "hefesto/pcell/framework/menus.hpp"
@@ -25,6 +27,9 @@ struct FrameworkState {
   /// in gencell_update: a `select` tag fired from inside a framework or
   /// device procedure does not refresh the dialog).
   int depth = 0;
+  /// Devices whose missing native generator for this PDK version was
+  /// reported (PCELL-NATIVE-001, once per device and session).
+  std::set<std::string, std::less<>> native_fallbacks;
 };
 
 }  // namespace hefesto::pcell

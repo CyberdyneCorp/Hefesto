@@ -106,10 +106,10 @@ TEST_CASE("every front end goes through the dispatcher and is logged with its or
   const auto history = s.log().history();
   REQUIRE(history.size() == 2U);
   CHECK(history[0] == history[1]);
-  CHECK(history[0] == "echo box \"1 2\"");
+  CHECK(history[0] == "echo box {1 2}");  // a Tcl command line
   const auto lines = s.logger().lines();
-  CHECK(lines.at(0) == "info cmd[touch] echo box \"1 2\" -> ok");
-  CHECK(lines.at(1) == "info cmd[script] echo box \"1 2\" -> ok");
+  CHECK(lines.at(0) == "info cmd[touch] echo box {1 2} -> ok");
+  CHECK(lines.at(1) == "info cmd[script] echo box {1 2} -> ok");
 }
 
 TEST_CASE("internal commands are logged but kept out of the history", CMD_API_TAGS) {
@@ -165,9 +165,10 @@ TEST_CASE("live sinks see context diagnostics while the command runs", CMD_API_T
 
 TEST_CASE("the command log replays a session", CMD_API_TAGS) {
   hefesto::test::Session original;
-  REQUIRE(original.script("setting set magic-compat off\nhefesto::strict on\necho \"a;b\" {c d}\n").ok());
+  REQUIRE(original.script("setting set magic-compat off\nhefesto::strict on\nhefesto::debug::hashorder 8 \"+a;b\" {+c d} +\\{ {+#x} {+$y}\n").ok());
   hefesto::test::Session replay;
   const auto run = replay.script(original.log().history_script());
+  INFO(original.log().history_script());
   CHECK(run.ok());
   CHECK(replay.project() == original.project());
   CHECK(replay.session().strict == original.session().strict);

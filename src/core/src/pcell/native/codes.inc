@@ -8,3 +8,5 @@
 // docs/diagnostics/codes/pcell.md with `hefesto-cli --diagnostic-codes=pcell`.
 //
 // Owner: PCELL (openspec/changes/m4-scripting/design.md D1/D2, tasks.md section 7).
+
+HEFESTO_PCELL_CODE("PCELL-NATIVE-001", info, "No native generator for this PDK version; the device's Tcl generator runs.")

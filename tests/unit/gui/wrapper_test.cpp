@@ -187,3 +187,34 @@ TEST_CASE("the per-window console directs commands to its window",
   CHECK(gui::command_entry_line(".layout1", "paint m1") == ".layout1.pane.top.magic paint m1");
   CHECK(gui::command_entry_prompt(".layout1") == ".layout1>");
 }
+
+// Regression (SHELL-A round 2, open item 1): the PDK's menu callbacks edit
+// the frame's menus through the wrapper's widgets, which the wrapper now
+// intercepts (Q-SCRIPT-42), in the CLI as on the desktop.
+TEST_CASE("a wrapper's frame widgets reach the menu model from its hooks",
+          "[cap:ui-gui-managers][req:Wrapper hook points for scripts]") {
+  Session s;
+  tcl(s, "set Opts(callback) {${framename}.titlebar.mbuttons.drc.toolmenu add command -label {DRC Routing} "
+         "-command {puts routing}}");
+  REQUIRE(s.run("openwrapper").ok());
+  const auto& drc = s.editor.script.menu_model.items("Drc");
+  REQUIRE(drc.size() == 1);
+  CHECK(drc.front().label == "DRC Routing");
+  CHECK(drc.front().command == "puts routing");
+}
+
+TEST_CASE("a front end's own window becomes the wrapper frame", "[cap:ui-gui-managers][req:Wrapper window construction]") {
+  Session s;
+  (void)s.interp();
+  // No window yet: nothing to adopt.
+  CHECK_FALSE(s.in_command([&](hefesto::cmd::CommandContext& ctx) { return gui::adopt_wrapper(ctx, ".layout1"); }).ok());
+  REQUIRE(s.run("openwindow").ok());  // the front end's window
+  REQUIRE(s.editor.windows.find_named(".layout1.pane.top.magic") == nullptr);
+  tcl(s, "set Opts(callback) {set ::hook_ran $framename}");
+  REQUIRE(s.in_command([&](hefesto::cmd::CommandContext& ctx) { return gui::adopt_wrapper(ctx, ".layout1"); }).ok());
+  CHECK(s.editor.windows.find_named(".layout1.pane.top.magic") != nullptr);
+  CHECK(var(s, "lwindow") == "1");
+  CHECK(var(s, "hook_ran") == ".layout1");
+  // The next wrapper is .layout2.
+  CHECK(s.run("openwrapper").value.to_string() == ".layout2.pane.top.magic");
+}

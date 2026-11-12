@@ -4,7 +4,8 @@
 // hefesto-cli's interactive prompt (m3-drc design D8 "Hosts"): the
 // background checker runs while the prompt waits for input and its
 // busy/idle transitions switch Magic's prompt between ']' and '%'; lines
-// continue while a brace group is open; `quit` and end of input end it.
+// continue while a brace group is open (Tcl's `info complete`); `quit` and
+// end of input end it.
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -23,6 +24,8 @@
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/drc/engine/kernel_hook.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
 #include "hefesto/tech/technology.hpp"
@@ -76,10 +79,14 @@ struct Console {
     REQUIRE(cmd::register_all_commands(registry));
     dispatcher = std::make_unique<cmd::Dispatcher>(registry, services.view(), project, script);
     dispatcher->set_editor(&editor);
+    // Typed commands are Tcl in the project's interpreter (m4-scripting 13.2).
+    hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(editor, {});
+    REQUIRE(hefesto::script::bind_registry(interp, registry, *dispatcher).ok());
     REQUIRE(prompt != nullptr);
     REQUIRE(::pipe(fds) == 0);
   }
   ~Console() {
+    hefesto::script::close_project_interpreter(editor);
     std::fclose(prompt);
     if (fds[0] >= 0) {
       ::close(fds[0]);
@@ -196,13 +203,13 @@ TEST_CASE("The interactive prompt continues a line with an open brace group", PR
     }
   } echo(out);
   console.dispatcher->add_observer(echo);
-  console.type("echo {a\nb}\nnosuchcommand\necho after\n");
+  console.type("magic::echo {a\nb}\nnosuchcommand\nmagic::echo after\n");
   console.end_input();
   const cli::InteractiveRun result =
       cli::run_interactive(*console.dispatcher, console.editor, console.fds[0], console.prompt, false);
   CHECK_FALSE(result.quit);  // ended by end of input
   CHECK_FALSE(result.ok);    // a command failed, and the prompt went on
-  CHECK(slurp(out) == "a\nb\n\nafter\n");
+  CHECK(slurp(out) == "a\nb\nafter\n");  // the Tcl error does not reach the dispatcher
   CHECK(console.prompt_text().empty());  // no prompt when disabled
   std::fclose(out);
 }

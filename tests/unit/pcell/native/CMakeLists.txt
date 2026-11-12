@@ -6,3 +6,5 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(pcell_native DATA_DIR pcell/native)
+# tcl_value_test.cpp checks the private Tcl value layer of the generator ports.
+target_include_directories(hefesto_pcell_native_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")

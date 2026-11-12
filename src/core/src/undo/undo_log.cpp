@@ -54,12 +54,13 @@ Event* UndoLog::open_back() noexcept {
   return open_.empty() ? nullptr : open_.back().get();
 }
 
-bool UndoLog::close_step() {
+bool UndoLog::close_step(std::string_view label) {
   if (suspended() || open_.empty()) {
     return false;
   }
   discard_undone();
   steps_.push_back(std::move(open_));
+  labels_.emplace_back(label);
   open_.clear();
   position_ = steps_.size();
   apply_limit();
@@ -70,6 +71,7 @@ void UndoLog::discard_undone() {
   // undoMemTruncate: the undone steps go when something new is recorded.
   while (steps_.size() > position_) {
     steps_.pop_back();
+    labels_.pop_back();
   }
 }
 
@@ -77,6 +79,7 @@ void UndoLog::apply_limit() {
   // undoFreeHead: keep the `limit_` most recent steps.
   while (steps_.size() > limit_) {
     steps_.pop_front();
+    labels_.pop_front();
     if (position_ > 0) {
       --position_;
     }
@@ -230,8 +233,20 @@ bool UndoLog::set_limit(std::size_t steps) noexcept {
   return true;
 }
 
+std::string UndoLog::step_label(std::size_t index) const {
+  if (index >= steps_.size()) {
+    return {};
+  }
+  if (!labels_[index].empty()) {
+    return labels_[index];
+  }
+  const Step& step = steps_[index];
+  return step.empty() ? std::string{} : step.back()->describe();
+}
+
 void UndoLog::clear() {
   steps_.clear();
+  labels_.clear();
   open_.clear();
   position_ = 0;
 }
@@ -246,6 +261,55 @@ void UndoLog::cell_deleted(const db::CellDef& def) {
   if (refers(open_) || std::any_of(steps_.begin(), steps_.end(), refers)) {
     clear();
   }
+}
+
+namespace {
+
+std::string label_word(const std::string& word) {
+  const bool spaced = word.empty() || word.find_first_of(" \t\n") != std::string::npos;
+  return spaced ? '"' + word + '"' : word;
+}
+
+}  // namespace
+
+std::string command_label(std::string_view name, const std::vector<std::string>& args) {
+  std::vector<std::string> words;
+  if (name != "*bypass") {
+    words.emplace_back(name);
+  }
+  for (const std::string& arg : args) {
+    words.push_back(words.empty() ? arg : label_word(arg));
+  }
+  std::string label;
+  for (const std::string& word : words) {
+    if (!label.empty()) {
+      label += ' ';
+    }
+    label += word;
+  }
+  if (label.size() > kMaxStepLabelLength) {
+    // Room for the 3-byte ellipsis, cut at a UTF-8 character boundary.
+    std::size_t cut = kMaxStepLabelLength - 3;
+    while (cut > 0 && (static_cast<unsigned char>(label[cut]) & 0xC0U) == 0x80U) {
+      --cut;
+    }
+    label = label.substr(0, cut) + "\u2026";
+  }
+  return label;
+}
+
+std::vector<HistoryEntry> history(const UndoLog& log, std::size_t max_each) {
+  std::vector<HistoryEntry> out;
+  const std::size_t position = log.position();
+  const std::size_t redoable = std::min(log.step_count() - position, max_each);
+  for (std::size_t n = redoable; n > 0; --n) {
+    out.push_back(HistoryEntry{log.step_label(position + n - 1), "redo " + std::to_string(n), true});
+  }
+  const std::size_t undoable = std::min(position, max_each);
+  for (std::size_t n = 1; n <= undoable; ++n) {
+    out.push_back(HistoryEntry{log.step_label(position - n), "undo " + std::to_string(n), false});
+  }
+  return out;
 }
 
 diag::Status set_history_limit(UndoLog& log, std::string_view value) {

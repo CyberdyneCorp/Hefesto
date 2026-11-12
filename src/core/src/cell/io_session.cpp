@@ -131,15 +131,21 @@ void IoSession::process_mismatches() {
 
 // Step 3 runs `<tech>.magicrc` as a script after consent (Q-SCRIPT-10,
 // hefesto-security "Consent before implicit script execution"); a declined
-// script loads nothing, so the cell keeps the current technology. Step 6
-// (libs.ref paths) applies only when no rc file ran. Step 7 has no `tech
-// load` callbacks to run yet (BINDING's tags).
-const tech::Technology* IoSession::discover_technology(std::string_view name) {
+// script loads nothing and the cell is read read-only with the current
+// technology. A PDK variant declined earlier in the session (its pinned rc
+// file at startup, or another cell's `<tech>.magicrc`) is declined again
+// without searching, so a project whose PDK was declined opens its cells
+// read-only too. Step 6 (libs.ref paths) applies only when no rc file ran.
+// Step 7 has no `tech load` callbacks to run yet (BINDING's tags).
+CellIoContext::TechnologySwitch IoSession::discover_technology(std::string_view name) {
   const std::string tech_name{name};
+  if (ed.script.pdk_trust.declined_variant(tech_name)) {
+    return declined_technology();
+  }
   const auto dir = locate_technology_dir(io.fs, io.host, io.vars, tech_name);
   const RcStep rc = dir ? run_technology_rc(*dir, tech_name) : RcStep::none;
   if (rc == RcStep::declined) {
-    return nullptr;
+    return declined_technology();
   }
   if (dir) {
     ed.search_paths.system.push_back(dir->generic_string());
@@ -151,12 +157,19 @@ const tech::Technology* IoSession::discover_technology(std::string_view name) {
   options.precheck = false;
   if (auto loaded = tech::load_session_technology(ed, command.services(), target, options, io.sink); !loaded) {
     emit(codes::kTechLoadFailed, "Error in loading technology file");
-    return nullptr;
+    return {};
   }
   if (dir && rc == RcStep::none) {
     discover_libraries(dir->generic_string());
   }
-  return ed.technology.get();
+  return {ed.technology.get(), false};
+}
+
+// The session keeps its technology: `minimum` in the bare session the
+// auto-discovery runs in (no paint in memory). Switching another loaded
+// technology back to `minimum` needs a TECH entry point (open item).
+CellIoContext::TechnologySwitch IoSession::declined_technology() const {
+  return {ed.technology.get(), true};
 }
 
 IoSession::RcStep IoSession::run_technology_rc(const platform::Path& dir, const std::string& tech_name) {

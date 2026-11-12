@@ -55,14 +55,11 @@ inline constexpr std::string_view kSettingsFile = "SETTINGS-FILE-001";
 inline constexpr std::string_view kCliUsage = "CLI-USAGE-001";
 inline constexpr std::string_view kCliScript = "CLI-SCRIPT-001";
 inline constexpr std::string_view kCliLog = "CLI-LOG-001";
-// Scaffold stubs (openspec/changes/m4-scripting/design.md D3): a command or
-// function the M4 scaffold declared before its workstream implemented it.
-// INTEGRATION retires the code at M4 exit (tasks.md 13.5).
-inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-004";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
-// is implemented).
+// is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
+// `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the

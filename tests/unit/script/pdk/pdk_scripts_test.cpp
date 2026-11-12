@@ -19,6 +19,7 @@
 #include "hefesto/script/pdk/inventory.hpp"
 #include "hefesto/script/pdk/startup.hpp"
 #include "hefesto/script/pdk/trust.hpp"
+#include "hefesto/script/pdk/widgets.hpp"
 #include "pdk_fixture.hpp"
 
 namespace script = hefesto::script;
@@ -136,11 +137,8 @@ TEST_CASE("Technology guard quits", "[cap:scripting-pdk-integration][req:PDK sta
   run_rc(s, rc, false);
   CHECK(s.eval("tech name") == "minimum");
   CHECK(s.script_session.quit_requested);
-  // `quit` ends the file only once BINDING stops the script (tasks.md 5.1);
-  // the stand-in binding lets it continue.
-  if (!s.stand_in_binding) {
-    CHECK(s.eval("namespace exists sky130") == "0");
-  }
+  // `quit` ends the file (BINDING stops the script).
+  CHECK(s.eval("namespace exists sky130") == "0");
 }
 
 TEST_CASE("Menu registration survives multiple windows", "[cap:scripting-pdk-integration][req:PDK device-script contract]") {
@@ -268,6 +266,86 @@ TEST_CASE("Inventory coverage check", "[cap:scripting-pdk-integration][req:PDK c
   }
 }
 
+namespace {
+
+// The `magic::gencell <lib>::<device>` items of the toolkit menus the PDK's
+// window callback registered.
+std::vector<std::string> gencell_devices(const PdkSession& s) {
+  std::vector<std::string> out;
+  constexpr std::string_view kPrefix = "magic::gencell ";
+  for (const auto& menu : s.editor.script.gencell.menus.menus) {
+    for (const auto& item : menu.items) {
+      if (item.command.starts_with(kPrefix)) {
+        std::string device = item.command.substr(kPrefix.size());
+        device.erase(device.find_last_not_of(' ') + 1);
+        out.push_back(std::move(device));
+      }
+    }
+  }
+  return out;
+}
+
+}  // namespace
+
+TEST_CASE("Inventory coverage check with every generator", "[cap:scripting-pdk-integration][req:PDK command and variable inventory]") {
+  struct Column {
+    const ref::PinnedPdk* pdk;
+    const char* family;
+    bool pdk_root;
+    std::size_t devices;  // the table's "Generated-cell devices (magic::gencell menu entries)"
+  };
+  // gf180mcu: the table says 39, counting four entries gf180mcuD.tcl has
+  // commented out (lines 100-106: the dss and asym FETs); 35 are active
+  // (open item for the spec table).
+  for (const Column& column : {Column{&ref::kSky130A, "sky130", true, 36}, Column{&ref::kGf180mcuD, "gf180mcu", true, 35},
+                               Column{&ref::kIhpSg13g2, "sg13g2", false, 21}}) {
+    const auto variant = ref::pinned_variant(*column.pdk);
+    if (!variant) {
+      SKIP("PDK cache absent (fetch it with scripts/fetch_pdk.py)");
+    }
+    INFO(column.family);
+    const auto env = script::test::pdk_env(column.pdk_root ? std::optional{variant->parent_path().string()} : std::nullopt);
+    PdkSession s{env};
+    s.eval("proc ::closewrapper {framename} {return closed}");  // wrapper mode
+    std::vector<std::string> names = s.registry.names();
+    for (const auto& name : hefesto::pcell::framework_command_names()) {
+      names.emplace_back(name);
+    }
+    script::CommandTrace trace;
+    REQUIRE(trace.install(s.tcl(), names).ok());
+    hefesto::platform::ScriptedFilePicker picker;
+    script::WidgetInterceptor interceptor{s.editor.script.menu_model, picker, s.editor.script.events};
+    REQUIRE(interceptor.install(s.tcl(), ".layout1").ok());
+    run_rc(s, rc_of(*variant), false);
+    s.eval("apply {{framename} {global Opts; eval $Opts(callback)}} .layout1");
+    const auto devices = gencell_devices(s);
+    CHECK(devices.size() == column.devices);
+    // Each generator with its defaults, non-interactively (toolkit.tcl's
+    // "device, empty args" row of the gencell dispatch).
+    std::size_t index = 0;
+    for (const auto& device : devices) {
+      const auto run = s.tcl().evaluate("magic::gencell " + device + " inv_trace_" + std::to_string(++index));
+      UNSCOPED_INFO(device << ": " << (run.ok() ? std::string{"ok"} : run.diagnostics.front().text));
+      if (device == "gf180mcu::nwell_3p3") {
+        // The PDK's menu names a device it does not define (only
+        // gf180mcu::nwell_*): Magic's gencell fails the same way
+        // (toolkit.tcl:720-723).
+        REQUIRE_FALSE(run.ok());
+        CHECK(run.diagnostics.front().text == "No import routine for gf180mcu library cell nwell_3p3!");
+        continue;
+      }
+      CHECK(run.ok());
+    }
+    const auto* inventory = script::pdk_inventory(column.family);
+    REQUIRE(inventory != nullptr);
+    const auto uncovered = script::uncovered_commands(trace.names(), *inventory);
+    for (const auto& name : uncovered) {
+      UNSCOPED_INFO("uncovered " << name);
+    }
+    CHECK(uncovered.empty());
+  }
+}
+
 TEST_CASE("the inventory columns", "[cap:scripting-pdk-integration][req:PDK command and variable inventory]") {
   REQUIRE(script::pdk_inventories().size() == 3);
   const auto* sky130 = script::pdk_inventory("sky130");
@@ -295,5 +373,37 @@ TEST_CASE("ext2spice scale is a setting", "[cap:scripting-pdk-integration][req:C
   CHECK_FALSE(bad.ok());
   const auto later = s.dispatcher->execute({"ext2spice", {"hierarchy", "on"}, hefesto::cmd::Origin::script, std::nullopt});
   REQUIRE_FALSE(later.ok());
-  CHECK(later.diagnostics.front().code == "CORE-NOTIMPL-004");  // M7
+  CHECK(later.diagnostics.front().code == "UI-CLIENT-002");  // the netlist writer arrives in M7
+}
+
+TEST_CASE("Portable library reference", "[cap:scripting-pdk-integration][req:PDK-relative paths in saved files]") {
+  // A session started with the sky130A rc file: PDKPATH (set by the device
+  // script) is checked before PDK_ROOT, so the child's path is written as
+  // $PDKPATH/libs.ref/... and read back through the script variable.
+  const auto variant = ref::pinned_variant(ref::kSky130A);
+  if (!variant) {
+    SKIP("PDK cache absent (fetch it with scripts/fetch_pdk.py)");
+  }
+  const auto env = script::test::pdk_env(variant->parent_path().string());
+  PdkSession s{env};
+  run_rc(s, rc_of(*variant), false);
+  CHECK(s.eval("set PDKPATH") == variant->string());
+  script::test::TempDir dir;
+  const std::string parent = (dir.path() / "parent").string();
+  s.eval("load " + parent);
+  s.eval("box values 0 0 0 0");
+  s.eval("getcell sky130_fd_sc_hd__inv_1");
+  s.eval("save " + parent);
+  std::ifstream in{parent + ".mag"};
+  const std::string text{std::istreambuf_iterator<char>{in}, {}};
+  INFO(text);
+  CHECK(text.find("use sky130_fd_sc_hd__inv_1  sky130_fd_sc_hd__inv_1_0 $PDKPATH/libs.ref/sky130_fd_sc_hd/mag") !=
+        std::string::npos);
+  // Read back in a fresh cell list: $PDKPATH expands to the script variable.
+  s.eval("cellname delete parent");
+  s.eval("cellname delete sky130_fd_sc_hd__inv_1");
+  s.eval("load " + parent);
+  s.eval("select top cell; expand");
+  CHECK(s.eval("cellname list filepath sky130_fd_sc_hd__inv_1") ==
+        (*variant / "libs.ref/sky130_fd_sc_hd/mag").string());
 }

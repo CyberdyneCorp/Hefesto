@@ -1,6 +1,0 @@
-# CELL-WR-03: magscale 1 2 cell: flabel with odd size and offset, element at odd coordinates, even paint; save.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/scmos -noprompt
-snap internal
-load input/a
-save a_out

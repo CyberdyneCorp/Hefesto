@@ -10,17 +10,25 @@
 #include <array>
 #include <cstdio>
 #include <map>
+#include <memory>
 
 #include "gui/gui_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gui/diag_codes.hpp"
 #include "hefesto/script/interp.hpp"
+#include "hefesto/script/pdk/widgets.hpp"
+#include "hefesto/script/project.hpp"
+#include "hefesto/view/window.hpp"
 #include "ui/command_util.hpp"
 
 namespace hefesto::gui {
 
 namespace {
+
+void finish_wrapper(cmd::CommandContext& ctx, editor::EditorState& editor, script::Interpreter& interp,
+                    const std::string& framename, std::string_view cell);
+
 
 using cmd::CommandContext;
 using cmd::CommandResult;
@@ -234,6 +242,48 @@ CommandResult open_named_window(CommandContext& ctx, editor::EditorState& editor
   return opened;
 }
 
+// The front end's file picker at the time of a request (none: cancelled), so
+// that a picker set after the wrapper opened is used.
+class SessionPicker final : public platform::FilePicker {
+ public:
+  explicit SessionPicker(editor::EditorState& editor) : editor_(editor) {}
+  [[nodiscard]] std::optional<platform::Path> pick(const platform::FilePickerRequest& request) override {
+    return editor_.file_picker != nullptr ? editor_.file_picker->pick(request) : std::nullopt;
+  }
+
+ private:
+  editor::EditorState& editor_;
+};
+
+// The PDK widget statements on `frame` edit the session's menu model and ask
+// its file picker (Q-SCRIPT-42; SHELL-A round 2 open item 1): what Magic's Tk
+// frame widgets are to the PDK's menu callbacks.
+void intercept_widgets(editor::EditorState& editor, script::Interpreter& interp, const std::string& frame) {
+  script::ProjectInterpreter& project = editor.script;
+  if (project.session_picker == nullptr) {
+    project.session_picker = std::make_unique<SessionPicker>(editor);
+  }
+  auto interceptor =
+      std::make_unique<script::WidgetInterceptor>(project.menu_model, *project.session_picker, project.events);
+  (void)interceptor->install(interp, frame);
+  project.interceptors.push_back(std::move(interceptor));
+}
+
+// The common tail of openwrapper and adopt_wrapper (wrapper.tcl:1495-1584):
+// per-frame options, the window keys, widget interception, the hooks.
+void finish_wrapper(cmd::CommandContext& ctx, editor::EditorState& editor, script::Interpreter& interp,
+                    const std::string& framename, std::string_view cell) {
+  if (!interp.get_var("Winopts(" + framename + ",toolbar)")) {
+    (void)interp.set_var("Winopts(" + framename + ",toolbar)", cmd::Value{std::int64_t{1}});
+  }
+  if (!interp.get_var("Winopts(" + framename + ",cmdentry)")) {
+    (void)interp.set_var("Winopts(" + framename + ",cmdentry)", cmd::Value{var_text(interp, "Opts(cmdentry)")});
+  }
+  override_window_keys(ctx);
+  intercept_widgets(editor, interp, framename);
+  run_hooks(ctx, interp, {framename, framename + ".pane.top", wrapper_window_name(framename), std::string{cell}});
+}
+
 }  // namespace
 
 const std::vector<std::pair<std::string, std::string>>& wrapper_option_defaults() {
@@ -287,15 +337,36 @@ CommandResult open_wrapper(CommandContext& ctx, std::string_view cell, std::stri
   if (!opened.ok()) {
     return opened;
   }
-  if (!interp->get_var("Winopts(" + framename + ",toolbar)")) {
-    (void)interp->set_var("Winopts(" + framename + ",toolbar)", cmd::Value{std::int64_t{1}});
-  }
-  if (!interp->get_var("Winopts(" + framename + ",cmdentry)")) {
-    (void)interp->set_var("Winopts(" + framename + ",cmdentry)", cmd::Value{var_text(*interp, "Opts(cmdentry)")});
-  }
-  override_window_keys(ctx);
-  run_hooks(ctx, *interp, {framename, framename + ".pane.top", winname, std::string{cell}});
+  finish_wrapper(ctx, *editor, *interp, framename, cell);
   return CommandResult::success(cmd::Value{winname});
+}
+
+CommandResult adopt_wrapper(CommandContext& ctx, std::string_view frame) {
+  editor::EditorState* editor = ctx.editor();
+  script::Interpreter* interp = editor != nullptr ? editor->script.interp.get() : nullptr;
+  if (interp == nullptr) {
+    return CommandResult::failure(diag::make(codes::kWrapper, "openwrapper needs the project's script interpreter"));
+  }
+  view::LayoutWindow* window = nullptr;
+  editor->windows.for_each([&](view::LayoutWindow& w) {
+    if (window == nullptr) {
+      window = &w;
+    }
+  });
+  if (window == nullptr) {
+    return CommandResult::failure(diag::make(codes::kWrapper, "no layout window to wrap"));
+  }
+  init_wrapper_options(*interp);
+  const std::string framename{frame};
+  window->set_name(wrapper_window_name(framename));
+  if (const auto lwindow = var_text(*interp, "lwindow"); lwindow.empty() || lwindow == "0") {
+    (void)interp->set_var("lwindow", cmd::Value{std::int64_t{1}});
+  }
+  if (!interp->get_var("Opts(scale)")) {
+    (void)interp->set_var("Opts(scale)", cmd::Value{std::int64_t{1}});
+  }
+  finish_wrapper(ctx, *editor, *interp, framename, {});
+  return CommandResult::success(cmd::Value{wrapper_window_name(framename)});
 }
 
 CommandResult close_wrapper(CommandContext& ctx, std::string_view frame) {

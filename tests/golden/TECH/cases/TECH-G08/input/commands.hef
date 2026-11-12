@@ -1,6 +1,0 @@
-# TECH-G08: include of a sibling file from the tech directory; include of a file with no .tech suffix.
-# Hefesto script (hefesto-cli --diagnostics=magic): the same commands.
-tech load input/tiny_inc -noprompt
-tech name
-tech load input/tiny2 -noprompt
-tech name

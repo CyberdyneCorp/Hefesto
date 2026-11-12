@@ -28,7 +28,8 @@
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/registry.hpp"
-#include "hefesto/cmd/script.hpp"
+#include "hefesto/script/binding/bind.hpp"
+#include "hefesto/script/project.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/drc/engine/host.hpp"
@@ -90,8 +91,10 @@ TEST_CASE("Background start latency after a paint on the 100 x 100 dfxtp_1 array
   REQUIRE(cmd::register_all_commands(registry));
   cmd::Dispatcher dispatcher(registry, services.view(), project, script);
   dispatcher.set_editor(&editor);
+  hefesto::script::Interpreter& interp = hefesto::script::open_project_interpreter(editor, {});
+  REQUIRE(hefesto::script::bind_registry(interp, registry, dispatcher).ok());
   auto run = [&](const std::string& text) {
-    const cmd::ScriptRun r = cmd::run_script(dispatcher, text, cmd::Origin::cli);
+    const cmd::CommandResult r = interp.evaluate(text, cmd::Origin::cli);
     REQUIRE(r.ok());
   };
   const std::filesystem::path mag = *root / "libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__dfxtp_1";

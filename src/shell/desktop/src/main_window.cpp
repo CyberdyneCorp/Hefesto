@@ -113,6 +113,8 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
                                                static_cast<float>(kRulerSize + 12));
   build_command_bar();
   build_status_bar();
+  build_m4();
+  build_m4b();
   window_.set_content(root_);
   window_.install_key_hook([this](int key, std::uint8_t modifiers) { return on_shortcut(key, modifiers); });
   register_view_commands();
@@ -138,6 +140,8 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
 }
 
 MainWindow::~MainWindow() {
+  teardown_m4();
+  teardown_m4b();
   ctx_.core.editor().prompt = nullptr;
   ctx_.core.editor().cell_session.confirm_recovery = {};
   ctx_.core.set_command_listener({});
@@ -350,7 +354,8 @@ void MainWindow::build_center() {
   console_.set_accessible_name("Console");
   diagnostics_.set_font(ctx_.runtime.mono_font());
   diagnostics_.set_accessible_name("Diagnostics");
-  console_tabs_.add(console_, "Console");
+  build_m4b_console();  // M4: the Console tab is the project's Tcl console
+  console_tabs_.add(console_panel_->widget(), "Console");
   console_tabs_.add(diagnostics_, "Diagnostics");
   feedback_.set_font(ctx_.runtime.mono_font());
   feedback_.set_accessible_name("Feedback");
@@ -378,15 +383,16 @@ void MainWindow::arrange_middle() {
   // rail, rail edge, then the docks: left panels, canvas, right panels.
   int index = 2;
   const auto place = [this, &index](ui::Widget& w, float fill) { middle_.insert(w, index++, fill); };
-  if (layers_side_ == DockSide::left) place(left_->widget(), 0.0F);
+  if (layers_side_ == DockSide::left) place(left_dock(), 0.0F);
   if (inspector_side_ == DockSide::left) place(inspector_->widget(), 0.0F);
   place(drc_panel_->list_widget(), 0.0F);  // the DRC browser beside the canvas (board)
   place(center_, 1.0F);
-  if (layers_side_ == DockSide::right) place(left_->widget(), 0.0F);
+  if (layers_side_ == DockSide::right) place(left_dock(), 0.0F);
   if (inspector_side_ == DockSide::right) place(inspector_->widget(), 0.0F);
   place(pdk_->widget(), 0.0F);
   place(color_->widget(), 0.0F);
   place(drc_panel_->inspector_widget(), 0.0F);
+  place(managers_->tech_widget(), 0.0F);  // M4 technology manager (right dock)
   left_->set_dock_side(layers_side_);
   inspector_->set_dock_side(inspector_side_);
 }
@@ -534,7 +540,8 @@ void MainWindow::run_typed_line(const std::string& text) {
   // History expansion (`!!`, `!n`, `^old^new^`) and the session's `history`.
   const TypedLine typed = expand_typed_line(ctx_.editor(), trim(text));
   if (typed.run) {
-    run_line(*typed.run);
+    // M4: the project's interpreter, shared with the Tcl console.
+    if (!run_console_line(*typed.run)) run_line(*typed.run);
     return;
   }
   if (typed.error) {
@@ -582,6 +589,7 @@ void MainWindow::run_line(const std::string& line) {
 
 void MainWindow::on_command(const cmd::Invocation& invocation, const cmd::CommandResult& result) {
   note_drc_command(invocation, result);
+  note_m4b_command(invocation, result);  // M4 managers' tags, the console run's pump
   // Widgets may be running the callback that issued this command: rebuild
   // on the next frame (on_frame), never inside the callback. A `*bypass`
   // command (pointer motion: wiring preview, pick drag) needs only the
@@ -626,6 +634,8 @@ void MainWindow::on_frame() {
   // After the refresh: the first scene build frames the cell, which would
   // replace a pinch made before it.
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
+  refresh_m4();
+  refresh_m4b();
 }
 
 // Work that finished off the event loop: a PDK install, the minimap, the
@@ -653,6 +663,10 @@ void MainWindow::run_pending_pinch() {
 void MainWindow::append_console(const std::string& command, const std::string& result) {
   for (const std::string& line : console_lines(command, result)) console_.add_item(line);
   console_.scroll_to_end();
+  if (!tcl_console_) return;
+  // M4: GUI commands echo in the Tcl console's transcript.
+  tcl_console_->transcript().add_input(command);
+  if (!result.empty()) tcl_console_->transcript().add(ConsoleLineKind::result, result);
 }
 
 void MainWindow::open_file() {
@@ -673,9 +687,11 @@ void MainWindow::update_right_dock() {
   color_->widget().set_visible(!pdk_visible_ && color_visible_);
   const bool drc = !pdk_visible_ && !color_visible_ && drc_visible_ && inspector_visible_;
   drc_panel_->inspector_widget().set_visible(drc);
-  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && !drc && inspector_visible_);
+  const bool tech = !pdk_visible_ && !color_visible_ && !drc && tech_shown_;
+  managers_->tech_widget().set_visible(tech);
+  inspector_->widget().set_visible(!pdk_visible_ && !color_visible_ && !drc && !tech && inspector_visible_);
   // While the DRC browser is shown it takes the Layers dock's place.
-  left_->widget().set_visible(layers_visible_ && !drc_visible_);
+  left_dock().set_visible(layers_visible_ && !drc_visible_);
   drc_panel_->list_widget().set_visible(drc_visible_);
   drc_panel_->stepper_widget().set_visible(drc_visible_);
 }
@@ -860,6 +876,10 @@ void MainWindow::build_tool_rail(ui::Box& middle) {
 }
 
 void MainWindow::rail_click(std::string_view icon) {
+  if (icon == "place") {  // M4: a popover of the PDK's device menus, not a tool mode
+    open_place_device();
+    return;
+  }
   if (icon == "paint" && ctx_.paint_layer.empty()) {
     set_message(StatusKind::warning, diagnostic_line(StatusKind::warning, "choose a layer to paint in the Layers panel"));
     status_bar_->invalidate();
@@ -1015,6 +1035,7 @@ void MainWindow::show_undo_history(float x, float y) {
 }
 
 bool MainWindow::on_shortcut(int key, std::uint8_t modifiers) {
+  if (m4b_shortcut(key, modifiers)) return true;  // the Tcl console's Return, history and Ctrl-C
   constexpr int kF6 = raven_key::kF1 + 5;
   if (key == kF6 && (modifiers & ~kModShift) == 0) {
     cycle_focus((modifiers & kModShift) != 0);
@@ -1045,7 +1066,7 @@ void MainWindow::cycle_focus(bool backward) {
       case FocusRegion::inspector:
         if (inspector_->focus()) return;
         break;  // no action to focus: on to the next region
-      case FocusRegion::console: console_.focus(); return;  // the tab strip itself takes no focus
+      case FocusRegion::console: console_panel_->focus(); return;  // the tab strip itself takes no focus
       case FocusRegion::command: command_bar_->focus(); return;
     }
   }

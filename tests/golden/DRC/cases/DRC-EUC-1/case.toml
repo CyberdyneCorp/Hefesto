@@ -17,7 +17,7 @@ description = "spacing m1 m1 3 touching_illegal; m1 [0,10]^2 and [12,20]^2; CAP 
 script = "input/commands.tcl"
 
 [hefesto]
-args = ["--no-log", "--diagnostics=magic", "{input}/commands.hef"]
+args = ["--no-log", "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc", "input/commands.tcl"]
 requires_commands = []
 
 [[outputs]]

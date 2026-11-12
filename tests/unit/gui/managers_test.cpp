@@ -6,12 +6,17 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include "gui_fixture.hpp"
+#include "hefesto/diag/sink.hpp"
+#include "hefesto/tech/loader.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/gui/managers.hpp"
+#include "hefesto/script/binding/bind.hpp"
 
 namespace gui = hefesto::gui;
 namespace db = hefesto::db;
@@ -112,6 +117,28 @@ TEST_CASE("the cell manager's tags clear the edit stack on load", "[cap:ui-gui-m
   CHECK(s.editor.script.tags.get("addpath") == "magic::libmanager ; magic::drcmanager");
   CHECK(s.run("cellmanager update").ok());
   CHECK(gui::gui_script_tags(gui::GuiScript::wrapper).size() == 17);
+}
+
+TEST_CASE("Load clears edit stack", "[cap:ui-gui-managers][req:Cell manager]") {
+  // End to end through the Tcl binding: `load foo` runs the `load` tag the
+  // cell manager installed (`catch {magic::clearstack}; magic::cellmanager`).
+  Session s;
+  auto& tcl = s.interp();
+  REQUIRE(hefesto::script::bind_registry(tcl, s.registry, *s.dispatcher).ok());
+  s.cell("top");
+  s.ok("load top");
+  REQUIRE(tcl.evaluate("magic::cellmanager create").ok());
+  s.editor.edit_stack = {"{top 0 0 10 10}", "{top 0 0 20 20}"};
+  const auto loaded = tcl.evaluate("load foo");
+  INFO((loaded.diagnostics.empty() ? std::string{} : loaded.diagnostics.front().text));
+  REQUIRE(loaded.ok());
+  CHECK(s.editor.edit_stack.empty());
+  REQUIRE(s.editor.cells.find("foo") != nullptr);
+  // Without the cell manager's tag the stack survives a load.
+  REQUIRE(tcl.evaluate("tag load {}").ok());
+  s.editor.edit_stack = {"{foo 0 0 10 10}"};
+  REQUIRE(tcl.evaluate("load top").ok());
+  CHECK(s.editor.edit_stack.size() == 1);
 }
 
 TEST_CASE("Filter by technology", "[cap:ui-gui-managers][req:Library manager]") {
@@ -220,4 +247,29 @@ TEST_CASE("the text helper changes the selected label", "[cap:ui-gui-managers][r
              })
               .ok());
   CHECK(fonts.front() == "default");
+}
+
+// Regression (SHELL-B round 2): Magic's technology manager shows
+// `[lindex [tech version] 1]`, the description without its list braces.
+TEST_CASE("the technology manager shows the description as a list element",
+          "[cap:ui-gui-managers][req:Technology manager]") {
+  Session s;
+  std::ifstream in{std::string{HEFESTO_SOURCE_DIR} + "/tests/data/tech/tiny.tech"};
+  std::string text{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
+  const std::string from = "\"Tiny demo process\"";
+  REQUIRE(text.find(from) != std::string::npos);
+  text.replace(text.find(from), from.size(), "\"SkyWater SKY130: {demo} process\"");
+  hefesto::diag::CollectingSink sink;
+  auto loaded = hefesto::tech::load_technology_text(text, "/t/tiny.tech", s.services.files(),
+                                                    hefesto::tech::LoadOptions{}, sink);
+  REQUIRE(loaded.ok());
+  s.editor.technology = loaded.value();
+  gui::TechManagerModel model;
+  REQUIRE(s.in_command([&](hefesto::cmd::CommandContext& ctx) {
+               model = gui::tech_manager_model(ctx);
+               return hefesto::cmd::CommandResult::success();
+             })
+              .ok());
+  CHECK(model.version == "(version 1.0)");
+  CHECK(model.description == "SkyWater SKY130: {demo} process");
 }

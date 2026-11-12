@@ -133,7 +133,11 @@ struct LoadedPresets {
 };
 
 std::optional<LoadedPresets> read_presets(cmd::CommandContext& ctx) {
-  const std::string name = toolbar_presets_file_name(detail::run(ctx, {"tech", "name"}));
+  const std::string tech = detail::run(ctx, {"tech", "name"});
+  if (tech.find('/') != std::string::npos) {
+    return std::nullopt;  // security finding S-15: the name must not lead out of the working directory
+  }
+  const std::string name = toolbar_presets_file_name(tech);
   const platform::Path path = detail::session_path(ctx, name);
   auto text = ctx.services().files.read(path);
   if (!text.ok()) {

@@ -7,7 +7,8 @@
 // (db::ChangeRecorder); editor-level events (box, selection, edit cell,
 // wiring, color map) and Hefesto's native compound events are recorded by
 // their areas with UndoLog::record() (undo/events.hpp has reusable ones).
-// editor::post_command closes the step.
+// editor::post_command closes the step and names it after the command
+// (`close_step(command_label(...))`, hefesto-app-ux "Undo history").
 // (Magic ref: utils/undo.c, database/DBundo.c, dbwind/DBWundo.c)
 //
 // Model (Magic's utils/undo.c with its delimiters made explicit):
@@ -104,7 +105,15 @@ class UndoLog {
   /// Closes the open step if it recorded something ("Event log and command
   /// grouping"); returns true when a step was closed. Applies the limit.
   /// While recording is suspended nothing is closed (Magic's UndoNext).
-  bool close_step();
+  /// `label` names the step after the user command that made it ("paint
+  /// metal1", see command_label); empty: the step is named by its newest
+  /// event (step_label). The label is Hefesto's: `undo print` is unchanged.
+  bool close_step(std::string_view label = {});
+
+  /// The name of closed step `index` (0 = the oldest kept, step_count() - 1
+  /// = the newest): its label, or without one its newest event's
+  /// description. Empty when `index` is out of range.
+  [[nodiscard]] std::string step_label(std::size_t index) const;
 
   /// Undoes up to `steps` steps (an open step is closed first). Fails with
   /// UNDO-CMD-002 while recording is suspended (Magic refuses then).
@@ -179,6 +188,7 @@ class UndoLog {
   void apply_limit();
 
   std::deque<Step> steps_;
+  std::deque<std::string> labels_;  // one per closed step, parallel to steps_
   std::size_t position_ = 0;
   Step open_;
   int suspend_depth_ = 0;
@@ -211,6 +221,30 @@ class ScopedSuspend {
  private:
   UndoLog* log_;
 };
+
+/// The undo-step label of a user command: its name and arguments as typed,
+/// separated by spaces ("paint metal1"); a word with white space is quoted
+/// with double quotes; a leading `*bypass` is dropped (the pick tool's drag
+/// commands are named by the command they bypass). At most
+/// kMaxStepLabelLength bytes, cut with "…".
+inline constexpr std::size_t kMaxStepLabelLength = 60;
+[[nodiscard]] std::string command_label(std::string_view name, const std::vector<std::string>& args);
+
+/// One entry of the undo history (hefesto-app-ux "Undo history"): a step
+/// named by its label (UndoLog::step_label) and the command that reaches it
+/// (`undo N` / `redo N`).
+struct HistoryEntry {
+  std::string label;
+  std::string command;
+  bool redo = false;
+
+  friend bool operator==(const HistoryEntry&, const HistoryEntry&) = default;
+};
+
+/// The undo history as the desktop shows it: first the undone steps that
+/// can be redone, farthest first (`redo N`), then the steps that can be
+/// undone, newest first (`undo N`); at most `max_each` of each.
+[[nodiscard]] std::vector<HistoryEntry> history(const UndoLog& log, std::size_t max_each = 8);
 
 /// Applies a value of the `undo-history-limit` setting: a decimal integer
 /// >= kDefaultHistoryLimit. Anything else fails with UNDO-LIMIT-001 and

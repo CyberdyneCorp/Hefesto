@@ -14,17 +14,21 @@
 #include <cstdlib>
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <set>
+#include <span>
 
 #include "hefesto/app/project_file.hpp"
 #include "hefesto/app/recent_projects.hpp"
 #include "hefesto/app/settings_layers.hpp"
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/cmd/host_access.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/pdk/diag_codes.hpp"
 #include "hefesto/pdk/packs.hpp"
 #include "hefesto/pdk/updates.hpp"
+#include "hefesto/script/pdk/trust.hpp"
 
 namespace hefesto::pdk {
 
@@ -38,7 +42,8 @@ constexpr std::string_view kSynopsis =
     "?-lib NAME ...? ?-accept-license? ?-accept-unverified? ?-enable? ?-progress? | enable FAMILY VERSION | "
     "uninstall FAMILY VERSION ?-force? | remove-library FAMILY VERSION LIBRARY | pin VARIANT ?VERSION? "
     "?-lib NAME ...? ?-project DIR? | info FAMILY VERSION | export FAMILY VERSION ?-to DIR? | import PACK "
-    "?-accept-license? ?-accept-unverified? ?-enable? ?-progress?  (common options: -root DIR, -source LOCATION, "
+    "?-accept-license? ?-accept-unverified? ?-enable? ?-progress? | trust VARIANT VERSION | untrust VARIANT VERSION  "
+    "(common options: -root DIR, -source LOCATION, "
     "-only PREFIX, -unpack-factor N)";
 
 const std::set<std::string, std::less<>> kFlags = {"-accept-license", "-accept-unverified", "-auto", "-enable",
@@ -223,6 +228,7 @@ class PdkRun {
         {"install", &PdkRun::install}, {"enable", &PdkRun::enable},   {"uninstall", &PdkRun::uninstall},
         {"pin", &PdkRun::pin},         {"info", &PdkRun::info},       {"remove-library", &PdkRun::remove_library},
         {"updates", &PdkRun::updates}, {"export", &PdkRun::export_},  {"import", &PdkRun::import_},
+        {"trust", &PdkRun::trust},     {"untrust", &PdkRun::untrust},
     };
     const auto it = kSubcommands.find(sub);
     if (it == kSubcommands.end()) {
@@ -281,6 +287,15 @@ class PdkRun {
   }
 
   CommandResult root() { return CommandResult::success(manager_.root().string()); }
+
+  // `pdk trust|untrust VARIANT VERSION` (PDK panel; board M4-Script-Consent
+  // note 5): the session's trust store and the store's provenance record.
+  CommandResult trust() { return trust_command(script::TrustAction::trust); }
+  CommandResult untrust() { return trust_command(script::TrustAction::untrust); }
+  CommandResult trust_command(script::TrustAction action) {
+    const auto store = script::make_pdk_store_trust(ctx_.services().files, *host_, manager_.root());
+    return script::run_pdk_trust(ctx_, std::span{args_.positional}.subspan(1), action, store.get());
+  }
 
   CommandResult list() {
     auto installed = manager_.installed();
@@ -625,6 +640,23 @@ std::optional<InstallProgress> parse_install_progress(const diag::Diagnostic& di
   return seen == 4 ? std::optional<InstallProgress>{std::move(out)} : std::nullopt;
 }
 
+namespace {
+
+// Security findings S-01 and S-03: the subcommands that download or run a
+// process, and those that change trust or the store, refuse a script.
+std::optional<CommandResult> refuse_from_script(const cmd::Invocation& inv, std::string_view sub) {
+  static const std::set<std::string, std::less<>> kProcess = {"install", "remote", "updates", "import"};
+  static const std::set<std::string, std::less<>> kTrust = {"trust", "untrust",        "uninstall", "enable",
+                                                            "pin",   "remove-library", "export"};
+  const std::string what = "pdk " + std::string{sub};
+  if (kProcess.contains(sub)) {
+    return cmd::refuse_host_access(inv, what, cmd::HostAccess::process);
+  }
+  return kTrust.contains(sub) ? cmd::refuse_host_access(inv, what, cmd::HostAccess::trust) : std::nullopt;
+}
+
+}  // namespace
+
 bool register_pdk_commands(cmd::CommandRegistry& registry, CommandHosts hosts) {
   auto handler = [hosts = std::move(hosts)](cmd::CommandContext& ctx, const cmd::Invocation& inv) {
     auto args = parse_args(inv.args);
@@ -633,6 +665,9 @@ bool register_pdk_commands(cmd::CommandRegistry& registry, CommandHosts hosts) {
     }
     if (args.value().positional.empty()) {
       return usage();
+    }
+    if (auto refused = refuse_from_script(inv, args.value().positional.front())) {
+      return *refused;
     }
     return PdkRun{ctx, hosts, std::move(args).value()}.run();
   };
