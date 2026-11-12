@@ -1,0 +1,358 @@
+file alpha.mag
+magic
+tech ihp-sg13g2
+magscale 1 2
+timestamp 1794452604
+<< error_p >>
+rect 4061 2209 4101 2267
+rect 4010 2101 4050 2167
+rect 4112 2101 4152 2167
+rect 4061 2001 4101 2059
+<< error_s >>
+rect 61 209 101 267
+rect 1323 209 1363 267
+rect 10 101 50 167
+rect 112 101 152 167
+rect 1272 101 1312 167
+rect 1374 101 1414 167
+rect 61 1 101 59
+rect 1323 1 1363 59
+<< metal1 >>
+rect 0 -600 800 -500
+use cap_cmim_YW4SB7  C1
+timestamp 1794452604
+transform 1 0 12320 0 1 2320
+box -320 -320 320 320
+use sg13_lv_nmos_THEM42  M1
+timestamp 1794452604
+transform 1 0 4081 0 1 2134
+box -81 -134 81 134
+use sg13_lv_nmos_THEM42  N0
+timestamp 1794452604
+transform 1 0 81 0 1 134
+box -81 -134 81 134
+use sg13_lv_pmos_YG5ZJG  P0
+timestamp 1794452604
+transform 1 0 1343 0 1 134
+box -143 -134 143 134
+use rsil_DZRRNV  R1
+timestamp 1794452604
+transform 1 0 8162 0 1 2382
+box -254 -474 254 474
+<< labels >>
+rlabel metal1 0 -550 0 -550 0 VIN
+<< end >>
+file cap_cmim_YW4SB7.mag
+magic
+tech ihp-sg13g2
+timestamp 1794452604
+<< metal5 >>
+rect -160 -160 160 160
+<< mimcap >>
+rect -100 80 100 100
+rect -100 -80 -80 80
+rect 80 -80 100 80
+rect -100 -100 100 -80
+<< mimcapcontact >>
+rect -80 -80 80 80
+<< metal6 >>
+rect -82 80 82 82
+rect -82 -80 -80 80
+rect 80 -80 82 80
+rect -82 -82 82 -80
+<< labels >>
+rlabel mimcapcontact 0 0 0 0 0 C1
+port 1 nsew
+rlabel metal5 110 0 110 0 0 C2
+port 2 nsew
+<< properties >>
+string FIXED_BBOX -160 -160 160 160
+string gencell cap_cmim
+string library sg13g2
+string parameters w 2.00 l 2.00 val 7.52 carea 1.50 cperi 0.19 class capacitor compatible {cap_cmim cap_rfcmim} nx 1 ny 1 dummy 0 square 0 lmin 2.00 wmin 2.00 lmax 30.0 wmax 30.0 dc 0 tabwidth 1.0 upcontact 0 bconnect 1 tconnect 1 ccov 100 doports 1
+<< end >>
+file rsil_DZRRNV.mag
+magic
+tech ihp-sg13g2
+magscale 1 2
+timestamp 1794452604
+<< error_p >>
+rect -36 211 36 269
+rect -36 -269 36 -211
+<< pwell >>
+rect -254 -474 254 474
+<< psubdiff >>
+rect -192 398 192 412
+rect -192 366 -100 398
+rect 100 366 192 398
+rect -192 352 192 366
+rect -192 320 -132 352
+rect -192 -320 -178 320
+rect -146 -320 -132 320
+rect 132 320 192 352
+rect -192 -352 -132 -320
+rect 132 -320 146 320
+rect 178 -320 192 320
+rect 132 -352 192 -320
+rect -192 -366 192 -352
+rect -192 -398 -100 -366
+rect 100 -398 192 -366
+rect -192 -412 192 -398
+<< psubdiffcont >>
+rect -100 366 100 398
+rect -178 -320 -146 320
+rect 146 -320 178 320
+rect -100 -398 100 -366
+<< poly >>
+rect -50 256 50 270
+rect -50 224 -36 256
+rect 36 224 50 256
+rect -50 200 50 224
+rect -50 -224 50 -200
+rect -50 -256 -36 -224
+rect 36 -256 50 -224
+rect -50 -270 50 -256
+<< polycont >>
+rect -36 224 36 256
+rect -36 -256 36 -224
+<< npolyres >>
+rect -50 -200 50 200
+<< metal1 >>
+rect -178 366 -100 398
+rect 100 366 178 398
+rect -178 320 -146 366
+rect 146 320 178 366
+rect -46 260 46 266
+rect -46 220 -36 260
+rect 36 220 46 260
+rect -46 214 46 220
+rect -46 -220 46 -214
+rect -46 -260 -36 -220
+rect 36 -260 46 -220
+rect -46 -266 46 -260
+rect -178 -366 -146 -320
+rect 146 -366 178 -320
+rect -178 -398 -100 -366
+rect 100 -398 178 -366
+<< via1 >>
+rect -36 256 36 260
+rect -36 224 36 256
+rect -36 220 36 224
+rect -36 -224 36 -220
+rect -36 -256 36 -224
+rect -36 -260 36 -256
+<< metal2 >>
+rect -36 260 36 269
+rect -36 211 36 220
+rect -36 -220 36 -211
+rect -36 -269 36 -260
+<< labels >>
+rlabel psubdiffcont 0 -382 0 -382 0 B
+port 1 nsew
+rlabel polycont 0 240 0 240 0 R1
+port 2 nsew
+rlabel polycont 0 -240 0 -240 0 R2
+port 3 nsew
+<< properties >>
+string FIXED_BBOX -162 -382 162 382
+string gencell rsil
+string library sg13g2
+string MASKHINTS_CONTBAR -50 -270 50 270
+string parameters w 0.50 l 2.00 m 1 nx 1 wmin 0.50 lmin 0.50 class resistor rho 7.0 val 28.0 dummy 0 dw 0.0 term 0.0 sterm 0.0 caplen 0 snake 0 guard 1 bar 1 glc 1 grc 1 gtc 1 gbc 1 roverlap 0 endcov 100 full_metal 1 hv_guard 0 n_guard 0 vias 1 viagb 0 viagt 0 viagl 0 viagr 0 doports 1
+<< end >>
+file sg13_lv_nmos_THEM42.mag
+magic
+tech ihp-sg13g2
+magscale 1 2
+timestamp 1794452604
+<< error_p >>
+rect -20 75 20 133
+rect -71 -33 -31 33
+rect 31 -33 71 33
+rect -20 -133 20 -75
+<< nmos >>
+rect -13 -60 13 60
+<< ndiff >>
+rect -81 46 -13 60
+rect -81 -46 -67 46
+rect -35 -46 -13 46
+rect -81 -60 -13 -46
+rect 13 46 81 60
+rect 13 -46 35 46
+rect 67 -46 81 46
+rect 13 -60 81 -46
+<< ndiffc >>
+rect -67 -46 -35 46
+rect 35 -46 67 46
+<< poly >>
+rect -30 120 30 134
+rect -30 88 -16 120
+rect 16 88 30 120
+rect -30 74 30 88
+rect -13 60 13 74
+rect -13 -74 13 -60
+rect -30 -88 30 -74
+rect -30 -120 -16 -88
+rect 16 -120 30 -88
+rect -30 -134 30 -120
+<< polycont >>
+rect -16 88 16 120
+rect -16 -120 16 -88
+<< metal1 >>
+rect -43 124 43 125
+rect -43 84 -20 124
+rect 20 84 43 124
+rect -43 83 43 84
+rect -77 24 -67 46
+rect -35 24 -25 46
+rect -77 -24 -71 24
+rect -31 -24 -25 24
+rect -77 -46 -67 -24
+rect -35 -46 -25 -24
+rect 25 24 35 46
+rect 67 24 77 46
+rect 25 -24 31 24
+rect 71 -24 77 24
+rect 25 -46 35 -24
+rect 67 -46 77 -24
+rect -43 -84 43 -83
+rect -43 -124 -20 -84
+rect 20 -124 43 -84
+rect -43 -125 43 -124
+<< via1 >>
+rect -20 120 20 124
+rect -20 88 -16 120
+rect -16 88 16 120
+rect 16 88 20 120
+rect -20 84 20 88
+rect -71 -24 -67 24
+rect -67 -24 -35 24
+rect -35 -24 -31 24
+rect 31 -24 35 24
+rect 35 -24 67 24
+rect 67 -24 71 24
+rect -20 -88 20 -84
+rect -20 -120 -16 -88
+rect -16 -120 16 -88
+rect 16 -120 20 -88
+rect -20 -124 20 -120
+<< metal2 >>
+rect -20 124 20 133
+rect -20 75 20 84
+rect -71 24 -31 33
+rect -71 -33 -31 -24
+rect 31 24 71 33
+rect 31 -33 71 -24
+rect -20 -84 20 -75
+rect -20 -133 20 -124
+<< labels >>
+rlabel ndiffc -51 0 -51 0 0 D
+port 4 nsew
+rlabel ndiffc 51 0 51 0 0 S
+port 5 nsew
+rlabel polycont 0 104 0 104 0 G
+port 6 nsew
+<< properties >>
+string gencell sg13_lv_nmos
+string library sg13g2
+string parameters w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 guard 0 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_nmos sg13_hv_nmos} full_metal 1 conn_gates 0 gate_ring 0 doports 1 viasrc 100 viadrn 100 viagate 100 ccols 1 viagb 0 viagr 0 viagl 0 viagt 0
+<< end >>
+file sg13_lv_pmos_YG5ZJG.mag
+magic
+tech ihp-sg13g2
+magscale 1 2
+timestamp 1794452604
+<< error_p >>
+rect -20 75 20 133
+rect -71 -33 -31 33
+rect 31 -33 71 33
+rect -20 -133 20 -75
+<< nwell >>
+rect -143 -122 143 122
+<< pmos >>
+rect -13 -60 13 60
+<< pdiff >>
+rect -81 46 -13 60
+rect -81 -46 -67 46
+rect -35 -46 -13 46
+rect -81 -60 -13 -46
+rect 13 46 81 60
+rect 13 -46 35 46
+rect 67 -46 81 46
+rect 13 -60 81 -46
+<< pdiffc >>
+rect -67 -46 -35 46
+rect 35 -46 67 46
+<< poly >>
+rect -30 120 30 134
+rect -30 88 -16 120
+rect 16 88 30 120
+rect -30 74 30 88
+rect -13 60 13 74
+rect -13 -74 13 -60
+rect -30 -88 30 -74
+rect -30 -120 -16 -88
+rect 16 -120 30 -88
+rect -30 -134 30 -120
+<< polycont >>
+rect -16 88 16 120
+rect -16 -120 16 -88
+<< metal1 >>
+rect -43 124 43 125
+rect -43 84 -20 124
+rect 20 84 43 124
+rect -43 83 43 84
+rect -77 24 -67 46
+rect -35 24 -25 46
+rect -77 -24 -71 24
+rect -31 -24 -25 24
+rect -77 -46 -67 -24
+rect -35 -46 -25 -24
+rect 25 24 35 46
+rect 67 24 77 46
+rect 25 -24 31 24
+rect 71 -24 77 24
+rect 25 -46 35 -24
+rect 67 -46 77 -24
+rect -43 -84 43 -83
+rect -43 -124 -20 -84
+rect 20 -124 43 -84
+rect -43 -125 43 -124
+<< via1 >>
+rect -20 120 20 124
+rect -20 88 -16 120
+rect -16 88 16 120
+rect 16 88 20 120
+rect -20 84 20 88
+rect -71 -24 -67 24
+rect -67 -24 -35 24
+rect -35 -24 -31 24
+rect 31 -24 35 24
+rect 35 -24 67 24
+rect 67 -24 71 24
+rect -20 -88 20 -84
+rect -20 -120 -16 -88
+rect -16 -120 16 -88
+rect 16 -120 20 -88
+rect -20 -124 20 -120
+<< metal2 >>
+rect -20 124 20 133
+rect -20 75 20 84
+rect -71 24 -31 33
+rect -71 -33 -31 -24
+rect 31 24 71 33
+rect 31 -33 71 -24
+rect -20 -84 20 -75
+rect -20 -133 20 -124
+<< labels >>
+rlabel pdiffc -51 0 -51 0 0 D
+port 1 nsew
+rlabel pdiffc 51 0 51 0 0 S
+port 2 nsew
+rlabel polycont 0 104 0 104 0 G
+port 3 nsew
+<< properties >>
+string gencell sg13_lv_pmos
+string library sg13g2
+string parameters w 0.6 l 0.13 m 1 ng 1 diffcov 100 polycov 100 guard 0 glc 1 grc 1 gtc 1 gbc 1 tbcov 100 rlcov 100 topc 1 botc 1 poverlap 0 doverlap 1 lmin 0.13 wmin 0.15 class mosfet compatible {sg13_lv_pmos sg13_hv_pmos} full_metal 1 conn_gates 0 gate_ring 0 ccols 1 viasrc 100 viadrn 100 viagate 100 viagb 0 viagr 0 viagl 0 viagt 0 doports 1
+<< end >>
