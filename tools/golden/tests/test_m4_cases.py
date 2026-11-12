@@ -7,6 +7,7 @@ cap:hefesto-testing-strategy req:Golden compatibility suite
 """
 from __future__ import annotations
 
+import gzip
 import re
 import sys
 import tempfile
@@ -20,8 +21,6 @@ sys.path.insert(0, str(GOLDEN / "authoring"))
 
 import common  # noqa: E402
 import desktop_cases  # noqa: E402
-import m1_cases  # noqa: E402
-import m3_cases  # noqa: E402
 import m4_cases  # noqa: E402
 import script_cases  # noqa: E402
 import tclcase  # noqa: E402
@@ -132,16 +131,35 @@ class TechPartsTest(unittest.TestCase):
         self.assertEqual(common.pdk_tech_externals("ihp", "ihp-sg13g2")[1]["set"], "ihp")
 
     def test_every_case_with_a_pdk_tech_file_copies_its_parts(self):
+        # The committed case.toml files, not the specs: the M1 specs read scmos.tech and the
+        # PDK while generating, which a leg without build/ref/magic does not have.
         variants = ("sky130A", "gf180mcuD", "ihp-sg13g2")
         mains = {f"{v}/libs.tech/magic/{v}.tech": v for v in variants}
         checked = 0
-        for spec in m1_cases.all_specs() + m3_cases.all_specs():
-            tos = {e["to"] for e in spec.external}
-            for variant in (mains[e["path"]] for e in spec.external if e.get("path") in mains):
+        for path in sorted((REPO / "tests" / "golden").glob("*/cases/*/case.toml")):
+            externals = tomllib.loads(path.read_text(encoding="utf-8")).get("external", [])
+            tos = {e["to"] for e in externals}
+            for variant in (mains[e["path"]] for e in externals if e.get("path") in mains):
                 checked += 1
-                with self.subTest(case=spec.id, tech=variant):
+                with self.subTest(case=path.parent.name, tech=variant):
                     self.assertTrue({f"{variant}-{p}.tech" for p in common.TECH_PARTS} <= tos)
         self.assertGreaterEqual(checked, 12)
+
+
+class GzipInputTest(unittest.TestCase):
+    """Compressed case inputs must not depend on the generating platform's zlib."""
+
+    def test_header_is_platform_independent(self):
+        data = common.gzip_bytes(b"magic\n")
+        self.assertEqual(data[:10], b"\x1f\x8b\x08\x00\x00\x00\x00\x00\x02\xff")
+        self.assertEqual(gzip.decompress(data), b"magic\n")
+
+    def test_committed_inputs_carry_the_same_header(self):
+        for path in sorted((REPO / "tests" / "golden").glob("*/cases/*/input/**/*.gz")):
+            with self.subTest(path=path.relative_to(REPO)):
+                data = path.read_bytes()
+                self.assertEqual(common.gzip_bytes(gzip.decompress(data)), data)
+
 
 if __name__ == "__main__":
     unittest.main()
