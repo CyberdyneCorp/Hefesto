@@ -53,6 +53,25 @@ release notices.
   stays above every window, not only Hefesto's, until the Raven toolkit has
   owned utility windows.
 
+### Fixed
+
+- **Moving, copying, deleting, rotating or arraying before anything was
+  ever selected no longer crashes.** `box 0 0 0 0; delete` in a fresh
+  session (or a device script that runs `array` first) crashed
+  `hefesto-cli`; these commands now see an empty selection, as in Magic.
+- **`cellname create` of an existing cell does nothing**, as in Magic,
+  instead of failing with `cell "..." already exists` (a second generated
+  device with the same parameters hit it).
+- **Commands that need the box in the edit cell print Magic's text.**
+  `paint`, `erase`, `label`, `port` and the other editing commands say `Box
+  must be present` when there is no box; `box`, `select box` and `element
+  inbox` keep `Box tool must be present`.
+- **`readspice` and `mazeroute` are global Tcl commands**, as Magic's
+  `readspice.tcl` and `mazeroute.tcl` define them, so scripts can call them
+  unqualified.
+- **`--diagnostics=magic` no longer prints the native-generator fallback
+  note** (`PCELL-NATIVE-001`), which Magic has no equivalent of.
+
 ### Security
 
 - `--trust-pdk <family|variant>` also trusts a copy of that PDK found
