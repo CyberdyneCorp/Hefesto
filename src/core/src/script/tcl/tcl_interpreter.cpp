@@ -554,4 +554,8 @@ ScriptLocation current_script_location(const Interpreter& interpreter) {
   return tcl != nullptr ? tcl->location() : ScriptLocation{};
 }
 
+void release_thread_tcl_state() noexcept {
+  Tcl_FinalizeThread();
+}
+
 }  // namespace hefesto::script

@@ -55,4 +55,11 @@ namespace hefesto::script {
 /// commands that report a diagnostic at the calling script line.
 [[nodiscard]] ScriptLocation current_script_location(const Interpreter& interpreter);
 
+/// Releases Tcl's per-thread data of the calling thread (Tcl_FinalizeThread).
+/// An interpreter belongs to the thread that creates it, which alone may
+/// evaluate in it and delete it. A thread other than the process's main
+/// thread that does so calls this once its interpreters are deleted and
+/// before it ends; Tcl frees that data only for the threads it creates.
+void release_thread_tcl_state() noexcept;
+
 }  // namespace hefesto::script
