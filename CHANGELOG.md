@@ -83,6 +83,20 @@ release notices.
   unqualified.
 - **`--diagnostics=magic` no longer prints the native-generator fallback
   note** (`PCELL-NATIVE-001`), which Magic has no equivalent of.
+- **A cell named on the command line that does not exist is reported as
+  Magic reports it**, without the extra "The cell was already read and
+  points to conflicting location" message, and a `.mag.gz` name is shown
+  without its extensions (`File /w/inv couldn't be read`).
+- **`load` removes the untouched `(UNNAMED)` cell when a display is
+  running**, as Magic does under X11, so the desktop's Cells manager no
+  longer lists it; `hefesto-cli` (no display) keeps it, as `magic -dnull`
+  does.
+- **`hefesto-cli --interactive` with standard input from a character
+  device such as `/dev/null` ends at end of input on macOS** instead of
+  waiting forever.
+- **Outline fonts with far-apart curve control points** no longer trigger
+  undefined integer overflow while flattening Bézier curves; the points
+  wrap as Magic's C arithmetic does.
 
 ### Security
 

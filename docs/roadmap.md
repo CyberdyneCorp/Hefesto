@@ -131,6 +131,13 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 **Goal.** Run real PDK flows: PDK startup scripts, device generators (PCells) and the PDK's menus.
 
+**Status (in progress, 2026-11-12):** OpenSpec change `openspec/changes/m4-scripting`, three implementation rounds and the closing round (PR #38). The embedded, sandboxed Tcl 8.6.16 with the `magic::` namespace and tag callbacks, the sky130A, gf180mcuD and ihp-sg13g2 startup files and device scripts (run unchanged after consent), the gencell framework with native C++ MOSFET generators equal to the Tcl ones (the `pcell-equivalence` CI job), `readspice`, the auxiliary tools, the GUI manager view models and the desktop's consent prompt, PCell dialog, managers and script progress card are implemented. M4 requirement coverage is 57 of 57 (`mazeroute`'s requirement is deferred to M10, Q-SCRIPT-30). CI is green on every leg (run 43161223404: Linux x86_64 and aarch64 with GCC and Clang, macOS arm64, ASan/UBSan, TSan, lavapipe, fuzzing, `pcell-equivalence`), and the outputs of every captured golden case, SCRIPT and Desktop Alpha included, are byte-identical across the seven legs. Golden: 436 captured cases verified against Magic in CI (golden-capture run 43161223446); the three Desktop Alpha cases (sky130, gf180mcu, sg13g2: open, edit, DRC-check, place PCells) pass. Left before M4 closes:
+- 60 golden cases captured in CI but not committed because their replay still differs (21 GUI cases need the GUI replay of task 12.4; the others are Hefesto gaps listed in `tasks.md` 6.3, 6.8, 7.6 and 12.5), so 33 of the 90 SCRIPT cases pass so far.
+- Decisions needed: Magic's `cellname list filepath` result (CELL-PR-03, CELL-PR-12, SCRIPT-API-15), the `readspice` bus-bracket typo against the spec (SCRIPT-RSP-03), Q-SCRIPT-45 for the sg13g2 fixed devices (SCRIPT-PDK-14), DRC-PDK-3's `cap_cmomf` (task 12.3).
+- Desktop: the panel header drag (11.2), the native menu bar and PCell dialog captures (10.1, 10.2), the consent card's board styling (10.3), Raven gaps G-1..G-3 (10.4).
+- Manual checks by the user: the Desktop Alpha checklist on Linux and macOS (10.6, 13.6), the Raven confirmation checks on Linux (11.1), and pointer and keyboard checks of 11.4, 11.7 and 11.8.
+- The App Review inquiry (2.2) is drafted for the user to submit.
+
 **Capabilities:** `hefesto-scripting`, `scripting-api`, `scripting-pdk-integration`, `pcell-toolkit`, `readspice`, `scripting-auxiliary-tools`, `ui-gui-managers`, `hefesto-security`
 
 **Deliverables**

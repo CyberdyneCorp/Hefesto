@@ -548,7 +548,9 @@ jobs:
           fi
           # replay.py --output-dir already applied each case's documented masks (case.toml [[outputs]] masks,
           # e.g. gds-dates, mag-timestamp), so the trees are compared byte for byte.
-          python3 scripts/compare_golden_outputs.py "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          # The M4 areas must stay in the comparison (m4-scripting task 13.6).
+          python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP \
+            "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
   asan:
