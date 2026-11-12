@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1990 requirements, 3135 scenarios, 852 open questions.
+**Totals:** 169 capabilities, 1990 requirements, 3136 scenarios, 852 open questions.
 
 ## Hefesto product (native)
 
@@ -299,7 +299,7 @@ Open questions: [48](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 |---|---|---|---|
 | [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 34 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
 | [`readspice`](../openspec/specs/readspice/spec.md) | 5 | 11 | Specifies the `readspice <netlist>` command. It is defined by `readspice.tcl` and loaded at startup when present. The command annotates already-loaded layout cells with the port or… |
-| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 52 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
+| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 53 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
 | [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 10 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
 | [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 14 | 29 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
 | [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 16 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
