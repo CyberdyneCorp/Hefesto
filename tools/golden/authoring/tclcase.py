@@ -85,6 +85,7 @@ class TclCase:
     stdin: bool = False                                # feed commands.tcl on standard input instead
     allow_nonzero_exit: bool = False                   # Magic's exit status is part of the case
     driver: str = "m4_cases.py"
+    stream_comparator: str = "magic-console"           # stdout/stderr comparator (DRC: drc-console)
 
     @property
     def area(self) -> str:
@@ -151,8 +152,8 @@ def case_toml(case: TclCase) -> str:
     for ext in externals(case):
         text += "\n[[external]]\n" + "".join(f"{k} = {_toml_str(v)}\n" for k, v in ext.items())
     masks = _with_mask(["magic-stamp-note", *case.stream_masks], "magic-tech-sections")
-    text += _output_block("stdout.txt", "stdout", "magic-console", masks)
-    text += _output_block("stderr.txt", "stderr", "magic-console", masks)
+    text += _output_block("stdout.txt", "stdout", case.stream_comparator, masks)
+    text += _output_block("stderr.txt", "stderr", case.stream_comparator, masks)
     for source in case.outputs:
         out_masks = case.output_masks.get(source, default_masks(source))
         name = case.output_names.get(source, source.replace("/", "__"))

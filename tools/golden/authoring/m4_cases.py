@@ -28,12 +28,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import casegen  # noqa: E402
 import cell_cases  # noqa: E402
 import desktop_cases  # noqa: E402
+import drc_cases  # noqa: E402
 import model_cases  # noqa: E402
 import script_cases  # noqa: E402
 import tclcase  # noqa: E402
 
 DRIVER = "m4_cases.py"
-OTHER = (cell_cases, model_cases, desktop_cases)
+OTHER = (cell_cases, model_cases, desktop_cases, drc_cases)
 
 
 def all_specs() -> list[tclcase.TclCase]:
