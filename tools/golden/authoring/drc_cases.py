@@ -802,7 +802,7 @@ def m4_specs() -> list[TclCase]:
     under MIM.b's 0.6 um. Run with the PDK rc file, then CAP."""
     body = lines("load mim", "box values 0 0 0 0",
                  p("magic::gencell sg13g2::cap_cmim C1"), "box values 0 0 0 0", p("box move e 2.4um"),
-                 p("magic::gencell sg13g2::cap_cmim C2", "cellname list childinst mim", *cap("mim")))
+                 p("magic::gencell sg13g2::cap_cmim C2", "lsort [cellname list childinst mim]", *cap("mim")))
     case = TclCase("DRC-PDK-3", ENG, ["Step square processing"],
                    "ihp-sg13g2: two MiM capacitors of the PDK's cap_cmim generator (no cap_cmomf generator in "
                    "IHP-Open-PDK) with the plates 0.4 um apart (MIM.b 0.6 um); CAP.",

@@ -13,7 +13,7 @@ probe {magic::gencell sg13g2::cap_cmim C1}
 box values 0 0 0 0
 probe {box move e 2.4um}
 probe {magic::gencell sg13g2::cap_cmim C2}
-probe {cellname list childinst mim}
+probe {lsort [cellname list childinst mim]}
 probe {select top cell}
 probe {box grow center 100}
 probe {drc check}
