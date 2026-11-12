@@ -154,10 +154,19 @@ def case_toml(case: TclCase) -> str:
     text += _output_block("stdout.txt", "stdout", "magic-console", masks)
     text += _output_block("stderr.txt", "stderr", "magic-console", masks)
     for source in case.outputs:
-        out_masks = case.output_masks.get(source, ["mag-timestamp"] if source.endswith(".mag") else [])
+        out_masks = case.output_masks.get(source, default_masks(source))
         name = case.output_names.get(source, source.replace("/", "__"))
         text += _output_block(name, source, "bytes", out_masks)
     return text
+
+
+def default_masks(source: str) -> list[str]:
+    """The write-time stamp of a saved .mag or .ext (its `timestamp` line) changes every run."""
+    if source.endswith(".mag"):
+        return ["mag-timestamp"]
+    if source.endswith(".ext"):
+        return ["ext-timestamp"]
+    return []
 
 
 def script(case: TclCase) -> str:

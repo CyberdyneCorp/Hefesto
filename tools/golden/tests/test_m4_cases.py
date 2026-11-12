@@ -185,6 +185,16 @@ class CaseInputTest(unittest.TestCase):
         cells = desktop_cases.CASES["DESKTOP-ALPHA-SKY130"][2]
         self.assertIn("libs.ref/sky130_fd_pr/mag/sky130_fd_pr__rf_npn_05v5_W1p00L1p00.mag", cells)
 
+    def test_extracted_files_mask_their_timestamp(self):
+        # Regression: the verify step of golden-capture run 43148079364 failed on SCRIPT-API-16's
+        # top.ext/top2.ext `timestamp` lines, which change with every capture.
+        self.assertEqual(tclcase.default_masks("top.ext"), ["ext-timestamp"])
+        self.assertEqual(tclcase.default_masks("a/b.mag"), ["mag-timestamp"])
+        case = load_case(REPO / "tests" / "golden" / "SCRIPT" / "cases" / "SCRIPT-API-16")
+        for out in case.outputs:
+            if out.name.endswith(".ext"):
+                self.assertIn("ext-timestamp", out.masks, out.name)
+
     def test_hand_written_techs_have_a_compose_section(self):
         # Magic fc5daa9e crashes (SIGSEGV in DBCellWriteFile) saving a cell under a tech without a
         # compose section, which made SCRIPT-API-16 exit 139 before its `extract all`.
