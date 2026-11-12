@@ -196,6 +196,13 @@ class TclInterpreter final : public Interpreter {
     return evaluation.finish(code, "", "");
   }
 
+  cmd::CommandResult evaluate_in_frame(std::string_view script) override {
+    Evaluation evaluation{*this, cmd::Origin::script, ""};
+    const std::string text{script};  // NUL-terminated, as in evaluate()
+    const int code = Tcl_EvalEx(interp_, text.c_str(), tcl_length(text), 0);
+    return evaluation.finish(code, "", "");
+  }
+
   cmd::CommandResult source(const platform::Path& path) override {
     Evaluation evaluation{*this, cmd::Origin::script, path.string()};
     Tcl_Obj* file = new_string(path.string());

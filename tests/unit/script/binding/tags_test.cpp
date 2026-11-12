@@ -58,6 +58,19 @@ TEST_CASE("Argument substitution with placeholder", "[cap:scripting-api][req:Tag
   CHECK(f.value("set ::seen") == ".layout1.pane.top.magic size");
 }
 
+// Regression (SCRIPT-PCELL-11, -14, PDK-16): tags ran at global level, so
+// wrapper.tcl's magic::boxview saw `[info level]` 1 under gencell and queried
+// the box again ("Box tool must be present" twice). Magic's TagCallback
+// evaluates in the caller's frame.
+TEST_CASE("Tag fired from a procedure", "[cap:scripting-api][req:Tag callback execution and substitution]") {
+  BindingFixture f;
+  CHECK(f.value("tag replace box {set ::lv [info level]}; tag box") == "set ::lv [info level]");
+  CHECK(f.value("proc q {} { box values }; q; set ::lv") == "1");
+  CHECK(f.value("box values; set ::lv") == "0");
+  // The procedure's locals are visible to the tag.
+  CHECK(f.value("tag replace box {set ::seen $local}; proc p {} { set local 7; box values }; p; set ::seen") == "7");
+}
+
 TEST_CASE("Result passthrough", "[cap:scripting-api][req:Tag callback execution and substitution]") {
   BindingFixture f;
   f.value("proc magic::mgrupdate {args} {return ignored}");

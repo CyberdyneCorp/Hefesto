@@ -224,7 +224,7 @@ cmd::CommandResult run_tag(const Binding& b, std::string_view invoked, const std
   context.command_count = editor->command_count;
   // The tag does not advance the command number (TagCallback).
   const std::uint64_t saved = editor->command_count;
-  cmd::CommandResult tag = b.interp.evaluate(substitute_tag(*script, context));
+  cmd::CommandResult tag = b.interp.evaluate_in_frame(substitute_tag(*script, context));
   editor->command_count = saved;
   if (!tag.ok()) {
     return tcl_error(error_message(tag));

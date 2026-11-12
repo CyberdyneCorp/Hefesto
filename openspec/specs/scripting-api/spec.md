@@ -222,7 +222,7 @@ After a script-dispatched command completes with ok status, the system SHALL eva
 
 This is Q-SCRIPT-3, resolution: fix in both `magic-compat` settings. Magic inserts `%r` as `"<result>"` with no escaping and the arguments and window path raw, restarts scanning at the beginning of the string after each replacement, and loops forever (the editor hangs) on `%%` or on any other `%x`. For every value without `"`, `$`, `[`, `]`, `\` or `%`, Hefesto inserts the word Magic's substitution produces, so a tag script that works in Magic keeps its meaning.
 
-The command's result SHALL be preserved across a successful tag evaluation unless `%R` was used. If the tag script raises an error, the command SHALL return error status with the tag's error message. The command sequence number SHALL be restored after the tag runs. Commands dispatched through a window path SHALL substitute `%W` with that path and SHALL number `%0` from the command name, excluding the path. See Q-SCRIPT-3 for the unescaped `%r` quoting and for rescanning.
+The command's result SHALL be preserved across a successful tag evaluation unless `%R` was used. If the tag script raises an error, the command SHALL return error status with the tag's error message. The command sequence number SHALL be restored after the tag runs. Commands dispatched through a window path SHALL substitute `%W` with that path and SHALL number `%0` from the command name, excluding the path. See Q-SCRIPT-3 for the unescaped `%r` quoting and for rescanning. The tag script SHALL be evaluated in the call frame of the code that ran the command, as Magic's TagCallback does (`Tcl_EvalEx` without `TCL_EVAL_GLOBAL`): a tag fired from inside a procedure sees that procedure's `info level` and local variables. wrapper.tcl's `magic::boxview` relies on this to skip the title-bar update (and its second `box values`) when `box` is called from a procedure such as `magic::gencell_create`; the native gencell's box query runs in such a frame too.
 Compatibility: exact
 
 (Magic ref: tcltk/tclmagic.c:107-294,528,576-577)
@@ -232,6 +232,12 @@ Compatibility: exact
 - **AND** one layout window `.layout1.pane.top.magic` exists
 - **WHEN** the script runs `box`
 - **THEN** the evaluated tag SHALL be `magic::boxview .layout1.pane.top.magic {}`
+
+#### Scenario: Tag fired from a procedure
+- **GIVEN** `tag box` is `set ::lv [info level]`
+- **AND** a procedure `p` that runs `box values`
+- **WHEN** a script runs `p` at global level
+- **THEN** `::lv` SHALL be `1`
 
 #### Scenario: Result passthrough
 - **GIVEN** `tag cellname` is `magic::mgrupdate %W %1`

@@ -52,6 +52,14 @@ class Interpreter {
   [[nodiscard]] virtual cmd::CommandResult evaluate(std::string_view script,
                                                     cmd::Origin origin = cmd::Origin::script) = 0;
 
+  /// Evaluates `script` in the frame of the command running now (Tcl_EvalEx
+  /// without TCL_EVAL_GLOBAL), as Magic's TagCallback runs a tag script: a tag
+  /// fired from a procedure sees its `info level` and local variables. At
+  /// global level when no command is running.
+  [[nodiscard]] virtual cmd::CommandResult evaluate_in_frame(std::string_view script) {
+    return evaluate(script, cmd::Origin::script);
+  }
+
   /// Tcl's `source` of `path` (through the sandbox's filesystem layer), so
   /// that `info script` names the file while it runs.
   [[nodiscard]] virtual cmd::CommandResult source(const platform::Path& path) = 0;
