@@ -202,6 +202,36 @@ CommandResult netlist(CommandContext& /*ctx*/, const Invocation& /*inv*/) {
       diag::make(codes::kModuleUnavailable, "netlist: the netlist module is not available yet (netlist-window, M12)"));
 }
 
+// The commands of Magic's netlist window client (netmenu/NMmain.c NMinit),
+// which arrives with netlist-window (M12). They exist as Tcl commands, as in
+// Magic's Tcl build, so a script that names one from a layout window gets
+// Magic's quiet dispatch failure (`magic::shownet` is an error with an empty
+// result) rather than an unknown command.
+constexpr std::array<std::string_view, 19> kNetlistWindowCommands = {
+    "add",   "cleanup", "cull",       "dnet",        "dterm",   "extract",  "find",
+    "flush", "joinnets", "netlist",   "print",       "pushbutton", "ripup", "savenetlist",
+    "shownet", "showterms", "trace",  "verify",      "writeall"};
+
+bool register_netlist_window_commands(cmd::CommandRegistry& registry) {
+  bool ok = true;
+  for (const std::string_view name : kNetlistWindowCommands) {
+    if (registry.find(name, "netlist") != nullptr) {
+      continue;
+    }
+    const std::string text = std::string{name} + ": the netlist window is not available yet (netlist-window, M12)";
+    cmd::Handler handler = [text](CommandContext& /*ctx*/, const Invocation& /*inv*/) {
+      return CommandResult::failure(diag::make(codes::kModuleUnavailable, text));
+    };
+    ok = !registry
+              .add({std::string{name}, std::string{name}, "Netlist window command (netlist-window, M12): not available yet.",
+                    std::move(handler)},
+                   "netlist")
+              .has_value() &&
+         ok;
+  }
+  return ok;
+}
+
 // --- source ----------------------------------------------------------------
 
 // Tcl's `source` in the project's interpreter (m4-scripting tasks.md 13.2:
@@ -457,6 +487,7 @@ bool register_session_commands(cmd::CommandRegistry& registry) {
   ok = add(registry, "netlist", "netlist option ?args?",
            "Netlist tool actions (netlist-window, M12): reports that the netlist module is unavailable.", netlist) &&
        ok;
+  ok = register_netlist_window_commands(registry) && ok;
   return ok;
 }
 

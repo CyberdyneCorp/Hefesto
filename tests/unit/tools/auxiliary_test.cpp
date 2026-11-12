@@ -121,3 +121,24 @@ TEST_CASE("console prompts and the launcher batch mode", "[cap:scripting-auxilia
   CHECK_FALSE(tools::launcher_batch_mode(true, false));
   CHECK_FALSE(tools::launcher_batch_mode(false, true));
 }
+
+// Regression (SCRIPT-AUX-03, SCRIPT-PDK-03): `--magic -dnull -noconsole`
+// left `batch_mode` and `argv` undefined.
+TEST_CASE("the launcher's interpreter globals", "[cap:scripting-auxiliary-tools][req:Interpreter launchers]") {
+  const std::vector<std::string> batch = {"-dnull", "-noconsole", "-norc", "s.tcl", "a.gds", "-foo"};
+  const tools::LauncherVariables dnull = tools::launcher_variables(batch);
+  CHECK(dnull.batch_mode);
+  CHECK(dnull.argv ==
+        std::vector<std::string>{"-nowrapper", "-dnull", "-noconsole", "-norc", "s.tcl", "a.gds", "-foo"});
+  // -noconsole alone: magicexec -- <args>.
+  const std::vector<std::string> wish = {"-noconsole", "s.tcl"};
+  CHECK_FALSE(tools::launcher_variables(wish).batch_mode);
+  CHECK(tools::launcher_variables(wish).argv == wish);
+  // The console: tkcon gets the words without -dnull and -noc*.
+  const std::vector<std::string> console = {"-dnull", "-norc", "s.tcl"};
+  CHECK_FALSE(tools::launcher_variables(console).batch_mode);
+  CHECK(tools::launcher_variables(console).argv == std::vector<std::string>{"-norc", "s.tcl"});
+  // --version runs magicdnull.
+  const std::vector<std::string> version = {"--version"};
+  CHECK(tools::launcher_variables(version).batch_mode);
+}

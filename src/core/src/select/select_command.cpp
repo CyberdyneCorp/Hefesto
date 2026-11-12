@@ -687,9 +687,6 @@ diag::Outcome<std::optional<ops::UseRef>> pick_cell(const Context& c, const Pars
     if (!found) {
       return diag::make(codes::kNoSuchUse, "Couldn't find a cell use named \"" + *p.arg(1) + "\"");
     }
-    named = true;
-    same = false;
-    c.ed->selection.cycle.last_area = db::Rect{-1000, -1000, -1000, -1000};
     return std::optional<ops::UseRef>{std::move(found)};
   }
   if (p.dotop || with_name) {
@@ -719,12 +716,9 @@ CommandResult cell_select(const Context& c, const Parsed& p, const Reference& re
     ops::select_cell(c, chosen, same && !named);
   }
   ops::set_root_box(c, element_box(c, chosen));
-  // The result is the path as given for a named use (empty for the top cell picked by an
-  // empty name), else the picked use's path.
-  if (named && chosen.use == nullptr) {
-    return CommandResult::success(Value{std::string{}});
-  }
-  return CommandResult::success(Value{unescaped(chosen.use == nullptr ? std::string{cell::kTopUseId} : chosen.path)});
+  // A named selection prints the name as given (printPath = optionArgs[1]).
+  const std::string printed = chosen.use != nullptr ? chosen.path : named ? *p.arg(1) : std::string{cell::kTopUseId};
+  return CommandResult::success(Value{unescaped(printed)});
 }
 
 /// Paint selection at the reference (chunk / region / net), the layer list

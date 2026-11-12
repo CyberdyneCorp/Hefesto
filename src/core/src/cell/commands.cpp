@@ -29,6 +29,7 @@
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/script/binding/output.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/undo/undo_log.hpp"
 #include "io_session.hpp"
@@ -138,6 +139,11 @@ std::optional<cmd::CommandResult> refuse_missing(IoSession& s, const std::string
   }
   s.ed.drc.pending.remove(def);  // a format error may have enqueued it (DRCRemovePending)
   (void)s.ed.cells.remove(def);
+  if (!options.prints(ReadOptions::Verbosity::warnings)) {
+    cmd::CommandResult unreported;  // -quiet / -silent: DBW_LOAD_QUIET prints nothing
+    unreported.status = cmd::Status::failed;
+    return unreported;
+  }
   return fail(codes::kNotFound, "No file \"" + name + "\" found or readable.");
 }
 
@@ -346,42 +352,71 @@ db::CellDef* save_target(IoSession& s) {
   return w != nullptr ? w->root() : nullptr;
 }
 
-/// cmdCheckNewName for `save NAME` under a different name: an existing
-/// file is overwritten only when the user says so, and a cell already named
-/// NAME refuses the rename. A refusal leads Magic to ask for another file
-/// name; a headless host (and an empty answer) aborts the save. Returns the
-/// result to stop with, or nullopt to write.
-std::optional<CommandResult> check_new_name(IoSession& s, const db::CellDef& def, const std::string& name) {
+/// cmdCheckNewName's refusals of `name` for saving `def`: an existing file
+/// the user does not overwrite, or a cell already named `name`.
+bool name_refused(IoSession& s, const db::CellDef& def, const std::string& name) {
   // Only ".mag" is removed for the comparison; a directory stays part of
   // the name (cmdCheckNewName), so `save sub/foo` from `foo` still asks.
   const std::string base = name.size() > 4 && name.ends_with(".mag") ? name.substr(0, name.size() - 4) : name;
   if (base == def.name()) {
-    return std::nullopt;
+    return false;
   }
   const std::string file = name.ends_with(".mag") ? name : name + ".mag";
-  bool refused = false;
   if (s.io.fs.exists(file)) {
     static const std::array<std::string, 2> kYesNo = {"no", "yes"};
     const std::string question = "File " + file + " already exists.\n  Overwrite it with " + def.name() + "? ";
-    refused = cmd::ask(s.ed.prompt, question, kYesNo, 0) == 0;
+    if (cmd::ask(s.ed.prompt, question, kYesNo, 0) == 0) {
+      return true;
+    }
   }
-  if (!refused && s.ed.cells.find(base) != nullptr) {
+  if (s.ed.cells.find(base) != nullptr) {
     s.emit(codes::kBadUsage,
            "Can't rename cell '" + def.name() + "' to '" + base + "' because that cell already exists.");
-    refused = true;
+    return true;
   }
-  if (!refused) {
-    return std::nullopt;
-  }
-  s.emit(codes::kSaveAbandoned, "Cell not saved.");
-  return CommandResult::success();
+  return false;
 }
 
-CommandResult save_as(IoSession& s, db::CellDef& def, const std::string& name) {
-  const bool script = name.size() > 4 && name.ends_with(".tcl");
-  if (auto stop = script ? std::nullopt : check_new_name(s, def, name)) {
-    return std::move(*stop);
+/// cmdCheckNewName's prompt for another file name, answered with one line
+/// of input (TxGetLine); nullopt when there is none (no interpreter, end of
+/// input or an empty line).
+std::optional<std::string> prompt_file_name(IoSession& s, const db::CellDef& def) {
+  if (s.ed.script.interp == nullptr) {
+    return std::nullopt;
   }
+  return script::read_line(*s.ed.script.interp, s.ed.script.output,
+                           "File for cell " + def.name() + ": [hit return to abort save] ");
+}
+
+/// cmdCheckNewName for `save NAME`: a refused name leads to the prompt for
+/// another file name, asked again until one is accepted or the answer is
+/// empty (the save is then abandoned). The name to write, or nullopt.
+std::optional<std::string> check_new_name(IoSession& s, const db::CellDef& def, std::string name) {
+  while (name_refused(s, def, name)) {
+    std::optional<std::string> answer;
+    while (!answer) {
+      answer = prompt_file_name(s, def);
+      if (!answer) {
+        s.emit(codes::kSaveAbandoned, "Cell not saved.");
+        return std::nullopt;
+      }
+      if (auto bad = illegal_cell_name(*answer)) {
+        s.emit(codes::kInvalidName, *bad);
+        answer.reset();
+      }
+    }
+    name = std::move(*answer);
+  }
+  return name;
+}
+
+CommandResult save_as(IoSession& s, db::CellDef& def, const std::string& requested) {
+  const bool script = requested.size() > 4 && requested.ends_with(".tcl");
+  const std::optional<std::string> checked = script ? std::optional{requested} : check_new_name(s, def, requested);
+  if (!checked) {
+    return CommandResult::success();
+  }
+  const std::string& name = *checked;
   if (!script && !s.session.declined.contains(def)) {
     def.flags().no_edit = false;  // "save as" writes a new file (Q-CELL-37); a declined cell stays read-only
   }

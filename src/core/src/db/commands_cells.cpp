@@ -202,33 +202,50 @@ CommandResult cellname_writeable(const cu::Session& s, const std::vector<std::st
 /// name, or 0 when no such cell is loaded; the plain form prints "Cell NAME
 /// is currently loaded." or reports "Cell NAME is not currently loaded."
 /// with no result (CMDEDIT-HIER-08).
-// DBCellPrint SELF without a name: every definition with a use in the
-// selection cell (the selected instances, or the window's root use when the
-// top cell is selected), in cell table order; with none, the edit root.
-// (Magic ref: database/DBcellname.c:880-925)
-CommandResult selected_or_edit_root(const cu::Session& s) {
-  Value::List names;
-  if (const CellDef* selection = s.editor->selection.def()) {
-    s.editor->cells.for_each([&](CellDef& def) {
-      const auto& uses = selection->uses();
-      if (std::any_of(uses.begin(), uses.end(), [&](const auto& use) { return use->def == &def; })) {
-        names.emplace_back(def.name());
+// DBCellPrint(NULL, SELF): every cell with an instance in the selection
+// (cell table order), else the edit root.
+std::vector<const CellDef*> selected_or_root(const cu::Session& s) {
+  std::vector<const CellDef*> defs;
+  const CellDef* sel = s.editor->selection.def();
+  if (sel != nullptr) {
+    const std::vector<db::CellUse*> uses = db::uses_in_search_order(*sel);
+    s.editor->cells.for_each([&](CellDef& d) {
+      if (std::any_of(uses.begin(), uses.end(), [&](const db::CellUse* u) { return u->def == &d; })) {
+        defs.push_back(&d);
       }
     });
   }
-  if (names.size() == 1) {
-    return CommandResult::success(std::move(names.front()));
+  if (defs.empty()) {
+    const CellDef* root = s.editor->edit_root != nullptr ? s.editor->edit_root : s.editor->edit_cell;
+    if (root != nullptr) {
+      defs.push_back(root);
+    }
   }
-  if (!names.empty()) {
-    return CommandResult::success(Value{std::move(names)});
+  return defs;
+}
+
+CommandResult cellname_self(const cu::Session& s, bool dolist) {
+  const std::vector<const CellDef*> defs = selected_or_root(s);
+  if (defs.empty() && !dolist) {
+    cu::print(s, "No cells selected.");
   }
-  const CellDef* root = s.editor->edit_root != nullptr ? s.editor->edit_root : s.editor->edit_cell;
-  return CommandResult::success(Value{root != nullptr ? root->name() : std::string{}});
+  Value::List names;
+  for (const CellDef* def : defs) {
+    if (dolist) {
+      names.emplace_back(def->name());
+    } else {
+      cu::print(s, "Cell " + def->name() + " is currently loaded.");
+    }
+  }
+  if (!dolist) {
+    return CommandResult::success();
+  }
+  return CommandResult::success(names.size() == 1 ? std::move(names.front()) : Value{std::move(names)});
 }
 
 CommandResult cellname_exists(const cu::Session& s, const std::vector<std::string>& args, bool dolist) {
   if (args.size() < 2) {
-    return selected_or_edit_root(s);
+    return cellname_self(s, dolist);
   }
   const CellDef* def = s.editor->cells.find(args[1]);
   if (dolist) {
@@ -350,6 +367,22 @@ std::vector<std::string> relatives(const cu::Session& s, const CellDef& def, boo
 
 // instances: the identifiers of `def`'s uses (cd_parents order, internal
 // parents skipped); childinst: the identifiers of the uses inside `def`.
+// dbGetUseName: an arrayed use is named with its first indices,
+// backslash-escaped (`x2\[0\]`, `x3\[0,1\]`).
+std::string array_use_name(const CellUse& u) {
+  const db::ArrayInfo& a = u.array;
+  const bool isx = a.xhi != a.xlo;
+  const bool isy = a.yhi != a.ylo;
+  if (!isx && !isy) {
+    return u.id;
+  }
+  std::string name = u.id + "\\[";
+  name += isx ? std::to_string(a.xlo) : std::string{};
+  name += isx && isy ? "," : "";
+  name += isy ? std::to_string(a.ylo) : std::string{};
+  return name + "\\]";
+}
+
 std::vector<std::string> use_names(const CellDef& def, bool inside) {
   std::vector<std::string> names;
   if (inside) {
@@ -360,7 +393,7 @@ std::vector<std::string> use_names(const CellDef& def, bool inside) {
   }
   for (const CellUse* u : def.instances()) {
     if (u->parent != nullptr && !u->parent->flags().internal) {
-      names.push_back(u->id);
+      names.push_back(array_use_name(*u));
     }
   }
   return names;

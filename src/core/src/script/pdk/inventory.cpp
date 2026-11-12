@@ -19,7 +19,7 @@ std::vector<std::string_view> framework() {
           "add_message",     "add_dependency",      "add_toolkit_menu",      "add_toolkit_command",
           "add_toolkit_separator", "netlist_to_layout", "suspendall",        "resumeall",
           "pushbox",         "popbox",              "addcommandentry",       "quit",
-          "closewrapper"};
+          "closewrapper",    "gencell_create",      "gencell_change"};
 }
 
 const std::array<PdkInventory, 3>& inventories() {
@@ -60,9 +60,16 @@ proc ::hefesto::pdk::traced {command op} {
 }
 foreach name $::hefesto::pdk::trace_names {
     foreach candidate [list $name ::magic::$name] {
-        if {[info commands $candidate] ne ""} {
-            trace add execution $candidate enter ::hefesto::pdk::traced
+        if {[info commands $candidate] eq ""} {
+            continue
         }
+        # A global name counts only as the engine command's import, not as
+        # a Tcl built-in of the same name (`trace`, `flush`).
+        if {$candidate eq $name && [info commands ::magic::$name] ne ""
+                && [namespace origin $name] ne "::magic::$name"} {
+            continue
+        }
+        trace add execution $candidate enter ::hefesto::pdk::traced
     }
 }
 unset -nocomplain name candidate

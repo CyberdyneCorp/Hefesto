@@ -254,7 +254,7 @@ class CommandLine(unittest.TestCase):
             self.assertEqual(info[f"{data.name}_key"], data.cache_key())
             self.assertEqual(info[f"{data.name}_path"],
                              f".cache/pdks/ciel/{data.family}/versions/{data.version}")
-        self.assertEqual(info["magic_ref_key"], f"magic-ref-{fetch.MAGIC_COMMIT[:12]}")
+        self.assertEqual(info["magic_ref_key"], f"magic-ref-{fetch.MAGIC_COMMIT[:12]}-scmos-graphics-tcltk")
         self.assertEqual(info["magic_ref_path"], "build/ref/magic")
 
     def test_run_steps_continues_after_a_failure_and_reports_it(self):

@@ -99,6 +99,11 @@ decisions = ["Q-CELL-42"]
 outputs = ["stdout.txt", "a_out.mag"]
 reason = "a property value longer than the line buffer does not keep the line feed of its last chunk"
 
+[CELL-PW-05]
+decisions = ["Q-CELL-20"]
+outputs = ["top.mag"]
+reason = "a PDK variable is substituted only when its value is followed by / or the end of the path, so a child under pdk2 is written with its full path; Magic writes $PDK_ROOT2/lib"
+
 [CELL-WR-06]
 decisions = ["Q-CELL-12"]
 outputs = ["a_out.mag"]
@@ -287,3 +292,18 @@ reason = "tag %r inserts the result as one list-quoted word; Magic wraps it in u
 decisions = ["Q-SCRIPT-41"]
 outputs = ["stderr.txt"]
 reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
+
+[SCRIPT-PDK-01]
+decisions = ["Q-SCRIPT-41"]
+outputs = ["stderr.txt"]
+reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
+
+[SCRIPT-PCELL-01]
+decisions = ["Q-SCRIPT-21"]
+outputs = ["stdout.txt"]
+reason = "magic::normalize_value returns inf verbatim; Magic's round() raises 'integer value too large to represent'"
+
+[SCRIPT-PCELL-05]
+decisions = ["Q-SCRIPT-29"]
+outputs = ["stdout.txt"]
+reason = "the non-interactive change of M2 keeps its name without a dialog and replaces the generated cell; Magic's gencell_change reads .params.title.ient and fails with 'invalid command name'"

@@ -32,7 +32,7 @@ Compatibility: exact
 1. If NAME is omitted, the window SHALL show the cell `(UNNAMED)`, which is created empty if needed.
 2. If a cell named NAME is already in memory, it is used. If NAME carried a path that names a different file than the one the cell was read from, the load SHALL fail with "The cell was already read and points to conflicting location". If the stored path is invalid and the given path exists, the given path is adopted with a warning.
 3. Otherwise the cell SHALL be read from the file (see `cell-file-format`, search paths per `path`). `-force` reads even if the technology in the file header differs. `-dereference` ignores file paths stored for subcells and uses the search paths.
-4. If the file does not exist, a new empty cell SHALL be created ("Creating new cell"), unless `-fail` is given, in which case the command SHALL fail with `No file "NAME" found or readable.` On any other read error the cell is discarded.
+4. If the file does not exist, a new empty cell SHALL be created ("Creating new cell"), unless `-fail` is given, in which case the command SHALL fail with `No file "NAME" found or readable.` (printed only when neither `-quiet` nor `-silent` is given: Magic's DBW_LOAD_QUIET). On any other read error the cell is discarded.
 5. `-quiet` prints only errors. `-silent` prints nothing.
 6. `-nowindow` reads the cell into memory without changing any window.
 7. If the window was the edit window, or no window holds the edit cell, the new top cell SHALL become the edit cell. If the cell is read-only, there SHALL be no edit cell. The edit change SHALL be recorded for undo.
@@ -249,6 +249,7 @@ Compatibility: exact
 - With NAME, the cell is written to NAME (adding `.mag`) and then renamed to NAME, unless NAME ends in `.tcl` or a cell named NAME already exists ("there is already a cell named"). If the cell is the edit cell, the window captions are updated.
 - Without NAME, the cell is written to its known file. A cell `(UNNAMED)` or a cell with no file requires a name ("Must specify name for cell (UNNAMED)."). In interactive mode the user is asked for one.
 - Writing over an existing different file asks for confirmation in interactive mode.
+- When the name is refused (an existing file not to be overwritten, or a cell already named NAME: `Can't rename cell 'C' to 'NAME' because that cell already exists.`), the user SHALL be asked for another file name with `File for cell C: [hit return to abort save] ` and one line of input (capability `scripting-api`, "Prompts and dialogs through the script layer"); the answer is checked like NAME, and an empty answer or the end of input abandons the save with `Cell not saved.` (Magic's cmdCheckNewName).
 - On success the cell's modified flag SHALL be cleared. A write failure SHALL report "Could not write file. Cell not written."
 
 The file writing (including locks and the backup/temporary-file protocol) is defined in capability `cell-file-format`.
@@ -311,8 +312,8 @@ Compatibility: behavioral
 |---|---|---|
 | `children` | child cell names of NAME | child instances of NAME's cell |
 | `parents` | cells that instantiate NAME | parent of the instance |
-| `exists`, `self` | with `list`: NAME when it is loaded, else `0`; without `list`: prints "Cell NAME is currently loaded." or reports "Cell NAME is not currently loaded." with no result; without NAME, the selected cell's name | the instance name |
-| `instances` | instance names of cell NAME | the instance itself |
+| `exists`, `self` | with `list`: NAME when it is loaded, else `0`; without `list`: prints "Cell NAME is currently loaded." or reports "Cell NAME is not currently loaded." with no result; without NAME, the cells with an instance in the selection (their names, or one "Cell C is currently loaded." line each), else the edit root's | the instance name |
+| `instances` | instance names of cell NAME; an arrayed instance is named with its first indices, backslash-escaped (`x2\[0\]`, `x3\[0,1\]`) | the instance itself |
 | `childinst` | child instance names | child instances |
 | `celldef` | the cell name | cell name of the instance |
 | `allcells` | all cell names (internal cells excluded) | — |

@@ -136,6 +136,32 @@ TEST_CASE("a selected cell without gencell property derives its type from the na
   CHECK(none.diagnostics.front().text == "No gencell device is selected!");
 }
 
+// Regression (SCRIPT-PCELL-09): with nothing selected `cellname list
+// property {} ...` prints "Unknown cell " twice, and the procedure's own
+// error stays the Tcl result (it was replaced by the printed message).
+TEST_CASE("gencell with nothing selected prints the lookups and raises its own error",
+          "[cap:pcell-toolkit][req:gencell entry point dispatch]") {
+  PcellSession s;
+  REQUIRE(s.run("select clear").ok());
+  const auto r = s.tcl("magic::gencell {}");
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.diagnostics.front().text == "No gencell device is selected!");
+  CHECK(std::count(s.printed.begin(), s.printed.end(), "Unknown cell ") == 2);
+}
+
+// Regression (SCRIPT-AUX-04): magic::gencell calls magic::gencell_create by
+// name, so a script's redefinition (toolkit_rev0.tcl) is the one that runs.
+TEST_CASE("gencell calls the toolkit procedures through the interpreter",
+          "[cap:pcell-toolkit][req:gencell entry point dispatch]") {
+  PcellSession s;
+  REQUIRE(s.tcl("proc magic::gencell_create {type library parameters {orient 0}} "
+                "{ set ::created [list $type $library]; error {redefined create} }").ok());
+  const auto r = s.tcl("magic::gencell tpdk::res M1 w 2");
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.diagnostics.front().text == "redefined create");
+  CHECK(s.value("set ::created") == "res tpdk");
+}
+
 // ---- gencell entry point dispatch ---------------------------------------------------
 
 TEST_CASE("Scripted creation", "[cap:pcell-toolkit][req:gencell entry point dispatch]") {

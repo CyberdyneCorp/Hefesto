@@ -455,7 +455,7 @@ When the grid is on and the window shows the edit cell, an origin square SHALL b
 - `grid on`, `grid off` and `grid 0` SHALL turn it on or off.
 - `grid state` SHALL return `1` or `0` (Magic's Tcl build; the non-Tcl build prints `Grid is on|off`).
 - `grid box` or `grid what` SHALL return `ox oy ox+sx oy+sy` in internal units (the non-Tcl build prints `Grid unit box is (ox, oy) to (ox+sx, oy+sy)`).
-- `grid sx [sy [ox oy]]` and `grid box sx [sy [ox oy]]` SHALL set the grid and turn it on. Spacings are distances, origins are positions. sy defaults to sx and the origin to (0,0). A spacing ≤ 0 SHALL report `Grid spacing must be greater than zero.`. 3 or more than 4 values SHALL print usage.
+- `grid sx [sy [ox oy]]` and `grid box sx [sy [ox oy]]` SHALL set the grid and turn it on. Spacings are distances, origins are positions, each read in the current units like any coordinate (an unsuffixed value follows `units`, or `snap` while `units` was never set). sy defaults to sx and the origin to (0,0). A spacing ≤ 0 SHALL report `Grid spacing must be greater than zero.`. 3 or more than 4 values SHALL print usage.
 - `grid multiple [m|off]` SHALL store a value from 1–255. In Magic the value has no visible effect, and out-of-range values are stored with an error. Hefesto SHALL draw every m-th grid line when the lines would otherwise be too dense to draw, and SHALL reject out-of-range values without storing them (see Q-UI-21).
 - `grid help` SHALL print usage.
 

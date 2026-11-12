@@ -450,3 +450,13 @@ Magic reference: fc5daa9e (8.3.694).
 - Options: replicate | compat (replicate with `magic-compat` ON, the intended `]` → `>` with it OFF) | fix
 - Recommendation: compat. A script relying on Magic's port order keeps it; the intended mapping is evident from the code comment and the reverse map.
 - Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON `D[0]` never matches `D<0>`, as in Magic; with it OFF the mapping is `[`/`]` to `<`/`>` and `D<0>` takes the netlist position of `D[0]` (X-2 tier 2). `readspice` "Port renumbering algorithm" and its scenario "Bus-bracket mapping" updated. Report upstream to Magic. Approved 2026-11-12.
+
+### Q-SCRIPT-48: A confirmation that cannot be asked counts as "yes" in Magic's Tcl build
+- Kind: quirk
+- Status: open (recommendation drafted 2026-11-12, needs the user's decision)
+- Magic behavior: in the Tcl build, TxDialog evaluates `tk_dialog ...` and returns -1 when the result is not an integer, which is what happens without Tk (`-dnull`, a plain Tcl shell). The callers test for the "no" answer (index 0) only, so -1 goes ahead: `tech load` without `-noprompt` reloads a technology over painted layout (then prints `Existing layout may be invalid.`), and `save NAME` over an existing different file overwrites it (and then asks for a file name when the cell name is taken). PDK rc files run `tech load` without `-noprompt`, so a second PDK's rc in a session with paint reloads in Magic.
+- Evidence: tcltk/tclmagic.c:1064-1102 (TxDialog), commands/CmdTZ.c:587-595 (`tech load`), commands/CmdSubrs.c:876-890 (cmdCheckNewName); SCRIPT-PDK-07 and SCRIPT-PCELL-12 captures (CI run 43173319299)
+- Hefesto now: `tech load` refuses without asking when a session cannot ask (TECH-CMD-003, spec `tech-command` "tech load": "A non-interactive session SHALL treat it as declined"), and `cmd::ask` maps a failed `tk_dialog` to the default answer (no), although spec `scripting-api` "Prompts and dialogs through the script layer" says -1. The two specs disagree.
+- Options: replicate (a confirmation that cannot be asked proceeds) | compat (proceed with `magic-compat` ON, decline with it OFF) | fix (decline in both modes; record SCRIPT-PDK-07 and SCRIPT-PCELL-12 as deviations)
+- Recommendation: compat. Data is overwritten only in batch sessions that Magic would overwrite too, and only with `magic-compat` ON; with it OFF a headless session keeps declining, which is the safe intent of `tech-command`. The `scripting-api` text (-1) then holds for magic-compat ON and the `tech-command` text for OFF.
+- Resolution: (pending)

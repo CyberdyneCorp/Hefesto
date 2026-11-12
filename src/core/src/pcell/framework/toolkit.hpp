@@ -59,7 +59,7 @@ class Toolkit {
   /// (empty when it fails or is not a list).
   std::vector<std::string> engine_list(const std::vector<std::string>& words);
   /// A query command (`instance list`, `cellname list`, `what -list`,
-  /// `array -list`, `box values`, `units`) run nested without printing:
+  /// `array -list`, `units`) run nested without printing:
   /// Magic's Tcl build answers them quietly (e.g. an undefined property of
   /// `cellname list property` is an empty result). Its Tcl string form.
   std::string query(const std::vector<std::string>& words);

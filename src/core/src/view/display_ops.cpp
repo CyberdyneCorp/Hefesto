@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "hefesto/cell/hier.hpp"
+#include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/view/diag_codes.hpp"
@@ -349,24 +350,37 @@ CommandResult grid_multiple(GridState& g, const Invocation& inv) {
   return CommandResult::success();
 }
 
-CommandResult grid_set(Target& t, const std::vector<std::string>& values) {
+// cmdParseCoord of one grid word in the current units (spacings relative,
+// origins absolute); an unparsable word is reported and counts as 0.
+diag::Outcome<db::Coord> grid_coordinate(CommandContext& ctx, const Target& t, const std::string& word, cmd::Axis axis,
+                                         bool relative) {
+  const auto value = cmd::parse_distance(word, coordinate_units(t.editor), cmd::DistanceRequest{axis, relative, 1},
+                                         &ctx.sink());
+  if (!value.ok()) {
+    return value.error();
+  }
+  return db::Coord{value.value()};
+}
+
+CommandResult grid_set(CommandContext& ctx, Target& t, const std::vector<std::string>& values) {
   if (values.size() == 3 || values.size() > 4) {
     return fail(codes::kUsage, std::string(kGridUsage));
   }
-  const auto& grid = t.editor.grid;
+  // CmdGrid: the x spacing, then the y spacing, are checked as they are read.
   std::array<db::Coord, 4> v{0, 0, 0, 0};
   for (std::size_t i = 0; i < values.size(); ++i) {
-    const auto c = parse_coord(values[i], grid);
-    if (!c) {
-      return fail(codes::kCoordinate, "Bad coordinate \"" + values[i] + "\"");
+    const bool spacing = i < 2;
+    const auto c = grid_coordinate(ctx, t, values[i], i % 2 == 0 ? cmd::Axis::x : cmd::Axis::y, spacing);
+    if (!c.ok()) {
+      return CommandResult::failure(c.error());
     }
-    v[i] = *c;
+    if (spacing && c.value() <= 0) {
+      return fail(codes::kGrid, "Grid spacing must be greater than zero.");
+    }
+    v[i] = c.value();
   }
   const db::Coord sx = v[0];
   const db::Coord sy = values.size() >= 2 ? v[1] : sx;
-  if (sx <= 0 || sy <= 0) {
-    return fail(codes::kGrid, "Grid spacing must be greater than zero.");
-  }
   GridState& g = t.window.grid();
   g.spacing = db::Rect{v[2], v[3], v[2] + sx, v[3] + sy};
   g.visible = true;
@@ -380,7 +394,7 @@ CommandResult grid_option(CommandContext& ctx, Target& t, int option, const Invo
     case 0:  // box
     case 7:  // what
       if (option == 0 && inv.args.size() > 1) {
-        return grid_set(t, std::vector<std::string>(inv.args.begin() + 1, inv.args.end()));
+        return grid_set(ctx, t, std::vector<std::string>(inv.args.begin() + 1, inv.args.end()));
       }
       // Tcl build: "%d %d %d %d" (commands/CmdFI.c:1350-1362)
       return CommandResult::success(std::to_string(b.x0) + " " + std::to_string(b.y0) + " " + std::to_string(b.x1) +
@@ -414,7 +428,7 @@ CommandResult grid_cmd(CommandContext& ctx, const Invocation& inv) {
   } else if (!inv.args.empty()) {
     option = lookup(inv.args[0], {"box", "help", "multiple", "off", "on", "state", "toggle", "what"});
   }
-  const CommandResult result = option < 0 ? grid_set(t.value(), inv.args) : grid_option(ctx, t.value(), option, inv);
+  const CommandResult result = option < 0 ? grid_set(ctx, t.value(), inv.args) : grid_option(ctx, t.value(), option, inv);
   t.value().editor.windows.notify(t.value().window.id(), Change::grid);
   return result;
 }

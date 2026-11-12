@@ -219,6 +219,17 @@ TEST_CASE("the magic option takes Magic's command line", "[cap:app-startup][req:
   CHECK(ok.out == "minimum\n");
 }
 
+// Regression (SCRIPT-AUX-03, SCRIPT-PDK-03, SCRIPT-API-23): Magic's launcher
+// gives the batch interpreter `argv`, `argc` and `batch_mode`, and its Tcl
+// build has no readline `history` command, so `history` is Tcl's.
+TEST_CASE("the magic option starts the interpreter as Magic's launcher does",
+          "[cap:scripting-auxiliary-tools][req:Interpreter launchers]") {
+  const Run r = run_cli({"--no-log", "-c", "puts [list $batch_mode $argc $argv [info commands ::magic::history]]",
+                         "--magic", "-dnull", "-noconsole", "-norc"});
+  CHECK(r.status == 0);
+  CHECK(r.out == "true 4 {-nowrapper -dnull -noconsole -norc} {}\n");
+}
+
 TEST_CASE("the version option names the Magic compatibility version", "[cap:app-startup][req:Tcl launcher options]") {
   const Run r = run_cli({"--version"});
   CHECK(r.status == 0);

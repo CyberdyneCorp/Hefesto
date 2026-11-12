@@ -17,7 +17,9 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <filesystem>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -133,6 +135,7 @@ class PcellSession {
   cmd::Dispatcher dispatcher{registry, services.view(), project, session};
   script::Interpreter* interp = nullptr;
   std::vector<std::string> errors;
+  std::vector<std::string> printed;  // every message the bound commands reported
 
  private:
   void load_fonts() {
@@ -147,16 +150,30 @@ class PcellSession {
 
   void collect(const cmd::CommandResult& r) {
     for (const auto& d : r.diagnostics) {
+      printed.push_back(d.text);
       if (d.code == "PCELL-GEN-002") {
         errors.push_back(d.text);
       }
     }
   }
 
+  // As the binding's dispatch_procedure: a procedure's Tcl error is the
+  // last error it reports (the one it raised), not a message it printed.
+  static void raised_first(cmd::CommandResult& r) {
+    const auto last = std::find_if(r.diagnostics.rbegin(), r.diagnostics.rend(),
+                                   [](const diag::Diagnostic& d) { return d.severity == diag::Severity::error; });
+    if (last != r.diagnostics.rend()) {
+      std::rotate(r.diagnostics.begin(), std::prev(last.base()), last.base());
+    }
+  }
+
   void bind(const std::string& name, bool global) {
-    auto handler = [this, name](const cmd::Invocation& inv) {
+    auto handler = [this, name, global](const cmd::Invocation& inv) {
       cmd::CommandResult r = dispatcher.execute(cmd::Invocation{name, inv.args, cmd::Origin::script, inv.source});
       collect(r);
+      if (!r.ok() && !global) {
+        raised_first(r);
+      }
       return r;
     };
     interp->define_command("::magic::" + name, handler);

@@ -136,7 +136,7 @@ Compatibility: exact
 | `lib::type` | names an existing instance | non-empty | non-interactive change: select it; P = merge(defaults, stored parameters of its cell); in SPICE mode args = `_convert(args)`; P = merge(P, args); run the change algorithm |
 | `lib::type` | not an existing instance | any | non-interactive create: in SPICE mode args = `_convert(args)`; P = merge(defaults, args); run the create algorithm; select the new instance and rename it to `<instname>` |
 
-The procedure SHALL return `0` on success.
+The procedure SHALL return `0` on success. The create and change algorithms SHALL be run as the script procedures `magic::gencell_create` and `magic::gencell_change`, called by name in the interpreter, so a script that redefines or traces them (for example the legacy `toolkit_rev0.tcl`, capability `scripting-auxiliary-tools`) sees the call; an error they raise is the error of `magic::gencell`. Messages the procedure prints along the way are not its error: with nothing selected, the lookups `cellname list property {} library|gencell` print `Unknown cell ` and the error is `No gencell device is selected!`.
 
 For an existing fixed (`nocell`) instance, both the interactive and the non-interactive call SHALL first set nx = xhi−xlo+1, ny = yhi−ylo+1 and `pitchx`/`pitchy` from `array -list pitch`, as the dialog does (see "Parameter dictionary model"). In the non-interactive call `deltax`/`deltay` come from the arguments or the device defaults. The change then proceeds as specified (Q-SCRIPT-23, resolution: fix in both `magic-compat` settings; Magic reads the undefined variables `delx`/`dely`, raises a Tcl error and changes nothing).
 Compatibility: behavioral
