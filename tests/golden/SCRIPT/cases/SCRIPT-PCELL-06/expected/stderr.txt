@@ -1,0 +1,7 @@
+Cell top couldn't be read
+No such file or directory
+Box tool must be present
+The box is in cell "nfet_FBERKF", not in the edit cell "top"
+The box isn't in the same window as the cursor.
+Cell Topmost cell in the window (top) isn't a child of the edit cell.
+    Cell identifier not changed.

@@ -154,7 +154,9 @@ constexpr std::array<Conflict, 6> kConflicts{{{"clockwise", "orig_clock"},
 // denied), so its error is returned when the file's last component has an
 // extension other than `mag` and `gz`, and for any other name the Magic
 // command runs without trying it: the outcome is Magic's, and a cell name
-// does not record a sandbox denial.
+// does not record a sandbox denial. With magic-compat ON the refused
+// `tcl_load` answers with Tcl's own text (::hefesto::_tcl_load_text); the
+// SCRIPT-SANDBOX denial is recorded either way.
 std::string conflict_proc(const Conflict& c) {
   const std::string magic_call = "   uplevel 1 [list ::magic::" + std::string{c.name} + " {*}$args]\n}\n";
   if (c.name == "load") {
@@ -163,8 +165,15 @@ std::string conflict_proc(const Conflict& c) {
            "      set tail [lindex [split [lindex $args 0] /] end]\n"
            "      set dot [string last . $tail]\n"
            "      if {$dot >= 0 && [string range $tail [expr {$dot + 1}] end] ni {mag gz}} {\n"
-           "         return [uplevel 1 [list ::" +
-           std::string{c.builtin} + " {*}$args]]\n" + "      }\n" + "   }\n" + magic_call;
+           "         if {![catch {uplevel 1 [list ::" +
+           std::string{c.builtin} +
+           " {*}$args]} result options]} {return $result}\n"
+           "         set text [::hefesto::_tcl_load_text {*}$args]\n"
+           "         if {$text eq {}} {return -options $options $result}\n"
+           "         return -code error $text\n"
+           "      }\n"
+           "   }\n" +
+           magic_call;
   }
   return "proc ::" + std::string{c.name} + " {args} {\n" + "   if {![catch {uplevel 1 [list ::" + std::string{c.builtin} +
          " {*}$args]} result]} {return $result}\n" + magic_call;
@@ -318,6 +327,18 @@ void define_tclmagic_commands(const Binding& b) {
 
 // `irsim`, `xcircuit`, `netgen` (decision D-34): diagnostics, no file is
 // sourced (the packages load native libraries, which the sandbox denies).
+// SCRIPT-API-04 (magic-compat ON): Tcl 8.6's error for `load <file>` when
+// dlopen() cannot open it, as Magic's reference build on Linux reports it.
+// The sandbox never opens the file, so the text is the same for every path
+// and reveals nothing about the host file system.
+std::string tcl_load_failure(const std::vector<std::string>& args) {
+  if (args.empty()) {
+    return {};
+  }
+  const std::string& file = args.front();  // ::load passes it first (its dispatch tested its suffix)
+  return "couldn't load file \"" + file + "\": " + file + ": cannot open shared object file: No such file or directory";
+}
+
 void define_application_helpers(const Binding& b) {
   struct Helper {
     std::string_view name;
@@ -336,6 +357,9 @@ void define_application_helpers(const Binding& b) {
       return cmd::CommandResult::success();
     });
   }
+  b.interp.define_command("::hefesto::_tcl_load_text", [b](const cmd::Invocation& call) {
+    return cmd::CommandResult::success(cmd::Value{b.magic_compat() ? tcl_load_failure(call.args) : std::string{}});
+  });
   b.interp.define_command("::hefesto::_rebase_cell_paths", [b](const cmd::Invocation& call) {
     if (b.editor() != nullptr && call.args.size() == 2) {
       detail::rebase_cell_paths(*b.editor(), call.args[0], call.args[1]);

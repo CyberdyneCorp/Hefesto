@@ -24,4 +24,22 @@ namespace hefesto::pcell::native {
 [[nodiscard]] std::unique_ptr<NativeGenerator> make_fixed_device(HelperFamily family, std::string defaults,
                                                                  std::string cell);
 
+/// The base cell an sg13g2 fixed device builds before placing it (PDK ref:
+/// IHP-Open-PDK 5e6d592e ihp-sg13g2-fix.tcl:268-580): `<type>_draw` runs
+/// `<type>_generate` when `cellname list exists <cell>` is 0, which loads
+/// `cell`, sources `${sg13g2::script_path}/<cell>.tcl` (the PDK keeps the
+/// layout as a Tcl script) and loads the window's cell again.
+struct BaseCellScript {
+  std::string guard;  // the cell `_generate` tests first (schottky's tests "schottky_cell")
+};
+
+/// An sg13g2 fixed device: the `fixed_check`/`fixed_draw` of the other PDKs
+/// (the same text) after the base cell is generated. With magic-compat ON the
+/// generation is Magic's sequence, which loses the edit cell, view and box
+/// (SCRIPT-PDK-14: the first device is not placed); with it OFF the edit
+/// context is put back afterwards and the device is placed in the edit cell
+/// (Q-SCRIPT-45, resolution: compat).
+[[nodiscard]] std::unique_ptr<NativeGenerator> make_generated_fixed_device(std::string defaults, std::string cell,
+                                                                           BaseCellScript base);
+
 }  // namespace hefesto::pcell::native

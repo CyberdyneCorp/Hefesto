@@ -6,8 +6,9 @@
 # PDK's Tcl generators. Every device is generated with its defaults, with each
 # `values` entry (one parameter changed: the PDK bounds, out-of-bounds values
 # that `_check` corrects, and interior values) and with each `combos` entry.
-# Values stay numbers: other text runs the Tcl generator by design. The sg13g2
-# fixed devices have no native generator yet (SCRIPT-PDK-14, Q-SCRIPT-45).
+# Values stay numbers: other text runs the Tcl generator by design. The fixed
+# devices build their base cell from the PDK's layout script on first use
+# (Q-SCRIPT-45, with the default magic-compat ON as in the Tcl run).
 
 set = "ihp"
 library = "sg13g2"
@@ -59,3 +60,15 @@ combos = [
   "ng 2 gate_ring 1 guard 1 ccols 2 w 2.0", "ng 3 gate_ring 1 conn_gates 0", "w 0.6 l 0.3 viagate 100 ng 2",
   "w 0.1 l 0.3 ng 2 gate_ring 1",
 ]
+
+[[group]]
+name = "fixed"
+fixed = true
+devices = [
+  "diodevdd_2kv", "diodevdd_4kv", "diodevss_2kv", "diodevss_4kv", "nmoscl_2", "nmoscl_4", "scr1", "schottky",
+]
+values.nx = ["0", "2", "5", "1.5"]
+values.ny = ["0", "3", "2.5"]
+values.deltax = ["0.5", "-1", "2u", "0.0004"]
+values.deltay = ["1.25", "-0.5"]
+combos = ["nx 2 ny 2", "nx 3 ny 2 deltax 1 deltay 2", "nx 2 ny 2 deltax 0.123456", "nx 4 deltay 3"]

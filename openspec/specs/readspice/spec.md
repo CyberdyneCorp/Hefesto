@@ -64,7 +64,7 @@ For a loaded cell C with pin candidates T (tokens 2..end of the `.subckt` line),
 4. Set n = 1. For each token t in T, in order:
    - Stop at the first token containing `=` (parameters follow).
    - Skip empty tokens.
-   - Find the port index by name t. If not found, try t with `[`/`]` mapped to `<`/`>`. If still not found, try `<`/`>` mapped to `[`/`]`. If still not found, try a case-insensitive comparison against each port name for indices 0..`port last`. If still not found, try a case-insensitive match against the collected label texts: on a match, `goto` that label and `port <label> make n`.
+   - Find the port index by name t. If not found, try t with `[`/`]` mapped to `<`/`>`: with `magic-compat` ON as Magic's `string map {[ < ] >]}`, which maps `]` to `>]` (so `D[0]` becomes `D<0>]` and never matches), with it OFF `]` to `>` (Q-SCRIPT-47, resolution: compat). If still not found, try `<`/`>` mapped to `[`/`]`. If still not found, try a case-insensitive comparison against each port name for indices 0..`port last`. If still not found, try a case-insensitive match against the collected label texts: on a match, `goto` that label and `port <label> make n`.
    - If a port was found or created, set its index to n, increment n, and record the mapping t → matched name.
    - If nothing matched, run `goto t`. If that returns a layer, `port t make n` and increment n. Record t → t.
 5. If some port's final index differs from its index before step 2, or a port was created in step 4, print `Cell <C> port order was modified.` This holds in both `magic-compat` settings (Q-SCRIPT-32, resolution: fix for the message). Magic compares each pin's index after step 2 with n, so it reports every cell that already had named ports.
@@ -86,7 +86,8 @@ Compatibility: exact
 
 #### Scenario: Bus-bracket mapping
 - **GIVEN** cell `reg` has port `D<0>` and the netlist pin is `D[0]`
-- **THEN** port `D<0>` SHALL receive the netlist position of `D[0]`
+- **THEN** with `magic-compat` OFF port `D<0>` SHALL receive the netlist position of `D[0]`
+- **AND** with `magic-compat` ON `D[0]` SHALL NOT match `D<0>`, which keeps the index step 2 gave it, as in Magic (Q-SCRIPT-47)
 
 #### Scenario: Extra layout port
 - **GIVEN** cell `inv` has ports A=1, Y=2, VDD=3, VSS=4, BODY=5 and the netlist pins are `A Y VDD VSS`

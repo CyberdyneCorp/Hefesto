@@ -111,6 +111,35 @@ TEST_CASE("Shared library load", "[cap:scripting-api][req:Name collisions with T
   CHECK(f.editor.cells.find("libfoo.so") == nullptr);
 }
 
+TEST_CASE("a refused shared library load answers with Tcl's text under magic-compat",
+          "[cap:scripting-api][req:Name collisions with Tcl built-ins]") {
+  // Regression (golden SCRIPT-API-04): Magic's `load /nonexistent/libfoo.so`
+  // returns Tcl's dlopen() error; the sandbox's own text only with
+  // magic-compat OFF. The denial is recorded either way.
+  struct Denials final : script::ScriptObserver {
+    int count = 0;
+    void on_denied(const script::DeniedOperation&) override { ++count; }
+  };
+  SECTION("magic-compat ON") {
+    Denials denials;
+    BindingFixture f{true};
+    f.editor.script.events.add(denials);
+    CHECK(f.error("load /nonexistent/libfoo.so") ==
+          "couldn't load file \"/nonexistent/libfoo.so\": /nonexistent/libfoo.so: cannot open shared object file: "
+          "No such file or directory");
+    CHECK(f.error("load lib/x.so Pkg") ==
+          "couldn't load file \"lib/x.so\": lib/x.so: cannot open shared object file: No such file or directory");
+    CHECK(denials.count == 2);
+  }
+  SECTION("magic-compat OFF") {
+    Denials denials;
+    BindingFixture f{false};
+    f.editor.script.events.add(denials);
+    CHECK(f.error("load /nonexistent/libfoo.so") == "load: loading native extensions is not permitted in the script sandbox");
+    CHECK(denials.count == 1);
+  }
+}
+
 TEST_CASE("Cell load with dotted directory", "[cap:scripting-api][req:Name collisions with Tcl built-ins]") {
   BindingFixture f;
   // The built-in fails, the last component has no dot: Magic's load runs

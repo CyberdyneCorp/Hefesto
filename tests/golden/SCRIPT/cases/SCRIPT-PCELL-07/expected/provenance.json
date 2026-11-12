@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "case": "SCRIPT-PCELL-07",
+  "area": "SCRIPT",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:4332da8fb1188ab7bace3ec9295f326e3b4d495b224dd4ebfb68405251f39132",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-12T11:37:08Z",
+  "outputs": {
+    "stderr.txt": "4d329eed90216ffbff1349019cd4fa4b8e6809ee31633d7d0a86da9cd1efef14",
+    "stdout.txt": "d13db55c1e39ccd3c734f32f8eb7462d0bbfc851c6cc9802a454518094cf621a"
+  }
+}

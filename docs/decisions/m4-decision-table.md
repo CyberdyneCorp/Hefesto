@@ -179,3 +179,11 @@ All applied in "Align the M4 specs with the approved decisions":
 - `cmd-labels-properties` "Label command": the font word `default` is the default font (Q-SCRIPT-31).
 - `ui-gui-managers` "Text helper": the Q-SCRIPT-31 note no longer describes a defect.
 - `readspice` "Line preprocessing": the token join, in both `magic-compat` settings (Q-SCRIPT-32).
+
+## User decisions of 2026-11-12 (final round)
+
+Taken on the captures of golden-capture runs 43151033297 and 43173319299; each entry's `Resolution:` line is in `open-questions/`.
+
+- **Q-CELL-45** (new): `cellname list filepath` returns Magic's whole stored path with `magic-compat` ON (its `TCL_STATIC` result sees the `/` put back) and the directory with it OFF. **compat.**
+- **Q-SCRIPT-47** (new): `readspice`'s `string map {[ < ] >]}` never matches `D[0]` to `D<0>` with `magic-compat` ON; OFF maps `]` to `>`. **compat.**
+- **Q-SCRIPT-45** (changed from replicate): the native sg13g2 fixed devices reproduce Magic's recorded sequence (SCRIPT-PDK-14: the first device of a kind is not placed when there was no box, and the edit cell becomes the window's cell) with `magic-compat` ON, and put back the edit context with it OFF. **compat.**

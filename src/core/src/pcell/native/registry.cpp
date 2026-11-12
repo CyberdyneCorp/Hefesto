@@ -5,7 +5,13 @@
 
 #include <utility>
 
+#include "pcell/native/tcl_value.hpp"
+
 namespace hefesto::pcell {
+
+std::string NativeHost::evaluate(std::string_view /*script*/) {
+  throw native::Unsupported{"Tcl evaluation"};
+}
 
 void NativeRegistry::add(const script::PdkIdentity& pdk, std::string device,
                          std::unique_ptr<NativeGenerator> generator) {

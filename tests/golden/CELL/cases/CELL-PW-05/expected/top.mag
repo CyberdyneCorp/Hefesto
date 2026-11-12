@@ -1,0 +1,14 @@
+magic
+tech scmos
+timestamp 1794483892
+<< checkpaint >>
+rect -14 -14 18 18
+use c1  c1_0 $PDK_ROOT/lib
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use c2  c2_0 $PDK_ROOT2/lib
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 4 4
+<< end >>

@@ -143,7 +143,7 @@ class TechPartsTest(unittest.TestCase):
                 checked += 1
                 with self.subTest(case=path.parent.name, tech=variant):
                     self.assertTrue({f"{variant}-{p}.tech" for p in common.TECH_PARTS} <= tos)
-        self.assertGreaterEqual(checked, 12)
+        self.assertGreaterEqual(checked, 11)  # DRC-PDK-3 copies the whole libs.tech/magic tree since M4
 
 
 class GzipInputTest(unittest.TestCase):

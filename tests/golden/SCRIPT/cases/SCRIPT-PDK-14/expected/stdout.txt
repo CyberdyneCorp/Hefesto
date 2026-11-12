@@ -1,0 +1,30 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 11:38:10 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+Creating new cell
+0 0
+0 0
+0 top
+0 diodevdd_2kv
+0 diodevdd_2kv
+0 {}
+0 {{gencell diodevdd_2kv} {parameters {nx 1 ny 1 deltax 0 deltay 0 nocell 1 compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv} xstep 13.3 ystep 35.67 class diode}} {library sg13g2}}
+0 {{gencell npn13g2} {FIXED_BBOX -580 -658 580 584} {parameters {w 0.07 l 0.9 area 0.063 peri 1.94 class bjt lmin 0.9 lmax 0.9 nx 1 nxmax 10 compatible {npn13g2 npn13g2l npn13g2v} elc 1 erc 1 etc 1 ebc 1 doports 1}} {library sg13g2}}
+0 {{MASKHINTS_CONTBAR -165 -242 165 -210}}
+0 {}

@@ -26,8 +26,9 @@ CommandResult cmd_readspice(CommandContext& ctx, const Invocation& inv) {
     return wrong_args("readspice netfile");
   }
   ReadSpiceOptions options;
-  options.continuation =
-      ctx.project().compat.magic_compat ? ContinuationMode::magic : ContinuationMode::fixed;
+  const bool magic_compat = ctx.project().compat.magic_compat;
+  options.continuation = magic_compat ? ContinuationMode::magic : ContinuationMode::fixed;
+  options.magic_bus_brackets = magic_compat;
   return readspice(ctx, inv.args[0], options);
 }
 

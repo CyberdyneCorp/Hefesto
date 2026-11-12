@@ -121,7 +121,7 @@ Test cases to be captured later by running Magic 8.3.694 (fc5daa9e) headless (`m
 | DRC-CIF-8 | drc-cif-rules | `scalefactor 10` drc section with only cif rules | `drc *halo` | Q-DRC-2 |
 | DRC-PDK-1 | all | sky130A tech; sky130_fd_sc_hd inverter and a deliberately broken copy | CAP | regression over real PDK |
 | DRC-PDK-2 | all | gf180mcu tech; standard cell row | CAP | regression over real PDK |
-| DRC-PDK-3 | all | IHP sg13g2 tech; a metal1/metal2 MOM finger capacitor drawn with `box`/`paint` (stand-in for the Tcl `cap_cmomf` generator, M4) with one finger too close | CAP | regression over real PDK |
+| DRC-PDK-3 | all | IHP sg13g2 with the PDK rc file; two MiM capacitors of the PDK's Tcl `cap_cmim` generator with the plates 0.4 µm apart (MIM.b asks 0.6 µm). IHP-Open-PDK has no `cap_cmomf` generator (m4-scripting tasks.md 12.3) | CAP | regression over real PDK |
 | DRC-STD-SKY130-HD | drc-engine | sky130A tech, PDK startup settings; every `sky130_fd_sc_hd` cell in sorted order: `load`, `select top cell`, `drc check`, `drc catchup`, `drc listall why`, `drc list count total`, `save` (design D14; label `golden-slow`) | stdout; the DRC sections of every saved cell (derived output) | standard-cell exit criterion |
 | DRC-STD-GF180-7T5V0 | drc-engine | gf180mcuD tech, PDK startup settings; every `gf180mcu_fd_sc_mcu7t5v0` cell, as DRC-STD-SKY130-HD | as DRC-STD-SKY130-HD | standard-cell exit criterion |
 

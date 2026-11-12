@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -52,6 +53,11 @@ class Toolkit {
   /// running command. The result's Tcl string form ("" after a failure, as
   /// Magic's quiet commands leave the result empty).
   std::string engine(const std::vector<std::string>& words);
+  /// The engine command `::magic::<words>` evaluated by the interpreter, as
+  /// toolkit.tcl's `[box values]` is: its messages print when it runs, in
+  /// order with the PDK procedures' output. Its result split as a Tcl list
+  /// (empty when it fails or is not a list).
+  std::vector<std::string> engine_list(const std::vector<std::string>& words);
   /// A query command (`instance list`, `cellname list`, `what -list`,
   /// `array -list`, `box values`, `units`) run nested without printing:
   /// Magic's Tcl build answers them quietly (e.g. an undefined property of
@@ -162,6 +168,11 @@ struct DeviceName {
 /// -list count` and pitchx/pitchy from `array -list pitch` (the first
 /// selected use's sublist when magic-compat is off, Q-CMDEDIT-63).
 void set_array_parameters(Toolkit& tk, ParameterDict& parameters);
+
+/// Saves the current window's cell, view and expanded uses, the edit cell
+/// and frame and the box; the returned function puts them back (native
+/// generators with magic-compat OFF, Q-SCRIPT-45).
+[[nodiscard]] std::function<void()> keep_edit_context(editor::EditorState& editor);
 
 /// `dict create {*}$words` (Tcl's error for an odd count).
 [[nodiscard]] diag::Outcome<ParameterDict> dict_create(const std::vector<std::string>& words);

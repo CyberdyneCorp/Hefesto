@@ -56,10 +56,10 @@ TEST_CASE("the built-in generators of design D10 per exact PDK release",
   CHECK(count_for({"sky130", "sky130A", open_pdks}) == 27);
   // gf180mcu: 21 MOS devices and 11 fixed devices.
   CHECK(count_for({"gf180mcu", "gf180mcuD", open_pdks}) == 32);
-  // sg13g2: the 4 MOSFETs and their 4 RF variants; the fixed devices wait
-  // for SCRIPT-PDK-14 (Q-SCRIPT-45).
-  CHECK(count_for({"ihp-sg13", "ihp-sg13g2", ihp}) == 8);
-  CHECK(pcell::builtin_generators().size() == 67);
+  // sg13g2: the 4 MOSFETs, their 4 RF variants and the 8 fixed devices (Q-SCRIPT-45).
+  CHECK(count_for({"ihp-sg13", "ihp-sg13g2", ihp}) == 16);
+  CHECK(pcell::builtin_generators().size() == 75);
+  CHECK(pcell::builtin_generators().find({"ihp-sg13", "ihp-sg13g2", ihp}, "sg13g2::schottky") != nullptr);
   const auto& builtin = pcell::builtin_generators();
   CHECK(builtin.find({"sky130", "sky130A", open_pdks}, "sky130::sky130_fd_pr__nfet_01v8") != nullptr);
   CHECK(builtin.find({"sky130", "sky130A", open_pdks}, "sky130::sky130_fd_pr__res_generic_po") == nullptr);

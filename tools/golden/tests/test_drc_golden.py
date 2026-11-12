@@ -180,7 +180,10 @@ class M3CaseSpecTest(unittest.TestCase):
         corpus = [r for r in rows if r in drc_cases.STD_LIBS]
         self.assertEqual(len(rows) - len(corpus), 118)
         self.assertEqual(sorted(corpus), sorted(drc_cases.STD_LIBS))
-        self.assertEqual(sorted(s.id for s in drc_cases.specs()), sorted(set(rows) - set(corpus)))
+        # DRC-PDK-3 runs the IHP Tcl generator with the PDK rc file: an M4 case (m4_cases.py).
+        m4 = [s.id for s in drc_cases.m4_specs()]
+        self.assertEqual(m4, ["DRC-PDK-3"])
+        self.assertEqual(sorted(s.id for s in drc_cases.specs()), sorted(set(rows) - set(corpus) - set(m4)))
 
     def test_requirements_are_exact_spec_headings(self):
         for spec in self.specs:

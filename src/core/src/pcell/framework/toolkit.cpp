@@ -71,6 +71,17 @@ std::string Toolkit::query(const std::vector<std::string>& words) {
   return r.ok() ? value_text(r.value) : std::string{};
 }
 
+std::vector<std::string> Toolkit::engine_list(const std::vector<std::string>& words) {
+  if (words.empty()) {
+    return {};
+  }
+  std::vector<std::string> call{words};
+  call.front() = "::magic::" + call.front();
+  const cmd::CommandResult r = interp_->evaluate(merge_tcl_list(call));
+  auto split = split_tcl_list(r.ok() ? value_text(r.value) : std::string{});
+  return split.ok() ? std::move(split).value() : std::vector<std::string>{};
+}
+
 std::vector<std::string> Toolkit::query_list(const std::vector<std::string>& words) {
   auto split = split_tcl_list(query(words));
   return split.ok() ? std::move(split).value() : std::vector<std::string>{};

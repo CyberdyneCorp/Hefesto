@@ -321,7 +321,7 @@ Compatibility: behavioral
 | `create NAME` | create an empty cell if absent | error (use `getcell`) |
 | `delete NAME [-noprompt]` | delete the cell from memory (asks if modified, unless `-noprompt`) | error (use `delete`) |
 | `dereference NAME` | drop stored file path and reload via search paths | unimplemented |
-| `filepath NAME [PATH]` | report or set the file directory | unimplemented |
+| `filepath NAME [PATH]` | report or set the file directory; with `list` and `magic-compat` ON the whole stored file path, as in Magic (Q-CELL-45) | unimplemented |
 | `flags NAME` | report cell flags (available, modified, read-only, …) | unimplemented |
 | `timestamp NAME [VALUE]` | report or set the integer timestamp. A non-integer is "Invalid timestamp". | unimplemented |
 | `lock`, `unlock` | error "Cell definitions cannot be locked" | lock/unlock the instance (locked instances cannot be moved, copied or deleted) |
@@ -338,6 +338,11 @@ More than 4 arguments, or an unknown option, SHALL print usage. The output order
 Compatibility: behavioral
 
 (Magic ref: commands/CmdCD.c:1125-1700, database/DBcellname.c:754-1200, database/DBcellname.c:1470-1535)
+
+#### Scenario: File path of a cell
+- **GIVEN** cell `inv` whose file path was set with `cellname filepath inv /lib`
+- **WHEN** `cellname filepath inv` and `cellname list filepath inv` are run
+- **THEN** both SHALL give `/lib`, except that with `magic-compat` ON the list form SHALL give the whole stored path `/lib/inv`, as Magic does (Q-CELL-45, resolution: compat)
 
 #### Scenario: Orientation names
 - **GIVEN** a selected instance placed with transform x'=−x, y'=−y

@@ -99,6 +99,11 @@ TEST_CASE("drc_save_report loads the named cell and reloads the original",
   REQUIRE(r.ok());
   CHECK(DrcFixture::texts(r).find("loading inv\n") != std::string::npos);
   CHECK(s.report().starts_with("inv "));
+  // `other` is loaded again, but `load` keeps the selection: inv's top cell, selected by
+  // `select top cell`, is what `cellname list self` names, as in Magic (DBCellPrint SELF).
+  CHECK(s.f.value("cellname window") == "other");
+  CHECK(s.f.value("cellname list self") == "inv");
+  REQUIRE(s.f.run("select clear").ok());
   CHECK(s.f.value("cellname list self") == "other");
 }
 

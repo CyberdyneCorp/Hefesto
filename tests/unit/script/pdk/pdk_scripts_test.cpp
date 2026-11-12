@@ -404,6 +404,9 @@ TEST_CASE("Portable library reference", "[cap:scripting-pdk-integration][req:PDK
   s.eval("cellname delete sky130_fd_sc_hd__inv_1");
   s.eval("load " + parent);
   s.eval("select top cell; expand");
-  CHECK(s.eval("cellname list filepath sky130_fd_sc_hd__inv_1") ==
-        (*variant / "libs.ref/sky130_fd_sc_hd/mag").string());
+  // The printed form is the directory; the list form returns the whole
+  // stored path with magic-compat ON (Q-CELL-45).
+  const std::string libdir = (*variant / "libs.ref/sky130_fd_sc_hd/mag").string();
+  CHECK(s.eval("cellname filepath sky130_fd_sc_hd__inv_1") == libdir);
+  CHECK(s.eval("cellname list filepath sky130_fd_sc_hd__inv_1").starts_with(libdir + "/sky130_fd_sc_hd__inv_1"));
 }
