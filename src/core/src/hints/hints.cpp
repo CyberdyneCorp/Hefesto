@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <utility>
 #include <variant>
@@ -73,6 +74,12 @@ db::Coord scale_value(std::int64_t v, std::int64_t up, std::int64_t down) noexce
   return i;
 }
 
+// The part of `r` inside `clip` (null when none), as HintRegion::clipped.
+db::Rect clip_rect(const db::Rect& r, const db::Rect& clip) noexcept {
+  return db::Rect{std::max(r.x0, clip.x0), std::max(r.y0, clip.y0), std::min(r.x1, clip.x1),
+                  std::min(r.y1, clip.y1)};
+}
+
 bool overlaps(const db::Rect& a, const db::Rect& b) noexcept {
   return a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 }
@@ -124,6 +131,9 @@ class FlatHintCopier {
     }
   }
 
+  /// Paints what search() found into the destination.
+  void commit() { batch_.commit(destination_); }
+
  private:
   template <typename F>
   void for_each_overlapping_element(const db::CellUse& use, const db::Transform& to_root, const F& f) const {
@@ -146,7 +156,7 @@ class FlatHintCopier {
   void visit(const Element& e) {
     const bool descended = db::descends(*e.use, mode_);
     if (descended || magic_compat_) {
-      copy_hints(*e.use->def, destination_, db::compose(to_destination_, e.to_root), clip_);
+      batch_.add(*e.use->def, db::compose(to_destination_, e.to_root), clip_);
     }
     if (descended) {
       search(*e.use->def, e.to_root);
@@ -159,6 +169,7 @@ class FlatHintCopier {
   db::CellDef& destination_;
   db::Descend mode_;
   bool magic_compat_;
+  HintBatch batch_;
 };
 
 }  // namespace
@@ -234,29 +245,54 @@ bool inside(const HintRegion& region, const Segment& segment, bool magic_compat)
 
 void copy_hints(const db::CellDef& source, db::CellDef& destination, const db::Transform& transform,
                 const std::optional<db::Rect>& clip) {
-  std::vector<std::pair<std::string, HintRegion>> copies;
+  HintBatch batch;
+  batch.add(source, transform, clip);
+  batch.commit(destination);
+}
+
+void HintBatch::add(const db::CellDef& source, const db::Transform& transform, const std::optional<db::Rect>& clip) {
   source.properties().for_each([&](std::string_view key, const db::PropertyValue& value) {
     const auto* region = std::get_if<HintRegion>(&value);
-    if (region != nullptr && hint_name(key)) {
-      HintRegion moved = region->transformed(transform);
-      copies.emplace_back(std::string{key}, clip ? moved.clipped(*clip) : std::move(moved));
+    if (region == nullptr || !hint_name(key)) {
+      return;
+    }
+    auto it = std::find_if(pending_.begin(), pending_.end(), [&](const Pending& p) { return p.key == key; });
+    if (it == pending_.end()) {
+      it = pending_.insert(pending_.end(), Pending{std::string{key}, {}});
+    }
+    // The transformed region is rebuilt (geometry beyond the usable plane
+    // drops out there, as in copy_hints); its strips, clipped, are painted
+    // by commit().
+    const HintRegion moved = region->transformed(transform);
+    for (const db::Rect& r : moved.strips()) {
+      const db::Rect c = clip ? clip_rect(r, *clip) : r;
+      if (!c.is_null()) {
+        it->rects.push_back(c);
+      }
     }
   });
-  for (auto& [key, region] : copies) {
-    if (const auto* existing = std::get_if<HintRegion>(destination.properties().find(key))) {
-      if (region.empty()) {
+}
+
+void HintBatch::commit(db::CellDef& destination) {
+  for (Pending& p : pending_) {
+    HintRegion region;
+    if (const auto* existing = std::get_if<HintRegion>(destination.properties().find(p.key))) {
+      if (p.rects.empty()) {
         continue;
       }
-      region.paint(*existing);
+      region = *existing;
     }
-    db::set_property(destination, key, db::PropertyValue{std::move(region)});
+    region.paint(std::span<const db::Rect>{p.rects});
+    db::set_property(destination, p.key, db::PropertyValue{std::move(region)});
   }
+  pending_.clear();
 }
 
 void flat_copy_hints(const db::CellDef& root, const db::Rect& area, const db::Transform& to_destination,
                      db::CellDef& destination, db::Descend mode, bool magic_compat) {
   FlatHintCopier copier{area, to_destination, destination, mode, magic_compat};
   copier.search(root, db::kIdentity);
+  copier.commit();
 }
 
 void translate_hints(db::CellDef& cell, db::Coord dx, db::Coord dy) {

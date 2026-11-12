@@ -105,11 +105,12 @@ void yank_cell_paint(Context& ctx, const db::CellDef& def, const db::Rect& area,
   });
 }
 
-void yank_child_hints(Context& ctx, const db::CellDef& def, const db::Rect& area, const db::Transform& t) {
+void yank_child_hints(hints::HintBatch& batch, const db::CellDef& def, const db::Rect& area,
+                      const db::Transform& t) {
   (void)search_elements(def, area, [&](const Element& e, const db::Rect& child_area) {
     const db::Transform to_yank = db::compose(t, e.to_parent);
-    hints::copy_hints(*e.use->def, ctx.yank, to_yank, db::apply(to_yank, child_area));
-    yank_child_hints(ctx, *e.use->def, child_area, to_yank);
+    batch.add(*e.use->def, to_yank, db::apply(to_yank, child_area));
+    yank_child_hints(batch, *e.use->def, child_area, to_yank);
     return Visit::next;
   });
 }
@@ -121,7 +122,11 @@ void yank_paint(Context& ctx, const db::CellDef& def, const db::Rect& area, cons
 }
 
 void yank_hints(Context& ctx, const db::CellDef& def, const db::Rect& area, const db::Transform& to_yank) {
-  yank_child_hints(ctx, def, area, to_yank);
+  // One union per hint for the whole yank (dbCopyMaskHintsFunc paints in
+  // place), not one rebuild of the yank's region per element.
+  hints::HintBatch batch;
+  yank_child_hints(batch, def, area, to_yank);
+  batch.commit(ctx.yank);
 }
 
 }  // namespace hefesto::drc::detail

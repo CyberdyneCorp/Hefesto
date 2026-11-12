@@ -21,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -97,6 +98,30 @@ struct Segment {
 /// (db::set_property).
 void copy_hints(const db::CellDef& source, db::CellDef& destination, const db::Transform& transform,
                 const std::optional<db::Rect>& clip);
+
+/// A sequence of copy_hints() calls into one destination, painted at once:
+/// add() collects each source's hints (transformed and clipped as
+/// copy_hints does) and commit() unions them into the destination, giving
+/// the regions and the (possibly empty) properties the calls one by one
+/// would. Each copy_hints() call rebuilds the destination region with all
+/// it already holds, so flattening many hinted instances one call at a
+/// time is quadratic; Magic paints into the destination plane in place
+/// (dbCopyMaskHintsFunc). Used by the flattening copies (DRC yank,
+/// flat_copy_hints).
+class HintBatch {
+ public:
+  /// Collects `source`'s hints as copy_hints(source, ., transform, clip).
+  void add(const db::CellDef& source, const db::Transform& transform, const std::optional<db::Rect>& clip);
+  /// Unions what add() collected into `destination` and empties the batch.
+  void commit(db::CellDef& destination);
+
+ private:
+  struct Pending {
+    std::string key;
+    std::vector<db::Rect> rects;
+  };
+  std::vector<Pending> pending_;  // in the order the keys were first added
+};
 
 /// DBFlatCopyMaskHints (DBTreeSrCells with `mode`): copies into
 /// `destination` the hints of the array elements of `root`'s descendants
