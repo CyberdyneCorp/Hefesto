@@ -80,16 +80,14 @@ Compatibility: native
 - **THEN** the Layers, Cells and Libraries tabs SHALL be right of the canvas and the Inspector a floating card at that place
 
 ### Requirement: Undo history
-On the desktop, the top bar SHALL have Undo and Redo buttons that run `undo` and `redo`, are enabled only when there is a step to undo or redo, and name the next step in their tooltips. A right click on Undo (or the Menu key while it has the focus) SHALL open the undo history, titled with the step count and the history limit ("Undo history · N steps · limit L"):
+On the desktop, the top bar SHALL have Undo and Redo buttons that run `undo` and `redo`, are enabled only when there is a step to undo or redo, and name the next step in their tooltips. A right click on Undo, pressing and holding it for 500 ms (a shorter press is a click), or the Menu key while it has the focus SHALL open the undo history, titled with the step count and the history limit ("Undo history · N steps · limit L"):
 - first the undone steps that can be redone, farthest first, each choosing `redo N`
 - then the undoable steps, newest first, each choosing `undo N`
-- at most 8 of each, each named by the description of its newest event (`undo print`)
+- at most 8 of each, each named after the user command that made it ("paint metal1"; layout-undo's step label), or by the description of its newest event when the step has no label
 - while undo recording is off (`undo disable`), only the redo entries are enabled
 - with an empty log, the status bar says "nothing to undo or redo" instead
 
 After any command that moves the undo log, the status bar SHALL read "Undid STEP · N more steps" (or "Redid …").
-
-Opening the history by pressing and holding Undo, and naming steps after the user command that made them ("paint metal1"), are deferred to M4 (user decision 2026-11-10); the second needs a per-step command label in the undo log (capability `layout-undo`).
 
 Compatibility: native
 
