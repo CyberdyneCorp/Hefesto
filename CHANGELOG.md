@@ -94,6 +94,9 @@ release notices.
 - **`hefesto-cli --interactive` with standard input from a character
   device such as `/dev/null` ends at end of input on macOS** instead of
   waiting forever.
+- **`file link NAME` and `file readlink NAME` with a NUL character in NAME
+  fail with "no such file or directory"** instead of crashing: Tcl 8.6.16
+  passes a NULL path to `readlink()` there.
 - **Outline fonts with far-apart curve control points** no longer trigger
   undefined integer overflow while flattening Bézier curves; the points
   wrap as Magic's C arithmetic does.

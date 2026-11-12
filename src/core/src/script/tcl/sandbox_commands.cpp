@@ -27,6 +27,7 @@
 #include <tcl.h>
 
 #include <array>
+#include <cerrno>
 #include <cstdint>
 #include <optional>
 #include <set>
@@ -127,7 +128,23 @@ struct Guard {
   /// `source`: the call evaluates a script, whose own commands report their
   /// denials; what is left unclaimed is reported without changing the result.
   bool container = false;
+  /// `file link NAME` / `file readlink NAME`: Tcl 8.6.16's TclpObjLink passes
+  /// a NULL native path to readlink() when NAME holds a NUL character.
+  bool reads_link = false;
 };
+
+// Tcl's answer to reading the link NAME when NAME holds a NUL character (in
+// Tcl's string form, the two bytes C0 80): no such file, as for any other
+// command given such a path, instead of the crash in TclpObjLink.
+std::optional<int> fail_nul_link_read(const Guard& guard, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
+  if (!guard.reads_link || objc != 2 || as_view(objv[1]).find("\xC0\x80") == std::string_view::npos) {
+    return std::nullopt;
+  }
+  Tcl_SetErrno(ENOENT);
+  const char* reason = Tcl_PosixError(interp);
+  Tcl_SetObjResult(interp, Tcl_ObjPrintf("could not read link \"%s\": %s", Tcl_GetString(objv[1]), reason));
+  return TCL_ERROR;
+}
 
 int guarded_call(ClientData data, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
   Guard& guard = *static_cast<Guard*>(data);
@@ -138,6 +155,9 @@ int guarded_call(ClientData data, Tcl_Interp* interp, int objc, Tcl_Obj* const o
   // moved into a path that was harmless when first checked).
   const ActiveSession active{*guard.session};
   Tcl_FSMountsChanged(nullptr);
+  if (const auto failed = fail_nul_link_read(guard, interp, objc, objv)) {
+    return *failed;
+  }
   if (guard.pre != nullptr) {
     if (const auto refusal = guard.pre(guard, objc, objv)) {
       return guard.session->refuse(*refusal);
@@ -513,11 +533,12 @@ void install_sandbox_commands(SandboxSession& session, const SandboxPolicy& poli
   guard_command(session, "glob", Guard{nullptr, {}, "glob", nullptr, nullptr, false});
   guard_command(session, "source", Guard{nullptr, {}, "source", check_source, nullptr, true});
   guard_command(session, "::tcl::file::tempfile", Guard{nullptr, {}, "file tempfile", check_tempfile, nullptr, false});
-  guard_command(session, "::tcl::file::link", Guard{nullptr, {}, "file link", check_link, nullptr, false});
+  guard_command(session, "::tcl::file::link", Guard{nullptr, {}, "file link", check_link, nullptr, false, true});
   guard_command(session, "encoding", Guard{nullptr, {}, "encoding", check_encoding, nullptr, false});
   for (const char* sub : kFileAccess) {
     guard_command(session, std::string{"::tcl::file::"} + sub,
-                  Guard{nullptr, {}, std::string{"file "} + sub, write_check(sub), nullptr, false});
+                  Guard{nullptr, {}, std::string{"file "} + sub, write_check(sub), nullptr, false,
+                        std::string_view{sub} == "readlink"});
   }
 }
 

@@ -243,6 +243,19 @@ TEST_CASE("a symbolic link cannot lead out of the granted root", SANDBOXED) {
   CHECK_FALSE(fs::exists(p.project.path() / "made"));
 }
 
+TEST_CASE("reading a link whose name holds a NUL character fails as a missing file", SANDBOXED) {
+  // fuzz_tcl_sandbox (CI run 43167835900): Tcl's TclpObjLink called readlink()
+  // with a NULL native path for such a name and crashed.
+  SandboxedProject p;
+  const std::string root = p.project.str();
+  for (const std::string command : {"file link", "file readlink"}) {
+    const auto result = p.run(command + " \"" + root + "/a\\0b\"");
+    REQUIRE_FALSE(result.ok());
+    CHECK(error_text(result).find("could not read link") != std::string::npos);
+    CHECK(error_text(result).find("no such file or directory") != std::string::npos);
+  }
+}
+
 TEST_CASE("home-directory and double-slash forms are resolved before the check", SANDBOXED) {
   SandboxedProject p;
   p.outside.write("secret.txt", "secret");

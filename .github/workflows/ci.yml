@@ -688,7 +688,7 @@ jobs:
             echo "::group::$name"
             # -close_fd_mask=3: fuzz_tcl_sandbox's scripts may `puts` to stdout/stderr.
             "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 -close_fd_mask=3 \
-              -artifact_prefix="fuzz-artifacts/$name-" -print_final_stats=1 || status=1
+              -artifact_prefix="$PWD/fuzz-artifacts/$name-" -print_final_stats=1 || status=1
             echo "::endgroup::"
           done
           exit "$status"
