@@ -141,6 +141,9 @@ void MainWindow::refresh_menu_bar() {
   if (!menu_built_ || native != menu_native_) {
     menu_native_ = native;
     menu_bar_->set_size(-1.0F, native ? 0.0F : kMenuBarHeight);
+    // Raven still lays a system bar out at its own height over the row
+    // below it: it must not take that row's clicks (the panel headers).
+    menu_bar_->set_hit_testable(!native);
   }
   const std::size_t signature = menu_bar_signature(view);
   if (menu_built_ && signature == menu_signature_) return;

@@ -421,7 +421,7 @@ Magic reference: fc5daa9e (8.3.694).
 
 ### Q-SCRIPT-45: sg13g2 generators change the window root cell with `load` during a gencell draw
 - Kind: ambiguity
-- Status: approved (recommendation drafted 2026-11-11, approved 2026-11-11)
+- Status: approved (recommendation drafted 2026-11-11, approved 2026-11-11; resolution changed by the user 2026-11-12)
 - Magic behavior: sg13g2 fixed and bipolar devices build their base cell on demand inside `_draw`, while the framework has the edit stack pushed into the generated cell. They save `cellname list window` or `cellname list self`, suspend the `load` tag, run `load <base> -silent`, paint, and then run `load <saved>`. The state of the framework's edit stack and of `popstack` after this sequence was not derived. `cellname list self` with no selection may return the generated cell, not the window root.
 - Static derivation (added 2026-11-11, to confirm with SCRIPT-PDK-14):
   - The edit stack is the Tcl list `editstack` (tcltk/tools.tcl:126-183). `load` does not touch it, so `popstack` after the draw still returns to the window and view saved by `pushstack`.
@@ -430,7 +430,8 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: IHP ihp-sg13g2-fix.tcl:238-260; IHP ihp-sg13g2-bjt.tcl:195-262; tcltk/toolkit.tcl:1253-1283
 - Options: replicate whatever Magic does (golden case SCRIPT-PDK-14)
 - Recommendation: replicate (PDK code under Tcl; X-2 n/a). The native sg13g2 fixed-device generator must reproduce the edit-cell and view reset. Confirm the derivation with SCRIPT-PDK-14 before implementing native sg13g2 generators. The Tcl path runs the PDK code as is, so this does not block the M4 gencell framework.
-- Resolution: replicate (PDK code under Tcl; X-2 n/a) — the Tcl path runs the sg13g2 generators unchanged; the native sg13g2 fixed-device generator reproduces the edit-cell and view reset after its `load` calls. The static derivation is confirmed with SCRIPT-PDK-14 before native sg13g2 generators are implemented. Approved 2026-11-11.
+- Capture (2026-11-12, SCRIPT-PDK-14, golden-capture run 43151033297): the static derivation is wrong for Magic's real sequence. After `magic::gencell sg13g2::npn13g2 Q1` and `magic::gencell sg13g2::diodevdd_2kv D1` in a new cell `top` (base cells not in memory) both gencells return 0, `cellname list window` is `top`, `cellname list self` is `diodevdd_2kv`, `cellname list children top` is empty (neither device is placed in `top`), and stderr has `Unknown layer: +comment` (Q-SCRIPT-39) and `Cell Topmost cell in the window (top) isn't a child of the edit cell.`
+- Resolution: compat (user decision 2026-11-12; replaces the earlier "replicate" of 2026-11-11) — the Tcl path runs the sg13g2 generators unchanged. The native sg13g2 fixed-device generators reproduce the recorded Magic result with `magic-compat` ON (the base cell is generated with the PDK's sequence, the edit cell is left on the base cell and the window's cell gets no child, SCRIPT-PDK-14) and give the fixed result with it OFF: after the base cell is generated, the edit cell, window cell and box are restored and the device is placed in the edit cell (X-2 tier 2). Approved 2026-11-12.
 
 ### Q-SCRIPT-46: Is the declarative PDK profile still needed under X-3?
 - Kind: platform
@@ -440,3 +441,22 @@ Magic reference: fc5daa9e (8.3.694).
 - Options: (a) keep the declarative profile for PDKs that are not in the iPadOS curated packs when App Review rejects imported scripts; (b) drop it, and make curated-pack mode refuse PDKs without bundled scripts; (c) also use it when the user declines script consent, instead of the `minimum`-tech read-only fallback of `hefesto-security`
 - Recommendation: platform, (b), unless App Review rejects imported scripts and users need uncurated PDKs on iPadOS (same as D-30). The requirement "Sessions without PDK script execution" in `scripting-pdk-integration` was written under the pre-X-3 assumption that iPadOS has no Tcl, and it is now limited to curated-pack mode until this is decided. Option (c) would contradict `hefesto-security` "Consent before implicit script execution", which opens a declined file read-only with the `minimum` tech.
 - Resolution: platform, option b (user decision; settles D-30) — the declarative (non-script) PDK profile is dropped. iPadOS curated-pack mode refuses PDKs without bundled scripts, and a declined consent keeps the read-only `minimum`-tech fallback of `hefesto-security`. The requirement "Sessions without PDK script execution" in `scripting-pdk-integration` is replaced accordingly. Approved 2026-11-11.
+
+### Q-SCRIPT-47: `readspice` maps `]` to `>]`
+- Kind: bug
+- Status: approved (recorded 2026-11-12 from the SCRIPT-RSP-03 capture; approved 2026-11-12)
+- Magic behavior: the bracket mapping of the pin lookup is `string map {\[ < \] >]} $pin`; the second pair maps `]` to `>]`, so a netlist pin `D[0]` is looked up as `D<0>]` and never matches the layout port `D<0>`. The port keeps the index the renumbering's step 2 moved it to. The reverse mapping (`<`/`>` to `[`/`]`) is correct.
+- Evidence: tcltk/readspice.tcl:165-167; SCRIPT-RSP-03 (golden-capture run 43173319299)
+- Options: replicate | compat (replicate with `magic-compat` ON, the intended `]` → `>` with it OFF) | fix
+- Recommendation: compat. A script relying on Magic's port order keeps it; the intended mapping is evident from the code comment and the reverse map.
+- Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON `D[0]` never matches `D<0>`, as in Magic; with it OFF the mapping is `[`/`]` to `<`/`>` and `D<0>` takes the netlist position of `D[0]` (X-2 tier 2). `readspice` "Port renumbering algorithm" and its scenario "Bus-bracket mapping" updated. Report upstream to Magic. Approved 2026-11-12.
+
+### Q-SCRIPT-48: A confirmation that cannot be asked counts as "yes" in Magic's Tcl build
+- Kind: quirk
+- Status: open (recommendation drafted 2026-11-12, needs the user's decision)
+- Magic behavior: in the Tcl build, TxDialog evaluates `tk_dialog ...` and returns -1 when the result is not an integer, which is what happens without Tk (`-dnull`, a plain Tcl shell). The callers test for the "no" answer (index 0) only, so -1 goes ahead: `tech load` without `-noprompt` reloads a technology over painted layout (then prints `Existing layout may be invalid.`), and `save NAME` over an existing different file overwrites it (and then asks for a file name when the cell name is taken). PDK rc files run `tech load` without `-noprompt`, so a second PDK's rc in a session with paint reloads in Magic.
+- Evidence: tcltk/tclmagic.c:1064-1102 (TxDialog), commands/CmdTZ.c:587-595 (`tech load`), commands/CmdSubrs.c:876-890 (cmdCheckNewName); SCRIPT-PDK-07 and SCRIPT-PCELL-12 captures (CI run 43173319299)
+- Hefesto now: `tech load` refuses without asking when a session cannot ask (TECH-CMD-003, spec `tech-command` "tech load": "A non-interactive session SHALL treat it as declined"), and `cmd::ask` maps a failed `tk_dialog` to the default answer (no), although spec `scripting-api` "Prompts and dialogs through the script layer" says -1. The two specs disagree.
+- Options: replicate (a confirmation that cannot be asked proceeds) | compat (proceed with `magic-compat` ON, decline with it OFF) | fix (decline in both modes; record SCRIPT-PDK-07 and SCRIPT-PCELL-12 as deviations)
+- Recommendation: compat. Data is overwritten only in batch sessions that Magic would overwrite too, and only with `magic-compat` ON; with it OFF a headless session keeps declining, which is the safe intent of `tech-command`. The `scripting-api` text (-1) then holds for magic-compat ON and the `tech-command` text for OFF.
+- Resolution: (pending)

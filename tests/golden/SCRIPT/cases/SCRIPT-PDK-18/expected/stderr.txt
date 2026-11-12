@@ -1,0 +1,2 @@
+Could not find file '/work/input/old/ihp-sg13g2.tech' in any of these directories:
+         . $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/current

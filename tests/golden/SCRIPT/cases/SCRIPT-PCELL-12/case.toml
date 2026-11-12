@@ -26,6 +26,11 @@ requires_commands = []
 source = "scmos"
 to = "scmos.tech"
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

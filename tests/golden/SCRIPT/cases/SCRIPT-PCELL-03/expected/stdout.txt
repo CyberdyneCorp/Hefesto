@@ -1,0 +1,221 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 07:11:13 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+{w 1.3 l 0.37 nf 4 model nfet_1} S96P8Y
+{w 2.1 l 0.02 nf 6 model nfet_2} YMBDXB
+{w 9.3 l 0.19 nf 5 model nfet_2} ZQB7A5
+{w 0.3 l 0.02 nf 5 model nfet_2} XHD2XL
+{w 0.0 l 0.19 nf 1 model nfet_1} HT57BR
+{w 6.8 l 0.29 nf 8 model nfet_2} RQRYXT
+{w 5.2 l 0.04 nf 6 model nfet_1} L7J48F
+{w 7.0 l 0.45 nf 7 model nfet_0} V64HWP
+{w 0.4 l 0.36 nf 3 model nfet_1} 457WXE
+{w 7.5 l 0.49 nf 3 model nfet_0} 3CPS2P
+{w 9.8 l 0.36 nf 7 model nfet_1} MNHNXN
+{w 0.7 l 0.31 nf 8 model nfet_0} EAQ75H
+{w 4.3 l 0.38 nf 4 model nfet_0} YYPME2
+{w 2.7 l 0.17 nf 2 model nfet_1} 24JHU2
+{w 8.9 l 0.45 nf 1 model nfet_2} 9UFF74
+{w 5.0 l 0.25 nf 3 model nfet_2} KPSCVR
+{w 4.9 l 0.13 nf 1 model nfet_2} HCQ6ZE
+{w 0.7 l 0.25 nf 4 model nfet_0} TAXP87
+{w 9.1 l 0.26 nf 4 model nfet_2} WGCG2J
+{w 0.5 l 0.38 nf 7 model nfet_2} URVAME
+{w 1.2 l 0.0 nf 6 model nfet_2} 2S4C5P
+{w 6.2 l 0.36 nf 6 model nfet_2} YLFPEZ
+{w 8.8 l 0.11 nf 3 model nfet_1} GZ7CAD
+{w 5.1 l 0.29 nf 7 model nfet_1} DUAPZD
+{w 8.4 l 0.13 nf 4 model nfet_1} 5TUTMS
+{w 4.6 l 0.14 nf 2 model nfet_0} 9QSC82
+{w 5.7 l 0.4 nf 1 model nfet_1} 4YDRFE
+{w 4.9 l 0.47 nf 6 model nfet_1} BMC3FS
+{w 8.9 l 0.31 nf 7 model nfet_0} DMHFY6
+{w 2.1 l 0.35 nf 2 model nfet_0} CKHCBA
+{w 2.7 l 0.0 nf 4 model nfet_0} A7UN3Y
+{w 7.0 l 0.46 nf 2 model nfet_0} ADRE87
+{w 3.1 l 0.44 nf 6 model nfet_0} STTNWT
+{w 6.8 l 0.19 nf 4 model nfet_1} PNHVN3
+{w 1.4 l 0.29 nf 7 model nfet_1} SPLWKG
+{w 9.5 l 0.27 nf 2 model nfet_2} L4CUVY
+{w 4.0 l 0.07 nf 5 model nfet_0} JTGDVT
+{w 4.8 l 0.23 nf 8 model nfet_0} W68E8Q
+{w 1.9 l 0.15 nf 6 model nfet_0} J6NH4P
+{w 6.5 l 0.31 nf 7 model nfet_0} XAKJNV
+{w 4.7 l 0.19 nf 2 model nfet_0} 79S9WH
+{w 9.0 l 0.21 nf 2 model nfet_2} BB938N
+{w 4.1 l 0.06 nf 8 model nfet_0} 9BJ4R3
+{w 1.6 l 0.03 nf 3 model nfet_0} 6VVD58
+{w 1.3 l 0.39 nf 4 model nfet_1} L2PE5B
+{w 4.5 l 0.4 nf 8 model nfet_1} 4K3LTX
+{w 2.1 l 0.33 nf 8 model nfet_0} 7875RJ
+{w 8.6 l 0.23 nf 5 model nfet_1} 22WHEV
+{w 8.1 l 0.37 nf 4 model nfet_2} 36M8DS
+{w 6.3 l 0.21 nf 7 model nfet_2} JVAPYF
+{w 7.0 l 0.49 nf 8 model nfet_2} BKB5P4
+{w 2.8 l 0.26 nf 5 model nfet_0} P3KC38
+{w 4.1 l 0.28 nf 8 model nfet_1} ELRRJY
+{w 7.2 l 0.43 nf 6 model nfet_2} 5VRHX5
+{w 7.0 l 0.37 nf 1 model nfet_2} DXANQN
+{w 5.2 l 0.23 nf 1 model nfet_2} CH87KE
+{w 4.8 l 0.33 nf 6 model nfet_0} WG99XY
+{w 9.1 l 0.43 nf 8 model nfet_1} 4JQRYQ
+{w 1.3 l 0.22 nf 8 model nfet_0} TDJDKC
+{w 4.4 l 0.15 nf 5 model nfet_2} 2CWGDX
+{w 4.3 l 0.23 nf 7 model nfet_1} 5YQ6BP
+{w 2.1 l 0.49 nf 2 model nfet_1} JPNBWB
+{w 6.1 l 0.0 nf 1 model nfet_2} LP8XVL
+{w 7.2 l 0.15 nf 4 model nfet_2} HUTTYW
+{w 6.8 l 0.1 nf 7 model nfet_2} SPWWSV
+{w 8.2 l 0.04 nf 1 model nfet_2} Z6SCZC
+{w 6.2 l 0.1 nf 2 model nfet_0} T5XXP9
+{w 3.8 l 0.47 nf 8 model nfet_1} 8L26YQ
+{w 2.6 l 0.34 nf 3 model nfet_2} LFBWST
+{w 7.8 l 0.21 nf 3 model nfet_0} HY2AS4
+{w 0.1 l 0.09 nf 8 model nfet_0} CWXYVE
+{w 8.1 l 0.06 nf 4 model nfet_1} WNCYD6
+{w 1.7 l 0.41 nf 2 model nfet_2} KQDVFJ
+{w 2.5 l 0.11 nf 1 model nfet_0} 5ABMQG
+{w 6.3 l 0.34 nf 7 model nfet_2} W62QYW
+{w 7.5 l 0.33 nf 6 model nfet_0} Q67YHH
+{w 5.9 l 0.11 nf 3 model nfet_2} S2GS4U
+{w 1.1 l 0.38 nf 5 model nfet_1} X8D3RJ
+{w 5.8 l 0.16 nf 6 model nfet_0} XKUGAA
+{w 1.6 l 0.24 nf 7 model nfet_2} BE47EG
+{w 5.5 l 0.36 nf 3 model nfet_0} CPEZ33
+{w 5.2 l 0.15 nf 5 model nfet_1} 9QMJWH
+{w 4.3 l 0.12 nf 3 model nfet_1} 4QAKWN
+{w 4.4 l 0.23 nf 4 model nfet_0} 5X36KD
+{w 0.7 l 0.18 nf 3 model nfet_2} SWAJVX
+{w 6.7 l 0.25 nf 6 model nfet_2} RKHXAQ
+{w 9.4 l 0.23 nf 8 model nfet_0} 66TATZ
+{w 4.6 l 0.25 nf 6 model nfet_1} KG8ZCS
+{w 6.0 l 0.49 nf 2 model nfet_2} U4USTQ
+{w 3.4 l 0.27 nf 5 model nfet_2} NJGVZX
+{w 0.1 l 0.13 nf 6 model nfet_1} BPRHKK
+{w 9.1 l 0.13 nf 8 model nfet_0} 6RXUHG
+{w 8.4 l 0.34 nf 4 model nfet_2} VKW5DF
+{w 0.2 l 0.08 nf 6 model nfet_2} NY29TF
+{w 4.3 l 0.29 nf 7 model nfet_2} RTNCCF
+{w 6.9 l 0.13 nf 7 model nfet_0} HHV5CJ
+{w 0.0 l 0.24 nf 1 model nfet_0} YYEW29
+{w 9.0 l 0.39 nf 6 model nfet_1} PNU36C
+{w 0.0 l 0.29 nf 5 model nfet_0} 89ZMFG
+{w 5.4 l 0.19 nf 2 model nfet_1} GRJHWM
+{w 6.2 l 0.32 nf 6 model nfet_1} 6E9PWJ
+{w 2.8 l 0.4 nf 3 model nfet_2} M2D5UL
+{w 3.1 l 0.0 nf 1 model nfet_1} DXBZMJ
+{w 7.7 l 0.11 nf 1 model nfet_0} MRH7GX
+{w 1.6 l 0.36 nf 3 model nfet_0} MKQ5QX
+{w 4.7 l 0.22 nf 5 model nfet_1} 8RFRWK
+{w 1.5 l 0.14 nf 7 model nfet_2} CH8V4A
+{w 5.7 l 0.34 nf 3 model nfet_0} N9LMJZ
+{w 9.8 l 0.27 nf 1 model nfet_2} AFFY6A
+{w 0.2 l 0.18 nf 4 model nfet_1} R2VEXK
+{w 7.3 l 0.33 nf 5 model nfet_0} K5739P
+{w 1.2 l 0.48 nf 2 model nfet_1} 6NLXET
+{w 6.1 l 0.3 nf 2 model nfet_1} CNPV4Q
+{w 9.5 l 0.17 nf 7 model nfet_2} ZJZLKF
+{w 2.5 l 0.12 nf 4 model nfet_2} K88PEC
+{w 8.9 l 0.12 nf 7 model nfet_2} 2JMQTP
+{w 4.5 l 0.13 nf 6 model nfet_0} 3PU6NG
+{w 2.0 l 0.05 nf 5 model nfet_0} UMRBCK
+{w 1.7 l 0.29 nf 4 model nfet_0} WEATSG
+{w 6.8 l 0.18 nf 7 model nfet_0} 2G9R7P
+{w 9.7 l 0.01 nf 1 model nfet_1} CRT2VM
+{w 7.6 l 0.46 nf 3 model nfet_1} RG86PK
+{w 7.6 l 0.24 nf 6 model nfet_2} JMLLT4
+{w 6.8 l 0.37 nf 1 model nfet_0} U5RANY
+{w 2.2 l 0.28 nf 6 model nfet_1} W9NPNL
+{w 3.7 l 0.11 nf 2 model nfet_1} PCSCB2
+{w 1.6 l 0.37 nf 2 model nfet_0} A7R465
+{w 6.6 l 0.06 nf 8 model nfet_1} 53YUCT
+{w 6.2 l 0.45 nf 1 model nfet_1} YNKDFM
+{w 7.2 l 0.24 nf 1 model nfet_1} MV3P4M
+{w 5.1 l 0.38 nf 1 model nfet_1} KK8252
+{w 9.7 l 0.23 nf 3 model nfet_1} 8AEDG8
+{w 7.4 l 0.1 nf 2 model nfet_1} 2K5KMA
+{w 9.3 l 0.48 nf 3 model nfet_0} LA7YQP
+{w 1.2 l 0.26 nf 2 model nfet_1} VX9FTF
+{w 1.0 l 0.42 nf 3 model nfet_1} DHYBST
+{w 3.2 l 0.35 nf 5 model nfet_2} PQFJGX
+{w 7.5 l 0.41 nf 6 model nfet_1} ZJ2FQV
+{w 9.3 l 0.3 nf 3 model nfet_1} AR87XH
+{w 4.5 l 0.2 nf 2 model nfet_0} E5WZFC
+{w 4.2 l 0.23 nf 3 model nfet_0} KVV3GZ
+{w 2.1 l 0.4 nf 5 model nfet_2} XTHRDT
+{w 8.6 l 0.12 nf 6 model nfet_0} Z5K3N2
+{w 3.8 l 0.04 nf 4 model nfet_0} MV3597
+{w 7.9 l 0.24 nf 1 model nfet_0} LN6TX7
+{w 6.6 l 0.21 nf 2 model nfet_2} MC5W8J
+{w 1.3 l 0.39 nf 8 model nfet_0} AU2MSL
+{w 6.0 l 0.03 nf 3 model nfet_0} AK6XD4
+{w 5.0 l 0.41 nf 7 model nfet_2} X2UF53
+{w 3.2 l 0.4 nf 6 model nfet_0} QYUKBS
+{w 0.4 l 0.07 nf 7 model nfet_0} 37EGR9
+{w 5.1 l 0.46 nf 2 model nfet_0} HDV4V9
+{w 0.8 l 0.34 nf 6 model nfet_1} FGH5QE
+{w 2.6 l 0.35 nf 4 model nfet_0} EEBR8E
+{w 2.3 l 0.21 nf 4 model nfet_2} PVU2EG
+{w 9.7 l 0.22 nf 1 model nfet_1} 7TZN4F
+{w 0.3 l 0.37 nf 5 model nfet_2} ZEMKQJ
+{w 3.2 l 0.11 nf 5 model nfet_1} 96HUSL
+{w 4.0 l 0.49 nf 8 model nfet_2} NK5HNV
+{w 8.6 l 0.15 nf 2 model nfet_2} P8L89C
+{w 6.3 l 0.23 nf 8 model nfet_2} A6VY8R
+{w 8.1 l 0.27 nf 5 model nfet_0} 5B2TFP
+{w 9.4 l 0.41 nf 2 model nfet_0} 48KC3A
+{w 3.4 l 0.05 nf 1 model nfet_1} N5GNS3
+{w 0.2 l 0.28 nf 7 model nfet_1} CY29B9
+{w 6.7 l 0.36 nf 6 model nfet_0} Y5GN2N
+{w 1.9 l 0.33 nf 3 model nfet_0} 5U6DF6
+{w 1.4 l 0.46 nf 2 model nfet_1} 3JJC8C
+{w 5.8 l 0.08 nf 1 model nfet_2} N9JVUV
+{w 7.6 l 0.35 nf 1 model nfet_1} B3XSBZ
+{w 9.2 l 0.46 nf 4 model nfet_1} BUFWCJ
+{w 8.3 l 0.45 nf 5 model nfet_2} KHNTF7
+{w 5.1 l 0.24 nf 2 model nfet_2} 2Z6QYK
+{w 5.7 l 0.13 nf 5 model nfet_2} JL3PG7
+{w 6.6 l 0.04 nf 5 model nfet_1} MB367L
+{w 6.6 l 0.24 nf 5 model nfet_1} DKW8YH
+{w 4.4 l 0.07 nf 5 model nfet_2} G9XCZK
+{w 0.3 l 0.02 nf 5 model nfet_0} G4TQBN
+{w 0.3 l 0.12 nf 1 model nfet_1} VBLB56
+{w 5.5 l 0.29 nf 5 model nfet_2} 3X3P4X
+{w 7.7 l 0.25 nf 4 model nfet_1} 9Y66AC
+{w 6.9 l 0.2 nf 4 model nfet_1} 98MR77
+{w 7.1 l 0.26 nf 3 model nfet_1} 9WQ5JK
+{w 2.8 l 0.35 nf 5 model nfet_2} Z8W247
+{w 2.3 l 0.2 nf 5 model nfet_2} WEHZS4
+{w 9.2 l 0.34 nf 7 model nfet_1} 975S4Y
+{w 2.3 l 0.07 nf 8 model nfet_0} UFUET3
+{w 6.5 l 0.0 nf 8 model nfet_0} 5C7QVA
+{w 8.5 l 0.13 nf 8 model nfet_1} 98LN9Z
+{w 1.2 l 0.2 nf 6 model nfet_1} 23VR2U
+{w 1.0 l 0.38 nf 1 model nfet_1} JZDN3H
+{w 3.4 l 0.14 nf 7 model nfet_1} 8BRKXB
+{w 3.3 l 0.02 nf 5 model nfet_1} 9PXZ4D
+{w 2.0 l 0.05 nf 8 model nfet_2} TBK97N
+{w 4.9 l 0.18 nf 7 model nfet_0} UBEHAS
+{w 1.5 l 0.02 nf 2 model nfet_1} Q6N669
+{w 3.8 l 0.44 nf 4 model nfet_1} JRUACV
+{w 6.5 l 0.15 nf 1 model nfet_2} RMDDB3
+{w 8.9 l 0.45 nf 8 model nfet_2} LD2LTK
+{w 1.7 l 0.28 nf 1 model nfet_2} WL49GC
+0 36BH2Y

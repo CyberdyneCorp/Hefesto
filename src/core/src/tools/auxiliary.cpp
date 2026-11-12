@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include "hefesto/tools/diag_codes.hpp"
 
@@ -96,6 +97,33 @@ char console_prompt(bool drc_busy, bool long_command) noexcept {
 
 bool launcher_batch_mode(bool noconsole, bool dnull) noexcept {
   return noconsole && dnull;
+}
+
+LauncherVariables launcher_variables(std::span<const std::string> args) {
+  bool tkcon = true;
+  bool dnull = false;
+  std::vector<std::string> arglist;
+  for (const std::string& word : args) {
+    if (word.starts_with("-noc")) {
+      tkcon = false;
+    } else if (word == "-dnull") {
+      dnull = true;
+    } else if (word == "--version" || word == "--commit" || word == "--prefix") {
+      tkcon = false;
+      dnull = true;
+    } else {
+      arglist.push_back(word);
+    }
+  }
+  if (tkcon) {
+    return LauncherVariables{std::move(arglist), false};
+  }
+  LauncherVariables vars{{}, dnull};
+  if (dnull) {
+    vars.argv.emplace_back("-nowrapper");
+  }
+  vars.argv.insert(vars.argv.end(), args.begin(), args.end());
+  return vars;
 }
 
 }  // namespace hefesto::tools

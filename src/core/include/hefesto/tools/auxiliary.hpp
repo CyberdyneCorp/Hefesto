@@ -65,4 +65,18 @@ std::vector<diag::Diagnostic> strip_reflibs(platform::FileSystem& files, const p
 /// the headless CLI).
 [[nodiscard]] bool launcher_batch_mode(bool noconsole, bool dnull) noexcept;
 
+/// "Interpreter launchers": the Tcl globals the `magic` launcher's
+/// interpreter starts with for the command-line words `args` (after the
+/// program name). tkcon (no `-noc*`) gets `argv` without `-dnull` and
+/// `-noc*`; `-noconsole -dnull` (or `--version`, `--commit`, `--prefix`)
+/// runs `magicdnull -nowrapper <args>`, so `argv` is `-nowrapper` and every
+/// word, and `batch_mode` is `true`; `-noconsole` alone runs `magicexec --
+/// <args>` (`argv` is every word). (Magic ref: tcltk/magic.sh.in:30-72,
+/// tcltk/magicdnull.c:25-61)
+struct LauncherVariables {
+  std::vector<std::string> argv;
+  bool batch_mode = false;
+};
+[[nodiscard]] LauncherVariables launcher_variables(std::span<const std::string> args);
+
 }  // namespace hefesto::tools

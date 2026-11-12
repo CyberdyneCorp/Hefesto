@@ -379,6 +379,18 @@ class Painted : public Widget {
   /// gets the window point under the widget's bottom-left corner. With it,
   /// a mouse click runs on release (before the delay), not on press.
   void on_hold(std::function<void(float x, float y)> callback);
+  /// What a drag from the widget carries (Raven's in-application drag:
+  /// `label` follows the pointer; DropZone callbacks get `type` and `data`).
+  struct DragData {
+    std::string type;
+    std::string data;
+    std::string label;
+  };
+  /// A left press moved kDragThreshold or more (DragGesture): `callback`
+  /// gets the press point (window units) and returns what to drag, or
+  /// nullopt to stay a press. With it, a click runs on release (when no
+  /// drag started), not on press.
+  void on_drag(std::function<std::optional<DragData>(float x, float y)> callback);
   void set_role(Role role);
   void set_accessible_description(std::string_view text);
   [[nodiscard]] bool hovered() const;
@@ -389,6 +401,26 @@ class Painted : public Widget {
   explicit Painted(WidgetId id);
   struct Callbacks;
   std::unique_ptr<Callbacks> callbacks_;
+};
+
+/// Where a drag started by Painted::on_drag can be dropped: `widget` and its
+/// children (a deeper DropZone takes precedence). Raven highlights the zone
+/// while the callback accepts; the callback stays installed while the
+/// DropZone lives.
+class DropZone {
+ public:
+  enum class Phase : unsigned char { enter, move, leave, drop };
+  /// Gets the phase, the pointer in window units, the drag's type and data;
+  /// returns whether a drop there is accepted.
+  using Callback = std::function<bool(Phase, float x, float y, std::string_view type, std::string_view data)>;
+  DropZone(const Widget& widget, Callback callback);
+  ~DropZone();
+  DropZone(const DropZone&) = delete;
+  DropZone& operator=(const DropZone&) = delete;
+
+ private:
+  struct State;
+  std::unique_ptr<State> state_;
 };
 
 /// A list of text rows (Console, Diagnostics).
@@ -546,6 +578,9 @@ class Window {
   /// (logical pixels) as the system would send it, `factor` spread over
   /// `steps` updates between a begin and an end.
   void inject_trackpad_pinch(float x, float y, double factor, int steps);
+  /// A left-button drag from (x0, y0) to (x1, y1) in `steps` moves, as the
+  /// system sends one (scripted checks of header drags).
+  void inject_left_drag(float x0, float y0, float x1, float y1, int steps);
   /// The window system Raven chose for this window: "x11", "wayland",
   /// "cocoa", "win32", or "none" (headless or unknown).
   [[nodiscard]] std::string window_system() const;

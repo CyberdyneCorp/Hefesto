@@ -163,6 +163,43 @@ TEST_CASE("live sinks see context diagnostics while the command runs", CMD_API_T
   CHECK(live.seen.size() == 2U);
 }
 
+namespace {
+
+struct TextRecorder final : hefesto::diag::DiagnosticSink {
+  void emit(const hefesto::diag::Diagnostic& d) override { seen.push_back(d.text); }
+  std::vector<std::string> seen;
+};
+
+}  // namespace
+
+// Regression (SCRIPT-PCELL-15, SCRIPT-PDK-15): a command that runs another
+// one (magic::gencell evaluating a device's Tcl draw, which calls pushbox)
+// printed its own earlier messages only when it returned, after the inner
+// command's; Magic prints each message when it is made.
+TEST_CASE("an outer command's messages are printed before those of a command it runs", CMD_API_TAGS) {
+  hefesto::test::Session s;
+  hefesto::cmd::Dispatcher& d = s.dispatcher();
+  REQUIRE_FALSE(s.registry().add({"inner", "inner", "Emits one message.",
+                                  [](hefesto::cmd::CommandContext& ctx, const Invocation& /*inv*/) {
+                                    ctx.emit(hefesto::diag::make(codes::kCmdUsage, "inner"));
+                                    return CommandResult::success();
+                                  }}));
+  REQUIRE_FALSE(s.registry().add({"outer", "outer", "Emits, runs inner, emits.",
+                                  [&d](hefesto::cmd::CommandContext& ctx, const Invocation& /*inv*/) {
+                                    ctx.emit(hefesto::diag::make(codes::kCmdUsage, "before"));
+                                    (void)d.execute(Invocation{"inner", {}, Origin::script, std::nullopt});
+                                    ctx.emit(hefesto::diag::make(codes::kCmdUsage, "after"));
+                                    return CommandResult::success();
+                                  }}));
+  TextRecorder printed;
+  d.add_sink(printed);
+  const CommandResult r = s.exec("outer");
+  CHECK(printed.seen == std::vector<std::string>{"before", "inner", "after"});
+  // The result still carries every message the command emitted.
+  CHECK(r.diagnostics.size() == 2U);
+  d.remove_sink(printed);
+}
+
 TEST_CASE("the command log replays a session", CMD_API_TAGS) {
   hefesto::test::Session original;
   REQUIRE(original.script("setting set magic-compat off\nhefesto::strict on\nhefesto::debug::hashorder 8 \"+a;b\" {+c d} +\\{ {+#x} {+$y}\n").ok());

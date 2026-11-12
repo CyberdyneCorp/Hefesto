@@ -13,5 +13,6 @@ target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/gui_util.cpp
   ${CMAKE_CURRENT_LIST_DIR}/managers.cpp
   ${CMAKE_CURRENT_LIST_DIR}/prompts.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/tk_model.cpp
   ${CMAKE_CURRENT_LIST_DIR}/toolbar_presets.cpp
   ${CMAKE_CURRENT_LIST_DIR}/wrapper.cpp)

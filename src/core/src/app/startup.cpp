@@ -120,6 +120,9 @@ class Startup {
     result_.technology = state_.technology->name();
     const drc::BackgroundMode drc_state = defer_drc();
     open_startup_window();
+    if (wrapper_mode() && env_.open_wrapper && !options_.no_window) {
+      env_.open_wrapper();
+    }
     if (options_.recover && !options_.no_window) {
       recover();
     } else {
@@ -592,7 +595,7 @@ class Startup {
     std::optional<std::string> first_cell;
     std::optional<std::string> last_cell;
     for (const auto& file : options_.files) {
-      report(codes::kFileLoading, "Loading \"" + file.name + "\" from command line.");
+      announce_file(file);
       if (load_file(file) && file.kind == FileKind::cell) {
         first_cell = first_cell.value_or(file.name);
         last_cell = file.name;
@@ -601,6 +604,19 @@ class Startup {
     if (first_cell && last_cell != first_cell) {
       const std::string name = cell::load_definition_name(*first_cell);
       (void)dispatcher_.execute(cmd::Invocation{"load", {name}, cmd::Origin::cli, std::nullopt});
+    }
+  }
+
+  // NULL graphics: `Loading "<f>" from command line.` (utils/main.c:1197);
+  // wrapper mode: magic.tcl.in's `Handling file entry <f> extension <ext>`
+  // for a file with an extension (tcltk/magic.tcl.in:374-381).
+  void announce_file(const FileArgument& file) {
+    if (!wrapper_mode()) {
+      report(codes::kFileLoading, "Loading \"" + file.name + "\" from command line.");
+      return;
+    }
+    if (const std::string ext = script::file_extension(file.name); !ext.empty() && ext != ".gz") {
+      report(codes::kFileLoading, "Handling file entry " + file.name + " extension " + ext);
     }
   }
 

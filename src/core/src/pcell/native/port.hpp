@@ -112,6 +112,9 @@ class BufferedHost final : public NativeHost {
  public:
   explicit BufferedHost(NativeHost& target) : target_(target) {}
   std::string run(const std::vector<std::string>& words) override { return target_.run(words); }
+  std::string evaluate(std::string_view script) override { return target_.evaluate(script); }
+  [[nodiscard]] bool magic_compat() const override { return target_.magic_compat(); }
+  [[nodiscard]] std::function<void()> keep_edit_context() override { return target_.keep_edit_context(); }
   void puts(bool to_stderr, std::string_view text) override;
   void set_variable(std::string_view name, std::string_view value) override;
   /// Replays the held output and variables on the target.

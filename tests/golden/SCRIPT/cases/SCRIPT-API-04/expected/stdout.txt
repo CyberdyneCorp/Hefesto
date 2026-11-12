@@ -1,0 +1,29 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 11:38:10 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style lambda=1.0(gen): scaleFactor=100, multiplier=1
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+Contact size value ignored (using GDS generation rules).
+The following types are not handled by extraction and will be treated as non-electrical types:
+    bccdiffusion substrateopen glass 
+1 {couldn't load file "/nonexistent/libfoo.so": /nonexistent/libfoo.so: cannot open shared object file: No such file or directory}
+Cell inv read from path input/lib.v2
+0 {}
+0 {(UNNAMED) inv}
+Warning: cell <inv2> from file input/cells/inv2.mag is not writeable
+Cell inv2 read from path input/cells
+0 {}
+0 {(UNNAMED) inv2 inv}
+0 tcl_load

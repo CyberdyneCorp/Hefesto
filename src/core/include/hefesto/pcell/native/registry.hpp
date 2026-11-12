@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -54,6 +55,19 @@ class NativeHost {
   virtual void puts(bool to_stderr, std::string_view text) = 0;
   /// `set <name> <value>` of a namespace variable (e.g. magic::minfo_val).
   virtual void set_variable(std::string_view name, std::string_view value) = 0;
+  /// Evaluates `script` (Tcl) in the project's interpreter as the PDK's own
+  /// code runs, and returns its result: the sg13g2 fixed devices source the
+  /// PDK's layout script of their base cell with it (layout data the PDK
+  /// keeps as Tcl). Throws native::TclError for a Tcl error. The default
+  /// throws native::Unsupported, so the device runs its Tcl generator.
+  virtual std::string evaluate(std::string_view script);
+  /// The project's magic-compat setting (Q-SCRIPT-45: the sg13g2 fixed
+  /// devices replicate Magic with it ON and keep the edit context with it OFF).
+  [[nodiscard]] virtual bool magic_compat() const { return true; }
+  /// Saves the edit context (window cell, view and expansion, edit cell and
+  /// frame, box) and returns the function that puts it back; an empty
+  /// function when the host cannot.
+  [[nodiscard]] virtual std::function<void()> keep_edit_context() { return {}; }
 };
 
 class NativeGenerator {

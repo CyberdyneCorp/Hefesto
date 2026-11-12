@@ -136,7 +136,7 @@ Compatibility: exact
 | `lib::type` | names an existing instance | non-empty | non-interactive change: select it; P = merge(defaults, stored parameters of its cell); in SPICE mode args = `_convert(args)`; P = merge(P, args); run the change algorithm |
 | `lib::type` | not an existing instance | any | non-interactive create: in SPICE mode args = `_convert(args)`; P = merge(defaults, args); run the create algorithm; select the new instance and rename it to `<instname>` |
 
-The procedure SHALL return `0` on success.
+The procedure SHALL return `0` on success. The create and change algorithms SHALL be run as the script procedures `magic::gencell_create` and `magic::gencell_change`, called by name in the interpreter, so a script that redefines or traces them (for example the legacy `toolkit_rev0.tcl`, capability `scripting-auxiliary-tools`) sees the call; an error they raise is the error of `magic::gencell`. Messages the procedure prints along the way are not its error: with nothing selected, the lookups `cellname list property {} library|gencell` print `Unknown cell ` and the error is `No gencell device is selected!`.
 
 For an existing fixed (`nocell`) instance, both the interactive and the non-interactive call SHALL first set nx = xhi−xlo+1, ny = yhi−ylo+1 and `pitchx`/`pitchy` from `array -list pitch`, as the dialog does (see "Parameter dictionary model"). In the non-interactive call `deltax`/`deltay` come from the arguments or the device defaults. The change then proceeds as specified (Q-SCRIPT-23, resolution: fix in both `magic-compat` settings; Magic reads the undefined variables `delx`/`dely`, raises a Tcl error and changes nothing).
 Compatibility: behavioral
@@ -277,7 +277,7 @@ The framework SHALL provide these builders. Each appends a row (label in column 
 - `magic::add_selectindex pname text values P ?ival 0?`: choice menu whose variable holds the 0-based index, fallback `ival`. Widget `<pname>_sel`.
 - `magic::add_message pname text P ?color blue?`: read-only text. Widget `<pname>_txt`.
 
-`magic::gencell_getparams` SHALL return a dictionary of `pname → magic::<pname>_val` for every `_ent`, `_chk` and `_sel` widget in grid order. `magic::gencell_setparams P` SHALL write P into those widgets. It writes `_txt` only if the key exists, skips the pseudo-widget `gencell_sel`, and does nothing if no dialog exists.
+`magic::gencell_getparams` SHALL return a dictionary of `pname → magic::<pname>_val` for every `_ent`, `_chk` and `_sel` widget in the order Tk's `grid slaves` lists them: the last row first. `magic::gencell_setparams P` SHALL write P into those widgets. It writes `_txt` only if the key exists, skips the pseudo-widget `gencell_sel`, and does nothing if no dialog exists.
 
 The verified PDKs use `add_entry`, `add_checkbox`, `add_selectlist`, `add_message` and `add_dependency`, but not `add_selectindex`. `add_selectlist gencell "Device type" <compatible list> P <type>` provides the type switch (see "Parameter dictionary model"). PDK `_check` procedures also write the message variables directly, inside `catch`: `magic::ctot_val`, `atot_val`, `ptot_val`, `ltot_val`, `minfo_val`. When no dialog exists these writes create plain namespace variables and have no visible effect. The variables SHALL be ordinary script variables in the `magic` namespace, so that the writes never raise an error.
 Compatibility: behavioral

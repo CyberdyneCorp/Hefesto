@@ -363,6 +363,22 @@ TEST_CASE("array a cell", ARRAY) {
   CHECK(u->bbox == Rect{0, 0, 34, 45});
 }
 
+// Regression (SCRIPT-PDK-16): the selection edits check the box with Magic's
+// ToolGetEditBox, whose message is "Box must be present" (dbwind/DBWtools.c),
+// not ToolGetBox's "Box tool must be present".
+TEST_CASE("selection edits without a box print ToolGetEditBox's message", ARRAY) {
+  HEFESTO_SELECT_MT(mt);
+  Session s(mt);
+  s.editor.box.reset();
+  for (const char* line : {"array 2 3", "delete", "clockwise", "upsidedown", "orient 90", "copy e 1", "move e 1",
+                           "stretch e 1"}) {
+    const auto r = s.run(line);
+    INFO(line);
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().text == "Box must be present");
+  }
+}
+
 TEST_CASE("array numbers labels", ARRAY) {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);

@@ -5,12 +5,15 @@
 // resumeall (ui-box-stack-and-measure "Box stack push", "Box stack pop and
 // peek", "Edit stack push", "Edit stack pop and clear", "Nested redraw
 // suspension"; Q-SCRIPT-15). Native versions of the tools.tcl procs, with
-// their names, arguments, results and errors. Owner: DISPATCH.
+// their names, arguments, results and errors. With a Tcl interpreter the
+// stacks are the globals `boxstack` and `editstack`, as in tools.tcl, so a
+// script reads them with `set boxstack`. Owner: DISPATCH.
 // (Magic ref: tcltk/tools.tcl:8-50, 122-265)
 
 #include <utility>
 
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/ui/diag_codes.hpp"
 #include "hefesto/ui/state.hpp"
 #include "ui/command_util.hpp"
@@ -50,6 +53,68 @@ std::string difference(const std::string& hi, const std::string& lo) {
   return a && b ? std::to_string(*a - *b) : hi + "-" + lo;
 }
 
+// --- the Tcl globals ---------------------------------------------------------------
+
+constexpr std::string_view kBoxStackVar = "::boxstack";
+constexpr std::string_view kEditStackVar = "::editstack";
+
+script::Interpreter* interpreter(editor::EditorState& editor) {
+  return editor.script.interp.get();
+}
+
+// The elements of global `name`, or nullopt when it does not exist (or is
+// not a list).
+std::optional<std::vector<std::string>> read_list(editor::EditorState& editor, std::string_view name) {
+  const auto value = interpreter(editor)->get_var(name);
+  if (!value) {
+    return std::nullopt;
+  }
+  auto words = pcell::split_tcl_list(value->to_string());
+  return words.ok() ? std::optional{std::move(words).value()} : std::nullopt;
+}
+
+void write_list(editor::EditorState& editor, std::string_view name, const std::vector<std::string>& elements) {
+  static_cast<void>(interpreter(editor)->set_var(name, cmd::Value{pcell::merge_tcl_list(elements)}));
+}
+
+// Loads the stacks from the Tcl globals for one command (a script may have
+// set them) and writes them back when it ends. A global is written only
+// when the procedure would set it: `boxstack` once pushed, `editstack` once
+// pushed or when it existed (or `clearstack`).
+class StackVariables {
+ public:
+  explicit StackVariables(editor::EditorState& editor) : editor_(editor) {
+    if (interpreter(editor_) == nullptr) {
+      return;
+    }
+    auto boxes = read_list(editor_, kBoxStackVar);
+    editor_.box_stack.created = boxes.has_value();
+    editor_.box_stack.records = boxes.value_or(std::vector<std::string>{});
+    auto edits = read_list(editor_, kEditStackVar);
+    edit_exists_ = edits.has_value();
+    editor_.edit_stack = edits.value_or(std::vector<std::string>{});
+  }
+  ~StackVariables() {
+    if (interpreter(editor_) == nullptr) {
+      return;
+    }
+    if (editor_.box_stack.created) {
+      write_list(editor_, kBoxStackVar, editor_.box_stack.records);
+    }
+    if (edit_exists_ || !editor_.edit_stack.empty()) {
+      write_list(editor_, kEditStackVar, editor_.edit_stack);
+    }
+  }
+  StackVariables(const StackVariables&) = delete;
+  StackVariables& operator=(const StackVariables&) = delete;
+
+  void create_edit_stack() { edit_exists_ = true; }
+
+ private:
+  editor::EditorState& editor_;
+  bool edit_exists_ = false;
+};
+
 // --- box stack -------------------------------------------------------------------
 
 CommandResult push_box(CommandContext& ctx, editor::EditorState& editor, const std::string& values) {
@@ -60,10 +125,12 @@ CommandResult push_box(CommandContext& ctx, editor::EditorState& editor, const s
     return CommandResult::success();
   }
   const CommandResult box = run_forwarded(ctx, {"box", "values"});
-  if (!box.ok()) {
+  if (!box.ok() && box.raises) {
     return box;
   }
-  editor.box_stack.records.push_back(joined(value_words(box.value)));
+  // `lappend boxstack [box values]`: without a box Magic prints "Box tool
+  // must be present" and appends an empty record.
+  editor.box_stack.records.push_back(box.ok() ? joined(value_words(box.value)) : std::string{});
   return CommandResult::success();
 }
 
@@ -94,7 +161,7 @@ CommandResult pop_box(CommandContext& ctx, editor::EditorState& editor, const st
   const std::vector<std::string> command = apply_command(type, record_words(record));
   if (!command.empty()) {
     const CommandResult applied = run_forwarded(ctx, command);
-    if (!applied.ok()) {
+    if (!applied.ok() && applied.raises) {
       return applied;
     }
   }
@@ -110,6 +177,7 @@ CommandResult pushbox(CommandContext& ctx, const Invocation& inv) {
   if (inv.args.size() > 1) {
     return raise(codes::kUsage, "wrong # args: should be \"pushbox ?values?\"");
   }
+  const StackVariables globals{*editor.value()};
   return push_box(ctx, *editor.value(), inv.args.empty() ? std::string{} : inv.args[0]);
 }
 
@@ -121,6 +189,7 @@ CommandResult popbox(CommandContext& ctx, const Invocation& inv) {
   if (inv.args.size() > 1) {
     return raise(codes::kUsage, "wrong # args: should be \"popbox ?type?\"");
   }
+  const StackVariables globals{*editor.value()};
   return pop_box(ctx, *editor.value(), inv.args.empty() ? std::string{"values"} : inv.args[0]);
 }
 
@@ -132,6 +201,7 @@ CommandResult peekbox(CommandContext& ctx, const Invocation& inv) {
   if (inv.args.size() > 1) {
     return raise(codes::kUsage, "wrong # args: should be \"peekbox ?type?\"");
   }
+  const StackVariables globals{*editor.value()};
   CommandResult popped = pop_box(ctx, *editor.value(), inv.args.empty() ? std::string{"values"} : inv.args[0]);
   if (!popped.ok()) {
     return stack_error("No stack");
@@ -211,6 +281,7 @@ CommandResult pushstack(CommandContext& ctx, const Invocation& inv) {
     return raise(codes::kUsage, "wrong # args: should be \"pushstack ?name?\"");
   }
   editor::EditorState& ed = *editor.value();
+  const StackVariables globals{ed};
   std::string name = inv.args.empty() ? std::string{} : inv.args[0];
   if (name.empty()) {
     name = cell_to_push(ctx, ed);
@@ -239,6 +310,7 @@ CommandResult popstack(CommandContext& ctx, const Invocation& /*inv*/) {
     return CommandResult::failure(editor.error());
   }
   editor::EditorState& ed = *editor.value();
+  const StackVariables globals{ed};
   if (ed.edit_stack.size() < 2) {
     return stack_error("No subcell stack!");
   }
@@ -265,6 +337,8 @@ CommandResult clearstack(CommandContext& ctx, const Invocation& /*inv*/) {
   if (!editor.ok()) {
     return CommandResult::failure(editor.error());
   }
+  StackVariables globals{*editor.value()};
+  globals.create_edit_stack();
   editor.value()->edit_stack.clear();
   return CommandResult::success();
 }

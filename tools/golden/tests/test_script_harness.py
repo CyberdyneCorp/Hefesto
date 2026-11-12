@@ -140,6 +140,15 @@ class WorkPathTest(unittest.TestCase):
             data = f"{work}/input/a.mag {work.resolve()}/b /workshop\n".encode()
             self.assertEqual(replay.with_container_work(data, work), b"/work/input/a.mag /work/b /workshop\n")
 
+    def test_replay_cad_root_is_written_as_the_image_cad_root(self):
+        # Regression: SCRIPT-GUI-08 lists the cell path, whose library directories are under
+        # CAD_ROOT (/opt/ref/lib in the capture image, <work>/cadroot in a replay).
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            data = f"{work}/cadroot/magic/sys/current/ {work}/input/\n".encode()
+            self.assertEqual(replay.with_container_work(data, work),
+                             b"/opt/ref/lib/magic/sys/current/ /work/input/\n")
+
     def test_other_bytes_untouched(self):
         self.assertEqual(replay.with_container_work(b"/tmp/x\n", Path("/nonexistent/w")), b"/tmp/x\n")
 

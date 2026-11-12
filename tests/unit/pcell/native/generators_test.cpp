@@ -233,6 +233,83 @@ TEST_CASE("native fixed devices place the same library cell and array",
   check_same_result(kGf180, "pnp_05p00x05p00", "nx 3 deltay 1.25");
   // gf180mcuD-bjt.tcl names a cell gf180mcu_fd_pr does not have: both fail alike.
   check_same_result(kGf180, "npn_00p54x08p00", "", false);
+  // sg13g2 builds the placed cell from the PDK's layout script on first use.
+  check_same_result(kSg13g2, "diodevdd_2kv", "");
+  check_same_result(kSg13g2, "scr1", "nx 2 ny 3 deltax 0.5");
+  check_same_result(kSg13g2, "schottky", "nx 2");
+}
+
+namespace {
+
+// A new cell top holding sub, with the box at the origin; `edit_sub` makes sub the edit cell.
+void place_in_sub_setup(PdkSession& s, bool edit_sub) {
+  s.eval("load sub -silent");
+  s.eval("load top -silent");
+  s.eval("box 0 0 0 0");
+  s.eval("getcell sub");
+  if (edit_sub) {
+    s.eval("select cell sub_0");
+    s.eval("edit");
+    s.eval("select clear");
+  }
+  s.eval("box 0 0 0 0");
+}
+
+}  // namespace
+
+TEST_CASE("sg13g2 fixed devices follow Magic with magic-compat ON and keep the edit cell with it OFF",
+          "[cap:scripting-pdk-integration][req:Generator drawing conventions]") {
+  // Q-SCRIPT-45 (resolution: compat). The first device of a kind builds its cell
+  // with `load <cell>` ... `load [cellname list window]`, which in Magic makes the
+  // window's cell the edit cell (SCRIPT-PDK-14). OFF puts the edit context back.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    auto s = pdk_session(kSg13g2, true);
+    if (!s) {
+      SKIP("PDK data set not fetched (scripts/fetch_pdk.py)");
+    }
+    s->project.compat.magic_compat = compat;
+    guard_tcl_generators(*s, kSg13g2);
+    place_in_sub_setup(*s, true);
+    REQUIRE(s->editor.edit_cell != nullptr);
+    REQUIRE(s->editor.edit_cell->name() == "sub");
+    s->eval("magic::gencell sg13g2::diodevdd_2kv D1");
+    CHECK_FALSE(s->console_has("Tcl generator called"));
+    CHECK(s->eval("cellname list window") == "top");
+    CHECK(s->editor.edit_cell->name() == (compat ? "top" : "sub"));
+    CHECK(s->eval("cellname list children sub") == (compat ? "" : "diodevdd_2kv"));
+    CHECK(s->eval("lsort [cellname list children top]") == (compat ? "diodevdd_2kv sub" : "sub"));
+    if (compat) {
+      // The cell exists now: the next device goes to the edit cell, top.
+      s->eval("box 5000 0 5000 0");
+      s->eval("magic::gencell sg13g2::diodevdd_2kv D2");
+      CHECK(s->eval("instance list celldef D2") == "diodevdd_2kv");
+    }
+  }
+}
+
+TEST_CASE("an sg13g2 fixed device without a box is not placed with magic-compat ON, as in Magic",
+          "[cap:scripting-pdk-integration][req:Generator drawing conventions]") {
+  // Regression (golden SCRIPT-PDK-14): in a new cell without a box, `box values {*}$curbox`
+  // restores nothing, the box stays in the generated cell, getcell fails and `select cell {}`
+  // selects the top cell.
+  auto s = pdk_session(kSg13g2, true);
+  if (!s) {
+    SKIP("PDK data set not fetched (scripts/fetch_pdk.py)");
+  }
+  guard_tcl_generators(*s, kSg13g2);
+  s->eval("load top");
+  hefesto::diag::CollectingSink printed;
+  s->dispatcher->add_sink(printed);
+  CHECK(s->eval("magic::gencell sg13g2::diodevdd_2kv D1") == "0");
+  CHECK_FALSE(s->console_has("Tcl generator called"));
+  const auto emitted = printed.snapshot();
+  CHECK(std::any_of(emitted.begin(), emitted.end(), [](const hefesto::diag::Diagnostic& d) {
+    return d.text == "The box is in cell \"diodevdd_2kv\", not in the edit cell \"top\"";
+  }));
+  CHECK(s->eval("cellname list children top").empty());
+  CHECK(s->eval("cellname list self") == "top");
+  CHECK(s->eval("what -list") == "{} {} {{{Topmost cell in the window} top}}");
 }
 
 TEST_CASE("native _defaults equal the PDK procedures", "[cap:pcell-toolkit][req:Native generator equivalence]") {
@@ -269,6 +346,8 @@ TEST_CASE("native _check corrections and messages equal the PDK procedures",
   const std::vector<std::string> fixed = {"", "nx 0", "ny 0", "nx 1.5", "deltax -1", "deltay 2u", "deltax abc"};
   check_checks(kSky130, "sky130_fd_pr__npn_05v5_W1p00L1p00", fixed);
   check_checks(kGf180, "pnp_10p00x00p42", fixed);
+  check_checks(kSg13g2, "diodevdd_4kv", fixed);
+  check_checks(kSg13g2, "schottky", fixed);
 }
 
 TEST_CASE("a parameter outside Tcl's numbers runs the Tcl generator",

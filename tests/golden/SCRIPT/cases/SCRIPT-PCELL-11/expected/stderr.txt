@@ -1,0 +1,10 @@
+Cell top couldn't be read
+No such file or directory
+Box tool must be present
+The box's lower-left corner must point to the place
+    in the edit cell where you'd like to put "fixedcap".
+Cell Topmost cell in the window (top) isn't a child of the edit cell.
+    Cell identifier not changed.
+Couldn't find a cell use named "F1"
+Unknown cell 
+Unknown cell 

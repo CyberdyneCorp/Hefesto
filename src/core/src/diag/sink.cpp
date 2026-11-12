@@ -23,6 +23,14 @@ std::vector<Diagnostic> CollectingSink::snapshot() const {
   return diagnostics_;
 }
 
+std::vector<Diagnostic> CollectingSink::snapshot_from(std::size_t first) const {
+  const std::scoped_lock lock{mutex_};
+  if (first >= diagnostics_.size()) {
+    return {};
+  }
+  return {diagnostics_.begin() + static_cast<std::ptrdiff_t>(first), diagnostics_.end()};
+}
+
 bool CollectingSink::has_errors() const {
   const std::scoped_lock lock{mutex_};
   return first_error(diagnostics_) != nullptr;

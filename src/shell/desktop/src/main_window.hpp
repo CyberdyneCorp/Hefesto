@@ -260,6 +260,11 @@ class MainWindow {
   void header_click(const std::string& id, float x);
   void open_panel_menu(const std::string& id, float x, float y);
   void strip_click(std::size_t zone, float y);
+  // Header drag to a dock (board M2-Panels tile 2): the header starts
+  // Raven's drag, the docks, the canvas column and the strips take it.
+  [[nodiscard]] std::optional<ui::Painted::DragData> begin_panel_drag(const std::string& id, float x, float y);
+  bool panel_drop(ui::DropZone::Phase phase, float x, float y, std::string_view type);
+  [[nodiscard]] DockGeometry dock_geometry() const;
   void fit_panels();  // per frame: the edge strips the window width needs
   [[nodiscard]] LayoutRect panel_window_rect() const;
   void save_panels();
@@ -295,6 +300,7 @@ class MainWindow {
   /// --pinch: injects the trackpad pinch and prints the zoom before and after.
   void poll_background();
   void run_pending_pinch();
+  void run_pending_drag();
   void on_problem(StatusKind kind, const std::string& panel_line, const std::string& status);
   void set_message(StatusKind kind, std::string text);
   /// Tells a screen reader of an error (assertive) or a warning (polite).
@@ -438,6 +444,8 @@ class MainWindow {
   std::array<std::vector<std::string>, 3> strip_panels_;    // what each strip lists
   ui::Box right_stack_ = ui::Box::vertical();  // Inspector, PDK manager, color window, DRC error area (one shown)
   std::array<ui::Box, 2> side_docks_{ui::Box::vertical(), ui::Box::vertical()};  // left, right: frames stacked
+  std::optional<PanelDrag> panel_drag_;                 // the header drag in progress
+  std::vector<std::unique_ptr<ui::DropZone>> drop_zones_;  // where a header drag can end
   int panels_fit_width_ = -1;                  // the window width fit_panels last applied
   bool narrow_left_ = false;                   // fit_to_window turned the left dock into its strip
   bool narrow_right_ = false;
@@ -506,6 +514,7 @@ class MainWindow {
   StatusKind message_kind_ = StatusKind::info;
   std::string pending_run_;          // run_when_ready
   std::optional<PinchOption> pending_pinch_;  // --pinch, after pending_run_
+  std::optional<DragOption> pending_drag_;    // --drag, after pending_run_
   UndoMark undo_mark_;                        // the undo log after the last command
   std::optional<std::string> undo_message_;  // "Undid … · N more steps", not shown yet
   bool in_command_ = false;          // run_line is executing a command line

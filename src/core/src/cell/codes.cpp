@@ -38,7 +38,7 @@ constexpr std::array kCellCodes = {
     CodeInfo{"CELL-PATH-004", warning, "A use-line path names an undefined variable; the search paths are used."},
     CodeInfo{"CELL-PATH-005", error, "The cell was already read from a different, conflicting location."},
     CodeInfo{"CELL-PATH-006", info, "Standard-cell library directories were added to the cell library path."},
-    CodeInfo{"CELL-PATH-007", info, "Automatic technology discovery is loading the technology a cell file names."},
+    CodeInfo{"CELL-PATH-007", warning, "Automatic technology discovery is loading the technology a cell file names (Magic's TxError: standard error)."},
     CodeInfo{"CELL-PATH-008", error, "Automatic technology discovery could not load the technology a cell file names."},
     CodeInfo{"CELL-READ-001", error, "The cell file contained a format error; the content read so far is kept."},
     CodeInfo{"CELL-READ-002", error, "The first line of a cell file is not \"magic\"."},

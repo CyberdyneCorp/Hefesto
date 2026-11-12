@@ -222,8 +222,9 @@ TEST_CASE("already-ordered ports are not reported in either magic-compat setting
 
 TEST_CASE("bus brackets, case and bare labels match netlist pins", "[cap:readspice][req:Port renumbering algorithm]") {
   Session s;
-  // "Bus-bracket mapping": port D<0> takes the position of D[0]; `clk`
-  // matches port CLK; label Q (not a port) becomes a port.
+  s.project.compat.magic_compat = false;
+  // "Bus-bracket mapping" (magic-compat OFF): port D<0> takes the position
+  // of D[0]; `clk` matches port CLK; label Q (not a port) becomes a port.
   s.cell_with_labels("reg", {{"CLK", 1}, {"D<0>", 2}, {"Q", 0}});
   s.write("/work/reg.sp", ".subckt reg Q D[0] clk W=1\n.ends\n");
   const auto r = s.run("readspice reg.sp");
@@ -232,6 +233,21 @@ TEST_CASE("bus brackets, case and bare labels match netlist pins", "[cap:readspi
   CHECK(s.index_of("reg", "D<0>") == 2);
   CHECK(s.index_of("reg", "CLK") == 3);
   CHECK(texts(r, "TOOLS-RSP-001").back() == "Cell reg port order was modified.");
+}
+
+TEST_CASE("D[0] never matches port D<0> with magic-compat ON", "[cap:readspice][req:Port renumbering algorithm]") {
+  // Regression (golden SCRIPT-RSP-03, Q-SCRIPT-47): Magic's `string map
+  // {[ < ] >]}` turns D[0] into D<0>], so D<0> keeps the index it was moved
+  // to in step 2; the angle-to-square mapping still finds d[1] from d<1>.
+  Session s;
+  s.cell_with_labels("reg", {{"CLK", 1}, {"D<0>", 2}, {"Q", 3}, {"d[1]", 4}});
+  s.write("/work/reg.sp", ".subckt reg Q D[0] CLK d<1>\n.ends\n");
+  const auto r = s.run("readspice reg.sp");
+  REQUIRE(r.ok());
+  CHECK(s.index_of("reg", "Q") == 1);
+  CHECK(s.index_of("reg", "CLK") == 2);
+  CHECK(s.index_of("reg", "d[1]") == 3);
+  CHECK(s.index_of("reg", "D<0>") > 4);  // not renumbered: still out of the way
 }
 
 TEST_CASE("layout ports absent from the netlist keep high indices", "[cap:readspice][req:Port renumbering algorithm]") {

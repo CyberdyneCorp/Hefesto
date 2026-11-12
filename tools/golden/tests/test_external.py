@@ -70,6 +70,21 @@ class ExternalTest(unittest.TestCase):
             self.assertEqual(staged.read_text(encoding="utf-8"), "font\n")
             self.assertFalse((work / "input" / "F.pt3").exists())
 
+    def test_magic_tcl_input_staged_under_the_replay_cad_root_tcl(self):
+        # The auxiliary scripts a case sources from $CAD_ROOT/magic/tcl (SCRIPT-AUX-01, -04).
+        with tempfile.TemporaryDirectory() as tmp:
+            magic = Path(tmp) / "magic"
+            (magic / "tcltk").mkdir(parents=True)
+            (magic / "tcltk" / "s.tcl").write_text("puts hi\n", encoding="utf-8")
+            work = Path(tmp) / "work"
+            (work / "input").mkdir(parents=True)
+            with mock.patch.dict(os.environ, {"HEFESTO_MAGIC_SRC": str(magic)}):
+                ext = external.parse_external({"source": "magic-tcl", "to": "s.tcl", "path": "tcltk/s.tcl"}, 0)
+                external.stage([ext], work / "input")
+            staged = external.cad_root(work) / "magic" / "tcl" / "s.tcl"
+            self.assertEqual(staged.read_text(encoding="utf-8"), "puts hi\n")
+            self.assertFalse((work / "input" / "s.tcl").exists())
+
     def test_replay_sets_its_own_cad_root(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"CAD_ROOT": "/dev/elsewhere"}):
             case = load_case(case_with(Path(tmp), ""))

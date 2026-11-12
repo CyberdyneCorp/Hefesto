@@ -18,7 +18,7 @@ using enum Severity;
 // Keep sorted by code. Never renumber or reuse a code once released.
 constexpr std::array kAppCodes = {
     CodeInfo{"APP-DISPLAY-001", error, "Unknown display type given with -d; startup fails with status 1."},
-    CodeInfo{"APP-FILE-001", info, "A file named on the command line is being loaded (`Loading \"F\" from command line.`)."},
+    CodeInfo{"APP-FILE-001", info, "A file named on the command line is being loaded (`Loading \"F\" from command line.`; in wrapper mode `Handling file entry F extension E`)."},
     CodeInfo{"APP-FILE-002", warning,
              "A command-line file of this type (LEF, DEF, CIF, GDS, Tcl script) cannot be read in this release; it was skipped."},
     CodeInfo{"APP-LIBPATH-001", info,

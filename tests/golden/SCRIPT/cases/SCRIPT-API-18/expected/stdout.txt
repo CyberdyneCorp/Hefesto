@@ -1,0 +1,52 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 07:11:13 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+2 Magic internal units = 1 Lambda
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.150 x 0.500   ( 0.000,  0.000), ( 0.150,  0.500)  0.075     
+lambda:    15.00 x 50.00   (  0.00,  0.00 ), ( 15.00,  50.00)  750.00    
+internal:     30 x 100     (     0,  0    ), (    30,  100  )  3000      
+0 {}
+0 {0 0 30 100}
+0 {}
+0 {0 0 30 100}
+0 {}
+0 {0 0 30 100}
+0 {}
+0 {0 0 30 100}
+0 {}
+0 {0i 0i 30i 100i}
+0 {}
+0 {0 0 30 100}
+0 {}
+0 {0 0 15 50}
+0 {}
+0 {0l 0l 15l 50l}
+0 {}
+0 {0 0 15 50}
+0 {}
+0 {0 0 0.15 0.5}
+0 {}
+0 {0um 0um 0.15um 0.5um}
+0 {}
+0 {0 0 0.15 0.5}
+0 {}
+0 {0 0 3 5}
+0 {}
+0 {0gx 0gy 3gx 5gy}
+0 {}
+0 {0 0 3 5}

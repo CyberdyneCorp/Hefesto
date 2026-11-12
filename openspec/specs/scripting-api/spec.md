@@ -22,7 +22,7 @@ Magic implements this as the shared library `tclmagic` loaded into `tclsh`/`wish
 - **THEN** both SHALL return status ok with result `0 0 10 20`
 
 ### Requirement: Command registration in the magic namespace
-For every command of every window client (layout, window-manager, color, netlist, 3D and the others), the system SHALL register a script command named `magic::<fullname>`. `<fullname>` is the first whitespace-delimited word of the command-table entry, for example `magic::box`, `magic::*bypass`, `magic::*flags`. Registration SHALL happen after the layout engine has finished its core initialization. Only full names SHALL be registered. Abbreviated command names SHALL NOT be callable as script commands.
+For every command of every window client (layout, window-manager, color, netlist, 3D and the others), the system SHALL register a script command named `magic::<fullname>`. `<fullname>` is the first whitespace-delimited word of the command-table entry, for example `magic::box`, `magic::*bypass`, `magic::*flags`. Registration SHALL happen after the layout engine has finished its core initialization. The commands of a window client Hefesto does not provide yet are registered too: the netlist window's `add`, `cleanup`, `cull`, `dnet`, `dterm`, `extract`, `find`, `flush`, `joinnets`, `netlist`, `print`, `pushbutton`, `ripup`, `savenetlist`, `shownet`, `showterms`, `trace`, `verify` and `writeall` (netlist-window, M12), so that from a layout window they fail quietly as in Magic (`magic::shownet` is an error with an empty result) and in a netlist window they report UI-CLIENT-002. Only full names SHALL be registered. Abbreviated command names SHALL NOT be callable as script commands.
 Compatibility: exact
 
 The following script commands SHALL also exist:
@@ -82,7 +82,7 @@ Compatibility: exact
 #### Scenario: Shared library load
 - **WHEN** a script runs `load /opt/x/libfoo.so`
 - **THEN** the Tcl built-in result SHALL be returned, and the Magic `load` SHALL NOT run
-- **AND** in Hefesto that result SHALL be the sandbox error, because loading native extensions is denied (capability `hefesto-scripting`)
+- **AND** in Hefesto that result SHALL be an error, because loading native extensions is denied (capability `hefesto-scripting`): with `magic-compat` ON Tcl's own text for a file dlopen() cannot open, `couldn't load file "/opt/x/libfoo.so": /opt/x/libfoo.so: cannot open shared object file: No such file or directory` (the same for every path, so it reveals nothing about the file system), with it OFF the sandbox's message; the sandbox denial SHALL be recorded in both settings
 
 #### Scenario: Cell load with dotted directory
 - **WHEN** a script runs `load ../lib.v2/inv` and the built-in fails
@@ -222,7 +222,7 @@ After a script-dispatched command completes with ok status, the system SHALL eva
 
 This is Q-SCRIPT-3, resolution: fix in both `magic-compat` settings. Magic inserts `%r` as `"<result>"` with no escaping and the arguments and window path raw, restarts scanning at the beginning of the string after each replacement, and loops forever (the editor hangs) on `%%` or on any other `%x`. For every value without `"`, `$`, `[`, `]`, `\` or `%`, Hefesto inserts the word Magic's substitution produces, so a tag script that works in Magic keeps its meaning.
 
-The command's result SHALL be preserved across a successful tag evaluation unless `%R` was used. If the tag script raises an error, the command SHALL return error status with the tag's error message. The command sequence number SHALL be restored after the tag runs. Commands dispatched through a window path SHALL substitute `%W` with that path and SHALL number `%0` from the command name, excluding the path. See Q-SCRIPT-3 for the unescaped `%r` quoting and for rescanning.
+The command's result SHALL be preserved across a successful tag evaluation unless `%R` was used. If the tag script raises an error, the command SHALL return error status with the tag's error message. The command sequence number SHALL be restored after the tag runs. Commands dispatched through a window path SHALL substitute `%W` with that path and SHALL number `%0` from the command name, excluding the path. See Q-SCRIPT-3 for the unescaped `%r` quoting and for rescanning. The tag script SHALL be evaluated in the call frame of the code that ran the command, as Magic's TagCallback does (`Tcl_EvalEx` without `TCL_EVAL_GLOBAL`): a tag fired from inside a procedure sees that procedure's `info level` and local variables. wrapper.tcl's `magic::boxview` relies on this to skip the title-bar update (and its second `box values`) when `box` is called from a procedure such as `magic::gencell_create`; the native gencell's box query runs in such a frame too.
 Compatibility: exact
 
 (Magic ref: tcltk/tclmagic.c:107-294,528,576-577)
@@ -232,6 +232,12 @@ Compatibility: exact
 - **AND** one layout window `.layout1.pane.top.magic` exists
 - **WHEN** the script runs `box`
 - **THEN** the evaluated tag SHALL be `magic::boxview .layout1.pane.top.magic {}`
+
+#### Scenario: Tag fired from a procedure
+- **GIVEN** `tag box` is `set ::lv [info level]`
+- **AND** a procedure `p` that runs `box values`
+- **WHEN** a script runs `p` at global level
+- **THEN** `::lv` SHALL be `1`
 
 #### Scenario: Result passthrough
 - **GIVEN** `tag cellname` is `magic::mgrupdate %W %1`
@@ -264,7 +270,7 @@ Compatibility: behavioral
 - **THEN** the result SHALL be the box values with respect to that window's root cell
 
 ### Requirement: Output, flushing and escaping
-All engine text output SHALL be emitted as a script-level `puts -nonewline stdout "<text>"` or `puts -nonewline stderr "<text>"` call, so that scripts or consoles that redefine `puts` capture it. Before emission, the characters `"`, `[`, `]`, `\` and `$` in the text SHALL be backslash-escaped, so the text prints literally whether or not a script variable named after a `$` exists (Q-SCRIPT-4, resolution: fix in both `magic-compat` settings; Magic leaves `$<name>` unescaped when a variable `<name>` exists in the printing interpreter, so the variable's value is printed). Output is evaluated in the console interpreter only when the `printf` runtime flag is set. Flushing SHALL call the original Tcl `flush` (`::tcl_flush stdout|stderr`), not the Magic `flush` command, and SHALL preserve the interpreter result.
+All engine text output SHALL be emitted as a script-level `puts -nonewline stdout "<text>"` or `puts -nonewline stderr "<text>"` call, so that scripts or consoles that redefine `puts` capture it. Before emission, the characters `"`, `[`, `]`, `\` and `$` in the text SHALL be backslash-escaped, so the text prints literally whether or not a script variable named after a `$` exists (Q-SCRIPT-4, resolution: fix in both `magic-compat` settings; Magic leaves `$<name>` unescaped when a variable `<name>` exists in the printing interpreter, so the variable's value is printed). Output is evaluated in the console interpreter only when the `printf` runtime flag is set. Flushing SHALL call the original Tcl `flush` (`::tcl_flush stdout|stderr`), not the Magic `flush` command, and SHALL preserve the interpreter result. Engine text SHALL appear in the order Magic prints it, each message when it is made: what a command printed before it runs another command (a Tcl procedure it evaluates, a device's draw) or before a script's `puts` comes first.
 Compatibility: informative
 
 (Magic ref: tcltk/tclmagic.c:1335-1490,1504-1550)
@@ -404,7 +410,7 @@ The following commands SHALL return these results. "dist" means a value formatte
 - `cellname list topcells|allcells|modified` → list. `cellname list window` → the window's root cell name.
 - `cellname list flags <c>` → list of flag words (for example `not-found`).
 - `cellname list property <c> <key>` → value, or empty if undefined (no error message).
-- `cellname list writeable <c>` → `writeable`|`read-only`. `cellname list filepath <c>` → directory, or `default`.
+- `cellname list writeable <c>` → `writeable`|`read-only`. `cellname list filepath <c>` → with `magic-compat` ON the whole stored file path, as in Magic; with it OFF the directory; `default` when there is none (Q-CELL-45, resolution: compat).
 - `instance list celldef|exists|self <i>` → name, or empty if `<i>` is not found in the edit cell. A name containing `/` is resolved hierarchically.
 - `instance list children <i>` → list. `instance list orientation` → one of `0 90 180 270 0h 90h 180h 270h`, or `N E S W FN FE FS FW` with `-def`. `instance list abutment` → `{llx lly urx ury}` (dist; from FIXED_BBOX if present, else the bounding box, transformed to the parent).
 - `what -list` → three lists: `{paint-types} {labels} {cells}`. Each label is `{text type cellname-or-{}}`. Each cell is `{use-id def-name}`.

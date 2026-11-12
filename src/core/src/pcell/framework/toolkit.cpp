@@ -71,6 +71,22 @@ std::string Toolkit::query(const std::vector<std::string>& words) {
   return r.ok() ? value_text(r.value) : std::string{};
 }
 
+std::vector<std::string> Toolkit::engine_list(const std::vector<std::string>& words) {
+  if (words.empty()) {
+    return {};
+  }
+  std::vector<std::string> call{words};
+  call.front() = "::magic::" + call.front();
+  // Inside a procedure frame, as toolkit.tcl calls it from gencell_create:
+  // a `box` tag (wrapper.tcl's magic::boxview) sees `[info level]` > 1 and
+  // leaves the box alone.
+  const std::vector<std::string> lambda{std::string{}, merge_tcl_list(call)};
+  const std::vector<std::string> apply{"apply", merge_tcl_list(lambda)};
+  const cmd::CommandResult r = interp_->evaluate(merge_tcl_list(apply));
+  auto split = split_tcl_list(r.ok() ? value_text(r.value) : std::string{});
+  return split.ok() ? std::move(split).value() : std::vector<std::string>{};
+}
+
 std::vector<std::string> Toolkit::query_list(const std::vector<std::string>& words) {
   auto split = split_tcl_list(query(words));
   return split.ok() ? std::move(split).value() : std::vector<std::string>{};

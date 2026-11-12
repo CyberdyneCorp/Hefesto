@@ -18,9 +18,12 @@
 #include "hefesto/cell/crash.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/command_log.hpp"
+#include "hefesto/cmd/context.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/gui/tk_model.hpp"
+#include "hefesto/gui/wrapper.hpp"
 #include "hefesto/pdk/manager.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/platform/services.hpp"
@@ -30,6 +33,7 @@
 #include "hefesto/platform_posix/lock_service.hpp"
 #include "hefesto/platform_posix/process_runner.hpp"
 #include "hefesto/script/binding/tags.hpp"
+#include "hefesto/script/binding/window_commands.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/script/pdk/consent.hpp"
 #include "hefesto/script/pdk/startup.hpp"
@@ -270,6 +274,10 @@ class Session {
     if (log_warning_) {
       dispatcher_->report(*log_warning_);
     }
+    if (startup.display_type) {
+      const auto display = app::resolve_display(startup.display_type, false);
+      wrapper_display_ = display.ok() && !display.value().headless;
+    }
     run_startup(startup);
     const bool ok = script_session_.quit_requested || run_sources();
     magic_console_.flush();
@@ -336,6 +344,18 @@ class Session {
   // The CLI's console in the project's interpreter: `puts` to stdout and
   // stderr writes to this session's streams (in order with the diagnostics);
   // other channels go to Tcl's own `puts`, kept as ::hefesto::tcl_puts.
+  // The globals the `magic` launcher's Tcl shell starts with (`argv`,
+  // `argc`, and `batch_mode` under `-dnull -noconsole`).
+  void set_launcher_variables(script::Interpreter& interp) const {
+    const tools::LauncherVariables vars = tools::launcher_variables(options_.magic_args);
+    cmd::Value::List words(vars.argv.begin(), vars.argv.end());
+    static_cast<void>(interp.set_var("::argc", cmd::Value{static_cast<std::int64_t>(words.size())}));
+    static_cast<void>(interp.set_var("::argv", cmd::Value{std::move(words)}));
+    if (vars.batch_mode) {
+      static_cast<void>(interp.set_var("::batch_mode", cmd::Value{"true"}));
+    }
+  }
+
   void install_console(script::Interpreter& interp) {
     const auto renamed = interp.evaluate("namespace eval ::hefesto {}; rename ::puts ::hefesto::tcl_puts");
     if (!renamed.ok()) {
@@ -364,7 +384,8 @@ class Session {
     }
     const std::string& text = a.back();
     std::FILE* stream = channel == "stdout" ? out_ : err_;
-    magic_console_.flush();  // a pending TxError line comes first
+    dispatcher_->flush_running();  // the running command's messages so far come first
+    magic_console_.flush();        // a pending TxError line comes first
     std::fwrite(text.data(), 1, text.size(), stream);
     if (!nonewline) {
       std::fputc('\n', stream);
@@ -390,8 +411,61 @@ class Session {
     env.pdk_root = options_.pdk_root;
     env.user_preferences = platform::default_storage_dir() / "preferences.json";
     env.recent_projects = platform::default_storage_dir() / "recent-projects.json";
-    env.configure_interpreter = [this](script::Interpreter& interp) { install_console(interp); };
+    env.configure_interpreter = [this](script::Interpreter& interp) {
+      install_console(interp);
+      if (options_.magic_mode) {
+        set_launcher_variables(interp);
+        // Magic's Tcl build has no readline `history` (CmdHistory needs
+        // USE_READLINE): `history` is Tcl's own, as in `magic -dnull`.
+        static_cast<void>(interp.evaluate("catch {rename ::magic::history {}}"));
+      }
+      if (wrapper_display_) {
+        install_wrapper(interp);
+      }
+    };
+    env.open_wrapper = [this] { open_wrapper(); };
     return env;
+  }
+
+  // Wrapper mode (`--magic -d X11`, m4-scripting design D16: GUI cases replay
+  // through hefesto-cli). Before the startup files, as magic.tcl.in sources
+  // wrapper.tcl before `magic::startup`: the headless widget model, the
+  // wrapper's tags and its commands in the global namespace.
+  void install_wrapper(script::Interpreter& interp) {
+    cmd::CommandResult ready = gui::install_tk_model(interp);
+    if (ready.ok()) {
+      interp.define_command("::hefesto::tk::window_command", [this](const cmd::Invocation& inv) {
+        return script::register_window_commands(*editor_.script.interp, *dispatcher_, inv.args);
+      });
+      interp.define_command("::hefesto::tk::params_model", [this](const cmd::Invocation&) {
+        const auto& dialog = editor_.script.gencell.dialog;
+        return cmd::CommandResult::success(cmd::Value{gui::params_dialog_words(dialog ? &*dialog : nullptr)});
+      });
+      ready = gui::import_wrapper_commands(interp);
+      file_picker_ = std::make_unique<gui::TkFilePicker>(editor_);
+      editor_.file_picker = file_picker_.get();
+    }
+    for (const auto& diagnostic : ready.diagnostics) {
+      dispatcher_->report(diagnostic);
+    }
+  }
+
+  // Then, once the startup window is open, it becomes `.layout1`, as
+  // magic.tcl.in runs `magic::openwrapper` with no window open.
+  void open_wrapper() {
+    script::Interpreter* interp = editor_.script.interp.get();
+    if (interp == nullptr || !gui::has_tk_model(*interp)) {
+      return;
+    }
+    // openwrapper's first window (wrapper.tcl:1061-1065): Tk draws the chrome.
+    for (const char* chrome : {"windowcaption", "windowscrollbars", "windowborder"}) {
+      (void)dispatcher_->execute(cmd::Invocation{chrome, {"off"}, cmd::Origin::cli, std::nullopt});
+    }
+    cmd::CommandContext ctx(services_.view(), project_, script_session_, console_sink(), registry_, &editor_);
+    const cmd::CommandResult adopted = gui::adopt_wrapper(ctx, ".layout1");
+    for (const auto& diagnostic : adopted.diagnostics) {
+      dispatcher_->report(diagnostic);
+    }
   }
 
   // One source of Tcl input and how the CLI runs it.
@@ -584,6 +658,8 @@ class Session {
   RunMonitor monitor_;
   MagicConsole magic_console_;
   std::unique_ptr<cmd::Dispatcher> dispatcher_;
+  bool wrapper_display_ = false;  // -d names a display other than NULL (wrapper mode)
+  std::unique_ptr<platform::FilePicker> file_picker_;  // wrapper mode: Tk's file dialogs
 };
 
 int report_usage_error(const std::string& text, std::FILE* err) {

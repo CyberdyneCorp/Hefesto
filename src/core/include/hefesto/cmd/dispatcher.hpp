@@ -68,6 +68,13 @@ class Dispatcher {
   /// error) to the attached sinks and the logger.
   void report(const diag::Diagnostic& diagnostic);
 
+  /// Reports what the running commands emitted so far, as Magic prints each
+  /// message when it is made: before a command run from within another one
+  /// (a Tcl procedure the outer command evaluates) reports its own, and
+  /// before a script's `puts` writes (the CLI console calls it). Each is
+  /// then left out when its command's result is published.
+  void flush_running();
+
   /// Observers and sinks are not owned; each must stay alive until the
   /// dispatcher is destroyed or it is removed again.
   void add_observer(CommandObserver& observer) { observers_.push_back(&observer); }
@@ -134,9 +141,12 @@ class Dispatcher {
   [[nodiscard]] std::string target_client() const;
 
  private:
-  CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation);
-  void publish(const Invocation& invocation, const CommandResult& result);
-  void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result);
+  /// `reported`: how many of the result's first diagnostics were already
+  /// reported while it ran (flush_running()).
+  CommandResult run_handler(const CommandSpec& spec, const Invocation& invocation, std::size_t& reported);
+  void publish(const Invocation& invocation, const CommandResult& result, std::size_t reported = 0);
+  void after_command(const Invocation& typed, const Invocation& resolved, CommandResult& result,
+                     std::size_t reported = 0);
   /// Sets the default point (set_default_point) when no point is set; true
   /// when it did, so that it is dropped after the command.
   bool place_default_point();
@@ -158,6 +168,13 @@ class Dispatcher {
   std::vector<CommandObserver*> observers_;
   std::vector<diag::DiagnosticSink*> sinks_;
   std::vector<diag::DiagnosticSink*> live_sinks_;
+  /// The collectors of the commands running now (outermost first) and how
+  /// many of each one's diagnostics flush_running() already reported.
+  struct Running {
+    diag::CollectingSink* collected;
+    std::size_t reported;
+  };
+  std::vector<Running> running_;
 };
 
 }  // namespace hefesto::cmd

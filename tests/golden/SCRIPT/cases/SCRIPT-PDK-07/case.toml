@@ -45,6 +45,11 @@ set = "ihp"
 path = "ihp-sg13g2/libs.tech/magic"
 to = "pdk/ihp-sg13g2/libs.tech/magic"
 
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
 [[outputs]]
 name = "stdout.txt"
 source = "stdout"

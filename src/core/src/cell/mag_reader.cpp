@@ -173,7 +173,7 @@ void reconcile_scale(ReadState& st, const Header& h) {
   const tech::GridScale ratio = tech::reduce(tech::GridScale{h.n * st.ctx.grid.internal, h.d * st.ctx.grid.lambda});
   st.n = ratio.internal;
   st.d = ratio.lambda;
-  const bool limited = !tech::check_grid_limit(st.tech(), st.n, st.d).ok();
+  const bool limited = !tech::check_grid_limit(st.tech(), st.n, st.d, st.ctx.grid).ok();
   const bool all = st.options.prints(ReadOptions::Verbosity::all);  // `load -quiet|-silent` (DBVerbose)
   if (!limited && st.d > 1 && st.ctx.rescale_database && st.ctx.rescale_database(st.d, 1)) {
     st.ctx.grid.internal *= st.d;

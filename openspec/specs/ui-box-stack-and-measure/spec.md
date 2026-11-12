@@ -14,7 +14,7 @@ These are commands in the `magic::` namespace and are imported globally (see `sc
 ## Requirements
 
 ### Requirement: Box stack push
-`pushbox ?values?` SHALL push a 4-element box record `{llx lly urx ury}` onto a session-global stack. The stack is shared by all windows and all callers. With no argument, the record SHALL be the current cursor box in internal units, captured while units are temporarily set to `internal` and then restored. With an argument, the argument SHALL be pushed verbatim. The command SHALL return the empty string. It SHALL NOT change the box.
+`pushbox ?values?` SHALL push a 4-element box record `{llx lly urx ury}` onto a session-global stack. The stack is shared by all windows and all callers. With a scripting interpreter the stack is the global Tcl variable `boxstack`, a list of records, which scripts may read and set as with Magic's tools.tcl; it does not exist before the first push. With no argument, the record SHALL be the current cursor box in internal units, captured while units are temporarily set to `internal` and then restored; without a box, `box values` reports `Box tool must be present` and the record is empty. With an argument, the argument SHALL be pushed verbatim. The command SHALL return the empty string. It SHALL NOT change the box.
 Compatibility: exact
 
 (Magic ref: tcltk/tools.tcl:190-212)
@@ -57,7 +57,7 @@ Compatibility: exact
 `pushstack ?name?` SHALL load cell `name` into the window and remember where to return. It SHALL:
 1. If `name` is empty and nothing is selected, select the cell under the box. The box is saved and restored with `pushbox`/`popbox` around this select. Then set `name` to the selected cell's definition name.
 2. Raise error `No cell to push!` if `name` is still empty, or `Too many cells selected!` if it is a list of more than one element.
-3. Append two entries to the session-global edit stack: the current view (`view get` in internal units), then the current window root cell name.
+3. Append two entries to the session-global edit stack (with a scripting interpreter, the global Tcl variable `editstack`): the current view (`view get` in internal units), then the current window root cell name.
 4. Save the `load` tag, clear it, load `name`, refresh the cell manager and window captions if they exist, then restore the `load` tag.
 5. Return the empty string.
 Compatibility: behavioral

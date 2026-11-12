@@ -6,8 +6,8 @@
 // scripts/pcell_equivalence.py (D-29):
 //  - open_pdks ciel release 5740c4a8 (the stand-in of the spec pin
 //    c6df28c1, design D15): sky130A and gf180mcuD;
-//  - IHP-Open-PDK 5e6d592e: ihp-sg13g2's MOSFETs (the fixed devices wait
-//    for SCRIPT-PDK-14 to confirm Q-SCRIPT-45).
+//  - IHP-Open-PDK 5e6d592e: ihp-sg13g2's MOSFETs and fixed devices (these
+//    follow Q-SCRIPT-45's compat resolution, decided on SCRIPT-PDK-14).
 // Any other version of these PDKs runs the Tcl generators.
 
 #include <string>
@@ -91,6 +91,40 @@ const std::vector<FixedRow>& gf180mcu_fixed() {
   return kRows;
 }
 
+// PDK ref: IHP-Open-PDK 5e6d592e ihp-sg13g2-fix.tcl:52-91, 268-580 (each
+// device places, and first generates, the cell of its own name; schottky's
+// `_generate` tests "schottky_cell", which never exists). The defaults are
+// the procedures' text: each continued line leaves two spaces.
+struct GeneratedRow {
+  const char* device;
+  const char* guard;
+  const char* defaults;
+};
+
+const std::vector<GeneratedRow>& sg13g2_fixed() {
+  static const std::vector<GeneratedRow> kRows = {
+      {"diodevdd_2kv", "diodevdd_2kv",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv}  "
+       "xstep 13.3 ystep 35.67 class diode"},
+      {"diodevdd_4kv", "diodevdd_4kv",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv}  "
+       "xstep 18.1 ystep 35.67 class diode"},
+      {"diodevss_2kv", "diodevss_2kv",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv}  "
+       "xstep 13.3 ystep 35.67 class diode"},
+      {"diodevss_4kv", "diodevss_4kv",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {diodevdd_2kv diodevdd_4kv diodevss_2kv diodevss_4kv}  "
+       "xstep 18.1 ystep 35.67 class diode"},
+      {"nmoscl_2", "nmoscl_2",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {nmoscl_2 nmoscl_4}  xstep 35.76 ystep 24 class mosfet"},
+      {"nmoscl_4", "nmoscl_4",
+       "nx 1 ny 1 deltax 0 deltay 0 nocell 1  compatible {nmoscl_2 nmoscl_4}  xstep 67.68 ystep 24 class mosfet"},
+      {"scr1", "scr1", "nx 1 ny 1 deltax 0 deltay 0 nocell 1  xstep 16.8 ystep 31.2 class diode"},
+      {"schottky", "schottky_cell", "nx 1 ny 1 deltax 0 deltay 0 nocell 1  xstep 5.5 ystep 6.0 class diode"},
+  };
+  return kRows;
+}
+
 void add_fixed(NativeRegistry& registry, const script::PdkIdentity& pdk, const char* library, HelperFamily family,
                const std::vector<FixedRow>& rows) {
   for (const auto& row : rows) {
@@ -107,7 +141,12 @@ NativeRegistry make_builtin() {
   native::add_sky130_mosfets(registry, sky130);
   add_fixed(registry, gf180mcu, "gf180mcu", HelperFamily::gf180mcu, gf180mcu_fixed());
   native::add_gf180mcu_mosfets(registry, gf180mcu);
-  native::add_sg13g2_mosfets(registry, script::PdkIdentity{"ihp-sg13", "ihp-sg13g2", kIhpRelease});
+  const script::PdkIdentity sg13g2{"ihp-sg13", "ihp-sg13g2", kIhpRelease};
+  native::add_sg13g2_mosfets(registry, sg13g2);
+  for (const auto& row : sg13g2_fixed()) {
+    registry.add(sg13g2, std::string{"sg13g2::"} + row.device,
+                 native::make_generated_fixed_device(row.defaults, row.device, native::BaseCellScript{row.guard}));
+  }
   return registry;
 }
 

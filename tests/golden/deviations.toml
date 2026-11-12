@@ -54,6 +54,11 @@ reason = "port renumber orders VDD and vdd by the total natural order (byte tie-
 
 # --- CELL -------------------------------------------------------------------
 
+[CELL-PR-03]
+decisions = ["Q-CELL-19"]
+outputs = ["stdout.txt"]
+reason = "with PDK_ROOT unset, the use path $PDK_ROOT/lib goes straight to the search paths, so leaf2's recorded path is the file found there; Magic records the bogus parent-relative input/$PDK_ROOT/lib/leaf2.mag"
+
 [CELL-PR-10]
 decisions = ["Q-CELL-16"]
 outputs = ["stderr.txt", "x_out.mag"]
@@ -63,6 +68,11 @@ reason = "when both x.mag and x.mag.gz exist, x.mag is read with a warning; Magi
 decisions = ["Q-CELL-12"]
 outputs = ["stdout.txt"]
 reason = "cellname list orders inv before inv_a (a natural prefix sorts first)"
+
+[CELL-PW-05]
+decisions = ["Q-CELL-20"]
+outputs = ["top.mag"]
+reason = "the PDK_ROOT prefix must end at a '/', so input/pdk2/lib is written as an absolute path; Magic writes $PDK_ROOT2/lib"
 
 [CELL-RD-12]
 decisions = ["Q-CELL-1"]
@@ -242,6 +252,11 @@ reason = "drc list/listall without an option prints the help instead of reading 
 
 # --- SCRIPT -----------------------------------------------------------------
 
+[SCRIPT-API-04]
+decisions = ["Q-MODEL-9"]
+outputs = ["stdout.txt"]
+reason = "cellname list top sorts inv before inv2 (the total natural order, a proper prefix first); Magic's strcmpbynum is not antisymmetric and its qsort put inv2 first"
+
 [SCRIPT-API-16]
 deferred = "M7"
 outputs = ["stdout.txt", "top.ext", "top2.ext"]
@@ -272,3 +287,23 @@ reason = "tag %r inserts the result as one list-quoted word; Magic wraps it in u
 decisions = ["Q-SCRIPT-41"]
 outputs = ["stderr.txt"]
 reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
+
+[SCRIPT-PDK-01]
+decisions = ["Q-SCRIPT-41"]
+outputs = ["stderr.txt"]
+reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
+
+[SCRIPT-PCELL-01]
+decisions = ["Q-SCRIPT-21"]
+outputs = ["stdout.txt"]
+reason = "magic::normalize_value returns inf verbatim; Magic's round() raises 'integer value too large to represent'"
+
+[SCRIPT-PCELL-05]
+decisions = ["Q-SCRIPT-29"]
+outputs = ["stdout.txt"]
+reason = "the non-interactive change of M2 keeps its name without a dialog and replaces the generated cell; Magic's gencell_change reads .params.title.ient and fails with 'invalid command name'"
+
+[SCRIPT-GUI-02]
+decisions = ["Q-SCRIPT-13"]
+outputs = ["stdout.txt"]
+reason = "openwrapper also runs Winopts(<frame>,callback), the key without the space; Magic reads only Winopts(<frame>, callback), so the per-window callback the case sets never runs there"

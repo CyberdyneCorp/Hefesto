@@ -112,7 +112,7 @@ TEST_CASE("the cell manager's tags clear the edit stack on load", "[cap:ui-gui-m
   REQUIRE(s.run("libmanager create").ok());
   CHECK(s.editor.script.tags.get("writeall") == "magic::libmanager");
   CHECK(s.editor.script.tags.get("select") == "magic::mgrselect %r ; magic::libmanager %1");
-  REQUIRE(s.run("make_texthelper").ok());
+  REQUIRE(s.run("make_texthelper .texthelper").ok());
   REQUIRE(s.run("drcmanager create").ok());
   CHECK(s.editor.script.tags.get("addpath") == "magic::libmanager ; magic::drcmanager");
   CHECK(s.run("cellmanager update").ok());

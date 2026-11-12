@@ -52,10 +52,15 @@ CommandResult with_context(CommandContext& ctx, const Invocation& inv, Body&& bo
   return body(c.value(), inv);
 }
 
-/// ToolGetEditBox: the box must be in a window on the edit cell.
+/// ToolGetEditBox: the box must be in a window on the edit cell
+/// (dbwind/DBWtools.c; its messages, not ToolGetBox's "Box tool must be present").
 bool edit_box(const Context& c) {
+  if (!c.ed->box) {
+    cu::warn(c.s, "Box must be present");
+    return false;
+  }
   if (!ops::root_box(c)) {
-    cu::warn(c.s, "Box tool must be present");
+    cu::warn(c.s, "The box isn't in a window on the edit cell.");
     return false;
   }
   return true;

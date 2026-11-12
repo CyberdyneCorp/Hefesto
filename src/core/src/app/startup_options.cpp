@@ -171,6 +171,7 @@ class OptionParser {
       options_.recover = true;
     } else if (word[2] == 'c' && index_ < args_.size()) {
       set(options_.rc_file, argument("-r", "startup file"));
+      options_.no_rc = false;  // RCFileName: the last of -rcfile and -norcfile wins
     } else {
       fail(codes::kOptionUnknown, "Unknown option: '" + std::string{word} + "'");
     }
@@ -186,6 +187,7 @@ class OptionParser {
       options_.no_window = true;
     } else if (word[3] == 'r') {
       options_.no_rc = true;
+      options_.rc_file.reset();
     } else {
       fail(codes::kOptionUnknown, "Unknown option: '" + std::string{word} + "'");
     }

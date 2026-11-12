@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1990 requirements, 3131 scenarios, 849 open questions.
+**Totals:** 169 capabilities, 1990 requirements, 3136 scenarios, 852 open questions.
 
 ## Hefesto product (native)
 
@@ -47,12 +47,12 @@ Open questions: [32](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 | [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
 | [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 30 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
 | [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
-| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 19 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
+| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 20 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
 | [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |
 
 ## Cell files (.mag) (CELL)
 
-Open questions: [44](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
+Open questions: [45](decisions/open-questions/CELL.md) · Golden cases: [CASES.md](../tests/golden/CELL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -270,7 +270,7 @@ Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`cmd-box`](../openspec/specs/cmd-box/spec.md) | 15 | 30 | Defines the **box**: the single rectangular editing cursor that marks the area for paint, erase, fill, selection, cell placement and most other editing commands. This capability co… |
 | [`cmd-coordinates-and-units`](../openspec/specs/cmd-coordinates-and-units/spec.md) | 14 | 45 | Defines how editing commands parse distances and coordinates (numbers, unit suffixes, simple expressions), how keyword arguments and direction names are matched, how the `units`, `… |
-| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 28 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
+| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 29 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
 | [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 19 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
 | [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 14 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific command… |
 | [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 36 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
@@ -293,15 +293,15 @@ Open questions: [44](decisions/open-questions/UI.md) · Golden cases: [CASES.md]
 
 ## Scripting, PCells, Tcl tools (SCRIPT)
 
-Open questions: [46](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES.md](../tests/golden/SCRIPT/CASES.md)
+Open questions: [48](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES.md](../tests/golden/SCRIPT/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`pcell-toolkit`](../openspec/specs/pcell-toolkit/spec.md) | 18 | 34 | Specifies the "gencell" framework that Magic provides in `toolkit.tcl`. Every open PDK (sky130, gf180mcu, IHP sg13g2) builds its device generators ("PCells") on this framework. The… |
 | [`readspice`](../openspec/specs/readspice/spec.md) | 5 | 11 | Specifies the `readspice <netlist>` command. It is defined by `readspice.tcl` and loaded at startup when present. The command annotates already-loaded layout cells with the port or… |
-| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 52 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
-| [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 9 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
-| [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 14 | 28 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
+| [`scripting-api`](../openspec/specs/scripting-api/spec.md) | 20 | 53 | Defines the scripting surface that Hefesto exposes to scripts. This is the surface that Magic exposes to Tcl when it is built as the `tclmagic` extension. It covers command binding… |
+| [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 10 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
+| [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 14 | 29 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
 | [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 16 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
 | [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 21 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
 

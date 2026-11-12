@@ -1,0 +1,2 @@
+Could not find file '/work/input/pdk/sky130A/libs.tech/magic/missing.tech' in any of these directories:
+         . $CAD_ROOT/magic/sys $CAD_ROOT/magic/sys/current

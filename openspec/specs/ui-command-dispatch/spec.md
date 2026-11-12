@@ -402,7 +402,7 @@ Compatibility: behavioral (sleep); informative (echo, send)
 - **THEN** the command SHALL return after about 3 seconds
 
 ### Requirement: Command history
-With line-editing support, the command prompt SHALL keep a history of entered lines. History expansion SHALL follow GNU Readline rules. `history [n] [r] [NUM] [help]` SHALL list the last NUM entries, or all entries. Each entry SHALL be printed as tab, the index in `%4d`, a space and the line. `n` SHALL suppress the numbers, `r` SHALL reverse the order, and a zero or non-numeric NUM SHALL print usage. Without line editing there is no history, and the prompt supports only erase-char, kill-line, erase-word, reprint and literal-next.
+With line-editing support, the command prompt SHALL keep a history of entered lines. History expansion SHALL follow GNU Readline rules. `history [n] [r] [NUM] [help]` SHALL list the last NUM entries, or all entries. Each entry SHALL be printed as tab, the index in `%4d`, a space and the line. `n` SHALL suppress the numbers, `r` SHALL reverse the order, and a zero or non-numeric NUM SHALL print usage. Without line editing there is no history, and the prompt supports only erase-char, kill-line, erase-word, reprint and literal-next. Magic's Tcl build has no readline, so in `hefesto-cli --magic` (Magic's batch interpreter) the command does not exist and `history` is Tcl's own.
 
 Compatibility: informative
 (Magic ref: commands/CmdFI.c:1472-1552, textio/txInput.c:997-1110, dbwind/DBWcommands.c:597-601)

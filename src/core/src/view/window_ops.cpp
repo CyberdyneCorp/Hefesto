@@ -203,24 +203,35 @@ CommandResult closewindow_cmd(CommandContext& ctx, const Invocation& inv) {
   return closed ? CommandResult::success() : failure(closed.error());
 }
 
+// A window as windNamesCmd names it: with a display, the Tk path of a named
+// window (`.layout1.pane.top.magic`, MagicWindow's Tk_PathName); with NULL
+// graphics, or for a window without a name, its id.
+cmd::Value window_word(const editor::EditorState& ed, const LayoutWindow& w) {
+  if (ed.display_running && !w.name().empty()) {
+    return cmd::Value{w.name()};
+  }
+  return cmd::Value{std::int64_t{w.id()}};
+}
+
 // windNamesCmd, Tcl build (Magic ref: windows/windCmdSZ.c:481-560): the
-// window id (no name pointer with a host-managed display), or the list of
-// every window's id from the top window down.
+// current window (window_word), or the list of every window from the top
+// window down.
 CommandResult windownames_cmd(CommandContext& ctx, const Invocation& inv) {
   auto e = session(ctx);
   if (!e) {
     return failure(e.error());
   }
-  const WindowManager& wm = e.value()->windows;
+  const editor::EditorState& ed = *e.value();
+  const WindowManager& wm = ed.windows;
   if (inv.args.size() > 1 || (inv.args.size() == 1 && !inv.args[0].starts_with("all") &&
                               lookup(inv.args[0], {"layout"}) < 0)) {
     return fail(codes::kUsage, "Usage:  windownames [all | client_type]");
   }
   if (inv.args.empty() && wm.size() == 1) {
-    return CommandResult::success(cmd::Value{std::int64_t{wm.current()->id()}});
+    return CommandResult::success(window_word(ed, *wm.current()));
   }
   cmd::Value::List ids;
-  wm.for_each([&ids](LayoutWindow& w) { ids.emplace_back(std::int64_t{w.id()}); });
+  wm.for_each([&](LayoutWindow& w) { ids.push_back(window_word(ed, w)); });
   return CommandResult::success(cmd::Value{std::move(ids)});
 }
 

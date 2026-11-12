@@ -85,7 +85,7 @@ void move_forward_by_width(Toolkit& tk, const std::string& instance) {
   const auto pitch = array_values(tk, "pitch");
   const std::int64_t anum = count.size() > 1 ? to_int(count[1]) : 0;
   const std::int64_t xpitch = !pitch.empty() ? to_int(pitch[0]) : 0;
-  const auto bbox = tk.query_list({"box", "values"});
+  const auto bbox = tk.engine_list({"box", "values"});
   if (bbox.size() < 4) {
     return;
   }
@@ -105,7 +105,7 @@ void get_and_move_inst(Toolkit& tk, const std::string& cell, const std::string& 
     tk.engine({"array", "1", std::to_string(anum)});
   }
   const detail::InternalUnits units{tk};
-  const auto bbox = tk.query_list({"box", "values"});
+  const auto bbox = tk.engine_list({"box", "values"});
   if (bbox.size() >= 4) {
     tk.engine({"box", "position", bbox[2], bbox[1]});
   }

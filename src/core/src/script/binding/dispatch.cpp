@@ -61,6 +61,14 @@ std::string error_message(const cmd::CommandResult& result) {
   return result.diagnostics.empty() ? std::string{} : result.diagnostics.front().text;
 }
 
+// A procedure's Tcl error message: the last error diagnostic, the one it
+// raised (`error ...`); the earlier ones are messages it printed on the way.
+std::string procedure_error_message(const cmd::CommandResult& result) {
+  const auto last = std::find_if(result.diagnostics.rbegin(), result.diagnostics.rend(),
+                                 [](const diag::Diagnostic& d) { return d.severity == diag::Severity::error; });
+  return last != result.diagnostics.rend() ? last->text : error_message(result);
+}
+
 cmd::CommandResult execute(const Binding& b, cmd::Invocation invocation) {
   const cmd::KeywordTerminatorScope keywords{b.magic_compat()};
   const bool quitting = b.dispatcher.session().quit_requested;
@@ -170,7 +178,7 @@ cmd::CommandResult dispatch_command(const Binding& b, const std::string& name, c
 cmd::CommandResult dispatch_procedure(const Binding& b, const std::string& name, const cmd::Invocation& call) {
   cmd::CommandResult result = execute(b, cmd::Invocation{name, call.args, command_origin(b, call), call.source});
   if (!result.ok()) {
-    return tcl_error(error_message(result));
+    return tcl_error(procedure_error_message(result));
   }
   return cmd::CommandResult::success(std::move(result.value));
 }
@@ -216,7 +224,7 @@ cmd::CommandResult run_tag(const Binding& b, std::string_view invoked, const std
   context.command_count = editor->command_count;
   // The tag does not advance the command number (TagCallback).
   const std::uint64_t saved = editor->command_count;
-  cmd::CommandResult tag = b.interp.evaluate(substitute_tag(*script, context));
+  cmd::CommandResult tag = b.interp.evaluate_in_frame(substitute_tag(*script, context));
   editor->command_count = saved;
   if (!tag.ok()) {
     return tcl_error(error_message(tag));

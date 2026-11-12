@@ -9,22 +9,24 @@
   "runner": "container",
   "reference_captured": true,
   "image": "hefesto-golden:ci",
-  "image_id": "sha256:95e9279d119285873d94a2c370794f4c6f0f4fd06a94291b03df13d34dfc7b56",
+  "image_id": "sha256:472cc9deeb90db289b0e57d5b96e4d8565fffe7dfa7953ffb4baf36d8128c5c1",
   "image_repo_digests": [],
   "command": [
     "magic",
     "-dnull",
     "-noconsole",
+    "-rcfile",
+    "input/pdk/ihp-sg13g2/libs.tech/magic/ihp-sg13g2.magicrc",
     "input/commands.tcl"
   ],
   "environment": {
     "TZ": "UTC",
     "LC_ALL": "C"
   },
-  "captured_at": "2026-11-12T02:53:58Z",
+  "captured_at": "2026-11-12T12:02:50Z",
   "outputs": {
-    "mom.mag": "381caacbbfac23ba63167a47a1c4de793e8704fae8e5f5ce9fd7e022382856c9",
-    "stderr.txt": "4358069a101e89fe8d3fb8056b3b595c4e6136c0e13d769c767bce60e27184e9",
-    "stdout.txt": "d4eb3d9a625c54ff41e424518e2295eb540d42a9efbf109447bbde0c147ee97b"
+    "mim.mag": "517ad04b89da2d4b9bef37ea1dd59b3576befc0dd43c89c9b18c5454269cf6cd",
+    "stderr.txt": "c537d0155b22bb2471a68814046efc600da5b5926a5d58aff3704079d4826cc9",
+    "stdout.txt": "d761a7661d3e564ddfaf12c07075e4cf51c5fc7acf4db46580ceabecf5adabfc"
   }
 }

@@ -399,7 +399,8 @@ diag::Outcome<platform::Path> resolve_tech_file(platform::FileSystem& fs, std::s
     }
   }
   return diag::make("TECH-FILE-001", "Could not find file '" + base + ".tech' in any of these directories:\n         " +
-                                         join_paths(options.search_path));
+                                         (options.search_path_text.empty() ? join_paths(options.search_path)
+                                                                           : options.search_path_text));
 }
 
 diag::Status precheck_tech_file(platform::FileSystem& fs, const platform::Path& path) {
@@ -495,7 +496,7 @@ GridScale apply_post_load(const Technology& tech, GridScale grid, diag::Diagnost
   if (grid.internal != 1 || grid.lambda != 1) {
     sink.emit(diag::make("TECH-LOAD-002", "Scaled tech values by " + std::to_string(grid.internal) + " / " +
                                               std::to_string(grid.lambda) + " to match internal grid scaling"));
-    if (!check_grid_limit(tech, 1, 1)) {
+    if (!check_grid_limit(tech, 1, 1, grid)) {
       sink.emit(diag::make("TECH-LOAD-003", "WARNING:  Current grid scale is smaller than the minimum for the process!"));
     }
   }
@@ -520,13 +521,15 @@ std::shared_ptr<const Technology> builtin_technology() {
   return minimum;
 }
 
-diag::Status check_grid_limit(const Technology& tech, std::int64_t n, std::int64_t d) {
+diag::Status check_grid_limit(const Technology& tech, std::int64_t n, std::int64_t d, const GridScale& current) {
   const auto& cif = tech.cif_output_grid();
   if (!cif) {
     return diag::Done{};
   }
-  const std::int64_t gridup = std::max<std::int64_t>(cif->grid_limit, 1) * cif->expander * d;
-  const std::int64_t scaledown = cif->scale_factor * n * 10;
+  // CIFTechLimitScale on the style as scaled to `current` (scale factor
+  // times lambda, expander times internal units per lambda).
+  const std::int64_t gridup = std::max<std::int64_t>(cif->grid_limit, 1) * cif->expander * current.internal * d;
+  const std::int64_t scaledown = cif->scale_factor * current.lambda * n * 10;
   if (gridup == 0 || scaledown / gridup == 0 || scaledown % gridup != 0) {
     return diag::make("TECH-GRID-002", "Grid scaling is finer than limit set by the process!");
   }

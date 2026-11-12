@@ -83,6 +83,7 @@ MainWindow::MainWindow(ui::Runtime& runtime, const ShellOptions& options, std::m
   });
   ctx_.run = [this](const std::string& line) { run_line(line); };
   pending_pinch_ = options.pinch;
+  pending_drag_ = options.drag;
   ctx_.echo = [this](const std::string& command, const std::string& result) { append_console(command, result); };
   ctx_.prompt = [this](const std::string& text) { show_prompt(text); };
   ctx_.menu = [this](const std::string& title, const std::vector<MenuEntry>& entries, float x, float y) {
@@ -604,6 +605,7 @@ void MainWindow::on_frame() {
   // After the refresh: the first scene build frames the cell, which would
   // replace a pinch made before it.
   if (pending_pinch_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_pinch();
+  if (pending_drag_ && pending_run_.empty() && canvas_->viewport_ready()) run_pending_drag();
   refresh_m4();
   refresh_m4b();
   refresh_tools();
@@ -627,6 +629,19 @@ void MainWindow::run_pending_pinch() {
   window_.inject_trackpad_pinch(pinch.x, pinch.y, pinch.factor, 8);
   std::printf("hefesto: pinch at %g,%g by %g: zoom %s -> %s\n", static_cast<double>(pinch.x),
               static_cast<double>(pinch.y), pinch.factor, before.c_str(), canvas_->zoom_text().c_str());
+  std::fflush(stdout);
+  dirty_ = true;
+  window_.request_redraw();
+}
+
+void MainWindow::run_pending_drag() {
+  const DragOption drag = *pending_drag_;
+  pending_drag_.reset();
+  window_.inject_left_drag(drag.x0, drag.y0, drag.x1, drag.y1, 12);
+  // A drop on a panel dock queued its `panel` command (run on the next frame).
+  std::printf("hefesto: drag %g,%g -> %g,%g: %s\n", static_cast<double>(drag.x0), static_cast<double>(drag.y0),
+              static_cast<double>(drag.x1), static_cast<double>(drag.y1),
+              pending_run_.empty() ? "no drop" : pending_run_.c_str());
   std::fflush(stdout);
   dirty_ = true;
   window_.request_redraw();

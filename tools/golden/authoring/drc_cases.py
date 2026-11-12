@@ -20,8 +20,9 @@ Rows reworded where the CASES.md text cannot be drawn on an integer grid (each c
 notes say so): DRC-SP-CORN-1 and DRC-SUR-1 use distance 2 and a 1-unit gap instead of a
 0.5 gap; DRC-MW-2 uses poly for ``pmc``; DRC-MW-4 uses metal2 with the via1-plane type
 ``via`` as the excluded layer (``m5``/``glass`` are not drctest types); DRC-EDGE-3 uses
-``~m2/metal2`` (the drctest contact is m1c). DRC-PDK-3 draws a MOM finger capacitor with
-box/paint on the IHP metal layers (design D12: the IHP device generators are Tcl, M4).
+``~m2/metal2`` (the drctest contact is m1c). DRC-PDK-3 is an M4 case (``m4_specs()``, run by
+m4_cases.py): IHP-Open-PDK has no ``cap_cmomf`` generator, so it places two MiM capacitors of
+the PDK's ``cap_cmim`` generator 0.4 um apart (MIM.b asks 0.6 um).
 
 The standard-cell corpus cases DRC-STD-SKY130-HD and DRC-STD-GF180-7T5V0 (design D14)
 are generated from the installed PDK libraries: one command block per ``.mag`` cell, in
@@ -35,6 +36,7 @@ from pathlib import Path
 import sys
 
 from casegen import Spec
+from tclcase import TclCase, lines, p
 from common import SCMOS_EXTERNAL, SKY130_TECH_EXTERNALS, box, paint, pdk_tech_externals, sky130_cell_external, split
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -772,18 +774,6 @@ def row_placement(cells: list[tuple[str, int]]) -> list[str]:
     return cmds
 
 
-def mom_fingers() -> list[str]:
-    """A metal1 MOM finger capacitor in IHP internal units (5 nm): two combs of 0.4 um fingers 0.4 um
-    apart joined by metal1/metal2 buses with via1, and one extra finger 0.1 um from its neighbour."""
-    cmds = paint("metal1", 0, 0, 1700, 120) + paint("metal1", 0, 1080, 1700, 1200)
-    for k in range(5):
-        x = k * 320
-        cmds += paint("metal1", x, 120, x + 80, 920) + paint("metal1", x + 160, 280, x + 240, 1080)
-    cmds += paint("metal2", 0, 0, 1700, 120) + paint("metal2", 0, 1080, 1700, 1200)
-    cmds += paint("via1", 40, 20, 140, 100) + paint("via1", 40, 1100, 140, 1180)
-    return cmds + paint("metal1", 1540, 120, 1620, 920)
-
-
 def pdk_specs() -> list[Spec]:
     inv = "sky130_fd_sc_hd__inv_1"
     names = [n for n, _ in GF180_ROW]
@@ -801,12 +791,29 @@ def pdk_specs() -> list[Spec]:
                  prefix=pdk_prefix("gf180mcuD"),
                  externals=[*GF180_TECH, *(pdk_cell("gf180mcu", GF180_LIB, n) for n in names)],
                  outputs=["row.mag"], tech_name="gf180mcuD"),
-        drc_case("DRC-PDK-3", ENG, ["Step square processing"],
-                 "ihp-sg13g2: a metal1 MOM finger capacitor drawn with box/paint (stand-in for the cap_cmomf "
-                 "generator, design D12) with one finger too close; CAP.",
-                 None, ["load mom", *mom_fingers(), *cap("mom")], prefix=pdk_prefix("ihp-sg13g2"),
-                 externals=IHP_TECH, outputs=["mom.mag"], tech_name="ihp-sg13g2"),
     ]
+
+
+def m4_specs() -> list[TclCase]:
+    """DRC-PDK-3 (M4, m4-scripting tasks.md 12.3): the IHP capacitor through its Tcl generator.
+    IHP-Open-PDK 5e6d592e has no ``cap_cmomf`` generator (its capacitor generators are
+    ``cap_cmim`` and ``cap_rfcmim``), so the case places two default ``cap_cmim`` devices (2 um
+    MiM plates), the second with the box 2.4 um right of the first: the plates are 0.4 um apart,
+    under MIM.b's 0.6 um. Run with the PDK rc file, then CAP."""
+    body = lines("load mim", "box values 0 0 0 0",
+                 p("magic::gencell sg13g2::cap_cmim C1"), "box values 0 0 0 0", p("box move e 2.4um"),
+                 p("magic::gencell sg13g2::cap_cmim C2", "lsort [cellname list childinst mim]", *cap("mim")))
+    case = TclCase("DRC-PDK-3", ENG, ["Step square processing"],
+                   "ihp-sg13g2: two MiM capacitors of the PDK's cap_cmim generator (no cap_cmomf generator in "
+                   "IHP-Open-PDK) with the plates 0.4 um apart (MIM.b 0.6 um); CAP.",
+                   body, outputs=["mim.mag"], pdk="ihp-sg13g2", stream_comparator=CONSOLE,
+                   external=[{"source": "magic-sys", "path": "graphics/FreeSans.pt3", "to": "FreeSans.pt3"}],
+                   notes=["Replaces the cap_cmomf row of DRC/CASES.md: IHP-Open-PDK 5e6d592e has no cap_cmomf "
+                          "generator (m4-scripting tasks.md 12.3)."])
+    return [case]
+
+
+M4_NOT_AUTHORED: dict[str, str] = {}
 
 
 # --- printrules of every style (RULES, tasks.md 4.11) -------------------------------

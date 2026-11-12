@@ -19,6 +19,7 @@ inline constexpr std::string_view kPromptNote = "GUI-PROMPT-001";
 inline constexpr std::string_view kReportNote = "GUI-REPORT-001";
 inline constexpr std::string_view kReportOpen = "GUI-REPORT-002";
 // Toolbar presets file (ui-gui-managers "Layer toolbar", "Toolbar order presets file").
+inline constexpr std::string_view kTkError = "GUI-TK-001";
 inline constexpr std::string_view kToolbarStatement = "GUI-TOOLBAR-001";
 inline constexpr std::string_view kToolbarPreset = "GUI-TOOLBAR-002";
 // Wrong number of arguments of a GUI procedure (Tcl's `wrong # args`).

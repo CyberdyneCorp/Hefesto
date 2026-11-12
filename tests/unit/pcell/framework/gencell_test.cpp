@@ -136,6 +136,49 @@ TEST_CASE("a selected cell without gencell property derives its type from the na
   CHECK(none.diagnostics.front().text == "No gencell device is selected!");
 }
 
+// Regression (SCRIPT-PCELL-09): with nothing selected `cellname list
+// property {} ...` prints "Unknown cell " twice, and the procedure's own
+// error stays the Tcl result (it was replaced by the printed message).
+TEST_CASE("gencell with nothing selected prints the lookups and raises its own error",
+          "[cap:pcell-toolkit][req:gencell entry point dispatch]") {
+  PcellSession s;
+  REQUIRE(s.run("select clear").ok());
+  const auto r = s.tcl("magic::gencell {}");
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.diagnostics.front().text == "No gencell device is selected!");
+  CHECK(std::count(s.printed.begin(), s.printed.end(), "Unknown cell ") == 2);
+}
+
+// Regression (SCRIPT-AUX-04): magic::gencell calls magic::gencell_create by
+// name, so a script's redefinition (toolkit_rev0.tcl) is the one that runs.
+TEST_CASE("gencell calls the toolkit procedures through the interpreter",
+          "[cap:pcell-toolkit][req:gencell entry point dispatch]") {
+  PcellSession s;
+  REQUIRE(s.tcl("proc magic::gencell_create {type library parameters {orient 0}} "
+                "{ set ::created [list $type $library]; error {redefined create} }").ok());
+  const auto r = s.tcl("magic::gencell tpdk::res M1 w 2");
+  REQUIRE_FALSE(r.ok());
+  CHECK(r.diagnostics.front().text == "redefined create");
+  CHECK(s.value("set ::created") == "res tpdk");
+}
+
+// Regression (SCRIPT-PCELL-11, -14, PDK-16 in wrapper mode): toolkit.tcl's
+// `[box values]` runs inside gencell_create, so a `box` tag sees a procedure
+// level; wrapper.tcl's magic::boxview checks `[info level] <= 1` and must not
+// query the box a second time ("Box tool must be present" printed twice).
+TEST_CASE("the toolkit box query runs at a procedure level as inside toolkit.tcl",
+          "[cap:pcell-toolkit][req:gencell entry point dispatch]") {
+  PcellSession s;
+  REQUIRE(s.run("box values 100 200 150 260").ok());
+  // Record the level `box` is called from (a wrapper.tcl `box` tag sees the same one).
+  REQUIRE(s.tcl("set ::levels {}; rename ::magic::box ::magic::box_engine; "
+                "proc ::magic::box {args} { lappend ::levels [expr {[info level] - 1}]; "
+                "uplevel 1 [list ::magic::box_engine {*}$args] }").ok());
+  CHECK(s.value("magic::gencell tpdk::res M1 w 2") == "0");
+  REQUIRE_FALSE(s.value("set ::levels").empty());
+  CHECK(s.value("lsearch -exact $::levels 0") == "-1");
+}
+
 // ---- gencell entry point dispatch ---------------------------------------------------
 
 TEST_CASE("Scripted creation", "[cap:pcell-toolkit][req:gencell entry point dispatch]") {

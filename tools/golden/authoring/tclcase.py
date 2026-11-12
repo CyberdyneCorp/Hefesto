@@ -85,6 +85,8 @@ class TclCase:
     stdin: bool = False                                # feed commands.tcl on standard input instead
     allow_nonzero_exit: bool = False                   # Magic's exit status is part of the case
     driver: str = "m4_cases.py"
+    stream_comparator: str = "magic-console"           # stdout/stderr comparator (DRC: drc-console)
+    fonts: list[str] = field(default_factory=list)     # Magic's default outline fonts the run uses
 
     @property
     def area(self) -> str:
@@ -120,9 +122,16 @@ def pdk_externals(case: TclCase) -> list[dict]:
     return trees + [_pdk_input(case.pdk, cell) for cell in case.pdk_cells]
 
 
+def font_externals(case: TclCase) -> list[dict]:
+    """Magic's system startup loads its default outline fonts from $CAD_ROOT/magic/sys; a case
+    whose generators place font labels (toolkit.tcl's pins, PDK labels) stages them for hefesto-cli,
+    whose replay CAD_ROOT holds only the case's magic-sys inputs."""
+    return [{"source": "magic-sys", "path": f"graphics/{f}.pt3", "to": f"{f}.pt3"} for f in case.fonts]
+
+
 def externals(case: TclCase) -> list[dict]:
     tech = [TECH_EXTERNALS[case.tech]] if case.tech in TECH_EXTERNALS else []
-    return [*tech, *pdk_externals(case), *case.external]
+    return [*tech, *pdk_externals(case), *font_externals(case), *case.external]
 
 
 def environment(case: TclCase) -> dict[str, str]:
@@ -151,8 +160,8 @@ def case_toml(case: TclCase) -> str:
     for ext in externals(case):
         text += "\n[[external]]\n" + "".join(f"{k} = {_toml_str(v)}\n" for k, v in ext.items())
     masks = _with_mask(["magic-stamp-note", *case.stream_masks], "magic-tech-sections")
-    text += _output_block("stdout.txt", "stdout", "magic-console", masks)
-    text += _output_block("stderr.txt", "stderr", "magic-console", masks)
+    text += _output_block("stdout.txt", "stdout", case.stream_comparator, masks)
+    text += _output_block("stderr.txt", "stderr", case.stream_comparator, masks)
     for source in case.outputs:
         out_masks = case.output_masks.get(source, default_masks(source))
         name = case.output_names.get(source, source.replace("/", "__"))
