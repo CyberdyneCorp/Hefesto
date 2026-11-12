@@ -116,6 +116,7 @@ These are accepted by design D5 ("As landed in round 1") and were re-checked in 
   - The cell file host (`cell/host.cpp`: permissions, `chmod` of a loaded cell's file, symlink tests) and the PDK manager's own stream I/O (`pdk/manager.cpp`, `packs.cpp`, `updates.cpp`) do not go through `platform::FileSystem`. A script reaches them only through cells it could load and through `pdk list`, `info`, `root`, which read the store (S-02, remainder).
   - The command limit does not count loops that compile to bytecode only (`while 1 {}`); the time limit and the interrupt do stop them.
   - Memory is not limited: a huge allocation makes Tcl panic, and the process aborts.
+  - `pdk install` and `pdk updates` typed by the user start the downloader and decompressor processes (`pdk/commands.cpp` through `ProcessRunner`). Accepted by the user on 2026-11-11 as the only exception to "no process execution": built-in commands only, only from a typed line; the same commands from a script, macro or plugin are refused (S-01, S-03).
 
 ## Review results (M4, 2026-11-11)
 

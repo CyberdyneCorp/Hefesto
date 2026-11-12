@@ -371,3 +371,6 @@ Not blocking (no decision needed now):
 
 - **App Review inquiry.** Not submitted yet. INTEGRATION drafts it (D20, task 2.2); the user submits it through App Store Connect and records the answer. M4 does not depend on it; it decides only M14's mode.
 - **Deferred questions.** Q-SCRIPT-30 (`mazeroute`) is implemented with `router-maze-iroute` in M10; Q-SCRIPT-44's seed-pinning setting is decided with Q-MASK-211 in M5. Q-SCRIPT-43 (sg13g2 `$SUB` and `$[…]` in extraction) is handed to the EXT area for M7.
+
+**User decisions on round 3 (2026-11-11).** `pdk install`/`updates` typed by the user may start the downloader and decompressor processes, the only exception to "no process execution" (docs/contributing/security.md, accepted limits). An interrupt is reported with Tcl's own text, `eval unwound` (boards and conformance corrected; PNGs re-render when the WebKit renderer works again). Accepted as built: `--magic --commit` prints Magic's reference commit; `--prefix` prints an empty line when `CAD_ROOT` is unset; a side dock whose panels are all collapsed becomes an edge strip; the DRC browser opens in the left dock; the panel layout is saved on every quit. Command-line file arguments in NULL graphics follow Magic fc5daa9e (`utils/main.c` `mainInitFinal`: `Loading "<f>" from command line.`, no `handling file entry` line), checked against the capture image.
+
