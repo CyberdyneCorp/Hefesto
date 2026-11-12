@@ -1,0 +1,8 @@
+timestamp 1794452656
+version 8.3
+tech subtech
+style default
+scale 1000 1000 100
+resistclasses 1000 50
+node "a_0_0#" 1 0 0 0 ndc 16 16 400 80
+substrate "VSUBS" 0 0 -1073741817 -1073741817 space 0 0 0 0
