@@ -257,3 +257,18 @@ reason = "mazeroute drives iroute, so it is implemented with the maze router; un
 decisions = ["Q-SCRIPT-32"]
 outputs = ["stdout.txt"]
 reason = "readspice reports 'port order was modified' only when an index changed; Magic compares each pin's moved-out index with n and reports every cell that already had named ports"
+
+[SCRIPT-API-08]
+decisions = ["Q-SCRIPT-3"]
+outputs = ["stdout.txt"]
+reason = "tag %-substitution inserts each value as one list-quoted word in one pass; Magic pastes the window path and arguments raw, so its tag script fails with 'extra characters after close-quote'"
+
+[SCRIPT-API-11]
+decisions = ["Q-SCRIPT-3"]
+outputs = ["stdout.txt"]
+reason = "tag %r inserts the result as one list-quoted word; Magic wraps it in unescaped double quotes, so a result with quotes or brackets breaks its tag script ('extra characters after close-quote')"
+
+[SCRIPT-PDK-11]
+decisions = ["Q-SCRIPT-41"]
+outputs = ["stderr.txt"]
+reason = "sourcing a second PDK's scripts warns once per magic:: helper the first PDK defined (cross-PDK redefinition); Magic replaces them silently"
