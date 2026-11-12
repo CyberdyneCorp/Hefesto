@@ -8,18 +8,24 @@
 #                pinned reference image (tools/golden/container/Containerfile) run the same
 #                `drc check; drc catchup` scripts, single-threaded, over the 100 x 100
 #                sky130_fd_sc_hd__dfxtp_1 array and the all-cells block (bench/drc/drc_bench.py).
-#                Fails when Hefesto is slower than Magic beyond the noise band (--max-ratio) or
-#                the error counts differ. The background start latency benchmark (hidden test
+#                Fails when the error counts differ; the timed ratio to Magic is reported for
+#                information (the throughput gate is drc-profile's instruction count, user
+#                decision of 2026-11-12). The background start latency benchmark (hidden test
 #                "[benchmark]" of hefesto_drc_engine_tests, target <= 100 ms) runs in the same
 #                job. Results: the job summary and the artifact "drc-bench"; they are recorded
 #                in docs/design/m3-ui-conformance.md "Performance".
-#   drc-profile  Manual (workflow_dispatch): where the time of `drc check; drc catchup` goes on
-#                the x86_64 runner. A Release build with debug info and frame pointers runs the
-#                block workload (bench/drc/drc_bench.py --emit) under `perf record`, and both
-#                tools run one and two passes under callgrind (Magic inside the reference image):
-#                bench/drc/callgrind_pass_diff.py gives the instructions of one pass per function. A GCC 14 and a Clang build
-#                run drc_bench.py against Magic, to separate compiler from algorithm. Reports:
-#                the job summary and the artifact "drc-profile".
+#   drc-profile  The DRC throughput gate (user decision of 2026-11-12): a GCC 14 Release build
+#                with debug info and frame pointers runs one and two passes of the block workload
+#                (bench/drc/drc_bench.py --emit) under callgrind; bench/drc/callgrind_pass_diff.py
+#                gives the instructions of one pass per function, and bench/drc/instruction_gate.py
+#                fails above the M3 baseline (12.14 billion) + 2 %. Instruction counts are stable
+#                across runner types, where wall time moves by about 0.1 x. On pull requests
+#                that touch the DRC paths only the gate runs (about 15 minutes); on main, the
+#                weekly schedule and workflow_dispatch the job also profiles: `perf record` of
+#                four passes, Magic's count under callgrind (inside the reference image, for
+#                information) and drc_bench.py with GCC 14 and Clang builds against Magic, to
+#                separate compiler from algorithm. Reports: the job summary and the artifact
+#                "drc-profile".
 #   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
 #                Release build, timed. They also replay on every CI leg (ci.yml, golden replay).
 
@@ -27,6 +33,17 @@ name: Performance
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - src/core/include/hefesto/drc/**
+      - src/core/src/drc/**
+      - src/core/src/db/**
+      - bench/drc/**
+      - tests/unit/drc/engine/latency_bench_test.cpp
+      - tests/golden/DRC/cases/DRC-STD-*/**
+      - tools/golden/container/**
+      - .github/workflows/perf.yml
   pull_request:
     paths:
       - src/core/include/hefesto/drc/**
@@ -131,6 +148,7 @@ jobs:
         shell: bash
         run: |
           status=0
+          # No --max-ratio: the timed ratio is information, the error counts must agree.
           python3 bench/drc/drc_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
             --magic-image hefesto-golden:ci --repeat 3 --json drc-bench.json | tee drc-bench.txt || status=$?
           {
@@ -152,11 +170,12 @@ jobs:
           retention-days: 90
 
   drc-profile:
-    name: DRC profile (perf, callgrind, GCC vs Clang)
-    # Manual only: the pull-request and scheduled runs keep drc-bench and golden-slow alone.
-    if: github.event_name == 'workflow_dispatch'
+    name: DRC instruction gate and profile (callgrind, perf, GCC vs Clang)
     runs-on: ubuntu-24.04
     timeout-minutes: 150
+    env:
+      # Pull requests run only the gate; main, the schedule and dispatch also profile.
+      PROFILE: ${{ github.event_name != 'pull_request' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -193,12 +212,17 @@ jobs:
       - name: Fetch the Magic reference sources (sparse, pinned)
         run: python3 scripts/fetch_pdk.py magic-ref
 
-      - name: Build hefesto-cli, GCC 14 and Clang (Release, debug info, frame pointers)
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
         run: |
           flags="-g -fno-omit-frame-pointer"
           cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
             -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
           cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Build hefesto-cli, Clang (Release, debug info, frame pointers)
+        if: env.PROFILE == 'true'
+        run: |
+          flags="-g -fno-omit-frame-pointer"
           CC=clang CXX=clang++ cmake --preset linux-release -B build/linux-release-clang -DHEFESTO_BUILD_DESKTOP=OFF \
             -DHEFESTO_BUILD_TESTS=OFF -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
           cmake --build build/linux-release-clang --target hefesto-cli
@@ -209,6 +233,7 @@ jobs:
         run: python3 scripts/fetch_pdk.py sky130 --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Build the reference-tool image (Magic)
+        if: env.PROFILE == 'true'
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
 
       - name: Scripts of the block workload
@@ -218,6 +243,7 @@ jobs:
           mkdir -p drc-profile
 
       - name: perf record (GCC build, 4 passes of the block)
+        if: env.PROFILE == 'true'
         shell: bash
         continue-on-error: true
         run: |
@@ -239,9 +265,8 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: callgrind, instructions per pass of the block (Hefesto GCC build and Magic)
+      - name: callgrind, instructions per pass of the block (Hefesto GCC build)
         shell: bash
-        continue-on-error: true
         run: |
           cd profile
           for passes in 1 2; do
@@ -250,6 +275,16 @@ jobs:
               "block-hefesto-$passes.tcl" > /dev/null 2>&1 &
           done
           wait
+          cd ../drc-profile
+          python3 ../bench/drc/callgrind_pass_diff.py callgrind.hefesto.1 callgrind.hefesto.2 > callgrind-hefesto-pass.txt
+          cat callgrind-hefesto-pass.txt
+
+      - name: callgrind, instructions per pass of the block (Magic, for information)
+        if: env.PROFILE == 'true'
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd profile
           # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
           docker run --rm -v "$PWD:/work" -v "$PWD/../drc-profile:/out" -v "$PWD/../bench/drc:/bench:ro" -w /work \
             hefesto-golden:ci bash -c '
@@ -266,20 +301,34 @@ jobs:
                 > /out/callgrind-magic-pass.txt || status=1
               chmod -R a+rwX /out
               exit $status'
-          cd ../drc-profile
-          python3 ../bench/drc/callgrind_pass_diff.py callgrind.hefesto.1 callgrind.hefesto.2 > callgrind-hefesto-pass.txt
-          cat callgrind-hefesto-pass.txt callgrind-magic-pass.txt
+          cat ../drc-profile/callgrind-magic-pass.txt
+
+      - name: Instruction gate (M3 baseline + 2 %)
+        shell: bash
+        run: |
+          cd drc-profile
+          magic=()
+          [ -s callgrind-magic-pass.txt ] && magic=(--magic callgrind-magic-pass.txt)
+          status=0
+          python3 ../bench/drc/instruction_gate.py callgrind-hefesto-pass.txt "${magic[@]}" | tee gate.txt || status=$?
           {
+            echo "## DRC instruction gate, one pass of the block"
+            echo '```'
+            cat gate.txt
+            echo '```'
             echo "## callgrind, instructions per pass of the block"
             for f in callgrind-hefesto-pass.txt callgrind-magic-pass.txt; do
+              [ -s "$f" ] || continue
               echo "### $f"
               echo '```'
               cat "$f"
               echo '```'
             done
           } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
 
       - name: GCC 14 and Clang against Magic (same runner)
+        if: env.PROFILE == 'true'
         shell: bash
         run: |
           for build in linux-release linux-release-clang; do
