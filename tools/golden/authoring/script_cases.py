@@ -598,7 +598,7 @@ def gui_bodies() -> dict[str, dict]:
             "proc tk_getOpenFile {args} { puts [list open {*}$args]; return [file normalize input/inv.mag] }",
             "proc tk_getSaveFile {args} { puts [list save {*}$args]; return [file normalize saved.mag] }",
             p("promptload magic", "cellname list window", "promptsave magic", "file exists saved.mag"))),
-        "SCRIPT-GUI-12": dict(body=lines(
+        "SCRIPT-GUI-12": dict(stream_masks=["magic-crash-file"], body=lines(
             "load top", "box 0 0 10 10", "paint m1", "set Opts(backupinterval) 1000",
             p("crashbackups start", "llength [after info]"), "after 2500 {set done 1}", "vwait done",
             p("crashbackups stop", "llength [after info]", "crashbackups disable", "crashbackups resume",

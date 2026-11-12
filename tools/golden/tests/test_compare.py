@@ -131,6 +131,16 @@ class MaskTest(unittest.TestCase):
         other = b"Magic error: something else for b.\n"
         self.assertEqual(apply_masks(other, ["magic-stamp-note"]), other)
 
+    def test_magic_crash_file(self):
+        # Regression (SCRIPT-GUI-12): Magic's crash backup file name carries the
+        # process id and a mkstemp suffix, so a fresh capture never matched.
+        first = b"0 2\nCreated database crash recovery file /tmp/MAG1.J4DCBc\n0 1\n"
+        second = b"0 2\nCreated database crash recovery file /tmp/MAG1.POEaZB\n0 1\n"
+        self.assertFalse(compare_bytes(first, second, "bytes", []).equal)
+        self.assertTrue(compare_bytes(first, second, "bytes", ["magic-crash-file"]).equal)
+        self.assertEqual(apply_masks(first, ["magic-crash-file"]),
+                         b"0 2\nCreated database crash recovery file /tmp/MAG<masked>\n0 1\n")
+
     def test_every_console_output_masks_the_stamp_note(self):
         # TECH-G36 flaked in CI on the note after CMDEDIT-MISC-01 had opted
         # in alone: any case that saves a cell can hit it, so every
