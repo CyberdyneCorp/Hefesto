@@ -1,0 +1,11 @@
+Cell top couldn't be read
+No such file or directory
+Box tool must be present
+Cell sky130_fd_pr__rf_npn_05v5_W1p00L1p00 couldn't be read
+Box tool must be present
+Box must be present
+Cell Topmost cell in the window (top) isn't a child of the edit cell.
+    Cell identifier not changed.
+Couldn't find a cell use named "Q1"
+Unknown cell 
+Unknown cell 

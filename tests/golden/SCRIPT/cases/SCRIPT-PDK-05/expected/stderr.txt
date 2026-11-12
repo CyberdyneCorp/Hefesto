@@ -1,0 +1,2 @@
+Cell sky130_fd_sc_hd__inv_1 has technology "sky130A", but current technology is "minimum"
+Loading technology sky130A
