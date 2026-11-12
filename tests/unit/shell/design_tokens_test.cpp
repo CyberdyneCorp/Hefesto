@@ -43,3 +43,12 @@ TEST_CASE("every status has a distinct shape", "[cap:hefesto-design-system][req:
   CHECK(glyphs.size() == 4);
   CHECK(status_glyph(StatusKind::success) == "●");
 }
+
+TEST_CASE("the console dock leaves the transcript at least eight lines", "[cap:scripting-auxiliary-tools][req:Console integration]") {
+  // Regression (Desktop Alpha, 1600x1000): the 160 px dock left the
+  // transcript about one clipped line. 12 px JetBrains Mono at 1.6 line
+  // height (M4-Console board) is 19.2 px a line.
+  CHECK(console_transcript_height(kConsoleHeight) >= 8 * 19);
+  // The dock stays under a third of a 1000 px window, so the canvas keeps the most room.
+  CHECK(kConsoleHeight * 3 < 1000);
+}

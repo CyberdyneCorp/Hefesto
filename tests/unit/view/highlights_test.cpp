@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/view/highlights.hpp"
 #include "view_session.hpp"
@@ -247,6 +248,25 @@ TEST_CASE("selected labels and cells are outlined with their names", "[cap:cmd-s
   CHECK(scene.items[0].shape == display::HighlightShape::cross);
   CHECK(scene.items[1].shape == display::HighlightShape::text);
   CHECK(scene.items[1].text == "VDD");
+}
+
+TEST_CASE("a selected cell's name and instance id are placed at 2/3 and 1/3 of its height",
+          "[cap:cmd-selection][req:Selection model]") {
+  // Regression (Desktop Alpha): `select top cell` drew "alpha" and "Topmost
+  // cell in the window" both centred, on top of each other.
+  HighlightSession s;
+  db::CellDef* child = s.cell("inv", {0, 0, 40, 30});
+  s.editor.selection.set_root(s.top, s.editor.technology->plane_count());
+  db::PlaceOptions po;
+  po.id = "x1";
+  REQUIRE(db::place(*s.editor.selection.def(), *child, po).ok());
+  const display::HighlightScene scene = s.build();
+  std::vector<std::pair<std::string, display::TextPlace>> texts;
+  for (const auto& it : scene.items) {
+    if (it.shape == display::HighlightShape::text) texts.emplace_back(it.text, it.place);
+  }
+  CHECK(texts == std::vector<std::pair<std::string, display::TextPlace>>{{"inv", display::TextPlace::cell_name},
+                                                                          {"x1", display::TextPlace::cell_id}});
 }
 
 TEST_CASE("a watched window is redrawn whole after any change",

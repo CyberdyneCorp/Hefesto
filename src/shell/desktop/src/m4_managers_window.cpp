@@ -197,7 +197,29 @@ void MainWindow::note_m4b_command(const cmd::Invocation& invocation, const cmd::
       update_right_dock();
     }
   }
+  apply_drc_manager_request(invocation);
   if (console_session_) console_session_->on_command();
+}
+
+void MainWindow::apply_drc_manager_request(const cmd::Invocation& invocation) {
+  // magic::drcmanager create / Options › DRC Manager: the DRC panel is the
+  // DRC manager (M3 boards), shown and focused, or hidden when unchecked.
+  std::optional<std::string> opts;
+  if (const script::Interpreter* interp = ctx_.core.editor().script.interp.get()) {
+    if (const auto value = interp->get_var("Opts(drcmgr)")) opts = value->to_string();
+  }
+  const std::optional<std::string_view> opts_view = opts ? std::optional<std::string_view>{*opts} : std::nullopt;
+  switch (drc_manager_request(invocation.name, invocation.args, opts_view)) {
+    case DrcManagerRequest::show:
+      (void)panel_command({"drc", "show"});
+      drc_panel_->focus();
+      break;
+    case DrcManagerRequest::hide:
+      (void)panel_command({"drc", "hide"});
+      break;
+    case DrcManagerRequest::none:
+      break;
+  }
 }
 
 void MainWindow::refresh_m4b() {

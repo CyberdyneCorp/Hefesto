@@ -136,28 +136,33 @@ bool outside(const PixelRect& r, float w, float h) {
   return r.x > static_cast<double>(w) || r.y > static_cast<double>(h) || r.x + r.w < 0.0 || r.y + r.h < 0.0;
 }
 
-/// A caption centered at `cy` in a cell `w` wide at `x`; like Magic's
-/// GrPutText with `adjust`, a caption that does not fit is not drawn.
-void caption(ui::Painter& p, float x, float w, float cy, const std::string& text, const Rgba& color) {
+/// A caption centered on `at`; like Magic's GrPutText with `adjust`, a
+/// caption wider than the cell box (`box_w` pixels) is not drawn.
+void caption(ui::Painter& p, PixelPoint at, float box_w, const std::string& text, const Rgba& color) {
   const float tw = p.text_width(TextRole::mono_small, text);
-  if (tw > w - 4.0F) return;
-  p.text_centered_y(TextRole::mono_small, x + (w - tw) / 2.0F, cy, text, color);
+  if (tw > box_w - 4.0F) return;
+  p.text_centered_y(TextRole::mono_small, static_cast<float>(at.x) - tw / 2.0F, static_cast<float>(at.y), text, color);
+}
+
+/// A cell box's caption (name or id) as dbwBBoxFunc and
+/// selRedisplayCellFunc place it; nothing on a box 28 px tall or less.
+void cell_caption(ui::Painter& p, const PixelRect& r, float win_h, CellCaption which, const std::string& text,
+                  const Rgba& color) {
+  constexpr double kMinHeight = 28.0 + 1e-9;
+  if (const auto at = cell_caption_center(r, static_cast<double>(win_h), which, kMinHeight)) {
+    caption(p, *at, static_cast<float>(r.w), text, color);
+  }
 }
 
 /// Unexpanded subcells: the definition name at 2/3 of the height and the
 /// instance id at 1/3, in the cell style (15), as Magic's DBWdisplay does.
 /// The outline itself is drawn by the renderer (cell_box batches).
-void subcell_captions(ui::Painter& p, const OverlayState& s) {
+void subcell_captions(ui::Painter& p, float h, const OverlayState& s) {
   for (const display::SceneCell& cell : s.cells) {
     const PixelRect r = world_to_pixels(s.camera, cell.bbox, s.pixel_ratio);
-    if (r.h <= 28.0) continue;
     const Rgba color = style_rgba(cell.style);
-    const auto x = static_cast<float>(r.x);
-    const auto y = static_cast<float>(r.y);
-    const auto w = static_cast<float>(r.w);
-    const auto h = static_cast<float>(r.h);
-    caption(p, x, w, y + h / 3.0F, cell.name, color);
-    caption(p, x, w, y + h * 2.0F / 3.0F, cell.id, color);
+    cell_caption(p, r, h, CellCaption::name, cell.name, color);
+    cell_caption(p, r, h, CellCaption::id, cell.id, color);
   }
 }
 
@@ -193,6 +198,9 @@ void highlight_marks(ui::Painter& p, float w, float h, const OverlayState& s) {
       constexpr auto kArm = static_cast<float>(view::kCrossSize);
       p.line(cx - kArm, cy, cx + kArm, cy, 1.0F, c);
       p.line(cx, cy - kArm, cx, cy + kArm, 1.0F, c);
+    } else if (item.place != display::TextPlace::center) {
+      const auto which = item.place == display::TextPlace::cell_name ? CellCaption::name : CellCaption::id;
+      cell_caption(p, r, h, which, item.text, c);
     } else if (!item.text.empty()) {
       const float tw = p.text_width(TextRole::mono_small, item.text);
       p.text_centered_y(TextRole::mono_small, cx - tw / 2.0F, cy, item.text, c);
@@ -437,7 +445,8 @@ void hierarchy_row(ui::Painter& p, float w, float h, const HierarchyRow& row, Wi
   if (s.focused) focus_ring(p, w, h, kRadius, t);
 }
 
-void inspector(ui::Painter& p, float w, float h, const InspectorView& view, const ThemeTokens& t) {
+void inspector(ui::Painter& p, float w, float h, const InspectorView& view, const NearbyRulesView& nearby,
+               const ThemeTokens& t) {
   const float pad = 14.0F;
   float y = pad;
   section_label(p, pad, y, view.section, t);
@@ -456,14 +465,17 @@ void inspector(ui::Painter& p, float w, float h, const InspectorView& view, cons
     p.text(TextRole::mono, col2, y, row.value, t.text_primary);
     y += p.line_height(TextRole::small) + 10.0F;
   }
-  // "Design rules nearby" card: DRC arrives in M3, so it is a disabled placeholder.
-  const float card_h = 70.0F;
+  // "Design rules nearby" card: the DRC result under the box (M3); rule
+  // margins wait for M11 (DRC-Browser board, "Measured vs required").
+  const float card_h = 86.0F;
   const float cy = h - pad - card_h;
+  const float text_w = w - 2.0F * pad - 24.0F;
   p.fill(pad, cy, w - 2.0F * pad, card_h, kPanelRadius, t.surface2);
   p.stroke(pad, cy, w - 2.0F * pad, card_h, kPanelRadius, 1.0F, t.border);
   p.text(TextRole::small, pad + 12.0F, cy + 12.0F, "Design rules nearby", t.text_primary);
-  p.text(TextRole::small, pad + 12.0F, cy + 34.0F, std::string(status_glyph(StatusKind::info)) + " Arrives with DRC (M3)",
-         t.text_secondary);
+  const std::string status = std::string(status_glyph(nearby.kind)) + " " + nearby.status;
+  p.text(TextRole::small, pad + 12.0F, cy + 34.0F, ellipsize(status, text_w, small), status_text_color(t, nearby.kind));
+  p.text(TextRole::small, pad + 12.0F, cy + 56.0F, ellipsize(nearby.later, text_w, small), t.text_tertiary);
 }
 
 void status_bar(ui::Painter& p, float w, float h, const StatusBarText& text, const StatusBarKinds& kinds,
@@ -497,7 +509,7 @@ void canvas_overlay(ui::Painter& p, float w, float h, const OverlayState& s, The
   // annotations (box, crosses, labels) would spill over the side panels.
   p.push_clip(0.0F, 0.0F, w, h);
   dot_grid(p, w, h, s);
-  subcell_captions(p, s);
+  subcell_captions(p, h, s);
   labels(p, w, h, s);
   highlight_marks(p, w, h, s);
   sweep_preview(p, s);

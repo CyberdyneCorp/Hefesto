@@ -16,9 +16,9 @@ namespace hefesto::shell {
 namespace {
 
 constexpr float kPadX = 12.0F;
-constexpr float kHeaderHeight = 28.0F;
-constexpr float kHintHeight = 18.0F;
-constexpr float kEditorHeight = 40.0F;
+constexpr auto kHeaderHeight = static_cast<float>(kConsoleToolbarHeight);
+constexpr float kHintWidth = 280.0F;
+constexpr auto kEditorHeight = static_cast<float>(kConsoleEditorHeight);
 constexpr float kCardWidth = 380.0F;
 constexpr float kCardHeight = 64.0F;
 constexpr float kCardButtonWidth = 108.0F;
@@ -166,12 +166,14 @@ void ConsolePanel::build_input() {
   hint_ = make_painted(ctx_, [this](ui::Painter& p, float, float h, const ThemeTokens& t) {
     p.text_centered_y(TextRole::small, kPadX, h / 2.0F, console_.input_status().hint(), t.text_tertiary);
   });
-  hint_->set_size(-1.0F, kHintHeight);
+  // The hint sits beside the editor, as on the M4-Console board, so the
+  // transcript keeps the height.
+  hint_->set_size(kHintWidth, kEditorHeight);
   ui::Box row = ui::Box::horizontal();
   row.add(*prompt_);
   row.add(*input_, 1.0F);
+  row.add(*hint_);
   root_.add(row);
-  root_.add(*hint_);
 }
 
 bool ConsolePanel::input_focused() const {

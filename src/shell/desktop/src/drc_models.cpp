@@ -156,6 +156,43 @@ DrcStatusView drc_status_view(const DrcStatusInput& in) {
   return v;
 }
 
+DrcManagerRequest drc_manager_request(std::string_view command, const std::vector<std::string>& args,
+                                     std::optional<std::string_view> opts_drcmgr) {
+  if (command.starts_with("::")) command.remove_prefix(2);
+  if (command.starts_with("magic::")) command.remove_prefix(7);
+  if (command != "drcmanager" || args.size() != 1 || args.front() != "create") {
+    return DrcManagerRequest::none;
+  }
+  return opts_drcmgr == std::optional<std::string_view>{"0"} ? DrcManagerRequest::hide : DrcManagerRequest::show;
+}
+
+NearbyRulesView nearby_rules_view(DrcState state, std::size_t errors_under_box, bool has_box) {
+  NearbyRulesView v;
+  const std::string where = has_box ? " under the box" : " in the cell";
+  switch (state) {
+    case DrcState::off:
+      v.status = "DRC off · drc on to check";
+      break;
+    case DrcState::checking:
+      v.status = "DRC checking…";
+      break;
+    case DrcState::not_run:
+      v.status = "DRC not run · Check now";
+      break;
+    case DrcState::clean:
+    case DrcState::errors:
+      if (errors_under_box == 0) {
+        v.kind = StatusKind::success;
+        v.status = "No DRC errors" + where;
+      } else {
+        v.kind = StatusKind::error;
+        v.status = plural(errors_under_box, "DRC error tile", "DRC error tiles") + where;
+      }
+      break;
+  }
+  return v;
+}
+
 std::vector<MenuEntry> drc_chip_menu(const DrcMenuInput& in) {
   std::vector<MenuEntry> out;
   out.push_back({"Open DRC panel", std::string(kDrcOpenPanelCommand), false, false, true, false});

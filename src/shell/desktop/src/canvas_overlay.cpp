@@ -433,6 +433,20 @@ PixelPoint world_point_to_pixels(const render::Camera& camera, double x, double 
                     (0.5 * camera.viewport_height() - (y - camera.center_y()) * ppu) / ratio};
 }
 
+std::optional<PixelPoint> cell_caption_center(const PixelRect& r, double win_h, CellCaption which,
+                                              double min_height) {
+  if (r.h < min_height) {
+    return std::nullopt;
+  }
+  if (which == CellCaption::name) {
+    return PixelPoint{r.x + r.w / 2.0, r.y + r.h / 3.0};
+  }
+  // x stays the unclipped centre (Magic's p_x is taken before the clip).
+  const double top = std::max(r.y, 0.0);
+  const double bottom = std::min(r.y + r.h, win_h);
+  return PixelPoint{r.x + r.w / 2.0, top + (bottom - top) * 2.0 / 3.0};
+}
+
 PixelPoint label_text_origin(const PixelRect& r, db::Position pos, double text_w, double text_h) {
   constexpr double kTextOffset = 5.0;  // Magic's TEXTOFFSET (graphics/grText.c)
   // Per position (GEO_CENTER .. GEO_NORTHWEST): -1 west / south, 0 center, 1 east / north.

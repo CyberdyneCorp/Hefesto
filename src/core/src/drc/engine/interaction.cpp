@@ -13,7 +13,11 @@
 // GeoNullRect ({0,0,0,0}) when a use has no sibling nearby, so a square
 // round the origin of the cell joins the interaction area when it lies in
 // the use's halo area; the subtree-paint pass counts a nested use with paint
-// as a second source of its own parent's paint.
+// as a second source of its own parent's paint. With magic-compat ON, the
+// cell searched for child errors, array checks, flattening and exact
+// overlaps is DRCDummyUse's def, which a `drc why` resolution re-entering
+// the check from an error report retargets for the rest of the square
+// (see scan_cell()).
 //
 // Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
 
@@ -157,14 +161,30 @@ void copy_child_errors(Context& ctx, const db::CellDef& def, const db::Rect& str
 
 namespace {
 
+// DRCDummyUse->cu_def: Magic's one global use through which
+// DRCInteractionCheck searches the children of the cell it checks. Each
+// square points it at that cell, but `drc why` and `drc listall why`
+// resolve a copied child error (why 4) from inside the error report by
+// checking the child, which points it at the child (or at the last cell of
+// that resolution) for the rest of the outer square: the later strips then
+// copy the errors of that cell's children, and the flattened check yanks
+// that cell's paint, at its own coordinates as if they were the outer
+// cell's (replicated with magic-compat ON; one per thread, as a check
+// never moves between threads).
+thread_local const db::CellDef* t_scan_cell = nullptr;
+
+const db::CellDef& scan_cell(const Context& ctx, const db::CellDef& def) {
+  return ctx.input.compat.magic_compat && t_scan_cell != nullptr ? *t_scan_cell : def;
+}
+
 // One non-interaction strip: basic check, copied child errors, array checks.
 void plain_strip(Context& ctx, const db::CellDef& def, db::Rect& strip) {
   if (!ctx.basic(def, db::expand(strip, ctx.halo), strip)) {
     return;
   }
   const db::Rect search = strip;  // scx_area is a copy; dCD_clip is `strip` itself
-  copy_child_errors(ctx, def, search);
-  array_checks(ctx, def, search, strip);
+  copy_child_errors(ctx, scan_cell(ctx, def), search);
+  array_checks(ctx, scan_cell(ctx, def), search, strip);
 }
 
 // The strips of `erase_clip` outside `inter`, in Magic's order, through the
@@ -199,19 +219,21 @@ void flattened_check(Context& ctx, const db::CellDef& def, const db::Rect& erase
   ++ctx.stats->interactions;
   const db::Rect yank_area = db::expand(inter, ctx.halo);
   ctx.clear_yank();
+  const db::CellDef& scanned = scan_cell(ctx, def);
   ctx.flag_off_grid = true;  // DBCellCheckCopyAllPaint
-  yank_paint(ctx, def, yank_area, db::kIdentity);
+  yank_paint(ctx, scanned, yank_area, db::kIdentity);
   ctx.flag_off_grid = false;
-  yank_hints(ctx, def, yank_area, db::kIdentity);
+  yank_hints(ctx, scanned, yank_area, db::kIdentity);
   if (!ctx.basic(ctx.yank, yank_area, inter)) {
     return;
   }
-  exact_overlap_check(ctx, def, inter, engine_rule(why::kSubcellOverlap));
+  exact_overlap_check(ctx, scan_cell(ctx, def), inter, engine_rule(why::kSubcellOverlap));
 }
 
 void check_square(Context& ctx, const db::CellDef& def, const db::Rect& clip_area, const db::Rect& erase_box) {
   db::Rect inter;
   const tech::TileType saved = ctx.error_type;
+  t_scan_cell = &def;  // DRCDummyUse->cu_def = def (DRCFindInteractions sets it again)
   if (find_interactions(ctx, def, clip_area, ctx.halo, inter) <= 0) {
     db::Rect sub = clip(erase_box, clip_area);
     if (sub.is_null()) {

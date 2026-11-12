@@ -177,7 +177,17 @@ inline constexpr int kZoomButtonSize = 32;
 inline constexpr int kChipHeight = 26;
 inline constexpr int kButtonHeight = 32;
 inline constexpr int kInputHeight = 30;
-inline constexpr int kConsoleHeight = 160;  // Console / Diagnostics (not in the mockup)
+// The bottom Console / Diagnostics dock (M4-Console board): its frame title
+// and tab strip, the console's toolbar row and its input row (prompt, editor
+// and the hint beside it, as on the board) leave the rest to the transcript.
+inline constexpr int kConsoleChromeHeight = 62;  // dock frame title (30) and tab strip (32)
+inline constexpr int kConsoleToolbarHeight = 28;
+inline constexpr int kConsoleEditorHeight = 40;
+inline constexpr int kConsoleHeight = 320;
+/// The transcript's height in a console dock `dock_height` pixels tall.
+[[nodiscard]] constexpr int console_transcript_height(int dock_height) noexcept {
+  return dock_height - kConsoleChromeHeight - kConsoleToolbarHeight - kConsoleEditorHeight;
+}
 
 // --- status --------------------------------------------------------------
 

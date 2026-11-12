@@ -178,11 +178,13 @@ The manual checklist of design D18, run through the GUI on Linux and macOS and s
 
 | Step | Linux | macOS |
 |---|---|---|
-| Open a sky130A, gf180mcuD and ihp-sg13g2 design; the consent prompt names the PDK version | todo | todo |
-| The PDK's `Devices` menus appear and their items open the Place device dialog | todo | todo |
-| Place a native-generator device and a Tcl-only device through the dialog | todo | todo |
-| DRC-check the result; the DRC browser lists the errors | todo | todo |
-| Save and reopen; the cells and properties are unchanged | todo | todo |
+| Open a sky130A, gf180mcuD and ihp-sg13g2 design; the consent prompt names the PDK version | todo | partial: the three designs open (GUI captures from a store where all three PDKs are trusted, so the consent prompt was not shown) |
+| The PDK's `Devices` menus appear and their items open the Place device dialog | todo | todo (the native menu bar is not in `--capture` frames) |
+| Place a native-generator device and a Tcl-only device through the dialog | todo | partial: placed through `magic::gencell` in the headless `tests/e2e/desktop_alpha_*.tcl` runs (same cells as Magic), not through the dialog |
+| DRC-check the result; the DRC browser lists the errors | todo | done: `drc listall why` equals Magic's on all three PDKs (headless); the DRC panel lists them (captures `*-drcmanager.png`), and its chip equals Magic's `drc list count total` for the reopened design (sky130A 6, ihp-sg13g2 14) |
+| Save and reopen; the cells and properties are unchanged | todo | partial: `writeall modified` writes the same cells as Magic, byte-identical but for timestamps, and no library cell (headless); the reopened designs show the saved cells (captures) |
+
+macOS runs of 2026-11-11 (branch `m4-alpha-fixes`): headless `hefesto-cli --trust-pdk <variant> --magic -dnull -noconsole -rcfile <rc> desktop_alpha_<pdk>.tcl` against Magic 8.3.694 on the same scripts (PDK mounted read-only), and desktop captures at 1600×1000 of the reopened designs (`select top cell; drc check; drc catchup`; `magic::drcmanager create`). Fixed on the way: `drc listall why` now replicates Magic's re-entrant why resolution (drc-engine "Interaction check over an area"); the selected cell's name and instance id sit at 2/3 and 1/3 of its box instead of both at the centre; the inspector's "Design rules nearby" card shows the DRC result under the box (rule margins: M11); `magic::drcmanager create` and Options › DRC Manager show and focus the DRC panel; the Console dock is 320 px with the hint beside the input, so the transcript keeps about nine lines. The user's sign-off is not recorded here.
 
 ## Raven gaps and spec/board differences
 
