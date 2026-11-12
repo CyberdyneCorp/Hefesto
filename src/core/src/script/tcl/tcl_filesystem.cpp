@@ -111,10 +111,13 @@ std::vector<std::pair<std::string, bool>> embedded_children(std::string_view pat
   }
   const std::string prefix = relative->empty() ? std::string{} : std::string{*relative} + "/";
   for (const auto& file : embedded_library()) {
-    if (file.path.substr(0, prefix.size()) != prefix) {
+    if (!file.path.starts_with(prefix)) {
       continue;
     }
-    const std::string_view rest = file.path.substr(prefix.size());
+    // remove_prefix, not substr: GCC 11 cannot bound substr's length here and
+    // rejects the inlined memchr of find() (-Wstringop-overread).
+    std::string_view rest = file.path;
+    rest.remove_prefix(prefix.size());
     const auto slash = rest.find('/');
     std::pair<std::string, bool> entry{std::string{rest.substr(0, slash)}, slash != std::string_view::npos};
     if (children.empty() || children.back() != entry) {
