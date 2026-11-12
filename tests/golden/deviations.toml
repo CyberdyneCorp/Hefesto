@@ -54,6 +54,11 @@ reason = "port renumber orders VDD and vdd by the total natural order (byte tie-
 
 # --- CELL -------------------------------------------------------------------
 
+[CELL-PR-03]
+decisions = ["Q-CELL-19"]
+outputs = ["stdout.txt"]
+reason = "with PDK_ROOT unset, the use path $PDK_ROOT/lib goes straight to the search paths, so leaf2's recorded path is the file found there; Magic records the bogus parent-relative input/$PDK_ROOT/lib/leaf2.mag"
+
 [CELL-PR-10]
 decisions = ["Q-CELL-16"]
 outputs = ["stderr.txt", "x_out.mag"]
@@ -63,6 +68,11 @@ reason = "when both x.mag and x.mag.gz exist, x.mag is read with a warning; Magi
 decisions = ["Q-CELL-12"]
 outputs = ["stdout.txt"]
 reason = "cellname list orders inv before inv_a (a natural prefix sorts first)"
+
+[CELL-PW-05]
+decisions = ["Q-CELL-20"]
+outputs = ["top.mag"]
+reason = "the PDK_ROOT prefix must end at a '/', so input/pdk2/lib is written as an absolute path; Magic writes $PDK_ROOT2/lib"
 
 [CELL-RD-12]
 decisions = ["Q-CELL-1"]
@@ -241,6 +251,11 @@ outputs = ["stderr.txt"]
 reason = "drc list/listall without an option prints the help instead of reading a stale argument of the previous command (Magic prints 'wizard isn't a valid drc option.' and 'll isn't a valid drc option.')"
 
 # --- SCRIPT -----------------------------------------------------------------
+
+[SCRIPT-API-04]
+decisions = ["Q-MODEL-9"]
+outputs = ["stdout.txt"]
+reason = "cellname list top sorts inv before inv2 (the total natural order, a proper prefix first); Magic's strcmpbynum is not antisymmetric and its qsort put inv2 first"
 
 [SCRIPT-API-16]
 deferred = "M7"
