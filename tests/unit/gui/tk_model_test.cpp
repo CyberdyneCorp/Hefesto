@@ -11,6 +11,7 @@
 
 #include "gui_fixture.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/pcell/framework/dialog.hpp"
 #include "hefesto/gui/tk_model.hpp"
 #include "hefesto/gui/wrapper.hpp"
 #include "hefesto/script/binding/bind.hpp"
@@ -196,4 +197,37 @@ TEST_CASE("make_texthelper takes its manager path", "[cap:ui-gui-managers][req:T
   CHECK(r.raises);
   CHECK(r.diagnostics.front().text == "wrong # args: should be \"magic::make_texthelper mgrpath\"");
   CHECK(s.run("make_texthelper .texthelper").ok());
+}
+
+TEST_CASE("the parameter dialog's widgets follow the engine's dialog model",
+          "[cap:pcell-toolkit][req:Parameter dialog structure]") {
+  hefesto::pcell::DialogModel d;
+  d.device = "nfet";
+  d.library = "toy";
+  d.cell_name = "(default)";
+  d.instance = "(default)";
+  d.widgets.push_back({hefesto::pcell::WidgetKind::entry, "w", "Width", "1", {}, {}, {}});
+  d.widgets.push_back({hefesto::pcell::WidgetKind::checkbox, "dummy", "Dummy", "0", {}, {}, {}});
+  d.buttons = {{"Create", "make", false}, {"Create and Close", "make", true}, {"Reset", "reset", false},
+               {"Close", "", true}};
+  const std::string words = gui::params_dialog_words(&d);
+  CHECK(words == "new nfet toy (default) (default) {{entry w Width 1} {checkbox dummy Dummy 0}} "
+                 "{{Create make 0} {{Create and Close} make 1} {Reset reset 0} {Close {} 1}}");
+  CHECK(gui::params_dialog_words(nullptr).empty());
+  Session s;
+  wrapped(s);
+  REQUIRE(tcl(s, "proc ::hefesto::tk::params_model {} {return $::model}") == "");
+  REQUIRE(s.interp().set_var("model", hefesto::cmd::Value{words}));
+  REQUIRE(tcl(s, "::hefesto::tk::params_sync") == "");
+  CHECK(tcl(s, "winfo children .params") == ".params.title .params.sep .params.body .params.buttons");
+  CHECK(tcl(s, "winfo children .params.body.area.edits") ==
+        ".params.body.area.edits.w_lab .params.body.area.edits.w_ent .params.body.area.edits.dummy_lab "
+        ".params.body.area.edits.dummy_chk");
+  CHECK(tcl(s, "winfo children .params.buttons") ==
+        ".params.buttons.apply .params.buttons.okay .params.buttons.reset .params.buttons.close");
+  CHECK(tcl(s, ".params.buttons.okay cget -command") == "make ; destroy .params");
+  CHECK(tcl(s, ".params.title.lab1 cget -text") == "New device:");
+  // The dialog closed: the window goes.
+  REQUIRE(s.interp().set_var("model", hefesto::cmd::Value{std::string{}}));
+  CHECK(tcl(s, "::hefesto::tk::params_sync; winfo exists .params") == "0");
 }

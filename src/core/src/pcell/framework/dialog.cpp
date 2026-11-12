@@ -334,8 +334,12 @@ diag::Outcome<ParameterDict> dialog_parameters(Toolkit& tk) {
   if (!tk.state().dialog) {
     return no_dialog_error().diagnostics.front();
   }
+  // Magic reads them through Tk's `grid slaves`, which lists the last row
+  // first (toolkit.tcl:819-833).
   ParameterDict result;
-  for (const auto& widget : tk.state().dialog->widgets) {
+  const std::vector<DialogWidget>& widgets = tk.state().dialog->widgets;
+  for (auto it = widgets.rbegin(); it != widgets.rend(); ++it) {
+    const DialogWidget& widget = *it;
     if (widget.kind == WidgetKind::message) {
       continue;
     }

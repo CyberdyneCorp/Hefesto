@@ -44,6 +44,10 @@ namespace hefesto::editor {
 struct EditorState;
 }
 
+namespace hefesto::pcell {
+struct DialogModel;
+}
+
 namespace hefesto::script {
 class Interpreter;
 }
@@ -88,6 +92,12 @@ enum class ManagerWindow : unsigned char { cell, library, technology };
 /// or tech_manager_model(); nothing happens while the window does not exist.
 [[nodiscard]] cmd::CommandResult update_manager_widgets(cmd::CommandContext& ctx, script::Interpreter& interp,
                                                         ManagerWindow window, std::string_view option);
+
+/// The engine's parameter dialog as the model's `.params` reads it
+/// (`::hefesto::tk::params_model`): `{new|edit type library cell instance
+/// {{kind pname label value} ...} {{text script closes} ...}}`; empty while
+/// the dialog is closed (`dialog` null).
+[[nodiscard]] std::string params_dialog_words(const pcell::DialogModel* dialog);
 
 /// The file dialogs of the model: Tk's `tk_getOpenFile` / `tk_getSaveFile`
 /// in `editor`'s interpreter with wrapper.tcl's arguments (`-filetypes

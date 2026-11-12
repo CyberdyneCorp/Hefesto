@@ -15,6 +15,7 @@
 
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gui/commands.hpp"
+#include "hefesto/pcell/framework/dialog.hpp"
 #include "hefesto/script/binding/tags.hpp"
 #include "hefesto/script/interp.hpp"
 
@@ -861,6 +862,66 @@ proc ::hefesto::tk::techmanager {option menus labels} {
 }
 )tcl";
 
+// The parameter dialog `.params` of toolkit.tcl's gencell_dialog
+// (toolkit.tcl:1594-1760, add_entry/add_checkbox/add_message/
+// add_selectlist 1289-1480): rebuilt from the engine's dialog model
+// (::hefesto::tk::params_model, a list `{mode type library cell instance
+// widgets buttons}`, empty while closed) after each gencell command.
+constexpr std::string_view kParams = R"tcl(
+proc ::hefesto::tk::params_sync {args} {
+   variable params_shown
+   if {![llength [info commands ::hefesto::tk::params_model]]} return
+   set model [::hefesto::tk::params_model]
+   if {[info exists params_shown] && $params_shown eq $model && ($model eq "" || [exists .params])} return
+   set params_shown $model
+   if {[exists .params]} {destroy .params}
+   if {$model eq ""} return
+   lassign $model mode type library cell instance widgets buttons
+   set p .params
+   create Toplevel $p
+   create Frame $p.title
+   create Label $p.title.lab1 -text "[expr {$mode eq "edit" ? "Edit device" : "New device"}]:"
+   create Label $p.title.lab2 -text $type
+   create Label $p.title.lab3 -text Library:
+   create Label $p.title.lab4 -text $library
+   create Label $p.title.clab -text Cellname:
+   create Label $p.title.glab -text $cell
+   create Label $p.title.ilab -text Instance:
+   create Entry $p.title.ient
+   $p.title.ient insert 0 $instance
+   create TSeparator $p.sep
+   create Frame $p.body
+   create Canvas $p.body.area
+   create Scrollbar $p.body.sb -command "$p.body.area yview"
+   create Frame $p.buttons
+   set e [create Frame $p.body.area.edits]
+   foreach w $widgets {
+      lassign $w kind pname text
+      create Label $e.${pname}_lab -text $text
+      switch -- $kind {
+         entry {create Entry $e.${pname}_ent -textvariable magic::${pname}_val}
+         checkbox {create Checkbutton $e.${pname}_chk -variable magic::${pname}_val}
+         message {create Label $e.${pname}_txt -text [lindex $w 3]}
+         default {
+            create Menubutton $e.${pname}_sel -menu $e.${pname}_sel.menu -text [lindex $w 3]
+            create Menu $e.${pname}_sel.menu -tearoff 0
+         }
+      }
+   }
+   foreach b $buttons name {apply okay reset close} {
+      if {$b eq ""} continue
+      lassign $b text script closes
+      if {$closes} {set script [expr {$script eq "" ? "destroy .params" : "$script ; destroy .params"}]}
+      create Button $p.buttons.$name -text $text -command $script
+   }
+}
+foreach c {gencell gencell_dialog gencell_change gencell_create gencell_update} {
+   foreach n [list ::magic::$c ::$c] {
+      if {[llength [info commands $n]]} {trace add execution $n leave ::hefesto::tk::params_sync}
+   }
+}
+)tcl";
+
 constexpr std::string_view kInstalled = "::hefesto::tk::class(.)";
 
 std::string tcl_list(const std::vector<std::string>& words) {
@@ -907,7 +968,7 @@ cmd::CommandResult install_tk_model(script::Interpreter& interp) {
   if (has_tk_model(interp)) {
     return cmd::CommandResult::success();
   }
-  for (const std::string_view part : {kTree, kCommands, kWidgets, kMenus, kItems, kWrapper, kTagProcs, kManagers}) {
+  for (const std::string_view part : {kTree, kCommands, kWidgets, kMenus, kItems, kWrapper, kTagProcs, kManagers, kParams}) {
     cmd::CommandResult r = interp.evaluate(part, cmd::Origin::internal);
     if (!r.ok()) {
       return r;
@@ -993,6 +1054,25 @@ std::string tech_labels(const TechManagerModel& model) {
 }
 
 }  // namespace
+
+std::string params_dialog_words(const pcell::DialogModel* dialog) {
+  if (dialog == nullptr) {
+    return {};
+  }
+  std::vector<std::string> widgets;
+  for (const pcell::DialogWidget& w : dialog->widgets) {
+    static constexpr std::array<std::string_view, 5> kKinds = {"entry", "checkbox", "selectlist", "selectindex",
+                                                              "message"};
+    widgets.push_back(tcl_list({std::string{kKinds[static_cast<std::size_t>(w.kind)]}, w.parameter, w.label, w.value}));
+  }
+  std::vector<std::string> buttons;
+  for (const pcell::DialogButton& b : dialog->buttons) {
+    buttons.push_back(tcl_list({b.text, b.script, b.closes ? "1" : "0"}));
+  }
+  const bool edit = dialog->mode == pcell::DialogMode::edit_device;
+  return tcl_list({edit ? "edit" : "new", dialog->device, dialog->library, dialog->cell_name, dialog->instance,
+                   tcl_list(widgets), tcl_list(buttons)});
+}
 
 cmd::CommandResult update_manager_widgets(cmd::CommandContext& ctx, script::Interpreter& interp,
                                           ManagerWindow window, std::string_view option) {

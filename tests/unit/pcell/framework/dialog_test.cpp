@@ -105,8 +105,9 @@ TEST_CASE("the builders, getparams and setparams", "[cap:pcell-toolkit][req:Dial
   CHECK(widget(s, "guard").value.empty());  // fallback empty
   CHECK(widget(s, "info").kind == pcell::WidgetKind::message);
   CHECK(widget(s, "info").color == "blue");
-  // getparams: entries, checkboxes and selects in grid order.
-  CHECK(s.value("magic::gencell_getparams") == "w 1 l 2 gencell res guard {} nf 1");
+  // getparams: entries, checkboxes and selects in Tk's `grid slaves` order,
+  // the last row first (regression: SCRIPT-PCELL-13 printed `w l nf`, Magic `nf l w`).
+  CHECK(s.value("magic::gencell_getparams") == "nf 1 guard {} gencell res l 2 w 1");
   // setparams writes every value widget except gencell_sel.
   REQUIRE(s.tcl("magic::gencell_setparams {w 7 l 8 guard 1 nf 2 gencell res2}").ok());
   CHECK(s.value("set magic::w_val") == "7");

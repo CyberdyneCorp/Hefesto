@@ -418,6 +418,10 @@ class Session {
       interp.define_command("::hefesto::tk::window_command", [this](const cmd::Invocation& inv) {
         return script::register_window_commands(*editor_.script.interp, *dispatcher_, inv.args);
       });
+      interp.define_command("::hefesto::tk::params_model", [this](const cmd::Invocation&) {
+        const auto& dialog = editor_.script.gencell.dialog;
+        return cmd::CommandResult::success(cmd::Value{gui::params_dialog_words(dialog ? &*dialog : nullptr)});
+      });
       ready = gui::import_wrapper_commands(interp);
       file_picker_ = std::make_unique<gui::TkFilePicker>(editor_);
       editor_.file_picker = file_picker_.get();
