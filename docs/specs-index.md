@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1990 requirements, 3129 scenarios, 849 open questions.
+**Totals:** 169 capabilities, 1990 requirements, 3130 scenarios, 849 open questions.
 
 ## Hefesto product (native)
 
@@ -83,7 +83,7 @@ Open questions: [25](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 |---|---|---|---|
 | [`drc-cif-rules`](../openspec/specs/drc-cif-rules/spec.md) | 6 | 7 | Defines the `cifstyle`, `cifwidth`, `cifspacing`, `cifarea` and `cifmaxwidth` statements of the `drc` tech section, which check geometry of mask (CIF/GDS output) layers generated f… |
 | [`drc-commands`](../openspec/specs/drc-commands/spec.md) | 15 | 28 | Defines the user-facing `drc` command of a Magic-compatible editor: option parsing, every option and its effect, printed output, and the values returned in scripting mode (`drc lis… |
-| [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 17 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
+| [`drc-engine`](../openspec/specs/drc-engine/spec.md) | 14 | 18 | Defines how Hefesto keeps DRC results up to date for a cell hierarchy in a Magic-compatible way: the per-cell check and error planes, how edits mark areas for rechecking, how the b… |
 | [`drc-rule-language`](../openspec/specs/drc-rule-language/spec.md) | 22 | 38 | Defines the `drc` section of a Magic-compatible technology file: its grammar, the style and variant mechanism, the scale factor, and every rule keyword with its parameters. For eac… |
 | [`drc-rule-semantics`](../openspec/specs/drc-rule-semantics/spec.md) | 13 | 30 | Defines the exact geometric check performed by each primitive DRC rule produced by capability `drc-rule-language`, when a *basic check* is run over a single flat cell (or a flatten… |
 
