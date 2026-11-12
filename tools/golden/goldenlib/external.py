@@ -8,13 +8,14 @@ the pinned Magic sources (``tests/data/tech/generate_scmos.cmake``). A case that
 needs such a file declares it in ``case.toml``::
 
     [[external]]
-    source = "pdk"                                   # pdk | scmos | magic-sys
+    source = "pdk"                                   # pdk | scmos | magic-sys | magic-tcl
     set = "sky130"                                   # pdk only: sky130 (default) | gf180mcu | ihp
     path = "sky130A/libs.tech/magic/sky130A.tech"    # pdk: path in the pinned version
     to = "sky130A.tech"                              # path in the work copy of input/
 
 ``capture.py`` and ``replay.py`` copy every external file into ``<work>/input/``
-(``magic-sys`` files into ``<work>/cadroot/magic/sys/``) before the tool runs, so the reference tool (in a container without network) and
+(``magic-sys`` files into ``<work>/cadroot/magic/sys/``, ``magic-tcl`` files into
+``<work>/cadroot/magic/tcl/``) before the tool runs, so the reference tool (in a container without network) and
 hefesto-cli read the same bytes. A missing file is an error for capture and a skip
 for replay (:class:`ExternalUnavailable`).
 
@@ -35,6 +36,9 @@ names a directory is copied whole.
            ``build/ref/magic``), e.g. ``graphics/FreeSans.pt3``: a file Magic installs in
            ``$CAD_ROOT/magic/sys`` (outline fonts). ``replay.py`` always sets ``CAD_ROOT``
            to ``<work>/cadroot``, so a replay never reads a developer's installation.
+``magic-tcl`` ``<magic>/<path>`` of the pinned Magic checkout, e.g. ``tcltk/strip_reflibs.tcl``:
+           a script Magic installs in ``$CAD_ROOT/magic/tcl`` (the auxiliary scripts a case
+           sources from ``$CAD_ROOT``), staged in ``<work>/cadroot/magic/tcl``.
 """
 from __future__ import annotations
 
@@ -47,9 +51,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-SOURCES = ("pdk", "scmos", "magic-sys")
+SOURCES = ("pdk", "scmos", "magic-sys", "magic-tcl")
+MAGIC_SOURCES = ("magic-sys", "magic-tcl")
 CAD_ROOT_DIR = "cadroot"
 SYS_SUBDIR = Path("magic") / "sys"
+CAD_ROOT_SUBDIRS = {"magic-sys": SYS_SUBDIR, "magic-tcl": Path("magic") / "tcl"}
 GENERATE_TIMEOUT_S = 300
 
 
@@ -76,7 +82,7 @@ def parse_external(raw: dict, index: int) -> External:
         raise ValueError(f"{where}: source must be one of {', '.join(SOURCES)}")
     if not _is_relative_inside(to):
         raise ValueError(f"{where}: 'to' must be a relative path inside the work copy of input/")
-    if source in ("pdk", "magic-sys") and (not isinstance(path, str) or not path or ".." in Path(path).parts
+    if source in ("pdk", *MAGIC_SOURCES) and (not isinstance(path, str) or not path or ".." in Path(path).parts
                                            or Path(path).is_absolute()):
         raise ValueError(f"{where}: a {source} input needs a relative 'path' inside the pinned version")
     pdk_set = raw.get("set", "sky130")
@@ -170,7 +176,7 @@ def resolve(ext: External) -> Path:
     """Local path of an external input; raise ExternalUnavailable when absent."""
     if ext.source == "pdk":
         return _resolve_pdk(ext)
-    if ext.source == "magic-sys":
+    if ext.source in MAGIC_SOURCES:
         return _resolve_magic_sys(ext)
     return _resolve_scmos()
 
@@ -182,11 +188,11 @@ def cad_root(work: Path) -> Path:
 
 def stage(externals, input_copy: Path) -> None:
     """Copy every external input into ``input_copy`` (the work copy of input/), and
-    ``magic-sys`` inputs into ``cad_root(<work>)/magic/sys``."""
+    ``magic-sys`` and ``magic-tcl`` inputs into ``cad_root(<work>)/magic/sys`` and ``/magic/tcl``."""
     for ext in externals:
         target_dir = input_copy
-        if ext.source == "magic-sys":
-            target_dir = cad_root(input_copy.parent) / SYS_SUBDIR
+        if ext.source in CAD_ROOT_SUBDIRS:
+            target_dir = cad_root(input_copy.parent) / CAD_ROOT_SUBDIRS[ext.source]
             target_dir.mkdir(parents=True, exist_ok=True)
         source, target = resolve(ext), target_dir / ext.to
         target.parent.mkdir(parents=True, exist_ok=True)
