@@ -4,6 +4,8 @@
 #include "hefesto/shell/script_consent_model.hpp"
 
 #include <algorithm>
+#include <filesystem>
+#include <system_error>
 
 namespace hefesto::shell {
 
@@ -124,6 +126,36 @@ ConsentDecision consent_decision(const ConsentPromptView& view, int dialog_resul
   return view.answers[static_cast<std::size_t>(dialog_result) - 1].decision;
 }
 
+bool release_digest_verified(const pdk::Provenance& provenance) noexcept {
+  if (provenance.source == "external" || provenance.assets.empty()) return false;
+  return std::ranges::all_of(provenance.assets, [](const auto& asset) { return !asset.second.empty(); });
+}
+
+std::string then_runs_text(std::string_view main_script, std::size_t part_files) {
+  if (main_script.empty()) return {};
+  std::string text{main_script};
+  if (part_files > 0) {
+    text += " + " + std::to_string(part_files) + (part_files == 1 ? " part file" : " part files") +
+            " (device generators)";
+  }
+  return text;
+}
+
+std::string startup_then_runs(const platform::Path& script, std::string_view variant) {
+  if (variant.empty()) return {};
+  const std::filesystem::path folder = script.parent_path();
+  const std::string main_script = std::string{variant} + ".tcl";
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(folder / main_script, ec)) return {};
+  const std::string part_prefix = std::string{variant} + "-";
+  std::size_t parts = 0;
+  for (const auto& entry : std::filesystem::directory_iterator(folder, ec)) {
+    const std::string name = entry.path().filename().string();
+    if (name.starts_with(part_prefix) && name.ends_with(".tcl") && entry.is_regular_file(ec)) ++parts;
+  }
+  return then_runs_text(main_script, parts);
+}
+
 // --- the desktop ConsentHost ----------------------------------------------------------------
 
 ConsentDecision DesktopConsentHost::ask(const script::PdkIdentity& pdk, const platform::Path& script) {
@@ -135,6 +167,7 @@ ConsentDecision DesktopConsentHost::ask(const script::PdkIdentity& pdk, const pl
   ConsentContext context;
   context.document = document_;
   context.in_store = in_store_ ? in_store_(script) : false;
+  if (context.in_store && origin_) origin_(pdk, script, context);
   const ConsentPromptView view = consent_prompt(request, context);
   const ConsentDecision decision = ask_ ? ask_(view) : ConsentDecision::decline;
   answers_[pdk] = decision;
@@ -205,7 +238,7 @@ ReviewPlan review_plan(const script::PdkIdentity& pdk, ConsentDecision decision)
 }
 
 std::string denial_status(const script::DeniedOperation& denied) {
-  return "■ Sandbox blocked " + denied.operation + " in " + where(denied.location);
+  return "■ Sandbox blocked " + denied.operation + " in " + where(denied.location) + " · Show";
 }
 
 std::optional<InterruptCardView> interrupt_card(const RunningScript& running) {
@@ -221,6 +254,13 @@ std::optional<InterruptCardView> interrupt_card(const RunningScript& running) {
     card.detail = "line " + std::to_string(running.line);  // typed text
   }
   return card;
+}
+
+std::optional<Rgba> script_dim(bool card_shown, const ThemeTokens& canvas_tokens) noexcept {
+  if (!card_shown) return std::nullopt;
+  Rgba scrim = canvas_tokens.canvas;
+  scrim.a = kScriptDimAlpha;
+  return scrim;
 }
 
 RunningScript running_script(const script::ScriptProgress& progress) {

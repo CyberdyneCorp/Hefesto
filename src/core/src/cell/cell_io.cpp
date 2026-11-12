@@ -115,21 +115,6 @@ diag::Outcome<std::string> read_text(CellIoContext& ctx, const platform::Path& f
   return maybe_decompress(std::move(data).value());
 }
 
-std::string root_name_of(std::string_view name) {
-  if (name.starts_with("./")) {
-    name.remove_prefix(2);
-  }
-  if (const std::size_t slash = name.rfind('/'); slash != std::string_view::npos) {
-    name.remove_prefix(slash + 1);
-  }
-  for (const std::string_view suffix : {std::string_view{".gz"}, kMag}) {
-    if (const std::size_t dot = name.rfind('.'); dot != std::string_view::npos && name.substr(dot) == suffix) {
-      name = name.substr(0, dot);
-    }
-  }
-  return std::string{name};
-}
-
 /// "Path conflicts on explicit load and placement" (load): false when the
 /// load must fail.
 bool check_load_conflict(CellIoContext& ctx, db::CellDef& def, std::string_view name) {
@@ -281,6 +266,29 @@ diag::Status save_script(CellIoContext& ctx, const db::CellDef& def, const std::
 
 }  // namespace
 
+std::string load_name(std::string_view name) {
+  if (name.starts_with("./")) {
+    name.remove_prefix(2);
+  }
+  const std::size_t slash = name.rfind('/');
+  const std::size_t tail = slash == std::string_view::npos ? 0 : slash + 1;
+  for (const std::string_view suffix : {std::string_view{".gz"}, kMag}) {
+    const std::size_t dot = name.rfind('.');
+    if (dot != std::string_view::npos && dot >= tail && name.substr(dot) == suffix) {
+      name = name.substr(0, dot);
+    }
+  }
+  return std::string{name};
+}
+
+std::string load_definition_name(std::string_view name) {
+  std::string out = load_name(name);
+  if (const std::size_t slash = out.rfind('/'); slash != std::string::npos) {
+    out.erase(0, slash + 1);
+  }
+  return out;
+}
+
 diag::Status read_cell(CellIoContext& ctx, db::CellDef& def, const ReadOptions& options) {
   if (def.flags().available) {
     return diag::Done{};
@@ -347,8 +355,8 @@ diag::Status settle_load(CellIoContext& ctx, db::CellDef& def, const diag::Statu
 }  // namespace
 
 diag::Outcome<db::CellDef*> load_cell(CellIoContext& ctx, std::string_view name, const ReadOptions& options) {
-  const std::string root = root_name_of(name);
-  const std::string requested = name.starts_with("./") ? std::string{name.substr(2)} : std::string{name};
+  const std::string requested = load_name(name);
+  const std::string root = load_definition_name(requested);
   db::CellDef* def = ctx.library.find(root);
   if (def != nullptr && !def->file_path().empty() && requested != root && !check_load_conflict(ctx, *def, requested)) {
     return diag::make(codes::kConflictingLocation, "cell " + root + " points to a conflicting location");

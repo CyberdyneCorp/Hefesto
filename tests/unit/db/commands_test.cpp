@@ -542,6 +542,19 @@ TEST_CASE("cellname list sorts naturally and cellname errors use Magic's text (M
   CHECK(s.run("cellname writeable top").value.to_string().empty());
 }
 
+TEST_CASE("cellname create of an existing cell is a silent no-op (DESKTOP-ALPHA-SG13G2)",
+          "[cap:layout-hierarchy][req:Cell definitions and the cell namespace]") {
+  // Regression: Magic's CmdCellname leaves an existing cell as it is; Hefesto reported
+  // "cell ... already exists" when gencell re-created a generated cell of the same name.
+  HEFESTO_REQUIRE_MT(mt);
+  Session s(mt);
+  s.cell("b9");
+  const auto again = s.run("cellname create b9");
+  CHECK(again.ok());
+  CHECK(again.diagnostics.empty());
+  CHECK(s.run("cellname list allcells").value.to_string() == "b9 top");
+}
+
 TEST_CASE("property lists flatten each value list; plane values follow tile order (MODEL-G-047, CELL-RD-20)",
           "[cap:layout-properties][req:Typed property store]") {
   HEFESTO_REQUIRE_MT(mt);

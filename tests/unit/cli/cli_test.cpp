@@ -542,6 +542,49 @@ TEST_CASE("file arguments in NULL graphics are announced as Magic's C startup do
   CHECK(r.out.find("late") == std::string::npos);
 }
 
+// Regression: the final reload that ends the window on the first file
+// argument (Q-UI-25 fix) used the argument's path, so a first cell whose
+// file was missing printed "The cell was already read and points to
+// conflicting location". Magic 8.3.694 (`magic -dnull /w/inv other`, reverse
+// order) prints only each cell's own "File /w/inv couldn't be read" (a path)
+// or "Cell other couldn't be read" (a name) and "Creating new cell".
+TEST_CASE("missing command-line cells are reported as Magic reports them and print no conflict",
+          "[cap:app-startup][req:Command-line file arguments]") {
+  ScratchDir dir;
+  const auto inv = (dir.path() / "inv").string();
+  const auto gz = (dir.path() / "nand.mag.gz").string();
+  const Run r = run_cli({"--no-log", "-c", "puts [cellname list window]; quit -noprompt", "--diagnostics=magic",
+                         "--magic", "-dnull", "-noconsole", "-norc", inv, "other", gz});
+  const std::string all = r.out + r.err;
+  INFO(all);
+  CHECK(all.find("conflicting location") == std::string::npos);
+  CHECK(r.err.find("File " + inv + " couldn't be read\nNo such file or directory\n") != std::string::npos);
+  CHECK(r.err.find("Cell other couldn't be read\nNo such file or directory\n") != std::string::npos);
+  CHECK(r.out.find("other\" from command line.\nCreating new cell\n") != std::string::npos);  // TxPrintf: stdout
+  // `.mag.gz` is cut off the recorded path, as DBWloadWindow does in place.
+  CHECK(r.err.find("File " + (dir.path() / "nand").string() + " couldn't be read\n") != std::string::npos);
+  CHECK(r.out.find("inv\n") != std::string::npos);  // the window ends on the first cell
+}
+
+// `load NAME -silent` prints nothing for a new cell (DBVerbose none, beQuiet);
+// with NULL graphics "(UNNAMED)" stays in memory (Magic -dnull), with a
+// display named by -d it is deleted by the load (Magic under X11).
+TEST_CASE("load -silent prints nothing and keeps (UNNAMED) only in NULL graphics",
+          "[cap:cmd-hierarchy][req:Load command]") {
+  const char* script = "load top -silent; puts [cellname list allcells]; quit -noprompt";
+  const Run null_run =
+      run_cli({"--no-log", "-c", script, "--diagnostics=magic", "--magic", "-dnull", "-noconsole", "-norc"});
+  INFO(null_run.out + null_run.err);
+  CHECK(null_run.err.find("top") == std::string::npos);
+  CHECK(null_run.out.find("(UNNAMED) top\n") != std::string::npos);
+  const Run x11_run =
+      run_cli({"--no-log", "-c", script, "--diagnostics=magic", "--magic", "-d", "X11", "-noconsole", "-norc"});
+  INFO(x11_run.out + x11_run.err);
+  CHECK(x11_run.err.find("top") == std::string::npos);
+  CHECK(x11_run.out.find("top\n") != std::string::npos);
+  CHECK(x11_run.out.find("(UNNAMED)") == std::string::npos);
+}
+
 TEST_CASE("the trust option names the PDKs whose scripts may run in batch mode",
           "[cap:hefesto-security][req:Consent before implicit script execution]") {
   const auto parsed = cli::parse_args(Args{"--trust-pdk", "sky130A", "--trust-pdk=gf180mcu", "--magic", "-dnull"});

@@ -50,6 +50,10 @@ class RunResult:
 # GUI cases (m4-scripting design D16): Magic's Tk wrapper needs an X display; the
 # image runs Xvfb through xvfb-run (Debian package xvfb) with a fixed screen.
 XVFB_PREFIX = ["xvfb-run", "-a", "-s", "-screen 0 1280x1024x24"]
+# Tk's fonts go through Fontconfig, which needs a writable cache directory. The container
+# user has no home (HOME=/), so without this every GUI case's stderr started with
+# "Fontconfig error: No writable cache directories", which Hefesto has no reason to print.
+DISPLAY_ENVIRONMENT = {"XDG_CACHE_HOME": "/tmp/.cache"}
 CONTAINER_WORK = "/work"
 
 
@@ -115,7 +119,8 @@ class ContainerRunner:
         directory: as root, Magic marks every input cell not owned by root and not group- or
         world-writable as read-only (database/DBio.c file_is_not_writeable), which the
         replay (run as the owner) never sees."""
-        env = {**ENVIRONMENT, **substitute_env(case.env, CONTAINER_WORK)}
+        display_env = DISPLAY_ENVIRONMENT if case.reference.get("display") else {}
+        env = {**ENVIRONMENT, **display_env, **substitute_env(case.env, CONTAINER_WORK)}
         env_flags = [flag for key, value in env.items() for flag in ("-e", f"{key}={value}")]
         user = ["--user", f"{os.getuid()}:{os.getgid()}"] if hasattr(os, "getuid") else []
         # xvfb-run waits for Xvfb's SIGUSR1 and reaps it: as PID 1 of the container it never

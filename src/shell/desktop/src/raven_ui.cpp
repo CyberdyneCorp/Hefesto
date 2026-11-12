@@ -11,9 +11,11 @@
 #include "raven_ui.hpp"
 
 #include "hefesto/shell/input_router.hpp"
+#include "hefesto/shell/press_hold.hpp"
 #include "hefesto/shell/text_key_filter.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -740,6 +742,59 @@ struct Painted::Callbacks {
   StatefulPaintFn paint;
   std::function<void(float, float)> click;
   std::function<void(float, float)> context;
+  std::function<void(float, float)> hold;
+  // on_hold: the press waiting for kHoldDelay (a one-shot timer) and where.
+  PressHold press;
+  Rid timer = kNoWidget;
+  Rid window = kNoWidget;
+  float press_x = 0.0F;  // window point under the widget's bottom-left corner
+  float press_y = 0.0F;
+  float local_x = 0.0F;
+  float local_y = 0.0F;
+
+  Callbacks() = default;
+  Callbacks(const Callbacks&) = delete;
+  Callbacks& operator=(const Callbacks&) = delete;
+  ~Callbacks() { stop_timer(); }
+
+  void stop_timer() {
+    if (timer != kNoWidget && Rtimer_is_valid(timer) != kFalse) Rtimer_destroy(timer);
+    timer = kNoWidget;
+  }
+
+  static void on_hold_timer(Rid /*timer*/, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    cb->timer = kNoWidget;  // a one-shot timer deletes itself
+    const bool down = cb->window != kNoWidget && Rwindow_is_mouse_button_down(cb->window, R_MOUSE_LEFT) != kFalse;
+    if (cb->press.elapse(down) && cb->hold) cb->hold(cb->press_x, cb->press_y);
+  }
+
+  /// on_hold's left button: a click on release before the delay, the hold
+  /// action once the delay passed with the button down.
+  bool hold_event(Rid id, const REvent& e) {
+    if (e.type == R_EVENT_MOUSE_DOWN && e.button == R_MOUSE_LEFT) {
+      float x = 0.0F;
+      float y = 0.0F;
+      float w = 0.0F;
+      float h = 0.0F;
+      Rwidget_get_rect(id, &x, &y, &w, &h);
+      press_x = x;
+      press_y = y + h;
+      local_x = e.local_x;
+      local_y = e.local_y;
+      window = e.window;
+      press.press();
+      stop_timer();
+      timer = Rtimer_create(std::chrono::duration<double>(kHoldDelay).count(), kFalse, &on_hold_timer, this);
+      return true;
+    }
+    if (e.type == R_EVENT_MOUSE_UP && e.button == R_MOUSE_LEFT) {
+      stop_timer();
+      if (press.release()) click(local_x, local_y);
+      return true;
+    }
+    return false;
+  }
 
   static bool context_event(const REvent& e) {
     if (e.type == R_EVENT_MOUSE_DOWN) return e.button == R_MOUSE_RIGHT;
@@ -772,6 +827,7 @@ struct Painted::Callbacks {
       return kTrue;
     }
     if (!cb->click || Rwidget_is_enabled(widget) == kFalse) return kFalse;
+    if (cb->hold && cb->hold_event(widget, *e)) return kTrue;
     if (e->type == R_EVENT_MOUSE_DOWN && e->button == R_MOUSE_LEFT) {
       cb->click(e->local_x, e->local_y);
       return kTrue;
@@ -813,6 +869,10 @@ void Painted::on_click(std::function<void(float, float)> callback) {
 
 void Painted::on_context(std::function<void(float, float)> callback) {
   callbacks_->context = std::move(callback);
+}
+
+void Painted::on_hold(std::function<void(float, float)> callback) {
+  callbacks_->hold = std::move(callback);
 }
 
 void Painted::set_role(Role role) {
@@ -1416,6 +1476,17 @@ int TextEditor::cursor_line() const {
   int column = 0;
   Rtext_editor_get_cursor(id_, &line, &column);
   return line;
+}
+
+std::pair<int, int> TextEditor::cursor() const {
+  int line = 0;
+  int column = 0;
+  Rtext_editor_get_cursor(id_, &line, &column);
+  return {line, column};
+}
+
+void TextEditor::set_cursor(int line, int column) {
+  Rtext_editor_set_cursor(id_, line, column);
 }
 
 int TextEditor::line_count() const {

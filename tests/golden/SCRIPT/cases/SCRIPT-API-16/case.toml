@@ -38,10 +38,10 @@ masks = ["magic-stamp-note", "magic-tech-sections"]
 name = "top.ext"
 source = "top.ext"
 comparator = "bytes"
-masks = []
+masks = ["ext-timestamp"]
 
 [[outputs]]
 name = "top2.ext"
 source = "top2.ext"
 comparator = "bytes"
-masks = []
+masks = ["ext-timestamp"]

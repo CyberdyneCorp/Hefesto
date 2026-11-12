@@ -1,0 +1,16 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Loading sky130A Device Generator Menu ...
+0 0.123
+1 {invalid command name "3digitpastdecimal"}

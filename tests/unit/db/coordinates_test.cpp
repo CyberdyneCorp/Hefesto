@@ -276,7 +276,12 @@ TEST_CASE("editing needs the box in a window on the edit cell", CAP "[req:Root a
   CHECK(r.diagnostics.back().text == "The box isn't in a window on the edit cell.");
   CHECK(db::test::rects_of(*s.editor.edit_cell, mt.metal1, mt.m1).empty());
   s.editor.box.reset();
-  CHECK(s.run("paint metal1").diagnostics.back().text == "Box tool must be present");
+  // Regression (golden SCRIPT-API-21, SCRIPT-RSP-04): ToolGetEditBox's text, not the box
+  // command's "Box tool must be present".
+  CHECK(s.run("paint metal1").diagnostics.back().text == "Box must be present");
+  CHECK(s.run("label A c metal1").diagnostics.back().text == "Box must be present");
+  CHECK(s.run("port first").diagnostics.back().text == "Box must be present");
+  CHECK(s.run("box values").diagnostics.back().text == "Box tool must be present");
 }
 
 TEST_CASE("message texts name the bad argument and substitute 0", CAP "[req:Message texts]") {

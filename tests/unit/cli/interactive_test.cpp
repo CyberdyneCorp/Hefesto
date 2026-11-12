@@ -33,6 +33,7 @@
 #include "interactive.hpp"
 #include "options.hpp"
 
+#include <fcntl.h>
 #include <unistd.h>
 
 namespace cli = hefesto::cli;
@@ -244,4 +245,20 @@ TEST_CASE("Option --interactive selects the interactive prompt", "[cap:hefesto-a
   const std::vector<std::string_view> batch{"-c", "echo hi"};
   CHECK_FALSE(cli::parse_args(batch).options.interactive);  // batch: no prompt, no worker
   CHECK(cli::usage_text().find("--interactive") != std::string::npos);
+}
+
+// Regression: macOS poll() answers POLLNVAL for /dev/null, which the loop
+// took as "not readable" and polled again forever (`hefesto-cli
+// --interactive </dev/null` never returned; the test then hits the CTest
+// timeout).
+TEST_CASE("The interactive prompt ends at end of input on a character device",
+          "[cap:hefesto-architecture][req:Headless command-line tool]") {
+  Console console;
+  const int null_fd = ::open("/dev/null", O_RDONLY);
+  REQUIRE(null_fd >= 0);
+  const cli::InteractiveRun result =
+      cli::run_interactive(*console.dispatcher, console.editor, null_fd, console.prompt, false);
+  ::close(null_fd);
+  CHECK_FALSE(result.quit);  // ended by end of input
+  CHECK(result.ok);
 }

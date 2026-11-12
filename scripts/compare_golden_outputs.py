@@ -17,10 +17,15 @@ see tools/golden/compare/masks.py), and replay.py applies those masks before it
 writes the trees, for binary formats (GDS dates) as well as text. This script
 therefore compares raw bytes.
 
-Usage:
-    compare_golden_outputs.py REFERENCE LEG [LEG...]
+The first line printed lists the cases of the reference per area, so the job
+summary shows what the check covers (m4-scripting task 13.6: the SCRIPT outputs).
+`--require-area AREA` (repeatable) fails when the reference has no case of AREA.
 
-Exits 1 on any difference, 2 if the reference directory does not exist.
+Usage:
+    compare_golden_outputs.py [--require-area AREA]... REFERENCE LEG [LEG...]
+
+Exits 1 on any difference or required area without cases, 2 if the reference
+directory does not exist.
 """
 from __future__ import annotations
 
@@ -44,15 +49,28 @@ def compare(reference: Path, leg: Path) -> list[str]:
     return problems
 
 
+def area_cases(directory: Path) -> dict[str, int]:
+    """Cases per area of an output tree (`<AREA>/<case-id>/...`)."""
+    return {area.name: sum(1 for case in area.iterdir() if case.is_dir())
+            for area in sorted(directory.iterdir()) if area.is_dir()}
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
+    parser.add_argument("--require-area", action="append", default=[], metavar="AREA",
+                        help="fail when the reference has no case of AREA")
     parser.add_argument("reference", type=Path)
     parser.add_argument("legs", nargs="+", type=Path)
     args = parser.parse_args(argv)
     if not args.reference.is_dir():
         print(f"reference directory {args.reference} does not exist", file=sys.stderr)
         return 2
-    failed = False
+    areas = area_cases(args.reference)
+    print("reference cases: " + (", ".join(f"{area} {count}" for area, count in areas.items()) or "none"))
+    uncovered = [area for area in args.require_area if not areas.get(area)]
+    for area in uncovered:
+        print(f"  no {area} case in the reference outputs")
+    failed = bool(uncovered)
     for leg in args.legs:
         problems = compare(args.reference, leg)
         status = "identical" if not problems else f"{len(problems)} difference(s)"

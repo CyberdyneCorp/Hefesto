@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1990 requirements, 3130 scenarios, 849 open questions.
+**Totals:** 169 capabilities, 1990 requirements, 3131 scenarios, 849 open questions.
 
 ## Hefesto product (native)
 
@@ -270,7 +270,7 @@ Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`cmd-box`](../openspec/specs/cmd-box/spec.md) | 15 | 30 | Defines the **box**: the single rectangular editing cursor that marks the area for paint, erase, fill, selection, cell placement and most other editing commands. This capability co… |
 | [`cmd-coordinates-and-units`](../openspec/specs/cmd-coordinates-and-units/spec.md) | 14 | 45 | Defines how editing commands parse distances and coordinates (numbers, unit suffixes, simple expressions), how keyword arguments and direction names are matched, how the `units`, `… |
-| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 27 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
+| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 28 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
 | [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 19 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
 | [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 14 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific command… |
 | [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 36 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |

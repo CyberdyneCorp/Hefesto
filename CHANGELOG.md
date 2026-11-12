@@ -8,6 +8,18 @@ release notices.
 
 ### Changed
 
+- **Desktop: the undo history names each step after the command that made
+  it** ("↶ paint metal1", "Undid paint metal1 · 3 more steps"), and pressing
+  and holding Undo for half a second opens it (a shorter press still
+  undoes).
+- **Desktop: Tab completes in the Tcl console** the command, procedure or
+  `$variable` name before the cursor from the project's interpreter; several
+  matches are listed in the transcript.
+- **Desktop: a script that runs longer than 2 s dims the canvas** under its
+  Interrupt card, and the canvas shows the script's edits as it goes. The
+  script-consent prompt names what the startup file runs next ("sky130A.tcl +
+  8 part files") and whether the store release's digest verified.
+
 - **`hefesto-cli` runs `-c`, script files, standard input and
   `--interactive` as Tcl outside `--magic` mode too.** Each complete command
   runs in the project's sandboxed interpreter and its non-empty result is
@@ -52,6 +64,42 @@ release notices.
   instance issues `magic::gencell <lib>::<type> <inst> k v …`. The dialog
   stays above every window, not only Hefesto's, until the Raven toolkit has
   owned utility windows.
+
+### Fixed
+
+- **Moving, copying, deleting, rotating or arraying before anything was
+  ever selected no longer crashes.** `box 0 0 0 0; delete` in a fresh
+  session (or a device script that runs `array` first) crashed
+  `hefesto-cli`; these commands now see an empty selection, as in Magic.
+- **`cellname create` of an existing cell does nothing**, as in Magic,
+  instead of failing with `cell "..." already exists` (a second generated
+  device with the same parameters hit it).
+- **Commands that need the box in the edit cell print Magic's text.**
+  `paint`, `erase`, `label`, `port` and the other editing commands say `Box
+  must be present` when there is no box; `box`, `select box` and `element
+  inbox` keep `Box tool must be present`.
+- **`readspice` and `mazeroute` are global Tcl commands**, as Magic's
+  `readspice.tcl` and `mazeroute.tcl` define them, so scripts can call them
+  unqualified.
+- **`--diagnostics=magic` no longer prints the native-generator fallback
+  note** (`PCELL-NATIVE-001`), which Magic has no equivalent of.
+- **A cell named on the command line that does not exist is reported as
+  Magic reports it**, without the extra "The cell was already read and
+  points to conflicting location" message, and a `.mag.gz` name is shown
+  without its extensions (`File /w/inv couldn't be read`).
+- **`load` removes the untouched `(UNNAMED)` cell when a display is
+  running**, as Magic does under X11, so the desktop's Cells manager no
+  longer lists it; `hefesto-cli` (no display) keeps it, as `magic -dnull`
+  does.
+- **`hefesto-cli --interactive` with standard input from a character
+  device such as `/dev/null` ends at end of input on macOS** instead of
+  waiting forever.
+- **`file link NAME` and `file readlink NAME` with a NUL character in NAME
+  fail with "no such file or directory"** instead of crashing: Tcl 8.6.16
+  passes a NULL path to `readlink()` there.
+- **Outline fonts with far-apart curve control points** no longer trigger
+  undefined integer overflow while flattening Bézier curves; the points
+  wrap as Magic's C arithmetic does.
 
 ### Security
 

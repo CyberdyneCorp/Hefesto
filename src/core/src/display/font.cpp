@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <numbers>
 #include <optional>
@@ -291,22 +292,39 @@ diag::Outcome<OutlineFont> parse_outline_font(std::string_view text, std::string
   return parser.take();
 }
 
+namespace {
+
+/// `a - b` as Magic's C int subtraction computes it on its two's-complement
+/// targets: an out-of-range difference wraps instead of being undefined.
+float wrapped_difference(db::Coord a, db::Coord b) {
+  return static_cast<float>(static_cast<db::Coord>(static_cast<std::uint32_t>(a) - static_cast<std::uint32_t>(b)));
+}
+
+/// C's `(int)` of a float as x86 computes it: a value outside the int range
+/// (or NaN) gives INT_MIN instead of being undefined.
+db::Coord float_to_coord(float v) {
+  constexpr float kLimit = 2147483648.0F;
+  return v >= -kLimit && v < kLimit ? static_cast<db::Coord>(v) : std::numeric_limits<db::Coord>::min();
+}
+
+}  // namespace
+
 std::vector<db::Point> flatten_bezier(db::Point p0, db::Point p1, db::Point p2, db::Point p3) {
   // Single precision, as DBFontInitCurves / CalcBezierPoints.
-  const float cx = static_cast<float>(3.0 * static_cast<double>(static_cast<float>(p1.x - p0.x)));
-  const float bx = static_cast<float>(3.0 * static_cast<double>(static_cast<float>(p2.x - p1.x)) - static_cast<double>(cx));
-  const float ax = static_cast<float>(p3.x - p0.x) - cx - bx;
-  const float cy = static_cast<float>(3.0 * static_cast<double>(static_cast<float>(p1.y - p0.y)));
-  const float by = static_cast<float>(3.0 * static_cast<double>(static_cast<float>(p2.y - p1.y)) - static_cast<double>(cy));
-  const float ay = static_cast<float>(p3.y - p0.y) - cy - by;
+  const float cx = static_cast<float>(3.0 * static_cast<double>(wrapped_difference(p1.x, p0.x)));
+  const float bx = static_cast<float>(3.0 * static_cast<double>(wrapped_difference(p2.x, p1.x)) - static_cast<double>(cx));
+  const float ax = wrapped_difference(p3.x, p0.x) - cx - bx;
+  const float cy = static_cast<float>(3.0 * static_cast<double>(wrapped_difference(p1.y, p0.y)));
+  const float by = static_cast<float>(3.0 * static_cast<double>(wrapped_difference(p2.y, p1.y)) - static_cast<double>(cy));
+  const float ay = wrapped_difference(p3.y, p0.y) - cy - by;
   std::vector<db::Point> out;
   db::Point last = p0;
   for (int i = 0; i < kBezierSegments; ++i) {
     const float t = static_cast<float>(i + 1) / static_cast<float>(kBezierSegments + 1);
     const float t2 = t * t;
     const float t3 = t2 * t;
-    const db::Point p{static_cast<db::Coord>(ax * t3 + bx * t2 + cx * t + static_cast<float>(p0.x)),
-                      static_cast<db::Coord>(ay * t3 + by * t2 + cy * t + static_cast<float>(p0.y))};
+    const db::Point p{float_to_coord(ax * t3 + bx * t2 + cx * t + static_cast<float>(p0.x)),
+                      float_to_coord(ay * t3 + by * t2 + cy * t + static_cast<float>(p0.y))};
     if (!(p == last)) {
       out.push_back(p);
       last = p;

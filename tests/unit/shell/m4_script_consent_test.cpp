@@ -7,9 +7,13 @@
 // the PDK panel's trust state and commands, the declined state, denials and
 // the long-running script card.
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -143,6 +147,93 @@ TEST_CASE("Trust this version is recorded per PDK version",
   CHECK_FALSE(store.trusted(other));
 }
 
+namespace {
+
+/// A scratch folder laid out like a PDK's libs.tech/magic.
+class MagicFolder {
+ public:
+  MagicFolder()
+      : dir_(std::filesystem::temp_directory_path() /
+             ("hefesto-consent-" + std::to_string(std::random_device{}()))) {
+    std::filesystem::create_directories(dir_);
+  }
+  ~MagicFolder() {
+    std::error_code ec;
+    std::filesystem::remove_all(dir_, ec);
+  }
+  MagicFolder(const MagicFolder&) = delete;
+  MagicFolder& operator=(const MagicFolder&) = delete;
+
+  void touch(const std::string& name) const { std::ofstream(dir_ / name) << "# " << name << "\n"; }
+  [[nodiscard]] const std::filesystem::path& path() const noexcept { return dir_; }
+
+ private:
+  std::filesystem::path dir_;
+};
+
+}  // namespace
+
+TEST_CASE("the consent prompt names what the startup file runs next",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  CHECK(then_runs_text("sky130A.tcl", 8) == "sky130A.tcl + 8 part files (device generators)");
+  CHECK(then_runs_text("x.tcl", 1) == "x.tcl + 1 part file (device generators)");
+  CHECK(then_runs_text("x.tcl", 0) == "x.tcl");
+  CHECK(then_runs_text("", 3).empty());
+
+  // sky130A's libs.tech/magic: sky130A.tcl sources eight sky130A-*.tcl part files.
+  const MagicFolder folder;
+  folder.touch("sky130A.magicrc");
+  CHECK(startup_then_runs(folder.path() / "sky130A.magicrc", "sky130A").empty());  // no device script
+  folder.touch("sky130A.tcl");
+  for (const char* part : {"util", "misc", "via", "fet", "cap", "res", "dio", "fix"}) {
+    folder.touch(std::string{"sky130A-"} + part + ".tcl");
+  }
+  folder.touch("sky130A-BindKeys");     // not a part file (not .tcl)
+  folder.touch("sky130A-drc.tech");     // not a part file
+  folder.touch("other.tcl");            // not this variant's
+  CHECK(startup_then_runs(folder.path() / "sky130A.magicrc", "sky130A") ==
+        "sky130A.tcl + 8 part files (device generators)");
+  CHECK(startup_then_runs(folder.path() / "sky130A.magicrc", "").empty());
+}
+
+TEST_CASE("the consent prompt says whether the store release's digest verified",
+          "[cap:hefesto-security][req:Consent before implicit script execution]") {
+  pdk::Provenance installed;
+  installed.source = "github:fossi-foundation/ciel-releases";
+  installed.assets = {{"common.tar.zst", "ab12"}, {"sky130_fd_sc_hd.tar.zst", "cd34"}};
+  CHECK(release_digest_verified(installed));
+  pdk::Provenance unknown_asset = installed;
+  unknown_asset.assets.back().second.clear();  // installed with -accept-unverified
+  CHECK_FALSE(release_digest_verified(unknown_asset));
+  pdk::Provenance external = installed;
+  external.source = "external";  // installed by ciel or volare: nothing was checked by Hefesto
+  CHECK_FALSE(release_digest_verified(external));
+  CHECK_FALSE(release_digest_verified(pdk::Provenance{}));
+
+  // The desktop host asks its origin only for a script in the store.
+  std::vector<ConsentPromptView> asked;
+  int described = 0;
+  DesktopConsentHost host([&](const ConsentPromptView& v) { asked.push_back(v); return ConsentDecision::run_once; },
+                          [](const platform::Path& p) { return p.string().find("/.ciel/") != std::string::npos; });
+  host.set_origin([&](const script::PdkIdentity& pdk, const platform::Path&, ConsentContext& context) {
+    ++described;
+    CHECK(pdk == kSky130);
+    context.digest_verified = true;
+    context.then_runs = "sky130A.tcl + 8 part files (device generators)";
+  });
+  CHECK(host.ask(kSky130, kRc) == ConsentDecision::run_once);
+  REQUIRE(asked.size() == 1);
+  REQUIRE(asked[0].origin.size() == 4);
+  CHECK(asked[0].origin[2].second == "ciel 5740c4a · ● digest verified");
+  CHECK(asked[0].origin[3] == std::pair<std::string, std::string>{"Then runs",
+                                                                  "sky130A.tcl + 8 part files (device generators)"});
+  const script::PdkIdentity downloaded{"sky130", "sky130A", ""};
+  CHECK(host.ask(downloaded, "/Users/me/Downloads/sky130A.magicrc") == ConsentDecision::run_once);
+  CHECK(described == 1);
+  REQUIRE(asked.size() == 2);
+  CHECK(asked[1].origin[2].second == "▲ not in the PDK store · not verified");
+}
+
 TEST_CASE("the PDK panel shows and changes script trust", "[cap:hefesto-pdk-manager][req:Script trust for managed PDKs]") {
   pdk::Family sky130;
   sky130.name = "sky130";
@@ -260,8 +351,9 @@ TEST_CASE("Review scripts asks again and reopens the layout on yes",
 
 TEST_CASE("sandbox denials are announced in the status bar", "[cap:hefesto-security][req:Script sandbox enforcement]") {
   const script::DeniedOperation socket{"socket", "example.com 80", {"/p/fetch_models.tcl", 12}};
-  CHECK(denial_status(socket) == "■ Sandbox blocked socket in fetch_models.tcl:12");
-  CHECK(denial_status({"exec", "curl", {}}) == "■ Sandbox blocked exec in typed text");
+  // Board tile 7: the status bar ends with Show (a click opens the Diagnostics tab).
+  CHECK(denial_status(socket) == "■ Sandbox blocked socket in fetch_models.tcl:12 · Show");
+  CHECK(denial_status({"exec", "curl", {}}) == "■ Sandbox blocked exec in typed text · Show");
   // The collector the window drains after each command.
   ScriptEventCollector collector;
   script::ScriptEvents events;
@@ -289,4 +381,20 @@ TEST_CASE("a long-running script shows the Interrupt card after 2 s",
   CHECK(card->shortcut == "Ctrl-C");
   CHECK(middle_ellipsis("abcdefghij", 5) == "ab…ij");
   CHECK(short_version("") == "version unknown");
+}
+
+TEST_CASE("the canvas is dimmed while a long-running script's card shows",
+          "[cap:hefesto-scripting][req:Long-running script progress and interrupt]") {
+  // Board note 8: the layout drawn at 35 % under the card, in both themes.
+  for (const ThemeMode mode : {ThemeMode::dark, ThemeMode::light}) {
+    const ThemeTokens& canvas = canvas_overlay_tokens(mode);
+    CHECK_FALSE(script_dim(false, canvas).has_value());
+    const auto scrim = script_dim(true, canvas);
+    REQUIRE(scrim.has_value());
+    CHECK(scrim->r == canvas.canvas.r);
+    CHECK(scrim->g == canvas.canvas.g);
+    CHECK(scrim->b == canvas.canvas.b);
+    CHECK(scrim->a == kScriptDimAlpha);
+    CHECK(1.0F - scrim->a == Catch::Approx(0.35F));
+  }
 }

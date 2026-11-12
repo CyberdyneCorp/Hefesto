@@ -548,7 +548,9 @@ jobs:
           fi
           # replay.py --output-dir already applied each case's documented masks (case.toml [[outputs]] masks,
           # e.g. gds-dates, mag-timestamp), so the trees are compared byte for byte.
-          python3 scripts/compare_golden_outputs.py "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          # The M4 areas must stay in the comparison (m4-scripting task 13.6).
+          python3 scripts/compare_golden_outputs.py --require-area SCRIPT --require-area DESKTOP \
+            "$reference" "${legs[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
           exit "${PIPESTATUS[0]}"
 
   asan:
@@ -686,7 +688,7 @@ jobs:
             echo "::group::$name"
             # -close_fd_mask=3: fuzz_tcl_sandbox's scripts may `puts` to stdout/stderr.
             "$target" "$corpus" -max_total_time="$FUZZ_SECONDS" -timeout=10 -rss_limit_mb=2048 -close_fd_mask=3 \
-              -artifact_prefix="fuzz-artifacts/$name-" -print_final_stats=1 || status=1
+              -artifact_prefix="$PWD/fuzz-artifacts/$name-" -print_final_stats=1 || status=1
             echo "::endgroup::"
           done
           exit "$status"

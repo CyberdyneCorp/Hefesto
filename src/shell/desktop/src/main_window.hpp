@@ -223,6 +223,9 @@ class MainWindow {
   void build_m4b();          // managers, utility windows, Interrupt card, FilePicker host
   void teardown_m4b();
   void refresh_m4b();        // between frames
+  /// A frame pumped while a script runs: the scrim under its card, and the
+  /// canvas and header brought up to date with the edits made so far.
+  void show_script_progress();
   bool m4b_shortcut(int key, std::uint8_t modifiers);
   /// A typed command-bar line runs in the project's interpreter through the
   /// console (one interpreter, one transcript); false without an interpreter.

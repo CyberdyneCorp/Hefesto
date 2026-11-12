@@ -118,6 +118,10 @@ struct StartupEnvironment {
   /// never does when it is "/", the home folder or a folder above it. The
   /// desktop app does not set it: it grants the project folder only.
   bool grant_working_directory = false;
+  /// Whether the front end can show windows: the display chosen without -d
+  /// (resolve_display). hefesto-cli has none (NULL graphics); the desktop
+  /// app has one, so its session behaves as Magic's with a running display.
+  bool display_available = true;
   /// The session's temporary area, a granted root of the script sandbox
   /// (design D5); empty: none.
   platform::Path temporary_folder;

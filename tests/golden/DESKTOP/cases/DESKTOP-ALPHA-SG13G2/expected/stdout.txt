@@ -1,0 +1,87 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+tech 0 ihp-sg13g2
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+inv 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 5.000,  0.000), ( 5.000,  0.000)
+lambda:     0.00 x 0.00    ( 500.00,  0.00 ), ( 500.00,  0.00 )
+internal:      0 x 0       (  1000,  0    ), (  1000,  0    )
+nand 0 P0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 0.500   ( 0.000, -3.000), ( 4.000, -2.500)  2.000     
+lambda:   400.00 x 50.00   (  0.00, -300.00), ( 400.00, -250.00)  20000.00  
+internal:    800 x 100     (     0, -600  ), (   800, -500  )  80000     
+paint 0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000, -2.750), ( 0.000, -2.750)
+lambda:     0.00 x 0.00    (  0.00, -275.00), (  0.00, -275.00)
+internal:      0 x 0       (     0, -550  ), (     0, -550  )
+label 0 {}
+move 0 {1200 0 1486 268}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 20.000,  10.000), ( 20.000,  10.000)
+lambda:     0.00 x 0.00    ( 2000.00,  1000.00), ( 2000.00,  1000.00)
+internal:      0 x 0       (  4000,  2000 ), (  4000,  2000 )
+mosfet 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 40.000,  10.000), ( 40.000,  10.000)
+lambda:     0.00 x 0.00    ( 4000.00,  1000.00), ( 4000.00,  1000.00)
+internal:      0 x 0       (  8000,  2000 ), (  8000,  2000 )
+Moving label "B" from psubdiff to psubdiffcont in cell rsil_DZRRNV.
+Moving label "R1" from poly to polycont in cell rsil_DZRRNV.
+Moving label "R2" from poly to polycont in cell rsil_DZRRNV.
+tcl-only 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 60.000,  10.000), ( 60.000,  10.000)
+lambda:     0.00 x 0.00    ( 6000.00,  1000.00), ( 6000.00,  1000.00)
+internal:      0 x 0       ( 12000,  2000 ), ( 12000,  2000 )
+Moving label "C1" from metal6 to mimcapcontact in cell cap_cmim_YW4SB7.
+tcl-only-2 0 0
+children 0 {cap_cmim_YW4SB7 rsil_DZRRNV sg13_lv_nmos_THEM42 sg13_lv_pmos_YG5ZJG}
+Loading DRC CIF style.
+drc 0 after#2
+why 0 {{Metal2 minimum area < 0.144um^2 (M2.d)} {{8126 2642 8198 2651} {8126 2602 8198 2642} {8126 2593 8198 2602} {0 260 36 269} {0 220 36 260} {0 211 36 220} {0 -220 36 -211} {0 -260 36 -220} {0 -269 36 -260}}}
+count 0 12
+Writing 'sg13_lv_pmos_YG5ZJG'
+Writing 'cap_cmim_YW4SB7'
+Writing 'sg13_lv_nmos_THEM42'
+Writing 'rsil_DZRRNV'
+Writing 'alpha'
+save 0 {}
+saved 0 {alpha.mag cap_cmim_YW4SB7.mag rsil_DZRRNV.mag sg13_lv_nmos_THEM42.mag sg13_lv_pmos_YG5ZJG.mag}

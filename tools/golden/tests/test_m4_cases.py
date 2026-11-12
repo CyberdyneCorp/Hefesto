@@ -161,5 +161,48 @@ class GzipInputTest(unittest.TestCase):
                 self.assertEqual(common.gzip_bytes(gzip.decompress(data)), data)
 
 
+class CaseInputTest(unittest.TestCase):
+    """Case inputs the reference capture needs (golden-capture.yml failures on m4-core..m4-alpha-fixes)."""
+
+    def test_pdk_externals_lie_in_their_data_set(self):
+        # A pdk input outside the pinned subset is never fetched; inside it, it must exist once the
+        # set is installed (DESKTOP-ALPHA-SKY130 named sky130_fd_pr__npn_05v5_W1p00L1p00.mag, which
+        # sky130_fd_pr lacks: the device draws sky130_fd_pr__rf_npn_05v5_W1p00L1p00).
+        from goldenlib import external
+        sets = external._fetch_pdk_module().DATA_SETS
+        for case_toml in sorted((REPO / "tests" / "golden").glob("*/cases/*/case.toml")):
+            for ext in load_case(case_toml.parent).externals:
+                if ext.source != "pdk":
+                    continue
+                with self.subTest(case=case_toml.parent.name, path=ext.path):
+                    subset = sets[ext.set].subset
+                    self.assertTrue(any(ext.path == s or ext.path.startswith(s + "/") for s in subset))
+                    root = external.pdk_set_root(ext.set)
+                    if root.is_dir():
+                        self.assertTrue((root / ext.path).exists(), f"{ext.path} not in the installed {ext.set} set")
+
+    def test_desktop_alpha_sky130_reads_the_rf_npn_cell(self):
+        cells = desktop_cases.CASES["DESKTOP-ALPHA-SKY130"][2]
+        self.assertIn("libs.ref/sky130_fd_pr/mag/sky130_fd_pr__rf_npn_05v5_W1p00L1p00.mag", cells)
+
+    def test_extracted_files_mask_their_timestamp(self):
+        # Regression: the verify step of golden-capture run 43148079364 failed on SCRIPT-API-16's
+        # top.ext/top2.ext `timestamp` lines, which change with every capture.
+        self.assertEqual(tclcase.default_masks("top.ext"), ["ext-timestamp"])
+        self.assertEqual(tclcase.default_masks("a/b.mag"), ["mag-timestamp"])
+        case = load_case(REPO / "tests" / "golden" / "SCRIPT" / "cases" / "SCRIPT-API-16")
+        for out in case.outputs:
+            if out.name.endswith(".ext"):
+                self.assertIn("ext-timestamp", out.masks, out.name)
+
+    def test_hand_written_techs_have_a_compose_section(self):
+        # Magic fc5daa9e crashes (SIGSEGV in DBCellWriteFile) saving a cell under a tech without a
+        # compose section, which made SCRIPT-API-16 exit 139 before its `extract all`.
+        self.assertRegex(script_cases.SUB_TECH, r"(?m)^compose\n")
+        for name in ("SCRIPT-API-16/input/subtech.tech", "SCRIPT-API-22/input/ver.tech"):
+            text = (REPO / "tests" / "golden" / "SCRIPT" / "cases" / name).read_text(encoding="utf-8")
+            self.assertRegex(text, r"(?m)^compose\n", name)
+
+
 if __name__ == "__main__":
     unittest.main()

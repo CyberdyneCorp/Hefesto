@@ -1,0 +1,10 @@
+file input/sky130_fd_sc_hd__tapvgnd2_1.mag
+<< error_p >>
+rect 17 391 75 397
+rect 17 357 29 391
+rect 17 351 75 357
+file input/sky130_fd_sc_hd__tapvgnd_1.mag
+<< error_p >>
+rect 17 459 75 465
+rect 17 425 29 459
+rect 17 419 75 425

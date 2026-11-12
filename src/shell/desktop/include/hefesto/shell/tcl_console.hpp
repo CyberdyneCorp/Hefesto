@@ -42,6 +42,7 @@
 #include <vector>
 
 #include "hefesto/cmd/command.hpp"
+#include "hefesto/shell/tcl_completion.hpp"
 
 namespace hefesto::shell {
 
@@ -218,6 +219,14 @@ class ConsoleEvaluator {
   /// callback, the PDK startup) and the console is reached from a frame it
   /// pumps: a command typed then is held until it ends.
   [[nodiscard]] virtual bool busy() const { return false; }
+  /// The names Tab completes (board note 5): the commands and procedures,
+  /// or the variables, matching `glob` (tcl_prefix_glob). None without an
+  /// interpreter or while an evaluation runs.
+  [[nodiscard]] virtual std::vector<std::string> names(TclWordKind kind, std::string_view glob) {
+    (void)kind;
+    (void)glob;
+    return {};
+  }
 
  protected:
   ConsoleEvaluator() = default;
@@ -250,6 +259,12 @@ class TclConsole {
   /// ↑ / ↓ in the input's first / last line: the shared history.
   void history_older();
   void history_newer();
+  /// Tab (board note 5): completes the command, procedure or variable name
+  /// before byte `cursor` of the input from the interpreter's names; the
+  /// input becomes the completed text. When several names match and the
+  /// input cannot grow, they are listed in the transcript. nullopt: nothing
+  /// to complete (an argument, no match, a command running).
+  std::optional<ConsoleCompletion> complete_input(std::size_t cursor);
 
   /// Runs `command` now (the input of Return, a queued line, or the command
   /// bar's line: `echo_input` false when the bar already shows it): input

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "SCRIPT-PDK-04",
+  "area": "SCRIPT",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:95e9279d119285873d94a2c370794f4c6f0f4fd06a94291b03df13d34dfc7b56",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "--version",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-12T02:53:58Z",
+  "outputs": {
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout.txt": "6e7b7843d03c022b204d08a5adbad0c0a19b966a8a5c4bae85d76c1ab5d6466f"
+  }
+}

@@ -147,6 +147,23 @@ class RequirementCoverageTest(unittest.TestCase):
                              {(u["capability"], u["requirement"]) for u in data["uncovered"]})
             self.assertIn("deferred (M10)", markdown)
 
+    def test_golden_case_deferred_to_a_later_milestone_covers_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            write(root, "tests/golden/MISC/cases/MISC-1/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Beta merge"]\n')
+            write(root, "tests/golden/MISC/cases/MISC-2/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Alpha order"]\n')
+            write(root, "tests/golden/deviations.toml",
+                  '[MISC-1]\ndeferred = "M10"\nreason = "needs a later feature"\n'
+                  '[MISC-2]\ndecisions = ["Q-1"]\nreason = "a documented deviation"\n')
+            code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json"])
+            self.assertEqual(code, 0)
+            uncovered = {(u["capability"], u["requirement"]) for u in json.loads(text)["uncovered"]}
+            self.assertIn(("cap-b", "Beta merge"), uncovered)
+            self.assertNotIn(("cap-b", "Alpha order"), uncovered)
+
     def test_milestone_filter_and_fail_under(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -226,6 +243,22 @@ class CompareGoldenOutputsTest(unittest.TestCase):
             self.assertIn("differs: MISC/c1/out.txt", text)
             self.assertIn("unexpected: MISC/c1/extra.txt", text)
             self.assertIn("missing: MISC/c1/out.txt", text)
+
+    def test_reports_areas_and_fails_on_a_required_area_without_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "ref/MISC/c1/out.txt", "a\n")
+            write(root, "ref/MISC/c2/out.txt", "a\n")
+            write(root, "leg/MISC/c1/out.txt", "a\n")
+            write(root, "leg/MISC/c2/out.txt", "a\n")
+            code, text = run_quiet(golden.main, [str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 0)
+            self.assertIn("reference cases: MISC 2", text)
+            code, _ = run_quiet(golden.main, ["--require-area", "MISC", str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 0)
+            code, text = run_quiet(golden.main, ["--require-area", "SCRIPT", str(root / "ref"), str(root / "leg")])
+            self.assertEqual(code, 1)
+            self.assertIn("no SCRIPT case in the reference outputs", text)
 
 
 DEPENDENCIES = """

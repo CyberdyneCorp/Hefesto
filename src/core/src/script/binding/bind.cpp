@@ -201,6 +201,13 @@ bool is_procedure(const cmd::CommandRegistry& registry, const std::string& name)
   return true;
 }
 
+// Magic's library procedures defined in the global namespace (`proc readspice` in
+// readspice.tcl, `proc mazeroute` in mazeroute.tcl): scripts call them unqualified.
+// They are also in `magic::`, like every registered command.
+bool is_global_procedure(std::string_view name) {
+  return name == "readspice" || name == "mazeroute";
+}
+
 // The Tcl name of a registry command: `::magic::<name>`, except Hefesto's
 // own namespaced commands (`hefesto::strict`), which keep their namespace.
 std::string tcl_name(const std::string& name) {
@@ -216,9 +223,11 @@ void define_commands(const Binding& b, bool procedures) {
       continue;  // tclmagic's own command, defined natively below
     }
     if (procedures) {
-      b.interp.define_command(tcl_name(name), [b, name](const cmd::Invocation& call) {
-        return detail::dispatch_procedure(b, name, call);
-      });
+      auto run = [b, name](const cmd::Invocation& call) { return detail::dispatch_procedure(b, name, call); };
+      b.interp.define_command(tcl_name(name), run);
+      if (is_global_procedure(name)) {
+        b.interp.define_command("::" + name, run);
+      }
     } else {
       b.interp.define_command(tcl_name(name), [b, name](const cmd::Invocation& call) {
         return detail::dispatch_command(b, name, call);

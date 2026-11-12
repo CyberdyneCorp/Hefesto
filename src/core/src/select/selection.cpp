@@ -105,6 +105,12 @@ void Selection::set_root(db::CellDef* root, std::size_t plane_count) {
   root_ = root;
 }
 
+void Selection::ensure_cell(std::size_t plane_count) {
+  if (def_ == nullptr) {
+    make_def(plane_count);
+  }
+}
+
 bool Selection::empty() const {
   if (def_ == nullptr) {
     return true;

@@ -39,6 +39,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/diag/sink.hpp"
@@ -90,6 +91,8 @@ class TclConsoleSession final : public ConsoleEvaluator {
   [[nodiscard]] std::size_t undo_steps() const override;
   /// Another evaluation (not the console's) is running and reporting.
   [[nodiscard]] bool busy() const override { return depth_ == 0 && progress_.has_value(); }
+  /// `info commands` / `info vars` of `glob` in the project's interpreter.
+  [[nodiscard]] std::vector<std::string> names(TclWordKind kind, std::string_view glob) override;
 
   /// The command bar's outcome for a line the console ran (status bar).
   [[nodiscard]] static CommandOutcome outcome_of(const ConsoleEvaluation& evaluation);

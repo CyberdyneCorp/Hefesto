@@ -275,6 +275,9 @@ class TextEditor : public Widget {
   /// The cursor's line (0-based) and the line count, for ↑/↓ history.
   [[nodiscard]] int cursor_line() const;
   [[nodiscard]] int line_count() const;
+  /// The cursor as a line and a byte column (both from 0).
+  [[nodiscard]] std::pair<int, int> cursor() const;
+  void set_cursor(int line, int column);
   void set_font(WidgetId font, float size);
   void on_change(std::function<void(std::string)> callback);
 
@@ -372,6 +375,10 @@ class Painted : public Widget {
   /// A right click (or the Menu key / Shift-F10 while focused): `callback`
   /// gets the window point where a context menu opens.
   void on_context(std::function<void(float x, float y)> callback);
+  /// Press-and-hold of the left button (PressHold, kHoldDelay): `callback`
+  /// gets the window point under the widget's bottom-left corner. With it,
+  /// a mouse click runs on release (before the delay), not on press.
+  void on_hold(std::function<void(float x, float y)> callback);
   void set_role(Role role);
   void set_accessible_description(std::string_view text);
   [[nodiscard]] bool hovered() const;

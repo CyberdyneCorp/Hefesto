@@ -154,7 +154,9 @@ std::optional<bool> wait_for_event(const LineReader& input, const WakePipe& wake
   if ((fds[1].revents & POLLIN) != 0) {
     wake.drain();
   }
-  return (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) != 0;
+  // POLLNVAL: macOS poll() does not support character devices such as
+  // /dev/null; read() then reports their end of input.
+  return (fds[0].revents & (POLLIN | POLLHUP | POLLERR | POLLNVAL)) != 0;
 }
 
 class InteractiveLoop {

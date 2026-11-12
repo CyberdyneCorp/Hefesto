@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "hefesto/diag/format.hpp"
+#include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/script/binding/tags.hpp"
 #include "hefesto/script/interp.hpp"
@@ -105,6 +106,16 @@ bool TclConsoleSession::complete(std::string_view text) {
   if (interp == nullptr) return console_input_status(text).complete;
   const cmd::CommandResult r = interp->evaluate("info complete " + script::quote_list_element(text));
   return !r.ok() || r.value.to_string() != "0";
+}
+
+std::vector<std::string> TclConsoleSession::names(TclWordKind kind, std::string_view glob) {
+  script::Interpreter* interp = interpreter();
+  if (interp == nullptr || kind == TclWordKind::none || depth_ > 0 || progress_) return {};
+  const char* query = kind == TclWordKind::variable ? "info vars " : "info commands ";
+  const cmd::CommandResult r = interp->evaluate(query + script::quote_list_element(glob));
+  if (!r.ok()) return {};
+  auto names = pcell::split_tcl_list(r.value.to_string());
+  return names.ok() ? std::move(names).value() : std::vector<std::string>{};
 }
 
 ConsoleEvaluation TclConsoleSession::evaluate(std::string_view command) {

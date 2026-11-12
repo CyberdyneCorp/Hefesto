@@ -945,8 +945,9 @@ void MainWindow::add_undo_buttons(ui::Box& row) {
       const bool enabled = redo ? undo_state_.can_redo : undo_state_.can_undo;
       if (enabled) run_line(redo ? "redo" : "undo");
     });
-    // Right-click (or the Menu key): the undo history (M2-Undo-Redo board).
+    // Right-click (or the Menu key) or press-and-hold: the undo history (M2-Undo-Redo board).
     button->on_context([this](float x, float y) { show_undo_history(x, y); });
+    button->on_hold([this](float x, float y) { show_undo_history(x, y); });
     row.add_centered(*button);
     (redo ? redo_button_ : undo_button_) = button.get();
     painted_.push_back(std::move(button));
