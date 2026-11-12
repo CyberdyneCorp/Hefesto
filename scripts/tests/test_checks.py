@@ -147,6 +147,23 @@ class RequirementCoverageTest(unittest.TestCase):
                              {(u["capability"], u["requirement"]) for u in data["uncovered"]})
             self.assertIn("deferred (M10)", markdown)
 
+    def test_golden_case_deferred_to_a_later_milestone_covers_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            write(root, "tests/golden/MISC/cases/MISC-1/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Beta merge"]\n')
+            write(root, "tests/golden/MISC/cases/MISC-2/case.toml",
+                  'capability = "cap-b"\nrequirements = ["Alpha order"]\n')
+            write(root, "tests/golden/deviations.toml",
+                  '[MISC-1]\ndeferred = "M10"\nreason = "needs a later feature"\n'
+                  '[MISC-2]\ndecisions = ["Q-1"]\nreason = "a documented deviation"\n')
+            code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json"])
+            self.assertEqual(code, 0)
+            uncovered = {(u["capability"], u["requirement"]) for u in json.loads(text)["uncovered"]}
+            self.assertIn(("cap-b", "Beta merge"), uncovered)
+            self.assertNotIn(("cap-b", "Alpha order"), uncovered)
+
     def test_milestone_filter_and_fail_under(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

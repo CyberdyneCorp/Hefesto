@@ -20,7 +20,8 @@ Tests are found in two places:
   test (or the first one after it, if the requirement comes first).
 - Golden case manifests tests/golden/<AREA>/cases/<case-id>/case.json or
   case.toml, with a `capability` string and a `requirement` string or a
-  `requirements` list.
+  `requirements` list. A case that tests/golden/deviations.toml defers to a
+  later milestone (`deferred = "M<n>"`) covers nothing until then.
 
 Usage:
     check_requirement_coverage.py                       # all capabilities, markdown
@@ -264,8 +265,18 @@ def load_manifest(path: Path) -> dict:
     return tomllib.loads(path.read_text(encoding="utf-8"))
 
 
+def deferred_cases(golden_dir: Path) -> set[str]:
+    """Case ids that `deviations.toml` defers to a later milestone: they test nothing yet."""
+    path = golden_dir / "deviations.toml"
+    if tomllib is None or not path.is_file():
+        return set()
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    return {case for case, entry in data.items() if isinstance(entry, dict) and "deferred" in entry}
+
+
 def scan_golden(golden_dir: Path, root: Path) -> list[TestRef]:
     refs: list[TestRef] = []
+    skipped = deferred_cases(golden_dir)
     patterns = ["*/cases/*/case.json"]
     if tomllib is not None:
         patterns.append("*/cases/*/case.toml")
@@ -273,6 +284,8 @@ def scan_golden(golden_dir: Path, root: Path) -> list[TestRef]:
         print("warning: Python < 3.11 has no tomllib; case.toml manifests skipped", file=sys.stderr)
     for pattern in patterns:
         for path in sorted(golden_dir.glob(pattern)):
+            if path.parent.name in skipped:
+                continue
             source = path.relative_to(root).as_posix()
             try:
                 data = load_manifest(path)
