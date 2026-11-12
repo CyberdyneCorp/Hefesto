@@ -24,6 +24,15 @@ struct PinchOption {
   double factor = 1.0;  // > 1 spreads the fingers (zooms in)
 };
 
+/// A left-button drag injected after --run (scripted captures and tests):
+/// press at (x0, y0), move to (x1, y1), release.
+struct DragOption {
+  float x0 = 0.0F;  // window points, logical pixels
+  float y0 = 0.0F;
+  float x1 = 0.0F;
+  float y1 = 0.0F;
+};
+
 struct ShellOptions {
   ThemeMode theme = ThemeMode::dark;
   /// Rectangles of the synthetic spike layout shown in the canvas instead of
@@ -63,6 +72,10 @@ struct ShellOptions {
   /// (X, Y) through Raven's event injection, as the system sends one; the
   /// app prints the zoom before and after it.
   std::optional<PinchOption> pinch;
+  /// --drag X0,Y0,X1,Y1: after `run`, a left-button drag through Raven's
+  /// event injection (a panel header to a dock); the app prints the panel
+  /// command the drop issued.
+  std::optional<DragOption> drag;
   /// Opens the PDK manager panel at startup.
   bool show_pdk_manager = false;
   /// Opens the Console / Diagnostics panel at startup (collapsed otherwise).
@@ -90,6 +103,8 @@ struct ParseResult {
 
 /// "X,Y,FACTOR" (X, Y finite, FACTOR > 0); nullopt otherwise.
 [[nodiscard]] std::optional<PinchOption> parse_pinch_option(std::string_view text);
+/// `X0,Y0,X1,Y1` (four numbers) for --drag.
+[[nodiscard]] std::optional<DragOption> parse_drag_option(std::string_view text);
 
 /// What the app prints for a bad Magic-compatible startup option: the
 /// diagnostic as text, followed by Magic's usage line unless the

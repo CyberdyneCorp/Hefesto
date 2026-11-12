@@ -11,6 +11,7 @@
 #include "raven_ui.hpp"
 
 #include "hefesto/shell/input_router.hpp"
+#include "hefesto/shell/drag_gesture.hpp"
 #include "hefesto/shell/press_hold.hpp"
 #include "hefesto/shell/text_key_filter.hpp"
 
@@ -743,6 +744,10 @@ struct Painted::Callbacks {
   std::function<void(float, float)> click;
   std::function<void(float, float)> context;
   std::function<void(float, float)> hold;
+  std::function<std::optional<DragData>(float, float)> drag;
+  DragGesture gesture;  // on_drag: the left press and whether it became a drag
+  float gesture_local_x = 0.0F;
+  float gesture_local_y = 0.0F;
   // on_hold: the press waiting for kHoldDelay (a one-shot timer) and where.
   PressHold press;
   Rid timer = kNoWidget;
@@ -796,6 +801,31 @@ struct Painted::Callbacks {
     return false;
   }
 
+  /// on_drag's left button: the press, the move that starts Raven's drag
+  /// (once), and a click on release when no drag started.
+  bool drag_event(Rid id, const REvent& e) {
+    if (e.type == R_EVENT_MOUSE_DOWN && e.button == R_MOUSE_LEFT) {
+      gesture.press(e.x, e.y);
+      gesture_local_x = e.local_x;
+      gesture_local_y = e.local_y;
+      return true;
+    }
+    // A Raven custom widget does not capture the mouse: a move that leaves
+    // it with the button down starts the drag too.
+    const bool left = e.type == R_EVENT_MOUSE_LEAVE && Rwindow_is_mouse_button_down(e.window, R_MOUSE_LEFT) != kFalse;
+    if ((e.type == R_EVENT_MOUSE_MOVE && gesture.move(e.x, e.y)) || (left && gesture.leave())) {
+      if (const std::optional<DragData> data = drag(gesture.press_x(), gesture.press_y())) {
+        (void)Rdrag_begin(id, data->type.c_str(), data->data.c_str(), data->label.c_str());
+      }
+      return e.type != R_EVENT_MOUSE_LEAVE;
+    }
+    if (e.type == R_EVENT_MOUSE_UP && e.button == R_MOUSE_LEFT) {
+      if (gesture.release()) click(gesture_local_x, gesture_local_y);
+      return true;
+    }
+    return false;
+  }
+
   static bool context_event(const REvent& e) {
     if (e.type == R_EVENT_MOUSE_DOWN) return e.button == R_MOUSE_RIGHT;
     return e.type == R_EVENT_KEY_DOWN &&
@@ -812,6 +842,7 @@ struct Painted::Callbacks {
     auto* cb = static_cast<Callbacks*>(self);
     if (e->type == R_EVENT_MOUSE_ENTER || e->type == R_EVENT_MOUSE_LEAVE) {
       Rwidget_invalidate(widget);
+      if (cb->drag && cb->click) (void)cb->drag_event(widget, *e);
       return kFalse;
     }
     if (cb->context && context_event(*e)) {
@@ -828,6 +859,7 @@ struct Painted::Callbacks {
     }
     if (!cb->click || Rwidget_is_enabled(widget) == kFalse) return kFalse;
     if (cb->hold && cb->hold_event(widget, *e)) return kTrue;
+    if (cb->drag && cb->drag_event(widget, *e)) return kTrue;
     if (e->type == R_EVENT_MOUSE_DOWN && e->button == R_MOUSE_LEFT) {
       cb->click(e->local_x, e->local_y);
       return kTrue;
@@ -875,6 +907,10 @@ void Painted::on_hold(std::function<void(float, float)> callback) {
   callbacks_->hold = std::move(callback);
 }
 
+void Painted::on_drag(std::function<std::optional<DragData>(float, float)> callback) {
+  callbacks_->drag = std::move(callback);
+}
+
 void Painted::set_role(Role role) {
   Rwidget_set_accessible_role(id_, to_role(role));
 }
@@ -893,6 +929,37 @@ bool Painted::focused() const {
 
 void Painted::invalidate() {
   Rwidget_invalidate(id_);
+}
+
+// --- DropZone ---------------------------------------------------------------
+
+struct DropZone::State {
+  Rid widget = kNoWidget;
+  Callback callback;
+
+  static int on_drop(Rid /*target*/, const RDropEvent* e, void* self) {
+    auto* state = static_cast<State*>(self);
+    if (!state->callback || e->drag_type == nullptr) return kFalse;  // another application's drop
+    Phase phase = Phase::move;
+    switch (e->phase) {
+      case R_DROP_ENTER: phase = Phase::enter; break;
+      case R_DROP_LEAVE: phase = Phase::leave; break;
+      case R_DROP_DROPPED: phase = Phase::drop; break;
+      default: break;
+    }
+    const std::string_view data = e->text != nullptr ? std::string_view(e->text) : std::string_view();
+    return state->callback(phase, e->x, e->y, e->drag_type, data) ? kTrue : kFalse;
+  }
+};
+
+DropZone::DropZone(const Widget& widget, Callback callback) : state_(std::make_unique<State>()) {
+  state_->widget = widget.id();
+  state_->callback = std::move(callback);
+  Rwidget_set_drop_callback(state_->widget, &State::on_drop, state_.get());
+}
+
+DropZone::~DropZone() {
+  if (Rwidget_is_valid(state_->widget) != kFalse) Rwidget_set_drop_callback(state_->widget, nullptr, nullptr);
 }
 
 // --- CommandBar ------------------------------------------------------------
@@ -1295,6 +1362,17 @@ void Window::inject_trackpad_pinch(float x, float y, double factor, int steps) {
     Rwindow_inject_trackpad_gesture(id_, R_GESTURE_PINCH, R_GESTURE_UPDATE, x, y, step, 0.0F, 0.0F, 0.0F, 2);
   }
   Rwindow_inject_trackpad_gesture(id_, R_GESTURE_PINCH, R_GESTURE_END, x, y, 1.0F, 0.0F, 0.0F, 0.0F, 2);
+}
+
+void Window::inject_left_drag(float x0, float y0, float x1, float y1, int steps) {
+  if (steps < 1) return;
+  Rwindow_inject_mouse_move(id_, x0, y0);
+  Rwindow_inject_mouse_button(id_, R_MOUSE_LEFT, kTrue);
+  for (int i = 1; i <= steps; ++i) {
+    const float t = static_cast<float>(i) / static_cast<float>(steps);
+    Rwindow_inject_mouse_move(id_, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t);
+  }
+  Rwindow_inject_mouse_button(id_, R_MOUSE_LEFT, kFalse);
 }
 
 bool Window::capture_ppm(const std::string& path) const {

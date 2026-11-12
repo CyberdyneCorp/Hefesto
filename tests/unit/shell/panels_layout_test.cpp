@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/shell/drag_gesture.hpp"
 #include "hefesto/shell/panels_layout.hpp"
 
 using namespace hefesto::shell;
@@ -129,6 +130,30 @@ TEST_CASE("dragging a panel header highlights the drop zone and issues a panel c
   PanelLayout layout = default_panel_layout();
   CHECK(run(layout, {"layers", "float", "648", "240", "240", "760"}).ok);
   CHECK(layout.find("layers")->dock == DockZone::floating);
+}
+
+TEST_CASE("a header press becomes a drag once it moves; a still press is a click",
+          "[cap:hefesto-app-ux][req:Panel layout and focus cycling]") {
+  // Painted::on_drag drives this from the header's mouse events (board
+  // M2-Panels tile 2): the title click collapses only when no drag started.
+  DragGesture g;
+  CHECK_FALSE(g.move(10.0F, 10.0F));  // no press
+  g.press(100.0F, 60.0F);
+  CHECK_FALSE(g.move(102.0F, 63.0F));  // under kDragThreshold
+  CHECK(g.release());                   // a click
+  g.press(100.0F, 60.0F);
+  CHECK(g.move(100.0F, 60.0F + kDragThreshold));  // the drag starts once
+  CHECK(g.dragging());
+  CHECK_FALSE(g.move(300.0F, 200.0F));
+  CHECK(g.press_x() == 100.0F);
+  CHECK_FALSE(g.release());  // the drop, not a click
+  CHECK_FALSE(g.pressed());
+  // A fast move leaves the header before any move reached it: the drag starts then.
+  g.press(100.0F, 60.0F);
+  CHECK(g.leave());
+  CHECK_FALSE(g.leave());
+  CHECK_FALSE(g.release());
+  CHECK_FALSE(g.leave());  // no press
 }
 
 TEST_CASE("headers name their state and collapsed docks become edge strips at narrow widths",

@@ -55,7 +55,7 @@ On the desktop:
 - `panel reset` (Reset layout) SHALL restore the default arrangement: Layers on the left, Inspector on the right, both shown
 - F6 SHALL move the keyboard focus to the next region and Shift-F6 to the previous one, in the order tool rail, Layers (filter field), canvas, Inspector (first action), Console, command bar, skipping hidden panels and an Inspector without an action
 
-The panel layout (dock, size, collapsed state, floating window) SHALL be saved per user (`panel-layout.json` in the user's storage folder) after each change and on quit, and restored at launch; a scripted capture or smoke run SHALL NOT save it. Dragging a panel header to a dock with a drop-zone highlight issues the same `panel` command; it is not on screen yet (the Raven wrapper has no pointer drag events; M4 task 11.2).
+The panel layout (dock, size, collapsed state, floating window) SHALL be saved per user (`panel-layout.json` in the user's storage folder) after each change and on quit, and restored at launch; a scripted capture or smoke run SHALL NOT save it. Dragging a panel header (a press that moves 4 or more units; a still press stays a click) SHALL carry the panel's title with the pointer; over a dock, the canvas column or an edge strip the target SHALL be highlighted, and the release SHALL issue the same `panel` command (`panel NAME dock ZONE`, or `panel NAME float X Y W H` over the canvas). Escape SHALL cancel the drag and change nothing.
 
 Compatibility: native
 
