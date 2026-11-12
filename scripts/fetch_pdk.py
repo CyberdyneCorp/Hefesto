@@ -32,7 +32,8 @@ version directory) must equal the set's pinned digest.
 
 ``magic-ref`` is a sparse, shallow checkout of Magic at MAGIC_COMMIT into
 ``build/ref/magic`` with only ``scmos/`` (scmos.tech sources, mos.* display
-styles and color maps) and ``graphics/`` (the .pt3 fonts and glyph files).
+styles and color maps), ``graphics/`` (the .pt3 fonts and glyph files) and
+``tcltk/`` (the auxiliary Tcl scripts Magic installs in $CAD_ROOT/magic/tcl).
 
 Every step is a no-op when its data is present and verified, so CI runs them
 behind actions/cache, one cache entry per data set (``--cache-info``).
@@ -117,7 +118,7 @@ PDK_TREE_SHA256 = DATA_SETS["sky130"].tree_sha256
 
 MAGIC_REPO = "https://github.com/RTimothyEdwards/magic"
 MAGIC_COMMIT = "fc5daa9e2856b89a0a3056f296ded1fd4474e39e"
-MAGIC_PATHS = ("scmos", "graphics")
+MAGIC_PATHS = ("scmos", "graphics", "tcltk")
 MAGIC_DIR = REPO / "build" / "ref" / "magic"
 
 
@@ -181,6 +182,11 @@ def magic_head() -> str | None:
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
+def magic_ref_key() -> str:
+    """The CI cache key of the checkout: the commit and the sparse paths it holds."""
+    return f"magic-ref-{MAGIC_COMMIT[:12]}-{'-'.join(MAGIC_PATHS)}"
+
+
 def fetch_magic_ref() -> bool:
     if magic_head() == MAGIC_COMMIT and all((MAGIC_DIR / p).is_dir() for p in MAGIC_PATHS):
         print(f"magic-ref: {MAGIC_DIR} already at {MAGIC_COMMIT[:8]}")
@@ -220,7 +226,7 @@ def cache_info(root: Path) -> list[str]:
     lines = []
     for data in DATA_SETS.values():
         lines += [f"{data.name}_key={data.cache_key()}", f"{data.name}_path={display_path(data.version_dir(root))}"]
-    lines += [f"magic_ref_key=magic-ref-{MAGIC_COMMIT[:12]}", f"magic_ref_path={display_path(MAGIC_DIR)}"]
+    lines += [f"magic_ref_key={magic_ref_key()}", f"magic_ref_path={display_path(MAGIC_DIR)}"]
     return lines
 
 
