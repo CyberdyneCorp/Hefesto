@@ -509,6 +509,39 @@ TEST_CASE("a Tcl error in a .tcl file argument prints Magic's error text",
   CHECK(r.err.find("Error parsing \"" + script.string() + "\": boom") != std::string::npos);
 }
 
+// NULL graphics follows Magic's C startup (utils/main.c mainInitFinal; user
+// decision 2026-11-11): `Loading "<f>" from command line.`, never magic.tcl.in's
+// `handling file entry` line. Files load in command-line order (app-startup,
+// Q-UI-25 fix); Magic 8.3.694 loads `inv nand a.tcl b.tcl` as a.tcl, nand, inv.
+// A `.tcl` argument ends the file arguments in both.
+TEST_CASE("file arguments in NULL graphics are announced as Magic's C startup does",
+          "[cap:scripting-pdk-integration][req:Command-line file arguments]") {
+  ScratchDir dir;
+  const auto script = dir.path() / "a.tcl";
+  std::ofstream(script) << "puts sourced\n";
+  const auto late = dir.path() / "b.tcl";
+  std::ofstream(late) << "puts late\n";
+  const auto inv = (dir.path() / "inv").string();
+  const auto nand = (dir.path() / "nand.mag").string();
+  const Run r = run_cli({"--no-log", "-c", "quit -noprompt", "--diagnostics=magic", "--magic", "-dnull", "-noconsole",
+                         "-norc", inv, nand, script.string(), late.string()});
+  const std::string all = r.out + r.err;
+  INFO(all);
+  CHECK(all.find("andling file entry") == std::string::npos);  // neither `handling` nor `Handling`
+  const auto at = [&](const std::string& name) { return all.find("Loading \"" + name + "\" from command line."); };
+  const auto first = at(inv);
+  const auto second = at((dir.path() / "nand").string());
+  const auto third = at(script.string());
+  REQUIRE(first != std::string::npos);
+  REQUIRE(second != std::string::npos);
+  REQUIRE(third != std::string::npos);
+  CHECK(first < second);
+  CHECK(second < third);
+  CHECK(r.out.find("sourced\n") != std::string::npos);
+  CHECK(at(late.string()) == std::string::npos);  // an argument of a.tcl, not a file
+  CHECK(r.out.find("late") == std::string::npos);
+}
+
 TEST_CASE("the trust option names the PDKs whose scripts may run in batch mode",
           "[cap:hefesto-security][req:Consent before implicit script execution]") {
   const auto parsed = cli::parse_args(Args{"--trust-pdk", "sky130A", "--trust-pdk=gf180mcu", "--magic", "-dnull"});

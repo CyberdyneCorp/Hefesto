@@ -28,8 +28,9 @@ Evaluation results (`script::Interpreter::evaluate` and `source`):
   error line and, for `source`, the file.
 - `SCRIPT-TCL-002`: the evaluation was stopped by `request_interrupt` (the
   console's and the canvas card's Interrupt, Ctrl-C). `catch` cannot absorb
-  it. The console reports it as `eval canceled · <file>:<line> ·
-  interrupted by the user (N edits kept; undo reverts them as one step)`.
+  it. The console reports it with Tcl's own text: `eval unwound ·
+  <file>:<line> · interrupted by the user (N edits kept; undo reverts them
+  as one step)`.
 - `SCRIPT-TCL-003`: the evaluation ran more commands or longer than the
   project's `SandboxLimits` allow (Tcl's resource limits); `catch` cannot
   absorb it. The limits apply again from zero to the next evaluation.
@@ -124,9 +125,13 @@ design D7; tasks.md section 6).
 - `SCRIPT-PDK-005` and `SCRIPT-PDK-009` are the curated-pack policy
   (Q-SCRIPT-46, D-30): a PDK without bundled scripts is refused; a curated
   PDK uses its bundled scripts, never an imported pack's.
-- `SCRIPT-PDK-006` and `SCRIPT-PDK-007` are the script host's file-argument
-  lines (`handling file entry <f> extension <ext>`, `don't know how to load
-  file <f>`, `only compressed .mag and .gds are handled.`).
+- `SCRIPT-PDK-006` and `SCRIPT-PDK-007` are the file-argument lines. In
+  wrapper mode they are the script host's (`Handling file entry <f>
+  extension <ext>`, `Handling compressed entry <f> extension <ext>`, `don't
+  know how to load file <f>`, `only compressed .mag and .gds are
+  handled.`). In NULL graphics only `SCRIPT-PDK-006` is used, with Magic's C
+  startup text `Loading "<f>" from command line.` (utils/main.c
+  mainInitFinal); no `handling file entry` line is printed.
 - `SCRIPT-PDK-008`: a startup file or `<tech>.magicrc` could not run
   because the project has no interpreter.
 - `SCRIPT-TRUST-001` is printed when a PDK script was not run for lack of
@@ -193,8 +198,8 @@ fails when the two disagree.
 | `SCRIPT-PDK-003` | warning | A `magic::` procedure defined by one PDK's script was redefined by another PDK's script. |
 | `SCRIPT-PDK-004` | warning | A Tk widget statement in a PDK menu callback was skipped; evaluation continues. |
 | `SCRIPT-PDK-005` | error | Curated-pack mode refused a PDK without bundled scripts. |
-| `SCRIPT-PDK-006` | info | A command-line file argument handled by the script host (`handling file entry ...`). |
-| `SCRIPT-PDK-007` | error | A command-line file argument the script host cannot load (`don't know how to load file ...`). |
+| `SCRIPT-PDK-006` | info | A command-line file argument being loaded (`Handling file entry ...` in wrapper mode, `Loading "F" from command line.` in NULL graphics). |
+| `SCRIPT-PDK-007` | error | A command-line file argument wrapper mode cannot load (`don't know how to load file ...`). |
 | `SCRIPT-PDK-008` | error | A PDK script could not run: the project has no interpreter. |
 | `SCRIPT-PDK-009` | info | Curated-pack mode uses the bundled curated scripts of a PDK; the imported pack's own scripts are not executed. |
 | `SCRIPT-SANDBOX-001` | error | The script sandbox refused to run a process (exec, open of a command pipeline, or shell from any origin). |

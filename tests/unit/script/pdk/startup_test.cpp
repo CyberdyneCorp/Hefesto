@@ -83,28 +83,57 @@ TEST_CASE("the script-host table's accidental spellings are replicated (Q-SCRIPT
 
 // ---- Command-line file arguments ---------------------------------------------
 
+// NULL graphics: Magic's C startup loads the file arguments (utils/main.c
+// mainInitFinal), not magic.tcl.in's NULL-graphics loop, which never runs
+// (user decision 2026-11-11). Texts checked with Magic 8.3.694
+// `magic -dnull -noconsole <f>` in hefesto-magic-only:local.
 TEST_CASE("Batch script argument", "[cap:scripting-pdk-integration][req:Command-line file arguments]") {
   const auto entry = script::script_host_file_entry("drc.tcl", false);
   CHECK(entry.command == "source drc.tcl");
-  CHECK(texts(entry.messages) == std::vector<std::string>{"handling file entry drc.tcl extension .tcl"});
+  CHECK(texts(entry.messages) == std::vector<std::string>{"Loading \"drc.tcl\" from command line."});
+  CHECK(entry.messages.front().code == "SCRIPT-PDK-006");
 }
 
-TEST_CASE("file arguments are loaded by extension", "[cap:scripting-pdk-integration][req:Command-line file arguments]") {
-  CHECK(script::script_host_file_entry("a.lef", false).command == "lef read a.lef");
-  CHECK(script::script_host_file_entry("a.DEF", false).command == "def read a.DEF");
-  CHECK(script::script_host_file_entry("a.gdsii", false).command == "gds read a.gdsii");
-  CHECK(script::script_host_file_entry("a.CIF", false).command == "cif read a.CIF");
-  CHECK(script::script_host_file_entry("inv.mag", false).command == "magic::load inv.mag");
-  CHECK(script::script_host_file_entry("inv", false).command == "magic::load inv");
-  CHECK(texts(script::script_host_file_entry("inv", false).messages) ==
-        std::vector<std::string>{"handling file entry inv extension "});
-  // NULL graphics: `.gz` is "other".
-  const auto gz = script::script_host_file_entry("a.gds.gz", false);
-  CHECK(gz.command.empty());
-  CHECK(texts(gz.messages) == std::vector<std::string>{"handling file entry a.gds.gz extension .gz",
-                                                       "don't know how to load file a.gds.gz"});
-  CHECK(script::script_host_file_entry("a.gds.gz", false).messages.back().code == "SCRIPT-PDK-007");
-  CHECK(script::script_host_file_entry("dir.v2/cell", false).command == "magic::load dir.v2/cell");
+TEST_CASE("NULL graphics prints no handling file entry line",
+          "[cap:scripting-pdk-integration][req:Command-line file arguments]") {
+  // Regression: the NULL-graphics path printed magic.tcl.in's
+  // `handling file entry <f> extension <ext>`, which Magic -dnull never prints.
+  for (const char* file : {"drc.tcl", "inv", "inv.mag", "a.gds.gz", "a.lef", "a.cif", "x.weird"}) {
+    INFO(file);
+    const auto entry = script::script_host_file_entry(file, false);
+    REQUIRE(entry.messages.size() == 1);
+    CHECK(entry.messages.front().text.starts_with("Loading \""));
+    CHECK(entry.messages.front().text.find("handling file entry") == std::string::npos);
+    CHECK_FALSE(entry.command.empty());  // every file has a reader; SCRIPT-PDK-007 is wrapper-only
+  }
+}
+
+TEST_CASE("NULL graphics loads file arguments as Magic's C startup does",
+          "[cap:scripting-pdk-integration][req:Command-line file arguments]") {
+  const auto load = [](const char* file) { return script::script_host_file_entry(file, false); };
+  // A cell: `.mag` stripped from the announced and loaded name.
+  CHECK(load("inv").command == "load inv");
+  CHECK(texts(load("inv").messages) == std::vector<std::string>{"Loading \"inv\" from command line."});
+  CHECK(load("inv.mag").command == "load inv");
+  CHECK(texts(load("inv.mag").messages) == std::vector<std::string>{"Loading \"inv\" from command line."});
+  // `.gz` is not a type: a cell named after the whole argument (Magic loads `a.gds`).
+  CHECK(load("a.gds.gz").command == "load a.gds.gz");
+  CHECK(texts(load("a.gds.gz").messages) == std::vector<std::string>{"Loading \"a.gds.gz\" from command line."});
+  CHECK(load("x.weird").command == "load x.weird");
+  CHECK(load("dir.v2/cell").command == "load dir.v2/cell");
+  // LEF and DEF by extension, case-insensitively; the type is taken after `.mag` is stripped.
+  CHECK(load("a.lef").command == "lef read a.lef");
+  CHECK(texts(load("a.lef").messages) == std::vector<std::string>{"Loading \"a.lef\" from command line."});
+  CHECK(load("a.DEF").command == "def read a.DEF");
+  CHECK(load("a.lef.mag").command == "lef read a.lef");
+  CHECK(load("RUN.TCL").command == "source RUN.TCL");
+  // Q-UI-25 (fix, app-startup): CIF and GDS are read and only exact
+  // extensions select a type. Magic announces `a.cif` and ignores it, and
+  // takes any `.gd...` extension as GDS.
+  CHECK(load("a.cif").command == "cif read a.cif");
+  CHECK(texts(load("a.cif").messages) == std::vector<std::string>{"Loading \"a.cif\" from command line."});
+  CHECK(load("a.GDS").command == "gds read a.GDS");
+  CHECK(load("a.gdsii").command == "load a.gdsii");
 }
 
 TEST_CASE("wrapper mode announces extensions and reads compressed files",

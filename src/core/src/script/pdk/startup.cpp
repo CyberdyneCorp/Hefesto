@@ -5,13 +5,14 @@
 // "Script-host startup sequence", "Command-line options in the script
 // host", "Command-line file arguments", "Startup files are scripts").
 // Ported from Magic 8.3.694 (fc5daa9e) tcltk/magic.tcl.in:158-237,363-439
-// and utils/main.c:840-1060. Copyright (C) 1985, 1990 Regents of the
+// and utils/main.c:383-440,840-1060,1189-1225. Copyright (C) 1985, 1990 Regents of the
 // University of California, see THIRD_PARTY_NOTICES.md.
 
 #include "hefesto/script/pdk/startup.hpp"
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <initializer_list>
 #include <regex>
 
@@ -238,6 +239,36 @@ void compressed_entry(std::string_view file, FileEntry& out) {
   }
 }
 
+// NULL graphics: Magic's C startup loads the file, not magic.tcl.in, whose
+// NULL-graphics loop never runs because the layout window already exists
+// (utils/main.c:383-440 mainDoArgs, 1189-1225 mainInitFinal). A trailing
+// `.mag` is stripped, the type comes from the last `.` extension, and the
+// file is announced as `Loading "<f>" from command line.`. As in app-startup
+// (Q-UI-25 fix): only exact extensions select a type, case-insensitively,
+// and CIF and GDS files are read; Magic ignores them and takes any `.gd...`
+// extension as GDS.
+FileEntry null_graphics_entry(std::string_view file) {
+  constexpr std::string_view kSuffix = ".mag";
+  std::string name{file};
+  if (name.size() > kSuffix.size() && name.ends_with(kSuffix)) {
+    name.resize(name.size() - kSuffix.size());
+  }
+  const auto dot = name.rfind('.');
+  std::string ext = dot == std::string::npos ? std::string{} : name.substr(dot);
+  std::transform(ext.begin(), ext.end(), ext.begin(),
+                 [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  FileEntry out;
+  out.messages.push_back(stdout_line("Loading \"" + name + "\" from command line."));
+  if (ext == ".lef" || ext == ".def" || ext == ".cif" || ext == ".gds") {
+    out.command = tcl_command({ext.substr(1), "read", name});
+  } else if (ext == ".tcl") {
+    out.command = tcl_command({"source", name});
+  } else {
+    out.command = tcl_command({"load", name});
+  }
+  return out;
+}
+
 }  // namespace
 
 std::vector<diag::Diagnostic> startup_error(const StartupFile& file, std::string_view message) {
@@ -307,21 +338,21 @@ std::string file_extension(std::string_view file) {
 }
 
 FileEntry script_host_file_entry(std::string_view file, bool wrapper) {
+  if (!wrapper) {
+    return null_graphics_entry(file);
+  }
   FileEntry out;
   const std::string ext = file_extension(file);
-  const std::string name{file};
-  if (!wrapper) {
-    out.messages.push_back(stdout_line("handling file entry " + name + " extension " + ext));
-  } else if (ext != ".gz" && !ext.empty()) {
-    out.messages.push_back(stdout_line("Handling file entry " + name + " extension " + ext));
-  }
-  if (wrapper && ext == ".gz") {
+  if (ext == ".gz") {
     compressed_entry(file, out);
     return out;
   }
+  if (!ext.empty()) {
+    out.messages.push_back(stdout_line("Handling file entry " + std::string{file} + " extension " + ext));
+  }
   out.command = reader_command(ext, file);
   if (out.command.empty()) {
-    out.messages.push_back(stderr_line("don't know how to load file " + name));
+    out.messages.push_back(stderr_line("don't know how to load file " + std::string{file}));
   }
   return out;
 }

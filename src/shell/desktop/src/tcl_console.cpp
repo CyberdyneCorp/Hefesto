@@ -235,7 +235,7 @@ std::string interrupt_report(std::string_view tcl_message, std::size_t edits, st
   if (tcl_message.starts_with(kWrapper) && tcl_message.ends_with(')')) {
     tcl_message = tcl_message.substr(kWrapper.size(), tcl_message.size() - kWrapper.size() - 1);
   }
-  std::string text = tcl_message.empty() ? std::string{"eval canceled"} : std::string{tcl_message};
+  std::string text = tcl_message.empty() ? std::string{"eval unwound"} : std::string{tcl_message};
   if (!where.empty()) text += " · " + std::string{where};
   text += " · interrupted by the user";
   if (edits > 0) {

@@ -49,7 +49,7 @@ class FakeEvaluator final : public ConsoleEvaluator {
     if (interrupted) {
       interrupted = false;  // the next evaluation runs normally
       steps += 412;
-      return shown_as(cmd::CommandResult::failure(diag::make("SCRIPT-TCL-002", "eval canceled")), true);
+      return shown_as(cmd::CommandResult::failure(diag::make("SCRIPT-TCL-002", "eval unwound")), true);
     }
     return shown_as(cmd::CommandResult::success(cmd::Value{"r:" + std::string{command}}));
   }
@@ -184,7 +184,7 @@ TEST_CASE("a long run shows the Interrupt card after 2 s, queues input and repor
   CHECK_FALSE(console.running());
   const auto lines = shown(console.transcript());
   CHECK(lines == std::vector<std::string>{"% ring 100000", "% box", "queued until it ends",
-                                          "■ eval canceled · interrupted by the user (412 edits kept; "
+                                          "■ eval unwound · interrupted by the user (412 edits kept; "
                                           "undo reverts them as one step)",
                                           "r:box"});
   CHECK(evaluator.evaluated == std::vector<std::string>{"ring 100000", "box"});
@@ -385,11 +385,14 @@ TEST_CASE("a line typed while another script runs waits for it",
 
 TEST_CASE("the interrupt report names the line as Tcl reports it",
           "[cap:scripting-auxiliary-tools][req:Console integration]") {
-  CHECK(interrupt_report("script evaluation interrupted (eval canceled)", 412, "sky130A.tcl:2378") ==
-        "eval canceled · sky130A.tcl:2378 · interrupted by the user (412 edits kept; undo reverts them as one step)");
-  CHECK(interrupt_report("eval canceled", 1) == "eval canceled · interrupted by the user (1 edit kept; undo "
-                                                 "reverts them as one step)");
-  CHECK(interrupt_report("", 0, "line 3") == "eval canceled · line 3 · interrupted by the user");
+  CHECK(interrupt_report("script evaluation interrupted (eval unwound)", 412, "sky130A.tcl:2378") ==
+        "eval unwound · sky130A.tcl:2378 · interrupted by the user (412 edits kept; undo reverts them as one step)");
+  CHECK(interrupt_report("eval unwound", 1) == "eval unwound · interrupted by the user (1 edit kept; undo "
+                                                "reverts them as one step)");
+  // Without a message from Tcl, Tcl's own text (user decision 2026-11-11);
+  // never the board's earlier wording.
+  CHECK(interrupt_report("", 0, "line 3") == "eval unwound · line 3 · interrupted by the user");
+  CHECK(interrupt_report("script evaluation interrupted ()", 0) == "eval unwound · interrupted by the user");
   CHECK(script_where({"/pdk/sky130A/libs.tech/magic/sky130A.tcl", 2378}) == "sky130A.tcl:2378");
   CHECK(script_where({"", 3}) == "line 3");
   CHECK(script_where({"/pdk/x.tcl", 0}).empty());

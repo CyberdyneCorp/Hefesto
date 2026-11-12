@@ -17,7 +17,7 @@
 //     says it is complete, Shift-Return always inserts a line.
 //   - ConsoleRun: a running evaluation: elapsed time, the Interrupt card
 //     after 2 s, input queued meanwhile (Magic's terminal input queue), the
-//     interrupt report ("eval canceled · file:line · interrupted by the
+//     interrupt report ("eval unwound · file:line · interrupted by the
 //     user (N edits kept; undo reverts them as one step)"). The evaluator
 //     keeps the frames coming while it runs (script/progress.hpp: the
 //     interpreter's progress handler pumps one every 50 ms, also inside a
@@ -177,11 +177,12 @@ class ConsoleRun {
   std::vector<std::string> queued_;
 };
 
-/// The transcript line of an interrupted evaluation: "eval canceled ·
+/// The transcript line of an interrupted evaluation: "eval unwound ·
 /// rc.tcl:12 · interrupted by the user (N edits kept; undo reverts them as
 /// one step)", without the location when `where` is empty and without the
 /// edits part when nothing changed (board tile 8 and note 8). Tcl's message
-/// is taken out of the interpreter's "script evaluation interrupted (…)".
+/// is taken out of the interpreter's "script evaluation interrupted (…)";
+/// without one, Tcl's own text for an unwinding cancel, "eval unwound".
 [[nodiscard]] std::string interrupt_report(std::string_view tcl_message, std::size_t edits,
                                            std::string_view where = {});
 

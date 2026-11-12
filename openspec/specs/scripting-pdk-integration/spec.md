@@ -76,7 +76,7 @@ Compatibility: behavioral
 - **THEN** the wrapper SHALL be disabled, the given rc file SHALL be used, and `run.tcl` SHALL be sourced after startup
 
 ### Requirement: Command-line file arguments
-Each file argument SHALL be handled by its extension:
+In wrapper mode, each file argument SHALL be handled by its extension, as the script host does:
 
 | Extension | Action |
 |---|---|
@@ -86,17 +86,28 @@ Each file argument SHALL be handled by its extension:
 | `.cif`, `.CIF` | `cif read` |
 | `.tcl` | `source` |
 | `.mag` or none | `load` |
-| `.gz` | wrapper mode only: an inner `.gds` gives `gds read`, an inner `.mag` gives `load`, anything else prints `only compressed .mag and .gds are handled.` |
+| `.gz` | an inner `.gds` gives `gds read`, an inner `.mag` gives `load`, anything else prints `only compressed .mag and .gds are handled.` |
 | other | print `don't know how to load file <f>` on stderr |
 
-In wrapper mode, every non-empty extension other than `.gz` first prints `Handling file entry <f> extension <ext>`. In NULL graphics, every file prints `handling file entry <f> extension <ext>`, and `.gz` falls into "other". Files SHALL be processed in command-line order after the startup files.
+Every non-empty extension other than `.gz` first prints `Handling file entry <f> extension <ext>`, and `.gz` prints `Handling compressed entry <f> extension <inner>`. Files SHALL be processed in command-line order after the startup files.
+
+In NULL graphics, the file arguments SHALL be loaded as Magic's C startup loads them, not by the script host's NULL-graphics loop, which never runs because the layout window already exists (user decision 2026-11-11). No `handling file entry` line SHALL be printed. A trailing `.mag` SHALL be stripped, the type SHALL be chosen by the last `.` extension, and each file SHALL be announced with `Loading "<f>" from command line.` before it is loaded. `.lef` and `.def` SHALL be read, `.tcl` SHALL be sourced, and anything else, `.gz` included, SHALL be loaded as a cell named after the argument. A Tcl error in a sourced file SHALL print `Error parsing "<f>": <message>`. A `.tcl` argument SHALL end the file arguments; later arguments belong to the script. As in capability `app-startup`, Requirement "Command-line file arguments" (Q-UI-25, fix), the files SHALL be loaded in command-line order, CIF and GDS files SHALL be read, and only the exact extensions `.cif` and `.gds` (any case) select those types. Magic loads the files in reverse order, announces CIF and GDS files without reading them, and takes any extension starting with `.gd` as GDS.
 Compatibility: behavioral
 
-(Magic ref: tcltk/magic.tcl.in:363-439)
+(Magic ref: tcltk/magic.tcl.in:363-439, utils/main.c:383-440, utils/main.c:1189-1225)
 
 #### Scenario: Batch script argument
 - **WHEN** `magic -dnull -noconsole drc.tcl` runs
-- **THEN** `handling file entry drc.tcl extension .tcl` SHALL be printed and `drc.tcl` SHALL be sourced
+- **THEN** `Loading "drc.tcl" from command line.` SHALL be printed after the startup files and `drc.tcl` SHALL be sourced
+- **AND** no `handling file entry` line SHALL be printed
+
+#### Scenario: Cell argument in NULL graphics
+- **WHEN** `magic -dnull -noconsole inv.mag` runs
+- **THEN** `Loading "inv" from command line.` SHALL be printed and the cell `inv` SHALL be loaded
+
+#### Scenario: Compressed argument in NULL graphics
+- **WHEN** `magic -dnull -noconsole a.gds.gz` runs
+- **THEN** `Loading "a.gds.gz" from command line.` SHALL be printed and the argument SHALL be loaded as a cell, not read as GDS
 
 ### Requirement: Startup files are scripts
 Every startup file SHALL be evaluated as a script at global scope. This includes the system pre-startup file `$CAD_ROOT/magic/sys/.initrc`, the system file `$CAD_ROOT/magic/sys/.magicrc`, the user file, the project file, and a file given by `-rcfile`. Script control flow (`if`, `catch`, `proc`, variables, `source`, `$env(...)`) is therefore available to PDK `.magicrc` files. An error in a file SHALL stop that file at the error and print `Error parsing <kind> "<file>": <message>`. Startup then continues with the next file. The system file SHALL set `GND` to `gnd!` and `VDD` to `vdd!`, and SHALL run the tool setup when `tools.tcl` was loaded. A later startup file can therefore override `VDD`, `GND` and `SUB`.
