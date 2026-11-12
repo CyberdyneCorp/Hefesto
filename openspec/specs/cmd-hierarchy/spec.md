@@ -37,7 +37,9 @@ Compatibility: exact
 6. `-nowindow` reads the cell into memory without changing any window.
 7. If the window was the edit window, or no window holds the edit cell, the new top cell SHALL become the edit cell. If the cell is read-only, there SHALL be no edit cell. The edit change SHALL be recorded for undo.
 8. The view SHALL be set to the cell bounding box grown on each side by `max(0, (60 − size)/2) + (size + 1)/10` (per axis, integer division). For a cell with no bounding box, a (0,0)–(1,1) area is used.
-9. The previously displayed `(UNNAMED)` cell SHALL be deleted from memory if it is unmodified and no longer shown.
+9. The previously displayed `(UNNAMED)` cell SHALL be deleted from memory if it is unmodified and no longer shown, while a display runs. With NULL graphics (a batch or headless session) or a suspended display (`updatedisplay suspend`), it SHALL stay in memory, as in Magic, whose NULL driver leaves the display suspended.
+
+A leading `./` SHALL be dropped from NAME, then a `.gz` and a `.mag` extension of its last component. Magic cuts them off NAME itself, so the path recorded for a missing file (and printed as `File <F> couldn't be read`) has neither: `load /w/inv.mag.gz` records `/w/inv`.
 
 `scaled N [D]` SHALL read the cell (and all of its hierarchy, by expanding everything once) with every coordinate multiplied by N/D, by temporarily changing the internal-unit ratio. Any other extra argument SHALL print the usage. There must be a layout window unless `-nowindow` is given ("Point to a window first.").
 
@@ -50,6 +52,12 @@ Compatibility: behavioral
 - **WHEN** `load newcell` is run
 - **THEN** an empty cell `newcell` SHALL be shown and become the edit cell
 - **AND** "Creating new cell" SHALL be printed
+
+#### Scenario: Untouched (UNNAMED) deleted while the display runs
+- **GIVEN** a window showing an unmodified `(UNNAMED)`
+- **WHEN** `load top` is run
+- **THEN** with a running display `cellname list allcells` SHALL list `top` only
+- **AND** with NULL graphics it SHALL list `(UNNAMED) top`
 
 #### Scenario: Fail option
 - **WHEN** `load nosuch -fail` is run with no such file

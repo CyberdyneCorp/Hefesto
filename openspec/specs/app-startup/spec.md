@@ -83,7 +83,7 @@ After startup files and technology loading:
 - A script SHALL be evaluated.
 - CIF and GDS files SHALL be read. Magic only announces them (see Q-UI-25).
 
-The window SHALL end up showing the first layout file named on the command line.
+The window SHALL end up showing the first layout file named on the command line. When later layout files were loaded after it, the first cell SHALL be shown again by its cell name, so nothing is read or printed for it a second time (in particular no "The cell was already read and points to conflicting location" for a cell whose file was missing).
 
 Compatibility: behavioral
 (Magic ref: utils/main.c:388-452, utils/main.c:1176-1228)

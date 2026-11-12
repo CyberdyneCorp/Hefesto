@@ -107,6 +107,12 @@ struct EditorState {
   std::vector<platform::Path> style_dirs;
   display::FontRegistry fonts;
   view::WindowManager windows;
+  /// INTEGRATION: the session shows its windows on a display (Magic's
+  /// GrDisplayStatus is not left at DISPLAY_SUSPEND by the NULL driver).
+  /// Set by app::run_startup for a display other than NULL; then loading a
+  /// cell over an untouched "(UNNAMED)" deletes it, as Magic does while its
+  /// display runs (Magic ref: dbwind/DBWprocs.c:321-331,608-617).
+  bool display_running = false;
 
   // PDK / app: layered settings (the project's typed compat settings stay
   // in settings::ProjectSettings, reachable through CommandContext::project()).

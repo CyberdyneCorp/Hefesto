@@ -381,6 +381,7 @@ class Session {
     std::error_code ec;
     env.working_directory = std::filesystem::current_path(ec);
     env.grant_working_directory = true;  // a batch run's files live in its working directory (S-11 limits it)
+    env.display_available = false;       // NULL graphics unless -d names a display
     env.script_limits.time_limit = std::chrono::seconds{options_.script_time_limit};  // S-14
     env.project_folder = options_.project;
     if (!env.project_folder && services_.files().exists(env.working_directory / std::string{app::kProjectFileName})) {
