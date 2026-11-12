@@ -157,7 +157,12 @@ class TclInterpreter final : public Interpreter {
 
   cmd::CommandResult evaluate(std::string_view script, cmd::Origin origin) override {
     Evaluation evaluation{*this, origin, ""};
-    const int code = Tcl_EvalEx(interp_, script.data(), tcl_length(script), TCL_EVAL_GLOBAL);
+    // A NUL-terminated copy: Tcl 8.6.16's parser reads the byte after the
+    // given length (Tcl_ParseQuotedString looks there for the closing quote
+    // of a quoted word that runs to the end), and a string_view need not be
+    // terminated.
+    const std::string text{script};
+    const int code = Tcl_EvalEx(interp_, text.c_str(), tcl_length(text), TCL_EVAL_GLOBAL);
     return evaluation.finish(code, "", "");
   }
 
