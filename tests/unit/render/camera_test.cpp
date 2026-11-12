@@ -73,3 +73,40 @@ TEST_CASE("zoom is clamped", "[cap:hefesto-performance][req:Interactive frame ra
   cam.zoom_at(0.0, 0.0, 0.0);  // ignored
   CHECK(cam.pixels_per_unit() == Camera::kMaxPixelsPerUnit);
 }
+
+// Regression (M4 wiring HUD capture): the console opened by an error between
+// a wiring press and the pointer moves shrank the canvas, the resize refitted
+// the view, and the next move mapped the same pixel row about 300 units lower,
+// so the leg went south instead of east. After the first press the canvas
+// resizes with resize_keeping_top_left(): every pixel left on screen keeps its
+// world point.
+TEST_CASE("a resize can keep the world point under every remaining pixel",
+          "[cap:hefesto-input-and-touch][req:Desktop canvas gestures]") {
+  Camera cam(500.0, 300.0, 0.5);
+  cam.set_viewport(1982, 1108);
+  const double left = cam.world_x(0.0);
+  const double top = cam.world_y(0.0);
+  const double wx = cam.world_x(1400.0);
+  const double wy = cam.world_y(400.0);
+  cam.resize_keeping_top_left(1500, 468);  // a 320-point console at 2x below, a narrower canvas
+  CHECK(cam.viewport_width() == 1500);
+  CHECK(cam.viewport_height() == 468);
+  CHECK(cam.pixels_per_unit() == Approx(0.5));
+  CHECK(cam.world_x(0.0) == Approx(left));
+  CHECK(cam.world_y(0.0) == Approx(top));
+  CHECK(cam.world_x(1400.0) == Approx(wx));
+  CHECK(cam.world_y(400.0) == Approx(wy));
+
+  // set_viewport() keeps the center instead: the same row shows another point.
+  Camera centered(500.0, 300.0, 0.5);
+  centered.set_viewport(1982, 1108);
+  centered.set_viewport(1982, 468);
+  CHECK(centered.world_y(400.0) == Approx(wy - 640.0));
+
+  // A camera that never had a viewport just takes the size.
+  Camera fresh(10.0, 20.0, 1.0);
+  fresh.resize_keeping_top_left(100, 50);
+  CHECK(fresh.center_x() == Approx(10.0));
+  CHECK(fresh.center_y() == Approx(20.0));
+  CHECK(fresh.viewport_width() == 100);
+}

@@ -26,6 +26,7 @@ On Linux and macOS, the layout canvas SHALL take trackpad and touch-screen gestu
 - a mouse wheel (deltas that are not precise) SHALL zoom the view about the pointer
 - these gestures SHALL stop at the zoom range the zoom control's `zoom` commands reach: from the core window's smallest scale (one 1/65536 pixel per internal unit, Magic's "At minimum scale!") to the renderer's largest
 - after each gesture event the zoom percentage of the zoom control, the rulers, the minimap's view rectangle and the core window's view SHALL show the new view
+- when the canvas is resized (the window, a panel shown or hidden, the console revealed by an error), the view SHALL be refitted to the cell only until the first gesture or press in the canvas; after it, the scale and the layout point under the canvas's top-left pixel SHALL be kept, so the layout under every pixel still shown, and a tool's gesture in progress (a wiring leg), stays where it was
 
 The canvas SHALL take the whole pinch when it begins, so that Raven neither scrolls nor zooms another widget with it. A swipe of three or more fingers SHALL be left to Raven (back / forward). Continuous gestures move the view directly instead of issuing one command per event (design.md D6 of change m1-core-viewer); keys and the zoom control issue commands.
 
@@ -42,6 +43,11 @@ Compatibility: native
 - **THEN** the view SHALL pan with the fingers and its zoom SHALL not change
 - **WHEN** the user then turns a mouse wheel one notch up
 - **THEN** the view SHALL zoom in about the pointer
+
+#### Scenario: A resize during a wiring leg keeps the view
+- **GIVEN** the wiring tool tracking from a press on a cell's material, the cell fitted at load
+- **WHEN** the console opens below the canvas before the pointer moves east of the press
+- **THEN** the view SHALL not be refitted, and the leg SHALL go east
 
 #### Scenario: Pinch stops at the zoom limit
 - **GIVEN** a view already at the largest zoom the zoom-in button reaches

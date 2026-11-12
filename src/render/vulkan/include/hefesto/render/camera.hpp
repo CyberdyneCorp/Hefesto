@@ -39,6 +39,12 @@ class Camera {
   Camera(double center_x, double center_y, double pixels_per_unit) noexcept;
 
   void set_viewport(int width_px, int height_px) noexcept;
+  /// set_viewport() keeping the world point at the top-left pixel fixed, so
+  /// every pixel still in the viewport shows the same point (scale kept).
+  /// A canvas resized under the pointer (a panel opening below it) then
+  /// keeps the layout under the cursor. Without a previous viewport size
+  /// (the 1 x 1 default) it is set_viewport().
+  void resize_keeping_top_left(int width_px, int height_px) noexcept;
   /// Moves the view by a drag of (dx, dy) pixels (screen y grows downwards).
   void pan_pixels(double dx_px, double dy_px) noexcept;
   /// Multiplies the zoom by `factor`, keeping the world point under the
