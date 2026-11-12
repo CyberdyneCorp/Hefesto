@@ -32,6 +32,7 @@ pattern                                                     Magic source
 ``New windows will not have a title caption.``              windows/windCmdAM.c:188 (wrapper.tcl)
 ``New windows will not have scroll bars.``                  windows/windCmdSZ.c:1022 (wrapper.tcl)
 ``New windows will not have a border.``                     windows/windCmdAM.c:121 (wrapper.tcl)
+``Use openwrapper to create a new GUI-based layout window``  tcltk/wrapper.tcl:1582
 ``Use closewrapper to remove a new GUI-based layout window`` tcltk/wrapper.tcl:1584
 ==========================================================  ======================================
 
@@ -62,7 +63,7 @@ _PREAMBLE = re.compile(
     rb'|Loading "[^"]*" from command line\.'
     rb"|Using \w+, VisualID 0x[0-9a-f]+ depth \d+"
     rb"|New windows will not have (?:a title caption|scroll bars|a border)\."
-    rb"|Use closewrapper to remove a new GUI-based layout window"
+    rb"|Use (?:open|close)wrapper to (?:create|remove) a new GUI-based layout window"
     rb")\r?$"
 )
 

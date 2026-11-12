@@ -23,6 +23,7 @@ constexpr std::array kCodes{
     CodeInfo{"GUI-PROMPT-001", info, "A file prompt reports what it read (`Top-level cells read from GDS file: L`, `Cells read from GDS file: L`)."},
     CodeInfo{"GUI-REPORT-001", info, "`drc_save_report` or `drc_load_report` progress (`loading C`, `done with F`, `Reading F`, `Done.`)."},
     CodeInfo{"GUI-REPORT-002", error, "The DRC report file cannot be opened or written (Tcl's `couldn't open \"F\"` error); nothing is written or read."},
+    CodeInfo{"GUI-TK-001", error, "A wrapper procedure addressed a widget that hefesto-cli's headless widget model (wrapper mode) does not have (Tk's `bad window path name \"P\"` error)."},
     CodeInfo{"GUI-TOOLBAR-001", warning, "A statement of the toolbar presets file `<tech>_toolbars.tcl` is not a `set <name> {<layers>}` line; it is ignored and never evaluated (Q-SCRIPT-11). Hefesto only."},
     CodeInfo{"GUI-TOOLBAR-002", error, "A toolbar preset cannot be loaded: the presets file `<tech>_toolbars.tcl` is missing or does not set the preset (Q-SCRIPT-28)."},
     CodeInfo{"GUI-USAGE-001", error, "A GUI manager command was given the wrong number or form of arguments (Tcl's `wrong # args` error of the procedure)."},

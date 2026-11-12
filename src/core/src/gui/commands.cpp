@@ -14,9 +14,11 @@
 #include "gui/gui_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/gui/diag_codes.hpp"
 #include "hefesto/gui/drc_report.hpp"
 #include "hefesto/gui/managers.hpp"
 #include "hefesto/gui/prompts.hpp"
+#include "hefesto/gui/tk_model.hpp"
 #include "hefesto/gui/toolbar_presets.hpp"
 #include "hefesto/gui/wrapper.hpp"
 #include "hefesto/script/interp.hpp"
@@ -82,6 +84,14 @@ CommandResult manager(CommandContext& ctx, const Invocation& inv, std::string_vi
   return CommandResult::success();
 }
 
+// texthelper.tcl's `proc magic::make_texthelper { mgrpath }`: one argument.
+CommandResult make_texthelper(CommandContext& ctx, const Invocation& inv) {
+  if (inv.args.size() != 1) {
+    return detail::wrong_args("magic::make_texthelper mgrpath");
+  }
+  return manager(ctx, inv, "magic::make_texthelper mgrpath", GuiScript::text_helper);
+}
+
 std::string opt(CommandContext& ctx, std::string_view name) {
   const script::Interpreter* interp = ctx.editor() != nullptr ? ctx.editor()->script.interp.get() : nullptr;
   const auto value = interp != nullptr ? interp->get_var(name) : std::nullopt;
@@ -98,6 +108,15 @@ CommandResult cmd_maketoolbar(CommandContext& ctx, const Invocation& inv) {
   ToolbarOptions options;
   options.hide_special = opt(ctx, "Opts(hidespecial)") == "1";
   options.hide_locked = opt(ctx, "Opts(hidelocked)") == "1";
+  script::Interpreter* interp = ctx.editor()->script.interp.get();
+  if (interp != nullptr && has_tk_model(*interp)) {
+    CommandResult built = build_toolbar_widgets(*interp, inv.args[0], [&] { return build_toolbar(ctx, options); });
+    if (!built.ok()) {  // a Tcl error of the procedure, as Tk's
+      const std::string text = built.diagnostics.empty() ? std::string{} : built.diagnostics.front().text;
+      return CommandResult::raised(diag::make(codes::kTkError, text));
+    }
+    return built;
+  }
   (void)build_toolbar(ctx, options);
   return CommandResult::success();
 }
@@ -170,8 +189,8 @@ bool register_gui_commands(cmd::CommandRegistry& registry) {
       managed("magic::libmanager ?option?", GuiScript::library_manager));
   add("drcmanager", "drcmanager [create|update]", "DRC manager.",
       managed("magic::drcmanager ?option?", GuiScript::drc_manager));
-  add("make_texthelper", "make_texthelper [<window>]", "Text helper.",
-      managed("magic::make_texthelper ?mgrpath?", GuiScript::text_helper));
+  add("make_texthelper", "make_texthelper <window>", "Text helper.",
+      make_texthelper);
   add("maketoolbar", "maketoolbar <frame>", "Rebuild the layer toolbar of a wrapper frame.", cmd_maketoolbar);
   add("saveallandquit", "saveallandquit", "Save every modified cell, then quit.", cmd_saveallandquit);
   return ok;
