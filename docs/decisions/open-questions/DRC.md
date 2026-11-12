@@ -225,3 +225,12 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Options: replicate (impossible: crash or hang) | fix (a rescaled or default step size never goes below 1) | fix (a step size that would be 0 falls back to 16 × halo, or 64 without a halo)
 - Recommendation: fix — never let a rescaled or default step size go below 1 (X-2 tier 1, "crashes"), clamped where it is computed (rescale and `default_step_size`) rather than at use, in both modes; `current_step_size` can then assert. No golden case (Magic crashes).
 - Resolution: fix — never let a rescaled or default step size go below 1 (X-2 tier 1, "crashes"), clamped where it is computed (the style and `drc *stepsize` rescale in src/core/src/drc/rules/style.cpp and `CifCatalog::default_step_size`), in both modes; `current_step_size` asserts a positive step. No golden case (Magic crashes). Approved 2026-11-10.
+
+### Q-DRC-26: DRC-PDK-3 uses IHP's `cap_cmim` generator (no `cap_cmomf` in IHP-Open-PDK)
+- Kind: other
+- Status: approved (recorded 2026-11-12 from m4-scripting task 12.3; approved 2026-11-12)
+- Magic behavior: n/a. The M4 plan (m4-scripting proposal and design, task 12.3) named an IHP `cap_cmomf` generator for DRC-PDK-3, but IHP-Open-PDK 5e6d592e has no such generator: its Tcl capacitor generators are `cap_cmim` and `cap_rfcmim` (MiM), and `cap_cmomf` exists only as an OSDI compact model (Q-SIMADV-5).
+- Evidence: IHP-Open-PDK 5e6d592e `ihp-sg13g2/libs.tech/magic/ihp-sg13g2.tcl`; tests/golden/DRC/cases/DRC-PDK-3 (golden-capture run 43214374466)
+- Options: use `cap_cmim` (two default MiM capacitors 0.4 µm apart, MIM.b asks 0.6 µm) | keep the box/paint stand-in until IHP ships a MOM generator
+- Recommendation: `cap_cmim`: it exercises the PDK's own generator and rules.
+- Resolution: other (user decision 2026-11-12) — DRC-PDK-3 places two `sg13g2::cap_cmim` capacitors; the case is captured, committed and replays. m4-scripting task 12.3 and its proposal and design name `cap_cmim`. Approved 2026-11-12.

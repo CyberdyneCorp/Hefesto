@@ -26,9 +26,12 @@ counts must agree.
 --emit DIR only writes the technology, the library and both tools' scripts
 (<workload>-<tool>-<passes>.tcl) into DIR, for the profiling job.
 
-Exit status: 0 when every Hefesto time is within --max-ratio of Magic's (or no
-Magic was given), 1 when a workload is slower than that or the counts differ,
-2 on a setup error. Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
+The timed ratio to Magic is information: the DRC throughput target is the
+callgrind instruction count of a block pass (bench/drc/instruction_gate.py,
+user decision of 2026-11-12). --max-ratio makes the ratio a gate again.
+
+Exit status: 0 when the counts agree (and, with --max-ratio, every Hefesto
+time is within that factor of Magic's), 1 otherwise, 2 on a setup error. Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
 """
 
 from __future__ import annotations
@@ -207,8 +210,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--array-size", type=int, default=100)
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--checks", type=int, default=4, help="passes of `drc check; drc catchup` in the long script")
-    parser.add_argument("--max-ratio", type=float, default=1.10,
-                        help="fail when Hefesto's DRC time exceeds Magic's by more than this factor (noise band)")
+    parser.add_argument("--max-ratio", type=float, default=None,
+                        help="fail when Hefesto's DRC time exceeds Magic's by more than this factor; "
+                             "without it the ratio is reported only")
     parser.add_argument("--json", help="write the results here")
     parser.add_argument("--emit", metavar="DIR",
                         help="only write the technology, the library and the scripts of both tools into DIR "
@@ -221,14 +225,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return args
 
 
-def compare(results: dict, max_ratio: float) -> list[str]:
+def compare(results: dict, max_ratio: float | None) -> list[str]:
     failures = []
     for name, row in results.items():
         if "magic_s" not in row:
             continue
         if row["hefesto_count"] != row["magic_count"]:
             failures.append(f"{name}: error count {row['hefesto_count']} (Hefesto) vs {row['magic_count']} (Magic)")
-        if row["hefesto_s"] > row["magic_s"] * max_ratio:
+        if max_ratio is not None and row["hefesto_s"] > row["magic_s"] * max_ratio:
             failures.append(f"{name}: Hefesto {row['hefesto_s']:.2f} s vs Magic {row['magic_s']:.2f} s")
     return failures
 
@@ -281,6 +285,8 @@ def main(argv: list[str]) -> int:
                                        f"long_{args.checks}_s": [round(t, 3) for t in timing.long_s]}
             results[workload.name] = row
             summary = ", ".join(f"{tool} {row[f'{tool}_s']:.2f} s ({row[f'{tool}_count']} errors)" for tool in tools)
+            if use_magic and row["magic_s"] > 0:
+                summary += f"; ratio {row['hefesto_s'] / row['magic_s']:.2f} x (information)"
             print(f"{workload.name}: {summary}")
     failures = compare(results, args.max_ratio)
     report = {"machine": platform.platform(), "processor": platform.machine(), "repeat": args.repeat,

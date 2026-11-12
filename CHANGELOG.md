@@ -8,6 +8,20 @@ release notices.
 
 ### Changed
 
+- **Confirmations that cannot be asked follow `magic-compat`.** In a
+  session with nobody to answer (a `-dnull` script, a headless run),
+  `tech load` over painted layout, `save NAME` over another existing file
+  and `flush` of a changed cell go ahead with it ON, as Magic does, and are
+  declined with it OFF. An answered "no" declines in both.
+- **`cellname list childinst` and the `save` file-name answer follow
+  `magic-compat`.** With it ON the children are listed in Magic's
+  instance-identifier hash order and an answered file name keeps its first
+  7 characters, as in Magic; with it OFF the list is in placement order and
+  the whole answer is the name.
+- **DRC throughput is gated on instruction count.** CI fails when one DRC
+  pass of the reference block takes more than the M3 baseline of 12.14
+  billion instructions + 2 %; the time ratio to Magic is reported for
+  information.
 - **`cellname list filepath` and `readspice` bus brackets follow
   `magic-compat`.** With it ON, `cellname list filepath` returns the whole
   stored path, as Magic does, and a netlist pin `D[0]` never matches the

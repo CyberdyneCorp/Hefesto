@@ -1,0 +1,3 @@
+Property name "nosuch" is not defined
+Couldn't find label VDD
+Couldn't find label nosuch

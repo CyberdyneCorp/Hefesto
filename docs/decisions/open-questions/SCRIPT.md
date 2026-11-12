@@ -453,10 +453,50 @@ Magic reference: fc5daa9e (8.3.694).
 
 ### Q-SCRIPT-48: A confirmation that cannot be asked counts as "yes" in Magic's Tcl build
 - Kind: quirk
-- Status: open (recommendation drafted 2026-11-12, needs the user's decision)
+- Status: approved (recommendation drafted 2026-11-12, approved 2026-11-12)
 - Magic behavior: in the Tcl build, TxDialog evaluates `tk_dialog ...` and returns -1 when the result is not an integer, which is what happens without Tk (`-dnull`, a plain Tcl shell). The callers test for the "no" answer (index 0) only, so -1 goes ahead: `tech load` without `-noprompt` reloads a technology over painted layout (then prints `Existing layout may be invalid.`), and `save NAME` over an existing different file overwrites it (and then asks for a file name when the cell name is taken). PDK rc files run `tech load` without `-noprompt`, so a second PDK's rc in a session with paint reloads in Magic.
 - Evidence: tcltk/tclmagic.c:1064-1102 (TxDialog), commands/CmdTZ.c:587-595 (`tech load`), commands/CmdSubrs.c:876-890 (cmdCheckNewName); SCRIPT-PDK-07 and SCRIPT-PCELL-12 captures (CI run 43173319299)
 - Hefesto now: `tech load` refuses without asking when a session cannot ask (TECH-CMD-003, spec `tech-command` "tech load": "A non-interactive session SHALL treat it as declined"), and `cmd::ask` maps a failed `tk_dialog` to the default answer (no), although spec `scripting-api` "Prompts and dialogs through the script layer" says -1. The two specs disagree.
 - Options: replicate (a confirmation that cannot be asked proceeds) | compat (proceed with `magic-compat` ON, decline with it OFF) | fix (decline in both modes; record SCRIPT-PDK-07 and SCRIPT-PCELL-12 as deviations)
 - Recommendation: compat. Data is overwritten only in batch sessions that Magic would overwrite too, and only with `magic-compat` ON; with it OFF a headless session keeps declining, which is the safe intent of `tech-command`. The `scripting-api` text (-1) then holds for magic-compat ON and the `tech-command` text for OFF.
-- Resolution: (pending)
+- Resolution: compat (user decision 2026-11-12) — a no/yes confirmation whose caller stops only on "no" (`tech load` over painted layout, `save NAME` over another existing file, `flush` of a changed cell) goes ahead with `magic-compat` ON when it cannot be asked (no prompt host, a headless host, or a script host whose `tk_dialog` gives no integer: Magic's -1), and is declined with it OFF (`tech load` then reports TECH-CMD-003). An answered "no" declines in both settings. `cmd::confirm`/`cmd::try_confirm` and `PromptHost::try_ask` (X-2 tier 2). Specs `scripting-api` "Prompts and dialogs through the script layer", `tech-command` "tech load" and `cmd-hierarchy` "Save command" and "Flush command" updated. SCRIPT-PCELL-12 now passes; SCRIPT-PDK-07 is committed with a Q-SCRIPT-41 deviation (stderr only: the cross-PDK redefinition warnings). Approved 2026-11-12.
+
+### Q-SCRIPT-49: Command inventories differ from Magic's by design
+- Kind: platform
+- Status: approved (recorded 2026-11-12 from the SCRIPT-API-01 and SCRIPT-PDK-09 captures; approved 2026-11-12)
+- Magic behavior: `info commands ::magic::*` lists every command compiled into Magic 8.3.694 (`garoute`, `plow`, `extract`, `irouter`, ...) and the Tcl procedures of its scripts; a PDK session traced with `trace add execution` (SCRIPT-PDK-09) calls `array`, `flush`, `select` and the other engine commands the PDK Tcl generators use, with the counts of Magic's Tcl toolkit.
+- Evidence: SCRIPT-API-01 and SCRIPT-PDK-09 (golden-capture run 43234885440)
+- Hefesto: the commands of later milestones are not registered until their engines exist, Hefesto-only commands are listed, the sky130/gf180mcu/sg13g2 generators run natively where D-29 provides them (validated against the Tcl output by `pcell-equivalence`), and the toolkit is C++, so the traced counts differ.
+- Options: accept as a recorded deviation | fix (register stubs for every Magic command and run the Tcl generators)
+- Recommendation: accept. The inventories are lists of implementation details; scripts call commands, they do not compare `info commands`.
+- Resolution: platform (user decision 2026-11-12) — the `info commands` inventory and the traced engine-command counts of a PDK session differ by design; SCRIPT-API-01 and SCRIPT-PDK-09 are committed as deviations of stdout. Approved 2026-11-12.
+
+### Q-SCRIPT-50: The technology manager's menu order depends on the installation
+- Kind: platform
+- Status: approved (recorded 2026-11-12 from the SCRIPT-GUI-05 capture; approved 2026-11-12)
+- Magic behavior: `magic::techmanager create` lists the `.tech` files of Magic's installed system directory (`nmos`, `scmos-tm`, `gdsquery`, `minimum`, `scmos`, `scmosWR`, `scmos-sub` in the capture image, in directory order) before the PDK under `$PDK_ROOT`.
+- Evidence: tcltk/techbuilder.tcl; SCRIPT-GUI-05 (golden-capture run 43234885440)
+- Hefesto: lists the technologies it can load (the PDK `x` of the case); it installs no copies of Magic's example technologies, and directory order is not reproducible across platforms (X-1).
+- Options: accept as a recorded deviation | install Magic's example technologies and sort them in the capture image's order
+- Recommendation: accept.
+- Resolution: platform (user decision 2026-11-12) — the technology menu lists what Hefesto can load, in its own order; SCRIPT-GUI-05 is committed as a deviation of stdout. Approved 2026-11-12.
+
+### Q-SCRIPT-51: Crash backups and tool enabling are native, not Tcl procedures
+- Kind: platform
+- Status: approved (recorded 2026-11-12 from the SCRIPT-GUI-12 and SCRIPT-GUI-13 captures; approved 2026-11-12)
+- Magic behavior: `crashbackups start` schedules a Tcl `after` timer (`after#1`) that writes `/tmp/MAG<random>` files; `magic::enable_tools` is a Tcl procedure of the wrapper that switches through the tools (printing "Switching to ... tool.") and defines their macros.
+- Evidence: tcltk/wrapper.tcl; SCRIPT-GUI-12 and SCRIPT-GUI-13 (golden-capture run 43234885440)
+- Hefesto: crash backups are written by the native session (cell-crash-recovery), so `crashbackups` returns no `after` identifier, and tool enabling is part of the native shell, so `magic::enable_tools` is not defined.
+- Options: accept as recorded deviations | reimplement both as Tcl procedures with `after`
+- Recommendation: accept: the native versions survive a busy interpreter and work on every platform.
+- Resolution: platform (user decision 2026-11-12) — native crash backups and tool enabling are kept; SCRIPT-GUI-12 and SCRIPT-GUI-13 are committed as deviations of stdout. Approved 2026-11-12.
+
+### Q-SCRIPT-52: Refused `load` of a native extension answers with Tcl's dlopen text
+- Kind: platform
+- Status: approved (recorded 2026-11-12 from the SCRIPT-API-04 capture; approved 2026-11-12)
+- Magic behavior: Tcl's `load` of a missing shared object fails with `couldn't load file "<path>": <path>: cannot open shared object file: No such file or directory`.
+- Evidence: SCRIPT-API-04 (golden-capture run 43210734684); spec `scripting-api` (the `load` scenario)
+- Hefesto: native extensions are always refused (`hefesto-scripting`). With `magic-compat` ON the refusal answers with that Tcl text, the same for every path, so it reveals nothing about the file system; with it OFF it names the sandbox. The SCRIPT-SANDBOX denial is recorded in both settings.
+- Options: accept | always name the sandbox
+- Recommendation: accept.
+- Resolution: compat (user decision 2026-11-12) — the ON-mode text is kept as implemented (X-2 tier 2). Approved 2026-11-12.

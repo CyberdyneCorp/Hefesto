@@ -113,14 +113,20 @@ std::optional<std::string> read_line(Interpreter& interp, const OutputRouting& r
 
 std::size_t ScriptPromptHost::ask(std::string_view question, std::span<const std::string> answers,
                                   std::size_t default_answer) {
+  const std::optional<std::size_t> index = try_ask(question, answers, default_answer);
+  return index && *index < answers.size() ? *index : default_answer;
+}
+
+std::optional<std::size_t> ScriptPromptHost::try_ask(std::string_view question, std::span<const std::string> answers,
+                                                     std::size_t default_answer) {
   std::string script = "tk_dialog .dialog \"Dialog\" " + quoted_text(question) + " {} " + std::to_string(default_answer);
   for (const std::string& answer : answers) {
     script += " " + quoted_text(answer);
   }
   const cmd::CommandResult result = interp_.evaluate(script);
   const std::optional<std::int64_t> index = result.ok() ? integer_of(result.value) : std::nullopt;
-  if (!index || *index < 0 || static_cast<std::uint64_t>(*index) >= answers.size()) {
-    return default_answer;
+  if (!index || *index < 0) {
+    return std::nullopt;
   }
   return static_cast<std::size_t>(*index);
 }

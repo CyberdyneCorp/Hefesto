@@ -292,7 +292,9 @@ When the engine needs a line of user input:
 
 The returned string, with one trailing newline removed, is the answer. An empty answer means "no input". Answers longer than the buffer are truncated to max-1 characters.
 
-For multiple-choice questions, it SHALL evaluate `tk_dialog .dialog "Dialog" "<escaped prompt>" {} <default> "<choice1>" ...` and use the integer result, or -1 if the result is not an integer.
+For multiple-choice questions, it SHALL evaluate `tk_dialog .dialog "Dialog" "<escaped prompt>" {} <default> "<choice1>" ...` and use the integer result, or -1 if the result is not an integer (the question could not be asked, e.g. without Tk under `-dnull`).
+
+A no/yes confirmation whose command stops only on the answer `no` (`tech load` over painted layout, `save NAME` over another existing file, `flush` of a changed cell) SHALL treat -1 as going ahead with `magic-compat` ON, as Magic does, and as declined with it OFF (Q-SCRIPT-48). A session with no prompt host or a headless one is a session that cannot ask. Other questions take their default answer when they cannot be asked.
 
 In batch mode (no console), `magic::dialog`, `magic::suspendout`, `magic::resumeout`, `magic::consolegeometry` and `magic::consolefocus` SHALL be defined as no-ops.
 Compatibility: behavioral
@@ -303,6 +305,12 @@ Compatibility: behavioral
 - **GIVEN** magic runs with `-dnull -noconsole` and stdin is a pipe whose next line is `yes`
 - **WHEN** a command asks for a line of input
 - **THEN** the answer SHALL be `yes`
+
+#### Scenario: Confirmation without tk_dialog
+- **GIVEN** magic runs with `-dnull -noconsole`, a cell has paint and `other.tech` exists
+- **WHEN** `tech load other` runs without `-noprompt`
+- **THEN** with `magic-compat` ON the technology SHALL be reloaded and `Existing layout may be invalid.` reported
+- **AND** with `magic-compat` OFF nothing SHALL be loaded and TECH-CMD-003 reported
 
 ### Requirement: Terminal input queue without console
 When running without the console, the system SHALL replace the standard input channel with one that serves bytes queued by the layout window first (keystrokes typed after the `:` macro) and only then reads the terminal. Bytes already buffered by the original channel at the time of replacement SHALL be preserved ahead of any queued input. Read interruptions (EINTR) SHALL be retried. Escape in a layout window during `:` entry SHALL cancel the partial command:

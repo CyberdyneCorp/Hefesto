@@ -464,14 +464,14 @@ struct YesHost final : cmd::PromptHost {
 
 TEST_CASE("flush re-reads the cell from its file and clears the modified flag",
           "[cap:cmd-hierarchy][req:Flush command][golden:CMDEDIT-HIER-09]") {
-  Session s;
+  Session s{false};
   s.write("/work/a.mag", "magic\ntech tiny\ntimestamp 5\n<< metal1 >>\nrect 0 0 4 4\n<< end >>\n");
   s.ok("load a");
   db::CellDef* a = s.editor.cells.find("a");
   REQUIRE(a != nullptr);
   s.paint(*a, "metal1", Rect{0, 0, 40, 40});
   db::mark_modified(*a);
-  // Headless: the confirmation gets its default answer, "no".
+  // No one to ask, magic-compat OFF: the confirmation is declined (Q-SCRIPT-48).
   auto r = s.run("flush a");
   CHECK(a->bbox() == Rect{0, 0, 40, 40});
   YesHost yes;
@@ -486,6 +486,23 @@ TEST_CASE("flush re-reads the cell from its file and clears the modified flag",
   CHECK(yes.asked == 1);
   CHECK(s.run("flush nosuch").ok());
   CHECK(last_message(s.run("flush a b c")) == "Usage: flush [cellname] [-noprompt] [-dereference]");
+}
+
+// Regression (SCRIPT-PDK-07, SCRIPT-PCELL-12; Q-SCRIPT-48): Magic's flush
+// stops only on the answer "no", and TxDialog gives -1 when it cannot ask,
+// so with magic-compat ON a question nobody can answer goes ahead.
+TEST_CASE("flush goes ahead with magic-compat ON when it cannot ask",
+          "[cap:cmd-hierarchy][req:Flush command]") {
+  Session s{true};
+  s.write("/work/a.mag", "magic\ntech tiny\ntimestamp 5\n<< metal1 >>\nrect 0 0 4 4\n<< end >>\n");
+  s.ok("load a");
+  db::CellDef* a = s.editor.cells.find("a");
+  REQUIRE(a != nullptr);
+  s.paint(*a, "metal1", Rect{0, 0, 40, 40});
+  db::mark_modified(*a);
+  const auto r = s.run("flush a");
+  CHECK(a->bbox() == Rect{0, 0, 4, 4});
+  CHECK(mentions(r, "[Flushed Modifications were Discarded]"));
 }
 
 TEST_CASE("flush refuses the parent of the edit instance", "[cap:cmd-hierarchy][req:Flush command]") {
@@ -660,4 +677,40 @@ TEST_CASE("load -nowindow reads the cell without changing the window or the edit
   CHECK(s.editor.cells.find("side")->flags().available);
   CHECK(s.editor.windows.current()->root() == s.top);
   CHECK(s.editor.edit_cell == s.top);
+}
+
+// Q-CELL-46: Magic lists childinst from the parent's cd_idHash, a string
+// hash table whose entries stay when a use is deleted or renamed; Hefesto
+// keeps that order with magic-compat ON and placement order with it OFF.
+TEST_CASE("cellname childinst lists Magic's id-hash order with magic-compat ON",
+          "[cap:cmd-hierarchy][req:Cellname and instance commands]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s{compat};
+    db::CellDef* leaf = s.cell("leaf");
+    for (const char* id : {"x1", "x2", "x3", "x4", "x5"}) {
+      (void)s.place(*s.top, *leaf, db::translation(0, 0), id);
+    }
+    const auto list = [&] { return s.run("cellname list childinst top").value.to_string(); };
+    CHECK(list() == (compat ? "x1 x4 x3 x2 x5" : "x1 x2 x3 x4 x5"));
+    // A deleted id keeps its entry, so placing it again keeps its place.
+    REQUIRE(db::remove_use(*db::find_use(*s.top, "x3")).ok());
+    (void)s.place(*s.top, *leaf, db::translation(0, 0), "x3");
+    CHECK(list() == (compat ? "x1 x4 x3 x2 x5" : "x1 x2 x4 x5 x3"));
+    REQUIRE(db::rename_use(*db::find_use(*s.top, "x2"), "x0").ok());
+    CHECK(list() == (compat ? "x0 x1 x4 x3 x5" : "x1 x0 x4 x5 x3"));
+    // Placed u0 then u1 (one bucket): the later id heads the chain.
+    db::CellDef* placed = s.cell("placed");
+    (void)s.place(*placed, *leaf, db::translation(0, 0), "u0");
+    (void)s.place(*placed, *leaf, db::translation(0, 0), "u1");
+    CHECK(s.run("cellname list childinst placed").value.to_string() == (compat ? "u1 u0" : "u0 u1"));
+    // A cell read from a file links its uses in subcell enumeration order
+    // (DBGenerateUniqueIds), the reverse of the file order.
+    s.write("/work/leaf.mag", "magic\ntech tiny\ntimestamp 5\n<< end >>\n");
+    s.write("/work/read.mag",
+            "magic\ntech tiny\ntimestamp 5\nuse leaf u0\ntimestamp 5\ntransform 1 0 0 0 1 0\nbox 0 0 1 1\n"
+            "use leaf u1\ntimestamp 5\ntransform 1 0 0 0 1 0\nbox 0 0 1 1\n<< end >>\n");
+    s.ok("load read");
+    CHECK(s.run("cellname list childinst read").value.to_string() == "u0 u1");
+  }
 }

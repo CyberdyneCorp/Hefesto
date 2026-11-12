@@ -366,8 +366,8 @@ std::vector<std::string> relatives(const cu::Session& s, const CellDef& def, boo
 }
 
 // instances: the identifiers of `def`'s uses (cd_parents order, internal
-// parents skipped); childinst: the identifiers of the uses inside `def`.
-// dbGetUseName: an arrayed use is named with its first indices,
+// parents skipped); childinst: the identifiers of the uses inside `def`
+// (child_use_names). dbGetUseName: an arrayed use is named with its first indices,
 // backslash-escaped (`x2\[0\]`, `x3\[0,1\]`).
 std::string array_use_name(const CellUse& u) {
   const db::ArrayInfo& a = u.array;
@@ -399,6 +399,27 @@ std::vector<std::string> use_names(const CellDef& def, bool inside) {
   return names;
 }
 
+// childinst: the uses inside `def`, named by dbGetUseName. With
+// magic-compat ON in Magic's cd_idHash order (CellDef::linked_use_ids, a
+// string-hash order that depends on the link history); with it OFF in
+// placement order (Q-CELL-46).
+std::vector<std::string> child_use_names(const CellDef& def, bool magic_compat) {
+  std::vector<std::string> names;
+  if (!magic_compat) {
+    for (const auto& u : def.uses()) {
+      names.push_back(array_use_name(*u));
+    }
+    return names;
+  }
+  for (const std::string& id : def.linked_use_ids()) {
+    const auto it = std::find_if(def.uses().begin(), def.uses().end(), [&](const auto& u) { return u->id == id; });
+    if (it != def.uses().end()) {
+      names.push_back(array_use_name(**it));
+    }
+  }
+  return names;
+}
+
 CommandResult cellname_relation(const cu::Session& s, int option, const CellnameArgs& c) {
   CellDef* def = option_cell(s, c.args, true);
   if (def == nullptr) {
@@ -412,7 +433,8 @@ CommandResult cellname_relation(const cu::Session& s, int option, const Cellname
     case kInstances:
       return names_or_lines(s, use_names(*def, false), c.dolist, "Names of cell instances:");
     case kChildinst:
-      return names_or_lines(s, use_names(*def, true), c.dolist, "Def " + def->name() + "'s children are:");
+      return names_or_lines(s, child_use_names(*def, s.magic_compat), c.dolist,
+                            "Def " + def->name() + "'s children are:");
     default:  // celldef
       return CommandResult::success(Value{def->name()});
   }
@@ -651,8 +673,8 @@ void instance_query(const cu::Session& s, int option, const CellUse& use, bool d
   switch (option) {
     case kChildren:
     case kChildinst:
-      for (const auto& child : use.def->uses()) {
-        out.emplace_back(child->id);
+      for (std::string& name : child_use_names(*use.def, s.magic_compat)) {
+        out.emplace_back(std::move(name));
       }
       break;
     case kParents:

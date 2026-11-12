@@ -363,9 +363,10 @@ bool name_refused(IoSession& s, const db::CellDef& def, const std::string& name)
   }
   const std::string file = name.ends_with(".mag") ? name : name + ".mag";
   if (s.io.fs.exists(file)) {
-    static const std::array<std::string, 2> kYesNo = {"no", "yes"};
+    // Magic stops only on `no`; an unaskable question goes ahead with
+    // magic-compat ON (Q-SCRIPT-48).
     const std::string question = "File " + file + " already exists.\n  Overwrite it with " + def.name() + "? ";
-    if (cmd::ask(s.ed.prompt, question, kYesNo, 0) == 0) {
+    if (!cmd::confirm(s.ed.prompt, question, s.io.magic_compat)) {
       return true;
     }
   }
@@ -379,13 +380,17 @@ bool name_refused(IoSession& s, const db::CellDef& def, const std::string& name)
 
 /// cmdCheckNewName's prompt for another file name, answered with one line
 /// of input (TxGetLine); nullopt when there is none (no interpreter, end of
-/// input or an empty line).
+/// input or an empty line). Magic reads it with `sizeof returnname`, the
+/// size of a pointer, so the answer keeps its first 7 characters; with
+/// magic-compat OFF the whole line is the name (Q-CELL-47).
 std::optional<std::string> prompt_file_name(IoSession& s, const db::CellDef& def) {
   if (s.ed.script.interp == nullptr) {
     return std::nullopt;
   }
+  constexpr std::size_t kMagicAnswerBuffer = sizeof(char*);
   return script::read_line(*s.ed.script.interp, s.ed.script.output,
-                           "File for cell " + def.name() + ": [hit return to abort save] ");
+                           "File for cell " + def.name() + ": [hit return to abort save] ",
+                           s.io.magic_compat ? kMagicAnswerBuffer : 0);
 }
 
 /// cmdCheckNewName for `save NAME`: a refused name leads to the prompt for
