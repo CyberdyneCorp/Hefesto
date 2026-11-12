@@ -81,6 +81,26 @@ std::string replace_chars(std::string text, char a, char a_to, char b, char b_to
   return text;
 }
 
+// readspice.tcl:166 `string map {\[ < \] >]} $pin` (Q-SCRIPT-47): Magic's
+// map turns `]` into `>]`, so `D[0]` becomes `D<0>]`; `magic` false is the
+// intended `[`/`]` to `<`/`>`.
+std::string square_to_angle(const std::string& pin, bool magic) {
+  if (!magic) {
+    return replace_chars(pin, '[', '<', ']', '>');
+  }
+  std::string out;
+  for (const char c : pin) {
+    if (c == '[') {
+      out += '<';
+    } else if (c == ']') {
+      out += ">]";
+    } else {
+      out += c;
+    }
+  }
+  return out;
+}
+
 std::optional<std::int64_t> as_int(const cmd::Value& value) {
   if (const auto* i = std::get_if<std::int64_t>(&value.data())) {
     return *i;
@@ -91,7 +111,8 @@ std::optional<std::int64_t> as_int(const cmd::Value& value) {
 // One readspice run: the state of readspice.tcl's loop over the logical lines.
 class Annotator {
  public:
-  Annotator(CommandContext& ctx, editor::EditorState& editor) : ctx_(ctx), editor_(editor) {}
+  Annotator(CommandContext& ctx, editor::EditorState& editor, bool magic_bus_brackets)
+      : ctx_(ctx), editor_(editor), magic_bus_brackets_(magic_bus_brackets) {}
 
   void line(const SpiceLine& line) {
     if (line.keyword == ".subckt") {
@@ -201,7 +222,7 @@ class Annotator {
   // `[]`/`<>` mapped, or a case-insensitive match. Sets `testpin`.
   std::optional<std::int64_t> find_port(const std::string& pin, std::string& testpin) {
     for (const std::string& candidate :
-         {pin, replace_chars(pin, '[', '<', ']', '>'), replace_chars(pin, '<', '[', '>', ']')}) {
+         {pin, square_to_angle(pin, magic_bus_brackets_), replace_chars(pin, '<', '[', '>', ']')}) {
       testpin = candidate;
       if (const auto index = port_index(testpin)) {
         return index;
@@ -290,6 +311,7 @@ class Annotator {
 
   CommandContext& ctx_;
   editor::EditorState& editor_;
+  bool magic_bus_brackets_ = true;
   std::string cell_;
   bool loaded_ = false;
   std::map<std::string, std::string> pins_;  // netlist pin -> matched name (pindict)
@@ -336,7 +358,7 @@ CommandResult readspice(CommandContext& ctx, std::string_view netlist, const Rea
     return CommandResult::success(cmd::Value{std::int64_t{1}});
   }
   note(ctx, "Annotating port orders from " + file->name);
-  Annotator annotator{ctx, *editor.value()};
+  Annotator annotator{ctx, *editor.value(), options.magic_bus_brackets};
   SpiceLineReader reader{file->text, options.continuation, file->cdl};
   (void)run_forwarded(ctx, {"suspendall"});
   while (const std::optional<std::string> line = reader.next()) {

@@ -367,3 +367,12 @@ Magic reference: `fc5daa9e` (8.3.694).
 - Options: replicate | fix (keep the style names as written)
 - Recommendation: fix. A `.mag` file's element styles should not depend on the display used to open it (X-2 tier 1, data loss).
 - Resolution: fix — element style names are kept as read and written back unchanged; no "has no styles" warning (recorded 2026-11-09 from the CELL-RD-19 / CELL-WR-08 captures; approved 2026-11-09).
+
+### Q-CELL-45: `cellname list filepath` returns the whole stored path
+- Kind: quirk
+- Status: approved (recorded 2026-11-12 from the CELL-PR-03, CELL-PR-12 and SCRIPT-API-15 captures; approved 2026-11-12)
+- Magic behavior: `cellname filepath <c>` cuts the stored file path at its last `/` while it prints, so the printed form is the directory. The list form sets the Tcl result with `TCL_STATIC` before the `/` is put back, so `cellname list filepath <c>` returns the whole stored path: `input/lib/inv` for a cell loaded as `load input/lib/inv`, `/work/input/lib/leaf1.mag` for a child read through its `use` path.
+- Evidence: commands/CmdCD.c:1465-1500; CELL-PR-03, CELL-PR-12, SCRIPT-API-15 (golden-capture run 43173319299)
+- Options: replicate | compat (replicate with `magic-compat` ON, the directory with it OFF) | fix (the directory in both forms, as the help text says)
+- Recommendation: compat. Scripts written against Magic may split the result themselves; the intended result is the directory.
+- Resolution: compat (user decision 2026-11-12) — with `magic-compat` ON `cellname list filepath` returns the whole stored path, as Magic does; with it OFF it returns the directory, like the printed form in both settings (X-2 tier 2). `cmd-hierarchy` "Cellname and instance commands" and `scripting-api` "Result formats of commands used by scripts" updated. Approved 2026-11-12.

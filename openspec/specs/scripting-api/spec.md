@@ -82,7 +82,7 @@ Compatibility: exact
 #### Scenario: Shared library load
 - **WHEN** a script runs `load /opt/x/libfoo.so`
 - **THEN** the Tcl built-in result SHALL be returned, and the Magic `load` SHALL NOT run
-- **AND** in Hefesto that result SHALL be the sandbox error, because loading native extensions is denied (capability `hefesto-scripting`)
+- **AND** in Hefesto that result SHALL be an error, because loading native extensions is denied (capability `hefesto-scripting`): with `magic-compat` ON Tcl's own text for a file dlopen() cannot open, `couldn't load file "/opt/x/libfoo.so": /opt/x/libfoo.so: cannot open shared object file: No such file or directory` (the same for every path, so it reveals nothing about the file system), with it OFF the sandbox's message; the sandbox denial SHALL be recorded in both settings
 
 #### Scenario: Cell load with dotted directory
 - **WHEN** a script runs `load ../lib.v2/inv` and the built-in fails
@@ -404,7 +404,7 @@ The following commands SHALL return these results. "dist" means a value formatte
 - `cellname list topcells|allcells|modified` → list. `cellname list window` → the window's root cell name.
 - `cellname list flags <c>` → list of flag words (for example `not-found`).
 - `cellname list property <c> <key>` → value, or empty if undefined (no error message).
-- `cellname list writeable <c>` → `writeable`|`read-only`. `cellname list filepath <c>` → directory, or `default`.
+- `cellname list writeable <c>` → `writeable`|`read-only`. `cellname list filepath <c>` → with `magic-compat` ON the whole stored file path, as in Magic; with it OFF the directory; `default` when there is none (Q-CELL-45, resolution: compat).
 - `instance list celldef|exists|self <i>` → name, or empty if `<i>` is not found in the edit cell. A name containing `/` is resolved hierarchically.
 - `instance list children <i>` → list. `instance list orientation` → one of `0 90 180 270 0h 90h 180h 270h`, or `N E S W FN FE FS FW` with `-def`. `instance list abutment` → `{llx lly urx ury}` (dist; from FIXED_BBOX if present, else the bounding box, transformed to the parent).
 - `what -list` → three lists: `{paint-types} {labels} {cells}`. Each label is `{text type cellname-or-{}}`. Each cell is `{use-id def-name}`.

@@ -37,6 +37,9 @@ struct ReadSpiceOptions {
   /// Q-SCRIPT-32: Magic's continuation spacing (magic-compat ON) or the
   /// fixed one (OFF). The command sets it from the project's magic-compat.
   ContinuationMode continuation = ContinuationMode::magic;
+  /// Q-SCRIPT-47: Magic's `string map {[ < ] >]}` (magic-compat ON) turns
+  /// `D[0]` into `D<0>]`, so it never finds port `D<0>`; OFF maps `]` to `>`.
+  bool magic_bus_brackets = true;
 };
 
 /// A netlist found by "Netlist file resolution".

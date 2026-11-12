@@ -380,6 +380,13 @@ CommandResult cellname_filepath(const cu::Session& s, const CellnameArgs& c) {
     if (file.empty()) {
       return CommandResult::success(Value{std::string{"default"}});
     }
+    // Q-CELL-45: Magic cuts the path at its last '/' only while it prints;
+    // the Tcl result is set TCL_STATIC and sees the '/' put back, so
+    // `cellname list filepath` returns the whole stored path. magic-compat
+    // OFF returns the directory in both forms.
+    if (c.dolist && s.magic_compat) {
+      return CommandResult::success(Value{file});
+    }
     const std::size_t slash = file.rfind('/');
     return CommandResult::success(Value{slash == std::string::npos ? file : file.substr(0, slash)});
   }

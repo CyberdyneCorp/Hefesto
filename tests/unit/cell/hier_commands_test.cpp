@@ -537,6 +537,23 @@ TEST_CASE("cellname reports children, parents, instances, the window and cell da
   CHECK(last_message(s.run("cellname allcells x")).starts_with("Usage: cellname"));
 }
 
+TEST_CASE("cellname list filepath returns the stored path with magic-compat ON",
+          "[cap:cmd-hierarchy][req:Cellname and instance commands]") {
+  // Regression (golden CELL-PR-03, CELL-PR-12, SCRIPT-API-15; Q-CELL-45):
+  // Magic's list form returns the whole stored path, its printed form the
+  // directory; magic-compat OFF returns the directory in both.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    EditFixture f{compat};
+    Session& s = f.s;
+    s.ok("cellname filepath inv /lib");
+    CHECK(s.run("cellname filepath inv").value.to_string() == "/lib");
+    CHECK(s.run("cellname list filepath inv").value.to_string() == (compat ? "/lib/inv" : "/lib"));
+    s.ok("cellname filepath inv default");
+    CHECK(s.run("cellname list filepath inv").value.to_string() == "default");
+  }
+}
+
 TEST_CASE("instance orientation, position, lock and the selected instance",
           "[cap:cmd-hierarchy][req:Cellname and instance commands][golden:CMDEDIT-HIER-08]") {
   EditFixture f;
