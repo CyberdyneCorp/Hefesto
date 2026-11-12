@@ -12,12 +12,15 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include "../../script/pdk/pdk_fixture.hpp"
+#include "hefesto/diag/format.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/pcell/framework/tcl_list.hpp"
 #include "hefesto/pcell/native/registry.hpp"
 #include "hefesto/script/pdk/consent.hpp"
@@ -302,11 +305,20 @@ TEST_CASE("another PDK version runs the Tcl generator and says so",
   static_cast<void>(s->editor.script.helper_origins.record("::magic::spice2float", other, {}));
   s->eval("proc sky130::mos_draw args {set ::tcl_draw_ran 1; error {stop}}");
   s->eval("load top -silent");
-  const auto r = s->tcl().evaluate("magic::gencell sky130::sky130_fd_pr__nfet_01v8 inst w 1.0");
+  hefesto::diag::CollectingSink printed;
+  s->dispatcher->add_sink(printed);
+  static_cast<void>(s->tcl().evaluate("magic::gencell sky130::sky130_fd_pr__nfet_01v8 inst w 1.0"));
   CHECK(s->eval("info exists ::tcl_draw_ran") == "1");
-  static_cast<void>(r);
   // PCELL-NATIVE-001 was reported once for the device.
   CHECK(s->editor.script.gencell.native_fallbacks.contains("sky130::sky130_fd_pr__nfet_01v8"));
+  // Regression (golden DESKTOP-ALPHA-*, SCRIPT-PDK-07/09): the report is Hefesto-only, so the
+  // `--diagnostics=magic` console of `magic -dnull` does not print it.
+  const auto emitted = printed.snapshot();
+  const auto fallback = std::find_if(emitted.begin(), emitted.end(),
+                                     [](const hefesto::diag::Diagnostic& d) { return d.code == "PCELL-NATIVE-001"; });
+  REQUIRE(fallback != emitted.end());
+  CHECK(fallback->native_only);
+  CHECK_FALSE(hefesto::diag::shown_in(*fallback, hefesto::diag::Format::magic));
 }
 
 TEST_CASE("::hefesto::native_generators 0 runs the Tcl generators",

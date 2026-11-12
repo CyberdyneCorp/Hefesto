@@ -1,0 +1,89 @@
+
+Magic 8.3 revision 694 - Compiled on Thu Nov 12 02:55:09 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+tech 0 sky130A
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+Cell sky130_fd_sc_hd__inv_1 read from path /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag
+inv 0 sky130_fd_sc_hd__inv_1_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 5.000,  0.000), ( 5.000,  0.000)
+lambda:     0.00 x 0.00    ( 500.00,  0.00 ), ( 500.00,  0.00 )
+internal:      0 x 0       (  1000,  0    ), (  1000,  0    )
+Cell sky130_fd_sc_hd__nand2_1 read from path /work/input/pdk/sky130A/libs.ref/sky130_fd_sc_hd/mag
+nand 0 sky130_fd_sc_hd__nand2_1_0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 0.500   ( 0.000, -3.000), ( 4.000, -2.500)  2.000     
+lambda:   400.00 x 50.00   (  0.00, -300.00), ( 400.00, -250.00)  20000.00  
+internal:    800 x 100     (     0, -600  ), (   800, -500  )  80000     
+paint 0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000, -2.750), ( 0.000, -2.750)
+lambda:     0.00 x 0.00    (  0.00, -275.00), (  0.00, -275.00)
+internal:      0 x 0       (     0, -550  ), (     0, -550  )
+label 0 {}
+move 0 {1200 0 1476 544}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 20.000,  10.000), ( 20.000,  10.000)
+lambda:     0.00 x 0.00    ( 2000.00,  1000.00), ( 2000.00,  1000.00)
+internal:      0 x 0       (  4000,  2000 ), (  4000,  2000 )
+Diagnostic: Device bounding box e -0.36499999184161425 -0.6499999854713678 0.36499999184161425 0.6499999854713678 (um)
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__nfet_01v8_BXHNFL.
+mosfet 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 40.000,  10.000), ( 40.000,  10.000)
+lambda:     0.00 x 0.00    ( 4000.00,  1000.00), ( 4000.00,  1000.00)
+internal:      0 x 0       (  8000,  2000 ), (  8000,  2000 )
+Cell sky130_fd_pr__rf_npn_05v5_W1p00L1p00 read from path /work/input/pdk/sky130A/libs.ref/sky130_fd_pr/mag
+fixed 0 0
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 60.000,  10.000), ( 60.000,  10.000)
+lambda:     0.00 x 0.00    ( 6000.00,  1000.00), ( 6000.00,  1000.00)
+internal:      0 x 0       ( 12000,  2000 ), ( 12000,  2000 )
+Moving label "B" from psubdiff to psubdiffcont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+Moving label "R1" from poly to polycont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+Moving label "R2" from poly to polycont in cell sky130_fd_pr__res_generic_po_QJMCKK.
+tcl-only 0 0
+children 0 {sky130_fd_pr__nfet_01v8_BXHNFL sky130_fd_pr__res_generic_po_QJMCKK sky130_fd_pr__rf_npn_05v5_W1p00L1p00 sky130_fd_sc_hd__inv_1 sky130_fd_sc_hd__nand2_1}
+Loading DRC CIF style.
+drc 0 after#2
+why 0 {{Metal1 minimum area < 0.083um^2 (met1.6)} {{4129 2313 4187 2319} {4129 2279 4141 2313} {4129 2273 4187 2279} {4129 2119 4187 2125} {4129 2085 4141 2119} {4129 2079 4187 2085} {-29 114 29 120} {-29 80 -17 114} {-29 74 29 80} {-29 -80 29 -74} {-29 -114 -17 -80} {-29 -120 29 -114}}}
+count 0 0
+Writing 'sky130_fd_pr__nfet_01v8_BXHNFL'
+Writing 'sky130_fd_pr__res_generic_po_QJMCKK'
+Writing 'alpha'
+save 0 {}
+saved 0 {alpha.mag sky130_fd_pr__nfet_01v8_BXHNFL.mag sky130_fd_pr__res_generic_po_QJMCKK.mag}

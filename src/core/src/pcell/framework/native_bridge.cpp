@@ -93,7 +93,8 @@ const NativeGenerator* Toolkit::native(std::string_view library, std::string_vie
     return generator;
   }
   if (registry.has_other_version(*pdk, device) && state_->native_fallbacks.insert(device).second) {
-    ctx_->emit(diag::make(codes::kNativeFallback, "No native generator of " + device + " for " + pdk->to_string() +
+    // Hefesto-only: Magic has no native generators, so its console never shows this.
+    ctx_->emit(diag::make_native(codes::kNativeFallback, "No native generator of " + device + " for " + pdk->to_string() +
                                                        "; its Tcl generator runs."));
   }
   return nullptr;
