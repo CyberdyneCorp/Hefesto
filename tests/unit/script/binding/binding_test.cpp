@@ -67,6 +67,10 @@ TEST_CASE("Unqualified call", "[cap:scripting-api][req:Global import of magic co
   // are reachable only as magic::<name>, as in Magic.
   CHECK(f.value("info commands gencell") == "");
   CHECK(f.value("info commands ::magic::gencell") == "::magic::gencell");
+  // Regression (golden SCRIPT-RSP-01..06, SCRIPT-AUX-02): readspice.tcl and mazeroute.tcl
+  // define global procedures, so scripts call them unqualified.
+  CHECK(f.value("info commands ::readspice") == "::readspice");
+  CHECK(f.value("info commands ::mazeroute") == "::mazeroute");
 }
 
 TEST_CASE("Pre-existing global command wins", "[cap:scripting-api][req:Global import of magic commands]") {
