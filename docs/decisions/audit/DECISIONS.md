@@ -239,6 +239,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** always accept both forms | accept the third-word form only with `magic-compat` OFF | replicate.
 - **Recommendation:** always accept both forms. This is a superset and changes no output, so record `Resolution: fix`.
 - **Priority:** blocks M5.
+- **Status:** resolved (2026-11-13): option 2, accept the third-word form only with `magic-compat` OFF — reversing the recommendation, by the approved resolution of Q-MASK-413 (docs/decisions/open-questions/MASK.md). In Magic `cif unfracture yes` only queries, so setting the switch would change GDS polygon partitioning (X-2 tier 2). With `magic-compat` ON the third word only queries and Hefesto warns when it is yes/no; with it OFF `cif unfracture yes|no` sets the switch and the four-word form is still accepted (`mask-hierarchical-generation`, `cif-format-io`).
 
 ### D-21: X-2 for xschem quirks
 

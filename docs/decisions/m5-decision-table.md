@@ -1,6 +1,6 @@
 # M5 decision table: the 105 open questions blocking mask generation, GDS and CIF
 
-M5 ("Mask generation, GDS and CIF", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M5` lists 105: 104 in `docs/decisions/open-questions/MASK.md` and Q-DRC-13 in `DRC.md`. Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only) and, where a PDK is named, against the sky130A, gf180mcuD and ihp-sg13g2 tech files. Each entry now carries `Status: open (recommendation drafted 2026-11-13)` and a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`. **Nothing here is approved yet**, and no entry has a `Resolution:` line.
+M5 ("Mask generation, GDS and CIF", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M5` lists 105: 104 in `docs/decisions/open-questions/MASK.md` and Q-DRC-13 in `DRC.md`. Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only) and, where a PDK is named, against the sky130A, gf180mcuD and ihp-sg13g2 tech files. Each entry carries a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`. **All 105 were approved on 2026-11-13** as drafted, with no option changed. Each entry now carries `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line, and `python3 scripts/check_milestone_readiness.py --milestone M5` reports `M5: ready`.
 
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour or the quirk is an internal unit or order choice that byte identity needs, fix when the quirk loses data, is undefined behaviour, or has no Magic output to match.
 
@@ -14,7 +14,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-None remain. Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
+None remain (all 105 approved as drafted on 2026-11-13). Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
 
 ## Effort and scope notes
 
@@ -23,7 +23,7 @@ None remain. Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; 
 
 ## Decision table
 
-Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
+Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
 
 ### Output styles and operators
 
@@ -173,9 +173,9 @@ Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-
 
 ## Audit decision D-20
 
-**This draft reverses D-20's recommendation.** D-20 recommends "always accept both forms" (`Resolution: fix`); Q-MASK-413 recommends compat instead. The standing rule decides it: X-2 tier 2 puts parse-argument quirks that change results behind `magic-compat`, and accepting the third word changes GDS output, so the "superset, no output change" argument behind D-20 does not apply.
+**Resolved 2026-11-13 by the approved Q-MASK-413, reversing D-20's recommendation.** D-20 recommended "always accept both forms" (`Resolution: fix`); Q-MASK-413 recommends compat instead. The standing rule decides it: X-2 tier 2 puts parse-argument quirks that change results behind `magic-compat`, and accepting the third word changes GDS output, so the "superset, no output change" argument behind D-20 does not apply.
 
-D-20 (`docs/decisions/audit/DECISIONS.md`) is the same question as Q-MASK-413: should `cif unfracture yes` set the switch, when Magic reads the value only from the fourth word? D-20's draft was "always accept both forms (fix), output-neutral". That premise does not hold: in Magic `cif unfracture yes` leaves the switch unchanged, so setting it would change GDS polygon partitioning. The draft here is D-20's second option, **the third-word form only with `magic-compat` OFF** (compat), with a warning under ON when the ignored word is yes/no. Approving Q-MASK-413 resolves D-20; DECISIONS.md is updated with the other approved changes.
+D-20 (`docs/decisions/audit/DECISIONS.md`) is the same question as Q-MASK-413: should `cif unfracture yes` set the switch, when Magic reads the value only from the fourth word? D-20's draft was "always accept both forms (fix), output-neutral". That premise does not hold: in Magic `cif unfracture yes` leaves the switch unchanged, so setting it would change GDS polygon partitioning. The draft here is D-20's second option, **the third-word form only with `magic-compat` OFF** (compat), with a warning under ON when the ignored word is yes/no. Approving Q-MASK-413 resolved D-20; DECISIONS.md records it.
 
 ## Notable changes to the entries' original recommendations
 
@@ -223,7 +223,7 @@ Entries whose evidence was right but incomplete carry a `Verified 2026-11-13:` l
 
 ## Spec changes after approval
 
-Not edited yet. After approval each spec gets the text below, and the entry's `Resolution:` line.
+Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the M5 specs with the approved decisions"). Each spec got the text below, and each entry its `Resolution:` line.
 
 ### drc-cif-rules
 
