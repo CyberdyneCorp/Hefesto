@@ -153,6 +153,7 @@ MainWindow::~MainWindow() {
   save_panels();  // the panel layout as the user leaves it (not in a scripted capture)
   teardown_m4();
   teardown_m4b();
+  label_popup_.reset();  // closes it (if open) while the window is whole
   ctx_.core.editor().prompt = nullptr;
   ctx_.core.editor().cell_session.confirm_recovery = {};
   ctx_.core.set_command_listener({});

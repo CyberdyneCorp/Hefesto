@@ -166,6 +166,29 @@ TEST_CASE("Place device lists the PDK's device menus",
                                                   "magic::gencell sky130::sky130_fd_pr__pfet_01v8", false, false, true});
 }
 
+TEST_CASE("the Place device filter highlights a device row and Up/Down skip the headings",
+          "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
+  // Rows: 0 "Devices 1" heading, 1-3 devices, 4 "Devices 2" heading, 5 device.
+  const PlaceDeviceView view = place_device_view(sky130_menus(), "sky130A", false);
+  REQUIRE(view.entries.size() == 6);
+  CHECK(first_device_row(view.entries) == 1U);  // Return in the filter places it
+  CHECK(step_device_row(view.entries, 1U, 1) == 2U);
+  CHECK(step_device_row(view.entries, 3U, 1) == 5U);   // over the heading
+  CHECK(step_device_row(view.entries, 5U, 1) == 5U);   // stays at the end
+  CHECK(step_device_row(view.entries, 5U, -1) == 3U);  // back over the heading
+  CHECK(step_device_row(view.entries, 1U, -1) == 1U);  // the first heading is not a stop
+  CHECK(step_device_row(view.entries, std::nullopt, 1) == 1U);
+  CHECK(step_device_row(view.entries, 2U, 0) == 2U);
+  // A filter that keeps one menu: its first item; nothing matching: no row.
+  const PlaceDeviceView filtered = place_device_view(sky130_menus(), "sky130A", false, "pmos");
+  REQUIRE(filtered.entries.size() == 2);
+  CHECK(first_device_row(filtered.entries) == 1U);
+  const PlaceDeviceView none = place_device_view(sky130_menus(), "sky130A", false, "no such device");
+  CHECK(none.entries.empty());
+  CHECK_FALSE(first_device_row(none.entries).has_value());
+  CHECK_FALSE(step_device_row(none.entries, std::nullopt, 1).has_value());
+}
+
 TEST_CASE("Place device is disabled without PDK device scripts",
           "[cap:hefesto-app-ux][req:Functional parity with Magic's GUI managers]") {
   const PlaceDeviceView none = place_device_view({}, "minimum", false);

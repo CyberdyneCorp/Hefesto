@@ -215,6 +215,10 @@ class TextInput : public Widget {
   /// the widget), e.g. the warning outline of a corrected PCell field;
   /// nullopt goes back to the theme's.
   void set_outline(const std::optional<Rgba>& color);
+  /// A key pressed while the input has the focus, before the input's own
+  /// keys (Raven's widget event callback; as Table::on_key): returns true to
+  /// consume it (the Place device filter moves the list with Up and Down).
+  void on_key(std::function<bool(int key, std::uint8_t modifiers)> callback);
 
  private:
   explicit TextInput(WidgetId id);
@@ -467,10 +471,10 @@ struct MenuItem {
 };
 
 /// A Raven menu opened as a popover at a point of the window (command
-/// history and completion, undo history, layer row and orientation menus).
-/// Raven 0.2.2 has no anchored popover widget: its menus are the in-window
-/// popups that take the keyboard (arrows, Return, Escape) and that screen
-/// readers can press.
+/// history and completion, undo history, layer row and orientation menus):
+/// the in-window popups that take the keyboard (arrows, Return, Escape) and
+/// that screen readers can press. A popover with other content than items
+/// (a field, buttons) is a Popup.
 class PopupMenu {
  public:
   PopupMenu();
@@ -485,6 +489,34 @@ class PopupMenu {
   /// (logical units; Raven keeps it inside the window).
   void open(const Window& window, float x, float y);
   [[nodiscard]] std::size_t size() const noexcept;
+
+ private:
+  struct State;
+  std::unique_ptr<State> state_;
+};
+
+/// An anchored popover with any content (Raven's application popup,
+/// Rpopup_open, raven_dialogs.h, since Raven 0.2.3): `content` shows over the
+/// window at a point, without blocking it, and keeps its state between
+/// openings. A click outside it or Escape closes it (light dismiss) with
+/// result 0; close(result) closes it with another result. The content draws
+/// its own background (a Panel) and must not be in a widget tree; the Popup
+/// deletes it when destroyed.
+class Popup {
+ public:
+  explicit Popup(const Widget& content);
+  ~Popup();
+  Popup(const Popup&) = delete;
+  Popup& operator=(const Popup&) = delete;
+
+  /// `callback(result)` each time the popup closes (0: dismissed).
+  void on_closed(std::function<void(int)> callback);
+  /// Shows the content with its top-left corner at window point (x, y)
+  /// (logical units; Raven keeps it inside the window). No-op while open.
+  void open(const Window& window, float x, float y);
+  /// Closes it with `result` (on_closed runs); no-op while closed.
+  void close(int result);
+  [[nodiscard]] bool is_open() const;
 
  private:
   struct State;

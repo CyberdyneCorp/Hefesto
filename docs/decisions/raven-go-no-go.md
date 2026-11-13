@@ -1,7 +1,7 @@
 # Raven go/no-go (M0)
 
 - **Status:** decided (2026-11-10): **GO**, final for M2 (see "Decision (2026-11-10)" below). The provisional recommendation of 2026-11-07 and the evidence gathered since are kept below. Logged as a follow-up of P-11 in `docs/decisions/product.md`.
-- **Raven under evaluation:** v0.2.2, commit `4a05d6f11c79e5a6eae77d7fe26f702f5fea4331`, the pin in `cmake/Dependencies.cmake`.
+- **Raven under evaluation:** v0.2.2, commit `4a05d6f11c79e5a6eae77d7fe26f702f5fea4331`. The pin in `cmake/Dependencies.cmake` is now v0.2.3, commit `019ab35d039897ef427dee89092c5602b99f5abf` (2026-11-13; see "Pin bump to v0.2.3" below).
 - **Criteria:** the five in `docs/roadmap.md` (M0 exit criteria), with the pass conditions of `openspec/changes/m0-foundations/design.md` D9. All five must hold for "go".
 - **Scope of a no-go:** only the desktop shell (`src/shell/desktop/`) would be replaced. The core, the CLI and the Vulkan renderer (`src/render/vulkan/`) do not depend on Raven.
 - **Evidence:** measurements in `docs/spikes/canvas-spike.md` and the raw JSON in `docs/spikes/results/`. Code: `src/shell/desktop/` (the Raven wrapper is `src/raven_ui.cpp`), `src/render/vulkan/` and `bench/canvas/`.
@@ -154,6 +154,10 @@ The Cocoa backend has NSAccessibility code (`src/platform/cocoa/cocoa_platform.m
   - 56 of the 57 functions used exist in v0.2.0 with the same declaration. `Rwidget_set_font` was added after v0.2.0.
   - `REvent` gained a trailing field, `wheel_precise`, which the shell uses. This is source-compatible. It changes the structure's size, which matters only for a shared Raven library; Hefesto links Raven statically.
   - `RAVEN_API_VERSION` went from "0.1" to "0.2". About 156 `RAVEN_API` declarations were added.
+- **v0.2.2 → v0.2.3** (`4a05d6f` → `019ab35`, 2026-11-06 → 2026-11-12, 100 commits), the same comparison of `include/raven/*.h`:
+  - No `RAVEN_API` declaration was removed or changed; 81 were added (installer, Plot widget, tray title, `Rwindow_focus`, notification clicks, the application popup).
+  - Enumerations gained trailing values only (`R_BACKEND_WEBGL`, `R_WINDOW_SYSTEM_EMSCRIPTEN`, and `R_WIDGET_PLOT` before the `R_WIDGET_LAST_` sentinel); no value Hefesto uses moved. No structure Hefesto reads changed. `RAVEN_API_VERSION` stays "0.2".
+  - Hefesto needed no caller change for the bump; it now uses `Rpopup_open`, `Rpopup_close` and `Rpopup_is_open` (`ui::Popup`) and calls `Rwidget_set_event_callback` on text inputs too (`ui::TextInput::on_key`).
 - Raven's README still says that the public API is subject to change before 1.0.
 
 **Judgment: acceptable.** The exact-commit pin, the one-file wrapper and the symbol list above bound the cost of an upgrade to editing `raven_ui.cpp`. Keep this list current, and repeat the diff at each upgrade (P-11: re-evaluate at each milestone gate).
@@ -309,7 +313,7 @@ No new upstream issue. What the on-screen work found at the pin (4a05d6f):
 
 - *Drag-to-dock and press-and-hold are possible in Raven*, so they are not Raven gaps: a mouse-down reaches the application through the window event hook (`Rwindow_set_event_hook`, `R_EVENT_MOUSE_DOWN` with the widget under the pointer), and an in-application drag through `Rdrag_begin` plus `Rwidget_set_drop_callback` (`R_DROP_ENTER/MOVE/LEAVE/DROPPED` with window coordinates; Escape cancels). Hefesto's wrapper (`raven_ui.hpp`) does not expose them yet; that is shell work (m4-scripting task 11.2 and 11.5 open items), not an upstream request.
 - *Floating panels inside the main window* are drawn as cards in the canvas overlay (`ui::Overlay`, placed with `place_top_right`): issue 6 still stands for a dock area that does it natively.
-- *The label popover* is a card in the canvas overlay next to the box, and *the key-binding sheet* a card that holds the keyboard while open: issue 4 (anchored popover) still stands; a modal sheet with custom content is covered by the same request (an anchored or window-modal popover that can host any widgets).
+- *The label popover* is a card in the canvas overlay next to the box, and *the key-binding sheet* a card that holds the keyboard while open: issue 4 (anchored popover) still stands (the label popover became a Raven popup with the v0.2.3 pin, 2026-11-13); a modal sheet with custom content is covered by the same request (an anchored or window-modal popover that can host any widgets).
 
 ### SHELL closing round (2026-11-11)
 
@@ -341,14 +345,14 @@ Drafted by the SCREENS polish pass from the board differences of the M4 captures
 
 ## Filed upstream (2026-11-12)
 
-The user filed the drafts above in https://github.com/oscar-soirey/Raven/issues on 2026-11-12, after checking each one against Raven HEAD v0.2.3 (`019ab35`). Hefesto still pins v0.2.2 (`4a05d6f`, `cmake/Dependencies.cmake`); the pin was not bumped. The Raven calls named below as available were checked in Raven's headers at the pin (`include/raven/*.h` at `4a05d6f`).
+The user filed the drafts above in https://github.com/oscar-soirey/Raven/issues on 2026-11-12, after checking each one against Raven HEAD v0.2.3 (`019ab35`). At the time Hefesto pinned v0.2.2 (`4a05d6f`); the Raven calls named below as available were checked in Raven's headers at that pin (`include/raven/*.h` at `4a05d6f`). The pin is now v0.2.3 (`019ab35`, see "Pin bump to v0.2.3" below), which makes draft 4 and the filter half of draft 14 usable.
 
 | Draft | Upstream | Note |
 |---|---|---|
 | 1 Cocoa function keys insert U+F7xx | [#89](https://github.com/oscar-soirey/Raven/issues/89) | Hefesto's `TextKeyFilter` workaround stays until a fixed Raven is pinned |
 | 2 Cocoa held key does not repeat | [#90](https://github.com/oscar-soirey/Raven/issues/90) | same workaround |
 | 3 accessible press and checked state for custom widgets | [#91](https://github.com/oscar-soirey/Raven/issues/91) | also takes the screen-reader part of draft 13 (a checked state for the justification grid) |
-| 4 anchored popover | not filed | fixed at Raven HEAD by PR #81 (`Rpopup_open` / `Rpopup_close` / `Rpopup_is_open`, `raven_dialogs.h`); usable after a future pin bump. The filter-field half of draft 14 is the same |
+| 4 anchored popover | not filed | fixed by Raven PR #81 (`Rpopup_open` / `Rpopup_close` / `Rpopup_is_open`, `raven_dialogs.h`), in the v0.2.3 pin: **used** since 2026-11-13 for the label popover (`ui::Popup`). The filter-field half of draft 14 is the same |
 | 5 `Rslot_set_fill(child, 0)` documentation | not filed | a docs-only note |
 | 6 float a dock panel inside the window | [#92](https://github.com/oscar-soirey/Raven/issues/92) | |
 | 7 owned utility window | [#93](https://github.com/oscar-soirey/Raven/issues/93) | |
@@ -358,7 +362,7 @@ The user filed the drafts above in https://github.com/oscar-soirey/Raven/issues 
 | 11 Table per-cell text color, Left/Right, multi-select | [#97](https://github.com/oscar-soirey/Raven/issues/97) | filed for G-3 (multi-select) and G-4 (per-cell color) only; G-1 was not a Raven gap, see below |
 | 12 text input outline state | not filed | possible at the pin, see below |
 | 13 button selected in a group | not filed | the look is possible at the pin, see below; the screen-reader checked state is in [#91](https://github.com/oscar-soirey/Raven/issues/91) |
-| 14 popup filter field and key text | split | filter field: PR #81 (draft 4); key text: [#94](https://github.com/oscar-soirey/Raven/issues/94) (draft 8) |
+| 14 popup filter field and key text | split | filter field: PR #81 (draft 4), **used** since the v0.2.3 pin (the Place device popover has its filter field); key text: [#94](https://github.com/oscar-soirey/Raven/issues/94) (draft 8), still open |
 
 **Draft 8, repro corrected.** The draft's repro (`Rmenu_item_set_shortcut(item, R_KEY_Z, 0)` on the native macOS bar, then `z` typed in a `TextInput` fires the item) was wrong: `rvn_textedit_key` consumes printable keys, and the Cocoa native menu gives an unmodified printable key no key equivalent, so typing `z` in a TextInput does not fire the item. The real gaps, as filed: the macOS native bar cannot show `Z`; the in-window bar fires the item when no widget consumed the key (so a binding would take the key from the canvas's own macros); and the shortcut is one key plus modifiers only, not free text.
 
@@ -369,6 +373,20 @@ The user filed the drafts above in https://github.com/oscar-soirey/Raven/issues 
 - *Draft 13 (selected button in a group), the look.* `Rbutton_set_style(b, R_BUTTON_PRIMARY)` (or `Rwidget_set_color`); the text helper's justification grid now marks the chosen square in the primary (ember) style (`ui::Button::set_primary`, `TextHelperView::justification_marks`). Only the screen-reader checked state is missing ([#91](https://github.com/oscar-soirey/Raven/issues/91)); until then the button's accessible name ends in ", chosen".
 
 These closures add two Raven calls to `raven_ui.cpp`, `Rwidget_set_color` and `Rwidget_clear_color` (both declared in `raven_widget.h` at the pin); `Rwidget_set_event_callback` is now also set on Tables.
+
+
+## Pin bump to v0.2.3 (2026-11-13)
+
+`cmake/Dependencies.cmake` pins Raven v0.2.3, commit `019ab35d039897ef427dee89092c5602b99f5abf` (was v0.2.2, `4a05d6f`). The header diff is in "API stability risk" above: additions only, no caller change. Built on macOS 27 arm64 (Apple M3 Pro, AppleClang 21, MoltenVK, preset `ci-macos-desktop`, `-Werror`) and the whole CTest suite run; Linux was left to CI.
+
+What the bump closes:
+
+- **Draft 4 (anchored popover).** `ui::Popup` wraps `Rpopup_open` / `Rpopup_close` / `Rpopup_is_open`. The label popover is no longer a card in the canvas overlay: it is a Raven popup at `label_popover_point()`, its text field focused; Escape, Cancel or a click outside it closes it without a command (Raven's light dismiss; the click is not passed on to the canvas), Return or Add label issues `label …`.
+- **Draft 14, filter half.** The Place device popover is a Raven popup with a title, a filter field and the device list (a one-column Table) instead of a Raven menu: typing filters (`place_device_view`), Up/Down in the field move the highlighted device over the headings (`step_device_row`), Return places it, a double click or Return in the list places that row (Raven's Table activation; not driven in the checks below), Escape or a click outside closes it.
+
+Checked in the app with `--input` (captures `docs/images/app/m4-carry-label-popover.png`, `docs/images/app/m4-place-device-filter.png`): the label popover opens focused, Return issues `label VPWR`, a click outside closes it with nothing issued and the box unchanged; Place device filters on `mos`, Down moves to `pmos (MOSFET)`, Return runs its script, Escape closes it with nothing run and reopening shows an empty filter and every device. No Raven bug was found.
+
+Still open: the ^P key text in the Place device popover ([#94](https://github.com/oscar-soirey/Raven/issues/94)); the list's headings are plain rows (no non-selectable header row in a Raven Table: choosing one does nothing); the key-binding sheet stays a card in the canvas overlay (it could move to a popup, but it is a modal sheet, not a light-dismiss popover).
 
 ## Checklist to close the decision
 

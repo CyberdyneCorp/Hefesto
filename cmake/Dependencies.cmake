@@ -16,7 +16,7 @@
 #   hefesto::curl                   libcurl 8.23.0, static, HTTPS with the system OpenSSL
 #                                   (Linux only; macOS uses URLSession, hefesto-licensing D-13)
 #   Catch2::Catch2WithMain          Catch2 v3.7.1             (HEFESTO_BUILD_TESTS)
-#   raven::raven                    Raven v0.2.2              (HEFESTO_BUILD_DESKTOP; desktop shell only)
+#   raven::raven                    Raven v0.2.3              (HEFESTO_BUILD_DESKTOP; desktop shell only)
 #
 # When adding a dependency, also add its notice to THIRD_PARTY_NOTICES.md
 # (capability hefesto-licensing).
@@ -72,10 +72,10 @@ FetchContent_Declare(Catch2
   GIT_TAG fa43b77429ba76c462b1898d6cd2f2d7a9416b14 # v3.7.1
   GIT_PROGRESS FALSE)
 
-# --- Raven v0.2.2 (Apache-2.0), desktop shell only ------------------------
+# --- Raven v0.2.3 (Apache-2.0), desktop shell only ------------------------
 FetchContent_Declare(raven
   GIT_REPOSITORY https://github.com/oscar-soirey/Raven.git
-  GIT_TAG 4a05d6f11c79e5a6eae77d7fe26f702f5fea4331 # v0.2.2
+  GIT_TAG 019ab35d039897ef427dee89092c5602b99f5abf # v0.2.3
   GIT_PROGRESS FALSE)
 
 FetchContent_MakeAvailable(hefesto_zlib hefesto_json hefesto_zstd)

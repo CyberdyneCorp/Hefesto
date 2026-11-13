@@ -215,7 +215,11 @@ class MainWindow {
   void drain_script_events();
   [[nodiscard]] bool scripts_declined() const;
   [[nodiscard]] PlaceDeviceView place_device_state(std::string_view filter = {}) const;
+  void build_place_device();  // the popover: filter field over the device list
   void open_place_device();
+  void filter_place_device(std::string_view filter);
+  [[nodiscard]] bool place_filter_key(int key, std::uint8_t modifiers);
+  void place_device_row(std::optional<std::size_t> row);
   void refresh_declined();
   void review_scripts();
   /// The PDK whose scripts the window's layout lacks (nullopt: none).
@@ -284,6 +288,7 @@ class MainWindow {
   void open_label_popover(const db::Rect& box);
   void commit_label();
   void close_label_popover();
+  void label_popover_closed();  // the popup closed (Escape, a click outside, Cancel, Add label)
   bool tool_shortcut(int key, std::uint8_t modifiers);  // Escape: the popover, `unmeasure`
   void note_tool_command(const cmd::Invocation& invocation);
   void refresh_tools();  // between frames
@@ -430,8 +435,16 @@ class MainWindow {
   bool menu_native_ = false;  // the system shows the bar (macOS)
   ScriptEventCollector script_events_;
   std::unique_ptr<PCellDialogWindow> pcell_dialog_;
-  ui::PopupMenu place_menu_;
-  std::vector<PlaceDeviceEntry> place_entries_;
+  // The Place device popover (a Raven popup, ui::Popup): title, filter, list.
+  std::optional<ui::Panel> place_card_;
+  std::optional<ui::Panel> place_inner_;
+  ui::Box place_box_ = ui::Box::vertical();
+  std::optional<ui::Label> place_title_;
+  std::unique_ptr<ui::TextInput> place_filter_;
+  std::unique_ptr<ui::Table> place_list_;
+  std::unique_ptr<ui::Popup> place_popup_;
+  std::vector<PlaceDeviceEntry> place_entries_;  // the list's rows (filtered)
+  std::optional<std::size_t> place_row_;         // the highlighted row (Return places it)
   std::string recent_device_;  // the last Place device script (listed last)
   DesktopConsentHost* consent_host_ = nullptr;
   ui::Box declined_bar_ = ui::Box::horizontal();  // banner over the canvas while scripts are declined
@@ -469,7 +482,7 @@ class MainWindow {
   LabelPopover label_popover_;
   MeasureEscape measure_escape_;
   bool measure_armed_ = false;  // a Measure sweep's `measure` ran: arm measure_escape_ after its line
-  std::optional<ui::Panel> label_card_;  // the popover card in the canvas overlay
+  std::optional<ui::Panel> label_card_;  // the popover's content (label_popup_)
   std::optional<ui::Panel> label_inner_;
   ui::Box label_box_ = ui::Box::vertical();
   std::optional<ui::Label> label_title_;
@@ -478,6 +491,7 @@ class MainWindow {
   std::unique_ptr<ui::TextInput> label_layer_;
   std::unique_ptr<ui::Button> label_cancel_;
   std::unique_ptr<ui::Button> label_ok_;
+  std::unique_ptr<ui::Popup> label_popup_;  // the card as a Raven popup at the box
 
   // CARRY key-binding sheet (key_bindings_view.cpp).
   std::optional<KeyBindingSheet> key_sheet_;

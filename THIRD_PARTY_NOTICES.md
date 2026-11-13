@@ -15,7 +15,7 @@ that every dependency declared there is listed here with its pin.
 |---|---|---|---|---|
 | zlib | v1.3.1 | Zlib | all packages (core) | https://github.com/madler/zlib |
 | nlohmann/json | v3.11.3 | MIT | all packages (core, header-only) | https://github.com/nlohmann/json |
-| Raven | v0.2.2, commit `4a05d6f11c79e5a6eae77d7fe26f702f5fea4331` | Apache-2.0 | desktop (Linux, macOS) | https://github.com/oscar-soirey/Raven |
+| Raven | v0.2.3, commit `019ab35d039897ef427dee89092c5602b99f5abf` | Apache-2.0 | desktop (Linux, macOS) | https://github.com/oscar-soirey/Raven |
 | ↳ stb_truetype 1.26, stb_image 2.30 (in Raven) | as bundled by Raven | MIT or Unlicense (public domain) | desktop | https://github.com/nothings/stb |
 | ↳ nanosvg, nanosvgrast (in Raven) | as bundled by Raven | Zlib | desktop | https://github.com/memononen/nanosvg |
 | ↳ Roboto Regular, subset (in Raven) | as bundled by Raven | Apache-2.0 | desktop | https://github.com/googlefonts/roboto |

@@ -8,7 +8,8 @@
 // "Parameter dialog structure", "Toolkit menu hooks").
 //
 // Place device is a rail button that opens a popover of the PDK's
-// device-menu items (pcell::ToolkitMenus, grouped by menu, with a filter).
+// device-menu items (pcell::ToolkitMenus, grouped by menu) under a filter
+// field.
 // The dialog renders pcell::DialogModel (editor::EditorState::script.
 // gencell.dialog), which the device's `_dialog` procedure filled through
 // the builder API. Every action is a Tcl script run in the project's
@@ -73,6 +74,17 @@ struct PlaceDeviceView {
 [[nodiscard]] PlaceDeviceView place_device_view(const pcell::ToolkitMenus& menus, std::string_view pdk_name,
                                                 bool scripts_declined, std::string_view filter = {},
                                                 std::string_view recent = {});
+
+/// The row the popover's list highlights after a filter change, which
+/// Return in the filter field places: the first device row (not a
+/// heading). std::nullopt when nothing matches.
+[[nodiscard]] std::optional<std::size_t> first_device_row(const std::vector<PlaceDeviceEntry>& entries);
+
+/// Down (`step` > 0) or Up (`step` < 0) in the filter field: the next
+/// device row after (before) `row`, skipping the headings; `row` itself at
+/// either end. With no row highlighted, the first device row.
+[[nodiscard]] std::optional<std::size_t> step_device_row(const std::vector<PlaceDeviceEntry>& entries,
+                                                         std::optional<std::size_t> row, int step);
 
 // --- parameter dialog ---------------------------------------------------------------
 

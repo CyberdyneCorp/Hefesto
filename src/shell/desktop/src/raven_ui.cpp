@@ -588,6 +588,12 @@ void Tabs::show(int index) {
 struct TextInput::Callbacks {
   std::function<void(std::string)> change;
   std::function<void(std::string)> commit;
+  std::function<bool(int, std::uint8_t)> key;
+  static int event(Rid /*input*/, const REvent* e, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (e->type != R_EVENT_KEY_DOWN || !cb->key) return kFalse;
+    return cb->key(static_cast<int>(e->key), static_cast<std::uint8_t>(e->modifiers)) ? kTrue : kFalse;
+  }
   static void on_change(Rid /*input*/, const char* text, void* self) {
     auto* cb = static_cast<Callbacks*>(self);
     if (cb->change) cb->change(text != nullptr ? text : "");
@@ -606,6 +612,7 @@ std::unique_ptr<TextInput> TextInput::create(std::string_view placeholder) {
   Rtext_input_set_placeholder(input->id_, str(placeholder).c_str());
   Rtext_input_set_changed_callback(input->id_, &Callbacks::on_change, input->callbacks_.get());
   Rtext_input_set_committed_callback(input->id_, &Callbacks::on_commit, input->callbacks_.get());
+  Rwidget_set_event_callback(input->id_, &Callbacks::event, input->callbacks_.get());
   return input;
 }
 
@@ -615,6 +622,10 @@ void TextInput::on_commit(std::function<void(std::string)> callback) {
 
 void TextInput::on_change(std::function<void(std::string)> callback) {
   callbacks_->change = std::move(callback);
+}
+
+void TextInput::on_key(std::function<bool(int, std::uint8_t)> callback) {
+  callbacks_->key = std::move(callback);
 }
 
 // --- Painter -------------------------------------------------------------------
@@ -1151,6 +1162,44 @@ void PopupMenu::open(const Window& window, float x, float y) {
 
 std::size_t PopupMenu::size() const noexcept {
   return state_->slots.size();
+}
+
+// --- Popup -------------------------------------------------------------------
+
+struct Popup::State {
+  Rid content = kNoWidget;
+  std::function<void(int)> closed;
+  static void on_closed(Rid /*content*/, int result, void* self) {
+    auto* state = static_cast<State*>(self);
+    if (state->closed) state->closed(result);
+  }
+};
+
+Popup::Popup(const Widget& content) : state_(std::make_unique<State>()) {
+  state_->content = content.id();
+}
+
+Popup::~Popup() {
+  // No callback into an owner that is going away; then the content goes.
+  state_->closed = nullptr;
+  if (Rwidget_is_valid(state_->content) != kFalse) Rwidget_destroy(state_->content);
+}
+
+void Popup::on_closed(std::function<void(int)> callback) {
+  state_->closed = std::move(callback);
+}
+
+void Popup::open(const Window& window, float x, float y) {
+  if (is_open()) return;
+  Rpopup_open(window.id(), state_->content, x, y, &State::on_closed, state_.get());
+}
+
+void Popup::close(int result) {
+  if (is_open()) Rpopup_close(state_->content, result);
+}
+
+bool Popup::is_open() const {
+  return Rwidget_is_valid(state_->content) != kFalse && Rpopup_is_open(state_->content) != kFalse;
 }
 
 // --- Window ----------------------------------------------------------------

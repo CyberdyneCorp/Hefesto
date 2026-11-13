@@ -57,12 +57,12 @@ Compatibility: native
 ### Requirement: Desktop Paint, Label and Measure tools
 On Linux and macOS, the tool rail's Paint, Label and Measure buttons SHALL be modes of the box tool: choosing one issues `tool box` when another tool is current, and the rail shows the mode's button as the active tool. In a mode, the left button SHALL sweep an area instead of running the box tool's left-button macro; the other buttons and every key SHALL keep the box tool's bindings of capability `ui-tools-and-input`. While the button is held, the canvas SHALL draw the swept area, snapped to the tool grid, as a dashed preview. On release the desktop SHALL issue `box values X0i Y0i X1i Y1i` for the swept area (internal units), followed in the same command line by:
 - **Paint:** `paint L`, where L is the palette's paint layer (`palette paint L`); with Option (Alt) held at release, `erase L` instead. Without a paint layer, only the box is set.
-- **Label:** nothing; the command bar opens prefilled with `label `, so that the user types the text (and optionally the position and layer) and Enter issues `label TEXT …` on the new box. A click without a drag gives a zero-size box at the point.
+- **Label:** nothing; a popover anchored beside the new box (right of it, flipped to its left at the canvas edge) opens with its text field focused, plus a position choice and a layer field (enabled with a position). Enter or Add label issues `label TEXT`, `label TEXT POS` or `label TEXT POS LAYER` on the new box and closes the popover; with an empty text nothing is issued and it stays open. Escape, Cancel or a click outside the popover closes it and issues nothing. A click without a drag gives a zero-size box at the point.
 - **Measure:** `measure` (capability `ui-box-stack-and-measure`).
 
 Escape while the button is held SHALL cancel the sweep and issue nothing. Every command issued SHALL be logged like a typed command.
 
-Deferred to M4 (user decision 2026-11-10): the label text entry as a popover on the canvas (the board's design; Raven 0.2.2 has no anchored popover), Escape after a measure issuing `unmeasure` (until then `unmeasure` is typed or bound), and the Paint button disabled with the tooltip "Choose a layer to paint" while no paint layer is set.
+Escape right after a Measure sweep, with no command run since, SHALL issue `unmeasure`. The Paint button SHALL be disabled, with the tooltip "Choose a layer to paint", while no paint layer is set. (Deferred from M2 to M4 by user decision 2026-11-10; the label popover is a Raven application popup, `Rpopup_open`, since the Raven v0.2.3 pin.)
 
 Compatibility: native
 
@@ -86,9 +86,14 @@ Compatibility: native
 #### Scenario: Label tool
 - **GIVEN** the Label tool is active
 - **WHEN** the user drags from (1,1) to (3,3) and releases
-- **THEN** the box SHALL be (1,1)–(3,3) and the command bar SHALL open with the text `label `
+- **THEN** the box SHALL be (1,1)–(3,3) and the label popover SHALL open beside it with the text field focused
 - **WHEN** the user types `A` and presses Enter
-- **THEN** `label A` SHALL be issued, placing label A on that box
+- **THEN** `label A` SHALL be issued, placing label A on that box, and the popover SHALL close
+
+#### Scenario: Label popover dismissed
+- **GIVEN** the label popover is open after a Label sweep and `B` is typed in it
+- **WHEN** the user clicks outside the popover, or presses Escape
+- **THEN** the popover SHALL close, no `label` command SHALL be issued and the box SHALL stay
 
 #### Scenario: Measure tool
 - **GIVEN** the Measure tool is active

@@ -11,9 +11,9 @@
 //   - the Paint button disabled, with the tooltip "Choose a layer to paint",
 //     while the layer palette has no paint layer.
 //
-// Raven 0.2.2 has no anchored popover widget (docs/decisions/raven-go-no-go.md,
-// "anchored popover"); the shell draws this one as a floating card in the
-// canvas overlay at label_popover_point().
+// The shell shows it as a Raven application popup (Rpopup_open, Raven
+// v0.2.3; docs/decisions/raven-go-no-go.md, draft 4) at label_popover_point():
+// Escape, Cancel or a click outside closes it without a command.
 //
 // Toolkit-independent; unit-tested in tests/unit/shell/label_tool_test.cpp.
 // Owner: CARRY (openspec/changes/m4-scripting/design.md D2).
