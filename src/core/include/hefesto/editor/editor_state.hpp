@@ -29,6 +29,7 @@
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/drc/session.hpp"
+#include "hefesto/mask/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/select/selection.hpp"
@@ -195,6 +196,14 @@ struct EditorState {
   // INTEGRATION: the front end's file picker (platform/file_picker.hpp; not
   // owned). nullptr: `promptload`/`promptsave` act as a cancelled dialog.
   platform::FilePicker* file_picker = nullptr;
+
+  // ---- M5 (openspec/changes/m5-mask-gds-cif/design.md D4) ----
+
+  // STYLES / INPUT / GDSR / GDSW / CIF / INTEGRATION: the mask session
+  // (mask/session.hpp; each member's owner is named there): the output and
+  // input styles, the `gds` and `cif` settings, the read warnings and the
+  // shared `random` generator.
+  mask::MaskSession mask;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed

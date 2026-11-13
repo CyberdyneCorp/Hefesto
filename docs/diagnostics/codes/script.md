@@ -96,8 +96,10 @@ through the dispatcher's sinks; Tcl errors of bound commands carry
   value changed after its first expansion (scripting-api "Script variables
   read by the engine", Q-SCRIPT-5). Printed once per name; with
   magic-compat ON the first value is still used, with it OFF the new one.
-- `SCRIPT-BIND-002` (error): a `cif` option other than `scale`, `lambda`,
-  `istyle`, `ostyle` and `help` (the CIF reader and writer arrive in M5).
+- `SCRIPT-BIND-002` (error): retired in M5. It was a `cif` option other
+  than `scale`, `lambda`, `istyle`, `ostyle` and `help`; the M5 scaffold
+  moved `cif` to `src/core/src/cif/command/`, where an option not yet
+  implemented answers `CORE-NOTIMPL-005`.
 - `SCRIPT-BIND-003`, `SCRIPT-BIND-004`, `SCRIPT-BIND-005` (info): the
   startup helpers `netgen`, `xcircuit` and `irsim` (decision D-34): Hefesto
   sources no package; `netgen` names the built-in `lvs` command.
@@ -189,7 +191,7 @@ fails when the two disagree.
 | Code | Default severity | Meaning |
 |---|---|---|
 | `SCRIPT-BIND-001` | warning | A path variable's value changed after its first use; the expansion keeps the first value (magic-compat ON) or uses the new one (OFF). |
-| `SCRIPT-BIND-002` | error | This `cif` option needs the CIF reader and writer, which arrive in M5. |
+| `SCRIPT-BIND-002` | error | Retired in M5, never reused. Was: a `cif` option that needed the CIF reader and writer (the M5 scaffold moved `cif` to cif/command/; unimplemented options answer CORE-NOTIMPL-005). |
 | `SCRIPT-BIND-003` | info | `netgen` is not available; Hefesto's built-in `lvs` command compares netlists. |
 | `SCRIPT-BIND-004` | info | `xcircuit` is not available in Hefesto. |
 | `SCRIPT-BIND-005` | info | `irsim` is not available on this host or in this milestone. |

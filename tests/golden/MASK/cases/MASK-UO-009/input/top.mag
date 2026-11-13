@@ -1,0 +1,52 @@
+magic
+tech useorder
+timestamp 100
+use cb  cb_5
+timestamp 100
+transform 1 0 100 0 1 100
+box 0 0 6 3
+use ca  ca_0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use cb  cb_9
+timestamp 100
+transform 1 0 60 0 1 80
+box 0 0 6 3
+use ca  ca_2
+timestamp 100
+transform 1 0 40 0 1 40
+box 0 0 4 4
+use cb  cb_11
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 6 3
+use cb  cb_7
+timestamp 100
+transform 1 0 20 0 1 40
+box 0 0 6 3
+use cb  cb_1
+timestamp 100
+transform 1 0 20 0 1 20
+box 0 0 6 3
+use ca  ca_10
+timestamp 100
+transform 1 0 80 0 1 100
+box 0 0 4 4
+use ca  ca_4
+timestamp 100
+transform 1 0 80 0 1 80
+box 0 0 4 4
+use ca  ca_8
+timestamp 100
+transform 1 0 40 0 1 60
+box 0 0 4 4
+use cb  cb_3
+timestamp 100
+transform 1 0 60 0 1 60
+box 0 0 6 3
+use ca  ca_6
+timestamp 100
+transform 1 0 0 0 1 20
+box 0 0 4 4
+<< end >>

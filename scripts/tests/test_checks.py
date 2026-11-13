@@ -174,6 +174,29 @@ class RequirementCoverageTest(unittest.TestCase):
             code, _ = run_quiet(coverage.main, ["--root", str(root), "--milestone", "M0", "--fail-under", "50"])
             self.assertEqual(code, 1)
 
+    def test_capability_filter_reports_only_the_named_capabilities(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.make_repo(root)
+            write(root, "openspec/specs/cap-c/spec.md", SPEC)
+            code, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json", "--capability", "cap-b"])
+            self.assertEqual(code, 0)
+            data = json.loads(text)
+            self.assertEqual({u["capability"] for u in data["uncovered"]}, {"cap-b"})
+            self.assertEqual(data["total"], 2)
+            self.assertIn("capabilities cap-b", data["scope"])
+            # Repeatable.
+            _, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json",
+                                                "--capability", "cap-a", "--capability", "cap-c"])
+            self.assertEqual({u["capability"] for u in json.loads(text)["uncovered"]}, {"cap-a", "cap-c"})
+            # Within the selected milestones only.
+            _, text = run_quiet(coverage.main, ["--root", str(root), "--format", "json", "--milestone", "M0",
+                                                "--capability", "cap-a", "--capability", "cap-b"])
+            self.assertEqual({u["capability"] for u in json.loads(text)["uncovered"]}, {"cap-a"})
+            # An unknown capability is an error.
+            with self.assertRaises(SystemExit):
+                run_quiet(coverage.main, ["--root", str(root), "--capability", "nope"])
+
 
 class LicenseHeaderTest(unittest.TestCase):
     def test_header_detection(self):

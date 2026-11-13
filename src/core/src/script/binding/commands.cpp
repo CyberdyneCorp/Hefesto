@@ -26,14 +26,12 @@ cmd::CommandResult tag_handler(cmd::CommandContext& ctx, const cmd::Invocation& 
 bool register_binding_commands(cmd::CommandRegistry& registry) {
   // `tag` is a Tcl command of tclmagic.c (AddCommandTag), outside Magic's
   // window command tables: exact-name table cmd::kScriptClient.
-  bool ok = !registry
+  return !registry
                  .add(cmd::CommandSpec{"tag", "tag [add|replace] <command> [<script>]",
                                        "Attach a Tcl script to run after <command> succeeds (%-substitutions).",
                                        tag_handler},
                       cmd::kScriptClient)
                  .has_value();
-  ok = register_cif_command(registry) && ok;
-  return ok;
 }
 
 }  // namespace hefesto::script

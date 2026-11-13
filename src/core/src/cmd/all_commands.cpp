@@ -6,11 +6,13 @@
 #include <utility>
 
 #include "hefesto/cell/commands.hpp"
+#include "hefesto/cif/command/command.hpp"
 #include "hefesto/cmd/builtins.hpp"
 #include "hefesto/cmd/units.hpp"
 #include "hefesto/db/commands.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/commands/command.hpp"
+#include "hefesto/gds/command/command.hpp"
 #include "hefesto/gui/commands.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
@@ -54,6 +56,9 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   ok = pcell::register_pcell_commands(registry) && ok;
   ok = tools::register_tools_commands(registry) && ok;
   ok = gui::register_gui_commands(registry) && ok;
+  // M5 (openspec/changes/m5-mask-gds-cif/design.md D3).
+  ok = gds::register_gds_command(registry) && ok;
+  ok = cif::register_cif_command(registry) && ok;
   return ok;
 }
 

@@ -1,0 +1,22 @@
+trace 1 MASK-UO-006
+root top
+place 1 ca_0 ca 0 0 4 4
+place 2 cb_0 cb 20 20 26 23
+place 3 ca_1 ca 40 40 44 44
+place 4 cb_1 cb 60 60 66 63
+place 5 ca_2 ca 80 80 84 84
+place 6 cb_2 cb 100 100 106 103
+childinst 7 top cb_2 cb_1 ca_1 ca_0 ca_2 cb_0
+write 8 gds uo_1.gds
+structures 8 gds cb ca top
+order 8 gds top cb_2 ca_2 cb_1 ca_1 cb_0 ca_0
+instances 9 ca ca_2 ca_1 ca_0
+resize 9 ca 0 0 4 8
+bbox 9 ca_0 0 0 4 8
+bbox 9 ca_1 40 40 44 48
+bbox 9 ca_2 80 80 84 88
+childinst 10 top cb_2 cb_1 ca_1 ca_0 ca_2 cb_0
+write 11 gds uo_2.gds
+structures 11 gds ca cb top
+order 11 gds top ca_0 ca_1 ca_2 cb_2 cb_1 cb_0
+end

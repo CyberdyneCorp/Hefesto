@@ -28,9 +28,12 @@ Usage:
     check_requirement_coverage.py --milestone M0        # M0 capabilities only
     check_requirement_coverage.py --through M1 --format json --output report.json
     check_requirement_coverage.py --fail-under 80       # exit 1 below 80 % covered
+    check_requirement_coverage.py --capability gds-write  # one capability (repeatable)
 
 Milestones come from the `**Capabilities:**` line of each `## M<n>` section of
-docs/roadmap.md, as in scripts/check_roadmap_coverage.py.
+docs/roadmap.md, as in scripts/check_roadmap_coverage.py. `--capability` limits
+the report to the named capabilities (within the selected milestones, if any);
+a workstream runs it to check its own capability.
 
 Exits 0 unless --fail-under is given and coverage is below it (report-only by
 default), or a usage error occurs (exit 2).
@@ -180,6 +183,16 @@ def capabilities_for(milestones: list[str], roadmap: Path) -> set[str] | None:
     if missing:
         raise SystemExit(f"milestone(s) not found in {roadmap}: {', '.join(missing)}")
     return {cap for m in milestones for cap in assignments[m]}
+
+
+def restrict_capabilities(selected: set[str] | None, named: list[str], specs_dir: Path) -> set[str] | None:
+    """Limit `selected` (None = every capability) to the `--capability` names."""
+    if not named:
+        return selected
+    missing = sorted(name for name in set(named) if not (specs_dir / name / "spec.md").is_file())
+    if missing:
+        raise SystemExit(f"capability(ies) not found in {specs_dir}: {', '.join(missing)}")
+    return set(named) if selected is None else selected.intersection(named)
 
 
 # --- Test discovery ----------------------------------------------------------
@@ -380,6 +393,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--milestone", action="append", default=[], help="limit to a milestone, e.g. M0 (repeatable)")
     parser.add_argument("--through", help="limit to M0 up to and including this milestone")
+    parser.add_argument("--capability", action="append", default=[],
+                        help="limit to a capability, e.g. gds-write (repeatable)")
     parser.add_argument("--classes", default=",".join(DEFAULT_CLASSES),
                         help=f"comma list of compatibility classes to require tests for (default: exact,behavioral; "
                              f"any of {', '.join(ALL_CLASSES)})")
@@ -400,7 +415,8 @@ def main(argv: list[str]) -> int:
     root = args.root.resolve()
     specs_dir = root / "openspec" / "specs"
     milestones = selected_milestones(args.milestone, args.through)
-    capabilities = capabilities_for(milestones, root / "docs" / "roadmap.md")
+    capabilities = restrict_capabilities(capabilities_for(milestones, root / "docs" / "roadmap.md"),
+                                         args.capability, specs_dir)
     classes = set(args.classes.split(","))
 
     requirements = load_requirements(specs_dir, capabilities, classes)
@@ -409,6 +425,8 @@ def main(argv: list[str]) -> int:
     report = build_report(requirements, refs, all_known)
 
     scope = f"{', '.join(milestones) or 'all milestones'}; classes {', '.join(sorted(classes))}"
+    if args.capability:
+        scope += f"; capabilities {', '.join(sorted(set(args.capability)))}"
     text = render_json(report, scope) if args.format == "json" else render_markdown(report, scope)
     if args.output:
         args.output.write_text(text, encoding="utf-8")

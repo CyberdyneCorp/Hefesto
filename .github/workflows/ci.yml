@@ -93,7 +93,10 @@ jobs:
   # `scripts/fetch_pdk.py --cache-info` (M4 pins: ciel 5740c4a8 for sky130/gf180mcu, standing in for open_pdks
   # c6df28c1, and IHP 5e6d592e). This job fetches the sets that are not cached yet, once (about 0.9 GB
   # downloaded on a cold cache), and saves them; the build legs only restore. A warm run fetches nothing, and
-  # changing one set's pin or digest refetches that set alone.
+  # changing one set's pin or digest refetches that set alone. The three standard-cell GDS sets
+  # (sky130-gds-sc, gf180mcu-gds-sc, ihp-gds-sc; openspec/changes/m5-mask-gds-cif design D19) are cached the
+  # same way, under .cache/pdks/gds, for the MASK-RT cases the golden legs replay (about 0.9 GB more on a cold
+  # cache, 6 MB kept); the full GDS sets are fetched only by the jobs that use them (golden-capture.yml, perf.yml).
   reference-data:
     name: reference data (PDK sets)
     runs-on: ubuntu-24.04
@@ -105,6 +108,12 @@ jobs:
       gf180mcu_path: ${{ steps.keys.outputs.gf180mcu_path }}
       ihp_key: ${{ steps.keys.outputs.ihp_key }}
       ihp_path: ${{ steps.keys.outputs.ihp_path }}
+      sky130_gds_sc_key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+      sky130_gds_sc_path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+      gf180mcu_gds_sc_key: ${{ steps.keys.outputs.gf180mcu_gds_sc_key }}
+      gf180mcu_gds_sc_path: ${{ steps.keys.outputs.gf180mcu_gds_sc_path }}
+      ihp_gds_sc_key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
+      ihp_gds_sc_path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
       magic_ref_key: ${{ steps.keys.outputs.magic_ref_key }}
       magic_ref_path: ${{ steps.keys.outputs.magic_ref_path }}
     steps:
@@ -138,6 +147,27 @@ jobs:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
           lookup-only: true
+      - name: Look up sky130-gds-sc
+        id: sky130_gds_sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+          key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+          lookup-only: true
+      - name: Look up gf180mcu-gds-sc
+        id: gf180mcu_gds_sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_gds_sc_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_gds_sc_key }}
+          lookup-only: true
+      - name: Look up ihp-gds-sc
+        id: ihp_gds_sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
+          key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
+          lookup-only: true
 
       - name: List the sets to fetch
         id: missing
@@ -145,11 +175,17 @@ jobs:
           SKY130_HIT: ${{ steps.sky130.outputs.cache-hit }}
           GF180MCU_HIT: ${{ steps.gf180mcu.outputs.cache-hit }}
           IHP_HIT: ${{ steps.ihp.outputs.cache-hit }}
+          SKY130_GDS_SC_HIT: ${{ steps.sky130_gds_sc.outputs.cache-hit }}
+          GF180MCU_GDS_SC_HIT: ${{ steps.gf180mcu_gds_sc.outputs.cache-hit }}
+          IHP_GDS_SC_HIT: ${{ steps.ihp_gds_sc.outputs.cache-hit }}
         run: |
           sets=""
           [ "$SKY130_HIT" = "true" ] || sets="$sets sky130"
           [ "$GF180MCU_HIT" = "true" ] || sets="$sets gf180mcu"
           [ "$IHP_HIT" = "true" ] || sets="$sets ihp"
+          [ "$SKY130_GDS_SC_HIT" = "true" ] || sets="$sets sky130-gds-sc"
+          [ "$GF180MCU_GDS_SC_HIT" = "true" ] || sets="$sets gf180mcu-gds-sc"
+          [ "$IHP_GDS_SC_HIT" = "true" ] || sets="$sets ihp-gds-sc"
           echo "sets=${sets# }" >> "$GITHUB_OUTPUT"
           echo "::notice::reference data to fetch: ${sets:- none}"
 
@@ -195,6 +231,24 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
+      - name: Save sky130-gds-sc
+        if: steps.sky130_gds_sc.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+          key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+      - name: Save gf180mcu-gds-sc
+        if: steps.gf180mcu_gds_sc.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_gds_sc_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_gds_sc_key }}
+      - name: Save ihp-gds-sc
+        if: steps.ihp_gds_sc.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
+          key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
 
   # Native PCell generators against the PDKs' Tcl generators (m4-scripting design D10, D-29; risk R3):
   # scripts/pcell_equivalence.py over tests/data/pcell/sweeps/ generates every sweep case natively and
@@ -369,6 +423,22 @@ jobs:
         with:
           path: ${{ needs.reference-data.outputs.ihp_path }}
           key: ${{ needs.reference-data.outputs.ihp_key }}
+      # The standard-cell GDS sets of the MASK-RT cases replayed below (m5-mask-gds-cif design D19).
+      - name: Restore sky130-gds-sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_gds_sc_path }}
+          key: ${{ needs.reference-data.outputs.sky130_gds_sc_key }}
+      - name: Restore gf180mcu-gds-sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_gds_sc_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_gds_sc_key }}
+      - name: Restore ihp-gds-sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_gds_sc_path }}
+          key: ${{ needs.reference-data.outputs.ihp_gds_sc_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ needs.reference-data.outputs.magic_ref_path }}
@@ -388,7 +458,9 @@ jobs:
       - name: Verify the pinned PDK data sets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/fetch_pdk.py sky130 gf180mcu ihp --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
+        run: |
+          python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-gds-sc gf180mcu-gds-sc ihp-gds-sc \
+            --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
 
       # The standard-cell corpus cases (label golden-slow, m3-drc design D14) run in the golden replay below.
       - name: Test

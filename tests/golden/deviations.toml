@@ -345,3 +345,63 @@ reason = "crash backups are written by the native session, so crashbackups retur
 decisions = ["Q-SCRIPT-51"]
 outputs = ["stdout.txt"]
 reason = "tool enabling is native, so magic::enable_tools is not a Tcl procedure and the tool switches it prints in Magic do not happen"
+
+[MASK-UO-001]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-002]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-003]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-004]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-005]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-006]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-007]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-008]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-009]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-010]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-011]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-012]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"

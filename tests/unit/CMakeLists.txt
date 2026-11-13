@@ -24,6 +24,9 @@
 #   pcell/   pcell/framework/, pcell/native/ PCELL (M4)   (always)
 #   tools/   TOOLS (M4)                     (always)
 #   gui/     GUIMGR (M4)                    (always)
+#   mask/ gds/ cif/  INTEGRATION (M5 shared tests); each subdirectory is
+#            owned by its workstream (openspec/changes/m5-mask-gds-cif
+#            design.md D1/D2)              (always)
 #   render/  VIEWER                         (desktop builds, if present)
 #   shell/   SHELL                          (desktop builds, if present)
 #   common/  INTEGRATION: header-only helpers shared by the area tests
@@ -62,13 +65,18 @@ add_subdirectory(core)
 #   the current directory, linked to hefesto::core, with HEFESTO_SOURCE_DIR
 #   and HEFESTO_TEST_DATA_DIR (tests/data/<dir>, default tests/data/<area>)
 #   defined for fixtures. The M3 drc subdirectories use e.g.
-#   hefesto_add_area_tests(drc_rules DATA_DIR drc/rules).
+#   hefesto_add_area_tests(drc_rules DATA_DIR drc/rules). A directory without
+#   tests yet builds nothing (the M5 scaffold creates the M5 test directories
+#   before their workstreams add tests; openspec/changes/m5-mask-gds-cif D1).
 function(hefesto_add_area_tests area)
   cmake_parse_arguments(PARSE_ARGV 1 ARG "" "DATA_DIR" "")
   if(NOT ARG_DATA_DIR)
     set(ARG_DATA_DIR "${area}")
   endif()
   file(GLOB _sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
+  if(NOT _sources)
+    return()
+  endif()
   hefesto_add_unit_test(hefesto_${area}_tests SOURCES ${_sources} LIBS hefesto::core)
   target_compile_definitions(hefesto_${area}_tests PRIVATE
     HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
@@ -78,7 +86,7 @@ function(hefesto_add_area_tests area)
 endfunction()
 
 foreach(_area IN ITEMS tech db cell display view pdk app undo select connect ui wiring drc hints
-                      script pcell tools gui)
+                      script pcell tools gui mask gds cif)
   add_subdirectory(${_area})
 endforeach()
 

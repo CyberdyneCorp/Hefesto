@@ -63,7 +63,13 @@ class ExternalUnavailable(RuntimeError):
     """An external input is not present on this machine."""
 
 
-PDK_SETS = ("sky130", "gf180mcu", "ihp")  # the data sets of scripts/fetch_pdk.py (DATA_SETS)
+# The data sets of scripts/fetch_pdk.py (DATA_SETS): the M4 tech/.mag sets and the M5 library GDS sets
+# (m5-mask-gds-cif D19), which live under their own PDK root (<pdk-root>/gds).
+PDK_SETS = (
+    "sky130", "gf180mcu", "ihp",
+    "sky130-gds", "gf180mcu-gds", "ihp-gds",
+    "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc",
+)
 
 
 @dataclass(frozen=True)
@@ -121,9 +127,11 @@ def pdk_root() -> Path:
 
 
 def pdk_set_root(pdk_set: str) -> Path:
-    """``<pdk-root>/ciel/<family>/versions/<pin>`` of a PDK data set of scripts/fetch_pdk.py."""
-    data_set = _fetch_pdk_module().DATA_SETS[pdk_set]
-    return pdk_root() / "ciel" / data_set.family / "versions" / data_set.version
+    """``<set root>/ciel/<family>/versions/<pin>`` of a PDK data set of scripts/fetch_pdk.py.
+
+    The set root is ``<pdk-root>`` for the tech/.mag sets and ``<pdk-root>/<pdk_dir>`` for the GDS sets.
+    """
+    return _fetch_pdk_module().DATA_SETS[pdk_set].version_dir(pdk_root())
 
 
 def _resolve_pdk(ext: External) -> Path:

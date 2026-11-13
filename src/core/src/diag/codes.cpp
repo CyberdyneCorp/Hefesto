@@ -33,6 +33,7 @@ constexpr std::array kTable = {
     CodeInfo{"CORE-NOTIMPL-002", error, "Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it)."},
     CodeInfo{"CORE-NOTIMPL-003", error, "Retired in M3, never reused. Was: not implemented yet (a `drc` option or M3 function stubbed by the M3 scaffold before its workstream landed it)."},
     CodeInfo{"CORE-NOTIMPL-004", error, "Retired in M4, never reused. Was: not implemented yet (an M4 command or function registered by the M4 scaffold before its workstream landed it)."},
+    CodeInfo{"CORE-NOTIMPL-005", error, "Not implemented yet: an M5 command option or function declared by the M5 scaffold before its workstream landed it (retired at M5 exit)."},
     CodeInfo{"PLATFORM-IO-001", error, "A file cannot be read."},
     CodeInfo{"PLATFORM-IO-002", error, "A file cannot be written."},
     CodeInfo{"PLATFORM-IO-003", error, "A directory cannot be created, listed or removed."},
@@ -59,8 +60,8 @@ constexpr bool is_word(std::string_view part) noexcept {
   return !part.empty() && std::all_of(part.begin(), part.end(), is_upper_alnum);
 }
 
-const std::array<CodeArea, 19>& areas() noexcept {
-  static const std::array<CodeArea, 19> table = {
+const std::array<CodeArea, 22>& areas() noexcept {
+  static const std::array<CodeArea, 22> table = {
       CodeArea{"core", "", "docs/diagnostics/codes.md", kTable},
       CodeArea{"tech", "TECH", "docs/diagnostics/codes/tech.md", area_codes::tech()},
       CodeArea{"db", "DB", "docs/diagnostics/codes/db.md", area_codes::db()},
@@ -82,6 +83,10 @@ const std::array<CodeArea, 19>& areas() noexcept {
       CodeArea{"pcell", "PCELL", "docs/diagnostics/codes/pcell.md", area_codes::pcell()},
       CodeArea{"tools", "TOOLS", "docs/diagnostics/codes/tools.md", area_codes::tools()},
       CodeArea{"gui", "GUI", "docs/diagnostics/codes/gui.md", area_codes::gui()},
+      // M5 areas (openspec/changes/m5-mask-gds-cif/design.md D1).
+      CodeArea{"mask", "MASK", "docs/diagnostics/codes/mask.md", area_codes::mask()},
+      CodeArea{"gds", "GDS", "docs/diagnostics/codes/gds.md", area_codes::gds()},
+      CodeArea{"cif", "CIF", "docs/diagnostics/codes/cif.md", area_codes::cif()},
   };
   return table;
 }
