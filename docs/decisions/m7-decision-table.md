@@ -1,6 +1,6 @@
 # M7 decision table: the 56 open questions blocking extraction and netlisting
 
-M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M7` lists 56: 19 in `docs/decisions/open-questions/EXTRACT.md`, 4 in `MISC.md` (antenna check) and 33 in `NETLIST.md`. Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only) and, where a PDK is named, against the sky130A, gf180mcuD and ihp-sg13g2 tech files. Each entry now carries `Status: open (recommendation drafted 2026-11-13)` and a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`, and evidence that was right gets a `Verified 2026-11-13:` line. **Nothing here is approved yet**, and no entry has a `Resolution:` line.
+M7 ("Extraction and netlisting", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M7` lists 56: 19 in `docs/decisions/open-questions/EXTRACT.md`, 4 in `MISC.md` (antenna check) and 33 in `NETLIST.md`. Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only) and, where a PDK is named, against the sky130A, gf180mcuD and ihp-sg13g2 tech files. Each entry carries a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`, and evidence that was right gets a `Verified 2026-11-13:` line. **All 56 were approved on 2026-11-13** as drafted, with no option changed; the three closest calls below take their recommended option (a). Each entry now carries `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line, and `python3 scripts/check_milestone_readiness.py --milestone M7` reports `M7: ready`.
 
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour, the "bug" turns out to be Magic's intended semantics, or the quirk is an internal unit or order choice that byte identity needs; fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Several compat rows also carry a tier-1 guard that applies in both modes (Q-MISC-4, Q-NETLIST-8, Q-NETLIST-29, Q-NETLIST-30); the guard only changes inputs on which Magic has undefined behaviour.
 
@@ -14,7 +14,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-None. Every item is settled by X-2, X-4, D-7 or an earlier resolution (Q-EXTRACT-5), so no row needs a product or scope decision. The three closest calls are listed so a reviewer can overrule them; options are listed with the recommended one first.
+None remain (all 56 approved as drafted on 2026-11-13). Every item is settled by X-2, X-4, D-7 or an earlier resolution (Q-EXTRACT-5), so no row needed a product or scope decision. The three closest calls are kept below for the record; the user took the recommended option (a) for each.
 
 1. **Q-EXTRACT-12: path-length values depend on tile decomposition.**
    The entry recommended a behavioural golden tolerance. Since Q-EXTRACT-5 already commits Hefesto to Magic's tile decomposition and enumeration order, the draft asks for a byte-exact port of the flood instead. This raises the porting bar for `extract length`; a tolerance would be cheaper but would hide port errors.
@@ -32,7 +32,7 @@ None. Every item is settled by X-2, X-4, D-7 or an earlier resolution (Q-EXTRACT
 
 ## Decision table
 
-Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
+Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
 
 ### Extraction technology section
 
@@ -219,7 +219,7 @@ Entries whose evidence was right carry a `Verified 2026-11-13:` line instead. No
 
 ## Spec changes after approval
 
-Not edited yet. After approval each spec gets the text below, and the entry's `Resolution:` line. Items are listed under the first spec that cites them; the text names any other spec it touches.
+Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the M7 specs with the approved decisions"). Each spec got the text below, and each entry its `Resolution:` line. Items are listed under the first spec that cites them; the text names any other spec it touches.
 
 ### extract-tech-section
 
