@@ -13,6 +13,8 @@
 #include "hefesto/drc/engine/background.hpp"
 
 #include <chrono>
+#include <cstdint>
+#include <functional>
 #include <optional>
 #include <utility>
 
@@ -26,9 +28,11 @@ struct BackgroundChecker::Shared {
   std::condition_variable cv;
   bool stop = false;
   bool woken = false;  // there may be work; cleared when the worker finds none
+  std::uint64_t wakes = 0;  // wake() calls so far: a wake during a step keeps `woken`
   std::optional<SquareResult> ready;  // a finished square awaiting commit_ready()
   std::atomic<bool> cancel{false};
   std::function<void()> on_ready;
+  std::function<void()> after_step;  // test hook (set_after_step_hook)
 };
 
 namespace {
@@ -59,6 +63,11 @@ BackgroundChecker::~BackgroundChecker() {
 void BackgroundChecker::set_ready_callback(std::function<void()> callback) {
   const std::lock_guard lock(shared_->mutex);
   shared_->on_ready = std::move(callback);
+}
+
+void BackgroundChecker::set_after_step_hook(std::function<void()> hook) {
+  const std::lock_guard lock(shared_->mutex);
+  shared_->after_step = std::move(hook);
 }
 
 void BackgroundChecker::start(editor::EditorState& editor) {
@@ -105,6 +114,7 @@ void BackgroundChecker::wake() {
   {
     const std::lock_guard lock(shared_->mutex);
     shared_->woken = true;
+    ++shared_->wakes;
   }
   shared_->cv.notify_all();
 }
@@ -120,9 +130,14 @@ void BackgroundChecker::run(editor::EditorState& editor) {
       shared_->cv.wait(lock);
       continue;
     }
+    const std::uint64_t wakes_seen = shared_->wakes;
+    const std::function<void()> after_step = shared_->after_step;
     lock.unlock();
     std::optional<SquareResult> result;
     const Step step = check_one(editor, shared_->cancel, result);
+    if (after_step) {
+      after_step();
+    }
     if (step == Step::cancelled) {
       std::this_thread::sleep_for(std::chrono::microseconds(50));  // let the writer in
     }
@@ -131,7 +146,9 @@ void BackgroundChecker::run(editor::EditorState& editor) {
     if (step == Step::result && !shared_->stop) {
       shared_->ready = std::move(result);
       notify = shared_->on_ready;
-    } else if (step == Step::nothing) {
+    } else if (step == Step::nothing && shared_->wakes == wakes_seen) {
+      // A wake() since this step began (drc on, a new edit) may have work
+      // the step did not see: check again instead of sleeping on it.
       shared_->woken = false;
     }
     shared_->cv.notify_all();

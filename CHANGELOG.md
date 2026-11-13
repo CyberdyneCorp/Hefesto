@@ -117,6 +117,9 @@ release notices.
 
 ### Fixed
 
+- **Background DRC no longer stalls after `drc on`.** If the checker found
+  nothing to do (for example with DRC off) at the same moment a command woke
+  it, it could go to sleep with squares still pending, until the next edit.
 - **"(UNNAMED)" no longer stays in the Cells manager** when the desktop
   app is started with a cell on the command line: the window's empty
   startup cell is replaced by the loaded cell, as in Magic.

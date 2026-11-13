@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <mutex>
 #include <random>
 #include <thread>
 
@@ -255,6 +256,50 @@ TEST_CASE("Busy and idle transitions", "[cap:drc-engine][req:Pending list and ba
   }
   worker.stop();
   s.ed.drc.events.remove(log);
+}
+
+TEST_CASE("A wake during a step that found nothing is not lost",
+          "[cap:drc-engine][req:Pending list and background scheduling]") {
+  // Regression: the worker found no work (background checking off) and,
+  // before it took its mutex again, `drc on` and an edit woke it; it then
+  // cleared `woken` and slept with squares pending (flaky shell test
+  // "drc off keeps the worker idle; drc on resumes it").
+  Session s;
+  db::CellDef& c = s.cell("c");
+  const drc::test::Recorder rec;
+  s.ed.drc.background = drc::BackgroundMode::off;
+  drc::BackgroundChecker& worker = *s.ed.drc.worker;
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool in_step = false;
+  bool release = false;
+  bool armed = true;
+  worker.set_after_step_hook([&] {
+    std::unique_lock lock(mutex);
+    if (!armed) return;
+    armed = false;
+    in_step = true;
+    cv.notify_all();
+    cv.wait(lock, [&] { return release; });
+  });
+  worker.start(s.ed);
+  {
+    std::unique_lock lock(mutex);
+    cv.wait(lock, [&] { return in_step; });
+  }
+  // The worker is between its (empty) step and taking its mutex again.
+  s.ed.drc.background = drc::BackgroundMode::on;
+  edit(s, c, "poly", db::Rect{0, 0, 4, 4});
+  worker.wake();
+  {
+    const std::lock_guard lock(mutex);
+    release = true;
+  }
+  cv.notify_all();
+  REQUIRE(worker.run_until_idle(s.ed, kTimeoutMs));
+  CHECK(s.ed.drc.pending.empty());
+  worker.stop();
+  worker.set_after_step_hook({});
 }
 
 TEST_CASE("Racing random edits against the worker gives catch-up's error planes",
