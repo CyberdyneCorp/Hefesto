@@ -49,6 +49,28 @@ Compatibility: native
 - **WHEN** the user asks to review the scripts and answers Run once or Trust
 - **THEN** the script SHALL run and the layout SHALL be read again with the PDK's technology and become editable
 
+### Requirement: Schematic script permission model
+Scripts carried by schematic files and symbol libraries (capability `schematic-symbols-and-libraries`) SHALL be handled as follows, on every platform:
+- `tcleval(...)` attribute values, `@tcleval(...)` format tokens and symbol `drc` procedures SHALL always run in the sandbox of requirement "Script sandbox enforcement", without a prompt. A denied operation SHALL give the sandbox diagnostic and the value SHALL become `?` as `schematic-symbols-and-libraries` defines.
+- Launcher `tclcommand` scripts SHALL run in the same sandbox, and only after the user has confirmed them once for the document; the confirmation SHALL last for the session.
+- xschem's `xschem_execute_scripts` setting in an `xschemrc` SHALL be ignored, with a log line, so a PDK cannot turn the confirmation off.
+
+Before M8 exits, a security review SHALL check this model against the sandbox (no process execution, sockets, native extensions, or file access outside granted folders) and record its sign-off in the M8 exit table.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/cross-cutting.md#X-3, docs/decisions/product.md#P-12)
+
+#### Scenario: tcleval tries to read outside the granted folders
+- **GIVEN** a symbol whose format is `tcleval([exec cat /etc/passwd])`
+- **WHEN** the schematic is netlisted
+- **THEN** the call SHALL be denied with a sandbox diagnostic naming the symbol, no process SHALL start, and the netlisted value SHALL be `?`
+
+#### Scenario: Launcher confirmed once
+- **GIVEN** a testbench with two launchers
+- **WHEN** the user runs the first, confirms, and then runs the second
+- **THEN** Hefesto SHALL ask only before the first
+
 ### Requirement: No remote command server by default
 Hefesto SHALL NOT listen on any network port by default. If a remote-control feature is offered on desktop, it SHALL require:
 - explicit enabling

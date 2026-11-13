@@ -40,7 +40,7 @@ Compatibility: behavioral
 A project SHALL be a folder with a `hefesto.project` file. The file SHALL record:
 - the PDK name and version
 - the cell search paths, relative to the project
-- project settings, including the reference-tool compatibility settings `magic-compat` and `netgen-compat` (capability `hefesto-magic-compat-mode`), `script-strict` (capability `hefesto-diagnostics`) and the global nets and power names (requirement "Global nets and power names")
+- project settings, including the reference-tool compatibility settings `magic-compat`, `netgen-compat` and `xschem-compat` (capability `hefesto-magic-compat-mode`), `script-strict` (capability `hefesto-diagnostics`), "portable netlist paths" for schematic netlists (capability `schematic-netlisting`, Requirement "Netlist file structure"; default off) and the global nets and power names (requirement "Global nets and power names")
 - open documents and window layout
 
 The file SHALL be text, with deterministic key order, so that it diffs well under version control.

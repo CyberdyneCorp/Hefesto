@@ -53,7 +53,7 @@ The remaining unifications are tracked as decisions D-45 and D-46 in `docs/decis
 |---|---|---|---|
 | `magic-compat` setting | The Hefesto setting (default ON) that replicates Magic's output-changing quirks (decision X-2, tier 2). | compat mode, compat flag, compatibility mode, compatibility switch | `hefesto-magic-compat-mode` |
 | `netgen-compat` setting | The Hefesto setting (default ON) that replicates netgen's output-changing quirks in the `lvs-*` capabilities (decision X-2 as amended by D-2). Independent of `magic-compat`. | "the compatibility switch" | `hefesto-magic-compat-mode` |
-| `xschem-compat` setting | Proposed counterpart for xschem quirks. Not yet decided (D-21). | "the compatibility switch" | `hefesto-magic-compat-mode` (proposed) |
+| `xschem-compat` setting | The Hefesto setting (default ON) that replicates xschem's output-changing quirks in the `schematic-*` capabilities (decision X-2 as amended by D-21). Independent of `magic-compat` and `netgen-compat`; written into a netlist only when OFF (`** xschem-compat=off`). | "the compatibility switch" | `hefesto-magic-compat-mode` |
 | property compat mode | Magic's global property flag (`property compat`, default true): every property is written as `string`. Unrelated to `magic-compat`. | compatibility mode, compat mode, property compatibility mode | `layout-properties` ("Property compat mode") |
 | substrate compatibility mode | Netlister behavior when a `.ext` file has no `substrate` record. | compatibility mode | `ext-flattening-hierarchy` |
 | ngspice compatibility mode | ngspice's `ngbehavior` setting (`hs`, `hsa`, `ps`, …). | compatibility mode (unqualified) | `simulation-netlist-preparation` ("PDK initialisation commands") |

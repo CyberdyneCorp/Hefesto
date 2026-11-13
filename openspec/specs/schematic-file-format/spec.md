@@ -147,7 +147,9 @@ On writing, the `v` record SHALL be the first line of the file:
 
 where `<V>` is the xschem compatibility version (Requirement "Writer version string"). Hefesto SHALL always write file format `1.3` regardless of the version read.
 
-File version `1.0` SHALL change the meaning of symbol references: a reference is a symbol name without extension, and `.sym` SHALL be appended (replacing any extension) when the instance is loaded, so the reference is written back with `.sym`. From `1.1` on, the reference is used as written. The file version is only known after the `v` record has been read; until the end of the first record it is unset (not `1.0`), so an instance record that comes before any other record is not given the extension (see Q-SCHEM-3).
+File version `1.0` SHALL change the meaning of symbol references: a reference is a symbol name without extension, and `.sym` SHALL be appended (replacing any extension) when the instance is loaded, so the reference is written back with `.sym`. From `1.1` on, the reference is used as written. When the file has no `v` record, the first record depends on the `xschem-compat` setting (capability `hefesto-magic-compat-mode`; Q-SCHEM-3, `Resolution: compat`):
+- with `xschem-compat` ON, the file version is unset (not `1.0`) until the end of the first record, as in xschem, so an instance record that comes before any other record is not given the extension; later records see `1.0`
+- with `xschem-compat` OFF, a file with no `v` record is version `1.0` from its first record, so every instance reference is given the extension
 
 Compatibility: exact
 
@@ -163,8 +165,18 @@ Compatibility: exact
 - **WHEN** it is read
 - **THEN** the file version SHALL be `1.0` and the instance SHALL reference symbol `res.sym`
 
+#### Scenario: Leading instance record, xschem-compat ON
+- **GIVEN** `xschem-compat` ON and a schematic with no `v` record whose first record is `C {res} 0 0 0 0 {name=R1}`, followed by `C {capa} 0 0 0 0 {name=C1}`
+- **WHEN** it is read and saved
+- **THEN** `R1` SHALL reference `res` and `C1` SHALL reference `capa.sym`
+
+#### Scenario: Leading instance record, xschem-compat OFF
+- **GIVEN** `xschem-compat` OFF and the same schematic
+- **WHEN** it is read and saved
+- **THEN** `R1` SHALL reference `res.sym` and `C1` SHALL reference `capa.sym`
+
 ### Requirement: Writer version string
-Hefesto SHALL write the version key as `xschem version=<V>`, where `<V>` is a single pinned xschem compatibility version, initially `3.4.8RC`. It SHALL NOT write a Hefesto version there, because xschem and other tools only check `file_version`. The pinned value SHALL change only together with a re-validation of this capability against a newer xschem. See Q-SCHEM-1.
+Hefesto SHALL write the version key as `xschem version=<V>`, where `<V>` is a single pinned xschem compatibility version, initially `3.4.8RC`. It SHALL NOT write a Hefesto version there, because xschem and other tools only check `file_version`. The pinned value SHALL change only together with a re-validation of this capability against a newer xschem, and SHALL NOT depend on the `xschem-compat` setting (Q-SCHEM-1, `Resolution: replicate`).
 
 Compatibility: native
 
@@ -335,7 +347,7 @@ E {}
 ]
 ```
 
-The embedded block SHALL NOT contain `F`, `N` or `C` records and SHALL write polygons after texts. Wires of a schematic-used-as-symbol appear there as `L 1` records. These are xschem quirks that Hefesto SHALL reproduce (see Q-SCHEM-2).
+The embedded block SHALL NOT contain `F`, `N` or `C` records and SHALL write polygons after texts. Wires of a schematic-used-as-symbol appear there as `L 1` records. These are xschem quirks that Hefesto SHALL reproduce whatever the `xschem-compat` setting, because they change only the layout of the block, which reads back the same either way (Q-SCHEM-2, `Resolution: replicate`).
 
 Compatibility: exact
 

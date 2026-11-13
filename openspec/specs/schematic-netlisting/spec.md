@@ -10,13 +10,15 @@ Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is ide
 - the file structure of hierarchical, top-level-only and flat netlists, `.subckt` generation and ordering
 - netlist options and the LVS netlist mode used by PDK LVS flows
 
-Only the SPICE netlister is in scope. xschem's Verilog, VHDL, Spectre and tEDAx netlisters are out of scope (see Q-SCHEM-4).
+Only the SPICE netlister is in scope. xschem's Verilog, VHDL, Spectre and tEDAx netlisters are out of scope; their records and `*_format` attributes are kept through round trips, and Verilog is revisited with P-17 (Q-SCHEM-4, `Resolution: other`).
 
 **Compatibility adaptation.** This capability is about xschem, not Magic. The compatibility classes in `docs/spec-conventions.md` therefore apply relative to **xschem** (`StefanSchippers/xschem` @ `4142e6d6f1eb5cd0e271bb183f14202af374ce27`, version `3.4.8RC`):
 - `exact`: byte-identical netlist text
 - `behavioral`: same circuit; text MAY differ as stated
 - `informative`: xschem detail that Hefesto MAY differ from
 - `native`: Hefesto-only, and cites `(Hefesto decision: docs/decisions/product.md#P-12)`
+
+xschem quirks whose open-question entry records `Resolution: compat` are governed by the `xschem-compat` setting (capability `hefesto-magic-compat-mode`, default ON). The requirements that cite them state both modes; `exact` refers to the output with `xschem-compat` ON, which is the default. Warnings that an entry gives in both modes are reported whatever the setting.
 
 Traces use `(xschem ref: path/file:line)`, relative to the xschem `src/` directory; `.awk` traces point at xschem's post-processing scripts. They exist for traceability only. Implementers SHALL work from this spec and SHALL NOT consult the GPL sources (capability `hefesto-licensing`). Hefesto SHALL produce the final text directly; it SHALL NOT run awk or any external program.
 
@@ -102,9 +104,9 @@ Hefesto SHALL name the nets of one schematic in this order, and the first name g
 2. **Unnamed wires.** For each non-ignored wire in wire order that is still unnamed: it gets the next automatic name (Requirement "Unnamed nets"), which spreads as in step 1.
 3. **Unnamed pins.** For each non-ignored instance in instance order, for each pin in pin order that is still unnamed: it gets the next automatic name, which spreads to other instance pins at the same point.
 
-When the spreading reaches a wire or pin that already has a different name, the existing name SHALL be kept and the netlist SHALL still be written. This is a short, reported as `Error: <tag> shorted: <a> - <b>` with tag `Net to net` (wire to wire), `net to named instance pin`, `Net`, `Instance pin`, `Pass_through symbol` or `Bus tap` (Requirement "Errors and warnings"; see Q-SCHEM-16 for when xschem reports top-level shorts).
+When the spreading reaches a wire or pin that already has a different name, the existing name SHALL be kept and the netlist SHALL still be written. This is a short, reported as `Error: <tag> shorted: <a> - <b>` with tag `Net to net` (wire to wire), `net to named instance pin`, `Net`, `Instance pin`, `Pass_through symbol` or `Bus tap` (Requirement "Errors and warnings"). Every short SHALL be reported, including shorts at the top level during its first connectivity pass and in runs that do not netlist the hierarchy, which xschem does not always report; the netlist text is the same either way (Q-SCHEM-16, `Resolution: fix`).
 
-After naming, every wire's `lab` attribute SHALL be set to its net name (unnamed nets including their `#`), and every label or port without `lab` SHALL get `lab` set to its net name without `#`. These updates SHALL use the property update rules of capability `schematic-file-format`; they change the saved file like xschem does, but SHALL NOT mark the document as modified (see Q-SCHEM-29).
+After naming, every wire's `lab` attribute SHALL be set to its net name (unnamed nets including their `#`), and every label or port without `lab` SHALL get `lab` set to its net name without `#`. These updates SHALL use the property update rules of capability `schematic-file-format`; they change the saved file like xschem does, but SHALL NOT mark the document as modified (Q-SCHEM-29, `Resolution: replicate`, whatever the `xschem-compat` setting).
 
 Compatibility: exact
 
@@ -114,6 +116,11 @@ Compatibility: exact
 - **GIVEN** one connected net with label instance `l1` (`lab=A`) before label instance `l2` (`lab=B`) in instance order
 - **WHEN** the schematic is netlisted
 - **THEN** every device pin on that net SHALL be on net `A`, and the netlist SHALL be written
+
+#### Scenario: Top-level short always reported
+- **GIVEN** a top schematic with no subcircuits where labels `A` and `B` are on one wire
+- **WHEN** it is netlisted, in a normal run and in a run that does not netlist the hierarchy
+- **THEN** each run SHALL report the short between `A` and `B` and return a failure status, and the netlist text SHALL be the same as xschem's
 
 ### Requirement: Unnamed nets
 Automatic names SHALL be `#net<N>` internally, with N counting 1, 2, 3, ... per schematic, skipping any N for which `net<N>` is already a net name in that schematic (for example from a label). In the netlist the `#` SHALL be removed, giving `net<N>`. The multiplicity of an unnamed net SHALL be the smallest product (pin bus width × instance vector width) among the pins attached to it. An unnamed net with multiplicity m > 1 SHALL be written as the expansion of `net<N>_[m−1..0]`, that is `net<N>_<m−1>,...,net<N>_0`.
@@ -226,7 +233,7 @@ Each netlisted instance SHALL produce the text of its format string with tokens 
 
 Parsing:
 - A backslash escapes the next character, and the backslash is dropped. An escaped LF is dropped entirely.
-- A token starts at an unescaped `@` or `%`. It ends before the first character, at position 2 or later of the token, that is an unescaped separator (space, tab, LF, `;`, end of string), an unescaped `@` or `%`, or an escaped character other than a separator, `@` or `%` (see Q-SCHEM-26).
+- A token starts at an unescaped `@` or `%`. It ends before the first character, at position 2 or later of the token, that is an unescaped separator (space, tab, LF, `;`, end of string), an unescaped `@` or `%`, or an escaped character other than a separator, `@` or `%`. This is xschem's rule, kept whatever the `xschem-compat` setting because PDK formats rely on it (`@spice_get_voltage(net)`). When a token's lookup fails but a shorter prefix of the token made of identifier characters (letters, digits, `_`) names a defined key, Hefesto SHALL report a warning naming the token and that prefix (Q-SCHEM-26, `Resolution: replicate`).
 - The ending character is copied to the output unless it is `@` or `%` (which starts the next token) or the end of the string. Characters outside tokens are copied.
 - A LF is appended at the end.
 
@@ -259,7 +266,7 @@ Compatibility: exact
 #### Scenario: Token ends at whitespace only
 - **GIVEN** a format containing `@W/@L` and an instance with `W=2 L=1`
 - **WHEN** it is substituted
-- **THEN** the token `@W/` SHALL be unresolved and give nothing, and the output SHALL be `1`
+- **THEN** the token `@W/` SHALL be unresolved and give nothing, the output SHALL be `1`, and a warning SHALL say that `@W/` is undefined while `W` is defined
 
 ### Requirement: Hierarchical parameters
 The value of `@key` for an instance SHALL be found as follows, where "lookup in S1, S2, ..." means: the first source that defines the key gives the value v; each later source that defines a key equal to v replaces v with that key's value:
@@ -281,7 +288,7 @@ Compatibility: exact
 
 ### Requirement: expr evaluation
 Text SHALL be scanned for the markers `expr(`, `expr_eng(` and `expr_eng4(`. Text outside markers SHALL be copied. After a marker, an arithmetic expression SHALL be parsed up to the matching `)`, optionally enclosed in single quotes (`expr('...')`):
-- **numbers**: a run of the characters `.0-9a-zA-Z_-` starting with a digit or `.`, converted by a C `%lf` scan, then multiplied by the SI suffix that starts the rest of the run: `T` 1e12, `G` 1e9, `x`/`X` or `meg` (case-insensitive) or `M` 1e6, `m` 1e-3, `k` 1e3, `u` 1e-6, `n` 1e-9, `p` 1e-12, `f` 1e-15, `a` 1e-18. Because `-` belongs to the run, `2-1` is read as the number 2 (see Q-SCHEM-12).
+- **numbers**: a run of the characters `.0-9a-zA-Z_-` starting with a digit or `.`, converted by a C `%lf` scan, then multiplied by the SI suffix that starts the rest of the run: `T` 1e12, `G` 1e9, `x`/`X` or `meg` (case-insensitive) or `M` 1e6, `m` 1e-3, `k` 1e3, `u` 1e-6, `n` 1e-9, `p` 1e-12, `f` 1e-15, `a` 1e-18. With `xschem-compat` ON, `-` belongs to the run anywhere after its first character, as in xschem, so `2-1` is read as the number 2. With `xschem-compat` OFF, a `-` belongs to the run only directly after an `e` or `E` (an exponent sign), so `2-1` is the number 2 minus the number 1. In both modes, a run as read with `xschem-compat` ON that contains a `-` not directly after `e` or `E` SHALL be reported as a warning, because the two modes read it differently (Q-SCHEM-12, `Resolution: compat`).
 - **constants**: `pi`, `e`, `k` (1.380649e-23), `h` (6.62607e-34), `echarge` (1.60217646e-19), `abszero` (273.15), `c` (2.99792458e8)
 - **functions** of one argument: `int` (truncate toward zero), `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `log` (base 10), `ln`, `exp`, `sqrt`, `round6`, `round1` (round to 6 or 1 significant digits), `round`
 - **operators**, lowest to highest precedence: `?:` (right-assoc), `==` and `!=`, `<` `>` `<=` `>=`, `+` and `-`, `*` `/` `%` (integer remainder of truncated operands), unary minus, `^` (power, right-assoc), parentheses
@@ -302,10 +309,20 @@ Compatibility: exact
 - **WHEN** `@ad` is substituted
 - **THEN** it SHALL give `int((1 + 1)/2) * W_N / 1 * 0.29`
 
+#### Scenario: Minus inside a number, xschem-compat ON
+- **GIVEN** `xschem-compat` ON
+- **WHEN** `expr(2-1)` and `expr(1e-3-1)` are evaluated
+- **THEN** they SHALL give `2` and `0.001`, and a warning SHALL be reported for each
+
+#### Scenario: Minus inside a number, xschem-compat OFF
+- **GIVEN** `xschem-compat` OFF
+- **WHEN** `expr(2-1)`, `expr(1e-3-1)` and `expr(2 - 1)` are evaluated
+- **THEN** they SHALL give `1`, `-0.999` and `1`, and a warning SHALL be reported for the first two only
+
 ### Requirement: Element line post-processing
 After all element texts are built, the netlist text SHALL be transformed line by line, as xschem does with its `spice.awk` script:
 1. **Join.** Outside user-code blocks, a line starting with `+` SHALL be appended to the previous line as one space followed by the rest of the line after the `+`. A user-code block runs from a line starting with `**** begin user architecture code` or `**** begin user header code` to the matching `**** end user ... code` line.
-2. **Trailing m=1.** From every line, including user code and comments, a trailing match of the regular expression ` [mM] *= *1 *$` SHALL be removed.
+2. **Trailing m=1.** A trailing match of the regular expression ` [mM] *= *1 *$` SHALL be removed. With `xschem-compat` ON it is removed from every line, including user code, comments, `.param` and `.control` text, as xschem does. With `xschem-compat` OFF it is removed only from device lines: lines outside user-code blocks whose first field does not start with `*` or `.` (Q-SCHEM-22, `Resolution: compat`).
 3. **Parametric vector instance names.** If any line starts with `.param` (case-insensitive), its `name=value` pairs (spaces around `=` removed) SHALL be recorded; an element whose first field matches `^[a-zA-Z][^\[\]:]+\[[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\]$` SHALL have its first field replaced by the expansion `name[first],...,name[last]` with recorded parameter values.
 4. **Markers.** `**** end_element` lines SHALL be dropped and reset the prefix; `**** spice_prefix <p>` lines SHALL be dropped and set the prefix to the third field. User-code header markers SHALL be dropped; architecture markers SHALL be kept. Lines inside user code SHALL be kept unchanged.
 5. **Comments.** A line whose first field starts with `*` SHALL be kept unchanged.
@@ -315,7 +332,7 @@ After all element texts are built, the netlist text SHALL be transformed line by
 9. **Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing.
 10. **Element expansion.** Any other line: let the names be the comma-separated items of field 1 (for the devices `ymemristor`, `ylin`, `ydelay`, `ytransline`, `ypgbr`, `ypowergridbranch`, `yacc`, `.model` and `.subckt`, field 1 repeated as many times as field 3 has items). A field matching `^(.*=)?\?-?[0-9]+$` is a width marker for the next field. For the i-th name (i from 1), write the prefix and the name, then each other field: a non-marker field as is; for a marker with width w (w = −1 means the item count of the next field) and next field with items a₁..a_k, write `<key=>` if the marker had one, then items a[((l + w·(i−1)) mod k) + 1] for l = 0..w−1. Every written field is followed by one space. A line with no names SHALL be written as an empty line.
 
-Case-insensitive matches in steps 3 and 7 follow gawk (see Q-SCHEM-18); step 2 applies to every line (see Q-SCHEM-22).
+Case-insensitive matches in steps 3 and 7 follow gawk on every platform, whatever the `xschem-compat` setting (Q-SCHEM-18, `Resolution: replicate`).
 
 Compatibility: exact
 
@@ -336,12 +353,17 @@ Compatibility: exact
 - **WHEN** it is netlisted
 - **THEN** the output SHALL be the line `V1 A 0 3` followed by `.save i(v1)`
 
+#### Scenario: Trailing m=1 in user code
+- **GIVEN** a `code_shown.sym` instance whose value is the line `.param m=1`, and a resistor line `R1 A B 1k m=1`
+- **WHEN** the schematic is netlisted with `xschem-compat` ON, then OFF
+- **THEN** with ON the lines SHALL be `.param` and `R1 A B 1k`; with OFF they SHALL be `.param m=1` and `R1 A B 1k`
+
 ### Requirement: Line breaking
 Finally, every line SHALL be processed as xschem does with its `break.awk` script:
 - trailing spaces and tabs SHALL be removed; an empty line stays empty
 - lines inside user-code blocks, lines whose first field (lowercased) matches the unanchored regular expression `\.inc(lude)?|\.lib|\.title|\.save|\.write`, and lines matching `^\*\* ..._path:` SHALL NOT be broken
 - other lines SHALL be broken so that no segment exceeds 130 characters before a break opportunity: a running column counter p starts at 0; for each field, p increases by the field's length plus the length of the whitespace before it; when p > 130, the text LF followed by `+` (or `*+` if the line starts with `*`) SHALL be emitted before that whitespace and p SHALL be reset to 0 (the field just placed is not counted)
-- if a line contains `{`, `}` or `'`, or the quote state carried over from an earlier line is set, it SHALL instead be scanned character by character: each of `{`, `}` and `'` toggles a quote state that persists across lines; p counts characters; a break (LF then `+` or `*+`) SHALL be inserted before a space or tab when p > 130 and the quote state is off, and p SHALL be reset to 0 (see Q-SCHEM-20)
+- if a line contains `{`, `}` or `'`, or the quote state carried over from an earlier line is set, it SHALL instead be scanned character by character: each of `{`, `}` and `'` toggles a quote state that persists across lines; p counts characters; a break (LF then `+` or `*+`) SHALL be inserted before a space or tab when p > 130 and the quote state is off, and p SHALL be reset to 0. Both rules are xschem's and are kept whatever the `xschem-compat` setting, because they change only where long lines wrap (Q-SCHEM-20, `Resolution: replicate`)
 
 Compatibility: exact
 
@@ -354,7 +376,7 @@ Compatibility: exact
 
 ### Requirement: Netlist file structure
 The hierarchical SPICE netlist of top schematic `T` (path `/abs/T.sch`) SHALL consist of, in order:
-1. `** sch_path: /abs/T.sch`
+1. `** sch_path: /abs/T.sch`, followed, only when `xschem-compat` is OFF, by the line `** xschem-compat=off` (capability `hefesto-magic-compat-mode`, Requirement "xschem-compat setting for xschem quirks")
 2. Header code: the `netlist_commands` instances whose `place` (symbol property first, then instance property) is `header`, in instance order, each element text written as is (no markers in the final text).
 3. Netlist options are applied (Requirement "Netlist options").
 4. The top line: `**.subckt T` (or `.subckt T` when the top is a subcircuit, Requirement "LVS netlist mode"; `.SUBCKT` with `uppercase_subckt`), followed by the port list (Requirement "Top-level port order"), then LF.
@@ -366,7 +388,7 @@ The hierarchical SPICE netlist of top schematic `T` (path `/abs/T.sch`) SHALL co
 10. If any `netlist_commands` instance has `place=end`, or any `device_model` was collected: `**** begin user architecture code`, the `place=end` texts in instance order, the `device_model` texts (Requirement "Device models"), `**** end user architecture code`.
 11. `.end`, unless the top is a subcircuit.
 
-All of this text then goes through Requirements "Element line post-processing" and "Line breaking". The `sch_path` and `sym_path` comment lines carry absolute paths on the netlisting host; comparisons with xschem SHALL normalise them (see Q-SCHEM-13).
+All of this text then goes through Requirements "Element line post-processing" and "Line breaking". The `sch_path` and `sym_path` comment lines carry absolute paths on the netlisting host, as in xschem. A per-project setting "portable netlist paths" (capability `hefesto-settings`, default off) SHALL instead write each such path as `$PDK_ROOT/<path>` when the file is inside the active PDK root, and otherwise relative to the folder of the top schematic. The setting changes only these comment lines. Comparisons with xschem SHALL normalise these lines (Q-SCHEM-13, `Resolution: platform`).
 
 Compatibility: exact
 
@@ -376,6 +398,11 @@ Compatibility: exact
 - **GIVEN** a top schematic `SC_Test` whose only user code is one `code_shown.sym` instance and which has no ports
 - **WHEN** it is netlisted
 - **THEN** the netlist SHALL start with `** sch_path: <path>`, then `**.subckt SC_Test`, the device lines, `**** begin user architecture code`, the code text, `**** end user architecture code`, `**.ends`, `.end`
+
+#### Scenario: Portable netlist paths
+- **GIVEN** the setting "portable netlist paths" on, a top schematic `/home/u/proj/tb.sch`, and a subcircuit symbol `/pdks/sky130A/libs.tech/xschem/sky130_tests/not.sym` with the active PDK root at `/pdks`
+- **WHEN** it is netlisted
+- **THEN** the first line SHALL be `** sch_path: tb.sch`, the symbol's line SHALL be `** sym_path: $PDK_ROOT/sky130A/libs.tech/xschem/sky130_tests/not.sym`, and every other line SHALL be as with the setting off
 
 ### Requirement: Subcircuit body
 The body of one schematic SHALL be written as:
@@ -396,7 +423,7 @@ Compatibility: exact
 - **THEN** the body SHALL list `*.ipin A`, `*.opin Y`, then the `R1` line
 
 ### Requirement: Top-level port order
-The top-level port list SHALL be taken from the symbol `<top base name>.sym` if it exists on the search path and has at least one pin: its format string SHALL be scanned like a subcircuit header (Requirement "Subcircuit definitions") and written after one space. Otherwise it SHALL be the `lab` of each port instance in instance order, sorted by `sim_pinnumber` when every port has one (unknown order on ties; Hefesto keeps instance order, see Q-SCHEM-5), each bus-expanded and written as ` <names>`. A mismatch between the symbol pins and the schematic ports SHALL be reported (Requirement "Errors and warnings").
+The top-level port list SHALL be taken from the symbol `<top base name>.sym` if it exists on the search path and has at least one pin: its format string SHALL be scanned like a subcircuit header (Requirement "Subcircuit definitions") and written after one space. Otherwise it SHALL be the `lab` of each port instance in instance order, sorted by `sim_pinnumber` when every port has one (unknown order on ties in xschem; Hefesto uses a stable sort that keeps instance order on ties and reports a warning for each duplicated value, whatever the `xschem-compat` setting; Q-SCHEM-5, `Resolution: fix`), each bus-expanded and written as ` <names>`. A mismatch between the symbol pins and the schematic ports SHALL be reported (Requirement "Errors and warnings").
 
 Compatibility: exact
 
@@ -410,7 +437,7 @@ Compatibility: exact
 ### Requirement: Subcircuit definitions
 In `hier` mode, after the top level, Hefesto SHALL write one definition per distinct subcircuit cell, in this order: walk the list of loaded symbols from the first; the list starts with the symbols used at top level in order of first use (then the variants created by instance `schematic` attributes), and each time a definition is written, the symbols first used inside it are appended to the end of the list. For each symbol S in the list:
 - skip S if its symbol property has `spice_ignore` true, `open` or `short`, or, with option `lvs_ignore`, `lvs_ignore` set; or if it has no `type`; or if its type is not `subcircuit`
-- skip S if a definition with the same cell name (the symbol reference without folder and extension) was already written; a symbol with `default_schematic=ignore` is skipped and not recorded
+- if a definition with the same cell name (the symbol reference without folder and extension) was already written from a different symbol file: with `xschem-compat` ON, skip S, as xschem does; with `xschem-compat` OFF, write S under the unique name `<cell>_<k>`, with k the smallest integer from 1 for which no definition of that name was written, and write every instance of S with that name in place of the cell name. Both modes SHALL report a warning naming both symbol files (Q-SCHEM-14, `Resolution: compat`). A symbol whose definition was already written from the same file is skipped. A symbol with `default_schematic=ignore` is skipped and not recorded
 - skip S if `spice_primitive` is true, or in LVS mode if `lvs_primitive` is true
 - skip S if its format (as in Requirement "Format string substitution") is empty
 
@@ -420,7 +447,8 @@ Otherwise write:
 3. if `spice_sym_def` is set: its value with `@` tokens substituted from the template (plus `symname`) and a LF, and nothing else
 4. otherwise `** sch_path: <absolute schematic path>` (Requirement "Schematic resolution"), then the header line `.subckt <name> ` where `<name>` is the template's `model` if set, else the cell name, followed by:
    - the port names, from scanning the symbol format: `@spiceprefix` and `@name` are ignored; `@pinlist` writes each pin name (not `spice_ignore`, first of each distinct name, substituted in the parent context, `expr`-evaluated, bus-expanded) followed by a space; `@@pin` and `@#n` write that pin's expanded name and a space; any other `@token` that is followed by a separator writes the token name and a space; `@symname` or `@model` ends the scan; if the scan reaches the end of the format instead, a LF is written. A format starting with `tcleval(` is Tcl-evaluated first.
-   - the template with the keys `name`, `spiceprefix`, `model` and every key that occurs as a substring of the symbol's `extra` value removed (see Q-SCHEM-19), values decoded, and all other characters (including separators and LFs) kept (see Q-SCHEM-21)
+   - the template with the keys `name`, `spiceprefix` and `model` removed, values decoded, and all other characters (including separators) kept. Keys named in `extra` are also removed: with `xschem-compat` ON, every key that occurs as a substring of the symbol's `extra` value, as xschem does; with `xschem-compat` OFF, only keys that are whole words of `extra` (delimited by separators). Both modes SHALL report a warning for each template key that occurs in `extra` as a substring but not as a whole word (Q-SCHEM-19, `Resolution: compat`).
+   - LFs of the template: with `xschem-compat` ON they are kept, as xschem does, which puts parameters on lines without `+`; with `xschem-compat` OFF each LF SHALL be written as one space, so the header is valid SPICE. Both modes SHALL report a warning naming the symbol whose template contains an LF (Q-SCHEM-21, `Resolution: compat`)
    - a LF
 5. the body of the schematic (Requirement "Subcircuit body"), unless `spice_stop` is true
 6. if the schematic's `S` property is non-empty: `**** begin user architecture code`, the property, `**** end user architecture code`
@@ -438,7 +466,22 @@ Compatibility: exact
 #### Scenario: Same cell name from two libraries
 - **GIVEN** a top schematic using `libA/inv.sym` and then `libB/inv.sym`, both `type=subcircuit`
 - **WHEN** it is netlisted
-- **THEN** only the definition from `libA/inv.sch` SHALL be written (see Q-SCHEM-14)
+- **THEN** with `xschem-compat` ON only the definition from `libA/inv.sch` SHALL be written, and a warning SHALL name both symbols
+
+#### Scenario: Same cell name from two libraries, xschem-compat OFF
+- **GIVEN** the same top schematic and `xschem-compat` OFF
+- **WHEN** it is netlisted
+- **THEN** `.subckt inv` SHALL be written from `libA/inv.sch` and `.subckt inv_1` from `libB/inv.sch`, the instances of `libB/inv.sym` SHALL use `inv_1`, and a warning SHALL name both symbols
+
+#### Scenario: extra key matched as a substring
+- **GIVEN** a subcircuit symbol with `extra="VPWR VGND"` and template `name=x1 VPW=1 L=1`
+- **WHEN** its definition is written
+- **THEN** with `xschem-compat` ON `VPW=1` SHALL be dropped from the header; with `xschem-compat` OFF it SHALL be kept; in both modes a warning SHALL name `VPW`
+
+#### Scenario: Multi-line template, xschem-compat OFF
+- **GIVEN** a subcircuit symbol whose template is `name=x1` LF `W=1`, and `xschem-compat` OFF
+- **WHEN** its definition is written
+- **THEN** the header line SHALL end with ` W=1` on the same line, and a warning SHALL name the symbol
 
 ### Requirement: Schematic resolution
 The schematic of a subcircuit instance or symbol SHALL be:
@@ -447,7 +490,7 @@ The schematic of a subcircuit instance or symbol SHALL be:
 3. in both cases with `@symname` replaced by the symbol cell name, Tcl-evaluated if in `tcleval(...)` form, and resolved like a symbol reference (capability `schematic-symbols-and-libraries`) unless it is a generator;
 4. otherwise the symbol's reference with its extension replaced by `.sch`, in the same folder as the resolved symbol file.
 
-An instance whose `schematic` attribute differs from its symbol's SHALL produce a separate subcircuit definition named after that schematic's cell name (see Q-SCHEM-28). A missing schematic SHALL produce a definition whose body is empty, and SHALL report a warning (see Q-SCHEM-27).
+An instance whose `schematic` attribute differs from its symbol's SHALL produce a separate subcircuit definition, one per distinct `schematic` value, named after that schematic's cell name; the exact naming is fixed by golden case SCHEM-NL-15 (Q-SCHEM-28, `Resolution: replicate`). A missing schematic SHALL produce a definition with its header lines and an empty body, and SHALL report a warning; the exact text is fixed by golden case SCHEM-NL-14 (Q-SCHEM-27, `Resolution: replicate`). Both rules apply whatever the `xschem-compat` setting.
 
 Compatibility: exact
 
@@ -489,7 +532,9 @@ Compatibility: exact
 - **THEN** the netlist SHALL contain `.subckt inv A Y`, then `*.PININFO A:I Y:O`, then device lines using `lvs_format` (no `ad=` or `nrd=` parameters), then `.ends`, and SHALL NOT contain `.end`
 
 ### Requirement: Flat netlist
-In `flat` mode, Hefesto SHALL produce a netlist with no subcircuit hierarchy for the subcircuits defined in the schematic: every instance of a defined subcircuit is replaced by its body, with instance names suffixed `_<path>` and local net names prefixed `<path>_`, where the path joins the instance names from the top with `_`; port nets map to the parent nets; global nets and `0` are not renamed; device lines of undefined subcircuits (for example PDK model subcircuits) stay `X` lines. Text outside `.control` blocks, except `.include`, `.lib` and `.write` lines, is uppercased. xschem does this with its `flatten.awk` script; its exact text is informative, and Hefesto's flat netlist SHALL be electrically equivalent to the hierarchical one. See Q-SCHEM-15.
+In `flat` mode, Hefesto SHALL produce a netlist with no subcircuit hierarchy for the subcircuits defined in the schematic: every instance of a defined subcircuit is replaced by its body; port nets map to the parent nets; global nets and `0` are not renamed; device lines of undefined subcircuits (for example PDK model subcircuits) stay `X` lines. Instance names SHALL be suffixed `_<path>` and local net names prefixed `<path>_`, where the path joins the instance names from the top with `_`.
+
+The flat netlist SHALL be electrically equivalent to the hierarchical one and to xschem's flat netlist: the same devices, the same connections, and the same model names and parameter values. It is not byte-compared: the golden comparison SHALL parse both netlists into a canonical form (devices with their resolved nodes, models and parameter values, in a canonical order, with names compared case-insensitively as SPICE reads them) and compare those. Any other property of xschem's flat text, such as its letter case, is informative and is not reproduced (Q-SCHEM-15, `Resolution: replicate`, behavioural).
 
 Compatibility: behavioral
 
@@ -500,6 +545,11 @@ Compatibility: behavioral
 - **WHEN** a flat netlist is generated
 - **THEN** it SHALL contain no `.subckt` line for `inv`, and the transistors of both instances SHALL appear with distinct names
 
+#### Scenario: Flat netlist compared behaviourally
+- **GIVEN** golden case SCHEM-NL-21 (sky130 `top.sch` netlisted flat by xschem and by Hefesto)
+- **WHEN** the outputs are compared
+- **THEN** the comparison SHALL pass when the canonical parsed forms are equal, even if the texts differ in letter case or line order
+
 ### Requirement: Errors and warnings
 Netlisting SHALL report, without stopping:
 - shorts between differently named nets (Requirement "Net naming order")
@@ -508,6 +558,7 @@ Netlisting SHALL report, without stopping:
 - unconnected pins (Requirement "Unnamed nets")
 - instances with all pins unconnected, overlapping identical instances, and pin mismatches between a symbol and its schematic
 - bus expansion syntax errors
+- the warnings that the rules above give in both modes of `xschem-compat`: duplicate `sim_pinnumber` values (Q-SCHEM-5), two subcircuits with one cell name (Q-SCHEM-14), template keys found in `extra` only as substrings (Q-SCHEM-19), templates with LFs (Q-SCHEM-21), numbers whose reading depends on `xschem-compat` (Q-SCHEM-12), and undefined tokens with a defined identifier prefix (Q-SCHEM-26)
 
 A run that found a short, a pin mismatch or another error SHALL return a failure status (xschem exit code 10), and the offending objects SHALL be highlighted in the editor (capability `schematic-editing`). Warnings alone SHALL NOT fail the run. The message wording is informative.
 

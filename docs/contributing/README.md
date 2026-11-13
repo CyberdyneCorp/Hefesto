@@ -128,6 +128,7 @@ Hefesto reproduces the behavior of GPL-licensed tools but never contains their c
 - Do not copy, translate or closely paraphrase code from GPL projects, including **netgen**, **KLayout** and **xschem**.
 - Implement behavior that must match those tools only from the Hefesto specifications. If a spec is not precise enough, raise it as a spec change; do not read the GPL source to fill the gap.
 - This applies in particular to the netgen-compatible **LVS**, the **OASIS** features and the xschem-compatible **schematic** (`.sch`, `.sym`) editor.
+- The `schematic-*` specs were written from xschem's source, so they follow a two-team process (capability `hefesto-licensing`, requirement "Two-team clean-room process for specs written from GPL source"): spec authors never implement those capabilities, implementers never follow `Evidence:` lines or `(xschem ref: ...)` traces, no xschem source tree is reachable from an implementation session, and golden inputs are Hefesto-authored or from the Apache-2.0 PDKs, never xschem's own files.
 - KLayout may only be run as a separate, user-installed program on desktop (decision P-18). It is never linked or bundled.
 - Magic (UC Berkeley notice) and ngspice (modified BSD, GPL parts excluded) are permissively licensed. Ported logic keeps their notices, recorded in `THIRD_PARTY_NOTICES.md`.
 

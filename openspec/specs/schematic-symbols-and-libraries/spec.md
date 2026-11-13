@@ -127,7 +127,7 @@ Compatibility: exact
 - **THEN** the right pin SHALL also connect to net `N1`
 
 ### Requirement: Pin order
-The pin order of a symbol SHALL be the order of its layer-5 boxes in the file. If every pin has a `sim_pinnumber` key, the pins SHALL instead be sorted by the integer value of `sim_pinnumber`, ascending. Pins with equal `sim_pinnumber` have no defined relative order in xschem; Hefesto SHALL keep their file order (a stable sort; see Q-SCHEM-5). If at least one pin lacks `sim_pinnumber`, no sorting SHALL happen. Pin order SHALL define `@pinlist`, the `.subckt` port list and pin numbers used by `@#n`.
+The pin order of a symbol SHALL be the order of its layer-5 boxes in the file. If every pin has a `sim_pinnumber` key, the pins SHALL instead be sorted by the integer value of `sim_pinnumber`, ascending. Pins with equal `sim_pinnumber` have no defined relative order in xschem; Hefesto SHALL keep their file order (a stable sort) and SHALL report a warning naming the symbol and the duplicated value, whatever the `xschem-compat` setting (Q-SCHEM-5, `Resolution: fix`). If at least one pin lacks `sim_pinnumber`, no sorting SHALL happen. Pin order SHALL define `@pinlist`, the `.subckt` port list and pin numbers used by `@#n`.
 
 Compatibility: exact
 
@@ -142,6 +142,11 @@ Compatibility: exact
 - **GIVEN** pins `B` (sim_pinnumber=2) and `A` (no sim_pinnumber)
 - **WHEN** the symbol is loaded
 - **THEN** the pin order SHALL be B, A
+
+#### Scenario: Duplicate sim_pinnumber
+- **GIVEN** pins in file order `B` (sim_pinnumber=1), `A` (sim_pinnumber=1), `C` (sim_pinnumber=0)
+- **WHEN** the symbol is loaded
+- **THEN** the pin order SHALL be C, B, A, and a warning SHALL report the duplicated `sim_pinnumber` 1
 
 ### Requirement: Templates and instance attributes
 A new instance SHALL get the symbol's `template` value (decoded, capability `schematic-file-format`, Requirement "Property strings") as its property string, with `name` made unique (Requirement "Instance names"). When an `@key` token is resolved for an instance (capability `schematic-netlisting`, Requirement "Format string substitution"), the instance property string SHALL be searched first, then the symbol template. Instance attributes that the template does not define SHALL be kept and SHALL be usable by `@key`. An instance MAY override `format` and `lvs_format`; an instance value SHALL be used before the symbol value.
@@ -235,7 +240,9 @@ An attribute value, a `format` result or a displayed text whose text begins with
 
 A format token `@tcleval(...)` SHALL be evaluated the same way, with Tcl variables `instname` and `symname` set to the instance name and symbol reference.
 
-Hefesto SHALL run this in the embedded, sandboxed Tcl interpreter of capability `hefesto-scripting` on every platform, so the PDK symbols that use `tcleval` work on iPadOS too. That interpreter SHALL provide xschem-compatible definitions of the Tcl procedures that PDK symbols call (Requirement "PDK attribute conventions"): `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `ngspice::get_node`, `ngspice::get_current`, `xschem getprop`, `xschem get` (subset), and the variables set by the active PDK's `xschemrc`. See Q-SCHEM-7 and Q-SCHEM-8.
+Hefesto SHALL run this in the embedded, sandboxed Tcl interpreter of capability `hefesto-scripting` on every platform, so the PDK symbols that use `tcleval` work on iPadOS too. That interpreter SHALL provide xschem-compatible definitions of the Tcl procedures that PDK symbols call (Requirement "PDK attribute conventions"): `ev`, `ev7`, `ev0`, `to_eng`, `from_eng`, `ngspice::get_node`, `ngspice::get_current`, `xschem getprop`, `xschem get` (subset), and the variables set by the active PDK's `xschemrc`. See Q-SCHEM-7.
+
+The set of procedures and variables SHALL be exactly the one that an inventory script finds in the three pinned PDK trees (every `tcleval(` value, every `[`-command and every `$::` variable). The inventory SHALL be kept as a test that fails when a PDK bump adds a procedure or variable that Hefesto does not provide. Each procedure's semantics SHALL be specified from the public xschem manual and from expected values computed for the PDK symbols, never from xschem's Tcl code (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"; Q-SCHEM-8, `Resolution: other`).
 
 Compatibility: behavioral
 
@@ -252,7 +259,7 @@ Compatibility: behavioral
 - **THEN** the area SHALL be printed as `A=1e-11`, which is Tcl `format %.7g` of the product
 
 ### Requirement: Script execution permission
-xschem guards `tcleval` and `tclcommand` with a user setting whose values are `ask`, true or false. Hefesto SHALL instead run `tcleval` attribute values always, inside the sandbox of capability `hefesto-scripting`, because the sandbox removes process execution, sockets and file access outside granted folders. Launcher `tclcommand` scripts SHALL run only after the user confirms them once per document, and SHALL run in the same sandbox. The xschem `xschem_execute_scripts` variable in an `xschemrc` SHALL be read and ignored. See Q-SCHEM-25.
+xschem guards `tcleval` and `tclcommand` with a user setting whose values are `ask`, true or false. Hefesto SHALL instead run `tcleval` attribute values always, inside the sandbox of capability `hefesto-scripting`, because the sandbox removes process execution, sockets and file access outside granted folders. Launcher `tclcommand` scripts SHALL run only after the user confirms them once per document, and SHALL run in the same sandbox. The xschem `xschem_execute_scripts` variable in an `xschemrc` SHALL be read and ignored, and the log SHALL say that it was ignored. This permission model SHALL be signed off by a security review against capability `hefesto-security` (Requirement "Schematic script permission model") before M8 exits (Q-SCHEM-25, `Resolution: platform`).
 
 Compatibility: native
 
@@ -263,10 +270,15 @@ Compatibility: native
 - **WHEN** the user Ctrl+clicks it for the first time in this document
 - **THEN** Hefesto SHALL ask for confirmation, and SHALL NOT ask again for that document in the session
 
+#### Scenario: xschem_execute_scripts ignored
+- **GIVEN** the sky130 `xschemrc`, which sets `xschem_execute_scripts` to `yes`
+- **WHEN** it is read
+- **THEN** the value SHALL have no effect, `tcleval` values SHALL still run in the sandbox, launchers SHALL still be confirmed, and the log SHALL report that the variable was ignored
+
 ### Requirement: Symbol references
 A symbol reference in a `C` record SHALL be resolved to a file as follows:
 1. An empty reference resolves to nothing.
-2. An `http://` or `https://` reference SHALL be kept as is (informative: Hefesto does not download; see Q-SCHEM-9).
+2. An `http://` or `https://` reference SHALL be kept as written and SHALL NOT be downloaded. The instance SHALL be shown as a missing symbol (Requirement "Missing symbols") and a warning naming the reference SHALL be reported (Q-SCHEM-9, `Resolution: platform`).
 3. A reference starting with `/` is an absolute path.
 4. Otherwise, runs of `/` SHALL be collapsed, `/./` removed, `dir/../` pairs removed, and a trailing `/` or `/.` removed.
 5. A reference that then starts with `./` or `../` SHALL be resolved against the folder of the schematic that contains the instance; it is used if the file or its folder exists.
@@ -284,6 +296,11 @@ Compatibility: exact
 - **GIVEN** the search path `/pdk/xschem:/pdk/xschem/sg13g2_pr` and the reference `sg13g2_pr/sg13_lv_nmos.sym`
 - **WHEN** it is resolved
 - **THEN** the file SHALL be `/pdk/xschem/sg13g2_pr/sg13_lv_nmos.sym`
+
+#### Scenario: Web reference not fetched
+- **GIVEN** an instance whose reference is `https://example.com/lib/amp.sym`
+- **WHEN** the schematic is opened
+- **THEN** no network request SHALL be made, the instance SHALL show the missing-symbol placeholder, a warning SHALL name the reference, and saving SHALL write the reference unchanged
 
 ### Requirement: Library search path
 The search path SHALL be an ordered list of folders built from the value of `XSCHEM_LIBRARY_PATH`:
@@ -327,7 +344,9 @@ Compatibility: behavioral
 - **THEN** the search path SHALL contain `<PDK root>/ihp-sg13g2/libs.tech/xschem`, `<PDK root>/ihp-sg13g2/libs.tech/xschem/sg13g2_pr` and `<PDK root>/ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem`, in that order after the system library folders
 
 ### Requirement: System library
-Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The exact list SHALL be fixed by an inventory of the references used by the three PDK libraries (see Q-SCHEM-10).
+Hefesto SHALL ship a clean-room symbol library that is reference-compatible with the xschem `xschem_library/devices` library: the same file names (for example `res.sym`, `capa.sym`, `vsource.sym`, `isource.sym`, `gnd.sym`, `vdd.sym`, `lab_pin.sym`, `lab_wire.sym`, `ipin.sym`, `opin.sym`, `iopin.sym`, `code.sym`, `code_shown.sym`, `launcher.sym`, `title.sym`, `noconn.sym`, `ammeter.sym`, `spice_probe.sym`, `netlist_options.sym`), the same pin names and order, pin positions and symbol properties (`type`, `format`, `template`, `global`, ...) that produce identical netlists. Their graphics MAY differ. The library SHALL be available as both `devices/<name>` and `<name>`, because PDK schematics use both forms. The library SHALL contain only the symbols that the three PDK libraries and their example schematics reference: the list SHALL be generated by an inventory script over the pinned Apache-2.0 PDK trees and kept as a test that fails when a PDK bump references a symbol that the library lacks (Q-SCHEM-10, `Resolution: other`).
+
+Clean-room provenance (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"): the interface of each symbol (file name, pin names, pin order, pin positions and the netlisting properties) has no public source other than xschem's GPL `devices/*.sym` files. It SHALL be extracted from them by the spec side only and recorded as a table in this spec, of which the table below is the part written so far; implementers SHALL take it from this spec, and SHALL draw the graphics independently. The table is covered by the one counsel review that `hefesto-licensing` requires before Desktop 1.0.
 
 Netlisting-relevant properties of the core symbols SHALL be:
 

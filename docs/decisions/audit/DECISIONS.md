@@ -248,6 +248,7 @@ Entries are ordered by priority, then by milestone.
 - **Options:** (a) apply X-2, with an `xschem-compat` setting defined like `netgen-compat` (D-2); (b) replicate always; (c) case by case without a switch.
 - **Recommendation:** (a).
 - **Priority:** blocks M8.
+- **Status:** resolved (2026-11-13): option (a), as recommended (`docs/decisions/m8-decision-table.md`, D-21). `xschem-compat` (default ON) is added to `hefesto-magic-compat-mode` beside `magic-compat` and `netgen-compat` and governs the `Resolution: compat` entries of `SCHEM.md` (Q-SCHEM-3, -12, -14, -19, -21, -22); `SCHEM.md` is no longer governed by `magic-compat`. The setting is stored per project, changes no layout, extraction or LVS output, and is written into a netlist only when OFF (one `** xschem-compat=off` line after the first `** sch_path:` line). Of the entries listed under Affects, Q-SCHEM-16 is fix and Q-SCHEM-20 and -26 are replicate in both modes; Q-SCHEM-12, -19 and -22 are compat.
 
 ### D-22: ngspice `.param` precedence (Q-SIMADV-3, -4, -9)
 
