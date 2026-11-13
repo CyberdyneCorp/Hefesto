@@ -7,10 +7,12 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-1: Cumulative antenna model never reports violations
 - Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: The per-layer sums S_metal and S_via are only accumulated when the PARTIAL model flag is set. With `model cumulative` both sums stay 0, so no gate ever fails, although the areas are accumulated over all lower planes.
 - Evidence: extflat/EFantenna.c:574-590, extflat/EFantenna.c:647-668
-- Options: replicate | fix (accumulate a[t]/ratio for all non-contact types in the cumulative model) 
-- Recommendation: fix behind a compatibility flag; default to Magic's behaviour for golden tests, document loudly.
+- Verified 2026-11-13: Confirmed at extflat/EFantenna.c:574-584 (no-diffusion branch) and :637-645 (diffusion branch). anttotal and conttotal are accumulated only under ANTENNAMODEL_PARTIAL. In the cumulative model both stay 0, so no gate ever fails, although areas are accumulated over all planes with order ≤ pos (:551-561). All three PDKs use `model partial` (sky130A-extract.tech:75, gf180mcuD-extract.tech:44, ihp-sg13g2), so none is affected.
+- Options: replicate | fix (accumulate a[t]/ratio for all non-contact types in the cumulative model) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. ON: in the cumulative model, report nothing, as Magic does. OFF: in the cumulative model, sum a[t]/ratio over all non-contact types into the metal total, and over contact types into the via total, for every plane with order ≤ the check plane, using the same gate and diffusion-ratio formulas as partial. Either total over the gate area is a violation. A check that can never fire is a bug that changes results, so the compat rule applies. The release notes should say clearly that ON reports no cumulative violations.
 
 ### Q-MISC-2: Antenna model flags are uninitialised
 - Kind: bug
@@ -22,17 +24,21 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-3: Antenna line without calc type and no default
 - Kind: quirk
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: The error is reported but the (uninitialised) calc type is still stored and the ratios are stored, so the layer may or may not count.
 - Evidence: extract/ExtTech.c:3015-3028
+- Verified 2026-11-13: Confirmed at extract/ExtTech.c:3017-3027. With no calc type and no SURFACE or SIDEWALL model bit, TechError is reported, but the uninitialised local `areaType` is still stored in exts_antennaRatio[t].areaType (:3025-3027). The ratios are stored afterwards. antennaAccumFunc (extflat/EFantenna.c:837 and the following lines) then branches on those bits, so whether the layer counts depends on stack garbage. No PDK line omits the calc type.
 - Options: replicate | fix (store "no calculation type")
-- Recommendation: fix — treat the layer as not contributing.
+- Recommendation: fix. Both modes: after the error, store 'no calculation type', so the layer contributes no antenna area while its ratios are still parsed. Magic reads an uninitialised value here, which is undefined behaviour and therefore X-2 tier 1. Magic has no reproducible output to match.
 
 ### Q-MISC-4: Contact cut count mixes internal and output units
 - Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: nx = (w − 2·border)/(size + sep) uses tile width in internal units but cut parameters in cifoutput units (scaled by scalefactor), so cut counts are wrong unless scalefactor = 1; additionally the cut area is truncated to an integer before multiplying. If the contact has no squares/slots rule the parameters are uninitialised.
 - Evidence: extflat/EFantenna.c:853-863, extflat/EFantenna.c:974-985, cif/CIFtech.c:2339-2343
-- Options: replicate | fix (convert w, h to output units first; use 0 area when no rule)
-- Recommendation: replicate by default (affects sky130/gf180 antenna results), offer fixed mode.
+- Verified 2026-11-13: Confirmed. The SIDEWALL path is at extflat/EFantenna.c:853-863 and the SURFACE path at :974-985. nx = (w − 2·border)/(size+sep), with w in internal units and the cut parameters in CIF style units; a zero result is replaced by 1. The SURFACE area is nx·ny·(dlong)(f·f) with f = size/cs_scaleFactor, so the area is truncated. For sky130A (scalefactor 10 nm, MCON `squares-grid 0 170 190`), most tiles count as 1 cut. Two cases are worse than the entry says. In cif/CIFtech.c:2339-2343, with no CIF style `edge = spacing = border = 0;` assigns the local pointers, so the caller's values stay uninitialised; with no squares or slots rule it returns without writing them. Separately, size+sep == 0 divides by zero.
+- Options: replicate | fix (convert w, h to output units first; use 0 area when no rule) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. Both modes (tier 1): a contact type with no CIF style or no squares/slots rule contributes cut area 0, and size+sep == 0 counts one cut, with no uninitialised read and no division by zero. ON: otherwise compute as Magic does, with the unit mix and the truncated f², which keeps sky130 and gf180 antenna results identical. OFF: convert w, h and border to the same units as the cut parameters before counting, and use the untruncated cut area. The unit mix is a quirk that changes results, so the compat rule applies; the undefined-behaviour parts are fixed in both modes. (corrected 2026-11-13, was replicate by default with a fixed mode; the undefined-behaviour cases are now fixed in both modes)
 
 ### Q-MISC-5: `antenna` line with calc type and a single ratio reads past arguments
 - Kind: bug
@@ -52,10 +58,12 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-7: Connectivity restriction uses plane numbers and one contact type
 - Kind: quirk
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: Only the first contact type whose home plane is the check plane is restricted, and the restriction keeps types whose plane *number* (not plane order) is ≤ the check plane's number. Other via types on that plane still connect upward.
 - Evidence: extflat/EFantenna.c:504-517
-- Options: replicate | fix (restrict all contacts on the plane, compare plane order)
-- Recommendation: replicate by default; techs with several via types per plane need a fixed mode.
+- Verified 2026-11-13: Confirmed at extflat/EFantenna.c:504-517. Only the first contact type whose DBPlane equals the check plane is restricted (`break`). It keeps the types j with DBPlane(j) <= pNum2, which compares plane numbers. The table is restored at :740-741. This affects a PDK: in gf180mcuD the metal4 plane declares mimcc (contact mimcap↔metal5) before via4 in the types section. At the metal4 check only mimcc is restricted, and via4 still connects through metal5, so metal4 reached through metal5 jumpers is counted. With the partial model that can produce false violations. sky130A and ihp-sg13g2 have one via per metal plane that matters.
+- Options: replicate | fix (restrict all contacts on the plane, compare plane order) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. ON: restrict only the first contact type whose home plane is the check plane, and compare plane numbers, as Magic does (gf180mcuD's metal4 results included). OFF: restrict every contact type whose home plane is the check plane, and keep only the types whose plane order is ≤ the check plane's order. This is a bug that changes antenna results, so the compat rule applies. The release notes should name gf180mcuD's metal4 check as the case where the modes differ.
 
 ## mask-hints
 
