@@ -405,3 +405,8 @@ reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the t
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
 reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
+
+[MASK-UO-013]
+deferred = "M5"
+outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
+reason = "use enumeration order (UseIndex) and gds/cif write arrive in M5; the trace is INDEX's reference (tests/data/db/use_index/)"
