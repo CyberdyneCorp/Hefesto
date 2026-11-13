@@ -22,9 +22,9 @@ How this plan runs:
 ## 2. Scaffold
 
 - [x] 2.1 Create the change `m5-mask-gds-cif` (proposal, design, tasks, `skip_specs: true`). Verify that `openspec validate m5-mask-gds-cif --strict` and `openspec validate --all --strict` pass.
-- [ ] 2.2 Add the areas `mask` (subdirectories `plane`, `style`, `input`, `ops`, `gen`), `gds` (`stream`, `read`, `write`, `command`) and `cif` (`read`, `write`, `command`), each subdirectory with its `sources.cmake` and `codes.inc`, plus the INTEGRATION-owned `{mask,gds,cif}/{sources.cmake,codes.cpp}`. Add their test directories and `docs/diagnostics/codes/{mask,gds,cif}.md` with one section per owning workstream (design D1). Verify that the build passes and the test "each area's code table matches its document and prefix" covers the three areas.
-- [ ] 2.3 Write the documented public headers of design "Area contracts" with stubs, and add `CORE-NOTIMPL-005`. Register `gds` and `calma` with Magic's option table, and move `cif` to `cif/command/` with every option. Unimplemented options fail with `CORE-NOTIMPL-005`, and the M4 `cif` queries keep working. Verify that the headers compile in `macos-debug` and `macos-bench`, a `[m5-scaffold]` test lists every `gds` and `cif` option, and the M4 `cif` tests pass unchanged.
-- [ ] 2.4 Add the shared interfaces of design D4:
+- [x] 2.2 Add the areas `mask` (subdirectories `plane`, `style`, `input`, `ops`, `gen`), `gds` (`stream`, `read`, `write`, `command`) and `cif` (`read`, `write`, `command`), each subdirectory with its `sources.cmake` and `codes.inc`, plus the INTEGRATION-owned `{mask,gds,cif}/{sources.cmake,codes.cpp}`. Add their test directories and `docs/diagnostics/codes/{mask,gds,cif}.md` with one section per owning workstream (design D1). Verify that the build passes and the test "each area's code table matches its document and prefix" covers the three areas.
+- [x] 2.3 Write the documented public headers of design "Area contracts" with stubs, and add `CORE-NOTIMPL-005`. Register `gds` and `calma` with Magic's option table, and move `cif` to `cif/command/` with every option. Unimplemented options fail with `CORE-NOTIMPL-005`, and the M4 `cif` queries keep working. Verify that the headers compile in `macos-debug` and `macos-bench`, a `[m5-scaffold]` test lists every `gds` and `cif` option, and the M4 `cif` tests pass unchanged.
+- [x] 2.4 Add the shared interfaces of design D4:
   - `mask::MaskSession` in `EditorState`, with the shared `random()` generator moved from `db/commands_misc.cpp`;
   - `MaskPlane` and `PlanePool`, `OutputStyle`, `InputStyle`, `OperatorContext` and `evaluate_layer`, `GenerationContext` and `Progress`;
   - `db::UseIndex` (`place`, `remove`, `search`, `find_equal`, `enumerate_all`, `order`), initially returning today's unbinned order;
@@ -32,8 +32,8 @@ How this plan runs:
   - the `read` entry points, and the two-phase `prepare_write`/`emit_write` entry points with `write` calling both (design D4).
 
   Verify that the CLI, shell and core tests pass unchanged and `random seed 1; random` gives the M4 sequence.
-- [ ] 2.5 Record the ownership table and contracts in design.md ("As-landed scaffold contracts") and seed `docs/design/m5-ui-conformance.md`. Verify that `openspec validate --all --strict` passes.
-- [ ] 2.6 Add `--capability <cap>` (repeatable) to `scripts/check_requirement_coverage.py`, limiting the report to those capabilities, with a test in `scripts/tests/`. Verify that `--capability gds-write` reports only `gds-write` requirements.
+- [x] 2.5 Record the ownership table and contracts in design.md ("As-landed scaffold contracts") and seed `docs/design/m5-ui-conformance.md`. Verify that `openspec validate --all --strict` passes.
+- [x] 2.6 Add `--capability <cap>` (repeatable) to `scripts/check_requirement_coverage.py`, limiting the report to those capabilities, with a test in `scripts/tests/`. Verify that `--capability gds-write` reports only `gds-write` requirements.
 
 ## 3. STYLES: mask-output-styles
 

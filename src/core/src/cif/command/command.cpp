@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 The Hefesto Authors
 //
-// The `cif` command (openspec/changes/m4-scripting/design.md D6;
-// capability scripting-api "Result formats of commands used by scripts";
-// Q-SCRIPT-7, resolution: compat): `cif scale|lambda input|output`,
-// `cif [list|listall] ostyle|istyle` and `cif help`, backed by the M3
-// cifoutput catalog (drc::CifCatalog) and the technology's raw `cifinput`
-// section. Every other option needs the CIF reader and writer of M5 and
-// fails with SCRIPT-BIND-002.
+// The `cif` command (capability cif-format-io "cif command dispatch";
+// openspec/changes/m5-mask-gds-cif/design.md D3, D13), moved here from
+// script/binding/ by the M5 scaffold with Magic's whole option table. The
+// M4 answers keep working (capability scripting-api "Result formats of
+// commands used by scripts"; Q-SCRIPT-7, resolution: compat):
+// `cif scale|lambda input|output`, `cif [list|listall] ostyle|istyle` and
+// `cif help`, backed by the M3 cifoutput catalog (drc::CifCatalog) and the
+// technology's raw `cifinput` section. Every other option fails with
+// CORE-NOTIMPL-005 until CIF lands it (tasks.md section 11).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) commands/CmdCD.c CmdCif (the option
 // table, list/listall, HELP, ISTYLE, OSTYLE, CIF_SCALE, CIF_LAMBDA),
@@ -15,6 +17,10 @@
 // CIFGetInputScale / CIFPrintReadStyle / the `style` and `scalefactor`
 // statements, Copyright (C) 1985, 1990 Regents of the University of
 // California (see THIRD_PARTY_NOTICES.md).
+//
+// Owner: CIF (openspec/changes/m5-mask-gds-cif/design.md D2).
+
+#include "hefesto/cif/command/command.hpp"
 
 #include <array>
 #include <cstdint>
@@ -28,12 +34,12 @@
 #include "db/command_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
+#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
-#include "hefesto/script/binding/commands.hpp"
 #include "hefesto/tech/technology.hpp"
 
-namespace hefesto::script {
+namespace hefesto::cif {
 
 namespace {
 
@@ -41,7 +47,6 @@ namespace cu = db::cmdutil;
 using cmd::CommandResult;
 using cmd::Value;
 
-constexpr std::string_view kNotYet = "SCRIPT-BIND-002";
 constexpr std::string_view kNoWindow = "VIEW-WINDOW-003";
 
 // cmdCifOption, in Magic's order (Lookup() reads each entry up to its
@@ -167,9 +172,10 @@ std::vector<InputStyle> input_styles(const tech::Technology& tech) {
   return styles;
 }
 
-CommandResult not_yet(const CifCall& c) {
-  return CommandResult::failure(diag::make(kNotYet, "\"cif " + c.words.front() +
-                                                        "\" needs the CIF reader and writer, which arrive in M5."));
+// An option the M5 scaffold registered before CIF implemented it.
+CommandResult not_yet(std::size_t option) {
+  const std::string_view entry = kOptions.at(option);
+  return cmd::not_implemented("cif " + std::string{entry.substr(0, entry.find_first_of(" \t\n"))});
 }
 
 CommandResult wrong_args(const CifCall& c, std::size_t option) {
@@ -293,10 +299,10 @@ CommandResult input_styles_of(const CifCall& c) {
   return print_styles(c, names, names.empty() ? std::nullopt : std::optional{names.front()}, "input");
 }
 
-// `cif istyle|ostyle [style]`: listing only; selecting a style is M5's.
+// `cif istyle|ostyle [style]`: listing only until CIF lands selection.
 CommandResult style(const CifCall& c, std::size_t option) {
   if (c.argc() == 3) {
-    return not_yet(c);
+    return not_yet(option);
   }
   if (c.argc() != 2) {
     return wrong_args(c, option);
@@ -324,7 +330,7 @@ CommandResult run_option(const CifCall& c, std::size_t option) {
     case kOstyle:
       return style(c, option);
     default:
-      return not_yet(c);
+      return not_yet(option);
   }
 }
 
@@ -335,8 +341,7 @@ CommandResult cif_command(cmd::CommandContext& ctx, const cmd::Invocation& invoc
   }
   CifCall c{session.value(), invocation.args};
   if (c.words.empty()) {
-    c.words.emplace_back("write");
-    return not_yet(c);
+    return cmd::not_implemented("cif write");  // a bare `cif` writes the root cell
   }
   if (c.words.front().starts_with("list")) {
     c.list = true;
@@ -365,4 +370,4 @@ bool register_cif_command(cmd::CommandRegistry& registry) {
               .has_value();
 }
 
-}  // namespace hefesto::script
+}  // namespace hefesto::cif
