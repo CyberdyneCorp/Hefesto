@@ -14,18 +14,12 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-These two involve scope or data-handling trade-offs that the standing rule does not settle. Options are listed with the recommended one first.
+None remain. Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
 
-1. **Q-MASK-204: order of SREFs and structures depends on the cell-use index's binning state** (also decides Q-MASK-323 for CIF, and the OASIS order).
-   Magic enumerates child uses through its bin plane: LIFO until a cell has 10 or more uses and a partial-area search has run, then bin order, which depends on editing history. The M5 exit criteria (byte-identical GDS, PDK library round trips) need Magic's order, and many PDK cells have 10 or more SREFs; emulating bplane exactly is real work and must be verified by goldens captured before and after a partial search.
-   - (a) **Recommended.** compat: emulate bplane enumeration order exactly with magic-compat ON (verified by >=10-use golden cases), canonical reverse-insertion order with OFF
-   - (b) replicate only the unbinned (reverse-insertion) order in both modes and record a documented deviation for binned cells; revisit if round-trip goldens fail
-   - (c) canonical order in both modes (fix); accept that SREF/structure order differs from Magic for large cells, weakening the byte-identical exit criterion
-2. **Q-MASK-318: a CIF `DS` reuses and clears an existing cell** (a cell renamed by `9`, a cell from an earlier definition, or a user cell that happens to be named `n`).
-   Concatenating two Magic-written CIF files silently replaces the first file's cells, and a user cell named `12` is cleared by `DS 12`. The standing rule would make this compat, but the loss hits cells the user already had, so the draft treats it as tier 1 and fixes it in both modes; only foreign or concatenated CIF reads change.
-   - (a) **Recommended.** Fix in both modes: never clear a cell already defined in this read or pre-existing in memory; always use a fresh cell
-   - (b) Compat: replicate Magic's reuse and clear with magic-compat ON, fresh cell with OFF
-   - (c) Replicate in both modes (the entry's original recommendation)
+## Effort and scope notes
+
+- **Q-MASK-204 (compat): bplane emulation.** With magic-compat ON, Hefesto's cell-use index must reproduce Magic's enumeration order exactly: LIFO inBox, the re-placement of uses by DBReComputeBbox (database/DBcellbox.c:728-764), the bin rebuild at 10 or more uses on a non-surrounding search (bplane/bpBins.c:651), bin geometry and the bin walk. Each writer must enumerate where Magic does: GDS SREFs before CIFGenSubcells (calma/CalmaWrite.c:1486, :1510-1514), so the first `gds write` of a fresh session is unbinned; CIF numbering before it (cif/CIFwrite.c:333) and CIF `C` calls after it (:467), so CIF calls are binned for any cell with 10 or more uses that has an interaction (cif/CIFhier.c:885-902) or is larger than one step square (drc/DRCsubcell.c:451). Replicating only the unbinned order would fail those CIF goldens and any GDS golden of a second write; a canonical order in both modes would give up the byte-identical criterion. `.mag` writes uses alphabetically (database/DBio.c:4775-4791), so the OFF order is stable. The golden harness must pin Magic's session state: one write per fresh session, no DRC or extraction before it, unless a case tests history on purpose.
+- **Q-MASK-318 (fix): CIF read symbol table.** Within one read, symbol n (in `C n` and in `DS n`) always maps to a cell created by that read, collisions become `n_k`, and no in-memory cell is cleared. The forward-call path (`C n` before `DS n`, cif/CIFrdcl.c:1355) needs the same rule as `DS` (:484-486). `DD n` is compat (ON: one symbol; OFF: every symbol >= n, as CIF 2.0).
 
 ## Decision table
 
@@ -93,15 +87,16 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-MASK-201 | UNITS values stick after an angstrom write | **fix** | UNITS derived from the current style on every write (Magic's sticky value writes 10× too small) |
 | Q-MASK-202 | Modification date is current time, documentation says zero | **compat** | ON: modification date is the current time; OFF: t = 0, as gds.html documents |
 | Q-MASK-203 | Dates depend on the host time zone | **replicate** | host local time zone; goldens and CI run with TZ=UTC |
-| Q-MASK-205 | Order of port labels with equal port index | **replicate** | stable sort of the reversed label list (glibc order), independent of the host libc |
+| Q-MASK-204 | Order of SREFs and structures depends on the cell-use index's binning state | **compat** | ON: exact bplane enumeration order, sampled where Magic samples it; OFF: canonical reverse-insertion order |
+| Q-MASK-205 | Order of port labels with equal port index | **replicate** | stable sort of the reversed label list (glibc order on the Linux reference image), independent of the host libc |
 | Q-MASK-206 | Port labels dropped when the type has no `labels ... port` declaration | **compat** | ON: port label without a port layer omitted; OFF: written on the port-text layer; warn in both |
 | Q-MASK-207 | string-limit truncation of odd-length strings keeps 31 characters | **compat** | ON: odd strings keep 31 characters under string-limit; OFF: the last 32 |
-| Q-MASK-209 | Sanitized structure names are not checked for uniqueness | **fix** | uniquify colliding sanitized STRNAMEs as `XXXXX<n>` with a warning |
+| Q-MASK-209 | Sanitized structure names are not checked for uniqueness | **fix** | uniquify colliding sanitized STRNAMEs as `XXXXX<calmanum>` (itself checked, `_k` if taken) with a warning |
 | Q-MASK-210 | Default extension test looks for '.' anywhere in the path | **compat** | ON: no extension if the path has any `.`; OFF: test the basename only |
 | Q-MASK-211 | Vendor full-dump prefix uses random() | **compat** | ON: own glibc TYPE_3 random() shared with `random`/`random seed`; OFF: prefix from a file-name hash |
 | Q-MASK-212 | Full-dump unit check depends on the `gds readonly` setting at write time | **fix** | always check the vendor library's units; abort the dump once per library |
 | Q-MASK-214 | Forward-reference renaming in full dumps | **compat** | ON: Magic's dangling forward-reference names, with a warning; OFF: appended structures take the recorded name |
-| Q-MASK-215 | All structures of a full dump get the triggering cell's creation date | **replicate** | creation date from `datestamp` or the owning cell, as Magic |
+| Q-MASK-215 | All structures of a full dump get the triggering cell's creation date | **compat** | ON: `datestamp` or the triggering cell's date, as Magic; OFF: the source file's creation date unless `datestamp` is set |
 | Q-MASK-216 | Copied SNAME records are not updated for renamed cells | **compat** | ON: copy SNAMEs verbatim and warn; OFF: rewrite SNAMEs to current names |
 | Q-MASK-217 | Merged polygons may contain slits and may be split arbitrarily | **replicate** | port Magic's merge and collinear passes exactly |
 | Q-MASK-219 | Write with no output style leaves an empty file | **fix** | check the output style before the file is opened (no truncation of an existing file) |
@@ -133,10 +128,11 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-MASK-315 | odd box lengths are truncated asymmetrically | **compat** | ON: truncate odd box lengths; OFF: subdivide read units so the box is exact |
 | Q-MASK-316 | round flash read as a square | **replicate** | round flash painted as its bounding square |
 | Q-MASK-317 | "9 name" outside a definition renames the edit cell | **compat** | ON: top-level `9` renames the edit cell; OFF: ignored with a warning |
+| Q-MASK-318 | DD/DS reuse and redefinition of renamed symbols | **fix** | symbol n always maps to a cell created by this read (`n_k` on collision); no existing cell is cleared; DD compat (OFF: all symbols >= n) |
 | Q-MASK-320 | .cif always appended to file names | **compat** | ON: always append `.cif`; OFF: only when missing; pickers pass the root name in both |
 | Q-MASK-321 | flat CIF named __CIF2__ and without labels | **compat** | ON: `__CIF2__` without labels; OFF: root name and flattened labels |
 | Q-MASK-322 | label text not escaped in CIF output | **compat** | ON: verbatim label text with a warning; OFF: whitespace and `;` → `_` |
-| Q-MASK-323 | CIF symbol numbering depends on instance enumeration order | **replicate** | CIF numbering and call order follow gds-write's use enumeration order (Q-MASK-204) |
+| Q-MASK-323 | CIF symbol numbering depends on instance enumeration order | **compat (follows Q-MASK-204)** | numbering and `C` call order use the current mode's use enumeration order; ON: numbering unbinned (CIFwrite.c:333), calls binned (:467), as Magic |
 | Q-MASK-324 | CIF header contains host/time fields | **platform** | same preamble lines; @@tool is Hefesto; six host/build lines masked in goldens |
 | Q-MASK-325 | cif coverage counts triangles as rectangles | **compat** | ON: split tiles count as full rectangles; OFF: half area, exact |
 | Q-MASK-326 | calma number list of exactly 255 entries rejected | **compat** | ON: 255+ list entries rejected; OFF: no entry limit |
@@ -168,14 +164,16 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 72 | Q-DRC-13, 1, 2, 3, 5, 6, 7, 18, 21, 27, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
-| replicate | 18 | 8, 11, 13, 15, 20, 22, 23, 26, 122, 203, 205, 215, 217, 301, 316, 323, 333, 401 |
+| compat | 74 | Q-DRC-13, 1, 2, 3, 5, 6, 7, 18, 21, 27, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
+| replicate | 16 | 8, 11, 13, 15, 20, 22, 23, 26, 122, 203, 205, 217, 301, 316, 333, 401 |
 | fix | 11 | 10, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. The two judgement items are counted under their recommended option (Q-MASK-204 compat, Q-MASK-318 fix).
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 105.
 
 ## Audit decision D-20
+
+**This draft reverses D-20's recommendation.** D-20 recommends "always accept both forms" (`Resolution: fix`); Q-MASK-413 recommends compat instead. The standing rule decides it: X-2 tier 2 puts parse-argument quirks that change results behind `magic-compat`, and accepting the third word changes GDS output, so the "superset, no output change" argument behind D-20 does not apply.
 
 D-20 (`docs/decisions/audit/DECISIONS.md`) is the same question as Q-MASK-413: should `cif unfracture yes` set the switch, when Magic reads the value only from the fourth word? D-20's draft was "always accept both forms (fix), output-neutral". That premise does not hold: in Magic `cif unfracture yes` leaves the switch unchanged, so setting it would change GDS polygon partitioning. The draft here is D-20's second option, **the third-word form only with `magic-compat` OFF** (compat), with a warning under ON when the ignored word is yes/no. Approving Q-MASK-413 resolves D-20; DECISIONS.md is updated with the other approved changes.
 
@@ -189,7 +187,10 @@ D-20 (`docs/decisions/audit/DECISIONS.md`) is the same question as Q-MASK-413: s
 - **Q-MASK-335**: fix → compat.
 - **Q-MASK-330**: replicate → compat.
 - **Q-MASK-311**: fix (reject) → compat.
-- **Q-MASK-318**: replicate → fix (judgement item 2).
+- **Q-MASK-318**: replicate → fix (X-2 tier 1, data loss); DD compat.
+- **Q-MASK-323**: "capture Magic's order and decide" → compat (follows Q-MASK-204).
+- **Q-MASK-215**: replicate → compat.
+- **Q-MASK-204**: replicate → compat (no longer a judgement item).
 - **Q-MASK-413**: D-20 draft: fix → compat.
 - Most other changed entries said "replicate" or "fix"; under the standing rule they become compat where the quirk changes output and Magic's intent is clear (each entry is marked `(corrected 2026-11-13, was ...)`).
 
@@ -218,7 +219,7 @@ D-20 (`docs/decisions/audit/DECISIONS.md`) is the same question as Q-MASK-413: s
 - **Q-MASK-324**: @@source and @@compiled are host or build dependent as well.
 - Line numbers only: Q-MASK-1, Q-MASK-2, Q-MASK-18, Q-MASK-121, Q-MASK-202, Q-MASK-207, Q-MASK-215, Q-MASK-221, Q-MASK-223, Q-MASK-232, Q-MASK-306, Q-MASK-314, Q-MASK-316, Q-MASK-322, Q-MASK-323, Q-MASK-333, Q-MASK-335.
 
-Entries whose evidence was right but incomplete carry a `Verified 2026-11-13:` line instead. Notable additions: Q-MASK-311 and Q-MASK-310 are live sky130 and IHP cases; Q-MASK-204 gives the exact bin rebuild trigger (10 uses, non-surrounding search); Q-MASK-318 adds that a pre-existing user cell named `n` is also cleared.
+Entries whose evidence was right but incomplete carry a `Verified 2026-11-13:` line instead. Notable additions: Q-MASK-311 and Q-MASK-310 are live sky130 and IHP cases; Q-MASK-204 gives the exact bin rebuild trigger (10 uses, non-surrounding search) and where each writer samples the order; Q-MASK-318 adds that a pre-existing user cell named `n` is also cleared, and that a forward `C n` misbinds; Q-MASK-209 corrects the string-limit collision claim (names over 32 become `XXXXX<calmanum>`, they are not truncated); Q-MASK-205 records the Linux reference image.
 
 ## Spec changes after approval
 
@@ -283,15 +284,16 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-MASK-200**: gds-write/spec.md:214 (String records, item 6): keep the swap as the magic-compat ON rule. Add that with magic-compat OFF every printable character maps to itself. The name-legality rule (spec:356) uses the same table in both modes.
 - **Q-MASK-201**: gds-write/spec.md:277: replace the conditional paragraph with a normative one. UNITS are derived from the current style's angstrom flag on every write, and the Magic session-sticky behaviour is listed as a fixed deviation (X-2 tier 1). oasis-write/spec.md:119 already states this and stays.
 - **Q-MASK-202**: gds-write/spec.md:246: keep 'modification date is always the current time' as the magic-compat ON rule. Add that with OFF it is t = 0, and that BGNLIB, the BGNSTR of the full-dump path and the BGNSTR of vendor cells all follow the same rule.
-- **Q-MASK-204**: gds-write/spec.md:331 (Structure ordering): replace 'The general order depends on the index's binning state' with a normative description of the bplane order (inBox LIFO, rebuild at 10 or more elements on a non-surrounding search, bin walk) for ON, and the canonical order for OFF. oasis-write/spec.md:460 cross-reference is unchanged.
+- **Q-MASK-204**: gds-write/spec.md:331 (Structure ordering): replace 'The general order depends on the index's binning state' with a normative description of the bplane order (inBox LIFO, rebuild at 10 or more elements on a non-surrounding search, bin walk) and the DBReComputeBbox re-placement for ON, with the points where each writer enumerates, and the canonical order for OFF. oasis-write/spec.md:460 cross-reference is unchanged.
 - **Q-MASK-205**: gds-write/spec.md:606: replace 'The order of equal port indices is unspecified' with 'labels with equal port index are written in reverse label-list order (stable sort of the reversed list)'.
 - **Q-MASK-206**: gds-write/spec.md:606: keep the current text as the ON rule. Add the OFF fallback (rectangle on the port-text layer) and the warning in both modes.
 - **Q-MASK-207**: gds-write/spec.md:206 (String records, item 2): mark the current rule as magic-compat ON and add the OFF rule (keep the last 32 characters of the unpadded string).
-- **Q-MASK-209**: gds-write/spec.md:356 (item 2): replace 'No uniqueness check is made after mapping' with the uniquification rule and its warning. Align the wording in oasis-write/spec.md:156, which currently says gds-write does not check.
+- **Q-MASK-209**: gds-write/spec.md:356 (item 2): replace 'No uniqueness check is made after mapping' with the uniquification rule (`XXXXX<calmanum>`, itself checked) and its warning. Align the wording in oasis-write/spec.md:156, which currently says gds-write does not check.
 - **Q-MASK-210**: gds-write/spec.md:24 (item 3): keep the current rule as magic-compat ON; add the OFF rule (test only the basename).
 - **Q-MASK-211**: gds-write/spec.md:769 (item 2): replace 'drawn from the C library random() sequence' with the following: ON: the glibc TYPE_3 random() algorithm with seed 1, shared with the `random` command and reseeded by `random seed`. OFF: a hash of the resolved file name. oasis-write/spec.md:460 is updated to match.
 - **Q-MASK-212**: gds-write/spec.md:768 (item 1): drop 'when the `gds readonly` setting is currently yes'. Units are always checked, the dump is aborted once per library per write with an error, and Magic's readonly-only check is listed as a fixed deviation.
 - **Q-MASK-214**: gds-write/spec.md:775 (item 4) and item 5 / Structure ordering (spec:329): state the ON naming (current text) and the OFF rule (appended structures take the recorded forward-reference name). Add the dangling-reference warning.
+- **Q-MASK-215**: gds-write/spec.md:245: keep 'for every structure produced by a full dump it is the timestamp of the vendor cell that triggered the dump' as the magic-compat ON rule. Add that with OFF the creation date is copied from the source structure's BGNSTR unless `datestamp` is set.
 - **Q-MASK-216**: gds-write:737: keep 'not rewritten' for compat ON, add a warning, and add OFF-mode rewriting. oasis-write:487 rule 2 ('matching gds-write') must follow the same split.
 - **Q-MASK-219**: gds-write:299 step 1: replace 'the already-created output file is left empty' with 'the output file is not created or modified'. The style check must come before the file is opened.
 - **Q-MASK-221**: gds-write:615: keep the ON sentence, and add that with magic-compat OFF MAG is divided by the `magscale` setting.
@@ -318,11 +320,11 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-MASK-314**: cif-format-io spec.md:232: replace "(without changing the symbol scale, see Q-MASK-314)" with "and the symbol scale numerator is multiplied by 2". Add a golden deviation entry.
 - **Q-MASK-315**: cif-format-io spec.md:160: make truncation the magic-compat ON behaviour, state the width-loss case for boxes straddling 0, and add the OFF subdivision.
 - **Q-MASK-317**: cif-format-io spec.md:102: make the edit-cell rename the magic-compat ON behaviour and add "with OFF a top-level 9 is ignored with a warning".
-- **Q-MASK-318**: cif-format-io spec.md:102: replace "a later DS n ... maps again to a cell found by the name n" and the implied overwrite of renamed cells with "a DS always defines a fresh cell; a previously defined cell is preserved (renamed n_k if it still has the default name); cells not created by this read are never reused". Note the DD-single-symbol deviation from CIF 2.0.
+- **Q-MASK-318**: cif-format-io spec.md:102: replace "a later DS n ... maps again to a cell found by the name n" and the implied overwrite of renamed cells with "within one read, symbol n (in C and DS) always maps to a cell created by that read; a cell defined earlier in the read is preserved (renamed n_k if it still has the default name); a cell from before the read keeps its name and the new cell is n_k; no existing cell is reused or cleared". Add the DD rule: ON forgets one symbol, OFF every symbol >= n (CIF 2.0).
 - **Q-MASK-320**: cif-format-io 'cif read, write and flat options': replace 'Magic always appends .cif (see Q-MASK-320)' with the compat rule (ON always append; OFF append only if missing). Also state that picker-driven read/write passes the root name in both modes.
 - **Q-MASK-321**: cif-format-io 'CIF output preconditions and flat output' and mask-hierarchical-generation 'Flat CIF output': describe the ON form (`__CIF2__`, no labels) as compat-ON and add the OFF form (root name, flattened labels as with `flatten`).
 - **Q-MASK-322**: cif-format-io 'CIF output labels': replace 'Label text is written verbatim (see Q-MASK-322)' with the compat rule and the OFF substitution set (space, tab, newline, ';' → '_') plus the warning text.
-- **Q-MASK-323**: cif-format-io 'CIF output symbol numbering and order': replace 'must be made deterministic (see Q-MASK-323)' with a reference to gds-write's 'use enumeration order' definition, used for both numbering and `C` call order.
+- **Q-MASK-323**: cif-format-io 'CIF output symbol numbering and order': replace 'must be made deterministic (see Q-MASK-323)' with a reference to gds-write's 'use enumeration order' definition in the current mode, used for both numbering and `C` call order, and the ON sampling points (numbering before CIFGenSubcells, calls after).
 - **Q-MASK-324**: cif-format-io preamble requirement: state @@tool = 'Hefesto <version>' and @@compiled = Hefesto build time, give the iPadOS source of USER/HOST, and list the six lines masked in golden comparisons.
 - **Q-MASK-325**: cif-format-io 'cif see, paint, coverage and statistics options' and tapeout-fill-and-density (density formula, line ~184): replace 'triangles counted as full rectangles (see Q-MASK-325)' with the compat rule (ON full rectangle, OFF half area, exact 64-bit).
 - **Q-MASK-327**: cif-format-io 'Label user extensions': spell out the ON search (first CIF-layer index < number of layer/templayer rules whose label type equals the current default type) and the OFF rule (the current `L` layer's kind), for 94 and for 95 without a layer.
@@ -344,6 +346,6 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-MASK-413**: mask-hierarchical-generation:653 and cif-format-io:505: add the OFF third-word form and the ON warning. Update D-20 in docs/decisions/audit/DECISIONS.md to the compat option.
 - **Q-MASK-414**: mask-hierarchical-generation:727 [platform]: state progress callback, cancellation without partial output, and snapshot isolation.
 
-No spec change beyond the `Resolution:` reference (and evidence line numbers): Q-MASK-11, Q-MASK-20, Q-MASK-26, Q-MASK-203, Q-MASK-215, Q-MASK-217, Q-MASK-223, Q-MASK-301, Q-MASK-316.
+No spec change beyond the `Resolution:` reference (and evidence line numbers): Q-MASK-11, Q-MASK-20, Q-MASK-26, Q-MASK-203, Q-MASK-217, Q-MASK-223, Q-MASK-301, Q-MASK-316.
 
 Outside the specs: D-20 in `docs/decisions/audit/DECISIONS.md` (Q-MASK-413), and golden deviation entries in `tests/golden/deviations.toml` for Q-MASK-314 and any Q-MASK-10 listing case.
