@@ -1,7 +1,7 @@
 # Tasks
 
 How this plan runs:
-- **Drafted against the recommended answers** of `docs/decisions/m10-3d-decision-table.md` (Q-MISC-70..78, J1, J2) and design Open Questions 1–4, none approved yet; J2 and Open Question 4 are settled by review and may be overruled. Section 1 runs first; if an answer changes, the tasks that cite it are revised before code starts.
+- **Every decision this plan cites was approved on 2026-11-13**: the answers of `docs/decisions/m10-3d-decision-table.md` (Q-MISC-70..78 as drafted) and option (a) of design Open Questions 1–4 (J1, J2, the `magic-gl` golden capture, the extract subset in `extract-tech-section`'s home). Section 1 is done; no task changed.
 - Phases (design D1): **P0** section 1, now (docs only). **P1** sections 2–9 and the P1 tasks of 12–14: code starts only after M5's mask-generation workstream (GEN, m5-mask-gds-cif section 6) is merged (user decision 2026-11-13). **P2** sections 10–11 and the P2 tasks of 12–14. **P3** section 15, after M7 extraction is merged.
 - Each task ends with how it is verified. Workstreams edit only what design D3 assigns to them; shared-file needs are reported as open items.
 - Unit tests carry `[cap:<capability>][req:<exact requirement heading>]`. Q-MISC-72 gets one test per magic-compat mode.
@@ -9,9 +9,9 @@ How this plan runs:
 
 ## 1. DECIDE: the 3D open questions (P0, now)
 
-- [ ] 1.1 Present `docs/decisions/m10-3d-decision-table.md` to the user: the six blocking/cited rows, the three new entries (Q-MISC-76, 77, 78), the `render3d` cut-box spec correction, judgement item J1 and design Open Question 3 (decisions), and J2 and Open Question 4 (settled by review, for confirmation). Record the answers in the table. Verify that each answer is recorded with its date.
-- [ ] 1.2 For each approved entry, set `Status: approved (...)` and add the `Resolution:` line in `docs/decisions/open-questions/MISC.md` (for Q-MISC-73, replace the Resolution with the amended text). Apply "Spec changes after approval" to `openspec/specs/view-3d/spec.md` and `openspec/specs/hefesto-3d-visualization/spec.md`, including J1, J2 and the `render3d` cut-box correction. Add to the M7 entry of `docs/roadmap.md` that `extract-tech-section` starts from the subset TECH writes in M10 P1 (Open Question 4). Verify that `python3 scripts/check_milestone_readiness.py --milestone M10` lists no Q-MISC-7x entry and `openspec validate --all --strict` passes.
-- [ ] 1.3 Revise this change where an answer differs from the recommendation (design "Decisions this design depends on"). Verify that design.md, tasks.md and the decision table agree, and that the README and proposal no longer say "not yet approved".
+- [x] 1.1 Present `docs/decisions/m10-3d-decision-table.md` to the user: the six blocking/cited rows, the three new entries (Q-MISC-76, 77, 78), the `render3d` cut-box spec correction, judgement item J1 and design Open Question 3 (decisions), and J2 and Open Question 4 (settled by review, for confirmation). Record the answers in the table. Verify that each answer is recorded with its date.
+- [x] 1.2 For each approved entry, set `Status: approved (...)` and add the `Resolution:` line in `docs/decisions/open-questions/MISC.md` (for Q-MISC-73, replace the Resolution with the amended text). Apply "Spec changes after approval" to `openspec/specs/view-3d/spec.md` and `openspec/specs/hefesto-3d-visualization/spec.md`, including J1, J2 and the `render3d` cut-box correction. Add to the M7 entry of `docs/roadmap.md` that `extract-tech-section` starts from the subset TECH writes in M10 P1 (Open Question 4). Verify that `python3 scripts/check_milestone_readiness.py --milestone M10` lists no Q-MISC-7x entry and `openspec validate --all --strict` passes.
+- [x] 1.3 Revise this change where an answer differs from the recommendation (design "Decisions this design depends on"). Verify that design.md, tasks.md and the decision table agree, and that the README and proposal no longer say "not yet approved".
 - [ ] 1.4 Ask M5 STYLES to keep the `render` attributes on `mask::OutputStyle` (style index in the technology style table, height and thickness as stored, defaults) and record the answer in design D5. Verify that the M5 plan or this design names who adds `RenderAttrs`.
 
 ## 2. SCAFFOLD (P1; after M5 GEN is merged)

@@ -1,6 +1,6 @@
 # Design: M10 3D view (view-3d, hefesto-3d-visualization)
 
-> Drafted 2026-11-13 and revised after review the same day, against the recommended answers of `docs/decisions/m10-3d-decision-table.md`, which are not yet approved. The table "Decisions this design depends on" at the end lists, for each drafted answer, the D-numbers to revise if the user picks another option.
+> Drafted 2026-11-13 and revised after review the same day, against the recommended answers of `docs/decisions/m10-3d-decision-table.md`. **The user approved them on 2026-11-13 as written**, with option (a) for J1, J2 and Open Questions 3 and 4, so no design section changed. The table "Decisions this design depends on" at the end lists, for each decision, the D-numbers it shapes.
 
 ## Context
 
@@ -184,7 +184,7 @@ Prisms with h and t both zero (gf180mcuD in mask-layer mode) still draw top face
 
 **Net highlighting.** From a picked target or the 2D selection, `connect::search_flat` (or the hierarchical search) gives the net's tiles; the 3D view draws them highlighted and dims the rest ("Isolate selected net" on the board). In mask-layer mode (P2) the layout-layer net tiles are drawn as an overlay over the mask geometry; mapping nets onto generated mask layers is not attempted.
 
-**Contacts and vias (J1, recommended (a)).** By default contacts use their technology height and thickness, as Magic. The view option "Span connected layers" (the board's "Show contacts and vias" area) draws each contact type from the top of the lowest connected layer to the bottom of the highest, using its residues from `tech-contacts-and-stacking` and the stack's h and t.
+**Contacts and vias (J1, decided (a) 2026-11-13).** By default contacts use their technology height and thickness, as Magic. The view option "Span connected layers" (the board's "Show contacts and vias" area) draws each contact type from the top of the lowest connected layer to the bottom of the highest, using its residues from `tech-contacts-and-stacking` and the stack's h and t.
 
 **Cross-sections (P2).** A cut line drawn in the 2D or 3D view (axis-aligned; the board's A–A′) gives a 2D section panel: for each layer, the intervals of the line it covers, drawn from h to h + t in µm (D5), with the same colors; and an optional clipping plane in the 3D view. Built from the mesh model, so it costs no re-flattening.
 
@@ -200,7 +200,7 @@ The screen follows the design system's "3D inspection" pattern and its reference
 
 What is compared with Magic, and how:
 
-1. **Command outputs (exact).** MISC-3D-01..04 and new cases (task 12.3: `cutbox` forms, `level` clamping, `render name h t style`, `see`/`defaults`, `cif` round trip values, Q-MISC-73 no-style errors as a deviation). They need a Magic with the 3D window. GOLDEN adds a `magic-gl` variant of the capture image: the same Magic commit built with `--with-opengl` against Mesa (llvmpipe, GLX) and run under Xvfb, used only by `MISC-3D-*` cases (Open Question 3).
+1. **Command outputs (exact).** MISC-3D-01..04 and new cases (task 12.3: `cutbox` forms, `level` clamping, `render name h t style`, `see`/`defaults`, `cif` round trip values, Q-MISC-73 no-style errors as a deviation). They need a Magic with the 3D window. GOLDEN adds a `magic-gl` variant of the capture image: the same Magic commit built with `--with-opengl` against Mesa (llvmpipe, GLX) and run under Xvfb, used only by `MISC-3D-*` cases (Open Question 3, decided (a) 2026-11-13).
 2. **Geometry (informative, strong).** A small GL interception shim (`tools/golden/gl_capture/`, LD_PRELOAD on `glBegin`/`glVertex3f`/`glEnd`/`glColor`) records Magic's emitted polygons for a case, normalised per (style, z) to the union of top and bottom faces and the union of covered side edges, not to a face multiset: Magic emits faces per tile and per cell (GrBoxOutline works in each cell's own plane, so tiles abutting across cells get inner side faces, and multi-style types are emitted once per style), while Hefesto's mesh walks the flattened boundaries. Hefesto's mesh is reduced to the same form. Cases avoid the fixed bugs (no transformed subcell under a clip area, Q-MISC-70; resizes, Q-MISC-74), or the comparator applies the documented correction. This checks layer heights, z formulas, side faces, split tiles and cut faces without comparing pixels.
 3. **Pixels (Hefesto only).** Headless image tests against Hefesto's reference images, tolerance-based, per backend.
 4. **OFF behaviors and native features.** Unit tests from the spec scenarios: one per mode for Q-MISC-72, and tests for picking round trips, net highlight sets, cross-section intervals and export bytes.
@@ -210,7 +210,7 @@ Golden cases run with magic-compat ON. The fix rows (Q-MISC-70, 71, 73 amendment
 ### D14. Export and determinism of exported files (EXPORT; J2)
 
 - `export3d <file> [-format gltf|glb|stl] [-merged] [-zscale k] [-visible|-all]`: a Hefesto command (not Magic). The format follows the extension by default.
-- Content: the current mesh model's geometry (layers, visibility, cut box) in physical µm (mask layers without a `render` height left out with `VIEW3D-STACK-001`, D5), without the view's z exaggeration unless `-zscale` is given (J2, recommended (a)); k is recorded in `asset.extras.hefesto.zscale`.
+- Content: the current mesh model's geometry (layers, visibility, cut box) in physical µm (mask layers without a `render` height left out with `VIEW3D-STACK-001`, D5), without the view's z exaggeration unless `-zscale` is given (J2, decided (a) 2026-11-13); k is recorded in `asset.extras.hefesto.zscale`.
 - glTF: one mesh node per visible layer in layer order (D6), named by layer; one material per layer named by the display style's long name with its color as base color; positions as `float32` µm relative to the model origin (the region's lower-left), with the origin in the root node's translation as `double`-derived `float`; indices `uint32`; no timestamps; `asset.generator` without build-specific text. Written by cgltf (`cgltf_write`) as the spec requires, under the C locale.
 - STL: binary, an 80-byte header of fixed text naming the layer (no time), triangles in mesh order with normals computed from the integer geometry.
 - Determinism: the same model writes the same bytes on Linux x86_64, Linux aarch64 and macOS arm64 (`hefesto-testing-strategy` "Cross-platform determinism checks"). Coordinates are computed from integers in `double` and rounded once to `float`; triangulation of faces is fixed (two triangles per rectangle, fixed diagonal). A test writes reference files on each CI leg and compares digests. If cgltf's number formatting turns out to depend on the C library, EXPORT pins it with cgltf's `CGLTF_SPRINTF`-style override hook or a post-pass on the JSON chunk; task 11.4 decides from the CI evidence.
@@ -277,7 +277,7 @@ Datasets are read, never recomputed: node and coupling capacitance from the `.ex
 - **R3. The extract subset ahead of M7.** Writing part of M7's reader early risks rework. → It is written in M7's home with M7's tags, as the first slice of `extract-tech-section`; M7's plan takes it as existing code (Open Question 4).
 - **R4. Memory and frame rate at 1M rectangles.** → Instancing, chunk culling, shader-side z, measured early on the M3 Pro and gated in `view3d-bench` (D6, D17).
 - **R5. Float precision on large chips.** → Chunk-relative `float32` positions with `double` origins (D6).
-- **R6. Unapproved decisions.** The plan follows the recommended answers. → The table at the end lists the D-numbers each answer touches; DECIDE runs before any code.
+- **R6. Decisions changing later.** The plan follows the answers approved on 2026-11-13. → The table at the end lists the D-numbers each answer shapes, so a later change of decision names the sections to revise.
 - **R7. Determinism of glTF text.** cgltf formats numbers with the C library. → C locale, cross-platform digest test, a pinned formatter if needed (D14).
 - **R8. Scope creep from the board.** The mockup shows overlays and simulation data before they exist. → Later-phase controls are shown disabled with their phase (D12), as the M2–M5 screens do.
 
@@ -287,20 +287,20 @@ No user data changes. The technology loader reads more of the `extract` section;
 
 ## Open Questions
 
-1 and 3 need the user's decision; 2 and 4 are settled by review and listed so the user can overrule them. The plan follows option (a) of each.
+**Decided 2026-11-13: the user chose the recommended option (a) for all four.** 1 and 3 needed the user's decision; 2 and 4 were settled by review and confirmed by the user. The options are kept for the record.
 
-1. **J1: contacts and vias in the 3D stack** (decision table, judgement item 1). (a) *Recommended:* tech values by default, spanning as a view option; (b) spanning in the Hefesto view only; (c) tech values only.
-2. **J2: units and exaggeration of exported models** (judgement item 2; settled by review: s_z is a view parameter, so "displayed model" means its geometry). (a) physical µm without exaggeration, optional `-zscale`; (b) export the displayed exaggeration; (c) ask on every export.
-3. **Golden capture of the 3D commands.** (a) *Recommended:* a `magic-gl` capture image variant (Mesa llvmpipe + Xvfb) used only by `MISC-3D-*`, plus the GL interception shim for geometry; (b) the `magic-gl` image without the shim (command outputs only); (c) no OpenGL Magic: author the expected outputs from Magic's source and mark the cases hand-derived.
-4. **The extract-style subset before M7** (settled by review: (a); the user's "first slice from layout layers" rules out (c), and (b) means two readers). (a) TECH writes it in P1 in `extract-tech-section`'s home with that capability's tags, and M7 extends it; (b) a private 3D-only reader of `height`/`planeorder`, replaced by M7's (two readers for a while); (c) no layout-layer heights until M7: P1 draws layout layers with the defaults only (h = 0.1 · plane index, t = 0.05).
+1. **J1: contacts and vias in the 3D stack** (decision table, judgement item 1). Decision: (a). (a) *Recommended:* tech values by default, spanning as a view option; (b) spanning in the Hefesto view only; (c) tech values only.
+2. **J2: units and exaggeration of exported models** (judgement item 2; settled by review: s_z is a view parameter, so "displayed model" means its geometry). Decision: (a). (a) physical µm without exaggeration, optional `-zscale`; (b) export the displayed exaggeration; (c) ask on every export.
+3. **Golden capture of the 3D commands.** Decision: (a), with the geometry comparator of D13 (per-(style, z) unions). (a) *Recommended:* a `magic-gl` capture image variant (Mesa llvmpipe + Xvfb) used only by `MISC-3D-*`, plus the GL interception shim for geometry; (b) the `magic-gl` image without the shim (command outputs only); (c) no OpenGL Magic: author the expected outputs from Magic's source and mark the cases hand-derived.
+4. **The extract-style subset before M7** (settled by review: (a); the user's "first slice from layout layers" rules out (c), and (b) means two readers). Decision: (a); the M7 entry of `docs/roadmap.md` records it. (a) TECH writes it in P1 in `extract-tech-section`'s home with that capability's tags, and M7 extends it; (b) a private 3D-only reader of `height`/`planeorder`, replaced by M7's (two readers for a while); (c) no layout-layer heights until M7: P1 draws layout layers with the defaults only (h = 0.1 · plane index, t = 0.05).
 
 ## Resolved Questions
 
-None yet. The 3D open questions are drafted, not approved: `docs/decisions/m10-3d-decision-table.md`.
+All 3D open questions were approved as drafted on 2026-11-13: Q-MISC-70, 71, 74, 76 and 77 (fix), Q-MISC-72 and 78 (compat), and the amendment of Q-MISC-73 (fix); Q-MISC-75 is unchanged (platform). `docs/decisions/m10-3d-decision-table.md` holds the table, the evidence corrections and the spec changes; the entries' `Resolution:` lines are in `docs/decisions/open-questions/MISC.md`. The specs were aligned in the commit "Align the 3D specs with the approved decisions", including the `render3d` cut-box correction (the box is copied once), J1 and J2. `check_milestone_readiness.py --milestone M10` lists no entry cited by `view-3d` or `hefesto-3d-visualization`.
 
 ## Decisions this design depends on
 
-| Drafted answer | Recommended option | Design sections to revise if changed |
+| Decision (approved 2026-11-13) | Option | Design sections it shapes |
 |---|---|---|
 | Q-MISC-70 | fix (clip in root coordinates) | D6, D13 |
 | Q-MISC-71 | fix (per-mode visibility sets) | D4, D9, D10 |
@@ -313,3 +313,5 @@ None yet. The 3D open questions are drafted, not approved: `docs/decisions/m10-3
 | Q-MISC-78 | compat (ON current f, OFF applied f) | D4, D7, D9 |
 | J1 | (a) tech values, spanning as an option | D10, D12 |
 | J2 | (a) physical µm, optional z scale | D14 |
+| Open Question 3 | (a) `magic-gl` image and GL shim | D13 |
+| Open Question 4 | (a) extract subset in `extract-tech-section`'s home | D5 |

@@ -1,6 +1,6 @@
 # Proposal: M10 3D view (view-3d, hefesto-3d-visualization)
 
-> **Status: plan drafted 2026-11-13 against recommended answers.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76, 77 and 78, the `render3d` cut-box spec correction and the judgement items J1 and J2 are drafted in `docs/decisions/m10-3d-decision-table.md` and are **not yet approved**. Every place in this change that depends on one of them names it. If the user picks another option, the affected decision (design D-numbers listed in the table at the end of design.md) and tasks are revised before code starts.
+> **Status: plan drafted 2026-11-13; its decisions approved by the user the same day.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76, 77 and 78, the `render3d` cut-box spec correction and the judgement items J1 and J2 (`docs/decisions/m10-3d-decision-table.md`) were approved as drafted, and design Open Questions 3 and 4 were decided (a). Every place in this change that depends on one of them names it; the table at the end of design.md lists the D-numbers each one shapes.
 
 ## Why
 
@@ -19,7 +19,7 @@ What exists today (2026-11-13, main at 3fff5567):
 
 ### P1: the slice from layout layers (starts after M5 GEN lands)
 
-- **Decisions recorded (DECIDE, docs only, may run now).** After the user's approval: `Resolution:` lines for Q-MISC-70..78 and the spec text of the decision table's "Spec changes after approval", including J1 and J2 in `hefesto-3d-visualization` and the `render3d` cut-box correction in `view-3d`.
+- **Decisions recorded (DECIDE, docs only, done 2026-11-13).** After the user's approval: `Resolution:` lines for Q-MISC-70..78 and the spec text of the decision table's "Spec changes after approval", including J1 and J2 in `hefesto-3d-visualization` and the `render3d` cut-box correction in `view-3d`.
 - **Layer stack data (TECH).** One drawable entry per (tile type, display style), since Magic draws a type once per style (Q-MISC-77). The extract-style subset that the layout-layer view needs (style and variant selection, scale, `units`, `planeorder`, `noplaneordering`, `height`, the 0.05 / 0.1·order defaults and the micron conversion), written once in the home of `extract-tech-section`, which M7 extends. The `render` values (style index, height, thickness) kept per mask layer on `mask::OutputStyle`, with the style resolved against the display styles; M5 STYLES is asked to store them, otherwise TECH adds them.
 - **Mesh model (MESH).** A headless, backend-free core module that builds per-layer prism meshes from flattened layout tiles: top and bottom faces, side faces on tile boundaries, triangles for split tiles, closed faces at the cut box, clipping in root coordinates (Q-MISC-70). Built in the background, by spatial chunk, with progress and cancellation; deterministic order.
 - **View state and camera (CAMERA).** Magic's view state and math exactly as "Default view" and "3D view commands" specify (both modes, Q-MISC-72 OFF conversion), the viewing transform for the current window size (Q-MISC-74), and Hefesto's orbit, pan, zoom and presets (top, isometric, front, side) as operations on the same state. Orthographic by default, perspective as a view option.
@@ -60,7 +60,7 @@ None.
 
 ### Modified Capabilities
 
-None in this change. This change implements the existing requirements of `view-3d` (8 requirements) and `hefesto-3d-visualization` (5 requirements). The spec edits listed in `docs/decisions/m10-3d-decision-table.md` "Spec changes after approval" are made by task 1.2 directly in the living specs once the user approves them, so the change sets `skip_specs: true`, following the M0–M5 precedent (m0-foundations design D10). TECH also implements, ahead of M7, the requirements of `extract-tech-section` that the layer stack needs (design D5); they are tested under that capability's tags and M7 extends the same code.
+None in this change. This change implements the existing requirements of `view-3d` (8 requirements) and `hefesto-3d-visualization` (5 requirements). The spec edits listed in `docs/decisions/m10-3d-decision-table.md` "Spec changes after approval" were made by task 1.2 directly in the living specs after the user approved them on 2026-11-13, so the change sets `skip_specs: true`, following the M0–M5 precedent (m0-foundations design D10). TECH also implements, ahead of M7, the requirements of `extract-tech-section` that the layer stack needs (design D5); they are tested under that capability's tags and M7 extends the same code.
 
 ## Impact
 
@@ -75,7 +75,7 @@ None in this change. This change implements the existing requirements of `view-3
 
 | Phase | Needs | From |
 |---|---|---|
-| P1 | user approval of the decision table (Q-MISC-70..78, J1, J2) | DECIDE (task 1.1) |
+| P1 | user approval of the decision table (Q-MISC-70..78, J1, J2): done 2026-11-13 | DECIDE (task 1.1) |
 | P1 | `mask::OutputStyle` and the `render` statement parsed; current output style selection and scalefactor | M5 STYLES (m5 tasks 3.1, 3.4) |
 | P1 start | M5 GEN merged (`generate_flat`, `GenerationContext`; `Progress` and cancellation) | M5 GEN (m5 tasks 6.1 and 6.6), per the user's decision |
 | P1 | the extract-style subset | TECH (this change), extended by M7 `extract-tech-section` |

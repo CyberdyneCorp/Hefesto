@@ -219,6 +219,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **Netlists:** ext2spice in all five dialects, and ext2sim.
 - **R-C extraction:** full R-C extraction with extresist.
 - **Antenna:** antenna checks.
+- **Extract tech section:** `extract-tech-section` starts from the subset that M10's 3D view writes first, in that capability's home with its tags (style, scale, units, `planeorder`, `noplaneordering`, `height`; `openspec/changes/m10-3d-view` design D5, Open Question 4, user decision 2026-11-13). M7 extends it; there is one extract reader.
 
 **Exit criteria**
 - The common exit criteria.
