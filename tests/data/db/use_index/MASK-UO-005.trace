@@ -1,0 +1,32 @@
+trace 1 MASK-UO-005
+root top
+place 1 ca_0 ca 0 0 4 4
+place 2 cb_0 cb 20 20 26 23
+place 3 ca_1 ca 40 40 44 44
+place 4 cb_1 cb 60 60 66 63
+place 5 ca_2 ca 80 80 84 84
+place 6 cb_2 cb 100 100 106 103
+remove 7 ca_1 40 40 44 44
+childinst 8 top cb_2 cb_1 ca_0 ca_2 cb_0
+write 9 gds uo_1.gds
+structures 9 gds cb ca top
+order 9 gds top cb_2 ca_2 cb_1 cb_0 ca_0
+place 10 ca_1 ca 0 20 4 24
+place 11 cb_3 cb 20 40 26 43
+place 12 ca_3 ca 40 60 44 64
+place 13 cb_4 cb 60 80 66 83
+place 14 ca_4 ca 80 100 84 104
+place 15 cb_5 cb 100 0 106 3
+place 16 ca_5 ca 0 40 4 44
+place 17 cb_6 cb 20 60 26 63
+remove 18 ca_3 40 60 44 64
+childinst 19 top cb_2 cb_1 cb_5 cb_4 cb_3 cb_6 ca_1 ca_0 ca_2 ca_5 ca_4 cb_0
+write 20 gds uo_2.gds
+structures 20 gds ca cb top
+order 20 gds top ca_0 cb_0 ca_1 cb_5 cb_3 ca_5 cb_6 cb_1 ca_2 cb_4 ca_4 cb_2
+remove 21 ca_0 0 0 4 4
+childinst 22 top cb_2 cb_1 cb_5 cb_4 cb_3 cb_6 ca_1 ca_2 ca_5 ca_4 cb_0
+write 23 gds uo_3.gds
+structures 23 gds cb ca top
+order 23 gds top cb_0 ca_1 cb_5 cb_3 ca_5 cb_6 cb_1 ca_2 cb_4 ca_4 cb_2
+end

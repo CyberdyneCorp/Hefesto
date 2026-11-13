@@ -1,0 +1,44 @@
+trace 1 MASK-UO-007
+root top
+place 1 ca_0 ca 0 0 4 4
+place 2 cb_0 cb 20 20 26 23
+place 3 ca_1 ca 40 40 44 44
+place 4 cb_1 cb 60 60 66 63
+place 5 ca_2 ca 80 80 84 84
+place 6 cb_2 cb 100 100 106 103
+place 7 ca_3 ca 0 20 4 24
+place 8 cb_3 cb 20 40 26 43
+place 9 ca_4 ca 40 60 44 64
+place 10 cb_4 cb 60 80 66 83
+place 11 ca_5 ca 80 100 84 104
+place 12 cb_5 cb 100 0 106 3
+search 13 0 0 30 30
+childinst 14 top cb_2 cb_1 cb_5 cb_4 cb_3 ca_1 ca_0 ca_3 ca_2 ca_5 ca_4 cb_0
+write 15 gds uo_1.gds
+structures 15 gds ca cb top
+order 15 gds top ca_0 cb_0 ca_3 cb_5 cb_3 ca_1 ca_4 cb_1 ca_2 cb_4 ca_5 cb_2
+instances 16 ca ca_5 ca_4 ca_3 ca_2 ca_1 ca_0
+resize 16 ca 0 0 4 8
+bbox 16 ca_0 0 0 4 8
+bbox 16 ca_1 40 40 44 48
+bbox 16 ca_2 80 80 84 88
+bbox 16 ca_3 0 20 4 28
+bbox 16 ca_4 40 60 44 68
+bbox 16 ca_5 80 100 84 108
+childinst 17 top cb_2 cb_1 cb_5 cb_4 cb_3 ca_1 ca_0 ca_3 ca_2 ca_5 ca_4 cb_0
+write 18 gds uo_2.gds
+structures 18 gds ca cb top
+order 18 gds top ca_0 ca_3 cb_0 cb_5 cb_3 ca_1 ca_4 ca_2 cb_1 cb_4 cb_2 ca_5
+instances 19 cb cb_5 cb_4 cb_3 cb_2 cb_1 cb_0
+resize 19 cb 0 0 8 3
+bbox 19 cb_0 20 20 28 23
+bbox 19 cb_1 60 60 68 63
+bbox 19 cb_2 100 100 108 103
+bbox 19 cb_3 20 40 28 43
+bbox 19 cb_4 60 80 68 83
+bbox 19 cb_5 100 0 108 3
+childinst 20 top cb_2 cb_1 cb_5 cb_4 cb_3 ca_1 ca_0 ca_3 ca_2 ca_5 ca_4 cb_0
+write 21 gds uo_3.gds
+structures 21 gds cb ca top
+order 21 gds top cb_0 ca_0 ca_3 cb_3 ca_1 ca_4 cb_1 cb_4 ca_2 cb_2 cb_5 ca_5
+end
