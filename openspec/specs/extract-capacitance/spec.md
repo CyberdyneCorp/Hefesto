@@ -55,10 +55,8 @@ Because perimeter rules exist only for edges whose outside type is declared, edg
 
 ### Requirement: Corner fringe capacitance to substrate
 
-When options `corners`, `fringehalo` are both on and the side halo is > 0, then for every horizontal segment of a node tile (top or bottom side) that has non-zero perimeter capacitance `c` against its neighbor, both endpoints SHALL be classified, and the node SHALL gain `+c·(k/m)` for each convex endpoint and `−c·(k/m)` for each concave endpoint, where `m = m(r,0) > 0` (no corner term when `m <= 0`) and `k` is the corner factor (default 1.0, set by `extract do corners <k>`). An endpoint at x = cx (cx = max of the two left edges, or min of the two right edges) on the segment line is *convex* when the tile continuing the inside side beyond cx and the tile diagonally beyond cx on the outside are both space, and *concave* when both have types that connect to the node's type; otherwise no correction. Split tiles adjacent to the endpoint SHALL disable the correction. With a clip area, only endpoints with `xbot <= cx < xtop` and `ybot <= cy < ytop` of the clip area SHALL be considered.
+When options `corners`, `fringehalo` are both on and the side halo is > 0, then for every horizontal segment of a node tile (top or bottom side) that has non-zero perimeter capacitance `c` against its neighbor, both endpoints SHALL be classified, and the node SHALL gain `+c·(k/m)` for each convex endpoint and `−c·(k/m)` for each concave endpoint, where `m = m(r,0) > 0` (no corner term when `m <= 0`) and `k` is the corner factor (default 1.0, set by `extract do corners <k>`). An endpoint at x = cx (cx = max of the two left edges, or min of the two right edges) on the segment line is *convex* when the tile continuing the inside side beyond cx and the tile diagonally beyond cx on the outside are both space, and *concave* as set by the `magic-compat` setting (Q-EXTRACT-24, resolution: compat): with it ON (the default), as in Magic, when both have types that connect to the node's type; with it OFF, by the test the corner fringe coupling uses (Requirement: Corner fringe coupling): both belong to the node and the free quadrant is space. Otherwise there is no correction. Split tiles adjacent to the endpoint SHALL disable the correction. With a clip area, only endpoints with `xbot <= cx < xtop` and `ybot <= cy < ytop` of the clip area SHALL be considered.
 Compatibility: exact
-
-See Q-EXTRACT-24.
 
 (Magic ref: extract/ExtBasic.c:5341-5441, extract/ExtBasic.c:5466-5468)
 
@@ -66,6 +64,12 @@ See Q-EXTRACT-24.
 - **GIVEN** corners, fringehalo and sidehalo > 0, `areacap metal1 30` (so m = 0.6/unit), `perimc metal1 space 20`, k = 1, and a lone metal1 rectangle
 - **WHEN** the cell is extracted
 - **THEN** the four convex corners add 4 · 20 · (1/0.6) ≈ 133.333 aF to the node capacitance (verify against Magic)
+
+#### Scenario: Diagonal point contact of two nodes
+- **GIVEN** corners, fringehalo and sidehalo > 0, and two metal1 rectangles of different nodes touching only at one corner point
+- **WHEN** the cell is extracted with `magic-compat` ON
+- **THEN** the two endpoints at the touching point are concave (the types connect), and each node loses `c·(k/m)` there
+- **AND** with `magic-compat` OFF the endpoints are not concave (the tiles belong to different nodes), and no correction is made there
 
 ### Requirement: Overlap coupling with shielding
 
@@ -117,14 +121,12 @@ For each selected far tile and its facing sub-segment: sidewall coupling SHALL b
 
 ### Requirement: Sidewall coupling value
 
-For a selected far tile F (type f) at separation `sep` (integer distance between the edge and F's facing side), each tile N adjacent to F on the side facing the edge contributes over its overlap `ov` with the sub-segment (only positive overlaps) and with near type n: for every sidewall rule of edge (a|o) whose near set contains n and far set contains f, the coupling between node(inside) and node(F) SHALL gain `C_half · ov / (sep + offset)`, where `C_half` is the halved coefficient and `sep + offset` is evaluated in single-precision float (offset is a float in internal units). No coupling SHALL be added when node(F) is the inside node or F belongs to no node.
+For a selected far tile F (type f) at separation `sep` (integer distance between the edge and F's facing side), each tile N adjacent to F on the side facing the edge contributes over its overlap `ov` with the sub-segment (only positive overlaps) and with near type n: for every sidewall rule of edge (a|o) whose near set contains n and far set contains f, the coupling between node(inside) and node(F) SHALL gain `C_half · ov / (sep + offset)`, where `C_half` is the halved coefficient. The offset SHALL be stored as a single-precision float in internal units and `sep + offset` SHALL be evaluated in single precision, in both `magic-compat` settings (Q-EXTRACT-20, resolution: replicate), because the difference shows in the `%lg` output. No coupling SHALL be added when node(F) is the inside node or F belongs to no node.
 Compatibility: exact
 
 Because the same facing pair is also visited from the other edge, the total coupling between two facing edges of common length L at separation s is `C · L / (s + offset)`.
 
-See Q-EXTRACT-20.
-
-(Magic ref: extract/ExtCouple.c:2886-3134)
+(Magic ref: extract/ExtCouple.c:2886-3134, extract/extractInt.h:476)
 
 #### Scenario: Two parallel wires, legacy
 - **GIVEN** `extract no fringehalo`, `sidehalo 4`, `sidewall metal1 space space metal1 40`, `cscale 1` and two metal1 wires (0,0)-(10,2) and (0,4)-(10,6)
@@ -138,31 +140,43 @@ See Q-EXTRACT-20.
 
 ### Requirement: Legacy sideoverlap (fringe directly below the edge)
 
-In the legacy model, for each (sub-)segment the search strip SHALL be the segment extended outward by exactly 1 unit, restricted along the edge to the sub-segment. On each target plane of edge (a|o), for each tile U of a target type b ≠ space overlapping the strip, belonging to node(U): let `len` = overlap of U with the *whole* boundary segment along the edge, `S` = area of U ∩ strip. For each sideoverlap rule of edge (a|o) whose plane mask includes U's plane and whose target set contains b: let `O = S` minus the area shielded on the pair's shield planes by the rule's shield types (computed as in overlap shielding); if node(U) ≠ node(inside) the pair coupling gains `cap_rule · O`; and `acc += O`. Then if `planeorder(edge plane) > planeorder(U plane)`, node(inside) SHALL lose `perimc(a, o') · min(acc, len)` (o' the residue of the boundary's outside type) and a resulting node value with |value| < 0.001 SHALL be set to 0. Finally if the nodes differ and both exist, the coupling SHALL be updated.
+In the legacy model, for each (sub-)segment the search strip SHALL be the segment extended outward by exactly 1 unit, restricted along the edge to the sub-segment. On each target plane of edge (a|o), for each tile U of a target type b ≠ space overlapping the strip, belonging to node(U): let `len` = overlap of U with the *whole* boundary segment along the edge, `S` = area of U ∩ strip. For each sideoverlap rule of edge (a|o) whose plane mask includes U's plane and whose target set contains b: let `O = S` minus the area shielded on the pair's shield planes by the rule's shield types (computed as in overlap shielding); if node(U) ≠ node(inside) the pair coupling gains `cap_rule · O`; and `acc += O`. Then if `planeorder(edge plane) > planeorder(U plane)`, node(inside) SHALL lose `perimc(a, o') · min(acc, L)` (o' the residue of the boundary's outside type) and a resulting node value with |value| < 0.001 SHALL be set to 0. Finally if the nodes differ and both exist, the coupling SHALL be updated.
+
+The cap on the subtracted length depends on the `magic-compat` setting (Q-EXTRACT-18, resolution: compat): with it ON (the default), as in Magic, `L = len` (the overlap with the whole boundary segment) and `acc` accumulates over every matching rule; with it OFF, `L` is the length of U's overlap with the clipped sub-segment being processed, and `O` is counted into `acc` once per tile U, not once per rule. The modes differ only when several rules match.
 Compatibility: exact
 
-See Q-EXTRACT-18.
-
-(Magic ref: extract/ExtCouple.c:1330-1418, extract/ExtCouple.c:1651-1836)
+(Magic ref: extract/ExtCouple.c:1330-1418, extract/ExtCouple.c:1651-1836, extract/ExtCouple.c:1677-1686, extract/ExtCouple.c:1780-1782)
 
 #### Scenario: Edge over a plate, legacy
 - **GIVEN** legacy model, `sideoverlap metal2 space metal1 6`, `perimc metal2 space 9`, plane order metal1 < metal2, metal2 (0,0)-(10,10) over a large metal1 plate on another node
 - **WHEN** the cell is extracted
 - **THEN** each of the 4 edges adds 6·10 = 60 to the metal2–metal1 coupling (240 total) and removes 9·10 = 90 from metal2's substrate capacitance
 
+#### Scenario: Two matching rules, legacy
+- **GIVEN** the same layout with a second rule `sideoverlap metal2 space metal1 6` for the same pair, and a metal1 plate covering only half of each edge's strip
+- **WHEN** the cell is extracted with `magic-compat` ON
+- **THEN** `acc` sums both rules' areas and is capped by the whole-segment overlap `len`, as in Magic
+- **AND** with `magic-compat` OFF each plate tile is counted once and the cap is its overlap with the clipped sub-segment, so the substrate subtraction equals the single-rule value
+
 ### Requirement: Fringe-halo sideoverlap
 
-In the fringe-halo model, for each (sub-)segment and its gap area G (walk sub-area up to the selected far tile or the full halo), on each target plane, for each tile U of target type b ≠ space overlapping G: let R = U ∩ G, `len` = extent of R along the edge, `dnear`, `dfar` = distances from the edge line to R's near and far sides (dnear clamped to ≥ 0). With `mc = m(a,b)` and `ms = m(a,0)`: `cfrac = F_mc(dfar) − F_mc(dnear)` and `sfrac = F_ms(dfar) − F_ms(dnear)`. For each sideoverlap rule of edge (a|o) for U's plane whose targets contain b: compute shield fractions by visiting the shield planes of (a,b) as for overlap shielding, where each shielding piece P ⊂ R with distances `dn`, `df` and length `lp` adds `(F_mc(df) − F_mc(dn))·lp/len` to `coupfrac` and `(F_ms'(df) − F_ms'(dn))·lp/len` to `subfrac_rule` (here ms' = m(a',0) with a' the boundary's stored inside type); if node(U) ≠ node(inside): coupling gains `cap_rule · (cfrac − coupfrac) · len` and `subfrac += subfrac_rule`. Then if `planeorder(edge plane) > planeorder(U plane)`, node(inside) SHALL lose `perimc(a, space) · (sfrac − subfrac) · len`, with |value| < 0.001 set to 0. The coupling entry SHALL be updated when nodes differ and both exist.
+In the fringe-halo model, for each (sub-)segment and its gap area G (walk sub-area up to the selected far tile or the full halo), on each target plane, for each tile U of target type b ≠ space overlapping G: let R = U ∩ G, `len` = extent of R along the edge, `dnear`, `dfar` = distances from the edge line to R's near and far sides (dnear clamped to ≥ 0). With `mc = m(a,b)` and `ms = m(a,0)`: `cfrac = F_mc(dfar) − F_mc(dnear)` and `sfrac = F_ms(dfar) − F_ms(dnear)`. For each sideoverlap rule of edge (a|o) for U's plane whose targets contain b: compute shield fractions by visiting the shield planes of (a,b) as for overlap shielding, where each shielding piece P ⊂ R with distances `dn`, `df` and length `lp` adds `(F_mc(df) − F_mc(dn))·lp/len` to `coupfrac` and `(F_ms'(df) − F_ms'(dn))·lp/len` to `subfrac_rule` (here ms' = m(a',0) with a' the boundary's stored inside type, see below); if node(U) ≠ node(inside): coupling gains `cap_rule · (cfrac − coupfrac) · len` and `subfrac += subfrac_rule`. Then if `planeorder(edge plane) > planeorder(U plane)`, node(inside) SHALL lose `perimc(a, space) · (sfrac − subfrac) · len`, with |value| < 0.001 set to 0. The coupling entry SHALL be updated when nodes differ and both exist.
+
+The shielded substrate fraction depends on the `magic-compat` setting (Q-EXTRACT-17, resolution: compat): with it ON (the default), as above and as in Magic, `subfrac` sums `subfrac_rule` over every matching rule, only when the nodes differ, and a' is the unreduced inside type (a contact is not reduced to its residue); with it OFF, `subfrac` is computed once per tile U, whatever the number of matching rules or the node identity, and a' is the residue of the inside type. The modes differ for duplicate rules on one (a, b) pair and for contact edges.
 Compatibility: exact
 
-See Q-EXTRACT-17.
-
-(Magic ref: extract/ExtCouple.c:1420-1649, extract/ExtCouple.c:672-828)
+(Magic ref: extract/ExtCouple.c:1420-1649, extract/ExtCouple.c:1530-1580, extract/ExtCouple.c:672-828, extract/ExtCouple.c:688)
 
 #### Scenario: Edge over a plate, fringe halo (verify against Magic)
 - **GIVEN** fringe-halo model with `sidehalo 10`, `overlap metal2 metal1 20` (so m(metal2,metal1) = 0.4), `sideoverlap metal2 space metal1 6`, and metal2 (0,0)-(10,10) over a metal1 plate extending 20 beyond every edge
 - **WHEN** the cell is extracted
 - **THEN** each edge adds 6 · 0.6366·atan(4) · 10 ≈ 50.64 to the coupling (≈ 202.56 total)
+
+#### Scenario: Duplicate rules over-subtract the shielded fraction
+- **GIVEN** the fringe-halo model and two `sideoverlap` rules for the same edge and target type, with a shield plane partly covering the gap area over a target tile of another node
+- **WHEN** the cell is extracted with `magic-compat` ON
+- **THEN** `subfrac` is the sum of both rules' shield fractions, as in Magic
+- **AND** with `magic-compat` OFF it is the shield fraction counted once, so the substrate subtraction equals the single-rule value
 
 ### Requirement: Corner fringe coupling
 

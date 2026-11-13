@@ -286,11 +286,16 @@ Compatibility: exact
 When the cell has a property `device`, all node resistances and capacitances SHALL be zeroed and coupling records suppressed. If the value starts with `primitive `, `parameters :<cellname> <rest>` SHALL be written and, after the nodes, the line `primitive`. Otherwise the value SHALL be parsed as `CLASS MODEL LLX LLY URX URY [D1 D2] REST...`: CLASS by prefix lookup in the class-name table, coordinates as integers multiplied by units-per-lambda (truncated to int), URX/URY incremented by 1 when not greater than LLX/LLY; D1 D2 present for classes fet (area·upl², perimeter·upl), mosfet/asymmetric/bjt (width·upl, length·upl), and devres/devcap/devcaprev with model ≠ `None` (as width/area·upl^k, length/perimeter·upl); the line `device <class> <model> <llx> <lly> <urx> <ury>` (or `fet ...`) plus ` D1 D2` and the remaining tokens verbatim SHALL replace normal device output. Parse errors SHALL report `Extract error:  "device" property has unknown device type: <t>` or `Extract error:  "device <class>" property syntax error` and normal device output SHALL be used.
 Compatibility: exact
 
-See Q-EXTRACT-16.
+D1 and D2 SHALL be written in the property's own token order, in both `magic-compat` settings (Q-EXTRACT-16, resolution: replicate): Magic's code reads them as width then length for mosfet, asymmetric, bjt and modelled resistor, and as area then perimeter for fet and modelled capacitor/caprev, and there is no reordering to the `L W` order of normal device records. Lengths, widths and perimeters SHALL be scaled by units-per-lambda (upl) and areas by upl², each truncated to int. After scaling, URX SHALL be incremented when URX ≤ LLX, and URY when URY ≤ LLY.
 
-(Magic ref: extract/ExtBasic.c:353-600, extract/ExtBasic.c:1716-1745)
+(Magic ref: extract/ExtBasic.c:353-556, extract/ExtBasic.c:1716-1745)
 
 #### Scenario: Primitive cell
 - **GIVEN** a cell `cap1` with property `device` = `primitive m=1`
 - **WHEN** it is extracted
 - **THEN** its `.ext` contains `parameters :cap1 m=1` and a `primitive` line, and every node record has R 0 and C 0
+
+#### Scenario: Property dimensions kept in token order
+- **GIVEN** units-per-lambda 1.5 and a cell with property `device` = `mosfet nfet 0 0 2 2 3 5 VSS`
+- **WHEN** it is extracted
+- **THEN** the line `device mosfet nfet 0 0 3 3 4 7 VSS` is written: coordinates and the two dimensions scaled by 1.5 and truncated, kept in the property's order

@@ -59,11 +59,11 @@ Each written definition SHALL be laid out as follows:
   2. device lines, after the merge pre-pass if merging is on
   3. resistor lines
   4. coupling capacitor lines
-  5. node lines, written only if a `substrate` record was read (not in substrate compatibility mode; Q-NETLIST-20)
+  5. node lines (not in substrate compatibility mode). Whether they are written depends on the `magic-compat` setting (Q-NETLIST-20, resolution: compat): with it ON (the default) only if a `substrate` record was read, as in Magic; with it OFF always, to the substrate node found, or else to `0`, as in flat mode.
 - **Closing.** The section SHALL close with `.ends` and an empty line, or with `.end` and an empty line for a root that was not wrapped.
-- **Counters.** After each section, the counters for capacitors, devices (back to 1000), resistors, diodes, subcircuits and SPICE2 nodes (back to 10) and the HSPICE prefix table SHALL be reset. The voltage-source counter is not reset (Q-NETLIST-35).
+- **Counters.** After each section, the counters for capacitors, devices (back to 1000), resistors, diodes, subcircuits and SPICE2 nodes (back to 10) and the HSPICE prefix table SHALL be reset. The voltage-source counter is reset at the start of each run in both `magic-compat` settings; its reset per section depends on the setting (Q-NETLIST-35, resolution: compat): with it ON (the default) it is not reset per section, so `V` numbering continues across subcircuits within a run, as in Magic; with it OFF it is reset with the other counters.
 Compatibility: exact
-(Magic ref: ext2spice/ext2hier.c:2380-2473)
+(Magic ref: ext2spice/ext2hier.c:2380-2473, ext2spice/ext2hier.c:2431-2441, ext2spice/ext2hier.c:2453-2459, ext2spice/ext2spice.c:828)
 
 #### Scenario: Unwrapped top level
 - **GIVEN** a root `chip` with no ports and subcircuits top `auto`
@@ -74,6 +74,18 @@ Compatibility: exact
 - **GIVEN** two cells that each contain one MOSFET
 - **WHEN** both sections are written
 - **THEN** both MOSFETs are named `M1000`
+
+#### Scenario: Voltage-source numbering across sections
+- **GIVEN** `short voltage` and two cells that each contain one pair of shorted ports, written in one hierarchical run
+- **WHEN** both sections are written
+- **THEN** with `magic-compat` ON the sources are named `V0` and `V1`
+- **AND** with `magic-compat` OFF both are named `V0`
+
+#### Scenario: Legacy .ext without a substrate record
+- **GIVEN** a cell read from a `.ext` file with no `substrate` record, whose node `out` has a ground capacitance above the threshold
+- **WHEN** its section is written in hierarchical mode
+- **THEN** with `magic-compat` ON no node capacitance line is written
+- **AND** with `magic-compat` OFF a capacitor line from `out` to the substrate node, or to `0`, is written as in flat mode
 
 ### Requirement: Subcircuit calls in hierarchical mode
 Each use of the definition SHALL produce a call, one per element for arrays, in use order with x outer and y inner, in these cases:
@@ -94,18 +106,17 @@ Compatibility: exact
 Hierarchical output SHALL follow the flat formats of capability `netlist-spice-devices`, with these exact differences:
 - **Skipped devices.** Devices with at most one terminal are skipped.
 - **Names.** A device named by its gate attribute does not get the instance path.
-- **Tee resistors.** The second `B` line of an `rsubckt` tee is written.
-- **Modeled resistor geometry.** In scale mode it is written as integers (`w=%d l=%d` of the truncated values).
-- **Unnamed `c` parameter.** It writes the capacitance.
-- **Perimeter parameter.** With scale off and no `k` scale, it uses `1e-6`.
-- **Coupling and node capacitors.** These are compared using |C|. Node connectivity is "any terminal or resistor touched".
+- **Tee resistors.** The second `B` line of an `rsubckt` tee is written. With `magic-compat` OFF flat mode writes it too (Q-NETLIST-5).
+- **Modeled resistor geometry.** In scale mode it depends on the `magic-compat` setting (Q-NETLIST-19, resolution: compat): with it ON (the default) it is written as integers (`w=%d l=%d` of the truncated values), as in Magic; with it OFF as `w=%g l=%g`, as in flat mode, so fractional values are kept.
+- **Unnamed `c` parameter.** It writes the capacitance. With `magic-compat` OFF flat mode does the same (Q-NETLIST-4).
+- **Perimeter parameter.** With scale off and no `k` scale, it uses `1e-6`. With `magic-compat` OFF flat mode does the same (Q-NETLIST-19).
+- **Coupling and node capacitors.** These are compared using |C|. Node connectivity is "any terminal or resistor touched". These two differences are normative in both `magic-compat` settings (Q-NETLIST-19, resolution: replicate per mode): negative capacitances are legitimate parent-level corrections in hierarchical output, and connectivity only drives the `**FLOATING` comment and `-F`.
 - **Killed nodes.** Devices on killed nodes are emitted with an error message.
 - **Merging.** It compares the raw substrate nodes and does not check area/perimeter attributes.
 - **Area/perimeter marks.** The "already written" marks for terminal area/perimeter are kept per node across the definition.
 
-See Q-NETLIST-19.
 Compatibility: exact
-(Magic ref: ext2spice/ext2hier.c:681-1360, ext2spice/ext2hier.c:1486-1717)
+(Magic ref: ext2spice/ext2hier.c:681-1360, ext2spice/ext2hier.c:1486-1717, ext2spice/ext2hier.c:567-570, ext2spice/ext2hier.c:1494, ext2spice/ext2hier.c:1655-1660, ext2spice/ext2hier.c:1673, ext2spice/ext2spice.c:4002, ext2spice/ext2spice.c:4157-4161, ext2spice/ext2spice.c:4180)
 
 #### Scenario: Hierarchical tee rsubckt
 - **GIVEN** resistor tee on and an `rsubckt` device `rhigh` with ends `a`, `b` and body `m`

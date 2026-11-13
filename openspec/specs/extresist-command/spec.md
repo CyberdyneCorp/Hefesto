@@ -13,7 +13,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 |---|---|---|
 | `threshold [v]` | Lumped-resistance cutoff `rthresh` in mΩ, float. A negative value prints usage. | 10000 |
 | `minresist [v]` | Simplification tolerance `minres` in mΩ | 1000 |
-| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. Informative: Magic's non-Tcl build reports it unconverted (Q-NETLIST-28). | 1 ps |
+| `mindelay [v]` | Delay cutoff, given in ps and stored ×1e9 zs. The query returns the value in ps, and any text output prints ps, in both `magic-compat` settings (Q-NETLIST-28, resolution: replicate, as Magic's normative Tcl build). Informative: Magic's non-Tcl build reports it unconverted; this is not reproduced. | 1 ps |
 | `tolerance` | Prints `Note:  This option has been deprecated and is unused.` | — |
 | `simplify on\|off` | Network simplification | on |
 | `extout on\|off` | Write `.res.ext` | on |
@@ -22,7 +22,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 | `debug on\|off` | Diagnostics | off |
 | `stats on\|off` | Statistics | off |
 | `blackbox on\|off` | Do not descend into subcells that have ports | off |
-| `skip <type>` | Remove one layer type from all net-copy connectivity masks. With no argument, restore the masks to the technology connectivity. | — |
+| `skip <type>[,<type>…]` | Remove each listed layer type from all net-copy connectivity masks and clear its own mask. With no argument, restore the masks to the technology connectivity. | — |
 | `force <net>\|none` | Always process the net; `none` clears the list | empty |
 | `ignore <net>\|none` | Never process the net; `none` clears the list | empty |
 | `include <net>\|all` | Process only the listed nets; `all` clears the list | empty |
@@ -33,7 +33,7 @@ The first word SHALL be matched case-insensitively, with unique-prefix matching,
 | `fasthenry [freq]` | Run with FastHenry output only | — |
 | `help` | List the options | — |
 
-`skip` accepts only a single type, although the documentation describes a list (Q-NETLIST-23).
+`skip` SHALL accept a comma-separated list of types, as documented, in both `magic-compat` settings (Q-NETLIST-23, resolution: fix; Magic accepts one type and writes out of bounds on a list or a bad name). A single type behaves exactly as in Magic. An unknown or ambiguous type reports an error and leaves the masks unchanged.
 
 Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any other value prints `Value must be either "on" or "off".`. `geometry` and `fasthenry` SHALL do the following for that run only, restoring the previous settings afterwards:
 - turn on "all"
@@ -41,7 +41,7 @@ Only `on` or `off` (prefix allowed) SHALL be accepted by the on/off options; any
 
 A frequency argument that does not parse prints `Cannot parse frequency value.  Assuming default`. The frequency default intended by the source (10 MHz) is never stored (Q-NETLIST-21).
 Compatibility: behavioral
-(Magic ref: resis/ResRex.c:266-700, resis/ResRex.c:202-262, resis/resis.h:506-518, doc/html/extresist.html)
+(Magic ref: resis/ResRex.c:266-700, resis/ResRex.c:371-390, resis/ResRex.c:572-588, resis/ResRex.c:202-262, resis/resis.h:506-518, doc/html/extresist.html)
 
 #### Scenario: Threshold in milliohms
 - **GIVEN** `extresist threshold 50000`
@@ -52,6 +52,15 @@ Compatibility: behavioral
 - **GIVEN** `extresist include clk` and `extresist ignore clk`
 - **WHEN** a run evaluates net `clk`
 - **THEN** `clk` is considered for processing, because the include list is consulted instead of the ignore list
+
+#### Scenario: Skip list
+- **GIVEN** a technology with types `mcon` and `via1`
+- **WHEN** `extresist skip mcon,via1` is issued
+- **THEN** both types are removed from every net-copy connectivity mask and their own masks are cleared
+
+#### Scenario: Skip with an unknown type
+- **WHEN** `extresist skip mcon,nosuchtype` is issued
+- **THEN** an error is reported and no connectivity mask changes
 
 ### Requirement: Run flow
 A run SHALL proceed as follows:
@@ -84,7 +93,7 @@ Compatibility: behavioral
 - **`port`**: add a drive point; the net is flagged forced, drive-located and port.
 - **`connect`**: a connection to a child cell; add a sink point.
 - **`cap`**: add C to both nets' capacitance.
-- **`attr`**: applies to the most recently read node, not to the named node (Q-NETLIST-29). Recognized texts:
+- **`attr`**: the node it applies to depends on the `magic-compat` setting (Q-NETLIST-29, resolution: compat): with it ON (the default) the most recently read node record, not the named node, as in Magic; with it OFF the node named in the record, and an unknown name prints a warning and the record is ignored. In both settings an `attr` before any node record is ignored with a warning, and `res:min=` values of any length are accepted (Magic reads an uninitialised node and overflows a 20-byte buffer). Recognized texts:
   - `res:skip` marks the net skipped.
   - `res:force` marks it forced.
   - `res:min=<v>` sets a minimum.
@@ -92,12 +101,18 @@ Compatibility: behavioral
 
 The `.ext` files of all parent cells SHALL be read for `connect` records into this cell. Those connection rectangles are transformed into this cell's coordinates and added as drive points, flagging the net forced and drive-located.
 Compatibility: exact
-(Magic ref: resis/ResReadExt.c:131-575, resis/ResReadExt.c:655-1075)
+(Magic ref: resis/ResReadExt.c:131-575, resis/ResReadExt.c:139, resis/ResReadExt.c:204-210, resis/ResReadExt.c:655-1075, resis/ResReadExt.c:1000-1060)
 
 #### Scenario: Node resistance scaling
 - **GIVEN** an extraction style with resistScale 1000 and the record `node n 25 3000 0 0 m1`
 - **WHEN** it is read
 - **THEN** net `n` has a resistance of 25000 mΩ and a capacitance of 3000 aF
+
+#### Scenario: Attribute for an earlier node
+- **GIVEN** the records `node a …`, `node b …` and then `attr a 0 0 0 0 m1 "res:skip"`
+- **WHEN** they are read
+- **THEN** with `magic-compat` ON net `b` is marked skipped, as in Magic
+- **AND** with `magic-compat` OFF net `a` is marked skipped
 
 ### Requirement: Net selection and first cutoff
 A net SHALL be skipped in these cases:

@@ -322,12 +322,14 @@ Compatibility: exact
 - **THEN** one north-south resistor of 50 × 100 / 4 = 1250 mΩ is made, with centerline 2 and width 4
 
 ### Requirement: Near-device cutting
-A tile with a device-terminal breakpoint SHALL be cut by the rule below.
+A tile with a device-terminal breakpoint SHALL be cut by the rule below. A tile with exactly one breakpoint depends on the `magic-compat` setting (Q-NETLIST-43, resolution: compat): with it ON (the default) the breakpoint is discarded and its node gains no area, as in Magic; with it OFF the tile's width × height is first added to the breakpoint's node, as the other cutting routines do, and then the breakpoint is discarded.
 
 Compatibility: exact
 
 ```
-if exactly one breakpoint: discard it (its node gains no area, Q-NETLIST-43); stop
+if exactly one breakpoint:
+  if magic-compat OFF: node(b).area += (R-L)·(Tp-B)
+  discard it; stop
 edges = ∅; count = 0
 for each device-kind breakpoint b: count++; edges |= first of {left if b.x=L, right if b.x=R, top if b.y=Tp, bottom if b.y=B}
 if count = 1 or edges ⊆ one single edge (including ∅):
@@ -365,7 +367,12 @@ dist(p, b) along axis: if b has a contact rectangle C: (C.lo > p ? C.lo - p : C.
 #### Scenario: Lone device breakpoint loses the tile area
 - **GIVEN** an ndiff tile whose only breakpoint is a device terminal
 - **WHEN** it is cut
-- **THEN** no resistor is made, and the tile's area is not added to any node (Q-NETLIST-43)
+- **THEN** with `magic-compat` ON no resistor is made, and the tile's area is not added to any node, as in Magic
+
+#### Scenario: Lone device breakpoint keeps the tile area with magic-compat OFF
+- **GIVEN** an ndiff tile `[0,20]×[0,10]` whose only breakpoint is a device terminal of node D
+- **WHEN** it is cut with `magic-compat` OFF
+- **THEN** no resistor is made, and 200 is added to D's area
 
 ### Requirement: Contact resistors
 When the first of a contact point's tiles is processed, the contact point SHALL be turned into nodes and resistors as follows, for contact type t.
@@ -456,16 +463,17 @@ finishNode(N):
 - With fewer than 10 resistors: r1 in list order, r2 after r1, r3 in n1's list order.
 - With 10 or more: n1 is taken in the hash-table iteration order of N's neighbours (Q-NETLIST-45), and r3 in n1's list order, skipping r1 and loops.
 - On a match, with S = R1+R2+R3, replace the triangle by a star around a new node X at N's location. X is flagged finished, ready and marked, and is prepended to the done list.
-  - `r1 = R1·R2/S + 0.5` now joins N and X.
-  - `r2 = R2·R3/S + 0.5` now joins n2 and X.
-  - `r3 = R1·R3/S + 0.5` now joins n1 and X.
-  - The products are computed in float as `(Ra·Rb)·(1/S)`. All three values are 0 if S = 0 (Q-NETLIST-44).
+  - `r1 = R1·R2/S + h` now joins N and X.
+  - `r2 = R2·R3/S + h` now joins n2 and X.
+  - `r3 = R1·R3/S + h` now joins n1 and X.
+  - The offset h depends on the `magic-compat` setting (Q-NETLIST-44, resolution: compat): with it ON (the default) h = 0.5 mΩ, as in Magic; with it OFF h = 0.
+  - The products are computed in float as `(Ra·Rb)·(1/S)`. All three values are 0 if S = 0.
   - X's resistor list is r3, r2, r1.
   - Then clear the ready flag of n1 and n2 where it was set. Call finishNode(N), then finishNode(n1) and finishNode(n2) for those that were ready.
 
 A no-merge type mask exists but is never populated, so no pair of resistor types is excluded from these reductions.
 
-(Magic ref: resis/ResMerge.c:45-138, resis/ResMerge.c:139-220, resis/ResMerge.c:221-416, resis/ResMerge.c:418-534, resis/ResMerge.c:536-876, resis/ResMerge.c:1050-1220)
+(Magic ref: resis/ResMerge.c:45-138, resis/ResMerge.c:139-220, resis/ResMerge.c:221-416, resis/ResMerge.c:418-534, resis/ResMerge.c:536-876, resis/ResMerge.c:630-641, resis/ResMerge.c:765-776, resis/ResMerge.c:1050-1220)
 
 #### Scenario: L-shaped wire reduced to one resistor (verify against Magic)
 - **GIVEN** metal1 tiles S = `[0,100]×[0,10]` and T = `[90,100]×[10,100]` with sheet resistance 100, an origin O at (0,5) on S and a port P at (95,100) on T
@@ -482,10 +490,11 @@ A no-merge type mask exists but is never populated, so no pair of resistor types
 #### Scenario: Delta-to-star
 - **GIVEN** three nodes pairwise joined by 300 mΩ resistors, where the node finished last allows no series or parallel reduction
 - **WHEN** the triangle is reduced
-- **THEN** each star arm is 300·300/900 + 0.5 = 100.5 mΩ
+- **THEN** with `magic-compat` ON each star arm is 300·300/900 + 0.5 = 100.5 mΩ
+- **AND** with `magic-compat` OFF each star arm is 300·300/900 = 100 mΩ
 
 ### Requirement: Path resistance and capacitance distribution
-After the network is built, the path resistance of every node SHALL be computed from the origin by the Dijkstra variant below.
+After the network is built, the path resistance of every node SHALL be computed from the origin by the Dijkstra variant below. The variant depends on the `magic-compat` setting (Q-NETLIST-25 and Q-NETLIST-46, resolution: compat): with it ON (the default) path resistances and heap keys are truncated to int mΩ and the heap below, with its session-wide state, is reproduced exactly, as in Magic; with it OFF path resistances and keys are floats (double), and each net uses a fresh priority queue that breaks ties between equal keys by insertion order. Only the upstream end chosen and the loop resistor marked as ignored for delay can differ, and only with fractional or equal path resistances.
 
 Compatibility: exact
 
@@ -513,7 +522,7 @@ The heap is a binary min-heap stored in a 1-based array. It works as follows:
 - **Insert into an unbuilt heap.** Append the entry.
 - **removeMin.** If the heap is not built, sift down every position from n down to 1. Then take position 1, move position n to position 1, and sift down.
 - **Sift-down.** Pick the left child, or the right child if the left child's key is greater. Stop when that child's key is ≥ the root key.
-- **Persistence.** The heap is created once per session, and its "built" state persists. The first net of a session therefore inserts the origin's resistors unbuilt (Q-NETLIST-46, Q-NETLIST-25).
+- **Persistence** (`magic-compat` ON only). The heap is created once per session, and its "built" state persists. The first net of a session therefore inserts the origin's resistors unbuilt (Q-NETLIST-46). Golden NL-RESNET captures therefore run each `extresist` in a fresh session.
 
 `maxres` SHALL be the largest path resistance, as a float.
 
@@ -521,7 +530,7 @@ The net capacitance C SHALL then be distributed: each node's area is multiplied 
 - If Σarea = 0, the message `Error: Node with no area.` SHALL be printed, and the capacitance is left undistributed.
 - A resistor with non-zero area prints `Nonnull resistor area`.
 
-(Magic ref: resis/ResSimple.c:942-960, resis/ResSimple.c:1083-1211, resis/ResSimple.c:716-757, utils/heap.c:114-260, utils/heap.c:314-460)
+(Magic ref: resis/ResSimple.c:942-960, resis/ResSimple.c:1083-1210, resis/ResSimple.c:716-757, utils/heap.c:114-260, utils/heap.c:314-460)
 
 #### Scenario: Two-segment path
 - **GIVEN** an origin connected to A by 2000 mΩ, and A connected to B by 3000 mΩ
@@ -538,7 +547,7 @@ The net capacitance C SHALL then be distributed: each node's area is multiplied 
 The delay computation below SHALL run when simplification or lumped output is enabled. With neither enabled, the network is left as it is after capacitance distribution. If no origin node exists, `Error:  Network simplification:  Failed to to get origin node.` SHALL be printed and Tdi = 0.
 
 **Downstream capacitance.** When mindelay > 0 and the net capacitance is known, the downstream capacitance SHALL be computed recursively from the origin:
-- `Cdown(N) = N.cap + Σ_{devices whose gate is N} (L·W·gateCap + (W+W)·sdCap) + Σ Cdown(child)` (Q-NETLIST-24). Children are reached through non-ignored resistors whose upstream end is N.
+- `Cdown(N) = N.cap + Σ_{devices whose gate is N} (L·W·gateCap + 2·W·sdCap) + Σ Cdown(child)`, in both `magic-compat` settings (Q-NETLIST-24, resolution: replicate). sdCap is the per-length gate–diffusion capacitance (gscap), and a gate has two diffusion edges. Children are reached through non-ignored resistors whose upstream end is N.
 - The device type of a split device tile is its left type if that is a device type, otherwise its right type.
 - Reaching a node a second time is a loop and makes the delay undefined (Tdi = −1).
 
@@ -557,7 +566,7 @@ The delay computation below SHALL run when simplification or lumped output is en
 
 Compatibility: exact
 
-(Magic ref: resis/ResSimple.c:759-940, resis/ResSimple.c:960-1081)
+(Magic ref: resis/ResSimple.c:759-940, resis/ResSimple.c:798-802, resis/ResSimple.c:960-1081)
 
 #### Scenario: Single RC delay
 - **GIVEN** origin → A through 1000 mΩ, A with 2000 aF, and no devices

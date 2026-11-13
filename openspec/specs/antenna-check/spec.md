@@ -30,7 +30,7 @@ number        = ? a token accepted as numeric (integer or decimal, optional sign
 
 Semantics, applied to every tile type in `types` (types at or above the first technology-dependent type):
 
-- `calc_type` selects how the layer's antenna area is measured: `surface`/`area` = drawn area (SURFACE); `sidewall`/`perimeter` = exposed perimeter times layer thickness (SIDEWALL). If `calc_type` is omitted, the layer takes the calculation type given by a previously parsed `model` line (SURFACE if the model carries SURFACE, else SIDEWALL if it carries SIDEWALL); if neither was declared, an error "No antenna calculation type given for layer(s) <types> and no default calculation type found." is reported and the calculation type is left undefined (see Q-MISC-3).
+- `calc_type` selects how the layer's antenna area is measured: `surface`/`area` = drawn area (SURFACE); `sidewall`/`perimeter` = exposed perimeter times layer thickness (SIDEWALL). If `calc_type` is omitted, the layer takes the calculation type given by a previously parsed `model` line (SURFACE if the model carries SURFACE, else SIDEWALL if it carries SIDEWALL); if neither was declared, an error "No antenna calculation type given for layer(s) <types> and no default calculation type found." is reported, the layer gets no calculation type and contributes no antenna area, and its ratios are still parsed and stored, in both `magic-compat` settings (Q-MISC-3, resolution: fix; Magic stores an uninitialised value).
 - A non-numeric third token that is not a calc keyword is an error ("Error in layer antenna calculation type ...; must be "surface" or "sidewall"") and the line is ignored.
 - `ratio_gate` is stored as a single-precision float. A non-numeric value is an error and the remaining fields are not stored (the calculation type has already been stored).
 - `ratio_diff_const` is stored as a float; the word `none` stores +infinity, which means "this layer has no rule when the net has tie-down area".
@@ -118,17 +118,17 @@ Compatibility: behavioral
 
 For a gate whose tile type lies on plane G, the system SHALL evaluate the antenna rule once for every plane-order position k from order(G)+1 up to the highest plane order in the style, where the "check plane" P_k is the plane whose `planeorder` index equals k, and for each k SHALL:
 
-1. Trace the electrically connected geometry of the whole hierarchy (flattened, labels ignored) starting from the device rectangle with the connectivity of the gate type, but with the connectivity of the first (lowest type number) contact type whose home plane is P_k restricted to types whose plane number is less than or equal to the plane number of P_k, so that the trace does not climb above P_k through that contact.
+1. Trace the electrically connected geometry of the whole hierarchy (flattened, labels ignored) starting from the device rectangle with the connectivity of the gate type, but with restricted contact connectivity so that the trace does not climb above P_k. The restriction depends on the `magic-compat` setting (Q-MISC-7, resolution: compat): with it ON (the default), as in Magic, only the first (lowest type number) contact type whose home plane is P_k is restricted, to types whose plane *number* is less than or equal to the plane number of P_k; with it OFF, every contact type whose home plane is P_k is restricted, to types whose plane *order* is less than or equal to k.
 2. Compute the tie-down area D = sum of areas of traced tiles whose type is in the `tiedown` set, on any plane (a contact tile counts only on its home plane; a split/diagonal tile counts half its bounding-box area, integer division).
 3. Compute the gate area A_g = sum of areas of traced tiles on plane G whose type is the device type of any `mosfet`/`fet`/`asymmetric`/`msubcircuit` device declaration (same contact and split rules).
 4. Compute per-type antenna areas a[t] over the traced tiles of every plane whose plane order is ≤ k (cumulative model), or of plane P_k only (partial model), using the per-type measurement of requirement "Antenna area measurement".
 5. Apply the ratio test of requirement "Antenna ratio test".
 
-All areas are in internal units squared and are accumulated in 64-bit integers. If no plane has order k, Magic reuses the previous check plane (see Q-MISC-6); the connectivity restriction compares plane numbers, not plane orders, and applies to one contact type only (see Q-MISC-7).
+All areas are in internal units squared and are accumulated in 64-bit integers. If no plane has order k, Magic reuses the previous check plane (see Q-MISC-6). The modes of step 1 differ in gf180mcuD, whose metal4 plane declares `mimcc` before `via4`: with `magic-compat` ON only `mimcc` is restricted at the metal4 check, so metal4 reached through metal5 jumpers is counted.
 
 Compatibility: exact
 
-(Magic ref: extflat/EFantenna.c:437-566, extflat/EFantenna.c:782-806)
+(Magic ref: extflat/EFantenna.c:437-566, extflat/EFantenna.c:504-517, extflat/EFantenna.c:782-806)
 
 #### Scenario: Check planes for a three-metal stack
 - **GIVEN** planeorder well 0, active 1, metal1 2, metal2 3, metal3 4, and an nfet gate type on plane active
@@ -141,18 +141,25 @@ Compatibility: exact
 - **THEN** the metal2 plate is not part of the traced geometry
 - **AND** when the check plane is metal2 the plate is traced
 
+#### Scenario: Two contact types on the check plane
+- **GIVEN** the gf180mcuD technology, whose metal4 plane declares `mimcc` (mimcap to metal5) before `via4`, and a gate whose metal4 net continues through via4 to a metal5 jumper and back down to more metal4
+- **WHEN** the check plane is metal4 with `magic-compat` ON
+- **THEN** only `mimcc` is restricted, `via4` still connects upward, and the metal4 beyond the jumper is traced and counted
+- **AND** with `magic-compat` OFF `via4` is restricted too, and the metal4 beyond the jumper is not traced
+
 ### Requirement: Antenna area measurement
 
 For each traced tile of type t on the searched plane, the system SHALL add to a[·] according to t's calculation type; types with no calculation type contribute nothing:
 
 - SURFACE, non-contact tile: a[t] += width × height (halved with integer division for a split tile).
-- SURFACE, contact tile of width w and height h: let (s, sep, b) be the cut size, separation and border of the first cifoutput `squares`/`slots` operator generating the contact type (values in output-style units), f = s / scalefactor (float), nx = trunc((w − 2b)/(s + sep)), ny likewise with h, each replaced by 1 when 0; cut area C = nx·ny × trunc(f²) (integer). C is added to every residue type of the contact that lies on the searched plane; then, for a user-visible contact type, C is also added to a[contact]; for a stacked contact type, C is added once more to the first of its residues on the searched plane. (w, h are internal units while s, sep, b are output units; see Q-MISC-4.)
+- SURFACE, contact tile of width w and height h: let (s, sep, b) be the cut size, separation and border of the first cifoutput `squares`/`slots` operator generating the contact type (values in output-style units) and f = s / scalefactor (float). The cut count and area depend on the `magic-compat` setting (Q-MISC-4, resolution: compat): with it ON (the default), as in Magic, nx = trunc((w − 2b)/(s + sep)) mixing internal units (w, h) with output units (s, sep, b), ny likewise with h, and C = nx·ny × trunc(f²); with it OFF, w, h and b are in the same units, nx = trunc((w·scalefactor − 2b)/(s + sep)), ny likewise with h, and C = trunc(nx·ny·f²), with f² not truncated. In both modes nx and ny are replaced by 1 when they are less than 1. C is added to every residue type of the contact that lies on the searched plane; then, for a user-visible contact type, C is also added to a[contact]; for a stacked contact type, C is added once more to the first of its residues on the searched plane.
+- In both modes, a contact type with no cifoutput style, or no `squares`/`slots` operator generating it, contributes cut area 0 (and cut perimeter 0), and s + sep = 0 counts one cut in each direction; Magic reads uninitialised values or divides by zero in these cases.
 - SIDEWALL, non-contact tile: perimeter p = total length of the tile's boundary segments that abut space-type tiles on the same plane; a[t] += trunc(p × thick[t]).
 - SIDEWALL, contact tile: cperim = trunc(nx·ny·4·s / scalefactor) (integer arithmetic); for each residue r on the searched plane a[r] += trunc(cperim × thick[r]); additionally, only in the cumulative model, a[contact] (user contact) or a[first residue on plane] (stacked contact) += trunc(cperim × thick).
 
 Compatibility: exact
 
-(Magic ref: extflat/EFantenna.c:822-1016, cif/CIFtech.c:2327-2372)
+(Magic ref: extflat/EFantenna.c:822-1016, extflat/EFantenna.c:853-863, extflat/EFantenna.c:974-985, cif/CIFtech.c:2339-2369)
 
 #### Scenario: Surface area of plain metal
 - **GIVEN** metal1 declared `antenna metal1 surface 400 none` and a traced metal1 rectangle 100 × 100
@@ -169,6 +176,12 @@ Compatibility: exact
 - **WHEN** areas are measured
 - **THEN** nx = trunc((10 − 20)/40) = 0 → 1, ny = 1, f = 2.0, C = 4
 - **AND** 4 is added to a[metal1] and 4 to a[via]
+- **AND** with `magic-compat` OFF nx = trunc((10·10 − 20)/40) = 2, ny = 2 and C = trunc(4 · 4.0) = 16
+
+#### Scenario: Contact with no cut rule
+- **GIVEN** a contact type declared surface that no cifoutput `squares` or `slots` operator generates
+- **WHEN** areas are measured, in either `magic-compat` setting
+- **THEN** the contact contributes 0 to every a[·]
 
 ### Requirement: Antenna ratio test
 
@@ -177,7 +190,7 @@ With gate area A_g, tie-down area D, and per-type areas a[t], the system SHALL e
 - If D = 0: for each t with ratio_gate[t] > 0, in the partial model add a[t]/ratio_gate[t] to S_metal when t is not a contact, or to S_via when t is a contact whose home plane is P_k. Limit L = max over all user types of ratio_gate.
 - If D > 0: for each t with ratio_diff_const[t] finite, R[t] = ratio_gate[t] + ratio_diff_const[t] + ratio_diff_prop[t] × D (single-precision); when R[t] > 0, in the partial model add a[t]/R[t] to S_metal (non-contact) or S_via (contact with home plane P_k). L = max of R[t] over those types.
 - A violation exists when S_metal > A_g or S_via > A_g; when D = 0 a violation additionally requires A_g > 0.
-- In the cumulative model neither sum is accumulated, so no violation is ever reported (see Q-MISC-1).
+- In the cumulative model the sums depend on the `magic-compat` setting (Q-MISC-1, resolution: compat): with it ON (the default) neither sum is accumulated, so no violation is ever reported, as in Magic; with it OFF the same terms as in the partial model are added for every type, over the areas of all planes with order ≤ k, a[t]/ratio to S_metal for a non-contact type and to S_via for a contact type whatever its home plane, so either total over A_g is a violation.
 
 Sums use double precision. The reported effective ratio is L × S / A_g computed in single precision.
 
@@ -200,10 +213,11 @@ Compatibility: exact
 - **WHEN** the rule is evaluated
 - **THEN** metal1 contributes nothing because its constant diffusion ratio is infinite, and no violation is reported
 
-#### Scenario: Cumulative model never reports (verify against Magic)
+#### Scenario: Cumulative model reports only with magic-compat OFF
 - **GIVEN** model cumulative surface with the same geometry as the gate-only violation scenario
-- **WHEN** `antennacheck` runs
-- **THEN** no violation is reported
+- **WHEN** `antennacheck` runs with `magic-compat` ON
+- **THEN** no violation is reported, as in Magic
+- **AND** with `magic-compat` OFF S_metal = 25.0 > 20 and a violation is reported at check plane metal1
 
 ### Requirement: Violation reporting
 

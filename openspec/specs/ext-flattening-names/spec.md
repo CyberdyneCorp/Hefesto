@@ -58,11 +58,11 @@ Comparing name N1 against name N2, N1 SHALL be preferred when the first applicab
 2. Fewer components are preferred.
 3. With one component each: the name `0` loses to any other name.
 4. Fewer total characters, summed over all components, are preferred.
-5. Otherwise, components are compared root-first by byte `strcmp`. N1 is preferred only if it compares greater (see Q-NETLIST-10).
+5. Otherwise, components are compared root-first by byte `strcmp`. N1 is preferred only if it compares greater, in both `magic-compat` settings (Q-NETLIST-10, resolution: replicate).
 
 Global names (ending in `!`) receive no extra preference.
 Compatibility: exact
-(Magic ref: extflat/EFname.c:510-625)
+(Magic ref: extflat/EFname.c:510-568, extflat/EFname.c:590-607)
 
 #### Scenario: Label beats generated name
 - **GIVEN** the names `a` and `b#`
@@ -105,7 +105,7 @@ Compatibility: behavioral
 - **THEN** `VGND` and `GND!` are the compatibility-mode ground and `u1/VGND` is not
 
 ### Requirement: SPICE output name conversion
-The SPICE netlisters SHALL convert a canonical name to text as follows, given the active conversion flags (trim-global, trim-local, convert-comma, convert-equal, convert-brackets) and the output format.
+The SPICE netlisters SHALL convert a canonical name to text as follows, given the active conversion flags (trim-global, trim-local, convert-comma, convert-equal, convert-brackets) and the output format. Which flags are active for a run depends on the `magic-compat` setting (Q-NETLIST-16, resolution: compat): with it ON (the default) the flags are one session-wide set that each run only adds to, as in Magic, so flags set by an earlier `ext2spice` or `ext2sim` run stay in effect; with it OFF each run starts from its own command's base flags (for `ext2spice`, trim-global, convert-comma and convert-equal, plus trim-local in HSPICE format and without trim-global in CDL; for `ext2sim`, none), adds the run's `-t` characters, and leaves nothing for later runs or the other command.
 
 **When all five flags are off**, only the leaf component is output, verbatim. This happens only when an instance name is printed with every flag cleared. Netlisters set at least convert-comma whenever they print a name.
 
@@ -124,9 +124,9 @@ The SPICE netlisters SHALL convert a canonical name to text as follows, given th
 - `#` is deleted if trim-local is on.
 - Every other character is copied.
 
-These deletions apply anywhere in the leaf, not only to a trailing character. See Q-NETLIST-30.
+Where `!` and `#` are deleted depends on the `magic-compat` setting (Q-NETLIST-30, resolution: compat): with it ON (the default) every `!` under trim-global and every `#` under trim-local is deleted anywhere in the leaf, as in Magic; with it OFF only a `!` or `#` that is the last character of the leaf is deleted, as in the `.sim` conversion, so `a!b` and `ab` stay distinct. The other deletions (`=` and `,` when their conversion is off) and the HSPICE `.`→`@` apply anywhere in the leaf in both settings, and `,` is deleted from non-leaf components as above. A leading `,` in a root prefix component is dropped without writing before the output buffer, in both settings (Q-NETLIST-30; Magic writes before the buffer).
 Compatibility: exact
-(Magic ref: ext2spice/ext2spice.c:4308-4396)
+(Magic ref: ext2spice/ext2spice.c:4307-4375)
 
 #### Scenario: Default SPICE conversion
 - **GIVEN** the flags trim-global, convert-comma and convert-equal, SPICE3 format, and the name `u1[0,1]/vdd!`
@@ -137,6 +137,16 @@ Compatibility: exact
 - **GIVEN** HSPICE format and the name `x/a.b`
 - **WHEN** it is converted
 - **THEN** the text is `x/a@b`
+
+#### Scenario: Inner bang deleted with magic-compat ON
+- **GIVEN** the trim-global flag and the leaf name `a!b`
+- **WHEN** it is converted for SPICE with `magic-compat` ON
+- **THEN** the text is `ab`
+
+#### Scenario: Inner bang kept with magic-compat OFF
+- **GIVEN** the trim-global flag and the leaf names `a!b` and `vdd!`
+- **WHEN** they are converted for SPICE with `magic-compat` OFF
+- **THEN** the texts are `a!b` and `vdd`
 
 ### Requirement: Sim output name conversion
 The `.sim` netlister SHALL output a name as follows:

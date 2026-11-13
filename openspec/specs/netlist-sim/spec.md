@@ -48,8 +48,8 @@ Compatibility: behavioral
 ### Requirement: File structure and order
 The `.sim` file SHALL begin with `| units: <S_out %g> tech: <tech> format: <MIT|LBL|SU>`. It SHALL then contain:
 1. device lines, in the device visit order of capability `ext-flattening-hierarchy`, after a merge pre-pass if merging is on
-2. coupling capacitor lines, if cthresh was finite when the command options were set; a run-level `-c` does not enable them (Q-NETLIST-18)
-3. resistor lines
+2. coupling capacitor lines, if the capacitance threshold is finite. Which threshold decides depends on the `magic-compat` setting (Q-NETLIST-18, resolution: compat): with it ON (the default) the cthresh in force when the command options were set, so a run-level `-c` does not enable them, as in Magic; with it OFF the run's threshold, after `-c`
+3. resistor lines; resistor flattening follows the same rule, with the option-level rthresh with `magic-compat` ON and the run's threshold, after `-r`, with it OFF
 4. node lines, in node visit order
 
 ```ebnf
@@ -57,18 +57,30 @@ simfile   = header , { device | cap | res } , { nodeline } ;
 header    = "| units: " , number , " tech: " , word , " format: " , ( "MIT" | "LBL" | "SU" ) , NL ;
 cap       = "C " , name , " " , name , " " , fixed1 , NL ;
 res       = "r " , name , " " , name , " " , gnum , NL ;
-nodeline  = [ "C " , name , "0 " , fixed1 , NL ] , [ "R " , name , " " , int , NL ]
+nodeline  = [ "C " , name , ( "0 " | " GND " ) , fixed1 , NL ] , [ "R " , name , " " , int , NL ]
             , [ "A " , name , " " , attr , { "," , attr } , NL ] , { "= " , name , " " , name , NL } ;
 ```
 
-Merging SHALL ignore device class and type. Two devices merge when they have the same gate and substrate nodes, equal truncated `l·s` and `w·s` (W equality only in conservative mode), and the same or swapped source/drain nodes (Q-NETLIST-17). The surviving device's W SHALL be multiplied by the accumulated multiplier `m = m + W_new/W_kept`, truncated to an integer.
+Whether merging compares device class and type depends on the `magic-compat` setting (Q-NETLIST-17, resolution: compat): with it ON (the default) merging SHALL ignore them, as in Magic; with it OFF the two devices SHALL also have the same class and type, as in `ext2spice`. Two devices merge when they have the same gate and substrate nodes, equal truncated `l·s` and `w·s` (W equality only in conservative mode), and the same or swapped source/drain nodes. The surviving device's W SHALL be multiplied by the accumulated multiplier `m = m + W_new/W_kept`, truncated to an integer.
 Compatibility: exact
-(Magic ref: ext2sim/ext2sim.c:640-700, ext2sim/ext2sim.c:1700-1866)
+(Magic ref: ext2sim/ext2sim.c:640-700, ext2sim/ext2sim.c:675-677, ext2sim/ext2sim.c:1700-1866, ext2sim/ext2sim.c:1770-1858)
 
 #### Scenario: Header
 - **GIVEN** output scale `S_out` 5 (capability `ext-flattening-read`) and technology `scmos`
 - **WHEN** a MIT file is written
 - **THEN** the first line is `| units: 5 tech: scmos format: MIT`
+
+#### Scenario: Run-level coupling threshold
+- **GIVEN** `ext2sim cthresh infinite` and a cell with a 5 fF coupling between `a` and `b`
+- **WHEN** `ext2sim -c 1` is run on it
+- **THEN** with `magic-compat` ON no coupling line is written
+- **AND** with `magic-compat` OFF the line `C a b 5.0` is written
+
+#### Scenario: Merge across device types
+- **GIVEN** `ext2sim merge aggressive` and an nfet and a different n-type device of equal L and W on the same gate, substrate, source and drain nodes
+- **WHEN** the `.sim` file is written
+- **THEN** with `magic-compat` ON the two devices merge into one line
+- **AND** with `magic-compat` OFF both lines are written
 
 ### Requirement: Device lines
 Devices with fewer than 2 terminals SHALL be skipped. A device line SHALL be built as follows:
@@ -136,18 +148,19 @@ The parasitic and node records SHALL be written as follows:
 - **Resistor.** Every explicit resistor SHALL be written as `r <n1> <n2> %g` of R/1000.
 
 For each visited node (skipped under `-F` if no device referenced it):
-- If C/1000 > cthresh: `C <name>` immediately followed by `0 ` and `%.1f` of C/1000. There is no space between the name and `0`; this is a regression (Q-NETLIST-15).
+- If C/1000 > cthresh: the node capacitance line, whose form depends on the `magic-compat` setting (Q-NETLIST-15, resolution: compat): with it ON (the default) `C <name>` immediately followed by `0 ` and `%.1f` of C/1000, with no space between the name and `0`, byte-identical to Magic 8.3.694; with it OFF `C <name> GND ` followed by `%.1f` of C/1000, the format that irsim parses (the `nodeline` production allows both).
 - If `(R + 500)/1000` (integer division, R being the lumped resistance in mΩ) > rthresh: `R <name> <that integer>`.
 - If attributes exist and `-B` is not set: `A <name> <a1>,<a2>,…`.
 - For each non-canonical name of the node, skipping it when both it and the canonical name are global: `= <canonical> <alias>`. This goes to the alias file when alias is on, otherwise to the `.sim` file.
 - When labels are on, `<name> <x> <y> <layer>` SHALL be written to the label file, using the node location and layer name.
 Compatibility: exact
-(Magic ref: ext2sim/ext2sim.c:1546-1720)
+(Magic ref: ext2sim/ext2sim.c:1546-1720, ext2sim/ext2sim.c:1628-1680)
 
 #### Scenario: Node capacitance line
 - **GIVEN** node `out` with 5000 aF and cthresh 2
 - **WHEN** node lines are written
-- **THEN** the line is `C out0 5.0`
+- **THEN** with `magic-compat` ON the line is `C out0 5.0`
+- **AND** with `magic-compat` OFF the line is `C out GND 5.0`
 
 #### Scenario: Lumped resistance
 - **GIVEN** node `w` with lumped resistance 25600 mΩ and rthresh 10
@@ -160,17 +173,22 @@ Compatibility: exact
 - **THEN** the line `= a u1/x` is written to the `.sim` file
 
 ### Requirement: Name conversion state
-Names SHALL be written with the `.sim` conversion of capability `ext-flattening-names`, using the session's current conversion flags. Magic does not reset these flags at the start of `ext2sim`, so flags left set by a previous `ext2spice` run (trim-global, convert-equal, convert-comma) stay in effect (Q-NETLIST-16). Hefesto SHALL reproduce this session-state dependence by default.
+Names SHALL be written with the `.sim` conversion of capability `ext-flattening-names`. Which conversion flags are active depends on the `magic-compat` setting (Q-NETLIST-16, resolution: compat): with it ON (the default) they are the session's current flags, which Magic does not reset at the start of `ext2sim`, so flags left set by a previous `ext2spice` run (trim-global, convert-equal, convert-comma) stay in effect; with it OFF each `ext2sim` run starts with no flags, adds its own `-t` characters, and leaves nothing for later runs.
 Compatibility: behavioral
-(Magic ref: ext2sim/ext2sim.c:430-445, ext2spice/ext2spice.c:1081-1084, extflat/EFvisit.c:878-920)
+(Magic ref: ext2sim/ext2sim.c:430-445, ext2sim/ext2sim.c:495, ext2spice/ext2spice.c:1071-1075, ext2spice/ext2spice.c:1081-1084, extflat/EFvisit.c:878-920)
 
 #### Scenario: After ext2spice
 - **GIVEN** a session in which `ext2spice` ran, followed by `ext2sim` with a node named `vdd!`
 - **WHEN** the `.sim` file is written
-- **THEN** the node is written as `vdd`
+- **THEN** with `magic-compat` ON the node is written as `vdd`
+
+#### Scenario: After ext2spice with magic-compat OFF
+- **GIVEN** `magic-compat` OFF and a session in which `ext2spice` ran, followed by `ext2sim` with a node named `vdd!`
+- **WHEN** the `.sim` file is written
+- **THEN** the node is written as `vdd!`
 
 ### Requirement: Deprecated sim2simp filter
-Hefesto SHALL NOT be required to provide the `sim2simp` filter. Magic ships its source, but neither builds nor installs it, so this requirement only records its behaviour. Parallel-device merging is covered by the `merge` option of this capability (Q-NETLIST-48).
+Hefesto SHALL NOT provide the `sim2simp` filter, in either `magic-compat` setting (Q-NETLIST-48, resolution: other, omitted). Magic ships its source, but neither builds nor installs it, so there is no Magic tool to match. Parallel-device merging is covered by the `merge` option of this capability (`merge conservative` or `merge aggressive`). The rest of this requirement is informative and only records the filter's behaviour.
 
 The filter reads a `.sim` file on standard input:
 - Lines starting with `p`, `n`, `e` or `d` are transistors. Their fields are space-separated: type, gate, source, drain, length, width, and optionally x, y, gate attributes, source attributes and drain attributes.
@@ -185,7 +203,7 @@ The filter reads a `.sim` file on standard input:
 
 Compatibility: informative
 
-(Magic ref: ext2sim/sim2simp.c:1-171, ext2sim/Makefile.in:18-20)
+(Magic ref: ext2sim/sim2simp.c:1-171, ext2sim/Makefile.in:20)
 
 #### Scenario: Two parallel transistors merged
 - **GIVEN** the input lines `n a x y 2 4 0 0 g s=A_8,P_12 d=A_8,P_12` and `n a y x 2 6 10 0 g s=A_12,P_16 d=A_10,P_14`

@@ -146,9 +146,9 @@ Compatibility: exact
 When option `labelcheck` is on: parent labels with the sticky flag that lie in the interaction area over no paint connecting to their type SHALL be copied into the cumulative area on the first subtree; parent sticky labels touching a subtree tile of a connecting type SHALL unify the label text with that tile's node; and subtree sticky labels touching cumulative tiles of connecting types SHALL unify their text with those tiles' nodes.
 Compatibility: exact
 
-See Q-EXTRACT-26.
+Every sticky label in the cumulative def that touches a tile SHALL be unified with that tile's node name, including the sticky labels created by the hard-way search, in both `magic-compat` settings (Q-EXTRACT-26, resolution: replicate). For an array the tile's node name describes one element rather than a range, so the extra `merge` aliases this produces are written as in Magic and resolved by the netlisters. Golden cases cover arrays with `labelcheck` on.
 
-(Magic ref: extract/ExtSubtree.c:615-668, extract/ExtHier.c:330-460, extract/ExtHier.c:418-447)
+(Magic ref: extract/ExtSubtree.c:615-668, extract/ExtHier.c:418-447, extract/ExtHier.c:521-575)
 
 #### Scenario: Sticky pin over child metal
 - **GIVEN** `extract do labelcheck` and a sticky parent label `VDD` over empty parent area above child metal1 named `c/vdd`
