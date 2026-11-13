@@ -61,7 +61,7 @@ class ShardTable(unittest.TestCase):
         include = shards.matrix(cases)["include"]
         self.assertEqual([row["shard"] for row in include], ["sky130-io", "ihp"])
         self.assertEqual(include[1], {"shard": "ihp", "tech": "ihp", "gds": "ihp-gds", "gds_out": "ihp_gds",
-                                      "timeout": 120})
+                                      "timeout": 45})
         self.assertEqual(shards.matrix(["tests/golden/MASK/cases/MASK-OS-001"]), {"include": []})
 
     def test_shard_cases_and_unknown_library(self):

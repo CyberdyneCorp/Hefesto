@@ -38,8 +38,8 @@ class Shard:
 # Timeouts: the job's fixed part (hefesto-cli build, data restore or fetch, image build; about 35 minutes
 # on a cold cache, sky130-gds alone fetches in about 13 minutes) plus twice Magic's read+write time of the
 # shard's files, rounded up. Magic's times are those of golden-capture run 43440833955 (task 1.1,
-# scripts/d19/): sky130 about 15 s, sky130-io 92 s, sky130-sram 972 s, gf180mcu 353 s, gf180mcu-io 142 s.
-# The ihp shards keep a provisional 120 minutes until their timing is measured (tasks.md 1.6).
+# scripts/d19/): sky130 about 15 s, sky130-io 92 s, sky130-sram 972 s, gf180mcu 353 s, gf180mcu-io 142 s,
+# ihp 1.4 s, ihp-io 75 s and ihp-sram 4901 s (RM_IHPSG13_1P_8192x32_c4 alone 2118 s).
 SHARDS = (
     Shard("sky130", "sky130", "sky130-gds",
           ("sky130_fd_pr", "sky130_fd_sc_hd", "sky130_fd_sc_hdll", "sky130_fd_sc_hs", "sky130_fd_sc_hvl",
@@ -51,8 +51,9 @@ SHARDS = (
            "gf180mcu_fd_sc_mcu9t5v0", "gf180mcu_ocd_ip_sram", "gf180mcu_ocd_sc_rt12t3v3",
            "gf180mcu_osu_sc_gp12t3v3", "gf180mcu_osu_sc_gp9t3v3", "gf180mcu_re_efuse"), 50),
     Shard("gf180mcu-io", "gf180mcu", "gf180mcu-gds", ("gf180mcu_fd_io", "gf180mcu_ocd_io"), 45),
-    Shard("ihp", "ihp", "ihp-gds", ("sg13g2_pr", "sg13g2_sram", "sg13g2_stdcell"), 120),
-    Shard("ihp-io", "ihp", "ihp-gds", ("sg13g2_io",), 120),
+    Shard("ihp", "ihp", "ihp-gds", ("sg13g2_pr", "sg13g2_stdcell"), 45),
+    Shard("ihp-io", "ihp", "ihp-gds", ("sg13g2_io",), 45),
+    Shard("ihp-sram", "ihp", "ihp-gds", ("sg13g2_sram",), 200),
 )
 BY_LIBRARY = {lib: shard for shard in SHARDS for lib in shard.libraries}
 
