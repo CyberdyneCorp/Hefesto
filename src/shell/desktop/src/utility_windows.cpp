@@ -87,6 +87,7 @@ void TextHelperWindow::close() {
   if (!window_) return;
   window_->destroy();
   window_.reset();
+  justify_.clear();
   buttons_.clear();
 }
 
@@ -139,9 +140,11 @@ void TextHelperWindow::build() {
       b->on_click([this, just] {
         fields_to_model();
         view_.set_justification(just);
+        mark_justification();
         preview_->set_text(view_.preview(port_exists_, units_));
       });
       row.add(*b);
+      justify_.push_back(b.get());
       buttons_.push_back(std::move(b));
     }
     grid.add(row);
@@ -252,9 +255,20 @@ void TextHelperWindow::model_to_fields() {
   const auto font = std::ranges::find(fonts_, m.font);
   font_->set_selected(font == fonts_.end() ? 0 : static_cast<int>(std::distance(fonts_.begin(), font)));
   preview_->set_text(view_.preview(port_exists_, units_));
+  mark_justification();
   default_layer_->on_toggle([this](bool on) { view_.model().default_layer = on; });
   sticky_->on_toggle([this](bool on) { view_.model().sticky = on; });
   port_->on_toggle([this](bool on) { view_.model().port = on; });
+}
+
+void TextHelperWindow::mark_justification() {
+  const auto marks = view_.justification_marks();
+  const auto& choices = justification_choices();
+  for (std::size_t i = 0; i < justify_.size() && i < marks.size(); ++i) {
+    justify_[i]->set_primary(marks[i]);
+    // Raven buttons have no checked state for screen readers: the name says it.
+    justify_[i]->set_accessible_name("Justification " + std::string{choices[i]} + (marks[i] ? ", chosen" : ""));
+  }
 }
 
 void TextHelperWindow::apply() {

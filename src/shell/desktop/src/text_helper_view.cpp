@@ -45,6 +45,13 @@ void TextHelperView::set_justification(std::string_view just) {
   if (std::ranges::find(choices, just) != choices.end()) model_.justification = std::string{just};
 }
 
+std::array<bool, 11> TextHelperView::justification_marks() const noexcept {
+  std::array<bool, 11> marks{};
+  const auto& choices = justification_choices();
+  for (std::size_t i = 0; i < choices.size(); ++i) marks[i] = justification_is(choices[i]);
+  return marks;
+}
+
 std::vector<std::string> TextHelperView::apply_lines(bool port_exists, std::string_view previous_units) const {
   if (target_ == TextHelperTarget::new_label) return command_lines(gui::new_label_commands(model_));
   std::vector<std::string> lines = {command_line({"units", "microns"})};

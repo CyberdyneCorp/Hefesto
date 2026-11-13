@@ -55,6 +55,10 @@ class TextHelperView {
   /// The justification grid: selects one of justification_choices().
   void set_justification(std::string_view just);
   [[nodiscard]] bool justification_is(std::string_view just) const noexcept { return model_.justification == just; }
+  /// Which buttons of the grid (justification_choices() order) show the
+  /// current justification as chosen: every slot holding it, so "center"
+  /// marks the grid's middle square and the "center" button below it.
+  [[nodiscard]] std::array<bool, 11> justification_marks() const noexcept;
 
   /// The command lines Apply (or Okay) issues: for a new label
   /// gui::new_label_commands; for selected labels `units microns`, the

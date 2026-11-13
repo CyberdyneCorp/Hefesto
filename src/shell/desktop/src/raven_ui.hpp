@@ -726,6 +726,9 @@ class Button : public Widget {
   Button(const Button&) = delete;
   Button& operator=(const Button&) = delete;
   void on_click(std::function<void()> callback);
+  /// The accent fill of a primary button, or the plain control look: also
+  /// marks the chosen button of a group (Raven buttons have no checked state).
+  void set_primary(bool primary);
 
  private:
   explicit Button(WidgetId id);

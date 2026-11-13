@@ -1935,6 +1935,10 @@ void Button::on_click(std::function<void()> callback) {
   callbacks_->click = std::move(callback);
 }
 
+void Button::set_primary(bool primary) {
+  Rbutton_set_style(id_, primary ? R_BUTTON_PRIMARY : R_BUTTON_DEFAULT);
+}
+
 struct CheckBox::Callbacks {
   std::function<void(bool)> toggle;
   static void changed(Rid, int checked, void* self) {

@@ -4,6 +4,7 @@
 // The M4 manager panels' view models (docs/design/mockups/M4-Managers.dc.html;
 // openspec/changes/m4-scripting task 10.4).
 
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <optional>
 #include <string>
@@ -266,6 +267,12 @@ TEST_CASE("text helper justification grid and selected labels",
   CHECK(helper.justification_is("NE"));
   helper.set_justification("bogus");  // not a choice: unchanged
   CHECK(helper.justification_is("NE"));
+  // The grid marks the chosen square only (primary button style, draft 13).
+  CHECK(helper.justification_marks() == std::array<bool, 11>{false, false, true, false, false, false, false, false,
+                                                             false, false, false});
+  helper.set_justification("center");  // the middle square and the "center" button
+  CHECK(helper.justification_marks() == std::array<bool, 11>{false, false, false, false, true, false, false, false,
+                                                             false, true, false});
   helper.set_justification("default");
   helper.model().text = "A";
   helper.model().font = "default";
