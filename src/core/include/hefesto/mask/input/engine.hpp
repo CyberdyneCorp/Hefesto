@@ -47,10 +47,9 @@ class ReadEngine final : public ReadSink {
 
  private:
   struct State;
-  // [[maybe_unused]] while the scaffold stubs do not read them (INPUT drops it).
-  [[maybe_unused]] editor::EditorState& editor_;
-  [[maybe_unused]] const InputStyle& style_;
-  [[maybe_unused]] compat::CompatSettings compat_;
+  editor::EditorState& editor_;
+  const InputStyle& style_;
+  compat::CompatSettings compat_;
   std::unique_ptr<State> state_;
 };
 

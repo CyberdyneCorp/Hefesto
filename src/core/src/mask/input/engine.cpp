@@ -44,6 +44,11 @@ diag::Status ReadEngine::end_cell() {
 }
 
 diag::Status ReadEngine::finish() {
+  // The stub keeps the members referenced: GCC 11 ignores [[maybe_unused]] on members (-Werror=attributes)
+  // and Clang flags an unread private field. INPUT drops this with the real engine.
+  static_cast<void>(editor_);
+  static_cast<void>(style_);
+  static_cast<void>(compat_);
   return cmd::not_implemented_status("mask::ReadEngine::finish");
 }
 

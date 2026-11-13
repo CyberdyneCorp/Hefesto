@@ -270,11 +270,12 @@ jobs:
       - name: List the shard's cases
         shell: bash
         run: |
-          read -ra requested <<< "$CASES"
+          # CASES and MODE come from the workflow env.
+          if [ -n "${CASES:-}" ]; then read -ra requested <<< "$CASES"; else requested=(); fi
           python3 scripts/gds_rt_shards.py --cases "${{ matrix.shard }}" "${requested[@]}" > cases.txt
-          mapfile -t cases < cases.txt
-          echo "${#cases[@]} case(s) in shard ${{ matrix.shard }}; mode $MODE"
-          python3 tools/golden/capture.py --check "${cases[@]}"
+          mapfile -t shard_cases < cases.txt
+          echo "${#shard_cases[@]} case(s) in shard ${{ matrix.shard }}; mode $MODE"
+          python3 tools/golden/capture.py --check "${shard_cases[@]}"
 
       # A sky130 GDS fetch peaks at about 4.7 GB (the largest library's tar plus the kept set, task 1.1).
       - name: Free disk space

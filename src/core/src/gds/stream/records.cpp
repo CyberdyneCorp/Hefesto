@@ -30,6 +30,9 @@ std::uint64_t RecordReader::position() const noexcept {
 }
 
 diag::Status RecordReader::seek(std::uint64_t /*offset*/) {
+  // The stubs keep the source referenced: GCC 11 ignores [[maybe_unused]] on members (-Werror=attributes)
+  // and Clang flags an unread private field.
+  static_cast<void>(source_);
   return cmd::not_implemented_status("gds::RecordReader::seek");
 }
 
@@ -58,6 +61,7 @@ diag::Status RecordWriter::write_string(RecordType type, std::string_view /*text
 }
 
 diag::Status RecordWriter::flush() {
+  static_cast<void>(sink_);  // referenced until GDSR writes to it (see RecordReader::seek)
   buffer_.clear();
   return cmd::not_implemented_status("gds::RecordWriter::flush");
 }

@@ -68,7 +68,7 @@ class RecordReader {
   [[nodiscard]] diag::Status seek(std::uint64_t offset);
 
  private:
-  [[maybe_unused]] ByteSource& source_;  // [[maybe_unused]] while the scaffold stubs do not read it
+  ByteSource& source_;
   std::optional<Record> lookahead_;
 };
 
@@ -90,7 +90,7 @@ class RecordWriter {
   [[nodiscard]] diag::Status flush();
 
  private:
-  [[maybe_unused]] ByteSink& sink_;  // [[maybe_unused]] while the scaffold stubs do not write it
+  ByteSink& sink_;
   std::vector<std::byte> buffer_;
 };
 
