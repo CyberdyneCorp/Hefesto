@@ -84,6 +84,40 @@ class ShardTable(unittest.TestCase):
         self.assertEqual(shards.main(["--matrix", "x/MASK-RT-unknown"]), 2)
 
 
+class PullRequestSelection(unittest.TestCase):
+    """A pull request verifies a MASK-RT case only when it changes that case or a shared input."""
+
+    CASES = ["tests/golden/MASK/cases/MASK-OS-001", "tests/golden/MASK/cases/MASK-RT-sg13g2_sram",
+             "tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd", "tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd-2"]
+
+    def test_unrelated_change_keeps_only_regular_cases(self):
+        changed = ["tests/golden/MASK/cases/MASK-OS-001/case.toml", "src/core/src/cif/command/command.cpp"]
+        self.assertEqual(shards.pr_cases(self.CASES, changed), ["tests/golden/MASK/cases/MASK-OS-001"])
+
+    def test_change_in_a_rt_case_selects_only_that_case(self):
+        changed = ["tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd/input/commands.tcl"]
+        self.assertEqual(shards.pr_cases(self.CASES, changed),
+                         ["tests/golden/MASK/cases/MASK-OS-001", "tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd"])
+        self.assertEqual(shards.matrix(shards.pr_cases(self.CASES, changed))["include"][0]["shard"], "sky130")
+
+    def test_shared_inputs_select_every_case(self):
+        for path in ("scripts/fetch_pdk.py", "scripts/gds_rt_shards.py", "tools/golden/capture.py",
+                     "tools/golden/pins.toml", "tools/golden/harness/use_order/use_order_probe.tcl",
+                     "tools/golden/container/Containerfile", "tools/golden/goldenlib/external.py",
+                     ".github/workflows/golden-capture.yml"):
+            with self.subTest(path=path):
+                self.assertEqual(shards.pr_cases(self.CASES, [path]), self.CASES)
+
+    def test_cli_reads_the_changed_paths_from_a_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            changed = Path(tmp) / "changed.txt"
+            changed.write_text("tests/golden/MASK/cases/MASK-RT-sg13g2_sram/case.toml\n", encoding="utf-8")
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(shards.main(["--pr-changed", str(changed), *self.CASES]), 0)
+        self.assertEqual(out.getvalue().split(), self.CASES[:2])
+
+
 FAKE_MAGIC = """#!/bin/sh
 # Fake magic: report the D19 line for the input named by D19_IN, failing on names containing 'bad'.
 case "$D19_IN" in

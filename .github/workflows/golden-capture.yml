@@ -25,7 +25,9 @@
 # large library GDS data sets and Magic's time on big libraries, so they never run in the
 # 120-minute `capture` job: `plan` splits the cases, and `capture-gds-rt` verifies and
 # captures them in shards (scripts/gds_rt_shards.py: one per PDK, the I/O and SRAM
-# libraries in shards of their own, each with its own timeout).
+# libraries in shards of their own, each with its own timeout). On pull_request a MASK-RT case runs only
+# when the PR changes its own directory or a file every shard depends on (SHARED_INPUTS in
+# scripts/gds_rt_shards.py); the schedule and dispatches verify the whole corpus.
 
 name: Golden capture
 
@@ -74,8 +76,11 @@ jobs:
       regular: ${{ steps.plan.outputs.regular }}
       rt_any: ${{ steps.plan.outputs.rt_any }}
       rt_matrix: ${{ steps.plan.outputs.rt_matrix }}
+      rt_cases: ${{ steps.plan.outputs.rt_cases }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # on pull_request HEAD is the merge commit and HEAD^1 the base tip
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -92,14 +97,27 @@ jobs:
           else
             mapfile -t cases < <(find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort)
           fi
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            # The MASK-RT corpus costs about 110 minutes of Magic: a PR verifies a MASK-RT case only when
+            # it changes that case or a shared input (SHARED_INPUTS in scripts/gds_rt_shards.py).
+            git diff --name-only HEAD^1 HEAD > changed.txt
+            mapfile -t cases < <(python3 scripts/gds_rt_shards.py --pr-changed changed.txt "${cases[@]}")
+          fi
+          if [ "${#cases[@]}" -eq 0 ]; then  # gds_rt_shards.py would read an empty list as "every case"
+            { echo "regular=0"; echo "rt_any=false"; echo 'rt_matrix={"include":[]}'; echo "rt_cases="; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           regular=0
           for case_dir in "${cases[@]}"; do
             case "$(basename "$case_dir")" in MASK-RT-*) ;; *) regular=$((regular + 1)) ;; esac
           done
           matrix="$(python3 scripts/gds_rt_shards.py --matrix "${cases[@]}")"
+          rt_cases="$(python3 scripts/gds_rt_shards.py --is-rt "${cases[@]}" | tr '\n' ' ')"
           rt_any=false
           [ "$(jq '.include | length' <<< "$matrix")" -gt 0 ] && rt_any=true
-          { echo "regular=$regular"; echo "rt_any=$rt_any"; echo "rt_matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+          {
+            echo "regular=$regular"; echo "rt_any=$rt_any"; echo "rt_matrix=$matrix"; echo "rt_cases=$rt_cases"
+          } >> "$GITHUB_OUTPUT"
           echo "::notice::$regular case(s) for capture; MASK-RT shards: $(jq -c '[.include[].shard]' <<< "$matrix")"
 
   capture:
@@ -269,9 +287,12 @@ jobs:
 
       - name: List the shard's cases
         shell: bash
+        env:
+          RT_CASES: ${{ needs.plan.outputs.rt_cases }}
         run: |
-          # CASES and MODE come from the workflow env.
-          if [ -n "${CASES:-}" ]; then read -ra requested <<< "$CASES"; else requested=(); fi
+          # RT_CASES is plan's selection of MASK-RT cases (never empty when this job runs); MODE comes
+          # from the workflow env.
+          read -ra requested <<< "$RT_CASES"
           python3 scripts/gds_rt_shards.py --cases "${{ matrix.shard }}" "${requested[@]}" > cases.txt
           mapfile -t shard_cases < cases.txt
           echo "${#shard_cases[@]} case(s) in shard ${{ matrix.shard }}; mode $MODE"

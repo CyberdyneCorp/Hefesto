@@ -11,12 +11,19 @@ sets (scripts/fetch_pdk.py) and the job's `timeout-minutes`.
     gds_rt_shards.py --matrix [CASE_DIR...]   GitHub matrix JSON of the shards with at least one case
     gds_rt_shards.py --cases SHARD [CASE_DIR...]   the case directories of one shard, one per line
     gds_rt_shards.py --is-rt CASE_DIR...      the MASK-RT case directories among the arguments
+    gds_rt_shards.py --pr-changed FILE [CASE_DIR...]
+                                              the cases a pull request verifies, one per line: every
+                                              non-MASK-RT case, and a MASK-RT case only when its own
+                                              directory or a file every shard depends on is among the
+                                              changed paths listed in FILE (one per line)
 
-Without CASE_DIR arguments every `tests/golden/*/cases/MASK-RT-*` directory is used.
+Without CASE_DIR arguments every `tests/golden/*/cases/MASK-RT-*` directory is used (for --pr-changed,
+every `tests/golden/*/cases/*` directory).
 """
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import sys
 from dataclasses import dataclass
@@ -57,6 +64,20 @@ SHARDS = (
 )
 BY_LIBRARY = {lib: shard for shard in SHARDS for lib in shard.libraries}
 
+# Files every capture-gds-rt shard depends on: a pull request that changes one re-verifies the whole
+# MASK-RT corpus (about 110 minutes of Magic); otherwise a pull request only runs the MASK-RT cases whose
+# own directory it changed, and the schedule and dispatches verify the rest.
+SHARED_INPUTS = (
+    "scripts/fetch_pdk.py",
+    "scripts/gds_rt_shards.py",
+    "tools/golden/capture.py",
+    "tools/golden/pins.toml",
+    "tools/golden/harness/*",
+    "tools/golden/container/*",
+    "tools/golden/goldenlib/*",
+    ".github/workflows/golden-capture.yml",
+)
+
 
 def is_rt(case_dir: str) -> bool:
     return Path(case_dir).name.startswith(PREFIX)
@@ -92,20 +113,48 @@ def shard_cases(name: str, cases: list[str]) -> list[str]:
     return [case for case in cases if is_rt(case) and shard_of(case).name == name]
 
 
+def touches_shared_input(changed: list[str]) -> bool:
+    return any(fnmatch.fnmatchcase(path, pattern) for path in changed for pattern in SHARED_INPUTS)
+
+
+def pr_cases(cases: list[str], changed: list[str]) -> list[str]:
+    """The cases a pull request with these changed paths verifies (see SHARED_INPUTS)."""
+    if touches_shared_input(changed):
+        return list(cases)
+
+    def touched(case: str) -> bool:
+        root = case.rstrip("/") + "/"
+        return any(path.startswith(root) for path in changed)
+
+    return [case for case in cases if not is_rt(case) or touched(case)]
+
+
+def every_case(repo: Path = REPO) -> list[str]:
+    return sorted(str(p.parent.relative_to(repo)) for p in repo.glob("tests/golden/*/cases/*/case.toml"))
+
+
+def select(args: argparse.Namespace) -> list[str]:
+    if args.pr_changed:
+        changed = Path(args.pr_changed).read_text(encoding="utf-8").split()
+        return pr_cases(args.case_dirs or every_case(), changed)
+    cases = args.case_dirs or all_cases()
+    return shard_cases(args.cases, cases) if args.cases else [c for c in cases if is_rt(c)]
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--matrix", action="store_true")
     mode.add_argument("--cases", metavar="SHARD")
     mode.add_argument("--is-rt", action="store_true")
+    mode.add_argument("--pr-changed", metavar="FILE")
     parser.add_argument("case_dirs", nargs="*")
     args = parser.parse_args(argv)
-    cases = args.case_dirs or all_cases()
     try:
         if args.matrix:
-            print(json.dumps(matrix(cases), separators=(",", ":")))
+            print(json.dumps(matrix(args.case_dirs or all_cases()), separators=(",", ":")))
         else:
-            selected = shard_cases(args.cases, cases) if args.cases else [c for c in cases if is_rt(c)]
+            selected = select(args)
             if selected:
                 print("\n".join(selected))
     except ValueError as err:
