@@ -11,6 +11,8 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import subprocess
 import stat
 import sys
 import tempfile
@@ -131,6 +133,39 @@ class D19Driver(unittest.TestCase):
         code, report = self.run_set("bad.gds")
         self.assertEqual(code, 1)
         self.assertEqual(sorted(e["status"] for e in report["files"]), ["ok", "read-error:x"])
+
+
+STUB_MAGIC_TCL = """
+rename clock {}
+foreach cmd {random drc load box getcell cellname gds} { proc $cmd args {} }
+proc cellname {args} { if {[lindex $args 1] eq "topcells"} { return {(UNNAMED) a b} }; return {a b c} }
+proc gds {op args} { if {$op eq "read" && [string match *bad* [lindex $args 0]]} { error "no such file" } }
+proc quit {args} { exit 0 }
+source [lindex $argv 0]
+"""
+
+
+@unittest.skipUnless(shutil.which("tclsh"), "tclsh not installed")
+class D19RoundTripScript(unittest.TestCase):
+    def run_tcl(self, gds_in: str) -> str:
+        with tempfile.TemporaryDirectory() as tmp:
+            stub = Path(tmp) / "stub.tcl"
+            stub.write_text(STUB_MAGIC_TCL, encoding="utf-8")
+            env = {**os.environ, "D19_IN": gds_in, "D19_OUT": str(Path(tmp) / "out.gds")}
+            proc = subprocess.run(["tclsh", str(stub), str(SCRIPTS / "d19" / "d19_roundtrip.tcl")], env=env,
+                                  capture_output=True, text=True, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout
+
+    def test_reports_without_the_clock_command(self):
+        # Regression: Magic's interpreter in the capture image has no `clock`, and the script failed on it
+        # before reporting (golden-capture run 43437852265).
+        self.assertRegex(self.run_tcl("lib.gds"),
+                         d19.LINE.pattern.replace("(\\S+)", "lib\\.gds", 1).replace("(\\S+)$", "ok$"))
+
+    def test_reports_a_read_error(self):
+        self.assertIn("read_ms=-1 write_ms=-1 tops=0 structures=0 status=read-error:no_such_file",
+                      self.run_tcl("bad.gds"))
 
 
 if __name__ == "__main__":
