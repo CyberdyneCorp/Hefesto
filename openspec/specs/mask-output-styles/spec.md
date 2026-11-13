@@ -69,7 +69,7 @@ A `style` statement SHALL register output style names in declaration order, with
 Compatibility: exact
 
 - A `style` line with a token count other than 2, or other than 4 with third token beginning `variant`, is an error (`Wrong number of arguments in style statement.`).
-- Before registering, the existing list is scanned and the new name is considered already present if some existing name begins with the full text of `<name>`/`<base>` (prefix comparison of length `strlen(argv[1])`). In that case nothing is registered. See Q-MASK-10.
+- Before registering, the existing list is scanned and the line is considered already present, in both `magic-compat` settings (Q-MASK-10, resolution: fix): for `style <name>`, if some existing name equals `<name>`; for a variant line, if some existing name equals `<base><si>` for one of its variants. In that case nothing is registered. When a new name is a strict prefix of an existing name, a tech warning names both; Magic's prefix comparison (length `strlen(argv[1])`) would drop the new style silently. Styles that Magic registers keep the same list order and output; a style Magic drops is appended at the end of the list.
 - For a variant style, the "default" of that line is the first variant name.
 - If no style has yet been loaded at the time the first `style` line is read, the first registered name becomes the style being loaded.
 - Statements appearing before any `style` line make the section fail (the line handler reports failure) — there is no implicit style named `default`. See Q-MASK-17.
@@ -87,7 +87,13 @@ Compatibility: exact
 
 - **GIVEN** the section declares `style gdsfoo` and later `style gds`
 - **WHEN** parsed
-- **THEN** only `gdsfoo` is registered because `gdsfoo` begins with `gds`
+- **THEN** both are registered, in the order `gdsfoo`, `gds`, and a tech warning reports that `gds` is a prefix of `gdsfoo` (Magic registers only `gdsfoo`)
+
+#### Scenario: Variant re-read is not registered twice
+
+- **GIVEN** the section declares `style sky130() variant (vendor),()` and later `style sky130() variant (vendor)`
+- **WHEN** parsed
+- **THEN** the second line registers nothing, because `sky130(vendor)` is already present
 
 ### Requirement: Style loading and variant-conditional statements
 
@@ -191,7 +197,7 @@ Compatibility: exact
 
 - `units <w>`: exactly 2 tokens; if `<w>` begins with `angstr` the style's angstrom flag is set (GDS database unit = 1 Å instead of 1 nm; see capability `gds-write`). Any other word is silently ignored. CIF output units are unaffected.
 - `stepsize <n>`: exactly 2 tokens; `n = atoi`; `n <= 0` reports `Step size must be positive integer.` and leaves 0 (meaning "no user step size"). Used by capability `mask-hierarchical-generation`.
-- Any statement whose first token begins with `grid`: if the second token is an integer string, `gridLimit = atoi`; a negative value reports an error and is set to 0; a non-integer reports `Unable to parse grid limit value.`. Default 0 (no limit). The value is stored as written and is NOT rescaled by unit normalisation; it is applied directly to mask-unit coordinates by the operators. See Q-MASK-8.
+- Any statement whose first token begins with `grid`: if the second token is an integer string, `gridLimit = atoi`; a negative value reports an error and is set to 0; a non-integer reports `Unable to parse grid limit value.`. Default 0 (no limit). The value is stored as written and is NOT rescaled by unit normalisation; it is applied directly to mask-unit coordinates by the operators, in both `magic-compat` settings (Q-MASK-8, resolution: replicate). Because the grid-scale guard reads the same value as a multiple of the expander, the two readings agree only when the expander is 10; after each unit normalisation the style loader warns when a style with a non-zero gridlimit has an expander other than 10.
 
 (Magic ref: cif/CIFtech.c:754-790)
 
@@ -200,6 +206,7 @@ Compatibility: exact
 - **GIVEN** `scalefactor 10 nanometers` and `gridlimit 5`
 - **WHEN** the style is finalised (scaleFactor and expander both reduced to 1)
 - **THEN** `gridLimit` remains 5 and operators snap mask-unit coordinates to multiples of 5 mu (= 50 nm)
+- **AND** a warning reports that gridlimit is applied with expander 1, not 10
 
 ### Requirement: Mask layer declarations
 
@@ -284,7 +291,7 @@ For each type `t` in `<types>` (parsed as a database type-list expression), with
 | Option | Effect |
 |---|---|
 | (none) | `labelLayer[t] = L`; `portText[t] = L` |
-| `text` | same as no option (see Q-MASK-11) |
+| `text` | same as no option, in both `magic-compat` settings (Q-MASK-11, resolution: replicate) |
 | `noport` | `labelLayer[t] = L` only |
 | `port` | `portLayer[t] = L`; if `portText[t]` is still -1 then `portText[t] = L` |
 
@@ -338,7 +345,7 @@ Compatibility: exact
 | `calma-permissive-labels` | GDS label text is not sanitised (see `gds-write`) |
 | `set-minimum-grid` | after tech load, the lambda ratio is forced to `1 : scaleFactor / gridLimit` (integer division) — see Q-MASK-16 |
 | `grow-euclidean` | `grow`, `shrink` and `bloat-or` on non-Manhattan edges use the Euclidean variant (see `mask-output-operators`) |
-| `see-no-vendor` | affects vendor (read-only) cell handling in hierarchical generation |
+| `see-no-vendor` | accepted and stored, with no effect on generation: vendor paint is always copied (Q-MASK-401, resolution: replicate; capability `mask-hierarchical-generation`) |
 | `no-errors` | mask-generation errors are not reported as feedback |
 | `string-limit` | GDS strings limited to the historic 32-character limit (see `gds-write`) |
 
@@ -444,16 +451,18 @@ rescale(n, d):
       (or, bbox, boundary, mask-hints, maxrect, orthogonal, net, tagged,
        overlapping-family: no client values)
   g = min(g, gcd(scaleFactor, expander))
-  if g <= 1: return            (interaction radius NOT recomputed; Q-MASK-18)
+  if g <= 1:
+      magic-compat OFF: recompute the interaction radius
+      return                    (magic-compat ON: radius NOT recomputed; Q-MASK-18)
   scaleFactor /= g; expander /= g
   every distance, squares/squares-grid/slots value, bloat-or/max/min value
   and bridge width is divided by g (bloat-all values are NOT divided)
   recompute the interaction radius
 ```
 
-`gcd` is the positive greatest common divisor. Because `bloat-all` stores the value 1 per selected type and that value enters the GCD, a style containing `bloat-all` is never reduced when `d = 1` (see Q-MASK-13). The DRC section's mask-layer rule distances are rescaled in step (see DRC capabilities).
+`gcd` is the positive greatest common divisor. Because `bloat-all` stores the value 1 per selected type and that value enters the GCD, a style containing `bloat-all` is never reduced when `d = 1`; this is replicated in both `magic-compat` settings (Q-MASK-13, resolution: replicate), which keeps the expander of the PDK styles at 10 and so the GDS UNITS record, the CIF DS scale and the meaning of gridlimit. `close` thresholds are stored as distances and enter the GCD as lengths in both settings; their own area scaling is defined by `close` in capability `mask-output-operators` (Q-MASK-2). With `magic-compat` ON, a call that returns at `g <= 1` keeps the radius computed before, as in Magic; with it OFF the radius is always recomputed at the end of the normalisation (Q-MASK-18, resolution: compat). The DRC section's mask-layer rule distances are rescaled in step (see DRC capabilities).
 
-(Magic ref: cif/CIFtech.c:2424-2720, cif/CIFtech.c:1872-1878, cif/CIFtech.c:2296, utils/tech.c:814-826)
+(Magic ref: cif/CIFtech.c:2424-2720, cif/CIFtech.c:1872-1878, cif/CIFtech.c:1912-1915, cif/CIFtech.c:2296, cif/CIFtech.c:2500-2502, cif/CIFtech.c:2601-2633, cif/CIFtech.c:2648-2649, cif/CIFtech.c:2689-2698, cif/CIFtech.c:1284-1294, cif/CIFtech.c:2022-2031, cif/CIFtech.c:2719, utils/tech.c:814-826)
 
 #### Scenario: Nanometre style reduced
 

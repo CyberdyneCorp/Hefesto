@@ -153,7 +153,7 @@ The output name of a cell SHALL be the gds-write "Structure naming" result (the 
 Compatibility: exact
 
 1. If the result is empty or contains a space (possible with the permissive table), the cell is illegal for OASIS and gets `XXXXX<n>`, with `n` its cell id number.
-2. If the result equals the output name already given to a different cell in this write, the later cell (in order of first need) gets `XXXXX<n>`, with a warning. OASIS forbids duplicate cell names. gds-write does not check uniqueness (see Q-MASK-209 and Q-OASIS-61).
+2. If the result equals the output name already given to a different cell in this write, the later cell (in order of first need) gets `XXXXX<n>` (with `_k` appended, smallest free `k ≥ 1`, if that is taken too), with a warning. OASIS forbids duplicate cell names. gds-write applies the same uniquification to mapped names (Q-MASK-209); this rule also covers names that only rule 1 makes collide (Q-OASIS-61).
 
 The same output name is used for the CELL record, every PLACEMENT reference, and `S_TOP_CELL`.
 
@@ -175,7 +175,7 @@ Every TEXT string and every string property value SHALL be the byte sequence tha
 Compatibility: exact
 
 1. A byte that gds-write maps to `0x00` (a control character or DEL) SHALL be written as `_`, because a-strings cannot contain `0x00` (see Q-OASIS-60).
-2. Under `string-limit`, the kept characters are the same ones gds-write keeps: let `n` be the source length and `n' = n` rounded up to even. If `n' > 32`, the last `32 − (n' − n)` characters are kept.
+2. Under `string-limit`, the kept characters are the same ones gds-write keeps (Q-MASK-207): let `n` be the source length and `n' = n` rounded up to even. With `magic-compat` ON, if `n' > 32`, the last `32 − (n' − n)` characters are kept; with it OFF, if `n > 32`, the last 32 characters are kept.
 3. Text strings are a-strings and property values are b-strings (or propstring refnums).
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaWrite.c:197-235, calma/CalmaWrite.c:3158-3244)
@@ -457,7 +457,7 @@ The output SHALL be a pure function of the layout, the technology output style, 
 
 Compatibility: native
 
-OASIS carries no dates, so unlike GDS no field depends on the current time. The only Magic-inherited order dependencies are those of gds-write (use enumeration order, Q-MASK-204; tile enumeration order) and the full-dump prefix sequence (Q-MASK-211 and Q-OASIS-68).
+OASIS carries no dates, so unlike GDS no field depends on the current time. The only Magic-inherited order dependencies are those of gds-write (use enumeration order, Q-MASK-204; tile enumeration order) and, with `magic-compat` ON, the full-dump prefix sequence (Q-MASK-211 and Q-OASIS-68, settled the same way: with `magic-compat` OFF both the use order and the prefixes are independent of session history).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -484,7 +484,7 @@ Compatibility: native
 
 Rules:
 1. Element order is the order in the GDS data. No shape repetition detection is applied.
-2. SNAME strings are used as cell names without re-mapping, matching gds-write (Q-MASK-216). An SNAME that is not a legal n-string is mapped as in "Cell names".
+2. SNAME strings follow gds-write (Q-MASK-216): with `magic-compat` ON they are used as cell names without re-mapping, with gds-write's warning when a child's current output name differs; with it OFF each SNAME is replaced by the referenced child's current output name. An SNAME that is not a legal n-string is mapped as in "Cell names".
 3. Coordinates are copied unchanged. If the vendor file's UNITS (meters per DB unit) do not round to the output unit (1e-9, or 1e-10 for ångström styles), the transcoding is refused with an error, and the cell is generated from its layout.
 4. Full-dump libraries (gds-write "Full dump of a vendor library") are transcoded structure by structure with the same naming and prefix rules.
 

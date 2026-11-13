@@ -21,7 +21,7 @@ Hefesto SHALL provide a "write GDS" operation that writes the hierarchy rooted a
 
 1. With no file argument (Magic: bare `gds` or `calma`), the name is the root cell name after its last `/`.
 2. With `write <file>`, the name is `<file>`.
-3. If the name contains no `.` character anywhere (including directory components), an extension is appended: `.gds` when the compression level is 0, `.gds.gz` when it is 1–9. If the name contains any `.`, nothing is appended (see Q-MASK-210).
+3. If the name has no extension, one is appended: `.gds` when the compression level is 0, `.gds.gz` when it is 1–9. The test depends on the `magic-compat` setting (Q-MASK-210, resolution: compat): with it ON (the default) the name has no extension when it contains no `.` anywhere, including directory components, as in Magic; with it OFF only the final path component is tested.
 4. The path is resolved relative to the current working directory, with no search path.
 
 `write` with a number of arguments other than exactly one file name is an argument error and writes nothing. `calma` is an exact alias of `gds`. If the file cannot be created, nothing is written and an error is reported. If writing returns failure (see Requirement "Write result and error propagation"), Hefesto reports that the file may be incompletely written; the file is still closed and left on disk.
@@ -41,9 +41,10 @@ Compatibility: behavioral
 - **THEN** the file `chip.gds.gz` is created and contains a gzip stream
 
 #### Scenario: Dot in a directory name suppresses the extension
-- **GIVEN** compression level 0
+- **GIVEN** compression level 0 and `magic-compat` ON
 - **WHEN** the user runs `gds write ./build/chip`
 - **THEN** the file `./build/chip` is created with no extension, because the path contains a `.`
+- **AND** with `magic-compat` OFF the file `./build/chip.gds` is created
 
 #### Scenario: Bare command writes the root cell
 - **GIVEN** the root cell of the window is `top`
@@ -203,7 +204,7 @@ Compatibility: exact
 Every string record (LIBNAME, STRNAME, SNAME, STRING, PROPVALUE) SHALL be encoded as follows. Let `s` be the source string and `n = strlen(s)`:
 
 1. If `n` is odd, `n := n + 1`. The extra byte is the string terminator and is written as `0x00`.
-2. If the output style has the `string-limit` flag and `n > 32`, only the last 32 bytes of the (padded) string are written: start at offset `n - 32` and set `n := 32`. For odd original lengths this keeps the last 31 characters plus the `0x00` pad (see Q-MASK-207).
+2. If the output style has the `string-limit` flag and the string is longer than 32, only 32 bytes are written, chosen by the `magic-compat` setting (Q-MASK-207, resolution: compat). With it ON (the default), as in Magic, if `n > 32` the last 32 bytes of the (padded) string are written: start at offset `n - 32` and set `n := 32`; for odd original lengths this keeps the last 31 characters plus the `0x00` pad. With it OFF, if the original length `m = strlen(s)` exceeds 32, the last 32 characters are written (offset `m - 32`, `n := 32`, no pad). The truncation warning is the same in both settings.
 3. The record length is `n + 4`, the record type is the given type, and the data type is 6.
 4. Each byte `c` of the `n` bytes is mapped as follows:
    - `c == 0` (the pad) → `0x00`.
@@ -211,7 +212,7 @@ Every string record (LIBNAME, STRNAME, SNAME, STRING, PROPVALUE) SHALL be encode
    - Otherwise `c := table[c]`, where `table` is the *strict* table, or the *permissive* table when the output style has `calma-permissive-labels`.
    - Then, if the `lower` setting is no and `c` is a lowercase ASCII letter, it is written upper-cased.
 5. Strict table: `A–Z`, `a–z`, `0–9`, `$` and `_` map to themselves. Every other printable character (0x20–0x7E) maps to `_`. Control characters 0x00–0x1F and DEL (0x7F) map to `0x00`.
-6. Permissive table: every printable character 0x20–0x7E maps to itself, except that `%` (0x25) maps to `&` and `&` (0x26) maps to `%` (see Q-MASK-200). Control characters and DEL map to `0x00`.
+6. Permissive table: every printable character 0x20–0x7E maps to itself, except that with `magic-compat` ON (the default) `%` (0x25) maps to `&` and `&` (0x26) maps to `%`, as in Magic, with Magic's "characters changed" warning (Q-MASK-200, resolution: compat). With it OFF there is no exception. Control characters and DEL map to `0x00`. The same table, per setting, is used for STRING, PROPVALUE and STRNAME records and for the name-legality rule of "Structure naming". Layout data is never changed by the mapping.
 
 A control character in a label or use name therefore produces a `0x00` byte inside the string (see Q-MASK-208). No other length limit is applied. Strings longer than 65531 bytes are not guarded against.
 
@@ -232,21 +233,28 @@ Compatibility: exact
 - **GIVEN** the output style has `options calma-permissive-labels`
 - **WHEN** a label with text `a%b` is written
 - **THEN** the STRING record data is `61 26 62 00` (`a&b` plus pad)
+- **AND** with `magic-compat` OFF it is `61 25 62 00` (`a%b` plus pad)
 
 #### Scenario: String limit keeps the tail
 - **GIVEN** the output style has `options string-limit`
 - **WHEN** a 36-character label `abcdefghijklmnopqrstuvwxyz0123456789` is written
 - **THEN** the STRING record has length 36 and contains `efghijklmnopqrstuvwxyz0123456789`
 
+#### Scenario: String limit with an odd length
+- **GIVEN** the output style has `options string-limit`
+- **WHEN** a 35-character label `bcdefghijklmnopqrstuvwxyz0123456789` is written
+- **THEN** with `magic-compat` ON the STRING data is the 31 characters `fghijklmnopqrstuvwxyz0123456789` followed by `0x00`
+- **AND** with `magic-compat` OFF it is the 32 characters `efghijklmnopqrstuvwxyz0123456789`
+
 ### Requirement: Date records
 
 Each BGNLIB and BGNSTR record SHALL contain two dates: a *creation* date followed by a *modification* date. Each date is six I2 values from the local-time broken-down representation of a POSIX time value `t`: `year - 1900`, `month (1–12)`, `day`, `hour`, `minute`, `second`.
 
-- The creation date is the session date stamp if one is set, otherwise the timestamp of the cell being written (the root cell for BGNLIB). For a verbatim-copied structure it is the vendor cell's timestamp. For every structure produced by a full dump it is the timestamp of the vendor cell that triggered the dump (see Q-MASK-215).
-- The modification date is always the current time at the moment the record is written. It is the only non-reproducible field (see Q-MASK-202).
+- The creation date is the session date stamp if one is set, otherwise the timestamp of the cell being written (the root cell for BGNLIB). For a verbatim-copied structure it is the vendor cell's timestamp. For every structure produced by a full dump it depends on the `magic-compat` setting (Q-MASK-215, resolution: compat): with it ON (the default) it is the session date stamp if set, otherwise the timestamp of the vendor cell that triggered the dump, as in Magic; with it OFF it is the session date stamp if set, otherwise the creation date copied from that structure's BGNSTR in the source file.
+- The modification date depends on the `magic-compat` setting (Q-MASK-202, resolution: compat): with it ON (the default) it is always the current time at the moment the record is written, as in Magic, and is the only non-reproducible field; with it OFF it is time 0, encoded as `datestamp no` encodes the creation date, as Magic's documentation states. BGNLIB, generated and verbatim-copied structures, full-dump structures and vendor cells all follow the same rule.
 - Date stamp setting: `datestamp yes` (and the initial state) means "no session stamp; use the cell timestamp". `datestamp no` and `nodatestamp yes` set the session stamp to 0. `datestamp <integer>` sets the session stamp to that integer. `nodatestamp no` clears it. Any other argument is an error. Magic's help text says `datestamp yes` uses the current time, but it uses the cell timestamp (see Q-MASK-224).
 
-Conversion uses the host local time zone (see Q-MASK-203). Under `TZ=UTC`, `t = 0` encodes as `00 46 00 01 00 01 00 00 00 00 00 00`.
+Conversion uses the host local time zone in both `magic-compat` settings (the device zone on iPadOS; Q-MASK-203, resolution: replicate); golden cases and CI run with `TZ=UTC`, and one test pins a non-UTC zone. Under `TZ=UTC`, `t = 0` encodes as `00 46 00 01 00 01 00 00 00 00 00 00`.
 
 Compatibility: exact
 
@@ -256,7 +264,7 @@ Compatibility: exact
 - **GIVEN** `TZ=UTC` and `gds datestamp 1700000000`
 - **WHEN** a library is written
 - **THEN** the first 12 data bytes of BGNLIB and of every BGNSTR encode 2023-11-14 22:13:20 as `00 7B 00 0B 00 0E 00 16 00 0D 00 14`
-- **AND** the last 12 data bytes encode the current time
+- **AND** the last 12 data bytes encode the current time with `magic-compat` ON, and `00 46 00 01 00 01 00 00 00 00 00 00` (t = 0) with it OFF
 
 #### Scenario: Default uses the cell timestamp
 - **GIVEN** no date stamp is set and cell `inv` has timestamp 1600000000
@@ -274,7 +282,7 @@ The stream SHALL start with these records in order and end with ENDLIB:
 5. The structures (Requirement "Structure ordering").
 6. ENDLIB `00 04 04 00`.
 
-Magic keeps the UNITS values in static storage. Once a write with an angstrom style has occurred in a session, every later write in that session also emits the angstrom UNITS values, even for nanometer styles, while coordinates are still scaled for nanometers (see Q-MASK-201). Hefesto SHALL reproduce this only if the decision on Q-MASK-201 is "replicate".
+The UNITS values SHALL be derived from the current output style's `units angstroms` flag on every write, in both `magic-compat` settings (Q-MASK-201, resolution: fix). Magic keeps them in static storage, so once a write with an angstrom style has occurred in a session every later nanometer write declares 1e-10 m per database unit while its coordinates are scaled for nanometers, a file 10× too small; this is a fixed deviation (X-2 tier 1). Golden cases use one write per session, so none shows the difference.
 
 When compiled with gzip support, Magic flushes the stream with a sync flush after ENDLIB. Hefesto does not otherwise pad the output.
 
@@ -292,12 +300,17 @@ Compatibility: exact
 - **WHEN** the library is written
 - **THEN** the UNITS record is `00 14 03 05 3D 68 DB 8B AC 71 0C B4 38 6D F3 7F 67 5E F6 EC`
 
+#### Scenario: Nanometer write after an angstrom write
+- **GIVEN** a session that has written a library with an angstrom style
+- **WHEN** a library is then written with a nanometer style
+- **THEN** its UNITS record is `00 14 03 05 3E 41 89 37 4B C6 A7 F0 39 44 B8 2F A0 9B 5A 54` (0.001, 1e-9)
+
 ### Requirement: Write preconditions and subtree loading
 
 Before writing anything to the stream, Hefesto SHALL:
 
-1. Fail with "no output style" if no output style is selected. Nothing is written, but the already-created output file is left empty (see Q-MASK-219).
-2. Load every cell in the hierarchy under the root, within the root's bounding box. If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated.
+1. Fail with "no output style" if no output style is selected. This check is made before the output file is opened, so the output file is not created or modified, in both `magic-compat` settings (Q-MASK-219, resolution: fix; Magic opens the file first and truncates an existing file of the same name).
+2. Load every cell in the hierarchy under the root, within the root's bounding box, by the recursive area search over uses described in Requirement "Structure ordering" (which can rebuild a cell's use index with `magic-compat` ON). If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated.
 3. Resolve pending timestamp mismatches between parents and children (see capability `layout-geometry-model`).
 4. Reset all cell id numbers to 0 and give the root id number 1. The next number assigned is 2.
 
@@ -328,11 +341,28 @@ Structures SHALL be written in a depth-first post-order traversal from the root:
 
 After the root traversal completes, every cell that was referenced by a forward reference in a full-dumped vendor library, never defined there, and exists in the database is traversed in the same way and appended (Requirement "Full dump of a vendor library").
 
-*Use enumeration order* is the order in which Magic's cell-use spatial index returns the uses of a cell. For a cell whose uses are all held in the index's unbinned list (few uses, no prior bin rebuild), this is the reverse of insertion order, which for a cell freshly read from a `.mag` file is the reverse of the file's `use` order. The general order depends on the index's binning state (see Q-MASK-204). The same order is used for the cell references inside a structure.
+*Use enumeration order* is the order in which the uses of a cell are visited. It depends on the `magic-compat` setting (Q-MASK-204, resolution: compat). The same order is used for the cell references inside a structure, and by `cif-format-io` for CIF symbol numbering and calls (Q-MASK-323).
+
+With `magic-compat` OFF it is the *canonical order*: the reverse of insertion order, i.e. the reverse of the `.mag` file's `use` order for a cell read from `.mag`, or of the SREF/AREF order for a cell read from GDS, independent of session history.
+
+With `magic-compat` ON (the default) it is the order in which Magic's cell-use spatial index (bplane) returns the uses at the moment the writer enumerates them, which Hefesto's cell-use index SHALL reproduce exactly:
+
+- *Insertion.* A use that is placed (read from a file, created, moved, or re-placed) is pushed at the head of the index's unbinned list (LIFO) unless bins exist and the use's bounding box lies inside the bin area, in which case it is pushed at the head of the list of its bin (oversized uses, as wide or as tall as a bin, go to the array's oversized list).
+- *Re-placement.* When a child's bounding box is recomputed, every use of that child is removed from its parent's index and placed again, in the order of the child's parent-use list (Magic DBReComputeBbox), which moves those uses to the head of the unbinned list.
+- *Rebuild.* An overlap search over an area A (Magic's `BPE_OVERLAP`, used by every area search over uses) first shrinks A by 1 on each side and tests whether the shrunk area surrounds the index's bounding box, touching allowed. If it does not (a *non-surrounding search*), the bins are rebuilt when the unbinned list holds 10 or more uses: existing bins are dissolved into the list, and a bin array is built over the list's bounding box (doubled when bins already existed) with Magic's bin sizing and recursive sub-binning (minimum population 10, average population 1.0); sub-bins are also built on the fly when a bin yields 10 or more rejected uses during a search. Because of the shrink, a search over a cell's own bounding box is non-surrounding whenever one of its uses touches that box's edge. An exact-match lookup (Magic's `BPE_EQUAL`, as used to find a duplicate use) and a search over the whole plane (as made by each writer's enumeration of a cell's uses) never rebuild.
+- *Walk.* An enumeration visits the bins of the root array in row-major order from the bottom-left bin (only the bins the search area reaches, for a non-surrounding search), descending into sub-arrays where a bin is sub-binned, each array's oversized list after its bins, each list from head to tail, and finally the unbinned list from head to tail.
+
+The bin geometry, sizing arithmetic and walk SHALL follow Magic's bplane exactly (bplane/bpBins.c, bplane/bpEnum.h, bplane/bpEnum.c). Each writer makes the same searches as Magic, at the same points, so it sees the same index state:
+
+1. Subtree loading (Requirement "Write preconditions and subtree loading", and its CIF counterpart) is a recursive overlap search: the root's uses are searched over the root's bounding box, each use's child over the search area transformed into the child's coordinates (each array element in turn), and the elements of an array after the first are skipped once the transformed area surrounds the child's bounding box. Each of these searches can rebuild the searched cell's bins. In a fresh session the root, and any cell whose transformed search area does not surround its uses after the shrink, is therefore binned before any structure is written if it has 10 or more uses.
+2. The timestamp-mismatch fix-up that follows re-places the uses of each child whose bounding box changed.
+3. The GDS writer then enumerates SREFs before the cell's own mask generation (CIFGenSubcells); the CIF writer numbers children before CIFGenSubcells and writes `C` calls after it (capability `cif-format-io`).
+
+The first write of a fresh session therefore sees unbinned uses only in cells with fewer than 10 uses, or whose subtree-loading search surrounded their uses. The golden harness runs each case as one write in a fresh session with no DRC or extraction before it, unless the case tests history on purpose; cases with 10 or more uses and an interaction verify both CIF and GDS. The `.mag` writer lists uses alphabetically, independent of this order.
 
 Compatibility: exact
 
-(Magic ref: calma/CalmaWrite.c:345-366, calma/CalmaWrite.c:920-996, calma/CalmaWrite.c:1047-1083, calma/CalmaWrite.c:1349-1370, database/DBcellsrch.c:1263-1281, database/DBcellsrch.c:86-109, bplane/bpMain.c:114-170)
+(Magic ref: calma/CalmaWrite.c:316-325, cif/CIFwrite.c:137-145, database/DBexpand.c:276-340, database/DBcellsrch.c:1131-1222, bplane/bpEnum.c:75-120, bplane/bpBins.c:645-651, calma/CalmaWrite.c:345-366, calma/CalmaWrite.c:920-996, calma/CalmaWrite.c:1047-1083, calma/CalmaWrite.c:1349-1370, calma/CalmaWrite.c:1486, calma/CalmaWrite.c:1510-1514, database/DBcellsrch.c:1263-1281, database/DBcellsrch.c:86-109, database/DBcellbox.c:728-764, bplane/bpMain.c:114-170, bplane/bpBins.c:256-719, bplane/bpEnum.c:80-140, bplane/bpEnum.h:190-400, cif/CIFwrite.c:333, cif/CIFwrite.c:467)
 
 #### Scenario: Post-order with shared child
 - **GIVEN** `top.mag` lists `use a a_0` then `use b b_0`, `a` uses `c`, and `b` uses `c`
@@ -341,6 +371,21 @@ Compatibility: exact
 - **THEN** the structure order is `c`, `b`, `a`, `top`
 - **AND** `c` appears exactly once
 - **AND** the cell id numbers are `top`=1, `b`=2, `c`=3, `a`=4
+
+#### Scenario: Canonical order with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, `top.mag` lists 12 uses `u1` … `u12`, and a DRC check of part of `top` ran before the write
+- **WHEN** GDS is written
+- **THEN** the SREFs of `top` are written in the order `u12`, `u11`, …, `u1`, the same as in a fresh session
+
+#### Scenario: Binned order with magic-compat ON
+- **GIVEN** `magic-compat` ON, the same `top`, and an area search that does not surround `top`'s uses ran before the write
+- **WHEN** GDS is written
+- **THEN** the SREFs of `top` are written in the bin-walk order of the rebuilt index, which matches Magic's output for the same session history
+
+#### Scenario: Fresh-session write of a cell whose uses touch its bounding box
+- **GIVEN** `magic-compat` ON, a fresh session, and `top` with 12 uses read from `top.mag`, one of which touches the edge of `top`'s bounding box
+- **WHEN** GDS is written once, with no other command before it
+- **THEN** the subtree-loading search over `top`'s bounding box has rebuilt `top`'s bins, and the SREFs of `top` are written in the bin-walk order, as in Magic, not in the unbinned order
 
 #### Scenario: Library mode omits the root
 - **GIVEN** `gds library yes` and `top` uses `inv`
@@ -353,7 +398,7 @@ Compatibility: exact
 The STRNAME of a structure, the SNAME of a reference to it, and LIBNAME SHALL be derived from the cell name as follows:
 
 1. The name is *legal* if every byte is ≤ 127 and maps to a non-zero value in the active character table (strict or permissive), and, when the output style has `string-limit`, its length is ≤ 32.
-2. A legal name is written through the string encoding (Requirement "String records and character mapping"). Characters that the table changes, such as `-` → `_` in the strict table, are changed in the output, with a warning. No uniqueness check is made after mapping (see Q-MASK-209).
+2. A legal name is written through the string encoding (Requirement "String records and character mapping"). Characters that the table changes, such as `-` → `_` in the strict table, are changed in the output, with a warning. If the mapped name equals a name already given to a different cell in this write, the later cell in write order is named `XXXXX<n>` as in item 3; if that name is also taken in this write, `_k` is appended with the smallest free `k ≥ 1`. Its SNAMEs use the same name, and a warning names both cells. This applies in both `magic-compat` settings (Q-MASK-209, resolution: fix; a collision would lose one cell's geometry in every reader), and names without a collision are as in Magic.
 3. An illegal name is replaced by `XXXXX<n>`, where `<n>` is the decimal absolute value of the cell's id number at the time of writing.
 
 Compatibility: exact
@@ -375,14 +420,19 @@ Compatibility: exact
 - **WHEN** the cell is written
 - **THEN** its STRNAME is `XXXXX2`
 
+#### Scenario: Colliding mapped names
+- **GIVEN** the strict table and cells `a-b` (id 2) and `a_b` (id 3), with `a-b` written first
+- **WHEN** the library is written
+- **THEN** `a-b` is written as `a_b`, `a_b` is written as `XXXXX3` with a warning, and every SNAME referencing `a_b` is `XXXXX3`
+
 ### Requirement: Output scale factors
 
 For each structure written from Hefesto's own data, two integer scale factors SHALL be computed from the output style. Let `U = 100` if the style has `units angstroms`, else `U = 10`.
 
 - If `U mod E == 0`: `Wscale = S * U / E` (multiplies internal units: cell reference positions, array pitches, label positions, label rectangles), and `Pscale = U / E` (multiplies mask-plane coordinates, which are already in output units).
-- Otherwise an error is reported, and `Wscale = S` and `Pscale = 1`. The output is written anyway, mis-scaled (see Q-MASK-225).
+- Otherwise the behaviour depends on the `magic-compat` setting (Q-MASK-225, resolution: compat): with it ON (the default) an error is reported, `Wscale = S` and `Pscale = 1`, and the output is written anyway, mis-scaled, as in Magic; with it OFF the write is refused before the output file is opened, with an error suggesting `units angstroms` or a coarser `scalegrid`, and the command fails.
 
-All products are computed in 32-bit signed integer arithmetic (see Q-MASK-222).
+All products, including the label-midpoint sum, are computed exactly in 64-bit integer arithmetic; a value outside the signed 32-bit (I4) range fails the write with an error naming the cell and the value, in both `magic-compat` settings (Q-MASK-222, resolution: fix; Magic overflows in 32 bits, which is undefined behaviour).
 
 Compatibility: exact
 
@@ -564,7 +614,7 @@ Only neighbors that share a segment of positive length are considered. For a spl
 
 **write bound.** BOUNDARY, LAYER, DATATYPE, then XY with length `4 + 8*(points+1)`: every node's start point from `first` around the ring, multiplied by `Pscale`, followed by the first point again. Then ENDEL.
 
-Consequences: a polygon never has more than 200 XY points, including the closing point. A component that would exceed this is split into several abutting bounds. Holes and multiply-connected joins appear as zero-width slits. Tiles of one component joined to two bounds do not merge those bounds (see Q-MASK-217).
+Consequences: a polygon never has more than 200 XY points, including the closing point. A component that would exceed this is split into several abutting bounds. Holes and multiply-connected joins appear as zero-width slits. Tiles of one component joined to two bounds do not merge those bounds. The merge and collinear passes are ported exactly in both `magic-compat` settings (Q-MASK-217, resolution: replicate).
 
 Compatibility: exact
 
@@ -603,7 +653,7 @@ Compatibility: exact
 When `labels` is yes, each cell label SHALL be written as follows. A *port label* is a label with any port-direction flag set. All other labels are *plain labels*.
 
 - Plain labels are written in label-list order. The text layer is the mask layer that the output style assigns to labels of the label's type (`labels <type>` or `labels <type> noport`). The rectangle layer is the same layer. A label whose type has no text layer is not written.
-- Port labels are written after all plain labels, sorted ascending by port index. The text layer is the style's port-text layer for the type, and the rectangle layer is the style's port layer for the type (`labels <type> port`). A port label is written only if its type has a port layer. A type that has only `labels <type>` with no `port` declaration has a port-text layer but no port layer, so its port labels are not written (see Q-MASK-206). The order of equal port indices is unspecified (see Q-MASK-205).
+- Port labels are written after all plain labels, sorted ascending by port index. The text layer is the style's port-text layer for the type, and the rectangle layer is the style's port layer for the type (`labels <type> port`). A port label is written only if its type has a port layer. A type that has only `labels <type>` with no `port` declaration has a port-text layer but no port layer: with `magic-compat` ON (the default) its port labels are not written, as in Magic; with it OFF they are written with the port-text layer as both text and rectangle layer; types with neither layer are skipped. In both settings Hefesto warns once per type and write about port labels written without a port layer or skipped (Q-MASK-206, resolution: compat). Labels with equal port index are written in reverse label-list order (a stable sort of the reversed label list), in both settings and independent of the host C library, matching the Linux/glibc reference Magic (Q-MASK-205, resolution: replicate).
 
 For a written label with text layer `Lt/Dt`, the label is skipped if `Lt` is outside 0–255. Otherwise the element is TEXT, LAYER `Lt`, TEXTTYPE `Dt`, then, only if the label has an explicit font (font index ≥ 0):
 
@@ -612,7 +662,7 @@ For a written label with text layer `Lt/Dt`, the label is skipped if `Lt` is out
 - MAG = R8 of `((double)size / 800) * (double)S / (double)E`, evaluated left to right in binary64, where `size` is the label size in eighths of an internal unit.
 - ANGLE = R8 of the rotation in degrees, only if the rotation is non-zero.
 
-Then XY with one point `((xbot+xtop)*Wscale/2, (ybot+ytop)*Wscale/2)` from the label rectangle, using C integer division; STRING with the label text; ENDEL. The text-magnification read setting (`gds magscale`) does not affect writing (see Q-MASK-221).
+Then XY with one point `((xbot+xtop)*Wscale/2, (ybot+ytop)*Wscale/2)` from the label rectangle, using C integer division; STRING with the label text; ENDEL. The text-magnification read setting (`gds magscale`) does not affect writing with `magic-compat` ON (the default), as in Magic; with it OFF the MAG value is divided by `magscale`, so a read and a write with the same `magscale` keep the text size (Q-MASK-221, resolution: compat). The settings agree for the default `magscale` 1.0.
 
 After the TEXT element, if the rectangle layer exists with GDS layer `Lr` in 0–255, that layer has no generation operators (a labels-only layer), and the label rectangle has positive width and height, a BOUNDARY is also written on `Lr/Dr` with the rectangle scaled by `Wscale`, in the 5-point order of "Unmerged boundary output".
 
@@ -734,7 +784,7 @@ A cell that has a `GDS_FILE` string property, a `GDS_START` property, and a `GDS
 5. On success, new style writes BGNSTR (creation date per Requirement "Date records", current time) and STRNAME from the cell name (Requirement "Structure naming"), followed by bytes `[start, end)` verbatim. Old style writes only bytes `[start, end)`. Nothing is written before all checks pass. A short write after that point is a fatal failure for this cell.
 6. After the copy, the cell is marked as vendor GDS for the rest of the session. That mark affects interaction generation of its parents (see `mask-hierarchical-generation`).
 
-SNAME records inside copied bytes are not rewritten (see Q-MASK-216).
+SNAME records inside copied bytes depend on the `magic-compat` setting (Q-MASK-216, resolution: compat): with it ON (the default) they are copied verbatim, as in Magic, and Hefesto warns when a referenced child's current output name differs from the SNAME; with it OFF the copied records are parsed and each SNAME is rewritten to the child's current output name, with record lengths adjusted (Hefesto keeps each vendor cell's original GDS name for this).
 
 If the file cannot be opened: when the cell's first parent also has `GDS_FILE`, the cell is silently skipped and marked vendor GDS. Otherwise an error is reported, and the write fails unless `undefined` is allow, in which case the cell is skipped.
 
@@ -765,14 +815,14 @@ Compatibility: exact
 
 A read-only cell whose view is abstract (`LEFview` property set) or that has `GDS_START` but no `GDS_END` SHALL be written by dumping the entire vendor GDS library once per write (keyed by the resolved file name). Its children are not traversed. The dump:
 
-1. Reads and discards HEADER, BGNLIB, LIBNAME and optional header records. UNITS must be compatible: when the `gds readonly` setting is currently yes, meters per database unit must round to 1e-9 (nanometer style) or 1e-10 (angstrom style), otherwise the dump is aborted (see Q-MASK-212).
-2. Chooses a library prefix: two characters (an uppercase letter, then an uppercase letter or digit) followed by `_`, drawn from the C library `random()` sequence and unique within this write (see Q-MASK-211). If the cell's `LEFview` property is the string `no_prefix`, the prefix is empty.
+1. Reads and discards HEADER, BGNLIB, LIBNAME and optional header records. UNITS must be compatible: meters per database unit must round to 1e-9 (nanometer style) or 1e-10 (angstrom style), whatever the current `gds readonly` setting, in both `magic-compat` settings (Q-MASK-212, resolution: fix; Magic checks only when `gds readonly` is yes and otherwise copies a library at the wrong scale). On a mismatch the dump is aborted with Magic's error, the library is recorded so the error is reported once per library per write, and the write's status follows the `undefined` rule.
+2. Chooses a library prefix: two characters (an uppercase letter, then an uppercase letter or digit) followed by `_`, unique within this write. The source depends on the `magic-compat` setting (Q-MASK-211, resolution: compat): with it ON (the default) the characters are drawn from Hefesto's own implementation of the glibc `random()` algorithm (TYPE_3 additive feedback, default seed 1), one generator per project interpreter shared with the `random` command and reseeded by `random seed`, so the sequence does not depend on the host C library; with it OFF they are derived from a hash of the resolved library file name, with collisions resolved deterministically, so the prefix does not depend on session history. If the cell's `LEFview` property is the string `no_prefix`, the prefix is empty.
 3. For each structure in the file: writes a new BGNSTR (creation date per Requirement "Date records", using the triggering vendor cell, and the current time), then STRNAME:
    - the original name if it equals the triggering cell's name;
-   - the original name if a database cell of that name is an abstract read-only view whose `GDS_FILE` (after path substitution) names this file;
+   - the original name if a database cell of that name is an abstract read-only view whose `GDS_FILE` (after the path substitution of `gds-read`, including its `~` rule, Q-MASK-128) names this file;
    - otherwise `prefix + name`.
    A structure defined twice reports an error and reuses the first name.
-4. Copies every following record verbatim up to the next BGNSTR or ENDLIB, except SNAME, which is replaced by the name assigned to that structure. A reference to a not-yet-defined structure becomes `prefix + name`, or `prefix + name + "[[0]]"` if a database cell with the prefixed name exists. Such forward references are remembered (see Q-MASK-214).
+4. Copies every following record verbatim up to the next BGNSTR or ENDLIB, except SNAME, which is replaced by the name assigned to that structure. A reference to a not-yet-defined structure becomes `prefix + name`, or `prefix + name + "[[0]]"` if a database cell with the prefixed name exists. Such forward references are remembered. Their final naming depends on the `magic-compat` setting (Q-MASK-214, resolution: compat): with it ON (the default) Magic's renaming is reproduced exactly, including a structure appended at the end of the write under its unprefixed name, and Hefesto warns that the SREF to the recorded name is left dangling; with it OFF a structure appended at the end of the write for an unresolved forward reference is written under the name recorded for that reference (`prefix + name` or the `[[0]]` form), so every SREF resolves.
 5. Forward references still undefined at the end of the dump are recorded. A later dump of a library that defines them reuses the recorded prefix. At the end of the write, those that name database cells are written as described in Requirement "Structure ordering".
 6. If the file starts with no structure, the next record's header is copied to the output with data type 2 (see Q-MASK-213).
 
@@ -807,7 +857,7 @@ Compatibility: exact
 
 ### Requirement: Abstract views
 
-A cell that is an abstract view (`LEFview` property present) and not read-only SHALL fail the write unless `abstract` is allow. On failure, an error is reported, the cell and all of its ancestors are not written, and the write returns failure. Structures already written stay in the file, and ENDLIB is still appended (see Q-MASK-226). With `abstract allow`, a warning is reported and the abstract view is written from its layout like any other cell.
+A cell that is an abstract view (`LEFview` property present) and not read-only SHALL fail the write unless `abstract` is allow. On failure the behaviour depends on the `magic-compat` setting (Q-MASK-226, resolution: compat). With it ON (the default), as in Magic: an error is reported, every cell not yet written is skipped, except the undefined-reference cells written at the end of the write, and the write returns failure; structures already written stay in the file, and ENDLIB is still appended. With it OFF the whole tree is checked for disallowed abstract views before the output file is opened, and on failure the error is reported, the file is not created or modified, and the write returns failure. With `abstract allow`, a warning is reported and the abstract view is written from its layout like any other cell.
 
 Compatibility: exact
 
@@ -817,6 +867,7 @@ Compatibility: exact
 - **GIVEN** `top` uses abstract cell `macro` (from LEF) and `abstract` is disallow
 - **WHEN** GDS is written
 - **THEN** the write fails, and neither `macro` nor `top` is written
+- **AND** with `magic-compat` OFF no output file is created
 
 #### Scenario: Abstract allowed
 - **GIVEN** `gds abstract allow`
@@ -825,7 +876,7 @@ Compatibility: exact
 
 ### Requirement: Compressed output
 
-When the compression level `z` is 1–9, the entire stream SHALL be written as a single gzip member at deflate level `z`. When `z` is 0, the stream is written uncompressed with no gzip framing. The decompressed bytes MUST be identical for every `z`. The exact compressed byte sequence (gzip header OS byte, deflate block choices, the sync-flush marker before the end) depends on the compression library and is informative only (see Q-MASK-223).
+When the compression level `z` is 1–9, the entire stream SHALL be written as a single gzip member at deflate level `z`. When `z` is 0, the stream is written uncompressed with no gzip framing. The decompressed bytes MUST be identical for every `z`. The exact compressed byte sequence (gzip header OS byte, deflate block choices, the sync-flush marker before the end) depends on the compression library and is informative only: any conforming single-member gzip writer is accepted, and conformance compares decompressed bytes (Q-MASK-223, resolution: platform).
 
 Compatibility: exact
 

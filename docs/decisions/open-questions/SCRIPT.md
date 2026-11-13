@@ -417,7 +417,7 @@ Magic reference: fc5daa9e (8.3.694).
 - Evidence: open_pdks sky130/magic/sky130.magicrc:17-19; commands/CmdRS.c:71-122; calma/CalmaWrite.c:747-770; Q-MASK-211
 - Options: replicate; let a Hefesto profile pin the seed
 - Recommendation: replicate (X-2 tier 3: the seed is session state, not a quirk). The golden-test harness MUST run `random seed 1` after startup, as tests/golden/SCRIPT/CASES.md already says. Whether Hefesto adds a project setting that pins the seed belongs with Q-MASK-211 (M5): its recommended hash-based GDS prefix would make the seed irrelevant to output. This entry does not block M4.
-- Resolution: replicate (X-2 tier 3: the seed is session state) — PDK rc files seed `random` from the clock; the golden harness runs `random seed 1` after startup. A setting that pins the seed is decided with Q-MASK-211 (M5), so this entry does not constrain M4. Approved 2026-11-11.
+- Resolution: replicate (X-2 tier 3: the seed is session state) — PDK rc files seed `random` from the clock; the golden harness runs `random seed 1` after startup. A setting that pins the seed is decided with Q-MASK-211 (M5), so this entry does not constrain M4. Approved 2026-11-11. M5 follow-up (user decision 2026-11-13, m5-mask-gds-cif design Open Question 4): no seed-pinning setting; with magic-compat OFF the full-dump prefix does not depend on the seed.
 
 ### Q-SCRIPT-45: sg13g2 generators change the window root cell with `load` during a gencell draw
 - Kind: ambiguity

@@ -261,7 +261,7 @@ Compatibility: exact
 | `es == half-width` and `ee == half-width`, half-width > 0 | PATHTYPE 2 |
 | otherwise | PATHTYPE 4 with BGNEXTN `es` and ENDEXTN `ee` |
 
-The gds-read rules "PATH elements", "Path-to-polygon conversion", "Path centerline properties" and "Path subcells" then apply unchanged. In particular, negative extensions are ignored (see Q-OASIS-33 and Q-MASK-114), and a half-width of 0 drops the path.
+The gds-read rules "PATH elements", "Path-to-polygon conversion", "Path centerline properties" and "Path subcells" then apply unchanged. In particular, end extensions follow gds-read and depend on the `magic-compat` setting: negative extensions are ignored with it ON and shorten the path with it OFF (see Q-OASIS-33 and Q-MASK-114), and a half-width of 0 drops the path.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdpt.c:534-750, cif/CIFrdpt.c:339-600)
 

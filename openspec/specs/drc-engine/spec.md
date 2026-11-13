@@ -147,8 +147,9 @@ for each subcell use U whose bounding box overlaps SA:
     if P non-empty: I = I ∪bbox ((P ⊕ h) ∩ H)
 if not found: return none (no subcells)
 for each (U, H) in list:
-    O = bounding box of the bounding boxes of all other uses overlapping H
-    I = I ∪bbox ((O ⊕ h) ∩ H)
+    O = (0,0,0,0) ∪bbox bounding boxes of all other uses overlapping H
+    if magic-compat ON or some other use overlaps H:
+        I = I ∪bbox ((O ⊕ h) ∩ H)        # ON: O may still be (0,0,0,0)
 if I empty: return none
 sources = 0
 if C has non-space paint overlapping I: sources += 1
@@ -158,12 +159,16 @@ if sources < 2: return none
 return I ∩ Ar (none if null)
 ```
 
-(Magic ref: drc/DRCsubcell.c:249-310, drc/DRCsubcell.c:406-525, drc/DRCsubcell.c:133-145)
+`∪bbox` ignores an empty (degenerate) operand. With `magic-compat` ON (the default) O is seeded with the null rectangle (0,0,0,0) and its expansion is included even when no other use overlaps H, so `(-h,-h)-(h,h)` clipped to H is added whenever H covers the origin, as in Magic; with it OFF nothing is added for a use with no other use nearby (Q-MASK-400, resolution: compat). Hierarchical DRC and hierarchical mask generation share this finder and the setting (capability `mask-hierarchical-generation` "Interaction area discovery").
+
+(Magic ref: drc/DRCsubcell.c:249-310, drc/DRCsubcell.c:406-525, drc/DRCsubcell.c:133-145, drc/DRCsubcell.c:470-478, utils/geometry.c:77)
 
 #### Scenario: Subcell far from paint
 - **GIVEN** halo 5, a parent with a subcell whose bbox is [0,10]×[0,10] and parent paint only at [100,110]×[0,10], and no other subcells
 - **WHEN** the interaction area over [−50,200]×[−50,50] is computed
-- **THEN** P is empty for the subcell's halo area, no other use overlaps it, so the result is none and the parent is checked with plain basic checks plus copied child errors
+- **THEN** P is empty for the subcell's halo area and no other use overlaps it
+- **AND** with `magic-compat` OFF I is empty; with it ON I = [−5,5]×[−5,5] from the (0,0,0,0) seed, but only the subcell has paint there (one source)
+- **AND** in both settings the result is none and the parent is checked with plain basic checks plus copied child errors
 
 ### Requirement: Flattening for interaction checks
 Flattening a hierarchy into the check buffer over area F SHALL copy the paint of the cell and all its descendants (all array elements, transformed into the cell's coordinates) that overlaps F into an empty internal cell using the DRC paint table, so that illegal overlaps become subcell-error tiles, and SHALL copy the mask-hint properties of all levels into the buffer; a non-Manhattan overlap between cells whose intersection is not representable on the integer grid SHALL be reported as an error with why index 5 over the affected rectangle.
