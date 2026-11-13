@@ -26,11 +26,11 @@ Sizes are given in requirements, not dates. Each milestone's work is planned as 
 
 | Milestone | Theme | Capabilities | Requirements | Release |
 |---|---|---|---|---|
-| M0 | Foundations and Raven go/no-go | 8 | 39 |  |
+| M0 | Foundations and Raven go/no-go | 8 | 41 |  |
 | M1 | Core model, formats, PDK manager, 2D viewer | 25 | 284 |  |
 | M2 | Interactive editing and design system | 19 | 194 |  |
 | M3 | Design rule checking | 5 | 72 |  |
-| M4 | Scripting and PDK integration | 8 | 90 | **Desktop Alpha** |
+| M4 | Scripting and PDK integration | 8 | 94 | **Desktop Alpha** |
 | M5 | Mask generation, GDS, CIF | 8 | 203 |  |
 | M6 | LEF/DEF and OASIS | 9 | 215 |  |
 | M7 | Extraction and netlisting | 21 | 207 |  |
@@ -230,6 +230,8 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Goal.** Draw schematics in an editor that is compatible with xschem, using the PDKs' symbol libraries. Schematics then drive simulation and LVS.
 
+**Status (2026-11-13): planned.** The 24 open SCHEM questions and D-21 were approved on 2026-11-13 (`docs/decisions/m8-decision-table.md`): xschem quirks are governed by the `xschem-compat` setting (default ON), the specs follow a two-team clean-room process (`hefesto-licensing`), and `scripts/check_milestone_readiness.py --milestone M8` reports ready. The plan is OpenSpec change `openspec/changes/m8-schematic`. Its implementation starts after the SCHEM golden cases are captured from xschem 3.4.8RC with gawk (roadmap principle 2).
+
 **Capabilities:** `schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration`, `schematic-command`
 
 **Deliverables**
@@ -241,6 +243,7 @@ Depends on `mask-hints`, which is completed in M3.
 **Exit criteria**
 - The common exit criteria.
 - The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics.
+- A `hefesto-security` review signs off the schematic script permission model (Q-SCHEM-25).
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
 
@@ -342,5 +345,8 @@ Desktop-only at first: the digital flow, the legacy tools, `shell` and git integ
 | M1 entry | Resolve open questions TECH, CELL, MODEL | Starting M1 work on settled behavior |
 | M4 | App Review inquiry on sandboxed Tcl | iPad scripting: user-imported scripts or curated packs (X-3) |
 | M5 | ~~KLayout sign-off decision (Q-TAPEOUT-1)~~ Done: decided by P-18 (2026-11-06) | How gf180mcu and IHP sign-off DRC, fill and density are run on desktop and on iPad |
+| M8 | SCHEM golden capture from xschem 3.4.8RC with gawk | The exact texts of Q-SCHEM-14, -21, -22, -27 and -28, and the start of M8 implementation |
 | M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
 | M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |
+| Before Desktop 1.0 | Counsel review of the two-team clean-room process and the system-library interface table (J-1, Q-SCHEM-10) | Whether the xschem-derived specs and symbol interface may ship |
+| Before the M14 iPad scope freeze | Usability test of finger vs Pencil wire drawing (Q-SCHEM-24) | The final iPad schematic gesture set |
