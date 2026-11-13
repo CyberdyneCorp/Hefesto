@@ -10,6 +10,7 @@
 
 #include "cell_fixture.hpp"
 #include "hefesto/cell/diag_codes.hpp"
+#include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 
@@ -243,4 +244,57 @@ TEST_CASE("a coarser file reports its scaling", "[cap:cell-file-format][req:Coor
     reported = reported || d.text == "Scaled magic input cell c geometry by factor of 2";
   }
   CHECK(reported);
+}
+
+namespace {
+
+constexpr const char* kUseHead = "magic\ntech tiny\ntimestamp 1\nuse child child_0\ntimestamp 0\n";
+constexpr const char* kUseTail = "use child child_1\ntimestamp 0\ntransform 1 0 0 0 1 0\nbox 0 0 4 4\n<< end >>\n";
+
+bool use_ignored_off_plane(const CellIo& io) {
+  for (const auto& d : io.sink.snapshot()) {
+    if (d.code == db::codes::kGeometryOutsidePlane &&
+        d.text == "Ignoring subcell child of top: its transform or box lies outside the usable plane "
+                  "(-1073741818..1073741818)") {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
+TEST_CASE("a use whose transform or box leaves the usable plane is ignored",
+          "[cap:cell-file-format][req:Use block parsing][regression]") {
+  // Regression (fuzz_mag_reader, CI run 43487286969): a translation and a box
+  // corner of -1908874356 overflowed int32 when the use's bounding box was
+  // transformed (Q-MODEL-24: geometry beyond the plane is rejected).
+  for (const char* block : {"transform 1 0 -1908874356 0 1 0\nbox -1908874356 0 1 0\n",
+                            "transform 1 0 1073741819 0 1 0\nbox 0 0 4 4\n",
+                            "transform 0 1 0 -1 0 -1073741819\nbox 0 0 4 4\n",
+                            "transform 1 0 0 0 1 0\nbox 0 0 4 1073741819\n"}) {
+    CellIo io;
+    hefesto::diag::Status status = hefesto::diag::Done{};
+    db::CellDef& top = io.read("top", std::string{kUseHead} + block + kUseTail, &status);
+    CHECK(status.ok());
+    CHECK(use_ignored_off_plane(io));
+    REQUIRE(top.uses().size() == 1);
+    CHECK(top.uses()[0]->id == "child_1");
+  }
+}
+
+TEST_CASE("a use at the edge of the usable plane is kept", "[cap:cell-file-format][req:Use block parsing]") {
+  CellIo io;
+  db::CellDef& top = io.read(
+      "top", std::string{kUseHead} + "transform 1 0 1073741818 0 1 -1073741818\nbox -1073741818 0 0 4\n" + kUseTail);
+  CHECK_FALSE(use_ignored_off_plane(io));
+  CHECK(top.uses().size() == 2);
+}
+
+TEST_CASE("the usable-plane limit of a use applies after scaling", "[cap:cell-file-format][req:Use block parsing]") {
+  CellIo io;
+  io.grid = hefesto::tech::GridScale{2, 1};  // n = 2: 600000000 scales to 1200000000
+  db::CellDef& top = io.read("top", std::string{kUseHead} + "transform 1 0 600000000 0 1 0\nbox 0 0 4 4\n" + kUseTail);
+  CHECK(use_ignored_off_plane(io));
+  CHECK(top.uses().size() == 1);
 }

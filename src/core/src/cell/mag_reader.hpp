@@ -35,7 +35,7 @@ struct ReadState {
   void emit(std::string_view code, std::string text) const { ctx.sink.emit(diag::make(code, std::move(text))); }
   /// v * n (when n > 1), then / d (when d > 1), truncating toward zero.
   /// The product saturates: v comes from the file and may be huge (fuzz_mag_reader).
-  [[nodiscard]] std::int32_t scale(std::int64_t v) const noexcept {
+  [[nodiscard]] std::int64_t scale64(std::int64_t v) const noexcept {
     if (n > 1) {
       constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
       constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
@@ -44,8 +44,10 @@ struct ReadState {
     if (d > 1) {
       v /= d;
     }
-    return static_cast<std::int32_t>(v);
+    return v;
   }
+  /// scale64() truncated to a 32-bit coordinate.
+  [[nodiscard]] std::int32_t scale(std::int64_t v) const noexcept { return static_cast<std::int32_t>(scale64(v)); }
 };
 
 /// dbReadUse: `st.line` holds the use line; on return the next line.
