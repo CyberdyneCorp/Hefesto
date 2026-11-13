@@ -30,7 +30,7 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
 
 ## X-2: Replicate or fix Magic's bugs
 
-- **Status:** decided (2026-11-05). Option: **tiered**. Amended 2026-11-06 (D-2).
+- **Status:** decided (2026-11-05). Option: **tiered**. Amended 2026-11-06 (D-2) and 2026-11-13 (D-21).
 - **Decision:** Hefesto handles suspected Magic bugs in three tiers:
   1. **Always fix:**
      - crashes
@@ -48,7 +48,7 @@ These decisions affect many capabilities. Per-area items are tracked in `open-qu
 
      With the setting OFF, Hefesto uses the corrected behavior and documents each difference.
 
-     **Amendment (2026-11-06, D-2):** the same tier applies to netgen quirks, behind a separate `netgen-compat` setting (default ON), so that LVS fidelity can be toggled without changing layout output. `hefesto-magic-compat-mode` owns the set of reference-tool compatibility settings (`magic-compat`, `netgen-compat`). Whether xschem gets an `xschem-compat` setting is open (D-21).
+     **Amendment (2026-11-06, D-2):** the same tier applies to netgen quirks, behind a separate `netgen-compat` setting (default ON), so that LVS fidelity can be toggled without changing layout output. `hefesto-magic-compat-mode` owns the set of reference-tool compatibility settings (`magic-compat`, `netgen-compat`). **Amendment (2026-11-13, D-21):** xschem quirks get the same tier behind a third setting, `xschem-compat` (default ON), owned by `hefesto-magic-compat-mode` beside `magic-compat` and `netgen-compat`. It governs the entries of `docs/decisions/open-questions/SCHEM.md` that record `Resolution: compat`, and changes no layout, extraction or LVS output. Unlike `magic-compat`, it is written into a netlist only when OFF (one `** xschem-compat=off` line), so default netlists stay byte-identical to xschem's.
   3. **Case by case:** ambiguous items. Each open-question entry records its resolution as `Resolution: fix | compat | platform | n/a`.
 - **Spec impact:** requirements that cite a tier-1 open question describe the corrected behavior once that question is resolved.
 
