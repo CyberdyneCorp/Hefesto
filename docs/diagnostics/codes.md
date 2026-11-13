@@ -34,6 +34,9 @@ document, so parallel work never edits the same table
 | pcell | PCELL | `src/core/src/pcell/codes.cpp` (fragments `pcell/<sub>/codes.inc`) | [codes/pcell.md](codes/pcell.md) |
 | tools | TOOLS | `src/core/src/tools/codes.cpp` | [codes/tools.md](codes/tools.md) |
 | gui | GUI | `src/core/src/gui/codes.cpp` | [codes/gui.md](codes/gui.md) |
+| mask | MASK | `src/core/src/mask/codes.cpp` (fragments `mask/<sub>/codes.inc`) | [codes/mask.md](codes/mask.md) |
+| gds | GDS | `src/core/src/gds/codes.cpp` (fragments `gds/<sub>/codes.inc`) | [codes/gds.md](codes/gds.md) |
+| cif | CIF | `src/core/src/cif/codes.cpp` (fragments `cif/<sub>/codes.inc`) | [codes/cif.md](codes/cif.md) |
 
 Regenerate the core table with:
 
@@ -78,6 +81,7 @@ between the markers below. Area codes follow the same steps in the area's
 | `CORE-NOTIMPL-002` | error | Retired in M2, never reused. Was: not implemented yet (an M2 command or function registered by the M2 scaffold before its workstream landed it). |
 | `CORE-NOTIMPL-003` | error | Retired in M3, never reused. Was: not implemented yet (a `drc` option or M3 function stubbed by the M3 scaffold before its workstream landed it). |
 | `CORE-NOTIMPL-004` | error | Retired in M4, never reused. Was: not implemented yet (an M4 command or function registered by the M4 scaffold before its workstream landed it). |
+| `CORE-NOTIMPL-005` | error | Not implemented yet: an M5 command option or function declared by the M5 scaffold before its workstream landed it (retired at M5 exit). |
 | `PLATFORM-IO-001` | error | A file cannot be read. |
 | `PLATFORM-IO-002` | error | A file cannot be written. |
 | `PLATFORM-IO-003` | error | A directory cannot be created, listed or removed. |

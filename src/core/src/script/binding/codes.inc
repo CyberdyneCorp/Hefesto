@@ -10,7 +10,7 @@
 //
 // Owner: BINDING (openspec/changes/m4-scripting/design.md D1/D2, tasks.md section 5).
 HEFESTO_SCRIPT_CODE("SCRIPT-BIND-001", warning, "A path variable's value changed after its first use; the expansion keeps the first value (magic-compat ON) or uses the new one (OFF).")
-HEFESTO_SCRIPT_CODE("SCRIPT-BIND-002", error, "This `cif` option needs the CIF reader and writer, which arrive in M5.")
+HEFESTO_SCRIPT_CODE("SCRIPT-BIND-002", error, "Retired in M5, never reused. Was: a `cif` option that needed the CIF reader and writer (the M5 scaffold moved `cif` to cif/command/; unimplemented options answer CORE-NOTIMPL-005).")
 HEFESTO_SCRIPT_CODE("SCRIPT-BIND-003", info, "`netgen` is not available; Hefesto's built-in `lvs` command compares netlists.")
 HEFESTO_SCRIPT_CODE("SCRIPT-BIND-004", info, "`xcircuit` is not available in Hefesto.")
 HEFESTO_SCRIPT_CODE("SCRIPT-BIND-005", info, "`irsim` is not available on this host or in this milestone.")

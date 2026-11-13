@@ -52,6 +52,10 @@ inline constexpr std::string_view kSettingsFile = "SETTINGS-FILE-001";
 inline constexpr std::string_view kCliUsage = "CLI-USAGE-001";
 inline constexpr std::string_view kCliScript = "CLI-SCRIPT-001";
 inline constexpr std::string_view kCliLog = "CLI-LOG-001";
+// Scaffold stubs (openspec/changes/m5-mask-gds-cif/design.md D3): a command
+// option or function the M5 scaffold declared before its workstream
+// implemented it. INTEGRATION retires the code at M5 exit (tasks.md 15.5).
+inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-005";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
@@ -66,7 +70,7 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 struct CodeArea {
   std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app",
                             // "undo", "select", "connect", "ui", "wiring", "drc", "hints",
-                            // "script", "pcell", "tools", "gui"
+                            // "script", "pcell", "tools", "gui", "mask", "gds", "cif"
   std::string_view prefix;  // required AREA part of each code; empty for "core"
   std::string_view doc;     // repository-relative path of the area's document
   std::span<const CodeInfo> codes;  // sorted by code

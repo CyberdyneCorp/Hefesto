@@ -9,12 +9,13 @@
 // constexpr std::array), sorted by code, and every code must start with the
 // area prefix declared in diag/codes.cpp (TECH-, DB-, CELL-, DISPLAY-, VIEW-,
 // PDK-, APP-, UNDO-, SELECT-, CONNECT-, UI-, WIRE-, DRC-, HINTS-, SCRIPT-,
-// PCELL-, TOOLS-, GUI-). The drc area's table is assembled by
+// PCELL-, TOOLS-, GUI-, MASK-, GDS-, CIF-). The drc area's table is assembled by
 // src/core/src/drc/codes.cpp from one fragment per workstream
 // (drc/<sub>/codes.inc; openspec/changes/m3-drc design.md D1); the script and
 // pcell tables likewise from script/<sub>/codes.inc and pcell/<sub>/codes.inc
-// (openspec/changes/m4-scripting/design.md D1), sorted at compile time by
-// diag/sorted_codes.hpp.
+// (openspec/changes/m4-scripting/design.md D1), and the mask, gds and cif
+// tables from <area>/<sub>/codes.inc (openspec/changes/m5-mask-gds-cif
+// design.md D1), sorted at compile time by diag/sorted_codes.hpp.
 
 #pragma once
 
@@ -45,5 +46,9 @@ namespace hefesto::diag::area_codes {
 [[nodiscard]] std::span<const CodeInfo> pcell() noexcept;
 [[nodiscard]] std::span<const CodeInfo> tools() noexcept;
 [[nodiscard]] std::span<const CodeInfo> gui() noexcept;
+// M5 areas (openspec/changes/m5-mask-gds-cif/design.md D1).
+[[nodiscard]] std::span<const CodeInfo> mask() noexcept;
+[[nodiscard]] std::span<const CodeInfo> gds() noexcept;
+[[nodiscard]] std::span<const CodeInfo> cif() noexcept;
 
 }  // namespace hefesto::diag::area_codes

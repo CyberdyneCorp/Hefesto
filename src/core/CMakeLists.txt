@@ -23,6 +23,7 @@ add_library(hefesto_core STATIC
   src/cmd/keywords.cpp
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
+  src/cmd/stubs.cpp
   src/cmd/quit_policy.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp
@@ -44,6 +45,7 @@ add_library(hefesto_core STATIC
   src/platform/storage.cpp
   src/platform/task_executor.cpp
   src/settings/project_settings.cpp
+  src/util/libc_random.cpp
   src/util/record_order.cpp)
 add_library(hefesto::core ALIAS hefesto_core)
 
@@ -61,8 +63,13 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       (shared files; tcl/ TCL, binding/ BINDING, pdk/ PDKINT each with its
 #       own sources.cmake)   pcell/ INTEGRATION (framework/, native/ PCELL)
 #       tools/ TOOLS   gui/ GUIMGR
+#   M5 (openspec/changes/m5-mask-gds-cif/design.md D1/D2): mask/, gds/, cif/
+#       INTEGRATION (shared files; each subdirectory has its own
+#       sources.cmake owned by its workstream: mask/{plane,ops} OPS,
+#       mask/style STYLES, mask/input INPUT, mask/gen GEN, gds/{stream,read}
+#       GDSR, gds/{write,command} GDSW, cif/* CIF)
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
-                       script pcell tools gui)
+                       script pcell tools gui mask gds cif)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

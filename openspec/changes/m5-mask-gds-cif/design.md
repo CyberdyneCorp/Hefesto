@@ -633,6 +633,45 @@ The headers are the contract, and each one is documented. The key types and func
 - `mask_layer_check(const CheckInput&, const Rect& K, ErrorSink&, GenerationContext&)`
 - `map_mask_error(Rect mask_rect, const OutputStyle&, compat) -> std::optional<Rect>`
 
+## As-landed scaffold contracts
+
+The scaffold (tasks.md 2.2–2.6, branch `m5-r1-scaffold`) landed the areas, headers and stubs below. The headers are the contract; this section records where they are, who fills them in, and where they differ from "Area contracts" and D4.
+
+### Files and owners
+
+| Path | Contents | Owner (fills in) |
+|---|---|---|
+| `src/core/src/{mask,gds,cif}/{sources.cmake,codes.cpp}` | area sources and code tables assembled from `<sub>/codes.inc` (sorted at compile time) | INTEGRATION |
+| `src/core/src/mask/{plane,ops}/`, `include/hefesto/mask/plane/plane.hpp`, `mask/ops/{evaluate,operators}.hpp` | `MaskPlane`, `PlanePool`, `cif_paint_table`, `cif_erase_table`, `mask::Polygon`; `OperatorContext`, `LayerInputs`, `evaluate_layer`, `OpArgs` and one `op_<name>` per operator | OPS |
+| `src/core/src/mask/style/`, `include/hefesto/mask/style/{core,style}.hpp` | `ScaleValue`, `parse_scale`, `StyleStateMachine`; `OpKind`, `LayerOp`, `OutputLayer`, `GdsLayer`, `StyleScale`, `OutputStyle`, `OutputStyleSet`, `read_output_styles`, `select_output_style` | STYLES |
+| `src/core/src/mask/input/`, `include/hefesto/mask/input/{style,sink,engine,warnings}.hpp` | `InputLayer`, `InputResolved`, `InputStyle`, `InputStyleSet`, `read_input_styles`, `select_input_style`; `ReadSink`, `ReadShape`, `ReadLabel`; `ReadEngine`; `WarningLevel`, `WarningSettings` | INPUT |
+| `src/core/src/mask/gen/`, `include/hefesto/mask/gen/{progress,context,generate}.hpp` | `Progress`, `GenerationStatistics`; `GenerationContext`; `LayerPlanes`, `generate_flat`, `generate_hierarchical`, `see`, `paint`, `coverage`, `statistics`, `interaction_areas` | GEN |
+| `include/hefesto/mask/session.hpp` | `MaskSession` (`EditorState::mask`) | INTEGRATION (members as D4) |
+| `src/core/src/db/use_index.cpp`, `include/hefesto/db/use_index.hpp` | `UseIndex`, `UseIndexState`, `UseIndexVisitor`, `uses_in_search_order(def, compat)`, `uses_overlapping` | INDEX |
+| `src/core/src/gds/{stream,read}/`, `include/hefesto/gds/stream/{io,records,encode}.hpp`, `gds/read/{read,stamps}.hpp` | `ByteSource`, `ByteSink`, `MemorySource`, `MemorySink`, `open_source`, `open_sink`; `RecordType`, `DataType`, `Record`, `RecordReader`, `RecordWriter`; `encode_real8`, `decode_real8`, `CharTable`, `encode_date`; `GdsReadOptions`, `read`; `StructureStamp`, `StampTable`, `content_stamps` | GDSR |
+| `src/core/src/gds/{write,command}/`, `include/hefesto/gds/write/write.hpp`, `gds/command/{command,settings}.hpp` | `GdsWriteOptions`, `PreparedWrite`, `prepare_write`, `emit_write`, `write`, `merge_polygons`; `GdsSettings`, `PolygonSubcells`, `gds_options`, `register_gds_command` | GDSW (read fields of `GdsSettings`: GDSR) |
+| `src/core/src/cif/`, `include/hefesto/cif/{read/read,write/write,command/command,command/settings}.hpp` | `CifReadOptions`, `SymbolTable`, `ReadSession`, `read`; `CifWriteOptions`, `PreparedWrite`, `prepare_write`, `emit_write`, `write`; `CifSettings`, `register_cif_command` (the M4 command, moved) | CIF |
+| `src/core/src/drc/check/mask_check.cpp`, `include/hefesto/drc/check/mask_check.hpp` | `mask_layer_check`, `map_mask_error` | DRCCIF |
+| `include/hefesto/cmd/stubs.hpp`, `src/core/src/cmd/stubs.cpp` | `not_implemented`, `not_implemented_status`, `not_implemented_diagnostic` (`CORE-NOTIMPL-005`) | INTEGRATION (removed at M5 exit, task 15.5) |
+| `include/hefesto/util/libc_random.hpp`, `src/core/src/util/libc_random.cpp` | `util::LibcRandom` (glibc TYPE_3 `random()`) | INTEGRATION |
+| `tests/unit/{mask,gds,cif}/` and their subdirectories, `tests/unit/db/use_index/` | one executable per subdirectory once it has a `*_test.cpp` (`hefesto_add_area_tests` skips an empty directory) | as the source subdirectory |
+| `tests/unit/core/m5_scaffold_test.cpp` | the `[m5-scaffold]` tests | INTEGRATION; owners replace them with `[cap:][req:]` tests |
+| `docs/diagnostics/codes/{mask,gds,cif}.md` | one section per owning workstream and the generated table | INTEGRATION (sections: their workstreams) |
+| `docs/design/m5-ui-conformance.md` | seeded with the D16 items | SHELL ("Performance": PERF) |
+
+### Differences from "Area contracts" and D4
+
+- **Read warnings.** Magic keeps one `CIFWarningLevel` for both readers, set by `cif warning` and `gds warning`. It is one `mask::WarningSettings` in `MaskSession::warnings`, not a field of `GdsSettings` and `CifSettings`. The read options carry a copy.
+- **Progress.** `mask::Progress` (with `GenerationStatistics`) is in `mask/gen/progress.hpp`, so the GDS and CIF headers include it without the generators. Its cancel token is a `const std::atomic<bool>*`; `GenerationContext` and `OperatorContext` point to it.
+- **Return types.** `read_output_styles`, `read_input_styles`, `generate_flat`, `generate_hierarchical`, `evaluate_layer` and `mask_layer_check` return their value and report errors to the caller's sink, as the contract's signatures require. `select_output_style` returns `diag::Status` (the contract's "Result"). `select_input_style` is added for `cif istyle`. `prepare_write` returns `diag::Outcome<PreparedWrite>`. Each `op_<name>` returns `diag::Status`.
+- **Signatures.** `generate_hierarchical(editor, cell, style, ctx)`; `see`, `paint` and `coverage` take the editor, the cell, the layer name, the area and the context; `interaction_areas(cell, halo, compat)`. The read and write entry points take `platform::Path` and an optional `const mask::Progress*`. `GdsReadOptions`/`GdsWriteOptions` and `CifReadOptions`/`CifWriteOptions` carry a snapshot of the session settings and the typed name; `CifWriteOptions::flat` selects `cif flat`.
+- **Use index.** `UseIndex` is a standalone class for now. INDEX adds the `CellDef` member and the re-placement hooks (D2). The visitor type is `db::UseIndexVisitor`, because `db::UseVisitor` already names the hierarchy walker of `db/hierarchy.hpp`. The scaffold version keeps only the unbinned LIFO list, so `order()` gives today's `uses_in_search_order` order in both modes and no search rebuilds. `search` already applies the shrink by 1 of `BPE_OVERLAP`.
+- **Working parts.** Some scaffold pieces are not stubs, because the stubs and tests need them: `cif_paint_table`/`cif_erase_table`, `MaskPlane::paint`/`erase`/`clear`/`empty`, `PlanePool`, `MemorySource`/`MemorySink`, `SymbolTable` (`DD` in both modes), `GenerationContext::operator_context`, and `write()` calling `prepare_write` then `emit_write`. The owners may replace them.
+- **Queries before their owners land.** Some stubs return a neutral value instead of `CORE-NOTIMPL-005`: `OutputStyle::halo()` returns 0, `contact_size` and `parse_scale` return nullopt, `content_stamps` returns an empty table, `encode_real8`/`encode_date` return zero bytes, `CharTable` is the identity, `merge_polygons` and `statistics` return nothing, and `map_mask_error` returns nullopt. Nothing calls them yet: `basic_check` does not call `mask_layer_check` until DRCCIF wires it.
+- **Commands.** `gds` and `calma` are registered with Magic's 29-entry table, Magic's lookup and invalid-option message, the window check of `read`, `write` and a bare `gds`, and `gds help`. Every other option answers `CORE-NOTIMPL-005` ("not implemented yet: gds <option>"). `cif` moved from `script/binding/cif_command.cpp` to `cif/command/command.cpp` with its M4 answers unchanged. Its other options answer `CORE-NOTIMPL-005` ("not implemented yet: cif <option>"; a bare `cif` is `cif write`), and `SCRIPT-BIND-002` is retired.
+- **random.** The generator is `util::LibcRandom` in `MaskSession::random`, one per open project (it was one per process). A command context without an editor uses a process-wide generator. A fresh session starts seeded with 1, so `random seed 1; random` gives 1804289383 as in M4.
+- **Edits outside the new areas.** `src/core/src/db/sources.cmake` (`use_index.cpp`), `src/core/src/drc/check/sources.cmake` (`mask_check.cpp`), `src/core/src/db/commands_misc.cpp` (the generator), `src/core/src/script/binding/{commands.cpp,sources.cmake,codes.inc}` and `include/hefesto/script/binding/commands.hpp` (the `cif` move), `tests/unit/db/CMakeLists.txt` (`use_index/`), and `docs/diagnostics/codes/script.md`.
+
 ## Risks / Trade-offs
 
 - **R1. Use-order emulation (Q-MASK-204).** A small mistake in bin sizing or the walk changes SREF and `C` order only in binned cells. That shows up late, in large designs and second writes. → INDEX lands early with trace tests against Magic orders (the probe of task 1.5, which lands first), targeted golden history cases, and the round-trip corpus (wrapper cells with hundreds of uses). The OFF order is history-free, so users who switch compat off are never exposed.
