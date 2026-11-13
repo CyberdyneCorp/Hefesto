@@ -288,9 +288,10 @@ On Linux and macOS with a mouse and keyboard, Hefesto SHALL offer xschem's defau
 - in wire mode, a drag SHALL place a wire with the current routing; lifting the finger SHALL end the segment and a double tap SHALL end placement
 - long press SHALL open a context menu with move, copy, rotate, flip, delete, edit properties, descend and highlight
 - Apple Pencil SHALL place points precisely with the pointer snap, and a hover preview SHALL be shown where supported
+- a floating tool palette SHALL offer the select, wire, place-symbol, move, copy, rotate, flip, delete, edit-properties, descend, ascend, highlight, undo, redo and netlist operations, so that every common operation is one tap away without a keyboard
 - every operation SHALL also be reachable from the command bar (capability `schematic-command`)
 
-The gesture set is provisional (see Q-SCHEM-24).
+The gesture set and the palette are both offered. The gestures are provisional until a usability test of wire drawing with a finger and with Apple Pencil, which SHALL run before the iPad scope freezes for M14; it does not gate M8 desktop work. Desktop bindings SHALL stay xschem-style by default and rebindable (Q-SCHEM-24, `Resolution: platform`).
 
 Compatibility: native
 
@@ -300,6 +301,11 @@ Compatibility: native
 - **GIVEN** an instance selected on iPad with no keyboard
 - **WHEN** the user long-presses it and chooses Rotate
 - **THEN** the same rotate command SHALL be issued as the `R` key issues on desktop
+
+#### Scenario: Wire from the palette on iPad
+- **GIVEN** a schematic open on iPad with no keyboard
+- **WHEN** the user taps the wire tool in the floating palette and drags from one pin to another
+- **THEN** the same wire command SHALL be issued as the `w` key and two clicks issue on desktop
 
 ### Requirement: Read-only libraries
 Files in the PDK store and the system library SHALL open read-only. Edits to them SHALL be refused with a message offering "Save as" to a user folder. Descending into a PDK cell SHALL be allowed for viewing.

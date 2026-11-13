@@ -27,6 +27,38 @@ Compatibility: native
 - **WHEN** a pull request adds `.sch` parsing code
 - **THEN** the review checklist SHALL require confirming that no xschem source was used as an implementation reference
 
+### Requirement: Two-team clean-room process for specs written from GPL source
+Where a Hefesto spec was written by reading GPL source, the spec work and the implementation SHALL be done by two separate teams. (User decision 2026-11-13, judgement items J-1 and J-3 of `docs/decisions/m8-decision-table.md`.) Today this covers the xschem-compatible schematic capabilities (`schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration`, `schematic-command`), whose specs and open-question entries (`docs/decisions/open-questions/SCHEM.md`) were written from xschem's source. The process SHALL be:
+- **Separate roles.** A contributor or agent session that read the GPL source of a tool SHALL NOT implement a capability whose spec it wrote or that cites that tool. An implementer SHALL NOT read that GPL source.
+- **No source references followed.** Implementers SHALL work from the spec text only. They SHALL NOT follow the `Evidence:` lines of open-question entries or the `(xschem ref: ...)` traces of the specs, which exist for traceability only.
+- **No source tree reachable.** No xschem source tree, clone, archive or code view SHALL be present on a machine, or in the context, of an implementation session. Running the xschem binary in the golden capture runner is allowed: its outputs are black-box behaviour.
+- **Spec review for paraphrase.** Spec text SHALL describe behaviour, not code. Before an implementation workstream starts on a requirement, its text SHALL be reviewed for literal code paraphrase (source variable or function names that are not part of the file format or user interface, the structure of a GPL awk or Tcl program, pseudo-code that mirrors C), and any such text SHALL be rewritten as behaviour.
+- **Hefesto-authored golden inputs.** Golden-case inputs SHALL be written by Hefesto contributors or taken from permissively licensed data such as the Apache-2.0 PDK libraries. Files from the GPL tool's own distribution (for example xschem's `xschem_library` or `tests` files) SHALL NOT be committed as inputs or expected outputs.
+- **Interface data.** The interface facts of the clean-room system symbol library (capability `schematic-symbols-and-libraries`, Requirement "System library": file names, pin names, order and positions, and the netlisting properties `type`, `format`, `template`, `global`) have no public source other than xschem's GPL `devices/*.sym` files. They SHALL be extracted from those files by the spec side only, as a table in that spec, and implementers SHALL take them from that table. Symbol graphics SHALL be drawn independently.
+- **Counsel review.** Legal counsel SHALL review this process once, including the interface table above, before the Desktop 1.0 release. The review SHALL NOT block M8.
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-9, docs/decisions/product.md#P-12)
+
+#### Scenario: Implementer never sees xschem source
+- **GIVEN** an agent or contributor session assigned to implement `schematic-netlisting`
+- **WHEN** the session starts
+- **THEN** no xschem source tree SHALL be reachable from it, and its instructions SHALL forbid following `Evidence:` paths and `(xschem ref: ...)` traces
+
+#### Scenario: Spec author does not implement
+- **GIVEN** a contributor who wrote a requirement of `schematic-netlisting` by reading xschem's source
+- **WHEN** a pull request implementing that capability lists the contributor as its author
+- **THEN** the review checklist SHALL reject it
+
+#### Scenario: GPL golden input refused
+- **WHEN** a pull request adds a golden case whose input is a file from xschem's own distribution
+- **THEN** the review checklist SHALL reject it and ask for a Hefesto-authored input
+
+#### Scenario: Counsel review before Desktop 1.0
+- **WHEN** the Desktop 1.0 release checklist runs
+- **THEN** it SHALL fail unless the counsel review of the two-team process and of the system-library interface table is recorded
+
 ### Requirement: Attribution for permissive sources
 Hefesto SHALL reproduce the copyright and permission notices for permissively licensed material that it includes or derives code from. This covers:
 - Magic's UC Berkeley notice, for any ported logic and the bundled scmos/minimum tech files, including the scmos MOSIS copyright notice

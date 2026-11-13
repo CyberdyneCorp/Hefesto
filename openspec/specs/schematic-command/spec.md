@@ -127,7 +127,7 @@ The sandboxed Tcl interpreter SHALL provide a command `xschem` with the subcomma
 | `xschem translate <inst> <string>`, `xschem expandlabel <s>`, `xschem get_tok <s> <key>`, `xschem subst_tok <s> <key> <value>` | Substitution and property helpers of capabilities `schematic-symbols-and-libraries`, `schematic-netlisting` and `schematic-file-format` |
 | `xschem select`, `xschem unselect_all`, `xschem redraw`, `xschem zoom_full`, `xschem hilight_netname`, `xschem unhilight_all`, `xschem load <file>`, `xschem go_back`, `xschem instance_list` | The corresponding `schematic` options |
 
-`xschem version` SHALL return the pinned compatibility version string. Any other subcommand SHALL raise the error `xschem command '<cmd>' is not supported`. The result formats of the supported subcommands SHALL equal xschem's. The list SHALL be fixed by an inventory of the `xschem` calls in the three PDK libraries (see Q-SCHEM-10).
+`xschem version` SHALL return the pinned compatibility version string. Any other subcommand SHALL raise the error `xschem command '<cmd>' is not supported`. The result formats of the supported subcommands SHALL equal xschem's. The list SHALL be fixed by an inventory script over the `xschem` calls in the three pinned PDK libraries, kept as a test that fails when a PDK bump adds a subcommand that is not in the table (Q-SCHEM-10, `Resolution: other`).
 
 Compatibility: exact
 

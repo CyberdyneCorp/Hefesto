@@ -5,11 +5,13 @@ These cases will be captured later by running xschem `3.4.8RC` (`StefanSchippers
 - round trips: `xschem --no_x -q --command "xschem load <in>; xschem saveas <out>; exit"`
 - property and connectivity queries: `xschem --no_x --script <case.tcl>` printing results with `puts`
 
-**Inputs.** Unmodified PDK example schematics at the pinned commits (`xschem_sky130` @ `2bfd7d65`, installed by open_pdks @ `c6df28c1` as `sky130A/libs.tech/xschem`; IHP `ihp-sg13g2/libs.tech/xschem` @ `5e6d592e`; gf180 `gf180mcu_fd_pr/cells/xschem` @ `aacc04cc`), xschem's own `xschem_library` examples, and small hand-written files described inline. `xschem_execute_scripts` SHALL be `yes` for captures so that `tcleval` values are evaluated.
+**Inputs.** Unmodified PDK example schematics at the pinned commits (`xschem_sky130` @ `2bfd7d65`, installed by open_pdks @ `c6df28c1` as `sky130A/libs.tech/xschem`; IHP `ihp-sg13g2/libs.tech/xschem` @ `5e6d592e`; gf180 `gf180mcu_fd_pr/cells/xschem` @ `aacc04cc`; all Apache-2.0), and small Hefesto-authored files described inline. No file from xschem's own distribution (`xschem_library`, `tests`) is an input or is committed: xschem is GPL, and the clean-room process requires Hefesto-authored golden inputs (capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source"; J-1 of `docs/decisions/m8-decision-table.md`). Running the xschem binary in the capture runner is allowed; its outputs are black-box behaviour. `xschem_execute_scripts` SHALL be `yes` for captures so that `tcleval` values are evaluated.
 
 **Normalisation.** Before comparing with Hefesto output:
 - replace the absolute paths in `** sch_path:` and `** sym_path:` lines by paths relative to the PDK root or test folder (Q-SCHEM-13)
 - for round-trip cases, compare bytes exactly, except the `xschem version=` value when the input was written by another xschem version (Q-SCHEM-1)
+- Hefesto runs with `xschem-compat` ON (the default) and "portable netlist paths" off; the OFF behaviour of the compat entries is covered by unit tests, one per mode
+- flat netlists (SCHEM-NL-21) are compared by their canonical parsed form, never by bytes (Q-SCHEM-15)
 
 **What is captured.** The output file (`.spice` or `.sch`/`.sym`), xschem's stdout and stderr (ERC messages), and the exit code.
 
@@ -19,7 +21,7 @@ These cases will be captured later by running xschem `3.4.8RC` (`StefanSchippers
 | SCHEM-RT-02 | schematic-file-format | every `.sch` and `.sym` in `xschem_sky130`, IHP `libs.tech/xschem` and gf180 `cells/xschem`, each loaded and saved | saved files; list of files whose second save differs from the first | Round-trip guarantee; Brace strings; Numeric fields |
 | SCHEM-RT-03 | schematic-file-format | hand-written file with CR-LF line ends, `L 4 20 0 10 5 {}`, `B 5 2.5 2.5 -2.5 -2.5 {}`, `N 10.50 -20.0 30 -20 {}` | saved file | File kinds and character handling; Line, box, arc and polygon records; Numeric fields |
 | SCHEM-RT-04 | schematic-file-format | pre-1.2 symbol with only a `G {type=subcircuit ...}` global record | saved file (G/K order) | Global property records |
-| SCHEM-RT-05 | schematic-file-format | xschem `xschem_library/pcb/pcb_test1_embed.sch` (embedded symbols) | saved file; position and content of `[`...`]` blocks | Embedded symbols; Q-SCHEM-2 |
+| SCHEM-RT-05 | schematic-file-format | Hefesto-authored schematic with embedded symbols: one embedded `.sym` that has lines, boxes, arcs, polygons and texts, one schematic used as a symbol with wires, and a second instance of each that is not embedded (replaces xschem's GPL `pcb_test1_embed.sch`, J-1) | saved file; position and content of `[`...`]` blocks | Embedded symbols; Q-SCHEM-2 |
 | SCHEM-RT-06 | schematic-file-format | hand-written file: unknown record `Z 1 2 {a` LF `b} 3`, a `#` comment, a truncated `N 0 0 10`, out-of-range layer `L 30 ...`, unterminated `{` at EOF | loaded object counts (`xschem get wires/instances`), messages, saved file | Record grammar; Malformed input; Layers |
 | SCHEM-RT-07 | schematic-file-format | symbol with header text (license block in `v`), e.g. `sky130_fd_pr/nfet_01v8.sym` | saved file first record | Version record and header text |
 | SCHEM-RT-08 | schematic-file-format | file with no `v` record: (a) first record `K {}`, then `C {res} 0 0 0 0 {name=R1}`; (b) first record is that `C` | saved files (references with/without `.sym`) | Version record and header text; Q-SCHEM-3 |
@@ -28,7 +30,7 @@ These cases will be captured later by running xschem `3.4.8RC` (`StefanSchippers
 | SCHEM-PR-03 | schematic-symbols-and-libraries | symbol with pins `B` (sim_pinnumber=3), `A` (1), `C` (2); and one with a pin missing sim_pinnumber; netlisted inside a top schematic | `.subckt` port lists | Pin order |
 | SCHEM-PR-04 | schematic-symbols-and-libraries | `xschem translate` of texts `@name=@value`, `a\@b @name`, `@W/@L`, `%undef`, `@symname`, `@#0:pinnumber` on chosen instances | returned strings | Text substitution tokens; Q-SCHEM-26 |
 | SCHEM-PR-05 | schematic-symbols-and-libraries | `XSCHEM_LIBRARY_PATH` with a missing folder, an alias `path \| lib`, and `.`; resolve `lib/x.sym`, `../x.sym`, `devices/res.sym` | `abs_sym_path` and `rel_sym_path` results | Symbol references; Library search path |
-| SCHEM-NL-01 | schematic-netlisting | xschem `tests/SC_Test.sch` | netlist | Netlist file structure; Subcircuit body; Element line post-processing |
+| SCHEM-NL-01 | schematic-netlisting | Hefesto-authored `SC_Test.sch`: a flat testbench with no ports, a few passive and source devices, and one `code_shown.sym` instance (replaces xschem's GPL `tests/SC_Test.sch`, J-1) | netlist | Netlist file structure; Subcircuit body; Element line post-processing |
 | SCHEM-NL-02 | schematic-netlisting | sky130 `sky130_tests/test_inv.sch` with sky130A `xschemrc` | netlist | Format string substitution; expr evaluation; Element line post-processing (spiceprefix); tcleval values (corner) |
 | SCHEM-NL-03 | schematic-netlisting | sky130 `sky130_tests/passgate.sch` and a testbench using `passgate.sym` | netlists | Hierarchical parameters; Subcircuit definitions |
 | SCHEM-NL-04 | schematic-netlisting | sky130 `sky130_tests/adder_16bit.sch` (buses and vector instances) | netlist | Bus and vector notation; Element line post-processing (vector expansion); Unnamed nets |
@@ -46,7 +48,7 @@ These cases will be captured later by running xschem `3.4.8RC` (`StefanSchippers
 | SCHEM-NL-16 | schematic-netlisting | `libA/inv.sym` and `libB/inv.sym` both used | netlist | Subcircuit definitions; Q-SCHEM-14 |
 | SCHEM-NL-17 | schematic-netlisting | `netlist_options.sym` with `bus_replacement_char=<>`, `top_is_subckt=true`; option `uppercase_subckt` | netlists | Netlist options; Bus and vector notation |
 | SCHEM-NL-18 | schematic-netlisting | five instances with distinct `device_model` texts plus one duplicate key | netlist (order of model lines) | Device models |
-| SCHEM-NL-19 | schematic-netlisting | `bus_tap` instances (xschem `xschem_library/examples` bus example) | netlist | Bus taps |
+| SCHEM-NL-19 | schematic-netlisting | Hefesto-authored bus schematic with `bus_tap` instances on a 4-bit and an 8-bit bus, taps of single bits and of a sub-range (replaces xschem's GPL `xschem_library/examples` bus example, J-1) | netlist | Bus taps |
 | SCHEM-NL-20 | schematic-netlisting | `inv.sch` netlisted as top with and without `inv.sym` present | netlist top line | Top-level port order |
 | SCHEM-NL-21 | schematic-netlisting | sky130 `top.sch` in flat mode (`-f`) | netlist; Hefesto compares electrically (LVS of flat vs hier) | Flat netlist; Q-SCHEM-15 |
 | SCHEM-NL-22 | schematic-netlisting | after netlisting SCHEM-NL-11 inputs, save the schematic | saved file (`lab=` on wires) | Net naming order; Q-SCHEM-29 |
