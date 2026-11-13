@@ -88,6 +88,8 @@ FAKE_MAGIC = """#!/bin/sh
 # Fake magic: report the D19 line for the input named by D19_IN, failing on names containing 'bad'.
 case "$D19_IN" in
   *bad*) echo "D19 $D19_IN read_ms=-1 write_ms=-1 tops=0 structures=0 status=read-error:x"; exit 0 ;;
+  *nowrite*) echo "Cell sub couldn't be read"; echo "D19 $D19_IN read_ms=1 write_ms=1 tops=1 structures=2 status=ok"
+             exit 0 ;;
 esac
 printf 'GDS' > "$D19_OUT"
 echo "D19 $D19_IN read_ms=1500 write_ms=250 tops=3 structures=40 status=ok"
@@ -133,6 +135,16 @@ class D19Driver(unittest.TestCase):
         code, report = self.run_set("bad.gds")
         self.assertEqual(code, 1)
         self.assertEqual(sorted(e["status"] for e in report["files"]), ["ok", "read-error:x"])
+
+    def test_an_empty_output_keeps_magics_messages(self):
+        # Regression: an "ok" report with no output file (run 43440833955, sky130_ef_io.gds) kept no Magic
+        # output, so the cause could not be read from the artifact.
+        code, report = self.run_set("nowrite.gds")
+        self.assertEqual(code, 1)
+        entry = next(e for e in report["files"] if e["file"] == "nowrite.gds")
+        self.assertEqual(entry["status"], "empty-output")
+        self.assertIn("Cell sub couldn't be read", entry["tail"])
+        self.assertNotIn("tail", next(e for e in report["files"] if e["status"] == "ok"))
 
 
 STUB_MAGIC_TCL = """

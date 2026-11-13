@@ -4,7 +4,9 @@
 
 The probe runs only in Magic (capture) and hefesto-cli (replay). Here its Tcl runs under a
 plain tclsh: the decoders on hand-built GDS and CIF files, and every case script against
-``fake_magic_useorder.tcl``, which stands in for the Magic commands. Skipped without tclsh.
+``fake_magic_useorder.tcl``, which stands in for the Magic commands. Skipped without a Tcl 8.6
+or later tclsh (the probe uses ``lmap``, as Magic's Tcl 8.6 in the capture image allows; macOS ships
+Tcl 8.5 as /usr/bin/tclsh).
 
 [cap:gds-write][req:Structure ordering]
 [cap:cif-format-io][req:CIF output symbol numbering and order]
@@ -27,7 +29,25 @@ sys.path.insert(0, str(GOLDEN / "authoring"))
 import tclcase  # noqa: E402
 import use_order_cases  # noqa: E402
 
-TCLSH = shutil.which("tclsh")
+
+
+def tcl86_shell() -> str | None:
+    """The first tclsh on PATH whose Tcl is 8.6 or later, or None."""
+    for name in ("tclsh8.6", "tclsh9.0", "tclsh"):
+        path = shutil.which(name)
+        if not path:
+            continue
+        try:
+            result = subprocess.run([path], input="puts [package vsatisfies [info patchlevel] 8.6-]\n",
+                                    capture_output=True, text=True, timeout=30, check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if result.stdout.strip() == "1":
+            return path
+    return None
+
+
+TCLSH = tcl86_shell()
 FAKE = Path(__file__).resolve().parent / "fake_magic_useorder.tcl"
 PROBE = use_order_cases.PROBE
 
@@ -66,7 +86,7 @@ def gds(*structures: bytes) -> bytes:
     return head + b"".join(structures) + rec(4, 0) + bytes(8)
 
 
-@unittest.skipIf(TCLSH is None, "tclsh not found")
+@unittest.skipIf(TCLSH is None, "no Tcl 8.6 or later tclsh found")
 class ProbeDecoderTest(unittest.TestCase):
     def decode(self, expression: str, name: str, content: bytes) -> str:
         with tempfile.TemporaryDirectory() as tmp:
@@ -99,7 +119,7 @@ class ProbeDecoderTest(unittest.TestCase):
         self.assertEqual(out, "1 ca {} 2 top {ca_1 #1 ca_0}")
 
 
-@unittest.skipIf(TCLSH is None, "tclsh not found")
+@unittest.skipIf(TCLSH is None, "no Tcl 8.6 or later tclsh found")
 class ProbeCaseRunTest(unittest.TestCase):
     """Every case script runs to its end under the fake Magic, which keeps uses newest first."""
 

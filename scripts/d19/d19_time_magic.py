@@ -70,9 +70,12 @@ def run_one(magic: str, gds: Path, tech_dir: Path, variant: str, timeout: int) -
         entry.update(read_ms=int(match[2]), write_ms=int(match[3]), tops=int(match[4]),
                      structures=int(match[5]), status=match[6])
     else:
-        entry.update(status="no-report", tail=output[-1500:])
+        entry["status"] = "no-report"
     if entry["status"] == "ok" and out_size == 0:
         entry["status"] = "empty-output"
+    if entry["status"] != "ok":
+        # Magic's own messages say why (an unreadable subcell, an aborted write, a Tcl error).
+        entry["tail"] = output[-4000:]
     return entry
 
 

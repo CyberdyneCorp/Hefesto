@@ -36,20 +36,21 @@ class Shard:
 
 
 # Timeouts: the job's fixed part (hefesto-cli build, data restore or fetch, image build; about 35 minutes
-# on a cold cache, sky130-gds alone fetches in about 13 minutes) plus Magic's read+write time of the shard's
-# files (task 1.1, scripts/d19/) times two for the margin. Until the D19 timing run of task 1.1 has
-# measured Magic, the values are provisional; tasks.md 1.6 records which ones are measured.
+# on a cold cache, sky130-gds alone fetches in about 13 minutes) plus twice Magic's read+write time of the
+# shard's files, rounded up. Magic's times are those of golden-capture run 43440833955 (task 1.1,
+# scripts/d19/): sky130 about 15 s, sky130-io 92 s, sky130-sram 972 s, gf180mcu 353 s, gf180mcu-io 142 s.
+# The ihp shards keep a provisional 120 minutes until their timing is measured (tasks.md 1.6).
 SHARDS = (
     Shard("sky130", "sky130", "sky130-gds",
           ("sky130_fd_pr", "sky130_fd_sc_hd", "sky130_fd_sc_hdll", "sky130_fd_sc_hs", "sky130_fd_sc_hvl",
-           "sky130_fd_sc_lp", "sky130_fd_sc_ls", "sky130_fd_sc_ms"), 120),
-    Shard("sky130-io", "sky130", "sky130-gds", ("sky130_fd_io",), 120),
-    Shard("sky130-sram", "sky130", "sky130-gds", ("sky130_sram_macros",), 120),
+           "sky130_fd_sc_lp", "sky130_fd_sc_ls", "sky130_fd_sc_ms"), 45),
+    Shard("sky130-io", "sky130", "sky130-gds", ("sky130_fd_io",), 45),
+    Shard("sky130-sram", "sky130", "sky130-gds", ("sky130_sram_macros",), 75),
     Shard("gf180mcu", "gf180mcu", "gf180mcu-gds",
           ("gf180mcu_as_sc_mcu7t3v3", "gf180mcu_fd_ip_sram", "gf180mcu_fd_pr", "gf180mcu_fd_sc_mcu7t5v0",
            "gf180mcu_fd_sc_mcu9t5v0", "gf180mcu_ocd_ip_sram", "gf180mcu_ocd_sc_rt12t3v3",
-           "gf180mcu_osu_sc_gp12t3v3", "gf180mcu_osu_sc_gp9t3v3", "gf180mcu_re_efuse"), 120),
-    Shard("gf180mcu-io", "gf180mcu", "gf180mcu-gds", ("gf180mcu_fd_io", "gf180mcu_ocd_io"), 120),
+           "gf180mcu_osu_sc_gp12t3v3", "gf180mcu_osu_sc_gp9t3v3", "gf180mcu_re_efuse"), 50),
+    Shard("gf180mcu-io", "gf180mcu", "gf180mcu-gds", ("gf180mcu_fd_io", "gf180mcu_ocd_io"), 45),
     Shard("ihp", "ihp", "ihp-gds", ("sg13g2_pr", "sg13g2_sram", "sg13g2_stdcell"), 120),
     Shard("ihp-io", "ihp", "ihp-gds", ("sg13g2_io",), 120),
 )
