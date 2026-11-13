@@ -658,21 +658,21 @@ User data does not change: `.mag` files are read and written as before.
 
 ## Open Questions
 
-These are product and scope decisions. Recommended answers come first, and the plan builds against them until the user decides.
+These are product and scope decisions. **Decided 2026-11-13: the user chose the recommended option (a) for all four.** The options are kept for the record.
 
-1. **Library round-trip scope and definition (exit criterion "every sky130, gf180mcu and IHP library GDS round-trips").**
+1. **Library round-trip scope and definition (exit criterion "every sky130, gf180mcu and IHP library GDS round-trips").** Decision: (a).
    - (a) *Recommended:* every library GDS in the three pinned releases, round-tripped as in D19 (read, wrapper with a pinned timestamp, `gds library yes`, write; equal to Magic's own read-and-write after `gds-mod-dates`; plus a non-gating, order-insensitive equivalence report of a second Hefesto read and write). The full corpus runs in a `gds-roundtrip` job on main, schedule, dispatch and PRs that touch GDS/mask/CIF paths. One standard-cell library per PDK replays on every CI leg. If task 1.1 finds the data over about 4 GB cached, the largest libraries (SRAM macros) are fetched in the job without caching.
    - (b) Only the standard-cell and primitive libraries (`sky130_fd_sc_hd`, `sky130_fd_pr`, `gf180mcu_fd_sc_mcu7t5v0`, `gf180mcu_fd_pr`, `sg13g2_stdcell`, `sg13g2_pr`) in CI. The other libraries run once, manually, at exit, with the results recorded.
    - (c) Compare against the source file's geometry (decoded polygon equivalence), not against Magic's output. This is cheaper to capture, but it does not prove byte identity.
-2. **GDS throughput gate.**
+2. **GDS throughput gate.** Decision: (a); task 14.5 amends `hefesto-performance`.
    - (a) *Recommended:* callgrind instructions per workload at or below Magic's count, then the baseline + 2 % once recorded, with wall time as information. This matches the user's DRC decision of 2026-11-12. `hefesto-performance` "Batch throughput relative to Magic" still says single-threaded wall time, and the DRC decision was recorded only in m3-drc design D16, so answering (a) also amends that requirement for DRC and GDS read/write and records the decision (task 14.5).
    - (b) The spec's single-threaded wall time against Magic on the same runner, as a hard gate. It is noisy across runner types.
    - (c) Record only, with no gate in M5.
-3. **Desktop scope for M5.**
+3. **Desktop scope for M5.** Decision: (a).
    - (a) *Recommended:* enable the GDS menu items and the `gds`/`cif` prompts with the file pickers and the existing progress and cancel patterns (D16), with no new board.
    - (b) Also add a GDS import/export dialog exposing the main `gds` options (readonly, flatten, merge, compress). DESIGN draws a board first.
    - (c) CLI and console only, with the menu items left disabled.
-4. **Seed-pinning setting (Q-SCRIPT-44, deferred to M5 with Q-MASK-211).**
+4. **Seed-pinning setting (Q-SCRIPT-44, deferred to M5 with Q-MASK-211).** Decision: (a), no setting.
    - (a) *Recommended:* no setting. With magic-compat OFF the full-dump prefix comes from a file-name hash, so output does not depend on the seed. With it ON, Magic's behavior is kept, and the golden harness runs `random seed 1`.
    - (b) A project setting `random-seed` applied after startup scripts, for reproducible ON-mode full dumps.
 

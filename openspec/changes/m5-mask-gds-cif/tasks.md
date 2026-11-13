@@ -7,7 +7,7 @@ How this plan runs:
 - Unit tests carry `[cap:<capability>][req:<exact requirement heading>]`. Requirements with a magic-compat dependence get one test per mode.
 - The last task of each capability workstream also runs `scripts/check_requirement_coverage.py --capability <cap>` (task 2.6) and verifies that every requirement of its capability is covered, or listed as deferred with a reason.
 - Every approved decision cited below is in `docs/decisions/m5-decision-table.md`.
-- Where a design Open Question is still open, the task builds against the recommended answer.
+- The design's four Open Questions were decided on 2026-11-13: option (a), the recommended one, for each.
 
 ## 1. PDK: library GDS data, the use-order probe and the round-trip capture job (first)
 
