@@ -58,7 +58,7 @@ Compatibility: behavioral
 
 ### Requirement: Non-recorded operations
 
-The system SHALL NOT record undo events for: reading cells from any file format (`.mag`, GDS, CIF, LEF, DEF), property changes, cell definition rename and delete, flattening (both into a new cell and in place), bounding-box recomputation and propagation, split-tile merging, and internal scratch-cell operations (DRC, extraction, mask generation, routing searches).
+The system SHALL NOT record undo events for: reading cells from any file format (`.mag`, GDS, CIF), property changes, cell definition rename and delete, flattening (both into a new cell and in place), bounding-box recomputation and propagation, split-tile merging, and internal scratch-cell operations (DRC, extraction, mask generation, routing searches).
 Compatibility: behavioral
 
 - Recording is suspended with a nesting counter: nested suspensions require the same number of resumptions.
@@ -66,6 +66,7 @@ Compatibility: behavioral
 - Flattening in place deletes the use without an undo record, so the deletion cannot be undone (see Q-MODEL-28).
 - This list applies as written while the `magic-compat` setting is ON (the default). With `magic-compat` OFF, property changes and flattening in place are recorded instead, as specified by requirement "Undoable property changes and flatten in place with magic-compat off" (decision D-10). Every other entry of the list stays non-recorded with either setting.
 - Hefesto's own compound operations record native events regardless of the setting (requirement "Native undo events for Hefesto compound operations").
+- `lef read` and `def read` are not in this list: each is one undoable step, in both settings (requirement "Undoable LEF and DEF reads").
 
 (Magic ref: utils/undo.c:408-436, database/DBio.c:838-841, calma/CalmaRead.c:211, database/DBcellname.c:167-173,326-357, commands/CmdFI.c:2116-2245, database/DBcellbox.c:705-735, database/DBpaint.c:1018-1035, database/DBundo.c:197-206)
 
@@ -73,6 +74,27 @@ Compatibility: behavioral
 - **GIVEN** an empty session
 - **WHEN** a cell is loaded from disk and `undo` is executed
 - **THEN** the cell SHALL remain loaded with its contents unchanged
+
+### Requirement: Undoable LEF and DEF reads
+
+The system SHALL record each `lef read` and each `def read` as one undoable step, on every platform and with either `magic-compat` setting (Q-LEFDEF-22, resolution: platform).
+Compatibility: native
+
+- The step covers everything the read changes: created cells, paint, uses, labels (including labels converted or erased by annotation) and the properties it sets (for example `FIXED_BBOX`), so one `undo` returns the session to its state before the read and `redo` re-applies it.
+- Magic disables undo for the whole read and prints "This action cannot be undone."; Hefesto SHALL NOT print that message. File content and the read result are the same as Magic's, so the setting does not affect the step.
+- The read's undo step is recorded even though property changes are otherwise not recorded with `magic-compat` ON (requirement "Non-recorded operations").
+
+(Magic ref: lef/lefRead.c:3018-3019, lef/lefRead.c:3203, lef/defRead.c:2550-2551, lef/defRead.c:2760)
+
+#### Scenario: Undo a DEF read
+- **GIVEN** an empty session and a DEF file `top.def` with `DESIGN top ;`, a die area, components and routing
+- **WHEN** `def read top` is run and then `undo` is executed once
+- **THEN** cell `top` and everything the read added SHALL be removed
+
+#### Scenario: Undo a LEF annotation
+- **GIVEN** cell `inv` exists with a port label `A`
+- **WHEN** `lef read inv.lef -annotate` adds port labels to `inv` and then `undo` is executed once
+- **THEN** `inv` SHALL have exactly the labels it had before the read
 
 ### Requirement: Undo and redo semantics
 

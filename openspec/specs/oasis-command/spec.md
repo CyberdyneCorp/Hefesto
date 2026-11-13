@@ -61,7 +61,7 @@ Compatibility: behavioral
 - **THEN** the current state (enabled, limit 5) is reported and nothing changes
 
 ### Requirement: Options shared with the gds command
-The `oasis` command SHALL accept every option of the `gds` command listed below, with the same value syntax and default. Each option's effect is defined by `oasis-read` or `oasis-write`:
+The `oasis` command SHALL accept every option of the `gds` command listed below, with the same value syntax and default. Each option's effect is defined by `oasis-read` or `oasis-write`. An option marked "shared with `gds`" is one setting with the `gds` option of the same name; every other option is a separate `oasis` setting (see "Settings shared with the gds command"):
 
 Compatibility: behavioral
 
@@ -73,28 +73,28 @@ Compatibility: behavioral
 | `contacts` | bool | no-op | write (accepted; `yes` reports "unimplemented") |
 | `datestamp` | `yes`, `no`, integer | `yes` | read (write: no effect, OASIS has no dates) |
 | `nodatestamp` | bool | `no` | read (alias of `datestamp no` / `yes`) |
-| `drccheck` | bool | `yes` | read |
-| `flatten` | bool or integer limit | `no`, limit 10 | read |
-| `flatglob` | pattern or `none` | `*_CDNS_*` | read |
+| `drccheck` | bool | `yes` | read; shared with `gds` |
+| `flatten` | bool or integer limit | `no`, limit 10 | read; shared with `gds` |
+| `flatglob` | pattern or `none` | `*_CDNS_*` | read; shared with `gds` |
 | `labels` | bool | `yes` | write |
 | `library` | bool | `no` | write |
 | `lower` | bool | `yes` | write |
 | `magscale` | float or `default` | 1.0 | accepted, no effect on OASIS (no text magnification) |
-| `maskhints` | bool or comma list of input layers | `no` | read |
+| `maskhints` | bool or comma list of input layers | `no` | read; shared with `gds` |
 | `merge` | bool | `no` | write |
-| `noduplicates` | bool | `no` | read |
-| `ordering` | bool | `off` | read |
-| `polygon subcells` | `none`/`temporary`/`keep`/bool | `none` | read |
-| `path subcells` | bool | `no` | read |
-| `readonly` | bool | `no` | read |
-| `rescale` | bool | `yes` | read (`no` also sets `warning limit`, as for `gds`) |
-| `savepaths` | bool | `no` | read |
+| `noduplicates` | bool | `no` | read; shared with `gds` |
+| `ordering` | bool | `off` | read; shared with `gds` |
+| `polygon subcells` | `none`/`temporary`/`keep`/bool | `none` | read; shared with `gds` |
+| `path subcells` | bool | `no` | read; shared with `gds` |
+| `readonly` | bool | `no` | read; shared with `gds` |
+| `rescale` | bool | `yes` | read; shared with `gds` (`no` also sets `warning limit`, as for `gds`) |
+| `savepaths` | bool | `no` | read; shared with `gds` |
 | `undefined` | allow/disallow | disallow | write |
-| `unique` | bool | `no` | read |
-| `warning` | `default`/`none`/`align`/`limit`/`redirect [file]` | `default` | read |
+| `unique` | bool | `no` | read; shared with `gds` |
+| `warning` | `default`/`none`/`align`/`limit`/`redirect [file]` | `default` | read; shared with `gds` |
 | `compress` | integer 0–9 | **6** (differs from `gds`) | write: CBLOCK DEFLATE level; 0 disables CBLOCKs |
 
-Values of `compress` outside 0–9 are rejected with an error, and the setting is kept, as for `gds`. OASIS output is never gzip-wrapped (see Q-OASIS-91).
+Values of `compress` outside 0–9 are rejected with an error, and the setting is kept, as for `gds`. OASIS output uses CBLOCK compression only and is never gzip-wrapped, in both modes (Q-OASIS-91, resolution: other). Reading a gzip-wrapped OASIS file stays supported, because other tools produce them.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: commands/CmdCD.c:97-125, commands/CmdCD.c:232-1008)
 
@@ -106,7 +106,7 @@ Values of `compress` outside 0–9 are rejected with an error, and the setting i
 #### Scenario: Rescale implies warning limit
 - **GIVEN** `oasis warning default`
 - **WHEN** `oasis rescale no` is issued
-- **THEN** the `oasis` warning level becomes `limit`
+- **THEN** the warning level, shared with `gds`, becomes `limit`
 
 ### Requirement: OASIS-only options
 The `oasis` command SHALL accept these additional options:
@@ -134,17 +134,37 @@ An out-of-range `circlepoints` is an argument error, and the setting is unchange
 - **WHEN** `oasis circlepoints 4` is issued
 - **THEN** an argument error is reported and the value stays 64
 
-### Requirement: Settings independent of the gds command
-The settings of the `oasis` command SHALL be stored separately from those of the `gds` command. Changing a `gds` option does not change the `oasis` option of the same name, and the reverse is also true. Both start from the defaults of their own tables. The input and output styles (`cif istyle`, `cif ostyle`) and the `cif` hierarchy options are shared, because they belong to the technology rather than to the file format. See Q-OASIS-90 for the alternative of shared settings.
+### Requirement: Settings shared with the gds command
+The read-side options that act only on reading SHALL be one setting shared by the `oasis` and `gds` commands: `drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning`. Setting one of them with either command changes it for both, and querying it with either command reports the same value, so a flow reads vendor data the same way whichever format it reads (Q-OASIS-90, resolution: other).
+
+All other settings of the `oasis` command SHALL be stored separately from those of the `gds` command, and each starts from the default of its own table: the write-side options `abstract`, `addendum`, `arrays`, `compress`, `contacts`, `labels`, `library`, `lower`, `merge` and `undefined`; `datestamp` and `nodatestamp`, which `gds` uses on both sides (a `gds datestamp` set for reproducible GDS output does not change OASIS cell timestamps); `magscale`, which has no effect on OASIS; and the OASIS-only options. Changing one of them with `gds` does not change the `oasis` value, and the reverse is also true. `help`, `read` and `write` are actions, not settings.
+
+The input and output styles (`cif istyle`, `cif ostyle`) and the `cif` hierarchy options are shared too, because they belong to the technology rather than to the file format.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-6)
+(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: commands/CmdCD.c:151-190)
 
-#### Scenario: Independent flatten setting
-- **GIVEN** `gds flatten yes` and no `oasis flatten` command issued
+#### Scenario: Shared readonly setting
+- **GIVEN** `gds readonly true` and no `oasis readonly` command issued
+- **WHEN** `oasis read cells.oas` is issued
+- **THEN** every cell read is read-only, with `OASIS_FILE` and `OASIS_CELL` set
+- **AND** `oasis readonly` reports `yes`
+
+#### Scenario: Shared flatten setting
+- **GIVEN** `oasis flatten no`
+- **WHEN** `gds flatten yes` is issued and then an OASIS file is read
+- **THEN** flattening is on for the OASIS read
+
+#### Scenario: Independent datestamp setting
+- **GIVEN** `gds datestamp 1700000000` and no `oasis datestamp` command issued
 - **WHEN** an OASIS file is read
-- **THEN** flattening is off for the OASIS read
+- **THEN** every cell read has timestamp 0 and is not fixed-stamp
+
+#### Scenario: Independent compression setting
+- **GIVEN** default settings
+- **WHEN** `gds compress 9` is issued
+- **THEN** `oasis compress` still reports `6`
 
 ### Requirement: Format recognition on open
 When a layout file is opened by any means other than the `gds` or `oasis` commands (the platform document picker, drag and drop, an iPadOS Files "Open in" request, or the scripting API's generic open), Hefesto SHALL recognise OASIS by its first 13 bytes `%SEMI-OASIS\r\n`, after gzip decompression if the file is gzip-wrapped, whatever its extension. It SHALL then read the file with `oasis read` semantics and the current `oasis` settings. A file that is neither OASIS, GDS nor a Hefesto/Magic cell file is reported as an unknown format.

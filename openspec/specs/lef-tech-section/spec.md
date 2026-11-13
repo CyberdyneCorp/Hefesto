@@ -161,23 +161,38 @@ Compatibility: exact
 
 ### Requirement: Filling defaults after grid scaling
 
-When the technology is loaded with an internal grid that is not 1:1 with lambda (internal units per lambda = n/d with (n, d) ≠ (1, 1)), after the LEF table has been scaled by n/d (see "Scaling the LEF table") the system SHALL fill sentinels as follows, for every entry:
+Route width and spacing and the contact area of a contact-flavor VIA entry SHALL be filled from the DRC defaults according to the `magic-compat` setting (Q-LEFDEF-1, resolution: compat; Q-LEFDEF-2, resolution: compat). Hefesto keeps an "unset" flag on these values instead of a numeric sentinel; the sentinel values below describe what Magic stores and are reproduced with `magic-compat` ON.
+
+With `magic-compat` ON (the default), as in Magic: when the technology is loaded with an internal grid that is not 1:1 with lambda (internal units per lambda = n/d with (n, d) ≠ (1, 1)), after the LEF table has been scaled by n/d (see "Scaling the LEF table") the system SHALL fill sentinels as follows, for every entry:
 - VIA class: if all four contact-area coordinates equal exactly -1, the area SHALL become (-w, -w, w, w) where w is the default DRC width of the entry's normal type (now in internal units); the stored area is in half units, so the contact square has side w internal units.
-- ROUTE class: if the width equals exactly -1, the width SHALL become the default DRC width of the entry's normal type; if the spacing equals exactly -1, the width (not the spacing) SHALL be overwritten with the default DRC spacing of the type to itself, and the spacing SHALL remain -1. See Q-LEFDEF-2.
-When the grid is 1:1 this fill step SHALL NOT run, so the sentinels remain. Because scaling is applied before the fill, a sentinel -1 multiplied by n/d with integer arithmetic generally no longer equals -1, and in that case it is not filled either. See Q-LEFDEF-1.
+- ROUTE class: if the width equals exactly -1, the width SHALL become the default DRC width of the entry's normal type; if the spacing equals exactly -1, the width (not the spacing) SHALL be overwritten with the default DRC spacing of the type to itself, and the spacing SHALL remain -1.
+
+When the grid is 1:1 this fill step SHALL NOT run, so the sentinels remain. Scaling truncates toward zero for route values and floors for contact areas, and is applied before the fill. A route sentinel -1 therefore stays -1 (and is filled) for d < n < 2d, becomes -2 or less for n ≥ 2d and 0 for n < d, and in those two cases is not filled. A contact-area sentinel stays -1 and is filled only for n < d. Because the spacing is still -1 at the fill only for d < n < 2d, the width overwrite by the default spacing occurs only for those grid ratios. `scalegrid` and the rescaling done to read CIF or a finer-grid file SHALL NOT refill. An unfilled contact-flavor entry behaves like a `cut` entry (no cut resizing on read).
+
+With `magic-compat` OFF: after every tech load and every grid change (`scalegrid` included), an unset route width SHALL become the default DRC width of the entry's normal type, an unset route spacing SHALL become the default DRC spacing of the type to itself (the width keeps its own default), and an unset contact area SHALL become (-w, -w, w, w) as above, whatever the grid ratio.
+
+In both modes, `def read` replaces a non-positive layer width by the DRC default width (capability `def-read`).
 Compatibility: exact
 
-(Magic ref: lef/lefTech.c:477-516, utils/tech.c:817-830)
+(Magic ref: lef/lefTech.c:340-366, 416-462, 477-516, utils/tech.c:817-830, commands/CmdRS.c:339)
 
 #### Scenario: 1:1 grid keeps sentinels
 - **GIVEN** a technology with a 1:1 internal grid and a DRC width rule of 3 for `m1`
 - **WHEN** the line `routing m1 metal1` is processed and the tech load completes
-- **THEN** the entry for `metal1` has width -1 and spacing -1 (unless a LEF LAYER section later sets them)
+- **THEN** with `magic-compat` ON the entry for `metal1` has width -1 and spacing -1 (unless a LEF LAYER section later sets them)
+- **AND** with `magic-compat` OFF the width is 3 and the spacing is the DRC default spacing of `m1` to itself
 
 #### Scenario: Grid 2:1 leaves scaled sentinel (verify against Magic)
 - **GIVEN** a technology whose internal grid is 2 units per lambda and a DRC width rule for `m1`
 - **WHEN** the tech load completes
-- **THEN** the `metal1` width is -2 (scaled sentinel) and is not replaced by the DRC width
+- **THEN** with `magic-compat` ON the `metal1` width is -2 (scaled sentinel) and is not replaced by the DRC width
+- **AND** with `magic-compat` OFF the width is the DRC default width of `m1`
+
+#### Scenario: Grid 3:2 fills the route width with the default spacing
+- **GIVEN** a technology whose internal grid is 3 units per 2 lambda, the line `routing m1 metal1`, and DRC default width 3 and default spacing 4 for `m1` after scaling
+- **WHEN** the tech load completes
+- **THEN** with `magic-compat` ON the scaled sentinels stay -1, the width becomes 3 and is then overwritten by 4, and the spacing stays -1
+- **AND** with `magic-compat` OFF the width is 3 and the spacing is 4
 
 #### Scenario: Grid 1:2 fills the contact area
 - **GIVEN** a grid of 1 internal unit per 2 lambda, a `contact pc cont1` line, and a default DRC width of 2 (internal units) for `pc` after scaling

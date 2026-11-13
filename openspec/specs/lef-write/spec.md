@@ -263,11 +263,11 @@ The LEF database-unit value `U` SHALL be computed whenever a library header is w
 2. If the output style declares angstrom units, set `U = 10000`.
 3. If the style's grid limit is 1, 5 or 10, divide `U` by it, using integer division.
 
-So `U` is one of 100, 200, 1000, 2000 or 10000. `U` persists for the session and is used by number formatting until the next header is written. Before any header is written, `U = 1000`. See Q-LEFDEF-34.
+So `U` is one of 100, 200, 1000, 2000 or 10000. When `U` is computed depends on the `magic-compat` setting (Q-LEFDEF-34, resolution: compat). With it ON (the default), as in Magic, `U` persists for the session and is used by number formatting until the next header is written; before any header is written, `U = 1000`. With it OFF, `U` SHALL be recomputed by the steps above from the current output style at the start of every write, whether or not a header is written.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:66, lef/lefWrite.c:274-292, cif/CIFmain.c:139-146)
+(Magic ref: lef/lefWrite.c:66, lef/lefWrite.c:274-292, lef/lefCmd.c:442-443, cif/CIFmain.c:139-146)
 
 #### Scenario: Nanometre style with grid limit 5
 - **GIVEN** an output style in nanometres with grid limit 5
@@ -278,6 +278,12 @@ Compatibility: exact
 - **GIVEN** an output style in angstroms with no grid limit
 - **WHEN** a header is written
 - **THEN** `U` SHALL be 10000
+
+#### Scenario: Units for a header-less write
+- **GIVEN** an output style in angstroms, no header written yet in the session, and a selected subcell that is not the edit root
+- **WHEN** `lef write` writes it (no header)
+- **THEN** with `magic-compat` ON distances are formatted with `U = 1000`
+- **AND** with `magic-compat` OFF they are formatted with `U = 10000`
 
 ### Requirement: Distance number formatting
 
@@ -301,13 +307,13 @@ The format `fmt` depends on `U`:
 | 20000 | `%.5f` |
 | any other value | `%.5f`, with `U` replaced by 100000 |
 
-This is round-half-away-from-zero to the `1/U` grid, applied in float32. Values that are exactly 0 SHALL print without a minus sign; the ORIGIN line computes `0.0 - x`, which yields `+0.0` for `x = 0`. A value in `(-1/(2U), 0)` would print as `-0.000`; see Q-LEFDEF-45.
+This is round-half-away-from-zero to the `1/U` grid, applied in float32. Values that are exactly 0 SHALL print without a minus sign; the ORIGIN line computes `0.0 - x`, which yields `+0.0` for `x = 0`. A value in `(-1/(2U), 0)` SHALL print as `-0.000`, in both modes (Q-LEFDEF-45, resolution: replicate); every LEF parser reads it as 0. In the default case (`U` replaced by 100000) the product `v * 100000. + r` is computed in double, narrowed to float32 for `truncf`, divided by 100000. in double and cast back to float32, as in Magic.
 
 Antenna areas, technology LAYER values and CUT AREA are NOT passed through this rounding. They SHALL be printed with `%f`, which gives six decimals.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:90-127)
+(Magic ref: lef/lefWrite.c:89-127)
 
 #### Scenario: Three decimals
 - **GIVEN** `U = 1000` and `oscale = 0.005`
@@ -384,7 +390,7 @@ Notes on the grammar:
 
 - No blank line separates consecutive macros, or the header from the first macro, unless a header block that ends in a blank line comes before it.
 - `NAMESCASESENSITIVE` SHALL NOT be written.
-- The empty alternatives of `dir` and `use` are explained in Q-LEFDEF-36.
+- The empty alternatives of `dir` and `use` are written only with `magic-compat` ON (Q-LEFDEF-36, resolution: compat; see Requirement "Pin header records").
 
 Annotated example. The setup is: `oscale = 0.01`, `U = 1000`, the edit-root cell `inv`, no `-tech`, an extraction style with no gate connection to the pins, and these properties:
 
@@ -443,11 +449,11 @@ Compatibility: exact
 
 ### Requirement: Single-cell file layout
 
-`lef write` SHALL write a library header only when the target cell is the current edit root cell. If it is not, for example when a sub-instance is selected, the file SHALL contain only the MACRO and the `END LIBRARY` trailer, with no `VERSION` line. In that case `U` is not recomputed. For a single-cell header, PROPERTYDEFINITIONS and SITE blocks SHALL be derived from that one cell only. See Q-LEFDEF-34.
+`lef write` SHALL write a library header only when the target cell is the current edit root cell. If it is not, for example when a sub-instance is selected, the file SHALL contain only the MACRO and the `END LIBRARY` trailer, with no `VERSION` line. The header rule is the same in both modes. In that case `U` is not recomputed with `magic-compat` ON and is recomputed with it OFF (Q-LEFDEF-34, resolution: compat; Requirement "Output scale and LEF database units"). For a single-cell header, PROPERTYDEFINITIONS and SITE blocks SHALL be derived from that one cell only.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:2384-2399, lef/lefCmd.c:430-433)
+(Magic ref: lef/lefWrite.c:2384-2399, lef/lefCmd.c:442-443)
 
 #### Scenario: Selected subcell
 - **GIVEN** edit root `top`, and a selected instance of `inv`
@@ -498,17 +504,24 @@ For each distinct `LEFsite` property value among the cells in the write set, the
 - `END <name>`
 - an empty line
 
-If the site cell has the fixed-bounding-box flag, the box SHALL instead come from the `FIXED_BBOX` property of the cell *being written*, not the site cell, provided that property exists as four integers. See Q-LEFDEF-33. Values with no cell of that name SHALL be skipped silently. SITE blocks SHALL appear in the iteration order of the site Magic string hash table (capability `hefesto-output-determinism`), reproduced exactly under decision X-1.
+If the site cell has the fixed-bounding-box flag, the box depends on the `magic-compat` setting (Q-LEFDEF-33, resolution: compat). With it ON (the default), as in Magic, the box SHALL come from the `FIXED_BBOX` property of the cell *being written*, not the site cell, provided that property exists as four integers; otherwise the site cell's bounding box is used. With it OFF, the box SHALL come from the site cell's own `FIXED_BBOX` property, falling back to its bounding box. Values with no cell of that name SHALL be skipped silently. SITE blocks SHALL appear in the iteration order of the site Magic string hash table (capability `hefesto-output-determinism`), reproduced exactly under decision X-1.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:315-370, lef/lefWrite.c:2109-2125)
+(Magic ref: lef/lefWrite.c:315-370, lef/lefWrite.c:345-362, lef/lefWrite.c:2109-2125)
 
 #### Scenario: Site from LEF-read site cell
 - **GIVEN** a site cell `unit` of size 46x272 internal units with no properties, `oscale = 0.005`, and `U = 1000`
 - **AND** cell `inv` with `LEFsite = unit`
 - **WHEN** `inv` is written as the edit root
 - **THEN** the header SHALL contain `SITE unit`, `  SYMMETRY Y ;`, `  CLASS CORE ;`, `  SIZE 0.230 BY 1.360 ;`, `END unit` and an empty line
+
+#### Scenario: Site cell with a fixed bounding box
+- **GIVEN** a site cell `unit` with the fixed-bounding-box flag and `FIXED_BBOX 0 0 46 272`, `oscale = 0.005`, `U = 1000`
+- **AND** the edit-root cell `inv` with `LEFsite = unit` and `FIXED_BBOX 0 0 460 272`
+- **WHEN** `inv` is written
+- **THEN** with `magic-compat` ON the SITE line is `  SIZE 2.300 BY 1.360 ;`
+- **AND** with `magic-compat` OFF it is `  SIZE 0.230 BY 1.360 ;`
 
 ### Requirement: Technology layers
 
@@ -522,21 +535,33 @@ The remaining records SHALL be written as follows:
 
 | Record class | Lines written |
 |---|---|
-| cut/contact | `  TYPE CUT ;`, plus `  CUT AREA %f ;` when the stored cut rectangle area `A` (internal units squared) is positive. The value is `float(A) * oscale * oscale`. |
+| cut/contact | `  TYPE CUT ;`, then, by the `magic-compat` setting (Q-LEFDEF-32, resolution: compat): with it ON (the default), `  CUT AREA %f ;` when the stored contact area `A` is positive, as in Magic. `A` is the product of the stored side lengths in half internal units, so it is 4 times the cut area in internal units squared, and the value is `float(A) * oscale * oscale`. `CUT AREA` is not a LEF 5.8 statement. With it OFF, `  WIDTH %f ;` with the value `side * oscale`, where side = (xtop − xbot)/2 internal units, when the stored area is a non-null square, and nothing otherwise. |
 | route | `  TYPE ROUTING ;`, then `  PITCH %f ;` if pitch > 0, `  WIDTH %f ;` if width > 0, `  SPACING %f ;` if spacing > 0 (each value times `oscale`), then `  DIRECTION HORIZONTAL ;` or `  DIRECTION VERTICAL ;` if width > 0 |
 | masterslice | `  TYPE MASTERSLICE ;` |
 | overlap | `  TYPE OVERLAP ;` |
 
-Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order SHALL be the layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`), reproduced exactly under decision X-1; see Q-LEFDEF-30. With default initialization, the written WIDTH equals the DRC default spacing and no SPACING line appears; see Q-LEFDEF-31. The CUT AREA default is discussed in Q-LEFDEF-32.
+Pitch, width, spacing, direction and the cut rectangle are the values held in the layer record, initialized by the tech file and possibly updated by `lef read` (see capabilities `lef-tech-section` and `lef-read`). The block order SHALL be the layer-table enumeration order (Requirement "Table enumeration order" of capability `def-write`), reproduced exactly under decision X-1; see Q-LEFDEF-30. The route values written follow the fill rules of capability `lef-tech-section` (Requirement "Filling defaults after grid scaling"; Q-LEFDEF-1 and Q-LEFDEF-31, resolution: compat). With `magic-compat` ON (the default) the writer prints what Magic stores: on a 1:1 grid an unset route writes no WIDTH, SPACING or DIRECTION line, and for grid ratios d < n < 2d an unset route writes `WIDTH <DRC default spacing>`, no SPACING, and the DIRECTION line. With it OFF, unset values are filled from the DRC defaults, so the route writes the default width, the default spacing and the DIRECTION line.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:374-497, lef/lefTech.c:325-370, lef/lefTech.c:478-516)
+(Magic ref: lef/lefWrite.c:374-497, lef/lefWrite.c:410-432, lef/lefTech.c:325-370, lef/lefTech.c:478-516)
 
 #### Scenario: Route layer block (verify against Magic)
-- **GIVEN** route record `met1`, with width 14, spacing -1, pitch 0, horizontal direction, and `oscale = 0.01`
+- **GIVEN** `magic-compat` ON, route record `met1`, with width 14, spacing -1 (unset), pitch 0, horizontal direction, and `oscale = 0.01`
 - **WHEN** `-tech` output is written
 - **THEN** the block SHALL be `LAYER met1`, `  TYPE ROUTING ;`, `  WIDTH 0.140000 ;`, `  DIRECTION HORIZONTAL ;`, `END met1` and an empty line
+
+#### Scenario: Unset route on a 1:1 grid
+- **GIVEN** a 1:1 grid, the tech line `routing m1 met1` with no LEF LAYER section read, DRC default width 14 and default spacing 14 for `m1`, and `oscale = 0.01`
+- **WHEN** `-tech` output is written
+- **THEN** with `magic-compat` ON the block is `LAYER met1`, `  TYPE ROUTING ;`, `END met1`
+- **AND** with `magic-compat` OFF it also has `  WIDTH 0.140000 ;`, `  SPACING 0.140000 ;` and a DIRECTION line
+
+#### Scenario: Filled contact-flavor cut
+- **GIVEN** a contact entry `cont1` whose contact area was filled to (−2,−2,2,2) half units (a 2 x 2 internal-unit cut) and `oscale = 0.1`
+- **WHEN** `-tech` output is written
+- **THEN** with `magic-compat` ON the block contains `  CUT AREA 0.160000 ;`
+- **AND** with `magic-compat` OFF it contains `  WIDTH 0.200000 ;` instead
 
 #### Scenario: Obstruction-only name skipped
 - **GIVEN** a tech line `obstruction m1obs met1obs` with no route mapping for `met1obs`
@@ -651,9 +676,9 @@ A port label is a label of the cell that has at least one port direction bit set
 1. Process each not-yet-visited port label with index `i`, in the cell's label-list order. Each processed label is marked visited and contributes zero or one PORT block.
 2. All labels with index `i` SHALL belong to one PIN, whatever their text. The PIN header uses the text of the first label that produces geometry.
 3. The closing line SHALL be `  END <text of the first label with index i>`.
-4. If a later label with index `i` has a different text, the system SHALL print `Index <i> is used for ports "<first>" and "<other>"` once for each such label. No separate PIN is written for it; see Q-LEFDEF-50.
+4. If a later label with index `i` has a different text, the system SHALL print `Index <i> is used for ports "<first>" and "<other>"` once for each such label. No separate PIN is written for it, in both modes (Q-LEFDEF-50, resolution: replicate): a shared index is one electrical port, as in Hefesto's DEF and netlist writers. Magic also decrements its index counter once per such label and re-scans, which has no effect on the output.
 5. Indices with no label SHALL be skipped.
-6. A port index whose labels produce no writable geometry SHALL produce no PIN record at all; see Q-LEFDEF-46.
+6. A port index whose labels produce no writable geometry SHALL produce no PIN record at all, as in Magic, and the system SHALL report a warning naming the dropped port and its index (Q-LEFDEF-46, resolution: replicate; the output file is the same in both modes).
 
 A label with index `i` that is processed after another label of the same index SHALL produce no PORT if routing geometry already yanked for this pin covers that label's rectangle on the label's plane. Coverage is checked against the label's type, plus every contact type having it as a residue when the label is sticky. Under `-toplayer`, coverage is also checked against the selected net.
 
@@ -661,7 +686,7 @@ Visited marks SHALL be cleared after the macro is written.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:1400-1440, lef/lefWrite.c:1738-1820)
+(Magic ref: lef/lefWrite.c:1400-1440, lef/lefWrite.c:1418-1460, lef/lefWrite.c:1689-1709, lef/lefWrite.c:1738-1820)
 
 #### Scenario: Port order by index
 - **GIVEN** labels in list order `Y` (index 1), `A` (index 0) and `VDD` (index 2)
@@ -683,7 +708,7 @@ Compatibility: exact
 The PIN header SHALL be written immediately before the first geometry record of the pin. Its lines SHALL be, in order:
 
 - `  PIN <label text>`, verbatim.
-- `    DIRECTION <d> ;`, if the label's port class is not default:
+- `    DIRECTION <d> ;`, if the label's port class is not default. For the undefined class codes 0x60 and 0x70 the line depends on the `magic-compat` setting (Q-LEFDEF-36, resolution: compat): with it ON (the default) it is `    DIRECTION  ;`, as in Magic; with it OFF no DIRECTION line is written.
 
   | Port class | `<d>` |
   |---|---|
@@ -703,7 +728,7 @@ The PIN header SHALL be written immediately before the first geometry record of 
   | ground | `GROUND` |
   | clock | `CLOCK` |
 
-  For the uses reset, scan and tie-off, the line is `    USE  ;`; see Q-LEFDEF-36.
+  For the uses reset, scan and tie-off, the line depends on the `magic-compat` setting (Q-LEFDEF-36, resolution: compat): with it ON (the default) it is `    USE  ;`, as in Magic (not legal LEF); with it OFF it is `    USE SIGNAL ;`, because LEF 5.8 has no such uses and all three are digital signals.
 - If the use is default, the power-name rule from "Power and ground pin detection" applies instead.
 - `    SHAPE <s> ;`, if the port shape is not default:
 
@@ -717,7 +742,7 @@ The PIN header SHALL be written immediately before the first geometry record of 
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:1028-1129, lef/lefWrite.c:1693-1709)
+(Magic ref: lef/lefWrite.c:1028-1129, lef/lefWrite.c:1035-1081, lef/lefWrite.c:1693-1709)
 
 #### Scenario: Tristate output clock
 - **GIVEN** a label `Z` with class tristate, use clock and shape ring
@@ -727,7 +752,8 @@ Compatibility: exact
 #### Scenario: Reset use
 - **GIVEN** a label `RN` with use reset
 - **WHEN** it is written
-- **THEN** the line `    USE  ;` SHALL be written, with two spaces before the semicolon
+- **THEN** with `magic-compat` ON the line `    USE  ;` SHALL be written, with two spaces before the semicolon
+- **AND** with `magic-compat` OFF the line `    USE SIGNAL ;` SHALL be written
 
 ### Requirement: Power and ground pin detection
 
@@ -829,16 +855,22 @@ When `-hide` is active with setback 0, each processed port label's pin geometry 
 - If no such chunk exists, `C` is the largest such chunk of the first type, in type-number order, that connects to the label's type. In that case the chunk is also selected on its own type, minus the area inside `B` shrunk by `p` when `p > 0`.
 - If no chunk exists on any connected type, `C` is the label rectangle.
 
-`C` SHALL be painted with the label's type into the pin selection, and remembered for the obstruction cut-out. The net is still selected for antenna computation unless the label is ignored. Only the pin geometry is removed from the flat copy. See Q-LEFDEF-51.
+What is painted depends on the `magic-compat` setting (Q-LEFDEF-51, resolution: compat). With it ON (the default), as in Magic, `C` SHALL be painted with the label's type into the pin selection, and remembered for the obstruction cut-out; a removal of `B` shrunk by `p` survives only where the chunk lies on a different connected type. With it OFF, when `p > 0`, the area `C` minus `B` shrunk by `p`, united with the label rectangle, SHALL be painted with the label's type and remembered for the cut-out instead, so `-hide -pinonly p` limits pins to within `p` of the boundary, as `-pinonly p` does without `-hide`. With `p = 0` or without `-pinonly` the two modes are identical. The net is still selected for antenna computation unless the label is ignored. Only the pin geometry is removed from the flat copy.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:1539-1602)
+(Magic ref: lef/lefWrite.c:1539-1602, lef/lefWrite.c:1575-1590)
 
 #### Scenario: Chunk pin
 - **GIVEN** label `A` (10,50)-(30,60) on metal1 that forms an L shape: (10,20)-(30,180) united with (30,20)-(80,40)
 - **WHEN** the user runs `lef write -hide`
 - **THEN** the pin SHALL be the single metal1 rectangle (10,20)-(30,180), the largest rectangle containing the label
+
+#### Scenario: Chunk pin limited by -pinonly
+- **GIVEN** `B` = (0,0)-(100,200), and label `A` (40,40)-(60,50) on a metal1 strip (40,0)-(60,100)
+- **WHEN** the user runs `lef write -hide -pinonly 10`
+- **THEN** with `magic-compat` ON the pin SHALL be metal1 (40,0)-(60,100)
+- **AND** with `magic-compat` OFF the pin SHALL be metal1 (40,0)-(60,10) plus the label area (40,40)-(60,50)
 
 ### Requirement: Hidden-detail pin geometry with positive setback
 
@@ -846,23 +878,29 @@ When `-hide d` is active with `d > 0`, the system SHALL:
 
 1. Select the whole net.
 2. Remove from the selection all material inside `B` shrunk by `d`.
-3. If `p > d`, also remove all material inside `B` shrunk by `p`. This has no further effect; see Q-LEFDEF-37.
+3. By the `magic-compat` setting (Q-LEFDEF-37, resolution: compat): with it ON (the default), as in Magic, if `p > d`, also remove all material inside `B` shrunk by `p`; this has no further effect, so `-pinonly` has no effect under `-hide d`. With it OFF, if `-pinonly` is active and `p < d` (including `p = 0`), also remove all material inside `B` shrunk by `p`, so the pin is the label plus the net within `p` of the boundary, as without `-hide`. When `p >= d` the setback already limits the pin, in both modes.
 4. Paint the label's type over the label rectangle.
 
 The result is the pin geometry. No cut-out areas are recorded for this mode.
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:1603-1630)
+(Magic ref: lef/lefWrite.c:1603-1630, lef/lefWrite.c:1608-1619)
 
 #### Scenario: Edge pin with setback
 - **GIVEN** `B` = (0,0)-(100,200), `d = 10`, and label `A` (40,0)-(60,10) on metal1 (40,0)-(60,100)
 - **WHEN** the user runs `lef write -hide 10`
 - **THEN** the pin SHALL be metal1 (40,0)-(60,10)
 
+#### Scenario: -pinonly smaller than the setback
+- **GIVEN** `B` = (0,0)-(100,200), and label `A` (40,40)-(60,50) on a metal1 strip (40,0)-(60,100)
+- **WHEN** the user runs `lef write -hide 20 -pinonly 10`
+- **THEN** with `magic-compat` ON the pin SHALL be metal1 (40,0)-(60,20) plus the label area (40,40)-(60,50)
+- **AND** with `magic-compat` OFF the pin SHALL be metal1 (40,0)-(60,10) plus the label area (40,40)-(60,50)
+
 ### Requirement: Degenerate setback
 
-If `d > 0` and either `bxh - bxl < 2d` or `byh - byl < 2d`, the setback SHALL be treated as -1. No hiding is performed, and `-hide` has no effect for that macro. See Q-LEFDEF-47.
+If `d > 0` and either `bxh - bxl < 2d` or `byh - byl < 2d`, the setback SHALL be treated as -1. No hiding is performed, and `-hide` has no effect for that macro, as Magic intends. In both modes the system SHALL also report a warning naming the macro, the setback and the boundary size (Q-LEFDEF-47, resolution: replicate; the output does not change).
 
 Compatibility: exact
 
@@ -872,6 +910,7 @@ Compatibility: exact
 - **GIVEN** `B` = (0,0)-(100,200)
 - **WHEN** the user runs `lef write -hide 60`
 - **THEN** the output SHALL be identical to `lef write`
+- **AND** a warning naming the macro, the setback 60 and the boundary size SHALL be reported
 
 ### Requirement: Top-layer pins
 
@@ -910,12 +949,12 @@ For each tile written:
   | lower-left | (L,T) (R,B) (L,B) |
   | upper-left | (L,T) (R,T) (L,B) |
 
-- If both halves of one split tile qualify, only the first half enumerated (the left half) SHALL be written; see Q-LEFDEF-39.
+- If both halves of one split tile qualify, the result depends on the `magic-compat` setting (Q-LEFDEF-39, resolution: compat): with it ON (the default) only the first half enumerated (the left half) SHALL be written, as in Magic, because the tile is marked visited before its side is examined; with it OFF both halves SHALL be written as separate POLYGONs, left half first. This needs both halves to be routing types.
 - Coordinates SHALL be written as `oscale * coordinate`, relative to the cell origin, formatted per "Distance number formatting".
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:655-745, lef/lefWrite.c:816-958, lef/lefWrite.c:1672-1711)
+(Magic ref: lef/lefWrite.c:655-745, lef/lefWrite.c:816-958, lef/lefWrite.c:828-849, lef/lefWrite.c:484-492, lef/lefWrite.c:1672-1711)
 
 #### Scenario: L-shape decomposition
 - **GIVEN** pin metal1 forming the union of (0,0)-(30,10) and (0,10)-(10,40), with `oscale = 0.01`
@@ -935,7 +974,7 @@ After the routing round on plane `p`, the system SHALL write the cut round:
 1. Each selected non-split contact tile whose contact type has its home plane on `p` and has a LEF name is copied into the scratch plane. For a stacked contact type, the component contact whose home plane is `p` is copied instead.
 2. Contact tiles of the scratch plane SHALL then be written as RECT (with LAYER changes) under the contact's LEF cut-layer name.
 
-Routing tiles left over from the routing round SHALL NOT be written again. Each record covers the whole magic contact area, not individual cut squares; see Q-LEFDEF-52.
+Routing tiles left over from the routing round SHALL NOT be written again. Each record covers the whole magic contact area, not individual cut squares, in both modes (Q-LEFDEF-52, resolution: replicate), as Magic intends.
 
 Compatibility: exact
 
@@ -1020,7 +1059,7 @@ Compatibility: exact
 When `-hide d` is active with `d > 0` after the degenerate check, the obstruction SHALL be generated as follows:
 
 1. Build the cover as in "Obstructions with zero setback" step 2, but clip `Lb` to `B` shrunk by `d`. There are no cut-outs.
-2. Copy into the scratch cell every remaining flat-copy tile in the routing set that overlaps one of the four setback strips. The whole tile is copied, unclipped; see Q-LEFDEF-38. The strips, where `bb` is the cell's bounding box, are:
+2. Copy into the scratch cell every remaining flat-copy tile in the routing set that overlaps one of the four setback strips. By the `magic-compat` setting (Q-LEFDEF-38, resolution: compat): with it ON (the default) the whole tile is copied, unclipped, as in Magic; with it OFF each tile is clipped to the strip it overlaps, so the obstruction ring is exactly the area within `d` of the boundary. The strips, where `bb` is the cell's bounding box, are:
    - `[bb.xl, bb.xh) x [bb.yl, byl+d)`
    - `[bb.xl, bb.xh) x [byh-d, bb.yh)`
    - `[bb.xl, bxl+d) x [byl+d, byh-d)`
@@ -1030,13 +1069,19 @@ When `-hide d` is active with `d > 0` after the degenerate check, the obstructio
 
 Compatibility: exact
 
-(Magic ref: lef/lefWrite.c:1874-1957, lef/lefWrite.c:1990-2030)
+(Magic ref: lef/lefWrite.c:1874-1957, lef/lefWrite.c:1919-1954, lef/lefWrite.c:655-731, lef/lefWrite.c:1990-2030)
 
 #### Scenario: Periphery detail kept
 - **GIVEN** `B` = (0,0)-(100,200), `d = 10`, and a metal1 rectangle (2,2)-(8,8) with no label
 - **WHEN** the user runs `lef write -hide 10`
 - **THEN** OBS SHALL contain the metal1 rectangle (2,2)-(8,8)
 - **AND** the metal1 cover SHALL lie within (10,10)-(90,190)
+
+#### Scenario: Tile crossing a setback strip
+- **GIVEN** `B` = (0,0)-(100,200), `d = 10`, and an isolated metal1 rectangle (2,40)-(50,60) with no label, a single tile
+- **WHEN** the user runs `lef write -hide 10`
+- **THEN** with `magic-compat` ON the tile copied for the setback strips SHALL be (2,40)-(50,60)
+- **AND** with `magic-compat` OFF it SHALL be clipped to (2,40)-(10,60)
 
 ### Requirement: Macro PROPERTY lines
 
@@ -1058,7 +1103,7 @@ Compatibility: exact
 
 ### Requirement: Names written verbatim
 
-Macro names, pin names, FOREIGN names, LEF layer names and property strings SHALL be written exactly as stored, with no escaping or character substitution. Characters such as `#`, `;`, spaces, `-`, `*` and `$` are not replaced. See Q-LEFDEF-35.
+Macro names, pin names, FOREIGN names, LEF layer names and property strings SHALL be written exactly as stored, with no escaping or character substitution. Characters such as `#`, `;`, spaces, `-`, `*` and `$` are not replaced, in both modes (Q-LEFDEF-35, resolution: replicate); renaming only in LEF would break name matching with DEF, SPICE and GDS. `-`, `*` and `$` are legal in LEF names. The system SHALL report a warning for each written name that contains a character that breaks LEF tokenizing: space, `;`, `#` or newline.
 
 Compatibility: exact
 
@@ -1068,6 +1113,7 @@ Compatibility: exact
 - **GIVEN** a port label `a#1`
 - **WHEN** the macro is written
 - **THEN** the lines `  PIN a#1` and `  END a#1` SHALL be written
+- **AND** a warning naming `a#1` SHALL be reported
 
 ### Requirement: Write side effects
 
