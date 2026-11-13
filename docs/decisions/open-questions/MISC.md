@@ -243,47 +243,70 @@ Magic reference: `RTimothyEdwards/magic` @ `fc5daa9e`.
 
 ### Q-MISC-70: 3D view clips subcell tiles in the wrong coordinate system
 - Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: Tiles are transformed to root coordinates but clipped against the search area expressed in the subcell's coordinates, so transformed subcells render clipped incorrectly (only visible with a cut box or partial area).
-- Evidence: graphics/W3Dmain.c:253-278, graphics/W3Dmain.c:589
+- Evidence: graphics/W3Dmain.c:253-278, graphics/W3Dmain.c:589 (corrected 2026-11-13: Confirmed. w3dRenderVolume transforms the tile to root coordinates (W3Dmain.c:253) and clips it with GeoClip against `cliprect` (:264 split, :278 Manhattan); :589 passes `&scx->scx_area`, which is in the subcell's own coordinates because DBTreeSrTiles applies GEOTRANSRECT(&tinv, ...) for each child (database/DBcellsrch.c:1201, :1223). The same child-coordinate rectangle is also used by GrClipTriangle for split tiles (:266), for the side segments, which are transformed and then tested and clipped against it (:316-321), and for closing cut faces, which compares root coordinates with it (:362-372). The root `scx_area` is the cut box or the window surface area grown by 1, in root coordinates (:1668-1680). The parenthesis in "Magic behavior" is wrong: without a cut box the clip area is the window's surface area, about the cell bbox fitted to the square window, so any subcell whose placement moves its tiles outside that rectangle as expressed in child coordinates is clipped too. Example: root (0,0)-(2000,100) with an instance at x+1000; the window area x ≈ -1..2001 is x ≈ -1001..1001 in child coordinates, so the instance's top and bottom faces vanish and spurious side faces appear (GeoClip on a disjoint rectangle leaves an inverted one, which :300-309 extrudes). `magic::render3d` always runs `cutbox box` (tcltk/wrapper.tcl:1594), so the usual entry point is affected. Mask-layer mode is not affected: :441 passes NULL, and its planes are generated flat in root coordinates.)
 - Options: replicate | fix (clip in root coordinates)
-- Recommendation: fix (display only).
+- Recommendation: fix, in both modes (X-2 tier 3: display only). Hefesto transforms each tile and its outline segments to root coordinates, then clips them against the root-coordinate clip area (the cut box, or the window area grown by 1). The picture is wrong and no command returns it, so there is no Magic output to match (view-3d "Viewing transform and shading" is informative); copying it would mean porting inverted-rectangle artefacts into the mesh builder. (corrected 2026-11-13, was fix (display only); both modes and the corrected behaviour statement are now explicit)
 
 ### Q-MISC-71: One visibility mask for two layer namespaces
 - Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: `see` sets bits by tile type in layout mode and by mask-layer index in mask mode, using the same bit set; toggling `cif` reinterprets the bits.
-- Evidence: graphics/W3Dmain.c:788-803, graphics/W3Dmain.c:1690-1695, graphics/W3Dmain.c:1767-1769
+- Evidence: graphics/W3Dmain.c:788-803, graphics/W3Dmain.c:1690-1695, graphics/W3Dmain.c:1767-1769 (corrected 2026-11-13: Confirmed. w3dSeeLayers uses CIFNameToMask in mask mode, which sets every mask-layer index with that name (cif/CIFmain.c:339-341), and CmdParseLayers in layout mode, both writing `crec->visible`. It is read by tile type at :1694 (TTMaskAndMask3) and by mask-layer index at :1769 (TTMaskHasType). Also: the `cif` toggle keeps the set as it is (:879-890), and `defaults` sets every bit (:1370-1371), resetting both meanings. Example: `see no MET1` in mask mode clears bit i; after `cif`, the tile type numbered i is hidden.)
 - Options: replicate | fix (separate sets)
-- Recommendation: fix.
+- Recommendation: fix, in both modes (X-2 tier 3). Hefesto keeps two visibility sets: tile types for layout-layer mode, and mask-layer indices of the current output style for mask-layer mode. `see` changes only the current mode's set (`see [no] name` in mask mode acts on every mask layer with that name, as CIFNameToMask does). `defaults` makes everything visible in both sets, as Magic's all-bits reset does. Because mask-layer indices change meaning when the current output style changes, the mask set is reset to all visible on a style change. No command returns the visibility set, so only pixels differ from Magic. (corrected 2026-11-13, was fix; the per-mode rules are now explicit)
 
 ### Q-MISC-72: Units of `render` heights versus extract heights
 - Kind: ambiguity
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: `render` height/thickness are used unscaled while the view is rescaled by the output scalefactor in mask mode; extract heights are converted to internal units. PDK files give render values in micrometres, so the vertical exaggeration differs between the two modes.
-- Evidence: cif/CIFtech.c:1016-1026, graphics/W3Dmain.c:428-433, graphics/W3Dmain.c:847-857
-- Options: replicate | fix (interpret render values as µm and convert)
-- Recommendation: replicate numerically for now; revisit with visual comparison.
+- Evidence: cif/CIFtech.c:1016-1026, graphics/W3Dmain.c:428-433, graphics/W3Dmain.c:847-857 (corrected 2026-11-13: the CIFtech.c lines are :1015-1027 (atof at :1015-1016, stored at :1024-1026). W3Dmain.c:428-433 (w3dRenderCIF uses cl_height and cl_thick raw) and :847-857 (w3dRescale: s_z *= f, p_z /= f, s_xy /= f) are correct. Also: extract/ExtTech.c:3963-3965 (with `units microns` extract heights are divided by dscale, giving internal units), :4090-4093 (rescaled when the internal grid changes), W3Dmain.c:396-400 (layout mode) and :1239-1241 (Magic's comment: render values "are independent of any extraction or other physical meaning"). The f rescale only cancels the change of xy unit, so a numeric h is drawn as 25·h internal units in both modes; extract h is in internal units while render h is used as written, and the PDKs write it in µm. For sky130 (scalefactor 10 nm, 0.01 µm per internal unit) metal1 shows at 25× its true height in layout mode and 0.25× in mask mode, 100 times flatter, and the factor changes with the internal grid. PDK check: sky130A cifoutput `render` values equal its extract `height` values (DIFF 0.2062/0.12 = alldiff, MET1 1.3761/0.36 = allm1), so they are µm; ihp-sg13g2 has 19 `render` lines with the same values and no extract `height` lines; gf180mcuD has no `render` lines, so its mask-layer view is flat (h = t = 0).)
+- Options: replicate | fix (interpret render values as µm and convert) | compat (replicate with `magic-compat` ON, convert with it OFF)
+- Recommendation: compat (standing rule; Magic produces a consistent, if flat, picture and copying it costs one multiplier). With magic-compat ON, `render` height and thickness are used as stored, as Magic does. With it OFF, they are taken as µm and converted to internal units at draw time by dividing by the µm per internal unit of the current output style, cs_scaleFactor / (100 · cs_expander) (cif/CIFint.h:264-276), so both modes show the same exaggeration. In both modes the `render` statement stores the values as given, `render name` returns them unchanged, and `zoom` returns the specified s_z (the conversion applies to h and t, not to s_z), so the exact "Default view" scenarios hold. Hefesto's extensions (cross-section heights, glTF/STL export) always use physical µm, whatever the mode. (corrected 2026-11-13, was replicate numerically for now; revisit with visual comparison)
 
 ### Q-MISC-73: `cif` toggle with no output style
 - Kind: bug
+- Status: resolved; amendment drafted 2026-11-13
 - Magic behavior: The window starts in mask mode even if no cifoutput style exists; toggling back dereferences the missing style.
-- Evidence: graphics/W3Dmain.c:879-890, graphics/W3Dmain.c:1502-1503
+- Evidence: graphics/W3Dmain.c:879-890, graphics/W3Dmain.c:1502-1503 (corrected 2026-11-13: both are correct, but the same missing style is dereferenced on paths the Resolution does not cover: opening the window, Set3DDefaults :1374-1376 (`crec->cif` is TRUE from :1503, so a window opened with no output style crashes before any toggle); the first redraw, W3DCIFredisplay :1745 (`CIFCurStyle->cs_radius`); and the `render` command, w3dRenderValues :1257 and :1297.)
 - Options: fix (start in layout mode when no style; ignore toggle)
 - Recommendation: fix.
+- Proposed amendment (drafted 2026-11-13, not yet approved; still X-2 tier 1, NULL dereference): the window opens in layout-layer mode when there is no current output style; `cif` keeps layout mode and reports it; `render` reports "No CIF output style set!" (the message CIFNameToMask already prints, cif/CIFmain.c:334).
 - Resolution: fix — toggling `cif` with no output style keeps layout mode and reports it, instead of dereferencing the missing style (X-2 tier 1, 2026-11-07).
 
 ### Q-MISC-74: 3D window size fixed at 500 x 500
 - Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: The aspect correction and viewport use the initial 500×500 size even after the window is resized.
-- Evidence: graphics/W3Dmain.c:1496-1497, graphics/W3Dmain.c:532-533, graphics/W3Dmain.c:955-958
+- Evidence: graphics/W3Dmain.c:1496-1497, graphics/W3Dmain.c:532-533, graphics/W3Dmain.c:955-958 (corrected 2026-11-13: Confirmed: initial size :1496-1497, the aspect glScalef and glViewport :532-533, the refresh area :955-958. Also: Tk_GeometryRequest 500×500 (:1566), TOGLEventProc handles StructureNotify (:1579), and graphics/grTOGL1.c:851-876 (ConfigureNotify calls WindReframe on the MagWindow but never updates `crec->width`/`height`). `render3d` packs the window with `-expand true -fill both` (tcltk/wrapper.tcl:1613), so a resize is routine; after one, drawing and refresh stay in the lower-left 500×500 area and the aspect stays 1.)
 - Options: fix (use actual size)
-- Recommendation: fix.
+- Recommendation: fix, in both modes (X-2 tier 3; a fixed viewport is meaningless in Raven or Metal hosts and on iPadOS). Hefesto uses the drawable's current size for the viewport and the refresh area, with A = H_w / W_w from that size. The initial size request stays 500 × 500. (corrected 2026-11-13, was fix; scope made explicit)
 
 ### Q-MISC-75: 3D view depends on OpenGL, Tk and GLX
 - Kind: platform
 - Magic behavior: Available only with the OGL display and Tk; refused otherwise.
 - Evidence: graphics/W3Dmain.c:1474-1480, graphics/W3Dmain.c:1540-1586
+- Verified 2026-11-13: :1474-1480 is correct; the Tk window creation starts at about :1538. Nothing to change.
 - Options: platform alternative (Metal/Vulkan/OpenGL abstraction; touch gestures)
 - Recommendation: implement natively on all platforms including iPadOS.
 - Resolution: platform — the 3D view is implemented natively on every platform, iPadOS included, through the rendering interface (Vulkan on desktop, Metal on iPadOS) (P-3, P-13, `view-3d`, 2026-11-07).
+
+### Q-MISC-76: 3D redisplay mode is global while the mode flag is per window
+- Kind: bug
+- Status: open (recommendation drafted 2026-11-13)
+- Magic behavior: the `cif` toggle sets the client's `w_redisplay` procedure, which is registered once as W3DCIFredisplay and never reset when a window opens, while each new window starts with `cif = TRUE` and a mask-scaled view. After a 3D window is closed in layout-layer mode, the next one draws layout layers with a mask-mode (×f) view until `cif` is toggled.
+- Evidence: graphics/W3Dmain.c:881, :887 (toggle sets w_redisplay), :1845-1846 (registration), :1503 and :1374-1376 (a new window starts in mask mode with the mask rescale)
+- Options: replicate | fix (the mode belongs to the window)
+- Recommendation: fix, in both modes (X-2 tier 3: display only; no command returns the redisplay procedure). The rendering mode is per-window state, and a new window draws in the mode it reports.
+
+### Q-MISC-77: 3D view has no depth test
+- Kind: quirk
+- Status: open (recommendation drafted 2026-11-13)
+- Magic behavior: GL_DEPTH_TEST is never enabled and w3dUnlock disables it, although the depth buffer is cleared. Occlusion follows draw order (style-table order in layout-layer mode, mask-layer order in mask-layer mode) plus back-face culling, so in tilted views lower layers can paint over higher ones.
+- Evidence: graphics/W3Dmain.c:105 (glDisable(GL_DEPTH_TEST)), :465 (depth buffer cleared); graphics/W3D*.c never enables GL_DEPTH_TEST
+- Options: replicate | fix (depth-buffered rendering)
+- Recommendation: fix, in both modes (X-2 tier 3). Faces are depth-tested. Pixels are informative in view-3d ("Viewing transform and shading"), no command observes the draw order, and the stack view of `hefesto-3d-visualization` needs correct occlusion.
 
 ## Scope
 
