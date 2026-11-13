@@ -125,7 +125,7 @@ Every GDSII record written SHALL consist of a 4-byte header followed by the data
 
 Hefesto never writes PATH, BOX, NODE, WIDTH, PATHTYPE, REFLIBS, FONTS, GENERATIONS, or FORMAT records from its own data. They can appear only inside bytes copied verbatim from a vendor GDS file.
 
-The output stream from Hefesto's own data SHALL follow this grammar (verbatim-copied structures are covered by Requirement "Verbatim copy of read-only cells"):
+The output stream from Hefesto's own data SHALL follow this grammar (verbatim-copied structures are covered by Requirement "Verbatim copy of read-only cells", and transcoded OASIS cells by Requirement "Read-only OASIS vendor cells"):
 
 ```ebnf
 stream      = header bgnlib libname units { structure } endlib ;
@@ -335,7 +335,7 @@ Structures SHALL be written in a depth-first post-order traversal from the root:
 1. If C already has a positive id number, stop (already written or in progress).
 2. If C's id number is 0, assign the next number (2, 3, …). Then make the number positive, which marks C as "in progress". Ids are therefore assigned in DFS pre-order of first visit, and the root is 1.
 3. If C is not loaded, try to load it. If that fails, stop without writing C. Parent references to C remain (undefined reference).
-4. Apply the read-only, abstract, and addendum rules (Requirements "Verbatim copy of read-only cells", "Abstract views", "Addendum mode").
+4. Apply the read-only, abstract, and addendum rules (Requirements "Verbatim copy of read-only cells", "Read-only OASIS vendor cells", "Abstract views", "Addendum mode").
 5. Unless C is a full-dump vendor cell, traverse each child use of C in *use enumeration order* (below). If any child traversal returns failure, C fails and is not written.
 6. Write C's structure (generated or copied). Under `library yes`, the root's own structure is skipped, but its descendants are written.
 
@@ -842,6 +842,63 @@ Compatibility: exact
 - **WHEN** GDS is written
 - **THEN** the structures are named `via_x` and `pad`
 
+### Requirement: Read-only OASIS vendor cells
+
+A read-only cell with `OASIS_FILE` and `OASIS_CELL` (capability `oasis-read` "Read-only OASIS vendor views") has only representational contents, the layers `cifinput` maps. Its structure SHALL NOT be generated from those contents. It SHALL instead be *transcoded*: the cell is decoded from its OASIS file and its elements are written as GDS elements, in both `magic-compat` settings (Q-OASIS-35, resolution: fix; Magic has no OASIS input, so there is no Magic output to match). Generating it from its layout would drop every vendor layer that `cifinput` does not map.
+
+1. Children are traversed first, as in "Verbatim copy of read-only cells" rule 1, including the replacement of a magnified-copy child by its `GDS_MAG_SOURCE` cell.
+2. The file named by `OASIS_FILE` is looked up as `GDS_FILE` is (rule 2 of "Verbatim copy of read-only cells"), and the cell named `OASIS_CELL` is decoded (capability `oasis-format`). If the file cannot be opened, or does not define that cell, the rules for an unopenable vendor GDS file apply, with `OASIS_FILE` in place of `GDS_FILE`.
+3. If the file's unit does not give 1e-9 m per DB unit (1e-10 m for ångström output styles), an error is reported and the cell is generated from its layout, as for a failed sanity check of a GDS copy.
+4. The structure is BGNSTR (creation date per Requirement "Date records", current time), STRNAME from the cell name (Requirement "Structure naming"), the transcoded elements in OASIS record order, and ENDSTR. Coordinates are copied in DB units, unscaled.
+5. After the transcoding, the cell is marked as vendor GDS for the rest of the session, as in rule 6 of "Verbatim copy of read-only cells".
+
+Each OASIS element, after its repetition is resolved, SHALL be written as follows:
+
+| OASIS element | GDS element |
+|---|---|
+| RECTANGLE | BOUNDARY with the 4 corners and the closing point, on LAYER = layer and DATATYPE = datatype |
+| POLYGON | BOUNDARY with the point list and the closing point |
+| TRAPEZOID, CTRAPEZOID | BOUNDARY with the decoded vertices (capability `oasis-format`, including the merging of coincident vertices) and the closing point; an element dropped by the decoder is not written |
+| CIRCLE | BOUNDARY with the vertices of `oasis-read` "CIRCLE elements" (current `circlepoints`); radius 0 writes nothing |
+| PATH | PATH with WIDTH = 2 × half-width and the centerline as XY; PATHTYPE 0 when both extensions are 0, PATHTYPE 2 when both equal the half-width (half-width > 0), otherwise PATHTYPE 4 with BGNEXTN and ENDEXTN, as in `oasis-read` "PATH elements" |
+| TEXT | TEXT with LAYER = textlayer, TEXTTYPE = texttype, the position as XY and the string mapped as in "String records and character mapping"; no PRESENTATION, STRANS, MAG or ANGLE |
+| PLACEMENT | SREF (or AREF, below); STRANS 0x8000 when the flip bit is set; ANGLE = `AA × 90` (record 17) or the decoded angle (record 18), written only when nonzero; MAG written only when not 1. The SNAME is the output name ("Structure naming") of the database cell whose `OASIS_FILE` and `OASIS_CELL` name the referenced cell, or, when there is none, the referenced name mapped as in "String records and character mapping" |
+| `S_GDS_PROPERTY` on a PLACEMENT | PROPATTR/PROPVALUE on the SREF or AREF, in PROPERTY order; on every SREF when the placement is expanded. Other properties are not written |
+| XELEMENT, XGEOMETRY | not written, with one warning per cell (GDS has no counterpart) |
+
+Repetitions: a PLACEMENT whose repetition `oasis-read` "Placement repetitions" reads as one Magic array (its rules 1 and 2) SHALL be written as one AREF with COLROW `(na, nb)` and the points `P0` = the placement position, `P1 = P0 + na·a` and `P2 = P0 + nb·b`, when both counts are at most 32767. Every other repetition, of a placement or of a shape, is expanded into one element per displacement, in displacement order.
+
+An element that GDS cannot hold SHALL make the write fail rather than be written altered. This is the case for a layer, datatype, textlayer or texttype above 32767 (GDS LAYER, DATATYPE and TEXTTYPE are signed I2 values), for a BOUNDARY or PATH with more than 8191 XY points including any closing point (the XY record limit), and for a coordinate outside the signed 32-bit (I4) range. An error naming the cell and the element (layer/datatype, or the point count) is reported, nothing of the cell's structure is written, and the cell fails, so its parents fail too (Requirement "Structure ordering").
+
+Compatibility: native
+
+(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaWrite.c:972-1361)
+
+#### Scenario: Vendor OASIS cell transcoded
+- **GIVEN** a read-only cell `sc_inv` read from OASIS, whose source holds a RECTANGLE on 68/20 (a layer `cifinput` does not map), a CIRCLE of radius 50 and a TEXT `A`
+- **WHEN** a hierarchy using `sc_inv` is written to GDS
+- **THEN** structure `sc_inv` holds a 5-point BOUNDARY on 68/20, a BOUNDARY with the 64 circle vertices plus the closing point, and a TEXT `A`, in that order
+
+#### Scenario: Regular placement repetition becomes an AREF
+- **GIVEN** a read-only OASIS cell with a PLACEMENT of `A` at (0,0), no rotation, repetition type 1 with `nx = 3`, `ny = 2`, `sx = 100`, `sy = 200`
+- **WHEN** it is transcoded to GDS
+- **THEN** the output is one AREF with COLROW (3, 2) and XY (0,0), (300,0), (0,400)
+
+#### Scenario: Largest GDS layer number
+- **GIVEN** a read-only OASIS cell whose source holds a RECTANGLE on layer 32767, datatype 0
+- **WHEN** a hierarchy using it is written to GDS
+- **THEN** the BOUNDARY is written with the LAYER record `00 06 0D 02 7F FF`
+
+#### Scenario: Layer number GDS cannot hold
+- **GIVEN** a read-only OASIS cell `vendor` whose source holds a RECTANGLE on layer 32768, datatype 0
+- **WHEN** a hierarchy using it is written to GDS
+- **THEN** an error naming `vendor` and layer 32768 is reported, no structure is written for `vendor` or its parents, and the write reports failure
+
+#### Scenario: Polygon above the XY limit
+- **GIVEN** a read-only OASIS cell whose source holds a POLYGON of 8191 vertices, which needs 8192 XY points with the closing point
+- **WHEN** it is written to GDS
+- **THEN** an error naming the cell and the point count is reported and the write reports failure
+
 ### Requirement: Addendum mode
 
 When `addendum` is yes, read-only cells that have a `GDS_START` property SHALL produce no structure and are not traversed. References to them are still written, so the output depends on the vendor library.
@@ -889,7 +946,7 @@ Compatibility: exact
 
 ### Requirement: Write result and error propagation
 
-The write operation SHALL return failure if the root traversal or any appended undefined-cell traversal returns failure, or if a stream I/O error occurs. Even on failure, ENDLIB is appended and the file is closed. Problems flagged during mask generation are counted and reported as feedback, and do not cause failure.
+The write operation SHALL return failure if the root traversal or any appended undefined-cell traversal returns failure (including a read-only OASIS cell holding an element GDS cannot express, Requirement "Read-only OASIS vendor cells"), or if a stream I/O error occurs. Even on failure, ENDLIB is appended and the file is closed. Problems flagged during mask generation are counted and reported as feedback, and do not cause failure.
 
 Compatibility: behavioral
 

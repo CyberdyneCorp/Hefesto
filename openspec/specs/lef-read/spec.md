@@ -91,10 +91,10 @@ When a geometry statement names a layer (`LAYER <name>` in PORT, OBS or a VIA de
 3. If no type results and the name is not an IGNORE entry, two errors SHALL be reported: `Don't know how to parse layer "<name>"` and `Try adding this name to the LEF techfile section`.
 4. A `LAYER` statement whose name token is `;` reports `Bad Layer statement` and yields no type.
 
-Within one PORT or OBS block, the secondary obstruction type SHALL be set only as described in step 1. Otherwise it keeps its previous value from an earlier LAYER statement in the same block, so a later layer can inherit it. The contact area SHALL also be left unchanged when step 2 resolves the name. See Q-LEFDEF-3. A table name that has no entry (see `lef-tech-section`, lifecycle) is treated as absent. See Q-LEFDEF-4.
+The secondary obstruction type is only ever set in OBS: PORT geometry uses the normal lookup, so in PORT it stays none. What a LAYER statement does to the previous secondary type and contact area depends on the `magic-compat` setting (Q-LEFDEF-3, resolution: compat). With it ON (the default), as in Magic, within one OBS block the secondary obstruction type SHALL be set only as described in step 1; otherwise it keeps its previous value from an earlier LAYER statement in the same block, so a later layer inherits it and paints it too. In PORT and OBS the contact area SHALL be left unchanged when step 2 resolves the name, so a later RECT on that contact type uses the previous LAYER's cut size. With it OFF, every LAYER statement SHALL reset the secondary obstruction type to none and the contact area to null before resolution, so each layer paints only its own material. A table name that has no entry (see `lef-tech-section`, lifecycle) is treated as absent. See Q-LEFDEF-4.
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:697-765, 579-591, database/DBtechname.c:64-104)
+(Magic ref: lef/lefRead.c:697-765, 579-591, 1220-1291, 1328-1331, database/DBtechname.c:64-104)
 
 #### Scenario: Fallback to magic type name
 - **GIVEN** no `lef` section entry for `METAL1` and a magic type named `metal1`
@@ -105,6 +105,12 @@ Compatibility: exact
 - **GIVEN** the tech line `obstruction obsv1,m1 via1` (primary `m1`, secondary `obsv1`), with `via1` also defined by `cut m2c via1`
 - **WHEN** an OBS has `LAYER via1 ;`
 - **THEN** OBS RECTs on that layer paint `m1` and also `obsv1`
+
+#### Scenario: Secondary obstruction type carries over in OBS
+- **GIVEN** the tech lines of the previous scenario and the tech line `routing m2 metal2`
+- **WHEN** an OBS has `LAYER via1 ; RECT ... ; LAYER metal2 ; RECT 0 0 1 1 ;`
+- **THEN** with `magic-compat` ON the `metal2` RECT paints `m2` and also `obsv1`
+- **AND** with `magic-compat` OFF it paints only `m2`
 
 #### Scenario: Unknown layer
 - **WHEN** `LAYER poly2 ;` is read and no table entry or magic type matches
@@ -159,7 +165,7 @@ A `LAYER <name>` section SHALL be handled as follows:
 |---|---|
 | `TYPE t ;` | t ∈ {ROUTING, CUT, MASTERSLICE, OVERLAP}. Unknown t: warning `Unknown layer type "<t>" in LEF file; ignoring.`. If t is ROUTING or CUT and differs from the entry's class (ROUTE↔ROUTING, VIA↔CUT), error `Attempt to reclassify layer <name> from <old> to <new>`. The class never changes. |
 | `WIDTH v ;` | ROUTE class only: width = round(v/s) |
-| `SPACING v ... ;` | ROUTE class only: spacing = round(v/s) using the first value. Every SPACING statement overwrites, so the last one in the section wins. See Q-LEFDEF-6. |
+| `SPACING v ... ;` | ROUTE class only: spacing = round(v/s) using the first value. Which statement sets it depends on `magic-compat` (Q-LEFDEF-6, resolution: compat): with it ON (the default) every SPACING statement overwrites, so the last one in the section wins, as in Magic; with it OFF the spacing is the value of the first SPACING statement with no qualifier (nothing between the value and `;`), or, if the section has none, the smallest first value of any SPACING statement. The value is used only by `lef write -tech`. |
 | `PITCH v ... ;` | ROUTE class only: pitch = round(v/s) using the first value |
 | `DIRECTION d ;` | ROUTE class only: horizontal if d starts with `h` or `H`, otherwise vertical |
 | `ACCURRENTDENSITY` | read 2 tokens. If the second is `FREQUENCY`: skip the statement, read one token, and if it is `WIDTH` skip another statement. Then skip a statement. |
@@ -182,7 +188,8 @@ Compatibility: exact
 #### Scenario: Last SPACING wins
 - **GIVEN** a ROUTE layer with `SPACING 0.14 ;` followed by `SPACING 0.28 RANGE 3 100 ;` and s = 0.01
 - **WHEN** the section is read
-- **THEN** the spacing is 28
+- **THEN** with `magic-compat` ON the spacing is 28
+- **AND** with `magic-compat` OFF the spacing is 14, the first unqualified SPACING
 
 #### Scenario: Reclassification error
 - **GIVEN** the tech line `routing m1 metal1`
@@ -196,11 +203,19 @@ A `VIA <name>` or `VIARULE <name>` section SHALL define a via entry in the LEF l
 - If `<name>` exists and the section is VIARULE: skip the whole section unchanged.
 - If `<name>` exists and the section is VIA: report the warning `Cut type "<name>" redefined.`, prepare the entry for redefinition (see "Via redefinition"), and read the body into it.
 
-Via geometry statements: `LAYER n ;` sets the current via layer by normal lookup ("LEF layer name resolution"). `RECT x1 y1 x2 y2 ;` reads a rectangle in half internal units (each coordinate round(v/(s/2))), made canonical. If the current layer is none, no geometry is added; in that case the error `No layer defined for RECT.` is still reported, even for IGNORE layers (see Q-LEFDEF-20). Otherwise apply cut growing ("Cut growing") and then:
+Via geometry statements: `LAYER n ;` sets the current via layer by normal lookup ("LEF layer name resolution"). `RECT x1 y1 x2 y2 ;` reads a rectangle in half internal units (each coordinate round(v/(s/2))), made canonical. If the current layer is none, no geometry is added. The error `No layer defined for RECT.` is reported for a layer that failed to resolve; for a layer of class IGNORE it depends on `magic-compat` (Q-LEFDEF-20, resolution: compat): with it ON (the default) the error is reported once per RECT, as in Magic; with it OFF the RECT is skipped silently, as in macro OBS. Geometry is the same in both modes. Otherwise apply cut growing ("Cut growing") and then:
 1. if the entry's contact area equals (0,0,0,0) exactly, the rectangle becomes the contact area and the current layer becomes the entry's normal type;
 2. otherwise prepend (current layer, rectangle) to the entry's list of extra rectangles; then, if the current layer is a contact type and the entry's normal type is not, exchange them, so that the list head receives the old (normal type, contact area) and the entry receives (current layer, rectangle).
 
-POLYGON, VIARULE-parameter statements (`VIARULE`, `CUTSIZE`, `LAYERS`, `CUTSPACING`, `ENCLOSURE`, `ROWCOL`, `ORIGIN`, `OFFSET`, `PATTERN`) and `RECT MASK n ...` are not supported. The first group is skipped as unknown, and `RECT MASK` fails with `Bad port geometry: RECT requires 4 values.`. A LEF via defined by a via rule therefore has no geometry. See Q-LEFDEF-7.
+POLYGON, VIARULE-parameter statements (`VIARULE`, `CUTSIZE`, `LAYERS`, `CUTSPACING`, `ENCLOSURE`, `ROWCOL`, `ORIGIN`, `OFFSET`, `PATTERN`), `RECT MASK n ...` and `RECT ITERATE` depend on the `magic-compat` setting (Q-LEFDEF-7, resolution: compat).
+
+With it ON (the default), as in Magic, they are not supported. POLYGON and the VIARULE-parameter statements are skipped as unknown keywords, and `RECT MASK` and `RECT ITERATE` fail with `Bad port geometry: RECT requires 4 values.`. A LEF via defined by a via rule therefore has no geometry.
+
+With it OFF:
+- A VIA whose body has `VIARULE`, `CUTSIZE`, `LAYERS`, `CUTSPACING`, `ENCLOSURE` and `ROWCOL` (and optionally `ORIGIN`, `OFFSET`, `PATTERN`) SHALL be given geometry by "Generated via geometry", the generator `def read` uses, with ORIGIN, OFFSET and PATTERN applied as `def read` applies them with `magic-compat` OFF (capability `def-read`, Requirement "Generated DEF vias").
+- `RECT MASK n x1 y1 x2 y2 ;` SHALL be read as `RECT x1 y1 x2 y2 ;`; the mask number is ignored.
+- `RECT ITERATE x1 y1 x2 y2 DO nx BY ny STEP dx dy ;` SHALL add the rectangle at each of the nx × ny offsets (i·dx, j·dy).
+- `POLYGON pts ;` SHALL be decomposed into rectangles as in "PORT and OBS geometry" and each rectangle added to the via as if read by RECT.
 Compatibility: exact
 
 ```
@@ -214,7 +229,7 @@ VIA M1M2_PR DEFAULT          # DEFAULT is a no-op token
 END M1M2_PR
 ```
 
-(Magic ref: lef/lefRead.c:3055-3090, 2646-2690, 2895-2906, 868-936)
+(Magic ref: lef/lefRead.c:3055-3090, 2646-2690, 2742-2777, 2895-2915, 867-936, 910, 1230, 2656, 2903-2905)
 
 #### Scenario: Contact type becomes primary
 - **GIVEN** s = 0.005, the tech line `cut via via`, no output style that generates `via` cuts, and the VIA example above
@@ -226,6 +241,18 @@ END M1M2_PR
 - **GIVEN** `VIA V12 ... END V12` followed by `VIARULE V12 ... END V12`
 - **WHEN** the file is read
 - **THEN** the VIARULE section is skipped and `V12` keeps the VIA geometry
+
+#### Scenario: RECT MASK in a via definition
+- **GIVEN** s = 0.005 and a VIA section with `LAYER met1 ; RECT MASK 1 -0.16 -0.13 0.16 0.13 ;`
+- **WHEN** it is read
+- **THEN** with `magic-compat` ON the error `Bad port geometry: RECT requires 4 values.` is reported and no rectangle is added
+- **AND** with `magic-compat` OFF the rectangle (-64,-52,64,52) half units on `met1` is added
+
+#### Scenario: RECT on an ignored layer in a via definition
+- **GIVEN** the tech line `ignore pwell` and a VIA section with `LAYER pwell ; RECT 0 0 1 1 ;`
+- **WHEN** it is read
+- **THEN** with `magic-compat` ON the error `No layer defined for RECT.` is reported
+- **AND** with `magic-compat` OFF nothing is reported; in both modes no geometry is added
 
 ### Requirement: Via redefinition
 
@@ -290,10 +317,12 @@ A `NONDEFAULTRULE <name>` section SHALL create a named non-default rule set in t
 | `MINCUTS a b`, `PROPERTY a b` | the two tokens are ignored |
 | other | message `Unknown keyword "<t>" in NONDEFAULTRULES definition; ignoring.`, skipped to `;` |
 
-When the current rule or layer is none, WIDTH, SPACING and WIREEXTENSION SHALL report a message and have no effect. Because `HARDSPACING`, `USEVIA`, `USEVIARULE`, `MINCUTS` and `PROPERTY` do not consume their `;`, the `;` is treated as an unknown keyword and the following statement is skipped as well. A `VIA` whose name already exists has its body parsed as rule statements. See Q-LEFDEF-10.
+When the current rule or layer is none, WIDTH, SPACING and WIREEXTENSION SHALL report a message and have no effect. In both modes `USEVIA` and `USEVIARULE` add a rule entry for the named via, and `END` (in or out of layer mode) also clears the current layer, as `HARDSPACING` does.
+
+Statement termination depends on the `magic-compat` setting (Q-LEFDEF-10, resolution: compat). With it ON (the default), as in Magic: because `HARDSPACING`, `USEVIA`, `USEVIARULE`, `MINCUTS` and `PROPERTY` do not consume their `;`, the `;` is treated as an unknown keyword and the following statement is skipped as well; a `VIA` whose name already exists has its body parsed as rule statements. With it OFF, every statement SHALL be consumed through its `;`, and the body of a `VIA` whose name already exists SHALL be skipped up to its `END <name>`.
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:1861-2056)
+(Magic ref: lef/lefRead.c:1861-2056, 1918-1990)
 
 #### Scenario: Double-width rule
 - **GIVEN** s = 0.005 and `NONDEFAULTRULE DW LAYER met1 WIDTH 0.28 ; SPACING 0.28 ; END met1 END DW`
@@ -303,18 +332,20 @@ Compatibility: exact
 #### Scenario: HARDSPACING swallows the next statement
 - **GIVEN** `NONDEFAULTRULE R HARDSPACING ; LAYER met1 WIDTH 0.2 ; END met1 END R`
 - **WHEN** it is read
-- **THEN** the `;` after HARDSPACING is skipped as an unknown keyword together with the tokens up to the next `;` (`LAYER met1 WIDTH 0.2 ;`), so no rule for `met1` is created
+- **THEN** with `magic-compat` ON the `;` after HARDSPACING is skipped as an unknown keyword together with the tokens up to the next `;` (`LAYER met1 WIDTH 0.2 ;`), so no rule for `met1` is created
+- **AND** with `magic-compat` OFF the rule set `R` has one rule for `met1` with width round(0.2/s)
 
 ### Requirement: MACRO and SITE cell creation
 
 Each `MACRO <name>` and each `SITE <name>` section SHALL be read with the same macro-reading procedure. For each section:
 1. If `<name>` was already read as a MACRO or SITE in this same file, find the smallest k ≥ 1 such that `<name>_k` was not read in this file, and use `<name>_k` as the cell name. Report the warning `Cell "<name>" was already defined in this file.  Renaming this cell "<name>_k"`. If no cell `<name>_k` exists and annotation was requested (`-annotate`), skip the section.
-2. If a cell with the (possibly renamed) name exists in the database, the macro SHALL be read in annotation mode ("Annotation of existing cells"). Otherwise a new empty, available cell SHALL be created and read in creation mode. Annotation is chosen only because the cell already exists. The `-annotate` option does not by itself stop new cells from being created for macros that are not duplicates. See Q-LEFDEF-11.
+2. If a cell with the (possibly renamed) name exists in the database, the macro SHALL be read in annotation mode ("Annotation of existing cells"). Otherwise a new empty, available cell SHALL be created and read in creation mode. Annotation is chosen only because the cell already exists. What `-annotate` does to a macro with no existing cell depends on the `magic-compat` setting (Q-LEFDEF-11, resolution: compat). With it ON (the default), as in Magic, `-annotate` does not by itself stop new cells from being created for macros that are not duplicates. With it OFF, as documented, with `-annotate` a macro whose (possibly renamed) cell does not exist SHALL be skipped and no cell created.
 3. If a fixed LEF datestamp is set (see "lef datestamp"), the cell's timestamp SHALL be set to it and marked as fixed.
-Reading SHALL disable undo for the whole file, so the read cannot be undone. See Q-LEFDEF-22.
+
+A LEF read SHALL be one undoable transaction (capability `layout-undo`), covering created cells, annotated labels and paint, on every platform and in both modes; Magic's `This action cannot be undone.` message is not printed (Q-LEFDEF-22, resolution: platform).
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:2112-2175, 3176-3185, 3018-3024)
+(Magic ref: lef/lefRead.c:2112-2175, 2114-2158, 3176-3185, 3018-3019, 3203)
 
 #### Scenario: Duplicate macro in one file
 - **GIVEN** a file defining `MACRO INV` twice and no cell `INV_1`
@@ -326,22 +357,31 @@ Compatibility: exact
 - **WHEN** the same file is read again
 - **THEN** `INV` is read in annotation mode: OBS geometry is skipped and `LEFview` is not set again
 
+#### Scenario: -annotate with an unknown macro
+- **GIVEN** no cell `NAND2` exists
+- **WHEN** a LEF file defining `MACRO NAND2` is read with `lef read -annotate`
+- **THEN** with `magic-compat` ON cell `NAND2` is created
+- **AND** with `magic-compat` OFF the macro is skipped and no cell is created
+
 ### Requirement: Macro coordinate offset
 
 During a macro, the reader SHALL keep an offset (ox, oy), initially (0, 0), that is added to every converted PIN and OBS coordinate. It is applied after rounding, to each RECT corner and each POLYGON vertex. The offset in effect when a geometry statement is read SHALL be used, so ORIGIN and FOREIGN statements affect only the geometry that follows them.
 - `ORIGIN x y ;` (parentheses around the point are optional): set the bounding-box lower-left to (−round(x/s), −round(y/s)); if SIZE was already read, add this lower-left to the stored upper-right; add (−round(x/s), −round(y/s)) to the offset. A malformed point reports `Bad macro ORIGIN; requires 2 values.`.
 - `FOREIGN name [x y [orient]] ;`: if a point is present, add (−round(x/s), −round(y/s)) to the offset. A malformed point reports `Bad origin in macro FOREIGN; requires 0 or 2 values.`. The name and orientation are not used.
 - `SIZE w BY h ;`: set the upper-right to (round(w/s) + lower-left x, round(h/s) + lower-left y) and record that a size is present. The `BY` token is not checked. A malformed size reports `Bad macro SIZE; requires values X BY Y.`.
-At the end of the macro, the lower-left and upper-right SHALL each have the offset subtracted, giving the macro box. See Q-LEFDEF-12.
+At the end of the macro, the lower-left and upper-right SHALL each have the offset subtracted, giving the macro box.
+
+The frame depends on the `magic-compat` setting (Q-LEFDEF-12, resolution: compat). With it ON (the default), the rules above apply, as in Magic: geometry lands at g − ORIGIN − F and the macro box (FIXED_BBOX) is (F, F + SIZE), where g is the converted LEF coordinate and F the FOREIGN point. Measured against LEF's rule (geometry + ORIGIN lies in (0,0)–(SIZE)), the geometry is off by 2·ORIGIN relative to the box, and the box moves by +F. With it OFF, `ORIGIN` SHALL NOT be added to the offset, so the offset is −F only and geometry lands at g − F; the macro box SHALL be (−ORIGIN − F, SIZE − ORIGIN − F). This is LEF's geometry/box relation, and a LEF written by `lef write` (ORIGIN = −boundary lower-left) reads back to the original cell. Both modes are identical when ORIGIN and F are zero. `def read` places components by the FIXED_BBOX lower-left in both modes (capability `def-read`, Requirement "Component placement transform").
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:2178-2238, 2329-2350, 2364-2370)
+(Magic ref: lef/lefRead.c:2178-2238, 2214-2228, 2329-2350, 2364-2385, lef/lefWrite.c:1367-1369)
 
 #### Scenario: ORIGIN shifts geometry but not the box (verify against Magic)
 - **GIVEN** s = 0.01 and `MACRO A ORIGIN 1 1 ; SIZE 10 BY 10 ; OBS LAYER met1 ; RECT 0 0 2 2 ; END END A`
 - **WHEN** the file is read
-- **THEN** the obstruction is painted at (−100,−100)–(100,100)
+- **THEN** with `magic-compat` ON the obstruction is painted at (−100,−100)–(100,100)
 - **AND** the macro box (FIXED_BBOX) is (0, 0, 1000, 1000)
+- **AND** with `magic-compat` OFF the obstruction is painted at (0,0)–(200,200) and the macro box is (−100, −100, 900, 900)
 
 #### Scenario: FOREIGN offset
 - **GIVEN** s = 0.01 and `MACRO B FOREIGN B 0.5 0.5 ; SIZE 2 BY 2 ; ... END B` with no ORIGIN
@@ -408,19 +448,29 @@ Within `PIN <name> ... END <name>`, the following statements SHALL set the attri
 
 | statement | accepted values (full-word, case-insensitive) → port attribute |
 |---|---|
-| `DIRECTION d ... ;` | DEFAULT→default, INPUT→input, OUTPUT→output, INOUT→bidirectional, FEEDTHRU→feedthrough. Only the first token is examined, so `OUTPUT TRISTATE` gives output. See Q-LEFDEF-13. |
-| `USE u ;` | DEFAULT, SIGNAL, ANALOG, POWER, GROUND, CLOCK → the same use. Other values (for example SCAN, TIEOFF, RESET) report `Improper USE statement` and leave the use unchanged. See Q-LEFDEF-14. |
+| `DIRECTION d ... ;` | DEFAULT→default, INPUT→input, OUTPUT→output, INOUT→bidirectional, FEEDTHRU→feedthrough. `OUTPUT TRISTATE` depends on `magic-compat` (Q-LEFDEF-13, resolution: compat): with it ON (the default) only the first token is examined, so it gives output, as in Magic; with it OFF the token after OUTPUT is read, and TRISTATE gives tristate. |
+| `USE u ;` | DEFAULT, SIGNAL, ANALOG, POWER, GROUND, CLOCK → the same use. SCAN, RESET and TIEOFF (DEF values, not LEF 5.8 ones) depend on `magic-compat` (Q-LEFDEF-14, resolution: compat): with it ON (the default) they are treated as other values, as in Magic; with it OFF they map to the uses scan, reset and tie-off. Other values report `Improper USE statement` and leave the use unchanged. |
 | `SHAPE x ;` | DEFAULT, ABUTMENT→abutment, RING, FEEDTHRU→feedthrough |
 
 An unrecognized DIRECTION or SHAPE value SHALL report `Improper DIRECTION statement` or `Improper SHAPE statement` and leave the attribute unchanged. `CAPACITANCE`, `ANTENNADIFFAREA`, `ANTENNAGATEAREA`, `ANTENNAMODEL`, `ANTENNAPARTIALMETALAREA`, `ANTENNAPARTIALMETALSIDEAREA`, `ANTENNAPARTIALCUTAREA`, `ANTENNAMAXAREACAR`, `ANTENNAMAXSIDEAREACAR` and `NETEXPR` SHALL be ignored up to `;`. Other keywords report a message and are skipped up to `;`. A mismatched `END` reports `Pin END statement missing.`.
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:1508-1820)
+(Magic ref: lef/lefRead.c:1508-1820, 1546-1582, 1677-1692)
 
 #### Scenario: DIRECTION after PORT does not apply
 - **GIVEN** `PIN A PORT LAYER met1 ; RECT 0 0 1 1 ; END DIRECTION INPUT ; END A`
 - **WHEN** it is read into a new cell
 - **THEN** the port label `A` has class default, not input
+
+#### Scenario: OUTPUT TRISTATE
+- **WHEN** `PIN Z DIRECTION OUTPUT TRISTATE ; PORT LAYER met1 ; RECT 0 0 1 1 ; END END Z` is read into a new cell
+- **THEN** with `magic-compat` ON the port label `Z` has class output
+- **AND** with `magic-compat` OFF it has class tristate
+
+#### Scenario: DEF-style USE value
+- **WHEN** a PIN has `USE TIEOFF ;`
+- **THEN** with `magic-compat` ON `Improper USE statement` is reported and the use stays default
+- **AND** with `magic-compat` OFF the use is tie-off
 
 ### Requirement: PORT and OBS geometry
 
@@ -431,7 +481,8 @@ geometry  = { geom_stmt } , "END" ;            (* END must end its line *)
 geom_stmt = "LAYER" , name , { tok } , ";"
           | "RECT" , coord4 , { tok } , ";"
           | "POLYGON" , { num , num } , ";"
-          | ( "WIDTH" | "PATH" | "VIA" | "CLASS" ) , { tok } , ";"   (* ignored *)
+          | ( "WIDTH" | "PATH" | "VIA" ) , { tok } , ";"   (* ignored with magic-compat ON *)
+          | "CLASS" , { tok } , ";"                          (* ignored *)
           | other , { tok } , ";" ;             (* message "Unknown keyword ..." *)
 coord4    = [ "(" ] , num , num , [ ")" ] , [ "(" ] , num , num , [ ")" ] ;
 ```
@@ -441,10 +492,14 @@ coord4    = [ "(" ] , num , num , [ ")" ] , [ "(" ] , num , num , [ ")" ] ;
 - Contact sizing: if the current layer is a contact type and the current contact area A (half units) is non-null, the rectangle (x1,y1,x2,y2) SHALL be replaced by (⌊(x1+x2+A.xbot)/2⌋, ⌊(y1+y2+A.ybot)/2⌋, ⌊(x1+x2+A.xtop)/2⌋, ⌊(y1+y2+A.ytop)/2⌋), where ⌊⌋ is the floor (arithmetic shift).
 - The rectangle SHALL be painted with the current layer. In OBS, if a secondary obstruction type is set, the same rectangle SHALL also be painted with it.
 - `POLYGON`: read x,y pairs until `;`. Each vertex converts to round(v/s) plus the offset. A bad number reports `Bad X value in polygon.` or `Bad Y value in polygon.` and skips the statement; a missing Y reports `Missing Y value in polygon point!`. In each case the vertices read so far are used. The polygon SHALL be painted with the current layer, on every plane that layer occupies, by the polygon-to-rectangle decomposition used for CIF polygon input, applied to the vertex list in reverse file order. In OBS it is also painted with the secondary obstruction type. If the current layer is none, Magic's behavior is undefined. See Q-LEFDEF-18.
-- `WIDTH`, `PATH` and `VIA` geometry SHALL be ignored, so path-based and via-instance pin or obstruction geometry produces no paint. See Q-LEFDEF-15.
+- `WIDTH`, `PATH` and `VIA` depend on the `magic-compat` setting (Q-LEFDEF-15, resolution: compat). With it ON (the default) they SHALL be ignored, as in Magic, so path-based and via-instance pin or obstruction geometry produces no paint and no port label. With it OFF:
+  - `WIDTH w ;` SHALL set the current path width to w converted by s (half-unit rounding as for RECT); it starts at 0 for each PORT or OBS body.
+  - `PATH x1 y1 x2 y2 ... ;` SHALL paint each segment on the current layer as a rectangle w wide, centred on the segment and extended by w/2 beyond both ends, with the offset added; with the current layer none it is skipped.
+  - `VIA x y name ;` SHALL place the named LEF via definition's contact area and extra rectangles, each with its own type, centred at (x, y) converted by s plus the offset. An unknown via name reports a message and is skipped.
+  - In PORT, each painted rectangle SHALL also become port geometry, exactly as a RECT does ("Port labels in creation mode"), and in annotation mode it goes through the same coverage check.
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:1174-1349, 966-1095, cif/CIFrdpt.c:603-635)
+(Magic ref: lef/lefRead.c:1174-1349, 1219-1224, 1336-1338, 966-1095, cif/CIFrdpt.c:603-635)
 
 #### Scenario: Contact sizing of a cut RECT
 - **GIVEN** a VIA-class tech entry for `pc` with contact area (−4,−4,4,4) half units and a PORT RECT that converts to (10,10,13,13) on that layer
@@ -452,12 +507,14 @@ Compatibility: exact
 - **THEN** the painted rectangle is (⌊19/2⌋, ⌊19/2⌋, ⌊27/2⌋, ⌊27/2⌋) = (9,9,13,13)
 
 #### Scenario: Ignored PATH
-- **WHEN** an OBS contains `LAYER met1 ; PATH 0 0 5 0 ;`
-- **THEN** nothing is painted for the PATH
+- **GIVEN** s = 1
+- **WHEN** an OBS contains `LAYER met1 ; WIDTH 2 ; PATH 0 0 5 0 ;`
+- **THEN** with `magic-compat` ON nothing is painted for the PATH
+- **AND** with `magic-compat` OFF `met1` is painted at (−1,−1)–(6,1)
 
 ### Requirement: Port labels in creation mode
 
-In creation mode, each PORT SHALL turn its accepted geometry into port labels. The geometry list for a PORT SHALL be built in this order: each RECT is prepended, and each POLYGON's decomposition rectangles (from the last plane painted) are appended in decomposition order (see Q-LEFDEF-23). For each list element in order, a label SHALL be created and appended to the cell's label list with:
+In creation mode, each PORT SHALL turn its accepted geometry into port labels. The geometry list for a PORT SHALL be built in this order: each RECT is prepended, and each POLYGON's decomposition rectangles are appended in decomposition order. The decomposition is purely geometric and identical on every plane the layer occupies, so a single decomposition is used (Q-LEFDEF-23, resolution: replicate; Magic takes the list of the last plane painted, which is the same). For each list element in order, a label SHALL be created and appended to the cell's label list with:
 - text = the pin name; rectangle = the element's rectangle; type = the element's layer;
 - default font and an automatically chosen text position;
 - port index = the index of the first existing port label in the cell with the same text, or else the macro's pin ordinal for this PIN;
@@ -510,10 +567,10 @@ on each PORT of the pin:
   firstport := false
 ```
 
-When reading a PORT body in annotation mode, each RECT SHALL first be checked against C. The rectangle must be covered entirely by material, in C and all of its subcells and array elements (flattened), of types that connect to the RECT's layer. If any part is not covered, the RECT SHALL be skipped: it is not painted and not listed. Accepted RECTs and all POLYGONs SHALL be painted into C and listed as in creation mode. The first list element SHALL update R, if R is given: R's rectangle and type become the element's. R's port index is kept if R is a port, and otherwise becomes (max port index in C) + 1. R's flags become class + use + shape + all directions + sticky. Every other element SHALL create a new label as in creation mode. If no element is accepted, R is unchanged. See Q-LEFDEF-21.
+When reading a PORT body in annotation mode, each RECT SHALL first be checked against C. The rectangle must be covered entirely by material, in C and all of its subcells and array elements (flattened), of types that connect to the RECT's layer. If any part is not covered, the RECT SHALL be skipped: it is not painted and not listed. Painting and the non-port label handling depend on the `magic-compat` setting (Q-LEFDEF-21, resolution: compat). With it ON (the default), as in Magic, accepted RECTs and all POLYGONs (with no coverage check) SHALL be painted into C and listed as in creation mode, and the procedure above applies as written: when a port label named N exists, the scan stops at the first non-port label named N and, if nothing was annotated before it, that label is passed as R and converted into a port, although Magic's comment says such labels are left alone. With it OFF, nothing SHALL be painted into C: accepted geometry is only listed; POLYGON decomposition rectangles SHALL get the same coverage check as RECTs; and when C has a port label named N, a non-port label named N SHALL never be passed as R (R := none instead), so non-port labels named N are left untouched. In both modes, the first list element SHALL update R, if R is given: R's rectangle and type become the element's. R's port index is kept if R is a port, and otherwise becomes (max port index in C) + 1. R's flags become class + use + shape + all directions + sticky. Every other element SHALL create a new label as in creation mode. If no element is accepted, R is unchanged.
 Compatibility: exact
 
-(Magic ref: lef/lefRead.c:1602-1786, 1214-1258, 1397-1441, 2321-2324)
+(Magic ref: lef/lefRead.c:1602-1786, 1704-1782, 1214-1258, 1238-1335, 1397-1441, 2321-2324)
 
 #### Scenario: Area label becomes a port without geometry change
 - **GIVEN** an existing cell `inv` with a non-port label `A` on `met1` with rectangle (0,0,10,10)
@@ -525,6 +582,7 @@ Compatibility: exact
 - **GIVEN** an existing cell with a point label `Y` at (5,5,5,5) on `met1`, `met1` covering (0,0,20,20), and s = 1
 - **WHEN** the macro's PIN `Y` has a PORT with `LAYER met1 ; RECT 2 2 8 8 ;`
 - **THEN** label `Y` gets rectangle (2,2,8,8) and type `met1`, and becomes a sticky port
+- **AND** with `magic-compat` ON `met1` is painted at (2,2,8,8) into the cell; with `magic-compat` OFF nothing is painted
 
 #### Scenario: Incompatible port rectangle rejected
 - **GIVEN** an existing cell with no paint under (0,0,1,1) and no label `Z`
@@ -538,7 +596,7 @@ Compatibility: exact
 
 ### Requirement: lef read side effects
 
-`lef read` SHALL report `Reading LEF data from file <path>.` and `This action cannot be undone.` before reading, and `LEF read: Processed <n> lines.` followed by the error and warning summary after reading. It SHALL redisplay each macro cell's area. The table of macro names seen in this file SHALL be cleared after each read, so duplicate renaming applies only within one file. The file SHALL be located by trying, in order:
+`lef read` SHALL report `Reading LEF data from file <path>.` before reading (Magic's `This action cannot be undone.` is not printed; Q-LEFDEF-22, resolution: platform), and `LEF read: Processed <n> lines.` followed by the error and warning summary after reading. It SHALL redisplay each macro cell's area. The table of macro names seen in this file SHALL be cleared after each read, so duplicate renaming applies only within one file. The file SHALL be located by trying, in order:
 1. If the last path component has an extension other than `.lef`, the name as given, searched in the cell search path.
 2. If the last path component has an extension other than `.lef`, the name with that extension removed and `.lef` appended.
 3. If the last path component already ends in `.lef`, the name as given.

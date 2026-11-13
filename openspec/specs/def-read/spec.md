@@ -40,18 +40,28 @@ Compatibility: behavioral
 - **WHEN** `def read top -annotate` is run
 - **THEN** the read SHALL behave as though both *annotate* and *dolabels* were given
 
-### Requirement: Command context (informative)
-Magic SHALL require a target window or box context before any non-help `def` subcommand, including `def read`.
-Compatibility: informative
+### Requirement: Command context
+The system SHALL run `def read` without a window or box context, headless and on iPadOS, and SHALL report progress through the platform progress service.
+Compatibility: native
 
-When no cell is selected, no layout window exists and no box tool cell exists, Magic prints "Point to a window first" and aborts. In the Tcl build, the read also restricts the event loop so that key and button events are not processed while it runs, and it prints progress through a periodic timer (about every 5 seconds: "  Processed N of M <items> (P%).  Est. time remaining: Ts"). Hefesto MAY instead run headless and report progress in any form. See Q-LEFDEF-86 and Q-LEFDEF-88.
+Magic requires a target window or box context before any non-help `def` subcommand: when no cell is selected, no layout window exists and no box tool cell exists, it prints "Point to a window first" and aborts. Hefesto SHALL NOT require one for `def read` or for the other `def` subcommands that need no target cell; the read targets the active document (Q-LEFDEF-86, resolution: platform). Subcommands that need a target cell (`def write`) use the active document's selected or root cell, or report an error when there is none.
+
+In the Tcl build, Magic restricts the event loop while the read runs, so that key and button events are not processed, and prints progress through a periodic timer (about every 5 seconds: "  Processed N of M <items> (P%).  Est. time remaining: Ts"). Hefesto SHALL run the read as a task that blocks edits to the target document until it finishes, and SHALL report progress through the platform progress service, with optional cancellation (Q-LEFDEF-88, resolution: platform). The scripting console SHALL keep the text form of the progress message. Timing and the progress medium are not part of compatibility, and file output is the same in both `magic-compat` settings.
 
 (Magic ref: lef/lefCmd.c:200-219, lef/defRead.c:2537-2547, lef/lefRead.c:87-140)
 
+(Hefesto decision: docs/decisions/cross-cutting.md#X-4)
+
 #### Scenario: No window context
-- **GIVEN** Magic with no layout window, no selection and no box
+- **GIVEN** no layout window, no selection and no box
 - **WHEN** `def read top` is run
-- **THEN** Magic prints "Point to a window first" and reads nothing
+- **THEN** Hefesto SHALL read `top.def` into the active document
+- **AND** Magic in the same state prints "Point to a window first" and reads nothing
+
+#### Scenario: Edits blocked during the read
+- **GIVEN** a long `def read` is running on a document
+- **WHEN** the user tries to paint in that document
+- **THEN** the edit SHALL be refused until the read finishes, and progress SHALL be shown through the platform progress service
 
 ### Requirement: DEF file lookup
 The system SHALL resolve the DEF file name as follows, where the basename is the part after the last `/` and its extension is the part from the last `.` in the basename.
@@ -61,7 +71,7 @@ Compatibility: behavioral
 2. If the extension is `.def`, try the name as given.
 3. If there is no extension, try `<name>.def` only. The bare name SHALL NOT be tried.
 
-Each try searches the cell search path and then the cell library path (see capability `cell-library-resolution`). If no file opens, the system SHALL print "Cannot open input file <name> (<system error text>)." and return no cell. On success it SHALL print "Reading DEF data from file <resolved name>." and "This action cannot be undone.". Undo recording SHALL be disabled for the whole read and re-enabled afterwards. The read is not undoable.
+Each try searches the cell search path and then the cell library path (see capability `cell-library-resolution`). If no file opens, the system SHALL print "Cannot open input file <name> (<system error text>)." and return no cell. On success it SHALL print "Reading DEF data from file <resolved name>.". A DEF read SHALL be one undoable transaction (capability `layout-undo`) covering the created or renamed design cell, its paint, uses, labels and properties, on every platform and in both `magic-compat` settings (Q-LEFDEF-22, resolution: platform). Magic disables undo for the read and prints "This action cannot be undone."; Hefesto SHALL NOT print that message.
 
 (Magic ref: lef/lefWrite.c:150-250, lef/defRead.c:2518-2552, lef/defRead.c:2760)
 
@@ -134,7 +144,7 @@ The section bodies `components`, `vias`, `pins`, `specialnets`, `nets`, `nondefa
 - A skipped statement SHALL be consumed up to and including the next `;` token.
 - A skipped section SHALL be consumed up to the matching `END <name>`. An `END` followed by another `END` SHALL cause the search to continue. If the input ends first, the system SHALL report the error "Section <name> has no END record!".
 - A section count that is not an integer SHALL be taken as 0.
-- An unknown top-level keyword SHALL produce the message "Unknown keyword "<tok>" in DEF file; ignoring." and the statement SHALL be skipped to the next `;`. This applies to `FILLS`, `SLOTS`, `STYLES` and other unsupported sections; see Q-LEFDEF-84.
+- An unknown top-level keyword SHALL produce the message "Unknown keyword "<tok>" in DEF file; ignoring." and the statement SHALL be skipped to the next `;`. With `magic-compat` ON (the default) this also applies to `FILLS`, `SLOTS` and `STYLES`, as in Magic, so their statements produce further unknown-keyword messages and their `END` produces "END statement out of context.". With it OFF, `FILLS`, `SLOTS` and `STYLES` are known sections: each SHALL be skipped to its `END <SECTION>` with the single info message "<SECTION> section not supported; skipped." and no error or warning is counted (Q-LEFDEF-84, resolution: compat). Painting FILLS is out of scope. The layout is the same in both settings.
 - `END` followed by anything other than `DESIGN` SHALL produce the error "END statement out of context." and reading SHALL continue.
 - Content after `END DESIGN` SHALL be ignored.
 - The output-related semantics of `VERSION`, `BUSBITCHARS` and `DIVIDERCHAR` SHALL be ignored. In particular, bus-bit and divider characters do not change name handling.
@@ -147,10 +157,11 @@ The section bodies `components`, `vias`, `pins`, `specialnets`, `nets`, `nondefa
 - **THEN** neither construct SHALL change the layout, and no messages SHALL be produced for them
 
 #### Scenario: Unsupported FILLS section (verify against Magic)
-- **GIVEN** `FILLS 1 ; - LAYER met1 RECT ( 0 0 ) ( 10 10 ) ; END FILLS`
+- **GIVEN** `FILLS 1 ; - LAYER met1 RECT ( 0 0 ) ( 10 10 ) ; END FILLS` and `magic-compat` ON
 - **WHEN** it is read
 - **THEN** the message `Unknown keyword "FILLS" in DEF file; ignoring.` SHALL be produced, followed by `Unknown keyword "-" ...` for the fill statement
 - **AND** `END FILLS` SHALL produce the error "END statement out of context.", after which reading continues
+- **AND** with `magic-compat` OFF the only message SHALL be "FILLS section not supported; skipped.", with no error counted
 
 ### Requirement: Unit scaling
 The system SHALL convert every DEF distance `v` (in DEF database units) to internal units as `round(v / oscale)`, where `oscale` is a single-precision float.
@@ -159,11 +170,13 @@ Compatibility: exact
 `oscale` is computed as follows:
 
 1. At the start of the read, `oscale = s0`, where `s0 = (10 · scalefactor) / (expander · 1000)` of the current CIF/GDS output style (microns per internal unit). If no output style exists, `s0 = 1.0`.
-2. On each `UNITS` statement, the third token after `UNITS` is parsed as an integer `n`, and `oscale` SHALL be multiplied by `n`. The two intermediate words are not checked. If the value is not an integer, the system SHALL report the error "Invalid syntax for UNITS statement.", then the message "Assuming default value of 100", and use `n = 100`.
+2. On each `UNITS` statement, the third token after `UNITS` is parsed as an integer `n`. The two intermediate words are not checked. The parse and its effect depend on the `magic-compat` setting (Q-LEFDEF-79, resolution: compat):
+   - With it ON (the default), as in Magic, the integer prefix of the token is taken (`1000.5` reads as 1000 without a message) and `oscale` SHALL be multiplied by `n`. If the token has no leading integer, the system SHALL report the error "Invalid syntax for UNITS statement.", then the message "Assuming default value of 100", and use `n = 100`.
+   - With it OFF, `oscale` SHALL be set to `s0 · n`. A value that is not a positive integer (including `1000.5`, `0` and `-1`) SHALL be reported with the same two messages and `n = 100` used.
 
 Other rules:
 
-- Each further `UNITS` statement multiplies again; see Q-LEFDEF-79.
+- With `magic-compat` ON each further `UNITS` statement multiplies again, as in Magic. With it OFF a further `UNITS` statement SHALL report a warning and replace the previous value (Q-LEFDEF-79, resolution: compat).
 - If no `UNITS` statement precedes a geometric construct, DEF numbers are interpreted as microns.
 - DEF reading SHALL NOT change the internal grid or rescale the database. Values that are not integral in internal units are rounded, never trimmed or grid-scaled.
 - Point coordinates, rectangle corners, wire widths, placement origins and non-default-rule widths and spacings use `round(v / oscale)`.
@@ -182,6 +195,12 @@ Other rules:
 - **WHEN** the coordinates `1235` and `-1235` are converted
 - **THEN** the results SHALL be `124` and `-124`
 
+#### Scenario: Repeated UNITS statement
+- **GIVEN** `s0 = 0.001` and the statements `UNITS DISTANCE MICRONS 1000 ;` and `UNITS DISTANCE MICRONS 2000 ;`
+- **WHEN** the coordinate `2000` is converted after both
+- **THEN** with `magic-compat` ON `oscale` SHALL be `2000.0` and the result SHALL be `1`
+- **AND** with `magic-compat` OFF a warning SHALL be reported, `oscale` SHALL be `2.0` and the result SHALL be `1000`
+
 #### Scenario: No UNITS statement
 - **GIVEN** `s0 = 0.001` and no UNITS statement
 - **WHEN** the DIEAREA `( 0 0 ) ( 10 20 )` is read
@@ -192,7 +211,7 @@ The system SHALL paint all DEF content into a single design cell, chosen as desc
 Compatibility: behavioral
 
 - `DESIGN <name> ;`: if no design cell has been chosen yet, look up a cell named `<name>`. If none exists, create a new, empty, available cell with that name. If a design cell was already chosen (because content came before `DESIGN`), rename it to `<name>`.
-- When DIEAREA, COMPONENTS, PINS, SPECIALNETS, NETS, NONDEFAULTRULES or BLOCKAGES is reached before any `DESIGN` statement, the design cell SHALL be looked up or created under the name exactly as passed to `def read` (including any directory or extension text). See Q-LEFDEF-78.
+- When DIEAREA, COMPONENTS, PINS, SPECIALNETS, NETS, NONDEFAULTRULES or BLOCKAGES is reached before any `DESIGN` statement, the design cell SHALL be looked up or created under a fallback name chosen by the `magic-compat` setting (Q-LEFDEF-78, resolution: compat). With it ON (the default) the name is exactly as passed to `def read`, including any directory or extension text, as in Magic. With it OFF the name is the argument's basename (after its last `/`) with a trailing `.def` removed. In both settings a later `DESIGN` statement renames the cell.
 - An existing cell SHALL NOT be cleared. DEF content SHALL be added to whatever it already contains.
 - `TECHNOLOGY <name>`: if `<name>` differs (case-sensitive) from the current technology name, the system SHALL report the warning "DEF technology name "<name>" does not match current magic technology name "<tech>"" and continue.
 - If the file never selects a design cell, the system SHALL print "DEF read: Design has no contents." and return no cell.
@@ -204,6 +223,12 @@ Compatibility: behavioral
 - **WHEN** a DEF file with `DESIGN picorv ;` is read
 - **THEN** a new cell `picorv` SHALL receive all geometry
 
+#### Scenario: Content before DESIGN
+- **GIVEN** a file `build/chip.def` whose DIEAREA comes before any `DESIGN` statement and which has no `DESIGN` statement
+- **WHEN** `def read build/chip.def` is run
+- **THEN** with `magic-compat` ON the design cell SHALL be named `build/chip.def`
+- **AND** with `magic-compat` OFF it SHALL be named `chip`
+
 #### Scenario: Re-reading into an existing cell
 - **GIVEN** cell `picorv` already contains a met1 rectangle
 - **WHEN** a DEF with `DESIGN picorv ;` is read
@@ -213,10 +238,10 @@ Compatibility: behavioral
 The system SHALL read `DIEAREA` as a rectangle and store it on the design cell as the property `FIXED_BBOX`, a dimension-typed property of four integers `xbot ybot xtop ytop` in internal units.
 Compatibility: exact
 
-- The rectangle uses the first two points read; the corners are canonicalised so that `xbot ≤ xtop` and `ybot ≤ ytop`.
+- With `magic-compat` ON (the default) the rectangle uses the first two points read, as in Magic; with it OFF it is the bounding box of all the DIEAREA points (Q-LEFDEF-77, resolution: compat). The corners are canonicalised so that `xbot ≤ xtop` and `ybot ≤ ytop`.
 - Points MAY be written with or without parentheses.
 - Setting the property SHALL mark the cell as having a fixed bounding box (see capability `layout-properties`).
-- Any further points (a polygonal die) SHALL be skipped up to `;`. See Q-LEFDEF-77.
+- With `magic-compat` ON any further points (a polygonal die) SHALL be skipped up to `;`. With it OFF every point up to `;` is read.
 - A malformed point SHALL report the error "Bad port geometry: RECT requires 4 values.". See Q-LEFDEF-68 for Magic's subsequent crash.
 
 (Magic ref: lef/defRead.c:2637-2650, lef/lefRead.c:868-931, database/DBprop.c:89-95)
@@ -229,6 +254,12 @@ Compatibility: exact
 #### Scenario: Reversed corners
 - **WHEN** `DIEAREA ( 100 100 ) ( 0 0 ) ;` is read with `oscale = 1`
 - **THEN** `FIXED_BBOX` SHALL be `0 0 100 100`
+
+#### Scenario: Polygonal die area
+- **GIVEN** `oscale = 1`
+- **WHEN** `DIEAREA ( 0 0 ) ( 100 0 ) ( 100 50 ) ( 50 50 ) ( 50 100 ) ( 0 100 ) ;` is read
+- **THEN** with `magic-compat` ON `FIXED_BBOX` SHALL be `0 0 100 0`, from the first two points
+- **AND** with `magic-compat` OFF it SHALL be `0 0 100 100`
 
 ### Requirement: VIAS section grammar
 The system SHALL read the VIAS section with the following grammar and record each via definition in the shared LEF/DEF via table of capability `lef-read`, keyed by via name.
@@ -248,17 +279,26 @@ via_prop    = "+" , ( "RECT" , layer , point , point
             | non_plus_token ;   (* tokens not introduced by "+" are ignored *)
 ```
 
-- `VIARULE <name>` SHALL be read and ignored. Missing generation parameters SHALL NOT be filled from any rule.
+- `VIARULE <name>` SHALL be read. When it names a LEF VIARULE GENERATE rule that is known, that rule supplies the generation parameters the definition omits (see "Generated DEF vias", Q-LEFDEF-61, resolution: fix).
 - `CUTSIZE`, `CUTSPACING`, `ENCLOSURE` and `ROWCOL` values SHALL be parsed as integers in DEF database units. A non-integer token SHALL report the error "Invalid syntax for CUTSIZE." (respectively CUTSPACING, ENCLOSURE or ROWCOL). For ROWCOL, the failing value SHALL be set to 1.
-- `ORIGIN`, `OFFSET`, `PATTERN`, `POLYGON`, `MASK` and any other `+` keyword SHALL report the message "Unknown via property "<kw>" in VIAS definition; ignoring.". Its arguments are skipped until the next `+` or `;`. See Q-LEFDEF-62.
+- Any `+` keyword not in the grammar above SHALL report the message "Unknown via property "<kw>" in VIAS definition; ignoring.". Its arguments are skipped until the next `+` or `;`.
+- `ORIGIN`, `OFFSET`, `PATTERN`, `POLYGON` and `MASK` depend on the `magic-compat` setting (Q-LEFDEF-62, resolution: compat). With it ON (the default) they are unknown properties, reported and skipped as above, as in Magic. With it OFF they SHALL be implemented per DEF 5.8:
+  - `+ ORIGIN x y` shifts the whole via geometry (primary area and every secondary rectangle) by `(x, y)`.
+  - `+ OFFSET xb yb xt yt` shifts the generated bottom enclosure rectangle by `(xb, yb)` and the top enclosure rectangle by `(xt, yt)`; cuts are not shifted.
+  - `+ PATTERN <pattern>` removes from the ROWCOL cut array the cuts the DEF 5.8 cut pattern marks as absent.
+  - `+ POLYGON <layer> <pt> <pt> <pt> ...` adds the polygon on that layer to the via geometry, decomposed into rectangles as LEF polygons are (capability `lef-read`).
+  - `+ MASK <n>` is accepted and ignored, because Hefesto has no mask colours.
+  The generated-via geometry for these properties SHALL be the same code that builds LEF vias defined by a via rule with `magic-compat` OFF (capability `lef-read`, Q-LEFDEF-7).
 - A statement that does not start with `-` or `END` SHALL report the message "Unknown keyword "<tok>" in VIAS definition; ignoring." and be skipped to `;`.
 - At the start of each via definition, ROWCOL SHALL default to 1 row and 1 column.
 
 (Magic ref: lef/defRead.c:1902-2170)
 
 #### Scenario: Unsupported via property
+- **GIVEN** `magic-compat` ON
 - **WHEN** a via contains `+ ORIGIN 10 10`
 - **THEN** the message `Unknown via property "ORIGIN" in VIAS definition; ignoring.` SHALL be produced, and the via SHALL be built as if ORIGIN were absent
+- **AND** with `magic-compat` OFF no message SHALL be produced and every rectangle of the via SHALL be shifted by `(10, 10)` DEF units
 
 ### Requirement: Rectangle-based DEF vias
 For each `+ RECT <layer> <pt> <pt>` in a via definition, the system SHALL resolve the layer as a non-obstruction layer (see `lef-read` layer lookup) and add the rectangle to the via's geometry exactly as a LEF VIA `RECT` is added (capability `lef-read`).
@@ -312,10 +352,10 @@ cuts   : x0 = trunc(-Wc/2), y0 = trunc(-Hc/2)   (C integer division, toward zero
 
 Because a full extent `E/oscale` in internal units equals the half-extent in doubled units, the top and bottom rectangles are centred on the via origin.
 
-- The primary type of a generated via SHALL be the top layer `T`, not the cut. See Q-LEFDEF-63.
+- The primary type of a generated via SHALL be the top layer `T`, not the cut, in both `magic-compat` settings (def-write and lef-write depend on it). How a route continues after such a via is specified in "Regular net routing" (Q-LEFDEF-63, resolution: compat).
 - Secondary rectangles are prepended to the list, so the list order is the last cut generated first, then earlier cuts, then the bottom rectangle.
-- Parameters not given in the definition SHALL keep whatever value they last had in this read. In Magic, a parameter never set in the read is undefined; see Q-LEFDEF-61.
-- The "generated" condition SHALL persist for all later via definitions in the same VIAS section, including purely rectangle-based ones. See Q-LEFDEF-60.
+- With `magic-compat` ON, a parameter not given in the definition SHALL keep the value it last had in this read, as in Magic. A parameter that has no value yet (never set in this read; Magic leaves it uninitialised), and with `magic-compat` OFF every parameter the definition omits, SHALL take the value from the named LEF VIARULE when it is known, otherwise 0, with a warning naming the via and the parameter (Q-LEFDEF-61, resolution: fix).
+- With `magic-compat` ON (the default) the "generated" condition SHALL persist for all later via definitions in the same VIAS section, including purely rectangle-based ones, as in Magic, so a later RECT-only via also gets generated geometry from the last parameters. With it OFF the condition and all generation parameters SHALL be reset at each `- <vianame>`, so a via is generated only from its own CUTSIZE, LAYERS, CUTSPACING, ENCLOSURE and ROWCOL, with omitted parameters handled as in Q-LEFDEF-61 (Q-LEFDEF-60, resolution: compat).
 
 (Magic ref: lef/defRead.c:1946-2160, lef/lefRead.c:2545-2632)
 
@@ -329,6 +369,12 @@ Because a full extent `E/oscale` in internal units equals the half-extent in dou
 #### Scenario: Swapped LAYERS order
 - **WHEN** `+ LAYERS met1 met2 via1` is given
 - **THEN** the warning "Improper layer order for VIARULE." SHALL be reported, and the cut SHALL be `via1` with top `met2`
+
+#### Scenario: Generated condition after a generated via
+- **GIVEN** the VIAS section defines the generated via `VG` of the previous scenario and then `- VR + RECT met1 ( -10 -10 ) ( 10 10 ) ;`
+- **WHEN** the section is read
+- **THEN** with `magic-compat` ON `VR` SHALL also get the geometry generated from `VG`'s parameters, as in Magic
+- **AND** with `magic-compat` OFF `VR` SHALL hold only its metal1 rectangle
 
 ### Requirement: Via redefinition
 When a VIAS definition names a via that already exists in the shared via table (from LEF or an earlier DEF), the system SHALL report the warning "Composite via "<name>" redefined." and discard the previous geometry before reading the new one.
@@ -374,7 +420,7 @@ Properties and placement:
 - `+ SOURCE`, `+ WEIGHT`, `+ FOREIGN`, `+ REGION`, `+ GENERATE`, `+ PROPERTY` and `+ EEQMASTER` SHALL consume exactly one following token and be ignored.
 - An unknown `+` keyword SHALL produce the message "Unknown component property "<kw>" in COMPONENT definition; ignoring.".
 - After the statement, the use SHALL be placed into the design cell with the transform computed by "Component placement transform".
-- If the instance name equals an existing use in the design cell, Magic's behavior is undefined; see Q-LEFDEF-83.
+- If the instance name equals an existing use in the design cell, the component SHALL still be placed, and its use SHALL be renamed with the instance-id rule of capability `cell-file-format`: the message "Duplicate instance-id for cell <child> (<id>) will be renamed", then the name `<child>_<k>` (Q-LEFDEF-83, resolution: fix, both `magic-compat` settings). Magic places the use with the duplicate id and writes it so; Hefesto's `.mag` and `def write` output carry the renamed id instead, a recorded golden deviation.
 - In annotation mode, the whole COMPONENTS section SHALL be skipped.
 
 (Magic ref: lef/defRead.c:2184-2404, lef/defRead.c:2657-2669, database/DBcellname.c:2401-2415)
@@ -382,6 +428,11 @@ Properties and placement:
 #### Scenario: Slash in instance name
 - **WHEN** `- core/u1 sky130_fd_sc_hd__inv_1 + PLACED ( 0 0 ) N ;` is read
 - **THEN** a use named `core_u1` SHALL be created, and the warning SHALL be reported once
+
+#### Scenario: Duplicate instance name
+- **GIVEN** the design cell already contains a use `u1` of cell `inv`
+- **WHEN** `- u1 inv + PLACED ( 0 0 ) N ;` is read
+- **THEN** the message "Duplicate instance-id for cell inv (u1) will be renamed" SHALL be reported, and the new use SHALL be named `inv_0`
 
 #### Scenario: Missing master
 - **GIVEN** no cell `FOO` is loaded and no `FOO.mag` exists
@@ -438,7 +489,7 @@ Other rules:
 `+ UNPLACED` SHALL place the component at the origin with orientation N, applying the lower-left convention, and SHALL report the warning "Unplaced component "<instname>" will be put at origin.".
 Compatibility: exact
 
-A component statement with no placement keyword at all SHALL be placed with the identity transform, without lower-left correction. See Q-LEFDEF-85.
+A component statement with no placement keyword at all SHALL be placed with the identity transform, without lower-left correction. Both rules apply in both `magic-compat` settings, because Hefesto has no unplaced-instance concept and DEF gives no location to use (Q-LEFDEF-85, resolution: replicate).
 
 (Magic ref: lef/defRead.c:1324-1331, lef/defRead.c:2344-2349)
 
@@ -472,7 +523,8 @@ pin_use   = "DEFAULT" | "SIGNAL" | "POWER" | "GROUND" | "CLOCK" | "RESET"
 - `NET` SHALL consume the net name and ignore it. The label text is always the pin name.
 - `SPECIAL` SHALL be ignored.
 - `LAYER <name>` SHALL resolve the layer as a non-obstruction layer (`lef-read` layer lookup) and then read a rectangle. Anything between the layer name and the first point (for example `MASK n`, `SPACING d` or `DESIGNRULEWIDTH d`) SHALL cause a rectangle parse error.
-- `POLYGON`, `VIA` and other `+` keywords SHALL report the message "Unknown pin property "<kw>" in PINS definition; ignoring.". Their arguments are skipped up to the next `+`. See Q-LEFDEF-66.
+- Other `+` keywords SHALL report the message "Unknown pin property "<kw>" in PINS definition; ignoring.". Their arguments are skipped up to the next `+`.
+- `POLYGON` and `VIA` depend on the `magic-compat` setting (Q-LEFDEF-66, resolution: compat). With it ON (the default) they are unknown pin properties, reported and skipped as above, and add no geometry, as in Magic. With it OFF, `+ POLYGON <layer> <pt> <pt> <pt> ...` is painted after decomposition into rectangles as LEF polygons are (capability `lef-read`), and `+ VIA <vianame> ( x y )` paints the named via's geometry at `(x, y)`. Both are transformed by the port placement and labelled with the pin name by "Pin port labels"; a polygon's label follows lef-read's polygon port-label rule (Q-LEFDEF-23).
 - An unknown direction SHALL report the error "Unknown pin class "<tok>"". An unknown use SHALL report the error "Unknown pin use "<tok>"". The token `OUTPUT TRISTATE` exists in the class table but can never match a single token.
 - Each `+ PORT` after the first in a pin SHALL increment the processed-pin counter, so that a multi-port pin counts as one pin per port.
 
@@ -495,7 +547,9 @@ The order of events is as follows:
 - On `+ PLACED`, `+ FIXED` or `+ COVER`, the placement transform is computed. If no LAYER has been seen yet in this pin, the placement is marked as waiting. Otherwise the whole pending list SHALL be painted and labelled now.
 - Each painting operation empties the pending list and increments the pin port index by 1. The index starts at 0 for the read, counts across all pins, and is never reset.
 - A pin that ends while a placement is still waiting for a layer SHALL report the error "Pin specified without layer, was not placed." when the next pin starts.
-- The pending list and the "layer seen" state SHALL NOT be cleared between pins in the way the DEF standard implies. Rectangles left unpainted at the end of a pin SHALL be painted with the next pin's placement and name. See Q-LEFDEF-65.
+- The waiting-placement flag and the current layer are reset at each `- <pin>`, as in Magic. What happens to rectangles that are pushed after the pin's last paint (for example `+ PLACED ... + LAYER a + LAYER b`, where `b` is pushed with no placement waiting) depends on the `magic-compat` setting (Q-LEFDEF-65, resolution: compat):
+  - With it ON (the default), as in Magic, the pending list is never cleared: such rectangles are painted with the next pin's placement and name at that pin's next paint, and rectangles still pending at the end of the PINS section are discarded without a message.
+  - With it OFF, rectangles are collected per port (a pin, or each `+ PORT` of a pin). At the end of the port, all of them are painted with that port's placement and labelled with that pin's name. A port that has rectangles but no placement SHALL be reported with the message "Pin specified without placement, was not placed." and its rectangles dropped.
 - Pin geometry SHALL be painted in annotation mode too. See Q-LEFDEF-80.
 
 (Magic ref: lef/defRead.c:1625-1730)
@@ -508,6 +562,18 @@ The order of events is as follows:
 #### Scenario: Placement before layer
 - **WHEN** `- b + PLACED ( 500 0 ) N + LAYER met1 ( 0 0 ) ( 20 20 ) ;` is read with `oscale = 1`
 - **THEN** metal1 SHALL be painted at `(500,0)-(520,20)` with a port label `b`
+
+#### Scenario: Second layer after the placement
+- **GIVEN** `oscale = 1`
+- **WHEN** `- b + PLACED ( 500 0 ) N + LAYER met1 ( 0 0 ) ( 20 20 ) + LAYER met2 ( 0 0 ) ( 20 20 ) ; - c + PLACED ( 900 0 ) N + LAYER met1 ( 0 0 ) ( 10 10 ) ;` is read
+- **THEN** with `magic-compat` ON the metal2 rectangle SHALL be painted at `(900,0)-(920,20)` with a port label `c`, together with `c`'s own metal1 rectangle
+- **AND** with `magic-compat` OFF it SHALL be painted at `(500,0)-(520,20)` with a port label `b`
+
+#### Scenario: Pin polygon
+- **GIVEN** `oscale = 1`
+- **WHEN** `- p + POLYGON met1 ( 0 0 ) ( 20 0 ) ( 20 10 ) ( 10 10 ) ( 10 20 ) ( 0 20 ) + PLACED ( 100 0 ) N ;` is read
+- **THEN** with `magic-compat` ON the message `Unknown pin property "POLYGON" in PINS definition; ignoring.` SHALL be produced and nothing painted
+- **AND** with `magic-compat` OFF metal1 SHALL be painted over the L shape translated by `(100,0)`, with a port label `p`
 
 ### Requirement: Pin port labels
 For each painted pin rectangle `R` on type `t`, the system SHALL create a label on `R` with text equal to the pin name, as described below.
@@ -528,13 +594,18 @@ DIRECTION mapping: DEFAULT → default; INPUT → input; OUTPUT → output; INOU
 
 USE mapping: each value maps to the same-named port use.
 
-The DIRECTION and USE values persist from one pin to the next until changed, so a pin without DIRECTION inherits the previous pin's direction. See Q-LEFDEF-64.
+With `magic-compat` ON (the default) the DIRECTION and USE values persist from one pin to the next until changed, as in Magic, so a pin without DIRECTION inherits the previous pin's direction. With it OFF both SHALL be reset to DEFAULT at each `- <pin>` (Q-LEFDEF-64, resolution: compat).
 
 In annotation mode, every existing label in the design cell whose rectangle equals `R` exactly and whose text equals the pin name SHALL be erased before the new label is added.
 
 If the pin layer is unknown, the label is non-sticky and its rectangle is degenerate at `(0,0)`. See Q-LEFDEF-67. If the type has no default width rule and the rectangle has non-zero height, Magic loops forever. See Q-LEFDEF-89.
 
 (Magic ref: lef/defRead.c:1555-1590, lef/defRead.c:1640-1729, database/DBlabel.c:135-219, database/DBlabel.c:431-461, drc/DRCtech.c:4620-4665)
+
+#### Scenario: Direction of a pin without DIRECTION
+- **WHEN** `- a + DIRECTION INPUT + LAYER met1 ( 0 0 ) ( 10 10 ) + PLACED ( 0 0 ) N ; - b + LAYER met1 ( 0 0 ) ( 10 10 ) + PLACED ( 100 0 ) N ;` is read
+- **THEN** with `magic-compat` ON the label `b` SHALL have class input
+- **AND** with `magic-compat` OFF it SHALL have the default class
 
 #### Scenario: Label size and rotation
 - **GIVEN** a font is loaded, metal2 has DRC default width 140, and the painted rectangle is `(0,0)-(140,1000)`
@@ -587,9 +658,9 @@ coord       = number | "*" ;
 
 - Connection lists SHALL be skipped, except in annotation mode (see "Net annotation mode").
 - `SHAPE`, `STYLE`, `USE` and the other special-net keywords before the first routing statement are handled at the net level. Of these, `SHAPE`, `STYLE` and `VOLTAGE` SHALL report the message "Unknown net property "<kw>" in NET definition; ignoring.". After the first routing statement, they are handled inside special routing as `s_plus`.
-- An unknown `s_plus` keyword or SHAPE value, or a non-numeric STYLE, SHALL report a message and skip input up to and including the next `;`. Routing reading then continues past that `;`. As a result, the following net statement is consumed as route tokens until its own `;`. See Q-LEFDEF-69.
+- An unknown `s_plus` keyword or SHAPE value, or a non-numeric STYLE, SHALL report a message. The recovery depends on the `magic-compat` setting (Q-LEFDEF-69, resolution: compat). With it ON (the default), as in Magic, input is skipped up to and including the next `;` and routing reading then continues past that `;`, so the following net statement is consumed as route tokens until its own `;`. With it OFF, input is skipped only to the next `+` or `;`; a `;` ends the current net, so the next net is read normally. The special-wiring shapes `+ RECT`, `+ POLYGON`, `+ VIA` and `+ MASK` take this path and are not painted in either setting.
 - `VPIN` SHALL consume only one token. Its remaining fields are processed as ordinary tokens.
-- A net-level `NONDEFAULTRULE <name>` applies to the next routing statement only. The rule SHALL be cleared at the start of each net and after each routing statement. See Q-LEFDEF-74. An unknown rule name SHALL report the error "Unknown nondefault rule "<name>"".
+- A net-level `NONDEFAULTRULE <name>` depends on the `magic-compat` setting (Q-LEFDEF-74, resolution: compat). With it ON (the default), as in Magic, it applies to the next routing statement only, and the rule SHALL be cleared at the start of each net and after each routing statement. With it OFF, it applies to all regular wiring of the net wherever it appears in the statement: the whole net statement is parsed before the net's routes are painted, so a rule written after the wiring still applies. `TAPER` and `TAPERRULE` still override it locally in both settings. An unknown rule name SHALL report the error "Unknown nondefault rule "<name>"".
 - The net count increments once per `-` statement.
 
 (Magic ref: lef/defRead.c:62-300, lef/defRead.c:1049-1300)
@@ -597,7 +668,15 @@ coord       = number | "*" ;
 #### Scenario: Routing then NONDEFAULTRULE
 - **GIVEN** a nondefault rule `W2` that gives met1 width 280
 - **WHEN** a net is written `- n1 ( u1 A ) + ROUTED met1 ( 0 0 ) ( 1000 0 ) + NONDEFAULTRULE W2 ;`
-- **THEN** the met1 wire SHALL use the default met1 width, because the rule appears after the routing statement
+- **THEN** with `magic-compat` ON the met1 wire SHALL use the default met1 width, because the rule appears after the routing statement
+- **AND** with `magic-compat` OFF it SHALL use width 280
+
+#### Scenario: Unknown special-net keyword
+- **GIVEN** SPECIALNETS with `- vdd + ROUTED met1 200 ( 0 0 ) ( 1000 0 ) + FOO bar ;` followed by `- gnd + ROUTED met1 200 ( 0 500 ) ( 1000 500 ) ;`
+- **WHEN** they are read
+- **THEN** a message SHALL be reported for `FOO`
+- **AND** with `magic-compat` ON the `gnd` statement SHALL be consumed as route tokens of `vdd`
+- **AND** with `magic-compat` OFF `gnd` SHALL be read as its own net, with its metal1 wire painted
 
 ### Requirement: Route layer resolution and width selection
 At the start of each route leg (the first leg, or after `NEW`/`new`, or after `+ ROUTED|FIXED|COVER|SHIELD` in special nets), the system SHALL resolve the layer token and set the paint width `W` (internal units, full width) and default extension `Xd` (half-width extension, in doubled units) as described below.
@@ -609,7 +688,7 @@ Layer resolution:
 2. Otherwise the route type SHALL be the magic type whose name equals the token converted to lower case.
 3. If neither applies, the system SHALL report the error "Unknown layer type "<tok>" for NEW route" and continue with the next token.
 
-The default width `Wdef` is the LEF layer record's route width (capability `lef-read` / `lef-tech-section`). If there is no record, `Wdef = (3 · λ1) / λ0` with integer arithmetic, where `λ1/λ0` is the database lambda ratio.
+The default width `Wdef` is the LEF layer record's route width (capability `lef-read` / `lef-tech-section`). If there is no record, `Wdef = (3 · λ1) / λ0` with integer arithmetic, where `λ1/λ0` is the database lambda ratio. In both `magic-compat` settings, wherever this gives a non-positive width (a record whose route width was never filled, for example on a 1:1 grid with no `lef read` that sets WIDTH), `Wdef` SHALL instead be the DRC default width of the route type, or `(3 · λ1) / λ0` when the type has no DRC width rule (Q-LEFDEF-1, resolution: compat, with this part fixed in both modes, X-2 tier 1). Magic builds empty rectangles there and paints no wire. This applies to every use of `Wdef` below and in "Route via placement".
 
 Width per net kind:
 
@@ -629,6 +708,12 @@ Width per net kind:
 - **GIVEN** met1 has route width 140
 - **WHEN** `+ ROUTED met1 0 ( 0 0 ) ( 0 500 )` is read
 - **THEN** `W` SHALL be 140
+
+#### Scenario: Unfilled route width
+- **GIVEN** `oscale = 1`, a 1:1 grid, the met1 LEF layer record has route width −1 (never filled), and the DRC default width of metal1 is 140
+- **WHEN** the regular route `met1 ( 0 0 ) ( 1000 0 )` is read
+- **THEN** `W` SHALL be 140 and metal1 SHALL be painted at `(-70,-70)-(1070,70)` in both `magic-compat` settings
+- **AND** Magic paints nothing for this route
 
 ### Requirement: Route wire segment geometry
 The system SHALL convert consecutive route points into rectangles on the current route type, using the algorithm below in doubled units. The default extension `Xd` and width `W` are as defined in "Route layer resolution and width selection".
@@ -704,7 +789,8 @@ Geometry for a defined via, with the reference point `P` in doubled units:
 Layer switch after a via, where `p` is the primary type of the via:
 
 - If `p` is a contact type, or the via is defined, look at the residue (constituent) types of `p` in increasing type order. The route type SHALL become the first residue type that differs from the current route type.
-- For a non-contact `p`, the residue set is `{p}`, so the route type changes only if `p` differs from the current route type. See Q-LEFDEF-63.
+- For a non-contact `p`, the residue set is `{p}`, so the route type changes only if `p` differs from the current route type.
+- A generated via has the non-contact primary type `T` (its top layer). With `magic-compat` ON (the default) the two rules above apply to it, as in Magic, so a route on `T` stays on `T` after the via. With it OFF, after a generated via the route type SHALL become the via's bottom layer `B` when the current route type is `T`, and `T` otherwise (Q-LEFDEF-63, resolution: compat). RECT-defined vias behave the same in both settings.
 - When the route type changes, the system SHALL look up the LEF layer record for the new type (see Q-LEFDEF-82) and recompute `W`:
   - special nets: `W` is the width saved at the start of the leg, unchanged
   - regular nets: the non-default rule set's width for that layer, else that layer's default width
@@ -712,7 +798,7 @@ Layer switch after a via, where `p` is the primary type of the via:
 
 Unsupported tokens:
 
-- A via orientation (`N`, `FS`, ...) or `MASK n` / `MASK <bits>` is processed as via names and reports "Via name ... unknown in route." for each token. Via orientation is not supported. See Q-LEFDEF-72.
+- With `magic-compat` ON (the default), as in Magic, a via orientation (`N`, `FS`, ...) or `MASK n` / `MASK <bits>` is processed as via names and reports "Via name ... unknown in route." for each token; via orientation is not supported. With it OFF, `MASK n` before a point or `RECT`, and the mask-bits token before a via name, SHALL be consumed silently, and a DEF orientation after a via name (`N`, `S`, `E`, `W`, `FN`, `FS`, `FE`, `FW`) SHALL rotate or flip the via's rectangles about the via point (orientation matrices of "Component placement transform") before they are emitted. The route-layer switch still follows the via's residues (Q-LEFDEF-72, resolution: compat).
 
 (Magic ref: lef/defRead.c:398-527)
 
@@ -722,6 +808,18 @@ Unsupported tokens:
 - **THEN** metal1 `(-70,430)-(1070,570)` SHALL be emitted, and then at doubled `P = (2000,1000)`: the cuts, the metal1 bottom rectangle `(800,430)-(1200,570)` and metal2 `(830,400)-(1170,600)`
 - **AND** the route type afterwards SHALL be metal2
 
+#### Scenario: Route continuing on the top layer of a generated via
+- **GIVEN** via `VG` from the generated-via scenario (top `metal2`, bottom `metal1`)
+- **WHEN** the regular route `met2 ( 0 500 ) ( 1000 500 ) VG ( 1000 2000 )` is read
+- **THEN** with `magic-compat` ON the second segment SHALL be painted on metal2
+- **AND** with `magic-compat` OFF it SHALL be painted on metal1
+
+#### Scenario: Oriented via in a route
+- **GIVEN** via `VA` whose only rectangle is metal1 doubled `(0,0)-(200,100)`, and `oscale = 1`
+- **WHEN** the route `met1 ( 0 0 ) VA E` is read
+- **THEN** with `magic-compat` ON the error `Via name "E" unknown in route.` SHALL be reported and metal1 painted at `(0,0)-(100,50)`
+- **AND** with `magic-compat` OFF no error SHALL be reported and metal1 painted at `(0,-100)-(50,0)`
+
 #### Scenario: Unknown via name
 - **WHEN** a route contains `( 0 0 ) NOSUCHVIA`
 - **THEN** the error `Via name "NOSUCHVIA" unknown in route.` SHALL be reported, and no geometry SHALL be emitted for it
@@ -730,9 +828,9 @@ Unsupported tokens:
 The system SHALL treat the route elements `RECT`, `POLYGON` and `VIRTUAL` as follows.
 Compatibility: exact
 
-- `RECT ( dx1 dy1 dx2 dy2 )`: the rectangle relative to the reference point. Each corner is `trunc(P/2) + round(d/oscale)`, where `P` is the doubled reference coordinate and the division truncates toward zero. The corners are canonicalised and emitted on the current paint type. `RECT` is accepted in both regular and special nets. An unparsable value SHALL report the error "Cannot parse X coordinate in RECT." (or Y), and a missing `)` SHALL report "Bad coordinates in RECT.". See Q-LEFDEF-73.
-- `POLYGON`: the system SHALL report the error "Route has POLYGON entries, this is not handled!". It then consumes tokens up to the first `)`. Later vertex points are processed as ordinary route points. See Q-LEFDEF-70.
-- `VIRTUAL`: the keyword SHALL be ignored. The following point is processed as an ordinary point, so a wire is painted to it. See Q-LEFDEF-71.
+- `RECT ( dx1 dy1 dx2 dy2 )`: the rectangle relative to the reference point. Each corner is `h(P) + round(d/oscale)`, where `P` is the doubled reference coordinate and `h` halves it by the `magic-compat` setting (Q-LEFDEF-73, resolution: compat): with it ON (the default) `h(P) = trunc(P/2)`, truncating toward zero as in Magic; with it OFF `h(P) = floor(P/2)`, as for wire points. The two differ only for negative odd doubled coordinates. The corners are canonicalised and emitted on the current paint type. `RECT` is accepted in both regular and special nets. In both settings (X-2 tier 1, Magic reads an uninitialised reference): a `RECT` before any valid reference point in the leg SHALL report the error "No reference point for RECT" and be skipped; an unparsable value SHALL report the error "Cannot parse X coordinate in RECT." (or Y), a missing `)` SHALL report "Bad coordinates in RECT.", and a `RECT` whose parse fails SHALL NOT be painted.
+- `POLYGON`: the system SHALL report the error "Route has POLYGON entries, this is not handled!". With `magic-compat` ON (the default), as in Magic, it then consumes tokens up to the first `)`, and later vertex points are processed as ordinary route points. With it OFF, the whole vertex list up to the next token that is not a point is consumed and painted as a polygon on the current route type, decomposed into rectangles as LEF polygons are (capability `lef-read`); the reference point is not changed (Q-LEFDEF-70, resolution: compat).
+- `VIRTUAL`: with `magic-compat` ON (the default) the keyword SHALL be ignored, as in Magic, so the following point is processed as an ordinary point and a wire is painted to it. With it OFF, the point after `VIRTUAL` SHALL become the new reference point without painting a wire, and no non-Manhattan error is reported for that leg (Q-LEFDEF-71, resolution: compat).
 
 (Magic ref: lef/defRead.c:285-357)
 
@@ -740,6 +838,22 @@ Compatibility: exact
 - **GIVEN** `oscale = 1`
 - **WHEN** a route has the reference point `(1000,500)` (doubled `(2000,1000)`) and then `RECT ( -50 -20 50 20 )`
 - **THEN** `(950,480)-(1050,520)` SHALL be emitted on the current paint type
+
+#### Scenario: RECT at a negative odd reference
+- **GIVEN** `oscale = 1` and the doubled reference point `(-3, 0)`
+- **WHEN** `RECT ( 0 0 10 10 )` is read
+- **THEN** with `magic-compat` ON the rectangle SHALL be `(-1,0)-(9,10)`
+- **AND** with `magic-compat` OFF it SHALL be `(-2,0)-(8,10)`
+
+#### Scenario: RECT without a reference point
+- **WHEN** a leg is `met1 RECT ( 0 0 10 10 )` with no point before the `RECT`
+- **THEN** the error "No reference point for RECT" SHALL be reported and nothing painted, in both `magic-compat` settings
+
+#### Scenario: VIRTUAL point
+- **GIVEN** `oscale = 1` and met1 width 140 in a regular net
+- **WHEN** `met1 ( 0 0 ) ( 1000 0 ) VIRTUAL ( 1000 500 ) ( 2000 500 )` is read
+- **THEN** with `magic-compat` ON wires SHALL be painted for all three legs, including the one from `(1000,0)` to `(1000,500)`
+- **AND** with `magic-compat` OFF no wire SHALL be painted from `(1000,0)` to `(1000,500)`; the legs from `(0,0)` to `(1000,0)` and from `(1000,500)` to `(2000,500)` are painted
 
 ### Requirement: Route painting and net labels
 After a routing statement has been parsed, the system SHALL paint every emitted rectangle into the design cell in emission order, unless annotation mode is on.
@@ -770,7 +884,7 @@ After the whole read, non-sticky labels are re-attached to the layer under them 
 In annotation mode, the system SHALL paint no route geometry and SHALL instead place one label per net, chosen as described below.
 Compatibility: behavioral
 
-1. Scan the net's connection list in order. If a connection is `( PIN <name> )`, stop looking and place no label for this net. For `( <comp> <pin> )`, look up the terminal `<comp>/<pin>` in the current edit cell (see Q-LEFDEF-81). If it is found on type `t` with area `A`, search the top-level design cell's plane for `t` within `A` for any tile of a type that connects to `t`. On the first tile found, place the net-name label at the tile centre on type `t`, and stop looking.
+1. Scan the net's connection list in order. If a connection is `( PIN <name> )`, stop looking and place no label for this net. For `( <comp> <pin> )`, look up the terminal `<comp>/<pin>` in the lookup cell. If it is found on type `t` with area `A`, search the top-level design cell's plane for `t` within the search area for any tile of a type that connects to `t`. The lookup cell and search area depend on the `magic-compat` setting (Q-LEFDEF-81, resolution: compat): with it ON (the default), as in Magic, the lookup cell is the current edit cell and the search area is `A` unexpanded; with it OFF, the lookup cell is the DEF design cell and the search area is `A` grown by 1 internal unit on every side, so paint that only touches the terminal is found. On the first tile found, place the net-name label at the tile centre on type `t`, and stop looking.
 2. If no label has been placed yet when a routing statement is read, place the label on the first emitted route rectangle whose lower-left corner lies in a tile of the same type in the design cell, at that rectangle's centre.
 3. If no rectangle qualifies, report the warning "Warning:  Label "<net>" did not land on any existing net geometry." and place the label at the centre of the last emitted rectangle.
 
@@ -782,6 +896,12 @@ In annotation mode, COMPONENTS and BLOCKAGES SHALL be skipped. VIAS and NONDEFAU
 - **GIVEN** an edit cell with subcell `u1` whose terminal `Y` is metal1 at `(10,10)-(20,20)`, and top-level metal1 covering `(0,0)-(100,30)`
 - **WHEN** `def read top -annotate` reads `- n1 ( u1 Y ) + ROUTED met1 ( 0 15 ) ( 100 15 ) ;`
 - **THEN** a label `n1` SHALL be placed at `(50,15)` on metal1, and no paint SHALL be added
+
+#### Scenario: Annotation when the edit cell is not the design cell
+- **GIVEN** the design cell `top` contains subcell `u1` with terminal `Y` on metal1 under top-level metal1, and the current edit cell is another cell that has no use `u1`
+- **WHEN** `def read top -annotate` reads `- n1 ( u1 Y ) + ROUTED met1 ( 0 15 ) ( 100 15 ) ;`
+- **THEN** with `magic-compat` ON the terminal SHALL NOT be found, and the label is placed by rules 2 and 3
+- **AND** with `magic-compat` OFF the terminal SHALL be found in `top` and the label placed on the tile under it
 
 ### Requirement: NONDEFAULTRULES section
 The system SHALL read DEF NONDEFAULTRULES into the shared non-default rule table of capability `lef-read`, keyed by rule name. A name that is redefined replaces the earlier rule set.
@@ -893,12 +1013,11 @@ Compatibility: behavioral
 2. Recompute the cell bounding box.
 3. Mark the whole cell area for redisplay.
 4. Mark the cell modified.
-5. Re-enable undo.
+5. Close the undoable transaction of the read (Q-LEFDEF-22, resolution: platform). Magic instead re-enables undo, which it disabled for the read, so in Magic the read creates no undo records.
 
-The read SHALL never create undo records.
+(Magic ref: lef/defRead.c:2550-2551, lef/defRead.c:2748-2761)
 
-(Magic ref: lef/defRead.c:2748-2761)
-
-#### Scenario: Modified flag
+#### Scenario: Modified flag and undo
 - **WHEN** a DEF read completes with a design cell
-- **THEN** that cell SHALL be marked modified, and `undo` SHALL NOT revert any of the read
+- **THEN** that cell SHALL be marked modified
+- **AND** one `undo` SHALL revert the whole read, including the creation of the design cell and every use, label and rectangle the read added

@@ -67,7 +67,7 @@ Compatibility: exact
 Consequently, the following are inherited unchanged from gds-write, and are NOT re-specified here:
 - the preconditions and subtree loading, including `undefined` handling;
 - the set and order of cells (depth-first post-order) and the cell id numbers;
-- the generation area, mask geometry, tile enumeration order, and the unmerged and merged polygon output, including the 200-point limit (see Q-OASIS-62);
+- the generation area, mask geometry, tile enumeration order, and the unmerged and merged polygon output, including the 200-point limit, which is kept for OASIS so that the shapes compare element for element with gds-write's BOUNDARY set (Q-OASIS-62, resolution: replicate; Magic ref: calma/CalmaWrite.c:2190-2260, calma/CalmaWrite.c:2394-2709);
 - the selection, order and coordinates of label TEXTs, label rectangles and `labellayer` TEXTs;
 - the reference transforms, positions, array parameters, `arrays yes` flattening, and the use-name and array-index properties;
 - the scale factors `Wscale` and `Pscale`, and the skipping of layers whose GDS layer number is outside 0–255;
@@ -153,7 +153,7 @@ The output name of a cell SHALL be the gds-write "Structure naming" result (the 
 Compatibility: exact
 
 1. If the result is empty or contains a space (possible with the permissive table), the cell is illegal for OASIS and gets `XXXXX<n>`, with `n` its cell id number.
-2. If the result equals the output name already given to a different cell in this write, the later cell (in order of first need) gets `XXXXX<n>` (with `_k` appended, smallest free `k ≥ 1`, if that is taken too), with a warning. OASIS forbids duplicate cell names. gds-write applies the same uniquification to mapped names (Q-MASK-209); this rule also covers names that only rule 1 makes collide (Q-OASIS-61).
+2. If the result equals the output name already given to a different cell in this write, the later cell (in order of first need) gets `XXXXX<n>` (with `_k` appended, smallest free `k ≥ 1`, if that is taken too), with a warning. OASIS forbids duplicate cell names. gds-write applies the same uniquification to mapped names (Q-MASK-209); this rule also covers names that only rule 1 makes collide (Q-OASIS-61, resolution: fix, settled by Q-MASK-209).
 
 The same output name is used for the CELL record, every PLACEMENT reference, and `S_TOP_CELL`.
 
@@ -174,7 +174,7 @@ Every TEXT string and every string property value SHALL be the byte sequence tha
 
 Compatibility: exact
 
-1. A byte that gds-write maps to `0x00` (a control character or DEL) SHALL be written as `_`, because a-strings cannot contain `0x00` (see Q-OASIS-60).
+1. The gds-write mapping applies unchanged in both modes (Q-OASIS-60, resolution: replicate): the strict table, or the permissive table as selected by `magic-compat` (Q-MASK-200); bytes above 127 written as `X` with Magic's "Unprintable character changed to 'X' in label." warning; upper-casing when `oasis lower` is off; and the "characters changed" summary warning. Layout data is not changed (Q-MASK-208). The only OASIS change: a byte that gds-write maps to `0x00` (a control character or DEL) SHALL be written as `_`, because a-strings cannot contain `0x00`.
 2. Under `string-limit`, the kept characters are the same ones gds-write keeps (Q-MASK-207): let `n` be the source length and `n' = n` rounded up to even. With `magic-compat` ON, if `n' > 32`, the last `32 − (n' − n)` characters are kept; with it OFF, if `n > 32`, the last 32 characters are kept.
 3. Text strings are a-strings and property values are b-strings (or propstring refnums).
 
@@ -246,7 +246,7 @@ PROPERTY records SHALL always be written in full: C = 1, N = 1 in strict mode, V
 - **THEN** the second record is `14 10 D0 0F`: W, H, Y, layer and datatype are omitted, and only X = 1000 is written
 
 ### Requirement: Text translation
-A GDS TEXT on `Lt/Dt` at point `(x, y)` with string `s` SHALL be translated to a TEXT record with textlayer `Lt`, texttype `Dt`, position `(x, y)` and string `s` (TEXTSTRING refnum in strict mode, inline a-string otherwise). PRESENTATION, STRANS, MAG and ANGLE have no OASIS counterpart and are dropped. Label font, size, rotation and justification are therefore not represented (see Q-OASIS-32).
+A GDS TEXT on `Lt/Dt` at point `(x, y)` with string `s` SHALL be translated to a TEXT record with textlayer `Lt`, texttype `Dt`, position `(x, y)` and string `s` (TEXTSTRING refnum in strict mode, inline a-string otherwise). PRESENTATION, STRANS, MAG and ANGLE have no OASIS counterpart and are dropped. Label font, size, rotation and justification are therefore not represented, and no private property carries them (Q-OASIS-32, resolution: other). When at least one font label is written, the system SHALL report one warning per write giving the number of font labels written without presentation.
 
 Compatibility: exact
 
@@ -288,7 +288,7 @@ Compatibility: exact
    - else type 8 with `(nx, ny, a, b)`.
 2. Exactly one of `nx`, `ny` greater than 1, with vector `w` (`a` or `b`) and count `n`: type 2 `(n, wx)` if `w = (wx, 0)` with `wx >= 0`; type 3 `(n, wy)` if `w = (0, wy)` with `wy >= 0`; else type 9 `(n, w)`.
 
-Zero vectors are written as they are (for example type 2 with spacing 0). The rules of capability `oasis-read` "Placement repetitions" read every case back as the same Magic array (see Q-OASIS-10). Under `arrays yes`, gds-write emits individual SREFs, which are translated individually.
+Zero vectors are written as they are (for example type 2 with spacing 0). The rules of capability `oasis-read` "Placement repetitions" read every case back as the same Magic array (Q-OASIS-10, resolution: replicate). Under `arrays yes`, gds-write emits individual SREFs, which are translated individually.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaWrite.c:1662-1863)
 
@@ -307,7 +307,7 @@ Each PROPATTR/PROPVALUE pair that gds-write emits for a reference SHALL be writt
 
 Compatibility: exact
 
-Hence attribute 61 (the use name) is always written, and attribute 99 (`xlo_xhi_ylo_yhi`) is written when `xlo != 0` or `ylo != 0`. Neither is written under `arrays yes`. See Q-OASIS-69 for the value type.
+Hence attribute 61 (the use name) is always written, and attribute 99 (`xlo_xhi_ylo_yhi`) is written when `xlo != 0` or `ylo != 0`. Neither is written under `arrays yes`. The value is a b-string in both modes (Q-OASIS-69, resolution: other): every known reader accepts any string type here, and a b-string holds any byte a GDS PROPVALUE holds. KLayout's writer instead uses the narrowest string type; that rule is the fallback if golden case OASIS-061 (a third-party strict reader) rejects the b-string.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaWrite.c:1662-1863)
 
@@ -352,7 +352,7 @@ for each mask layer M in style order:
 
 `repetition(k, d, m, e)` is type 1 `(k, m, d, e)` if `k >= 2` and `m >= 2`; type 2 `(k, d)` if `k >= 2` and `m == 1`; type 3 `(m, e)` if `k == 1` and `m >= 2`; and none if `k == m == 1`. Elements of different mask layers keep the gds-write layer order.
 
-The set of written shapes, expanded by their repetitions, SHALL equal the set of GDS BOUNDARYs of the layer. Only element order and grouping differ (see Q-OASIS-67).
+The set of written shapes, expanded by their repetitions, SHALL equal the set of GDS BOUNDARYs of the layer. Only element order and grouping differ. `repetitions yes` is the default (Q-OASIS-67, resolution: other); `repetitions no` gives the gds-write element order for comparison.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -373,7 +373,7 @@ Compatibility: native
 
 1. **Chunks.** The CELL record itself is never compressed. The records after it, up to the next CELL record, are appended to a buffer, whole records only. When the buffer reaches 1,048,576 bytes or more after a record is appended, the chunk is flushed. The rest is flushed at the end of the cell. Each name table is chunked the same way, as its own sequence. In strict mode, the CELLNAME table chunks include the `S_CELL_OFFSET` PROPERTY records.
 2. **Flush.** The chunk is compressed as one raw DEFLATE stream (RFC 1951, window 2^15, memory level 8, default strategy, level `z`, a single finishing flush). Let `U` be the chunk length, `C` the compressed length, and `H = 2 + len(uint(U)) + len(uint(C))` the CBLOCK header length. If `C + H < U`, the writer emits `CBLOCK(type 0, U, C, data)`. Otherwise it emits the chunk uncompressed.
-3. **Implementation.** Hefesto SHALL use one pinned DEFLATE implementation on all platforms, so that the compressed bytes are identical everywhere (see Q-OASIS-64).
+3. **Implementation.** Hefesto SHALL use one pinned DEFLATE implementation on all platforms, so that the compressed bytes are identical everywhere (Q-OASIS-64, resolution: platform): the zlib version pinned in the build, with the parameters of rule 2, on every platform including iPadOS. The system zlib, Apple libcompression and zlib-ng are never used for writing. Decompression accepts any valid DEFLATE stream.
 4. The file-level PROPERTY records, START and END are never compressed.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
@@ -387,6 +387,11 @@ Compatibility: native
 - **GIVEN** the same layout written with `compress 0` and with `compress 9`
 - **WHEN** every CBLOCK of the second file is replaced by its decompressed bytes, and the table offsets, `S_CELL_OFFSET` values and validation signature are recomputed
 - **THEN** the result equals the first file byte for byte
+
+#### Scenario: Compressed bytes identical across platforms
+- **GIVEN** the same layout and `compress 9`
+- **WHEN** it is written on macOS and on Linux
+- **THEN** the two files, CBLOCK payloads included, are byte-identical
 
 ### Requirement: Strict and non-strict modes
 With `strict yes`, the writer SHALL produce a strict-mode file (capability `oasis-format` "Strict mode"):
@@ -414,7 +419,7 @@ Directly after START, the writer SHALL emit these standard file properties, in t
 Compatibility: native
 
 1. `S_MAX_SIGNED_INTEGER_WIDTH` = unsigned 4;
-2. `S_MAX_UNSIGNED_INTEGER_WIDTH` = unsigned 4 (file offsets in table entries and `S_CELL_OFFSET` are not counted; see Q-OASIS-66);
+2. `S_MAX_UNSIGNED_INTEGER_WIDTH` = unsigned 4 (file offsets in table entries and `S_CELL_OFFSET` are not counted, as in KLayout's writer; Q-OASIS-66, resolution: other);
 3. `S_TOP_CELL` = the root cell's output name, unless `library yes`, in which case it is omitted.
 
 No `S_BOUNDING_BOXES_AVAILABLE` and no `S_BOUNDING_BOX` are written. In strict mode, every CELLNAME carries `S_CELL_OFFSET` (see "Reference numbers and name tables").
@@ -441,7 +446,7 @@ A mask layer name that is not a legal n-string is mapped as a cell name would be
 - **THEN** the records are `0B 02 4D 31 03 31 03 00` and `0C 02 4D 31 03 31 03 00`
 
 ### Requirement: END record and validation
-The writer SHALL write the END record with the table offsets (strict mode), the padding rules of capability `oasis-format`, and the validation scheme selected by `validation`: 0 for `none`, 1 for `crc32` (the default) and 2 for `checksum`. For schemes 1 and 2, the signature is computed over the final file bytes, as defined in `oasis-format`. See Q-OASIS-65 for the default.
+The writer SHALL write the END record with the table offsets (strict mode), the padding rules of capability `oasis-format`, and the validation scheme selected by `validation`: 0 for `none`, 1 for `crc32` (the default) and 2 for `checksum`. For schemes 1 and 2, the signature is computed over the final file bytes, as defined in `oasis-format`. `crc32` is the default in both modes (Q-OASIS-65, resolution: other); `validation none` is available, for example to compare bytes with KLayout output.
 
 Compatibility: native
 
@@ -459,7 +464,7 @@ Compatibility: native
 
 OASIS carries no dates, so unlike GDS no field depends on the current time. The only Magic-inherited order dependencies are those of gds-write (use enumeration order, Q-MASK-204; tile enumeration order) and, with `magic-compat` ON, the full-dump prefix sequence (Q-MASK-211 and Q-OASIS-68, settled the same way: with `magic-compat` OFF both the use order and the prefixes are independent of session history).
 
-(Hefesto decision: docs/decisions/product.md#P-6)
+(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaWrite.c:754-760)
 
 #### Scenario: Repeated write
 - **GIVEN** a layout and fixed settings
@@ -475,7 +480,7 @@ Compatibility: native
 |---|---|
 | BOUNDARY | "Boundary translation". A BOUNDARY with fewer than 3 distinct vertices is dropped with a warning |
 | BOX | RECTANGLE of the points' bounding box, datatype = BOXTYPE |
-| PATH | PATH: half-width `w/2`; type 0 flush/flush, type 2 half-width/half-width, type 4 explicit BGNEXTN/ENDEXTN (0 if absent); type 1 and others flush/flush with a warning; negative `w` uses `|w|` with a warning; odd `w` uses half-width `(w+1)/2` with a warning (Q-OASIS-63); a single-point path is dropped with a warning. The point list type is chosen as in "Boundary translation", without closure |
+| PATH | PATH: half-width `w/2`; type 0 flush/flush, type 2 half-width/half-width, type 4 explicit BGNEXTN/ENDEXTN (0 if absent); type 1 (round ends) flush/flush plus a CIRCLE of radius `w/2` centred on each endpoint, as KLayout's writer does; other types flush/flush with a warning; negative `w` uses `|w|` with a warning; an odd `|w|` (any type) makes the write fail with an error naming the cell and the path's layer/datatype, because OASIS cannot express edges on half units, as KLayout's default "Paths with odd width cannot be written to OASIS files" (Q-OASIS-63, resolution: fix); a single-point path is dropped with a warning. The point list type is chosen as in "Boundary translation", without closure |
 | TEXT | TEXT with LAYER, TEXTTYPE, the first XY point and the mapped STRING. Other records are dropped |
 | SREF | PLACEMENT. Record 17 when there is no MAG (or MAG = 1) and ANGLE is a multiple of 90. Otherwise record 18 with the MAG and ANGLE values as reals. STRANS bit 0x8000 sets F. The absolute flags are ignored |
 | AREF | PLACEMENT with `a = (P1−P0)/cols` and `b = (P2−P0)/rows` and the "Array placements" rules, when both divisions are exact. Otherwise repetition type 10 with the displacements `trunc(i·(P1−P0)/cols) + trunc(j·(P2−P0)/rows)`, `j` outer and `i` inner |
@@ -495,6 +500,16 @@ Rules:
 - **WHEN** a hierarchy using it is written to OASIS
 - **THEN** cell `sc_inv` contains, in order, two RECTANGLE or POLYGON records, a PATH with half-width 70 and half-width extensions, and one TEXT
 
+#### Scenario: Odd-width vendor path
+- **GIVEN** a read-only cell `sc_buf` whose GDS bytes hold a PATH of width 15 on 68/20
+- **WHEN** a hierarchy using it is written to OASIS
+- **THEN** an error naming `sc_buf` and 68/20 is reported, the path is not widened or narrowed, and the operation reports failure
+
+#### Scenario: Round-ended vendor path
+- **GIVEN** a read-only cell whose GDS bytes hold a PATH of width 100, pathtype 1, from (0,0) to (1000,0)
+- **WHEN** it is transcoded to OASIS
+- **THEN** the cell contains a flush PATH with half-width 50 from (0,0) to (1000,0) and CIRCLEs of radius 50 at (0,0) and (1000,0)
+
 ### Requirement: Read-only OASIS vendor cells
 A read-only cell with `OASIS_FILE` and `OASIS_CELL` (capability `oasis-read`) SHALL be *re-encoded* from its source file:
 
@@ -504,7 +519,7 @@ Compatibility: native
 2. The file is looked up like `GDS_FILE`. The cell named `OASIS_CELL` is decoded. If the file or the cell cannot be found, the gds-write rules for an unopenable vendor file apply.
 3. If the source unit differs from the output unit, an error is reported and the cell is generated from its layout.
 4. Every element is re-encoded with the same record type (RECTANGLE, POLYGON with the same point list type, PATH, TRAPEZOID as record 23, CTRAPEZOID, CIRCLE, TEXT, PLACEMENT as 17 or 18, XELEMENT, XGEOMETRY), the same resolved field values, and the same repetition (type 0 resolved to the actual repetition and then re-subjected to "Modal field omission"). Coordinates are absolute. Names and strings are remapped to the output tables. Every PROPERTY record is kept, with its names and strings remapped.
-5. XNAME records of the source file are not copied. XELEMENT and XGEOMETRY payloads are copied unchanged (see Q-OASIS-40).
+5. XNAME records of the source file are not copied. XELEMENT and XGEOMETRY payloads are copied unchanged (Q-OASIS-40, resolution: fix). When a copied cell carries XELEMENT or XGEOMETRY records and its source file has XNAME records, the system SHALL report a warning naming the cell, because the payloads may refer to names that are not written.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 

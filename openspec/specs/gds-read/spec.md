@@ -1096,7 +1096,7 @@ Compatibility: behavioral
 | `warning` | `default`/`none`/`align`/`limit`/`redirect [file]` | `default` |
 | `library` | bool (shared with write) | `no` |
 
-The options persist for the session and apply to subsequent reads. `cif istyle` selects the input style used (capability `cif-format-io`).
+The options persist for the session and apply to subsequent reads. `drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning` are one setting shared with the `oasis` command, so they also apply to OASIS reads; the others are not (capability `oasis-command` "Settings shared with the gds command", Q-OASIS-90). `cif istyle` selects the input style used (capability `cif-format-io`).
 
 (Magic ref: commands/CmdCD.c:131-1075, calma/CalmaRead.c:60-110, calma/CalmaRdcl.c:50-60)
 

@@ -52,7 +52,7 @@ Compatibility: native
 **Pass 2 (interpretation).** Process the cells in file order, as in gds-read "Structure processing and cell creation". Look-ahead reads (see "Post-order reading") jump directly to the indexed position of the requested cell. No sequential search and no rewinding are needed.
 
 Rules:
-1. A CELL refnum, PLACEMENT refnum or TEXT refnum with no definition after pass 1 SHALL be reported. A cell refnum `n` is then named `#<n>` (see Q-OASIS-34). An undefined TEXTSTRING refnum yields an empty string, which is dropped as an empty label.
+1. A CELL refnum, PLACEMENT refnum or TEXT refnum with no definition after pass 1 SHALL be reported. A cell refnum `n` is then named `#<n>`, as KLayout names it (Q-OASIS-34, resolution: fix); `#` is a legal cell-name character (capability `cmd-hierarchy`). An undefined TEXTSTRING refnum yields an empty string, which is dropped as an empty label.
 2. A fatal decoding error in pass 1 (one that "stops decoding" in `oasis-format`) SHALL abort the read before any cell is created, with the error and its byte position reported. Exception: errors located after the last complete CELL record still allow pass 2 for the cells indexed before the error, which keeps the behaviour of gds-read rule 6 ("cells already created are kept").
 3. Strict-mode violations and validation failures are reported as warnings and do not change the result.
 4. When the START or END record provides table offsets, Hefesto MAY use them to load the name tables before pass 1. The result SHALL be the same.
@@ -145,7 +145,7 @@ Compatibility: native
 - default (`datestamp yes`) or `datestamp no`: 0. The cell receives the current time when it is next saved, as in gds-read for timestamp 0.
 - `datestamp <integer N>`: `N`. If `N != 0`, the cell is also fixed-stamp, as in gds-read.
 
-Read-only cells are overridden by the content hash (see "Content-hash timestamps for read-only OASIS cells"). See Q-OASIS-30 for alternatives.
+This is gds-read's rule for a missing or unknown date (Q-OASIS-30, resolution: replicate; Magic ref: calma/CalmaRdio.c:326-332, calma/CalmaRdcl.c:500-508). Read-only cells are overridden by the content hash (see "Content-hash timestamps for read-only OASIS cells"). A private timestamp property may be added with P-8.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -165,9 +165,9 @@ Each geometry element (RECTANGLE, POLYGON, PATH, TRAPEZOID, CTRAPEZOID, CIRCLE) 
 Compatibility: exact
 
 Rules:
-1. OASIS layer and datatype numbers are unsigned 32-bit values. A value above 255 can only match a `*` wildcard, because `calma` statements accept 0..255 (see Q-OASIS-39).
-2. LAYERNAME records SHALL NOT affect the mapping (see Q-OASIS-38). They are kept only for re-encoding read-only cells (capability `oasis-write`).
-3. The unknown-layer message kinds are: "Unknown layer/datatype in boundary" for POLYGON, TRAPEZOID, CTRAPEZOID and CIRCLE; "... in box" for RECTANGLE; "... in path" for PATH; "Label on unknown layer/datatype" for TEXT. Each is reported once per (kind, pair) per cell, as in gds-read.
+1. OASIS layer and datatype numbers are unsigned 32-bit values. A value above 255 can only match a `*` wildcard, because `calma` statements accept 0..255. GDS numbers above 255 behave the same in gds-read (Q-OASIS-39, resolution: replicate).
+2. LAYERNAME records SHALL NOT affect the mapping, which uses numbers only, as `cifinput` does for GDS (Q-OASIS-38, resolution: replicate). They are kept only for re-encoding read-only cells (capability `oasis-write`).
+3. The unknown-layer message kinds are: "Unknown layer/datatype in boundary" for POLYGON, TRAPEZOID, CTRAPEZOID and CIRCLE; "... in box" for RECTANGLE; "... in path" for PATH; "Label on unknown layer/datatype" for TEXT. Each is reported once per (kind, pair) per cell, as in gds-read (calmaLayerError), for any number, including numbers above 255. No report is made in read-only cells (see "Read-only OASIS vendor views"), whose unmapped layers are expected (Q-OASIS-39).
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: cif/CIFrdtech.c:184-232, calma/CalmaRdpt.c:1251-1276)
 
@@ -237,11 +237,11 @@ A closed OASIS polygon never produces the gds-read "Boundary is not closed." mes
 - **THEN** it is read as the BOUNDARY (0,0) (0,10) (10,0) (0,0)
 
 ### Requirement: CIRCLE elements
-A CIRCLE instance with radius `r > 0` and centre `(cx, cy)` SHALL be read as a GDS BOUNDARY approximating the disk by a regular polygon with `N` vertices, where `N` is the `circlepoints` setting (default 64, minimum 8, see capability `oasis-command`). Vertex `k`, for `k = 0..N−1`, is `(cx + round(r·cos(2πk/N)), cy + round(r·sin(2πk/N)))` in DB units. `round` is round-half-away-from-zero, and `cos`/`sin` are binary64. The first vertex is appended again to close the polygon. Consecutive coincident vertices are merged.
+A CIRCLE instance with radius `r > 0` and centre `(cx, cy)` SHALL be read as a GDS BOUNDARY approximating the disk by a regular polygon with `N` vertices, where `N` is the `circlepoints` setting (default 64, minimum 8, see capability `oasis-command`). Vertex `k`, for `k = 0..N−1`, is `(cx + round(r·cos(2πk/N)), cy + round(r·sin(2πk/N)))` in DB units. `round` is round-half-away-from-zero. The values `cos(2πk/N)` and `sin(2πk/N)` SHALL be computed identically on all platforms, with a bundled correctly-rounded implementation or by computing the first octant and mirroring it, never with the platform libm (Q-OASIS-31, resolution: fix). The polygon is inscribed only up to that rounding. The first vertex is appended again to close the polygon. Consecutive coincident vertices are merged.
 
 Compatibility: native
 
-A radius of 0 SHALL produce no geometry and no message. See Q-OASIS-31 for the choice of `N` and the inscribed approximation.
+A radius of 0 SHALL produce no geometry and no message. Because KLayout and gdstk approximate circles differently, CIRCLE goldens compare against these vertices, not against those tools.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -249,6 +249,12 @@ A radius of 0 SHALL produce no geometry and no message. See Q-OASIS-31 for the c
 - **GIVEN** `circlepoints 8` and a CIRCLE with radius 10 at (0,0)
 - **WHEN** it is read
 - **THEN** the BOUNDARY vertices are (10,0), (7,7), (0,10), (−7,7), (−10,0), (−7,−7), (0,−10), (7,−7), (10,0)
+
+#### Scenario: Default circle vertices are fixed
+- **GIVEN** `circlepoints 64` and a CIRCLE with radius 1000 at (0,0)
+- **WHEN** it is read on any platform
+- **THEN** vertices k = 0..16 are (1000,0), (995,98), (981,195), (957,290), (924,383), (882,471), (831,556), (773,634), (707,707), (634,773), (556,831), (471,882), (383,924), (290,957), (195,981), (98,995), (0,1000)
+- **AND** the other vertices are their mirror images in the axes, so the output bytes are identical on every platform
 
 ### Requirement: PATH elements
 A PATH instance SHALL be read as a GDS PATH with the same (layer, datatype), `WIDTH = 2 × half-width`, the centerline vertices as XY, and PATHTYPE and extensions chosen from the start extension `es` and end extension `ee` as follows:
@@ -261,7 +267,7 @@ Compatibility: exact
 | `es == half-width` and `ee == half-width`, half-width > 0 | PATHTYPE 2 |
 | otherwise | PATHTYPE 4 with BGNEXTN `es` and ENDEXTN `ee` |
 
-The gds-read rules "PATH elements", "Path-to-polygon conversion", "Path centerline properties" and "Path subcells" then apply unchanged. In particular, end extensions follow gds-read and depend on the `magic-compat` setting: negative extensions are ignored with it ON and shorten the path with it OFF (see Q-OASIS-33 and Q-MASK-114), and a half-width of 0 drops the path.
+The gds-read rules "PATH elements", "Path-to-polygon conversion", "Path centerline properties" and "Path subcells" then apply unchanged. In particular, end extensions follow gds-read and depend on the `magic-compat` setting: negative extensions are ignored with it ON and shorten the path with it OFF (Q-OASIS-33, resolution: compat, settled by Q-MASK-114), and a half-width of 0 drops the path.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdpt.c:534-750, cif/CIFrdpt.c:339-600)
 
@@ -286,7 +292,7 @@ Consequences:
 - an empty string produces the warning "Ignoring empty string label at (x, y)" and no label;
 - a `cell`-kind label layer renames the cell.
 
-OASIS text has no font, size, rotation or anchor, so font labels do not survive a round trip through OASIS (see Q-OASIS-32).
+OASIS text has no font, size, rotation or anchor, so font labels do not survive a round trip through OASIS. The labels read are plain labels (Q-OASIS-32, resolution: other); `oasis write` warns about the lost presentation.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdpt.c:767-960, calma/CalmaRdpt.c:1008-1135)
 
@@ -302,9 +308,9 @@ Compatibility: exact
 
 Specifically:
 - record 17: angle = `AA × 90`, magnification 1;
-- record 18: angle = the decoded real (0 if absent), magnification = the decoded real (1 if absent). The angle goes through gds-read truncation and normalization, so a non-quarter-turn angle is rounded to a quarter turn with the "Non-Manhattan angle" error (see Q-OASIS-12). A magnification `d <= 0` is reported and treated as 1, and `d != 1` produces a magnified copy `<name>_mag<text>`.
+- record 18: angle = the decoded real (0 if absent), magnification = the decoded real (1 if absent). The angle goes through gds-read truncation and normalization, so a non-quarter-turn angle is rounded to a quarter turn with the "Non-Manhattan angle" error (Q-OASIS-12, resolution: replicate). Representing arbitrary angles, for example as a flattened rotated copy, is a possible later extension. A magnification `d <= 0` is reported and treated as 1, and `d != 1` produces a magnified copy `<name>_mag<text>`.
 
-(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdio.c:81-205, calma/CalmaRdcl.c:1195-1240, calma/CalmaRdcl.c:826-1058, calma/CalmaRdcl.c:1352-1380)
+(Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdio.c:81-193, calma/CalmaRdcl.c:1195-1240, calma/CalmaRdcl.c:826-1058, calma/CalmaRdcl.c:1352-1380)
 
 #### Scenario: Rotated and flipped placement
 - **GIVEN** a record 17 placement with AA = 1, F = 1 at (100, 0), with `S = 1` and `num = den = 1`
@@ -315,6 +321,12 @@ Specifically:
 - **GIVEN** cell `C` with a rectangle `[0,10]×[0,10]` and a record 18 placement of `C` with magnification 1.5 at (0,0)
 - **WHEN** read
 - **THEN** cell `C_mag1p5` exists with the box `[0,15]×[0,15]` and the property `GDS_MAG_SOURCE = C`, and the use refers to `C_mag1p5`
+
+#### Scenario: Non-quarter-turn angle
+- **GIVEN** a record 18 placement with angle 30 and magnification 1
+- **WHEN** read
+- **THEN** the error "Non-Manhattan angle (30) in transform" is reported and the use is placed with rotation 0
+- **AND** a golden case records the difference from KLayout, which keeps the 30-degree placement
 
 ### Requirement: Placement repetitions
 A PLACEMENT with a repetition SHALL be read as one Magic array use when the repetition is regular and its vectors are axis-aligned in the child coordinate system. Otherwise it SHALL be read as one use per displacement.
@@ -338,7 +350,9 @@ Let `u = T⁻¹(a)` and `v = T⁻¹(b)`, in DB units. Then:
 
 The separations are converted from DB units to internal units like reference points (gds-read "Coordinate conversion and automatic rescaling", then "Instance placement scaling"), and may be negative or zero. The array origin is the placement position. The array-index property (attribute 99, see "Instance properties") overrides the index ranges, as in gds-read. With a magnified placement, the array refers to the magnified copy.
 
-Under these rules, the AREF that gds-write produces and the PLACEMENT that oasis-write produces for the same Magic array read back as the same array. See Q-OASIS-10 for zero spacings.
+Under these rules, the AREF that gds-write produces and the PLACEMENT that oasis-write produces for the same Magic array read back as the same array.
+
+Zero spacings follow gds-read (Q-OASIS-10, resolution: replicate): a regular repetition with spacing 0 becomes an array with separation 0. Displacements read as individual uses (rule 3) go through the gds-read "Use placement rules", so a coincident identical placement is discarded with the "placed on top of itself" warning, except in a flattened cell (`flatten`/`flatglob`, CDFLATGDS), whose placements are each painted. Coincident shapes are painted again, which changes nothing.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdcl.c:1243-1505)
 
@@ -358,6 +372,11 @@ Under these rules, the AREF that gds-write produces and the PLACEMENT that oasis
 - **WHEN** read
 - **THEN** three separate uses of `A` are created, at x = 0, 5 and 12
 
+#### Scenario: Coincident displacements
+- **GIVEN** a placement of `A` (not flattened) with repetition type 10 with `n' = 1` and g-deltas (5,0), (0,0), so displacements (0,0), (5,0), (5,0)
+- **WHEN** read
+- **THEN** two uses of `A` are created, at x = 0 and 5, and the third is discarded with the warning "Warning: cell "A" placed on top of itself. Ignoring the extra one."
+
 ### Requirement: Instance properties
 A standard property `S_GDS_PROPERTY` attached to a PLACEMENT SHALL be read as the GDS PROPATTR/PROPVALUE pair (attribute = first value, value = second value as a string), in PROPERTY record order. The gds-read rules "Instance properties" then apply unchanged: attributes 61 and 98 give the instance identifier, attribute 99 gives the array index limits, and any other attribute ends property processing for the element.
 
@@ -366,7 +385,7 @@ Compatibility: exact
 Rules:
 1. A non-standard property, or an `S_GDS_PROPERTY` whose value list is not (unsigned or signed integer, string or propstring refnum), SHALL be ignored, and does not end property processing.
 2. When a placement is read as several separate uses (repetition rule 3), every use receives the same identifier, and the end-of-structure uniquing of gds-read resolves the duplicates.
-3. Properties attached to geometry and TEXT elements, to cells, to name records and to the file SHALL be discarded, except the standard properties used elsewhere in this capability. See Q-OASIS-37.
+3. Properties attached to geometry and TEXT elements, to cells, to name records and to the file SHALL be discarded, except the standard properties used elsewhere in this capability. This is gds-read's property handling (Q-OASIS-37, resolution: replicate), so a design read from GDS and from OASIS gives the same cells.
 
 (Hefesto decision: docs/decisions/product.md#P-6; Magic ref: calma/CalmaRdcl.c:1385-1445)
 
@@ -441,7 +460,7 @@ Compatibility: native
 - `OASIS_CELL`: the cell's name as defined in the file, before any renaming by `unique`, duplicates or `cell` labels.
 
 Rules:
-1. Setting `OASIS_FILE` on a cell, by any means, SHALL make the cell read-only, and removing it SHALL clear that state, exactly as `GDS_FILE` does. Read-only cells are still interpreted through `cifinput`. Their Hefesto contents are representational, and OASIS output re-encodes them from the file (capability `oasis-write`). How GDS output treats them is open (Q-OASIS-35).
+1. Setting `OASIS_FILE` on a cell, by any means, SHALL make the cell read-only, and removing it SHALL clear that state, exactly as `GDS_FILE` does. Read-only cells are still interpreted through `cifinput`. Their Hefesto contents are representational, and OASIS output re-encodes them from the file (capability `oasis-write`). GDS output transcodes them from the file (capability `gds-write` "Read-only OASIS vendor cells"; Q-OASIS-35, resolution: fix), so no vendor layer is lost.
 2. In read-only mode, the read SHALL be refused unless `(int)(0.5 + mpd·1e11) == 100` (1 nm), or `(int)(0.5 + mpd·1e12) == 100` (1 Å) when the current output style uses ångström units. Otherwise "Incompatible scale factor of <mpd>, must be 1e-9." (or "1e-10.") and "Cannot read this file in read-only mode." are reported, and nothing is read. This is the same check as gds-read.
 3. Unknown-layer messages are suppressed for read-only cells, and they are not queued for DRC, as in gds-read.
 4. `noduplicates` with a pre-existing abstract view (`LEFview`) SHALL annotate the abstract with `OASIS_FILE` and `OASIS_CELL`, as gds-read does with `GDS_FILE`/`GDS_START`/`GDS_END`.

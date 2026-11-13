@@ -91,7 +91,7 @@ Compatibility: native
 
 Decoding rules:
 1. The reader SHALL accept up to 64 value bits. A value that does not fit in 64 bits SHALL be reported as "integer overflow", and decoding stops.
-2. Non-minimal encodings (redundant trailing `0x80`-continued zero groups, for example `80 00` for 0) SHALL be accepted and decode to the same value. See Q-OASIS-1.
+2. Non-minimal encodings (redundant trailing `0x80`-continued zero groups, for example `80 00` for 0) SHALL be accepted and decode to the same value (Q-OASIS-1, resolution: fix). Acceptance is required in practice: KLayout writes an overlong zero in the END padding length (dbOASISWriter.cc, END record).
 3. A signed encoding of negative zero (`01`) SHALL decode to 0.
 4. The writer SHALL always use the minimal encoding, except where "END record and padding" requires otherwise.
 
@@ -269,7 +269,7 @@ Compatibility: native
 
 Rules:
 1. Dimensions are stored minus 2, so every repetition (other than type 0) yields at least two displacements.
-2. Zero spacings and zero displacement vectors are legal. They SHALL produce coincident displacements, which are kept. See Q-OASIS-10.
+2. Zero spacings and zero displacement vectors are legal. They SHALL produce coincident displacements, which the decoder keeps; capability `oasis-read` decides what they become (Q-OASIS-10, resolution: replicate).
 3. The order of the displacement list is significant for `oasis-read` (it determines element order).
 4. A modal `repetition` is set by every element record that carries a repetition of type 1–11. Type 0 reuses it.
 5. A `grid` of 0 in types 5, 7 and 11 SHALL be reported as "zero repetition grid", and decoding stops.
@@ -332,7 +332,7 @@ Rules:
 1. A version other than `1.0` SHALL be reported ("unsupported OASIS version <v>"), and the file is not read.
 2. A unit that is not positive and finite SHALL be reported ("invalid unit"), and the file is not read.
 3. When offset-flag is nonzero, the table-offsets structure is located in the END record instead.
-4. A table-entry offset of 0 means "table not present or position not given". A nonzero offset is the byte offset, from the first magic byte, of the first record of that table. This record may be a CBLOCK that contains the table. See Q-OASIS-8.
+4. A table-entry offset of 0 means "table not present or position not given". A nonzero offset is the byte offset, from the first magic byte, of the first record of that table. This record may be a CBLOCK that contains the table (Q-OASIS-8, resolution: fix). KLayout's writer produces such offsets (dbOASISWriter.cc begin_table/begin_cblock), so a reader must accept them.
 5. A strict-flag of 1 declares that the table is *strict* (see "Strict mode").
 
 (Hefesto decision: docs/decisions/product.md#P-6)
@@ -387,7 +387,7 @@ Compatibility: native
 
 On read, Hefesto SHALL verify the signature when the scheme is 1 or 2. A mismatch SHALL be reported as "OASIS validation failed (expected <hex>, computed <hex>)". The read result is still used, because geometry was decoded independently. A file compressed with gzip is validated over its decompressed bytes.
 
-The coverage and the byte order were confirmed against an independent open implementation, not against the SEMI P39 text. See Q-OASIS-2.
+The coverage and the byte order follow gdstk (library.cpp oas_validate) and were not checked against the SEMI P39 text (Q-OASIS-2, resolution: fix). Golden cases OASIS-012, OASIS-030 and OASIS-061, with files from commercial writers and readers, are release gates for every rule that rests on KLayout and gdstk parity (Q-OASIS-2, resolution: fix; the SEMI P39 text was not bought).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -486,7 +486,7 @@ Compatibility: native
 
 Reset events:
 1. At START, and at every CELL record, all modal variables SHALL be reset to their initial values.
-2. At every name record (CELLNAME, TEXTSTRING, PROPNAME, PROPSTRING, LAYERNAME, XNAME), all modal variables SHALL also be reset. This matches the observable behaviour of the KLayout reader. Whether SEMI P39 requires it is not confirmed (see Q-OASIS-5). The writer of capability `oasis-write` never depends on modal state across a name record.
+2. At every name record (CELLNAME, TEXTSTRING, PROPNAME, PROPSTRING, LAYERNAME, XNAME), all modal variables SHALL also be reset. This matches the KLayout reader, which resets after each name record (dbOASISReader.cc do_read) (Q-OASIS-5, resolution: fix). Whether SEMI P39 requires it is not confirmed; a file that relied on modal state surviving a name record would also fail in KLayout. The writer of capability `oasis-write` never depends on modal state across a name record.
 
 Coordinate modes: in absolute mode a coordinate field `v` sets the modal variable to `v`. In relative mode it sets it to `modal + v`. The xy-mode applies to the x and y fields of PLACEMENT, TEXT and all geometry elements, but not to point-list deltas, repetition displacements or widths.
 
@@ -579,7 +579,7 @@ rectangle = 0x14, info, [ unsigned(layer) ], [ unsigned(datatype) ],
 
 Bits: S (0x80) square, W (0x40), H (0x20), X (0x10), Y (0x08), R (0x04), D (0x02), L (0x01).
 
-With S=1, the height equals the width (taken from the W field or the modal `geometry-w`), and H SHALL be 0. A set H with S=1 SHALL be reported, and the height field is read and ignored. After an S=1 rectangle, the modal `geometry-h` is set to the width. KLayout does the same, but this is not confirmed against SEMI P39 (see Q-OASIS-3). Zero width or height is legal and yields an empty rectangle.
+With S=1, the height equals the width (taken from the W field or the modal `geometry-w`), and H SHALL be 0. A set H with S=1 SHALL be reported, and the height field is read and ignored. After an S=1 rectangle, the modal `geometry-h` is set to the width, as KLayout reads it (dbOASISReader.cc do_read_rectangle) and as its writer assumes (dbOASISWriter.cc, square rectangles) (Q-OASIS-3, resolution: fix). KLayout does not read the H field when S=1 and the H bit is set, so reporting it and reading the field is Hefesto's own behaviour; a cross-check golden for that case does not compare against KLayout. Zero width or height is legal and yields an empty rectangle.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -628,7 +628,7 @@ Bits: E (0x80) extension scheme present, W (0x40) half-width present, P (0x20), 
 
 Extension scheme: SS (bits 2–3) is for the start, EE (bits 0–1) for the end. 0 reuses the modal value, 1 is flush (extension 0), 2 is half-width (extension = half-width), and 3 means an explicit signed value follows. The start value, if any, precedes the end value.
 
-Modal updates: the scheme values 1, 2 and 3 SHALL set the corresponding extension modal variable to the resulting numeric value (0, the half-width in effect, or the explicit value). KLayout does the same. P39 conformance of this rule is not confirmed (see Q-OASIS-11).
+Modal updates: the scheme values 1, 2 and 3 SHALL set the corresponding extension modal variable to the resulting numeric value (0, the half-width in effect, or the explicit value). KLayout does the same (dbOASISReader.cc do_read_path) (Q-OASIS-11, resolution: fix). P39 conformance of this rule is not confirmed.
 
 The total width is `2 × half-width`, so every path width is even in DB units. The centerline is the point list placed at (x, y) (see "Point lists"). A centerline with fewer than 2 vertices SHALL be reported, and the element dropped.
 
@@ -659,7 +659,7 @@ Bit O (0x80) selects vertical orientation. The other bits are as for RECTANGLE. 
 - horizontal (O=0): `(max(a,0), h)`, `(w + min(b,0), h)`, `(w − max(b,0), 0)`, `(−min(a,0), 0)`
 - vertical (O=1): `(0, max(a,0))`, `(0, h + min(b,0))`, `(w, h − max(b,0))`, `(w, −min(a,0))`
 
-Consecutive coincident vertices SHALL be merged, so a trapezoid may degenerate into a triangle. If fewer than 3 distinct vertices remain, the element is dropped with a warning. The vertex formulas match the KLayout implementation and are believed to match SEMI P39 (verify; see Q-OASIS-4).
+Consecutive coincident vertices SHALL be merged, so a trapezoid may degenerate into a triangle. If fewer than 3 distinct vertices remain, the element is dropped with a warning. The vertex formulas match the KLayout implementation (Q-OASIS-4, resolution: fix).
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -712,11 +712,11 @@ Bit T (0x80) means a type is present. The other bits are as for RECTANGLE. The v
 
 Rules:
 1. Types 16–19, 22, 23 and 25 use only `w`. Types 20 and 21 use only `h`. A field that the type does not use may be absent, and its modal value is then not required.
-2. After decoding, the modal `geometry-w` and `geometry-h` SHALL be set to the width and height of the resulting vertex set's bounding box. KLayout does the same. P39 conformance is not confirmed (see Q-OASIS-4).
+2. After decoding, the modal `geometry-w` and `geometry-h` SHALL be set to the width and height of the resulting vertex set's bounding box. KLayout and gdstk do the same (Q-OASIS-4, resolution: fix).
 3. A type above 25 SHALL be reported ("invalid CTRAPEZOID type"), and the element is dropped.
 4. Degenerate vertex sets follow the TRAPEZOID rule.
 
-This table was transcribed from an independent implementation and must be verified against the SEMI P39 table before release (Q-OASIS-4).
+This table matches KLayout (dbOASISReader.cc ctraps_table) and gdstk (library.cpp CTRAPEZOID) for all 26 types (Q-OASIS-4, resolution: fix). Golden case OASIS-030 (all 26 types, from a commercial writer) is the release check.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -773,7 +773,7 @@ Attachment: a PROPERTY applies to the closest preceding object in this list:
 - the CELL record, if no element has followed it yet;
 - the immediately preceding element.
 
-PAD and CBLOCK are transparent for attachment. A PROPERTY after XYABSOLUTE or XYRELATIVE attaches to the element before that record. This is not confirmed against SEMI P39 (see Q-OASIS-6). The writer never emits it. Several PROPERTY records may follow one object.
+PAD and CBLOCK are transparent for attachment. XYABSOLUTE and XYRELATIVE end element attachment: a PROPERTY that follows one of them (with only PAD, CBLOCK or PROPERTY records in between) attaches to the current CELL, as KLayout reads it (Q-OASIS-6, resolution: fix). This rests on KLayout parity, not on the SEMI P39 clause. The writer never emits it. Several PROPERTY records may follow one object.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -786,6 +786,11 @@ PAD and CBLOCK are transparent for attachment. A PROPERTY after XYABSOLUTE or XY
 - **GIVEN** a PROPERTY on one RECTANGLE, then a second RECTANGLE followed by record `1D`
 - **WHEN** they are decoded
 - **THEN** the second rectangle carries the same property name and values
+
+#### Scenario: PROPERTY after XYRELATIVE belongs to the cell
+- **GIVEN** a cell containing a PLACEMENT, then an XYRELATIVE record, then a PROPERTY
+- **WHEN** they are decoded
+- **THEN** the property is attached to the cell, not to the placement
 
 ### Requirement: Standard properties
 Hefesto SHALL recognise the following standard properties (S = 1) by name. All other standard-property names SHALL be kept as ordinary properties with a warning ("unknown standard property").
@@ -849,7 +854,7 @@ Rules:
 2. The decompressed bytes SHALL replace the CBLOCK in the record stream. The decoder continues with the decompressed bytes and then with the bytes after the CBLOCK.
 3. The decompressed length SHALL equal uncomp-byte-count. The DEFLATE stream SHALL end exactly at comp-byte-count bytes. A mismatch SHALL be reported ("CBLOCK size mismatch"), and decoding stops.
 4. A CBLOCK SHALL NOT contain a START, END or CBLOCK record. If one is found, it is reported and decoding stops.
-5. The writer SHALL put only whole records in a CBLOCK. The reader SHALL accept a record that spans the end of a CBLOCK, by continuing into the following bytes. P39 may forbid this (see Q-OASIS-9).
+5. The writer SHALL put only whole records in a CBLOCK. The reader SHALL accept a record that spans the end of a CBLOCK at any byte, including inside a string, by continuing into the following bytes (Q-OASIS-9, resolution: fix). KLayout accepts a span only outside strings. P39 may forbid this, but accepting it never changes how a conforming file decodes.
 6. CBLOCKs may appear anywhere a file record or cell-content record may appear, including inside a cell and around name tables.
 7. Byte offsets used by S_CELL_OFFSET and table-offsets are offsets in the file, not in decompressed data.
 
@@ -875,7 +880,7 @@ Compatibility: native
 3. References to that table's names SHALL be by refnum only. A strict CELLNAME table forbids CELL-by-name and PLACEMENT-by-name. A strict TEXTSTRING table forbids inline TEXT strings. A strict PROPNAME table forbids inline property names. A strict PROPSTRING table forbids inline string property values (types 10–12).
 4. A strict table with offset 0 means the file has no records of that type.
 
-On read, a violation SHALL be reported as a warning ("strict mode violation: <detail>") and SHALL NOT change the decoded content. Rule 3 for PROPSTRING and the exact scope of "contiguous" are not confirmed against SEMI P39 (see Q-OASIS-7).
+On read, a violation SHALL be reported as a warning ("strict mode violation: <detail>") and SHALL NOT change the decoded content. The set of violations matches the warnings of the KLayout reader (Q-OASIS-7, resolution: fix). Rule 3 for PROPSTRING and the exact scope of "contiguous" are not confirmed against SEMI P39.
 
 (Hefesto decision: docs/decisions/product.md#P-6)
 
@@ -883,6 +888,11 @@ On read, a violation SHALL be reported as a warning ("strict mode violation: <de
 - **GIVEN** a file whose TEXTSTRING table entry has strict-flag 1, and a TEXT record with C=1 and N=0 (inline string)
 - **WHEN** it is read
 - **THEN** a strict-mode violation warning is reported and the text is still created
+
+#### Scenario: Strict file written by Hefesto reads back clean
+- **GIVEN** a file written by `oasis write` with `strict yes`
+- **WHEN** it is read back
+- **THEN** no strict-mode violation warning is reported
 
 ### Requirement: PAD record
 A PAD record (ID 0) SHALL have no fields and no effect, except that it is transparent for PROPERTY attachment. It may appear wherever a file record or cell-content record may appear.

@@ -109,7 +109,7 @@ Before writing, the system SHALL check the following:
 - If the output file cannot be opened, it SHALL report `Cannot open output file <name> (<reason>).` and write nothing.
 - If the cell's extracted netlist file `<cellname>.ext` (with the hierarchy it references) cannot be read, it SHALL report `Warning:  Circuit has no .ext file;  no nets written.` and `Run extract on this circuit if you want nets in the output.`. It SHALL still write every other section, and SHALL omit SPECIALNETS and NETS.
 
-The netlist SHALL be read from the existing `.ext` files. It SHALL NOT be re-extracted, and it SHALL NOT be checked for staleness against the layout (see Q-LEFDEF-110). The netlist SHALL be read in unscaled mode (node locations in internal units), with subcircuits kept and resistance information not used.
+The netlist SHALL be read from the existing `.ext` files. It SHALL NOT be re-extracted in either `magic-compat` setting, so the DEF is the same in both. With `magic-compat` ON (the default) it SHALL NOT be checked for staleness against the layout, as in Magic. With it OFF, the system SHALL compare the `timestamp` recorded in each `.ext` file with the timestamp of the corresponding cell (and the cell's modified flag) and, when they differ, report the warning `<cell>.ext is out of date; nets may be wrong. Run extract.` (Q-LEFDEF-110, resolution: compat). The netlist SHALL be read in unscaled mode (node locations in internal units), with subcircuits kept and resistance information not used.
 
 Progress messages such as `Diagnostic:  Write DEF header for cell <c>`, `Generating DEF output <file> for cell <c>:`, `Diagnostic:  Finding all components of cell <c>`, `Diagnostic:  Finding all pins of cell <c>`, `Diagnostic:  Finding all nets in cell <c>` and `(This can take a while!)` are informative.
 
@@ -123,6 +123,13 @@ Compatibility: behavioral
 - **WHEN** `def write` is run
 - **THEN** `top.def` SHALL contain the header, VIAS, COMPONENTS and PINS sections, the BLOCKAGES section if non-electrical obstruction paint exists, and `END DESIGN`
 - **AND** it SHALL contain no SPECIALNETS or NETS section
+
+#### Scenario: Stale extraction
+
+- **GIVEN** cell `top` was edited after `top.ext` was written
+- **WHEN** `def write` is run
+- **THEN** the nets SHALL be read from `top.ext` in both `magic-compat` settings
+- **AND** with `magic-compat` OFF the warning `top.ext is out of date; nets may be wrong. Run extract.` SHALL be reported, and with it ON no warning SHALL be reported
 
 ### Requirement: Output scale and number formatting
 
@@ -290,7 +297,7 @@ The VIAS and NETS writers SHALL identify one contact region per group of contact
 2. If any tile directly adjacent along the tile's left edge, or along its bottom edge, has type `T` (or is a stacked type whose residues include `T`), ignore this tile. Only the bottom-most, left-most tile of a region is processed.
 3. Otherwise, the region SHALL be the tile's rectangle. Grow it by including tiles stacked directly above, walking upward from the top-left neighbour, while each tile is `T` or a stacked type containing `T`. Then grow it by including tiles directly to the right, walking rightward from the right-top neighbour, under the same rule.
 
-This bounding box SHALL be the contact rectangle `C = (xl, yl, xh, yh)`. The rule assumes rectangular contacts. See Q-LEFDEF-111.
+With `magic-compat` ON (the default) this bounding box SHALL be the contact rectangle `C = (xl, yl, xh, yh)`, as in Magic. The rule assumes rectangular contacts: for an L-shaped contact area the bounding box overshoots, so the written via covers area with no contact. With it OFF, the region SHALL instead be split into rectangles that lie wholly inside the contact area: the maximal horizontal strips of the region, merged vertically only when their x extents are equal. Each rectangle is a contact rectangle `C` of its own, so a rectangular contact still gives one via, as in Magic (Q-LEFDEF-111, resolution: compat).
 
 Compatibility: exact
 
@@ -299,14 +306,20 @@ Compatibility: exact
 #### Scenario: Two-tile contact
 
 - **GIVEN** via1 paint covering (10,10)-(36,36), stored as two tiles (10,10)-(36,20) and (10,20)-(36,36) because of neighbouring geometry
-- **THEN** one contact region (10,10)-(36,36) SHALL be identified, from the lower tile
+- **THEN** one contact region (10,10)-(36,36) SHALL be identified, from the lower tile, in both `magic-compat` settings
+
+#### Scenario: L-shaped contact
+
+- **GIVEN** via1 paint covering (10,10)-(36,20) and (10,20)-(20,36), an L shape
+- **THEN** with `magic-compat` ON one contact rectangle (10,10)-(36,36) SHALL be used
+- **AND** with `magic-compat` OFF two contact rectangles (10,10)-(36,20) and (10,20)-(20,36) SHALL be used
 
 ### Requirement: Generated via definitions
 
 For every contact region found by searching each plane (in plane order) for contact types whose home plane is that plane (including stacked types that have such a residue), the system SHALL derive a via name and geometry. A region whose contact type `T` has no LEF name SHALL be skipped. Let `C` be the contact rectangle, `w = xh − xl`, `h = yh − yl`.
 
 1. **Half-unit area.** Let `A = (−w, −h, w, h)` in half-units. This is the area centered on the origin with all coordinates doubled.
-2. **Directional surround.** Take the first two residue types of `T` in type-number order, `L` and `H`. For each, get the default surround `sL`/`sH` and the directional surround `dL`/`dH` of `T` by that layer, from the DRC rules (see the drc capabilities). Only `L` is used if `T` has a single residue (see Q-LEFDEF-106). If `dL > 0`, search the plane of `L` over the area `(xl − dL + sL, yl − sL, xh + dL + sL, yh + sL)` for any tile whose type does not connect to `L`. Space counts as such a tile. If one is found, `oL = 'v'`; otherwise `oL = 'h'`. The same applies to `H`. See Q-LEFDEF-105 for the asymmetric search area. If `dL = 0`, `oL = 'x'`.
+2. **Directional surround.** Take the first two residue types of `T` in type-number order, `L` and `H`. For each, get the default surround `sL`/`sH` and the directional surround `dL`/`dH` of `T` by that layer, from the DRC rules (see the drc capabilities). Only `L` is used if `T` has a single residue (see Q-LEFDEF-106). If `dL > 0`, search the plane of `L` over a probe area for any tile whose type does not connect to `L`. Space counts as such a tile. If one is found, `oL = 'v'`; otherwise `oL = 'h'`. The same applies to `H`. The probe area depends on the `magic-compat` setting (Q-LEFDEF-105, resolution: compat): with it ON (the default) it is `(xl − dL + sL, yl − sL, xh + dL + sL, yh + sL)`, asymmetric in x as in Magic; with it OFF it is `(xl − dL − sL, yl − sL, xh + dL + sL, yh + sL)`. If `dL = 0`, `oL = 'x'`.
 3. **Name.** The name is `<lefname(T)>_<a>_<b>` when `dL = 0` and `dH = 0`, and `<lefname(T)>_<a>_<b>_<oL><oH>` otherwise. Here `a` = %g10 of float `f32(w)·s` and `b` = %g10 of float `f32(h)·s`.
 4. **Registration.** If the layer table already has a live record with this name, reuse it and do not count it. Otherwise create a temporary via record (class via, magic type `T`, area `A`, reference count 0), insert it into the layer table under the name, and add 1 to the VIAS count. In the new record:
    - if `sL > 0` or `dL > 0`, attach a residue rectangle for `L` equal to `A` grown by `2·sL` on all sides, and then, if `dL > 0`, grown by a further `2·dL` in x when `oL = 'h'` or in y when `oL = 'v'`;
@@ -343,7 +356,7 @@ Compatibility: exact
 - its class is via;
 - its name contains at least two `_` characters, with the first `_` at a different position from the last.
 
-This filter selects the generated vias, but also any other via record whose name has two or more underscores. Such records are written but not counted (see Q-LEFDEF-91).
+With `magic-compat` ON (the default), as in Magic, this filter selects the generated vias, but also any other via record whose name has two or more underscores (for example from `lef read` or `def read`). Such records are written but not counted. With it OFF, the section SHALL contain exactly the via records registered by step 4 of "Generated via definitions" in this write, in table enumeration order, and the count SHALL be the number of records written (Q-LEFDEF-91, resolution: compat).
 
 For each record of magic type `T`:
 
@@ -355,7 +368,7 @@ For each record of magic type `T`:
    - `nx = trunc((X2 − X1 + p' − 2b') / pitch)`
    - If `nx = 0`: `nx = 1` and `left = trunc((X1 + X2 − z')/2)`. If `left < X1`, the warning `Warning: via size is <z'> but area width is <X2−X1>!` is printed.
    - Otherwise: `left = trunc((X1 + X2 + p' − nx·pitch)/2)`.
-   - Compute `ny` and `bottom` the same way from `Y1` and `Y2`. The y warning fires when `bottom >= Y1` (see Q-LEFDEF-107).
+   - Compute `ny` and `bottom` the same way from `Y1` and `Y2`. The y warning fires when `bottom >= Y1` with `magic-compat` ON (the default), as in Magic, and when `bottom < Y1`, the same test as for x, with it OFF (Q-LEFDEF-107, resolution: compat). Only the message differs; the DEF bytes are the same.
    - Write `nx·ny` cuts row by row from the bottom, left to right within each row: `+ RECT <lefname(T)> ( l b ) ( l+z' b+z' )`, starting at (`left`, `bottom`) and stepping by `pitch`. Values are integers printed with %g10.
 3. If no cut operator exists, write one cut rectangle `+ RECT <lefname(T)>` equal to `A·s/2`.
 
@@ -419,14 +432,14 @@ Compatibility: exact
 
 ### Requirement: COMPONENTS section
 
-The count SHALL be the sum over all child uses that have an instance id of `(xhi − xlo + 1)·(yhi − ylo + 1)`, using the use's array index bounds. See Q-LEFDEF-94 for reversed bounds. Uses SHALL be visited in the subcell enumeration order of the cell (see "Table enumeration order").
+The count SHALL be the sum over all child uses that have an instance id of a per-use count from the use's array index bounds, chosen by the `magic-compat` setting (Q-LEFDEF-94, resolution: compat): with it ON (the default) the signed product `(xhi − xlo + 1)·(yhi − ylo + 1)`, as in Magic, which is wrong for reversed bounds; with it OFF `(|xhi − xlo| + 1)·(|yhi − ylo| + 1)`, the number of components written for the use. Uses SHALL be visited in the subcell enumeration order of the cell (see "Table enumeration order").
 
 For a non-arrayed use:
 
 - `instname` SHALL be the use id, and `macroname` SHALL be the child cell name after its last `/` (if any).
 - Let `R` be the child's `FIXED_BBOX` (four integers) if the child cell is marked fixed-bbox and the property exists, else the child's bounding box `Bc`. Let `U` = the use's bounding box in parent coordinates (the transform applied to `Bc`).
 - If `R` is the FIXED_BBOX, let `off = T(R).ll − T(Bc).ll`, where `T` is the use transform. Otherwise `off = (0,0)`.
-- The placement SHALL be `x = f32(U.xl − R.xl + off.x)·s` and `y = f32(U.yl − R.yl + off.y)·s`. Note that `R.xl` is not transformed (see Q-LEFDEF-93).
+- With `magic-compat` ON (the default) the placement SHALL be `x = f32(U.xl − R.xl + off.x)·s` and `y = f32(U.yl − R.yl + off.y)·s`, as in Magic. `R.xl` is not transformed, so the result is wrong for any orientation when `R.ll` is not (0,0). With it OFF the placement SHALL be `x = f32(T(R).xl)·s` and `y = f32(T(R).yl)·s`, the lower-left of the transformed `R`, which is the formula of the array path and the one that `def read` places back at the same position (Q-LEFDEF-93, resolution: compat).
 
 For an arrayed use (`xlo ≠ xhi` or `ylo ≠ yhi`), one component SHALL be written per element, with `y` in the outer loop and `x` in the inner loop, both ascending over the index range:
 
@@ -448,23 +461,32 @@ Compatibility: exact
 #### Scenario: Child bbox not at origin
 
 - **GIVEN** child `c` with bounding box (−5,0)-(20,10), and use `u2` with identity orientation translated by (100,0), with s = 10
-- **THEN** U.xl = 95 and x = (95 − (−5))·10 = 1000, so `+ PLACED ( 1000 0 ) N` SHALL be written
+- **THEN** with `magic-compat` ON U.xl = 95 and x = (95 − (−5))·10 = 1000, so `+ PLACED ( 1000 0 ) N` SHALL be written
+- **AND** with `magic-compat` OFF x = 95·10 = 950, so `+ PLACED ( 950 0 ) N` SHALL be written
 
 #### Scenario: Two-dimensional array naming
 
 - **GIVEN** use `a` arrayed with x index 0..1 and y index 0..1
 - **THEN** the components SHALL be written in the order `a[0,0]`, `a[0,1]`, `a[1,0]`, `a[1,1]` (y,x), and the count SHALL include 4 for this use
 
+#### Scenario: Reversed array bounds
+
+- **GIVEN** use `r` arrayed with x index 3..0 and y index 0..0
+- **THEN** with `magic-compat` ON the count SHALL include (0 − 3 + 1)·1 = −2 for this use
+- **AND** with `magic-compat` OFF it SHALL include 4
+
 ### Requirement: PINS section
 
 The count SHALL be the number of labels in the target cell that are ports (labels with any port connection-direction flag set). Pins SHALL be written in the cell's label list order. For each port label with text `t`, rectangle `(xl,yl,xh,yh)` and layer `L`:
 
 1. `   - t + NET t` (the text is not sanitized).
-2. If the port class is not default: `     + DIRECTION ` followed by `INPUT` (input), `OUTPUT` (output), `INOUT` (tristate or bidirectional), `FEEDTHRU` (feedthrough), or nothing for other encodings. Then a newline.
-3. If the port use is not default: `     + USE ` followed by `SIGNAL`, `ANALOG`, `POWER`, `GROUND` or `CLOCK`, or nothing for reset, scan and tieoff (see Q-LEFDEF-103). Then a newline.
+2. If the port class is not default: `     + DIRECTION ` followed by `INPUT` (input), `OUTPUT` (output), `INOUT` (tristate or bidirectional) or `FEEDTHRU` (feedthrough), then a newline. For the undefined class encodings 0x60 and 0x70, with `magic-compat` ON (the default) the keyword is empty, as in Magic; with it OFF no DIRECTION line is written.
+3. If the port use is not default: `     + USE ` followed by `SIGNAL`, `ANALOG`, `POWER`, `GROUND` or `CLOCK`, then a newline. For reset, scan and tieoff, with `magic-compat` ON the keyword is empty, as in Magic; with it OFF it is `RESET`, `SCAN` or `TIEOFF`, which are valid DEF 5.8 PINS uses and which `def read` accepts.
 4. `     + PORT` and a newline.
-5. If `L` has a LEF name: `        + LAYER <name> ( −w′ −h′ ) ( w′ h′ )`, **with no newline**. Here `w′ = f32(s·f32(w))/2.0` and `h′` likewise, with `w = xh − xl` and `h = yh − yl`. The negative corner uses `f32(s·f32(−w))/2.0`. If `L` has no LEF name, an error is reported instead (informative) and nothing is written.
+5. If `L` has a LEF name: `        + LAYER <name> ( −w′ −h′ ) ( w′ h′ )`, with no newline when `magic-compat` is ON (so `+ PLACED` follows on the same line, as in Magic) and with a newline when it is OFF. Here `w′ = f32(s·f32(w))/2.0` and `h′` likewise, with `w = xh − xl` and `h = yh − yl`. The negative corner uses `f32(s·f32(−w))/2.0`. If `L` has no LEF name, an error is reported instead (informative) and nothing is written.
 6. `        + PLACED ( cx cy ) N ;` and a newline, where `cx = f32(s·f32(xl+xh))/2.0` and `cy` likewise.
+
+Rules 2, 3 and 5 follow the `magic-compat` setting (Q-LEFDEF-103, resolution: compat).
 
 Compatibility: exact
 
@@ -487,6 +509,21 @@ Compatibility: exact
 
 - **GIVEN** a port label `B` with default class and default use
 - **THEN** no DIRECTION or USE line SHALL be written
+
+#### Scenario: Scan pin
+
+- **GIVEN** s = 10 and port label `SE` on metal1 at (10,20)-(14,24) with class input and use scan
+- **THEN** with `magic-compat` ON the USE line SHALL be `     + USE ` with an empty keyword and the LAYER and PLACED fragments SHALL share one line
+- **AND** with `magic-compat` OFF the pin SHALL be written as:
+
+```
+   - SE + NET SE
+     + DIRECTION INPUT
+     + USE SCAN
+     + PORT
+        + LAYER metal1 ( -20 -20 ) ( 20 20 )
+        + PLACED ( 120 220 ) N ;
+```
 
 #### Scenario: Point label
 
@@ -573,11 +610,17 @@ For each net, the routing geometry SHALL be found as follows:
 2. If no tile has been passed to the segment writer for this net so far (after a seed's search), search the hierarchy at the node location for the first tile of a connecting type (in subcells too, transformed to top coordinates). If one is found, grow its rectangle by 1 on every side, add the contact's residue types to the mask if the seed layer is a contact, and run the connectivity search from that rectangle. If nothing is found and the seed layer is electrically active, report `Nothing of type <layer> found at node <name> location (floating label?)!` (informative).
 3. After the last seed, if a segment is pending and it is not a via, write its end coordinate with the pending orientation. Then write ` ;` and a newline, and reset the column to 0.
 
-The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). Seeds whose components are connected in the top cell produce repeated geometry (Q-LEFDEF-112).
+The traversal order of the connectivity search (a LIFO stack; for each popped tile, push its neighbours along the left edge bottom→top, the bottom edge left→right, the right edge top→bottom and the top edge right→left, then one tile per other connected plane in plane order) determines the order of route segments. Hefesto SHALL reproduce this order, using the same tile decomposition (maximal horizontal strips) and the same traversal, so that route segments are byte-identical (decision X-1, capability `hefesto-output-determinism`; see Q-LEFDEF-108). With `magic-compat` ON (the default), as in Magic, every seed starts a fresh search, so seeds whose components are connected in the top cell produce repeated geometry. With it OFF, tiles already passed to the segment writer for this net SHALL NOT be passed again, so a seed whose region an earlier search covered adds nothing (Q-LEFDEF-112, resolution: compat).
 
 Compatibility: exact
 
 (Magic ref: lef/defWrite.c:747-834, database/DBconnect.c:171-243, database/DBconnect.c:395-640)
+
+#### Scenario: Two seeds on one wire
+
+- **GIVEN** a regular net with two node records whose seeds both lie on the same top-level metal1 tile
+- **THEN** with `magic-compat` ON the tile's segment SHALL be written twice, once per seed
+- **AND** with `magic-compat` OFF it SHALL be written once
 
 #### Scenario: Net with no top-level paint
 
@@ -603,7 +646,7 @@ The segment writer SHALL handle each tile of type `t` with rectangle `r`, skippi
      - `orient = N` if `h > w`, else `E`.
    - If the test does not apply, there is no rule.
 6. **Endpoints** (binary32):
-   - E: `y1 = y2 = f32(f32(yl+yh)·s)/2`, `x1 = f32(xl)·s`, `x2 = f32(xh)·s`. If `W = 0`, `W = h`. In regular mode, `x1 += f32(⌊q/2⌋)·s` and `x2 −= f32(⌊q/2⌋)·s`, where `q` is the rule width if a rule is selected, else `W`. The halving is integer division (see Q-LEFDEF-95).
+   - E: `y1 = y2 = f32(f32(yl+yh)·s)/2`, `x1 = f32(xl)·s`, `x2 = f32(xh)·s`. If `W = 0`, `W = h`. In regular mode, the ends are inset by half of `q`, where `q` is the rule width if a rule is selected, else `W`. The inset depends on the `magic-compat` setting (Q-LEFDEF-95, resolution: compat): with it ON (the default), as in Magic, `x1 += f32(⌊q/2⌋)·s` and `x2 −= f32(⌊q/2⌋)·s`, where the halving is integer division; with it OFF, `x1 += f32(q·s/2)` and `x2 −= f32(q·s/2)`, so a reader that extends by half the width rebuilds the wire's true extent (the value may end in .5 when `q·s` is odd).
    - N: the same with x and y exchanged, using `xl + xh` for the centerline.
    - CENTER (via): `x1 = x2 = f32(f32(xl+xh)·s)/2` and `y1 = y2 = f32(f32(yl+yh)·s)/2`.
    - Special-mode endpoints are the rectangle edges, with no inset.
@@ -618,6 +661,7 @@ Compatibility: exact
 - **GIVEN** s = 10, regular net `A` (top port), metal1 route width W = 3, and a single metal1 tile (0,10)-(100,13)
 - **THEN** orient = E and y = f32(23·10)/2 = 115, x1 = 0 + 1·10 = 10, x2 = 1000 − 10 = 990
 - **AND** the record SHALL be `   - A ( PIN A )\n      + ROUTED metal1  ( 10 115 ) ( 990 * ) ;\n`
+- **AND** with `magic-compat` OFF the inset SHALL be 3·10/2 = 15, so the record SHALL be `   - A ( PIN A )\n      + ROUTED metal1  ( 15 115 ) ( 985 * ) ;\n`
 
 #### Scenario: Special wire
 
@@ -661,9 +705,9 @@ The segment writer SHALL keep state across the tiles of one net: the previous ti
      - If the current tile is a via: let `R` = the LEF name of `rtype` (or of `r2type` if `rtype` is none), looked up among route and masterslice layers and then via records. Apply the line-break rule with `len(R)+1` and write `R `. If a rule is selected, write `TAPERRULE <rule> `. In special mode, write the width (below). Then write(x1, y1, CENTER), apply the line-break rule with `len(vianame)+2`, and write ` <vianame> `.
      - If the current tile is a wire: apply the line-break rule with `len(lefname)+1` and write `<lefname> `. Write the optional `TAPERRULE <rule> ` and, in special mode, the width. Then write(x1, y1, CENTER).
 2. Else (`same` and same type):
-   - If orient = previous orient and `px ≠ x1` and `py ≠ x2` (dogleg; the test compares `py` with `x2`, see Q-LEFDEF-96): write(px, py, prev orient), then write(x1, y1, orient).
+   - If orient = previous orient and `px ≠ x1` and `py ≠ c` (dogleg): write(px, py, prev orient), then write(x1, y1, orient). With `magic-compat` ON (the default) `c = x2`, as in Magic (lef/defWrite.c:1534); with it OFF `c = y1`, the evident intent (Q-LEFDEF-96, resolution: compat).
    - Else if the previous orient is E: if `x1 = px`, write(x1, py, E). Otherwise end and restart: write(px, py, E), write `\n      NEW <lefname>` and set the column to 10 + len. In special mode, write a space (column + 1) and the width. Then write(x1, y1, CENTER).
-   - Else if the previous orient is N: if `y1 = py`, write(px, y1, N). Otherwise the same restart, except that the column is reset to 10 + len *after* the width is written (Q-LEFDEF-97).
+   - Else if the previous orient is N: if `y1 = py`, write(px, y1, N). Otherwise the same restart, except that the column is reset to 10 + len *after* the width is written. This column accounting, the uncounted `TAPERRULE` text and the uncounted `( PIN <name> )` text only decide where line breaks fall and are kept in both `magic-compat` settings (Q-LEFDEF-97, resolution: replicate; lef/defWrite.c:720-721, 1490, 1518, 1589-1595).
    - Else (the previous tile was a via): if orient = N and `x1 ≠ px`, write(x1, py, E). If orient = E and `y1 ≠ py`, write(px, y1, N).
 3. Update the state:
    - the previous layer type becomes `r2type` if this is a via with both `rtype` and `r2type` defined, none if this is any other via, and `t` otherwise;
@@ -701,13 +745,18 @@ Compatibility: exact
 
 ### Requirement: NONDEFAULTRULES section
 
-After the nets are produced, the count SHALL be the number of entries in the non-default rule table. This table includes rules created by this write, rules created by earlier writes in the same session, and rules read by `lef read`/`def read` (see Q-LEFDEF-99). Rules SHALL be written in table enumeration order:
+After the nets are produced, the rules written depend on the `magic-compat` setting (Q-LEFDEF-99, resolution: compat):
+
+- With it ON (the default), as in Magic, the count SHALL be the number of entries in the global non-default rule table, and every entry is written. This table includes rules created by this write, rules created by earlier writes in the same session, and rules read by `lef read`/`def read`. A rule name created by the segment writer that equals a LEF- or DEF-read rule reuses that rule.
+- With it OFF, the segment writer creates and looks up its rules in a table local to this write, so a name collision with a LEF- or DEF-read rule creates a write-local rule. Only rules referenced by a `TAPERRULE` in this file's nets SHALL be written, and the count SHALL be their number.
+
+Rules SHALL be written in table enumeration order:
 
 ```
   - <rulename>[anal-lines]{\n     + LAYER <L1> WIDTH <%g10 f32(width1)·s>[ WIREEXT <%g10 f32(ext1)/2.0>]} ;\n
 ```
 
-The braces repeat once per layer entry in the rule, but every repetition writes the *first* entry's layer, width and extension (Q-LEFDEF-98). WIREEXT is written only when the extension is greater than 0. It is not multiplied by `s`.
+The braces repeat once per layer entry in the rule. WIREEXT is written only when the extension is greater than 0. The extension is stored in doubled internal units. With `magic-compat` ON (the default), as in Magic, every repetition writes the *first* entry's layer, width and extension, and WIREEXT is `%g10 f32(ext)/2.0`, not multiplied by `s`. With it OFF, each repetition writes its own entry's layer, width and extension, and WIREEXT is `%g10 f32(ext)/2.0·s` in DEF units (Q-LEFDEF-98, resolution: compat; lef/defWrite.c:3162-3170). Rules created by the segment writer have one entry and extension 0, so only rules from `lef read` or `def read` show the difference, and with `magic-compat` OFF those are not written by `def write` (see above).
 
 With `-anal`, before the rule's own layers, write `\n     + LAYER <canon> WIDTH <%g10 f32(routewidth)·s>` for every distinct route-class layer record, in layer-table enumeration order, that meets all of these conditions:
 
@@ -730,6 +779,12 @@ Compatibility: exact
 
 - **GIVEN** route layers metal1 (width 3) and metal2 (width 4), the rule `metal1_width_80`, and `-anal`, with s = 10
 - **THEN** the rule SHALL contain `+ LAYER metal2 WIDTH 40` before `+ LAYER metal1 WIDTH 80`
+
+#### Scenario: Multi-layer rule from LEF
+
+- **GIVEN** s = 10, `magic-compat` ON, and a LEF-read rule `W2` with entries metal1 (width 28, extension stored as 10) and metal2 (width 28, extension stored as 10)
+- **THEN** the rule SHALL be written with two `+ LAYER metal1 WIDTH 280 WIREEXT 5` lines
+- **AND** with `magic-compat` OFF `W2` SHALL NOT be written, because no `TAPERRULE` of this write's nets references it
 
 ### Requirement: BLOCKAGES section
 
@@ -783,7 +838,7 @@ Compatibility: exact
 
 ### Requirement: Session state after writing
 
-After writing, the system SHALL remove the generated via records from the layer table and SHALL discard the via position index. Non-default rules created during the write SHALL remain in the rule table for the rest of the session (until the technology is reloaded), so later `def write` and `lef write` runs see them (see Q-LEFDEF-99). Writing SHALL NOT modify the layout and SHALL NOT be undoable.
+After writing, the system SHALL remove the generated via records from the layer table and SHALL discard the via position index. With `magic-compat` ON (the default), non-default rules created during the write SHALL remain in the rule table for the rest of the session (until the technology is reloaded), so later `def write` and `lef write` runs see them, as in Magic. With it OFF, rules created by the write SHALL be discarded after it; rules read by `lef read` or `def read` stay in the table in both settings (Q-LEFDEF-99, resolution: compat). Writing SHALL NOT modify the layout and SHALL NOT be undoable.
 
 Compatibility: behavioral
 
@@ -793,4 +848,5 @@ Compatibility: behavioral
 
 - **GIVEN** a write that created rule `metal1_width_80`
 - **WHEN** `def write` is run again on a different cell with no wide wires
-- **THEN** that file's NONDEFAULTRULES SHALL still list `metal1_width_80`
+- **THEN** with `magic-compat` ON that file's NONDEFAULTRULES SHALL still list `metal1_width_80`
+- **AND** with `magic-compat` OFF it SHALL list no rule
