@@ -50,7 +50,7 @@ These checks move to M4 (Desktop Alpha, `docs/roadmap.md` M4 "Carried from M2") 
 - live mouse, keyboard and trackpad input on Linux under X11 and under Wayland;
 - Orca on Linux.
 
-An audible VoiceOver run by a person is part of the user's guided review of M2 (m2-interactive-editing task 10.1). The embedded-Roboto licensing item (section 3) and filing the Raven issues upstream stay open items; neither blocks the decision.
+An audible VoiceOver run by a person is part of the user's guided review of M2 (m2-interactive-editing task 10.1). The embedded-Roboto licensing item (section 3) stays an open item and does not block the decision; filing the Raven issues upstream, the other open item, was done on 2026-11-12 (see "Filed upstream (2026-11-12)").
 
 ## 1. Canvas frame rate
 
@@ -291,7 +291,7 @@ The median target (16.7 ms) still holds on the M3 Pro in a Debug build under loa
 
 **Crash-recovery dialog:** captured with the product app (`crash save FILE`, then `hefesto --run "crash recover FILE" --capture`): the prompt dialog reads "Recover from backup file …?" with Cancel and the primary, focused Recover, as the M2-Dialogs board. Noted: a long backup path widens the dialog to the path's length instead of wrapping.
 
-**Still open (manual):** the M1 frame-rate run; Linux x86_64 with a mid-range discrete GPU under X11 and Wayland (frame rate and live mouse, keyboard and trackpad input); Orca; an audible VoiceOver run; filing the issues below.
+**Still open (manual):** the M1 frame-rate run; Linux x86_64 with a mid-range discrete GPU under X11 and Wayland (frame rate and live mouse, keyboard and trackpad input); Orca; an audible VoiceOver run. Filing the issues below: done on 2026-11-12 (see "Filed upstream (2026-11-12)").
 
 ### Raven issues to file (drafts, not filed)
 
@@ -338,6 +338,37 @@ Drafted by the SCREENS polish pass from the board differences of the M4 captures
 12. *Text input: an outline state.* A field corrected by the application (the PCell dialog's `_check`) needs a warning outline that stays until the next edit; `Rtext_input` has the theme's focus ring only. Request: `Rwidget_set_state_outline(widget, r, g, b, a)` or an `R_STATE_WARNING` style.
 13. *Buttons: a selected state in a group.* The text helper's justification grid marks the chosen square (ember fill); Raven buttons have no checked state outside a toggle and a segmented control has one row. Request: `Rbutton_set_checked(button, checked)` (a toggle look without a toggle behavior) or a grid of radio buttons.
 14. *Popup menu: a filter field and right-aligned key text.* The Place device popover has a filter field and the ^P key of the last device; `Rmenu_open` shows items only (draft 8 covers key text in the bar).
+
+## Filed upstream (2026-11-12)
+
+The user filed the drafts above in https://github.com/oscar-soirey/Raven/issues on 2026-11-12, after checking each one against Raven HEAD v0.2.3 (`019ab35`). Hefesto still pins v0.2.2 (`4a05d6f`, `cmake/Dependencies.cmake`); the pin was not bumped. The Raven calls named below as available were checked in Raven's headers at the pin (`include/raven/*.h` at `4a05d6f`).
+
+| Draft | Upstream | Note |
+|---|---|---|
+| 1 Cocoa function keys insert U+F7xx | [#89](https://github.com/oscar-soirey/Raven/issues/89) | Hefesto's `TextKeyFilter` workaround stays until a fixed Raven is pinned |
+| 2 Cocoa held key does not repeat | [#90](https://github.com/oscar-soirey/Raven/issues/90) | same workaround |
+| 3 accessible press and checked state for custom widgets | [#91](https://github.com/oscar-soirey/Raven/issues/91) | also takes the screen-reader part of draft 13 (a checked state for the justification grid) |
+| 4 anchored popover | not filed | fixed at Raven HEAD by PR #81 (`Rpopup_open` / `Rpopup_close` / `Rpopup_is_open`, `raven_dialogs.h`); usable after a future pin bump. The filter-field half of draft 14 is the same |
+| 5 `Rslot_set_fill(child, 0)` documentation | not filed | a docs-only note |
+| 6 float a dock panel inside the window | [#92](https://github.com/oscar-soirey/Raven/issues/92) | |
+| 7 owned utility window | [#93](https://github.com/oscar-soirey/Raven/issues/93) | |
+| 8 display-only menu shortcut text | [#94](https://github.com/oscar-soirey/Raven/issues/94) | also takes the key-text part of draft 14 (^P in the Place device popover); repro corrected, see below |
+| 9 a drop target draws its own highlight | [#95](https://github.com/oscar-soirey/Raven/issues/95) | |
+| 10 menu bar divider, title color, header row | [#96](https://github.com/oscar-soirey/Raven/issues/96) | |
+| 11 Table per-cell text color, Left/Right, multi-select | [#97](https://github.com/oscar-soirey/Raven/issues/97) | filed for G-3 (multi-select) and G-4 (per-cell color) only; G-1 was not a Raven gap, see below |
+| 12 text input outline state | not filed | possible at the pin, see below |
+| 13 button selected in a group | not filed | the look is possible at the pin, see below; the screen-reader checked state is in [#91](https://github.com/oscar-soirey/Raven/issues/91) |
+| 14 popup filter field and key text | split | filter field: PR #81 (draft 4); key text: [#94](https://github.com/oscar-soirey/Raven/issues/94) (draft 8) |
+
+**Draft 8, repro corrected.** The draft's repro (`Rmenu_item_set_shortcut(item, R_KEY_Z, 0)` on the native macOS bar, then `z` typed in a `TextInput` fires the item) was wrong: `rvn_textedit_key` consumes printable keys, and the Cocoa native menu gives an unmodified printable key no key equivalent, so typing `z` in a TextInput does not fire the item. The real gaps, as filed: the macOS native bar cannot show `Z`; the in-window bar fires the item when no widget consumed the key (so a binding would take the key from the canvas's own macros); and the shortcut is one key plus modifiers only, not free text.
+
+**Not Raven gaps after all (closed in Hefesto, `docs/design/m4-ui-conformance.md`):**
+
+- *G-1 (Table Left/Right).* `Rwidget_set_event_callback` on a Table gets `R_EVENT_KEY_DOWN` before the table's own handler (`rvn_widget_deliver_scoped` in `src/widget/events.c` runs the event callback, then `widget->cls->event`; the same at the pin). The Cells tab now opens and closes nodes with Left/Right through it (`ui::Table::on_key`, `CellsView::tree_key`). Raven's TreeView also has Left/Right, multi-select and `Rtree_item_set_text_color`, should the managers move to it.
+- *Draft 12 (warning outline).* `Rwidget_set_color(input, R_COLOR_BORDER, ...)` and `R_COLOR_FOCUS` (the colors a TextInput draws its outline and focus ring with, `src/widgets/text_input.c`), cleared with `Rwidget_clear_color` on the next edit; a style class (`Rwidget_add_class` with `Rtheme_set_style_color`) would do too. The PCell dialog now outlines a corrected field in the forge `warning` color (#E5B13A) until it is typed into again (`ui::TextInput::set_outline`, `PCellEditState::begin_typing`).
+- *Draft 13 (selected button in a group), the look.* `Rbutton_set_style(b, R_BUTTON_PRIMARY)` (or `Rwidget_set_color`); the text helper's justification grid now marks the chosen square in the primary (ember) style (`ui::Button::set_primary`, `TextHelperView::justification_marks`). Only the screen-reader checked state is missing ([#91](https://github.com/oscar-soirey/Raven/issues/91)); until then the button's accessible name ends in ", chosen".
+
+These closures add two Raven calls to `raven_ui.cpp`, `Rwidget_set_color` and `Rwidget_clear_color` (both declared in `raven_widget.h` at the pin); `Rwidget_set_event_callback` is now also set on Tables.
 
 ## Checklist to close the decision
 
