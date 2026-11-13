@@ -310,7 +310,7 @@ Compatibility: exact
 Before writing anything to the stream, Hefesto SHALL:
 
 1. Fail with "no output style" if no output style is selected. This check is made before the output file is opened, so the output file is not created or modified, in both `magic-compat` settings (Q-MASK-219, resolution: fix; Magic opens the file first and truncates an existing file of the same name).
-2. Load every cell in the hierarchy under the root, within the root's bounding box. If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated.
+2. Load every cell in the hierarchy under the root, within the root's bounding box, by the recursive area search over uses described in Requirement "Structure ordering" (which can rebuild a cell's use index with `magic-compat` ON). If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated.
 3. Resolve pending timestamp mismatches between parents and children (see capability `layout-geometry-model`).
 4. Reset all cell id numbers to 0 and give the root id number 1. The next number assigned is 2.
 
@@ -349,14 +349,20 @@ With `magic-compat` ON (the default) it is the order in which Magic's cell-use s
 
 - *Insertion.* A use that is placed (read from a file, created, moved, or re-placed) is pushed at the head of the index's unbinned list (LIFO) unless bins exist and the use's bounding box lies inside the bin area, in which case it is pushed at the head of the list of its bin (oversized uses, as wide or as tall as a bin, go to the array's oversized list).
 - *Re-placement.* When a child's bounding box is recomputed, every use of that child is removed from its parent's index and placed again, in the order of the child's parent-use list (Magic DBReComputeBbox), which moves those uses to the head of the unbinned list.
-- *Rebuild.* An area search whose area does not surround the index's bounding box (a non-surrounding search: interaction searches, DRC, extraction) first rebuilds the bins when the unbinned list holds 10 or more uses: existing bins are dissolved into the list, and a bin array is built over the list's bounding box (doubled when bins already existed) with Magic's bin sizing and recursive sub-binning (minimum population 10, average population 1.0); sub-bins are also built on the fly when a bin yields 10 or more rejected uses during a search. A search over the whole plane (as made by the GDS writer's own enumeration) does not rebuild.
+- *Rebuild.* An overlap search over an area A (Magic's `BPE_OVERLAP`, used by every area search over uses) first shrinks A by 1 on each side and tests whether the shrunk area surrounds the index's bounding box, touching allowed. If it does not (a *non-surrounding search*), the bins are rebuilt when the unbinned list holds 10 or more uses: existing bins are dissolved into the list, and a bin array is built over the list's bounding box (doubled when bins already existed) with Magic's bin sizing and recursive sub-binning (minimum population 10, average population 1.0); sub-bins are also built on the fly when a bin yields 10 or more rejected uses during a search. Because of the shrink, a search over a cell's own bounding box is non-surrounding whenever one of its uses touches that box's edge. An exact-match lookup (Magic's `BPE_EQUAL`, as used to find a duplicate use) and a search over the whole plane (as made by each writer's enumeration of a cell's uses) never rebuild.
 - *Walk.* An enumeration visits the bins of the root array in row-major order from the bottom-left bin (only the bins the search area reaches, for a non-surrounding search), descending into sub-arrays where a bin is sub-binned, each array's oversized list after its bins, each list from head to tail, and finally the unbinned list from head to tail.
 
-The bin geometry, sizing arithmetic and walk SHALL follow Magic's bplane exactly (bplane/bpBins.c, bplane/bpEnum.h, bplane/bpEnum.c). Each writer enumerates at the point where Magic does, so it sees the same index state: the GDS writer enumerates SREFs before the cell's own mask generation (CIFGenSubcells), so the first GDS write of a fresh session sees unbinned uses; the CIF writer numbers children before CIFGenSubcells and writes `C` calls after it (capability `cif-format-io`). The golden harness runs each case as one write in a fresh session with no DRC or extraction before it, unless the case tests history on purpose; cases with 10 or more uses and an interaction verify both CIF and GDS. The `.mag` writer lists uses alphabetically, independent of this order.
+The bin geometry, sizing arithmetic and walk SHALL follow Magic's bplane exactly (bplane/bpBins.c, bplane/bpEnum.h, bplane/bpEnum.c). Each writer makes the same searches as Magic, at the same points, so it sees the same index state:
+
+1. Subtree loading (Requirement "Write preconditions and subtree loading", and its CIF counterpart) is a recursive overlap search: the root's uses are searched over the root's bounding box, each use's child over the search area transformed into the child's coordinates (each array element in turn), and the elements of an array after the first are skipped once the transformed area surrounds the child's bounding box. Each of these searches can rebuild the searched cell's bins. In a fresh session the root, and any cell whose transformed search area does not surround its uses after the shrink, is therefore binned before any structure is written if it has 10 or more uses.
+2. The timestamp-mismatch fix-up that follows re-places the uses of each child whose bounding box changed.
+3. The GDS writer then enumerates SREFs before the cell's own mask generation (CIFGenSubcells); the CIF writer numbers children before CIFGenSubcells and writes `C` calls after it (capability `cif-format-io`).
+
+The first write of a fresh session therefore sees unbinned uses only in cells with fewer than 10 uses, or whose subtree-loading search surrounded their uses. The golden harness runs each case as one write in a fresh session with no DRC or extraction before it, unless the case tests history on purpose; cases with 10 or more uses and an interaction verify both CIF and GDS. The `.mag` writer lists uses alphabetically, independent of this order.
 
 Compatibility: exact
 
-(Magic ref: calma/CalmaWrite.c:345-366, calma/CalmaWrite.c:920-996, calma/CalmaWrite.c:1047-1083, calma/CalmaWrite.c:1349-1370, calma/CalmaWrite.c:1486, calma/CalmaWrite.c:1510-1514, database/DBcellsrch.c:1263-1281, database/DBcellsrch.c:86-109, database/DBcellbox.c:728-764, bplane/bpMain.c:114-170, bplane/bpBins.c:256-719, bplane/bpEnum.c:80-140, bplane/bpEnum.h:190-400, cif/CIFwrite.c:333, cif/CIFwrite.c:467)
+(Magic ref: calma/CalmaWrite.c:316-325, cif/CIFwrite.c:137-145, database/DBexpand.c:276-340, database/DBcellsrch.c:1131-1222, bplane/bpEnum.c:75-120, bplane/bpBins.c:645-651, calma/CalmaWrite.c:345-366, calma/CalmaWrite.c:920-996, calma/CalmaWrite.c:1047-1083, calma/CalmaWrite.c:1349-1370, calma/CalmaWrite.c:1486, calma/CalmaWrite.c:1510-1514, database/DBcellsrch.c:1263-1281, database/DBcellsrch.c:86-109, database/DBcellbox.c:728-764, bplane/bpMain.c:114-170, bplane/bpBins.c:256-719, bplane/bpEnum.c:80-140, bplane/bpEnum.h:190-400, cif/CIFwrite.c:333, cif/CIFwrite.c:467)
 
 #### Scenario: Post-order with shared child
 - **GIVEN** `top.mag` lists `use a a_0` then `use b b_0`, `a` uses `c`, and `b` uses `c`
@@ -375,6 +381,11 @@ Compatibility: exact
 - **GIVEN** `magic-compat` ON, the same `top`, and an area search that does not surround `top`'s uses ran before the write
 - **WHEN** GDS is written
 - **THEN** the SREFs of `top` are written in the bin-walk order of the rebuilt index, which matches Magic's output for the same session history
+
+#### Scenario: Fresh-session write of a cell whose uses touch its bounding box
+- **GIVEN** `magic-compat` ON, a fresh session, and `top` with 12 uses read from `top.mag`, one of which touches the edge of `top`'s bounding box
+- **WHEN** GDS is written once, with no other command before it
+- **THEN** the subtree-loading search over `top`'s bounding box has rebuilt `top`'s bins, and the SREFs of `top` are written in the bin-walk order, as in Magic, not in the unbinned order
 
 #### Scenario: Library mode omits the root
 - **GIVEN** `gds library yes` and `top` uses `inv`

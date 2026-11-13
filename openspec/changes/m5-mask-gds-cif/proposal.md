@@ -111,7 +111,7 @@ Every open question these specs cite is resolved, and the specs were aligned in 
   - MASK: 233 rows in `tests/golden/MASK/CASES.md`, plus the library round-trip rows `MASK-RT-*`.
   - DRC-CIF-4..7 un-deferred. DRC-CIF-2 and DRC-CIF-3 must still pass once errors are generated.
   - MISC-MH-03..06, MISC-FL-05 and CELL-TS-07.
-  - Deviations for the fix rows whose output differs from Magic: Q-MASK-201, 209, 219, 222, 227, 314, 318 and Q-MASK-10 where a listing differs.
+  - Deviations for the fix rows whose output differs from Magic: Q-MASK-201, 208, 209, 219, 222, 227, 314, 318 and Q-MASK-10 where a listing differs.
 - **Docs:**
   - the diagnostic code documents `docs/diagnostics/codes/{mask,gds,cif}.md` and the new DRC codes;
   - `docs/building.md` (GDS data sets);

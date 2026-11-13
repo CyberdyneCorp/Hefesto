@@ -118,6 +118,7 @@ Rules (unchanged from M1–M4 D2):
 Dependencies:
 - PDK (section 1) lands first. The round-trip cases and the GDS bench need its data, and its size check may change D19.
 - The scaffold (section 2) publishes the interfaces of D4 with stubs.
+- GOLDEN's use-order probe (task 1.5) lands with the PDK step, before the scaffold ends, because INDEX's trace test (task 5.1) replays its traces. INDEX depends on GOLDEN for it.
 - STYLES, OPS, INDEX, GDSR (stream layer, records, content hash, vendor views) and the CIF parser start at once. OPS works against a hand-built `OutputStyle`, and the CIF parser works against a recording `ReadSink`.
 - GEN needs STYLES and OPS.
 - INPUT's tech reader needs STYLES' shared core. Its read engine needs OPS.
@@ -163,8 +164,9 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 **Use order**
 - `db::UseIndex` (`db/use_index.hpp`) (INDEX), with these operations:
   - `place(use)`, `remove(use)`;
-  - `search(area, visitor)`, a non-surrounding search that may rebuild bins under magic-compat ON;
-  - `enumerate_all(visitor)`, the whole-plane enumeration of the writers;
+  - `search(area, visitor)`, Magic's `BPE_OVERLAP` search (area shrunk by 1), which rebuilds bins when it is non-surrounding (D7);
+  - `find_equal(rect, visitor)`, Magic's `BPE_EQUAL` lookup, which never rebuilds;
+  - `enumerate_all(visitor)`, the whole-plane enumeration of the writers and `.mag` write, which never rebuilds;
   - `order(compat) -> std::vector<CellUse*>`.
 
 **Input**
@@ -184,6 +186,11 @@ Shared interfaces created by the scaffold (INTEGRATION owns the files; the named
 
 **Commands and progress**
 - `gds::read(EditorState&, path, const GdsReadOptions&)`, `gds::write(EditorState&, root, path, const GdsWriteOptions&)`, `cif::read(...)` and `cif::write(...)`. Each returns a `cmd::CommandResult` and takes an optional `mask::Progress` (callback and cancel). The commands, the CLI and the shell all call these (GDSR, GDSW, CIF).
+- Each write has two phases, because Magic's write mutates the database before it generates anything:
+  - `prepare_write(EditorState&, root, options) -> PreparedWrite` runs on the command thread under the exclusive database lock. It checks the style (Q-MASK-219), loads the subtree with Magic's recursive area search through `UseIndex::search` (which can rebuild bins), resolves timestamp mismatches with the DBReComputeBbox re-placement, and returns the checked options and the root;
+  - `emit_write(const PreparedWrite&, path, Progress*)` generates and writes under the shared lock. It mutates nothing in the layout; the only state it changes is the use index's bins, under the index mutex (D7).
+
+  `gds::write` and `cif::write` call both in sequence; the shell runs the second on a worker (D16).
 - `platform::FilePicker` is reused (M4).
 
 ### D5. Output styles and the catalog (STYLES; `mask-output-styles`)
@@ -249,22 +256,23 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   - use creation, read, move and delete;
   - the re-placement in DBReComputeBbox, in the child's parent-use order (DBcellbox.c:728-764).
 
-  Every area search over uses goes through `search(area)`: DRC interactions, flattening, `select`, `.mag`'s DBCellEnum, hierarchical generation, and later extraction. A non-surrounding search rebuilds the bins at 10 or more unbinned uses (bpBins.c:651), and so do sub-bins built during a search. The writers use `enumerate_all`, which never rebuilds.
+  Every area search over uses goes through `search(area)`: DRC interactions, flattening, `select`, hierarchical generation, the writers' subtree loading, and later extraction. The search is Magic's `BPE_OVERLAP`: the area is first shrunk by 1 on each side (bpEnum.c:104-106), and the search is *non-surrounding* when the shrunk area does not surround the index's bounding box (touching allowed). A non-surrounding search rebuilds the bins at 10 or more unbinned uses (bpBins.c:651), and so do sub-bins built during a search. Because of the shrink, a search over a cell's own bounding box is non-surrounding whenever a use touches that box's edge. Exact-match lookups (Magic's `BPE_EQUAL`, `DBCellFindDup`, DBcell.c:107) go through `find_equal(rect)`, which never rebuilds. Whole-plane enumeration (`DBCellEnum` over `TiPlaneRect`, used by `.mag` write and by both writers' enumeration of a cell's uses) is `enumerate_all`, which never rebuilds.
 - **Mode.**
   - magic-compat ON: `order()` is the bin walk of the current state, as the spec describes.
   - magic-compat OFF: `order()` is the reverse of insertion order: the reverse of the `.mag` `use` order, or of the SREF/AREF order for a cell read from GDS, independent of history.
 
   The state is maintained in both modes, so toggling the mode never needs a rebuild.
-- **Sampling points.** Each writer enumerates exactly where Magic does:
-  - the GDS writer takes the SREF order before the cell's CIFGenSubcells (CalmaWrite.c:1486, :1510-1514);
-  - the CIF writer numbers children before CIFGenSubcells (CIFwrite.c:333) and writes `C` calls after it (:467).
+- **Writers' searches and sampling points.** Each writer makes Magic's searches, in Magic's order, before it enumerates:
+  1. subtree loading (`DBCellReadArea`, CalmaWrite.c:316, CIFwrite.c:137): `search` over the root's bounding box, then recursively over each child with the area transformed into the child's coordinates, each array element in turn, stopping at the remaining elements of an array once the transformed area surrounds the child's bounding box (DBexpand.c:329-337). In a fresh session this bins the root, and any cell whose transformed area does not surround its uses, if it has 10 or more uses;
+  2. `DBFixMismatch`, whose DBReComputeBbox re-places the uses of each child whose bounding box changed;
+  3. the GDS writer takes the SREF order before the cell's CIFGenSubcells (CalmaWrite.c:1486, :1510-1514); the CIF writer numbers children before CIFGenSubcells (CIFwrite.c:333) and writes `C` calls after it (:467).
 
-  GEN's interaction searches are non-surrounding searches, so they can bin a cell between those two points, as in Magic.
+  Steps 1 and 2 are the prepare phase of D4. GEN's interaction searches are non-surrounding searches, so they can bin a cell between the two CIF sampling points, as in Magic. A trace test covers a fresh session with one write and a cell of 10 or more uses touching its bounding box.
 - **Concurrency.** Rebuilding bins is a logically const mutation that happens during reads, from the command thread or from the DRC worker under the shared database lock. `UseIndex` therefore guards its state with its own mutex, and `order()` returns a snapshot vector, so an enumeration is never invalidated by a concurrent rebuild. In batch CLI mode there is no worker, so the history, and with it the ON order, is deterministic.
 
   On the desktop, a background DRC pass that ran before a write can bin a cell, exactly as Magic's idle-time DRC does. Golden cases run in the CLI. The OFF order never depends on history.
 - **Verification.**
-  - A trace test replays recorded sequences of place, search and enumerate against orders captured from Magic. GOLDEN adds a small Tcl probe to the capture image, through `cellname list childinst` and GDS writes after controlled searches.
+  - A trace test replays recorded sequences of place, search and enumerate against orders captured from Magic. GOLDEN adds a small Tcl probe to the capture image (task 1.5), through `cellname list childinst` and GDS writes after controlled searches. The probe also records the orders after a plain fresh-session `gds write` and `cif write`, the case where subtree loading bins the root.
   - Golden cases cover ≥10-use cells with an interaction for CIF and GDS, a second write in one session, and a write after `drc check`.
   - The M1–M4 golden suite and the DRC corpus cases must pass unchanged. The DRC results do not depend on the order, but the regression risk is real.
 
@@ -301,7 +309,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   - The console host may print `Completed N%`. That text is informative and masked in golden output.
   - A cancelled GDS or CIF write leaves no output file. The writers write to a temporary file in the target directory and rename it on success.
   - A write that fails where Magic would leave a partial, terminated file (Q-MASK-226 ON, "Write result and error propagation") is still renamed into place, so the observable file matches Magic. Only a cancellation discards.
-  - Snapshot isolation uses the M3 interpretation (Q-DRC-12, m3 D8): the write runs under the shared database lock. On the desktop it runs on a worker with progress (D16), while edits issued during the write queue until it ends. "An edit made during the write does not appear in the written file" holds because nothing mutates under the lock.
+  - Snapshot isolation uses the M3 interpretation (Q-DRC-12, m3 D8). A write's prepare phase (D4: subtree loading, mismatch fix-up and the Magic-order pre-search) mutates the database, so it runs on the command thread under the exclusive lock. Generation and output then run under the shared database lock. On the desktop that phase runs on a worker with progress (D16), while edits issued during it queue until it ends. "An edit made during the write does not appear in the written file" holds because nothing in the layout mutates under the shared lock; use-index rebuilds during generation are guarded by the index mutex (D7). A TSan test runs a write while a background DRC pass runs.
 - **Hints.** The generation wiring of m3-drc design D13 (`output_region`, `flat_copy_hints`, `add_input_region`, `gds_maskhints_region`) is done by GEN for output and by INPUT and GDSR for input. MISC-MH-03..06 are authored then.
 
 ### D9. Input styles and the shared read engine (INPUT; `mask-input-styles`)
@@ -366,7 +374,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
 
 - **Writer.** It ports CalmaWrite.c (3,343 lines) in this order:
   1. the header and trailer, with UNITS from the current style on every write (Q-MASK-201, fix);
-  2. the preconditions, checked before the file is opened (Q-MASK-219, fix), and subtree loading;
+  2. the preconditions, checked before the file is opened (Q-MASK-219, fix), and subtree loading with mismatch fix-up (the prepare phase of D4, with Magic's searches of D7);
   3. structure ordering (D7), with naming and the Q-MASK-209 uniquification (`XXXXX<n>`, `_k` on collision);
   4. output scale factors (Q-MASK-225 compat: ON writes mis-scaled output with Magic's errors; OFF refuses before opening);
   5. per structure, the mask geometry from `generate_hierarchical`, the tile decomposition and enumeration, unmerged boundaries, or merged polygons (`merge yes`).
@@ -386,7 +394,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   - Every case runs with `TZ=UTC` and `LC_ALL=C`, which the capture image already sets (Q-MASK-203).
   - Compressed output is compared after decompression (`gzip` canonicalizer).
   - A decoded record view (`gds-records`) is used only for readable diffs. Pass or fail is always the masked bytes.
-- **OFF mode.** It writes `t = 0` for modification dates, which makes OFF output fully reproducible. Unit tests check the OFF bytes directly.
+- **OFF mode.** It writes `t = 0` for modification dates. Dates are converted in the host's local time zone in both modes (Q-MASK-203, replicate), so `t = 0` encodes as 1970-01-01 00:00:00 under UTC and as 1969-12-31 in western zones. OFF output is therefore reproducible under a fixed time zone (`TZ`, or the `gds-time-zone` setting of Q-MASK-132), not across zones. Unit tests check the OFF bytes directly under UTC and under one pinned non-UTC zone.
 
 ### D13. CIF read symbol table and CIF I/O (CIF; `cif-format-io`)
 
@@ -443,7 +451,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
 ### D16. Desktop (SHELL)
 
 - **Menu items.** The wrapper's "Read GDS" and "Write GDS" items (`gui/wrapper.cpp`) are enabled. `later_milestone()` in `menu_bar_model.cpp` stops returning M5. The items issue the logged `magic::promptload gds` and `magic::promptsave gds`, which the prompt procedures (`gui/prompts.*`, SHELL in M5) complete for the `gds` and `cif` kinds through `platform::FilePicker`, as Magic's wrapper.tcl does. For `cif` this includes the `cif_temp` load-and-delete sequence of `promptload cif`. The pickers pass the root name, and the extension rule applies (Q-MASK-320, 210). Magic's wrapper has no CIF menu item, so none is added; `promptload cif` is reachable from the console and scripts. The M4 GUI-manager scenario "GDS with a single top cell" (`ui-gui-managers` "File prompts", m4 task 9.5) is completed here.
-- **Progress and cancel (Q-MASK-414).** A long read or write shows progress and can be cancelled. Both use the existing patterns: the Tcl console's running header and the canvas Interrupt card after 2 s (m4 D5). Writes run on a worker under the shared lock and the UI keeps drawing. Reads run on the command thread with progress pumping frames, as Tcl evaluation does, because they take the exclusive lock.
+- **Progress and cancel (Q-MASK-414).** A long read or write shows progress and can be cancelled. Both use the existing patterns: the Tcl console's running header and the canvas Interrupt card after 2 s (m4 D5). A write's prepare phase (D4) runs on the command thread under the exclusive lock, with frames pumped; its generate-and-emit phase runs on a worker under the shared lock and the UI keeps drawing. Reads run on the command thread with progress pumping frames, as Tcl evaluation does, because they take the exclusive lock.
 - **No new board.** Both items reuse approved patterns (`M4-Menu-Bar`, `M4-Script-Consent`'s long-running state). If SHELL finds that an element is missing from every board, DESIGN draws it first, following the M2–M4 rule. `docs/design/m5-ui-conformance.md` records the items.
 
 ### D17. Ownership of the M1–M4 changes M5 makes
@@ -492,7 +500,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   - MISC-MH-03..06 and MISC-FL-05 are authored in `misc_cases.py`, and CELL-TS-07 in `cell_cases.py`.
   - `UI-G-005`'s deviation text drops `calma, gds, cif`. The case stays deferred to M12 for the other commands.
 - **Deviations.** Only with an approved decision:
-  - the fix rows whose output differs from Magic: Q-MASK-201 (only in a case with an angstrom write first), 209, 219, 222, 227, 314, 318, and Q-MASK-10 for any listing case where Magic's prefix shadowing drops a style;
+  - the fix rows whose output differs from Magic: Q-MASK-201 (only in a case with an angstrom write first), 208 (label text after a write, MASK-GW-005), 209, 219, 222, 227, 314, 318, and Q-MASK-10 for any listing case where Magic's prefix shadowing drops a style;
   - the platform rows: Q-MASK-223 (handled by the canonicalizer) and 324 (by the mask).
 
   MASK-OP-032 ("per platform") is captured on the x86_64 image. Under the Q-MASK-227 fix, Hefesto's replay must be identical on every leg.
@@ -505,17 +513,19 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   - GitHub's 10 GB cache limit per repository is the constraint. If the kept GDS exceeds about 4 GB across the three PDKs, or the cold fetch exceeds the job's disk, the PDK step stops and raises Open Question 1 with the measured numbers.
 - **Round-trip definition (proposed, Open Question 1).** For each library GDS file L, both tools run the same script in a fresh session, with the PDK's rc trusted and `random seed 1`:
   1. `gds read L` with the PDK's default read options;
-  2. create a wrapper cell that places every top structure;
+  2. create a wrapper cell that places every top structure, then pin its timestamp with `cellname timestamp <wrapper> 0` (Magic's `cellname` timestamp option, commands/CmdCD.c:1554-1561);
   3. `gds library yes; gds write out`.
 
-  Library mode omits the wrapper and writes every structure. The wrapper has many uses, so the first write exercises the unbinned Q-MASK-204 order.
+  Library mode omits the wrapper's own structure and writes every structure below it. LIBNAME is still the wrapper, and BGNLIB's creation date is the wrapper's `cd_timestamp` when no `gds datestamp` is set (calma/CalmaWrite.c:3075-3078). `gds-mod-dates` does not mask it, so step 2 pins it to 0, and both tools must write it as 1970-01-01 00:00:00 under the capture image's `TZ=UTC`. Structure creation dates keep the BGNSTR dates of the read (calma/CalmaRdcl.c:504-510), so they are compared too. The wrapper has many uses, one of which touches its bounding box, so with 10 or more top structures the write's subtree-loading search bins it (D7) and the round trip exercises the binned Q-MASK-204 order; libraries with fewer top structures exercise the unbinned order.
 
-  Pass means Hefesto's `out.gds` equals Magic's after `gds-mod-dates`. Expected outputs of this size are not committed. `expected/` stores the SHA-256 of the masked, decompressed output and a compact decoded summary (structure names and record counts) for diagnosis, as DRC-PR-1's printrules digest did. A second, Hefesto-only check reads `out.gds` back and writes it again. The result must be byte-identical (a fixed point). A library that Magic itself cannot read or write correctly is recorded with an approved decision.
+  Pass means Hefesto's `out.gds` equals Magic's after `gds-mod-dates`. Expected outputs of this size are not committed. `expected/` stores the SHA-256 of the masked, decompressed output and a compact decoded summary (structure names, record counts and the BGNLIB creation date) for diagnosis, as DRC-PR-1's printrules digest did. A library that Magic itself cannot read or write correctly is recorded with an approved decision.
+
+  There is no read/write fixed-point gate. A GDS read pushes each SREF at the head of the unbinned list and the next write walks it from the head, so SREF order reverses on each cycle for a cell with 2 to 9 uses under ON and always under OFF, and regenerating masks from read-back layers is not guaranteed idempotent (cuts, merges, labels). Instead a Hefesto-only *equivalence report* reads `out.gds` back, writes it again, and compares the two writes by decoded content, insensitive to order: structures as a set by name, SREF/AREF records as a multiset per structure, and the geometry of each layer and datatype as a canonical polygon set. Differences are listed in the job summary for review. They do not fail the job.
 - **Where it runs.**
-  - One `MASK-RT-<lib>` case per library, labelled `golden-slow`.
-  - A new `gds-roundtrip` job in `perf.yml` runs all of them on main, on the schedule, on dispatch, and on pull requests that touch `gds/`, `mask/`, `db/use_index*` or the data sets.
-  - `golden-slow` runs one standard-cell library per PDK on every pull request: `sky130_fd_sc_hd`, `gf180mcu_fd_sc_mcu7t5v0` and `sg13g2_stdcell`.
-  - Capture runs in `golden-capture.yml` with the GDS sets restored.
+  - One `MASK-RT-<lib>` case per library. The three standard-cell cases (`sky130_fd_sc_hd`, `gf180mcu_fd_sc_mcu7t5v0`, `sg13g2_stdcell`) are small and carry the ordinary `golden` label. `ci.yml`'s golden legs fetch the three standard-cell GDS subsets (their own cache keys) and replay them on every leg, so the round trip is checked byte for byte on Linux x86_64, Linux aarch64 and macOS arm64. A missing input in those legs is an error, not a skip.
+  - Every other `MASK-RT-*` case carries a new label `golden-gds-rt`. `replay.py` excludes that label by default (`--include-label golden-gds-rt` opts in), and `ci.yml` does not run it.
+  - A new `gds-roundtrip` job in `perf.yml` runs every `MASK-RT-*` case on main, on the schedule, on dispatch, and on pull requests that touch the GDS, mask or CIF paths. `perf.yml`'s `push` and `pull_request` path filters gain `src/core/{include/hefesto,src}/{gds,mask,cif}/**`, `tests/golden/MASK/**`, `bench/gds/**` and `scripts/fetch_pdk.py` (`src/core/src/db/**` is already there).
+  - Capture of the `MASK-RT-*` cases runs in a separate, sharded job of `golden-capture.yml` (`capture-gds-rt`, one shard per PDK, with large libraries such as `sky130_fd_io` and the SRAM macros in shards of their own if task 1.1's timings need it), each with its own timeout sized from task 1.1's measured Magic read+write times plus a margin. The existing 120-minute `capture` job keeps the other cases. INTEGRATION owns the job; GOLDEN owns the case list it shards.
 
 ### D20. Performance targets and gates (PERF)
 
@@ -524,7 +534,7 @@ The highest-risk decision of M5. GDS SREF order, structure order, CIF symbol num
   1. read `sky130_fd_sc_hd.gds`;
   2. write the M3 all-cells block (every `sky130_fd_sc_hd` cell in rows) to GDS with the `gdsii` style;
   3. write the same block with `merge yes`.
-- **Gate (proposed, Open Question 2).** As the user decided for DRC on 2026-11-12, `gds-bench` measures callgrind instructions per workload on the x86_64 runner for both tools. It gates Hefesto at or below Magic's count for each workload. Once the baseline is recorded, the gate is the baseline + 2 %, as `drc-profile` does. The timed ratio is reported as information. The job runs on pull requests that touch `gds/`, `mask/` or `db/use_index*`, and on main, schedule and dispatch.
+- **Gate (proposed, Open Question 2).** As the user decided for DRC on 2026-11-12, `gds-bench` measures callgrind instructions per workload on the x86_64 runner for both tools. It gates Hefesto at or below Magic's count for each workload. Once the baseline is recorded, the gate is the baseline + 2 %, as `drc-profile` does. The timed ratio is reported as information. The job runs on pull requests that touch `gds/`, `mask/`, `cif/` or `db/use_index*`, and on main, schedule and dispatch. If Open Question 2 is answered (a), task 14.5 amends `hefesto-performance` "Batch throughput relative to Magic", which still names wall time.
 - **DRC.** `drc-profile`'s 12.38-billion gate must still pass after D14 and D7, because the use index sits on the DRC interaction path.
 - **Data layout.** The operator kernels reuse pooled planes. The record writer buffers 64 KB. The reader inflates in 64 KB blocks. The content hash runs in one linear pass.
 
@@ -588,7 +598,7 @@ The headers are the contract, and each one is documented. The key types and func
 - `CompatSettings` helpers `q_mask_<n>_*`
 
 ### INDEX: `hefesto/db/use_index.hpp`
-- `UseIndex` (`place`, `remove`, `search`, `enumerate_all`, `order(compat)`, `state_for_test()`)
+- `UseIndex` (`place`, `remove`, `search`, `find_equal`, `enumerate_all`, `order(compat)`, `state_for_test()`)
 - `uses_in_search_order(def, compat)`
 - `uses_overlapping(def, area, visitor)`
 
@@ -610,13 +620,13 @@ The headers are the contract, and each one is documented. The key types and func
 - `content_stamps(bytes) -> StampTable`
 
 ### GDSW: `hefesto/gds/write/`, `hefesto/gds/command/`
-- `write(EditorState&, CellDef& root, path, GdsWriteOptions, Progress*) -> CommandResult`
+- `prepare_write(EditorState&, CellDef& root, GdsWriteOptions) -> Result<PreparedWrite>` (exclusive lock), `emit_write(const PreparedWrite&, path, Progress*) -> CommandResult` (shared lock), and `write(...)`, which calls both
 - `merge_polygons(const MaskPlane&) -> std::vector<Polygon>`
 - `GdsSettings`, `register_gds_command(CommandRegistry&)`
 
 ### CIF: `hefesto/cif/`
 - `read(EditorState&, path, CifReadOptions, Progress*)`, `SymbolTable`, `ReadSession`
-- `write(EditorState&, CellDef& root, path, CifWriteOptions, Progress*)`
+- `prepare_write(...)`, `emit_write(...)` and `write(EditorState&, CellDef& root, path, CifWriteOptions, Progress*)`, split as GDSW's (D4)
 - `CifSettings`, `register_cif_command(CommandRegistry&)`
 
 ### DRCCIF: `hefesto/drc/check/mask_check.hpp`
@@ -625,12 +635,12 @@ The headers are the contract, and each one is documented. The key types and func
 
 ## Risks / Trade-offs
 
-- **R1. Use-order emulation (Q-MASK-204).** A small mistake in bin sizing or the walk changes SREF and `C` order only in binned cells. That shows up late, in large designs and second writes. → INDEX lands early with trace tests against Magic orders, targeted golden history cases, and the round-trip corpus (wrapper cells with hundreds of uses). The OFF order is history-free, so users who switch compat off are never exposed.
+- **R1. Use-order emulation (Q-MASK-204).** A small mistake in bin sizing or the walk changes SREF and `C` order only in binned cells. That shows up late, in large designs and second writes. → INDEX lands early with trace tests against Magic orders (the probe of task 1.5, which lands first), targeted golden history cases, and the round-trip corpus (wrapper cells with hundreds of uses). The OFF order is history-free, so users who switch compat off are never exposed.
 - **R2. Byte identity of merged polygons and tiles (Q-MASK-217).** Point order and split points depend on the mask planes' tile structure and paint order. → Planes use Magic's CIF paint table and paint order. The merge pass is a line-for-line port. MASK-GW merge cases and the round trips (with `merge` as the PDK sets it) exercise it.
 - **R3. Port size.** About 12,000 lines of Magic C (CIFgen, CIFhier, CIFrd*, CIFwrite, Calma*, DRCcif, bplane) carry about 70 compat branches under a complexity limit of 15. → Four independent operator groups. Dispatch tables for the GDS records, CIF commands and `gds` options. One helper per compat branch. Flagged exceptions of at most 25.
 - **R4. DRC cost.** Mask generation inside the basic check could break the `drc-profile` gate. → Generation is skipped without applicable rules, the planes are pooled, and the gate runs on every DRC-path PR.
-- **R5. Concurrency.** Generation on the DRC worker and index rebuilds under the shared lock. → Reentrant contexts with no globals, the index mutex with snapshot orders, immutable styles, and the TSan leg.
-- **R6. Data volume and CI time of the round trips.** Several GB of library GDS, a 10 GB cache limit, and Magic's own time on large libraries. → Separate GDS sets, a size check first (task 1.1), digests instead of committed outputs, the full corpus off the per-PR path (D19), and Open Question 1.
+- **R5. Concurrency.** Generation on the DRC worker and index rebuilds under the shared lock, and a write that loads and fixes up the hierarchy before generating. → The write's prepare phase under the exclusive lock (D4), reentrant contexts with no globals, the index mutex with snapshot orders, immutable styles, and the TSan leg.
+- **R6. Data volume and CI time of the round trips.** Several GB of library GDS, a 10 GB cache limit, and Magic's own time on large libraries. → Separate GDS sets, a size and Magic-time check first (task 1.1), a sharded capture job (task 1.6), digests instead of committed outputs, the full corpus off the per-PR CI legs (D19), and Open Question 1.
 - **R7. Floating point.** Path outlines and Euclidean operators on arm64 against x86_64. → D22, pinned-value tests, and the determinism job.
 - **R8. Mid-read rescale.** `DBScaleEverything` during a read touches the whole database, undo and the DRC worker. → The read holds the exclusive lock, undo is disabled for the read as in Magic, and the DRC worker waits on the exclusive lock, as it does for every command.
 - **R9. Malformed input.** GDS and CIF are attacker-controlled files. → Fuzz targets with caps (D21), 64-bit coordinate arithmetic (Q-MASK-222), bounded recursion in post-order reading, and symbol and structure count limits reported as diagnostics.
@@ -651,11 +661,11 @@ User data does not change: `.mag` files are read and written as before.
 These are product and scope decisions. Recommended answers come first, and the plan builds against them until the user decides.
 
 1. **Library round-trip scope and definition (exit criterion "every sky130, gf180mcu and IHP library GDS round-trips").**
-   - (a) *Recommended:* every library GDS in the three pinned releases, round-tripped as in D19 (read, wrapper, `gds library yes`, write; equal to Magic's own read-and-write after `gds-mod-dates`; plus Hefesto's fixed-point re-read). The full corpus runs in a `gds-roundtrip` job on main, schedule, dispatch and PRs that touch GDS/mask paths. One standard-cell library per PDK runs on every PR. If task 1.1 finds the data over about 4 GB cached, the largest libraries (SRAM macros) are fetched in the job without caching.
+   - (a) *Recommended:* every library GDS in the three pinned releases, round-tripped as in D19 (read, wrapper with a pinned timestamp, `gds library yes`, write; equal to Magic's own read-and-write after `gds-mod-dates`; plus a non-gating, order-insensitive equivalence report of a second Hefesto read and write). The full corpus runs in a `gds-roundtrip` job on main, schedule, dispatch and PRs that touch GDS/mask/CIF paths. One standard-cell library per PDK replays on every CI leg. If task 1.1 finds the data over about 4 GB cached, the largest libraries (SRAM macros) are fetched in the job without caching.
    - (b) Only the standard-cell and primitive libraries (`sky130_fd_sc_hd`, `sky130_fd_pr`, `gf180mcu_fd_sc_mcu7t5v0`, `gf180mcu_fd_pr`, `sg13g2_stdcell`, `sg13g2_pr`) in CI. The other libraries run once, manually, at exit, with the results recorded.
    - (c) Compare against the source file's geometry (decoded polygon equivalence), not against Magic's output. This is cheaper to capture, but it does not prove byte identity.
 2. **GDS throughput gate.**
-   - (a) *Recommended:* callgrind instructions per workload at or below Magic's count, then the baseline + 2 % once recorded, with wall time as information. This matches the user's DRC decision of 2026-11-12.
+   - (a) *Recommended:* callgrind instructions per workload at or below Magic's count, then the baseline + 2 % once recorded, with wall time as information. This matches the user's DRC decision of 2026-11-12. `hefesto-performance` "Batch throughput relative to Magic" still says single-threaded wall time, and the DRC decision was recorded only in m3-drc design D16, so answering (a) also amends that requirement for DRC and GDS read/write and records the decision (task 14.5).
    - (b) The spec's single-threaded wall time against Magic on the same runner, as a hard gate. It is noisy across runner types.
    - (c) Record only, with no gate in M5.
 3. **Desktop scope for M5.**
