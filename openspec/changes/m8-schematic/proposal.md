@@ -1,6 +1,6 @@
 # Proposal: M8 Schematic capture
 
-> **Status: plan drafted 2026-11-13, after the user approved the M8 decisions the same day.** The 24 open SCHEM entries, D-21 (`xschem-compat`) and judgement items J-1 to J-5 of `docs/decisions/m8-decision-table.md` were approved as drafted (commit "Resolve the 24 open questions blocking M8"), and the specs were aligned with them (commit "Align the M8 specs with the approved decisions"). `scripts/check_milestone_readiness.py --milestone M8` reports ready. Design Open Questions 1–3 are not yet decided; each names its recommended option.
+> **Status: plan drafted 2026-11-13, after the user approved the M8 decisions the same day.** The 24 open SCHEM entries, D-21 (`xschem-compat`) and judgement items J-1 to J-5 of `docs/decisions/m8-decision-table.md` were approved as drafted (commit "Resolve the 24 open questions blocking M8"), and the specs were aligned with them (commit "Align the M8 specs with the approved decisions"). `scripts/check_milestone_readiness.py --milestone M8` reports ready. Design Open Questions 1–3 were decided the same day, each as its recommended option (a).
 
 ## Why
 

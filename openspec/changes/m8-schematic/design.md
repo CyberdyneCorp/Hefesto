@@ -208,6 +208,8 @@ No user data changes. The project file gains `xschem-compat` and `portable-netli
 
 ## Open Questions
 
+All three were decided by the user on 2026-11-13, each as option (a), the recommended one.
+
 1. **Source of the xschem PDK data.** (a) *Recommended:* install `libs.tech/xschem` from the same ciel releases as M5 and check their tree digests against the pinned PDK commits of `SCHEM.md`; if they differ, re-pin the specs and golden plan to the ciel content (one consistent PDK set); (b) fetch the pinned PDK repositories directly (exact commits, a second source to cache); (c) both, with the pinned repositories only for capture.
 2. **Who draws the system-library graphics.** (a) *Recommended:* DEVLIB draws them from the interface table's pin positions and bounding boxes, with the design system's symbol style; (b) the design workstream draws them in the board first; (c) generate minimal graphics (box and pin stubs) automatically.
 3. **When M8 implementation starts relative to M6 and M7.** (a) *Recommended:* follow the roadmap order: CLEANROOM, PDK, GOLDEN and SPEC (no product code) may run now; implementation starts after M7 exits; (b) start implementation as soon as G1 and G2 pass, in parallel with M6/M7, since no code depends on them; (c) start after M9 planning, so the simulation part is planned once.

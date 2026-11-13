@@ -1,7 +1,7 @@
 # Tasks
 
 How this plan runs:
-- **Every decision this plan cites was approved on 2026-11-13** (`docs/decisions/m8-decision-table.md`: the 24 open SCHEM entries, D-21 and J-1 to J-5, as recommended). Design Open Questions 1–3 are pending; the tasks below follow their recommended options and name them where an answer would change a task.
+- **Every decision this plan cites was approved on 2026-11-13** (`docs/decisions/m8-decision-table.md`: the 24 open SCHEM entries, D-21 and J-1 to J-5, as recommended). Design Open Questions 1–3 were decided the same day as option (a); the tasks below follow those answers.
 - Gates (design D1): sections 1 (CLEANROOM) and 2 (PDK) first; section 3 (GOLDEN) and section 4 (SPEC) next; implementation sections 5–14 start only after G1 (section 1 done) and G2 (task 3.6 done), and DEVLIB and the Tcl part of SYMLIB after G3 (section 4 done). When implementation starts relative to M6/M7 is Open Question 3.
 - **Clean room (J-1).** Each section names its team. Implementation-team tasks never read xschem's source, never follow `Evidence:` lines or `(xschem ref: ...)` traces, and raise spec gaps as spec issues for the spec team. Spec-team members do not take implementation tasks.
 - Each task ends with how it is verified. Workstreams edit only what design D3 assigns to them; shared-file needs are reported as open items.
