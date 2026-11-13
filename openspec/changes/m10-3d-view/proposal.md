@@ -1,36 +1,36 @@
 # Proposal: M10 3D view (view-3d, hefesto-3d-visualization)
 
-> **Status: plan drafted 2026-11-13 against recommended answers.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76 and 77, and the judgement items J1 and J2 are drafted in `docs/decisions/m10-3d-decision-table.md` and are **not yet approved**. Every place in this change that depends on one of them names it. If the user picks another option, the affected decision (design D-numbers listed in the table at the end of design.md) and tasks are revised before code starts.
+> **Status: plan drafted 2026-11-13 against recommended answers.** The open questions Q-MISC-70, 71, 72 and 74, the amendment of Q-MISC-73, the new entries Q-MISC-76, 77 and 78, the `render3d` cut-box spec correction and the judgement items J1 and J2 are drafted in `docs/decisions/m10-3d-decision-table.md` and are **not yet approved**. Every place in this change that depends on one of them names it. If the user picks another option, the affected decision (design D-numbers listed in the table at the end of design.md) and tasks are revised before code starts.
 
 ## Why
 
 Hefesto has no 3D view. The user decided on 2026-11-13 to resolve the 3D open questions and plan the 3D work now, so that code can start as soon as M5's mask-generation workstream (GEN) lands, with a first slice from layout (magic) layers. The parasitic and field overlays need M7 extraction and wait for it.
 
-What exists today (2026-11-13, main at 50df24bc):
-- **Core.** `ui::ClientId::wind3d` exists (`ui/client.hpp:27`), and the `wind3d` key macros of `magic/proto.magicrc` are in `ui/bindings.cpp`. `specialopen wind3d` is not wired: `view/window_ops.cpp` opens `color` but not `wind3d`.
+What exists today (2026-11-13, main at 3fff5567):
+- **Core.** `ui::ClientId::wind3d` exists (`ui/client.hpp:27`), and the `wind3d` key macros of `magic/proto.magicrc` are in `ui/bindings.cpp`. `specialopen wind3d` is not wired: `view/window_ops.cpp` opens `color` but not `wind3d`, and answers `UI-CLIENT-002` ("`wind3d` until M10", `docs/diagnostics/codes/ui.md`).
 - **Technology.** The `cifoutput` and `extract` sections are kept as raw lines (`tech/loader.cpp`). The M3 `drc::CifCatalog` skips `render`. Extract `height`, `planeorder` and `units` are not parsed: that reader (`extract-tech-section`) belongs to M7.
 - **Renderer.** `src/render/vulkan/` (about 3.1k lines) is 2D only: `CanvasRenderer` draws instanced rectangles and polygons through a `ViewTransform`, records into Raven's render pass through the viewport draw callback, which has one color attachment and no depth (Raven v0.2.2 `raven_viewport.h:53`), and has no 3D matrices. `headless.cpp` renders offscreen, which image tests can reuse.
 - **Desktop.** "3D" is a disabled editor-view tab ("3D inspection: arrives in M10", `view_models.cpp:410`); Window > "3D Display" (`magic::render3d`) is disabled as a later-milestone item (`menu_bar_model.cpp:187`, `later_milestone()`). The reference board is `docs/design/mockups/View3D.dc.html` (marked M10), matching the design system's "3D inspection" pattern.
 - **Connectivity and selection.** `connect/search.hpp` returns the tiles and labels of a net, flat or hierarchical, on demand. `select/selection.hpp` holds the 2D selection with provenance.
 - **Golden.** `tests/golden/MISC/CASES.md` has MISC-3D-01..04 (text outputs, not authored). The capture image builds Magic with `--with-opengl=no` (`tools/golden/container/Containerfile:86`), so `wind3d` does not exist there.
-- **M5 (planned, `openspec/changes/m5-mask-gds-cif` on `m5-questions`).** STYLES parses the `render` statement (task 3.1); the `mask-output-styles` spec calls it "3-D display attributes only", and keeping the values on `mask::OutputStyle` is not stated. GEN provides `generate_flat(EditorState&, const CellDef&, Rect, const OutputStyle&, GenerationContext&) -> LayerPlanes` with the halo, progress and cancellation: exactly what Magic's mask-layer mode needs.
+- **M5 (planned on main, `openspec/changes/m5-mask-gds-cif`, merged by PR #44; GEN not yet implemented).** STYLES parses the `render` statement (task 3.1); the `mask-output-styles` spec calls it "3-D display attributes only", and keeping the values on `mask::OutputStyle` is not stated. GEN provides `generate_flat(EditorState&, const CellDef&, Rect, const OutputStyle&, GenerationContext&) -> LayerPlanes` with the halo, progress and cancellation: exactly what Magic's mask-layer mode needs.
 
 ## What Changes
 
 ### P1: the slice from layout layers (starts after M5 GEN lands)
 
-- **Decisions recorded (DECIDE, docs only, may run now).** After the user's approval: `Resolution:` lines for Q-MISC-70..77 and the spec text of the decision table's "Spec changes after approval", including J1 and J2 in `hefesto-3d-visualization`.
-- **Layer stack data (TECH).** The extract-style subset that the layout-layer view needs (style and variant selection, scale, `units`, `planeorder`, `noplaneordering`, `height`, the 0.05 / 0.1·order defaults and the micron conversion), written once in the home of `extract-tech-section`, which M7 extends. The `render` values (style index, height, thickness) kept per mask layer on `mask::OutputStyle`, with the style resolved against the display styles; M5 STYLES is asked to store them, otherwise TECH adds them.
+- **Decisions recorded (DECIDE, docs only, may run now).** After the user's approval: `Resolution:` lines for Q-MISC-70..78 and the spec text of the decision table's "Spec changes after approval", including J1 and J2 in `hefesto-3d-visualization` and the `render3d` cut-box correction in `view-3d`.
+- **Layer stack data (TECH).** One drawable entry per (tile type, display style), since Magic draws a type once per style (Q-MISC-77). The extract-style subset that the layout-layer view needs (style and variant selection, scale, `units`, `planeorder`, `noplaneordering`, `height`, the 0.05 / 0.1·order defaults and the micron conversion), written once in the home of `extract-tech-section`, which M7 extends. The `render` values (style index, height, thickness) kept per mask layer on `mask::OutputStyle`, with the style resolved against the display styles; M5 STYLES is asked to store them, otherwise TECH adds them.
 - **Mesh model (MESH).** A headless, backend-free core module that builds per-layer prism meshes from flattened layout tiles: top and bottom faces, side faces on tile boundaries, triangles for split tiles, closed faces at the cut box, clipping in root coordinates (Q-MISC-70). Built in the background, by spatial chunk, with progress and cancellation; deterministic order.
 - **View state and camera (CAMERA).** Magic's view state and math exactly as "Default view" and "3D view commands" specify (both modes, Q-MISC-72 OFF conversion), the viewing transform for the current window size (Q-MISC-74), and Hefesto's orbit, pan, zoom and presets (top, isometric, front, side) as operations on the same state. Orthographic by default, perspective as a view option.
 - **3D renderer (RENDER3D).** A depth-tested (Q-MISC-77) mesh pipeline with Magic's lighting, rendering offscreen into color, depth and pick-id images on Raven's Vulkan device, shown through the viewport's texture mode. Headless image tests.
-- **Window and commands (WIND3D).** `specialopen wind3d`, `render3d`, every command of "3D view commands" with per-window mode (Q-MISC-76), per-mode visibility sets (Q-MISC-71) and the no-output-style rules (Q-MISC-73), and the `wind3d` key macros. In P1 the window opens in layout-layer mode; `cif` to mask-layer mode reports that it arrives in P2.
+- **Window and commands (WIND3D).** `specialopen wind3d`, `render3d` (cut box copied once, as Magic), every command of "3D view commands" with per-window mode (Q-MISC-76), per-mode visibility sets (Q-MISC-71), the no-output-style rules (Q-MISC-73) and the output-style rescale rule (Q-MISC-78), and the `wind3d` key macros. Magic's mode state is exact from P1: the window opens in mask-layer mode when an output style exists and `cif` toggles both ways, so every command value matches Magic; until P2, mask-layer mode draws the layout-layer mesh scaled by f with a notice.
 - **Desktop (DESIGN, SHELL).** The 3D tab and Window > 3D Display enabled; the 3D inspection screen per `View3D.dc.html`: layer stack with µm ranges, visibility, isolate and transparency, camera presets, "Show contacts and vias" (J1), gestures; parts of later phases shown disabled with their phase.
 - **Inspection (INSPECT, P1 part).** Picking through the id image, linked both ways with the 2D selection; net highlighting through `layout-connectivity`; per-layer show, hide, isolate and transparency.
 
 ### P2: mask-layer source, cross-sections and export
 
-- **Mask-layer source (MASKSRC).** Mask-layer mode from `mask::generate_flat` over the cell bbox or cut box grown by the style's radius, with the `render` values (Q-MISC-72 compat), the mask-layer visibility set and the mesh builder's plane input. `cif` toggles, and the window opens in mask-layer mode when an output style exists, as Magic.
+- **Mask-layer source (MASKSRC).** Mask-layer mode draws the meshes of `mask::generate_flat` over the cell bbox or cut box grown by the style's radius, with the `render` values (Q-MISC-72 compat; layers without `render` have no physical height and are reported in µm-based features), the mask-layer visibility set and the mesh builder's plane input, replacing the P1 placeholder.
 - **Cross-sections (INSPECT, P2 part).** An axis-aligned cut line or plane: a 2D section panel of the stack along the line, in µm, and a clipping plane in the 3D view.
 - **Export (EXPORT).** `export3d` to glTF 2.0 (`.gltf` + `.bin`, `.glb`) through cgltf, added to the build with its notice, and binary STL (per layer or merged) by Hefesto's own writer; physical µm (J2); byte-identical on every platform.
 
@@ -75,9 +75,9 @@ None in this change. This change implements the existing requirements of `view-3
 
 | Phase | Needs | From |
 |---|---|---|
-| P1 | user approval of the decision table (Q-MISC-70..77, J1, J2) | DECIDE (task 1.1) |
-| P1 | `mask::OutputStyle` and the `render` statement parsed; current output style selection | M5 STYLES (m5 tasks 3.1, 3.4) |
-| P1 start | M5 GEN merged (`generate_flat`, `GenerationContext`, `Progress`) | M5 GEN (m5 task 6.1), per the user's decision |
+| P1 | user approval of the decision table (Q-MISC-70..78, J1, J2) | DECIDE (task 1.1) |
+| P1 | `mask::OutputStyle` and the `render` statement parsed; current output style selection and scalefactor | M5 STYLES (m5 tasks 3.1, 3.4) |
+| P1 start | M5 GEN merged (`generate_flat`, `GenerationContext`; `Progress` and cancellation) | M5 GEN (m5 tasks 6.1 and 6.6), per the user's decision |
 | P1 | the extract-style subset | TECH (this change), extended by M7 `extract-tech-section` |
 | P1 | flat and hierarchical net search | `layout-connectivity` (M2, exists) |
 | P2 | `generate_flat` over an area, halo radius | M5 GEN, STYLES |
