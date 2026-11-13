@@ -34,9 +34,11 @@ struct ScriptSession {
   /// is the desktop and CLI policy, ending the session with exit_status.
   /// Not owned; the front end that installs it outlives the session.
   QuitPolicy* quit_policy = nullptr;
-  /// Client exit checks (Magic's w_exit), run by `quit` without -noprompt;
-  /// any one returning false cancels the quit (e.g. a front end asking
-  /// whether to discard modified cells). Headless sessions install none.
+  /// Client exit checks (Magic's w_exit), run by `quit` without -noprompt
+  /// before the layout client's modified-cells question
+  /// (cell::check_cells_written, run by `quit` itself when an editor is
+  /// attached); any one returning false cancels the quit. The first color
+  /// window installs the unsaved color map check.
   std::vector<std::function<bool()>> exit_checks;
 };
 

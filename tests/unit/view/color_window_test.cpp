@@ -404,22 +404,53 @@ TEST_CASE("the default color map name follows the styles and monitor", "[cap:ui-
 TEST_CASE("quit and load ask before losing color map changes", "[cap:ui-color-window][req:Unsaved color map protection]") {
   ColorSession s;
   view::ColorWindow& w = s.open("5");
-  CHECK(view::check_color_map_written(s.editor));  // unmodified: no question
+  CHECK(view::check_color_map_written(s.editor, true));  // unmodified: no question
+  CHECK(view::check_color_map_written(s.editor, false));
   REQUIRE(view::press_button(s.editor, w, {6000, 8500}, view::Button::left));
-  // Headless: the default answer is "no", which vetoes.
-  CHECK_FALSE(view::check_color_map_written(s.editor));
   ScriptedHost yes(1);
   s.editor.prompt = &yes;
-  CHECK(view::check_color_map_written(s.editor));
+  CHECK(view::check_color_map_written(s.editor, false));
   CHECK(yes.asked == "The color map has been modified.\n  Do you want to lose the changes? ");
   // Scenario "Quit vetoed": the exit check installed by specialopen says no.
   ScriptedHost no(0);
   s.editor.prompt = &no;
+  CHECK_FALSE(view::check_color_map_written(s.editor, true));  // an answered "no" keeps them in both settings
   REQUIRE(s.script.exit_checks.size() == 1);
   CHECK_FALSE(s.script.exit_checks.front()());
   // `load` is cancelled too: the map stays as edited.
   REQUIRE(s.color("load", {"/nonexistent/x", "y", "z"}).ok());
   CHECK(s.rgb(5)[0] == 128);
+}
+
+// Regression (Q-SCRIPT-48, user decision 2026-11-12): CMWCheckWritten keeps
+// TxDialog's answer in a bool, so with no `tk_dialog` (-1) Magic's quit and
+// `load` lose the edited map. Hefesto loses it with magic-compat ON and keeps
+// it with OFF when nobody can be asked: no prompt host or a headless one.
+TEST_CASE("a color map question that cannot be asked follows magic-compat",
+          "[cap:ui-color-window][req:Unsaved color map protection]") {
+  ColorSession s;
+  view::ColorWindow& w = s.open("5");
+  REQUIRE(view::press_button(s.editor, w, {6000, 8500}, view::Button::left));
+  hefesto::cmd::HeadlessPromptHost headless;
+  for (hefesto::cmd::PromptHost* host : {static_cast<hefesto::cmd::PromptHost*>(nullptr),
+                                         static_cast<hefesto::cmd::PromptHost*>(&headless)}) {
+    s.editor.prompt = host;
+    CHECK(view::check_color_map_written(s.editor, true));
+    CHECK_FALSE(view::check_color_map_written(s.editor, false));
+  }
+  s.editor.prompt = nullptr;
+  // The exit check `quit` runs reads the project's setting when it runs.
+  REQUIRE(s.script.exit_checks.size() == 1);
+  s.project.compat.magic_compat = true;
+  CHECK(s.script.exit_checks.front()());
+  s.project.compat.magic_compat = false;
+  CHECK_FALSE(s.script.exit_checks.front()());
+  // `load` is refused with OFF: the map stays as edited.
+  REQUIRE(s.color("load", {"/nonexistent/x", "y", "z"}).ok());
+  CHECK(s.rgb(5)[0] == 128);
+  // With ON it goes ahead and looks for the file (here it is missing).
+  s.project.compat.magic_compat = true;
+  CHECK_FALSE(s.color("load", {"/nonexistent/x", "y", "z"}).ok());
 }
 
 TEST_CASE("the color window commands are in the color client's table", "[cap:ui-color-window][req:Color window commands]") {

@@ -146,8 +146,11 @@ CommandResult open_color(CommandContext& ctx, editor::EditorState& ed, const Scr
     return failure(d);
   }
   if (!ed.color_map.exit_check_installed) {
+    // The project settings outlive the script session that holds the check.
     editor::EditorState* session_state = &ed;
-    ctx.session().exit_checks.emplace_back([session_state] { return check_color_map_written(*session_state); });
+    const compat::CompatSettings* compat = &ctx.project().compat;
+    ctx.session().exit_checks.emplace_back(
+        [session_state, compat] { return check_color_map_written(*session_state, compat->magic_compat); });
     ed.color_map.exit_check_installed = true;
   }
   return CommandResult::success();

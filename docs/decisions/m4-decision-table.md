@@ -193,7 +193,7 @@ Taken on the captures of golden-capture runs 43151033297 and 43173319299; each e
 Taken on the captures of golden-capture run 43234885440; each entry's `Resolution:` line is in `open-questions/`.
 
 1. The usual rule (`magic-compat` ON copies Magic, OFF gives the intended behavior):
-   - **Q-SCRIPT-48**: a no/yes confirmation that cannot be asked (`tech load` over painted layout, `save NAME` over another file, `flush`) goes ahead with ON, as TxDialog's -1 does in Magic, and is declined with OFF. **compat.** The `scripting-api` and `tech-command` specs no longer disagree.
+   - **Q-SCRIPT-48**: a no/yes confirmation that cannot be asked (`tech load` over painted layout, `save NAME` over another file, `flush`) goes ahead with ON, as TxDialog's -1 does in Magic, and is declined with OFF. **compat.** The `scripting-api` and `tech-command` specs no longer disagree. Extended later that day to the color map's "lose the changes?" (`quit`, `load`) and to `quit` with modified cells (a question Hefesto did not ask before); the iPadOS quit policy (D-36) applies only once the checks pass.
    - **Q-CELL-46** (new): `cellname list childinst` in Magic's id-hash order with ON, placement order with OFF. **compat.**
    - **Q-CELL-47** (new): the `save` file-name answer cut to 7 characters (`sizeof` a pointer) with ON, the whole line with OFF. **compat.**
    - SCRIPT-PCELL-12 passes; SCRIPT-PDK-07 is committed with its Q-SCRIPT-41 deviation (cross-PDK redefinition warnings).

@@ -19,6 +19,10 @@ namespace hefesto::db {
 class CellDef;
 }
 
+namespace hefesto::editor {
+struct EditorState;
+}
+
 namespace hefesto::cell {
 
 /// Adds the CELL commands to `registry`. Returns false if a name was taken.
@@ -42,5 +46,14 @@ bool register_cell_commands(cmd::CommandRegistry& registry);
 /// SelectClear): drops the stored file path of `def`, re-reads it through
 /// the search paths and clears the selection, without asking.
 [[nodiscard]] cmd::CommandResult dereference_cell(cmd::CommandContext& ctx, db::CellDef& def);
+
+/// The layout client's exit check run by `quit` without -noprompt (DBWexit,
+/// app-startup "quit command and exit status"): true when no cell is
+/// modified or the user answers `yes` to `N Magic cell(s) has/have been
+/// modified. Do you want to exit magic and lose it/them?`. A question that
+/// cannot be asked (no prompt host, a headless host, a script host whose
+/// `tk_dialog` gives no integer) quits with `magic_compat` ON, as Magic's -1
+/// does, and keeps the session with it OFF (Q-SCRIPT-48).
+[[nodiscard]] bool check_cells_written(editor::EditorState& editor, bool magic_compat);
 
 }  // namespace hefesto::cell

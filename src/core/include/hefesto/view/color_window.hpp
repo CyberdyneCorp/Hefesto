@@ -165,8 +165,11 @@ enum class Button : std::uint8_t { left, middle, right };
 bool press_button(editor::EditorState& editor, const ColorWindow& window, db::Point point, Button button);
 
 /// "Unsaved color map protection" (CMWCheckWritten): true when the map is
-/// not modified or the user answers `yes` to losing the changes.
-[[nodiscard]] bool check_color_map_written(editor::EditorState& editor);
+/// not modified or the user answers `yes` to losing the changes. A question
+/// that cannot be asked (no prompt host, a headless host, a script host
+/// whose `tk_dialog` gives no integer) loses them with `magic_compat` ON, as
+/// Magic's -1 does, and keeps them with it OFF (Q-SCRIPT-48).
+[[nodiscard]] bool check_color_map_written(editor::EditorState& editor, bool magic_compat);
 
 /// What a color window shows, in its surface coordinates: bar fills up to
 /// (c + 0.5)/255 and the HSV derived from it, outlines and texts in the

@@ -31,6 +31,18 @@ void Camera::set_viewport(int width_px, int height_px) noexcept {
   height_px_ = std::max(height_px, 1);
 }
 
+void Camera::resize_keeping_top_left(int width_px, int height_px) noexcept {
+  if (width_px_ > 1 || height_px_ > 1) {
+    const double left = world_x(0.0);
+    const double top = world_y(0.0);
+    set_viewport(width_px, height_px);
+    center_x_ = left + 0.5 * width_px_ / pixels_per_unit_;
+    center_y_ = top - 0.5 * height_px_ / pixels_per_unit_;
+    return;
+  }
+  set_viewport(width_px, height_px);
+}
+
 void Camera::pan_pixels(double dx_px, double dy_px) noexcept {
   center_x_ -= dx_px / pixels_per_unit_;
   center_y_ += dy_px / pixels_per_unit_;

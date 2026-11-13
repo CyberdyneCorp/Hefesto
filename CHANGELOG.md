@@ -10,9 +10,14 @@ release notices.
 
 - **Confirmations that cannot be asked follow `magic-compat`.** In a
   session with nobody to answer (a `-dnull` script, a headless run),
-  `tech load` over painted layout, `save NAME` over another existing file
-  and `flush` of a changed cell go ahead with it ON, as Magic does, and are
+  `tech load` over painted layout, `save NAME` over another existing file,
+  `flush` of a changed cell, losing an edited color map on `quit` or `load`,
+  and `quit` with modified cells go ahead with it ON, as Magic does, and are
   declined with it OFF. An answered "no" declines in both.
+- **`quit` asks before losing modified cells.** Without `-noprompt` it
+  asks `N Magic cells have been modified. Do you want to exit magic and
+  lose them?`, as Magic does; "no" keeps the session (on iPadOS, the
+  project stays open).
 - **`cellname list childinst` and the `save` file-name answer follow
   `magic-compat`.** With it ON the children are listed in Magic's
   instance-identifier hash order and an answered file name keeps its first
@@ -112,6 +117,14 @@ release notices.
 
 ### Fixed
 
+- **"(UNNAMED)" no longer stays in the Cells manager** when the desktop
+  app is started with a cell on the command line: the window's empty
+  startup cell is replaced by the loaded cell, as in Magic.
+- **The canvas keeps its view when it is resized after you start working
+  in it.** Opening the console (for example on an error) between a wiring
+  press and the pointer moves refitted the view, so the leg went south
+  instead of east. The view is now refitted on resize only until the first
+  press in the canvas; after that the layout under every pixel stays put.
 - **DRC on sky130 standard cells is fast again.** Copying mask hints into
   the DRC's interaction area cost quadratic time in the number of hinted
   cells; a block check is back to about 0.7 × Magic's time on x86.

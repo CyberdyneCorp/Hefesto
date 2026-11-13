@@ -9,7 +9,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <filesystem>
+#include <optional>
+#include <span>
+#include <string_view>
 #include <string>
 #include <vector>
 
@@ -18,6 +22,7 @@
 #include "hefesto/app/startup.hpp"
 #include "hefesto/cmd/builtins.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
+#include "hefesto/cmd/prompt.hpp"
 #include "hefesto/cmd/quit_policy.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
@@ -33,6 +38,20 @@ using hefesto::test::write_file;
 #define QUIT_TAGS "[cap:app-startup][req:quit command and exit status]"
 
 namespace {
+
+// A prompt host that answers every question with `answer` and records it.
+class ScriptedHost final : public cmd::PromptHost {
+ public:
+  explicit ScriptedHost(std::size_t answer) : answer_(answer) {}
+  std::size_t ask(std::string_view question, std::span<const std::string>, std::size_t) override {
+    asked.emplace_back(question);
+    return answer_;
+  }
+  std::vector<std::string> asked;
+
+ private:
+  std::size_t answer_;
+};
 
 // The iPad shell's side of the policy: it records what it was asked to show.
 class TestBrowserHost final : public app::ProjectBrowserHost {
@@ -81,6 +100,16 @@ class Session {
   }
 
   cmd::ScriptSession& script() { return script_session_; }
+  hefesto::settings::ProjectSettings& project() { return project_; }
+  cmd::CommandResult run(const std::string& name, std::vector<std::string> args = {}) {
+    return dispatcher_.execute(cmd::Invocation{name, std::move(args), cmd::Origin::cli, std::nullopt});
+  }
+  // A cell with unsaved changes (CDMODIFIED), as an edit leaves it.
+  void modify(const std::string& name) {
+    auto made = editor.cells.create(name, 0);
+    REQUIRE(made.ok());
+    made.value()->flags().modified = true;
+  }
   [[nodiscard]] std::optional<cmd::Value> var(std::string_view name) const { return editor.script.interp->get_var(name); }
 
   TempDir dir;
@@ -169,4 +198,89 @@ TEST_CASE("an iPadOS quit typed outside a script names no location", QUIT_TAGS) 
   REQUIRE(host.shown.size() == 1);
   CHECK(std::holds_alternative<std::monostate>(host.shown.front().location));
   CHECK(host.shown.front().text.starts_with("The project was closed by \"quit\";"));
+}
+
+// Regression (Q-SCRIPT-48, user decision 2026-11-12): Magic's layout client
+// asks `N Magic cells have been modified` on `quit` (DBWexit, CmdWarnWrite)
+// and quits on any answer but "no", so with no `tk_dialog` (-1) it quits.
+// Hefesto asked nothing at all; it now asks, and when nobody can be asked it
+// quits with magic-compat ON and keeps the session with OFF.
+TEST_CASE("quit asks before losing modified cells", QUIT_TAGS) {
+  Session s;
+  s.modify("a");
+  auto internal = s.editor.cells.create("__internal", 0);
+  REQUIRE(internal.ok());
+  internal.value()->flags().internal = true;
+  internal.value()->flags().modified = true;  // internal cells are not counted
+
+  SECTION("an answered no keeps the session in both settings") {
+    ScriptedHost no(0);
+    s.editor.prompt = &no;
+    for (const bool compat : {true, false}) {
+      s.project().compat.magic_compat = compat;
+      CHECK(s.run("quit").ok());
+      CHECK_FALSE(s.script().quit_requested);
+    }
+    REQUIRE(no.asked.size() == 2U);
+    CHECK(no.asked.front() == "1 Magic cell has been modified.\n  Do you want to exit magic and lose it? ");
+  }
+  SECTION("yes quits; the count is plural for several cells") {
+    s.modify("b");
+    ScriptedHost yes(1);
+    s.editor.prompt = &yes;
+    s.project().compat.magic_compat = false;
+    CHECK(s.run("quit", {"2"}).ok());
+    CHECK(s.script().quit_requested);
+    CHECK(s.script().exit_status == 2);
+    REQUIRE(yes.asked.size() == 1U);
+    CHECK(yes.asked.front() == "2 Magic cells have been modified.\n  Do you want to exit magic and lose them? ");
+  }
+  SECTION("nobody to ask, magic-compat ON: quits as Magic's -1 does") {
+    cmd::HeadlessPromptHost headless;
+    s.editor.prompt = &headless;
+    CHECK(s.run("quit").ok());
+    CHECK(s.script().quit_requested);
+  }
+  SECTION("nobody to ask, magic-compat OFF: the session stays") {
+    s.project().compat.magic_compat = false;
+    CHECK(s.run("quit").ok());  // no prompt host at all
+    CHECK_FALSE(s.script().quit_requested);
+    cmd::HeadlessPromptHost headless;
+    s.editor.prompt = &headless;
+    CHECK(s.run("quit").ok());
+    CHECK_FALSE(s.script().quit_requested);
+    CHECK(s.run("quit", {"-noprompt"}).ok());  // -noprompt asks nothing
+    CHECK(s.script().quit_requested);
+  }
+  SECTION("a vetoing exit check runs first and the cells are not asked about") {
+    ScriptedHost yes(1);
+    s.editor.prompt = &yes;
+    s.script().exit_checks.emplace_back([] { return false; });  // the color map: "no"
+    CHECK(s.run("quit").ok());
+    CHECK_FALSE(s.script().quit_requested);
+    CHECK(yes.asked.empty());
+  }
+}
+
+// D-36 keeps applying after the question: the iPad policy closes the project
+// only when the modified-cells check lets `quit` through.
+TEST_CASE("iPadOS quit with modified cells follows the same question", QUIT_TAGS) {
+  Session s;
+  TestBrowserHost host;
+  app::ProjectBrowserQuitPolicy policy{host};
+  s.script().quit_policy = &policy;
+  s.modify("a");
+  cmd::HeadlessPromptHost headless;
+  s.editor.prompt = &headless;
+  s.project().compat.magic_compat = false;
+  CHECK(s.run("quit").ok());
+  CHECK_FALSE(s.script().quit_requested);
+  CHECK(host.shown.empty());  // the project stays open
+  s.project().compat.magic_compat = true;
+  const cmd::CommandResult closed = s.run("quit", {"3"});
+  CHECK(s.script().quit_requested);
+  CHECK(s.script().exit_status == 0);  // iPadOS applies no exit status
+  REQUIRE(host.shown.size() == 1U);
+  CHECK(host.shown.front().code == app::codes::kQuitClosedProject);
+  REQUIRE(closed.diagnostics.size() == 1U);
 }

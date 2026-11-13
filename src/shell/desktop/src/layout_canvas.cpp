@@ -112,7 +112,14 @@ LayoutCanvas::LayoutCanvas(ScreenContext& ctx, std::mutex& queue_mutex, std::fun
 
   viewport_->on_draw([this](const ui::ViewportDraw& target) { draw(target); });
   viewport_->on_resize([this](int width, int height) {
-    camera_.set_viewport(width, height);
+    // Until the user works in the canvas the cell stays fitted; afterwards a
+    // resize (a panel shown or the console revealed by an error, possibly in
+    // the middle of a wiring leg) keeps the layout under every pixel.
+    if (auto_fit_) {
+      camera_.set_viewport(width, height);
+    } else {
+      camera_.resize_keeping_top_left(width, height);
+    }
     controller_.set_pixel_ratio(static_cast<double>(pixel_ratio_()));
     if (auto_fit_) fit_view();
     camera_changed(true);
@@ -477,6 +484,10 @@ bool LayoutCanvas::route_input(const CanvasInput& input) {
                          : input.button == PointerButton::middle ? 2
                          : input.button == PointerButton::right  ? 3
                                                                  : 0;
+      // A press starts work in the canvas: from now on a resize keeps the
+      // view instead of refitting it under the pointer (a wiring leg went
+      // south when the console opened between its press and its moves).
+      if (input.kind == InputKind::pointer_down) auto_fit_ = false;
       used = router_.button(button, input.kind == InputKind::pointer_down, input.modifiers, pointer(input.x, input.y));
       break;
     }

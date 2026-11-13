@@ -56,7 +56,13 @@ diag::Outcome<db::CellDef*> unnamed_def(IoSession& s) {
   return made.value();
 }
 
-// A window that shows no cell shows "(UNNAMED)" (Magic's startup window).
+// A window that shows no cell shows "(UNNAMED)": Magic's DBWcreate loads it
+// into every new layout window (DBWloadWindow with no name), so the window a
+// front end opened before the first `load` (the desktop canvas, before the
+// command-line cell) has it as its root and the load below deletes it while
+// the display runs. Creating it without showing it left "(UNNAMED)" in the
+// Cells manager next to the command-line cell. Not recorded.
+// (Magic ref: dbwind/DBWprocs.c:131-154,321-345)
 diag::Status adopt_startup_root(IoSession& s) {
   const view::LayoutWindow* w = s.ed.windows.current();
   if (w == nullptr || w->root() != nullptr) {
@@ -66,6 +72,8 @@ diag::Status adopt_startup_root(IoSession& s) {
   if (!def) {
     return def.error();
   }
+  const undo::ScopedSuspend quiet(s.ed.undo);
+  show_in_window(s.ed, *def.value());
   return diag::Done{};
 }
 
@@ -749,6 +757,28 @@ CommandResult save_def_as(cmd::CommandContext& ctx, db::CellDef& def, std::strin
     const auto saved = save_cell(s.io, def, file);
     return saved.ok() ? CommandResult::success() : CommandResult::failure(saved.error());
   });
+}
+
+// CmdWarnWrite counts the non-internal cells with CDMODIFIED, CDBOXESCHANGED
+// or CDSTAMPSCHANGED; DBWexit goes ahead on any answer but "no", so the Tcl
+// build's -1 (no `tk_dialog`) quits (commands/CmdSubrs.c:1188-1217,
+// dbwind/DBWprocs.c:653-656).
+bool check_cells_written(editor::EditorState& editor, bool magic_compat) {
+  int count = 0;
+  editor.cells.for_each([&count](db::CellDef& def) {
+    const db::CellFlags& f = def.flags();
+    if (!f.internal && (f.modified || f.child_bboxes_changed || f.child_timestamps_changed)) {
+      ++count;
+    }
+  });
+  if (count == 0) {
+    return true;
+  }
+  const bool one = count == 1;
+  const std::string question = std::to_string(count) + " Magic cell" + (one ? " has" : "s have") +
+                               " been modified.\n  Do you want to exit magic and lose " + (one ? "it" : "them") +
+                               "? ";
+  return cmd::confirm(editor.prompt, question, magic_compat);
 }
 
 bool register_cell_commands(cmd::CommandRegistry& registry) {

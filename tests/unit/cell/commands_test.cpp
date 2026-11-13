@@ -183,6 +183,35 @@ TEST_CASE("load deletes an untouched (UNNAMED) while the display runs", "[cap:cm
   }
 }
 
+// Regression: the desktop opens its layout window before the command-line
+// cell is loaded, with no root. `load` created "(UNNAMED)" for it without
+// showing it, so DBWloadWindow's deleteDef rule never saw it and the Cells
+// manager listed "(UNNAMED)" next to the cell. Magic's DBWcreate shows
+// "(UNNAMED)" in every new window, and the load deletes it while the display
+// runs (Magic 8.3.694 under X11: `magic -T scmos top` lists only `top`).
+TEST_CASE("a window opened without a cell loses its (UNNAMED) to the first load",
+          "[cap:cmd-hierarchy][req:Load command]") {
+  Session s;
+  REQUIRE(s.editor.windows.open_frame(nullptr).ok());
+  REQUIRE(s.editor.windows.current()->root() == nullptr);
+  SECTION("display running: only the loaded cell is left") {
+    s.editor.display_running = true;
+    REQUIRE(s.run("load", {"top"}).ok());
+    db::CellDef* top = s.editor.cells.find("top");
+    REQUIRE(top != nullptr);
+    CHECK(s.editor.cells.find("(UNNAMED)") == nullptr);
+    CHECK(s.editor.cells.find("__UNNAMED__") == nullptr);
+    CHECK(s.editor.windows.current()->root() == top);
+    CHECK(s.editor.edit_cell == top);
+    CHECK(s.editor.cells.size() == 1U);
+  }
+  SECTION("NULL graphics keeps it, as Magic's batch runs do") {
+    REQUIRE(s.run("load", {"top"}).ok());
+    CHECK(s.editor.cells.find("(UNNAMED)") != nullptr);
+    CHECK(s.editor.windows.current()->root() == s.editor.cells.find("top"));
+  }
+}
+
 // DBWloadWindow cuts `.gz` and `.mag` off the name in place, so the path it
 // records (and prints when the file is missing) has neither (Magic 8.3.694:
 // `magic -dnull /w/inv.mag.gz` prints "File /w/inv couldn't be read").

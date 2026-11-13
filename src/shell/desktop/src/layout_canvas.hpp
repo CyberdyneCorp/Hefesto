@@ -162,7 +162,7 @@ class LayoutCanvas final : public view::ViewObserver {
   InputRouter router_;
   std::optional<CanvasInput> last_pointer_;  // for keys: the pointer over the canvas
   render::Bounds bounds_;
-  bool auto_fit_ = true;  // refit on resize until the user moves the view
+  bool auto_fit_ = true;  // refit on resize until the user moves the view or presses in the canvas
   // The root the camera was last framed for: a new root (load, the first
   // cell) frames as the core does, not the previous cell's camera. Compared,
   // never dereferenced.

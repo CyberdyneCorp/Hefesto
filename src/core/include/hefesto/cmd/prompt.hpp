@@ -63,7 +63,8 @@ class HeadlessPromptHost final : public PromptHost {
 
 /// A `no`/`yes` confirmation (default `no`) of a caller that, in Magic,
 /// stops only on the answer `no` (`tech load`, `save` over another file,
-/// `flush`). True to go ahead. A question that cannot be asked (no host,
+/// `flush`, the color map's "lose the changes?" on `quit` and `load`, `quit`
+/// with modified cells). True to go ahead. A question that cannot be asked (no host,
 /// a headless host, or a script host without `tk_dialog`) goes ahead with
 /// `magic_compat` ON, as Magic's -1 does, and is declined with it OFF
 /// (Q-SCRIPT-48).

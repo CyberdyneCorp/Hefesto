@@ -294,7 +294,7 @@ The returned string, with one trailing newline removed, is the answer. An empty 
 
 For multiple-choice questions, it SHALL evaluate `tk_dialog .dialog "Dialog" "<escaped prompt>" {} <default> "<choice1>" ...` and use the integer result, or -1 if the result is not an integer (the question could not be asked, e.g. without Tk under `-dnull`).
 
-A no/yes confirmation whose command stops only on the answer `no` (`tech load` over painted layout, `save NAME` over another existing file, `flush` of a changed cell) SHALL treat -1 as going ahead with `magic-compat` ON, as Magic does, and as declined with it OFF (Q-SCRIPT-48). A session with no prompt host or a headless one is a session that cannot ask. Other questions take their default answer when they cannot be asked.
+A no/yes confirmation whose command stops only on the answer `no` (`tech load` over painted layout, `save NAME` over another existing file, `flush` of a changed cell, the color map's `Do you want to lose the changes?` on `quit` and `load`, `quit` with modified cells) SHALL treat -1 as going ahead with `magic-compat` ON, as Magic does, and as declined with it OFF (Q-SCRIPT-48). A session with no prompt host or a headless one is a session that cannot ask. Other questions take their default answer when they cannot be asked.
 
 In batch mode (no console), `magic::dialog`, `magic::suspendout`, `magic::resumeout`, `magic::consolegeometry` and `magic::consolefocus` SHALL be defined as no-ops.
 Compatibility: behavioral

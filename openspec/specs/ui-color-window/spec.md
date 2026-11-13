@@ -135,7 +135,7 @@ Compatibility: behavioral
 - **THEN** the file `mos.OpenGL.std.cmap` SHALL be written
 
 ### Requirement: Unsaved color map protection
-If the color map was modified since the last save or load, quitting and `load` SHALL ask `The color map has been modified.` / `  Do you want to lose the changes? ` with the answers `no` (default) and `yes`. Answering `no` SHALL cancel the quit or load.
+If the color map was modified since the last save or load, quitting and `load` SHALL ask `The color map has been modified.` / `  Do you want to lose the changes? ` with the answers `no` (default) and `yes`. Answering `no` SHALL cancel the quit or load. When the question cannot be asked (no prompt host, a headless session, or a script session whose `tk_dialog` gives no integer), the changes SHALL be lost (the quit or load goes ahead) with `magic-compat` ON, as Magic's CMWCheckWritten does with TxDialog's -1, and the quit or load SHALL be cancelled with it OFF (Q-SCRIPT-48).
 
 Compatibility: behavioral
 (Magic ref: cmwind/CMWcmmnds.c:648-659, windows/windCmdNR.c:262-334)
@@ -144,3 +144,8 @@ Compatibility: behavioral
 - **GIVEN** a color was edited and not saved
 - **WHEN** `quit` is executed and the user answers `no`
 - **THEN** the application SHALL keep running
+
+#### Scenario: Nobody to ask
+- **GIVEN** a color was edited and not saved, in a session that cannot ask
+- **WHEN** `quit` is executed
+- **THEN** with `magic-compat` ON the application SHALL quit, and with it OFF it SHALL keep running

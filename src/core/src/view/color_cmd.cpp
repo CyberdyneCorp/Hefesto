@@ -150,7 +150,7 @@ CommandResult load_cmd(CommandContext& ctx, const Invocation& inv) {
     return failure(t.error());
   }
   editor::EditorState& e = t.value().editor;
-  if (!check_color_map_written(e)) {
+  if (!check_color_map_written(e, ctx.project().compat.magic_compat)) {
     return CommandResult::success();
   }
   const std::string name = cmap_name(e, inv.args);
