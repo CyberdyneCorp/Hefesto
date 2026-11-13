@@ -120,6 +120,27 @@ TEST_CASE("cmap blank lines are skipped and errors reported", "[cap:display-styl
   CHECK(syntax.error().text == "Syntax error in color map file \"t.cmap\"\nLast color read was index 1");
 }
 
+TEST_CASE("cmap sizes above the entry limit are refused before allocation",
+          "[cap:display-style-files][req:Color map file grammar][regression]") {
+  // The limit is the default 2^24 entries; a caller may ask for fewer.
+  const auto big = display::parse_color_map("0 0 0 16777216\n", "t.cmap", true);
+  REQUIRE_FALSE(big.ok());
+  CHECK(big.error().code == display::codes::kCmapSyntax);
+  CHECK(big.error().text == "Color map file \"t.cmap\" has too many colors");
+  CHECK_FALSE(display::parse_color_map("0 0 0 1024\n", "t.cmap", true, 1024).ok());
+  const auto at_limit = display::parse_color_map("0 0 0 1023\n", "t.cmap", true, 1024);
+  REQUIRE(at_limit.ok());
+  CHECK(at_limit.value().entries.size() == 1024);
+  // Regression (fuzz_cmap OOM, CI run 43487286969): the size comes from the
+  // 127-byte fgets() chunks, so the second chunk of one long line declares
+  // index 9325154 although the line's own fourth integer is 50.
+  const std::string long_line = "1 2 3 50 " + std::string(118, 'x') + "0 0 0 9325154 n\n";
+  REQUIRE(long_line.find("0 0 0 9325154") == 127);
+  const auto split = display::parse_color_map(long_line, "t.cmap", true, std::size_t{1} << 20);
+  REQUIRE_FALSE(split.ok());
+  CHECK(split.error().text == "Color map file \"t.cmap\" has too many colors");
+}
+
 TEST_CASE("cmap saving merges runs and keeps the first name", "[cap:display-style-files][req:Color map file writing]") {
   display::ColorMap map;
   map.entries.assign(256, display::ColorEntry{255, 255, 255, ""});

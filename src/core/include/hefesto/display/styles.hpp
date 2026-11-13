@@ -54,10 +54,15 @@ struct ColorMap {
   [[nodiscard]] std::optional<std::size_t> find(std::string_view name) const;
 };
 
+/// The largest color map a .cmap may declare (indices 0 .. 2^24 - 1).
+inline constexpr std::size_t kMaxColorMapEntries = std::size_t{1} << 24;
+
 /// Reads a .cmap (two passes, run filling). `file_name` is the name used in
-/// messages ("F.cmap"). Blank lines are skipped (Q-UI-7).
+/// messages ("F.cmap"). Blank lines are skipped (Q-UI-7). A map that would
+/// hold more than `max_entries` entries is refused before it is allocated.
 [[nodiscard]] diag::Outcome<ColorMap> parse_color_map(std::string_view text, std::string_view file_name,
-                                                      bool magic_compat);
+                                                      bool magic_compat,
+                                                      std::size_t max_entries = kMaxColorMapEntries);
 /// One "%d %d %d %d[ %s]\n" line per run of equal RGB (GrSaveCMap).
 [[nodiscard]] std::string write_color_map(const ColorMap& map);
 
