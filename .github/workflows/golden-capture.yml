@@ -18,7 +18,14 @@
 #                   adds or edits a case.toml or its input/ gets its outputs as an artifact).
 #   schedule        verify only.
 #   workflow_dispatch  input `mode`: verify, capture or both (default both); input
-#                   `cases` limits either step to the given case directories.
+#                   `cases` limits either step to the given case directories. Mode
+#                   d19-timing runs only the d19-magic-timing job below.
+#
+# The MASK-RT-* library round trips (openspec/changes/m5-mask-gds-cif design D19) need the
+# large library GDS data sets and Magic's time on big libraries, so they never run in the
+# 120-minute `capture` job: `plan` splits the cases, and `capture-gds-rt` verifies and
+# captures them in shards (scripts/gds_rt_shards.py: one per PDK, the I/O and SRAM
+# libraries in shards of their own, each with its own timeout).
 
 name: Golden capture
 
@@ -26,9 +33,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "verify (captured cases), capture (cases without expected/) or both"
+        description: "verify (captured cases), capture (cases without expected/), both, or d19-timing (m5 task 1.1 Magic timing only)"
         type: choice
-        options: [both, verify, capture]
+        options: [both, verify, capture, d19-timing]
         default: both
       cases:
         description: "Space-separated case directories (e.g. tests/golden/TECH/cases/TECH-G01); empty = all"
@@ -44,6 +51,7 @@ on:
       - tests/golden/**/case.toml
       - tests/golden/**/input/**
       - scripts/fetch_pdk.py  # a PDK pin change alters the [[external]] pdk inputs
+      - scripts/gds_rt_shards.py
       - .github/workflows/golden-capture.yml
   schedule:
     - cron: "17 4 * * 1"
@@ -51,14 +59,55 @@ on:
 permissions:
   contents: read
 
+env:
+  MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'verify' || 'both') }}
+  CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.cases || '' }}
+
 jobs:
+  # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
+  # that have cases), every other case to capture.
+  plan:
+    name: plan the capture jobs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      regular: ${{ steps.plan.outputs.regular }}
+      rt_any: ${{ steps.plan.outputs.rt_any }}
+      rt_matrix: ${{ steps.plan.outputs.rt_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Split the cases
+        id: plan
+        shell: bash
+        run: |
+          if [ "$MODE" = "d19-timing" ]; then
+            { echo "regular=0"; echo "rt_any=false"; echo 'rt_matrix={"include":[]}'; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$CASES" ]; then
+            read -ra cases <<< "$CASES"
+          else
+            mapfile -t cases < <(find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort)
+          fi
+          regular=0
+          for case_dir in "${cases[@]}"; do
+            case "$(basename "$case_dir")" in MASK-RT-*) ;; *) regular=$((regular + 1)) ;; esac
+          done
+          matrix="$(python3 scripts/gds_rt_shards.py --matrix "${cases[@]}")"
+          rt_any=false
+          [ "$(jq '.include | length' <<< "$matrix")" -gt 0 ] && rt_any=true
+          { echo "regular=$regular"; echo "rt_any=$rt_any"; echo "rt_matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+          echo "::notice::$regular case(s) for capture; MASK-RT shards: $(jq -c '[.include[].shard]' <<< "$matrix")"
+
   capture:
     name: build reference image, verify and capture
+    needs: plan
+    if: needs.plan.outputs.regular != '0'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    env:
-      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'verify' || 'both') }}
-      CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.cases || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -71,10 +120,12 @@ jobs:
         run: |
           if [ -n "$CASES" ]; then
             read -ra requested <<< "$CASES"
-            printf '%s\n' "${requested[@]}" > cases.txt
+            printf '%s\n' "${requested[@]}" > all-cases.txt
           else
-            find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort > cases.txt
+            find tests/golden -path '*/cases/*/case.toml' -exec dirname {} \; | sort > all-cases.txt
           fi
+          # The MASK-RT-* round trips run in capture-gds-rt (m5-mask-gds-cif design D19).
+          grep -v -E '(^|/)MASK-RT-[^/]*/?$' all-cases.txt > cases.txt || true
           mapfile -t cases < cases.txt
           echo "${#cases[@]} case(s); mode $MODE"
           python3 tools/golden/capture.py --check "${cases[@]}"
@@ -195,3 +246,222 @@ jobs:
           path: golden-expected/
           if-no-files-found: ignore
           retention-days: 30
+
+  # The MASK-RT-* library round trips (m5-mask-gds-cif design D19, task 1.6), one shard per PDK and the large
+  # libraries in shards of their own (scripts/gds_rt_shards.py, which also sets each shard's timeout from
+  # task 1.1's Magic read+write times). Each shard restores its PDK's tech set (the rc) and library GDS set,
+  # fetches whatever the restore missed and saves it, then verifies and captures like `capture`.
+  capture-gds-rt:
+    name: MASK-RT round trips (${{ matrix.shard }})
+    needs: plan
+    if: needs.plan.outputs.rt_any == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.rt_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: List the shard's cases
+        shell: bash
+        run: |
+          read -ra requested <<< "$CASES"
+          python3 scripts/gds_rt_shards.py --cases "${{ matrix.shard }}" "${requested[@]}" > cases.txt
+          mapfile -t cases < cases.txt
+          echo "${#cases[@]} case(s) in shard ${{ matrix.shard }}; mode $MODE"
+          python3 tools/golden/capture.py --check "${cases[@]}"
+
+      # A sky130 GDS fetch peaks at about 4.7 GB (the largest library's tar plus the kept set, task 1.1).
+      - name: Free disk space
+        if: matrix.tech == 'sky130'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore the tech set
+        id: tech
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.tech)] }}
+      - name: Restore the library GDS set
+        id: gds
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.gds_out)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.gds_out)] }}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli for the PDK install (cache miss only)
+        if: steps.tech.outputs.cache-hit != 'true' || steps.gds.outputs.cache-hit != 'true'
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev  # libcurl's TLS
+          python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify the data sets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/fetch_pdk.py ${{ matrix.tech }} ${{ matrix.gds }} \
+            --cli build/linux-release/src/cli/hefesto-cli
+          df -h /
+
+      - name: Save the tech set
+        if: steps.tech.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.tech)] }}
+      - name: Save the library GDS set
+        if: steps.gds.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.gds_out)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.gds_out)] }}
+
+      - name: Build reference-tool image
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Verify captured cases against a fresh capture
+        if: env.MODE == 'both' || env.MODE == 'verify'
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
+            --verify --only-captured "${cases[@]}"
+
+      - name: Capture cases without expected/
+        if: env.MODE == 'both' || env.MODE == 'capture'
+        shell: bash
+        run: |
+          SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          export SOURCE_DATE_EPOCH
+          mapfile -t cases < cases.txt
+          status=0
+          python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
+            --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
+          mkdir -p golden-expected
+          git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
+          if [ -s new-files.txt ]; then
+            tar -cf - -T new-files.txt | tar -xf - -C golden-expected
+            echo "::notice::captured $(grep -c 'captured' capture.log) case(s); download golden-expected-gds-rt-${{ matrix.shard }}"
+          else
+            echo "::notice::no case without expected/"
+          fi
+          grep ': error: ' capture.log | sed 's/^/::error::/' || true
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && (env.MODE == 'both' || env.MODE == 'capture')
+        with:
+          name: golden-expected-gds-rt-${{ matrix.shard }}
+          path: golden-expected/
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # Task 1.1 of m5-mask-gds-cif (design D19): Magic 8.3.694 reads and writes every library GDS file with
+  # the PDK's rc, timed per file (scripts/d19/). Dispatch with mode d19-timing. The job summary has one
+  # table per set and d19-<set>.json is uploaded; the wall times size capture-gds-rt's shard timeouts.
+  d19-magic-timing:
+    name: D19 Magic round-trip timing (${{ matrix.set }})
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'd19-timing'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { set: sky130-gds, tech: sky130, out: sky130_gds }
+          - { set: gf180mcu-gds, tech: gf180mcu, out: gf180mcu_gds }
+          - { set: ihp-gds, tech: ihp, out: ihp_gds }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Free disk space for the sky130 GDS (peak is the largest library's tar plus the kept set)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Cache keys of the data sets
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore the tech set
+        id: tech
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.tech)] }}
+      - name: Restore the GDS set
+        id: gds
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.out)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.out)] }}
+      - name: Build hefesto-cli for the PDK install
+        env:
+          CC: gcc-14
+          CXX: g++-14
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+          python3 -m pip install "cmake==3.31.6" "ninja==1.11.1.4"
+          cmake --preset linux-release -DHEFESTO_BUILD_TESTS=OFF -DHEFESTO_BUILD_DESKTOP=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+      - name: Fetch or verify the sets (records download time and peak disk)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          df -h /
+          /usr/bin/time -v python3 scripts/fetch_pdk.py ${{ matrix.tech }} ${{ matrix.set }} \
+            --cli build/linux-release/src/cli/hefesto-cli
+          df -h /
+          du -sh .cache/pdks/gds
+      - name: Save the tech set
+        if: steps.tech.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.tech)] }}
+      - name: Save the GDS set
+        if: steps.gds.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.out)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.out)] }}
+      - name: Build reference-tool image
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+      - name: Time Magic's read and write of every library GDS
+        shell: bash
+        run: |
+          mkdir -p d19
+          status=0
+          docker run --rm -v "$PWD:/work" -w /work --user "$(id -u):$(id -g)" -e HOME=/tmp -e TZ=UTC -e LC_ALL=C \
+            -e GITHUB_STEP_SUMMARY=/work/d19/summary.md hefesto-golden:ci \
+            python3 /work/scripts/d19/d19_time_magic.py --set ${{ matrix.set }} \
+            --out /work/d19/${{ matrix.set }}.json || status=$?
+          cat d19/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d19-${{ matrix.set }}
+          path: d19/

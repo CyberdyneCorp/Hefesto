@@ -114,6 +114,18 @@ class ExternalTest(unittest.TestCase):
                 external.stage([external.External("pdk", "x.tech", "sky130A/x.tech")], dest)
             self.assertEqual((dest / "x.tech").read_text(encoding="utf-8"), "tech\n")
 
+    def test_gds_set_resolves_under_its_own_pdk_root(self):
+        # Regression: pdk_set_root() ignored the set's pdk_dir, so the M5 GDS sets (installed under
+        # <pdk-root>/gds, m5-mask-gds-cif D19) resolved to the M4 tech set's directory.
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"HEFESTO_PDK_ROOT": tmp}):
+            tech = external.pdk_set_root("sky130")
+            for name in ("sky130-gds", "sky130-gds-sc"):
+                with self.subTest(name=name):
+                    self.assertIn(name, external.PDK_SETS)
+                    gds = external.pdk_set_root(name)
+                    self.assertEqual(gds.relative_to(Path(tmp)).parts[0], "gds")
+                    self.assertEqual(gds.relative_to(Path(tmp) / "gds"), tech.relative_to(Path(tmp)))
+
     def test_missing_input_is_a_capture_error_and_a_replay_skip(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"HEFESTO_PDK_ROOT": tmp}):
             case = load_case(case_with(Path(tmp), EXTERNAL_TOML))
