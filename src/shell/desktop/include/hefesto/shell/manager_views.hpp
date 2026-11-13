@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -73,6 +74,11 @@ class CellsView {
   /// moves to the parent), as tree views do. Returns the new selection.
   std::optional<std::size_t> key_right(std::size_t index);
   std::optional<std::size_t> key_left(std::size_t index);
+  /// A key pressed in the Cells table with row `index` selected (Raven key
+  /// code, kMod* bits): unmodified Left and Right run key_left / key_right
+  /// and return true (consumed); any other key returns false and is left to
+  /// the table (arrows, Return).
+  bool tree_key(int key, std::uint8_t modifiers, std::size_t index);
 
   void select(std::optional<std::size_t> index);
   [[nodiscard]] std::optional<std::size_t> selected() const;

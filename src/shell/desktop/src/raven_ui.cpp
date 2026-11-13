@@ -1572,6 +1572,7 @@ struct Table::Callbacks {
   std::function<void(int)> select;
   std::function<void(int)> activate;
   std::function<void(int, bool)> sort;
+  std::function<bool(int, std::uint8_t)> key;
   std::string buffer;  // the last cell text handed to Raven (valid until the next call)
   bool quiet = false;  // set_selected(): not a pick
 
@@ -1592,6 +1593,11 @@ struct Table::Callbacks {
     auto* cb = static_cast<Callbacks*>(self);
     if (cb->sort) cb->sort(column, descending != kFalse);
   }
+  static int event(Rid, const REvent* e, void* self) {
+    auto* cb = static_cast<Callbacks*>(self);
+    if (e->type != R_EVENT_KEY_DOWN || !cb->key) return kFalse;
+    return cb->key(static_cast<int>(e->key), static_cast<std::uint8_t>(e->modifiers)) ? kTrue : kFalse;
+  }
 };
 
 Table::Table(WidgetId id) : Widget(id), callbacks_(std::make_unique<Callbacks>()) {}
@@ -1603,6 +1609,7 @@ std::unique_ptr<Table> Table::create() {
   Rtable_set_selection_changed_callback(table->id_, &Callbacks::selected, cb);
   Rtable_set_activated_callback(table->id_, &Callbacks::activated, cb);
   Rtable_set_sort_callback(table->id_, &Callbacks::sorted, cb);
+  Rwidget_set_event_callback(table->id_, &Callbacks::event, cb);
   Rtable_set_striped(table->id_, kFalse);
   Rtable_set_grid_lines(table->id_, kFalse);
   return table;
@@ -1652,6 +1659,10 @@ void Table::on_activate(std::function<void(int)> callback) {
 
 void Table::on_sort(std::function<void(int, bool)> callback) {
   callbacks_->sort = std::move(callback);
+}
+
+void Table::on_key(std::function<bool(int, std::uint8_t)> callback) {
+  callbacks_->key = std::move(callback);
 }
 
 // --- M4 SHELL-B: console input, file dialogs, frames -----------------------------

@@ -257,6 +257,10 @@ class Table : public Widget {
   void on_activate(std::function<void(int)> callback);
   /// A header click: the application sorts its data.
   void on_sort(std::function<void(int column, bool descending)> callback);
+  /// A key pressed while the table has the focus, before the table's own
+  /// keys (Raven's widget event callback): `callback(key, modifiers)` (Raven
+  /// key codes, kMod* bits) returns true to consume it.
+  void on_key(std::function<bool(int key, std::uint8_t modifiers)> callback);
 
  private:
   explicit Table(WidgetId id);

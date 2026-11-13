@@ -79,6 +79,8 @@ class ManagerPanels {
   void refresh_libraries();
   void refresh_tech();
   void highlight_selection(const cmd::CommandResult& result);
+  /// Hands the Cells view's visible rows and selection to the table (scrolled to it).
+  void show_cells_rows();
   void open_tech_menu(const ui::Widget& anchor);
   void open_style_menu(TechStyle style, const ui::Widget& anchor);
   void apply_units();
