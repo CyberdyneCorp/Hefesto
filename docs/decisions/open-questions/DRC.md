@@ -113,10 +113,11 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 
 ### Q-DRC-13: Mask error coordinate mapping truncates toward zero
 - Kind: quirk
+- Status: open (recommendation drafted 2026-11-13)
 - Magic behavior: Mask-layer error rectangles are converted to internal units with C integer division (toward zero), so negative coordinates round up and positive round down; zero-width results are widened by one unit away from zero. Area/maxwidth errors are not widened.
-- Evidence: drc/DRCcif.c:1052-1068
-- Options: replicate | fix (floor/ceil outward)
-- Recommendation: replicate.
+- Evidence: drc/DRCcif.c:1052-1068 (corrected 2026-11-13: The spacing/width path is confirmed at drc/DRCcif.c:1052-1068: C division, and a zero extent is widened by xbot-- when the coordinate is negative, otherwise by xtop++. Correction for area and maxwidth: drcCheckCifArea (DRCcif.c:1364-1367) and drcCheckCifMaxwidth (1468-1471, 1497-1500, 1554-1557) truncate with no widening and then skip the error if GEO_RECTNULL holds. A violation whose start tile collapses to zero width in internal units is therefore not reported at all, not just placed differently. All three PDK DRC sections use cifwidth, cifspacing and cifmaxwidth, and gf180mcuD and IHP also use cifarea.)
+- Options: replicate | fix (floor/ceil outward) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. With magic-compat ON, Hefesto replicates Magic: truncation toward zero, the one-unit widening on the spacing/width path, and dropping collapsed area and maxwidth errors. The DRC error plane, `drc count` and `drc find` then match Magic for the PDK decks. With it OFF, mask rectangles map to internal units with outward rounding (floor for lower edges, ceil for upper edges) on every path. Error rectangles are never empty, so area and maxwidth violations narrower than one internal unit are reported. In both modes, Hefesto counts collapsed area and maxwidth errors in a diagnostic, so a missed error is visible even with magic-compat ON. (corrected 2026-11-13, was replicate)
 
 ### Q-DRC-14: `drc count` prints a zero total
 - Kind: bug
