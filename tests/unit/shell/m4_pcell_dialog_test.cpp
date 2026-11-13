@@ -265,6 +265,13 @@ TEST_CASE("PCell dialog", "[cap:hefesto-app-ux][req:Functional parity with Magic
   CHECK(row(view, "l").value == "6");
   CHECK(row(view, "l").updated);
   CHECK(view.announcement == "Length (um) updated to 6");
+  // The corrected width keeps its warning outline through another field's
+  // edit, and loses it once the user types into it again (draft 12).
+  CHECK(row(view, "w").corrected);
+  CHECK(edits.begin_typing("w"));
+  CHECK_FALSE(edits.begin_typing("w"));
+  view = pcell_dialog_view(s.dialog(), false, edits);
+  CHECK_FALSE(row(view, "w").corrected);
   // Create places the generated cell and keeps the dialog on the new instance.
   const std::string command = pcell_gencell_command(s.dialog());
   CHECK(command == "magic::gencell_create res tpdk {w 1 l 6 gencell res guard {} nf 3}");

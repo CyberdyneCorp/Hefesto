@@ -1799,6 +1799,16 @@ std::string TextInput::text() const {
   return t != nullptr ? std::string(t) : std::string();
 }
 
+void TextInput::set_outline(const std::optional<Rgba>& color) {
+  for (const RColorRole role : {R_COLOR_BORDER, R_COLOR_FOCUS}) {
+    if (color) {
+      Rwidget_set_color(id_, role, color->r, color->g, color->b, color->a);
+    } else {
+      Rwidget_clear_color(id_, role);
+    }
+  }
+}
+
 bool Window::active() const {
   return id_ != kNoWidget && Rwindow_is_active(id_) != kFalse;
 }

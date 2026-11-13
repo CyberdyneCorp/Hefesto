@@ -211,6 +211,10 @@ class TextInput : public Widget {
   /// Replaces the text (no change callback).
   void set_text(std::string_view text);
   [[nodiscard]] std::string text() const;
+  /// This input's outline (Raven's R_COLOR_BORDER and R_COLOR_FOCUS set on
+  /// the widget), e.g. the warning outline of a corrected PCell field;
+  /// nullopt goes back to the theme's.
+  void set_outline(const std::optional<Rgba>& color);
 
  private:
   explicit TextInput(WidgetId id);
