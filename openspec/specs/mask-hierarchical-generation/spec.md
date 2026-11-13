@@ -98,7 +98,8 @@ For each layer i, in style order, compute a grow distance `g_i` and a shrink dis
 - `grow`, `grow-min` and `grow-grid` add their distance to `g`.
 - `shrink` adds its distance to `s`.
 - `bloat-or` adds the largest positive per-type distance to `g`. It adds the largest magnitude among negative distances to `s`. When scanning types, a negative value is considered only if it did not first exceed the running positive maximum.
-- All other operators contribute nothing. This includes `and`, `and-not`, `or`, `interact` and its variants, `bridge`, `bridge-lim`, `squares`, `squares-grid`, `slots`, `close`, `bloat-max`, `bloat-min`, `bloat-all`, `maxrect`, `boundary` and `orthogonal`/`manhattan`.
+- With `magic-compat` OFF only: `bloat-max` and `bloat-min` add their largest positive per-type distance to `g`, and `bridge` and `bridge-lim` add their width to `g` (Q-MASK-404, resolution: compat).
+- All other operators contribute nothing. With `magic-compat` ON (the default), as in Magic, this includes `and`, `and-not`, `or`, `interact` and its variants, `bridge`, `bridge-lim`, `squares`, `squares-grid`, `slots`, `close`, `bloat-max`, `bloat-min`, `bloat-all`, `maxrect`, `boundary` and `orthogonal`/`manhattan`; with it OFF, the same list without `bloat-max`, `bloat-min`, `bridge` and `bridge-lim`.
 
 Then:
 
@@ -110,7 +111,7 @@ r = (S > 0) ? floor(d / S) + 1 : d + 1  (integer division)
 
 Compatibility: exact
 
-See Q-MASK-404 for the operators that are not counted.
+`bloat-all`, `interact` and `close` have no fixed reach, so they stay uncounted in both settings; the style loader prints a note when a hierarchical layer uses them. With `magic-compat` ON, a rescale that does not reduce the units keeps the radius computed before it (Q-MASK-18; capability `mask-output-styles`).
 
 (Magic ref: cif/CIFtech.c:1668-1760, cif/CIFtech.c:1777-1800, cif/CIFtech.c:2049, cif/CIFtech.c:2718-2719)
 
@@ -130,6 +131,12 @@ See Q-MASK-404 for the operators that are not counted.
 - **WHEN** the radius is computed
 - **THEN** r = 1
 
+#### Scenario: Bridge width counted with magic-compat OFF
+- **GIVEN** S=10 and a style whose only operator with a distance is `bridge 20 40` on one layer
+- **WHEN** the radius is computed
+- **THEN** with `magic-compat` ON r = 1
+- **AND** with `magic-compat` OFF g = 40 and r = floor(80/10) + 1 = 9
+
 ### Requirement: Classification of hierarchically processed layers
 
 After computing the radius, the implementation SHALL compute two sets:
@@ -139,20 +146,18 @@ After computing the radius, the implementation SHALL compute two sets:
 
 The sets are built in four passes.
 
-1. **Backward pass**, i from the last layer down to the first. Layer i is needed if it is already in `HierLayers` (because a later layer depends on it) or if any of its operators is one of: `and`, `and-not`, `interact` (any variant), `shrink`, `close`, `bridge`, `bridge-lim`, `bloat-or`, `bloat-max`, `bloat-min`, `bloat-all`.
+1. **Backward pass**, i from the last layer down to the first. Layer i is needed if it is already in `HierLayers` (because a later layer depends on it) or if any of its operators is one of: `and`, `and-not`, `interact` (any variant), `shrink`, `close`, `bridge`, `bridge-lim`, `bloat-or`, `bloat-max`, `bloat-min`, `bloat-all`; with `magic-compat` OFF also `grow-min`, `not-square`, `orthogonal`/`manhattan` and `maxrect` (Q-MASK-405, resolution: compat). `squares`, `squares-grid`, `slots`, `net` and `tagged` are not added in either setting, because they stop hierarchical evaluation (Q-MASK-402).
    - Let `Depend_i` be the union of the cifoutput layers read by its operators.
    - Let `Yank_i` be the union of their paint-type masks, plus:
      - for `bloat-or`, `bloat-max` and `bloat-min`: every type whose bloat distance differs from the distance given for space;
      - for `bloat-all`: every type with a non-zero distance. These go into `Depend_i` when the bloat-all refers to cifoutput layers, and into `Yank_i` otherwise.
    - If layer i is needed, add i and `Depend_i` to `HierLayers`, and add `Yank_i` to `YankTypes`.
 2. **Forward pass**, i from first to last. Any layer that reads a layer already in `HierLayers` is added to `HierLayers`.
-3. **Removal pass**. Any layer that contains a `boundary` or `bbox` operator is removed from `HierLayers`. Layers that depend on it are not removed. See Q-MASK-403.
+3. **Removal pass**. Any layer that contains a `boundary` or `bbox` operator is removed from `HierLayers`. With `magic-compat` ON (the default) layers that depend on it are not removed, as in Magic, and read it as an empty plane during interaction processing; with it OFF every layer that depends on a removed layer, directly or transitively, is removed too, following the intent that bbox/boundary geometry stays in the child cell (Q-MASK-403, resolution: compat).
 
 Layers not in `HierLayers` get no correction in interaction areas or array overlaps. Their parent output is `Own_L` only.
 
 Compatibility: exact
-
-See Q-MASK-405.
 
 (Magic ref: cif/CIFtech.c:2051-2132, cif/CIFtech.c:2203-2238)
 
@@ -169,7 +174,8 @@ See Q-MASK-405.
 #### Scenario: A bbox layer is excluded but its dependents are kept
 - **GIVEN** `templayer BB; bbox` followed by `layer X; or m1; and-not BB; shrink 1`
 - **WHEN** the style is loaded
-- **THEN** X is in HierLayers and BB is not
+- **THEN** with `magic-compat` ON X is in HierLayers and BB is not
+- **AND** with `magic-compat` OFF neither X nor BB is in HierLayers
 
 ### Requirement: Non-local layers
 
@@ -261,7 +267,8 @@ if not found: return NONE (no subcells)
 for each (U, H) in List:
     B := (0,0,0,0)
     for each other use V ≠ U whose bbox overlaps H: include(B, V.bbox)
-    include(Int, expand(B, r) ∩ H)        # B may still be (0,0,0,0); see Q-MASK-400
+    if magic-compat ON or B was extended by some V:
+        include(Int, expand(B, r) ∩ H)    # ON: B may still be (0,0,0,0); Q-MASK-400
 if Int degenerate: return NONE
 sources := 0
 if D has own paint (any non-space type) overlapping Int: sources := 1
@@ -274,6 +281,8 @@ return I
 ```
 
 Compatibility: exact
+
+With `magic-compat` ON (the default) the sibling pass includes `expand(B, r) ∩ H` even when no other use was found, so the (0,0,0,0) seed adds `(-r,-r)-(r,r)` clipped to H whenever H covers the origin, as in Magic; with it OFF a pair with no other use adds nothing (Q-MASK-400, resolution: compat). Mask generation and hierarchical DRC use the same interaction finder and read the same setting (capability `drc-engine` "Interaction area"); golden case MASK-HG-005 covers it.
 
 Each use found by the depth search counts as a separate source. This includes each array element, and each nested descendant use in addition to its ancestor. Two elements of the same array therefore satisfy the two-source test. A single child that contains a nested subcell with paint in Int also satisfies it. Elements of one array are never detected as interacting with each other in the first two passes, because the whole array is a single use there. Those interactions are handled by the array correction.
 
@@ -293,6 +302,7 @@ Each use found by the depth search counts as a separate source. This includes ea
 - **AND** expand(P,7) ∩ H = (97,33)-(107,67)
 - **AND** the sibling pass for U finds no other use, so B=(0,0,0,0) and expand(B,7) ∩ H = (-7,-7)-(7,7), which is included
 - **AND** Int = (-7,-7)-(107,67), and the two-source test passes (parent plus U), so I = (-7,-7)-(107,67)
+- **AND** with `magic-compat` OFF the sibling pass adds nothing, so Int = I = (97,33)-(107,67)
 
 #### Scenario: Overlapping bounding boxes without paint in the overlap
 - **GIVEN** two children whose bounding boxes overlap, but where only one of them has paint inside the computed Int and the parent has no paint there
@@ -309,7 +319,7 @@ When the hierarchy below a cell is flattened into a scratch cell for an area W, 
 4. Skip space tiles.
 5. Copy every cell property whose name begins with `MASKHINTS_` from the root use and from every use in the subtree that overlaps W. Transform each property's rectangles into root coordinates and OR them into the same-named property of the scratch cell. The whole hint geometry is copied, not clipped.
 
-Paint of cells marked as vendor (read-only GDS) cells SHALL also be copied. See Q-MASK-401.
+Paint of cells marked as vendor (read-only GDS) cells SHALL also be copied, in both `magic-compat` settings, whatever the style's `see-no-vendor` option (Q-MASK-401, resolution: replicate).
 
 Compatibility: exact
 
@@ -379,11 +389,9 @@ While generating layers for an interaction area or array overlap (both the total
 - `boundary`;
 - `bbox`.
 
-The stopping operator and all later operators of that layer are skipped. The layer result is whatever had been computed before the stopping operator. That partial result then takes part in the residual and add steps like any other layer. Own-paint generation and flat generation never stop.
+The stopping operator and all later operators of that layer are skipped. The layer result is whatever had been computed before the stopping operator. With `magic-compat` ON (the default) that partial result then takes part in the total, components, residual and add steps like any other layer, as in Magic; with it OFF a layer that stopped early contributes no hierarchical residual, so its cuts or net geometry come only from per-cell generation (Q-MASK-402, resolution: compat). `bbox` and `boundary` never stop a hierarchical layer, because the removal pass excludes such layers. In both settings the style loader warns when a hierarchical layer has a stopping operator after a hierarchy-forcing one (for example `bloat-or` then `squares`). Own-paint generation and flat generation never stop.
 
 Compatibility: exact
-
-See Q-MASK-402.
 
 (Magic ref: cif/CIFgen.c:5079-5089, cif/CIFgen.c:5332-5376, cif/CIFgen.c:5433-5462, cif/CIFgen.c:5601-5636, cif/CIFgen.c:5700-5705)
 
@@ -396,7 +404,8 @@ See Q-MASK-402.
 - **GIVEN** `layer CC; or pc; and-not nwell; squares 2 4 4`
 - **WHEN** an interaction area is processed
 - **THEN** CC's hierarchical result is the `or pc; and-not nwell` region, without square cuts
-- **AND** its residual, if any, is added to the parent's CC layer as uncut area
+- **AND** with `magic-compat` ON its residual, if any, is added to the parent's CC layer as uncut area
+- **AND** with `magic-compat` OFF no residual is added to the parent's CC layer
 
 ### Requirement: Parent/child disagreement reporting
 
@@ -480,7 +489,7 @@ For each phase, the implementation SHALL compute the correction as follows. Each
    - low phase: `x − xlo < 2` and `y − ylo < 2`;
    - high phase: `xhi − x < 2` and `yhi − y < 2`.
 
-   Here xlo, xhi, ylo and yhi are the index bounds as stored (see Q-MASK-406).
+   Here xlo, xhi, ylo and yhi are the index bounds as stored. These are the signed differences used with `magic-compat` ON (the default), as in Magic, so when `xlo > xhi` (or `ylo > yhi`) every element passes; with it OFF the filter uses the absolute index distance from the corner element (`|x − xlo| < 2` and `|y − ylo| < 2` for the low phase, `|xhi − x| < 2` and `|yhi − y| < 2` for the high phase), which selects the intended 2×2 corner (Q-MASK-406, resolution: compat; golden MASK-HG-013).
 2. For each such element:
    - add its subtree material (types `YankTypes`), within `expand(R in element coordinates, r)` and with mask hints, into a total scratch cell. This cell is shared by both regions of the phase and is not cleared between them;
    - also flatten the same material alone into a cleared component scratch cell;
@@ -550,11 +559,11 @@ if (w < h) or side:
     xtop += (m-w) div 2 ; xbot -= (m-w) div 2
 ```
 
-Here `div` is integer division truncating toward zero. The "stop" in the first branch also skips the second branch.
+Here `div` is integer division truncating toward zero. The "stop" in the first branch also skips the second branch. This is the behaviour with `magic-compat` ON (the default), as in Magic: `m` is not rescaled, split tiles grow as full rectangles, and only residual pieces grow. With `magic-compat` OFF (Q-MASK-409, resolution: compat): `m` is rescaled with the style scale like other distances; both axes are checked independently (no early return); a dimension `d < m` grows by `m − d` in total, `(m − d) div 2` on the bottom/left side and the rest on the top/right side, so it reaches at least `m`.
 
 Compatibility: exact
 
-Magic also prints two diagnostic lines to standard output. That part is informative. See Q-MASK-409.
+Magic also prints two diagnostic lines (`got sliver`, `created sliver`) to standard output. Hefesto does not print these lines in either setting; at most they go to a debug log.
 
 (Magic ref: cif/CIFhier.c:1268-1305, cif/CIFhier.c:651-652, cif/CIFhier.c:1343, cif/CIFtech.c:979-989)
 
@@ -562,6 +571,12 @@ Magic also prints two diagnostic lines to standard output. That part is informat
 - **GIVEN** `min-width 40` on layer M and an isolated residual tile (1000,100)-(1010,900) with space neighbours
 - **WHEN** it is painted into the parent
 - **THEN** since w=10 < h=800, it becomes (985,100)-(1025,900)
+
+#### Scenario: Odd shortfall with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, `min-width 40` on layer M at style scale 1, and an isolated residual tile (1000,100)-(1011,900)
+- **WHEN** it is painted into the parent
+- **THEN** the shortfall 29 grows the left side by 14 and the right side by 15, giving (986,100)-(1026,900)
+- **AND** with `magic-compat` ON it becomes (986,100)-(1025,900), 39 wide
 
 ### Requirement: Hierarchy and array output switches
 
@@ -577,7 +592,7 @@ When GDS is written, a cell definition that carries a property named `CIFhier` (
 - the generation of that cell itself;
 - the processing of every descendant that is first written while that cell's subcells are being processed. Descendants already written earlier keep the setting that was in effect when they were written.
 
-The switches are restored afterwards. CIF writing ignores `CIFhier` (see Q-MASK-410).
+The switches are restored afterwards. With `magic-compat` ON (the default) CIF writing ignores `CIFhier`, as in Magic; with it OFF the CIF writer honours it the same way the GDS writer does (Q-MASK-410, resolution: compat).
 
 Compatibility: behavioral
 
@@ -592,6 +607,7 @@ Compatibility: behavioral
 - **GIVEN** subcell interaction output is disabled and the parent has the property `CIFhier` = `true`
 - **WHEN** GDS is written
 - **THEN** the parent receives the M1X rectangle (1000,100)-(1050,900)
+- **AND** when CIF is written instead, the parent receives it only with `magic-compat` OFF
 
 ### Requirement: Hierarchical layer preview
 
@@ -630,11 +646,11 @@ Compatibility: exact
 
 When the user requests flat CIF output, the implementation SHALL:
 
-1. Flatten all paint types except space and DRC types from the whole hierarchy of the root, within its bounding box expanded by r, into a single scratch definition. Labels and mask hints are not copied.
+1. Flatten all paint types except space and DRC types from the whole hierarchy of the root, within its bounding box expanded by r, into a single scratch definition. With `magic-compat` ON (the default), as in Magic, labels and mask hints are not copied; with it OFF the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes are copied too (Q-MASK-411, resolution: compat).
 2. Recompute that definition's bounding box.
 3. Write it as the only symbol, using own-paint generation only. The scratch definition has no subcells, so `Hier_L` and `Array_L` are empty.
 
-Magic names the scratch definition `__CIF2__`, so the symbol name record is `9 __CIF2__;`. See Q-MASK-411.
+With `magic-compat` ON the scratch definition is named `__CIF2__`, as in Magic, so the symbol name record is `9 __CIF2__;`; with it OFF the symbol is named after the root cell (Q-MASK-321 and Q-MASK-411; capability `cif-format-io`).
 
 Compatibility: exact
 
@@ -644,13 +660,14 @@ Compatibility: exact
 - **GIVEN** the grow/shrink gap layout
 - **WHEN** `cif flat out.cif` is run
 - **THEN** out.cif contains one symbol, `DS 1 …`, whose M1X geometry is one box covering (900,100)-(1150,900) in output units, and no labels
+- **AND** with `magic-compat` OFF the symbol is named after the root cell and carries the hierarchy's labels
 - **AND** the file ends with `C 1;` followed by `End`
 
 ### Requirement: Non-manhattan merge option
 
 When the `unfracture` switch is on (default off), the implementation SHALL merge adjacent non-Manhattan (split) tiles of each generated layer result, wherever they can be represented by fewer tiles. This happens after each layer is generated and before clipping. It applies to all generation modes and changes only the decomposition, not the covered point set.
 
-In Magic the switch is set with `cif unfracture <any> yes|no`. The value is the fourth word. With only three words the command reports the state. See Q-MASK-413.
+In Magic the switch is set with `cif unfracture <any> yes|no`: the value is the fourth word, and with only three words the command reports the state. Hefesto does the same with `magic-compat` ON (the default), and warns when the ignored third word is `yes` or `no`; with it OFF `cif unfracture yes|no` sets the switch, and the four-word form is still accepted (Q-MASK-413, resolution: compat; settles D-20; capability `cif-format-io`).
 
 Compatibility: exact
 
@@ -668,7 +685,7 @@ A cell whose output is copied verbatim from a vendor GDS file (see `gds-write`) 
 
 Compatibility: exact
 
-See Q-MASK-401.
+The style option `see-no-vendor` does not change this, in either `magic-compat` setting (Q-MASK-401, resolution: replicate).
 
 (Magic ref: calma/CalmaWrite.c:1323-1335, calma/CalmaWrite.c:1350-1372, cif/CIFhier.c:396-405)
 
@@ -680,12 +697,12 @@ See Q-MASK-401.
 
 ### Requirement: Known limitations of hierarchical generation
 
-The implementation SHALL reproduce the following known limitations of Magic exactly when it claims `exact` compatibility. It SHALL NOT silently correct them; deviations are decided through the referenced open questions.
+With `magic-compat` ON (the default) the implementation SHALL reproduce the following known limitations of Magic exactly. It SHALL NOT silently correct them; the corrections made with `magic-compat` OFF are those of the referenced resolved questions, and are noted per item.
 
 1. **Subtractive interactions.** A hierarchical layer whose flat result inside an interaction area is smaller than the union of the components produces a disagreement error. The extra child geometry remains in the child.
-2. **Non-hierarchical layers.** Layers not in `HierLayers` are generated per cell only, even when their operators do not distribute over union. Examples are `squares` on a contact area split across cells, `grow-min`, and `not-square`. See Q-MASK-405.
-3. **Stopping operators.** See Q-MASK-402.
-4. **Material beyond the halo.** Corrections only see material within the halo r and within the whole tiles that overlap it. Operators whose reach exceeds r (Q-MASK-404) may differ from flat generation.
+2. **Non-hierarchical layers.** Layers not in `HierLayers` are generated per cell only, even when their operators do not distribute over union. Examples are `squares` on a contact area split across cells, `grow-min`, and `not-square`. With `magic-compat` OFF, `grow-min`, `not-square`, `orthogonal`/`manhattan` and `maxrect` force a layer into `HierLayers` (Q-MASK-405).
+3. **Stopping operators.** With `magic-compat` ON the partial result of a stopped layer takes part in the residual; with it OFF a stopped layer has no residual (Q-MASK-402).
+4. **Material beyond the halo.** Corrections only see material within the halo r and within the whole tiles that overlap it. Operators whose reach exceeds r may differ from flat generation. With `magic-compat` OFF the radius also counts `bloat-max`/`bloat-min` distances and `bridge`/`bridge-lim` widths; `bloat-all`, `interact` and `close` have no fixed reach and stay uncounted in both settings (Q-MASK-404).
 5. **Array scope.** Array corrections consider only interactions among elements of the same array. They exclude the parent's own paint and other uses; those are covered by the subcell-interaction step.
 
 Compatibility: informative
@@ -720,15 +737,27 @@ Compatibility: informative
 
 ### Requirement: Progress reporting and interruptibility
 
-During interaction processing Magic prints `Completed N%` roughly every five seconds once more than one interaction area has been processed, and `Completed 100%` at the end if it printed anything. While doing so it blocks user input events. Hefesto SHALL provide equivalent non-blocking progress and SHALL keep the database from being edited during a write, but MAY use a different mechanism.
+During interaction processing Magic prints `Completed N%` roughly every five seconds once more than one interaction area has been processed, and `Completed 100%` at the end if it printed anything. While doing so it blocks user input events. On every platform, including iPadOS, Hefesto SHALL instead (Q-MASK-414, resolution: platform):
+
+- report progress (the fraction of interaction squares done) to a callback, rate-limited to about once every five seconds; the console shell MAY print `Completed N%`, which is informative and not part of golden output;
+- let the callback cancel the write; a cancelled write leaves no output file, because the output is written to a temporary file and renamed only on success;
+- generate from a read-only snapshot of the database, so the user interface is not blocked and edits made during the write do not affect it.
+
+None of this changes the mask output.
 
 Compatibility: informative
 
-[platform] See Q-MASK-414.
+[platform]
 
 (Magic ref: cif/CIFhier.c:974-988, cif/CIFhier.c:1035-1041, cif/CIFhier.c:1070-1100, cif/CIFhier.c:1110-1124)
 
 #### Scenario: Long write shows progress
 - **GIVEN** a parent with thousands of interaction areas that takes more than five seconds to write
 - **WHEN** it is written
-- **THEN** percentage progress is reported and editing is blocked until the write finishes
+- **THEN** percentage progress is reported and the user interface stays responsive
+- **AND** an edit made during the write does not appear in the written file
+
+#### Scenario: Cancelled write
+- **GIVEN** a long GDS write to `chip.gds`, where `chip.gds` did not exist before
+- **WHEN** the user cancels it from the progress callback
+- **THEN** no file `chip.gds` exists afterwards

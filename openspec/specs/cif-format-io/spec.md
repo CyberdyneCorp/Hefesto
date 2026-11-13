@@ -99,7 +99,9 @@ Compatibility: exact
 
 ### Requirement: Symbol-to-cell naming on read
 
-Hefesto SHALL name the cell for symbol `n` with the decimal string of `n` (for example `"12"`), creating it on first reference by `DS` or `C`. On `DS n` when symbol `n` already maps to an available (already defined) cell whose name is still `"n"`, that cell is renamed `"n_k"` with the smallest `k >= 1` not in use, the warning "cell definition n reused." is issued, and a new cell `"n"` is created for the new definition. The definition always clears the target cell before reading. `DD n` forgets the mapping of `n`; a later `DS n` or `C n` maps again to a cell found by the name `"n"` if one exists (see Q-MASK-318). The user extension `9 NAME` renames the current cell (or, outside any definition, the edit cell, see Q-MASK-317) to `NAME`; if `NAME` already exists, the error "NAME already exists, so cell from CIF is named OLD." is reported and the name is unchanged.
+Hefesto SHALL name the cell for symbol `n` with the decimal string of `n` (for example `"12"`), creating it on first reference by `DS` or `C`. Within one read, symbol `n`, whether it first appears in a `C n` or in a `DS n`, SHALL always map to a cell created by that read; an in-memory cell is never looked up by the name `"n"`, reused or cleared. Name collisions are resolved as `"n_k"` with the smallest `k >= 1` not in use: on a second `DS n` (after `DD n`, after a `9` renamed the symbol, or a plain redefinition) a cell defined earlier in the same read that still has the name `"n"` is renamed `"n_k"` with the warning "cell definition n reused.", as in Magic, and a fresh cell is created for the new definition; the earlier cell and its callers stay intact. A cell that existed before the read keeps its name, and the new cell becomes `"n_k"`. A forward `C n` and the later `DS n` name the same new cell. These rules apply in both `magic-compat` settings (Q-MASK-318, resolution: fix; Magic can clear a user cell named `"n"` or a cell defined earlier in the read, which loses data). `DD n` depends on the setting (Q-MASK-318, resolution: compat for `DD`): with `magic-compat` ON (the default) it forgets the mapping of symbol `n` only, as in Magic; with it OFF it forgets every symbol numbered `n` or higher, as CIF 2.0 specifies. Magic never writes `DD`, so Magic-written CIF reads the same in both settings.
+
+The user extension `9 NAME` renames the current cell to `NAME`. Outside any definition it depends on the `magic-compat` setting (Q-MASK-317, resolution: compat): with it ON (the default) it renames the edit cell (the cell receiving top-level geometry), as in Magic; with it OFF it is ignored with a warning. If `NAME` already exists, the error "NAME already exists, so cell from CIF is named OLD." is reported and the name is unchanged.
 
 Compatibility: exact
 
@@ -111,9 +113,20 @@ Compatibility: exact
 - **THEN** the first definition becomes cell `5_1` and the second cell `5`
 - **AND** calls to symbol 5 read before the second `DS 5` refer to `5_1`
 
+#### Scenario: Existing user cell is not cleared
+- **GIVEN** a cell named `5` with paint is open before the read, and a file with `DS 5; ... DF; C 5; E`
+- **WHEN** the file is read
+- **THEN** the existing cell `5` keeps its paint, the definition creates cell `5_1`, and the top-level call places `5_1`
+
+#### Scenario: DD forgets higher symbols with magic-compat OFF
+- **GIVEN** a file that defines symbols 3 and 7, then `DD 3;`, then `C 7;`
+- **WHEN** the file is read with `magic-compat` OFF
+- **THEN** symbol 7 is forgotten, so `C 7` refers to a new, undefined cell, which is reported as used but not defined
+- **AND** with `magic-compat` ON `C 7` places the cell defined earlier for symbol 7
+
 ### Requirement: Calls and transformations
 
-Hefesto SHALL process `C n transforms` by creating an instance of the cell for symbol `n` in the current cell (or the edit cell at top level), with transform `T` built as follows: start from identity; for each transformation in order, compose so that it is applied after the previous ones: `T p` translates by `p` (a point at scale 1, see "Point scaling"); `M X` mirrors x (x → −x); `M Y` mirrors y (y → −y); `R a b` rotates the x axis onto the direction `(a,b)`: `(+,0)` identity, `(−,0)` 180°, `(0,+)` 90° counter-clockwise, `(0,−)` 90° clockwise; any other direction is reported "non-manhattan direction vector (a, b); ignored." and treated as identity. The final translation components are converted from read units to internal units with exact conversion (capability `mask-input-styles`). The instance gets the pending `91` id if any (then cleared), otherwise a default id. Placing a cell inside itself or its descendants is reported ("attempt to place cell use inside its own definition!") and skipped. A malformed transformation is reported and the call is still made with the transform parsed so far, unscaled (see Q-MASK-335).
+Hefesto SHALL process `C n transforms` by creating an instance of the cell for symbol `n` in the current cell (or the edit cell at top level), with transform `T` built as follows: start from identity; for each transformation in order, compose so that it is applied after the previous ones: `T p` translates by `p` (a point at scale 1, see "Point scaling"); `M X` mirrors x (x → −x); `M Y` mirrors y (y → −y); `R a b` rotates the x axis onto the direction `(a,b)`: `(+,0)` identity, `(−,0)` 180°, `(0,+)` 90° counter-clockwise, `(0,−)` 90° clockwise; any other direction is reported "non-manhattan direction vector (a, b); ignored." and treated as identity. The final translation components are converted from read units to internal units with exact conversion (capability `mask-input-styles`). The instance gets the pending `91` id if any (then cleared), otherwise a default id. Placing a cell inside itself or its descendants is reported ("attempt to place cell use inside its own definition!") and skipped. A malformed transformation is reported; with `magic-compat` ON (the default) the call is still made with the transform parsed so far, unscaled, as in Magic; with it OFF "call ignored" is also reported, the call is skipped and the pending `91` id is cleared (Q-MASK-335, resolution: compat). With `magic-compat` OFF, a call to a symbol defined earlier in the read also copies that symbol's saved `copyup` planes into the calling cell's read planes under the call transform, and a call to a symbol defined later warns once per read and copies nothing; with it ON the CIF reader never copies them (Q-MASK-309, resolution: compat; capability `mask-input-styles` "Input operator copyup").
 
 Compatibility: exact
 
@@ -157,7 +170,7 @@ Compatibility: exact
 
 ### Requirement: Box command
 
-Hefesto SHALL process `B L W cx cy [dx dy]` as follows: `(L, W)` is scaled as a point with `iscale = 1`; `L <= 0` or `W <= 0` is reported and the box ignored. `(cx, cy)` is scaled with `iscale = 2` (giving `2c`); if this subdivides read units, `L` and `W` are multiplied by the same factor. The rectangle `[−L, L] × [−W, W]` is rotated by the direction `(dx, dy)` if present (same mapping as the `R` transformation), then each coordinate is computed as `(r + 2c) / 2` with C integer division (truncation toward zero), and the resulting rectangle is added to the current layer. See Q-MASK-315 for odd lengths.
+Hefesto SHALL process `B L W cx cy [dx dy]` as follows: `(L, W)` is scaled as a point with `iscale = 1`; `L <= 0` or `W <= 0` is reported and the box ignored. `(cx, cy)` is scaled with `iscale = 2` (giving `2c`); if this subdivides read units, `L` and `W` are multiplied by the same factor. The rectangle `[−L, L] × [−W, W]` is rotated by the direction `(dx, dy)` if present (same mapping as the `R` transformation), then each coordinate is computed as `(r + 2c) / 2`, and the resulting rectangle is added to the current layer. When `r + 2c` is odd the result depends on the `magic-compat` setting (Q-MASK-315, resolution: compat): with it ON (the default) C integer division truncates toward zero, as in Magic, so odd lengths lose width asymmetrically and a box straddling 0 can lose width on both sides (`B 3 2 0 0` gives x from −1 to 1); with it OFF the read units are first subdivided by 2 (the same mechanism as a center rescale, capability `mask-input-styles`), so the box is exact.
 
 Compatibility: exact
 
@@ -171,7 +184,8 @@ Compatibility: exact
 #### Scenario: Odd length centered on an integer
 - **GIVEN** scale 1/1 and `B 3 2 10 0;`
 - **WHEN** it is read
-- **THEN** the x extent is `(−3+20)/2 = 8` to `(3+20)/2 = 11`, giving (8,−1)-(11,1)
+- **THEN** with `magic-compat` ON the x extent is `(−3+20)/2 = 8` to `(3+20)/2 = 11`, giving (8,−1)-(11,1)
+- **AND** with `magic-compat` OFF the read units are subdivided by 2 and the box is (17,−2)-(23,2) in the new units, i.e. x from 8.5 to 11.5 in the original units
 
 #### Scenario: Rotated box
 - **GIVEN** scale 1/1 and `B 40 20 0 0 0 1;`
@@ -180,7 +194,7 @@ Compatibility: exact
 
 ### Requirement: Round flash command
 
-Hefesto SHALL process `R d cx cy` by computing `d' = d*N / Dn` (truncating; "Roundflash diameter snapped to nearest integer boundary." when inexact), scaling the center with `iscale = 2` (and multiplying `d'` by any subdivision factor), and adding the axis-aligned square `[(2cx − d')/2, (2cx + d')/2] × [(2cy − d')/2, (2cy + d')/2]` with truncating division. The flash is not approximated by a polygon (see Q-MASK-316).
+Hefesto SHALL process `R d cx cy` by computing `d' = d*N / Dn` (truncating; "Roundflash diameter snapped to nearest integer boundary." when inexact), scaling the center with `iscale = 2` (and multiplying `d'` by any subdivision factor), and adding the axis-aligned square `[(2cx − d')/2, (2cx + d')/2] × [(2cy − d')/2, (2cy + d')/2]` with truncating division. The flash is not approximated by a polygon, in both `magic-compat` settings (Q-MASK-316, resolution: replicate).
 
 Compatibility: exact
 
@@ -206,7 +220,7 @@ Compatibility: exact
 
 ### Requirement: Wire command
 
-Hefesto SHALL process `W w p1 p2 ...` by computing `w' = w*N / Dn` (truncating, warning "Wire width snapped to nearest integer boundary." when inexact), scaling the path with `iscale = 2` (doubled coordinates `P_i`; `w'` multiplied by any subdivision factor), and converting the path to polygons with square end extensions (see Q-MASK-333) as follows (all in doubled coordinates, double-precision arithmetic, `round` = round half away from zero, results divided by 2):
+Hefesto SHALL process `W w p1 p2 ...` by computing `w' = w*N / Dn` (truncating, warning "Wire width snapped to nearest integer boundary." when inexact), scaling the path with `iscale = 2` (doubled coordinates `P_i`; `w'` multiplied by any subdivision factor), and converting the path to polygons with square half-width end extensions in both `magic-compat` settings (Q-MASK-333, resolution: replicate; the CIF standard specifies round ends, which no reference tool produces) as follows (all in doubled coordinates, double-precision arithmetic, `round` = round half away from zero, results divided by 2):
 
 1. Remove consecutive duplicate points. A single-point path uses the point as both ends.
 2. For each segment `P_{i-1} → P_i` with angle `θ`: at the first point of a polygon, move the start back by `w'` along `−θ` (end extension of `w'/2` real units) and emit the two corner points `round((P ± w'·(cos(θ−90°), sin(θ−90°)))/2)`.
@@ -229,7 +243,7 @@ Compatibility: exact
 
 ### Requirement: Label user extensions
 
-Hefesto SHALL process `94 NAME x y [LAYER]` as a point label: the point is scaled with `iscale = 1` and converted to internal units with "any" (snapping) conversion; the label rectangle is that point. `95 NAME L W x y [LAYER]` is an area label: `(L, W)` is scaled with `iscale = 1`, the center with `iscale = 2`; `ll = 2c − (L,W)`, `ur = 2c + (L,W)`; if both components of `ll` are even, `ll` and `ur` are halved, otherwise the input style is rescaled by 2 (without changing the symbol scale, see Q-MASK-314); each corner is then converted with "any" conversion. In both cases, if `LAYER` is given and is a CIF layer of the style, the label type is that layer's label type; if `LAYER` is unknown "label attached to unknown layer NAME." is reported and the label goes on space; if absent, the type is the current default label type (94) or space (95). The label is sticky when the layer's label kind is not NONE (see Q-MASK-327). Labels whose type is "discard" are dropped. Label names are read up to the first whitespace or `;` (see Q-MASK-313).
+Hefesto SHALL process `94 NAME x y [LAYER]` as a point label: the point is scaled with `iscale = 1` and converted to internal units with "any" (snapping) conversion; the label rectangle is that point. `95 NAME L W x y [LAYER]` is an area label: `(L, W)` is scaled with `iscale = 1`, the center with `iscale = 2`; `ll = 2c − (L,W)`, `ur = 2c + (L,W)`; if both components of `ll` are even, `ll` and `ur` are halved, otherwise the input style is rescaled by 2 and the symbol scale numerator is multiplied by 2, as `CIFParsePoint` does, so later geometry in the symbol keeps its size, in both `magic-compat` settings (Q-MASK-314, resolution: fix; Magic does not update the symbol scale and corrupts the following geometry of the symbol; golden cases with odd `95` corners get a deviation entry); each corner is then converted with "any" conversion. In both cases, if `LAYER` is given and is a CIF layer of the style, the label type is that layer's label type; if `LAYER` is unknown "label attached to unknown layer NAME." is reported and the label goes on space; if absent, the type is the current default label type (94) or space (95). With `LAYER` given, the label is sticky when that layer's label kind is not NONE. Without `LAYER` (a `94` or `95` taking the default type) the stickiness depends on the `magic-compat` setting (Q-MASK-327, resolution: compat): with it ON (the default), as in Magic, the label kind is taken from the first CIF layer whose index is less than the number of `layer`/`templayer` rules and whose label type equals the current default label type; with it OFF it is the label kind of the CIF layer selected by the current `L`, and the label is not sticky when no valid layer is current. Labels whose type is "discard" are dropped. Label names are read up to the first whitespace or `;` (see Q-MASK-313).
 
 Compatibility: exact
 
@@ -260,7 +274,7 @@ Compatibility: exact
 
 ### Requirement: Read diagnostics
 
-Hefesto SHALL count errors and warnings separately per read and report them prefixed with "Error at line L of CIF file: " / "Warning at line L of CIF file: " (or "CIF file read error: "/"CIF file read warning: " when the line is 0). Under warning level `none` nothing is printed; under `limit` the first 99 of each kind are printed and the 100th prints "Error limit set:  Remaining errors will not be reported." (resp. "Warning limit set:  Remaining warnings will not be reported."); levels `default`, `align` and `redirect` print everything for CIF input (redirection applies only to GDS input, see Q-MASK-331).
+Hefesto SHALL count errors and warnings separately per read and report them prefixed with "Error at line L of CIF file: " / "Warning at line L of CIF file: " (or "CIF file read error: "/"CIF file read warning: " when the line is 0). Under warning level `none` nothing is printed; under `limit` the first 99 of each kind are printed and the 100th prints "Error limit set:  Remaining errors will not be reported." (resp. "Warning limit set:  Remaining warnings will not be reported."); levels `default` and `align` print everything for CIF input. Level `redirect` depends on the `magic-compat` setting (Q-MASK-331, resolution: compat): with it ON (the default) CIF messages are printed to the console and the redirect file is used only by GDS input, as in Magic; with it OFF CIF read errors and warnings go to the redirect file, opened for writing at the start of each read as for GDS, and nothing is printed to the console when no file name was given. In both settings a message's prefix and body go to the same stream.
 
 Compatibility: informative
 
@@ -279,7 +293,7 @@ Hefesto SHALL begin every CIF output file with these comment lines, in order, ea
 ( @@user : USER );
 ( @@machine : HOST );
 ( @@source : SOURCE );
-( @@tool : Magic VERSION.REVISION );
+( @@tool : Hefesto VERSION );
 ( @@compiled : COMPILETIME );
 ( @@technology : TECHNAME );
 ( @@version : TECHVERSION );
@@ -288,7 +302,7 @@ Hefesto SHALL begin every CIF output file with these comment lines, in order, ea
 ( @@date : DATE );
 ```
 
-`USER`/`HOST` come from the environment (`?` when unset), `SOURCE` is the root cell's file path (`?` when none), `TECHVERSION` is `unknown` when the technology declares none, the `@@techdesc` line is omitted when there is no description, and `DATE` is the local time in C `ctime` format without the trailing newline. The `@@user`, `@@machine`, `@@source`, `@@tool`, `@@compiled` and `@@date` values are host/time dependent (see Q-MASK-324).
+The lines, their order and format are the same in both `magic-compat` settings (Q-MASK-324, resolution: platform). `USER`/`HOST` come from the environment on desktop platforms (`?` when unset); on iPadOS they are `?` unless the app provides them. `SOURCE` is the root cell's file path (`?` when none). The `@@tool` value is `Hefesto <version>` and `COMPILETIME` is Hefesto's build time: Hefesto does not claim to be Magic. `TECHVERSION` is `unknown` when the technology declares none, the `@@techdesc` line is omitted when there is no description, and `DATE` is the local time in C `ctime` format without the trailing newline. Golden comparisons mask the six host-, build- or time-dependent values `@@user`, `@@machine`, `@@source`, `@@tool`, `@@compiled` and `@@date`, and run with `TZ=UTC`.
 
 Compatibility: informative
 
@@ -301,11 +315,13 @@ Compatibility: informative
 
 ### Requirement: CIF output symbol numbering and order
 
-Hefesto SHALL number and order symbols as follows. The root cell is symbol 1. Starting with a stack containing only the root, repeatedly pop a cell; if it was already written skip it; otherwise, enumerate its child instances in database enumeration order and give each child cell not yet numbered the next number (2, 3, …) and push it; then write the popped cell's definition. Consequently parents are written before their children and the last-numbered pending cell is written first. A cell that cannot be read from disk is skipped. Before writing, the whole hierarchy below the root is loaded and timestamp mismatches are resolved; if a cell cannot be loaded the write fails with "Failure to read in entire subtree of the cell." The order of child enumeration must be made deterministic (see Q-MASK-323).
+Hefesto SHALL number and order symbols as follows. The root cell is symbol 1. Starting with a stack containing only the root, repeatedly pop a cell; if it was already written skip it; otherwise, enumerate its child instances in *use enumeration order* and give each child cell not yet numbered the next number (2, 3, …) and push it; then write the popped cell's definition. Consequently parents are written before their children and the last-numbered pending cell is written first. A cell that cannot be read from disk is skipped. Before writing, the whole hierarchy below the root is loaded and timestamp mismatches are resolved; if a cell cannot be loaded the write fails with "Failure to read in entire subtree of the cell."
+
+*Use enumeration order* is the order defined by capability `gds-write` requirement "Structure ordering" for the current `magic-compat` setting, used for both the numbering and stack order here and the order of `C` calls ("CIF output calls and arrays"); no separate CIF order is defined (Q-MASK-323, resolution: compat, following Q-MASK-204). With `magic-compat` ON the order is sampled where Magic samples it: children are numbered when their parent is processed, before the parent's own mask generation (CIFGenSubcells), and calls are written after it, so for a cell with 10 or more uses whose generation ran a non-surrounding search the two orders can differ, as in Magic. With `magic-compat` OFF both use the canonical reverse-insertion order.
 
 Compatibility: exact
 
-(Magic ref: cif/CIFwrite.c:121-232, cif/CIFwrite.c:234-258, cif/CIFwrite.c:309-356)
+(Magic ref: cif/CIFwrite.c:121-232, cif/CIFwrite.c:234-258, cif/CIFwrite.c:309-356, cif/CIFwrite.c:333, cif/CIFwrite.c:467)
 
 #### Scenario: Two-level hierarchy
 - **GIVEN** root `top` with instances of `a` then `b` (in enumeration order), and `a` instancing `c`
@@ -347,7 +363,7 @@ Compatibility: exact
 
 ### Requirement: CIF output labels
 
-Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) is written as `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or, with area labels, `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text is written verbatim (see Q-MASK-322). Area labels are disabled by default (see Q-MASK-337).
+Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) is written as `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or, with area labels, `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text depends on the `magic-compat` setting (Q-MASK-322, resolution: compat): with it ON (the default) it is written verbatim, as in Magic, and a warning names each label whose text contains whitespace or `;` (the file will not read back); with it OFF each space, tab, newline and `;` in the written text is replaced by `_`, with a warning in the GDS writer's form (`characters changed in string ...; modified string is ...`). The layout's own labels are never changed. Area labels are disabled by default (see Q-MASK-337).
 
 Compatibility: exact
 
@@ -357,6 +373,12 @@ Compatibility: exact
 - **GIVEN** `S = 100`, `R = 1`, and a label `out` at point (4,1) of type m1 whose output layer is CMF
 - **WHEN** CIF is written
 - **THEN** the line `94 out 800 200 CMF;` is produced
+
+#### Scenario: Label text with a space
+- **GIVEN** the same label with text `out 1`
+- **WHEN** CIF is written
+- **THEN** with `magic-compat` ON the line `94 out 1 800 200 CMF;` is produced with a warning
+- **AND** with `magic-compat` OFF the line `94 out_1 800 200 CMF;` is produced with a warning
 
 ### Requirement: CIF output calls and arrays
 
@@ -388,7 +410,7 @@ Compatibility: exact
 
 ### Requirement: CIF output preconditions and flat output
 
-Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output" (one temporary cell holding the flattened paint, no labels, written as symbol 1 named `__CIF2__`), using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End` (see Q-MASK-321).
+Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output", using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End`. Its form depends on the `magic-compat` setting (Q-MASK-321 and Q-MASK-411, resolution: compat): with it ON (the default), as in Magic, one temporary cell holds the flattened paint only and is written as symbol 1 named `__CIF2__` (with any `cif prefix`), with no cell labels, and mask-hints and boundary layers come out empty; with it OFF symbol 1 is named after the root cell with the prefix and `UNNAMED` rules of hierarchical output, and the flat cell also holds the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes, written in the same `94`/`95` format.
 
 Compatibility: exact
 
@@ -398,6 +420,7 @@ Compatibility: exact
 - **GIVEN** a two-level hierarchy
 - **WHEN** flat CIF is written
 - **THEN** the file contains exactly one `DS 1 ...` definition with `9 __CIF2__;` and no `C` line inside it
+- **AND** with `magic-compat` OFF that definition has `9 <root name>;` and the flattened labels
 
 ### Requirement: cif command dispatch
 
@@ -414,7 +437,7 @@ Compatibility: behavioral
 
 ### Requirement: cif read, write and flat options
 
-Hefesto SHALL implement `cif read FILE` (read CIF into the edit cell from `FILE.cif` searched along the cell search path), `cif write FILE` (hierarchical output of the window root to `FILE.cif` in the current directory) and `cif flat FILE` (flat output). Magic always appends `.cif` to the given name (see Q-MASK-320). An unopenable file is reported ("Cannot open FILE.cif to read CIF." / "... to write CIF") and nothing else happens; an I/O error during writing reports "I/O error in writing file FILE." and "File may be incompletely written.".
+Hefesto SHALL implement `cif read FILE` (read CIF into the edit cell from `FILE.cif` searched along the cell search path), `cif write FILE` (hierarchical output of the window root to `FILE.cif` in the current directory) and `cif flat FILE` (flat output). Appending `.cif` depends on the `magic-compat` setting (Q-MASK-320, resolution: compat): with it ON (the default) `.cif` is always appended, as in Magic (`cif write chip.cif` writes `chip.cif.cif`); with it OFF it is appended only when the name does not already end in `.cif`. In both settings the GUI and the iPadOS document picker pass the picked file name without its extension. An unopenable file is reported ("Cannot open FILE.cif to read CIF." / "... to write CIF") and nothing else happens; an I/O error during writing reports "I/O error in writing file FILE." and "File may be incompletely written.".
 
 Compatibility: behavioral
 
@@ -502,7 +525,7 @@ Compatibility: behavioral
 
 ### Requirement: cif polygon and unfracture options
 
-Hefesto SHALL implement `cif polygon subcells [yes|no]` (stores a flag, default no; it has no effect on CIF reading, see Q-MASK-319) and `cif unfracture [yes|no]` (default no; when yes, each generated output layer has adjacent non-Manhattan tiles merged after generation, as specified in capability `mask-hierarchical-generation` requirement "Non-manhattan merge option"). For `polygon`, with only the sub-word `subcells` given, the current value is reported. For `unfracture`, Magic reads the value from the fourth word (`cif unfracture <any> yes|no`), `cif unfracture <any>` reports the current value, and `cif unfracture` alone is an argument error (see Q-MASK-413).
+Hefesto SHALL implement `cif polygon subcells [yes|no]` (stores a flag, default no; it has no effect on CIF reading, see Q-MASK-319) and `cif unfracture [yes|no]` (default no; when yes, each generated output layer has adjacent non-Manhattan tiles merged after generation, as specified in capability `mask-hierarchical-generation` requirement "Non-manhattan merge option"). For `polygon`, with only the sub-word `subcells` given, the current value is reported. For `unfracture`, the value is read according to the `magic-compat` setting (Q-MASK-413, resolution: compat; settles D-20): with it ON (the default), as in Magic, the value is read from the fourth word (`cif unfracture <any> yes|no`), `cif unfracture <any>` reports the current value, and Hefesto warns that the value was not applied when that third word is `yes` or `no`; with it OFF `cif unfracture yes|no` sets the switch, and the four-word form is still accepted. In both settings `cif unfracture` alone is an argument error.
 
 Compatibility: behavioral
 
@@ -512,9 +535,14 @@ Compatibility: behavioral
 - **WHEN** `cif polygon subcells` is executed with no value
 - **THEN** the current setting (default no) is reported
 
+#### Scenario: Third-word unfracture value
+- **WHEN** `cif unfracture yes` is executed
+- **THEN** with `magic-compat` ON the current value is reported unchanged, with a warning that `yes` was not applied
+- **AND** with `magic-compat` OFF the switch is set to yes
+
 ### Requirement: cif see, paint, coverage and statistics options
 
-Hefesto SHALL implement, for the window root cell and the cursor box: `cif see LAYERS` — flatten paint under the box grown by the style radius, generate the listed output layers (comma-separated, with their dependencies) and show each tile as feedback with text `CIF layer "LAYERS"`; `cif paint LAYERS TYPE [CELL]` — generate as for `see`, then paint every tile, converted to internal units by truncating division by `S` and skipping degenerate results, as Magic type `TYPE` into `CELL` (created if absent) or the root cell, followed by redisplay and DRC re-check of the box; `cif [list] coverage LAYER [box]` — generate over the cell bounding box (or the box), sum the areas of all generated tiles (triangles counted as full rectangles, see Q-MASK-325) and report `Cell|Cursor Box Area`, `Layer Bounding Area`, `Layer Total Area` (in CIF units², area scaled by `S²`) and `Coverage in cell|box = %1.1f%%`, or only the fraction with `list`; `cif statistics` — print and reset the counters of tile operations, hierarchy tile operations, rectangles output and hierarchical rectangles as `recent/total`.
+Hefesto SHALL implement, for the window root cell and the cursor box: `cif see LAYERS` — flatten paint under the box grown by the style radius, generate the listed output layers (comma-separated, with their dependencies) and show each tile as feedback with text `CIF layer "LAYERS"`; `cif paint LAYERS TYPE [CELL]` — generate as for `see`, then paint every tile, converted to internal units by truncating division by `S` and skipping degenerate results, as Magic type `TYPE` into `CELL` (created if absent) or the root cell, followed by redisplay and DRC re-check of the box; `cif [list] coverage LAYER [box]` — generate over the cell bounding box (or the box), sum the areas of all generated tiles (a triangle counts as its full rectangle with `magic-compat` ON, as in Magic, and as half its rectangle with it OFF, summed as twice the area in 64-bit integers and halved at the end; Q-MASK-325, resolution: compat) and report `Cell|Cursor Box Area`, `Layer Bounding Area`, `Layer Total Area` (in CIF units², area scaled by `S²`) and `Coverage in cell|box = %1.1f%%`, or only the fraction with `list`; `cif statistics` — print and reset the counters of tile operations, hierarchy tile operations, rectangles output and hierarchical rectangles as `recent/total`.
 
 Compatibility: behavioral
 

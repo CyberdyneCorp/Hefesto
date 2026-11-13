@@ -68,12 +68,15 @@ Per tile T:
 - **AND** the reported error is [10,14]×[0,100] in internal units
 
 ### Requirement: Mapping mask errors to layout coordinates
-A mask-layer candidate rectangle C (mask units, already clipped to E) SHALL be converted to internal units by dividing each coordinate by σ with C truncating division (toward zero); if a resulting extent is zero it SHALL be widened by one unit (xbot−1 if xbot < 0, otherwise xtop+1; same for y); the result is clipped to L and reported if non-null.
+A mask-layer candidate rectangle C (mask units, already clipped to E) SHALL be converted to internal units according to the `magic-compat` setting (Q-DRC-13, resolution: compat):
 Compatibility: exact
 
-Area and maxwidth errors convert the whole start tile rectangle by truncating division without the zero-extent widening. See Q-DRC-13 for the asymmetric truncation of negative coordinates.
+- With `magic-compat` ON (the default), as in Magic: each coordinate is divided by σ with C truncating division (toward zero); if a resulting extent is zero it SHALL be widened by one unit (xbot−1 if xbot < 0, otherwise xtop+1; same for y). Area and maxwidth errors convert the whole start tile rectangle by truncating division without the zero-extent widening, and an area or maxwidth error whose rectangle collapses to zero width or height is dropped (not reported).
+- With `magic-compat` OFF: on every path (spacing, width, area, maxwidth) lower edges are mapped with floor(x/σ) and upper edges with ceil(x/σ), so no error rectangle is empty and area and maxwidth violations narrower than one internal unit are reported.
 
-(Magic ref: drc/DRCcif.c:1035-1075, drc/DRCcif.c:1395-1405, drc/DRCcif.c:1490-1505)
+The result is clipped to L and reported if non-null. In both settings Hefesto SHALL count the area and maxwidth errors whose rectangle collapses under truncating division in a diagnostic, so an error dropped with `magic-compat` ON is visible.
+
+(Magic ref: drc/DRCcif.c:1035-1075, drc/DRCcif.c:1052-1068, drc/DRCcif.c:1364-1367, drc/DRCcif.c:1468-1471, drc/DRCcif.c:1497-1500, drc/DRCcif.c:1554-1557)
 
 #### Scenario: Sub-unit error widened
 - **GIVEN** σ = 10 and a mask candidate [103,107]×[0,50]
@@ -84,6 +87,17 @@ Area and maxwidth errors convert the whole start tile rectangle by truncating di
 - **GIVEN** σ = 10 and a mask candidate [−15,−5]×[0,10]
 - **WHEN** converted
 - **THEN** the result is [−1,0]×[0,1]
+
+#### Scenario: Negative coordinate with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, σ = 10 and a mask candidate [−15,−5]×[0,10]
+- **WHEN** converted
+- **THEN** the result is [−2,0]×[0,1]
+
+#### Scenario: Collapsed area error
+- **GIVEN** σ = 10, `cifarea VIA1 10000 50 "via area"`, and an isolated VIA1 rectangle [103,107]×[0,90] (area 360)
+- **WHEN** checked with `magic-compat` ON
+- **THEN** the tile truncates to [10,10]×[0,9], no error is reported, and the collapsed-error diagnostic count is 1
+- **AND** with `magic-compat` OFF the error [10,11]×[0,9] is reported
 
 ### Requirement: Mask area rule
 A mask AREA rule SHALL flood-fill the 4-connected solid region containing each solid tile, summing full tile areas in mask units², and report the start tile's rectangle (converted, clipped to L) when the total is below the limit; the fill stops without error when the sum reaches the limit or a visited tile has an edge exactly equal to an edge of K·σ.

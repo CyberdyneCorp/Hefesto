@@ -162,13 +162,17 @@ for each tile T (solid for grow, space for shrink), rect [x1,x2]×[y1,y2] in mu:
 
 ### Requirement: grow-grid
 
-`grow-grid g` SHALL replace cur by the union over solid tiles of each tile's bounding rectangle with each finite side moved outward by `|c| mod g`, where c is that side's coordinate.
+`grow-grid g` SHALL replace cur by the union over solid tiles of each tile's bounding rectangle with each finite side moved outward according to the `magic-compat` setting (Q-MASK-1, resolution: compat): with it ON (the default) by `|c| mod g`, where c is that side's coordinate, as in Magic; with it OFF to the g-grid, rounding outward.
 
 Compatibility: exact
 
-`x1' = x1 - (|x1| mod g)`, `y1' = y1 - (|y1| mod g)`, `x2' = x2 + (|x2| mod g)`, `y2' = y2 + (|y2| mod g)`. Split tiles are treated as their full rectangle. This snaps lower/left edges with non-negative coordinates and upper/right edges with non-positive coordinates to the g-grid; other edges generally end off-grid. See Q-MASK-1.
+With `magic-compat` ON: `x1' = x1 - (|x1| mod g)`, `y1' = y1 - (|y1| mod g)`, `x2' = x2 + (|x2| mod g)`, `y2' = y2 + (|y2| mod g)`. This snaps lower/left edges with non-negative coordinates and upper/right edges with non-positive coordinates to the g-grid; other edges generally end off-grid.
 
-(Magic ref: cif/CIFgen.c:502-545, cif/CIFgen.c:5179-5191)
+With `magic-compat` OFF: `x1' = floor(x1/g)·g`, `y1' = floor(y1/g)·g`, `x2' = ceil(x2/g)·g`, `y2' = ceil(y2/g)·g`, so every finite edge is on the g-grid and the result contains the input.
+
+In both settings split tiles are treated as their full rectangle and infinite edges are unchanged. The same function serves `grow-grid` in mask input styles (Q-MASK-334, capability `mask-input-styles`).
+
+(Magic ref: cif/CIFgen.c:502-545, cif/CIFgen.c:519-522, cif/CIFgen.c:526-533, cif/CIFgen.c:5179-5191)
 
 #### Scenario: Positive coordinates
 
@@ -181,6 +185,12 @@ Compatibility: exact
 - **GIVEN** cur = `[-7,-3]×[0,5]`
 - **WHEN** `grow-grid 5`
 - **THEN** x1 = -7 - 2 = -9 and x2 = -3 + 3 = 0, giving `[-9,0]×[0,5]`
+
+#### Scenario: Outward rounding with magic-compat OFF
+
+- **GIVEN** `magic-compat` OFF and cur = `[-7,12]×[3,12]`
+- **WHEN** `grow-grid 5`
+- **THEN** the result is `[-10,15]×[0,15]`
 
 ### Requirement: grow-min
 
@@ -220,7 +230,7 @@ minBoxGrid(A, g):
 snapOutward(A): if gridLimit > 1, move x1,y1 down and x2,y2 up to multiples of gridLimit
 ```
 
-The per-tile result depends on the canonical decomposition. See Q-MASK-15.
+The per-tile result depends on the canonical decomposition. The algorithm is replicated exactly in both `magic-compat` settings (Q-MASK-15, resolution: replicate): h is evaluated exactly as Magic writes it, `(int) sqrt((double)(g*g) - 0.25 * (double)((g+W)*(g+W)) + 0.5)`: `g*g` and `(g+W)*(g+W)` are 32-bit `int` products, the subtraction and addition are IEEE double operations in that order, the square root is the double `sqrt`, and the `(int)` conversion truncates. The style loader warns when grow-min is used on a layer whose DRC rules are not `rect_only`.
 
 (Magic ref: cif/CIFgen.c:163-237, cif/CIFgen.c:272-318, cif/CIFgen.c:326-485)
 
@@ -270,7 +280,7 @@ for each tile X of a type in T, rect [x1,x2]×[y1,y2] (scaled), own type τ:
      xl = xr
 ```
 
-(Neighbour coordinates are scaled before use.) For a split tile, sides on which the tile's own type is absent are skipped, and the triangle is bloated only along its hypotenuse direction by `dist` of the type on the other side of the diagonal: two rectangles of thickness `dist` along the legs and the triangle translated by `dist` outward (or, with `grow-euclidean`, the Euclidean grow of the tile). See Q-MASK-20.
+(Neighbour coordinates are scaled before use.) For a split tile, sides on which the tile's own type is absent are skipped, and the triangle is bloated only along its hypotenuse direction by `dist` of the type on the other side of the diagonal: two rectangles of thickness `dist` along the legs and the triangle translated by `dist` outward (or, with `grow-euclidean`, the Euclidean grow of the tile), in both `magic-compat` settings (Q-MASK-20, resolution: replicate).
 
 (Magic ref: cif/CIFgen.c:923-1268, cif/CIFtech.c:1295-1362)
 
@@ -307,9 +317,9 @@ Definitions:
 
 - s = scaleFactor of the style; p2 = the single database plane of the T2 types (when T2 are database types).
 - `connect` = the set of T2 database types (every type with a non-zero bloat value), or `{solid}` when T2 are mask layers.
-- `a / s` divides each coordinate with C truncation toward zero (so `-17/10 = -1`); `a · s` multiplies each coordinate.
+- `a / s` divides each coordinate: with `magic-compat` ON with C truncation toward zero (so `-17/10 = -1`), as in Magic; with it OFF rounding outward, floor for lower edges and ceil for upper edges (so `[-17,23] / 10 = [-2,3]`) (Q-MASK-232, resolution: compat). `a · s` multiplies each coordinate.
 - A tile's *mark* is one of `unmarked`, `pending`, `processed`. All marks start `unmarked`. `push(u, side)` pushes (u, side) onto a LIFO stack and sets mark(u) = pending, but only if mark(u) = unmarked.
-- *Seed search* over area A in plane P: enumerate tiles of P whose type is in `connect` (database) or solid (mask layer) and overlap A, in tile enumeration order (capability `layout-geometry-model`); `push` the first one whose mark is `unmarked` and stop. Tiles that are already marked are skipped.
+- *Seed search* over area A in plane P: enumerate tiles of P whose type is in `connect` (database) or solid (mask layer) and overlap A, in tile enumeration order (capability `layout-geometry-model`). With `magic-compat` ON, `push` the first one whose mark is `unmarked` and stop, as in Magic; with it OFF, `push` every one whose mark is `unmarked` (Q-MASK-231, resolution: compat). Tiles that are already marked are skipped.
 
 Trigger enumeration order: database planes in plane order, each searched over the evaluation area E for the database types of T; then the mask layers of T in layer order, each over its whole plane. Triggers never come from cur.
 
@@ -349,7 +359,7 @@ flood(stack):
   if d > 0: set every remembered tile to unmarked
 ```
 
-`dir(t)` is the split direction (0 for a non-split tile). Split tiles are never clipped: the clip only decides whether they are painted and expanded. With d = 0 the marks persist for the rest of the operation, so a region reached from one trigger is not re-flooded, and a later trigger whose first overlapping region is already processed seeds the next unprocessed region overlapping it instead (Q-MASK-231). After all triggers, marks are reset: on the T2 mask layers (all solid tiles), or on plane p2 for the types `connect ∪ T` (database case). Trigger tiles of case C on another plane than p2 (contact images) are not reset (Q-MASK-230). Mask-layer triggers in case A use truncating division (Q-MASK-232). See capability `mask-output-styles` for argument rules.
+`dir(t)` is the split direction (0 for a non-split tile). Split tiles are never clipped: the clip only decides whether they are painted and expanded. With d = 0 the marks persist for the rest of the operation, so a region reached from one trigger is not re-flooded. With `magic-compat` ON a later trigger whose first overlapping region is already processed seeds the next unprocessed region overlapping it instead, so the result depends on trigger order; with it OFF every overlapping region is seeded, so the result is the union of all regions touching any trigger, independent of order (Q-MASK-231, resolution: compat). After all triggers, marks are reset: on the T2 mask layers (all solid tiles), or on plane p2 for the types `connect ∪ T` (database case). With `magic-compat` ON, trigger tiles of case C on another plane than p2 (contact images) are not reset, as in Magic: their marks stay set for the rest of the layer generation of that cell, so a later bloat-all with the same trigger produces nothing for it; marks never persist past the generation pass of the cell or into the editable database. With it OFF the marks on every plane searched for triggers are reset at the end of the operation (Q-MASK-230, resolution: compat). Mask-layer triggers in case A use the `a / s` division above, truncating with `magic-compat` ON and rounding outward with it OFF (Q-MASK-232, resolution: compat). See capability `mask-output-styles` for argument rules.
 
 (Magic ref: cif/CIFgen.c:1233-1249, cif/CIFgen.c:1332-1344, cif/CIFgen.c:1374-1625, cif/CIFgen.c:3974-4030, cif/CIFgen.c:5282-5330, drc/DRCtech.c:113-126)
 
@@ -373,6 +383,14 @@ flood(stack):
 - **THEN** (case A) the seed area is `[-1,2]×[0,1]`, which finds the ndiff tile; clip = `[-10,20]×[0,10]` grown by 5 = `[-15,25]×[-5,15]`
 - **AND** the painted result is `[-15,25]×[0,10]`
 - **AND** with `bloat-all M ndiff` (no distance) the result is the whole ndiff tile `[-20,30]×[0,10]`
+- **AND** with `magic-compat` OFF the seed area is `[-2,3]×[0,1]` and the clip is `[-20,30]×[0,10]` grown by 5 = `[-25,35]×[-5,15]`, so the painted result is the whole ndiff tile `[-20,30]×[0,10]`
+
+#### Scenario: Order-independent seeding with magic-compat OFF
+
+- **GIVEN** scaleFactor 1, a mask-layer trigger `M` `[0,30]×[0,10]`, and two separate `ndiff` tiles `[0,10]×[0,10]` and `[20,30]×[0,10]`
+- **WHEN** `bloat-all M ndiff` is applied with `magic-compat` OFF
+- **THEN** both ndiff tiles are seeded and the result is `[0,10]×[0,10]` ∪ `[20,30]×[0,10]`
+- **AND** with `magic-compat` ON only the first unmarked ndiff tile in enumeration order is seeded from that trigger
 
 ### Requirement: Contact strip pre-pass for squares and slots
 
@@ -413,7 +431,9 @@ rows, cy likewise in y
 first cut = [cx, cx+size] × [cy, cy+size]; cuts at cx + i*P, cy + j*P
 ```
 
-Region processing: for each region of the (post-pre-pass) input, compute its bounding box B. Up to three attempts: place cuts for B; keep each cut whose `border`-grown square overlaps only solid, non-split tiles of this region (always kept if the region is a single rectangle with no solid neighbours); if at least one cut was kept, stop; otherwise if `rows == 2` shrink B in y by `b = 1 + height(B) - (2*(size+border) + sep)`, rounded up to even, halved, from each side; else if `cols == 2` the same in x; else stop. If no cut was generated, report "no room for contacts in area!". The cuts are the new cur. See Q-MASK-27, Q-MASK-28.
+Region processing: for each region of the (post-pre-pass) input, compute its bounding box B. Up to three attempts: place cuts for B; keep each cut whose `border`-grown square overlaps only solid, non-split tiles of this region (always kept if the region is a single rectangle with no solid neighbours); if at least one cut was kept, stop; otherwise if `rows == 2` shrink B in y by `b = 1 + height(B) - (2*(size+border) + sep)`, rounded up to even, halved, from each side; else if `cols == 2` the same in x; else stop. If no cut was generated, report "no room for contacts in area!". The cuts are the new cur. See Q-MASK-28.
+
+The grid-limit step depends on the `magic-compat` setting (Q-MASK-27, resolution: compat): with it ON (the default) it is sign-blind, `x2 -= 2δ` whatever the sign of cx, as in Magic, so a contact left of or below the origin can lose its cuts; with it OFF it is sign-aware, as in `slots`: `x2 -= 2δ` when cx ≥ 0 and `x2 += 2δ` when cx < 0 (likewise in y).
 
 (Magic ref: cif/CIFgen.c:3769-3880, cif/CIFgen.c:2848-2990, cif/CIFgen.c:2548-2563, cif/CIFgen.c:5332-5347)
 
@@ -429,6 +449,14 @@ Region processing: for each region of the (post-pre-pass) input, compute its bou
 - **GIVEN** gridLimit 5, `squares 5 20 20`, cur = `[0,92]×[0,30]` (a strip)
 - **WHEN** the x placement is computed
 - **THEN** first cols = 2, cx = (0+92+20-80)/2 = 16, δ = 1, x2 becomes 90, recomputed cx = 15 (on grid)
+
+#### Scenario: Grid-limit shift at negative coordinates
+
+- **GIVEN** gridLimit 5, `squares 5 20 20`, cur = `[-92,0]×[0,30]` (a strip)
+- **WHEN** the x placement is computed
+- **THEN** first cols = 2, cx = (-92+0+20-80)/2 = -76, δ = 1
+- **AND** with `magic-compat` ON x2 becomes -2 and the recomputed cx = -77 (off grid, as in Magic)
+- **AND** with `magic-compat` OFF x2 becomes 2 and the recomputed cx = -75 (on grid)
 
 ### Requirement: squares-grid
 
@@ -495,9 +523,11 @@ Region processing: vertical iff `width(B) <= height(B)`. Cuts are stepped by `xp
 
 Compatibility: exact
 
-Area is the sum of tile areas (a split tile counts its full rectangle area divided by 2, truncated); accumulation stops once the running total reaches a. Space halves of split tiles are filled as triangles. The threshold a is normalised like a linear distance (see Q-MASK-2).
+Area is the sum of tile areas (a split tile counts its full rectangle area divided by 2, truncated); accumulation stops once the running total reaches a. Space halves of split tiles are filled as triangles.
 
-(Magic ref: cif/CIFgen.c:2191-2380, cif/CIFgen.c:5207-5221)
+Unit normalisation of the threshold depends on the `magic-compat` setting (Q-MASK-2, resolution: compat). With it ON (the default) a is multiplied and divided linearly by each unit change, like a distance, as in Magic. With it OFF a is kept in the declared mask units² and the comparison is exact in 64-bit: a region is filled when `atotal · L² < a · D²`, where D is the cumulative multiply and L the cumulative reduce applied to the style since a was declared. In both settings close values take part in the unit-reduction GCD as lengths (capability `mask-output-styles`), so scaleFactor, expander, the GDS UNITS record and the CIF DS scale do not depend on the setting.
+
+(Magic ref: cif/CIFgen.c:2191-2380, cif/CIFgen.c:2205-2223, cif/CIFgen.c:5207-5221, cif/CIFtech.c:2500-2502, cif/CIFtech.c:2648-2649, cif/CIFtech.c:1912-1915)
 
 #### Scenario: Small hole filled
 
@@ -506,13 +536,20 @@ Area is the sum of tile areas (a split tile counts its full rectangle area divid
 - **THEN** the result is `[0,30]×[0,30]`
 - **AND** with `close 100` the hole remains
 
+#### Scenario: Threshold after a unit reduction with magic-compat OFF
+
+- **GIVEN** `magic-compat` OFF, `close 100` declared, and a later unit normalisation that reduces the style by L = 2 (D = 1)
+- **WHEN** a bounded hole of 24 reduced mask units² (96 declared units²) is evaluated
+- **THEN** 24 · 4 = 96 < 100 · 1, so the hole is filled
+- **AND** with `magic-compat` ON the threshold becomes 100 / 2 = 50 and the hole (24 < 50) is also filled, while a hole of 26 reduced units² (104 declared units²) is filled with ON but not with OFF
+
 ### Requirement: bridge
 
 `bridge d w` SHALL replace cur by cur plus one bridging rectangle for every catecorner solid–solid gap (pass A) and every catecorner space–space pinch (pass B) found by the corner tests below, each bridge being the corner-to-corner rectangle expanded by the minimum-width rule `expand(·, w, ·)`.
 
 Compatibility: exact
 
-d is the spacing distance, w the bridge width, both mu (> 0, see capability `mask-output-styles`). All tests read the unmodified input plane cur; all bridges are painted into a copy of cur, so the result is order-independent except for which violator is chosen. Neighbour notation for a tile T with left L, right R, bottom B, top Tp: `TR(T)` = right neighbour at T's top, `RT(T)` = top neighbour at T's right end, `LB(T)` = bottom neighbour at T's left end, `BL(T)` = left neighbour at T's bottom. `RBot(T)` = the right neighbour containing T's bottom edge (start at TR(T), step down while its bottom > B). `BRight(T)` = the bottom neighbour at T's right end (start at LB(T), step right while its right < R). The plane's boundary sentinel tiles are neither space nor solid. Rectangles are written `[x1,x2]×[y1,y2]` and may be inverted (x1 > x2) before `expand`.
+d is the spacing distance, w the bridge width, both mu (> 0, see capability `mask-output-styles`). All tests read the unmodified input plane cur; all bridges are painted into a copy of cur, so the result is order-independent except for which violator is chosen. Neighbour notation for a tile T with left L, right R, bottom B, top Tp: `TR(T)` = right neighbour at T's top, `RT(T)` = top neighbour at T's right end, `LB(T)` = bottom neighbour at T's left end, `BL(T)` = left neighbour at T's bottom. `RBot(T)` = the right neighbour containing T's bottom edge (start at TR(T), step down while its bottom > B). `BRight(T)` = the bottom neighbour at T's right end (start at LB(T), step right while its right < R). `SEB(T)` is the bottom neighbour used for the pass-1 SE corner test, chosen by the `magic-compat` setting (Q-MASK-3, resolution: compat): with it ON (the default) `LB(T)`, the bottom-left neighbour, as in Magic, whose search loop tests the right neighbour's edge and never advances; with it OFF `BRight(T)`, the bottom neighbour under T's right end, as in pass B. The plane's boundary sentinel tiles are neither space nor solid. Rectangles are written `[x1,x2]×[y1,y2]` and may be inverted (x1 > x2) before `expand`.
 
 ```
 bridge(cur, d, w):
@@ -521,7 +558,7 @@ bridge(cur, d, w):
     if leftKind(TR(T)) = space and bottomKind(RT(T)) = space:          # NE outer corner
       V = violator(cur, [R-w, R+d]×[Tp-w, Tp+d], T, SW, k=space, search=solid)
       if V: paint(out, expand([R, left(V)]×[Tp, bottom(V)], w, false))
-    if leftKind(RBot(T)) = space and topKind(LB(T)) = space:           # SE outer corner (Q-MASK-3: LB, not BRight)
+    if leftKind(RBot(T)) = space and topKind(SEB(T)) = space:          # SE outer corner (Q-MASK-3)
       V = violator(cur, [R-w, R+d]×[B-d, B+w], T, NW, k=space, search=solid)
       if V: paint(out, expand([R, left(V)]×[top(V), B], w, false))
   for each space tile T of cur, in tile enumeration order:            # pass B
@@ -609,7 +646,12 @@ dx or dy is negative when the gap already exceeds w, which narrows the bridge to
 
 Compatibility: exact
 
-L may contain database types and mask layers. `limitFree(A)` is true iff no tile of L overlaps A: database planes containing L types are searched first (plane order), then L mask layers (layer order). Database planes are searched with the mask-unit rectangle A unchanged (Q-MASK-5). `limitOverlap(A)` searches the same tiles and returns `(found, Xmax, Ymax)` where Xmax/Ymax start at A.x1/A.y1 and become the largest right/top edge of any L tile overlapping A (raw coordinates of the plane searched, Q-MASK-5). `eraseLimits(A)` erases from the output plane the **whole** rectangle of every L tile overlapping A, unscaled (Q-MASK-229).
+L may contain database types and mask layers. `limitFree(A)` is true iff no tile of L overlaps A: database planes containing L types are searched first (plane order), then L mask layers (layer order). `limitOverlap(A)` searches the same tiles and returns `(found, Xmax, Ymax)` where Xmax/Ymax start at A.x1/A.y1 and become the largest right/top edge of any L tile overlapping A. `eraseLimits(A)` erases L geometry from the output plane. The units of these searches depend on the `magic-compat` setting (Q-MASK-5, resolution: compat):
+
+- With `magic-compat` ON (the default), as in Magic: database planes are searched with the mask-unit rectangle A unchanged, Xmax/Ymax are raw tile edges of the plane searched, and `eraseLimits(A)` erases the **whole** rectangle of every L tile overlapping A, unscaled (Q-MASK-229, resolution: compat).
+- With `magic-compat` OFF: the search area on a database plane is A converted to internal units with outward rounding (floor(x/scaleFactor) for lower edges, ceil for upper edges); database tile edges are multiplied by scaleFactor before they are used for Xmax/Ymax and for erasure; and `eraseLimits(A)` erases only the intersection of each overlapping L tile with A, in mask units (Q-MASK-229).
+
+In both settings the style loader warns when bridge-lim names database types and scaleFactor ≠ 1, the case where the settings differ.
 
 ```
 # pass 0: cur -> P (new empty plane), for each solid tile T of cur in enumeration order
@@ -634,7 +676,7 @@ if height(A) < w:
 paint(P, A)
 ```
 
-Passes 1 and 2 enumerate the tiles of P and paint into P itself while it is being enumerated (Q-MASK-228). They use the corner tests of `bridge` (including Q-MASK-3 for the pass-1 SE corner; the pass-2 SE corner uses BRight) with these differences: search boxes start at the corner, i.e. pass 1 NE `[R, R+d]×[Tp, Tp+d]`, SE `[R, R+d]×[B-d, B]`; pass 2 NE `[R, R+w]×[Tp, Tp+w]`, SE `[R, R+w]×[B-w, B]`; and the violator test is:
+With `magic-compat` ON (the default) passes 1 and 2 enumerate the tiles of P and paint into P itself while it is being enumerated, as in Magic, so bridges painted earlier in a pass are seen by later corner tests; Hefesto's tile plane reproduces Magic's tile splitting and merging and the behaviour of an area search over tiles that change during the search. With it OFF passes 1 and 2 enumerate a snapshot of the pass-0 plane P and paint into a copy, so the result depends only on geometry (Q-MASK-228, resolution: compat). They use the corner tests of `bridge` (including `SEB` of Q-MASK-3 for the pass-1 SE corner; the pass-2 SE corner uses BRight) with these differences: search boxes start at the corner, i.e. pass 1 NE `[R, R+d]×[Tp, Tp+d]`, SE `[R, R+d]×[B-d, B]`; pass 2 NE `[R, R+w]×[Tp, Tp+w]`, SE `[R, R+w]×[B-w, B]`; and the violator test is:
 
 ```
 limViolator(P, S, T, dir, k, search, D):        # D = d (pass 1) or w (pass 2)
@@ -701,7 +743,8 @@ Paint/erase of a rectangle with non-positive extent changes nothing. Bridges do 
 - **GIVEN** the same cur, L with tiles `[13,30]×[0,8]` and `[6,14]×[15,30]`, `bridge-lim 5 4 L`
 - **WHEN** pass 1 processes the NE corner of `[0,10]×[0,10]`
 - **THEN** c1 and c2 both overlap L, c3 = `[6,16]×[6,16]` is painted, and then both L tiles are erased in full
-- **AND** the part `[12,14]×[15,22]` of the original square `[12,22]×[12,22]` is also removed (Q-MASK-229)
+- **AND** with `magic-compat` ON the part `[12,14]×[15,22]` of the original square `[12,22]×[12,22]` is also removed (Q-MASK-229)
+- **AND** with `magic-compat` OFF only the parts of the L tiles inside c3, `[13,16]×[6,8]` and `[6,14]×[15,16]`, are erased, so of the strip `[12,14]×[15,22]` only `[12,14]×[15,16]` is removed from the original square
 
 ### Requirement: maxrect
 
@@ -736,11 +779,14 @@ Compatibility: exact
 
 ### Requirement: not-square
 
-`not-square` SHALL keep every rectangular solid tile of cur except tiles that are square (width = height) and have no solid neighbour on any side; split tiles are dropped.
+`not-square` SHALL keep every rectangular solid tile of cur except tiles that are square (width = height) and have no solid neighbour on any side; split tiles are handled according to the `magic-compat` setting (Q-MASK-7, resolution: compat).
 
 Compatibility: exact
 
-See Q-MASK-7 (non-Manhattan geometry is removed).
+- With `magic-compat` ON (the default), as in Magic: split tiles are dropped, and all four neighbour checks test the neighbour's bottom type.
+- With `magic-compat` OFF: split tiles are copied into the result unchanged, with their diagonal (a triangle is never square), and each neighbour check tests the neighbour's type on the side facing the tile (right type of a left neighbour, left type of a right neighbour, bottom type of a top neighbour, top type of a bottom neighbour).
+
+The same rule applies to `not-square` in mask input styles (Q-MASK-330, capability `mask-input-styles`).
 
 (Magic ref: cif/CIFgen.c:4727-4818, cif/CIFgen.c:5420-5431)
 
@@ -749,6 +795,13 @@ See Q-MASK-7 (non-Manhattan geometry is removed).
 - **GIVEN** cur = `[0,10]×[0,10] ∪ [20,30]×[0,15]`
 - **WHEN** `not-square`
 - **THEN** the result is `[20,30]×[0,15]`
+
+#### Scenario: Triangle kept with magic-compat OFF
+
+- **GIVEN** cur = a solid triangle with bounding box `[0,10]×[0,10]` and right angle at (0,0), and the rectangle `[20,30]×[0,15]`
+- **WHEN** `not-square` is applied with `magic-compat` OFF
+- **THEN** the result is the triangle and `[20,30]×[0,15]`
+- **AND** with `magic-compat` ON the result is `[20,30]×[0,15]`
 
 ### Requirement: overlapping, nonoverlapping, interacting, noninteracting
 
@@ -759,7 +812,7 @@ Compatibility: exact
 - Regions are seeded only from solid tiles overlapping the search area E (scaled), but extend without limit.
 - Per tile rectangle r (mu): for the touching forms, r is grown by 1 mu on every side (diagonal corner contact therefore counts).
 - Mask-layer test: any solid of the listed mask layer planes overlaps r.
-- Database-type test: r is converted to internal units by dividing each coordinate by scaleFactor with C truncation toward zero, then any tile of a listed type overlaps it (Q-MASK-21).
+- Database-type test: r is converted to internal units by dividing each coordinate by scaleFactor, then any tile of a listed type overlaps it. The division depends on the `magic-compat` setting (Q-MASK-21, resolution: compat): with it ON (the default) it is C truncation toward zero, as in Magic; with it OFF it rounds outward, floor for lower/left edges and ceil for upper/right edges, so a database tile reached by r is never missed.
 - Kept regions are copied tile by tile into the result; others are discarded.
 
 (Magic ref: cif/CIFgen.c:4822-4996, cif/CIFgen.c:4057-4140, cif/CIFtech.c:1131-1146)
@@ -771,13 +824,20 @@ Compatibility: exact
 - **THEN** the result is empty
 - **AND** `interacting M` yields `[0,10]×[0,10]`, `noninteracting M` yields `[50,60]×[0,10]`
 
+#### Scenario: Database test at negative coordinates
+
+- **GIVEN** scaleFactor 10, a cur region `[-25,-15]×[0,10]` mu, and a `poly` tile `[-3,-2]×[0,1]` internal units
+- **WHEN** `overlapping poly` is applied
+- **THEN** with `magic-compat` ON r converts to `[-2,-1]×[0,1]`, which does not overlap the poly tile, and the result is empty
+- **AND** with `magic-compat` OFF r converts to `[-3,-1]×[0,1]`, which overlaps it, and the region is kept
+
 ### Requirement: net
 
 `net <name> [layers]` SHALL OR into cur the geometry of the listed types belonging to the electrical net that contains the label `<name>` in the cell being generated, found by hierarchical connectivity.
 
 Compatibility: behavioral
 
-The net is located by label name as by the net-finding command (see capability `cmd-selection` / selection), all electrically connected paint in the hierarchy is collected into a flat scratch cell, and tiles of the operation's types (overlapping the search area) are scaled and ORed into cur. With no layer list nothing is added (Q-MASK-22). If the name is not found nothing is added.
+The net is located by label name as by the net-finding command (see capability `cmd-selection` / selection), all electrically connected paint in the hierarchy is collected into a flat scratch cell, and tiles of the operation's types (overlapping the search area) are scaled and ORed into cur. With no layer list nothing is added, in both `magic-compat` settings (Q-MASK-22, resolution: replicate). CIF and temp layers in the list contribute their whole plane, not only the net. The style loader warns about a `net` operator without layers and about one whose layer list names CIF or temp layers. If the name is not found nothing is added.
 
 (Magic ref: cif/CIFgen.c:5433-5456, cif/CIFtech.c:1365-1372)
 
@@ -793,7 +853,12 @@ The net is located by label name as by the net-finding command (see capability `
 
 Compatibility: exact
 
-For each label of the cell (own labels only, in list order) with matching text, its rectangle (degenerate dimensions widened by 1 on each side) is used as a search area: database-type planes are searched with the area divided by scaleFactor; mask planes (or cur) are searched with the area as given — i.e. internal-unit label coordinates applied to mask-unit planes (Q-MASK-6). Each found tile seeds a `bloat-all`-style flood fill of the same layers (no clip).
+For each label of the cell (own labels only, in list order) with matching text, its rectangle (degenerate dimensions widened by 1 on each side) is used as a search area. The units depend on the `magic-compat` setting (Q-MASK-6, resolution: compat):
+
+- With `magic-compat` ON (the default), as in Magic: database-type planes are searched with the area divided by scaleFactor; mask planes (or cur) are searched with the area as given — i.e. internal-unit label coordinates applied to mask-unit planes.
+- With `magic-compat` OFF: the label rectangle is first multiplied by scaleFactor, so database-type planes are searched in internal units and mask planes in mask units.
+
+Each found tile seeds a `bloat-all`-style flood fill of the same layers (no clip). The same unit rule applies to `tagged` in mask input styles (capability `mask-input-styles`).
 
 (Magic ref: cif/CIFgen.c:5458-5599, cif/CIFgen.c:4057-4140)
 
@@ -803,13 +868,20 @@ For each label of the cell (own labels only, in list order) with matching text, 
 - **WHEN** `tagged A`
 - **THEN** cur becomes `[20,30]×[0,10]`
 
+#### Scenario: Tagged with scale 10
+
+- **GIVEN** scaleFactor 10, cur regions `[0,100]×[0,100]` and `[200,300]×[0,100]` mu, and a label `A` at point (25,5) internal units
+- **WHEN** `tagged A`
+- **THEN** with `magic-compat` ON the search area `[24,26]×[4,6]` is used unscaled on cur and touches `[0,100]×[0,100]`, so cur becomes `[0,100]×[0,100]`
+- **AND** with `magic-compat` OFF the search area is `[240,260]×[40,60]` and cur becomes `[200,300]×[0,100]`
+
 ### Requirement: bbox
 
 `bbox [top]` SHALL OR into cur the cell's bounding box scaled to mu; with `top`, nothing is added if the cell has at least one parent instance in a non-internal cell.
 
 Compatibility: exact
 
-The bounding box is the cell definition's database bounding box (see capability `layout-geometry-model`; Q-MASK-23). Nothing is added when no cell is designated for generation errors (e.g. some preview paths).
+The bounding box is that of the cell being generated (the cell designated for generation errors), in both `magic-compat` settings (Q-MASK-23, resolution: replicate): the union of its paint, the bounding boxes of its subcell uses and the anchor rectangles of its labels, without the extents of rendered label text. With `top`, nothing is added when the cell has a parent use in a cell that is not an internal scratch cell. Nothing is added when no cell is designated for generation errors (e.g. some preview paths).
 
 (Magic ref: cif/CIFgen.c:5635-5680)
 
@@ -857,7 +929,7 @@ When a layer is evaluated in hierarchical mode (interaction areas and array proc
 
 Compatibility: exact
 
-How the truncated result is used is specified in capability `mask-hierarchical-generation`. See Q-MASK-26.
+The truncation is the same in both `magic-compat` settings (Q-MASK-26, resolution: replicate). How the truncated result is used is specified in capability `mask-hierarchical-generation` (Q-MASK-402).
 
 (Magic ref: cif/CIFgen.c:5332-5380, cif/CIFgen.c:5433-5440, cif/CIFgen.c:5601-5641, cif/CIFgen.c:5714-5718)
 

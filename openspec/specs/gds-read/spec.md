@@ -185,7 +185,7 @@ Compatibility: exact
 3. Clear the cell: all paint, labels and uses are removed. Mark it available (defined).
 4. Skip STRCLASS/STRTYPE.
 5. Parse elements until a non-element record. Elements paint into fresh, empty input-layer planes for the cell. Labels go directly into the cell. Uses are placed directly.
-6. Consume ENDSTR. If the record is not ENDSTR, report "Unexpected record type", skip to and including the next ENDSTR, and do not process the cell further. The cell's input planes are not converted. See Q-MASK-110.
+6. Consume ENDSTR. If the record is not ENDSTR, report "Unexpected record type", skip to and including the next ENDSTR, and do not process the cell further. The cell's input planes are not converted. What happens to them depends on the `magic-compat` setting (Q-MASK-110, resolution: compat): with it ON (the default) they are not cleared, as in Magic, so their geometry is painted into the next structure that is processed; with it OFF they are cleared and the malformed structure's geometry is discarded.
 7. Run the end-of-structure processing (see "End-of-structure processing").
 
 Every structure SHALL become a separate cell named by STRNAME (subject to renaming rules). Structure names SHALL NOT be sanitized. The reader prints `Reading "<name>".` (informative). Subcell references to a name that has not yet been defined SHALL create an empty, not-yet-available cell of that name, which a later structure definition fills.
@@ -200,8 +200,14 @@ Reading SHALL NOT be undoable. It does not record undo events.
 - **THEN** reading `TOP` creates an empty, undefined cell `A` and places a use of it
 - **AND** when structure `A` is read, cell `A` receives its contents, and `TOP`'s use refers to the filled cell
 
+#### Scenario: Malformed structure does not leak with magic-compat OFF
+- **GIVEN** a file with structure `A` containing a BOUNDARY on a mapped layer followed by an unexpected record before ENDSTR, then a well-formed structure `B` with no elements
+- **WHEN** read with `magic-compat` OFF
+- **THEN** "Unexpected record type" is reported, `A` has no paint, and `B` has no paint
+- **AND** with `magic-compat` ON `B` receives `A`'s boundary geometry, as in Magic
+
 ### Requirement: Structure timestamps
-The BGNSTR record SHALL be interpreted as follows when its data length is exactly 24 bytes (12 I2 values). The first six values `(year, month, day, hour, minute, second)` form the creation date. They are converted to seconds since the Unix epoch by local-time conversion, where `year` is taken as years since 1900 (see Q-MASK-134), `month` is 1-based, and daylight saving time is unknown (auto-determined). The modification date (last six values) SHALL be ignored. If the data length is not 24, the creation timestamp is 0 and the error "Unknown timestamp format; setting timestamp to zero." is reported.
+The BGNSTR record SHALL be interpreted as follows when its data length is exactly 24 bytes (12 I2 values). The first six values `(year, month, day, hour, minute, second)` form the creation date. They are converted to seconds since the Unix epoch by local-time conversion, where `month` is 1-based and daylight saving time is unknown (auto-determined). The year depends on the `magic-compat` setting (Q-MASK-134, resolution: compat): with it ON (the default) `year` is taken as years since 1900 (the `tm_year` field) and the result is truncated to 32 bits (low 32 bits, two's complement), as in Magic; with it OFF a `year >= 1900` is a full year, a smaller value is years since 1900, and the result is stored without overflow. The modification date (last six values) SHALL be ignored. If the data length is not 24, the creation timestamp is 0 and the error "Unknown timestamp format; setting timestamp to zero." is reported.
 
 Compatibility: exact
 
@@ -213,6 +219,12 @@ The cell timestamp SHALL be set as follows, according to the `datestamp` option:
 At the end of the read, every cell read from the file whose timestamp is nonzero SHALL be marked as *not needing a new timestamp*. A cell with timestamp 0 receives the current time when next saved. Read-only cells are overridden by the content hash (see "Content-hash timestamps for read-only cells").
 
 (Magic ref: calma/CalmaRdio.c:308-372, calma/CalmaRdcl.c:500-512, cif/CIFrdcl.c:1734-1790, commands/CmdCD.c:919-975)
+
+#### Scenario: Full year with magic-compat OFF
+- **GIVEN** the host time zone is UTC and a BGNSTR whose creation date is (2024, 1, 1, 0, 0, 0)
+- **WHEN** read with `magic-compat` OFF
+- **THEN** the cell timestamp is 1704067200 (2024-01-01 00:00:00 UTC)
+- **AND** with `magic-compat` ON the year is read as 1900 + 2024 = 3924 and the timestamp is the low 32 bits of that time
 
 #### Scenario: Magic-written date round trip
 - **GIVEN** BGNSTR data `124 1 15 10 30 0` followed by six more values, and the host time zone UTC
@@ -235,7 +247,7 @@ The reader SHALL track every structure name defined so far in the current file. 
 Compatibility: exact
 
 - If that name was pre-loaded by look-ahead (see "Post-order reading"), the structure is skipped silently, without being parsed. The pre-load mark is cleared.
-- Else, if the earlier definition was completely processed, the structure is skipped. The errors "Cell "<name>" was already defined in this file." and "Ignoring duplicate definition" are reported, unless post-order reading is enabled or the file has been rewound during this session (see Q-MASK-111).
+- Else, if the earlier definition was completely processed, the structure is skipped. The errors "Cell "<name>" was already defined in this file." and "Ignoring duplicate definition" are reported, unless post-order reading is enabled or a file has been rewound during this session (`magic-compat` ON, the default, as in Magic) or during this read (`magic-compat` OFF) (Q-MASK-111, resolution: compat). Only these diagnostics depend on the setting; the geometry is the same.
 - Else (the earlier definition is still incomplete), the new structure is read under the name `<name>_<n>`, where `n` is the smallest integer ≥ 1 such that `<name>_<n>` is not a structure name in this file. The errors "Cell ... was already defined" and "Giving this cell a new name: <newname>" are reported.
 
 Skipping a structure SHALL advance the input to the next BGNSTR or ENDLIB record without interpreting the elements.
@@ -375,12 +387,12 @@ A PATH SHALL be read as LAYER, DATATYPE, an optional PATHTYPE (default 0), an op
 
 Compatibility: exact
 
-1. Supported path types are 0 (flush), 2 (half-width extension) and 4 (custom extension). Any other type, including 1 (round), SHALL be reported ("Warning: pathtype <t> unsupported (ignored).") and treated as type 0. See Q-MASK-113.
+1. Supported path types are 0 (flush), 2 (half-width extension) and 4 (custom extension). Any other type SHALL be reported ("Warning: pathtype <t> unsupported (ignored).") and treated as type 0. Type 1 (round) depends on the `magic-compat` setting (Q-MASK-113, resolution: compat): with it ON (the default) it is reported and treated as type 0, as in Magic; with it OFF it is treated as type 2 and a warning reports that the round cap was approximated by a half-width square extension.
 2. `W = (width × num) / den` (C truncation). If the product is not divisible by `den`, "Wire width snapped to nearest integer boundary." is reported.
 3. For BGNEXTN/ENDEXTN value `e`: `E = (e × num × 2) / den` (truncating), with the same warning on inexact division. `E` is in doubled input units.
 4. Centerline points are converted with `k = 2` (doubled input units). If a rescale by `r` occurs while reading them, `W` and both `E` values are multiplied by `r`.
-5. If `E_begin > 0`, the first point moves away from the second point by `E_begin` independently in x and in y. Each coordinate moves only if it differs from the second point's coordinate, in the direction away from it. `E_end > 0` moves the last point away from the second-to-last point the same way. Negative or zero extensions are ignored. Extensions apply whenever the records are present, regardless of the path type. See Q-MASK-114.
-6. If `W <= 0`, the path SHALL be dropped. This includes negative widths, which GDSII defines as absolute widths. See Q-MASK-115.
+5. End extensions depend on the `magic-compat` setting (Q-MASK-114, resolution: compat). With it ON (the default), as in Magic: if `E_begin > 0`, the first point moves away from the second point by `E_begin` independently in x and in y; each coordinate moves only if it differs from the second point's coordinate, in the direction away from it; `E_end > 0` moves the last point away from the second-to-last point the same way; negative or zero extensions are ignored. With it OFF: the first point moves by `E_begin` along the direction from the second point to the first, and the last point by `E_end` along the direction from the second-to-last point to the last, each coordinate rounded to the doubled-unit grid (round half away from zero); a negative extension moves the point the other way (shortening the path). Manhattan paths with non-negative extensions give the same result in both settings. Extensions apply whenever the records are present, regardless of the path type.
+6. If `W == 0`, the path SHALL be dropped. A negative width, which GDSII defines as an absolute width, depends on the `magic-compat` setting (Q-MASK-115, resolution: compat): with it ON (the default) the path is dropped silently, as in Magic; with it OFF `|W|` is used, converted with the unit conversion of item 2 but without the magnification of the enclosing SREF/AREF, and a warning is reported.
 7. If the layer is unmapped, the path is reported and dropped.
 8. If `savepaths` is enabled, the centerline is recorded (see "Path centerline properties").
 9. The outline is generated by "Path-to-polygon conversion", with endcap enabled only for path type 2.
@@ -411,14 +423,28 @@ Compatibility: exact
 - **GIVEN** a PATH with PATHTYPE 1, WIDTH 10 and points (0,0) (100,0)
 - **WHEN** it is read
 - **THEN** a warning is reported and the rectangle x∈[0,100], y∈[-5,5] is painted, with no extension
+- **AND** with `magic-compat` OFF the rectangle x∈[-5,105], y∈[-5,5] is painted and the warning says the round cap was approximated
+
+#### Scenario: Diagonal extension with magic-compat OFF
+- **GIVEN** `num = den = 1`, PATHTYPE 4, WIDTH 10, BGNEXTN 0, ENDEXTN 5 and points (0,0) (30,40)
+- **WHEN** it is read with `magic-compat` OFF
+- **THEN** the last point moves along the segment to (33,44)
+- **AND** with `magic-compat` ON it moves by 5 in x and in y, to (35,45)
+
+#### Scenario: Negative width
+- **GIVEN** `num = den = 1`, PATHTYPE 0, WIDTH -10 and points (0,0) (100,0)
+- **WHEN** it is read with `magic-compat` OFF
+- **THEN** a warning is reported and the rectangle x∈[0,100], y∈[-5,5] is painted
+- **AND** with `magic-compat` ON nothing is painted
 
 ### Requirement: Path-to-polygon conversion
-The reader SHALL convert a centerline `P_0..P_{n-1}` (doubled input units), half-width offset `w` (= `W` in doubled units) and endcap flag into one or more polygons with this algorithm. All trigonometry is IEEE double precision, and the constant `H = 1.5708` is used in place of π/2.
+The reader SHALL convert a centerline `P_0..P_{n-1}` (doubled input units), half-width offset `w` (= `W` in doubled units) and endcap flag into one or more polygons with this algorithm. All trigonometry is IEEE double precision. `H` depends on the `magic-compat` setting (Q-MASK-118, resolution: compat): with it ON (the default) `H = 1.5708`, as in Magic; with it OFF `H = π/2` (`M_PI_2`).
 
 Compatibility: exact
 
 ```
-remove P_i when P_i == P_{i+1}, for 1 <= i <= n-2   (* the head is never removed; see Q-MASK-116 *)
+remove P_i when P_i == P_{i+1}, for 1 <= i <= n-2   (* magic-compat ON: the head is never removed *)
+                                                    (* magic-compat OFF: for 0 <= i <= n-2; Q-MASK-116 *)
 if n == 1: segments = [(P0, P0)] else segments = [(P_{i-1}, P_i)]
 theta = 0; first = true
 for each segment (A = prev point, B = current point), with N = next point if any:
@@ -459,7 +485,7 @@ Inner-corner correction, done after appending the joint points `Lk`, `Rk` when t
   - if `|d1| > 1e-4`, then `r2 = (sin(phi)·(Rk.x − S.x) − cos(phi)·(Rk.y − S.y)) / d1` and `S += (round(r2·cos savetheta), round(r2·sin savetheta))`.
 - Else, let `a2 = |atan2(Lk − T) − theta|`. If `0.1 < a2 < 6.1`, the same correction is applied to `T` using `Lk − T`.
 
-For the first segment, `savetheta = 0`. See Q-MASK-118.
+For the first joint, `savetheta = 0` with `magic-compat` ON, as in Magic, and the angle of the first segment with it OFF (Q-MASK-118, resolution: compat). Savepaths properties are recorded before duplicate removal, so they keep a head duplicate in both settings (Q-MASK-116, resolution: compat).
 
 (Magic ref: cif/CIFrdpt.c:339-600)
 
@@ -484,7 +510,7 @@ For the first segment, `savetheta = 0`. See Q-MASK-118.
 - **THEN** a parallelogram with corners round(±3.5355…) offsets is painted: (4,-4), (104,96), (96,104) and (-4,4), represented with split tiles
 
 ### Requirement: Path centerline properties
-With `gds savepaths yes`, the reader SHALL record each mapped, nonzero-width path's centerline as a property of the cell receiving the path. The property is a dimension list `x0 y0 x1 y1 …`. Each value is the doubled input-unit coordinate after end extensions, shifted right by 1 (arithmetic shift, i.e. floor division by 2). The values stay in input units, not internal units. See Q-MASK-119.
+With `gds savepaths yes`, the reader SHALL record each mapped, nonzero-width path's centerline as a property of the cell receiving the path. The property is a dimension list `x0 y0 x1 y1 …`. Each value is the doubled input-unit coordinate after end extensions, shifted right by 1 (arithmetic shift, i.e. floor division by 2). The units depend on the `magic-compat` setting (Q-MASK-119, resolution: compat): with it ON (the default) the values stay in input units, as in Magic; with it OFF each value is converted to internal units the way geometry is (divided by the style scale factor `S`), so the property matches the layout coordinates. The settings agree when `S = 1`.
 
 Compatibility: exact
 
@@ -518,14 +544,20 @@ Compatibility: exact
 | other | — | southeast (default) |
 
    If PRESENTATION is absent, no font is set and the position is southeast.
-2. If PRESENTATION was absent and the next record is not STRANS, every PATHTYPE and WIDTH record is skipped. Then, if the next record is WIDTH, it is honored. Otherwise, if it is not STRANS, every PATHTYPE and WIDTH record is skipped. As a result, WIDTH is honored only when it directly follows PRESENTATION (see Q-MASK-120). A honored WIDTH `t` gives `size = (t·num)/den` (truncating, with the warning "Text width snapped to nearest integer boundary." if inexact), converted to internal units with nearest-grid rounding (the any-snap rule of "Instance placement scaling").
+2. If PRESENTATION was absent and the next record is not STRANS, every PATHTYPE and WIDTH record is skipped. Then, if the next record is WIDTH, it is honored. Otherwise, if it is not STRANS, every PATHTYPE and WIDTH record is skipped. As a result, with `magic-compat` ON (the default) WIDTH is honored only when it directly follows PRESENTATION, as in Magic; with it OFF a WIDTH record anywhere in the PATHTYPE/WIDTH run between PRESENTATION (or TEXTTYPE) and STRANS is honored (Q-MASK-120, resolution: compat). Files without PRESENTATION are unaffected in both settings. A honored WIDTH `t` gives `size = (t·num)/den` (truncating, with the warning "Text width snapped to nearest integer boundary." if inexact), converted to internal units with nearest-grid rounding (the any-snap rule of "Instance placement scaling").
 3. If STRANS follows, its flags are ignored, including reflection. An optional MAG `d` with `0 < d <= 10000` sets `size = (int)(0.5 + d·1000·magscale·m / S)`. Otherwise the error "Invalid text magnification" is reported. An optional ANGLE `a` sets `rotation = (int)a`, truncated and not normalized.
-4. The XY record must have at least 8 data bytes. The first point is converted with `k = 1`, and extra points are skipped. The label point SHALL be `(x / S, y / S)` using integer division truncating toward zero. See Q-MASK-121.
+4. The XY record must have at least 8 data bytes. The first point is converted with `k = 1`, and extra points are skipped. The label point SHALL be `(x / S, y / S)`, using integer division truncating toward zero with `magic-compat` ON (the default), as in Magic, and floor division with it OFF (Q-MASK-121, resolution: compat). On-grid points give the same result in both settings.
 5. STRING is the label text. It is used as-is, with no character filtering.
 
-Default size: if the label's Magic type `t > 0` has a minimum DRC width `w_t > 0` (internal units), then `size = (w_t·den·m·8) / (num·S·10)`, computed as `size = w_t·(den·m·8)` followed by `size /= (num·S·10)`. Then, if `size == 0` or `size > (800·m)/S`, `size = (800·m)/S`. These are integer operations. See Q-MASK-122. Size, font and rotation SHALL be applied only when PRESENTATION was present: the label is created as a font label. Otherwise the label is a plain label at the position above, and size and rotation are discarded.
+Default size: if the label's Magic type `t > 0` has a minimum DRC width `w_t > 0` (internal units), then `size = (w_t·den·m·8) / (num·S·10)`, computed as `size = w_t·(den·m·8)` followed by `size /= (num·S·10)`. Then, if `size == 0` or `size > (800·m)/S`, `size = (800·m)/S`. These are integer operations. The three size formulas — this default, the MAG formula of item 3 with its `+0.5` rounding, and the WIDTH formula of item 2 (truncating `(t·num)/den`, then the any-snap conversion, without the `8/10` factor) — are replicated exactly in both `magic-compat` settings (Q-MASK-122, resolution: replicate). Size, font and rotation SHALL be applied only when PRESENTATION was present: the label is created as a font label. Otherwise the label is a plain label at the position above, and size and rotation are discarded.
 
 (Magic ref: calma/CalmaRdpt.c:767-960, calma/CalmaRdpt.c:1015-1135)
+
+#### Scenario: Negative off-grid label point
+- **GIVEN** `S = 10`, `num = den = 1`, and a TEXT at (−15, 25)
+- **WHEN** it is read
+- **THEN** with `magic-compat` ON the label point is (−1, 2)
+- **AND** with `magic-compat` OFF it is (−2, 2)
 
 #### Scenario: Presentation anchor mapping
 - **GIVEN** a TEXT with PRESENTATION 0x0005 and string `VDD` at (1000, 2000), with `S = 10` and `num = den = 1`
@@ -573,13 +605,13 @@ A label whose layer kind is `port` SHALL become a port. Its port index is assign
 - **THEN** cell `XYZ` is renamed `real_name`
 
 ### Requirement: Pin shapes and port labels
-For a BOUNDARY on an input layer whose label kind is `text`, `port` or `cell`, the reader SHALL associate the shape with labels. Let `R` be the rectangle produced last by the fill scan (the topmost band's rightmost rectangle), converted to internal units by truncating division of each coordinate by `S`, and let `T` be the layer's label type.
+For a BOUNDARY on an input layer whose label kind is `text`, `port` or `cell`, the reader SHALL associate the shape with labels. Let `R` be the rectangle produced last by the fill scan (the topmost band's rightmost rectangle), converted to internal units by dividing each coordinate by `S` (truncating toward zero with `magic-compat` ON, floor division with it OFF; Q-MASK-121), and let `T` be the layer's label type.
 
 Compatibility: exact
 
 1. The first existing label in the cell with type `T` whose rectangle lies inside `R` (borders inclusive) gets its rectangle replaced by `R`. If there is none, a placeholder label with empty text, position center and type `T` is created at `R`.
 2. If the kind is `port` and that label has no port direction yet, it gets a port index and all four directions.
-3. When a TEXT is later read, an empty-text label of the same type `T` whose rectangle encloses the text point is consumed. The new label takes the placeholder's rectangle, a port index and all four directions, even when the kind is `text` (see Q-MASK-123).
+3. When a TEXT is later read, an empty-text label of the same type `T` whose rectangle encloses the text point is consumed, and the new label takes the placeholder's rectangle. Port data depends on the `magic-compat` setting (Q-MASK-123, resolution: compat): with it ON (the default) the new label also takes a port index and all four directions, even when the kind is `text`, as in Magic; with it OFF it takes a port index and directions only if the placeholder already had port directions (it was created on a `port`-kind layer), and otherwise only the rectangle.
 
 Port index assignment for label `X` with text `s`: scan the cell's labels in list order. Track `i` = the maximum port index seen, starting at −1. If a label other than `X` with index > 0 has text `s`, use its index and stop. Otherwise use `i + 1`.
 
@@ -596,6 +628,12 @@ After the structure, all labels that are still empty SHALL be deleted.
 - **GIVEN** the same shapes in reverse order
 - **WHEN** read
 - **THEN** the result is identical: port `IN` with rectangle [0,10]×[0,10] and index 1
+
+#### Scenario: Text-kind pin shape
+- **GIVEN** `S = 1`, `labels m1 text` for 68/16 and 68/5, a BOUNDARY [0,10]×[0,10] on 68/16, then a TEXT `IN` at (5,5) on 68/5
+- **WHEN** read
+- **THEN** with `magic-compat` ON label `IN` has rectangle [0,10]×[0,10] and is a port with index 1
+- **AND** with `magic-compat` OFF label `IN` has rectangle [0,10]×[0,10] and is not a port
 
 #### Scenario: Pin with no text
 - **GIVEN** a pin BOUNDARY with no TEXT inside it
@@ -658,7 +696,7 @@ Compatibility: exact
 1. `rotated` is true if the transform's rotation is 90 or 270. When reading `P1` and `P2`:
    - if (not rotated and `rows == 1`) or (rotated and `cols == 1`), their y values are ignored and replaced by `P0.y`;
    - else, if (not rotated and `cols == 1`) or (rotated and `rows == 1`), their x values are replaced by `P0.x`.
-2. After scaling (see "Instance placement scaling"), apply the inverse use transform to `P1` and `P2`, giving `p1` and `p2` in child coordinates. Compute `xsep = p1.x / cols`. If `p1.x mod cols != 0`, report "# cols doesn't divide displacement ref pt" and use `(p1.x + (cols+1)/2) / cols`. Compute `ysep = p2.y / rows` (truncating). The same error is reported when not divisible, but the truncated value is used (see Q-MASK-124). The y component of `p1` and the x component of `p2` are ignored.
+2. After scaling (see "Instance placement scaling"), apply the inverse use transform to `P1` and `P2`, giving `p1` and `p2` in child coordinates. Compute `xsep = p1.x / cols`. If `p1.x mod cols != 0`, report "# cols doesn't divide displacement ref pt" and use `(p1.x + (cols+1)/2) / cols`. Compute `ysep = p2.y / rows` (truncating). The same error is reported when not divisible; with `magic-compat` ON (the default) the truncated value is used, as in Magic, and with it OFF the rounded value `(p2.y + (rows+1)/2) / rows`, as for columns (Q-MASK-124, resolution: compat). The y component of `p1` and the x component of `p2` are ignored.
 3. The use is an array with x indices `0..cols−1` and y indices `0..rows−1`, separations `(xsep, ysep)` in child coordinates. This is overridden by property 99 (see "Instance properties").
 
 (Magic ref: calma/CalmaRdcl.c:1243-1505)
@@ -678,6 +716,12 @@ Compatibility: exact
 - **WHEN** read
 - **THEN** xsep = 100 and ysep = 0
 
+#### Scenario: Row spacing not divisible
+- **GIVEN** `S = 1`, `num = den = 1`, an AREF with COLROW 1 3, XY (0,0) (0,0) (0,302) and no STRANS
+- **WHEN** read
+- **THEN** "# rows doesn't divide displacement ref pt" is reported
+- **AND** ysep = 100 with `magic-compat` ON and ysep = (302 + 2) / 3 = 101 with it OFF
+
 ### Requirement: Instance properties
 After the XY record of an SREF/AREF, the reader SHALL process PROPATTR/PROPVALUE pairs:
 
@@ -685,7 +729,7 @@ Compatibility: exact
 
 - Attribute 61 or 98: PROPVALUE is the instance identifier (instance name). Each `/` or `,` in it is replaced by `_` (informative message "character cannot be used in instance name", limited to 100 reports).
 - Attribute 99: PROPVALUE `"%d_%d_%d_%d"` gives the array index limits `xlo_xhi_ylo_yhi`, which replace `0..cols−1` and `0..rows−1`. A malformed value is reported and ignored.
-- Any other attribute ends property processing for the element. Its value and all following properties are skipped (see Q-MASK-125).
+- Any other attribute: with `magic-compat` ON (the default) it ends property processing for the element, and its value and all following properties are skipped, as in Magic; with it OFF only that PROPATTR/PROPVALUE pair is skipped and processing continues, so a later 61, 98 or 99 property is honored (Q-MASK-125, resolution: compat).
 
 Uses without a instance identifier, and duplicate identifiers, SHALL get unique identifiers at the end of the structure, following the layout database's default naming (capability `layout-geometry-model`).
 
@@ -746,7 +790,7 @@ Look-ahead:
 2. If found, read that structure completely (recursively, with the same rules), restore the position and the in-progress planes of the current cell, and mark the read cell *pre-loaded*. When the sequential pass later reaches it, it is skipped silently.
 3. If not found, create an empty cell for the name and mark it *dereferenced*. If no cell of that name exists in memory, report "Cell "<name>" is used but not defined in this file." A name already in memory is assumed to come from a library read earlier, as an addendum, and is not reported.
 
-Position bookkeeping: after a STRNAME match, the reader moves back to the start of the BGNSTR record. It moves back by `L_BGNSTR + 4 + len'`, where `len'` is the string length rounded up to even. See Q-MASK-126.
+Position bookkeeping: after a STRNAME match, the reader moves back to the start of the BGNSTR record. It moves back to the start of the BGNSTR record using the actual length of the STRNAME record from its header (or a saved BGNSTR offset), in both `magic-compat` settings (Q-MASK-126, resolution: fix). For conforming files this equals Magic's `L_BGNSTR + 4 + len'`, where `len'` is the string length rounded up to even; for a STRNAME padded beyond that, Magic loses synchronisation.
 
 With default options (`ordering off`, no flattening), structures SHALL be read strictly in file order without seeking.
 
@@ -874,7 +918,7 @@ Compatibility: exact
 
 - `GDS_START` (floating point): the byte offset in the decompressed stream immediately after the structure's STRNAME record.
 - `GDS_END` (floating point): the byte offset immediately after the structure's ENDSTR record.
-- `GDS_FILE` (string): the path of the file as opened, with substitution: if a PDK path variable (`PDK_PATH`, `PDKPATH`, `PDK_ROOT` or `PDKROOT`, checked in this order) is defined and is a prefix of the path, the prefix is replaced by `$<VARNAME>`. See Q-MASK-128 and Q-MASK-129.
+- `GDS_FILE` (string): the path of the file with substitution. The path is the file name as found on the search path with `magic-compat` ON (the default), as in Magic, and the absolute canonical path with it OFF (Q-MASK-129, resolution: compat). Then, if a PDK path variable (`PDK_PATH`, `PDKPATH`, `PDK_ROOT` or `PDKROOT`, checked in this order) is defined and is a prefix of the path, the prefix is replaced by `$<VARNAME>`; otherwise, if the path is absolute and starts with the home directory followed by `/`, that prefix is replaced by `~`. The `~` substitution is applied to the GDS path itself in both settings (Q-MASK-128, resolution: fix; Magic applies it to another string and can store a `.mag` path, which loses the vendor cell's contents on the next write). The library-name comparison of `gds-write` full dumps uses the same substitution.
 
 Setting the `GDS_FILE` property on any cell, by any means, SHALL make the cell read-only, and removing it SHALL clear that state. Read-only cells are still interpreted through `cifinput`. Their Magic contents are representational, and GDS output copies the bytes `[GDS_START, GDS_END)` verbatim (capability `gds-write`).
 
@@ -1014,7 +1058,7 @@ Compatibility: behavioral
 - **THEN** the factor is 1.0
 
 ### Requirement: Grid subdivision option
-`gds rescale yes|no` SHALL allow or forbid internal grid subdivision when instance reference points fall off the internal grid (see "Instance placement scaling"). The default is `yes`. Setting `no` SHALL also set the warning level to `limit` (see "Read diagnostics"). See Q-MASK-130.
+`gds rescale yes|no` SHALL allow or forbid internal grid subdivision when instance reference points fall off the internal grid (see "Instance placement scaling"). The default is `yes`. With `magic-compat` ON (the default), setting `no` SHALL also set the warning level to `limit` (see "Read diagnostics"), as in Magic; with it OFF it leaves the warning level unchanged (Q-MASK-130, resolution: compat).
 
 Compatibility: exact
 
@@ -1024,6 +1068,7 @@ Compatibility: exact
 - **GIVEN** `gds warning default`
 - **WHEN** `gds rescale no` is issued
 - **THEN** the warning level becomes `limit`
+- **AND** with `magic-compat` OFF it stays `default`
 
 ### Requirement: Read option syntax and defaults
 The `gds` command (alias `calma`) SHALL accept the read-related options below. The option keyword and enumerated values are matched by unique prefix. Boolean values accept `no|false|off|0` and `yes|true|on|1`. Giving an option without a value reports its current state.
@@ -1097,7 +1142,7 @@ Each GDS read error is prefixed `Error while reading cell "<cell>" (byte positio
 - **THEN** 99 error messages and the limit notice are printed
 
 ### Requirement: Host mechanisms used by the reader
-Magic resolves PDK path variables through Tcl global variables and the home directory through `$HOME`, and opens files through zlib. Hefesto SHALL provide equivalent path-variable substitution for `GDS_FILE` from its own configuration, and SHALL support gzip input on all platforms. Local-time conversion of GDS dates uses the host time zone. See Q-MASK-132.
+Magic resolves PDK path variables through Tcl global variables and the home directory through `$HOME`, and opens files through zlib. Hefesto SHALL resolve `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT` from the Tcl global variables of the project's interpreter (Tcl is embedded on every platform), seeded from the settings store on iPadOS; SHALL take the home directory for `~` from the platform services; and SHALL bundle zlib so gzip input works on all platforms. Local-time conversion of GDS dates uses the host time zone by default; a time-zone override setting (for example UTC) replaces it, and golden captures and CI SHALL run with the zone pinned (Q-MASK-132, resolution: platform).
 
 Compatibility: informative
 
