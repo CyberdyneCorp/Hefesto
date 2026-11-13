@@ -86,10 +86,10 @@ A `merge_group` with values is followed by its value-less continuation merges; `
 
 ### Requirement: Header records
 
-The header SHALL be, in order: `timestamp <T>` with T the cell's timestamp (the integer timestamp stored with the cell in its `.mag` file), `version <V>` with V the extractor format version string (Magic writes its major.minor version, `8.3`; see Q-EXTRACT-10), `tech <technology name>`, `style <current extract style name>`, `scale <rscale> <cscale> <units-per-lambda>` (the last with `%g`, already scaled to internal units, see `extract-tech-section`), and `resistclasses` with the class values.
+The header SHALL be, in order: `timestamp <T>` with T the cell's timestamp (the integer timestamp stored with the cell in its `.mag` file), `version 8.3`, the `.ext` format version Hefesto targets (Magic writes its major.minor version; Hefesto writes `8.3` in both `magic-compat` settings, not its own version, Q-EXTRACT-10, resolution: replicate), `tech <technology name>`, `style <current extract style name>`, `scale <rscale> <cscale> <units-per-lambda>` (the last with `%g`, already scaled to internal units, see `extract-tech-section`), and `resistclasses` with the class values.
 Compatibility: exact
 
-(Magic ref: extract/ExtCell.c:552-605)
+(Magic ref: extract/ExtCell.c:552-605, extract/ExtCell.c:576)
 
 #### Scenario: Header of a default style
 - **GIVEN** technology `scmos`, style `default`, no `cscale`/`rscale`/`lambda` lines, a 1:1 grid and `resist metal1 80`

@@ -20,7 +20,7 @@ Each emitted device SHALL start with a class letter:
 | `N` | veriloga |
 | `X` | subckt, rsubckt, csubckt, dsubckt, msubckt |
 
-If the gate terminal (terminal 0) has an attribute string, that string SHALL follow the letter. In flat mode it is preceded by the raw `/`-joined instance path without a trailing separator (Q-NETLIST-34). In hierarchical mode no path is added. Otherwise the letter SHALL be followed by a counter:
+If the gate terminal (terminal 0) has an attribute string, that string SHALL follow the letter. In flat mode it is preceded by the `/`-joined instance path, joined to the attribute according to the `magic-compat` setting (Q-NETLIST-34, resolution: compat): with it ON (the default) the path is followed directly by the attribute with no separator, as in Magic (`Mu1foo`); with it OFF a `/` is inserted (`Mu1/foo`), as in flat node names, so names cannot collide. Top-level devices have an empty path and are the same in both settings. In hierarchical mode no path is added. Otherwise the letter SHALL be followed by a counter:
 - `R` and `D` each have their own counter.
 - `C` shares its counter with parasitic capacitors.
 - `V` has its own counter.
@@ -29,12 +29,22 @@ If the gate terminal (terminal 0) has an attribute string, that string SHALL fol
 
 With `resistor tee on`, `R` names and `rsubckt` names SHALL get the suffix `A`.
 Compatibility: exact
-(Magic ref: ext2spice/ext2spice.c:2782-2890, ext2spice/ext2hier.c:780-860)
+(Magic ref: ext2spice/ext2spice.c:2782-2890, ext2spice/ext2spice.c:2876-2881, ext2spice/ext2hier.c:780-860)
 
 #### Scenario: First transistors
 - **GIVEN** a flat netlist with two MOSFETs and one unmodeled capacitor device
 - **WHEN** they are written
 - **THEN** they are named `M1000`, `M1001` and `C0`
+
+#### Scenario: Flat gate attribute name with magic-compat ON
+- **GIVEN** a flat netlist and a MOSFET in instance `u1` whose gate terminal has the attribute string `foo`
+- **WHEN** it is written with `magic-compat` ON
+- **THEN** the device is named `Mu1foo`
+
+#### Scenario: Flat gate attribute name with magic-compat OFF
+- **GIVEN** the same MOSFET
+- **WHEN** it is written with `magic-compat` OFF
+- **THEN** the device is named `Mu1/foo`
 
 ### Requirement: Device eligibility and annotations
 A device SHALL be skipped in the following cases:
@@ -84,7 +94,7 @@ For a terminal written with names `<a>`/`<p>`, the text SHALL be ` <a>=<SI>` and
 1. If the terminal's attribute string contains a substring that parses as `<int>,<int>` (scanning from the start and from just after each comma), those are area A and perimeter P. The attribute string is truncated at that point.
 2. Otherwise, A and P are the node's area and perimeter for the type's source resistance class (or drain class for terminal index > 1). If the class is undefined (−1), or that node and class were already written by an earlier device, the values are 0. Otherwise the node and class are marked as written.
 
-In scale mode the output is `SI(1e-12·A·s²/m)` and `SI(1e-6·P·s/m)`, where m is the merge multiplier. Otherwise it is `SI(1e-12·A·s²·E²)` and `SI(1e-6·P·s·E)`, with no division by m (Q-NETLIST-7). With `-d` (distributed junctions), the node values are instead multiplied by `w / Σw`, where Σw is the total width of devices on that node and class, and no node is zeroed.
+In scale mode the output is `SI(1e-12·A·s²/m)` and `SI(1e-6·P·s/m)`, where m is the merge multiplier. Otherwise it is `SI(1e-12·A·s²·E²)` and `SI(1e-6·P·s·E)`; the division by m depends on the `magic-compat` setting (Q-NETLIST-7, resolution: compat): with it ON (the default) these values are not divided by m, as in Magic; with it OFF they are also divided by m, so M·ad equals the merged junction area in either output style. With `-d` (distributed junctions), the node values are instead multiplied by `w / Σw`, where Σw is the total width of devices on that node and class, and no node is zeroed.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:3658-3790, ext2spice/ext2spice.c:3792-3885)
 
@@ -98,16 +108,24 @@ Compatibility: exact
 - **WHEN** it is written in scale mode
 - **THEN** its values are `as=12p ps=14u` and no `s=` attribute is written
 
+#### Scenario: Merged device areas outside scale mode
+- **GIVEN** two merged nfets (m = 2) whose drain node has area 30 and perimeter 16, `scale off`, and E = 1, s = 1
+- **WHEN** the kept device is written
+- **THEN** with `magic-compat` ON its drain values are `ad=30p pd=16u`
+- **AND** with `magic-compat` OFF they are `ad=15p pd=8u`
+
 ### Requirement: Device parameter output
 For each parameter declared for the device type (see capability `ext-flattening-read`), in stored order, the output SHALL be as follows. In every case below, "scale mode" means the `%g` form is used; scale `k ≠ 1` means the `%g` form is used; otherwise the SI form is used.
 
 | Key | Scale mode | Scale `k ≠ 1` | Otherwise |
 |---|---|---|---|
 | `a`/`a0` | ` <n>=%g` of `A·s²` | `%g` of `A·s²·E²·k·1e-12` | `SI(1e-12·(A+off)·s²·E²)` |
-| `p`/`p0` | `%g` of `P·s` | `P·s·E·k·1e-6` | `SI(1e-12·(P+off)·s·E)` in flat mode (Q-NETLIST-19); `SI((P+off)·s·E·1e-6)` in hierarchical mode |
+| `p`/`p0` | `%g` of `P·s` | `P·s·E·k·1e-6` | in flat mode `SI(1e-12·(P+off)·s·E)` with `magic-compat` ON and `SI(1e-6·(P+off)·s·E)` with it OFF (Q-NETLIST-19, resolution: compat); `SI((P+off)·s·E·1e-6)` in hierarchical mode |
 | `l`/`l0` | `%g` of `l·s` | as above with k | `SI(1e-6·(l+off)·s·E)` |
 | `w`/`w0` | `%g` of `w·s` | as above with k | `SI(1e-6·(w+off)·s·E)` |
 | `x`/`y` | the device's lower-left x/y coordinate, scaled like `l` | | |
+
+The offset `off` is the declared offset of the parameter (0 for a parameter declared with a `*` scale, capability `ext-flattening-read`). Where it is applied depends on the `magic-compat` setting (Q-NETLIST-8, resolution: compat): with it ON (the default) it is added only in the "Otherwise" (SI, scale 1) column, as in Magic; with it OFF it is added to the raw value before scaling in every column, scale mode and `k ≠ 1` included.
 
 The remaining keys SHALL be handled as follows:
 - **`a<n>`/`p<n>`** (n ≥ 1): the area/perimeter of terminal n, clamped to the last terminal, per Requirement "Terminal area and perimeter". An `a<n>` immediately followed by `p<n>` with the same n (or the reverse) is written as one pair, area first.
@@ -115,25 +133,37 @@ The remaining keys SHALL be handled as follows:
 - **`s`**: ` <n>=` followed by the substrate text, unless the substrate was already written.
 - **`r`, `c` with a name**: ` <n>=SI(R)` / ` <n>=SI(C)`, using the raw device value.
 
-After the declared parameters, every verbatim device parameter SHALL be written as ` <text>`. A blanked entry yields a lone space (Q-NETLIST-32).
+After the declared parameters, every verbatim device parameter SHALL be written as ` <text>`. A blanked entry depends on the `magic-compat` setting (Q-NETLIST-32, resolution: compat): with it ON (the default) it yields a lone space, as in Magic; with it OFF it is skipped and nothing is written. Entries are blanked per write in both settings.
 Compatibility: exact
-(Magic ref: ext2spice/ext2spice.c:2200-2519, ext2spice/ext2hier.c:227-360)
+(Magic ref: ext2spice/ext2spice.c:2200-2519, ext2spice/ext2spice.c:2286-2299, ext2spice/ext2spice.c:2388, ext2spice/ext2spice.c:2433, ext2spice/ext2spice.c:2495-2497, ext2spice/ext2hier.c:227-360, ext2spice/ext2hier.c:379, ext2spice/ext2hier.c:424)
 
 #### Scenario: Reversed declaration order
 - **GIVEN** `parameters nfet l=l w=w` and a device with L=2 and W=8 in scale mode
 - **WHEN** parameters are written after the fixed `w=8 l=2`
 - **THEN** the appended text is ` w=8 l=2`, with `w` first because the list is reversed
 
+#### Scenario: Consumed length parameter
+- **GIVEN** `parameters rpoly l1=len` and a device whose verbatim parameters, in stored order, are `l1=4` and `foo=1`, in scale mode
+- **WHEN** its parameters are written
+- **THEN** with `magic-compat` ON the text is ` len=4  foo=1`, with a lone space for the blanked `l1=4`
+- **AND** with `magic-compat` OFF it is ` len=4 foo=1`
+
+#### Scenario: Flat SI perimeter factor
+- **GIVEN** `parameters nfet p1=pd`, a flat netlist outside scale mode with s = 1 and E = 1, and a device whose drain perimeter is 16
+- **WHEN** it is written
+- **THEN** with `magic-compat` ON the text is ` pd=16p`
+- **AND** with `magic-compat` OFF it is ` pd=16u`
+
 ### Requirement: Resistor lines
 A `devres` device SHALL be written as follows. Terminal 0 is the resistor body; terminals 1 and 2 are its ends.
 - **Unmodeled** (type `None`): `R<id> <t1> <t2> %f` of `R/dscale/m`, then parameters.
 - **Modeled**: `R<id> <t1> <t2>`, then for CDL the unnamed value parameters (see below) and the substrate parameter, then ` <type>`, then the geometry:
-  - In scale mode, flat: ` w=%g l=%g` of `w·s` and `l·s/dscale`. Hierarchical: ` w=%d l=%d` of the truncated values.
+  - In scale mode, flat: ` w=%g l=%g` of `w·s` and `l·s/dscale`. Hierarchical: with `magic-compat` ON ` w=%d l=%d` of the truncated values, as in Magic; with it OFF ` w=%g l=%g` as in flat mode (Q-NETLIST-19, resolution: compat).
   - Otherwise: ` w=SI(1e-6·w·s·E) l=SI(1e-6·l·s·E/dscale)`.
   - Then parameters, then ` M=%g` if m ≠ 1.
-- **Unnamed value parameters**: an `r` or `c` parameter with an empty name SHALL be written as ` SI(value)` right after the terminals. The value is the device resistance, or for `c` the capacitance. Flat mode wrongly writes the resistance for `c` (Q-NETLIST-4).
+- **Unnamed value parameters**: an `r` or `c` parameter with an empty name SHALL be written as ` SI(value)` right after the terminals. The value is the device resistance for `r` and the capacitance for `c`, except that for `c` in flat mode it depends on the `magic-compat` setting (Q-NETLIST-4, resolution: compat): with it ON (the default) flat mode writes the resistance, as in Magic; with it OFF it writes the capacitance, as hierarchical mode does.
 
-Without a tee, `dscale = 1`. Half of the body node's capacitance SHALL then be moved to each end node, and the body node's capacitance set to 0. With `resistor tee on`, two lines SHALL be written with `dscale = 2`: `R<n>A <t0> <t1> …` and `R<n>B <t0> <t2> …`. The `rsubckt` class follows Requirement "Subcircuit-class device lines".
+Without a tee, `dscale = 1`. Half of the body node's capacitance SHALL then be moved to each end node, and the body node's capacitance set to 0. For a shorted-port resistor (capability `ext-flattening-read`, Q-NETLIST-31) terminal 0 is the node `dummy` with `magic-compat` ON and an anonymous node per device with it OFF: in tee mode it is the midpoint of the two halves, so with ON every shorted-port pair of a cell is joined through `dummy`; in pi mode its capacitance moves to the ports. With `resistor tee on`, two lines SHALL be written with `dscale = 2`: `R<n>A <t0> <t1> …` and `R<n>B <t0> <t2> …`. The `rsubckt` class follows Requirement "Subcircuit-class device lines".
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:2521-2582, ext2spice/ext2spice.c:3104-3126, ext2spice/ext2spice.c:3887-3935, ext2spice/ext2hier.c:513-588)
 
@@ -176,7 +206,7 @@ Classes subckt, csubckt, veriloga, rsubckt, msubckt and dsubckt SHALL write `X<i
 - Other classes except dsubckt: then terminal 2 if present. For rsubckt this also applies the pi capacitance split.
 - Then terminals 3 … n−1.
 
-If the type declares no `s` parameter and the device has a substrate, ` <substrate>` SHALL follow. Then ` /` in CDL, ` <type>`, parameters, and ` M=%g` if m ≠ 1. In hierarchical mode with tee, a second line `X<n>B <t0> <t2>[ <sub>] <type>…` follows, and when a substrate pin is written the body node's ground capacitance is set to 0. In flat mode that second line is never written (Q-NETLIST-5).
+If the type declares no `s` parameter and the device has a substrate, ` <substrate>` SHALL follow. Then ` /` in CDL, ` <type>`, parameters, and ` M=%g` if m ≠ 1. In hierarchical mode with tee, a second line `X<n>B <t0> <t2>[ <sub>] <type>…` follows, and when a substrate pin is written the body node's ground capacitance is set to 0. In flat mode the second line depends on the `magic-compat` setting (Q-NETLIST-5, resolution: compat): with it ON (the default) it is never written, as in Magic, so the drain is left open; with it OFF it is written as in hierarchical mode, including setting the body node's ground capacitance to 0 when a substrate pin is written.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:2950-3100, ext2spice/ext2hier.c:880-1040)
 
@@ -184,6 +214,12 @@ Compatibility: exact
 - **GIVEN** a `subckt` device `sky130_fd_pr__cap_mim` with terminals `c1`, `c2` and no substrate, in CDL format
 - **WHEN** it is written
 - **THEN** the line is `X0 c1 c2 / sky130_fd_pr__cap_mim`
+
+#### Scenario: Flat tee rsubckt
+- **GIVEN** `resistor tee on`, a flat netlist, and an `rsubckt` device `rres` with body `m` and ends `a` and `b`
+- **WHEN** it is written
+- **THEN** with `magic-compat` ON only the line `X0A a m rres …` is written
+- **AND** with `magic-compat` OFF the line `X0B m b rres …` follows it
 
 ### Requirement: Substrate terminal text
 The substrate SHALL be written as follows. If the substrate node's local name equals the type's default substrate name (case-insensitive), the local name SHALL be written after these conversions: trailing `!` removed under trim-global, trailing `#` removed under trim-local, `,`→`|`, brackets→`_` under convert-brackets, `=`→`:`. Otherwise the SPICE name of the instance-path-qualified node SHALL be written, or `errGnd!` if it does not resolve. Writing a substrate SHALL mark the node as connected.
@@ -206,7 +242,7 @@ No other class merges. On a merge, the kept device's multiplier m SHALL become:
 - **Unmodeled capacitor**: `m + C_new/C_kept`.
 - **Modeled capacitor**: `m + (L·W)_new/(L·W)_kept`.
 
-The merged device SHALL be dropped. In flat mode, devices whose source/drain hierarchical-area attributes conflict across different instances are not merged, and a warning is given. `Devs merged: <n>` is informative. In flat mode, devices with exactly one terminal desynchronize the multiplier list (Q-NETLIST-6).
+The merged device SHALL be dropped. In flat mode, devices whose source/drain hierarchical-area attributes conflict across different instances are not merged, and a warning is given. `Devs merged: <n>` is informative. Each device's merge multiplier and merged flag SHALL be kept with the device itself, in both `magic-compat` settings (Q-NETLIST-6, resolution: fix; Magic's flat list desynchronizes on devices with one terminal and reads uninitialised memory). Devices with exactly one terminal take part in no merge, are never dropped by merging, and are written with M = 1; devices with no terminals are never written.
 Compatibility: exact
 (Magic ref: ext2spice/ext2spice.c:4514-4888, ext2spice/ext2hier.c:1361-1484)
 

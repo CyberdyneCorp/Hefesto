@@ -125,22 +125,27 @@ The `.ext` header SHALL report these values (see `extract-file-format`); every c
 
 ### Requirement: Step size and side halo parsing
 
-`step V` SHALL set the step size to `(int)atof(V)` (truncation toward zero); a result `<= 0` SHALL report `Hierarchical interaction step size must be > 0` and SHALL abort the tech-file load as a fatal error. `sidehalo D` SHALL parse D as a double, multiply by 1000.0, truncate to an integer and store it (milli-units). After all lines are parsed (Requirement: Micron conversion), the stored halo SHALL be divided by 1000 with integer truncation.
-Compatibility: exact
+`step V` and `sidehalo D` depend on the `magic-compat` setting (Q-EXTRACT-19, resolution: compat):
 
-See Q-EXTRACT-19.
+- With `magic-compat` ON (the default), as in Magic: `step V` SHALL set the step size to `(int)atof(V)` (truncation toward zero). `sidehalo D` SHALL parse D as a double, multiply by 1000.0, truncate to an integer and store it (milli-units). After all lines are parsed (Requirement: Micron conversion), the stored halo SHALL be divided by 1000 with integer truncation.
+- With `magic-compat` OFF: `step V` SHALL be parsed as a double and `sidehalo D` stored as a double; both SHALL be kept fractional through unit conversion and rounded to the nearest internal unit only after it, with no integer truncation of fractional lambda values.
+
+In both modes a step size `<= 0` (after rounding, with `magic-compat` OFF) SHALL report `Hierarchical interaction step size must be > 0` and SHALL abort the tech-file load as a fatal error. Integer values, as in the reference PDKs, give the same result in both modes.
+Compatibility: exact
 
 (Magic ref: extract/ExtTech.c:3362-3375, extract/ExtTech.c:3444-3452, extract/ExtTech.c:3986-3997)
 
 #### Scenario: Fractional halo in lambda
 - **GIVEN** `units lambda` and `sidehalo 2.5`
 - **WHEN** the style is loaded with a 1:1 internal grid
-- **THEN** the side halo is 2 internal units (2500/1000 truncated)
+- **THEN** with `magic-compat` ON the side halo is 2 internal units (2500/1000 truncated)
+- **AND** with `magic-compat` OFF it is 3 internal units (2.5 rounded to the nearest unit)
 
 #### Scenario: Fractional step
 - **GIVEN** `step 7.9`
 - **WHEN** the style is loaded
-- **THEN** the step size before conversion is 7
+- **THEN** with `magic-compat` ON the step size before conversion is 7
+- **AND** with `magic-compat` OFF it is kept as 7.9 and becomes 8 internal units on a 1:1 grid
 
 ### Requirement: Plane ordering
 
@@ -252,7 +257,7 @@ Compatibility: exact
 - `defaultperimeter TYPES P1 [[SUBTYPES] P2] C`: perimeter cap C for edges (s|space) for s in TYPES∩P1 (the outside is only space). Then, with P2 (or the substrate plane) as above, for every non-contact s, a sideoverlap rule on edge (s|space) with capacitance C, target SUBTYPES (default: the substrate types, or `{space}` when there is no substrate line), target plane P2 (none if absent) and shields as computed; in the 3-argument form with a substrate default type, space SHALL be added back to the targets.
 - `defaultsidewall TYPES P C [OFFSET]`: equivalent to `sidewall TYPES space space TYPES C [OFFSET]` restricted to plane P, including the halving.
 - `defaultoverlap TYPES P1 OTHER P2 C`: equivalent to `overlap` with automatic shields (planes strictly between), skipping pairs that already have a positive value.
-- `defaultsideoverlap TYPES P1 OTHER P2 C`: sideoverlap rules on edges (s|space) targeting OTHER on P2; P1 and P2 with equal order SHALL be rejected (`Cannot have fringing capacitance between types on the same plane`); space in TYPES or OTHER SHALL reject the line. Shield planes SHALL be the planes strictly between P1 and P2 in plane order, choosing the comparison direction by comparing the plane *indices* of P1 and P2 (see Q-EXTRACT-1).
+- `defaultsideoverlap TYPES P1 OTHER P2 C`: sideoverlap rules on edges (s|space) targeting OTHER on P2; P1 and P2 with equal order SHALL be rejected (`Cannot have fringing capacitance between types on the same plane`); space in TYPES or OTHER SHALL reject the line. Shield planes SHALL be the planes strictly between P1 and P2 in plane order, choosing the comparison direction by the `magic-compat` setting (Q-EXTRACT-1, resolution: compat): with it ON (the default) by comparing the plane *indices* of P1 and P2, as in Magic, so the shield set can be empty or wrong when plane declaration order differs from `planeorder`; with it OFF by comparing plane order, so the shields are always the planes strictly between P1 and P2 in plane order. None of the reference PDKs differs between the modes.
 
 (Magic ref: extract/ExtTech.c:1194-1347, extract/ExtTech.c:1372-1533, extract/ExtTech.c:1558-1622, extract/ExtTech.c:1647-1720, extract/ExtTech.c:1745-1872)
 
@@ -260,6 +265,12 @@ Compatibility: exact
 - **GIVEN** planes ordered `well=0, active=1, metal1=2`, a line `substrate *psd,space well` and `defaultperimeter metal1 metal1 12`
 - **WHEN** the style is loaded
 - **THEN** edge (metal1|space) has perimeter cap 12 and a sideoverlap rule of 12 targeting the substrate types on plane `well` with the types of plane `active` as shields
+
+#### Scenario: Sideoverlap shields when declaration order differs from plane order
+- **GIVEN** planes declared in the order `metal2`, `via`, `metal1`, a `planeorder` giving `metal1=2, via=3, metal2=4`, and `defaultsideoverlap metal1 metal1 metal2 metal2 5`
+- **WHEN** the style is loaded with `magic-compat` ON
+- **THEN** the direction is taken from the plane indices (metal1 after metal2), no plane order lies strictly between 4 and 2 in that direction, and the rule has no shields
+- **AND** with `magic-compat` OFF the direction comes from plane order and the types of plane `via` are the shields
 
 ### Requirement: Substrate declaration
 
@@ -291,7 +302,7 @@ Positional arguments by class (argument 4 is the first after TYPES):
 | bjt | EMITTER COLLECTOR(sub types) | 1 |
 | capacitor / capreverse | BOTTOM [SUBTYPES\|None [SUBNODE]] [[PERIMCAP] AREACAP] | 1 |
 | resistor | TERM [SUBTYPES\|None [SUBNODE]] | 2 (both TERM) |
-| diode / pdiode / ndiode | OTHER [SUBTYPES\|None [SUBNODE]] (see Q-EXTRACT-2) | 1 |
+| diode / pdiode / ndiode | OTHER [SUBNODE]; substrate types = OTHER (none when OTHER is `None`) (Q-EXTRACT-2, resolution: replicate) | 1 |
 | subcircuit / msubcircuit / veriloga | [N] T1 ... TN [SUBTYPES\|None SUBNODE] | N (or all remaining) |
 | rsubcircuit | TERM [SUBTYPES\|None [SUBNODE]] | 2 |
 | csubcircuit / dsubcircuit | TERM [SUBTYPES\|None [SUBNODE]] | 1 |
@@ -302,14 +313,21 @@ One device record SHALL be created per type in TYPES and SHALL be prepended to t
 
 The legacy `fet TYPES SD NTERM NAME [SUBTYPES] SUBNODE GSCAP [GCCAP]` SHALL create class `fet` records (area/perimeter output); argument 6 is treated as SUBTYPES iff it does not parse as a number; SUBNODE not ending in `!` (and not `error`) SHALL be warned as `Fet substrate node <n> is not a global name`.
 
-See Q-EXTRACT-21 for fractional limits.
+Fractional parameter limits and offsets depend on the `magic-compat` setting (Q-EXTRACT-21, resolution: compat): with it ON (the default) they are truncated by the final integer division by 1000, as in Magic (Requirement: Micron conversion), so a limit below one unit becomes 0; with it OFF they are kept in milli-internal-units and the device's 1000·L (or W, A) is compared against them, so fractional limits and strict comparisons keep their meaning.
 
 (Magic ref: extract/ExtTech.c:2433-2945, extract/ExtTech.c:2338-2405, extract/ExtTech.c:2484-2600)
 
 #### Scenario: Parameter and range parsing
 - **GIVEN** `device msubcircuit nfet_01v8 nfet ndiff,ndiffc ndiff,ndiffc pwell,space VSUBS l=l w=w l>=0.15 w<20`
 - **WHEN** the style is loaded with `units lambda`
-- **THEN** the record has terminals {ndiff,ndiffc} (collapsed to symmetric), substrate types {pwell, space}, substrate node `VSUBS`, parameters `l=l` with minimum 150/1000→0 after normalization and `w=w` with maximum (20000−1)/1000 → 19 (integer division)
+- **THEN** the record has terminals {ndiff,ndiffc} (collapsed to symmetric), substrate types {pwell, space}, substrate node `VSUBS`
+- **AND** with `magic-compat` ON the parameters are `l=l` with minimum 150/1000→0 after normalization and `w=w` with maximum (20000−1)/1000 → 19 (integer division)
+- **AND** with `magic-compat` OFF the limits stay 150 and 19999 milli-units, so a device with l = 0.1 is rejected by `l>=0.15`
+
+#### Scenario: Diode substrate types come from OTHER
+- **GIVEN** `device pdiode sky130_fd_pr__photodiode photodiode dnwell VPB`
+- **WHEN** the style is loaded
+- **THEN** the terminal types and the substrate types are both {dnwell}, and the substrate node name is `VPB`, in both `magic-compat` settings
 
 #### Scenario: Capacitor values
 - **GIVEN** `device capacitor None mimcap metal2 10 2`
@@ -371,14 +389,15 @@ Compatibility: exact (parsing); semantics see `antenna-check`
 When the style declares `units microns`, after parsing, values SHALL be converted to lambda using `dscale` = microns per lambda = `10·cifScaleFactor / (cifExpander·1000)` of the current `cifoutput` style evaluated at an unscaled (1:1) lambda grid (1.0 if there is no cifoutput style), computed in single precision:
 Compatibility: exact
 
-- area caps, overlap caps and device gate-cap (`gccap`) and device perimeter cap (`gscap`, see Q-EXTRACT-3) SHALL be multiplied by `dscale²`;
+- area caps, overlap caps and device gate-cap (`gccap`) SHALL be multiplied by `dscale²`;
 - perimeter caps, sideoverlap caps and fringe multipliers SHALL be multiplied by `dscale`;
+- the device perimeter cap (`gscap`) depends on the `magic-compat` setting (Q-EXTRACT-3, resolution: compat): with it ON (the default) it SHALL be multiplied by `dscale²`, like an area coefficient, as in Magic; with it OFF by `dscale`, like the other per-length coefficients;
 - sidewall coefficients SHALL NOT be scaled; sidewall offsets SHALL be divided by `dscale`;
 - the side halo SHALL become `(int)(halo_milli / dscale + 0.5)` (still in milli-units), and the step SHALL become `(int)(step / dscale + 0.5)`;
-- device parameter offsets and range limits (stored ×1000) SHALL be divided by `dscale²` for keys beginning with `a` and by `dscale` otherwise, with C integer truncation; `devresist` values under keys `area` (÷`dscale²`), `perimeter` and `linear` (÷`dscale`) SHALL be converted with integer truncation;
+- device parameter offsets and range limits (stored ×1000) SHALL be divided by `dscale²` for keys beginning with `a` and by `dscale` otherwise, with C integer truncation (with `magic-compat` OFF, without truncation; Q-EXTRACT-21); `devresist` values under keys `area` (÷`dscale²`), `perimeter` and `linear` (÷`dscale`) SHALL be converted with integer truncation;
 - heights and thicknesses SHALL be divided by `dscale`.
 
-Then, for all units, parameter offsets and limits SHALL be divided by 1000 (integer division), and a step size `<= 0` SHALL be reset to 100 with `Warning:  zero step size!  Resetting to default.`
+Then, for all units, with `magic-compat` ON parameter offsets and limits SHALL be divided by 1000 (integer division; with it OFF they stay in milli-units, Q-EXTRACT-21), and a step size `<= 0` SHALL be reset to 100 with `Warning:  zero step size!  Resetting to default.`
 
 (Magic ref: extract/ExtTech.c:3858-3998, cif/CIFmain.c:139-146, extract/ExtTech.c:1097-1105)
 
@@ -392,9 +411,15 @@ Then, for all units, parameter offsets and limits SHALL be divided by 1000 (inte
 - **WHEN** the style is loaded
 - **THEN** the side halo is (int)(2000/0.005 + 0.5) / 1000 = 400 λ
 
+#### Scenario: Micron conversion of device perimeter cap
+- **GIVEN** `units microns`, `dscale` = 0.005 and `device mosfet nfet poly ndiff pwell GND! 100 0` (gscap 100 aF/µm)
+- **WHEN** the style is loaded
+- **THEN** with `magic-compat` ON gscap is 100 × 0.005² = 0.0025 aF/λ
+- **AND** with `magic-compat` OFF gscap is 100 × 0.005 = 0.5 aF/λ
+
 ### Requirement: Scaling to internal units
 
-After loading (and after every grid rescale, see `cmd-coordinates-and-units`), extraction values SHALL be scaled from lambda to internal units with `n/d` = the current internal-units-per-lambda ratio (scale numerator `n`, denominator `d`, applied as "multiply by d/n" to lengths): units-per-lambda SHALL be multiplied by `n/d` (float); side halo and step size SHALL be scaled as integer lengths `v·d/n` (positive values rounded toward zero, negative toward −∞); area, overlap and device caps SHALL be multiplied by `n²` and divided by `d²` (gscap included, see Q-EXTRACT-3); perimeter caps, fringe multipliers and sideoverlap caps SHALL be multiplied by `n` and divided by `d`; sidewall offsets SHALL be multiplied by `d` and divided by `n` (float); sidewall coefficients SHALL NOT be scaled; parameter offsets and limits SHALL be scaled like lengths (`a*` keys like areas) with integer truncation.
+After loading (and after every grid rescale, see `cmd-coordinates-and-units`), extraction values SHALL be scaled from lambda to internal units with `n/d` = the current internal-units-per-lambda ratio (scale numerator `n`, denominator `d`, applied as "multiply by d/n" to lengths): units-per-lambda SHALL be multiplied by `n/d` (float); side halo and step size SHALL be scaled as integer lengths `v·d/n` (positive values rounded toward zero, negative toward −∞); area, overlap and device caps SHALL be multiplied by `n²` and divided by `d²` (gscap included with `magic-compat` ON; with it OFF gscap is multiplied by `n` and divided by `d`, Q-EXTRACT-3); perimeter caps, fringe multipliers and sideoverlap caps SHALL be multiplied by `n` and divided by `d`; sidewall offsets SHALL be multiplied by `d` and divided by `n` (float); sidewall coefficients SHALL NOT be scaled; parameter offsets and limits SHALL be scaled like lengths (`a*` keys like areas) with integer truncation (with `magic-compat` OFF they are kept in milli-units without truncation, Q-EXTRACT-21).
 Compatibility: exact
 
 (Magic ref: extract/ExtTech.c:4022-4130, database/DBcellsrch.c:1457-1480)

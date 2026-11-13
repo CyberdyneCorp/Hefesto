@@ -14,7 +14,7 @@ Device lines belong to capability `netlist-spice-devices`. Hierarchical output (
 ## Requirements
 
 ### Requirement: Command options
-The command SHALL take an optional first word. It is matched case-insensitively, with unique-prefix matching, against `default format rthresh cthresh merge extresist resistor scale short subcircuits hierarchy blackbox renumber global lvs help`. If the first word is missing or does not match, all words SHALL be treated as run arguments (see Q-NETLIST-13). The settings below SHALL persist across invocations within a session. On/off values SHALL accept `yes true on` as on and `no false off` as off, case-insensitively with prefix matching. Giving an option without a value SHALL report the current setting (informative text).
+The command SHALL take an optional first word. It is matched case-insensitively, with unique-prefix matching, against `default format rthresh cthresh merge extresist resistor scale short subcircuits hierarchy blackbox renumber global lvs help`. If the first word is missing, all words SHALL be treated as run arguments. A first word that is `run`, ambiguous, or not an option prefix depends on the `magic-compat` setting (Q-NETLIST-13, resolution: compat): with it ON (the default) all words, that word included, SHALL be treated as run arguments, as in Magic, so `run` or the ambiguous word becomes the cell name; with it OFF `run` is a keyword and the remaining words are the run arguments, an ambiguous prefix prints `Ambiguous option: <w>` and does nothing, and a word that is not an option prefix is still taken, with the rest, as run arguments (the `ext2spice <cell>` form). The settings below SHALL persist across invocations within a session. On/off values SHALL accept `yes true on` as on and `no false off` as off, case-insensitively with prefix matching. Giving an option without a value SHALL report the current setting (informative text).
 
 | Option | Effect | Default |
 |---|---|---|
@@ -28,7 +28,7 @@ The command SHALL take an optional first word. It is matched case-insensitively,
 | `short none\|resistor\|voltage` | Shorted-port policy (see capability `ext-flattening-read`). | none |
 | `subcircuits on\|off` | Same as `subcircuits descend on\|off`. | on |
 | `subcircuits top on\|off\|auto` | Top-level `.subckt` wrapper. | auto |
-| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here sets *top* to auto (Q-NETLIST-41). | on |
+| `subcircuits descend on\|off` | Emit cells with ports as subcircuit calls. Giving `auto` here depends on the `magic-compat` setting (Q-NETLIST-41, resolution: compat): with it ON (the default) it sets *top* to auto, as in Magic; with it OFF it prints the usage message and changes nothing. | on |
 | `hierarchy on\|off` | Hierarchical output. | off |
 | `blackbox on\|off` | Emit abstract views as stub subcircuits. | off |
 | `renumber on\|off` | Number instances `X0, X1, …` instead of using their ids. | off |
@@ -40,7 +40,7 @@ The command SHALL take an optional first word. It is matched case-insensitively,
 
 A bad format SHALL print `Bad format type.  Formats are:spice2, spice3, hspice, ngspice, and cdl.` and leave the format unchanged.
 Compatibility: behavioral
-(Magic ref: ext2spice/ext2spice.c:47-60, ext2spice/ext2spice.c:260-820)
+(Magic ref: ext2spice/ext2spice.c:47-60, ext2spice/ext2spice.c:260-820, ext2spice/ext2spice.c:629-646)
 
 #### Scenario: LVS preset
 - **GIVEN** a fresh session
@@ -51,6 +51,22 @@ Compatibility: behavioral
 - **GIVEN** `ext2spice scale off`
 - **WHEN** `ext2spice format hspice` is issued
 - **THEN** scale mode is on again
+
+#### Scenario: Run keyword with magic-compat ON
+- **GIVEN** a cell `foo` and `magic-compat` ON
+- **WHEN** `ext2spice run foo` is issued
+- **THEN** the run arguments are `run foo`, so `run` is taken as the cell name, as in Magic
+
+#### Scenario: Run keyword with magic-compat OFF
+- **GIVEN** a cell `foo` and `magic-compat` OFF
+- **WHEN** `ext2spice run foo` is issued
+- **THEN** `foo` is netlisted to `foo.spice`
+
+#### Scenario: Descend auto
+- **GIVEN** `subcircuits top on`
+- **WHEN** `ext2spice subcircuits descend auto` is issued
+- **THEN** with `magic-compat` ON *top* becomes auto
+- **AND** with `magic-compat` OFF the usage message is printed and *top* stays on
 
 ### Requirement: Run arguments and output file
 A run SHALL accept the common arguments of capability `ext-flattening-hierarchy` plus these flags:
@@ -155,7 +171,7 @@ Compatibility: exact
 
 ### Requirement: Flat netlist structure
 With `hierarchy off`, the body SHALL be written in this order:
-1. If `subcircuits top on`: the `.subckt` header line (see Requirement "Subcircuit header line"). `auto` never produces a wrapper in flat mode, because port records do not mark cells as subcircuits when hierarchy is off (Q-NETLIST-37).
+1. The `.subckt` header line (see Requirement "Subcircuit header line"), when the wrapper is written. That depends on the `magic-compat` setting (Q-NETLIST-37, resolution: compat): with it ON (the default) only `subcircuits top on` writes a wrapper, because flat mode reads without subcircuit marking, as in Magic 8.3.694; with it OFF `top on` writes one, and so does `top auto` when the root `.ext` has `port` records.
 2. All device lines, in device visit order (capability `ext-flattening-hierarchy`).
 3. If cthresh is finite: coupling capacitor lines.
 4. Resistor lines.
@@ -164,14 +180,24 @@ With `hierarchy off`, the body SHALL be written in this order:
 7. `.ends` if a wrapper was written.
 8. The HSPICE dictionary, in HSPICE format.
 
-When `subcircuits descend off` is in effect, no cell SHALL be treated as a subcircuit.
+`subcircuits descend` SHALL have no effect in flat mode, in both `magic-compat` settings: child cells are always fully flattened (Q-NETLIST-37).
 Compatibility: exact
-(Magic ref: ext2spice/ext2spice.c:1086-1180)
+(Magic ref: ext2spice/ext2spice.c:1086-1180, ext2spice/ext2spice.c:888, ext2spice/ext2spice.c:1123-1145, extflat/EFread.c:469-472)
 
 #### Scenario: Flat inverter order
 - **GIVEN** an inverter with two MOSFETs and node `out` at 5 fF
 - **WHEN** a default flat netlist is written
 - **THEN** the two `M` lines come before the `C… out 0 5f` line, and no `.subckt` line is written
+
+#### Scenario: Flat top auto with ports and magic-compat ON
+- **GIVEN** a root cell `inv` whose `.ext` file has `port` records for `in` (index 0) and `out` (index 1), and `subcircuits top auto`
+- **WHEN** a flat netlist is written with `magic-compat` ON
+- **THEN** no `.subckt` or `.ends` line is written
+
+#### Scenario: Flat top auto with ports and magic-compat OFF
+- **GIVEN** the same cell and options
+- **WHEN** a flat netlist is written with `magic-compat` OFF
+- **THEN** the body is wrapped in `.subckt inv in out` … `.ends`, and child cells are still flattened
 
 ### Requirement: Subcircuit header line
 A `.subckt` line SHALL be written as `.subckt <name>` followed by the ports in ascending port index, each preceded by one space. `<name>` is the cell name, prefixed with `x` if its first character is not a letter; the cell's name is permanently renamed this way.

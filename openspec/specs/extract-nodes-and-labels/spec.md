@@ -88,9 +88,9 @@ Compatibility: exact
 The name of a node SHALL be the text of the first label in its label list (Requirement: Label attachment) whose role is "node name"; if there is none, the generated name (Requirement: Node reference point and generated name).
 Compatibility: exact
 
-Consequences that SHALL hold: (a) if any port label with a name role is attached, the port label that appears last in the cell label list wins; (b) with no ports, the first attached name label wins, unless the first attached label was an attribute, in which case the most recently attached name label wins (see Q-EXTRACT-4).
+Consequences that SHALL hold: (a) if any port label with a name role is attached, the port label that appears last in the cell label list wins; (b) with no ports, the first attached name label wins. With `magic-compat` ON (the default) there is one exception, as in Magic: if the first attached label was an attribute, each later non-port label is inserted after it, so the most recently attached name label wins. With `magic-compat` OFF non-port labels keep attachment order and the first attached name label always wins (Q-EXTRACT-4, resolution: compat). Port precedence is the same in both modes.
 
-(Magic ref: extract/ExtBasic.c:993-1012, extract/ExtRegion.c:236-252)
+(Magic ref: extract/ExtBasic.c:993-1012, extract/ExtRegion.c:315-331, extract/ExtRegion.c:489-503)
 
 #### Scenario: Port beats internal label
 - **GIVEN** a node with labels in cell order `int1` (non-port), `A` (port 1), `B` (port 2)
@@ -102,6 +102,12 @@ Consequences that SHALL hold: (a) if any port label with a name role is attached
 - **GIVEN** a node with non-port labels in cell order `alpha`, `beta`
 - **WHEN** the cell is extracted
 - **THEN** the node name is `alpha`
+
+#### Scenario: Attribute attached before two name labels
+- **GIVEN** a node whose non-port labels are attached in the order `cap=1f@`, `alpha`, `beta`
+- **WHEN** the cell is extracted with `magic-compat` ON
+- **THEN** the node name is `beta`
+- **AND** with `magic-compat` OFF the node name is `alpha`
 
 ### Requirement: Port records
 
@@ -134,9 +140,7 @@ The node list order SHALL be: the reverse of node discovery order, where discove
 After each node record, the extractor SHALL locate the label whose text is the chosen name in the node's label list, and for each later label L in the list with a name role and text different from the chosen name: if L is a port label or the `aliases` option is on, write `equiv "<name>" "<L>"`, except when L's text equals the first port name seen for this node or equals the text of the immediately preceding written alias; otherwise mark L as a non-exported alias, so it SHALL NOT be used for hierarchical merges or coupling names and SHALL be skipped by later label attachment in the same extraction.
 Compatibility: exact
 
-If the chosen name is a port, or once a port alias is written, a later port label with a different text SHALL produce the warning `Warning:  Ports "<a>" and "<b>" are electrically shorted.` unless the two names are equal after truncating each at its first `_uq`, or lumped resistance extraction is on (informative message). Non-exported alias marks SHALL be cleared at the start of every cell extraction.
-
-See Q-EXTRACT-22.
+If the chosen name is a port, or once a port alias is written, a later port label with a different text SHALL produce the warning `Warning:  Ports "<a>" and "<b>" are electrically shorted.` unless the two names are equal after truncating each at its first `_uq`, or it is suppressed (informative message). Suppression depends on the `magic-compat` setting (Q-EXTRACT-22, resolution: compat): with it ON (the default) the warning is suppressed whenever lumped resistance extraction is on, as in Magic, so it never prints in the default configuration; with it OFF it is suppressed only when full R-C extraction (`extresist`) runs in the same pass. The `.ext` output is the same in both modes. Non-exported alias marks SHALL be cleared at the start of every cell extraction.
 
 (Magic ref: extract/ExtBasic.c:770-860, extract/ExtCell.c:520-523, extract/ExtRegion.c:197-201)
 
@@ -169,15 +173,23 @@ Compatibility: exact
 
 Mode rules: mode `all` and the temporary mode SHALL rename every duplicated text including global names; modes `noports`, `notopports` and temporary-noports SHALL rename only non-port labels; otherwise texts ending in `#` SHALL be renamed, texts ending in `!` SHALL be left alone silently, and other duplicates SHALL only be warned as `Non-global label "<T>" attached to more than one unconnected node: <name>` (ports silently skipped in `noports`/`notopports`). Abstract views (`LEFview`) SHALL be skipped. Temporarily renamed labels SHALL be flagged and, when reverted, truncated at their last `_`, and a renamed port SHALL take back the port number of another label with the restored text.
 
-See Q-EXTRACT-23.
+Which node keeps the name is Magic's choice in both `magic-compat` settings (Q-EXTRACT-23, resolution: replicate): the node visited later keeps it, except that a port on the earlier node wins over a non-port. The result depends on the node-list order, which is reproduced exactly (Requirement: Node and attribute records; Q-EXTRACT-5).
 
-(Magic ref: extract/ExtUnique.c:83-408, extract/ExtMain.c:744-760)
+After every extraction run with the temporary mode, the temporary labels SHALL be reverted in every cell that was renamed, the top cell of `extract`/`extract cell` included, whether or not the cell has isolated substrate regions, and the cell's modified flag SHALL be restored if the renaming was its only change, in both `magic-compat` settings (Q-EXTRACT-6, resolution: fix). Magic leaves the `_uqN` labels in some cells, and a later save writes them to the `.mag` file; the revert does not change `.ext` content.
+
+(Magic ref: extract/ExtUnique.c:83-408, extract/ExtUnique.c:155-188, extract/ExtMain.c:842-848, extract/ExtMain.c:1108-1115)
 
 #### Scenario: Temporary unique
 - **GIVEN** `extract do unique` and two unconnected metal1 shapes both labeled `net1`, neither a port
 - **WHEN** the cell is extracted
 - **THEN** the `.ext` file contains one node named `net1` and one named `net1_uq0`
-- **AND** after extraction both labels read `net1` again in the layout (see Q-EXTRACT-6 for an exception)
+- **AND** after extraction both labels read `net1` again in the layout, and the cell is not left modified
+
+#### Scenario: Temporary unique labels reverted without isolated substrate
+- **GIVEN** `extract do unique`, a style with no default substrate type, and a top cell with two unconnected metal1 shapes both labeled `net1`
+- **WHEN** `extract cell` runs on the top cell and the cell is then saved
+- **THEN** the `.ext` file contains the nodes `net1` and `net1_uq0`
+- **AND** both labels read `net1` in the layout and in the saved `.mag` file, in both `magic-compat` settings
 
 #### Scenario: Global name preserved by tagged mode
 - **GIVEN** two unconnected shapes labeled `vdd!` and command `extract unique #`

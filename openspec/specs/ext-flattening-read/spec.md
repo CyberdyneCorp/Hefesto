@@ -169,13 +169,13 @@ Compatibility: exact
 `parameters <type> {<key>=<expr>}` SHALL declare, once per device type name, how parameters are output. Later declarations for the same type are ignored. For each token:
 - `parm_type` is the key's first character and, if the key is longer than one character, its second character.
 - `parm_name` is the text after `=`.
-- If that text contains `*`, the part after `*` is a float scale factor and the name ends at `*`. The offset is then left undefined; see Q-NETLIST-8.
+- If that text contains `*`, the part after `*` is a float scale factor and the name ends at `*`. The offset is then 0, in both `magic-compat` settings (Q-NETLIST-8, resolution: compat; Magic leaves it uninitialised, so `*1` reads garbage). Where the offset is applied is set by capability `netlist-spice-devices`.
 - Otherwise, a `+N` or `-N` suffix is an integer offset and the name ends at the sign.
 - Tokens without `=` SHALL be reported as `Bad parameter assignment` and skipped.
 
-The declared list SHALL be stored in reverse order of the tokens. Output therefore emits parameters last-declared-first; see Q-NETLIST-9. A type name starting with `:` declares instance parameters of a cell. For those, the whole token is kept verbatim as the name, and `parm_type` becomes the two-digit token index `"00"`, `"01"`, ….
+The declared list SHALL be stored in reverse order of the tokens. Output therefore emits parameters last-declared-first, in both `magic-compat` settings (Q-NETLIST-9, resolution: replicate). The `.ext` `parameters` line is already in tech-file order, so output is the reverse of the tech-file declaration order. A type name starting with `:` declares instance parameters of a cell. For those, the whole token is kept verbatim as the name, and `parm_type` becomes the two-digit token index `"00"`, `"01"`, ….
 Compatibility: exact
-(Magic ref: extflat/EFbuild.c:753-870)
+(Magic ref: extflat/EFbuild.c:753-870, extflat/EFbuild.c:777-852, extflat/EFbuild.c:982-985)
 
 #### Scenario: Declaration order reversed
 - **GIVEN** `parameters nfet l=l w=w a1=as p1=ps`
@@ -196,7 +196,7 @@ Compatibility: exact
 When both names are ports with different port indices, the following rules SHALL apply in order:
 1. When netlisting SPICE and the names are equal ignoring case, merge silently.
 2. If the names are equal after cutting each name at its first `_uq`, merge silently.
-3. Otherwise, under `short resistor` (or `short voltage`), do not merge. Instead create a resistor (or voltage source) device of type `None` with value 0 between the two names, plus a dangling first terminal named `dummy` (Q-NETLIST-31).
+3. Otherwise, under `short resistor` (or `short voltage`), do not merge. Instead create a resistor (or voltage source) device of type `None` with value 0 between the two names, plus a first terminal (terminal 0) that depends on the `magic-compat` setting (Q-NETLIST-31, resolution: compat): with it ON (the default) every short device in the definition takes the shared terminal-0 node `dummy`, as in Magic; with it OFF each short device gets its own anonymous terminal-0 node that no name lookup can reach, so it never joins a user net or another short device. The device keeps three terminals and its visit order in both settings. Capability `netlist-spice-devices` describes how terminal 0 reaches the netlist in resistor tee and pi modes.
 4. Otherwise, when not reading resistance-extraction overlays, warn `Ports "<a>" and "<b>" are electrically shorted.` and merge.
 5. When reading with resistance-extraction overlays, keep them separate.
 
@@ -206,12 +206,22 @@ Every `equiv` read while an overlay is pending SHALL also be remembered. After t
 
 `killnode <name>` SHALL record a kill that is applied at flattening time.
 Compatibility: exact
-(Magic ref: extflat/EFbuild.c:541-750, extflat/EFbuild.c:1762-1880, extflat/EFbuild.c:509-530, extflat/EFread.c:374-416, extflat/EFread.c:725-745)
+(Magic ref: extflat/EFbuild.c:541-750, extflat/EFbuild.c:638-648, extflat/EFbuild.c:1762-1880, extflat/EFbuild.c:1817-1836, extflat/EFbuild.c:509-530, extflat/EFread.c:374-416, extflat/EFread.c:725-745)
 
 #### Scenario: Shorted ports with resistor policy
 - **GIVEN** `ext2spice short resistor`, ports `A` (index 0) and `B` (index 1), and the line `equiv A B`
 - **WHEN** it is read
 - **THEN** `A` and `B` remain distinct nodes and a 0-valued `None` resistor device connects them
+
+#### Scenario: Two shorted-port pairs share dummy with magic-compat ON
+- **GIVEN** `ext2spice short resistor`, `ext2spice resistor tee on`, and one cell whose ports `A`/`B` and `C`/`D` are shorted by `equiv A B` and `equiv C D`
+- **WHEN** the cell is read and netlisted with `magic-compat` ON
+- **THEN** both short devices take the terminal-0 node `dummy`, so the tee midpoints of the two devices are the same node and the pairs are joined through it
+
+#### Scenario: Two shorted-port pairs stay separate with magic-compat OFF
+- **GIVEN** the same cell and options
+- **WHEN** it is read and netlisted with `magic-compat` OFF
+- **THEN** each short device has its own anonymous terminal-0 node, the two tee midpoints are distinct, and the pairs `A`/`B` and `C`/`D` are not connected to each other
 
 #### Scenario: Unique-suffix ports merge
 - **GIVEN** ports `net` (index 0) and `net_uq1` (index 1) and the line `equiv net net_uq1`
@@ -223,14 +233,14 @@ The reader SHALL handle these records as follows:
 - **`use`**: `use <def> <id> <a> <b> <c> <d> <e> <f>` SHALL create an instance with transform `(a b c / d e f)`. If `<id>` contains `[` followed by `%d:%d:%d][%d:%d:%d`, it SHALL be an array with x range `xlo:xhi:xsep` and y range `ylo:yhi:ysep`. The id is cut at the `[`. Any other bracket text SHALL be kept in the id verbatim, with no array. A repeated id SHALL warn and replace the earlier use.
 - **`port`**: `port <name> <idx> <llx> <lly> <urx> <ury> <layer>` SHALL mark the node as a port with index `idx`. The node is created if needed. A port in the root file is also a top-level port. Port records SHALL mark the definition as a subcircuit, but only when subcircuit processing was requested for this read. Subcircuit processing is disabled for the children of a definition that has itself been marked as a subcircuit, unless that definition is the root.
 - **`cap`**: `cap <a> <b> <C>` SHALL record a coupling of `C × cscale` aF.
-- **`resist`**: `resist <a> <b> <R>` SHALL record a resistor of value `(float)(0.5 + rscale × atof(R))`, with no truncation; see Q-NETLIST-12.
+- **`resist`**: `resist <a> <b> <R>` SHALL record a floating-point resistor value with no truncation, which depends on the `magic-compat` setting (Q-NETLIST-12, resolution: compat): with it ON (the default) the value is `(float)(0.5 + rscale × atof(R))`, as in Magic; with it OFF it is `(float)(rscale × atof(R))`.
 - **Array ranges in names**: in `cap`, `resist` and `merge`, names may contain array ranges `[lo:hi]` or `[lo:hi,lo:hi]`, with at most 2 ranges. Both names SHALL have the same number of ranges with equal spans. Otherwise the record is rejected with `Number of subscripts doesn't match` or `Subscript <n> range mismatch`. A range with lo > hi is rejected.
 - **`subcap`**: `subcap <name> <C>` SHALL add `C × cscale` to an existing node. An unknown node is silently ignored unless warnings are on.
 - **`attr`**: `attr <node> <llx> <lly> <urx> <ury> <layer> <text>` SHALL prepend the attribute text to the node, with scaled coordinates. An unknown node is reported as `Attribute for nonexistent node <n> ignored`.
 - **`connect`**: `connect` records SHALL only be kept as connection points for resistance extraction.
 - **`abstract`/`primitive`**: these SHALL flag the definition as abstract or primitive.
 Compatibility: exact
-(Magic ref: extflat/EFbuild.c:1533-1612, extflat/EFbuild.c:1331-1376, extflat/EFbuild.c:1881-2110, extflat/EFbuild.c:336-430, extflat/EFread.c:438-470, extflat/EFread.c:627-648)
+(Magic ref: extflat/EFbuild.c:1533-1612, extflat/EFbuild.c:1331-1376, extflat/EFbuild.c:1881-2110, extflat/EFbuild.c:336-430, extflat/EFread.c:438-470, extflat/EFread.c:626-635, extflat/EFread.c:627-648)
 
 #### Scenario: Array use
 - **GIVEN** `use inv u1[0:3:10][0:0:0] 1 0 0 0 1 0`
@@ -240,13 +250,14 @@ Compatibility: exact
 #### Scenario: Resist rounding
 - **GIVEN** `scale 1 1 1` and `resist a b 1234`
 - **WHEN** it is read
-- **THEN** the stored resistance is 1234.5 mΩ
+- **THEN** with `magic-compat` ON the stored resistance is 1234.5 mΩ
+- **AND** with `magic-compat` OFF it is 1234 mΩ
 
 ### Requirement: Technology, style, version and resistance classes
 The reader SHALL handle these records as follows:
 - **`tech <name>`**: SHALL set the technology name. In the embedded editor, if the name differs from the loaded technology and layout is loaded, the read SHALL fail. If no layout is loaded, the named technology SHALL be loaded. A `-T` argument SHALL override the final technology name.
 - **`style <name>`**: an unknown style SHALL clear the active style and warn `.ext file style <s> is not known in this technology!`. The netlisters then output zero area/perimeter and parasitic values.
-- **`version <v>`**: a version different from the editor's own SHALL warn `Cell was extracted using version <v> of the extractor.` (informative).
+- **`version <v>`**: a version different from `8.3`, the `.ext` format version Hefesto writes (Q-EXTRACT-10, resolution: replicate), SHALL warn `Cell was extracted using version <v> of the extractor.` (informative).
 - **`resistclasses <r0> <r1> …`**: the first occurrence SHALL define the class count and their sheet resistances in mΩ/square. A later file with a different count or different values SHALL report a mismatch and set an error flag, but reading SHALL continue.
 Compatibility: behavioral
 (Magic ref: extflat/EFread.c:470-626)

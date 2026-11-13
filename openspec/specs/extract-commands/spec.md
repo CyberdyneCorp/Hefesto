@@ -99,29 +99,40 @@ Compatibility: behavioral
 
 ### Requirement: Style, halo and step size
 
-`extract style` SHALL print the current style (with `listall`, all styles); `extract style NAME` SHALL select the unique style whose name has NAME as prefix (`Extraction style "<n>" is ambiguous.` / `"<n>" is not one of the extraction styles Magic knows.` otherwise) and reload it (see `extract-tech-section`). `extract halo [D]` SHALL print the side halo in internal units or set it to D (any distance syntax of `cmd-coordinates-and-units`, must be ≥ 0); `extract stepsize [D]` likewise for the step size (must be > 0). These overrides SHALL apply to the loaded style until it is reloaded.
+`extract style` SHALL print the current style (with `listall`, all styles); `extract style NAME` SHALL select the unique style whose name has NAME as prefix (`Extraction style "<n>" is ambiguous.` / `"<n>" is not one of the extraction styles Magic knows.` otherwise) and reload it (see `extract-tech-section`). `extract halo [D]` SHALL print the side halo in internal units or set it to D (any distance syntax of `cmd-coordinates-and-units`, must be ≥ 0); `extract stepsize [D]` likewise for the step size (must be > 0). These overrides SHALL change the loaded style in place, in both `magic-compat` settings (Q-EXTRACT-25, resolution: replicate): a grid rescale SHALL scale them like any other style value, and selecting or reloading a style, or loading a technology, SHALL restore the tech-file values.
 Compatibility: behavioral
 
-See Q-EXTRACT-25.
-
-(Magic ref: commands/CmdE.c:1240-1300, extract/ExtTech.c:770-806)
+(Magic ref: commands/CmdE.c:1241-1300, extract/ExtTech.c:770-806, extract/ExtTech.c:1084-1109, extract/ExtTech.c:4038-4039)
 
 #### Scenario: Halo override
 - **GIVEN** a style with `sidehalo 4` on a 1:1 grid
 - **WHEN** `extract halo 8` is run and a cell extracted
 - **THEN** sidewall coupling is searched up to 8 units and the hierarchical halo is 9
 
+#### Scenario: Halo override survives a rescale, not a style reload
+- **GIVEN** a style with `sidehalo 4` on a 1:1 grid and `extract halo 8`
+- **WHEN** the grid is rescaled to 2 internal units per lambda
+- **THEN** the halo is 16 units
+- **AND** after `extract style` reselects the style the halo is the tech-file value again, 8 units on the rescaled grid
+
 ### Requirement: Output path and file location
 
 `extract path DIR` SHALL set the output directory; `none`, `(none)` or `null` (case-insensitive) SHALL clear it; with no argument the path SHALL be printed (`(none)` when unset). The `.ext` file of a cell SHALL be located as follows: with path `.`, `<cellname>.ext` in the current directory; with another path, `<path>/<cellname>.ext`, creating the directory (mode 0755) when missing and falling back to the current directory when creation fails (`Path "<p>" does not exist;  saving locally.`); with no path, next to the cell's `.mag` file (its file name with the extension replaced by `.ext`), or `<cellname>.ext` for a cell never saved. If that file cannot be opened for writing, the writer SHALL retry `<basename>.ext` in the current directory unless a `<basename>.mag` exists there, and otherwise report `Cannot open output file` and skip the cell.
-Compatibility: behavioral; see Q-EXTRACT-11 [platform] for sandboxed hosts
 
-(Magic ref: extract/ExtCell.c:150-245, extract/ExtTech.c:705-730)
+On desktop hosts (macOS, Linux) this SHALL be exactly Magic's behaviour. On iPadOS and any other sandboxed host (X-4) the current directory SHALL be the project folder, the session working directory granted to the sandbox; relative paths resolve against it, directories SHALL be created through the file-coordination service with no POSIX mode, and a path outside the granted roots SHALL fail as unwritable, with the same `Cannot open output file` outcome. Messages are Magic's text on every host (Q-EXTRACT-11, resolution: platform).
+Compatibility: behavioral
+
+(Magic ref: extract/ExtCell.c:152-250, extract/ExtTech.c:705-730)
 
 #### Scenario: Path directory created
 - **GIVEN** `extract path ext/` and no `ext/` directory
 - **WHEN** a cell `top` is extracted
 - **THEN** the directory `ext/` is created and `ext/top.ext` is written
+
+#### Scenario: Path outside the sandbox
+- **GIVEN** a sandboxed host and `extract path /tmp/ext` outside the granted roots
+- **WHEN** a cell `top` is extracted
+- **THEN** the fallback `top.ext` in the project folder is written if it can be opened, and otherwise `Cannot open output file` is reported and the cell is skipped
 
 ### Requirement: Unique command and temporary unique option
 
@@ -138,9 +149,18 @@ Compatibility: behavioral (renaming rules are exact, see `extract-nodes-and-labe
 ### Requirement: Path length extraction
 
 `extract length driver NAME...` and `extract length receiver NAME...` SHALL add hierarchical terminal names (relative to the root) to the driver and receiver tables; `extract length clear` SHALL empty both. When option `length` is on and the root cell is extracted, for every driver whose label is found, the net through the driver SHALL be flattened, every receiver label on that net found, and for each driver label and receiver label a record `distance <driver> <receiver> <min> <max>` SHALL be written, where min and max are the shortest and longest path lengths (internal units) from driver to receiver accumulated by flooding the net's tiles, each tile crossing costing the Manhattan distance between the midpoints of its entry and exit boundaries (plus the tile's width or height when entry and exit lie on the same side).
-Compatibility: behavioral (see Q-EXTRACT-12)
 
-(Magic ref: extract/ExtLength.c:147-310, extract/ExtLength.c:968-1040, extract/ExtCell.c:542-544)
+The flood SHALL be Magic's, tile for tile, in both `magic-compat` settings, so `distance` min and max are byte-identical (Q-EXTRACT-12, resolution: replicate; the tile decomposition and enumeration order are fixed by Q-EXTRACT-5):
+
+- The net is yanked flat into a scratch cell. For each plane that the driver label's type connects to, in increasing plane number, every unmarked tile of a connecting type touching the label rectangle expanded by 1 starts a flood.
+- The flood is depth-first. Visiting a tile marks it. If the tile touches the receiver label and connects to its type, the distance to the point of the label rectangle closest to the entry point is computed, min and max are updated, and the flood does not continue from that tile.
+- Otherwise the neighbours are walked in the order top (right to left), right (top to bottom), bottom (left to right), left (bottom to top); each unmarked neighbour of a connecting type is entered at the midpoint of the shared boundary.
+- Then, for a contact type, the tile at the same lower-left point on each other plane the contact connects to is entered at the same point and distance when its client is still unset (`CLIENTDEFAULT`) and its type connects. For any type with connections on other planes, those planes are searched over the tile's area expanded by 1 for unmarked connecting tiles, each entered at the current point when it overlaps the tile and otherwise at the midpoint of the clipped boundary.
+- Marks are kept until every start tile under the driver label has been flooded, and cleared only then, so a tile is reached by the first path that arrives and only first-arrival paths reach the receiver and set min and max.
+- Distances are integer arithmetic.
+Compatibility: exact
+
+(Magic ref: extract/ExtLength.c:147-310, extract/ExtLength.c:640-1040, extract/ExtCell.c:542-544)
 
 #### Scenario: Straight wire
 - **GIVEN** a single metal1 wire (0,0)-(100,4) with driver label `d` at the left end and receiver label `r` at the right end, `extract length driver d`, `extract length receiver r`
