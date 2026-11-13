@@ -18,7 +18,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-The six open-question rows below are decided by the standing rules, so none of them needs a user decision. Two native-spec questions came up while planning; they are not Magic quirks, so no rule settles them. Options are listed with the recommended one first.
+The open-question rows of the decision table are decided by the standing rules, so none of them needs a user decision. Two native-spec questions came up while planning; they are not Magic quirks, so no rule settles them. Options are listed with the recommended one first. Two plan questions (how the 3D golden cases are captured, and whether the extract-style subset is written before M7) are in the plan, `openspec/changes/m10-3d-view/design.md` "Open Questions" 3 and 4.
 
 1. **J1: contacts and vias in the 3D stack.** `hefesto-3d-visualization` "Mesh generation from layout" says contact and via cuts SHALL be drawn as vertical solids spanning the layers they connect. view-3d (Magic parity) draws every type, contacts included, with its own height and thickness: extract `height` for the contact type in layout-layer mode, the `render` line of the cut layer in mask-layer mode. The two requirements contradict each other for the same view. The View3D mockup has a "Show contacts and vias" toggle.
    - (a) **Recommended.** Parity by default: contacts use the tech values in both sources, as Magic. "Span the connected layers" is a Hefesto view option (off by default), which extends a cut from the top of the lower connected layer to the bottom of the upper one, using the contact's residues (`tech-contacts-and-stacking`) to find the layers. The spec is reworded to make spanning an option.
