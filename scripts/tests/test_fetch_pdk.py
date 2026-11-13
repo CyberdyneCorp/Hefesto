@@ -89,7 +89,7 @@ class DataSetTable(unittest.TestCase):
         self.assertEqual(ihp.family, "ihp-sg13")  # Hefesto's family directory for ihp-sg13g2
 
     def test_cache_keys_of_the_m4_pins(self):
-        self.assertEqual([data.cache_key() for data in fetch.DATA_SETS.values()],
+        self.assertEqual([fetch.DATA_SETS[name].cache_key() for name in ("sky130", "gf180mcu", "ihp")],
                          ["pdk-sky130-5740c4a81c42-8aedf059155765ef",
                           "pdk-gf180mcu-5740c4a81c42-354c55418060a14c",
                           "pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0"])
@@ -114,6 +114,87 @@ class DataSetTable(unittest.TestCase):
         gf_script = fetch.DATA_SETS["gf180mcu"].install_script()
         self.assertEqual(gf_script.count("-only "), 3)
         self.assertIn("-lib gf180mcu_fd_sc_mcu7t5v0 -lib gf180mcu_fd_pr ", gf_script)
+
+
+class GdsDataSets(unittest.TestCase):
+    """The library GDS sets of openspec/changes/m5-mask-gds-cif design D19 (task 1.2)."""
+
+    GDS_SETS = ("sky130-gds", "gf180mcu-gds", "ihp-gds", "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc")
+
+    def test_gds_sets_use_the_m4_pins_and_their_own_pdk_root(self):
+        for name in self.GDS_SETS:
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                tech = fetch.DATA_SETS[name.split("-")[0]]
+                self.assertEqual((data.family, data.variant, data.version), (tech.family, tech.variant, tech.version))
+                self.assertEqual(data.pdk_dir, "gds")
+                self.assertEqual(data.version_dir(Path("/r")),
+                                 Path("/r/gds/ciel") / tech.family / "versions" / tech.version)
+                self.assertNotEqual(data.version_dir(Path("/r")), tech.version_dir(Path("/r")))
+
+    def test_each_subset_is_the_gds_directory_of_each_library(self):
+        for name in self.GDS_SETS:
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                self.assertEqual(data.subset, tuple(f"{data.variant}/libs.ref/{lib}/gds" for lib in data.libraries))
+
+    def test_standard_cell_sets_hold_one_library_of_the_full_set(self):
+        expected = {"sky130-gds-sc": "sky130_fd_sc_hd", "gf180mcu-gds-sc": "gf180mcu_fd_sc_mcu7t5v0",
+                    "ihp-gds-sc": "sg13g2_stdcell"}
+        for name, lib in expected.items():
+            with self.subTest(name):
+                self.assertEqual(fetch.DATA_SETS[name].libraries, (lib,))
+                self.assertIn(lib, fetch.DATA_SETS[name.removesuffix("-sc")].libraries)
+
+    def test_full_sets_list_the_libraries_of_the_releases(self):
+        self.assertEqual(fetch.DATA_SETS["ihp-gds"].libraries,
+                         ("sg13g2_io", "sg13g2_pr", "sg13g2_sram", "sg13g2_stdcell"))
+        self.assertIn("sky130_sram_macros", fetch.DATA_SETS["sky130-gds"].libraries)
+        self.assertIn("gf180mcu_fd_ip_sram", fetch.DATA_SETS["gf180mcu-gds"].libraries)
+
+    def test_sky130_installs_one_library_at_a_time(self):
+        sky = fetch.DATA_SETS["sky130-gds"]
+        commands = sky.install_commands()
+        self.assertTrue(sky.per_library)
+        self.assertEqual(len(commands), len(sky.libraries))
+        for lib, command in zip(sky.libraries, commands):
+            self.assertIn(f" -lib {lib} -accept-license ", command)
+            self.assertEqual(command.count("-only "), len(sky.subset))
+        self.assertEqual(sky.install_script(), "; ".join(commands))
+
+    def test_gf180_and_ihp_install_in_one_command(self):
+        for name in ("gf180mcu-gds", "ihp-gds"):
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                self.assertFalse(data.per_library)  # common is large: download it once
+                self.assertEqual(len(data.install_commands()), 1)
+                self.assertEqual(data.install_script().count("-lib "), len(data.libraries))
+
+    def test_m4_sets_keep_their_root_and_single_install(self):
+        for name in ("sky130", "gf180mcu", "ihp"):
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                self.assertEqual(data.pdk_dir, "")
+                self.assertEqual(data.pdk_root(Path("/r")), Path("/r"))
+                self.assertEqual(len(data.install_commands()), 1)
+
+    def test_gds_cache_keys_are_distinct_and_named_after_the_set(self):
+        keys = [fetch.DATA_SETS[name].cache_key() for name in self.GDS_SETS]
+        self.assertEqual(len(set(keys)), len(keys))
+        for name, key in zip(self.GDS_SETS, keys):
+            self.assertTrue(key.startswith(f"pdk-{name}-"), key)
+
+    def test_cache_info_uses_underscored_output_names(self):
+        info = dict(line.split("=", 1) for line in fetch.cache_info(fetch.REPO / ".cache" / "pdks"))
+        self.assertEqual(info["sky130_gds_sc_key"], fetch.DATA_SETS["sky130-gds-sc"].cache_key())
+        self.assertEqual(info["ihp_gds_path"], f".cache/pdks/gds/ciel/ihp-sg13/versions/{fetch.IHP_PIN}")
+
+    def test_full_and_standard_cell_sets_share_the_version_directory(self):
+        # The -sc set is a subset of the full set: installing either first leaves the other verifiable.
+        for pdk in ("sky130", "gf180mcu", "ihp"):
+            full, sc = fetch.DATA_SETS[f"{pdk}-gds"], fetch.DATA_SETS[f"{pdk}-gds-sc"]
+            self.assertEqual(full.version_dir(Path("/r")), sc.version_dir(Path("/r")))
+            self.assertTrue(set(sc.subset) <= set(full.subset))
 
 
 class TreeDigest(unittest.TestCase):
@@ -190,6 +271,33 @@ class FetchSet(unittest.TestCase):
             self.assertIn("already present and verified", out)
             self.assertEqual(run.call_count, 1)
 
+    def test_gds_set_installs_under_its_pdk_root_and_a_second_run_is_a_no_op(self):
+        shape = dict(pdk_dir="gds", per_library=True, libraries=("lib_a", "lib_b"),
+                     subset=("toyA/libs.ref/lib_a/gds", "toyA/libs.ref/lib_b/gds"))
+        scratch = Path(self.tmp.name) / "gds-scratch"
+        populate(make_set(**shape), scratch)
+        data = make_set(**shape, tree_sha256=fetch.set_digest(make_set(**shape), scratch))
+        calls = []
+
+        def run(argv, check):
+            calls.append(argv)
+            self.assertEqual(argv[2], f"--pdk-root={self.root / 'gds'}")
+            self.assertEqual(argv[4], "pdk install toyA " + "ab" * 20 + " -lib lib_a -accept-license "
+                             "-accept-unverified -unpack-factor 32 -only toyA/libs.ref/lib_a/gds/ "
+                             "-only toyA/libs.ref/lib_b/gds/; pdk install toyA " + "ab" * 20 + " -lib lib_b "
+                             "-accept-license -accept-unverified -unpack-factor 32 -only toyA/libs.ref/lib_a/gds/ "
+                             "-only toyA/libs.ref/lib_b/gds/")
+            populate(data, self.root)  # version_dir() adds the set's pdk_dir
+            return subprocess.CompletedProcess(argv, 0)
+
+        with mock.patch.object(fetch.subprocess, "run", side_effect=run):
+            first, _, _ = quiet(fetch.fetch_set, data, self.cli, self.root)
+            second, out, _ = quiet(fetch.fetch_set, data, self.cli, self.root)
+        self.assertTrue(first and second)
+        self.assertEqual(len(calls), 1)
+        self.assertIn("already present and verified", out)
+        self.assertTrue((self.root / "gds" / "ciel" / "toyfam" / "versions" / ("ab" * 20)).is_dir())
+
     def test_verified_set_needs_no_cli(self):
         populate(self.data, self.root)
         with mock.patch.object(fetch.subprocess, "run") as run:
@@ -216,8 +324,14 @@ class FetchSet(unittest.TestCase):
 
 
 class CommandLine(unittest.TestCase):
-    def test_default_steps_are_every_set_then_magic_ref(self):
+    def test_default_steps_are_the_tech_sets_then_magic_ref(self):
+        # The GDS sets (several GB) are fetched only when named.
         self.assertEqual(fetch.selected_steps([]), ["sky130", "gf180mcu", "ihp", "magic-ref"])
+
+    def test_gds_sets_are_steps_in_canonical_order(self):
+        self.assertEqual(fetch.selected_steps(["magic-ref", "ihp-gds-sc", "sky130-gds"]),
+                         ["sky130-gds", "ihp-gds-sc", "magic-ref"])
+        self.assertEqual(fetch.parse_args(["--print-digest", "gf180mcu-gds"]).print_digest, "gf180mcu-gds")
 
     def test_steps_keep_canonical_order_and_pdk_aliases_sky130(self):
         self.assertEqual(fetch.selected_steps(["magic-ref", "ihp", "pdk", "sky130"]), ["sky130", "ihp", "magic-ref"])
@@ -251,9 +365,10 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(code, 0)
         info = dict(line.split("=", 1) for line in out.splitlines())
         for data in fetch.DATA_SETS.values():
-            self.assertEqual(info[f"{data.name}_key"], data.cache_key())
-            self.assertEqual(info[f"{data.name}_path"],
-                             f".cache/pdks/ciel/{data.family}/versions/{data.version}")
+            prefix = f"{data.pdk_dir}/" if data.pdk_dir else ""
+            self.assertEqual(info[f"{data.output_name()}_key"], data.cache_key())
+            self.assertEqual(info[f"{data.output_name()}_path"],
+                             f".cache/pdks/{prefix}ciel/{data.family}/versions/{data.version}")
         self.assertEqual(info["magic_ref_key"], f"magic-ref-{fetch.MAGIC_COMMIT[:12]}-scmos-graphics-tcltk")
         self.assertEqual(info["magic_ref_path"], "build/ref/magic")
 

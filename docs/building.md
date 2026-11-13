@@ -161,7 +161,7 @@ Downloads run in process (capability `hefesto-licensing`, decision D-13; `src/pl
 The PDK and Magic-reference tests use pinned data that is fetched, never committed (design D8/D9 of `openspec/changes/m1-core-viewer`, D15 of `openspec/changes/m3-drc` and of `openspec/changes/m4-scripting`). Without it they skip cleanly.
 
 ```sh
-# After building hefesto-cli (any preset): every PDK data set, then Magic's sources.
+# After building hefesto-cli (any preset): the tech/.mag PDK data sets, then Magic's sources.
 python3 scripts/fetch_pdk.py --cli build/macos-debug/src/cli/hefesto-cli
 ```
 
@@ -182,6 +182,32 @@ Each PDK data set is a subset of one ciel release, installed into `.cache/pdks/c
 - `scmos.tech` is generated from `build/ref/magic/scmos` at configure time (`tests/data/tech/generate_scmos.cmake`, run by `tests/unit/tech/CMakeLists.txt`), so fetch `magic-ref` before configuring, or reconfigure afterwards.
 - Golden replay (`ctest -L golden`, `tools/golden/replay.py`) takes the outline fonts that `flabel` cases need from `build/ref/magic/graphics/` and the auxiliary scripts some SCRIPT cases source from `build/ref/magic/tcltk/` (`magic-sys` and `magic-tcl` external inputs) and runs `hefesto-cli` with its own `CAD_ROOT`, so a `CAD_ROOT` set in your shell does not change the results; cases whose data is missing are skipped.
 
+### Library GDS data sets (M5)
+
+The M5 library round trips (`MASK-RT-*`), the GDS benchmark and the GDS read tests use the library GDS files of the same three releases (design D19 of `openspec/changes/m5-mask-gds-cif`). They come in six more data sets, fetched only when named (a bare `fetch_pdk.py` does not fetch them):
+
+| Set | Libraries (`<variant>/libs.ref/<lib>/gds/`) | Downloaded | Kept (cached) | Peak disk |
+|---|---|---|---|---|
+| `sky130-gds` | sky130A: `sky130_fd_io`, `sky130_fd_pr`, `sky130_fd_sc_hd`, `sky130_fd_sc_hdll`, `sky130_fd_sc_hs`, `sky130_fd_sc_hvl`, `sky130_fd_sc_lp`, `sky130_fd_sc_ls`, `sky130_fd_sc_ms`, `sky130_sram_macros` | 2.9 GB (+ `common` 6.6 MB per library) | 211 MB, 21 files (30 MB) | 4.7 GB |
+| `gf180mcu-gds` | gf180mcuD: `gf180mcu_as_sc_mcu7t3v3`, `gf180mcu_fd_io`, `gf180mcu_fd_ip_sram`, `gf180mcu_fd_pr`, `gf180mcu_fd_sc_mcu7t5v0`, `gf180mcu_fd_sc_mcu9t5v0`, `gf180mcu_ocd_io`, `gf180mcu_ocd_ip_sram`, `gf180mcu_ocd_sc_rt12t3v3`, `gf180mcu_osu_sc_gp12t3v3`, `gf180mcu_osu_sc_gp9t3v3`, `gf180mcu_re_efuse` | 684 MB (`common` 170 MB) | 130 MB, 35 files (15 MB) | 2.0 GB |
+| `ihp-gds` | ihp-sg13g2: `sg13g2_io`, `sg13g2_pr`, `sg13g2_sram`, `sg13g2_stdcell` | 456 MB (`common` 434 MB) | 90 MB, 33 files (6 MB) | 1.2 GB |
+| `sky130-gds-sc` | `sky130_fd_sc_hd` (`sky130_fd_sc_hd.gds`) | 134 MB | 4.2 MB | 0.9 GB |
+| `gf180mcu-gds-sc` | `gf180mcu_fd_sc_mcu7t5v0` (`gf180mcu_fd_sc_mcu7t5v0.gds`) | 350 MB | 1.5 MB | 1.4 GB |
+| `ihp-gds-sc` | `sg13g2_stdcell` (`sg13g2_stdcell.gds`) | 441 MB | 0.6 MB | 1.2 GB |
+
+- **Pins and root.** The pins are those of the `sky130`, `gf180mcu` and `ihp` sets. The GDS sets install under their own PDK root, `.cache/pdks/gds/` (`.cache/pdks/gds/ciel/<family>/versions/<pin>/`), never into the tech/.mag sets' version directories: `pdk install` skips a library whose `libs.ref/<lib>` directory exists, so a GDS install there would skip `sky130_fd_sc_hd` and the other `.mag` libraries, and a shared directory would also mix the two kinds of set in one CI cache entry. The `*-gds-sc` sets are subsets of the full sets and share their version directories; installing either first leaves the other verifiable.
+- **Libraries left out.** `sky130_ml_xx_hd` and `gf180mcu_ocd_alpha_{large,misc,small}` have no `gds/` directory. `sky130_fd_pr_reram` exists only for sky130B (`pdk install sky130A` rejects it).
+- **Disk.** `pdk install` decompresses each archive in full before filtering and keeps the archives of one command until it ends. `sky130-gds` therefore runs one `pdk install` per library: its largest step is `sky130_fd_sc_ls` (743 MB archive, 3.6 GB tar). `gf180mcu-gds` and `ihp-gds` run one command, so their large `common` archive is downloaded once. The peak column is the measured peak disk use of a fresh install (macOS, 2026-11-13), archives and tars included; a cold `sky130-gds` fetch takes about 13 minutes on a home connection. The cached column is the set compressed as `actions/cache` does (zstd `--long=30`).
+- **Cache keys.** `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>`: `pdk-sky130-gds-5740c4a81c42-ff704e64e85d0ee3`, `pdk-gf180mcu-gds-5740c4a81c42-227560121bb6ce03`, `pdk-ihp-gds-5e6d592e4002-cc04c5c56dc037ea`, `pdk-sky130-gds-sc-5740c4a81c42-8953c7159e79611b`, `pdk-gf180mcu-gds-sc-5740c4a81c42-50469c4cd42efa29`, `pdk-ihp-gds-sc-5e6d592e4002-fd0edbc877f78824`. `--cache-info` prints them with `-` replaced by `_` in the output name (`sky130_gds_key`, `sky130_gds_path`).
+- **CI.** The `reference-data` job of `ci.yml` caches the three `*-gds-sc` sets, and the build legs restore and verify them for the three `MASK-RT-*` cases every golden leg replays. The full sets are fetched only by the jobs that run the other round trips and the GDS benchmark (`golden-capture.yml`, `perf.yml`), each set under its own key. Together the full sets keep about 430 MB, about 50 MB cached, far below the 4 GB cache budget of design D19, so every set is cached.
+- **Tests.** `tests/unit/common/reference_data.hpp` gives the paths (`pinned_gds_library`, `pinned_gds`, and `kSky130FdScHdGds`, `kGf180mcu7t5v0Gds`, `kSg13g2StdcellGds` for the standard-cell files); a test whose set is missing skips.
+
+```sh
+python3 scripts/fetch_pdk.py sky130-gds-sc gf180mcu-gds-sc ihp-gds-sc --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py sky130-gds gf180mcu-gds ihp-gds --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py --print-digest sky130-gds
+```
+
 Run some steps only by naming them; every step is a no-op once its data is present and verified:
 
 ```sh
@@ -191,7 +217,7 @@ python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an insta
 python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
 ```
 
-The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp` and `magic-ref`; `--root DIR` installs into another PDK root. In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 
