@@ -1,6 +1,6 @@
 # M6 decision table: the 99 open questions blocking LEF/DEF and OASIS
 
-M6 ("LEF/DEF and OASIS", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M6` lists 99: 65 in `docs/decisions/open-questions/LEFDEF.md` and 34 in `OASIS.md`. Each LEFDEF entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only; `lef/` is unchanged up to HEAD 9c83a9a6). Magic has no OASIS code, so the OASIS entries were checked against the gds-read and gds-write code they mirror and against KLayout (master `dbOASISReader.cc`, `dbOASISWriter.cc`) and gdstk (`library.cpp`); the SEMI P39 text was not available. Each entry now carries `Status: open (recommendation drafted 2026-11-13)` and a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`, and evidence that was right gets a `Verified 2026-11-13:` line. **Nothing here is approved yet**, and no entry has a `Resolution:` line.
+M6 ("LEF/DEF and OASIS", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M6` lists 99: 65 in `docs/decisions/open-questions/LEFDEF.md` and 34 in `OASIS.md`. Each LEFDEF entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only; `lef/` is unchanged up to HEAD 9c83a9a6). Magic has no OASIS code, so the OASIS entries were checked against the gds-read and gds-write code they mirror and against KLayout (master `dbOASISReader.cc`, `dbOASISWriter.cc`) and gdstk (`library.cpp`); the SEMI P39 text was not available. Each entry carries a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`, and evidence that was right gets a `Verified 2026-11-13:` line. **All 99 were approved as drafted on 2026-11-13**, and the three judgement items were decided with the recommended option (a). Each entry now has `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line, and `check_milestone_readiness.py --milestone M6` reports ready.
 
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most LEFDEF rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour or the quirk is a formatting or arithmetic choice that byte identity needs, fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Most OASIS rows have no Magic output at all: they are fix (format semantics, aligned with KLayout and gdstk), replicate (the GDS-equivalence rule inherits gds-read or gds-write behaviour), or other (a Hefesto default).
 
@@ -14,20 +14,20 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-These three involve scope or product trade-offs that the standing rule does not settle. Options are listed with the recommended one first.
+These three involve scope or product trade-offs that the standing rule does not settle. Options are listed with the recommended one first. **Decided 2026-11-13: option (a) for all three**, recorded in the `Resolution:` lines of Q-OASIS-2, Q-OASIS-35 and Q-OASIS-90.
 
 1. **Q-OASIS-2: Buy the SEMI P39 text to confirm the format details that rest on KLayout and gdstk parity**
    Q-OASIS-1, 2, 3, 4, 5, 6, 7, 8, 9, 11 and 66 are drafted from KLayout and gdstk source and close without P39, because a reader has to accept what those tools write anyway. The remaining risk is a detail where KLayout and gdstk both differ from the standard and a commercial reader follows the standard (validation coverage and Q-OASIS-6's PROPERTY association, where the spec now follows KLayout rather than the P39 clause, are the most exposed). Golden cases OASIS-012, OASIS-030 and OASIS-061 with commercial files catch that, but only if such files are obtained.
-   - (a) **Recommended.** Keep the drafts as they are, relying on KLayout and gdstk parity plus the commercial-file goldens (OASIS-012, OASIS-030, OASIS-061) as release gates
+   - (a) **Recommended; chosen 2026-11-13.** Keep the drafts as they are, relying on KLayout and gdstk parity plus the commercial-file goldens (OASIS-012, OASIS-030, OASIS-061) as release gates
    - (b) Buy SEMI P39 and check the drafts against it before M6 starts; any difference becomes a spec correction
 2. **Q-OASIS-35: GDS output of read-only OASIS cells**
    A cell read from OASIS with `readonly` holds only representational content (the layers `cifinput` maps). Generating GDS from it drops every unmapped vendor layer, which is the data loss the read-only flag exists to prevent. Transcoding avoids that but adds a GDS-side requirement and its tests to M6.
-   - (a) **Recommended.** Transcode OASIS to GDS in M6: add a gds-write requirement that decodes the cell from its OASIS file and writes GDS elements, failing with an error on elements GDS cannot express
+   - (a) **Recommended; chosen 2026-11-13.** Transcode OASIS to GDS in M6: add a gds-write requirement that decodes the cell from its OASIS file and writes GDS elements, failing with an error on elements GDS cannot express
    - (b) Refuse `gds write` for a hierarchy with OASIS_FILE cells in M6 (error naming them) and add transcoding later
    - (c) Generate GDS from the representational layout with a warning listing unmapped layers (loses vendor data)
 3. **Q-OASIS-90: Shared or independent `gds` and `oasis` settings**
    PDK and flow scripts set `gds` read options (readonly, flatglob, rescale) before reading vendor data. With independent settings, a script that switches to `oasis read` silently imports differently; with shared settings, `oasis` is no longer configurable on its own for reading. The PDK script survey the entry asks for could not be done here (no PDK scripts in the workspace).
-   - (a) **Recommended.** Share the read-only settings with `gds` (`drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning`) and keep the rest independent (`abstract`, `addendum`, `arrays`, `compress`, `contacts`, `labels`, `library`, `lower`, `merge` and `undefined` (write-side), `datestamp` and `nodatestamp` (used on both sides by `gds`; a `gds datestamp` set for reproducible GDS output must not change OASIS cell timestamps), and `magscale` (no effect on OASIS))
+   - (a) **Recommended; chosen 2026-11-13.** Share the read settings with `gds` (`drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning`) and keep the rest independent (`abstract`, `addendum`, `arrays`, `compress`, `contacts`, `labels`, `library`, `lower`, `merge` and `undefined` (write-side), `datestamp` and `nodatestamp` (used on both sides by `gds`; a `gds datestamp` set for reproducible GDS output must not change OASIS cell timestamps), and `magscale` (no effect on OASIS))
    - (b) Fully independent settings (the current spec)
    - (c) Independent settings, with `oasis` values copied from `gds` at first use
 
@@ -35,11 +35,12 @@ These three involve scope or product trade-offs that the standing rule does not 
 
 - **Shared generators.** Several OFF paths reuse one piece of code: the DEF generated-via generator also builds LEF via-rule vias (Q-LEFDEF-7) and the DEF VIAS ORIGIN/OFFSET/PATTERN properties (Q-LEFDEF-62); lef-read's polygon decomposition also paints DEF pin and route polygons (Q-LEFDEF-66, Q-LEFDEF-70). Build each once.
 - **Q-LEFDEF-1 (tier-1 part).** With a 1:1 grid and no `lef read` that sets WIDTH, Magic's `def read` paints no regular-net wire at all. The both-modes fix (DRC default width) changes every such DEF import relative to Magic; the golden cases for DEF read on PDK techs must be captured with LEF loaded first, or record the deviation.
-- **Q-OASIS-35 (judgement item 2).** Transcoding OASIS read-only cells to GDS adds a gds-write requirement and its golden cases to M6. Option (b) keeps M6 smaller and loses no data, at the cost of refusing a mixed-format stream-out.
+- **Q-OASIS-35 (judgement item 2, option a chosen).** Transcoding OASIS read-only cells to GDS adds a gds-write requirement ('Read-only OASIS vendor cells') and its golden cases (layer 32767 written, 32768 an error) to M6.
+- **Q-OASIS-2 (judgement item 1, option a chosen).** P39 is not bought, so goldens OASIS-012, OASIS-030 and OASIS-061 need commercial OASIS files; obtaining them is part of M6, since they are release gates.
 
 ## Decision table
 
-Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
+Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
 
 ### LEF technology section and LEF read
 
@@ -131,7 +132,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
 | Q-OASIS-1 | Non-minimal integer encodings | **fix** | accept non-minimal encodings; write minimal ones |
-| Q-OASIS-2 | Validation signature coverage and byte order | **fix** | gdstk coverage and byte order; judgement item on buying P39 |
+| Q-OASIS-2 | Validation signature coverage and byte order | **fix** | gdstk coverage and byte order; P39 not bought, commercial-file goldens are release gates (judgement item, option a) |
 | Q-OASIS-3 | RECTANGLE square flag and modal geometry-h | **fix** | S=1 sets modal geometry-h (KLayout) |
 | Q-OASIS-4 | CTRAPEZOID table, trapezoid formulas and modal w/h after CTRAPEZOID | **fix** | keep the table; modal w/h = decoded bounding box |
 | Q-OASIS-5 | Modal reset at name records | **fix** | reset modal variables at every name record |
@@ -152,7 +153,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-OASIS-32 | Label presentation lost through OASIS | **other** | drop presentation, warn once per write; no private property in M6 |
 | Q-OASIS-33 | Negative path extensions ignored | **compat** | follows Q-MASK-114: ON ignore negative extensions; OFF shorten |
 | Q-OASIS-34 | Name for a cell refnum with no CELLNAME | **fix** | `#<n>`, as KLayout |
-| Q-OASIS-35 | GDS output of read-only OASIS cells | **fix** | transcode OASIS read-only cells to GDS (judgement item) |
+| Q-OASIS-35 | GDS output of read-only OASIS cells | **fix** | transcode OASIS read-only cells to GDS; inexpressible elements are an error (judgement item, option a) |
 | Q-OASIS-37 | User properties discarded on read | **replicate** | discard, as gds-read |
 | Q-OASIS-38 | LAYERNAME not used for mapping | **replicate** | numbers only, as cifinput |
 | Q-OASIS-39 | Layer or datatype numbers above 255 | **replicate** | wildcards only, as GDS; unmapped pairs reported once as gds-read's calmaLayerError (silent for read-only cells) |
@@ -177,7 +178,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
-| Q-OASIS-90 | Shared or independent settings for gds and oasis | **other** | share read-side settings, keep write-side ones separate (judgement item) |
+| Q-OASIS-90 | Shared or independent settings for gds and oasis | **other** | share the 13 read settings, keep the rest separate (judgement item, option a) |
 | Q-OASIS-91 | No gzip-wrapped OASIS output | **other** | CBLOCK only; gzip-wrapped files still read |
 
 ## Counts
@@ -191,7 +192,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | other | 7 | O32, O65, O66, O67, O69, O90, O91 |
 | total | 99 | |
 
-L = Q-LEFDEF, O = Q-OASIS. The judgement items are counted under their recommended option (Q-OASIS-2 fix, Q-OASIS-35 fix, Q-OASIS-90 other). Q-LEFDEF-1 and Q-LEFDEF-73 are compat with a tier-1 part fixed in both modes; Q-OASIS-33, 61 and 68 are already settled by the approved Q-MASK-114, 209 and 211 resolutions.
+L = Q-LEFDEF, O = Q-OASIS. The judgement items are counted under the chosen option (a) (Q-OASIS-2 fix, Q-OASIS-35 fix, Q-OASIS-90 other). Q-LEFDEF-1 and Q-LEFDEF-73 are compat with a tier-1 part fixed in both modes; Q-OASIS-33, 61 and 68 are already settled by the approved Q-MASK-114, 209 and 211 resolutions.
 
 ## Notable changes to the entries' original recommendations
 
@@ -233,7 +234,7 @@ Q-LEFDEF-63 appeared twice in the reviewer drafts with the same recommendation; 
 
 ## Spec changes after approval
 
-Not edited yet. After approval each spec gets the text below, and the entry's `Resolution:` line.
+Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the M6 specs with the approved decisions"). Each spec got the text below, and each entry its `Resolution:` line.
 
 ### lef-tech-section
 
@@ -337,7 +338,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-OASIS-32**: oasis-write TEXT translation (line ~249): replace '(see Q-OASIS-32)' with the resolution and add that the system SHALL warn once per write with the number of font labels written without presentation. oasis-read (line ~289): replace the pointer with the resolution.
 - **Q-OASIS-33**: None to the behaviour: oasis-read line ~264 already follows Q-MASK-114. Replace 'see Q-OASIS-33' with the resolution.
 - **Q-OASIS-34**: oasis-read line ~55: replace '(see Q-OASIS-34)' with the resolution and note that `#` is a legal cell-name character (cmd-hierarchy).
-- **Q-OASIS-35**: oasis-read line ~444: replace 'How GDS output treats them is open (Q-OASIS-35)' with the chosen rule. gds-write: add 'Read-only OASIS vendor cells' (transcode, or refuse with an error under option b), with the element mapping and the error for inexpressible elements (layer or datatype above 32767, polygon above 8191 points), and a golden case at 32767/32768. Correct the Magic ref to CalmaWrite.c:972-1361.
+- **Q-OASIS-35**: oasis-read line ~444: replace 'How GDS output treats them is open (Q-OASIS-35)' with the chosen rule. gds-write: add 'Read-only OASIS vendor cells' (transcode, option a), with the element mapping and the error for inexpressible elements (layer or datatype above 32767, polygon above 8191 points), and a golden case at 32767/32768. Correct the Magic ref to CalmaWrite.c:972-1361.
 - **Q-OASIS-37**: oasis-read line ~369: replace 'See Q-OASIS-37' with the resolution (replicate gds-read's property handling).
 - **Q-OASIS-38**: oasis-read line ~169: replace '(see Q-OASIS-38)' with the resolution.
 - **Q-OASIS-39**: oasis-read line ~168: replace '(see Q-OASIS-39)' with the resolution, note that GDS numbers above 255 behave the same, and state that unmapped pairs are reported once per pair as gds-read does (calmaLayerError), with no report in read-only cells.
