@@ -91,7 +91,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-NETLIST-10 | Name preference favors the lexically greater name | **replicate** | on a full tie the lexically greater root-first name wins |
 | Q-NETLIST-12 | `resist` values are offset by +0.5 mΩ | **compat** | ON: `resist` = 0.5 + rscale×R; OFF: rscale×R, still float |
 | Q-NETLIST-30 | Leaf-name conversion deletes characters anywhere | **compat** | ON: delete `!`/`#` anywhere in the leaf; OFF: trailing only; leading-comma underwrite guarded in both |
-| Q-NETLIST-31 | Shorted-port devices create a `dummy` node | **replicate** | short devices keep the `dummy` terminal 0 |
+| Q-NETLIST-31 | Shorted-port devices create a `dummy` node | **compat** | ON: shared `dummy` terminal 0 (tee mode joins all shorted pairs); OFF: anonymous terminal 0 per short device |
 
 ### SPICE netlisting
 
@@ -139,8 +139,8 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 37 | EXTRACT-1, EXTRACT-3, EXTRACT-4, EXTRACT-17, EXTRACT-18, EXTRACT-19, EXTRACT-21, EXTRACT-22, EXTRACT-24, MISC-1, MISC-4, MISC-7, NETLIST-4, NETLIST-5, NETLIST-7, NETLIST-8, NETLIST-12, NETLIST-13, NETLIST-15, NETLIST-16, NETLIST-17, NETLIST-18, NETLIST-19, NETLIST-20, NETLIST-25, NETLIST-29, NETLIST-30, NETLIST-32, NETLIST-34, NETLIST-35, NETLIST-37, NETLIST-39, NETLIST-40, NETLIST-41, NETLIST-43, NETLIST-44, NETLIST-46 |
-| replicate | 13 | EXTRACT-2, EXTRACT-10, EXTRACT-12, EXTRACT-16, EXTRACT-20, EXTRACT-23, EXTRACT-25, EXTRACT-26, NETLIST-9, NETLIST-10, NETLIST-24, NETLIST-28, NETLIST-31 |
+| compat | 38 | EXTRACT-1, EXTRACT-3, EXTRACT-4, EXTRACT-17, EXTRACT-18, EXTRACT-19, EXTRACT-21, EXTRACT-22, EXTRACT-24, MISC-1, MISC-4, MISC-7, NETLIST-4, NETLIST-5, NETLIST-7, NETLIST-8, NETLIST-12, NETLIST-13, NETLIST-15, NETLIST-16, NETLIST-17, NETLIST-18, NETLIST-19, NETLIST-20, NETLIST-25, NETLIST-29, NETLIST-30, NETLIST-31, NETLIST-32, NETLIST-34, NETLIST-35, NETLIST-37, NETLIST-39, NETLIST-40, NETLIST-41, NETLIST-43, NETLIST-44, NETLIST-46 |
+| replicate | 12 | EXTRACT-2, EXTRACT-10, EXTRACT-12, EXTRACT-16, EXTRACT-20, EXTRACT-23, EXTRACT-25, EXTRACT-26, NETLIST-9, NETLIST-10, NETLIST-24, NETLIST-28 |
 | fix | 4 | EXTRACT-6, MISC-3, NETLIST-6, NETLIST-23 |
 | platform | 1 | EXTRACT-11 |
 | other | 1 | NETLIST-48 |
@@ -176,6 +176,7 @@ Total: 56. IDs are given without the `Q-` prefix.
 - **Q-NETLIST-28**: fix → replicate.
 - **Q-NETLIST-29**: fix → compat.
 - **Q-NETLIST-30**: replicate → compat.
+- **Q-NETLIST-31**: replicate → compat.
 - **Q-NETLIST-32**: replicate → compat.
 - **Q-NETLIST-34**: replicate → compat.
 - **Q-NETLIST-35**: replicate → compat.
@@ -189,7 +190,7 @@ Total: 56. IDs are given without the `Q-` prefix.
 
 ## Evidence corrections
 
-26 entries had wrong line numbers or an incomplete or wrong description; each entry's `Evidence:` line now carries the corrected lines. The ones that change the substance:
+27 entries had wrong line numbers or an incomplete or wrong description; each entry's `Evidence:` line now carries the corrected lines. The ones that change the substance:
 
 - **Q-EXTRACT-2**: the "documented syntax" is Hefesto's spec table, not Magic's; sky130A-extract.tech:1027 depends on argument 5 being the substrate node name.
 - **Q-EXTRACT-6**: wider than described: the top cell of `extract`/`extract cell` is never reverted, and the `_uqN` renames are permanent edits that a later save writes to the .mag file.
@@ -198,6 +199,7 @@ Total: 56. IDs are given without the `Q-` prefix.
 - **Q-NETLIST-24**: the premise is wrong: gscap is per edge length and a gate has two diffusion edges, so `W+W` is intended.
 - **Q-NETLIST-29**: `curnode` is uninitialised before the first `node` record, and `res:min=` overflows a 20-byte stack buffer.
 - **Q-NETLIST-30**: the trim flags are defined as "delete trailing"; a leading comma in a root prefix writes before the output buffer.
+- **Q-NETLIST-31**: the `dummy` node is shared by every short device in a cell and reaches the netlist in resistor tee mode, where it shorts separate shorted-port pairs together; pi mode moves its capacitance to the ports.
 - **Q-NETLIST-34**: the missing separator can make two flat device names collide (`Mu11foo`).
 - **Q-NETLIST-35**: the counter is reset per run, so it only continues across subcircuits within one run.
 - **Q-NETLIST-37**: commit 9800d98d made the change on purpose; `descend` is inert in flat mode.
@@ -247,7 +249,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 
 ### extract-devices
 
-- **Q-EXTRACT-16**: extract-devices, 'Device cell property' (line 289): say that D1 and D2 are written in property order (Magic's code reads them as width then length for mosfet, asymmetric and bjt), with no reordering to L W. Replace 'See Q-EXTRACT-16' with the resolution and fix the refs to ExtBasic.c:353-556.
+- **Q-EXTRACT-16**: extract-devices, 'Device cell property' (line 289): say that D1 and D2 are written in property order (Magic's code reads them as width then length for mosfet, asymmetric, bjt and modelled resistor, and as area then perimeter for fet and modelled capacitor/caprev), with no reordering to L W; lengths, widths and perimeters scale by upl and areas by upl², truncated. State that after scaling urx is incremented when urx ≤ llx, and ury when ury ≤ lly. Replace 'See Q-EXTRACT-16' with the resolution and fix the refs to ExtBasic.c:353-556.
 
 ### extract-file-format
 
@@ -256,7 +258,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 ### extract-commands
 
 - **Q-EXTRACT-11**: extract-commands, 'Output path and file location' (line 117): add a platform clause mapping the current directory to the project folder on sandboxed hosts, saying that directory creation goes through file coordination and that out-of-sandbox paths fail as unwritable. Replace the Q-EXTRACT-11 pointer with the resolution.
-- **Q-EXTRACT-12**: extract-commands, 'Path length extraction' (line 141): change 'Compatibility: behavioral (see Q-EXTRACT-12)' to 'Compatibility: exact'. Specify the neighbour walk order and the depth-first marking; the refs are ExtLength.c:770-1040.
+- **Q-EXTRACT-12**: extract-commands, 'Path length extraction' (line 141): change 'Compatibility: behavioral (see Q-EXTRACT-12)' to 'Compatibility: exact'. Specify the neighbour walk order and the depth-first marking; that marks are kept until every start tile under lab1 is done (ExtLength.c:647-674), so only first-arrival paths reach the destination and set min/max; the `CLIENTDEFAULT` test of the contact branch (:864); and the 1-unit halo search of other planes in the non-contact case (:878-905). The refs are ExtLength.c:640-1040.
 - **Q-EXTRACT-25**: extract-commands, 'Style, halo and step size' (line 105): add that overrides survive a grid rescale (scaled) and are lost on style selection or reload. Replace 'See Q-EXTRACT-25' with the resolution.
 
 ### antenna-check
@@ -271,7 +273,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-NETLIST-8**: ext-flattening-read (line 172): replace 'The offset is then left undefined; see Q-NETLIST-8' with 'the offset is 0'. netlist-spice-devices parameter text: state that the offset is applied only in the SI, scale-1 branch with magic-compat ON, and in all branches with it OFF.
 - **Q-NETLIST-9**: ext-flattening-read, Requirement 'Device parameter declarations' (spec.md:176): keep the text. Add one sentence saying the .ext `parameters` line is already in tech-file order, so output is the reverse of the tech-file declaration order. Update the Magic ref to extflat/EFbuild.c:777-852, :982-985.
 - **Q-NETLIST-12**: ext-flattening-read, Requirement 'Use, port, cap, resist, attr and connect records' (spec.md:226): give the `resist` bullet both modes (ON: +0.5; OFF: rscale×R). extresist-output, Requirement 'Consumption by netlisters' (spec.md:74-78): the same, and limit the '0.0005 Ω offset' sentence to magic-compat ON. Update the Magic ref to extflat/EFread.c:626-635.
-- **Q-NETLIST-31**: ext-flattening-read, Requirement 'Equivalence, merge and kill records' (spec.md:199): keep rule 3. Add 'The `dummy` terminal is terminal 0 and is never written on the device line.' Update the Magic refs to extflat/EFbuild.c:638-648, :1817-1836.
+- **Q-NETLIST-31**: ext-flattening-read, Requirement 'Equivalence, merge and kill records' (spec.md:199): give rule 3 both modes: ON: every short device in the def takes the shared terminal-0 node `dummy`; OFF: each short device gets its own anonymous terminal-0 node that no name lookup can reach. netlist-spice-devices: note that in resistor tee mode the terminal-0 node is the midpoint of the two halves, and in pi mode its capacitance moves to the ports. Add a golden scenario (tee on, `short resistor`, two shorted-port pairs in one cell) per mode. Update the Magic refs to extflat/EFbuild.c:638-648, :1817-1836.
 
 ### ext-flattening-names
 
@@ -282,7 +284,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 
 - **Q-NETLIST-4**: netlist-spice-devices (line 134): replace 'Flat mode wrongly writes the resistance for c (Q-NETLIST-4)' with: with magic-compat ON, flat mode writes the resistance for `c`; with it OFF, it writes the capacitance.
 - **Q-NETLIST-5**: netlist-spice-devices (line 179): replace 'In flat mode that second line is never written (Q-NETLIST-5)' with the per-mode rule.
-- **Q-NETLIST-6**: netlist-spice-devices (line 209): replace 'devices with exactly one terminal desynchronize the multiplier list (Q-NETLIST-6)' with 'devices with fewer than two terminals take part in no merge and are written with M = 1'.
+- **Q-NETLIST-6**: netlist-spice-devices (line 209): replace 'devices with exactly one terminal desynchronize the multiplier list (Q-NETLIST-6)' with 'devices with exactly one terminal take part in no merge and are written with M = 1' (devices with no terminals are never written).
 - **Q-NETLIST-7**: netlist-spice-devices (line 87): keep the current text under magic-compat ON and add 'with it OFF, the non-scale values are also divided by m'. Replace the Q-NETLIST-7 pointer with the resolution.
 - **Q-NETLIST-19**: netlist-spice-devices, parameter table (spec.md:107): give the flat `p`/`p0` SI entry both modes (ON 1e-12; OFF 1e-6). netlist-spice-hierarchy (spec.md:100-106): add 'Modeled resistor in scale mode: ON `w=%d l=%d` truncated; OFF `%g`', and keep the |C| threshold and connectivity bullets as normative per-mode behaviour. Update the Magic refs to ext2spice.c:2286-2299, :4002, :4157-4161, :4180 and ext2hier.c:567-570, :1494, :1655-1660, :1673.
 - **Q-NETLIST-32**: netlist-spice-devices (spec.md:118): change 'A blanked entry yields a lone space' to ON: lone space; OFF: nothing written. Update the Magic refs to ext2spice.c:2388, :2433, :2495-2497 and ext2hier.c:379, :424.
