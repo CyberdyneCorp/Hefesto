@@ -1,8 +1,10 @@
 # M10 3D decision table: the open questions of `view-3d` and `hefesto-3d-visualization`
 
-The 3D part of M10 ("3D, plotting, diff, routing, EM/IR, digital flow", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M10` lists four 3D blockers, all in `docs/decisions/open-questions/MISC.md` and all cited by `openspec/specs/view-3d/spec.md`: Q-MISC-70, 71, 72 and 74. `hefesto-3d-visualization` cites no open question. view-3d also cites Q-MISC-73 and Q-MISC-75, which are resolved; Q-MISC-73's resolution turned out to be incomplete. The rest of M10 (plotting, diff, routing, EM/IR, digital flow) is out of scope here.
+The 3D part of M10 ("3D, plotting, diff, routing, EM/IR, digital flow", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. Before approval, `python3 scripts/check_milestone_readiness.py --milestone M10` listed four 3D blockers, all in `docs/decisions/open-questions/MISC.md` and all cited by `openspec/specs/view-3d/spec.md`: Q-MISC-70, 71, 72 and 74. `hefesto-3d-visualization` cites no open question. view-3d also cites Q-MISC-73 and Q-MISC-75, which are resolved; Q-MISC-73's resolution turned out to be incomplete. The rest of M10 (plotting, diff, routing, EM/IR, digital flow) is out of scope here.
 
-Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only; `graphics/W3Dmain.c` and `cif/CIFtech.c` are identical at fc5daa9e and at the checkout's HEAD 9c83a9a6) and against the sky130A, gf180mcuD and ihp-sg13g2 tech files of the pinned ciel releases. Each open entry now carries `Status: open (recommendation drafted 2026-11-13)` and a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`. Three new entries, Q-MISC-76, 77 and 78, were found during verification and review. **Nothing here is approved yet**, and no `Resolution:` line was added or changed.
+Each entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only; `graphics/W3Dmain.c` and `cif/CIFtech.c` are identical at fc5daa9e and at the checkout's HEAD 9c83a9a6) and against the sky130A, gf180mcuD and ihp-sg13g2 tech files of the pinned ciel releases. Each open entry now carries `Status: open (recommendation drafted 2026-11-13)` and a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`. Three new entries, Q-MISC-76, 77 and 78, were found during verification and review.
+
+**Approved 2026-11-13.** The user approved every drafted answer as written, with no option changed: Q-MISC-70, 71, 72, 74, 76, 77 and 78, and the amendment of Q-MISC-73. Each entry now carries `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line; Q-MISC-73's `Resolution:` line is replaced by the amended text and marked "resolution changed by the user 2026-11-13". Q-MISC-75 was verified and is unchanged. The user also decided the judgement items and the plan questions (next section): J1 (a), J2 (a), design Open Question 3 (a) and Open Question 4 (a). `python3 scripts/check_milestone_readiness.py --milestone M10` lists no entry cited by `view-3d` or `hefesto-3d-visualization`; the rest of M10 stays blocked.
 
 The user decided on 2026-11-13 to resolve the 3D questions and plan the 3D work now. Code starts after M5's mask-generation workstream (GEN) lands; the plan is `openspec/changes/m10-3d-view/`, drafted against the recommendations below.
 
@@ -18,22 +20,24 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-The open-question rows of the decision table are decided by the standing rules, so none of them needs a user decision. Two native-spec questions came up while planning; they are not Magic quirks, so no rule settles them. Options are listed with the recommended one first. **J1 needs the user.** J2 is settled by reading the spec (below) and is listed so the user can overrule it. Of the two plan questions in `openspec/changes/m10-3d-view/design.md` "Open Questions", 3 (how the 3D golden cases are captured) needs the user, because it adds a second capture image to CI; 4 (the extract-style subset before M7) is settled by the user's "first slice from layout layers" decision, which rules out drawing defaults only, and by preferring one reader: option (a).
+**Decided 2026-11-13: the user chose option (a) for J1, J2 and design Open Questions 3 and 4.** The options are kept for the record.
 
-1. **J1: contacts and vias in the 3D stack.** `hefesto-3d-visualization` "Mesh generation from layout" says contact and via cuts SHALL be drawn as vertical solids spanning the layers they connect. view-3d (Magic parity) draws every type, contacts included, with its own height and thickness: extract `height` for the contact type in layout-layer mode, the `render` line of the cut layer in mask-layer mode. The two requirements contradict each other for the same view. The View3D mockup has a "Show contacts and vias" toggle.
+The open-question rows of the decision table are decided by the standing rules, so none of them needs a user decision. Two native-spec questions came up while planning; they are not Magic quirks, so no rule settles them. Options are listed with the recommended one first. J1 needed the user. J2 was settled by reading the spec (below) and listed so the user could overrule it; the user confirmed it. Of the two plan questions in `openspec/changes/m10-3d-view/design.md` "Open Questions", 3 (how the 3D golden cases are captured) needed the user, because it adds a second capture image to CI; 4 (the extract-style subset before M7) is settled by the user's "first slice from layout layers" decision, which rules out drawing defaults only, and by preferring one reader: option (a). Decisions of 2026-11-13: Open Question 3 (a), a `magic-gl` capture image (the same Magic commit built with OpenGL, Mesa llvmpipe under Xvfb) used only by `MISC-3D-*` cases, plus the GL interception shim compared with the per-(style, z) union comparator; Open Question 4 (a), TECH writes the extract-style subset in P1 in `extract-tech-section`'s home, and M7 extends it.
+
+1. **J1: contacts and vias in the 3D stack.** Decision (2026-11-13): (a). `hefesto-3d-visualization` "Mesh generation from layout" says contact and via cuts SHALL be drawn as vertical solids spanning the layers they connect. view-3d (Magic parity) draws every type, contacts included, with its own height and thickness: extract `height` for the contact type in layout-layer mode, the `render` line of the cut layer in mask-layer mode. The two requirements contradict each other for the same view. The View3D mockup has a "Show contacts and vias" toggle.
    - (a) **Recommended.** Parity by default: contacts use the tech values in both sources, as Magic. "Span the connected layers" is a Hefesto view option (off by default), which extends a cut from the top of the lower connected layer to the bottom of the upper one, using the contact's residues (`tech-contacts-and-stacking`) to find the layers. The spec is reworded to make spanning an option.
    - (b) Spanning always in the Hefesto view, tech values only when the view is driven by Magic's commands (`specialopen wind3d`). Two models of one cell differ by entry point.
    - (c) Tech values only; drop spanning from the spec.
-2. **J2: units and exaggeration of exported models.** `hefesto-3d-visualization` "3D export" says units SHALL be microns and exported geometry SHALL equal the displayed model. The displayed model exaggerates z (s_z = 25 by default, changed by `zoom`), so both cannot hold.
+2. **J2: units and exaggeration of exported models.** Decision (2026-11-13): (a), confirmed by the user. `hefesto-3d-visualization` "3D export" says units SHALL be microns and exported geometry SHALL equal the displayed model. The displayed model exaggerates z (s_z = 25 by default, changed by `zoom`), so both cannot hold.
    - (a) **Recommended.** Export physical µm in x, y and z with no exaggeration; the model's geometry (polygons, layer set, cut box, visibility) equals the displayed one. An optional `-zscale k` multiplies z and is recorded in the glTF `asset.extras`. The spec says "the displayed model's geometry, in physical microns".
    - (b) Export what is displayed, z exaggeration included, and record the factor in `asset.extras`.
    - (c) Ask on every export (dialog only); scripts use (a).
 
-   **Settled without a user decision (review 2026-11-13): (a).** s_z is a view parameter held in the view state, like the rotation angles, so "the displayed model" means its geometry; the spec only needs rewording.
+   **Settled by review 2026-11-13: (a); confirmed by the user the same day.** s_z is a view parameter held in the view state, like the rotation angles, so "the displayed model" means its geometry; the spec only needed rewording.
 
 ## Decision table
 
-Each row's full text is the entry's `Recommendation:` line in `docs/decisions/open-questions/MISC.md`. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`. All rows: needs_user no.
+Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line in `docs/decisions/open-questions/MISC.md`. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`. All rows: needs_user no.
 
 ### Blocking (cited by view-3d, unresolved)
 
@@ -68,13 +72,13 @@ Each row's full text is the entry's `Recommendation:` line in `docs/decisions/op
 | fix, amendment of a resolved entry | 1 (Q-MISC-73) |
 | platform, no change | 1 (Q-MISC-75) |
 
-Once Q-MISC-70, 71, 72 and 74 have `Resolution:` lines, `check_milestone_readiness.py --milestone M10` lists no 3D blocker.
+Q-MISC-70, 71, 72 and 74 have `Resolution:` lines, so `check_milestone_readiness.py --milestone M10` lists no 3D blocker.
 
 ## Notable changes to the entries' original recommendations
 
 - **Q-MISC-72**: from "replicate numerically for now; revisit with visual comparison" to compat. Magic draws mask-layer mode 100 times flatter than layout-layer mode for sky130, and the factor depends on the internal grid; OFF makes both modes physical.
 - **Q-MISC-70**: still fix, but the behaviour statement was wrong: the bug shows without a cut box whenever a subcell's placement moves its tiles outside the window area expressed in child coordinates, and `render3d` sets a cut box only when a box exists in the rendered cell.
-- **Q-MISC-73**: the resolution covers only the toggle; a window opened with no output style crashes before any toggle (Set3DDefaults), and the first redraw and `render` dereference the style too. The amendment is drafted as a separate line; the existing `Resolution:` line is unchanged until approval.
+- **Q-MISC-73**: the resolution covered only the toggle; a window opened with no output style crashes before any toggle (Set3DDefaults), and the first redraw and `render` dereference the style too. The amendment, approved 2026-11-13, replaced the `Resolution:` line.
 
 ## Evidence corrections
 
@@ -88,7 +92,7 @@ Once Q-MISC-70, 71, 72 and 74 have `Resolution:` lines, `check_milestone_readine
 
 ## Spec changes after approval
 
-Not edited yet. After approval each spec gets the text below, and each entry its `Resolution:` line.
+Applied after the approval of 2026-11-13 in the commit "Align the 3D specs with the approved decisions", including J1 (a) and J2 (a). Each entry has its `Resolution:` line.
 
 ### view-3d
 
@@ -106,5 +110,5 @@ Not edited yet. After approval each spec gets the text below, and each entry its
 
 - **Q-MISC-71**, "Interactive 3D inspection", Layer visibility: acts on the same per-mode sets as `see`.
 - **Q-MISC-72**, "3D export" and "Interactive 3D inspection" (cross-sections): add "heights are in µm regardless of magic-compat; mask layers without a `render` height are reported, not given one".
-- **J1** (if (a)), "Mesh generation from layout": "Contact and via cuts SHALL be drawn with their technology height and thickness; a view option SHALL draw them as vertical solids spanning the layers they connect."
-- **J2** ((a), settled), "3D export": "Exported geometry SHALL equal the displayed model's geometry in physical microns, without the view's z exaggeration, unless a z scale is requested; the scale is recorded in the file."
+- **J1** ((a), approved), "Mesh generation from layout": "Contact and via cuts SHALL be drawn with their technology height and thickness; a view option SHALL draw them as vertical solids spanning the layers they connect."
+- **J2** ((a), approved), "3D export": "Exported geometry SHALL equal the displayed model's geometry in physical microns, without the view's z exaggeration, unless a z scale is requested; the scale is recorded in the file."
