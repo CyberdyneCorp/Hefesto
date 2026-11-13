@@ -123,6 +123,16 @@ release notices.
 
 ### Fixed
 
+- **A `.mag` subcell placed outside the usable plane is ignored with an
+  error** instead of overflowing coordinates. A `use` block whose
+  `transform` translation or `box` lies beyond ±1073741818 (after scaling)
+  is skipped with `Ignoring subcell C of P: its transform or box lies
+  outside the usable plane`, and the rest of the cell is read.
+- **The color-map size limit is checked by the reader itself.** A `.cmap`
+  that declares more entries than the limit (2^24, or a smaller limit the
+  caller sets) reports `Color map file "F.cmap" has too many colors` before
+  any memory is allocated, including when the index sits on the second
+  part of a line longer than 127 characters.
 - **Background DRC no longer stalls after `drc on`.** If the checker found
   nothing to do (for example with DRC off) at the same moment a command woke
   it, it could go to sleep with squares still pending, until the next edit.
