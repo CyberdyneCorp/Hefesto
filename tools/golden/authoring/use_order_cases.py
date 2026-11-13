@@ -47,10 +47,19 @@ TECH = common.MT.replace("    mt\nend", "    useorder\nend", 1).replace(
     "cifoutput\nstyle probe\n    scalefactor 100\n    layer CMF metal1\n        calma 49 0\n"
     "    layer CMS metal2\n        calma 51 0\nend\n", 1)
 
-# Two children of different sizes; use k is a use of CHILDREN[k % 2].
-CHILDREN = {"ca": (4, 4), "cb": (6, 3)}
-CHILD_FILES = {f"{name}.mag": common.mag("useorder", f"<< metal1 >>\nrect 0 0 {w} {h}\n")
-               for name, (w, h) in CHILDREN.items()}
+# Children of different sizes. Use k is a use of children[k % len(children)]: the first two for
+# every case but MASK-UO-013, which uses all four so its symbol numbering shows more than which
+# child comes first.
+CHILDREN = {"ca": (4, 4), "cb": (6, 3), "cc": (5, 5), "cd": (3, 6)}
+TWO = ("ca", "cb")
+FOUR = tuple(CHILDREN)
+
+
+def child_files(children: tuple[str, ...]) -> dict[str, str]:
+    return {f"{name}.mag": common.mag("useorder", f"<< metal1 >>\nrect 0 0 {CHILDREN[name][0]} {CHILDREN[name][1]}\n")
+            for name in children}
+
+
 # Paint around the use area [0, 106] x [0, 104]: the subtree-loading search over the root's
 # bounding box, shrunk by 1, still surrounds every use (D7), so a readout write never bins.
 FRAME = (-20, -20, 140, 140)
@@ -60,8 +69,8 @@ FRAME_RECTS = [(-20, -20, 140, -18), (-20, 138, 140, 140), (-20, -18, -18, 138),
 QUIET_WRITES = ["cif *hier write disable", "cif *array write disable"]
 
 
-def child(k: int) -> str:
-    return "ca" if k % 2 == 0 else "cb"
+def child(k: int, children: tuple[str, ...] = TWO) -> str:
+    return children[k % len(children)]
 
 
 def position(k: int) -> tuple[int, int]:
@@ -78,16 +87,17 @@ def frame() -> list[str]:
     return [line for rect in FRAME_RECTS for line in common.paint("metal1", *rect)]
 
 
-def mag_use(k: int) -> str:
+def mag_use(k: int, children: tuple[str, ...] = TWO) -> str:
     x, y = position(k)
-    w, h = CHILDREN[child(k)]
-    return f"use {child(k)}  {child(k)}_{k}\ntimestamp 100\ntransform 1 0 {x} 0 1 {y}\nbox 0 0 {w} {h}\n"
+    name = child(k, children)
+    w, h = CHILDREN[name]
+    return f"use {name}  {name}_{k}\ntimestamp 100\ntransform 1 0 {x} 0 1 {y}\nbox 0 0 {w} {h}\n"
 
 
-def top_mag(order: list[int], framed: bool, overlap: bool = False) -> str:
+def top_mag(order: list[int], framed: bool, overlap: bool = False, children: tuple[str, ...] = TWO) -> str:
     """The root cell with uses in the given file order (ids ``<child>_<k>``)."""
     paint = "".join(f"rect {x1} {y1} {x2} {y2}\n" for x1, y1, x2, y2 in FRAME_RECTS) if framed else ""
-    body = (f"<< metal1 >>\n{paint}" if paint else "") + "".join(mag_use(k) for k in order)
+    body = (f"<< metal1 >>\n{paint}" if paint else "") + "".join(mag_use(k, children) for k in order)
     if overlap:  # a use overlapping use 0, so the cell has a subcell interaction
         x, y = position(0)
         body += f"use ca  ca_99\ntimestamp 100\ntransform 1 0 {x + 2} 0 1 {y + 2}\nbox 0 0 4 4\n"
@@ -104,12 +114,13 @@ def setup(quiet: bool) -> list[str]:
 
 
 def case(cid: str, title: str, steps: list[str], *, spec=GDS_ORDER, quiet: bool = True,
-         built: bool = True, top: str | None = None) -> tclcase.TclCase:
+         built: bool = True, top: str | None = None, children: tuple[str, ...] = TWO) -> tclcase.TclCase:
     """A probe case: set-up, then (for a built root) ``load top`` and the frame, then the steps."""
     capability, requirements = spec
     start = ["load top", *frame()] if built else []
     body = [*setup(quiet), *start, f"uo::start {cid} top", *steps, "uo::finish"]
-    files = {"useorder.tech": TECH, "use_order_probe.tcl": PROBE.read_text(encoding="utf-8"), **CHILD_FILES}
+    files = {"useorder.tech": TECH, "use_order_probe.tcl": PROBE.read_text(encoding="utf-8"),
+             **child_files(children)}
     if top is not None:
         files["top.mag"] = top
     return tclcase.TclCase(cid, capability, requirements, title, "\n".join(body), files=files,
@@ -167,6 +178,13 @@ def fresh_write_specs() -> list[tclcase.TclCase]:
         case("MASK-UO-012", "Fresh session, 13 uses with an interaction: gds write, cif write, gds write.",
              ["uo::readmag input/top.mag", "uo::gds_order", "uo::cif_order", "uo::gds_order"],
              quiet=False, built=False, top=top_mag(MAG_ORDER, framed=False, overlap=True)),
+        # CIF numbers the symbols before CIFGenSubcells (cif/CIFwrite.c:333) and writes the calls after it
+        # (cif/CIFwrite.c:467). In a framed cell the loading search surrounds the uses and the interaction
+        # searches bin them in between, so the two orders differ within this one write.
+        case("MASK-UO-013", "Fresh session, framed cell with 13 uses of four children and an interaction: "
+             "one cif write (numbering before the interaction searches, calls after).",
+             ["uo::readmag input/top.mag", "uo::cif_order"], spec=CIF_ORDER, quiet=False, built=False,
+             top=top_mag(MAG_ORDER, framed=True, overlap=True, children=FOUR), children=FOUR),
     ]
 
 
