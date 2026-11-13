@@ -39,6 +39,12 @@ release notices.
   Tk's widget tree stands in for the wrapper window, so wrapper.tcl's tags,
   menus and dialogs work without a display.
 
+- **Desktop: Place device has a filter field; the label popover closes on
+  a click outside.** Both are now Raven popovers (Raven is pinned at
+  v0.2.3). In Place device, typing filters the PDK's devices, Up/Down move
+  the highlighted device and Return places it; Escape or a click outside
+  closes it. The label popover also closes on a click outside, issuing
+  nothing, like Escape and Cancel.
 - **Desktop: dragging a panel header shows where it will dock.** A dashed
   band at the dock edge ("Drop to dock on the right"), the outline of a
   floating target, and the dock the panel came from. A panel docked again

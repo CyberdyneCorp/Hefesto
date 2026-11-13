@@ -4,10 +4,10 @@
 // The rail's box-tool modes on screen (board M2-Tool-States; capability
 // hefesto-input-and-touch "Desktop Paint, Label and Measure tools"; M4
 // CARRY task 11.4), from the label_tool.hpp models:
-//   - the Label sweep opens a popover card on the canvas next to the box
-//     (Raven 0.2.2 has no anchored popover, so it is a card in the canvas
-//     overlay): text, position, layer; Enter or Add label issues `label …`,
-//     Escape or Cancel closes it and issues nothing;
+//   - the Label sweep opens a popover next to the box (a Raven popup,
+//     ui::Popup): text, position, layer; Enter or Add label issues
+//     `label …`, Escape, Cancel or a click outside closes it and issues
+//     nothing;
 //   - Escape right after a Measure sweep issues `unmeasure`;
 //   - the Paint button is disabled, with "Choose a layer to paint", while the
 //     palette has no paint layer, and the Paint mode leaves when it is cleared.
@@ -78,8 +78,8 @@ void MainWindow::build_label_popover() {
   label_card_->set_child(inner);
   label_card_->set_size(static_cast<float>(kLabelPopoverWidth), static_cast<float>(kLabelPopoverHeight) + 40.0F);
   label_card_->set_accessible_name("Label popover");
-  canvas_->add_overlay(*label_card_);
-  label_card_->set_visible(false);
+  label_popup_ = std::make_unique<ui::Popup>(*label_card_);
+  label_popup_->on_closed([this](int) { label_popover_closed(); });
 }
 
 void MainWindow::route_prompt(const std::string& text) {
@@ -100,10 +100,7 @@ void MainWindow::open_label_popover(const db::Rect& box) {
   label_layer_->set_enabled(false);
   // Right of the box, flipped to its left at the canvas edge (label_popover_point).
   const auto [x, y] = canvas_->label_point(box);
-  const ui::Rect area = canvas_->widget().rect();
-  const float w = static_cast<float>(kLabelPopoverWidth);
-  label_card_->place_top_right(std::max(0.0F, area.x + area.width - x - w), std::max(0.0F, y - area.y));
-  label_card_->set_visible(true);
+  label_popup_->open(window_, x, y);
   label_text_->focus();
 }
 
@@ -113,14 +110,20 @@ void MainWindow::commit_label() {
     label_text_->focus();  // nothing to add yet
     return;
   }
-  label_card_->set_visible(false);
+  label_popup_->close(1);
   run_line(*line);
-  canvas_->focus();
 }
 
 void MainWindow::close_label_popover() {
-  label_popover_.cancel();
-  label_card_->set_visible(false);
+  if (label_popup_->is_open()) {
+    label_popup_->close(0);  // label_popover_closed
+  } else {
+    label_popover_closed();
+  }
+}
+
+void MainWindow::label_popover_closed() {
+  if (label_popover_.is_open()) label_popover_.cancel();  // dismissed: nothing is issued
   canvas_->focus();
 }
 

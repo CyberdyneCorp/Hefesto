@@ -175,6 +175,24 @@ PlaceDeviceView place_device_view(const pcell::ToolkitMenus& menus, std::string_
   return view;
 }
 
+std::optional<std::size_t> first_device_row(const std::vector<PlaceDeviceEntry>& entries) {
+  const auto it = std::find_if(entries.begin(), entries.end(), [](const PlaceDeviceEntry& e) { return !e.heading; });
+  if (it == entries.end()) return std::nullopt;
+  return static_cast<std::size_t>(it - entries.begin());
+}
+
+std::optional<std::size_t> step_device_row(const std::vector<PlaceDeviceEntry>& entries,
+                                           std::optional<std::size_t> row, int step) {
+  if (!row || *row >= entries.size()) return first_device_row(entries);
+  if (step == 0) return row;
+  std::size_t i = *row;
+  while (step > 0 ? i + 1 < entries.size() : i > 0) {
+    i = step > 0 ? i + 1 : i - 1;
+    if (!entries[i].heading) return i;
+  }
+  return row;
+}
+
 // --- parameter dialog ---------------------------------------------------------------
 
 void PCellEditState::begin_edit(const DialogModel& model, std::string_view parameter, std::string_view value) {

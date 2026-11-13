@@ -42,16 +42,12 @@ std::vector<ui::MenuBarMenuSpec> menu_specs(const MenuBarView& view) {
   return specs;
 }
 
-std::vector<ui::MenuItem> place_items(const PlaceDeviceView& view) {
-  std::vector<ui::MenuItem> items;
-  for (const PlaceDeviceEntry& e : view.entries) {
-    ui::MenuItem item;
-    item.label = e.heading ? e.label : "    " + e.label;
-    item.enabled = !e.heading;
-    item.separator_before = (e.heading || e.recent) && !items.empty();
-    items.push_back(std::move(item));
-  }
-  return items;
+constexpr float kPlaceWidth = 300.0F;      // the Place device popover
+constexpr float kPlaceListHeight = 260.0F;
+
+/// A row of the Place device list: headings flush left, devices indented.
+std::string place_row_text(const PlaceDeviceEntry& e) {
+  return e.heading ? e.label : "    " + e.label;
 }
 
 }  // namespace
@@ -80,6 +76,7 @@ void MainWindow::build_m4() {
   declined_bar_.add(*review_button_);
   declined_bar_.set_visible(false);
   center_.insert(declined_bar_, 0);
+  build_place_device();
   refresh_menu_bar();
 }
 
@@ -92,6 +89,7 @@ void MainWindow::teardown_m4() {
   }
   editor.script.events.remove(script_events_);
   pcell_dialog_.reset();
+  place_popup_.reset();  // closes it (if open) while the window is whole
 }
 
 void MainWindow::set_consent_host(DesktopConsentHost* host) {
@@ -221,6 +219,35 @@ PlaceDeviceView MainWindow::place_device_state(std::string_view filter) const {
                            recent_device_);
 }
 
+void MainWindow::build_place_device() {
+  place_card_.emplace(ui::Panel::create(ctx_.tokens().control_border));
+  place_card_->set_padding(1.0F, 1.0F, 1.0F, 1.0F);
+  ui::Panel& inner = place_inner_.emplace(ui::Panel::create(ctx_.tokens().surface1));
+  inner.set_padding(12.0F, 10.0F, 12.0F, 10.0F);
+  place_box_.set_spacing(8.0F);
+  place_title_.emplace(ui::Label::create("Place device"));
+  place_box_.add(*place_title_);
+  place_filter_ = ui::TextInput::create("Filter devices");
+  place_filter_->set_accessible_name("Filter devices");
+  place_filter_->on_change([this](std::string text) { filter_place_device(text); });
+  place_filter_->on_commit([this](const std::string&) { place_device_row(place_row_); });
+  place_filter_->on_key([this](int key, std::uint8_t modifiers) { return place_filter_key(key, modifiers); });
+  place_box_.add(*place_filter_);
+  place_list_ = ui::Table::create();
+  place_list_->add_column("Device", 120.0F, 1.0F, false);  // fills the list (no side scroll)
+  place_list_->set_header_visible(false);
+  place_list_->set_accessible_name("Devices");
+  place_list_->set_size(-1.0F, kPlaceListHeight);
+  place_list_->on_select([this](int row) { place_row_ = static_cast<std::size_t>(row); });
+  place_list_->on_activate([this](int row) { place_device_row(static_cast<std::size_t>(row)); });
+  place_box_.add(*place_list_, 1.0F);
+  inner.set_child(place_box_);
+  place_card_->set_child(inner);
+  place_card_->set_size(kPlaceWidth, -1.0F);
+  place_card_->set_accessible_name("Place device");
+  place_popup_ = std::make_unique<ui::Popup>(*place_card_);
+}
+
 void MainWindow::open_place_device() {
   const PlaceDeviceView view = place_device_state();
   if (!view.enabled) {
@@ -228,19 +255,45 @@ void MainWindow::open_place_device() {
     status_bar_->invalidate();
     return;
   }
-  place_entries_ = view.entries;
-  place_menu_.set_items(view.title, place_items(view), [this](std::size_t index) {
-    if (index >= place_entries_.size() || place_entries_[index].heading) return;
-    const std::string script = place_entries_[index].script;
-    recent_device_ = script;
-    (void)run_script_action(script, cmd::Origin::script);  // a PDK's device entry (S-01)
-  });
+  place_title_->set_text(view.title);
+  place_filter_->set_text("");
+  filter_place_device({});
   float x = static_cast<float>(kToolRailWidth);
   float y = 0.0F;
   for (const RailButton& b : rail_) {
     if (b.tool.icon == "place") y = b.widget->rect().y;
   }
-  place_menu_.open(window_, x, y);
+  place_popup_->open(window_, x, y);
+  place_filter_->focus();
+}
+
+void MainWindow::filter_place_device(std::string_view filter) {
+  place_entries_ = place_device_state(filter).entries;
+  place_list_->set_rows(static_cast<int>(place_entries_.size()), [this](int row, int) {
+    const auto i = static_cast<std::size_t>(row);
+    return i < place_entries_.size() ? place_row_text(place_entries_[i]) : std::string();
+  });
+  place_row_ = first_device_row(place_entries_);
+  place_list_->set_selected(place_row_ ? static_cast<int>(*place_row_) : -1);
+}
+
+bool MainWindow::place_filter_key(int key, std::uint8_t modifiers) {
+  // Up and Down move the highlighted device while the filter keeps the keyboard.
+  if (modifiers != 0 || (key != raven_key::kDown && key != raven_key::kUp)) return false;
+  place_row_ = step_device_row(place_entries_, place_row_, key == raven_key::kDown ? 1 : -1);
+  if (place_row_) {
+    place_list_->set_selected(static_cast<int>(*place_row_));
+    place_list_->scroll_to_row(static_cast<int>(*place_row_));
+  }
+  return true;
+}
+
+void MainWindow::place_device_row(std::optional<std::size_t> row) {
+  if (!row || *row >= place_entries_.size() || place_entries_[*row].heading) return;
+  const std::string script = place_entries_[*row].script;
+  place_popup_->close(1);
+  recent_device_ = script;
+  (void)run_script_action(script, cmd::Origin::script);  // a PDK's device entry (S-01)
 }
 
 // --- declined ---------------------------------------------------------------------------
