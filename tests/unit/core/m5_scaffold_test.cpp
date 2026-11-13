@@ -191,6 +191,26 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
   check_not_implemented(s.run("cif istyle in"), "cif istyle");
 }
 
+// Regression: a bare `cif` returned CORE-NOTIMPL-005 before CmdCif's window
+// check, and only `scale` and `lambda` checked for a window.
+TEST_CASE("cif options other than the windowless ones need a window",
+          "[m5-scaffold][cap:cif-format-io][req:cif command dispatch]") {
+  Session s;
+  for (const auto* line : {"cif", "cif write x", "cif flat x", "cif read x", "cif see x", "cif paint a b",
+                           "cif coverage x", "cif statistics", "cif drccheck yes", "cif rescale yes", "cif idcell yes",
+                           "cif unfracture yes", "cif *hier x", "cif *array x", "cif scale out"}) {
+    INFO(line);
+    const auto result = s.run(line);
+    REQUIRE_FALSE(result.ok());
+    CHECK(result.diagnostics.front().code == "VIEW-WINDOW-003");
+  }
+  for (const auto* name : {"prefix", "arealabels", "warning", "limit", "polygon"}) {
+    check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
+  }
+  REQUIRE(s.run("cif help").ok());
+  REQUIRE(s.run("cif list ostyle").ok());
+}
+
 TEST_CASE("an unknown gds option prints the error and the help", "[m5-scaffold]") {
   Session s;
   REQUIRE(s.run("gds bogus").ok());

@@ -22,6 +22,7 @@
 
 #include "hefesto/cif/command/command.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -77,7 +78,19 @@ constexpr std::array<std::string_view, 23> kOptions{
     "unfracture [yes|no]\n\t\t\toptimize non-Manhattan geometry",
 };
 
-enum Option : std::size_t { kHelp = 5, kIstyle = 7, kLambda = 8, kOstyle = 10, kScale = 15 };
+enum Option : std::size_t {
+  kArealabels = 2,
+  kHelp = 5,
+  kIstyle = 7,
+  kLambda = 8,
+  kLimit = 9,
+  kOstyle = 10,
+  kPrefix = 12,
+  kScale = 15,
+  kWarning = 18,
+  kWrite = 19,
+  kPolygon = 21,
+};
 
 /// One parsed `cif` call: the list mode words removed (Magic's argv++).
 struct CifCall {
@@ -310,10 +323,13 @@ CommandResult style(const CifCall& c, std::size_t option) {
   return option == kIstyle ? input_styles_of(c) : output_styles(c);
 }
 
-// Options that need a window (every one but help, istyle, ostyle, prefix,
-// arealabels, warning, limit and polygon): "Point to a window first".
+// Options that need a window (CmdCif's first switch: every one but help,
+// istyle, ostyle, prefix, arealabels, warning, limit and polygon, and a bare
+// `cif`, which writes): "Point to a window first".
 bool needs_window(std::size_t option) {
-  return option == kScale || option == kLambda;
+  constexpr std::array<std::size_t, 8> kWindowless{kHelp,   kIstyle,     kOstyle,  kPrefix,
+                                                   kLimit, kArealabels, kWarning, kPolygon};
+  return std::ranges::find(kWindowless, option) == kWindowless.end();
 }
 
 CommandResult run_option(const CifCall& c, std::size_t option) {
@@ -341,7 +357,7 @@ CommandResult cif_command(cmd::CommandContext& ctx, const cmd::Invocation& invoc
   }
   CifCall c{session.value(), invocation.args};
   if (c.words.empty()) {
-    return cmd::not_implemented("cif write");  // a bare `cif` writes the root cell
+    return run_option(c, kWrite);  // a bare `cif` writes the root cell (CmdCif's outputCIF)
   }
   if (c.words.front().starts_with("list")) {
     c.list = true;
