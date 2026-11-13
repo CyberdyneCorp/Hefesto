@@ -1,0 +1,38 @@
+Tcl_ObjSetVar2: hold the new value across the variable lookup
+
+When the lookup fails with TCL_LEAVE_ERR_MSG, TclObjVarErrMsg replaces the
+interpreter result. If newValuePtr is that result (CatchObjCmdCallback
+passes Tcl_GetObjResult(interp)), its last reference is released there, and
+the following newValuePtr->refCount check reads freed memory. Reproducer:
+Tcl_EvalEx(interp, "catch nosuchcmd nosuchns::v", -1, 0) under ASan.
+
+Affects Tcl 8.6.16, core-8-6-branch (8.6.18) and main (9.x). Carried by
+Hefesto until upstream ships a fix; see cmake/Tcl.cmake.
+
+--- a/generic/tclVar.c
++++ b/generic/tclVar.c
+@@ -1754,14 +1754,21 @@
+ 
+     flags &= (TCL_GLOBAL_ONLY|TCL_NAMESPACE_ONLY|TCL_LEAVE_ERR_MSG
+ 	    |TCL_APPEND_VALUE|TCL_LIST_ELEMENT);
++
++    /*
++     * Hold newValuePtr across the lookup: when it fails with
++     * TCL_LEAVE_ERR_MSG, the error message replaces the interpreter result,
++     * which may be newValuePtr itself (catch passes Tcl_GetObjResult).
++     */
++
++    Tcl_IncrRefCount(newValuePtr);
+     varPtr = TclObjLookupVarEx(interp, part1Ptr, part2Ptr, flags, "set",
+ 	    /*createPart1*/ 1, /*createPart2*/ 1, &arrayPtr);
+     if (varPtr == NULL) {
+-	if (newValuePtr->refCount == 0) {
+-	    Tcl_DecrRefCount(newValuePtr);
+-	}
++	Tcl_DecrRefCount(newValuePtr);	/* Frees it if nobody else holds it. */
+ 	return NULL;
+     }
++    newValuePtr->refCount--;		/* Back to the caller's count. */
+ 
+     return TclPtrSetVarIdx(interp, varPtr, arrayPtr, part1Ptr, part2Ptr,
+ 	    newValuePtr, flags, -1);

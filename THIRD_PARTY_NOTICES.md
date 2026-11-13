@@ -50,7 +50,7 @@ bundled: they are read at run time from a Magic installation (`$CAD_ROOT/magic/s
 
 | Component | Version / pin | License | Shipped in | Source |
 |---|---|---|---|---|
-| Tcl | 8.6.16, release archive `tcl8.6.16-src.tar.gz`, SHA-256 `91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5` | Tcl/Tk license (BSD-style, TCL) | all packages (core) | https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz (https://www.tcl-lang.org) |
+| Tcl | 8.6.16, release archive `tcl8.6.16-src.tar.gz`, SHA-256 `91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5`, patched (see [Tcl](#tcl)) | Tcl/Tk license (BSD-style, TCL) | all packages (core) | https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz (https://www.tcl-lang.org) |
 | ↳ LibTomMath (in Tcl) | as bundled by Tcl 8.6.16 | Unlicense (public domain) | all packages (core) | https://github.com/libtom/libtommath |
 
 ## libcurl
@@ -93,6 +93,14 @@ into the core without Tk and without dynamic loading, and Tcl's own `library/` s
 (init.tcl, clock.tcl, msgcat, http, opt, platform, tcltest, msgs, tzdata, encodings) are compiled
 into the binary. Its regular-expression engine (Henry Spencer's, as modified for Tcl) is covered
 by the same terms. The bundled zlib copy is not used (Hefesto's zlib above is linked instead).
+
+Hefesto's copy is modified. The patches in `third_party/patches/tcl/` are applied to the release
+archive at configure time, and each patch file says why it exists:
+
+- `0001-objsetvar2-hold-value-across-lookup.patch` (`generic/tclVar.c`): `Tcl_ObjSetVar2` holds a
+  reference on the new value while it looks up the variable. Without it, `catch body var` where
+  `var` cannot be set reads the freed interpreter result (heap use-after-free; Tcl 8.6.16, 8.6.18
+  and 9.x). It is dropped once the pinned release contains an upstream fix.
 
 ```text
 This software is copyrighted by the Regents of the University of
