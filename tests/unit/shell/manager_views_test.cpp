@@ -4,10 +4,14 @@
 // The M4 manager panels' view models (docs/design/mockups/M4-Managers.dc.html;
 // openspec/changes/m4-scripting task 10.4).
 
+#include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "hefesto/shell/canvas_controller.hpp"
+#include "hefesto/shell/input_router.hpp"
 #include "hefesto/shell/manager_views.hpp"
 #include "hefesto/shell/text_helper_view.hpp"
 
@@ -120,6 +124,27 @@ TEST_CASE("Cells rows are reachable by keyboard and named for screen readers",
   view.select(0);
   CHECK(view.key_right(0) == std::optional<std::size_t>{1});
   CHECK(view.key_left(1) == std::optional<std::size_t>{0});  // a closed child: to its parent
+}
+
+TEST_CASE("Left and Right in the Cells table open, close and move along the tree (G-1)",
+          "[cap:hefesto-app-ux][req:Accessibility and localization]") {
+  CellsView view(children_of);
+  view.reset(ota_model());
+  view.select(0);
+  // Unmodified Left / Right are the tree's keys; the table keeps the others.
+  CHECK(view.tree_key(raven_key::kLeft, 0, 0));  // closes the open top cell
+  CHECK(view.visible_count() == 2);
+  CHECK(view.tree_key(raven_key::kRight, 0, 0));  // opens it again
+  CHECK(view.visible_count() == 5);
+  CHECK(view.selected() == std::optional<std::size_t>{0});
+  CHECK(view.tree_key(raven_key::kRight, 0, 0));  // open: moves to the first child
+  CHECK(view.selected() == std::optional<std::size_t>{1});
+  CHECK(view.tree_key(raven_key::kLeft, 0, 1));  // a closed child: back to its parent
+  CHECK(view.selected() == std::optional<std::size_t>{0});
+  CHECK_FALSE(view.tree_key(raven_key::kDown, 0, 0));
+  CHECK_FALSE(view.tree_key(raven_key::kEnter, 0, 0));
+  CHECK_FALSE(view.tree_key(raven_key::kLeft, kModShift, 0));
+  CHECK(view.visible_count() == 5);  // nothing changed by the keys left to the table
 }
 
 TEST_CASE("the manager tables are virtual: rows are text on demand",
@@ -242,6 +267,12 @@ TEST_CASE("text helper justification grid and selected labels",
   CHECK(helper.justification_is("NE"));
   helper.set_justification("bogus");  // not a choice: unchanged
   CHECK(helper.justification_is("NE"));
+  // The grid marks the chosen square only (primary button style, draft 13).
+  CHECK(helper.justification_marks() == std::array<bool, 11>{false, false, true, false, false, false, false, false,
+                                                             false, false, false});
+  helper.set_justification("center");  // the middle square and the "center" button
+  CHECK(helper.justification_marks() == std::array<bool, 11>{false, false, false, false, true, false, false, false,
+                                                             false, true, false});
   helper.set_justification("default");
   helper.model().text = "A";
   helper.model().font = "default";

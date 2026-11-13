@@ -56,6 +56,8 @@ class TextHelperWindow {
   void fields_to_model();
   void model_to_fields();
   void apply();
+  /// The chosen justification in the primary (ember) button style.
+  void mark_justification();
 
   ScreenContext& ctx_;
   TextHelperView view_;
@@ -75,6 +77,7 @@ class TextHelperWindow {
   std::unique_ptr<ui::CheckBox> port_;
   std::unique_ptr<ui::TextInput> port_index_;
   std::vector<std::unique_ptr<ui::Button>> buttons_;
+  std::vector<ui::Button*> justify_;  // the grid's buttons in justification_choices() order (owned by buttons_)
   bool port_exists_ = false;
   std::string units_ = "lambda";
 };

@@ -131,6 +131,10 @@ struct PCellEditState {
 
   /// Called before an edit of `parameter` to `value` is run.
   void begin_edit(const pcell::DialogModel& model, std::string_view parameter, std::string_view value);
+  /// The user started typing into `parameter` again: what was last typed
+  /// into it is forgotten, so a correction shown on it (warning outline,
+  /// "you typed") goes. True when something was forgotten.
+  bool begin_typing(std::string_view parameter);
   /// The dialog was rebuilt for another device or instance.
   void clear() noexcept;
 };

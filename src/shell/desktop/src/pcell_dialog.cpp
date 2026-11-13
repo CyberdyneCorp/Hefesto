@@ -172,7 +172,12 @@ void PCellDialogWindow::add_row(ui::Box& body, const PCellRow& row) {
       input->set_font_size(kTextSize);
       input->set_size(kEntryWidth, -1.0F);
       input->set_accessible_name(row.label);
-      input->on_change([this, p](std::string text) { pending_[p] = std::move(text); });
+      // A field _check corrected keeps a warning outline until it is edited again.
+      if (row.corrected) input->set_outline(ctx_.tokens().warning);
+      input->on_change([this, p, field = input.get()](std::string text) {
+        pending_[p] = std::move(text);
+        if (edits_.begin_typing(p)) field->set_outline(std::nullopt);
+      });
       input->on_commit([this, p](std::string text) { edit(p, text); });
       line.add(*input);
       inputs_.push_back(std::move(input));

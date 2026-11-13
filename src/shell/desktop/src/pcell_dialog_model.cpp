@@ -186,6 +186,13 @@ void PCellEditState::begin_edit(const DialogModel& model, std::string_view param
   typed[edited] = std::string{value};
 }
 
+bool PCellEditState::begin_typing(std::string_view parameter) {
+  const auto it = typed.find(parameter);
+  if (it == typed.end()) return false;
+  typed.erase(it);
+  return true;
+}
+
 void PCellEditState::clear() noexcept {
   typed.clear();
   before.clear();

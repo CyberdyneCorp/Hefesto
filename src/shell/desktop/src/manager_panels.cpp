@@ -7,6 +7,7 @@
 #include "manager_panels.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <utility>
 
 #include "hefesto/cmd/registry.hpp"
@@ -140,6 +141,14 @@ void ManagerPanels::build_cells() {
   cells_table_->on_activate([this](int row) {
     if (cells_.toggle(static_cast<std::size_t>(row))) dirty_.cells = true;
   });
+  // Left closes a node or moves to its parent, Right opens it or moves to its
+  // first child (gap G-1): the table's event callback sees them first.
+  cells_table_->on_key([this](int key, std::uint8_t modifiers) {
+    const int row = cells_table_->selected();
+    if (row < 0 || !cells_.tree_key(key, modifiers, static_cast<std::size_t>(row))) return false;
+    show_cells_rows();
+    return true;
+  });
   cells_root_.add(*cells_table_, 1.0F);
   using gui::CellManagerAction;
   const auto action = [this](CellManagerAction a) { return [this, a] { run_lines(cells_.commands(a)); }; };
@@ -200,6 +209,10 @@ void ManagerPanels::highlight_selection(const cmd::CommandResult& result) {
   });
   if (top.empty()) top = cells_.visible_row(0).cell;
   if (!cells_.select_instance(top, path, sstr)) return;
+  show_cells_rows();
+}
+
+void ManagerPanels::show_cells_rows() {
   cells_table_->set_rows(static_cast<int>(cells_.visible_count()), [this](int row, int column) {
     return cells_.cell_text(static_cast<std::size_t>(row), column);
   });

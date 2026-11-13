@@ -80,6 +80,10 @@ class BackgroundChecker {
   /// start().
   void set_ready_callback(std::function<void()> callback);
 
+  /// Test hook: runs on the worker thread after each step, between the
+  /// check and the worker taking its mutex again.
+  void set_after_step_hook(std::function<void()> hook);
+
   /// Applies the finished square, if any, when its generation and epoch
   /// still match, holding the database lock exclusively; returns the number
   /// committed (0 or 1). Publishes idle when the pending list becomes

@@ -11,6 +11,7 @@
 #include <cstdint>
 
 #include "hefesto/script/binding/tags.hpp"
+#include "hefesto/shell/input_router.hpp"
 
 namespace hefesto::shell {
 
@@ -148,6 +149,19 @@ std::optional<std::size_t> CellsView::key_left(std::size_t index) {
     if (nodes_[visible_[i]].row.id == parent) select(i);
   }
   return selected();
+}
+
+bool CellsView::tree_key(int key, std::uint8_t modifiers, std::size_t index) {
+  if (modifiers != 0U) return false;
+  if (key == raven_key::kRight) {
+    (void)key_right(index);
+    return true;
+  }
+  if (key == raven_key::kLeft) {
+    (void)key_left(index);
+    return true;
+  }
+  return false;
 }
 
 void CellsView::select(std::optional<std::size_t> index) {
