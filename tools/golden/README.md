@@ -67,7 +67,7 @@ python3 authoring/use_order_cases.py --dispatch   # the golden-capture.yml dispa
 python3 authoring/use_order_cases.py --sync       # copy captured expected/trace.txt to tests/data/db/use_index/
 ```
 
-`tests/test_use_order_probe.py` runs the probe's GDS and CIF decoders on hand-built files. It also runs every case script under `tclsh` against `tests/fake_magic_useorder.tcl`, a stand-in for the Magic commands with no bplane model. Both are skipped when `tclsh` is missing.
+`tests/test_use_order_probe.py` runs the probe's GDS and CIF decoders on hand-built files. It also runs every case script under `tclsh` against `tests/fake_magic_useorder.tcl`, a stand-in for the Magic commands with no bplane model. Both are skipped without a Tcl 8.6 or later `tclsh` (macOS ships 8.5). With `HEFESTO_REQUIRE_TCLSH86=1` a missing one fails instead; `ci.yml`'s `linux-x64-gcc-latest` leg installs `tcl8.6` and sets it, so at least one leg always runs them.
 
 ## Building the reference image (CI, not developer machines)
 

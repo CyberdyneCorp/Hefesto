@@ -6,13 +6,15 @@ The probe runs only in Magic (capture) and hefesto-cli (replay). Here its Tcl ru
 plain tclsh: the decoders on hand-built GDS and CIF files, and every case script against
 ``fake_magic_useorder.tcl``, which stands in for the Magic commands. Skipped without a Tcl 8.6
 or later tclsh (the probe uses ``lmap``, as Magic's Tcl 8.6 in the capture image allows; macOS ships
-Tcl 8.5 as /usr/bin/tclsh).
+Tcl 8.5 as /usr/bin/tclsh). With HEFESTO_REQUIRE_TCLSH86=1 (set on the ci.yml leg that installs
+tcl8.6) a missing Tcl 8.6 tclsh fails instead of skipping.
 
 [cap:gds-write][req:Structure ordering]
 [cap:cif-format-io][req:CIF output symbol numbering and order]
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import struct
@@ -44,6 +46,13 @@ def tcl86_shell() -> str | None:
             continue
         if result.stdout.strip() == "1":
             return path
+    return None
+
+
+def missing_tclsh_error(tclsh: str | None, env: dict[str, str]) -> str | None:
+    """The failure when a Tcl 8.6 tclsh is required (HEFESTO_REQUIRE_TCLSH86=1) but missing, else None."""
+    if tclsh is None and env.get("HEFESTO_REQUIRE_TCLSH86") == "1":
+        return "HEFESTO_REQUIRE_TCLSH86=1 but no Tcl 8.6 or later tclsh is on PATH: the probe tests would skip"
     return None
 
 
@@ -84,6 +93,20 @@ def structure(name: str, *elements: bytes) -> bytes:
 def gds(*structures: bytes) -> bytes:
     head = rec(0, 2, struct.pack(">h", 600)) + rec(1, 2, bytes(24)) + text(2, "lib") + rec(3, 5, bytes(16))
     return head + b"".join(structures) + rec(4, 0) + bytes(8)
+
+
+class TclshRequirementTest(unittest.TestCase):
+    """Regression: the probe tests skipped silently on every CI leg without a Tcl 8.6 tclsh."""
+
+    def test_required_tclsh_is_present(self):
+        error = missing_tclsh_error(TCLSH, dict(os.environ))
+        if error:
+            self.fail(error)
+
+    def test_requirement_flag(self):
+        self.assertIsNotNone(missing_tclsh_error(None, {"HEFESTO_REQUIRE_TCLSH86": "1"}))
+        self.assertIsNone(missing_tclsh_error(None, {}))
+        self.assertIsNone(missing_tclsh_error("/usr/bin/tclsh8.6", {"HEFESTO_REQUIRE_TCLSH86": "1"}))
 
 
 @unittest.skipIf(TCLSH is None, "no Tcl 8.6 or later tclsh found")

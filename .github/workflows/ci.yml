@@ -331,6 +331,7 @@ jobs:
             cxx: g++-14
             preset: ci-linux-desktop
             desktop: true
+            tcl86: true
           - name: linux-x64-clang-latest
             os: ubuntu-24.04
             cc: clang-18
@@ -355,6 +356,9 @@ jobs:
     env:
       CC: ${{ matrix.cc }}
       CXX: ${{ matrix.cxx }}
+      # golden-tools.unit's use-order probe tests (m5-mask-gds-cif task 1.5) need a Tcl 8.6 tclsh; on the
+      # leg that installs one, a missing tclsh fails them instead of skipping.
+      HEFESTO_REQUIRE_TCLSH86: ${{ matrix.tcl86 && '1' || '' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -377,6 +381,10 @@ jobs:
       - name: Install the OpenSSL headers for libcurl
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: Install Tcl 8.6 for the use-order probe tests
+        if: matrix.tcl86
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tcl8.6
 
       - name: Install Vulkan, X11 and Wayland development packages
         if: matrix.desktop
