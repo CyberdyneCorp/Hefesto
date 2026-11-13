@@ -17,7 +17,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 These three involve scope or product trade-offs that the standing rule does not settle. Options are listed with the recommended one first.
 
 1. **Q-OASIS-2: Buy the SEMI P39 text to confirm the format details that rest on KLayout and gdstk parity**
-   Q-OASIS-1, 2, 3, 4, 5, 7, 8, 9, 11 and 66 are drafted from KLayout and gdstk source and close without P39, because a reader has to accept what those tools write anyway. The remaining risk is a detail where KLayout and gdstk both differ from the standard and a commercial reader follows the standard (validation coverage is the most exposed). Golden cases OASIS-012, OASIS-030 and OASIS-061 with commercial files catch that, but only if such files are obtained.
+   Q-OASIS-1, 2, 3, 4, 5, 6, 7, 8, 9, 11 and 66 are drafted from KLayout and gdstk source and close without P39, because a reader has to accept what those tools write anyway. The remaining risk is a detail where KLayout and gdstk both differ from the standard and a commercial reader follows the standard (validation coverage and Q-OASIS-6's PROPERTY association, where the spec now follows KLayout rather than the P39 clause, are the most exposed). Golden cases OASIS-012, OASIS-030 and OASIS-061 with commercial files catch that, but only if such files are obtained.
    - (a) **Recommended.** Keep the drafts as they are, relying on KLayout and gdstk parity plus the commercial-file goldens (OASIS-012, OASIS-030, OASIS-061) as release gates
    - (b) Buy SEMI P39 and check the drafts against it before M6 starts; any difference becomes a spec correction
 2. **Q-OASIS-35: GDS output of read-only OASIS cells**
@@ -27,7 +27,7 @@ These three involve scope or product trade-offs that the standing rule does not 
    - (c) Generate GDS from the representational layout with a warning listing unmapped layers (loses vendor data)
 3. **Q-OASIS-90: Shared or independent `gds` and `oasis` settings**
    PDK and flow scripts set `gds` read options (readonly, flatglob, rescale) before reading vendor data. With independent settings, a script that switches to `oasis read` silently imports differently; with shared settings, `oasis` is no longer configurable on its own for reading. The PDK script survey the entry asks for could not be done here (no PDK scripts in the workspace).
-   - (a) **Recommended.** Share the read-side settings with `gds` and keep write-side settings independent
+   - (a) **Recommended.** Share the read-only settings with `gds` (`drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning`) and keep the rest independent (`abstract`, `addendum`, `arrays`, `compress`, `contacts`, `labels`, `library`, `lower`, `merge` and `undefined` (write-side), `datestamp` and `nodatestamp` (used on both sides by `gds`; a `gds datestamp` set for reproducible GDS output must not change OASIS cell timestamps), and `magscale` (no effect on OASIS))
    - (b) Fully independent settings (the current spec)
    - (c) Independent settings, with `oasis` values copied from `gds` at first use
 
@@ -139,7 +139,7 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-OASIS-7 | Exact definition of strict mode | **fix** | keep the strict-mode set (matches KLayout) |
 | Q-OASIS-8 | Table offsets pointing at a CBLOCK | **fix** | table offsets may point at a CBLOCK |
 | Q-OASIS-9 | Records spanning a CBLOCK boundary | **fix** | tolerate records spanning a CBLOCK end |
-| Q-OASIS-10 | Zero spacing in repetitions | **replicate** | zero-separation arrays as gds-read; coincident uses discarded by the duplicate rule |
+| Q-OASIS-10 | Zero spacing in repetitions | **replicate** | zero-separation arrays as gds-read; coincident uses discarded by the duplicate rule (painted for flattened cells) |
 | Q-OASIS-11 | Path extension modal values for flush and half-width schemes | **fix** | store the numeric extension (KLayout) |
 | Q-OASIS-12 | Non-quarter-turn placement angles | **replicate** | gds-read quarter-turn rounding with an error |
 
@@ -155,17 +155,17 @@ Each row's full text is the entry's `Recommendation:` line. Where the draft chan
 | Q-OASIS-35 | GDS output of read-only OASIS cells | **fix** | transcode OASIS read-only cells to GDS (judgement item) |
 | Q-OASIS-37 | User properties discarded on read | **replicate** | discard, as gds-read |
 | Q-OASIS-38 | LAYERNAME not used for mapping | **replicate** | numbers only, as cifinput |
-| Q-OASIS-39 | Layer or datatype numbers above 255 | **replicate** | wildcards only, as GDS; report unmapped pairs |
+| Q-OASIS-39 | Layer or datatype numbers above 255 | **replicate** | wildcards only, as GDS; unmapped pairs reported once as gds-read's calmaLayerError (silent for read-only cells) |
 | Q-OASIS-40 | Extension records | **fix** | keep; warn when payloads may refer to dropped XNAMEs |
 
 ### OASIS write
 
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
-| Q-OASIS-60 | Character mapping applied to OASIS strings | **replicate** | gds-write mapping (per magic-compat), control characters as `_` |
+| Q-OASIS-60 | Character mapping applied to OASIS strings | **replicate** | gds-write mapping (per magic-compat, >127 as `X`, case folding with `lower` off), control characters as `_` |
 | Q-OASIS-61 | Duplicate cell names after mapping | **fix** | follows Q-MASK-209: rename to `XXXXX<n>` |
 | Q-OASIS-62 | 200-point polygon limit kept | **replicate** | keep the 200-point limit |
-| Q-OASIS-63 | Transcoding vendor GDS paths that OASIS cannot express | **fix** | odd width as an exact POLYGON; round ends as CIRCLEs (KLayout) |
+| Q-OASIS-63 | Transcoding vendor GDS paths that OASIS cannot express | **fix** | odd width is an error (inexpressible; as KLayout's default); even-width round ends as CIRCLEs (KLayout) |
 | Q-OASIS-64 | Pinned DEFLATE implementation | **platform** | bundled, pinned zlib on all platforms |
 | Q-OASIS-65 | Default validation scheme | **other** | default `crc32` |
 | Q-OASIS-66 | Integer-width standard properties | **other** | declare 4/4, as KLayout |
@@ -198,9 +198,9 @@ L = Q-LEFDEF, O = Q-OASIS. The judgement items are counted under their recommend
 - **fix → compat** (the quirk changes output values but loses no data, so the standing rule applies): Q-LEFDEF-1 (DEF-read width still fixed in both modes), 2, 3, 10, 11, 13, 14, 20, 39, 60, 62, 63, 64, 65, 66, 69, 70, 71, 72, 74, 77, 78, 79, 81, 84, 91, 94, 98, 99, 107. Q-LEFDEF-33, 34 and 36 said "fix with an opt-in compatibility mode" or "always recompute"; they become plain compat.
 - **replicate → compat** (Magic's intent is clear, so OFF does it): Q-LEFDEF-6, 7, 12, 15, 21, 31, 32, 37, 38, 51, 93, 95, 96, 103, 105, 110, 111, 112.
 - **fix → compat plus a both-modes fix**: Q-LEFDEF-73 (rounding is compat; the undefined reference point and the half-parsed RECT are tier 1).
-- **Unchanged kind, sharper wording**: Q-LEFDEF-22, 86, 88 (platform, now SHALL), Q-LEFDEF-46 and 47 (replicate plus a warning), Q-LEFDEF-83 (fix: reuse the .mag instance-id renaming).
-- **Q-OASIS-6**: the spec's "attach to the preceding element" becomes KLayout's "cell property".
-- **Q-OASIS-63**: odd-width vendor paths become exact polygons instead of being widened; round ends become CIRCLE caps (as KLayout) instead of flush.
+- **Unchanged kind, sharper wording**: Q-LEFDEF-22, 86, 88 (platform, now SHALL), Q-LEFDEF-46 and 47 (replicate plus a warning), Q-LEFDEF-83 (fix: reuse the .mag instance-id renaming; a recorded deviation, since Magic writes the duplicate id).
+- **Q-OASIS-6**: the spec's "attach to the preceding element" becomes KLayout's "cell property". The P39 property-association clause was not consulted, so this rests on KLayout parity (judgement item 1).
+- **Q-OASIS-63**: odd-width vendor paths make the write fail with an error instead of being widened (OASIS cannot express half-unit edges without changing the file unit); even-width round ends become CIRCLE caps (as KLayout) instead of flush.
 - **Q-OASIS-90**: from "gather PDK usage" to a recommendation (judgement item 3).
 - Every other OASIS entry keeps its original option; the "confirm against P39" caveats are collected in judgement item 1.
 
@@ -222,10 +222,10 @@ L = Q-LEFDEF, O = Q-OASIS. The judgement items are counted under their recommend
 - **Q-LEFDEF-99**: a write-created rule name that collides with a LEF-read rule reuses that rule.
 - **Q-LEFDEF-103**: RESET, SCAN and TIEOFF are valid DEF PINS uses, and Magic's own reader accepts them.
 - **Q-OASIS-6**: KLayout treats such a PROPERTY as a cell property; the spec did not match the reference reader.
-- **Q-OASIS-10**: coincident single placements are discarded by gds-read's duplicate-use rule, not kept.
+- **Q-OASIS-10**: coincident single placements are discarded by gds-read's duplicate-use rule, not kept, unless the cell is flattened (`flatten`/`flatglob`), in which case they are painted.
 - **Q-OASIS-35**: generating GDS from the representational layout drops every vendor layer `cifinput` does not map.
 - **Q-OASIS-39**: GDS has the same 255 limit in Magic; OASIS behaves exactly as GDS.
-- **Q-OASIS-63**: KLayout refuses odd widths (or rounds them down) and writes round ends as CIRCLE caps; the spec's choices both altered vendor geometry.
+- **Q-OASIS-63**: KLayout refuses odd widths (or rounds them down) and writes round ends as CIRCLE caps; the spec's choices both altered vendor geometry. Neither a PATH nor a POLYGON can carry an odd width exactly, since its edges lie on half units.
 - **Q-OASIS-69**: KLayout's writer uses the narrowest string type, not b-string, for property values.
 - Line numbers or refs only: Q-LEFDEF-11, 13, 15, 20, 34, 39, 50, 60, 62, 63, 96, 97, 105; Q-OASIS-12, 30, 32, 33, 37, 38, 62, 68.
 
@@ -326,7 +326,7 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-OASIS-7**: oasis-format strict mode: cite the KLayout warnings as the source. Add a scenario: a strict-mode file written by oasis-write, read back, produces no strict-mode warning.
 - **Q-OASIS-8**: oasis-format table offsets rule 4: cite KLayout dbOASISWriter.cc begin_table/begin_cblock.
 - **Q-OASIS-9**: oasis-format CBLOCK rule 5: state that a span is accepted at any byte, including inside a string, and note that KLayout accepts it only outside strings.
-- **Q-OASIS-10**: oasis-read 'Placement repetitions': add that displacements read as individual uses (rule 3) go through the gds-read duplicate-use rule, so coincident identical placements are discarded with the 'placed on top of itself' warning. Add a type 10 scenario with a zero g-delta. In oasis-format repetition rule 2, change 'which are kept' to 'which the decoder keeps; oasis-read decides what they become'.
+- **Q-OASIS-10**: oasis-read 'Placement repetitions': add that displacements read as individual uses (rule 3) go through the gds-read duplicate-use rule, so coincident identical placements are discarded with the 'placed on top of itself' warning, except for flattened (CDFLATGDS) cells, whose placements are painted. Add a type 10 scenario with a zero g-delta. In oasis-format repetition rule 2, change 'which are kept' to 'which the decoder keeps; oasis-read decides what they become'.
 - **Q-OASIS-11**: oasis-format PATH modal updates: cite dbOASISReader.cc do_read_path and keep the not-confirmed note.
 
 ### oasis-read
@@ -337,18 +337,18 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 - **Q-OASIS-32**: oasis-write TEXT translation (line ~249): replace '(see Q-OASIS-32)' with the resolution and add that the system SHALL warn once per write with the number of font labels written without presentation. oasis-read (line ~289): replace the pointer with the resolution.
 - **Q-OASIS-33**: None to the behaviour: oasis-read line ~264 already follows Q-MASK-114. Replace 'see Q-OASIS-33' with the resolution.
 - **Q-OASIS-34**: oasis-read line ~55: replace '(see Q-OASIS-34)' with the resolution and note that `#` is a legal cell-name character (cmd-hierarchy).
-- **Q-OASIS-35**: oasis-read line ~444: replace 'How GDS output treats them is open (Q-OASIS-35)' with the chosen rule. gds-write: add 'Read-only OASIS vendor cells' (transcode, or refuse with an error under option b), with the element mapping and the error for inexpressible elements. Correct the Magic ref to CalmaWrite.c:972-1361.
+- **Q-OASIS-35**: oasis-read line ~444: replace 'How GDS output treats them is open (Q-OASIS-35)' with the chosen rule. gds-write: add 'Read-only OASIS vendor cells' (transcode, or refuse with an error under option b), with the element mapping and the error for inexpressible elements (layer or datatype above 32767, polygon above 8191 points), and a golden case at 32767/32768. Correct the Magic ref to CalmaWrite.c:972-1361.
 - **Q-OASIS-37**: oasis-read line ~369: replace 'See Q-OASIS-37' with the resolution (replicate gds-read's property handling).
 - **Q-OASIS-38**: oasis-read line ~169: replace '(see Q-OASIS-38)' with the resolution.
-- **Q-OASIS-39**: oasis-read line ~168: replace '(see Q-OASIS-39)' with the resolution, note that GDS numbers above 255 behave the same, and add the once-per-pair report.
+- **Q-OASIS-39**: oasis-read line ~168: replace '(see Q-OASIS-39)' with the resolution, note that GDS numbers above 255 behave the same, and state that unmapped pairs are reported once per pair as gds-read does (calmaLayerError), with no report in read-only cells.
 
 ### oasis-write
 
 - **Q-OASIS-40**: oasis-write line ~507: replace '(see Q-OASIS-40)' with the resolution and add the warning.
-- **Q-OASIS-60**: oasis-write 'String mapping' rule 1 (line ~177): replace 'see Q-OASIS-60' with the resolution, and state that the permissive table is the one selected by magic-compat (Q-MASK-200).
+- **Q-OASIS-60**: oasis-write 'String mapping' rule 1 (line ~177): replace 'see Q-OASIS-60' with the resolution, and state that the permissive table is the one selected by magic-compat (Q-MASK-200), that bytes above 127 become `X` with the 'Unprintable character' warning, that output is upper-cased when `oasis lower` is off, and that layout data is not mutated (Q-MASK-208).
 - **Q-OASIS-61**: None to the behaviour: oasis-write line ~156 already states it. Replace '(Q-OASIS-61)' with the resolution.
 - **Q-OASIS-62**: oasis-write line ~70: replace '(see Q-OASIS-62)' with the resolution. Correct the Magic ref to CalmaWrite.c:2190-2260, 2394-2709.
-- **Q-OASIS-63**: oasis-write PATH row (line ~478): replace the odd-width and type-1 rules with the polygon and CIRCLE rules above, keep the negative-width rule, and cite KLayout's writer for the round-end form.
+- **Q-OASIS-63**: oasis-write PATH row (line ~478): replace the odd-width rule with 'an odd width makes the write fail with an error naming the cell (OASIS cannot express it)', replace the type-1 rule with 'flush path plus a CIRCLE of radius w/2 at each end', keep the negative-width rule, and cite KLayout's writer for both. Add an odd-width error scenario.
 - **Q-OASIS-64**: oasis-write line ~376: replace '(see Q-OASIS-64)' with the resolution, name the build-pinned zlib and its settings, and add a scenario: the same write on macOS and Linux gives identical bytes.
 - **Q-OASIS-65**: oasis-write line ~444: replace 'See Q-OASIS-65 for the default' with the resolution.
 - **Q-OASIS-66**: oasis-write line ~417: replace 'see Q-OASIS-66' with the resolution and cite KLayout's writer.
@@ -358,9 +358,9 @@ Not edited yet. After approval each spec gets the text below, and the entry's `R
 
 ### oasis-command
 
-- **Q-OASIS-90**: oasis-command 'Settings independent of the gds command' (line ~138): split into read-side options (shared with `gds`, listed) and write-side options (independent). Add a scenario: `gds readonly true` then `oasis read` marks the read cells read-only.
+- **Q-OASIS-90**: oasis-command 'Settings independent of the gds command' (line ~138): split into options shared with `gds` (`drccheck`, `flatten`, `flatglob`, `maskhints`, `noduplicates`, `ordering`, `polygon subcells`, `path subcells`, `readonly`, `rescale`, `savepaths`, `unique` and `warning`) and independent options (`abstract`, `addendum`, `arrays`, `compress`, `contacts`, `labels`, `library`, `lower`, `merge` and `undefined` (write-side), `datestamp` and `nodatestamp` (used on both sides by `gds`; a `gds datestamp` set for reproducible GDS output must not change OASIS cell timestamps), and `magscale` (no effect on OASIS), plus the OASIS-only options). Update the 'Applies to' column of 'Options shared with the gds command' to say which are shared. Add a scenario: `gds readonly true` then `oasis read` marks the read cells read-only.
 - **Q-OASIS-91**: oasis-command line ~97: replace '(see Q-OASIS-91)' with the resolution.
 
 Behaviour unchanged, only the reference or Magic lines change: Q-LEFDEF-23, Q-LEFDEF-45, Q-LEFDEF-50, Q-LEFDEF-52, Q-OASIS-33, Q-OASIS-61, Q-OASIS-68.
 
-Outside the specs: golden deviation entries in `tests/golden/deviations.toml` for the both-modes fixes that change Magic-comparable output (Q-LEFDEF-1 DEF-read width, Q-LEFDEF-73, Q-LEFDEF-83), and the undo change of Q-LEFDEF-22 in layout-undo's list of undoable operations.
+Outside the specs: golden deviation entries in `tests/golden/deviations.toml` for the both-modes fixes that change Magic-comparable output (Q-LEFDEF-1 DEF-read width, Q-LEFDEF-73, Q-LEFDEF-83: Hefesto's `.mag` and `def write` carry the renamed instance id where Magic writes the duplicate), and the undo change of Q-LEFDEF-22 in layout-undo's list of undoable operations.
