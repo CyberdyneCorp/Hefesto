@@ -57,6 +57,18 @@ From M4 hefesto-cli embeds Tcl, so a case can have a single `input/commands.tcl`
 - `[[external]]` `to` may be a relative path and a `pdk` `path` may be a directory (a PDK tree under `input/pdk` for `PDK_ROOT`).
 - `derived:files:<glob>`: every matching file preceded by `file <path>` (cells named only at run time).
 
+## M5: the use-order probe (MASK-UO-*)
+
+`harness/use_order/use_order_probe.tcl` records the order in which Magic enumerates a cell's uses (m5-mask-gds-cif task 1.5, design D7, Q-MASK-204). It does this after controlled placements, area searches, exact-match lookups, removals and child bounding-box changes, and after plain fresh-session GDS and CIF writes. INDEX's trace test (task 5.1) replays the result. The probe is not built into the image. `authoring/use_order_cases.py` copies it into the `input/` of the 12 cases `tests/golden/MASK/cases/MASK-UO-*`, so capture (Magic in the pinned image, `--network=none`) and replay (`hefesto-cli --magic`) run the same file. Each case's compared output is `trace.txt`, whose format is in `tests/data/db/use_index/README.md`.
+
+```sh
+python3 authoring/use_order_cases.py              # write the cases and tests/data/db/use_index/*.tcl
+python3 authoring/use_order_cases.py --dispatch   # the golden-capture.yml dispatch command (mode capture)
+python3 authoring/use_order_cases.py --sync       # copy captured expected/trace.txt to tests/data/db/use_index/
+```
+
+`tests/test_use_order_probe.py` runs the probe's GDS and CIF decoders on hand-built files. It also runs every case script under `tclsh` against `tests/fake_magic_useorder.tcl`, a stand-in for the Magic commands with no bplane model. Both are skipped when `tclsh` is missing.
+
 ## Building the reference image (CI, not developer machines)
 
 ```sh
