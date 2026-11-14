@@ -279,8 +279,9 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   mask::GenerationContext ctx;
   ctx.sink = &sink_diag;
   const mask::OutputStyle style;
+  // GEN landed flat generation: a style without layers generates nothing.
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
-  CHECK(sink_diag.take().front().code == kNotImplemented);
+  CHECK(sink_diag.take().empty());
   std::atomic<bool> stop{true};
   mask::Progress progress{{}, &stop};
   CHECK(progress.cancelled());
