@@ -1,0 +1,24 @@
+magic
+tech masktest
+timestamp 100
+use c  ar
+array 0 2 10 0 1 10
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use c  rot
+array 0 1 10 0 1 10
+timestamp 100
+transform 0 -1 50 1 0 0
+box 0 0 4 4
+use c  idx
+array 1 3 10 0 0 10
+timestamp 100
+transform 1 0 0 0 1 50
+box 0 0 4 4
+use c  desc
+array 3 1 10 0 0 10
+timestamp 100
+transform 1 0 50 0 1 50
+box 0 0 4 4
+<< end >>

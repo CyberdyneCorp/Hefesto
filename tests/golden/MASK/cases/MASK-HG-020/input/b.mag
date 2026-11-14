@@ -1,0 +1,8 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 20 4
+<< labels >>
+rlabel metal1 2 2 2 2 0 VDD
+<< end >>

@@ -1,0 +1,85 @@
+tech
+    format 35
+    masktest
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+    metal3,m3
+end
+
+types
+    active  ndiffusion,ndiff
+    active  pdiffusion,pdiff
+    active  polysilicon,poly
+    active  ntransistor,nfet
+    metal1  metal1,m1
+    metal2  metal2,m2
+    metal3  metal3,m3
+    active  pdcontact,pdc
+    metal1  via1
+    metal2  via2
+end
+
+contact
+    pdc   pdiff  metal1
+    via1  metal1 metal2
+    via2  metal2 metal3
+    stackable via1 via2
+end
+
+styles
+    styletype mos
+end
+
+compose
+    compose nfet poly ndiff
+end
+
+connect
+    metal1 via1
+    metal2 via1,via2
+    metal3 via2
+end
+
+cifoutput
+style gds
+    scalefactor 10
+    layer CMF metal1,pdc,via1
+        labels metal1
+        calma 49 0
+    layer CMS metal2,via1,via2
+        labels metal2
+        calma 51 0
+    layer CMT metal3,via2
+        calma 62 0
+    layer CPG poly,nfet
+        labels poly
+        calma 46 0
+    layer CAA ndiff,pdiff,nfet,pdc
+        calma 43 0
+    layer CCA pdc
+        squares 10 20 20
+        calma 48 0
+    layer CVA via1
+        squares 10 20 20
+        calma 50 0
+end
+
+cifinput
+style gds
+    scalefactor 10
+    grow 10
+    layer metal1 CMF
+        grow 0
+    frobnicate 3
+    calma CMF 49 0
+end
+
+drc
+end
+
+extract
+end

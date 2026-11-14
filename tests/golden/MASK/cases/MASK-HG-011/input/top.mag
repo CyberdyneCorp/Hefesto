@@ -1,0 +1,10 @@
+magic
+tech masktest
+timestamp 100
+<< polysilicon >>
+rect 4 -5 6 15
+use child  c0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

@@ -101,7 +101,8 @@ class RepositoryFileTest(unittest.TestCase):
             with self.subTest(case=case_id):
                 self.assertIn(case_id, cases)
                 case = load_case(cases[case_id])
-                self.assertTrue(case.is_captured)
+                # A case whose capture is pending in CI may only be deferred (m5-mask-gds-cif D18).
+                self.assertTrue(case.is_captured or dev.deferred, "an uncaptured case needs a deferred entry")
                 deviations.check(dev, [o.name for o in case.outputs])
                 for decision in dev.decisions:
                     self.assertIn(decision, headings, f"{decision} is not a heading in docs/decisions")

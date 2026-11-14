@@ -12,6 +12,7 @@ expected/ directory is needed: no container, no reference tool.
 Usage:
     replay.py [--hefesto-cli PATH] [--root tests/golden] [CASE_DIR...]
               [--json FILE] [--output-dir DIR] [--skip-code N]
+              [--include-gds-rt] [--require-inputs ID[,ID...]]...
 
 hefesto-cli comes from --hefesto-cli or $HEFESTO_CLI. Without CASE_DIR every
 captured case under --root is replayed. --output-dir writes the actual outputs,
@@ -20,7 +21,16 @@ the layout scripts/compare_golden_outputs.py compares across platforms.
 
 A case is SKIPPED (not failed) when it lists [hefesto] requires_commands and
 hefesto-cli rejects one of them as unknown (diagnostic CMD-DISPATCH-001), or
-when one of its [[external]] inputs (goldenlib/external.py) is not present.
+when one of its [[external]] inputs (goldenlib/external.py) is not present,
+unless the case's ID is listed with --require-inputs: a missing input of such a
+case FAILS (the standard-cell MASK-RT cases of ci.yml, m5-mask-gds-cif D19).
+Every ID given to --require-inputs must name a case directory under --root.
+A case with ``gds_rt = true`` (label golden-gds-rt: the library round trips of
+m5-mask-gds-cif D19) is left out of the default selection and SKIPPED when named,
+unless --include-gds-rt is passed.
+A case without expected/ that deviations.toml lists as ``deferred`` is reported
+as a DEVIATION (its capture is pending in CI); without such an entry it is an
+ERROR when named.
 A case listed in <root>/deviations.toml (goldenlib/deviations.py) whose only
 differing outputs are the listed ones is a DEVIATION: a documented, decided
 difference from Magic, counted like a skip. A listed case that passes fails.
@@ -39,8 +49,7 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from compare import COMPARATORS, compare_bytes
-from compare.masks import apply_masks
+from compare import COMPARATORS, compare_bytes, normalized
 from goldenlib import deviations
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, substitute_env
 from goldenlib.derived import read_output
@@ -132,6 +141,14 @@ def missing_command(case: Case, execution: Execution) -> str | None:
     return next((name for name in case.hefesto.get("requires_commands", []) if name in stderr), None)
 
 
+@dataclass(frozen=True)
+class Options:
+    output_dir: Path | None = None
+    known: dict = field(default_factory=dict)          # case id -> deviations.Deviation
+    include_gds_rt: bool = False
+    require_inputs: frozenset[str] = frozenset()       # case ids whose external inputs must exist
+
+
 def compare_outputs(case: Case, execution: Execution) -> list[OutputReport]:
     reports = []
     for out in case.outputs:
@@ -140,7 +157,7 @@ def compare_outputs(case: Case, execution: Execution) -> list[OutputReport]:
             reports.append(OutputReport(out.name, out.comparator, "fail", f"hefesto-cli did not write '{out.source}'"))
             continue
         expected = (case.expected_dir / out.name).read_bytes()
-        result = compare_bytes(expected, actual, out.comparator, out.masks)
+        result = compare_bytes(expected, actual, out.comparator, out.masks, out.display)
         reports.append(OutputReport(out.name, out.comparator, "pass" if result.equal else "fail", result.detail))
     return reports
 
@@ -150,14 +167,16 @@ def save_outputs(case: Case, execution: Execution, output_dir: Path) -> None:
 
     The cross-platform determinism check (scripts/compare_golden_outputs.py)
     compares these trees byte for byte, so the masks a case documents in
-    case.toml (e.g. gds-dates) must already be applied here.
+    case.toml (e.g. gds-dates) must already be applied here, after the
+    comparator's decoding (a gzip output is saved decompressed: its compressed
+    bytes are platform-dependent, Q-MASK-223).
     """
     target = output_dir / case.area / case.id
     target.mkdir(parents=True, exist_ok=True)
     for out in case.outputs:
         data = actual_output(execution, out.source)
         if data is not None:
-            (target / out.name).write_bytes(apply_masks(data, out.masks))
+            (target / out.name).write_bytes(normalized(data, out.comparator, out.masks))
 
 
 def is_provisional(case: Case) -> bool:
@@ -166,13 +185,16 @@ def is_provisional(case: Case) -> bool:
 
 
 def replay_case(cli: Path, case: Case, output_dir: Path | None,
-                deviation: deviations.Deviation | None = None) -> CaseReport:
+                deviation: deviations.Deviation | None = None, require_inputs: bool = False) -> CaseReport:
     report = CaseReport(case.id, case.area, "error", is_provisional(case))
     with tempfile.TemporaryDirectory(prefix=f"replay-{case.id}-") as tmp:
         try:
             execution = execute(cli, case, Path(tmp))
         except ExternalUnavailable as error:
-            report.status, report.detail = "skip", f"external input unavailable: {error}"
+            report.status = "fail" if require_inputs else "skip"
+            report.detail = f"external input unavailable: {error}"
+            if require_inputs:
+                report.detail += " (required by --require-inputs)"
             return report
     if output_dir is not None:
         save_outputs(case, execution, output_dir)
@@ -189,22 +211,40 @@ def replay_case(cli: Path, case: Case, output_dir: Path | None,
     return report
 
 
+def _is_gds_rt(case_dir: Path) -> bool:
+    try:
+        return load_case(case_dir).gds_rt
+    except (CaseError, OSError, ValueError):
+        return False  # run_one reports the malformed case
+
+
 def select_cases(args: argparse.Namespace) -> list[Path]:
     if args.cases:
         return args.cases
-    return [p for p in discover(args.root) if (p / "expected" / "provenance.json").is_file()]
+    captured = [p for p in discover(args.root) if (p / "expected" / "provenance.json").is_file()]
+    return captured if args.include_gds_rt else [p for p in captured if not _is_gds_rt(p)]
 
 
-def run_one(cli: Path, case_dir: Path, output_dir: Path | None,
-            known: dict[str, deviations.Deviation] | None = None) -> CaseReport:
+def uncaptured(case: Case, deviation: deviations.Deviation | None) -> CaseReport:
+    """A named case without expected/: a deviation while its deferral stands, else an error."""
+    if deviation is not None and deviation.deferred:
+        return CaseReport(case.id, case.area, "deviation",
+                          detail=f"not captured yet ({deviation.describe()})")
+    return CaseReport(case.id, case.area, "error", detail="not captured (no expected/provenance.json)")
+
+
+def run_one(cli: Path, case_dir: Path, options: Options | None = None) -> CaseReport:
+    options = options or Options()
     try:
         case = load_case(case_dir, COMPARATORS)
-        if not case.is_captured:
-            return CaseReport(case.id, case.area, "error", detail="not captured (no expected/provenance.json)")
-        deviation = (known or {}).get(case.id)
+        if case.gds_rt and not options.include_gds_rt:
+            return CaseReport(case.id, case.area, "skip", detail="golden-gds-rt case (pass --include-gds-rt)")
+        deviation = options.known.get(case.id)
         if deviation is not None:
             deviations.check(deviation, [o.name for o in case.outputs])
-        return replay_case(cli, case, output_dir, deviation)
+        if not case.is_captured:
+            return uncaptured(case, deviation)
+        return replay_case(cli, case, options.output_dir, deviation, case.id in options.require_inputs)
     except (CaseError, OSError, subprocess.TimeoutExpired, ValueError) as error:
         return CaseReport(case_dir.name, case_dir.parent.parent.name, "error", detail=str(error))
 
@@ -232,9 +272,17 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--json", type=Path, help="write the JSON summary to this file ('-' = stdout)")
     parser.add_argument("--output-dir", type=Path, help="also write actual outputs here")
     parser.add_argument("--skip-code", type=int, default=0, help="exit status when cases were only skipped")
+    parser.add_argument("--include-gds-rt", action="store_true",
+                        help="also replay the golden-gds-rt cases (gds_rt = true)")
+    parser.add_argument("--require-inputs", action="append", default=[], metavar="ID[,ID...]",
+                        help="fail, not skip, when these cases miss an external input (repeatable)")
     args = parser.parse_args(argv)
     if args.hefesto_cli is None:
         parser.error("hefesto-cli not given (use --hefesto-cli or set HEFESTO_CLI)")
+    args.require_inputs = frozenset(i for group in args.require_inputs for i in group.split(",") if i)
+    unknown = sorted(args.require_inputs - {p.name for p in discover(args.root)})
+    if unknown:
+        parser.error(f"--require-inputs names no case under {args.root}: {', '.join(unknown)}")
     return args
 
 
@@ -246,7 +294,8 @@ def main(argv: list[str]) -> int:
     except (deviations.DeviationError, ValueError) as error:
         print(f"replay.py: {error}", file=sys.stderr)
         return 2
-    reports = [run_one(args.hefesto_cli, case_dir, args.output_dir, known) for case_dir in select_cases(args)]
+    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs)
+    reports = [run_one(args.hefesto_cli, case_dir, options) for case_dir in select_cases(args)]
     human = sys.stderr if str(args.json) == "-" else sys.stdout
     for report in reports:
         print_report(report, human)

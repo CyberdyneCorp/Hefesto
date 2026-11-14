@@ -1,0 +1,10 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+<< properties >>
+string GDS_FILE input/missing.gds
+string GDS_START 102
+string GDS_END 200
+<< end >>
