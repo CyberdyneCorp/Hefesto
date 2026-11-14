@@ -81,6 +81,17 @@ bool surrounds(const db::Rect& outer, const db::Rect& inner) noexcept {
   return outer.x0 <= inner.x0 && outer.y0 <= inner.y0 && outer.x1 >= inner.x1 && outer.y1 >= inner.y1;
 }
 
+/// size * a * b / (c * d) in 64 bits; 0 (the 1 um default) on overflow.
+std::int64_t scaled_size(std::int64_t size, std::int64_t a, std::int64_t b, std::int64_t c, std::int64_t d) noexcept {
+  std::int64_t numerator = 0;
+  std::int64_t denominator = 0;
+  if (__builtin_mul_overflow(size, a, &numerator) || __builtin_mul_overflow(numerator, b, &numerator) ||
+      __builtin_mul_overflow(c, d, &denominator) || denominator <= 0) {
+    return 0;
+  }
+  return numerator / denominator;
+}
+
 tech::TileType side_type(const db::TileView& t) noexcept {
   return t.split ? (t.right_side ? t.right_type : t.left_type) : t.type;
 }
@@ -133,8 +144,7 @@ std::int32_t Reader::default_text_size(std::int32_t type) const {
     size = drc::default_width(*editor_.drc.rules, *editor_.technology, static_cast<tech::TileType>(type));
     if (size > 0) {
       const ReadScale rs = scale_->scale();
-      size *= rs.den * style.multiplier * 8;
-      size /= rs.num * s * 10;
+      size = scaled_size(size, rs.den * 8, style.multiplier, rs.num * 10, s);
     }
   }
   const std::int64_t micron = (800 * style.multiplier) / s;

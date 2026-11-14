@@ -31,6 +31,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/read/read.hpp"
 #include "hefesto/display/font.hpp"
+#include "hefesto/drc/rules/style.hpp"
 #include "hefesto/gds/stream/encode.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/mask/input/style.hpp"
@@ -74,13 +75,16 @@ inline std::string read_tech_text() {
   return out.str();
 }
 
-inline std::shared_ptr<const tech::Technology> tech_with(std::string_view cifinput, std::string_view cifoutput) {
+inline std::shared_ptr<const tech::Technology> tech_with(std::string_view cifinput, std::string_view cifoutput,
+                                                         std::string_view drc = {}) {
   std::string text = read_tech_text();
   text += "\ncifoutput\n";
   text += cifoutput;
   text += "\nend\n\ncifinput\n";
   text += cifinput;
-  text += "\nend\n\ndrc\nend\n\nextract\nend\n";
+  text += "\nend\n\ndrc\n";
+  text += drc;
+  text += "\nend\n\nextract\nend\n";
   platform::MemoryFileSystem fs;
   diag::CollectingSink sink;
   auto loaded = tech::load_technology_text(text, "/t/read.tech", fs, tech::LoadOptions{}, sink);
@@ -312,14 +316,18 @@ struct Session {
   hefesto::editor::EditorState editor;
   gds::GdsReadOptions options;
 
-  explicit Session(std::string_view cifinput = kStyle, bool magic_compat = true, std::string_view cifoutput = {}) {
+  explicit Session(std::string_view cifinput = kStyle, bool magic_compat = true, std::string_view cifoutput = {},
+                   std::string_view drc_section = {}) {
     compat = mode(magic_compat);
-    editor.technology = tech_with(cifinput, cifoutput);
+    editor.technology = tech_with(cifinput, cifoutput, drc_section);
     editor.drc.compat = &compat;
     diag::CollectingSink quiet;
     editor.mask.output_styles = mask::read_output_styles(*editor.technology, quiet, compat);
     editor.mask.input_styles = mask::read_input_styles(*editor.technology, compat, quiet);
     REQUIRE(editor.mask.input_styles.current_style() != nullptr);
+    if (!drc_section.empty()) {
+      hefesto::drc::install_rules(editor, hefesto::drc::read_rules(*editor.technology, compat, quiet));
+    }
     options.time_zone = "UTC0";
     options.gds_file = "/data/test.gds";
   }

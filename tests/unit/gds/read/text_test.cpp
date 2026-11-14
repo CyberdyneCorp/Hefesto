@@ -257,3 +257,18 @@ TEST_CASE("GDS fonts that are not loaded read as the default font", "[cap:font-l
   CHECK(f3->size == 0);
   CHECK(f3->justification == db::kCenter);
 }
+
+TEST_CASE("the default text size follows the layer's minimum width", "[cap:gds-read][req:TEXT element parsing]") {
+  // Q-MASK-122 (replicate): size = w * (den * M * 8) / (num * S * 10), or
+  // the 1 um size (800 * M / S) when that is 0 or larger.
+  Session s(kStyle, true, {}, "width m1 30 \"metal1 width\"");
+  s.add_fonts(1);
+  GdsFile f;
+  f.library().begin("top");
+  f.text(68, 5, {1, 1}, "narrow", TextSpec{0x0000, {}, false, {}, {}});
+  f.end().end_library();
+  s.read(f);
+  const db::Label* l = label(s.cell("top"), "narrow");
+  REQUIRE(l != nullptr);
+  CHECK(l->size == 30 * 8 / 10);
+}
