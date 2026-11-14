@@ -12,7 +12,9 @@
 #include <algorithm>
 #include <set>
 
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/gds/read/vendor.hpp"
 
 namespace hefesto::cell {
 
@@ -177,6 +179,12 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
   for (db::CellDef* def : pending) {
     stamp_cell(*def, now, vendor_stamp);
   }
+}
+
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup) {
+  gds::VendorStamper stamper{lookup};
+  update_timestamps(library, only, now, [&stamper](const db::CellDef& def) { return stamper.stamp(def); });
+  stamper.flush();
 }
 
 void set_explicit_timestamp(db::CellDef& def, std::int64_t value, bool magic_compat) {
