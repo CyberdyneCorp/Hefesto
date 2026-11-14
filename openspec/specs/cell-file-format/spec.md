@@ -344,6 +344,8 @@ Compatibility: exact
 - On failure the message is `Malformed "box" line: <line>` and a format error follows.
 - The values are scaled. They are the child's bounding box in child coordinates, a guess used until the child is read. The Magic manual page describes this box differently (see Q-CELL-38).
 
+**Usable plane.** If the scaled translation c or f, or a scaled box coordinate, lies outside the usable plane (−1073741818..1073741818, capability `layout-geometry-model`), the message `Ignoring subcell <child> of <parent>: its transform or box lies outside the usable plane (-1073741818..1073741818)` SHALL be reported (code DB-GEOM-001). The block is then skipped: no definition is created and no instance is placed, and reading continues with the next line. This applies with `magic-compat` ON and OFF. Magic performs no check, and its coordinates overflow when the instance is transformed (see Q-MODEL-24).
+
 **Creating the definition.** If no cell definition with that name exists, an unread placeholder definition is created with the following properties:
 - Its timestamp is the child timestamp.
 - Its bounding box is the box.
@@ -369,6 +371,11 @@ It is then placed in the parent. Timestamp comparison follows capability `cell-t
 #### Scenario: Illegal transform
 - **WHEN** a use block contains `transform 2 0 0 0 1 0`
 - **THEN** the message `Malformed or illegal "transform" line: transform 2 0 0 0 1 0` SHALL be printed and the read SHALL end with a format error
+
+#### Scenario: Use outside the usable plane is ignored
+- **GIVEN** the file being read for cell `top`
+- **WHEN** it contains `use child child_0`, `timestamp 0`, `transform 1 0 1073741819 0 1 0`, `box 0 0 4 4`
+- **THEN** `Ignoring subcell child of top: its transform or box lies outside the usable plane (-1073741818..1073741818)` SHALL be reported, no instance SHALL be created and the rest of the file SHALL be read
 
 #### Scenario: Self use is ignored
 - **GIVEN** the file being read for cell `a`

@@ -266,7 +266,7 @@ entry      = int , ws , int , ws , int , ws , int , [ ws , name ] , newline ;
 Lines SHALL be read up to 127 characters. Magic reports blank lines as syntax errors. Hefesto SHALL skip them (see Q-UI-7).
 
 Loading SHALL take two passes:
-1. The color-map size is 1 + the maximum `maxIndex` over all entries. A line with no fourth integer that is not a comment SHALL report `Syntax error in color map file "F.cmap"` and `Last color read was index K`, and loading fails.
+1. The color-map size is 1 + the maximum `maxIndex` over all entries. A line with no fourth integer that is not a comment SHALL report `Syntax error in color map file "F.cmap"` and `Last color read was index K`, and loading fails. The lines of this pass are the same 127-character pieces as in the second pass, so a longer line contributes the fourth integer of each piece. If the size would exceed 2^24 entries (a `maxIndex` of 16777216 or more), the system SHALL report `Color map file "F.cmap" has too many colors` and loading fails before any entry is allocated. Magic has no limit and allocates whatever the file declares.
 2. The entries SHALL be applied in order. Each entry fills every index from the previous `maxIndex`+1 (0 for the first entry) up to its own `maxIndex`, with (red & 255, green & 255, blue & 255). If the line has a name, that name SHALL be stored on every index the entry fills.
 
 If an entry's `maxIndex` is below the next index to fill, the system SHALL report `Colors in map are out of order!` and stop. A short file SHALL report `Premature end-of-file in color map file "F.cmap"`. The load SHALL fail if any index stays unfilled.
@@ -288,6 +288,11 @@ Compatibility: exact
 - **GIVEN** a cmap file that contains an empty line
 - **WHEN** it is loaded
 - **THEN** the empty line SHALL be skipped and the color map SHALL be loaded, where Magic reports a syntax error
+
+#### Scenario: Oversized color map refused
+- **GIVEN** a cmap file whose only line is `0 0 0 16777216`
+- **WHEN** it is loaded
+- **THEN** `Color map file "F.cmap" has too many colors` SHALL be reported, no color map SHALL be allocated and loading SHALL fail
 
 ### Requirement: Color map file writing
 Saving the color map SHALL write `T.C.M.cmap`, opened through the search path in write mode. For each maximal run of consecutive indices with identical RGB, the system SHALL write one line `"%d %d %d %d"` (red green blue last-index-of-run). If the first index of the run has a name, the line SHALL be followed by `" %s"` with that name, and then `"\n"`. Names on later indices of the run SHALL be dropped (see Q-UI-7). If the file cannot be opened, the message SHALL be `Couldn't write color map file "T.C.M.cmap"`.

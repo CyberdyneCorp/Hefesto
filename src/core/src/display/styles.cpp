@@ -27,7 +27,6 @@ namespace dc = codes;
 constexpr std::size_t kCmapLine = 128;
 constexpr std::size_t kDstyleLine = 200;
 constexpr std::size_t kGlyphLine = 500;
-constexpr std::size_t kMaxColors = std::size_t{1} << 24;
 constexpr std::int32_t kMaxGlyphDimension = 4096;
 // Upper bound on count * width * height of a glyph file (Magic's own cursor
 // files hold a few thousand pixels). A size line above it is refused instead
@@ -86,7 +85,8 @@ bool cmap_ignorable(std::string_view line) {
   return (!line.empty() && line.front() == '#') || cscan::is_white(line, false);
 }
 
-diag::Outcome<std::size_t> cmap_size(const std::vector<std::string_view>& lines, std::string_view file_name) {
+diag::Outcome<std::size_t> cmap_size(const std::vector<std::string_view>& lines, std::string_view file_name,
+                                     std::size_t max_entries) {
   std::int64_t max = 0;
   for (const auto line : lines) {
     const auto newmax = cmap_max_index(line);
@@ -99,7 +99,8 @@ diag::Outcome<std::size_t> cmap_size(const std::vector<std::string_view>& lines,
                                              "\"\nLast color read was index " + std::to_string(max));
     }
   }
-  if (max >= static_cast<std::int64_t>(kMaxColors)) {  // not max + 1: max may be INT64_MAX (fuzz_cmap)
+  // max >= limit, not max + 1 > limit: max may be INT64_MAX (fuzz_cmap).
+  if (static_cast<std::uint64_t>(max) >= max_entries) {
     return diag::make(dc::kCmapSyntax, "Color map file \"" + std::string(file_name) + "\" has too many colors");
   }
   return static_cast<std::size_t>(max + 1);
@@ -143,9 +144,10 @@ std::optional<std::size_t> ColorMap::find(std::string_view name) const {
   return std::nullopt;
 }
 
-diag::Outcome<ColorMap> parse_color_map(std::string_view text, std::string_view file_name, bool /*magic_compat*/) {
+diag::Outcome<ColorMap> parse_color_map(std::string_view text, std::string_view file_name, bool /*magic_compat*/,
+                                        std::size_t max_entries) {
   const auto lines = cscan::fgets_chunks(text, kCmapLine);
-  const auto size = cmap_size(lines, file_name);
+  const auto size = cmap_size(lines, file_name, max_entries);
   if (!size) {
     return size.error();
   }

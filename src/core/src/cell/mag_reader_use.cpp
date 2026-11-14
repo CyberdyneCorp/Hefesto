@@ -14,6 +14,7 @@
 
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cell/paths.hpp"
+#include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "mag_reader.hpp"
 
@@ -36,7 +37,16 @@ struct UseBlock {
   std::int32_t stamp = 0;
   db::Transform t;
   db::Rect box;
+  bool outside_plane = false;  // a scaled translation or box coordinate (Q-MODEL-24)
 };
+
+/// Scales a translation or box coordinate and notes one that leaves the
+/// usable plane: such a use would overflow every transform applied to it.
+db::Coord plane_coord(const ReadState& st, UseBlock& u, std::int32_t v) {
+  const std::int64_t scaled = st.scale64(v);
+  u.outside_plane = u.outside_plane || scaled < db::kPlaneMin || scaled > db::kPlaneMax;
+  return static_cast<db::Coord>(scaled);
+}
 
 bool manhattan(const db::Transform& t) {
   if (t.a == 0) {
@@ -82,7 +92,7 @@ bool read_transform_line(ReadState& st, UseBlock& u) {
   for (auto& x : v) {
     ok = ok && s.integer(x);
   }
-  u.t = db::Transform{v[0], v[1], st.scale(v[2]), v[3], v[4], st.scale(v[5])};
+  u.t = db::Transform{v[0], v[1], plane_coord(st, u, v[2]), v[3], v[4], plane_coord(st, u, v[5])};
   if (!ok || !manhattan(u.t)) {
     st.emit(codes::kFormatError, "Malformed or illegal \"transform\" line: " + text_of(st.line));
     return false;
@@ -101,7 +111,8 @@ bool read_box_line(ReadState& st, UseBlock& u) {
     st.emit(codes::kFormatError, "Malformed \"box\" line: " + text_of(st.line));
     return false;
   }
-  u.box = db::Rect{st.scale(v[0]), st.scale(v[1]), st.scale(v[2]), st.scale(v[3])};
+  u.box = db::Rect{plane_coord(st, u, v[0]), plane_coord(st, u, v[1]), plane_coord(st, u, v[2]),
+                   plane_coord(st, u, v[3])};
   return true;
 }
 
@@ -399,6 +410,12 @@ bool read_use_body(ReadState& st, UseBlock& u) {
   u.locked = !u.id.empty() && u.id.front() == '*';
   if (!read_block_lines(st, u)) {
     return false;
+  }
+  if (u.outside_plane) {
+    st.emit(db::codes::kGeometryOutsidePlane, "Ignoring subcell " + u.name + " of " + st.def.name() +
+                                                  ": its transform or box lies outside the usable plane "
+                                                  "(-1073741818..1073741818)");
+    return st.in.fgets(st.line);
   }
   const bool first_use = st.seen_uses.insert(u.name).second;
   db::CellDef* sub = st.ctx.library.find(u.name);
