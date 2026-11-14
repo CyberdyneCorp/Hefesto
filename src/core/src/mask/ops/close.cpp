@@ -31,10 +31,10 @@ class Closer {
  public:
   Closer(const OpArgs& args, OperatorContext& ctx, const db::Plane& from, MaskPlane& into)
       : ctx_(ctx), from_(from), into_(into) {
-    threshold_.scaled = detail::value(args.op, 0);
-    threshold_.declared = detail::value(args.op, 1, threshold_.scaled);
-    threshold_.multiply = detail::value(args.op, 2, 1);
-    threshold_.reduce = detail::value(args.op, 3, 1);
+    threshold_.scaled = args.op.distance;
+    threshold_.declared = detail::value32(args.op, 0, args.op.distance);
+    threshold_.multiply = detail::value32(args.op, 1, 1);
+    threshold_.reduce = detail::value32(args.op, 2, 1);
   }
 
   /// cifCloseFunc for space tile `t`.

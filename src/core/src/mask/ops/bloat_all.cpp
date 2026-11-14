@@ -244,13 +244,12 @@ void BloatAll::finish() {
 
 diag::Status op_bloat_all(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
   detail::BloatAllConfig cfg;
-  cfg.bloat_plane = detail::value32(args.op, 1, -1);
-  cfg.distance = detail::value32(args.op, 0);
+  cfg.bloat_plane = detail::bloat_plane(args.op, -1);
+  cfg.distance = args.op.distance;
   cfg.trigger_types = args.op.types;
-  const std::size_t n = args.op.values.size() > 2 ? args.op.values.size() - 2 : 0;
   std::vector<std::size_t> bloated;
-  for (std::size_t i = 0; i < n; ++i) {
-    if (args.op.values[2 + i] != 0) {
+  for (std::size_t i = 0; i < tech::kMaxTileTypes; ++i) {
+    if (detail::bloat_distance(args.op, i) != 0) {
       bloated.push_back(i);
     }
   }
@@ -258,7 +257,7 @@ diag::Status op_bloat_all(const OpArgs& args, OperatorContext& ctx, MaskPlane& o
     cfg.connect = detail::solid_mask();
     std::vector<std::size_t> positive;
     std::copy_if(bloated.begin(), bloated.end(), std::back_inserter(positive),
-                 [&](std::size_t i) { return args.op.values[2 + i] > 0; });
+                 [&](std::size_t i) { return detail::bloat_distance(args.op, i) > 0; });
     cfg.layers = detail::layer_sources(args.inputs, positive);
   } else {
     for (const std::size_t t : bloated) {

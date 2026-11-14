@@ -20,23 +20,25 @@ namespace {
 LayerOp bloat(OpKind kind, std::initializer_list<tech::TileType> types, tech::PlaneId plane,
               std::initializer_list<std::pair<tech::TileType, std::int64_t>> distances) {
   LayerOp o = with_types(op(kind), types);
-  o.values.assign(1 + tech::kMaxTileTypes, 0);
-  o.values[0] = plane;
+  BloatTable table;
+  table.plane = static_cast<std::int32_t>(plane);
   for (const auto& [t, d] : distances) {
-    o.values[1 + t] = d;
+    table.distance[t] = static_cast<std::int32_t>(d);
   }
+  o.bloat = table;
   return o;
 }
 
 /// A bloat-all over layout types: triggers, bloat plane, bloated types, clip.
 LayerOp bloat_all(LayerOp triggers, int plane, std::initializer_list<std::size_t> bloated, std::int64_t d = 0) {
   triggers.kind = OpKind::bloat_all;
-  triggers.values.assign(2 + tech::kMaxTileTypes, 0);
-  triggers.values[0] = d;
-  triggers.values[1] = plane;
+  triggers.distance = static_cast<std::int32_t>(d);
+  BloatTable table;
+  table.plane = plane;
   for (const std::size_t i : bloated) {
-    triggers.values[2 + i] = 1;
+    table.distance[i] = 1;
   }
+  triggers.bloat = table;
   return triggers;
 }
 
@@ -154,13 +156,14 @@ TEST_CASE("bloat-all into mask layers (cases B and E)", CAP "[req:bloat-all]") {
   const std::size_t t2 = f.mask_layer({Rect{0, 0, 10, 10}, Rect{10, 0, 20, 30}, Rect{100, 0, 110, 10}});
   const std::size_t trig = f.mask_layer({Rect{15, 25, 16, 26}});
   LayerOp b = with_layers(op(OpKind::bloat_all), {trig});
-  b.values.assign(2 + t2 + 1, 0);
-  b.values[1] = -1;
-  b.values[2 + t2] = 1;
+  BloatTable table;
+  table.plane = -1;
+  table.distance[t2] = 1;
+  b.bloat = table;
   CHECK(f.run({b}) == strips({{0, 0, 10, 10}, {10, 0, 20, 30}}));
   f.paint(f.poly, Rect{105, 5, 106, 6});
   LayerOp e = with_types(op(OpKind::bloat_all), {f.poly});
-  e.values = b.values;
+  e.bloat = b.bloat;
   CHECK(f.run({e}) == Rects{{100, 0, 110, 10}});
 }
 

@@ -25,10 +25,10 @@ class BloatTable {
  public:
   explicit BloatTable(const LayerOp& op) : op_(op) {}
   [[nodiscard]] db::Coord operator()(tech::TileType t) const {
-    return t < tech::kMaxTileTypes ? detail::value32(op_, 1 + std::size_t{t}) : 0;
+    return t < tech::kMaxTileTypes ? detail::bloat_distance(op_, std::size_t{t}) : 0;
   }
   [[nodiscard]] tech::PlaneId plane() const {
-    return static_cast<tech::PlaneId>(std::max<std::int64_t>(detail::value(op_, 0), 0));
+    return static_cast<tech::PlaneId>(std::max(detail::bloat_plane(op_), 0));
   }
 
  private:

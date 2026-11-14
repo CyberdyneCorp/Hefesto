@@ -115,11 +115,20 @@ class Marks {
   constexpr std::uint32_t kGrowEuclidean = 0x08;  // CWF_GROW_EUCLIDEAN
   return (args.style.options & kGrowEuclidean) != 0;
 }
-[[nodiscard]] inline std::int64_t value(const LayerOp& op, std::size_t i, std::int64_t fallback = 0) noexcept {
+/// The client value `i` of `op` (LayerOp::values: squares_value,
+/// slots_value, bridge_value, or close's Q-MASK-2 OFF record), `fallback`
+/// when the style did not set it.
+[[nodiscard]] inline std::int32_t value32(const LayerOp& op, std::size_t i, std::int32_t fallback = 0) noexcept {
   return i < op.values.size() ? op.values[i] : fallback;
 }
-[[nodiscard]] inline std::int32_t value32(const LayerOp& op, std::size_t i, std::int32_t fallback = 0) noexcept {
-  return static_cast<std::int32_t>(value(op, i, fallback));
+/// bl_distance[t] of a bloat operator (0 when the operator has no table).
+[[nodiscard]] inline std::int32_t bloat_distance(const LayerOp& op, std::size_t t) noexcept {
+  return op.bloat && t < op.bloat->distance.size() ? op.bloat->distance[t] : 0;
+}
+/// bl_plane of a bloat operator: a tech::PlaneId, or -1 for a bloat-all over
+/// mask layers.
+[[nodiscard]] inline std::int32_t bloat_plane(const LayerOp& op, std::int32_t fallback = 0) noexcept {
+  return op.bloat ? op.bloat->plane : fallback;
 }
 
 // --- Painting ----------------------------------------------------------------

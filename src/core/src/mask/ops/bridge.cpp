@@ -154,8 +154,8 @@ diag::Status op_bridge(const OpArgs& args, OperatorContext& ctx, MaskPlane& out)
   const db::Plane& plane = out.plane();
   const Bridger b{plane,
                   *next,
-                  detail::value32(args.op, 0),
-                  detail::value32(args.op, 1),
+                  args.op.distance,
+                  detail::value32(args.op, bridge_value::width),
                   detail::grid_limit_of(args),
                   q_mask_3_se_bottom_right(ctx.compat)};
   plane.enumerate(db::whole_plane(), detail::solid_mask(), [&](const db::TileView& t) {

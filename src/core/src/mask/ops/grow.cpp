@@ -272,7 +272,7 @@ namespace {
 /// construction over the solid (grow) or space (shrink) tiles of `out`,
 /// into a new plane that replaces it.
 diag::Status grow_or_shrink(const OpArgs& args, OperatorContext& ctx, MaskPlane& out, bool shrink) {
-  const db::Coord d = detail::value32(args.op, 0);
+  const db::Coord d = args.op.distance;
   ScratchPlane next{*ctx.pool};
   if (shrink) {
     detail::paint(*next, db::whole_plane());
@@ -387,7 +387,7 @@ diag::Status op_shrink(const OpArgs& args, OperatorContext& ctx, MaskPlane& out)
 }
 
 diag::Status op_grow_grid(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
-  const std::int32_t g = detail::value32(args.op, 0);
+  const std::int32_t g = args.op.distance;
   if (g <= 0) {
     return diag::Done{};
   }
@@ -402,7 +402,7 @@ diag::Status op_grow_grid(const OpArgs& args, OperatorContext& ctx, MaskPlane& o
 }
 
 diag::Status op_grow_min(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
-  const std::int32_t g = detail::value32(args.op, 0);
+  const std::int32_t g = args.op.distance;
   const std::int32_t limit = detail::grid_limit_of(args);
   ScratchPlane next{*ctx.pool};
   const db::Plane& from = out.plane();

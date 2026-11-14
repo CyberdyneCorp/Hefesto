@@ -39,10 +39,29 @@ using db::Rect;
 using Rects = std::vector<Rect>;
 
 /// Operator constructors (the operand layouts of mask/ops/operators.hpp).
-inline LayerOp op(OpKind kind, std::initializer_list<std::int64_t> values = {}) {
+/// `operands` are written in tech-file order: the distance first for the
+/// operators that have one (grow, shrink, grow-grid, grow-min, close,
+/// bridge, bridge-lim), then the client values.
+inline LayerOp op(OpKind kind, std::initializer_list<std::int64_t> operands = {}) {
   LayerOp o;
   o.kind = kind;
-  o.values = values;
+  std::vector<std::int32_t> all;
+  for (const std::int64_t v : operands) {
+    all.push_back(static_cast<std::int32_t>(v));
+  }
+  const bool has_distance = kind == OpKind::grow || kind == OpKind::shrink || kind == OpKind::grow_grid ||
+                            kind == OpKind::grow_min || kind == OpKind::close || kind == OpKind::bridge ||
+                            kind == OpKind::bridge_lim;
+  if (has_distance && !all.empty()) {
+    o.distance = all.front();
+    all.erase(all.begin());
+  }
+  o.values = std::move(all);
+  return o;
+}
+/// The co_client flag: maxrect `external`, orthogonal `fill`, bbox `top`.
+inline LayerOp with_option(LayerOp o) {
+  o.option = true;
   return o;
 }
 inline LayerOp with_types(LayerOp o, std::initializer_list<tech::TileType> types) {

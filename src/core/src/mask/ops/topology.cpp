@@ -94,7 +94,7 @@ bool isolated(const db::Plane& plane, const db::TileView& t, bool facing) {
 }  // namespace
 
 diag::Status op_maxrect(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
-  const bool external = args.op.text.starts_with("ext");
+  const bool external = args.op.option;
   ScratchPlane next{*ctx.pool};
   const db::Plane& plane = out.plane();
   detail::Marks marks;
@@ -112,7 +112,7 @@ diag::Status op_maxrect(const OpArgs& args, OperatorContext& ctx, MaskPlane& out
 }
 
 diag::Status op_orthogonal(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
-  const bool fill = args.op.text == "fill";
+  const bool fill = args.op.option;
   ScratchPlane next{*ctx.pool};
   out.plane().enumerate(db::whole_plane(), detail::solid_mask(), [&](const db::TileView& t) {
     if (!t.split || fill) {

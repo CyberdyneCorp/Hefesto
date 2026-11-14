@@ -76,7 +76,7 @@ TEST_CASE("maxrect of an L-shape", CAP "[req:maxrect]") {
   OpsFixture f;
   const Rects l{{0, 0, 10, 30}, {10, 0, 40, 10}};
   CHECK(f.apply(l, {op(OpKind::maxrect)}) == Rects{{0, 0, 40, 10}});
-  CHECK(f.apply(l, {with_text(op(OpKind::maxrect), "external")}) == Rects{{0, 0, 40, 30}});
+  CHECK(f.apply(l, {with_option(op(OpKind::maxrect))}) == Rects{{0, 0, 40, 30}});
   // A single isolated tile is its own bounding box.
   CHECK(f.apply({{5, 5, 8, 9}}, {op(OpKind::maxrect)}) == Rects{{5, 5, 8, 9}});
 }
@@ -87,7 +87,7 @@ TEST_CASE("orthogonal removes or fills triangles", CAP "[req:orthogonal]") {
   REQUIRE(db::paint_triangle(*f.cell, *f.tech, Rect{10, 0, 20, 10}, db::Diagonal::nw_se, false, f.m1).ok());
   const LayerOp m1 = with_types(op(OpKind::op_or), {f.m1});
   CHECK(f.run({m1, op(OpKind::orthogonal)}) == Rects{{0, 0, 10, 10}});
-  CHECK(f.run({m1, with_text(op(OpKind::orthogonal), "fill")}) == Rects{{0, 0, 20, 10}});
+  CHECK(f.run({m1, with_option(op(OpKind::orthogonal))}) == Rects{{0, 0, 20, 10}});
 }
 
 TEST_CASE("isolated square removed", CAP "[req:not-square]") {
@@ -212,9 +212,9 @@ TEST_CASE("bbox scales the cell's bounding box", CAP "[req:bbox]") {
   use.def = f.cell.get();
   use.parent = &parent;
   f.cell->instances().push_back(&use);
-  CHECK(f.run({with_text(op(OpKind::bbox), "top")}).empty());
+  CHECK(f.run({with_option(op(OpKind::bbox))}).empty());
   parent.flags().internal = true;
-  CHECK(f.run({with_text(op(OpKind::bbox), "top")}) == Rects{{0, 0, 500, 200}});
+  CHECK(f.run({with_option(op(OpKind::bbox))}) == Rects{{0, 0, 500, 200}});
   f.cell->instances().clear();
   // No cell being generated: nothing.
   f.ctx.cell = nullptr;

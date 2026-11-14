@@ -13,44 +13,43 @@
 // reads it as its input and leaves its result in it. Kernels that build a
 // new plane take scratch planes from ctx.pool and swap.
 //
-// Operands (LayerOp; Magic's CIFOp and its co_client record). Distances are
-// mask units. `types` and `cif_layers` are co_paintMask and co_cifMask.
+// Operands (LayerOp; Magic's CIFOp and its co_client record, as the style
+// reader fills them). Distances are mask units. `types` and `cif_layers` are
+// co_paintMask and co_cifMask.
 //   or, and, and-not, interacting  types / cif_layers: the layers read
-//   grow, shrink, grow-grid,       values[0]: the distance (co_distance)
+//   grow, shrink, grow-grid,       distance (co_distance)
 //   grow-min
-//   close                          values[0]: the area threshold as
+//   close                          distance: the area threshold as
 //                                  normalised linearly (Magic, Q-MASK-2 ON;
-//                                  0 or absent = every enclosed area);
-//                                  optional values[1..3]: the threshold as
+//                                  0 = every enclosed area); optional
+//                                  values {declared, D, L}: the threshold as
 //                                  declared, the cumulative multiply D and
 //                                  the cumulative reduce L applied since
-//                                  (Q-MASK-2 OFF; absent = values[0], 1, 1)
-//   bridge                         values: {distance, width}
-//   bridge-lim                     values: {distance, width}; types /
-//                                  cif_layers: the limiting layers
-//   squares                        values: {border, size, sep}
+//                                  (Q-MASK-2 OFF; absent = distance, 1, 1)
+//   bridge                         distance; values[bridge_value::width]
+//   bridge-lim                     as bridge; types / cif_layers: the
+//                                  limiting layers
+//   squares                        values: squares_value {border, size, sep}
 //   squares-grid                   values: {border, size, sep, gridx, gridy}
-//   slots                          values: {sborder, ssize, ssep, lborder,
-//                                  lsize, lsep, offset, start} (missing
-//                                  trailing values are 0)
+//   slots                          values: slots_value {sborder, ssize, ssep,
+//                                  lborder, lsize, lsep, offset, start}
+//                                  (missing trailing values are 0)
 //   bloat-or, bloat-min,           types: the bloated types (co_paintMask);
-//   bloat-max                      values[0]: the bloat plane (bl_plane, a
-//                                  tech::PlaneId); values[1 + t]: the
-//                                  distance of type t (bl_distance; missing
-//                                  entries are 0)
+//   bloat-max                      bloat: plane (bl_plane, a tech::PlaneId)
+//                                  and distance[t] (bl_distance)
 //   bloat-all                      types / cif_layers: the trigger layers;
-//                                  values[0]: the clip distance d (0 = none);
-//                                  values[1]: the bloat plane (bl_plane), or
-//                                  -1 when the bloated layers are mask
-//                                  layers; values[2 + i]: non-zero for each
-//                                  bloated type i (bl_plane >= 0) or mask
-//                                  layer index i (bl_plane = -1)
+//                                  distance: the clip distance (0 = none);
+//                                  bloat: plane (bl_plane), or -1 when the
+//                                  bloated layers are mask layers;
+//                                  distance[i] non-zero for each bloated
+//                                  type i (plane >= 0) or mask layer i
+//                                  (plane = -1)
 //   net, tagged                    text: the name; types / cif_layers: the
 //                                  optional layer list
 //   mask-hints                     text: the hint name
-//   bbox                           text "top": only for top-level cells
-//   maxrect                        text starting "ext": external
-//   orthogonal                     text "fill": fill (else remove)
+//   bbox                           option: `top` (only for top-level cells)
+//   maxrect                        option: `external`
+//   orthogonal                     option: `fill` (else remove)
 //   boundary, not-square, copyup   no operands
 //
 // Owner: INTEGRATION (this header, created by the M5 scaffold); OPS fills in

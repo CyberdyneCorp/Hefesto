@@ -164,7 +164,7 @@ diag::Status op_bbox(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
   if (cell == nullptr) {
     return diag::Done{};
   }
-  if (args.op.text == "top") {
+  if (args.op.option) {
     const auto& uses = cell->instances();
     const bool placed = std::any_of(uses.begin(), uses.end(), [](const db::CellUse* u) {
       return u->parent != nullptr && !u->parent->flags().internal;

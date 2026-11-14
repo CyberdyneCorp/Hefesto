@@ -343,8 +343,8 @@ void scan_tiles(const db::Plane& plane, const tech::TypeMask& kind,
 }  // namespace
 
 diag::Status op_bridge_lim(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
-  const db::Coord spacing = detail::value32(args.op, 0);
-  const db::Coord width = detail::value32(args.op, 1);
+  const db::Coord spacing = args.op.distance;
+  const db::Coord width = detail::value32(args.op, bridge_value::width);
   const Limits limits{args, ctx};
   ScratchPlane next{*ctx.pool};
   const Widener widen{out.plane(), *next, limits, width};
