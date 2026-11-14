@@ -17,8 +17,7 @@
 //
 // Owner: GDSW (design D2): emit_tile_boundaries is in
 // src/core/src/gds/write/tiles.cpp (task 10.3); emit_merged_polygons is in
-// src/core/src/gds/write/merge.cpp (task 10.4), which until then writes
-// unmerged boundaries.
+// src/core/src/gds/write/merge.cpp (task 10.4) over merge_plane.hpp.
 
 #pragma once
 

@@ -15,26 +15,28 @@
 // Both write through the structure's ElementWriter (its string_record never
 // changes the label text, Q-MASK-208) and return its first error.
 //
-// Owner: GDSW (design D2): src/core/src/gds/write/labels.cpp (task 10.5),
-// which until then writes nothing.
+// Owner: GDSW (design D2): src/core/src/gds/write/labels.cpp, over the
+// emitters of labels_text.hpp.
 
 #pragma once
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/gds/write/emit.hpp"
+#include "hefesto/gds/write/labels_text.hpp"
 #include "hefesto/mask/plane/plane.hpp"
 #include "hefesto/mask/style/style.hpp"
 
 namespace hefesto::gds {
 
 /// "Label layers": the TEXT elements of `plane`, the generated plane of
-/// the label layer `layer` (its name is the STRING, its `calma` numbers
-/// the LAYER and TEXTTYPE).
-[[nodiscard]] diag::Status emit_label_layer(const mask::MaskPlane& plane, const mask::OutputLayer& layer,
+/// the label layer at `layer_index` of out.style() (its name is the
+/// STRING, its `calma` numbers the LAYER and TEXTTYPE).
+[[nodiscard]] diag::Status emit_label_layer(const mask::MaskPlane& plane, std::size_t layer_index,
                                             ElementWriter& out);
 
-/// "Label TEXT records": the labels of `cell` (out.cell()).
-[[nodiscard]] diag::Status emit_labels(const db::CellDef& cell, ElementWriter& out);
+/// "Label TEXT records": the labels of `cell` (out.cell()). `warned` is
+/// the write's Q-MASK-206 warning memory (one per write).
+[[nodiscard]] diag::Status emit_labels(const db::CellDef& cell, ElementWriter& out, PortLabelWarnings& warned);
 
 }  // namespace hefesto::gds

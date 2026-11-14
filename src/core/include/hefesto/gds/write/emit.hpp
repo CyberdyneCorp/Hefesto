@@ -38,6 +38,10 @@
 #include "hefesto/gds/stream/values.hpp"
 #include "hefesto/mask/style/style.hpp"
 
+namespace hefesto::tech {
+class Technology;
+}
+
 namespace hefesto::gds {
 
 /// A point in output (database) units, before the I4 range check.
@@ -66,6 +70,7 @@ struct StructureContext {
   const GdsSettings* settings = nullptr;   // the write's `gds` settings
   compat::CompatSettings compat;
   OutputScale scale;
+  const tech::Technology* technology = nullptr;  // type names in warnings (may be null)
 };
 
 class ElementWriter {
@@ -84,6 +89,8 @@ class ElementWriter {
   [[nodiscard]] const CharTable& table() const noexcept { return table_; }
   /// The underlying record writer, for records without a helper here.
   [[nodiscard]] RecordWriter& records() noexcept { return records_; }
+  /// Where warnings go (nullptr: dropped).
+  [[nodiscard]] diag::DiagnosticSink* sink() const noexcept { return sink_; }
 
   /// A record without data (BOUNDARY, TEXT, SREF, AREF, ENDEL, ...).
   [[nodiscard]] diag::Status empty(RecordType type);

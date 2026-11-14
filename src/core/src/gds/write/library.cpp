@@ -79,7 +79,9 @@ void LibraryWriter::print(std::string text) {
 }
 
 StructureContext LibraryWriter::context_for(const db::CellDef& def, const OutputScale& scale) const {
-  return StructureContext{&def, prepared_.style.get(), &prepared_.options.settings, prepared_.compat, scale};
+  const tech::Technology* technology = prepared_.editor != nullptr ? prepared_.editor->technology.get() : nullptr;
+  return StructureContext{&def, prepared_.style.get(), &prepared_.options.settings, prepared_.compat, scale,
+                          technology};
 }
 
 // calmaOutHeader: HEADER, BGNLIB, LIBNAME, UNITS.
@@ -245,7 +247,7 @@ diag::Status LibraryWriter::structure_body(const db::CellDef& def, ElementWriter
   if (!prepared_.options.settings.labels) {
     return diag::Done{};
   }
-  return emit_labels(def, out);
+  return emit_labels(def, out, port_warnings_);
 }
 
 diag::Status LibraryWriter::mask_layers(const db::CellDef& def, ElementWriter& out,
@@ -264,7 +266,7 @@ diag::Status LibraryWriter::mask_layers(const db::CellDef& def, ElementWriter& o
     }
     diag::Status s = diag::Done{};
     if (layer.label_layer) {
-      s = emit_label_layer(*plane, layer, out);
+      s = emit_label_layer(*plane, i, out);
     } else if (prepared_.options.settings.merge) {
       s = emit_merged_polygons(*plane, *layer.gds, out);
     } else {

@@ -17,6 +17,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/gds/stream/records.hpp"
 #include "hefesto/gds/write/emit.hpp"
+#include "hefesto/gds/write/labels_text.hpp"
 #include "hefesto/gds/write/write.hpp"
 #include "hefesto/mask/gen/context.hpp"
 
@@ -104,6 +105,7 @@ class LibraryWriter {
   diag::DiagnosticSink& sink_;
   mask::GenerationContext& ctx_;
   StructureNames names_;
+  PortLabelWarnings port_warnings_;  // Q-MASK-206: once per type and write
   // Magic's cd_client: 0 not yet numbered, negative numbered, positive
   // visited (in progress or written).
   std::unordered_map<const db::CellDef*, std::int64_t> ids_;
