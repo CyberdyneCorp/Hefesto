@@ -6,11 +6,14 @@
 // scaleFactor=<S>, multiplier=<M>` line, every style selects without a
 // message in both magic-compat settings, and the style list and scales are
 // the values Magic 8.3.694 holds (`cif listall istyle` and the tech-load
-// line). The ihp-sg13g2 line is Magic's own, from the golden captures (for
-// example DRC-PDK-3); the sky130A and gf180mcuD values follow CIFrdtech.c
-// on the pinned sections (scalefactor 10 and 50 nanometers, the distances
-// listed below) and await a Magic probe (tasks.md 7.4 note). The cases skip
-// when the PDK data set is not installed (scripts/fetch_pdk.py).
+// line). The tech-load line of each PDK is Magic's own, from the golden
+// captures on the M4 pins: sky130A DRC-PDK-1, gf180mcuD DRC-PDK-2,
+// ihp-sg13g2 DRC-PDK-3. The style lists and the scales of the styles not
+// current after the load (sky130A `sky130(vendor)` and `rdlimport`) follow
+// CIFrdtech.c on the pinned *-cifin.tech sections; no Magic capture of
+// `cif listall istyle` or of those styles' lines exists yet (tasks.md 7.4
+// open item). The cases skip when the PDK data set is not installed
+// (scripts/fetch_pdk.py).
 
 #include <catch2/catch_test_macros.hpp>
 
