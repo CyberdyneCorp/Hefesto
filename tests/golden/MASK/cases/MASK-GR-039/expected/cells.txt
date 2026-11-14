@@ -1,0 +1,66 @@
+file t2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 5 1
+use three  three_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 5 1
+<< end >>
+file t3.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 2 2
+use v3  v3_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 2 2
+<< end >>
+file three.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 5 1
+<< metal1 >>
+rect 0 0 1 1
+rect 2 0 3 1
+rect 4 0 5 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 7 7
+<< metal1 >>
+rect 0 5 2 7
+rect 5 5 7 7
+rect 0 0 2 2
+rect 5 0 7 2
+<< metal2 >>
+rect 0 5 2 7
+rect 5 5 7 7
+rect 0 0 2 2
+rect 5 0 7 2
+<< end >>
+file v3.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 2 2
+<< metal1 >>
+rect 0 0 2 2
+<< end >>
+file via.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>

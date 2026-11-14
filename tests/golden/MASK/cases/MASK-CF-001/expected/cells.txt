@@ -1,0 +1,5 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634415
+<< end >>

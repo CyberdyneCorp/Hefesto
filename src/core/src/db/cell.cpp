@@ -20,6 +20,7 @@
 #include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::db {
@@ -31,7 +32,8 @@ constexpr std::string_view kUnnamed = "(UNNAMED)";
 
 }  // namespace
 
-CellDef::CellDef(std::string name, std::size_t plane_count) : name_(std::move(name)) {
+CellDef::CellDef(std::string name, std::size_t plane_count)
+    : name_(std::move(name)), use_index_(std::make_unique<UseIndex>(this)) {
   planes_.resize(plane_count);
 }
 

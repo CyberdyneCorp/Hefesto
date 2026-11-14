@@ -1,0 +1,9 @@
+file real_name.mag
+magic
+tech masktest
+timestamp 1794634426
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>

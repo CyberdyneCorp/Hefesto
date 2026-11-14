@@ -1,0 +1,32 @@
+file top.mag
+magic
+tech masktest
+magscale 1 10
+timestamp 1794634425
+<< checkpaint >>
+rect 0 -9 309 109
+<< metal1 >>
+tri 297 105 301 109 se
+rect 0 95 100 105
+tri 287 95 297 105 se
+rect 297 95 301 105
+tri 301 101 309 109 sw
+tri 285 93 287 95 se
+rect 287 93 301 95
+tri 301 93 309 101 nw
+tri 269 77 285 93 se
+tri 285 77 301 93 nw
+tri 253 61 269 77 se
+tri 269 61 285 77 nw
+tri 237 45 253 61 se
+tri 253 45 269 61 nw
+tri 221 29 237 45 se
+tri 237 29 253 45 nw
+tri 205 13 221 29 se
+tri 221 13 237 29 nw
+tri 191 -1 205 13 se
+rect 205 -1 207 13
+tri 207 -1 221 13 nw
+tri 191 -9 199 -1 ne
+tri 199 -9 207 -1 nw
+<< end >>

@@ -1,0 +1,74 @@
+file polygon00001.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+tri 0 0 10 10 sw
+<< end >>
+file polygon00002.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 20 0 30 10
+<< metal1 >>
+tri 20 0 30 10 sw
+<< end >>
+file polygon_ring.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 1 1
+<< end >>
+file t0.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 0 0 61 10
+<< metal1 >>
+rect 40 0 50 10
+use polygon00001  polygon00001_0
+timestamp 1794641673
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use polygon00002  polygon00002_0
+timestamp 1794641673
+transform 1 0 0 0 1 0
+box 20 0 30 10
+use polygon_ring  polygon_ring_0
+timestamp 1794641673
+transform 1 0 60 0 1 0
+box 0 0 1 1
+<< end >>
+file t1.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 0 0 50 10
+<< metal1 >>
+tri 0 0 10 10 sw
+tri 20 0 30 10 sw
+rect 40 0 50 10
+<< end >>
+file t2.mag
+magic
+tech masktest
+timestamp 1794641673
+<< checkpaint >>
+rect 0 0 61 10
+<< metal1 >>
+tri 0 0 10 10 sw
+tri 20 0 30 10 sw
+rect 40 0 50 10
+use polygon_ring  polygon_ring_0
+timestamp 1794641673
+transform 1 0 60 0 1 0
+box 0 0 1 1
+<< end >>

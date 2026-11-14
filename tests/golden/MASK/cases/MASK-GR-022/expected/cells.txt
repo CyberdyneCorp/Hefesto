@@ -1,0 +1,26 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634426
+<< checkpaint >>
+rect 0 0 200 20
+<< metal1 >>
+rect 0 0 200 20
+<< labels >>
+flabel metal1 5 10 5 10 4 FreeSans 80 0 0 0 t0
+flabel metal1 15 10 15 10 5 FreeSerif 80 0 0 0 t1
+flabel metal1 25 10 25 10 6 FreeMono 80 0 0 0 t2
+rlabel metal1 35 10 35 10 4 t3
+flabel metal1 45 10 45 10 3 FreeSans 80 0 0 0 t4
+flabel metal1 55 10 55 10 0 FreeSerif 80 0 0 0 t5
+flabel metal1 65 10 65 10 7 FreeMono 80 0 0 0 t6
+rlabel metal1 75 10 75 10 4 t7
+flabel metal1 85 10 85 10 2 FreeSans 80 0 0 0 t8
+flabel metal1 95 10 95 10 1 FreeSerif 80 0 0 0 t9
+flabel metal1 105 10 105 10 8 FreeMono 80 0 0 0 tA
+rlabel metal1 115 10 115 10 4 tB
+flabel metal1 125 10 125 10 4 FreeSans 80 0 0 0 tC
+flabel metal1 135 10 135 10 4 FreeSerif 80 0 0 0 tD
+flabel metal1 145 10 145 10 4 FreeMono 80 0 0 0 tE
+rlabel metal1 155 10 155 10 4 tF
+<< end >>

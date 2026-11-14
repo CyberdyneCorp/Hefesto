@@ -1,0 +1,16 @@
+file dup2.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 4 2
+<< metal2 >>
+rect 0 0 4 2
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 0
+<< metal1 >>
+rect 0 0 1 1
+<< end >>

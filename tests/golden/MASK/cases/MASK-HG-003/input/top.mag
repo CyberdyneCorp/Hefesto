@@ -1,0 +1,8 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 10 10
+<< properties >>
+string FIXED_BBOX -20 -20 30 30
+<< end >>

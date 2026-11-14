@@ -1,0 +1,24 @@
+( @@user : ? );
+( @@machine : 34e5beb89e4d );
+( @@source : input/top );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 05:27:00 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : gds );
+( @@date : Sat Nov 14 05:33:37 2026 );
+DS 1 10 2;
+9 top;
+L CMF;
+    B 8 40 4 20;
+    B 8 40 20 20;
+L CPG;
+    B 8 4 12 18;
+L CAA;
+    B 24 12 12 6;
+94 in 0 20 CMF;
+94 out 24 20 CMF;
+DF;
+C 1;
+End

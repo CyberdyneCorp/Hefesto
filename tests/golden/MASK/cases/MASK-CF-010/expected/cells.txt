@@ -1,0 +1,61 @@
+file top.mag
+magic
+tech masktest
+magscale 1 5
+timestamp 1794634416
+<< checkpaint >>
+rect -5 -5 707 405
+use wires  wires_0
+timestamp 1794634416
+transform 1 0 0 0 1 0
+box -5 -5 707 405
+<< end >>
+file wires.mag
+magic
+tech masktest
+magscale 1 5
+timestamp 1794634416
+<< checkpaint >>
+rect -5 -5 707 405
+<< metal1 >>
+rect -5 395 205 405
+rect 195 55 205 255
+tri 686 193 700 207 se
+tri 700 200 707 207 sw
+tri 700 193 707 200 nw
+tri 672 179 686 193 se
+tri 686 179 700 193 nw
+tri 658 165 672 179 se
+tri 672 165 686 179 nw
+tri 644 151 658 165 se
+tri 658 151 672 165 nw
+tri 630 137 644 151 se
+tri 644 137 658 151 nw
+tri 616 123 630 137 se
+tri 630 123 644 137 nw
+tri 602 109 616 123 se
+tri 616 109 630 123 nw
+tri 588 95 602 109 se
+tri 602 95 616 109 nw
+tri 574 81 588 95 se
+tri 588 81 602 95 nw
+tri 560 67 574 81 se
+tri 574 67 588 81 nw
+rect -5 45 205 55
+tri 546 53 560 67 se
+tri 560 53 574 67 nw
+tri 538 45 546 53 se
+tri 532 39 538 45 se
+rect 538 39 546 45
+tri 546 39 560 53 nw
+tri 518 25 532 39 se
+tri 532 25 546 39 nw
+tri 504 11 518 25 se
+tri 518 11 532 25 nw
+tri 498 5 504 11 se
+rect 504 5 512 11
+tri 512 5 518 11 nw
+rect -5 -5 205 5
+rect 295 -5 502 5
+tri 502 -5 512 5 nw
+<< end >>

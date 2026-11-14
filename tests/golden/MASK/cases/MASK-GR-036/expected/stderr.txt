@@ -1,0 +1,18 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Error while reading cell "top" (byte position 402): Magnification 0.333333 of cell c approximated as 1/3
+CIF file read warning: CIF style gds: units rescaled by factor of 3 / 1
+CIF file read warning: Input off lambda grid by 1/3; grid redefined.
+Error while reading cell "top" (byte position 442): Invalid magnification (0) in instance of c (ignored)
+Error while reading cell "top" (byte position 516): cell nowhere was used but not defined.
+File nowhere contained format error
+"nowhere" has a zero timestamp; it should be written out
+    to establish a correct timestamp.
+Can't write file named '(UNNAMED)'

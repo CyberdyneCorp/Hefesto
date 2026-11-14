@@ -7,8 +7,9 @@
 //
 // Ported from Magic VLSI 8.3.694 database/DBprop.c (plane properties),
 // database/DBcellsrch.c (DBScaleValue, dbScalePlane, dbTileScaleFunc) and
-// cif/CIFgen.c (the CIF paint table, CIFOP_ANDNOT), Copyright (C) 1985, 1990
-// Regents of the University of California (see THIRD_PARTY_NOTICES.md).
+// cif/CIFgen.c (CIFOP_ANDNOT), Copyright (C) 1985, 1990 Regents of the
+// University of California (see THIRD_PARTY_NOTICES.md). The CIF paint and
+// erase tables live in mask/plane (mask::cif_paint_table, M5 design D6).
 //
 // Owner: HINTS (openspec/changes/m3-drc/design.md D2).
 
@@ -18,12 +19,13 @@
 #include <utility>
 
 #include "hefesto/db/plane.hpp"
+#include "hefesto/mask/plane/plane.hpp"
 
 namespace hefesto::hints {
 
 namespace {
 
-constexpr tech::TileType kHintType = 1;
+constexpr tech::TileType kHintType = mask::kMaskSolid;
 
 // DBScaleValue: v * n / d rounded down (also for negative values).
 db::Coord scale_coord(db::Coord v, std::int64_t num, std::int64_t den) {
@@ -34,12 +36,6 @@ db::Coord scale_coord(db::Coord v, std::int64_t num, std::int64_t den) {
     x = ((x + 1) / den) - 1;
   }
   return static_cast<db::Coord>(x);
-}
-
-db::PaintRow filled_row(tech::TileType type) {
-  db::PaintRow row{};
-  row.fill(type);
-  return row;
 }
 
 }  // namespace
@@ -118,8 +114,8 @@ HintRegion HintRegion::minus(const HintRegion& other) const {
 
 void HintRegion::rebuild(std::span<const db::Rect> extra, std::span<const db::Rect> erase) {
   auto plane = std::make_shared<db::Plane>();
-  const db::PaintRow paint_row = filled_row(kHintType);
-  const db::PaintRow erase_row = filled_row(tech::kSpace);
+  const db::PaintRow& paint_row = mask::cif_paint_table();
+  const db::PaintRow& erase_row = mask::cif_erase_table();
   const auto apply_row = [&](const db::PaintRow& row) {
     return [&plane, &row](const db::Rect& r) {
       if (!r.is_null()) {

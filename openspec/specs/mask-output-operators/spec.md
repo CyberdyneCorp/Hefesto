@@ -809,7 +809,7 @@ These operators SHALL keep or discard whole regions of cur according to whether 
 
 Compatibility: exact
 
-- Regions are seeded only from solid tiles overlapping the search area E (scaled), but extend without limit.
+- Regions are seeded only from solid tiles of cur overlapping the search area E as given in internal units (not scaled to mu, as CIFgen.c cifInteractingRegions searches it), in both `magic-compat` settings, but extend without limit.
 - Per tile rectangle r (mu): for the touching forms, r is grown by 1 mu on every side (diagonal corner contact therefore counts).
 - Mask-layer test: any solid of the listed mask layer planes overlaps r.
 - Database-type test: r is converted to internal units by dividing each coordinate by scaleFactor, then any tile of a listed type overlaps it. The division depends on the `magic-compat` setting (Q-MASK-21, resolution: compat): with it ON (the default) it is C truncation toward zero, as in Magic; with it OFF it rounds outward, floor for lower/left edges and ceil for upper/right edges, so a database tile reached by r is never missed.

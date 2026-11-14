@@ -1,0 +1,43 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style plain: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+CIF input style is now "plain"
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "top".
+Moving label "l3" from space to metal1 in cell top.
+Moving label "l4" from space to metal1 in cell top.
+0 {}
+0 {(UNNAMED) top}
+Input style ign: scaleFactor=10, multiplier=1
+CIF input style is now "ign"
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t2".
+Moving label "l3" from space to metal1 in cell t2.
+0 {}
+Writing 't2'
+Writing 'top'
+Writing '(UNNAMED)'
+Must specify name for cell (UNNAMED).
+0 {}

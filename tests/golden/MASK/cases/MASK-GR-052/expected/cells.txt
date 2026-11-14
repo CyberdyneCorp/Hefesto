@@ -1,0 +1,43 @@
+file a.mag
+magic
+tech masktest
+timestamp 1757017646
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< metal2 >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 164
+string GDS_FILE input/in.gds
+string GDS_START 96
+<< end >>
+file b.mag
+magic
+tech masktest
+timestamp 2108469444
+<< checkpaint >>
+rect 0 0 10 10
+<< metal2 >>
+rect 0 0 5 5
+use a  a_0
+timestamp 1757017646
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< properties >>
+string GDS_END 292
+string GDS_FILE input/in.gds
+string GDS_START 0
+<< end >>
+file e.mag
+magic
+tech masktest
+timestamp 1595775465
+<< checkpaint >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 330
+string GDS_FILE input/in.gds
+string GDS_START 326
+<< end >>

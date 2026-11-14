@@ -78,7 +78,7 @@ Compatibility: exact
 
 #### Scenario: Variant names
 
-- **GIVEN** `style sky130() variant (vendor),(),(fill)`
+- **GIVEN** `style sky130 variant (vendor),(),(fill)`
 - **WHEN** parsed in a section with no earlier styles
 - **THEN** the registered names in order are `sky130(vendor)`, `sky130()`, `sky130(fill)`
 - **AND** the style loaded by default is `sky130(vendor)`
@@ -91,7 +91,7 @@ Compatibility: exact
 
 #### Scenario: Variant re-read is not registered twice
 
-- **GIVEN** the section declares `style sky130() variant (vendor),()` and later `style sky130() variant (vendor)`
+- **GIVEN** the section declares `style sky130 variant (vendor),()` and later `style sky130 variant (vendor)`
 - **WHEN** parsed
 - **THEN** the second line registers nothing, because `sky130(vendor)` is already present
 
@@ -197,7 +197,7 @@ Compatibility: exact
 
 - `units <w>`: exactly 2 tokens; if `<w>` begins with `angstr` the style's angstrom flag is set (GDS database unit = 1 Å instead of 1 nm; see capability `gds-write`). Any other word is silently ignored. CIF output units are unaffected.
 - `stepsize <n>`: exactly 2 tokens; `n = atoi`; `n <= 0` reports `Step size must be positive integer.` and leaves 0 (meaning "no user step size"). Used by capability `mask-hierarchical-generation`.
-- Any statement whose first token begins with `grid`: if the second token is an integer string, `gridLimit = atoi`; a negative value reports an error and is set to 0; a non-integer reports `Unable to parse grid limit value.`. Default 0 (no limit). The value is stored as written and is NOT rescaled by unit normalisation; it is applied directly to mask-unit coordinates by the operators, in both `magic-compat` settings (Q-MASK-8, resolution: replicate). Because the grid-scale guard reads the same value as a multiple of the expander, the two readings agree only when the expander is 10; after each unit normalisation the style loader warns when a style with a non-zero gridlimit has an expander other than 10.
+- Any statement whose first token begins with `grid`: if the second token is an integer string, `gridLimit = atoi`; a negative value reports an error and is set to 0; a non-integer reports `Unable to parse grid limit value.`. Default 0 (no limit). The value is stored as written and is NOT rescaled by unit normalisation; it is applied directly to mask-unit coordinates by the operators, in both `magic-compat` settings (Q-MASK-8, resolution: replicate). Because the grid-scale guard reads the same value as a multiple of the expander, the two readings agree only when the expander is 10; after each unit normalisation (the load, and every later rescale) a Hefesto-only warning (`MASK-STYLE-004`) is issued when a style that uses `bloat-all` has a non-zero gridlimit and an expander other than 10. A style without `bloat-all` reduces its units by design (the PDK `density` and `metfill` styles) and is not warned about (Q-MASK-8, amended 2026-11-14).
 
 (Magic ref: cif/CIFtech.c:754-790)
 
@@ -206,7 +206,19 @@ Compatibility: exact
 - **GIVEN** `scalefactor 10 nanometers` and `gridlimit 5`
 - **WHEN** the style is finalised (scaleFactor and expander both reduced to 1)
 - **THEN** `gridLimit` remains 5 and operators snap mask-unit coordinates to multiples of 5 mu (= 50 nm)
-- **AND** a warning reports that gridlimit is applied with expander 1, not 10
+- **AND** no warning is issued, because the style has no `bloat-all`
+
+#### Scenario: gridlimit in a bloat-all style with expander 1
+
+- **GIVEN** `scalefactor 10` (no unit word, so the expander is 1), `gridlimit 5` and a `bloat-all` operation
+- **WHEN** the style is finalised
+- **THEN** a warning reports that gridlimit is applied with expander 1, not 10
+
+#### Scenario: PDK density and metfill styles stay quiet
+
+- **GIVEN** the sky130A or ihp-sg13g2 `density` style, or the gf180mcuD `metfill` style (`gridlimit 5`, no `bloat-all`, reduced below expander 10)
+- **WHEN** it is selected with `cif ostyle`, in either `magic-compat` setting
+- **THEN** no warning is issued
 
 ### Requirement: Mask layer declarations
 
@@ -385,7 +397,7 @@ Compatibility: exact
 | `orthogonal` | `[fill|remove]` | exact words; default `remove` |
 | `not-square` | — | (extra arguments are ignored) |
 
-An operation statement without a current layer reports `Must define layer before specifying operation.`. Rejected statements are not appended. For `bloat-*`, after parsing, the distance of every type in `types` is forced to 0, and all of `types` ∪ named `types2` must lie in one database plane (else error and plane 0 is used). For `bloat-all` with database types the same single-plane rule applies; with mask layers the bloat is marked as operating on mask layers.
+An operation statement without a current layer reports `Must define layer before specifying operation.`. Rejected statements are not appended. Distances past the usable plane, where Magic's int arithmetic overflows, are refused in both magic-compat modes (Q-MASK-30, resolution: fix; a fixed deviation, X-2 tier 1: Magic accepts them and overflows, so it has no output to match): a `grow`/`shrink` distance, a `bridge` distance or width, or a `bloat-all` clip distance above 1073741818 rejects the statement with `Grow/shrink distance must be at most 1073741818.`, `Bridge distance and width must be at most 1073741818.` or `Bloat distance must be at most 1073741818.`; a `bloat-*` pair distance beyond ±1073741818 reports the last message and is clamped to it. Rescaling clamps distances to the same bound. For `bloat-*`, after parsing, the distance of every type in `types` is forced to 0, and all of `types` ∪ named `types2` must lie in one database plane (else error and plane 0 is used). For `bloat-all` with database types the same single-plane rule applies; with mask layers the bloat is marked as operating on mask layers.
 
 (Magic ref: cif/CIFtech.c:1064-1622)
 
@@ -450,7 +462,7 @@ rescale(n, d):
       bloat-or/max/min/all: each non-zero per-type value *= d; g = gcd(...)
       (or, bbox, boundary, mask-hints, maxrect, orthogonal, net, tagged,
        overlapping-family: no client values)
-  g = min(g, gcd(scaleFactor, expander))
+  g = min(g, gcd(scaleFactor, expander))      (Q-MASK-29: not gcd; scaleFactor / g may truncate)
   if g <= 1:
       magic-compat OFF: recompute the interaction radius
       return                    (magic-compat ON: radius NOT recomputed; Q-MASK-18)
@@ -460,7 +472,7 @@ rescale(n, d):
   recompute the interaction radius
 ```
 
-`gcd` is the positive greatest common divisor. Because `bloat-all` stores the value 1 per selected type and that value enters the GCD, a style containing `bloat-all` is never reduced when `d = 1`; this is replicated in both `magic-compat` settings (Q-MASK-13, resolution: replicate), which keeps the expander of the PDK styles at 10 and so the GDS UNITS record, the CIF DS scale and the meaning of gridlimit. `close` thresholds are stored as distances and enter the GCD as lengths in both settings; their own area scaling is defined by `close` in capability `mask-output-operators` (Q-MASK-2). With `magic-compat` ON, a call that returns at `g <= 1` keeps the radius computed before, as in Magic; with it OFF the radius is always recomputed at the end of the normalisation (Q-MASK-18, resolution: compat). The DRC section's mask-layer rule distances are rescaled in step (see DRC capabilities).
+`gcd` is the positive greatest common divisor. Because `bloat-all` stores the value 1 per selected type and that value enters the GCD, a style containing `bloat-all` is never reduced when `d = 1`; this is replicated in both `magic-compat` settings (Q-MASK-13, resolution: replicate), which keeps the expander of the PDK styles at 10 and so the GDS UNITS record, the CIF DS scale and the meaning of gridlimit. `close` thresholds are stored as distances and enter the GCD as lengths in both settings; their own area scaling is defined by `close` in capability `mask-output-operators` (Q-MASK-2). With `magic-compat` ON, a call that returns at `g <= 1` keeps the radius computed before, as in Magic; with it OFF the radius is always recomputed at the end of the normalisation (Q-MASK-18, resolution: compat). Because `g` is the smaller of the operands' common factor and gcd(scaleFactor, expander), not their greatest common divisor, `g` need not divide scaleFactor, and `scaleFactor /= g` truncates. Hefesto copies this arithmetic in both `magic-compat` settings; with `magic-compat` OFF it also issues a Hefesto-only warning (`MASK-STYLE-007`) naming the style, the scale factor before the division, `g` and the result (Q-MASK-29, resolution: replicate with an OFF warning). The DRC section's mask-layer rule distances are rescaled in step (see DRC capabilities).
 
 (Magic ref: cif/CIFtech.c:2424-2720, cif/CIFtech.c:1872-1878, cif/CIFtech.c:1912-1915, cif/CIFtech.c:2296, cif/CIFtech.c:2500-2502, cif/CIFtech.c:2601-2633, cif/CIFtech.c:2648-2649, cif/CIFtech.c:2689-2698, cif/CIFtech.c:1284-1294, cif/CIFtech.c:2022-2031, cif/CIFtech.c:2719, utils/tech.c:814-826)
 
@@ -472,15 +484,29 @@ rescale(n, d):
 
 #### Scenario: Odd scale doubling preserved by squares
 
+- **GIVEN** `scalefactor 9`, `squares 12 42 42`
+- **WHEN** finalised
+- **THEN** scaleFactor = 18, expander = 2, squares border 24, size 84, sep 84 (half-centimicron units; reduction blocked because the size and separation count halved, and 84/2/2 = 21 is odd)
+
+#### Scenario: Odd scale doubling undone by even squares
+
 - **GIVEN** `scalefactor 9`, `squares 12 44 44`
 - **WHEN** finalised
-- **THEN** scaleFactor = 18, expander = 2, squares border 12, size 44, sep 44 (half-centimicron units; reduction blocked because 44/2/2 = 11 is odd)
+- **THEN** the doubled values (18, 2, squares 24 88 88) reduce by 2, because 88/2/2 = 22 is even, and the result is scaleFactor = 9, expander = 1, squares 12 44 44
 
 #### Scenario: Odd scale with everything even
 
 - **GIVEN** `scalefactor 9`, `grow 30`
 - **WHEN** finalised
 - **THEN** after doubling (18, 2, grow 60) the GCD is 2 and the result is scaleFactor = 9, expander = 1, grow = 30
+
+#### Scenario: Scale factor truncated by the reduction
+
+- **GIVEN** a style with `scalefactor 10 nanometers` and a `bloat-all` operation (scaleFactor 10, expander 10 after finalisation) and an internal grid 3 times finer than lambda (`scalegrid 1 3`)
+- **WHEN** the style is rescaled by `rescale(1, 3)` (at tech load or on selection)
+- **THEN** scaleFactor = 10 and expander = 30 before the reduction, the bloat-all value 3 gives g = 3, and min(3, gcd(10, 30)) = 3
+- **AND** the result is scaleFactor = 10 / 3 = 3 (truncated) and expander = 10, in both `magic-compat` settings
+- **AND** with `magic-compat` OFF a warning reports that the scale factor 10 was rounded to 3; with it ON nothing is reported
 
 #### Scenario: bloat-all blocks reduction (verify against Magic)
 

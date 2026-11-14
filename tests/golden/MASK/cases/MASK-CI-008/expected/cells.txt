@@ -1,0 +1,9 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634420
+<< checkpaint >>
+rect 1 1 9 5
+<< ndiffusion >>
+rect 1 1 9 5
+<< end >>

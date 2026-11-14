@@ -1,0 +1,20 @@
+file MISSING.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+use MISSING  MISSING_0
+timestamp 0
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>

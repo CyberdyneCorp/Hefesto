@@ -82,7 +82,7 @@ Compatibility: native
 - **THEN** Hefesto SHALL report a format error and SHALL NOT crash
 
 ### Requirement: Cross-platform determinism checks
-CI SHALL run the golden suite on Linux x86_64, Linux aarch64 and macOS arm64, and on the iPadOS simulator from the start of the iPadOS milestone (capability `hefesto-build-and-distribution`). It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields.
+CI SHALL run the golden suite on Linux x86_64, Linux aarch64 and macOS arm64, and on the iPadOS simulator from the start of the iPadOS milestone (capability `hefesto-build-and-distribution`). It SHALL fail if any platform's output differs byte-wise from the Linux x86_64 output, except for documented time-dependent fields. Cases deferred to a later milestone in `tests/golden/deviations.toml` are left out of the comparison: their feature is missing, so their output is not yet Hefesto's.
 
 Compatibility: native
 

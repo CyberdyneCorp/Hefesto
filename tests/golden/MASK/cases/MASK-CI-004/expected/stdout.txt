@@ -1,0 +1,73 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style s0: scaleFactor=100, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+0 1.0
+0 (UNNAMED)
+CIF input style is now "s0"
+0 {}
+0 1.0
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t0".
+0 {}
+Input style s1: scaleFactor=3, multiplier=2
+CIF input style is now "s1"
+0 {}
+0 0.014999999664723873
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t1".
+0 {}
+Input style s2: scaleFactor=1, multiplier=2
+CIF input style is now "s2"
+0 {}
+0 0.0016666667070239782
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t2".
+0 {}
+Input style s3: scaleFactor=1, multiplier=2
+CIF input style is now "s3"
+0 {}
+0 0.0016666667070239782
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t3".
+0 {}
+Input style s4: scaleFactor=1, multiplier=10
+CIF input style is now "s4"
+0 {}
+0 0.00033333332976326346
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "t4".
+0 {}
+Writing 't0'
+Writing 't1'
+Writing 't2'
+Writing 't3'
+Writing 't4'
+Writing '(UNNAMED)'
+Must specify name for cell (UNNAMED).
+0 {}

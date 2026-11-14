@@ -1,0 +1,53 @@
+# styles.tech -- test technology of the mask/style unit tests
+# (SPDX-License-Identifier: Apache-2.0). Planes well, active, metal1 and
+# metal2; pc, ndc and m2c are contacts and pm12c the stacked pc/m2c type;
+# allm1 is a multi-type alias. The cifoutput section is empty: each test
+# appends its own (style_fixture.hpp).
+tech
+    format 35
+    stylestest
+end
+
+planes
+    well,w
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    well    nwell,nw
+    active  polysilicon,poly
+    active  ndiffusion,ndiff
+    active  pdiffusion,pdiff
+    metal1  metal1,m1
+    metal2  metal2,m2
+    active  polycontact,pc
+    active  ndcontact,ndc
+    metal1  m2contact,m2c
+end
+
+contact
+    pc   poly  metal1
+    ndc  ndiff metal1
+    m2c  metal1 metal2
+    stackable pc m2c pm12c
+end
+
+aliases
+    allm1  *m1
+end
+
+styles
+    styletype mos
+    poly 1
+end
+
+compose
+end
+
+connect
+    poly,pc      poly,pc
+    *m1          *m1
+    m2,m2c       m2,m2c
+end

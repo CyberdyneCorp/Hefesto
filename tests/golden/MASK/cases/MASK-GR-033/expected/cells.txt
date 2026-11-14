@@ -1,0 +1,42 @@
+file c.mag
+magic
+tech masktest
+timestamp 1794634427
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 100
+timestamp 1794634427
+<< checkpaint >>
+rect 0 -700 6400 5699
+use c  c_0
+array 0 2 334 0 1 499
+timestamp 1794634427
+transform 1 0 0 0 1 5000
+box 0 0 400 200
+use c  c_1
+array 0 3 500 0 0 0
+timestamp 1794634427
+transform 1 0 0 0 1 3000
+box 0 0 400 200
+use c  c_2
+array 0 2 500 0 1 500
+timestamp 1794634427
+transform 1 0 5000 0 -1 0
+box 0 0 400 200
+use c  c_3
+array 0 2 500 0 1 500
+timestamp 1794634427
+transform 0 -1 3000 1 0 0
+box 0 0 400 200
+use c  c_4
+array 0 2 500 0 1 500
+timestamp 1794634427
+transform 1 0 0 0 1 0
+box 0 0 400 200
+<< end >>

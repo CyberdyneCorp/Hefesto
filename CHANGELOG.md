@@ -4,6 +4,53 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
+## Unreleased (M5: mask generation, GDS and CIF; in progress)
+
+### Changed
+
+- **Use enumeration order follows Magic's bplane.** Searches over cells
+  with ten or more uses now enumerate them in Magic's binned order after a
+  partial search, and a use whose child's bounding box changes is
+  re-placed when its new box differs from the old extended box, as Magic
+  does; GDS SREF and CIF call order will follow it. With `magic-compat` OFF
+  uses enumerate in reverse creation order, and the DRC interaction area no
+  longer includes Magic's phantom area at the origin (Q-MASK-400). The
+  callers not yet moved to the index (`.mag` read, flatten, selection,
+  `what`, connectivity, hints, DRC reports) keep the M4 order.
+- **The cifoutput section is read at tech load.** Its messages are printed
+  at load, before the drc section's, and a cifoutput statement before the
+  first `style` line fails the load (Q-MASK-17), as in Magic. The DRC
+  `cif*` style catalog is read through the same reader: a style without a
+  `scalefactor` now has reducer 0 and the `slots` values count in the
+  reducer, as in Magic. `cif ostyle <name>` reloads a DRC style whose
+  `cifstyle` names the selected style, as Magic's DRCReloadCurStyle does.
+  Grow, shrink, bridge and bloat distances past the usable plane
+  (1073741818) are rejected with a message instead of overflowing, in both
+  `magic-compat` settings (Q-MASK-30, a fixed deviation from Magic).
+  The native gridlimit warning (MASK-STYLE-004) now applies only to
+  styles that use `bloat-all`, so `cif ostyle density` and
+  `cif ostyle metfill` on the PDKs are quiet (Q-MASK-8). A unit
+  normalisation that truncates a style's scale factor, as Magic's does
+  (a 10/10 `bloat-all` style under `scalegrid 1 3` becomes 3/10), is
+  reported with `magic-compat` OFF (MASK-STYLE-007, Q-MASK-29).
+- **GDS stream layer and vendor content stamps.** The GDS record layer
+  (gzip input, `real8` and date encoding) and the content stamps of vendor
+  GDS cells are in place for the coming `gds read`.
+
+### Fixed
+
+- **Painting up to the edge of the plane no longer crashes.** A paint or
+  erase that touched the plane's edge without covering the whole plane
+  dereferenced the boundary tiles while merging split tiles.
+- **Malformed CIF and GDS input stays bounded.** CIF integers saturate at
+  2^61, so box, flash, area-label and call-translation sums cannot overflow;
+  redefining one CIF symbol many times no longer takes quadratic time; a
+  vendor `.gds.gz` is scanned for content stamps one record at a time
+  instead of being inflated whole; a `GDS_START` of -2^63 and an oversized
+  temporary read scale no longer overflow; and a gzip member boundary one
+  byte before the edge of the 1 GiB inflate window no longer ends the
+  stream early.
+
 ## Unreleased (M4: scripting)
 
 ### Changed

@@ -138,6 +138,20 @@ class ReplayTest(unittest.TestCase):
             self.assertEqual(quiet(replay.main, argv), 0)
             self.assertTrue((out / "CORE" / "CORE-HASH-01" / "stdout.txt").is_file())
 
+    def test_output_dir_leaves_out_deferred_cases(self):
+        """Regression: a deferred case's output (a missing feature's fallback, e.g. MASK-GR-052's
+        save time) reached the cross-platform byte diff and differed between CI legs."""
+        from goldenlib import deviations
+        case = load_case(CASE, replay.COMPARATORS)
+        deferred = deviations.Deviation(case.id, (), ("stdout.txt",), "feature arrives later", "M99")
+        decided = deviations.Deviation(case.id, ("Q-CORE-1",), ("stdout.txt",), "decided difference")
+        with tempfile.TemporaryDirectory() as tmp:
+            cli = fake_cli(Path(tmp))
+            for name, deviation in (("deferred", deferred), ("decided", decided)):
+                replay.replay_case(cli, case, Path(tmp) / name, deviation)
+            self.assertFalse((Path(tmp) / "deferred").exists())
+            self.assertTrue((Path(tmp) / "decided" / "CORE" / "CORE-HASH-01" / "stdout.txt").is_file())
+
     def test_output_dir_applies_case_masks(self):
         """Regression: --output-dir wrote raw outputs, so the cross-platform byte diff saw GDS dates."""
         def gds(year: int) -> bytes:

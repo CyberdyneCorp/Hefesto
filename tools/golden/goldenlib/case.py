@@ -18,6 +18,8 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     tool = "magic"                   # magic | netgen | ngspice | xschem | magic-hash-harness
     description = "..."
     slow = true                      # optional: CTest label golden-slow instead of golden
+    gds_rt = true                    # optional: CTest label golden-gds-rt; replay.py skips the case
+                                     # unless --include-gds-rt (m5-mask-gds-cif D19, the MASK-RT cases)
 
     [reference]                      # how capture.py runs the reference tool
     script = "input/commands.tcl"    # fed to the tool (path relative to the case)
@@ -46,6 +48,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
                                      # | derived:mag-drc-sections:<glob> (goldenlib/derived.py)
     comparator = "bytes"             # see compare/ (bytes, ext-cap)
     masks = []                       # time-dependent field masks (see compare/masks.py)
+    display = "gds-records"          # optional: view that renders a difference (compare/__init__.py)
 """
 from __future__ import annotations
 
@@ -60,6 +63,7 @@ from .external import External, parse_external
 
 REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
 STREAM_SOURCES = ("stdout", "stderr")
+DISPLAY_VIEWS = ("gds-records",)  # the display views of compare/__init__.py (DISPLAYS)
 
 
 class CaseError(ValueError):
@@ -72,6 +76,7 @@ class Output:
     source: str
     comparator: str
     masks: tuple[str, ...] = ()
+    display: str | None = None
 
 
 @dataclass(frozen=True)
@@ -88,6 +93,15 @@ class Case:
     description: str = ""
     externals: tuple[External, ...] = ()
     env: dict = field(default_factory=dict)
+    slow: bool = False
+    gds_rt: bool = False
+
+    @property
+    def label(self) -> str:
+        """The CTest label: ``golden-gds-rt``, ``golden-slow`` or ``golden``."""
+        if self.gds_rt:
+            return "golden-gds-rt"
+        return "golden-slow" if self.slow else "golden"
 
     @property
     def input_dir(self) -> Path:
@@ -124,7 +138,10 @@ def _parse_output(raw: dict, index: int, known_comparators) -> Output:
             parse_derived(source)
         except ValueError as error:
             raise CaseError(f"{where}: {error}") from None
-    return Output(name, source, comparator, masks)
+    display = raw.get("display")
+    if display is not None and display not in DISPLAY_VIEWS:
+        raise CaseError(f"{where}: unknown display view '{display}'")
+    return Output(name, source, comparator, masks, display)
 
 
 def _check_paths(case: Case) -> None:
@@ -166,6 +183,13 @@ def _parse_externals(data: dict, where: str) -> tuple[External, ...]:
         raise CaseError(f"{where}: {error}") from None
 
 
+def _flag(data: dict, key: str, where: str) -> bool:
+    value = data.get(key, False)
+    if not isinstance(value, bool):
+        raise CaseError(f"{where}: '{key}' must be true or false")
+    return value
+
+
 def load_case(root: Path, known_comparators=None) -> Case:
     """Load and validate ``root/case.toml``; raise CaseError when malformed."""
     root = Path(root).resolve()
@@ -195,6 +219,8 @@ def load_case(root: Path, known_comparators=None) -> Case:
         description=data.get("description", ""),
         externals=_parse_externals(data, where),
         env=_parse_env(data, where),
+        slow=_flag(data, "slow", where),
+        gds_rt=_flag(data, "gds_rt", where),
     )
     display = case.reference.get("display")
     if display is not None and display not in DISPLAYS:

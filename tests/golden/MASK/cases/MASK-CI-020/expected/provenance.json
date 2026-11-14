@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "case": "MASK-CI-020",
+  "area": "MASK",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:027db63184a71ebbf6d38b310cd13c3b3a46f3e5118172e35573c48f57a895f6",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-norc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-14T05:25:43Z",
+  "outputs": {
+    "cells.txt": "1422ee2733d6799d053c503ad6cb331486e06fadd7fa978f10ad5a0cd8bc851e",
+    "stderr.txt": "3946a2fb89a80a6bb1c145547856e72cea25969ef2936363eec1eb39a5e38c6e",
+    "stdout.txt": "e98ddd6662740d131c673667327fab303c11be7b214216673d684752272fe9c2"
+  }
+}

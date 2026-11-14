@@ -1,0 +1,48 @@
+file t0.mag
+magic
+tech masktest
+timestamp 1794634419
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file t1.mag
+magic
+tech masktest
+magscale 1 3
+timestamp 1794634419
+<< checkpaint >>
+rect 0 0 200 200
+<< metal1 >>
+rect 0 0 200 200
+<< end >>
+file t2.mag
+magic
+tech masktest
+magscale 1 3
+timestamp 1794634419
+<< checkpaint >>
+rect 0 0 500 500
+<< metal1 >>
+rect 0 0 500 500
+<< end >>
+file t3.mag
+magic
+tech masktest
+magscale 1 3
+timestamp 1794634419
+<< checkpaint >>
+rect 0 0 500 500
+<< metal1 >>
+rect 0 0 500 500
+<< end >>
+file t4.mag
+magic
+tech masktest
+timestamp 1794634419
+<< checkpaint >>
+rect 0 0 1000 1000
+<< metal1 >>
+rect 0 0 1000 1000
+<< end >>

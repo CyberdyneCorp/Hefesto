@@ -1,0 +1,17 @@
+( @@user : ? );
+( @@machine : 2c66737ac8b3 );
+( @@source : top.mag );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 05:27:00 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : sq );
+( @@date : Sat Nov 14 05:34:10 2026 );
+DS 1 1 2;
+9 top;
+L CCA;
+    B 88 88 108 108;
+DF;
+C 1;
+End

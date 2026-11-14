@@ -90,3 +90,22 @@ TEST_CASE("cif style queries", "[cap:scripting-api][req:Result formats of comman
   // The CIF reader and writer are M5's.
   CHECK(f.value("catch {cif write x}") == "0");
 }
+
+// M5 round 2: `cif ostyle <name>` selects through mask::select_output_style
+// (CIFSetStyle): a unique prefix, the typed name in the report, and the DRC
+// catalog follows; an unknown name prints the error, the current style and
+// the list.
+TEST_CASE("cif ostyle selects an output style", "[cap:mask-output-styles][req:Output style selection]") {
+  BindingFixture f;
+  f.take_printed();
+  CHECK(f.value("cif ostyle coa") == "");
+  CHECK(f.take_printed() == "CIF output style is now \"coa\"\n");
+  CHECK(f.value("cif list ostyle") == "coarse");
+  CHECK(f.editor.mask.output_styles.current_style()->name == "coarse");
+  CHECK(f.editor.drc.cif.current()->name == "coarse");
+  CHECK(f.value("cif ostyle nosuch") == "");
+  CHECK(f.take_printed() == "\"nosuch\" is not one of the CIF output styles Magic knows.\n"
+                            "The current style is \"coarse\".\n"
+                            "The CIF output styles are: lambda, coarse.\n");
+  CHECK(f.value("cif list ostyle") == "coarse");
+}

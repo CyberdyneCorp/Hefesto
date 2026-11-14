@@ -86,20 +86,33 @@ void fix_mismatch(const StampMismatch& m, const std::function<void(db::CellDef&)
   }
 }
 
-void stamp_cell(db::CellDef& def, std::int64_t now);
+void stamp_cell(db::CellDef& def, std::int64_t now, const VendorStampFn& vendor_stamp);
 
-void stamp_parents(db::CellDef& def, std::int64_t now) {
+void stamp_parents(db::CellDef& def, std::int64_t now, const VendorStampFn& vendor_stamp) {
   const std::vector<db::CellUse*> uses = def.instances();
   for (db::CellUse* u : uses) {
     if (u->parent != nullptr) {
       u->parent->flags().child_timestamps_changed = true;
-      stamp_cell(*u->parent, now);
+      stamp_cell(*u->parent, now, vendor_stamp);
     }
   }
 }
 
+/// dbStampFunc's CDVENDORGDS branch (CalmaVendorStamp): true when the
+/// content stamp changed, so the parents must be stamped too. The stamp
+/// does not follow edits of the Magic view; an unreadable file or a 0
+/// stamp keeps the old value.
+bool restamp_vendor_cell(db::CellDef& def, const VendorStampFn& vendor_stamp) {
+  const std::int64_t stamp = vendor_stamp ? std::int64_t{vendor_stamp(def)} : 0;
+  if (stamp == 0 || stamp == def.timestamp()) {
+    return false;
+  }
+  def.set_timestamp(stamp);
+  return true;
+}
+
 /// dbStampFunc.
-void stamp_cell(db::CellDef& def, std::int64_t now) {
+void stamp_cell(db::CellDef& def, std::int64_t now, const VendorStampFn& vendor_stamp) {
   db::CellFlags& f = def.flags();
   if (def.timestamp() == now) {
     return;
@@ -108,15 +121,16 @@ void stamp_cell(db::CellDef& def, std::int64_t now) {
   if (f.no_edit) {
     return;
   }
-  // Vendor-GDS content stamps come from gds-read (not in M1): such cells
-  // keep their stamp and do not propagate.
   if (f.vendor_gds && !f.fixed_timestamp) {
+    if (restamp_vendor_cell(def, vendor_stamp)) {
+      stamp_parents(def, now, vendor_stamp);
+    }
     return;
   }
   if (!f.fixed_timestamp) {
     def.set_timestamp(now);
   }
-  stamp_parents(def, now);
+  stamp_parents(def, now, vendor_stamp);
 }
 
 }  // namespace
@@ -141,7 +155,8 @@ MismatchReport process_mismatches(TimestampLog& log, const std::function<void(db
   return report;
 }
 
-void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now) {
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now,
+                       const VendorStampFn& vendor_stamp) {
   if (only != nullptr) {
     if (!only->flags().needs_new_timestamp) {
       return;  // DBUpdateStamps(def): only a pending cell is stamped
@@ -150,7 +165,7 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
       only->flags().needs_new_timestamp = false;
       return;
     }
-    stamp_cell(*only, now);
+    stamp_cell(*only, now, vendor_stamp);
     return;
   }
   std::vector<db::CellDef*> pending;
@@ -160,7 +175,7 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
     }
   });
   for (db::CellDef* def : pending) {
-    stamp_cell(*def, now);
+    stamp_cell(*def, now, vendor_stamp);
   }
 }
 

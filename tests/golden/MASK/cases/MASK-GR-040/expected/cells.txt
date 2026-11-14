@@ -1,0 +1,32 @@
+file pcell_CDNS_1.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file t2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file viaA.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>

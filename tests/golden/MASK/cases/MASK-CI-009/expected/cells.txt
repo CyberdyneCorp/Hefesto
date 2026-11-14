@@ -1,0 +1,15 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634420
+<< checkpaint >>
+rect 0 -2 10 6
+<< ndiffusion >>
+rect 0 0 4 4
+rect 6 0 10 4
+<< polysilicon >>
+rect 4 4 6 6
+rect 4 -2 6 0
+<< ntransistor >>
+rect 4 0 6 4
+<< end >>

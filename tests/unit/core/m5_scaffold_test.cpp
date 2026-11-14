@@ -22,7 +22,6 @@
 #include "hefesto/cif/write/write.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/db/use_index.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/check/mask_check.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -187,7 +186,6 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
                            "*array"}) {
     check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
   }
-  check_not_implemented(s.run("cif ostyle lambda"), "cif ostyle");
   check_not_implemented(s.run("cif istyle in"), "cif istyle");
 }
 
@@ -239,49 +237,6 @@ TEST_CASE("the mask session has its defaults", "[m5-scaffold]") {
   CHECK(state.mask.warnings.level == mask::WarningLevel::warn_default);
 }
 
-TEST_CASE("the use index starts with today's unbinned order", "[m5-scaffold]") {
-  db::CellUse a;
-  db::CellUse b;
-  db::CellUse c;
-  a.bbox = db::Rect{0, 0, 10, 10};
-  b.bbox = db::Rect{20, 0, 30, 10};
-  c.bbox = db::Rect{10, 0, 20, 10};
-  db::UseIndex index;
-  index.place(a);
-  index.place(b);
-  index.place(c);
-  const hefesto::compat::CompatSettings on{};
-  CHECK(index.order(on) == std::vector<db::CellUse*>{&c, &b, &a});  // LIFO
-  CHECK(index.order(hefesto::compat::CompatSettings{false, true}) == std::vector<db::CellUse*>{&c, &b, &a});
-  CHECK_FALSE(index.state_for_test().binned);
-  CHECK(index.state_for_test().bbox == db::Rect{0, 0, 30, 10});
-
-  // BPE_OVERLAP: the area shrinks by 1, so a use that only touches it is out.
-  std::vector<db::CellUse*> found;
-  CHECK(index.search(db::Rect{10, 0, 20, 10}, [&](db::CellUse& u) {
-    found.push_back(&u);
-    return true;
-  }));
-  CHECK(found == std::vector<db::CellUse*>{&c});
-  found.clear();
-  CHECK(index.find_equal(db::Rect{0, 0, 10, 10}, [&](db::CellUse& u) {
-    found.push_back(&u);
-    return true;
-  }));
-  CHECK(found == std::vector<db::CellUse*>{&a});
-
-  index.place(a);  // re-placement moves it to the head (BPDelete + BPAdd)
-  CHECK(index.order(on).front() == &a);
-  index.remove(b);
-  CHECK(index.size() == 2);
-  found.clear();
-  CHECK_FALSE(index.enumerate_all([&](db::CellUse& u) {
-    found.push_back(&u);
-    return false;
-  }));
-  CHECK(found.size() == 1);
-}
-
 TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaffold]") {
   editor::EditorState state;
   hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
@@ -308,7 +263,9 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   CHECK(source.read(out).value() == 1);
   CHECK(source.position() == 3);
   gds::RecordReader reader{source};
-  CHECK_FALSE(reader.next().ok());
+  auto end = reader.next();  // GDSR landed the reader: at the end of the stream there are no more records
+  REQUIRE(end.ok());
+  CHECK_FALSE(end.value().has_value());
 
   // Mask planes, operators and generation.
   mask::PlanePool pool;
@@ -323,10 +280,6 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   ctx.sink = &sink_diag;
   const mask::OutputStyle style;
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
-  auto op = ctx.operator_context(nullptr, {});
-  const mask::LayerOp layer_op;
-  const mask::LayerInputs inputs;
-  check_not_implemented(mask::op_grow(mask::OpArgs{layer_op, style, inputs, {}}, op, plane), "mask::op_grow");
   CHECK(sink_diag.take().front().code == kNotImplemented);
   std::atomic<bool> stop{true};
   mask::Progress progress{{}, &stop};
@@ -334,10 +287,7 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   ctx.progress = &progress;
   CHECK(ctx.cancelled());
 
-  // Styles and the shared core.
-  CHECK_FALSE(mask::parse_scale("1.5").has_value());
-  mask::OutputStyleSet styles;
-  check_not_implemented(mask::select_output_style(styles, "x", {}), "mask::select_output_style");
+  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/).
   mask::InputStyle input_style;
   mask::ReadEngine engine{state, input_style, {}};
   check_not_implemented(engine.begin_cell("a"), "mask::ReadEngine::begin_cell");

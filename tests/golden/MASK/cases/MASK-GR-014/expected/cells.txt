@@ -1,0 +1,22 @@
+file top.mag
+magic
+tech masktest
+magscale 1 50
+timestamp 1794634425
+<< checkpaint >>
+rect 0 0 4000 1000
+<< metal1 >>
+rect 3000 500 4000 1000
+tri 0 0 500 500 sw
+tri 1000 350 1150 500 se
+rect 1150 350 1350 500
+tri 1350 350 1500 500 sw
+rect 1000 150 1500 350
+tri 1000 0 1150 150 ne
+rect 1150 0 1350 150
+tri 1350 0 1500 150 nw
+rect 2000 0 2577 500
+tri 2577 0 2866 500 sw
+tri 3000 0 3500 500 nw
+tri 3500 0 4000 500 ne
+<< end >>

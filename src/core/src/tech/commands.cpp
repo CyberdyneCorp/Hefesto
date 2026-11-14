@@ -30,6 +30,7 @@
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/wiring/wiring.hpp"
 #include "tech/build_state.hpp"
@@ -463,6 +464,11 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     ed.grid = reduce(GridScale{ed.grid.internal * b, ed.grid.lambda * a});
     // CmdScalegrid's DRCTechScale(a, b): rules, halo and step size (Q-DRC-1).
     drc::rescale_rules(ed, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b));
+    const mask::RescaleStep step = mask::rescale_output_styles(
+        ed.mask.output_styles, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b), ed.drc.compat_settings());
+    for (const diag::Diagnostic& d : step.messages) {
+      ctx.emit(d);
+    }
     if (ctx.project().compat.magic_compat && ed.box) {
       // CmdScalegrid then rescales the box once more ("Rescale cursor box"),
       // so Magic scales the box by (b/a)^2 (magic-compat; see step 8 of
@@ -541,14 +547,24 @@ namespace {
 /// the locked types, the DRC rules, the wiring section's report, the plane
 /// count of every cell and the display styles.
 void install_technology(editor::EditorState& editor, platform::FileSystem& files,
-                        std::shared_ptr<const Technology> tech, drc::LoadedRules rules, bool magic_compat,
-                        diag::DiagnosticSink& sink) {
+                        std::shared_ptr<const Technology> tech, drc::LoadedRules rules,
+                        mask::OutputStyleSet output_styles, bool magic_compat, diag::DiagnosticSink& sink) {
   const std::size_t old_planes = editor.technology->plane_count();
   const std::size_t new_planes = tech->plane_count();
   editor.grid = apply_post_load(*tech, editor.grid, sink);
   check_existing_layout(editor, old_planes, new_planes, sink);
   set_technology(editor, std::move(tech));
   drc::install_rules(editor, std::move(rules));
+  // TechLoad's post-load CIFTechOutputScale(DBLambda[0], DBLambda[1]).
+  editor.mask.output_styles = std::move(output_styles);
+  if (editor.grid.lambda != editor.grid.internal) {
+    const mask::RescaleStep step = mask::rescale_output_styles(
+        editor.mask.output_styles, static_cast<std::int32_t>(editor.grid.lambda),
+        static_cast<std::int32_t>(editor.grid.internal), editor.drc.compat_settings());
+    for (const diag::Diagnostic& d : step.messages) {
+      sink.emit(d);
+    }
+  }
   // The `wiring` section is kept raw and read by the wiring area; reading it
   // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
   (void)wiring::parse_wiring_section(*editor.technology, editor.grid, &sink);
@@ -563,6 +579,24 @@ void install_technology(editor::EditorState& editor, platform::FileSystem& files
 std::string layer_names_text(const Technology& tech) {
   return print_types_text(tech, all_but_space_and_drc());
 }
+
+namespace {
+
+/// TechLoad's report of the sections whose line handler failed, and the
+/// failed load.
+diag::Status section_failure(const std::string& file, bool cifoutput, bool drc, diag::DiagnosticSink& sink) {
+  std::string sections;
+  for (const auto& [failed, name] : {std::pair{cifoutput, "cifoutput"}, std::pair{drc, "drc"}}) {
+    if (failed) {
+      sections += std::string{"\n    "} + name;
+    }
+  }
+  sink.emit(diag::make("TECH-SECTION-007", "The following sections of " + file + " contained errors:" + sections,
+                       diag::SourceLocation{file, 0}));
+  return diag::make("TECH-LOAD-001", "Error in loading technology file", diag::SourceLocation{file, 0});
+}
+
+}  // namespace
 
 diag::Status load_session_technology(editor::EditorState& editor, platform::PlatformServices& services,
                                      std::string_view name, const SessionLoadOptions& options,
@@ -586,18 +620,19 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   if (!tech) {
     return tech.error();
   }
-  // The drc section is compiled while the technology is read (m3-drc design
-  // D4/D5): Magic reads it before the wiring section and before the
-  // post-load scaling, so its messages come first, and a rejected rule line
-  // fails the load with the previous technology kept (TECH-LOAD-001).
+  // The cifoutput and drc sections are read while the technology is read
+  // (m3-drc design D4/D5): Magic reads them, in this order, before the
+  // wiring section and before the post-load scaling, so their messages come
+  // first, and a failed section (a statement before the first cifoutput
+  // `style`, Q-MASK-17, or a rejected rule line) fails the load with the
+  // previous technology kept (TECH-LOAD-001).
+  mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink, editor.drc.compat_settings());
   drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
-  if (!rules.ok()) {
-    const std::string file = path.value().string();
-    sink.emit(diag::make("TECH-SECTION-007", "The following sections of " + file + " contained errors:\n    drc",
-                         diag::SourceLocation{file, 0}));
-    return diag::make("TECH-LOAD-001", "Error in loading technology file", diag::SourceLocation{file, 0});
+  if (output_styles.section_failed || !rules.ok()) {
+    return section_failure(path.value().string(), output_styles.section_failed, !rules.ok(), sink);
   }
-  install_technology(editor, services.files, std::move(tech.value()), std::move(rules), options.magic_compat, sink);
+  install_technology(editor, services.files, std::move(tech.value()), std::move(rules), std::move(output_styles),
+                     options.magic_compat, sink);
   return diag::Done{};
 }
 
@@ -611,7 +646,10 @@ diag::Status load_builtin_technology(editor::EditorState& editor, platform::Plat
   if (!rules.ok()) {  // the built-in text has no drc section; kept as a guard
     return diag::make("TECH-LOAD-001", "Error in loading technology file");
   }
-  install_technology(editor, services.files, std::move(minimum), std::move(rules), options.magic_compat, sink);
+  diag::NullSink quiet;  // the built-in text has no cifoutput section
+  mask::OutputStyleSet output_styles = mask::read_output_styles(*minimum, quiet);
+  install_technology(editor, services.files, std::move(minimum), std::move(rules), std::move(output_styles),
+                     options.magic_compat, sink);
   return diag::Done{};
 }
 

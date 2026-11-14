@@ -8,28 +8,27 @@
 // `cifstyle` and resolve `cif*` rule layers), and for each contact type the
 // `squares` (or `slots`) operator border used by Euclidean derived borders
 // (drcGetContactBorder) and by the default step size (6400 / cifScale).
-// M5's mask-output-styles reader replaces the catalog's source without
-// changing this interface.
 //
-// Each style is read as Magic loads it when it becomes the current output
-// style (CIFTechLine with the style/variant state machine, CIFTechFinal),
-// keeping only what the catalog needs: layer names, the paint masks of the
-// leading `or` operators and the numeric operands of every operator, so
-// that CIFTechOutputScale (the expander reduction at load and the grid
-// rescale of `scalegrid` and finer-grid reads) gives Magic's scalefactor and
-// squares borders. The reader is quiet: the cifoutput section's own
-// messages are M5's (mask-output-styles).
+// Since M5 the catalog is a view over the mask-output-styles reader
+// (mask::read_output_styles, openspec/changes/m5-mask-gds-cif/design.md D5):
+// each style is the mask::OutputStyle Magic loads when it becomes the
+// current output style (CIFTechLine, CIFTechFinal), and rescale() is
+// CIFTechOutputScale on it, so the scalefactor and squares borders are
+// Magic's. The catalog reads quietly: the cifoutput section's messages are
+// reported by the session's own read (mask-output-styles).
 //
-// (Magic ref: cif/CIFtech.c CIFTechLine, cifParseLayers, CIFParseScale,
-// CIFTechFinal, CIFGetContactSize, CIFTechOutputScale; cif/CIFint.h
-// CIFStyle; drc/DRCtech.c drcGetContactBorder)
+// (Magic ref: cif/CIFtech.c CIFTechFinal, CIFGetContactSize,
+// CIFTechOutputScale; cif/CIFint.h CIFStyle; drc/DRCtech.c
+// drcGetContactBorder)
 //
-// Owner: RULES (openspec/changes/m3-drc/design.md D2).
+// Owner: RULES (openspec/changes/m3-drc/design.md D2); the re-sourcing onto
+// mask::OutputStyle: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
 
 #pragma once
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <span>
@@ -46,6 +45,10 @@ class DiagnosticSink;
 
 namespace hefesto::tech {
 class Technology;
+}
+
+namespace hefesto::mask {
+class OutputStyle;
 }
 
 namespace hefesto::drc {
@@ -104,9 +107,10 @@ class CifCatalog {
   /// An empty catalog: no cifoutput style loaded (CIFCurStyle == NULL).
   CifCatalog() = default;
 
-  /// Reads the raw `cifoutput` section of `technology`; the first style is
-  /// current. The reader is quiet (the section's messages belong to M5);
-  /// `sink` is kept for that reader.
+  /// Reads the `cifoutput` section of `technology` with
+  /// mask::read_output_styles; the first style is current. The read is
+  /// quiet (the session reports the section's messages once); `sink` is
+  /// unused.
   [[nodiscard]] static CifCatalog from_technology(const tech::Technology& technology, diag::DiagnosticSink& sink);
 
   [[nodiscard]] std::span<const CifStyleInfo> styles() const noexcept { return styles_; }
@@ -133,8 +137,17 @@ class CifCatalog {
   friend bool operator==(const CifCatalog&, const CifCatalog&) = default;
 
  private:
+  /// The mask::OutputStyle each entry of styles_ views (rescale() scales
+  /// these). Equality is the view's: two catalogs are equal when their
+  /// styles_ are.
+  struct Sources {
+    std::vector<std::shared_ptr<const mask::OutputStyle>> styles;
+    friend bool operator==(const Sources&, const Sources&) noexcept { return true; }
+  };
+
   std::vector<CifStyleInfo> styles_;
   std::optional<std::size_t> current_;
+  Sources sources_;
 };
 
 }  // namespace hefesto::drc

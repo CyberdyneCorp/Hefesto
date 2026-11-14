@@ -1,0 +1,27 @@
+file c10.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 100 50
+<< metal1 >>
+rect 0 0 100 50
+<< end >>
+file c8.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 100 50
+<< metal1 >>
+rect 0 0 100 50
+<< end >>
+file c9.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 100 50
+<< metal1 >>
+rect 0 0 100 50
+<< end >>

@@ -1,0 +1,8 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 4 2
+<< metal2 >>
+rect 0 2 2 4
+<< end >>

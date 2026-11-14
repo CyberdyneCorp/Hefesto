@@ -1,0 +1,69 @@
+file a.mag
+magic
+tech masktest
+timestamp 1757017646
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< properties >>
+string GDS_END 164
+string GDS_FILE input/in.gds
+string GDS_START 96
+<< end >>
+file b.mag
+magic
+tech masktest
+timestamp 2108469444
+<< checkpaint >>
+rect 0 0 10 10
+<< metal2 >>
+rect 0 0 5 5
+use a  a_0
+timestamp 1757017646
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< properties >>
+string GDS_END 292
+string GDS_FILE input/in.gds
+string GDS_START 198
+<< end >>
+file cyc1.mag
+magic
+tech masktest
+timestamp 784481753
+<< checkpaint >>
+rect 0 0 1 1
+use cyc2  cyc2_0
+timestamp 1600967848
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< properties >>
+string GDS_END 500
+string GDS_FILE input/in.gds
+string GDS_START 468
+<< end >>
+file cyc2.mag
+magic
+tech masktest
+timestamp 1600967848
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 632
+string GDS_FILE input/in.gds
+string GDS_START 536
+<< end >>
+file e.mag
+magic
+tech masktest
+timestamp 1595775465
+<< checkpaint >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 330
+string GDS_FILE input/in.gds
+string GDS_START 326
+<< end >>

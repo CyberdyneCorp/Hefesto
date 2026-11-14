@@ -1,0 +1,11 @@
+file top.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634425
+<< checkpaint >>
+rect 0 -1 21 20
+<< metal1 >>
+rect 19 1 21 20
+rect 0 -1 21 1
+<< end >>

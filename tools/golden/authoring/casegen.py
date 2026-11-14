@@ -77,9 +77,10 @@ def _toml_list(items) -> str:
     return "[" + ", ".join(_toml_str(i) if not i.startswith("regex:") else f"'{i}'" for i in items) + "]"
 
 
-def _output_block(name: str, source: str, comparator: str, masks: list[str]) -> str:
+def _output_block(name: str, source: str, comparator: str, masks: list[str], display: str | None = None) -> str:
+    shown = f"display = {_toml_str(display)}\n" if display else ""
     return (f"\n[[outputs]]\nname = {_toml_str(name)}\nsource = {_toml_str(source)}\n"
-            f"comparator = {_toml_str(comparator)}\nmasks = {_toml_list(masks)}\n")
+            f"comparator = {_toml_str(comparator)}\nmasks = {_toml_list(masks)}\n{shown}")
 
 
 def _output_name(source: str) -> str:

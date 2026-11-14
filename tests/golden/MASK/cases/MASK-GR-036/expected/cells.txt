@@ -1,0 +1,102 @@
+file c.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< end >>
+file c_mag0p333333.mag
+magic
+tech masktest
+magscale 1 3
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file c_mag0p5.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 2 1
+<< metal1 >>
+rect 0 0 2 1
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file c_mag1p5.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 6 3
+<< metal1 >>
+rect 0 0 6 3
+<< properties >>
+string GDS_MAG_SOURCE c
+<< end >>
+file m2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 2 1
+use c_mag0p5  c_mag0p5_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 2 1
+<< end >>
+file m2_mag2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 4 2
+use c  c_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 4 2
+<< properties >>
+string GDS_MAG_SOURCE m2
+<< end >>
+file nowhere.mag
+magic
+tech masktest
+timestamp 0
+<< checkpaint >>
+rect 0 0 0 0
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 3
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 151 9
+use c  c_0
+timestamp 1794634428
+transform 1 0 120 0 1 0
+box 0 0 12 6
+use c_mag0p333333  c_mag0p333333_0
+timestamp 1794634428
+transform 1 0 90 0 1 0
+box 0 0 4 2
+use c_mag1p5  c_mag1p5_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 18 9
+use m2_mag2  m2_mag2_0
+timestamp 1794634428
+transform 1 0 30 0 1 0
+box 0 0 12 6
+use nowhere  nowhere_0
+timestamp 0
+transform 1 0 150 0 1 0
+box 0 0 1 1
+<< end >>

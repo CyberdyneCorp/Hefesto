@@ -1,0 +1,24 @@
+( @@user : ? );
+( @@machine : 4d67663cfeed );
+( @@source : top.mag );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 07:25:41 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : gds );
+( @@date : Sat Nov 14 07:34:33 2026 );
+DS 1 10 2;
+9 top;
+L CMF;
+    B 8 8 4 4;
+91 foo_0;
+C 2 R 1 0 T 0 0;
+DF;
+DS 2 10 2;
+9 foo;
+L CMF;
+    B 8 4 4 2;
+DF;
+C 1;
+End

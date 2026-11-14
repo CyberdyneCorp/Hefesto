@@ -1,0 +1,19 @@
+magic
+tech masktest
+timestamp 100
+use child  a
+array 0 1 10 0 1 10
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use child  b
+array 0 2 10 0 2 10
+timestamp 100
+transform 1 0 100 0 1 0
+box 0 0 10 10
+use child  r
+array 2 0 10 0 1 10
+timestamp 100
+transform 1 0 300 0 1 0
+box 0 0 10 10
+<< end >>

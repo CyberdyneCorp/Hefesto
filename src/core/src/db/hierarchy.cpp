@@ -23,6 +23,7 @@
 
 #include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/diag_codes.hpp"
+#include "hefesto/db/use_index.hpp"
 
 namespace hefesto::db {
 
@@ -238,6 +239,7 @@ diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOption
   CellUse* raw = use.get();
   parent.link_use_id(raw->id);  // DBLinkCell
   parent.uses().push_back(std::move(use));
+  parent.use_index().place(*raw);  // DBPlaceCell's BPAdd
   child.instances().insert(child.instances().begin(), raw);
   if (ChangeRecorder* r = parent.recorder()) {
     r->use_placed(parent, *raw);
@@ -260,6 +262,7 @@ diag::Status remove_use(CellUse& use) {
   }
   mark_modified(*parent);
   parent->unlink_use_id(use.id);  // DBUnLinkCell
+  parent->use_index().remove(use);  // dbInstanceUnplace's BPDelete
   auto& uses = parent->uses();
   uses.erase(std::remove_if(uses.begin(), uses.end(), [&](const auto& u) { return u.get() == &use; }), uses.end());
   return diag::Done{};
@@ -449,6 +452,28 @@ bool window_use_is_oldest(const CellDef& def) {
                      [window](const CellUse* use) { return use->parent == nullptr || use->serial > window; });
 }
 
+// dbReComputeBboxFunc rips up and re-places the uses of `def` in its
+// parents' use indexes when the new bounding box differs from the old
+// *extended* one, or the cell is empty (database/DBcellbox.c:709-727).
+// Magic then changes nothing else. Hefesto still updates the boxes and the
+// uses' boxes: with magic-compat ON the uses keep their places in the
+// indexes (UseIndex::refresh), OFF a change of the plain bounding box
+// re-places them too.
+bool must_replace_uses(const CellDef& def, const Rect& area, bool degenerate, bool magic_compat) {
+  return degenerate || area != def.extended_bbox() || (!magic_compat && area != def.bbox());
+}
+
+// The first loop of the rip-up: every use of `def` leaves its parent's
+// index (DBDeleteCellNoModify), in cd_parents order, before any is placed
+// again.
+void unplace_instances(const CellDef& def) {
+  for (const CellUse* use : def.instances()) {
+    if (use->parent != nullptr) {
+      use->parent->use_index().remove(*use);
+    }
+  }
+}
+
 }  // namespace
 
 std::uint64_t next_use_serial() noexcept {
@@ -472,6 +497,10 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
   }
   fix_degenerate(s.area);
   fix_degenerate(s.extended);
+  const bool replace = must_replace_uses(def, s.area, !s.found, magic_compat);
+  if (replace) {
+    unplace_instances(def);
+  }
   def.set_bboxes(s.area, s.extended);
   // dbReComputeBboxFunc walks cd_parents (most recent use first) and
   // recomputes a parent when the next use has another one. Its final call is
@@ -487,6 +516,11 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
       continue;
     }
     parent->flags().child_bboxes_changed = true;
+    if (replace) {
+      parent->use_index().place(*use);  // DBPlaceCellNoModify
+    } else {
+      parent->use_index().refresh(*use);
+    }
     if (last != parent) {
       if (last != nullptr) {
         recompute_bbox(*last, magic_compat);

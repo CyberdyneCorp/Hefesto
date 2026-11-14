@@ -1,0 +1,23 @@
+file flash.mag
+magic
+tech masktest
+magscale 1 10
+timestamp 1794634416
+<< checkpaint >>
+rect 225 225 507 507
+<< metal1 >>
+rect 492 492 507 507
+rect 225 225 275 275
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 10
+timestamp 1794634416
+<< checkpaint >>
+rect 225 225 507 507
+use flash  flash_0
+timestamp 1794634416
+transform 1 0 0 0 1 0
+box 225 225 507 507
+<< end >>

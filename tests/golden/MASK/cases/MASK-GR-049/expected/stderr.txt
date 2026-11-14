@@ -1,0 +1,14 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Error while reading cell "a" (byte position 364): Cell "a" was already defined in this file.
+Error while reading cell "a" (byte position 364): Ignoring duplicate definition
+Error while reading cell "cyc2" (byte position 548): Cell cyc1 is an ancestor of cyc2Error while reading cell "cyc2" (byte position 548):  and can't be used as a subcell.
+Error while reading cell "cyc2" (byte position 548): (Use skipped)
+Can't write file named '(UNNAMED)'

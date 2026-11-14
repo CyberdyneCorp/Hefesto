@@ -1,0 +1,51 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "c".
+Reading "m2".
+Cell c is magnified by 0.5:  reading magnified copy c_mag0p5.
+Reading "c_mag0p5".
+Reading "top".
+Cell c is magnified by 1.5:  reading magnified copy c_mag1p5.
+Reading "c_mag1p5".
+Cell m2 is magnified by 2:  reading magnified copy m2_mag2.
+Reading "m2_mag2".
+Cell c is magnified by 0.333333:  reading magnified copy c_mag0p333333.
+Reading "c_mag0p333333".
+Cell nowhere is magnified by 2:  reading magnified copy nowhere_mag2.
+0 {}
+0 {(UNNAMED) c c_mag0p5 c_mag0p333333 c_mag1p5 m2 m2_mag2 nowhere top}
+Writing 'c_mag0p333333'
+Writing 'c_mag0p5'
+Writing 'm2_mag2'
+Writing 'nowhere'
+Cell nowhere read from current working directory
+Magic error: writing out-of-date timestamp for nowhere.
+Writing 'm2'
+Processing timestamp mismatches.
+Timestamp mismatches found in these cells: nowhere.
+Writing 'c_mag1p5'
+Writing 'c'
+Writing 'top'
+Writing '(UNNAMED)'
+Must specify name for cell (UNNAMED).
+0 {}

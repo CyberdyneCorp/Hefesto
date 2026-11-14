@@ -1,0 +1,11 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634424
+<< checkpaint >>
+rect 0 0 10 10
+use PAD  PAD_0 input
+timestamp 1757017646
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

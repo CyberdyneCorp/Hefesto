@@ -55,7 +55,11 @@ TileView view_of(const detail::Tile* t, detail::Body dinfo) {
 
 void merge_after_paint(detail::TilePlane& tiles, const Rect& area) {
   if (!(area == whole_plane())) {
-    detail::merge_nm_tiles(tiles, expand(area, 1));
+    // One unit around the area, but never into the boundary tiles.
+    const Rect around = expand(area, 1);
+    const Rect plane = whole_plane();
+    detail::merge_nm_tiles(tiles, Rect{std::max(around.x0, plane.x0), std::max(around.y0, plane.y0),
+                                       std::min(around.x1, plane.x1), std::min(around.y1, plane.y1)});
   }
   tiles.end_operation();
 }

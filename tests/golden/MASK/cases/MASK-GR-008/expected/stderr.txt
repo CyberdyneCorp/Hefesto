@@ -1,0 +1,11 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Error while reading cell "inv_1" (byte position 98): Warning: cell definition "inv" reused.
+Error while reading cell "inv" (byte position 202): Warning: cell definition "top" reused.

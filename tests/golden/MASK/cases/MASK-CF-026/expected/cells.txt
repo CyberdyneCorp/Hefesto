@@ -1,0 +1,20 @@
+file p.mag
+magic
+tech masktest
+timestamp 1794634418
+<< checkpaint >>
+rect 0 0 40 40
+<< metal1 >>
+tri 0 0 40 40 sw
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634418
+<< checkpaint >>
+rect 0 0 40 40
+use p  p_0
+timestamp 1794634418
+transform 1 0 0 0 1 0
+box 0 0 40 40
+<< end >>

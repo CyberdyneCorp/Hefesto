@@ -1,0 +1,10 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 4 4
+use ghost  g0
+timestamp 100
+transform 1 0 10 0 1 0
+box 0 0 10 10
+<< end >>

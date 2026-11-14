@@ -1,0 +1,33 @@
+file s3.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 50 25
+<< metal1 >>
+rect 0 0 50 25
+<< end >>
+file s4.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 50 25
+use s3  s3_0
+timestamp 1794634415
+transform 1 0 0 0 1 0
+box 0 0 50 25
+use s4  s4_0
+timestamp 1794634415
+transform 1 0 0 0 1 0
+box 0 0 4 2
+<< end >>

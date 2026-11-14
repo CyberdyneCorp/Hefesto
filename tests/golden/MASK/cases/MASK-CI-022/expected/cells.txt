@@ -1,0 +1,14 @@
+file newname.mag
+magic
+tech masktest
+timestamp 1794634422
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< labels >>
+rlabel metal1 s 0 0 10 10 4 P
+port 1 nsew
+rlabel metal2 s 2 2 2 2 4 T
+rlabel metal3 s 3 3 3 3 4 S
+<< end >>

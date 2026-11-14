@@ -1,0 +1,19 @@
+( @@user : ? );
+( @@machine : 119810c3fdb8 );
+( @@source : input/top );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 05:27:00 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : gds );
+( @@date : Sat Nov 14 05:33:58 2026 );
+DS 1 10 2;
+9 top;
+L BB;
+    B 20 20 10 10;
+L CMF;
+    B 20 20 10 10;
+DF;
+C 1;
+End

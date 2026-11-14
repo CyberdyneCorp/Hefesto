@@ -13,6 +13,21 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
 ``gds-dates``
     GDSII BGNLIB and BGNSTR records carry 12 two-byte date fields
     (modification and access time). All 24 bytes are zeroed.
+``gds-mod-dates``
+    Only the *modification* date of BGNLIB and BGNSTR: the last 12 of their 24 date
+    bytes (m5-mask-gds-cif design D12). Under magic-compat ON it is the time of the
+    write (Q-MASK-202); the creation date in front of it is compared. For cases that
+    set ``gds datestamp <n>`` or whose creation dates come from reproduced cell stamps.
+``completed-percent``
+    Console lines ``Completed <n>%``: the progress of a long hierarchical generation
+    (cif/CIFhier.c:1093 and 1117, extract/ExtSubtree.c:320 and 385), printed by time
+    and informative in Hefesto (Q-MASK-414). Each whole line is removed.
+``cif-preamble``
+    The six host-, build- or time-dependent values of a CIF file's preamble
+    (cif/CIFwrite.c:275-288, Q-MASK-324): ``( @@user : <v> );``, ``@@machine``,
+    ``@@source``, ``@@tool``, ``@@compiled`` and ``@@date``; each value becomes
+    ``<masked>``. ``@@technology``, ``@@version``, ``@@techdesc`` and ``@@style``
+    are compared.
 ``mag-timestamp``
     ``.mag`` header line ``timestamp <n>``: the number becomes ``0``.
 ``ext-timestamp``
@@ -77,6 +92,37 @@ def mask_gds_dates(data: bytes) -> bytes:
             out[pos + 4 : pos + 4 + _GDS_DATE_BYTES] = bytes(_GDS_DATE_BYTES)
         pos += length
     return bytes(out)
+
+
+_GDS_MOD_DATE_OFFSET = 12  # creation date (6 x I2), then modification date (6 x I2)
+
+
+def mask_gds_mod_dates(data: bytes) -> bytes:
+    out = bytearray(data)
+    pos = 0
+    while pos + 4 <= len(out):
+        (length,) = struct.unpack_from(">H", out, pos)
+        if length < 4:  # zero padding after ENDLIB, or a malformed stream
+            break
+        if out[pos + 2] in _GDS_DATE_RECORDS and length >= 4 + _GDS_DATE_BYTES:
+            start = pos + 4 + _GDS_MOD_DATE_OFFSET
+            out[start : pos + 4 + _GDS_DATE_BYTES] = bytes(_GDS_DATE_BYTES - _GDS_MOD_DATE_OFFSET)
+        pos += length
+    return bytes(out)
+
+
+_COMPLETED = re.compile(rb"^Completed \d+%\r?\n", re.MULTILINE)
+
+
+def mask_completed_percent(data: bytes) -> bytes:
+    return _COMPLETED.sub(b"", data)
+
+
+_CIF_PREAMBLE = re.compile(rb"^(\( @@(?:user|machine|source|tool|compiled|date) : ).*?( \);\r?)$", re.MULTILINE)
+
+
+def mask_cif_preamble(data: bytes) -> bytes:
+    return _CIF_PREAMBLE.sub(rb"\g<1><masked>\g<2>", data)
 
 
 _TIMESTAMP_LINE = re.compile(rb"^(timestamp )-?\d+(\r?)$", re.MULTILINE)
@@ -172,6 +218,9 @@ def _regex_mask(pattern: str) -> Mask:
 
 _NAMED: dict[str, Mask] = {
     "gds-dates": mask_gds_dates,
+    "gds-mod-dates": mask_gds_mod_dates,
+    "completed-percent": mask_completed_percent,
+    "cif-preamble": mask_cif_preamble,
     "mag-timestamp": mask_timestamp_line,
     "ext-timestamp": mask_timestamp_line,
     "magic-tech-sections": mask_magic_tech_sections,

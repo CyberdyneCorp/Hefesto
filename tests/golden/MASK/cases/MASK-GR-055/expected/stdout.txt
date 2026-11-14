@@ -1,0 +1,96 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+0 {}
+0 (UNNAMED)
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "top".
+0 {}
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "top".
+Warning:  cell top already existed before reading GDS!
+0 {}
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: lib
+Reading "top".
+Warning:  cell top already existed before reading GDS!
+Unknown layer/datatype in boundary, layer=99 type=0
+Unknown layer/datatype in boundary, layer=99 type=1
+Unknown layer/datatype in boundary, layer=99 type=2
+Unknown layer/datatype in boundary, layer=99 type=3
+Unknown layer/datatype in boundary, layer=99 type=4
+Unknown layer/datatype in boundary, layer=99 type=5
+Unknown layer/datatype in boundary, layer=99 type=6
+Unknown layer/datatype in boundary, layer=99 type=7
+Unknown layer/datatype in boundary, layer=99 type=8
+Unknown layer/datatype in boundary, layer=99 type=9
+Unknown layer/datatype in boundary, layer=99 type=10
+Unknown layer/datatype in boundary, layer=99 type=11
+Unknown layer/datatype in boundary, layer=99 type=12
+Unknown layer/datatype in boundary, layer=99 type=13
+Unknown layer/datatype in boundary, layer=99 type=14
+Unknown layer/datatype in boundary, layer=99 type=15
+Unknown layer/datatype in boundary, layer=99 type=16
+Unknown layer/datatype in boundary, layer=99 type=17
+Unknown layer/datatype in boundary, layer=99 type=18
+Unknown layer/datatype in boundary, layer=99 type=19
+Unknown layer/datatype in boundary, layer=99 type=20
+Unknown layer/datatype in boundary, layer=99 type=21
+Unknown layer/datatype in boundary, layer=99 type=22
+Unknown layer/datatype in boundary, layer=99 type=23
+Unknown layer/datatype in boundary, layer=99 type=24
+Unknown layer/datatype in boundary, layer=99 type=25
+Unknown layer/datatype in boundary, layer=99 type=26
+Unknown layer/datatype in boundary, layer=99 type=27
+Unknown layer/datatype in boundary, layer=99 type=28
+Unknown layer/datatype in boundary, layer=99 type=29
+Unknown layer/datatype in boundary, layer=99 type=30
+Unknown layer/datatype in boundary, layer=99 type=31
+Unknown layer/datatype in boundary, layer=99 type=32
+Unknown layer/datatype in boundary, layer=99 type=33
+Unknown layer/datatype in boundary, layer=99 type=34
+Unknown layer/datatype in boundary, layer=99 type=35
+Unknown layer/datatype in boundary, layer=99 type=36
+Unknown layer/datatype in boundary, layer=99 type=37
+Unknown layer/datatype in boundary, layer=99 type=38
+Unknown layer/datatype in boundary, layer=99 type=39
+Unknown layer/datatype in boundary, layer=99 type=40
+Unknown layer/datatype in boundary, layer=99 type=41
+Unknown layer/datatype in boundary, layer=99 type=42
+Unknown layer/datatype in boundary, layer=99 type=43
+Unknown layer/datatype in boundary, layer=99 type=44
+Unknown layer/datatype in boundary, layer=99 type=45
+Unknown layer/datatype in boundary, layer=99 type=46
+Unknown layer/datatype in boundary, layer=99 type=47
+Unknown layer/datatype in boundary, layer=99 type=48
+Unknown layer/datatype in boundary, layer=99 type=49
+0 {}
+Warning display options: redirect
+0 {}
+Writing 'top'
+Writing '(UNNAMED)'
+Must specify name for cell (UNNAMED).
+0 {}

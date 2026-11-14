@@ -1,0 +1,63 @@
+file top.mag
+magic
+tech masktest
+magscale 1 10
+timestamp 1794634425
+<< checkpaint >>
+rect 0 -5 612 305
+<< metal1 >>
+rect 0 295 100 305
+tri 392 100 396 104 se
+rect 95 5 105 100
+tri 381 88 392 100 se
+rect 392 88 396 100
+tri 396 96 404 104 sw
+tri 396 88 404 96 nw
+tri 496 96 504 104 se
+tri 504 96 512 104 sw
+tri 496 88 504 96 ne
+rect 504 88 512 96
+tri 366 73 381 88 se
+tri 381 73 396 88 nw
+tri 504 81 512 88 ne
+tri 512 81 527 96 sw
+tri 512 73 520 81 ne
+rect 520 73 527 81
+tri 351 58 366 73 se
+tri 366 58 381 73 nw
+tri 520 66 527 73 ne
+tri 527 66 542 81 sw
+tri 527 58 535 66 ne
+rect 535 58 542 66
+tri 336 43 351 58 se
+tri 351 43 366 58 nw
+tri 535 51 542 58 ne
+tri 542 51 557 66 sw
+tri 542 43 550 51 ne
+rect 550 43 557 51
+tri 321 28 336 43 se
+tri 336 28 351 43 nw
+tri 550 36 557 43 ne
+tri 557 36 572 51 sw
+tri 557 28 565 36 ne
+rect 565 28 572 36
+tri 306 13 321 28 se
+tri 321 13 336 28 nw
+tri 565 21 572 28 ne
+tri 572 21 587 36 sw
+tri 572 13 580 21 ne
+rect 580 19 587 21
+tri 587 19 588 21 sw
+rect 580 13 588 19
+tri 298 5 306 13 se
+rect 306 5 312 13
+tri 312 5 321 13 nw
+tri 580 6 587 13 ne
+rect 587 6 588 13
+tri 587 5 588 6 ne
+rect 0 -5 105 5
+rect 200 -5 302 5
+tri 302 -5 312 5 nw
+rect 500 -5 588 5
+tri 588 -5 612 19 sw
+<< end >>

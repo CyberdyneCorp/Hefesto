@@ -1,0 +1,12 @@
+magic
+tech masktest
+timestamp 100
+use c  c0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use c  c1
+timestamp 100
+transform 1 0 11 0 1 0
+box 0 0 10 10
+<< end >>

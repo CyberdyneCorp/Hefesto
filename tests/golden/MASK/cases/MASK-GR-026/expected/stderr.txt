@@ -1,0 +1,12 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Error while reading cell "top" (byte position 272): Warning:  label "l2" at (250, 50) is on unhandled layer:purpose pair 52:0 and will be discarded.
+Error while reading cell "top" (byte position 330): Label on unknown layer/datatype, layer=99 type=0
+Can't write file named '(UNNAMED)'

@@ -1,0 +1,804 @@
+magic
+tech masktest
+timestamp 100
+use c  u0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 2 2
+use c  u1
+timestamp 100
+transform 1 0 4 0 1 0
+box 0 0 2 2
+use c  u2
+timestamp 100
+transform 1 0 8 0 1 0
+box 0 0 2 2
+use c  u3
+timestamp 100
+transform 1 0 12 0 1 0
+box 0 0 2 2
+use c  u4
+timestamp 100
+transform 1 0 16 0 1 0
+box 0 0 2 2
+use c  u5
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 2 2
+use c  u6
+timestamp 100
+transform 1 0 24 0 1 0
+box 0 0 2 2
+use c  u7
+timestamp 100
+transform 1 0 28 0 1 0
+box 0 0 2 2
+use c  u8
+timestamp 100
+transform 1 0 32 0 1 0
+box 0 0 2 2
+use c  u9
+timestamp 100
+transform 1 0 36 0 1 0
+box 0 0 2 2
+use c  u10
+timestamp 100
+transform 1 0 40 0 1 0
+box 0 0 2 2
+use c  u11
+timestamp 100
+transform 1 0 44 0 1 0
+box 0 0 2 2
+use c  u12
+timestamp 100
+transform 1 0 48 0 1 0
+box 0 0 2 2
+use c  u13
+timestamp 100
+transform 1 0 52 0 1 0
+box 0 0 2 2
+use c  u14
+timestamp 100
+transform 1 0 56 0 1 0
+box 0 0 2 2
+use c  u15
+timestamp 100
+transform 1 0 60 0 1 0
+box 0 0 2 2
+use c  u16
+timestamp 100
+transform 1 0 64 0 1 0
+box 0 0 2 2
+use c  u17
+timestamp 100
+transform 1 0 68 0 1 0
+box 0 0 2 2
+use c  u18
+timestamp 100
+transform 1 0 72 0 1 0
+box 0 0 2 2
+use c  u19
+timestamp 100
+transform 1 0 76 0 1 0
+box 0 0 2 2
+use c  u20
+timestamp 100
+transform 1 0 0 0 1 4
+box 0 0 2 2
+use c  u21
+timestamp 100
+transform 1 0 4 0 1 4
+box 0 0 2 2
+use c  u22
+timestamp 100
+transform 1 0 8 0 1 4
+box 0 0 2 2
+use c  u23
+timestamp 100
+transform 1 0 12 0 1 4
+box 0 0 2 2
+use c  u24
+timestamp 100
+transform 1 0 16 0 1 4
+box 0 0 2 2
+use c  u25
+timestamp 100
+transform 1 0 20 0 1 4
+box 0 0 2 2
+use c  u26
+timestamp 100
+transform 1 0 24 0 1 4
+box 0 0 2 2
+use c  u27
+timestamp 100
+transform 1 0 28 0 1 4
+box 0 0 2 2
+use c  u28
+timestamp 100
+transform 1 0 32 0 1 4
+box 0 0 2 2
+use c  u29
+timestamp 100
+transform 1 0 36 0 1 4
+box 0 0 2 2
+use c  u30
+timestamp 100
+transform 1 0 40 0 1 4
+box 0 0 2 2
+use c  u31
+timestamp 100
+transform 1 0 44 0 1 4
+box 0 0 2 2
+use c  u32
+timestamp 100
+transform 1 0 48 0 1 4
+box 0 0 2 2
+use c  u33
+timestamp 100
+transform 1 0 52 0 1 4
+box 0 0 2 2
+use c  u34
+timestamp 100
+transform 1 0 56 0 1 4
+box 0 0 2 2
+use c  u35
+timestamp 100
+transform 1 0 60 0 1 4
+box 0 0 2 2
+use c  u36
+timestamp 100
+transform 1 0 64 0 1 4
+box 0 0 2 2
+use c  u37
+timestamp 100
+transform 1 0 68 0 1 4
+box 0 0 2 2
+use c  u38
+timestamp 100
+transform 1 0 72 0 1 4
+box 0 0 2 2
+use c  u39
+timestamp 100
+transform 1 0 76 0 1 4
+box 0 0 2 2
+use c  u40
+timestamp 100
+transform 1 0 0 0 1 8
+box 0 0 2 2
+use c  u41
+timestamp 100
+transform 1 0 4 0 1 8
+box 0 0 2 2
+use c  u42
+timestamp 100
+transform 1 0 8 0 1 8
+box 0 0 2 2
+use c  u43
+timestamp 100
+transform 1 0 12 0 1 8
+box 0 0 2 2
+use c  u44
+timestamp 100
+transform 1 0 16 0 1 8
+box 0 0 2 2
+use c  u45
+timestamp 100
+transform 1 0 20 0 1 8
+box 0 0 2 2
+use c  u46
+timestamp 100
+transform 1 0 24 0 1 8
+box 0 0 2 2
+use c  u47
+timestamp 100
+transform 1 0 28 0 1 8
+box 0 0 2 2
+use c  u48
+timestamp 100
+transform 1 0 32 0 1 8
+box 0 0 2 2
+use c  u49
+timestamp 100
+transform 1 0 36 0 1 8
+box 0 0 2 2
+use c  u50
+timestamp 100
+transform 1 0 40 0 1 8
+box 0 0 2 2
+use c  u51
+timestamp 100
+transform 1 0 44 0 1 8
+box 0 0 2 2
+use c  u52
+timestamp 100
+transform 1 0 48 0 1 8
+box 0 0 2 2
+use c  u53
+timestamp 100
+transform 1 0 52 0 1 8
+box 0 0 2 2
+use c  u54
+timestamp 100
+transform 1 0 56 0 1 8
+box 0 0 2 2
+use c  u55
+timestamp 100
+transform 1 0 60 0 1 8
+box 0 0 2 2
+use c  u56
+timestamp 100
+transform 1 0 64 0 1 8
+box 0 0 2 2
+use c  u57
+timestamp 100
+transform 1 0 68 0 1 8
+box 0 0 2 2
+use c  u58
+timestamp 100
+transform 1 0 72 0 1 8
+box 0 0 2 2
+use c  u59
+timestamp 100
+transform 1 0 76 0 1 8
+box 0 0 2 2
+use c  u60
+timestamp 100
+transform 1 0 0 0 1 12
+box 0 0 2 2
+use c  u61
+timestamp 100
+transform 1 0 4 0 1 12
+box 0 0 2 2
+use c  u62
+timestamp 100
+transform 1 0 8 0 1 12
+box 0 0 2 2
+use c  u63
+timestamp 100
+transform 1 0 12 0 1 12
+box 0 0 2 2
+use c  u64
+timestamp 100
+transform 1 0 16 0 1 12
+box 0 0 2 2
+use c  u65
+timestamp 100
+transform 1 0 20 0 1 12
+box 0 0 2 2
+use c  u66
+timestamp 100
+transform 1 0 24 0 1 12
+box 0 0 2 2
+use c  u67
+timestamp 100
+transform 1 0 28 0 1 12
+box 0 0 2 2
+use c  u68
+timestamp 100
+transform 1 0 32 0 1 12
+box 0 0 2 2
+use c  u69
+timestamp 100
+transform 1 0 36 0 1 12
+box 0 0 2 2
+use c  u70
+timestamp 100
+transform 1 0 40 0 1 12
+box 0 0 2 2
+use c  u71
+timestamp 100
+transform 1 0 44 0 1 12
+box 0 0 2 2
+use c  u72
+timestamp 100
+transform 1 0 48 0 1 12
+box 0 0 2 2
+use c  u73
+timestamp 100
+transform 1 0 52 0 1 12
+box 0 0 2 2
+use c  u74
+timestamp 100
+transform 1 0 56 0 1 12
+box 0 0 2 2
+use c  u75
+timestamp 100
+transform 1 0 60 0 1 12
+box 0 0 2 2
+use c  u76
+timestamp 100
+transform 1 0 64 0 1 12
+box 0 0 2 2
+use c  u77
+timestamp 100
+transform 1 0 68 0 1 12
+box 0 0 2 2
+use c  u78
+timestamp 100
+transform 1 0 72 0 1 12
+box 0 0 2 2
+use c  u79
+timestamp 100
+transform 1 0 76 0 1 12
+box 0 0 2 2
+use c  u80
+timestamp 100
+transform 1 0 0 0 1 16
+box 0 0 2 2
+use c  u81
+timestamp 100
+transform 1 0 4 0 1 16
+box 0 0 2 2
+use c  u82
+timestamp 100
+transform 1 0 8 0 1 16
+box 0 0 2 2
+use c  u83
+timestamp 100
+transform 1 0 12 0 1 16
+box 0 0 2 2
+use c  u84
+timestamp 100
+transform 1 0 16 0 1 16
+box 0 0 2 2
+use c  u85
+timestamp 100
+transform 1 0 20 0 1 16
+box 0 0 2 2
+use c  u86
+timestamp 100
+transform 1 0 24 0 1 16
+box 0 0 2 2
+use c  u87
+timestamp 100
+transform 1 0 28 0 1 16
+box 0 0 2 2
+use c  u88
+timestamp 100
+transform 1 0 32 0 1 16
+box 0 0 2 2
+use c  u89
+timestamp 100
+transform 1 0 36 0 1 16
+box 0 0 2 2
+use c  u90
+timestamp 100
+transform 1 0 40 0 1 16
+box 0 0 2 2
+use c  u91
+timestamp 100
+transform 1 0 44 0 1 16
+box 0 0 2 2
+use c  u92
+timestamp 100
+transform 1 0 48 0 1 16
+box 0 0 2 2
+use c  u93
+timestamp 100
+transform 1 0 52 0 1 16
+box 0 0 2 2
+use c  u94
+timestamp 100
+transform 1 0 56 0 1 16
+box 0 0 2 2
+use c  u95
+timestamp 100
+transform 1 0 60 0 1 16
+box 0 0 2 2
+use c  u96
+timestamp 100
+transform 1 0 64 0 1 16
+box 0 0 2 2
+use c  u97
+timestamp 100
+transform 1 0 68 0 1 16
+box 0 0 2 2
+use c  u98
+timestamp 100
+transform 1 0 72 0 1 16
+box 0 0 2 2
+use c  u99
+timestamp 100
+transform 1 0 76 0 1 16
+box 0 0 2 2
+use c  u100
+timestamp 100
+transform 1 0 0 0 1 20
+box 0 0 2 2
+use c  u101
+timestamp 100
+transform 1 0 4 0 1 20
+box 0 0 2 2
+use c  u102
+timestamp 100
+transform 1 0 8 0 1 20
+box 0 0 2 2
+use c  u103
+timestamp 100
+transform 1 0 12 0 1 20
+box 0 0 2 2
+use c  u104
+timestamp 100
+transform 1 0 16 0 1 20
+box 0 0 2 2
+use c  u105
+timestamp 100
+transform 1 0 20 0 1 20
+box 0 0 2 2
+use c  u106
+timestamp 100
+transform 1 0 24 0 1 20
+box 0 0 2 2
+use c  u107
+timestamp 100
+transform 1 0 28 0 1 20
+box 0 0 2 2
+use c  u108
+timestamp 100
+transform 1 0 32 0 1 20
+box 0 0 2 2
+use c  u109
+timestamp 100
+transform 1 0 36 0 1 20
+box 0 0 2 2
+use c  u110
+timestamp 100
+transform 1 0 40 0 1 20
+box 0 0 2 2
+use c  u111
+timestamp 100
+transform 1 0 44 0 1 20
+box 0 0 2 2
+use c  u112
+timestamp 100
+transform 1 0 48 0 1 20
+box 0 0 2 2
+use c  u113
+timestamp 100
+transform 1 0 52 0 1 20
+box 0 0 2 2
+use c  u114
+timestamp 100
+transform 1 0 56 0 1 20
+box 0 0 2 2
+use c  u115
+timestamp 100
+transform 1 0 60 0 1 20
+box 0 0 2 2
+use c  u116
+timestamp 100
+transform 1 0 64 0 1 20
+box 0 0 2 2
+use c  u117
+timestamp 100
+transform 1 0 68 0 1 20
+box 0 0 2 2
+use c  u118
+timestamp 100
+transform 1 0 72 0 1 20
+box 0 0 2 2
+use c  u119
+timestamp 100
+transform 1 0 76 0 1 20
+box 0 0 2 2
+use c  u120
+timestamp 100
+transform 1 0 0 0 1 24
+box 0 0 2 2
+use c  u121
+timestamp 100
+transform 1 0 4 0 1 24
+box 0 0 2 2
+use c  u122
+timestamp 100
+transform 1 0 8 0 1 24
+box 0 0 2 2
+use c  u123
+timestamp 100
+transform 1 0 12 0 1 24
+box 0 0 2 2
+use c  u124
+timestamp 100
+transform 1 0 16 0 1 24
+box 0 0 2 2
+use c  u125
+timestamp 100
+transform 1 0 20 0 1 24
+box 0 0 2 2
+use c  u126
+timestamp 100
+transform 1 0 24 0 1 24
+box 0 0 2 2
+use c  u127
+timestamp 100
+transform 1 0 28 0 1 24
+box 0 0 2 2
+use c  u128
+timestamp 100
+transform 1 0 32 0 1 24
+box 0 0 2 2
+use c  u129
+timestamp 100
+transform 1 0 36 0 1 24
+box 0 0 2 2
+use c  u130
+timestamp 100
+transform 1 0 40 0 1 24
+box 0 0 2 2
+use c  u131
+timestamp 100
+transform 1 0 44 0 1 24
+box 0 0 2 2
+use c  u132
+timestamp 100
+transform 1 0 48 0 1 24
+box 0 0 2 2
+use c  u133
+timestamp 100
+transform 1 0 52 0 1 24
+box 0 0 2 2
+use c  u134
+timestamp 100
+transform 1 0 56 0 1 24
+box 0 0 2 2
+use c  u135
+timestamp 100
+transform 1 0 60 0 1 24
+box 0 0 2 2
+use c  u136
+timestamp 100
+transform 1 0 64 0 1 24
+box 0 0 2 2
+use c  u137
+timestamp 100
+transform 1 0 68 0 1 24
+box 0 0 2 2
+use c  u138
+timestamp 100
+transform 1 0 72 0 1 24
+box 0 0 2 2
+use c  u139
+timestamp 100
+transform 1 0 76 0 1 24
+box 0 0 2 2
+use c  u140
+timestamp 100
+transform 1 0 0 0 1 28
+box 0 0 2 2
+use c  u141
+timestamp 100
+transform 1 0 4 0 1 28
+box 0 0 2 2
+use c  u142
+timestamp 100
+transform 1 0 8 0 1 28
+box 0 0 2 2
+use c  u143
+timestamp 100
+transform 1 0 12 0 1 28
+box 0 0 2 2
+use c  u144
+timestamp 100
+transform 1 0 16 0 1 28
+box 0 0 2 2
+use c  u145
+timestamp 100
+transform 1 0 20 0 1 28
+box 0 0 2 2
+use c  u146
+timestamp 100
+transform 1 0 24 0 1 28
+box 0 0 2 2
+use c  u147
+timestamp 100
+transform 1 0 28 0 1 28
+box 0 0 2 2
+use c  u148
+timestamp 100
+transform 1 0 32 0 1 28
+box 0 0 2 2
+use c  u149
+timestamp 100
+transform 1 0 36 0 1 28
+box 0 0 2 2
+use c  u150
+timestamp 100
+transform 1 0 40 0 1 28
+box 0 0 2 2
+use c  u151
+timestamp 100
+transform 1 0 44 0 1 28
+box 0 0 2 2
+use c  u152
+timestamp 100
+transform 1 0 48 0 1 28
+box 0 0 2 2
+use c  u153
+timestamp 100
+transform 1 0 52 0 1 28
+box 0 0 2 2
+use c  u154
+timestamp 100
+transform 1 0 56 0 1 28
+box 0 0 2 2
+use c  u155
+timestamp 100
+transform 1 0 60 0 1 28
+box 0 0 2 2
+use c  u156
+timestamp 100
+transform 1 0 64 0 1 28
+box 0 0 2 2
+use c  u157
+timestamp 100
+transform 1 0 68 0 1 28
+box 0 0 2 2
+use c  u158
+timestamp 100
+transform 1 0 72 0 1 28
+box 0 0 2 2
+use c  u159
+timestamp 100
+transform 1 0 76 0 1 28
+box 0 0 2 2
+use c  u160
+timestamp 100
+transform 1 0 0 0 1 32
+box 0 0 2 2
+use c  u161
+timestamp 100
+transform 1 0 4 0 1 32
+box 0 0 2 2
+use c  u162
+timestamp 100
+transform 1 0 8 0 1 32
+box 0 0 2 2
+use c  u163
+timestamp 100
+transform 1 0 12 0 1 32
+box 0 0 2 2
+use c  u164
+timestamp 100
+transform 1 0 16 0 1 32
+box 0 0 2 2
+use c  u165
+timestamp 100
+transform 1 0 20 0 1 32
+box 0 0 2 2
+use c  u166
+timestamp 100
+transform 1 0 24 0 1 32
+box 0 0 2 2
+use c  u167
+timestamp 100
+transform 1 0 28 0 1 32
+box 0 0 2 2
+use c  u168
+timestamp 100
+transform 1 0 32 0 1 32
+box 0 0 2 2
+use c  u169
+timestamp 100
+transform 1 0 36 0 1 32
+box 0 0 2 2
+use c  u170
+timestamp 100
+transform 1 0 40 0 1 32
+box 0 0 2 2
+use c  u171
+timestamp 100
+transform 1 0 44 0 1 32
+box 0 0 2 2
+use c  u172
+timestamp 100
+transform 1 0 48 0 1 32
+box 0 0 2 2
+use c  u173
+timestamp 100
+transform 1 0 52 0 1 32
+box 0 0 2 2
+use c  u174
+timestamp 100
+transform 1 0 56 0 1 32
+box 0 0 2 2
+use c  u175
+timestamp 100
+transform 1 0 60 0 1 32
+box 0 0 2 2
+use c  u176
+timestamp 100
+transform 1 0 64 0 1 32
+box 0 0 2 2
+use c  u177
+timestamp 100
+transform 1 0 68 0 1 32
+box 0 0 2 2
+use c  u178
+timestamp 100
+transform 1 0 72 0 1 32
+box 0 0 2 2
+use c  u179
+timestamp 100
+transform 1 0 76 0 1 32
+box 0 0 2 2
+use c  u180
+timestamp 100
+transform 1 0 0 0 1 36
+box 0 0 2 2
+use c  u181
+timestamp 100
+transform 1 0 4 0 1 36
+box 0 0 2 2
+use c  u182
+timestamp 100
+transform 1 0 8 0 1 36
+box 0 0 2 2
+use c  u183
+timestamp 100
+transform 1 0 12 0 1 36
+box 0 0 2 2
+use c  u184
+timestamp 100
+transform 1 0 16 0 1 36
+box 0 0 2 2
+use c  u185
+timestamp 100
+transform 1 0 20 0 1 36
+box 0 0 2 2
+use c  u186
+timestamp 100
+transform 1 0 24 0 1 36
+box 0 0 2 2
+use c  u187
+timestamp 100
+transform 1 0 28 0 1 36
+box 0 0 2 2
+use c  u188
+timestamp 100
+transform 1 0 32 0 1 36
+box 0 0 2 2
+use c  u189
+timestamp 100
+transform 1 0 36 0 1 36
+box 0 0 2 2
+use c  u190
+timestamp 100
+transform 1 0 40 0 1 36
+box 0 0 2 2
+use c  u191
+timestamp 100
+transform 1 0 44 0 1 36
+box 0 0 2 2
+use c  u192
+timestamp 100
+transform 1 0 48 0 1 36
+box 0 0 2 2
+use c  u193
+timestamp 100
+transform 1 0 52 0 1 36
+box 0 0 2 2
+use c  u194
+timestamp 100
+transform 1 0 56 0 1 36
+box 0 0 2 2
+use c  u195
+timestamp 100
+transform 1 0 60 0 1 36
+box 0 0 2 2
+use c  u196
+timestamp 100
+transform 1 0 64 0 1 36
+box 0 0 2 2
+use c  u197
+timestamp 100
+transform 1 0 68 0 1 36
+box 0 0 2 2
+use c  u198
+timestamp 100
+transform 1 0 72 0 1 36
+box 0 0 2 2
+use c  u199
+timestamp 100
+transform 1 0 76 0 1 36
+box 0 0 2 2
+<< end >>
