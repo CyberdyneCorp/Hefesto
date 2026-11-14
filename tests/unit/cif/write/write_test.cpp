@@ -22,6 +22,16 @@
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/platform/stack_thread.hpp"
 
+// The depth tests check the stack budget; the asan leg runs them. Under
+// ThreadSanitizer the 1024-level writes overrun the CI runner (task 8.4).
+#if defined(__SANITIZE_THREAD__)
+#define HEFESTO_DEPTH_TESTS_SKIPPED 1
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define HEFESTO_DEPTH_TESTS_SKIPPED 1
+#endif
+#endif
+
 namespace {
 
 using namespace cif_test;  // NOLINT(google-build-using-namespace): the fixture's aliases
@@ -367,6 +377,9 @@ TEST_CASE("a cancelled subtree load leaves the file untouched",
 
 TEST_CASE("the depth limit of a CIF write, on a thread with the documented stack",
           "[cap:cif-format-io][req:CIF output symbol numbering and order]") {
+#ifdef HEFESTO_DEPTH_TESTS_SKIPPED
+  SKIP("depth tests do not run under ThreadSanitizer");
+#endif
   for (const std::size_t levels : {hefesto::gds::kMaxSubtreeDepth, hefesto::gds::kMaxSubtreeDepth + 1}) {
     Fixture f;
     db::CellDef* child = &f.cell("c" + std::to_string(levels));

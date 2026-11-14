@@ -18,6 +18,16 @@
 #include "hefesto/platform/stack_thread.hpp"
 #include "write_fixture.hpp"
 
+// The depth tests check the stack budget; the asan leg runs them. Under
+// ThreadSanitizer the 1024-level writes overrun the CI runner (task 8.4).
+#if defined(__SANITIZE_THREAD__)
+#define HEFESTO_DEPTH_TESTS_SKIPPED 1
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define HEFESTO_DEPTH_TESTS_SKIPPED 1
+#endif
+#endif
+
 namespace gds_write_test {
 namespace {
 
@@ -41,6 +51,9 @@ void write_on_thread(Fixture& f, db::CellDef& root) {
 
 TEST_CASE("a hierarchy at the depth limit is written on a secondary thread",
           "[cap:gds-write][req:Write preconditions and subtree loading]") {
+#ifdef HEFESTO_DEPTH_TESTS_SKIPPED
+  SKIP("depth tests do not run under ThreadSanitizer");
+#endif
   for (const bool on : {true, false}) {
     Fixture f(on);
     db::CellDef& root = chain(f, gds::kMaxSubtreeDepth);
@@ -52,6 +65,9 @@ TEST_CASE("a hierarchy at the depth limit is written on a secondary thread",
 
 TEST_CASE("a hierarchy one level deeper than the limit fails the write",
           "[cap:gds-write][req:Write preconditions and subtree loading]") {
+#ifdef HEFESTO_DEPTH_TESTS_SKIPPED
+  SKIP("depth tests do not run under ThreadSanitizer");
+#endif
   for (const bool on : {true, false}) {
     Fixture f(on);
     db::CellDef& root = chain(f, gds::kMaxSubtreeDepth + 1);
