@@ -39,6 +39,15 @@ release notices.
 
 ### Fixed
 
+- **Painting a huge triangle no longer overflows the stack.** Painting a
+  triangle over existing triangles on the opposite diagonal recursed once
+  per piece left on the diagonal, as Magic does, and that depth grows with
+  the triangle's size: a `.mag` file with a large `magscale` crashed on
+  read. The pieces are now kept on a heap stack and processed in the same
+  order, so ordinary triangles paint exactly as before. One paint
+  processes at most 4096 such pieces; past that a piece is filled as a
+  rectangle and reported off grid, as for a piece too small to quarter
+  (Q-MODEL-34, a fixed deviation from Magic).
 - **Painting up to the edge of the plane no longer crashes.** A paint or
   erase that touched the plane's edge without covering the whole plane
   dereferenced the boundary tiles while merging split tiles.
