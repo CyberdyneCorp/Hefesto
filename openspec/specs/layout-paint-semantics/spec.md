@@ -170,6 +170,7 @@ Let the triangle have bounding rectangle `A` (width `W`, height `H`), direction 
    - for `dir == 0`: `x(y) = A.xbot + round_half_up(W*(y - A.ybot)/H)`, `y(x) = A.ybot + round_half_up(H*(x - A.xbot)/W)`;
    - for `dir == 1`: `x(y) = A.xbot + floor(W*(A.ytop - y)/H)`, `y(x) = A.ybot + floor(H*(A.xtop - x)/W)` (truncation, never rounding up; see Q-MODEL-3; with `magic-compat` off, both diagonals SHALL round half-up as for `dir == 0`).
    - `r` is cut vertically at `x(r.ybot)`/`x(r.ytop)` and horizontally at `y(r.xbot)`/`y(r.xtop)` when those fall strictly inside `r`; pieces wholly on the operand's side are painted as rectangles, pieces wholly on the other side are skipped, and pieces still straddling the diagonal are processed recursively as triangles with bounding rectangle equal to the piece.
+   - The recursion SHALL NOT be bounded by the call stack: pieces are processed in the order above however deep they nest. One triangle paint processes at most 4096 straddling pieces this way; any further straddling piece is painted as a rectangle and the paint is reported off grid, as for the 1-unit case of step 2 (Q-MODEL-34). Magic has no limit, and over existing opposite-diagonal triangles its recursion depth grows with the triangle's size in internal units until the stack overflows.
 4. After painting, split-tile merging is applied over `A` expanded by 1 (see requirement "Split tile merging").
 
 Consequently, when the diagonal crosses existing horizontal tile boundaries at non-integer x, the resulting geometry is an approximation built from triangles whose vertices are the rounded crossing points.
@@ -185,6 +186,12 @@ Consequently, when the diagonal crosses existing horizontal tile boundaries at n
 - **GIVEN** `metal1 (0,5)-(10,10)`
 - **WHEN** the left side of a `/` split of `(0,0)-(10,10)` is painted with `metal1`
 - **THEN** the metal1 geometry SHALL be `rect 0 5 10 10` plus triangle `tri 0 0 5 5 nw` in `.mag` output
+
+#### Scenario: A huge triangle over opposite-diagonal triangles
+- **GIVEN** the right sides of `/` triangles on `(0,0)-(30k,10k)` painted with types A and B in turn, and the right side of a `\` triangle on `(0,0)-(30k,17k)` painted with A, each type painted only over space, with `k = 4444441`
+- **WHEN** the right side of the `\` triangle is painted with B over space
+- **THEN** the paint SHALL complete without exhausting the call stack and SHALL be reported off grid
+- **AND** with `k = 1000` the same paints SHALL stay below the 4096-piece limit and SHALL NOT be reported off grid
 
 #### Scenario: Rounding of a non-integer crossing (verify against Magic)
 - **GIVEN** a `/` triangle with bounding rectangle `(0,0)-(10,3)` crossing existing tile boundaries at `y = 1` and `y = 2`

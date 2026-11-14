@@ -10,6 +10,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <cstddef>
 #include <vector>
 
 #include "db_fixture.hpp"
@@ -376,4 +377,58 @@ TEST_CASE("enumerating out to the infinities visits the plane's tiles", GEO "[re
   const db::TriangleSide side = db::triangle_side(db::TriangleCorner::sw);
   CHECK(p.enumerate_triangle(everything, side.diagonal, side.right_side, tech::TypeMask::of(kM1),
                              [](const db::TileView&) { return true; }));  // no crash
+}
+
+namespace {
+
+// Paints `t` only where there is space (a .mag paint of one type of a
+// section's type list).
+db::PaintRow fill_space_row(tech::TileType t) {
+  db::PaintRow row{};
+  for (std::size_t i = 0; i < row.size(); ++i) {
+    row[i] = static_cast<tech::TileType>(i);
+  }
+  row[tech::kSpace] = t;
+  return row;
+}
+
+// The paints of fuzz_mag_reader's regression-26fd2417 seed on one plane,
+// with its `magscale` factor k: two triangles on `/` (0,0)-(30k,10k), then
+// two on `\` (0,0)-(30k,17k). The `\` paints descend into a chain of
+// sub-areas about 0.4k deep. Returns whether the last paint was off grid.
+bool paint_crossed_triangles(db::Plane& p, int k) {
+  const Rect slash{0, 0, 30 * k, 10 * k};
+  const Rect back{0, 0, 30 * k, 17 * k};
+  REQUIRE(p.paint_triangle(slash, db::Diagonal::ne_sw, true, fill_space_row(kM1)).ok());
+  REQUIRE(p.paint_triangle(slash, db::Diagonal::ne_sw, true, fill_space_row(kM2)).ok());
+  REQUIRE(p.paint_triangle(back, db::Diagonal::nw_se, true, fill_space_row(kM1)).ok());
+  bool off_grid = false;
+  REQUIRE(p.paint_triangle(back, db::Diagonal::nw_se, true, fill_space_row(kM2), true, &off_grid).ok());
+  return off_grid;
+}
+
+}  // namespace
+
+TEST_CASE("crossed triangles of moderate size are painted exactly", NM "[req:Non-Manhattan painting]") {
+  constexpr int k = 1000;
+  db::Plane p;
+  CHECK_FALSE(paint_crossed_triangles(p, k));
+  CHECK(p.type_at({30 * k - 1, 1}) == kM1);       // below the `/` diagonal
+  CHECK(p.type_at({10 * k, 17 * k - 1}) == kM1);  // above the `\` diagonal
+  CHECK(p.type_at({1, 1}) == tech::kSpace);
+  CHECK(p.type_at({1, 12 * k}) == tech::kSpace);
+}
+
+TEST_CASE("a huge triangle over crossed triangles does not overflow the stack", NM "[req:Non-Manhattan painting]") {
+  // fuzz_mag_reader: with `magscale 8888882 2` the `\` paint recursed about
+  // two million levels deep in DBNMPaintPlane0 and overflowed the stack.
+  // The sub-areas now live on the heap, and past 4096 of them a piece left
+  // on the diagonal is filled and reported off grid (Q-MODEL-34).
+  constexpr int k = 4444441;
+  db::Plane p;
+  CHECK(paint_crossed_triangles(p, k));
+  CHECK(p.type_at({30 * k - 1, 1}) == kM1);
+  CHECK(p.type_at({10 * k, 17 * k - 1}) == kM1);
+  CHECK(p.type_at({1, 1}) == tech::kSpace);
+  CHECK(p.tile_count() < 4 * 4096);
 }
