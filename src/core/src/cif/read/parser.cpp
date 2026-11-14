@@ -309,19 +309,32 @@ Transform64 then(const Transform64& t, const Transform64& m) {
 
 }  // namespace
 
+bool Parser::translate(Transform64& t) {
+  const std::int64_t saved = scale_n_;
+  const auto p = point(1);
+  if (!p) {
+    error("translation, but no point.");
+    return false;
+  }
+  if (saved != scale_n_ && !options_.magic_compat) {
+    // The point subdivided the read units: with magic-compat OFF the
+    // translation accumulated so far follows, so the call lands exactly.
+    // ON keeps it in the coarser units, as Magic does (CIFrdutils.c:1529-1538).
+    const std::int64_t factor = scale_n_ / saved;
+    t.c = mul(t.c, factor);
+    t.f = mul(t.f, factor);
+  }
+  // GeoTranslateTrans. Both terms are within +-2^61, so the sum fits;
+  // it is saturated back to the limit so later steps cannot overflow.
+  t.c = saturate(t.c + p->x);
+  t.f = saturate(t.f + p->y);
+  return true;
+}
+
 bool Parser::transform_step(int ch, Transform64& t) {
   lex_.take();
   if (ch == 'T') {
-    const auto p = point(1);
-    if (!p) {
-      error("translation, but no point.");
-      return false;
-    }
-    // GeoTranslateTrans. Both terms are within +-2^61, so the sum fits;
-    // it is saturated back to the limit so later steps cannot overflow.
-    t.c = saturate(t.c + p->x);
-    t.f = saturate(t.f + p->y);
-    return true;
+    return translate(t);
   }
   if (ch == 'M') {
     lex_.skip_blanks();

@@ -282,10 +282,9 @@ void Parser::cleanup() {
     discard_pending_id();
     close_definition();
   }
-  for (const ReadCell& cell : session_.symbols.cells()) {
-    if (!cell.defined) {
-      error("cell " + cell.name + " was used but not defined.");
-    }
+  // In the iteration order of Magic's cell table (CIFReadCellCleanup).
+  for (const SymbolTable::CellId id : session_.symbols.undefined_cells()) {
+    error("cell " + session_.symbols.cell(id).name + " was used but not defined.");
   }
   check(target_.end_top());
 }

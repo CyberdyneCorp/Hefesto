@@ -78,7 +78,24 @@ std::optional<SymbolTable::CellId> SymbolTable::create(std::int64_t number, bool
   names_[name] = id;
   given_out_.insert(name);
   symbols_[number] = id;
+  table_.find_or_insert(number);  // HashFind in cifFindCell: the first C or DS of the number
   return id;
+}
+
+std::vector<SymbolTable::CellId> SymbolTable::undefined_cells() const {
+  std::unordered_map<std::int64_t, std::vector<CellId>> by_symbol;
+  for (CellId id = 0; id < cells_.size(); ++id) {
+    if (!cells_[id].defined) {
+      by_symbol[cells_[id].symbol].push_back(id);
+    }
+  }
+  std::vector<CellId> out;
+  table_.for_each([&](const auto& entry) {
+    if (const auto found = by_symbol.find(entry.key); found != by_symbol.end()) {
+      out.insert(out.end(), found->second.begin(), found->second.end());
+    }
+  });
+  return out;
 }
 
 std::optional<SymbolTable::CellId> SymbolTable::find(std::int64_t number) const {
