@@ -6,6 +6,9 @@
 # Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D1/D2). Add new files here.
 
 target_sources(hefesto_core PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/dates.cpp
   ${CMAKE_CURRENT_LIST_DIR}/encode.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/gzip.cpp
   ${CMAKE_CURRENT_LIST_DIR}/io.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/records.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/records.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/values.cpp)

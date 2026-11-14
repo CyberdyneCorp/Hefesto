@@ -264,7 +264,9 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   CHECK(source.read(out).value() == 1);
   CHECK(source.position() == 3);
   gds::RecordReader reader{source};
-  CHECK_FALSE(reader.next().ok());
+  auto end = reader.next();  // GDSR landed the reader: at the end of the stream there are no more records
+  REQUIRE(end.ok());
+  CHECK_FALSE(end.value().has_value());
 
   // Mask planes, operators and generation.
   mask::PlanePool pool;

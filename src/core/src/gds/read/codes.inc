@@ -9,3 +9,9 @@
 // and describe the codes in its GDSR section.
 //
 // Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+
+HEFESTO_GDS_CODE("GDS-READ-001", error, "Unexpected record type in input: the GDS record found is not the one the grammar expects.")
+HEFESTO_GDS_CODE("GDS-READ-002", error, "Unexpected EOF: the GDS stream ends before the record the grammar expects.")
+HEFESTO_GDS_CODE("GDS-READ-003", error, "Incompatible scale factor for a read-only (`gds readonly yes`) read; nothing is read.")
+HEFESTO_GDS_CODE("GDS-READ-004", info, "`Library written using GDS-II Release <version>`.")
+HEFESTO_GDS_CODE("GDS-READ-005", error, "Unknown BGNSTR timestamp format; the cell timestamp is set to zero.")

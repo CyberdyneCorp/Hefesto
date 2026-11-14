@@ -71,10 +71,18 @@ struct MismatchReport {
 [[nodiscard]] MismatchReport process_mismatches(TimestampLog& log,
                                                 const std::function<void(db::CellDef&)>& read_cell);
 
+/// The content stamp of a read-only (vendor GDS) cell from the file its
+/// GDS_FILE names, or 0 when it cannot be computed (gds::VendorStamper).
+using VendorStampFn = std::function<std::uint32_t(const db::CellDef&)>;
+
 /// "Generating new stamps" at time `now` for `only` (nullptr: every
 /// pending cell of `library`, in its hash order). Mismatches must be
-/// processed first by the caller.
-void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now);
+/// processed first by the caller. A read-only cell that is not fixed-stamp
+/// takes `vendor_stamp`'s nonzero, changed stamp and propagates it to its
+/// parents (gds-read "When content-hash timestamps are assigned"); without
+/// `vendor_stamp` it keeps its stamp.
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now,
+                       const VendorStampFn& vendor_stamp = {});
 
 /// `cellname timestamp`: assigns `value`; clears the pending mark when the
 /// value differs; with `magic_compat` false also sets the fixed-stamp
