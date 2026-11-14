@@ -3,9 +3,8 @@
 //
 // M5 scaffold (openspec/changes/m5-mask-gds-cif tasks.md 2.2-2.4): the
 // mask, gds and cif code areas exist; `gds`, `calma` and `cif` are
-// registered with Magic's option tables, and every option not yet
-// implemented fails with CORE-NOTIMPL-005 while the M4 `cif` queries keep
-// working; the shared interfaces of design D4 exist with their stubs; the
+// registered with Magic's option tables (every option is implemented by
+// round 4) and the M4 `cif` queries keep working; the shared interfaces of design D4 exist with their stubs; the
 // `random` generator lives in EditorState::mask and keeps the M4 sequence.
 // Owners replace these [m5-scaffold] tests with [cap:][req:] ones as the
 // stubs go away.
@@ -86,14 +85,6 @@ std::string option_name(std::string_view entry) {
   return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
 }
 
-void check_not_implemented(const cmd::CommandResult& result, const std::string& what) {
-  INFO(what);
-  REQUIRE_FALSE(result.ok());
-  REQUIRE_FALSE(result.diagnostics.empty());
-  CHECK(result.diagnostics.front().code == kNotImplemented);
-  CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
-}
-
 }  // namespace
 
 // --- tasks.md 2.2/2.3: code areas and CORE-NOTIMPL-005 ----------------------
@@ -155,7 +146,7 @@ TEST_CASE("cif help lists every cif option of Magic's table", "[m5-scaffold]") {
   }
 }
 
-TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-scaffold]") {
+TEST_CASE("the gds and cif options are implemented", "[m5-scaffold]") {
   Session s;
   // `read` and `write` (and a bare `gds`) check for a window first.
   const auto no_window = s.run("gds write out");
@@ -171,12 +162,7 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
   REQUIRE(s.run("gds nodup yes").ok());
   CHECK(s.state.mask.gds.noduplicates);
 
-  check_not_implemented(s.run("cif"), "cif write");
-  for (const auto* name : {"read", "write", "flat", "see", "paint", "coverage", "statistics", "drccheck", "warning",
-                           "limit", "rescale", "polygon", "unfracture", "prefix", "arealabels", "idcell", "*hier",
-                           "*array"}) {
-    check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
-  }
+  // CIF landed every `cif` option (tests/unit/cif/command/).
 }
 
 TEST_CASE("an unknown gds option prints the error and the help", "[m5-scaffold]") {
@@ -227,18 +213,18 @@ TEST_CASE("the mask session has its defaults", "[m5-scaffold]") {
   CHECK(state.mask.warnings.level == mask::WarningLevel::warn_default);
 }
 
-TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaffold]") {
+TEST_CASE("the M5 entry points exist", "[m5-scaffold]") {
   editor::EditorState state;
   hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
   db::CellDef top{"top", 1};
   db::CellDef* root = &top;
-  check_not_implemented(cif::read(state, "in.cif", cif::CifReadOptions{}), "cif read");
-  // GDSW landed the writer: without an output style it fails before any file is opened.
+  // GDSW and CIF landed the writers: without an output style they fail before any file is opened.
   const auto prepared = gds::prepare_write(state, *root, gds::GdsWriteOptions{});
   REQUIRE_FALSE(prepared.ok());
   CHECK(prepared.error().code == "GDS-WRITE-002");
-  check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{}), "cif write");
-  check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{{}, true, {}}), "cif flat");
+  const auto cif_prepared = cif::prepare_write(state, *root, cif::CifWriteOptions{});
+  REQUIRE_FALSE(cif_prepared.ok());
+  CHECK(cif_prepared.error().code == "CIF-WRITE-001");
   CHECK_FALSE(gds::open_source(services.view().files, "in.gds").ok());
   CHECK(gds::content_stamps({}).empty());
 

@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "hefesto/cif/command/settings.hpp"
 #include "hefesto/cif/read/symbols.hpp"
@@ -40,6 +41,9 @@ struct CifReadOptions {
   CifSettings settings;
   mask::WarningSettings warnings;
   std::string typed_name;
+  /// The file system the file and the redirect file are on; null means the
+  /// local one (added by CIF in round 4).
+  platform::FileSystem* files = nullptr;
 };
 
 /// The state of one CIF read.
@@ -50,8 +54,14 @@ struct ReadSession {
   bool saw_end = false;       // the E command was read
 };
 
-/// Reads `path` into the editor's cell library.
+/// Reads `path` into the editor's cell library (CIFReadFile): the
+/// definitions become cells of this read, top-level geometry goes into the
+/// edit cell. Holds the exclusive database lock and records no undo. Fails
+/// when the file cannot be read or no input style is set.
 [[nodiscard]] cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
                                       const CifReadOptions& options, const mask::Progress* progress = nullptr);
+/// The same over CIF text already in memory.
+[[nodiscard]] cmd::CommandResult read_text(editor::EditorState& editor, std::string_view text,
+                                           const CifReadOptions& options, const mask::Progress* progress = nullptr);
 
 }  // namespace hefesto::cif

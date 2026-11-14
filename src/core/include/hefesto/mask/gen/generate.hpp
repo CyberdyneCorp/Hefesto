@@ -39,6 +39,7 @@
 #include "hefesto/db/plane.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/mask/gen/context.hpp"
+#include "hefesto/mask/ops/evaluate.hpp"
 #include "hefesto/mask/plane/plane.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/technology.hpp"
@@ -87,18 +88,22 @@ using InteractionFinder =
 
 /// What generation reads besides the style and the layout: the technology
 /// (the planes searched and the paint tables of the flattening), the
-/// session's compat settings and the interaction finder (without one,
-/// hierarchical generation finds no subcell interaction).
+/// session's compat settings, the interaction finder (without one,
+/// hierarchical generation finds no subcell interaction) and the session's
+/// `cif unfracture` switch, which Magic applies to every CIFGen call
+/// (CIFUnfracture: flat, hierarchical, DRC and the readers' `maskhints`).
 struct GenerationSource {
   const tech::Technology* technology = nullptr;  // required
   compat::CompatSettings compat;
   InteractionFinder find_interaction;
+  /// `cif unfracture` ("Non-manhattan merge option", Q-MASK-413).
+  bool unfracture = false;
 };
 
 /// The editor's technology and compat settings (the DRC session's pointer
-/// to the project's settings, as the dispatcher sets it), and
-/// drc::interaction_area over the editor as the finder (the editor must
-/// outlive the source).
+/// to the project's settings, as the dispatcher sets it), its `cif
+/// unfracture` switch, and drc::interaction_area over the editor as the
+/// finder (the editor must outlive the source).
 [[nodiscard]] GenerationSource generation_source(const editor::EditorState& editor);
 
 /// CIFGen's options.
@@ -112,9 +117,22 @@ struct GenerateOptions {
   bool hierarchical = false;
   /// Report generation errors (CIFErrorDef set); false suppresses them.
   bool report_errors = true;
-  /// `cif unfracture` (CIFUnfracture; Q-MASK-413).
+  /// `cif unfracture` (CIFUnfracture; Q-MASK-413) for this call; the
+  /// source's switch applies as well.
   bool unfracture = false;
 };
+
+/// "Non-manhattan merge option" (`cif unfracture`): DBMergeNMTiles on
+/// `plane`, a layer CIFGen just generated, before the next layer reads it
+/// and before clipping. `clip` is the call's cifGenClip result and `scale`
+/// the style's scale factor. With magic-compat ON the merge covers
+/// `clip.expanded`, the search area in internal units, as Magic passes it
+/// although the plane is in mask units (cif/CIFgen.c:5784-5786), so with a
+/// scale factor above 1 only part of the layer is merged; with it OFF it
+/// covers that area times the scale factor, the whole generated layer.
+/// Only the decomposition changes (db::Plane::merge_split_tiles).
+void unfracture_layer(MaskPlane& plane, const GenerationClip& clip, std::int32_t scale,
+                      const compat::CompatSettings& compat);
 
 /// The halo radius generation uses, in internal units ("Halo radius"):
 /// with magic-compat ON the style's (Magic's cs_radius, kept stale by a
@@ -159,7 +177,8 @@ struct HierarchyOptions {
   bool arrays = true;
   /// Enlarge the generation area by a `FIXED_BBOX` property (GDS only).
   bool fixed_bbox = false;
-  /// `cif unfracture`.
+  /// `cif unfracture` for this cell's generation (own paint, subcell and
+  /// array corrections); the source's switch applies as well.
   bool unfracture = false;
 };
 

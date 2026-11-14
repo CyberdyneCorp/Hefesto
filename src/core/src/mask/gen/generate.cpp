@@ -58,7 +58,7 @@ void LayerPlanes::reset() noexcept {
 // --- Sources -------------------------------------------------------------------
 
 GenerationSource generation_source(const editor::EditorState& editor) {
-  GenerationSource source{editor.technology.get(), editor.drc.compat_settings(), {}};
+  GenerationSource source{editor.technology.get(), editor.drc.compat_settings(), {}, editor.mask.cif.unfracture};
   source.find_interaction = [&editor](const db::CellDef& cell, const db::Rect& area,
                                       std::int64_t radius) -> std::optional<db::Rect> {
     const auto r = static_cast<std::int32_t>(std::clamp<std::int64_t>(radius, 0, db::kInfinity));
@@ -171,7 +171,25 @@ bool requested(const GenerateOptions& options, std::size_t layer) noexcept {
   return options.layers.empty() || (layer < options.layers.size() && options.layers[layer]);
 }
 
+// A finite side of the search area times the scale factor; a side at the
+// plane's edge stays (as cifGenClip leaves it).
+db::Coord scale_side(db::Coord v, std::int32_t scale) noexcept {
+  return v <= db::kPlaneMin || v >= db::kPlaneMax ? v : gen_detail::clamp_coord(std::int64_t{v} * scale);
+}
+
 }  // namespace
+
+void unfracture_layer(MaskPlane& plane, const GenerationClip& clip, std::int32_t scale,
+                      const compat::CompatSettings& compat) {
+  const db::Rect& e = clip.expanded;
+  if (compat.magic_compat) {
+    plane.plane().merge_split_tiles(e);  // Magic's internal-unit area on a mask-unit plane
+    return;
+  }
+  const std::int32_t s = std::max(scale, 1);
+  plane.plane().merge_split_tiles(
+      db::Rect{scale_side(e.x0, s), scale_side(e.y0, s), scale_side(e.x1, s), scale_side(e.y1, s)});
+}
 
 LayerPlanes generate_area(const GenerationSource& source, const db::CellDef& layout, const db::CellDef* origin,
                           const db::Rect& area, const OutputStyle& style, GenerationContext& ctx,
@@ -185,9 +203,13 @@ LayerPlanes generate_area(const GenerationSource& source, const db::CellDef& lay
     octx.sink = nullptr;  // CIFErrorDef = NULL
   }
   const LayerInputs inputs{&layout, std::span<MaskPlane* const>{out.planes}, source.technology};
+  const bool unfracture = options.unfracture || source.unfracture;
   for (std::size_t i = 0; i < style.layers.size(); ++i) {
     if (requested(options, i)) {
       out.planes[i] = &evaluate_layer(style, i, inputs, clip.expanded, octx);
+      if (unfracture) {
+        unfracture_layer(*out.planes[i], clip, gen_detail::scale_of(style), source.compat);
+      }
     } else if (options.all_planes) {
       out.planes[i] = &ctx.pool.acquire();
     }

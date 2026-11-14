@@ -313,15 +313,6 @@ void set_use_locked(CellUse& use, bool locked) {
   }
 }
 
-std::vector<CellUse*> uses_in_search_order(const CellDef& def) {
-  std::vector<CellUse*> out;
-  out.reserve(def.uses().size());
-  for (auto it = def.uses().rbegin(); it != def.uses().rend(); ++it) {
-    out.push_back(it->get());
-  }
-  return out;
-}
-
 // DBGenerateUniqueIds: dbFindNamesFunc then dbGenerateUniqueIdsFunc, both in
 // subcell enumeration order (DBCellEnum, database/DBcellname.c:2640-2770):
 // the use index's order under the given magic-compat setting.

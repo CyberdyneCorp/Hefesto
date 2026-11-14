@@ -133,8 +133,10 @@ class UseIndex {
   std::unique_ptr<State> state_;
 };
 
-/// The enumeration order of `def`'s uses under `compat` (the INDEX
-/// replacement of db::uses_in_search_order).
+/// The enumeration order of `def`'s uses under `compat` (DBCellEnum): the
+/// bin walk with magic-compat ON, the reverse insertion order (newest
+/// first, the M1-M4 order) with it OFF. Every subcell enumeration uses it
+/// with the session's compat.
 [[nodiscard]] std::vector<CellUse*> uses_in_search_order(const CellDef& def, const compat::CompatSettings& compat);
 
 /// The uses of `def` found by a BPE_OVERLAP search over `area`, in search
