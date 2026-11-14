@@ -88,6 +88,8 @@ Context::Context(const editor::EditorState& editor, ErrorSink& error_sink, const
   if (const StyleDetails* details = rules->details(); details != nullptr && !details->mask_layer_rules.empty()) {
     generation = std::make_unique<mask::GenerationContext>();
     input.generation = generation.get();
+    mask_rules = std::make_unique<MaskRuleCache>();
+    input.mask_rules = mask_rules.get();
   }
   if (sink.statistics() == nullptr) {
     sink.set_statistics(&own_stats);

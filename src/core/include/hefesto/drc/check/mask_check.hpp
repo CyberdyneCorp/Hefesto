@@ -23,7 +23,8 @@
 // the bound style whatever the current cifoutput style is.
 //
 // Scratch planes come from CheckInput::generation (the engine's context)
-// when set; otherwise from a context local to the call.
+// when set; otherwise from a context local to the call. The compiled rules
+// come from CheckInput::mask_rules the same way.
 //
 // Owner: DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
 
@@ -32,6 +33,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -75,6 +77,16 @@ struct MaskRules {
   }
 
   friend bool operator==(const MaskRules&, const MaskRules&) = default;
+};
+
+/// compile_mask_rules() and the layers generation must produce, kept for the
+/// basic checks of one engine context (one thread at a time). Recompiled
+/// when the style details or the bound output style change.
+struct MaskRuleCache {
+  const StyleDetails* details = nullptr;
+  std::shared_ptr<const mask::OutputStyle> style;
+  MaskRules rules;
+  std::vector<bool> layers;  // empty = every layer
 };
 
 /// The primitive rules Magic's drcCifWidth, drcCifSpacing, drcCifArea and

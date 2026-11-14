@@ -176,6 +176,17 @@ std::vector<bool> layers_to_generate(const MaskRules& rules, const mask::OutputS
   return selected.ok() ? selected.value().depend : std::vector<bool>{};  // empty = every layer
 }
 
+const MaskRuleCache& compiled_rules(MaskRuleCache& cache, const StyleDetails& details,
+                                    const std::shared_ptr<const mask::OutputStyle>& style) {
+  if (cache.details != &details || cache.style != style) {
+    cache.details = &details;
+    cache.style = style;
+    cache.rules = compile_mask_rules(details, *style);
+    cache.layers = layers_to_generate(cache.rules, *style);
+  }
+  return cache;
+}
+
 void report_collapsed(mask::GenerationContext& ctx, std::size_t collapsed, bool magic_compat) {
   if (collapsed == 0 || ctx.sink == nullptr) {
     return;
@@ -248,14 +259,17 @@ CheckOutcome mask_layer_check(const CheckInput& input, const db::Rect& check_are
   if (!style) {
     return CheckOutcome::completed;
   }
-  const MaskRules rules = compile_mask_rules(*details, *style);
+  MaskRuleCache local_rules;
+  const MaskRuleCache& compiled =
+      compiled_rules(input.mask_rules != nullptr ? *input.mask_rules : local_rules, *details, style);
+  const MaskRules& rules = compiled.rules;
   if (rules.empty()) {
     return CheckOutcome::completed;
   }
   mask::GenerationContext local;
   mask::GenerationContext& ctx = input.generation != nullptr ? *input.generation : local;
   mask::GenerateOptions options;
-  options.layers = layers_to_generate(rules, *style);
+  options.layers = compiled.layers;
   options.report_errors = false;  // drcCifCheck leaves CIFErrorDef as it is; Hefesto adds no feedback
   const mask::GenerationSource source{input.technology, input.compat, {}};
   const mask::LayerPlanes planes = mask::generate_area(source, *input.cell, input.cell, check_area, *style, ctx, options);

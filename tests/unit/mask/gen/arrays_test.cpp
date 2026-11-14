@@ -205,4 +205,45 @@ TEST_CASE("Later layers reuse Magic's core windows with magic-compat ON",
   }
 }
 
+TEST_CASE("A non-hierarchical first layer still moves Magic's windows to the core",
+          "[cap:mask-hierarchical-generation][req:Array correction replication]") {
+  // cifHierArrayFunc overwrites A and B with the core windows after layer 0
+  // even when that layer is not hierarchical (its total plane is generated
+  // empty, genAllPlanes), so the first hierarchical layer (here layer 1) is
+  // copied from the core windows with magic-compat ON: its output equals
+  // the second of two identical hierarchical layers, not the first. OFF
+  // copies every layer from the named windows.
+  const auto paint = [](GenFixture& f) -> db::CellDef& {
+    db::CellDef& child = f.cell("child");
+    f.paint(child, f.m1, Rect{1, 1, 9, 9});
+    f.paint(child, f.m2, Rect{0, 0, 10, 10});
+    db::CellDef& top = f.cell("top");
+    f.place(top, child, db::kIdentity, db::ArrayInfo{0, 3, 0, 3, 9, 10});
+    return top;
+  };
+  const auto ops = [](const GenFixture& f) {
+    return std::vector<LayerOp>{types_op(OpKind::op_or, {f.m1}), op(OpKind::grow, 20), op(OpKind::shrink, 20)};
+  };
+  const auto two_layers = [&](bool on, bool second) {
+    GenFixture f(on);
+    const std::size_t first = f.layer("M", ops(f));
+    const std::size_t other = f.layer("N", ops(f));
+    db::CellDef& top = paint(f);
+    return GenFixture::rects(f.hierarchical(top), second ? other : first);
+  };
+  REQUIRE(two_layers(true, false) != two_layers(true, true));  // the windows matter for this layout
+  for (const bool on : {true, false}) {
+    GenFixture f(on);
+    const std::size_t plain = f.layer("P", {types_op(OpKind::op_or, {f.m1})});
+    const std::size_t m = f.layer("M", ops(f));
+    REQUIRE_FALSE(classify_layers(f.style, f.source().compat).hier[plain]);
+    db::CellDef& top = paint(f);
+    CAPTURE(on);
+    CHECK(GenFixture::rects(f.hierarchical(top), m) == two_layers(on, true));
+    if (!on) {
+      CHECK(two_layers(false, true) == two_layers(false, false));
+    }
+  }
+}
+
 }  // namespace hefesto::mask::test

@@ -56,6 +56,7 @@ class GenerationContext;
 namespace hefesto::drc {
 
 class CifCatalog;
+struct MaskRuleCache;
 
 /// When a running check must stop early (design D8): the worker's own
 /// cancel flag, or a writer waiting for the database lock. Polled between
@@ -81,6 +82,9 @@ struct CheckInput {
   /// Scratch planes, statistics and the diagnostic sink (DRC-MASK-001) of
   /// the mask-layer check; nullptr = a context local to each call.
   mask::GenerationContext* generation = nullptr;
+  /// The mask-layer rules compiled for this context; nullptr = compiled on
+  /// each call.
+  MaskRuleCache* mask_rules = nullptr;
 };
 
 enum class CheckOutcome : unsigned char {

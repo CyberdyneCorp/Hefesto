@@ -24,6 +24,7 @@
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/drc/check/basic_check.hpp"
+#include "hefesto/drc/check/mask_check.hpp"
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/drc/types.hpp"
 #include "hefesto/mask/gen/context.hpp"
@@ -147,6 +148,9 @@ struct Context {
   /// basic checks of this context; created only when the style has
   /// mask-layer rules.
   std::unique_ptr<mask::GenerationContext> generation;
+  /// The mask-layer rules compiled once for this context, next to
+  /// `generation`.
+  std::unique_ptr<MaskRuleCache> mask_rules;
 
   [[nodiscard]] const tech::Technology& tech() const noexcept { return *technology; }
   /// Polls the cancel token; latches `cancelled`.

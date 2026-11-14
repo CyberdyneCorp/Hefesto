@@ -425,6 +425,33 @@ TEST_CASE("the engine's generation context is reused across checks",
   CHECK(first.errors() == second.errors());
 }
 
+TEST_CASE("the engine's compiled mask rules are reused across checks",
+          "[cap:drc-cif-rules][req:Mask-layer check procedure]") {
+  MaskCase c("width");
+  c.paint("m1", Rect{0, 0, 10, 100});
+  CollectingErrorSink uncached;
+  REQUIRE(mask_layer_check(c.input(true), kWide, kWide, uncached) == CheckOutcome::completed);
+  MaskRuleCache cache;
+  CheckInput in = c.input(true);
+  in.mask_rules = &cache;
+  CollectingErrorSink first;
+  REQUIRE(mask_layer_check(in, kWide, kWide, first) == CheckOutcome::completed);
+  REQUIRE(cache.style != nullptr);
+  const mask::OutputStyle* compiled_for = cache.style.get();
+  CHECK(cache.rules == compile_mask_rules(*c.rules->details(), *cache.style));
+  CollectingErrorSink second;
+  REQUIRE(mask_layer_check(in, kWide, kWide, second) == CheckOutcome::completed);
+  CHECK(cache.style.get() == compiled_for);
+  CHECK(first.errors() == uncached.errors());
+  CHECK(second.errors() == uncached.errors());
+  cache.rules = MaskRules{};  // a stale entry for another style is recompiled
+  cache.style = std::make_shared<const mask::OutputStyle>();
+  CollectingErrorSink third;
+  REQUIRE(mask_layer_check(in, kWide, kWide, third) == CheckOutcome::completed);
+  CHECK(cache.style.get() == compiled_for);
+  CHECK(third.errors() == uncached.errors());
+}
+
 TEST_CASE("a style without mask-layer rules generates nothing", "[cap:drc-cif-rules][req:Mask-layer check procedure]") {
   MaskCase c("missing");
   c.paint("m1", Rect{0, 0, 10, 100});
