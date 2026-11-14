@@ -116,7 +116,7 @@ class MaskChecker {
   std::size_t layer_ = 0;              // dCD_plane
   const db::Plane* plane_ = nullptr;
   unsigned marks_ = 0;    // dCD_radial corner bits (per tile, kept across its edges)
-  std::int32_t sdist_ = 0;  // dCD_radial & 0xfff
+  std::int32_t sdist_ = 0;  // dCD_radial & 0xfff (magic-compat ON), cdist OFF (Q-DRC-27)
   bool cancelled_ = false;
   std::size_t collapsed_ = 0;
 

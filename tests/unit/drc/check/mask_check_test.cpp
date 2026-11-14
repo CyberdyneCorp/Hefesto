@@ -97,6 +97,9 @@ style width
 style spacing
     cifstyle mask
     cifspacing MET1 MET1 100 touching_ok "m1 spacing"
+style bigspacing
+    cifstyle mask
+    cifspacing MET1 MET1 4096 touching_ok "big m1 spacing"
 style wells
     cifstyle mask
     cifspacing NW PW 600 touching_illegal "well spacing"
@@ -375,6 +378,22 @@ TEST_CASE("the Euclidean corner filter exempts diagonal neighbours beyond the ra
   close.paint("m1", Rect{0, 0, 10, 10});
   close.paint("m1", Rect{16, 16, 26, 26});  // 60 x 60: 85 < 100
   CHECK_FALSE(close.check(kWide, kWide, true, true).empty());
+}
+
+// Q-DRC-27: Magic packs the corner distance into the 12 bits of dCD_radial,
+// so 4096 mask units become a radius of 0 with magic-compat ON and the
+// diagonal neighbour is reported; OFF keeps the radius 4096 and exempts the
+// neighbour, which is 3000 x 3000 mask units (4243) away.
+TEST_CASE("the mask-layer corner radius wraps at 4096 only with magic-compat ON",
+          "[cap:drc-cif-rules][req:Mask-layer check procedure]") {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    MaskCase c("bigspacing", compat);
+    c.paint("m1", Rect{0, 0, 10, 10});
+    c.paint("m1", Rect{310, 310, 320, 320});
+    CHECK_FALSE(c.check(kWide, kWide, compat, false).empty());  // inside the Manhattan box
+    CHECK(c.check(kWide, kWide, compat, true).empty() == !compat);
+  }
 }
 
 TEST_CASE("generation is clipped to K and errors are clipped to L",

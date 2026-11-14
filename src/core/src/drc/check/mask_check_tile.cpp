@@ -10,9 +10,11 @@
 //   - the right half of a split tile skips the left edge and goes straight
 //     to the bottom edge, so an area or maxwidth rule is then run there as
 //     an edge rule;
-//   - the Euclidean corner bits are cleared once per tile, not per edge,
-//     and the corner radius is the rule's corner distance modulo 4096
-//     (dCD_radial packs it into 12 bits).
+//   - the Euclidean corner bits are cleared once per tile, not per edge.
+//
+// Compat split (Q-DRC-27): the corner radius is the rule's corner distance
+// modulo 4096 with magic-compat ON (dCD_radial packs it into 12 bits) and
+// the full distance with it OFF, as Q-DRC-20 does for the layout rules.
 //
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) drc/DRCcif.c (drcCifTile,
 // areaCifCheck, drcCheckCifArea, drcCheckCifMaxwidth), Copyright (C) 1985,
@@ -260,7 +262,7 @@ bool MaskChecker::horizontal_forward(const TileView& tile, Rect& region) {
 
 void MaskChecker::search(const Rect& region) {
   if (marks_ != 0) {
-    sdist_ = rule().cdist & kRadialMask;
+    sdist_ = input_.compat.magic_compat ? (rule().cdist & kRadialMask) : rule().cdist;
   }
   count(&CheckStatistics::slow);
   const mask::MaskPlane* target = planes_[current_->check_layer];
