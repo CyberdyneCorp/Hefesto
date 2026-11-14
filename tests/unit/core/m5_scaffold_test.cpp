@@ -33,7 +33,6 @@
 #include "hefesto/gds/stream/records.hpp"
 #include "hefesto/gds/write/write.hpp"
 #include "hefesto/mask/gen/generate.hpp"
-#include "hefesto/mask/input/engine.hpp"
 #include "hefesto/mask/ops/operators.hpp"
 #include "hefesto/mask/style/core.hpp"
 #include "hefesto/platform/services.hpp"
@@ -93,12 +92,6 @@ void check_not_implemented(const cmd::CommandResult& result, const std::string& 
   REQUIRE_FALSE(result.diagnostics.empty());
   CHECK(result.diagnostics.front().code == kNotImplemented);
   CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
-}
-
-void check_not_implemented(const diag::Status& status, const std::string& what) {
-  INFO(what);
-  REQUIRE_FALSE(status.ok());
-  CHECK(status.error().code == kNotImplemented);
 }
 
 }  // namespace
@@ -287,9 +280,7 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   ctx.progress = &progress;
   CHECK(ctx.cancelled());
 
-  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/).
-  mask::InputStyle input_style;
-  mask::ReadEngine engine{state, input_style, {}};
-  check_not_implemented(engine.begin_cell("a"), "mask::ReadEngine::begin_cell");
+  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/);
+  // input styles and the read engine by INPUT (tests/unit/mask/input/).
   CHECK_FALSE(hefesto::drc::map_mask_error(db::Rect{0, 0, 1, 1}, style, {}).has_value());
 }
