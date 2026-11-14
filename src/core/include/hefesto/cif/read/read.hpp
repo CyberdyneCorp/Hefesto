@@ -12,16 +12,16 @@
 // is cleared or redefined.
 //
 // Owner: INTEGRATION (this header, created by the M5 scaffold); CIF fills in
-// the implementation in src/core/src/cif/read/ (design D2).
+// the implementation in src/core/src/cif/read/ (design D2). The parser is
+// cif/read/parser.hpp and the symbol table cif/read/symbols.hpp.
 
 #pragma once
 
 #include <cstdint>
-#include <map>
 #include <string>
-#include <string_view>
 
 #include "hefesto/cif/command/settings.hpp"
+#include "hefesto/cif/read/symbols.hpp"
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/mask/gen/progress.hpp"
@@ -42,28 +42,12 @@ struct CifReadOptions {
   std::string typed_name;
 };
 
-/// The symbol numbers of one read and the cells they name.
-class SymbolTable {
- public:
-  /// The cell of symbol `number`, or nullptr when not yet defined or called.
-  [[nodiscard]] db::CellDef* find(std::int64_t number) const noexcept;
-  /// Binds symbol `number` to `cell` (DS n, or a forward C n).
-  void bind(std::int64_t number, db::CellDef& cell);
-  /// `DD n`: magic-compat ON deletes symbol n only; OFF deletes every
-  /// symbol >= n (CIF 2.0).
-  void delete_from(std::int64_t number, bool magic_compat);
-
-  [[nodiscard]] std::size_t size() const noexcept { return cells_.size(); }
-
- private:
-  std::map<std::int64_t, db::CellDef*> cells_;
-};
-
 /// The state of one CIF read.
 struct ReadSession {
   SymbolTable symbols;
   std::int64_t errors = 0;    // counted toward the error limit
   std::int64_t warnings = 0;
+  bool saw_end = false;       // the E command was read
 };
 
 /// Reads `path` into the editor's cell library.

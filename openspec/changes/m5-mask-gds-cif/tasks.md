@@ -207,7 +207,7 @@ How this plan runs:
 
 ## 11. CIF: cif-format-io
 
-- [ ] 11.1 Implement the CIF lexer and the table-driven parser driving `ReadSink`, covering:
+- [x] 11.1 Implement the CIF lexer and the table-driven parser driving `ReadSink`, covering:
   - lexical rules and input grammar;
   - symbol definitions and scale;
   - point scaling, layer selection, box (Q-MASK-315), round flash (Q-MASK-316), polygon and wire (Q-MASK-333);
@@ -216,7 +216,8 @@ How this plan runs:
   - read diagnostics (Q-MASK-331).
 
   Verify the `[cap:cif-format-io][req:…]` tests of these requirements in both modes.
-- [ ] 11.2 Implement the per-read `SymbolTable` (Q-MASK-318 fix: symbol n maps to a cell of this read, `n_k` on collision, no existing cell cleared; DD compat) and calls and transformations (Q-MASK-309, 335). Verify the `[req:Symbol-to-cell naming on read]` and `[req:Calls and transformations]` tests, including forward calls, DD then redefinition, and a collision with a library cell.
+- [x] 11.2 Implement the per-read `SymbolTable` (Q-MASK-318 fix: symbol n maps to a cell of this read, `n_k` on collision, no existing cell cleared; DD compat) and calls and transformations (Q-MASK-309, 335). Verify the `[req:Symbol-to-cell naming on read]` and `[req:Calls and transformations]` tests, including forward calls, DD then redefinition, and a collision with a library cell.
+  - As landed (round 2, 11.1 and 11.2, branch `m5-r2-cifparse`): `cif/read/{lexer,messages,symbols,wire,parser}.hpp` and `src/core/src/cif/read/` (parser split over `parser.cpp`, `parser_cells.cpp`, `parser_shapes.cpp`, `parser_labels.cpp`). The parser works in read units and drives `cif::CifReadTarget`, a `mask::ReadSink` plus the operations CIF needs that the shared sink lacks: `cell_exists`, `edit_cell_name`, `rename_cell` (9 and `n` to `n_k`), `rescale` (CIFInputRescale), `place` (`CifCall`: use id, the Q-MASK-335 ON unscaled-translation flag, whether the child was defined, for Q-MASK-309 OFF copyup), `cif_label` (`CifLabel`: label type and stickiness resolved by the parser, Q-MASK-327) and `end_top`. It never calls `ReadSink::call`, `label` or `property`. The style view is `cif::ParseStyle` (the CIF layer name table with label types and stickiness, the rule count, M, whether a rule has copyup). `SymbolTable` moved from `read.hpp` to `symbols.hpp` and deals in names and ids. Messages: `CIF-READ-001..006` with Magic's text, limit and Q-MASK-331 routing. Hardening: 64-bit scaling with saturation, out-of-plane elements ignored with `DB-GEOM-001`, iterative comments and ancestor search, a cell cap (`CIF-READ-006`), and a 2^30 cap on the 95 rescale (Magic has none). Tested against a recording target (`tests/unit/cif/read/`, 92 cases); `cif::read` stays `CORE-NOTIMPL-005` until INPUT's engine (7.3) and the `cif read` option (11.4) land, when an adapter from `CifReadTarget` to `ReadEngine` is added in `cif/read/`.
 - [ ] 11.3 Implement the CIF writer with GDSW's two phases (design D4): `prepare_write` makes the same subtree-loading walk through `UseIndex::search` and `DBFixMismatch` as task 10.1 (CIFwrite.c:137-144, with the shared helper), then header (Q-MASK-324), symbol numbering and order through `UseIndex` at Magic's two sampling points (Q-MASK-323), the CIF reducer of task 3.3, symbol definition format, labels (Q-MASK-322), calls and arrays, and preconditions with flat output (Q-MASK-321, 411). Verify the `[req:…]` tests of these requirements in both modes.
 - [ ] 11.4 Implement the remaining `cif` options:
   - read, write and flat (Q-MASK-320);
