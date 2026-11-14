@@ -216,8 +216,9 @@ TEST_CASE("corrupt or cut-off gzip input is an error, not a crash",
   }
   SECTION("damaged deflate data") {
     Bytes bad = good;
+    REQUIRE(bad.size() > 60);
     for (std::size_t i = 20; i < 60; ++i) {
-      bad[i] = std::byte{0xff};
+      bad.at(i) = std::byte{0xff};
     }
     auto source = gds::make_gzip_source(bad);
     std::vector<std::byte> buffer(plain.size());

@@ -56,7 +56,7 @@ std::vector<std::int32_t> bloat_values(const mask::LayerOp& op) {
     }
   }
   if (op.kind == OpKind::bloat_all && !values.empty()) {
-    values = {values.front()};
+    values.resize(1);  // the first distance (not `= {front()}`: GCC 13+ -Warray-bounds)
   }
   return values;
 }

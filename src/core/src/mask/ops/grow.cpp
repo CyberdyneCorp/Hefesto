@@ -111,19 +111,24 @@ enum Stop : std::uint8_t {
   kStopES = 0x80
 };
 
+/// Clears `bits` in `dirs` (in std::uint8_t, so GCC's -Wconversion is quiet).
+void clear(std::uint8_t& dirs, std::uint8_t bits) noexcept {
+  dirs = static_cast<std::uint8_t>(dirs & ~bits);
+}
+
 std::uint8_t finite_dirs(const db::Rect& a) noexcept {
   std::uint8_t dirs = kNorth | kSouth | kEast | kWest;
   if (a.x0 <= db::kPlaneMin) {
-    dirs &= ~kWest;
+    clear(dirs, kWest);
   }
   if (a.y0 <= db::kPlaneMin) {
-    dirs &= ~kSouth;
+    clear(dirs, kSouth);
   }
   if (a.x1 >= db::kPlaneMax) {
-    dirs &= ~kEast;
+    clear(dirs, kEast);
   }
   if (a.y1 >= db::kPlaneMax) {
-    dirs &= ~kNorth;
+    clear(dirs, kNorth);
   }
   return dirs;
 }
@@ -132,8 +137,8 @@ std::uint8_t finite_dirs(const db::Rect& a) noexcept {
 /// moved triangle. Returns the reference type for the corner tests.
 tech::TileType grow_split_euclidean(const Painter& p, const db::TileView& t, const db::Rect& a, db::Coord d,
                                     std::int32_t limit, std::uint8_t& dirs) {
-  dirs &= t.right_side ? ~kWest : ~kEast;
-  dirs &= leg_on_top(t) ? ~kSouth : ~kNorth;
+  clear(dirs, t.right_side ? kWest : kEast);
+  clear(dirs, leg_on_top(t) ? kSouth : kNorth);
   const EuclideanOffsets off =
       euclidean_offsets(d, static_cast<std::int32_t>(a.width()), static_cast<std::int32_t>(a.height()));
   const db::Coord gx = set_value_grid(off.dx, limit);
