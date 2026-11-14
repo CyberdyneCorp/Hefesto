@@ -30,6 +30,7 @@
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/wiring/wiring.hpp"
@@ -469,6 +470,9 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     for (const diag::Diagnostic& d : step.messages) {
       ctx.emit(d);
     }
+    for (const diag::Diagnostic& d : mask::rescale_input_styles(ed.mask.input_styles, a, b, ed.drc.compat_settings())) {
+      ctx.emit(d);
+    }
     if (ctx.project().compat.magic_compat && ed.box) {
       // CmdScalegrid then rescales the box once more ("Rescale cursor box"),
       // so Magic scales the box by (b/a)^2 (magic-compat; see step 8 of
@@ -548,7 +552,8 @@ namespace {
 /// count of every cell and the display styles.
 void install_technology(editor::EditorState& editor, platform::FileSystem& files,
                         std::shared_ptr<const Technology> tech, drc::LoadedRules rules,
-                        mask::OutputStyleSet output_styles, bool magic_compat, diag::DiagnosticSink& sink) {
+                        mask::OutputStyleSet output_styles, mask::InputStyleSet input_styles, bool magic_compat,
+                        diag::DiagnosticSink& sink) {
   const std::size_t old_planes = editor.technology->plane_count();
   const std::size_t new_planes = tech->plane_count();
   editor.grid = apply_post_load(*tech, editor.grid, sink);
@@ -564,6 +569,12 @@ void install_technology(editor::EditorState& editor, platform::FileSystem& files
     for (const diag::Diagnostic& d : step.messages) {
       sink.emit(d);
     }
+  }
+  // and CIFTechInputScale(DBLambda[0], DBLambda[1], TRUE).
+  editor.mask.input_styles = std::move(input_styles);
+  for (const diag::Diagnostic& d : mask::rescale_input_styles(editor.mask.input_styles, editor.grid.lambda,
+                                                               editor.grid.internal, editor.drc.compat_settings())) {
+    sink.emit(d);
   }
   // The `wiring` section is kept raw and read by the wiring area; reading it
   // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
@@ -627,12 +638,13 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   // `style`, Q-MASK-17, or a rejected rule line) fails the load with the
   // previous technology kept (TECH-LOAD-001).
   mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink, editor.drc.compat_settings());
+  mask::InputStyleSet input_styles = mask::read_input_styles(*tech.value(), editor.drc.compat_settings(), sink);
   drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
   if (output_styles.section_failed || !rules.ok()) {
     return section_failure(path.value().string(), output_styles.section_failed, !rules.ok(), sink);
   }
   install_technology(editor, services.files, std::move(tech.value()), std::move(rules), std::move(output_styles),
-                     options.magic_compat, sink);
+                     std::move(input_styles), options.magic_compat, sink);
   return diag::Done{};
 }
 
@@ -648,8 +660,9 @@ diag::Status load_builtin_technology(editor::EditorState& editor, platform::Plat
   }
   diag::NullSink quiet;  // the built-in text has no cifoutput section
   mask::OutputStyleSet output_styles = mask::read_output_styles(*minimum, quiet);
+  mask::InputStyleSet input_styles = mask::read_input_styles(*minimum, editor.drc.compat_settings(), quiet);
   install_technology(editor, services.files, std::move(minimum), std::move(rules), std::move(output_styles),
-                     options.magic_compat, sink);
+                     std::move(input_styles), options.magic_compat, sink);
   return diag::Done{};
 }
 

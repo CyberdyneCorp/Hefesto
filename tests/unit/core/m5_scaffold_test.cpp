@@ -178,7 +178,6 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
                            "*array"}) {
     check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
   }
-  check_not_implemented(s.run("cif istyle in"), "cif istyle");
 }
 
 TEST_CASE("an unknown gds option prints the error and the help", "[m5-scaffold]") {

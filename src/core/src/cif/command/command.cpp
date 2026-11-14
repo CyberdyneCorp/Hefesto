@@ -9,8 +9,9 @@
 // `cif scale|lambda input|output`, `cif [list|listall] ostyle|istyle` and
 // `cif help`, backed by the session's output styles (EditorState::mask,
 // selected by `cif ostyle <name>`; `cif scale out` reads drc::CifCatalog,
-// which follows the selection) and the
-// technology's raw `cifinput` section. Every other option fails with
+// which follows the selection) and the session's input styles
+// (EditorState::mask.input_styles, read at tech load by
+// mask::read_input_styles and selected by `cif istyle <name>`). Every other option fails with
 // CORE-NOTIMPL-005 until CIF lands it (tasks.md section 11).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) commands/CmdCD.c CmdCif (the option
@@ -26,10 +27,7 @@
 
 #include <array>
 #include <cstdint>
-#include <cstdlib>
-#include <numeric>
 #include <optional>
-#include <tuple>
 #include <string>
 #include <vector>
 
@@ -40,6 +38,7 @@
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -92,90 +91,6 @@ struct CifCall {
   [[nodiscard]] std::size_t argc() const noexcept { return words.size() + 1; }
 };
 
-// A `cifinput` style as `cif istyle` sees it: its name and the first
-// `scalefactor` of its body (crs_scaleFactor / crs_multiplier).
-struct InputStyle {
-  std::string name;
-  std::int64_t scale_factor = 1;
-  std::int64_t multiplier = 1;
-};
-
-// CIFParseScale: "n" or "n.d" as a reduced fraction n / expander.
-std::pair<std::int64_t, std::int64_t> parse_scale(const std::string& text) {
-  const std::size_t dot = text.find('.');
-  if (dot == std::string::npos) {
-    return {cu::c_atoi(text), 1};
-  }
-  std::int64_t d = 1;
-  for (std::size_t i = dot + 1; i < text.size(); ++i) {
-    d *= 10;
-  }
-  const std::int64_t n = std::int64_t{cu::c_atoi(text.substr(0, dot))} * d + cu::c_atoi(text.substr(dot + 1));
-  const std::int64_t g = std::gcd(n, d);
-  return g > 1 ? std::pair{n / g, d / g} : std::pair{n, d};
-}
-
-// The names a `style` statement adds (CIFReadTechLine): the name, or with
-// `variants a,b` one name per variant appended to it.
-std::vector<std::string> style_names(const tech::RawLine& line) {
-  const auto& t = line.tokens;
-  if (t.size() == 4 && t[2].starts_with("variant")) {
-    std::vector<std::string> names;
-    std::size_t start = 0;
-    while (start <= t[3].size()) {
-      const std::size_t comma = t[3].find(',', start);
-      names.push_back(t[1] + t[3].substr(start, comma == std::string::npos ? std::string::npos : comma - start));
-      if (comma == std::string::npos) {
-        break;
-      }
-      start = comma + 1;
-    }
-    return names;
-  }
-  return t.size() >= 2 ? std::vector<std::string>{t[1]} : std::vector<std::string>{};
-}
-
-void apply_scalefactor(const tech::RawLine& line, InputStyle& style) {
-  const auto& t = line.tokens;
-  if (t.size() < 2) {
-    return;
-  }
-  std::tie(style.scale_factor, style.multiplier) = parse_scale(t[1]);
-  if (t.size() >= 3 && t.back().starts_with("nanom")) {
-    style.multiplier = 10;
-  } else if (t.size() >= 3 && t.back().starts_with("angstr")) {
-    style.multiplier = 100;
-  }
-}
-
-// Every `cifinput` style in declaration order; the first is current.
-std::vector<InputStyle> input_styles(const tech::Technology& tech) {
-  std::vector<InputStyle> styles;
-  for (const tech::RawSection& section : tech.raw_sections()) {
-    if (section.name != "cifinput") {
-      continue;
-    }
-    std::size_t first_of_statement = styles.size();
-    for (const tech::RawLine& line : section.lines) {
-      if (line.tokens.empty()) {
-        continue;
-      }
-      if (line.tokens[0] == "style") {
-        first_of_statement = styles.size();
-        for (std::string& name : style_names(line)) {
-          styles.push_back(InputStyle{std::move(name)});
-        }
-      } else if (line.tokens[0] == "scalefactor" && first_of_statement < styles.size()) {
-        for (std::size_t i = first_of_statement; i < styles.size(); ++i) {
-          apply_scalefactor(line, styles[i]);
-        }
-        first_of_statement = styles.size();  // the first scalefactor of the body counts
-      }
-    }
-  }
-  return styles;
-}
-
 // An option the M5 scaffold registered before CIF implemented it.
 CommandResult not_yet(std::size_t option) {
   const std::string_view entry = kOptions.at(option);
@@ -218,21 +133,19 @@ double output_scale(const editor::EditorState& editor, bool magic_compat) {
   return static_cast<double>(numerator) / static_cast<double>(denominator);
 }
 
-// CIFGetInputScale(1000); nullopt ("Error: No style is set") without one.
+// CIFGetInputScale(1000) of the session's input style (mask-input-styles
+// "Input-scale reporting"): the float quotient widened with magic-compat
+// ON, the same quotient in double precision OFF (Q-SCRIPT-7); nullopt
+// ("Error: No style is set") without one.
 std::optional<double> input_scale(const editor::EditorState& editor, bool magic_compat) {
-  if (!editor.technology) {
+  const mask::InputStyle* style = editor.mask.input_styles.current_style();
+  if (style == nullptr) {
     return std::nullopt;
   }
-  const std::vector<InputStyle> styles = input_styles(*editor.technology);
-  if (styles.empty()) {
-    return std::nullopt;
-  }
-  const std::int64_t numerator = 10 * styles.front().scale_factor;
-  const std::int64_t denominator = styles.front().multiplier * 1000;
   if (magic_compat) {
-    return static_cast<double>(static_cast<float>(numerator) / static_cast<float>(denominator));
+    return static_cast<double>(style->microns_per_unit());
   }
-  return static_cast<double>(numerator) / static_cast<double>(denominator);
+  return static_cast<double>(10 * style->scale_factor) / static_cast<double>(style->multiplier * 1000);
 }
 
 CommandResult scale(const CifCall& c, std::size_t option) {
@@ -291,13 +204,31 @@ CommandResult output_styles(const CifCall& c) {
 }
 
 CommandResult input_styles_of(const CifCall& c) {
-  std::vector<std::string> names;
-  if (c.s.editor->technology) {
-    for (InputStyle& style : input_styles(*c.s.editor->technology)) {
-      names.push_back(std::move(style.name));
-    }
+  const mask::InputStyleSet& set = c.s.editor->mask.input_styles;
+  const mask::InputStyle* current = set.current_style();
+  return print_styles(c, set.names(), current != nullptr ? std::optional{current->name} : std::nullopt, "input");
+}
+
+// CIFSetReadStyle: `cif istyle <name>` (mask-input-styles "Input style
+// selection"; Q-MASK-303: an exact name wins); on failure the error, then
+// the current style and the style list (CIFPrintReadStyle).
+CommandResult select_input(const CifCall& c) {
+  editor::EditorState& editor = *c.s.editor;
+  const std::string& name = c.words[1];
+  const compat::CompatSettings compat{c.s.magic_compat, c.s.ctx->project().compat.netgen_compat};
+  const diag::Status selected = mask::select_input_style(editor.mask.input_styles, name, editor.grid.lambda,
+                                                         editor.grid.internal, compat, c.s.ctx->sink());
+  if (!selected.ok()) {
+    c.s.ctx->emit(selected.error());
+    CifCall listing = c;
+    listing.list = false;
+    listing.listall = false;
+    (void)input_styles_of(listing);
+    listing.listall = true;
+    return input_styles_of(listing);
   }
-  return print_styles(c, names, names.empty() ? std::nullopt : std::optional{names.front()}, "input");
+  cu::print(c.s, "CIF input style is now \"" + name + "\"");
+  return CommandResult::success();
 }
 
 // CIFSetStyle: `cif ostyle <name>` selects the output style (an exact name,
@@ -330,10 +261,10 @@ CommandResult select_output(const CifCall& c) {
   return CommandResult::success();
 }
 
-// `cif istyle|ostyle [style]`: istyle lists only until INPUT lands selection.
+// `cif istyle|ostyle [style]`.
 CommandResult style(const CifCall& c, std::size_t option) {
   if (c.argc() == 3) {
-    return option == kOstyle ? select_output(c) : not_yet(option);
+    return option == kOstyle ? select_output(c) : select_input(c);
   }
   if (c.argc() != 2) {
     return wrong_args(c, option);

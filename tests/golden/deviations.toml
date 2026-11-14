@@ -325,6 +325,13 @@ decisions = ["Q-SCRIPT-51"]
 outputs = ["stdout.txt"]
 reason = "tool enabling is native, so magic::enable_tools is not a Tcl procedure and the tool switches it prints in Magic do not happen"
 
+# --- MASK -------------------------------------------------------------------
+
+[MASK-CI-003]
+decisions = ["Q-MASK-303"]
+outputs = ["stdout.txt", "stderr.txt"]
+reason = "cif istyle gds selects the input style gds although gds2 also starts with it: an exact name wins over prefix matches; Magic reports the name as ambiguous"
+
 [MASK-UO-001]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
@@ -782,11 +789,6 @@ deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
-[MASK-CI-003]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt"]
-reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
-
 [MASK-CI-004]
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
@@ -890,11 +892,6 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 [MASK-CI-024]
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
-
-[MASK-CI-025]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-CF-001]

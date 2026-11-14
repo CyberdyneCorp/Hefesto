@@ -17,6 +17,7 @@
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/layer_list.hpp"
 #include "hefesto/db/paint.hpp"
@@ -657,7 +658,7 @@ std::vector<UseRef> uses_at(const Context& c, const db::Rect& area) {
   const auto visit = [&](const auto& self, const db::CellDef& def, const db::Transform& to_root,
                          const std::string& path) -> void {
     const db::Rect local = connect::to_local(to_root, area);
-    for (db::CellUse* u : db::uses_in_search_order(def)) {
+    for (db::CellUse* u : db::uses_in_search_order(def, compat::CompatSettings{c.s.magic_compat, true})) {
       if (u->def == nullptr || !db::overlap(u->bbox, local)) {
         continue;
       }

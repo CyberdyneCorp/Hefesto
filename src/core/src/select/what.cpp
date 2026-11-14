@@ -15,6 +15,7 @@
 
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/db/transform.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/select/diag_codes.hpp"
@@ -193,7 +194,7 @@ std::string use_name(const db::CellUse& u) {
 /// The selected uses as the layout has them (SelEnumCells(FALSE) order).
 std::vector<const db::CellUse*> selected_uses(const Context& c) {
   std::vector<const db::CellUse*> out;
-  for (const db::CellUse* u : db::uses_in_search_order(*c.ed->selection.def())) {
+  for (const db::CellUse* u : db::uses_in_search_order(*c.ed->selection.def(), compat::CompatSettings{c.s.magic_compat, true})) {
     const auto found = ops::layout_use(c, *u);
     out.push_back(found ? found->use : u);
   }
@@ -315,7 +316,7 @@ CommandResult cmd_identify(CommandContext& ctx, const Invocation& inv) {
     return fail_text(codes::kIdIllegal, *bad);
   }
   db::CellDef* sel = c.ed->selection.def();
-  const std::vector<db::CellUse*> selected = sel != nullptr ? db::uses_in_search_order(*sel)
+  const std::vector<db::CellUse*> selected = sel != nullptr ? db::uses_in_search_order(*sel, compat::CompatSettings{c.s.magic_compat, true})
                                                             : std::vector<db::CellUse*>{};
   if (selected.empty()) {
     return fail_text(codes::kIdNoSubcell, "There isn't a selected subcell;  can't change ids.");

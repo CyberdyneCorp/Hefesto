@@ -16,6 +16,7 @@
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/change_recorder.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/tech/commands.hpp"
 #include "hefesto/tech/loader.hpp"
@@ -485,7 +486,7 @@ void assign_unique_ids(ReadState& st) {
   db::CellDef& def = st.def;
   std::set<std::string, std::less<>> seen;
   std::vector<const db::CellUse*> unnamed;
-  const std::vector<db::CellUse*> order = db::uses_in_search_order(def);  // DBCellEnum order
+  const std::vector<db::CellUse*> order = db::uses_in_search_order(def, compat::CompatSettings{st.ctx.magic_compat, true});  // DBCellEnum order
   for (const db::CellUse* u : order) {
     if (u->id.empty()) {
       unnamed.push_back(u);

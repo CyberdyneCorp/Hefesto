@@ -13,6 +13,8 @@
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/quit_policy.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/editor/editor_state.hpp"
+#include "hefesto/mask/input/style.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
 #include "hefesto/version.hpp"
 
@@ -124,6 +126,17 @@ CommandResult setting_list(const settings::ProjectSettings& project) {
   return CommandResult::success(std::move(pairs));
 }
 
+// The input styles read some statements per magic-compat setting
+// (Q-MASK-300, Q-MASK-302), so a change re-reads the cifinput section.
+void refresh_compat_dependent_state(CommandContext& ctx) {
+  editor::EditorState* editor = ctx.editor();
+  if (editor == nullptr || editor->technology == nullptr) {
+    return;
+  }
+  mask::refresh_input_styles(editor->mask.input_styles, *editor->technology, editor->grid.lambda,
+                             editor->grid.internal, ctx.project().compat);
+}
+
 CommandResult setting(CommandContext& ctx, const Invocation& inv) {
   const auto& args = inv.args;
   if (args.empty()) {
@@ -134,7 +147,11 @@ CommandResult setting(CommandContext& ctx, const Invocation& inv) {
     return value ? CommandResult::success(value.value() ? "on" : "off") : CommandResult::failure(value.error());
   }
   if (args[0] == "set" && args.size() == 3) {
-    return from_status(settings::set(ctx.project(), args[1], args[2]));
+    diag::Status status = settings::set(ctx.project(), args[1], args[2]);
+    if (status.ok() && args[1] == settings::kMagicCompat) {
+      refresh_compat_dependent_state(ctx);
+    }
+    return from_status(status);
   }
   return usage(kSettingSynopsis);
 }
