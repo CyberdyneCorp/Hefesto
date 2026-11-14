@@ -68,7 +68,7 @@ struct LongRow {
     db::CellDef& child = f.cell("child");
     f.paint(child, f.m1, Rect{0, 10, 100, 90});
     for (int i = 0; i < count; ++i) {
-      f.place(top, child, translate(static_cast<db::Coord>(105 * i), 0));
+      f.place(top, child, translate(105 * i, 0));
     }
   }
 };

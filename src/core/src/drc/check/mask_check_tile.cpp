@@ -394,7 +394,9 @@ void MaskChecker::report_region(const Rect& tile_area) {
   if (collapses_when_truncated(tile_area, scale_)) {
     // Counted when the outward-rounded error would be reported (DRC-MASK-*).
     const std::optional<Rect> outward = map_mask_error(tile_area, scale_, MaskErrorKind::region, {false, false});
-    collapsed_ += outward && !clipped(*outward, clip_).is_null() ? 1 : 0;
+    if (outward && !clipped(*outward, clip_).is_null()) {
+      ++collapsed_;
+    }
   }
   const std::optional<Rect> mapped = map_mask_error(tile_area, scale_, MaskErrorKind::region, input_.compat);
   if (!mapped) {

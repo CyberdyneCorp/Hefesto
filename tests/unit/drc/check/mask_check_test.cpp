@@ -224,7 +224,9 @@ TEST_CASE("mask-layer rules without a cifstyle are ignored with one message",
   MaskCase c("missing");
   std::size_t said = 0;
   for (const auto& d : c.messages) {
-    said += d.text.find("Missing cif style for drc") != std::string::npos ? 1 : 0;
+    if (d.text.find("Missing cif style for drc") != std::string::npos) {
+      ++said;
+    }
   }
   CHECK(said == 1);
   REQUIRE(c.rules->details() != nullptr);
