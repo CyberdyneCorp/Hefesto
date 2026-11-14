@@ -9,20 +9,28 @@
 // California, distributed under its permissive license
 // (THIRD_PARTY_NOTICES.md).
 //
-// Replicated quirks: the sibling pass of DRCFindInteractions expands
-// GeoNullRect ({0,0,0,0}) when a use has no sibling nearby, so a square
-// round the origin of the cell joins the interaction area when it lies in
-// the use's halo area; the subtree-paint pass counts a nested use with paint
+// The use searches of DRCFindInteractions are overlap searches of the
+// cell's use index (db::uses_overlapping; Magic's DBSrCellPlaneArea), so
+// they can bin it as Magic's do (gds-write "Structure ordering").
+//
+// Q-MASK-400 (compat): with magic-compat ON the sibling pass of
+// DRCFindInteractions expands GeoNullRect ({0,0,0,0}) when a use has no
+// sibling nearby, so a square round the origin of the cell joins the
+// interaction area when it lies in the use's halo area; with it OFF a use
+// without a sibling adds nothing. Replicated quirk: the subtree-paint pass counts a nested use with paint
 // as a second source of its own parent's paint. With magic-compat ON, the
 // cell searched for child errors, array checks, flattening and exact
 // overlaps is DRCDummyUse's def, which a `drc why` resolution re-entering
 // the check from an error report retargets for the rest of the square
 // (see scan_cell()).
 //
-// Owner: ENGINE (openspec/changes/m3-drc/design.md D2).
+// Owner: ENGINE (openspec/changes/m3-drc/design.md D2); the use-index
+// searches and Q-MASK-400 OFF: INDEX (openspec/changes/m5-mask-gds-cif
+// design.md D2, D17).
 
 #include <vector>
 
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "internal.hpp"
 
@@ -76,10 +84,23 @@ struct LinkedUse {
   db::Rect area;
 };
 
+// DBSrCellPlaneArea over the cell's use index (BPE_OVERLAP), in search
+// order.
+std::vector<const db::CellUse*> searched_uses(const db::CellDef& def, const db::Rect& area) {
+  std::vector<const db::CellUse*> out;
+  (void)db::uses_overlapping(def, area, [&](db::CellUse& u) {
+    if (u.def != nullptr) {
+      out.push_back(&u);
+    }
+    return true;
+  });
+  return out;
+}
+
 // drcSubcellFunc for every use near `search`; returns whether one was found.
 bool subcell_pass(const db::CellDef& def, const db::Rect& search, std::int32_t radius, db::Rect& total,
                   std::vector<LinkedUse>& linked) {
-  const std::vector<const db::CellUse*> uses = uses_overlapping(def, search);
+  const std::vector<const db::CellUse*> uses = searched_uses(def, search);
   for (const db::CellUse* u : uses) {
     const db::Rect halo_area = clip(db::expand(u->bbox, radius), search);
     db::Rect found = paint_bbox(def, halo_area);
@@ -95,17 +116,24 @@ bool subcell_pass(const db::CellDef& def, const db::Rect& search, std::int32_t r
   return !uses.empty();
 }
 
-// The sibling pass over the linked uses (drcFindOtherCells).
+// The sibling pass over the linked uses (drcFindOtherCells). Q-MASK-400:
+// the seed GeoNullRect is expanded and included even when no sibling was
+// found with magic-compat ON; OFF skips a use without siblings.
 void sibling_pass(const db::CellDef& def, std::int32_t radius, const std::vector<LinkedUse>& linked,
-                  db::Rect& total) {
+                  bool magic_compat, db::Rect& total) {
   for (const LinkedUse& l : linked) {
     db::Rect others = kNullRect;
-    for (const db::CellUse* u : uses_overlapping(def, l.area)) {
+    bool found = false;
+    for (const db::CellUse* u : searched_uses(def, l.area)) {
       if (u != l.use) {
         others = db::include(others, u->bbox);
+        found = true;
       }
     }
-    others = clip(db::expand(others, radius), l.area);  // replicated: GeoNullRect expands too
+    if (!found && !magic_compat) {
+      continue;
+    }
+    others = clip(db::expand(others, radius), l.area);
     total = db::include(total, others);
   }
 }
@@ -129,14 +157,13 @@ bool two_sources(const db::CellDef& def, const db::Rect& area) {
 
 int find_interactions(Context& ctx, const db::CellDef& def, const db::Rect& area, std::int32_t radius,
                       db::Rect& interaction) {
-  (void)ctx;
   const db::Rect search = db::expand(area, radius);
   db::Rect total = kNullRect;
   std::vector<LinkedUse> linked;
   if (!subcell_pass(def, search, radius, total, linked)) {
     return -1;
   }
-  sibling_pass(def, radius, linked, total);
+  sibling_pass(def, radius, linked, ctx.input.compat.magic_compat, total);
   if (total.is_null() || !two_sources(def, total)) {
     return 0;
   }
