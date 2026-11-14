@@ -53,7 +53,8 @@ The read engine's grid and unit messages (`MASK-INPUT-010`..`012`) are printed a
 
 Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`; capability gds-write; design D12). Owner: GDSW.
 
-No codes yet.
+- `GDS-WRITE-201`: a coordinate of a merged polygon, a label point or a label rectangle, after scaling to GDS units, does not fit a 4-byte integer (Q-MASK-222). The write fails; Magic would wrap the value.
+- `GDS-WRITE-202`: port labels of a type whose output style has no `labels <type> port` layer (Q-MASK-206). With magic-compat ON they are not written, as in Magic; OFF writes them on the port-text layer. Reported once per type and write, as a native diagnostic (Magic prints nothing, so the `magic` format drops it).
 
 ## CMD
 
@@ -92,4 +93,6 @@ fails when the two disagree.
 | `GDS-STREAM-003` | error | A seek moved past the end of the (decompressed) GDS stream. |
 | `GDS-STREAM-004` | error | A GDS record payload exceeds 65531 bytes and cannot be written. |
 | `GDS-STREAM-005` | error | Gzip compression of the GDS output failed or the level is not 1 to 9. |
+| `GDS-WRITE-201` | error | A GDS output coordinate does not fit a 4-byte integer (Q-MASK-222); the write fails. |
+| `GDS-WRITE-202` | warning | Port labels of a type without a `labels <type> port` layer are skipped (magic-compat ON) or written on the port-text layer (OFF) (Q-MASK-206). |
 <!-- END DIAGNOSTIC CODES -->
