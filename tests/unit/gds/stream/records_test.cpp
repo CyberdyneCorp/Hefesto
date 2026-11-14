@@ -150,25 +150,32 @@ TEST_CASE("seeking drops the look-ahead and repositions in the stream",
 }
 
 TEST_CASE("the writer encodes headers and big-endian values", "[cap:gds-write][req:Record encoding]") {
-  CHECK(written([](gds::RecordWriter& w) { REQUIRE(w.write_empty(gds::RecordType::endel).ok()); }) ==
-        hex("00 04 11 00"));
-  CHECK(written([](gds::RecordWriter& w) {
-          const std::array<std::int16_t, 1> v{49};
-          REQUIRE(w.write_int2(gds::RecordType::layer, v).ok());
-        }) == hex("00 06 0D 02 00 31"));
-  CHECK(written([](gds::RecordWriter& w) {
-          const std::array<std::int32_t, 1> v{-200};
-          REQUIRE(w.write_int4(gds::RecordType::xy, v).ok());
-        }) == hex("00 08 10 03 FF FF FF 38"));
-  CHECK(written([](gds::RecordWriter& w) {
-          const std::array<double, 2> v{0.001, 1e-9};
-          REQUIRE(w.write_real8(gds::RecordType::units, v).ok());
-        }) == hex("00 14 03 05 3E 41 89 37 4B C6 A7 F0 39 44 B8 2F A0 9B 5A 54"));
-  CHECK(written([](gds::RecordWriter& w) { REQUIRE(w.write_string(gds::RecordType::strname, "top").ok()); }) ==
-        hex("00 08 06 06 74 6F 70 00"));
-  CHECK(written([](gds::RecordWriter& w) {
-          REQUIRE(w.write(gds::RecordType::strans, gds::DataType::bitarray, hex("80 00")).ok());
-        }) == hex("00 06 1A 01 80 00"));
+  // Each output is computed before the CHECK: a REQUIRE inside a CHECK's
+  // expression shadows Catch's assertion handler (GCC -Wshadow).
+  const gds_test::Bytes endel = written([](gds::RecordWriter& w) { REQUIRE(w.write_empty(gds::RecordType::endel).ok()); });
+  CHECK(endel == hex("00 04 11 00"));
+  const gds_test::Bytes layer = written([](gds::RecordWriter& w) {
+    const std::array<std::int16_t, 1> v{49};
+    REQUIRE(w.write_int2(gds::RecordType::layer, v).ok());
+  });
+  CHECK(layer == hex("00 06 0D 02 00 31"));
+  const gds_test::Bytes xy = written([](gds::RecordWriter& w) {
+    const std::array<std::int32_t, 1> v{-200};
+    REQUIRE(w.write_int4(gds::RecordType::xy, v).ok());
+  });
+  CHECK(xy == hex("00 08 10 03 FF FF FF 38"));
+  const gds_test::Bytes units = written([](gds::RecordWriter& w) {
+    const std::array<double, 2> v{0.001, 1e-9};
+    REQUIRE(w.write_real8(gds::RecordType::units, v).ok());
+  });
+  CHECK(units == hex("00 14 03 05 3E 41 89 37 4B C6 A7 F0 39 44 B8 2F A0 9B 5A 54"));
+  const gds_test::Bytes strname =
+      written([](gds::RecordWriter& w) { REQUIRE(w.write_string(gds::RecordType::strname, "top").ok()); });
+  CHECK(strname == hex("00 08 06 06 74 6F 70 00"));
+  const gds_test::Bytes strans = written([](gds::RecordWriter& w) {
+    REQUIRE(w.write(gds::RecordType::strans, gds::DataType::bitarray, hex("80 00")).ok());
+  });
+  CHECK(strans == hex("00 06 1A 01 80 00"));
 }
 
 TEST_CASE("the writer buffers 64 KB and flushes in order", "[cap:gds-write][req:Record encoding]") {
