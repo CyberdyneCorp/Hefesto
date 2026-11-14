@@ -13,7 +13,7 @@ area = "MASK"
 capability = "cif-format-io"
 requirements = ["Layer selection"]
 tool = "magic"
-description = "Geometry before L, an unknown L and a 6-character L name."
+description = "Geometry before L and an unknown L."
 
 [reference]
 script = "input/commands.tcl"

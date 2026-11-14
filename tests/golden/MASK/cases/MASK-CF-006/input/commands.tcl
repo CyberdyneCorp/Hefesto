@@ -1,4 +1,4 @@
-# MASK-CF-006: Geometry before L, an unknown L and a 6-character L name.
+# MASK-CF-006: Geometry before L and an unknown L.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]

@@ -267,9 +267,12 @@ def cf_specs() -> list[tclcase.TclCase]:
                       cif_file("DS 1 1 1;", "9 leaf;", "L CMF;", "B 40 20 20 10;", "DF;", "DS 2 1 1;", "9 rec;",
                                "C 2;", "DF;", "91 u_r;", "C 1 R 0 1 T 200 300;", "91 u_mx;", "C 1 M X T 500 0;",
                                "C 1 M Y T 800 0;", "C 1 M X R 0 -1 T 1100 0;", "C 1 R 1 1 T 1400 0;", "C 2;", "E")),
-        cif_read_case("MASK-CF-006", ["Layer selection"], "Geometry before L, an unknown L and a 6-character L name.",
-                      cif_file("DS 1 1 1;", "9 lay;", "B 40 20 20 10;", "L CXX;", "B 40 20 20 50;", "L CMFABC;",
-                               "B 40 20 20 90;", "L CMF;", "B 40 20 20 130;", "DF;", "C 1;", "E")),
+        # A 5- or 6-character L name overflows Magic's 5-byte buffer (Q-MASK-312): the
+        # "isn't known" message then prints whatever follows it, which differs between
+        # captures, so the long name is unit-tested only.
+        cif_read_case("MASK-CF-006", ["Layer selection"], "Geometry before L and an unknown L.",
+                      cif_file("DS 1 1 1;", "9 lay;", "B 40 20 20 10;", "L CXX;", "B 40 20 20 50;",
+                               "L CMF;", "B 40 20 20 130;", "DF;", "C 1;", "E")),
         cif_read_case("MASK-CF-007", ["Box command", "Point scaling on input"],
                       "Boxes B 40 20 20 10, B 3 2 10 0, B 3 2 -10 0, rotated 0 1 and zero length.",
                       cif_file("DS 1 10 1;", "9 boxes;", "L CMF;", "B 40 20 20 10;", "B 3 2 10 0;", "B 3 2 -10 0;",
@@ -650,17 +653,23 @@ def gr_specs_b() -> list[tclcase.TclCase]:
                   lib(g.structure("cut", [sq(CC, 0, 0, 200, 200)]),
                       g.structure("top", [g.sref("cut", (100, 100)), sq(M1, 0, 0, 400, 400), sq(AA, 0, 0, 400, 400)])),
                   before=["gds flatten yes"]),
+        # Magic's temporary mode deletes any cell named polygon* that it flattens, the
+        # genuine polygon_ring included, and later reads use the freed cell (Q-MASK-127):
+        # the saved use ids then differ between captures. So the temporary read comes
+        # first, before any polygon* cell exists, and its file has no polygon_ring.
         read_case("MASK-GR-042", ["Polygon subcells"],
-                  "gds polygon subcells keep, temporary and none with 2 triangles + 1 rect; a real polygon_ring.", None,
-                  files={f"in{i}.gds": lib(g.structure("polygon_ring", [sq(M2, 0, 0, 100, 100)]),
+                  "gds polygon subcells temporary, keep and none with 2 triangles + 1 rect; a real polygon_ring "
+                  "in the keep and none files.", None,
+                  files={f"in{i}.gds": lib(*([g.structure("polygon_ring", [sq(M2, 0, 0, 100, 100)])] if i != 1 else []),
                                            g.structure(f"t{i}", [g.boundary(49, 0, [(0, 0), (1000, 0), (0, 1000)]),
                                                                  g.boundary(49, 0, [(2000, 0), (3000, 0), (2000, 1000)]),
                                                                  sq(M1, 4000, 0, 5000, 1000),
-                                                                 g.sref("polygon_ring", (6000, 0))]))
+                                                                 *([g.sref("polygon_ring", (6000, 0))] if i != 1
+                                                                   else [])]))
                          for i in range(3)},
-                  read="gds polygon subcells keep",
-                  after=["gds read in0", "gds polygon subcells temporary", "gds read in1", "gds polygon subcells none",
-                         "gds read in2"], notes=["Q-MASK-127."]),
+                  read="gds polygon subcells temporary",
+                  after=["gds read in1", "gds polygon subcells keep", "gds read in0", "gds polygon subcells none",
+                         "gds read in2"], notes=["Q-MASK-127: the genuine polygon* deletion is unit-tested only."]),
         read_case("MASK-GR-043", ["Path subcells"], "gds path subcells yes with 3 paths.",
                   one_cell(*(g.path(49, 0, 100, [(0, 500 * i), (1000, 500 * i)]) for i in range(3))),
                   before=["gds path subcells yes"]),

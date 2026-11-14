@@ -115,7 +115,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-CF-003 | cif-format-io | `DS 3 25 2` with M=1 and M=10; DS without b; nested DS; DF without DS | geometry scale, messages | Symbol definitions and scale |
 | MASK-CF-004 | cif-format-io | symbol defined twice; `DD`; `9 name` inside and outside DS; name collision | cell names | Symbol-to-cell naming on read |
 | MASK-CF-005 | cif-format-io | calls with `R 0 1 T 200 300`, `M X`, `M Y`, combined, non-manhattan R; `91 id`; recursive call | instance transforms/ids | Calls and transformations |
-| MASK-CF-006 | cif-format-io | geometry before L; unknown L; 6-char L name | painted layers, messages | Layer selection |
+| MASK-CF-006 | cif-format-io | geometry before L; unknown L (a 5- or 6-char L name overflows Magic's buffer and prints memory, Q-MASK-312: unit-tested only) | painted layers, messages | Layer selection |
 | MASK-CF-007 | cif-format-io | boxes `B 40 20 20 10`, `B 3 2 10 0`, `B 3 2 -10 0`, rotated `0 1`, zero length | .mag geometry | Box command; Point scaling on input |
 | MASK-CF-008 | cif-format-io | `R 10 50 50`, odd diameter with scale 1/2 | .mag geometry, warning | Round flash command |
 | MASK-CF-009 | cif-format-io | `P` rectangle, L-shape, triangle | .mag geometry | Polygon command |
@@ -178,7 +178,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-GR-039 | gds-read | `gds flatten yes` with a 2-shape VIA used as AREF 2×2; `gds flatten 3` with 3-shape cell; `gds flatten 0` | parent paint, presence of uses | Flattening small cells on input |
 | MASK-GR-040 | gds-read | Default flatglob: `pcell_CDNS_1` with/without subcells; `gds flatglob none`; `gds flatglob via*` | parent paint/uses | Flattening small cells on input |
 | MASK-GR-041 | gds-read | Contact split between child (cut) and parent (metal) with flatten: verify combined cifinput result | .mag contact types | Flattening small cells on input |
-| MASK-GR-042 | gds-read | `gds polygon subcells keep`, `temporary`, `none` with 2 triangles + 1 rect; plus real structure named `polygon_ring` | cells created, final paint | Polygon subcells (Q-MASK-127) |
+| MASK-GR-042 | gds-read | `gds polygon subcells temporary`, `keep`, `none` with 2 triangles + 1 rect; plus real structure named `polygon_ring` in the keep and none files (Magic's temporary mode frees a genuine `polygon*` cell, Q-MASK-127: unit-tested only) | cells created, final paint | Polygon subcells (Q-MASK-127) |
 | MASK-GR-043 | gds-read | `gds path subcells yes` with 3 paths | cells path00001..3 | Path subcells |
 | MASK-GR-044 | gds-read | `gds drccheck no` vs default | DRC pending status of cells | End-of-structure processing |
 | MASK-GR-045 | gds-read | Reference to never-defined `MISSING` | messages, empty cell | End-of-read cleanup |
