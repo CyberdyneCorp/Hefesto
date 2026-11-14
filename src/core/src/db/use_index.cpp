@@ -48,6 +48,15 @@ Rect include_rect(const Rect& a, const Rect& b) noexcept {
   return Rect{std::min(a.x0, b.x0), std::min(a.y0, b.y0), std::max(a.x1, b.x1), std::max(a.y1, b.y1)};
 }
 
+bool in_list(const detail::Element* head, const detail::Element& e) noexcept {
+  for (; head != nullptr; head = head->link) {
+    if (head == &e) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::size_t list_length(const detail::Element* e) noexcept {
   std::size_t n = 0;
   for (; e != nullptr; e = e->link) {
@@ -160,6 +169,32 @@ void UseIndex::sync_locked() const {
       add_locked(*u);
     }
   }
+}
+
+void UseIndex::refresh(const CellUse& use) {
+  const std::lock_guard lock(mutex_);
+  State& s = *state_;
+  const auto it = s.elements.find(&use);
+  if (it == s.elements.end() || it->second->rect == use.bbox) {
+    return;
+  }
+  detail::Element& e = *it->second;
+  detail::Plane& p = s.plane;
+  const bool in_box = in_list(p.inbox, e);
+  p.equal.remove(e);
+  e.rect = use.bbox;
+  p.equal.add(e);
+  p.bbox = include_rect(p.bbox, e.rect);
+  ++s.generation;
+  if (in_box) {
+    return;
+  }
+  detail::unlink(e);
+  if (p.root != nullptr && surround(p.bin_area, e.rect)) {
+    detail::bin_add(*p.root, e);
+    return;
+  }
+  detail::push_front(p.inbox, e);
 }
 
 void UseIndex::place(CellUse& use) {

@@ -52,12 +52,13 @@ struct PlaceOptions {
 /// Locks or unlocks a use; marks the parent modified (Q-MODEL-13, fix).
 void set_use_locked(CellUse& use, bool locked);
 
-/// Magic's subcell enumeration order (DBCellEnum over the cell's BPlane):
-/// the magic-compat ON order of the cell's use index (db/use_index.hpp),
-/// i.e. the in-box list newest first until a partial-area search over 10
-/// or more uses bins it, then the bin walk. (Magic ref: bplane/bpMain.c,
-/// bplane/bpEnum.c; db::uses_in_search_order(def, compat) for the OFF
-/// order.)
+/// The M1-M4 subcell enumeration order: the reverse of the cell's use
+/// list (newest first), in both magic-compat modes. It is Magic's
+/// DBCellEnum order until a partial-area search over 10 or more uses bins
+/// the cell's BPlane, and the magic-compat OFF canonical order. Callers
+/// move to db::uses_in_search_order(def, compat) (db/use_index.hpp), which
+/// follows the bin walk with magic-compat ON, as task 5.2 migrates them.
+/// (Magic ref: bplane/bpMain.c, bplane/bpEnum.c.)
 [[nodiscard]] std::vector<CellUse*> uses_in_search_order(const CellDef& def);
 
 /// DBGenerateUniqueIds: after reading a cell, the first use with a given id

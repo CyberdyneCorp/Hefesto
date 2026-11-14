@@ -291,7 +291,12 @@ TEST_CASE("Binned order with magic-compat ON", "[cap:gds-write][req:Structure or
   CHECK(db::uses_in_search_order(top, kOn) ==
         std::vector<db::CellUse*>{placed[0], placed[1], placed[6], placed[7], placed[2], placed[3], placed[8],
                                   placed[9], placed[4], placed[5]});
-  CHECK(db::uses_in_search_order(top) == db::uses_in_search_order(top, kOn));
+  // The one-argument helper keeps the M1-M4 order (newest first) until
+  // task 5.2 moves its callers to the session's compat.
+  CHECK(db::uses_in_search_order(top) ==
+        std::vector<db::CellUse*>{placed[9], placed[8], placed[7], placed[6], placed[5], placed[4], placed[3],
+                                  placed[2], placed[1], placed[0]});
+  CHECK(db::uses_in_search_order(top) == db::uses_in_search_order(top, kOff));
 }
 
 TEST_CASE("Fresh-session write of a cell whose uses touch its bounding box", "[cap:gds-write][req:Structure ordering]") {
@@ -332,4 +337,61 @@ TEST_CASE("Use index: the subtree-loading search descends into children", "[cap:
   db::search_subtree(top, db::Rect{100, 100, 110, 110});
   CHECK(mid.use_index().state_for_test().binned);
   CHECK_FALSE(top.use_index().state_for_test().binned);  // one use only
+}
+
+namespace {
+
+/// A child whose font label makes its extended box (0,0)-(20,10) larger
+/// than its bounding box (0,0)-(10,10), used by `u0` in `top` before `u1`
+/// of another child; then a label grows the bounding box to the old
+/// extended one and the child's boxes are recomputed.
+struct ExtendedBoxCase {
+  db::CellDef child{"child", 1};
+  db::CellDef other{"other", 1};
+  db::CellDef top{"top", 1};
+  db::CellUse* u0 = nullptr;
+  db::CellUse* u1 = nullptr;
+
+  explicit ExtendedBoxCase(bool magic_compat) {
+    db::Label font_label;
+    font_label.text = "a";
+    font_label.rect = db::Rect{0, 0, 10, 10};
+    font_label.font = 0;
+    font_label.text_bbox = db::Rect{0, 0, 20, 10};
+    child.labels().push_back(font_label);
+    db::recompute_bbox(child, magic_compat);
+    REQUIRE(child.bbox() == db::Rect{0, 0, 10, 10});
+    REQUIRE(child.extended_bbox() == db::Rect{0, 0, 20, 10});
+    other.set_bboxes(db::Rect{0, 0, 4, 4}, db::Rect{0, 0, 4, 4});
+    u0 = db::place(top, child, db::PlaceOptions{}).value();
+    db::PlaceOptions o;
+    o.transform = db::translation(100, 0);
+    u1 = db::place(top, other, o).value();
+    REQUIRE(db::uses_in_search_order(top, kOn) == std::vector<db::CellUse*>{u1, u0});
+    db::Label area_label;
+    area_label.text = "b";
+    area_label.rect = db::Rect{0, 0, 20, 10};
+    child.labels().push_back(area_label);
+    db::recompute_bbox(child, magic_compat);
+    REQUIRE(child.bbox() == db::Rect{0, 0, 20, 10});
+  }
+};
+
+}  // namespace
+
+TEST_CASE("A bounding box grown to the old extended box keeps the uses in place with magic-compat ON",
+          "[cap:gds-write][req:Structure ordering]") {
+  ExtendedBoxCase c{true};
+  // DBReComputeBbox returns before the rip-up (DBcellbox.c:709-713).
+  CHECK(db::uses_in_search_order(c.top, kOn) == std::vector<db::CellUse*>{c.u1, c.u0});
+  CHECK(c.u0->bbox == db::Rect{0, 0, 20, 10});
+  // The index holds the new box: a search over the grown part finds u0.
+  CHECK(searched(c.top.use_index(), db::Rect{14, 0, 18, 10}) == std::vector<db::CellUse*>{c.u0});
+}
+
+TEST_CASE("A bounding box grown to the old extended box re-places the uses with magic-compat OFF",
+          "[cap:gds-write][req:Structure ordering]") {
+  ExtendedBoxCase c{false};
+  CHECK(db::uses_in_search_order(c.top, kOn) == std::vector<db::CellUse*>{c.u0, c.u1});
+  CHECK(searched(c.top.use_index(), db::Rect{14, 0, 18, 10}) == std::vector<db::CellUse*>{c.u0});
 }

@@ -314,7 +314,12 @@ void set_use_locked(CellUse& use, bool locked) {
 }
 
 std::vector<CellUse*> uses_in_search_order(const CellDef& def) {
-  return def.use_index().order(compat::CompatSettings{});
+  std::vector<CellUse*> out;
+  out.reserve(def.uses().size());
+  for (auto it = def.uses().rbegin(); it != def.uses().rend(); ++it) {
+    out.push_back(it->get());
+  }
+  return out;
 }
 
 // DBGenerateUniqueIds: dbFindNamesFunc then dbGenerateUniqueIdsFunc, both in
@@ -450,10 +455,12 @@ bool window_use_is_oldest(const CellDef& def) {
 // dbReComputeBboxFunc rips up and re-places the uses of `def` in its
 // parents' use indexes when the new bounding box differs from the old
 // *extended* one, or the cell is empty (database/DBcellbox.c:709-727).
-// Magic then changes nothing else; Hefesto still updates the boxes and the
-// uses' boxes, so a change of the plain bounding box re-places them too.
-bool must_replace_uses(const CellDef& def, const Rect& area, bool degenerate) {
-  return degenerate || area != def.extended_bbox() || area != def.bbox();
+// Magic then changes nothing else. Hefesto still updates the boxes and the
+// uses' boxes: with magic-compat ON the uses keep their places in the
+// indexes (UseIndex::refresh), OFF a change of the plain bounding box
+// re-places them too.
+bool must_replace_uses(const CellDef& def, const Rect& area, bool degenerate, bool magic_compat) {
+  return degenerate || area != def.extended_bbox() || (!magic_compat && area != def.bbox());
 }
 
 // The first loop of the rip-up: every use of `def` leaves its parent's
@@ -490,7 +497,7 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
   }
   fix_degenerate(s.area);
   fix_degenerate(s.extended);
-  const bool replace = must_replace_uses(def, s.area, !s.found);
+  const bool replace = must_replace_uses(def, s.area, !s.found, magic_compat);
   if (replace) {
     unplace_instances(def);
   }
@@ -511,6 +518,8 @@ void recompute_bbox(CellDef& def, bool magic_compat) {
     parent->flags().child_bboxes_changed = true;
     if (replace) {
       parent->use_index().place(*use);  // DBPlaceCellNoModify
+    } else {
+      parent->use_index().refresh(*use);
     }
     if (last != parent) {
       if (last != nullptr) {

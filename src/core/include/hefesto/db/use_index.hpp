@@ -84,6 +84,13 @@ class UseIndex {
   void place(CellUse& use);
   /// BPDelete: takes `use` out of the index; no-op when absent.
   void remove(const CellUse& use);
+  /// Records a changed bbox of `use` without re-placing it: an in-box use
+  /// keeps its place in the list, and a binned use whose new bbox leaves
+  /// its bin moves to the bin (or the in-box list) that holds it. For the
+  /// box updates Magic makes no index change for (DBReComputeBbox when the
+  /// new box equals the old extended one, database/DBcellbox.c:709-713).
+  /// No-op when absent or unchanged.
+  void refresh(const CellUse& use);
   /// DBMoveCell / DBScaleEverything: a fresh index holding the same uses
   /// with their current bboxes, added in reverse enumeration order.
   void rebuild();
