@@ -13,6 +13,9 @@ probe {gds datestamp 0}
 probe {load top}
 probe {box 0 0 10 4}
 probe {paint metal1}
+probe {box 0 0 10 4}
+probe {cif see CMF}
+probe {feedback clear}
 probe {gds write out}
 } scriptError]} {
     puts [list script-error $scriptError]

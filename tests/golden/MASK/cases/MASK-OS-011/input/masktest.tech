@@ -46,7 +46,7 @@ end
 
 cifoutput
 style gds
-    scalefactor 10 nanometers
+    scalefactor 10
     gridlimit 5
     options calma-permissive-labels set-minimum-grid grow-euclidean see-no-vendor no-errors string-limit frobnicate
     layer CMF metal1

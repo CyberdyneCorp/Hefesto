@@ -7,6 +7,7 @@
 # Magic and hefesto-cli both run input/commands.tcl (authoring/tclcase.py).
 # MASK case (m5-mask-gds-cif design D18): fresh session, drc off, gds datestamp 0.
 # History case (design D18): 2 writes in one session, compared side by side: cif write foo; cif write bar.cif.
+# Q-MASK-320: cif write bar.cif writes bar.cif.cif.
 
 schema = 1
 id = "MASK-CF-021"
@@ -43,7 +44,7 @@ comparator = "bytes"
 masks = ["cif-preamble"]
 
 [[outputs]]
-name = "bar.cif"
-source = "bar.cif"
+name = "bar.cif.cif"
+source = "bar.cif.cif"
 comparator = "bytes"
 masks = ["cif-preamble"]

@@ -7,7 +7,7 @@
 # Magic and hefesto-cli both run input/commands.tcl (authoring/tclcase.py).
 # MASK case (m5-mask-gds-cif design D18): fresh session, drc off, gds datestamp 0.
 # History case (design D18): three writes naming the output differently.
-# Q-MASK-210.
+# Q-MASK-210: ./dir/top has a '.', so no extension is appended.
 
 schema = 1
 id = "MASK-GW-038"
@@ -38,8 +38,8 @@ comparator = "magic-console"
 masks = ["magic-stamp-note", "completed-percent", "magic-tech-sections"]
 
 [[outputs]]
-name = "dir__top.gds"
-source = "dir/top.gds"
+name = "dir__top"
+source = "dir/top"
 comparator = "bytes"
 masks = ["gds-mod-dates"]
 display = "gds-records"

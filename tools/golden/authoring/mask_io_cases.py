@@ -46,14 +46,16 @@ def in_style(body: str, name: str = "gds", head: str = "    scalefactor 10\n") -
 def read_case(cid: str, requirements: list[str], description: str, data: bytes | None, *,
               before: list[str] | None = None, after: list[str] | None = None, cifinput: str = IN_DEFAULT,
               files: dict | None = None, read: str = "gds read in", outputs: list[str] | None = None,
-              notes: list[str] | None = None, env: dict[str, str] | None = None) -> tclcase.TclCase:
-    """Read ``in.gds`` (``data``) with the case's input style, then save every cell."""
+              notes: list[str] | None = None, env: dict[str, str] | None = None,
+              cells: bool = True) -> tclcase.TclCase:
+    """Read ``in.gds`` (``data``) with the case's input style, then save every cell. ``cells``:
+    compare the saved cells (off when the read creates none in the work directory)."""
     inputs = dict(files or {})
     if data is not None:
         inputs["in.gds"] = data
     body = [*(before or []), read, "cellname list allcells", *(after or []), SAVE_ALL]
     return case(cid, requirements, description, body, files=inputs, technology=tech(OUT_DEFAULT, cifinput),
-                start=[], outputs=[CELLS, *(outputs or [])], notes=notes, env=env)
+                start=[], outputs=[*([CELLS] if cells else []), *(outputs or [])], notes=notes, env=env)
 
 
 def cif_read_case(cid: str, requirements: list[str], description: str, cif: str, *,
@@ -338,7 +340,7 @@ def cf_specs() -> list[tclcase.TclCase]:
              "cif read foo, cif write foo and cif write foo.cif: the files opened.",
              ["cif read foo", *paint("metal1", 0, 0, 4, 4), "cif write foo", "cif write bar.cif"],
              files={"foo.cif": cif_file("DS 1 1 1;", "9 foo;", "L CMF;", "B 40 20 20 10;", "DF;", "C 1;", "E")},
-             outputs=["foo.cif", "bar.cif"]),
+             outputs=["foo.cif", "bar.cif.cif"], notes=["Q-MASK-320: cif write bar.cif writes bar.cif.cif."]),
         case("MASK-CF-022", ["cif scale and lambda options"], "cif scale in, cif scale out and cif lambda out.",
              ["cif scale in", "cif scale out", "cif lambda in", "cif lambda out"]),
         case("MASK-CF-023", ["cif limit and rescale options"],
@@ -393,14 +395,16 @@ def sref_orientations() -> bytes:
 
 
 def gr_specs_a() -> list[tclcase.TclCase]:
-    header = [g.record("LIBDIRSIZE", 0), g.record("SRFNAME", "srf"), g.record("LIBSECUR", 0, 0, 0),
-              g.record("REFLIBS", "reflib1".ljust(44, "\0")), g.record("FONTS", "font0".ljust(44, "\0")),
+    # LIBDIRSIZE, SRFNAME and LIBSECUR come before LIBNAME (GDS II grammar; CalmaRead.c:183).
+    before_name = [g.record("LIBDIRSIZE", 0), g.record("SRFNAME", "srf"), g.record("LIBSECUR", 0, 0, 0)]
+    header = [g.record("REFLIBS", "reflib1".ljust(44, "\0")), g.record("FONTS", "font0".ljust(44, "\0")),
               g.record("GENERATIONS", 3)]
     units = [(1e-8, "c8"), (1e-9, "c9"), (1e-10, "c10")]
     return [
         read_case("MASK-GR-001", ["Library grammar and header processing"],
                   "HEADER 600, LIBDIRSIZE, SRFNAME, REFLIBS, FONTS, GENERATIONS, UNITS 1e-3/1e-9, one structure.",
-                  lib(g.structure("top", [sq(M1, 0, 0, 1000, 1000)]), header_extra=header),
+                  lib(g.structure("top", [sq(M1, 0, 0, 1000, 1000)]), before_libname=before_name,
+                      header_extra=header),
                   notes=["Also the capture check of gdsgen.py (task 13.1): Magic reads its output."]),
         read_case("MASK-GR-002", ["Library grammar and header processing"],
                   "LIBNAME 'lib/my top' and a structure my_top: the cell loaded into the window.",
@@ -675,7 +679,8 @@ def gr_specs_b() -> list[tclcase.TclCase]:
                   "gds readonly yes on a 1e-8 file, and on a 1e-10 file with an angstrom output style.", None,
                   files={"c8.gds": lib(g.structure("c8", [sq(M1, 0, 0, 10, 10)]), units=(1e-2, 1e-8)),
                          "c10.gds": lib(g.structure("c10", [sq(M1, 0, 0, 1000, 1000)]), units=(1e-4, 1e-10))},
-                  read="gds readonly yes", after=["gds read c8", "gds read c10"]),
+                  read="gds readonly yes", after=["gds read c8", "gds read c10"], cells=False,
+                  notes=["Both reads are refused, so no cell is saved."]),
         read_case("MASK-GR-048", ["Read-only vendor views"], "A readonly read with PDK_ROOT a prefix of the file path.",
                   None, files={"pdk/lib/v.gds": lib(g.structure("v", [sq(M1, 0, 0, 100, 100)]))},
                   read="gds readonly yes", after=["gds read $env(PDK_ROOT)/lib/v.gds", "load v", "property"],
@@ -711,7 +716,8 @@ def gr_specs_b() -> list[tclcase.TclCase]:
                   files={"sub/vc.mag": mag(rects("metal1", (0, 0, 1, 1)),
                                            props={"GDS_FILE": "vc.gds", "GDS_START": "102", "GDS_END": "200"}),
                          "sub/vc.gds.gz": common.gzip_bytes(lib(g.structure("vc", [sq(M1, 0, 0, 100, 100)])))},
-                  read="addpath input/sub", after=["load vc", "cellname timestamp vc"]),
+                  read="addpath input/sub", after=["load vc", "cellname timestamp vc"], cells=False,
+                  notes=["writeall saves vc back to input/sub, so the saved cells are not compared."]),
         read_case("MASK-GR-054", ["Mask hints on input"],
                   "gds maskhints yes and gds maskhints CMF with an output style whose CMF reads mask hints.", None,
                   files={"in.gds": one_cell(g.boundary(49, 0, [(0, 0), (1000, 0), (0, 1000)])),
@@ -960,7 +966,8 @@ def gw_specs() -> list[tclcase.TclCase]:
                    "gds write ./dir/top, gds write top and a bare gds: the files created.",
                    [*paint("metal1", 0, 0, 4, 2)], cifoutput=GW_TECH,
                    write=["file mkdir dir", "gds write ./dir/top", "gds write top", "gds"],
-                   outputs=["dir/top.gds", "top.gds"], notes=["Q-MASK-210."]),
+                   outputs=["dir/top", "top.gds"],
+                   notes=["Q-MASK-210: ./dir/top has a '.', so no extension is appended."]),
         case("MASK-GW-039", ["Write preconditions and subtree loading"],
              "No cifoutput style loaded: gds write x, the error and the empty file.",
              [*paint("metal1", 0, 0, 4, 2), "gds write x", "file exists x.gds", "file size x.gds"],

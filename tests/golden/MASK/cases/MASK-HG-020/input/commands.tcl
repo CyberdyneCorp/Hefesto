@@ -11,6 +11,9 @@ probe {tech load input/masktest -noprompt}
 probe {snap internal}
 probe {gds datestamp 0}
 probe {load top}
+probe {box 0 0 10 4}
+probe {cif see NET}
+probe {feedback clear}
 probe {gds write a}
 probe {load b}
 probe {gds write b}

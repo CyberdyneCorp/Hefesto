@@ -179,10 +179,12 @@ def structure(name: str | bytes, elements: Iterable[bytes], *, created: int = 0,
 
 def library(name: str, structures: Iterable[bytes], *, units: tuple[float, float] = (1e-3, 1e-9),
             version: int = 600, created: int = 0, modified: int | None = None,
-            header_extra: Iterable[bytes] = (), pad: bool = True) -> bytes:
-    """A whole stream. ``header_extra`` goes between LIBNAME and UNITS (REFLIBS, FONTS, ...)."""
-    head = [record("HEADER", version), record("BGNLIB", *dates(created, modified)), record("LIBNAME", name),
-            *header_extra, record("UNITS", *units)]
+            header_extra: Iterable[bytes] = (), before_libname: Iterable[bytes] = (),
+            pad: bool = True) -> bytes:
+    """A whole stream. ``before_libname`` goes between BGNLIB and LIBNAME (LIBDIRSIZE, SRFNAME,
+    LIBSECUR), ``header_extra`` between LIBNAME and UNITS (REFLIBS, FONTS, ...)."""
+    head = [record("HEADER", version), record("BGNLIB", *dates(created, modified)), *before_libname,
+            record("LIBNAME", name), *header_extra, record("UNITS", *units)]
     data = b"".join(head) + b"".join(structures) + record("ENDLIB")
     return padded(data) if pad else data
 

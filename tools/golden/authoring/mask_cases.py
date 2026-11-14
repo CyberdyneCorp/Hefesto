@@ -48,7 +48,9 @@ CAPABILITY = {
 # Named history cases (design D18): more than one write, or a write after another search, on purpose.
 HISTORY = {
     "MASK-OS-003": "selects four styles in one session (one write at the end)",
-    "MASK-HG-020": "Q-MASK-412: two cells written in one session, the first write after startup",
+    "MASK-OS-012": "a cif see before the write (Q-MASK-412: Magic's net operator needs it)",
+    "MASK-OP-022": "a cif see before the write (Q-MASK-412: Magic's net operator needs it)",
+    "MASK-HG-020": "Q-MASK-412: two cells written in one session after a cif see",
     "MASK-HG-025": "cif statistics twice after one hierarchical write",
     "MASK-GW-003": "Q-MASK-201: a write in an angstrom style, then one in a nanometer style",
     "MASK-GW-036": "four writes with different compress levels",
@@ -159,6 +161,13 @@ def label(text: str, x: int, y: int, layer_name: str = "metal1", x2: int | None 
     return [common.box(x, y, x if x2 is None else x2, y if y2 is None else y2), f"label {text} c {layer_name}"]
 
 
+def net_init(layer_name: str, box: tuple[int, int, int, int] = (0, 0, 10, 4)) -> list[str]:
+    """``cif see`` of a layer before the first write: Magic's ``net`` operator searches
+    CIFDummyUse, which only CIFInitCells creates, so the first generation of a fresh session
+    dereferences NULL (CIFgen.c:5441, CmdFI.c:1779; Q-MASK-412)."""
+    return [*see(layer_name, box, "init_fb.txt")[:2], "feedback clear"]
+
+
 def gds_write(name: str = "out") -> list[str]:
     return [f"gds write {name}"]
 
@@ -175,11 +184,15 @@ CELLS = "derived:files:*.mag"
 SAVE_ALL = "writeall force"
 
 
+# GDS files written without an extension (MASK-GW-038: Q-MASK-210 appends none to ./dir/top).
+EXTENSIONLESS_GDS = {"dir/top"}
+
+
 def output_kind(source: str) -> tuple[str, list[str], str | None]:
     """(comparator, masks, display) of an output file, by its name."""
     if source.endswith(".gds.gz"):
         return "gzip", ["gds-mod-dates"], "gds-records"
-    if source.endswith(".gds"):
+    if source.endswith(".gds") or source in EXTENSIONLESS_GDS:
         return "bytes", ["gds-mod-dates"], "gds-records"
     if source.endswith(".cif"):
         return "bytes", ["cif-preamble"], None
@@ -335,14 +348,17 @@ def os_specs() -> list[tclcase.TclCase]:
         case("MASK-OS-011", ["min-width, render and options statements"],
              "options with each flag and an unknown word; set-minimum-grid with gridlimit: lambda after load.",
              ["cif scale out", "cif lambda out", "tech lambda", *paint("metal1", 0, 0, 3, 3), *gds_write()],
-             technology=tech(out_style(M1, head="    scalefactor 10 nanometers\n    gridlimit 5\n"
+             technology=tech(out_style(M1, head="    scalefactor 10\n    gridlimit 5\n"
                                        "    options calma-permissive-labels set-minimum-grid grow-euclidean "
                                        "see-no-vendor no-errors string-limit frobnicate\n")),
-             outputs=["out.gds"]),
+             outputs=["out.gds"],
+             notes=["scalefactor 10 without nanometers: set-minimum-grid sets lambda to 1/(10/5); with a style "
+                    "that reduces to scale 1 Magic divides by 1/5 = 0 (SIGFPE on x86, Q-MASK-16)."]),
         case("MASK-OS-012", ["Operator statement arguments"],
              "Every operator with a valid and an invalid argument count: tech errors and the ops kept.",
-             [*paint("metal1", 0, 0, 10, 4), *gds_write()],
-             technology=tech(out_style(layer("CMF", "metal1", *OPERATOR_LINES))), outputs=["out.gds"]),
+             [*paint("metal1", 0, 0, 10, 4), *net_init("CMF"), *gds_write()],
+             technology=tech(out_style(layer("CMF", "metal1", *OPERATOR_LINES))), outputs=["out.gds"],
+             notes=["cif see before the write: Magic crashes on the net operator in a fresh session (Q-MASK-412)."]),
         case("MASK-OS-013", ["Unit normalisation", "CIF reducer"],
              "scalefactor 9 with squares 12 44 44, and with only grow 30: the CIF DS scale and coordinates.",
              [*paint("pdc", 0, 0, 12, 12), "cif ostyle sq", "cif write sq", "cif ostyle gr", "cif write gr"],
@@ -501,12 +517,13 @@ def op_specs() -> list[tclcase.TclCase]:
                  *paint("metal2", 50, 10, 54, 14)],
                 ("TM", "metal2", []), ("OV", "metal1", ["overlapping metal2"]),
                 ("NOV", "metal1", ["nonoverlapping metal2"]), ("IN", "metal1", ["interacting metal2"]),
-                ("NIN", "metal1", ["noninteracting metal2"]), ("INT", "metal1", ["interacting TM"])),
-        op_case("MASK-OP-022", ["net"], "A hierarchy with labelled net VDD: net VDD metal1,metal2 and net VDD.",
-                ["getcell child", *paint("metal1", 10, 0, 20, 4), *paint("via1", 18, 0, 20, 4),
+                ("NIN", "metal1", ["noninteracting metal2"]), ("INT", "metal1", ["interacting TM"]),
+                head="    scalefactor 1\n"),
+        op_case("MASK-OP-022", ["net"], "A flat cell with labelled net VDD: net VDD metal1,metal2 and net VDD.",
+                [*paint("metal1", 0, 0, 20, 4), *paint("via1", 18, 0, 20, 4),
                  *paint("metal2", 18, 0, 30, 4), *label("VDD", 12, 2), *paint("metal1", 0, 20, 10, 24)],
                 ("NET", "metal1,metal2", ["net VDD metal1,metal2"]), ("NETA", "metal1", ["net VDD"]),
-                files={"child.mag": mag(rects("metal1", (0, 0, 10, 4)))}),
+                extra=net_init("NETA", (0, 0, 30, 24))),
         case("MASK-OP-023", ["tagged"], "Labels A on regions: tagged A and tagged A metal1 at scale 1 and 10.",
              [*paint("metal1", 0, 0, 10, 10), *paint("metal1", 20, 0, 30, 10), *paint("metal2", 0, 20, 10, 30),
               *label("A", 5, 5), *label("A", 5, 25, "metal2"), "cif ostyle s1", "gds write s1",
@@ -725,11 +742,13 @@ def hg_specs() -> list[tclcase.TclCase]:
              outputs=["fb_hier.txt", "fb_array.txt"]),
         case("MASK-HG-020", ["Per-cell output composition"],
              "A style with the net operator: two cells written in one session, the first write after startup.",
-             ["gds write a", "load b", "gds write b"],
+             [*net_init("NET", (0, 0, 10, 4)), "gds write a", "load b", "gds write b"],
              files={"top.mag": mag(rects("metal1", (0, 0, 10, 4)) + "<< labels >>\nrlabel metal1 2 2 2 2 0 VDD\n"),
                     "b.mag": mag(rects("metal1", (0, 0, 20, 4)) + "<< labels >>\nrlabel metal1 2 2 2 2 0 VDD\n")},
              technology=tech(out_style(layer("NET", "metal1", "net VDD metal1", calma=(100, 0)))),
-             outputs=["a.gds", "b.gds"], notes=["Q-MASK-412 (CASES.md): the net layer of the second write."]),
+             outputs=["a.gds", "b.gds"],
+             notes=["Q-MASK-412 (CASES.md): the net layer of the second write. A cif see comes first: the first "
+                    "net generation of a fresh session dereferences a NULL CIFDummyUse in Magic (CIFgen.c:5441)."]),
         case("MASK-HG-021", ["Flat CIF output"], "MASK-HG-006 layout, cif flat out.cif: one __CIF2__ symbol.",
              ["cif flat out"], files=two_children(5), technology=tech(out_style(GROW_SHRINK)), outputs=["out.cif"],
              notes=["Q-MASK-411: Magic's flat CIF has no labels; the OFF behaviour is unit-tested."]),

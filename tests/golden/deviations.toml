@@ -1035,7 +1035,7 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 
 [MASK-CF-021]
 deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "foo.cif", "bar.cif"]
+outputs = ["stdout.txt", "stderr.txt", "foo.cif", "bar.cif.cif"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-CF-022]
@@ -1300,7 +1300,7 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 
 [MASK-GR-047]
 deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+outputs = ["stdout.txt", "stderr.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-GR-048]
@@ -1330,7 +1330,7 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 
 [MASK-GR-053]
 deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+outputs = ["stdout.txt", "stderr.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-GR-054]
@@ -1555,7 +1555,7 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 
 [MASK-GW-038]
 deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "dir__top.gds", "top.gds"]
+outputs = ["stdout.txt", "stderr.txt", "dir__top", "top.gds"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-GW-039]

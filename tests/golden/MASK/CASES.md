@@ -41,8 +41,8 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-OP-018 | mask-output-operators | L-shape, T-shape, region with hole, tie case; `maxrect`, `maxrect external` | geometry | maxrect |
 | MASK-OP-019 | mask-output-operators | rect + triangle; `orthogonal`, `orthogonal fill` | geometry | orthogonal |
 | MASK-OP-020 | mask-output-operators | isolated squares, non-isolated squares, triangle; `not-square` | geometry | not-square |
-| MASK-OP-021 | mask-output-operators | regions touching/overlapping/diagonal to M; all four interact forms; paint and templayer M; scale 1 and 7 | geometry | overlapping, nonoverlapping, interacting, noninteracting |
-| MASK-OP-022 | mask-output-operators | hierarchy with labelled net VDD; `net VDD metal1,metal2` and `net VDD` | geometry | net |
+| MASK-OP-021 | mask-output-operators | regions touching/overlapping/diagonal to M; all four interact forms; paint and templayer M; scale 1 (Magic crashes at tech load on the interacting family unless the reducer is already 1, Q-MASK-12) | geometry | overlapping, nonoverlapping, interacting, noninteracting |
+| MASK-OP-022 | mask-output-operators | flat cell with labelled net VDD; `net VDD metal1,metal2` and `net VDD`; a `cif see` before the write (Q-MASK-412) | geometry | net |
 | MASK-OP-023 | mask-output-operators | labels A on regions; `tagged A`, `tagged A metal1`; scaleFactor 1 and 10 | geometry | tagged |
 | MASK-OP-024 | mask-output-operators | top cell and child; `bbox`, `bbox top` | geometry per cell | bbox |
 | MASK-OP-025 | mask-output-operators | cell with FIXED_BBOX; `boundary` | geometry | boundary |
@@ -79,7 +79,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-HG-017 | mask-hierarchical-generation | MASK-HG-006 layout with `cif *hier write disable`, then with `CIFhier` property on parent; GDS and CIF | Presence of parent residual in each output | Hierarchy and array output switches; Q-MASK-410 |
 | MASK-HG-018 | mask-hierarchical-generation | MASK-HG-012 layout, `cif *array write disable` | No seam rectangles | Hierarchy and array output switches |
 | MASK-HG-019 | mask-hierarchical-generation | `cif *hier M1X` and `cif *array M` with box over layouts 006/012 | Highlighted areas (feedback/see output) | Hierarchical layer preview |
-| MASK-HG-020 | mask-hierarchical-generation | Style with `net` operator, two cells written in one session, first write after startup | Generated net-layer geometry per cell | Q-MASK-412 |
+| MASK-HG-020 | mask-hierarchical-generation | Style with `net` operator, two cells written in one session after a `cif see` (the first `net` generation of a fresh session crashes Magic) | Generated net-layer geometry per cell | Q-MASK-412 |
 | MASK-HG-021 | mask-hierarchical-generation | MASK-HG-006 layout, `cif flat out.cif` | Full CIF text (single `__CIF2__` symbol, no labels) | Flat CIF output; Q-MASK-411 |
 | MASK-HG-022 | mask-hierarchical-generation | MASK-HG-006 layout, `cif see M1X`, `cif coverage M1X`, `cif paint M1X m2` | Highlight area, coverage numbers, painted m2 | Flat region generation |
 | MASK-HG-023 | mask-hierarchical-generation | 45° wire layer; `cif unfracture x yes` vs off, GDS write | Boundary record count and union equality | Non-manhattan merge option; Q-MASK-413 |

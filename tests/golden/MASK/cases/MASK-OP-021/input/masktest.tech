@@ -46,7 +46,7 @@ end
 
 cifoutput
 style gds
-    scalefactor 10
+    scalefactor 1
     layer TM metal2
         calma 100 0
     layer OV metal1
