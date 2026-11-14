@@ -16,7 +16,10 @@
 // coordinates and recurses into each use found, array element by element
 // (DBArrayOverlap's range, y outer, x inner), skipping the remaining
 // elements of an array once the area surrounds the child's bounding box
-// (database/DBexpand.c:296-340, DBcellsrch.c:1131-1222). With
+// (database/DBexpand.c:296-340, DBcellsrch.c:1131-1222). A repeated visit
+// that cannot change anything (same cell and area, nothing read or rebuilt
+// since a visit that itself read and rebuilt nothing) is skipped, so the
+// walk is not exponential in the depth (subtree.cpp). With
 // halt_on_error a cell that cannot be read stops the walk and is returned
 // (Magic's "Failure to read entire subtree"); without it the walk goes on
 // (`gds undefined allow`). Then DBFixMismatch re-places the uses of each
@@ -28,6 +31,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <functional>
 
@@ -52,11 +56,19 @@ struct SubtreeLoader {
   /// DBFixMismatch: processes the pending timestamp mismatches. Empty:
   /// nothing to process.
   std::function<void()> fix_mismatches;
+  /// Set by the host to stop the walk (mask::Progress::cancel); nullptr:
+  /// never cancelled. Polled at every cell visit.
+  const std::atomic<bool>* cancel = nullptr;
 };
 
 /// The walk is recursive, as Magic's; a hierarchy deeper than this fails
-/// the walk instead of exhausting the stack (hardening; Magic has no limit).
-inline constexpr std::size_t kMaxSubtreeDepth = 4096;
+/// the walk instead of exhausting the stack (hardening; Magic has no
+/// limit). The same bound as the mask generators' (MASK-GEN-004), so a
+/// write never reaches a depth its generation refuses. The writers'
+/// recursion at this depth needs more stack than a secondary thread's
+/// default: a host that runs a write off the command thread uses
+/// platform::run_on_stack with platform::kDeepRecursionStackBytes.
+inline constexpr std::size_t kMaxSubtreeDepth = 1024;
 
 /// What load_subtree found.
 struct SubtreeResult {
@@ -64,8 +76,10 @@ struct SubtreeResult {
   /// which the hierarchy exceeded kMaxSubtreeDepth; nullptr on success.
   db::CellDef* failed = nullptr;
   bool too_deep = false;
+  /// The host cancelled the walk (SubtreeLoader::cancel).
+  bool cancelled = false;
 
-  [[nodiscard]] bool ok() const noexcept { return failed == nullptr; }
+  [[nodiscard]] bool ok() const noexcept { return failed == nullptr && !cancelled; }
 };
 
 /// DBCellReadArea(root, root.bbox(), halt_on_error) then DBFixMismatch.

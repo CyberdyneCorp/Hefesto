@@ -117,6 +117,12 @@ class UseIndex {
   /// The number of uses in the index.
   [[nodiscard]] std::size_t size() const;
 
+  /// A counter that grows whenever the index state changes (a place,
+  /// remove, rebuild, a search that rebuilt or sub-binned, or a pending use
+  /// list change applied): equal values mean no change in between. Does
+  /// not apply pending changes itself.
+  [[nodiscard]] std::uint64_t generation() const;
+
   /// The current state, for trace tests.
   [[nodiscard]] UseIndexState state_for_test() const;
 

@@ -66,7 +66,7 @@ Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`;
 - `GDS-WRITE-011`: Magic's "Error:  Cell has the default name "(UNNAMED)"!"; the cell is written anyway.
 - `GDS-WRITE-012`: Magic's "<n> problems occurred.  See feedback entries." after a write whose mask generation reported problems.
 - `GDS-WRITE-013`: the write was cancelled (Q-MASK-414); the temporary file is removed and the target is untouched.
-- `GDS-WRITE-014`: the hierarchy under the written cell is deeper than 4096 levels; the writer stops instead of exhausting the stack (Magic has no limit).
+- `GDS-WRITE-014`: the hierarchy under the written cell is deeper than 1024 levels (the mask generators' limit); the writer stops instead of exhausting the stack (Magic has no limit).
 - `GDS-WRITE-020`: port labels of a type whose output style has no `labels <type> port` layer (Q-MASK-206). With magic-compat ON they are not written, as in Magic; OFF writes them on the port-text layer. Reported once per type and write, as a native diagnostic (Magic prints nothing, so the `magic` format drops it).
 - `GDS-WRITE-040`: Magic's "   Copying output for cell <name> from <file>" line for each read-only cell with content (gds-write "Magic write-time side effects").
 - `GDS-WRITE-041`: Magic's "Calma output error:  Can't find GDS file "<file>" for vendor cell "<name>".  It will not be output.": the file named by GDS_FILE is not on the cell search path, the library path or next to the cell's .mag file. The write fails unless `gds undefined` is allow; nothing is reported when the cell's first parent is itself a vendor cell (gds-write "Verbatim copy of read-only cells").

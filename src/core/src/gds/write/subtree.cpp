@@ -13,8 +13,11 @@
 #include "hefesto/gds/write/subtree.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
+#include <map>
 #include <memory>
+#include <tuple>
 
 #include "cell/io_session.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -93,18 +96,58 @@ ElementRange array_overlap(const db::CellUse& use, const db::Rect& parent_rect) 
 }
 
 // The search state of one DBCellReadArea.
+//
+// Magic re-descends into every use of every cell it reaches, so a cell
+// placed twice at every level of a deep hierarchy is visited 2^depth times.
+// Each visit is a function of the area and of the state it starts from (the
+// cells read and the use indexes' bins), so a visit that read nothing and
+// changed no index leaves the state as it found it, and repeating it with
+// the same area, at the same or a smaller depth, before anything else
+// changes, does nothing again. Such visits are remembered and not repeated:
+// the cells read, their order, the index states and the result stay
+// Magic's, and the walk is polynomial in the number of distinct (cell,
+// area) pairs instead of exponential in the depth.
 class ReadArea {
  public:
   ReadArea(const SubtreeLoader& loader, bool halt, const compat::CompatSettings& compat)
       : loader_(loader), halt_(halt), compat_(compat) {}
 
-  // dbReadAreaFunc: 1 to stop (an error), 2 when `area` covers the whole
-  // definition, else 0.
+  // dbReadAreaFunc: 1 to stop (an error or a cancellation), 2 when `area`
+  // covers the whole definition, else 0.
   int read_area(db::CellDef& def, const db::Rect& area, std::size_t depth) {
     if (depth > kMaxSubtreeDepth) {
-      result_ = SubtreeResult{&def, true};
+      result_.failed = &def;
+      result_.too_deep = true;
       return 1;
     }
+    if (loader_.cancel != nullptr && loader_.cancel->load(std::memory_order_relaxed)) {
+      result_.cancelled = true;
+      return 1;
+    }
+    const Key key{&def, area.x0, area.y0, area.x1, area.y1};
+    if (const auto known = done_.find(key);
+        known != done_.end() && known->second.epoch == epoch_ && depth <= known->second.depth) {
+      return known->second.result;
+    }
+    const std::uint64_t epoch = epoch_;
+    const int result = visit(def, area, depth);
+    if (result != 1 && epoch_ == epoch) {
+      done_[key] = Done{epoch_, depth, result};
+    }
+    return result;
+  }
+
+  [[nodiscard]] const SubtreeResult& result() const noexcept { return result_; }
+
+ private:
+  using Key = std::tuple<const db::CellDef*, db::Coord, db::Coord, db::Coord, db::Coord>;
+  struct Done {
+    std::uint64_t epoch = 0;  // epoch_ when the visit was made
+    std::size_t depth = 0;
+    int result = 0;
+  };
+
+  int visit(db::CellDef& def, const db::Rect& area, std::size_t depth) {
     if (!def.flags().available && !read(def)) {
       if (halt_) {
         result_.failed = &def;
@@ -112,21 +155,31 @@ class ReadArea {
       }
       return 0;
     }
+    std::uint64_t seen = def.use_index().generation();
+    const auto note_index_change = [&] {  // the search rebuilt or sub-binned the index
+      const std::uint64_t now = def.use_index().generation();
+      if (now != seen) {
+        seen = now;
+        ++epoch_;
+      }
+    };
     int stop = 0;
     (void)db::uses_overlapping(def, area, compat_, [&](db::CellUse& use) {
+      note_index_change();
       stop = read_use(use, area, depth);
       return stop == 0;
     });
+    note_index_change();
     if (stop != 0) {
       return 1;
     }
     return db::surround(area, def.bbox()) ? 2 : 0;
   }
 
-  [[nodiscard]] const SubtreeResult& result() const noexcept { return result_; }
-
- private:
-  bool read(db::CellDef& def) const { return loader_.read && loader_.read(def); }
+  bool read(db::CellDef& def) {
+    ++epoch_;  // a read attempt changes the state (or reports a failure)
+    return loader_.read && loader_.read(def);
+  }
 
   // dbCellSrFunc with dbReadAreaFunc as the client: 1 to stop, else 0.
   int read_use(db::CellUse& use, const db::Rect& area, std::size_t depth) {
@@ -154,6 +207,8 @@ class ReadArea {
   bool halt_;
   compat::CompatSettings compat_;
   SubtreeResult result_;
+  std::uint64_t epoch_ = 0;  // grows with every read attempt and index change
+  std::map<Key, Done> done_;
 };
 
 }  // namespace
