@@ -334,10 +334,7 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   ctx.progress = &progress;
   CHECK(ctx.cancelled());
 
-  // Styles and the shared core.
-  CHECK_FALSE(mask::parse_scale("1.5").has_value());
-  mask::OutputStyleSet styles;
-  check_not_implemented(mask::select_output_style(styles, "x", {}), "mask::select_output_style");
+  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/).
   mask::InputStyle input_style;
   mask::ReadEngine engine{state, input_style, {}};
   check_not_implemented(engine.begin_cell("a"), "mask::ReadEngine::begin_cell");
