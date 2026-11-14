@@ -6,7 +6,38 @@ release notices.
 
 ## Unreleased (M5: mask generation, GDS and CIF; in progress)
 
+### Added
+
+- **`gds write` and `cif write`.** `gds write` (and a bare `gds`) writes
+  the window's root cell as GDS II, byte for byte as Magic does: structure
+  order and names, SREF/AREF, merged polygons (`gds merge`), labels and
+  label layers, read-only vendor cells copied verbatim from their source
+  GDS, full library dumps, `addendum`, `abstract` and compressed output.
+  `cif write` and `cif flat` write CIF with Magic's header, symbol numbering
+  and call order. Neither writer changes the layout: with `magic-compat`
+  OFF the UNITS follow each write's style (Q-MASK-201), colliding structure
+  names are renamed with a warning (Q-MASK-209), no file is created without
+  an output style (Q-MASK-219), and coordinates or array counts that do not
+  fit 32 bits fail the write instead of wrapping (Q-MASK-222).
+- **`gds read` and the read options.** `gds read` finds `<name>.gds`,
+  `.gds.gz`, `.strm` or the name itself, and every `gds` read option
+  (`flatten`, `flatglob`, `readonly`, `magscale`, `maskhints`, `rescale`,
+  `warning`, `polygon subcells`, `path subcells`, `unique`, ...) works with
+  Magic's argument forms. `cif read`, `cif see`, `cif paint`, `cif
+  coverage`, `cif statistics` and the remaining `cif` options work too.
+- **`cif unfracture`.** With `magic-compat` OFF it merges split tiles of
+  each generated layer before output; with it ON it prints a warning and
+  keeps Magic's behaviour (Q-MASK-413).
+
 ### Changed
+
+- **Saving restamps read-only vendor cells.** `save` and `writeall`
+  recompute a read-only cell's content-hash timestamp from the GDS file its
+  `GDS_FILE` names, as Magic's DBUpdateStamps does.
+- **Generated mask layers keep their split tiles apart.** Mask planes are
+  painted without merging collinear triangles, as Magic's CIF planes are,
+  so GDS boundary counts and CIF polygons of non-Manhattan layouts match
+  Magic's.
 
 - **Use enumeration order follows Magic's bplane.** Searches over cells
   with ten or more uses now enumerate them in Magic's binned order after a
