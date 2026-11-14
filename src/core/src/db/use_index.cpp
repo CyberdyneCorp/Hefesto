@@ -36,6 +36,10 @@ struct UseIndex::State {
   // Bumped by every change of the structure; an early-stopped search
   // undoes its late sub-binnings only when nothing changed since.
   std::uint64_t generation = 0;
+  // The magic-compat ON order of `walk_generation` (enumerations repeat
+  // often between changes, e.g. on the DRC path).
+  std::vector<CellUse*> walk;
+  std::uint64_t walk_generation = ~std::uint64_t{0};
 };
 
 namespace {
@@ -63,12 +67,16 @@ std::size_t max_population(const detail::BinArray& ba) noexcept {
 // The sub-binnings Magic's lazy walk would not have reached when the
 // visitor stopped at the `stopped_at`-th match (1-based): those made after
 // that many matches had been handed out.
-void undo_late_subbins(const std::vector<detail::SubbinRecord>& subbins, std::size_t stopped_at) {
+// Returns whether it undid any.
+bool undo_late_subbins(const std::vector<detail::SubbinRecord>& subbins, std::size_t stopped_at) {
+  bool undone = false;
   for (auto it = subbins.rbegin(); it != subbins.rend(); ++it) {
     if (it->matches_before >= stopped_at) {
       detail::undo_subbin(*it);
+      undone = true;
     }
   }
+  return undone;
 }
 
 }  // namespace
@@ -193,7 +201,9 @@ bool UseIndex::search(const Rect& area, UseIndexVisitor visit) const {
     const std::lock_guard lock(mutex_);
     sync_locked();
     detail::WalkResult r = detail::walk_overlap(state_->plane, area);
-    state_->generation += 1;  // the walk may have rebuilt or sub-binned
+    if (r.rebuilt || !r.subbins.empty()) {
+      ++state_->generation;
+    }
     generation = state_->generation;
     found.reserve(r.matches.size());
     for (const detail::Element* e : r.matches) {
@@ -204,8 +214,8 @@ bool UseIndex::search(const Rect& area, UseIndexVisitor visit) const {
   for (std::size_t k = 0; k < found.size(); ++k) {
     if (!visit(*found[k])) {
       const std::lock_guard lock(mutex_);
-      if (state_->generation == generation) {
-        undo_late_subbins(subbins, k + 1);
+      if (state_->generation == generation && undo_late_subbins(subbins, k + 1)) {
+        ++state_->generation;
       }
       return false;
     }
@@ -236,10 +246,15 @@ std::vector<CellUse*> UseIndex::order(const compat::CompatSettings& compat) cons
   std::vector<CellUse*> out;
   out.reserve(state_->elements.size());
   if (compat.magic_compat) {
-    for (const detail::Element* e : detail::walk_all(state_->plane)) {
-      out.push_back(e->use);
+    State& s = *state_;
+    if (s.walk_generation != s.generation) {
+      s.walk.clear();
+      for (const detail::Element* e : detail::walk_all(s.plane)) {
+        s.walk.push_back(e->use);
+      }
+      s.walk_generation = s.generation;
     }
-    return out;
+    return s.walk;
   }
   // The reverse of insertion order: newest creation first (CellUse::serial,
   // the `.mag` or GDS read order), then the newest insertion.

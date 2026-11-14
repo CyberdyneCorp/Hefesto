@@ -128,6 +128,7 @@ struct SubbinRecord {
 struct WalkResult {
   std::vector<Element*> matches;
   std::vector<SubbinRecord> subbins;
+  bool rebuilt = false;  // bpBinsUpdate rebuilt the bins
 };
 
 /// BPE_OVERLAP enumeration (BPEnumInit with the area shrunk by one, then
@@ -135,8 +136,9 @@ struct WalkResult {
 [[nodiscard]] WalkResult walk_overlap(Plane& plane, const Rect& area);
 /// BPE_ALL enumeration: every element in bin-walk order, never rebuilds.
 [[nodiscard]] std::vector<Element*> walk_all(const Plane& plane);
-/// bpBinsUpdate: rebuilds the bins when the in-box list holds 10 or more.
-void bins_update(Plane& plane);
+/// bpBinsUpdate: rebuilds the bins when the in-box list holds 10 or more;
+/// returns whether it did.
+bool bins_update(Plane& plane);
 /// Puts a sub-binned bin back to its original list (undoes a SubbinRecord).
 void undo_subbin(const SubbinRecord& record);
 

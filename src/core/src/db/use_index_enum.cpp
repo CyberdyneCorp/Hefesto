@@ -59,7 +59,7 @@ class Walk {
       if (!inside) {
         sub_min_x_ = (area_.x1 - area_.x0) / 2;
         sub_min_y_ = (area_.y1 - area_.y0) / 2;
-        bins_update(plane_);
+        result_.rebuilt = bins_update(plane_);
       }
     }
     if (plane_.root != nullptr) {

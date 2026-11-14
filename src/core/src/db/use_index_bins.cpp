@@ -309,9 +309,9 @@ Rect list_bbox(const Element* e) noexcept {
 
 }  // namespace
 
-void bins_update(Plane& plane) {
+bool bins_update(Plane& plane) {
   if (!list_exceeds(plane.inbox, kMinBinArrayPopulation - 1)) {
-    return;
+    return false;
   }
   const bool old_bins = plane.root != nullptr;
   if (old_bins) {
@@ -338,6 +338,7 @@ void bins_update(Plane& plane) {
     relink(plane.inbox);  // Magic leaves the back pointers stale here
   }
   plane.bin_area = bbox;
+  return true;
 }
 
 void undo_subbin(const SubbinRecord& record) {
