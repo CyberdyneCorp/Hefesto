@@ -17,6 +17,7 @@
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/ops/evaluate.hpp"
 #include "hefesto/mask/plane/plane.hpp"
+#include "hefesto/platform/clock.hpp"
 
 namespace hefesto::mask {
 
@@ -30,6 +31,7 @@ class GenerationContext {
   const Progress* progress = nullptr;      // optional
   GenerationStatistics statistics;
   diag::DiagnosticSink* sink = nullptr;    // generation errors; optional
+  platform::Clock* clock = nullptr;        // times the progress reports; nullptr = the steady clock
 
   /// An OperatorContext over this context's pool, progress, statistics and
   /// sink, for generating `cell` under `compat`.
