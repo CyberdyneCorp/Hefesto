@@ -464,8 +464,11 @@ CommandResult scalegrid_command(cmd::CommandContext& ctx, const cmd::Invocation&
     ed.grid = reduce(GridScale{ed.grid.internal * b, ed.grid.lambda * a});
     // CmdScalegrid's DRCTechScale(a, b): rules, halo and step size (Q-DRC-1).
     drc::rescale_rules(ed, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b));
-    (void)mask::rescale_output_styles(ed.mask.output_styles, static_cast<std::int32_t>(a),
-                                      static_cast<std::int32_t>(b), ed.drc.compat_settings());
+    const mask::RescaleStep step = mask::rescale_output_styles(
+        ed.mask.output_styles, static_cast<std::int32_t>(a), static_cast<std::int32_t>(b), ed.drc.compat_settings());
+    for (const diag::Diagnostic& d : step.messages) {
+      ctx.emit(d);
+    }
     if (ctx.project().compat.magic_compat && ed.box) {
       // CmdScalegrid then rescales the box once more ("Rescale cursor box"),
       // so Magic scales the box by (b/a)^2 (magic-compat; see step 8 of
@@ -555,8 +558,12 @@ void install_technology(editor::EditorState& editor, platform::FileSystem& files
   // TechLoad's post-load CIFTechOutputScale(DBLambda[0], DBLambda[1]).
   editor.mask.output_styles = std::move(output_styles);
   if (editor.grid.lambda != editor.grid.internal) {
-    (void)mask::rescale_output_styles(editor.mask.output_styles, static_cast<std::int32_t>(editor.grid.lambda),
-                                      static_cast<std::int32_t>(editor.grid.internal), editor.drc.compat_settings());
+    const mask::RescaleStep step = mask::rescale_output_styles(
+        editor.mask.output_styles, static_cast<std::int32_t>(editor.grid.lambda),
+        static_cast<std::int32_t>(editor.grid.internal), editor.drc.compat_settings());
+    for (const diag::Diagnostic& d : step.messages) {
+      sink.emit(d);
+    }
   }
   // The `wiring` section is kept raw and read by the wiring area; reading it
   // here reports its line errors (WIRE-TECH-001) at load, as Magic does.
@@ -619,7 +626,7 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   // first, and a failed section (a statement before the first cifoutput
   // `style`, Q-MASK-17, or a rejected rule line) fails the load with the
   // previous technology kept (TECH-LOAD-001).
-  mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink);
+  mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink, editor.drc.compat_settings());
   drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
   if (output_styles.section_failed || !rules.ok()) {
     return section_failure(path.value().string(), output_styles.section_failed, !rules.ok(), sink);

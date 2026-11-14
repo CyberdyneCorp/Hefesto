@@ -25,7 +25,14 @@ release notices.
   reducer, as in Magic. `cif ostyle <name>` reloads a DRC style whose
   `cifstyle` names the selected style, as Magic's DRCReloadCurStyle does.
   Grow, shrink, bridge and bloat distances past the usable plane
-  (1073741818) are rejected with a message instead of overflowing.
+  (1073741818) are rejected with a message instead of overflowing, in both
+  `magic-compat` settings (Q-MASK-30, a fixed deviation from Magic).
+  The native gridlimit warning (MASK-STYLE-004) now applies only to
+  styles that use `bloat-all`, so `cif ostyle density` and
+  `cif ostyle metfill` on the PDKs are quiet (Q-MASK-8). A unit
+  normalisation that truncates a style's scale factor, as Magic's does
+  (a 10/10 `bloat-all` style under `scalegrid 1 3` becomes 3/10), is
+  reported with `magic-compat` OFF (MASK-STYLE-007, Q-MASK-29).
 - **GDS stream layer and vendor content stamps.** The GDS record layer
   (gzip input, `real8` and date encoding) and the content stamps of vendor
   GDS cells are in place for the coming `gds read`.

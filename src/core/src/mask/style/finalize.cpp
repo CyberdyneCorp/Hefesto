@@ -19,6 +19,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <optional>
+#include <string>
 
 #include "hefesto/db/geometry.hpp"
 #include "mask/style/reader.hpp"
@@ -271,13 +273,18 @@ ScaleApplied output_scale(OutputStyle& style, std::int64_t n, std::int64_t d, bo
       scale_op(op, d, odd_space, expander, lexpand);
     }
   }
+  // Magic takes the smaller of the operand GCD and gcd(scale, expander),
+  // not their GCD, so the scale can be truncated (Q-MASK-29).
   lexpand = std::min(lexpand, gcf(style.scale.scale_factor, expander));
-  const ScaleApplied applied{clamp_int(d), lexpand > 1 ? clamp_int(lexpand) : 1};
+  ScaleApplied applied{clamp_int(d), lexpand > 1 ? clamp_int(lexpand) : 1};
   if (lexpand <= 1) {
     if (recompute_halo_always) {
       style.radius = style.compute_halo();  // Q-MASK-18, magic-compat OFF
     }
     return applied;
+  }
+  if (style.scale.scale_factor % lexpand != 0) {
+    applied.rounded_from = style.scale.scale_factor;
   }
   style.scale.scale_factor = static_cast<std::int32_t>(style.scale.scale_factor / lexpand);
   style.scale.expander = static_cast<std::int32_t>(style.scale.expander / lexpand);
@@ -290,16 +297,49 @@ ScaleApplied output_scale(OutputStyle& style, std::int64_t n, std::int64_t d, bo
   return applied;
 }
 
+namespace {
+
+bool uses_bloat_all(const OutputStyle& style) {
+  return std::ranges::any_of(style.layers, [](const OutputLayer& layer) {
+    return std::ranges::any_of(layer.ops, [](const LayerOp& op) { return op.kind == OpKind::bloat_all; });
+  });
+}
+
+}  // namespace
+
+std::optional<std::string> grid_expander_warning(const OutputStyle& style) {
+  // Only bloat-all keeps a style from reducing, so only such a style can
+  // pair a PDK gridlimit with an expander that is not 10 on purpose; the
+  // reducing styles (sky130 and IHP density, gf180 metfill) stay quiet
+  // (Q-MASK-8, amended 2026-11-14).
+  if (style.grid_limit == 0 || style.scale.expander == 10 || !uses_bloat_all(style)) {
+    return std::nullopt;
+  }
+  return "gridlimit " + std::to_string(style.grid_limit) + " of output style \"" + style.name +
+         "\" is applied in mask units of expander " + std::to_string(style.scale.expander) + ", not 10 (Q-MASK-8).";
+}
+
+std::optional<std::string> scale_rounding_warning(const OutputStyle& style, const ScaleApplied& applied) {
+  if (applied.rounded_from == 0) {
+    return std::nullopt;
+  }
+  return "the scale factor of output style \"" + style.name + "\" was rounded: " +
+         std::to_string(applied.rounded_from) + " is not a multiple of the common factor " +
+         std::to_string(applied.reduced) + ", so it became " + std::to_string(style.scale.scale_factor) +
+         " (Q-MASK-29).";
+}
+
 void check_grid_expander(const OutputStyle& style, Messages& messages) {
-  if (style.grid_limit != 0 && style.scale.expander != 10) {
-    messages.native(kGridExpander, "gridlimit " + std::to_string(style.grid_limit) + " of output style \"" +
-                                       style.name + "\" is applied in mask units of expander " +
-                                       std::to_string(style.scale.expander) + ", not 10 (Q-MASK-8).");
+  if (auto text = grid_expander_warning(style)) {
+    messages.native(kGridExpander, std::move(*text));
   }
 }
 
 void finalize(const tech::Technology* technology, OutputStyle& style, Messages& messages) {
-  (void)output_scale(style, 1, 1, false);
+  const ScaleApplied applied = output_scale(style, 1, 1, false);
+  if (auto text = scale_rounding_warning(style, applied)) {
+    messages.native(kScaleRounded, std::move(*text));
+  }
   if (style.scale.scale_factor <= 0) {
     messages.error("No valid scale factor was given for " + style.name + " CIF.");
     style.scale.scale_factor = 1;

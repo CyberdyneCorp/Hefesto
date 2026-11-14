@@ -92,8 +92,11 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
     // dbReadOpen's finer-grid read: DRCTechScale(1, d) before DBScaleEverything(d, 1).
     drc::rescale_rules(ed, static_cast<std::int32_t>(d), static_cast<std::int32_t>(n));
     // and CIFTechOutputScale(1, d) next to it.
-    (void)mask::rescale_output_styles(ed.mask.output_styles, static_cast<std::int32_t>(d),
-                                      static_cast<std::int32_t>(n), ed.drc.compat_settings());
+    const mask::RescaleStep step = mask::rescale_output_styles(
+        ed.mask.output_styles, static_cast<std::int32_t>(d), static_cast<std::int32_t>(n), ed.drc.compat_settings());
+    for (const diag::Diagnostic& message : step.messages) {
+      io.sink.emit(message);
+    }
     (void)tech::scale_layout(ed, n, d);
     return true;
   };

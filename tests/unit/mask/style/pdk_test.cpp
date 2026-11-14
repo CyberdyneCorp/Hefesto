@@ -79,7 +79,7 @@ void check_scale(const mask::OutputStyle& style, const MagicScale& magic) {
   CHECK(style.scale == mask::StyleScale{magic.scale, magic.expander, magic.reducer});
 }
 
-void compare_pdk(const fs::path& file, const std::string& reference, const std::vector<std::string>& expected_warned) {
+void compare_pdk(const fs::path& file, const std::string& reference) {
   hefesto::platform::LocalFileSystem files;
   hefesto::diag::CollectingSink load_sink;
   auto loaded = tech::load_technology(files, file.string(), tech::LoadOptions{}, load_sink);
@@ -95,23 +95,22 @@ void compare_pdk(const fs::path& file, const std::string& reference, const std::
   CHECK(set.names() == magic.names);
   REQUIRE(set.current_style() != nullptr);
   check_scale(*set.current_style(), magic.loaded);
-  std::vector<std::string> warned;
-  for (const MagicScale& m : magic.styles) {
-    REQUIRE(mask::select_output_style(set, m.name, 1, 1, mask::test::compat_mode(true), sink).ok());
-    for (const auto& d : sink.take()) {
-      // The only message is Hefesto's native Q-MASK-8 warning for a style
-      // that reduces below expander 10 (the magic rendering drops it).
-      if (d.code == "MASK-STYLE-004" && d.native_only) {
-        warned.push_back(m.name);
-        continue;
+  // Every style selects without a message in both modes: the styles that
+  // reduce below expander 10 (sky130A and IHP density, gf180mcuD metfill)
+  // have no bloat-all, so the Q-MASK-8 warning stays quiet (amended
+  // 2026-11-14), and no PDK style truncates its scale (Q-MASK-29).
+  for (const bool compat : {true, false}) {
+    for (const MagicScale& m : magic.styles) {
+      REQUIRE(mask::select_output_style(set, m.name, 1, 1, mask::test::compat_mode(compat), sink).ok());
+      for (const auto& d : sink.take()) {
+        FAIL_CHECK("cif ostyle " << m.name << " (magic-compat " << (compat ? "ON" : "OFF") << "): " << d.code
+                                 << ": " << d.text);
       }
-      FAIL_CHECK("cif ostyle " << m.name << ": " << d.code << ": " << d.text);
+      check_scale(*set.current_style(), m);
+      CHECK_FALSE(set.current_style()->layers.empty());
+      CHECK(set.current_style()->halo() > 0);
     }
-    check_scale(*set.current_style(), m);
-    CHECK_FALSE(set.current_style()->layers.empty());
-    CHECK(set.current_style()->halo() > 0);
   }
-  CHECK(warned == expected_warned);
   // The technology's grid values are the first style's (tech/loader.cpp).
   REQUIRE(technology.cif_output_grid().has_value());
   CHECK(technology.cif_output_grid()->scale_factor == magic.loaded.scale);
@@ -126,7 +125,7 @@ TEST_CASE("the sky130A cifoutput section loads as in Magic",
   if (!file) {
     SKIP("sky130A.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "sky130A-plain", {"density"});
+  compare_pdk(*file, "sky130A-plain");
 }
 
 TEST_CASE("the gf180mcuD cifoutput section loads as in Magic",
@@ -135,7 +134,7 @@ TEST_CASE("the gf180mcuD cifoutput section loads as in Magic",
   if (!file) {
     SKIP("gf180mcuD.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "gf180mcuD-plain", {"metfill"});
+  compare_pdk(*file, "gf180mcuD-plain");
 }
 
 TEST_CASE("the ihp-sg13g2 cifoutput section loads as in Magic",
@@ -144,5 +143,5 @@ TEST_CASE("the ihp-sg13g2 cifoutput section loads as in Magic",
   if (!file) {
     SKIP("ihp-sg13g2.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "ihp-sg13g2-plain", {"density"});
+  compare_pdk(*file, "ihp-sg13g2-plain");
 }

@@ -61,6 +61,7 @@ struct Session {
   void load_tiny() {
     file("/t/tiny.tech", tiny());
     const auto r = run("tech", {"load", "/t/tiny", "-noprompt"});
+    for (const auto& d : r.diagnostics) { UNSCOPED_INFO(d.code << " " << d.text); }
     REQUIRE(r.ok());
   }
 
@@ -352,6 +353,28 @@ TEST_CASE("tech load installs the cifoutput styles and scalegrid rescales them",
   CHECK(set.current_style()->scale.scale_factor == 10);
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
   CHECK(s.editor.mask.output_styles.current_style()->scale.scale_factor == 5);
+}
+
+// Q-MASK-29: with the internal grid 3 times finer than lambda (scalegrid
+// 1 3), loading a bloat-all 10/10 style rescales it by (1, 3): 10/30, the
+// operands share 3, and the scale is truncated to 10 / 3 = 3 in both modes;
+// magic-compat OFF reports it. (scalegrid 1 3 over the loaded style itself
+// is refused by the process grid limit, CIFTechLimitScale.)
+TEST_CASE("a tech load that truncates the output style's scale warns only with magic-compat OFF",
+          "[cap:mask-output-styles][req:Unit normalisation]") {
+  for (const bool compat : {true, false}) {
+    Session s;
+    s.project.compat.magic_compat = compat;
+    REQUIRE(s.run("scalegrid", {"1", "3"}).ok());
+    s.file("/t/c.tech", with(tiny(), "cifoutput\nend",
+                             "cifoutput\nstyle a\nscalefactor 10 nanometers\nlayer A m1\nbloat-all m1 m2\nend"));
+    const auto r = s.run("tech", {"load", "/t/c", "-noprompt"});
+    REQUIRE(r.ok());
+    REQUIRE(s.editor.mask.output_styles.current_style() != nullptr);
+    CHECK(s.editor.mask.output_styles.current_style()->scale.scale_factor == 3);
+    CHECK(s.editor.mask.output_styles.current_style()->scale.expander == 10);
+    CHECK(says(r, "(Q-MASK-29)") == !compat);
+  }
 }
 
 // Q-MASK-17: a cifoutput statement before the first `style` line makes the

@@ -155,6 +155,65 @@ TEST_CASE("a reducing rescale recomputes the radius in both modes",
   }
 }
 
+// Q-MASK-29: Magic reduces by min(operand GCD, gcd(scale, expander)), not
+// by their GCD, so the scale factor can be truncated. Both modes copy the
+// arithmetic; only magic-compat OFF warns.
+TEST_CASE("a rescale that truncates the scale factor warns only with magic-compat OFF",
+          "[cap:mask-output-styles][req:Unit normalisation]") {
+  // Scenario "Scale factor truncated by the reduction": a 10/10 style with
+  // bloat-all under scalegrid 1 3 becomes 10/30, the operands share 3, and
+  // 10 / 3 is truncated to 3.
+  const auto r = read("style s\nscalefactor 10 nanometers\nlayer A metal1\nbloat-all metal1 metal2");
+  REQUIRE(r.style().scale.scale_factor == 10);
+  REQUIRE(r.style().scale.expander == 10);
+  for (const bool compat : {true, false}) {
+    const mask::RescaleStep step = mask::rescale_step(r.style(), 1, 3, compat_mode(compat));
+    CHECK(step.multiplier == 3);
+    CHECK(step.reduced == 3);
+    CHECK(step.style->scale.scale_factor == 3);
+    CHECK(step.style->scale.expander == 10);
+    if (compat) {
+      CHECK(step.messages.empty());
+    } else {
+      REQUIRE(step.messages.size() == 1);
+      CHECK(step.messages[0].code == "MASK-STYLE-007");
+      CHECK(step.messages[0].native_only);
+      CHECK(step.messages[0].text ==
+            "the scale factor of output style \"s\" was rounded: 10 is not a multiple of the common factor 3, "
+            "so it became 3 (Q-MASK-29).");
+    }
+  }
+  // An exact reduction says nothing in either mode.
+  for (const bool compat : {true, false}) {
+    CHECK(mask::rescale_step(r.style(), 1, 2, compat_mode(compat)).messages.empty());
+  }
+}
+
+TEST_CASE("a load that truncates the scale factor warns only with magic-compat OFF",
+          "[cap:mask-output-styles][req:Unit normalisation]") {
+  // scalefactor 10 angstroms: expander 100, grow 4 shares 4 with it, and
+  // gcd(10, 100) = 10 > 4, so Magic divides by 4: 10 / 4 = 2, 100 / 4 = 25.
+  const std::string body = "style s\nscalefactor 10 angstroms\nlayer A metal1\ngrow 4";
+  for (const bool compat : {true, false}) {
+    const auto technology = mask::test::tech_with(body);
+    hefesto::diag::CollectingSink sink;
+    const mask::OutputStyleSet set = mask::read_output_styles(*technology, sink, compat_mode(compat));
+    REQUIRE(set.current_style() != nullptr);
+    CHECK(set.current_style()->scale.scale_factor == 2);
+    CHECK(set.current_style()->scale.expander == 25);
+    CHECK(set.current_style()->layers[0].ops[1].distance == 1);
+    const auto messages = sink.take();
+    if (compat) {
+      CHECK(messages.empty());
+    } else {
+      REQUIRE(messages.size() == 1);
+      CHECK(messages[0].code == "MASK-STYLE-007");
+      CHECK(messages[0].text.find("10 is not a multiple of the common factor 4, so it became 2") !=
+            std::string::npos);
+    }
+  }
+}
+
 TEST_CASE("the contact cut size query", "[cap:mask-output-styles][req:Contact cut size query]") {
   // Scenario "Contact size", on a style built in mask units.
   mask::OutputStyle style;

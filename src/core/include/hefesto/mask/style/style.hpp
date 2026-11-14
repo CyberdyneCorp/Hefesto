@@ -243,10 +243,14 @@ class OutputStyle {
 /// operand (d, doubled for half-grid contacts) and the common factor then
 /// divided out (1 when nothing reduced). drc::CifCatalog passes them to the
 /// DRC rule rescale (drcCifScale(d', 1), drcCifScale(1, reduced)).
+/// `messages`: the native warnings of the step, for the caller to emit: the
+/// Q-MASK-8 gridlimit warning, and with magic-compat OFF the Q-MASK-29
+/// warning when the scale factor was truncated.
 struct RescaleStep {
   std::shared_ptr<const OutputStyle> style;
   std::int32_t multiplier = 1;
   std::int32_t reduced = 1;
+  std::vector<diag::Diagnostic> messages;
 };
 [[nodiscard]] RescaleStep rescale_step(const OutputStyle& style, std::int32_t n, std::int32_t d,
                                        const compat::CompatSettings& compat);
@@ -277,12 +281,14 @@ struct OutputStyleSet {
 /// the list for a repeated section): every style, each loaded as Magic
 /// loads it (CIFTechLine, CIFTechFinal with CIFTechOutputScale(1, 1)); the
 /// first style is current. Emits the first style's tech-load messages to
-/// `sink` (the others are kept in OutputStyle::load_messages for selection).
+/// `sink` (the others are kept in OutputStyle::load_messages for selection);
+/// the Q-MASK-29 rounding warning only with magic-compat OFF in `compat`.
 /// Empty when the technology has no cifoutput section or no style.
-[[nodiscard]] OutputStyleSet read_output_styles(const tech::Technology& technology, diag::DiagnosticSink& sink);
+[[nodiscard]] OutputStyleSet read_output_styles(const tech::Technology& technology, diag::DiagnosticSink& sink,
+                                                const compat::CompatSettings& compat = {});
 /// The same for one given section.
 [[nodiscard]] OutputStyleSet read_output_styles(const tech::Technology& technology, const tech::RawSection& section,
-                                                diag::DiagnosticSink& sink);
+                                                diag::DiagnosticSink& sink, const compat::CompatSettings& compat = {});
 
 /// Only the style a tech load makes current (the first one), read quietly
 /// from the last `cifoutput` section; nullopt when there is none. The
@@ -291,7 +297,8 @@ struct OutputStyleSet {
 
 /// CIFTechOutputScale(n, d) on the current style: the internal grid became
 /// n/d times finer (the post-load lambda scaling of tech load, `scalegrid`,
-/// a finer-grid read). Returns what the step did ({1, 1} without a style).
+/// a finer-grid read). Returns what the step did ({1, 1} without a style);
+/// the caller emits its `messages`.
 RescaleStep rescale_output_styles(OutputStyleSet& set, std::int32_t n, std::int32_t d,
                                   const compat::CompatSettings& compat);
 
@@ -299,7 +306,7 @@ RescaleStep rescale_output_styles(OutputStyleSet& set, std::int32_t n, std::int3
 /// name first, otherwise the unique name that starts with `name`. On success
 /// the style becomes current, rescaled by the lambda ratio (lambda_n /
 /// lambda_d, DBLambda) unless it was already current, and its load messages
-/// are emitted to `sink`. Fails (MASK-STYLE-005 ambiguous, MASK-STYLE-006
+/// and the rescale's messages are emitted to `sink`. Fails (MASK-STYLE-005 ambiguous, MASK-STYLE-006
 /// unknown) leaving the current style unchanged.
 [[nodiscard]] diag::Status select_output_style(OutputStyleSet& set, std::string_view name,
                                                const compat::CompatSettings& compat);

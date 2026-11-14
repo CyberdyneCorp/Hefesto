@@ -73,7 +73,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Verified 2026-11-13: Confirmed at CIFtech.c:775-790 (parse), CIFtech.c:466-490 (CIFTechLimitScale: gridup = limit*expander*ds vs scale*ns*10) and CIFgen.c:163-237 (SetBoxGrid applies it to mask coordinates). The two interpretations agree only when the expander is 10, i.e. 1 nm mask units. All three PDKs declare `gridlimit 5` with `scalefactor 10 nanometers`, and bloat-all stops any reduction (Q-MASK-13), so their expander stays 10 and the two readings agree.
 - Options: replicate | fix (store in nm and convert)
 - Recommendation: replicate. Hefesto replicates Magic in both modes: gridLimit is stored as written, applied to final mask-unit coordinates, and never rescaled, and the scale guard is Magic's formula. Rescaling would need a non-integer limit whenever the expander is reduced, and would change which `scalegrid` values are refused, with no PDK benefit. Instead, the style loader warns, after each unit normalisation, when the current expander differs from 10, the case where the operator and guard interpretations disagree.
-- Resolution: replicate — in both modes gridlimit is stored as written, applied to final mask-unit coordinates and never rescaled, and the scale guard uses Magic's formula; the style loader warns after each unit normalisation when the expander differs from 10, the case where the two interpretations disagree. Approved 2026-11-13.
+- Resolution: replicate — in both modes gridlimit is stored as written, applied to final mask-unit coordinates and never rescaled, and the scale guard uses Magic's formula; the style loader warns after each unit normalisation when the expander differs from 10, the case where the two interpretations disagree. Approved 2026-11-13. Amended 2026-11-14: the warning (native only, MASK-STYLE-004) fires only for a style that uses `bloat-all`. A style without `bloat-all` reduces its units by design, so a gridlimit read in its reduced mask units is expected, and the warning was noise for every PDK `cif ostyle density` (sky130A, ihp-sg13g2) and `cif ostyle metfill` (gf180mcuD). It is checked after the load and after every later rescale. Behaviour is unchanged.
 
 ### Q-MASK-9: slots with exactly 6 tokens reads past the argument list
 - Kind: bug
@@ -251,6 +251,24 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: follow code
 - Recommendation: follow code.
 - Resolution: n/a — spec follows Magic's code; documentation is wrong; cuts are placed per region bounding box (spec conventions §2.7, 2026-11-07).
+
+### Q-MASK-29: unit normalisation can truncate the scale factor
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: CIFTechOutputScale reduces by `lexpand = min(lexpand, gcd(scaleFactor, expander))`, where `lexpand` is the common factor of the expander and every operand. The minimum of two divisors of the expander need not divide the scale factor, so `cs_scaleFactor /= lexpand` truncates. A style with `scalefactor 10 nanometers` and `bloat-all` (10/10) rescaled by (1, 3), as at a tech load or a `cif ostyle` under `scalegrid 1 3`, becomes 10/30, the bloat-all value 3 gives lexpand = 3, min(3, gcd(10, 30) = 10) = 3, and the scale becomes 10/3 = 3 with expander 10. At load (CIFTechOutputScale(1, 1)) it needs an expander with two incomparable divisors, e.g. `scalefactor 10 angstroms` (expander 100) with every distance a multiple of 4: 10/4 = 2, expander 25.
+- Evidence: cif/CIFtech.c:2601-2612 (lexpand folded with every operand), cif/CIFtech.c:2631-2633 (`if (lgcf < lexpand) lexpand = lgcf`), cif/CIFtech.c:2640-2641 (the divisions), cif/CIFtech.c:1873 (CIFTechFinal's CIFTechOutputScale(1, 1)), utils/tech.c:814-826 (TechLoad's rescale by DBLambda)
+- Options: replicate | fix (divide by gcd(lexpand, gcd(scale, expander))) | replicate with a warning when magic-compat is OFF
+- Recommendation: replicate in both modes, and with magic-compat OFF warn that the style's scale was rounded. A fix would change the scale factor, expander, GDS UNITS and every operand of any style that reaches the case, so it cannot be byte-identical with Magic. None of the reference PDK styles truncates.
+- Resolution: replicate — in both modes the unit normalisation reduces by min(lexpand, gcd(scale, expander)) as Magic does, so a 10/10 style with bloat-all under `scalegrid 1 3` becomes 10/3 and then 3; with `magic-compat` OFF Hefesto also issues a native warning (MASK-STYLE-007) that the style's scale was rounded, at load and after every rescale. Approved 2026-11-14.
+
+### Q-MASK-30: operator distances past the usable plane
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: `grow`, `shrink`, `bridge` (distance and width), `bloat-all` clip and `bloat-*` pair distances are read with atoi and used in int arithmetic on plane coordinates. A value near INT_MAX overflows (signed overflow, undefined behaviour), and rescaling can push a value past it.
+- Evidence: cif/CIFtech.c:1064-1622 (operator parsing), cif/CIFgen.c (grow, shrink, bridge and bloat coordinate arithmetic), cif/CIFtech.c:2500-2612 (rescaling multiplies by d)
+- Options: replicate (undefined behaviour) | fix (refuse distances above db::kPlaneMax = 1073741818, clamp bloat pair distances and rescaled values)
+- Recommendation: fix in both modes (X-2 tier 1: undefined behaviour with no Magic output to match). Landed in the round 2 review ("Reject mask-operator distances past the usable plane").
+- Resolution: fix — in both modes a `grow`/`shrink` distance, a `bridge` distance or width, or a `bloat-all` clip distance above 1073741818 (db::kPlaneMax) rejects the statement, a `bloat-*` pair distance beyond ±1073741818 is clamped with a message, and rescaling clamps to the same bound; a fixed deviation from Magic. No golden case uses such a distance, so `tests/golden/deviations.toml` has no entry. Approved 2026-11-14.
 
 ### Q-MASK-400: Phantom interaction area around the origin
 - Kind: bug

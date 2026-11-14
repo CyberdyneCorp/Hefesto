@@ -28,7 +28,8 @@ Codes of the cifoutput reader, output style selection and rescale (`src/core/src
 - `MASK-STYLE-001` is Magic's `TechError` for a `cifoutput` line, with Magic's text (for example `Unknown statement "foo".`, `Grow/shrink distance must be greater than zero.`, `Calma layer and type numbers must be 0 to 255.`); the magic rendering prints the line context (`<file>: line <n>: section cifoutput:`). A rejected operator is not appended; a bad value is reset as Magic resets it.
 - `MASK-STYLE-002` is the same for the messages the capability calls warnings, after which the statement still applies: `Layer "<name>" contains no material.`, `Why are you attaching labels to a temporary layer?`, `Why assign a Calma number to a temporary layer?`.
 - `MASK-STYLE-003` (native only) names a `style` line that Magic's prefix test would drop (`style gds` after `style gdsfoo`). Hefesto registers it at the end of the style list in both `magic-compat` settings (Q-MASK-10, fix).
-- `MASK-STYLE-004` (native only) warns after the unit normalisation of a style with a non-zero `gridlimit` and an expander other than 10, where the operators' and the grid guard's readings of the value disagree (Q-MASK-8).
+- `MASK-STYLE-004` (native only) warns after a unit normalisation (the load, and every later rescale) of a style that uses `bloat-all`, has a non-zero `gridlimit` and has an expander other than 10, where the operators' and the grid guard's readings of the value disagree (Q-MASK-8, amended 2026-11-14). A style without `bloat-all` reduces its units on purpose, as the PDK `density` and `metfill` styles do, and is not warned about.
+- `MASK-STYLE-007` (native only, magic-compat OFF only) warns that a unit normalisation truncated the style's scale factor: Magic divides by the smaller of the operands' common factor and gcd(scale factor, expander), which need not divide the scale factor (a 10/10 `bloat-all` style rescaled by 1/3 becomes 3/10). Hefesto copies the arithmetic in both modes (Q-MASK-29).
 - `MASK-STYLE-005` and `MASK-STYLE-006` are `cif ostyle` failures with Magic's texts: `CIF output style "<name>" is ambiguous.` and `"<name>" is not one of the CIF output styles Magic knows.` The current style is unchanged.
 
 The tech-load messages of a style are those of its load pass: the first style's at `tech load`, another style's each time `cif ostyle` loads it, as Magic re-reads the section.
@@ -87,7 +88,8 @@ fails when the two disagree.
 | `MASK-STYLE-001` | error | Error in a `cifoutput` section line (Magic's message); the statement is skipped or its value reset. |
 | `MASK-STYLE-002` | warning | Warning for a `cifoutput` section line (Magic's message); the statement still applies. |
 | `MASK-STYLE-003` | warning | Output style name that Magic's prefix test would drop; registered at the end of the list (Q-MASK-10); native only. |
-| `MASK-STYLE-004` | warning | Non-zero `gridlimit` in a style whose expander is not 10: applied in mask units (Q-MASK-8); native only. |
+| `MASK-STYLE-004` | warning | Non-zero `gridlimit` in a style with `bloat-all` whose expander is not 10: applied in mask units (Q-MASK-8); native only. |
 | `MASK-STYLE-005` | error | `cif ostyle`: the name is a prefix of more than one output style. |
 | `MASK-STYLE-006` | error | `cif ostyle`: no output style has the name or starts with it. |
+| `MASK-STYLE-007` | warning | Unit normalisation truncated the output style's scale factor, as Magic does (Q-MASK-29); magic-compat OFF only. |
 <!-- END DIAGNOSTIC CODES -->

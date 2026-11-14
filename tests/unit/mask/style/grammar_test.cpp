@@ -193,19 +193,36 @@ TEST_CASE("units, stepsize and gridlimit", "[cap:mask-output-styles][req:units, 
   CHECK(bad.style().grid_limit == 0);
 }
 
-TEST_CASE("gridlimit is stored as written and warned about with expander other than 10",
+TEST_CASE("gridlimit is stored as written and warned about only in a bloat-all style with expander other than 10",
           "[cap:mask-output-styles][req:units, stepsize and gridlimit statements]") {
-  // Scenario "gridlimit stored verbatim" (Q-MASK-8).
+  // Scenario "gridlimit stored verbatim" (Q-MASK-8, amended 2026-11-14): a
+  // style without bloat-all reduces, like the PDK density and metfill
+  // styles, and stays quiet.
   const auto r = read("style s\nscalefactor 10 nanometers\ngridlimit 5\nlayer A metal1");
   CHECK(r.style().scale == mask::StyleScale{1, 1, 1});
   CHECK(r.style().grid_limit == 5);
-  REQUIRE(r.messages.size() == 1);
-  CHECK(r.messages[0].code == "MASK-STYLE-004");
-  CHECK(r.messages[0].native_only);
-  CHECK(r.messages[0].text.find("expander 1, not 10") != std::string::npos);
+  CHECK(r.messages.empty());
   // The PDK case: bloat-all keeps the expander at 10, no warning.
   const auto pdk = read("style s\nscalefactor 10 nanometers\ngridlimit 5\nlayer A metal1\nbloat-all metal1 metal2");
   CHECK(pdk.messages.empty());
+  // Scenario "gridlimit in a bloat-all style with expander 1": warned.
+  const auto warned = read("style s\nscalefactor 10\ngridlimit 5\nlayer A metal1\nbloat-all metal1 metal2");
+  CHECK(warned.style().scale.expander == 1);
+  REQUIRE(warned.messages.size() == 1);
+  CHECK(warned.messages[0].code == "MASK-STYLE-004");
+  CHECK(warned.messages[0].native_only);
+  CHECK(warned.messages[0].text.find("expander 1, not 10") != std::string::npos);
+  // The warning follows a later normalisation too (both modes).
+  for (const bool compat : {true, false}) {
+    const mask::RescaleStep step = mask::rescale_step(pdk.style(), 1, 3, mask::test::compat_mode(compat));
+    CHECK(step.style->scale.expander == 10);
+    for (const auto& d : step.messages) {
+      CHECK(d.code != "MASK-STYLE-004");
+    }
+    const mask::RescaleStep finer = mask::rescale_step(warned.style(), 2, 1, mask::test::compat_mode(compat));
+    REQUIRE_FALSE(finer.messages.empty());
+    CHECK(finer.messages.back().code == "MASK-STYLE-004");
+  }
 }
 
 TEST_CASE("mask layer declarations", "[cap:mask-output-styles][req:Mask layer declarations]") {

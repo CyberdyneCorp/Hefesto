@@ -35,7 +35,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-5 | bridge-lim searches database planes with mask-unit coordinates | **compat** | ON: mask-unit search and unscaled erase on database planes; OFF: convert units; warn when scaleFactor ≠ 1 |
 | Q-MASK-6 | tagged uses internal-unit label coordinates against mask planes | **compat** | ON: Magic's unit mix on output and input (IHP reads depend on it); OFF: convert the label rect to the plane's units |
 | Q-MASK-7 | not-square drops all non-Manhattan geometry | **compat** | ON: drop split tiles, bottom type for all neighbours; OFF: copy triangles, side-correct neighbour types |
-| Q-MASK-8 | gridlimit is never rescaled and has two interpretations | **replicate** | store and apply gridlimit as written; warn when the expander ≠ 10 |
+| Q-MASK-8 | gridlimit is never rescaled and has two interpretations | **replicate** | store and apply gridlimit as written; warn when the expander ≠ 10 in a style with bloat-all (amended 2026-11-14) |
 | Q-MASK-10 | style name prefix shadowing | **fix** | exact-name (and base+variant) style matching, with a warning; only styles Magic drops change |
 | Q-MASK-11 | `labels ... text` has no effect | **replicate** | `labels ... text` in cifoutput is the same as `labels ...` |
 | Q-MASK-13 | bloat-all prevents unit reduction | **replicate** | bloat-all counts as 1 in both GCDs (keeps expander 10 and GDS UNITS for every PDK) |
@@ -47,6 +47,8 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-23 | bbox operator uses the database cell bounding box | **replicate** | bbox of the cell being generated (paint, subcells, label anchors; no text extents) |
 | Q-MASK-26 | hierarchical truncation returns partial layer geometry | **replicate** | replicate the hierarchical truncation; the residual question is Q-MASK-402 |
 | Q-MASK-27 | squares grid-limit fix diverges for negative coordinates | **compat** | ON: sign-blind grid-limit shrink; OFF: sign-aware correction, as slots |
+| Q-MASK-29 | unit normalisation can truncate the scale factor (2026-11-14) | **replicate** | reduce by min(lexpand, gcd(scale, expander)) in both modes; OFF also warns that the scale was rounded |
+| Q-MASK-30 | operator distances past the usable plane (2026-11-14) | **fix** | refuse grow/shrink/bridge/bloat distances above db::kPlaneMax, clamp bloat pairs and rescaled values, in both modes (fixed deviation) |
 
 ### DRC mask-layer rules
 
@@ -165,11 +167,19 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Kind | Count | IDs |
 |---|---|---|
 | compat | 74 | Q-DRC-13, 1, 2, 3, 5, 6, 7, 18, 21, 27, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
-| replicate | 16 | 8, 11, 13, 15, 20, 22, 23, 26, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 11 | 10, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318 |
+| replicate | 17 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 122, 203, 205, 217, 301, 316, 333, 401 |
+| fix | 12 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 105.
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 107: the 105 of 2026-11-13 and Q-MASK-29 and Q-MASK-30 of 2026-11-14.
+
+## User decisions of 2026-11-14 (round 2 review)
+
+Taken on the round 2 review of PR #53; each entry's `Resolution:` line is in `open-questions/MASK.md`.
+
+1. **Q-MASK-30** (new, **fix**): grow, shrink, bridge and bloat distances above `db::kPlaneMax` (1073741818) stay rejected in both `magic-compat` settings, bloat pair distances and rescaled values are clamped to it. Magic overflows (undefined behaviour), so this is a fixed deviation with no Magic output to match; no golden case uses such a distance, so `tests/golden/deviations.toml` has no entry. `mask-output-styles` "Operator statement arguments" states it.
+2. **Q-MASK-29** (new, **replicate**, with a magic-compat OFF warning): the unit normalisation reduces by min(lexpand, gcd(scale, expander)), as CIFTechOutputScale does, so a 10/10 style with bloat-all under `scalegrid 1 3` becomes 10/3 and then 3. Both modes copy the arithmetic; with `magic-compat` OFF Hefesto warns that the style's scale was rounded (MASK-STYLE-007), at load and after every rescale. `mask-output-styles` "Unit normalisation" has the scenario "Scale factor truncated by the reduction".
+3. **Q-MASK-8** (amended): the expander ≠ 10 warning (MASK-STYLE-004, native only) fires only for styles that use bloat-all, after the load and after every rescale. `cif ostyle density` (sky130A, ihp-sg13g2) and `cif ostyle metfill` (gf180mcuD) no longer warn (`tests/unit/mask/style/pdk_test.cpp`, both modes).
 
 ## Audit decision D-20
 
@@ -261,6 +271,9 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-10**: mask-output-styles (spec.md:72): replace the prefix rule with exact-name and base+variant matching, plus the warning.
 - **Q-MASK-13**: mask-output-styles (spec.md:454): state that this is replicated in both modes, and cite the corrected lines.
 - **Q-MASK-18**: mask-output-styles normalisation pseudocode (spec.md:447): add that OFF recomputes the radius on the g<=1 path.
+- **Q-MASK-8 (amended 2026-11-14)**: mask-output-styles gridlimit: the warning is limited to styles with bloat-all and checked after every rescale; scenarios "gridlimit stored verbatim" (now quiet), "gridlimit in a bloat-all style with expander 1" and "PDK density and metfill styles stay quiet".
+- **Q-MASK-29 (2026-11-14)**: mask-output-styles "Unit normalisation": the truncating division, the OFF warning, and the scenario "Scale factor truncated by the reduction".
+- **Q-MASK-30 (2026-11-14)**: mask-output-styles "Operator statement arguments": the kPlaneMax rejection is marked as a fixed deviation (resolution: fix).
 - **Q-MASK-401**: mask-output-styles:341 says `see-no-vendor` 'affects vendor (read-only) cell handling in hierarchical generation'. Change it to: accepted and stored, with no effect on generation (Q-MASK-401). mask-hierarchical-generation:312/671 already describe the copy correctly.
 
 ### gds-read

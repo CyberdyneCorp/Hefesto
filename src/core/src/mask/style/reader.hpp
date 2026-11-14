@@ -32,6 +32,7 @@ inline constexpr std::string_view kPrefixShadow = "MASK-STYLE-003";
 inline constexpr std::string_view kGridExpander = "MASK-STYLE-004";
 inline constexpr std::string_view kAmbiguousStyle = "MASK-STYLE-005";
 inline constexpr std::string_view kUnknownStyle = "MASK-STYLE-006";
+inline constexpr std::string_view kScaleRounded = "MASK-STYLE-007";
 
 /// The tech-load messages of one pass over the section, located on the
 /// current line with the `cifoutput` section (the magic rendering prints
@@ -101,15 +102,24 @@ struct LoadResult {
 void finalize(const tech::Technology* technology, OutputStyle& style, Messages& messages);
 
 /// CIFTechOutputScale(n, d) in place. `recompute_halo_always`: magic-compat
-/// OFF (Q-MASK-18). Returns {multiplier, reduced}.
+/// OFF (Q-MASK-18). Returns {multiplier, reduced, rounded_from}:
+/// `rounded_from` is the scale factor before the division when `reduced`
+/// did not divide it (Magic truncates it, Q-MASK-29), else 0.
 struct ScaleApplied {
   std::int32_t multiplier = 1;
   std::int32_t reduced = 1;
+  std::int32_t rounded_from = 0;
 };
 ScaleApplied output_scale(OutputStyle& style, std::int64_t n, std::int64_t d, bool recompute_halo_always);
 
-/// The Q-MASK-8 warning after a normalisation: a non-zero gridlimit with an
-/// expander other than 10.
+/// The Q-MASK-8 warning text after a normalisation: a style with bloat-all
+/// and a non-zero gridlimit whose expander is not 10; nullopt otherwise.
+[[nodiscard]] std::optional<std::string> grid_expander_warning(const OutputStyle& style);
+/// The Q-MASK-29 warning text when `applied` truncated the scale factor of
+/// `style` (after the normalisation); nullopt otherwise.
+[[nodiscard]] std::optional<std::string> scale_rounding_warning(const OutputStyle& style,
+                                                                const ScaleApplied& applied);
+/// check_grid_expander: grid_expander_warning as a load message.
 void check_grid_expander(const OutputStyle& style, Messages& messages);
 
 }  // namespace hefesto::mask::style_detail

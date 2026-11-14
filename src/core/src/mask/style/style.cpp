@@ -32,8 +32,14 @@ void shadow_warnings(const std::vector<StyleStateMachine::Shadowed>& shadowed, s
   }
 }
 
-void emit(const std::vector<diag::Diagnostic>& messages, diag::DiagnosticSink& sink) {
+/// Emits `messages`; the Q-MASK-29 rounding warning of a style load only
+/// with magic-compat OFF (the load itself does not know the mode).
+void emit(const std::vector<diag::Diagnostic>& messages, diag::DiagnosticSink& sink,
+          const compat::CompatSettings& compat) {
   for (const diag::Diagnostic& d : messages) {
+    if (compat.magic_compat && d.code == style_detail::kScaleRounded) {
+      continue;
+    }
     sink.emit(d);
   }
 }
@@ -64,7 +70,14 @@ RescaleStep rescale_step(const OutputStyle& style, std::int32_t n, std::int32_t 
   auto copy = std::make_shared<OutputStyle>(style);
   copy->load_messages.clear();
   const style_detail::ScaleApplied applied = style_detail::output_scale(*copy, n, d, !compat.magic_compat);
-  return RescaleStep{std::move(copy), applied.multiplier, applied.reduced};
+  std::vector<diag::Diagnostic> messages;
+  if (auto text = style_detail::scale_rounding_warning(*copy, applied); text && !compat.magic_compat) {
+    messages.push_back(diag::make_native(style_detail::kScaleRounded, std::move(*text)));
+  }
+  if (auto text = style_detail::grid_expander_warning(*copy)) {
+    messages.push_back(diag::make_native(style_detail::kGridExpander, std::move(*text)));
+  }
+  return RescaleStep{std::move(copy), applied.multiplier, applied.reduced, std::move(messages)};
 }
 
 std::optional<std::size_t> OutputStyle::find_layer(std::string_view layer) const noexcept {
@@ -94,18 +107,18 @@ std::vector<std::string> OutputStyleSet::names() const {
 }
 
 OutputStyleSet read_output_styles(const tech::Technology& technology, const tech::RawSection& section,
-                                  diag::DiagnosticSink& sink) {
+                                  diag::DiagnosticSink& sink, const compat::CompatSettings& compat) {
   OutputStyleSet set;
   // The first pass is the tech load: it declares every style and loads the
   // first one; each other style is one more pass (CIFLoadStyle).
   style_detail::LoadResult first = style_detail::load_style(&technology, section, {});
   set.section_failed = first.section_failed;
   if (first.names.empty()) {
-    emit(first.style.load_messages, sink);
+    emit(first.style.load_messages, sink, compat);
     return set;
   }
   shadow_warnings(first.shadowed, first.style.load_messages);
-  emit(first.style.load_messages, sink);
+  emit(first.style.load_messages, sink, compat);
   set.styles.push_back(std::make_shared<const OutputStyle>(std::move(first.style)));
   for (std::size_t i = 1; i < first.names.size(); ++i) {
     style_detail::LoadResult other = style_detail::load_style(&technology, section, first.names[i]);
@@ -131,9 +144,10 @@ const tech::RawSection* last_cifoutput(const tech::Technology& technology) {
 
 }  // namespace
 
-OutputStyleSet read_output_styles(const tech::Technology& technology, diag::DiagnosticSink& sink) {
+OutputStyleSet read_output_styles(const tech::Technology& technology, diag::DiagnosticSink& sink,
+                                  const compat::CompatSettings& compat) {
   const tech::RawSection* section = last_cifoutput(technology);
-  return section != nullptr ? read_output_styles(technology, *section, sink) : OutputStyleSet{};
+  return section != nullptr ? read_output_styles(technology, *section, sink, compat) : OutputStyleSet{};
 }
 
 std::optional<OutputStyle> read_first_output_style(const tech::Technology& technology) {
@@ -191,8 +205,14 @@ diag::Status select_output_style(OutputStyleSet& set, std::string_view name, std
     set.styles[*set.current] = set.base[*set.current];  // the old style is freed
   }
   const std::shared_ptr<const OutputStyle>& base = set.base[*m.index];
-  emit(base->load_messages, sink);
-  set.styles[*m.index] = lambda_n != 1 || lambda_d != 1 ? base->rescale(lambda_n, lambda_d, compat) : base;
+  emit(base->load_messages, sink, compat);
+  if (lambda_n != 1 || lambda_d != 1) {
+    RescaleStep step = rescale_step(*base, lambda_n, lambda_d, compat);
+    emit(step.messages, sink, compat);
+    set.styles[*m.index] = std::move(step.style);
+  } else {
+    set.styles[*m.index] = base;
+  }
   set.current = m.index;
   return diag::Done{};
 }
