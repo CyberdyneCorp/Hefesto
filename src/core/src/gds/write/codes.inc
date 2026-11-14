@@ -9,3 +9,6 @@
 // and describe the codes in its GDSW section.
 //
 // Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+
+HEFESTO_GDS_CODE("GDS-WRITE-004", error, "A GDS output value does not fit its integer record field (Q-MASK-222); the write fails.")
+HEFESTO_GDS_CODE("GDS-WRITE-006", warning, "A name or string was changed for GDS output (character table, unprintable character, string-limit truncation).")

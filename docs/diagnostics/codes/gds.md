@@ -51,9 +51,10 @@ The read engine's grid and unit messages (`MASK-INPUT-010`..`012`) are printed a
 
 ## WRITE
 
-Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`; capability gds-write; design D12). Owner: GDSW.
+Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`; capability gds-write; design D12). Owner: GDSW. GDS-WRITE-001 to 019 belong to the writer core, 020 to 039 to the merged-polygon and label emitters, 040 on to verbatim copy, full dump, addendum and abstract views (`src/core/src/gds/write/codes.hpp`).
 
-No codes yet.
+- `GDS-WRITE-004`: a value written to an integer record field does not fit it: an XY coordinate outside the signed 32-bit range after scaling (Q-MASK-222, a fix in both modes; Magic overflows in 32 bits). The message names the cell and the value, and the write fails.
+- `GDS-WRITE-006`: Magic's warnings for a changed name or string: "Warning: character 'c' changed to 'd' in name <name>", "Warning: string in output unprintable; changed to 'XXXXX<n>'", "Warning: characters changed in string '<text>'; modified string is '<mapped>'", "Warning: Unprintable character changed to 'X' in label." and the `string-limit` truncation warning. The layout keeps the original text (Q-MASK-208).
 
 ## CMD
 
@@ -92,4 +93,6 @@ fails when the two disagree.
 | `GDS-STREAM-003` | error | A seek moved past the end of the (decompressed) GDS stream. |
 | `GDS-STREAM-004` | error | A GDS record payload exceeds 65531 bytes and cannot be written. |
 | `GDS-STREAM-005` | error | Gzip compression of the GDS output failed or the level is not 1 to 9. |
+| `GDS-WRITE-004` | error | A GDS output value does not fit its integer record field (Q-MASK-222); the write fails. |
+| `GDS-WRITE-006` | warning | A name or string was changed for GDS output (character table, unprintable character, string-limit truncation). |
 <!-- END DIAGNOSTIC CODES -->
