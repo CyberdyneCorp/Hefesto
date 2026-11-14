@@ -38,6 +38,7 @@ inline constexpr std::string_view kUnitsRescaled = "MASK-INPUT-012";
 inline constexpr std::string_view kBoundaryRedefined = "MASK-INPUT-013";
 inline constexpr std::string_view kEuclideanNote = "MASK-INPUT-014";
 inline constexpr std::string_view kTaggedScaleNote = "MASK-INPUT-015";
+inline constexpr std::string_view kEarlyStatement = "MASK-INPUT-018";
 
 /// The tech-load messages of one pass, located on the current line with the
 /// `cifinput` section (the magic rendering prints TechPrintLine's context).
@@ -65,7 +66,7 @@ class Messages {
 struct LoadResult {
   InputStyle style;
   std::vector<std::string> names;  // the style list seen by the pass
-  bool section_failed = false;     // a statement before the first style line
+  bool section_failed = false;     // a statement before the first style line (magic-compat ON)
   bool loaded = false;             // a style was started (cifCurReadStyle != NULL)
 };
 

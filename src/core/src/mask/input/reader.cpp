@@ -118,6 +118,7 @@ class Reader {
   void apply_labels(const std::vector<std::size_t>& layers, std::optional<LabelKind> kind);
   [[nodiscard]] std::optional<tech::TileType> label_type_of_rule();
   void warn_superseded(std::size_t layer, tech::TileType type);
+  void early_statement(const Tokens& t);
   void ignore_line(const Tokens& t);
   void options_line(const Tokens& t);
   void op_line(const Tokens& t);
@@ -187,7 +188,7 @@ void Reader::line(const tech::RawLine& raw) {
     return;
   }
   if (machine_.no_style()) {
-    section_failed_ = true;  // cifCurReadStyle == NULL: CIFReadTechLine returns FALSE
+    early_statement(t);
     return;
   }
   if (!machine_.active() || settings_line(t)) {
@@ -201,6 +202,22 @@ void Reader::line(const tech::RawLine& raw) {
   }
   if (machine_.applies()) {
     statement(t);
+  }
+}
+
+/// A statement before the first `style` line (cifCurReadStyle == NULL):
+/// CIFReadTechLine returns FALSE, so with magic-compat ON the section fails
+/// and with it the tech load; OFF ignores the statement with a warning,
+/// reported once by the first pass (Q-MASK-32).
+void Reader::early_statement(const Tokens& t) {
+  if (compat_.magic_compat) {
+    section_failed_ = true;
+    return;
+  }
+  if (list_messages_) {
+    messages_.native(kEarlyStatement, "Statement \"" + t[0] +
+                                          "\" before the first input style ignored; Magic fails the tech load here "
+                                          "(Q-MASK-32).");
   }
 }
 

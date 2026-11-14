@@ -593,11 +593,23 @@ std::string layer_names_text(const Technology& tech) {
 
 namespace {
 
+/// Which sections' line handlers failed, in Magic's section order.
+struct FailedSections {
+  bool cifoutput = false;
+  bool cifinput = false;
+  bool drc = false;
+
+  [[nodiscard]] bool any() const noexcept { return cifoutput || cifinput || drc; }
+};
+
 /// TechLoad's report of the sections whose line handler failed, and the
 /// failed load.
-diag::Status section_failure(const std::string& file, bool cifoutput, bool drc, diag::DiagnosticSink& sink) {
+diag::Status section_failure(const std::string& file, const FailedSections& failed_sections,
+                             diag::DiagnosticSink& sink) {
   std::string sections;
-  for (const auto& [failed, name] : {std::pair{cifoutput, "cifoutput"}, std::pair{drc, "drc"}}) {
+  for (const auto& [failed, name] :
+       {std::pair{failed_sections.cifoutput, "cifoutput"}, std::pair{failed_sections.cifinput, "cifinput"},
+        std::pair{failed_sections.drc, "drc"}}) {
     if (failed) {
       sections += std::string{"\n    "} + name;
     }
@@ -635,13 +647,15 @@ diag::Status load_session_technology(editor::EditorState& editor, platform::Plat
   // (m3-drc design D4/D5): Magic reads them, in this order, before the
   // wiring section and before the post-load scaling, so their messages come
   // first, and a failed section (a statement before the first cifoutput
-  // `style`, Q-MASK-17, or a rejected rule line) fails the load with the
-  // previous technology kept (TECH-LOAD-001).
+  // `style`, Q-MASK-17, or before the first cifinput `style` with
+  // magic-compat ON, Q-MASK-32, or a rejected rule line) fails the load
+  // with the previous technology kept (TECH-LOAD-001).
   mask::OutputStyleSet output_styles = mask::read_output_styles(*tech.value(), sink, editor.drc.compat_settings());
   mask::InputStyleSet input_styles = mask::read_input_styles(*tech.value(), editor.drc.compat_settings(), sink);
   drc::LoadedRules rules = drc::read_rules(*tech.value(), editor.drc.compat_settings(), sink);
-  if (output_styles.section_failed || !rules.ok()) {
-    return section_failure(path.value().string(), output_styles.section_failed, !rules.ok(), sink);
+  const FailedSections failed{output_styles.section_failed, input_styles.section_failed, !rules.ok()};
+  if (failed.any()) {
+    return section_failure(path.value().string(), failed, sink);
   }
   install_technology(editor, services.files, std::move(tech.value()), std::move(rules), std::move(output_styles),
                      std::move(input_styles), options.magic_compat, sink);
