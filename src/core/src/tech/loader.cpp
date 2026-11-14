@@ -8,8 +8,8 @@
 // built-in `minimum` technology and the grid-limit check.
 //
 // Ported from Magic VLSI 8.3.694 utils/tech.c (TechLoad), cif/CIFtech.c
-// (CIFParseScale, CIFTechLimitScale and the scalefactor/gridlimit/options
-// lines of the first output style) and scmos/minimum.tech.in, Copyright
+// (CIFTechLimitScale; the first output style itself is read by
+// mask::read_first_output_style) and scmos/minimum.tech.in, Copyright
 // (C) 1985, 1990 Regents of the University of California (see
 // THIRD_PARTY_NOTICES.md).
 
@@ -19,6 +19,7 @@
 #include <numeric>
 #include <utility>
 
+#include "hefesto/mask/style/style.hpp"
 #include "tech/build_state.hpp"
 #include "tech/reader.hpp"
 
@@ -88,71 +89,6 @@ bool repeat_is_error(int section) noexcept {
          section == kSecConnect;
 }
 
-// --- the first cifoutput style's grid values ---------------------------
-
-// CIFParseScale: "12.5" gives 25 with expander 2.
-std::int64_t parse_cif_scale(std::string_view text, std::int64_t& expander) {
-  const auto dot = text.find('.');
-  if (dot == std::string_view::npos) {
-    expander = 1;
-    return str_to_int(text);
-  }
-  std::int64_t d = 1;
-  for (std::size_t i = dot + 1; i < text.size(); ++i) {
-    d *= 10;
-  }
-  const std::int64_t n = str_to_int(text.substr(0, dot)) * d + str_to_int(text.substr(dot + 1));
-  const GridScale reduced = reduce(GridScale{n, d});
-  expander = reduced.lambda;
-  return reduced.internal;
-}
-
-class CifGridReader {
- public:
-  void init() {
-    styles_ = 0;
-    grid_.reset();
-  }
-
-  void line(Tokens tokens) {
-    if (tokens[0] == "style") {
-      if (styles_++ == 0) {
-        grid_ = CifGridInfo{};
-      }
-      return;
-    }
-    if (styles_ != 1 || !grid_) {
-      return;  // only the first style is the current one after a load
-    }
-    if (tokens[0] == "scalefactor" && tokens.size() >= 2) {
-      scale_factor(tokens);
-    } else if (tokens[0] == "gridlimit" && tokens.size() == 2) {
-      grid_->grid_limit = std::max<std::int64_t>(str_to_int(tokens[1]), 0);
-    } else if (tokens[0] == "options") {
-      for (const auto& option : tokens.subspan(1)) {
-        grid_->minimum_grid = grid_->minimum_grid || option == "set-minimum-grid";
-      }
-    }
-  }
-
-  [[nodiscard]] const std::optional<CifGridInfo>& grid() const noexcept { return grid_; }
-
- private:
-  // `scalefactor <n> [nanometers|angstroms]` of the current style.
-  void scale_factor(Tokens tokens) {
-    grid_->scale_factor = parse_cif_scale(tokens[1], grid_->expander);
-    const std::string& last = tokens.back();
-    if (tokens.size() >= 3 && last.compare(0, 5, "nanom") == 0) {
-      grid_->expander *= 10;
-    } else if (tokens.size() >= 3 && last.compare(0, 6, "angstr") == 0) {
-      grid_->expander *= 100;
-    }
-  }
-
-  int styles_ = 0;
-  std::optional<CifGridInfo> grid_;
-};
-
 // --- the section client of TechLoad -----------------------------------
 
 class LoadClient final : public SectionClient {
@@ -189,9 +125,7 @@ class LoadClient final : public SectionClient {
     s_.r().set_location(end_line.where, section_name(section));
     read_ |= section_bit(section);
     section_final(s_, section);
-    if (section == kSecCifOutput) {
-      s_.d.cif_grid = cif_.grid();
-    } else if (section == kSecExtract && s_.magic_compat) {
+    if (section == kSecExtract && s_.magic_compat) {
       s_.d.fringe_halo = s_.d.format_version >= 34;  // Q-TECH-32
     }
     s_.r().set_location(end_line.where, "(none)");  // techCurrentSection = NULL after `end`
@@ -237,15 +171,9 @@ class LoadClient final : public SectionClient {
       return;
     }
     s_.d.raw_sections.push_back(RawSection{section_name(section), {}});
-    if (section == kSecCifOutput) {
-      cif_.init();
-    }
   }
 
-  bool raw_line(int section, const TechLine& line) {
-    if (section == kSecCifOutput) {
-      cif_.line(Tokens{line.tokens});
-    }
+  bool raw_line(int /*section*/, const TechLine& line) {
     s_.d.raw_sections.back().lines.push_back(RawLine{line.tokens, line.where.file, line.where.line});
     return true;
   }
@@ -256,7 +184,6 @@ class LoadClient final : public SectionClient {
   SectionMask read_ = 0;
   SectionMask bad_ = 0;
   bool repeat_failed_ = false;
-  CifGridReader cif_;
 };
 
 struct RunResult {
@@ -348,9 +275,25 @@ RunResult run_load(const RunInput& in, Data start) {
   return RunResult{ok, std::move(s.d)};
 }
 
+// The first cifoutput style's grid values, read through the
+// mask-output-styles reader after the types and contacts are final: the
+// scale factor and expander after CIFTechFinal's unit normalisation, the
+// gridlimit as written and the set-minimum-grid option of that style
+// (CIFCurStyle after TechLoad). std::nullopt without an output style.
+std::optional<CifGridInfo> first_style_grid(const Technology& tech) {
+  const std::optional<mask::OutputStyle> style = mask::read_first_output_style(tech);
+  if (!style) {
+    return std::nullopt;
+  }
+  return CifGridInfo{style->scale.scale_factor, style->scale.expander, style->grid_limit,
+                     style->has_option(mask::style_option::minimum_grid)};
+}
+
 std::shared_ptr<const Technology> publish(Data d) {
   publish_contacts(d);
-  return std::make_shared<const Technology>(std::make_shared<const Data>(std::move(d)));
+  auto data = std::make_shared<Data>(std::move(d));
+  data->cif_grid = first_style_grid(Technology{data});
+  return std::make_shared<const Technology>(std::move(data));
 }
 
 diag::Diagnostic load_failure(const platform::Path& file) {
