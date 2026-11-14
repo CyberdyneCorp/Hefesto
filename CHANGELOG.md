@@ -86,6 +86,25 @@ release notices.
 
 ### Fixed
 
+- **Writing a deep hierarchy is no longer exponential.** Loading the cells
+  under the written cell re-descended into every use, as Magic does, so a
+  cell placed twice at every level of a deep hierarchy took 2^depth steps;
+  `gds write` and `cif write` now skip visits that cannot change anything,
+  with the same cells read in the same order. Placing a cell in such a
+  hierarchy (the recursion check) was exponential too. A write can be
+  cancelled while it loads cells, and the hierarchy depth limit of the
+  writers is now 1024 levels, the mask generators' limit.
+- **GDS writes fail cleanly on values outside 32 bits.** A merged polygon
+  or label whose coordinates do not fit no longer leaves a partial element
+  in the file, and the error names the cell and the exact value.
+- **CIF label layers with a scale factor.** With `magic-compat` ON a
+  `labellayer` tile is written as Magic writes it, multiplied by the
+  style's scale factor (Q-MASK-338, proposed); with it OFF it is written in
+  the units of the geometry. `cif flat` with `magic-compat` ON processes
+  timestamp mismatches after the write, as Magic does.
+- **Large inputs.** `cif read` refuses a file larger than 2 GiB before
+  reading it (CIF-READ-010), and copying a read-only vendor cell streams its
+  records instead of holding the whole structure in memory.
 - **Painting a huge triangle no longer overflows the stack.** Painting a
   triangle over existing triangles on the opposite diagonal recursed once
   per piece left on the diagonal, as Magic does, and that depth grows with

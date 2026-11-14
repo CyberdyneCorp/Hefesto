@@ -48,7 +48,10 @@ the usable plane is ignored with the database code `DB-GEOM-001`, as the
 that's OK." printed when `cif read` starts, `CIF-READ-008` Magic's "Don't
 know how to read CIF:  nothing in tech file." when no cifinput style is set,
 and `CIF-READ-009` "Cannot open <name>.cif to read CIF." when the file is not
-found along the cell search path or cannot be read. The read engine's grid
+found along the cell search path or cannot be read. `CIF-READ-010` is
+Hefesto's own (`native_only`): the file is held in memory while it is
+parsed, so a file larger than the read's limit (2 GiB by default) is refused
+before it is read. The read engine's grid
 messages are printed as `CIF-READ-002` warnings and its boundary
 redefinition as a `CIF-READ-001` error, with the line prefix, as Magic's
 CIFReadWarning and CIFReadError print them.
@@ -107,6 +110,7 @@ fails when the two disagree.
 | `CIF-READ-007` | info | `Warning: CIF reading is not undoable!  I hope that's OK.` at the start of a CIF read. |
 | `CIF-READ-008` | error | No cifinput style is set: the CIF file is not read. |
 | `CIF-READ-009` | error | The CIF input file cannot be found or read. |
+| `CIF-READ-010` | error | The CIF input file is larger than a CIF read accepts (2 GiB by default); nothing is read. |
 | `CIF-WRITE-001` | error | No CIF output style is set: nothing is written. |
 | `CIF-WRITE-002` | error | Failure to read in entire subtree of the cell: a cell under the root cannot be read; the file is left empty. |
 | `CIF-WRITE-003` | error | The current CIF output style has a reducer of 0 and can only be used for writing Calma output. |
