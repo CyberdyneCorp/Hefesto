@@ -1,0 +1,56 @@
+file polygon_ring.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 1 1
+<< end >>
+file t0.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 61 10
+<< metal1 >>
+rect 40 0 50 10
+use polygon_ring  polygon00001_0
+timestamp 1794634429
+transform 1 0 0 0 1 0
+box 0 0 1 1
+use t2  polygon00002_0
+timestamp 1794634429
+transform 1 0 0 0 1 0
+box 0 0 61 10
+use Å˜-ä«U  polygon_ring_0
+timestamp 0
+transform 1 0 60 0 1 0
+box 5 1115787351 2137577352 1
+<< end >>
+file t1.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 50 10
+<< metal1 >>
+tri 0 0 10 10 sw
+tri 20 0 30 10 sw
+rect 40 0 50 10
+<< end >>
+file t2.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 61 10
+<< metal1 >>
+tri 0 0 10 10 sw
+tri 20 0 30 10 sw
+rect 40 0 50 10
+use polygon_ring  polygon_ring_0
+timestamp 1794634429
+transform 1 0 60 0 1 0
+box 0 0 1 1
+<< end >>

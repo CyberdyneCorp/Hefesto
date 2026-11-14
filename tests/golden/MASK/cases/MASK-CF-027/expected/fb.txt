@@ -1,0 +1,4 @@
+box 0 0 10 10
+feedback add "CIF layer \"CMF\"" pale
+box 20 0 30 4
+feedback add "CIF layer \"CMF\"" pale

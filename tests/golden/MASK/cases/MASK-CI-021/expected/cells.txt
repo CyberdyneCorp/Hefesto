@@ -1,0 +1,15 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634422
+<< checkpaint >>
+rect 10 0 55 5
+<< metal1 >>
+rect 50 0 55 5
+<< metal2 >>
+rect 10 0 15 5
+rect 20 0 25 5
+rect 40 0 45 5
+<< metal3 >>
+rect 30 0 35 5
+<< end >>

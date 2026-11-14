@@ -1,0 +1,26 @@
+file r1.mag
+magic
+tech masktest
+timestamp 1564682681
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 164
+string GDS_FILE input/r1.gds
+string GDS_START 96
+<< end >>
+file r2.mag
+magic
+tech masktest
+timestamp 1700000000
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 164
+string GDS_FILE input/r2.gds
+string GDS_START 96
+<< end >>

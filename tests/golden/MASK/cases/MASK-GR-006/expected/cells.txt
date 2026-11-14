@@ -1,0 +1,72 @@
+file s0.mag
+magic
+tech masktest
+timestamp 1700000000
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file s1.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file s2.mag
+magic
+tech masktest
+timestamp 1700000000
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file s3.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file short0.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file short1.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file short2.mag
+magic
+tech masktest
+timestamp 1700000000
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file short3.mag
+magic
+tech masktest
+timestamp 1794634423
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>

@@ -1,0 +1,44 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 0.400   ( 0.000,  0.000), ( 4.000,  0.400)  1.600     
+lambda:       40 x 4       (     0,  0    ), (    40,  4    )  160       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.400 x 4.000   ( 0.000,  1.000), ( 0.400,  5.000)  1.600     
+lambda:        4 x 40      (     0,  10   ), (     4,  50   )  160       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   4.000 x 4.000   ( 1.000,  1.000), ( 5.000,  5.000)  16.000    
+lambda:       40 x 40      (    10,  10   ), (    50,  50   )  1600      
+0 {}
+0 {}
+   Generating output for cell top
+0 {}

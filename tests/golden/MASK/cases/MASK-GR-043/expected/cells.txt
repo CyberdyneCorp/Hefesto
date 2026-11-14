@@ -1,0 +1,50 @@
+file path00001.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634429
+<< checkpaint >>
+rect 0 -1 20 1
+<< metal1 >>
+rect 0 -1 20 1
+<< end >>
+file path00002.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634429
+<< checkpaint >>
+rect 0 9 20 11
+<< metal1 >>
+rect 0 9 20 11
+<< end >>
+file path00003.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634429
+<< checkpaint >>
+rect 0 19 20 21
+<< metal1 >>
+rect 0 19 20 21
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634429
+<< checkpaint >>
+rect 0 -1 20 21
+use path00001  path00001_0
+timestamp 1794634429
+transform 1 0 0 0 1 0
+box 0 -1 20 1
+use path00002  path00002_0
+timestamp 1794634429
+transform 1 0 0 0 1 0
+box 0 9 20 11
+use path00003  path00003_0
+timestamp 1794634429
+transform 1 0 0 0 1 0
+box 0 19 20 21
+<< end >>

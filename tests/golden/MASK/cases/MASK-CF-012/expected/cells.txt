@@ -1,0 +1,33 @@
+file 7.mag
+magic
+tech masktest
+timestamp 1794634416
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file eof.mag
+magic
+tech masktest
+timestamp 1794634416
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634416
+<< checkpaint >>
+rect 0 0 4 2
+<< metal2 >>
+rect 0 0 4 2
+use 7  7_0
+timestamp 0
+transform 1 0 0 0 1 0
+box 0 0 1 1
+use eof  eof_0
+timestamp 1794634416
+transform 1 0 0 0 1 0
+box 0 0 4 2
+<< end >>

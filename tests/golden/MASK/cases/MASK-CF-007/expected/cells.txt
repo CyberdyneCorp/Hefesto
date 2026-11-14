@@ -1,0 +1,25 @@
+file boxes.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634416
+<< checkpaint >>
+rect -23 -2 220 240
+<< metal1 >>
+rect 180 160 220 240
+rect -23 -2 -17 2
+rect 0 0 80 40
+rect 17 -2 23 0
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 2
+timestamp 1794634416
+<< checkpaint >>
+rect -23 -2 220 240
+use boxes  boxes_0
+timestamp 1794634416
+transform 1 0 0 0 1 0
+box -23 -2 220 240
+<< end >>

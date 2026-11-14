@@ -1,0 +1,11 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634431
+<< checkpaint >>
+rect 0 0 10 10
+use inv  inv_0 input
+timestamp 1794634431
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

@@ -1,0 +1,19 @@
+file a.mag
+magic
+tech masktest
+timestamp 1794634421
+<< checkpaint >>
+rect 0 0 10 10
+<< metal1 >>
+rect 0 0 10 10
+<< end >>
+file b.mag
+magic
+tech masktest
+timestamp 1794634421
+<< checkpaint >>
+rect 0 0 30 10
+<< metal1 >>
+rect 0 0 10 10
+rect 20 0 30 10
+<< end >>

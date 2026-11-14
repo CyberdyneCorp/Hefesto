@@ -1,0 +1,11 @@
+file top.mag
+magic
+tech masktest
+timestamp 1794634421
+<< checkpaint >>
+rect 0 0 2 2
+<< polysilicon >>
+rect 0 0 2 2
+<< properties >>
+string MASKHINTS_poly 0 0 10 5
+<< end >>

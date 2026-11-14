@@ -1,0 +1,26 @@
+file t2.mag
+magic
+tech masktest
+timestamp 1794634421
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< metal2 >>
+rect 0 0 1 1
+<< labels >>
+rlabel metal2 0 0 0 0 4 VDD
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634421
+<< checkpaint >>
+rect 0 0 100 100
+<< metal1 >>
+rect 0 0 100 100
+<< metal2 >>
+rect 0 0 100 100
+<< labels >>
+rlabel metal2 50 50 50 50 4 VDD
+<< end >>

@@ -1,0 +1,19 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Warning: string in output unprintable; changed to 'XXXXX2'
+Warning: character '-' changed to '_' in name a-b
+Warning: characters changed in string 'a-b'; modified string is 'a_b'
+Warning: character '-' changed to '_' in name nand-2
+Warning: characters changed in string 'nand-2'; modified string is 'nand_2'
+Warning: string in output unprintable; changed to 'XXXXX2'
+Warning: character '-' changed to '_' in name a-b
+Warning: characters changed in string 'a-b'; modified string is 'a_b'
+Warning: character '-' changed to '_' in name nand-2
+Warning: characters changed in string 'nand-2'; modified string is 'nand_2'

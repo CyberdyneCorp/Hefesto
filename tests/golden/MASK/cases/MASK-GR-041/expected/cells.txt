@@ -1,0 +1,16 @@
+file cut.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634429
+<< checkpaint >>
+rect 0 0 4 4
+<< pdcontact >>
+rect 0 0 4 4
+<< end >>

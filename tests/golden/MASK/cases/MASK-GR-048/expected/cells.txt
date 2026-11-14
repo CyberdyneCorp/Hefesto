@@ -1,0 +1,13 @@
+file v.mag
+magic
+tech masktest
+timestamp 1564682681
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< properties >>
+string GDS_END 164
+string GDS_FILE /work/input/pdk/lib/v.gds
+string GDS_START 96
+<< end >>

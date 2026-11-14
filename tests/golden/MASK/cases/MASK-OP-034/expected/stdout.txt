@@ -1,0 +1,53 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 05:27:00 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.200 x 2.000   ( 0.000,  0.000), ( 0.200,  2.000)  0.400     
+lambda:        2 x 20      (     0,  0    ), (     2,  20   )  40        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 0.200   ( 1.000,  0.000), ( 3.000,  0.200)  0.400     
+lambda:       20 x 2       (    10,  0    ), (    30,  2    )  40        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 0.600   ( 1.000,  0.400), ( 3.000,  1.000)  1.200     
+lambda:       20 x 6       (    10,  4    ), (    30,  10   )  120       
+0 {}
+0 {}
+   Generating output for cell top
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.200 x 2.000   ( 0.300,  0.000), ( 0.500,  2.000)  0.400     
+lambda:        2 x 20      (     3,  0    ), (     5,  20   )  40        
+0 {}
+0 {}
+   Generating output for cell top
+0 {}

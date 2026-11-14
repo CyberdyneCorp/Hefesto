@@ -1,0 +1,20 @@
+file t2.mag
+magic
+tech masktest
+magscale 1 100
+timestamp 1794634423
+<< checkpaint >>
+rect 1 0 1000 1000
+<< metal1 >>
+rect 1 0 1000 1000
+<< end >>
+file top.mag
+magic
+tech masktest
+magscale 1 20
+timestamp 1794634423
+<< checkpaint >>
+rect 3 0 200 200
+<< metal1 >>
+rect 3 0 200 200
+<< end >>

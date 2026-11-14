@@ -1,0 +1,23 @@
+( @@user : ? );
+( @@machine : ecb56bb0dfcc );
+( @@source : top.mag );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 05:27:00 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : gds );
+( @@date : Sat Nov 14 05:33:37 2026 );
+DS 1 25 2;
+9 top;
+L CMF;
+    P 48 8 48 16 40 16;
+    B 8 8 52 12;
+    B 20 8 10 4;
+    P 56 0 56 8 48 8;
+    P 76 16 60 16 60 0;
+    P 80 0 96 0 96 16;
+    P 100 16 100 0 116 0;
+DF;
+C 1;
+End

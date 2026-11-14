@@ -1,0 +1,113 @@
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell top couldn't be read
+No such file or directory
+Error at line 3 of CIF file: unknown command `Q'; ignored.
+Error at line 4 of CIF file: unknown command `Q'; ignored.
+Error at line 5 of CIF file: unknown command `Q'; ignored.
+Error at line 6 of CIF file: unknown command `Q'; ignored.
+Error at line 7 of CIF file: unknown command `Q'; ignored.
+Error at line 8 of CIF file: unknown command `Q'; ignored.
+Error at line 9 of CIF file: unknown command `Q'; ignored.
+Error at line 10 of CIF file: unknown command `Q'; ignored.
+Error at line 11 of CIF file: unknown command `Q'; ignored.
+Error at line 12 of CIF file: unknown command `Q'; ignored.
+Error at line 13 of CIF file: unknown command `Q'; ignored.
+Error at line 14 of CIF file: unknown command `Q'; ignored.
+Error at line 15 of CIF file: unknown command `Q'; ignored.
+Error at line 16 of CIF file: unknown command `Q'; ignored.
+Error at line 17 of CIF file: unknown command `Q'; ignored.
+Error at line 18 of CIF file: unknown command `Q'; ignored.
+Error at line 19 of CIF file: unknown command `Q'; ignored.
+Error at line 20 of CIF file: unknown command `Q'; ignored.
+Error at line 21 of CIF file: unknown command `Q'; ignored.
+Error at line 22 of CIF file: unknown command `Q'; ignored.
+Error at line 23 of CIF file: unknown command `Q'; ignored.
+Error at line 24 of CIF file: unknown command `Q'; ignored.
+Error at line 25 of CIF file: unknown command `Q'; ignored.
+Error at line 26 of CIF file: unknown command `Q'; ignored.
+Error at line 27 of CIF file: unknown command `Q'; ignored.
+Error at line 28 of CIF file: unknown command `Q'; ignored.
+Error at line 29 of CIF file: unknown command `Q'; ignored.
+Error at line 30 of CIF file: unknown command `Q'; ignored.
+Error at line 31 of CIF file: unknown command `Q'; ignored.
+Error at line 32 of CIF file: unknown command `Q'; ignored.
+Error at line 33 of CIF file: unknown command `Q'; ignored.
+Error at line 34 of CIF file: unknown command `Q'; ignored.
+Error at line 35 of CIF file: unknown command `Q'; ignored.
+Error at line 36 of CIF file: unknown command `Q'; ignored.
+Error at line 37 of CIF file: unknown command `Q'; ignored.
+Error at line 38 of CIF file: unknown command `Q'; ignored.
+Error at line 39 of CIF file: unknown command `Q'; ignored.
+Error at line 40 of CIF file: unknown command `Q'; ignored.
+Error at line 41 of CIF file: unknown command `Q'; ignored.
+Error at line 42 of CIF file: unknown command `Q'; ignored.
+Error at line 43 of CIF file: unknown command `Q'; ignored.
+Error at line 44 of CIF file: unknown command `Q'; ignored.
+Error at line 45 of CIF file: unknown command `Q'; ignored.
+Error at line 46 of CIF file: unknown command `Q'; ignored.
+Error at line 47 of CIF file: unknown command `Q'; ignored.
+Error at line 48 of CIF file: unknown command `Q'; ignored.
+Error at line 49 of CIF file: unknown command `Q'; ignored.
+Error at line 50 of CIF file: unknown command `Q'; ignored.
+Error at line 51 of CIF file: unknown command `Q'; ignored.
+Error at line 52 of CIF file: unknown command `Q'; ignored.
+Error at line 53 of CIF file: unknown command `Q'; ignored.
+Error at line 54 of CIF file: unknown command `Q'; ignored.
+Error at line 55 of CIF file: unknown command `Q'; ignored.
+Error at line 56 of CIF file: unknown command `Q'; ignored.
+Error at line 57 of CIF file: unknown command `Q'; ignored.
+Error at line 58 of CIF file: unknown command `Q'; ignored.
+Error at line 59 of CIF file: unknown command `Q'; ignored.
+Error at line 60 of CIF file: unknown command `Q'; ignored.
+Error at line 61 of CIF file: unknown command `Q'; ignored.
+Error at line 62 of CIF file: unknown command `Q'; ignored.
+Error at line 63 of CIF file: unknown command `Q'; ignored.
+Error at line 64 of CIF file: unknown command `Q'; ignored.
+Error at line 65 of CIF file: unknown command `Q'; ignored.
+Error at line 66 of CIF file: unknown command `Q'; ignored.
+Error at line 67 of CIF file: unknown command `Q'; ignored.
+Error at line 68 of CIF file: unknown command `Q'; ignored.
+Error at line 69 of CIF file: unknown command `Q'; ignored.
+Error at line 70 of CIF file: unknown command `Q'; ignored.
+Error at line 71 of CIF file: unknown command `Q'; ignored.
+Error at line 72 of CIF file: unknown command `Q'; ignored.
+Error at line 73 of CIF file: unknown command `Q'; ignored.
+Error at line 74 of CIF file: unknown command `Q'; ignored.
+Error at line 75 of CIF file: unknown command `Q'; ignored.
+Error at line 76 of CIF file: unknown command `Q'; ignored.
+Error at line 77 of CIF file: unknown command `Q'; ignored.
+Error at line 78 of CIF file: unknown command `Q'; ignored.
+Error at line 79 of CIF file: unknown command `Q'; ignored.
+Error at line 80 of CIF file: unknown command `Q'; ignored.
+Error at line 81 of CIF file: unknown command `Q'; ignored.
+Error at line 82 of CIF file: unknown command `Q'; ignored.
+Error at line 83 of CIF file: unknown command `Q'; ignored.
+Error at line 84 of CIF file: unknown command `Q'; ignored.
+Error at line 85 of CIF file: unknown command `Q'; ignored.
+Error at line 86 of CIF file: unknown command `Q'; ignored.
+Error at line 87 of CIF file: unknown command `Q'; ignored.
+Error at line 88 of CIF file: unknown command `Q'; ignored.
+Error at line 89 of CIF file: unknown command `Q'; ignored.
+Error at line 90 of CIF file: unknown command `Q'; ignored.
+Error at line 91 of CIF file: unknown command `Q'; ignored.
+Error at line 92 of CIF file: unknown command `Q'; ignored.
+Error at line 93 of CIF file: unknown command `Q'; ignored.
+Error at line 94 of CIF file: unknown command `Q'; ignored.
+Error at line 95 of CIF file: unknown command `Q'; ignored.
+Error at line 96 of CIF file: unknown command `Q'; ignored.
+Error at line 97 of CIF file: unknown command `Q'; ignored.
+Error at line 98 of CIF file: unknown command `Q'; ignored.
+Error at line 99 of CIF file: unknown command `Q'; ignored.
+Error at line 100 of CIF file: unknown command `Q'; ignored.
+Error at line 101 of CIF file: unknown command `Q'; ignored.
+Error limit set:  Remaining errors will not be reported.
+Cell top2 couldn't be read
+No such file or directory

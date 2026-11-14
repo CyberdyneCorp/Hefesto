@@ -1,0 +1,40 @@
+file a.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file a2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+<< metal1 >>
+rect 0 0 1 1
+<< end >>
+file t2.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+use a2  a2_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634428
+<< checkpaint >>
+rect 0 0 1 1
+use a  a_0
+timestamp 1794634428
+transform 1 0 0 0 1 0
+box 0 0 1 1
+<< end >>

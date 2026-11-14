@@ -1,0 +1,25 @@
+file polys.mag
+magic
+tech masktest
+timestamp 1794634416
+<< checkpaint >>
+rect 0 0 240 40
+<< metal1 >>
+rect 100 20 120 40
+tri 200 20 220 40 sw
+rect 0 0 40 20
+rect 100 0 140 20
+rect 200 0 220 20
+tri 220 0 240 20 sw
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634416
+<< checkpaint >>
+rect 0 0 240 40
+use polys  polys_0
+timestamp 1794634416
+transform 1 0 0 0 1 0
+box 0 0 240 40
+<< end >>

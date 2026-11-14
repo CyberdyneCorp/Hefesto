@@ -1,0 +1,29 @@
+file t2.mag
+magic
+tech masktest
+timestamp 1794634426
+<< checkpaint >>
+rect 0 0 50 10
+<< metal1 >>
+rect 0 0 50 10
+<< labels >>
+rlabel metal1 s 0 0 50 10 4 l0
+port 1 nsew
+rlabel metal2 s 15 5 15 5 4 l1
+rlabel metal1 35 5 35 5 4 l3
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634426
+<< checkpaint >>
+rect 0 0 50 10
+<< metal1 >>
+rect 0 0 50 10
+<< labels >>
+rlabel metal1 s 0 0 50 10 4 l0
+port 1 nsew
+rlabel metal2 s 15 5 15 5 4 l1
+rlabel metal1 35 5 35 5 4 l3
+rlabel metal1 45 5 45 5 4 l4
+<< end >>

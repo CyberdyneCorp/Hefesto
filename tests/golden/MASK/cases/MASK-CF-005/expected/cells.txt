@@ -1,0 +1,52 @@
+file leaf.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 4 2
+<< metal1 >>
+rect 0 0 4 2
+<< end >>
+file rec.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 0 0 1 1
+<< end >>
+file top.mag
+magic
+tech masktest
+timestamp 1794634415
+<< checkpaint >>
+rect 18 30 20 34
+rect 0 0 1 1
+rect 46 0 50 2
+rect 110 0 112 4
+rect 140 0 144 2
+rect 80 -2 84 0
+use leaf  leaf_0
+timestamp 1794634415
+transform 1 0 80 0 -1 0
+box 0 0 4 2
+use leaf  leaf_1
+timestamp 1794634415
+transform 0 1 110 1 0 0
+box 0 0 4 2
+use leaf  leaf_2
+timestamp 1794634415
+transform 1 0 140 0 1 0
+box 0 0 4 2
+use rec  rec_0
+timestamp 1794634415
+transform 1 0 0 0 1 0
+box 0 0 1 1
+use leaf  u_mx
+timestamp 1794634415
+transform -1 0 50 0 1 0
+box 0 0 4 2
+use leaf  u_r
+timestamp 1794634415
+transform 0 -1 20 1 0 30
+box 0 0 4 2
+<< end >>
