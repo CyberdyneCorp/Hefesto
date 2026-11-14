@@ -74,7 +74,9 @@ release notices.
   instead of being inflated whole; a `GDS_START` of -2^63 and an oversized
   temporary read scale no longer overflow; and a gzip member boundary one
   byte before the edge of the 1 GiB inflate window no longer ends the
-  stream early.
+  stream early. Flatten copies of a GDS read share one budget of 2^26 tile
+  paints, so a large `gds flatglob` cell in big arrays is skipped with
+  GDS-READ-011 instead of repainting without bound.
 
 ## Unreleased (M4: scripting)
 

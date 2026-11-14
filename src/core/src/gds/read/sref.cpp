@@ -20,8 +20,9 @@
 // and read as 1; magnified copies are nested at most kMaxMagnifyDepth deep
 // and only while the read scale stays within kMaxScale (GDS-READ-011, the
 // instance is then placed without magnification); one AREF makes at most
-// kMaxArrayCopies flatten copies; coordinates are clamped to the usable
-// plane.
+// kMaxArrayCopies flatten copies, and one read at most kMaxFlattenPaints
+// tile paints of flatten copies (copies times the source's solid tiles);
+// coordinates are clamped to the usable plane.
 //
 // Owner: GDSR (openspec/changes/m5-mask-gds-cif/design.md D2).
 
@@ -30,6 +31,8 @@
 #include <cmath>
 #include <cstdio>
 #include <numeric>
+#include <utility>
+#include <vector>
 
 #include "gds/read/reader.hpp"
 #include "hefesto/db/hierarchy.hpp"
@@ -107,6 +110,23 @@ void copy_tiles(const mask::MaskPlane& from, mask::MaskPlane& to, const db::Tran
       (void)to.paint_triangle(area, side.diagonal, side.right_side, magic_compat);
     } else {
       (void)to.paint(area);
+    }
+  }
+}
+
+using FlattenLayer = std::pair<const mask::MaskPlane*, mask::MaskPlane*>;  // flatten source, target
+
+/// gdsCopyPaintFunc over every element of a cols x rows flatten copy.
+void paint_copies(const std::vector<FlattenLayer>& layers, std::int64_t cols, std::int64_t rows,
+                  const db::ArrayInfo& array, const db::Transform& trans, bool magic_compat) {
+  for (const auto& [source, to] : layers) {
+    for (std::int64_t x = 0; x < cols; ++x) {
+      for (std::int64_t y = 0; y < rows; ++y) {
+        // GeoTransTranslate: the element offset is added after the transform.
+        const db::Transform t = db::compose(
+            db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)), trans);
+        copy_tiles(*source, *to, t, magic_compat);
+      }
     }
   }
 }
@@ -521,22 +541,24 @@ void Reader::copy_flattened(const Reference& ref, const db::Transform& trans, co
                                         std::to_string(cols) + " x " + std::to_string(rows) + " array"));
     return;
   }
-  state(*ref.def).flattened = true;
   std::vector<mask::MaskPlane*>& target = planes();
+  std::vector<FlattenLayer> layers;
+  std::int64_t tiles = 0;
   for (std::size_t layer = 0; layer < target.size(); ++layer) {
     const mask::MaskPlane* source = source_plane(own, copyup, layer);
-    if (source == nullptr || target[layer] == nullptr) {
-      continue;
-    }
-    for (std::int64_t x = 0; x < cols; ++x) {
-      for (std::int64_t y = 0; y < rows; ++y) {
-        // GeoTransTranslate: the element offset is added after the transform.
-        const db::Transform t = db::compose(
-            db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)), trans);
-        copy_tiles(*source, *target[layer], t, compat_.magic_compat);
-      }
+    if (source != nullptr && target[layer] != nullptr) {
+      layers.emplace_back(source, target[layer]);
+      tiles += static_cast<std::int64_t>(source->solid_tiles().size());
     }
   }
+  if (tiles > 0 && cols * rows > (kMaxFlattenPaints - flatten_paints_) / tiles) {
+    counted(diag::make(kCapReached, "flattened cell " + ref.def->name() +
+                                        " not copied: the read's flatten copy budget is spent"));
+    return;
+  }
+  flatten_paints_ += cols * rows * tiles;
+  state(*ref.def).flattened = true;
+  paint_copies(layers, cols, rows, array, trans, compat_.magic_compat);
 }
 
 bool Reader::place_reference(const Reference& ref, bool unscaled, std::int64_t& made) {

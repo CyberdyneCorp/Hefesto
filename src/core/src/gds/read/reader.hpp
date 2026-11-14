@@ -65,6 +65,7 @@ namespace hefesto::gds::read_detail {
 inline constexpr std::size_t kMaxNesting = 512;                          // look-ahead and magnified-copy reads
 inline constexpr std::size_t kMaxMagnifyDepth = 32;                      // nested magnified copies
 inline constexpr std::int64_t kMaxArrayCopies = std::int64_t{1} << 20;  // flatten copies of one AREF
+inline constexpr std::int64_t kMaxFlattenPaints = std::int64_t{1} << 26;  // flatten tile paints per read
 
 /// CalmaReadError, CIFReadError / CIFReadWarning and TxPrintf under the
 /// read warning level. Each kind has its own counter, as in Magic.
@@ -330,6 +331,7 @@ class Reader {
   std::unordered_set<const db::CellDef*> in_order_;               // the members of cell_order_
   std::unordered_map<const db::CellDef*, CellState> states_;
   std::unordered_map<const db::CellDef*, PlaneSet> flat_planes_;  // cd_client of CDFLATGDS cells
+  std::int64_t flatten_paints_ = 0;  // tile paints of flatten copies so far (kMaxFlattenPaints)
   std::vector<PlaneSet*> saved_sets_;                             // nested saves, scaled by a rescale
   std::unordered_set<std::uint64_t> layer_errors_;                // calmaLayerHash
   std::int64_t polygon_count_ = 0;                                // CalmaPolygonCount

@@ -92,6 +92,28 @@ TEST_CASE("flatten copies into a huge array are capped", "[cap:gds-read][req:Fla
   CHECK(has_code(s, "GDS-READ-011"));
 }
 
+TEST_CASE("flatten copies share one per-read paint budget", "[cap:gds-read][req:Flattening small cells on input]") {
+  // Regression: the per-AREF copy cap alone let one AREF repaint every tile
+  // of a large flatglob'd cell 2^20 times. 128 disjoint squares in a
+  // 1024 x 1024 array is 2^27 tile paints, over the read's budget.
+  const auto read_big = [](std::int32_t n) {
+    Session s;
+    s.options.settings.flatglob = {"BIG"};
+    GdsFile f;
+    f.library().begin("BIG");
+    for (std::int32_t i = 0; i < 128; ++i) {
+      square(f, 20 * i, 10);
+    }
+    f.end().begin("top").aref("BIG", n, n, {{0, 0}, {n * 4000, 0}, {0, n * 4000}}).end().end_library();
+    s.read(f);
+    return std::any_of(s.last.diagnostics.begin(), s.last.diagnostics.end(), [](const diag::Diagnostic& d) {
+      return d.code == "GDS-READ-011" && d.text.find("budget") != std::string::npos;
+    });
+  };
+  CHECK(read_big(1024));
+  CHECK_FALSE(read_big(2));
+}
+
 TEST_CASE("coordinates beyond the plane are clamped", "[cap:gds-read][req:Coordinate conversion and automatic rescaling]") {
   Session s;
   GdsFile f;
