@@ -163,6 +163,17 @@ struct HierarchyOptions {
   bool unfracture = false;
 };
 
+/// "Hierarchy and array output switches": the options for generating
+/// `cell` when `inherited` is in effect (the session's `cif *hier` and
+/// `cif *array` switches, or what a `CIFhier` ancestor forced). A cell with
+/// a `CIFhier` property (any value) forces both switches on, for itself and
+/// for the descendants the writer first writes while processing its
+/// subcells (the writer passes the result down as their `inherited`). The
+/// GDS writer (`gds` true) always honours the property; the CIF writer only
+/// with magic-compat OFF (Q-MASK-410).
+[[nodiscard]] HierarchyOptions hierarchy_options(const db::CellDef& cell, const HierarchyOptions& inherited, bool gds,
+                                                 const compat::CompatSettings& compat);
+
 /// "Per-cell output composition" for `cell`: the own-paint layers over the
 /// cell's bounding box grown by the radius (and its FIXED_BBOX with
 /// options.fixed_bbox), then the subcell (CIFGenSubcells) and array

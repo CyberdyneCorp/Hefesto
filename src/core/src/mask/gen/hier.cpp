@@ -282,6 +282,18 @@ db::Rect generation_area(const db::CellDef& cell, std::int64_t radius, bool fixe
   return area;
 }
 
+// --- The output switches ----------------------------------------------------------
+
+HierarchyOptions hierarchy_options(const db::CellDef& cell, const HierarchyOptions& inherited, bool gds,
+                                   const compat::CompatSettings& compat) {
+  HierarchyOptions out = inherited;
+  if ((gds || !compat.magic_compat) && cell.properties().find("CIFhier") != nullptr) {
+    out.subcells = true;
+    out.arrays = true;
+  }
+  return out;
+}
+
 // --- CIFGenSubcells --------------------------------------------------------------
 
 void generate_subcells(const GenerationSource& source, const db::CellDef& cell, const db::Rect& area,
