@@ -96,7 +96,8 @@ class SymbolTable {
   [[nodiscard]] std::size_t size() const noexcept { return symbols_.size(); }
 
  private:
-  [[nodiscard]] std::string free_name(std::int64_t number) const;
+  [[nodiscard]] std::string free_name(std::int64_t number);
+  void name_freed(const std::string& name);
   [[nodiscard]] std::optional<CellId> create(std::int64_t number, bool defined);
   void set_name(CellId id, const std::string& name);
 
@@ -106,6 +107,7 @@ class SymbolTable {
   std::vector<ReadCell> cells_;
   std::unordered_map<std::string, CellId> names_;  // the current names of this read's cells
   std::unordered_set<std::string> given_out_;       // every name this read has given a cell
+  std::unordered_map<std::string, std::int64_t> first_suffix_;  // free_name's search start per base
 };
 
 }  // namespace hefesto::cif

@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <set>
 #include <string>
 
@@ -127,4 +128,39 @@ TEST_CASE("The cell cap stops new cells", "[cap:cif-format-io][req:Symbol-to-cel
   CHECK_FALSE(table.define(4));
   CHECK(table.define(2));  // a forward call's cell can still be defined
   CHECK(table.cells().size() == 2);
+}
+
+TEST_CASE("Redefining one symbol many times stays linear and names n_1, n_2, ...",
+          "[cap:cif-format-io][req:Symbol-to-cell naming on read]") {
+  SymbolTable table;
+  constexpr int kTimes = 50000;  // about 1.25e9 name lookups when each search starts at _1
+  const auto started = std::chrono::steady_clock::now();
+  for (int i = 0; i < kTimes; ++i) {
+    REQUIRE(table.define(1));
+  }
+  const auto elapsed = std::chrono::steady_clock::now() - started;
+  CHECK(elapsed < std::chrono::seconds{20});
+  REQUIRE(table.cells().size() == kTimes);
+  CHECK(table.cells().front().name == "1_1");
+  CHECK(table.cells()[kTimes - 2].name == "1_" + std::to_string(kTimes - 1));
+  CHECK(table.cells().back().name == "1");
+}
+
+TEST_CASE("A suffix freed by a rename is given out again",
+          "[cap:cif-format-io][req:Symbol-to-cell naming on read]") {
+  SymbolTable table;
+  for (int i = 0; i < 3; ++i) {
+    REQUIRE(table.define(5));
+  }
+  REQUIRE(table.cells()[0].name == "5_1");
+  REQUIRE(table.cells()[1].name == "5_2");
+  table.rename(0, "x");  // `9 x` inside the first definition frees 5_1
+  const auto again = table.define(5);
+  REQUIRE(again);
+  REQUIRE(again->renamed_to);
+  CHECK(*again->renamed_to == "5_1");
+  const auto more = table.define(5);
+  REQUIRE(more);
+  REQUIRE(more->renamed_to);
+  CHECK(*more->renamed_to == "5_3");
 }

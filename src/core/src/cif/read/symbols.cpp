@@ -6,6 +6,7 @@
 
 #include "hefesto/cif/read/symbols.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace hefesto::cif {
@@ -21,20 +22,46 @@ bool SymbolTable::name_in_use(std::string_view name) const {
   return !given_out_.contains(key) && outside_ && outside_(name);
 }
 
-std::string SymbolTable::free_name(std::int64_t number) const {
+// cifUniqueCell: "<n>" if free, else the first free "<n>_<k>", k >= 1.
+// first_suffix_ keeps, per base, a k below which every suffix is known to
+// be taken, so redefining one symbol many times stays linear; set_name
+// lowers it when a suffixed name is freed, so the names are unchanged.
+std::string SymbolTable::free_name(std::int64_t number) {
   std::string base = std::to_string(number);
   if (!name_in_use(base)) {
     return base;
   }
-  for (std::int64_t k = 1;; ++k) {
+  auto [hint, inserted] = first_suffix_.try_emplace(base, 1);
+  for (std::int64_t k = hint->second;; ++k) {
     std::string candidate = base + "_" + std::to_string(k);
     if (!name_in_use(candidate)) {
+      hint->second = k;
       return candidate;
     }
   }
 }
 
+void SymbolTable::name_freed(const std::string& name) {
+  const auto underscore = name.rfind('_');
+  if (underscore == std::string::npos || underscore + 1 == name.size()) {
+    return;
+  }
+  const auto hint = first_suffix_.find(name.substr(0, underscore));
+  if (hint == first_suffix_.end()) {
+    return;
+  }
+  std::int64_t k = 0;
+  for (std::size_t i = underscore + 1; i < name.size(); ++i) {
+    if (name[i] < '0' || name[i] > '9' || k > hint->second) {
+      return;  // not a suffix, or above the hint already
+    }
+    k = k * 10 + (name[i] - '0');
+  }
+  hint->second = std::min(hint->second, k);
+}
+
 void SymbolTable::set_name(CellId id, const std::string& name) {
+  name_freed(cells_[id].name);
   names_.erase(cells_[id].name);
   cells_[id].name = name;
   names_[name] = id;
