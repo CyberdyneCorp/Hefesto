@@ -185,7 +185,7 @@ TEST_CASE("a missing subcell with undefined disallowed or allowed",
   CHECK_FALSE(f.last.ok());
   CHECK(f.has_code("GDS-WRITE-003"));
   REQUIRE_FALSE(f.last.diagnostics.empty());
-  CHECK(f.last.diagnostics.back().text ==
+  CHECK(f.last.diagnostics.front().text ==
         "Failure to read entire subtree of the cell.\nFailed on cell missing.");
   CHECK(failed.empty());  // the file exists and holds no records
 

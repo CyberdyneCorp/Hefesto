@@ -124,6 +124,13 @@ diag::Status check_before_open(const PreparedWrite& prepared) {
   return diag::Done{};
 }
 
+// CmdCalma's message when CalmaWrite returns FALSE, naming the file as
+// typed.
+diag::Diagnostic io_error(const GdsWriteOptions& options, const platform::Path& path) {
+  const std::string name = options.typed_name.empty() ? path.generic_string() : options.typed_name;
+  return diag::make(codes::kOutputFile, "I/O error in writing file " + name + ".\nFile may be incompletely written.");
+}
+
 cmd::CommandResult finished(std::vector<diag::Diagnostic> diagnostics, std::optional<diag::Diagnostic> error) {
   cmd::CommandResult result = cmd::CommandResult::success();
   result.diagnostics = std::move(diagnostics);
@@ -253,21 +260,27 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   if (result.good && result.status.ok()) {
     return finished(std::move(out), std::nullopt);
   }
-  return finished(std::move(out), diag::make(codes::kOutputFile, "I/O error in writing file " + path.generic_string() +
-                                                                      ".\nFile may be incompletely written."));
+  return finished(std::move(out), io_error(prepared.options, path));
 }
 
 cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                          const GdsWriteOptions& options, const mask::Progress* progress) {
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, options);
   if (!prepared) {
-    if (prepared.error().code == codes::kSubtree || prepared.error().code == codes::kDepth) {
+    const std::string_view code = prepared.error().code;
+    if (code == codes::kSubtree || code == codes::kDepth) {
       // Magic opened (and truncated) the file before CalmaWrite failed.
       platform::LocalFileSystem local;
       platform::FileSystem& fs = options.files != nullptr ? *options.files : local;
       (void)fs.write_atomic(path, {});
     }
-    return cmd::CommandResult::failure(prepared.error());
+    // CmdCalma reports every CalmaWrite failure as an I/O error; the style
+    // check keeps that text although it comes before the file (Q-MASK-219).
+    const bool calma_write_failed = code == codes::kSubtree || code == codes::kDepth || code == codes::kNoStyle;
+    if (!calma_write_failed) {
+      return cmd::CommandResult::failure(prepared.error());
+    }
+    return finished({prepared.error()}, io_error(options, path));
   }
   return emit_write(prepared.value(), path, progress);
 }

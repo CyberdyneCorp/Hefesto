@@ -240,6 +240,7 @@ How this plan runs:
 - [ ] 10.5 Implement label layers and TEXT records: our own stable merge sort over the reversed label list (Q-MASK-205), port labels (Q-MASK-206), MAG and magscale (Q-MASK-221), and the font-size formulas (Q-MASK-122). Verify the `[req:Label layers]` and `[req:Label TEXT records]` tests in both modes, and the same TEXT order on Linux and macOS.
 - [x] 10.6 Implement cell reference elements and array flattening on output. Verify the `[req:Cell reference elements]` and `[req:Array flattening on output]` tests.
   - As landed (round 4): `references.cpp` (STRANS as BITARRAY, the literal ANGLE bytes, COLROW, AREF points through the full transform, PROPATTR 61 always, 99 for a non-zero origin; `gds arrays yes` x outer, y inner, no PROPATTR; cancellation polled every 4096 elements). Tests: `references_test.cpp`.
+  - Golden (round 4): 75 MASK cases (GW 22, OP 33, HG 11, OS 9) replay byte for byte with the writer and joined `m5_cases.REPLAYED`; MASK-UO-009 and 011 (fresh-session GDS order with 12 uses) match Magic and lost their deferral. Still deferred for the writer: GW-003 (Q-MASK-201 fix, needs a deviation entry), GW-006 (Q-MASK-209 fix, deviation), GW-039 (Q-MASK-219 fix: no file, deviation), GW-017/018 (merge, task 10.4), the label cases (task 10.5), the read-only cases (task 10.7, `gds readonly` 10.8) and GW-026 (`cif *hier`, task 11.4).
 - [ ] 10.7 Implement:
   - verbatim copy of read-only cells (Q-MASK-216);
   - full dump of a vendor library (Q-MASK-128, 211 with the shared `random()`, 212, 214, 215);

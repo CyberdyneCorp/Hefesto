@@ -129,7 +129,7 @@ TEST_CASE("a failed write still reports and leaves the terminated file",
   db::recompute_bbox(*s.top);
   const auto result = s.run("gds write bad");
   CHECK_FALSE(result.ok());
-  CHECK(result.diagnostics.back().text == "I/O error in writing file bad.gds.\nFile may be incompletely written.");
+  CHECK(result.diagnostics.back().text == "I/O error in writing file bad.\nFile may be incompletely written.");
   REQUIRE(s.exists("bad.gds"));
   CHECK(decode(s.file("bad.gds")).back().record() == gds::RecordType::endlib);
 }
