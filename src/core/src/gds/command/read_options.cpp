@@ -303,6 +303,7 @@ CommandResult read_option(cmd::CommandContext& ctx, const cu::Session& s, const 
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &ctx.services().files;
+  options.time_zone = editor.mask.time_zone;
   options.gds_file = gds_file_property(s, found->path);
   CommandResult result = read(editor, found->path, options);
   const std::string* library = std::get_if<std::string>(&result.value.data());

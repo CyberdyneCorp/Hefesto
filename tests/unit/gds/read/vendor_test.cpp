@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "../../cell/cell_fixture.hpp"
 #include "../stream/stream_fixture.hpp"
 #include "hefesto/cell/search_path.hpp"
 #include "hefesto/cell/timestamps.hpp"
@@ -346,4 +347,29 @@ TEST_CASE("the save-path timestamp update restamps vendor cells through the sear
   cell::update_timestamps(library, nullptr, 800, look.ctx);
   CHECK(pad.timestamp() == kLeafStamp);
   CHECK(top.timestamp() == 800);
+}
+
+TEST_CASE("the save paths restamp vendor cells through the cell search path",
+          "[cap:gds-read][req:When content-hash timestamps are assigned]") {
+  // Regression (round 4 integration): save, writeall and the stamp pass of
+  // `save` go through cell::update_save_stamps, which restamps read-only
+  // cells from their GDS_FILE (DBUpdateStamps with CalmaVendorStamp).
+  const VendorFile f = vendor_file();
+  Lookup look;
+  look.put("lib/cells.gds", f.bytes);
+  cell::test::CellIo io{cell::test::tiny_technology(), &look.fs};
+  io.paths.path = {"lib"};
+  db::CellDef& top = *io.library.create("top", kPlanes).value();
+  db::CellDef& pad = *io.library.create("pad", kPlanes).value();
+  REQUIRE(db::place(top, pad, db::PlaceOptions{}).ok());
+  make_vendor(pad, "cells.gds", f.e_start);
+  pad.set_timestamp(kLeafStamp);
+  top.set_timestamp(100);
+  top.flags().needs_new_timestamp = false;
+  pad.flags().needs_new_timestamp = true;
+
+  cell::update_save_stamps(io.ctx, nullptr, 600);
+  CHECK(pad.timestamp() == kEmptyStamp);
+  CHECK(top.timestamp() == 600);
+  CHECK(io.sink.snapshot().empty());  // the lookup is quiet
 }

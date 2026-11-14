@@ -205,6 +205,7 @@ CommandResult write_gds(cmd::CommandContext& ctx, const cu::Session& s, db::Cell
   options.typed_name = name;
   options.loader = command_subtree_loader(ctx, editor);
   options.files = &ctx.services().files;
+  options.time_zone = editor.mask.time_zone;
   const std::string file = output_file_name(name, options.settings.compress, editor.drc.compat_settings());
   return write(editor, root, file, options);
 }

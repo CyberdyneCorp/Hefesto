@@ -873,9 +873,4 @@ deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
-[MASK-GW-022]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "out.gds"]
-reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
-
 # --- END MASK deferrals ---

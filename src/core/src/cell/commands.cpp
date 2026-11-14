@@ -463,7 +463,7 @@ CommandResult save_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
       return fail(codes::kBadUsage, "Must specify name for cell (UNNAMED).");
     }
     s.process_mismatches();
-    update_timestamps(s.ed.cells, def, stamp_from_time(s.io.clock.wall_now()));
+    update_save_stamps(s.io, def, stamp_from_time(s.io.clock.wall_now()));
     if (!inv.args.empty()) {
       return save_as(s, *def, inv.args[0]);
     }
@@ -565,7 +565,7 @@ bool stamp_named_cells(WriteallRun& run, std::int64_t now) {
       ++missing;
       continue;
     }
-    update_timestamps(run.s.ed.cells, def, now);
+    update_save_stamps(run.s.io, def, now);
   }
   return missing < run.names.size();
 }
@@ -586,7 +586,7 @@ CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv)
     }
     const std::int64_t now = stamp_from_time(s.io.clock.wall_now());
     if (run.names.empty()) {
-      update_timestamps(s.ed.cells, nullptr, now);
+      update_save_stamps(s.io, nullptr, now);
     } else if (!stamp_named_cells(run, now)) {
       return CommandResult::success();
     }

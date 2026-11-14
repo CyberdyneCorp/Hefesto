@@ -226,6 +226,29 @@ TEST_CASE("the contacts option is a no-op", "[cap:gds-write][req:Write option se
   CHECK(before == after);
 }
 
+TEST_CASE("gds write converts dates in the session's pinned time zone", "[cap:gds-write][req:Date records]") {
+  // Q-MASK-132: EditorState::mask.time_zone (a POSIX TZ string) replaces the
+  // host zone; 1700000000 is 2023-11-14 22:13:20 UTC.
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s{compat};
+    REQUIRE(s.run("gds datestamp 1700000000").ok());
+    s.f.ed.mask.time_zone = "UTC0";
+    REQUIRE(s.run("gds write utc").ok());
+    s.f.ed.mask.time_zone = "XXX-3";
+    REQUIRE(s.run("gds write plus3").ok());
+    // BGNLIB's creation hour: the fourth I2 of its data (HEADER is 6 bytes,
+    // the BGNLIB record header 4).
+    const auto hour = [&](const std::string& path) {
+      const std::string bytes = s.file(path);
+      REQUIRE(bytes.size() > 18);
+      return (static_cast<unsigned char>(bytes[16]) << 8) | static_cast<unsigned char>(bytes[17]);
+    };
+    CHECK(hour("utc.gds") == 22);
+    CHECK(hour("plus3.gds") == 1);
+  }
+}
+
 TEST_CASE("gds lower no upper-cases the names", "[cap:gds-write][req:Write option settings and defaults]") {
   Session s;
   db::CellDef& inv = s.f.cell("inv");

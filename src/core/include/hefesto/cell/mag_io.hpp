@@ -176,6 +176,11 @@ struct WriteOptions {
 /// are updated first ("Generating new stamps").
 [[nodiscard]] diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view path = {});
 
+/// DBUpdateStamps before a write: update_timestamps with each read-only
+/// (vendor GDS) cell restamped from the file its GDS_FILE names, looked up
+/// through `ctx`'s search paths without messages (CalmaVendorStamp).
+void update_save_stamps(CellIoContext& ctx, db::CellDef* only, std::int64_t now);
+
 /// Refuses names that cannot be written back (Q-CELL-41): whitespace in
 /// cell names, instance ids and paths.
 [[nodiscard]] diag::Status check_writable_name(std::string_view what, std::string_view name);

@@ -70,9 +70,10 @@ def cif_read_case(cid: str, requirements: list[str], description: str, cif: str,
 def write_case(cid: str, requirements: list[str], description: str, layout: list[str], *,
                cifoutput: str = OUT_DEFAULT, files: dict | None = None, write: list[str] | None = None,
                outputs: list[str] | None = None, start: list[str] | None = None,
-               notes: list[str] | None = None) -> tclcase.TclCase:
+               notes: list[str] | None = None, fonts: list[str] | None = None) -> tclcase.TclCase:
     return case(cid, requirements, description, [*layout, *(write or ["gds write out"])], files=files,
-                technology=tech(cifoutput), outputs=outputs or ["out.gds"], start=start, notes=notes)
+                technology=tech(cifoutput), outputs=outputs or ["out.gds"], start=start, notes=notes,
+                fonts=fonts)
 
 
 # --- MASK-CI: input styles ------------------------------------------------------------------------
@@ -885,7 +886,8 @@ def gw_specs() -> list[tclcase.TclCase]:
                     *(c for i, j in enumerate(("n", "ne", "e", "se", "s", "sw", "w", "nw", "c"))
                       for c in (f"box {10 * i} 50 {10 * i} 50", f"label j{j} {j} metal1")),
                     "box 60 60 80 80", "label area c metal1"],
-                   cifoutput=GW_TECH.replace("    layer M1 metal1\n", "    layer M1 metal1\n        labels metal1\n")),
+                   cifoutput=GW_TECH.replace("    layer M1 metal1\n", "    layer M1 metal1\n        labels metal1\n"),
+                   fonts=["FreeSans"]),
         write_case("MASK-GW-023", ["Label TEXT records"],
                    "Port labels with indices 2, 1, 1 and plain labels; labels metal1 port against labels metal1.",
                    [*paint("metal1", 0, 0, 40, 10), *(c for i, idx in enumerate((2, 1, 1)) for c in

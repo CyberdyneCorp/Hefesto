@@ -137,6 +137,7 @@ CommandResult write_option(const CifCall& c, const std::string& name, bool flat)
   options.typed_name = name;
   options.loader = gds::command_subtree_loader(*c.s.ctx, editor);
   options.files = &c.s.ctx->services().files;
+  options.time_zone = editor.mask.time_zone;
   options.user = environment("USER");
   options.machine = environment("HOSTNAME");
   return write(editor, *root, output_file_name(name, editor.drc.compat_settings()), options);
