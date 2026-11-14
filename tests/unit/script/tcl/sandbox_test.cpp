@@ -355,3 +355,28 @@ TEST_CASE("SandboxFilesystem allows exactly the paths under its roots", SANDBOXE
   CHECK_FALSE(script::is_embedded_path("/__hefesto_embedded__x/y"));
   CHECK(script::default_removed_commands() == std::vector<std::string>{"exec", "socket", "load", "unload", "exit"});
 }
+
+// ---- the embedded Tcl ------------------------------------------------------------------
+
+TEST_CASE("catch into a variable that cannot be set does not use the freed result", SANDBOXED "[regression]") {
+  // Regression (fuzz_tcl_sandbox, CI run 43487286969): Tcl_ObjSetVar2 read
+  // the catch result after the lookup's error message had freed it
+  // (third_party/patches/tcl/0001-objsetvar2-hold-value-across-lookup.patch).
+  // ASan reports the use-after-free when the patch is missing.
+  SandboxedProject p;
+  const std::string message = "can't set \"nosuchns::v\": parent namespace doesn't exist";
+  auto result = p.run("catch nosuchcmd nosuchns::v");
+  REQUIRE_FALSE(result.ok());
+  CHECK(error_text(result) == message);
+  result = p.run("proc p {} {catch nosuchcmd nosuchns::v}; p");
+  REQUIRE_FALSE(result.ok());
+  CHECK(error_text(result) == message);
+  // The options dictionary is a new value nobody else holds: it is freed
+  // when its variable cannot be set and kept when it can.
+  result = p.run("catch {error boom} v nosuchns::o");
+  REQUIRE_FALSE(result.ok());
+  CHECK(error_text(result) == "can't set \"nosuchns::o\": parent namespace doesn't exist");
+  CHECK(p.value("set v") == "boom");
+  CHECK(p.value("catch {error boom} v o; dict get $o -code") == "1");
+  CHECK(p.value("expr {1+1}") == "2");
+}

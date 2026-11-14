@@ -161,6 +161,8 @@ The review found 15 weaknesses. Each fix has a regression test named "security f
 | S-14 | Low | No time limit; the CLI could not be interrupted. | Fixed for the CLI: `--script-time-limit <seconds>` (default none, as in Magic). |
 | S-15 | Low | The toolbar presets path was built from the technology name. | Fixed. A technology name with `/` reads no presets file (`gui/toolbar_presets.cpp`). |
 
+Found later by `fuzz_tcl_sandbox` (CI run 43487286969): `catch body var` with a `var` that cannot be set read the freed interpreter result, a heap use-after-free in Tcl itself (8.6.16, also 8.6.18 and 9.x). It is fixed by the patch `third_party/patches/tcl/0001-objsetvar2-hold-value-across-lookup.patch`, which is carried until upstream ships a fix (see THIRD_PARTY_NOTICES.md). The test "catch into a variable that cannot be set does not use the freed result" is in `tests/unit/script/tcl/sandbox_test.cpp`.
+
 Not a security issue, noted for BINDING: in `hefesto-cli` the `clock` command is missing (`invalid command name "clock"`, while `::tcl::clock::*` exists). The unit-test interpreter has it.
 
 ## Adding a command safely

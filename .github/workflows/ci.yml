@@ -277,7 +277,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-pcell-equivalence-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-pcell-equivalence-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-pcell-equivalence-
       - name: Restore sky130
         uses: actions/cache/restore@v4
@@ -401,7 +401,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-${{ matrix.name }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-${{ matrix.name }}-
 
       # Pinned reference data (job reference-data above; docs/building.md, "Reference data for tests"):
@@ -571,7 +571,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-lavapipe-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-linux-lavapipe-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-linux-lavapipe-
       - name: Configure
         run: cmake --preset "$PRESET"
@@ -648,7 +648,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-asan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-linux-asan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-linux-asan-
       - run: cmake --preset linux-asan
       - run: cmake --build --preset linux-asan
@@ -689,7 +689,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-tsan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-linux-tsan-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-linux-tsan-
       - run: cmake --preset linux-tsan
       - run: cmake --build --preset linux-tsan
@@ -728,7 +728,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: .cache/deps
-          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake') }}
+          key: deps-linux-fuzz-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
           restore-keys: deps-linux-fuzz-
       # The linux-fuzz preset uses the unversioned clang/clang++ (Clang 18 on ubuntu-24.04).
       - run: cmake --preset linux-fuzz

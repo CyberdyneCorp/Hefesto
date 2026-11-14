@@ -234,7 +234,7 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 
 ## Dependencies and offline rebuilds
 
-All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and `cmake/Tcl.cmake` (Tcl 8.6.16, by URL and SHA-256), and fetched with CMake FetchContent into `.cache/deps/<preset>`. Tcl is compiled by CMake with the preset's own toolchain and flags (no `configure` run; the platform settings are in `cmake/tcl/tclConfig.h`), statically, without Tk and without dynamic loading, and its `library/` scripts are embedded in the binary, so no Tcl file is read from the host. CI's dependency caches are keyed on both files. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
+All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and `cmake/Tcl.cmake` (Tcl 8.6.16, by URL and SHA-256, with the fixes in `third_party/patches/tcl/` applied on top by `cmake/ApplyPatches.cmake`), and fetched with CMake FetchContent into `.cache/deps/<preset>`. Tcl is compiled by CMake with the preset's own toolchain and flags (no `configure` run; the platform settings are in `cmake/tcl/tclConfig.h`), statically, without Tk and without dynamic loading, and its `library/` scripts are embedded in the binary, so no Tcl file is read from the host. CI's dependency caches are keyed on both files and on the patches. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:
 
 ```sh
 cmake --preset macos-debug -DFETCHCONTENT_FULLY_DISCONNECTED=ON

@@ -190,6 +190,12 @@ release notices.
 
 ### Security
 
+- **A script can no longer corrupt memory with `catch`.** In the embedded
+  Tcl 8.6.16, `catch body var` where `var` cannot be set (for example
+  `catch nosuchcmd nosuchns::v`) read the interpreter result after it had
+  been freed. Hefesto now carries a fix for Tcl
+  (`third_party/patches/tcl/`); the script gets Tcl's usual
+  `can't set "nosuchns::v": parent namespace doesn't exist` error.
 - `--trust-pdk <family|variant>` also trusts a copy of that PDK found
   outside the PDK store, for example a tree named by `-rcfile` or
   `PDKPATH`. This is a documented, accepted limit (S-12 in

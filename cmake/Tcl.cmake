@@ -27,13 +27,29 @@
 include(FetchContent)
 
 # --- Tcl 8.6.16 (Tcl/Tk license, BSD-style) --------------------------------
+# Patches carried on top of the release (third_party/patches/tcl/, listed in
+# THIRD_PARTY_NOTICES.md):
+#   0001-objsetvar2-hold-value-across-lookup.patch
+#     Heap use-after-free in Tcl_ObjSetVar2 when `catch body var` cannot set
+#     `var` (found by fuzz_tcl_sandbox). Upstream 8.6.18 and 9.x still have
+#     the bug; drop the patch when the pinned release contains a fix.
+# ApplyPatches.cmake skips a patch that is already applied, and runs again
+# after population so a deps cache filled before a patch was added is
+# patched too.
+cmake_path(SET _tcl_patches NORMALIZE
+           "${CMAKE_CURRENT_LIST_DIR}/../third_party/patches/tcl/0001-objsetvar2-hold-value-across-lookup.patch")
+set(_tcl_apply_patches "${CMAKE_COMMAND}" "-DPATCHES=${_tcl_patches}")
+set(_tcl_apply_script -P "${CMAKE_CURRENT_LIST_DIR}/ApplyPatches.cmake")
 FetchContent_Declare(hefesto_tcl
   URL https://downloads.sourceforge.net/project/tcl/Tcl/8.6.16/tcl8.6.16-src.tar.gz
       https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz
   URL_HASH SHA256=91cb8fa61771c63c262efb553059b7c7ad6757afa5857af6265e4b0bdc2a14a5
   DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  PATCH_COMMAND ${_tcl_apply_patches} -DSOURCE_DIR=<SOURCE_DIR> ${_tcl_apply_script}
   SOURCE_SUBDIR hefesto-sources-only)
 FetchContent_MakeAvailable(hefesto_tcl)
+execute_process(COMMAND ${_tcl_apply_patches} "-DSOURCE_DIR=${hefesto_tcl_SOURCE_DIR}" ${_tcl_apply_script}
+                COMMAND_ERROR_IS_FATAL ANY)
 
 set(_tcl_src "${hefesto_tcl_SOURCE_DIR}")
 set(_tcl_gen "${CMAKE_BINARY_DIR}/generated/hefesto_tcl")
