@@ -323,10 +323,13 @@ std::vector<CellUse*> uses_in_search_order(const CellDef& def) {
 }
 
 // DBGenerateUniqueIds: dbFindNamesFunc then dbGenerateUniqueIdsFunc, both in
-// subcell enumeration order (database/DBcellname.c:2640-2770).
+// subcell enumeration order (DBCellEnum, database/DBcellname.c:2640-2770):
+// the use index's order under the given magic-compat setting.
 std::size_t make_use_ids_unique(CellDef& parent, bool magic_compat) {
   std::set<std::string, std::less<>> names;
-  const std::vector<CellUse*> order = uses_in_search_order(parent);
+  compat::CompatSettings settings;
+  settings.magic_compat = magic_compat;
+  const std::vector<CellUse*> order = uses_in_search_order(parent, settings);
   for (CellUse* u : order) {
     if (!u->id.empty() && !names.insert(u->id).second) {
       parent.unlink_use_id(u->id);  // dbFindNamesFunc

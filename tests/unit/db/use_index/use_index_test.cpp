@@ -395,3 +395,70 @@ TEST_CASE("A bounding box grown to the old extended box re-places the uses with 
   CHECK(db::uses_in_search_order(c.top, kOn) == std::vector<db::CellUse*>{c.u0, c.u1});
   CHECK(searched(c.top.use_index(), db::Rect{14, 0, 18, 10}) == std::vector<db::CellUse*>{c.u0});
 }
+
+TEST_CASE("Use index: a search with magic-compat OFF bins as ON does and visits in canonical order",
+          "[cap:gds-write][req:Structure ordering]") {
+  Uses on;
+  add_ten(on);
+  Uses off;
+  add_ten(off);
+  // The same partial search in both modes: the same matches, binned the same.
+  std::vector<db::CellUse*> found_on;
+  (void)on.index.search(db::Rect{0, 0, 30, 30}, kOn, [&](db::CellUse& use) {
+    found_on.push_back(&use);
+    return true;
+  });
+  std::vector<db::CellUse*> found_off;
+  (void)off.index.search(db::Rect{0, 0, 30, 30}, kOff, [&](db::CellUse& use) {
+    found_off.push_back(&use);
+    return true;
+  });
+  CHECK(found_on == std::vector<db::CellUse*>{on[0], on[1], on[6]});  // the bin walk
+  CHECK(found_off == std::vector<db::CellUse*>{off[6], off[1], off[0]});  // newest first
+  CHECK(off.index.state_for_test().binned);
+  CHECK(ids(off.index.order(kOn)) == ids(on.index.order(kOn)));
+  CHECK(off.index.order(kOff) == reversed(off));
+}
+
+TEST_CASE("Use index: a magic-compat OFF search stops when its visitor does", "[cap:gds-write][req:Structure ordering]") {
+  Uses u;
+  add_ten(u);
+  std::vector<db::CellUse*> seen;
+  const bool complete = u.index.search(db::Rect{0, 0, 30, 30}, kOff, [&](db::CellUse& use) {
+    seen.push_back(&use);
+    return false;
+  });
+  CHECK_FALSE(complete);
+  CHECK(seen == std::vector<db::CellUse*>{u[6]});
+}
+
+TEST_CASE("Read uniquification keeps the id of the first use in the index order, in both magic-compat settings",
+          "[cap:layout-hierarchy][req:Instance identifier assignment]") {
+  for (const bool magic_compat : {true, false}) {
+    CAPTURE(magic_compat);
+    db::CellDef ca("ca", 1);
+    ca.set_bboxes(db::Rect{0, 0, 4, 4}, db::Rect{0, 0, 4, 4});
+    db::CellDef top("top", 1);
+    const db::Rect boxes[] = {{0, 0, 4, 4},     {20, 20, 24, 24}, {40, 40, 44, 44}, {60, 60, 64, 64},
+                              {80, 80, 84, 84}, {100, 100, 104, 104}, {0, 20, 4, 24}, {20, 40, 24, 44},
+                              {40, 60, 44, 64}, {60, 80, 64, 84}};
+    std::vector<db::CellUse*> placed;
+    for (const db::Rect& r : boxes) {
+      db::PlaceOptions o;
+      o.transform = db::translation(r.x0, r.y0);
+      placed.push_back(db::place(top, ca, o).value());
+    }
+    // Binned, the walk starts with the oldest use; the in-box order (and
+    // magic-compat OFF) starts with the newest.
+    (void)db::uses_overlapping(top, db::Rect{0, 0, 30, 30}, [](db::CellUse&) { return true; });
+    REQUIRE(top.use_index().state_for_test().binned);
+    placed[0]->id = "dup";
+    placed[9]->id = "dup";
+    (void)db::make_use_ids_unique(top, magic_compat);
+    const db::CellUse* keeps = magic_compat ? placed[0] : placed[9];
+    const db::CellUse* loses = magic_compat ? placed[9] : placed[0];
+    CHECK(keeps->id == "dup");
+    CHECK(loses->id != "dup");
+    CHECK_FALSE(loses->id.empty());
+  }
+}

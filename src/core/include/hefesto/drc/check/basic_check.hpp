@@ -10,8 +10,8 @@
 // (ascending plane order) overlapping the check rectangle K, evaluates the
 // rules of each left and bottom edge segment in K ("Basic check scope"),
 // reports subcell-error tiles (why 2, clipped to K), and reports every error
-// rectangle to `sink` clipped to the clip rectangle L. The mask-layer
-// (cif) rules are kept unchecked until M5 (design D13).
+// rectangle to `sink` clipped to the clip rectangle L. It then runs the
+// mask-layer (cif) rules (drc/check/mask_check.hpp, M5 design D14).
 //
 // The kernel reads only: the cell's planes and its `MASKHINTS_*` properties
 // (hints::HintRegion, for exception/exemption scoping through
@@ -49,9 +49,14 @@ namespace hefesto::tech {
 class Technology;
 }
 
+namespace hefesto::mask {
+class GenerationContext;
+}
+
 namespace hefesto::drc {
 
 class CifCatalog;
+struct MaskRuleCache;
 
 /// When a running check must stop early (design D8): the worker's own
 /// cancel flag, or a writer waiting for the database lock. Polled between
@@ -74,6 +79,12 @@ struct CheckInput {
   bool euclidean = false;                      // `drc euclidean on` (DRCEuclidean)
   compat::CompatSettings compat;               // magic-compat switches (Q-DRC-7/9/10/11/20)
   CancelToken cancel;                          // early stop (background worker only)
+  /// Scratch planes, statistics and the diagnostic sink (DRC-MASK-001) of
+  /// the mask-layer check; nullptr = a context local to each call.
+  mask::GenerationContext* generation = nullptr;
+  /// The mask-layer rules compiled for this context; nullptr = compiled on
+  /// each call.
+  MaskRuleCache* mask_rules = nullptr;
 };
 
 enum class CheckOutcome : unsigned char {

@@ -131,12 +131,16 @@ void Parser::box() {
   if (odd && !options_.magic_compat && !range_error_) {
     // Q-MASK-315 OFF: subdivide the read units by 2 so the box is exact; the
     // doubled coordinates are then the coordinates in the new units.
-    if (mul(scale_n_, 2) <= rescale_limit()) {
+    if (options_.rescale_allowed && mul(scale_n_, 2) <= rescale_limit()) {
       static_cast<void>(rescale(2));
       paint_rect(d, "box");
       return;
     }
+    // No subdivision: round outward, so the box contains the exact one.
+    // The doubled values stay within +-2^62, so the negation cannot overflow.
     warning("CIF units at maximum scale; value is rounded");
+    paint_rect(Rect64{d.x0 >> 1, d.y0 >> 1, -((-d.x1) >> 1), -((-d.y1) >> 1)}, "box");
+    return;
   }
   // Q-MASK-315 ON: C division truncates toward zero, as Magic does.
   paint_rect(Rect64{d.x0 / 2, d.y0 / 2, d.x1 / 2, d.y1 / 2}, "box");

@@ -159,6 +159,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-409 | Grow-slivers details | **compat** | ON: Magic's sliver geometry; OFF: rescaled min-width, full growth, both axes; no stdout prints |
 | Q-MASK-410 | CIFhier property ignored by CIF writer | **compat** | ON: CIF writer ignores CIFhier; OFF: honours it like GDS |
 | Q-MASK-411 | Flat CIF output loses labels and mask hints, names cell __CIF2__ | **compat** | ON: flat CIF loses labels and hints; OFF: copies them, root name |
+| Q-MASK-412 | `net` operator in own-paint generation uses a stale dummy cell | **fix** | search the cell being generated, in both modes (Magic crashes in a fresh session, else searches the previous cell) |
 | Q-MASK-413 | `cif unfracture` needs a dummy argument (= D-20) | **compat** | ON: third word only queries, with a warning; OFF: third word sets the switch |
 | Q-MASK-414 | Progress reporting and event blocking during interaction processing | **platform** | progress callback, cancellation without partial output, snapshot isolation |
 
@@ -168,10 +169,10 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 |---|---|---|
 | compat | 74 | Q-DRC-13, 1, 2, 3, 5, 6, 7, 18, 21, 27, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
 | replicate | 17 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 12 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318 |
+| fix | 13 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318, 412 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 107: the 105 of 2026-11-13 and Q-MASK-29 and Q-MASK-30 of 2026-11-14.
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 108: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, and Q-MASK-412 (completed after the round 2 captures), all of 2026-11-14.
 
 ## User decisions of 2026-11-14 (round 2 review)
 
@@ -180,6 +181,8 @@ Taken on the round 2 review of PR #53; each entry's `Resolution:` line is in `op
 1. **Q-MASK-30** (new, **fix**): grow, shrink, bridge and bloat distances above `db::kPlaneMax` (1073741818) stay rejected in both `magic-compat` settings, bloat pair distances and rescaled values are clamped to it. Magic overflows (undefined behaviour), so this is a fixed deviation with no Magic output to match; no golden case uses such a distance, so `tests/golden/deviations.toml` has no entry. `mask-output-styles` "Operator statement arguments" states it.
 2. **Q-MASK-29** (new, **replicate**, with a magic-compat OFF warning): the unit normalisation reduces by min(lexpand, gcd(scale, expander)), as CIFTechOutputScale does, so a 10/10 style with bloat-all under `scalegrid 1 3` becomes 10/3 and then 3. Both modes copy the arithmetic; with `magic-compat` OFF Hefesto warns that the style's scale was rounded (MASK-STYLE-007), at load and after every rescale. `mask-output-styles` "Unit normalisation" has the scenario "Scale factor truncated by the reduction".
 3. **Q-MASK-8** (amended): the expander ≠ 10 warning (MASK-STYLE-004, native only) fires only for styles that use bloat-all, after the load and after every rescale. `cif ostyle density` (sky130A, ihp-sg13g2) and `cif ostyle metfill` (gf180mcuD) no longer warn (`tests/unit/mask/style/pdk_test.cpp`, both modes).
+4. **Q-MASK-412** (completed, **fix**): the entry had no Status or Resolution line, and MASK-HG-020 cited it. The round 2 captures settled the open point: Magic crashes (SIGSEGV in CmdFindNetProc, NULL CIFDummyUse) on the first `net` generation of a fresh session, and otherwise searches the previously processed cell. In both `magic-compat` settings the `net` operator searches the cell being generated; `mask-output-operators` "net" states it. MASK-HG-020's `b.gds` gets a fix deviation in `tests/golden/deviations.toml` once GEN replays the case (it is still `deferred = "M5"`); MASK-OP-022 and MASK-OS-012 need none.
+5. **CIF read spec gaps of task 11.1** (no new entries): `cif-format-io` now states the 95 rescale cap at 2^30 (fix, both modes), the Q-MASK-315 OFF outward rounding when the read units cannot be subdivided, the Q-MASK-317 and Q-MASK-309 OFF warning texts, the "used but not defined" report in Magic's cell-table order (replicate, both modes) and the translation before a mid-command subdivision (compat: ON as Magic, OFF scaled).
 
 ## Audit decision D-20
 
@@ -364,8 +367,9 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-410**: mask-hierarchical-generation:580: add 'with magic-compat OFF the CIF writer honours CIFhier like the GDS writer'.
 - **Q-MASK-411**: mask-hierarchical-generation:637 and cif-format-io (flat write): add the OFF behaviour (labels and hints copied, symbol named after the root cell).
 - **Q-MASK-413**: mask-hierarchical-generation:653 and cif-format-io:505: add the OFF third-word form and the ON warning. Update D-20 in docs/decisions/audit/DECISIONS.md to the compat option.
+- **Q-MASK-412**: mask-output-operators "net": state that the net is searched in the cell being generated in both modes, with Magic's crash and stale-cell search as the fixed deviation.
 - **Q-MASK-414**: mask-hierarchical-generation:727 [platform]: state progress callback, cancellation without partial output, and snapshot isolation.
 
 No spec change beyond the `Resolution:` reference (and evidence line numbers): Q-MASK-11, Q-MASK-20, Q-MASK-26, Q-MASK-203, Q-MASK-217, Q-MASK-223, Q-MASK-301, Q-MASK-316.
 
-Outside the specs: D-20 in `docs/decisions/audit/DECISIONS.md` (Q-MASK-413), and golden deviation entries in `tests/golden/deviations.toml` for Q-MASK-314 and any Q-MASK-10 listing case.
+Outside the specs: D-20 in `docs/decisions/audit/DECISIONS.md` (Q-MASK-413), and golden deviation entries in `tests/golden/deviations.toml` for Q-MASK-314, any Q-MASK-10 listing case, and MASK-HG-020 (`decisions = ["Q-MASK-412"]`, `outputs = ["b.gds"]`, once the case replays).

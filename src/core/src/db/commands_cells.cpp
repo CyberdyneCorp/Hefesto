@@ -26,6 +26,7 @@
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/util/record_order.hpp"
 
 namespace hefesto::db {
@@ -208,7 +209,7 @@ std::vector<const CellDef*> selected_or_root(const cu::Session& s) {
   std::vector<const CellDef*> defs;
   const CellDef* sel = s.editor->selection.def();
   if (sel != nullptr) {
-    const std::vector<db::CellUse*> uses = db::uses_in_search_order(*sel);
+    const std::vector<db::CellUse*> uses = db::uses_in_search_order(*sel, compat::CompatSettings{s.magic_compat, true});
     s.editor->cells.for_each([&](CellDef& d) {
       if (std::any_of(uses.begin(), uses.end(), [&](const db::CellUse* u) { return u->def == &d; })) {
         defs.push_back(&d);

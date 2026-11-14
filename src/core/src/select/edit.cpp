@@ -18,6 +18,7 @@
 
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/drc/engine/marking.hpp"
@@ -342,7 +343,7 @@ std::optional<UseRef> layout_use(const Context& c, const db::CellUse& selected) 
   std::optional<UseRef> found;
   const auto visit = [&](const auto& self, const db::CellDef& def, const db::Transform& to_root,
                          const std::string& path) -> bool {
-    for (db::CellUse* u : db::uses_in_search_order(def)) {
+    for (db::CellUse* u : db::uses_in_search_order(def, compat::CompatSettings{c.s.magic_compat, true})) {
       if (u->def == nullptr) {
         continue;
       }

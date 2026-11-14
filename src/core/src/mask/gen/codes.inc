@@ -9,3 +9,8 @@
 // and describe the codes in its GEN section.
 //
 // Owner: GEN (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+
+HEFESTO_MASK_CODE("MASK-GEN-001", error, "A CIF layer name does not exist in the current output style.")
+HEFESTO_MASK_CODE("MASK-GEN-002", error, "No CIF output style is set.")
+HEFESTO_MASK_CODE("MASK-GEN-003", warning, "Mask generation: a parent and its child disagree on a layer's geometry.")
+HEFESTO_MASK_CODE("MASK-GEN-004", warning, "Mask generation: the hierarchy is deeper than the generators descend.")

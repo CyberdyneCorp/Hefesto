@@ -28,7 +28,10 @@
 #include "hefesto/connect/tree.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/drc/engine/engine.hpp"
+#include "hefesto/drc/rules/details.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
 
@@ -198,7 +201,7 @@ void count_in(const db::CellDef& def, const db::Rect& area, bool descend, bool m
   if (!descend || !def.flags().available) {
     return;
   }
-  for (const db::CellUse* use : db::uses_in_search_order(def)) {
+  for (const db::CellUse* use : db::uses_in_search_order(def, compat::CompatSettings{magic_compat, true})) {
     for_each_element(*use, area, [&](const db::Transform& et) {
       count_in(*use->def, connect::to_local(et, area), true, magic_compat, counts);
     });
@@ -280,7 +283,7 @@ class WhyCollector {
   // DBTreeSrCells(xMask 0) from `def` over `rect`: every element of every
   // use below, depth first, rechecked over `rect` in its coordinates.
   void resolve_in_subcells(const db::CellDef& def, const db::Rect& rect, const db::Transform& to_root) {
-    for (const db::CellUse* use : db::uses_in_search_order(def)) {
+    for (const db::CellUse* use : db::uses_in_search_order(def, editor_.drc.compat_settings())) {
       for_each_element(*use, rect, [&](const db::Transform& et) {
         const db::Rect local = connect::to_local(et, rect);
         const db::Transform child_to_root = db::compose(to_root, et);
@@ -425,7 +428,16 @@ std::string why_text(const RuleSet& rules, const Rule& rule, const cmd::UnitsSta
 
 std::string why_text(const editor::EditorState& editor, const Rule& rule) {
   const bool compat = editor.drc.compat_settings().magic_compat;
-  return why_text(*editor.drc.rules, rule, editor.units, editor::coordinate_units(editor, compat));
+  cmd::CoordinateUnits scale = editor::coordinate_units(editor, compat);
+  // Magic substitutes a mask-layer rule's text from drcCifCheck's error
+  // callback, while CIFCurStyle is the DRC's bound cifoutput style.
+  const StyleDetails* details = editor.drc.rules->details();
+  if (rule.has(flags::kCifRule) && details != nullptr) {
+    if (const auto bound = editor.drc.cif.output_style(details->cif_style)) {
+      scale.cif_scale = std::array<std::int64_t, 2>{bound->scale.scale_factor, bound->scale.expander};
+    }
+  }
+  return why_text(*editor.drc.rules, rule, editor.units, scale);
 }
 
 bool IgnoreList::contains(WhyIndex why) const noexcept {

@@ -49,7 +49,13 @@ cmd::CoordinateUnits coordinate_units(const EditorState& editor, bool magic_comp
   u.lambda_per = editor.grid.lambda;
   u.default_unit = default_unit(editor);
   u.magic_compat = magic_compat;
-  if (const auto& cif = editor.technology->cif_output_grid()) {
+  if (const mask::OutputStyle* current = editor.mask.output_styles.current_style()) {
+    // CIFGetOutputScale and CIFGetScale read CIFCurStyle: the current
+    // output style (`cif ostyle`), which the session keeps rescaled with
+    // every grid change. Its scalefactor and expander are used as they are
+    // (DBWPrintCIFValue divides by the scalefactor itself).
+    u.cif_scale = std::array<std::int64_t, 2>{current->scale.scale_factor, current->scale.expander};
+  } else if (const auto& cif = editor.technology->cif_output_grid()) {
     // The style is kept as read (per lambda); Magic rescales it with every
     // grid change (CIFTechOutputScale), i.e. by lambda/internal of the
     // session grid, reduced.

@@ -28,6 +28,7 @@
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/plane.hpp"
 #include "hefesto/db/property.hpp"
+#include "hefesto/db/use_index.hpp"
 
 namespace hefesto::hints {
 
@@ -123,7 +124,7 @@ class FlatHintCopier {
   // DBCellSrArea over `def` (reached by `to_root`), dbTreeCellSrFunc on
   // every element found.
   void search(const db::CellDef& def, const db::Transform& to_root) {
-    for (const db::CellUse* use : db::uses_in_search_order(def)) {
+    for (const db::CellUse* use : db::uses_in_search_order(def, compat::CompatSettings{magic_compat_, true})) {
       if (use->def == nullptr) {
         continue;
       }

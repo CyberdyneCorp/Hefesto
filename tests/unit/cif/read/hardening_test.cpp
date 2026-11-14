@@ -118,6 +118,24 @@ TEST_CASE("Repeated odd area labels stop rescaling at the unit cap", "[cap:cif-f
   CHECK(r.printed_line("Warning at line 1 of CIF file: CIF units at maximum scale; value is rounded"));
 }
 
+TEST_CASE("At the unit cap an odd area label is halved toward zero in both modes",
+          "[cap:cif-format-io][req:Label user extensions]") {
+  for (const bool compat : {true, false}) {
+    Reader r;
+    r.options.magic_compat = compat;
+    std::string text;
+    for (int i = 1; i <= 30; ++i) {
+      text += "DS " + std::to_string(i) + "; 95 a 1 1 0 0; DF; ";
+    }
+    // M is now 2^30: ll = (-3,-3) and ur = (-1,-1) are halved, not rescaled.
+    static_cast<void>(r.read(text + "DS 31; 95 b 1 1 -1 -1 CMF; DF; E"));
+    REQUIRE(r.target.events.size() >= 4);
+    const auto tail = std::vector<std::string>(r.target.events.end() - 4, r.target.events.end());
+    CHECK(tail == std::vector<std::string>{"begin 31", "label b (-1,-1)-(0,0) type=3", "end", "end_top"});
+    CHECK(r.printed().back() == "Warning at line 1 of CIF file: CIF units at maximum scale; value is rounded");
+  }
+}
+
 TEST_CASE("Random bytes never crash the parser", "[cap:cif-format-io][req:CIF input grammar]") {
   const std::string alphabet = "DSFCLBRPWE0123456789-;() \n9145TMXYabc";
   std::mt19937 rng(20261113);

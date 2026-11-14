@@ -19,6 +19,7 @@
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
+#include "hefesto/drc/rules/details.hpp"
 #include "hefesto/drc/engine/kernel_hook.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "internal.hpp"
@@ -84,6 +85,12 @@ Context::Context(const editor::EditorState& editor, ErrorSink& error_sink, const
   input.euclidean = editor.drc.euclidean;
   input.compat = editor.drc.compat_settings();
   input.cancel = cancel;
+  if (const StyleDetails* details = rules->details(); details != nullptr && !details->mask_layer_rules.empty()) {
+    generation = std::make_unique<mask::GenerationContext>();
+    input.generation = generation.get();
+    mask_rules = std::make_unique<MaskRuleCache>();
+    input.mask_rules = mask_rules.get();
+  }
   if (sink.statistics() == nullptr) {
     sink.set_statistics(&own_stats);
   }

@@ -23,7 +23,6 @@
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/diag/codes.hpp"
-#include "hefesto/drc/check/mask_check.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/command/command.hpp"
 #include "hefesto/gds/read/read.hpp"
@@ -33,7 +32,6 @@
 #include "hefesto/gds/stream/records.hpp"
 #include "hefesto/gds/write/write.hpp"
 #include "hefesto/mask/gen/generate.hpp"
-#include "hefesto/mask/input/engine.hpp"
 #include "hefesto/mask/ops/operators.hpp"
 #include "hefesto/mask/style/core.hpp"
 #include "hefesto/platform/services.hpp"
@@ -93,12 +91,6 @@ void check_not_implemented(const cmd::CommandResult& result, const std::string& 
   REQUIRE_FALSE(result.diagnostics.empty());
   CHECK(result.diagnostics.front().code == kNotImplemented);
   CHECK(result.diagnostics.front().text == "not implemented yet: " + what);
-}
-
-void check_not_implemented(const diag::Status& status, const std::string& what) {
-  INFO(what);
-  REQUIRE_FALSE(status.ok());
-  CHECK(status.error().code == kNotImplemented);
 }
 
 }  // namespace
@@ -186,7 +178,6 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
                            "*array"}) {
     check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
   }
-  check_not_implemented(s.run("cif istyle in"), "cif istyle");
 }
 
 TEST_CASE("an unknown gds option prints the error and the help", "[m5-scaffold]") {
@@ -242,7 +233,6 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
   db::CellDef top{"top", 1};
   db::CellDef* root = &top;
-  check_not_implemented(gds::read(state, "in.gds", gds::GdsReadOptions{}), "gds read");
   check_not_implemented(cif::read(state, "in.cif", cif::CifReadOptions{}), "cif read");
   const auto prepared = gds::prepare_write(state, *root, gds::GdsWriteOptions{});
   REQUIRE_FALSE(prepared.ok());
@@ -279,17 +269,15 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   mask::GenerationContext ctx;
   ctx.sink = &sink_diag;
   const mask::OutputStyle style;
+  // GEN landed flat generation: a style without layers generates nothing.
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
-  CHECK(sink_diag.take().front().code == kNotImplemented);
+  CHECK(sink_diag.take().empty());
   std::atomic<bool> stop{true};
   mask::Progress progress{{}, &stop};
   CHECK(progress.cancelled());
   ctx.progress = &progress;
   CHECK(ctx.cancelled());
 
-  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/).
-  mask::InputStyle input_style;
-  mask::ReadEngine engine{state, input_style, {}};
-  check_not_implemented(engine.begin_cell("a"), "mask::ReadEngine::begin_cell");
-  CHECK_FALSE(hefesto::drc::map_mask_error(db::Rect{0, 0, 1, 1}, style, {}).has_value());
+  // Styles and the shared core: implemented by STYLES (tests/unit/mask/style/);
+  // input styles and the read engine by INPUT (tests/unit/mask/input/).
 }

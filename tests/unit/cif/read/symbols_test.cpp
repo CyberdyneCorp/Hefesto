@@ -9,6 +9,7 @@
 #include <chrono>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "hefesto/cif/read/symbols.hpp"
 
@@ -163,4 +164,17 @@ TEST_CASE("A suffix freed by a rename is given out again",
   REQUIRE(more);
   REQUIRE(more->renamed_to);
   CHECK(*more->renamed_to == "5_3");
+}
+
+TEST_CASE("Undefined cells come in cell-table order, then creation order within a symbol",
+          "[cap:cif-format-io][req:End of file and top-level geometry]") {
+  SymbolTable table;
+  REQUIRE(table.call(5));    // cell 0: "5"
+  REQUIRE(table.define(3));  // cell 1: defined, never listed
+  table.forget(5, true);
+  REQUIRE(table.call(5));    // cell 2: "5_1", a second cell of symbol 5
+  REQUIRE(table.call(1));    // cell 3: "1"
+  // Symbols 1, 3 and 5 fall in buckets 0, 2 and 4 of 32.
+  CHECK(table.undefined_cells() == std::vector<SymbolTable::CellId>{3, 0, 2});
+  CHECK(table.cell(2).name == "5_1");
 }

@@ -21,6 +21,7 @@
 #include "db/tech_masks.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/hints/hints.hpp"
 
@@ -132,7 +133,7 @@ class Flattener {
     if (options_.labels == FlattenLabels::top_only) {
       return;
     }
-    for (const CellUse* u : uses_in_search_order(def)) {
+    for (const CellUse* u : uses_in_search_order(def, compat::CompatSettings{options_.magic_compat, true})) {
       if (!descends(*u, options_.descend)) {
         continue;
       }

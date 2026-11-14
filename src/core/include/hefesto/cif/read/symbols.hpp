@@ -13,7 +13,10 @@
 //     named "n" to "n_k", as Magic does (cifUniqueCell), and creates a fresh
 //     cell for the new definition;
 //   - `DD n` is compat: magic-compat ON forgets symbol n only, as Magic does;
-//     OFF forgets every symbol >= n, as CIF 2.0 says.
+//     OFF forgets every symbol >= n, as CIF 2.0 says;
+//   - the cells left undefined are listed in the iteration order of Magic's
+//     CifCellTable, a word-keyed Magic hash table of the symbol numbers
+//     (requested size 32; cif/CIFrdcl.c:134, 1752-1772), in both modes.
 // Magic's version (cif/CIFrdcl.c:199-290) can clear a user cell named "n" or
 // a cell defined earlier in the read; that loses data, hence the fix.
 //
@@ -34,6 +37,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "hefesto/util/magic_hash_table.hpp"
 
 namespace hefesto::cif {
 
@@ -87,6 +92,10 @@ class SymbolTable {
   [[nodiscard]] const ReadCell& cell(CellId id) const { return cells_.at(id); }
   /// Every cell this read created, in creation order.
   [[nodiscard]] const std::vector<ReadCell>& cells() const noexcept { return cells_; }
+  /// The cells whose DS was never read, in the order Magic reports them
+  /// ("used but not defined"): the iteration order of the symbol table,
+  /// then creation order among the cells of one symbol number.
+  [[nodiscard]] std::vector<CellId> undefined_cells() const;
   /// True when a cell of this read, or a cell outside it, has `name`. The
   /// outside test is not asked about names this read has given out, so a
   /// rename the caller has not yet applied to the library is not mistaken
@@ -101,8 +110,15 @@ class SymbolTable {
   [[nodiscard]] std::optional<CellId> create(std::int64_t number, bool defined);
   void set_name(CellId id, const std::string& name);
 
+  /// Magic's HT_WORDKEYS hash input: the key's integer value.
+  struct WordKey {
+    using Key = std::int64_t;
+    [[nodiscard]] static std::uint64_t hash(Key key) noexcept { return static_cast<std::uint64_t>(key); }
+  };
+
   NameInUse outside_;
   std::size_t max_cells_ = kDefaultMaxCells;
+  util::MagicHashTable<bool, WordKey> table_{32};  // CifCellTable: every symbol number given a cell
   std::map<std::int64_t, CellId> symbols_;
   std::vector<ReadCell> cells_;
   std::unordered_map<std::string, CellId> names_;  // the current names of this read's cells

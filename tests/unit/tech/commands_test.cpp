@@ -18,6 +18,7 @@
 
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/prompt.hpp"
+#include "hefesto/cmd/builtins.hpp"
 #include "hefesto/cmd/registry.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/commands.hpp"
@@ -353,6 +354,35 @@ TEST_CASE("tech load installs the cifoutput styles and scalegrid rescales them",
   CHECK(set.current_style()->scale.scale_factor == 10);
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
   CHECK(s.editor.mask.output_styles.current_style()->scale.scale_factor == 5);
+}
+
+// The session's input styles: tech load reads the cifinput section,
+// scalegrid rescales the current style, and `setting set magic-compat`
+// re-reads the section (Q-MASK-300 resolves per mode).
+TEST_CASE("tech load installs the cifinput styles, scalegrid rescales them and magic-compat re-reads them",
+          "[cap:mask-input-styles][req:Scalefactor statement]") {
+  Session s;
+  REQUIRE(cmd::register_builtins(s.registry));
+  s.file("/t/c.tech", with(tiny(), "cifinput\nend",
+                           "cifinput\nstyle a\nscalefactor 2.5 nanometers\nlayer poly P\nstyle b\nscalefactor 3\nend"));
+  REQUIRE(s.run("tech", {"load", "/t/c", "-noprompt"}).ok());
+  const auto& set = s.editor.mask.input_styles;
+  CHECK(set.names() == std::vector<std::string>{"a", "b"});
+  REQUIRE(set.current_style() != nullptr);
+  CHECK(set.current_style()->name == "a");
+  CHECK(set.magic_compat);
+  // Read units per internal unit (S / M) halve when the grid gets twice as fine.
+  const auto ratio = [&] {
+    const auto* style = s.editor.mask.input_styles.current_style();
+    return static_cast<double>(style->scale_factor) / static_cast<double>(style->multiplier);
+  };
+  const double before = ratio();
+  REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
+  CHECK(ratio() == before / 2);
+  REQUIRE(s.run("setting", {"set", "magic-compat", "off"}).ok());
+  CHECK_FALSE(s.editor.mask.input_styles.magic_compat);
+  REQUIRE(s.editor.mask.input_styles.current_style() != nullptr);
+  CHECK(s.editor.mask.input_styles.current_style()->name == "a");
 }
 
 // Q-MASK-29: with the internal grid 3 times finer than lambda (scalegrid

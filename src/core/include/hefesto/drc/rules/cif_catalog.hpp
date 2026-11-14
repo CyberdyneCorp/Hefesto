@@ -123,6 +123,10 @@ class CifCatalog {
   /// drcGetContactBorder in the current style; std::nullopt when `type` is
   /// not a contact with a positive border or no style is loaded.
   [[nodiscard]] std::optional<ContactBorder> contact_border(tech::TileType type) const noexcept;
+  /// The mask::OutputStyle the style `name` (exact) views, rescaled with
+  /// the catalog; nullptr when unknown. DRC's mask-layer check generates
+  /// with it (drcCifStyle).
+  [[nodiscard]] std::shared_ptr<const mask::OutputStyle> output_style(std::string_view name) const;
   /// The step size used when the halo is 0: 6400 / scalefactor of the
   /// current style (integer division), or 64 without a style.
   [[nodiscard]] std::int32_t default_step_size() const noexcept;

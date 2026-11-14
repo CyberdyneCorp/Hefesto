@@ -70,6 +70,7 @@ class Parser {
   [[nodiscard]] Transform64 direction(std::int64_t x, std::int64_t y);
   [[nodiscard]] bool transform(Transform64& t);
   [[nodiscard]] bool transform_step(int ch, Transform64& t);
+  [[nodiscard]] bool translate(Transform64& t);
 
   // parser_cells.cpp.
   void report_symbol_cap();

@@ -17,6 +17,7 @@
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/script/pdk/tech_rc.hpp"
 #include "hefesto/script/pdk/trust.hpp"
@@ -95,6 +96,10 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
     const mask::RescaleStep step = mask::rescale_output_styles(
         ed.mask.output_styles, static_cast<std::int32_t>(d), static_cast<std::int32_t>(n), ed.drc.compat_settings());
     for (const diag::Diagnostic& message : step.messages) {
+      io.sink.emit(message);
+    }
+    // and CIFTechInputScale(1, d, TRUE).
+    for (const diag::Diagnostic& message : mask::rescale_input_styles(ed.mask.input_styles, d, n, ed.drc.compat_settings())) {
       io.sink.emit(message);
     }
     (void)tech::scale_layout(ed, n, d);
