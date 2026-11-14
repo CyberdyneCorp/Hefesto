@@ -30,7 +30,9 @@ class Lexer {
   /// The value of peek() and take() at end of file (C's EOF).
   static constexpr int kEof = -1;
   /// Integers saturate at +-kIntegerLimit (Magic's atoi has no limit).
-  static constexpr std::int64_t kIntegerLimit = std::int64_t{1} << 62;
+  /// 2^61, so the sum of two values within the limit (a box's size and
+  /// center, a translation step) cannot overflow 64 bits.
+  static constexpr std::int64_t kIntegerLimit = std::int64_t{1} << 61;
 
   explicit Lexer(std::string_view text) noexcept : text_(text) {}
 

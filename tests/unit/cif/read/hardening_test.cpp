@@ -52,6 +52,40 @@ TEST_CASE("A call translated outside the plane is ignored", "[cap:cif-format-io]
   CHECK(has_code(r, "DB-GEOM-001"));
 }
 
+// Values saturate at 2^61, so the sum of a saturated size and a saturated
+// center, and a chain of saturated translations, stay within 64 bits (the
+// linux-asan leg runs these under UBSan).
+TEST_CASE("A box with a saturated size and center is ignored without overflow",
+          "[cap:cif-format-io][req:Box command]") {
+  Reader r;
+  CHECK(body(r.read("L CMF; B 4611686018427387904 4 4611686018427387904 0; B 4 4 2 2; E")) ==
+        Events{"paint 0 rect (0,0)-(4,4)"});
+  CHECK(has_code(r, "DB-GEOM-001"));
+}
+
+TEST_CASE("A round flash with a saturated diameter and center is ignored without overflow",
+          "[cap:cif-format-io][req:Round flash command]") {
+  Reader r;
+  CHECK(body(r.read("L CMF; R 4611686018427387904 4611686018427387904 0; E")).empty());
+  CHECK(has_code(r, "DB-GEOM-001"));
+}
+
+TEST_CASE("An area label with a saturated size and center is ignored without overflow",
+          "[cap:cif-format-io][req:Label user extensions]") {
+  Reader r;
+  CHECK(body(r.read("L CMF; 95 a 4611686018427387904 4 4611686018427387904 0; E")).empty());
+  CHECK(has_code(r, "DB-GEOM-001"));
+}
+
+TEST_CASE("Repeated saturated translations of a call are ignored without overflow",
+          "[cap:cif-format-io][req:Calls and transformations]") {
+  Reader r;
+  CHECK(body(r.read("91 a; C 1 T 4611686018427387904 0 T 4611686018427387904 0 T 4611686018427387904 0 "
+                    "T 0 -4611686018427387904 T 0 -4611686018427387904; C 1 T 1 1; E")) ==
+        Events{"place 1 [1 0 1 0 1 1] forward"});
+  CHECK(has_code(r, "DB-GEOM-001"));
+}
+
 TEST_CASE("Out-of-plane wires, flashes and labels are ignored", "[cap:cif-format-io][req:Wire command]") {
   Reader r;
   CHECK(body(r.read("L CMF; W 4000000000000 0 0 10 0; R 10 1500000000 0; 94 a 1500000000 0; "

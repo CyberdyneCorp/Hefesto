@@ -57,6 +57,9 @@ class Parser {
   // CIFParsePath) and the mid-read subdivision.
   [[nodiscard]] std::optional<std::int64_t> unsigned_integer();
   [[nodiscard]] std::int64_t mul(std::int64_t a, std::int64_t b);
+  /// Clamps a sum of two in-range values to +-kIntegerLimit, marking the
+  /// command's geometry out of range when it had to.
+  [[nodiscard]] std::int64_t saturate(std::int64_t v);
   [[nodiscard]] std::int64_t scale_value(std::int64_t v, std::int64_t iscale, ReadPoint* earlier);
   [[nodiscard]] std::optional<ReadPoint> point(std::int64_t iscale);
   [[nodiscard]] std::optional<std::vector<ReadPoint>> path(std::int64_t iscale);

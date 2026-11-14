@@ -189,15 +189,24 @@ std::optional<std::int64_t> Parser::unsigned_integer() {
 }
 
 std::int64_t Parser::mul(std::int64_t a, std::int64_t b) {
-  // Every value stays within +-kIntegerLimit (2^62), so sums never overflow
-  // and only products need a check; an overflow saturates and marks the
-  // command's geometry as out of range.
+  // Every value stays within +-kIntegerLimit (2^61), so the sum of two
+  // values never overflows and only products need a check; an overflow
+  // saturates and marks the command's geometry as out of range.
   constexpr std::int64_t kLimit = Lexer::kIntegerLimit;
   if (a != 0 && std::llabs(b) > kLimit / std::llabs(a)) {
     range_error_ = true;
     return (a < 0) != (b < 0) ? -kLimit : kLimit;
   }
   return a * b;
+}
+
+std::int64_t Parser::saturate(std::int64_t v) {
+  constexpr std::int64_t kLimit = Lexer::kIntegerLimit;
+  if (v > kLimit || v < -kLimit) {
+    range_error_ = true;
+    return v < 0 ? -kLimit : kLimit;
+  }
+  return v;
 }
 
 std::int64_t Parser::rescale_limit() const noexcept {
@@ -308,9 +317,10 @@ bool Parser::transform_step(int ch, Transform64& t) {
       error("translation, but no point.");
       return false;
     }
-    t.c += p->x;  // GeoTranslateTrans; translations stay within +-2^62 each
-    t.f += p->y;
-    range_error_ = range_error_ || std::llabs(t.c) > Lexer::kIntegerLimit || std::llabs(t.f) > Lexer::kIntegerLimit;
+    // GeoTranslateTrans. Both terms are within +-2^61, so the sum fits;
+    // it is saturated back to the limit so later steps cannot overflow.
+    t.c = saturate(t.c + p->x);
+    t.f = saturate(t.f + p->y);
     return true;
   }
   if (ch == 'M') {
