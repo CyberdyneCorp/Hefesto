@@ -30,7 +30,7 @@ struct GdsSettings {
   // ---- read options (GDSR) ----
   bool flatten = false;                      // CalmaFlattenUses
   std::int32_t flatten_limit = 10;           // CalmaFlattenLimit
-  std::vector<std::string> flatglob;         // CalmaFlattenUsesByName
+  std::vector<std::string> flatglob{"*_CDNS_*"};  // CalmaFlattenUsesByName (CalmaTechInit's default)
   bool readonly = false;                     // CalmaReadOnly
   double magscale = 1.0;                     // CalmaMagScale (float in Magic)
   bool drccheck = true;                      // !CalmaNoDRCCheck
@@ -38,11 +38,13 @@ struct GdsSettings {
   bool noduplicates = false;                 // CalmaNoDuplicates
   bool unique = false;                       // CalmaUnique
   bool savepaths = false;                    // CalmaRecordPaths
-  std::string maskhints;                     // CalmaMaskHints ("" = none)
+  std::string maskhints;                     // CalmaMaskHints: "" none, "yes" all, else CIF layers a,b,...
   PolygonSubcells polygon_subcells = PolygonSubcells::none;  // CalmaSubcellPolygons
   bool path_subcells = false;                // CalmaSubcellPaths
   bool rescale = true;                       // CIFRescaleAllow (Q-MASK-130)
   bool rewound = false;                      // CalmaRewound (Q-MASK-111, ON only)
+  bool snap_warned = false;                  // cifSeenSnapWarning: the grid message is given once per
+                                             // session (a CIF read resets it)
 
   // ---- write options (GDSW) ----
   bool library = false;                      // CalmaDoLibrary

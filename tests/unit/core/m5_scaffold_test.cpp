@@ -235,7 +235,6 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
   db::CellDef top{"top", 1};
   db::CellDef* root = &top;
-  check_not_implemented(gds::read(state, "in.gds", gds::GdsReadOptions{}), "gds read");
   check_not_implemented(cif::read(state, "in.cif", cif::CifReadOptions{}), "cif read");
   const auto prepared = gds::prepare_write(state, *root, gds::GdsWriteOptions{});
   REQUIRE_FALSE(prepared.ok());
