@@ -14,6 +14,8 @@
 #include "binding_fixture.hpp"
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/script/binding/keyword_rule.hpp"
 #include "hefesto/ui/magic_help.hpp"
 
@@ -43,13 +45,13 @@ std::string selected_instance(BindingFixture& f) {
   hefesto::db::CellDef* inv = f.editor.cells.create("inv", f.editor.technology->plane_count()).value();
   inv->flags().available = true;
   REQUIRE(f.eval("box 0 0 4 4; getcell inv; identify x1").ok());
-  const auto uses = hefesto::db::uses_in_search_order(*f.top);
+  const auto uses = hefesto::db::uses_in_search_order(*f.top, hefesto::compat::CompatSettings{});
   REQUIRE(uses.size() == 1);
   return uses.front()->id;
 }
 
 std::string instance_id(const BindingFixture& f) {
-  return hefesto::db::uses_in_search_order(*f.top).front()->id;
+  return hefesto::db::uses_in_search_order(*f.top, hefesto::compat::CompatSettings{}).front()->id;
 }
 
 }  // namespace
