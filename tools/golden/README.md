@@ -16,7 +16,7 @@ tools/golden/
   replay.py              run hefesto-cli on each case and compare (run.py = alias)
   compare/               canonical comparators and time-field masks (python3 -m compare)
   goldenlib/             case model, pins, reference runners, hash-table model, external inputs
-  authoring/             generators of the M1, M2 and M3 cases (m1_cases.py, m2_cases.py, m3_cases.py) and the paint/erase table dump
+  authoring/             generators of the M1-M5 cases (m1_cases.py ... m5_cases.py), the paint/erase table dump and the GDS writer gdsgen.py
   harness/magic_hash/    driver around Magic's own utils/hash.c (magic-hash-harness)
   tests/                 unit tests (CTest label golden-tools)
 ```
@@ -68,6 +68,19 @@ python3 authoring/use_order_cases.py --sync       # copy captured expected/trace
 ```
 
 `tests/test_use_order_probe.py` runs the probe's GDS and CIF decoders on hand-built files. It also runs every case script under `tclsh` against `tests/fake_magic_useorder.tcl`, a stand-in for the Magic commands with no bplane model. Both are skipped when `tclsh` is missing.
+
+## M5: the MASK cases (mask generation, GDS and CIF)
+
+`authoring/m5_cases.py` writes the MASK cases of `tests/golden/MASK/CASES.md` (m5-mask-gds-cif design D18, task 13.4) from `authoring/mask_cases.py` (framework; output styles MASK-OS, operators MASK-OP, hierarchical generation MASK-HG) and `authoring/mask_io_cases.py` (input styles MASK-CI, CIF MASK-CF, GDS read MASK-GR, GDS write MASK-GW). Each case is a `TclCase` on a small synthetic technology (the MODEL technology `mt` with the family's cifoutput and cifinput sections, committed per case), with Magic's session state pinned: a fresh session, `drc off` first, `gds datestamp 0` before a GDS write (creation dates are then compared under the image's `TZ=UTC`; `gds-mod-dates` masks only the modification dates) and one write per case, unless the case is a *history case*, whose `case.toml` names its writes. A read case saves every cell it created (`writeall force`) and compares them as one file (`derived:files:*.mag`). Outputs are compared by kind: GDS byte for byte (display `gds-records`), compressed GDS through `gzip`, CIF with `cif-preamble`, `feedback save` files with `polygon-set`.
+
+```sh
+python3 authoring/m5_cases.py                 # write the cases (never expected/)
+python3 authoring/m5_cases.py --not-authored  # rows left out: reason and target milestone
+python3 authoring/m5_cases.py --deviations    # rewrite the generated deferral block of deviations.toml
+python3 authoring/m5_cases.py --dispatch      # the golden-capture.yml capture command
+```
+
+Hand-built GDS inputs (bad headers, damaged records, every PATHTYPE, AREFs, properties, odd TEXT) come from `authoring/gdsgen.py`, a record writer with its decoder in `goldenlib/gds.py` (`tests/test_gdsgen.py`). Inputs under 64 KB are committed as binary. Until a case is captured and its workstream lands, `deviations.toml` lists it as `deferred = "M5"` in the block `m5_cases.py --deviations` generates; a workstream whose implementation makes cases replay adds them to `REPLAYED` in `m5_cases.py` and re-runs `--deviations`.
 
 ## Building the reference image (CI, not developer machines)
 

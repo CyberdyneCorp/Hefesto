@@ -1,0 +1,10 @@
+magic
+tech masktest
+timestamp 100
+<< metal3 >>
+rect 5 -5 30 15
+use child  c0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

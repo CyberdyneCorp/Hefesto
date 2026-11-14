@@ -68,6 +68,9 @@ class TclCase:
     outputs: list[str] = field(default_factory=list)   # files written in the work dir
     output_masks: dict[str, list[str]] = field(default_factory=dict)
     output_names: dict[str, str] = field(default_factory=dict)  # name per source (derived sources)
+    output_comparators: dict[str, str] = field(default_factory=dict)  # per source (default "bytes")
+    output_displays: dict[str, str] = field(default_factory=dict)  # display view per source (gds-records)
+    gds_rt: bool = False                               # CTest label golden-gds-rt (m5 design D19)
     stream_masks: list[str] = field(default_factory=list)
     tech: str | None = None                            # "scmos": staged and loaded first
     pdk: str | None = None                             # sky130A | gf180mcuD | ihp-sg13g2
@@ -150,7 +153,8 @@ def case_toml(case: TclCase) -> str:
              *(f"# {n}" for n in case.notes), "",
              "schema = 1", f"id = {_toml_str(case.id)}", f"area = {_toml_str(case.area)}",
              f"capability = {_toml_str(case.capability)}", f"requirements = {_toml_list(case.requirements)}",
-             'tool = "magic"', f"description = {_toml_str(case.description)}", "",
+             'tool = "magic"', f"description = {_toml_str(case.description)}",
+             *(["gds_rt = true"] if case.gds_rt else []), "",
              "[reference]", 'script = "input/commands.tcl"', f"argv = {_toml_list(reference_argv(case))}",
              *(['display = "xvfb"'] if case.gui else []), *(STDIN if case.stdin else []),
              *(["allow_nonzero_exit = true"] if case.timeout or case.allow_nonzero_exit else []), "",
@@ -165,7 +169,8 @@ def case_toml(case: TclCase) -> str:
     for source in case.outputs:
         out_masks = case.output_masks.get(source, default_masks(source))
         name = case.output_names.get(source, source.replace("/", "__"))
-        text += _output_block(name, source, "bytes", out_masks)
+        text += _output_block(name, source, case.output_comparators.get(source, "bytes"), out_masks,
+                              case.output_displays.get(source))
     return text
 
 

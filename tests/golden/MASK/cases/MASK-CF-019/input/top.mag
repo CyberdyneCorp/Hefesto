@@ -1,0 +1,10 @@
+magic
+tech masktest
+timestamp 100
+<< metal2 >>
+rect 0 0 10 10
+use c  c0
+timestamp 100
+transform 1 0 2 0 1 2
+box 0 0 4 4
+<< end >>

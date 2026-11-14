@@ -1,0 +1,14 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 4 20
+rect 8 0 12 20
+<< polysilicon >>
+rect 4 8 8 10
+<< ndiffusion >>
+rect 0 0 12 6
+<< labels >>
+rlabel metal1 0 10 0 10 0 in
+rlabel metal1 12 10 12 10 0 out
+<< end >>

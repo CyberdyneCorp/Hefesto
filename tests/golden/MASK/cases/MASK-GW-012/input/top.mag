@@ -1,0 +1,36 @@
+magic
+tech masktest
+timestamp 100
+use c  u0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 4 4
+use c  u1
+timestamp 100
+transform 0 -1 20 1 0 0
+box 0 0 4 4
+use c  u2
+timestamp 100
+transform -1 0 40 0 -1 0
+box 0 0 4 4
+use c  u3
+timestamp 100
+transform 0 1 60 -1 0 0
+box 0 0 4 4
+use c  u4
+timestamp 100
+transform -1 0 80 0 1 0
+box 0 0 4 4
+use c  u5
+timestamp 100
+transform 1 0 100 0 -1 0
+box 0 0 4 4
+use c  u6
+timestamp 100
+transform 0 1 120 1 0 0
+box 0 0 4 4
+use c  u7
+timestamp 100
+transform 0 -1 140 -1 0 0
+box 0 0 4 4
+<< end >>

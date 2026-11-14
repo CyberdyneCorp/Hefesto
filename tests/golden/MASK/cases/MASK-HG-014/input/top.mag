@@ -1,0 +1,9 @@
+magic
+tech masktest
+timestamp 100
+use child  a
+array 0 2 30 0 2 30
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+<< end >>

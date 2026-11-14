@@ -1,0 +1,18 @@
+magic
+tech masktest
+timestamp 100
+<< metal1 >>
+rect 0 0 300 4
+use child  c0
+timestamp 100
+transform 1 0 139 0 1 5
+box 0 0 10 10
+use child  c1
+timestamp 100
+transform 1 0 140 0 1 5
+box 0 0 10 10
+use child  c2
+timestamp 100
+transform 1 0 141 0 1 5
+box 0 0 10 10
+<< end >>

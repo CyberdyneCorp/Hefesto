@@ -1,0 +1,20 @@
+magic
+tech masktest
+timestamp 100
+use nand-2  u0
+timestamp 100
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use a-b  u1
+timestamp 100
+transform 1 0 10 0 1 0
+box 0 0 10 10
+use a_b  u2
+timestamp 100
+transform 1 0 20 0 1 0
+box 0 0 10 10
+use nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn  u3
+timestamp 100
+transform 1 0 30 0 1 0
+box 0 0 10 10
+<< end >>
