@@ -27,6 +27,18 @@ inline constexpr std::string_view kUnnamed = "GDS-WRITE-011";
 inline constexpr std::string_view kProblems = "GDS-WRITE-012";
 inline constexpr std::string_view kCancelled = "GDS-WRITE-013";
 inline constexpr std::string_view kDepth = "GDS-WRITE-014";
-inline constexpr std::string_view kNotWritten = "GDS-WRITE-015";
+inline constexpr std::string_view kPortLayer = "GDS-WRITE-020";
+inline constexpr std::string_view kVendorCopy = "GDS-WRITE-040";
+inline constexpr std::string_view kVendorMissing = "GDS-WRITE-041";
+inline constexpr std::string_view kVendorCheck = "GDS-WRITE-042";
+inline constexpr std::string_view kVendorName = "GDS-WRITE-043";
+inline constexpr std::string_view kVendorWrite = "GDS-WRITE-044";
+inline constexpr std::string_view kVendorSname = "GDS-WRITE-045";
+inline constexpr std::string_view kDumpUnits = "GDS-WRITE-046";
+inline constexpr std::string_view kDumpProgress = "GDS-WRITE-047";
+inline constexpr std::string_view kDumpForward = "GDS-WRITE-048";
+inline constexpr std::string_view kDumpError = "GDS-WRITE-049";
+inline constexpr std::string_view kDumpDangling = "GDS-WRITE-050";
+inline constexpr std::string_view kDumpPrefix = "GDS-WRITE-051";
 
 }  // namespace hefesto::gds::codes

@@ -233,7 +233,7 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   mask::GenerationContext ctx;
   ctx.progress = progress;
   ctx.sink = &problems;
-  detail::LibraryWriter writer(prepared, records, collected, ctx);
+  detail::LibraryWriter writer(prepared, records, sink, collected, ctx);
   detail::LibraryWriter::Result result = writer.write();
   if (!result.status.ok() && result.status.error().code == codes::kCancelled) {
     (void)sink.finish();

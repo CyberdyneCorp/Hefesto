@@ -67,8 +67,19 @@ Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`;
 - `GDS-WRITE-012`: Magic's "<n> problems occurred.  See feedback entries." after a write whose mask generation reported problems.
 - `GDS-WRITE-013`: the write was cancelled (Q-MASK-414); the temporary file is removed and the target is untouched.
 - `GDS-WRITE-014`: the hierarchy under the written cell is deeper than 4096 levels; the writer stops instead of exhausting the stack (Magic has no limit).
-- `GDS-WRITE-015`: a read-only vendor cell with GDS content (verbatim copy or full dump) cannot be written yet; it arrives with task 10.7.
 - `GDS-WRITE-020`: port labels of a type whose output style has no `labels <type> port` layer (Q-MASK-206). With magic-compat ON they are not written, as in Magic; OFF writes them on the port-text layer. Reported once per type and write, as a native diagnostic (Magic prints nothing, so the `magic` format drops it).
+- `GDS-WRITE-040`: Magic's "   Copying output for cell <name> from <file>" line for each read-only cell with content (gds-write "Magic write-time side effects").
+- `GDS-WRITE-041`: Magic's "Calma output error:  Can't find GDS file "<file>" for vendor cell "<name>".  It will not be output.": the file named by GDS_FILE is not on the cell search path, the library path or next to the cell's .mag file. The write fails unless `gds undefined` is allow; nothing is reported when the cell's first parent is itself a vendor cell (gds-write "Verbatim copy of read-only cells").
+- `GDS-WRITE-042`: A sanity check of a verbatim copy failed (Magic's "Bad vendor GDS file reference!", "Structure name not found ending at GDS file position <n>", "Structure definition not found at GDS file position <n>", "Can't read cell from vendor GDS" or "Structure end definition not found at GDS file position <n>", with "Can't write cell from vendor GDS.  Using magic's internal definition"). Nothing of the copy was written and the cell is generated from its layout.
+- `GDS-WRITE-043`: Magic's "Calma output warning:  Structure definition has name <a> but cell definition has name <b>." and "The structure definition will be given the cell name."
+- `GDS-WRITE-044`: Magic's "Calma output error:  Failed to write cell "<name>" from vendor GDS.  Output is invalid!": the copy could not be read or written after its BGNSTR; the cell fails.
+- `GDS-WRITE-045`: An SNAME inside a verbatim copy names none of the cell's children as they are written (Q-MASK-216): with magic-compat ON the bytes are copied as they are, with this warning; with it OFF SNAMEs that name a child are rewritten to the child's output name and the others keep their text with this warning. Native only.
+- `GDS-WRITE-046`: A full dump's library has units other than 1 nm (1 Angstrom with `units angstroms`) per database unit: "Incompatible scale factor of <mpd>, must be 1e-9." and "Error:  Library <name> has incompatible database units!". Checked whatever `gds readonly` is, in both modes, and reported once per library and write (Q-MASK-212, fix); the write fails unless `gds undefined` is allow.
+- `GDS-WRITE-047`: Magic's `Reading "<name>".` for each structure a full dump copies.
+- `GDS-WRITE-048`: Magic's "Diagnostic:  <name> is a forward reference?" for an SNAME of a full dump naming a structure not yet copied; it is written with the library prefix (or the `[[0]]` form).
+- `GDS-WRITE-049`: Errors of a full dump: a read error in the vendor file ("Error while reading cell "<name>" (byte position <n>): ..."), "Structure <name> defined redundantly in GDS", "Error:  Unreferenced cell <name> prefix is unrecorded!" and, at the end of the write, "Error:  Cell <name> is not defined in the output file!".
+- `GDS-WRITE-050`: With magic-compat ON, a cell appended at the end of the write for a forward reference no dump defined is written under its own name, as in Magic, so the SNAME written for it (the prefixed name) dangles (Q-MASK-214). With it OFF the cell is written under the recorded name and nothing is reported. Native only.
+- `GDS-WRITE-051`: All 936 library prefixes of a write are taken; the next full dump is written without a prefix (Magic loops forever).
 
 ## CMD
 
@@ -128,6 +139,17 @@ fails when the two disagree.
 | `GDS-WRITE-012` | info | `<n> problems occurred.  See feedback entries.` after a write whose mask generation reported problems. |
 | `GDS-WRITE-013` | error | The GDS write was cancelled; no output file is left. |
 | `GDS-WRITE-014` | error | The cell hierarchy under the written cell is deeper than the writer's limit. |
-| `GDS-WRITE-015` | error | A read-only vendor cell with GDS content cannot be copied yet (verbatim copy and full dump arrive with task 10.7). |
 | `GDS-WRITE-020` | warning | Port labels of a type without a `labels <type> port` layer are skipped (magic-compat ON) or written on the port-text layer (OFF) (Q-MASK-206). |
+| `GDS-WRITE-040` | info | `   Copying output for cell <name> from <file>` for each read-only cell copied from its vendor GDS file. |
+| `GDS-WRITE-041` | error | The vendor GDS file of a read-only cell cannot be found; the cell is not written. |
+| `GDS-WRITE-042` | error | A sanity check of a verbatim vendor copy failed; the cell is written from its layout instead. |
+| `GDS-WRITE-043` | warning | The STRNAME before a vendor structure differs from the cell name; the copy takes the cell name. |
+| `GDS-WRITE-044` | error | A vendor copy failed after its header was written; the output is invalid. |
+| `GDS-WRITE-045` | warning | An SNAME inside a copied vendor structure names no child's output structure (Q-MASK-216). |
+| `GDS-WRITE-046` | error | A vendor library's units do not match the output style; the full dump is refused (Q-MASK-212). |
+| `GDS-WRITE-047` | info | `Reading "<name>".` for each structure of a full dump. |
+| `GDS-WRITE-048` | warning | `Diagnostic:  <name> is a forward reference?` in a full dump. |
+| `GDS-WRITE-049` | error | A full dump met a malformed record, a redundant structure, an unrecorded prefix or an undefined cell. |
+| `GDS-WRITE-050` | warning | A structure appended for an undefined vendor reference keeps its own name, so the SNAME dangles (Q-MASK-214). |
+| `GDS-WRITE-051` | error | Every two-character library prefix is taken; a full dump is written without a prefix. |
 <!-- END DIAGNOSTIC CODES -->

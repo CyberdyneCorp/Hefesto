@@ -97,6 +97,19 @@ std::string StructureNames::choose(ElementWriter& out, const db::CellDef& def, s
   return candidate;
 }
 
+std::string StructureNames::name_of(ElementWriter& out, const db::CellDef& def, std::int64_t id) {
+  const auto found = chosen_.find(&def);
+  return found != chosen_.end() ? found->second : choose(out, def, id, legal_name(out, def.name()));
+}
+
+void StructureNames::assign(ElementWriter& out, const db::CellDef& def, const std::string& text) {
+  if (chosen_.contains(&def)) {
+    return;
+  }
+  taken_.emplace(payload_key(out, text), &def);
+  chosen_.emplace(&def, text);
+}
+
 diag::Status StructureNames::write(ElementWriter& out, RecordType type, const db::CellDef& def, std::int64_t id) {
   const bool legal = legal_name(out, def.name());
   const auto found = chosen_.find(&def);

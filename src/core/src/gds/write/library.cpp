@@ -16,8 +16,10 @@
 //   phase read every cell it could).
 // - The traversal is recursive, as Magic's, with the depth limit of
 //   kMaxSubtreeDepth (GDS-WRITE-014).
-// - A read-only cell with content (verbatim copy, full dump; task 10.7)
-//   fails the write with GDS-WRITE-015 until that copy is implemented.
+// - Read-only cells with content are copied by vendor.cpp (verbatim copy)
+//   and dump.cpp (full dump); the forward references no dump defined are
+//   appended at the end of the write in the order they were recorded
+//   (Magic: calmaUndefHash order), with Q-MASK-214's naming.
 // Owner: GDSW.
 
 #include <chrono>
@@ -29,6 +31,7 @@
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/write/labels.hpp"
 #include "hefesto/gds/write/polygons.hpp"
+#include "vendor.hpp"
 #include "writer.hpp"
 
 namespace hefesto::gds::detail {
@@ -57,9 +60,17 @@ bool vendor_polygon_cell(const db::CellDef& def) {
 
 }  // namespace
 
-LibraryWriter::LibraryWriter(const PreparedWrite& prepared, RecordWriter& records, diag::DiagnosticSink& sink,
-                             mask::GenerationContext& ctx)
-    : prepared_(prepared), records_(records), sink_(sink), ctx_(ctx) {}
+LibraryWriter::LibraryWriter(const PreparedWrite& prepared, RecordWriter& records, ByteSink& raw,
+                             diag::DiagnosticSink& sink, mask::GenerationContext& ctx)
+    : prepared_(prepared),
+      records_(records),
+      sink_(sink),
+      ctx_(ctx),
+      vendor_(std::make_unique<VendorIo>(VendorIo{prepared, records, raw, sink, names_,
+                                                  [this](const db::CellDef& def) { return id_of(def); }})),
+      dump_(std::make_unique<FullDump>()) {}
+
+LibraryWriter::~LibraryWriter() = default;
 
 std::int64_t LibraryWriter::now() const {
   if (prepared_.options.now) {
@@ -117,6 +128,9 @@ LibraryWriter::Result LibraryWriter::write() {
   next_id_ = -2;
   const Visit visit = process(*prepared_.root, prepared_.options.settings.library, prepared_.hierarchy, 0);
   result.good = visit == Visit::done;
+  if (error_.ok() && !append_undefined()) {
+    result.good = false;
+  }
   if (!error_.ok()) {
     result.good = false;
     result.status = error_;
@@ -144,15 +158,116 @@ LibraryWriter::Visit LibraryWriter::check_kind(const db::CellDef& def, const Cel
   return Visit::done;
 }
 
+// calmaProcessVendorUse: a magnified copy in a vendor cell is written as
+// the structure it magnifies.
+db::CellDef& LibraryWriter::magnified_source(db::CellDef& def) {
+  const db::PropertyValue* value = def.properties().find("GDS_MAG_SOURCE");
+  const auto* name = value != nullptr ? std::get_if<std::string>(value) : nullptr;
+  if (name == nullptr) {
+    return def;
+  }
+  if (db::CellDef* source = prepared_.editor->cells.find(*name)) {
+    return *source;
+  }
+  sink_.emit(diag::make(codes::kVendorMissing, "Calma output error:  Cell \"" + def.name() +
+                                                   "\" is a magnified copy of \"" + *name +
+                                                   "\", which is not in memory."));
+  return def;
+}
+
 LibraryWriter::Visit LibraryWriter::process_children(const db::CellDef& def, const mask::HierarchyOptions& options,
-                                                     std::size_t depth) {
+                                                     std::size_t depth, bool vendor) {
   // DBCellEnum: the whole-plane enumeration, which never rebuilds.
   for (db::CellUse* use : db::uses_in_search_order(def, prepared_.compat)) {
-    if (use->def != nullptr && process(*use->def, false, options, depth + 1) == Visit::failed) {
+    if (use->def == nullptr) {
+      continue;
+    }
+    db::CellDef& child = vendor ? magnified_source(*use->def) : *use->def;
+    if (process(child, false, options, depth + 1) == Visit::failed) {
       return Visit::failed;
     }
   }
   return Visit::done;
+}
+
+// The full dump of `file` (once per write; Q-MASK-212: a refused library
+// follows the `undefined` rule).
+LibraryWriter::VendorVisit LibraryWriter::full_dump(const db::CellDef& def, ByteSource& source,
+                                                    const std::string& file) {
+  const bool allow = prepared_.options.settings.allow_undefined;
+  if (dump_->refused(file)) {
+    return allow ? VendorVisit::done : VendorVisit::failed;
+  }
+  if (dump_->seen(file)) {
+    return VendorVisit::done;
+  }
+  vendor_->now = now();
+  const bool dumped = dump_->dump(*vendor_, def, source, file);
+  if (!vendor_->error.ok()) {
+    error_ = vendor_->error;
+    return VendorVisit::failed;
+  }
+  return dumped || allow ? VendorVisit::done : VendorVisit::failed;
+}
+
+// The copy branch of calmaProcessDef.
+LibraryWriter::VendorVisit LibraryWriter::vendor_structure(const db::CellDef& def, const CellKind& kind) {
+  const auto* file = std::get_if<std::string>(def.properties().find("GDS_FILE"));
+  sink_.emit(diag::make(codes::kVendorCopy, "   Copying output for cell " + def.name() + " from " + *file));
+  std::optional<VendorFile> opened = open_vendor_gds(*vendor_, def, *file);
+  if (!opened) {
+    const std::vector<db::CellUse*>& parents = def.instances();
+    const db::CellDef* parent =
+        !parents.empty() && parents.front()->parent != nullptr ? parents.front()->parent : &def;
+    if (parent->properties().find("GDS_FILE") != nullptr) {
+      return VendorVisit::done;  // inside another vendor cell: not written
+    }
+    sink_.emit(diag::make(codes::kVendorMissing, "Calma output error:  Can't find GDS file \"" + *file +
+                                                     "\" for vendor cell \"" + def.name() +
+                                                     "\".  It will not be output."));
+    return prepared_.options.settings.allow_undefined ? VendorVisit::done : VendorVisit::failed;
+  }
+  if (kind.abstract || !kind.has_end) {
+    return full_dump(def, *opened->source, opened->path.generic_string());
+  }
+  vendor_->now = now();
+  const CopyResult copied = copy_vendor_structure(*vendor_, def, *opened->source);
+  if (!vendor_->error.ok()) {
+    error_ = vendor_->error;
+  }
+  switch (copied) {
+    case CopyResult::copied:
+      return VendorVisit::done;
+    case CopyResult::fallback:
+      return VendorVisit::fallback;
+    default:
+      return VendorVisit::failed;
+  }
+}
+
+// The structures of the forward references no dump defined (CalmaWrite's
+// calmaUndefHash pass, Q-MASK-214).
+bool LibraryWriter::append_undefined() {
+  bool good = true;
+  for (const FullDump::Undefined& u : dump_->undefined()) {
+    db::CellDef* def = prepared_.editor->cells.find(u.name);
+    if (def == nullptr) {
+      sink_.emit(diag::make(codes::kDumpError, "Error:  Cell " + u.recorded + " is not defined in the output file!"));
+      continue;
+    }
+    if (!prepared_.compat.magic_compat) {
+      ElementWriter out(records_, context_for(*def, {}), &sink_);
+      names_.assign(out, *def, u.recorded);
+    } else if (u.recorded != def->name()) {
+      sink_.emit(diag::make_native(codes::kDumpDangling, "Warning: cell " + def->name() +
+                                                             " is written under its own name, so references to \"" +
+                                                             u.recorded + "\" in the copied vendor structures dangle."));
+    }
+    if (process(*def, false, prepared_.hierarchy, 0) == Visit::failed) {
+      good = false;
+    }
+  }
+  return good;
 }
 
 // calmaProcessDef.
@@ -188,16 +303,26 @@ LibraryWriter::Visit LibraryWriter::process(db::CellDef& def, bool library, cons
     return Visit::failed;
   }
   const mask::HierarchyOptions options = mask::hierarchy_options(def, inherited, true, prepared_.compat);
-  if (kind.traverses_children() && process_children(def, options, depth) == Visit::failed) {
+  if (kind.traverses_children() && process_children(def, options, depth, kind.copied()) == Visit::failed) {
     return Visit::failed;
   }
+  return emit(def, kind, options, library);
+}
+
+// The rest of calmaProcessDef: the vendor copy or calmaOutFunc.
+LibraryWriter::Visit LibraryWriter::emit(const db::CellDef& def, const CellKind& kind,
+                                         const mask::HierarchyOptions& options, bool library) {
+  bool read_only = kind.read_only;
   if (kind.copied()) {
-    sink_.emit(diag::make(codes::kNotWritten, "Calma output error:  copying read-only cell \"" + def.name() +
-                                                  "\" from its GDS file is not implemented yet."));
-    return Visit::failed;
+    const VendorVisit visit = vendor_structure(def, kind);
+    if (visit != VendorVisit::fallback) {
+      return visit == VendorVisit::done ? Visit::done : Visit::failed;
+    }
+    read_only = false;  // a failed sanity check: generated from the layout
+  } else {
+    print("   Generating output for cell " + def.name());
   }
-  print("   Generating output for cell " + def.name());
-  if (kind.read_only || vendor_polygon_cell(def) || library) {
+  if (read_only || vendor_polygon_cell(def) || library) {
     return Visit::done;
   }
   if (diag::Status s = structure(def, options); !s.ok()) {

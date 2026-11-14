@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -22,6 +23,9 @@
 #include "hefesto/mask/gen/context.hpp"
 
 namespace hefesto::gds::detail {
+
+struct VendorIo;
+class FullDump;
 
 /// The properties calmaProcessDef reads (LEFview, GDS_START, GDS_END,
 /// CIFhier, GDS_FILE as a string).
@@ -48,6 +52,11 @@ class StructureNames {
  public:
   /// Writes the name record `type` of `def`, whose id number is `id`.
   [[nodiscard]] diag::Status write(ElementWriter& out, RecordType type, const db::CellDef& def, std::int64_t id);
+  /// The structure name text of `def` (chosen now when it has none yet).
+  [[nodiscard]] std::string name_of(ElementWriter& out, const db::CellDef& def, std::int64_t id);
+  /// Gives `def` the name `text` unless it has one already (Q-MASK-214
+  /// OFF: an appended structure takes the name its references use).
+  void assign(ElementWriter& out, const db::CellDef& def, const std::string& text);
 
  private:
   std::string choose(ElementWriter& out, const db::CellDef& def, std::int64_t id, bool legal);
@@ -69,8 +78,12 @@ class StructureNames {
 /// structures in post-order from the root ("Structure ordering"), ENDLIB.
 class LibraryWriter {
  public:
-  LibraryWriter(const PreparedWrite& prepared, RecordWriter& records, diag::DiagnosticSink& sink,
+  /// `raw` is the stream under `records` (verbatim vendor copies).
+  LibraryWriter(const PreparedWrite& prepared, RecordWriter& records, ByteSink& raw, diag::DiagnosticSink& sink,
                 mask::GenerationContext& ctx);
+  ~LibraryWriter();
+  LibraryWriter(const LibraryWriter&) = delete;
+  LibraryWriter& operator=(const LibraryWriter&) = delete;
 
   /// The whole library. `good` is false when a traversal failed (the
   /// stream is still terminated); an error status is a stream, range or
@@ -83,12 +96,19 @@ class LibraryWriter {
 
  private:
   enum class Visit : std::uint8_t { done, failed };
+  enum class VendorVisit : std::uint8_t { done, failed, fallback };
 
   [[nodiscard]] diag::Status header();
   [[nodiscard]] Visit process(db::CellDef& def, bool library, const mask::HierarchyOptions& inherited,
                               std::size_t depth);
   [[nodiscard]] Visit process_children(const db::CellDef& def, const mask::HierarchyOptions& options,
-                                       std::size_t depth);
+                                       std::size_t depth, bool vendor);
+  [[nodiscard]] Visit emit(const db::CellDef& def, const CellKind& kind, const mask::HierarchyOptions& options,
+                           bool library);
+  [[nodiscard]] VendorVisit vendor_structure(const db::CellDef& def, const CellKind& kind);
+  [[nodiscard]] VendorVisit full_dump(const db::CellDef& def, ByteSource& source, const std::string& file);
+  [[nodiscard]] db::CellDef& magnified_source(db::CellDef& def);
+  [[nodiscard]] bool append_undefined();
   [[nodiscard]] Visit check_kind(const db::CellDef& def, const CellKind& kind);
   [[nodiscard]] diag::Status structure(const db::CellDef& def, const mask::HierarchyOptions& options);
   [[nodiscard]] diag::Status structure_body(const db::CellDef& def, ElementWriter& out,
@@ -106,6 +126,8 @@ class LibraryWriter {
   mask::GenerationContext& ctx_;
   StructureNames names_;
   PortLabelWarnings port_warnings_;  // Q-MASK-206: once per type and write
+  std::unique_ptr<VendorIo> vendor_;
+  std::unique_ptr<FullDump> dump_;  // calmaLibHash, calmaPrefixHash, calmaUndefHash
   // Magic's cd_client: 0 not yet numbered, negative numbered, positive
   // visited (in progress or written).
   std::unordered_map<const db::CellDef*, std::int64_t> ids_;
