@@ -123,7 +123,7 @@ bool reload_rules(editor::EditorState& editor, diag::DiagnosticSink& sink);
 
 /// drcCifCheck's style bookkeeping, run after every basic check (Magic
 /// calls drcCifCheck at the end of DRCBasicCheck; the mask-layer checks
-/// themselves come in M5). When the current style binds a `cifstyle` that
+/// themselves are drc::mask_layer_check). When the current style binds a `cifstyle` that
 /// is not the current cifoutput style (drcCifStyle == NULL), it prints
 /// `Loading DRC CIF style.` (DRC-TECH-006) to `sink` (if any), selects that
 /// cifoutput style and reloads the DRC style (CIFLoadStyle ->

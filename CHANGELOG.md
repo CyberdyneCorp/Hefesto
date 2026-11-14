@@ -15,8 +15,24 @@ release notices.
   does; GDS SREF and CIF call order will follow it. With `magic-compat` OFF
   uses enumerate in reverse creation order, and the DRC interaction area no
   longer includes Magic's phantom area at the origin (Q-MASK-400). The
-  callers not yet moved to the index (`.mag` read, flatten, selection,
-  `what`, connectivity, hints, DRC reports) keep the M4 order.
+  `.mag` read's id uniquification, flatten, selection, `what`, hints and
+  the DRC reports now enumerate in the index order as well; connectivity
+  searches still keep the M4 order.
+- **The cifinput section is read at tech load.** Its messages are printed
+  at load, the input styles follow every grid change (tech load lambda,
+  `scalegrid`, a finer-grid `.mag` read), and `cif istyle <name>` selects
+  an input style by unique prefix, or by exact name when it is a prefix of
+  several (Q-MASK-303, a fixed deviation from Magic: `cif istyle gds`
+  with a `gds2` style present selects `gds`). `cif list istyle`,
+  `cif listall istyle` and `cif scale in` read the loaded styles. Changing
+  `magic-compat` re-reads the section (Q-MASK-300, Q-MASK-302).
+- **DRC checks mask-layer rules.** The drc section's `cifwidth`,
+  `cifspacing`, `cifarea` and `cifmaxwidth` rules (for example sky130's
+  `cifmaxwidth` and `cifspacing` rules) now report errors, generated on
+  the bound cifoutput style as Magic's drcCifCheck does. With
+  `magic-compat` OFF error boxes are rounded outward to the internal grid
+  instead of truncated (Q-DRC-13). Coordinate units in DRC output follow
+  the current `cif ostyle`.
 - **The cifoutput section is read at tech load.** Its messages are printed
   at load, before the drc section's, and a cifoutput statement before the
   first `style` line fails the load (Q-MASK-17), as in Magic. The DRC

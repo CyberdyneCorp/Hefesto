@@ -27,7 +27,7 @@
 namespace hefesto::drc {
 
 /// One compiled mask-layer rule (`cifwidth`, `cifspacing`, `cifarea`,
-/// `cifmaxwidth`), kept unchecked until M5 (design D13). Distances are in
+/// `cifmaxwidth`), checked by drc::mask_layer_check (m5 design D14). Distances are in
 /// the CIF units of the bound cifoutput style, as written.
 struct MaskLayerRule {
   std::string keyword;        // "cifwidth", "cifspacing", "cifarea", "cifmaxwidth"

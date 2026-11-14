@@ -5,8 +5,8 @@
 // `cifspacing`, `cifarea`, `cifmaxwidth`): parsed, bound to the cifoutput
 // style, why texts registered and halo contributions returned in internal
 // units, as Magic does; the compiled rules are kept in StyleDetails and
-// checked from M5 (openspec/changes/m3-drc/design.md D13; capability
-// drc-cif-rules).
+// checked by drc/check/mask_check.cpp (openspec/changes/m5-mask-gds-cif
+// design D14; capability drc-cif-rules).
 //
 // Ported from Magic VLSI 8.3.694 drc/DRCcif.c (drcCifSetStyle,
 // drcCifWarning, drcCifWidth, drcCifSpacing, drcCifArea, drcCifMaxwidth),

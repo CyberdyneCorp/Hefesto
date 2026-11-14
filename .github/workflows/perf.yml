@@ -39,6 +39,7 @@ on:
       - src/core/include/hefesto/drc/**
       - src/core/src/drc/**
       - src/core/src/db/**
+      - src/core/include/hefesto/db/**
       - bench/drc/**
       - tests/unit/drc/engine/latency_bench_test.cpp
       - tests/golden/DRC/cases/DRC-STD-*/**
@@ -49,6 +50,7 @@ on:
       - src/core/include/hefesto/drc/**
       - src/core/src/drc/**
       - src/core/src/db/**
+      - src/core/include/hefesto/db/**
       - bench/drc/**
       - tests/unit/drc/engine/latency_bench_test.cpp
       - tests/golden/DRC/cases/DRC-STD-*/**
