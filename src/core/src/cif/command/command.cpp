@@ -38,6 +38,7 @@
 #include "hefesto/cmd/keywords.hpp"
 #include "hefesto/cmd/stubs.hpp"
 #include "hefesto/diag/codes.hpp"
+#include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/technology.hpp"
@@ -302,6 +303,7 @@ CommandResult input_styles_of(const CifCall& c) {
 // CIFSetStyle: `cif ostyle <name>` selects the output style (an exact name,
 // else a unique prefix), and the DRC catalog follows it; on failure the
 // error, then the current style and the style list (CIFPrintStyle).
+// A DRC style that binds a cifstyle is reloaded (drc::select_cif_style).
 CommandResult select_output(const CifCall& c) {
   editor::EditorState& editor = *c.s.editor;
   const std::string& name = c.words[1];
@@ -320,7 +322,9 @@ CommandResult select_output(const CifCall& c) {
     return output_styles(listing);
   }
   if (const mask::OutputStyle* current = editor.mask.output_styles.current_style()) {
-    (void)editor.drc.cif.select(current->name);
+    // CIFLoadStyle: DRCReloadCurStyle when the DRC section names a cifstyle
+    // (cif/CIFtech.c:2297-2298).
+    (void)drc::select_cif_style(editor, current->name, c.s.ctx->sink());
   }
   cu::print(c.s, "CIF output style is now \"" + name + "\"");
   return CommandResult::success();

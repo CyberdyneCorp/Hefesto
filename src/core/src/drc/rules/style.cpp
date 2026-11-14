@@ -313,7 +313,7 @@ diag::Status select_cif_style(editor::EditorState& editor, std::string_view name
   if (auto selected = drc.cif.select(name); !selected) {
     return selected;
   }
-  const StyleDetails* details = drc.rules->details();
+  const StyleDetails* details = drc.rules != nullptr ? drc.rules->details() : nullptr;
   if (details != nullptr && !details->cif_style.empty()) {
     drc.rules = load_style(*editor.technology, drc.style, editor.grid, drc.cif, drc.compat_settings(), sink);
     drc.events.publish_style(drc.style);
