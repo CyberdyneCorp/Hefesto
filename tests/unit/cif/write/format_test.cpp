@@ -112,10 +112,34 @@ TEST_CASE("cell labels and label-layer tiles", "[cap:cif-format-io][req:CIF outp
   n.area_labels = true;
   CHECK(detail::cell_label_line("a", db::Rect{0, 0, 2, 3}, std::string{"CMF"}, n) == "95 a 400 600 200 300 CMF;\n");
   CHECK(detail::cell_label_line("a", db::Rect{0, 0, 2, 3}, std::nullopt, n) == "95 a 400 600 200 300;\n");
-  CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "95 CPIN 80 40 40 20;\n");
-  n.area_labels = false;
+}
+
+TEST_CASE("label-layer tiles are scaled by S with magic-compat ON and not with it OFF",
+          "[cap:cif-format-io][req:CIF output labels]") {
+  // Regression: cifWriteLabelFunc multiplies label-layer tiles by S
+  // (cif/CIFwrite.c:603-618); the writer used to divide by R only.
+  detail::OutputNumbers n;
+  n.scale_factor = 100;
   n.reducer = 10;
+  n.scale_label_layers = true;
+  CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "94 CPIN 400 200;\n");
+  n.area_labels = true;
+  CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "95 CPIN 800 400 400 200;\n");
+  n.scale_label_layers = false;
+  CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "95 CPIN 8 4 4 2;\n");
+  n.area_labels = false;
   CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "94 CPIN 4 2;\n");
+  n.scale_factor = 1;
+  n.reducer = 1;
+  n.area_labels = true;
+  for (const bool scaled : {true, false}) {
+    n.scale_label_layers = scaled;
+    CHECK(detail::layer_label_line("CPIN", db::Rect{0, 0, 40, 20}, n) == "95 CPIN 80 40 40 20;\n");
+  }
+  // Extreme values saturate instead of overflowing.
+  n.scale_factor = std::numeric_limits<std::int64_t>::max();
+  n.scale_label_layers = true;
+  CHECK_FALSE(detail::layer_label_line("CPIN", db::Rect{-2000000000, 0, 2000000000, 1}, n).empty());
 }
 
 TEST_CASE("label text is verbatim with magic-compat ON and escaped with it OFF",

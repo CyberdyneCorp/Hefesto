@@ -765,6 +765,14 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Recommendation: replicate (default no).
 - Resolution: n/a — spec follows Magic's code; documentation is wrong; `cif arealabels` defaults to no (spec conventions §2.7, 2026-11-07).
 
+### Q-MASK-338: CIF label-layer tiles are scaled twice
+- Kind: bug
+- Status: proposed (drafted 2026-11-14 in the round 4 review; awaiting approval)
+- Magic behavior: cifWriteLabelFunc multiplies a `labellayer` tile's centre and size by `cs_scaleFactor` before dividing by `cs_reducer`, although the tile is on a generated CIF plane whose coordinates are already in output units (cifWritePaintFunc divides the same tiles by the reducer only). With `scalefactor` S other than 1 the `94`/`95` label lands S times too far from the geometry it marks.
+- Evidence: cif/CIFwrite.c:603-618 (label tiles), cif/CIFwrite.c:647-700 (paint tiles of the same planes)
+- Options: replicate | fix (divide by R only) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
+- Recommendation: compat. ON: `94 LAYER ((x1+x2)*S)/R ((y1+y2)*S)/R;` and the `95` size `((x2-x1)*2*S)/R`, as Magic writes them. OFF: `(x1+x2)/R` and `(2*(x2-x1))/R`, in the units of the geometry. Only label-layer output with S other than 1 changes; most styles use S = 1 for labellayers' planes.
+
 ### Q-MASK-110: Structure with trailing garbage leaves input planes uncleared
 - Kind: bug
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)

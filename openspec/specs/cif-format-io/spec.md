@@ -379,7 +379,7 @@ Compatibility: exact
 
 ### Requirement: CIF output labels
 
-Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) is written as `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or, with area labels, `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text depends on the `magic-compat` setting (Q-MASK-322, resolution: compat): with it ON (the default) it is written verbatim, as in Magic, and a warning names each label whose text contains whitespace or `;` (the file will not read back); with it OFF each space, tab, newline and `;` in the written text is replaced by `_`, with a warning in the GDS writer's form (`characters changed in string ...; modified string is ...`). The layout's own labels are never changed. Area labels are disabled by default (see Q-MASK-337).
+Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) depends on the `magic-compat` setting (Q-MASK-338, proposed: compat): with it ON (the default) it is written as Magic's cifWriteLabelFunc writes it, multiplied by S although it is already in output units: `94 LAYERNAME ((x1+x2)*S)/R ((y1+y2)*S)/R;` or, with area labels, `95 LAYERNAME ((x2−x1)*2*S)/R ((y2−y1)*2*S)/R ((x1+x2)*S)/R ((y1+y2)*S)/R;`; with it OFF the factor S is left out: `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text depends on the `magic-compat` setting (Q-MASK-322, resolution: compat): with it ON (the default) it is written verbatim, as in Magic, and a warning names each label whose text contains whitespace or `;` (the file will not read back); with it OFF each space, tab, newline and `;` in the written text is replaced by `_`, with a warning in the GDS writer's form (`characters changed in string ...; modified string is ...`). The layout's own labels are never changed. Area labels are disabled by default (see Q-MASK-337).
 
 Compatibility: exact
 
@@ -389,6 +389,12 @@ Compatibility: exact
 - **GIVEN** `S = 100`, `R = 1`, and a label `out` at point (4,1) of type m1 whose output layer is CMF
 - **WHEN** CIF is written
 - **THEN** the line `94 out 800 200 CMF;` is produced
+
+#### Scenario: Label-layer tile with a scale factor
+- **GIVEN** `S = 100`, `R = 10`, area labels off, and a tile (0,0)-(40,20) on label layer CPIN
+- **WHEN** CIF is written
+- **THEN** with `magic-compat` ON the line `94 CPIN 400 200;` is produced
+- **AND** with `magic-compat` OFF the line `94 CPIN 4 2;` is produced
 
 #### Scenario: Label text with a space
 - **GIVEN** the same label with text `out 1`
@@ -426,11 +432,11 @@ Compatibility: exact
 
 ### Requirement: CIF output preconditions and flat output
 
-Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output", using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End`. Its form depends on the `magic-compat` setting (Q-MASK-321 and Q-MASK-411, resolution: compat): with it ON (the default), as in Magic, one temporary cell holds the flattened paint only and is written as symbol 1 named `__CIF2__` (with any `cif prefix`), with no cell labels, and mask-hints and boundary layers come out empty; with it OFF symbol 1 is named after the root cell with the prefix and `UNNAMED` rules of hierarchical output, and the flat cell also holds the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes, written in the same `94`/`95` format.
+Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output", using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End`. Its form depends on the `magic-compat` setting (Q-MASK-321 and Q-MASK-411, resolution: compat): with it ON (the default), as in Magic, one temporary cell holds the flattened paint only and is written as symbol 1 named `__CIF2__` (with any `cif prefix`), with no cell labels, and mask-hints and boundary layers come out empty; with it OFF symbol 1 is named after the root cell with the prefix and `UNNAMED` rules of hierarchical output, and the flat cell also holds the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes, written in the same `94`/`95` format. Flat output reads the cells under the root that are not yet loaded, without stopping at one that cannot be read; with `magic-compat` ON the timestamp mismatches those reads find are processed after the file is written, as Magic's CIFWriteFlat never calls DBFixMismatch and the mismatches are processed after the command, so the flat area is the root's bounding box as it was before the write; with it OFF they are processed before generation, as for hierarchical output.
 
 Compatibility: exact
 
-(Magic ref: cif/CIFwrite.c:121-160, cif/CIFwrite.c:729-792)
+(Magic ref: cif/CIFwrite.c:121-160, cif/CIFwrite.c:729-792, dbwind/DBWprocs.c:1009)
 
 #### Scenario: Flat output structure
 - **GIVEN** a two-level hierarchy

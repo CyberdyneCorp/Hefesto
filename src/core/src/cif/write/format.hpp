@@ -56,6 +56,10 @@ struct OutputNumbers {
   std::int64_t scale_factor = 1;  // S (labels and calls: internal units to output units)
   std::int64_t reducer = 1;       // R (> 0)
   bool area_labels = false;       // `cif arealabels`
+  /// magic-compat ON: label-layer tiles are multiplied by S as well, as
+  /// Magic's cifWriteLabelFunc does although they are in output units
+  /// (Q-MASK-338); OFF they are only divided by R.
+  bool scale_label_layers = true;
 };
 
 /// "DS <num> <R> <2E>;"
@@ -67,7 +71,7 @@ struct OutputNumbers {
 /// "    P x1 y1 x2 y2 x3 y3;" of a split tile's solid triangle.
 [[nodiscard]] std::string triangle_line(const db::TileView& tile, std::int64_t reducer);
 /// A label-layer tile (output-plane units): `94 LAYER cx cy;` or the `95`
-/// form with area labels.
+/// form with area labels; times S first when `n.scale_label_layers`.
 [[nodiscard]] std::string layer_label_line(std::string_view layer, const db::Rect& r, const OutputNumbers& n);
 /// A cell label (internal units): `94 TEXT cx cy [LAYER];` or the `95` form.
 [[nodiscard]] std::string cell_label_line(std::string_view text, const db::Rect& r,

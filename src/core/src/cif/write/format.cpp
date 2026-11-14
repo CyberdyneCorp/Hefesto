@@ -132,11 +132,14 @@ std::string triangle_line(const db::TileView& tile, std::int64_t reducer) {
 }
 
 std::string layer_label_line(std::string_view layer, const db::Rect& r, const OutputNumbers& n) {
-  const std::string center =
-      num((std::int64_t{r.x0} + r.x1) / n.reducer) + " " + num((std::int64_t{r.y0} + r.y1) / n.reducer);
+  // cifWriteLabelFunc multiplies by S before dividing by R (Q-MASK-338 ON).
+  const std::int64_t s = n.scale_label_layers ? n.scale_factor : 1;
+  const std::string center = num(scaled(std::int64_t{r.x0} + r.x1, s, n.reducer)) + " " +
+                             num(scaled(std::int64_t{r.y0} + r.y1, s, n.reducer));
   if (n.area_labels) {
-    const std::string size = num(scaled(2, std::int64_t{r.x1} - r.x0, n.reducer)) + " " +
-                             num(scaled(2, std::int64_t{r.y1} - r.y0, n.reducer));
+    const std::int64_t s2 = saturating_mul(2, s);
+    const std::string size = num(scaled(std::int64_t{r.x1} - r.x0, s2, n.reducer)) + " " +
+                             num(scaled(std::int64_t{r.y1} - r.y0, s2, n.reducer));
     return "95 " + std::string{layer} + " " + size + " " + center + ";\n";
   }
   return "94 " + std::string{layer} + " " + center + ";\n";

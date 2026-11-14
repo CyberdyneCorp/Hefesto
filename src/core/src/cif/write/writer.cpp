@@ -71,6 +71,7 @@ SymbolWriter::SymbolWriter(const PreparedWrite& prepared, TextOut& out, diag::Di
   numbers_scale_.scale_factor = style.scale.scale_factor;
   numbers_scale_.reducer = style.scale.reducer;
   numbers_scale_.area_labels = settings.arealabels;
+  numbers_scale_.scale_label_layers = prepared.compat.magic_compat;  // Q-MASK-338
   base_.subcells = settings.hier;
   base_.arrays = settings.array;
   base_.unfracture = settings.unfracture;

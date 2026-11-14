@@ -32,8 +32,8 @@ def spec_headings(capability: str) -> set[str]:
 
 
 class InventoryTest(unittest.TestCase):
-    def test_inventory_has_233_rows(self):
-        self.assertEqual(len(m5_cases.inventory()), 233)
+    def test_inventory_has_234_rows(self):
+        self.assertEqual(len(m5_cases.inventory()), 234)
 
     def test_every_row_is_authored_or_deferred_with_a_milestone(self):
         self.assertEqual(m5_cases.missing_rows(), [])
