@@ -247,7 +247,8 @@ void Reader::boundary_polygon(std::size_t cif_layer, mask::Polygon polygon) {
   db::CellDef* sub = nullptr;
   PlaneSet saved;
   if (settings().polygon_subcells != PolygonSubcells::none && non_manhattan_path_) {
-    char name[24];
+    // 32 bytes: the prefix, up to 20 digits of a 64-bit count and the NUL.
+    char name[32];
     std::snprintf(name, sizeof name, "polygon%05lld", static_cast<long long>(++polygon_count_));
     sub = begin_subcell(name);
     if (sub != nullptr) {
@@ -434,7 +435,8 @@ void Reader::path_geometry(std::size_t cif_layer, const std::vector<PathPoint>& 
   db::CellDef* sub = nullptr;
   PlaneSet saved;
   if (settings().path_subcells) {
-    char name[24];
+    // 32 bytes: the prefix, up to 20 digits of a 64-bit count and the NUL.
+    char name[32];
     std::snprintf(name, sizeof name, "path%05lld", static_cast<long long>(++path_count_));
     sub = begin_subcell(name);
     if (sub != nullptr) {
