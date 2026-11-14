@@ -18,6 +18,7 @@
 #include <cassert>
 
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/drc/engine/kernel_hook.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "internal.hpp"
@@ -176,12 +177,15 @@ db::Rect array_area(const db::Rect& area, const db::CellUse& use, std::int32_t x
 }
 
 std::vector<const db::CellUse*> uses_overlapping(const db::CellDef& def, const db::Rect& area) {
+  // DBTreeSrCells / DBCellSrArea: a BPE_OVERLAP search of the use index,
+  // which may bin the cell's uses as Magic's bplane does.
   std::vector<const db::CellUse*> out;
-  for (const db::CellUse* u : db::uses_in_search_order(def)) {
-    if (u->def != nullptr && db::overlap(u->bbox, area)) {
-      out.push_back(u);
+  (void)db::uses_overlapping(def, area, [&](db::CellUse& u) {
+    if (u.def != nullptr) {
+      out.push_back(&u);
     }
-  }
+    return true;
+  });
   return out;
 }
 
