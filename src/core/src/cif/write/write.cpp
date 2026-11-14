@@ -59,6 +59,9 @@ class CountingSink final : public diag::DiagnosticSink {
 };
 
 diag::Diagnostic subtree_error(const gds::SubtreeResult& result) {
+  if (result.cancelled) {
+    return diag::make(codes::kCancelled, "CIF write cancelled.");
+  }
   if (result.too_deep) {
     return diag::make(codes::kDepth, "Failure to read in entire subtree of the cell.\nThe hierarchy is deeper than " +
                                          std::to_string(gds::kMaxSubtreeDepth) + " levels at cell " +
@@ -155,9 +158,20 @@ std::string preamble(const PreparedWrite& prepared) {
   return detail::preamble_text(p);
 }
 
+// CIFWriteFlat neither reads the subtree nor calls DBFixMismatch: the
+// mismatches its reads find are processed after the command (magic-compat
+// ON); OFF they are processed before the write, as for `cif write`.
+bool defers_mismatches(const CifWriteOptions& options, const compat::CompatSettings& compat) {
+  return options.flat && compat.magic_compat;
+}
+
 // Reads the cells a write reaches (see prepare_write).
 diag::Status load_cells(db::CellDef& root, const CifWriteOptions& options, const compat::CompatSettings& compat) {
-  const gds::SubtreeResult loaded = gds::load_subtree(root, options.loader, !options.flat, compat);
+  gds::SubtreeLoader loader = options.loader;
+  if (defers_mismatches(options, compat)) {
+    loader.fix_mismatches = nullptr;  // finish_write
+  }
+  const gds::SubtreeResult loaded = gds::load_subtree(root, loader, !options.flat, compat);
   if (!loaded.ok()) {
     return subtree_error(loaded);
   }
@@ -241,13 +255,26 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   return finished(std::move(messages), io_error(prepared.options, path));
 }
 
+void finish_write(editor::EditorState& editor, const CifWriteOptions& options) {
+  if (defers_mismatches(options, editor.drc.compat_settings()) && options.loader.fix_mismatches) {
+    options.loader.fix_mismatches();
+  }
+}
+
 cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                          const CifWriteOptions& options, const mask::Progress* progress) {
-  diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, options);
-  if (prepared) {
-    return emit_write(prepared.value(), path, progress);
+  CifWriteOptions with_cancel = options;
+  if (progress != nullptr) {
+    with_cancel.loader.cancel = progress->cancel;
   }
-  if (prepared.error().code == codes::kNoStyle) {
+  diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
+  if (prepared) {
+    cmd::CommandResult result = emit_write(prepared.value(), path, progress);
+    finish_write(editor, options);
+    return result;
+  }
+  finish_write(editor, options);
+  if (prepared.error().code == codes::kNoStyle || prepared.error().code == codes::kCancelled) {
     return cmd::CommandResult::failure(prepared.error());
   }
   // CmdCif opened (and truncated) the file before CIFWrite failed.

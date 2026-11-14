@@ -26,6 +26,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hefesto/db/cell.hpp"
@@ -110,11 +111,21 @@ class FullDump {
   [[nodiscard]] std::string choose_prefix(VendorIo& io, const db::CellDef& def, const std::string& file);
   [[nodiscard]] std::optional<std::string> undefined_prefix(VendorIo& io, const std::string& name);
   void record_undefined(const std::map<std::string, std::string>& names);
+  [[nodiscard]] bool is_undefined(const std::string& name) const;
 
   std::vector<std::pair<std::string, std::string>> libraries_;  // file -> prefix, in dump order
   std::set<std::string> refused_;
   std::set<std::string> prefixes_;
-  std::vector<std::pair<std::string, std::string>> undefined_;  // name -> '0'/'1' + recorded
+  // calmaUndefHash in record order: a removed entry stays as a dead slot
+  // (`live` false) so the indexes of the others hold; a name recorded again
+  // after its removal is appended.
+  struct UndefinedEntry {
+    std::string name;
+    std::string recorded;  // '0'/'1' + the SNAME written
+    bool live = true;
+  };
+  std::vector<UndefinedEntry> undefined_;
+  std::unordered_map<std::string, std::size_t> undefined_index_;  // live name -> slot in undefined_
 };
 
 }  // namespace hefesto::gds::detail

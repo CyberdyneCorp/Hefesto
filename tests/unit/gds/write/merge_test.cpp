@@ -11,9 +11,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cstdint>
+#include <limits>
+#include <optional>
+#include <string>
 #include <random>
 #include <vector>
 
+#include "hefesto/gds/write/emit.hpp"
 #include "hefesto/gds/write/merge_plane.hpp"
 #include "hefesto/gds/write/merge_rings.hpp"
 #include "merge_labels_fixture.hpp"
@@ -196,6 +200,27 @@ TEST_CASE("Merged output coordinates outside I4 fail the write", "[cap:gds-write
   const auto huge = gds::emit_merged_boundaries(out.writer(), plane, 1, 0, std::int64_t{1} << 62);
   REQUIRE_FALSE(huge.ok());
   CHECK(huge.error().code == "GDS-WRITE-004");
+}
+
+TEST_CASE("A merged element outside I4 writes nothing and names the cell and the value",
+          "[cap:gds-write][req:Output scale factors]") {
+  // Regression: the merged path wrote BOUNDARY, LAYER and DATATYPE before
+  // the range check, and reported INT64_MAX on a multiply overflow.
+  mask::MaskPlane plane;
+  gdsw_test::paint(plane, {{0, 0, 1000, 1000}});
+  gdsw_test::Output out;
+  const auto status = gds::emit_merged_boundaries(out.writer(), plane, 1, 0, 10'000'000, std::nullopt, "top");
+  REQUIRE_FALSE(status.ok());
+  CHECK(out.bytes().empty());
+  CHECK(status.error().text.find("value 10000000000 in cell top") != std::string::npos);
+  const auto huge = gds::emit_merged_boundaries(out.writer(), plane, 1, 0, std::int64_t{1} << 62, std::nullopt, "top");
+  REQUIRE_FALSE(huge.ok());
+  CHECK(out.bytes().empty());
+  CHECK(huge.error().text.find("value 4611686018427387904000 in cell top") != std::string::npos);
+  const auto product = gds::checked_i4_product(-3, std::numeric_limits<std::int64_t>::max(), "c");
+  REQUIRE_FALSE(product.ok());
+  CHECK(product.error().text.find("value -27670116110564327421 in cell c") != std::string::npos);
+  CHECK(gds::checked_i4_product(-7, 3, "c", 2).value() == -10);  // C truncation
 }
 
 TEST_CASE("LAYER and DATATYPE carry the low 16 bits as calmaOutI2", "[cap:gds-write][req:Merged polygon output]") {

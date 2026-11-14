@@ -10,6 +10,7 @@
 #include "hefesto/cell/timestamps.hpp"
 
 #include <algorithm>
+#include <array>
 #include <set>
 
 #include "hefesto/cell/search_path.hpp"
@@ -182,8 +183,17 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
 }
 
 void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup) {
+  const std::array<db::CellDef*, 1> one{only};
+  update_timestamps(library, std::span<db::CellDef* const>{one.data(), one.size()}, now, lookup);
+}
+
+void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
+                       LookupContext& lookup) {
   gds::VendorStamper stamper{lookup};
-  update_timestamps(library, only, now, [&stamper](const db::CellDef& def) { return stamper.stamp(def); });
+  const VendorStampFn stamp = [&stamper](const db::CellDef& def) { return stamper.stamp(def); };
+  for (db::CellDef* def : cells) {
+    update_timestamps(library, def, now, stamp);
+  }
   stamper.flush();
 }
 

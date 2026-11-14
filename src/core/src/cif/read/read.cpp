@@ -269,9 +269,15 @@ cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
                         const mask::Progress* progress) {
   platform::LocalFileSystem local;
   platform::FileSystem& fs = options.files != nullptr ? *options.files : local;
+  const std::string name = options.typed_name.empty() ? path.generic_string() : options.typed_name;
+  if (const diag::Outcome<std::uint64_t> size = fs.size(path); size.ok() && size.value() > options.max_file_bytes) {
+    return cmd::CommandResult::failure(diag::make_native(
+        read_codes::kTooLarge, "Cannot read " + name + ".cif: the file has " + std::to_string(size.value()) +
+                                   " bytes, more than the " + std::to_string(options.max_file_bytes) +
+                                   " a CIF read accepts."));
+  }
   diag::Outcome<std::string> text = fs.read(path);
   if (!text.ok()) {
-    const std::string name = options.typed_name.empty() ? path.generic_string() : options.typed_name;
     return cmd::CommandResult::failure(diag::make(read_codes::kNoFile, "Cannot open " + name + ".cif to read CIF."));
   }
   return read_text(editor, text.value(), options, progress);

@@ -10,10 +10,17 @@
 //   (which can rebuild bins), resolves timestamp mismatches with the
 //   DBReComputeBbox re-placement, and returns the checked options and root;
 // - emit_write, under the shared lock: generates (mask::generate_hierarchical)
-//   and writes. It mutates nothing in the layout (Q-MASK-208); the only
-//   state it changes is the use index's bins, under the index mutex.
-// write() calls both in sequence; the shell runs emit_write on a worker
-// (D16). The structure body's element output goes through the emitters of
+//   and writes. It reads its settings from the PreparedWrite only (the
+//   compat and hierarchy switches taken at prepare time, never the
+//   session's current ones) and mutates nothing in the session or the
+//   layout (Q-MASK-208): the only shared state it changes is the use
+//   index's bins, under the index mutex. The Q-MASK-211 prefixes of a full
+//   dump are drawn from the write's own copy of the session's random()
+//   state (PreparedWrite::random);
+// - finish_write, under the exclusive lock again: stores that random()
+//   state back into the session.
+// write() calls the three in sequence; the shell runs emit_write on a
+// worker (D16). The structure body's element output goes through the emitters of
 // gds/write/{emit,polygons,labels}.hpp, the subtree loading through
 // gds/write/subtree.hpp (shared with the CIF writer). A cancelled write leaves no output file: the writer writes to a
 // temporary file in the target directory and renames it on success.
@@ -43,6 +50,7 @@
 #include "hefesto/mask/plane/plane.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/platform/file_system.hpp"
+#include "hefesto/util/libc_random.hpp"
 
 namespace hefesto::editor {
 struct EditorState;
@@ -79,6 +87,11 @@ struct PreparedWrite {
   /// The session's `cif *hier`, `*array` and `unfracture` switches, with
   /// FIXED_BBOX enlarging the generation area (GDS).
   mask::HierarchyOptions hierarchy;
+  /// The write's copy of the session's glibc random() state (shared with
+  /// `random`), which the full dumps draw their prefixes from under
+  /// magic-compat ON (Q-MASK-211); finish_write stores it back. Owned by
+  /// this write only, so concurrent writes never share it.
+  std::shared_ptr<util::LibcRandom> random;
 };
 
 /// "Output scale factors" of `style`: Wscale and Pscale, the errors Magic
@@ -108,7 +121,12 @@ struct ScaleResult {
 [[nodiscard]] cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Path& path,
                                             const mask::Progress* progress = nullptr);
 
-/// prepare_write then emit_write. When the prepare phase fails reading the
+/// The finish phase (exclusive lock, after emit_write): stores the write's
+/// random() state back into the session (PreparedWrite::random).
+void finish_write(editor::EditorState& editor, const PreparedWrite& prepared);
+
+/// prepare_write, emit_write, then finish_write; `progress`'s cancel flag
+/// also stops the subtree loading. When the prepare phase fails reading the
 /// subtree (GDS-WRITE-003), the output file is left empty, as Magic leaves
 /// the file it opened before CalmaWrite; the other prepare failures (no
 /// style, Q-MASK-219; refused scale, Q-MASK-225 OFF; abstract views,

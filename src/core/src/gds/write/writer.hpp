@@ -54,12 +54,18 @@ class StructureNames {
   [[nodiscard]] diag::Status write(ElementWriter& out, RecordType type, const db::CellDef& def, std::int64_t id);
   /// The structure name text of `def` (chosen now when it has none yet).
   [[nodiscard]] std::string name_of(ElementWriter& out, const db::CellDef& def, std::int64_t id);
+  /// The name name_of would return now, without choosing it (no name is
+  /// claimed and no warning is printed).
+  [[nodiscard]] std::string preview(const ElementWriter& out, const db::CellDef& def, std::int64_t id) const;
   /// Gives `def` the name `text` unless it has one already (Q-MASK-214
   /// OFF: an appended structure takes the name its references use).
   void assign(ElementWriter& out, const db::CellDef& def, const std::string& text);
 
  private:
   std::string choose(ElementWriter& out, const db::CellDef& def, std::int64_t id, bool legal);
+  [[nodiscard]] std::string candidate(const ElementWriter& out, const db::CellDef& def, std::int64_t id,
+                                      bool legal) const;
+  [[nodiscard]] bool taken_by_other(const ElementWriter& out, const db::CellDef& def, const std::string& text) const;
 
   std::unordered_map<const db::CellDef*, std::string> chosen_;
   std::unordered_map<std::string, const db::CellDef*> taken_;  // encoded payload -> cell
@@ -124,6 +130,7 @@ class LibraryWriter {
   RecordWriter& records_;
   diag::DiagnosticSink& sink_;
   mask::GenerationContext& ctx_;
+  mask::GenerationSource source_;  // the editor's, with the prepared compat and unfracture
   StructureNames names_;
   PortLabelWarnings port_warnings_;  // Q-MASK-206: once per type and write
   std::unique_ptr<VendorIo> vendor_;

@@ -300,6 +300,23 @@ TEST_CASE("Label coordinates outside I4 fail the write", "[cap:gds-write][req:La
   REQUIRE_FALSE(gds::emit_cell_labels(output, labels).ok());
 }
 
+TEST_CASE("A label outside I4 writes nothing and names the cell and the value",
+          "[cap:gds-write][req:Output scale factors]") {
+  // Regression: TEXT, LAYER and TEXTTYPE were written before the centre
+  // was range-checked, and the error named neither the cell nor the value.
+  const mask::OutputStyle s = style();
+  gdsw_test::Output out;
+  gds::LabelOutput output(out.writer(), s);
+  output.cell = "top";
+  output.write_scale = std::int64_t{1} << 62;
+  const std::vector<db::Label> labels{label("A", {1000, 1000, 1000, 1000})};
+  const auto status = gds::emit_cell_labels(output, labels);
+  REQUIRE_FALSE(status.ok());
+  CHECK(out.bytes().empty());
+  // (1000 + 1000) * 2^62 / 2
+  CHECK(status.error().text.find("value 4611686018427387904000 in cell top") != std::string::npos);
+}
+
 TEST_CASE("Label layer tile TEXT bytes", "[cap:gds-write][req:Label layers]") {
   const mask::OutputStyle s = style();
   mask::MaskPlane plane;

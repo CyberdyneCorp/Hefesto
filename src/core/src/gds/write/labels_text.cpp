@@ -18,6 +18,7 @@
 #include <string>
 #include <utility>
 
+#include "hefesto/gds/write/emit.hpp"
 #include "hefesto/gds/write/labels_sort.hpp"
 #include "hefesto/gds/write/merge_plane.hpp"
 
@@ -72,10 +73,9 @@ class Records {
     }
     return *this;
   }
-  Records& point(std::int64_t x, std::int64_t y) {
-    const std::array<std::int64_t, 2> xy{x, y};
+  Records& point(const std::array<std::int32_t, 2>& xy) {
     if (status_) {
-      status_ = write_xy(out_, xy);
+      status_ = out_.write_int4(RecordType::xy, xy);
     }
     return *this;
   }
@@ -86,13 +86,6 @@ class Records {
     }
     return *this;
   }
-  Records& fail(diag::Diagnostic error) {
-    if (status_) {
-      status_ = std::move(error);
-    }
-    return *this;
-  }
-
   [[nodiscard]] diag::Status status() && { return std::move(status_); }
 
  private:
@@ -100,27 +93,19 @@ class Records {
   diag::Status status_ = diag::Done{};
 };
 
-/// (lo + hi) * scale / 2 with C truncation, in 64-bit; nullopt on overflow.
-std::optional<std::int64_t> scaled_center(db::Coord lo, db::Coord hi, std::int64_t scale) noexcept {
-  std::int64_t product = 0;
-  if (__builtin_mul_overflow(std::int64_t{lo} + hi, scale, &product)) {
-    return std::nullopt;
+/// The text element's centre point, (lo + hi) * scale / 2 with C
+/// truncation computed exactly, or the GDS-WRITE-004 error naming the cell
+/// and the value (checked before any record of the element is written).
+diag::Outcome<std::array<std::int32_t, 2>> center_point(const db::Rect& r, std::int64_t scale, std::string_view cell) {
+  diag::Outcome<std::int32_t> x = checked_i4_product(std::int64_t{r.x0} + r.x1, scale, cell, 2);
+  if (!x.ok()) {
+    return x.error();
   }
-  return product / 2;
-}
-
-diag::Diagnostic overflow_error() {
-  return diag::make("GDS-WRITE-004", "A GDS label coordinate does not fit a 4-byte integer; the write fails.");
-}
-
-/// The text element's centre point, or an overflow error.
-Records& center_point(Records& records, const db::Rect& r, std::int64_t scale) {
-  const std::optional<std::int64_t> x = scaled_center(r.x0, r.x1, scale);
-  const std::optional<std::int64_t> y = scaled_center(r.y0, r.y1, scale);
-  if (!x || !y) {
-    return records.fail(overflow_error());
+  diag::Outcome<std::int32_t> y = checked_i4_product(std::int64_t{r.y0} + r.y1, scale, cell, 2);
+  if (!y.ok()) {
+    return y.error();
   }
-  return records.point(*x, *y);
+  return std::array<std::int32_t, 2>{x.value(), y.value()};
 }
 
 /// PRESENTATION, STRANS, MAG and ANGLE of a font label.
@@ -141,7 +126,8 @@ diag::Status label_rectangle(const LabelOutput& output, const db::Label& label, 
     return diag::Done{};
   }
   const std::array<db::Point, 4> corners{{{r.x0, r.y0}, {r.x1, r.y0}, {r.x1, r.y1}, {r.x0, r.y1}}};
-  return write_boundary(output.out, layer->gds->layer, layer->gds->datatype, corners, output.write_scale);
+  return write_boundary(output.out, layer->gds->layer, layer->gds->datatype, corners, output.write_scale,
+                        output.cell);
 }
 
 std::string type_label(const LabelOutput& output, tech::TileType type) {
@@ -217,6 +203,10 @@ diag::Status emit_label(const LabelOutput& output, const db::Label& label, Label
   if (text_layer == nullptr) {
     return diag::Done{};
   }
+  const diag::Outcome<std::array<std::int32_t, 2>> center = center_point(label.rect, output.write_scale, output.cell);
+  if (!center.ok()) {
+    return center.error();
+  }
   Records records(output.out);
   records.empty(RecordType::text)
       .int2(RecordType::layer, text_layer->gds->layer)
@@ -224,7 +214,7 @@ diag::Status emit_label(const LabelOutput& output, const db::Label& label, Label
   if (label.font >= 0) {
     font_records(records, output, label);
   }
-  center_point(records, label.rect, output.write_scale).string(output, label.text).empty(RecordType::endel);
+  records.point(center.value()).string(output, label.text).empty(RecordType::endel);
   diag::Status status = std::move(records).status();
   if (!status) {
     return status;
@@ -277,10 +267,15 @@ diag::Status emit_label_layer(const LabelOutput& output, std::size_t layer_index
       r = db::Rect{std::max(r.x0, clip->x0), std::max(r.y0, clip->y0), std::min(r.x1, clip->x1),
                    std::min(r.y1, clip->y1)};
     }
+    const diag::Outcome<std::array<std::int32_t, 2>> center = center_point(r, output.paint_scale, output.cell);
+    if (!center.ok()) {
+      status = center.error();
+      return false;
+    }
     Records records(output.out);
     records.empty(RecordType::text).int2(RecordType::layer, layer->gds->layer).int2(RecordType::texttype,
                                                                                     layer->gds->datatype);
-    center_point(records, r, output.paint_scale).string(output, layer->name).empty(RecordType::endel);
+    records.point(center.value()).string(output, layer->name).empty(RecordType::endel);
     status = std::move(records).status();
     return status.ok();
   });

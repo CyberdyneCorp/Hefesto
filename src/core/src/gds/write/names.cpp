@@ -74,27 +74,42 @@ bool legal_name(const ElementWriter& out, std::string_view name) {
   return !out.style().has_option(mask::style_option::string_limit) || name.size() <= kCalmaNameLength;
 }
 
-std::string StructureNames::choose(ElementWriter& out, const db::CellDef& def, std::int64_t id, bool legal) {
-  std::string candidate = legal ? def.name() : numbered_name(id);
-  const auto taken_by_other = [&](const std::string& text) {
-    const auto it = taken_.find(payload_key(out, text));
-    return it != taken_.end() && it->second != &def;
-  };
-  if (taken_by_other(candidate)) {
+bool StructureNames::taken_by_other(const ElementWriter& out, const db::CellDef& def, const std::string& text) const {
+  const auto it = taken_.find(payload_key(out, text));
+  return it != taken_.end() && it->second != &def;
+}
+
+std::string StructureNames::candidate(const ElementWriter& out, const db::CellDef& def, std::int64_t id,
+                                      bool legal) const {
+  std::string text = legal ? def.name() : numbered_name(id);
+  if (taken_by_other(out, def, text)) {
     const std::string base = numbered_name(id);
-    candidate = base;
-    for (std::size_t k = 1; taken_by_other(candidate); ++k) {
-      candidate = base + "_" + std::to_string(k);
+    text = base;
+    for (std::size_t k = 1; taken_by_other(out, def, text); ++k) {
+      text = base + "_" + std::to_string(k);
     }
-    const auto first = taken_.find(payload_key(out, legal ? def.name() : base));
+  }
+  return text;
+}
+
+std::string StructureNames::preview(const ElementWriter& out, const db::CellDef& def, std::int64_t id) const {
+  const auto found = chosen_.find(&def);
+  return found != chosen_.end() ? found->second : candidate(out, def, id, legal_name(out, def.name()));
+}
+
+std::string StructureNames::choose(ElementWriter& out, const db::CellDef& def, std::int64_t id, bool legal) {
+  const std::string first_choice = legal ? def.name() : numbered_name(id);
+  const std::string text = candidate(out, def, id, legal);
+  if (text != first_choice) {  // the first choice is another cell's
+    const auto first = taken_.find(payload_key(out, first_choice));
     const std::string other = first != taken_.end() ? first->second->name() : std::string{};
     out.warn("Warning: structure name of cell " + def.name() + " collides with that of cell " + other +
-                 "; cell " + def.name() + " is written as '" + candidate + "'",
+                 "; cell " + def.name() + " is written as '" + text + "'",
              codes::kNameCollision);
   }
-  taken_.emplace(payload_key(out, candidate), &def);
-  chosen_.emplace(&def, candidate);
-  return candidate;
+  taken_.emplace(payload_key(out, text), &def);
+  chosen_.emplace(&def, text);
+  return text;
 }
 
 std::string StructureNames::name_of(ElementWriter& out, const db::CellDef& def, std::int64_t id) {

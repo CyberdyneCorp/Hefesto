@@ -155,4 +155,33 @@ TEST_CASE("a label string is encoded for output and the label keeps its text",
   }
 }
 
+TEST_CASE("the emit phase generates with the settings taken at prepare time",
+          "[cap:gds-write][req:Write preconditions and subtree loading]") {
+  // Regression: emit built its GenerationSource from the editor, so a
+  // command between the phases could change compat and `cif unfracture`.
+  const auto build = [](Fixture& f) -> db::CellDef& {
+    db::CellDef& top = f.cell("top");
+    // One '/' triangle in two split tiles and the gap above the lower one.
+    const db::TriangleSpec half{db::Diagonal::ne_sw, false};
+    REQUIRE(db::paint_type(top, *f.technology, db::Rect{0, 0, 10, 10}, f.m1, half).ok());
+    REQUIRE(db::paint_type(top, *f.technology, db::Rect{10, 10, 20, 20}, f.m1, half).ok());
+    f.paint(top, f.m1, db::Rect{0, 10, 10, 20});
+    db::recompute_bbox(top);
+    return top;
+  };
+  Fixture reference;
+  const std::string expected = reference.write(build(reference));
+  REQUIRE(reference.last.ok());
+
+  Fixture f;
+  db::CellDef& top = build(f);
+  f.install();
+  auto prepared = gds::prepare_write(f.ed, top, f.options);
+  REQUIRE(prepared.ok());
+  f.ed.mask.cif.unfracture = true;  // a command between the phases
+  f.set_compat(false);
+  REQUIRE(gds::emit_write(prepared.value(), "/out.gds").ok());
+  CHECK(f.file() == expected);
+}
+
 }  // namespace gds_write_test

@@ -66,9 +66,15 @@ LibraryWriter::LibraryWriter(const PreparedWrite& prepared, RecordWriter& record
       records_(records),
       sink_(sink),
       ctx_(ctx),
+      source_(prepared.editor != nullptr ? mask::generation_source(*prepared.editor) : mask::GenerationSource{}),
       vendor_(std::make_unique<VendorIo>(VendorIo{prepared, records, raw, sink, names_,
                                                   [this](const db::CellDef& def) { return id_of(def); }})),
-      dump_(std::make_unique<FullDump>()) {}
+      dump_(std::make_unique<FullDump>()) {
+  // Generation follows the settings taken at prepare time, not the
+  // session's current ones (D4: a command may run between the phases).
+  source_.compat = prepared.compat;
+  source_.unfracture = prepared.hierarchy.unfracture;
+}
 
 LibraryWriter::~LibraryWriter() = default;
 
@@ -379,7 +385,7 @@ diag::Status LibraryWriter::mask_layers(const db::CellDef& def, ElementWriter& o
                                         const mask::HierarchyOptions& options) {
   const mask::OutputStyle& style = *prepared_.style;
   const mask::LayerPlanes planes =
-      mask::generate_hierarchical(mask::generation_source(*prepared_.editor), def, style, ctx_, options);
+      mask::generate_hierarchical(source_, def, style, ctx_, options);
   if (ctx_.cancelled()) {
     return diag::make(codes::kCancelled, "GDS write cancelled.");
   }

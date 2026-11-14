@@ -9,7 +9,8 @@
 //
 // Differences from Magic, for malformed or huge input only:
 // - the copied bytes are streamed in 64 KiB chunks (Magic reads the whole
-//   structure into one buffer); a first pass checks that [start, end) is
+//   structure into one buffer), and the SNAME passes stream the records
+//   without keeping them; a first pass checks that [start, end) is
 //   readable and ends with ENDSTR, so nothing is written before every
 //   check has passed, as in Magic;
 // - a negative GDS_START is a bad reference (Magic allocates a negative
@@ -20,7 +21,9 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <span>
+#include <unordered_map>
 
 #include "codes.hpp"
 #include "hefesto/cell/search_path.hpp"
@@ -234,51 +237,98 @@ std::vector<const db::CellDef*> referenced_children(const VendorIo& io, const db
   return out;
 }
 
-// The structure name `child` is written as (the payload text).
-std::string written_name(VendorIo& io, ElementWriter& out, const db::CellDef& child) {
-  const std::string chosen = io.names.name_of(out, child, io.id_of(child));
-  return string_value(
-      encode_string(chosen, out.table(), string_options(out.style(), out.settings()), out.compat()).data);
-}
-
-// The child written as `sname`, else the child named `sname`.
-const db::CellDef* child_named(VendorIo& io, ElementWriter& out, const std::vector<const db::CellDef*>& children,
-                               const std::string& sname, bool by_cell_name) {
-  for (const db::CellDef* child : children) {
-    if (written_name(io, out, *child) == sname) {
-      return child;
-    }
-  }
-  if (by_cell_name) {
+// The children a copied SNAME may name, looked up by the payload of their
+// structure name (chosen, or the one they would get: nothing is claimed)
+// and by their cell name; the first child in search order wins. Built once
+// per copy.
+class ChildNames {
+ public:
+  ChildNames(const VendorIo& io, const ElementWriter& out, const std::vector<const db::CellDef*>& children) {
     for (const db::CellDef* child : children) {
-      if (child->name() == sname) {
-        return child;
-      }
+      const std::string written = io.names.preview(out, *child, io.id_of(*child));
+      const EncodedString encoded =
+          encode_string(written, out.table(), string_options(out.style(), out.settings()), out.compat());
+      by_written_.emplace(string_value(encoded.data), child);
+      by_cell_.emplace(child->name(), child);
     }
   }
-  return nullptr;
-}
 
-// The records of [start, end), or nullopt when they do not frame it.
-std::optional<std::vector<Record>> region_records(ByteSource& source, const CopySpan& span) {
+  // The child written as `sname`, else (when `by_cell_name`) the child
+  // named `sname`.
+  [[nodiscard]] const db::CellDef* find(const std::string& sname, bool by_cell_name) const {
+    if (const auto it = by_written_.find(sname); it != by_written_.end()) {
+      return it->second;
+    }
+    if (const auto it = by_cell_.find(sname); by_cell_name && it != by_cell_.end()) {
+      return it->second;
+    }
+    return nullptr;
+  }
+
+ private:
+  std::unordered_map<std::string, const db::CellDef*> by_written_;
+  std::unordered_map<std::string, const db::CellDef*> by_cell_;
+};
+
+enum class Walk : std::uint8_t { framed, unframed, stopped };
+
+// Streams the records of [start, end) to `visit` (false stops the walk);
+// unframed when they do not end exactly at `end`. Nothing is kept.
+Walk walk_records(ByteSource& source, const CopySpan& span, const std::function<bool(const Record&)>& visit) {
   if (!source.seek(static_cast<std::uint64_t>(span.start)).ok()) {
-    return std::nullopt;
+    return Walk::unframed;
   }
   RecordReader reader(source);
-  std::vector<Record> records;
-  std::uint64_t at = static_cast<std::uint64_t>(span.start);
+  auto at = static_cast<std::uint64_t>(span.start);
   while (at < static_cast<std::uint64_t>(span.end)) {
     diag::Outcome<std::optional<Record>> next = reader.next();
     if (!next.ok() || !next.value()) {
-      return std::nullopt;
+      return Walk::unframed;
     }
     at += 4 + next.value()->data.size();
-    records.push_back(std::move(*next.value()));
+    if (!visit(*next.value())) {
+      return Walk::stopped;
+    }
   }
-  if (at != static_cast<std::uint64_t>(span.end)) {
-    return std::nullopt;
+  return at == static_cast<std::uint64_t>(span.end) ? Walk::framed : Walk::unframed;
+}
+
+bool is_sname(const Record& r) {
+  return r.type == static_cast<std::uint8_t>(RecordType::sname);
+}
+
+// The warning pass: each SNAME that names none of the children.
+void warn_unknown_snames(const VendorIo& io, const db::CellDef& def, ByteSource& source, const CopySpan& span,
+                         const ChildNames& children, bool by_cell_name) {
+  (void)walk_records(source, span, [&](const Record& r) {
+    if (is_sname(r)) {
+      const std::string sname = string_value(r.data);
+      if (children.find(sname, by_cell_name) == nullptr) {
+        io.report_native(codes::kVendorSname, "Warning: the copied structure of cell " + def.name() +
+                                                  " references \"" + sname +
+                                                  "\", which is not the structure name of any of its children.");
+      }
+    }
+    return true;
+  });
+}
+
+// The rewrite pass (Q-MASK-216 OFF): the records, each SNAME naming a
+// child replaced by the child's output name.
+diag::Status rewrite_snames(VendorIo& io, ByteSource& source, const CopySpan& span, const ChildNames& children,
+                            ElementWriter& out) {
+  diag::Status status = diag::Done{};
+  const Walk walk = walk_records(source, span, [&](const Record& r) {
+    const auto type = static_cast<RecordType>(r.type);
+    const db::CellDef* child = is_sname(r) ? children.find(string_value(r.data), true) : nullptr;
+    status = child != nullptr ? out.string_record(type, io.names.name_of(out, *child, io.id_of(*child)))
+                              : io.records.write(type, static_cast<DataType>(r.data_type), r.data);
+    return status.ok();
+  });
+  if (status.ok() && walk != Walk::framed) {
+    return diag::make(codes::kVendorWrite, "short read");
   }
-  return records;
+  return status;
 }
 
 diag::Status copy_raw(VendorIo& io, ByteSource& source, const CopySpan& span) {
@@ -306,37 +356,22 @@ diag::Status copy_raw(VendorIo& io, ByteSource& source, const CopySpan& span) {
 
 // Q-MASK-216: with magic-compat ON the copy is verbatim, with a warning
 // for each SNAME that names none of the children's structures; with it OFF
-// each SNAME naming a child is rewritten to the child's output name.
+// each SNAME naming a child is rewritten to the child's output name. The
+// records are streamed, once to check that they frame [start, end) (else
+// the bytes are copied as they are, without warnings), once for the
+// warnings and once for the copy.
 diag::Status copy_body(VendorIo& io, const db::CellDef& def, ByteSource& source, const CopySpan& span,
                        ElementWriter& out) {
-  const std::optional<std::vector<Record>> records = region_records(source, span);
-  const std::vector<const db::CellDef*> children = referenced_children(io, def);
-  const bool rewrite = !io.prepared.compat.magic_compat && records.has_value();
-  for (const Record& r : records ? *records : std::vector<Record>{}) {
-    if (r.type != static_cast<std::uint8_t>(RecordType::sname)) {
-      continue;
-    }
-    const std::string sname = string_value(r.data);
-    if (child_named(io, out, children, sname, rewrite) == nullptr) {
-      io.report_native(codes::kVendorSname, "Warning: the copied structure of cell " + def.name() + " references \"" +
-                                         sname + "\", which is not the structure name of any of its children.");
+  const bool framed = walk_records(source, span, [](const Record&) { return true; }) == Walk::framed;
+  const bool rewrite = !io.prepared.compat.magic_compat && framed;
+  if (framed) {
+    const ChildNames children(io, out, referenced_children(io, def));
+    warn_unknown_snames(io, def, source, span, children, rewrite);
+    if (rewrite) {
+      return rewrite_snames(io, source, span, children, out);
     }
   }
-  if (!rewrite) {
-    return copy_raw(io, source, span);
-  }
-  for (const Record& r : *records) {
-    const auto type = static_cast<RecordType>(r.type);
-    const db::CellDef* child =
-        type == RecordType::sname ? child_named(io, out, children, string_value(r.data), true) : nullptr;
-    diag::Status s = child != nullptr
-                         ? out.string_record(type, io.names.name_of(out, *child, io.id_of(*child)))
-                         : io.records.write(type, static_cast<DataType>(r.data_type), r.data);
-    if (!s.ok()) {
-      return s;
-    }
-  }
-  return diag::Done{};
+  return copy_raw(io, source, span);
 }
 
 }  // namespace

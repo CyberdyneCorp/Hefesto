@@ -129,6 +129,14 @@ class ElementWriter {
 /// value is far outside I4, so ElementWriter's range check rejects it
 /// (Q-MASK-222) instead of the arithmetic overflowing.
 [[nodiscard]] std::int64_t saturating_mul(std::int64_t a, std::int64_t b) noexcept;
+
+/// The GDS-WRITE-004 error of Q-MASK-222: `value` (its decimal text) in
+/// cell `cell` does not fit in a GDS 4-byte integer.
+[[nodiscard]] diag::Diagnostic value_range_error(std::string_view cell, std::string_view value);
+/// (a * b) / divisor (C truncation, divisor > 0) computed exactly, when it
+/// fits in I4; else value_range_error naming `cell` and the exact value.
+[[nodiscard]] diag::Outcome<std::int32_t> checked_i4_product(std::int64_t a, std::int64_t b, std::string_view cell,
+                                                             std::int64_t divisor = 1);
 [[nodiscard]] std::int64_t saturating_add(std::int64_t a, std::int64_t b) noexcept;
 
 /// The StringOptions of `style` and `settings` (string-limit, `gds lower`).

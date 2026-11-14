@@ -97,6 +97,18 @@ OutputPoint transform_point(const db::Transform& t, std::int64_t x, std::int64_t
   return OutputPoint{affine(t.a, x, t.b, y, t.c, scale), affine(t.d, x, t.e, y, t.f, scale)};
 }
 
+// One SREF of a flattened array at output point `p`.
+diag::Status flattened_element(ElementWriter& out, StructureNames& names, const db::CellUse& use, std::int64_t id,
+                               Orientation o, const OutputPoint& p) {
+  if (diag::Status s = reference_head(out, names, RecordType::sref, use, id, o); !s.ok()) {
+    return s;
+  }
+  if (diag::Status s = out.xy(std::span<const OutputPoint>{&p, 1}); !s.ok()) {
+    return s;
+  }
+  return out.empty(RecordType::endel);
+}
+
 // The SREFs of a flattened array (`gds arrays yes`), x outer, y inner.
 diag::Status flattened_array(ElementWriter& out, StructureNames& names, const db::CellUse& use, std::int64_t id,
                              const mask::GenerationContext& ctx) {
@@ -114,13 +126,7 @@ diag::Status flattened_array(ElementWriter& out, StructureNames& names, const db
       }
       // xxlate = c + a*xsep*x + b*ysep*y (Magic's order of terms).
       const OutputPoint p = transform_point(t, sat_mul(xsep, x), sat_mul(ysep, y), out.scale().write);
-      if (diag::Status s = reference_head(out, names, RecordType::sref, use, id, o); !s.ok()) {
-        return s;
-      }
-      if (diag::Status s = out.xy(std::span<const OutputPoint>{&p, 1}); !s.ok()) {
-        return s;
-      }
-      if (diag::Status s = out.empty(RecordType::endel); !s.ok()) {
+      if (diag::Status s = flattened_element(out, names, use, id, o, p); !s.ok()) {
         return s;
       }
     }

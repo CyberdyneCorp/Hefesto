@@ -18,7 +18,9 @@
 #include <vector>
 
 #include "../cif_fixture.hpp"
+#include "hefesto/gds/write/subtree.hpp"
 #include "hefesto/mask/gen/progress.hpp"
+#include "hefesto/platform/stack_thread.hpp"
 
 namespace {
 
@@ -307,6 +309,76 @@ TEST_CASE("the loader reads unavailable cells before the write",
   CHECK(contains(body(f.write_with(top, o)), "9 leaf;"));
   CHECK(reads == 1);
   CHECK(fixes == 1);
+}
+
+TEST_CASE("cif flat processes timestamp mismatches after the write with magic-compat ON",
+          "[cap:cif-format-io][req:CIF output preconditions and flat output]") {
+  // Regression: CIFWriteFlat calls neither DBCellReadArea nor DBFixMismatch,
+  // so the mismatches its reads find are processed after the command.
+  for (const bool on : {true, false}) {
+    for (const bool flat : {true, false}) {
+      Fixture f(on);
+      db::CellDef& top = f.cell("top");
+      db::CellDef& leaf = f.cell("leaf");
+      f.paint(leaf, "metal1", db::Rect{0, 0, 2, 2});
+      f.place(top, leaf);
+      leaf.flags().available = false;
+      cif::CifWriteOptions o = f.options(flat);
+      bool written_before_fix = false;
+      int fixes = 0;
+      o.loader.read = [](db::CellDef& def) {
+        def.flags().available = true;
+        return true;
+      };
+      o.loader.fix_mismatches = [&] {
+        ++fixes;
+        written_before_fix = f.fs.exists("/out.cif");
+      };
+      (void)f.write_with(top, o);
+      CHECK(fixes == 1);
+      CHECK(written_before_fix == (flat && on));
+    }
+  }
+}
+
+TEST_CASE("a cancelled subtree load leaves the file untouched",
+          "[cap:cif-format-io][req:CIF output preconditions and flat output]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  db::CellDef& leaf = f.cell("leaf");
+  f.place(top, leaf);
+  int reads = 0;
+  cif::CifWriteOptions o = f.options();
+  o.loader.read = [&reads](db::CellDef&) {
+    ++reads;
+    return true;
+  };
+  leaf.flags().available = false;
+  std::atomic<bool> cancel{true};
+  mask::Progress progress;
+  progress.cancel = &cancel;
+  REQUIRE(f.fs.write_atomic("/out.cif", "previous").ok());
+  f.last = cif::write(f.ed, top, "/out.cif", o, &progress);
+  CHECK_FALSE(f.last.ok());
+  CHECK(f.has_code("CIF-WRITE-007"));
+  CHECK(reads == 0);
+  CHECK(f.file("/out.cif") == "previous");
+}
+
+TEST_CASE("the depth limit of a CIF write, on a thread with the documented stack",
+          "[cap:cif-format-io][req:CIF output symbol numbering and order]") {
+  for (const std::size_t levels : {hefesto::gds::kMaxSubtreeDepth, hefesto::gds::kMaxSubtreeDepth + 1}) {
+    Fixture f;
+    db::CellDef* child = &f.cell("c" + std::to_string(levels));
+    f.paint(*child, "metal1", db::Rect{0, 0, 2, 2});
+    for (std::size_t i = levels; i-- > 0;) {
+      db::CellDef& parent = f.cell("c" + std::to_string(i));
+      f.place(parent, *child);
+      child = &parent;
+    }
+    hefesto::platform::run_on_stack(hefesto::platform::kDeepRecursionStackBytes, [&f, child] { (void)f.write(*child); });
+    CHECK(f.has_code("CIF-WRITE-008") == (levels > hefesto::gds::kMaxSubtreeDepth));
+  }
 }
 
 TEST_CASE("a cancelled write leaves no file", "[cap:cif-format-io][req:CIF output preconditions and flat output]") {

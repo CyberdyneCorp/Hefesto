@@ -27,6 +27,7 @@ LabelOutput label_output(ElementWriter& out, PortLabelWarnings* warned) {
   output.sink = out.sink();
   output.warned = warned;
   output.technology = out.context().technology;
+  output.cell = out.cell().name();
   return output;
 }
 

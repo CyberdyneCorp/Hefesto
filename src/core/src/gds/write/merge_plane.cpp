@@ -19,10 +19,10 @@
 
 #include <algorithm>
 #include <array>
-#include <limits>
 #include <string>
 #include <unordered_map>
 
+#include "hefesto/gds/write/emit.hpp"
 #include "hefesto/gds/write/merge_rings.hpp"
 
 namespace hefesto::gds {
@@ -306,11 +306,6 @@ class PlaneMerger {
   BoundList bounds_;
 };
 
-diag::Diagnostic out_of_range(std::int64_t value) {
-  return diag::make("GDS-WRITE-004", "GDS output coordinate " + std::to_string(value) +
-                                         " does not fit a 4-byte integer; the write fails.");
-}
-
 }  // namespace
 
 std::vector<mask::Polygon> merge_plane_polygons(const mask::MaskPlane& plane, const std::optional<db::Rect>& clip) {
@@ -324,42 +319,44 @@ std::vector<mask::Polygon> merge_plane_polygons(const mask::MaskPlane& plane, co
   return out;
 }
 
-diag::Status write_xy(RecordWriter& out, std::span<const std::int64_t> coords) {
+diag::Status write_xy(RecordWriter& out, std::span<const std::int64_t> coords, std::string_view cell) {
   std::vector<std::int32_t> values;
   values.reserve(coords.size());
   for (const std::int64_t v : coords) {
-    if (v < std::numeric_limits<std::int32_t>::min() || v > std::numeric_limits<std::int32_t>::max()) {
-      return out_of_range(v);
+    diag::Outcome<std::int32_t> checked = checked_i4_product(v, 1, cell);
+    if (!checked.ok()) {
+      return checked.error();
     }
-    values.push_back(static_cast<std::int32_t>(v));
+    values.push_back(checked.value());
   }
   return out.write_int4(RecordType::xy, values);
 }
 
 diag::Status write_boundary(RecordWriter& out, std::int32_t layer, std::int32_t datatype,
-                            std::span<const db::Point> polygon, std::int64_t scale) {
+                            std::span<const db::Point> polygon, std::int64_t scale, std::string_view cell) {
   if (polygon.empty()) {
     return diag::Done{};
   }
-  std::vector<std::int64_t> coords;
-  coords.reserve(2 * (polygon.size() + 1));
-  const auto put = [&](db::Point p) {
-    std::int64_t x = 0;
-    std::int64_t y = 0;
-    if (__builtin_mul_overflow(std::int64_t{p.x}, scale, &x) || __builtin_mul_overflow(std::int64_t{p.y}, scale, &y)) {
-      return false;
+  // Every product is checked before the first record is written.
+  std::vector<std::int32_t> values;
+  values.reserve(2 * (polygon.size() + 1));
+  const auto put = [&](db::Point p) -> diag::Status {
+    for (const db::Coord c : {p.x, p.y}) {
+      diag::Outcome<std::int32_t> checked = checked_i4_product(c, scale, cell);
+      if (!checked.ok()) {
+        return checked.error();
+      }
+      values.push_back(checked.value());
     }
-    coords.push_back(x);
-    coords.push_back(y);
-    return true;
+    return diag::Done{};
   };
   for (const db::Point p : polygon) {
-    if (!put(p)) {
-      return out_of_range(std::numeric_limits<std::int64_t>::max());
+    if (diag::Status s = put(p); !s.ok()) {
+      return s;
     }
   }
-  if (!put(polygon.front())) {
-    return out_of_range(std::numeric_limits<std::int64_t>::max());
+  if (diag::Status s = put(polygon.front()); !s.ok()) {
+    return s;
   }
   const std::array<std::int16_t, 1> layer_value{static_cast<std::int16_t>(layer)};
   const std::array<std::int16_t, 1> datatype_value{static_cast<std::int16_t>(datatype)};
@@ -371,7 +368,7 @@ diag::Status write_boundary(RecordWriter& out, std::int32_t layer, std::int32_t 
     status = out.write_int2(RecordType::datatype, datatype_value);
   }
   if (status) {
-    status = write_xy(out, coords);
+    status = out.write_int4(RecordType::xy, values);
   }
   if (status) {
     status = out.write_empty(RecordType::endel);
@@ -381,9 +378,9 @@ diag::Status write_boundary(RecordWriter& out, std::int32_t layer, std::int32_t 
 
 diag::Status emit_merged_boundaries(RecordWriter& out, const mask::MaskPlane& plane, std::int32_t layer,
                                     std::int32_t datatype, std::int64_t paint_scale,
-                                    const std::optional<db::Rect>& clip) {
+                                    const std::optional<db::Rect>& clip, std::string_view cell) {
   for (const mask::Polygon& polygon : merge_plane_polygons(plane, clip)) {
-    if (diag::Status status = write_boundary(out, layer, datatype, polygon, paint_scale); !status) {
+    if (diag::Status status = write_boundary(out, layer, datatype, polygon, paint_scale, cell); !status) {
       return status;
     }
   }

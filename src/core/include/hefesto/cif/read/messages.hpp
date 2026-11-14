@@ -40,6 +40,7 @@ inline constexpr std::string_view kSymbolLimit = "CIF-READ-006";    // resource 
 inline constexpr std::string_view kNotUndoable = "CIF-READ-007";    // "CIF reading is not undoable"
 inline constexpr std::string_view kNoStyle = "CIF-READ-008";        // no cifinput style
 inline constexpr std::string_view kNoFile = "CIF-READ-009";         // the file cannot be opened
+inline constexpr std::string_view kTooLarge = "CIF-READ-010";       // the file exceeds max_file_bytes
 }  // namespace read_codes
 
 class ReadMessages {

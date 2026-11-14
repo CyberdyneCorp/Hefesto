@@ -80,7 +80,9 @@ struct PreparedWrite {
 /// for `cif write` loads the subtree (DBCellReadArea over the root's
 /// bounding box, halting on the first cell that cannot be read) and fixes
 /// the timestamp mismatches; for `cif flat` reads the cells the flattening
-/// reaches (DBTreeSrTiles reads them, without halting). Then it takes the
+/// reaches (DBTreeSrTiles reads them, without halting) and, with
+/// magic-compat ON, leaves their mismatches to finish_write, as
+/// CIFWriteFlat does (OFF they are fixed here). Then it takes the
 /// current style and refuses one whose reducer is 0 (Magic refuses it for
 /// `cif write`, and divides by zero for `cif flat`).
 [[nodiscard]] diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::CellDef& root,
@@ -94,7 +96,15 @@ struct PreparedWrite {
 [[nodiscard]] cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Path& path,
                                             const mask::Progress* progress = nullptr);
 
-/// prepare_write then emit_write. When the prepare phase fails reading the
+/// The finish phase (exclusive lock, after emit_write or a failed
+/// prepare_write): `cif flat` with magic-compat ON processes the timestamp
+/// mismatches its reads found, as Magic does after CIFWriteFlat, which
+/// never calls DBFixMismatch; otherwise nothing.
+void finish_write(editor::EditorState& editor, const CifWriteOptions& options);
+
+/// prepare_write, emit_write, then finish_write; `progress`'s cancel flag
+/// also stops the subtree loading (a cancelled write leaves the file
+/// untouched). When the prepare phase fails reading the
 /// subtree or refuses a reducer of 0, the output file is left empty and the
 /// failure is followed by Magic's "I/O error in writing file <typed>."
 /// (CmdCif opens the file before CIFWrite fails); without an output style

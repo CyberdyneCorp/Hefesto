@@ -37,6 +37,10 @@ namespace hefesto::cif {
 
 /// The options of one read: the session's `cif` settings and read warnings
 /// at the time of the call, and the name the user typed.
+/// The default CifReadOptions::max_file_bytes: 2 GiB (hardening; Magic
+/// streams the file).
+inline constexpr std::uint64_t kMaxCifFileBytes = std::uint64_t{2} << 30U;
+
 struct CifReadOptions {
   CifSettings settings;
   mask::WarningSettings warnings;
@@ -44,6 +48,9 @@ struct CifReadOptions {
   /// The file system the file and the redirect file are on; null means the
   /// local one (added by CIF in round 4).
   platform::FileSystem* files = nullptr;
+  /// The largest file read() accepts (the text is held in memory while it
+  /// is parsed); a larger one fails with CIF-READ-010 before it is read.
+  std::uint64_t max_file_bytes = kMaxCifFileBytes;
 };
 
 /// The state of one CIF read.

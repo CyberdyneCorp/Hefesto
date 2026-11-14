@@ -74,6 +74,7 @@ struct LabelOutput {
   diag::DiagnosticSink* sink = nullptr;      // GDS-WRITE-020 warnings
   PortLabelWarnings* warned = nullptr;       // per-write warning memory
   const tech::Technology* technology = nullptr;  // type names in warnings
+  std::string_view cell;                         // the cell range errors name (GDS-WRITE-004)
 };
 
 /// The PRESENTATION word: `((font & 3) << 4) | j` with j from the

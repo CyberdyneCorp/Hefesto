@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <limits>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -26,6 +27,44 @@ constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
 constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 
 }  // namespace
+
+namespace {
+
+__extension__ typedef __int128 Int128;  // NOLINT(modernize-use-using): __extension__ needs the typedef form
+
+std::string int128_text(Int128 value) {
+  if (value == 0) {
+    return "0";
+  }
+  const bool negative = value < 0;
+  std::string digits;
+  while (value != 0) {
+    const auto digit = static_cast<int>(value % 10);
+    digits.push_back(static_cast<char>('0' + (digit < 0 ? -digit : digit)));
+    value /= 10;
+  }
+  if (negative) {
+    digits.push_back('-');
+  }
+  return {digits.rbegin(), digits.rend()};
+}
+
+}  // namespace
+
+diag::Diagnostic value_range_error(std::string_view cell, std::string_view value) {
+  return diag::make(codes::kValueRange, "Calma output error:  value " + std::string{value} + " in cell " +
+                                            std::string{cell} +
+                                            " does not fit in a GDS 4-byte integer; the cell cannot be written.");
+}
+
+diag::Outcome<std::int32_t> checked_i4_product(std::int64_t a, std::int64_t b, std::string_view cell,
+                                               std::int64_t divisor) {
+  const Int128 value = Int128{a} * b / (divisor > 0 ? divisor : 1);  // |a*b| < 2^126: exact
+  if (value < std::numeric_limits<std::int32_t>::min() || value > std::numeric_limits<std::int32_t>::max()) {
+    return value_range_error(cell, int128_text(value));
+  }
+  return static_cast<std::int32_t>(value);
+}
 
 std::int64_t saturating_mul(std::int64_t a, std::int64_t b) noexcept {
   if (a == 0 || b == 0) {
@@ -106,9 +145,7 @@ diag::Status ElementWriter::string_record(RecordType type, std::string_view text
 
 diag::Outcome<std::int32_t> ElementWriter::checked_i4(std::int64_t value) const {
   if (value < std::numeric_limits<std::int32_t>::min() || value > std::numeric_limits<std::int32_t>::max()) {
-    return diag::make(codes::kValueRange, "Calma output error:  value " + std::to_string(value) + " in cell " +
-                                              cell().name() +
-                                              " does not fit in a GDS 4-byte integer; the cell cannot be written.");
+    return value_range_error(cell().name(), std::to_string(value));
   }
   return static_cast<std::int32_t>(value);
 }

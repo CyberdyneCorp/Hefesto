@@ -11,6 +11,7 @@
 // under its permissive license (THIRD_PARTY_NOTICES.md).
 
 #include <algorithm>
+#include <array>
 #include <set>
 
 #include "hefesto/cell/diag_codes.hpp"
@@ -399,9 +400,14 @@ diag::Status check_writable_name(std::string_view what, std::string_view name) {
 }
 
 void update_save_stamps(CellIoContext& ctx, db::CellDef* only, std::int64_t now) {
+  const std::array<db::CellDef*, 1> one{only};
+  update_save_stamps(ctx, std::span<db::CellDef* const>{one.data(), one.size()}, now);
+}
+
+void update_save_stamps(CellIoContext& ctx, std::span<db::CellDef* const> cells, std::int64_t now) {
   diag::NullSink quiet;
   LookupContext lookup{ctx.fs, ctx.paths, ctx.vars, quiet};
-  update_timestamps(ctx.library, only, now, lookup);
+  update_timestamps(ctx.library, cells, now, lookup);
 }
 
 diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view path) {

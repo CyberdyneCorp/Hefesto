@@ -96,6 +96,9 @@ class AbstractCheck {
 };
 
 diag::Diagnostic subtree_error(const SubtreeResult& result) {
+  if (result.cancelled) {
+    return diag::make(codes::kCancelled, "GDS write cancelled.");
+  }
   if (result.too_deep) {
     return diag::make(codes::kDepth, "Failure to read entire subtree of the cell.\nThe hierarchy is deeper than " +
                                          std::to_string(kMaxSubtreeDepth) + " levels at cell " +
@@ -197,6 +200,7 @@ diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::Cell
   prepared.root = &root;
   prepared.options = options;
   prepared.compat = editor.drc.compat_settings();
+  prepared.random = std::make_shared<util::LibcRandom>(editor.mask.random);  // Q-MASK-211 ON draws
   const SubtreeResult loaded = load_subtree(root, options.loader, !options.settings.allow_undefined, prepared.compat);
   if (!loaded.ok()) {
     return subtree_error(loaded);
@@ -263,9 +267,19 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   return finished(std::move(out), io_error(prepared.options, path));
 }
 
+void finish_write(editor::EditorState& editor, const PreparedWrite& prepared) {
+  if (prepared.random != nullptr) {
+    editor.mask.random = *prepared.random;
+  }
+}
+
 cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                          const GdsWriteOptions& options, const mask::Progress* progress) {
-  diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, options);
+  GdsWriteOptions with_cancel = options;
+  if (progress != nullptr) {
+    with_cancel.loader.cancel = progress->cancel;
+  }
+  diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (!prepared) {
     const std::string_view code = prepared.error().code;
     if (code == codes::kSubtree || code == codes::kDepth) {
@@ -282,7 +296,9 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const p
     }
     return finished({prepared.error()}, io_error(options, path));
   }
-  return emit_write(prepared.value(), path, progress);
+  cmd::CommandResult result = emit_write(prepared.value(), path, progress);
+  finish_write(editor, prepared.value());
+  return result;
 }
 
 }  // namespace hefesto::gds

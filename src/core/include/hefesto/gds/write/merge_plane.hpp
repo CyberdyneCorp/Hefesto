@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 #include "hefesto/db/geometry.hpp"
@@ -46,19 +47,27 @@ namespace hefesto::gds {
                                                               const std::optional<db::Rect>& clip = std::nullopt);
 
 /// An XY record of `coords` (x, y pairs), each checked to fit an I4 (a
-/// value outside fails the write with GDS-WRITE-004, Q-MASK-222).
-[[nodiscard]] diag::Status write_xy(RecordWriter& out, std::span<const std::int64_t> coords);
+/// value outside fails the write with GDS-WRITE-004 naming cell `cell`
+/// and the value, Q-MASK-222); nothing is written then.
+[[nodiscard]] diag::Status write_xy(RecordWriter& out, std::span<const std::int64_t> coords,
+                                    std::string_view cell = {});
 
 /// One BOUNDARY element: BOUNDARY, LAYER, DATATYPE (each an I2 of the low
 /// 16 bits, as calmaOutI2), XY with every point times `scale` and then the
-/// first point again, ENDEL. A polygon without points writes nothing.
+/// first point again, ENDEL. A polygon without points writes nothing. The
+/// products are checked first, so an element with a value outside I4
+/// writes nothing and fails with GDS-WRITE-004 naming `cell` and the exact
+/// product.
 [[nodiscard]] diag::Status write_boundary(RecordWriter& out, std::int32_t layer, std::int32_t datatype,
-                                          std::span<const db::Point> polygon, std::int64_t scale);
+                                          std::span<const db::Point> polygon, std::int64_t scale,
+                                          std::string_view cell = {});
 
 /// The merged boundary elements of one mask layer: merge_plane_polygons
-/// written with write_boundary on `layer`/`datatype` at `paint_scale`.
+/// written with write_boundary on `layer`/`datatype` at `paint_scale`,
+/// range errors naming `cell`.
 [[nodiscard]] diag::Status emit_merged_boundaries(RecordWriter& out, const mask::MaskPlane& plane, std::int32_t layer,
                                                   std::int32_t datatype, std::int64_t paint_scale,
-                                                  const std::optional<db::Rect>& clip = std::nullopt);
+                                                  const std::optional<db::Rect>& clip = std::nullopt,
+                                                  std::string_view cell = {});
 
 }  // namespace hefesto::gds

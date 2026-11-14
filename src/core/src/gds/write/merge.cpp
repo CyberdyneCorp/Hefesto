@@ -18,7 +18,8 @@ std::vector<mask::Polygon> merge_polygons(const mask::MaskPlane& plane) {
 }
 
 diag::Status emit_merged_polygons(const mask::MaskPlane& plane, const mask::GdsLayer& layer, ElementWriter& out) {
-  return emit_merged_boundaries(out.records(), plane, layer.layer, layer.datatype, out.scale().paint);
+  return emit_merged_boundaries(out.records(), plane, layer.layer, layer.datatype, out.scale().paint, std::nullopt,
+                                out.cell().name());
 }
 
 }  // namespace hefesto::gds

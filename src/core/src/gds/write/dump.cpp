@@ -9,8 +9,9 @@
 //
 // Decisions:
 // - Q-MASK-211 (compat): the prefix comes from the session's glibc TYPE_3
-//   random() (EditorState::mask.random, shared with `random`) with
-//   magic-compat ON, and from an FNV-1a hash of the resolved file name,
+//   random() (EditorState::mask.random, shared with `random`; the write
+//   draws from its copy PreparedWrite::random, which finish_write stores
+//   back) with magic-compat ON, and from an FNV-1a hash of the resolved file name,
 //   with the next free prefix on a collision, with it OFF. Magic loops
 //   forever once its 936 prefixes are taken; Hefesto reports an error and
 //   dumps without a prefix.
@@ -25,7 +26,8 @@
 // - Q-MASK-128 (fix): the library comparison substitutes the file name as
 //   GDS_FILE values are (gds::gds_file_value).
 // Magic's tables are hash tables; the undefined references are kept in the
-// order they were recorded and the libraries in dump order, which decides
+// order they were recorded (with a name index, so a library of N forward
+// references costs O(N)) and the libraries in dump order, which decides
 // the order of the structures appended at the end of a write with several
 // undefined references and the prefix lookup of a later definition.
 // Owner: GDSW.
@@ -161,20 +163,24 @@ bool FullDump::refused(const std::string& file) const {
 
 std::vector<FullDump::Undefined> FullDump::undefined() const {
   std::vector<Undefined> out;
-  for (const auto& [name, recorded] : undefined_) {
-    if (!recorded.empty() && recorded.front() == '0') {
-      out.push_back(Undefined{name, recorded.substr(1)});
+  for (const UndefinedEntry& entry : undefined_) {
+    if (entry.live && !entry.recorded.empty() && entry.recorded.front() == '0') {
+      out.push_back(Undefined{entry.name, entry.recorded.substr(1)});
     }
   }
   return out;
+}
+
+bool FullDump::is_undefined(const std::string& name) const {
+  return undefined_index_.contains(name);
 }
 
 std::string FullDump::choose_prefix(VendorIo& io, const db::CellDef& def, const std::string& file) {
   if (no_prefix_view(def)) {
     return {};
   }
-  if (io.prepared.compat.magic_compat) {
-    util::LibcRandom& random = io.prepared.editor->mask.random;
+  if (io.prepared.compat.magic_compat && io.prepared.random != nullptr) {
+    util::LibcRandom& random = *io.prepared.random;
     for (std::size_t tries = 0; tries < kRandomTries && prefixes_.size() < kPrefixCount; ++tries) {
       const auto first = static_cast<std::size_t>(random.next() % 26);
       const auto second = static_cast<std::size_t>(random.next() % 36);
@@ -197,11 +203,13 @@ std::string FullDump::choose_prefix(VendorIo& io, const db::CellDef& def, const 
 }
 
 std::optional<std::string> FullDump::undefined_prefix(VendorIo& io, const std::string& name) {
-  const auto entry = std::find_if(undefined_.begin(), undefined_.end(), [&](const auto& u) { return u.first == name; });
-  const std::string recorded = entry->second;
+  const auto index = undefined_index_.find(name);
+  UndefinedEntry& entry = undefined_[index->second];
+  const std::string recorded = entry.recorded;
   for (const auto& [file, prefix] : libraries_) {
     if (recorded.compare(1, prefix.size(), prefix) == 0) {
-      undefined_.erase(entry);
+      entry.live = false;  // erased; a later record appends it again
+      undefined_index_.erase(index);
       return prefix;
     }
   }
@@ -216,12 +224,11 @@ void FullDump::record_undefined(const std::map<std::string, std::string>& names)
     if (recorded.empty() || recorded.front() != '0') {
       continue;
     }
-    const auto entry =
-        std::find_if(undefined_.begin(), undefined_.end(), [&](const auto& u) { return u.first == name; });
-    if (entry != undefined_.end()) {
-      entry->second = recorded;
+    const auto [index, added] = undefined_index_.try_emplace(name, undefined_.size());
+    if (added) {
+      undefined_.push_back(UndefinedEntry{name, recorded, true});
     } else {
-      undefined_.emplace_back(name, recorded);
+      undefined_[index->second].recorded = recorded;
     }
   }
 }
@@ -332,8 +339,7 @@ bool FullDump::dump_structure(Dump& d) {
   if (!d.fail(d.io.records.write_int2(RecordType::bgnstr, dump_dates(d, *bgnstr)))) {
     return false;
   }
-  const bool undefined_before =
-      std::any_of(undefined_.begin(), undefined_.end(), [&](const auto& u) { return u.first == name; });
+  const bool undefined_before = is_undefined(name);
   const std::optional<std::string> prefix =
       undefined_before ? undefined_prefix(d.io, name) : std::optional<std::string>{libraries_.back().second};
   if (!d.fail(d.out.string_record(RecordType::strname, structure_name(d, name, prefix)))) {

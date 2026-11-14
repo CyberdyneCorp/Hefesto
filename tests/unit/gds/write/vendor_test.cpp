@@ -396,6 +396,31 @@ TEST_CASE("the full-dump prefix follows the shared random() with magic-compat ON
   }
 }
 
+TEST_CASE("the emit phase draws from the write's copy of random(); finish_write stores it back",
+          "[cap:gds-write][req:Full dump of a vendor library]") {
+  // Regression: the emit phase advanced EditorState::mask.random under the
+  // shared lock, a data race between two concurrent writes (D4).
+  Fixture f(true);
+  REQUIRE(f.fs.write_atomic("lib.gds", pad_library(false)).ok());
+  db::CellDef& top = f.cell("top");
+  f.place(top, abstract_pad(f));
+  f.install();
+  hefesto::util::LibcRandom expected;  // seed 1, as the session's
+  (void)expected.next();
+  (void)expected.next();
+  auto prepared = gds::prepare_write(f.ed, top, f.options);
+  REQUIRE(prepared.ok());
+  const hefesto::util::LibcRandom before = f.ed.mask.random;
+  const cmd::CommandResult result = gds::emit_write(prepared.value(), "/out.gds");
+  CHECK(result.ok());
+  hefesto::util::LibcRandom session = f.ed.mask.random;
+  hefesto::util::LibcRandom untouched = before;
+  CHECK(session.next() == untouched.next());  // emit left the session's state alone
+  gds::finish_write(f.ed, prepared.value());
+  CHECK(f.ed.mask.random.next() == expected.next());  // two draws were made and stored back
+  CHECK(structure_names(decode(f.file())).front() == "N8_via_x");
+}
+
 TEST_CASE("LEFview no_prefix dumps without a prefix", "[cap:gds-write][req:Full dump of a vendor library]") {
   Fixture f;
   REQUIRE(f.fs.write_atomic("lib.gds", pad_library(false)).ok());

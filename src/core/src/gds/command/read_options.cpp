@@ -24,6 +24,7 @@
 //
 // Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D2).
 
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -120,28 +121,33 @@ CommandResult flatglob_option(const cmd::Invocation& invocation, GdsSettings& g)
   return CommandResult::success();
 }
 
+// The names of a layer list as CIFParseReadLayers splits it: a run of
+// commas separates two names, a leading comma gives an empty name.
+std::vector<std::string_view> split_layer_list(std::string_view list) {
+  std::vector<std::string_view> names;
+  std::size_t from = 0;
+  while (from < list.size()) {
+    const std::size_t comma = list.find(',', from);
+    names.push_back(list.substr(from, comma == std::string_view::npos ? std::string_view::npos : comma - from));
+    if (comma == std::string_view::npos) {
+      break;
+    }
+    from = list.find_first_not_of(',', comma);
+  }
+  return names;
+}
+
 // CIFParseReadLayers(list, mask, FALSE): the layers of the current input
 // style, an error for each unknown name.
 std::string known_read_layers(const cu::Session& s, std::string_view list) {
   const mask::InputStyle* style = s.editor->mask.input_styles.current_style();
   std::string known;
-  std::size_t from = 0;
-  while (from < list.size()) {
-    const std::size_t comma = list.find(',', from);
-    const std::string_view name = list.substr(from, comma == std::string_view::npos ? std::string_view::npos : comma - from);
-    bool found = false;
-    for (const std::string& layer : style != nullptr ? style->cif_layers : std::vector<std::string>{}) {
-      found = found || layer == name;
-    }
-    if (found) {
+  for (const std::string_view name : split_layer_list(list)) {
+    if (style != nullptr && std::ranges::find(style->cif_layers, name) != style->cif_layers.end()) {
       known += (known.empty() ? "" : ",") + std::string{name};
     } else {
       cu::warn(s, "Error:  CIF layer \"" + std::string{name} + "\" is unknown.");
     }
-    if (comma == std::string_view::npos) {
-      break;
-    }
-    from = list.find_first_not_of(',', comma);
   }
   return known;
 }
