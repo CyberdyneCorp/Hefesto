@@ -8,8 +8,10 @@
 #include "hefesto/connect/tree.hpp"
 
 #include <algorithm>
+#include <vector>
 
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 
 namespace hefesto::connect {
 
@@ -18,8 +20,20 @@ namespace {
 /// What every recursive search carries.
 struct Walk {
   const Descend* descend = nullptr;
+  compat::CompatSettings compat;
   [[nodiscard]] bool descends(const db::CellUse& use) const { return !*descend || (*descend)(use); }
+  /// The uses of `def` in the use index's order (DBCellSrArea's bin walk
+  /// with magic-compat ON).
+  [[nodiscard]] std::vector<db::CellUse*> uses(const db::CellDef& def) const {
+    return db::uses_in_search_order(def, compat);
+  }
 };
+
+Walk make_walk(const Descend& descend, bool magic_compat) {
+  Walk w{&descend, {}};
+  w.compat.magic_compat = magic_compat;
+  return w;
+}
 
 /// Calls `f(x, y, element_transform)` for every array element of `use` whose
 /// bounding box overlaps `area` (parent coordinates). Stops when f returns
@@ -70,7 +84,7 @@ bool tree_tiles(const Walk& w, const db::CellDef& def, const db::Rect& area, con
   if (!tiles_in(def, area, types, triangle, base, visit)) {
     return false;
   }
-  for (const db::CellUse* u : db::uses_in_search_order(def)) {
+  for (const db::CellUse* u : w.uses(def)) {
     if (!w.descends(*u)) {
       continue;
     }
@@ -104,7 +118,7 @@ bool tree_labels(const Walk& w, const db::CellDef& def, const db::Rect& area, co
       }
     }
   }
-  for (const db::CellUse* u : db::uses_in_search_order(def)) {
+  for (const db::CellUse* u : w.uses(def)) {
     if (!w.descends(*u)) {
       continue;
     }
@@ -122,7 +136,7 @@ bool tree_labels(const Walk& w, const db::CellDef& def, const db::Rect& area, co
 
 bool tree_cells(const Walk& w, const db::CellDef& def, const db::Rect& area, const db::Transform& to_root,
                 const std::string& path, const CellFn& visit) {
-  for (const db::CellUse* u : db::uses_in_search_order(def)) {
+  for (const db::CellUse* u : w.uses(def)) {
     if (!w.descends(*u)) {
       if (u->def != nullptr && db::overlap(u->bbox, area) && !visit(TreeCell{u, to_root, &path})) {
         return false;
@@ -145,7 +159,7 @@ bool tree_defs(const Walk& w, const db::CellDef& def, const db::Rect& area, cons
   if (!visit(def, to_root, path)) {
     return false;
   }
-  for (const db::CellUse* u : db::uses_in_search_order(def)) {
+  for (const db::CellUse* u : w.uses(def)) {
     if (!w.descends(*u)) {
       continue;
     }
@@ -162,8 +176,9 @@ bool tree_defs(const Walk& w, const db::CellDef& def, const db::Rect& area, cons
 
 }  // namespace
 
-bool search_tree_defs(const db::CellDef& root, const db::Rect& area, const Descend& descend, const DefFn& visit) {
-  const Walk w{&descend};
+bool search_tree_defs(const db::CellDef& root, const db::Rect& area, const Descend& descend, bool magic_compat,
+                      const DefFn& visit) {
+  const Walk w = make_walk(descend, magic_compat);
   return tree_defs(w, root, area, db::kIdentity, std::string{}, visit);
 }
 
@@ -192,20 +207,21 @@ std::string child_path(const std::string& parent_path, const db::CellUse& use, s
 }
 
 bool search_tree_tiles(const db::CellDef& root, const db::Rect& area, const tech::TypeMask& types,
-                       const Descend& descend, const TileFn& visit, std::optional<db::TriangleSide> triangle) {
-  const Walk w{&descend};
+                       const Descend& descend, bool magic_compat, const TileFn& visit,
+                       std::optional<db::TriangleSide> triangle) {
+  const Walk w = make_walk(descend, magic_compat);
   return tree_tiles(w, root, area, types, triangle, db::kIdentity, std::string{}, visit);
 }
 
 bool search_tree_labels(const db::CellDef& root, const db::Rect& area, const tech::TypeMask& types,
-                        const Descend& descend, const LabelFn& visit) {
-  const Walk w{&descend};
+                        const Descend& descend, bool magic_compat, const LabelFn& visit) {
+  const Walk w = make_walk(descend, magic_compat);
   return tree_labels(w, root, area, types, db::kIdentity, std::string{}, visit);
 }
 
-bool search_tree_cells(const db::CellDef& root, const db::Rect& area, const Descend& descend,
+bool search_tree_cells(const db::CellDef& root, const db::Rect& area, const Descend& descend, bool magic_compat,
                        const CellFn& visit) {
-  const Walk w{&descend};
+  const Walk w = make_walk(descend, magic_compat);
   return tree_cells(w, root, area, db::kIdentity, std::string{}, visit);
 }
 

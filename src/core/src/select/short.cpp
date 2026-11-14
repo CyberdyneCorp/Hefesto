@@ -125,7 +125,7 @@ CommandResult select_short(const Context& c, const std::string& name1, const std
   c.ed->selection.clear();
   // CmdFindNetProc: the first label matching NAME1 in the hierarchy.
   std::optional<db::Label> start;
-  (void)connect::search_tree_labels(*c.root, db::whole_plane(), tech::TypeMask::all(), {},
+  (void)connect::search_tree_labels(*c.root, db::whole_plane(), tech::TypeMask::all(), {}, c.s.magic_compat,
                                     [&](const connect::TreeLabel& l) {
                                       if (!db::glob_match(name1, l.label->text) || l.label->type == tech::kSpace) {
                                         return true;
