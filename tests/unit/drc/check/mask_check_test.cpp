@@ -21,13 +21,18 @@
 #include <vector>
 
 #include "hefesto/db/cell.hpp"
+#include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/lock.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/drc/check/basic_check.hpp"
 #include "hefesto/drc/check/mask_check.hpp"
+#include "hefesto/drc/engine/background.hpp"
+#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/drc/rules/cif_catalog.hpp"
 #include "hefesto/drc/rules/details.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/mask/gen/context.hpp"
 #include "hefesto/platform/file_system.hpp"
 #include "hefesto/tech/loader.hpp"
@@ -604,6 +609,42 @@ TEST_CASE("concurrent mask-layer checks with their own contexts agree",
   for (const auto& r : results) {
     CHECK(r == expected);
   }
+}
+
+TEST_CASE("the background worker paints mask-layer errors", "[cap:drc-cif-rules][req:Mask-layer check procedure]") {
+  compat::CompatSettings settings;
+  editor::EditorState ed;
+  ed.technology = mask_tech();
+  ed.drc.compat = &settings;
+  diag::CollectingSink sink;
+  REQUIRE(reload_rules(ed, sink));  // the first DRC style is `width`
+  auto made = ed.cells.create("top", ed.technology->plane_count());
+  REQUIRE(made.ok());
+  db::CellDef& top = *made.value();
+  top.flags().available = true;
+  const auto m1 = ed.technology->find_type("m1");
+  REQUIRE(m1.ok());
+  {
+    const db::DatabaseLock::Exclusive guard(ed.database_lock);
+    REQUIRE(db::paint_type(top, *ed.technology, Rect{0, 0, 10, 100}, *m1.id).ok());
+    db::recompute_bbox(top);
+    check_this(ed, top, Rect{0, 0, 10, 100});
+  }
+  BackgroundChecker& worker = *ed.drc.worker;
+  worker.start(ed);
+  worker.wake();
+  REQUIRE(worker.run_until_idle(ed, 20000));
+  worker.stop();
+  std::vector<Rect> painted;
+  {
+    const db::DatabaseLock::Exclusive guard(ed.database_lock);
+    top.plane(tech::kPlaneDrcError).enumerate(db::whole_plane(), tech::TypeMask::of(tech::kErrorP),
+                                              [&](const db::TileView& t) {
+                                                painted.push_back(t.area);
+                                                return true;
+                                              });
+  }
+  CHECK(painted == std::vector<Rect>{{10, 0, 14, 100}});
 }
 
 // --- Malformed rule values ----------------------------------------------------------
