@@ -258,6 +258,27 @@ bool UseIndex::search(const Rect& area, UseIndexVisitor visit) const {
   return true;
 }
 
+bool UseIndex::search(const Rect& area, const compat::CompatSettings& compat, UseIndexVisitor visit) const {
+  if (compat.magic_compat) {
+    return search(area, visit);
+  }
+  std::vector<CellUse*> found;
+  {
+    const std::lock_guard lock(mutex_);
+    sync_locked();
+    const detail::WalkResult r = detail::walk_overlap(state_->plane, area);
+    if (r.rebuilt || !r.subbins.empty()) {
+      ++state_->generation;
+    }
+    found.reserve(r.matches.size());
+    for (const detail::Element* e : r.matches) {
+      found.push_back(e->use);
+    }
+    sort_canonical_locked(found);
+  }
+  return std::all_of(found.begin(), found.end(), [&](CellUse* u) { return visit(*u); });
+}
+
 bool UseIndex::find_equal(const Rect& rect, UseIndexVisitor visit) const {
   std::vector<CellUse*> found;
   {
@@ -278,10 +299,8 @@ bool UseIndex::enumerate_all(UseIndexVisitor visit) const {
 std::vector<CellUse*> UseIndex::order(const compat::CompatSettings& compat) const {
   const std::lock_guard lock(mutex_);
   sync_locked();
-  std::vector<CellUse*> out;
-  out.reserve(state_->elements.size());
+  State& s = *state_;
   if (compat.magic_compat) {
-    State& s = *state_;
     if (s.walk_generation != s.generation) {
       s.walk.clear();
       for (const detail::Element* e : detail::walk_all(s.plane)) {
@@ -291,18 +310,30 @@ std::vector<CellUse*> UseIndex::order(const compat::CompatSettings& compat) cons
     }
     return s.walk;
   }
-  // The reverse of insertion order: newest creation first (CellUse::serial,
-  // the `.mag` or GDS read order), then the newest insertion.
-  std::vector<std::pair<std::pair<std::uint64_t, std::uint64_t>, CellUse*>> keyed;
-  keyed.reserve(state_->elements.size());
-  for (const auto& [use, element] : state_->elements) {
-    keyed.push_back({{element->serial, state_->inserted.at(use)}, element->use});
+  std::vector<CellUse*> out;
+  out.reserve(s.elements.size());
+  for (const auto& entry : s.elements) {
+    out.push_back(entry.second->use);
+  }
+  sort_canonical_locked(out);
+  return out;
+}
+
+// The magic-compat OFF order: newest creation first (CellUse::serial, the
+// `.mag` or GDS read order), then the newest insertion. Every use is in the
+// index (the caller holds the lock since it found them).
+void UseIndex::sort_canonical_locked(std::vector<CellUse*>& uses) const {
+  using Key = std::pair<std::uint64_t, std::uint64_t>;
+  std::vector<std::pair<Key, CellUse*>> keyed;
+  keyed.reserve(uses.size());
+  for (CellUse* use : uses) {
+    const auto it = state_->inserted.find(use);
+    keyed.push_back({{use->serial, it != state_->inserted.end() ? it->second : 0}, use});
   }
   std::sort(keyed.begin(), keyed.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
-  for (const auto& entry : keyed) {
-    out.push_back(entry.second);
+  for (std::size_t k = 0; k < keyed.size(); ++k) {
+    uses[k] = keyed[k].second;
   }
-  return out;
 }
 
 std::size_t UseIndex::size() const {
@@ -333,6 +364,11 @@ std::vector<CellUse*> uses_in_search_order(const CellDef& def, const compat::Com
 
 bool uses_overlapping(const CellDef& def, const Rect& area, UseIndexVisitor visit) {
   return def.use_index().search(area, visit);
+}
+
+bool uses_overlapping(const CellDef& def, const Rect& area, const compat::CompatSettings& compat,
+                      UseIndexVisitor visit) {
+  return def.use_index().search(area, compat, visit);
 }
 
 namespace {

@@ -57,14 +57,18 @@ void set_use_locked(CellUse& use, bool locked);
 /// DBCellEnum order until a partial-area search over 10 or more uses bins
 /// the cell's BPlane, and the magic-compat OFF canonical order. Callers
 /// move to db::uses_in_search_order(def, compat) (db/use_index.hpp), which
-/// follows the bin walk with magic-compat ON, as task 5.2 migrates them.
+/// follows the bin walk with magic-compat ON, as task 5.2 migrates them;
+/// area searches move to db::uses_overlapping(def, area, compat, visit).
+/// New code does not call this form; it goes once the last caller moved.
 /// (Magic ref: bplane/bpMain.c, bplane/bpEnum.c.)
 [[nodiscard]] std::vector<CellUse*> uses_in_search_order(const CellDef& def);
 
 /// DBGenerateUniqueIds: after reading a cell, the first use with a given id
 /// keeps it, later duplicates lose theirs, and every use without an id gets
 /// `<child name>_<k>` (Q-MODEL-8: the part after the last `/` when
-/// `magic_compat` is false). Returns the number of ids assigned.
+/// `magic_compat` is false). "First" is in the use index's enumeration order
+/// under `magic_compat` (db::uses_in_search_order(def, compat)). Returns the
+/// number of ids assigned.
 std::size_t make_use_ids_unique(CellDef& parent, bool magic_compat = true);
 
 /// "Array element naming": the name of element (x, y), e.g. "X1[2,0]".
