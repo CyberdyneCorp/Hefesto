@@ -17,7 +17,10 @@ Usage:
 hefesto-cli comes from --hefesto-cli or $HEFESTO_CLI. Without CASE_DIR every
 captured case under --root is replayed. --output-dir writes the actual outputs,
 with each output's documented masks applied, as <DIR>/<AREA>/<case-id>/<file>,
-the layout scripts/compare_golden_outputs.py compares across platforms.
+the layout scripts/compare_golden_outputs.py compares across platforms. A case
+whose deviations.toml entry is ``deferred`` is not written there: its feature
+is missing, so its output can depend on the run (MASK-GR-052 prints the save
+time of a cell its unimplemented `gds read` should have stamped).
 
 A case is SKIPPED (not failed) when it lists [hefesto] requires_commands and
 hefesto-cli rejects one of them as unknown (diagnostic CMD-DISPATCH-001), or
@@ -196,7 +199,7 @@ def replay_case(cli: Path, case: Case, output_dir: Path | None,
             if require_inputs:
                 report.detail += " (required by --require-inputs)"
             return report
-    if output_dir is not None:
+    if output_dir is not None and not (deviation is not None and deviation.deferred):
         save_outputs(case, execution, output_dir)
     missing = missing_command(case, execution)
     if missing is not None:

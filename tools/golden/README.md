@@ -135,7 +135,7 @@ HEFESTO_CLI=… python3 run.py                                                  
 
 Each case runs in a scratch copy of `input/`, with `TZ=UTC` and `LC_ALL=C`. `{input}` and `{work}` in `[hefesto] args` are replaced with that copy and the work directory. The tool prints one `PASS`/`FAIL`/`SKIP`/`ERROR` line per case and a JSON summary, and exits non-zero on any failure.
 
-`--output-dir` writes `<dir>/<AREA>/<case-id>/<file>`, which is the input format of `scripts/compare_golden_outputs.py` for cross-platform determinism checks.
+`--output-dir` writes `<dir>/<AREA>/<case-id>/<file>`, which is the input format of `scripts/compare_golden_outputs.py` for cross-platform determinism checks. Cases with a `deferred` entry in `deviations.toml` are left out: their feature is missing, so their output can depend on the run (MASK-GR-052 prints the save time of cells its `gds read` should have stamped).
 
 A manifest with `gds_rt = true` (the library GDS round trips `MASK-RT-*` of m5-mask-gds-cif design D19) gets the CTest label `golden-gds-rt`. `replay.py` leaves such cases out of its default selection and skips one named on the command line, unless `--include-gds-rt` is passed (its CTest passes it; `perf.yml`'s `gds-roundtrip` job runs them). `--require-inputs ID[,ID...]` (repeatable) turns a missing `[[external]]` input of the listed cases from a skip into a failure: `ci.yml`'s golden replay lists the three standard-cell `MASK-RT-*` cases, whose GDS subsets every golden leg fetches. Every listed ID must name a case directory under `--root`.
 
