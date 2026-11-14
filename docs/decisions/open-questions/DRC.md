@@ -236,3 +236,12 @@ Items found while reverse-engineering Magic 8.3.694 (fc5daa9e) DRC for the capab
 - Options: use `cap_cmim` (two default MiM capacitors 0.4 µm apart, MIM.b asks 0.6 µm) | keep the box/paint stand-in until IHP ships a MOM generator
 - Recommendation: `cap_cmim`: it exercises the PDK's own generator and rules.
 - Resolution: other (user decision 2026-11-12) — DRC-PDK-3 places two `sg13g2::cap_cmim` capacitors; the case is captured, committed and replays. m4-scripting task 12.3 and its proposal and design name `cap_cmim`. Approved 2026-11-12.
+
+### Q-DRC-27: Mask-layer Euclidean corner radius limited to 4095 mask units
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: drcCifTile packs a mask-layer rule's corner distance into the low 12 bits of `dCD_radial` (`0xfff & drcc_cdist`) when a corner is extended under `drc euclidean on`, and areaCifCheck unpacks it with `& 0xfff`, so corner distances of 4096 mask units or more are taken modulo 4096. The layout-rule twin is Q-DRC-20. Mask units can be finer than internal units, so the limit can be reached at a smaller layout distance.
+- Evidence: drc/DRCcif.c:806-809 (packing), drc/DRCcif.c:1080 (`int sdist = arg->dCD_radial & 0xfff;` in areaCifCheck)
+- Options: replicate | compat (replicate under `magic-compat`; native uses the full distance) | fix
+- Recommendation: compat, as Q-DRC-20: a packing truncation that changes the error set (X-2 tier 2).
+- Resolution: compat — with `magic-compat` ON the mask-layer corner radius is the corner distance modulo 4096, as Magic packs it; with it OFF the full corner distance is used (`tests/unit/drc/check/mask_check_test.cpp`, both modes). Approved 2026-11-14.
