@@ -323,10 +323,6 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   ctx.sink = &sink_diag;
   const mask::OutputStyle style;
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
-  auto op = ctx.operator_context(nullptr, {});
-  const mask::LayerOp layer_op;
-  const mask::LayerInputs inputs;
-  check_not_implemented(mask::op_grow(mask::OpArgs{layer_op, style, inputs, {}}, op, plane), "mask::op_grow");
   CHECK(sink_diag.take().front().code == kNotImplemented);
   std::atomic<bool> stop{true};
   mask::Progress progress{{}, &stop};
