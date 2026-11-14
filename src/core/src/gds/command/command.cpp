@@ -6,8 +6,8 @@
 // table and lookup, the window check of `read` and `write`, `gds help`,
 // `write` (and a bare `gds`) with the output file naming of Q-MASK-210,
 // and the write options (gds-write "Write option settings and defaults").
-// The read options, `warning`, `rescale` and `read` itself still fail
-// with CORE-NOTIMPL-005 (task 10.8).
+// The read options, `warning`, `rescale` and `read` are in
+// read_options.cpp.
 //
 // Ported from Magic 8.3.694 (fc5daa9e) commands/CmdCD.c CmdCalma (the
 // option table, the lookup, the window check, CALMA_HELP, the write
@@ -20,30 +20,48 @@
 #include "hefesto/gds/command/command.hpp"
 
 #include <array>
-#include <cctype>
-#include <climits>
-#include <cstdlib>
 #include <string>
+#include <utility>
 
-#include "db/command_util.hpp"
-#include "hefesto/cmd/context.hpp"
-#include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/write/subtree.hpp"
 #include "hefesto/gds/write/write.hpp"
+#include "options.hpp"
 
 namespace hefesto::gds {
 
+namespace command_detail {
+
+// wrongNumArgs.
+cmd::CommandResult wrong_args(const cmd::Invocation& invocation, std::string prefix) {
+  return cmd::CommandResult::failure(diag::make(kWrongArgs, prefix + "Wrong number of arguments in \"" +
+                                                                invocation.name + "\" command.  Try \":" +
+                                                                invocation.name + " help\" for help."));
+}
+
+cmd::CommandResult boolean(bool value) {
+  return cmd::CommandResult::success(cmd::Value{std::int64_t{value ? 1 : 0}});
+}
+
+cmd::CommandResult yes_no_option(const cmd::Invocation& invocation, bool& field, std::size_t arg) {
+  if (invocation.args.size() == arg) {
+    return boolean(field);
+  }
+  const auto index =
+      invocation.args.size() == arg + 1 ? lookup_index(invocation.args[arg], kYesNo) : std::nullopt;
+  if (!index) {
+    return wrong_args(invocation);
+  }
+  field = *index >= 4;
+  return cmd::CommandResult::success();
+}
+
+}  // namespace command_detail
+
 namespace {
 
-namespace cu = db::cmdutil;
 using cmd::CommandResult;
-
-constexpr std::string_view kNoWindow = "VIEW-WINDOW-003";
-constexpr std::string_view kWrongArgs = "GDS-CMD-001";
-constexpr std::string_view kBadValue = "GDS-CMD-002";
-constexpr std::string_view kUnimplemented = "GDS-CMD-003";
+using namespace command_detail;  // NOLINT(google-build-using-namespace): the command's internal helpers
 
 // cmdCalmaOption, in Magic's order (Lookup() reads each entry up to its
 // first blank; the help prints the whole entry).
@@ -79,32 +97,6 @@ constexpr std::array<std::string_view, 29> kOptions{
     "unique [yes|no]\trename any cells with names duplicated in the GDS",
 };
 
-enum Option : std::size_t {
-  kHelp = 0,
-  kAbstract = 1,
-  kAddendum = 2,
-  kArrays = 3,
-  kCompress = 4,
-  kContacts = 5,
-  kDatestamp = 6,
-  kLabels = 10,
-  kLibrary = 11,
-  kLower = 12,
-  kMerge = 15,
-  kNoStamp = 16,
-  kRead = 19,
-  kWrite = 24,
-  kUndefined = 27,
-};
-
-constexpr std::array<std::string_view, 8> kYesNo{"no", "false", "off", "0", "yes", "true", "on", "1"};
-constexpr std::array<std::string_view, 4> kAllowDisallow{"disallow", "0", "allow", "1"};
-
-std::string option_name(std::size_t option) {
-  const std::string_view entry = kOptions.at(option);
-  return std::string{entry.substr(0, entry.find_first_of(" \t\n"))};
-}
-
 // CALMA_HELP.
 CommandResult help(const cu::Session& s) {
   std::string text = "GDS commands have the form \":gds option\", where option is one of:\n";
@@ -121,73 +113,17 @@ CommandResult help(const cu::Session& s) {
   return CommandResult::success();
 }
 
-// wrongNumArgs.
-CommandResult wrong_args(const cmd::Invocation& invocation, std::string prefix = {}) {
-  return CommandResult::failure(diag::make(kWrongArgs, prefix + "Wrong number of arguments in \"" + invocation.name +
-                                                           "\" command.  Try \":" + invocation.name +
-                                                           " help\" for help."));
-}
-
-CommandResult boolean(bool value) {
-  return CommandResult::success(cmd::Value{std::int64_t{value ? 1 : 0}});
-}
-
-// Lookup() of the option's argument in `table`; nullopt when it fails.
-template <std::size_t N>
-std::optional<std::size_t> argument_index(const cmd::Invocation& invocation,
-                                          const std::array<std::string_view, N>& table) {
-  const cmd::LookupResult found = cmd::lookup(invocation.args.at(1), table);
-  if (found.match != cmd::Match::found) {
-    return std::nullopt;
-  }
-  return found.index;
-}
-
-// A yes/no option: no argument reports the value; yes (index >= 4) sets it.
-CommandResult yes_no_option(const cmd::Invocation& invocation, bool& field) {
-  if (invocation.args.size() == 1) {
-    return boolean(field);
-  }
-  const auto index = invocation.args.size() == 2 ? argument_index(invocation, kYesNo) : std::nullopt;
-  if (!index) {
-    return wrong_args(invocation);
-  }
-  field = *index >= 4;
-  return CommandResult::success();
-}
-
 // An allow/disallow option: allow (index >= 2) sets it.
 CommandResult allow_option(const cmd::Invocation& invocation, bool& field) {
   if (invocation.args.size() == 1) {
     return boolean(field);
   }
-  const auto index = invocation.args.size() == 2 ? argument_index(invocation, kAllowDisallow) : std::nullopt;
+  const auto index = invocation.args.size() == 2 ? lookup_index(invocation.args[1], kAllowDisallow) : std::nullopt;
   if (!index) {
     return wrong_args(invocation);
   }
   field = *index >= 2;
   return CommandResult::success();
-}
-
-// C atoi(): optional blanks and sign, then digits; 0 without digits; the
-// strtol value clamped to long and narrowed to int as glibc does.
-std::int32_t c_atoi(const std::string& text) {
-  const long long value = std::strtoll(text.c_str(), nullptr, 10);
-  const long long clamped = value < LONG_MIN ? LONG_MIN : (value > LONG_MAX ? LONG_MAX : value);
-  return static_cast<std::int32_t>(static_cast<std::uint32_t>(static_cast<unsigned long long>(clamped)));
-}
-
-// StrIsInt: an optional sign, then only digits.
-bool str_is_int(std::string_view text) {
-  if (!text.empty() && (text.front() == '-' || text.front() == '+')) {
-    text.remove_prefix(1);
-  }
-  for (const char c : text) {
-    if (std::isdigit(static_cast<unsigned char>(c)) == 0) {
-      return false;
-    }
-  }
-  return true;
 }
 
 CommandResult compress_option(const cmd::Invocation& invocation, GdsSettings& settings) {
@@ -197,7 +133,7 @@ CommandResult compress_option(const cmd::Invocation& invocation, GdsSettings& se
   if (invocation.args.size() != 2) {
     return wrong_args(invocation);
   }
-  const std::int32_t value = c_atoi(invocation.args[1]);
+  const std::int32_t value = cu::c_atoi(invocation.args[1]);
   if (value < 0 || value > 9) {
     return CommandResult::failure(diag::make(kBadValue, "Bad compression value " + std::to_string(value) +
                                                             ".  Value must be in the range 0 to 9."));
@@ -210,7 +146,7 @@ CommandResult contacts_option(cmd::CommandContext& ctx, const cmd::Invocation& i
   if (invocation.args.size() == 1) {
     return boolean(false);
   }
-  const auto index = invocation.args.size() == 2 ? argument_index(invocation, kYesNo) : std::nullopt;
+  const auto index = invocation.args.size() == 2 ? lookup_index(invocation.args[1], kYesNo) : std::nullopt;
   if (!index) {
     return wrong_args(invocation);
   }
@@ -228,14 +164,14 @@ CommandResult datestamp_option(const cmd::Invocation& invocation, GdsSettings& s
   if (invocation.args.size() != 2) {
     return wrong_args(invocation);
   }
-  if (const auto index = argument_index(invocation, kYesNo)) {
+  if (const auto index = lookup_index(invocation.args[1], kYesNo)) {
     settings.datestamp = *index >= 4 ? std::nullopt : std::optional<std::int64_t>{0};
     return CommandResult::success();
   }
-  if (!str_is_int(invocation.args[1])) {
+  if (!cu::str_is_int(invocation.args[1])) {
     return wrong_args(invocation, "Unrecognizable date stamp \"" + invocation.args[1] + "\".\n");
   }
-  settings.datestamp = c_atoi(invocation.args[1]);
+  settings.datestamp = cu::c_atoi(invocation.args[1]);
   return CommandResult::success();
 }
 
@@ -247,7 +183,7 @@ CommandResult nodatestamp_option(const cmd::Invocation& invocation, GdsSettings&
     }
     return *settings.datestamp == 0 ? boolean(true) : CommandResult::success(cmd::Value{"fixed"});
   }
-  const auto index = invocation.args.size() == 2 ? argument_index(invocation, kYesNo) : std::nullopt;
+  const auto index = invocation.args.size() == 2 ? lookup_index(invocation.args[1], kYesNo) : std::nullopt;
   if (!index) {
     return wrong_args(invocation);
   }
@@ -289,7 +225,7 @@ CommandResult write_option(cmd::CommandContext& ctx, const cu::Session& s, const
   return write_gds(ctx, s, *root, invocation.args[1]);
 }
 
-CommandResult settings_option(std::size_t option, const cmd::Invocation& invocation, GdsSettings& g) {
+CommandResult write_settings_option(std::size_t option, const cmd::Invocation& invocation, GdsSettings& g) {
   switch (option) {
     case kAbstract:
       return allow_option(invocation, g.allow_abstract);
@@ -314,7 +250,7 @@ CommandResult settings_option(std::size_t option, const cmd::Invocation& invocat
     case kNoStamp:
       return nodatestamp_option(invocation, g);
     default:
-      return cmd::not_implemented("gds " + option_name(option));
+      return CommandResult::success();
   }
 }
 
@@ -351,9 +287,15 @@ CommandResult gds_command(cmd::CommandContext& ctx, const cmd::Invocation& invoc
       return write_option(ctx, s, invocation);
     case kContacts:
       return contacts_option(ctx, invocation);
+    case kRead:
+      return read_option(ctx, s, invocation);
     default:
-      return settings_option(option, invocation, s.editor->mask.gds);
+      break;
   }
+  if (auto handled = read_settings_option(s, option, invocation)) {
+    return std::move(*handled);
+  }
+  return write_settings_option(option, invocation, s.editor->mask.gds);
 }
 
 }  // namespace

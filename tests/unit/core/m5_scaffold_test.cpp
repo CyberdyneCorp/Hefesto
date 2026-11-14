@@ -163,18 +163,13 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
   CHECK(no_window.diagnostics.front().code == "VIEW-WINDOW-003");
   s.state.command_point = cmd::PointerState{};
 
-  check_not_implemented(s.run("calma read in.gds"), "gds read");
-  // GDSW landed `write` and the write options (tests/unit/gds/command/).
-  const std::array<std::string_view, 13> landed{"help",  "write",  "abstract", "addendum",    "arrays",
-                                                "compress", "contacts", "datestamp", "labels",  "library",
-                                                "lower", "merge",  "nodatestamp"};
-  for (const std::string_view entry : gds::gds_options()) {
-    const std::string name = option_name(entry);
-    if (std::find(landed.begin(), landed.end(), name) == landed.end() && name != "undefined") {
-      check_not_implemented(s.run("gds " + name), "gds " + name);
-    }
-  }
-  check_not_implemented(s.run("gds nodup yes"), "gds noduplicates");  // unique prefix
+  // GDSW landed every gds option (tests/unit/gds/command/): a missing file
+  // is reported by `read`, and options match by unique prefix.
+  const auto missing = s.run("calma read in.gds");
+  REQUIRE_FALSE(missing.ok());
+  CHECK(missing.diagnostics.front().code == "GDS-CMD-004");
+  REQUIRE(s.run("gds nodup yes").ok());
+  CHECK(s.state.mask.gds.noduplicates);
 
   check_not_implemented(s.run("cif"), "cif write");
   for (const auto* name : {"read", "write", "flat", "see", "paint", "coverage", "statistics", "drccheck", "warning",

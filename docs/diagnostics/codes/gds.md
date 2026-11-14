@@ -77,6 +77,7 @@ Codes of the `gds`/`calma` command and its settings (`src/core/src/gds/command/`
 - `GDS-CMD-001`: Magic's "Wrong number of arguments in "gds" command.  Try ":gds help" for help.", for a wrong argument count or an argument the option does not accept (the setting is unchanged); `gds datestamp` prefixes "Unrecognizable date stamp "<text>"." (gds-write "Write option settings and defaults").
 - `GDS-CMD-002`: Magic's "Bad compression value <n>.  Value must be in the range 0 to 9."; the compression level is kept.
 - `GDS-CMD-003`: Magic's "Unimplemented function:  Contacts will be output as individual cuts." for `gds contacts yes`; nothing changes.
+- `GDS-CMD-004`: Magic's "Cannot open <f>.gds, <f>.strm or <f> to read GDS-II stream input." for `gds read <f>` when no candidate opens (gds-read "Read command and file lookup"); nothing is read.
 
 ## Table
 
@@ -95,6 +96,7 @@ fails when the two disagree.
 | `GDS-CMD-001` | error | Wrong number of arguments, or an unrecognized argument, in a `gds` command. |
 | `GDS-CMD-002` | error | `gds compress` with a value outside 0 to 9; the setting is kept. |
 | `GDS-CMD-003` | error | `gds contacts yes`: the option is accepted and does nothing (Magic's unimplemented function). |
+| `GDS-CMD-004` | error | `gds read`: no file of the given name (with .gds, .gds.gz, .gds2, .strm or no extension) is on the search path. |
 | `GDS-READ-001` | error | Unexpected record type in input: the GDS record found is not the one the grammar expects. |
 | `GDS-READ-002` | error | Unexpected EOF: the GDS stream ends before the record the grammar expects. |
 | `GDS-READ-003` | error | Incompatible scale factor for a read-only (`gds readonly yes`) read; nothing is read. |

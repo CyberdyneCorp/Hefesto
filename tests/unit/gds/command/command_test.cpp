@@ -236,5 +236,160 @@ TEST_CASE("gds lower no upper-cases the names", "[cap:gds-write][req:Write optio
   CHECK(structure_names(recs) == std::vector<std::string>{"INV"});
 }
 
+// --- the read side (task 10.8) -----------------------------------------------
+
+TEST_CASE("the read options and their defaults", "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  const auto value = [&s](std::string_view line) { return s.run(line).value.to_string(); };
+  CHECK(value("gds drccheck") == "1");
+  CHECK(value("gds flatten") == "0");
+  CHECK(value("gds flatglob") == "*_CDNS_*");
+  CHECK(value("gds magscale") == "1.0");
+  CHECK(value("gds maskhints") == "0");
+  CHECK(value("gds noduplicates") == "0");
+  CHECK(value("gds ordering") == "0");
+  CHECK(value("gds polygon subcells") == "none");
+  CHECK(value("gds path subcells") == "0");
+  CHECK(value("gds readonly") == "0");
+  CHECK(value("gds rescale") == "1");
+  CHECK(value("gds savepaths") == "0");
+  CHECK(value("gds unique") == "0");
+  (void)s.printed.take();
+  REQUIRE(s.run("gds warning").ok());
+  const auto printed = s.printed.take();
+  REQUIRE_FALSE(printed.empty());
+  CHECK(printed.back().text == "Warning display options: default");
+
+  for (const auto* option : {"drccheck", "noduplicates", "ordering", "readonly", "savepaths", "unique"}) {
+    INFO(option);
+    CHECK_FALSE(s.run(std::string{"gds "} + option + " maybe").ok());
+  }
+  REQUIRE(s.run("gds readonly yes").ok());
+  CHECK(s.f.ed.mask.gds.readonly);
+  REQUIRE(s.run("gds drccheck off").ok());
+  CHECK_FALSE(s.f.ed.mask.gds.drccheck);
+  REQUIRE(s.run("gds path subcells true").ok());
+  CHECK(s.f.ed.mask.gds.path_subcells);
+}
+
+TEST_CASE("read options match by unique prefix", "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  REQUIRE(s.run("gds noduplicates t").ok());
+  CHECK(s.f.ed.mask.gds.noduplicates);
+  REQUIRE(s.run("gds ord on").ok());
+  CHECK(s.f.ed.mask.gds.ordering);
+}
+
+TEST_CASE("flatten takes a boolean or a limit", "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  REQUIRE(s.run("gds flatten 5").ok());
+  CHECK(s.f.ed.mask.gds.flatten);
+  CHECK(s.f.ed.mask.gds.flatten_limit == 5);
+  REQUIRE(s.run("gds flatten 0").ok());  // "0" is the boolean no: the limit stays
+  CHECK_FALSE(s.f.ed.mask.gds.flatten);
+  CHECK(s.f.ed.mask.gds.flatten_limit == 5);
+  REQUIRE(s.run("gds flatten -2").ok());
+  CHECK_FALSE(s.f.ed.mask.gds.flatten);
+  CHECK(s.f.ed.mask.gds.flatten_limit == -2);
+  REQUIRE(s.run("gds flatten yes").ok());
+  CHECK(s.f.ed.mask.gds.flatten);
+  CHECK_FALSE(s.run("gds flatten some").ok());
+  CHECK(s.f.ed.mask.gds.flatten);
+}
+
+TEST_CASE("flatglob adds patterns and none clears them", "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  REQUIRE(s.run("gds flatglob via*").ok());
+  CHECK(s.run("gds flatglob").value.to_string() == "*_CDNS_* via*");
+  REQUIRE(s.run("gds flatglob NONE").ok());
+  CHECK(s.f.ed.mask.gds.flatglob.empty());
+  CHECK(s.run("gds flatglob").value.to_string().empty());
+}
+
+TEST_CASE("polygon subcells takes a type or a boolean", "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  REQUIRE(s.run("gds polygon subcells keep").ok());
+  CHECK(s.run("gds polygon subcells").value.to_string() == "keep");
+  REQUIRE(s.run("gds polygon subcells yes").ok());
+  CHECK(s.f.ed.mask.gds.polygon_subcells == gds::PolygonSubcells::temporary);
+  REQUIRE(s.run("gds polygon subcells no").ok());
+  CHECK(s.f.ed.mask.gds.polygon_subcells == gds::PolygonSubcells::none);
+  CHECK_FALSE(s.run("gds polygon subcells maybe").ok());
+  CHECK_FALSE(s.run("gds polygon").ok());
+}
+
+TEST_CASE("maskhints takes a boolean or a list of input layers",
+          "[cap:gds-read][req:Read option syntax and defaults]") {
+  Session s;
+  REQUIRE(s.run("gds maskhints yes").ok());
+  CHECK(s.run("gds maskhints").value.to_string() == "1");
+  REQUIRE(s.run("gds maskhints no").ok());
+  CHECK(s.f.ed.mask.gds.maskhints.empty());
+  (void)s.printed.take();
+  REQUIRE(s.run("gds maskhints CMF,CPG").ok());  // no input style: both unknown
+  CHECK(s.f.ed.mask.gds.maskhints.empty());
+  const auto printed = s.printed.take();
+  REQUIRE(printed.size() == 2);
+  CHECK(printed[0].text == "Error:  CIF layer \"CMF\" is unknown.");
+}
+
+TEST_CASE("magscale default resets the factor", "[cap:gds-read][req:Text magnification scale option]") {
+  Session s;
+  REQUIRE(s.run("gds magscale 0.1").ok());
+  CHECK(s.f.ed.mask.gds.magscale == static_cast<double>(0.1F));
+  REQUIRE(s.run("gds magscale default").ok());
+  CHECK(s.f.ed.mask.gds.magscale == 1.0);
+  CHECK_FALSE(s.run("gds magscale big").ok());
+  CHECK(s.f.ed.mask.gds.magscale == 1.0);
+}
+
+TEST_CASE("rescale no sets warning level limit with magic-compat ON", "[cap:gds-read][req:Grid subdivision option]") {
+  for (const bool on : {true, false}) {
+    Session s(on);
+    REQUIRE(s.run("gds warning default").ok());
+    REQUIRE(s.run("gds rescale no").ok());
+    CHECK_FALSE(s.f.ed.mask.gds.rescale);
+    CHECK(s.f.ed.mask.warnings.level == (on ? hefesto::mask::WarningLevel::limit
+                                              : hefesto::mask::WarningLevel::warn_default));
+  }
+}
+
+TEST_CASE("gds warning levels and redirect", "[cap:gds-read][req:Read diagnostics]") {
+  Session s;
+  REQUIRE(s.run("gds warning redirect errs.txt").ok());
+  CHECK(s.f.ed.mask.warnings.level == hefesto::mask::WarningLevel::redirect);
+  CHECK(s.f.ed.mask.warnings.redirect_file == "errs.txt");
+  REQUIRE(s.run("gds warning lim").ok());
+  CHECK(s.f.ed.mask.warnings.level == hefesto::mask::WarningLevel::limit);
+  (void)s.printed.take();
+  REQUIRE(s.run("gds warning loud").ok());
+  const auto printed = s.printed.take();
+  REQUIRE(printed.size() == 2);
+  CHECK(printed[0].text == "\"loud\" isn't a valid gds warning option.");
+  CHECK(printed[1].text == "Valid options are: default, align, limit, redirect, and none.");
+  CHECK(s.f.ed.mask.warnings.level == hefesto::mask::WarningLevel::limit);
+}
+
+TEST_CASE("gds read searches the extensions and reports a missing file",
+          "[cap:gds-read][req:Read command and file lookup]") {
+  Session s;
+  const auto missing = s.run("gds read chip");
+  REQUIRE_FALSE(missing.ok());
+  CHECK(missing.diagnostics.back().text == "Cannot open chip.gds, chip.strm or chip to read GDS-II stream input.");
+  CHECK_FALSE(s.run("gds read").ok());
+
+  REQUIRE(s.run("gds compress 6").ok());
+  REQUIRE(s.run("gds write chip").ok());
+  REQUIRE(s.exists("chip.gds.gz"));
+  // The file opens (chip.gds.gz); without a cifinput style nothing is read.
+  const auto read = s.run("gds read chip");
+  CHECK_FALSE(read.ok());
+  bool no_style = false;
+  for (const auto& d : read.diagnostics) {
+    no_style = no_style || d.code == "GDS-READ-009";
+  }
+  CHECK(no_style);
+}
+
 }  // namespace
 }  // namespace gds_command_test
