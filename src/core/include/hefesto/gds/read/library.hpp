@@ -114,8 +114,9 @@ class CoordinateScale {
   [[nodiscard]] Conversion convert(std::int32_t v, std::int64_t k);
 
   [[nodiscard]] ReadScale scale() const noexcept { return scale_; }
-  /// Replaces the scale (a magnified copy reads at a temporary scale).
-  void set_scale(ReadScale scale) noexcept { scale_ = scale; }
+  /// Replaces the scale (a magnified copy reads at a temporary scale),
+  /// clamped to [1, kMaxScale] as the constructor does.
+  void set_scale(ReadScale scale) noexcept;
 
  private:
   ReadScale scale_;

@@ -37,8 +37,13 @@ namespace hefesto::gds {
 /// The most inflate checkpoints a gzip source keeps.
 inline constexpr std::size_t kMaxCheckpoints = 256;
 
-/// A source over the gzip data `compressed`.
-[[nodiscard]] std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed);
+/// The input bytes handed to one inflate call (zlib counts in 32 bits).
+inline constexpr std::size_t kMaxGzipFeed = std::size_t{1} << 30U;
+
+/// A source over the gzip data `compressed`, inflated `max_feed` input
+/// bytes at a time (smaller in tests, to reach the window edges).
+[[nodiscard]] std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed,
+                                                           std::size_t max_feed = kMaxGzipFeed);
 
 /// A sink that compresses into `inner` as one gzip member at deflate level
 /// `level` (1-9; GDS-STREAM-005 otherwise). finish() ends the member and

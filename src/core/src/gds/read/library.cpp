@@ -210,9 +210,13 @@ ReadScale units_scale(double meters_per_unit, std::int64_t multiplier) {
   return ReadScale{1, round_scale(1.0 / cu)};
 }
 
-CoordinateScale::CoordinateScale(ReadScale scale, std::int64_t limit) : scale_(scale), limit_(limit) {
-  scale_.num = std::clamp<std::int64_t>(scale_.num, 1, kMaxScale);
-  scale_.den = std::clamp<std::int64_t>(scale_.den, 1, kMaxScale);
+CoordinateScale::CoordinateScale(ReadScale scale, std::int64_t limit) : limit_(limit) {
+  set_scale(scale);
+}
+
+void CoordinateScale::set_scale(ReadScale scale) noexcept {
+  scale_.num = std::clamp<std::int64_t>(scale.num, 1, kMaxScale);
+  scale_.den = std::clamp<std::int64_t>(scale.den, 1, kMaxScale);
 }
 
 Conversion CoordinateScale::convert(std::int32_t v, std::int64_t k) {

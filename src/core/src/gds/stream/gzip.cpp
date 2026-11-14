@@ -20,7 +20,6 @@ namespace {
 constexpr std::size_t kChunk = 64 * 1024;
 constexpr std::uint64_t kFirstInterval = std::uint64_t{4} << 20U;  // 4 MiB of output
 constexpr int kGzipWindow = 15 + 16;                              // gzip framing only
-constexpr std::size_t kMaxFeed = std::size_t{1} << 30U;          // input bytes per inflate call
 
 struct InflateEnd {
   void operator()(z_stream* zs) const noexcept {
@@ -36,7 +35,8 @@ diag::Diagnostic corrupt(const std::string& what) {
 
 class GzipSource final : public ByteSource {
  public:
-  explicit GzipSource(std::vector<std::byte> compressed) : in_(std::move(compressed)), out_(kChunk) {}
+  GzipSource(std::vector<std::byte> compressed, std::size_t max_feed)
+      : in_(std::move(compressed)), out_(kChunk), max_feed_(std::max<std::size_t>(max_feed, 1)) {}
 
   [[nodiscard]] diag::Outcome<std::size_t> read(std::span<std::byte> out) override;
   [[nodiscard]] std::uint64_t position() const noexcept override { return chunk_start_ + out_pos_; }
@@ -66,6 +66,7 @@ class GzipSource final : public ByteSource {
   bool eof_ = false;
   std::vector<Checkpoint> checkpoints_;
   std::uint64_t interval_ = kFirstInterval;
+  std::size_t max_feed_;
 };
 
 diag::Status GzipSource::restart() {
@@ -90,7 +91,7 @@ void GzipSource::feed() {
     return;
   }
   const auto used = static_cast<std::size_t>(reinterpret_cast<std::byte*>(zs.next_in) - in_.data());
-  zs.avail_in = static_cast<uInt>(std::min<std::size_t>(in_.size() - used, kMaxFeed));
+  zs.avail_in = static_cast<uInt>(std::min<std::size_t>(in_.size() - used, max_feed_));
 }
 
 diag::Status GzipSource::inflate_step() {
@@ -101,8 +102,10 @@ diag::Status GzipSource::inflate_step() {
   const int rc = inflate(&zs, Z_NO_FLUSH);
   out_len_ = out_.size() - zs.avail_out;
   if (rc == Z_STREAM_END) {
-    feed();
-    const bool another = zs.avail_in >= 2 && zs.next_in[0] == 0x1f && zs.next_in[1] == 0x8b;
+    // The magic is checked against the whole input: the feed window may end
+    // inside the next member's first two bytes.
+    const auto used = static_cast<std::size_t>(reinterpret_cast<std::byte*>(zs.next_in) - in_.data());
+    const bool another = in_.size() - used >= 2 && in_[used] == std::byte{0x1f} && in_[used + 1] == std::byte{0x8b};
     if (another) {
       return inflateReset(&zs) == Z_OK ? diag::Status{diag::Done{}} : diag::Status{corrupt("bad member")};
     }
@@ -289,8 +292,8 @@ bool is_gzip(std::span<const std::byte> bytes) noexcept {
   return bytes.size() >= 2 && bytes[0] == std::byte{0x1f} && bytes[1] == std::byte{0x8b};
 }
 
-std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed) {
-  return std::make_unique<GzipSource>(std::move(compressed));
+std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed, std::size_t max_feed) {
+  return std::make_unique<GzipSource>(std::move(compressed), max_feed);
 }
 
 diag::Outcome<std::unique_ptr<ByteSink>> make_gzip_sink(std::unique_ptr<ByteSink> inner, int level) {

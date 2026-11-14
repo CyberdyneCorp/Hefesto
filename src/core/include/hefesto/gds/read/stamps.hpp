@@ -22,6 +22,8 @@
 
 namespace hefesto::gds {
 
+class ByteSource;
+
 /// One structure of a GDS stream and its content stamp.
 struct StructureStamp {
   std::string name;          // STRNAME, up to its first NUL
@@ -39,6 +41,11 @@ struct StructureStamp {
 using StampTable = std::vector<StructureStamp>;
 
 [[nodiscard]] StampTable content_stamps(std::span<const std::byte> bytes);
+
+/// The same table read from `source` one record at a time, so a gzip file
+/// is never inflated whole (calmaStampTableRead streams it). A read error
+/// ends the table as the end of the stream does.
+[[nodiscard]] StampTable content_stamps(ByteSource& source);
 
 /// calmaStampLookup: the stamp of the structure whose GDS_START is
 /// `start`, or 0 when none starts there.

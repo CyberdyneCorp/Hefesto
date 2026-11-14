@@ -133,6 +133,23 @@ TEST_CASE("concatenated gzip members read as one stream; trailing bytes are igno
   CHECK(read_all(*empty).empty());
 }
 
+TEST_CASE("a member boundary at the edge of the inflate feed window reads on",
+          "[cap:gds-read][req:Record framing and primitive data types]") {
+  const Bytes a = pattern(5000, 4);
+  const Bytes b = pattern(7000, 5);
+  const Bytes first = gzip(a);
+  const Bytes both = concat(first, gzip(b));
+  // A window ending 1 byte into the second member hides its magic number
+  // from the bytes handed to inflate.
+  for (std::size_t feed = first.size() - 1; feed <= first.size() + 3; ++feed) {
+    INFO("feed window " << feed);
+    auto source = gds::make_gzip_source(both, feed);
+    CHECK(read_all(*source, 333) == concat(a, b));
+  }
+  auto tiny = gds::make_gzip_source(both, 1);
+  CHECK(read_all(*tiny) == concat(a, b));
+}
+
 TEST_CASE("positions count decompressed bytes and seeks re-inflate",
           "[cap:gds-read][req:Record framing and primitive data types]") {
   // Large enough for several inflate checkpoints (one every 4 MiB of output).

@@ -8,12 +8,16 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "../stream/stream_fixture.hpp"
 #include "hefesto/gds/read/stamps.hpp"
+#include "hefesto/gds/stream/gzip.hpp"
+#include "hefesto/gds/stream/io.hpp"
 
 namespace gds = hefesto::gds;
 using gds_test::Bytes;
@@ -48,6 +52,33 @@ const gds::StructureStamp& named(const gds::StampTable& table, std::string_view 
   }
   FAIL("no structure " << name);
   return table.front();
+}
+
+/// A source that hands out at most `chunk` bytes per read and records the
+/// largest request, so the streamed scan is checked with short reads.
+class ChunkedSource final : public gds::ByteSource {
+ public:
+  ChunkedSource(Bytes bytes, std::size_t chunk) : inner_(std::move(bytes)), chunk_(chunk) {}
+
+  hefesto::diag::Outcome<std::size_t> read(std::span<std::byte> out) override {
+    largest_ = std::max(largest_, out.size());
+    return inner_.read(out.first(std::min(out.size(), chunk_)));
+  }
+  [[nodiscard]] std::uint64_t position() const noexcept override { return inner_.position(); }
+  hefesto::diag::Status seek(std::uint64_t offset) override { return inner_.seek(offset); }
+  [[nodiscard]] std::size_t largest() const noexcept { return largest_; }
+
+ private:
+  gds::MemorySource inner_;
+  std::size_t chunk_;
+  std::size_t largest_ = 0;
+};
+
+gds::StampTable streamed(const Bytes& bytes, std::size_t chunk = 3) {
+  ChunkedSource source{bytes, chunk};
+  gds::StampTable table = gds::content_stamps(source);
+  CHECK(source.largest() <= 0xffff);  // never more than one record at a time
+  return table;
 }
 
 }  // namespace
@@ -200,5 +231,43 @@ TEST_CASE("arbitrary bytes scan without crashing", "[cap:gds-read][req:Content-h
       CHECK(s.stamp >= 1);
       CHECK(s.stamp <= 0x7fffffffU);
     }
+  }
+}
+
+TEST_CASE("a streamed scan reads one record at a time and matches the in-memory scan",
+          "[cap:gds-read][req:Content-hash timestamps for read-only cells]") {
+  Gds g;
+  g.library("lib");
+  structure(g, "A", kLeafBody);
+  structure(g, "B", kParentBody);
+  structure(g, "E", hex("00 04 07 00"));
+  g.empty(kEndlib);
+  const gds::StampTable table = gds::content_stamps(g.bytes());
+  CHECK(streamed(g.bytes()) == table);
+  CHECK(streamed(g.bytes(), 1 << 16) == table);
+  // A gzip source is inflated as the scan reads, never whole.
+  auto inner = std::make_unique<gds::MemorySink>();
+  gds::MemorySink* memory = inner.get();
+  auto sink = gds::make_gzip_sink(std::move(inner), 6);
+  REQUIRE(sink.ok());
+  REQUIRE(sink.value()->write(g.bytes()).ok());
+  REQUIRE(sink.value()->finish().ok());
+  auto gz = gds::make_gzip_source(memory->bytes());
+  CHECK(gds::content_stamps(*gz) == table);
+  // Cut-off streams and arbitrary bytes end the same way.
+  Gds cut;
+  structure(cut, "A", kLeafBody);
+  structure(cut, "B", hex("00 04 0a 00  00 06 12 06 41 00  00 0c 10 03 00 00"));
+  CHECK(streamed(cut.bytes()) == gds::content_stamps(cut.bytes()));
+  std::uint32_t state = 7;
+  for (int round = 0; round < 200; ++round) {
+    Bytes bytes;
+    const std::size_t size = (state = state * 1103515245U + 12345U) % 400;
+    for (std::size_t i = 0; i < size; ++i) {
+      state = state * 1103515245U + 12345U;
+      const std::uint32_t r = state >> 16U;
+      bytes.push_back(static_cast<std::byte>(i % 4 == 0 ? 0 : i % 4 == 1 ? r % 16 : i % 4 == 2 ? r % 20 : r));
+    }
+    CHECK(streamed(bytes) == gds::content_stamps(bytes));
   }
 }

@@ -7,11 +7,13 @@
 // California, distributed under its permissive license
 // (THIRD_PARTY_NOTICES.md).
 //
-// The scan works on the byte span in place: names are views into it, and
-// the table grows with the number of structures and SNAME records, each at
-// least four bytes of input. calmaStructStamp's recursion is an explicit
-// stack, so a deep or cyclic hierarchy cannot exhaust the call stack; the
-// visiting order, and so every stamp, is the recursive one. Owner: GDSR.
+// The scan reads one record at a time, from a byte span or a ByteSource
+// (a gzip file is never inflated whole, as calmaStampTableRead streams it),
+// and the table grows with the number of structures and SNAME records,
+// each at least four bytes of input. calmaStructStamp's recursion is an
+// explicit stack, so a deep or cyclic hierarchy cannot exhaust the call
+// stack; the visiting order, and so every stamp, is the recursive one.
+// Owner: GDSR.
 
 #include "hefesto/gds/read/stamps.hpp"
 
@@ -20,6 +22,8 @@
 #include <optional>
 #include <string_view>
 #include <unordered_map>
+
+#include "hefesto/gds/stream/io.hpp"
 
 namespace hefesto::gds {
 
@@ -43,68 +47,122 @@ std::uint64_t fnv(std::uint64_t h, std::span<const std::byte> bytes) {
 }
 
 /// The name of a payload as Magic's C string: up to the first NUL.
-std::string_view c_name(std::span<const std::byte> data) {
+std::string c_name(std::span<const std::byte> data) {
   const auto* chars = reinterpret_cast<const char*>(data.data());
   const std::string_view all{chars, data.size()};
-  return all.substr(0, all.find('\0'));
+  return std::string{all.substr(0, all.find('\0'))};
 }
 
 enum class State : std::uint8_t { not_started, in_progress, done };
 
 struct Entry {
-  std::string_view name;
+  std::string name;
   std::uint64_t start = 0;
   std::uint64_t end = 0;
   std::uint64_t hash = kFnvOffset;
-  std::vector<std::string_view> children;
+  std::vector<std::string> children;
   std::uint32_t stamp = 0;
   State state = State::not_started;
 };
 
 struct Table {
   std::vector<Entry> entries;
-  std::unordered_map<std::string_view, std::size_t> by_name;  // first definition wins
+  std::unordered_map<std::string, std::size_t> by_name;  // first definition wins
 };
 
 /// One record of the scan; nullopt at the end (EOF, L < 4, short data).
+/// The spans stay valid until the next record is read.
 struct RawRecord {
   std::uint8_t type = 0;
   std::span<const std::byte> whole;  // header and data
   std::span<const std::byte> data;
 };
 
-std::optional<RawRecord> record_at(std::span<const std::byte> bytes, std::size_t offset) {
-  if (bytes.size() - offset < kHeader) {
-    return std::nullopt;
-  }
-  const std::size_t length =
-      (std::to_integer<std::size_t>(bytes[offset]) << 8U) | std::to_integer<std::size_t>(bytes[offset + 1]);
-  if (length < kHeader || bytes.size() - offset < length) {
-    return std::nullopt;
-  }
-  const auto whole = bytes.subspan(offset, length);
-  return RawRecord{std::to_integer<std::uint8_t>(bytes[offset + 2]), whole, whole.subspan(kHeader)};
+std::size_t record_length(std::span<const std::byte> header) {
+  return (std::to_integer<std::size_t>(header[0]) << 8U) | std::to_integer<std::size_t>(header[1]);
 }
+
+RawRecord raw_record(std::span<const std::byte> whole) {
+  return RawRecord{std::to_integer<std::uint8_t>(whole[2]), whole, whole.subspan(kHeader)};
+}
+
+/// The records of a byte span, in place.
+class SpanRecords {
+ public:
+  explicit SpanRecords(std::span<const std::byte> bytes) : bytes_(bytes) {}
+
+  std::optional<RawRecord> next() {
+    if (bytes_.size() - offset_ < kHeader) {
+      return std::nullopt;
+    }
+    const std::size_t length = record_length(bytes_.subspan(offset_));
+    if (length < kHeader || bytes_.size() - offset_ < length) {
+      return std::nullopt;
+    }
+    const auto whole = bytes_.subspan(offset_, length);
+    offset_ += length;
+    return raw_record(whole);
+  }
+
+ private:
+  std::span<const std::byte> bytes_;
+  std::size_t offset_ = 0;
+};
+
+/// The records of a ByteSource, one at a time (at most 65535 bytes held).
+/// A read error ends the scan as the end of the stream does.
+class SourceRecords {
+ public:
+  explicit SourceRecords(ByteSource& source) : source_(source), buffer_(0xffff) {}
+
+  std::optional<RawRecord> next() {
+    const std::span<std::byte> all{buffer_};
+    if (!fill(all.first(kHeader))) {
+      return std::nullopt;
+    }
+    const std::size_t length = record_length(all);
+    if (length < kHeader || !fill(all.subspan(kHeader, length - kHeader))) {
+      return std::nullopt;
+    }
+    return raw_record(all.first(length));
+  }
+
+ private:
+  bool fill(std::span<std::byte> out) {
+    while (!out.empty()) {
+      const auto got = source_.read(out);
+      if (!got.ok() || got.value() == 0) {
+        return false;
+      }
+      out = out.subspan(got.value());
+    }
+    return true;
+  }
+
+  ByteSource& source_;
+  std::vector<std::byte> buffer_;
+};
 
 void add_record(Entry& entry, const RawRecord& r, std::uint64_t end) {
   entry.hash = fnv(entry.hash, r.whole);
   if (r.type == kSname) {
-    const std::string_view child = c_name(r.data);
+    std::string child = c_name(r.data);
     if (entry.children.empty() || entry.children.back() != child) {
-      entry.children.push_back(child);
+      entry.children.push_back(std::move(child));
     }
   } else if (r.type == kEndstr) {
     entry.end = end;
   }
 }
 
-/// calmaStampTableRead.
-Table scan(std::span<const std::byte> bytes) {
+/// calmaStampTableRead over the records of `records`.
+template <typename Records>
+Table scan(Records& records) {
   Table table;
   bool need_name = false;
   std::optional<std::size_t> current;
-  std::size_t offset = 0;
-  while (const auto r = record_at(bytes, offset)) {
+  std::uint64_t offset = 0;
+  while (const auto r = records.next()) {
     offset += r->whole.size();
     if (r->type == kEndlib) {
       break;
@@ -212,18 +270,30 @@ void stamp(Table& t, std::size_t root) {
   }
 }
 
-}  // namespace
-
-StampTable content_stamps(std::span<const std::byte> bytes) {
-  Table table = scan(bytes);
+/// Every entry of `table` stamped, in file order.
+StampTable stamps_of(Table& table) {
   StampTable out;
   out.reserve(table.entries.size());
   for (std::size_t i = 0; i < table.entries.size(); ++i) {
     stamp(table, i);
     const Entry& e = table.entries[i];
-    out.push_back(StructureStamp{std::string{e.name}, e.start, e.end, e.stamp});
+    out.push_back(StructureStamp{e.name, e.start, e.end, e.stamp});
   }
   return out;
+}
+
+}  // namespace
+
+StampTable content_stamps(std::span<const std::byte> bytes) {
+  SpanRecords records{bytes};
+  Table table = scan(records);
+  return stamps_of(table);
+}
+
+StampTable content_stamps(ByteSource& source) {
+  SourceRecords records{source};
+  Table table = scan(records);
+  return stamps_of(table);
 }
 
 std::uint32_t lookup_stamp(const StampTable& table, std::uint64_t start) {

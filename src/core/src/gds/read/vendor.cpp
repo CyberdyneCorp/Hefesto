@@ -36,30 +36,15 @@ std::int64_t leading_integer(std::string_view text) {
   for (; i < text.size() && std::isdigit(static_cast<unsigned char>(text[i])) != 0; ++i) {
     value = value * 10 + static_cast<std::uint64_t>(text[i] - '0');  // wraps on overflow
   }
-  const auto magnitude = static_cast<std::int64_t>(value);
-  return negative ? -magnitude : magnitude;
+  // Negated in unsigned arithmetic, so -9223372036854775808 (and any value
+  // that wraps to INT64_MIN) stays defined.
+  return static_cast<std::int64_t>(negative ? 0 - value : value);
 }
 
 std::string format_g(double value) {
   std::array<char, 64> buffer{};
   std::snprintf(buffer.data(), buffer.size(), "%g", value);
   return buffer.data();
-}
-
-/// The whole decompressed contents of `source`.
-diag::Outcome<std::vector<std::byte>> read_all(ByteSource& source) {
-  std::vector<std::byte> out;
-  std::array<std::byte, 64 * 1024> chunk{};
-  for (;;) {
-    auto got = source.read(chunk);
-    if (!got.ok()) {
-      return got.error();
-    }
-    if (got.value() == 0) {
-      return out;
-    }
-    out.insert(out.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(got.value()));
-  }
 }
 
 }  // namespace
@@ -137,10 +122,7 @@ const StampTable* VendorStamper::table_for(const platform::Path& path) {
   if (inserted) {
     auto source = open_source(ctx_.fs, path);
     if (source.ok()) {
-      auto bytes = read_all(*source.value());
-      if (bytes.ok()) {
-        it->second = content_stamps(bytes.value());
-      }
+      it->second = content_stamps(*source.value());  // streamed: a gzip file is never inflated whole
     }
   }
   return it->second ? &*it->second : nullptr;

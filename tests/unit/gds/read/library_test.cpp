@@ -226,6 +226,14 @@ TEST_CASE("path centerlines double and unmapped points are consumed",
   CHECK(big.convert(INT32_MIN, 2).value == std::int64_t{INT32_MIN} * gds::kMaxScale * 2);
   gds::CoordinateScale tiny{gds::ReadScale{1, gds::kMaxScale}};
   CHECK(tiny.convert(INT32_MAX, 1).rounded);
+  // A temporary scale is clamped as the constructor clamps, so products
+  // stay within 64 bits (UBSan on the linux-asan leg).
+  gds::CoordinateScale copy{gds::ReadScale{1, 1}};
+  copy.set_scale(gds::ReadScale{std::int64_t{1} << 40, 0});
+  CHECK(copy.scale() == gds::ReadScale{gds::kMaxScale, 1});
+  CHECK(copy.convert(INT32_MIN, 2).value == std::int64_t{INT32_MIN} * gds::kMaxScale * 2);
+  copy.set_scale(gds::ReadScale{-5, std::int64_t{1} << 40});
+  CHECK(copy.scale() == gds::ReadScale{1, gds::kMaxScale});
 }
 
 TEST_CASE("structure timestamps by magic-compat setting", "[cap:gds-read][req:Structure timestamps]") {

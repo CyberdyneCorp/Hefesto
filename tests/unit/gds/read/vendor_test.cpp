@@ -164,6 +164,12 @@ TEST_CASE("GDS_START and GDS_END read as Magic's DBPropGetDouble", "[cap:gds-rea
   CHECK(gds::property_integer(def, "GDS_START") == 0);
   db::set_property(def, "GDS_START", db::PropertyValue{db::IntegerList{{5}}});
   CHECK_FALSE(gds::property_integer(def, "GDS_START").has_value());
+  // The most negative value negates without overflow (UBSan on the
+  // linux-asan leg).
+  db::set_property(def, "GDS_START", db::PropertyValue{std::string{"-9223372036854775808"}});
+  CHECK(gds::property_integer(def, "GDS_START") == std::numeric_limits<std::int64_t>::min());
+  db::set_property(def, "GDS_END", db::PropertyValue{std::string{"-12"}});
+  CHECK(gds::property_integer(def, "GDS_END") == -12);
 }
 
 TEST_CASE("a read-only cell's stamp is the stamp at its GDS_START",
