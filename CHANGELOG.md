@@ -4,6 +4,33 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
+## Unreleased (M5: mask generation, GDS and CIF; in progress)
+
+### Changed
+
+- **Use enumeration order follows Magic's bplane.** Searches over cells
+  with ten or more uses now enumerate them in Magic's binned order after a
+  partial search, and a use whose child's bounding box changes is
+  re-placed, as Magic does; GDS SREF and CIF call order will follow it.
+  With `magic-compat` OFF uses enumerate in reverse creation order, and the
+  DRC interaction area no longer includes Magic's phantom area at the
+  origin (Q-MASK-400).
+- **The cifoutput section is read at tech load.** Its messages are printed
+  at load, before the drc section's, and a cifoutput statement before the
+  first `style` line fails the load (Q-MASK-17), as in Magic. The DRC
+  `cif*` style catalog is read through the same reader: a style without a
+  `scalefactor` now has reducer 0 and the `slots` values count in the
+  reducer, as in Magic.
+- **GDS stream layer and vendor content stamps.** The GDS record layer
+  (gzip input, `real8` and date encoding) and the content stamps of vendor
+  GDS cells are in place for the coming `gds read`.
+
+### Fixed
+
+- **Painting up to the edge of the plane no longer crashes.** A paint or
+  erase that touched the plane's edge without covering the whole plane
+  dereferenced the boundary tiles while merging split tiles.
+
 ## Unreleased (M4: scripting)
 
 ### Changed

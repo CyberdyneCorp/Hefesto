@@ -78,7 +78,7 @@ Compatibility: exact
 
 #### Scenario: Variant names
 
-- **GIVEN** `style sky130() variant (vendor),(),(fill)`
+- **GIVEN** `style sky130 variant (vendor),(),(fill)`
 - **WHEN** parsed in a section with no earlier styles
 - **THEN** the registered names in order are `sky130(vendor)`, `sky130()`, `sky130(fill)`
 - **AND** the style loaded by default is `sky130(vendor)`
@@ -91,7 +91,7 @@ Compatibility: exact
 
 #### Scenario: Variant re-read is not registered twice
 
-- **GIVEN** the section declares `style sky130() variant (vendor),()` and later `style sky130() variant (vendor)`
+- **GIVEN** the section declares `style sky130 variant (vendor),()` and later `style sky130 variant (vendor)`
 - **WHEN** parsed
 - **THEN** the second line registers nothing, because `sky130(vendor)` is already present
 
@@ -472,9 +472,15 @@ rescale(n, d):
 
 #### Scenario: Odd scale doubling preserved by squares
 
+- **GIVEN** `scalefactor 9`, `squares 12 42 42`
+- **WHEN** finalised
+- **THEN** scaleFactor = 18, expander = 2, squares border 24, size 84, sep 84 (half-centimicron units; reduction blocked because the size and separation count halved, and 84/2/2 = 21 is odd)
+
+#### Scenario: Odd scale doubling undone by even squares
+
 - **GIVEN** `scalefactor 9`, `squares 12 44 44`
 - **WHEN** finalised
-- **THEN** scaleFactor = 18, expander = 2, squares border 12, size 44, sep 44 (half-centimicron units; reduction blocked because 44/2/2 = 11 is odd)
+- **THEN** the doubled values (18, 2, squares 24 88 88) reduce by 2, because 88/2/2 = 22 is even, and the result is scaleFactor = 9, expander = 1, squares 12 44 44
 
 #### Scenario: Odd scale with everything even
 

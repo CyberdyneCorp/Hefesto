@@ -462,10 +462,11 @@ jobs:
           python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-gds-sc gf180mcu-gds-sc ihp-gds-sc \
             --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
 
-      # The standard-cell corpus cases (label golden-slow, m3-drc design D14) run in the golden replay below.
+      # The standard-cell corpus cases (label golden-slow, m3-drc design D14) run in the golden replay below;
+      # the GDS library round trips (label golden-gds-rt, m5 design D19) run in perf.yml.
       - name: Test
         if: ${{ !matrix.desktop }}
-        run: ctest --preset ${{ matrix.preset }} -LE golden-slow
+        run: ctest --preset ${{ matrix.preset }} -LE 'golden-slow|golden-gds-rt'
 
       # hefesto-pdk-manager (task 7.3): the real Fetchers (in-process HTTPS: libcurl here; and the curl-process
       # fallback) install the pinned sky130A common asset and one small library (about 6.4 MB each, a few
@@ -488,7 +489,7 @@ jobs:
         env:
           RAVEN_WINDOW_SYSTEM: x11  # Raven's documented override of its window-system choice
         run: |
-          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -LE 'desktop-window|golden-slow'
+          xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -LE 'desktop-window|golden-slow|golden-gds-rt'
           xvfb-run -a -s "-screen 0 1920x1080x24" ctest --preset ${{ matrix.preset }} -L desktop-window-x11
 
       - name: Test under Wayland (headless Weston)
@@ -652,7 +653,7 @@ jobs:
           restore-keys: deps-linux-asan-
       - run: cmake --preset linux-asan
       - run: cmake --build --preset linux-asan
-      - run: ctest --preset linux-asan -LE golden-slow
+      - run: ctest --preset linux-asan -LE 'golden-slow|golden-gds-rt'
 
   # m3-drc design D8 (Q-DRC-12): the background DRC worker reads the database under the shared lock while
   # the command thread edits it; ThreadSanitizer runs the whole suite (the race tests of
@@ -693,7 +694,7 @@ jobs:
           restore-keys: deps-linux-tsan-
       - run: cmake --preset linux-tsan
       - run: cmake --build --preset linux-tsan
-      - run: ctest --preset linux-tsan -LE golden-slow
+      - run: ctest --preset linux-tsan -LE 'golden-slow|golden-gds-rt'
       # The linux-tsan preset builds without the desktop shell, so the desktop host of the background checker
       # (src/shell/desktop/src/drc_link.cpp: worker callback -> one event-loop task -> service(), task 9.1)
       # is built here on its own, with the desktop on, and its threaded tests run under TSan.
