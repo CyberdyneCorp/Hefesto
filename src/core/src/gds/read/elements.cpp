@@ -117,8 +117,11 @@ MagFraction mag_fraction(double mag) noexcept {
     }
     x = 1.0 / (x - static_cast<double>(a));
   }
-  if (h1 <= 0 || k1 <= 0) {
-    h1 = 1;
+  if (k1 <= 0) {
+    h1 = INT_MAX;  // beyond int on the first term: Magic divides by 0 later
+    k1 = 1;
+  } else if (h1 <= 0) {
+    h1 = 1;  // too small to represent
     k1 = kMaxMagDenominator;
   }
   const bool exact = std::fabs(static_cast<double>(h1) / static_cast<double>(k1) - mag) <= 1.0e-12 * mag;

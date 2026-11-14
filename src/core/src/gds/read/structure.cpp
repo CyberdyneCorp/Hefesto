@@ -413,6 +413,7 @@ void Reader::flatten_polygon_cells(db::CellDef& def) {
     copy_paint(*child, def, technology);
     (void)db::remove_use(*use);
     forget_cell(*child);
+    (void)editor_.drc.pending.remove(*child);  // DRCRemovePending before the definition goes
     (void)editor_.cells.remove(*child);
   }
 }

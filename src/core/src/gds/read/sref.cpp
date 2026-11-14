@@ -374,23 +374,33 @@ bool Reader::read_instance_properties(Reference& ref) {
       unread(std::move(*rec));
       return true;
     }
-    const std::int32_t attr = i2_at(rec->data, 0).value_or(0);
-    if (attr == kPropUseName || attr == kPropUseNameOld) {
-      std::optional<std::string> id = read_string(RecordType::propvalue);
-      if (!id) {
-        return false;
-      }
-      ref.useid = instance_name(std::move(*id));
-    } else if (attr == kPropArrayLimits) {
-      const std::optional<std::string> limits = read_string(RecordType::propvalue);
-      if (!limits) {
-        return false;
-      }
-      array_limits(ref, *limits);
-    } else if (!compat_.magic_compat) {
-      skip_property_value();  // Q-MASK-125 OFF: only this pair is skipped
+    if (!instance_property(ref, i2_at(rec->data, 0).value_or(0))) {
+      return false;
     }
   }
+}
+
+bool Reader::instance_property(Reference& ref, std::int32_t attr) {
+  if (attr == kPropUseName || attr == kPropUseNameOld) {
+    std::optional<std::string> id = read_string(RecordType::propvalue);
+    if (id) {
+      ref.useid = instance_name(std::move(*id));
+    }
+    return id.has_value();
+  }
+  if (attr == kPropArrayLimits) {
+    const std::optional<std::string> limits = read_string(RecordType::propvalue);
+    if (limits) {
+      array_limits(ref, *limits);
+    }
+    return limits.has_value();
+  }
+  // Q-MASK-125: ON the PROPVALUE that follows ends the list (it is no
+  // PROPATTR); OFF only this pair is skipped.
+  if (!compat_.magic_compat) {
+    skip_property_value();
+  }
+  return true;
 }
 
 void Reader::skip_property_value() {

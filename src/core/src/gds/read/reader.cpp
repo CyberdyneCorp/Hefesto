@@ -450,43 +450,43 @@ db::CellDef* Reader::create_cell(const std::string& name) {
   return created.value();
 }
 
+bool Reader::note_existing_cell(const std::string& name) {
+  if (!options_.settings.noduplicates) {
+    info("Warning:  cell " + name + " already existed before reading GDS!");
+    return false;
+  }
+  info("Note:  cell " + name + " already existed before reading GDS.");
+  info("Using pre-existing cell definition");
+  return true;
+}
+
 db::CellDef* Reader::find_cell(const std::string& name, bool* was_called, bool* predefined) {
+  // calmaFindCell: `was_called` is whether the name was known (in this
+  // read's table, or in memory) before; `predefined` whether `gds
+  // noduplicates` keeps the existing definition.
   auto [it, inserted] = cif_cells_.try_emplace(name, nullptr);
-  if (it->second != nullptr) {
-    if (was_called != nullptr) {
-      *was_called = true;
+  bool called = it->second != nullptr;
+  if (!called) {
+    db::CellDef* def = editor_.cells.find(name);
+    called = def != nullptr;
+    if (def == nullptr) {
+      def = create_cell(name);
+    } else if (note_existing_cell(name) && predefined != nullptr) {
+      *predefined = true;
     }
-    return it->second;
-  }
-  db::CellDef* def = editor_.cells.find(name);
-  if (def == nullptr) {
-    def = create_cell(name);
-    if (was_called != nullptr) {
-      *was_called = false;
+    if (def == nullptr) {
+      cif_cells_.erase(it);
+      return nullptr;
     }
-  } else {
-    if (options_.settings.noduplicates) {
-      info("Note:  cell " + name + " already existed before reading GDS.");
-      if (predefined != nullptr) {
-        *predefined = true;
-      }
-      info("Using pre-existing cell definition");
-    } else {
-      info("Warning:  cell " + name + " already existed before reading GDS!");
-    }
-    if (was_called != nullptr) {
-      *was_called = true;
+    it->second = def;
+    if (in_order_.insert(def).second) {
+      cell_order_.push_back(def);
     }
   }
-  it->second = def;
-  if (def == nullptr) {
-    cif_cells_.erase(it);
-    return nullptr;
+  if (was_called != nullptr) {
+    *was_called = called;
   }
-  if (std::find(cell_order_.begin(), cell_order_.end(), def) == cell_order_.end()) {
-    cell_order_.push_back(def);
-  }
-  return def;
+  return it->second;
 }
 
 void Reader::unique_cell(const std::string& name) {
@@ -514,6 +514,7 @@ void Reader::forget_cell(db::CellDef& def) {
   std::erase_if(cif_cells_, [&](const auto& entry) { return entry.second == &def; });
   std::erase_if(def_init_, [&](const auto& entry) { return entry.second == &def; });
   std::erase(cell_order_, &def);
+  in_order_.erase(&def);
   states_.erase(&def);
   flat_planes_.erase(&def);
 }

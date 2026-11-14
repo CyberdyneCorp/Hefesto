@@ -30,6 +30,7 @@
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/read/read.hpp"
+#include "hefesto/display/font.hpp"
 #include "hefesto/gds/stream/encode.hpp"
 #include "hefesto/gds/stream/io.hpp"
 #include "hefesto/mask/input/style.hpp"
@@ -248,6 +249,18 @@ class GdsFile {
     g_.empty(type);
     return *this;
   }
+  GdsFile& i2(std::uint8_t type, std::initializer_list<int> values) {
+    g_.i2(type, values);
+    return *this;
+  }
+  GdsFile& i4(std::uint8_t type, std::initializer_list<std::int32_t> values) {
+    g_.i4(type, values);
+    return *this;
+  }
+  GdsFile& str(std::uint8_t type, std::string_view text) {
+    g_.str(type, text);
+    return *this;
+  }
 
   [[nodiscard]] const Bytes& bytes() const { return g_.bytes(); }
   [[nodiscard]] std::size_t size() const { return g_.size(); }
@@ -309,6 +322,26 @@ struct Session {
     REQUIRE(editor.mask.input_styles.current_style() != nullptr);
     options.time_zone = "UTC0";
     options.gds_file = "/data/test.gds";
+  }
+
+  /// Loads `count` copies of a one-glyph test font, so GDS fonts 0..count-1
+  /// exist (Magic's default session has FreeSans, FreeSerif and FreeMono).
+  void add_fonts(int count) {
+    constexpr std::string_view kFont = R"(%!PS-AdobeFont-1.0: Test
+/FontBBox {0 0 1000 1000 }readonly def
+/CharProcs 128 dict def
+CharProcs begin
+  /.notdef { 500 0 0 0 400 700 setcachedevice
+	} bind def
+currentdict end
+/Test.Regular exch definefont
+)";
+    for (int i = 0; i < count; ++i) {
+      auto font = hefesto::display::parse_outline_font(kFont, "Test.pt3");
+      REQUIRE(font.ok());
+      font.value().name = "Test" + std::to_string(i);
+      editor.fonts.fonts.push_back(std::make_shared<const hefesto::display::OutlineFont>(std::move(font).value()));
+    }
   }
 
   hefesto::cmd::CommandResult read(const GdsFile& file) {

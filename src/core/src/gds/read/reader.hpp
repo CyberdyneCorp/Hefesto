@@ -208,6 +208,7 @@ class Reader {
   [[nodiscard]] db::CellDef* look_cell(std::string_view name) const;
   db::CellDef* create_cell(const std::string& name);
   db::CellDef* find_cell(const std::string& name, bool* was_called, bool* predefined);
+  bool note_existing_cell(const std::string& name);
   void unique_cell(const std::string& name);
   void forget_cell(db::CellDef& def);
 
@@ -299,6 +300,7 @@ class Reader {
   void read_reference_point(Reference& ref, const Record& xy, std::size_t n, bool rotated);
   void scale_reference_points(Reference& ref, std::size_t count);
   bool read_instance_properties(Reference& ref);
+  bool instance_property(Reference& ref, std::int32_t attr);
   void skip_property_value();
   [[nodiscard]] std::string instance_name(std::string id);
   void array_limits(Reference& ref, const std::string& text);
@@ -325,6 +327,7 @@ class Reader {
   std::unordered_map<std::string, db::CellDef*> def_init_;        // calmaDefInitHash
   std::unordered_map<std::string, db::CellDef*> cif_cells_;       // CifCellTable (null: renamed by `unique`)
   std::vector<db::CellDef*> cell_order_;                          // CifCellTable's cells, as created
+  std::unordered_set<const db::CellDef*> in_order_;               // the members of cell_order_
   std::unordered_map<const db::CellDef*, CellState> states_;
   std::unordered_map<const db::CellDef*, PlaneSet> flat_planes_;  // cd_client of CDFLATGDS cells
   std::vector<PlaneSet*> saved_sets_;                             // nested saves, scaled by a rescale
