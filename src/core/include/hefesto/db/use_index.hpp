@@ -22,7 +22,10 @@
 // - enumerate_all: DBCellEnum over the whole plane (the writers and `.mag`
 //   write), never rebuilds;
 // - order(compat): magic-compat ON the bin walk of the current state; OFF
-//   the reverse of insertion (creation) order, independent of history.
+//   the reverse of insertion (creation) order, independent of history;
+// - search(area, compat, visitor): the same search, which bins the index
+//   in both modes; magic-compat ON hands the uses over in walk order, OFF
+//   in the order of order(compat).
 //
 // The state is kept in both modes, so toggling magic-compat never rebuilds.
 // Rebuilding bins is a logically const mutation that happens during reads
@@ -98,6 +101,11 @@ class UseIndex {
   /// BPE_OVERLAP search over `area`; may rebuild the bins (see above).
   /// Returns false when the visitor stopped early.
   bool search(const Rect& area, UseIndexVisitor visit) const;
+  /// The same search with the session's compat: magic-compat ON exactly
+  /// search(area, visit); OFF the same matches (and the same index state
+  /// as a full walk), visited in the order of order(compat), so the result
+  /// never depends on history.
+  bool search(const Rect& area, const compat::CompatSettings& compat, UseIndexVisitor visit) const;
   /// BPE_EQUAL: the uses whose bbox equals `rect`; never rebuilds.
   bool find_equal(const Rect& rect, UseIndexVisitor visit) const;
   /// Every use in enumeration order; never rebuilds.
@@ -118,6 +126,7 @@ class UseIndex {
   void sync_locked() const;
   void add_locked(CellUse& use) const;
   void delete_locked(const CellUse& use) const;
+  void sort_canonical_locked(std::vector<CellUse*>& uses) const;
 
   const CellDef* owner_ = nullptr;
   mutable std::mutex mutex_;
@@ -131,6 +140,10 @@ class UseIndex {
 /// The uses of `def` found by a BPE_OVERLAP search over `area`, in search
 /// order. Returns false when the visitor stopped early.
 bool uses_overlapping(const CellDef& def, const Rect& area, UseIndexVisitor visit);
+/// The same with the session's compat (UseIndex::search(area, compat, ...)):
+/// the area search of commands whose output lists the uses it finds.
+bool uses_overlapping(const CellDef& def, const Rect& area, const compat::CompatSettings& compat,
+                      UseIndexVisitor visit);
 
 /// DBCellReadArea's searches (calma/CalmaWrite.c:316, cif/CIFwrite.c:137,
 /// database/DBexpand.c:300-340): a BPE_OVERLAP search of `root` over
