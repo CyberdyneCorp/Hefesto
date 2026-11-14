@@ -69,31 +69,32 @@ How this plan runs:
 - [ ] 3.7 Load the sky130A, gf180mcuD and ihp-sg13g2 cifoutput sections at the M4 pins without new diagnostics. Verify a unit test per PDK that compares the style list, scale and layer count with Magic's `cif listall ostyle` and `cif scale out` captures.
   - Round 2: `tests/unit/mask/style/pdk_test.cpp` compares the style list, the loaded style and every style's scale factor, expander and reducer (hence `cif scale out`) with Magic's captures in `tests/data/drc/rules/magic_cif/`, and checks the tech load emits nothing. `cif ostyle density` (sky130A, ihp-sg13g2) and `metfill` (gf180mcuD) emit only the native Q-MASK-8 warning (expander 1 or 2 with gridlimit 5). Open: no Magic capture of per-style layer counts exists; it needs a probe run in CI (GOLDEN).
 - [x] 3.8 Keep every function's cognitive complexity at most 15 (flag irreducible ones). Verify with the cognitive-complexity tooling on `mask/style/`, and that `check_requirement_coverage.py --capability mask-output-styles` reports every requirement covered.
+  - As landed (round 2): `cogcom.py src/core/src/mask/style`: worst 12 (`settings_line`, `apply_labels`), none over 15; `check_requirement_coverage.py --capability mask-output-styles`: 18 of 18 covered.
 
 ## 4. OPS: mask-output-operators
 
-  - As landed (round 2): `cogcom.py src/core/src/mask/style`: worst 12 (`settings_line`, `apply_labels`), none over 15; `check_requirement_coverage.py --capability mask-output-styles`: 18 of 18 covered.
-- [ ] 4.1 Implement `MaskPlane` with Magic's CIF paint and erase tables, moved from `hints/region` (the hints API is unchanged), and `PlanePool`. Verify the `[req:Geometric model of mask planes]` tests and that the `tests/unit/hints/` suites pass unchanged.
-- [ ] 4.2 Implement `evaluate_layer` (the layer evaluation pipeline for an area, clipping, temp layers) and the boolean and grow group: `or`, `and`, `and-not`, `grow`, `shrink` (square and Euclidean), `grow-grid` (Q-MASK-1) and `grow-min` (Q-MASK-15 exact arithmetic). Verify the `[req:Layer evaluation pipeline for an area]`, `[req:or, and, and-not]`, `[req:grow and shrink (default, square metric)]`, `[req:Euclidean grow and shrink]`, `[req:grow-grid]` and `[req:grow-min]` tests, with both modes for Q-MASK-1.
-- [ ] 4.3 Implement the contact-cut group: `squares` (Q-MASK-27), `squares-grid`, `slots`, the contact strip pre-pass, and squares-to-grid conversion by gridlimit. Verify the `[req:squares]`, `[req:squares-grid]`, `[req:slots]` and gridlimit tests, with both modes for Q-MASK-27 and negative-coordinate cases.
-- [ ] 4.4 Implement the bridge and bloat group:
+- [x] 4.1 Implement `MaskPlane` with Magic's CIF paint and erase tables, moved from `hints/region` (the hints API is unchanged), and `PlanePool`. Verify the `[req:Geometric model of mask planes]` tests and that the `tests/unit/hints/` suites pass unchanged.
+- [x] 4.2 Implement `evaluate_layer` (the layer evaluation pipeline for an area, clipping, temp layers) and the boolean and grow group: `or`, `and`, `and-not`, `grow`, `shrink` (square and Euclidean), `grow-grid` (Q-MASK-1) and `grow-min` (Q-MASK-15 exact arithmetic). Verify the `[req:Layer evaluation pipeline for an area]`, `[req:or, and, and-not]`, `[req:grow and shrink (default, square metric)]`, `[req:Euclidean grow and shrink]`, `[req:grow-grid]` and `[req:grow-min]` tests, with both modes for Q-MASK-1.
+- [x] 4.3 Implement the contact-cut group: `squares` (Q-MASK-27), `squares-grid`, `slots`, the contact strip pre-pass, and squares-to-grid conversion by gridlimit. Verify the `[req:squares]`, `[req:squares-grid]`, `[req:slots]` and gridlimit tests, with both modes for Q-MASK-27 and negative-coordinate cases.
+- [x] 4.4 Implement the bridge and bloat group:
   - `bloat-or` (Q-MASK-20 split tiles), `bloat-min`, `bloat-max`, `bloat-all` (Q-MASK-230, 231, 232);
   - `close` (Q-MASK-2);
   - `bridge` (Q-MASK-3, and the Q-MASK-227 clamp);
   - `bridge-lim` (Q-MASK-3, 5, 228, 229).
 
   Verify the `[req:…]` tests of each operator, with one test per mode for every compat decision.
-- [ ] 4.5 Implement the topology group:
+- [x] 4.5 Implement the topology group:
   - `maxrect`, `orthogonal`, `not-square` (Q-MASK-7);
   - `overlapping`, `nonoverlapping`, `interacting`, `noninteracting` (Q-MASK-21);
   - `net` (Q-MASK-22), `tagged` (Q-MASK-6), `bbox` (Q-MASK-23 cell bbox), `boundary`;
   - `mask-hints`, through `hints::output_region`.
 
   Verify the `[req:…]` tests of each operator, with both modes for Q-MASK-6, 7 and 21.
-- [ ] 4.6 Implement hierarchical-mode truncation (Q-MASK-26) and the render and min-width handling in the operator path. Verify the `[req:Hierarchical-mode truncation]` tests.
-- [ ] 4.7 Pin the float paths of design D22 (Euclidean grow, grow-min `sqrt`, bridge distance) with value tests. Verify that they pass identically on every CI leg (`linux-*`, `macos-*`).
-- [ ] 4.8 Add randomized property tests of the operators (`hefesto-testing-strategy` "Geometry property tests"), seeded and reproducible: `grow d` then `shrink d` contains the original; mask-plane contents are independent of paint order; `or` and `and` are commutative; `and-not` of a layer with itself is empty. Failing seeds are recorded as regression tests in `tests/unit/mask/ops/`. Verify that the property tests pass on every leg.
-- [ ] 4.9 Keep every function's cognitive complexity at most 15, or at most 25 with a flag for the bridge, bridge-lim, bloat-all and squares passes that cannot be split without obscuring the port. Verify with the cognitive-complexity tooling on `mask/{plane,ops}/`, list every flagged function in this task's note, and verify that `check_requirement_coverage.py --capability mask-output-operators` reports every requirement covered (after task 4.8).
+- [x] 4.6 Implement hierarchical-mode truncation (Q-MASK-26) and the render and min-width handling in the operator path. Verify the `[req:Hierarchical-mode truncation]` tests.
+- [x] 4.7 Pin the float paths of design D22 (Euclidean grow, grow-min `sqrt`, bridge distance) with value tests. Verify that they pass identically on every CI leg (`linux-*`, `macos-*`).
+- [x] 4.8 Add randomized property tests of the operators (`hefesto-testing-strategy` "Geometry property tests"), seeded and reproducible: `grow d` then `shrink d` contains the original; mask-plane contents are independent of paint order; `or` and `and` are commutative; `and-not` of a layer with itself is empty. Failing seeds are recorded as regression tests in `tests/unit/mask/ops/`. Verify that the property tests pass on every leg.
+- [x] 4.9 Keep every function's cognitive complexity at most 15, or at most 25 with a flag for the bridge, bridge-lim, bloat-all and squares passes that cannot be split without obscuring the port. Verify with the cognitive-complexity tooling on `mask/{plane,ops}/`, list every flagged function in this task's note, and verify that `check_requirement_coverage.py --capability mask-output-operators` reports every requirement covered (after task 4.8).
+  - As landed: no function needed the flagged limit; the worst are `grow_split_euclidean` (14), `paint_strip_cuts` (12), `set_box_grid` and `process_strip` (11). Coverage: 28 of 28 requirements.
 
 ## 5. INDEX: use enumeration order (Q-MASK-204, Q-MASK-323)
 
