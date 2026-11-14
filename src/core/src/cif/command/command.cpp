@@ -7,7 +7,9 @@
 // M4 answers keep working (capability scripting-api "Result formats of
 // commands used by scripts"; Q-SCRIPT-7, resolution: compat):
 // `cif scale|lambda input|output`, `cif [list|listall] ostyle|istyle` and
-// `cif help`, backed by the M3 cifoutput catalog (drc::CifCatalog) and the
+// `cif help`, backed by the session's output styles (EditorState::mask,
+// selected by `cif ostyle <name>`; `cif scale out` reads drc::CifCatalog,
+// which follows the selection) and the
 // technology's raw `cifinput` section. Every other option fails with
 // CORE-NOTIMPL-005 until CIF lands it (tasks.md section 11).
 //
@@ -37,6 +39,7 @@
 #include "hefesto/cmd/stubs.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::cif {
@@ -281,12 +284,9 @@ CommandResult print_styles(const CifCall& c, const std::vector<std::string>& nam
 }
 
 CommandResult output_styles(const CifCall& c) {
-  std::vector<std::string> names;
-  for (const drc::CifStyleInfo& style : c.s.editor->drc.cif.styles()) {
-    names.push_back(style.name);
-  }
-  const drc::CifStyleInfo* current = c.s.editor->drc.cif.current();
-  return print_styles(c, names, current != nullptr ? std::optional{current->name} : std::nullopt, "output");
+  const mask::OutputStyleSet& set = c.s.editor->mask.output_styles;
+  const mask::OutputStyle* current = set.current_style();
+  return print_styles(c, set.names(), current != nullptr ? std::optional{current->name} : std::nullopt, "output");
 }
 
 CommandResult input_styles_of(const CifCall& c) {
@@ -299,10 +299,37 @@ CommandResult input_styles_of(const CifCall& c) {
   return print_styles(c, names, names.empty() ? std::nullopt : std::optional{names.front()}, "input");
 }
 
-// `cif istyle|ostyle [style]`: listing only until CIF lands selection.
+// CIFSetStyle: `cif ostyle <name>` selects the output style (an exact name,
+// else a unique prefix), and the DRC catalog follows it; on failure the
+// error, then the current style and the style list (CIFPrintStyle).
+CommandResult select_output(const CifCall& c) {
+  editor::EditorState& editor = *c.s.editor;
+  const std::string& name = c.words[1];
+  const compat::CompatSettings compat{c.s.magic_compat, c.s.ctx->project().compat.netgen_compat};
+  const auto selected = mask::select_output_style(editor.mask.output_styles, name,
+                                                  static_cast<std::int32_t>(editor.grid.lambda),
+                                                  static_cast<std::int32_t>(editor.grid.internal), compat,
+                                                  c.s.ctx->sink());
+  if (!selected.ok()) {
+    c.s.ctx->emit(selected.error());
+    CifCall listing = c;
+    listing.list = false;
+    listing.listall = false;
+    (void)output_styles(listing);
+    listing.listall = true;
+    return output_styles(listing);
+  }
+  if (const mask::OutputStyle* current = editor.mask.output_styles.current_style()) {
+    (void)editor.drc.cif.select(current->name);
+  }
+  cu::print(c.s, "CIF output style is now \"" + name + "\"");
+  return CommandResult::success();
+}
+
+// `cif istyle|ostyle [style]`: istyle lists only until INPUT lands selection.
 CommandResult style(const CifCall& c, std::size_t option) {
   if (c.argc() == 3) {
-    return not_yet(option);
+    return option == kOstyle ? select_output(c) : not_yet(option);
   }
   if (c.argc() != 2) {
     return wrong_args(c, option);

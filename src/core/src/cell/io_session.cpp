@@ -17,6 +17,7 @@
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "hefesto/script/pdk/tech_rc.hpp"
 #include "hefesto/script/pdk/trust.hpp"
 #include "hefesto/script/project.hpp"
@@ -90,6 +91,9 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
   io.rescale_database = [this](std::int64_t n, std::int64_t d) {
     // dbReadOpen's finer-grid read: DRCTechScale(1, d) before DBScaleEverything(d, 1).
     drc::rescale_rules(ed, static_cast<std::int32_t>(d), static_cast<std::int32_t>(n));
+    // and CIFTechOutputScale(1, d) next to it.
+    (void)mask::rescale_output_styles(ed.mask.output_styles, static_cast<std::int32_t>(d),
+                                      static_cast<std::int32_t>(n), ed.drc.compat_settings());
     (void)tech::scale_layout(ed, n, d);
     return true;
   };

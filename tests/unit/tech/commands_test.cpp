@@ -338,6 +338,36 @@ TEST_CASE("a negative drc rule distance fails tech load and keeps the previous t
   CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
 }
 
+// M5 round 2: the session keeps the cifoutput styles read at tech load,
+// rescaled with the grid (TechLoad's and CmdScalegrid's CIFTechOutputScale).
+TEST_CASE("tech load installs the cifoutput styles and scalegrid rescales them",
+          "[cap:mask-output-styles][req:Style declaration and the style list]") {
+  Session s;
+  s.file("/t/c.tech", with(tiny(), "cifoutput\nend", "cifoutput\nstyle a\nscalefactor 10\nstyle b\nscalefactor 20\nend"));
+  REQUIRE(s.run("tech", {"load", "/t/c", "-noprompt"}).ok());
+  const auto& set = s.editor.mask.output_styles;
+  CHECK(set.names() == std::vector<std::string>{"a", "b"});
+  REQUIRE(set.current_style() != nullptr);
+  CHECK(set.current_style()->name == "a");
+  CHECK(set.current_style()->scale.scale_factor == 10);
+  REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
+  CHECK(s.editor.mask.output_styles.current_style()->scale.scale_factor == 5);
+}
+
+// Q-MASK-17: a cifoutput statement before the first `style` line makes the
+// section's line handler fail, so TechLoad fails the whole load.
+TEST_CASE("a cifoutput statement before the first style fails tech load",
+          "[cap:mask-output-styles][req:Style declaration and the style list]") {
+  Session s;
+  s.load_tiny();
+  s.file("/t/early.tech", with(tiny(), "cifoutput\nend", "cifoutput\nscalefactor 10\nstyle a\nend"));
+  const auto r = s.run("tech", {"load", "/t/early", "-noprompt"});
+  CHECK_FALSE(r.ok());
+  CHECK(says(r, "The following sections of /t/early.tech contained errors:\n    cifoutput"));
+  CHECK(r.value.to_string() == "Error in loading technology file\n");
+  CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
+}
+
 TEST_CASE("post-load scaling report at a doubled grid","[cap:tech-loading-and-scaling][req:Post-load adjustments]") {
   Session s;
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());
