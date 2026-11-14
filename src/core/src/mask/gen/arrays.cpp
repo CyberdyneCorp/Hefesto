@@ -14,13 +14,14 @@
 // Compat splits:
 // - Q-MASK-406: the element filter uses Magic's signed index differences
 //   with magic-compat ON, the absolute distance from the corner with it OFF.
-// - Magic's low-phase replication reuses its A and B rectangles: the core
-//   windows A'' and B'' overwrite them while the first layer is copied, so
-//   every later layer's left-edge and bottom-edge copies use the core
-//   windows. magic-compat ON replicates this; OFF copies every layer from
-//   the windows the spec names (open item for a decision).
-// - An array whose pitch is zero along an axis it repeats on makes Magic
-//   divide by zero; it gets no array correction here, in both modes.
+// - Q-MASK-33: Magic's low-phase replication reuses its A and B
+//   rectangles: the core windows A'' and B'' overwrite them while the first
+//   layer is copied, so every later layer's left-edge and bottom-edge copies
+//   use the core windows. magic-compat ON replicates this; OFF copies every
+//   layer from the windows the spec names.
+// - Q-MASK-407: an array whose pitch is zero along an axis it repeats on
+//   makes Magic divide by zero; it gets no array correction here, in both
+//   modes.
 //
 // Owner: GEN.
 

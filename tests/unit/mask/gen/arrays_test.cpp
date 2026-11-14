@@ -170,16 +170,24 @@ TEST_CASE("The element filter of a reversed array (Q-MASK-406)",
   CHECK(tiles[0] > tiles[1]);
 }
 
+// Q-MASK-407 (regression): Magic divides by the zero pitch; the use gets no
+// array correction in both magic-compat settings, along either axis.
 TEST_CASE("An array with a zero pitch along a repeated axis is skipped",
           "[cap:mask-hierarchical-generation][req:Array interaction geometry parameters]") {
-  GenFixture f;
-  const std::size_t m = f.layer("M", {types_op(OpKind::op_or, {f.m1}), op(OpKind::grow, 10), op(OpKind::shrink, 10)});
-  db::CellDef& child = f.cell("child");
-  f.paint(child, f.m1, Rect{0, 0, 10, 10});
-  db::CellDef& top = f.cell("top");
-  f.place(top, child, db::kIdentity, db::ArrayInfo{0, 3, 0, 0, 0, 0});
-  const LayerPlanes out = f.hierarchical(top);  // Magic divides by zero here
-  CHECK(out[m]->empty());
+  for (const bool on : {true, false}) {
+    for (const db::ArrayInfo& array : {db::ArrayInfo{0, 3, 0, 0, 0, 0}, db::ArrayInfo{0, 0, 0, 3, 0, 0}}) {
+      CAPTURE(on, array.xhi, array.yhi);
+      GenFixture f(on);
+      const std::size_t m =
+          f.layer("M", {types_op(OpKind::op_or, {f.m1}), op(OpKind::grow, 10), op(OpKind::shrink, 10)});
+      db::CellDef& child = f.cell("child");
+      f.paint(child, f.m1, Rect{0, 0, 10, 10});
+      db::CellDef& top = f.cell("top");
+      f.place(top, child, db::kIdentity, array);
+      const LayerPlanes out = f.hierarchical(top);  // Magic divides by zero here
+      CHECK(out[m]->empty());
+    }
+  }
 }
 
 TEST_CASE("Later layers reuse Magic's core windows with magic-compat ON",
