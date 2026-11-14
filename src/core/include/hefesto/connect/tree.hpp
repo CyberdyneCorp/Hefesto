@@ -9,7 +9,10 @@
 // "Descending" follows a predicate that stands for the expansion state of a
 // window (Magic's xMask): a use the predicate refuses is visited as a whole
 // use by search_tree_cells() and its contents are not searched. An empty
-// predicate descends into every use.
+// predicate descends into every use. The uses of each cell are visited in
+// the use index's order under the session's `magic_compat`
+// (db::uses_in_search_order(def, compat): the bin walk with magic-compat
+// ON, the canonical order with it OFF).
 // (Magic ref: database/DBcellsrch.c:300-700, database/DBcell.c DBCellSrArea)
 //
 // Owner: SELECT (openspec/changes/m2-interactive-editing/design.md D2).
@@ -72,25 +75,26 @@ using CellFn = std::function<bool(const TreeCell&)>;
 /// only the tiles overlapping that triangle of `area` (DBTreeSrNMTiles).
 /// Returns false when the visitor stopped the search.
 bool search_tree_tiles(const db::CellDef& root, const db::Rect& area, const tech::TypeMask& types,
-                       const Descend& descend, const TileFn& visit,
+                       const Descend& descend, bool magic_compat, const TileFn& visit,
                        std::optional<db::TriangleSide> triangle = std::nullopt);
 
 /// DBTreeSrLabels with TF_LABEL_ATTACH: every label whose type is in
 /// `types` and whose rectangle touches `area` (root coordinates), in the
 /// root and every descended cell.
 bool search_tree_labels(const db::CellDef& root, const db::Rect& area, const tech::TypeMask& types,
-                        const Descend& descend, const LabelFn& visit);
+                        const Descend& descend, bool magic_compat, const LabelFn& visit);
 
 /// DBTreeSrCells: every use overlapping `area` that the search does not
 /// descend into (an unexpanded use; with an empty predicate, none), found
 /// through the descended cells.
-bool search_tree_cells(const db::CellDef& root, const db::Rect& area, const Descend& descend,
+bool search_tree_cells(const db::CellDef& root, const db::Rect& area, const Descend& descend, bool magic_compat,
                        const CellFn& visit);
 
 /// The root and every descended cell instance (array element) overlapping
 /// `area` (root coordinates), depth first: `visit(def, to_root, path)`.
 using DefFn = std::function<bool(const db::CellDef& def, const db::Transform& to_root, const std::string& path)>;
-bool search_tree_defs(const db::CellDef& root, const db::Rect& area, const Descend& descend, const DefFn& visit);
+bool search_tree_defs(const db::CellDef& root, const db::Rect& area, const Descend& descend, bool magic_compat,
+                      const DefFn& visit);
 
 /// A label moved by `t` (GeoTransRect/GeoTransPos/GeoTransAngle and
 /// GeoTransPointDelta of the offset, as dbCopyAllLabels does): rectangle,

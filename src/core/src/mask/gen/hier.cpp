@@ -341,10 +341,13 @@ LayerPlanes generate_hierarchical(const GenerationSource& source, const db::Cell
   if (source.technology == nullptr) {
     return {};
   }
+  if (options.unfracture && !source.unfracture) {
+    GenerationSource merged = source;  // the switch reaches the subcell and array passes
+    merged.unfracture = true;
+    return generate_hierarchical(merged, cell, style, ctx, options);
+  }
   const db::Rect area = generation_area(cell, generation_radius(style, source.compat), options.fixed_bbox);
-  GenerateOptions own;
-  own.unfracture = options.unfracture;
-  LayerPlanes out = generate_area(source, cell, &cell, area, style, ctx, own);
+  LayerPlanes out = generate_area(source, cell, &cell, area, style, ctx);
   if (options.subcells && !ctx.cancelled()) {
     generate_subcells(source, cell, area, style, ctx, out);
   }
