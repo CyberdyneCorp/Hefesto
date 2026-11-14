@@ -7,17 +7,19 @@
 // tiles, split tiles, left and bottom edges). The edge walks, rule regions
 // and nonstandard rules live in the sibling files listed in kernel.hpp.
 //
-// The mask-layer (cif) rules of a style are not checked until M5
-// (design D13; drcCifCheck is not called).
+// DRCBasicCheck ends with drcCifCheck: the mask-layer (cif) rules run after
+// the paint planes (mask_check.cpp; M5 design D14).
 //
 // (Magic ref: drc/DRCbasic.c DRCBasicCheck, drcTile)
 //
-// Owner: CHECK (openspec/changes/m3-drc/design.md D2).
+// Owner: CHECK (openspec/changes/m3-drc/design.md D2); the mask-layer step:
+// DRCCIF (openspec/changes/m5-mask-gds-cif/design.md D2).
 
 #include "hefesto/drc/check/basic_check.hpp"
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/lock.hpp"
+#include "hefesto/drc/check/mask_check.hpp"
 #include "kernel.hpp"
 
 namespace hefesto::drc {
@@ -69,7 +71,7 @@ CheckOutcome Kernel::run() {
       return CheckOutcome::cancelled;
     }
   }
-  return CheckOutcome::completed;
+  return mask_layer_check(input_, check_, clip_, sink_);  // drcCifCheck
 }
 
 bool Kernel::visit_tile(const TileView& tile) {

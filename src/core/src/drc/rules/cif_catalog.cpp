@@ -152,6 +152,15 @@ std::optional<ContactBorder> CifCatalog::contact_border(tech::TileType type) con
   return style->contact_borders[type];
 }
 
+std::shared_ptr<const mask::OutputStyle> CifCatalog::output_style(std::string_view name) const {
+  for (std::size_t i = 0; i < styles_.size() && i < sources_.styles.size(); ++i) {
+    if (styles_[i].name == name) {
+      return sources_.styles[i];
+    }
+  }
+  return nullptr;
+}
+
 std::int32_t CifCatalog::default_step_size() const noexcept {
   const CifStyleInfo* style = current();
   if (style == nullptr || style->scale_factor <= 0) {

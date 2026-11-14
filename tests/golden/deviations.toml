@@ -221,29 +221,8 @@ outputs = ["stdout.txt", "stderr.txt", "flat.mag"]
 reason = "flatten -doproperty also copies the hints of the flattened instances and their flattened descendants (MASKHINTS_F, MASKHINTS_X); Magic copies only the kept instance's hints (MASKHINTS_K, kept under magic-compat)"
 
 # --- DRC --------------------------------------------------------------------
-# m3-drc Resolved Question 1 / design D13: the mask-layer checks arrive in M5.
-# DRC-CIF-2 and DRC-CIF-3 already match Magic (no mask-layer error is reported
-# with the bound cifoutput style current), so they have no entry.
-
-[DRC-CIF-4]
-deferred = "M5"
-outputs = ["stdout.txt", "top.mag"]
-reason = "cifarea errors come from the mask-layer check of the generated VIA1 squares, which arrives with mask generation"
-
-[DRC-CIF-5]
-deferred = "M5"
-outputs = ["stdout.txt", "top.mag"]
-reason = "cifmaxwidth errors come from the mask-layer check of the generated MET2 layer, which arrives with mask generation"
-
-[DRC-CIF-6]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "top.mag"]
-reason = "mask-layer errors mapped to layout coordinates need cif ostyle and the mask-layer check, which arrive with mask generation; until then the M4 cif command (scale and style queries only, m4-scripting design D6) reports cif ostyle as not implemented on stderr"
-
-[DRC-CIF-7]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "top.mag"]
-reason = "switching the output style with cif ostyle and the mask-layer check arrive with mask generation; until then the M4 cif command (scale and style queries only, m4-scripting design D6) reports cif ostyle as not implemented on stderr"
+# The mask-layer checks landed in M5 (m5-mask-gds-cif design D14): DRC-CIF-1..8
+# match Magic.
 
 [DRC-CMD-1]
 decisions = ["Q-DRC-22"]
