@@ -837,15 +837,21 @@ Compatibility: exact
 
 Compatibility: behavioral
 
-The net is located by label name as by the net-finding command (see capability `cmd-selection` / selection), all electrically connected paint in the hierarchy is collected into a flat scratch cell, and tiles of the operation's types (overlapping the search area) are scaled and ORed into cur. With no layer list nothing is added, in both `magic-compat` settings (Q-MASK-22, resolution: replicate). CIF and temp layers in the list contribute their whole plane, not only the net. The style loader warns about a `net` operator without layers and about one whose layer list names CIF or temp layers. If the name is not found nothing is added.
+The net is located by label name as by the net-finding command (see capability `cmd-selection` / selection), all electrically connected paint in the hierarchy is collected into a flat scratch cell, and tiles of the operation's types (overlapping the search area) are scaled and ORed into cur. With no layer list nothing is added, in both `magic-compat` settings (Q-MASK-22, resolution: replicate). CIF and temp layers in the list contribute their whole plane, not only the net. The style loader warns about a `net` operator without layers and about one whose layer list names CIF or temp layers. If the name is not found nothing is added. In own-paint generation the net is searched in the cell being generated (with that cell's own uses for the connectivity copy), in both `magic-compat` settings (Q-MASK-412, resolution: fix). Magic searches through a dummy use whose cell is whatever cell was processed before (the writers generate a cell's own paint before its subcells), and it crashes on the first such generation of a session, when that use does not exist yet; golden cases that show the stale search carry a fix deviation.
 
-(Magic ref: cif/CIFgen.c:5433-5456, cif/CIFtech.c:1365-1372)
+(Magic ref: cif/CIFgen.c:5433-5456, cif/CIFtech.c:1365-1372, commands/CmdFI.c:1779, cif/CIFhier.c:157-162)
 
 #### Scenario: Net extraction
 
 - **GIVEN** a cell with label `VDD` on metal1 connected through via1 to metal2
 - **WHEN** a layer `templayer PWR` with `net VDD metal1,metal2` is generated
 - **THEN** PWR contains exactly the metal1 and metal2 tiles of that net
+
+#### Scenario: Net searched in the cell being generated
+
+- **GIVEN** two unrelated cells `top` and `b`, each with a label `VDD` on its own metal1, and a style with `net VDD metal1`
+- **WHEN** `top` is written and then `b` is written in the same session
+- **THEN** the net layer of `b` holds `b`'s VDD metal1 only, in both `magic-compat` settings (Magic copies `top`'s net into `b`, Q-MASK-412)
 
 ### Requirement: tagged
 
