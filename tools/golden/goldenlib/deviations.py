@@ -29,8 +29,9 @@ replay.py reports such a case as ``deviation`` (skipped, not passed) when
 only the listed outputs differ. It still fails when any other output
 differs, and it fails when the case passes, so a stale entry is removed
 instead of hiding a regression later. Every entry must name a captured case
-and existing outputs (``check``), and each decision must be a heading in
-``docs/decisions`` (``tests/test_deviations.py``).
+(or, with ``deferred``, a case whose capture is pending in CI) and existing
+outputs (``check``), and each decision must be a heading in ``docs/decisions``
+(``tests/test_deviations.py``).
 """
 from __future__ import annotations
 

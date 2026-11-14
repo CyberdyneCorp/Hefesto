@@ -124,6 +124,8 @@ Each case runs in a scratch copy of `input/`, with `TZ=UTC` and `LC_ALL=C`. `{in
 
 `--output-dir` writes `<dir>/<AREA>/<case-id>/<file>`, which is the input format of `scripts/compare_golden_outputs.py` for cross-platform determinism checks.
 
+A manifest with `gds_rt = true` (the library GDS round trips `MASK-RT-*` of m5-mask-gds-cif design D19) gets the CTest label `golden-gds-rt`. `replay.py` leaves such cases out of its default selection and skips one named on the command line, unless `--include-gds-rt` is passed (its CTest passes it; `perf.yml`'s `gds-roundtrip` job runs them). `--require-inputs ID[,ID...]` (repeatable) turns a missing `[[external]]` input of the listed cases from a skip into a failure: `ci.yml`'s golden replay lists the three standard-cell `MASK-RT-*` cases, whose GDS subsets every golden leg fetches. Every listed ID must name a case directory under `--root`.
+
 A case that lists `[hefesto] requires_commands` is **skipped**, not failed, when hefesto-cli rejects one of those commands with `CMD-DISPATCH-001`. CTest reports the skip through exit code 77.
 
 CTest:
@@ -141,9 +143,13 @@ Comparators are canonicalizers, each applied to both sides after masking (`compa
 
 - `bytes`: byte for byte. Use it for tile-order and name-keyed hash-order records, which Hefesto reproduces exactly.
 - `ext-cap`: `.ext` cap records are reordered so the smaller terminal name comes first and the records are sorted. Every other line, including `merge` groups, is compared byte for byte and in place. The rules are in `compare/ext_cap.py`.
+- `polygon-set`: runs of `box x1 y1 x2 y2` records (with the `feedback add` line `feedback save` writes after each) or `rect` lines are compared as the area each text covers, in a canonical maximal-strip decomposition, so `cif see` feedback compares whatever tiles produced it (m5-mask-gds-cif design D18). The rules are in `compare/polygon_set.py`.
+- `gzip`: compressed output (`gds compress`, `.gds.gz`) is decompressed, every member, *before* the masks, then compared byte for byte (Q-MASK-223: the gzip header and deflate choices are informative). `replay.py --output-dir` saves such an output decompressed and masked.
 - `drc-console`: `magic-console`, then `drc list(all) count` pairs sorted and each run of `drc count` cell lines sorted (Magic: address-keyed hash order; Hefesto: name order, m3-drc design D12). A `drc listall why` result is compared as printed: Hefesto reproduces Magic's string-hash order of the why texts (Q-SCRIPT-8; M3 sorted them here). The rules are in `compare/drc_console.py`.
 
-Masks (`compare/masks.py`) fix fields that are documented as time-dependent: `gds-dates` (BGNLIB/BGNSTR dates), `mag-timestamp`, `ext-timestamp`, and `regex:<pattern>` for one-off fields. Two more remove Magic output of features outside M1 (design.md Non-Goals: DRC, extraction, mask output): `magic-tech-sections` drops exactly Magic's cifinput/cifoutput/extract messages printed by `tech load` (each pattern with its Magic source line), and `mag-checkpaint` drops the `<< checkpaint >>` section of a `.mag` file (areas Magic's DRC still has to check; DRC cases never carry it, and `CHECKPAINT_MASK_RETIRED` in `authoring/casegen.py` retires it from the M1/M2 cases once the M3 engine marks every edit as Magic does, m3-drc design D17). `magic-stamp-note` drops Magic's "writing out-of-date timestamp for CELL." note, which Magic and Hefesto print only when a save lands in the same wall-clock second as the cell's previous stamp; every `magic-console` output carries it by default (`authoring/casegen.py`), because any case that saves a cell can hit it (CMDEDIT-MISC-01 and TECH-G36 did in CI). A mask touches only its field, so it cannot hide a layout difference.
+An output may name a *display view*, `display = "gds-records"`, which only renders a difference readably (GDSII decoded one record per line, `goldenlib/gds.py`); pass or fail is always the comparator's (`python3 -m compare a.gds b.gds --mask gds-mod-dates --display gds-records`).
+
+Masks (`compare/masks.py`) fix fields that are documented as time-dependent: `gds-dates` (BGNLIB/BGNSTR dates), `gds-mod-dates` (only their modification dates, the last 12 of the 24 date bytes: the creation dates are compared, m5-mask-gds-cif D12), `cif-preamble` (the six host, build and time values of a CIF preamble, Q-MASK-324), `completed-percent` (Magic's `Completed N%` progress lines, Q-MASK-414), `mag-timestamp`, `ext-timestamp`, and `regex:<pattern>` for one-off fields. Two more remove Magic output of features outside M1 (design.md Non-Goals: DRC, extraction, mask output): `magic-tech-sections` drops exactly Magic's cifinput/cifoutput/extract messages printed by `tech load` (each pattern with its Magic source line), and `mag-checkpaint` drops the `<< checkpaint >>` section of a `.mag` file (areas Magic's DRC still has to check; DRC cases never carry it, and `CHECKPAINT_MASK_RETIRED` in `authoring/casegen.py` retires it from the M1/M2 cases once the M3 engine marks every edit as Magic does, m3-drc design D17). `magic-stamp-note` drops Magic's "writing out-of-date timestamp for CELL." note, which Magic and Hefesto print only when a save lands in the same wall-clock second as the cell's previous stamp; every `magic-console` output carries it by default (`authoring/casegen.py`), because any case that saves a cell can hit it (CMDEDIT-MISC-01 and TECH-G36 did in CI). A mask touches only its field, so it cannot hide a layout difference.
 
 ## Documented deviations
 
@@ -164,6 +170,8 @@ deferred = "M5"
 outputs = ["stdout.txt", "top.mag"]
 reason = "cifwidth errors come from the mask-layer check of the generated MET1 layer, which arrives with mask generation"
 ```
+
+A case authored before its capture (the M5 MASK cases, whose `expected/` golden-capture.yml writes later) may be listed with `deferred` while it has no `expected/`: replay reports it as `DEVIATION` ("not captured yet") when named, and the default selection never runs it. An uncaptured case without such an entry is an error when named.
 
 `replay.py` reports such a case as `DEVIATION`, counted like a skip (CTest shows it as skipped). It still fails when another output differs, and it fails when the case passes, so a stale entry is removed. `tests/test_deviations.py` checks that every entry names a captured case, its outputs, existing decisions and a milestone heading of `docs/roadmap.md` for `deferred`. When the milestone lands, the case passes and the stale entry fails replay until it is removed. A Hefesto bug is never listed: fix it.
 
