@@ -58,7 +58,7 @@ db::Label port_label(std::string text, tech::TileType type, std::uint32_t index)
 std::size_t count_code(const cmd::CommandResult& result, std::string_view code) {
   std::size_t n = 0;
   for (const auto& d : result.diagnostics) {
-    n += d.code == code ? 1 : 0;
+    n += d.code == code ? 1U : 0U;
   }
   return n;
 }

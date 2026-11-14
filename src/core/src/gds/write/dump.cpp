@@ -184,7 +184,7 @@ std::string FullDump::choose_prefix(VendorIo& io, const db::CellDef& def, const 
       }
     }
   }
-  const std::size_t base = static_cast<std::size_t>(fnv1a(file) % kPrefixCount);
+  const std::size_t base = fnv1a(file) % kPrefixCount;
   for (std::size_t k = 0; k < kPrefixCount; ++k) {
     std::string prefix = prefix_at((base + k) % kPrefixCount);
     if (prefixes_.insert(prefix).second) {
@@ -210,7 +210,9 @@ std::optional<std::string> FullDump::undefined_prefix(VendorIo& io, const std::s
 }
 
 void FullDump::record_undefined(const std::map<std::string, std::string>& names) {
-  for (const auto& [name, recorded] : names) {
+  for (const auto& entry_names : names) {
+    const std::string& name = entry_names.first;  // a named variable: clang 14 cannot capture a binding
+    const std::string& recorded = entry_names.second;
     if (recorded.empty() || recorded.front() != '0') {
       continue;
     }

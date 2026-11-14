@@ -112,7 +112,7 @@ TEST_CASE("AREF geometry and the array-limits property", "[cap:gds-write][req:Ce
   CHECK(use_names(refs[0]) == std::vector<std::string>{"a1"});
   std::size_t propattrs = 0;
   for (const Rec& r : refs[0]) {
-    propattrs += r.record() == gds::RecordType::propattr ? 1 : 0;
+    propattrs += r.record() == gds::RecordType::propattr ? 1U : 0U;
   }
   CHECK(propattrs == 1);
 

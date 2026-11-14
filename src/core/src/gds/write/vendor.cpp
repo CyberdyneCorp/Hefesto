@@ -171,7 +171,7 @@ diag::Outcome<Measured> measure(ByteSource& source, const CopySpan& span) {
   Measured m;
   std::vector<std::byte> chunk(kChunk);
   while (m.length < span.size()) {
-    const auto want = static_cast<std::size_t>(std::min<std::uint64_t>(kChunk, span.size() - m.length));
+    const std::size_t want = std::min<std::uint64_t>(kChunk, span.size() - m.length);  // <= kChunk
     diag::Outcome<std::size_t> got = read_up_to(source, std::span<std::byte>{chunk}.first(want));
     if (!got.ok()) {
       return got.error();
@@ -291,7 +291,7 @@ diag::Status copy_raw(VendorIo& io, ByteSource& source, const CopySpan& span) {
   std::vector<std::byte> chunk(kChunk);
   std::uint64_t left = span.size();
   while (left > 0) {
-    const auto want = static_cast<std::size_t>(std::min<std::uint64_t>(kChunk, left));
+    const std::size_t want = std::min<std::uint64_t>(kChunk, left);  // <= kChunk
     diag::Outcome<std::size_t> got = read_up_to(source, std::span<std::byte>{chunk}.first(want));
     if (!got.ok() || got.value() != want) {
       return diag::make(codes::kVendorWrite, "short read");
