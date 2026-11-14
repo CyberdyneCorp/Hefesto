@@ -26,6 +26,7 @@
 #include "hefesto/drc/check/basic_check.hpp"
 #include "hefesto/drc/engine/engine.hpp"
 #include "hefesto/drc/types.hpp"
+#include "hefesto/mask/gen/context.hpp"
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::editor {
@@ -142,6 +143,10 @@ struct Context {
   /// exact_overlap_tile's type masks per tile type (array_overlap.cpp),
   /// computed on first use; empty until then.
   std::vector<OverlapMasks> overlap_masks;
+  /// The mask-layer check's scratch planes (M5 design D14), shared by the
+  /// basic checks of this context; created only when the style has
+  /// mask-layer rules.
+  std::unique_ptr<mask::GenerationContext> generation;
 
   [[nodiscard]] const tech::Technology& tech() const noexcept { return *technology; }
   /// Polls the cancel token; latches `cancelled`.

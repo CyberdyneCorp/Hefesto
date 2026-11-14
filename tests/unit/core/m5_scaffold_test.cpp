@@ -23,7 +23,6 @@
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/diag/codes.hpp"
-#include "hefesto/drc/check/mask_check.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/command/command.hpp"
 #include "hefesto/gds/read/read.hpp"
@@ -292,5 +291,4 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   mask::InputStyle input_style;
   mask::ReadEngine engine{state, input_style, {}};
   check_not_implemented(engine.begin_cell("a"), "mask::ReadEngine::begin_cell");
-  CHECK_FALSE(hefesto::drc::map_mask_error(db::Rect{0, 0, 1, 1}, style, {}).has_value());
 }

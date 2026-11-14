@@ -10,7 +10,7 @@ workstream and sorted by code:
 
 | Fragment | Topics | Owner |
 |---|---|---|
-| `src/core/src/drc/check/codes.inc` | `DRC-CHECK-*` | CHECK |
+| `src/core/src/drc/check/codes.inc` | `DRC-CHECK-*`, `DRC-MASK-*` | CHECK, DRCCIF (M5) |
 | `src/core/src/drc/commands/codes.inc` | `DRC-CMD-*` | COMMANDS |
 | `src/core/src/drc/engine/codes.inc` | `DRC-ENG-*` | ENGINE |
 | `src/core/src/drc/rules/codes.inc` | `DRC-LINT-*`, `DRC-TECH-*` | RULES |
@@ -37,6 +37,8 @@ fails when the two disagree.
 | `DRC-LINT-001` | warning | Multiplane `spacing` rule: Magic compiles only the first plane pair (Q-DRC-3); native only. |
 | `DRC-LINT-002` | warning | `surround ... exact_width` between types that share no plane checks absence only (Q-DRC-18); native only. |
 | `DRC-LINT-003` | warning | `maxwidth` exclude types with `bend_illegal`/`both` are ignored (Q-DRC-19); native only. |
+| `DRC-MASK-001` | warning | Mask-layer area or maxwidth errors narrower than one internal unit were dropped (Q-DRC-13, magic-compat ON); native only. |
+| `DRC-MASK-002` | info | Mask-layer area or maxwidth errors narrower than one internal unit were reported rounded outward (Q-DRC-13, magic-compat OFF); native only. |
 | `DRC-TECH-001` | error | Error in a `drc` section line (Magic's message); the line or rule is skipped. |
 | `DRC-TECH-002` | warning | Warning for a `drc` section line (Magic's message); the rule is still compiled. |
 | `DRC-TECH-003` | error | Unknown or ambiguous DRC style (or cifoutput style) name. |
@@ -94,6 +96,24 @@ M3 defines no `DRC-CHECK-*` code. The kernel cannot fail: a missing rule
 set or a null check area reports nothing, a rule whose check plane does not
 exist in the cell is ignored, and a cancelled check (background worker)
 returns `CheckOutcome::cancelled` for the engine to retry, not a diagnostic.
+
+## DRCCIF
+
+The mask-layer check (`drc-cif-rules`; `openspec/changes/m5-mask-gds-cif/design.md`
+D14), run at the end of each basic check when the DRC style's `cifstyle`
+binds a cifoutput style. Its errors go to `drc::ErrorSink` like every other
+DRC error; the codes here report what the mapping to layout coordinates did
+(Q-DRC-13). Both are native only, so `--diagnostics=magic` drops them.
+
+- `DRC-MASK-001` (magic-compat ON): area (`cifarea`) or maxwidth
+  (`cifmaxwidth`) errors whose tile is narrower than one internal unit
+  collapse under Magic's truncating division and are dropped, as Magic
+  does. The text gives the count for one basic check.
+- `DRC-MASK-002` (magic-compat OFF): the same errors were reported, with
+  their rectangle rounded outward.
+
+The diagnostic goes to the sink of the check's `mask::GenerationContext`
+(`CheckInput::generation`); a check without one reports nothing.
 
 ## ENGINE
 
