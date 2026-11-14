@@ -1,0 +1,66 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 07:25:41 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   2.000 x 0.400   ( 0.000,  0.000), ( 2.000,  0.400)  0.800     
+lambda:       20 x 4       (     0,  0    ), (    20,  4    )  80        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.200 x 0.400   ( 1.800,  0.000), ( 2.000,  0.400)  0.080     
+lambda:        2 x 4       (    18,  0    ), (    20,  4    )  8         
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   1.200 x 0.400   ( 1.800,  0.000), ( 3.000,  0.400)  0.480     
+lambda:       12 x 4       (    18,  0    ), (    30,  4    )  48        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 1.200,  0.200), ( 1.200,  0.200)
+lambda:        0 x 0       (    12,  2    ), (    12,  2    )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   1.000 x 0.400   ( 0.000,  2.000), ( 1.000,  2.400)  0.400     
+lambda:       10 x 4       (     0,  20   ), (    10,  24   )  40        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   3.000 x 2.400   ( 0.000,  0.000), ( 3.000,  2.400)  7.200     
+lambda:       30 x 24      (     0,  0    ), (    30,  24   )  720       
+0 {}
+0 {}
+0 {}
+   Generating output for cell top
+0 {}

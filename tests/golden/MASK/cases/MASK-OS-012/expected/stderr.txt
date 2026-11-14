@@ -1,0 +1,37 @@
+input/masktest.tech: line 52: section cifoutput:
+	Wrong number of arguments in or statement.
+input/masktest.tech: line 54: section cifoutput:
+	Wrong number of arguments in and statement.
+input/masktest.tech: line 56: section cifoutput:
+	Wrong number of arguments in and-not statement.
+input/masktest.tech: line 58: section cifoutput:
+	Wrong number of arguments in grow statement.
+input/masktest.tech: line 60: section cifoutput:
+	Wrong number of arguments in grow-grid statement.
+input/masktest.tech: line 62: section cifoutput:
+	Wrong number of arguments in grow-min statement.
+input/masktest.tech: line 64: section cifoutput:
+	Wrong number of arguments in shrink statement.
+input/masktest.tech: line 66: section cifoutput:
+	Wrong number of arguments in bloat-or statement.
+input/masktest.tech: line 70: section cifoutput:
+	Wrong number of arguments in bloat-all statement.
+input/masktest.tech: line 72: section cifoutput:
+	Wrong number of arguments in squares statement.
+input/masktest.tech: line 73: section cifoutput:
+	Square grid must be strictly positive.
+input/masktest.tech: line 75: section cifoutput:
+	Wrong number of arguments in slots statement.
+input/masktest.tech: line 78: section cifoutput:
+	Wrong number of arguments in bridge statement.
+
+Warning: Extraction Style default
+  Missing planeorder for plane(s):
+    active, metal1, metal2, metal3,
+  Magic will use the default planeorder for this style:
+    active=0, metal1=1, metal2=2, metal3=3,
+Warning:  snap setting is also changing units.  This usage is deprecated
+and may be removed in the future.  Use "units" to change units, and
+change units before setting snap to keep this message from appearing.
+Cell top couldn't be read
+No such file or directory

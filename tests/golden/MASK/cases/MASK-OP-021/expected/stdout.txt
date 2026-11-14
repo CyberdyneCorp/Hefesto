@@ -1,0 +1,72 @@
+
+Magic 8.3 revision 694 - Compiled on Sat Nov 14 07:25:41 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.000,  0.000), ( 0.100,  0.100)  0.010     
+lambda:       10 x 10      (     0,  0    ), (    10,  10   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.200,  0.000), ( 0.300,  0.100)  0.010     
+lambda:       10 x 10      (    20,  0    ), (    30,  10   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.400,  0.000), ( 0.500,  0.100)  0.010     
+lambda:       10 x 10      (    40,  0    ), (    50,  10   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.600,  0.000), ( 0.700,  0.100)  0.010     
+lambda:       10 x 10      (    60,  0    ), (    70,  10   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.040 x 0.100   ( 0.100,  0.000), ( 0.140,  0.100)  0.004     
+lambda:        4 x 10      (    10,  0    ), (    14,  10   )  40        
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.100 x 0.100   ( 0.250,  0.050), ( 0.350,  0.150)  0.010     
+lambda:       10 x 10      (    25,  5    ), (    35,  15   )  100       
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.040 x 0.040   ( 0.500,  0.100), ( 0.540,  0.140)  0.002     
+lambda:        4 x 4       (    50,  10   ), (    54,  14   )  16        
+0 {}
+0 {}
+   Generating output for cell top
+0 {}

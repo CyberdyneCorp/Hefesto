@@ -42,7 +42,7 @@ END = "# --- END MASK deferrals ---"
 REASON = ("mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its "
           "capture in golden-capture.yml and before the owning workstream lands")
 # Authored cases that replay against Magic's captured output (no deferral any more).
-REPLAYED: set[str] = {"MASK-CF-022", "MASK-CI-001", "MASK-OS-001", "MASK-OS-003"}
+REPLAYED: set[str] = {"MASK-CF-022", "MASK-CI-001", "MASK-GR-053", "MASK-OS-001", "MASK-OS-003"}
 
 
 def all_specs() -> list[tclcase.TclCase]:
