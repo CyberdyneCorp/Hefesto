@@ -82,12 +82,16 @@ class ElementWriter {
   [[nodiscard]] const OutputScale& scale() const noexcept { return context_.scale; }
   /// The character table of the style (`calma-permissive-labels`).
   [[nodiscard]] const CharTable& table() const noexcept { return table_; }
+  /// The underlying record writer, for records without a helper here.
+  [[nodiscard]] RecordWriter& records() noexcept { return records_; }
 
   /// A record without data (BOUNDARY, TEXT, SREF, AREF, ENDEL, ...).
   [[nodiscard]] diag::Status empty(RecordType type);
   /// An I2 record holding the low 16 bits of `value` (calmaOutI2, as Magic
   /// writes LAYER, DATATYPE, TEXTTYPE, PRESENTATION, STRANS and PROPATTR).
   [[nodiscard]] diag::Status int2(RecordType type, std::int32_t value);
+  /// A BITARRAY record of 16 bits (STRANS, PRESENTATION).
+  [[nodiscard]] diag::Status bits(RecordType type, std::uint16_t value);
   /// An R8 record of one value.
   [[nodiscard]] diag::Status real8(RecordType type, double value);
   /// A string record (calmaOutStringRecord) with Magic's warnings.
@@ -113,6 +117,12 @@ class ElementWriter {
   diag::DiagnosticSink* sink_;
   CharTable table_;
 };
+
+/// Saturating 64-bit product and sum for output arithmetic: a saturated
+/// value is far outside I4, so ElementWriter's range check rejects it
+/// (Q-MASK-222) instead of the arithmetic overflowing.
+[[nodiscard]] std::int64_t saturating_mul(std::int64_t a, std::int64_t b) noexcept;
+[[nodiscard]] std::int64_t saturating_add(std::int64_t a, std::int64_t b) noexcept;
 
 /// The StringOptions of `style` and `settings` (string-limit, `gds lower`).
 [[nodiscard]] StringOptions string_options(const mask::OutputStyle& style, const GdsSettings& settings) noexcept;

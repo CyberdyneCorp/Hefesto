@@ -12,6 +12,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <memory>
@@ -162,11 +163,14 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
   CHECK(no_window.diagnostics.front().code == "VIEW-WINDOW-003");
   s.state.command_point = cmd::PointerState{};
 
-  check_not_implemented(s.run("gds"), "gds write");
   check_not_implemented(s.run("calma read in.gds"), "gds read");
+  // GDSW landed `write` and the write options (tests/unit/gds/command/).
+  const std::array<std::string_view, 13> landed{"help",  "write",  "abstract", "addendum",    "arrays",
+                                                "compress", "contacts", "datestamp", "labels",  "library",
+                                                "lower", "merge",  "nodatestamp"};
   for (const std::string_view entry : gds::gds_options()) {
     const std::string name = option_name(entry);
-    if (name != "help") {
+    if (std::find(landed.begin(), landed.end(), name) == landed.end() && name != "undefined") {
       check_not_implemented(s.run("gds " + name), "gds " + name);
     }
   }
@@ -234,10 +238,10 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   db::CellDef top{"top", 1};
   db::CellDef* root = &top;
   check_not_implemented(cif::read(state, "in.cif", cif::CifReadOptions{}), "cif read");
+  // GDSW landed the writer: without an output style it fails before any file is opened.
   const auto prepared = gds::prepare_write(state, *root, gds::GdsWriteOptions{});
   REQUIRE_FALSE(prepared.ok());
-  CHECK(prepared.error().code == kNotImplemented);
-  check_not_implemented(gds::write(state, *root, "out.gds", gds::GdsWriteOptions{}), "gds write");
+  CHECK(prepared.error().code == "GDS-WRITE-002");
   check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{}), "cif write");
   check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{{}, true, {}}), "cif flat");
   CHECK_FALSE(gds::open_source(services.view().files, "in.gds").ok());

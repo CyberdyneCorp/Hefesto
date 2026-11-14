@@ -20,6 +20,37 @@
 
 namespace hefesto::gds {
 
+namespace {
+
+constexpr std::int64_t kMax = std::numeric_limits<std::int64_t>::max();
+constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
+
+}  // namespace
+
+std::int64_t saturating_mul(std::int64_t a, std::int64_t b) noexcept {
+  if (a == 0 || b == 0) {
+    return 0;
+  }
+  const bool negative = (a < 0) != (b < 0);
+  const std::uint64_t ua = a < 0 ? 0 - static_cast<std::uint64_t>(a) : static_cast<std::uint64_t>(a);
+  const std::uint64_t ub = b < 0 ? 0 - static_cast<std::uint64_t>(b) : static_cast<std::uint64_t>(b);
+  if (ua > static_cast<std::uint64_t>(kMax) / ub) {
+    return negative ? kMin : kMax;
+  }
+  const auto product = static_cast<std::int64_t>(ua * ub);
+  return negative ? -product : product;
+}
+
+std::int64_t saturating_add(std::int64_t a, std::int64_t b) noexcept {
+  if (b > 0 && a > kMax - b) {
+    return kMax;
+  }
+  if (b < 0 && a < kMin - b) {
+    return kMin;
+  }
+  return a + b;
+}
+
 StringOptions string_options(const mask::OutputStyle& style, const GdsSettings& settings) noexcept {
   return StringOptions{style.has_option(mask::style_option::string_limit), settings.lower};
 }
@@ -41,6 +72,11 @@ diag::Status ElementWriter::int2(RecordType type, std::int32_t value) {
   const auto low = static_cast<std::int16_t>(static_cast<std::uint16_t>(static_cast<std::uint32_t>(value) & 0xffffU));
   const std::array<std::int16_t, 1> values{low};
   return records_.write_int2(type, values);
+}
+
+diag::Status ElementWriter::bits(RecordType type, std::uint16_t value) {
+  const std::array<std::byte, 2> payload{static_cast<std::byte>(value >> 8U), static_cast<std::byte>(value & 0xffU)};
+  return records_.write(type, DataType::bitarray, payload);
 }
 
 diag::Status ElementWriter::real8(RecordType type, double value) {
