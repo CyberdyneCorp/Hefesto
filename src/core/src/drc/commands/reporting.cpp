@@ -29,6 +29,8 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/drc/engine/engine.hpp"
+#include "hefesto/drc/rules/details.hpp"
+#include "hefesto/mask/style/style.hpp"
 #include "hefesto/editor/coordinate_units.hpp"
 #include "hefesto/editor/editor_state.hpp"
 
@@ -425,7 +427,16 @@ std::string why_text(const RuleSet& rules, const Rule& rule, const cmd::UnitsSta
 
 std::string why_text(const editor::EditorState& editor, const Rule& rule) {
   const bool compat = editor.drc.compat_settings().magic_compat;
-  return why_text(*editor.drc.rules, rule, editor.units, editor::coordinate_units(editor, compat));
+  cmd::CoordinateUnits scale = editor::coordinate_units(editor, compat);
+  // Magic substitutes a mask-layer rule's text from drcCifCheck's error
+  // callback, while CIFCurStyle is the DRC's bound cifoutput style.
+  const StyleDetails* details = editor.drc.rules->details();
+  if (rule.has(flags::kCifRule) && details != nullptr) {
+    if (const auto bound = editor.drc.cif.output_style(details->cif_style)) {
+      scale.cif_scale = std::array<std::int64_t, 2>{bound->scale.scale_factor, bound->scale.expander};
+    }
+  }
+  return why_text(*editor.drc.rules, rule, editor.units, scale);
 }
 
 bool IgnoreList::contains(WhyIndex why) const noexcept {
