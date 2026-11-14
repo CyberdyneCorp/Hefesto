@@ -159,8 +159,10 @@ TEST_CASE("content-hash stamps at read time", "[cap:gds-read][req:When content-h
 
 TEST_CASE("mask hints on input", "[cap:gds-read][req:Mask hints on input]") {
   constexpr std::string_view kOutput = "style out\nscalefactor 1\nlayer M1 m1\nmask-hints M1\n";
+  // M1 generated from m2 only: the read m1 square is not regenerated.
+  constexpr std::string_view kOtherSource = "style out\nscalefactor 1\nlayer M1 m2\nmask-hints M1\n";
   SECTION("hint for input the output does not regenerate") {
-    Session s(kStyle, true, kOutput);
+    Session s(kStyle, true, kOtherSource);
     s.options.settings.maskhints = "yes";
     GdsFile f;
     f.library().begin("top");
@@ -170,6 +172,16 @@ TEST_CASE("mask hints on input", "[cap:gds-read][req:Mask hints on input]") {
     const auto* region = hint(s.cell("top"), "M1");
     REQUIRE(region != nullptr);
     CHECK(region->strips() == std::vector<db::Rect>{{0, 0, 10, 10}});
+  }
+  SECTION("no hint for input the output regenerates") {
+    Session s(kStyle, true, kOutput);
+    s.options.settings.maskhints = "yes";
+    GdsFile f;
+    f.library().begin("top");
+    square(f, 68);
+    f.end().end_library();
+    s.read(f);
+    CHECK(hint(s.cell("top"), "M1") == nullptr);
   }
   SECTION("only the named layers") {
     Session s(kStyle, true, kOutput);
