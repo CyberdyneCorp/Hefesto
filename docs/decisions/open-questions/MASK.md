@@ -389,10 +389,13 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 
 ### Q-MASK-412: `net` operator in own-paint generation uses a stale dummy cell
 - Kind: bug
-- Magic behavior: The `net` operator looks up the named net through an internal dummy use. That use's cell is only set by hierarchical, array or flat-view processing. During own-paint generation of cell D it still points at whatever cell was processed before (or at the internal scratch cell). If no such processing has happened yet in the session, the pointer may be NULL. The net may therefore be searched in the wrong cell, or not found.
-- Evidence: cif/CIFgen.c:5433-5446, cif/CIFhier.c:157-162, cif/CIFwrite.c:388-394, calma/CalmaWrite.c:1509-1516
-- Options: replicate | fix (search D)
-- Recommendation: fix, and verify against Magic with MASK-HG-020 before deciding.
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: The `net` operator looks up the named net through CIFDummyUse. In a fresh session that use does not exist yet (CIFInitCells has not run), so the first own-paint generation of a style with `net` dereferences NULL and Magic crashes (SIGSEGV in CmdFindNetProc). Afterwards the use's cell is whatever cell hierarchical, array, flat-CIF or `cif see` processing set last; the writers generate a cell's own paint before its subcells, so the net is searched in the previously processed cell (or the edit cell of an earlier `cif see`), not in the cell being generated.
+- Evidence: cif/CIFgen.c:5433-5446, commands/CmdFI.c:1779, cif/CIFhier.c:157-162, cif/CIFhier.c:991-1000, cif/CIFhier.c:1764-1785, cif/CIFwrite.c:388-394, cif/CIFwrite.c:739-741, cif/CIFsee.c:162-166, calma/CalmaWrite.c:1509-1516
+- Verified 2026-11-14: golden-capture run 43561483197: MASK-HG-020, MASK-OP-022 and MASK-OS-012 exited 139 at their first write; a gdb backtrace in the pinned image stops in CmdFindNetProc with use=0x0 called from CIFgen.c:5441. With a `cif see` first, MASK-HG-020's second write searches the first cell. No reference PDK uses `net` in cifoutput.
+- Options: replicate (crash; impossible) | fix (search the cell being generated) | compat (ON: search the previously processed cell where Magic has one; OFF: search the cell being generated)
+- Recommendation: fix. In both modes the `net` operator searches the cell being generated (D, with D's own uses for the connectivity copy). The fresh-session case is undefined behaviour with no Magic output to match, and the stale case puts another cell's geometry into D's mask layer (wrong output, X-2 tier 1). A compat ON mode would have to define a "previous cell" that Magic itself only has by accident of call order, and no PDK depends on it. MASK-HG-020's `b.gds` gets a fix deviation entry with this decision; MASK-OP-022 and MASK-OS-012 (a `cif see` of the written cell first) match the fixed behaviour and need none.
+- Resolution: fix — in both modes the `net` operator in own-paint generation searches the cell being generated; Magic crashes on the first such generation of a session and otherwise searches the previously processed cell (X-2 tier 1). MASK-HG-020's second write carries a fix deviation. Approved 2026-11-14.
 
 ### Q-MASK-413: `cif unfracture` needs a dummy argument
 - Kind: quirk

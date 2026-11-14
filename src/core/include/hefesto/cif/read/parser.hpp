@@ -72,6 +72,9 @@ struct ParseStyle {
 struct ParseOptions {
   bool magic_compat = true;
   std::int64_t rescale_limit = 100;   // `cif limit` (CIFRescaleLimit); <= 0 means 100
+  /// `cif rescale` (CIFRescaleAllow). Only the Q-MASK-315 OFF box
+  /// subdivision reads it here; the engine applies it to the unit conversion.
+  bool rescale_allowed = true;
   std::size_t max_symbols = SymbolTable::kDefaultMaxCells;
   const std::atomic<bool>* cancel = nullptr;
 };

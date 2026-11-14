@@ -261,6 +261,24 @@ TEST_CASE("A malformed call transformation follows magic-compat", "[cap:cif-form
   }
 }
 
+TEST_CASE("A translation that subdivides the read units follows magic-compat",
+          "[cap:cif-format-io][req:Calls and transformations]") {
+  // Scale 1/2: T 2 2 is (1,1); T 1 1 subdivides by 2 and is (1,1) in the new
+  // units, where the first translation is (2,2).
+  const char* text = "DS 2; DF; DS 1 1 2; C 2 T 2 2 T 1 1; DF; E";
+  SECTION("magic-compat ON keeps the earlier translation in the coarser units") {
+    Reader r;
+    CHECK(body(r.read(text)) ==
+          Events{"begin 2", "end", "begin 1", "rescale 2", "place 2 [1 0 2 0 1 2] defined", "end"});
+  }
+  SECTION("magic-compat OFF scales it with the subdivision") {
+    Reader r;
+    r.options.magic_compat = false;
+    CHECK(body(r.read(text)) ==
+          Events{"begin 2", "end", "begin 1", "rescale 2", "place 2 [1 0 3 0 1 3] defined", "end"});
+  }
+}
+
 TEST_CASE("Other malformed transformations are reported", "[cap:cif-format-io][req:Calls and transformations]") {
   Reader r;
   static_cast<void>(r.read("C 1 T 5; C 1 R 4; C 1 X; C; DS 1; DF; E"));
@@ -372,6 +390,34 @@ TEST_CASE("Odd length centered on an integer", "[cap:cif-format-io][req:Box comm
     r.options.magic_compat = false;
     CHECK(body(r.read("DS 1; L CMF; B 3 2 10 0; B 2 2 1 1; DF; E")) ==
           Events{"begin 1", "rescale 2", "paint 0 rect (17,-2)-(23,2)", "paint 0 rect (0,0)-(4,4)", "end"});
+  }
+}
+
+TEST_CASE("An odd box that cannot subdivide is rounded outward with magic-compat OFF",
+          "[cap:cif-format-io][req:Box command]") {
+  const char* text = "L CMF; B 3 2 10 0; B 3 2 0 0; E";
+  const Events rounded{"Warning at line 1 of CIF file: CIF units at maximum scale; value is rounded",
+                       "Warning at line 1 of CIF file: CIF units at maximum scale; value is rounded"};
+  SECTION("magic-compat OFF at the cif limit") {
+    Reader r;
+    r.options.magic_compat = false;
+    r.options.rescale_limit = 1;
+    CHECK(body(r.read(text)) == Events{"paint 0 rect (8,-1)-(12,1)", "paint 0 rect (-2,-1)-(2,1)"});
+    CHECK(r.printed() == rounded);
+  }
+  SECTION("magic-compat OFF with cif rescale no") {
+    Reader r;
+    r.options.magic_compat = false;
+    r.options.rescale_allowed = false;
+    CHECK(body(r.read(text)) == Events{"paint 0 rect (8,-1)-(12,1)", "paint 0 rect (-2,-1)-(2,1)"});
+    CHECK(r.printed() == rounded);
+  }
+  SECTION("magic-compat ON still truncates without a warning") {
+    Reader r;
+    r.options.rescale_limit = 1;
+    r.options.rescale_allowed = false;
+    CHECK(body(r.read(text)) == Events{"paint 0 rect (8,-1)-(11,1)", "paint 0 rect (-1,-1)-(1,1)"});
+    CHECK(r.printed().empty());
   }
 }
 
@@ -514,6 +560,41 @@ TEST_CASE("An open definition is finished at end of file",
                               "Error at line 1 of CIF file: CIF ended partway through a symbol definition.",
                               "Error at line 1 of CIF file: pending call identifier x discarded.",
                               "Error at line 1 of CIF file: cell 2 was used but not defined."});
+}
+
+TEST_CASE("Undefined cells are reported in Magic's cell-table order",
+          "[cap:cif-format-io][req:End of file and top-level geometry]") {
+  for (const bool compat : {true, false}) {
+    Reader r;
+    r.options.magic_compat = compat;
+    // Word keys 1, 2, 8 and 9 fall in buckets 0, 1, 7 and 7 of 32; within a
+    // bucket the latest insertion comes first.
+    static_cast<void>(r.read("C 8; C 9; C 2; C 1; E"));
+    CHECK(r.printed() == Events{"Error at line 1 of CIF file: cell 1 was used but not defined.",
+                                "Error at line 1 of CIF file: cell 2 was used but not defined.",
+                                "Error at line 1 of CIF file: cell 9 was used but not defined.",
+                                "Error at line 1 of CIF file: cell 8 was used but not defined."});
+  }
+}
+
+TEST_CASE("The undefined-cell order follows the cell table's growth",
+          "[cap:cif-format-io][req:End of file and top-level geometry]") {
+  // The 97th symbol grows the table from 32 to 128 buckets.
+  Reader r;
+  std::string text;
+  for (int i = 1; i <= 100; ++i) {
+    text += "C " + std::to_string(i) + "; ";
+  }
+  static_cast<void>(r.read(text + "E"));
+  const auto lines = r.printed();
+  REQUIRE(lines.size() == 100);
+  const Events first{lines.begin(), lines.begin() + 6};
+  CHECK(first == Events{"Error at line 1 of CIF file: cell 1 was used but not defined.",
+                        "Error at line 1 of CIF file: cell 37 was used but not defined.",
+                        "Error at line 1 of CIF file: cell 73 was used but not defined.",
+                        "Error at line 1 of CIF file: cell 38 was used but not defined.",
+                        "Error at line 1 of CIF file: cell 74 was used but not defined.",
+                        "Error at line 1 of CIF file: cell 2 was used but not defined."});
 }
 
 TEST_CASE("Top-level geometry goes to the edit cell", "[cap:cif-format-io][req:End of file and top-level geometry]") {
