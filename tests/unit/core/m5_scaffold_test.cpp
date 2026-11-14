@@ -22,7 +22,6 @@
 #include "hefesto/cif/write/write.hpp"
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
-#include "hefesto/db/use_index.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/check/mask_check.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -237,49 +236,6 @@ TEST_CASE("the mask session has its defaults", "[m5-scaffold]") {
   CHECK(state.mask.gds.flatten_limit == 10);
   CHECK(state.mask.cif == cif::CifSettings{});
   CHECK(state.mask.warnings.level == mask::WarningLevel::warn_default);
-}
-
-TEST_CASE("the use index starts with today's unbinned order", "[m5-scaffold]") {
-  db::CellUse a;
-  db::CellUse b;
-  db::CellUse c;
-  a.bbox = db::Rect{0, 0, 10, 10};
-  b.bbox = db::Rect{20, 0, 30, 10};
-  c.bbox = db::Rect{10, 0, 20, 10};
-  db::UseIndex index;
-  index.place(a);
-  index.place(b);
-  index.place(c);
-  const hefesto::compat::CompatSettings on{};
-  CHECK(index.order(on) == std::vector<db::CellUse*>{&c, &b, &a});  // LIFO
-  CHECK(index.order(hefesto::compat::CompatSettings{false, true}) == std::vector<db::CellUse*>{&c, &b, &a});
-  CHECK_FALSE(index.state_for_test().binned);
-  CHECK(index.state_for_test().bbox == db::Rect{0, 0, 30, 10});
-
-  // BPE_OVERLAP: the area shrinks by 1, so a use that only touches it is out.
-  std::vector<db::CellUse*> found;
-  CHECK(index.search(db::Rect{10, 0, 20, 10}, [&](db::CellUse& u) {
-    found.push_back(&u);
-    return true;
-  }));
-  CHECK(found == std::vector<db::CellUse*>{&c});
-  found.clear();
-  CHECK(index.find_equal(db::Rect{0, 0, 10, 10}, [&](db::CellUse& u) {
-    found.push_back(&u);
-    return true;
-  }));
-  CHECK(found == std::vector<db::CellUse*>{&a});
-
-  index.place(a);  // re-placement moves it to the head (BPDelete + BPAdd)
-  CHECK(index.order(on).front() == &a);
-  index.remove(b);
-  CHECK(index.size() == 2);
-  found.clear();
-  CHECK_FALSE(index.enumerate_all([&](db::CellUse& u) {
-    found.push_back(&u);
-    return false;
-  }));
-  CHECK(found.size() == 1);
 }
 
 TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaffold]") {

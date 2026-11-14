@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <filesystem>
 #include <functional>
@@ -36,6 +37,7 @@ namespace hefesto::db {
 
 class CellDef;
 class ChangeRecorder;  // db/change_recorder.hpp
+class UseIndex;        // db/use_index.hpp
 
 /// Observable definition flags ("Cell definitions and the cell namespace").
 struct CellFlags {
@@ -145,9 +147,25 @@ class CellDef {
   [[nodiscard]] std::vector<Element>& elements() noexcept { return elements_; }
   [[nodiscard]] const std::vector<Element>& elements() const noexcept { return elements_; }
 
-  /// Child instances, in the order the `.mag` writer observes.
+  /// Child instances in creation order (the `.mag` writer sorts them).
+  /// Taking the list for writing tells the use index to check it against
+  /// the list on its next read (db/use_index.hpp).
   [[nodiscard]] const std::vector<std::unique_ptr<CellUse>>& uses() const noexcept { return uses_; }
-  [[nodiscard]] std::vector<std::unique_ptr<CellUse>>& uses() noexcept { return uses_; }
+  [[nodiscard]] std::vector<std::unique_ptr<CellUse>>& uses() noexcept {
+    uses_touched_.store(true, std::memory_order_relaxed);
+    return uses_;
+  }
+
+  /// The cell-use index of this definition (Magic's cd_cellPlane): the
+  /// enumeration and area-search order of its uses (db/use_index.hpp).
+  /// Searches may rebuild its bins, so it is reachable from a const
+  /// definition; it guards itself with its own mutex.
+  [[nodiscard]] UseIndex& use_index() const noexcept { return *use_index_; }
+  /// Whether uses() was taken for writing since the last call (used by the
+  /// use index; clears the flag).
+  [[nodiscard]] bool take_uses_touched() const noexcept {
+    return uses_touched_.exchange(false, std::memory_order_relaxed);
+  }
 
   /// Every use of this definition, in any parent (Magic's cd_parents list:
   /// the most recently placed first). Maintained by place()/remove_use().
@@ -203,6 +221,8 @@ class CellDef {
   PropertyStore properties_;
   std::vector<Element> elements_;
   std::vector<std::unique_ptr<CellUse>> uses_;
+  mutable std::atomic<bool> uses_touched_{false};
+  std::unique_ptr<UseIndex> use_index_;  // created by the constructor, never null
   std::vector<CellUse*> instances_;
   Rect bbox_{0, 0, 1, 1};
   Rect extended_bbox_{0, 0, 1, 1};
