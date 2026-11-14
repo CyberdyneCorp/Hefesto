@@ -6,7 +6,38 @@ release notices.
 
 ## Unreleased (M5: mask generation, GDS and CIF; in progress)
 
+### Added
+
+- **`gds write` and `cif write`.** `gds write` (and a bare `gds`) writes
+  the window's root cell as GDS II, byte for byte as Magic does: structure
+  order and names, SREF/AREF, merged polygons (`gds merge`), labels and
+  label layers, read-only vendor cells copied verbatim from their source
+  GDS, full library dumps, `addendum`, `abstract` and compressed output.
+  `cif write` and `cif flat` write CIF with Magic's header, symbol numbering
+  and call order. Neither writer changes the layout: with `magic-compat`
+  OFF the UNITS follow each write's style (Q-MASK-201), colliding structure
+  names are renamed with a warning (Q-MASK-209), no file is created without
+  an output style (Q-MASK-219), and coordinates or array counts that do not
+  fit 32 bits fail the write instead of wrapping (Q-MASK-222).
+- **`gds read` and the read options.** `gds read` finds `<name>.gds`,
+  `.gds.gz`, `.strm` or the name itself, and every `gds` read option
+  (`flatten`, `flatglob`, `readonly`, `magscale`, `maskhints`, `rescale`,
+  `warning`, `polygon subcells`, `path subcells`, `unique`, ...) works with
+  Magic's argument forms. `cif read`, `cif see`, `cif paint`, `cif
+  coverage`, `cif statistics` and the remaining `cif` options work too.
+- **`cif unfracture`.** With `magic-compat` OFF it merges split tiles of
+  each generated layer before output; with it ON it prints a warning and
+  keeps Magic's behaviour (Q-MASK-413).
+
 ### Changed
+
+- **Saving restamps read-only vendor cells.** `save` and `writeall`
+  recompute a read-only cell's content-hash timestamp from the GDS file its
+  `GDS_FILE` names, as Magic's DBUpdateStamps does.
+- **Generated mask layers keep their split tiles apart.** Mask planes are
+  painted without merging collinear triangles, as Magic's CIF planes are,
+  so GDS boundary counts and CIF polygons of non-Manhattan layouts match
+  Magic's.
 
 - **Use enumeration order follows Magic's bplane.** Searches over cells
   with ten or more uses now enumerate them in Magic's binned order after a
@@ -55,6 +86,25 @@ release notices.
 
 ### Fixed
 
+- **Writing a deep hierarchy is no longer exponential.** Loading the cells
+  under the written cell re-descended into every use, as Magic does, so a
+  cell placed twice at every level of a deep hierarchy took 2^depth steps;
+  `gds write` and `cif write` now skip visits that cannot change anything,
+  with the same cells read in the same order. Placing a cell in such a
+  hierarchy (the recursion check) was exponential too. A write can be
+  cancelled while it loads cells, and the hierarchy depth limit of the
+  writers is now 1024 levels, the mask generators' limit.
+- **GDS writes fail cleanly on values outside 32 bits.** A merged polygon
+  or label whose coordinates do not fit no longer leaves a partial element
+  in the file, and the error names the cell and the exact value.
+- **CIF label layers with a scale factor.** With `magic-compat` ON a
+  `labellayer` tile is written as Magic writes it, multiplied by the
+  style's scale factor (Q-MASK-338, proposed); with it OFF it is written in
+  the units of the geometry. `cif flat` with `magic-compat` ON processes
+  timestamp mismatches after the write, as Magic does.
+- **Large inputs.** `cif read` refuses a file larger than 2 GiB before
+  reading it (CIF-READ-010), and copying a read-only vendor cell streams its
+  records instead of holding the whole structure in memory.
 - **Painting a huge triangle no longer overflows the stack.** Painting a
   triangle over existing triangles on the opposite diagonal recursed once
   per piece left on the diagonal, as Magic does, and that depth grows with

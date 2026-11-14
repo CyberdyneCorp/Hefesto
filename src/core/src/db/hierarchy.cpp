@@ -18,6 +18,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -29,12 +30,25 @@ namespace hefesto::db {
 
 namespace {
 
+// Whether `target` is `root` or under it. Each cell is searched once (a
+// cell placed twice per level of a deep hierarchy made the plain recursion
+// exponential), with an explicit stack instead of recursion.
 bool contains_def(const CellDef& root, const CellDef& target) {
-  if (&root == &target) {
-    return true;
+  std::unordered_set<const CellDef*> seen{&root};
+  std::vector<const CellDef*> pending{&root};
+  while (!pending.empty()) {
+    const CellDef* def = pending.back();
+    pending.pop_back();
+    if (def == &target) {
+      return true;
+    }
+    for (const auto& u : def->uses()) {
+      if (u->def != nullptr && seen.insert(u->def).second) {
+        pending.push_back(u->def);
+      }
+    }
   }
-  return std::any_of(root.uses().begin(), root.uses().end(),
-                     [&](const auto& u) { return u->def != nullptr && contains_def(*u->def, target); });
+  return false;
 }
 
 std::string_view last_component(std::string_view name) {
@@ -311,15 +325,6 @@ void set_use_locked(CellUse& use, bool locked) {
     }
     set_modified_flag(*use.parent);  // Q-MODEL-13 (fix)
   }
-}
-
-std::vector<CellUse*> uses_in_search_order(const CellDef& def) {
-  std::vector<CellUse*> out;
-  out.reserve(def.uses().size());
-  for (auto it = def.uses().rbegin(); it != def.uses().rend(); ++it) {
-    out.push_back(it->get());
-  }
-  return out;
 }
 
 // DBGenerateUniqueIds: dbFindNamesFunc then dbGenerateUniqueIdsFunc, both in

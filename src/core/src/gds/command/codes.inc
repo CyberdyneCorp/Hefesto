@@ -9,3 +9,8 @@
 // and describe the codes in its GDSW section.
 //
 // Owner: GDSW (openspec/changes/m5-mask-gds-cif/design.md D1/D2).
+
+HEFESTO_GDS_CODE("GDS-CMD-001", error, "Wrong number of arguments, or an unrecognized argument, in a `gds` command.")
+HEFESTO_GDS_CODE("GDS-CMD-002", error, "`gds compress` with a value outside 0 to 9; the setting is kept.")
+HEFESTO_GDS_CODE("GDS-CMD-003", error, "`gds contacts yes`: the option is accepted and does nothing (Magic's unimplemented function).")
+HEFESTO_GDS_CODE("GDS-CMD-004", error, "`gds read`: no file of the given name (with .gds, .gds.gz, .gds2, .strm or no extension) is on the search path.")

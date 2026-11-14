@@ -32,9 +32,11 @@ const tech::TypeMask& solid_mask() {
 }
 
 /// The paintable part of a mask plane: the usable plane (TiPlaneRect) less
-/// one unit on each side. db::Plane::paint merges split tiles over the area
-/// grown by 1, and that merge must not reach the boundary tiles; the
-/// one-unit rim stays space, which no operator result reaches.
+/// one unit on each side (kept from when the plane paint merged split tiles
+/// over the area grown by 1). Mask planes paint with db::PaintMerge::none,
+/// as Magic's DBPaintPlane / DBNMPaintPlane; only `cif unfracture` merges
+/// (mask::unfracture_layer). The one-unit rim stays space, which no
+/// operator result reaches.
 constexpr db::Rect kMaskUniverse = db::expand(db::whole_plane(), -1);
 
 db::Rect clip_to_plane(const db::Rect& area) noexcept {
@@ -47,7 +49,7 @@ diag::Status paint_rect(db::Plane& plane, const db::Rect& area, const db::PaintR
   if (clipped.is_null()) {
     return diag::Done{};
   }
-  return plane.paint(clipped, row);
+  return plane.paint(clipped, row, db::PaintMerge::none);
 }
 
 diag::Status paint_tri(db::Plane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
@@ -58,7 +60,7 @@ diag::Status paint_tri(db::Plane& plane, const db::Rect& area, db::Diagonal diag
     // the database rejects).
     return diag::Done{};
   }
-  return plane.paint_triangle(area, diagonal, right_side, row, magic_compat);
+  return plane.paint_triangle(area, diagonal, right_side, row, magic_compat, nullptr, db::PaintMerge::none);
 }
 
 /// Paints or erases every solid tile of `from` into `into`.

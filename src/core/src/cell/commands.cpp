@@ -463,7 +463,7 @@ CommandResult save_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
       return fail(codes::kBadUsage, "Must specify name for cell (UNNAMED).");
     }
     s.process_mismatches();
-    update_timestamps(s.ed.cells, def, stamp_from_time(s.io.clock.wall_now()));
+    update_save_stamps(s.io, def, stamp_from_time(s.io.clock.wall_now()));
     if (!inv.args.empty()) {
       return save_as(s, *def, inv.args[0]);
     }
@@ -557,17 +557,19 @@ bool writeall_one(WriteallRun& run, db::CellDef& def) {
 // The named cells' timestamps are updated; false when none of them exists
 // ("No such cell" for each unknown one).
 bool stamp_named_cells(WriteallRun& run, std::int64_t now) {
-  std::size_t missing = 0;
+  std::vector<db::CellDef*> found;
   for (const std::string& name : run.names) {
     db::CellDef* def = run.s.ed.cells.find(name);
     if (def == nullptr) {
       run.s.emit(codes::kNoCell, "No such cell \"" + name + "\".");
-      ++missing;
       continue;
     }
-    update_timestamps(run.s.ed.cells, def, now);
+    found.push_back(def);
   }
-  return missing < run.names.size();
+  // One scan cache for the whole list (stamping prints nothing, so the
+  // messages keep their order).
+  update_save_stamps(run.s.io, found, now);
+  return !found.empty();
 }
 
 CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv) {
@@ -586,7 +588,7 @@ CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv)
     }
     const std::int64_t now = stamp_from_time(s.io.clock.wall_now());
     if (run.names.empty()) {
-      update_timestamps(s.ed.cells, nullptr, now);
+      update_save_stamps(s.io, nullptr, now);
     } else if (!stamp_named_cells(run, now)) {
       return CommandResult::success();
     }

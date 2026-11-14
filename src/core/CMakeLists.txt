@@ -42,6 +42,7 @@ add_library(hefesto_core STATIC
   src/platform/memory_file_system.cpp
   src/platform/services.cpp
   src/platform/session_log.cpp
+  src/platform/stack_thread.cpp
   src/platform/storage.cpp
   src/platform/task_executor.cpp
   src/settings/project_settings.cpp

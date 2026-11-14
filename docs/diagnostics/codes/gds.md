@@ -51,15 +51,44 @@ The read engine's grid and unit messages (`MASK-INPUT-010`..`012`) are printed a
 
 ## WRITE
 
-Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`; capability gds-write; design D12). Owner: GDSW.
+Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`; capability gds-write; design D12). Owner: GDSW. GDS-WRITE-001 to 019 belong to the writer core, 020 to 039 to the merged-polygon and label emitters, 040 on to verbatim copy, full dump, addendum and abstract views (`src/core/src/gds/write/codes.hpp`).
 
-No codes yet.
+- `GDS-WRITE-001`: the informative "   Generating output for cell <name>" line Magic prints for each cell the write reaches (gds-write "Magic write-time side effects").
+- `GDS-WRITE-002`: Magic's "No CIF/GDS output style set!". The check is made before the output file is opened, so no file is created or truncated (Q-MASK-219, a fix in both modes).
+- `GDS-WRITE-003`: Magic's "Failure to read entire subtree of the cell." and "Failed on cell <name>.": the prepare phase's subtree loading met a cell it cannot read and `gds undefined` is disallow. The output file is left empty, as Magic leaves the file it opened (gds-write "Write preconditions and subtree loading").
+- `GDS-WRITE-004`: a value written to an integer record field does not fit it: an XY coordinate outside the signed 32-bit range after scaling, or an array's column or row count outside the signed 16-bit range of COLROW (Q-MASK-222, a fix in both modes; Magic overflows or keeps the low bits). The message names the cell and the value, and the write fails; the stream is still terminated.
+- `GDS-WRITE-005`: the output style's units are not a whole number of nanometers (or angstroms with `units angstroms`): with magic-compat ON Magic's three lines ("Calma output error:  Output scale units are <n> nanometers.", "Magic Calma output will be scaled incorrectly!" and the `units angstroms` advice) for each structure, and the mis-scaled output is written; with it OFF the write is refused before the file is opened (Q-MASK-225).
+- `GDS-WRITE-006`: Magic's warnings for a changed name or string: "Warning: character 'c' changed to 'd' in name <name>", "Warning: string in output unprintable; changed to 'XXXXX<n>'", "Warning: characters changed in string '<text>'; modified string is '<mapped>'", "Warning: Unprintable character changed to 'X' in label." and the `string-limit` truncation warning. The layout keeps the original text (Q-MASK-208).
+- `GDS-WRITE-007`: two cells of one write map to the same structure name; the later one in write order is written as `XXXXX<id>` (or `XXXXX<id>_<k>`), with every reference to it (Q-MASK-209, a fix in both modes).
+- `GDS-WRITE-008`: Magic's "Error:  Cell "<name>" is an abstract view;  cannot write GDS." with `gds abstract disallow`. With magic-compat ON the write fails at that cell, as in Magic; with it OFF the whole tree is checked first and no file is opened (Q-MASK-226).
+- `GDS-WRITE-009`: Magic's "Warning:  Writing abstract view of "<name>" to GDS." with `gds abstract allow`.
+- `GDS-WRITE-010`: the output file cannot be opened ("Cannot open <file> to write GDS-II stream output"), or a write failed: Magic's "I/O error in writing file <file>." and "File may be incompletely written."; the terminated file is kept.
+- `GDS-WRITE-011`: Magic's "Error:  Cell has the default name "(UNNAMED)"!"; the cell is written anyway.
+- `GDS-WRITE-012`: Magic's "<n> problems occurred.  See feedback entries." after a write whose mask generation reported problems.
+- `GDS-WRITE-013`: the write was cancelled (Q-MASK-414); the temporary file is removed and the target is untouched.
+- `GDS-WRITE-014`: the hierarchy under the written cell is deeper than 1024 levels (the mask generators' limit); the writer stops instead of exhausting the stack (Magic has no limit).
+- `GDS-WRITE-020`: port labels of a type whose output style has no `labels <type> port` layer (Q-MASK-206). With magic-compat ON they are not written, as in Magic; OFF writes them on the port-text layer. Reported once per type and write, as a native diagnostic (Magic prints nothing, so the `magic` format drops it).
+- `GDS-WRITE-040`: Magic's "   Copying output for cell <name> from <file>" line for each read-only cell with content (gds-write "Magic write-time side effects").
+- `GDS-WRITE-041`: Magic's "Calma output error:  Can't find GDS file "<file>" for vendor cell "<name>".  It will not be output.": the file named by GDS_FILE is not on the cell search path, the library path or next to the cell's .mag file. The write fails unless `gds undefined` is allow; nothing is reported when the cell's first parent is itself a vendor cell (gds-write "Verbatim copy of read-only cells").
+- `GDS-WRITE-042`: A sanity check of a verbatim copy failed (Magic's "Bad vendor GDS file reference!", "Structure name not found ending at GDS file position <n>", "Structure definition not found at GDS file position <n>", "Can't read cell from vendor GDS" or "Structure end definition not found at GDS file position <n>", with "Can't write cell from vendor GDS.  Using magic's internal definition"). Nothing of the copy was written and the cell is generated from its layout.
+- `GDS-WRITE-043`: Magic's "Calma output warning:  Structure definition has name <a> but cell definition has name <b>." and "The structure definition will be given the cell name."
+- `GDS-WRITE-044`: Magic's "Calma output error:  Failed to write cell "<name>" from vendor GDS.  Output is invalid!": the copy could not be read or written after its BGNSTR; the cell fails.
+- `GDS-WRITE-045`: An SNAME inside a verbatim copy names none of the cell's children as they are written (Q-MASK-216): with magic-compat ON the bytes are copied as they are, with this warning; with it OFF SNAMEs that name a child are rewritten to the child's output name and the others keep their text with this warning. Native only.
+- `GDS-WRITE-046`: A full dump's library has units other than 1 nm (1 Angstrom with `units angstroms`) per database unit: "Incompatible scale factor of <mpd>, must be 1e-9." and "Error:  Library <name> has incompatible database units!". Checked whatever `gds readonly` is, in both modes, and reported once per library and write (Q-MASK-212, fix); the write fails unless `gds undefined` is allow.
+- `GDS-WRITE-047`: Magic's `Reading "<name>".` for each structure a full dump copies.
+- `GDS-WRITE-048`: Magic's "Diagnostic:  <name> is a forward reference?" for an SNAME of a full dump naming a structure not yet copied; it is written with the library prefix (or the `[[0]]` form).
+- `GDS-WRITE-049`: Errors of a full dump: a read error in the vendor file ("Error while reading cell "<name>" (byte position <n>): ..."), "Structure <name> defined redundantly in GDS", "Error:  Unreferenced cell <name> prefix is unrecorded!" and, at the end of the write, "Error:  Cell <name> is not defined in the output file!".
+- `GDS-WRITE-050`: With magic-compat ON, a cell appended at the end of the write for a forward reference no dump defined is written under its own name, as in Magic, so the SNAME written for it (the prefixed name) dangles (Q-MASK-214). With it OFF the cell is written under the recorded name and nothing is reported. Native only.
+- `GDS-WRITE-051`: All 936 library prefixes of a write are taken; the next full dump is written without a prefix (Magic loops forever).
 
 ## CMD
 
 Codes of the `gds`/`calma` command and its settings (`src/core/src/gds/command/`; design D15). Owner: GDSW.
 
-No codes yet.
+- `GDS-CMD-001`: Magic's "Wrong number of arguments in "gds" command.  Try ":gds help" for help.", for a wrong argument count or an argument the option does not accept (the setting is unchanged); `gds datestamp` prefixes "Unrecognizable date stamp "<text>"." (gds-write "Write option settings and defaults").
+- `GDS-CMD-002`: Magic's "Bad compression value <n>.  Value must be in the range 0 to 9."; the compression level is kept.
+- `GDS-CMD-003`: Magic's "Unimplemented function:  Contacts will be output as individual cuts." for `gds contacts yes`; nothing changes.
+- `GDS-CMD-004`: Magic's "Cannot open <f>.gds, <f>.strm or <f> to read GDS-II stream input." for `gds read <f>` when no candidate opens (gds-read "Read command and file lookup"); nothing is read.
 
 ## Table
 
@@ -75,6 +104,10 @@ fails when the two disagree.
 <!-- BEGIN DIAGNOSTIC CODES (generated by `hefesto-cli --diagnostic-codes=gds`) -->
 | Code | Default severity | Meaning |
 |---|---|---|
+| `GDS-CMD-001` | error | Wrong number of arguments, or an unrecognized argument, in a `gds` command. |
+| `GDS-CMD-002` | error | `gds compress` with a value outside 0 to 9; the setting is kept. |
+| `GDS-CMD-003` | error | `gds contacts yes`: the option is accepted and does nothing (Magic's unimplemented function). |
+| `GDS-CMD-004` | error | `gds read`: no file of the given name (with .gds, .gds.gz, .gds2, .strm or no extension) is on the search path. |
 | `GDS-READ-001` | error | Unexpected record type in input: the GDS record found is not the one the grammar expects. |
 | `GDS-READ-002` | error | Unexpected EOF: the GDS stream ends before the record the grammar expects. |
 | `GDS-READ-003` | error | Incompatible scale factor for a read-only (`gds readonly yes`) read; nothing is read. |
@@ -92,4 +125,31 @@ fails when the two disagree.
 | `GDS-STREAM-003` | error | A seek moved past the end of the (decompressed) GDS stream. |
 | `GDS-STREAM-004` | error | A GDS record payload exceeds 65531 bytes and cannot be written. |
 | `GDS-STREAM-005` | error | Gzip compression of the GDS output failed or the level is not 1 to 9. |
+| `GDS-WRITE-001` | info | GDS write progress: `Generating output for cell <name>` for each cell the write reaches. |
+| `GDS-WRITE-002` | error | No CIF/GDS output style set: nothing is written and no file is opened (Q-MASK-219). |
+| `GDS-WRITE-003` | error | Failure to read entire subtree of the cell: a cell under the root cannot be read and `gds undefined` is disallow. |
+| `GDS-WRITE-004` | error | A GDS output value does not fit its integer record field (Q-MASK-222); the write fails. |
+| `GDS-WRITE-005` | error | The output style's units are not a whole number of nanometers or angstroms (Q-MASK-225). |
+| `GDS-WRITE-006` | warning | A name or string was changed for GDS output (character table, unprintable character, string-limit truncation). |
+| `GDS-WRITE-007` | warning | Two cells map to the same structure name; the later one is renamed (Q-MASK-209). |
+| `GDS-WRITE-008` | error | A cell is an abstract view and `gds abstract` is disallow; the write fails (Q-MASK-226). |
+| `GDS-WRITE-009` | warning | An abstract view is written to GDS (`gds abstract allow`). |
+| `GDS-WRITE-010` | error | The GDS output file cannot be opened or written; a failed write reports that the file may be incomplete. |
+| `GDS-WRITE-011` | error | The written cell has the default name (UNNAMED). |
+| `GDS-WRITE-012` | info | `<n> problems occurred.  See feedback entries.` after a write whose mask generation reported problems. |
+| `GDS-WRITE-013` | error | The GDS write was cancelled; no output file is left. |
+| `GDS-WRITE-014` | error | The cell hierarchy under the written cell is deeper than the writer's limit. |
+| `GDS-WRITE-020` | warning | Port labels of a type without a `labels <type> port` layer are skipped (magic-compat ON) or written on the port-text layer (OFF) (Q-MASK-206). |
+| `GDS-WRITE-040` | info | `   Copying output for cell <name> from <file>` for each read-only cell copied from its vendor GDS file. |
+| `GDS-WRITE-041` | error | The vendor GDS file of a read-only cell cannot be found; the cell is not written. |
+| `GDS-WRITE-042` | error | A sanity check of a verbatim vendor copy failed; the cell is written from its layout instead. |
+| `GDS-WRITE-043` | warning | The STRNAME before a vendor structure differs from the cell name; the copy takes the cell name. |
+| `GDS-WRITE-044` | error | A vendor copy failed after its header was written; the output is invalid. |
+| `GDS-WRITE-045` | warning | An SNAME inside a copied vendor structure names no child's output structure (Q-MASK-216). |
+| `GDS-WRITE-046` | error | A vendor library's units do not match the output style; the full dump is refused (Q-MASK-212). |
+| `GDS-WRITE-047` | info | `Reading "<name>".` for each structure of a full dump. |
+| `GDS-WRITE-048` | warning | `Diagnostic:  <name> is a forward reference?` in a full dump. |
+| `GDS-WRITE-049` | error | A full dump met a malformed record, a redundant structure, an unrecorded prefix or an undefined cell. |
+| `GDS-WRITE-050` | warning | A structure appended for an undefined vendor reference keeps its own name, so the SNAME dangles (Q-MASK-214). |
+| `GDS-WRITE-051` | error | Every two-character library prefix is taken; a full dump is written without a prefix. |
 <!-- END DIAGNOSTIC CODES -->

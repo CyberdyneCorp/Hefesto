@@ -34,11 +34,10 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     ``.ext`` header line ``timestamp <n>``: the number becomes ``0``.
 ``magic-tech-sections``
     Console output (stdout/stderr) of Magic's ``tech load`` that comes from
-    the cifinput, cifoutput and extract sections, which M1 reads but does
-    not interpret (openspec/changes/m1-core-viewer/design.md, Non-Goals:
-    DRC, extraction, mask output; capabilities mask-* and extract-*). Exactly
-    these Magic messages are removed, each line matched in full:
-    ``Input style <s>: scaleFactor=<n>, multiplier=<n>`` (cif/CIFrdtech.c:1102),
+    the extract section, which Hefesto reads but does not interpret until
+    M7 (openspec/changes/m1-core-viewer/design.md, Non-Goals: extraction;
+    capability extract-*). Exactly these Magic messages are removed, each
+    line matched in full:
     ``Contact size value ignored (using GDS generation rules).``
     (extract/ExtTech.c:2296), ``The following types are not handled by
     extraction ...`` with its type-list line (extract/ExtTech.c:3609-3618), and
@@ -132,10 +131,7 @@ def mask_timestamp_line(data: bytes) -> bytes:
     return _TIMESTAMP_LINE.sub(rb"\g<1>0\g<2>", data)
 
 
-_TECH_LINE = re.compile(
-    rb"^(?:Input style .*: scaleFactor=\d+, multiplier=\d+"
-    rb"|Contact size value ignored \(using GDS generation rules\)\.)\r?$"
-)
+_TECH_LINE = re.compile(rb"^Contact size value ignored \(using GDS generation rules\)\.\r?$")
 _EXTRACT_STYLE_BODY = re.compile(
     rb"^(?:  (?:Missing|Conflicting) planeorder for plane\(s\):"
     rb"|  Magic will use the default planeorder for this style:"

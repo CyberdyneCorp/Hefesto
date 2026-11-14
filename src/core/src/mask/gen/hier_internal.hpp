@@ -26,7 +26,8 @@ struct HierPass {
         ctx(c),
         cell(def),
         radius(generation_radius(st, src.compat)),
-        flattener(*src.technology, src.compat.magic_compat) {}
+        flattener(*src.technology, src.compat.magic_compat),
+        unfracture(src.unfracture) {}
 
   // NOLINTBEGIN(cppcoreguidelines-avoid-const-or-ref-data-members)
   const GenerationSource& source;
@@ -36,6 +37,7 @@ struct HierPass {
   // NOLINTEND(cppcoreguidelines-avoid-const-or-ref-data-members)
   std::int64_t radius;
   Flattener flattener;
+  /// `cif unfracture` for the yank generations (the source's switch).
   bool unfracture = false;
   /// The style's layer classes (set by the array pass).
   const LayerClasses* classes = nullptr;

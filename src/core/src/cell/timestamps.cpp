@@ -10,9 +10,12 @@
 #include "hefesto/cell/timestamps.hpp"
 
 #include <algorithm>
+#include <array>
 #include <set>
 
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/gds/read/vendor.hpp"
 
 namespace hefesto::cell {
 
@@ -177,6 +180,21 @@ void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t
   for (db::CellDef* def : pending) {
     stamp_cell(*def, now, vendor_stamp);
   }
+}
+
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup) {
+  const std::array<db::CellDef*, 1> one{only};
+  update_timestamps(library, std::span<db::CellDef* const>{one.data(), one.size()}, now, lookup);
+}
+
+void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
+                       LookupContext& lookup) {
+  gds::VendorStamper stamper{lookup};
+  const VendorStampFn stamp = [&stamper](const db::CellDef& def) { return stamper.stamp(def); };
+  for (db::CellDef* def : cells) {
+    update_timestamps(library, def, now, stamp);
+  }
+  stamper.flush();
 }
 
 void set_explicit_timestamp(db::CellDef& def, std::int64_t value, bool magic_compat) {

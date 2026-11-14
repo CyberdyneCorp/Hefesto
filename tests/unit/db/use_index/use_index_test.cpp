@@ -291,12 +291,10 @@ TEST_CASE("Binned order with magic-compat ON", "[cap:gds-write][req:Structure or
   CHECK(db::uses_in_search_order(top, kOn) ==
         std::vector<db::CellUse*>{placed[0], placed[1], placed[6], placed[7], placed[2], placed[3], placed[8],
                                   placed[9], placed[4], placed[5]});
-  // The one-argument helper keeps the M1-M4 order (newest first) until
-  // task 5.2 moves its callers to the session's compat.
-  CHECK(db::uses_in_search_order(top) ==
+  // magic-compat OFF keeps the M1-M4 order (newest first).
+  CHECK(db::uses_in_search_order(top, kOff) ==
         std::vector<db::CellUse*>{placed[9], placed[8], placed[7], placed[6], placed[5], placed[4], placed[3],
                                   placed[2], placed[1], placed[0]});
-  CHECK(db::uses_in_search_order(top) == db::uses_in_search_order(top, kOff));
 }
 
 TEST_CASE("Fresh-session write of a cell whose uses touch its bounding box", "[cap:gds-write][req:Structure ordering]") {

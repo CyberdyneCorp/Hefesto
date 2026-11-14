@@ -1,4 +1,4 @@
-# MASK-CF-017: Labels with and without an output label layer, a labellayer style and cif arealabels yes.
+# MASK-CF-017: Labels with and without an output label layer (a layer with labels) and cif arealabels yes; labellayer is MASK-CF-028.
 proc probe {script} {
     set code [catch {uplevel #0 $script} result]
     puts [list $code $result]
