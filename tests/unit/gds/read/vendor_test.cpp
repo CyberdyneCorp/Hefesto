@@ -312,3 +312,38 @@ TEST_CASE("editing a vendor cell keeps its stamp; pointing it to new data change
   cell::update_timestamps(library, &pad, 700);
   CHECK(pad.timestamp() == kEmptyStamp);
 }
+
+TEST_CASE("the save-path timestamp update restamps vendor cells through the search path",
+          "[cap:gds-read][req:When content-hash timestamps are assigned]") {
+  const VendorFile f = vendor_file();
+  Lookup look;
+  look.put("lib/cells.gds", f.bytes);
+  db::CellLibrary library;
+  db::CellDef& top = *library.create("top", kPlanes).value();
+  db::CellDef& pad = *library.create("pad", kPlanes).value();
+  REQUIRE(db::place(top, pad, db::PlaceOptions{}).ok());
+  make_vendor(pad, "cells.gds", f.e_start);
+  pad.set_timestamp(kLeafStamp);
+  top.set_timestamp(100);
+  top.flags().needs_new_timestamp = false;
+  pad.flags().needs_new_timestamp = true;
+
+  cell::update_timestamps(library, &pad, 600, look.ctx);
+  CHECK(pad.timestamp() == kEmptyStamp);
+  CHECK(top.timestamp() == 600);
+
+  // Each pass drops its scan cache, so the next pass reads the file again.
+  Gds other;
+  other.library("lib");
+  look.put("lib/cells.gds", other.bytes());
+  db::set_property(pad, "GDS_START", db::PropertyValue{db::DoubleList{{static_cast<std::int64_t>(f.a_start)}}});
+  pad.flags().needs_new_timestamp = true;
+  cell::update_timestamps(library, nullptr, 700, look.ctx);
+  CHECK(pad.timestamp() == kEmptyStamp);  // no structure starts there now: unchanged
+  CHECK(top.timestamp() == 600);
+  look.put("lib/cells.gds", f.bytes);
+  pad.flags().needs_new_timestamp = true;
+  cell::update_timestamps(library, nullptr, 800, look.ctx);
+  CHECK(pad.timestamp() == kLeafStamp);
+  CHECK(top.timestamp() == 800);
+}
