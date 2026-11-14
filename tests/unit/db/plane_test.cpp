@@ -190,6 +190,20 @@ TEST_CASE("whole-plane rectangle and plane limits", GEO "[req:Integer database c
   CHECK(p.tile_count() == 1);
 }
 
+TEST_CASE("paint and erase reaching the plane edge", GEO "[req:Integer database coordinate space]") {
+  // Regression: the split-tile merge after a paint looked one unit beyond
+  // the painted area, into the boundary tiles, when the area touched the
+  // plane edge without being the whole plane.
+  const Rect bottom{db::kPlaneMin, db::kPlaneMin, db::kPlaneMax, 0};
+  db::Plane p;
+  paint(p, bottom);
+  CHECK(rects(p) == std::vector<Rect>{bottom});
+  REQUIRE(p.paint(bottom, db::test::erase_row_of(kM1)).ok());
+  CHECK(p.empty());
+  tri(p, Rect{db::kPlaneMin, db::kPlaneMin, db::kPlaneMin + 10, db::kPlaneMin + 10}, db::TriangleCorner::sw);
+  CHECK(split_tiles(p).size() == 1);
+}
+
 TEST_CASE("a fresh plane is one space tile", GEO "[req:Plane model]") {
   db::Plane p;
   const auto all = db::test::tiles(p, tech::TypeMask::all());
