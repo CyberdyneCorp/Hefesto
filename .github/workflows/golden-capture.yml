@@ -351,7 +351,9 @@ jobs:
   capture-gds-rt:
     name: MASK-RT round trips (${{ matrix.shard }})
     needs: [plan, rt-data]
-    if: needs.plan.outputs.rt_any == 'true'
+    # A failed data-set job must not skip every shard: each shard falls back
+    # to its own fetch.
+    if: ${{ !cancelled() && needs.plan.outputs.rt_any == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
