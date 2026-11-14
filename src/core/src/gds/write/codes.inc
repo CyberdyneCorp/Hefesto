@@ -27,3 +27,4 @@ HEFESTO_GDS_CODE("GDS-WRITE-014", error, "The cell hierarchy under the written c
 HEFESTO_GDS_CODE("GDS-WRITE-015", error, "A read-only vendor cell with GDS content cannot be copied yet (verbatim copy and full dump arrive with task 10.7).")
 HEFESTO_GDS_CODE("GDS-WRITE-004", error, "A GDS output value does not fit its integer record field (Q-MASK-222); the write fails.")
 HEFESTO_GDS_CODE("GDS-WRITE-006", warning, "A name or string was changed for GDS output (character table, unprintable character, string-limit truncation).")
+HEFESTO_GDS_CODE("GDS-WRITE-020", warning, "Port labels of a type without a `labels <type> port` layer are skipped (magic-compat ON) or written on the port-text layer (OFF) (Q-MASK-206).")

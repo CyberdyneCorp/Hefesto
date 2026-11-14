@@ -8,8 +8,12 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/emit.cpp
   ${CMAKE_CURRENT_LIST_DIR}/labels.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/labels_sort.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/labels_text.cpp
   ${CMAKE_CURRENT_LIST_DIR}/library.cpp
   ${CMAKE_CURRENT_LIST_DIR}/merge.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/merge_plane.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/merge_rings.cpp
   ${CMAKE_CURRENT_LIST_DIR}/names.cpp
   ${CMAKE_CURRENT_LIST_DIR}/references.cpp
   ${CMAKE_CURRENT_LIST_DIR}/subtree.cpp

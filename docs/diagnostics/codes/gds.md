@@ -68,6 +68,7 @@ Codes of the GDS writer, verbatim copy and full dump (`src/core/src/gds/write/`;
 - `GDS-WRITE-013`: the write was cancelled (Q-MASK-414); the temporary file is removed and the target is untouched.
 - `GDS-WRITE-014`: the hierarchy under the written cell is deeper than 4096 levels; the writer stops instead of exhausting the stack (Magic has no limit).
 - `GDS-WRITE-015`: a read-only vendor cell with GDS content (verbatim copy or full dump) cannot be written yet; it arrives with task 10.7.
+- `GDS-WRITE-020`: port labels of a type whose output style has no `labels <type> port` layer (Q-MASK-206). With magic-compat ON they are not written, as in Magic; OFF writes them on the port-text layer. Reported once per type and write, as a native diagnostic (Magic prints nothing, so the `magic` format drops it).
 
 ## CMD
 
@@ -126,4 +127,5 @@ fails when the two disagree.
 | `GDS-WRITE-013` | error | The GDS write was cancelled; no output file is left. |
 | `GDS-WRITE-014` | error | The cell hierarchy under the written cell is deeper than the writer's limit. |
 | `GDS-WRITE-015` | error | A read-only vendor cell with GDS content cannot be copied yet (verbatim copy and full dump arrive with task 10.7). |
+| `GDS-WRITE-020` | warning | Port labels of a type without a `labels <type> port` layer are skipped (magic-compat ON) or written on the port-text layer (OFF) (Q-MASK-206). |
 <!-- END DIAGNOSTIC CODES -->
