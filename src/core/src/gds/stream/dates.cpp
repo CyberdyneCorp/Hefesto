@@ -332,7 +332,7 @@ std::optional<LocalTime> to_local_time(std::int64_t utc, std::string_view zone) 
   if (utc < std::numeric_limits<std::time_t>::min() || utc > std::numeric_limits<std::time_t>::max()) {
     return std::nullopt;
   }
-  const auto t = static_cast<std::time_t>(utc);
+  const std::time_t t = utc;  // in range (checked above); same type on LP64 Linux
   std::tm tm{};
 #if defined(_WIN32)
   if (localtime_s(&tm, &t) != 0) {
@@ -358,7 +358,7 @@ std::int64_t from_local_time(const LocalTime& local, std::string_view zone) {
   tm.tm_min = static_cast<int>(local.minute);
   tm.tm_sec = static_cast<int>(local.second);
   tm.tm_isdst = -1;
-  return static_cast<std::int64_t>(std::mktime(&tm));  // Magic keeps mktime's -1 on error too
+  return std::mktime(&tm);  // Magic keeps mktime's -1 on error too
 }
 
 std::int64_t decode_date(std::span<const std::int16_t, 6> fields, std::string_view zone, bool magic_compat) {

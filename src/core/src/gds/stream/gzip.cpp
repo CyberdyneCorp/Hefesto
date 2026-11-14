@@ -217,7 +217,7 @@ diag::Status GzipSource::restore(const Checkpoint& checkpoint) {
 
 diag::Status GzipSource::seek(std::uint64_t offset) {
   if (zs_ && offset >= chunk_start_ && offset <= chunk_start_ + out_len_) {
-    out_pos_ = static_cast<std::size_t>(offset - chunk_start_);  // inside the current chunk
+    out_pos_ = offset - chunk_start_;  // inside the current chunk, so within size_t
     return diag::Done{};
   }
   if (!zs_ || offset < position()) {
