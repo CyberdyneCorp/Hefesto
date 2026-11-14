@@ -385,7 +385,7 @@ Compatibility: exact
 | `orthogonal` | `[fill|remove]` | exact words; default `remove` |
 | `not-square` | — | (extra arguments are ignored) |
 
-An operation statement without a current layer reports `Must define layer before specifying operation.`. Rejected statements are not appended. For `bloat-*`, after parsing, the distance of every type in `types` is forced to 0, and all of `types` ∪ named `types2` must lie in one database plane (else error and plane 0 is used). For `bloat-all` with database types the same single-plane rule applies; with mask layers the bloat is marked as operating on mask layers.
+An operation statement without a current layer reports `Must define layer before specifying operation.`. Rejected statements are not appended. Distances past the usable plane, where Magic's int arithmetic overflows, are refused in both magic-compat modes: a `grow`/`shrink` distance, a `bridge` distance or width, or a `bloat-all` clip distance above 1073741818 rejects the statement with `Grow/shrink distance must be at most 1073741818.`, `Bridge distance and width must be at most 1073741818.` or `Bloat distance must be at most 1073741818.`; a `bloat-*` pair distance beyond ±1073741818 reports the last message and is clamped to it. Rescaling clamps distances to the same bound. For `bloat-*`, after parsing, the distance of every type in `types` is forced to 0, and all of `types` ∪ named `types2` must lie in one database plane (else error and plane 0 is used). For `bloat-all` with database types the same single-plane rule applies; with mask layers the bloat is marked as operating on mask layers.
 
 (Magic ref: cif/CIFtech.c:1064-1622)
 

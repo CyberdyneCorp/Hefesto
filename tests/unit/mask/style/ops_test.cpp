@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/geometry.hpp"
 #include "style_fixture.hpp"
 
 namespace mask = hefesto::mask;
@@ -169,6 +170,28 @@ TEST_CASE("bloat-all", "[cap:mask-output-styles][req:Operator statement argument
         std::vector<std::string>{"Can't mix CIF and magic layers in bloat statement."});
   check_rejected("bloat-all ndiff", wrong("bloat-all"));
   check_rejected("bloat-all ndiff poly 0", "Bloat distance must be greater than zero.");
+}
+
+TEST_CASE("distances past the usable plane are rejected", "[cap:mask-output-styles][req:Operator statement arguments]") {
+  // The operators add distances to plane coordinates in 32 bits; Magic's
+  // arithmetic overflows on these (`grow 2000000000`).
+  const std::string limit = std::to_string(hefesto::db::kPlaneMax);
+  check_rejected("grow 2000000000", "Grow/shrink distance must be at most " + limit + ".");
+  check_rejected("shrink " + std::to_string(hefesto::db::kPlaneMax + 1),
+                 "Grow/shrink distance must be at most " + limit + ".");
+  const One largest = one("grow " + limit);
+  REQUIRE(largest.op.has_value());
+  CHECK(largest.op->distance == hefesto::db::kPlaneMax);
+  check_rejected("bridge 2000000000 6", "Bridge distance and width must be at most " + limit + ".");
+  check_rejected("bridge 5 2000000000", "Bridge distance and width must be at most " + limit + ".");
+  check_rejected("bloat-all ndiff poly 2000000000", "Bloat distance must be at most " + limit + ".");
+  const One bloat = one("bloat-max ndiff poly 2000000000 pdiff -2000000000");
+  REQUIRE(bloat.op.has_value());
+  CHECK(bloat.messages == std::vector<std::string>{"Bloat distance must be at most " + limit + ".",
+                                                   "Bloat distance must be at most " + limit + "."});
+  const Parsed p = parse("bloat-max ndiff poly 2000000000 pdiff -2000000000");
+  CHECK(bloat.op->bloat->distance[p.r.type("poly")] == hefesto::db::kPlaneMax);
+  CHECK(bloat.op->bloat->distance[p.r.type("pdiff")] == -hefesto::db::kPlaneMax);
 }
 
 TEST_CASE("net, tagged and mask-hints", "[cap:mask-output-styles][req:Operator statement arguments]") {

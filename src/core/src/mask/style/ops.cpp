@@ -16,7 +16,9 @@
 // Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
 
 #include <array>
+#include <string>
 
+#include "hefesto/db/geometry.hpp"
 #include "mask/style/reader.hpp"
 #include "mask/style/text.hpp"
 
@@ -81,6 +83,17 @@ namespace hefesto::mask::style_detail {
 namespace {
 
 using style_text::c_atoi;
+
+/// A distance past the usable plane. The operators add distances to plane
+/// coordinates in 32 bits, so such a distance is rejected (Magic's int
+/// arithmetic overflows on it).
+bool beyond_plane(std::int32_t d) noexcept {
+  return d > db::kPlaneMax || d < -db::kPlaneMax;
+}
+
+std::string beyond_plane_text(const std::string& what) {
+  return what + " must be at most " + std::to_string(db::kPlaneMax) + ".";
+}
 
 /// The operator parser of one statement.
 class OpParser {
@@ -187,6 +200,9 @@ std::optional<LayerOp> OpParser::grow() {
   if (op_.distance <= 0) {
     return reject("Grow/shrink distance must be greater than zero.");
   }
+  if (beyond_plane(op_.distance)) {
+    return reject(beyond_plane_text("Grow/shrink distance"));
+  }
   return done();
 }
 
@@ -212,6 +228,9 @@ std::optional<LayerOp> OpParser::bridge() {
   const std::int32_t width = c_atoi(t_[2]);
   if (width <= 0) {
     return reject("Bridge width must be greater than zero.");
+  }
+  if (beyond_plane(op_.distance) || beyond_plane(width)) {
+    return reject(beyond_plane_text("Bridge distance and width"));
   }
   if (op_.kind == OpKind::bridge_lim) {
     set_layers(3);
@@ -244,6 +263,9 @@ std::optional<LayerOp> OpParser::bloat_all() {
     if (op_.distance <= 0) {
       return reject("Bloat distance must be greater than zero.");
     }
+    if (beyond_plane(op_.distance)) {
+      return reject(beyond_plane_text("Bloat distance"));
+    }
   }
   if (!bloat.types.empty()) {
     set_distance(table, bloat.types, 1);
@@ -274,6 +296,10 @@ void OpParser::bloat_pair(BloatTable& table, tech::TypeMask& bloat_types, std::s
   if (distance < 0 && op_.kind == OpKind::bloat_or) {
     messages().error("Bloat-or distances must not be negative.");
     distance = 0;
+  }
+  if (beyond_plane(distance)) {
+    messages().error(beyond_plane_text("Bloat distance"));
+    distance = distance < 0 ? -db::kPlaneMax : db::kPlaneMax;
   }
   set_distance(table, mask, distance);
 }

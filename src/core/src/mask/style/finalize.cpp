@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdlib>
 
+#include "hefesto/db/geometry.hpp"
 #include "mask/style/reader.hpp"
 #include "mask/style/text.hpp"
 
@@ -131,13 +132,21 @@ bool has_odd_cut(const OutputStyle& style) {
   return false;
 }
 
+/// A rescaled distance, kept within the usable plane as the reader keeps
+/// the distances it reads (the operators add it to plane coordinates in
+/// 32 bits).
+std::int32_t clamp_distance(std::int64_t v) {
+  return static_cast<std::int32_t>(std::clamp<std::int64_t>(v, -db::kPlaneMax, db::kPlaneMax));
+}
+
 /// Multiplies one client value by d; returns the value folded into the
 /// expander reduction, or nullopt for a zero value.
 std::optional<std::int64_t> scale_value(OpKind kind, std::size_t j, std::int32_t& v, std::int64_t d, bool odd_space) {
   if (v == 0) {
     return std::nullopt;
   }
-  v = clamp_int(v * d);
+  const bool bridge = kind == OpKind::bridge || kind == OpKind::bridge_lim;
+  v = bridge ? clamp_distance(v * d) : clamp_int(v * d);  // a bridge width is a distance
   std::int64_t folded = std::abs(std::int64_t{v});
   const bool cut = kind == OpKind::squares || kind == OpKind::slots;
   if (kind == OpKind::squares ? is_halved_squares(j) : (kind == OpKind::slots && is_halved_slots(j))) {
@@ -165,7 +174,7 @@ bool scales_values(OpKind kind) {
 void scale_op(LayerOp& op, std::int64_t d, bool odd_space, std::int64_t expander, std::int64_t& lexpand) {
   const auto fold = [&](std::int64_t value) { lexpand = gcf(lexpand, gcf(value, expander)); };
   if (op.distance != 0) {
-    op.distance = clamp_int(op.distance * d);
+    op.distance = clamp_distance(op.distance * d);
     fold(std::abs(std::int64_t{op.distance}));
   }
   if (scales_values(op.kind)) {
@@ -178,7 +187,7 @@ void scale_op(LayerOp& op, std::int64_t d, bool odd_space, std::int64_t expander
   if (op.bloat) {
     for (std::int32_t& v : op.bloat->distance) {
       if (v != 0) {
-        v = clamp_int(v * d);
+        v = clamp_distance(std::int64_t{v} * d);
         fold(std::abs(std::int64_t{v}));
       }
     }
