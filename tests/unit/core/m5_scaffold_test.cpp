@@ -175,13 +175,7 @@ TEST_CASE("unimplemented gds and cif options fail with CORE-NOTIMPL-005", "[m5-s
     }
   }
   check_not_implemented(s.run("gds nodup yes"), "gds noduplicates");  // unique prefix
-
-  check_not_implemented(s.run("cif"), "cif write");
-  for (const auto* name : {"read", "write", "flat", "see", "paint", "coverage", "statistics", "drccheck", "warning",
-                           "limit", "rescale", "polygon", "unfracture", "prefix", "arealabels", "idcell", "*hier",
-                           "*array"}) {
-    check_not_implemented(s.run("cif " + std::string{name} + " x"), "cif " + std::string{name});
-  }
+  // CIF landed every `cif` option (tests/unit/cif/command/).
 }
 
 TEST_CASE("an unknown gds option prints the error and the help", "[m5-scaffold]") {
@@ -237,13 +231,13 @@ TEST_CASE("the M5 entry points exist and fail with CORE-NOTIMPL-005", "[m5-scaff
   hefesto::platform::PortableServices services{hefesto::platform::PortableOptions{{}, {}, true, true}};
   db::CellDef top{"top", 1};
   db::CellDef* root = &top;
-  check_not_implemented(cif::read(state, "in.cif", cif::CifReadOptions{}), "cif read");
-  // GDSW landed the writer: without an output style it fails before any file is opened.
+  // GDSW and CIF landed the writers: without an output style they fail before any file is opened.
   const auto prepared = gds::prepare_write(state, *root, gds::GdsWriteOptions{});
   REQUIRE_FALSE(prepared.ok());
   CHECK(prepared.error().code == "GDS-WRITE-002");
-  check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{}), "cif write");
-  check_not_implemented(cif::write(state, *root, "out.cif", cif::CifWriteOptions{{}, true, {}}), "cif flat");
+  const auto cif_prepared = cif::prepare_write(state, *root, cif::CifWriteOptions{});
+  REQUIRE_FALSE(cif_prepared.ok());
+  CHECK(cif_prepared.error().code == "CIF-WRITE-001");
   CHECK_FALSE(gds::open_source(services.view().files, "in.gds").ok());
   CHECK(gds::content_stamps({}).empty());
 
