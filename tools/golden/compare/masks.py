@@ -53,6 +53,11 @@ A case lists masks by name in ``[[outputs]] masks``. Available masks:
     Console line ``Created database crash recovery file /tmp/MAG<pid>.<XXXXXX>``
     (Magic's crash backups, database/DBio.c via mkstemp): the process id and
     the random suffix become ``<masked>``.
+``magic-crash-line``
+    The whole ``Created database crash recovery file ...`` console line. Magic
+    writes its crash backup from a timer, so during a long run (the MASK-RT
+    library round trips) the line lands between different messages in each
+    capture; the line is dropped wherever it appears.
 ``magic-tech-menu-order``
     Lines ``<i> <name> {magic::tech load <name> ;  magic::techmanager update}``
     (the technology manager's menu, tcltk/techbuilder.tcl): Magic lists the
@@ -189,6 +194,14 @@ def mask_magic_crash_file(data: bytes) -> bytes:
     return _CRASH_FILE.sub(rb"\1<masked>", data)
 
 
+# Magic's crash backup comes from a timer: a long run prints the line at no fixed place.
+_CRASH_LINE = re.compile(rb"^Created database crash recovery file \S*\r?\n", re.MULTILINE)
+
+
+def mask_magic_crash_line(data: bytes) -> bytes:
+    return _CRASH_LINE.sub(b"", data)
+
+
 # The technology manager lists Magic's example technologies in directory order.
 _TECH_MENU_LINE = re.compile(rb"^\d+ (\S+) \{magic::tech load \1 ;  magic::techmanager update\}\r?$")
 
@@ -223,6 +236,7 @@ _NAMED: dict[str, Mask] = {
     "mag-checkpaint": mask_mag_checkpaint,
     "magic-stamp-note": mask_magic_stamp_note,
     "magic-crash-file": mask_magic_crash_file,
+    "magic-crash-line": mask_magic_crash_line,
     "magic-tech-menu-order": mask_magic_tech_menu_order,
 }
 

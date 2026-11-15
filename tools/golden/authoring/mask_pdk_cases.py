@@ -113,9 +113,9 @@ def rt_case(lib: Library, index: int) -> tclcase.TclCase:
         "structure with its timestamp pinned to 0, gds library yes, gds write.",
         body, files={HARNESS_NAME: HARNESS.read_text(encoding="utf-8")},
         outputs=[DIGEST, SUMMARY], output_names=dict(OUTPUT_NAMES), gds_rt=not lib.standard,
-        # CIFhier's timed progress lines (Q-MASK-414), and the crash-backup file Magic names at
-        # random during a long read (golden-capture run 43762085730, MASK-RT-gf180mcu_re_efuse-f04).
-        stream_masks=["completed-percent", "magic-crash-file"],
+        # CIFhier's timed progress lines (Q-MASK-414), and the line of the crash backup Magic
+        # writes from a timer during a long read (golden-capture runs 43762085730, 43764851411).
+        stream_masks=["completed-percent", "magic-crash-line"],
         # Magic's startup loads its outline fonts, so the library's TEXT stay font labels and are
         # written back with PRESENTATION, STRANS and MAG; without them the writes lose 3 records
         # per label (round 5: sky130_fd_sc_hd__tap_1, 132 records against Magic's 144).
