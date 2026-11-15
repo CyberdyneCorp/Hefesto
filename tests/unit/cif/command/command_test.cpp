@@ -354,6 +354,30 @@ TEST_CASE("the generation errors of a write become feedback entries afterwards",
   }
 }
 
+TEST_CASE("the cif previews read the unread cells their flattening reaches",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options][golden:MASK-HG-022]") {
+  Session s;
+  s.editor.search_paths.path = {"/t"};
+  REQUIRE(s.files()
+              .write_atomic("/t/par.mag", "magic\ntech masktest\ntimestamp 100\nuse child  c0\ntimestamp 100\n"
+                                          "transform 1 0 0 0 1 0\nbox 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.files()
+              .write_atomic("/t/child.mag", "magic\ntech masktest\ntimestamp 100\n<< metal1 >>\nrect 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.run("load par").ok());
+  REQUIRE(s.run("box 0 0 10 10").ok());
+  const db::CellDef* child = s.editor.cells.find("child");
+  REQUIRE(child != nullptr);
+  REQUIRE_FALSE(child->flags().available);
+  REQUIRE(s.run("cif see NOPE").ok());  // CIFNameToMask fails first: nothing is read
+  CHECK_FALSE(child->flags().available);
+  s.editor.feedback.clear();
+  REQUIRE(s.run("cif see CMF").ok());
+  CHECK(child->flags().available);
+  CHECK(s.editor.feedback.size() > 0);
+}
+
 TEST_CASE("gds and cif writes add their generation counters to the session's cif statistics",
           "[cap:cif-format-io][req:cif see, paint, coverage and statistics options]") {
   Session s;

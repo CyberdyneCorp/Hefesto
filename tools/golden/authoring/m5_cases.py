@@ -178,6 +178,7 @@ REPLAYED: set[str] = {
     "MASK-HG-002",
     "MASK-HG-003",
     "MASK-HG-004",
+    "MASK-HG-005",
     "MASK-HG-006",
     "MASK-HG-007",
     "MASK-HG-008",
@@ -191,8 +192,10 @@ REPLAYED: set[str] = {
     "MASK-HG-024",
     "MASK-HG-017",
     "MASK-HG-018",
+    "MASK-HG-019",
     "MASK-HG-020",
     "MASK-HG-021",
+    "MASK-HG-022",
     "MASK-HG-023",
     "MASK-OP-001",
     "MASK-OP-002",
@@ -246,6 +249,7 @@ REPLAYED: set[str] = {
     "MASK-OS-012",
     "MASK-OS-013",
     "MASK-OS-014",
+    "MASK-OS-015",
     "MASK-OS-017",
 }
 

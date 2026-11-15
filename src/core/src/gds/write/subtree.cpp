@@ -215,8 +215,13 @@ class ReadArea {
 
 SubtreeResult load_subtree(db::CellDef& root, const SubtreeLoader& loader, bool halt_on_error,
                            const compat::CompatSettings& compat) {
+  return load_area(root, root.bbox(), loader, halt_on_error, compat);
+}
+
+SubtreeResult load_area(db::CellDef& root, const db::Rect& area, const SubtreeLoader& loader, bool halt_on_error,
+                        const compat::CompatSettings& compat) {
   ReadArea walk(loader, halt_on_error, compat);
-  (void)walk.read_area(root, root.bbox(), 0);
+  (void)walk.read_area(root, area, 0);
   if (!walk.result().ok()) {
     return walk.result();
   }
