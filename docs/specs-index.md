@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3328 scenarios, 875 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3330 scenarios, 875 open questions.
 
 ## Hefesto product (native)
 
@@ -27,7 +27,7 @@ Decisions: [product.md](decisions/product.md) · [cross-cutting.md](decisions/cr
 | [`hefesto-onboarding-and-help`](../openspec/specs/hefesto-onboarding-and-help/spec.md) | 4 | 4 | Defines how new users get started and how every user finds help (decision P-16). This covers: - a new-project wizard - project templates and example designs per PDK - interactive t… |
 | [`hefesto-output-determinism`](../openspec/specs/hefesto-output-determinism/spec.md) | 5 | 8 | Implements decision X-1 (as amended on 2026-11-06). Hefesto reproduces Magic's ordering wherever that ordering is a deterministic function of the input: Magic's canonical tile deco… |
 | [`hefesto-pdk-manager`](../openspec/specs/hefesto-pdk-manager/spec.md) | 19 | 29 | Defines the in-app PDK manager. On every platform, users browse, download, install, update, pin and remove open PDKs from inside Hefesto. On iPadOS this is the only way to get a PD… |
-| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 4 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
+| [`hefesto-performance`](../openspec/specs/hefesto-performance/spec.md) | 4 | 6 | Sets measurable performance targets for interactive editing, rendering and batch operations. Each target has a reference workload, so CI benchmarks can catch regressions. The numbe… |
 | [`hefesto-platform-targets`](../openspec/specs/hefesto-platform-targets/spec.md) | 4 | 6 | Defines what Hefesto is built from and where it runs: the language standard, the supported compilers, and the supported operating systems and architectures. Every other `hefesto-*`… |
 | [`hefesto-product-operations`](../openspec/specs/hefesto-product-operations/spec.md) | 5 | 5 | Defines how Hefesto runs as a shipped product (decision P-22): - opt-in crash reporting and usage telemetry that never collect design data - signed desktop updates with stable and … |
 | [`hefesto-rendering`](../openspec/specs/hefesto-rendering/spec.md) | 4 | 4 | Defines Hefesto's GPU rendering for the 2D layout view. One internal rendering interface sits over two backends. On the desktop (Linux and macOS) the backend is Vulkan, through Mol… |
