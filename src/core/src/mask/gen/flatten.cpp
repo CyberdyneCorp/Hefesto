@@ -44,65 +44,6 @@ const tech::TypeMask& all_but_space_and_drc() noexcept {
 
 namespace {
 
-std::int32_t clamp_index(std::int64_t v) noexcept {
-  return static_cast<std::int32_t>(std::clamp<std::int64_t>(v, INT32_MIN, INT32_MAX));
-}
-
-// One axis of DBArrayOverlap on the normalised (positive separation) array.
-void overlap_axis(std::int64_t lo_area, std::int64_t hi_area, std::int64_t box_lo, std::int64_t box_hi,
-                  std::int64_t sep, std::int32_t base, std::int32_t& lo, std::int32_t& hi) {
-  if (sep == 0) {
-    return;
-  }
-  lo = clamp_index(base + (lo_area - box_hi + sep - 1) / sep);
-  hi = clamp_index(base + (hi_area - box_lo) / sep);
-}
-
-}  // namespace
-
-IndexRange array_overlap(const db::CellUse& use, const db::Rect& parent_area) {
-  const db::ArrayInfo& a = use.array;
-  if (!a.is_array()) {
-    return IndexRange{a.xlo, a.xlo, a.ylo, a.ylo};
-  }
-  db::Rect box = use.def->bbox();
-  db::Rect child = db::apply(db::invert(use.transform), parent_area);
-  std::int64_t xsep = a.xsep;
-  std::int64_t ysep = a.ysep;
-  const std::int32_t xlo = std::min(a.xlo, a.xhi);
-  const std::int32_t xhi = std::max(a.xlo, a.xhi);
-  const std::int32_t ylo = std::min(a.ylo, a.yhi);
-  const std::int32_t yhi = std::max(a.ylo, a.yhi);
-  if (xsep < 0) {  // flip about the y axis
-    xsep = -xsep;
-    child = db::Rect{-child.x1, child.y0, -child.x0, child.y1};
-    box = db::Rect{-box.x1, box.y0, -box.x0, box.y1};
-  }
-  if (ysep < 0) {
-    ysep = -ysep;
-    child = db::Rect{child.x0, -child.y1, child.x1, -child.y0};
-    box = db::Rect{box.x0, -box.y1, box.x1, -box.y0};
-  }
-  IndexRange out{xlo, xhi, ylo, yhi};
-  overlap_axis(child.x0, child.x1, box.x0, box.x1, xsep, xlo, out.xlo, out.xhi);
-  overlap_axis(child.y0, child.y1, box.y0, box.y1, ysep, ylo, out.ylo, out.yhi);
-  out.xlo = std::max(out.xlo, xlo);
-  out.xhi = std::min(out.xhi, xhi);
-  out.ylo = std::max(out.ylo, ylo);
-  out.yhi = std::min(out.yhi, yhi);
-  if (a.xlo > a.xhi) {  // back to the use's own index direction
-    out = IndexRange{clamp_index(std::int64_t{a.xhi} + a.xlo - out.xhi),
-                     clamp_index(std::int64_t{a.xhi} + a.xlo - out.xlo), out.ylo, out.yhi};
-  }
-  if (a.ylo > a.yhi) {
-    out = IndexRange{out.xlo, out.xhi, clamp_index(std::int64_t{a.yhi} + a.ylo - out.yhi),
-                     clamp_index(std::int64_t{a.yhi} + a.ylo - out.ylo)};
-  }
-  return out;
-}
-
-namespace {
-
 // dbCellSrFunc for one use; false when the search must stop.
 bool search_use(const db::CellUse& use, const db::Rect& area, const ElementVisitor& visit) {
   const IndexRange r = array_overlap(use, area);

@@ -7,6 +7,7 @@
 # files here; never edit src/core/CMakeLists.txt.
 
 target_sources(hefesto_core PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/array_overlap.cpp
   ${CMAKE_CURRENT_LIST_DIR}/cell.cpp
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/command_util.cpp
