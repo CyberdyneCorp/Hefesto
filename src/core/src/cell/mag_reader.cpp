@@ -340,6 +340,14 @@ std::optional<PaintRecord> read_record(ReadState& st, int c) {
   return rec;
 }
 
+// The non-Manhattan pieces each paint record adds to the read's pool. An
+// ordinary triangle descends into at most 16 (unit and golden suites), so a
+// file of them never runs short; a file of huge triangles over crossed
+// triangles, each taking a whole NMBudget, leaves at most about four tiles
+// per piece, which bounds the tiles every later paint and image repaint of
+// the read walks (Q-MODEL-36).
+constexpr std::size_t kPiecesPerRecord = 16;
+
 void paint_record(ReadState& st, const PaintRecord& rec, const tech::TypeMask& mask) {
   if (rec.rect.x0 >= rec.rect.x1 || rec.rect.y0 >= rec.rect.y1) {
     return;  // degenerate after scaling: silently ignored
@@ -349,13 +357,14 @@ void paint_record(ReadState& st, const PaintRecord& rec, const tech::TypeMask& m
     const db::TriangleSide side = db::triangle_side(*rec.corner);
     tri = db::TriangleSpec{side.diagonal, side.right_side};
   }
+  st.nm_pool.pieces += kPiecesPerRecord;
   const std::size_t end = st.tech().user_type_end();
   for (std::size_t t = 1; t < end; ++t) {
     const auto type = static_cast<tech::TileType>(t);
     if (!mask.test(type)) {
       continue;
     }
-    if (auto done = db::paint_type(st.def, st.tech(), rec.rect, type, tri); !done.ok()) {
+    if (auto done = db::paint_type(st.def, st.tech(), rec.rect, type, tri, st.nm_pool); !done.ok()) {
       st.ctx.sink.emit(done.error());
     }
   }

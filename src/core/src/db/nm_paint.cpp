@@ -411,33 +411,31 @@ struct PaintFrame {
   }
 };
 
-// The most sub-areas one triangle paint descends into (Q-MODEL-34,
-// Q-MODEL-35). Over opposite-diagonal triangles the sub-areas nest in a
-// chain that grows linearly with the triangle's size in internal units.
-// Each level is only slightly smaller than its parent and fractures,
-// enumerates and paints next to the tiles every level above it left, all
-// bordering the same large tiles, so a chain of n sub-areas costs about n^2
-// tile steps and leaves about 4n tiles for whatever follows the paint. The
-// limit keeps n^2 small, as one .mag file can repeat such a paint for every
-// type and plane: at 4096 the fuzz_mag_reader seed regression-0ecdaece took
-// 10 s to read in a debug build, at 512 it takes 0.3 s. Ordinary triangles
-// descend into a handful of sub-areas (at most 16 over the unit and golden
-// suites).
-constexpr std::size_t kMaxSubAreas = 512;
-
 // DBNMPaintPlane0. Magic recurses into every rectangle the diagonal still
 // crosses; over opposite-diagonal triangles that depth grows with the
 // triangle's size in internal units, so a large triangle (or a large
 // `magscale`) overflowed the call stack. The recursion runs here on an
 // explicit stack of frames, in Magic's order: a sub-area is fractured and
 // enumerated when it is reached, and its parent resumes with the rectangle
-// after it once it is done. Past kMaxSubAreas a piece still on the diagonal
-// is filled as a rectangle and reported off grid, as Magic does for a piece
-// it cannot quarter (Q-MODEL-4).
+// after it once it is done.
+//
+// Every sub-area is drawn from an NMBudget (NMBudget::kPieces, Q-MODEL-34,
+// Q-MODEL-35). Over opposite-diagonal triangles the sub-areas nest in a
+// chain that grows linearly with the triangle's size in internal units.
+// Each level is only slightly smaller than its parent and fractures,
+// enumerates and paints next to the tiles every level above it left, all
+// bordering the same large tiles, so a chain of n sub-areas costs about n^2
+// tile steps and leaves about 4n tiles for whatever follows the paint. A
+// cell paint shares its budget with the contact images it repaints, which
+// would otherwise multiply that by the number of image tiles (Q-MODEL-36).
+// Ordinary triangles descend into a handful of sub-areas (at most 16 over
+// the unit and golden suites). Once the budget is spent a piece still on
+// the diagonal is filled as a rectangle and reported off grid, as Magic
+// does for a piece it cannot quarter (Q-MODEL-4).
 class NMPainter {
  public:
-  NMPainter(TilePlane& plane, Body exact, const ResultRow& row, bool magic_compat)
-      : plane_(plane), row_(row), compat_(magic_compat) {
+  NMPainter(TilePlane& plane, Body exact, const ResultRow& row, bool magic_compat, NMBudget& budget)
+      : plane_(plane), row_(row), compat_(magic_compat), budget_(budget) {
     d_.row = &row;
     d_.dir = (exact & kDirectionBit) != 0 ? 1 : 0;
     d_.side = (exact & kSideBit) != 0 ? 1 : 0;
@@ -445,8 +443,8 @@ class NMPainter {
 
   /// Paints; true when a 1x1 area had to be filled because a triangle could
   /// not be quartered any further (DBNMPaintPlane0's "return 1", used by
-  /// the DRC flattening to flag an off-grid overlap), or a piece past
-  /// kMaxSubAreas had to be filled.
+  /// the DRC flattening to flag an off-grid overlap), or a piece had to be
+  /// filled because the budget was spent.
   bool run(const Rect& area) {
     enter(area);
     while (!frames_.empty()) {
@@ -597,8 +595,8 @@ class NMPainter {
   }
 
   void descend(const Rect& piece) {
-    if (sub_areas_ < kMaxSubAreas) {
-      ++sub_areas_;
+    if (budget_.pieces > 0) {
+      --budget_.pieces;
       enter(piece);
       return;
     }
@@ -630,8 +628,8 @@ class NMPainter {
   const ResultRow& row_;
   const bool compat_;
   DiagInfo d_;
+  NMBudget& budget_;
   std::deque<PaintFrame> frames_;
-  std::size_t sub_areas_ = 0;
   bool off_grid_ = false;  // DBNMPaintPlane0's result, OR-ed over every level
 };
 
@@ -641,12 +639,13 @@ void merge_nm_tiles(TilePlane& plane, const Rect& area) {
   NMMerger(plane, area).run();
 }
 
-bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat) {
+bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat,
+                    NMBudget& budget) {
   if ((exact & kDiagonalBit) == 0) {
     paint_plane(plane, area, row);
     return false;
   }
-  return NMPainter(plane, exact, row, magic_compat).run(area);
+  return NMPainter(plane, exact, row, magic_compat, budget).run(area);
 }
 
 }  // namespace hefesto::db::detail
