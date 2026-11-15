@@ -421,6 +421,33 @@ TEST_CASE("a cifoutput statement before the first style fails tech load",
   CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
 }
 
+// Q-MASK-32: a cifinput statement before the first `style` line fails the
+// tech load with magic-compat ON, as Magic's CIFReadTechLine returning FALSE
+// does; with it OFF the statement is ignored with a warning and the load
+// succeeds.
+TEST_CASE("a cifinput statement before the first style fails tech load only with magic-compat ON",
+          "[cap:mask-input-styles][req:Input style declaration and default style]") {
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    Session s;
+    s.project.compat.magic_compat = compat;
+    s.load_tiny();
+    s.file("/t/early.tech", with(tiny(), "cifinput\nend", "cifinput\nscalefactor 10\nstyle a\nscalefactor 100\nend"));
+    const auto r = s.run("tech", {"load", "/t/early", "-noprompt"});
+    CHECK(r.ok() == !compat);
+    CHECK(says(r, "The following sections of /t/early.tech contained errors:\n    cifinput") == compat);
+    CHECK(says(r, "(Q-MASK-32)") == !compat);
+    if (compat) {
+      CHECK(r.value.to_string() == "Error in loading technology file\n");
+      CHECK(s.editor.technology->file_name() == "/t/tiny.tech");
+    } else {
+      CHECK(s.editor.technology->file_name() == "/t/early.tech");
+      REQUIRE(s.editor.mask.input_styles.current_style() != nullptr);
+      CHECK(s.editor.mask.input_styles.current_style()->name == "a");
+    }
+  }
+}
+
 TEST_CASE("post-load scaling report at a doubled grid","[cap:tech-loading-and-scaling][req:Post-load adjustments]") {
   Session s;
   REQUIRE(s.run("scalegrid", {"1", "2"}).ok());

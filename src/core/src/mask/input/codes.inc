@@ -27,3 +27,4 @@ HEFESTO_MASK_CODE("MASK-INPUT-014", info, "Input `grow`/`shrink` while the outpu
 HEFESTO_MASK_CODE("MASK-INPUT-016", error, "Read engine used out of order by a format reader (a cell inside a cell, an end or a call without a cell).")
 HEFESTO_MASK_CODE("MASK-INPUT-017", warning, "Copyup planes not copied into an array of more than 2^20 elements (resource cap); native only.")
 HEFESTO_MASK_CODE("MASK-INPUT-015", info, "Input `tagged` rule run with a scale factor other than 1 (Q-MASK-310); native only, once per read.")
+HEFESTO_MASK_CODE("MASK-INPUT-018", warning, "Statement before the first `style` line of `cifinput` ignored (Q-MASK-32); magic-compat OFF only, native only.")

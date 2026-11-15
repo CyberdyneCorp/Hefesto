@@ -438,11 +438,9 @@ For every child use U of D whose bounding box overlaps D's generation area and t
 
 The pitch is taken from child coordinates, so a 90° rotation swaps the roles of the two separations.
 
-Single-element uses are skipped.
+Single-element uses are skipped. A use whose `xsep` or `ysep` is 0, which happens when the array repeats along an axis with separation 0, SHALL get no array correction, in both `magic-compat` settings and without a message; Magic divides by the zero separation when it computes `nx` or `ny` (Q-MASK-407, resolution: fix, amended 2026-11-14).
 
 Compatibility: exact
-
-See Q-MASK-407.
 
 (Magic ref: cif/CIFhier.c:1403-1450, cif/CIFhier.c:1749-1790, database/DBcellsrch.c:1185-1229)
 
@@ -455,6 +453,11 @@ See Q-MASK-407.
 - **GIVEN** the same child arrayed y 0..2 with cu_ysep=25 and x 0..0, with a 90° rotation transform, and r=3
 - **WHEN** the parameters are computed
 - **THEN** xsep=25, ysep=13 (that is, r + child width 10), xsize=20, ysize=10, and nx=3
+
+#### Scenario: Zero pitch along a repeated axis
+- **GIVEN** a child arrayed x 0..3 with cu_xsep=0 (or y 0..3 with cu_ysep=0)
+- **WHEN** the array correction runs, with `magic-compat` ON or OFF
+- **THEN** the use contributes no array correction and the generation completes
 
 ### Requirement: Array interaction regions
 
@@ -524,6 +527,8 @@ High phase:
 
 1. If `nx > 1` and `xsep < xsize+r`: window C, dx=−xsep, dy=0, cx=nx−1, cy=1.
 2. If `nx > 1`, `ny > 1` and both conditions hold: window D', dx=0, dy=−ysep, cx=1, cy=ny−1.
+
+The low-phase windows of the layers after the first depend on the `magic-compat` setting (Q-MASK-33, resolution: compat). With it ON (the default), as in Magic, step 2 of a layer stores A″ in place of A and, when B″ is copied, B″ in place of B, and the next layers use the stored windows in steps 1 and 2.1. This applies even when the first layer is not hierarchical, whose residual is empty. With it OFF every layer is copied from A, B, A″ and B″ as defined above.
 
 Compatibility: exact
 

@@ -25,14 +25,20 @@ release notices.
   several (Q-MASK-303, a fixed deviation from Magic: `cif istyle gds`
   with a `gds2` style present selects `gds`). `cif list istyle`,
   `cif listall istyle` and `cif scale in` read the loaded styles. Changing
-  `magic-compat` re-reads the section (Q-MASK-300, Q-MASK-302).
+  `magic-compat` re-reads the section (Q-MASK-300, Q-MASK-302). A
+  cifinput statement before the first `style` line now fails the load
+  with `magic-compat` ON, as in Magic; with it OFF the statement is
+  ignored with a warning (MASK-INPUT-018, Q-MASK-32).
 - **DRC checks mask-layer rules.** The drc section's `cifwidth`,
   `cifspacing`, `cifarea` and `cifmaxwidth` rules (for example sky130's
   `cifmaxwidth` and `cifspacing` rules) now report errors, generated on
   the bound cifoutput style as Magic's drcCifCheck does. With
   `magic-compat` OFF error boxes are rounded outward to the internal grid
   instead of truncated (Q-DRC-13). Coordinate units in DRC output follow
-  the current `cif ostyle`.
+  the current `cif ostyle`. Under `drc euclidean on` a mask-layer corner
+  distance of 4096 mask units or more keeps its full value with
+  `magic-compat` OFF; ON still wraps it modulo 4096, as Magic does
+  (Q-DRC-27).
 - **The cifoutput section is read at tech load.** Its messages are printed
   at load, before the drc section's, and a cifoutput statement before the
   first `style` line fails the load (Q-MASK-17), as in Magic. The DRC

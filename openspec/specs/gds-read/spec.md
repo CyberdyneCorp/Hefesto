@@ -416,8 +416,9 @@ Compatibility: exact
 
 #### Scenario: Odd width rounds outward
 - **GIVEN** `num = den = 1`, PATHTYPE 0, WIDTH 5 and points (0,0) (100,0)
-- **WHEN** it is read
-- **THEN** the edges are at round(−2.5) = −3 and round(2.5) = 3, so y∈[-3,3] is painted
+- **WHEN** it is read with `magic-compat` OFF
+- **THEN** H = π/2 gives offsets of exactly ±2.5, the edges are at round(−2.5) = −3 and round(2.5) = 3, and y∈[-3,3] is painted
+- **AND** with `magic-compat` ON Magic's H = 1.5708 (Q-MASK-118) gives offsets just under ±2.5, which round to ±2, so y∈[-2,2] is painted
 
 #### Scenario: Round path type
 - **GIVEN** a PATH with PATHTYPE 1, WIDTH 10 and points (0,0) (100,0)
@@ -632,7 +633,7 @@ After the structure, all labels that are still empty SHALL be deleted.
 #### Scenario: Text-kind pin shape
 - **GIVEN** `S = 1`, `labels m1 text` for 68/16 and 68/5, a BOUNDARY [0,10]×[0,10] on 68/16, then a TEXT `IN` at (5,5) on 68/5
 - **WHEN** read
-- **THEN** with `magic-compat` ON label `IN` has rectangle [0,10]×[0,10] and is a port with index 1
+- **THEN** with `magic-compat` ON label `IN` has rectangle [0,10]×[0,10] and is a port with index 0: the placeholder is removed before the index is assigned and no other label has a port index, so i stays −1 (a `port`-kind layer renumbers the label after placing it, which gives 1 in "Pin shape after text")
 - **AND** with `magic-compat` OFF label `IN` has rectangle [0,10]×[0,10] and is not a port
 
 #### Scenario: Pin with no text
@@ -899,7 +900,7 @@ After the last structure, the reader SHALL do the following:
 Compatibility: exact
 
 - Report "cell <name> was used but not defined." for each cell referenced in the file that never received a definition.
-- Mark every cell created or referenced by the read as modified, and (unless `drccheck no`) for DRC checking.
+- Mark every cell created or referenced by the read as modified, and (unless `drccheck no`) for DRC checking. Read-only cells are included: only the per-structure mark of "End-of-structure processing" step 6 skips them.
 - Mark cells with a nonzero timestamp as not needing a new timestamp.
 - Discard all saved flatten planes.
 - Compute content-hash timestamps if the read was read-only (see "Content-hash timestamps for read-only cells").
@@ -925,11 +926,11 @@ Setting the `GDS_FILE` property on any cell, by any means, SHALL make the cell r
 In read-only mode:
 - the read SHALL be refused unless the UNITS `mpd` satisfies `(int)(0.5 + mpd·1e11) == 100` (1 nm), or `(int)(0.5 + mpd·1e12) == 100` (1 Å) when the current *output* style uses ångström units. Otherwise the error "Incompatible scale factor of <mpd>, must be 1e-9." (or "1e-10.") and "Cannot read this file in read-only mode." are reported and nothing is read;
 - unknown-layer messages are suppressed for read-only cells;
-- cells are not queued for DRC checking when read, and background DRC ignores read-only cells.
+- the per-structure DRC mark is skipped ("End-of-structure processing" step 6), but the end-of-read cleanup still queues every cell of the read for DRC checking unless `drccheck no` is set (CIFReadCellCleanup); background DRC ignores read-only cells.
 
 The default is `readonly no`.
 
-(Magic ref: calma/CalmaRdcl.c:514-575, calma/CalmaRead.c:842-875, database/DBio.c:6060-6111, database/DBprop.c:98-105, drc/DRCcontin.c:770)
+(Magic ref: calma/CalmaRdcl.c:514-575, calma/CalmaRdcl.c:680-681, calma/CalmaRead.c:842-875, cif/CIFrdcl.c:1777-1779, database/DBio.c:6060-6111, database/DBprop.c:98-105, drc/DRCcontin.c:770)
 
 #### Scenario: Offsets of a read-only structure
 - **GIVEN** `gds readonly yes` and an uncompressed file where structure `A` has BGNSTR at offset 100 (28 bytes) and STRNAME `A` (6 bytes, padded), so its first element starts at offset 134, and its ENDSTR record occupies bytes 400..403
@@ -1130,11 +1131,11 @@ Reporting depends on the warning level:
 - `default`: all messages are printed.
 - `none`: nothing is printed.
 - `limit`: only the first 99 messages are printed, then "Error limit set: Remaining errors will not be reported.".
-- `redirect <file>`: messages are written to `<file>`, which is opened for writing at the start of each read. Without a file name, messages are discarded.
+- `redirect <file>`: messages are written to `<file>`, which is opened for writing at the start of each read. Without a file name, messages are discarded. In Magic's Tcl build the file receives only the prefix of each counted error (`Error while reading cell "<cell>" (byte position <offset>): `) and the second line of an unexpected-record error, because the message body goes through `Vfprintf`, which that build maps to `Tcl_printf` and so prints on the console. Hefesto writes each whole message, prefix and body, to the file and prints nothing, in both `magic-compat` settings.
 
 Each GDS read error is prefixed `Error while reading cell "<cell>" (byte position <offset>): `. Hefesto MAY format messages differently. The conditions that produce messages are specified in the other requirements.
 
-(Magic ref: calma/CalmaRead.c:936-1035, commands/CmdCD.c:977-1005)
+(Magic ref: calma/CalmaRead.c:936-1035, commands/CmdCD.c:977-1005, textio/textio.h:57-61, tcltk/tclmagic.c:1411-1419)
 
 #### Scenario: Limit mode
 - **GIVEN** `gds warning limit` and a file producing 150 errors

@@ -209,9 +209,10 @@ struct InputStyleSet {
   std::optional<std::size_t> current;
   /// The magic-compat setting the section was read with (Q-MASK-300, 302).
   bool magic_compat = true;
-  /// A statement came before the first `style` line. The capability ignores
-  /// it; Magic's CIFReadTechLine returns FALSE, which fails the tech load as
-  /// Q-MASK-17 does for cifoutput (kept for the caller to decide).
+  /// A statement came before the first `style` line with magic-compat ON:
+  /// Magic's CIFReadTechLine returns FALSE, so the tech load fails, as
+  /// Q-MASK-17 does for cifoutput. With it OFF the statement is ignored with
+  /// a warning and this stays false (Q-MASK-32).
   bool section_failed = false;
 
   /// The current style, or nullptr when none is loaded.
