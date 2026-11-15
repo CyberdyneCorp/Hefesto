@@ -59,7 +59,9 @@ db::PaintRow paint_row(const Technology& tech, PlaneId plane, TileType type) {
   return row;
 }
 
-// dbScalePlane: copies every non-space tile at the scaled size.
+// dbScalePlane: copies every non-space tile at the scaled size. Like
+// dbTileScaleFunc (DBNMPaintPlane / DBPaintPlane) it never merges split
+// tiles, so the scaled plane keeps the source's fragmentation.
 bool scale_plane(db::Plane& plane, const Technology& tech, PlaneId id, std::int64_t n, std::int64_t d) {
   std::vector<db::TileView> tiles;
   plane.enumerate(db::whole_plane(), ~TypeMask::of(kSpace), [&](const db::TileView& tile) {
@@ -75,9 +77,9 @@ bool scale_plane(db::Plane& plane, const Technology& tech, PlaneId id, std::int6
     }
     const db::PaintRow row = paint_row(tech, id, tile.type);
     if (tile.split) {
-      (void)scaled.paint_triangle(tile.area, tile.diagonal, tile.right_side, row);
+      (void)scaled.paint_triangle(tile.area, tile.diagonal, tile.right_side, row, true, nullptr, db::PaintMerge::none);
     } else {
-      (void)scaled.paint(tile.area, row);
+      (void)scaled.paint(tile.area, row, db::PaintMerge::none);
     }
   }
   plane = std::move(scaled);

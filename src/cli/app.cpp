@@ -202,7 +202,13 @@ class MagicConsole final : public diag::DiagnosticSink, public cmd::CommandObser
  private:
   void flush_pending() {
     if (has_pending_) {
-      print_line(err_, diag::format_magic(pending_));
+      const std::string text = diag::format_magic(pending_);
+      if (pending_.no_newline) {
+        std::fwrite(text.data(), 1, text.size(), err_);  // the next output ends the line
+        std::fflush(err_);
+      } else {
+        print_line(err_, text);
+      }
       has_pending_ = false;
     }
   }

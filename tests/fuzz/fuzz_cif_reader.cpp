@@ -51,7 +51,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   }
   top.value()->flags().available = true;
   editor.edit_cell = top.value();
-  editor.mask.cif.rescale = (mode & kNoRescale) == 0;
+  editor.mask.rescale_allowed = (mode & kNoRescale) == 0;
   editor.mask.cif.limit = (mode & kLimit) != 0 ? 2 : 0;
   editor.mask.cif.hier = (mode & kNoHier) == 0;
   editor.mask.cif.array = (mode & kNoHier) == 0;
@@ -59,6 +59,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   cif::CifReadOptions options;
   options.settings = editor.mask.cif;
   options.warnings = editor.mask.warnings;
+  options.rescale_allowed = editor.mask.rescale_allowed;
   options.files = &session.files;
   options.typed_name = "in";
   (void)cif::read_text(editor, text, options);
