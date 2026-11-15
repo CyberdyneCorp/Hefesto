@@ -1,0 +1,11 @@
+style g0
+    scalefactor 10 nanometers
+    layer GM metal1
+        grow-min 15
+        calma 100 0
+style g5
+    scalefactor 10 nanometers
+    gridlimit 5
+    layer GM metal1
+        grow-min 15
+        calma 100 0

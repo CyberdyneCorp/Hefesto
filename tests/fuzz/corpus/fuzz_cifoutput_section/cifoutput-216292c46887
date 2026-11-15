@@ -1,0 +1,9 @@
+style gds
+    scalefactor 10
+    layer GS metal1
+        grow 20
+        shrink 20
+        calma 100 0
+    layer TG metal2
+        grow 10
+        calma 101 0

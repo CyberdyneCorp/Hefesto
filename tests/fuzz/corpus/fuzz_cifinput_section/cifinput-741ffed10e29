@@ -1,0 +1,9 @@
+style gds
+    scalefactor 10
+    layer poly CPG
+    templayer HM PH
+        mask-hints poly
+    templayer HM PH
+        mask-hints poly
+    calma CPG 46 0
+    calma PH 97 0

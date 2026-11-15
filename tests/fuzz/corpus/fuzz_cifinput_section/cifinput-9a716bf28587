@@ -1,0 +1,7 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+    layer metal1 CBD
+        boundary
+    calma CMF 49 0
+    calma CBD 235 0

@@ -1,0 +1,8 @@
+style gds
+    scalefactor 10
+    layer metal1 CA
+    layer metal2 CB
+    layer metal3 CC
+    calma CA 4,5 0,20
+    calma CB 7 *
+    calma CC * 5

@@ -1,0 +1,17 @@
+style gds
+    scalefactor 10
+    layer M1 metal1
+        labels metal1
+        calma 49 0
+style perm
+    scalefactor 10
+    options calma-permissive-labels
+    layer M1 metal1
+        labels metal1
+        calma 49 0
+style lim
+    scalefactor 10
+    options string-limit
+    layer M1 metal1
+        labels metal1
+        calma 49 0

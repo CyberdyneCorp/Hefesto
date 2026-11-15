@@ -1,0 +1,13 @@
+style nostep
+    scalefactor 10
+    layer M1X metal1
+        grow 30
+        shrink 30
+        calma 49 0
+style step50
+    scalefactor 10
+    stepsize 50
+    layer M1X metal1
+        grow 30
+        shrink 30
+        calma 49 0

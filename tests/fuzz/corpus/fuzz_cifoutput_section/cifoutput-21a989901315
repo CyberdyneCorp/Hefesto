@@ -1,0 +1,4 @@
+style gds
+    scalefactor 25 angstroms
+    layer M1 metal1
+        calma 49 0

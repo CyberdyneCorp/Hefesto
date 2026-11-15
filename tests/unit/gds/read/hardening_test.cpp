@@ -9,8 +9,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <memory>
 #include <random>
 
+#include "hefesto/gds/stream/gzip.hpp"
 #include "read_fixture.hpp"
 
 using namespace gds_read_test;
@@ -173,4 +175,29 @@ TEST_CASE("random bytes never crash the reader", "[cap:gds-read][req:Record fram
     s.last = gds::read(s.editor, source, s.options);
     CHECK(s.has_cell("A"));
   }
+}
+
+TEST_CASE("security fix M5-S1: a gzip bomb ends the read with GDS-STREAM-006",
+          "[cap:hefesto-security][req:Untrusted input handling]") {
+  // Structure A repeats one square about 100000 times (4 MiB, which deflate
+  // packs into a few KiB); read through a source capped at 256 KiB, the
+  // read reports the cap once and ends as at a cut-off stream.
+  GdsFile f;
+  f.library().begin("A");
+  while (f.size() < (std::size_t{4} << 20U)) {
+    square(f);
+  }
+  f.end().end_library();
+  auto memory = std::make_unique<gds::MemorySink>();
+  gds::MemorySink* inner = memory.get();
+  auto sink = gds::make_gzip_sink(std::move(memory), 9);
+  REQUIRE(sink.ok());
+  REQUIRE(sink.value()->write(f.bytes()).ok());
+  REQUIRE(sink.value()->finish().ok());
+  auto source = gds::make_gzip_source(inner->bytes(), gds::kMaxGzipFeed, std::uint64_t{256} << 10U);
+  Session s;
+  s.last = gds::read(s.editor, *source, s.options);
+  CHECK(s.count("inflate size cap") == 1);
+  CHECK(has_code(s, "GDS-STREAM-006"));
+  CHECK(s.has_cell("A"));
 }

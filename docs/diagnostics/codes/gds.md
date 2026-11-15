@@ -29,6 +29,7 @@ Codes of the byte sources and sinks (plain, gzip, memory), the record reader and
 - `GDS-STREAM-003`: a seek (post-order reading, read-only offsets) asks for a byte past the end of the decompressed stream.
 - `GDS-STREAM-004`: the writer refuses a record whose payload exceeds 65531 bytes, the most a two-byte length holds. Magic writes a wrapped length instead.
 - `GDS-STREAM-005`: a compression level outside 1-9, or a zlib failure while compressing the output (gds-write "Compressed output").
+- `GDS-STREAM-006`: a gzip input inflates past the inflate size cap, 256 times its compressed size and at least 1 GiB (`gds::inflate_cap`). The read stops there, as at a corrupt member. Magic has no cap; the cap keeps a gzip bomb from keeping a read busy for hours (hardening, `docs/contributing/security.md` M5-S1).
 
 ## READ
 
@@ -125,6 +126,7 @@ fails when the two disagree.
 | `GDS-STREAM-003` | error | A seek moved past the end of the (decompressed) GDS stream. |
 | `GDS-STREAM-004` | error | A GDS record payload exceeds 65531 bytes and cannot be written. |
 | `GDS-STREAM-005` | error | Gzip compression of the GDS output failed or the level is not 1 to 9. |
+| `GDS-STREAM-006` | error | The decompressed GDS stream exceeds the inflate size cap (256 times the compressed size, at least 1 GiB). |
 | `GDS-WRITE-001` | info | GDS write progress: `Generating output for cell <name>` for each cell the write reaches. |
 | `GDS-WRITE-002` | error | No CIF/GDS output style set: nothing is written and no file is opened (Q-MASK-219). |
 | `GDS-WRITE-003` | error | Failure to read entire subtree of the cell: a cell under the root cannot be read and `gds undefined` is disallow. |

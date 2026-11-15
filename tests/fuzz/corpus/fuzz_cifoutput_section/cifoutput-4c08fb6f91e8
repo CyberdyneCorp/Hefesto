@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer M1 metal1
+        labels metal1
+        calma 49 0

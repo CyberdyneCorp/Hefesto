@@ -1,0 +1,11 @@
+style gds
+    scalefactor 10
+    layer ndiff CAA
+        and CSN
+    layer nfet CPG
+        and CAA
+        and CSN
+    layer poly CPG
+    calma CAA 43 0
+    calma CSN 45 0
+    calma CPG 46 0

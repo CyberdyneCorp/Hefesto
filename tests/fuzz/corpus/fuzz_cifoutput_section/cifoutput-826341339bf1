@@ -1,0 +1,6 @@
+style gds
+    scalefactor 10
+    layer M1 metal1
+        calma 49 0
+    labellayer LBL metal1
+        calma 63 5

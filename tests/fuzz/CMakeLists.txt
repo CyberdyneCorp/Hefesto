@@ -35,6 +35,10 @@ set(HEFESTO_FUZZ_TARGETS
   fuzz_tcl_sandbox      # the script sandbox (hefesto-scripting, hefesto-security; m4 design D19)
   fuzz_readspice        # readspice's netlist reader (readspice)
   fuzz_toolbar_presets  # layer toolbar presets and DRC report files read as data (ui-gui-managers)
+  fuzz_gds_reader       # GDS streams, plain and gzip, read then written (gds-read, gds-write; m5 design D21)
+  fuzz_cif_reader       # CIF files read then written (cif-format-io)
+  fuzz_cifoutput_section  # the technology `cifoutput` section (mask-output-styles, mask-output-operators)
+  fuzz_cifinput_section   # the technology `cifinput` section (mask-input-styles)
 )
 
 if(HEFESTO_BUILD_FUZZ)
@@ -89,3 +93,11 @@ if(TARGET fuzz_drc_section)
   target_compile_definitions(fuzz_drc_section PRIVATE
     HEFESTO_SCMOS_TECH="${CMAKE_BINARY_DIR}/tests/unit/tech/magic-tech/scmos.tech")
 endif()
+
+# The cifoutput and cifinput section targets also read the pinned PDK
+# technologies (tests/unit/common/reference_data.hpp) as bases.
+foreach(target IN ITEMS fuzz_cifoutput_section fuzz_cifinput_section)
+  if(TARGET ${target})
+    target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
+  endif()
+endforeach()

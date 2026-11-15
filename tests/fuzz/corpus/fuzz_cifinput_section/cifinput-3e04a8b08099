@@ -1,0 +1,9 @@
+style plain
+    scalefactor 10
+    layer metal1 CMF
+    calma CMF 49 0
+style ign
+    scalefactor 10
+    layer metal1 CMF
+    calma CMF 49 0
+    options ignore-unknown-layer-labels
