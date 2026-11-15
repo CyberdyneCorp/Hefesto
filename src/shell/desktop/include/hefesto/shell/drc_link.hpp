@@ -59,8 +59,17 @@ class DrcPump {
   /// task unless one is already waiting.
   void notify();
   /// Commits a finished square now (UI thread); the posted task calls it.
+  /// While `hold` (set_hold) answers true it commits nothing and remembers
+  /// that a square waits.
   std::size_t service();
   [[nodiscard]] bool busy() const noexcept { return host_.busy(); }
+
+  /// Holds commits while `hold()` is true (UI thread): a GDS or CIF write
+  /// emits on a worker that reads the layout, and the frames its host pumps
+  /// run posted tasks (m5-mask-gds-cif design D16; shell::MaskJobHost).
+  void set_hold(std::function<bool()> hold) { hold_ = std::move(hold); }
+  /// After the hold ended: posts the service a held square waits for.
+  void resume();
 
  private:
   struct State {
@@ -69,6 +78,8 @@ class DrcPump {
   };
   Post post_;
   std::function<void(std::size_t)> after_service_;
+  std::function<bool()> hold_;
+  bool held_ = false;  // a service was skipped while held
   std::shared_ptr<State> state_;  // declared before host_: alive until the worker stopped
   drc::BackgroundHost host_;
 };

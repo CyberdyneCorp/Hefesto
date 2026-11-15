@@ -80,6 +80,11 @@ target_sources(hefesto_shell_desktop PRIVATE
   src/wiring_hud.cpp
   src/wiring_hud_view.cpp)
 
+# M5 (openspec/changes/m5-mask-gds-cif task 12.2, SHELL): the host of long
+# GDS and CIF reads and writes (progress, Interrupt, the deep-stack emit worker).
+target_sources(hefesto_shell_desktop PRIVATE
+  src/mask_job_host.cpp)
+
 # POSIX host services (fcntl locks, file ownership/ctime, process liveness,
 # posix_spawn process runner): hefesto::platform_posix, and the HTTPS Fetcher
 # (URLSession or libcurl): hefesto::platform_net, both added by the root
