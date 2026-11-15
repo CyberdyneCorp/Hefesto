@@ -273,6 +273,7 @@ void report_error(const OutputStyle& style, const db::CellDef* cell, std::size_t
       diag::make(code, "CIF error in cell " + cell->name() + ", layer " + name + ": " + std::string{message},
                  diag::LayoutLocation{cell->name(), mask_area.x0 / s, mask_area.y0 / s});
   d.native_only = true;  // Magic adds feedback; it prints nothing
+  ctx.problems.push_back(GenerationProblem{cell, mask_area, s, d.text});
   ctx.sink->emit(d);
 }
 

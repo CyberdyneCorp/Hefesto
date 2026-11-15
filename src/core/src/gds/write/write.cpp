@@ -202,6 +202,7 @@ diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::Cell
   prepared.compat = editor.drc.compat_settings();
   prepared.random = std::make_shared<util::LibcRandom>(editor.mask.random);  // Q-MASK-211 ON draws
   prepared.statistics = std::make_shared<mask::GenerationStatistics>();
+  prepared.problems = std::make_shared<std::vector<mask::GenerationProblem>>();
   const SubtreeResult loaded = load_subtree(root, options.loader, !options.settings.allow_undefined, prepared.compat);
   if (!loaded.ok()) {
     return subtree_error(loaded);
@@ -243,6 +244,9 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   if (prepared.statistics != nullptr) {
     *prepared.statistics = ctx.statistics;
   }
+  if (prepared.problems != nullptr) {
+    *prepared.problems = std::move(ctx.problems);
+  }
   if (!result.status.ok() && result.status.error().code == codes::kCancelled) {
     (void)sink.finish();
     file.discard();
@@ -277,6 +281,9 @@ void finish_write(editor::EditorState& editor, const PreparedWrite& prepared) {
   }
   if (prepared.statistics != nullptr) {
     editor.mask.statistics.add(*prepared.statistics);
+  }
+  if (prepared.problems != nullptr) {
+    mask::add_problem_feedback(editor, *prepared.problems);
   }
 }
 

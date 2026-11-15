@@ -25,6 +25,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "hefesto/cif/command/settings.hpp"
 #include "hefesto/cmd/command.hpp"
@@ -32,6 +33,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/gds/write/subtree.hpp"
+#include "hefesto/mask/gen/context.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/platform/file_system.hpp"
@@ -77,6 +79,9 @@ struct PreparedWrite {
   /// The write's generation counters, filled by emit_write; finish_write
   /// adds them to the session's `cif statistics` (MaskSession::statistics).
   std::shared_ptr<mask::GenerationStatistics> statistics;
+  /// The generation errors of the write, filled by emit_write; finish_write
+  /// adds them to the editor's feedback (CIFError).
+  std::shared_ptr<std::vector<mask::GenerationProblem>> problems;
 };
 
 /// The prepare phase (exclusive lock): checks that an output style is set;
@@ -102,11 +107,11 @@ struct PreparedWrite {
 /// The finish phase (exclusive lock, after emit_write or a failed
 /// prepare_write): `cif flat` with magic-compat ON processes the timestamp
 /// mismatches its reads found, as Magic does after CIFWriteFlat, which
-/// never calls DBFixMismatch. `statistics` (PreparedWrite::statistics after
-/// emit_write; nullptr after a failed prepare) is added to the session's
-/// `cif statistics`.
+/// never calls DBFixMismatch. The generation counters and errors of
+/// `prepared` (after emit_write; nullptr after a failed prepare) go to the
+/// session's `cif statistics` and the editor's feedback.
 void finish_write(editor::EditorState& editor, const CifWriteOptions& options,
-                  const mask::GenerationStatistics* statistics = nullptr);
+                  const PreparedWrite* prepared = nullptr);
 
 /// prepare_write, emit_write, then finish_write; `progress`'s cancel flag
 /// also stops the subtree loading (a cancelled write leaves the file

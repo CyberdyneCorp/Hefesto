@@ -326,6 +326,34 @@ TEST_CASE("cif paint, coverage and statistics", "[cap:cif-format-io][req:cif see
   CHECK(stats.front().starts_with("CIF statistics (recent/total):"));
 }
 
+TEST_CASE("the generation errors of a write become feedback entries afterwards",
+          "[cap:mask-hierarchical-generation][req:Parent/child disagreement reporting][golden:MASK-HG-007]") {
+  // MASK-HG-007: the child's pdiff under the parent's metal3; PSD = pdiff
+  // and-not metal3 differs between the child and the flattened parent.
+  std::string text = masktest_text();
+  const std::string last = "    layer CVA via1\n        squares 10 20 20\n        calma 50 0\n";
+  const std::size_t at = text.find(last);
+  REQUIRE(at != std::string::npos);
+  text.insert(at + last.size(), "    layer PSD pdiff\n        and-not metal3\n        calma 100 0\n");
+  for (const char* write : {"gds write /t/o", "cif write /t/o"}) {
+    Session s(true, true, "top", text);
+    auto made = s.editor.cells.create("child", s.editor.technology->plane_count());
+    REQUIRE(made.ok());
+    db::CellDef& child = *made.value();
+    child.flags().available = true;
+    s.paint(child, "pdiff", db::Rect{0, 0, 10, 10});
+    s.paint(*s.top, "metal3", db::Rect{5, -5, 30, 15});
+    REQUIRE(db::place(*s.top, child, db::PlaceOptions{}).ok());
+    db::recompute_bbox(*s.top);
+    REQUIRE(s.run(write).ok());
+    REQUIRE(s.editor.feedback.size() == 1);
+    const view::FeedbackArea& entry = s.editor.feedback.areas().front();
+    CHECK(entry.message() == "CIF error in cell top, layer PSD: parent and child disagree on CIF");
+    CHECK(entry.area == db::Rect{5, 0, 10, 10});
+    CHECK(entry.root == s.top);
+  }
+}
+
 TEST_CASE("gds and cif writes add their generation counters to the session's cif statistics",
           "[cap:cif-format-io][req:cif see, paint, coverage and statistics options]") {
   Session s;

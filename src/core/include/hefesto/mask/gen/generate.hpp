@@ -303,6 +303,12 @@ struct Coverage {
 /// The four lines for `stats` as both the recent and the total values.
 [[nodiscard]] std::string statistics(const GenerationStatistics& stats);
 
+/// CIFError's DBWFeedbackAdd for each of `problems` in order (pale
+/// highlights, the area in the problem's mask units), run on the command
+/// thread once a generation (a write or a `cif` preview) is over. A problem
+/// whose cell no window shows adds nothing, as in Magic.
+void add_problem_feedback(editor::EditorState& editor, const std::vector<GenerationProblem>& problems);
+
 /// The interaction areas of `cell` for halo `halo` (internal units) over
 /// `area`: the interaction search grid of hierarchical generation
 /// ("Interaction search grid", with `step` 0 meaning max(20·halo, 50)),

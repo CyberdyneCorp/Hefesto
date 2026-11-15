@@ -179,6 +179,7 @@ REPLAYED: set[str] = {
     "MASK-HG-003",
     "MASK-HG-004",
     "MASK-HG-006",
+    "MASK-HG-007",
     "MASK-HG-008",
     "MASK-HG-009",
     "MASK-HG-010",

@@ -413,7 +413,7 @@ When a non-templayer component tile is not fully covered by the total, the imple
 
 For split (non-Manhattan) total tiles, space inside the split tile is not an error when the component tile's left edge coincides with a left-side split tile, or its right edge with a right-side split tile.
 
-In Magic the report is a feedback area at `area / S` on the parent, with the text `CIF error in cell <cell>, layer <layer>: parent and child disagree on CIF`. Hefesto MAY present it differently.
+In Magic the report is a feedback area at `area / S` on the parent, with the text `CIF error in cell <cell>, layer <layer>: parent and child disagree on CIF`. Hefesto adds the same feedback area (pale highlights) once the generation is over, on the command thread: after `gds write`, `cif write` or `cif flat`, and after a `cif` preview. The write also prints `<n> problems occurred.  See feedback entries.`.
 
 Compatibility: behavioral
 

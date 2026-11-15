@@ -95,6 +95,9 @@ struct PreparedWrite {
   /// The write's generation counters, filled by emit_write; finish_write
   /// adds them to the session's `cif statistics` (MaskSession::statistics).
   std::shared_ptr<mask::GenerationStatistics> statistics;
+  /// The generation errors of the write, filled by emit_write; finish_write
+  /// adds them to the editor's feedback (CIFError).
+  std::shared_ptr<std::vector<mask::GenerationProblem>> problems;
 };
 
 /// "Output scale factors" of `style`: Wscale and Pscale, the errors Magic
@@ -125,8 +128,9 @@ struct ScaleResult {
                                             const mask::Progress* progress = nullptr);
 
 /// The finish phase (exclusive lock, after emit_write): stores the write's
-/// random() state back into the session (PreparedWrite::random) and adds
-/// its generation counters to the session's `cif statistics`.
+/// random() state back into the session (PreparedWrite::random), adds its
+/// generation counters to the session's `cif statistics` and its
+/// generation errors to the feedback.
 void finish_write(editor::EditorState& editor, const PreparedWrite& prepared);
 
 /// prepare_write, emit_write, then finish_write; `progress`'s cancel flag

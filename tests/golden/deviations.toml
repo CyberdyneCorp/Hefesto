@@ -362,6 +362,11 @@ decisions = ["Q-MASK-219"]
 outputs = ["stdout.txt"]
 reason = "without an output style no file is opened, so x.gds does not exist afterwards; Magic leaves an empty x.gds"
 
+[MASK-HG-007]
+decisions = ["Q-UI-24"]
+outputs = ["fb.txt"]
+reason = "feedback save writes the box coordinates with an i suffix so the file replays under any units setting"
+
 [MASK-OP-002]
 decisions = ["Q-UI-24"]
 outputs = ["fb.txt"]
@@ -421,11 +426,6 @@ reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case 
 [MASK-HG-005]
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "fb_near.txt", "near.gds", "fb_far.txt"]
-reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
-
-[MASK-HG-007]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "out.gds", "fb.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-HG-016]

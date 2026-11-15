@@ -66,6 +66,7 @@ class Preview {
 
 Preview::~Preview() {
   c_.s.editor->mask.statistics.add(ctx.statistics);
+  mask::add_problem_feedback(*c_.s.editor, ctx.problems);
   for (const diag::Diagnostic& d : problems.kept) {
     c_.s.ctx->emit(d);
   }
