@@ -27,6 +27,7 @@
 #include "codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/stream/io.hpp"
+#include "hefesto/mask/gen/generate.hpp"
 #include "hefesto/mask/gen/throttle.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/version.hpp"
@@ -198,6 +199,8 @@ diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::Cell
   prepared.root = &root;
   prepared.options = options;
   prepared.compat = editor.drc.compat_settings();
+  prepared.statistics = std::make_shared<mask::GenerationStatistics>();
+  prepared.problems = std::make_shared<std::vector<mask::GenerationProblem>>();
   if (diag::Status s = load_cells(root, options, prepared.compat); !s.ok()) {
     return s.error();
   }
@@ -232,6 +235,12 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   out.put(preamble(prepared));
   detail::SymbolWriter writer(prepared, out, collected, ctx);
   diag::Status status = prepared.options.flat ? writer.write_flat() : writer.write_hierarchical();
+  if (prepared.statistics != nullptr) {
+    *prepared.statistics = ctx.statistics;
+  }
+  if (prepared.problems != nullptr) {
+    *prepared.problems = std::move(ctx.problems);
+  }
   std::vector<diag::Diagnostic> messages = collected.take();
   if (!status.ok() && status.error().code == codes::kCancelled) {
     (void)sink.finish();
@@ -255,7 +264,13 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   return finished(std::move(messages), io_error(prepared.options, path));
 }
 
-void finish_write(editor::EditorState& editor, const CifWriteOptions& options) {
+void finish_write(editor::EditorState& editor, const CifWriteOptions& options, const PreparedWrite* prepared) {
+  if (prepared != nullptr && prepared->statistics != nullptr) {
+    editor.mask.statistics.add(*prepared->statistics);
+  }
+  if (prepared != nullptr && prepared->problems != nullptr) {
+    mask::add_problem_feedback(editor, *prepared->problems);
+  }
   if (defers_mismatches(options, editor.drc.compat_settings()) && options.loader.fix_mismatches) {
     options.loader.fix_mismatches();
   }
@@ -270,7 +285,7 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const p
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (prepared) {
     cmd::CommandResult result = emit_write(prepared.value(), path, progress);
-    finish_write(editor, options);
+    finish_write(editor, options, &prepared.value());
     return result;
   }
   finish_write(editor, options);

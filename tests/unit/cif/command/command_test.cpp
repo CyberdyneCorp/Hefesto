@@ -326,6 +326,82 @@ TEST_CASE("cif paint, coverage and statistics", "[cap:cif-format-io][req:cif see
   CHECK(stats.front().starts_with("CIF statistics (recent/total):"));
 }
 
+TEST_CASE("the generation errors of a write become feedback entries afterwards",
+          "[cap:mask-hierarchical-generation][req:Parent/child disagreement reporting][golden:MASK-HG-007]") {
+  // MASK-HG-007: the child's pdiff under the parent's metal3; PSD = pdiff
+  // and-not metal3 differs between the child and the flattened parent.
+  std::string text = masktest_text();
+  const std::string last = "    layer CVA via1\n        squares 10 20 20\n        calma 50 0\n";
+  const std::size_t at = text.find(last);
+  REQUIRE(at != std::string::npos);
+  text.insert(at + last.size(), "    layer PSD pdiff\n        and-not metal3\n        calma 100 0\n");
+  for (const char* write : {"gds write /t/o", "cif write /t/o"}) {
+    Session s(true, true, "top", text);
+    auto made = s.editor.cells.create("child", s.editor.technology->plane_count());
+    REQUIRE(made.ok());
+    db::CellDef& child = *made.value();
+    child.flags().available = true;
+    s.paint(child, "pdiff", db::Rect{0, 0, 10, 10});
+    s.paint(*s.top, "metal3", db::Rect{5, -5, 30, 15});
+    REQUIRE(db::place(*s.top, child, db::PlaceOptions{}).ok());
+    db::recompute_bbox(*s.top);
+    REQUIRE(s.run(write).ok());
+    REQUIRE(s.editor.feedback.size() == 1);
+    const view::FeedbackArea& entry = s.editor.feedback.areas().front();
+    CHECK(entry.message() == "CIF error in cell top, layer PSD: parent and child disagree on CIF");
+    CHECK(entry.area == db::Rect{5, 0, 10, 10});
+    CHECK(entry.root == s.top);
+  }
+}
+
+TEST_CASE("the cif previews read the unread cells their flattening reaches",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options][golden:MASK-HG-022]") {
+  Session s;
+  s.editor.search_paths.path = {"/t"};
+  REQUIRE(s.files()
+              .write_atomic("/t/par.mag", "magic\ntech masktest\ntimestamp 100\nuse child  c0\ntimestamp 100\n"
+                                          "transform 1 0 0 0 1 0\nbox 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.files()
+              .write_atomic("/t/child.mag", "magic\ntech masktest\ntimestamp 100\n<< metal1 >>\nrect 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.run("load par").ok());
+  REQUIRE(s.run("box 0 0 10 10").ok());
+  const db::CellDef* child = s.editor.cells.find("child");
+  REQUIRE(child != nullptr);
+  REQUIRE_FALSE(child->flags().available);
+  REQUIRE(s.run("cif see NOPE").ok());  // CIFNameToMask fails first: nothing is read
+  CHECK_FALSE(child->flags().available);
+  s.editor.feedback.clear();
+  REQUIRE(s.run("cif see CMF").ok());
+  CHECK(child->flags().available);
+  CHECK(s.editor.feedback.size() > 0);
+}
+
+TEST_CASE("gds and cif writes add their generation counters to the session's cif statistics",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options]") {
+  Session s;
+  const hefesto::mask::StatisticsCounters& counters = s.editor.mask.statistics;
+  REQUIRE(counters.recent.flat_tiles == 0);
+  REQUIRE(s.run("cif write /t/x").ok());
+  const std::uint64_t after_cif = counters.recent.flat_tiles;
+  CHECK(after_cif > 0);
+  REQUIRE(s.run("gds write /t/y").ok());
+  const std::uint64_t after_gds = counters.recent.flat_tiles;
+  CHECK(after_gds > after_cif);
+  (void)s.take();
+  REQUIRE(s.run("cif statistics").ok());
+  const std::string both = std::to_string(after_gds);
+  const std::string tiles = "    Geometrical tile operations: " + both + "/" + both;
+  bool found = false;
+  for (const std::string& text : s.take()) {
+    found = found || text.find(tiles) != std::string::npos;
+  }
+  CHECK(found);
+  CHECK(counters.recent.flat_tiles == 0);
+  CHECK(counters.total.flat_tiles == after_gds);
+}
+
 TEST_CASE("the CIF writer ignores CIFhier with magic-compat ON and honours it OFF (Q-MASK-410)",
           "[cap:mask-hierarchical-generation][req:Hierarchy and array output switches]") {
   // CCA closes gaps up to 2 units: grow 10, shrink 10 in output units.

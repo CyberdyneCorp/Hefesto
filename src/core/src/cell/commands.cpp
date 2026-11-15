@@ -532,17 +532,61 @@ WriteAction writeall_action(WriteallRun& run, const db::CellDef& def) {
   return ask_writeall(run, def);
 }
 
+/// cmdSaveCell with no file name for "(UNNAMED)": the cell has no name to
+/// write under. Noninteractive (autowrite) refuses; otherwise the user is
+/// asked for a file name, as `save NAME` would be given one.
+void save_unnamed(IoSession& s, db::CellDef& def, bool noninteractive) {
+  s.emit(codes::kSaveAbandoned, "Must specify name for cell (UNNAMED).");
+  if (noninteractive) {
+    s.emit(codes::kWriteRefused, "Can't write file named '" + def.name() + "'");
+    return;
+  }
+  std::optional<std::string> answer;
+  while (!answer) {
+    answer = prompt_file_name(s, def);
+    if (!answer) {
+      s.emit(codes::kSaveAbandoned, "Cell not saved.");
+      return;
+    }
+    if (auto bad = illegal_cell_name(*answer)) {
+      s.emit(codes::kInvalidName, *bad);
+      answer.reset();
+    }
+  }
+  for (diag::Diagnostic& d : save_as(s, def, *answer).diagnostics) {
+    s.io.sink.emit(std::move(d));
+  }
+}
+
+/// cmdSaveCell(def, NULL, noninteractive, TRUE) for one `writeall` cell.
+void writeall_save(IoSession& s, db::CellDef& def, bool noninteractive) {
+  if (def.name() == "(UNNAMED)") {
+    save_unnamed(s, def, noninteractive);
+    return;
+  }
+  s.process_mismatches();  // cmdSaveCell's DBUpdateStamps runs DBFixMismatch
+  if (auto saved = save_cell(s.io, def); !saved) {
+    s.io.sink.emit(saved.error());
+  }
+}
+
+/// The cells `writeall` visits (DBCellSrDefs): with magic-compat ON also the
+/// unavailable ones (a used but undefined GDS or CIF cell), which the write
+/// then reads; with it OFF only cells whose contents are loaded.
+bool writeall_visits(const IoSession& s, const db::CellDef& def, int option) {
+  return !def.flags().internal && (def.flags().available || s.io.magic_compat) && selected_by_flags(def, option);
+}
+
 // One cell; false when the command is aborted.
 bool writeall_one(WriteallRun& run, db::CellDef& def) {
   switch (writeall_action(run, def)) {
     case WriteAction::autowrite:
       run.autowrite = true;
       run.s.emit(codes::kSaved, "Writing '" + def.name() + "'");
-      [[fallthrough]];
+      writeall_save(run.s, def, true);
+      return true;
     case WriteAction::write:
-      if (auto saved = save_cell(run.s.io, def); !saved) {
-        run.s.io.sink.emit(saved.error());
-      }
+      writeall_save(run.s, def, false);
       return true;
     case WriteAction::flush:
       (void)detail::flush_cell(run.s, def, false);
@@ -594,7 +638,7 @@ CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv)
     }
     std::vector<db::CellDef*> cells;
     s.ed.cells.for_each([&](db::CellDef& def) {
-      if (!def.flags().internal && def.flags().available && selected_by_flags(def, option)) {
+      if (writeall_visits(s, def, option)) {
         cells.push_back(&def);
       }
     });

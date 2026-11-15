@@ -13,6 +13,7 @@
 
 #include "hefesto/cif/command/settings.hpp"
 #include "hefesto/gds/command/settings.hpp"
+#include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/input/warnings.hpp"
 #include "hefesto/mask/style/style.hpp"
@@ -49,6 +50,9 @@ struct MaskSession {
   // host local zone. Passed to GdsWriteOptions, GdsReadOptions and
   // CifWriteOptions by the `gds` and `cif` commands.
   std::string time_zone;
+  // INTEGRATION: the `cif statistics` counters (Magic's CIFTileOps and
+  // totals), fed on the command thread after each generation.
+  StatisticsCounters statistics;
 };
 
 }  // namespace hefesto::mask

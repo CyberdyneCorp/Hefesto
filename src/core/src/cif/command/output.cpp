@@ -12,15 +12,14 @@
 // California (see THIRD_PARTY_NOTICES.md). The generation itself is GEN's
 // (mask/gen/generate.hpp).
 //
-// The `cif statistics` counters belong to the session in Magic (CIFTileOps
-// and friends); until MaskSession holds them they are kept here per
-// editor and count the generations of the `cif` command's previews.
+// The `cif statistics` counters are the session's (MaskSession::statistics,
+// Magic's CIFTileOps and friends): the previews here and the GDS and CIF
+// writes add to them.
 // Owner: CIF.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
-#include <unordered_map>
 
 #include "command_impl.hpp"
 #include "hefesto/cif/read/read.hpp"
@@ -66,15 +65,9 @@ class Preview {
   CountingSink problems;
 };
 
-mask::StatisticsCounters& session_counters(const editor::EditorState& editor) {
-  static std::mutex mutex;
-  static std::unordered_map<const editor::EditorState*, mask::StatisticsCounters> counters;
-  const std::lock_guard<std::mutex> lock(mutex);
-  return counters[&editor];
-}
-
 Preview::~Preview() {
-  session_counters(*c_.s.editor).add(ctx.statistics);
+  c_.s.editor->mask.statistics.add(ctx.statistics);
+  mask::add_problem_feedback(*c_.s.editor, ctx.problems);
   for (const diag::Diagnostic& d : problems.kept) {
     c_.s.ctx->emit(d);
   }
@@ -167,6 +160,23 @@ CommandResult read_option(const CifCall& c) {
   return read(editor, found->path, options);
 }
 
+// The previews flatten the box grown by the style radius with DBTreeSrTiles
+// (CIFGenSubcells searches the same area), which reads every unavailable
+// cell it reaches; nothing processes the timestamp mismatches afterwards.
+// Only once the layer names are valid (CIFNameToMask comes first).
+void read_reached(const CifCall& c, db::CellDef& root, const db::Rect& area, const mask::OutputStyle& style,
+                  std::string_view layer) {
+  if (!mask::select_layers(style, layer).ok()) {
+    return;
+  }
+  editor::EditorState& editor = *c.s.editor;
+  const compat::CompatSettings compat = editor.drc.compat_settings();
+  gds::SubtreeLoader loader = gds::command_subtree_loader(*c.s.ctx, editor);
+  loader.fix_mismatches = nullptr;
+  const std::int64_t radius = std::clamp<std::int64_t>(mask::generation_radius(style, compat), 0, db::kInfinity);
+  (void)gds::load_area(root, db::expand(area, static_cast<db::Coord>(radius)), loader, false, compat);
+}
+
 // SEE, and the preview forms of ARRAY and HIER (three words).
 CommandResult see_option(const CifCall& c, std::size_t option) {
   if (c.argc() != 3) {
@@ -181,8 +191,9 @@ CommandResult see_option(const CifCall& c, std::size_t option) {
   if (style == nullptr) {
     return CommandResult::success();
   }
-  const db::CellDef& root = *editor.box_root;
+  db::CellDef& root = *editor.box_root;
   const std::string& layer = c.words[1];
+  read_reached(c, root, *editor.box, *style, layer);
   diag::Outcome<std::vector<db::TileView>> tiles = diag::Outcome<std::vector<db::TileView>>{std::vector<db::TileView>{}};
   {
     Preview preview(c);
@@ -229,6 +240,9 @@ CommandResult paint_option(const CifCall& c) {
   if (type.value() < tech::kFirstUserType) {  // layer >= TT_TECHDEPBASE
     return CommandResult::success();
   }
+  if (const mask::OutputStyle* style = editor.mask.output_styles.current_style(); style != nullptr) {
+    read_reached(c, root, *editor.box, *style, c.words[1]);
+  }
   diag::Status painted = diag::Done{};
   {
     Preview preview(c);
@@ -263,6 +277,9 @@ CommandResult coverage_option(const CifCall& c) {
   if (root == nullptr) {
     return CommandResult::failure(diag::make("VIEW-WINDOW-003", "Point to a window first"));
   }
+  if (const mask::OutputStyle* style = editor.mask.output_styles.current_style(); style != nullptr) {
+    read_reached(c, *root, area, *style, c.words[1]);
+  }
   diag::Outcome<mask::Coverage> covered = diag::Outcome<mask::Coverage>{mask::Coverage{}};
   {
     Preview preview(c);
@@ -280,7 +297,7 @@ CommandResult coverage_option(const CifCall& c) {
 }
 
 CommandResult statistics_option(const CifCall& c) {
-  cu::print_block(c.s, mask::statistics(session_counters(*c.s.editor)));
+  cu::print_block(c.s, mask::statistics(c.s.editor->mask.statistics));
   return CommandResult::success();
 }
 

@@ -20,6 +20,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "use_index_impl.hpp"
 
@@ -377,58 +378,6 @@ bool uses_overlapping(const CellDef& def, const Rect& area, const compat::Compat
 }
 
 namespace {
-
-struct ElementRange {
-  std::int32_t xlo = 0;
-  std::int32_t xhi = 0;
-  std::int32_t ylo = 0;
-  std::int32_t yhi = 0;
-};
-
-// DBArrayOverlap, one axis: the element range whose images may overlap
-// [lo, hi] (child coordinates, flipped for a negative separation).
-void axis_range(Coord sep, Coord lo, Coord hi, Coord box_lo, Coord box_hi, std::int32_t& out_lo,
-                std::int32_t& out_hi) {
-  const std::int32_t first = std::min(out_lo, out_hi);
-  const std::int32_t last = std::max(out_lo, out_hi);
-  if (sep < 0) {
-    sep = -sep;
-    std::swap(lo, hi);
-    lo = -lo;
-    hi = -hi;
-    std::swap(box_lo, box_hi);
-    box_lo = -box_lo;
-    box_hi = -box_hi;
-  }
-  std::int32_t a = first;
-  std::int32_t b = last;
-  if (sep != 0) {
-    a = first + (lo - box_hi + sep - 1) / sep;
-    b = first + (hi - box_lo) / sep;
-  }
-  a = std::max(a, first);
-  b = std::min(b, last);
-  if (out_lo > out_hi) {  // back to the use's own index direction
-    const std::int32_t na = last + first - b;
-    b = last + first - a;
-    a = na;
-  }
-  out_lo = a;
-  out_hi = b;
-}
-
-ElementRange array_overlap(const CellUse& use, const Rect& parent_rect) {
-  const ArrayInfo& a = use.array;
-  ElementRange r{a.xlo, a.xhi, a.ylo, a.yhi};
-  if (!a.is_array()) {
-    return ElementRange{a.xlo, a.xlo, a.ylo, a.ylo};
-  }
-  const Rect child = apply(invert(use.transform), parent_rect);
-  const Rect box = use.def->bbox();
-  axis_range(a.xsep, child.x0, child.x1, box.x0, box.x1, r.xlo, r.xhi);
-  axis_range(a.ysep, child.y0, child.y1, box.y0, box.y1, r.ylo, r.yhi);
-  return r;
-}
 
 int read_area(const CellDef& def, const Rect& area);
 

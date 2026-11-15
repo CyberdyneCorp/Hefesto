@@ -47,4 +47,16 @@ struct GenerationStatistics {
   friend bool operator==(const GenerationStatistics&, const GenerationStatistics&) = default;
 };
 
+/// The recent and cumulative statistics counters of a session (Magic's
+/// CIFTileOps, cifTotalTileOps, ...): MaskSession::statistics, fed by every
+/// generation the commands run (`cif see` and the other previews, `gds
+/// write`, `cif write`, `cif flat`) and printed by `cif statistics`.
+struct StatisticsCounters {
+  GenerationStatistics recent;
+  GenerationStatistics total;
+
+  /// Adds a generation's counters to the recent values.
+  void add(const GenerationStatistics& stats) noexcept;
+};
+
 }  // namespace hefesto::mask

@@ -18,6 +18,7 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/plane.hpp"
@@ -85,14 +86,9 @@ struct ElementRef {
 };
 
 /// DBArrayOverlap: the element index range of `use` whose images may
-/// overlap `parent_area` (C truncating division, 64-bit).
-struct IndexRange {
-  std::int32_t xlo = 0;
-  std::int32_t xhi = 0;
-  std::int32_t ylo = 0;
-  std::int32_t yhi = 0;
-};
-[[nodiscard]] IndexRange array_overlap(const db::CellUse& use, const db::Rect& parent_area);
+/// overlap a parent area (db/array_overlap.hpp).
+using IndexRange = db::ElementRange;
+using db::array_overlap;
 
 /// Return value of a search callback (dbCellSrFunc): go on, stop the whole
 /// search, or skip the remaining elements of the current array.

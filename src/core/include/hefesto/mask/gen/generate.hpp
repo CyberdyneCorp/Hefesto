@@ -296,22 +296,18 @@ struct Coverage {
 /// lines (`box` selects the cursor-box wording).
 [[nodiscard]] std::string coverage_report(const Coverage& coverage, bool box);
 
-/// The recent and cumulative statistics counters of a session (Magic's
-/// CIFTileOps, cifTotalTileOps, ...).
-struct StatisticsCounters {
-  GenerationStatistics recent;
-  GenerationStatistics total;
-
-  /// Adds a generation's counters to the recent values.
-  void add(const GenerationStatistics& stats) noexcept;
-};
-
 /// `cif statistics` (CIFPrintStats): the four `recent/total` lines of
 /// `counters` after adding the recent values to the totals; then the
 /// recent values are reset.
 [[nodiscard]] std::string statistics(StatisticsCounters& counters);
 /// The four lines for `stats` as both the recent and the total values.
 [[nodiscard]] std::string statistics(const GenerationStatistics& stats);
+
+/// CIFError's DBWFeedbackAdd for each of `problems` in order (pale
+/// highlights, the area in the problem's mask units), run on the command
+/// thread once a generation (a write or a `cif` preview) is over. A problem
+/// whose cell no window shows adds nothing, as in Magic.
+void add_problem_feedback(editor::EditorState& editor, const std::vector<GenerationProblem>& problems);
 
 /// The interaction areas of `cell` for halo `halo` (internal units) over
 /// `area`: the interaction search grid of hierarchical generation

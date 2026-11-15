@@ -89,6 +89,13 @@ struct SubtreeResult {
 SubtreeResult load_subtree(db::CellDef& root, const SubtreeLoader& loader, bool halt_on_error,
                            const compat::CompatSettings& compat);
 
+/// The same walk over `area` of `root` instead of its bounding box
+/// (DBCellReadArea(root, area, halt_on_error)): the `cif` previews read the
+/// cells their flattening reaches (DBTreeSrTiles) with it. The mismatches
+/// are processed only when the loader has fix_mismatches.
+SubtreeResult load_area(db::CellDef& root, const db::Rect& area, const SubtreeLoader& loader, bool halt_on_error,
+                        const compat::CompatSettings& compat);
+
 /// The loader of a command: DBCellRead through the cell area's reader
 /// (technology ignored, the dereference flag followed, as subcell expansion
 /// reads) and its deferred mismatch processing, which prints Magic's

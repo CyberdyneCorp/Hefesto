@@ -33,6 +33,17 @@ release notices.
 
 ### Changed
 
+- **`writeall` after a GDS or CIF read.** A modified `(UNNAMED)` cell is
+  no longer written to `(UNNAMED).mag`: `writeall force` reports `Can't
+  write file named '(UNNAMED)'`, and a chosen write asks for a file name.
+  With `magic-compat` ON a used but undefined cell is written as Magic
+  writes it (an empty cell whose timestamp stays 0).
+- **Generation errors become feedback.** The errors of `gds write`, `cif
+  write`, `cif flat` and the `cif` previews ("parent and child disagree on
+  CIF") are added as feedback areas when the command finishes, and every
+  write counts in `cif statistics`.
+- **`cif see` and the other previews read unread subcells** within the box
+  before generating, as Magic does.
 - **Saving restamps read-only vendor cells.** `save` and `writeall`
   recompute a read-only cell's content-hash timestamp from the GDS file its
   `GDS_FILE` names, as Magic's DBUpdateStamps does.
