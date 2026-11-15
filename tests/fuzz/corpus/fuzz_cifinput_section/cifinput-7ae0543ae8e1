@@ -1,0 +1,6 @@
+style gds
+    scalefactor 10
+    templayer CAA CAA
+        shrink 10
+    layer ndiff CAA
+    calma CAA 43 0

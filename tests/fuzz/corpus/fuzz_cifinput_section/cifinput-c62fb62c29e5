@@ -1,0 +1,12 @@
+style s1
+    scalefactor 1
+    layer metal1 CMF
+    layer metal2 CMF
+        tagged VDD
+    calma CMF 49 0
+style s100
+    scalefactor 100
+    layer metal1 CMF
+    layer metal2 CMF
+        tagged VDD
+    calma CMF 49 0

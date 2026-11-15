@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10 nanometers
+    layer metal1 CMF
+        grow 5
+    calma CMF 49 0

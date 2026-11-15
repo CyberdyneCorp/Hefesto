@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    calma CPO 7 *
+    layer poly CPO
+    calma CPO 7 *

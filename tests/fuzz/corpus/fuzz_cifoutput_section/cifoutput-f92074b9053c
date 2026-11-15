@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer PSD pdiff
+        and-not metal3
+        calma 100 0

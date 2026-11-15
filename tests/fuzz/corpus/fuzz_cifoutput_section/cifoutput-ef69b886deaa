@@ -1,0 +1,7 @@
+style gds
+    scalefactor 10
+    layer M metal1
+        grow 30
+        shrink 30
+        min-width 40
+        calma 49 0

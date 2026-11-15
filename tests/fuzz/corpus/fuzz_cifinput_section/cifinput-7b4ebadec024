@@ -1,0 +1,9 @@
+style gds
+    scalefactor 10
+    layer pdc CCA
+        grow 100
+        and CMF
+    layer metal1 CMF
+        shrink 50
+    calma CCA 48 0
+    calma CMF 49 0

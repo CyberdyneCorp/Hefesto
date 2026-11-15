@@ -1,0 +1,14 @@
+style g
+    scalefactor 10
+    layer M1X metal1
+        grow 30
+        calma 49 0
+style s
+    scalefactor 10
+    layer M1X metal1
+        shrink 25
+        calma 49 0
+style o
+    scalefactor 10
+    layer M1X metal1
+        calma 49 0

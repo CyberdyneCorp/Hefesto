@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer M1 metal1
+        grow 30
+        calma 49 0

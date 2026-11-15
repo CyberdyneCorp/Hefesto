@@ -1,0 +1,22 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+        labels CMF
+    layer metal2 CMS
+        labels CMS
+    layer metal3 CMT
+    layer poly CPG
+        labels CPG
+    layer ndiff CAA
+    layer nfet CPG
+        and CAA
+    layer pdc CCA
+        grow 10
+        and CAA
+        and CMF
+    calma CMF 49 0
+    calma CMS 51 0
+    calma CMT 62 0
+    calma CPG 46 0
+    calma CAA 43 0
+    calma CCA 48 0

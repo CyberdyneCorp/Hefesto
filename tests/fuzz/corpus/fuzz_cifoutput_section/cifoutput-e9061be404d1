@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer NET metal1
+        net VDD metal1
+        calma 100 0

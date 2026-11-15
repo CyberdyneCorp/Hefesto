@@ -1,0 +1,8 @@
+style gds
+    scalefactor 10
+    layer BMAX pdiff
+        bloat-max pdiff poly 20 metal1 -10
+        calma 100 0
+    layer BMIN pdiff
+        bloat-min pdiff poly -20 metal1 10
+        calma 101 0

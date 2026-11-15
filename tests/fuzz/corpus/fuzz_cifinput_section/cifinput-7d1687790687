@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+        not-square
+    calma CMF 49 0
