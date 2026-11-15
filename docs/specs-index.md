@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3324 scenarios, 872 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3328 scenarios, 875 open questions.
 
 ## Hefesto product (native)
 
@@ -63,7 +63,7 @@ Open questions: [47](decisions/open-questions/CELL.md) · Golden cases: [CASES.m
 
 ## Layout data model (MODEL)
 
-Open questions: [36](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
+Open questions: [35](decisions/open-questions/MODEL.md) · Golden cases: [CASES.md](../tests/golden/MODEL/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -71,7 +71,7 @@ Open questions: [36](decisions/open-questions/MODEL.md) · Golden cases: [CASES.
 | [`layout-geometry-model`](../openspec/specs/layout-geometry-model/spec.md) | 9 | 21 | Defines the geometric foundation of the Hefesto layout database so that it is data-compatible with Magic VLSI: the integer coordinate space and its limits, rectangles and their pre… |
 | [`layout-hierarchy`](../openspec/specs/layout-hierarchy/spec.md) | 13 | 22 | Specifies the hierarchical data model of a Magic-compatible layout: cell definitions and their namespace, cell instances (uses) with instance identifiers, transforms and arrays, bo… |
 | [`layout-labels-ports`](../openspec/specs/layout-labels-ports/spec.md) | 11 | 15 | Specifies the label and port data model of a Magic-compatible layout database: label attributes (text, attached layer, rectangle, justification, outline font, size, rotation, offse… |
-| [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 23 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
+| [`layout-paint-semantics`](../openspec/specs/layout-paint-semantics/spec.md) | 11 | 21 | Specifies, as observable semantics, what geometry results when paint is added to, removed from, or overwritten in a cell: the per-plane result tables (paint, erase, write), the def… |
 | [`layout-properties`](../openspec/specs/layout-properties/spec.md) | 6 | 10 | Specifies cell-definition properties: the typed key/value store attached to each cell definition, the value types and their coercions, how geometric property values follow scaling … |
 | [`layout-undo`](../openspec/specs/layout-undo/spec.md) | 10 | 25 | Specifies the undo/redo model: the event log, how events are grouped into one undo step per user command, what database and editor changes are recorded (and what is not), how undo … |
 
@@ -89,14 +89,14 @@ Open questions: [27](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 
 ## Mask generation, GDS, CIF (MASK)
 
-Open questions: [145](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
+Open questions: [149](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
-| [`cif-format-io`](../openspec/specs/cif-format-io/spec.md) | 30 | 48 | Defines the Caltech Intermediate Form (CIF) as read and written by Hefesto in a Magic-compatible way: the lexical rules and grammar accepted on input, how symbols, calls, transform… |
-| [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 90 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
-| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 75 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
-| [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 47 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
+| [`cif-format-io`](../openspec/specs/cif-format-io/spec.md) | 30 | 51 | Defines the Caltech Intermediate Form (CIF) as read and written by Hefesto in a Magic-compatible way: the lexical rules and grammar accepted on input, how symbols, calls, transform… |
+| [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 91 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
+| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 76 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
+| [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 48 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
 | [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 46 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 47 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
 | [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 38 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |

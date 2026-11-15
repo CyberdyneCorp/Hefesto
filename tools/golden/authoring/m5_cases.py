@@ -46,6 +46,7 @@ REPLAYED: set[str] = {
     "MASK-CF-001",
     "MASK-CF-002",
     "MASK-CF-003",
+    "MASK-CF-004",
     "MASK-CF-005",
     "MASK-CF-006",
     "MASK-CF-007",

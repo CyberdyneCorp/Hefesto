@@ -444,6 +444,16 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Recommendation: platform, on every target including iPadOS. Hierarchical generation reports progress (fraction of interaction squares done) to a callback, rate-limited to about 5 s. The console shell may print `Completed N%`, which is informative and not part of the golden output. The callback also offers cancellation: a cancelled write produces no output file, by writing to a temporary file and renaming it. Generation reads a read-only snapshot of the database, so edits cannot corrupt a write in progress, and the UI is not blocked the way Tk_RestrictEvents blocks it. None of this changes the mask output.
 - Resolution: platform — on every target hierarchical generation reports progress to a rate-limited callback that also offers cancellation (a cancelled write leaves no output file: temporary file and rename) and reads a read-only snapshot of the database, so the UI is not blocked and edits cannot corrupt a write; mask output is unchanged. Approved 2026-11-13.
 
+### Q-MASK-415: `cif unfracture` merges only the internal-unit search area
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: CIFGen calls DBMergeNMTiles on each generated layer with `expanded`, the search area in internal units, although the layer's plane is in mask units (internal units times the scale factor). With a scale factor above 1 only the split tiles inside that smaller area of the mask-unit plane are merged; the rest of the layer stays fractured. Split from Q-MASK-413 (the command's argument form) in the round 4 review.
+- Evidence: cif/CIFgen.c:5781-5786 (CIFGenLayer over `expanded`, then `DBMergeNMTiles(new[i], &expanded, ...)`), cif/CIFgen.c:51 (CIFUnfracture)
+- Verified 2026-11-14: round 4 landed ON as Magic and OFF as the search area times the scale factor; the round 4 task notes described OFF both as "that area times the scale factor" and as "the whole generated area". Decided as the whole generated layer and changed in the round 4 decisions.
+- Options: replicate | fix (merge the whole layer) | compat (ON: Magic's internal-unit area; OFF: the whole generated layer)
+- Recommendation: compat. The unit mix-up only changes the polygon decomposition, never the covered area, so ON can keep Magic's GDS bytes. OFF merges the whole plane: every tile on it was generated for this call, so nothing outside the layer is touched, and the result no longer depends on where the geometry lies relative to the internal-unit area.
+- Resolution: compat — with `magic-compat` ON `cif unfracture` merges each generated layer over CIFGen's search area in internal units, as Magic does on its mask-unit plane; with it OFF it merges the whole generated layer (`mask::unfracture_layer`, `db::whole_plane()`). Only the decomposition changes. mask-hierarchical-generation "Non-manhattan merge option" states both (`tests/unit/mask/gen/unfracture_test.cpp`). Approved 2026-11-14.
+
 ### Q-MASK-300: cifinput "nanometers"/"angstroms" overwrites the decimal multiplier
 - Kind: bug
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
@@ -742,11 +752,13 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 
 ### Q-MASK-332: flat CIF write lacks reducer check
 - Kind: bug
+- Status: approved (resolved 2026-11-07; confirmed for both modes 2026-11-14 in the round 4 review)
 - Magic behavior: CIFWriteFlat does not refuse styles with reducer 0 (division by zero).
-- Evidence: cif/CIFwrite.c:729-792 vs cif/CIFwrite.c:142-147
+- Evidence: cif/CIFwrite.c:729-792 vs cif/CIFwrite.c:146-150 (the hierarchical check); the divisions by cs_reducer are at cif/CIFwrite.c:368, 423-434, 551-553, 607-609
+- Verified 2026-11-14: as landed in round 4 (`cif/write/write.cpp` `prepare_write`), `cif write` and `cif flat` both refuse a reducer of 0 with CIF-WRITE-003 and leave an empty file, in both `magic-compat` settings. The cif-format-io text still said "no reducer check" for flat output; corrected.
 - Options: fix (same refusal as hierarchical)
 - Recommendation: fix.
-- Resolution: fix — flat CIF write refuses a style with reducer 0, like the hierarchical write, instead of dividing by zero (X-2 tier 1, 2026-11-07).
+- Resolution: fix — flat CIF write refuses a style with reducer 0, like the hierarchical write, instead of dividing by zero (X-2 tier 1, 2026-11-07). Confirmed 2026-11-14: crash class, so the refusal (CIF-WRITE-003, the Calma-only message, empty file) applies in both `magic-compat` settings; cif-format-io "CIF output preconditions and flat output" states it (`tests/unit/cif/write/write_test.cpp`, both forms, both modes).
 
 ### Q-MASK-333: CIF wires use square end extensions
 - Kind: quirk
@@ -794,11 +806,22 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 
 ### Q-MASK-338: CIF label-layer tiles are scaled twice
 - Kind: bug
-- Status: proposed (drafted 2026-11-14 in the round 4 review; awaiting approval)
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
 - Magic behavior: cifWriteLabelFunc multiplies a `labellayer` tile's centre and size by `cs_scaleFactor` before dividing by `cs_reducer`, although the tile is on a generated CIF plane whose coordinates are already in output units (cifWritePaintFunc divides the same tiles by the reducer only). With `scalefactor` S other than 1 the `94`/`95` label lands S times too far from the geometry it marks.
 - Evidence: cif/CIFwrite.c:603-618 (label tiles), cif/CIFwrite.c:647-700 (paint tiles of the same planes)
 - Options: replicate | fix (divide by R only) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
 - Recommendation: compat. ON: `94 LAYER ((x1+x2)*S)/R ((y1+y2)*S)/R;` and the `95` size `((x2-x1)*2*S)/R`, as Magic writes them. OFF: `(x1+x2)/R` and `(2*(x2-x1))/R`, in the units of the geometry. Only label-layer output with S other than 1 changes; most styles use S = 1 for labellayers' planes.
+- Resolution: compat — with `magic-compat` ON a `labellayer` tile is written multiplied by the scale factor S before the division by the reducer R, as Magic's cifWriteLabelFunc does (`94 LAYER ((x1+x2)*S)/R ((y1+y2)*S)/R;`, `95` sizes `((x2-x1)*2*S)/R`); with it OFF it is only divided by R, in the units of the geometry. Code as landed in round 4 (`cif/write/writer.cpp`, `format.cpp`); cif-format-io "CIF output labels" states both modes (`tests/unit/cif/write/format_test.cpp`, `tests/unit/cif/write/write_test.cpp`; golden MASK-CF-028, ON). Approved 2026-11-14.
+
+### Q-MASK-339: CIF header of a technology without a version section
+- Kind: quirk
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: cifOutPreamble prints DBTechVersion and DBTechDescription. A tech load never clears them (DBTechInitVersion is empty; DBTechSetVersion only overwrites), so a technology without a `version` section, or without one of its two lines, shows the previous technology's value; in a session that loaded one technology that is the start-up (minimum) technology's `0.0` and `Minimum technology file structure`.
+- Evidence: cif/CIFwrite.c:260-300 (cifOutPreamble), database/DBtech.c:44-45, database/DBtech.c:146-151 (DBTechInitVersion), database/DBtech.c:171-200 (DBTechSetVersion)
+- Verified 2026-11-14: the MASK-CF goldens (masktest has no version section) show `( @@version : 0.0 );` and `( @@techdesc : Minimum technology file structure );`.
+- Options: replicate (stale values of the previous technology) | compat (ON: the start-up technology's values; OFF: `unknown` and no `@@techdesc` line, as the capability said)
+- Recommendation: compat. ON gives what Magic shows in the golden sessions (one technology loaded after start-up), without tracking which technology was loaded before. OFF reports the technology's own state: `( @@version : unknown );` and no `@@techdesc` line. The `@@` lines are comments, so no geometry changes.
+- Resolution: compat — with `magic-compat` ON a technology that declares no version or no description shows the start-up technology's `0.0` / `Minimum technology file structure` in the CIF `@@version` / `@@techdesc` lines, each value on its own, as Magic does in a session that loaded one technology; with it OFF `@@version` is `unknown` and the `@@techdesc` line is omitted, as implemented in round 4 (`cif/write/write.cpp` `set_version`). cif-format-io "CIF output header" states both (`tests/unit/cif/write/write_test.cpp`). Approved 2026-11-14.
 
 ### Q-MASK-110: Structure with trailing garbage leaves input planes uncleared
 - Kind: bug
@@ -1036,6 +1059,16 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix (treat values >= 1900 as full years) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
 - Recommendation: compat. ON: use the year as tm_year and keep the 32-bit truncation of the result (defined as the low 32 bits, two's complement) so that cd_timestamp matches Magic. OFF: treat year >= 1900 as a full year and smaller values as years since 1900, and store the timestamp without overflow. Magic only checks timestamps for equality, so the OFF values stay internally consistent. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `magic-compat` ON the BGNSTR year is taken as tm_year and the result keeps Magic's 32-bit truncation; with it OFF a year ≥ 1900 is a full year, smaller values are years since 1900, and the timestamp is stored without overflow. Approved 2026-11-13.
+
+### Q-MASK-135: `gds warning redirect` file holds only message prefixes
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: Under `gds warning redirect FILE`, CalmaReadError writes the `Error while reading cell "<cell>" (byte position <offset>): ` prefix to the file with fprintf and the message body with Vfprintf. In the Tcl build Vfprintf is Tcl_printf, which ignores the stream and prints on the console, so the file gets only the prefixes (and the second line of an unexpected-record error) while the bodies appear on the console without their prefixes.
+- Evidence: calma/CalmaRead.c:948-958 (the redirect branch), calma/CalmaRead.c:1002-1009 (the unexpected-record second line, fprintf), textio/textio.h:57-61 (`#define Vfprintf Tcl_printf` in the Tcl build), tcltk/tclmagic.c:1411-1419
+- Verified 2026-11-14: noted on the round 3 review (decision table, round 3 item 6); the gds-read "Read diagnostics" text described both behaviours without a decision.
+- Options: replicate (split each message across the file and the console) | fix (whole messages to the file, nothing on the console) | compat
+- Recommendation: fix in both modes. A message split across two streams loses its meaning in both (the file has prefixes with no bodies, the console bodies with no cell or byte position), so it is a loss of diagnostic data; the redirect's purpose is to keep the console clean. No golden case captures a redirect file.
+- Resolution: fix — in both modes `gds warning redirect FILE` writes each whole read message, prefix and body, to the file and prints nothing on the console; Magic's Tcl build writes only the prefixes to the file and the bodies to the console. gds-read "Read diagnostics" states it (`tests/unit/gds/read/read_test.cpp`). Approved 2026-11-14.
 
 ### Q-MASK-200: Permissive GDS character table swaps '%' and '&'
 - Kind: bug
@@ -1344,3 +1377,13 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Recommendation: compat (a rounding asymmetry, the X-2 tier-2 example). With magic-compat ON, use C truncation toward zero for both the seed area and the clip base. With it OFF, round outward (floor the lower bounds, ceil the upper bounds) so off-grid and negative triggers are not shifted toward the origin. Both modes give identical output for on-grid mask geometry. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `magic-compat` ON mask-layer triggers are converted to internal units with C truncation toward zero for the seed area and the clip base, as in Magic; with it OFF they round outward. On-grid geometry is identical in both modes. Approved 2026-11-13.
 
+
+### Q-MASK-233: hierarchy depth limit of the GDS and CIF writers
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: The subtree load before a write (DBCellReadArea, dbReadAreaFunc), the GDS structure traversal (calmaProcessDef, calmaProcessUse) and the CIF writer's generation recurse once per hierarchy level with no limit, so a deep enough hierarchy (or a cyclic one read from a malformed file) overflows the stack and crashes Magic.
+- Evidence: database/DBexpand.c:276-330 (dbReadAreaFunc recurses through DBCellSrArea), calma/CalmaWrite.c:920-1074 (calmaProcessDef and calmaProcessUse through DBCellEnum), cif/CIFwrite.c:309-356
+- Verified 2026-11-14: Hefesto's walks were bounded at 4096 levels (`gds::kMaxSubtreeDepth`) in round 4; the round 4 review lowered it to 1024, the mask generators' own limit (`mask::gen_detail::kMaxDepth`), because the emit phase recursing 4096 levels overflowed a secondary thread's stack (task 12.2 note, `platform::kDeepRecursionStackBytes`).
+- Options: replicate (crash; impossible) | fix (fail the write cleanly at a fixed depth)
+- Recommendation: fix in both modes (crash class, X-2 tier 1: no Magic output to match). 1024 levels is far beyond any real design and is the limit the generators already use, so every recursive walk of a write fails at the same depth with a message instead of overflowing the stack.
+- Resolution: fix — in both modes a GDS or CIF write of a hierarchy deeper than 1024 levels below the root (`gds::kMaxSubtreeDepth`, the mask generators' limit) fails before any record is written and leaves an empty file: GDS-WRITE-014 "Failure to read entire subtree of the cell. / The hierarchy is deeper than 1024 levels at cell CELL." (the structure traversal checks the same bound as a backstop: "Calma output error:  the hierarchy under cell ROOT is deeper than 1024 levels."), CIF-WRITE-008 "Failure to read in entire subtree of the cell. / The hierarchy is deeper than 1024 levels at cell CELL.". gds-write "Write preconditions and subtree loading" and cif-format-io "CIF output symbol numbering and order" state it (`tests/unit/gds/write/depth_test.cpp`, `tests/unit/cif/write/write_test.cpp`). Approved 2026-11-14.

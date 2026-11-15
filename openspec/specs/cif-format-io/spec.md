@@ -318,20 +318,27 @@ Hefesto SHALL begin every CIF output file with these comment lines, in order, ea
 ( @@date : DATE );
 ```
 
-The lines, their order and format are the same in both `magic-compat` settings (Q-MASK-324, resolution: platform). `USER`/`HOST` come from the environment on desktop platforms (`?` when unset); on iPadOS they are `?` unless the app provides them. `SOURCE` is the root cell's file path (`?` when none). The `@@tool` value is `Hefesto <version>` and `COMPILETIME` is Hefesto's build time: Hefesto does not claim to be Magic. `TECHVERSION` is `unknown` when the technology declares none, the `@@techdesc` line is omitted when there is no description, and `DATE` is the local time in C `ctime` format without the trailing newline. Golden comparisons mask the six host-, build- or time-dependent values `@@user`, `@@machine`, `@@source`, `@@tool`, `@@compiled` and `@@date`, and run with `TZ=UTC`.
+The lines, their order and format are the same in both `magic-compat` settings (Q-MASK-324, resolution: platform). `USER`/`HOST` come from the environment on desktop platforms (`?` when unset); on iPadOS they are `?` unless the app provides them. `SOURCE` is the root cell's file path (`?` when none). The `@@tool` value is `Hefesto <version>` and `COMPILETIME` is Hefesto's build time: Hefesto does not claim to be Magic. When the technology declares no version or no description, the values depend on the `magic-compat` setting (Q-MASK-339, resolution: compat): with it ON (the default) a missing `TECHVERSION` or `TECHDESC` is the start-up technology's, `0.0` and `Minimum technology file structure`, as Magic shows them in a session that loaded one technology (a tech load never clears DBTechVersion and DBTechDescription); with it OFF `TECHVERSION` is `unknown` when the technology declares none and the `@@techdesc` line is omitted when there is no description. Each value falls back on its own. and `DATE` is the local time in C `ctime` format without the trailing newline. Golden comparisons mask the six host-, build- or time-dependent values `@@user`, `@@machine`, `@@source`, `@@tool`, `@@compiled` and `@@date`, and run with `TZ=UTC`.
 
 Compatibility: informative
 
-(Magic ref: cif/CIFwrite.c:260-300)
+(Magic ref: cif/CIFwrite.c:260-300, database/DBtech.c:44-45, database/DBtech.c:146-151)
 
 #### Scenario: Header for a technology without description
 - **GIVEN** technology `scmos`, version `2.0`, no description, output style `lambda=1.0(gen)`
 - **WHEN** CIF is written
-- **THEN** the lines `( @@technology : scmos );`, `( @@version : 2.0 );`, `( @@style : lambda=1.0(gen) );` appear and no `@@techdesc` line
+- **THEN** the lines `( @@technology : scmos );`, `( @@version : 2.0 );`, `( @@style : lambda=1.0(gen) );` appear
+- **AND** with `magic-compat` OFF there is no `@@techdesc` line, and with it ON the line is `( @@techdesc : Minimum technology file structure );`
+
+#### Scenario: Header for a technology without a version section
+- **GIVEN** a technology with no `version` section
+- **WHEN** CIF is written with `magic-compat` ON
+- **THEN** the lines `( @@version : 0.0 );` and `( @@techdesc : Minimum technology file structure );` appear
+- **AND** with `magic-compat` OFF the line `( @@version : unknown );` appears and no `@@techdesc` line
 
 ### Requirement: CIF output symbol numbering and order
 
-Hefesto SHALL number and order symbols as follows. The root cell is symbol 1. Starting with a stack containing only the root, repeatedly pop a cell; if it was already written skip it; otherwise, enumerate its child instances in *use enumeration order* and give each child cell not yet numbered the next number (2, 3, …) and push it; then write the popped cell's definition. Consequently parents are written before their children and the last-numbered pending cell is written first. A cell that cannot be read from disk is skipped. Before writing, the whole hierarchy below the root is loaded and timestamp mismatches are resolved; if a cell cannot be loaded the write fails with "Failure to read in entire subtree of the cell."
+Hefesto SHALL number and order symbols as follows. The root cell is symbol 1. Starting with a stack containing only the root, repeatedly pop a cell; if it was already written skip it; otherwise, enumerate its child instances in *use enumeration order* and give each child cell not yet numbered the next number (2, 3, …) and push it; then write the popped cell's definition. Consequently parents are written before their children and the last-numbered pending cell is written first. A cell that cannot be read from disk is skipped. Before writing, the whole hierarchy below the root is loaded and timestamp mismatches are resolved; if a cell cannot be loaded the write fails with "Failure to read in entire subtree of the cell." A hierarchy deeper than 1024 levels below the root fails the write the same way, in both `magic-compat` settings (Q-MASK-233, resolution: fix; Magic has no limit and recurses until the stack overflows): the second line is "The hierarchy is deeper than 1024 levels at cell CELL." (CIF-WRITE-008), and the file is left empty
 
 *Use enumeration order* is the order defined by capability `gds-write` requirement "Structure ordering" for the current `magic-compat` setting, used for both the numbering and stack order here and the order of `C` calls ("CIF output calls and arrays"); no separate CIF order is defined (Q-MASK-323, resolution: compat, following Q-MASK-204). With `magic-compat` ON the order is sampled where Magic samples it: the subtree-loading searches made before writing (as `gds-write` "Structure ordering" describes) can already bin a cell, then children are numbered when their parent is processed, before the parent's own mask generation (CIFGenSubcells), and calls are written after it, so for a cell with 10 or more uses that was still unbinned at numbering and whose generation ran a non-surrounding search the two orders can differ, as in Magic. With `magic-compat` OFF both use the canonical reverse-insertion order.
 
@@ -344,6 +351,12 @@ Compatibility: exact
 - **WHEN** CIF is written
 - **THEN** `top`=1, `a`=2, `b`=3 are numbered when `top` is written, then `b` (3) is written, then `a` (2) is written and numbers `c`=4, then `c` (4)
 - **AND** the file ends with `C 1;` and `End`
+
+#### Scenario: Hierarchy deeper than the limit
+- **GIVEN** a chain of cells `c0` → `c1` → … → `c1025`, each using the next, written from `c0`
+- **WHEN** CIF is written
+- **THEN** the write fails with CIF-WRITE-008 ("The hierarchy is deeper than 1024 levels at cell ...") and leaves an empty file
+- **AND** the same chain one level shorter is written
 
 ### Requirement: CIF output symbol definition format
 
@@ -379,7 +392,7 @@ Compatibility: exact
 
 ### Requirement: CIF output labels
 
-Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) depends on the `magic-compat` setting (Q-MASK-338, proposed: compat): with it ON (the default) it is written as Magic's cifWriteLabelFunc writes it, multiplied by S although it is already in output units: `94 LAYERNAME ((x1+x2)*S)/R ((y1+y2)*S)/R;` or, with area labels, `95 LAYERNAME ((x2−x1)*2*S)/R ((y2−y1)*2*S)/R ((x1+x2)*S)/R ((y1+y2)*S)/R;`; with it OFF the factor S is left out: `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text depends on the `magic-compat` setting (Q-MASK-322, resolution: compat): with it ON (the default) it is written verbatim, as in Magic, and a warning names each label whose text contains whitespace or `;` (the file will not read back); with it OFF each space, tab, newline and `;` in the written text is replaced by `_`, with a warning in the GDS writer's form (`characters changed in string ...; modified string is ...`). The layout's own labels are never changed. Area labels are disabled by default (see Q-MASK-337).
+Hefesto SHALL write each cell label (in the cell's label list order) as `94 TEXT CX CY;` or `94 TEXT CX CY LAYER;` where `CX = ((xb+xt)*S)/R`, `CY = ((yb+yt)*S)/R` from the label rectangle in internal units, and `LAYER` is the output layer assigned to the label's type by the output style (omitted when none). When area labels are enabled (`cif arealabels yes`), `95 TEXT SX SY CX CY [LAYER];` is written instead with `SX = ((xt−xb)*2*S)/R`, `SY = ((yt−yb)*2*S)/R`. A label-layer tile `[x1,x2]×[y1,y2]` (output units) depends on the `magic-compat` setting (Q-MASK-338, resolution: compat): with it ON (the default) it is written as Magic's cifWriteLabelFunc writes it, multiplied by S although it is already in output units: `94 LAYERNAME ((x1+x2)*S)/R ((y1+y2)*S)/R;` or, with area labels, `95 LAYERNAME ((x2−x1)*2*S)/R ((y2−y1)*2*S)/R ((x1+x2)*S)/R ((y1+y2)*S)/R;`; with it OFF the factor S is left out: `94 LAYERNAME (x1+x2)/R (y1+y2)/R;` or `95 LAYERNAME (2*(x2−x1))/R (2*(y2−y1))/R (x1+x2)/R (y1+y2)/R;`. Label text depends on the `magic-compat` setting (Q-MASK-322, resolution: compat): with it ON (the default) it is written verbatim, as in Magic, and a warning names each label whose text contains whitespace or `;` (the file will not read back); with it OFF each space, tab, newline and `;` in the written text is replaced by `_`, with a warning in the GDS writer's form (`characters changed in string ...; modified string is ...`). The layout's own labels are never changed. Area labels are disabled by default (see Q-MASK-337).
 
 Compatibility: exact
 
@@ -432,11 +445,16 @@ Compatibility: exact
 
 ### Requirement: CIF output preconditions and flat output
 
-Hefesto SHALL refuse hierarchical CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output.") and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output", using the symbol format of this capability (no reducer check, see Q-MASK-332), and SHALL end with `C 1;` and `End`. Its form depends on the `magic-compat` setting (Q-MASK-321 and Q-MASK-411, resolution: compat): with it ON (the default), as in Magic, one temporary cell holds the flattened paint only and is written as symbol 1 named `__CIF2__` (with any `cif prefix`), with no cell labels, and mask-hints and boundary layers come out empty; with it OFF symbol 1 is named after the root cell with the prefix and `UNNAMED` rules of hierarchical output, and the flat cell also holds the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes, written in the same `94`/`95` format. Flat output reads the cells under the root that are not yet loaded, without stopping at one that cannot be read; with `magic-compat` ON the timestamp mismatches those reads find are processed after the file is written, as Magic's CIFWriteFlat never calls DBFixMismatch and the mismatches are processed after the command, so the flat area is the root's bounding box as it was before the write; with it OFF they are processed before generation, as for hierarchical output.
+Hefesto SHALL refuse hierarchical and flat CIF output when the output style's reducer is 0 ("The current CIF output style can only be used for writing Calma output."), leaving an empty file, in both `magic-compat` settings (Q-MASK-332, resolution: fix; Magic's CIFWriteFlat does not check the reducer and divides by zero) and SHALL report "N problems occurred.  See feedback entries." when generation created feedback. Flat output SHALL be generated as specified in capability `mask-hierarchical-generation` requirement "Flat CIF output", using the symbol format of this capability, and SHALL end with `C 1;` and `End`. Its form depends on the `magic-compat` setting (Q-MASK-321 and Q-MASK-411, resolution: compat): with it ON (the default), as in Magic, one temporary cell holds the flattened paint only and is written as symbol 1 named `__CIF2__` (with any `cif prefix`), with no cell labels, and mask-hints and boundary layers come out empty; with it OFF symbol 1 is named after the root cell with the prefix and `UNNAMED` rules of hierarchical output, and the flat cell also holds the labels that `flatten` copies by default and the transformed `MASKHINTS_*` planes, written in the same `94`/`95` format. Flat output reads the cells under the root that are not yet loaded, without stopping at one that cannot be read; with `magic-compat` ON the timestamp mismatches those reads find are processed after the file is written, as Magic's CIFWriteFlat never calls DBFixMismatch and the mismatches are processed after the command, so the flat area is the root's bounding box as it was before the write; with it OFF they are processed before generation, as for hierarchical output.
 
 Compatibility: exact
 
 (Magic ref: cif/CIFwrite.c:121-160, cif/CIFwrite.c:729-792, dbwind/DBWprocs.c:1009)
+
+#### Scenario: Reducer 0 refused for flat output
+- **GIVEN** an output style whose reducer is 0
+- **WHEN** `cif flat` is run, with `magic-compat` ON or OFF
+- **THEN** the write is refused (CIF-WRITE-003, the Calma-only message) and the file is left empty
 
 #### Scenario: Flat output structure
 - **GIVEN** a two-level hierarchy
