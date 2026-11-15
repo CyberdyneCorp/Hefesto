@@ -14,6 +14,7 @@
 #include <string_view>
 
 #include "hefesto/cell/mag_io.hpp"
+#include "hefesto/db/plane.hpp"
 #include "mag_input.hpp"
 
 namespace hefesto::cell::detail {
@@ -30,6 +31,9 @@ struct ReadState {
   std::int64_t d = 1;  // read scale denominator
   std::set<std::string, std::less<>> seen_uses;  // dbUseTable: names used so far
   std::string line;
+  /// The non-Manhattan pieces the paints of this read may still descend
+  /// into; every paint record adds kPiecesPerRecord (Q-MODEL-36).
+  db::NMBudget nm_pool;
 
   [[nodiscard]] const tech::Technology& tech() const { return *ctx.tech; }
   void emit(std::string_view code, std::string text) const { ctx.sink.emit(diag::make(code, std::move(text))); }

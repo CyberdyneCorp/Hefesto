@@ -17,6 +17,7 @@
 
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
+#include "hefesto/db/plane.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -46,6 +47,13 @@ struct TriangleSpec {
 /// Marks the cell modified even when nothing changes.
 [[nodiscard]] diag::Status paint_type(CellDef& def, const tech::Technology& tech, const Rect& area,
                                       tech::TileType type, std::optional<TriangleSpec> triangle = std::nullopt);
+
+/// paint_type() drawing its non-Manhattan pieces from `pool` too: the paint
+/// descends into at most min(NMBudget::kPieces, pool.pieces) of them, and
+/// those it uses are taken from `pool`. The .mag reader shares one pool
+/// between the paints of a read (Q-MODEL-36).
+[[nodiscard]] diag::Status paint_type(CellDef& def, const tech::Technology& tech, const Rect& area,
+                                      tech::TileType type, std::optional<TriangleSpec> triangle, NMBudget& pool);
 
 /// DBErase ("Paint operation", erase): erases `type`; erasing space applies
 /// the space paint table (a no-op with default tables, Q-MODEL-29).

@@ -113,6 +113,16 @@ release notices.
 - **Large inputs.** `cif read` refuses a file larger than 2 GiB before
   reading it (CIF-READ-010), and copying a read-only vendor cell streams its
   records instead of holding the whole structure in memory.
+- **Reading many huge triangles no longer takes seconds or minutes.** A
+  paint repainted each contact image under it as a paint of its own, each
+  allowed the full 512 pieces over crossed triangles, and a record of a
+  type-list section paints every type, so a 354-byte `.mag` file with a
+  large `magscale` took about 12 s to read and a few kilobytes of such
+  records over two minutes. A paint now shares its 512 pieces with the
+  images it repaints, and the paints of one `.mag` read share a pool of 512
+  pieces plus 16 per record; such files read in about 0.1 s. Ordinary
+  triangles use at most 16 pieces and paint exactly as before (Q-MODEL-36,
+  a fixed deviation from Magic).
 - **Reading a huge triangle no longer takes seconds.** Each piece a
   triangle paint descends into over crossed triangles works next to the
   tiles the pieces before it left, so one paint cost the square of the

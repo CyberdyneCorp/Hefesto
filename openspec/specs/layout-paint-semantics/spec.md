@@ -170,7 +170,7 @@ Let the triangle have bounding rectangle `A` (width `W`, height `H`), direction 
    - for `dir == 0`: `x(y) = A.xbot + round_half_up(W*(y - A.ybot)/H)`, `y(x) = A.ybot + round_half_up(H*(x - A.xbot)/W)`;
    - for `dir == 1`: `x(y) = A.xbot + floor(W*(A.ytop - y)/H)`, `y(x) = A.ybot + floor(H*(A.xtop - x)/W)` (truncation, never rounding up; see Q-MODEL-3; with `magic-compat` off, both diagonals SHALL round half-up as for `dir == 0`).
    - `r` is cut vertically at `x(r.ybot)`/`x(r.ytop)` and horizontally at `y(r.xbot)`/`y(r.xtop)` when those fall strictly inside `r`; pieces wholly on the operand's side are painted as rectangles, pieces wholly on the other side are skipped, and pieces still straddling the diagonal are processed recursively as triangles with bounding rectangle equal to the piece.
-   - The recursion SHALL NOT be bounded by the call stack: pieces are processed in the order above however deep they nest. One triangle paint processes at most 512 straddling pieces this way; any further straddling piece is painted as a rectangle and the paint is reported off grid, as for the 1-unit case of step 2 (Q-MODEL-34, Q-MODEL-35). Magic has no limit, and over existing opposite-diagonal triangles its recursion depth grows with the triangle's size in internal units until the stack overflows. Each nested piece works next to the tiles the pieces above it left, so the work of one paint grows with the square of the pieces it processes; the limit keeps that bounded.
+   - The recursion SHALL NOT be bounded by the call stack: pieces are processed in the order above however deep they nest. One triangle paint processes at most 512 straddling pieces this way; any further straddling piece is painted as a rectangle and the paint is reported off grid, as for the 1-unit case of step 2 (Q-MODEL-34, Q-MODEL-35). Magic has no limit, and over existing opposite-diagonal triangles its recursion depth grows with the triangle's size in internal units until the stack overflows. Each nested piece works next to the tiles the pieces above it left, so the work of one paint grows with the square of the pieces it processes; the limit keeps that bounded. A cell paint (DBPaint) draws the pieces of all its planes and of every contact image it repaints from one such budget of 512, so the image repaints cannot multiply it (Q-MODEL-36). A `.mag` read additionally shares a pool between its paints: it starts at 512 and grows by 16 per paint record, each paint may use at most the smaller of 512 and what is left, and the pieces it uses are taken from the pool. Ordinary triangles descend into at most 16 pieces per paint, so neither bound changes how they are painted.
 4. After painting, split-tile merging is applied over `A` expanded by 1 (see requirement "Split tile merging").
 
 Consequently, when the diagonal crosses existing horizontal tile boundaries at non-integer x, the resulting geometry is an approximation built from triangles whose vertices are the rounded crossing points.
@@ -198,6 +198,17 @@ Consequently, when the diagonal crosses existing horizontal tile boundaries at n
 - **WHEN** the right side of the `\` triangle is painted four more times, alternately with A and B over space and the other type
 - **THEN** no one of these paints SHALL fracture or join more than 1024 split tiles, and the plane SHALL hold fewer than 4096 tiles afterwards (Q-MODEL-35)
 - **AND** a `.mag` file with `magscale 8888882 2` that paints such triangles for several types (fuzz_mag_reader seed `regression-0ecdaeced894ac48779e9e0fac70fc254120e458`) SHALL be read in well under a second, where the 4096-piece limit took about 10 s in a debug build
+
+#### Scenario: Contact image repaints share the budget of the paint
+- **GIVEN** the tiny test technology, a `\` triangle on `(0,0)-(30k,10k)` and then one on `(0,0)-(30k,17k)`, with `k = 4444441`
+- **WHEN** the right side of each is painted (DBPaint) with every user type in turn, the first triangle with all types before the second
+- **THEN** no one of these paints, including the contact images it repaints, SHALL add 2048 tiles or more to the cell (Q-MODEL-36)
+
+#### Scenario: The paints of a .mag read share a pool of pieces
+- **GIVEN** a `.mag` file with `magscale 8888882 2` holding eight type-list sections (`~metal1`, `~metal2`, `~poly`, `~pc`, `~m2c`, `~ndc`, `~nwell`, `~pwell`), each with six huge triangles of different sizes and directions
+- **WHEN** it is read
+- **THEN** the cell SHALL hold fewer than `4 * (512 + 16 * 48)` tiles and the read SHALL take well under a second, where without the pool it left about 38000 tiles and took over two minutes in a debug build (Q-MODEL-36)
+- **AND** a `.mag` file with crossed triangles and a large `magscale` (fuzz_mag_reader seed `regression-3b720185126474ca4033c22ea793e51f2711551e`) SHALL be read in well under a second, where sharing no budget took about 12 s in a debug build
 
 #### Scenario: Rounding of a non-integer crossing (verify against Magic)
 - **GIVEN** a `/` triangle with bounding rectangle `(0,0)-(10,3)` crossing existing tile boundaries at `y = 1` and `y = 2`

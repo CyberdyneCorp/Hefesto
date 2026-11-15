@@ -87,25 +87,26 @@ void record_tiles(CellDef& def, tech::PlaneId id, const Rect& area, const PaintR
 }
 
 diag::Status paint_plane_row(Plane& plane, const Rect& area, const PaintRow& row,
-                             const std::optional<TriangleSpec>& tri) {
+                             const std::optional<TriangleSpec>& tri, NMBudget* budget) {
   if (tri) {
-    return plane.paint_triangle(area, tri->diagonal, tri->right_side, row);
+    return plane.paint_triangle(area, tri->diagonal, tri->right_side, row, true, nullptr,
+                                PaintMerge::split_tiles, budget);
   }
   return plane.paint(area, row);
 }
 
 diag::Status apply_row(CellDef& def, tech::PlaneId id, const Rect& area, const PaintRow& row,
-                       const std::optional<TriangleSpec>& tri) {
+                       const std::optional<TriangleSpec>& tri, NMBudget* budget = nullptr) {
   ChangeRecorder* recorder = in_usable_plane(area) ? def.recorder() : nullptr;
   if (recorder == nullptr) {
-    return paint_plane_row(def.plane(id), area, row, tri);
+    return paint_plane_row(def.plane(id), area, row, tri, budget);
   }
   record_tiles(def, id, area, row, tri);
   // The split-tile fractures and joins of the paint (dbSplitUndo/dbJoinUndo).
   std::vector<SplitEdit> splits;
   Plane& plane = def.plane(id);
   plane.record_splits(&splits);
-  diag::Status status = paint_plane_row(plane, area, row, tri);
+  diag::Status status = paint_plane_row(plane, area, row, tri, budget);
   plane.record_splits(nullptr);
   for (const SplitEdit& e : splits) {
     recorder->split_changed(def, SplitChange{e.join ? SplitChange::Kind::join : SplitChange::Kind::fracture, id,
@@ -141,15 +142,41 @@ std::vector<Image> find_images(const Plane& plane, const Rect& area, const std::
   return found;
 }
 
+diag::Status resolve_images(CellDef& def, const tech::Technology& tech, const Rect& area,
+                            const std::optional<TriangleSpec>& tri, tech::TileType type, NMBudget& budget);
+
+// DBPaint drawing its non-Manhattan pieces from `budget`, which the paint
+// shares with the contact images it repaints (Q-MODEL-36).
+diag::Status paint_type_within(CellDef& def, const tech::Technology& tech, const Rect& area, tech::TileType type,
+                               const std::optional<TriangleSpec>& triangle, NMBudget& budget) {
+  if (auto s = check_area(area); !s.ok()) {
+    return s;
+  }
+  mark_modified(def);
+  const tech::PlaneMask planes = tech.paint_planes(type);
+  for (std::size_t p = 1; p < def.plane_count(); ++p) {
+    if (on_plane(planes, p)) {
+      const auto id = static_cast<tech::PlaneId>(p);
+      if (auto s = apply_row(def, id, area, paint_row(tech, id, type), triangle, &budget); !s.ok()) {
+        return s;
+      }
+    }
+  }
+  if (type < tech.user_type_end()) {
+    return resolve_images(def, tech, area, triangle, type, budget);
+  }
+  return diag::Done{};
+}
+
 // Repaints the images of contact `itype` found on every plane it paints.
 diag::Status repaint_images(CellDef& def, const tech::Technology& tech, const Rect& area,
-                            const std::optional<TriangleSpec>& tri, tech::TileType itype) {
+                            const std::optional<TriangleSpec>& tri, tech::TileType itype, NMBudget& budget) {
   for (std::size_t p = 1; p < def.plane_count(); ++p) {
     if (!on_plane(tech.paint_planes(itype), p)) {
       continue;
     }
     for (const Image& img : find_images(def.plane(static_cast<tech::PlaneId>(p)), area, tri, itype)) {
-      if (auto s = paint_type(def, tech, img.area, itype, img.triangle); !s.ok()) {
+      if (auto s = paint_type_within(def, tech, img.area, itype, img.triangle, budget); !s.ok()) {
         return s;
       }
     }
@@ -160,14 +187,14 @@ diag::Status repaint_images(CellDef& def, const tech::Technology& tech, const Re
 // dbResolveImages: repaints every user contact image that has `type` as a
 // residue over the areas where it is present on any of its planes.
 diag::Status resolve_images(CellDef& def, const tech::Technology& tech, const Rect& area,
-                            const std::optional<TriangleSpec>& tri, tech::TileType type) {
+                            const std::optional<TriangleSpec>& tri, tech::TileType type, NMBudget& budget) {
   const TechMasks masks(tech, def.plane_count());
   for (std::size_t i = tech::kMagnet; i < tech.user_type_end(); ++i) {
     const auto itype = static_cast<tech::TileType>(i);
     if (itype == type || !masks.residues(itype).test(type)) {
       continue;
     }
-    if (auto s = repaint_images(def, tech, area, tri, itype); !s.ok()) {
+    if (auto s = repaint_images(def, tech, area, tri, itype, budget); !s.ok()) {
       return s;
     }
   }
@@ -288,23 +315,17 @@ PaintRow erase_row(const tech::Technology& tech, tech::PlaneId plane, tech::Tile
 
 diag::Status paint_type(CellDef& def, const tech::Technology& tech, const Rect& area, tech::TileType type,
                         std::optional<TriangleSpec> triangle) {
-  if (auto s = check_area(area); !s.ok()) {
-    return s;
-  }
-  mark_modified(def);
-  const tech::PlaneMask planes = tech.paint_planes(type);
-  for (std::size_t p = 1; p < def.plane_count(); ++p) {
-    if (on_plane(planes, p)) {
-      const auto id = static_cast<tech::PlaneId>(p);
-      if (auto s = apply_row(def, id, area, paint_row(tech, id, type), triangle); !s.ok()) {
-        return s;
-      }
-    }
-  }
-  if (type < tech.user_type_end()) {
-    return resolve_images(def, tech, area, triangle, type);
-  }
-  return diag::Done{};
+  NMBudget budget;
+  return paint_type_within(def, tech, area, type, triangle, budget);
+}
+
+diag::Status paint_type(CellDef& def, const tech::Technology& tech, const Rect& area, tech::TileType type,
+                        std::optional<TriangleSpec> triangle, NMBudget& pool) {
+  const std::size_t granted = std::min(NMBudget::kPieces, pool.pieces);
+  NMBudget budget{granted};
+  diag::Status status = paint_type_within(def, tech, area, type, triangle, budget);
+  pool.pieces -= granted - budget.pieces;
+  return status;
 }
 
 diag::Status erase_type(CellDef& def, const tech::Technology& tech, const Rect& area, tech::TileType type,

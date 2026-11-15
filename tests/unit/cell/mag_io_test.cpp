@@ -6,14 +6,18 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <string>
+#include <string_view>
 
 #include "cell_fixture.hpp"
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
+#include "hefesto/db/paint.hpp"
 
 namespace cell = hefesto::cell;
 namespace db = hefesto::db;
@@ -334,5 +338,119 @@ TEST_CASE("a huge magscale over crossed triangles reads with bounded work",
   const auto elapsed = std::chrono::steady_clock::now() - start;
   CHECK(c.flags().available);
   // About 0.3 s in a debug build now; the bound leaves room for sanitizers.
+  CHECK(elapsed < std::chrono::seconds{5});
+}
+
+namespace {
+
+std::size_t total_tiles(const db::CellDef& def) {
+  std::size_t n = 0;
+  for (std::size_t p = 1; p < def.plane_count(); ++p) {
+    n += def.plane(static_cast<hefesto::tech::PlaneId>(p)).tile_count();
+  }
+  return n;
+}
+
+// The triangles of the fuzz_mag_reader seeds, scaled by `magscale 8888882
+// 2`: `/` on (0,0)-(30k,10k) and `\` on (0,0)-(30k,17k).
+constexpr int kHuge = 4444441;
+constexpr db::Rect kSlash{0, 0, 30 * kHuge, 10 * kHuge};
+constexpr db::Rect kBack{0, 0, 30 * kHuge, 17 * kHuge};
+
+}  // namespace
+
+TEST_CASE("a paint shares its non-Manhattan budget with the contact images it repaints",
+          "[cap:layout-paint-semantics][req:Non-Manhattan painting][regression]") {
+  // fuzz_mag_reader timeout: painting a residue over the staircase of
+  // contact images a huge triangle left repainted every image strip as a
+  // triangle paint of its own, each with a whole budget of pieces over the
+  // crossed triangles, so one paint left tens of thousands of tiles
+  // (Q-MODEL-36). Every type of the tiny technology paints both triangles,
+  // as a `<< ~metal1 >>` section does.
+  CellIo io;
+  const auto tech = cell::test::tiny_technology();
+  auto created = io.library.create("c", tech->plane_count());
+  REQUIRE(created.ok());
+  db::CellDef& def = *created.value();
+  std::size_t most = 0;
+  for (const db::Rect& area : {kSlash, kBack}) {
+    for (std::size_t t = 1; t < tech->user_type_end(); ++t) {
+      const std::size_t before = total_tiles(def);
+      const auto type = static_cast<hefesto::tech::TileType>(t);
+      REQUIRE(db::paint_type(def, *tech, area, type, db::TriangleSpec{db::Diagonal::nw_se, true}).ok());
+      const std::size_t after = total_tiles(def);
+      most = std::max(most, after > before ? after - before : 0);
+    }
+  }
+  // Every piece leaves at most about four tiles: 1276 at most now; 2905
+  // when each image repaint had a budget of its own.
+  INFO("most tiles added by one paint: " << most);
+  CHECK(most < 4 * db::NMBudget::kPieces);
+}
+
+TEST_CASE("the paints of a .mag read share one non-Manhattan budget",
+          "[cap:layout-paint-semantics][req:Non-Manhattan painting][regression]") {
+  // fuzz_mag_reader variants: every paint of a huge triangle over crossed
+  // triangles may leave a few thousand tiles, and one record of a type
+  // list section paints every type, so a few kilobytes of such records
+  // left hundreds of thousands of tiles for every later paint and image
+  // repaint to walk (Q-MODEL-36). The read now grants its paints 16 pieces
+  // per record on top of one NMBudget.
+  std::string text = "magic\ntech tiny\nmagscale 8888882 2\ntimestamp 1000\n";
+  const char* const dirs[] = {"s", "se", "ne", "nw", "sw", "n", "e", "w"};
+  std::size_t records = 0;
+  for (const char* layer : {"~metal1", "~metal2", "~poly", "~pc", "~m2c", "~ndc", "~nwell", "~pwell"}) {
+    text += std::string{"<< "} + layer + " >>\n";
+    for (int i = 0; i < 6; ++i) {
+      text += "tri 0 0 " + std::to_string(30 + i) + " " + std::to_string(17 + i % 5) + " " + dirs[i] + "\n";
+      ++records;
+    }
+  }
+  CellIo io;
+  const auto start = std::chrono::steady_clock::now();
+  db::CellDef& c = io.read("c", text);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  // 190 tiles and 22 ms in a debug build now; without the pool 37856 tiles
+  // and 144 s.
+  INFO("tiles: " << total_tiles(c));
+  CHECK(total_tiles(c) < 4 * (db::NMBudget::kPieces + 16 * records));
+  CHECK(elapsed < std::chrono::seconds{5});
+}
+
+TEST_CASE("crossed triangles under a huge magscale read with bounded work (image repaints)",
+          "[cap:layout-paint-semantics][req:Non-Manhattan painting][regression]") {
+  // Regression (fuzz_mag_reader timeout, CI fuzz job, after Q-MODEL-35):
+  // the paints of this file repainted the staircase of contact images left
+  // by the crossed triangles strip by strip, each strip with a budget of
+  // its own, and a later rectangle walked the 150000 tiles that left; the
+  // read took about 12 s in a debug build (Q-MODEL-36). The input is the
+  // fuzz_mag_reader seed regression-3b720185126474ca4033c22ea793e51f2711551e.
+  using namespace std::string_view_literals;
+  CellIo io;
+  const std::string_view text =
+      "magic\n"
+      "tech tiny\n"
+      "magscale 8888882 2\n"
+      "timestamp 1000\n"
+      "<< po<< ~etal1 t 0 0 10 20\n"
+      "rect 10 0 20 4\n"
+      "<< ~etal1 >>\n"
+      "rec@t -2 -8\n"
+      "rect 0 0 10 20 -4 -4 24 24\n"
+      "tri\xb4 0 20 10 eeSans 16 4 24 24\n"
+      "tri\xb4 0 30 17 eeSanmagirec@t -2 -\x04\x00\x00\x00\x00\x00\x00\x00" "8 \x00\x00\x00\x00\x00\x00\x00\x00" "0\n"
+      "rect 05 0 20 4\n"
+      "<< ~etal1 t 0 0 1* 10\n"
+      "rect 10 0 20 4\n"
+      "<< ~et2al1 >>\n"
+      "rect -2 -8 24 24\x11tr2lysilicon >>\n"
+      "rect 0 0ilicon >>\n"
+      "rect\xac\xac\xac\xacmm"sv;
+  REQUIRE(text.size() == 354);
+  const auto start = std::chrono::steady_clock::now();
+  db::CellDef& c = io.read("c", text);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(c.flags().available);
+  // About 0.03 s in a debug build now; the bound leaves room for sanitizers.
   CHECK(elapsed < std::chrono::seconds{5});
 }

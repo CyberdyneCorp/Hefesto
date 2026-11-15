@@ -153,7 +153,8 @@ void paint_plane(TilePlane& plane, const Rect& area, const ResultRow& row);
 /// (0 = a Manhattan rectangle). `magic_compat` false rounds both diagonals
 /// half up (Q-MODEL-3). Returns true when a 1x1 area was filled because the
 /// triangle could not be quartered further (Magic returns 1: off grid).
-bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat);
+bool nm_paint_plane(TilePlane& plane, Body exact, const Rect& area, const ResultRow& row, bool magic_compat,
+                    NMBudget& budget);
 
 /// DBMergeNMTiles0 with mergeOnce = FALSE.
 void merge_nm_tiles(TilePlane& plane, const Rect& area);
