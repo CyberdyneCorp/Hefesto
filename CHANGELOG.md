@@ -10,8 +10,8 @@ release notices.
 
 - **Read GDS and Write GDS in the desktop app.** The File menu's Read GDS
   and Write GDS items are enabled. The native file dialogs filter
-  `*.gds *.strm *.cal`, `*.cif` and `*.mag` (the old Tk extension lists
-  matched no file). A long `gds`/`cif` read or write from the menu or the
+  `*.gds`, `*.strm`, `*.cal`, `*.cif` and `*.mag` (wrapper.tcl's Tk
+  extension lists matched no file there). A long `gds`/`cif` read or write from the menu or the
   console keeps the window drawing: the Interrupt card shows "Writing
   chip.gds · N s" and "Completed N%", Interrupt stops the job without
   leaving an output file, and lines typed meanwhile wait until it ends.

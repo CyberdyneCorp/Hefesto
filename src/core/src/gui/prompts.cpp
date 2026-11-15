@@ -24,11 +24,12 @@ using platform::FilePickerRequest;
 using FileTypes = std::vector<std::pair<std::string, std::string>>;
 using detail::run;
 
-// wrapper.tcl's -filetypes as FilePickerRequest patterns: Tk's extension
-// lists (".gds .strm .cal") become globs, which the native dialogs match.
-const FileTypes kMagicTypes = {{"Magic", "*.mag"}, {"All files", "*"}};
-const FileTypes kGdsTypes = {{"GDS", "*.gds *.strm *.cal"}, {"All files", "*"}};
-const FileTypes kCifTypes = {{"CIF", "*.cif"}, {"All files", "*"}};
+// wrapper.tcl's -filetypes, as Tk's extension lists: an intercepted
+// tk_getOpenFile sees Magic's text (SCRIPT-GUI-11), and the desktop host
+// turns each ".ext" into the glob "*.ext" its native dialogs match.
+const FileTypes kMagicTypes = {{"Magic", ".mag"}, {"All files", "*"}};
+const FileTypes kGdsTypes = {{"GDS", ".gds .strm .cal"}, {"All files", "*"}};
+const FileTypes kCifTypes = {{"CIF", ".cif"}, {"All files", "*"}};
 
 std::string pick(platform::FilePicker* picker, FilePickerRequest::Mode mode, const FileTypes& types,
                  std::string title = {}) {

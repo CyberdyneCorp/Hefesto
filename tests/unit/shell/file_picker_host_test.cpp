@@ -38,6 +38,14 @@ TEST_CASE("a FilePicker request becomes the native dialog request",
   CHECK(saved.file_name == "top.gds");
   CHECK(saved.filters.size() == 2);  // "All files" is not added twice
   CHECK(saved.default_extension == "gds");
+
+  // Regression (m5 round 5): wrapper.tcl's Tk extension lists (".gds .strm
+  // .cal") matched no file in the native dialogs; they become globs.
+  platform::FilePickerRequest tk;
+  tk.file_types = {{"GDS", ".gds .strm .cal"}, {"All files", "*"}};
+  const NativeFileDialogRequest globbed = native_request(tk);
+  REQUIRE(globbed.filters.size() == 2);
+  CHECK(globbed.filters[0] == NativeFileFilter{"GDS", "*.gds;*.strm;*.cal"});
 }
 
 TEST_CASE("the desktop picker answers with the native dialog's path or a cancel",

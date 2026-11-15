@@ -90,9 +90,7 @@ TEST_CASE("promptload getcell adds the directory to the search path", "[cap:ui-g
   CHECK(s.run("path cell").value.to_string().find("/work/lib/") != std::string::npos);
 }
 
-TEST_CASE("the gds, cif and magic prompts ask for glob patterns", "[cap:ui-gui-managers][req:File prompts]") {
-  // Regression: the prompts passed Tk's extension lists (".gds .strm .cal"),
-  // which match no file in the native dialogs (FilePickerRequest takes globs).
+TEST_CASE("the gds, cif and magic prompts pass wrapper.tcl's file types", "[cap:ui-gui-managers][req:File prompts]") {
   Session s;
   ScriptedFilePicker picker;
   for (const char* type : {"gds", "cif", "magic"}) {
@@ -104,9 +102,11 @@ TEST_CASE("the gds, cif and magic prompts ask for glob patterns", "[cap:ui-gui-m
   REQUIRE(s.in_command([&](hefesto::cmd::CommandContext& ctx) { return gui::prompt_save(ctx, &picker, "cif"); }).ok());
   REQUIRE(picker.requests().size() == 4);
   using Type = std::pair<std::string, std::string>;
-  CHECK(picker.requests()[0].file_types.front() == Type{"GDS", "*.gds *.strm *.cal"});
-  CHECK(picker.requests()[1].file_types.front() == Type{"CIF", "*.cif"});
-  CHECK(picker.requests()[2].file_types.front() == Type{"Magic", "*.mag"});
+  // wrapper.tcl's Tk extension lists (an intercepted tk_getOpenFile prints
+  // them, SCRIPT-GUI-11); the desktop host turns them into globs.
+  CHECK(picker.requests()[0].file_types.front() == Type{"GDS", ".gds .strm .cal"});
+  CHECK(picker.requests()[1].file_types.front() == Type{"CIF", ".cif"});
+  CHECK(picker.requests()[2].file_types.front() == Type{"Magic", ".mag"});
   CHECK(picker.requests()[3].mode == FilePickerRequest::Mode::save);
   CHECK(picker.requests()[3].file_types.back() == Type{"All files", "*"});
   // A cancelled dialog does nothing (no cif_temp is created).
