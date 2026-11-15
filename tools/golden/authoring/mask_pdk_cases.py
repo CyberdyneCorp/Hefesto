@@ -113,7 +113,9 @@ def rt_case(lib: Library, index: int) -> tclcase.TclCase:
         "structure with its timestamp pinned to 0, gds library yes, gds write.",
         body, files={HARNESS_NAME: HARNESS.read_text(encoding="utf-8")},
         outputs=[DIGEST, SUMMARY], output_names=dict(OUTPUT_NAMES), gds_rt=not lib.standard,
-        stream_masks=["completed-percent"],  # CIFhier's timed progress lines (Q-MASK-414)
+        # CIFhier's timed progress lines (Q-MASK-414), and the crash-backup file Magic names at
+        # random during a long read (golden-capture run 43762085730, MASK-RT-gf180mcu_re_efuse-f04).
+        stream_masks=["completed-percent", "magic-crash-file"],
         pdk=lib.variant, run_timeout=lib.timeout if lib.timeout != DEFAULT_TIMEOUT_S else None,
         external=[{"source": "pdk", "set": gds_set(lib), "path": f"{lib.variant}/libs.ref/{lib.name}/gds",
                    "to": "lib"}],
