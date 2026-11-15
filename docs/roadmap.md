@@ -197,6 +197,20 @@ Depends on `mask-hints`, which is completed in M3.
 - GDS output is byte-identical to Magic's, apart from the masked time fields.
 - Every sky130, gf180mcu and IHP library GDS round-trips.
 
+**Status (in review, 2026-11-15; change `openspec/changes/m5-mask-gds-cif`, round 5 integration on branch `m5-round5`, PR #61).** Mask generation (cifoutput and cifinput styles with every operator), `gds read`/`gds write` (compressed files, read-only vendor views, content-hash timestamps), `cif read`/`cif write` and the mask-layer DRC rules are implemented; the desktop app has Read GDS / Write GDS with a progress card for long reads and writes. Not complete: the exit criteria below that are not met, and tasks 12.2, 14.3, 15.1, 15.6 and 15.7.
+
+| Criterion | Result | Evidence |
+|---|---|---|
+| Unit, property and fuzz tests green on every leg | met | CI 43766374908: every Linux and macOS leg, ASan/UBSan, TSan, fuzz (60 s per target, four new M5 targets), lavapipe |
+| MASK golden cases pass or carry an approved deviation | not met | 233 MASK rows plus 3 PDK probes and 89 `MASK-RT-*`: all pass or carry an approved deviation except the deferred MASK-UO-002..005/007/008 (INDEX), MASK-GR-008 (MODEL), MASK-HG-025 (GEN/OPS), MASK-OP-021 (a decision) and three library round trips (`tasks.md` 13.7) |
+| DRC-CIF-2..7 pass | met | DRC-CIF-1..8 replay on every leg |
+| GDS byte-identical to Magic apart from masked time fields | met for the GW cases and the passing round trips | fix deviations MASK-GW-003 (Q-MASK-201), GW-006 (Q-MASK-209), GW-039 (Q-MASK-219), GW-005 (Q-MASK-208) |
+| Every sky130, gf180mcu and IHP library GDS round-trips | not met | 86 of 89 library files match Magic's capture where run; gf180mcu_fd_io-f02 and sky130_fd_io-f01/-f09 differ (GDSR/GDSW) |
+| Determinism covers MASK | met | determinism job of CI 43766374908 with `--require-area MASK` |
+| M5 requirement coverage | met | 194 of 194 |
+| `openspec validate --all --strict` | met | 177 passed |
+| `perf.yml` green and the equivalence report reviewed | partly | `gds-bench` met (0.84 / 0.87 / 0.89 x Magic's instructions, Performance 43766374927), `drc-profile` 12.24 billion (met), `golden-slow` green; `gds-roundtrip` waits for the deferrals above |
+
 ## M6 — LEF/DEF and OASIS
 
 **Capabilities:** `lef-tech-section`, `lef-read`, `lef-write`, `def-read`, `def-write`, `oasis-format`, `oasis-read`, `oasis-write`, `oasis-command`

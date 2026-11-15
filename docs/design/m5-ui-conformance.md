@@ -73,6 +73,14 @@ The host is `shell::MaskJobHost` (`src/shell/desktop/include/hefesto/shell/mask_
 | local, 2026-11-15, macOS arm64 (Apple silicon), `macos-release` hefesto-cli at `m5-r5-perf` (base 9997d707), sky130A at the M4 pin; wall time only (no callgrind or Magic on this Mac) | read | 1.36 s (447 cells) | not measured | CI |
 | same | write | 0.51 s (450 cells, 5.4 MB) | not measured | CI |
 | same | write-merge | 0.57 s | not measured | CI |
-| CI `gds-bench` | read, write, write-merge | to record | to record | to record |
+| CI `gds-bench`, Performance run 43754937070 (`m5-round5` at 4aa162f7), x86_64 runner, GCC 14 Release, callgrind (op minus base) | read | 9.214 billion instructions; 1.035 s | 10.929 billion; 1.589 s | met (0.84 x Magic) |
+| same | write | 6.231 billion; 0.800 s | 7.099 billion; 1.207 s | met (0.88 x) |
+| same | write-merge | 6.429 billion; 0.814 s | 7.174 billion; 1.150 s | met (0.90 x) |
+
+| CI `gds-bench`, Performance run 43766374927 (`m5-round5` at c937e133, after the `getcell` fix), same runner and builds | read | 9.215 billion; 0.761 s (447 cells) | 10.929 billion; 0.948 s (447 cells) | met (0.84 x Magic); job passed |
+| same | write | 6.185 billion; 0.645 s (448 cells) | 7.099 billion; 0.788 s (448 cells) | met (0.87 x) |
+| same | write-merge | 6.383 billion; 0.668 s (448 cells) | 7.174 billion; 0.798 s (448 cells) | met (0.89 x) |
+
+The masked write outputs of the two tools differ (information: the block's cells are generated from `.mag` files, not copied). Run 43754937070's timing step had failed on the cell count after the writes (Hefesto 450, Magic 448). The two extra cells were `getcell` renames (`sky130_fd_sc_hd__nand2_2_a`, `nor2_2_a`): a cell read through `macro_sparecell` records its file with the extension, and `getcell` compared it with its own path plus ".mag". Fixed at integration (0e43f7dc, regression test in `tests/unit/cell/console_test.cpp`). The baseline is recorded in `bench/gds/baseline.json` from the first `gds-bench` run on main, as its comment says. DRC on the same branch (Performance run 43753404487): `drc-profile` 12.24 billion instructions per block pass (target 12.38 billion, met; Magic 10.98 billion, information); `drc-bench` block 1.15 s against Magic's 1.37 s (0.84 x, information), 1314 errors each.
 
 Equivalence report, local (same build): `sky130_fd_sc_hd.gds`. First pass: read 1.9 s, write 0.4 s. Second pass: read 2.2 s, write 0.3 s. There are 5 differences, all in TEXT. For example, `sky130_fd_sc_hd__dlrtn_1`'s `VGND` label on 68/5 is at (230, 0) after the first write and at (235, 0) after the second. The other labels are in `a32oi_4`, `dlrtn_2`, `dlrtn_4` and `dlrtp_4`. These differences are information only (design D19) and are left for review by GDSR/GDSW.

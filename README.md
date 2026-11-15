@@ -183,7 +183,7 @@ Forge tokens: graphite UI chrome, one ember accent, Inter and JetBrains Mono. La
 | M2 | Interactive editing and design system (complete) | |
 | M3 | Design rule checking (complete) | |
 | M4 | Scripting and PDK integration (complete; Desktop Alpha sign-off pending) | Desktop Alpha |
-| M5 | Mask generation, GDS and CIF (final round in review; see the roadmap for the open exit criteria) | |
+| M5 | Mask generation, GDS and CIF (in review: library round trips and use-order cases left; see the roadmap) | |
 | M6–M7 | LEF/DEF/OASIS, extraction and netlisting | |
 | M8 | Schematic capture | |
 | M9 | LVS and simulation, including advanced analog | Desktop Beta |
