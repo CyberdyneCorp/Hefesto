@@ -410,7 +410,7 @@ bool paint_crossed_triangles(db::Plane& p, int k) {
 }  // namespace
 
 TEST_CASE("crossed triangles of moderate size are painted exactly", NM "[req:Non-Manhattan painting]") {
-  constexpr int k = 1000;
+  constexpr int k = 200;
   db::Plane p;
   CHECK_FALSE(paint_crossed_triangles(p, k));
   CHECK(p.type_at({30 * k - 1, 1}) == kM1);       // below the `/` diagonal
@@ -422,7 +422,7 @@ TEST_CASE("crossed triangles of moderate size are painted exactly", NM "[req:Non
 TEST_CASE("a huge triangle over crossed triangles does not overflow the stack", NM "[req:Non-Manhattan painting]") {
   // fuzz_mag_reader: with `magscale 8888882 2` the `\` paint recursed about
   // two million levels deep in DBNMPaintPlane0 and overflowed the stack.
-  // The sub-areas now live on the heap, and past 4096 of them a piece left
+  // The sub-areas now live on the heap, and past 512 of them a piece left
   // on the diagonal is filled and reported off grid (Q-MODEL-34).
   constexpr int k = 4444441;
   db::Plane p;
@@ -430,5 +430,34 @@ TEST_CASE("a huge triangle over crossed triangles does not overflow the stack", 
   CHECK(p.type_at({30 * k - 1, 1}) == kM1);
   CHECK(p.type_at({10 * k, 17 * k - 1}) == kM1);
   CHECK(p.type_at({1, 1}) == tech::kSpace);
-  CHECK(p.tile_count() < 4 * 4096);
+  CHECK(p.tile_count() < 4 * 512);
+}
+
+TEST_CASE("repainting a huge triangle over crossed triangles stays within the work bound",
+          NM "[req:Non-Manhattan painting][regression]") {
+  // fuzz_mag_reader timeout (CI run 43648522848): a .mag file with
+  // `magscale 8888882 2` paints the crossed triangles again for every type
+  // and plane. Each paint descended into the whole chain of sub-areas the
+  // limit allowed, every level working next to the tiles the levels above
+  // it left, so one paint cost the square of the limit and the read took
+  // about 10 s in a debug build (Q-MODEL-35). The split tiles one paint
+  // fractures and joins measure that work.
+  constexpr int k = 4444441;
+  const Rect back{0, 0, 30 * k, 17 * k};
+  db::Plane p;
+  REQUIRE(paint_crossed_triangles(p, k));
+  std::size_t most = 0;
+  for (const tech::TileType t : {kM1, kM2, kM1, kM2}) {
+    std::vector<db::SplitEdit> log;
+    p.record_splits(&log);
+    db::PaintRow row = fill_space_row(t);
+    row[t == kM1 ? kM2 : kM1] = t;  // paints over the other type as well
+    REQUIRE(p.paint_triangle(back, db::Diagonal::nw_se, true, row).ok());
+    p.record_splits(nullptr);
+    most = std::max(most, log.size());
+  }
+  // About 700 split edits and 2000 tiles with the limit at 512; with 4096,
+  // 7500 edits in one paint and 15600 tiles.
+  CHECK(most < 2 * 512);
+  CHECK(p.tile_count() < 8 * 512);
 }
