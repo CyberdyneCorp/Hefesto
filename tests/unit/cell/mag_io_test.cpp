@@ -6,6 +6,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <string>
 
 #include "cell_fixture.hpp"
@@ -297,4 +298,41 @@ TEST_CASE("the usable-plane limit of a use applies after scaling", "[cap:cell-fi
   db::CellDef& top = io.read("top", std::string{kUseHead} + "transform 1 0 600000000 0 1 0\nbox 0 0 4 4\n" + kUseTail);
   CHECK(use_ignored_off_plane(io));
   CHECK(top.uses().size() == 1);
+}
+
+TEST_CASE("a huge magscale over crossed triangles reads with bounded work",
+          "[cap:layout-paint-semantics][req:Non-Manhattan painting][regression]") {
+  // Regression (fuzz_mag_reader timeout, CI run 43648522848): with
+  // `magscale 8888882 2` every paint of the crossed triangles below
+  // descended into the full chain of sub-areas allowed per paint, each
+  // working over the tiles the chain had already left, and the contact
+  // images were then repainted one strip at a time; the read took about
+  // 10 s in a debug build (Q-MODEL-35). plane_test bounds the work of one
+  // such paint; this bounds the time of the whole read.
+  CellIo io;
+  const std::string text =
+      "magic\n"
+      "tech tiny\n"
+      "magscale 8888882 2\n"
+      "timestamp 1000\n"
+      "<< po<< ~etal1 t 0 0 10 20\n"
+      "rect 10 0 20 4\n"
+      "<< ~etal1 >>\n"
+      "rec@t -2 -8\n"
+      "rect 0 0 10 20 -4 -4 24 24\n"
+      "tri\xb4 0 30 10 eeSans 16 4 24 24\n"
+      "tri\xb4 0 30 17 eeSanmagirec@t -2 -8 0\n"
+      "rect 10 0 20 4\n"
+      "<< ~etal1 t 0 0 1* 20\n"
+      "rect 10 0 20 4\n"
+      "<< ~et2al1 >>\n"
+      "rect -2 -8 24 24\x11tr2lysilicon >>\n"
+      "rect 0 0ilicon >>\n"
+      "rect\xac\xac\xac\xacmm";
+  const auto start = std::chrono::steady_clock::now();
+  db::CellDef& c = io.read("c", text);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  CHECK(c.flags().available);
+  // About 0.3 s in a debug build now; the bound leaves room for sanitizers.
+  CHECK(elapsed < std::chrono::seconds{5});
 }
