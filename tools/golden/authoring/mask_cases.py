@@ -239,10 +239,11 @@ def case(cid: str, requirements: list[str], description: str, body: list[str], *
          files: dict[str, str | bytes] | None = None, outputs: list[str] | None = None,
          technology: str | None = None, start: list[str] | None = None, notes: list[str] | None = None,
          env: dict[str, str] | None = None, raw_prelude: bool = False,
-         fonts: list[str] | None = None) -> tclcase.TclCase:
+         fonts: list[str] | None = None, capability: str | None = None) -> tclcase.TclCase:
     """One MASK case. ``technology`` is the case's tech file (default: ``tech()``); ``start``
     the commands after the prelude (default ``load top``); ``outputs`` files the run writes;
-    ``fonts`` Magic's default outline fonts a command names (``magic-sys`` inputs)."""
+    ``fonts`` Magic's default outline fonts a command names (``magic-sys`` inputs); ``capability``
+    the case's capability when it is not a MASK family's (the M5 cases of other areas)."""
     files = dict(files or {})
     files.setdefault(f"{TECH}.tech", technology if technology is not None else tech())
     head = [] if raw_prelude else prelude(files, body)
@@ -252,8 +253,8 @@ def case(cid: str, requirements: list[str], description: str, body: list[str], *
     names = {CELLS: "cells.txt"} if CELLS in outs else {}
     history = history_note(cid, cmds)
     return tclcase.TclCase(
-        cid, CAPABILITY[cid.split("-")[1]], requirements, description, script_lines(cmds), files=files,
-        outputs=outs, output_masks={o: k[1] for o, k in kinds.items()}, output_names=names,
+        cid, capability or CAPABILITY[cid.split("-")[1]], requirements, description, script_lines(cmds),
+        files=files, outputs=outs, output_masks={o: k[1] for o, k in kinds.items()}, output_names=names,
         output_comparators={o: k[0] for o, k in kinds.items() if k[0] != "bytes"},
         output_displays={o: k[2] for o, k in kinds.items() if k[2]},
         stream_masks=["completed-percent"], env=dict(env or {}), driver=DRIVER, fonts=list(fonts or []),

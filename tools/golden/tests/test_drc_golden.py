@@ -197,10 +197,9 @@ class M3CaseSpecTest(unittest.TestCase):
                 self.assertFalse(casegen.masks_checkpaint(spec))
                 self.assertTrue(spec.cmds[0].startswith("tech load input/"))
 
-    def test_only_the_gds_cases_are_not_authored(self):
-        self.assertTrue({"MISC-MH-03", "MISC-MH-04", "MISC-MH-05", "MISC-MH-06"} <= set(m3_cases.not_authored()))
-        other = set(m3_cases.not_authored()) - {"MISC-MH-03", "MISC-MH-04", "MISC-MH-05", "MISC-MH-06"}
-        self.assertTrue(other <= set(drc_cases.STD_LIBS), other)
+    def test_only_missing_corpus_libraries_are_not_authored(self):
+        # MISC-MH-03..06 waited for GDS and are authored by m5_cases.py (m5-mask-gds-cif task 13.6).
+        self.assertTrue(set(m3_cases.not_authored()) <= set(drc_cases.STD_LIBS), m3_cases.not_authored())
 
     def test_committed_cases_match_the_specs(self):
         """Every authored case directory equals what the generator writes (re-run m3_cases.py)."""
