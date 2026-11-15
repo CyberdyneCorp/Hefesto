@@ -81,6 +81,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-130 | `gds rescale no` also forces warning level "limit" | **compat** | ON: `gds rescale no` also sets warning level `limit`; OFF: leaves it |
 | Q-MASK-132 | Host dependencies (time zone, PDK variables, gzip) | **platform** | host local zone with a pinned-zone override for tests; PDK variables from Tcl globals (settings on iPadOS); bundled zlib |
 | Q-MASK-134 | BGNSTR year interpreted as years since 1900 | **compat** | ON: year as tm_year with 32-bit truncation; OFF: full years accepted, no overflow |
+| Q-MASK-135 | `gds warning redirect` file holds only message prefixes (2026-11-14) | **fix** | whole messages, prefix and body, go to the redirect file and nothing to the console, in both modes (Magic's Tcl build splits each message) |
 
 ### GDS write
 
@@ -113,6 +114,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-230 | bloat-all leaves contact-image trigger tiles marked | **compat** | ON: stale trigger marks within the generation pass; OFF: reset every searched plane |
 | Q-MASK-231 | bloat-all seeding depends on trigger order when d = 0 | **compat** | ON: seed only the first unprocessed tile; OFF: seed every overlapping region |
 | Q-MASK-232 | bloat-all converts mask-layer triggers to internal units with truncation toward zero | **compat** | ON: truncating trigger conversion; OFF: outward rounding |
+| Q-MASK-233 | hierarchy depth limit of the GDS and CIF writers (2026-11-14) | **fix** | a hierarchy deeper than 1024 levels fails the write (GDS-WRITE-014 / CIF-WRITE-008, empty file), in both modes (Magic overflows the stack) |
 
 ### Mask input styles and CIF I/O
 
@@ -144,9 +146,12 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-327 | default 94 label sticky flag uses a mismatched layer search | **compat** | ON: Magic's mismatched sticky search; OFF: the current `L` layer's kind |
 | Q-MASK-330 | not-square drops non-manhattan geometry | **compat** | same as Q-MASK-7 for input styles |
 | Q-MASK-331 | warning redirect not honored for CIF input | **compat** | ON: CIF read ignores the redirect file; OFF: CIF messages go to it |
+| Q-MASK-332 | flat CIF write lacks reducer check (confirmed 2026-11-14) | **fix** | `cif flat` refuses reducer 0 like `cif write` (CIF-WRITE-003, empty file), in both modes (Magic divides by zero) |
 | Q-MASK-333 | CIF wires use square end extensions | **replicate** | square half-width wire ends |
 | Q-MASK-334 | grow-grid does not snap upper edges to the grid (duplicate of Q-MASK-1) | **compat** | same as Q-MASK-1 for input styles |
 | Q-MASK-335 | malformed CIF call transformation is used unscaled | **compat** | ON: place the call with the partial unscaled transform; OFF: skip the call |
+| Q-MASK-338 | CIF label-layer tiles are scaled twice (2026-11-14) | **compat** | ON: label-layer tiles multiplied by S, then divided by R, as Magic; OFF: divided by R only |
+| Q-MASK-339 | CIF header of a technology without a version section (2026-11-14) | **compat** | ON: the start-up technology's `0.0` / `Minimum technology file structure`; OFF: `unknown` and no `@@techdesc` line |
 
 ### Hierarchical generation
 
@@ -167,17 +172,18 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-412 | `net` operator in own-paint generation uses a stale dummy cell | **fix** | search the cell being generated, in both modes (Magic crashes in a fresh session, else searches the previous cell) |
 | Q-MASK-413 | `cif unfracture` needs a dummy argument (= D-20) | **compat** | ON: third word only queries, with a warning; OFF: third word sets the switch |
 | Q-MASK-414 | Progress reporting and event blocking during interaction processing | **platform** | progress callback, cancellation without partial output, snapshot isolation |
+| Q-MASK-415 | `cif unfracture` merge area (2026-11-14) | **compat** | ON: CIFGen's internal-unit search area on the mask-unit plane, as Magic; OFF: the whole generated layer |
 
 ## Counts
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 77 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
+| compat | 80 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 338, 339, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413, 415 |
 | replicate | 18 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 31, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 14 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318, 407, 412 |
+| fix | 17 | 10, 30, 126, 128, 135, 201, 209, 212, 219, 222, 233, 303, 314, 318, 332, 407, 412 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 113: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), and Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, all of 2026-11-14.
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 119: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14.
 
 ## User decisions of 2026-11-14 (round 2 review)
 
@@ -199,6 +205,18 @@ Taken on the round 3 integration report (PR #55); each entry's `Resolution:` lin
 4. **Q-MASK-407** (amended, **fix**): an array use whose pitch is 0 along a repeated axis gets no array correction, in both modes and without a warning (the 2026-11-07 resolution said one element and a warning). Code unchanged (round 3); the regression test now runs both modes and both axes, and `mask-hierarchical-generation` has the scenario "Zero pitch along a repeated axis".
 5. **Q-DRC-27** (new, **compat**): the mask-layer Euclidean corner radius is `cdist & 0xfff` with `magic-compat` ON and the full corner distance with it OFF, as Q-DRC-20 decided for the layout rules. Behaviour change: before, both modes wrapped. Test: `tests/unit/drc/check/mask_check_test.cpp` (corner distance 4096, both modes).
 6. **gds-read scenarios** (no new entries): "Odd width rounds outward" holds with `magic-compat` OFF; ON gives y∈[-2,2] (Magic's H = 1.5708, Q-MASK-118). "Text-kind pin shape" gives port index 0 with ON. Read-only cells are queued for DRC by the end-of-read cleanup (CIFReadCellCleanup), only the per-structure mark skips them. Magic's `gds warning redirect` file holds only the message prefixes (its Tcl build sends the message body to the console); Hefesto writes whole messages to the file.
+
+## User decisions of 2026-11-14 (round 4 review)
+
+Taken on the round 4 review of the GDS and CIF writers (PR #56); each entry's `Resolution:` line is in `open-questions/MASK.md`.
+
+1. **Q-MASK-338** (drafted in the round 4 review, now approved, **compat**): with `magic-compat` ON a `labellayer` tile is multiplied by the scale factor S before the division by the reducer, as Magic's cifWriteLabelFunc does although the tile is already in output units; with it OFF it is only divided by R. Code as landed in round 4; `cif-format-io` "CIF output labels" now says "resolution: compat". Tests: `tests/unit/cif/write/format_test.cpp` (both modes), golden MASK-CF-028 (ON).
+2. **Q-MASK-415** (new, **compat**, split from Q-MASK-413): `cif unfracture` merges each generated layer over CIFGen's internal-unit search area with `magic-compat` ON, as Magic does on its mask-unit plane (cif/CIFgen.c:5784-5786), and over the whole generated layer with it OFF. Behaviour change: round 4 merged over the search area times the scale factor with OFF; `mask::unfracture_layer` now merges the whole plane. `mask-hierarchical-generation` "Non-manhattan merge option" has the scenario "Merge area with a scale factor"; regression test in `tests/unit/mask/gen/unfracture_test.cpp`.
+3. **Q-MASK-318 fix deviation for MASK-CF-004** (no new entry): `tests/golden/deviations.toml` lists `stdout.txt`, `stderr.txt` and `cells.txt` under Q-MASK-318, and the case replays (reported as a deviation) instead of being deferred.
+4. **Q-MASK-332** (resolved 2026-11-07, confirmed, **fix**, crash class): `cif flat` refuses a style with reducer 0 like `cif write` (CIF-WRITE-003, empty file), in both modes; Magic's CIFWriteFlat divides by zero. Code as landed in round 4; `cif-format-io` "CIF output preconditions and flat output" no longer says "no reducer check" and has the scenario "Reducer 0 refused for flat output"; the regression test now runs both forms in both modes.
+5. **Q-MASK-339** (new, **compat**): the CIF `@@version` / `@@techdesc` lines of a technology without a version section show the start-up technology's `0.0` / `Minimum technology file structure` with `magic-compat` ON (Magic never clears DBTechVersion and DBTechDescription), each value on its own; with it OFF `unknown` and no `@@techdesc` line, as implemented. Code as landed; `cif-format-io` "CIF output header" states both modes, with the scenario "Header for a technology without a version section".
+6. **Q-MASK-233** (new, **fix**, crash class): the GDS and CIF writers' hierarchy depth limit `gds::kMaxSubtreeDepth` is 1024 levels, the mask generators' limit (lowered from 4096 in the round 4 review); a deeper hierarchy fails the write with GDS-WRITE-014 or CIF-WRITE-008 and an empty file, in both modes, where Magic overflows the stack. Code as landed; `gds-write` "Write preconditions and subtree loading" and `cif-format-io` "CIF output symbol numbering and order" state the limit and the message, each with the scenario "Hierarchy deeper than the limit". Tests: `tests/unit/gds/write/depth_test.cpp`, `tests/unit/cif/write/write_test.cpp`.
+7. **Q-MASK-135** (new, **fix**): `gds warning redirect FILE` writes each whole read message, prefix and body, to the file and nothing to the console, in both modes; Magic's Tcl build writes only the prefixes to the file and the bodies to the console (Vfprintf is Tcl_printf). Code unchanged; `gds-read` "Read diagnostics" states it as the decision instead of describing both behaviours, with the scenario "Redirect file"; regression test in `tests/unit/gds/read/read_test.cpp` (both modes).
 
 ## Audit decision D-20
 
@@ -298,6 +316,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### gds-read
 
+- **Q-MASK-135 (2026-11-14)**: "Read diagnostics": the `redirect` bullet states the decision (whole messages to the file, nothing on the console, both modes) and Magic's split as the deviation; scenario "Redirect file".
 - **Round 3 review (2026-11-14, no new entry)**: "Odd width rounds outward" gives the ON result (y∈[-2,2]) and the OFF result (y∈[-3,3]); "Text-kind pin shape" gives port index 0 with magic-compat ON; "Read-only vendor views" and "End-of-read cleanup" say that read-only cells are queued for DRC at the end of the read; "Read diagnostics" says what Magic's redirect file holds and what Hefesto writes.
 - **Q-MASK-110**: gds-read 'structure end' step 6 (spec.md:188): state that with magic-compat ON the uncleared planes are painted into the next processed structure, and that with magic-compat OFF the planes are cleared and the structure's geometry is discarded.
 - **Q-MASK-111**: gds-read spec.md:238: replace 'rewound during this session' with 'rewound during this session (magic-compat ON) or during this read (magic-compat OFF)'.
@@ -322,6 +341,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### gds-write
 
+- **Q-MASK-233 (2026-11-14)**: "Write preconditions and subtree loading" step 2: the 1024-level limit, GDS-WRITE-014 and its message, the empty file, the structure-traversal backstop; scenario "Hierarchy deeper than the limit".
 - **Q-MASK-200**: gds-write/spec.md:214 (String records, item 6): keep the swap as the magic-compat ON rule. Add that with magic-compat OFF every printable character maps to itself. The name-legality rule (spec:356) uses the same table in both modes.
 - **Q-MASK-201**: gds-write/spec.md:277: replace the conditional paragraph with a normative one. UNITS are derived from the current style's angstrom flag on every write, and the Magic session-sticky behaviour is listed as a fixed deviation (X-2 tier 1). oasis-write/spec.md:119 already states this and stays.
 - **Q-MASK-202**: gds-write/spec.md:246: keep 'modification date is always the current time' as the magic-compat ON rule. Add that with OFF it is t = 0, and that BGNLIB, the BGNSTR of the full-dump path and the BGNSTR of vendor cells all follow the same rule.
@@ -360,6 +380,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### cif-format-io
 
+- **Round 4 review (2026-11-14)**: Q-MASK-338 "CIF output labels" (proposed → resolution: compat); Q-MASK-339 "CIF output header" (the ON start-up technology fallback and the OFF `unknown`; the scenario "Header for a technology without description" now gives both modes, new scenario "Header for a technology without a version section"); Q-MASK-332 "CIF output preconditions and flat output" (reducer 0 refused for flat output too, both modes; scenario "Reducer 0 refused for flat output"); Q-MASK-233 "CIF output symbol numbering and order" (the 1024-level limit and CIF-WRITE-008; scenario "Hierarchy deeper than the limit").
 - **Q-MASK-314**: cif-format-io spec.md:232: replace "(without changing the symbol scale, see Q-MASK-314)" with "and the symbol scale numerator is multiplied by 2". Add a golden deviation entry.
 - **Q-MASK-315**: cif-format-io spec.md:160: make truncation the magic-compat ON behaviour, state the width-loss case for boxes straddling 0, and add the OFF subdivision.
 - **Q-MASK-317**: cif-format-io spec.md:102: make the edit-cell rename the magic-compat ON behaviour and add "with OFF a top-level 9 is ignored with a warning".
@@ -377,6 +398,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### mask-hierarchical-generation
 
+- **Q-MASK-415 (2026-11-14)**: "Non-manhattan merge option": the ON internal-unit merge area and the OFF whole layer; scenario "Merge area with a scale factor".
 - **Q-MASK-33 (2026-11-14)**: "Array correction replication": the ON reuse of the core windows for later layers and the OFF named windows.
 - **Q-MASK-407 (amended 2026-11-14)**: "Array interaction geometry parameters": a zero pitch along a repeated axis skips the use's array correction in both modes; scenario "Zero pitch along a repeated axis".
 - **Q-MASK-400**: mask-hierarchical-generation:264 pseudocode: state the ON/OFF split (OFF: skip include when no other use found). drc-engine:137-160 'Interaction area' (Compatibility: exact) currently computes O as the bbox of other uses with no (0,0,0,0) seed, i.e. it silently has the OFF behaviour; it must add the ON seed and cite Q-MASK-400.
@@ -394,4 +416,4 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 No spec change beyond the `Resolution:` reference (and evidence line numbers): Q-MASK-11, Q-MASK-20, Q-MASK-26, Q-MASK-203, Q-MASK-217, Q-MASK-223, Q-MASK-301, Q-MASK-316.
 
-Outside the specs: D-20 in `docs/decisions/audit/DECISIONS.md` (Q-MASK-413), and golden deviation entries in `tests/golden/deviations.toml` for Q-MASK-314, any Q-MASK-10 listing case, and MASK-HG-020 (`decisions = ["Q-MASK-412"]`, `outputs = ["b.gds"]`, once the case replays).
+Outside the specs: D-20 in `docs/decisions/audit/DECISIONS.md` (Q-MASK-413), and golden deviation entries in `tests/golden/deviations.toml` for Q-MASK-314, any Q-MASK-10 listing case, MASK-HG-020 (`decisions = ["Q-MASK-412"]`, `outputs = ["b.gds"]`, once the case replays), and MASK-CF-004 (`decisions = ["Q-MASK-318"]`, `outputs = ["stdout.txt", "stderr.txt", "cells.txt"]`, approved 2026-11-14).

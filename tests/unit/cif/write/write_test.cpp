@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <atomic>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../cif_fixture.hpp"
@@ -257,8 +258,11 @@ TEST_CASE("flat output: __CIF2__ with magic-compat ON, the root's name and label
 
 TEST_CASE("a style with reducer 0 is refused and leaves an empty file",
           "[cap:cif-format-io][req:CIF output preconditions and flat output]") {
-  for (const bool flat : {false, true}) {
-    Fixture f;
+  // `cif flat` too, in both modes (Q-MASK-332): Magic's CIFWriteFlat divides
+  // by the reducer without checking it.
+  for (const auto& [flat, on] : {std::pair{false, true}, std::pair{true, true}, std::pair{false, false},
+                                 std::pair{true, false}}) {
+    Fixture f(on);
     mask::OutputStyle style = *f.ed.mask.output_styles.current_style();
     style.scale.reducer = 0;
     auto shared = std::make_shared<const mask::OutputStyle>(style);

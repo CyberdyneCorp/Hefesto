@@ -310,7 +310,7 @@ Compatibility: exact
 Before writing anything to the stream, Hefesto SHALL:
 
 1. Fail with "no output style" if no output style is selected. This check is made before the output file is opened, so the output file is not created or modified, in both `magic-compat` settings (Q-MASK-219, resolution: fix; Magic opens the file first and truncates an existing file of the same name).
-2. Load every cell in the hierarchy under the root, within the root's bounding box, by the recursive area search over uses described in Requirement "Structure ordering" (which can rebuild a cell's use index with `magic-compat` ON). If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated.
+2. Load every cell in the hierarchy under the root, within the root's bounding box, by the recursive area search over uses described in Requirement "Structure ordering" (which can rebuild a cell's use index with `magic-compat` ON). If a cell cannot be loaded and `undefined` is disallow, fail without writing any records. With `undefined allow`, unloadable cells are tolerated. A hierarchy deeper than 1024 levels below the root fails the write without writing any records, in both `magic-compat` settings (Q-MASK-233, resolution: fix; Magic has no limit and recurses until the stack overflows): the error is GDS-WRITE-014, "Failure to read entire subtree of the cell." followed by "The hierarchy is deeper than 1024 levels at cell CELL.", and the file is left empty. The same limit applies to the structure traversal ("Calma output error:  the hierarchy under cell ROOT is deeper than 1024 levels.") and to mask generation.
 3. Resolve pending timestamp mismatches between parents and children (see capability `layout-geometry-model`).
 4. Reset all cell id numbers to 0 and give the root id number 1. The next number assigned is 2.
 
@@ -327,6 +327,12 @@ Compatibility: behavioral
 - **GIVEN** the same layout and `gds undefined allow`
 - **WHEN** GDS is written
 - **THEN** the write succeeds, `top` contains an SREF with SNAME `missing`, and no structure named `missing` is written
+
+#### Scenario: Hierarchy deeper than the limit
+- **GIVEN** a chain of cells `c0` → `c1` → … → `c1025`, each using the next, written from `c0`
+- **WHEN** GDS is written, with `magic-compat` ON or OFF
+- **THEN** the write fails with GDS-WRITE-014 and the file contains no records
+- **AND** the same chain one level shorter (1024 levels below the root) is written with 1025 structures
 
 ### Requirement: Structure ordering
 
