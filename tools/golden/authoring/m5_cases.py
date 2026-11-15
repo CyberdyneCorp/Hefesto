@@ -138,6 +138,7 @@ REPLAYED: set[str] = {
     "MASK-GR-033",
     "MASK-GR-034",
     "MASK-GR-035",
+    "MASK-GR-036",
     "MASK-GR-037",
     "MASK-GR-038",
     "MASK-GR-039",
