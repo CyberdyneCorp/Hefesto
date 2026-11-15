@@ -107,33 +107,49 @@ TEST_CASE("Unfracture merges over Magic's area with magic-compat ON", MERGE) {
     MaskPlane far;
     fractured_pair(far, 100, 100, 50);
     const std::vector<tech::TileType> before = raster(far, box);
-    unfracture_layer(far, clip, 10, compat::CompatSettings{true, true});
+    unfracture_layer(far, clip, compat::CompatSettings{true, true});
     CHECK(split_count(far) == 2);
     CHECK(raster(far, box) == before);
     MaskPlane near;
     fractured_pair(near, 0, 0, 10);
-    unfracture_layer(near, clip, 10, compat::CompatSettings{true, true});
+    unfracture_layer(near, clip, compat::CompatSettings{true, true});
     CHECK(split_count(near) == 1);
   }
   SECTION("magic-compat OFF: the whole generated area in mask units") {
     MaskPlane far;
     fractured_pair(far, 100, 100, 50);
     const std::vector<tech::TileType> before = raster(far, box);
-    unfracture_layer(far, clip, 10, compat::CompatSettings{false, true});
+    unfracture_layer(far, clip, compat::CompatSettings{false, true});
     REQUIRE(split_count(far) == 1);
     CHECK(far.solid_tiles().front().area == Rect{100, 100, 200, 200});
     CHECK(raster(far, box) == before);
   }
+  SECTION("magic-compat OFF: beyond the search area times the scale factor") {
+    // Regression (Q-MASK-415): OFF merged only over the area times the scale
+    // factor, (-100,-100)-(300,300) here, and left this pair fractured; the
+    // decision is the whole generated layer.
+    MaskPlane beyond;
+    fractured_pair(beyond, 400, 400, 50);
+    const Rect wide{390, 390, 510, 510};
+    const std::vector<tech::TileType> before = raster(beyond, wide);
+    unfracture_layer(beyond, clip, compat::CompatSettings{false, true});
+    REQUIRE(split_count(beyond) == 1);
+    CHECK(beyond.solid_tiles().front().area == Rect{400, 400, 500, 500});
+    CHECK(raster(beyond, wide) == before);
+    MaskPlane on;
+    fractured_pair(on, 400, 400, 50);
+    unfracture_layer(on, clip, compat::CompatSettings{true, true});
+    CHECK(split_count(on) == 2);
+  }
 }
 
 TEST_CASE("Unfracture over an unbounded generation area", MERGE) {
-  // A side at the plane's edge stays there in both modes (no overflow when
-  // scaled).
+  // An unbounded search area merges the whole plane in both modes.
   const GenerationClip clip = generation_clip(db::whole_plane(), 10, 10);
   for (const bool on : {true, false}) {
     MaskPlane plane;
     fractured_pair(plane, -500, 300, 25);
-    unfracture_layer(plane, clip, 10, compat::CompatSettings{on, true});
+    unfracture_layer(plane, clip, compat::CompatSettings{on, true});
     CHECK(split_count(plane) == 1);
   }
 }

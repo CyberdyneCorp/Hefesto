@@ -672,6 +672,8 @@ Compatibility: exact
 
 When the `unfracture` switch is on (default off), the implementation SHALL merge adjacent non-Manhattan (split) tiles of each generated layer result, wherever they can be represented by fewer tiles. This happens after each layer is generated and before clipping. It applies to all generation modes and changes only the decomposition, not the covered point set.
 
+The area the merge covers depends on the `magic-compat` setting (Q-MASK-415, resolution: compat): with it ON (the default) it is the generation's search area in internal units, as Magic passes it to DBMergeNMTiles although the layer's plane is in mask units, so with a scale factor above 1 only the split tiles inside that area of the mask-unit plane are merged; with it OFF the whole generated layer is merged.
+
 In Magic the switch is set with `cif unfracture <any> yes|no`: the value is the fourth word, and with only three words the command reports the state. Hefesto does the same with `magic-compat` ON (the default), and warns when the ignored third word is `yes` or `no`; with it OFF `cif unfracture yes|no` sets the switch, and the four-word form is still accepted (Q-MASK-413, resolution: compat; settles D-20; capability `cif-format-io`).
 
 Compatibility: exact
@@ -683,6 +685,12 @@ Compatibility: exact
 - **WHEN** GDS is written with unfracture on and again with it off
 - **THEN** the union of the boundaries is identical in both files
 - **AND** the version with unfracture on has no more boundary records than the version with it off
+
+#### Scenario: Merge area with a scale factor
+- **GIVEN** a style with scale factor 10, a generation search area (-10,-10)-(30,30) in internal units, and a layer with two collinear split tiles at mask coordinates (400,400)-(500,500)
+- **WHEN** the layer is merged with unfracture on
+- **THEN** with `magic-compat` ON the two split tiles stay, because they lie outside the internal-unit area
+- **AND** with `magic-compat` OFF they become one split tile
 
 ### Requirement: Vendor cells in hierarchical generation
 

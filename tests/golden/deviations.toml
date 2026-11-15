@@ -327,6 +327,11 @@ reason = "tool enabling is native, so magic::enable_tools is not a Tcl procedure
 
 # --- MASK -------------------------------------------------------------------
 
+[MASK-CF-004]
+decisions = ["Q-MASK-318"]
+outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
+reason = "symbol 1 defined twice keeps both cells, dup and dup2 (a redefinition never clears a cell this read created or renamed), and DD 2 leaves no NULL symbol-table entry; Magic clears dup, renames it dup2 and reports 'cell table has NULL entry (Magic error)'"
+
 [MASK-CI-003]
 decisions = ["Q-MASK-303"]
 outputs = ["stdout.txt", "stderr.txt"]
@@ -544,11 +549,6 @@ outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
 
 [MASK-CI-024]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"
-
-[MASK-CF-004]
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
 reason = "mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case is authored before its capture in golden-capture.yml and before the owning workstream lands"

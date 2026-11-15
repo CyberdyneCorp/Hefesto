@@ -247,6 +247,34 @@ TEST_CASE("read diagnostics and warning levels", "[cap:gds-read][req:Read diagno
   }
 }
 
+TEST_CASE("the redirect file holds whole messages in both modes (Q-MASK-135)", "[cap:gds-read][req:Read diagnostics]") {
+  // Magic's Tcl build writes only the prefix of each message to the file and
+  // prints the body on the console; Hefesto writes prefix and body together
+  // to the file and prints nothing, with magic-compat ON and OFF.
+  for (const bool on : {true, false}) {
+    Session s(kStyle, on);
+    platform::MemoryFileSystem files;
+    s.options.files = &files;
+    s.options.warnings.level = mask::WarningLevel::redirect;
+    s.options.warnings.redirect_file = "/out/err.txt";
+    GdsFile f;
+    f.library().begin("top");
+    square(f, 99, 7);
+    f.end().end_library();
+    s.read(f);
+    CHECK(s.count("Unknown layer/datatype") == 0);
+    CHECK_FALSE(s.said("Error while reading cell"));
+    const auto written = files.read("/out/err.txt");
+    REQUIRE(written.ok());
+    const std::string& text = written.value();
+    const std::size_t prefix = text.find("Error while reading cell \"top\" (byte position ");
+    REQUIRE(prefix != std::string::npos);
+    const std::size_t body = text.find("Unknown layer/datatype in boundary, layer=99 type=7", prefix);
+    REQUIRE(body != std::string::npos);
+    CHECK(text.find('\n', prefix) > body);  // the body is on the prefix's line
+  }
+}
+
 TEST_CASE("read command file lookup", "[cap:gds-read][req:Read command and file lookup]") {
   platform::MemoryFileSystem files;
   REQUIRE(files.write_atomic("/w/chip.gds.gz", "x").ok());

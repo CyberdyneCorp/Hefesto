@@ -1131,7 +1131,7 @@ Reporting depends on the warning level:
 - `default`: all messages are printed.
 - `none`: nothing is printed.
 - `limit`: only the first 99 messages are printed, then "Error limit set: Remaining errors will not be reported.".
-- `redirect <file>`: messages are written to `<file>`, which is opened for writing at the start of each read. Without a file name, messages are discarded. In Magic's Tcl build the file receives only the prefix of each counted error (`Error while reading cell "<cell>" (byte position <offset>): `) and the second line of an unexpected-record error, because the message body goes through `Vfprintf`, which that build maps to `Tcl_printf` and so prints on the console. Hefesto writes each whole message, prefix and body, to the file and prints nothing, in both `magic-compat` settings.
+- `redirect <file>`: each whole message, prefix and body, is written to `<file>`, which is opened for writing at the start of each read, and nothing is printed on the console, in both `magic-compat` settings (Q-MASK-135, resolution: fix). Without a file name, messages are discarded. This deviates from Magic's Tcl build, whose file receives only the prefix of each counted error (`Error while reading cell "<cell>" (byte position <offset>): `) and the second line of an unexpected-record error, while the message body goes through `Vfprintf`, which that build maps to `Tcl_printf`, and so is printed on the console: each message is split across two streams.
 
 Each GDS read error is prefixed `Error while reading cell "<cell>" (byte position <offset>): `. Hefesto MAY format messages differently. The conditions that produce messages are specified in the other requirements.
 
@@ -1141,6 +1141,12 @@ Each GDS read error is prefixed `Error while reading cell "<cell>" (byte positio
 - **GIVEN** `gds warning limit` and a file producing 150 errors
 - **WHEN** read
 - **THEN** 99 error messages and the limit notice are printed
+
+#### Scenario: Redirect file
+- **GIVEN** `gds warning redirect err.txt` and a file whose cell `top` has a boundary on an unknown layer
+- **WHEN** read, with `magic-compat` ON or OFF
+- **THEN** `err.txt` holds the whole message, `Error while reading cell "top" (byte position N): ` followed by the unknown layer/datatype text on the same line
+- **AND** nothing is printed on the console
 
 ### Requirement: Host mechanisms used by the reader
 Magic resolves PDK path variables through Tcl global variables and the home directory through `$HOME`, and opens files through zlib. Hefesto SHALL resolve `PDK_PATH`, `PDKPATH`, `PDK_ROOT` and `PDKROOT` from the Tcl global variables of the project's interpreter (Tcl is embedded on every platform), seeded from the settings store on iPadOS; SHALL take the home directory for `~` from the platform services; and SHALL bundle zlib so gzip input works on all platforms. Local-time conversion of GDS dates uses the host time zone by default; a time-zone override setting (for example UTC) replaces it, and golden captures and CI SHALL run with the zone pinned (Q-MASK-132, resolution: platform).

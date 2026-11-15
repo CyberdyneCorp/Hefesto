@@ -25,9 +25,11 @@ release notices.
   `warning`, `polygon subcells`, `path subcells`, `unique`, ...) works with
   Magic's argument forms. `cif read`, `cif see`, `cif paint`, `cif
   coverage`, `cif statistics` and the remaining `cif` options work too.
-- **`cif unfracture`.** With `magic-compat` OFF it merges split tiles of
-  each generated layer before output; with it ON it prints a warning and
-  keeps Magic's behaviour (Q-MASK-413).
+- **`cif unfracture`.** Merges the split tiles of each generated layer
+  before output. With `magic-compat` ON the value is Magic's fourth word
+  (a three-word `cif unfracture yes` only warns, Q-MASK-413) and the merge
+  covers Magic's internal-unit search area; with it OFF `cif unfracture
+  yes` sets it and the whole generated layer is merged (Q-MASK-415).
 
 ### Changed
 
@@ -105,7 +107,7 @@ release notices.
   in the file, and the error names the cell and the exact value.
 - **CIF label layers with a scale factor.** With `magic-compat` ON a
   `labellayer` tile is written as Magic writes it, multiplied by the
-  style's scale factor (Q-MASK-338, proposed); with it OFF it is written in
+  style's scale factor (Q-MASK-338); with it OFF it is written in
   the units of the geometry. `cif flat` with `magic-compat` ON processes
   timestamp mismatches after the write, as Magic does.
 - **Large inputs.** `cif read` refuses a file larger than 2 GiB before
