@@ -1,0 +1,20 @@
+( @@user : ? );
+( @@machine : 16db689a563a );
+( @@source : top.mag );
+( @@tool : Magic 8.3.694 );
+( @@compiled : Sat Nov 14 21:05:44 UTC 2026 );
+( @@technology : masktest );
+( @@version : 0.0 );
+( @@techdesc : Minimum technology file structure );
+( @@style : gds );
+( @@date : Sat Nov 14 21:15:20 2026 );
+DS 1 10 2;
+9 top;
+L CMF;
+    B 20 8 10 4;
+    B 12 12 46 6;
+94 CPN 100 40;
+94 CPN 460 60;
+DF;
+C 1;
+End

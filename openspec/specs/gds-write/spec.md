@@ -432,7 +432,7 @@ For each structure written from Hefesto's own data, two integer scale factors SH
 - If `U mod E == 0`: `Wscale = S * U / E` (multiplies internal units: cell reference positions, array pitches, label positions, label rectangles), and `Pscale = U / E` (multiplies mask-plane coordinates, which are already in output units).
 - Otherwise the behaviour depends on the `magic-compat` setting (Q-MASK-225, resolution: compat): with it ON (the default) an error is reported, `Wscale = S` and `Pscale = 1`, and the output is written anyway, mis-scaled, as in Magic; with it OFF the write is refused before the output file is opened, with an error suggesting `units angstroms` or a coarser `scalegrid`, and the command fails.
 
-All products, including the label-midpoint sum, are computed exactly in 64-bit integer arithmetic; a value outside the signed 32-bit (I4) range fails the write with an error naming the cell and the value, in both `magic-compat` settings (Q-MASK-222, resolution: fix; Magic overflows in 32 bits, which is undefined behaviour).
+All products, including the label-midpoint sum, are computed exactly in 64-bit integer arithmetic; a value outside the signed 32-bit (I4) range fails the write with an error naming the cell and the value, in both `magic-compat` settings (Q-MASK-222, resolution: fix; Magic overflows in 32 bits, which is undefined behaviour). The same rule covers an AREF's COLROW counts: a count above 32767 fails the write (Magic writes the low 16 bits).
 
 Compatibility: exact
 
@@ -576,7 +576,7 @@ for each solid tile T in enumeration order:            # Requirement "Tile decom
         intedges := 0
         for each boundary segment (p1 -> p2, neighbor n) of t, in the order below:
             ext := (type of n facing t) != (type of t facing n)
-            intedges += add_segment(ring, ext, p1, p2)    # 1 if INT else 0
+            intedges += add_segment(ring, ext, p1, p2)    # kind of the node left current: EXT 0, INT 1, INIT 2; -1 if none matches
             np += 1    (not for the diagonal segment)
             if not ext and n is unmarked: mark n PENDING; push(stack, n)
         if intedges == 0:                                 # isolated tile
@@ -606,7 +606,9 @@ Only neighbors that share a segment of positive length are considered. For a spl
 - only the start matches: insert a node Y after X with `Y.start = p2` and `Y.kind = X.kind` (INIT). Then set X.kind := EXT/INT, and continue from Y.
 - only the end matches: insert Y after X with `Y.start = p1` and `Y.kind = EXT/INT`, and continue from Y.
 
-**merge_segments(edge, bounds, np)**, where `edge` is the original ring head (for a rectangle, the `(urx,ury)` node). For each INT node `c` of `edge`, taken in ring order starting from `edge.next` and ending with `edge` itself, with predecessor `p`: for each bound B in list order with `B.points + np <= 201`, and for each INT node `q` of B (from `B.first.next` to `B.first`, with predecessor `qp`) such that `q.start == c.next.start` and `q.next.start == c.start`, splice: `p.next := q.next`, `qp.next := c.next`, delete `q` and `c`, set `B.first := qp` if `q` was `B.first`, `B.points += np - 2`, and return. Only one splice is made per tile. If no splice is made, prepend a new bound `{first = edge, points = np}`.
+It returns the kind of the node it leaves current (EXT 0, INT 1; INIT 2 after a start-only match), or -1 when no node matches, as calmaAddSegment does. So a tile with no internal neighbour but several neighbours along its top or bottom side (for example a split tile whose space side touches it) has a nonzero `intedges` and goes through `merge_segments`: it is written as a merged bound starting at its top-right corner, not as the plain rectangle.
+
+**merge_segments(edge, bounds, np)**, where `edge` is the original ring head (for a rectangle, the `(urx,ury)` node). For each node `c` of `edge` that is not EXT (INT or INIT), taken in ring order starting from `edge.next` and ending with `edge` itself, with predecessor `p`: for each bound B in list order with `B.points + np <= 201`, and for each node `q` of B that is not EXT (from `B.first.next` to `B.first`, with predecessor `qp`) such that `q.start == c.next.start` and `q.next.start == c.start`, splice: `p.next := q.next`, `qp.next := c.next`, delete `q` and `c`, set `B.first := qp` if `q` was `B.first`, `B.points += np - 2`, and return. Only one splice is made per tile. If no splice is made, prepend a new bound `{first = edge, points = np}`.
 
 **remove_degenerate.** For each bound, repeat until no change: scan from `first`. If node `c = p.next` satisfies `c.start == c.next.next.start`, remove `c` and `c.next`, set `first := p`, `points -= 2`, and restart.
 

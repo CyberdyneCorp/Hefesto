@@ -39,6 +39,8 @@ class Parser {
          ReadMessages& messages, ReadSession& session);
 
   void run();
+  /// The current line (cifLineNumber).
+  [[nodiscard]] std::int64_t line() const noexcept { return lex_.line(); }
 
  private:
   // parser.cpp: the main loop and the command table.

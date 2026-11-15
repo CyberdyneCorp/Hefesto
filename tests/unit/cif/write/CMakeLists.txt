@@ -6,3 +6,6 @@
 # extra libraries or definitions go below.
 
 hefesto_add_area_tests(cif_write DATA_DIR cif/write)
+
+# The format tests include the writer's internal header (src/core/src/cif/write/format.hpp).
+target_include_directories(hefesto_cif_write_tests PRIVATE "${PROJECT_SOURCE_DIR}/src/core/src")

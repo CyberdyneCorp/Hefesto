@@ -11,6 +11,7 @@
 // under its permissive license (THIRD_PARTY_NOTICES.md).
 
 #include <algorithm>
+#include <array>
 #include <set>
 
 #include "hefesto/cell/diag_codes.hpp"
@@ -398,6 +399,17 @@ diag::Status check_writable_name(std::string_view what, std::string_view name) {
   return diag::Done{};
 }
 
+void update_save_stamps(CellIoContext& ctx, db::CellDef* only, std::int64_t now) {
+  const std::array<db::CellDef*, 1> one{only};
+  update_save_stamps(ctx, std::span<db::CellDef* const>{one.data(), one.size()}, now);
+}
+
+void update_save_stamps(CellIoContext& ctx, std::span<db::CellDef* const> cells, std::int64_t now) {
+  diag::NullSink quiet;
+  LookupContext lookup{ctx.fs, ctx.paths, ctx.vars, quiet};
+  update_timestamps(ctx.library, cells, now, lookup);
+}
+
 diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view path) {
   if (path.size() > 4 && path.ends_with(".tcl")) {
     return save_script(ctx, def, std::string{path});
@@ -409,7 +421,7 @@ diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view pa
   if (auto names = check_names(def); !names) {
     return names;
   }
-  update_timestamps(ctx.library, &def, stamp_from_time(ctx.clock.wall_now()));
+  update_save_stamps(ctx, &def, stamp_from_time(ctx.clock.wall_now()));
   warn_renamed_children(ctx, def);
   WriteOptions write;
   write.target_file = recorded_path_of(file);

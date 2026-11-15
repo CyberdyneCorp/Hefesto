@@ -117,6 +117,12 @@ class UseIndex {
   /// The number of uses in the index.
   [[nodiscard]] std::size_t size() const;
 
+  /// A counter that grows whenever the index state changes (a place,
+  /// remove, rebuild, a search that rebuilt or sub-binned, or a pending use
+  /// list change applied): equal values mean no change in between. Does
+  /// not apply pending changes itself.
+  [[nodiscard]] std::uint64_t generation() const;
+
   /// The current state, for trace tests.
   [[nodiscard]] UseIndexState state_for_test() const;
 
@@ -133,8 +139,10 @@ class UseIndex {
   std::unique_ptr<State> state_;
 };
 
-/// The enumeration order of `def`'s uses under `compat` (the INDEX
-/// replacement of db::uses_in_search_order).
+/// The enumeration order of `def`'s uses under `compat` (DBCellEnum): the
+/// bin walk with magic-compat ON, the reverse insertion order (newest
+/// first, the M1-M4 order) with it OFF. Every subcell enumeration uses it
+/// with the session's compat.
 [[nodiscard]] std::vector<CellUse*> uses_in_search_order(const CellDef& def, const compat::CompatSettings& compat);
 
 /// The uses of `def` found by a BPE_OVERLAP search over `area`, in search

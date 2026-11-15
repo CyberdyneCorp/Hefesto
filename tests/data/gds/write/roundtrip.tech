@@ -1,0 +1,66 @@
+# roundtrip.tech -- test technology of the gds/write write-then-read
+# property tests (SPDX-License-Identifier: Apache-2.0): three routing
+# types, each written to and read back from its own GDS layer, with
+# labels on metal1 and metal2.
+tech
+    format 35
+    roundtrip
+end
+
+planes
+    active,a
+    metal1,m1
+    metal2,m2
+end
+
+types
+    active  polysilicon,poly
+    metal1  metal1,m1
+    metal2  metal2,m2
+end
+
+contact
+end
+
+styles
+    styletype mos
+    poly 1
+end
+
+compose
+end
+
+connect
+end
+
+cifoutput
+style gdsii
+    scalefactor 10
+    layer PO poly
+        calma 46 0
+    layer M1 metal1
+        labels metal1
+        calma 49 0
+    layer M2 metal2
+        labels metal2
+        calma 51 0
+end
+
+cifinput
+style gdsii
+    scalefactor 10
+    layer poly PO
+        calma PO 46 0
+    layer m1 M1
+        labels M1
+        calma M1 49 0
+    layer m2 M2
+        labels M2
+        calma M2 51 0
+end
+
+drc
+end
+
+extract
+end

@@ -48,7 +48,7 @@ void put_unique_label(db::CellDef& def, const db::Label& label) {
 /// root and the descended cells into `dest` (DBCellCopyAllPaint).
 void copy_tree_paint(const Context& c, const db::CellDef& root, const db::Rect& area, const tech::TypeMask& types,
                      const connect::Descend& descend, db::CellDef& dest, std::vector<Provenance>* provenance) {
-  (void)connect::search_tree_defs(root, area, descend, [&](const db::CellDef& def, const db::Transform& t,
+  (void)connect::search_tree_defs(root, area, descend, c.s.magic_compat, [&](const db::CellDef& def, const db::Transform& t,
                                                            const std::string& path) {
     const db::Rect local = connect::to_local(t, area);
     bool any = false;
@@ -79,7 +79,7 @@ tech::TypeMask label_mask(const Context& c, const tech::TypeMask& types) {
 
 void copy_tree_labels(const Context& c, const db::Rect& area, const tech::TypeMask& types, const std::string* glob,
                       db::CellDef& dest, std::vector<Provenance>* provenance) {
-  (void)connect::search_tree_labels(c.root ? *c.root : dest, area, types, c.descend, [&](const connect::TreeLabel& l) {
+  (void)connect::search_tree_labels(c.root ? *c.root : dest, area, types, c.descend, c.s.magic_compat, [&](const connect::TreeLabel& l) {
     const db::Label copy = connect::transform_label(*l.label, l.to_root, c.s.magic_compat);
     if (!db::label_in_area(copy.rect, area) || (glob != nullptr && !db::glob_match(*glob, l.label->text))) {
       return true;
@@ -94,7 +94,7 @@ void copy_tree_labels(const Context& c, const db::Rect& area, const tech::TypeMa
 
 void copy_tree_cells(const Context& c, const db::Rect& area) {
   Selection& sel = c.ed->selection;
-  (void)connect::search_tree_cells(*c.root, area, c.descend, [&](const connect::TreeCell& found) {
+  (void)connect::search_tree_cells(*c.root, area, c.descend, c.s.magic_compat, [&](const connect::TreeCell& found) {
     const db::CellUse& u = *found.use;
     const db::Transform t = db::compose(found.parent_to_root, u.transform);
     if (sel.add_use(*u.def, u.id, t, u.array, u.locked) != nullptr) {
@@ -195,7 +195,7 @@ db::Rect grow_window(const db::Rect& w, const db::Rect& best) {
 /// DBCellCopyManhattanPaint: the Manhattan tiles of exactly `mask`'s types
 /// under `area`, clipped, into `dest` (no residues, unlike copy_paint).
 void copy_tree_manhattan(const Context& c, const db::Rect& area, const tech::TypeMask& mask, db::CellDef& dest) {
-  (void)connect::search_tree_tiles(*c.root, area, mask, c.descend, [&](const connect::TreeTile& t) {
+  (void)connect::search_tree_tiles(*c.root, area, mask, c.descend, c.s.magic_compat, [&](const connect::TreeTile& t) {
     if (!t.tile.split) {
       const db::Rect r = clip(db::apply(t.to_root, t.tile.area), area);
       (void)dest.plane(t.plane).paint(r, db::paint_row(*c.tech, t.plane, t.tile.type));
@@ -207,7 +207,7 @@ void copy_tree_manhattan(const Context& c, const db::Rect& area, const tech::Typ
 /// The chunk rectangle (null when no rectangle contains the area).
 db::Rect chunk_rect(const Context& c, const db::Rect& area, tech::TileType type, const tech::TypeMask& mask) {
   std::optional<db::Rect> split;
-  (void)connect::search_tree_tiles(*c.root, area, mask, {}, [&](const connect::TreeTile& t) {
+  (void)connect::search_tree_tiles(*c.root, area, mask, {}, c.s.magic_compat, [&](const connect::TreeTile& t) {
     if (t.tile.split) {
       split = db::apply(t.to_root, t.tile.area);
       return false;
@@ -478,7 +478,7 @@ void remove_area(const Context& c, const db::Rect& area, const Layers& layers, c
 
 tech::TypeMask types_under(const Context& c, const db::Rect& area) {
   tech::TypeMask m;
-  (void)connect::search_tree_tiles(*c.root, area, tech::TypeMask::all(), c.descend, [&](const connect::TreeTile& t) {
+  (void)connect::search_tree_tiles(*c.root, area, tech::TypeMask::all(), c.descend, c.s.magic_compat, [&](const connect::TreeTile& t) {
     m.set(t.tile.type);
     return true;
   });
@@ -559,7 +559,7 @@ void select_flat(const Context& c) {
   }
   auto flat = scratch(c);
   copy_tree_paint(c, *sel.def(), db::whole_plane(), paint_types(*c.tech), {}, *flat, nullptr);
-  (void)connect::search_tree_labels(*sel.def(), db::whole_plane(), tech::TypeMask::all(), {},
+  (void)connect::search_tree_labels(*sel.def(), db::whole_plane(), tech::TypeMask::all(), {}, c.s.magic_compat,
                                     [&](const connect::TreeLabel& l) {
                                       db::Label copy = connect::transform_label(*l.label, l.to_root, c.s.magic_compat);
                                       if (!l.path->empty()) {

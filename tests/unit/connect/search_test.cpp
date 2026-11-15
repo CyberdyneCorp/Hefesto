@@ -15,6 +15,7 @@
 #include "hefesto/connect/tree.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
+#include "hefesto/db/use_index.hpp"
 
 namespace connect = hefesto::connect;
 namespace db = hefesto::db;
@@ -315,7 +316,7 @@ TEST_CASE("tree searches visit descended cells in root coordinates", "[cap:layou
   REQUIRE(db::place(parent, child, o).ok());
   db::recompute_bbox(parent);
   std::vector<std::pair<std::string, Rect>> seen;
-  (void)connect::search_tree_tiles(parent, db::whole_plane(), tech::TypeMask::of(mt.m2), {},
+  (void)connect::search_tree_tiles(parent, db::whole_plane(), tech::TypeMask::of(mt.m2), {}, true,
                                    [&](const connect::TreeTile& t) {
                                      seen.emplace_back(*t.path, db::apply(t.to_root, t.tile.area));
                                      return true;
@@ -324,11 +325,65 @@ TEST_CASE("tree searches visit descended cells in root coordinates", "[cap:layou
   CHECK(seen[0] == std::pair<std::string, Rect>{"c[0]", {100, 0, 104, 4}});
   CHECK(seen[1] == std::pair<std::string, Rect>{"c[1]", {110, 0, 114, 4}});
   int cells = 0;
-  (void)connect::search_tree_cells(parent, db::whole_plane(), [](const db::CellUse&) { return false; },
+  (void)connect::search_tree_cells(parent, db::whole_plane(), [](const db::CellUse&) { return false; }, true,
                                    [&](const connect::TreeCell& c) {
                                      ++cells;
                                      CHECK(c.use->id == "c");
                                      return true;
                                    });
   CHECK(cells == 1);
+}
+
+TEST_CASE("tree searches enumerate uses in the use index order of the session's compat",
+          "[cap:layout-connectivity][req:Hierarchical connectivity]") {
+  // Twelve uses binned by a partial-area search: magic-compat ON follows
+  // the bin walk (DBCellSrArea over the BPlane), OFF the newest-first order.
+  HEFESTO_SELECT_MT(mt);
+  db::CellLibrary lib;
+  db::CellDef& parent = *lib.create("parent", mt.tech->plane_count()).value();
+  db::CellDef& child = *lib.create("child", mt.tech->plane_count()).value();
+  paint(child, mt, {0, 0, 4, 4}, mt.m2);
+  for (int i = 0; i < 12; ++i) {
+    db::PlaceOptions o;
+    o.id = "u" + std::to_string(i + 1);
+    o.transform = db::translation(10 * i, 10 * (i % 3));
+    REQUIRE(db::place(parent, child, o).ok());
+  }
+  db::recompute_bbox(parent);
+  (void)db::uses_overlapping(parent, db::Rect{0, 0, 30, 30}, [](db::CellUse&) { return true; });
+  REQUIRE(parent.use_index().state_for_test().binned);
+  std::vector<std::string> newest_first;
+  for (int i = 12; i >= 1; --i) {
+    newest_first.push_back("u" + std::to_string(i));
+  }
+  for (const bool on : {true, false}) {
+    std::vector<std::string> expected;
+    for (const db::CellUse* u : db::uses_in_search_order(parent, hefesto::compat::CompatSettings{on, true})) {
+      expected.push_back(u->id);
+    }
+    CHECK((expected == newest_first) == !on);
+    std::vector<std::string> tiles;
+    (void)connect::search_tree_tiles(parent, db::whole_plane(), tech::TypeMask::of(mt.m2), {}, on,
+                                     [&](const connect::TreeTile& t) {
+                                       tiles.push_back(*t.path);
+                                       return true;
+                                     });
+    CHECK(tiles == expected);
+    std::vector<std::string> cells;
+    (void)connect::search_tree_cells(parent, db::whole_plane(), [](const db::CellUse&) { return false; }, on,
+                                     [&](const connect::TreeCell& c) {
+                                       cells.push_back(c.use->id);
+                                       return true;
+                                     });
+    CHECK(cells == expected);
+  }
+  std::vector<std::string> off;
+  (void)connect::search_tree_defs(parent, db::whole_plane(), {}, false,
+                                  [&](const db::CellDef&, const db::Transform&, const std::string& path) {
+                                    if (!path.empty()) {
+                                      off.push_back(path);
+                                    }
+                                    return true;
+                                  });
+  CHECK(off == newest_first);
 }

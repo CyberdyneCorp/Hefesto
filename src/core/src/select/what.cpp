@@ -74,7 +74,7 @@ std::vector<std::string> cells_with(const Context& c, tech::TileType type) {
       continue;
     }
     sel.plane(plane).enumerate(db::whole_plane(), mask, [&](const db::TileView& t) {
-      (void)connect::search_tree_tiles(*c.root, t.area, mask, {}, [&](const connect::TreeTile& found) {
+      (void)connect::search_tree_tiles(*c.root, t.area, mask, {}, c.s.magic_compat, [&](const connect::TreeTile& found) {
         const std::string name = found.path->empty() ? std::string{cell::kTopUseId} : use_id_of(*found.path);
         if (std::find(names.begin(), names.end(), name) == names.end()) {
           names.insert(names.begin(), name);
@@ -102,7 +102,7 @@ struct LabelEntry {
 std::optional<LabelEntry> layout_label(const Context& c, const db::Label& want, bool relaxed) {
   std::optional<LabelEntry> hit;
   const db::CellDef* edit_root = c.ed->edit_root != nullptr ? c.ed->edit_root : c.ed->edit_cell;
-  (void)connect::search_tree_labels(*c.root, want.rect, tech::TypeMask::all(), {}, [&](const connect::TreeLabel& l) {
+  (void)connect::search_tree_labels(*c.root, want.rect, tech::TypeMask::all(), {}, c.s.magic_compat, [&](const connect::TreeLabel& l) {
     if (db::apply(l.to_root, l.label->rect) != want.rect) {
       return true;
     }

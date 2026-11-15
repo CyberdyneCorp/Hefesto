@@ -342,6 +342,11 @@ std::size_t UseIndex::size() const {
   return state_->elements.size();
 }
 
+std::uint64_t UseIndex::generation() const {
+  const std::lock_guard lock(mutex_);
+  return state_->generation;
+}
+
 UseIndexState UseIndex::state_for_test() const {
   const std::lock_guard lock(mutex_);
   sync_locked();

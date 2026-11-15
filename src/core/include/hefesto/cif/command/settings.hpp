@@ -27,7 +27,7 @@ struct CifSettings {
   bool rescale = true;              // `cif rescale` (CIFRescaleAllow)
   std::int32_t limit = 0;           // `cif limit` (CIFRescaleLimit; 0 = Magic's default)
   bool arealabels = false;          // `cif arealabels` (CIFDoAreaLabels)
-  bool idcell = false;              // `cif idcell` (CIFDoCellIdLabels)
+  bool idcell = true;               // `cif idcell` (CIFDoCellIdLabels; TRUE in Magic)
   bool drccheck = true;             // `cif drccheck` (!CIFNoDRCCheck)
 
   friend bool operator==(const CifSettings&, const CifSettings&) = default;

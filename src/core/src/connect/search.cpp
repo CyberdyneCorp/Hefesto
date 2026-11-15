@@ -275,7 +275,8 @@ class TreeSearch {
   void search(const db::Rect& area, const tech::TypeMask& mask, const std::optional<db::TriangleSide>& triangle) {
     current_area_ = area;
     (void)search_tree_tiles(
-        root_, area, mask, options_.descend, [&](const TreeTile& t) { return found(t); }, triangle);
+        root_, area, mask, options_.descend, options_.magic_compat, [&](const TreeTile& t) { return found(t); },
+        triangle);
   }
 
   [[nodiscard]] static db::Rect clip(const db::Rect& a, const db::Rect& b) noexcept {
@@ -389,7 +390,8 @@ class TreeSearch {
   }
 
   void copy_labels(const db::Rect& area, const tech::TypeMask& mask) {
-    (void)search_tree_labels(root_, area, mask, options_.descend, [&](const TreeLabel& l) { return label(l); });
+    (void)search_tree_labels(root_, area, mask, options_.descend, options_.magic_compat,
+                             [&](const TreeLabel& l) { return label(l); });
   }
 
   bool label(const TreeLabel& l) {

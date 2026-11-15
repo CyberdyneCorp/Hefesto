@@ -29,7 +29,9 @@ std::optional<std::size_t> ParseStyle::find(std::string_view layer_name) const {
 void parse(std::string_view text, const ParseStyle& style, const ParseOptions& options, CifReadTarget& target,
            ReadMessages& messages, ReadSession& session) {
   detail::Parser parser(text, style, options, target, messages, session);
+  messages.set_line_source([&parser] { return parser.line(); });
   parser.run();
+  messages.set_line_source({});
 }
 
 namespace detail {

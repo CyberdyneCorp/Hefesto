@@ -288,3 +288,20 @@ TEST_CASE("Generation counts its tile operations", "[cap:mask-hierarchical-gener
 }
 
 }  // namespace hefesto::mask::test
+
+namespace hefesto::mask::test {
+
+TEST_CASE("Operators after a mask-hints operator add nothing to the radius",
+          "[cap:mask-hints][req:Mask-hint output operator]") {
+  for (const bool on : {true, false}) {
+    GenFixture f(on);
+    LayerOp hint = op(OpKind::mask_hints);
+    hint.text = "H";
+    f.layer("A", {types_op(OpKind::op_or, {f.m1}), op(OpKind::grow, 30), hint, op(OpKind::grow, 500)});
+    GenFixture g(on);
+    g.layer("A", {types_op(OpKind::op_or, {g.m1}), op(OpKind::grow, 30)});
+    CHECK(generation_radius(f.style, f.compat) == generation_radius(g.style, g.compat));
+  }
+}
+
+}  // namespace hefesto::mask::test

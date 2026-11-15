@@ -125,3 +125,21 @@ TEST_CASE("hint regions are painted with the mask plane's CIF table", MODEL) {
   }
   CHECK(region.strips() == p.solid_rects());
 }
+
+TEST_CASE("mask plane paint does not merge collinear split tiles", MODEL) {
+  // Regression (round 4): Magic's CIF planes are painted with DBPaintPlane /
+  // DBNMPaintPlane, which leave split tiles apart (only `cif unfracture`
+  // merges them, mask::unfracture_layer). The left sides of '/' splits of
+  // (0,0)-(5,5) and (5,5)-(10,10) with the gap (0,5)-(5,10) filled stay two
+  // split tiles; the merging cell paint would join them into one.
+  MaskPlane p;
+  REQUIRE(p.paint_triangle(Rect{0, 0, 5, 5}, db::Diagonal::ne_sw, false).ok());
+  REQUIRE(p.paint_triangle(Rect{5, 5, 10, 10}, db::Diagonal::ne_sw, false).ok());
+  REQUIRE(p.paint(Rect{0, 5, 5, 10}).ok());
+  std::size_t splits = 0;
+  for (const db::TileView& t : p.solid_tiles()) {
+    splits += t.split ? 1U : 0U;
+  }
+  CHECK(splits == 2);
+  CHECK(p.solid_area() == 50.0);
+}

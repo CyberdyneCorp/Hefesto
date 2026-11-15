@@ -96,8 +96,7 @@ class MaskTest(unittest.TestCase):
         self.assertTrue(compare_bytes(a, b, "bytes", [r"regex:\d{4}-\d{2}-\d{2}"]).equal)
 
     def test_magic_tech_sections_removes_only_listed_messages(self):
-        magic = (b"Input style lambda=1.0(gen): scaleFactor=100, multiplier=1\n"
-                 b"Contact size value ignored (using GDS generation rules).\n"
+        magic = (b"Contact size value ignored (using GDS generation rules).\n"
                  b"\n"
                  b"Warning: Extraction Style default\n"
                  b"  Missing planeorder for plane(s):\n"
@@ -112,6 +111,13 @@ class MaskTest(unittest.TestCase):
         hefesto = b"Cell a couldn't be read\nNo such file or directory\n"
         self.assertEqual(apply_masks(magic, ["magic-tech-sections"]), hefesto)
         self.assertTrue(compare_bytes(magic, hefesto, "bytes", ["magic-tech-sections"]).equal)
+
+    def test_magic_tech_sections_keeps_the_cifinput_line(self):
+        # M5 prints the cifinput section's line at tech load (tasks.md 13.5),
+        # so a missing or different line is a difference.
+        line = b"Input style lambda=1.0(gen): scaleFactor=100, multiplier=1\n"
+        self.assertEqual(apply_masks(line, ["magic-tech-sections"]), line)
+        self.assertFalse(compare_bytes(line + b"x\n", b"x\n", "bytes", ["magic-tech-sections"]).equal)
 
     def test_magic_tech_sections_keeps_other_differences(self):
         # Lines that only resemble the masked messages stay, so a real

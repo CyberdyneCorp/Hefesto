@@ -53,13 +53,18 @@ TileView view_of(const detail::Tile* t, detail::Body dinfo) {
   return v;
 }
 
-void merge_after_paint(detail::TilePlane& tiles, const Rect& area) {
-  if (!(area == whole_plane())) {
+/// The search area clamped to the plane: the boundary tiles have no
+/// neighbours beyond them, so an area out to +-kInfinity must stop there.
+Rect clamp_to_plane(const Rect& area) noexcept {
+  const Rect plane = whole_plane();
+  return Rect{std::max(area.x0, plane.x0), std::max(area.y0, plane.y0), std::min(area.x1, plane.x1),
+              std::min(area.y1, plane.y1)};
+}
+
+void merge_after_paint(detail::TilePlane& tiles, const Rect& area, PaintMerge merge) {
+  if (merge == PaintMerge::split_tiles && !(area == whole_plane())) {
     // One unit around the area, but never into the boundary tiles.
-    const Rect around = expand(area, 1);
-    const Rect plane = whole_plane();
-    detail::merge_nm_tiles(tiles, Rect{std::max(around.x0, plane.x0), std::max(around.y0, plane.y0),
-                                       std::min(around.x1, plane.x1), std::min(around.y1, plane.y1)});
+    detail::merge_nm_tiles(tiles, clamp_to_plane(expand(area, 1)));
   }
   tiles.end_operation();
 }
@@ -77,17 +82,17 @@ Plane Plane::clone() const {
   return copy;
 }
 
-diag::Status Plane::paint(const Rect& area, const PaintRow& row) {
+diag::Status Plane::paint(const Rect& area, const PaintRow& row, PaintMerge merge) {
   if (auto status = check_area(area); !status.ok() || area.is_null()) {
     return status;
   }
   detail::paint_plane(impl_->tiles, area, row);
-  merge_after_paint(impl_->tiles, area);
+  merge_after_paint(impl_->tiles, area, merge);
   return diag::Done{};
 }
 
 diag::Status Plane::paint_triangle(const Rect& area, Diagonal diagonal, bool right_side, const PaintRow& row,
-                                   bool magic_compat, bool* off_grid) {
+                                   bool magic_compat, bool* off_grid, PaintMerge merge) {
   if (auto status = check_area(area); !status.ok() || area.is_null()) {
     return status;
   }
@@ -95,25 +100,22 @@ diag::Status Plane::paint_triangle(const Rect& area, Diagonal diagonal, bool rig
   if (off_grid != nullptr) {
     *off_grid = filled;
   }
-  merge_after_paint(impl_->tiles, area);
+  merge_after_paint(impl_->tiles, area, merge);
   return diag::Done{};
+}
+
+void Plane::merge_split_tiles(const Rect& area) {
+  const Rect clamped = clamp_to_plane(area);
+  if (clamped.x0 >= clamped.x1 || clamped.y0 >= clamped.y1) {
+    return;  // a null, inverted or zero-extent area holds no tile to merge
+  }
+  detail::merge_nm_tiles(impl_->tiles, clamped);
+  impl_->tiles.end_operation();
 }
 
 void Plane::record_splits(std::vector<SplitEdit>* log) noexcept {
   impl_->tiles.set_split_log(log);
 }
-
-namespace {
-
-/// The search area clamped to the plane: the boundary tiles have no
-/// neighbours beyond them, so an area out to +-kInfinity must stop there.
-Rect clamp_to_plane(const Rect& area) noexcept {
-  const Rect plane = whole_plane();
-  return Rect{std::max(area.x0, plane.x0), std::max(area.y0, plane.y0), std::min(area.x1, plane.x1),
-              std::min(area.y1, plane.y1)};
-}
-
-}  // namespace
 
 bool Plane::enumerate(const Rect& unclamped, const tech::TypeMask& types, TileVisitorRef visit) const {
   const Rect area = clamp_to_plane(unclamped);
