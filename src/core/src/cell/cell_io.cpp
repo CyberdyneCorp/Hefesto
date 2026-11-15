@@ -256,6 +256,35 @@ diag::Status write_file(CellIoContext& ctx, const std::string& file, const std::
   return diag::Done{};
 }
 
+/// DBCellWrite of a cell that is not available, with magic-compat ON: the
+/// header is written with the new stamp, then DBCellWriteFile's use
+/// enumeration (DBCellEnum) reads the cell. A file that did not exist was
+/// just created and is still empty on disk, so the read finds it, reports
+/// a format error and a zero timestamp, and the timestamp stays 0 after
+/// the write (Magic ref: database/DBio.c:4780, database/DBcellsrch.c:1273).
+/// Returns the stamp the header carries.
+std::int64_t read_during_write(CellIoContext& ctx, db::CellDef& def, const std::string& file) {
+  const std::int64_t header_stamp = def.timestamp();
+  def.set_file_path(recorded_path_of(file));  // DBCellWrite sets cd_file first
+  if (!ctx.fs.exists(file)) {
+    (void)ctx.fs.write_atomic(file, std::string{});  // fopen(tmpname, "w")
+  }
+  ReadOptions opts;
+  opts.ignore_tech = true;
+  (void)read_cell(ctx, def, opts);  // DBCellEnum ignores the outcome
+  return header_stamp;
+}
+
+/// write_mag with the header's timestamp `stamp` (the cell keeps its own).
+std::string write_mag_stamped(const CellIoContext& ctx, db::CellDef& def, const WriteOptions& write,
+                              std::int64_t stamp) {
+  const std::int64_t own = def.timestamp();
+  def.set_timestamp(stamp);
+  std::string text = write_mag(ctx, def, write);
+  def.set_timestamp(own);
+  return text;
+}
+
 diag::Status save_script(CellIoContext& ctx, const db::CellDef& def, const std::string& file) {
   if (auto written = ctx.fs.write_atomic(file, write_command_script(ctx, def)); !written) {
     return diag::make(codes::kWriteFailed, "Cannot write file " + file + ": " + written.error().text);
@@ -425,7 +454,9 @@ diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view pa
   warn_renamed_children(ctx, def);
   WriteOptions write;
   write.target_file = recorded_path_of(file);
-  const std::string text = write_mag(ctx, def, write);
+  const bool unread = ctx.magic_compat && !def.flags().available;
+  const std::int64_t header_stamp = unread ? read_during_write(ctx, def, file) : def.timestamp();
+  const std::string text = write_mag_stamped(ctx, def, write, header_stamp);
   const platform::Path old_file = def.file_path().generic_string() + std::string{kMag};
   if (auto written = write_file(ctx, file, text); !written) {
     return written;
