@@ -330,13 +330,26 @@ bool manhattan_edges(const Path& path, std::vector<Edge>& edges) {
   return true;
 }
 
-// CIFPolyToRects after the path is Manhattan. A path that is still not
-// Manhattan, or has fewer than four edges, gives no strips (Magic reports a
-// CIF read error and keeps the triangles already painted).
-void poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
+// The number of edges of the path (CIFPolyToRects' npts).
+std::size_t edge_count(const Path& path) {
+  std::size_t n = 0;
+  for (int p = path.head(); p != kEnd && path.next(p) != kEnd; p = path.next(p)) {
+    ++n;
+  }
+  return n;
+}
+
+// CIFPolyToRects after the path is Manhattan. A path with fewer than four
+// edges, or one that is still not Manhattan, gives no strips (Magic reports
+// a CIF read error and keeps the triangles already painted).
+PolygonProblem poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
+  const std::size_t npts = edge_count(path);
+  if (npts < 4) {
+    return npts > 0 ? PolygonProblem::too_few_points : PolygonProblem::none;
+  }
   std::vector<Edge> edges;
-  if (!manhattan_edges(path, edges) || edges.size() < 4) {
-    return;
+  if (!manhattan_edges(path, edges)) {
+    return PolygonProblem::not_manhattan;
   }
   std::vector<Coord> ys;
   for (const Edge& e : edges) {
@@ -358,6 +371,7 @@ void poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
   for (auto it = found.rbegin(); it != found.rend(); ++it) {
     out.push_back(PolygonPiece{*it, std::nullopt});
   }
+  return PolygonProblem::none;
 }
 
 }  // namespace
@@ -366,12 +380,19 @@ diag::Outcome<std::vector<PolygonPiece>> decompose_polygon(std::span<const Point
   if (vertices.size() < 3) {
     return diag::make(codes::kBadArgument, "a polygon needs at least three vertices");
   }
+  return decompose_read_polygon(vertices).pieces;
+}
+
+PolygonDecomposition decompose_read_polygon(std::span<const Point> vertices) {
+  PolygonDecomposition out;
+  if (vertices.empty()) {
+    return out;
+  }
   Path path(vertices);
   path.close();
-  std::vector<PolygonPiece> pieces;
-  make_manhattan(path, pieces);
-  poly_to_rects(path, pieces);
-  return pieces;
+  make_manhattan(path, out.pieces);
+  out.problem = poly_to_rects(path, out.pieces);
+  return out;
 }
 
 }  // namespace hefesto::db

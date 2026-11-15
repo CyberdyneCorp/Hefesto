@@ -160,6 +160,7 @@ CommandResult read_option(const CifCall& c) {
   }
   CifReadOptions options;
   options.settings = editor.mask.cif;
+  options.rescale_allowed = editor.mask.rescale_allowed;
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &c.s.ctx->services().files;

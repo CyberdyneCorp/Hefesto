@@ -34,6 +34,8 @@ namespace {
 
 constexpr std::string_view kEngineMisuse = "MASK-INPUT-016";
 constexpr std::string_view kCopyTooLarge = "MASK-INPUT-017";
+constexpr std::string_view kLabelAdjusted = "MASK-INPUT-019";
+constexpr std::string_view kPolygonProblem = "MASK-INPUT-020";
 /// Array elements a copyup copy may visit (D21 resource cap).
 constexpr std::int64_t kMaxCopyElements = std::int64_t{1} << 20;
 
@@ -133,15 +135,15 @@ diag::Status ReadEngine::paint(std::size_t cif_layer, const ReadShape& shape) {
   if (const auto* rect = std::get_if<db::Rect>(&shape)) {
     return plane.paint(*rect);
   }
-  const Polygon& polygon = std::get<Polygon>(shape);
-  const auto pieces = db::decompose_polygon(polygon);
-  if (!pieces.ok()) {
-    return diag::Done{};  // fewer than three vertices: nothing to paint
+  const db::PolygonDecomposition decomposed = db::decompose_read_polygon(std::get<Polygon>(shape));
+  if (decomposed.problem == db::PolygonProblem::too_few_points) {
+    state_->emit(diag::make(kPolygonProblem, "polygon with fewer than 4 points."));
+  } else if (decomposed.problem == db::PolygonProblem::not_manhattan) {
+    state_->emit(diag::make(kPolygonProblem, "non-manhattan polygon."));
   }
-  for (const db::PolygonPiece& piece : pieces.value()) {
+  for (const db::PolygonPiece& piece : decomposed.pieces) {
     if (piece.triangle) {
-      (void)plane.paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side,
-                                 compat_.magic_compat);
+      paint_read_triangle(plane, piece, compat_.magic_compat);
     } else {
       (void)plane.paint(piece.area);
     }
@@ -230,7 +232,7 @@ diag::Status ReadEngine::end_cell() {
     return diag::make(kEngineMisuse, "read engine: end of a cell without a cell");
   }
   paint_current(state_->cell, *cell);
-  (void)db::adjust_labels(*cell, *editor_.technology, db::whole_plane());
+  adjust_labels(*cell);
   db::recompute_bbox(*cell, compat_.magic_compat);
   state_->reading = nullptr;
   return diag::Done{};
@@ -242,7 +244,7 @@ diag::Status ReadEngine::finish() {
   }
   if (db::CellDef* top = state_->options.top) {
     paint_current(state_->top, *top);
-    (void)db::adjust_labels(*top, *editor_.technology, db::whole_plane());
+    adjust_labels(*top);
     db::recompute_bbox(*top, compat_.magic_compat);
   }
   for (auto& [cell, planes] : state_->saved) {
@@ -256,7 +258,28 @@ diag::Status ReadEngine::finish() {
   return diag::Done{};
 }
 
+// DBAdjustLabels over the whole cell, printing its messages (DBVerbose is
+// DB_VERBOSE_ALL by default, so Magic prints them during a read).
+void ReadEngine::adjust_labels(db::CellDef& cell) {
+  std::vector<std::string> messages;
+  (void)db::adjust_labels(cell, *editor_.technology, db::whole_plane(), &messages);
+  for (std::string& text : messages) {
+    state_->emit(diag::make(kLabelAdjusted, std::move(text)));
+  }
+}
+
 // --- lower level ------------------------------------------------------------------
+
+void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat) {
+  (void)plane.paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side, magic_compat);
+  // CIFMakeManhattanPath merges the split tiles around each triangle it
+  // paints (DBMergeNMTiles over the triangle's area grown by one).
+  const db::Rect& a = piece.area;
+  const auto grow = [](db::Coord v, int by) {
+    return static_cast<db::Coord>(std::clamp<std::int64_t>(std::int64_t{v} + by, db::kPlaneMin, db::kPlaneMax));
+  };
+  plane.plane().merge_split_tiles(db::Rect{grow(a.x0, -1), grow(a.y0, -1), grow(a.x1, 1), grow(a.y1, 1)});
+}
 
 const std::vector<MaskPlane*>* ReadEngine::saved_planes(const db::CellDef& cell) const {
   const auto it = state_->saved.find(&cell);

@@ -154,13 +154,23 @@ void Messages::print(diag::Diagnostic d) {
 
 void Reader::error(std::string text, bool no_newline) {
   const db::CellDef* cell = current_ != nullptr ? current_ : editor_.edit_cell;
-  messages_.counted(cell != nullptr ? cell->name() : std::string{}, records_.position(),
+  messages_.counted(cell != nullptr ? cell->name() : std::string{}, error_position(),
                     diag::make(kReadError, std::move(text)), no_newline);
+}
+
+void Reader::error_in_header(const Record& record, std::string text) {
+  const db::CellDef* cell = current_ != nullptr ? current_ : editor_.edit_cell;
+  messages_.counted(cell != nullptr ? cell->name() : std::string{}, record.offset + kHeaderBytes,
+                    diag::make(kReadError, std::move(text)));
 }
 
 void Reader::counted(diag::Diagnostic d) {
   const db::CellDef* cell = current_ != nullptr ? current_ : editor_.edit_cell;
-  messages_.counted(cell != nullptr ? cell->name() : std::string{}, records_.position(), std::move(d));
+  messages_.counted(cell != nullptr ? cell->name() : std::string{}, error_position(), std::move(d));
+}
+
+std::uint64_t Reader::error_position() const noexcept {
+  return ahead_ ? *ahead_ + kHeaderBytes : records_.position();
 }
 
 void Reader::engine_message(diag::Diagnostic d) {
@@ -168,15 +178,17 @@ void Reader::engine_message(diag::Diagnostic d) {
   // message is given once per session (cifSeenSnapWarning, which only a
   // CIF read resets); the boundary redefinition is a CalmaReadError.
   if (d.code == "MASK-INPUT-010" || d.code == "MASK-INPUT-011") {
-    if (editor_.mask.gds.snap_warned) {
+    if (editor_.mask.snap_warned) {
       return;
     }
-    editor_.mask.gds.snap_warned = true;
+    editor_.mask.snap_warned = true;
     messages_.cif_warning(std::move(d));
   } else if (d.code == "MASK-INPUT-012") {
     messages_.cif_warning(std::move(d));
   } else if (d.code == "MASK-INPUT-013") {
     counted(std::move(d));
+  } else if (d.code == "MASK-INPUT-020") {
+    messages_.cif_error(std::move(d));  // CIFPolyToRects' CIFReadError
   } else {
     messages_.print(std::move(d));
   }
@@ -228,7 +240,7 @@ void Reader::run() {
   info("Warning: Calma reading is not undoable!  I hope that's OK.");
   engine_sink_ = std::make_unique<EngineSink>(*this);
   mask::ReadEngine::Options engine_options;
-  engine_options.rescale_allowed = options_.settings.rescale;
+  engine_options.rescale_allowed = options_.rescale_allowed;
   engine_options.copyup_on_call = true;
   engine_options.sink = engine_sink_.get();
   engine_ = std::make_unique<mask::ReadEngine>(editor_, *style, compat_, engine_options);
@@ -307,8 +319,15 @@ void Reader::end_of_read() {
       (void)db::make_use_ids_unique(*def, compat_.magic_compat);  // a structure that ended before its ids were made
     }
   }
-  if (db::CellDef* edit = editor_.edit_cell) {
-    (void)db::adjust_labels(*edit, *editor_.technology, db::whole_plane());
+  // CalmaReadFile loads the library cell into the window (DBWloadWindow)
+  // before CIFReadCellCleanup, so the clean-up's edit cell is that cell.
+  db::CellDef* library = library_cell_ ? look_cell(*library_cell_) : nullptr;
+  if (db::CellDef* edit = library != nullptr ? library : editor_.edit_cell) {
+    std::vector<std::string> moved;
+    (void)db::adjust_labels(*edit, *editor_.technology, db::whole_plane(), &moved);
+    for (std::string& text : moved) {
+      info(std::move(text));  // DBAdjustLabels prints with DBVerbose at its default
+    }
     db::recompute_bbox(*edit, compat_.magic_compat);
     db::mark_modified(*edit);
   }
@@ -324,6 +343,7 @@ void Reader::end_of_read() {
 // --- records ----------------------------------------------------------------------
 
 std::optional<Record> Reader::next() {
+  ahead_.reset();
   auto record = records_.next();
   if (!record.ok()) {
     if (!stream_error_reported_) {
@@ -344,11 +364,20 @@ std::optional<Record> Reader::peek() {
     }
     return std::nullopt;
   }
+  if (record.value()) {
+    ahead_ = record.value()->offset;
+  }
   return std::move(record.value());
 }
 
 void Reader::unread(Record record) {
+  ahead_ = record.offset;
   records_.unread(std::move(record));
+}
+
+bool Reader::seek(std::uint64_t offset) {
+  ahead_.reset();
+  return records_.seek(offset).ok();
 }
 
 std::optional<Record> Reader::expect(RecordType type) {

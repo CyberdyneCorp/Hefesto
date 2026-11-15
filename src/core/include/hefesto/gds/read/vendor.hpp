@@ -29,6 +29,10 @@
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/gds/read/stamps.hpp"
 
+namespace hefesto::editor {
+struct EditorState;
+}  // namespace hefesto::editor
+
 namespace hefesto::gds {
 
 /// The units check of `gds readonly yes` (calmaParseUnits): nullopt when
@@ -47,6 +51,12 @@ namespace hefesto::gds {
 /// cell::substitute_path, so the PDK prefix must end at a path separator
 /// as for cell paths (Q-CELL-20).
 [[nodiscard]] std::string gds_file_value(std::string_view path, const cell::PathVariables& vars);
+
+/// gds_file_value with the session's variables as DBPathSubstitute reads
+/// them: the PDK variables are the interpreter's global variables only
+/// (Tcl_GetVar with TCL_GLOBAL_ONLY; an environment variable of the same
+/// name does not count, MASK-GR-048), the home directory is the session's.
+[[nodiscard]] std::string gds_file_value(std::string_view path, const editor::EditorState& editor);
 
 /// DBPropGetDouble: the first value of a double property, or the leading
 /// integer of a string property (0 when it has none); nullopt when the

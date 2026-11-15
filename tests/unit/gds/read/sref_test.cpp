@@ -68,7 +68,7 @@ TEST_CASE("instance placement scaling", "[cap:gds-read][req:Instance placement s
   }
   SECTION("rescale disallowed snaps") {
     Session s(kS10);
-    s.options.settings.rescale = false;
+    s.options.rescale_allowed = false;
     GdsFile f;
     f.library();
     f.begin("A").boundary(68, 20, {{0, 0}, {0, 100}, {100, 100}, {100, 0}, {0, 0}}).end();
@@ -235,7 +235,7 @@ TEST_CASE("the rescale setting allows or forbids grid subdivision", "[cap:gds-re
   // level are the gds command's, GDSW).
   for (const bool allowed : {true, false}) {
     Session s("style test\nscalefactor 10\nlayer m1 M1\ncalma M1 68 20\n");
-    s.options.settings.rescale = allowed;
+    s.options.rescale_allowed = allowed;
     GdsFile f;
     f.library();
     f.begin("A").boundary(68, 20, {{0, 0}, {0, 100}, {100, 100}, {100, 0}, {0, 0}}).end();
@@ -244,4 +244,36 @@ TEST_CASE("the rescale setting allows or forbids grid subdivision", "[cap:gds-re
     CHECK(s.said(allowed ? "grid redefined." : "snapped to grid."));
     CHECK(only_use(s, "top").transform.c == (allowed ? 7 : 3));
   }
+}
+
+TEST_CASE("a message after the look-ahead of the element end is placed past that header",
+          "[cap:gds-read][req:Read diagnostics]") {
+  // Magic's FTELL: the property loop reads the next record header and
+  // UNREADRH does not seek back, so the duplicate-placement message names
+  // the byte after the ENDEL header (MASK-GR-035).
+  Session s;
+  GdsFile f;
+  f.library();
+  child(f, "A");
+  f.begin("top").sref("A", {0, 0}).sref("A", {0, 0});
+  const std::size_t after_second = f.size();  // the second SREF's ENDEL ends here
+  f.end().end_library();
+  s.read(f);
+  CHECK(s.said("Error while reading cell \"top\" (byte position " + std::to_string(after_second) +
+               "): Warning: cell \"A\" placed on top of itself."));
+}
+
+TEST_CASE("a malformed array property message has no line end, as Magic's TxError",
+          "[cap:gds-read][req:Instance properties]") {
+  Session s;
+  GdsFile f;
+  f.library();
+  child(f, "A");
+  f.begin("top").aref("A", 2, 1, {{0, 0}, {200, 0}, {0, 0}}, RefSpec{0, {}, {}, {{99, "bad"}}}).end().end_library();
+  s.read(f);
+  const auto it = std::find_if(s.last.diagnostics.begin(), s.last.diagnostics.end(), [](const diag::Diagnostic& d) {
+    return d.text == "Malformed \"array\" property ignored: bad";
+  });
+  REQUIRE(it != s.last.diagnostics.end());
+  CHECK(it->no_newline);
 }

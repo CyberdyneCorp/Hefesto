@@ -23,6 +23,7 @@
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/diag/sink.hpp"
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/read/stamps.hpp"
 #include "hefesto/gds/read/vendor.hpp"
 #include "hefesto/gds/stream/gzip.hpp"
@@ -372,4 +373,21 @@ TEST_CASE("the save paths restamp vendor cells through the cell search path",
   CHECK(pad.timestamp() == kEmptyStamp);
   CHECK(top.timestamp() == 600);
   CHECK(io.sink.snapshot().empty());  // the lookup is quiet
+}
+
+TEST_CASE("GDS_FILE takes the PDK variables from the interpreter's globals only",
+          "[cap:gds-read][req:Read-only vendor views]") {
+  // DBPathSubstitute reads Tcl_GetVar(..., TCL_GLOBAL_ONLY): an environment
+  // variable of the same name does not count (MASK-GR-048); the home rule
+  // still uses the session's home directory.
+  hefesto::editor::EditorState editor;
+  editor.path_variables.variable = [](std::string_view name) -> std::optional<std::string> {
+    if (name == "PDK_ROOT") {
+      return "/work/pdk";  // the environment, as the start-up lookup reports it
+    }
+    return std::nullopt;
+  };
+  editor.path_variables.home_of = [](std::string_view) -> std::optional<std::string> { return "/home/u"; };
+  CHECK(gds::gds_file_value("/work/pdk/lib/v.gds", editor) == "/work/pdk/lib/v.gds");
+  CHECK(gds::gds_file_value("/home/u/ip/v.gds", editor) == "~/ip/v.gds");
 }

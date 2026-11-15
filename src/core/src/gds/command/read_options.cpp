@@ -190,9 +190,9 @@ CommandResult polygons_option(const cmd::Invocation& invocation, GdsSettings& g)
 // Q-MASK-130: `rescale no` also sets warning level limit with
 // magic-compat ON.
 CommandResult rescale_option(const cu::Session& s, const cmd::Invocation& invocation) {
-  GdsSettings& g = s.editor->mask.gds;
-  CommandResult result = yes_no_option(invocation, g.rescale);
-  if (invocation.args.size() == 2 && result.ok() && !g.rescale && s.magic_compat) {
+  bool& allowed = s.editor->mask.rescale_allowed;  // shared with `cif rescale`
+  CommandResult result = yes_no_option(invocation, allowed);
+  if (invocation.args.size() == 2 && result.ok() && !allowed && s.magic_compat) {
     s.editor->mask.warnings.level = mask::WarningLevel::limit;
   }
   return result;
@@ -306,6 +306,7 @@ CommandResult read_option(cmd::CommandContext& ctx, const cu::Session& s, const 
   }
   GdsReadOptions options;
   options.settings = editor.mask.gds;
+  options.rescale_allowed = editor.mask.rescale_allowed;
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &ctx.services().files;

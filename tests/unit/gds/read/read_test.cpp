@@ -9,6 +9,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "hefesto/db/labels.hpp"
+#include "hefesto/db/paint.hpp"
 #include "hefesto/db/property.hpp"
 #include "hefesto/gds/read/stamps.hpp"
 #include "hefesto/hints/hints.hpp"
@@ -331,7 +333,7 @@ TEST_CASE("read option defaults", "[cap:gds-read][req:Read option syntax and def
   CHECK(defaults.maskhints.empty());
   CHECK(defaults.polygon_subcells == gds::PolygonSubcells::none);
   CHECK_FALSE(defaults.path_subcells);
-  CHECK(defaults.rescale);
+  CHECK(hefesto::mask::MaskSession{}.rescale_allowed);  // shared with `cif rescale`
   CHECK_FALSE(defaults.datestamp.has_value());
 }
 
@@ -353,4 +355,41 @@ TEST_CASE("the read style keeps its rescale", "[cap:gds-read][req:Host mechanism
   f.library().begin("A").end().end_library();
   s.read(f);
   CHECK(s.cell("A").timestamp() == 1705314600 + 3 * 3600);  // 10:30 at UTC-3
+}
+
+TEST_CASE("the end-of-read clean-up acts on the library cell loaded into the window",
+          "[cap:gds-read][req:End-of-read cleanup]") {
+  // CalmaReadFile loads the library cell (DBWloadWindow) before
+  // CIFReadCellCleanup, so the edit cell the clean-up marks modified is that
+  // cell, not the "(UNNAMED)" one (MASK-GR-002).
+  Session s;
+  auto unnamed = s.editor.cells.create("(UNNAMED)", s.editor.technology->plane_count());
+  REQUIRE(unnamed.ok());
+  unnamed.value()->flags().available = true;
+  unnamed.value()->flags().modified = false;
+  s.editor.edit_cell = unnamed.value();
+  GdsFile f;
+  f.library("top").begin("top").boundary(68, 20, {{0, 0}, {0, 10}, {10, 10}, {10, 0}, {0, 0}}).end().end_library();
+  s.read(f);
+  CHECK_FALSE(s.cell("(UNNAMED)").flags().modified);
+  CHECK(s.cell("top").flags().modified);
+
+  SECTION("without a library cell the edit cell is cleaned up and its moved labels reported") {
+    Session t;
+    auto edit = t.editor.cells.create("edit", t.editor.technology->plane_count());
+    REQUIRE(edit.ok());
+    db::CellDef& e = *edit.value();
+    e.flags().available = true;
+    REQUIRE(db::paint_type(e, *t.editor.technology, db::Rect{0, 0, 10, 10}, t.type("m1")).ok());
+    db::Label l;
+    l.text = "x";
+    l.rect = db::Rect{5, 5, 5, 5};
+    REQUIRE(db::put_label(e, std::move(l)).ok());
+    t.editor.edit_cell = &e;
+    GdsFile g;
+    g.library("lib").begin("top").end().end_library();
+    t.read(g);
+    CHECK(t.said("Moving label \"x\" from space to metal1 in cell edit."));
+    CHECK(e.flags().modified);
+  }
 }

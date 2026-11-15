@@ -371,10 +371,22 @@ TEST_CASE("rescale no sets warning level limit with magic-compat ON", "[cap:gds-
     Session s(on);
     REQUIRE(s.run("gds warning default").ok());
     REQUIRE(s.run("gds rescale no").ok());
-    CHECK_FALSE(s.f.ed.mask.gds.rescale);
+    CHECK_FALSE(s.f.ed.mask.rescale_allowed);
     CHECK(s.f.ed.mask.warnings.level == (on ? hefesto::mask::WarningLevel::limit
                                               : hefesto::mask::WarningLevel::warn_default));
   }
+}
+
+TEST_CASE("gds rescale and cif rescale share one setting", "[cap:gds-read][req:Grid subdivision option]") {
+  // Magic has one CIFRescaleAllow for both commands (MASK-CI-019: `cif
+  // rescale no` makes a GDS read snap).
+  Session s;
+  REQUIRE(s.run("cif rescale no").ok());
+  CHECK(s.run("gds rescale").value.to_string() == "0");
+  REQUIRE(s.run("gds rescale yes").ok());
+  CHECK(s.f.ed.mask.rescale_allowed);
+  REQUIRE(s.run("gds rescale no").ok());
+  CHECK_FALSE(s.f.ed.mask.rescale_allowed);
 }
 
 TEST_CASE("gds warning levels and redirect", "[cap:gds-read][req:Read diagnostics]") {
