@@ -326,6 +326,30 @@ TEST_CASE("cif paint, coverage and statistics", "[cap:cif-format-io][req:cif see
   CHECK(stats.front().starts_with("CIF statistics (recent/total):"));
 }
 
+TEST_CASE("gds and cif writes add their generation counters to the session's cif statistics",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options]") {
+  Session s;
+  const hefesto::mask::StatisticsCounters& counters = s.editor.mask.statistics;
+  REQUIRE(counters.recent.flat_tiles == 0);
+  REQUIRE(s.run("cif write /t/x").ok());
+  const std::uint64_t after_cif = counters.recent.flat_tiles;
+  CHECK(after_cif > 0);
+  REQUIRE(s.run("gds write /t/y").ok());
+  const std::uint64_t after_gds = counters.recent.flat_tiles;
+  CHECK(after_gds > after_cif);
+  (void)s.take();
+  REQUIRE(s.run("cif statistics").ok());
+  const std::string both = std::to_string(after_gds);
+  const std::string tiles = "    Geometrical tile operations: " + both + "/" + both;
+  bool found = false;
+  for (const std::string& text : s.take()) {
+    found = found || text.find(tiles) != std::string::npos;
+  }
+  CHECK(found);
+  CHECK(counters.recent.flat_tiles == 0);
+  CHECK(counters.total.flat_tiles == after_gds);
+}
+
 TEST_CASE("the CIF writer ignores CIFhier with magic-compat ON and honours it OFF (Q-MASK-410)",
           "[cap:mask-hierarchical-generation][req:Hierarchy and array output switches]") {
   // CCA closes gaps up to 2 units: grow 10, shrink 10 in output units.

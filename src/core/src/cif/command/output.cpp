@@ -12,15 +12,13 @@
 // California (see THIRD_PARTY_NOTICES.md). The generation itself is GEN's
 // (mask/gen/generate.hpp).
 //
-// The `cif statistics` counters belong to the session in Magic (CIFTileOps
-// and friends); until MaskSession holds them they are kept here per
-// editor and count the generations of the `cif` command's previews.
+// The `cif statistics` counters are the session's (MaskSession::statistics,
+// Magic's CIFTileOps and friends): the previews here and the GDS and CIF
+// writes add to them.
 // Owner: CIF.
 
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
-#include <unordered_map>
 
 #include "command_impl.hpp"
 #include "hefesto/cif/read/read.hpp"
@@ -66,15 +64,8 @@ class Preview {
   CountingSink problems;
 };
 
-mask::StatisticsCounters& session_counters(const editor::EditorState& editor) {
-  static std::mutex mutex;
-  static std::unordered_map<const editor::EditorState*, mask::StatisticsCounters> counters;
-  const std::lock_guard<std::mutex> lock(mutex);
-  return counters[&editor];
-}
-
 Preview::~Preview() {
-  session_counters(*c_.s.editor).add(ctx.statistics);
+  c_.s.editor->mask.statistics.add(ctx.statistics);
   for (const diag::Diagnostic& d : problems.kept) {
     c_.s.ctx->emit(d);
   }
@@ -279,7 +270,7 @@ CommandResult coverage_option(const CifCall& c) {
 }
 
 CommandResult statistics_option(const CifCall& c) {
-  cu::print_block(c.s, mask::statistics(session_counters(*c.s.editor)));
+  cu::print_block(c.s, mask::statistics(c.s.editor->mask.statistics));
   return CommandResult::success();
 }
 

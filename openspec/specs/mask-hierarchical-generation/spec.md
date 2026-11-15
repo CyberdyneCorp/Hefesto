@@ -729,7 +729,7 @@ Compatibility: informative
 
 ### Requirement: Generation statistics
 
-The implementation SHALL keep counters of total geometric tile operations, tile operations due to hierarchy, rectangles output, and rectangles due to hierarchical interactions. Each counter has a recent value and a cumulative value. Magic's `cif statistics` prints them as four lines and resets the recent values:
+The implementation SHALL keep counters of total geometric tile operations, tile operations due to hierarchy, rectangles output, and rectangles due to hierarchical interactions. Each counter has a recent value and a cumulative value, kept once per session: every `gds write`, `cif write`, `cif flat` and `cif` preview (`see`, `*hier`, `*array`, `paint`, `coverage`) adds its counts when it finishes, on the command thread. Magic's `cif statistics` prints them as four lines and resets the recent values:
 
 ```
 CIF statistics (recent/total):

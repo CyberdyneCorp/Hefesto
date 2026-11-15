@@ -296,16 +296,6 @@ struct Coverage {
 /// lines (`box` selects the cursor-box wording).
 [[nodiscard]] std::string coverage_report(const Coverage& coverage, bool box);
 
-/// The recent and cumulative statistics counters of a session (Magic's
-/// CIFTileOps, cifTotalTileOps, ...).
-struct StatisticsCounters {
-  GenerationStatistics recent;
-  GenerationStatistics total;
-
-  /// Adds a generation's counters to the recent values.
-  void add(const GenerationStatistics& stats) noexcept;
-};
-
 /// `cif statistics` (CIFPrintStats): the four `recent/total` lines of
 /// `counters` after adding the recent values to the totals; then the
 /// recent values are reset.
