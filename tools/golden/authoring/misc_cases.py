@@ -264,13 +264,17 @@ def _mh_specs() -> list:
     met1_out = mc.out_style(_hint_layer("MET1", "bloat-or metal1 * 0", "mask-hints MET1", calma=(49, 0)))
     met1_gds, sram_gds = _mh_inputs()
     mh03 = mc.case("MISC-MH-03", ["Mask hints in .mag files", "Mask-hint output operator"],
-                   "property compat false: a cell with MASKHINTS_SRAM saved (a dimension line), flushed and read "
-                   "back; the hint queried; gds write with a mask-hints SRAM layer (Q-MISC-10).",
-                   [*mc.paint("metal1", 0, 0, 4, 4), 'property MASKHINTS_SRAM "0 0 10 10"', "property compat false",
+                   "Property compat mode off (property plane false): a cell with MASKHINTS_SRAM saved (a dimension "
+                   "line), flushed and read back; the hint queried; gds write with a mask-hints SRAM layer (Q-MISC-10).",
+                   [*mc.paint("metal1", 0, 0, 4, 4), 'property MASKHINTS_SRAM "0 0 10 10"', "property plane false",
+                    "property plane",
                     "save a", "flush a", "property MASKHINTS_SRAM", "gds write out"],
                    technology=mc.tech(hints_out), start=["load a"], outputs=["a.mag", "out.gds"],
                    capability=HINTS,
-                   notes=["Q-MISC-10 (fix): Magic reads the dimension line back as integers, which its mask-hints "
+                   notes=["Magic 8.3.694 takes `property plane` as the compat switch (PROPERTY_TYPE_COMPAT is the "
+                          "index of plane, commands/CmdLQ.c:2345-2348); `property compat false` would query a "
+                          "property named false.",
+                          "Q-MISC-10 (fix): Magic reads the dimension line back as integers, which its mask-hints "
                           "operator then takes for a hint plane (cif/CIFgen.c:5695), so its write may crash."])
     mh03.allow_nonzero_exit = True
     return [
