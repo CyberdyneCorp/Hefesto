@@ -55,7 +55,6 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 // Scaffold stubs (openspec/changes/m5-mask-gds-cif/design.md D3): a command
 // option or function the M5 scaffold declared before its workstream
 // implemented it. INTEGRATION retires the code at M5 exit (tasks.md 15.5).
-inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-005";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option

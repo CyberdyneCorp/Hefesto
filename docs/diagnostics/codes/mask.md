@@ -17,9 +17,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/mask/ops/codes.inc` | `MASK-OPER-*` | OPS |
 | `src/core/src/mask/gen/codes.inc` | `MASK-GEN-*` | GEN |
 
-While M5 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-005`
-([../codes.md](../codes.md)).
+The M5 scaffold's stub code `CORE-NOTIMPL-005` is retired: every option
+and function it declared is implemented ([../codes.md](../codes.md)).
 
 ## STYLES
 

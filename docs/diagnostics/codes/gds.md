@@ -16,9 +16,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/gds/write/codes.inc` | `GDS-WRITE-*` | GDSW |
 | `src/core/src/gds/command/codes.inc` | `GDS-CMD-*` | GDSW |
 
-While M5 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-005`
-([../codes.md](../codes.md)).
+The M5 scaffold's stub code `CORE-NOTIMPL-005` is retired: every option
+and function it declared is implemented ([../codes.md](../codes.md)).
 
 ## STREAM
 

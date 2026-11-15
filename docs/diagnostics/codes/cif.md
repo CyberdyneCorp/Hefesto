@@ -15,9 +15,8 @@ workstream. The rows are sorted while compiling
 | `src/core/src/cif/write/codes.inc` | `CIF-WRITE-*` | CIF |
 | `src/core/src/cif/command/codes.inc` | `CIF-CMD-*` | CIF |
 
-While M5 is in progress, an option or function the scaffold declared before
-its workstream implemented it fails with the core code `CORE-NOTIMPL-005`
-([../codes.md](../codes.md)).
+The M5 scaffold's stub code `CORE-NOTIMPL-005` is retired: every option
+and function it declared is implemented ([../codes.md](../codes.md)).
 
 ## CIF
 
