@@ -34,17 +34,35 @@ Compatibility: native
 - **THEN** the screen SHALL show the change within 50 ms
 
 ### Requirement: Batch throughput relative to Magic
-On the same reference workloads, single-threaded wall time on the same machine SHALL be no worse than Magic 8.3.694 for:
+On the same reference workloads, single-threaded Hefesto SHALL be no slower than Magic 8.3.694 for:
 - full-hierarchy DRC
 - GDS read and write
 - extraction
 - SPICE generation
 
+How the target is judged:
+- **Full-hierarchy DRC, GDS read and GDS write: instruction counts.** The measure is the callgrind instruction count of each reference workload on the x86_64 CI runner, counting the operation alone: a script with the operation minus the same script without it, or one pass minus the set-up. Instruction counts are stable across runner types, while the wall-clock ratio moves by about 0.1 ×.
+  - GDS read and GDS write: each workload SHALL take at most Magic's instruction count, measured on the same runner. Once Hefesto's count for a workload is recorded as its baseline, the workload SHALL take at most that baseline + 2 %.
+  - Full-hierarchy DRC: one pass of the reference block SHALL take at most the recorded baseline + 2 %. The baseline is 12.14 billion instructions, the M3 count, so the limit is 12.38 billion. Magic's count is reported for information.
+  - The wall time of both tools on the same runner is reported for information. It does not gate.
+- **Extraction and SPICE generation: wall time.** Single-threaded wall time on the same machine SHALL be no worse than Magic's.
+
 Multithreaded runs SHOULD be faster. CI SHALL track these benchmarks.
 
 Compatibility: native
 
-(Hefesto decision: docs/decisions/product.md#P-1)
+(Hefesto decisions: docs/decisions/product.md#P-1, docs/decisions/product.md#P-24)
+
+#### Scenario: GDS write benchmark
+- **GIVEN** the reference all-cells block of `sky130_fd_sc_hd` with no recorded Hefesto baseline for the workload
+- **WHEN** `gds write` of the block is run under callgrind in Hefesto and in Magic on the same x86_64 runner
+- **THEN** Hefesto's instruction count for the write SHALL be less than or equal to Magic's
+- **AND** the wall times of both tools SHALL be reported without gating
+
+#### Scenario: GDS read benchmark after the baseline is recorded
+- **GIVEN** a recorded Hefesto baseline of B instructions for `gds read` of `sky130_fd_sc_hd.gds`
+- **WHEN** the workload is run under callgrind on the x86_64 runner
+- **THEN** Hefesto's instruction count SHALL be at most B + 2 %, whatever Magic's count is
 
 #### Scenario: Extraction benchmark
 - **WHEN** `extract all` is run on the reference standard-cell block in Hefesto and in Magic on the same machine

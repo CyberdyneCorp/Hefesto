@@ -47,4 +47,27 @@ No pass yet. SHELL records each pass here (machine, build, PDK pin, command line
 
 ## Performance (PERF)
 
-`hefesto-performance` "Batch throughput relative to Magic" for GDS read and write (design D20; Open Question 2 decided (a): callgrind instructions per workload at or below Magic's count, then the baseline + 2 %). PERF records the `gds-bench` and `gds-roundtrip` results here (tasks.md section 14). No results yet.
+`hefesto-performance` "Batch throughput relative to Magic" for GDS read and write (design D20; Open Question 2 decided (a): callgrind instructions per workload at or below Magic's count, then the baseline + 2 %). PERF records the `gds-bench` and `gds-roundtrip` results here (tasks.md section 14). The requirement now names the instruction gate (decision P-24, `docs/decisions/product.md`).
+
+**How it is measured.** `perf.yml` `gds-bench`, on the x86_64 runner, with a GCC 14 Release build of hefesto-cli and Magic 8.3.694 from the reference image:
+
+- **Workloads.** `bench/gds/gds_bench.py` holds the three D20 workloads:
+  - `read`: `gds read sky130_fd_sc_hd.gds`;
+  - `write`: `gds write` of the all-cells block with `gds merge no`;
+  - `write-merge`: the same write with `gds merge yes`.
+- **Scripts.** Each workload has a base script (technology load, and for the writes the block placed from the `.mag` cells without their vendor-GDS properties) and an op script (the same plus the operation).
+- **Gate.** The instructions of the operation are callgrind's op total minus its base total. `bench/gds/gds_gate.py` gates each workload:
+  - at most Magic's count, until `bench/gds/baseline.json` records Hefesto's baseline;
+  - then at most that baseline + 2 %.
+- **Information only.** The wall time of op minus base for both tools on the same runner (`--repeat 3`, minimum of each). The instructions by function, from `bench/drc/callgrind_pass_diff.py`.
+
+`gds-roundtrip` replays every `MASK-RT-*` case, one job per shard of `scripts/gds_rt_shards.py`. It then writes Hefesto's equivalence report of a second read and write (`bench/gds/gds_equivalence.py`) into the job summary.
+
+| Run | Workload | Hefesto | Magic | Gate |
+|---|---|---|---|---|
+| local, 2026-11-15, macOS arm64 (Apple silicon), `macos-release` hefesto-cli at `m5-r5-perf` (base 9997d707), sky130A at the M4 pin; wall time only (no callgrind or Magic on this Mac) | read | 1.36 s (447 cells) | not measured | CI |
+| same | write | 0.51 s (450 cells, 5.4 MB) | not measured | CI |
+| same | write-merge | 0.57 s | not measured | CI |
+| CI `gds-bench` | read, write, write-merge | to record | to record | to record |
+
+Equivalence report, local (same build): `sky130_fd_sc_hd.gds`. First pass: read 1.9 s, write 0.4 s. Second pass: read 2.2 s, write 0.3 s. There are 5 differences, all in TEXT. For example, `sky130_fd_sc_hd__dlrtn_1`'s `VGND` label on 68/5 is at (230, 0) after the first write and at (235, 0) after the second. The other labels are in `a32oi_4`, `dlrtn_2`, `dlrtn_4` and `dlrtp_4`. These differences are information only (design D19) and are left for review by GDSR/GDSW.

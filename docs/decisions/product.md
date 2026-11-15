@@ -209,6 +209,16 @@ Open decisions found by the spec audit are listed in `docs/decisions/audit/DECIS
 - Layout layer colors come from the PDK display styles. They are not part of the UI theme.
 - Capability: `hefesto-design-system`. Screen mockups are kept in `docs/design/mockups/` (the source of truth since 2026-11-10) and linked from it.
 
+## P-24: Batch throughput judged by instruction counts
+
+- Status: decided (2026-11-12 for DRC; 2026-11-13 for GDS read and write, m5-mask-gds-cif design Open Question 2, answer (a)); recorded 2026-11-15
+- Decision: The batch-throughput target of `hefesto-performance` ("Batch throughput relative to Magic") is judged by callgrind instruction counts on the x86_64 CI runner for full-hierarchy DRC and for GDS read and write, not by wall time:
+  - **GDS read and write.** For each reference workload, Hefesto's instructions for the operation (the script with it minus the script without it) SHALL be at most Magic 8.3.694's, measured on the same runner. Once Hefesto's count for a workload is recorded as its baseline, the gate becomes that baseline + 2 %. The workloads are those of m5-mask-gds-cif design D20: read `sky130_fd_sc_hd.gds`, and write the all-cells block with `gds merge no` and with `gds merge yes`. The gate is the `gds-bench` job of `perf.yml` (`bench/gds/gds_gate.py`, baselines in `bench/gds/baseline.json`).
+  - **Full-hierarchy DRC.** One `drc check; drc catchup` pass of the all-cells block SHALL take at most the M3 baseline of 12.14 billion instructions + 2 %, that is 12.38 billion. Magic's count, 10.98 billion, is information (user decision of 2026-11-12, m3-drc design D16 and `docs/design/m3-ui-conformance.md` "Performance"). The gate is the `drc-profile` job of `perf.yml` (`bench/drc/instruction_gate.py`).
+  - The wall time of both tools on the same runner is still measured and reported. It does not gate.
+- Reason: on GitHub's runners the wall-clock ratio to Magic moves by about 0.1 × between runner types, so a wall-time gate either flakes or needs a margin that hides real regressions. Instruction counts are stable across runners. Measuring Magic's count on the same runner keeps the "no slower than Magic" intent until a baseline exists.
+- Scope: extraction and SPICE generation keep the single-threaded wall-time target (unchanged by this decision).
+
 ## P-19: Advanced analog simulation
 
 - Status: decided (2026-11-06)

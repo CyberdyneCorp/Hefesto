@@ -28,6 +28,25 @@
 #                "drc-profile".
 #   golden-slow  The standard-cell corpus cases (CTest label golden-slow, design D14) in a
 #                Release build, timed. They also replay on every CI leg (ci.yml, golden replay).
+#   gds-bench    The GDS throughput gate (openspec/changes/m5-mask-gds-cif design D20, Open
+#                Question 2 decided (a)): a GCC 14 Release build of hefesto-cli and Magic 8.3.694
+#                (reference image) run the base and op scripts of bench/gds/gds_bench.py (read
+#                sky130_fd_sc_hd.gds; write the all-cells block with `gds merge no` and `yes`)
+#                under callgrind on the same runner; bench/gds/gds_gate.py fails when Hefesto's
+#                instructions of a workload (op minus base) exceed Magic's, or, once a baseline is
+#                recorded in bench/gds/baseline.json, that baseline + 2 %. gds_bench.py then times
+#                both tools (information) and fails when their cell counts differ or a write is
+#                empty. Results: the job summary and the artifact "gds-bench"; recorded in
+#                docs/design/m5-ui-conformance.md "Performance".
+#   gds-roundtrip  Every MASK-RT-* library round-trip case (design D19), one job per shard of
+#                scripts/gds_rt_shards.py (the shard table golden-capture.yml's capture-gds-rt
+#                uses): replay.py --include-gds-rt with every case's input required, then
+#                Hefesto's non-gating, order-insensitive equivalence report of a second read and
+#                write (bench/gds/gds_equivalence.py) in the job summary.
+#
+# `plan` picks the jobs: on pull requests the DRC jobs (drc-bench, drc-profile, golden-slow) run
+# only when a DRC path changed and the GDS jobs only when a GDS, mask, CIF or use-index path
+# changed; on main, the schedule and workflow_dispatch every job runs.
 
 name: Performance
 
@@ -44,6 +63,19 @@ on:
       - tests/unit/drc/engine/latency_bench_test.cpp
       - tests/golden/DRC/cases/DRC-STD-*/**
       - tools/golden/container/**
+      - src/core/include/hefesto/gds/**
+      - src/core/src/gds/**
+      - src/core/include/hefesto/mask/**
+      - src/core/src/mask/**
+      - src/core/include/hefesto/cif/**
+      - src/core/src/cif/**
+      - tests/golden/MASK/**
+      - bench/gds/**
+      - scripts/fetch_pdk.py
+      - scripts/gds_rt_shards.py
+      - tools/golden/replay.py
+      - tools/golden/compare/**
+      - tools/golden/goldenlib/**
       - .github/workflows/perf.yml
   pull_request:
     paths:
@@ -55,6 +87,19 @@ on:
       - tests/unit/drc/engine/latency_bench_test.cpp
       - tests/golden/DRC/cases/DRC-STD-*/**
       - tools/golden/container/**
+      - src/core/include/hefesto/gds/**
+      - src/core/src/gds/**
+      - src/core/include/hefesto/mask/**
+      - src/core/src/mask/**
+      - src/core/include/hefesto/cif/**
+      - src/core/src/cif/**
+      - tests/golden/MASK/**
+      - bench/gds/**
+      - scripts/fetch_pdk.py
+      - scripts/gds_rt_shards.py
+      - tools/golden/replay.py
+      - tools/golden/compare/**
+      - tools/golden/goldenlib/**
       - .github/workflows/perf.yml
   schedule:
     - cron: "41 3 * * 2"
@@ -74,8 +119,74 @@ env:
   CXX: g++-14
 
 jobs:
+  plan:
+    name: plan the performance jobs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      drc: ${{ steps.select.outputs.drc }}
+      gds: ${{ steps.select.outputs.gds }}
+      rt_any: ${{ steps.rt.outputs.rt_any }}
+      rt_matrix: ${{ steps.rt.outputs.rt_matrix }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Select the jobs from the changed paths
+        id: select
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            { echo "drc=true"; echo "gds=true"; } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA...$HEAD_SHA" > changed.txt
+          drc=false
+          gds=false
+          while IFS= read -r path; do
+            case "$path" in
+              src/core/include/hefesto/drc/*|src/core/src/drc/*|src/core/src/db/*|src/core/include/hefesto/db/*|\
+              bench/drc/*|tests/unit/drc/engine/latency_bench_test.cpp|tests/golden/DRC/cases/DRC-STD-*)
+                drc=true ;;
+            esac
+            case "$path" in
+              src/core/include/hefesto/gds/*|src/core/src/gds/*|src/core/include/hefesto/mask/*|src/core/src/mask/*|\
+              src/core/include/hefesto/cif/*|src/core/src/cif/*|src/core/include/hefesto/db/use_index*|\
+              src/core/src/db/use_index*|tests/golden/MASK/*|bench/gds/*|scripts/fetch_pdk.py|scripts/gds_rt_shards.py|\
+              tools/golden/replay.py|tools/golden/compare/*|tools/golden/goldenlib/*)
+                gds=true ;;
+            esac
+            case "$path" in
+              tools/golden/container/*|.github/workflows/perf.yml) drc=true; gds=true ;;
+            esac
+          done < changed.txt
+          { echo "drc=$drc"; echo "gds=$gds"; } >> "$GITHUB_OUTPUT"
+          echo "::notice::DRC jobs: $drc; GDS jobs: $gds"
+      - name: Shards of the MASK-RT cases
+        id: rt
+        shell: bash
+        run: |
+          # The shard table of golden-capture.yml's capture-gds-rt (scripts/gds_rt_shards.py). Replaying and the
+          # equivalence report make three Hefesto round trips per file, so each shard gets twice its capture
+          # timeout (sized for two Magic round trips), at most GitHub's 360 minutes.
+          matrix="$(python3 scripts/gds_rt_shards.py --matrix \
+            | jq -c '{include: (.include | map(.timeout = ([.timeout * 2, 360] | min)))}')"
+          rt_any=false
+          [ "$(jq '.include | length' <<< "$matrix")" -gt 0 ] && rt_any=true
+          { echo "rt_any=$rt_any"; echo "rt_matrix=$matrix"; } >> "$GITHUB_OUTPUT"
+          echo "::notice::MASK-RT shards: $(jq -c '[.include[].shard]' <<< "$matrix")"
+
   drc-bench:
     name: DRC throughput vs Magic and background start latency
+    needs: plan
+    if: needs.plan.outputs.drc == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
@@ -173,6 +284,8 @@ jobs:
 
   drc-profile:
     name: DRC instruction gate and profile (callgrind, perf, GCC vs Clang)
+    needs: plan
+    if: needs.plan.outputs.drc == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     env:
@@ -357,6 +470,8 @@ jobs:
 
   golden-slow:
     name: golden-slow corpus (Release)
+    needs: plan
+    if: needs.plan.outputs.drc == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -414,3 +529,297 @@ jobs:
           start=$(date +%s)
           ctest --test-dir build/linux-release -L golden-slow --output-on-failure --no-tests=error
           echo "golden-slow: $(( $(date +%s) - start )) s" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # m5-mask-gds-cif design D20, tasks 14.1 and 14.2. The gate is the callgrind instruction count of each
+  # workload (Open Question 2 decided (a)): Magic's count until bench/gds/baseline.json records Hefesto's,
+  # then that baseline + 2 %. Wall time on the same runner is information.
+  gds-bench:
+    name: GDS instruction gate and timing vs Magic (callgrind)
+    needs: plan
+    if: needs.plan.outputs.gds == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja, the OpenSSL headers and valgrind
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev valgrind
+
+      - name: Unit tests of the bench scripts
+        run: python3 -m unittest discover -s bench/gds/tests -v
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      - name: Restore sky130
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_path }}
+          key: ${{ steps.keys.outputs.sky130_key }}
+      - name: Restore sky130-gds-sc
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_gds_sc_path }}
+          key: ${{ steps.keys.outputs.sky130_gds_sc_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli, GCC 14 (Release, debug info, frame pointers)
+        run: |
+          flags="-g -fno-omit-frame-pointer"
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF \
+            -DCMAKE_CXX_FLAGS="$flags" -DCMAKE_C_FLAGS="$flags"
+          cmake --build --preset linux-release --target hefesto-cli
+
+      # ci.yml's reference-data job saves both sets; a miss here fetches without saving.
+      - name: Fetch or verify sky130 and sky130-gds-sc
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/fetch_pdk.py sky130 sky130-gds-sc --cli build/linux-release/src/cli/hefesto-cli
+
+      - name: Build the reference-tool image (Magic)
+        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      - name: Scripts of the three workloads
+        run: |
+          python3 bench/gds/gds_bench.py --emit profile
+          mkdir -p gds-bench
+          {
+            echo "## GDS performance"
+            echo
+            echo "Runner: $(nproc) CPUs, $(lscpu | sed -n 's/^Model name: *//p')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: callgrind, base and op scripts (Hefesto GCC build)
+        shell: bash
+        run: |
+          cd profile
+          pids=()
+          for workload in read write write-merge; do
+            for kind in base op; do
+              valgrind --tool=callgrind --callgrind-out-file="../gds-bench/callgrind.hefesto.$workload.$kind" \
+                ../build/linux-release/src/cli/hefesto-cli --no-log --magic -dnull -noconsole \
+                "$workload-hefesto-$kind.tcl" > "../gds-bench/hefesto.$workload.$kind.log" 2>&1 &
+              pids+=("$!")
+            done
+          done
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
+
+      - name: callgrind, base and op scripts (Magic)
+        shell: bash
+        run: |
+          cd profile
+          # magic is a wrapper script: trace into the Tcl interpreter it starts, keep the largest profile.
+          docker run --rm -v "$PWD:/work" -v "$PWD/../gds-bench:/out" -w /work hefesto-golden:ci bash -c '
+              status=0
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1 || status=1
+              for workload in read write write-merge; do
+                for kind in base op; do
+                  dir="/tmp/cg.$workload.$kind"
+                  mkdir -p "$dir"
+                  valgrind --tool=callgrind --trace-children=yes --callgrind-out-file="$dir/out.%p" \
+                    magic -dnull -noconsole "$workload-magic-$kind.tcl" > "/out/magic.$workload.$kind.log" 2>&1 || status=1
+                  cp "$(ls -S "$dir"/out.* | head -1)" "/out/callgrind.magic.$workload.$kind" || status=1
+                done
+              done
+              chmod -R a+rwX /out
+              exit $status'
+
+      - name: Instructions by function (information)
+        shell: bash
+        continue-on-error: true
+        run: |
+          cd gds-bench
+          for workload in read write write-merge; do
+            python3 ../bench/drc/callgrind_pass_diff.py "callgrind.hefesto.$workload.base" \
+              "callgrind.hefesto.$workload.op" --top 30 > "functions-hefesto-$workload.txt"
+          done
+          docker run --rm -v "$PWD:/out" -v "$PWD/../bench/drc:/bench:ro" -w /out hefesto-golden:ci bash -c '
+              { apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends valgrind; } \
+                > /dev/null 2>&1
+              for workload in read write write-merge; do
+                python3 /bench/callgrind_pass_diff.py "callgrind.magic.$workload.base" "callgrind.magic.$workload.op" \
+                  --top 30 > "functions-magic-$workload.txt"
+              done
+              chmod a+rw functions-magic-*.txt'
+
+      - name: Instruction gate (Magic's count, then the baseline + 2 %)
+        shell: bash
+        run: |
+          status=0
+          python3 bench/gds/gds_gate.py gds-bench | tee gds-bench/gate.txt || status=$?
+          {
+            echo "## GDS instruction gate (op minus base, callgrind)"
+            echo
+            cat gds-bench/gate.txt
+            for f in gds-bench/functions-*.txt; do
+              [ -s "$f" ] || continue
+              echo
+              echo "<details><summary>$(basename "$f" .txt)</summary>"
+              echo
+              echo '```'
+              head -32 "$f"
+              echo '```'
+              echo "</details>"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Wall time against Magic (same runner, information)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
+        run: |
+          status=0
+          python3 bench/gds/gds_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --magic-image hefesto-golden:ci --repeat 3 --json gds-bench/gds-bench.json | tee gds-bench/timing.txt \
+            || status=$?
+          {
+            echo
+            echo "## GDS wall time, op minus base (information)"
+            echo '```'
+            cat gds-bench/timing.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gds-bench
+          path: gds-bench
+          if-no-files-found: ignore
+          retention-days: 90
+
+  # m5-mask-gds-cif design D19, task 14.3: every MASK-RT-* case, sharded as golden-capture.yml's capture-gds-rt
+  # (scripts/gds_rt_shards.py, GOLDEN's case list), then the non-gating equivalence report.
+  gds-roundtrip:
+    name: MASK-RT round trips (${{ matrix.shard }})
+    needs: plan
+    if: needs.plan.outputs.gds == 'true' && needs.plan.outputs.rt_any == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.rt_matrix) }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install CMake, Ninja and the OpenSSL headers for libcurl
+        run: |
+          python3 -m pip install "cmake==${CMAKE_VERSION}" "ninja==${NINJA_VERSION}"
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libssl-dev
+
+      - name: List the shard's cases
+        run: python3 scripts/gds_rt_shards.py --cases "${{ matrix.shard }}" > cases.txt
+
+      - name: Cache keys of the reference data
+        id: keys
+        run: python3 scripts/fetch_pdk.py --cache-info >> "$GITHUB_OUTPUT"
+      # The sets golden-capture.yml's rt-data saves under the same keys; a miss fetches and saves them here.
+      - name: Restore the tech set
+        id: tech
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.tech)] }}
+      - name: Restore the library GDS set
+        id: gds
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.keys.outputs[format('{0}_path', matrix.gds_out)] }}
+          key: ${{ steps.keys.outputs[format('{0}_key', matrix.gds_out)] }}
+      # A sky130 GDS fetch peaks at about 4.7 GB (the largest library's tar plus the kept set, task 1.1).
+      - name: Free disk space
+        if: matrix.tech == 'sky130' && steps.gds.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.magic_ref_path }}
+          key: ${{ steps.keys.outputs.magic_ref_key }}
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/deps
+          key: deps-perf-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/Tcl.cmake', 'third_party/patches/**') }}
+          restore-keys: deps-perf-
+
+      - name: Fetch the Magic reference sources (sparse, pinned)
+        run: python3 scripts/fetch_pdk.py magic-ref
+
+      - name: Build hefesto-cli (Release)
+        run: |
+          cmake --preset linux-release -DHEFESTO_BUILD_DESKTOP=OFF -DHEFESTO_BUILD_TESTS=OFF
+          cmake --build --preset linux-release --target hefesto-cli
+
+      - name: Fetch or verify the data sets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/fetch_pdk.py ${{ matrix.tech }} ${{ matrix.gds }} \
+            --cli build/linux-release/src/cli/hefesto-cli
+          df -h /
+
+      - name: Replay the MASK-RT cases (every input required)
+        # bash -eo pipefail: without it `cmd | tee` takes tee's status and hides cmd's failure.
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          ids="$(xargs -n1 basename < cases.txt | paste -sd, -)"
+          mkdir -p gds-roundtrip
+          start=$(date +%s)
+          status=0
+          python3 tools/golden/replay.py --hefesto-cli build/linux-release/src/cli/hefesto-cli --include-gds-rt \
+            --require-inputs "$ids" --json gds-roundtrip/replay.json "${cases[@]}" | tee gds-roundtrip/replay.txt \
+            || status=$?
+          {
+            echo "## MASK-RT replay: ${{ matrix.shard }} (${#cases[@]} case(s), $(( $(date +%s) - start )) s)"
+            echo '```'
+            cat gds-roundtrip/replay.txt
+            echo '```'
+            echo "Data: $(du -sh "${{ steps.keys.outputs[format('{0}_path', matrix.gds_out)] }}" | cut -f1) library GDS" \
+              "(${{ matrix.gds }}), $(du -sh "${{ steps.keys.outputs[format('{0}_path', matrix.tech)] }}" | cut -f1)" \
+              "tech set (${{ matrix.tech }}); disk: $(df -h / | awk 'NR==2 {print $3 " used, " $4 " free"}')"
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Equivalence report of a second read and write (information)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          python3 bench/gds/gds_equivalence.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+            --shard "${{ matrix.shard }}" --json gds-roundtrip/equivalence.json --summary "$GITHUB_STEP_SUMMARY" \
+            "${cases[@]}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gds-roundtrip-${{ matrix.shard }}
+          path: gds-roundtrip
+          if-no-files-found: ignore
+          retention-days: 30

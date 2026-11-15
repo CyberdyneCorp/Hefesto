@@ -353,9 +353,55 @@ How this plan runs:
 - [ ] 14.1 Add `bench/gds/` with the workloads of design D20: read `sky130_fd_sc_hd.gds`, and write the all-cells block with and without `merge`. Add a `gds-bench` job in `perf.yml` that measures callgrind instructions and wall time for Hefesto and Magic on the same runner. Verify that a run records both tools' numbers in `docs/design/m5-ui-conformance.md` "Performance".
 - [ ] 14.2 Gate `gds-bench` as Open Question 2 decides (recommended: Hefesto's instructions at or below Magic's per workload, then the baseline + 2 %). Run it on PRs touching `gds/`, `mask/`, `cif/` or `db/use_index*` and on main, schedule and dispatch. Verify that the gate passes, or record the gap for the user with a profile.
 - [ ] 14.3 Add the `gds-roundtrip` job running every `MASK-RT-*` case (design D19), with the equivalence report in the job summary. Add `src/core/{include/hefesto,src}/{gds,mask,cif}/**`, `tests/golden/MASK/**`, `bench/gds/**` and `scripts/fetch_pdk.py` to `perf.yml`'s `push` and `pull_request` path filters (as an open item for INTEGRATION, task 15.1). Verify that the job passes, that a PR touching only `src/core/src/gds/` triggers it, and that its time and data use are recorded.
+  - Round 5, 14.1 and 14.2 (`m5-r5-perf`): what was built.
+    - **Workloads.** `bench/gds/gds_bench.py` holds the three D20 workloads:
+      - `read`: `gds read sky130_fd_sc_hd.gds` from the `sky130-gds-sc` set;
+      - `write` and `write-merge`: the drc_bench all-cells block with `gds merge no` and `gds merge yes`.
+      - The cells are copied without their `GDS_FILE`/`GDS_START`/`GDS_END` properties, so both tools generate the masks instead of copying the vendor GDS.
+    - **Measurement.** Each workload has a base script (set-up) and an op script (set-up plus the operation). The cost of the operation is op minus base, in callgrind instructions and in wall time.
+    - **Checks.** Both tools print the cell count, and the counts must agree. Every write must be non-empty. Whether the two tools' outputs are byte-identical after masking the dates is reported for information only.
+    - **Gate.** `bench/gds/gds_gate.py` reads the six callgrind totals per tool and gates each workload. The limit is Magic's count until `bench/gds/baseline.json`, empty for now, records a baseline. After that the limit is the baseline + 2 %. Exit codes: 1 when over the limit, 2 when a count is missing.
+    - **Tests.** 25 unit tests in `bench/gds/tests/test_gds_bench.py`. The `gds-bench` job runs them.
+    - **`gds-bench` job in `perf.yml`.** GCC 14 Release with `-g`. Steps:
+      - callgrind runs for both tools; Magic runs inside the reference image, with `--trace-children` and the largest profile kept;
+      - the gate;
+      - the instructions by function, through `bench/drc/callgrind_pass_diff.py`, for diagnosis;
+      - the timed run against Magic (information);
+      - the artifact `gds-bench`.
+    - **Local check** (macOS arm64, no callgrind, no Magic). `gds_bench.py --hefesto-cli build/macos-debug/...` ran all three workloads:
+      - Debug build: read 15.1 s (447 cells), write 7.6 s, write-merge 6.9 s.
+      - The Release numbers are in `docs/design/m5-ui-conformance.md` "Performance".
+    - Left (14.1, 14.2): the CI run that records both tools' numbers, the gate verdict, and then the baseline.
+  - Round 5, 14.3 (`m5-r5-perf`): what was built.
+    - **`gds-roundtrip` job.** It runs as a matrix over the shards of `scripts/gds_rt_shards.py`. The case list is GOLDEN's `MASK-RT-<lib>[-<suffix>]` directories, the same as golden-capture `capture-gds-rt`.
+      - Each shard gets twice its capture timeout, at most 360 minutes.
+      - Each shard restores its tech and GDS sets with `actions/cache`, which fetches and saves on a miss, then builds a Release hefesto-cli.
+      - It runs `replay.py --include-gds-rt --require-inputs <every case of the shard>`. This step gates.
+      - Then `bench/gds/gds_equivalence.py` writes the equivalence report into the job summary. It does not gate.
+      - The job summary records the replay time, the data-set sizes and the disk use.
+    - **Equivalence report.**
+      - Hefesto-only round trip with the PDK's rc (`bench/gds/roundtrip.tcl`): library file to out1, then out1 to out2, each in a fresh session. An `ef_io` wrapper reads its `_fd_io` file first.
+      - out1 and out2 are compared by decoded content (`bench/gds/gds_content.py`):
+        - structures as a set;
+        - SREF/AREF, TEXT and other elements as multisets;
+        - each layer as normalised rings, then as covered area when the rings differ.
+      - Local run, sky130_fd_sc_hd with the Debug build: 5 label differences (TEXT multisets in `a32oi_4`, `dlrtn_{1,2,4}`, `dlrtp_4`). These are information for review.
+    - **Notes.**
+      - hefesto-cli scripts can read and write only under their working directory and the trusted PDK. They also see a synthesized `env`. So the driver copies each library file into its work directory and puts the paths in the script.
+      - The new `plan` job runs the GDS jobs on pull requests only when one of these paths changed: `gds`/`mask`/`cif`, `db/use_index*`, `bench/gds`, `tests/golden/MASK`, `fetch_pdk.py`, `gds_rt_shards.py`, or the golden replay and compare code. It runs the DRC jobs only for the DRC paths.
+      - `perf.yml`'s `push` and `pull_request` filters gain the paths of 14.3, plus `scripts/gds_rt_shards.py` and `tools/golden/{replay.py,compare,goldenlib}`.
+      - With no `MASK-RT-*` case on main yet, the job is skipped (`rt_any` false).
+    - Left: a CI run with GOLDEN's cases (task 13.7), and recording its time and data use.
 - [ ] 14.4 Re-run `drc-profile` after DRCCIF and INDEX land. Verify that it stays at or below 12.38 billion instructions per block pass, with the timed ratio recorded as information.
   - Round 3 (integration): Performance run 43605654201 on `m5-round3` (DRCCIF and INDEX round 3 merged): 12.24 billion instructions per block pass, gate met. Left for PERF: the timed ratio as information.
-- [ ] 14.5 If Open Question 2 is answered (a), draft the amendment of `hefesto-performance` "Batch throughput relative to Magic" (callgrind instructions per workload as the gate for DRC and GDS read/write, wall time as information) and the decision record in `docs/decisions/`, as an open item that INTEGRATION applies. Verify that `openspec validate --all --strict` passes after it.
+  - Round 5 (`m5-r5-perf`): `drc-profile` now runs on pull requests only when `perf.yml`'s `plan` job sees a DRC path change (the same paths as before; `mask/` alone does not trigger it, because the drc-profile workload's default style has no mask-layer rules). Its gate (`bench/drc/instruction_gate.py`, 12.38 billion) is unchanged. Left: the measurement on the round-5 integration branch, and recording the timed ratio from its `drc-bench` job as information.
+- [x] 14.5 If Open Question 2 is answered (a), draft the amendment of `hefesto-performance` "Batch throughput relative to Magic" (callgrind instructions per workload as the gate for DRC and GDS read/write, wall time as information) and the decision record in `docs/decisions/`, as an open item that INTEGRATION applies. Verify that `openspec validate --all --strict` passes after it.
+  - As landed (round 5, `m5-r5-perf`; applied by PERF as the round-5 prompt allowed). The decision record is `docs/decisions/product.md` P-24. The requirement in `openspec/specs/hefesto-performance/spec.md` now has these gates:
+    - GDS read and write: at most Magic's instructions per workload, then the recorded baseline + 2 %.
+    - DRC: the M3 baseline + 2 % (12.38 billion).
+    - Wall time is information only. Extraction and SPICE keep the wall-time target.
+    - It adds two scenarios: "GDS write benchmark" and "GDS read benchmark after the baseline is recorded".
+  - Checks: `openspec validate --all --strict` passes (177 items), and `docs/specs-index.md` is regenerated.
 
 ## 15. INTEGRATION
 
