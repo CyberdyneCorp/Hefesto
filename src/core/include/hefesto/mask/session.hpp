@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "hefesto/cif/command/settings.hpp"
 #include "hefesto/gds/command/settings.hpp"
 #include "hefesto/mask/input/style.hpp"
@@ -36,6 +38,11 @@ struct MaskSession {
   // seed`, which the Q-MASK-211 full-dump prefix reads under magic-compat
   // ON (moved from db/commands_misc.cpp).
   util::LibcRandom random;
+  // INTEGRATION (Q-MASK-132): the time-zone override for GDS dates and the
+  // CIF header date, a POSIX TZ string ("UTC0", "EST5EDT"); empty = the
+  // host local zone. Passed to GdsWriteOptions, GdsReadOptions and
+  // CifWriteOptions by the `gds` and `cif` commands.
+  std::string time_zone;
 };
 
 }  // namespace hefesto::mask

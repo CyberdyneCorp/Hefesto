@@ -70,9 +70,10 @@ def cif_read_case(cid: str, requirements: list[str], description: str, cif: str,
 def write_case(cid: str, requirements: list[str], description: str, layout: list[str], *,
                cifoutput: str = OUT_DEFAULT, files: dict | None = None, write: list[str] | None = None,
                outputs: list[str] | None = None, start: list[str] | None = None,
-               notes: list[str] | None = None) -> tclcase.TclCase:
+               notes: list[str] | None = None, fonts: list[str] | None = None) -> tclcase.TclCase:
     return case(cid, requirements, description, [*layout, *(write or ["gds write out"])], files=files,
-                technology=tech(cifoutput), outputs=outputs or ["out.gds"], start=start, notes=notes)
+                technology=tech(cifoutput), outputs=outputs or ["out.gds"], start=start, notes=notes,
+                fonts=fonts)
 
 
 # --- MASK-CI: input styles ------------------------------------------------------------------------
@@ -318,7 +319,8 @@ def cf_specs() -> list[tclcase.TclCase]:
                    write=["cif write out", "load", *paint("metal1", 0, 0, 2, 2), "cif write unnamed"],
                    outputs=["out.cif", "unnamed.cif"]),
         write_case("MASK-CF-017", ["CIF output labels", "cif output-format toggles"],
-                   "Labels with and without an output label layer, a labellayer style and cif arealabels yes.",
+                   "Labels with and without an output label layer (a layer with labels) and cif arealabels yes; "
+                   "labellayer is MASK-CF-028.",
                    [*paint("metal1", 0, 0, 10, 10), *paint("ndiff", 20, 0, 30, 10), *label("pt", 2, 2),
                     *label("area", 4, 4, x2=8, y2=8), *label("nolayer", 25, 5, "ndiff")],
                    cifoutput=OUT_DEFAULT + "    layer CLB metal1\n        labels metal1\n",
@@ -371,6 +373,14 @@ def cf_specs() -> list[tclcase.TclCase]:
               "feedback save fb.txt", "cif paint CMF metal2 newcell", "cif coverage CMF box", "cif coverage CMF",
               "cif list coverage CMF", "cif statistics", SAVE_ALL],
              outputs=["fb.txt", CELLS]),
+        # Review of round 4: cifWriteLabelFunc multiplies label-layer tiles by the scale
+        # factor (Q-MASK-338); MASK-CF-017's style has no labellayer, so this case adds one
+        # with scalefactor 10 (S != 1).
+        write_case("MASK-CF-028", ["CIF output labels"],
+                   "A labellayer CPN with scalefactor 10, with and without cif arealabels.",
+                   [*paint("metal1", 0, 0, 10, 4), *paint("metal1", 20, 0, 26, 6)],
+                   cifoutput=out_style(layer("CMF", "metal1"), layer("CPN", "metal1", calma=None, kind="labellayer")),
+                   write=["cif write out", "cif arealabels yes", "cif write area"], outputs=["out.cif", "area.cif"]),
     ]
 
 
@@ -885,7 +895,8 @@ def gw_specs() -> list[tclcase.TclCase]:
                     *(c for i, j in enumerate(("n", "ne", "e", "se", "s", "sw", "w", "nw", "c"))
                       for c in (f"box {10 * i} 50 {10 * i} 50", f"label j{j} {j} metal1")),
                     "box 60 60 80 80", "label area c metal1"],
-                   cifoutput=GW_TECH.replace("    layer M1 metal1\n", "    layer M1 metal1\n        labels metal1\n")),
+                   cifoutput=GW_TECH.replace("    layer M1 metal1\n", "    layer M1 metal1\n        labels metal1\n"),
+                   fonts=["FreeSans"]),
         write_case("MASK-GW-023", ["Label TEXT records"],
                    "Port labels with indices 2, 1, 1 and plain labels; labels metal1 port against labels metal1.",
                    [*paint("metal1", 0, 0, 40, 10), *(c for i, idx in enumerate((2, 1, 1)) for c in

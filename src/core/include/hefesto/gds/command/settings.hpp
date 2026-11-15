@@ -52,8 +52,8 @@ struct GdsSettings {
   bool lower = true;                         // CalmaDoLower
   bool arrays = false;                       // CalmaFlattenArrays
   bool addendum = false;                     // CalmaAddendum
-  std::optional<std::int64_t> datestamp;     // CalmaDateStamp (nullopt = current time)
-  bool nodatestamp = false;                  // `gds nodatestamp`
+  std::optional<std::int64_t> datestamp;     // CalmaDateStamp (nullopt = the cell's timestamp;
+                                             // `gds nodatestamp yes` sets 0)
   bool allow_undefined = false;              // CalmaAllowUndefined
   bool allow_abstract = false;               // CalmaAllowAbstract
   bool contacts = false;                     // CalmaContactArrays (accepted, no effect)

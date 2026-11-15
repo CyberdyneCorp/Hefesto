@@ -11,11 +11,14 @@
 // selected by `cif ostyle <name>`; `cif scale out` reads drc::CifCatalog,
 // which follows the selection) and the session's input styles
 // (EditorState::mask.input_styles, read at tech load by
-// mask::read_input_styles and selected by `cif istyle <name>`). Every other option fails with
-// CORE-NOTIMPL-005 until CIF lands it (tasks.md section 11).
+// mask::read_input_styles and selected by `cif istyle <name>`). The window
+// check, a bare `cif` (write the root cell) and the dispatch are here; the
+// session options are options.cpp's, the output options output.cpp's
+// (command_impl.hpp).
 //
 // Ported from Magic 8.3.694 (fc5daa9e) commands/CmdCD.c CmdCif (the option
-// table, list/listall, HELP, ISTYLE, OSTYLE, CIF_SCALE, CIF_LAMBDA),
+// table, list/listall, the window check, HELP, ISTYLE, OSTYLE, CIF_SCALE,
+// CIF_LAMBDA),
 // cif/CIFmain.c CIFGetOutputScale / CIFPrintStyle and cif/CIFrdtech.c
 // CIFGetInputScale / CIFPrintReadStyle / the `style` and `scalefactor`
 // statements, Copyright (C) 1985, 1990 Regents of the University of
@@ -31,10 +34,10 @@
 #include <string>
 #include <vector>
 
+#include "command_impl.hpp"
 #include "db/command_util.hpp"
 #include "hefesto/cmd/context.hpp"
 #include "hefesto/cmd/keywords.hpp"
-#include "hefesto/cmd/stubs.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/drc/rules/style.hpp"
 #include "hefesto/editor/editor_state.hpp"
@@ -80,21 +83,12 @@ constexpr std::array<std::string_view, 23> kOptions{
     "unfracture [yes|no]\n\t\t\toptimize non-Manhattan geometry",
 };
 
-enum Option : std::size_t { kHelp = 5, kIstyle = 7, kLambda = 8, kOstyle = 10, kScale = 15 };
+}  // namespace
 
-/// One parsed `cif` call: the list mode words removed (Magic's argv++).
-struct CifCall {
-  cu::Session s;
-  std::vector<std::string> words;  // words[0] is the option
-  bool list = false;
-  bool listall = false;
-  [[nodiscard]] std::size_t argc() const noexcept { return words.size() + 1; }
-};
+namespace command_detail {
 
-// An option the M5 scaffold registered before CIF implemented it.
-CommandResult not_yet(std::size_t option) {
-  const std::string_view entry = kOptions.at(option);
-  return cmd::not_implemented("cif " + std::string{entry.substr(0, entry.find_first_of(" \t\n"))});
+std::string_view option_entry(std::size_t option) {
+  return kOptions.at(option);
 }
 
 CommandResult wrong_args(const CifCall& c, std::size_t option) {
@@ -103,6 +97,12 @@ CommandResult wrong_args(const CifCall& c, std::size_t option) {
   cu::warn(c.s, "Try \":cif help\" for more help.");
   return CommandResult::success();
 }
+
+}  // namespace command_detail
+
+namespace {
+
+using namespace command_detail;  // NOLINT(google-build-using-namespace): this file's own helpers
 
 CommandResult help(const CifCall& c) {
   const bool wizard = c.argc() == 3 && c.words[1] == "wizard";
@@ -275,13 +275,39 @@ CommandResult style(const CifCall& c, std::size_t option) {
 // Options that need a window (every one but help, istyle, ostyle, prefix,
 // arealabels, warning, limit and polygon): "Point to a window first".
 bool needs_window(std::size_t option) {
-  return option == kScale || option == kLambda;
+  switch (option) {
+    case kHelp:
+    case kIstyle:
+    case kOstyle:
+    case kPrefix:
+    case kAreaLabels:
+    case kWarning:
+    case kLimit:
+    case kPolygon:
+      return false;
+    default:
+      return true;
+  }
+}
+
+bool has_window(const CifCall& c) {
+  return c.s.editor->windows.size() != 0 || c.s.editor->command_point.has_value();
+}
+
+// `*array` and `*hier`: the `write` switch with four words, else a preview.
+CommandResult wizard_option(const CifCall& c, std::size_t option) {
+  return c.argc() == 4 ? settings_option(c, option) : see_option(c, option);
+}
+
+// `write` and `flat` with their file name.
+CommandResult output_option(const CifCall& c, std::size_t option) {
+  if (c.argc() != 3) {
+    return wrong_args(c, option);
+  }
+  return write_option(c, c.words[1], option == kFlat);
 }
 
 CommandResult run_option(const CifCall& c, std::size_t option) {
-  if (needs_window(option) && c.s.editor->windows.size() == 0 && !c.s.editor->command_point) {
-    return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
-  }
   switch (option) {
     case kHelp:
       return help(c);
@@ -291,9 +317,35 @@ CommandResult run_option(const CifCall& c, std::size_t option) {
     case kIstyle:
     case kOstyle:
       return style(c, option);
+    case kArray:
+    case kHier:
+      return wizard_option(c, option);
+    case kWrite:
+    case kFlat:
+      return output_option(c, option);
+    case kRead:
+      return read_option(c);
+    case kSee:
+      return see_option(c, option);
+    case kPaint:
+      return paint_option(c);
+    case kCoverage:
+      return coverage_option(c);
+    case kStats:
+      return statistics_option(c);
     default:
-      return not_yet(option);
+      return settings_option(c, option);
   }
+}
+
+// A bare `cif`: CIF of the window's root cell to <name after its last '/'>.
+CommandResult bare_write(const CifCall& c) {
+  if (!has_window(c) || c.s.editor->windows.current() == nullptr) {
+    return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
+  }
+  const std::string& name = c.s.editor->windows.current()->root()->name();
+  const std::size_t slash = name.rfind('/');
+  return write_option(c, slash == std::string::npos ? name : name.substr(slash + 1), false);
 }
 
 CommandResult cif_command(cmd::CommandContext& ctx, const cmd::Invocation& invocation) {
@@ -303,7 +355,7 @@ CommandResult cif_command(cmd::CommandContext& ctx, const cmd::Invocation& invoc
   }
   CifCall c{session.value(), invocation.args};
   if (c.words.empty()) {
-    return cmd::not_implemented("cif write");  // a bare `cif` writes the root cell
+    return bare_write(c);
   }
   if (c.words.front().starts_with("list")) {
     c.list = true;
@@ -318,6 +370,9 @@ CommandResult cif_command(cmd::CommandContext& ctx, const cmd::Invocation& invoc
     cu::warn(c.s, "\"" + c.words.front() + "\" isn't a valid cif option.");
     c.words = {"help"};
     return help(c);
+  }
+  if (needs_window(found.index) && !has_window(c)) {
+    return CommandResult::failure(diag::make(kNoWindow, "Point to a window first"));
   }
   return run_option(c, found.index);
 }

@@ -13,6 +13,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,8 @@
 #include "hefesto/db/geometry.hpp"
 
 namespace hefesto::cell {
+
+struct LookupContext;
 
 /// "Timestamp value domain": whole seconds since the epoch truncated to a
 /// signed 32-bit value (held in 64 bits, Q-CELL-35).
@@ -83,6 +86,19 @@ using VendorStampFn = std::function<std::uint32_t(const db::CellDef&)>;
 /// `vendor_stamp` it keeps its stamp.
 void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now,
                        const VendorStampFn& vendor_stamp = {});
+
+/// The same update with each read-only cell restamped from the file its
+/// GDS_FILE names, looked up through `lookup` (gds::VendorStamper,
+/// CalmaVendorStamp). Each GDS file is scanned at most once, and the scan
+/// cache is dropped at the end of the pass (CalmaVendorStampFlush). This is
+/// the form the save paths use (DBUpdateStamps before a write).
+void update_timestamps(db::CellLibrary& library, db::CellDef* only, std::int64_t now, LookupContext& lookup);
+
+/// DBUpdateStamps(def) for each of `cells` in order, sharing one scan cache
+/// (`writeall` with cell names): each GDS file is scanned at most once for
+/// the whole list.
+void update_timestamps(db::CellLibrary& library, std::span<db::CellDef* const> cells, std::int64_t now,
+                       LookupContext& lookup);
 
 /// `cellname timestamp`: assigns `value`; clears the pending mark when the
 /// value differs; with `magic_compat` false also sets the fixed-stamp

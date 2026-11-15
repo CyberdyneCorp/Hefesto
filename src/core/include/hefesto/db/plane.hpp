@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -129,6 +130,13 @@ struct SplitEdit {
   friend bool operator==(const SplitEdit&, const SplitEdit&) = default;
 };
 
+/// Whether a paint merges split tiles afterwards: `split_tiles` is the
+/// cell paint (DBPaint / DBErase: the plane paint, then DBMergeNMTiles over
+/// the area grown by 1); `none` is the bare plane paint (DBPaintPlane /
+/// DBNMPaintPlane), which leaves the split tiles as the paint cut them, as
+/// mask generation's planes do in Magic.
+enum class PaintMerge : std::uint8_t { split_tiles, none };
+
 class Plane {
  public:
   Plane();  // the whole plane is space
@@ -142,20 +150,35 @@ class Plane {
   [[nodiscard]] Plane clone() const;
 
   /// Replaces every type t under `area` by row[t] (DBPaintPlane), then
-  /// merges split tiles over `area` expanded by 1 unless `area` is the
-  /// whole-plane rectangle (DBPaint / DBErase). Geometry outside the usable
-  /// plane is rejected with DB-GEOM-001 (Q-MODEL-24); a null area is a no-op.
-  [[nodiscard]] diag::Status paint(const Rect& area, const PaintRow& row);
+  /// (with PaintMerge::split_tiles, the default) merges split tiles over
+  /// `area` expanded by 1 unless `area` is the whole-plane rectangle
+  /// (DBPaint / DBErase). Geometry outside the usable plane is rejected
+  /// with DB-GEOM-001 (Q-MODEL-24); a null area is a no-op.
+  [[nodiscard]] diag::Status paint(const Rect& area, const PaintRow& row,
+                                   PaintMerge merge = PaintMerge::split_tiles);
 
   /// Applies `row` to one side of the triangle obtained by splitting `area`
   /// along `diagonal` ("Non-Manhattan painting", DBNMPaintPlane), then
-  /// merges split tiles. `magic_compat` false rounds both diagonals half up
-  /// (Q-MODEL-3). `off_grid`, when given, is set to whether a 1x1 area had
-  /// to be filled because the triangle could not be split on the grid
-  /// (DBNMPaintPlane0 returning 1; the DRC flattening reports it, why 5).
+  /// merges split tiles as paint() does. `magic_compat` false rounds both
+  /// diagonals half up (Q-MODEL-3). `off_grid`, when given, is set to
+  /// whether a 1x1 area had to be filled because the triangle could not be
+  /// split on the grid (DBNMPaintPlane0 returning 1; the DRC flattening
+  /// reports it, why 5).
   [[nodiscard]] diag::Status paint_triangle(const Rect& area, Diagonal diagonal, bool right_side,
                                             const PaintRow& row, bool magic_compat = true,
-                                            bool* off_grid = nullptr);
+                                            bool* off_grid = nullptr,
+                                            PaintMerge merge = PaintMerge::split_tiles);
+
+  /// DBMergeNMTiles ("Split tile merging"): walks the tiles overlapping
+  /// `area` in Magic's area-enumeration order and merges each split tile
+  /// with the split tile of the same split type at its diagonal corner
+  /// below while the merge criteria hold, repeating on the merged tile.
+  /// Only the decomposition changes, never the type of a point; nothing is
+  /// recorded for undo beyond what record_splits() logs. `area` is clamped
+  /// to the usable plane; an area without extent merges nothing. Run after
+  /// the cell paints (above) and by mask generation's `cif unfracture`
+  /// (Q-MASK-413).
+  void merge_split_tiles(const Rect& area);
 
   /// While `log` is set, paint() and paint_triangle() append the split-tile
   /// fractures and joins they make to it (dbSplitUndo / dbJoinUndo, for the

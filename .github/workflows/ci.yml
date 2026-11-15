@@ -528,8 +528,19 @@ jobs:
         run: |
           # Writes golden-out/<AREA>/<case-id>/<output>; exits non-zero when a case fails.
           # The summary stays outside golden-out/: it holds host paths, which differ per leg.
+          # The three standard-cell MASK-RT round trips (m5-mask-gds-cif design D19) read the *-gds-sc sets
+          # restored above, so a missing input fails instead of skipping (--require-inputs). Until task 13.7
+          # adds the cases, an absent case is only reported (replay.py rejects an unknown ID).
+          require=()
+          for id in MASK-RT-sky130_fd_sc_hd MASK-RT-gf180mcu_fd_sc_mcu7t5v0 MASK-RT-sg13g2_stdcell; do
+            if [ -d "tests/golden/MASK/cases/$id" ]; then
+              require+=(--require-inputs "$id")
+            else
+              echo "::notice::$id is not authored yet (m5-mask-gds-cif task 13.7)"
+            fi
+          done
           python3 tools/golden/replay.py --hefesto-cli "build/${{ matrix.preset }}/src/cli/hefesto-cli" \
-            --json golden-summary.json --output-dir golden-out
+            --json golden-summary.json --output-dir golden-out ${require[@]+"${require[@]}"}
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -18,8 +18,10 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/sink.hpp"
@@ -35,6 +37,10 @@ inline constexpr std::string_view kLimitReached = "CIF-READ-003";   // "Error/Wa
 inline constexpr std::string_view kWireWarning = "CIF-READ-004";    // wire reversal or duplicate point
 inline constexpr std::string_view kWireMitre = "CIF-READ-005";      // wire mitre limit exceeded
 inline constexpr std::string_view kSymbolLimit = "CIF-READ-006";    // resource cap on symbols
+inline constexpr std::string_view kNotUndoable = "CIF-READ-007";    // "CIF reading is not undoable"
+inline constexpr std::string_view kNoStyle = "CIF-READ-008";        // no cifinput style
+inline constexpr std::string_view kNoFile = "CIF-READ-009";         // the file cannot be opened
+inline constexpr std::string_view kTooLarge = "CIF-READ-010";       // the file exceeds max_file_bytes
 }  // namespace read_codes
 
 class ReadMessages {
@@ -49,6 +55,10 @@ class ReadMessages {
   void error(std::int64_t line, std::string_view text);
   /// CIFReadWarning: counts and prints `text`.
   void warning(std::int64_t line, std::string_view text);
+  /// The parser's current line (cifLineNumber), for messages raised behind
+  /// it by the read engine; empty when no parse is running (line 0).
+  void set_line_source(std::function<std::int64_t()> source) { line_source_ = std::move(source); }
+  [[nodiscard]] std::int64_t current_line() const { return line_source_ ? line_source_() : 0; }
   /// Magic's TxError outside the counters (the wire messages): always
   /// printed on the console.
   void console(std::string_view code, std::string text);
@@ -70,6 +80,7 @@ class ReadMessages {
   diag::DiagnosticSink* redirect_;
   std::int64_t errors_ = 0;
   std::int64_t warnings_ = 0;
+  std::function<std::int64_t()> line_source_;
 };
 
 }  // namespace hefesto::cif

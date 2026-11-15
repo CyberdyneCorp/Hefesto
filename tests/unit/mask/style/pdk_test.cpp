@@ -11,11 +11,17 @@
 // holds, read with a probe into tests/data/drc/rules/magic_cif/ (m3-drc
 // task 4.1, re-read on the M4 pins). The cases skip when the PDK data set
 // is not installed (scripts/fetch_pdk.py).
+//
+// The layer count of each style (cs_nLayers: every `layer`, `templayer` and
+// `labellayer` line of the style's variant) is written from the pinned
+// *-cifout.tech files: no Magic capture of per-style layer counts exists
+// yet (a probe in golden-capture.yml, tasks.md 3.7 open item).
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -79,7 +85,10 @@ void check_scale(const mask::OutputStyle& style, const MagicScale& magic) {
   CHECK(style.scale == mask::StyleScale{magic.scale, magic.expander, magic.reducer});
 }
 
-void compare_pdk(const fs::path& file, const std::string& reference) {
+/// cs_nLayers of each style, counted from the pinned *-cifout.tech files.
+using LayerCounts = std::map<std::string, std::size_t>;
+
+void compare_pdk(const fs::path& file, const std::string& reference, const LayerCounts& layer_counts) {
   hefesto::platform::LocalFileSystem files;
   hefesto::diag::CollectingSink load_sink;
   auto loaded = tech::load_technology(files, file.string(), tech::LoadOptions{}, load_sink);
@@ -107,7 +116,8 @@ void compare_pdk(const fs::path& file, const std::string& reference) {
                                  << ": " << d.text);
       }
       check_scale(*set.current_style(), m);
-      CHECK_FALSE(set.current_style()->layers.empty());
+      REQUIRE(layer_counts.contains(m.name));
+      CHECK(set.current_style()->layers.size() == layer_counts.at(m.name));
       CHECK(set.current_style()->halo() > 0);
     }
   }
@@ -125,7 +135,13 @@ TEST_CASE("the sky130A cifoutput section loads as in Magic",
   if (!file) {
     SKIP("sky130A.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "sky130A-plain");
+  compare_pdk(*file, "sky130A-plain",
+              LayerCounts{{"gdsii()", 117},
+                          {"gdsii(origfill)", 117},
+                          {"drc", 47},
+                          {"density", 8},
+                          {"wafflefill()", 72},
+                          {"wafflefill(tiled)", 72}});
 }
 
 TEST_CASE("the gf180mcuD cifoutput section loads as in Magic",
@@ -134,7 +150,7 @@ TEST_CASE("the gf180mcuD cifoutput section loads as in Magic",
   if (!file) {
     SKIP("gf180mcuD.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "gf180mcuD-plain");
+  compare_pdk(*file, "gf180mcuD-plain", LayerCounts{{"gdsii", 97}, {"metfill", 17}, {"drc", 25}});
 }
 
 TEST_CASE("the ihp-sg13g2 cifoutput section loads as in Magic",
@@ -143,5 +159,6 @@ TEST_CASE("the ihp-sg13g2 cifoutput section loads as in Magic",
   if (!file) {
     SKIP("ihp-sg13g2.tech not in .cache/pdks");
   }
-  compare_pdk(*file, "ihp-sg13g2-plain");
+  compare_pdk(*file, "ihp-sg13g2-plain",
+              LayerCounts{{"gdsii", 148}, {"drc", 62}, {"density", 9}, {"patternfill()", 70}, {"patternfill(tiled)", 70}});
 }

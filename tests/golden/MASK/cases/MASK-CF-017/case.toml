@@ -14,7 +14,7 @@ area = "MASK"
 capability = "cif-format-io"
 requirements = ["CIF output labels", "cif output-format toggles"]
 tool = "magic"
-description = "Labels with and without an output label layer, a labellayer style and cif arealabels yes."
+description = "Labels with and without an output label layer (a layer with labels) and cif arealabels yes; labellayer is MASK-CF-028."
 
 [reference]
 script = "input/commands.tcl"

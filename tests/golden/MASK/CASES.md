@@ -126,7 +126,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-CF-014 | cif-format-io | `cif write` of scmos inverter | full file text (header lines masked) | CIF output header |
 | MASK-CF-015 | cif-format-io | 3-level hierarchy (top→a,b; a→c), `cif write` | DS numbering and order | CIF output symbol numbering and order |
 | MASK-CF-016 | cif-format-io | cell with rects and four triangle orientations, R≠1 style, `(UNNAMED)` cell | DS/9/L/B/P lines | CIF output symbol definition format |
-| MASK-CF-017 | cif-format-io | labels with/without output label layer; style with labellayer; `cif arealabels yes` | 94/95 lines | CIF output labels; cif output-format toggles |
+| MASK-CF-017 | cif-format-io | labels with/without output label layer (`labels` statement; labellayer is MASK-CF-028); `cif arealabels yes` | 94/95 lines | CIF output labels; cif output-format toggles |
 | MASK-CF-018 | cif-format-io | instances in all 8 orientations; 1x3 and 2x2 arrays with ids; `cif idcell no` | C/91 lines | CIF output calls and arrays |
 | MASK-CF-019 | cif-format-io | `cif flat` of 2-level hierarchy; GDS-only style (reducer 0) with `cif write` | file text, error | CIF output preconditions and flat output |
 | MASK-CF-020 | cif-format-io | `cif` with no args; `cif xyz`; `cif list istyle` | file name, help, result | cif command dispatch; cif style options |
@@ -137,6 +137,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-CF-025 | cif-format-io | `cif drccheck no` then read | DRC pending state | cif drccheck option |
 | MASK-CF-026 | cif-format-io | `cif polygon subcells yes` then read CIF with polygons; `cif unfracture yes` then write | no change on read; merged triangles on write | cif polygon and unfracture options |
 | MASK-CF-027 | cif-format-io | `cif see CMF`, `cif paint CMF m1 newcell`, `cif coverage CMF box`, `cif list coverage`, `cif statistics` | feedback, painted cell, numbers | cif see, paint, coverage and statistics options |
+| MASK-CF-028 | cif-format-io | `labellayer` with `scalefactor 10`; `cif arealabels yes` | 94/95 label-layer lines (Q-MASK-338) | CIF output labels |
 | MASK-GR-001 | gds-read | Hand-built GDS with HEADER 600, LIBDIRSIZE, SRFNAME, REFLIBS, FONTS, GENERATIONS, UNITS 1e-3/1e-9, one structure; `gds read` | console messages, cell list | Library grammar and header processing |
 | MASK-GR-002 | gds-read | LIBNAME "lib/my top", structure `my_top` | which cell is loaded into window | Library grammar and header processing |
 | MASK-GR-003 | gds-read | Same layout encoded with UNITS mpd 1e-8, 1e-9, 1e-10 under a centimicron and a nanometer cifinput style | .mag output of each read; internal grid scale | Units and input scale |

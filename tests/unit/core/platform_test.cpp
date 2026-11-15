@@ -3,17 +3,20 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <random>
+#include <stdexcept>
 #include <string>
 
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/platform/session_log.hpp"
+#include "hefesto/platform/stack_thread.hpp"
 
 namespace platform = hefesto::platform;
 namespace codes = hefesto::diag::codes;
@@ -250,4 +253,25 @@ TEST_CASE("install_session_log warns and keeps going when the dir cannot be made
   REQUIRE(log.warning);
   CHECK(log.warning->code == codes::kPlatformLog);
   services.view().logger.write(hefesto::diag::Severity::info, "dropped");  // NullLogger: no crash
+}
+
+namespace {
+
+// About 1 KiB of stack per level.
+std::size_t deep_recursion(std::size_t n) {
+  std::array<char, 1024> frame{};
+  frame[n % frame.size()] = 1;
+  return n == 0 ? 0 : deep_recursion(n - 1) + static_cast<std::size_t>(frame[n % frame.size()]);
+}
+
+}  // namespace
+
+TEST_CASE("run_on_stack runs deep recursion on a thread with the requested stack",
+          "[cap:hefesto-architecture][req:Concurrency model]") {
+  // About 16 MiB of frames: far past a secondary thread's default stack.
+  std::size_t depth = 0;
+  hefesto::platform::run_on_stack(hefesto::platform::kDeepRecursionStackBytes,
+                                  [&depth] { depth = deep_recursion(16 * 1024); });
+  CHECK(depth == 16 * 1024);
+  CHECK_THROWS_AS(hefesto::platform::run_on_stack(1, [] { throw std::runtime_error("boom"); }), std::runtime_error);
 }

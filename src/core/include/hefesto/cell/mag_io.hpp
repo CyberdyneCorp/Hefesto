@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <functional>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -175,6 +176,14 @@ struct WriteOptions {
 /// lock and updates the recorded path and flags (cell-io-safety). Stamps
 /// are updated first ("Generating new stamps").
 [[nodiscard]] diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view path = {});
+
+/// DBUpdateStamps before a write: update_timestamps with each read-only
+/// (vendor GDS) cell restamped from the file its GDS_FILE names, looked up
+/// through `ctx`'s search paths without messages (CalmaVendorStamp).
+void update_save_stamps(CellIoContext& ctx, db::CellDef* only, std::int64_t now);
+/// The same for each of `cells` in order, scanning each vendor GDS file at
+/// most once for the whole list (`writeall` with cell names).
+void update_save_stamps(CellIoContext& ctx, std::span<db::CellDef* const> cells, std::int64_t now);
 
 /// Refuses names that cannot be written back (Q-CELL-41): whitespace in
 /// cell names, instance ids and paths.

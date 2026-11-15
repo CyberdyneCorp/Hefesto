@@ -15,3 +15,7 @@ HEFESTO_CIF_CODE("CIF-READ-003", warning, "The CIF read error or warning limit w
 HEFESTO_CIF_CODE("CIF-READ-004", warning, "A CIF wire path reverses direction or repeats a point; the wire is split there.")
 HEFESTO_CIF_CODE("CIF-READ-005", error, "A CIF wire junction exceeds the mitre limit; the rest of the route is dropped.")
 HEFESTO_CIF_CODE("CIF-READ-006", error, "The CIF file defines or calls more symbols than the read allows; the rest are ignored.")
+HEFESTO_CIF_CODE("CIF-READ-007", info, "`Warning: CIF reading is not undoable!  I hope that's OK.` at the start of a CIF read.")
+HEFESTO_CIF_CODE("CIF-READ-008", error, "No cifinput style is set: the CIF file is not read.")
+HEFESTO_CIF_CODE("CIF-READ-009", error, "The CIF input file cannot be found or read.")
+HEFESTO_CIF_CODE("CIF-READ-010", error, "The CIF input file is larger than a CIF read accepts (2 GiB by default); nothing is read.")
