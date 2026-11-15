@@ -124,15 +124,14 @@ struct GenerateOptions {
 
 /// "Non-manhattan merge option" (`cif unfracture`): DBMergeNMTiles on
 /// `plane`, a layer CIFGen just generated, before the next layer reads it
-/// and before clipping. `clip` is the call's cifGenClip result and `scale`
-/// the style's scale factor. With magic-compat ON the merge covers
-/// `clip.expanded`, the search area in internal units, as Magic passes it
-/// although the plane is in mask units (cif/CIFgen.c:5784-5786), so with a
-/// scale factor above 1 only part of the layer is merged; with it OFF it
-/// covers that area times the scale factor, the whole generated layer.
-/// Only the decomposition changes (db::Plane::merge_split_tiles).
-void unfracture_layer(MaskPlane& plane, const GenerationClip& clip, std::int32_t scale,
-                      const compat::CompatSettings& compat);
+/// and before clipping. `clip` is the call's cifGenClip result. With
+/// magic-compat ON the merge covers `clip.expanded`, the search area in
+/// internal units, as Magic passes it although the plane is in mask units
+/// (cif/CIFgen.c:5784-5786), so with a scale factor above 1 only part of
+/// the layer is merged; with it OFF it covers the whole plane, so every
+/// generated tile of the layer is merged (Q-MASK-415). Only the
+/// decomposition changes (db::Plane::merge_split_tiles).
+void unfracture_layer(MaskPlane& plane, const GenerationClip& clip, const compat::CompatSettings& compat);
 
 /// The halo radius generation uses, in internal units ("Halo radius"):
 /// with magic-compat ON the style's (Magic's cs_radius, kept stale by a
