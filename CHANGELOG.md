@@ -4,9 +4,22 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
-## Unreleased (M5: mask generation, GDS and CIF; in progress)
+## Unreleased (M5: mask generation, GDS and CIF)
 
 ### Added
+
+- **Read GDS and Write GDS in the desktop app.** The File menu's Read GDS
+  and Write GDS items are enabled. The native file dialogs filter
+  `*.gds *.strm *.cal`, `*.cif` and `*.mag` (the old Tk extension lists
+  matched no file). A long `gds`/`cif` read or write from the menu or the
+  console keeps the window drawing: the Interrupt card shows "Writing
+  chip.gds · N s" and "Completed N%", Interrupt stops the job without
+  leaving an output file, and lines typed meanwhile wait until it ends.
+- **GDS throughput gate.** `perf.yml` measures `gds read` of
+  `sky130_fd_sc_hd.gds` and the all-cells block write (with and without
+  `gds merge`) in callgrind instructions against Magic (`bench/gds/`), and
+  a `gds-roundtrip` job reads and writes every sky130, gf180mcu and IHP
+  library GDS (decision P-24).
 
 - **`gds write` and `cif write`.** `gds write` (and a bare `gds`) writes
   the window's root cell as GDS II, byte for byte as Magic does: structure
@@ -33,6 +46,14 @@ release notices.
 
 ### Changed
 
+- **`gds rescale` and `cif rescale` are one setting**, as Magic's
+  CIFRescaleAllow is, and a CIF read resets the once-per-read grid
+  message.
+- **Read messages match Magic.** GDS read errors give Magic's byte
+  positions, polygons with fewer than four points and non-Manhattan
+  polygons are reported (MASK-INPUT-020), labels moved onto their paint
+  print Magic's "Moving label" lines (MASK-INPUT-019), and the split tiles
+  of read polygons keep Magic's fragmentation (also after `scalegrid`).
 - **`writeall` after a GDS or CIF read.** A modified `(UNNAMED)` cell is
   no longer written to `(UNNAMED).mag`: `writeall force` reports `Can't
   write file named '(UNNAMED)'`, and a chosen write asks for a file name.
@@ -105,6 +126,9 @@ release notices.
 
 ### Fixed
 
+- **Array overlap no longer overflows.** The use index and the DRC
+  computed the array elements under an area in 32 bits; one 64-bit
+  routine now serves the use index, DRC, mask flattening and the writers.
 - **Writing a deep hierarchy is no longer exponential.** Loading the cells
   under the written cell re-descended into every use, as Magic does, so a
   cell placed twice at every level of a deep hierarchy took 2^depth steps;
@@ -156,6 +180,14 @@ release notices.
   stream early. Flatten copies of a GDS read share one budget of 2^26 tile
   paints, so a large `gds flatglob` cell in big arrays is skipped with
   GDS-READ-011 instead of repainting without bound.
+
+### Security
+
+- **Compressed GDS input is capped.** A `.gds.gz` inflates to at most 256
+  times its compressed size (at least 1 GiB); past that the read stops
+  with GDS-STREAM-006 instead of filling memory. New fuzz targets cover
+  the GDS and CIF readers and the `cifoutput`/`cifinput` sections
+  (`docs/contributing/security.md` "Layout input").
 
 ## Unreleased (M4: scripting)
 
