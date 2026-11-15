@@ -170,7 +170,7 @@ Let the triangle have bounding rectangle `A` (width `W`, height `H`), direction 
    - for `dir == 0`: `x(y) = A.xbot + round_half_up(W*(y - A.ybot)/H)`, `y(x) = A.ybot + round_half_up(H*(x - A.xbot)/W)`;
    - for `dir == 1`: `x(y) = A.xbot + floor(W*(A.ytop - y)/H)`, `y(x) = A.ybot + floor(H*(A.xtop - x)/W)` (truncation, never rounding up; see Q-MODEL-3; with `magic-compat` off, both diagonals SHALL round half-up as for `dir == 0`).
    - `r` is cut vertically at `x(r.ybot)`/`x(r.ytop)` and horizontally at `y(r.xbot)`/`y(r.xtop)` when those fall strictly inside `r`; pieces wholly on the operand's side are painted as rectangles, pieces wholly on the other side are skipped, and pieces still straddling the diagonal are processed recursively as triangles with bounding rectangle equal to the piece.
-   - The recursion SHALL NOT be bounded by the call stack: pieces are processed in the order above however deep they nest. One triangle paint processes at most 4096 straddling pieces this way; any further straddling piece is painted as a rectangle and the paint is reported off grid, as for the 1-unit case of step 2 (Q-MODEL-34). Magic has no limit, and over existing opposite-diagonal triangles its recursion depth grows with the triangle's size in internal units until the stack overflows.
+   - The recursion SHALL NOT be bounded by the call stack: pieces are processed in the order above however deep they nest. One triangle paint processes at most 512 straddling pieces this way; any further straddling piece is painted as a rectangle and the paint is reported off grid, as for the 1-unit case of step 2 (Q-MODEL-34, Q-MODEL-35). Magic has no limit, and over existing opposite-diagonal triangles its recursion depth grows with the triangle's size in internal units until the stack overflows. Each nested piece works next to the tiles the pieces above it left, so the work of one paint grows with the square of the pieces it processes; the limit keeps that bounded.
 4. After painting, split-tile merging is applied over `A` expanded by 1 (see requirement "Split tile merging").
 
 Consequently, when the diagonal crosses existing horizontal tile boundaries at non-integer x, the resulting geometry is an approximation built from triangles whose vertices are the rounded crossing points.
@@ -191,7 +191,13 @@ Consequently, when the diagonal crosses existing horizontal tile boundaries at n
 - **GIVEN** the right sides of `/` triangles on `(0,0)-(30k,10k)` painted with types A and B in turn, and the right side of a `\` triangle on `(0,0)-(30k,17k)` painted with A, each type painted only over space, with `k = 4444441`
 - **WHEN** the right side of the `\` triangle is painted with B over space
 - **THEN** the paint SHALL complete without exhausting the call stack and SHALL be reported off grid
-- **AND** with `k = 1000` the same paints SHALL stay below the 4096-piece limit and SHALL NOT be reported off grid
+- **AND** with `k = 200` the same paints SHALL stay below the 512-piece limit and SHALL NOT be reported off grid
+
+#### Scenario: Repainting a huge triangle stays within the work bound
+- **GIVEN** the paints of the previous scenario with `k = 4444441`
+- **WHEN** the right side of the `\` triangle is painted four more times, alternately with A and B over space and the other type
+- **THEN** no one of these paints SHALL fracture or join more than 1024 split tiles, and the plane SHALL hold fewer than 4096 tiles afterwards (Q-MODEL-35)
+- **AND** a `.mag` file with `magscale 8888882 2` that paints such triangles for several types (fuzz_mag_reader seed `regression-0ecdaeced894ac48779e9e0fac70fc254120e458`) SHALL be read in well under a second, where the 4096-piece limit took about 10 s in a debug build
 
 #### Scenario: Rounding of a non-integer crossing (verify against Magic)
 - **GIVEN** a `/` triangle with bounding rectangle `(0,0)-(10,3)` crossing existing tile boundaries at `y = 1` and `y = 2`

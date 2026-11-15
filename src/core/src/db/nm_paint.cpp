@@ -116,13 +116,19 @@ class NMMerger {
  public:
   NMMerger(TilePlane& plane, const Rect& area) : plane_(plane), area_(area) {}
 
+  // Magic leaves the plane's hint on the tile its walk ends at. Beside a
+  // staircase that is often a large tile (the merge area is one unit wider
+  // than the paint), from which the next point location walks the whole
+  // staircase; the contact images of a paint are repainted one strip at a
+  // time, so their repainting became quadratic (Q-MODEL-35). The hint stays
+  // where the paint left it instead: it only speeds up point location and
+  // never changes a result.
   void run() {
     Tile* tile = area_first(plane_, area_);
     while (tile != nullptr) {
       const Coord clip_top = std::min(top(tile), area_.y1);
       while (is_split(tile->body) && try_merge(tile)) {
       }
-      plane_.set_hint(tile);
       tile = area_next(tile, area_, clip_top);
     }
   }
@@ -405,11 +411,19 @@ struct PaintFrame {
   }
 };
 
-// The most sub-areas one triangle paint descends into (Q-MODEL-34). Over
-// opposite-diagonal triangles the count grows linearly with the triangle's
-// size in internal units and the work with its square; ordinary triangles
-// stay far below it.
-constexpr std::size_t kMaxSubAreas = 4096;
+// The most sub-areas one triangle paint descends into (Q-MODEL-34,
+// Q-MODEL-35). Over opposite-diagonal triangles the sub-areas nest in a
+// chain that grows linearly with the triangle's size in internal units.
+// Each level is only slightly smaller than its parent and fractures,
+// enumerates and paints next to the tiles every level above it left, all
+// bordering the same large tiles, so a chain of n sub-areas costs about n^2
+// tile steps and leaves about 4n tiles for whatever follows the paint. The
+// limit keeps n^2 small, as one .mag file can repeat such a paint for every
+// type and plane: at 4096 the fuzz_mag_reader seed regression-0ecdaece took
+// 10 s to read in a debug build, at 512 it takes 0.3 s. Ordinary triangles
+// descend into a handful of sub-areas (at most 16 over the unit and golden
+// suites).
+constexpr std::size_t kMaxSubAreas = 512;
 
 // DBNMPaintPlane0. Magic recurses into every rectangle the diagonal still
 // crosses; over opposite-diagonal triangles that depth grows with the

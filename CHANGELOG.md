@@ -61,6 +61,16 @@ release notices.
 
 ### Fixed
 
+- **Reading a huge triangle no longer takes seconds.** Each piece a
+  triangle paint descends into over crossed triangles works next to the
+  tiles the pieces before it left, so one paint cost the square of the
+  4096-piece limit, and a `.mag` file with a large `magscale` that paints
+  such triangles on several layers took about 10 s to read. The limit is
+  now 512 pieces, and the merge after a paint no longer moves the plane's
+  search hint onto a large tile far from the next contact image to
+  repaint; the file reads in 0.3 s. Ordinary triangles never come near
+  the limit and paint exactly as before (Q-MODEL-35, a fixed deviation
+  from Magic).
 - **Painting a huge triangle no longer overflows the stack.** Painting a
   triangle over existing triangles on the opposite diagonal recursed once
   per piece left on the diagonal, as Magic does, and that depth grows with
