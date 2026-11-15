@@ -270,6 +270,33 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Recommendation: fix in both modes (X-2 tier 1: undefined behaviour with no Magic output to match). Landed in the round 2 review ("Reject mask-operator distances past the usable plane").
 - Resolution: fix — in both modes a `grow`/`shrink` distance, a `bridge` distance or width, or a `bloat-all` clip distance above 1073741818 (db::kPlaneMax) rejects the statement, a `bloat-*` pair distance beyond ±1073741818 is clamped with a message, and rescaling clamps to the same bound; a fixed deviation from Magic. No golden case uses such a distance, so `tests/golden/deviations.toml` has no entry. Approved 2026-11-14.
 
+### Q-MASK-31: input scale normalisation can truncate the scale factor
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: CIFTechInputScale folds the multiplier with every nonzero operator distance into `lmult = gcd(M, distances)` and then takes `lmult = min(lmult, gcd(S, M))`, not the greatest common divisor of the two. The minimum of two divisors of M need not divide S or every distance, so `crs_scaleFactor /= lmult` and `co_distance /= lmult` truncate. Example: `scalefactor 6` with M = 12 and a distance of 4 gives gcd(12, 4) = 4, gcd(6, 12) = 6, min = 4, and S becomes 6 / 4 = 1. The cifoutput twin is Q-MASK-29.
+- Evidence: cif/CIFrdtech.c:1468-1479 (lmult folded with M and every distance), cif/CIFrdtech.c:1486-1487 (`if (lgcf < lmult) lmult = lgcf`), cif/CIFrdtech.c:1501-1511 (the divisions), cif/CIFrdtech.c:1099 (CIFReadTechFinal's CIFTechInputScale(1, 1, TRUE)), cif/CIFrdtech.c:1139, utils/tech.c:822, commands/CmdRS.c:321, database/DBio.c:798 (later rescales)
+- Options: replicate | fix (divide by gcd(lmult, gcd(S, M))) | replicate with a warning when magic-compat is OFF
+- Recommendation: replicate in both modes, and with magic-compat OFF warn that the style's scale was rounded, as Q-MASK-29 decided for cifoutput. A fix changes S, M and every distance of any style that reaches the case, so reads could not match Magic. None of the reference PDK input styles truncates.
+- Resolution: replicate — in both modes the input scale normalisation reduces by min(gcd(M, distances), gcd(S, M)) as Magic does; with `magic-compat` OFF Hefesto also issues a native warning (MASK-INPUT-009) that a value was truncated, at load and after every rescale. Approved 2026-11-14.
+
+### Q-MASK-32: cifinput statement before the first style line
+- Kind: doc-mismatch
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: CIFReadTechLine returns FALSE for any statement while `cifCurReadStyle` is NULL (before the first `style` line), so TechLoad marks the `cifinput` section bad, prints "The following sections of <file> contained errors:" and the load fails. The capability text said such statements are ignored. The cifoutput twin is Q-MASK-17, which fails the load in both modes.
+- Evidence: cif/CIFrdtech.c:621 (`if (cifCurReadStyle == NULL) return FALSE;`), utils/tech.c:750-756 (retval and badMask), utils/tech.c:765-770 (the report)
+- Options: replicate (fail the load in both modes, as Q-MASK-17) | follow the capability (ignore the statement) | compat (ON fails the load as Magic; OFF ignores the statement with a warning)
+- Recommendation: compat. With magic-compat ON the tech load fails as in Magic; with it OFF the statement is ignored with a warning, so a tech file with a stray line before the first style still loads.
+- Resolution: compat — with `magic-compat` ON a `cifinput` statement before the first `style` line fails the section and the tech load (TECH-SECTION-007 lists `cifinput`, TECH-LOAD-001, the previous technology is kept), as Magic's CIFReadTechLine returning FALSE does; with it OFF the statement is ignored with a native warning (MASK-INPUT-018), reported once per load. Unlike Q-MASK-17 (cifoutput, both modes fail), OFF does not fail. Approved 2026-11-14.
+
+### Q-MASK-33: array replication windows of later layers
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-14, approved 2026-11-14)
+- Magic behavior: CIFGenArrays copies each layer's low-phase residual from the rectangles A (left edge) and B (bottom edge), then, for a 2-D array whose A and B are both used, assigns the core windows A'' and B'' to the same variables A and B. The loop over layers does not restore them, so every layer after the first copies its left-edge and bottom-edge residual from the core windows instead of A and B. This happens even when the first layer is not hierarchical (its total plane is generated empty). B is overwritten only when 2r < ysep.
+- Evidence: cif/CIFhier.c:1521 (the loop over layers), cif/CIFhier.c:1530-1540 (left edge from A), cif/CIFhier.c:1542-1554 (bottom edge from B), cif/CIFhier.c:1570-1583 (A becomes A''), cif/CIFhier.c:1593-1611 (B becomes B'')
+- Options: replicate | fix (copy every layer from A and B) | compat (ON replicates; OFF copies every layer from the windows "Array correction replication" names)
+- Recommendation: compat. The reuse is a variable-reuse slip, not a design choice; with it, the second of two identical layers can differ from the first and from the flat result. ON keeps Magic's output; OFF copies every layer from A and B.
+- Resolution: compat — with `magic-compat` ON the low-phase copies of every layer after the first use the core windows A'' and B'' left by the previous layer, as Magic does; with it OFF every layer is copied from A, B, A'' and B'' as "Array correction replication" names them, so identical layers give identical, flat-equivalent results (`tests/unit/mask/gen/arrays_test.cpp`). Approved 2026-11-14.
+
 ### Q-MASK-400: Phantom interaction area around the origin
 - Kind: bug
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
@@ -343,7 +370,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Evidence: cif/CIFhier.c:1446-1449
 - Options: replicate (not acceptable) | fix (treat the axis as having nx=1, or reject the array)
 - Recommendation: fix. Treat the axis as one element for the correction and warn.
-- Resolution: fix — an axis with separation 0 is treated as one element for the correction, with a warning, instead of dividing by zero (X-2 tier 1, 2026-11-07).
+- Resolution: fix — an axis with separation 0 is treated as one element for the correction, with a warning, instead of dividing by zero (X-2 tier 1, 2026-11-07). Amended 2026-11-14 (round 3 review): an array use whose pitch is 0 along an axis it repeats on gets no array correction at all, in both `magic-compat` settings and without a warning, where Magic divides by zero (crash class, X-2 tier 1); `tests/unit/mask/gen/arrays_test.cpp` is the regression test. Approved 2026-11-14.
 
 ### Q-MASK-408: Array replication copies whole residual tiles beyond the window
 - Kind: quirk

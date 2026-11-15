@@ -93,7 +93,7 @@ The `labels`, `copyup` and operator statements apply to the most recent `layer`/
 
 ### Requirement: Input style declaration and default style
 
-Hefesto SHALL maintain an ordered list of input style names and SHALL select as default the first style declared in the `cifinput` section. For `style NAME`, the name list receives `NAME`. For `style NAME variants V1,V2,...`, the list receives `NAME+V1`, `NAME+V2`, ... (string concatenation, in order), and the first of these is the style that `NAME` denotes for the purpose of defaulting. Statements that precede the first `style` statement in the section SHALL be ignored.
+Hefesto SHALL maintain an ordered list of input style names and SHALL select as default the first style declared in the `cifinput` section. For `style NAME`, the name list receives `NAME`. For `style NAME variants V1,V2,...`, the list receives `NAME+V1`, `NAME+V2`, ... (string concatenation, in order), and the first of these is the style that `NAME` denotes for the purpose of defaulting. A statement that precedes the first `style` statement in the section depends on the `magic-compat` setting (Q-MASK-32, resolution: compat): with it ON (the default) the section's line handler fails, as Magic's CIFReadTechLine returns FALSE, so the technology load reports `cifinput` among the sections that contained errors and fails, keeping the previous technology (the same outcome as Q-MASK-17 for `cifoutput`); with it OFF the statement SHALL be ignored with a Hefesto-only warning (`MASK-INPUT-018`), reported once per load, and the load continues.
 
 Compatibility: exact
 
@@ -101,7 +101,13 @@ Whether a `style` statement refers to an already-listed style depends on the `ma
 
 When a specific style `X` is being loaded, a statement belongs to `X` iff it follows a `style` statement that names `X` exactly (for the 2-field form), or whose base name is a prefix of `X` and one of whose listed variants equals the remainder of `X` after the base name (4-field form). Loading stops at the next `style` statement after the matching one. See Q-MASK-328 for the documented-but-unimplemented "default" name.
 
-(Magic ref: cif/CIFrdtech.c:494-625)
+(Magic ref: cif/CIFrdtech.c:494-625, cif/CIFrdtech.c:621, utils/tech.c:750-770)
+
+#### Scenario: Statement before the first style
+- **GIVEN** a `cifinput` section whose first line is `scalefactor 10`, followed by `style a`
+- **WHEN** the technology file is loaded with `magic-compat` ON
+- **THEN** "The following sections of <file> contained errors:" lists `cifinput`, the load fails and the previous technology stays current
+- **AND** with `magic-compat` OFF the load succeeds, the `scalefactor 10` line is ignored with one warning, and `a` is the current input style
 
 #### Scenario: Variant styles expand to concatenated names
 - **GIVEN** the statement `style scmos0.18 variants (p),(c),(pc),()`
@@ -201,11 +207,11 @@ Hefesto SHALL, after a style has been loaded, normalize its scale with the proce
 `rescale(n, d, reduceFully)`:
 
 1. `S := S*n`; `M := M*d`; every nonzero operator distance `D := D*d`.
-2. `g := gcd(M, all nonzero |D|, S)` (with `gcd` over an empty distance set equal to `gcd(M, S)`).
+2. `g := min(gcd(M, all nonzero |D|), gcd(S, M))` (with `gcd` over an empty distance set equal to `M`). This is the smaller of the two divisors of `M`, not their greatest common divisor, so `g` need not divide `S` or every distance, and step 4 then truncates (Q-MASK-31).
 3. If not `reduceFully`: `g := d` if `g mod d == 0`, otherwise `g := 1`.
 4. If `g > 1`: `S := S/g`, `M := M/g`, every nonzero `D := D/g`.
 
-The normalization never changes the physical meaning of any value (`S/M` centimicrons per IU; `D/M` centimicrons per distance).
+The normalization changes the physical meaning of no value, except when step 4 truncates. Hefesto copies the truncating arithmetic in both `magic-compat` settings; with `magic-compat` OFF it also issues a Hefesto-only warning (`MASK-INPUT-009`) when a division truncated `S` or a distance, at load and after every rescale (Q-MASK-31, resolution: replicate with an OFF warning; the cifoutput twin is Q-MASK-29). None of the reference PDK input styles truncates.
 
 Compatibility: exact
 
@@ -214,14 +220,20 @@ Compatibility: exact
 #### Scenario: Common factors are divided out
 - **GIVEN** `scalefactor 10 nanometers` and a single rule containing `grow 5`
 - **WHEN** the style is normalized with `rescale(1, 1, true)`
-- **THEN** `g = gcd(10, 5, 10) = 5`
+- **THEN** `g = min(gcd(10, 5), gcd(10, 10)) = 5`
 - **AND** the style ends with `S = 2`, `M = 2`, `grow 1`
 
 #### Scenario: No reduction possible
 - **GIVEN** `scalefactor 100` and `grow 25`
 - **WHEN** the style is normalized
-- **THEN** `g = gcd(1, 25, 100) = 1` and the style is unchanged
+- **THEN** `g = min(gcd(1, 25), gcd(100, 1)) = 1` and the style is unchanged
 
+#### Scenario: Scale factor truncated by the reduction
+- **GIVEN** a style with `S = 6`, `M = 12` and a single distance 4 (values a rescale can produce)
+- **WHEN** it is normalized with `rescale(1, 1, true)`
+- **THEN** `g = min(gcd(12, 4), gcd(6, 12)) = min(4, 6) = 4`
+- **AND** the style ends with `S = 6/4 = 1` (truncated), `M = 3` and the distance 1, in both `magic-compat` settings
+- **AND** with `magic-compat` OFF a warning reports the truncation
 ### Requirement: Grid limit
 
 Hefesto SHALL support `gridlimit G` (any keyword starting with `grid`; `G` an integer, negative values reported and replaced by 0, non-integer values an error). `G = 0` means no limit. When `G > 0`, a proposed subdivision of the internal grid by an integer factor `den` is permitted only if `q = S*10 / (G*M*den)` (integer division) is nonzero AND `(S*10) mod (G*M*den) == 0`; that is, only if the subdivided internal unit is a positive integer multiple of `G` nanometers. When the subdivision is not permitted, the coordinate being converted SHALL be snapped instead (see "Conversion of read units to internal units"). The doc comment calls `G` "CIF units"; the arithmetic makes it nanometers (see Q-MASK-305).

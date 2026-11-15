@@ -131,11 +131,23 @@ TEST_CASE("variant styles expand to concatenated names",
   CHECK(r.style(4).scale_factor == 10);
 }
 
-TEST_CASE("statements before the first style are ignored",
+// Q-MASK-32: Magic's CIFReadTechLine returns FALSE before the first style,
+// which fails the section (and the tech load) with magic-compat ON; OFF
+// ignores the statement with one warning.
+TEST_CASE("a statement before the first style fails the section with magic-compat ON only",
           "[cap:mask-input-styles][req:Input style declaration and default style]") {
-  const auto r = read("scalefactor 7\nstyle a\nscalefactor 100");
-  CHECK(r.set.section_failed);  // Magic's CIFReadTechLine returns FALSE here
-  CHECK(r.style().scale_factor == 100);
+  for (const bool compat : {true, false}) {
+    CAPTURE(compat);
+    const auto r = read("scalefactor 7\nstyle a\nscalefactor 100\nstyle b\nscalefactor 10", compat);
+    CHECK(r.set.section_failed == compat);
+    CHECK(r.has_code("MASK-INPUT-018") == !compat);
+    std::size_t warnings = 0;
+    for (const auto& d : r.messages) {
+      warnings += d.code == "MASK-INPUT-018" ? 1U : 0U;
+    }
+    CHECK(warnings == (compat ? 0U : 1U));  // reported once, not per style pass
+    CHECK(r.style().scale_factor == 100);
+  }
 }
 
 TEST_CASE("a prefix-matching style name is merged with magic-compat ON (Q-MASK-302)",

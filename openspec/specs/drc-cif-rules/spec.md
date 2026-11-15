@@ -55,11 +55,17 @@ Compatibility: exact
 
 Per tile T:
 - AREA and MAXWIDTH rules are evaluated on every tile (no edge requirement).
-- Otherwise the left edge (if LEFT(T) ≥ K.xbot·σ, skipped for the right half of a split tile) and the bottom edge (if BOTTOM(T) ≥ K.ybot·σ, skipped for split halves whose bottom is the diagonal) are processed as in `drc-rule-semantics` "Standard edge rule check region" with these differences: segments are skipped only when both sides have the same type (no per-pair rule lookup), there is no edge-end continuation test on any edge, no OUTSIDE, TRIGGER, RUNLENGTH, MANHATTAN or DERIVED handling, and the Euclidean corner exemption uses the plain test `sqx² + sqy² ≥ s²` with the global Euclidean setting.
+- Otherwise the left edge (if LEFT(T) ≥ K.xbot·σ, skipped for the right half of a split tile) and the bottom edge (if BOTTOM(T) ≥ K.ybot·σ, skipped for split halves whose bottom is the diagonal) are processed as in `drc-rule-semantics` "Standard edge rule check region" with these differences: segments are skipped only when both sides have the same type (no per-pair rule lookup), there is no edge-end continuation test on any edge, no OUTSIDE, TRIGGER, RUNLENGTH, MANHATTAN or DERIVED handling, and the Euclidean corner exemption uses the plain test `sqx² + sqy² ≥ s²` with the global Euclidean setting. The radius s is the rule's corner distance c, in mask units, and depends on the `magic-compat` setting (Q-DRC-27, resolution: compat): with it ON (the default) s = c mod 4096, as in Magic, which packs it into the 12 low bits of `dCD_radial`; with it OFF s = c.
 - The corner samples are the same unit squares as in the layout rules (top end: tile containing (X−1, ytop) bottom type for FWD; bottom end: tile containing (X, ybot−1) top type for REVERSE; horizontal FWD: (xl−1, Y−1) and (xr, Y−1); horizontal REVERSE: (xr, Y) and (xl−1, Y)).
 - Candidate tiles: tiles of the check layer overlapping E whose type is not in OK.
 
-(Magic ref: drc/DRCcif.c:515-600, drc/DRCcif.c:606-1030)
+(Magic ref: drc/DRCcif.c:515-600, drc/DRCcif.c:606-1030, drc/DRCcif.c:806-809, drc/DRCcif.c:1080)
+
+#### Scenario: Corner radius of 4096 mask units
+- **GIVEN** σ = 10, `cifspacing MET1 MET1 4096 touching_ok`, `drc euclidean on`, and generated MET1 squares [0,100]×[0,100] and [3100,3200]×[3100,3200] (mask units), 3000 × 3000 apart diagonally
+- **WHEN** checked
+- **THEN** with `magic-compat` ON s = 4096 mod 4096 = 0, the candidate is not exempt and an error is reported
+- **AND** with `magic-compat` OFF s = 4096 and the candidate, at distance √(2·3000²) ≈ 4243 ≥ 4096, is exempt and no error is reported
 
 #### Scenario: Mask width violation
 - **GIVEN** σ = 10, `cifwidth MET1 140 "m1 < 1.4"`, and a generated MET1 rectangle [0,100]×[0,1000] (mask units)

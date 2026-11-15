@@ -55,6 +55,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
 | Q-DRC-13 | Mask error coordinate mapping truncates toward zero | **compat** | ON: truncation, widening, and dropping collapsed area/maxwidth errors; OFF: outward rounding; diagnostic counts drops in both |
+| Q-DRC-27 | mask-layer Euclidean corner radius limited to 4095 mask units (2026-11-14) | **compat** | ON: corner distance modulo 4096 (dCD_radial packing); OFF: the full corner distance |
 
 ### GDS read
 
@@ -117,6 +118,8 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
+| Q-MASK-31 | input scale normalisation can truncate the scale factor (2026-11-14) | **replicate** | reduce by min(gcd(M, distances), gcd(S, M)) in both modes; OFF also warns that a value was truncated (MASK-INPUT-009) |
+| Q-MASK-32 | cifinput statement before the first style line (2026-11-14) | **compat** | ON: the section and the tech load fail, as CIFReadTechLine returning FALSE; OFF: statement ignored with a warning (MASK-INPUT-018) |
 | Q-MASK-300 | cifinput "nanometers"/"angstroms" overwrites the decimal multiplier | **compat** | ON: unit keyword sets M; OFF: multiplies M, as on output; warn for decimal + unit |
 | Q-MASK-301 | labels kind "sticky" identical to "text" | **replicate** | `sticky` is the same as `text` |
 | Q-MASK-302 | style statement prefix-matches existing style names | **compat** | ON: prefix match merges styles; OFF: exact match; warn in both |
@@ -149,6 +152,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
+| Q-MASK-33 | array replication windows of later layers (2026-11-14) | **compat** | ON: layers after the first copy their low-phase edges from the core windows Magic left in A and B; OFF: every layer from the named windows |
 | Q-MASK-400 | Phantom interaction area around the origin | **compat** | ON: the (0,0) seed adds a phantom area; OFF: skip it; shared with hierarchical DRC |
 | Q-MASK-401 | Vendor-cell exclusion during flattening never applies | **replicate** | vendor paint always copied; `see-no-vendor` parsed and stored, no effect |
 | Q-MASK-402 | Hierarchy-stopping operators leave a partial layer result | **compat** | ON: the partial plane joins the residual; OFF: a stopped layer has no residual; warn in both |
@@ -156,6 +160,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-404 | Halo radius ignores several operators | **compat** | ON: Magic's radius; OFF: also count bloat-max/min and bridge widths |
 | Q-MASK-405 | Non-distributive operators do not force hierarchical processing | **compat** | ON: Magic's force set; OFF: grow-min, not-square, orthogonal, maxrect also force |
 | Q-MASK-406 | Array element filter with reversed index ranges | **compat** | ON: signed index filter; OFF: absolute distance from the corner |
+| Q-MASK-407 | Zero-separation arrays (amended 2026-11-14) | **fix** | an array use with pitch 0 along a repeated axis gets no array correction, in both modes, no warning (Magic divides by zero) |
 | Q-MASK-409 | Grow-slivers details | **compat** | ON: Magic's sliver geometry; OFF: rescaled min-width, full growth, both axes; no stdout prints |
 | Q-MASK-410 | CIFhier property ignored by CIF writer | **compat** | ON: CIF writer ignores CIFhier; OFF: honours it like GDS |
 | Q-MASK-411 | Flat CIF output loses labels and mask hints, names cell __CIF2__ | **compat** | ON: flat CIF loses labels and hints; OFF: copies them, root name |
@@ -167,12 +172,12 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 74 | Q-DRC-13, 1, 2, 3, 5, 6, 7, 18, 21, 27, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
-| replicate | 17 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 13 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318, 412 |
+| compat | 77 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413 |
+| replicate | 18 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 31, 122, 203, 205, 217, 301, 316, 333, 401 |
+| fix | 14 | 10, 30, 126, 128, 201, 209, 212, 219, 222, 303, 314, 318, 407, 412 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 108: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, and Q-MASK-412 (completed after the round 2 captures), all of 2026-11-14.
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 113: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), and Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, all of 2026-11-14.
 
 ## User decisions of 2026-11-14 (round 2 review)
 
@@ -183,6 +188,17 @@ Taken on the round 2 review of PR #53; each entry's `Resolution:` line is in `op
 3. **Q-MASK-8** (amended): the expander ≠ 10 warning (MASK-STYLE-004, native only) fires only for styles that use bloat-all, after the load and after every rescale. `cif ostyle density` (sky130A, ihp-sg13g2) and `cif ostyle metfill` (gf180mcuD) no longer warn (`tests/unit/mask/style/pdk_test.cpp`, both modes).
 4. **Q-MASK-412** (completed, **fix**): the entry had no Status or Resolution line, and MASK-HG-020 cited it. The round 2 captures settled the open point: Magic crashes (SIGSEGV in CmdFindNetProc, NULL CIFDummyUse) on the first `net` generation of a fresh session, and otherwise searches the previously processed cell. In both `magic-compat` settings the `net` operator searches the cell being generated; `mask-output-operators` "net" states it. MASK-HG-020's `b.gds` gets a fix deviation in `tests/golden/deviations.toml` once GEN replays the case (it is still `deferred = "M5"`); MASK-OP-022 and MASK-OS-012 need none.
 5. **CIF read spec gaps of task 11.1** (no new entries): `cif-format-io` now states the 95 rescale cap at 2^30 (fix, both modes), the Q-MASK-315 OFF outward rounding when the read units cannot be subdivided, the Q-MASK-317 and Q-MASK-309 OFF warning texts, the "used but not defined" report in Magic's cell-table order (replicate, both modes) and the translation before a mid-command subdivision (compat: ON as Magic, OFF scaled).
+
+## User decisions of 2026-11-14 (round 3 review)
+
+Taken on the round 3 integration report (PR #55); each entry's `Resolution:` line is in `open-questions/MASK.md` or `open-questions/DRC.md`.
+
+1. **Q-MASK-31** (new, **replicate**, with a magic-compat OFF warning): the cifinput twin of Q-MASK-29. CIFTechInputScale divides by min(gcd(M, distances), gcd(S, M)), which can truncate S and the distances; Hefesto copies it in both modes and warns with `magic-compat` OFF (MASK-INPUT-009). Code unchanged; `mask-input-styles` "Scale normalization" step 2 and the scenario "Scale factor truncated by the reduction" state it.
+2. **Q-MASK-32** (new, **compat**): a `cifinput` statement before the first `style` line fails the section and the tech load with `magic-compat` ON, as Magic's CIFReadTechLine returning FALSE does (TECH-SECTION-007 now lists `cifinput`); with it OFF the statement is ignored with a native warning (MASK-INPUT-018). Behaviour change: before, the load continued in both modes and only `InputStyleSet::section_failed` recorded it. Q-MASK-17, the cifoutput twin, fails in both modes and is unchanged. Tests: `tests/unit/mask/input/grammar_test.cpp`, `tests/unit/tech/commands_test.cpp`.
+3. **Q-MASK-33** (new, **compat**): Magic's low-phase array replication leaves the core windows in its A and B rectangles, so later layers copy their edges from the core windows; `magic-compat` ON replicates it, OFF uses the windows of "Array correction replication" for every layer. Code unchanged (round 3); `mask-hierarchical-generation` "Array correction replication" states both modes.
+4. **Q-MASK-407** (amended, **fix**): an array use whose pitch is 0 along a repeated axis gets no array correction, in both modes and without a warning (the 2026-11-07 resolution said one element and a warning). Code unchanged (round 3); the regression test now runs both modes and both axes, and `mask-hierarchical-generation` has the scenario "Zero pitch along a repeated axis".
+5. **Q-DRC-27** (new, **compat**): the mask-layer Euclidean corner radius is `cdist & 0xfff` with `magic-compat` ON and the full corner distance with it OFF, as Q-DRC-20 decided for the layout rules. Behaviour change: before, both modes wrapped. Test: `tests/unit/drc/check/mask_check_test.cpp` (corner distance 4096, both modes).
+6. **gds-read scenarios** (no new entries): "Odd width rounds outward" holds with `magic-compat` OFF; ON gives y∈[-2,2] (Magic's H = 1.5708, Q-MASK-118). "Text-kind pin shape" gives port index 0 with ON. Read-only cells are queued for DRC by the end-of-read cleanup (CIFReadCellCleanup), only the per-structure mark skips them. Magic's `gds warning redirect` file holds only the message prefixes (its Tcl build sends the message body to the console); Hefesto writes whole messages to the file.
 
 ## Audit decision D-20
 
@@ -247,6 +263,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### drc-cif-rules
 
+- **Q-DRC-27 (2026-11-14)**: drc-cif-rules "Mask-layer check procedure": the corner radius is the corner distance modulo 4096 with magic-compat ON and the full distance with it OFF, and the scenario "Corner radius of 4096 mask units".
 - **Q-DRC-13**: drc-cif-rules (spec.md:74): state that collapsed area and maxwidth errors are dropped with magic-compat ON. Add the OFF outward-rounding mapping and the diagnostic for dropped errors. Cite DRCcif.c:1364-1367, 1468-1471, 1497-1500 and 1554-1557.
 
 ### mask-output-operators
@@ -281,6 +298,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### gds-read
 
+- **Round 3 review (2026-11-14, no new entry)**: "Odd width rounds outward" gives the ON result (y∈[-2,2]) and the OFF result (y∈[-3,3]); "Text-kind pin shape" gives port index 0 with magic-compat ON; "Read-only vendor views" and "End-of-read cleanup" say that read-only cells are queued for DRC at the end of the read; "Read diagnostics" says what Magic's redirect file holds and what Hefesto writes.
 - **Q-MASK-110**: gds-read 'structure end' step 6 (spec.md:188): state that with magic-compat ON the uncleared planes are painted into the next processed structure, and that with magic-compat OFF the planes are cleared and the structure's geometry is discarded.
 - **Q-MASK-111**: gds-read spec.md:238: replace 'rewound during this session' with 'rewound during this session (magic-compat ON) or during this read (magic-compat OFF)'.
 - **Q-MASK-113**: gds-read spec.md:378: split by mode. Type 1 is treated as type 0 with magic-compat ON and as type 2 (with a warning) with magic-compat OFF.
@@ -326,6 +344,8 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### mask-input-styles
 
+- **Q-MASK-31 (2026-11-14)**: "Scale normalization" step 2: g = min(gcd(M, distances), gcd(S, M)), the truncating division, the OFF warning, and the scenario "Scale factor truncated by the reduction".
+- **Q-MASK-32 (2026-11-14)**: "Input style declaration and default style": a statement before the first `style` line fails the tech load with magic-compat ON and is ignored with a warning with it OFF; scenario "Statement before the first style".
 - **Q-MASK-300**: mask-input-styles "scalefactor" step 3 (spec.md:160): keep SET for magic-compat ON; add "with magic-compat OFF, M is multiplied by 10/100" and the warning for decimal+unit.
 - **Q-MASK-302**: mask-input-styles spec.md:100: describe prefix match as the magic-compat ON behaviour, exact match with OFF, and the tech-load warning in both modes.
 - **Q-MASK-303**: mask-input-styles spec.md:138: replace "even when one of the matches is exact (see Q-MASK-303)" with "an exact match is selected; ambiguity is reported only among prefix matches when no exact match exists".
@@ -357,6 +377,8 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 
 ### mask-hierarchical-generation
 
+- **Q-MASK-33 (2026-11-14)**: "Array correction replication": the ON reuse of the core windows for later layers and the OFF named windows.
+- **Q-MASK-407 (amended 2026-11-14)**: "Array interaction geometry parameters": a zero pitch along a repeated axis skips the use's array correction in both modes; scenario "Zero pitch along a repeated axis".
 - **Q-MASK-400**: mask-hierarchical-generation:264 pseudocode: state the ON/OFF split (OFF: skip include when no other use found). drc-engine:137-160 'Interaction area' (Compatibility: exact) currently computes O as the bbox of other uses with no (0,0,0,0) seed, i.e. it silently has the OFF behaviour; it must add the ON seed and cite Q-MASK-400.
 - **Q-MASK-402**: mask-hierarchical-generation:386 and limitation item 3 (687): add the OFF behaviour, and note that bbox/boundary never stop a hierarchical layer because the removal pass excludes them.
 - **Q-MASK-403**: mask-hierarchical-generation:149 (removal pass): add the OFF rule (transitive removal of dependents).
