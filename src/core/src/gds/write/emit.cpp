@@ -137,8 +137,11 @@ diag::Status ElementWriter::string_record(RecordType type, std::string_view text
     warn("Warning: Unprintable character changed to 'X' in label.");
   }
   if (encoded.changed) {
+    // Magic prints the mapped string as a C string: a control character
+    // mapped to 0x00 ends it (MASK-RT-sg13g2_pr's multi-line labels).
+    const std::string_view mapped = std::string_view{encoded.mapped}.substr(0, encoded.mapped.find('\0'));
     warn("Warning: characters changed in string '" + std::string{source} + "'; modified string is '" +
-         encoded.mapped + "'");
+         std::string{mapped} + "'");
   }
   return records_.write(type, DataType::string, encoded.data);
 }

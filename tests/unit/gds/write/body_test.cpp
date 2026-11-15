@@ -215,6 +215,23 @@ TEST_CASE("a single rectangle and a triangle as unmerged boundaries",
   CHECK(tri[3].i4() == std::vector<std::int32_t>{0, 10, 0, 0, 10, 0, 0, 10});
 }
 
+// Regression (m5 round 5, MASK-RT-sg13g2_pr): a newline maps to 0x00, and
+// Magic's "characters changed" warning prints the mapped string up to it.
+TEST_CASE("the characters-changed warning ends the mapped string at its first 0x00",
+          "[cap:gds-write][req:String records and character mapping]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  gds::MemorySink bytes;
+  gds::RecordWriter records{bytes};
+  const gds::StructureContext context{&top, &f.style, &f.options.settings, f.compat, gds::OutputScale{1, 1}};
+  diag::CollectingSink sink;
+  gds::ElementWriter out{records, context, &sink};
+  REQUIRE(out.string_record(gds::RecordType::string, "W=2\nS=3").ok());
+  const std::vector<diag::Diagnostic> said = sink.take();
+  REQUIRE(said.size() == 1);
+  CHECK(said[0].text == "Warning: characters changed in string 'W=2\nS=3'; modified string is 'W_2'");
+}
+
 TEST_CASE("the four triangle point orders", "[cap:gds-write][req:Unmerged boundary output]") {
   Fixture f;
   db::CellDef& top = f.cell("top");
