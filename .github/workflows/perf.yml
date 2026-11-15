@@ -174,10 +174,11 @@ jobs:
         shell: bash
         run: |
           # The shard table of golden-capture.yml's capture-gds-rt (scripts/gds_rt_shards.py). Replaying and the
-          # equivalence report make three Hefesto round trips per file, so each shard gets twice its capture
-          # timeout (sized for two Magic round trips), at most GitHub's 360 minutes.
+          # equivalence report make three Hefesto round trips per file; the gf180mcu shard ran out of twice
+          # its capture timeout (100 min, Performance run 43766374927).
+          # Each shard gets four times its capture timeout, at most GitHub's 360 minutes.
           matrix="$(python3 scripts/gds_rt_shards.py --matrix \
-            | jq -c '{include: (.include | map(.timeout = ([.timeout * 2, 360] | min)))}')"
+            | jq -c '{include: (.include | map(.timeout = ([.timeout * 4, 360] | min)))}')"
           rt_any=false
           [ "$(jq '.include | length' <<< "$matrix")" -gt 0 ] && rt_any=true
           { echo "rt_any=$rt_any"; echo "rt_matrix=$matrix"; } >> "$GITHUB_OUTPUT"
