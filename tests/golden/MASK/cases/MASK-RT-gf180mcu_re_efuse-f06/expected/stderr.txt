@@ -1,0 +1,17 @@
+CIF file read warning: CIF style import: units rescaled by factor of 5 / 1
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1046770): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1056036): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1073114): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1073172): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1073498): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1073592): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1085784): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1085842): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1086074): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1086132): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1092976): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1093128): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1093244): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_wb_mem_32x8" (byte position 1093570): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

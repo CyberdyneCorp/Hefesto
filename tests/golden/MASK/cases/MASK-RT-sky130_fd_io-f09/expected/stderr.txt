@@ -1,0 +1,7 @@
+CIF file read warning: CIF style sky130(): units rescaled by factor of 5 / 1
+CIF file read warning: Input off lambda grid by 2/5; snapped to grid.
+Error while reading cell "sky130_fd_io__gpio_ovtv2_hotswap_pghspu" (byte position 70797176): Warning: cell "sky130_fd_pr__pfet_01v8__example_55959141808164" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "sky130_fd_io__top_gpio_ovtv2" (byte position 78128570): Unknown layer/datatype in boundary, layer=72 type=10
+Error while reading cell "sky130_fd_io__sio_in_diff_res_40k" (byte position 86307938): Unknown layer/datatype in boundary, layer=65 type=48
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

@@ -1,0 +1,18 @@
+CIF file read warning: CIF style sky130(): units rescaled by factor of 5 / 1
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 279196): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 281934): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 282846): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 283134): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 283294): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 283694): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 284062): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 298190): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 298478): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 298686): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 298782): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_isosrchvaon_1" (byte position 298894): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_clkiso_hlkg_3" (byte position 478652): Unknown layer/datatype in boundary, layer=251 type=0
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_clkiso_hlkg_3" (byte position 491820): NODE elements not supported: skipping.
+Error while reading cell "sky130_fd_sc_hvl__lsbuflv2hv_clkiso_hlkg_3" (byte position 494622): NODE elements not supported: skipping.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

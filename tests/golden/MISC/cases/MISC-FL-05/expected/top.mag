@@ -1,0 +1,18 @@
+magic
+tech masktest
+timestamp 1794771728
+<< checkpaint >>
+rect 0 0 100 100
+<< metal1 >>
+rect 0 0 100 100
+<< labels >>
+flabel metal1 5 50 5 50 1 FreeSans 80 0 0 0 jn
+flabel metal1 15 50 15 50 2 FreeSerif 160 90 0 0 jne
+flabel metal1 25 50 25 50 3 FreeSans 240 180 0 0 je
+flabel metal1 35 50 35 50 4 FreeSerif 320 270 0 0 jse
+flabel metal1 45 50 45 50 5 FreeSans 400 45 0 0 js
+flabel metal1 55 50 55 50 6 FreeSerif 480 0 0 0 jsw
+flabel metal1 65 50 65 50 7 FreeSans 560 90 0 0 jw
+flabel metal1 75 50 75 50 8 FreeSerif 640 315 0 0 jnw
+flabel metal1 85 50 85 50 0 FreeSans 720 0 0 0 jcenter
+<< end >>

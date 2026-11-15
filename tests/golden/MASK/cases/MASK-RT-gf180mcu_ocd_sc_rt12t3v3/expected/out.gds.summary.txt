@@ -1,0 +1,29 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure gf180mcu_ocd_sc_rt12t3v3__nand2_1 created 103-12-8 5:6:10 records 1018
+structure gf180mcu_ocd_sc_rt12t3v3__nor2_1 created 119-3-19 20:7:43 records 983
+structure gf180mcu_ocd_sc_rt12t3v3__tieh created 106-7-17 13:45:7 records 660
+structure gf180mcu_ocd_sc_rt12t3v3__tiel created 106-10-23 6:49:58 records 655
+structure gf180mcu_ocd_sc_rt12t3v3__decap_4 created 120-6-12 5:33:29 records 581
+structure gf180mcu_ocd_sc_rt12t3v3__fill_1 created 135-7-15 2:25:19 records 221
+structure gf180mcu_ocd_sc_rt12t3v3__fill_2 created 110-1-7 9:53:16 records 296
+structure gf180mcu_ocd_sc_rt12t3v3__fill_4 created 73-4-15 2:57:51 records 316
+structure gf180mcu_ocd_sc_rt12t3v3__inv_1 created 91-2-13 10:5:31 records 684
+structure gf180mcu_ocd_sc_rt12t3v3__inv_2 created 90-6-13 18:27:22 records 839
+structure gf180mcu_ocd_sc_rt12t3v3__inv_4 created 136-5-10 6:52:0 records 1194
+structure gf180mcu_ocd_sc_rt12t3v3__or2_1 created 125-2-3 6:8:19 records 1323
+structure gf180mcu_ocd_sc_rt12t3v3__tbuf_1 created 118-8-9 0:37:29 records 1761
+structure gf180mcu_ocd_sc_rt12t3v3__tinv_1 created 112-2-21 17:38:17 records 1421
+structure gf180mcu_ocd_sc_rt12t3v3__buf_2 created 82-3-20 4:36:58 records 1174
+structure gf180mcu_ocd_sc_rt12t3v3__buf_1 created 115-4-10 21:20:46 records 974
+structure gf180mcu_ocd_sc_rt12t3v3__ant created 103-8-28 14:27:21 records 375
+structure gf180mcu_ocd_sc_rt12t3v3__and2_1 created 87-8-20 1:56:17 records 1398
+structure gf180mcu_ocd_sc_rt12t3v3__xor2_1 created 103-7-3 22:41:26 records 2727
+structure gf180mcu_ocd_sc_rt12t3v3__xnor2_1 created 119-4-26 8:45:29 records 2752
+structure gf180mcu_ocd_sc_rt12t3v3__maj3_1 created 119-3-24 0:33:50 records 3004
+structure gf180mcu_ocd_sc_rt12t3v3__dlatn_1 created 78-11-27 21:7:31 records 3952
+structure gf180mcu_ocd_sc_rt12t3v3__dlat_1 created 131-9-25 7:43:17 records 3962
+structure gf180mcu_ocd_sc_rt12t3v3__dff_1 created 137-9-23 5:17:28 records 6010
+structure gf180mcu_ocd_sc_rt12t3v3__dffn_1 created 130-11-28 8:13:3 records 6015
+structure gf180mcu_ocd_sc_rt12t3v3__dffsr_1 created 106-10-31 17:38:26 records 8911
+total structures 26 records 53211

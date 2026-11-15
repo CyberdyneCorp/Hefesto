@@ -1,0 +1,12 @@
+CIF file read warning: CIF style sg13g2(): units rescaled by factor of 5 / 1
+CIF file read warning: Input off lambda grid by 1/5; snapped to grid.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory
+Warning: characters changed in string '  width=2.0
+  space=2.1
+  diameter=25.35
+  turns=1'; modified string is '  width=2.0'
+Warning: characters changed in string '  width=2.0
+  space=2.1
+  diameter=25.35
+  turns=2'; modified string is '  width=2.0'

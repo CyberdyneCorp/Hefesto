@@ -1,0 +1,248 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:55 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology gf180mcuD ...
+10 Magic internal units = 1 Lambda
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 10 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file gf180mcu_ocd_io.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 3.0
+Library name: gf180mcu_ocd_io
+Reading "3LM_METAL_RAIL".
+Reading "4LM_METAL_RAIL".
+Reading "5LM_METAL_RAIL".
+Reading "Bondpad_5LM".
+Reading "5LM_METAL_RAIL_PAD_60".
+Reading "comp018green_esd_hbm".
+Reading "GF_NI_ASIG_5P0_BASE".
+Reading "gf180mcu_ocd_io__asig_5p0".
+Reading "comp018green_esd_cdm".
+Reading "comp018green_in_pupd".
+Reading "lv_nand".
+Reading "lv_inv".
+Reading "lv_passgate".
+Reading "comp018green_in_logic_pupd".
+Reading "comp018green_in_cms_smt".
+Reading "lvlshift_up".
+Reading "comp018green_sigbuf".
+Reading "comp018green_in_drv".
+Reading "comp018green_inpath_cms_smt".
+Reading "comp018green_out_predrv".
+Reading "comp018green_out_sigbuf_a".
+Reading "comp018green_out_sigbuf_oe".
+Reading "comp018green_sigbuf_1".
+Reading "comp018green_out_drv_nleg_6T".
+Reading "GR_NMOS".
+Reading "nmos_metal_stack".
+Reading "comp018green_out_paddrv_6T_NMOS_GROUP".
+Reading "pmos_6p0_esd".
+Reading "comp018green_out_drv_pleg_6T_X".
+Reading "comp018green_out_drv_pleg_6T_Y".
+Reading "PMOS_metal_stack".
+Reading "comp018green_out_paddrv_6T_PMOS_GROUP".
+Reading "comp018green_out_paddrv_24T".
+Reading "tie_poly_res2".
+Reading "GF_NI_BI_24T_BASE".
+Reading "gf180mcu_ocd_io__bi_24t".
+Reading "GR_NMOS_4T".
+Reading "nmos_4T_metal_stack".
+Reading "comp018green_out_drv_nleg_4T".
+Reading "comp018green_out_paddrv_4T_NMOS_GROUP".
+Reading "PMOS_4T_metal_stack".
+Reading "pmos_6p0_esd_40".
+Reading "comp018green_out_drv_pleg_4T_X".
+Reading "comp018green_out_drv_pleg_4T_Y".
+Reading "comp018green_out_paddrv_4T_PMOS_GROUP".
+Reading "comp018green_out_paddrv_16T".
+Reading "GF_NI_BI_T_BASE".
+Reading "gf180mcu_ocd_io__bi_a".
+Reading "gf180mcu_ocd_io__bi_t".
+Reading "POLY_FILL".
+Reading "GF_NI_BRK2_1".
+Reading "GF_NI_BRK2_0".
+Reading "gf180mcu_ocd_io__brk2".
+Reading "POLY_SUB_FILL_3".
+Reading "GF_NI_BRK5_1".
+Reading "GF_NI_BRK5_0".
+Reading "gf180mcu_ocd_io__brk5".
+Reading "comp018green_esd_rc_v5p0".
+Reading "nmos_clamp_20_50_4_DVDD".
+Reading "comp018green_esd_clamp_v5p0_DVDD".
+Reading "GF_NI_DVDD_BASE".
+Reading "gf180mcu_ocd_io__dvdd".
+Reading "nmos_clamp_20_50_4_DVSS".
+Reading "comp018green_esd_clamp_v5p0_DVSS".
+Reading "GF_NI_DVSS_BASE".
+Reading "gf180mcu_ocd_io__dvss".
+Reading "GF_NI_FILL1_1".
+Reading "GF_NI_FILL1_0".
+Reading "gf180mcu_ocd_io__fill1".
+Reading "POLY_SUB_FILL".
+Reading "GF_NI_FILL5_1".
+Reading "GF_NI_FILL5_0".
+Reading "gf180mcu_ocd_io__fill5".
+Reading "POWER_RAIL_COR_1".
+Reading "POWER_RAIL_COR_0".
+Reading "POWER_RAIL_COR".
+Reading "comp018green_esd_rc_v5p0_1".
+Reading "nmos_clamp_20_50_4".
+Reading "top_route".
+Reading "comp018green_esd_clamp_v5p0_1".
+Reading "top_route_1".
+Reading "comp018green_esd_clamp_v5p0_2".
+Reading "moscap_corner".
+Reading "moscap_corner_1".
+Reading "moscap_corner_2".
+Reading "moscap_corner_3".
+Reading "moscap_routing".
+Reading "power_via_cor_3".
+Reading "power_via_cor_5".
+Reading "GF_NI_COR_BASE".
+Reading "gf180mcu_ocd_io__cor".
+Reading "POLY_SUB_FILL_1".
+Reading "GF_NI_FILL10_1".
+Reading "GF_NI_FILL10_0".
+Reading "gf180mcu_ocd_io__fill10".
+Reading "GF_NI_FILLNC_1".
+Reading "GF_NI_FILLNC_0".
+Reading "gf180mcu_ocd_io__fillnc".
+Reading "tie_poly_res".
+Reading "GF_NI_IN_C_BASE".
+Reading "gf180mcu_ocd_io__in_c".
+Reading "GF_NI_IN_S_BASE".
+Reading "gf180mcu_ocd_io__in_s".
+Reading "GF_NI_VDD_BASE".
+Reading "gf180mcu_ocd_io__vdd".
+Reading "GF_NI_VSS_BASE".
+Reading "gf180mcu_ocd_io__vss".
+mask-rt tops 17 cells 107
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell POLY_SUB_FILL_3
+   Generating output for cell GF_NI_BRK5_1
+   Generating output for cell GF_NI_BRK5_0
+   Generating output for cell gf180mcu_ocd_io__brk5
+   Generating output for cell POLY_FILL
+   Generating output for cell GF_NI_BRK2_1
+   Generating output for cell GF_NI_BRK2_0
+   Generating output for cell gf180mcu_ocd_io__brk2
+   Generating output for cell POLY_SUB_FILL_1
+   Generating output for cell GF_NI_FILL10_1
+   Generating output for cell GF_NI_FILL10_0
+   Generating output for cell gf180mcu_ocd_io__fill10
+   Generating output for cell GF_NI_FILL1_1
+   Generating output for cell GF_NI_FILL1_0
+   Generating output for cell gf180mcu_ocd_io__fill1
+   Generating output for cell 3LM_METAL_RAIL
+   Generating output for cell 4LM_METAL_RAIL
+   Generating output for cell 5LM_METAL_RAIL
+   Generating output for cell Bondpad_5LM
+   Generating output for cell 5LM_METAL_RAIL_PAD_60
+   Generating output for cell comp018green_esd_rc_v5p0
+   Generating output for cell nmos_clamp_20_50_4_DVSS
+   Generating output for cell comp018green_esd_clamp_v5p0_DVSS
+   Generating output for cell GF_NI_DVSS_BASE
+   Generating output for cell gf180mcu_ocd_io__dvss
+   Generating output for cell nmos_clamp_20_50_4_DVDD
+   Generating output for cell comp018green_esd_clamp_v5p0_DVDD
+   Generating output for cell GF_NI_DVDD_BASE
+   Generating output for cell gf180mcu_ocd_io__dvdd
+   Generating output for cell GR_NMOS_4T
+   Generating output for cell nmos_4T_metal_stack
+   Generating output for cell comp018green_out_drv_nleg_4T
+   Generating output for cell comp018green_out_paddrv_4T_NMOS_GROUP
+   Generating output for cell PMOS_4T_metal_stack
+   Generating output for cell pmos_6p0_esd_40
+   Generating output for cell comp018green_out_drv_pleg_4T_X
+   Generating output for cell comp018green_out_drv_pleg_4T_Y
+   Generating output for cell comp018green_out_paddrv_4T_PMOS_GROUP
+   Generating output for cell comp018green_out_paddrv_16T
+   Generating output for cell comp018green_in_pupd
+   Generating output for cell lv_nand
+   Generating output for cell lv_inv
+   Generating output for cell lv_passgate
+   Generating output for cell comp018green_in_logic_pupd
+   Generating output for cell comp018green_in_cms_smt
+   Generating output for cell lvlshift_up
+   Generating output for cell comp018green_sigbuf
+   Generating output for cell comp018green_in_drv
+   Generating output for cell comp018green_inpath_cms_smt
+   Generating output for cell comp018green_sigbuf_1
+   Generating output for cell comp018green_out_sigbuf_a
+   Generating output for cell comp018green_out_predrv
+   Generating output for cell comp018green_out_sigbuf_oe
+   Generating output for cell comp018green_esd_cdm
+   Generating output for cell GF_NI_BI_T_BASE
+   Generating output for cell gf180mcu_ocd_io__bi_t
+   Generating output for cell gf180mcu_ocd_io__bi_a
+   Generating output for cell comp018green_out_drv_nleg_6T
+   Generating output for cell GR_NMOS
+   Generating output for cell nmos_metal_stack
+   Generating output for cell comp018green_out_paddrv_6T_NMOS_GROUP
+   Generating output for cell pmos_6p0_esd
+   Generating output for cell comp018green_out_drv_pleg_6T_X
+   Generating output for cell comp018green_out_drv_pleg_6T_Y
+   Generating output for cell PMOS_metal_stack
+   Generating output for cell comp018green_out_paddrv_6T_PMOS_GROUP
+   Generating output for cell comp018green_out_paddrv_24T
+   Generating output for cell tie_poly_res2
+   Generating output for cell GF_NI_BI_24T_BASE
+   Generating output for cell gf180mcu_ocd_io__bi_24t
+   Generating output for cell comp018green_esd_hbm
+   Generating output for cell GF_NI_ASIG_5P0_BASE
+   Generating output for cell gf180mcu_ocd_io__asig_5p0
+   Generating output for cell POWER_RAIL_COR_1
+   Generating output for cell POWER_RAIL_COR_0
+   Generating output for cell POWER_RAIL_COR
+   Generating output for cell comp018green_esd_rc_v5p0_1
+   Generating output for cell nmos_clamp_20_50_4
+   Generating output for cell top_route
+   Generating output for cell comp018green_esd_clamp_v5p0_1
+   Generating output for cell top_route_1
+   Generating output for cell comp018green_esd_clamp_v5p0_2
+   Generating output for cell moscap_corner
+   Generating output for cell moscap_corner_1
+   Generating output for cell moscap_corner_2
+   Generating output for cell moscap_corner_3
+   Generating output for cell moscap_routing
+   Generating output for cell power_via_cor_3
+   Generating output for cell power_via_cor_5
+   Generating output for cell GF_NI_COR_BASE
+   Generating output for cell gf180mcu_ocd_io__cor
+   Generating output for cell POLY_SUB_FILL
+   Generating output for cell GF_NI_FILL5_1
+   Generating output for cell GF_NI_FILL5_0
+   Generating output for cell gf180mcu_ocd_io__fill5
+   Generating output for cell GF_NI_FILLNC_1
+   Generating output for cell GF_NI_FILLNC_0
+   Generating output for cell gf180mcu_ocd_io__fillnc
+   Generating output for cell tie_poly_res
+   Generating output for cell GF_NI_IN_C_BASE
+   Generating output for cell gf180mcu_ocd_io__in_c
+   Generating output for cell GF_NI_IN_S_BASE
+   Generating output for cell gf180mcu_ocd_io__in_s
+   Generating output for cell GF_NI_VDD_BASE
+   Generating output for cell gf180mcu_ocd_io__vdd
+   Generating output for cell GF_NI_VSS_BASE
+   Generating output for cell gf180mcu_ocd_io__vss
+   Generating output for cell mask_rt_wrapper
+56 problems occurred.  See feedback entries.

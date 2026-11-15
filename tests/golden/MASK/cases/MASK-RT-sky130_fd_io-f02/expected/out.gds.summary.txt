@@ -1,0 +1,28 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure sky130_ef_io__esd_mvpdiode_array created 123-4-12 19:54:45 records 20553
+structure sky130_ef_io__esd_mvndiode_array created 123-4-12 19:48:0 records 20253
+structure sky130_ef_io__esd_lvpdiode_array created 123-4-11 17:51:13 records 20563
+structure sky130_ef_io__esd_lvndiode_array created 123-4-11 17:58:37 records 20313
+structure sky130_fd_io__com_bus_slice created 118-6-11 8:4:54 records 168
+structure sky130_fd_io__com_bus_hookup created 131-1-16 3:47:50 records 13068
+structure sky130_fd_pr__genrivetdlring__example_559591418082 created 118-12-2 7:20:5 records 2343
+structure sky130_fd_pr__gendlring__example_559591418081 created 120-7-26 14:57:45 records 3
+structure sky130_fd_pr__padplhp__example_559591418080 created 70-2-24 3:59:20 records 267
+structure sky130_fd_io__pad_esd created 92-8-12 9:21:43 records 10
+structure sky130_fd_io__com_busses_esd created 94-3-27 20:12:52 records 17
+structure sky130_ef_io__simple_pad_and_busses created 123-4-12 17:45:12 records 56310
+structure sky130_ef_io__analog_pad created 123-4-12 17:45:12 records 1237
+structure sky130_ef_io__analog_noesd_pad created 123-4-12 17:45:12 records 1237
+structure sky130_ef_io__com_pg_esd created 123-4-14 11:15:51 records 6087
+structure sky130_ef_io__esd_ndiode_11v0_single created 123-4-11 18:5:51 records 26218
+structure sky130_ef_io__esd_pdiode_11v0_single created 123-4-14 11:15:51 records 9673
+structure sky130_ef_io__minesd_pad_and_pg created 123-4-24 14:3:58 records 138538
+structure sky130_ef_io__analog_minesd_pad_short created 123-4-24 14:3:58 records 223
+structure sky130_ef_io__minesd_pad_and_busses created 123-4-12 21:14:1 records 144376
+structure sky130_ef_io__analog_minesd_pad created 123-4-12 21:14:1 records 1237
+structure sky130_ef_io__esd_ndiode_11v0_array created 123-4-7 15:18:8 records 62078
+structure sky130_ef_io__esd_pdiode_11v0_array created 123-4-7 15:18:8 records 42238
+structure sky130_ef_io__esd_pad_and_busses created 123-4-12 17:48:3 records 165956
+structure sky130_ef_io__analog_esd_pad created 123-4-12 17:48:3 records 1237
+total structures 25 records 754208

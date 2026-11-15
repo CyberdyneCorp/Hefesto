@@ -1,0 +1,13 @@
+Error while reading cell "wen_wm1_3v64x8m81" (byte position 309912): Warning: cell "M2_M1$$202406956_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "wen_wm1_3v64x8m81" (byte position 310680): Warning: cell "M2_M1$$202406956_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "din_3v64x8m81" (byte position 575584): Warning: cell "M1_PSUB$$46893100_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "din_3v64x8m81" (byte position 575780): Warning: cell "M1_PSUB$$46892076_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v64x8m81" (byte position 600532): Warning: cell "via2_x2_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v64x8m81" (byte position 600610): Warning: cell "via2_x2_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v64x8m81" (byte position 600688): Warning: cell "via2_x2_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v64x8m81" (byte position 792178): Warning: cell "M3_M2$$47332396_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v64x8m81" (byte position 792366): Warning: cell "M3_M2$$47332396_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v64x8m81" (byte position 792648): Warning: cell "M2_M1$$47515692_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v64x8m81" (byte position 792836): Warning: cell "M2_M1$$47515692_3v64x8m81" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

@@ -1,0 +1,461 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:59 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file RM_IHPSG13_2P_512x32_c2_bm_bist.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: LIB
+Reading "M1_GatPoly_CDNS_7564820148278".
+Saving contents of cell M1_GatPoly_CDNS_7564820148278
+Reading "VIA_M1_Activ_db_0x02835b9b".
+Reading "RM_IHPSG13_2P_BITKIT_CELL_SUB".
+Reading "lvsres_db_0x02834b9a".
+Reading "lvsres_db_0x0283509a".
+Reading "RM_IHPSG13_2P_BITKIT_CELL".
+Reading "RM_IHPSG13_2P_BITKIT_TAP".
+Reading "viagen23_CDNS_7564820148275".
+Saving contents of cell viagen23_CDNS_7564820148275
+Reading "lvsres_db_0x0400b71a".
+Reading "RSC_IHPSG13_NOR3X2".
+Reading "RSC_IHPSG13_LHPQX2".
+Reading "M2_M1_CDNS_7564820148274".
+Saving contents of cell M2_M1_CDNS_7564820148274
+Reading "M3_M2_CDNS_7564820148273".
+Saving contents of cell M3_M2_CDNS_7564820148273
+Reading "RSC_IHPSG13_NAND3X2".
+Reading "M3_M2_CDNS_7564820148270".
+Saving contents of cell M3_M2_CDNS_7564820148270
+Reading "M2_M1_CDNS_7564820148269".
+Saving contents of cell M2_M1_CDNS_7564820148269
+Reading "M3_M2_CDNS_7564820148268".
+Saving contents of cell M3_M2_CDNS_7564820148268
+Reading "RSC_IHPSG13_NAND2X2".
+Reading "RSC_IHPSG13_FILLCAP8".
+Reading "viagen34_CDNS_7564820148247".
+Saving contents of cell viagen34_CDNS_7564820148247
+Reading "viagen23_CDNS_7564820148245".
+Saving contents of cell viagen23_CDNS_7564820148245
+Reading "M3_M2_CDNS_7564820148243".
+Saving contents of cell M3_M2_CDNS_7564820148243
+Reading "M2_M1_CDNS_7564820148240".
+Saving contents of cell M2_M1_CDNS_7564820148240
+Reading "RSC_IHPSG13_FILL2".
+Reading "RSC_IHPSG13_FILL4".
+Reading "RSC_IHPSG13_FILL1".
+Reading "RSC_IHPSG13_INVX2".
+Reading "RSC_IHPSG13_CINVX2".
+Reading "RSC_IHPSG13_FILLCAP4".
+Reading "RSC_IHPSG13_INVX4".
+Reading "M3_M2_CDNS_7564820148239".
+Saving contents of cell M3_M2_CDNS_7564820148239
+Reading "M2_M1_CDNS_7564820148238".
+Saving contents of cell M2_M1_CDNS_7564820148238
+Reading "M3_M2_CDNS_7564820148237".
+Saving contents of cell M3_M2_CDNS_7564820148237
+Reading "M2_M1_CDNS_7564820148236".
+Saving contents of cell M2_M1_CDNS_7564820148236
+Reading "M3_M2_CDNS_7564820148235".
+Saving contents of cell M3_M2_CDNS_7564820148235
+Reading "M2_M1_CDNS_7564820148234".
+Saving contents of cell M2_M1_CDNS_7564820148234
+Reading "M3_M2_CDNS_7564820148233".
+Saving contents of cell M3_M2_CDNS_7564820148233
+Reading "viagen23_CDNS_7564820148232".
+Saving contents of cell viagen23_CDNS_7564820148232
+Reading "viagen12_CDNS_7564820148231".
+Saving contents of cell viagen12_CDNS_7564820148231
+Reading "viagen23_CDNS_7564820148230".
+Saving contents of cell viagen23_CDNS_7564820148230
+Reading "M2_M1_CDNS_7564820148228".
+Saving contents of cell M2_M1_CDNS_7564820148228
+Reading "M3_M2_CDNS_7564820148210".
+Saving contents of cell M3_M2_CDNS_7564820148210
+Reading "M2_M1_CDNS_756482014828".
+Saving contents of cell M2_M1_CDNS_756482014828
+Reading "M2_M1_CDNS_756482014820".
+Saving contents of cell M2_M1_CDNS_756482014820
+Reading "RM_IHPSG13_2P_BITKIT_16x2_EDGE_TB".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_TAP".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_SRAM".
+Reading "viagen34_CDNS_7564820148277".
+Saving contents of cell viagen34_CDNS_7564820148277
+Reading "viagen34_CDNS_7564820148276".
+Saving contents of cell viagen34_CDNS_7564820148276
+Reading "RM_IHPSG13_2P_BITKIT_EDGE_LR".
+Reading "RM_IHPSG13_2P_BITKIT_CORNER".
+Reading "RM_IHPSG13_2P_ROWREG0".
+Reading "RM_IHPSG13_2P_DEC04".
+Reading "RM_IHPSG13_2P_DEC_LE_tap".
+Reading "RM_IHPSG13_2P_DEC_LE_l2empty".
+Reading "RM_IHPSG13_2P_DEC03".
+Reading "RM_IHPSG13_2P_DEC_LE_l1wire".
+Reading "RM_IHPSG13_2P_DEC01".
+Reading "RM_IHPSG13_2P_DEC02".
+Reading "RM_IHPSG13_2P_DEC_LE_l0wire".
+Reading "RM_IHPSG13_2P_DEC00".
+Reading "RM_IHPSG13_2P_DEC_LE_l1empty".
+Reading "viagen34_CDNS_7564820148272".
+Saving contents of cell viagen34_CDNS_7564820148272
+Reading "viagen34_CDNS_7564820148271".
+Saving contents of cell viagen34_CDNS_7564820148271
+Reading "lvsres_db_0x04007e9a".
+Reading "viagen34_CDNS_7564820148253".
+Saving contents of cell viagen34_CDNS_7564820148253
+Reading "RSC_IHPSG13_XOR2X2".
+Reading "RSC_IHPSG13_CBUFX8".
+Reading "RSC_IHPSG13_TIEL".
+Reading "RSC_IHPSG13_CDLYX2".
+Reading "RSC_IHPSG13_CNAND2X2".
+Reading "RSC_IHPSG13_OA12X1".
+Reading "RSC_IHPSG13_DFNQX2".
+Reading "RSC_IHPSG13_CINVX4".
+Reading "RSC_IHPSG13_CGATEPX4".
+Reading "RSC_IHPSG13_MX2X2".
+Reading "RSC_IHPSG13_CINVX8".
+Reading "M3_M2_CDNS_7564820148252".
+Saving contents of cell M3_M2_CDNS_7564820148252
+Reading "M2_M1_CDNS_7564820148251".
+Saving contents of cell M2_M1_CDNS_7564820148251
+Reading "viagen23_CDNS_7564820148250".
+Saving contents of cell viagen23_CDNS_7564820148250
+Reading "M2_M1_CDNS_7564820148249".
+Saving contents of cell M2_M1_CDNS_7564820148249
+Reading "viagen12_CDNS_7564820148248".
+Saving contents of cell viagen12_CDNS_7564820148248
+Reading "viagen12_CDNS_7564820148246".
+Saving contents of cell viagen12_CDNS_7564820148246
+Reading "viagen23_CDNS_7564820148241".
+Saving contents of cell viagen23_CDNS_7564820148241
+Reading "RSC_IHPSG13_DFPQD_MSAFFX2P_half".
+Reading "RM_IHPSG13_2P_BLDRV_CORE".
+Reading "viagen23_CDNS_7564820148229".
+Saving contents of cell viagen23_CDNS_7564820148229
+Reading "RSC_IHPSG13_AND2X2".
+Reading "RSC_IHPSG13_DFNQMX2IX1".
+Reading "M2_M1_CDNS_7564820148221".
+Saving contents of cell M2_M1_CDNS_7564820148221
+Reading "viagen12_CDNS_7564820148217".
+Saving contents of cell viagen12_CDNS_7564820148217
+Reading "viagen23_CDNS_756482014821".
+Saving contents of cell viagen23_CDNS_756482014821
+Reading "RM_IHPSG13_2P_COLUMN_128".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_CORNER".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_LE_con_corner".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_POWER_ramtap".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_TAP_LR".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_LE_con_tap_lr".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_POWER_ramblk".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_EDGE_LR".
+Reading "RM_IHPSG13_2P_BITKIT_16x2_LE_con_edge_lr".
+Reading "RM_IHPSG13_2P_ROWREG7".
+Reading "RM_IHPSG13_2P_ROWDEC7".
+Reading "RM_IHPSG13_2P_ROWDEC0".
+Reading "RSC_IHPSG13_WLDRVX4".
+Reading "M3_M2_CDNS_7564820148267".
+Saving contents of cell M3_M2_CDNS_7564820148267
+Reading "M3_M2_CDNS_7564820148266".
+Saving contents of cell M3_M2_CDNS_7564820148266
+Reading "M2_M1_CDNS_7564820148265".
+Saving contents of cell M2_M1_CDNS_7564820148265
+Reading "RM_IHPSG13_2P_COLDRV13_END".
+Reading "RSC_IHPSG13_CBUFX4".
+Reading "M3_M2_CDNS_7564820148264".
+Saving contents of cell M3_M2_CDNS_7564820148264
+Reading "viagen12_CDNS_7564820148263".
+Saving contents of cell viagen12_CDNS_7564820148263
+Reading "viagen23_CDNS_7564820148262".
+Saving contents of cell viagen23_CDNS_7564820148262
+Reading "viagen23_CDNS_7564820148261".
+Saving contents of cell viagen23_CDNS_7564820148261
+Reading "M3_M2_CDNS_7564820148260".
+Saving contents of cell M3_M2_CDNS_7564820148260
+Reading "viagen12_CDNS_7564820148259".
+Saving contents of cell viagen12_CDNS_7564820148259
+Reading "M3_M2_CDNS_7564820148258".
+Saving contents of cell M3_M2_CDNS_7564820148258
+Reading "viagen23_CDNS_7564820148257".
+Saving contents of cell viagen23_CDNS_7564820148257
+Reading "viagen12_CDNS_7564820148256".
+Saving contents of cell viagen12_CDNS_7564820148256
+Reading "viagen23_CDNS_7564820148255".
+Saving contents of cell viagen23_CDNS_7564820148255
+Reading "viagen23_CDNS_7564820148254".
+Saving contents of cell viagen23_CDNS_7564820148254
+Reading "RSC_IHPSG13_CDLYX1_DUMMY".
+Reading "RSC_IHPSG13_CDLYX1".
+Reading "RSC_IHPSG13_MX2IX1".
+Reading "RM_IHPSG13_2P_COLDEC2".
+Reading "RM_IHPSG13_2P_CTRL".
+Reading "M3_M2_CDNS_7564820148244".
+Saving contents of cell M3_M2_CDNS_7564820148244
+Reading "viagen12_CDNS_7564820148242".
+Saving contents of cell viagen12_CDNS_7564820148242
+Reading "lvsres_db_0x263f099a".
+Reading "RSC_IHPSG13_TIEH".
+Reading "RSC_IHPSG13_NOR2X2".
+Reading "RSC_IHPSG13_DFPQD_MSAFFX2P".
+Reading "RM_IHPSG13_2P_BLDRV".
+Reading "RSC_IHPSG13_CINVX4_WN".
+Reading "RSC_IHPSG13_CBUFX2".
+Reading "viagen12_CDNS_7564820148227".
+Saving contents of cell viagen12_CDNS_7564820148227
+Reading "viagen23_CDNS_7564820148226".
+Saving contents of cell viagen23_CDNS_7564820148226
+Reading "viagen12_CDNS_7564820148225".
+Saving contents of cell viagen12_CDNS_7564820148225
+Reading "viagen23_CDNS_7564820148224".
+Saving contents of cell viagen23_CDNS_7564820148224
+Reading "viagen12_CDNS_7564820148223".
+Saving contents of cell viagen12_CDNS_7564820148223
+Reading "viagen34_CDNS_7564820148222".
+Saving contents of cell viagen34_CDNS_7564820148222
+Reading "M2_M1_CDNS_7564820148220".
+Saving contents of cell M2_M1_CDNS_7564820148220
+Reading "viagen12_CDNS_7564820148219".
+Saving contents of cell viagen12_CDNS_7564820148219
+Reading "viagen12_CDNS_7564820148218".
+Saving contents of cell viagen12_CDNS_7564820148218
+Reading "M3_M2_CDNS_7564820148216".
+Saving contents of cell M3_M2_CDNS_7564820148216
+Reading "viagen34_CDNS_7564820148215".
+Saving contents of cell viagen34_CDNS_7564820148215
+Reading "M3_M2_CDNS_7564820148214".
+Saving contents of cell M3_M2_CDNS_7564820148214
+Reading "viagen34_CDNS_7564820148213".
+Saving contents of cell viagen34_CDNS_7564820148213
+Reading "viagen34_CDNS_7564820148212".
+Saving contents of cell viagen34_CDNS_7564820148212
+Reading "viagen34_CDNS_7564820148211".
+Saving contents of cell viagen34_CDNS_7564820148211
+Reading "M3_M2_CDNS_756482014829".
+Saving contents of cell M3_M2_CDNS_756482014829
+Reading "viagen12_CDNS_756482014827".
+Saving contents of cell viagen12_CDNS_756482014827
+Reading "viagen34_CDNS_756482014826".
+Saving contents of cell viagen34_CDNS_756482014826
+Reading "M3_M2_CDNS_756482014825".
+Saving contents of cell M3_M2_CDNS_756482014825
+Reading "viagen12_CDNS_756482014824".
+Saving contents of cell viagen12_CDNS_756482014824
+Reading "M3_M2_CDNS_756482014823".
+Saving contents of cell M3_M2_CDNS_756482014823
+Reading "M3_M2_CDNS_756482014822".
+Saving contents of cell M3_M2_CDNS_756482014822
+Reading "RM_IHPSG13_2P_MATRIX_128x64".
+Reading "RM_IHPSG13_2P_ROWREG7_AB".
+Reading "RM_IHPSG13_2P_ROWDEC7_AB".
+Reading "RM_IHPSG13_2P_WLDRV16X4_AB_tap".
+Reading "RM_IHPSG13_2P_WLDRV16X4_AB".
+Reading "RM_IHPSG13_2P_COLDRV13X4_AB".
+Reading "RM_IHPSG13_2P_DLY_2".
+Reading "RM_IHPSG13_2P_DLY_MUX".
+Reading "RM_IHPSG13_2P_COLDEC2_AB".
+Reading "RM_IHPSG13_2P_CTRL_AB".
+Reading "RM_IHPSG13_2P_COLDRV13_FILL4C2".
+Reading "RM_IHPSG13_2P_COLDRV13_FILL1C2".
+Reading "RM_IHPSG13_2P_COLDRV13_FILL4".
+Reading "RM_IHPSG13_2P_COLDRV13_FILL1".
+Reading "RM_IHPSG13_2P_COLCTRL2".
+Reading "RM_IHPSG13_2P_COLCTRL2_end".
+Reading "RM_IHPSG13_2P_512x32_c2_bm_bist".
+mask-rt tops 80 cells 174
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell viagen34_CDNS_7564820148277
+   Generating output for cell viagen34_CDNS_7564820148276
+   Generating output for cell viagen34_CDNS_7564820148272
+   Generating output for cell viagen34_CDNS_7564820148271
+   Generating output for cell viagen34_CDNS_756482014826
+   Generating output for cell viagen34_CDNS_7564820148253
+   Generating output for cell viagen34_CDNS_7564820148247
+   Generating output for cell viagen34_CDNS_7564820148222
+   Generating output for cell viagen34_CDNS_7564820148215
+   Generating output for cell viagen34_CDNS_7564820148213
+   Generating output for cell viagen34_CDNS_7564820148212
+   Generating output for cell viagen34_CDNS_7564820148211
+   Generating output for cell viagen23_CDNS_7564820148275
+   Generating output for cell viagen23_CDNS_7564820148262
+   Generating output for cell viagen23_CDNS_7564820148261
+   Generating output for cell viagen23_CDNS_7564820148257
+   Generating output for cell viagen23_CDNS_7564820148255
+   Generating output for cell viagen23_CDNS_7564820148254
+   Generating output for cell viagen23_CDNS_7564820148250
+   Generating output for cell viagen23_CDNS_7564820148245
+   Generating output for cell viagen23_CDNS_7564820148241
+   Generating output for cell viagen23_CDNS_7564820148232
+   Generating output for cell viagen23_CDNS_7564820148230
+   Generating output for cell viagen23_CDNS_7564820148229
+   Generating output for cell viagen23_CDNS_7564820148226
+   Generating output for cell viagen23_CDNS_7564820148224
+   Generating output for cell viagen23_CDNS_756482014821
+   Generating output for cell viagen12_CDNS_756482014827
+   Generating output for cell viagen12_CDNS_7564820148263
+   Generating output for cell viagen12_CDNS_7564820148259
+   Generating output for cell viagen12_CDNS_7564820148256
+   Generating output for cell viagen12_CDNS_7564820148248
+   Generating output for cell viagen12_CDNS_7564820148246
+   Generating output for cell viagen12_CDNS_7564820148242
+   Generating output for cell viagen12_CDNS_756482014824
+   Generating output for cell viagen12_CDNS_7564820148231
+   Generating output for cell viagen12_CDNS_7564820148227
+   Generating output for cell viagen12_CDNS_7564820148225
+   Generating output for cell viagen12_CDNS_7564820148223
+   Generating output for cell viagen12_CDNS_7564820148219
+   Generating output for cell viagen12_CDNS_7564820148218
+   Generating output for cell viagen12_CDNS_7564820148217
+   Generating output for cell M3_M2_CDNS_756482014829
+   Generating output for cell M3_M2_CDNS_7564820148273
+   Generating output for cell M3_M2_CDNS_7564820148270
+   Generating output for cell M3_M2_CDNS_7564820148268
+   Generating output for cell M3_M2_CDNS_7564820148267
+   Generating output for cell M3_M2_CDNS_7564820148266
+   Generating output for cell M3_M2_CDNS_7564820148264
+   Generating output for cell M3_M2_CDNS_7564820148260
+   Generating output for cell M3_M2_CDNS_7564820148258
+   Generating output for cell M3_M2_CDNS_7564820148252
+   Generating output for cell M3_M2_CDNS_756482014825
+   Generating output for cell M3_M2_CDNS_7564820148244
+   Generating output for cell M3_M2_CDNS_7564820148243
+   Generating output for cell M3_M2_CDNS_7564820148239
+   Generating output for cell M3_M2_CDNS_7564820148237
+   Generating output for cell M3_M2_CDNS_7564820148235
+   Generating output for cell M3_M2_CDNS_7564820148233
+   Generating output for cell M3_M2_CDNS_756482014823
+   Generating output for cell M3_M2_CDNS_756482014822
+   Generating output for cell M3_M2_CDNS_7564820148216
+   Generating output for cell M3_M2_CDNS_7564820148214
+   Generating output for cell M3_M2_CDNS_7564820148210
+   Generating output for cell M2_M1_CDNS_756482014828
+   Generating output for cell M2_M1_CDNS_7564820148274
+   Generating output for cell M2_M1_CDNS_7564820148269
+   Generating output for cell M2_M1_CDNS_7564820148265
+   Generating output for cell M2_M1_CDNS_7564820148251
+   Generating output for cell M2_M1_CDNS_7564820148249
+   Generating output for cell M2_M1_CDNS_7564820148240
+   Generating output for cell M2_M1_CDNS_7564820148238
+   Generating output for cell M2_M1_CDNS_7564820148236
+   Generating output for cell M2_M1_CDNS_7564820148234
+   Generating output for cell M2_M1_CDNS_7564820148228
+   Generating output for cell M2_M1_CDNS_7564820148221
+   Generating output for cell M2_M1_CDNS_7564820148220
+   Generating output for cell M2_M1_CDNS_756482014820
+   Generating output for cell M1_GatPoly_CDNS_7564820148278
+   Generating output for cell RM_IHPSG13_2P_COLCTRL2_end
+   Generating output for cell RSC_IHPSG13_NOR2X2
+   Generating output for cell RSC_IHPSG13_TIEH
+   Generating output for cell RSC_IHPSG13_INVX2
+   Generating output for cell RSC_IHPSG13_FILL1
+   Generating output for cell RSC_IHPSG13_FILL4
+   Generating output for cell RSC_IHPSG13_FILL2
+   Generating output for cell RSC_IHPSG13_CINVX2
+   Generating output for cell RSC_IHPSG13_FILLCAP4
+   Generating output for cell lvsres_db_0x263f099a
+   Generating output for cell RSC_IHPSG13_DFNQMX2IX1
+   Generating output for cell RSC_IHPSG13_CBUFX2
+   Generating output for cell RSC_IHPSG13_INVX4
+   Generating output for cell RSC_IHPSG13_DFPQD_MSAFFX2P_half
+   Generating output for cell RSC_IHPSG13_DFPQD_MSAFFX2P
+   Generating output for cell RSC_IHPSG13_AND2X2
+   Generating output for cell RSC_IHPSG13_CINVX4_WN
+   Generating output for cell RM_IHPSG13_2P_BLDRV_CORE
+   Generating output for cell RM_IHPSG13_2P_BLDRV
+   Generating output for cell RM_IHPSG13_2P_COLCTRL2
+   Generating output for cell RM_IHPSG13_2P_COLDRV13_FILL1C2
+   Generating output for cell RM_IHPSG13_2P_COLDRV13_FILL4C2
+   Generating output for cell RSC_IHPSG13_CBUFX4
+   Generating output for cell RSC_IHPSG13_FILLCAP8
+   Generating output for cell RM_IHPSG13_2P_COLDRV13_END
+   Generating output for cell RM_IHPSG13_2P_COLDRV13X4_AB
+   Generating output for cell RSC_IHPSG13_WLDRVX4
+   Generating output for cell RM_IHPSG13_2P_WLDRV16X4_AB
+   Generating output for cell RM_IHPSG13_2P_WLDRV16X4_AB_tap
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_CORNER
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_LE_con_corner
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_LE_con_edge_lr
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_TAP_LR
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_LE_con_tap_lr
+   Generating output for cell VIA_M1_Activ_db_0x02835b9b
+   Generating output for cell RM_IHPSG13_2P_BITKIT_CORNER
+   Generating output for cell RM_IHPSG13_2P_BITKIT_EDGE_LR
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_EDGE_LR
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_POWER_ramblk
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_POWER_ramtap
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_EDGE_TB
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_TAP
+   Generating output for cell RM_IHPSG13_2P_BITKIT_CELL_SUB
+   Generating output for cell lvsres_db_0x02834b9a
+   Generating output for cell lvsres_db_0x0283509a
+   Generating output for cell RM_IHPSG13_2P_BITKIT_CELL
+   Generating output for cell RM_IHPSG13_2P_BITKIT_TAP
+   Generating output for cell RM_IHPSG13_2P_BITKIT_16x2_SRAM
+   Generating output for cell RM_IHPSG13_2P_COLUMN_128
+   Generating output for cell RM_IHPSG13_2P_MATRIX_128x64
+   Generating output for cell RM_IHPSG13_2P_COLDRV13_FILL1
+   Generating output for cell RM_IHPSG13_2P_COLDRV13_FILL4
+   Generating output for cell RSC_IHPSG13_CDLYX1
+   Generating output for cell RSC_IHPSG13_MX2IX1
+   Generating output for cell RM_IHPSG13_2P_DLY_MUX
+   Generating output for cell lvsres_db_0x04007e9a
+   Generating output for cell RSC_IHPSG13_CDLYX1_DUMMY
+   Generating output for cell RM_IHPSG13_2P_DLY_2
+   Generating output for cell RSC_IHPSG13_CINVX4
+   Generating output for cell RSC_IHPSG13_XOR2X2
+   Generating output for cell RSC_IHPSG13_DFNQX2
+   Generating output for cell RSC_IHPSG13_CNAND2X2
+   Generating output for cell RSC_IHPSG13_CGATEPX4
+   Generating output for cell RSC_IHPSG13_TIEL
+   Generating output for cell RSC_IHPSG13_CDLYX2
+   Generating output for cell RSC_IHPSG13_MX2X2
+   Generating output for cell RSC_IHPSG13_CBUFX8
+   Generating output for cell RSC_IHPSG13_OA12X1
+   Generating output for cell RSC_IHPSG13_CINVX8
+   Generating output for cell RM_IHPSG13_2P_CTRL
+   Generating output for cell RM_IHPSG13_2P_CTRL_AB
+   Generating output for cell RSC_IHPSG13_NAND2X2
+   Generating output for cell RM_IHPSG13_2P_COLDEC2
+   Generating output for cell RM_IHPSG13_2P_COLDEC2_AB
+   Generating output for cell RM_IHPSG13_2P_ROWREG0
+   Generating output for cell RM_IHPSG13_2P_ROWREG7
+   Generating output for cell RM_IHPSG13_2P_ROWREG7_AB
+   Generating output for cell RSC_IHPSG13_NAND3X2
+   Generating output for cell lvsres_db_0x0400b71a
+   Generating output for cell RSC_IHPSG13_NOR3X2
+   Generating output for cell RSC_IHPSG13_LHPQX2
+   Generating output for cell RM_IHPSG13_2P_DEC04
+   Generating output for cell RM_IHPSG13_2P_DEC_LE_tap
+   Generating output for cell RM_IHPSG13_2P_DEC_LE_l2empty
+   Generating output for cell RM_IHPSG13_2P_DEC03
+   Generating output for cell RM_IHPSG13_2P_DEC_LE_l1wire
+   Generating output for cell RM_IHPSG13_2P_DEC01
+   Generating output for cell RM_IHPSG13_2P_DEC02
+   Generating output for cell RM_IHPSG13_2P_DEC_LE_l0wire
+   Generating output for cell RM_IHPSG13_2P_DEC00
+   Generating output for cell RM_IHPSG13_2P_DEC_LE_l1empty
+   Generating output for cell RM_IHPSG13_2P_ROWDEC7
+   Generating output for cell RM_IHPSG13_2P_ROWDEC0
+   Generating output for cell RM_IHPSG13_2P_ROWDEC7_AB
+   Generating output for cell RM_IHPSG13_2P_512x32_c2_bm_bist
+   Generating output for cell mask_rt_wrapper
+9 problems occurred.  See feedback entries.

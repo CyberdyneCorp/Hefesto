@@ -1,0 +1,129 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:57 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file sg13g2_io.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 5.0
+Library name: sg13g2_io
+Reading "sg13g2_Corner".
+Reading "sg13g2_Filler1000".
+Reading "sg13g2_Filler10000".
+Reading "sg13g2_Filler200".
+Reading "sg13g2_Filler2000".
+Reading "sg13g2_Filler400".
+Reading "sg13g2_Filler4000".
+Reading "sg13g2_Clamp_N20N0D".
+Reading "sg13g2_Clamp_P20N0D".
+Reading "sg13g2_DCNDiode".
+Reading "sg13g2_DCPDiode".
+Reading "sg13g2_SecondaryProtection".
+Reading "sg13g2_IOPadAnalog".
+Reading "sg13g2_RCClampInverter".
+Reading "sg13g2_Clamp_N43N43D4R".
+Reading "sg13g2_RCClampResistor".
+Reading "sg13g2_IOPadIOVdd".
+Reading "sg13g2_IOPadIOVss".
+Reading "M2_M1_CDNS_777302434540".
+Saving contents of cell M2_M1_CDNS_777302434540
+Reading "M2_M1_CDNS_777302434541".
+Saving contents of cell M2_M1_CDNS_777302434541
+Reading "sg13g2_LevelDown".
+Reading "sg13g2_IOPadIn".
+Reading "sg13g2_Clamp_P15N15D".
+Reading "sg13g2_io_inv_x1".
+Reading "sg13g2_LevelUp".
+Reading "sg13g2_io_nor2_x1".
+Reading "sg13g2_io_tie".
+Reading "sg13g2_io_nand2_x1".
+Reading "sg13g2_GateDecode".
+Reading "sg13g2_Clamp_N15N15D".
+Reading "sg13g2_IOPadInOut30mA".
+Reading "sg13g2_Clamp_N8N8D".
+Reading "sg13g2_Clamp_P8N8D".
+Reading "sg13g2_IOPadInOut16mA".
+Reading "sg13g2_Clamp_N2N2D".
+Reading "sg13g2_Clamp_P2N2D".
+Reading "sg13g2_IOPadInOut4mA".
+Reading "sg13g2_LevelUpInv".
+Reading "sg13g2_GateLevelUpInv".
+Reading "sg13g2_IOPadOut16mA".
+Reading "sg13g2_IOPadOut30mA".
+Reading "sg13g2_IOPadOut4mA".
+Reading "sg13g2_IOPadTriOut16mA".
+Reading "sg13g2_IOPadTriOut30mA".
+Reading "sg13g2_IOPadTriOut4mA".
+Reading "sg13g2_IOPadVdd".
+Reading "sg13g2_IOPadVss".
+mask-rt tops 24 cells 47
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell sg13g2_Filler4000
+   Generating output for cell sg13g2_Filler400
+   Generating output for cell sg13g2_Filler2000
+   Generating output for cell sg13g2_Filler200
+   Generating output for cell sg13g2_Filler1000
+   Generating output for cell M2_M1_CDNS_777302434541
+   Generating output for cell M2_M1_CDNS_777302434540
+   Generating output for cell sg13g2_DCNDiode
+   Generating output for cell sg13g2_DCPDiode
+   Generating output for cell sg13g2_IOPadVss
+   Generating output for cell sg13g2_RCClampInverter
+   Generating output for cell sg13g2_RCClampResistor
+   Generating output for cell sg13g2_Clamp_N43N43D4R
+   Generating output for cell sg13g2_IOPadVdd
+   Generating output for cell sg13g2_Clamp_N2N2D
+   Generating output for cell sg13g2_Clamp_P2N2D
+   Generating output for cell sg13g2_io_nand2_x1
+   Generating output for cell sg13g2_io_tie
+   Generating output for cell sg13g2_io_nor2_x1
+   Generating output for cell sg13g2_LevelUp
+   Generating output for cell sg13g2_io_inv_x1
+   Generating output for cell sg13g2_GateDecode
+   Generating output for cell sg13g2_IOPadTriOut4mA
+   Generating output for cell sg13g2_Clamp_N15N15D
+   Generating output for cell sg13g2_Clamp_P15N15D
+   Generating output for cell sg13g2_IOPadTriOut30mA
+   Generating output for cell sg13g2_Clamp_N8N8D
+   Generating output for cell sg13g2_Clamp_P8N8D
+   Generating output for cell sg13g2_IOPadTriOut16mA
+   Generating output for cell sg13g2_LevelUpInv
+   Generating output for cell sg13g2_GateLevelUpInv
+   Generating output for cell sg13g2_IOPadOut4mA
+   Generating output for cell sg13g2_IOPadOut30mA
+   Generating output for cell sg13g2_IOPadOut16mA
+   Generating output for cell sg13g2_SecondaryProtection
+   Generating output for cell sg13g2_LevelDown
+   Generating output for cell sg13g2_IOPadInOut4mA
+   Generating output for cell sg13g2_IOPadInOut30mA
+   Generating output for cell sg13g2_IOPadInOut16mA
+   Generating output for cell sg13g2_IOPadIn
+   Generating output for cell sg13g2_IOPadIOVss
+   Generating output for cell sg13g2_IOPadIOVdd
+   Generating output for cell sg13g2_Clamp_P20N0D
+   Generating output for cell sg13g2_Clamp_N20N0D
+   Generating output for cell sg13g2_IOPadAnalog
+   Generating output for cell sg13g2_Filler10000
+   Generating output for cell sg13g2_Corner
+   Generating output for cell mask_rt_wrapper

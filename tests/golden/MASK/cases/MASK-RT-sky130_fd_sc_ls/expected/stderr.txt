@@ -1,0 +1,27 @@
+CIF file read warning: CIF style sky130(): units rescaled by factor of 5 / 1
+Error while reading cell "sky130_fd_sc_ls__sdfrbp_1" (byte position 87082): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrbp_1" (byte position 88090): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__sdfrbp_2" (byte position 113026): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrbp_2" (byte position 129650): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__sdfrtn_1" (byte position 132242): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrtn_1" (byte position 138322): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_1" (byte position 153622): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_1" (byte position 172038): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_2" (byte position 184906): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_2" (byte position 185258): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_4" (byte position 382242): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__sdfrtp_4" (byte position 382514): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrbp_1" (byte position 2542000): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrbp_1" (byte position 2550112): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrbp_2" (byte position 2552790): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrbp_2" (byte position 2552982): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrtn_1" (byte position 2580786): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrtn_1" (byte position 2583378): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrtp_1" (byte position 2602218): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrtp_1" (byte position 2602522): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrtp_2" (byte position 2619728): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrtp_2" (byte position 2620928): Unknown layer/datatype in boundary, layer=230 type=241
+Error while reading cell "sky130_fd_sc_ls__dfrtp_4" (byte position 2799906): Unknown layer/datatype in boundary, layer=230 type=242
+Error while reading cell "sky130_fd_sc_ls__dfrtp_4" (byte position 2805794): Unknown layer/datatype in boundary, layer=230 type=241
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

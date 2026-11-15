@@ -1,0 +1,17 @@
+magic
+tech masktest
+timestamp 1794771728
+<< checkpaint >>
+rect 0 0 10 10
+rect 20 0 30 10
+<< metal2 >>
+rect 0 20 10 30
+use va  va_0
+timestamp 1757017646
+transform 1 0 0 0 1 0
+box 0 0 10 10
+use vb  vb_0
+timestamp 1591685461
+transform 1 0 20 0 1 0
+box 0 0 10 10
+<< end >>

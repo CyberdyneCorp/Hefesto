@@ -1,0 +1,4 @@
+CIF file read warning: CIF style sg13g2(): units rescaled by factor of 5 / 1
+Error while reading cell "RM_IHPSG13_2P_ROWDEC6" (byte position 289400): Warning: cell "RSC_IHPSG13_FILL2" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

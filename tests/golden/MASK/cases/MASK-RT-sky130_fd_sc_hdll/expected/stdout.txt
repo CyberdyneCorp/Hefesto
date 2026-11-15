@@ -1,0 +1,701 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:49:03 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file sky130_fd_sc_hdll.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 3.0
+Library name: sky130_fd_sc_hdll
+Reading "sky130_fd_sc_hdll__a21o_8".
+Reading "sky130_fd_sc_hdll__a21o_6".
+Reading "sky130_fd_sc_hdll__a211o_2".
+Reading "sky130_fd_sc_hdll__a211o_1".
+Reading "sky130_fd_sc_hdll__tapvpwrvgnd_1".
+Reading "sky130_fd_sc_hdll__and2_6".
+Reading "sky130_fd_sc_hdll__a211o_4".
+Reading "sky130_fd_sc_hdll__a211oi_1".
+Reading "sky130_fd_sc_hdll__and2_8".
+Reading "sky130_fd_sc_hdll__a211oi_2".
+Reading "sky130_fd_sc_hdll__clkbuf_6".
+Reading "sky130_fd_sc_hdll__clkbuf_12".
+Reading "sky130_fd_sc_hdll__a211oi_4".
+Reading "sky130_fd_sc_hdll__a21bo_1".
+Reading "sky130_fd_sc_hdll__a21bo_2".
+Reading "sky130_fd_sc_hdll__a21bo_4".
+Reading "sky130_fd_sc_hdll__a21boi_1".
+Reading "sky130_fd_sc_hdll__clkinv_12".
+Reading "sky130_fd_sc_hdll__mux2_12".
+Reading "sky130_fd_sc_hdll__a21boi_4".
+Reading "sky130_fd_sc_hdll__a21boi_2".
+Reading "sky130_fd_sc_hdll__a21o_2".
+Reading "sky130_fd_sc_hdll__a21o_1".
+Reading "sky130_fd_sc_hdll__mux2_16".
+Reading "sky130_fd_sc_hdll__a21o_4".
+Reading "sky130_fd_sc_hdll__a21oi_2".
+Reading "sky130_fd_sc_hdll__a21oi_1".
+Reading "sky130_fd_sc_hdll__nand2_6".
+Reading "sky130_fd_sc_hdll__a21oi_4".
+Reading "sky130_fd_sc_hdll__a221oi_1".
+Reading "sky130_fd_sc_hdll__a221oi_2".
+Reading "sky130_fd_sc_hdll__nand2_12".
+Reading "sky130_fd_sc_hdll__a221oi_4".
+Reading "sky130_fd_sc_hdll__a222oi_1".
+Reading "sky130_fd_sc_hdll__a22o_1".
+Reading "sky130_fd_sc_hdll__nand2_16".
+Reading "sky130_fd_sc_hdll__a22o_2".
+Reading "sky130_fd_sc_hdll__a22oi_1".
+Reading "sky130_fd_sc_hdll__a22o_4".
+Reading "sky130_fd_sc_hdll__nor4_8".
+Reading "sky130_fd_sc_hdll__nor4_6".
+Reading "sky130_fd_sc_hdll__a22oi_2".
+Reading "sky130_fd_sc_hdll__a22oi_4".
+Reading "sky130_fd_sc_hdll__probe_p_8".
+Reading "sky130_fd_sc_hdll__a2bb2o_1".
+Reading "sky130_fd_sc_hdll__tapvgnd_1".
+Reading "sky130_fd_sc_hdll__tapvgnd2_1".
+Reading "sky130_fd_sc_hdll__a2bb2o_2".
+Reading "sky130_fd_sc_hdll__a2bb2o_4".
+Reading "sky130_fd_sc_hdll__or2_6".
+Reading "sky130_fd_sc_hdll__or2_8".
+Reading "sky130_fd_sc_hdll__a2bb2oi_1".
+Reading "sky130_fd_sc_hdll__a2bb2oi_2".
+Reading "sky130_fd_sc_hdll__probec_p_8".
+Reading "sky130_fd_sc_hdll__a2bb2oi_4".
+Reading "sky130_fd_sc_hdll__dlrtn_1".
+Reading "sky130_fd_sc_hdll__dlrtp_1".
+Reading "sky130_fd_sc_hdll__a31o_1".
+Reading "sky130_fd_sc_hdll__a31o_2".
+Reading "sky130_fd_sc_hdll__dlrtn_2".
+Reading "sky130_fd_sc_hdll__a31o_4".
+Reading "sky130_fd_sc_hdll__dlrtp_2".
+Reading "sky130_fd_sc_hdll__dlrtn_4".
+Reading "sky130_fd_sc_hdll__a31oi_1".
+Reading "sky130_fd_sc_hdll__a31oi_2".
+Reading "sky130_fd_sc_hdll__a31oi_4".
+Reading "sky130_fd_sc_hdll__dlrtp_4".
+Reading "sky130_fd_sc_hdll__a32o_1".
+Reading "sky130_fd_sc_hdll__a32o_2".
+Reading "sky130_fd_sc_hdll__diode_2".
+Reading "sky130_fd_sc_hdll__diode_4".
+Reading "sky130_fd_sc_hdll__diode_6".
+Reading "sky130_fd_sc_hdll__diode_8".
+Reading "sky130_fd_sc_hdll__a32o_4".
+Reading "sky130_fd_sc_hdll__a32oi_1".
+Reading "sky130_fd_sc_hdll__a32oi_2".
+Reading "sky130_fd_sc_hdll__a32oi_4".
+Reading "sky130_fd_sc_hdll__and2_1".
+Reading "sky130_fd_sc_hdll__and2_2".
+Reading "sky130_fd_sc_hdll__and2_4".
+Reading "sky130_fd_sc_hdll__and2b_1".
+Reading "sky130_fd_sc_hdll__and2b_2".
+Reading "sky130_fd_sc_hdll__and2b_4".
+Reading "sky130_fd_sc_hdll__and3_1".
+Reading "sky130_fd_sc_hdll__and3_2".
+Reading "sky130_fd_sc_hdll__and3_4".
+Reading "sky130_fd_sc_hdll__and3b_1".
+Reading "sky130_fd_sc_hdll__and3b_2".
+Reading "sky130_fd_sc_hdll__and3b_4".
+Reading "sky130_fd_sc_hdll__and4_1".
+Reading "sky130_fd_sc_hdll__and4_2".
+Reading "sky130_fd_sc_hdll__and4_4".
+Reading "sky130_fd_sc_hdll__and4b_1".
+Reading "sky130_fd_sc_hdll__and4b_2".
+Reading "sky130_fd_sc_hdll__and4b_4".
+Reading "sky130_fd_sc_hdll__and4bb_1".
+Reading "sky130_fd_sc_hdll__and4bb_2".
+Reading "sky130_fd_sc_hdll__and4bb_4".
+Reading "sky130_fd_sc_hdll__buf_1".
+Reading "sky130_fd_sc_hdll__buf_12".
+Reading "sky130_fd_sc_hdll__buf_16".
+Reading "sky130_fd_sc_hdll__buf_2".
+Reading "sky130_fd_sc_hdll__buf_4".
+Reading "sky130_fd_sc_hdll__buf_6".
+Reading "sky130_fd_sc_hdll__buf_8".
+Reading "sky130_fd_sc_hdll__bufbuf_16".
+Reading "sky130_fd_sc_hdll__bufbuf_8".
+Reading "sky130_fd_sc_hdll__bufinv_16".
+Reading "sky130_fd_sc_hdll__bufinv_8".
+Reading "sky130_fd_sc_hdll__clkbuf_1".
+Reading "sky130_fd_sc_hdll__clkbuf_16".
+Reading "sky130_fd_sc_hdll__clkbuf_2".
+Reading "sky130_fd_sc_hdll__clkbuf_4".
+Reading "sky130_fd_sc_hdll__clkbuf_8".
+Reading "sky130_fd_sc_hdll__clkinv_1".
+Reading "sky130_fd_sc_hdll__clkinv_16".
+Reading "sky130_fd_sc_hdll__clkinv_2".
+Reading "sky130_fd_sc_hdll__clkinv_4".
+Reading "sky130_fd_sc_hdll__clkinv_8".
+Reading "sky130_fd_sc_hdll__clkinvlp_2".
+Reading "sky130_fd_sc_hdll__clkinvlp_4".
+Reading "sky130_fd_sc_hdll__conb_1".
+Reading "sky130_fd_sc_hdll__dfrtp_1".
+Reading "sky130_fd_sc_hdll__dfrtp_2".
+Reading "sky130_fd_sc_hdll__dfrtp_4".
+Reading "sky130_fd_sc_hdll__dfstp_1".
+Reading "sky130_fd_sc_hdll__dfstp_2".
+Reading "sky130_fd_sc_hdll__dfstp_4".
+Reading "sky130_fd_sc_hdll__dlxtn_1".
+Reading "sky130_fd_sc_hdll__dlxtn_2".
+Reading "sky130_fd_sc_hdll__dlxtn_4".
+Reading "sky130_fd_sc_hdll__dlygate4sd1_1".
+Reading "sky130_fd_sc_hdll__ebufn_1".
+Reading "sky130_fd_sc_hdll__dlygate4sd2_1".
+Reading "sky130_fd_sc_hdll__dlygate4sd3_1".
+Reading "sky130_fd_sc_hdll__ebufn_2".
+Reading "sky130_fd_sc_hdll__ebufn_4".
+Reading "sky130_fd_sc_hdll__ebufn_8".
+Reading "sky130_fd_sc_hdll__einvn_1".
+Reading "sky130_fd_sc_hdll__einvn_2".
+Reading "sky130_fd_sc_hdll__einvn_4".
+Reading "sky130_fd_sc_hdll__einvn_8".
+Reading "sky130_fd_sc_hdll__einvp_1".
+Reading "sky130_fd_sc_hdll__einvp_2".
+Reading "sky130_fd_sc_hdll__einvp_4".
+Reading "sky130_fd_sc_hdll__einvp_8".
+Reading "sky130_fd_sc_hdll__inv_1".
+Reading "sky130_fd_sc_hdll__inv_12".
+Reading "sky130_fd_sc_hdll__inv_16".
+Reading "sky130_fd_sc_hdll__inv_2".
+Reading "sky130_fd_sc_hdll__inv_4".
+Reading "sky130_fd_sc_hdll__inv_6".
+Reading "sky130_fd_sc_hdll__inv_8".
+Reading "sky130_fd_sc_hdll__mux2_1".
+Reading "sky130_fd_sc_hdll__mux2_2".
+Reading "sky130_fd_sc_hdll__mux2_4".
+Reading "sky130_fd_sc_hdll__mux2_8".
+Reading "sky130_fd_sc_hdll__mux2i_1".
+Reading "sky130_fd_sc_hdll__mux2i_2".
+Reading "sky130_fd_sc_hdll__mux2i_4".
+Reading "sky130_fd_sc_hdll__nand2_1".
+Reading "sky130_fd_sc_hdll__nand2_2".
+Reading "sky130_fd_sc_hdll__nand2_4".
+Reading "sky130_fd_sc_hdll__nand2_8".
+Reading "sky130_fd_sc_hdll__nand2b_1".
+Reading "sky130_fd_sc_hdll__nand2b_2".
+Reading "sky130_fd_sc_hdll__nand2b_4".
+Reading "sky130_fd_sc_hdll__nand3_1".
+Reading "sky130_fd_sc_hdll__nand3_2".
+Reading "sky130_fd_sc_hdll__nand3_4".
+Reading "sky130_fd_sc_hdll__nand3b_1".
+Reading "sky130_fd_sc_hdll__nand3b_2".
+Reading "sky130_fd_sc_hdll__nand3b_4".
+Reading "sky130_fd_sc_hdll__nand4_1".
+Reading "sky130_fd_sc_hdll__nand4_2".
+Reading "sky130_fd_sc_hdll__nand4_4".
+Reading "sky130_fd_sc_hdll__nand4b_1".
+Reading "sky130_fd_sc_hdll__nand4b_2".
+Reading "sky130_fd_sc_hdll__nand4b_4".
+Reading "sky130_fd_sc_hdll__nand4bb_1".
+Reading "sky130_fd_sc_hdll__nand4bb_2".
+Reading "sky130_fd_sc_hdll__nand4bb_4".
+Reading "sky130_fd_sc_hdll__nor2_1".
+Reading "sky130_fd_sc_hdll__nor2_2".
+Reading "sky130_fd_sc_hdll__nor2_4".
+Reading "sky130_fd_sc_hdll__nor2_8".
+Reading "sky130_fd_sc_hdll__nor2b_1".
+Reading "sky130_fd_sc_hdll__nor2b_2".
+Reading "sky130_fd_sc_hdll__nor2b_4".
+Reading "sky130_fd_sc_hdll__nor3_1".
+Reading "sky130_fd_sc_hdll__nor3_2".
+Reading "sky130_fd_sc_hdll__nor3_4".
+Reading "sky130_fd_sc_hdll__nor3b_1".
+Reading "sky130_fd_sc_hdll__nor3b_2".
+Reading "sky130_fd_sc_hdll__nor3b_4".
+Reading "sky130_fd_sc_hdll__nor4_1".
+Reading "sky130_fd_sc_hdll__nor4_2".
+Reading "sky130_fd_sc_hdll__nor4_4".
+Reading "sky130_fd_sc_hdll__nor4b_1".
+Reading "sky130_fd_sc_hdll__nor4b_2".
+Reading "sky130_fd_sc_hdll__nor4b_4".
+Reading "sky130_fd_sc_hdll__nor4bb_1".
+Reading "sky130_fd_sc_hdll__nor4bb_2".
+Reading "sky130_fd_sc_hdll__nor4bb_4".
+Reading "sky130_fd_sc_hdll__o211a_1".
+Reading "sky130_fd_sc_hdll__o211a_2".
+Reading "sky130_fd_sc_hdll__o211a_4".
+Reading "sky130_fd_sc_hdll__o211ai_1".
+Reading "sky130_fd_sc_hdll__o211ai_2".
+Reading "sky130_fd_sc_hdll__o211ai_4".
+Reading "sky130_fd_sc_hdll__o21a_1".
+Reading "sky130_fd_sc_hdll__o21a_2".
+Reading "sky130_fd_sc_hdll__o21a_4".
+Reading "sky130_fd_sc_hdll__o21ai_1".
+Reading "sky130_fd_sc_hdll__o21ai_2".
+Reading "sky130_fd_sc_hdll__o21ai_4".
+Reading "sky130_fd_sc_hdll__o21ba_1".
+Reading "sky130_fd_sc_hdll__o21ba_2".
+Reading "sky130_fd_sc_hdll__o21ba_4".
+Reading "sky130_fd_sc_hdll__o21bai_1".
+Reading "sky130_fd_sc_hdll__o21bai_2".
+Reading "sky130_fd_sc_hdll__o21bai_4".
+Reading "sky130_fd_sc_hdll__o221a_1".
+Reading "sky130_fd_sc_hdll__o221a_2".
+Reading "sky130_fd_sc_hdll__o221a_4".
+Reading "sky130_fd_sc_hdll__o221ai_1".
+Reading "sky130_fd_sc_hdll__o221ai_2".
+Reading "sky130_fd_sc_hdll__o221ai_4".
+Reading "sky130_fd_sc_hdll__o22a_1".
+Reading "sky130_fd_sc_hdll__o22a_2".
+Reading "sky130_fd_sc_hdll__o22a_4".
+Reading "sky130_fd_sc_hdll__o22ai_1".
+Reading "sky130_fd_sc_hdll__o22ai_2".
+Reading "sky130_fd_sc_hdll__o22ai_4".
+Reading "sky130_fd_sc_hdll__o2bb2a_1".
+Reading "sky130_fd_sc_hdll__o2bb2a_2".
+Reading "sky130_fd_sc_hdll__o2bb2a_4".
+Reading "sky130_fd_sc_hdll__o2bb2ai_1".
+Reading "sky130_fd_sc_hdll__o2bb2ai_2".
+Reading "sky130_fd_sc_hdll__o2bb2ai_4".
+Reading "sky130_fd_sc_hdll__o31ai_1".
+Reading "sky130_fd_sc_hdll__o31ai_2".
+Reading "sky130_fd_sc_hdll__o31ai_4".
+Reading "sky130_fd_sc_hdll__o32ai_1".
+Reading "sky130_fd_sc_hdll__o32ai_2".
+Reading "sky130_fd_sc_hdll__o32ai_4".
+Reading "sky130_fd_sc_hdll__or2_1".
+Reading "sky130_fd_sc_hdll__or2_2".
+Reading "sky130_fd_sc_hdll__or2_4".
+Reading "sky130_fd_sc_hdll__or2b_1".
+Reading "sky130_fd_sc_hdll__or2b_2".
+Reading "sky130_fd_sc_hdll__or2b_4".
+Reading "sky130_fd_sc_hdll__or3_1".
+Reading "sky130_fd_sc_hdll__or3_2".
+Reading "sky130_fd_sc_hdll__or3_4".
+Reading "sky130_fd_sc_hdll__or3b_1".
+Reading "sky130_fd_sc_hdll__or3b_2".
+Reading "sky130_fd_sc_hdll__or3b_4".
+Reading "sky130_fd_sc_hdll__or4_1".
+Reading "sky130_fd_sc_hdll__or4_2".
+Reading "sky130_fd_sc_hdll__or4_4".
+Reading "sky130_fd_sc_hdll__or4b_1".
+Reading "sky130_fd_sc_hdll__or4b_2".
+Reading "sky130_fd_sc_hdll__or4b_4".
+Reading "sky130_fd_sc_hdll__or4bb_1".
+Reading "sky130_fd_sc_hdll__or4bb_2".
+Reading "sky130_fd_sc_hdll__or4bb_4".
+Reading "sky130_fd_sc_hdll__sdfbbp_1".
+Reading "sky130_fd_sc_hdll__sdfrtp_1".
+Reading "sky130_fd_sc_hdll__sdfrtn_1".
+Reading "sky130_fd_sc_hdll__sdfrbp_2".
+Reading "sky130_fd_sc_hdll__sdfrbp_1".
+Reading "sky130_fd_sc_hdll__sdfsbp_2".
+Reading "sky130_fd_sc_hdll__sdfsbp_1".
+Reading "sky130_fd_sc_hdll__sdfrtp_2".
+Reading "sky130_fd_sc_hdll__sdfxbp_1".
+Reading "sky130_fd_sc_hdll__sdfstp_4".
+Reading "sky130_fd_sc_hdll__sdfstp_2".
+Reading "sky130_fd_sc_hdll__sdfstp_1".
+Reading "sky130_fd_sc_hdll__sdfxtp_4".
+Reading "sky130_fd_sc_hdll__sdfxtp_2".
+Reading "sky130_fd_sc_hdll__sdfxtp_1".
+Reading "sky130_fd_sc_hdll__sdfxbp_2".
+Reading "sky130_fd_sc_hdll__sdlclkp_1".
+Reading "sky130_fd_sc_hdll__sdlclkp_2".
+Reading "sky130_fd_sc_hdll__sdlclkp_4".
+Reading "sky130_fd_sc_hdll__sedfxbp_1".
+Reading "sky130_fd_sc_hdll__sedfxbp_2".
+Reading "sky130_fd_sc_hdll__xnor2_1".
+Reading "sky130_fd_sc_hdll__xnor2_4".
+Reading "sky130_fd_sc_hdll__xnor2_2".
+Reading "sky130_fd_sc_hdll__xnor3_1".
+Reading "sky130_fd_sc_hdll__xnor3_2".
+Reading "sky130_fd_sc_hdll__xnor3_4".
+Reading "sky130_fd_sc_hdll__xor2_1".
+Reading "sky130_fd_sc_hdll__xor2_4".
+Reading "sky130_fd_sc_hdll__xor2_2".
+Reading "sky130_fd_sc_hdll__xor3_1".
+Reading "sky130_fd_sc_hdll__xor3_2".
+Reading "sky130_fd_sc_hdll__xor3_4".
+Reading "sky130_fd_sc_hdll__sdfrtp_4".
+Reading "sky130_fd_sc_hdll__inputiso0n_1".
+Reading "sky130_fd_sc_hdll__inputiso0p_1".
+Reading "sky130_fd_sc_hdll__inputiso1n_1".
+Reading "sky130_fd_sc_hdll__inputiso1p_1".
+Reading "sky130_fd_sc_hdll__isobufsrc_1".
+Reading "sky130_fd_sc_hdll__isobufsrc_2".
+Reading "sky130_fd_sc_hdll__isobufsrc_4".
+Reading "sky130_fd_sc_hdll__isobufsrc_8".
+Reading "sky130_fd_sc_hdll__isobufsrc_16".
+Reading "sky130_fd_sc_hdll__decap_8".
+Reading "sky130_fd_sc_hdll__decap_6".
+Reading "sky130_fd_sc_hdll__decap_4".
+Reading "sky130_fd_sc_hdll__decap_3".
+Reading "sky130_fd_sc_hdll__tap_1".
+Reading "sky130_fd_sc_hdll__fill_8".
+Reading "sky130_fd_sc_hdll__fill_4".
+Reading "sky130_fd_sc_hdll__fill_2".
+Reading "sky130_fd_sc_hdll__fill_1".
+Reading "sky130_fd_sc_hdll__decap_12".
+Reading "sky130_fd_sc_hdll__muxb8to1_1".
+Reading "sky130_fd_sc_hdll__muxb4to1_4".
+Reading "sky130_fd_sc_hdll__muxb4to1_2".
+Reading "sky130_fd_sc_hdll__muxb4to1_1".
+Reading "sky130_fd_sc_hdll__clkmux2_4".
+Reading "sky130_fd_sc_hdll__clkmux2_2".
+Reading "sky130_fd_sc_hdll__clkmux2_1".
+Reading "sky130_fd_sc_hdll__muxb8to1_2".
+Reading "sky130_fd_sc_hdll__muxb16to1_2".
+Reading "sky130_fd_sc_hdll__muxb16to1_1".
+Reading "sky130_fd_sc_hdll__muxb8to1_4".
+Reading "sky130_fd_sc_hdll__muxb16to1_4".
+Reading "sky130_fd_sc_hdll__tap".
+Reading "sky130_fd_sc_hdll__muxb".
+mask-rt tops 2 cells 334
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell sky130_fd_sc_hdll__a21o_8
+   Generating output for cell sky130_fd_sc_hdll__a21o_6
+   Generating output for cell sky130_fd_sc_hdll__tapvpwrvgnd_1
+   Generating output for cell sky130_fd_sc_hdll__a211o_2
+   Generating output for cell sky130_fd_sc_hdll__a211o_1
+   Generating output for cell sky130_fd_sc_hdll__and2_6
+   Generating output for cell sky130_fd_sc_hdll__a211o_4
+   Generating output for cell sky130_fd_sc_hdll__a211oi_1
+   Generating output for cell sky130_fd_sc_hdll__and2_8
+   Generating output for cell sky130_fd_sc_hdll__a211oi_2
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_6
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_12
+   Generating output for cell sky130_fd_sc_hdll__a211oi_4
+   Generating output for cell sky130_fd_sc_hdll__a21bo_1
+   Generating output for cell sky130_fd_sc_hdll__a21bo_2
+   Generating output for cell sky130_fd_sc_hdll__a21bo_4
+   Generating output for cell sky130_fd_sc_hdll__a21boi_1
+   Generating output for cell sky130_fd_sc_hdll__clkinv_12
+   Generating output for cell sky130_fd_sc_hdll__mux2_12
+   Generating output for cell sky130_fd_sc_hdll__a21boi_4
+   Generating output for cell sky130_fd_sc_hdll__a21boi_2
+   Generating output for cell sky130_fd_sc_hdll__a21o_2
+   Generating output for cell sky130_fd_sc_hdll__a21o_1
+   Generating output for cell sky130_fd_sc_hdll__mux2_16
+   Generating output for cell sky130_fd_sc_hdll__a21o_4
+   Generating output for cell sky130_fd_sc_hdll__a21oi_2
+   Generating output for cell sky130_fd_sc_hdll__a21oi_1
+   Generating output for cell sky130_fd_sc_hdll__nand2_6
+   Generating output for cell sky130_fd_sc_hdll__a21oi_4
+   Generating output for cell sky130_fd_sc_hdll__a221oi_1
+   Generating output for cell sky130_fd_sc_hdll__a221oi_2
+   Generating output for cell sky130_fd_sc_hdll__nand2_12
+   Generating output for cell sky130_fd_sc_hdll__a221oi_4
+   Generating output for cell sky130_fd_sc_hdll__a222oi_1
+   Generating output for cell sky130_fd_sc_hdll__a22o_1
+   Generating output for cell sky130_fd_sc_hdll__nand2_16
+   Generating output for cell sky130_fd_sc_hdll__a22o_2
+   Generating output for cell sky130_fd_sc_hdll__a22oi_1
+   Generating output for cell sky130_fd_sc_hdll__a22o_4
+   Generating output for cell sky130_fd_sc_hdll__nor4_8
+   Generating output for cell sky130_fd_sc_hdll__nor4_6
+   Generating output for cell sky130_fd_sc_hdll__a22oi_2
+   Generating output for cell sky130_fd_sc_hdll__a22oi_4
+   Generating output for cell sky130_fd_sc_hdll__probe_p_8
+   Generating output for cell sky130_fd_sc_hdll__a2bb2o_1
+   Generating output for cell sky130_fd_sc_hdll__a2bb2o_2
+   Generating output for cell sky130_fd_sc_hdll__a2bb2o_4
+   Generating output for cell sky130_fd_sc_hdll__or2_6
+   Generating output for cell sky130_fd_sc_hdll__or2_8
+   Generating output for cell sky130_fd_sc_hdll__tapvgnd_1
+   Generating output for cell sky130_fd_sc_hdll__tapvgnd2_1
+   Generating output for cell sky130_fd_sc_hdll__a2bb2oi_1
+   Generating output for cell sky130_fd_sc_hdll__a2bb2oi_2
+   Generating output for cell sky130_fd_sc_hdll__probec_p_8
+   Generating output for cell sky130_fd_sc_hdll__a2bb2oi_4
+   Generating output for cell sky130_fd_sc_hdll__dlrtn_1
+   Generating output for cell sky130_fd_sc_hdll__dlrtp_1
+   Generating output for cell sky130_fd_sc_hdll__a31o_1
+   Generating output for cell sky130_fd_sc_hdll__a31o_2
+   Generating output for cell sky130_fd_sc_hdll__dlrtn_2
+   Generating output for cell sky130_fd_sc_hdll__a31o_4
+   Generating output for cell sky130_fd_sc_hdll__dlrtp_2
+   Generating output for cell sky130_fd_sc_hdll__dlrtn_4
+   Generating output for cell sky130_fd_sc_hdll__a31oi_1
+   Generating output for cell sky130_fd_sc_hdll__a31oi_2
+   Generating output for cell sky130_fd_sc_hdll__a31oi_4
+   Generating output for cell sky130_fd_sc_hdll__dlrtp_4
+   Generating output for cell sky130_fd_sc_hdll__a32o_1
+   Generating output for cell sky130_fd_sc_hdll__a32o_2
+   Generating output for cell sky130_fd_sc_hdll__diode_2
+   Generating output for cell sky130_fd_sc_hdll__diode_4
+   Generating output for cell sky130_fd_sc_hdll__diode_6
+   Generating output for cell sky130_fd_sc_hdll__diode_8
+   Generating output for cell sky130_fd_sc_hdll__a32o_4
+   Generating output for cell sky130_fd_sc_hdll__a32oi_1
+   Generating output for cell sky130_fd_sc_hdll__a32oi_2
+   Generating output for cell sky130_fd_sc_hdll__a32oi_4
+   Generating output for cell sky130_fd_sc_hdll__and2_1
+   Generating output for cell sky130_fd_sc_hdll__and2_2
+   Generating output for cell sky130_fd_sc_hdll__and2_4
+   Generating output for cell sky130_fd_sc_hdll__and2b_1
+   Generating output for cell sky130_fd_sc_hdll__and2b_2
+   Generating output for cell sky130_fd_sc_hdll__and2b_4
+   Generating output for cell sky130_fd_sc_hdll__and3_1
+   Generating output for cell sky130_fd_sc_hdll__and3_2
+   Generating output for cell sky130_fd_sc_hdll__and3_4
+   Generating output for cell sky130_fd_sc_hdll__and3b_1
+   Generating output for cell sky130_fd_sc_hdll__and3b_2
+   Generating output for cell sky130_fd_sc_hdll__and3b_4
+   Generating output for cell sky130_fd_sc_hdll__and4_1
+   Generating output for cell sky130_fd_sc_hdll__and4_2
+   Generating output for cell sky130_fd_sc_hdll__and4_4
+   Generating output for cell sky130_fd_sc_hdll__and4b_1
+   Generating output for cell sky130_fd_sc_hdll__and4b_2
+   Generating output for cell sky130_fd_sc_hdll__and4b_4
+   Generating output for cell sky130_fd_sc_hdll__and4bb_1
+   Generating output for cell sky130_fd_sc_hdll__and4bb_2
+   Generating output for cell sky130_fd_sc_hdll__and4bb_4
+   Generating output for cell sky130_fd_sc_hdll__buf_1
+   Generating output for cell sky130_fd_sc_hdll__buf_12
+   Generating output for cell sky130_fd_sc_hdll__buf_16
+   Generating output for cell sky130_fd_sc_hdll__buf_2
+   Generating output for cell sky130_fd_sc_hdll__buf_4
+   Generating output for cell sky130_fd_sc_hdll__buf_6
+   Generating output for cell sky130_fd_sc_hdll__buf_8
+   Generating output for cell sky130_fd_sc_hdll__bufbuf_16
+   Generating output for cell sky130_fd_sc_hdll__bufbuf_8
+   Generating output for cell sky130_fd_sc_hdll__bufinv_16
+   Generating output for cell sky130_fd_sc_hdll__bufinv_8
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_1
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_16
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_2
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_4
+   Generating output for cell sky130_fd_sc_hdll__clkbuf_8
+   Generating output for cell sky130_fd_sc_hdll__clkinv_1
+   Generating output for cell sky130_fd_sc_hdll__clkinv_16
+   Generating output for cell sky130_fd_sc_hdll__clkinv_2
+   Generating output for cell sky130_fd_sc_hdll__clkinv_4
+   Generating output for cell sky130_fd_sc_hdll__clkinv_8
+   Generating output for cell sky130_fd_sc_hdll__clkinvlp_2
+   Generating output for cell sky130_fd_sc_hdll__clkinvlp_4
+   Generating output for cell sky130_fd_sc_hdll__conb_1
+   Generating output for cell sky130_fd_sc_hdll__dfrtp_1
+   Generating output for cell sky130_fd_sc_hdll__dfrtp_2
+   Generating output for cell sky130_fd_sc_hdll__dfrtp_4
+   Generating output for cell sky130_fd_sc_hdll__dfstp_1
+   Generating output for cell sky130_fd_sc_hdll__dfstp_2
+   Generating output for cell sky130_fd_sc_hdll__dfstp_4
+   Generating output for cell sky130_fd_sc_hdll__dlxtn_1
+   Generating output for cell sky130_fd_sc_hdll__dlxtn_2
+   Generating output for cell sky130_fd_sc_hdll__dlxtn_4
+   Generating output for cell sky130_fd_sc_hdll__dlygate4sd1_1
+   Generating output for cell sky130_fd_sc_hdll__ebufn_1
+   Generating output for cell sky130_fd_sc_hdll__dlygate4sd2_1
+   Generating output for cell sky130_fd_sc_hdll__dlygate4sd3_1
+   Generating output for cell sky130_fd_sc_hdll__ebufn_2
+   Generating output for cell sky130_fd_sc_hdll__ebufn_4
+   Generating output for cell sky130_fd_sc_hdll__ebufn_8
+   Generating output for cell sky130_fd_sc_hdll__einvn_1
+   Generating output for cell sky130_fd_sc_hdll__einvn_2
+   Generating output for cell sky130_fd_sc_hdll__einvn_4
+   Generating output for cell sky130_fd_sc_hdll__einvn_8
+   Generating output for cell sky130_fd_sc_hdll__einvp_1
+   Generating output for cell sky130_fd_sc_hdll__einvp_2
+   Generating output for cell sky130_fd_sc_hdll__einvp_4
+   Generating output for cell sky130_fd_sc_hdll__einvp_8
+   Generating output for cell sky130_fd_sc_hdll__inv_1
+   Generating output for cell sky130_fd_sc_hdll__inv_12
+   Generating output for cell sky130_fd_sc_hdll__inv_16
+   Generating output for cell sky130_fd_sc_hdll__inv_2
+   Generating output for cell sky130_fd_sc_hdll__inv_4
+   Generating output for cell sky130_fd_sc_hdll__inv_6
+   Generating output for cell sky130_fd_sc_hdll__inv_8
+   Generating output for cell sky130_fd_sc_hdll__mux2_1
+   Generating output for cell sky130_fd_sc_hdll__mux2_2
+   Generating output for cell sky130_fd_sc_hdll__mux2_4
+   Generating output for cell sky130_fd_sc_hdll__mux2_8
+   Generating output for cell sky130_fd_sc_hdll__mux2i_1
+   Generating output for cell sky130_fd_sc_hdll__mux2i_2
+   Generating output for cell sky130_fd_sc_hdll__mux2i_4
+   Generating output for cell sky130_fd_sc_hdll__nand2_1
+   Generating output for cell sky130_fd_sc_hdll__nand2_2
+   Generating output for cell sky130_fd_sc_hdll__nand2_4
+   Generating output for cell sky130_fd_sc_hdll__nand2_8
+   Generating output for cell sky130_fd_sc_hdll__nand2b_1
+   Generating output for cell sky130_fd_sc_hdll__nand2b_2
+   Generating output for cell sky130_fd_sc_hdll__nand2b_4
+   Generating output for cell sky130_fd_sc_hdll__nand3_1
+   Generating output for cell sky130_fd_sc_hdll__nand3_2
+   Generating output for cell sky130_fd_sc_hdll__nand3_4
+   Generating output for cell sky130_fd_sc_hdll__nand3b_1
+   Generating output for cell sky130_fd_sc_hdll__nand3b_2
+   Generating output for cell sky130_fd_sc_hdll__nand3b_4
+   Generating output for cell sky130_fd_sc_hdll__nand4_1
+   Generating output for cell sky130_fd_sc_hdll__nand4_2
+   Generating output for cell sky130_fd_sc_hdll__nand4_4
+   Generating output for cell sky130_fd_sc_hdll__nand4b_1
+   Generating output for cell sky130_fd_sc_hdll__nand4b_2
+   Generating output for cell sky130_fd_sc_hdll__nand4b_4
+   Generating output for cell sky130_fd_sc_hdll__nand4bb_1
+   Generating output for cell sky130_fd_sc_hdll__nand4bb_2
+   Generating output for cell sky130_fd_sc_hdll__nand4bb_4
+   Generating output for cell sky130_fd_sc_hdll__nor2_1
+   Generating output for cell sky130_fd_sc_hdll__nor2_2
+   Generating output for cell sky130_fd_sc_hdll__nor2_4
+   Generating output for cell sky130_fd_sc_hdll__nor2_8
+   Generating output for cell sky130_fd_sc_hdll__nor2b_1
+   Generating output for cell sky130_fd_sc_hdll__nor2b_2
+   Generating output for cell sky130_fd_sc_hdll__nor2b_4
+   Generating output for cell sky130_fd_sc_hdll__nor3_1
+   Generating output for cell sky130_fd_sc_hdll__nor3_2
+   Generating output for cell sky130_fd_sc_hdll__nor3_4
+   Generating output for cell sky130_fd_sc_hdll__nor3b_1
+   Generating output for cell sky130_fd_sc_hdll__nor3b_2
+   Generating output for cell sky130_fd_sc_hdll__nor3b_4
+   Generating output for cell sky130_fd_sc_hdll__nor4_1
+   Generating output for cell sky130_fd_sc_hdll__nor4_2
+   Generating output for cell sky130_fd_sc_hdll__nor4_4
+   Generating output for cell sky130_fd_sc_hdll__nor4b_1
+   Generating output for cell sky130_fd_sc_hdll__nor4b_2
+   Generating output for cell sky130_fd_sc_hdll__nor4b_4
+   Generating output for cell sky130_fd_sc_hdll__nor4bb_1
+   Generating output for cell sky130_fd_sc_hdll__nor4bb_2
+   Generating output for cell sky130_fd_sc_hdll__nor4bb_4
+   Generating output for cell sky130_fd_sc_hdll__o211a_1
+   Generating output for cell sky130_fd_sc_hdll__o211a_2
+   Generating output for cell sky130_fd_sc_hdll__o211a_4
+   Generating output for cell sky130_fd_sc_hdll__o211ai_1
+   Generating output for cell sky130_fd_sc_hdll__o211ai_2
+   Generating output for cell sky130_fd_sc_hdll__o211ai_4
+   Generating output for cell sky130_fd_sc_hdll__o21a_1
+   Generating output for cell sky130_fd_sc_hdll__o21a_2
+   Generating output for cell sky130_fd_sc_hdll__o21a_4
+   Generating output for cell sky130_fd_sc_hdll__o21ai_1
+   Generating output for cell sky130_fd_sc_hdll__o21ai_2
+   Generating output for cell sky130_fd_sc_hdll__o21ai_4
+   Generating output for cell sky130_fd_sc_hdll__o21ba_1
+   Generating output for cell sky130_fd_sc_hdll__o21ba_2
+   Generating output for cell sky130_fd_sc_hdll__o21ba_4
+   Generating output for cell sky130_fd_sc_hdll__o21bai_1
+   Generating output for cell sky130_fd_sc_hdll__o21bai_2
+   Generating output for cell sky130_fd_sc_hdll__o21bai_4
+   Generating output for cell sky130_fd_sc_hdll__o221a_1
+   Generating output for cell sky130_fd_sc_hdll__o221a_2
+   Generating output for cell sky130_fd_sc_hdll__o221a_4
+   Generating output for cell sky130_fd_sc_hdll__o221ai_1
+   Generating output for cell sky130_fd_sc_hdll__o221ai_2
+   Generating output for cell sky130_fd_sc_hdll__o221ai_4
+   Generating output for cell sky130_fd_sc_hdll__o22a_1
+   Generating output for cell sky130_fd_sc_hdll__o22a_2
+   Generating output for cell sky130_fd_sc_hdll__o22a_4
+   Generating output for cell sky130_fd_sc_hdll__o22ai_1
+   Generating output for cell sky130_fd_sc_hdll__o22ai_2
+   Generating output for cell sky130_fd_sc_hdll__o22ai_4
+   Generating output for cell sky130_fd_sc_hdll__o2bb2a_1
+   Generating output for cell sky130_fd_sc_hdll__o2bb2a_2
+   Generating output for cell sky130_fd_sc_hdll__o2bb2a_4
+   Generating output for cell sky130_fd_sc_hdll__o2bb2ai_1
+   Generating output for cell sky130_fd_sc_hdll__o2bb2ai_2
+   Generating output for cell sky130_fd_sc_hdll__o2bb2ai_4
+   Generating output for cell sky130_fd_sc_hdll__o31ai_1
+   Generating output for cell sky130_fd_sc_hdll__o31ai_2
+   Generating output for cell sky130_fd_sc_hdll__o31ai_4
+   Generating output for cell sky130_fd_sc_hdll__o32ai_1
+   Generating output for cell sky130_fd_sc_hdll__o32ai_2
+   Generating output for cell sky130_fd_sc_hdll__o32ai_4
+   Generating output for cell sky130_fd_sc_hdll__or2_1
+   Generating output for cell sky130_fd_sc_hdll__or2_2
+   Generating output for cell sky130_fd_sc_hdll__or2_4
+   Generating output for cell sky130_fd_sc_hdll__or2b_1
+   Generating output for cell sky130_fd_sc_hdll__or2b_2
+   Generating output for cell sky130_fd_sc_hdll__or2b_4
+   Generating output for cell sky130_fd_sc_hdll__or3_1
+   Generating output for cell sky130_fd_sc_hdll__or3_2
+   Generating output for cell sky130_fd_sc_hdll__or3_4
+   Generating output for cell sky130_fd_sc_hdll__or3b_1
+   Generating output for cell sky130_fd_sc_hdll__or3b_2
+   Generating output for cell sky130_fd_sc_hdll__or3b_4
+   Generating output for cell sky130_fd_sc_hdll__or4_1
+   Generating output for cell sky130_fd_sc_hdll__or4_2
+   Generating output for cell sky130_fd_sc_hdll__or4_4
+   Generating output for cell sky130_fd_sc_hdll__or4b_1
+   Generating output for cell sky130_fd_sc_hdll__or4b_2
+   Generating output for cell sky130_fd_sc_hdll__or4b_4
+   Generating output for cell sky130_fd_sc_hdll__or4bb_1
+   Generating output for cell sky130_fd_sc_hdll__or4bb_2
+   Generating output for cell sky130_fd_sc_hdll__or4bb_4
+   Generating output for cell sky130_fd_sc_hdll__sdfbbp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfrtp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfrtn_1
+   Generating output for cell sky130_fd_sc_hdll__sdfrbp_2
+   Generating output for cell sky130_fd_sc_hdll__sdfrbp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfsbp_2
+   Generating output for cell sky130_fd_sc_hdll__sdfsbp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfrtp_2
+   Generating output for cell sky130_fd_sc_hdll__sdfxbp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfstp_4
+   Generating output for cell sky130_fd_sc_hdll__sdfstp_2
+   Generating output for cell sky130_fd_sc_hdll__sdfstp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfxtp_4
+   Generating output for cell sky130_fd_sc_hdll__sdfxtp_2
+   Generating output for cell sky130_fd_sc_hdll__sdfxtp_1
+   Generating output for cell sky130_fd_sc_hdll__sdfxbp_2
+   Generating output for cell sky130_fd_sc_hdll__sdlclkp_1
+   Generating output for cell sky130_fd_sc_hdll__sdlclkp_2
+   Generating output for cell sky130_fd_sc_hdll__sdlclkp_4
+   Generating output for cell sky130_fd_sc_hdll__sedfxbp_1
+   Generating output for cell sky130_fd_sc_hdll__sedfxbp_2
+   Generating output for cell sky130_fd_sc_hdll__xnor2_1
+   Generating output for cell sky130_fd_sc_hdll__xnor2_2
+   Generating output for cell sky130_fd_sc_hdll__xnor2_4
+   Generating output for cell sky130_fd_sc_hdll__xnor3_1
+   Generating output for cell sky130_fd_sc_hdll__xnor3_2
+   Generating output for cell sky130_fd_sc_hdll__xnor3_4
+   Generating output for cell sky130_fd_sc_hdll__xor2_1
+   Generating output for cell sky130_fd_sc_hdll__xor2_2
+   Generating output for cell sky130_fd_sc_hdll__xor2_4
+   Generating output for cell sky130_fd_sc_hdll__xor3_1
+   Generating output for cell sky130_fd_sc_hdll__xor3_2
+   Generating output for cell sky130_fd_sc_hdll__xor3_4
+   Generating output for cell sky130_fd_sc_hdll__sdfrtp_4
+   Generating output for cell sky130_fd_sc_hdll__inputiso0n_1
+   Generating output for cell sky130_fd_sc_hdll__inputiso0p_1
+   Generating output for cell sky130_fd_sc_hdll__inputiso1n_1
+   Generating output for cell sky130_fd_sc_hdll__inputiso1p_1
+   Generating output for cell sky130_fd_sc_hdll__isobufsrc_1
+   Generating output for cell sky130_fd_sc_hdll__isobufsrc_2
+   Generating output for cell sky130_fd_sc_hdll__isobufsrc_4
+   Generating output for cell sky130_fd_sc_hdll__isobufsrc_8
+   Generating output for cell sky130_fd_sc_hdll__isobufsrc_16
+   Generating output for cell sky130_fd_sc_hdll__decap_8
+   Generating output for cell sky130_fd_sc_hdll__decap_6
+   Generating output for cell sky130_fd_sc_hdll__decap_4
+   Generating output for cell sky130_fd_sc_hdll__decap_3
+   Generating output for cell sky130_fd_sc_hdll__fill_8
+   Generating output for cell sky130_fd_sc_hdll__fill_4
+   Generating output for cell sky130_fd_sc_hdll__fill_2
+   Generating output for cell sky130_fd_sc_hdll__fill_1
+   Generating output for cell sky130_fd_sc_hdll__decap_12
+   Generating output for cell sky130_fd_sc_hdll__tap_1
+   Generating output for cell sky130_fd_sc_hdll__muxb8to1_1
+   Generating output for cell sky130_fd_sc_hdll__muxb4to1_4
+   Generating output for cell sky130_fd_sc_hdll__muxb4to1_2
+   Generating output for cell sky130_fd_sc_hdll__muxb4to1_1
+   Generating output for cell sky130_fd_sc_hdll__clkmux2_4
+   Generating output for cell sky130_fd_sc_hdll__clkmux2_2
+   Generating output for cell sky130_fd_sc_hdll__clkmux2_1
+   Generating output for cell sky130_fd_sc_hdll__muxb8to1_2
+   Generating output for cell sky130_fd_sc_hdll__muxb16to1_2
+   Generating output for cell sky130_fd_sc_hdll__muxb16to1_1
+   Generating output for cell sky130_fd_sc_hdll__muxb8to1_4
+   Generating output for cell sky130_fd_sc_hdll__muxb16to1_4
+   Generating output for cell sky130_fd_sc_hdll__tap
+   Generating output for cell sky130_fd_sc_hdll__muxb
+   Generating output for cell mask_rt_wrapper

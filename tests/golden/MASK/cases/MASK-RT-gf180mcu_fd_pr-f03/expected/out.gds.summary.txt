@@ -1,0 +1,5 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure npn_00p54x04p00_0 created 117-3-5 23:31:13 records 1146
+structure npn_00p54x04p00 created 117-3-5 23:31:13 records 118
+total structures 2 records 1269

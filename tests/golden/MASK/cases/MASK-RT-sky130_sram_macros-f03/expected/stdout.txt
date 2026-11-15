@@ -1,0 +1,360 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:56 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file sky130_sram_2kbyte_1rw1r_32x512_8.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: LIB
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_11".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_12".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_360_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w1_120_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_15".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_29".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_28".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m2_w0_740_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m2_w1_260_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_16".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_14".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_13".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w7_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w7_000_sli_dli_da_p".
+Reading "sky130_fd_bd_sram__openram_dp_nand3_dec".
+Reading "sky130_fd_bd_sram__openram_dp_nand2_dec".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_dec".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sactive_dli".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sli_dactive".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w1_120_sli_dli".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m18_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m18_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m22_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m22_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m7_w1_680_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m7_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m3_w1_680_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m3_w1_680_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_dec_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_and2_dec".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_20".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_17".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_and3_dec".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w2_880_sli_dli".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pnand2".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_23".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_22".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_21".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w0_550_sli_dli".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_19".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_7".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m41_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m41_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m14_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m14_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m5_w1_680_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_16".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_15".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sactive_dactive".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m24_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m24_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m8_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m8_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m3_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m3_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_4".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m42_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m42_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m15_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m15_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m5_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m5_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m2_w1_260_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m2_w2_000_sli_dli_da_p".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_3".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_2".
+Reading "sky130_fd_bd_sram__openram_dff".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pnand2_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_wordline_driver".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode3x8".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode2x4".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_precharge_1".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_27".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_26".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_25".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_24".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_column_mux".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pand2".
+Reading "sky130_fd_bd_sram__openram_write_driver".
+Reading "sky130_fd_bd_sram__openram_sense_amp".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_precharge_0".
+Reading "sky130_fd_bd_sram__openram_dp_cell_cap_row".
+Reading "sky130_fd_bd_sram__openram_dp_cell_dummy".
+Reading "sky130_fd_bd_sram__openram_dp_cell_replica".
+Reading "sky130_fd_bd_sram__openram_dp_cell_cap_col".
+Reading "sky130_fd_bd_sram__openram_dp_cell".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_20".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_19".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_18".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_17".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_5".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_4".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pnand3".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_14".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_13".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_12".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_11".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_1".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_10".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_9".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_8".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_7".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pand2_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pinv_1".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_and2_dec_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_wordline_driver_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_decoder".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_array_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_precharge_array_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_write_mask_and_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_write_driver_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_sense_amp_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_precharge_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_9".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_8".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_row_cap_array_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_row_cap_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_col_cap_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_col_cap_array_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_dummy_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_replica_column_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_replica_column".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_bitcell_array".
+    5000 uses
+    10000 uses
+    15000 uses
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_6".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_array_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pnand2_1".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_delay_chain".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pand3_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pand3".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_3".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pand2_1".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_2".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode2x4_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_port_address_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_port_address".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_port_data_0".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_port_data".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_replica_bitcell_array".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_33".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_32".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_39".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_contact_38".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_cr_5".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_cr_4".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_cr_3".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_data_dff".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_wmask_dff".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_col_addr_dff".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_row_addr_dff".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_control_logic_r".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_control_logic_rw".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8_bank".
+Reading "sky130_sram_2kbyte_1rw1r_32x512_8".
+    5000 uses
+mask-rt tops 1 cells 161
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_39
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_19
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_14
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_13
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_7
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_38
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_33
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_32
+   Generating output for cell sky130_fd_bd_sram__openram_dff
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_row_addr_dff
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_wmask_dff
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_cr_3
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_col_addr_dff
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_data_dff
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_16
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_29
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_28
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_11
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_360_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_12
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w1_120_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_1
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sactive_dli
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sli_dactive
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w1_120_sli_dli
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pnand2_1
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m3_w1_680_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m3_w1_680_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_3
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m2_w0_740_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m2_w1_260_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_2
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m7_w1_680_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m7_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_4
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_1
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pnand2_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pand2_1
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m24_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m24_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_14
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m8_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m8_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_13
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m3_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m3_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_12
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_11
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_3
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_17
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_delay_chain
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m18_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m18_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_16
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_5
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w0_740_sactive_dactive
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pnand3
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pand3_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m22_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m22_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_15
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_4
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pand3
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m42_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m42_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_10
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m15_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m15_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_9
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m5_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m5_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_8
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m2_w1_260_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m2_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_7
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_2
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_control_logic_rw
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_cr_5
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_dff_buf_array_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m41_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m41_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_20
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m14_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m14_w2_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_19
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m5_w1_680_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_18
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_6
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_control_logic_r
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_cr_4
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_20
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_17
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pand2_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode2x4_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_15
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w7_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w7_000_sli_dli_da_p
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_dec_0
+   Generating output for cell sky130_fd_bd_sram__openram_dp_nand2_dec
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_and2_dec_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_wordline_driver
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_wordline_driver_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv_dec
+   Generating output for cell sky130_fd_bd_sram__openram_dp_nand3_dec
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_and3_dec
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode3x8
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_and2_dec
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_predecode2x4
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_hierarchical_decoder
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_port_address_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_port_address
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_27
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_26
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_25
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_24
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_nmos_m1_w2_880_sli_dli
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_array_0
+   Generating output for cell sky130_fd_bd_sram__openram_sense_amp
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_sense_amp_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_23
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_21
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_22
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pmos_m1_w0_550_sli_dli
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_precharge_1
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_precharge_array_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_port_data_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_column_mux
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_column_mux_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pinv
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pdriver
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pnand2
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_pand2
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_write_mask_and_array
+   Generating output for cell sky130_fd_bd_sram__openram_write_driver
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_write_driver_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_precharge_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_precharge_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_port_data
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_9
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_contact_8
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_cap_row
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_row_cap_array_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_row_cap_array
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_cap_col
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_col_cap_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_col_cap_array_0
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_dummy
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_dummy_array
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_replica
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_replica_column_0
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_replica_column
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_bitcell_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_replica_bitcell_array
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8_bank
+   Generating output for cell sky130_sram_2kbyte_1rw1r_32x512_8
+   Generating output for cell mask_rt_wrapper
+135229 problems occurred.  See feedback entries.

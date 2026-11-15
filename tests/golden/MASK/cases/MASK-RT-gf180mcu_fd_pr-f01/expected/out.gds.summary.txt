@@ -1,0 +1,4 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure efuse_cell created 117-1-2 22:30:23 records 111
+total structures 1 records 116

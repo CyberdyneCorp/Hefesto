@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "MASK-RT-gf180mcu_re_efuse-f06",
+  "area": "MASK",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:90a69a6e308d3d31e5dad2d170a157565322c8476ded0b521269d35f2fd80075",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-rcfile",
+    "input/pdk/gf180mcuD/libs.tech/magic/gf180mcuD.magicrc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-15T19:35:59Z",
+  "outputs": {
+    "out.gds.sha256": "9544af2c0d307821688fd0868563bbf737ca6dfcac762df2346c23cde03d98a1",
+    "out.gds.summary.txt": "4d2358abf7066ab7ff8fe4ca1b7be034099113026a41984de2e7c3fe6a68bad2",
+    "stderr.txt": "413a89b1f16e7f7577508b9d1b4f160e6ab897d328fc78e9492ddbecadcb3d68",
+    "stdout.txt": "42e41be50b10afb2c61c26624f2409d47669ae87621bf48240a78a2932dc8c29"
+  }
+}

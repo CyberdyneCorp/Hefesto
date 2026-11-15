@@ -1,0 +1,1648 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:48:01 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology gf180mcuD ...
+10 Magic internal units = 1 Lambda
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 10 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file gf180mcu_ocd_ip_sram__sram64x8m8wm1.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 3.0
+Library name: gf180mcu_ocd_ip_sram__sram64x8m8wm1
+Reading "antenna_tiedown_3v64x8m81".
+Reading "M2_M1431059130200_3v64x8m81".
+Reading "M3_M243105913020104_3v64x8m81".
+Reading "M2_M143105913020103_3v64x8m81".
+Reading "power_a_3v64x8m81".
+Reading "M3_M24310591302042_3v64x8m81".
+Reading "M3_M24310591302016_3v64x8m81".
+Reading "M2_M14310591302017_3v64x8m81".
+Reading "power_route_01_a_3v64x8m81".
+Reading "power_route_01_b_3v64x8m81".
+Reading "M3_M2431059130205_3v64x8m81".
+Reading "power_route_01_c_3v64x8m81".
+Reading "M3_M2$$201416748_3v64x8m81".
+Reading "M3_M2$$201249836_3v64x8m81".
+Reading "M3_M2$$201248812_3v64x8m81".
+Reading "M3_M24310591302013_3v64x8m81".
+Reading "M3_M24310591302015_3v64x8m81".
+Reading "M3_M2$$201415724_3v64x8m81".
+Reading "M3_M2431059130209_3v64x8m81".
+Reading "M3_M2$$201414700_3v64x8m81".
+Reading "M3_M2$$201413676_3v64x8m81".
+Reading "M3_M2431059130202_3v64x8m81".
+Reading "M2_M1431059130203_3v64x8m81".
+Reading "M2_M1431059130204_3v64x8m81".
+Reading "M2_M1$$201260076_3v64x8m81".
+Reading "M3_M2$$201250860_3v64x8m81".
+Reading "M3_M2$$201254956_3v64x8m81".
+Reading "M3_M2$$201412652_3v64x8m81".
+Reading "M3_M2431059130206_3v64x8m81".
+Reading "M2_M14310591302012_3v64x8m81".
+Reading "M3_M2$$201258028_3v64x8m81".
+Reading "M2_M1$$199747628_3v64x8m81".
+Reading "M3_M2$$201252908_3v64x8m81".
+Reading "M3_M2$$201251884_3v64x8m81".
+Reading "M3_M2$$204143660_3v64x8m81".
+Reading "M1_PSUB4310591302014_3v64x8m81".
+Reading "pmos_5p043105913020110_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020110_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020110_3v64x8m81.
+Reading "pmos_5p043105913020105_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020105_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020105_3v64x8m81.
+Reading "pmos_5p043105913020103_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020103_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020103_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020103_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020103_3v64x8m81.
+Reading "pmos_1p2_03_R270_3v64x8m81".
+Reading "pmos_5p043105913020104_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020104_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020104_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020104_3v64x8m81.
+Reading "pmos_1p2_02_R270_3v64x8m81".
+Reading "pmos_5p043105913020108_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020108_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020108_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020108_3v64x8m81.
+Reading "pmos_1p2_01_R270_3v64x8m81".
+Reading "nmos_5p043105913020109_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p043105913020109_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020109_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020109_3v64x8m81.
+Reading "nmos_5p043105913020107_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p043105913020107_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020107_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020107_3v64x8m81.
+Reading "nmos_5p043105913020106_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020106_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p043105913020106_3v64x8m81.
+Reading "nmos_5p04310591302044_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302044_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302044_3v64x8m81.
+Reading "nmos_1p2_02_R270_3v64x8m81".
+Reading "M3_M2$$204401708_3v64x8m81".
+Reading "M3_M2$$204400684_3v64x8m81".
+Reading "M3_M2$$204399660_3v64x8m81".
+Reading "M3_M2$$204398636_3v64x8m81".
+Reading "M3_M2$$204147756_3v64x8m81".
+Reading "M2_M1$02_R270_3v64x8m81".
+Reading "M2_M1$$204408876_3v64x8m81".
+Reading "M2_M1$$204407852_3v64x8m81".
+Reading "M2_M1$$204406828_3v64x8m81".
+Reading "M2_M1$$204405804_3v64x8m81".
+Reading "M2_M1$$204404780_3v64x8m81".
+Reading "M2_M1$$204403756_3v64x8m81".
+Reading "M2_M1$$204402732_3v64x8m81".
+Reading "M2_M1$$202406956_3v64x8m81".
+Reading "M2_M1$$202394668_3v64x8m81".
+Reading "M2_M1$$201262124_3v64x8m81".
+Reading "M2_M1$$46894124_3v64x8m81".
+Reading "M2_M1$$45004844_3v64x8m81".
+Reading "M1_PSUB_05_3v64x8m81".
+Reading "M1_PSUB$$45111340_3v64x8m81".
+Reading "M1_POLY243105913020105_3v64x8m81".
+Reading "M1_POLY24310591302033_3v64x8m81".
+Reading "M1_POLY24310591302031_3v64x8m81".
+Reading "M1_POLY24310591302019_3v64x8m81".
+Reading "M1_PACTIVE43105913020106_3v64x8m81".
+Reading "M1_PACTIVE03_3v64x8m81".
+Reading "M1_NWELL4310591302032_3v64x8m81".
+Reading "M1_NWELL07_3v64x8m81".
+Reading "xdec_3v64x8m81".
+Reading "xdec8_3v64x8m81".
+Reading "xdec32_3v64x8m81".
+Reading "pmoscap_R270_3v64x8m81".
+Reading "M2_M1$04_R270_3v64x8m81".
+Reading "M1_POLY2_01_R270_3v64x8m81".
+Reading "M1_PACTIVE_R270_3v64x8m81".
+Reading "M1_NACTIVE_01_R270_3v64x8m81".
+Reading "pmoscap_L1_W2_R270_3v64x8m81".
+Reading "pmos_5p043105913020101_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020101_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020101_3v64x8m81.
+Reading "pmos_5p043105913020100_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p043105913020100_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020100_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p043105913020100_3v64x8m81.
+Reading "pmos_1p2_02_R90_3v64x8m81".
+Reading "pmos_1p2_01_R90_3v64x8m81".
+Reading "nmos_5p043105913020111_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020111_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p043105913020111_3v64x8m81.
+Reading "nmos_5p04310591302099_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302099_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302099_3v64x8m81.
+Reading "nmos_1p2_02_R90_3v64x8m81".
+Reading "nmos_5p043105913020102_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p043105913020102_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p043105913020102_3v64x8m81.
+Reading "nmos_1p2_01_R270_3v64x8m81".
+Reading "M3_M2$$204146732_3v64x8m81".
+Reading "M3_M2$$204145708_3v64x8m81".
+Reading "M3_M2$$204144684_3v64x8m81".
+Reading "M3_M2$$204142636_3v64x8m81".
+Reading "M2_M1$$204222508_3v64x8m81".
+Reading "M2_M1$$204221484_3v64x8m81".
+Reading "M2_M1$$204220460_3v64x8m81".
+Reading "M2_M1$$204141612_3v64x8m81".
+Reading "M2_M1$$204140588_3v64x8m81".
+Reading "M2_M1$$204139564_3v64x8m81".
+Reading "M2_M1$$204138540_3v64x8m81".
+Reading "M1_POLY2$$204150828_3v64x8m81".
+Reading "M1_PACTIVE$11_3v64x8m81".
+Reading "M1_PACTIVE$10_3v64x8m81".
+Reading "M1_NWELL_01_3v64x8m81".
+Reading "M1_NACTIVE_02_3v64x8m81".
+Reading "xdec64_3v64x8m81".
+Reading "via2_x2_3v64x8m81".
+Reading "M3_M24310591302021_3v64x8m81".
+Reading "M2_M14310591302020_3v64x8m81".
+Reading "018SRAM_strap1_3v64x8m81".
+Reading "018SRAM_cell1_dummy_3v64x8m81".
+Reading "new_dummyrowunit01_3v64x8m81".
+Reading "new_dummyrow_unit_3v64x8m81".
+Reading "M3_M2431059130201_3v64x8m81".
+Reading "M2_M14310591302018_3v64x8m81".
+Reading "M2_M1431059130208_3v64x8m81".
+Reading "M2_M1$$43375660_3v64x8m81".
+Reading "M1_POLY2$$44754988_3v64x8m81".
+Reading "018SRAM_cell1_cutPC_3v64x8m81".
+Reading "array16_64_dummy_01_3v64x8m81".
+Making label "VSS" on type metal1 in cell array16_64_dummy_01_3v64x8m81 sticky.
+Making label "VDD" on type metal1 in cell array16_64_dummy_01_3v64x8m81 sticky.
+Making label "VDD" on type metal1 in cell array16_64_dummy_01_3v64x8m81 sticky.
+Making label "VSS" on type metal1 in cell array16_64_dummy_01_3v64x8m81 sticky.
+Reading "018SRAM_cell1_3v64x8m81".
+Reading "ldummy_3v64x4_3v64x8m81".
+Reading "dcap_103_novia_3v64x8m81".
+Reading "pmos_5p04310591302043_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302043_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302043_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302043_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302043_3v64x8m81.
+Reading "pmos_5p04310591302041_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302041_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302041_3v64x8m81.
+Reading "pmos_5p04310591302035_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302035_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302035_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302035_3v64x8m81.
+Reading "pmos_5p04310591302020_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302020_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302020_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302020_3v64x8m81.
+Reading "pmos_5p04310591302014_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302014_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302014_3v64x8m81.
+Reading "pmos_1p2$$202587180_3v64x8m81".
+Reading "pmos_1p2$$202586156_3v64x8m81".
+Reading "pmos_1p2$$202585132_3v64x8m81".
+Reading "pmos_1p2$$202584108_3v64x8m81".
+Reading "pmos_1p2$$202583084_3v64x8m81".
+Reading "nmos_5p04310591302042_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302042_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302042_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302042_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302042_3v64x8m81.
+Reading "nmos_5p04310591302040_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302040_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302040_3v64x8m81.
+Reading "nmos_5p04310591302039_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302039_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302039_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302039_3v64x8m81.
+Reading "nmos_5p04310591302010_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302010_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302010_3v64x8m81.
+Reading "nmos_5p0431059130208_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130208_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p0431059130208_3v64x8m81.
+Reading "nmos_1p2$$202598444_3v64x8m81".
+Reading "nmos_1p2$$202596396_3v64x8m81".
+Reading "nmos_1p2$$202595372_3v64x8m81".
+Reading "nmos_1p2$$202594348_3v64x8m81".
+Reading "M3_M24310591302036_3v64x8m81".
+Reading "M3_M2$$202397740_3v64x8m81".
+Reading "M2_M14310591302035_3v64x8m81".
+Reading "M2_M1$$202396716_3v64x8m81".
+Reading "M2_M1$$202395692_3v64x8m81".
+Reading "M1_PACTIVE4310591302027_3v64x8m81".
+Reading "M1_NACTIVE_01_3v64x8m81".
+Reading "M1_NACTIVE4310591302037_3v64x8m81".
+Reading "wen_wm1_3v64x8m81".
+Reading "via2_3v64x8m81".
+Reading "via1_x2_R90_3v64x8m81".
+Reading "via1_x2_3v64x8m81".
+Reading "via1_R90_3v64x8m81".
+Reading "via2_x2_R90_3v64x8m81".
+Reading "via1_2_x2_3v64x8m81".
+Reading "via1_x2_R270_3v64x8m81".
+Reading "po_m1_3v64x8m81".
+Reading "pmos_5p04310591302038_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302038_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302038_3v64x8m81.
+Reading "pmos_5p04310591302027_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302027_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302027_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302027_3v64x8m81.
+Reading "pmos_5p04310591302031_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302031_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302031_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302031_3v64x8m81.
+Reading "pmos_1p2$$46287916_3v64x8m81".
+Reading "pmos_5p04310591302013_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302013_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302013_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302013_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302013_3v64x8m81.
+Reading "pmos_1p2$$46286892_3v64x8m81".
+Reading "pmos_1p2$$46285868_3v64x8m81".
+Reading "pmos_1p2$$46284844_3v64x8m81".
+Reading "pmos_5p04310591302022_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302022_3v64x8m81.
+Reading "pmos_1p2$$46283820_3v64x8m81".
+Reading "pmos_5p04310591302024_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302024_3v64x8m81.
+Reading "pmos_1p2$$46282796_3v64x8m81".
+Reading "pmos_5p04310591302025_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302025_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302025_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302025_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302025_3v64x8m81.
+Reading "pmos_1p2$$46281772_3v64x8m81".
+Reading "pmos_5p04310591302030_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302030_3v64x8m81.
+Reading "pmos_1p2$$45095980_3v64x8m81".
+Reading "nmos_5p04310591302034_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302034_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302034_3v64x8m81.
+Reading "nmos_5p04310591302033_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302033_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302033_3v64x8m81.
+Reading "nmos_5p04310591302032_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302032_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302032_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302032_3v64x8m81.
+Reading "nmos_5p04310591302028_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302028_3v64x8m81.
+Reading "nmos_5p04310591302023_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302023_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302023_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302023_3v64x8m81.
+Reading "nmos_5p04310591302012_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302012_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302012_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302012_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302012_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302012_3v64x8m81.
+Reading "nmos_5p04310591302037_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302037_3v64x8m81.
+Reading "nmos_1p2$$45103148_3v64x8m81".
+Reading "nmos_5p04310591302026_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302026_3v64x8m81.
+Reading "nmos_1p2$$45102124_3v64x8m81".
+Reading "nmos_5p04310591302036_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302036_3v64x8m81.
+Reading "nmos_1p2$$45101100_3v64x8m81".
+Reading "nmos_5p04310591302029_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302029_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302029_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302029_3v64x8m81.
+Reading "nmos_1p2$$45100076_3v64x8m81".
+Reading "M3_M2$$45008940_3v64x8m81".
+Reading "M3_M2$$45006892_3v64x8m81".
+Reading "M3_M2$$45005868_3v64x8m81".
+Reading "M2_M1c$$203396140_3v64x8m81".
+Reading "M2_M1$$45003820_3v64x8m81".
+Reading "M2_M1$$45002796_3v64x8m81".
+Reading "M2_M1$$43374636_3v64x8m81".
+Reading "M1_PSUB_285_3v64x8m81".
+Reading "M1_PSUB$$44997676_3v64x8m81".
+Reading "M1_POLY2$$45109292_3v64x8m81".
+Reading "M1_POLY2$$44753964_3v64x8m81".
+Reading "M1_PACTIVE4310591302034_3v64x8m81".
+Reading "M1_NWELL04_3v64x8m81".
+Reading "M1_NWELL03_3v64x8m81".
+Reading "M1_NWELL02_3v64x8m81".
+Reading "sacntl_2_3v64x8m81".
+Reading "via1_R270_3v64x8m81".
+Reading "via1_3v64x8m81".
+Reading "via2_x2_R270_3v64x8m81".
+Reading "via1_2_x2_R270_3v64x8m81".
+Reading "via1_2_x2_R90_3v64x8m81".
+Reading "pmos_5p04310591302019_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302019_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302019_3v64x8m81.
+Reading "pmos_1p2$$46898220_3v64x8m81".
+Reading "pmos_1p2$$46897196_3v64x8m81".
+Reading "pmos_5p04310591302021_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302021_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302021_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302021_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302021_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302021_3v64x8m81.
+Reading "pmos_1p2$$46896172_3v64x8m81".
+Reading "pmos_5p04310591302018_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302018_3v64x8m81.
+Reading "pmos_1p2$$46549036_3v64x8m81".
+Reading "nmos_5p04310591302015_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302015_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302015_3v64x8m81.
+Reading "nmos_1p2$$46553132_3v64x8m81".
+Reading "nmos_5p04310591302016_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302016_3v64x8m81.
+Reading "nmos_1p2$$46552108_3v64x8m81".
+Reading "nmos_1p2$$46551084_3v64x8m81".
+Reading "nmos_5p04310591302017_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302017_3v64x8m81.
+Reading "nmos_1p2$$46550060_3v64x8m81".
+Reading "nmos_1p2$$45107244_3v64x8m81".
+Reading "M3_M2$$43371564_3v64x8m81".
+Reading "M1_PSUB_04_R90_3v64x8m81".
+Reading "M1_PSUB$$46558252_3v64x8m81".
+Reading "M1_PSUB$$46557228_3v64x8m81".
+Reading "M1_PSUB$$46556204_3v64x8m81".
+Reading "M1_PSUB$$46555180_3v64x8m81".
+Reading "M1_NWELL_01_R90_3v64x8m81".
+Reading "M1_NWELL06_3v64x8m81".
+Reading "sa_3v64x8m81".
+Reading "pmos_5p04310591302051_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302051_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302051_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302051_3v64x8m81.
+Reading "pmos_5p04310591302049_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302049_3v64x8m81.
+Reading "pmos_5p04310591302048_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302048_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302048_3v64x8m81.
+Reading "pmos_5p04310591302047_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302047_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302047_3v64x8m81.
+Reading "pmos_5p0431059130203_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130203_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130203_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p0431059130203_3v64x8m81.
+Reading "pmos_1p2$$171625516_3v64x8m81".
+Reading "nmos_5p04310591302052_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302052_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302052_3v64x8m81.
+Reading "nmos_5p04310591302050_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302050_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302050_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302050_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302050_3v64x8m81.
+Reading "nmos_5p04310591302046_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302046_3v64x8m81.
+Reading "nmos_5p04310591302045_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302045_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302045_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302045_3v64x8m81.
+Reading "M3_M2431059130207_3v64x8m81".
+Reading "M2_M1$$168351788_R90_3v64x8m81".
+Reading "M1_PSUB_02_3v64x8m81".
+Reading "M1_PACTIVE4310591302040_3v64x8m81".
+Reading "M1_PACTIVE4310591302039_3v64x8m81".
+Reading "M1_NWELL_01_R270_3v64x8m81".
+Reading "M1_NACTIVE4310591302041_3v64x8m81".
+Reading "M1_NACTIVE4310591302038_3v64x8m81".
+Reading "outbuf_oe_3v64x8m81".
+Reading "via2_R90_3v64x8m81".
+Reading "via1_2_3v64x8m81".
+Reading "pmos_5p0431059130201_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130201_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p0431059130201_3v64x8m81.
+Reading "pmos_1p2$$46889004_3v64x8m81".
+Reading "nmos_5p0431059130202_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130202_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p0431059130202_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130202_3v64x8m81.
+Reading "nmos_5p0431059130200_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130200_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p0431059130200_3v64x8m81.
+Reading "nmos_1p2$$47119404_3v64x8m81".
+Reading "M1_PSUB$$47122476_3v64x8m81".
+Reading "M1_POLY24310591302030_3v64x8m81".
+Reading "M1_NWELL09_3v64x8m81".
+Reading "M1_NWELL05_3v64x8m81".
+Reading "ypass_gate_a_3v64x8m81".
+Reading "ypass_gate_3v64x8m81".
+Reading "M3_M24310591302029_3v64x8m81".
+Reading "M1_NACTIVE4310591302028_3v64x8m81".
+Reading "mux821_3v64x8m81".
+Reading "M3_M2$$44741676_3v64x8m81".
+Reading "M3_M2$$43370540_3v64x8m81".
+Reading "m2_saout01_3v64x8m81".
+Reading "M2_M1$$45013036_3v64x8m81".
+Reading "M2_M1$$45012012_3v64x8m81".
+Reading "po_m1_R270_3v64x8m81".
+Reading "po_m1_R90_3v64x8m81".
+Reading "pmos_5p0431059130209_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130209_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p0431059130209_3v64x8m81.
+Reading "pmos_5p0431059130206_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p0431059130206_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130206_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130206_3v64x8m81.
+Reading "pmos_5p0431059130204_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p0431059130204_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p0431059130204_3v64x8m81.
+Reading "pmos_1p2$$46887980_3v64x8m81".
+Reading "pmos_1p2$$46885932_3v64x8m81".
+Reading "pmos_1p2$$46273580_3v64x8m81".
+Reading "nmos_5p04310591302011_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302011_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302011_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302011_3v64x8m81.
+Reading "nmos_5p0431059130207_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130207_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p0431059130207_3v64x8m81.
+Reading "nmos_1p2$$46884908_3v64x8m81".
+Reading "nmos_5p0431059130205_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p0431059130205_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p0431059130205_3v64x8m81.
+Reading "nmos_1p2$$46883884_3v64x8m81".
+Reading "nmos_1p2$$46563372_3v64x8m81".
+Reading "M3_M2$$46895148_3v64x8m81".
+Reading "M3_M2$$43368492_R90_3v64x8m81".
+Reading "M2_M1$$43375660_R90_3v64x8m81".
+Reading "M1_PSUB$$46893100_3v64x8m81".
+Reading "M1_PSUB$$46892076_3v64x8m81".
+Reading "M1_NWELL08_3v64x8m81".
+Reading "din_3v64x8m81".
+Reading "saout_R_m2_3v64x8m81".
+Reading "M3_M24310591302026_3v64x8m81".
+Reading "M2_M14310591302025_3v64x8m81".
+Reading "M1_NACTIVE4310591302024_3v64x8m81".
+Reading "saout_m2_3v64x8m81".
+Reading "M3_M24310591302023_3v64x8m81".
+Reading "M3_M24310591302022_3v64x8m81".
+Reading "018SRAM_strap1_bndry_3v64x8m81".
+Reading "018SRAM_strap1_2x_bndry_3v64x8m81".
+Reading "018SRAM_strap1_2x_3v64x8m81".
+Reading "018SRAM_cell1_2x_3v64x8m81".
+Reading "Cell_array8x8_3v64x8m81".
+Reading "col_64a_3v64x8m81".
+Reading "lcol4_64_3v64x8m81".
+Reading "pmos_5p04310591302055_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302055_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302055_3v64x8m81.
+Reading "nmos_5p04310591302054_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302054_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302054_3v64x8m81.
+Reading "M3_M24310591302053_3v64x8m81".
+Reading "M2_M14310591302056_3v64x8m81".
+Reading "M2_M14310591302055_3v64x8m81".
+Reading "M2_M14310591302054_3v64x8m81".
+Reading "M2_M14310591302052_3v64x8m81".
+Reading "ypredec1_ys_3v64x8m81".
+Reading "pmos_5p04310591302060_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302060_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302060_3v64x8m81.
+Reading "pmos_1p2$$47821868_3v64x8m81".
+Reading "pmos_5p04310591302061_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302061_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302061_3v64x8m81.
+Reading "pmos_1p2$$47820844_3v64x8m81".
+Reading "M3_M2$$47819820_3v64x8m81".
+Reading "M3_M2$$47333420_3v64x8m81".
+Reading "M3_M2$$47332396_3v64x8m81".
+Reading "M3_M2$$47108140_3v64x8m81".
+Reading "M2_M1$$47515692_3v64x8m81".
+Reading "M2_M1$$43380780_3v64x8m81".
+Reading "M2_M1$$43379756_3v64x8m81".
+Reading "M2_M1$$43378732_3v64x8m81".
+Reading "ypredec1_xa_3v64x8m81".
+Reading "M3_M24310591302058_3v64x8m81".
+Reading "M2_M14310591302057_3v64x8m81".
+Reading "ypredec1_xax8_3v64x8m81".
+Reading "nmos_5p04310591302057_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302057_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302057_3v64x8m81.
+Reading "nmos_1p2$$47514668_3v64x8m81".
+Reading "M3_M2$$47334444_3v64x8m81".
+Reading "M3_M2$$43368492_3v64x8m81".
+Reading "M2_M1$$43377708_3v64x8m81".
+Reading "M2_M1$$34864172_3v64x8m81".
+Reading "M1_PSUB$$47818796_3v64x8m81".
+Reading "M1_POLY2$$46559276_3v64x8m81".
+Reading "M1_NWELL14_3v64x8m81".
+Reading "pmos_1p2_161_3v64x8m81".
+Reading "pmos_1p2_160_3v64x8m81".
+Reading "pmos_5p04310591302058_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302058_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302058_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302058_3v64x8m81.
+Reading "pmos_1p2$$47331372_3v64x8m81".
+Reading "nmos_1p2_157_3v64x8m81".
+Reading "nmos_5p04310591302059_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302059_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302059_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302059_3v64x8m81.
+Reading "nmos_1p2$$47329324_3v64x8m81".
+Reading "M3_M2$$47333420_150_3v64x8m81".
+Reading "M3_M2$$47108140_149_3v64x8m81".
+Reading "M3_M2$$43368492_151_3v64x8m81".
+Reading "M2_M1_154_3v64x8m81".
+Reading "M2_M1$$43380780_152_3v64x8m81".
+Reading "M2_M1$$43379756_153_3v64x8m81".
+Reading "M1_PSUB$$45110316_3v64x8m81".
+Reading "M1_POLY2_155_3v64x8m81".
+Reading "alatch_3v64x8m81".
+Reading "ypredec1_bot_3v64x8m81".
+Reading "pmos_5p04310591302062_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302062_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302062_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302062_3v64x8m81.
+Reading "pmos_1p2$$47109164_3v64x8m81".
+Reading "nmos_5p04310591302056_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302056_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302056_3v64x8m81.
+Reading "nmos_5p04310591302053_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302053_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302053_3v64x8m81.
+Reading "nmos_1p2$$47342636_3v64x8m81".
+Reading "M3_M2$$47633452_3v64x8m81".
+Reading "M3_M2$$47632428_3v64x8m81".
+Reading "M3_M2$$43368492_R270_3v64x8m81".
+Reading "M2_M14310591302051_3v64x8m81".
+Reading "M2_M1$$47631404_3v64x8m81".
+Reading "M2_M1$$47630380_3v64x8m81".
+Reading "M1_PSUB$$47114284_3v64x8m81".
+Reading "M1_NWELL13_3v64x8m81".
+Reading "M1_NWELL12_3v64x8m81".
+Reading "ypredec1_3v64x8m81".
+Reading "pmos_5p04310591302068_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302068_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302068_3v64x8m81.
+Reading "pmos_1p2$$47513644_3v64x8m81".
+Reading "pmos_5p04310591302072_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302072_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302072_3v64x8m81.
+Reading "pmos_1p2$$47512620_3v64x8m81".
+Reading "M2_M1$$47327276_3v64x8m81".
+Reading "M2_M1$$43376684_3v64x8m81".
+Reading "M1_POLY24310591302060_3v64x8m81".
+Reading "xpredec1_xa_3v64x8m81".
+Reading "pmos_5p04310591302070_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302070_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302070_3v64x8m81.
+Reading "pmos_1p2$$47337516_3v64x8m81".
+Reading "nmos_5p04310591302071_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302071_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302071_3v64x8m81.
+Reading "nmos_1p2$$47336492_3v64x8m81".
+Reading "M1_PSUB$$47335468_3v64x8m81".
+Reading "M1_NWELL10_3v64x8m81".
+Reading "xpredec1_bot_3v64x8m81".
+Reading "M1_POLY2_R270_3v64x8m81".
+Reading "xpredec1_3v64x8m81".
+Reading "pmos_5p04310591302067_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302067_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302067_3v64x8m81.
+Reading "pmos_1p2$$47643692_3v64x8m81".
+Reading "pmos_1p2$$47642668_3v64x8m81".
+Reading "nmos_1p2$$47641644_3v64x8m81".
+Reading "M3_M2$$47644716_3v64x8m81".
+Reading "M2_M1$$47640620_3v64x8m81".
+Reading "M2_M1$$47500332_3v64x8m81".
+Reading "M1_POLY24310591302059_3v64x8m81".
+Reading "xpredec0_xa_3v64x8m81".
+Reading "pmos_5p04310591302063_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302063_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302063_3v64x8m81.
+Reading "pmos_1p2$$47504428_3v64x8m81".
+Reading "pmos_5p04310591302064_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302064_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302064_3v64x8m81.
+Reading "pmos_1p2$$47503404_3v64x8m81".
+Reading "nmos_5p04310591302066_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302066_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302066_3v64x8m81.
+Reading "nmos_5p04310591302065_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302065_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302065_3v64x8m81.
+Reading "nmos_1p2$$47502380_3v64x8m81".
+Reading "M3_M2$$47645740_3v64x8m81".
+Reading "M1_NWELL11_3v64x8m81".
+Reading "xpredec0_bot_3v64x8m81".
+Reading "pmos_5p04310591302069_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302069_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302069_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302069_3v64x8m81.
+Reading "M1_PACTIVE_02_3v64x8m81".
+Reading "xpredec0_3v64x8m81".
+Reading "M3_M2$$47115308_3v64x8m81".
+Reading "prexdec_top_3v64x8m81".
+Reading "M3_M24310591302050_3v64x8m81".
+Reading "M3_M2$$201401388_3v64x8m81".
+Reading "M3_M2$$201255980_3v64x8m81".
+Reading "M2_M1$$202405932_3v64x8m81".
+Reading "M2_M1$$199746604_3v64x8m81".
+Reading "M1_PACTIVE4310591302049_3v64x8m81".
+Reading "M1_PACTIVE4310591302048_3v64x8m81".
+Reading "M1_NACTIVE4310591302047_3v64x8m81".
+Reading "pmos_5p04310591302082_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302082_3v64x8m81.
+Reading "pmos_5p04310591302080_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302080_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302080_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302080_3v64x8m81.
+Reading "pmos_5p04310591302079_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302079_3v64x8m81.
+Reading "pmos_5p04310591302077_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302077_3v64x8m81.
+Reading "nmos_5p04310591302081_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302081_3v64x8m81.
+Reading "nmos_5p04310591302078_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302078_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302078_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302078_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302078_3v64x8m81.
+Reading "nmos_5p04310591302076_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302076_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302076_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302076_3v64x8m81.
+Reading "nmos_5p04310591302075_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302075_3v64x8m81.
+Reading "M3_M24310591302072_3v64x8m81".
+Reading "M2_M14310591302074_3v64x8m81".
+Reading "M2_M14310591302073_3v64x8m81".
+Reading "M1_PACTIVE_01_3v64x8m81".
+Reading "M1_PACTIVE4310591302071_3v64x8m81".
+Reading "M1_PACTIVE4310591302069_3v64x8m81".
+Reading "M1_NACTIVE4310591302070_3v64x8m81".
+Reading "wen_v2_3v64x8m81".
+Reading "pmos_5p04310591302094_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302094_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302094_3v64x8m81.
+Reading "pmos_5p04310591302092_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302092_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302092_3v64x8m81.
+Reading "pmos_5p04310591302089_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302089_3v64x8m81.
+Reading "pmos_5p04310591302088_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302088_3v64x8m81.
+Reading "pmos_5p04310591302074_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302074_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302074_3v64x8m81.
+Reading "pmos_5p04310591302091_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302091_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302091_3v64x8m81.
+Reading "pmos_1p2$$48624684_3v64x8m81".
+Reading "pmos_5p04310591302073_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302073_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302073_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302073_3v64x8m81.
+Reading "pmos_1p2$$48623660_3v64x8m81".
+Reading "pmos_5p04310591302087_3v64x8m81".
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302087_3v64x8m81.
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302087_3v64x8m81.
+Reading "pmos_1p2$$47815724_3v64x8m81".
+Reading "pmos_1p2$$47330348_3v64x8m81".
+Reading "nmos_5p04310591302093_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302093_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302093_3v64x8m81.
+Reading "nmos_5p04310591302090_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302090_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302090_3v64x8m81.
+Reading "nmos_5p04310591302083_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302083_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302083_3v64x8m81.
+Reading "nmos_1p2$$48629804_3v64x8m81".
+Reading "nmos_5p04310591302084_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302084_3v64x8m81.
+Reading "nmos_1p2$$48308268_3v64x8m81".
+Reading "nmos_5p04310591302085_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302085_3v64x8m81.
+Reading "nmos_1p2$$48306220_3v64x8m81".
+Reading "nmos_5p04310591302086_3v64x8m81".
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302086_3v64x8m81.
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302086_3v64x8m81.
+Reading "nmos_1p2$$48302124_3v64x8m81".
+Reading "M3_M24310591302064_3v64x8m81".
+Reading "M3_M2$$169756716_3v64x8m81".
+Reading "M3_M2$$169755692_3v64x8m81".
+Reading "M3_M2$$169753644_3v64x8m81".
+Reading "M3_M2$$48231468_3v64x8m81".
+Reading "M3_M2$$48229420_3v64x8m81".
+Reading "M3_M2$$48228396_3v64x8m81".
+Reading "M3_M2$$48227372_3v64x8m81".
+Reading "M3_M2$$48066604_3v64x8m81".
+Reading "M2_M14310591302065_3v64x8m81".
+Reading "M2_M1_01_R270_3v64x8m81".
+Reading "M2_M1$$170064940_3v64x8m81".
+Reading "M2_M1$$170063916_3v64x8m81".
+Reading "M2_M1$$170061868_3v64x8m81".
+Reading "M2_M1$$168351788_3v64x8m81".
+Reading "M2_M1$$48316460_3v64x8m81".
+Reading "M2_M1$$48224300_3v64x8m81".
+Reading "M2_M1$$48222252_3v64x8m81".
+Reading "M2_M1$$48221228_3v64x8m81".
+Reading "M2_M1$$48220204_3v64x8m81".
+Reading "M2_M1$$48219180_3v64x8m81".
+Reading "M2_M1$$48218156_3v64x8m81".
+Reading "M2_M1$$48217132_3v64x8m81".
+Reading "M2_M1$$34864172_R90_3v64x8m81".
+Reading "M1_PSUB_03_R90_3v64x8m81".
+Reading "M1_PSUB_03_3v64x8m81".
+Reading "M1_PSUB_02_R90_3v64x8m81".
+Reading "M1_PSUB$$48312364_3v64x8m81".
+Reading "M1_POLY24310591302067_3v64x8m81".
+Reading "M1_POLY24310591302066_3v64x8m81".
+Reading "M1_POLY24310591302062_3v64x8m81".
+Reading "M1_POLY24310591302061_3v64x8m81".
+Reading "M1_PACTIVE_03_R90_3v64x8m81".
+Reading "M1_PACTIVE_02_R90_3v64x8m81".
+Reading "M1_PACTIVE_01_R90_3v64x8m81".
+Reading "M1_PACTIVE4310591302068_3v64x8m81".
+Reading "M1_PACTIVE06_3v64x8m81".
+Reading "M1_PACTIVE02_3v64x8m81".
+Reading "M1_PACTIVE01_3v64x8m81".
+Reading "M1_NWELL_03_R90_3v64x8m81".
+Reading "M1_NWELL_02_R90_3v64x8m81".
+Reading "M1_NWELL17_3v64x8m81".
+Reading "M1_NWELL16_3v64x8m81".
+Reading "M1_NWELL01_3v64x8m81".
+Reading "M1_NACTIVE4310591302063_3v64x8m81".
+Reading "gen_3v64x8_3v64x8m81".
+Reading "control_3v64x8_3v64x8m81".
+Reading "M1_PSUB4310591302010_3v64x8m81".
+Reading "M3_M2$$201253932_3v64x8m81".
+Reading "M3_M24310591302011_3v64x8m81".
+Reading "m2m3_3v64x8m81".
+Reading "via2_R90_3v64x8m81_0".
+Reading "via1_x2_R90_3v64x8m81_0".
+Reading "via1_R270_3v64x8m81_0".
+Reading "via1_R90_3v64x8m81_0".
+Reading "via1_2_3v64x8m81_0".
+Reading "M3_M2$$43368492_3v64x8m81_0".
+Reading "M1_PSUB$$45111340_3v64x8m81_0".
+Reading "M1_PACTIVE4310591302075_3v64x8m81".
+Reading "M1_NWELL$$47121452_3v64x8m81".
+Reading "M1_NWELL$$46277676_3v64x8m81".
+Reading "ypass_gate_3v64x8m81_0".
+Reading "via2_x2_R270_3v64x8m81_0".
+Reading "via1_x2_R270_3v64x8m81_0".
+Reading "via1_2_x2_R270_3v64x8m81_0".
+Reading "via2_x2_R90_3v64x8m81_0".
+Reading "via1_2_x2_R90_3v64x8m81_0".
+Reading "via1_2_x2_3v64x8m81_0".
+Reading "pmos_5p04310591302097_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302097_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302097_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302097_3v64x8m81.
+Reading "pmos_5p04310591302095_3v64x8m81".
+Moving label "D" from metal1 to pdiffc in cell pmos_5p04310591302095_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302095_3v64x8m81.
+Moving label "S" from metal1 to pdiffc in cell pmos_5p04310591302095_3v64x8m81.
+Reading "nmos_5p04310591302098_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302098_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302098_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302098_3v64x8m81.
+Reading "nmos_5p04310591302096_3v64x8m81".
+Moving label "D" from metal1 to ndiffc in cell nmos_5p04310591302096_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302096_3v64x8m81.
+Moving label "S" from metal1 to ndiffc in cell nmos_5p04310591302096_3v64x8m81.
+Reading "M2_M1$$47117356_3v64x8m81".
+Reading "M1_PSUB$$46274604_3v64x8m81".
+Reading "M1_POLY2$$46559276_3v64x8m81_0".
+Reading "M1_NWELL$$44998700_3v64x8m81".
+Reading "018SRAM_cell1_dummy_R_3v64x8m81".
+Reading "rdummy_3v64x4_3v64x8m81".
+Reading "rarray4_64_3v64x8m81".
+Reading "rcol4_64_3v64x8m81".
+Reading "M3_M24310591302079_3v64x8m81".
+Reading "M3_M24310591302078_3v64x8m81".
+Reading "M3_M24310591302077_3v64x8m81".
+Reading "M2_M14310591302076_3v64x8m81".
+Reading "3v64x8M8W_PWR_3v64x8m81".
+Reading "M1_PSUB4310591302046_3v64x8m81".
+Reading "M1_PSUB4310591302045_3v64x8m81".
+Reading "M1_PSUB4310591302044_3v64x8m81".
+Reading "M1_PSUB4310591302043_3v64x8m81".
+Reading "G_ring_3v64x8m81".
+Reading "GF018_3v64x8M8WM1_lef_3v64x8m81".
+Reading "M3_M243105913020101_3v64x8m81".
+Reading "M3_M243105913020100_3v64x8m81".
+Reading "M3_M24310591302099_3v64x8m81".
+Reading "M3_M24310591302098_3v64x8m81".
+Reading "M3_M24310591302095_3v64x8m81".
+Reading "M2_M14310591302097_3v64x8m81".
+Reading "power_route_06_3v64x8m81".
+Reading "M3_M24310591302096_3v64x8m81".
+Reading "power_route_05_3v64x8m81".
+Reading "M3_M24310591302090_3v64x8m81".
+Reading "M2_M14310591302087_3v64x8m81".
+Reading "power_route_02_a_3v64x8m81".
+Reading "power_route_01_3v64x8m81".
+Reading "M3_M24310591302094_3v64x8m81".
+Reading "M3_M24310591302091_3v64x8m81".
+Reading "M3_M24310591302089_3v64x8m81".
+Reading "M3_M24310591302088_3v64x8m81".
+Reading "M3_M24310591302086_3v64x8m81".
+Reading "M3_M24310591302085_3v64x8m81".
+Reading "M3_M24310591302084_3v64x8m81".
+Reading "M3_M24310591302083_3v64x8m81".
+Reading "M3_M24310591302082_3v64x8m81".
+Reading "M2_M14310591302093_3v64x8m81".
+Reading "M2_M14310591302092_3v64x8m81".
+Reading "M2_M14310591302081_3v64x8m81".
+Reading "M2_M14310591302080_3v64x8m81".
+Reading "power_route_04_3v64x8m81".
+Reading "M3_M243105913020102_3v64x8m81".
+Reading "power_route_07_3v64x8m81".
+Reading "power_route_02_b_3v64x8m81".
+Reading "power_route_3v64x8m81".
+Reading "gf180mcu_ocd_ip_sram__sram64x8m8wm1".
+mask-rt tops 1 cells 590
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell antenna_tiedown_3v64x8m81
+   Generating output for cell M2_M1431059130200_3v64x8m81
+   Generating output for cell M2_M143105913020103_3v64x8m81
+   Generating output for cell M3_M243105913020104_3v64x8m81
+   Generating output for cell power_a_3v64x8m81
+   Generating output for cell M2_M14310591302017_3v64x8m81
+   Generating output for cell M3_M24310591302016_3v64x8m81
+   Generating output for cell M3_M24310591302042_3v64x8m81
+   Generating output for cell power_route_01_a_3v64x8m81
+   Generating output for cell power_route_01_b_3v64x8m81
+   Generating output for cell M3_M2431059130205_3v64x8m81
+   Generating output for cell power_route_01_c_3v64x8m81
+   Generating output for cell M3_M2$$201416748_3v64x8m81
+   Generating output for cell M3_M2$$201249836_3v64x8m81
+   Generating output for cell M3_M2$$201248812_3v64x8m81
+   Generating output for cell M3_M24310591302013_3v64x8m81
+   Generating output for cell M3_M2$$201415724_3v64x8m81
+   Generating output for cell M3_M24310591302015_3v64x8m81
+   Generating output for cell M3_M2$$201413676_3v64x8m81
+   Generating output for cell M3_M2$$201414700_3v64x8m81
+   Generating output for cell M3_M2431059130209_3v64x8m81
+   Generating output for cell M2_M1431059130203_3v64x8m81
+   Generating output for cell M3_M2431059130202_3v64x8m81
+   Generating output for cell M2_M1431059130204_3v64x8m81
+   Generating output for cell M2_M1$$201260076_3v64x8m81
+   Generating output for cell M3_M2$$201250860_3v64x8m81
+   Generating output for cell M3_M2$$201254956_3v64x8m81
+   Generating output for cell M3_M2$$201412652_3v64x8m81
+   Generating output for cell M2_M14310591302012_3v64x8m81
+   Generating output for cell M3_M2431059130206_3v64x8m81
+   Generating output for cell M2_M1$$199747628_3v64x8m81
+   Generating output for cell M3_M2$$201258028_3v64x8m81
+   Generating output for cell M3_M2$$201252908_3v64x8m81
+   Generating output for cell M3_M2$$201251884_3v64x8m81
+   Generating output for cell M3_M2$$204143660_3v64x8m81
+   Generating output for cell M1_PSUB4310591302014_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302063_3v64x8m81
+   Generating output for cell M1_NWELL01_3v64x8m81
+   Generating output for cell M1_NWELL16_3v64x8m81
+   Generating output for cell M1_NWELL17_3v64x8m81
+   Generating output for cell M1_NWELL_02_R90_3v64x8m81
+   Generating output for cell M1_NWELL_03_R90_3v64x8m81
+   Generating output for cell M1_PACTIVE01_3v64x8m81
+   Generating output for cell M1_PACTIVE02_3v64x8m81
+   Generating output for cell M1_PACTIVE06_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302068_3v64x8m81
+   Generating output for cell M1_PACTIVE_01_R90_3v64x8m81
+   Generating output for cell M1_PACTIVE_02_R90_3v64x8m81
+   Generating output for cell M1_PACTIVE_03_R90_3v64x8m81
+   Generating output for cell M1_POLY2$$44753964_3v64x8m81
+   Generating output for cell M1_POLY2$$44754988_3v64x8m81
+   Generating output for cell M1_POLY2$$46559276_3v64x8m81
+   Generating output for cell M1_POLY24310591302019_3v64x8m81
+   Generating output for cell M1_POLY24310591302030_3v64x8m81
+   Generating output for cell M1_POLY24310591302031_3v64x8m81
+   Generating output for cell M1_POLY24310591302033_3v64x8m81
+   Generating output for cell M1_POLY24310591302061_3v64x8m81
+   Generating output for cell M1_POLY24310591302062_3v64x8m81
+   Generating output for cell M1_POLY24310591302066_3v64x8m81
+   Generating output for cell M1_POLY24310591302067_3v64x8m81
+   Generating output for cell M1_PSUB$$48312364_3v64x8m81
+   Generating output for cell M1_PSUB_02_R90_3v64x8m81
+   Generating output for cell M1_PSUB_03_3v64x8m81
+   Generating output for cell M1_PSUB_03_R90_3v64x8m81
+   Generating output for cell M2_M1$$34864172_3v64x8m81
+   Generating output for cell M2_M1$$34864172_R90_3v64x8m81
+   Generating output for cell M2_M1$$43375660_3v64x8m81
+   Generating output for cell M2_M1$$43375660_R90_3v64x8m81
+   Generating output for cell M2_M1$$43376684_3v64x8m81
+   Generating output for cell M2_M1$$43377708_3v64x8m81
+   Generating output for cell M2_M1$$43378732_3v64x8m81
+   Generating output for cell M2_M1$$43379756_3v64x8m81
+   Generating output for cell M2_M1$$43380780_3v64x8m81
+   Generating output for cell M2_M1$$45013036_3v64x8m81
+   Generating output for cell M2_M1$$47500332_3v64x8m81
+   Generating output for cell M2_M1$$47515692_3v64x8m81
+   Generating output for cell M2_M1$$48217132_3v64x8m81
+   Generating output for cell M2_M1$$48218156_3v64x8m81
+   Generating output for cell M2_M1$$48219180_3v64x8m81
+   Generating output for cell M2_M1$$48220204_3v64x8m81
+   Generating output for cell M2_M1$$48221228_3v64x8m81
+   Generating output for cell M2_M1$$48222252_3v64x8m81
+   Generating output for cell M2_M1$$48224300_3v64x8m81
+   Generating output for cell M2_M1$$48316460_3v64x8m81
+   Generating output for cell M2_M1$$168351788_3v64x8m81
+   Generating output for cell M2_M1$$170061868_3v64x8m81
+   Generating output for cell M2_M1$$170063916_3v64x8m81
+   Generating output for cell M2_M1$$170064940_3v64x8m81
+   Generating output for cell M2_M1$$199746604_3v64x8m81
+   Generating output for cell M2_M1_01_R270_3v64x8m81
+   Generating output for cell M2_M14310591302025_3v64x8m81
+   Generating output for cell M2_M14310591302065_3v64x8m81
+   Generating output for cell M3_M2$$43368492_3v64x8m81
+   Generating output for cell M3_M2$$43368492_R270_3v64x8m81
+   Generating output for cell M3_M2$$43371564_3v64x8m81
+   Generating output for cell M3_M2$$45008940_3v64x8m81
+   Generating output for cell M3_M2$$47108140_3v64x8m81
+   Generating output for cell M3_M2$$47115308_3v64x8m81
+   Generating output for cell M3_M2$$47332396_3v64x8m81
+   Generating output for cell M3_M2$$47333420_3v64x8m81
+   Generating output for cell M3_M2$$47644716_3v64x8m81
+   Generating output for cell M3_M2$$47645740_3v64x8m81
+   Generating output for cell M3_M2$$48066604_3v64x8m81
+   Generating output for cell M3_M2$$48227372_3v64x8m81
+   Generating output for cell M3_M2$$48228396_3v64x8m81
+   Generating output for cell M3_M2$$48229420_3v64x8m81
+   Generating output for cell M3_M2$$48231468_3v64x8m81
+   Generating output for cell M3_M2$$169753644_3v64x8m81
+   Generating output for cell M3_M2$$169755692_3v64x8m81
+   Generating output for cell M3_M2$$169756716_3v64x8m81
+   Generating output for cell M3_M2$$201255980_3v64x8m81
+   Generating output for cell M3_M24310591302026_3v64x8m81
+   Generating output for cell M3_M24310591302064_3v64x8m81
+   Generating output for cell nmos_5p04310591302010_3v64x8m81
+   Generating output for cell nmos_1p2$$46551084_3v64x8m81
+   Generating output for cell nmos_5p0431059130208_3v64x8m81
+   Generating output for cell nmos_1p2$$46563372_3v64x8m81
+   Generating output for cell nmos_5p04310591302053_3v64x8m81
+   Generating output for cell nmos_1p2$$47342636_3v64x8m81
+   Generating output for cell nmos_5p04310591302086_3v64x8m81
+   Generating output for cell nmos_1p2$$48302124_3v64x8m81
+   Generating output for cell nmos_5p04310591302085_3v64x8m81
+   Generating output for cell nmos_1p2$$48306220_3v64x8m81
+   Generating output for cell nmos_5p04310591302084_3v64x8m81
+   Generating output for cell nmos_1p2$$48308268_3v64x8m81
+   Generating output for cell nmos_5p04310591302039_3v64x8m81
+   Generating output for cell nmos_1p2$$48629804_3v64x8m81
+   Generating output for cell nmos_5p04310591302083_3v64x8m81
+   Generating output for cell nmos_5p04310591302090_3v64x8m81
+   Generating output for cell nmos_5p04310591302093_3v64x8m81
+   Generating output for cell pmos_5p0431059130203_3v64x8m81
+   Generating output for cell pmos_1p2$$46273580_3v64x8m81
+   Generating output for cell pmos_5p04310591302014_3v64x8m81
+   Generating output for cell pmos_1p2$$46285868_3v64x8m81
+   Generating output for cell pmos_5p04310591302041_3v64x8m81
+   Generating output for cell pmos_1p2$$47330348_3v64x8m81
+   Generating output for cell pmos_5p04310591302087_3v64x8m81
+   Generating output for cell pmos_1p2$$47815724_3v64x8m81
+   Generating output for cell pmos_5p04310591302073_3v64x8m81
+   Generating output for cell pmos_1p2$$48623660_3v64x8m81
+   Generating output for cell pmos_5p04310591302091_3v64x8m81
+   Generating output for cell pmos_1p2$$48624684_3v64x8m81
+   Generating output for cell pmos_5p04310591302051_3v64x8m81
+   Generating output for cell pmos_5p04310591302074_3v64x8m81
+   Generating output for cell pmos_5p04310591302088_3v64x8m81
+   Generating output for cell pmos_5p04310591302089_3v64x8m81
+   Generating output for cell pmos_5p04310591302092_3v64x8m81
+   Generating output for cell pmos_5p04310591302094_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302028_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302070_3v64x8m81
+   Generating output for cell M1_NACTIVE_01_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302039_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302069_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302071_3v64x8m81
+   Generating output for cell M1_PACTIVE_01_3v64x8m81
+   Generating output for cell M2_M1$$201262124_3v64x8m81
+   Generating output for cell M2_M1$$202395692_3v64x8m81
+   Generating output for cell M2_M1$$202396716_3v64x8m81
+   Generating output for cell M2_M1$$202406956_3v64x8m81
+   Generating output for cell M2_M1431059130208_3v64x8m81
+   Generating output for cell M2_M14310591302018_3v64x8m81
+   Generating output for cell M2_M14310591302073_3v64x8m81
+   Generating output for cell M2_M14310591302074_3v64x8m81
+   Generating output for cell M3_M2$$202397740_3v64x8m81
+   Generating output for cell M3_M2431059130207_3v64x8m81
+   Generating output for cell M3_M24310591302029_3v64x8m81
+   Generating output for cell M3_M24310591302050_3v64x8m81
+   Generating output for cell M3_M24310591302072_3v64x8m81
+   Generating output for cell nmos_1p2$$202595372_3v64x8m81
+   Generating output for cell nmos_1p2$$202596396_3v64x8m81
+   Generating output for cell nmos_5p04310591302075_3v64x8m81
+   Generating output for cell nmos_5p04310591302076_3v64x8m81
+   Generating output for cell nmos_5p04310591302078_3v64x8m81
+   Generating output for cell nmos_5p04310591302081_3v64x8m81
+   Generating output for cell pmos_1p2$$202586156_3v64x8m81
+   Generating output for cell pmos_1p2$$202587180_3v64x8m81
+   Generating output for cell pmos_5p04310591302020_3v64x8m81
+   Generating output for cell pmos_5p04310591302077_3v64x8m81
+   Generating output for cell pmos_5p04310591302079_3v64x8m81
+   Generating output for cell pmos_5p04310591302080_3v64x8m81
+   Generating output for cell pmos_5p04310591302082_3v64x8m81
+   Generating output for cell wen_v2_3v64x8m81
+   Generating output for cell gen_3v64x8_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302047_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302048_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302049_3v64x8m81
+   Generating output for cell M2_M1$$202405932_3v64x8m81
+   Generating output for cell M3_M2$$201401388_3v64x8m81
+   Generating output for cell M1_PACTIVE_02_3v64x8m81
+   Generating output for cell M2_M1$$46894124_3v64x8m81
+   Generating output for cell M3_M2$$43368492_R90_3v64x8m81
+   Generating output for cell nmos_5p04310591302040_3v64x8m81
+   Generating output for cell pmos_5p04310591302069_3v64x8m81
+   Generating output for cell M1_POLY2_155_3v64x8m81
+   Generating output for cell M1_PSUB$$45110316_3v64x8m81
+   Generating output for cell M2_M1$$43379756_153_3v64x8m81
+   Generating output for cell M2_M1$$43380780_152_3v64x8m81
+   Generating output for cell M2_M1_154_3v64x8m81
+   Generating output for cell M3_M2$$43368492_151_3v64x8m81
+   Generating output for cell M3_M2$$47108140_149_3v64x8m81
+   Generating output for cell M3_M2$$47333420_150_3v64x8m81
+   Generating output for cell nmos_5p04310591302059_3v64x8m81
+   Generating output for cell nmos_1p2$$47329324_3v64x8m81
+   Generating output for cell nmos_1p2_157_3v64x8m81
+   Generating output for cell pmos_5p04310591302058_3v64x8m81
+   Generating output for cell pmos_1p2$$47331372_3v64x8m81
+   Generating output for cell pmos_1p2_160_3v64x8m81
+   Generating output for cell pmos_1p2_161_3v64x8m81
+   Generating output for cell alatch_3v64x8m81
+   Generating output for cell M1_NWELL11_3v64x8m81
+   Generating output for cell M1_PSUB$$47335468_3v64x8m81
+   Generating output for cell nmos_5p04310591302065_3v64x8m81
+   Generating output for cell nmos_1p2$$47502380_3v64x8m81
+   Generating output for cell nmos_5p04310591302066_3v64x8m81
+   Generating output for cell pmos_5p04310591302064_3v64x8m81
+   Generating output for cell pmos_1p2$$47503404_3v64x8m81
+   Generating output for cell pmos_5p04310591302063_3v64x8m81
+   Generating output for cell pmos_1p2$$47504428_3v64x8m81
+   Generating output for cell xpredec0_bot_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302024_3v64x8m81
+   Generating output for cell M1_POLY24310591302059_3v64x8m81
+   Generating output for cell M2_M1$$47640620_3v64x8m81
+   Generating output for cell nmos_5p04310591302057_3v64x8m81
+   Generating output for cell nmos_1p2$$47641644_3v64x8m81
+   Generating output for cell pmos_5p04310591302068_3v64x8m81
+   Generating output for cell pmos_1p2$$47513644_3v64x8m81
+   Generating output for cell pmos_5p04310591302067_3v64x8m81
+   Generating output for cell pmos_1p2$$47642668_3v64x8m81
+   Generating output for cell pmos_1p2$$47643692_3v64x8m81
+   Generating output for cell xpredec0_xa_3v64x8m81
+   Generating output for cell xpredec0_3v64x8m81
+   Generating output for cell M1_POLY2_R270_3v64x8m81
+   Generating output for cell nmos_5p04310591302056_3v64x8m81
+   Generating output for cell pmos_5p04310591302062_3v64x8m81
+   Generating output for cell pmos_1p2$$47109164_3v64x8m81
+   Generating output for cell M1_NWELL10_3v64x8m81
+   Generating output for cell M3_M2$$47334444_3v64x8m81
+   Generating output for cell nmos_5p04310591302071_3v64x8m81
+   Generating output for cell nmos_1p2$$47336492_3v64x8m81
+   Generating output for cell pmos_5p04310591302070_3v64x8m81
+   Generating output for cell pmos_1p2$$47337516_3v64x8m81
+   Generating output for cell xpredec1_bot_3v64x8m81
+   Generating output for cell M1_POLY24310591302060_3v64x8m81
+   Generating output for cell M2_M1$$47327276_3v64x8m81
+   Generating output for cell nmos_1p2$$47514668_3v64x8m81
+   Generating output for cell pmos_5p04310591302072_3v64x8m81
+   Generating output for cell pmos_1p2$$47512620_3v64x8m81
+   Generating output for cell xpredec1_xa_3v64x8m81
+   Generating output for cell xpredec1_3v64x8m81
+   Generating output for cell prexdec_top_3v64x8m81
+   Generating output for cell M1_NWELL12_3v64x8m81
+   Generating output for cell M1_NWELL13_3v64x8m81
+   Generating output for cell M1_PSUB$$47114284_3v64x8m81
+   Generating output for cell M2_M1$$47630380_3v64x8m81
+   Generating output for cell M2_M1$$47631404_3v64x8m81
+   Generating output for cell M2_M14310591302051_3v64x8m81
+   Generating output for cell M3_M2$$46895148_3v64x8m81
+   Generating output for cell M3_M2$$47632428_3v64x8m81
+   Generating output for cell M3_M2$$47633452_3v64x8m81
+   Generating output for cell M1_NWELL14_3v64x8m81
+   Generating output for cell M1_PSUB$$47818796_3v64x8m81
+   Generating output for cell pmos_5p0431059130204_3v64x8m81
+   Generating output for cell pmos_1p2$$46887980_3v64x8m81
+   Generating output for cell ypredec1_bot_3v64x8m81
+   Generating output for cell M2_M14310591302057_3v64x8m81
+   Generating output for cell M3_M24310591302058_3v64x8m81
+   Generating output for cell M3_M2$$47819820_3v64x8m81
+   Generating output for cell pmos_5p04310591302061_3v64x8m81
+   Generating output for cell pmos_1p2$$47820844_3v64x8m81
+   Generating output for cell pmos_5p04310591302060_3v64x8m81
+   Generating output for cell pmos_1p2$$47821868_3v64x8m81
+   Generating output for cell ypredec1_xa_3v64x8m81
+   Generating output for cell ypredec1_xax8_3v64x8m81
+   Generating output for cell M1_NWELL4310591302032_3v64x8m81
+   Generating output for cell M2_M14310591302052_3v64x8m81
+   Generating output for cell M2_M14310591302054_3v64x8m81
+   Generating output for cell M2_M14310591302055_3v64x8m81
+   Generating output for cell M2_M14310591302056_3v64x8m81
+   Generating output for cell M3_M24310591302053_3v64x8m81
+   Generating output for cell nmos_5p04310591302054_3v64x8m81
+   Generating output for cell pmos_5p04310591302055_3v64x8m81
+   Generating output for cell ypredec1_ys_3v64x8m81
+   Generating output for cell ypredec1_3v64x8m81
+   Generating output for cell control_3v64x8_3v64x8m81
+   Generating output for cell 018SRAM_cell1_3v64x8m81
+   Generating output for cell 018SRAM_cell1_2x_3v64x8m81
+   Generating output for cell M2_M14310591302020_3v64x8m81
+   Generating output for cell M3_M24310591302021_3v64x8m81
+   Generating output for cell 018SRAM_strap1_3v64x8m81
+   Generating output for cell 018SRAM_strap1_2x_3v64x8m81
+   Generating output for cell 018SRAM_strap1_bndry_3v64x8m81
+   Generating output for cell 018SRAM_strap1_2x_bndry_3v64x8m81
+   Generating output for cell Cell_array8x8_3v64x8m81
+   Generating output for cell M3_M24310591302022_3v64x8m81
+   Generating output for cell M3_M24310591302023_3v64x8m81
+   Generating output for cell M1_NWELL08_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302027_3v64x8m81
+   Generating output for cell M1_PSUB$$45111340_3v64x8m81
+   Generating output for cell M1_PSUB$$46892076_3v64x8m81
+   Generating output for cell M1_PSUB$$46893100_3v64x8m81
+   Generating output for cell nmos_5p0431059130205_3v64x8m81
+   Generating output for cell nmos_1p2$$46883884_3v64x8m81
+   Generating output for cell nmos_5p0431059130207_3v64x8m81
+   Generating output for cell nmos_1p2$$46884908_3v64x8m81
+   Generating output for cell nmos_5p04310591302011_3v64x8m81
+   Generating output for cell pmos_5p0431059130206_3v64x8m81
+   Generating output for cell pmos_1p2$$46885932_3v64x8m81
+   Generating output for cell pmos_5p0431059130201_3v64x8m81
+   Generating output for cell pmos_1p2$$46889004_3v64x8m81
+   Generating output for cell pmos_5p0431059130209_3v64x8m81
+   Generating output for cell po_m1_3v64x8m81
+   Generating output for cell po_m1_R90_3v64x8m81
+   Generating output for cell po_m1_R270_3v64x8m81
+   Generating output for cell via1_x2_R90_3v64x8m81
+   Generating output for cell via2_x2_R90_3v64x8m81
+   Generating output for cell via1_2_x2_3v64x8m81
+   Generating output for cell via1_2_x2_R90_3v64x8m81
+   Generating output for cell via1_3v64x8m81
+   Generating output for cell via1_R90_3v64x8m81
+   Generating output for cell via1_x2_3v64x8m81
+   Generating output for cell via2_x2_3v64x8m81
+   Generating output for cell din_3v64x8m81
+   Generating output for cell M2_M1$$45012012_3v64x8m81
+   Generating output for cell m2_saout01_3v64x8m81
+   Generating output for cell M3_M2$$43370540_3v64x8m81
+   Generating output for cell M3_M2$$44741676_3v64x8m81
+   Generating output for cell M3_M2431059130201_3v64x8m81
+   Generating output for cell M1_NWELL05_3v64x8m81
+   Generating output for cell M1_NWELL09_3v64x8m81
+   Generating output for cell M1_PSUB$$47122476_3v64x8m81
+   Generating output for cell nmos_5p0431059130200_3v64x8m81
+   Generating output for cell nmos_1p2$$47119404_3v64x8m81
+   Generating output for cell nmos_5p0431059130202_3v64x8m81
+   Generating output for cell via2_R90_3v64x8m81
+   Generating output for cell via1_2_3v64x8m81
+   Generating output for cell ypass_gate_3v64x8m81
+   Generating output for cell ypass_gate_a_3v64x8m81
+   Generating output for cell mux821_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302038_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302041_3v64x8m81
+   Generating output for cell M1_NWELL_01_R270_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302034_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302040_3v64x8m81
+   Generating output for cell M1_PSUB_02_3v64x8m81
+   Generating output for cell M2_M1$$168351788_R90_3v64x8m81
+   Generating output for cell nmos_5p04310591302033_3v64x8m81
+   Generating output for cell nmos_5p04310591302044_3v64x8m81
+   Generating output for cell nmos_5p04310591302045_3v64x8m81
+   Generating output for cell nmos_5p04310591302046_3v64x8m81
+   Generating output for cell nmos_5p04310591302050_3v64x8m81
+   Generating output for cell nmos_5p04310591302052_3v64x8m81
+   Generating output for cell pmos_1p2$$171625516_3v64x8m81
+   Generating output for cell pmos_5p04310591302013_3v64x8m81
+   Generating output for cell pmos_5p04310591302038_3v64x8m81
+   Generating output for cell pmos_5p04310591302047_3v64x8m81
+   Generating output for cell pmos_5p04310591302048_3v64x8m81
+   Generating output for cell pmos_5p04310591302049_3v64x8m81
+   Generating output for cell via1_R270_3v64x8m81
+   Generating output for cell outbuf_oe_3v64x8m81
+   Generating output for cell M1_NWELL06_3v64x8m81
+   Generating output for cell M1_NWELL_01_R90_3v64x8m81
+   Generating output for cell M1_PSUB$$46555180_3v64x8m81
+   Generating output for cell M1_PSUB$$46556204_3v64x8m81
+   Generating output for cell M1_PSUB$$46557228_3v64x8m81
+   Generating output for cell M1_PSUB$$46558252_3v64x8m81
+   Generating output for cell M1_PSUB_04_R90_3v64x8m81
+   Generating output for cell nmos_5p04310591302012_3v64x8m81
+   Generating output for cell nmos_1p2$$45107244_3v64x8m81
+   Generating output for cell nmos_5p04310591302017_3v64x8m81
+   Generating output for cell nmos_1p2$$46550060_3v64x8m81
+   Generating output for cell nmos_5p04310591302016_3v64x8m81
+   Generating output for cell nmos_1p2$$46552108_3v64x8m81
+   Generating output for cell nmos_5p04310591302015_3v64x8m81
+   Generating output for cell nmos_1p2$$46553132_3v64x8m81
+   Generating output for cell pmos_1p2$$46286892_3v64x8m81
+   Generating output for cell pmos_5p04310591302018_3v64x8m81
+   Generating output for cell pmos_1p2$$46549036_3v64x8m81
+   Generating output for cell pmos_5p04310591302021_3v64x8m81
+   Generating output for cell pmos_1p2$$46896172_3v64x8m81
+   Generating output for cell pmos_1p2$$46897196_3v64x8m81
+   Generating output for cell pmos_5p04310591302019_3v64x8m81
+   Generating output for cell pmos_1p2$$46898220_3v64x8m81
+   Generating output for cell via1_x2_R270_3v64x8m81
+   Generating output for cell via2_x2_R270_3v64x8m81
+   Generating output for cell via1_2_x2_R270_3v64x8m81
+   Generating output for cell sa_3v64x8m81
+   Generating output for cell M1_NWELL02_3v64x8m81
+   Generating output for cell M1_NWELL03_3v64x8m81
+   Generating output for cell M1_NWELL04_3v64x8m81
+   Generating output for cell M1_POLY2$$45109292_3v64x8m81
+   Generating output for cell M1_PSUB$$44997676_3v64x8m81
+   Generating output for cell M1_PSUB_285_3v64x8m81
+   Generating output for cell M2_M1$$43374636_3v64x8m81
+   Generating output for cell M2_M1$$45002796_3v64x8m81
+   Generating output for cell M2_M1$$45003820_3v64x8m81
+   Generating output for cell M2_M1c$$203396140_3v64x8m81
+   Generating output for cell M3_M2$$45005868_3v64x8m81
+   Generating output for cell M3_M2$$45006892_3v64x8m81
+   Generating output for cell nmos_5p04310591302029_3v64x8m81
+   Generating output for cell nmos_1p2$$45100076_3v64x8m81
+   Generating output for cell nmos_5p04310591302036_3v64x8m81
+   Generating output for cell nmos_1p2$$45101100_3v64x8m81
+   Generating output for cell nmos_5p04310591302026_3v64x8m81
+   Generating output for cell nmos_1p2$$45102124_3v64x8m81
+   Generating output for cell nmos_5p04310591302037_3v64x8m81
+   Generating output for cell nmos_1p2$$45103148_3v64x8m81
+   Generating output for cell nmos_5p04310591302023_3v64x8m81
+   Generating output for cell nmos_5p04310591302028_3v64x8m81
+   Generating output for cell nmos_5p04310591302032_3v64x8m81
+   Generating output for cell nmos_5p04310591302034_3v64x8m81
+   Generating output for cell pmos_5p04310591302030_3v64x8m81
+   Generating output for cell pmos_1p2$$45095980_3v64x8m81
+   Generating output for cell pmos_5p04310591302025_3v64x8m81
+   Generating output for cell pmos_1p2$$46281772_3v64x8m81
+   Generating output for cell pmos_5p04310591302024_3v64x8m81
+   Generating output for cell pmos_1p2$$46282796_3v64x8m81
+   Generating output for cell pmos_5p04310591302022_3v64x8m81
+   Generating output for cell pmos_1p2$$46283820_3v64x8m81
+   Generating output for cell pmos_5p04310591302035_3v64x8m81
+   Generating output for cell pmos_1p2$$46284844_3v64x8m81
+   Generating output for cell pmos_5p04310591302031_3v64x8m81
+   Generating output for cell pmos_1p2$$46287916_3v64x8m81
+   Generating output for cell pmos_5p04310591302027_3v64x8m81
+   Generating output for cell sacntl_2_3v64x8m81
+   Generating output for cell via2_3v64x8m81
+   Generating output for cell M1_NACTIVE4310591302037_3v64x8m81
+   Generating output for cell M2_M14310591302035_3v64x8m81
+   Generating output for cell M3_M24310591302036_3v64x8m81
+   Generating output for cell nmos_1p2$$202594348_3v64x8m81
+   Generating output for cell nmos_1p2$$202598444_3v64x8m81
+   Generating output for cell nmos_5p04310591302042_3v64x8m81
+   Generating output for cell pmos_1p2$$202583084_3v64x8m81
+   Generating output for cell pmos_1p2$$202584108_3v64x8m81
+   Generating output for cell pmos_1p2$$202585132_3v64x8m81
+   Generating output for cell pmos_5p04310591302043_3v64x8m81
+   Generating output for cell wen_wm1_3v64x8m81
+   Generating output for cell saout_m2_3v64x8m81
+   Generating output for cell saout_R_m2_3v64x8m81
+   Generating output for cell col_64a_3v64x8m81
+   Generating output for cell dcap_103_novia_3v64x8m81
+   Generating output for cell 018SRAM_cell1_dummy_3v64x8m81
+   Generating output for cell 018SRAM_cell1_cutPC_3v64x8m81
+   Generating output for cell array16_64_dummy_01_3v64x8m81
+   Generating output for cell new_dummyrow_unit_3v64x8m81
+   Generating output for cell new_dummyrowunit01_3v64x8m81
+   Generating output for cell ldummy_3v64x4_3v64x8m81
+   Generating output for cell lcol4_64_3v64x8m81
+   Generating output for cell M1_NACTIVE_02_3v64x8m81
+   Generating output for cell M1_NWELL_01_3v64x8m81
+   Generating output for cell M1_PACTIVE$10_3v64x8m81
+   Generating output for cell M1_PACTIVE$11_3v64x8m81
+   Generating output for cell M1_POLY2$$204150828_3v64x8m81
+   Generating output for cell M2_M1$$204138540_3v64x8m81
+   Generating output for cell M2_M1$$204139564_3v64x8m81
+   Generating output for cell M2_M1$$204140588_3v64x8m81
+   Generating output for cell M2_M1$$204141612_3v64x8m81
+   Generating output for cell M2_M1$$204220460_3v64x8m81
+   Generating output for cell M2_M1$$204221484_3v64x8m81
+   Generating output for cell M2_M1$$204222508_3v64x8m81
+   Generating output for cell M3_M2$$204142636_3v64x8m81
+   Generating output for cell M3_M2$$204144684_3v64x8m81
+   Generating output for cell M3_M2$$204145708_3v64x8m81
+   Generating output for cell M3_M2$$204146732_3v64x8m81
+   Generating output for cell M3_M2$$204147756_3v64x8m81
+   Generating output for cell nmos_5p043105913020102_3v64x8m81
+   Generating output for cell nmos_1p2_01_R270_3v64x8m81
+   Generating output for cell nmos_5p04310591302099_3v64x8m81
+   Generating output for cell nmos_1p2_02_R90_3v64x8m81
+   Generating output for cell nmos_5p043105913020111_3v64x8m81
+   Generating output for cell pmos_5p043105913020101_3v64x8m81
+   Generating output for cell pmos_1p2_01_R90_3v64x8m81
+   Generating output for cell pmos_5p043105913020100_3v64x8m81
+   Generating output for cell pmos_1p2_02_R90_3v64x8m81
+   Generating output for cell M1_NACTIVE_01_R270_3v64x8m81
+   Generating output for cell M1_PACTIVE_R270_3v64x8m81
+   Generating output for cell M1_POLY2_01_R270_3v64x8m81
+   Generating output for cell M2_M1$04_R270_3v64x8m81
+   Generating output for cell pmoscap_L1_W2_R270_3v64x8m81
+   Generating output for cell pmoscap_R270_3v64x8m81
+   Generating output for cell M2_M1$$202394668_3v64x8m81
+   Generating output for cell M1_NWELL07_3v64x8m81
+   Generating output for cell M1_PACTIVE03_3v64x8m81
+   Generating output for cell M1_PACTIVE43105913020106_3v64x8m81
+   Generating output for cell M1_POLY243105913020105_3v64x8m81
+   Generating output for cell M1_PSUB_05_3v64x8m81
+   Generating output for cell M2_M1$$45004844_3v64x8m81
+   Generating output for cell M2_M1$$204402732_3v64x8m81
+   Generating output for cell M2_M1$$204403756_3v64x8m81
+   Generating output for cell M2_M1$$204404780_3v64x8m81
+   Generating output for cell M2_M1$$204405804_3v64x8m81
+   Generating output for cell M2_M1$$204406828_3v64x8m81
+   Generating output for cell M2_M1$$204407852_3v64x8m81
+   Generating output for cell M2_M1$$204408876_3v64x8m81
+   Generating output for cell M2_M1$02_R270_3v64x8m81
+   Generating output for cell M3_M2$$204398636_3v64x8m81
+   Generating output for cell M3_M2$$204399660_3v64x8m81
+   Generating output for cell M3_M2$$204400684_3v64x8m81
+   Generating output for cell M3_M2$$204401708_3v64x8m81
+   Generating output for cell nmos_1p2_02_R270_3v64x8m81
+   Generating output for cell nmos_5p043105913020106_3v64x8m81
+   Generating output for cell nmos_5p043105913020107_3v64x8m81
+   Generating output for cell nmos_5p043105913020109_3v64x8m81
+   Generating output for cell pmos_5p043105913020108_3v64x8m81
+   Generating output for cell pmos_1p2_01_R270_3v64x8m81
+   Generating output for cell pmos_5p043105913020104_3v64x8m81
+   Generating output for cell pmos_1p2_02_R270_3v64x8m81
+   Generating output for cell pmos_5p043105913020103_3v64x8m81
+   Generating output for cell pmos_1p2_03_R270_3v64x8m81
+   Generating output for cell pmos_5p043105913020105_3v64x8m81
+   Generating output for cell pmos_5p043105913020110_3v64x8m81
+   Generating output for cell xdec_3v64x8m81
+   Generating output for cell xdec8_3v64x8m81
+   Generating output for cell xdec32_3v64x8m81
+   Generating output for cell xdec64_3v64x8m81
+   Generating output for cell M1_PSUB4310591302010_3v64x8m81
+   Generating output for cell M3_M2$$201253932_3v64x8m81
+   Generating output for cell M3_M24310591302011_3v64x8m81
+   Generating output for cell m2m3_3v64x8m81
+   Generating output for cell rarray4_64_3v64x8m81
+   Generating output for cell 018SRAM_cell1_dummy_R_3v64x8m81
+   Generating output for cell M1_NWELL$$44998700_3v64x8m81
+   Generating output for cell M1_NWELL$$46277676_3v64x8m81
+   Generating output for cell M1_POLY2$$46559276_3v64x8m81_0
+   Generating output for cell M1_PSUB$$46274604_3v64x8m81
+   Generating output for cell M2_M1$$47117356_3v64x8m81
+   Generating output for cell nmos_5p04310591302096_3v64x8m81
+   Generating output for cell nmos_5p04310591302098_3v64x8m81
+   Generating output for cell pmos_5p04310591302095_3v64x8m81
+   Generating output for cell pmos_5p04310591302097_3v64x8m81
+   Generating output for cell via1_x2_R90_3v64x8m81_0
+   Generating output for cell via2_x2_R90_3v64x8m81_0
+   Generating output for cell via1_2_x2_3v64x8m81_0
+   Generating output for cell via1_2_x2_R90_3v64x8m81_0
+   Generating output for cell via1_x2_R270_3v64x8m81_0
+   Generating output for cell via2_x2_R270_3v64x8m81_0
+   Generating output for cell via1_2_x2_R270_3v64x8m81_0
+   Generating output for cell M1_NWELL$$47121452_3v64x8m81
+   Generating output for cell M1_PACTIVE4310591302075_3v64x8m81
+   Generating output for cell M1_PSUB$$45111340_3v64x8m81_0
+   Generating output for cell M3_M2$$43368492_3v64x8m81_0
+   Generating output for cell via1_R90_3v64x8m81_0
+   Generating output for cell via2_R90_3v64x8m81_0
+   Generating output for cell via1_2_3v64x8m81_0
+   Generating output for cell via1_R270_3v64x8m81_0
+   Generating output for cell ypass_gate_3v64x8m81_0
+   Generating output for cell rdummy_3v64x4_3v64x8m81
+   Generating output for cell rcol4_64_3v64x8m81
+   Generating output for cell M2_M14310591302076_3v64x8m81
+   Generating output for cell M3_M24310591302077_3v64x8m81
+   Generating output for cell M3_M24310591302078_3v64x8m81
+   Generating output for cell M3_M24310591302079_3v64x8m81
+   Generating output for cell 3v64x8M8W_PWR_3v64x8m81
+   Generating output for cell M1_PSUB4310591302043_3v64x8m81
+   Generating output for cell M1_PSUB4310591302044_3v64x8m81
+   Generating output for cell M1_PSUB4310591302045_3v64x8m81
+   Generating output for cell M1_PSUB4310591302046_3v64x8m81
+   Generating output for cell G_ring_3v64x8m81
+   Generating output for cell GF018_3v64x8M8WM1_lef_3v64x8m81
+   Generating output for cell M2_M14310591302097_3v64x8m81
+   Generating output for cell M3_M24310591302095_3v64x8m81
+   Generating output for cell M3_M24310591302096_3v64x8m81
+   Generating output for cell power_route_05_3v64x8m81
+   Generating output for cell M3_M24310591302098_3v64x8m81
+   Generating output for cell M3_M24310591302099_3v64x8m81
+   Generating output for cell M3_M243105913020100_3v64x8m81
+   Generating output for cell M3_M243105913020101_3v64x8m81
+   Generating output for cell power_route_06_3v64x8m81
+   Generating output for cell M2_M14310591302087_3v64x8m81
+   Generating output for cell M3_M24310591302090_3v64x8m81
+   Generating output for cell power_route_02_a_3v64x8m81
+   Generating output for cell power_route_01_3v64x8m81
+   Generating output for cell M2_M14310591302080_3v64x8m81
+   Generating output for cell M2_M14310591302081_3v64x8m81
+   Generating output for cell M2_M14310591302092_3v64x8m81
+   Generating output for cell M2_M14310591302093_3v64x8m81
+   Generating output for cell M3_M24310591302082_3v64x8m81
+   Generating output for cell M3_M24310591302083_3v64x8m81
+   Generating output for cell M3_M24310591302084_3v64x8m81
+   Generating output for cell M3_M24310591302085_3v64x8m81
+   Generating output for cell M3_M24310591302086_3v64x8m81
+   Generating output for cell M3_M24310591302088_3v64x8m81
+   Generating output for cell M3_M24310591302089_3v64x8m81
+   Generating output for cell M3_M24310591302091_3v64x8m81
+   Generating output for cell M3_M24310591302094_3v64x8m81
+   Generating output for cell power_route_04_3v64x8m81
+   Generating output for cell M3_M243105913020102_3v64x8m81
+   Generating output for cell power_route_07_3v64x8m81
+   Generating output for cell power_route_02_b_3v64x8m81
+   Generating output for cell power_route_3v64x8m81
+   Generating output for cell gf180mcu_ocd_ip_sram__sram64x8m8wm1
+   Generating output for cell mask_rt_wrapper
+496 problems occurred.  See feedback entries.

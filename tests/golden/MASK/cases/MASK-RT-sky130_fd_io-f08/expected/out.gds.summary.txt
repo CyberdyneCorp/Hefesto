@@ -1,0 +1,2 @@
+file out.gds
+total structures 0 records 0

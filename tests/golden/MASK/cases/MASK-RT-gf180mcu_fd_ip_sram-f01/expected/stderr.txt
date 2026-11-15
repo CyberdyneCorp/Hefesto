@@ -1,0 +1,20 @@
+Error while reading cell "wen_wm1_128x8m81" (byte position 414628): Warning: cell "M2_M1$$202406956_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "wen_wm1_128x8m81" (byte position 416032): Warning: cell "M2_M1$$202406956_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570156): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570292): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570428): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570564): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570700): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570836): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1570972): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_128_128x8m81" (byte position 1571108): Warning: cell "018SRAM_strap1_2x_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_wm1_x4_128x8m81" (byte position 1680850): Warning:  Cell saout_wm1_x4_128x8m81 boundary was redefined.
+Error while reading cell "saout_wm1_x4_128x8m81" (byte position 1680850): Warning:  Cell saout_wm1_x4_128x8m81 boundary was redefined.
+Error while reading cell "saout_wm1_x4_128x8m81" (byte position 1680850): Warning:  Cell saout_wm1_x4_128x8m81 boundary was redefined.
+Error while reading cell "xdec16_128_128x8m81" (byte position 2196144): Warning: cell "M3_M2$$204142636_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "gf180mcu_fd_ip_sram__sram128x8m8wm1" (byte position 2300166): Warning: cell "M3_M2$$201258028_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "gf180mcu_fd_ip_sram__sram128x8m8wm1" (byte position 2301026): Warning: cell "M2_M1$$199747628_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "gf180mcu_fd_ip_sram__sram128x8m8wm1" (byte position 2301730): Warning: cell "M3_M2$$201258028_128x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "gf180mcu_fd_ip_sram__sram128x8m8wm1" (byte position 2301830): Warning: cell "M2_M1$$199747628_128x8m81" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

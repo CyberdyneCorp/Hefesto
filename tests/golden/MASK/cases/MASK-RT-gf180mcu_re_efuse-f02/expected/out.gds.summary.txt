@@ -1,0 +1,42 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure VIA_via4_5_2400_2400_2_2_1040_1040 created 120-6-28 20:45:4 records 33
+structure VIA_via4_5_3200_2400_2_3_1040_1040 created 120-6-28 20:45:4 records 43
+structure VIA_via4_5_2400_3200_3_2_1040_1040 created 120-6-28 20:45:4 records 43
+structure VIA_Via2_VH created 120-6-28 20:45:4 records 18
+structure VIA_Via3_HV created 120-6-28 20:45:4 records 18
+structure VIA_Via1_VV created 120-6-28 20:45:4 records 18
+structure VIA_via4_5_5720_3200_2_4_1240_1240 created 120-6-28 20:45:4 records 53
+structure VIA_via4_5_3200_3200_3_3_1040_1040 created 120-6-28 20:45:4 records 58
+structure VIA_via4_5_2000_3200_3_2_1040_1040 created 120-6-28 20:45:4 records 43
+structure VIA_via4_5_3200_880_1_3_1040_1040 created 120-6-28 20:45:4 records 28
+structure efuse_cell created 120-6-28 20:45:4 records 93
+structure pmos created 120-6-28 20:45:4 records 2093
+structure efuse_bitline_block_0 created 120-6-28 20:45:4 records 1326
+structure efuse_senseamp_2 created 120-6-28 20:45:4 records 878
+structure efuse_bitline created 120-6-28 20:45:4 records 1384
+structure efuse_array_async_1x8 created 120-6-28 20:45:4 records 5305
+structure gf180mcu_fd_sc_mcu7t5v0__fill_2 created 120-6-28 20:45:4 records 64
+structure gf180mcu_fd_sc_mcu7t5v0__endcap created 120-6-28 20:45:4 records 116
+structure gf180mcu_fd_sc_mcu7t5v0__fillcap_4 created 120-6-28 20:45:4 records 229
+structure gf180mcu_fd_sc_mcu7t5v0__filltie created 120-6-28 20:45:4 records 121
+structure gf180mcu_fd_sc_mcu7t5v0__buf_8 created 120-6-28 20:45:4 records 747
+structure gf180mcu_fd_sc_mcu7t5v0__antenna created 120-6-28 20:45:4 records 128
+structure gf180mcu_fd_sc_mcu7t5v0__fill_1 created 120-6-28 20:45:4 records 64
+structure gf180mcu_fd_sc_mcu7t5v0__nand2_2 created 120-6-28 20:45:4 records 351
+structure VIA_Via1_HV created 120-6-28 20:45:4 records 18
+structure VIA_via1_2_3200_1200_1_3_1040_1040 created 120-6-28 20:45:4 records 28
+structure VIA_via3_4_3200_1200_1_3_1040_1040 created 120-6-28 20:45:4 records 28
+structure VIA_via2_3_3200_1200_1_3_1040_1040 created 120-6-28 20:45:4 records 28
+structure gf180mcu_fd_sc_mcu7t5v0__fillcap_8 created 120-6-28 20:45:4 records 374
+structure gf180mcu_fd_sc_mcu7t5v0__dlyd_4 created 120-6-28 20:45:4 records 1352
+structure gf180mcu_fd_sc_mcu7t5v0__buf_4 created 120-6-28 20:45:4 records 492
+structure gf180mcu_fd_sc_mcu7t5v0__and2_2 created 120-6-28 20:45:4 records 396
+structure gf180mcu_fd_sc_mcu7t5v0__inv_2 created 120-6-28 20:45:4 records 287
+structure gf180mcu_fd_sc_mcu7t5v0__nor2_4 created 120-6-28 20:45:4 records 516
+structure gf180mcu_fd_sc_mcu7t5v0__buf_2 created 120-6-28 20:45:4 records 342
+structure gf180mcu_fd_sc_mcu7t5v0__or2_2 created 120-6-28 20:45:4 records 371
+structure gf180mcu_fd_sc_mcu7t5v0__fillcap_16 created 120-6-28 20:45:4 records 664
+structure gf180mcu_fd_sc_mcu7t5v0__fillcap_32 created 120-6-28 20:45:4 records 1244
+structure efuse_async_mem_1x8 created 120-6-28 20:45:4 records 7312
+total structures 39 records 26711

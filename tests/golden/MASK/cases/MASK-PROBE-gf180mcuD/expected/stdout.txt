@@ -1,0 +1,42 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:37:59 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology gf180mcuD ...
+10 Magic internal units = 1 Lambda
+Input style import: scaleFactor=10, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    obsactive mvobsactive filldiff fillpoly m1hole obsm1 fillm1 obsv1 m2hole obsm2 fillm2 obsv2 m3hole obsm3 fillm3 m4hole obsm4 fillm4 m5hole obsm5 fillm5 glass fillblock lvstext obscomment 
+Scaled tech values by 10 / 1 to match internal grid scaling
+Loading gf180mcuD Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:   0.050 x 0.050   ( 0.000,  0.000), ( 0.050,  0.050)  0.002     
+lambda:     1.00 x 1.00    (  0.00,  0.00 ), (  1.00,  1.00 )  1.00      
+internal:     10 x 10      (     0,  0    ), (    10,  10   )  100       
+0 {}
+0 {gdsii metfill drc}
+0 import
+CIF output style is now "gdsii"
+0 {}
+0 {}
+CIF output style is now "metfill"
+0 {}
+0 {}
+CIF output style is now "drc"
+0 {}
+0 {}
+CIF input style is now "import"
+0 {}

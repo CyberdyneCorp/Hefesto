@@ -1,0 +1,26 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure efuse_cell$3 created 120-11-1 1:19:9 records 111
+structure efuse_cell$2 created 120-11-1 1:19:9 records 111
+structure efuse_cell$1 created 120-11-1 1:19:9 records 111
+structure gf180mcu_fd_sc_mcu7t5v0__fillcap_4 created 120-11-1 1:19:9 records 211
+structure gf180mcu_fd_sc_mcu7t5v0__endcap created 120-11-1 1:19:9 records 98
+structure gf180mcu_fd_sc_mcu7t5v0__filltie created 120-11-1 1:19:9 records 103
+structure efuse_senseamp created 120-11-1 1:19:9 records 818
+structure pmos created 120-11-1 1:19:9 records 2543
+structure nmos$6 created 120-11-1 1:19:9 records 723
+structure efuse_cell created 120-11-1 1:19:9 records 93
+structure nmos$7 created 120-11-1 1:19:9 records 1058
+structure efuse_bitline_block_48 created 120-11-1 1:19:9 records 2479
+structure nmos$4 created 120-11-1 1:19:9 records 723
+structure nmos$5 created 120-11-1 1:19:9 records 1058
+structure efuse_bitline_block_32 created 120-11-1 1:19:9 records 2479
+structure nmos$2 created 120-11-1 1:19:9 records 723
+structure nmos$3 created 120-11-1 1:19:9 records 1058
+structure efuse_bitline_block_16 created 120-11-1 1:19:9 records 2479
+structure nmos created 120-11-1 1:19:9 records 723
+structure nmos$1 created 120-11-1 1:19:9 records 1058
+structure efuse_bitline_block_0 created 120-11-1 1:19:9 records 2479
+structure efuse_bitline created 120-11-1 1:19:9 records 7667
+structure efuse_array_64x32 created 120-11-1 1:19:9 records 88970
+total structures 23 records 117881
