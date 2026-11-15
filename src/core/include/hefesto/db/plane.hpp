@@ -137,6 +137,16 @@ struct SplitEdit {
 /// mask generation's planes do in Magic.
 enum class PaintMerge : std::uint8_t { split_tiles, none };
 
+/// The straddling pieces non-Manhattan paints may still descend into
+/// ("Non-Manhattan painting"). A triangle paint without a budget of its own
+/// gets a fresh one; a cell paint shares one between its planes and the
+/// contact images it repaints, so the image repaints cannot multiply the
+/// work of one paint (Q-MODEL-34, Q-MODEL-36).
+struct NMBudget {
+  static constexpr std::size_t kPieces = 512;
+  std::size_t pieces = kPieces;
+};
+
 class Plane {
  public:
   Plane();  // the whole plane is space
@@ -163,11 +173,15 @@ class Plane {
   /// diagonals half up (Q-MODEL-3). `off_grid`, when given, is set to
   /// whether a 1x1 area had to be filled because the triangle could not be
   /// split on the grid (DBNMPaintPlane0 returning 1; the DRC flattening
-  /// reports it, why 5).
+  /// reports it, why 5); it is also set when `budget` ran out and a piece
+  /// still on the diagonal was filled as a rectangle. `budget`, when given,
+  /// is drawn from and may be shared by several paints; otherwise the paint
+  /// has a fresh NMBudget.
   [[nodiscard]] diag::Status paint_triangle(const Rect& area, Diagonal diagonal, bool right_side,
                                             const PaintRow& row, bool magic_compat = true,
                                             bool* off_grid = nullptr,
-                                            PaintMerge merge = PaintMerge::split_tiles);
+                                            PaintMerge merge = PaintMerge::split_tiles,
+                                            NMBudget* budget = nullptr);
 
   /// DBMergeNMTiles ("Split tile merging"): walks the tiles overlapping
   /// `area` in Magic's area-enumeration order and merges each split tile
