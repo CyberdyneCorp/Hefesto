@@ -352,6 +352,10 @@ int run_window(const ShellOptions& options) {
     DrcPump drc_pump(
         core.editor(), [](std::function<void()> task) { ui::post_task(std::move(task)); },
         [&window](std::size_t committed) { window.on_drc_service(committed); });
+    // A GDS or CIF write emits on a worker that reads the layout while the
+    // frames it pumps run posted tasks: squares wait until it ends (m5 D16).
+    drc_pump.set_hold([&window] { return window.mask_jobs().busy(); });
+    window.mask_jobs().set_on_end([&drc_pump] { drc_pump.resume(); });
     if (!options.run.empty()) window.run_when_ready(options.run);
     if (options.rects > 0) {
       render::SyntheticLayoutParams params;

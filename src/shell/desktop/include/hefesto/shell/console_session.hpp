@@ -39,6 +39,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "hefesto/cmd/dispatcher.hpp"
@@ -89,8 +90,13 @@ class TclConsoleSession final : public ConsoleEvaluator {
   ConsoleEvaluation evaluate(std::string_view command) override;
   void interrupt() noexcept override;
   [[nodiscard]] std::size_t undo_steps() const override;
-  /// Another evaluation (not the console's) is running and reporting.
-  [[nodiscard]] bool busy() const override { return depth_ == 0 && progress_.has_value(); }
+  /// Another evaluation (not the console's) is running and reporting, or
+  /// the external source says so (a long GDS/CIF job, shell::MaskJobHost).
+  [[nodiscard]] bool busy() const override {
+    return (depth_ == 0 && progress_.has_value()) || (external_busy_ && external_busy_());
+  }
+  /// Also busy while `busy()` answers true: typed lines then wait.
+  void set_external_busy(std::function<bool()> busy) { external_busy_ = std::move(busy); }
   /// `info commands` / `info vars` of `glob` in the project's interpreter.
   [[nodiscard]] std::vector<std::string> names(TclWordKind kind, std::string_view glob) override;
 
@@ -110,6 +116,7 @@ class TclConsoleSession final : public ConsoleEvaluator {
   std::string pending_out_;  // `puts -nonewline` text not yet ended by a newline
   ConsoleLineKind pending_kind_ = ConsoleLineKind::out;
   std::function<void()> pump_;
+  std::function<bool()> external_busy_;
   std::chrono::milliseconds pump_interval_{50};
   std::chrono::steady_clock::time_point last_pump_{};
   int depth_ = 0;

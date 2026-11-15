@@ -26,6 +26,7 @@
 #include "hefesto/shell/key_bindings_sheet.hpp"
 #include "hefesto/shell/label_tool.hpp"
 #include "hefesto/shell/manager_views.hpp"
+#include "hefesto/shell/mask_job_host.hpp"
 #include "hefesto/shell/menu_bar_model.hpp"
 #include "hefesto/shell/minimap.hpp"
 #include "hefesto/shell/options.hpp"

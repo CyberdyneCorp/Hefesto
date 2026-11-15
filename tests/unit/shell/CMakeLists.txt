@@ -53,6 +53,11 @@ target_sources(hefesto_shell_tests PRIVATE
   minimap_test.cpp
   panels_layout_test.cpp
   wiring_hud_test.cpp)
+# M5 GDS menu items and the host of long GDS/CIF reads and writes
+# (openspec/changes/m5-mask-gds-cif tasks 12.1, 12.2, SHELL).
+target_sources(hefesto_shell_tests PRIVATE
+  m5_gds_menu_test.cpp
+  m5_mask_job_test.cpp)
 # assets_test reads the bundled fonts and the shell sources.
 target_compile_definitions(hefesto_shell_tests PRIVATE HEFESTO_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_include_directories(hefesto_shell_tests PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit/common")
