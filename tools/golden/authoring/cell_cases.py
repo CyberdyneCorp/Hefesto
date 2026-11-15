@@ -25,7 +25,7 @@ NOT_AUTHORED = {
     "CELL-PW-06": "needs symbolic links",
     "CELL-LIB-01": "needs PDK_ROOT in the environment", "CELL-LIB-02": "needs PDK_ROOT in the environment",
     "CELL-IO-01..10": "need file modes/owners, two processes, strace, full filesystems, crash/archive commands",
-    "CELL-TS-06": "needs lef read (LEF/DEF, M6)", "CELL-TS-07": "needs gds readonly (GDS, M5)",
+    "CELL-TS-06": "needs lef read (LEF/DEF, M6)",
 }
 
 FAKE = """\
@@ -395,3 +395,27 @@ def m4_specs() -> list[TclCase]:
                                p("getcell [pwd]/input/pdk/lib/c1", "getcell [pwd]/input/pdk2/lib/c2", "save top")]),
                    files={"pdk/lib/c1.mag": leaf, "pdk2/lib/c2.mag": leaf}, outputs=["top.mag"], tech="scmos")
     return [pr03, pr12, pw05]
+
+
+# --- M5: the row that needed `gds readonly` (m5-mask-gds-cif design D18, task 13.6; m5_cases.py) ---
+
+M5_NOT_AUTHORED: dict[str, str] = {}
+
+
+def m5_specs() -> list[TclCase]:
+    """CELL-TS-07 on the MASK framework (mask_cases.py), without `gds datestamp 0`: a datestamp other
+    than the default would replace the content-hash stamps of the read (gds-read "When content-hash
+    timestamps are assigned")."""
+    import common
+    import mask_cases as mc
+    import mask_io_cases as mio
+
+    body = ["drc off", *common.tech_load(mc.TECH), "gds readonly true", "gds read vendor", "cellname list allcells",
+            "cellname timestamp va", "cellname timestamp vb", "load parent", "box 0 0 0 0", "getcell va",
+            "box 20 0 20 0", "getcell vb", *paint("metal2", 0, 20, 10, 30), "save parent", "cellname timestamp va",
+            "cellname timestamp vb", "cellname flags va", "cellname flags parent"]
+    return [mc.case("CELL-TS-07", ["Generating new stamps"],
+                    "gds readonly true: vendor cells va and vb read from GDS (content-hash stamps) placed in a new "
+                    "parent; the parent edited and saved: the vendor stamps in the use records.",
+                    body, files={"vendor.gds": mio.vendor_lib()}, outputs=["parent.mag"], start=[],
+                    raw_prelude=True, capability=STAMPS)]

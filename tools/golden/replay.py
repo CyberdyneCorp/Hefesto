@@ -54,7 +54,7 @@ from pathlib import Path
 
 from compare import COMPARATORS, compare_bytes, normalized
 from goldenlib import deviations
-from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, substitute_env
+from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, run_timeout, substitute_env
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage
 from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
@@ -90,21 +90,27 @@ class Execution:
     files: dict[str, bytes]
 
 
-def hefesto_argv(cli: Path, case: Case, work: Path) -> list[str]:
-    args = case.hefesto.get("args", [])
+def hefesto_argv(cli: Path, case: Case, work: Path, args: list[str] | None = None) -> list[str]:
+    args = case.hefesto.get("args", []) if args is None else args
     subst = {"input": str(work / "input"), "work": str(work)}
     return [str(cli), *(arg.format(**subst) for arg in args)]
+
+
+def run_hefesto(cli: Path, case: Case, work: Path, args: list[str] | None = None) -> subprocess.CompletedProcess:
+    """hefesto-cli in ``work`` (its input/ already staged) with the case's arguments, or ``args``
+    (gds_rt_report.py's second pass); the case's ``[hefesto] timeout_s`` bounds the run."""
+    # Hermetic: Magic's system files come only from the case's magic-sys inputs.
+    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **substitute_env(case.env, str(work))}
+    stdin = (work / case.hefesto["stdin"]).read_bytes() if "stdin" in case.hefesto else b""
+    return subprocess.run(hefesto_argv(cli, case, work, args), capture_output=True, cwd=work, env=env,
+                          timeout=run_timeout(case.hefesto, TIMEOUT_S), check=False, input=stdin)
 
 
 def execute(cli: Path, case: Case, work: Path) -> Execution:
     """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent."""
     shutil.copytree(case.input_dir, work / "input")
     stage(case.externals, work / "input")
-    # Hermetic: Magic's system files come only from the case's magic-sys inputs.
-    env = {**os.environ, **ENVIRONMENT, "CAD_ROOT": str(cad_root(work)), **substitute_env(case.env, str(work))}
-    stdin = (work / case.hefesto["stdin"]).read_bytes() if "stdin" in case.hefesto else b""
-    proc = subprocess.run(hefesto_argv(cli, case, work), capture_output=True, cwd=work,
-                          env=env, timeout=TIMEOUT_S, check=False, input=stdin)
+    proc = run_hefesto(cli, case, work)
     files = {}
     for out in case.outputs:
         if out.source not in STREAM_SOURCES:

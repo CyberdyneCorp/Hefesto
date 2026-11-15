@@ -56,6 +56,8 @@ From M4 hefesto-cli embeds Tcl, so a case can have a single `input/commands.tcl`
 - `[reference] allow_nonzero_exit = true`: keep the output of a run killed by `timeout` (SCRIPT-API-11, Q-SCRIPT-3).
 - `[[external]]` `to` may be a relative path and a `pdk` `path` may be a directory (a PDK tree under `input/pdk` for `PDK_ROOT`).
 - `derived:files:<glob>`: every matching file preceded by `file <path>` (cells named only at run time).
+- `derived:gds-digest:<glob>` and `derived:gds-summary:<glob>`: a GDS output too large to commit, as the SHA-256 of its decompressed, `gds-mod-dates`-masked bytes and as its decoded summary (the `MASK-RT-*` cases).
+- `[reference] timeout_s` / `[hefesto] timeout_s`: seconds before `capture.py` (default 600) or `replay.py` (default 300) abandons the run, at most 6 hours.
 
 ## M5: the use-order probe (MASK-UO-*)
 
@@ -78,6 +80,19 @@ python3 authoring/m5_cases.py                 # write the cases (never expected/
 python3 authoring/m5_cases.py --not-authored  # rows left out: reason and target milestone
 python3 authoring/m5_cases.py --deviations    # rewrite the generated deferral block of deviations.toml
 python3 authoring/m5_cases.py --dispatch      # the golden-capture.yml capture command
+python3 authoring/m5_cases.py --dispatch-uncaptured  # the same, for the cases without expected/
+```
+
+The driver also writes the M5 cases outside the 233 MASK rows (task 13.6, 13.7): the rows of other areas that waited for GDS (`m5_specs()` of `misc_cases.py` and `cell_cases.py`: MISC-MH-03..06, MISC-FL-05, CELL-TS-07, on the same framework; CELL-TS-07 without `gds datestamp 0`, which would replace the content-hash stamps it checks), and the cases on the pinned PDKs of `authoring/mask_pdk_cases.py`:
+
+- `MASK-RT-<lib>` and `MASK-RT-<lib>-fNN`, the library round trips of design D19, one fresh session per library GDS file (89). Each copies `harness/gds_rt/gds_rt.tcl` into its `input/` and stages the library's `libs.ref/<lib>/gds` directory as `input/lib` from the GDS data set; `rt::run_library` picks the file by its index in sorted order (and checks the file count), reads it (an `*_ef_io*` file reads the library's `*_fd_io` file first), places every new top structure in `mask_rt_wrapper` (sorted by name, at the origin), pins the wrapper's timestamp to 0 and writes with `gds library yes`. `out.gds` is compared through `derived:gds-digest:out.gds` (SHA-256 of the decompressed, `gds-mod-dates`-masked stream) and `derived:gds-summary:out.gds` (`goldenlib/gds.py` `summary`: library name and creation date, one line per structure with its creation date and record count). The SRAM libraries set `timeout_s` in `[reference]` and `[hefesto]` (the runners' defaults are 600 and 300 seconds). `tests/test_gds_rt.py` runs the harness under `tclsh` against `tests/fake_magic_gds_rt.tcl`.
+- `MASK-PROBE-<variant>`: each output style's CIF layer list (`cif see` of an unknown layer prints it) and each input style's `Input style` line, for the PDK unit tests of tasks 3.7 and 7.4.
+
+The round trips' review tool is `gds_rt_report.py` (design D19's equivalence report): for each `MASK-RT-*` case it runs the case with hefesto-cli, reads `out.gds` back in a fresh session with the same round trip (`rt::roundtrip out.gds out2`) and lists the order-insensitive differences between the two writes (structures, SREF/AREF multisets, each layer's area as canonical rectangles, other polygons as normalized rings) in Markdown and the job summary. It never fails on differences (`--strict` fails when a pass writes nothing); `perf.yml`'s `gds-roundtrip` job runs it.
+
+```sh
+python3 gds_rt_report.py --hefesto-cli ../../build/macos-debug/src/cli/hefesto-cli \
+  ../../tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd
 ```
 
 Hand-built GDS inputs (bad headers, damaged records, every PATHTYPE, AREFs, properties, odd TEXT) come from `authoring/gdsgen.py`, a record writer with its decoder in `goldenlib/gds.py` (`tests/test_gdsgen.py`). Inputs under 64 KB are committed as binary. Until a case is captured and its workstream lands, `deviations.toml` lists it as `deferred = "M5"` in the block `m5_cases.py --deviations` generates; a workstream whose implementation makes cases replay adds them to `REPLAYED` in `m5_cases.py` and re-runs `--deviations`.

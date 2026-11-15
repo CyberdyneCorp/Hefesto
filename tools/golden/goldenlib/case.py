@@ -27,6 +27,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     argv = ["magic", "-dnull", ...]  # optional; overrides the tool's default argv
     display = "xvfb"                 # optional: run under a virtual X server (GUI cases, Tk)
     stdin = "input/commands.tcl"     # optional: the tool's standard input (path relative to the case)
+    timeout_s = 3600                 # optional: seconds before the run is abandoned (default 600)
 
     [env]                            # optional: environment of BOTH runs (reference and replay);
     PDK_ROOT = "{work}/input/pdk"    # {work} = the work directory (/work in the container)
@@ -36,6 +37,7 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     requires_commands = []           # optional: commands the case needs (skip if unknown)
     stdin = "input/commands.tcl"     # optional: hefesto-cli's standard input (default: none)
     m0_only = false                  # optional: uses a temporary M0-only command
+    timeout_s = 3600                 # optional: seconds before replay.py abandons the run (default 300)
 
     [[external]]                     # optional: pinned data copied into input/ (goldenlib/external.py)
     source = "pdk"                   # pdk | scmos | magic-sys | magic-tcl
@@ -230,7 +232,25 @@ def load_case(root: Path, known_comparators=None) -> Case:
     if root.parent.name != "cases" or root.parent.parent.name != case.area:
         raise CaseError(f"{where}: case must live in tests/golden/{case.area}/cases/{case.id}")
     _check_paths(case)
+    for table in ("reference", "hefesto"):
+        _check_timeout(getattr(case, table), table, where)
     return case
+
+
+MAX_TIMEOUT_S = 6 * 3600  # the longest capture shard (golden-capture.yml) is 200 minutes
+
+
+def _check_timeout(table: dict, name: str, where: str) -> None:
+    value = table.get("timeout_s")
+    if value is not None and (isinstance(value, bool) or not isinstance(value, int)
+                              or not 0 < value <= MAX_TIMEOUT_S):
+        raise CaseError(f"{where}: {name}.timeout_s must be an integer of seconds in 1..{MAX_TIMEOUT_S}")
+
+
+def run_timeout(table: dict, default: int) -> int:
+    """The ``timeout_s`` of a ``[reference]`` or ``[hefesto]`` table (validated by load_case), else
+    ``default``: the library round trips (MASK-RT-*, m5-mask-gds-cif D19) run for up to 35 minutes."""
+    return int(table.get("timeout_s", default))
 
 
 def discover(golden_root: Path) -> list[Path]:
