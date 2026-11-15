@@ -291,7 +291,6 @@ REPLAYED: set[str] = {
     "MASK-PROBE-sky130A",
     "MASK-RT-gf180mcu_as_sc_mcu7t3v3",
     "MASK-RT-gf180mcu_fd_io-f01",
-    "MASK-RT-gf180mcu_fd_io-f02",
     "MASK-RT-gf180mcu_fd_ip_sram-f01",
     "MASK-RT-gf180mcu_fd_ip_sram-f02",
     "MASK-RT-gf180mcu_fd_ip_sram-f03",
