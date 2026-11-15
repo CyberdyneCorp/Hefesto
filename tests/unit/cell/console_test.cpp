@@ -135,6 +135,25 @@ TEST_CASE("getcell reads the cell it places and the box covers the instance",
   CHECK(*s.editor.box == db::Rect{10, 0, 14, 4});
 }
 
+// Regression (m5 round 5, gds-bench): a cell read through a parent records
+// "/work/in/leaf.mag"; getcell of "/work/in/leaf" named the same file but was
+// renamed leaf_a, because the comparison appended ".mag" to both paths.
+TEST_CASE("getcell reuses a cell read through a parent from the same file",
+          "[cap:layout-hierarchy][req:Cell instances]") {
+  CommandSession s;
+  s.write("/work/in/leaf.mag", kLeaf);
+  s.write("/work/in/top.mag", kTop);
+  REQUIRE(s.run("load", {"parent"}).ok());
+  s.editor.box = db::Rect{0, 0, 0, 0};
+  REQUIRE(s.run("getcell", {"/work/in/top"}).ok());
+  REQUIRE(s.editor.cells.find("leaf") != nullptr);
+  s.editor.box = db::Rect{20, 0, 20, 0};
+  const auto r = s.run("getcell", {"/work/in/leaf"});
+  REQUIRE(r.ok());
+  CHECK_FALSE(has_text(r, "Renaming cell to \"leaf_a\" to avoid conflict."));
+  CHECK(s.editor.cells.find("leaf_a") == nullptr);
+}
+
 TEST_CASE("expanding an instance reads its unavailable cell through the CELL reader (UI-G-037)",
           "[cap:ui-windows-and-views][req:Per-window expansion state]") {
   CommandSession s;

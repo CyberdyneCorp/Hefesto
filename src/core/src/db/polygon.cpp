@@ -265,12 +265,30 @@ void split_diagonal(Path& path, int p, bool clockwise, std::vector<PolygonPiece>
   }
 }
 
-void make_manhattan(Path& path, std::vector<PolygonPiece>& out) {
+// The split budget of one path (security.md M5-S7): a split that finds a
+// crossing leaves a shorter diagonal behind it, so a few edges with huge,
+// nearly parallel slopes split about once per unit of length (a 5-point GDS
+// boundary from the fuzzer never finished). Each crossing between two
+// edges splits at most once per edge, so n^2 + n splits cover every
+// legitimate path of n vertices; past the budget the path stays
+// non-Manhattan, which the caller reports as for any non-Manhattan path.
+std::uint64_t split_budget(std::size_t vertices) noexcept {
+  constexpr std::uint64_t kMinBudget = 1024;
+  const std::uint64_t n = vertices;
+  return kMinBudget + n * n + n;
+}
+
+void make_manhattan(Path& path, std::size_t vertices, std::vector<PolygonPiece>& out) {
   const bool clockwise = is_clockwise(path);
+  std::uint64_t budget = split_budget(vertices);
   for (int p = path.head(); path.next(p) != kEnd; p = path.next(p)) {
     const Point a = path.at(p);
     const Point b = path.at(path.next(p));
     if (a.x != b.x && a.y != b.y) {
+      if (budget == 0) {
+        return;
+      }
+      --budget;
       split_diagonal(path, p, clockwise, out);
     }
   }
@@ -390,7 +408,7 @@ PolygonDecomposition decompose_read_polygon(std::span<const Point> vertices) {
   }
   Path path(vertices);
   path.close();
-  make_manhattan(path, out.pieces);
+  make_manhattan(path, vertices.size(), out.pieces);
   out.problem = poly_to_rects(path, out.pieces);
   return out;
 }

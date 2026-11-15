@@ -428,6 +428,22 @@ TEST_CASE("the shared decomposer handles self-intersecting paths", CAP "[req:Pol
   CHECK_FALSE(db::decompose_polygon(std::vector<Point>{{0, 0}, {1, 1}}).ok());
 }
 
+// Regression (m5 round 5, CI fuzz run 43754937069, fuzz_gds_reader timeout):
+// two edges with huge, nearly parallel slopes split about once per unit of
+// length and never finished. The split budget stops the path, which is then
+// reported as non-Manhattan (security.md M5-S7).
+TEST_CASE("the read decomposer bounds the splits of a degenerate path", CAP "[req:Polygon command]") {
+  const std::vector<Point> path{{0, 0}, {1000, 0}, {1000, 400}, {16318463, 1056965008}, {0, 0}};
+  const db::PolygonDecomposition d = db::decompose_read_polygon(path);
+  CHECK(d.problem == db::PolygonProblem::not_manhattan);
+  CHECK(d.pieces.size() <= 1024 + 25 + 5);
+  // An ordinary triangle still decomposes completely.
+  const std::vector<Point> triangle{{0, 0}, {10, 0}, {0, 10}};
+  const db::PolygonDecomposition t = db::decompose_read_polygon(triangle);
+  CHECK(t.problem == db::PolygonProblem::none);
+  CHECK_FALSE(t.pieces.empty());
+}
+
 TEST_CASE("splitpaint paints the two triangles", CAP "[req:Splitpaint command]") {
   HEFESTO_REQUIRE_MT(mt);
   Paint s(mt);
