@@ -1,6 +1,6 @@
 # Security model of scripting
 
-This page describes how Hefesto contains the Tcl scripts it runs: PDK startup files, PCell generators, menu callbacks, console input and user scripts. It covers the sandbox, consent and trust, the data-only files, PDK widget interception and `readspice`. It also records the results of the M4 security review (openspec change `m4-scripting`, design D19, task 13.3) and explains how to add a command without opening a hole.
+This page describes how Hefesto contains the Tcl scripts it runs: PDK startup files, PCell generators, menu callbacks, console input and user scripts. It covers the sandbox, consent and trust, the data-only files, PDK widget interception and `readspice`. It also records the results of the M4 security review (openspec change `m4-scripting`, design D19, task 13.3), the M5 review of the GDS, CIF and mask readers ("Layout input"), and explains how to add a command without opening a hole.
 
 Read it before you change anything under `src/core/src/script/`, before you add an engine command that takes a path or reaches the host, and before you add a new way to run Tcl.
 
@@ -184,3 +184,39 @@ Before you register a new engine command, Tcl command or `magic::` procedure:
 
    If the change touches the filesystem layer, also run `fuzz_tcl_sandbox` (linux-fuzz) for 60 s.
 8. **Review.** A change under `src/core/src/script/tcl/`, `script/pdk/trust.*`, `script/pdk/consent.*` or `app/startup.cpp` `sandbox_policy` needs a reviewer to check it against this page. Update this page when the model changes.
+
+## Layout input: GDS, CIF and the mask sections (M5 review, 2026-11-15)
+
+GDS and CIF files come from foundries, IP vendors and other tools, so their readers treat every byte as hostile (hefesto-security "Untrusted input handling", design R9 of `openspec/changes/m5-mask-gds-cif/design.md`). The `cifoutput` and `cifinput` technology sections come with a PDK and get the same parser hardening, but a PDK is trusted to describe sensible operators (see "Accepted limits" below). The review covered `src/core/src/gds/` (stream, read, write), `src/core/src/cif/` (read, write) and `src/core/src/mask/` (style and input readers, generation), task 15.3.
+
+### Bounds in place
+
+| Concern | Bound | Where |
+|---|---|---|
+| Record framing | A record length below 4 or past the end of the stream ends the records (GDS-STREAM-001); payloads are at most 65531 bytes, so no read allocates more. | `gds/stream/records.cpp` |
+| Gzip bombs | Inflating streams through a 64 KiB buffer and keeps at most 256 inflate checkpoints; the decompressed stream is capped at 256 times the compressed size, at least 1 GiB (GDS-STREAM-006, M5-S1). | `gds/stream/gzip.cpp`, `gds::inflate_cap` |
+| Recursion (read) | Post-order look-ahead and magnified-copy reads nest at most 512 deep; magnified copies at most 32 deep and only while the scale stays within 2^30 (GDS-READ-011). Reference cycles are refused. | `gds/read/reader.hpp`, `sref.cpp`, `structure.cpp` |
+| Recursion (write, generation) | Subtree loading and the writers stop at `gds::kMaxSubtreeDepth` (1024); hosts that write off the command thread run on a 64 MiB stack (`platform::run_on_stack`). | `gds/write/subtree.hpp`, `platform/stack_thread.hpp` |
+| AREF counts | Counts are 16-bit and pitches 64-bit, so negative or extreme values cannot overflow (checked with crafted inputs); one AREF makes at most 2^20 flatten copies and one read at most 2^26 flatten tile paints (GDS-READ-011). | `gds/read/sref.cpp` |
+| Coordinates | GDS coordinates and scale products use 64-bit arithmetic and are clamped to the usable plane; CIF integers saturate at 2^61 and every sum and product is checked (Q-MASK-222). Mask-operator distances beyond `db::kPlaneMax` are rejected by the style reader and clamped after a rescale. | `gds/read/library.cpp`, `cif/read/parser.cpp`, `mask/style/` |
+| Symbols and structures | A CIF read defines at most 2^20 symbols (later definitions are dropped with a message) and reads at most 2 GiB of text (CIF-READ-010). A GDS read has no structure count cap: cells grow with the file size. | `cif/read/symbols.hpp`, `cif/read/read.hpp` |
+| Unit subdivision | CIF area labels and finer grids subdivide the units at most to the `cif limit` and 2^30. | `cif/read/parser_labels.cpp` |
+
+Fixed in round 2 of the change, each with a regression test (listed under task 15.3 in `tasks.md`): saturated CIF sums overflowing 64 bits, quadratic `SymbolTable::free_name`, `VendorStamper` inflating a whole `.gds.gz`, `leading_integer` negating INT64_MIN, `CoordinateScale::set_scale` skipping the clamp, a gzip member boundary at the inflate feed window's edge, and mask-operator distances overflowing the 32-bit kernels.
+
+### Findings of this review
+
+| ID | Severity | Finding | Disposition |
+|---|---|---|---|
+| M5-S1 | Medium | A few KiB of gzip data inflate to many GiB; the streaming source never ran out of memory but kept a read busy for hours. Magic has no cap. | Fixed. `make_gzip_source` stops at `gds::inflate_cap` (256 times the compressed size, at least 1 GiB) with GDS-STREAM-006, reported once by the reader. Tests "security fix M5-S1: ..." in `tests/unit/gds/stream/gzip_test.cpp` and `tests/unit/gds/read/hardening_test.cpp`. |
+| M5-S2 | Medium | Every structure read appends its cell to the DRC pending list through `drc::check_this`, whose duplicate test is a linear scan (`drc::PendingList::append`), and `check_this` recurses through every ancestor: a GDS file with n structures costs O(n^2) (100 000 empty structures, 10 MB: 38 s in a debug build), a chain of n nested structures O(n^3) (5 000 levels, 350 KB: hours). Magic has the same algorithm. | Open: drc-engine code (ENGINE). Recommended fix: keep a count per cell next to the list so the Magic "never looks at the last entry" rule stays exact in O(1), and skip the parent walk when the parent already holds the area. Until then an accepted limit; `gds drccheck no` avoids it. |
+| M5-S3 | Medium | `db::UseIndex` re-synchronizes the whole index after every placement (`sync_locked` walks all uses when the use list was touched), so placing n uses in one cell costs O(n^2): the GDS duplicate-use probe after each SREF makes a 200 000-instance cell (5.6 MB) take hours. This also slows real flat designs. | Open: use-index code (INDEX). Recommended fix: insert appended uses incrementally instead of the full scan. |
+| M5-S4 | Low | Hierarchical generation visits every interaction square (at least 50 internal units on a side) that a use reaches, as Magic's CIFGenSubcells does, and builds a DRC context per square: a 263-byte GDS whose AREF spans the plane makes the write after the read run for days. | Accepted limit (Magic behaves the same): the write is cancellable through `mask::Progress`. Reported to GEN as a performance item (reuse one context per generation). The fuzz targets skip writes of cells spanning more than 20 000 squares. |
+| M5-S5 | Low | Polygon decomposition (`db::decompose_polygon`) is quadratic in the point count. GDS bounds a BOUNDARY to 8191 points, but a CIF polygon or wire has no point limit: a 20 000-point polygon (190 KB) takes 52 s in a debug build. Magic's decomposition is quadratic too. | Accepted limit until decided: capping CIF points per element would refuse input Magic reads (a new decision, recorded for the user). |
+| M5-S6 | Info | The content-stamp table of a read-only read grows with the number of structures and SNAME records, as Magic's does. | Accepted limit (linear in the file size). |
+
+### Fuzz targets
+
+`fuzz_gds_reader` (plain and gzip, with the content-hash scan, a seek back and an in-memory GDS write after the read), `fuzz_cif_reader` (read, then a CIF or GDS write), `fuzz_cifoutput_section` and `fuzz_cifinput_section` (design D21) live in `tests/fuzz/`; their file comments list the mode bits and resource caps. `tests/fuzz/gen_mask_seeds.py` regenerates their seeds from the MASK golden cases and the test technologies (`--check` reports a stale corpus); hand-added regression inputs are named `regress-*`. CI runs each for 60 s (`fuzz` job) and replays the seeds on every leg (`fuzz-seeds.*`).
+
+When you change a GDS, CIF or mask reader, replay the seeds of these targets, and for a change to a bound above add a regression test named "security fix M5-..." or extend this table.
