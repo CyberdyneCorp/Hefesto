@@ -116,6 +116,10 @@ def rt_case(lib: Library, index: int) -> tclcase.TclCase:
         # CIFhier's timed progress lines (Q-MASK-414), and the crash-backup file Magic names at
         # random during a long read (golden-capture run 43762085730, MASK-RT-gf180mcu_re_efuse-f04).
         stream_masks=["completed-percent", "magic-crash-file"],
+        # Magic's startup loads its outline fonts, so the library's TEXT stay font labels and are
+        # written back with PRESENTATION, STRANS and MAG; without them the writes lose 3 records
+        # per label (round 5: sky130_fd_sc_hd__tap_1, 132 records against Magic's 144).
+        fonts=["FreeSans", "FreeSerif", "FreeMono"],
         pdk=lib.variant, run_timeout=lib.timeout if lib.timeout != DEFAULT_TIMEOUT_S else None,
         external=[{"source": "pdk", "set": gds_set(lib), "path": f"{lib.variant}/libs.ref/{lib.name}/gds",
                    "to": "lib"}],

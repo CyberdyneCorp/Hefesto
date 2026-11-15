@@ -43,19 +43,26 @@ def in_style(body: str, name: str = "gds", head: str = "    scalefactor 10\n") -
     return f"style {name}\n{head}{body}"
 
 
+# Magic's default outline fonts, which its startup loads from $CAD_ROOT/magic/sys: a GDS read maps
+# TEXT fonts 0..2 to them and keeps the labels as font labels.
+MAGIC_FONTS = ["FreeSans", "FreeSerif", "FreeMono"]
+
+
 def read_case(cid: str, requirements: list[str], description: str, data: bytes | None, *,
               before: list[str] | None = None, after: list[str] | None = None, cifinput: str = IN_DEFAULT,
               files: dict | None = None, read: str = "gds read in", outputs: list[str] | None = None,
               notes: list[str] | None = None, env: dict[str, str] | None = None,
-              cells: bool = True) -> tclcase.TclCase:
+              cells: bool = True, fonts: list[str] | None = None) -> tclcase.TclCase:
     """Read ``in.gds`` (``data``) with the case's input style, then save every cell. ``cells``:
-    compare the saved cells (off when the read creates none in the work directory)."""
+    compare the saved cells (off when the read creates none in the work directory). ``fonts``:
+    Magic's default outline fonts the read maps TEXT fonts to (staged for hefesto-cli)."""
     inputs = dict(files or {})
     if data is not None:
         inputs["in.gds"] = data
     body = [*(before or []), read, "cellname list allcells", *(after or []), SAVE_ALL]
     return case(cid, requirements, description, body, files=inputs, technology=tech(OUT_DEFAULT, cifinput),
-                start=[], outputs=[*([CELLS] if cells else []), *(outputs or [])], notes=notes, env=env)
+                start=[], outputs=[*([CELLS] if cells else []), *(outputs or [])], notes=notes, env=env,
+                fonts=fonts)
 
 
 def cif_read_case(cid: str, requirements: list[str], description: str, cif: str, *,
@@ -526,11 +533,13 @@ def gr_specs_a() -> list[tclcase.TclCase]:
                   one_cell(g.path(49, 0, 100, [(0, 0), (1000, 0)]), g.path(51, 0, 100, [(0, 500), (1000, 500)])),
                   before=["gds savepaths yes"]),
         read_case("MASK-GR-022", ["TEXT element parsing"],
-                  "TEXT with every PRESENTATION nibble 0x0..0xF and fonts 0..3.", texts_presentations()),
+                  "TEXT with every PRESENTATION nibble 0x0..0xF and fonts 0..3.", texts_presentations(),
+                  fonts=MAGIC_FONTS),
         read_case("MASK-GR-023", ["TEXT element parsing", "Text magnification scale option"],
                   "TEXT with STRANS+MAG 0.5/0/20000+ANGLE 45.7, WIDTH after and without PRESENTATION; gds magscale.",
                   None, files={"in.gds": text_mags("top"), "in2.gds": text_mags("t2")},
-                  after=["gds magscale", "gds magscale 2", "gds read in2", "gds magscale default", "gds magscale"]),
+                  after=["gds magscale", "gds magscale 2", "gds read in2", "gds magscale default", "gds magscale"],
+                  fonts=MAGIC_FONTS),
         read_case("MASK-GR-024", ["TEXT element parsing"],
                   "Labels on a layer without a DRC width and on one with DRC width 3: the default font size.",
                   one_cell(sq(M1, 0, 0, 1000, 1000), sq(M2, 0, 0, 1000, 1000), g.text(49, 0, (500, 500), "a", mag=1.0),

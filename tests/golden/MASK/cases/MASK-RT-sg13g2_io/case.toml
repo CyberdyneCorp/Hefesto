@@ -37,6 +37,21 @@ path = "ihp-sg13g2/libs.tech/magic"
 to = "pdk/ihp-sg13g2/libs.tech/magic"
 
 [[external]]
+source = "magic-sys"
+path = "graphics/FreeSans.pt3"
+to = "FreeSans.pt3"
+
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeSerif.pt3"
+to = "FreeSerif.pt3"
+
+[[external]]
+source = "magic-sys"
+path = "graphics/FreeMono.pt3"
+to = "FreeMono.pt3"
+
+[[external]]
 source = "pdk"
 set = "ihp-gds"
 path = "ihp-sg13g2/libs.ref/sg13g2_io/gds"
