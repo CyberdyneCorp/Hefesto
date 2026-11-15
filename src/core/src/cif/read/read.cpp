@@ -272,6 +272,7 @@ cmd::CommandResult read_text(editor::EditorState& editor, std::string_view text,
   parse_options.rescale_limit = options.settings.limit;
   parse_options.rescale_allowed = options.rescale_allowed;
   parse_options.cancel = progress != nullptr ? progress->cancel : nullptr;
+  parse_options.progress = progress;
   EngineTarget target(editor, engine, engine_options.copyup_on_call);
   ReadSession session;
   parse(text, parse_style(*style), parse_options, target, messages, session);

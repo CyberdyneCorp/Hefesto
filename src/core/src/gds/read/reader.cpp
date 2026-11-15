@@ -230,6 +230,14 @@ Reader::Reader(editor::EditorState& editor, ByteSource& source, const GdsReadOpt
 
 Reader::~Reader() = default;
 
+void Reader::report_progress() const {
+  if (progress_ == nullptr || options_.source_bytes == 0) {
+    return;
+  }
+  const double fraction = static_cast<double>(records_.position()) / static_cast<double>(options_.source_bytes);
+  progress_->update(std::min(fraction, 1.0));
+}
+
 void Reader::run() {
   const mask::InputStyle* style = editor_.mask.input_styles.current_style();
   if (style == nullptr || editor_.technology == nullptr) {
@@ -250,6 +258,7 @@ void Reader::run() {
         interrupted_ = true;
         break;
       }
+      report_progress();
     }
     if (!interrupted_) {
       (void)skip_exact(RecordType::endlib);

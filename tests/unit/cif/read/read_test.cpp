@@ -56,6 +56,26 @@ TEST_CASE("a read without an input style fails", "[cap:cif-format-io][req:cif re
   CHECK(texts(r) == std::vector<std::string>{"Don't know how to read CIF:  nothing in tech file."});
 }
 
+TEST_CASE("a CIF read reports the fraction of the text parsed",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  Fixture f;
+  f.ed.edit_cell = &f.cell("top");
+  std::vector<double> fractions;
+  hefesto::mask::Progress progress;
+  progress.report = [&fractions](double fraction) { fractions.push_back(fraction); };
+  cif::CifReadOptions options;
+  options.settings = f.ed.mask.cif;
+  options.warnings = f.ed.mask.warnings;
+  options.files = &f.fs;
+  const cmd::CommandResult r =
+      cif::read_text(f.ed, "DS 1 1 1;\n9 leaf;\nL CMF;\nB 40 20 20 10;\nDF;\nC 1;\nE\n", options, &progress);
+  REQUIRE(r.ok());
+  REQUIRE(fractions.size() >= 3);
+  CHECK(std::is_sorted(fractions.begin(), fractions.end()));
+  CHECK(fractions.front() >= 0.0);
+  CHECK(fractions.back() < 1.0);
+}
+
 TEST_CASE("definitions, calls with ids and top-level geometry", "[cap:cif-format-io][req:Calls and transformations]") {
   Fixture f;
   db::CellDef& top = f.cell("top");

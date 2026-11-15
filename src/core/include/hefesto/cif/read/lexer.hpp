@@ -50,6 +50,8 @@ class Lexer {
   [[nodiscard]] bool at_end() const noexcept { return pos_ >= text_.size(); }
   /// The number of characters consumed (for progress reports).
   [[nodiscard]] std::size_t position() const noexcept { return pos_; }
+  /// The length of the text.
+  [[nodiscard]] std::size_t size() const noexcept { return text_.size(); }
 
   /// True when `ch` is a CIF blank (cifIsBlank).
   [[nodiscard]] static bool is_blank(int ch) noexcept;

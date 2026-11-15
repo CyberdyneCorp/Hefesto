@@ -10,6 +10,8 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "../write/write_fixture.hpp"
 #include "hefesto/cmd/all_commands.hpp"
@@ -424,6 +426,41 @@ TEST_CASE("gds read searches the extensions and reports a missing file",
     no_style = no_style || d.code == "GDS-READ-009";
   }
   CHECK(no_style);
+}
+
+TEST_CASE("gds write and read run through the session's hosts",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  Session s;
+  std::vector<std::string> labels;
+  bool given_progress = true;
+  const auto host = [&labels, &given_progress](std::string_view label, const hefesto::mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    hefesto::mask::Progress progress;
+    const cmd::CommandResult result = work(&progress);
+    given_progress = given_progress && result.ok();
+    return result;
+  };
+  s.f.ed.mask.emit_host = host;
+  REQUIRE(s.run("gds write chip").ok());
+  CHECK(s.exists("chip.gds"));
+  REQUIRE(labels == std::vector<std::string>{"chip.gds"});
+  CHECK(given_progress);
+
+  // The read host gets the file; without a cifinput style the read fails
+  // inside it, and its result is the command's.
+  s.f.ed.mask.read_host = [&labels](std::string_view label, const hefesto::mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    hefesto::mask::Progress progress;
+    return work(&progress);
+  };
+  CHECK_FALSE(s.run("gds read chip").ok());
+  CHECK(labels == std::vector<std::string>{"chip.gds", "chip.gds"});
+
+  // Empty hosts: the write runs inline.
+  s.f.ed.mask.emit_host = {};
+  REQUIRE(s.run("gds write other").ok());
+  CHECK(s.exists("other.gds"));
+  CHECK(labels.size() == 2);
 }
 
 }  // namespace

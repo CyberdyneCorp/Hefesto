@@ -16,6 +16,9 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <string_view>
+
+#include "hefesto/cmd/command.hpp"
 
 namespace hefesto::mask {
 
@@ -58,5 +61,11 @@ struct StatisticsCounters {
   /// Adds a generation's counters to the recent values.
   void add(const GenerationStatistics& stats) noexcept;
 };
+
+/// A read or an emit phase run by a host with the Progress it provides.
+using ProgressWork = std::function<cmd::CommandResult(const Progress*)>;
+/// A host that runs `work` with progress and cancellation (the desktop's
+/// shell::MaskJobHost, design D16); `label` names the file for its card.
+using ProgressHost = std::function<cmd::CommandResult(std::string_view label, const ProgressWork& work)>;
 
 }  // namespace hefesto::mask

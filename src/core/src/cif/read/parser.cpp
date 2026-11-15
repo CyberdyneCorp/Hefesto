@@ -67,6 +67,7 @@ void Parser::run() {
       ended = true;  // Magic's SigInterruptPending: stop without the End message
       break;
     }
+    report_progress();
     lex_.skip_blanks();
     range_error_ = false;
     ended = command();
@@ -80,6 +81,12 @@ void Parser::run() {
   cleanup();
   session_.errors = messages_.errors();
   session_.warnings = messages_.warnings();
+}
+
+void Parser::report_progress() const {
+  if (options_.progress != nullptr && !lex_.at_end()) {
+    options_.progress->update(static_cast<double>(lex_.position()) / static_cast<double>(lex_.size()));
+  }
 }
 
 bool Parser::cancelled() const noexcept {

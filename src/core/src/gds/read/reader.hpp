@@ -213,6 +213,9 @@ class Reader {
   bool read_header();
   void end_of_read();
   [[nodiscard]] bool cancelled() const noexcept { return progress_ != nullptr && progress_->cancelled(); }
+  /// Reports the fraction of the file read (a gzip source counts
+  /// decompressed bytes against the compressed size, so it is clamped).
+  void report_progress() const;
 
   // --- cell tables (reader.cpp) ---
   [[nodiscard]] CellState& state(const db::CellDef& def) { return states_[&def]; }

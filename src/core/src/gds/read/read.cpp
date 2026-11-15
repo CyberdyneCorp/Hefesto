@@ -77,6 +77,9 @@ cmd::CommandResult read(editor::EditorState& editor, const platform::Path& path,
     effective.gds_file = path.string();
   }
   effective.files = &fs;
+  if (auto bytes = fs.size(path); bytes.ok()) {
+    effective.source_bytes = bytes.value();
+  }
   return read(editor, *source.value(), effective, progress);
 }
 

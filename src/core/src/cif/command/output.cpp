@@ -116,6 +116,17 @@ void show_tiles(const CifCall& c, const db::CellDef& root, const std::vector<db:
   }
 }
 
+// The desktop's read host (MaskSession::read_host, design D16) pumps frames
+// from the reader's progress reports; without one the read runs inline.
+CommandResult hosted_read(editor::EditorState& editor, const platform::Path& path, const CifReadOptions& options) {
+  const mask::ProgressHost& host = editor.mask.read_host;
+  if (!host) {
+    return read(editor, path, options);
+  }
+  return host(path.filename().string(),
+              [&editor, &path, &options](const mask::Progress* p) { return read(editor, path, options, p); });
+}
+
 }  // namespace
 
 CommandResult write_option(const CifCall& c, const std::string& name, bool flat) {
@@ -157,7 +168,7 @@ CommandResult read_option(const CifCall& c) {
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &c.s.ctx->services().files;
-  return read(editor, found->path, options);
+  return hosted_read(editor, found->path, options);
 }
 
 // The previews flatten the box grown by the style radius with DBTreeSrTiles

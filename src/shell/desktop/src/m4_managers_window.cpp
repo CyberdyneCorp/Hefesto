@@ -15,9 +15,11 @@
 //
 // Owner: SHELL (SHELL-B).
 
+#include <string_view>
 #include <utility>
 
 #include "hefesto/gui/toolbar_presets.hpp"
+#include "hefesto/mask/session.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/shell/gui_script.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
@@ -66,6 +68,14 @@ void MainWindow::build_m4b_console() {
   mask_jobs_ = std::make_unique<MaskJobHost>(ctx_.core.editor().database_lock);
   mask_jobs_->set_pump([this] { pump_script_frame(); });
   console_session_->set_external_busy([this] { return mask_jobs_->busy(); });
+  // The gds and cif commands reach the host through the session (D16).
+  mask::MaskSession& mask_session = ctx_.core.editor().mask;
+  mask_session.read_host = [this](std::string_view label, const mask::ProgressWork& work) {
+    return mask_jobs_->run_read(label, work);
+  };
+  mask_session.emit_host = [this](std::string_view label, const mask::ProgressWork& work) {
+    return mask_jobs_->run_emit(label, work);
+  };
   // A script that is not the console's (menu callbacks, PDK files) gets the
   // same card from its progress report (board M4-Script-Consent tile 7).
   console_panel_->set_script_card(
@@ -116,6 +126,8 @@ void MainWindow::teardown_m4b() {
   if (text_helper_) text_helper_->close();
   if (reorder_) reorder_->close();
   if (console_session_) console_session_->set_pump({});
+  ctx_.core.editor().mask.read_host = {};
+  ctx_.core.editor().mask.emit_host = {};
 }
 
 void MainWindow::attach_interpreter(script::Interpreter& interp) {

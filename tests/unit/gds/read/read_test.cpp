@@ -9,6 +9,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/property.hpp"
@@ -68,6 +72,37 @@ TEST_CASE("library header and library cell", "[cap:gds-read][req:Library grammar
     s.read(f);
     CHECK(s.said("    Expected ENDLIB record but got LAYER."));
     CHECK(s.has_cell("A"));
+  }
+}
+
+TEST_CASE("a GDS read reports the fraction of the file read",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  Session s;
+  GdsFile f;
+  f.library("lib");
+  for (int i = 0; i < 4; ++i) {
+    f.begin("cell" + std::to_string(i));
+    square(f, 1);
+    f.end();
+  }
+  f.end_library();
+  s.options.source_bytes = f.bytes().size();
+  std::vector<double> fractions;
+  hefesto::mask::Progress progress;
+  progress.report = [&fractions](double fraction) { fractions.push_back(fraction); };
+  gds::MemorySource source{f.bytes()};
+  REQUIRE(gds::read(s.editor, source, s.options, &progress).ok());
+  REQUIRE(fractions.size() >= 4);
+  CHECK(std::is_sorted(fractions.begin(), fractions.end()));
+  CHECK(fractions.front() > 0.0);
+  CHECK(fractions.back() <= 1.0);
+
+  SECTION("an unknown size reports nothing") {
+    Session unknown;
+    fractions.clear();
+    gds::MemorySource again{f.bytes()};
+    REQUIRE(gds::read(unknown.editor, again, unknown.options, &progress).ok());
+    CHECK(fractions.empty());
   }
 }
 

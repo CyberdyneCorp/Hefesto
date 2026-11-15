@@ -257,6 +257,7 @@ bool Reader::read_elements(ElementCounts& counts) {
       interrupted_ = true;
       return false;
     }
+    report_progress();
     if (counts.references > 0 && counts.references % 5000 == 0 && counts.references != last_reported_) {
       last_reported_ = counts.references;
       info("    " + std::to_string(counts.references) + " uses");

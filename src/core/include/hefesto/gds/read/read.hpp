@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -63,6 +64,9 @@ struct GdsReadOptions {
   /// The zone BGNSTR dates are converted in (a POSIX TZ string, Q-MASK-132);
   /// empty: the host zone.
   std::string time_zone;
+  /// The size of the file in bytes, for progress reports (design D16);
+  /// 0 = unknown. read(path) sets it.
+  std::uint64_t source_bytes = 0;
 };
 
 /// "Read command and file lookup": `name` with `.gds`, `.gds.gz`, `.gds2`,

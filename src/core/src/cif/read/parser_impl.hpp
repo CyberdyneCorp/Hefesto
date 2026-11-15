@@ -50,6 +50,7 @@ class Parser {
   void unknown_command();
   void end_command();
   [[nodiscard]] bool cancelled() const noexcept;
+  void report_progress() const;
   void error(std::string_view text) { messages_.error(lex_.line(), text); }
   void warning(std::string_view text) { messages_.warning(lex_.line(), text); }
   void check(const diag::Status& status);

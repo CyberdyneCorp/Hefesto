@@ -53,6 +53,9 @@ struct MaskSession {
   // INTEGRATION: the `cif statistics` counters (Magic's CIFTileOps and
   // totals), fed on the command thread after each generation.
   StatisticsCounters statistics;
+  // SHELL (D16): the desktop's hosts; empty = inline, no progress (CLI, tests).
+  ProgressHost read_host;
+  ProgressHost emit_host;
 };
 
 }  // namespace hefesto::mask

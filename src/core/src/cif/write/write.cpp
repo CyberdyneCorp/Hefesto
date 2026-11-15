@@ -276,6 +276,23 @@ void finish_write(editor::EditorState& editor, const CifWriteOptions& options, c
   }
 }
 
+namespace {
+
+// The desktop's emit host (MaskSession::emit_host, design D16) runs the
+// emit on its deep-stack worker, covered by the command's exclusive hold,
+// while the UI thread pumps frames; without one the emit runs inline.
+cmd::CommandResult hosted_emit(const editor::EditorState& editor, const PreparedWrite& prepared,
+                               const platform::Path& path, const mask::Progress* progress) {
+  const mask::ProgressHost& host = editor.mask.emit_host;
+  if (!host) {
+    return emit_write(prepared, path, progress);
+  }
+  return host(path.filename().string(),
+              [&prepared, &path](const mask::Progress* hosted) { return emit_write(prepared, path, hosted); });
+}
+
+}  // namespace
+
 cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                          const CifWriteOptions& options, const mask::Progress* progress) {
   CifWriteOptions with_cancel = options;
@@ -284,7 +301,7 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const p
   }
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (prepared) {
-    cmd::CommandResult result = emit_write(prepared.value(), path, progress);
+    cmd::CommandResult result = hosted_emit(editor, prepared.value(), path, progress);
     finish_write(editor, options, &prepared.value());
     return result;
   }
