@@ -128,19 +128,32 @@ void ReadEngine::note_rule(const InputRule& rule) {
   }
 }
 
+// cifPaintCurrentFunc: each tile is painted with DBNMPaintPlane on every
+// plane the type paints on (DBPaintOnPlane, DBStdPaintTbl), not through
+// DBPaint, so the split tiles keep the fragmentation of the cell's tile
+// structure (no DBMergeNMTiles) and no contact image is resolved.
 void ReadEngine::paint_layer_rule(const MaskPlane& result, db::CellDef& cell, tech::TileType type) {
   const tech::Technology& technology = *editor_.technology;
   const bool contact = technology.is_contact(type);
+  const tech::PlaneMask planes = technology.paint_planes(type);
+  std::vector<std::pair<tech::PlaneId, db::PaintRow>> rows;
+  for (std::size_t p = 1; p < cell.plane_count() && p < 64; ++p) {
+    if ((planes & tech::plane_bit(static_cast<tech::PlaneId>(p))) != 0) {
+      const auto id = static_cast<tech::PlaneId>(p);
+      rows.emplace_back(id, db::paint_row(technology, id, type));
+    }
+  }
   for (const db::TileView& tile : result.solid_tiles()) {
     const db::Rect area = scale_rect(tile.area, Snap::exact, contact);
     if (area.x0 == area.x1 || area.y0 == area.y1) {
       continue;  // degenerate after a limited rescale
     }
-    std::optional<db::TriangleSpec> triangle;
-    if (tile.split) {
-      triangle = db::TriangleSpec{tile.diagonal, tile.right_side};
+    for (const auto& [id, row] : rows) {
+      db::Plane& plane = cell.plane(id);
+      (void)(tile.split ? plane.paint_triangle(area, tile.diagonal, tile.right_side, row, compat_.magic_compat,
+                                               nullptr, db::PaintMerge::none)
+                        : plane.paint(area, row, db::PaintMerge::none));
     }
-    (void)db::paint_type(cell, technology, area, type, triangle);
   }
 }
 

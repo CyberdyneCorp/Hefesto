@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <vector>
 
+#include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/stream/io.hpp"
 
 namespace hefesto::gds {
@@ -61,6 +62,20 @@ std::optional<diag::Diagnostic> readonly_units_error(double mpd, bool angstroms)
 
 std::string gds_file_value(std::string_view path, const cell::PathVariables& vars) {
   return cell::substitute_path(path, path, vars, /*magic_compat=*/false);
+}
+
+std::string gds_file_value(std::string_view path, const editor::EditorState& editor) {
+  cell::PathVariables vars;
+  const script::Interpreter* interp = editor.script.interp.get();
+  vars.variable = [interp](std::string_view name) -> std::optional<std::string> {
+    if (interp == nullptr) {
+      return std::nullopt;
+    }
+    const std::optional<cmd::Value> value = interp->get_var("::" + std::string{name});
+    return value ? std::optional<std::string>{value->to_string()} : std::nullopt;
+  };
+  vars.home_of = editor.path_variables.home_of;
+  return gds_file_value(path, vars);
 }
 
 std::optional<std::int64_t> property_integer(const db::CellDef& def, std::string_view name) {

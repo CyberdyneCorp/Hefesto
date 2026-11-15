@@ -50,6 +50,9 @@ class ByteSource;
 /// GDS_FILE).
 struct GdsReadOptions {
   GdsSettings settings;
+  /// CIFRescaleAllow (MaskSession::rescale_allowed): the read may subdivide
+  /// the internal grid.
+  bool rescale_allowed = true;
   mask::WarningSettings warnings;
   std::string typed_name;
   /// The file system the file (and the redirect file) is opened on; null

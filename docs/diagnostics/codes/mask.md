@@ -51,6 +51,7 @@ Read engine (the CIF and GDS readers may route these through their warning level
 - `MASK-INPUT-012` is `CIF style <name>: units rescaled by factor of <n> / <d>` after a mid-read subdivision of the read units.
 - `MASK-INPUT-013` is `Warning:  Cell <name> boundary was redefined.` when a boundary templayer gives a cell a different FIXED_BBOX.
 - `MASK-INPUT-014` and `MASK-INPUT-015` (native notes, once per read) report input `grow`/`shrink` while the output style has grow-euclidean (Q-MASK-306: Euclidean with magic-compat ON, square OFF) and an input `tagged` rule with a scale factor other than 1 (Q-MASK-310: the label area unscaled ON, times S OFF).
+- `MASK-INPUT-019` (info) is DBAdjustLabels' `Moving label "<text>" from <type> to <type> in cell <cell>.` or `Adjusting size of label ...` line for a read label at the end of a cell or of the read; the CIF reader prints it on the console. `MASK-INPUT-020` (error) is CIFPolyToRects' `polygon with fewer than 4 points.` or `non-manhattan polygon.` for a read polygon (its triangles are still painted); the CIF reader prints it as a CIF read error at the polygon's line.
 - `MASK-INPUT-016` is a format reader driving the engine out of order (a cell inside a cell, an end or a call without a cell); `MASK-INPUT-017` (native) is the resource cap of the copyup copy into arrays of more than 2^20 elements (design D21).
 
 ## OPS
@@ -119,6 +120,8 @@ fails when the two disagree.
 | `MASK-INPUT-016` | error | Read engine used out of order by a format reader (a cell inside a cell, an end or a call without a cell). |
 | `MASK-INPUT-017` | warning | Copyup planes not copied into an array of more than 2^20 elements (resource cap); native only. |
 | `MASK-INPUT-018` | warning | Statement before the first `style` line of `cifinput` ignored (Q-MASK-32); magic-compat OFF only, native only. |
+| `MASK-INPUT-019` | info | A read label moved to the type under it or resized to the remaining paint (DBAdjustLabels' `Moving label` / `Adjusting size of label` lines). |
+| `MASK-INPUT-020` | error | A read polygon left no strips after its diagonals were split off (CIFPolyToRects: `polygon with fewer than 4 points.` or `non-manhattan polygon.`). |
 | `MASK-OPER-001` | warning | Mask generation: a bloat-min or bloat-max tile was inverted by shrink. |
 | `MASK-OPER-002` | warning | Mask generation: no room for contact cuts in a contact strip. |
 | `MASK-OPER-003` | warning | Mask generation: a shortened contact strip has no room for cuts. |

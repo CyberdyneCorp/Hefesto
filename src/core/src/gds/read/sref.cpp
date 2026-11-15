@@ -250,7 +250,7 @@ db::CellDef* Reader::magnified_cell(const std::string& sname, double mag) {
   const std::uint64_t resume = records_.position();
   db::CellDef* def = nullptr;
   Position position;
-  if (records_.seek(0).ok()) {
+  if (seek(0)) {
     position = set_position(sname);
   }
   // Magic tests FEOF: a search ended by block padding counts as found, and
@@ -267,7 +267,7 @@ db::CellDef* Reader::magnified_cell(const std::string& sname, double mag) {
   } else {
     error("Cannot magnify cell " + sname + ", which is not defined in this file;  placing it without magnification.");
   }
-  (void)records_.seek(resume);
+  (void)seek(resume);
   return def;
 }
 
@@ -449,7 +449,10 @@ std::string Reader::instance_name(std::string id) {
 void Reader::array_limits(Reference& ref, const std::string& text) {
   std::array<std::int32_t, 4> v{};
   if (!parse_limits(text, v)) {
-    messages_.print(diag::make("GDS-READ-006", "Malformed \"array\" property ignored: " + text));
+    // TxError with no line end, as Magic (CalmaRdcl.c:1427).
+    diag::Diagnostic d = diag::make("GDS-READ-006", "Malformed \"array\" property ignored: " + text);
+    d.no_newline = true;
+    messages_.print(std::move(d));
     return;
   }
   ref.xlo = v[0];

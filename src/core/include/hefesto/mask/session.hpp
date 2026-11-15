@@ -34,6 +34,12 @@ struct MaskSession {
   // INPUT / GDSR / CIF: the read warning level and redirect, which `cif
   // warning` and `gds warning` share (Magic's CIFWarningLevel).
   WarningSettings warnings;
+  // INPUT / GDSR / CIF: Magic's CIFRescaleAllow, which `gds rescale` and
+  // `cif rescale` share (both readers may subdivide the internal grid only
+  // while it is set), and cifSeenSnapWarning: the read grid message is given
+  // once until a CIF read resets it.
+  bool rescale_allowed = true;
+  bool snap_warned = false;
   // INTEGRATION: the shared glibc TYPE_3 generator of `random` / `random
   // seed`, which the Q-MASK-211 full-dump prefix reads under magic-compat
   // ON (moved from db/commands_misc.cpp).

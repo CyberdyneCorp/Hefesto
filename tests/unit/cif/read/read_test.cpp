@@ -9,7 +9,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "../cif_fixture.hpp"
@@ -130,4 +132,137 @@ TEST_CASE("cif drccheck no leaves the read cells unmarked", "[cap:cif-format-io]
   const db::CellDef* leaf = f.ed.cells.find("leaf");
   REQUIRE(leaf != nullptr);
   CHECK_FALSE(f.ed.drc.pending.contains(*leaf));
+}
+
+namespace {
+
+struct TileText {
+  db::Rect area;
+  bool split = false;
+
+  friend bool operator==(const TileText&, const TileText&) = default;
+};
+
+// The tiles of `type` in `def` in enumeration order (split tiles by bounding
+// box), so a test sees the fragmentation, not only the covered area.
+std::vector<TileText> tiles_of(const Fixture& f, const db::CellDef& def, std::string_view type_name) {
+  const tech::TileType t = f.type(type_name);
+  tech::TypeMask m;
+  m.set(t);
+  std::vector<TileText> out;
+  def.plane(*f.ed.technology->home_plane(t)).enumerate(db::whole_plane(), m, [&](const db::TileView& v) {
+    out.push_back(TileText{v.area, v.split});
+    return true;
+  });
+  return out;
+}
+
+bool any_ends_with(const std::vector<std::string>& lines, std::string_view tail) {
+  return std::any_of(lines.begin(), lines.end(), [&](const std::string& l) { return l.ends_with(tail); });
+}
+
+}  // namespace
+
+TEST_CASE("a 95 label reports the first corner off the grid in xbot, ybot, xtop, ytop order",
+          "[cap:cif-format-io][req:Label user extensions]") {
+  // MASK-CF-011: the corners (279.5, 279.5)-(320.5, 320.5) are 559 and 641
+  // once the units are halved; Magic converts xbot first (559 % 20 = 19).
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  const cmd::CommandResult r = read(f, "DS 1 1 1;\n9 labs;\nL CMF;\nB 400 400 200 200;\n95 e 41 41 300 300;\nDF;\nE\n");
+  REQUIRE(r.ok());
+  const std::vector<std::string> lines = texts(r);
+  for (const std::string& l : lines) {
+    UNSCOPED_INFO(l);
+  }
+  CHECK(any_ends_with(lines, "Input off lambda grid by 19/20; snapped to grid."));
+  CHECK_FALSE(any_ends_with(lines, "Input off lambda grid by 1/20; snapped to grid."));
+  const db::CellDef* labs = f.ed.cells.find("labs");
+  REQUIRE(labs != nullptr);
+  REQUIRE(labs->labels().size() == 1);
+  CHECK(labs->labels()[0].rect == db::Rect{28, 28, 32, 32});
+}
+
+TEST_CASE("a label read on space is moved to the material under it with DBAdjustLabels' message",
+          "[cap:mask-input-styles][req:Label placement semantics during read]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  const cmd::CommandResult r = read(f, "DS 1 1 1;\n9 labs;\nL CMF;\nB 400 400 200 200;\n94 c 50 50 CZZ;\nDF;\nE\n");
+  REQUIRE(r.ok());
+  CHECK(has(texts(r), "Moving label \"c\" from space to metal1 in cell labs."));
+  const db::CellDef* labs = f.ed.cells.find("labs");
+  REQUIRE(labs != nullptr);
+  REQUIRE(labs->labels().size() == 1);
+  CHECK(labs->labels()[0].type == f.type("metal1"));
+}
+
+TEST_CASE("a read triangle keeps the fragmentation of the tile structure it is painted into",
+          "[cap:mask-input-styles][req:Painting rule results]") {
+  // MASK-CF-009: the L-shape splits the space at y = 200 read units, so the
+  // triangle is painted over two tiles (DBNMPaintPlane); cifPaintCurrentFunc
+  // paints the pieces into the cell without DBMergeNMTiles.
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  REQUIRE(read(f, "DS 1 1 1;\n9 polys;\nL CMF;\nP 0 0 400 0 400 200 0 200;\n"
+                  "P 1000 0 1400 0 1400 200 1200 200 1200 400 1000 400;\nP 2000 0 2400 0 2000 400;\nDF;\nC 1;\nE\n")
+              .ok());
+  const db::CellDef* polys = f.ed.cells.find("polys");
+  REQUIRE(polys != nullptr);
+  const std::vector<TileText> tiles = tiles_of(f, *polys, "metal1");
+  const auto contains = [&](const TileText& t) { return std::find(tiles.begin(), tiles.end(), t) != tiles.end(); };
+  CHECK(contains(TileText{{200, 20, 220, 40}, true}));
+  CHECK(contains(TileText{{200, 0, 220, 20}, false}));
+  CHECK(contains(TileText{{220, 0, 240, 20}, true}));
+  CHECK_FALSE(contains(TileText{{200, 0, 240, 40}, true}));
+}
+
+TEST_CASE("a polygon that closes to fewer than four edges is a CIF read error",
+          "[cap:cif-format-io][req:Polygon command]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  const cmd::CommandResult r = read(f, "DS 1 1 1;\n9 p;\nL CMF;\nP 0 0 100 0;\nB 40 20 20 10;\nDF;\nE\n");
+  REQUIRE(r.ok());
+  const std::vector<std::string> lines = texts(r);
+  for (const std::string& l : lines) {
+    UNSCOPED_INFO(l);
+  }
+  CHECK(any_ends_with(lines, " of CIF file: polygon with fewer than 4 points."));
+  const db::CellDef* p = f.ed.cells.find("p");
+  REQUIRE(p != nullptr);
+  CHECK(p->bbox() == db::Rect{0, 0, 4, 2});  // the read goes on
+}
+
+TEST_CASE("a CIF read resets the shared grid-message flag and sets it when it warns",
+          "[cap:mask-input-styles][req:Conversion of read units to internal units]") {
+  // Magic's cifSeenSnapWarning: CIFReadFile clears it, and a later GDS read
+  // gives no grid message once a CIF read gave one.
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  f.ed.mask.snap_warned = true;
+  const cmd::CommandResult r = read(f, "DS 1 1 1;\n9 odd;\nL CMF;\nB 40 20 25 10;\nDF;\nE\n");
+  REQUIRE(r.ok());
+  CHECK(any_ends_with(texts(r), "Input off lambda grid by 1/2; grid redefined."));
+  CHECK(f.ed.mask.snap_warned);
+  REQUIRE(read(f, "DS 2 1 1;\n9 even;\nL CMF;\nB 40 20 20 10;\nDF;\nE\n").ok());
+  CHECK_FALSE(f.ed.mask.snap_warned);
+}
+
+TEST_CASE("a read without rescaling allowed snaps off-grid input",
+          "[cap:cif-format-io][req:cif limit and rescale options]") {
+  Fixture f;
+  db::CellDef& top = f.cell("top");
+  f.ed.edit_cell = &top;
+  cif::CifReadOptions options;
+  options.settings = f.ed.mask.cif;
+  options.warnings = f.ed.mask.warnings;
+  options.files = &f.fs;
+  options.rescale_allowed = false;
+  const cmd::CommandResult r = cif::read_text(f.ed, "DS 1 1 1;\n9 odd;\nL CMF;\nB 40 20 25 10;\nDF;\nE\n", options);
+  REQUIRE(r.ok());
+  CHECK(any_ends_with(texts(r), "Input off lambda grid by 1/2; snapped to grid."));
 }

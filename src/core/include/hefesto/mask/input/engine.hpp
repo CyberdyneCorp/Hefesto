@@ -46,6 +46,7 @@
 #include <vector>
 
 #include "hefesto/compat/compat_settings.hpp"
+#include "hefesto/db/polygon.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/mask/input/sink.hpp"
 #include "hefesto/mask/input/style.hpp"
@@ -112,11 +113,12 @@ class ReadEngine final : public ReadSink {
   /// Sets a string property of the current cell.
   [[nodiscard]] diag::Status property(std::string_view key, std::string_view value) override;
   /// Ends the current cell: paint_current, label adjustment, bounding box
-  /// (CIFParseFinish).
+  /// (CIFParseFinish). DBAdjustLabels' "Moving label" and "Adjusting size of
+  /// label" lines go to Options::sink as MASK-INPUT-019.
   [[nodiscard]] diag::Status end_cell() override;
 
-  /// Ends the read: paints the top-level planes into Options::top and drops
-  /// the saved copyup planes.
+  /// Ends the read: paints the top-level planes into Options::top (with the
+  /// label adjustment of end_cell) and drops the saved copyup planes.
   [[nodiscard]] diag::Status finish();
 
   // --- Lower-level operations ---------------------------------------------------
@@ -169,6 +171,7 @@ class ReadEngine final : public ReadSink {
   struct State;
   [[nodiscard]] db::CellDef* target_cell() const noexcept;
   [[nodiscard]] diag::Outcome<db::CellDef*> find_or_create(std::string_view name);
+  void adjust_labels(db::CellDef& cell);
   void report_off_grid(std::int64_t remainder, std::int64_t denominator, bool snapped);
   void subdivide_grid(std::int64_t den);
   [[nodiscard]] const OutputStyle& evaluation();
@@ -202,5 +205,10 @@ struct ReadUnitValue {
 };
 [[nodiscard]] ReadUnitValue subdivide_read_unit(std::int64_t value, std::int64_t n, std::int64_t d,
                                                 std::int64_t limit) noexcept;
+
+/// Paints a triangle piece of db::decompose_polygon into a read plane as
+/// CIFMakeManhattanPath does: DBNMPaintPlane, then DBMergeNMTiles over the
+/// triangle's area grown by one (the CIF and GDS polygon readers).
+void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat);
 
 }  // namespace hefesto::mask

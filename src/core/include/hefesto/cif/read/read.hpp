@@ -43,6 +43,9 @@ inline constexpr std::uint64_t kMaxCifFileBytes = std::uint64_t{2} << 30U;
 
 struct CifReadOptions {
   CifSettings settings;
+  /// CIFRescaleAllow (MaskSession::rescale_allowed): the read may subdivide
+  /// the read units and the internal grid.
+  bool rescale_allowed = true;
   mask::WarningSettings warnings;
   std::string typed_name;
   /// The file system the file and the redirect file are on; null means the

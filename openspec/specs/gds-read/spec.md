@@ -1059,7 +1059,7 @@ Compatibility: behavioral
 - **THEN** the factor is 1.0
 
 ### Requirement: Grid subdivision option
-`gds rescale yes|no` SHALL allow or forbid internal grid subdivision when instance reference points fall off the internal grid (see "Instance placement scaling"). The default is `yes`. With `magic-compat` ON (the default), setting `no` SHALL also set the warning level to `limit` (see "Read diagnostics"), as in Magic; with it OFF it leaves the warning level unchanged (Q-MASK-130, resolution: compat).
+`gds rescale yes|no` SHALL allow or forbid internal grid subdivision when instance reference points fall off the internal grid (see "Instance placement scaling"). The default is `yes`. The setting is shared with `cif rescale` (Magic has one `CIFRescaleAllow`), and so is the once-per-session grid message flag, which a CIF read clears. With `magic-compat` ON (the default), setting `no` SHALL also set the warning level to `limit` (see "Read diagnostics"), as in Magic; with it OFF it leaves the warning level unchanged (Q-MASK-130, resolution: compat).
 
 Compatibility: exact
 

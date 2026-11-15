@@ -45,6 +45,7 @@
 
 #include "hefesto/compat/compat_settings.hpp"
 #include "hefesto/db/cell.hpp"
+#include "hefesto/db/polygon.hpp"
 #include "hefesto/diag/diagnostic.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/gds/read/elements.hpp"
@@ -66,6 +67,7 @@ inline constexpr std::size_t kMaxNesting = 512;                          // look
 inline constexpr std::size_t kMaxMagnifyDepth = 32;                      // nested magnified copies
 inline constexpr std::int64_t kMaxArrayCopies = std::int64_t{1} << 20;  // flatten copies of one AREF
 inline constexpr std::int64_t kMaxFlattenPaints = std::int64_t{1} << 26;  // flatten tile paints per read
+inline constexpr std::uint64_t kHeaderBytes = 4;                          // a GDS record header (READRH)
 
 /// CalmaReadError, CIFReadError / CIFReadWarning and TxPrintf under the
 /// read warning level. Each kind has its own counter, as in Magic.
@@ -185,12 +187,20 @@ class Reader {
     return r.type == 0 && r.data_type == 0 && r.data.empty();
   }
   void error(std::string text, bool no_newline = false);
+  /// An error found after Magic read only `record`'s header (READRH), not
+  /// its payload: reported at the byte after the header.
+  void error_in_header(const Record& record, std::string text);
   void info(std::string text);
   void unexpected(RecordType wanted, std::uint8_t got);
   void header_error(diag::Diagnostic d);
   [[nodiscard]] std::optional<Record> next();
   [[nodiscard]] std::optional<Record> peek();
   void unread(Record record);
+  /// Moves the record stream to `offset` and drops the look-ahead.
+  bool seek(std::uint64_t offset);
+  /// Magic's FTELL for a message: a looked-ahead record's header is read
+  /// (UNREADRH does not seek back), so the position is past that header.
+  [[nodiscard]] std::uint64_t error_position() const noexcept;
   [[nodiscard]] std::optional<Record> expect(RecordType type);
   void skip_set(std::initializer_list<RecordType> types);
   bool skip_to(RecordType type);
@@ -250,7 +260,7 @@ class Reader {
   [[nodiscard]] std::optional<LayerPair> read_layer_pair(RecordType datatype, std::string_view missing);
   void layer_error(std::string_view message, std::int32_t layer, std::int32_t datatype);
   [[nodiscard]] std::optional<std::vector<PathPoint>> read_path(std::int64_t k, std::int64_t& rescaled);
-  void paint_polygon(std::size_t cif_layer, const mask::Polygon& polygon, db::Rect* last_strip);
+  db::PolygonProblem paint_polygon(std::size_t cif_layer, const mask::Polygon& polygon, db::Rect* last_strip);
   [[nodiscard]] db::CellDef* begin_subcell(const std::string& name);
   void end_subcell(db::CellDef& sub, db::CellDef* parent, const PlaneSet& saved);
   void element_boundary();
@@ -352,6 +362,7 @@ class Reader {
   bool no_style_ = false;
   bool readonly_refused_ = false;
   bool stream_error_reported_ = false;
+  std::optional<std::uint64_t> ahead_;  // offset of the looked-ahead record
 };
 
 /// The (layer, datatype) key of calmaLayerHash.

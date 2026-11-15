@@ -41,10 +41,9 @@ struct GdsSettings {
   std::string maskhints;                     // CalmaMaskHints: "" none, "yes" all, else CIF layers a,b,...
   PolygonSubcells polygon_subcells = PolygonSubcells::none;  // CalmaSubcellPolygons
   bool path_subcells = false;                // CalmaSubcellPaths
-  bool rescale = true;                       // CIFRescaleAllow (Q-MASK-130)
   bool rewound = false;                      // CalmaRewound (Q-MASK-111, ON only)
-  bool snap_warned = false;                  // cifSeenSnapWarning: the grid message is given once per
-                                             // session (a CIF read resets it)
+  // `gds rescale` (CIFRescaleAllow) and cifSeenSnapWarning are shared with
+  // `cif`: MaskSession::rescale_allowed and MaskSession::snap_warned.
 
   // ---- write options (GDSW) ----
   bool library = false;                      // CalmaDoLibrary
