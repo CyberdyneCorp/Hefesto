@@ -9,7 +9,6 @@
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/array_overlap.cpp
   ${CMAKE_CURRENT_LIST_DIR}/cell.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/cell_print_order.cpp
   ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
   ${CMAKE_CURRENT_LIST_DIR}/command_util.cpp
   ${CMAKE_CURRENT_LIST_DIR}/commands.cpp

@@ -24,7 +24,6 @@
 #include "db/hier_commands.hpp"
 #include "hefesto/cell/commands.hpp"
 #include "hefesto/cell/hier.hpp"
-#include "hefesto/db/cell_print_order.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
@@ -75,10 +74,8 @@ CommandResult cellname_usage(const std::string& cmd = "cellname") {
       "or:    " + cmd + " writeable [name] [true|false]"));
 }
 
-// DBCellPrint for ALLCELLS, TOPCELLS and MODIFIED: with magic-compat ON
-// Magic's order (the cell-table hash order merge sorted by qcompare, then
-// reversed; db/cell_print_order.hpp), OFF the natural name order; a list
-// result with `list`, printed lines otherwise.
+// DBCellPrint for ALLCELLS, TOPCELLS and MODIFIED: natural name order
+// (strcmpbynum); a list result with `list`, printed lines otherwise.
 // (Magic ref: database/DBcellname.c:750-880)
 CommandResult cellname_list(const cu::Session& s, int option, bool dolist) {
   std::vector<std::string> names;
@@ -92,12 +89,8 @@ CommandResult cellname_list(const cu::Session& s, int option, bool dolist) {
       names.push_back(def.name());
     }
   });
-  if (s.magic_compat) {
-    names = magic_cell_print_order(std::move(names));
-  } else {
-    std::sort(names.begin(), names.end(),
-              [](const std::string& a, const std::string& b) { return util::compare_natural(a, b) < 0; });
-  }
+  std::sort(names.begin(), names.end(),
+            [](const std::string& a, const std::string& b) { return util::compare_natural(a, b) < 0; });
   if (dolist) {
     return CommandResult::success(Value{Value::List{names.begin(), names.end()}});
   }

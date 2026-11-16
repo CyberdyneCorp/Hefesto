@@ -224,9 +224,8 @@ TEST_CASE("MASK-CF-004 end to end: a redefined symbol, DD and a name over a user
   CHECK(messages == std::vector<std::string>{"Warning: CIF reading is not undoable!  I hope that's OK."});
   // Both definitions of symbol 1 are kept, and no cell is cleared or renamed
   // (Magic clears dup, renames it dup2 and reports "cell table has NULL
-  // entry (Magic error)"). The list is in Magic's DBCellPrint order (magic-compat
-  // ON), which puts dup2 before its prefix dup here.
-  CHECK(s.value("cellname list allcells") == "dup2 dup outside start top");
+  // entry (Magic error)").
+  CHECK(s.value("cellname list allcells") == "dup dup2 outside start top");
   const auto paint = [&s](const char* name, const char* type) {
     const db::CellDef* def = s.editor.cells.find(name);
     REQUIRE(def != nullptr);

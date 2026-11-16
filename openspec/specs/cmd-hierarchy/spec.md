@@ -366,8 +366,6 @@ Compatibility: behavioral
 
 More than 4 arguments, or an unknown option, SHALL print usage. The output order of list results (verify against Magic) follows the in-memory cell table order.
 
-`allcells`, `topcells` and `modified` list the names, with magic-compat ON, in Magic's order: the cell names in the order of the cell-name hash table (64 buckets at start), merge sorted as glibc's `qsort` does with the negated `strcmpbynum` and then listed from the end. `strcmpbynum` compares digit runs by value and other characters case-insensitively, and returns 1 both ways when one name is a proper prefix of the other, so `inv_1` can come before `inv`. With magic-compat OFF they are in the natural order of cell-file-format (a proper prefix first).
-
 Compatibility: behavioral
 
 (Magic ref: commands/CmdCD.c:1125-1700, database/DBcellname.c:754-1200, database/DBcellname.c:1470-1535)
@@ -382,12 +380,6 @@ Compatibility: behavioral
 - **WHEN** `instance orientation -def` is run in scripting mode
 - **THEN** the result SHALL include `S`
 - **AND** without `-def` it SHALL be `180`
-
-#### Scenario: Cell list order
-- **GIVEN** cells `top`, `inv`, `inv_1` and `top_1` created in that order
-- **WHEN** `cellname list allcells` is run in scripting mode
-- **THEN** with `magic-compat` ON the result SHALL be `inv_1 inv top top_1`, as Magic gives (MASK-GR-008)
-- **AND** with it OFF the result SHALL be `inv inv_1 top top_1`
 
 #### Scenario: Exists
 - **WHEN** `cellname list exists nosuch` is run in scripting mode

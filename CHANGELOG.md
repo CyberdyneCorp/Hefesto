@@ -49,10 +49,6 @@ release notices.
 
 ### Changed
 
-- **`cellname list allcells|topcells|modified` order follows Magic.** With
-  `magic-compat` ON the names come in Magic's order (the cell-table hash
-  order merge sorted by `strcmpbynum`, which puts `inv_1` before `inv`);
-  OFF they stay in natural order.
 - **File prompts and `writeall` with `magic-compat` OFF.** `promptload
   gds` reads the picked file when its root name does not find it
   (Q-MASK-136); `writeall` writes an undefined cell as an empty, stamped
