@@ -523,6 +523,7 @@ db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db
   db::PlaceOptions options;
   options.transform = transform;
   options.array = array;
+  options.link_id = false;  // calmaElementSref: DBCellNewUse with a NULL id, no DBLinkCell
   auto placed = db::place(parent, child, options);
   if (!placed.ok()) {
     counted(placed.error());
@@ -531,7 +532,6 @@ db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db
   // DBCellNewUse leaves the id as read (or unset) until DBGenerateUniqueIds
   // at the end of the structure, which resolves duplicates in Magic's order.
   db::CellUse* use = placed.value();
-  parent.unlink_use_id(use->id);
   use->id = id;
   if (const auto tracked = placed_.find(&parent); tracked != placed_.end()) {
     tracked->second.uses.emplace(PlacementKey{&child, transform.c, transform.f}, use);

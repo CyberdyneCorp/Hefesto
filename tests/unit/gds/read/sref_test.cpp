@@ -8,7 +8,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/property.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
 #include "read_fixture.hpp"
 
 using namespace gds_read_test;
@@ -214,6 +221,45 @@ TEST_CASE("use placement rules", "[cap:gds-read][req:Use placement rules]") {
     REQUIRE(it != s.last.diagnostics.end());
     CHECK(it->no_newline);  // Magic's text has no line end
   }
+}
+
+TEST_CASE("regression: a read SREF leaves no default-id entry in the parent's id table",
+          "[cap:gds-read][req:Instance properties]") {
+  // calmaElementSref makes the use with a NULL id and never links it. The
+  // reader linked a default id (`A_0`) per SREF and unlinked it, which left
+  // a dead `A_0` entry at its old place in cd_idHash, so a later `A_0` took
+  // that place instead of the head of its bucket; it also cost an O(n) scan
+  // of the parent's uses per SREF (security.md M5-S3).
+  Session s;
+  GdsFile f;
+  f.library();
+  child(f, "A");
+  f.begin("top");
+  constexpr std::int32_t kNamed = 30;  // below the table's growth at 48 entries
+  for (std::int32_t i = 0; i < kNamed; ++i) {
+    f.sref("A", {100 * i, 0}, RefSpec{0, {}, {}, {{61, "n" + std::to_string(i)}}});
+  }
+  f.end().end_library();
+  s.read(f);
+  db::CellDef* top = s.editor.cells.find("top");
+  db::CellDef* a = s.editor.cells.find("A");
+  REQUIRE(top != nullptr);
+  REQUIRE(a != nullptr);
+  db::PlaceOptions o;
+  o.transform = db::translation(0, 1000);
+  const auto placed = db::place(*top, *a, o);
+  REQUIRE(placed.ok());
+  REQUIRE(placed.value()->id == "A_0");
+  // A new key goes to the head of its bucket (16 buckets, DBCellNewDef).
+  const hefesto::util::MagicHashTable<bool> probe{16};
+  const std::size_t bucket = probe.bucket_of_key("A_0");
+  const std::vector<std::string> ids = top->linked_use_ids();
+  const auto first = std::find_if(ids.begin(), ids.end(),
+                                  [&](const std::string& id) { return probe.bucket_of_key(id) == bucket; });
+  REQUIRE(first != ids.end());
+  CHECK(*first == "A_0");
+  CHECK(std::count_if(ids.begin(), ids.end(), [&](const std::string& id) { return probe.bucket_of_key(id) == bucket; }) >
+        1);
 }
 
 TEST_CASE("magnified instances", "[cap:gds-read][req:Magnified instances]") {
