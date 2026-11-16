@@ -611,6 +611,8 @@ jobs:
         shell: bash
         run: |
           cd profile
+          # Magic's outline fonts, staged by gds_bench.py --emit (Magic in the image has its own).
+          export CAD_ROOT="$PWD/cadroot"
           pids=()
           for workload in read write write-merge; do
             for kind in base op; do
@@ -691,8 +693,8 @@ jobs:
         run: |
           status=0
           python3 bench/gds/gds_bench.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
-            --magic-image hefesto-golden:ci --repeat 3 --json gds-bench/gds-bench.json | tee gds-bench/timing.txt \
-            || status=$?
+            --magic-image hefesto-golden:ci --repeat 3 --json gds-bench/gds-bench.json \
+            --outputs gds-bench/outputs | tee gds-bench/timing.txt || status=$?
           {
             echo
             echo "## GDS wall time, op minus base (information)"
@@ -722,6 +724,11 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.rt_matrix) }}
     steps:
+      # The non-gating equivalence report stops 10 minutes before the job's timeout, so its run time can
+      # never cancel the job after the gating replay passed.
+      - name: Record the job's deadline
+        run: echo "JOB_DEADLINE=$(( $(date +%s) + ${{ matrix.timeout }} * 60 - 600 ))" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v5
@@ -813,9 +820,22 @@ jobs:
         shell: bash
         run: |
           mapfile -t cases < cases.txt
-          python3 bench/gds/gds_equivalence.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
+          left=$(( JOB_DEADLINE - $(date +%s) ))
+          if [ "$left" -lt 300 ]; then
+            echo "## Equivalence report: ${{ matrix.shard }}: skipped, ${left} s left before the job's timeout" \
+              >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          status=0
+          timeout --signal=INT --kill-after=60 "${left}s" \
+            python3 bench/gds/gds_equivalence.py --hefesto-cli build/linux-release/src/cli/hefesto-cli \
             --shard "${{ matrix.shard }}" --json gds-roundtrip/equivalence.json --summary "$GITHUB_STEP_SUMMARY" \
-            "${cases[@]}"
+            "${cases[@]}" || status=$?
+          if [ "$status" -eq 124 ]; then
+            echo "## Equivalence report: ${{ matrix.shard }}: stopped at the job's deadline (information only)" \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
 
       - uses: actions/upload-artifact@v4
         if: always()

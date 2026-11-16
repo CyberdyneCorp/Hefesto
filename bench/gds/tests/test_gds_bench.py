@@ -188,6 +188,31 @@ class BenchScriptsTest(unittest.TestCase):
         row["magic_count"] = "446"
         self.assertEqual(bench.compare({"write": row}), ["write: cell count 447 (Hefesto) vs 446 (Magic)"])
 
+    def test_the_outputs_must_be_identical_after_masking_the_dates(self):
+        row = {"hefesto_s": 1.0, "hefesto_count": "447",
+               "hefesto_runs": {"output_size": 10, "output_sha256_dates_masked": "a"},
+               "magic_s": 1.0, "magic_count": "447", "magic_runs": {"output_size": 10, "output_sha256_dates_masked": "a"}}
+        self.assertEqual(bench.compare({"write": row}), [])
+        row["magic_runs"]["output_sha256_dates_masked"] = "b"
+        self.assertEqual(bench.compare({"write": row}),
+                         ["write: the outputs differ after masking the dates (the gate would compare different work)"])
+
+    def test_hefesto_runs_with_magics_fonts_in_its_cad_root(self):
+        # Without the .pt3 fonts every font label loses PRESENTATION/STRANS/MAG and Hefesto does less work.
+        with tempfile.TemporaryDirectory() as tmp:
+            magic, work = Path(tmp) / "magic", Path(tmp) / "work"
+            (magic / "graphics").mkdir(parents=True)
+            for name in bench.FONTS:
+                (magic / "graphics" / name).write_text(name)
+            bench.stage_fonts(work, magic)
+            for name in bench.FONTS:
+                self.assertEqual((work / "cadroot" / "magic" / "sys" / name).read_text(), name)
+            self.assertEqual(bench.tool_env("hefesto", work)["CAD_ROOT"], str(work / "cadroot"))
+            self.assertNotIn(str(work), bench.tool_env("magic", work).get("CAD_ROOT", ""))
+            (magic / "graphics" / "FreeMono.pt3").unlink()
+            with self.assertRaises(FileNotFoundError):
+                bench.stage_fonts(Path(tmp) / "other", magic)
+
     def test_the_cell_count_is_the_last_printed(self):
         self.assertEqual(bench.cell_count("cells 1\nnoise\ncells 447\n"), "447")
         self.assertEqual(bench.cell_count("nothing\n"), "")

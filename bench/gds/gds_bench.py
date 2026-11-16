@@ -31,13 +31,21 @@ vendor GDS (gds-write "Vendor cell copy").
 --emit DIR only writes the technology, the cells, the GDS file and both tools'
 scripts into DIR, for the profiling job.
 
-Both tools print the number of cells after the operation (`cellname list
-allcells`); the counts of a workload must agree, and every write must produce a
-non-empty file. Whether the two writes are byte-identical after masking the
-dates is reported for information (the golden cases are the byte check).
+Both tools run with the same outline fonts: Magic has its installed
+FreeSans/FreeSerif/FreeMono `.pt3` files, and Hefesto gets the pinned Magic
+checkout's copies (`$HEFESTO_MAGIC_SRC` or build/ref/magic, graphics/*.pt3)
+in `<work>/cadroot/magic/sys` with `CAD_ROOT=<work>/cadroot`, as the golden
+replay stages them. Without them every font label of the cells loses its
+PRESENTATION, STRANS and MAG records and Hefesto does less work than Magic.
 
-Exit status: 0 when the counts agree and every write produced output, 1
-otherwise, 2 on a setup error. Owner: PERF (openspec/changes/m5-mask-gds-cif design D2).
+Both tools print the number of cells after the operation (`cellname list
+allcells`); the counts of a workload must agree, every write must produce a
+non-empty file, and the two writes must be byte-identical after masking the
+dates, so the gate compares the same work. --outputs DIR keeps each tool's
+last output there for diagnosis.
+
+Exit status: 0 when the counts agree and every write produced the same
+output, 1 otherwise, 2 on a setup error. Owner: PERF (openspec/changes/m5-mask-gds-cif design D2).
 """
 
 from __future__ import annotations
@@ -59,6 +67,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 TOOLS = ("hefesto", "magic")
+CAD_ROOT = "cadroot"  # Hefesto's CAD_ROOT in the work directory (fonts in magic/sys)
+FONTS = ("FreeSans.pt3", "FreeSerif.pt3", "FreeMono.pt3")
 TIMEOUT_S = 3600
 VENDOR_PROPERTIES = re.compile(r"^string GDS_(FILE|START|END) .*\n", re.MULTILINE)
 COUNT_LINE = "puts \"cells [llength [cellname list allcells]]\"\n"
@@ -100,6 +110,7 @@ class Workload:
 
 @dataclass
 class Timing:
+    tool: str = ""
     base_s: list[float] = field(default_factory=list)
     op_s: list[float] = field(default_factory=list)
     count: str = ""
@@ -150,10 +161,35 @@ def copy_cells(mags: Path, dest: Path) -> None:
         (dest / mag.name).write_text(VENDOR_PROPERTIES.sub("", mag.read_text()))
 
 
+def magic_source() -> Path:
+    env = os.environ.get("HEFESTO_MAGIC_SRC")
+    return Path(env) if env else REPO / "build" / "ref" / "magic"
+
+
+def stage_fonts(work: Path, magic: Path) -> None:
+    """Magic's outline fonts in Hefesto's CAD_ROOT (<work>/cadroot/magic/sys), as replay.py stages them."""
+    sys_dir = work / CAD_ROOT / "magic" / "sys"
+    sys_dir.mkdir(parents=True, exist_ok=True)
+    for name in FONTS:
+        source = magic / "graphics" / name
+        if not source.is_file():
+            raise FileNotFoundError(f"{source} not found (run scripts/fetch_pdk.py magic-ref)")
+        shutil.copy(source, sys_dir / name)
+
+
+def tool_env(tool: str, work: Path) -> dict[str, str]:
+    env = {**os.environ, "TZ": "UTC", "LC_ALL": "C"}
+    if tool == "hefesto":
+        env["CAD_ROOT"] = str(work / CAD_ROOT)
+    return env
+
+
 def prepare(work: Path, pdk_root: Path, need_gds: bool) -> Path:
-    """Copies the technology, the cells and (for the read) the library GDS into `work`; returns the cell dir."""
+    """Copies the technology, the cells, Magic's fonts and (for the read) the library GDS into `work`; returns
+    the cell dir."""
     DRC_BENCH.prepare(work, pdk_root)  # the tech files and the cells, as the DRC bench uses them
     copy_cells(work / "mag", work / "mag")
+    stage_fonts(work, magic_source())
     if need_gds:
         source = gds_source(pdk_root)
         if not source.is_file():
@@ -162,10 +198,10 @@ def prepare(work: Path, pdk_root: Path, need_gds: bool) -> Path:
     return work / "mag"
 
 
-def run_once(argv: list[str], work: Path) -> tuple[float, str]:
+def run_once(argv: list[str], work: Path, env: dict[str, str]) -> tuple[float, str]:
     start = time.perf_counter()
     proc = subprocess.run(argv, cwd=work, capture_output=True, text=True, errors="replace", timeout=TIMEOUT_S,
-                          check=False, env={**os.environ, "TZ": "UTC", "LC_ALL": "C"})
+                          check=False, env=env)
     elapsed = time.perf_counter() - start
     if proc.returncode != 0:
         raise RuntimeError(f"{argv[0]} exited {proc.returncode}:\n{proc.stderr[-2000:]}")
@@ -184,37 +220,48 @@ def masked_digest(path: Path) -> str:
     return hashlib.sha256(mask_gds_dates(path.read_bytes())).hexdigest()
 
 
-def record_output(timing: Timing, workload: Workload, work: Path) -> None:
+def record_output(timing: Timing, workload: Workload, work: Path, keep: Path | None) -> None:
     if not workload.output:
         return
     out = work / workload.output
     timing.output_size = out.stat().st_size if out.is_file() else 0
     timing.output_digest = masked_digest(out) if timing.output_size else ""
+    if keep is not None and timing.output_size:
+        keep.mkdir(parents=True, exist_ok=True)
+        shutil.copy(out, keep / f"{workload.name}-{timing.tool}.gds")
     out.unlink(missing_ok=True)
 
 
 def measure(tool: str, workload: Workload, args: argparse.Namespace, work: Path) -> Timing:
     base, op = write_scripts(workload, tool, work)
-    timing = Timing()
+    timing = Timing(tool=tool)
+    env = tool_env(tool, work)
+    keep = Path(args.outputs) if args.outputs else None
     for _ in range(args.repeat):
-        elapsed, _stdout = run_once(DRC_BENCH.tool_argv(tool, args, work, base), work)
+        elapsed, _stdout = run_once(DRC_BENCH.tool_argv(tool, args, work, base), work, env)
         timing.base_s.append(elapsed)
-        elapsed, stdout = run_once(DRC_BENCH.tool_argv(tool, args, work, op), work)
+        elapsed, stdout = run_once(DRC_BENCH.tool_argv(tool, args, work, op), work, env)
         timing.op_s.append(elapsed)
         timing.count = cell_count(stdout)
-        record_output(timing, workload, work)
+        record_output(timing, workload, work, keep)
     return timing
 
 
-def compare(results: dict) -> list[str]:
-    failures = []
-    for name, row in results.items():
-        for tool in TOOLS:
-            if f"{tool}_s" in row and "output_size" in row[f"{tool}_runs"] and not row[f"{tool}_runs"]["output_size"]:
-                failures.append(f"{name}: {tool} wrote no output")
-        if "magic_s" in row and row["hefesto_count"] != row["magic_count"]:
-            failures.append(f"{name}: cell count {row['hefesto_count']} (Hefesto) vs {row['magic_count']} (Magic)")
+def row_failures(name: str, row: dict) -> list[str]:
+    failures = [f"{name}: {tool} wrote no output" for tool in TOOLS
+                if f"{tool}_s" in row and "output_size" in row[f"{tool}_runs"] and not row[f"{tool}_runs"]["output_size"]]
+    if "magic_s" not in row:
+        return failures
+    if row["hefesto_count"] != row["magic_count"]:
+        failures.append(f"{name}: cell count {row['hefesto_count']} (Hefesto) vs {row['magic_count']} (Magic)")
+    digests = [row[f"{tool}_runs"].get("output_sha256_dates_masked", "") for tool in TOOLS]
+    if all(digests) and digests[0] != digests[1]:
+        failures.append(f"{name}: the outputs differ after masking the dates (the gate would compare different work)")
     return failures
+
+
+def compare(results: dict) -> list[str]:
+    return [failure for name, row in results.items() for failure in row_failures(name, row)]
 
 
 def result_row(timing: Timing, workload: Workload) -> dict:
@@ -231,7 +278,7 @@ def summary_line(name: str, row: dict, tools: list[str]) -> str:
     digests = {row[f"{tool}_runs"].get("output_sha256_dates_masked") for tool in tools}
     if len(tools) == 2 and "output_size" in row["hefesto_runs"]:
         text += "; outputs " + ("identical" if len(digests) == 1 and "" not in digests else "differ") + \
-                " after masking the dates (information)"
+                " after masking the dates"
     return f"{name}: {text}"
 
 
@@ -246,6 +293,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--workload", choices=["read", "write", "write-merge", "all"], default="all")
     parser.add_argument("--repeat", type=int, default=3)
     parser.add_argument("--json", help="write the results here")
+    parser.add_argument("--outputs", metavar="DIR", help="keep each tool's last output of each write here")
     parser.add_argument("--emit", metavar="DIR",
                         help="only write the technology, the cells, the GDS file and the scripts of both tools into "
                              "DIR (for profiling runs, .github/workflows/perf.yml gds-bench) and exit")
