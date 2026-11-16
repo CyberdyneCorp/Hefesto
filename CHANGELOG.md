@@ -153,6 +153,19 @@ release notices.
   write` emit sibling structures in Magic's order. `select` at a point
   and `delete`, `copy` and `move` of selected cells make Magic's searches
   of the use index too.
+- **Every hierarchical search goes through the use index of each cell it
+  descends into**, as Magic's DBTreeSrTiles, DBTreeSrLabels and
+  DBTreeSrCells do: `select area`, `what` and the connectivity searches
+  bin a cell's index as Magic's do. `delete`, `move`, `identify` and the
+  array report find a selected cell from its first element's corner,
+  through every child there, as Magic's SelEnumCells does. With
+  `magic-compat` ON, `expand` and `unexpand` also search below unexpanded
+  instances, in the frame of the first array element under the box.
+- **A GDS read finds a duplicate placement after a grid subdivision** in
+  the same structure ("placed on top of itself"); it was kept before.
+- **The desktop's background DRC link to GDS and CIF writes is undone
+  before the DRC pump goes away**, so a write ending while the window
+  closes no longer resumes a destroyed pump.
 - **Array overlap no longer overflows.** The use index and the DRC
   computed the array elements under an area in 32 bits; one 64-bit
   routine now serves the use index, DRC, mask flattening and the writers.
