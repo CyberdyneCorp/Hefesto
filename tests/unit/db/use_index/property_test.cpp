@@ -83,7 +83,7 @@ struct Run {
     db::PlaceOptions o;
     o.transform = db::translation(coord(2000), coord(400));
     if (coord(4) == 0) {
-      o.array = db::ArrayInfo{0, static_cast<std::int32_t>(coord(3)), 0, 0, 30, 0};
+      o.array = db::ArrayInfo{0, coord(3), 0, 0, 30, 0};
     }
     db::CellDef* child = children[static_cast<std::size_t>(coord(static_cast<db::Coord>(children.size()) - 1))];
     for (Parent* p : {&fast, &forced}) {
