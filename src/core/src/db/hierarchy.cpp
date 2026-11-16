@@ -223,27 +223,41 @@ bool search(const CellDef& def, const Rect& area, const std::string& path, const
 
 }  // namespace
 
+namespace {
+
+// The identifier place() gives a new use: the explicit one, DBLinkCell's
+// default, or none when the caller sets it later.
+diag::Outcome<std::string> new_use_id(const CellDef& parent, const CellDef& child, const PlaceOptions& options) {
+  if (!options.link_id) {
+    return std::string{};
+  }
+  if (!options.id) {
+    return default_use_id(parent, last_component(child.name()));
+  }
+  if (options.id->empty()) {
+    return diag::make(codes::kUseIdInvalid, "an instance identifier cannot be empty");
+  }
+  if (find_use(parent, *options.id) != nullptr) {
+    return diag::make(codes::kUseIdTaken,
+                      "instance \"" + *options.id + "\" already exists in \"" + parent.name() + "\"");
+  }
+  return *options.id;
+}
+
+}  // namespace
+
 diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOptions& options) {
   if (contains_def(child, parent)) {
     return diag::make(codes::kUseRecursive,
                       "placing \"" + child.name() + "\" in \"" + parent.name() + "\" would make it contain itself");
   }
-  std::string id;
-  if (options.id) {
-    if (options.id->empty()) {
-      return diag::make(codes::kUseIdInvalid, "an instance identifier cannot be empty");
-    }
-    if (find_use(parent, *options.id) != nullptr) {
-      return diag::make(codes::kUseIdTaken, "instance \"" + *options.id + "\" already exists in \"" +
-                                                parent.name() + "\"");
-    }
-    id = *options.id;
-  } else {
-    id = default_use_id(parent, last_component(child.name()));
+  auto id = new_use_id(parent, child, options);
+  if (!id.ok()) {
+    return id.error();
   }
   auto use = std::make_unique<CellUse>();
   use->serial = next_use_serial();
-  use->id = std::move(id);
+  use->id = std::move(id.value());
   use->def = &child;
   use->parent = &parent;
   use->transform = options.transform;
@@ -251,8 +265,10 @@ diag::Outcome<CellUse*> place(CellDef& parent, CellDef& child, const PlaceOption
   use->locked = options.locked;
   compute_use_bbox(*use);
   CellUse* raw = use.get();
-  parent.link_use_id(raw->id);  // DBLinkCell
-  parent.uses().push_back(std::move(use));
+  if (options.link_id) {
+    parent.link_use_id(raw->id);  // DBLinkCell
+  }
+  parent.append_indexed_use(std::move(use));
   parent.use_index().place(*raw);  // DBPlaceCell's BPAdd
   child.instances().insert(child.instances().begin(), raw);
   if (ChangeRecorder* r = parent.recorder()) {
@@ -277,8 +293,7 @@ diag::Status remove_use(CellUse& use) {
   mark_modified(*parent);
   parent->unlink_use_id(use.id);  // DBUnLinkCell
   parent->use_index().remove(use);  // dbInstanceUnplace's BPDelete
-  auto& uses = parent->uses();
-  uses.erase(std::remove_if(uses.begin(), uses.end(), [&](const auto& u) { return u.get() == &use; }), uses.end());
+  parent->erase_indexed_use(use);
   return diag::Done{};
 }
 

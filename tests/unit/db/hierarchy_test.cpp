@@ -16,6 +16,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/hints/hints.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/util/magic_hash_table.hpp"
@@ -116,6 +117,42 @@ TEST_CASE("sequential default identifiers and gap reuse", HI "[req:Instance iden
   const auto taken = db::place(*top, *inv, o);
   REQUIRE_FALSE(taken.ok());
   CHECK(taken.error().code == db::codes::kUseIdTaken);
+}
+
+TEST_CASE("a placement without a linked id leaves the id empty and the id table untouched",
+          HI "[req:Instance identifier assignment]") {
+  // DBCellNewUse with a NULL id (the GDS and CIF readers): no default-id
+  // scan and no DBLinkCell entry, so cd_idHash keeps Magic's order.
+  db::CellLibrary lib;
+  auto* top = make(lib, "top");
+  auto* inv = make(lib, "inv");
+  db::PlaceOptions o;
+  o.link_id = false;
+  o.id = "ignored";
+  db::CellUse* use = add_use(*top, *inv, o);
+  CHECK(use->id.empty());
+  CHECK(top->linked_use_ids().empty());
+  CHECK(add_use(*top, *inv)->id == "inv_0");
+  CHECK(top->linked_use_ids() == std::vector<std::string>{"inv_0"});
+}
+
+TEST_CASE("security fix M5-S3: place and remove do not make the use index rescan the use list",
+          "[cap:gds-write][req:Structure ordering]") {
+  // Regression: db::place and db::remove_use took CellDef::uses() for
+  // writing, which marked the list touched, so the next index read (the GDS
+  // reader's find_equal per SREF) rescanned every use: O(n^2) in the uses
+  // of a structure (`gds read` of gf180mcu_re_efuse took over 1200 s).
+  db::CellLibrary lib;
+  auto* top = make(lib, "top");
+  auto* inv = make(lib, "inv");
+  (void)top->take_uses_touched();
+  db::CellUse* first = add_use(*top, *inv);
+  (void)add_use(*top, *inv);
+  CHECK_FALSE(top->take_uses_touched());
+  REQUIRE(db::remove_use(*first).ok());
+  CHECK_FALSE(top->take_uses_touched());
+  CHECK(top->use_index().size() == 1);
+  CHECK(top->uses().size() == 1);
 }
 
 TEST_CASE("library path stripped from base", HI "[req:Instance identifier assignment]") {

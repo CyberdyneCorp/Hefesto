@@ -69,7 +69,6 @@ BLOCKERS: dict[str, str] = {
     "MASK-OP-021": "OPS: the generated layer differs from Magic's; the cause is not confirmed yet and the "
                    "fix or a fix deviation needs a user decision",
     "MASK-HG-025": "GEN/OPS: the cif statistics tile counts differ from Magic's",
-    "MASK-GR-008": "MODEL/CMDEDIT: cellname list allcells lists the read cells in a different order",
     "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: the library round trip differs from Magic's capture",
     "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: the library round trip differs from Magic's capture",
     "MASK-RT-gf180mcu_fd_io-f02": "GDSR/GDSW: the library round trip differs from Magic's capture",
@@ -138,6 +137,7 @@ REPLAYED: set[str] = {
     "MASK-GR-005",
     "MASK-GR-006",
     "MASK-GR-007",
+    "MASK-GR-008",
     "MASK-GR-009",
     "MASK-GR-010",
     "MASK-GR-011",
