@@ -416,33 +416,33 @@ reason = "feedback save writes the box coordinates with an i suffix so the file 
 [MASK-UO-002]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, VIEW: `expand` (the probe's search step) walks CellDef::uses() instead of making DBExpandAll's area search through the use index, so the index is never binned and stays newest-first; the m5-r6-index open item routes it through db::uses_overlapping (tests/data/db/use_index/)"
 
 [MASK-UO-003]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, VIEW: `expand` (the probe's search step) walks CellDef::uses() instead of making DBExpandAll's area search through the use index, so the index is never binned and stays newest-first; the m5-r6-index open item routes it through db::uses_overlapping (tests/data/db/use_index/)"
 
 [MASK-UO-004]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, VIEW: `expand` (the probe's search step) walks CellDef::uses() instead of making DBExpandAll's area search through the use index, so the index is never binned and stays newest-first; the m5-r6-index open item routes it through db::uses_overlapping (tests/data/db/use_index/)"
 
 [MASK-UO-005]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, SELECT: `select cell <id> at` and `delete` (the probe's remove step) make none of DBSeeTypesAll's and SelEnumCells' 1x1 searches through the use index, so the 10 unbinned uses are never binned and the index stays newest-first; m5-r6-index open item (tests/data/db/use_index/)"
 
 
 [MASK-UO-007]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, VIEW: `expand` (the probe's search step) walks CellDef::uses() instead of making DBExpandAll's area search through the use index, so the index is never binned and stays newest-first; the m5-r6-index open item routes it through db::uses_overlapping (tests/data/db/use_index/)"
 
 [MASK-UO-008]
 deferred = "M5"
 outputs = ["trace.txt", "stdout.txt", "stderr.txt"]
-reason = "M5 exit blocker, INDEX/GDSW: two sibling structures are written in the opposite order to Magic's after the searches of the case; the trace is INDEX's reference (tests/data/db/use_index/)"
+reason = "M5 exit blocker, VIEW: `expand` (the probe's search step) walks CellDef::uses() instead of making DBExpandAll's area search through the use index, so the index is never binned and stays newest-first; the m5-r6-index open item routes it through db::uses_overlapping (tests/data/db/use_index/)"
 
 
 
@@ -458,11 +458,6 @@ reason = "M5 exit blocker, OPS: the generated layer differs from Magic's; the ca
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "out.gds"]
 reason = "M5 exit blocker, GEN/OPS: the cif statistics tile counts differ from Magic's"
-
-[MASK-GR-008]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "cells.txt"]
-reason = "M5 exit blocker, MODEL/CMDEDIT: cellname list allcells lists the read cells in a different order"
 
 [MASK-RT-sky130_fd_io-f01]
 deferred = "M5"
