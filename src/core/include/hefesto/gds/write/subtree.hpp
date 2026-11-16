@@ -59,6 +59,10 @@ struct SubtreeLoader {
   /// Set by the host to stop the walk (mask::Progress::cancel); nullptr:
   /// never cancelled. Polled at every cell visit.
   const std::atomic<bool>* cancel = nullptr;
+  /// Called at every cell visit (mask::Progress::tick: the desktop draws a
+  /// frame there, rate-limited, so the window stays live while a large
+  /// hierarchy loads). Empty: nothing is called.
+  std::function<void()> tick;
 };
 
 /// The walk is recursive, as Magic's; a hierarchy deeper than this fails

@@ -260,7 +260,7 @@ TEST_CASE("the M5 entry points exist", "[m5-scaffold]") {
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
   CHECK(sink_diag.take().empty());
   std::atomic<bool> stop{true};
-  mask::Progress progress{{}, &stop};
+  mask::Progress progress{{}, &stop, {}};
   CHECK(progress.cancelled());
   ctx.progress = &progress;
   CHECK(ctx.cancelled());

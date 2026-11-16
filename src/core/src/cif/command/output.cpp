@@ -144,7 +144,16 @@ CommandResult write_option(const CifCall& c, const std::string& name, bool flat)
   options.time_zone = editor.mask.time_zone;
   options.user = environment("USER");
   options.machine = environment("HOSTNAME");
-  return write(editor, *root, output_file_name(name, editor.drc.compat_settings()), options);
+  const platform::Path path{output_file_name(name, editor.drc.compat_settings())};
+  // The desktop's write host (MaskSession::write_host, design D16): frames
+  // and Interrupt during the prepare phase too; without one, inline.
+  const mask::ProgressHost& host = editor.mask.write_host;
+  if (!host) {
+    return write(editor, *root, path, options);
+  }
+  return host(path.filename().string(), [&editor, root, &path, &options](const mask::Progress* progress) {
+    return write(editor, *root, path, options, progress);
+  });
 }
 
 CommandResult read_option(const CifCall& c) {

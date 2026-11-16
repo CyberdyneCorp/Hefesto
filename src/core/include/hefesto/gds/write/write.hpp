@@ -38,6 +38,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/compat/compat_settings.hpp"
@@ -98,6 +99,15 @@ struct PreparedWrite {
   /// The generation errors of the write, filled by emit_write; finish_write
   /// adds them to the editor's feedback (CIFError).
   std::shared_ptr<std::vector<mask::GenerationProblem>> problems;
+  /// The session's path variables as the calling thread resolved them at
+  /// prepare time (design D16): the emit phase finds vendor GDS files and
+  /// compares GDS_FILE values (Q-MASK-128) with this snapshot, never with
+  /// EditorState::path_variables, whose script binding reads the Tcl
+  /// interpreter, which only the command thread may touch. Holds the
+  /// variables those lookups can ask for (the PDK roots, HOME and every
+  /// `$NAME` of the search paths and vendor cells' GDS_FILE values); empty
+  /// when the session has no vendor cell.
+  cell::PathVariables path_variables;
 };
 
 /// "Output scale factors" of `style`: Wscale and Pscale, the errors Magic

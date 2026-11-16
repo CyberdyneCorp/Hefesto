@@ -20,6 +20,8 @@
 #include "hefesto/gds/write/write.hpp"
 
 #include <cstdio>
+#include <map>
+#include <set>
 #include <unordered_set>
 #include <utility>
 
@@ -134,6 +136,99 @@ diag::Diagnostic io_error(const GdsWriteOptions& options, const platform::Path& 
   return diag::make(codes::kOutputFile, "I/O error in writing file " + name + ".\nFile may be incompletely written.");
 }
 
+// The names a path text can expand: `$NAME`/`${NAME}` variables and
+// `~user` home directories (cell::expand_entry's prefixes, anywhere in the
+// text, so a search-path string with several entries is covered).
+struct PathNames {
+  std::set<std::string, std::less<>> variables;
+  std::set<std::string, std::less<>> users{""};
+
+  static bool ends_name(char c) { return c == '/' || c == ':' || c == ' ' || c == '\t'; }
+
+  void scan(std::string_view text) {
+    for (std::size_t i = 0; i < text.size(); ++i) {
+      if (text[i] != '$' && text[i] != '~') {
+        continue;
+      }
+      std::size_t end = i + 1;
+      while (end < text.size() && !ends_name(text[end])) {
+        ++end;
+      }
+      std::string name;
+      for (const char c : text.substr(i + 1, end - i - 1)) {
+        if (c != '{' && c != '}') {
+          name += c;
+        }
+      }
+      (text[i] == '$' ? variables : users).insert(std::move(name));
+      i = end - 1;
+    }
+  }
+};
+
+// PreparedWrite::path_variables: `live`'s answers for `names`, taken now.
+cell::PathVariables frozen(const cell::PathVariables& live, const PathNames& names) {
+  using Answers = std::map<std::string, std::optional<std::string>, std::less<>>;
+  auto variables = std::make_shared<Answers>();
+  for (const std::string& name : names.variables) {
+    (*variables)[name] = live.variable ? live.variable(name) : std::nullopt;
+  }
+  cell::PathVariables out;
+  out.install_root = live.install_root;
+  out.variable = [variables](std::string_view name) -> std::optional<std::string> {
+    const auto found = variables->find(name);
+    return found != variables->end() ? found->second : std::nullopt;
+  };
+  if (live.home_of) {
+    auto homes = std::make_shared<Answers>();
+    for (const std::string& user : names.users) {
+      (*homes)[user] = live.home_of(user);
+    }
+    out.home_of = [homes](std::string_view user) -> std::optional<std::string> {
+      const auto found = homes->find(user);
+      return found != homes->end() ? found->second : std::nullopt;
+    };
+  }
+  return out;
+}
+
+// The path variables the emit phase's vendor lookups can need, resolved on
+// the calling thread (PreparedWrite::path_variables). Only a session with
+// vendor cells (GDS_FILE) asks, so a write without them reads no variable,
+// as Magic's.
+cell::PathVariables prepare_path_variables(const editor::EditorState& editor) {
+  PathNames names;
+  bool vendor = false;
+  bool library_compare = false;
+  editor.cells.for_each([&](db::CellDef& def) {
+    const auto* file = std::get_if<std::string>(def.properties().find("GDS_FILE"));
+    if (file == nullptr) {
+      return;
+    }
+    vendor = true;
+    library_compare = library_compare || def.properties().find("LEFview") != nullptr;
+    names.scan(*file);
+    names.scan(def.file_path().generic_string());
+  });
+  if (!vendor) {
+    return {};
+  }
+  for (const std::string& entry : editor.search_paths.path) {
+    names.scan(entry);
+  }
+  for (const std::string& entry : editor.search_paths.library) {
+    names.scan(entry);
+  }
+  if (library_compare) {
+    // gds_file_value's substitution (cell::substitute_path).
+    names.variables.insert({"PDK_PATH", "PDKPATH", "PDK_ROOT", "PDKROOT"});
+  }
+  if (!editor.path_variables.home_of) {
+    names.variables.insert("HOME");  // PathVariables::home's fallback
+  }
+  return frozen(editor.path_variables, names);
+}
+
 cmd::CommandResult finished(std::vector<diag::Diagnostic> diagnostics, std::optional<diag::Diagnostic> error) {
   cmd::CommandResult result = cmd::CommandResult::success();
   result.diagnostics = std::move(diagnostics);
@@ -216,6 +311,7 @@ diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::Cell
   prepared.hierarchy.arrays = editor.mask.cif.array;
   prepared.hierarchy.unfracture = editor.mask.cif.unfracture;
   prepared.hierarchy.fixed_bbox = true;
+  prepared.path_variables = prepare_path_variables(editor);
   if (diag::Status s = check_before_open(prepared); !s.ok()) {
     return s.error();
   }
@@ -309,6 +405,7 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const p
   GdsWriteOptions with_cancel = options;
   if (progress != nullptr) {
     with_cancel.loader.cancel = progress->cancel;
+    with_cancel.loader.tick = progress->tick;
   }
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (!prepared) {

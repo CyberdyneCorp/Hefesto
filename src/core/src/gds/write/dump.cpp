@@ -24,7 +24,9 @@
 //   `datestamp` or the triggering cell's timestamp; OFF the source
 //   structure's creation date unless `datestamp` is set.
 // - Q-MASK-128 (fix): the library comparison substitutes the file name as
-//   GDS_FILE values are (gds::gds_file_value).
+//   GDS_FILE values are (gds::gds_file_value), with the variables the
+//   prepare phase resolved (PreparedWrite::path_variables: the dump runs on
+//   the emit worker, which must not read the Tcl interpreter).
 // Magic's tables are hash tables; the undefined references are kept in the
 // order they were recorded (with a name index, so a library of N forward
 // references costs O(N)) and the libraries in dump order, which decides
@@ -265,7 +267,7 @@ std::string structure_name(FullDump::Dump& d, const std::string& name, const std
     const std::string* library = existing != nullptr ? string_property(*existing, "GDS_FILE") : nullptr;
     const bool same_library = existing != nullptr && library != nullptr &&
                               existing->properties().find("LEFview") != nullptr &&
-                              gds_file_value(d.file, d.io.prepared.editor->path_variables) == *library;
+                              gds_file_value(d.file, d.io.prepared.path_variables) == *library;
     if (!same_library && prefix) {
       written = *prefix + name;
     }

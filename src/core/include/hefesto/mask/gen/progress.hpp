@@ -28,6 +28,10 @@ struct Progress {
   std::function<void(double fraction)> report;
   /// Set by the host to request cancellation; nullptr = never cancelled.
   const std::atomic<bool>* cancel = nullptr;
+  /// Called while work that has no fraction to report goes on (a write's
+  /// subtree loading, at every cell visit); the host may draw a frame
+  /// there, rate-limited. May be empty.
+  std::function<void()> tick;
 
   /// True when the host asked to stop.
   [[nodiscard]] bool cancelled() const noexcept { return cancel != nullptr && cancel->load(std::memory_order_relaxed); }

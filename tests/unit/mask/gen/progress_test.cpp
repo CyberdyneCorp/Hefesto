@@ -26,7 +26,7 @@ TEST_CASE("The progress throttle follows Magic's reporting rule",
           "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
   platform::FixedClock clock;
   std::vector<double> reports;
-  Progress progress{[&](double fraction) { reports.push_back(fraction); }, nullptr};
+  Progress progress{[&](double fraction) { reports.push_back(fraction); }, nullptr, {}};
   ProgressThrottle throttle(&progress, &clock);
   throttle.step(1, 10);  // never for the first square
   clock.advance(seconds(6));
@@ -46,7 +46,7 @@ TEST_CASE("The progress throttle follows Magic's reporting rule",
   CHECK(throttle.reported());
 
   std::vector<double> quiet;
-  Progress silent{[&](double fraction) { quiet.push_back(fraction); }, nullptr};
+  Progress silent{[&](double fraction) { quiet.push_back(fraction); }, nullptr, {}};
   ProgressThrottle fast(&silent, &clock);
   fast.step(2, 2);  // done before the timer expired: nothing, not even 100 %
   fast.finish();
@@ -80,7 +80,7 @@ TEST_CASE("A long write shows progress", "[cap:mask-hierarchical-generation][req
   LongRow row(f, 12);
   platform::FixedClock clock;
   std::vector<double> reports;
-  Progress progress{[&](double fraction) { reports.push_back(fraction); }, nullptr};
+  Progress progress{[&](double fraction) { reports.push_back(fraction); }, nullptr, {}};
   f.ctx.progress = &progress;
   f.ctx.clock = &clock;
   GenerationSource source = f.source();
@@ -104,7 +104,7 @@ TEST_CASE("A cancelled write leaves no file", "[cap:mask-hierarchical-generation
   LongRow row(f, 12);
   std::atomic<bool> stop{false};
   int squares = 0;
-  Progress progress{{}, &stop};
+  Progress progress{{}, &stop, {}};
   f.ctx.progress = &progress;
   GenerationSource source = f.source();
   const InteractionFinder shared = source.find_interaction;

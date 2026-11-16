@@ -298,6 +298,7 @@ cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const p
   CifWriteOptions with_cancel = options;
   if (progress != nullptr) {
     with_cancel.loader.cancel = progress->cancel;
+    with_cancel.loader.tick = progress->tick;
   }
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (prepared) {

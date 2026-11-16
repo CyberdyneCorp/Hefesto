@@ -54,7 +54,11 @@ struct MaskSession {
   // totals), fed on the command thread after each generation.
   StatisticsCounters statistics;
   // SHELL (D16): the desktop's hosts; empty = inline, no progress (CLI, tests).
+  // read_host runs a read, write_host a whole write (its prepare and finish
+  // phases), on the command thread with frames pumped; emit_host runs a
+  // write's emit phase on a worker while the command thread pumps.
   ProgressHost read_host;
+  ProgressHost write_host;
   ProgressHost emit_host;
 };
 

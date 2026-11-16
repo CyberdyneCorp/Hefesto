@@ -75,7 +75,8 @@ std::optional<platform::Path> exact(cell::LookupContext& ctx, const std::string&
 std::optional<platform::Path> find_vendor_path(VendorIo& io, const db::CellDef& def, const std::string& name) {
   const editor::EditorState& editor = *io.prepared.editor;
   diag::NullSink quiet;
-  cell::LookupContext ctx{io.files(), editor.search_paths, editor.path_variables, quiet};
+  // The prepare phase's snapshot: this runs on the emit worker (design D16).
+  cell::LookupContext ctx{io.files(), editor.search_paths, io.prepared.path_variables, quiet};
   if (auto p = exact(ctx, name, editor.search_paths.path, &editor.search_paths.library)) {
     return p;
   }

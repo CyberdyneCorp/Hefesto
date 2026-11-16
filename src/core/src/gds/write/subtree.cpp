@@ -52,6 +52,9 @@ class ReadArea {
       result_.too_deep = true;
       return 1;
     }
+    if (loader_.tick) {
+      loader_.tick();
+    }
     if (loader_.cancel != nullptr && loader_.cancel->load(std::memory_order_relaxed)) {
       result_.cancelled = true;
       return 1;

@@ -10,7 +10,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <mutex>
 #include <regex>
+#include <thread>
 
 #include "write_fixture.hpp"
 
@@ -442,6 +444,63 @@ TEST_CASE("a library is dumped once per write", "[cap:gds-write][req:Full dump o
   CHECK(f.last.ok());
   // via_x is an abstract view of the same library, so it keeps its name.
   CHECK(structure_names(recs) == std::vector<std::string>{"via_x", "pad", "top"});
+}
+
+TEST_CASE("the emit phase reads the path variables the prepare phase resolved (design D16)",
+          "[cap:gds-write][req:Full dump of a vendor library]") {
+  // Regression: the vendor file lookup and the full dump's library
+  // comparison (Q-MASK-128) called EditorState::path_variables from the
+  // emit worker, which on the desktop reads the Tcl interpreter.
+  Fixture f;
+  REQUIRE(f.fs.write_atomic("/pdk/lib.gds", pad_library(false)).ok());
+  std::mutex mutex;
+  std::vector<std::thread::id> askers;
+  f.ed.path_variables.variable = [&](std::string_view name) -> std::optional<std::string> {
+    {
+      const std::lock_guard lock(mutex);
+      askers.push_back(std::this_thread::get_id());
+    }
+    return name == "PDK_ROOT" ? std::optional<std::string>{"/pdk"} : std::nullopt;
+  };
+  db::CellDef& top = f.cell("top");
+  db::CellDef& pad = abstract_pad(f, "pad");
+  db::CellDef& via = abstract_pad(f, "via_x");
+  for (db::CellDef* def : {&pad, &via}) {
+    def->properties().put("GDS_FILE", std::string{"$PDK_ROOT/lib.gds"});
+  }
+  f.place(top, pad);
+  f.place(top, via, db::translation(20, 0));
+  f.install();
+  auto prepared = gds::prepare_write(f.ed, top, f.options);
+  REQUIRE(prepared.ok());
+  const std::thread::id caller = std::this_thread::get_id();
+  std::thread::id worker_id;
+  cmd::CommandResult result = cmd::CommandResult::success();
+  std::thread worker([&] {
+    worker_id = std::this_thread::get_id();
+    result = gds::emit_write(prepared.value(), "/out.gds");
+  });
+  worker.join();
+  gds::finish_write(f.ed, prepared.value());
+  CHECK(result.ok());
+  CHECK_FALSE(askers.empty());
+  CHECK(std::count(askers.begin(), askers.end(), caller) == static_cast<std::ptrdiff_t>(askers.size()));
+  CHECK(std::find(askers.begin(), askers.end(), worker_id) == askers.end());
+  // The snapshot found the file ($PDK_ROOT) and substituted it back, so
+  // via_x is the same library's view and keeps its name.
+  CHECK(structure_names(decode(f.file())) == std::vector<std::string>{"via_x", "pad", "top"});
+
+  // Without vendor cells no variable is read.
+  Fixture plain;
+  bool asked = false;
+  plain.ed.path_variables.variable = [&asked](std::string_view) -> std::optional<std::string> {
+    asked = true;
+    return std::nullopt;
+  };
+  db::CellDef& alone = plain.cell("alone");
+  plain.paint(alone, plain.m1, db::Rect{0, 0, 10, 10});
+  CHECK_FALSE(plain.write(alone).empty());
+  CHECK_FALSE(asked);
 }
 
 TEST_CASE("incompatible library units refuse the dump once (Q-MASK-212)",

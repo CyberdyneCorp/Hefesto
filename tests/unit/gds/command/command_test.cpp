@@ -8,6 +8,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -461,6 +462,45 @@ TEST_CASE("gds write and read run through the session's hosts",
   REQUIRE(s.run("gds write other").ok());
   CHECK(s.exists("other.gds"));
   CHECK(labels.size() == 2);
+}
+
+TEST_CASE("gds write runs its prepare phase inside the session's write host",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  // Regression: the prepare phase (subtree loading) got no Progress, so it
+  // drew no frame and the Interrupt could not stop it.
+  Session s;
+  std::vector<std::string> calls;
+  std::size_t ticks = 0;
+  s.f.ed.mask.write_host = [&](std::string_view label, const hefesto::mask::ProgressWork& work) {
+    calls.push_back("write " + std::string{label});
+    hefesto::mask::Progress progress;
+    progress.tick = [&ticks] { ++ticks; };
+    return work(&progress);
+  };
+  s.f.ed.mask.emit_host = [&](std::string_view label, const hefesto::mask::ProgressWork& work) {
+    calls.push_back("emit " + std::string{label});
+    hefesto::mask::Progress progress;
+    return work(&progress);
+  };
+  REQUIRE(s.run("gds write chip").ok());
+  CHECK(s.exists("chip.gds"));
+  CHECK(calls == std::vector<std::string>{"write chip.gds", "emit chip.gds"});
+  CHECK(ticks > 0);  // the subtree walk ticked
+
+  // An Interrupt while the subtree loads stops the write before any file.
+  std::atomic<bool> cancel{false};
+  s.f.ed.mask.write_host = [&cancel](std::string_view, const hefesto::mask::ProgressWork& work) {
+    hefesto::mask::Progress progress;
+    progress.cancel = &cancel;
+    progress.tick = [&cancel] { cancel = true; };
+    return work(&progress);
+  };
+  const cmd::CommandResult stopped = s.run("gds write stopped");
+  REQUIRE_FALSE(stopped.ok());
+  CHECK(stopped.diagnostics.back().text == "GDS write cancelled.");
+  CHECK_FALSE(s.exists("stopped.gds"));
+  s.f.ed.mask.write_host = {};
+  s.f.ed.mask.emit_host = {};
 }
 
 }  // namespace
