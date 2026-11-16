@@ -42,6 +42,8 @@ class Path {
   }
 
   [[nodiscard]] int head() const noexcept { return nodes_.empty() ? kEnd : 0; }
+  /// The number of nodes (every node is on the path: nodes are only added).
+  [[nodiscard]] std::size_t size() const noexcept { return nodes_.size(); }
   [[nodiscard]] int next(int i) const { return nodes_.at(static_cast<std::size_t>(i)).next; }
   [[nodiscard]] const Point& at(int i) const { return nodes_.at(static_cast<std::size_t>(i)).p; }
   Point& at(int i) { return nodes_.at(static_cast<std::size_t>(i)).p; }
@@ -265,30 +267,36 @@ void split_diagonal(Path& path, int p, bool clockwise, std::vector<PolygonPiece>
   }
 }
 
-// The split budget of one path (security.md M5-S7): a split that finds a
-// crossing leaves a shorter diagonal behind it, so a few edges with huge,
-// nearly parallel slopes split about once per unit of length (a 5-point GDS
-// boundary from the fuzzer never finished). Each crossing between two
-// edges splits at most once per edge, so n^2 + n splits cover every
-// legitimate path of n vertices; past the budget the path stays
-// non-Manhattan, which the caller reports as for any non-Manhattan path.
-std::uint64_t split_budget(std::size_t vertices) noexcept {
-  constexpr std::uint64_t kMinBudget = 1024;
-  const std::uint64_t n = vertices;
-  return kMinBudget + n * n + n;
+// The work budget of one path (security.md M5-S7), in edges visited. Each
+// split searches the whole path for a crossing (path_intersect), and a
+// split that finds one leaves a shorter diagonal behind it, so edges with
+// huge, nearly parallel slopes split about once per unit of length (a
+// 5-point GDS boundary from the fuzzer never finished): counting splits
+// alone leaves O(n^3) work. An ordinary path of n vertices splits about
+// once per diagonal edge (convex arcs never cross), at most n splits over
+// a path of at most 3n edges; 16 n^2 + 4096 visits leave room for crossings
+// and keep the work quadratic, as the strip decomposition after it (M5-S5).
+// Past the budget the path stays non-Manhattan, which the caller reports as
+// for any non-Manhattan path.
+std::uint64_t work_budget(std::size_t vertices) noexcept {
+  constexpr std::uint64_t kMinBudget = 4096;
+  constexpr std::uint64_t kSaturate = std::uint64_t{1} << 28;  // n^2 * 16 stays below 2^64
+  const std::uint64_t n = std::min<std::uint64_t>(vertices, kSaturate);
+  return kMinBudget + 16 * n * n;
 }
 
 void make_manhattan(Path& path, std::size_t vertices, std::vector<PolygonPiece>& out) {
   const bool clockwise = is_clockwise(path);
-  std::uint64_t budget = split_budget(vertices);
+  std::uint64_t budget = work_budget(vertices);
   for (int p = path.head(); path.next(p) != kEnd; p = path.next(p)) {
     const Point a = path.at(p);
     const Point b = path.at(path.next(p));
     if (a.x != b.x && a.y != b.y) {
-      if (budget == 0) {
+      const std::uint64_t cost = path.size();  // path_intersect's visits
+      if (cost > budget) {
         return;
       }
-      --budget;
+      budget -= cost;
       split_diagonal(path, p, clockwise, out);
     }
   }

@@ -430,18 +430,62 @@ TEST_CASE("the shared decomposer handles self-intersecting paths", CAP "[req:Pol
 
 // Regression (m5 round 5, CI fuzz run 43754937069, fuzz_gds_reader timeout):
 // two edges with huge, nearly parallel slopes split about once per unit of
-// length and never finished. The split budget stops the path, which is then
+// length and never finished. The work budget stops the path, which is then
 // reported as non-Manhattan (security.md M5-S7).
 TEST_CASE("the read decomposer bounds the splits of a degenerate path", CAP "[req:Polygon command]") {
   const std::vector<Point> path{{0, 0}, {1000, 0}, {1000, 400}, {16318463, 1056965008}, {0, 0}};
   const db::PolygonDecomposition d = db::decompose_read_polygon(path);
   CHECK(d.problem == db::PolygonProblem::not_manhattan);
-  CHECK(d.pieces.size() <= 1024 + 25 + 5);
+  CHECK(d.pieces.size() <= 4096 + 16 * 25);
   // An ordinary triangle still decomposes completely.
   const std::vector<Point> triangle{{0, 0}, {10, 0}, {0, 10}};
   const db::PolygonDecomposition t = db::decompose_read_polygon(triangle);
   CHECK(t.problem == db::PolygonProblem::none);
   CHECK_FALSE(t.pieces.empty());
+}
+
+// Regression (round 5 review): the budget counted splits (1024 + n^2 + n)
+// and each split searched the whole path, so a crafted boundary cost
+// O(n^3) (for the XY record's 8191 points, about 5 x 10^11 visits). The
+// budget now counts edge visits, 16 n^2 + 4096 (security.md M5-S7): the
+// fuzzer's slivers padded to 1500 vertices stop after it, while 2000
+// steep, near-parallel zigzag diagonals and a 2000-point convex arc of
+// diagonals still decompose completely. (A full 8191-point crafted path
+// costs about 10^9 visits, seconds in a Release build; the sizes here keep
+// the sanitizer legs fast.)
+TEST_CASE("security fix M5-S7: the read decomposer bounds the work of a crafted path",
+          CAP "[req:Polygon command]") {
+  std::vector<Point> sliver{{0, 0}};
+  for (db::Coord x = 1; x < 1500; ++x) {
+    sliver.push_back(Point{x / 2, 0});  // collinear padding: each split now visits ~1500 edges
+  }
+  for (const Point p : {Point{1000, 0}, Point{1000, 400}, Point{16318463, 1056965008}, Point{0, 0}}) {
+    sliver.push_back(p);
+  }
+  const db::PolygonDecomposition d = db::decompose_read_polygon(sliver);
+  CHECK(d.problem == db::PolygonProblem::not_manhattan);
+  CHECK(d.pieces.size() <= 4096 + 16 * sliver.size());
+
+  std::vector<Point> zigzag;
+  constexpr db::Coord kTeeth = 1000;
+  for (db::Coord i = 0; i <= 2 * kTeeth; ++i) {
+    zigzag.push_back(Point{i * 3, (i % 2) * 1000000 + i});
+  }
+  zigzag.push_back(Point{2 * kTeeth * 3, -10});
+  zigzag.push_back(Point{0, -10});
+  const db::PolygonDecomposition z = db::decompose_read_polygon(zigzag);
+  CHECK(z.problem == db::PolygonProblem::none);
+  CHECK_FALSE(z.pieces.empty());
+
+  std::vector<Point> arc{{0, 0}};
+  constexpr db::Coord kSteps = 2000;
+  for (db::Coord i = 0; i < kSteps; ++i) {
+    arc.push_back(Point{i + 1, 2 * kSteps - (kSteps - i - 1) * (kSteps - i - 1) / kSteps});  // concave down
+  }
+  arc.push_back(Point{kSteps, 0});
+  const db::PolygonDecomposition a = db::decompose_read_polygon(arc);
+  CHECK(a.problem == db::PolygonProblem::none);
+  CHECK_FALSE(a.pieces.empty());
 }
 
 TEST_CASE("splitpaint paints the two triangles", CAP "[req:Splitpaint command]") {
