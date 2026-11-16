@@ -460,3 +460,17 @@ TEST_CASE("Read uniquification keeps the id of the first use in the index order,
     CHECK_FALSE(loses->id.empty());
   }
 }
+
+// Regression (m5 round 5, CI fuzz run 43776774834, fuzz_cif_reader stack
+// overflow): eleven 1x1 uses in a 3x2 box size bins of 2x3, taller than the
+// box, so each bin rebuilt a box that did not shrink and the sub-binning
+// recursed without end; it now stops at a fixed depth (security.md M5-S8).
+TEST_CASE("Use index: degenerate bins stop sub-binning", "[cap:gds-write][req:Structure ordering]") {
+  Uses u;
+  u.add(db::Rect{-1, -1, 2, 1});
+  for (int i = 0; i < 11; ++i) {
+    u.add(db::Rect{0, 0, 1, 1});
+  }
+  CHECK(searched(u.index, db::Rect{0, 0, 1, 1}).size() == 12);
+  CHECK(searched(u.index, db::Rect{-1, -1, 0, 0}).size() == 1);
+}

@@ -269,22 +269,38 @@ bool list_exceeds(const Element* e, int n) noexcept {
   return n == 0;
 }
 
-std::unique_ptr<BinArray> bin_array_build(const Rect& bbox, Element* elements, bool subbin) {
+namespace {
+
+// bpBinArrayBuild's recursion, bounded (security.md M5-S8): a bin whose area
+// is the parent's bbox, or an oversized bin that keeps its elements, rebuilds
+// the same array, and Magic recurses until the stack overflows (a fuzzed CIF
+// file, CI fuzz run 43776774834). Ordinary layouts nest a few levels; past
+// kMaxBinDepth a bin keeps its plain list, which only changes the order of
+// such degenerate arrays.
+constexpr int kMaxBinDepth = 64;
+
+std::unique_ptr<BinArray> build_level(const Rect& bbox, Element* elements, bool subbin, int depth) {
   const std::optional<Sizing> s = size_it(bbox, elements);
   if (!s) {
     return nullptr;
   }
   auto ba = bin_array_build1(bbox, elements, s->dx, s->dy);
-  if (!subbin) {
+  if (!subbin || depth >= kMaxBinDepth) {
     return ba;
   }
   for (int i = 0; i < ba->num_bins; ++i) {
     Bin& bin = ba->bins[static_cast<std::size_t>(i)];
-    set_sub(bin, bin_array_build(bin_area(*ba, i), bin.list, true));
+    set_sub(bin, build_level(bin_area(*ba, i), bin.list, true, depth + 1));
   }
   Bin& oversized = ba->bins.back();
-  set_sub(oversized, bin_array_build(bbox, oversized.list, true));
+  set_sub(oversized, build_level(bbox, oversized.list, true, depth + 1));
   return ba;
+}
+
+}  // namespace
+
+std::unique_ptr<BinArray> bin_array_build(const Rect& bbox, Element* elements, bool subbin) {
+  return build_level(bbox, elements, subbin, 0);
 }
 
 namespace {
