@@ -1,0 +1,7 @@
+style gds
+    scalefactor 10
+    grow 10
+    layer metal1 CMF
+        grow 0
+    frobnicate 3
+    calma CMF 49 0

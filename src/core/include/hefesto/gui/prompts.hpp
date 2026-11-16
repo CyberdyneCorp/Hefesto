@@ -7,11 +7,16 @@
 // `saveallandquit` and `prompt_dialog new|save`. The file dialogs are
 // platform::FilePicker requests (the desktop's native dialog, a scripted
 // picker in tests); a null picker or a cancelled request does nothing, as
-// an empty answer of Tk's file dialog.
+// an empty answer of Tk's file dialog. The `gds` and `cif` kinds
+// (openspec/changes/m5-mask-gds-cif/design.md D16) read the chosen file's
+// root name (`gds read`, and `cif read` into the temporary cell `cif_temp`),
+// write `cif write <root name>` (Q-MASK-320) and `gds write <file>`
+// (Q-MASK-210 keeps its extension).
 //
 // (Magic ref: tcltk/wrapper.tcl:66-231,1033-1048)
 //
-// Owner: GUIMGR (design D2).
+// Owner: GUIMGR (m4-scripting design D2); the `gds` and `cif` kinds: SHELL
+// (m5-mask-gds-cif design D2).
 
 #pragma once
 

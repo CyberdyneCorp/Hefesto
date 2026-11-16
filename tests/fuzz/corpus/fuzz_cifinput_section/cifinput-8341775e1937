@@ -1,0 +1,10 @@
+style g5
+    scalefactor 10
+    gridlimit 5
+    layer metal1 CMF
+    calma CMF 49 0
+style g1000
+    scalefactor 10
+    gridlimit 1000
+    layer metal1 CMF
+    calma CMF 49 0

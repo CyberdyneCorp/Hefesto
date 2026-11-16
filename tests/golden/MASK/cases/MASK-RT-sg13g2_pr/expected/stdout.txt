@@ -1,0 +1,157 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:58 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology ihp-sg13g2 ...
+2 Magic internal units = 1 Lambda
+Input style sg13g2(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    pblock sealcont difffill nemitter hvnemitter hvisodiffres sealvia1 sealvia2 sealvia3 sealvia4 sealvia5 sealvia6 pillar solder seal glass thruvia inductor 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading ihp-sg13g2 Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file sg13g2_pr.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: LIB
+Reading "sealring_CDNS_675179387642".
+Saving contents of cell sealring_CDNS_675179387642
+Reading "sealring_corner_CDNS_675179387641".
+Saving contents of cell sealring_corner_CDNS_675179387641
+Reading "npn13G2_base_CDNS_675179387640".
+Saving contents of cell npn13G2_base_CDNS_675179387640
+Reading "TM2_TM1_CDNS_675179387646".
+Saving contents of cell TM2_TM1_CDNS_675179387646
+Reading "TM1_M5_CDNS_675179387645".
+Saving contents of cell TM1_M5_CDNS_675179387645
+Reading "M1_GatPoly_CDNS_675179387644".
+Saving contents of cell M1_GatPoly_CDNS_675179387644
+Reading "M2_M1_CDNS_675179387643".
+Saving contents of cell M2_M1_CDNS_675179387643
+Reading "M3_M2_CDNS_675179387642".
+Saving contents of cell M3_M2_CDNS_675179387642
+Reading "M4_M3_CDNS_675179387641".
+Saving contents of cell M4_M3_CDNS_675179387641
+Reading "M5_M4_CDNS_675179387640".
+Saving contents of cell M5_M4_CDNS_675179387640
+Reading "sealring_complete".
+Reading "scr1".
+Reading "schottky_nbl1".
+Reading "rsil".
+Reading "rppd".
+Reading "rhigh".
+Reading "rfpmosHV".
+Reading "rfpmos".
+Reading "rfnmosHV".
+Reading "rfnmos".
+Reading "rfcmim".
+Reading "ptap1".
+Reading "ptap".
+Reading "pnpMPA".
+Reading "pmosHV".
+Reading "pmos".
+Reading "ntap1".
+Reading "ntap".
+Reading "npn13G2V".
+Reading "npn13G2L".
+Reading "npn13G2".
+Reading "nmoscl_4".
+Moving label "sub!" from space to metal3 in cell nmoscl_4.
+Reading "nmoscl_2".
+Moving label "sub!" from space to metal3 in cell nmoscl_2.
+Reading "nmosHV".
+Reading "nmos".
+Reading "lvsres".
+Reading "isolbox".
+Reading "iprobe".
+Reading "inductor3".
+Reading "inductor2".
+Reading "dummy1".
+Reading "diodevss_4kv".
+Reading "diodevss_2kv".
+Reading "diodevdd_4kv".
+Reading "diodevdd_2kv".
+Reading "diffstbprobe".
+Reading "dantenna".
+Reading "colors_and_stipples".
+Reading "cmim".
+Reading "chipText".
+Reading "bondpad".
+Reading "ViaStack".
+Reading "SVaricap".
+Reading "NoFillerStack".
+Reading "L2_IND_LVS".
+Reading "dpantenna".
+mask-rt tops 56 cells 56
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell M1_GatPoly_CDNS_675179387644
+   Generating output for cell M2_M1_CDNS_675179387643
+   Generating output for cell M3_M2_CDNS_675179387642
+   Generating output for cell M4_M3_CDNS_675179387641
+   Generating output for cell M5_M4_CDNS_675179387640
+   Generating output for cell NoFillerStack
+   Generating output for cell TM1_M5_CDNS_675179387645
+   Generating output for cell TM2_TM1_CDNS_675179387646
+   Generating output for cell npn13G2_base_CDNS_675179387640
+   Generating output for cell sealring_CDNS_675179387642
+   Generating output for cell sealring_corner_CDNS_675179387641
+   Generating output for cell L2_IND_LVS
+   Generating output for cell rsil
+   Generating output for cell dantenna
+   Generating output for cell dummy1
+   Generating output for cell nmos
+   Generating output for cell ntap
+   Generating output for cell ntap1
+   Generating output for cell ptap
+   Generating output for cell ptap1
+   Generating output for cell pmos
+   Generating output for cell nmosHV
+   Generating output for cell ViaStack
+   Generating output for cell dpantenna
+   Generating output for cell pmosHV
+   Generating output for cell rhigh
+   Generating output for cell rppd
+   Generating output for cell lvsres
+   Generating output for cell iprobe
+   Generating output for cell isolbox
+   Generating output for cell rfnmos
+   Generating output for cell rfnmosHV
+   Generating output for cell rfpmos
+   Generating output for cell rfpmosHV
+   Generating output for cell pnpMPA
+   Generating output for cell SVaricap
+   Generating output for cell cmim
+   Generating output for cell npn13G2
+   Generating output for cell npn13G2L
+   Generating output for cell npn13G2V
+   Generating output for cell schottky_nbl1
+   Generating output for cell diffstbprobe
+   Generating output for cell rfcmim
+   Generating output for cell scr1
+   Generating output for cell diodevss_4kv
+   Generating output for cell diodevss_2kv
+   Generating output for cell diodevdd_4kv
+   Generating output for cell diodevdd_2kv
+   Generating output for cell nmoscl_2
+   Generating output for cell nmoscl_4
+   Generating output for cell bondpad
+   Generating output for cell chipText
+   Generating output for cell colors_and_stipples
+   Generating output for cell inductor2
+   Generating output for cell inductor3
+   Generating output for cell sealring_complete
+   Generating output for cell mask_rt_wrapper

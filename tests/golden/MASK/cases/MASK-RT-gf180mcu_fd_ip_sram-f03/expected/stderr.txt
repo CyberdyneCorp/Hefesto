@@ -1,0 +1,9 @@
+Error while reading cell "wen_wm1_512x8m81" (byte position 393786): Warning: cell "M2_M1$$202406956_512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "wen_wm1_512x8m81" (byte position 395596): Warning: cell "M2_M1$$202406956_512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "rarray4_512_512x8m81" (byte position 2111920): Warning: cell "018SRAM_strap1_2x_512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "col_512a_512x8m81" (byte position 2464456): Warning:  Cell col_512a_512x8m81 boundary was redefined.
+Error while reading cell "col_512a_512x8m81" (byte position 2464456): Warning:  Cell col_512a_512x8m81 boundary was redefined.
+Error while reading cell "col_512a_512x8m81" (byte position 2464456): Warning:  Cell col_512a_512x8m81 boundary was redefined.
+Error while reading cell "xdec64_512x8m81" (byte position 2849024): Warning: cell "M3_M2$$204142636_512x8m81" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

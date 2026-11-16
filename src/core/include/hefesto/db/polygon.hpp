@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <vector>
@@ -35,5 +36,21 @@ struct PolygonPiece {
 /// order: the triangles split off the diagonal edges, then the strips.
 /// Fails only with fewer than three vertices.
 [[nodiscard]] diag::Outcome<std::vector<PolygonPiece>> decompose_polygon(std::span<const Point> vertices);
+
+/// Why CIFPolyToRects found no strips after the path was made Manhattan
+/// (the triangles split off before are still pieces): its "polygon with
+/// fewer than 4 points." (one to three edges) and "non-manhattan polygon."
+/// CIF read errors.
+enum class PolygonProblem : std::uint8_t { none, too_few_points, not_manhattan };
+
+struct PolygonDecomposition {
+  std::vector<PolygonPiece> pieces;
+  PolygonProblem problem = PolygonProblem::none;
+};
+
+/// decompose_polygon for the readers: any number of vertices (a path that
+/// closes to fewer than four edges is reported, as Magic's CIFPolyToRects
+/// does, instead of refused).
+[[nodiscard]] PolygonDecomposition decompose_read_polygon(std::span<const Point> vertices);
 
 }  // namespace hefesto::db

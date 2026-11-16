@@ -177,8 +177,10 @@ class CaseInputTest(unittest.TestCase):
                 with self.subTest(case=case_toml.parent.name, path=ext.path):
                     subset = sets[ext.set].subset
                     self.assertTrue(any(ext.path == s or ext.path.startswith(s + "/") for s in subset))
+                    # A *-gds-sc subset shares its full GDS set's version directory, so the root
+                    # exists once the subset alone is installed: check only a fully installed set.
                     root = external.pdk_set_root(ext.set)
-                    if root.is_dir():
+                    if root.is_dir() and all((root / s).exists() for s in subset):
                         self.assertTrue((root / ext.path).exists(), f"{ext.path} not in the installed {ext.set} set")
 
     def test_desktop_alpha_sky130_reads_the_rf_npn_cell(self):

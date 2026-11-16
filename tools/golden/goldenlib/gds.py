@@ -191,3 +191,70 @@ def dump(data: bytes) -> str:
     except GdsError as error:
         lines.append(f"error {error}")
     return "\n".join(lines) + "\n"
+
+
+def _date(values: tuple) -> str:
+    """The first six two-byte date fields as stored (``Y-M-D h:m:s``), ``?`` when short."""
+    fields = values[:6]
+    if len(fields) < 6 or not all(isinstance(v, int) for v in fields):
+        return "?"
+    return "{}-{}-{} {}:{}:{}".format(*fields)
+
+
+def _text(values: tuple) -> str:
+    return values[0] if values and isinstance(values[0], str) else "?"
+
+
+class _Summary:
+    """The state of :func:`summary` over one stream."""
+
+    def __init__(self) -> None:
+        self.lines: list[str] = []
+        self.library = {"name": "?", "created": "?"}
+        self.structure: dict | None = None
+        self.records = self.structures = 0
+
+    def library_record(self, name: str, values: tuple) -> None:
+        if name == "BGNLIB":
+            self.library["created"] = _date(values)
+        elif name == "LIBNAME":
+            self.library["name"] = _text(values)
+        elif name == "UNITS":
+            units = " ".join(repr(v) for v in values)
+            self.lines.append(f"library {self.library['name']} created {self.library['created']} units {units}")
+        elif name == "BGNSTR":
+            self.structure = {"name": "?", "created": _date(values), "records": 0}
+
+    def structure_record(self, name: str, values: tuple) -> None:
+        current = self.structure
+        current["records"] += 1
+        if name == "STRNAME":
+            current["name"] = _text(values)
+        elif name == "ENDSTR":
+            self.lines.append(f"structure {current['name']} created {current['created']} records {current['records']}")
+            self.structures += 1
+            self.structure = None
+
+    def add(self, record: Record) -> None:
+        self.records += 1
+        if self.structure is None:
+            self.library_record(record.name, record.values())
+        if self.structure is not None:
+            self.structure_record(record.name, record.values())
+
+
+def summary(data: bytes) -> str:
+    """A compact decoded summary of a library (m5-mask-gds-cif design D19, the MASK-RT cases).
+
+    A ``library`` line (LIBNAME, BGNLIB creation date, UNITS), one ``structure`` line per
+    structure in stream order (STRNAME, BGNSTR creation date, records from BGNSTR to ENDSTR)
+    and a ``total`` line (structures, records). Modification dates are left out, as
+    ``gds-mod-dates`` masks them. A stream that cannot be decoded ends with an ``error`` line."""
+    state = _Summary()
+    try:
+        for record in records(data):
+            state.add(record)
+    except GdsError as error:
+        state.lines.append(f"error {error}")
+    state.lines.append(f"total structures {state.structures} records {state.records}")
+    return "\n".join(state.lines) + "\n"

@@ -1,0 +1,4 @@
+style gds
+    scalefactor 10
+    layer CMF metal1
+        calma 49 0

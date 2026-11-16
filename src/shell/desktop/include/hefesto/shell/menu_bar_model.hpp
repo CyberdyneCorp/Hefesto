@@ -50,7 +50,7 @@ struct MenuBarItem {
   bool checked = false;
   bool enabled = true;
   bool pdk = false;         // added by a PDK script (the "PDK" chip)
-  std::string tooltip;      // disabled items: the milestone ("Read GDS: arrives in M5")
+  std::string tooltip;      // disabled items: the milestone ("3D Display: arrives in M10")
 
   /// The status-bar text and accessible description: "<label> · <command>".
   [[nodiscard]] std::string description() const;
@@ -93,7 +93,7 @@ struct MenuBarInputs {
 [[nodiscard]] std::string collapse_spaces(std::string_view label);
 
 /// The milestone that enables a wrapper command, for the items present but
-/// disabled in M4 (Read/Write GDS: M5, Netlist Window: M12, 3D Display:
+/// disabled until a later milestone (Netlist Window: M12, 3D Display:
 /// M10); nullopt for the others.
 [[nodiscard]] std::optional<std::string_view> later_milestone(std::string_view command);
 

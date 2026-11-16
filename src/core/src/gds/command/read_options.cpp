@@ -190,9 +190,9 @@ CommandResult polygons_option(const cmd::Invocation& invocation, GdsSettings& g)
 // Q-MASK-130: `rescale no` also sets warning level limit with
 // magic-compat ON.
 CommandResult rescale_option(const cu::Session& s, const cmd::Invocation& invocation) {
-  GdsSettings& g = s.editor->mask.gds;
-  CommandResult result = yes_no_option(invocation, g.rescale);
-  if (invocation.args.size() == 2 && result.ok() && !g.rescale && s.magic_compat) {
+  bool& allowed = s.editor->mask.rescale_allowed;  // shared with `cif rescale`
+  CommandResult result = yes_no_option(invocation, allowed);
+  if (invocation.args.size() == 2 && result.ok() && !allowed && s.magic_compat) {
     s.editor->mask.warnings.level = mask::WarningLevel::limit;
   }
   return result;
@@ -247,7 +247,18 @@ std::string gds_file_property(const cu::Session& s, const platform::Path& found)
     const std::filesystem::path canonical = ec ? found : std::filesystem::weakly_canonical(absolute, ec);
     path = (ec ? absolute.lexically_normal() : canonical).generic_string();
   }
-  return gds_file_value(path, s.editor->path_variables);
+  return gds_file_value(path, *s.editor);
+}
+
+// The desktop's read host (MaskSession::read_host, design D16) pumps frames
+// from the reader's progress reports; without one the read runs inline.
+CommandResult hosted_read(editor::EditorState& editor, const platform::Path& path, const GdsReadOptions& options) {
+  const mask::ProgressHost& host = editor.mask.read_host;
+  if (!host) {
+    return read(editor, path, options);
+  }
+  return host(path.filename().string(),
+              [&editor, &path, &options](const mask::Progress* p) { return read(editor, path, options, p); });
 }
 
 }  // namespace
@@ -306,12 +317,13 @@ CommandResult read_option(cmd::CommandContext& ctx, const cu::Session& s, const 
   }
   GdsReadOptions options;
   options.settings = editor.mask.gds;
+  options.rescale_allowed = editor.mask.rescale_allowed;
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &ctx.services().files;
   options.time_zone = editor.mask.time_zone;
   options.gds_file = gds_file_property(s, found->path);
-  CommandResult result = read(editor, found->path, options);
+  CommandResult result = hosted_read(editor, found->path, options);
   const std::string* library = std::get_if<std::string>(&result.value.data());
   if (library != nullptr && editor.cells.find(*library) != nullptr) {
     const std::string cell = *library;

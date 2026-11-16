@@ -15,3 +15,4 @@ HEFESTO_GDS_CODE("GDS-STREAM-002", error, "The gzip-compressed GDS stream is cor
 HEFESTO_GDS_CODE("GDS-STREAM-003", error, "A seek moved past the end of the (decompressed) GDS stream.")
 HEFESTO_GDS_CODE("GDS-STREAM-004", error, "A GDS record payload exceeds 65531 bytes and cannot be written.")
 HEFESTO_GDS_CODE("GDS-STREAM-005", error, "Gzip compression of the GDS output failed or the level is not 1 to 9.")
+HEFESTO_GDS_CODE("GDS-STREAM-006", error, "The decompressed GDS stream exceeds the inflate size cap (256 times the compressed size, at least 1 GiB).")

@@ -430,7 +430,7 @@ Compatibility: exact
 
 ### Requirement: Painting rule results
 
-Hefesto SHALL paint each tile of a `layer` rule's result into the cell as type `T` on every plane on which `T` is painted, using the standard paint composition, after converting the tile's four edges from read units to internal units as follows: if `T` is a contact type, the top and right edges use half-up conversion and the bottom and left edges use half-down conversion; otherwise all edges use exact conversion. The four edges are converted in the order xtop, ytop, xbot, ybot; if a conversion subdivides the internal grid, the edges already converted are multiplied by the subdivision factor. A tile whose converted width or height is zero is skipped. Triangular tiles keep their diagonal orientation.
+Hefesto SHALL paint each tile of a `layer` rule's result into the cell as type `T` on every plane on which `T` is painted, using the standard paint composition tables but no split-tile merging and no contact-image resolution afterwards (each plane is painted as Magic's non-Manhattan plane paint does, so a triangle keeps the fragmentation of the tile structure it is painted into), after converting the tile's four edges from read units to internal units as follows: if `T` is a contact type, the top and right edges use half-up conversion and the bottom and left edges use half-down conversion; otherwise all edges use exact conversion. The four edges are converted in the order xtop, ytop, xbot, ybot; if a conversion subdivides the internal grid, the edges already converted are multiplied by the subdivision factor. A tile whose converted width or height is zero is skipped. Triangular tiles keep their diagonal orientation.
 
 Compatibility: exact
 

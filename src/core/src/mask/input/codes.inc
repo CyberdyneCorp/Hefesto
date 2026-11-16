@@ -28,3 +28,5 @@ HEFESTO_MASK_CODE("MASK-INPUT-016", error, "Read engine used out of order by a f
 HEFESTO_MASK_CODE("MASK-INPUT-017", warning, "Copyup planes not copied into an array of more than 2^20 elements (resource cap); native only.")
 HEFESTO_MASK_CODE("MASK-INPUT-015", info, "Input `tagged` rule run with a scale factor other than 1 (Q-MASK-310); native only, once per read.")
 HEFESTO_MASK_CODE("MASK-INPUT-018", warning, "Statement before the first `style` line of `cifinput` ignored (Q-MASK-32); magic-compat OFF only, native only.")
+HEFESTO_MASK_CODE("MASK-INPUT-019", info, "A read label moved to the type under it or resized to the remaining paint (DBAdjustLabels' `Moving label` / `Adjusting size of label` lines).")
+HEFESTO_MASK_CODE("MASK-INPUT-020", error, "A read polygon left no strips after its diagonals were split off (CIFPolyToRects: `polygon with fewer than 4 points.` or `non-manhattan polygon.`).")

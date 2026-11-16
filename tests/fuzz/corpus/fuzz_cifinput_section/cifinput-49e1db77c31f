@@ -1,0 +1,10 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+        and-not CMS
+    layer metal2 CMS
+        and CMF
+    layer metal3 CMS
+        or CMF
+    calma CMF 49 0
+    calma CMS 51 0

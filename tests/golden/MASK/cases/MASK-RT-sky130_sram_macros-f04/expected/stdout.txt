@@ -1,0 +1,384 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:47:56 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Sourcing design .magicrc for technology sky130A ...
+2 Magic internal units = 1 Lambda
+Input style sky130(): scaleFactor=2, multiplier=2
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ubm 
+Scaled tech values by 2 / 1 to match internal grid scaling
+Loading sky130A Device Generator Menu ...
+Loading "input/commands.tcl" from command line.
+0 {}
+mask-rt file sram_1rw1r_32_256_8_sky130.gds
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 6.0
+Library name: DEFAULT.DB
+Reading "contact_11".
+Reading "contact_17".
+Reading "contact_12".
+Reading "contact_7".
+Reading "pmos_m2_w1_120_sli_dli_da_p".
+Reading "contact_23".
+Reading "contact_24".
+Reading "nmos_m2_w0_740_sli_dli_da_p".
+Reading "pmos_m1_w1_120_sli_dli_da_p".
+Reading "nmos_m1_w0_360_sli_dli_da_p".
+Reading "contact_18".
+Reading "contact_13".
+Reading "nand3_dec".
+Moving label "C" from locali to polycont in cell nand3_dec.
+Moving label "B" from locali to polycont in cell nand3_dec.
+Moving label "A" from locali to polycont in cell nand3_dec.
+Reading "pinv_dec".
+Reading "nand2_dec".
+Moving label "B" from locali to polycont in cell nand2_dec.
+Moving label "A" from locali to polycont in cell nand2_dec.
+Reading "nmos_m1_w0_740_sli_dactive".
+Reading "pmos_m10_w7_000_sli_dli_da_p".
+Reading "pinv".
+Reading "pmos_m1_w1_120_sli_dli".
+Reading "nmos_m1_w0_740_sactive_dli".
+Reading "nmos_m10_w7_000_sli_dli_da_p".
+Reading "contact_27".
+Reading "pmos_m3_w1_650_sli_dli_da_p".
+Reading "and3_dec".
+Reading "contact_8".
+Reading "pinv_dec_0".
+Reading "contact_9".
+Reading "nmos_m3_w1_680_sli_dli_da_p".
+Reading "pnand2".
+Reading "pdriver".
+Reading "nmos_m1_w2_880_sli_dli".
+Reading "contact_26".
+Reading "contact_28".
+Reading "contact_29".
+Reading "and2_dec".
+Reading "contact_14".
+Reading "pmos_m1_w0_550_sli_dli".
+Reading "contact_15".
+Reading "contact_16".
+Reading "pmos_m18_w2_000_sli_dli_da_p".
+Reading "nmos_m18_w2_000_sli_dli_da_p".
+Reading "pmos_m22_w2_000_sli_dli_da_p".
+Reading "nmos_m22_w2_000_sli_dli_da_p".
+Reading "pmos_m7_w2_000_sli_dli_da_p".
+Reading "nmos_m7_w1_680_sli_dli_da_p".
+Reading "pmos_m12_w2_000_sli_dli_da_p".
+Reading "nmos_m12_w2_000_sli_dli_da_p".
+Reading "pmos_m8_w2_000_sli_dli_da_p".
+Reading "nmos_m13_w2_000_sli_dli_da_p".
+Reading "pmos_m13_w2_000_sli_dli_da_p".
+Reading "pinv_3".
+Reading "wordline_driver".
+Reading "nmos_m8_w1_680_sli_dli_da_p".
+Reading "precharge_0".
+Reading "pinv_2".
+Reading "pmos_m24_w2_000_sli_dli_da_p".
+Reading "pmos_m40_w2_000_sli_dli_da_p".
+Reading "pand2".
+Reading "pmos_m3_w2_000_sli_dli_da_p".
+Reading "single_level_column_mux_0".
+Reading "sense_amp".
+Reading "pinv_1".
+Reading "nmos_m1_w0_740_sactive_dactive".
+Reading "dff".
+Reading "single_level_column_mux".
+Reading "contact_19".
+Reading "contact_20".
+Reading "contact_21".
+Reading "contact_22".
+Reading "pmos_m5_w2_000_sli_dli_da_p".
+Reading "precharge_1".
+Reading "hierarchical_predecode2x4".
+Reading "hierarchical_predecode3x8".
+Reading "write_driver".
+Reading "sky130_fd_bd_sram__openram_dp_cell_cap_col".
+Reading "pinv_17".
+Reading "nmos_m3_w2_000_sli_dli_da_p".
+Reading "pmos_m4_w2_000_sli_dli_da_p".
+Reading "nmos_m4_w1_260_sli_dli_da_p".
+Reading "nmos_m24_w2_000_sli_dli_da_p".
+Reading "sky130_fd_bd_sram__openram_dp_cell_cap_row".
+Reading "nmos_m5_w1_680_sli_dli_da_p".
+Reading "nmos_m40_w2_000_sli_dli_da_p".
+Reading "nmos_m2_w1_260_sli_dli_da_p".
+Reading "pinv_16".
+Reading "pmos_m2_w1_650_sli_dli_da_p".
+Reading "sky130_fd_bd_sram__openram_dp_cell".
+Reading "sky130_fd_bd_sram__openram_dp_cell_dummy".
+Reading "sky130_fd_bd_sram__openram_dp_cell_replica".
+Reading "bitcell_array".
+    5000 uses
+Reading "pinv_19".
+Reading "pinv_10".
+Reading "precharge_array".
+Reading "sense_amp_array".
+Reading "write_driver_array".
+Reading "write_mask_and_array".
+Reading "single_level_column_mux_array".
+Reading "pdriver_0".
+Reading "pinv_20".
+Reading "precharge_array_0".
+Reading "single_level_column_mux_array_0".
+Reading "pinv_0".
+Reading "hierarchical_decoder".
+Reading "pnand2_0".
+Reading "pinv_6".
+Reading "pinv_12".
+Reading "pinv_18".
+Reading "pnand3".
+Reading "pdriver_4".
+Reading "replica_column_0".
+Reading "pinv_14".
+Reading "pinv_7".
+Reading "pinv_8".
+Reading "pinv_9".
+Reading "pinv_11".
+Reading "wordline_driver_array".
+Reading "pinv_13".
+Reading "dff_buf_0".
+Reading "replica_column".
+Reading "pdriver_3".
+Reading "row_cap_array_0".
+Reading "dummy_array".
+Reading "col_cap_array".
+Reading "row_cap_array".
+Reading "pinv_15".
+Reading "port_data".
+Reading "cr_1".
+Reading "contact_33".
+Reading "port_data_0".
+Reading "pinvbuf".
+Reading "pand2_0".
+Reading "pdriver_2".
+Reading "pand3_0".
+Reading "delay_chain".
+Reading "pnand2_1".
+Reading "pdriver_5".
+Reading "contact_32".
+Reading "cr_0".
+Reading "replica_bitcell_array".
+Reading "port_address".
+Reading "pdriver_1".
+Reading "pand3".
+Reading "dff_buf_array".
+Reading "contact_34".
+Reading "cr_2".
+Reading "col_addr_dff".
+Reading "control_logic_r".
+Reading "bank".
+Reading "control_logic_rw".
+Reading "row_addr_dff".
+Reading "wmask_dff".
+Reading "data_dff".
+Reading "cr_3".
+Reading "sram_1rw1r_32_256_8_sky130".
+    5000 uses
+    10000 uses
+    15000 uses
+    20000 uses
+    25000 uses
+    30000 uses
+    35000 uses
+    40000 uses
+    45000 uses
+    50000 uses
+    55000 uses
+    60000 uses
+    65000 uses
+    70000 uses
+    75000 uses
+    80000 uses
+    85000 uses
+    90000 uses
+    95000 uses
+    100000 uses
+    105000 uses
+    110000 uses
+    115000 uses
+    120000 uses
+    125000 uses
+    130000 uses
+    135000 uses
+    140000 uses
+    145000 uses
+    150000 uses
+    155000 uses
+Making label "s_en" on type metal2 in cell sram_1rw1r_32_256_8_sky130 sticky.
+Making label "w_en" on type metal2 in cell sram_1rw1r_32_256_8_sky130 sticky.
+Making label "p_en_bar" on type metal2 in cell sram_1rw1r_32_256_8_sky130 sticky.
+Making label "wl_en" on type metal2 in cell sram_1rw1r_32_256_8_sky130 sticky.
+Making label "clk_buf" on type metal2 in cell sram_1rw1r_32_256_8_sky130 sticky.
+mask-rt tops 1 cells 154
+Creating new cell
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.000,  0.000), ( 0.000,  0.000)
+lambda:     0.00 x 0.00    (  0.00,  0.00 ), (  0.00,  0.00 )
+internal:      0 x 0       (     0,  0    ), (     0,  0    )
+   Generating output for cell contact_34
+   Generating output for cell contact_32
+   Generating output for cell contact_33
+   Generating output for cell contact_9
+   Generating output for cell contact_8
+   Generating output for cell contact_7
+   Generating output for cell dff
+   Generating output for cell col_addr_dff
+   Generating output for cell wmask_dff
+   Generating output for cell data_dff
+   Generating output for cell contact_12
+   Generating output for cell contact_24
+   Generating output for cell contact_23
+   Generating output for cell contact_17
+   Generating output for cell nmos_m1_w0_360_sli_dli_da_p
+   Generating output for cell contact_11
+   Generating output for cell pmos_m1_w1_120_sli_dli_da_p
+   Generating output for cell pinv_0
+   Generating output for cell nmos_m7_w1_680_sli_dli_da_p
+   Generating output for cell pmos_m7_w2_000_sli_dli_da_p
+   Generating output for cell pinv_3
+   Generating output for cell pdriver_0
+   Generating output for cell nmos_m1_w0_740_sactive_dli
+   Generating output for cell nmos_m1_w0_740_sli_dactive
+   Generating output for cell pmos_m1_w1_120_sli_dli
+   Generating output for cell pnand2_0
+   Generating output for cell pand2_0
+   Generating output for cell nmos_m40_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m40_w2_000_sli_dli_da_p
+   Generating output for cell pinv_11
+   Generating output for cell nmos_m13_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m13_w2_000_sli_dli_da_p
+   Generating output for cell pinv_10
+   Generating output for cell nmos_m5_w1_680_sli_dli_da_p
+   Generating output for cell pmos_m5_w2_000_sli_dli_da_p
+   Generating output for cell pinv_9
+   Generating output for cell nmos_m2_w1_260_sli_dli_da_p
+   Generating output for cell pmos_m2_w1_650_sli_dli_da_p
+   Generating output for cell pinv_8
+   Generating output for cell pinv_7
+   Generating output for cell pinv_6
+   Generating output for cell pdriver_1
+   Generating output for cell nmos_m3_w1_680_sli_dli_da_p
+   Generating output for cell pmos_m3_w1_650_sli_dli_da_p
+   Generating output for cell pinv_2
+   Generating output for cell nmos_m2_w0_740_sli_dli_da_p
+   Generating output for cell pmos_m2_w1_120_sli_dli_da_p
+   Generating output for cell pinv_1
+   Generating output for cell dff_buf_0
+   Generating output for cell dff_buf_array
+   Generating output for cell pnand2_1
+   Generating output for cell nmos_m22_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m22_w2_000_sli_dli_da_p
+   Generating output for cell pinv_16
+   Generating output for cell pdriver_3
+   Generating output for cell nmos_m1_w0_740_sactive_dactive
+   Generating output for cell pnand3
+   Generating output for cell pand3
+   Generating output for cell nmos_m12_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m12_w2_000_sli_dli_da_p
+   Generating output for cell pinv_19
+   Generating output for cell nmos_m4_w1_260_sli_dli_da_p
+   Generating output for cell pmos_m4_w2_000_sli_dli_da_p
+   Generating output for cell pinv_18
+   Generating output for cell pinv_12
+   Generating output for cell pdriver_5
+   Generating output for cell nmos_m24_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m24_w2_000_sli_dli_da_p
+   Generating output for cell pinv_15
+   Generating output for cell nmos_m8_w1_680_sli_dli_da_p
+   Generating output for cell pmos_m8_w2_000_sli_dli_da_p
+   Generating output for cell pinv_14
+   Generating output for cell nmos_m3_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m3_w2_000_sli_dli_da_p
+   Generating output for cell pinv_13
+   Generating output for cell pdriver_2
+   Generating output for cell pinv_20
+   Generating output for cell delay_chain
+   Generating output for cell nmos_m18_w2_000_sli_dli_da_p
+   Generating output for cell pmos_m18_w2_000_sli_dli_da_p
+   Generating output for cell pinv_17
+   Generating output for cell pdriver_4
+   Generating output for cell pand3_0
+   Generating output for cell control_logic_rw
+   Generating output for cell row_addr_dff
+   Generating output for cell cr_2
+   Generating output for cell control_logic_r
+   Generating output for cell cr_3
+   Generating output for cell contact_28
+   Generating output for cell contact_29
+   Generating output for cell pinvbuf
+   Generating output for cell cr_0
+   Generating output for cell cr_1
+   Generating output for cell contact_18
+   Generating output for cell contact_13
+   Generating output for cell nmos_m10_w7_000_sli_dli_da_p
+   Generating output for cell pmos_m10_w7_000_sli_dli_da_p
+   Generating output for cell pinv_dec_0
+   Generating output for cell nand2_dec
+   Generating output for cell wordline_driver
+   Generating output for cell wordline_driver_array
+   Generating output for cell contact_27
+   Generating output for cell contact_26
+   Generating output for cell pinv_dec
+   Generating output for cell nand3_dec
+   Generating output for cell and3_dec
+   Generating output for cell and2_dec
+   Generating output for cell hierarchical_predecode2x4
+   Generating output for cell hierarchical_predecode3x8
+   Generating output for cell hierarchical_decoder
+   Generating output for cell port_address
+   Generating output for cell contact_20
+   Generating output for cell contact_21
+   Generating output for cell contact_22
+   Generating output for cell contact_19
+   Generating output for cell nmos_m1_w2_880_sli_dli
+   Generating output for cell single_level_column_mux_0
+   Generating output for cell single_level_column_mux_array_0
+   Generating output for cell contact_15
+   Generating output for cell contact_14
+   Generating output for cell sense_amp
+   Generating output for cell sense_amp_array
+   Generating output for cell contact_16
+   Generating output for cell pmos_m1_w0_550_sli_dli
+   Generating output for cell precharge_1
+   Generating output for cell precharge_array_0
+   Generating output for cell port_data_0
+   Generating output for cell single_level_column_mux
+   Generating output for cell single_level_column_mux_array
+   Generating output for cell pinv
+   Generating output for cell pdriver
+   Generating output for cell pnand2
+   Generating output for cell pand2
+   Generating output for cell write_mask_and_array
+   Generating output for cell write_driver
+   Generating output for cell write_driver_array
+   Generating output for cell precharge_0
+   Generating output for cell precharge_array
+   Generating output for cell port_data
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_cap_row
+   Generating output for cell row_cap_array_0
+   Generating output for cell row_cap_array
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_cap_col
+   Generating output for cell col_cap_array
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_dummy
+   Generating output for cell dummy_array
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell_replica
+   Generating output for cell replica_column_0
+   Generating output for cell replica_column
+   Generating output for cell sky130_fd_bd_sram__openram_dp_cell
+   Generating output for cell bitcell_array
+   Generating output for cell replica_bitcell_array
+   Generating output for cell bank
+   Generating output for cell sram_1rw1r_32_256_8_sky130
+   Generating output for cell mask_rt_wrapper
+68633 problems occurred.  See feedback entries.

@@ -1,0 +1,9 @@
+style gds
+    scalefactor 10
+    options grow-euclidean
+    layer G metal1
+        grow 10
+        calma 100 0
+    layer S metal1
+        shrink 10
+        calma 101 0

@@ -89,10 +89,12 @@ std::string option_name(std::string_view entry) {
 
 // --- tasks.md 2.2/2.3: code areas and CORE-NOTIMPL-005 ----------------------
 
-TEST_CASE("CORE-NOTIMPL-005 and the M5 code areas are declared", "[m5-scaffold]") {
+// Task 15.5: the stub code is retired at the M5 exit (kept, never reused).
+TEST_CASE("CORE-NOTIMPL-005 is retired and the M5 code areas are declared", "[m5-scaffold]") {
   const auto code = diag::find_code(kNotImplemented);
   REQUIRE(code.has_value());
   CHECK(code->severity == diag::Severity::error);
+  CHECK(code->summary.starts_with("Retired in M5, never reused."));
   for (const auto* area : {"mask", "gds", "cif"}) {
     INFO(area);
     const auto found = diag::find_code_area(area);
@@ -258,7 +260,7 @@ TEST_CASE("the M5 entry points exist", "[m5-scaffold]") {
   CHECK(mask::generate_flat(state, top, db::Rect{0, 0, 1, 1}, style, ctx).empty());
   CHECK(sink_diag.take().empty());
   std::atomic<bool> stop{true};
-  mask::Progress progress{{}, &stop};
+  mask::Progress progress{{}, &stop, {}};
   CHECK(progress.cancelled());
   ctx.progress = &progress;
   CHECK(ctx.cancelled());

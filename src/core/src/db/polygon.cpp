@@ -42,6 +42,8 @@ class Path {
   }
 
   [[nodiscard]] int head() const noexcept { return nodes_.empty() ? kEnd : 0; }
+  /// The number of nodes (every node is on the path: nodes are only added).
+  [[nodiscard]] std::size_t size() const noexcept { return nodes_.size(); }
   [[nodiscard]] int next(int i) const { return nodes_.at(static_cast<std::size_t>(i)).next; }
   [[nodiscard]] const Point& at(int i) const { return nodes_.at(static_cast<std::size_t>(i)).p; }
   Point& at(int i) { return nodes_.at(static_cast<std::size_t>(i)).p; }
@@ -265,12 +267,38 @@ void split_diagonal(Path& path, int p, bool clockwise, std::vector<PolygonPiece>
   }
 }
 
-void make_manhattan(Path& path, std::vector<PolygonPiece>& out) {
+// The work budget of one path (security.md M5-S7), in edges visited. Each
+// split searches the whole path for a crossing (path_intersect), and a
+// split that finds one leaves a shorter diagonal behind it, so edges with
+// huge, nearly parallel slopes split about once per unit of length (a
+// 5-point GDS boundary from the fuzzer never finished): counting splits
+// alone leaves O(n^3) work. The number of splits depends on the geometry,
+// not only on n: a 9-point rounded corner of gf180mcu_fd_io needs 262
+// splits and about 88 000 visits (MASK-RT-gf180mcu_fd_io-f01). The budget
+// is a fixed 2^24 visits, about 190 times that, plus 16 n^2 for long paths
+// (an ordinary path splits about once per diagonal edge, at most n splits
+// over at most 3n edges), so the work stays quadratic, as the strip
+// decomposition after it (M5-S5). Past the budget the path stays
+// non-Manhattan, which the caller reports as for any non-Manhattan path.
+std::uint64_t work_budget(std::size_t vertices) noexcept {
+  constexpr std::uint64_t kMinBudget = std::uint64_t{1} << 24;
+  constexpr std::uint64_t kSaturate = std::uint64_t{1} << 28;  // n^2 * 16 stays below 2^64
+  const std::uint64_t n = std::min<std::uint64_t>(vertices, kSaturate);
+  return kMinBudget + 16 * n * n;
+}
+
+void make_manhattan(Path& path, std::size_t vertices, std::vector<PolygonPiece>& out) {
   const bool clockwise = is_clockwise(path);
+  std::uint64_t budget = work_budget(vertices);
   for (int p = path.head(); path.next(p) != kEnd; p = path.next(p)) {
     const Point a = path.at(p);
     const Point b = path.at(path.next(p));
     if (a.x != b.x && a.y != b.y) {
+      const std::uint64_t cost = path.size();  // path_intersect's visits
+      if (cost > budget) {
+        return;
+      }
+      budget -= cost;
       split_diagonal(path, p, clockwise, out);
     }
   }
@@ -330,13 +358,26 @@ bool manhattan_edges(const Path& path, std::vector<Edge>& edges) {
   return true;
 }
 
-// CIFPolyToRects after the path is Manhattan. A path that is still not
-// Manhattan, or has fewer than four edges, gives no strips (Magic reports a
-// CIF read error and keeps the triangles already painted).
-void poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
+// The number of edges of the path (CIFPolyToRects' npts).
+std::size_t edge_count(const Path& path) {
+  std::size_t n = 0;
+  for (int p = path.head(); p != kEnd && path.next(p) != kEnd; p = path.next(p)) {
+    ++n;
+  }
+  return n;
+}
+
+// CIFPolyToRects after the path is Manhattan. A path with fewer than four
+// edges, or one that is still not Manhattan, gives no strips (Magic reports
+// a CIF read error and keeps the triangles already painted).
+PolygonProblem poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
+  const std::size_t npts = edge_count(path);
+  if (npts < 4) {
+    return npts > 0 ? PolygonProblem::too_few_points : PolygonProblem::none;
+  }
   std::vector<Edge> edges;
-  if (!manhattan_edges(path, edges) || edges.size() < 4) {
-    return;
+  if (!manhattan_edges(path, edges)) {
+    return PolygonProblem::not_manhattan;
   }
   std::vector<Coord> ys;
   for (const Edge& e : edges) {
@@ -358,6 +399,7 @@ void poly_to_rects(const Path& path, std::vector<PolygonPiece>& out) {
   for (auto it = found.rbegin(); it != found.rend(); ++it) {
     out.push_back(PolygonPiece{*it, std::nullopt});
   }
+  return PolygonProblem::none;
 }
 
 }  // namespace
@@ -366,12 +408,19 @@ diag::Outcome<std::vector<PolygonPiece>> decompose_polygon(std::span<const Point
   if (vertices.size() < 3) {
     return diag::make(codes::kBadArgument, "a polygon needs at least three vertices");
   }
+  return decompose_read_polygon(vertices).pieces;
+}
+
+PolygonDecomposition decompose_read_polygon(std::span<const Point> vertices) {
+  PolygonDecomposition out;
+  if (vertices.empty()) {
+    return out;
+  }
   Path path(vertices);
   path.close();
-  std::vector<PolygonPiece> pieces;
-  make_manhattan(path, pieces);
-  poly_to_rects(path, pieces);
-  return pieces;
+  make_manhattan(path, vertices.size(), out.pieces);
+  out.problem = poly_to_rects(path, out.pieces);
+  return out;
 }
 
 }  // namespace hefesto::db

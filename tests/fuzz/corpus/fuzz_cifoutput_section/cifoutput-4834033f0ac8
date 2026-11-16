@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer FILLBLK metal1
+        maxrect
+        calma 100 0

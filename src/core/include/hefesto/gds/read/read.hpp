@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -50,6 +51,9 @@ class ByteSource;
 /// GDS_FILE).
 struct GdsReadOptions {
   GdsSettings settings;
+  /// CIFRescaleAllow (MaskSession::rescale_allowed): the read may subdivide
+  /// the internal grid.
+  bool rescale_allowed = true;
   mask::WarningSettings warnings;
   std::string typed_name;
   /// The file system the file (and the redirect file) is opened on; null
@@ -60,6 +64,9 @@ struct GdsReadOptions {
   /// The zone BGNSTR dates are converted in (a POSIX TZ string, Q-MASK-132);
   /// empty: the host zone.
   std::string time_zone;
+  /// The size of the file in bytes, for progress reports (design D16);
+  /// 0 = unknown. read(path) sets it.
+  std::uint64_t source_bytes = 0;
 };
 
 /// "Read command and file lookup": `name` with `.gds`, `.gds.gz`, `.gds2`,

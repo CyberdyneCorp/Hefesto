@@ -77,6 +77,9 @@ struct ParseOptions {
   bool rescale_allowed = true;
   std::size_t max_symbols = SymbolTable::kDefaultMaxCells;
   const std::atomic<bool>* cancel = nullptr;
+  /// Given the fraction of the text parsed at each command (the desktop
+  /// host pumps frames from it, design D16); may be null.
+  const mask::Progress* progress = nullptr;
 };
 
 /// A call (CIF C).

@@ -1,0 +1,6 @@
+style gds
+    scalefactor 10
+    layer M1X metal1
+        grow 5
+        shrink 5
+        calma 49 0

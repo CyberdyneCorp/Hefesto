@@ -62,6 +62,27 @@ db::CellDef* create_def(IoSession& s, const std::string& name) {
   return made ? made.value() : nullptr;
 }
 
+// dbStatCellFile: the file a cell path names, given with or without the
+// extension (<path>.mag, then <path>, then <path>.mag.gz); nullopt when none
+// exists.
+std::optional<platform::Path> cell_file(FileHost& host, const std::string& path) {
+  for (const std::string& candidate : {path + ".mag", path, path + ".mag.gz"}) {
+    if (host.same_file(candidate, candidate).has_value()) {
+      return platform::Path{candidate};
+    }
+  }
+  return std::nullopt;
+}
+
+// DBSameCellFile: both cell paths name one file. A cell read through a
+// parent records its file with the extension ("lib/inv.mag"), while getcell
+// gives it without ("lib/inv").
+bool same_cell_file(FileHost& host, const std::string& a, const std::string& b) {
+  const std::optional<platform::Path> fa = cell_file(host, a);
+  const std::optional<platform::Path> fb = cell_file(host, b);
+  return fa && fb && host.same_file(*fa, *fb).value_or(false);
+}
+
 // The path-mismatch rule of cmdDumpParseArgs: a definition that already
 // points elsewhere is not reused; a new one named <cell>_a, <cell>_b, ... is.
 db::CellDef* definition_for(IoSession& s, const CellName& n, std::string_view command) {
@@ -77,8 +98,7 @@ db::CellDef* definition_for(IoSession& s, const CellName& n, std::string_view co
     def->set_file_path(n.path);
     return def;
   }
-  const auto same = s.io.host.same_file(existing + ".mag", n.path + ".mag");
-  if (existing == n.path || (same && *same)) {
+  if (existing == n.path || same_cell_file(s.io.host, existing, n.path)) {
     return def;
   }
   s.emit(codes::kConflictingLocation, "Warning:  Cell file path mismatch.  Existing cell has path \"" + existing +

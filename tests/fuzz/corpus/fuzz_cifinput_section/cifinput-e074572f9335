@@ -1,0 +1,8 @@
+style gds
+    scalefactor 10
+    layer metal1 M1
+    layer metal2 M1PIN
+    layer metal3 X
+    calma M1 68 20
+    calma M1PIN 68 *
+    calma X * 5

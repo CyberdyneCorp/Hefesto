@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer GG metal1
+        grow-grid 25
+        calma 100 0

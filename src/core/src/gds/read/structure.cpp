@@ -126,7 +126,7 @@ Reader::Position Reader::set_position(const std::string& name) {
   Position out;
   out.original = records_.position();
   Search search = find_structure(name);
-  if (!search.offset && out.original != 0 && records_.seek(0).ok()) {
+  if (!search.offset && out.original != 0 && seek(0)) {
     rewound_ = true;
     editor_.mask.gds.rewound = true;  // CalmaRewound (Q-MASK-111 ON)
     search = find_structure(name);
@@ -140,7 +140,7 @@ Reader::Position Reader::set_position(const std::string& name) {
   } else if (!search.offset && editor_.cells.find(name) == nullptr) {
     error("Cell \"" + name + "\" is used but not defined in this file.");
   }
-  out.found = search.offset && records_.seek(*search.offset).ok();
+  out.found = search.offset && seek(*search.offset);
   out.padding = !out.found && search.padding;
   return out;
 }
@@ -153,7 +153,7 @@ db::CellDef* Reader::read_ahead(const std::string& name) {
   }
   const Position position = set_position(name);
   if (!position.found) {
-    (void)records_.seek(position.original);
+    (void)seek(position.original);
     db::CellDef* def = find_cell(name, nullptr, nullptr);
     if (def != nullptr) {
       def->flags().dereference = true;  // CDDEREFERENCE until a definition clears it
@@ -168,7 +168,7 @@ db::CellDef* Reader::read_ahead(const std::string& name) {
   (void)parse_structure();
   --nesting_;
   saved_sets_.pop_back();
-  (void)records_.seek(position.original);
+  (void)seek(position.original);
   current_ = reading;
   restore_planes(saved);
   layer_errors_ = saved_errors;
@@ -257,6 +257,7 @@ bool Reader::read_elements(ElementCounts& counts) {
       interrupted_ = true;
       return false;
     }
+    report_progress();
     if (counts.references > 0 && counts.references % 5000 == 0 && counts.references != last_reported_) {
       last_reported_ = counts.references;
       info("    " + std::to_string(counts.references) + " uses");

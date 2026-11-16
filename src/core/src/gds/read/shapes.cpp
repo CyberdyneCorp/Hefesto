@@ -52,28 +52,6 @@ db::Rect clamp_rect(std::int64_t x0, std::int64_t y0, std::int64_t x1, std::int6
   return db::Rect{clamp_coord(x0), clamp_coord(y0), clamp_coord(x1), clamp_coord(y1)};
 }
 
-/// The edges of the closed path, plus one corner per diagonal edge
-/// (CIFMakeManhattanPath), for the "fewer than 4 points" test.
-std::size_t manhattan_edge_count(const mask::Polygon& points) {
-  if (points.empty()) {
-    return 0;
-  }
-  std::size_t edges = points.size() - 1;
-  std::size_t diagonals = 0;
-  for (std::size_t i = 0; i + 1 < points.size(); ++i) {
-    if (points[i].x != points[i + 1].x && points[i].y != points[i + 1].y) {
-      ++diagonals;
-    }
-  }
-  if (points.back() != points.front()) {
-    ++edges;
-    if (points.back().x != points.front().x && points.back().y != points.front().y) {
-      ++diagonals;
-    }
-  }
-  return edges + diagonals;
-}
-
 void multiply(std::vector<PathPoint>& points, std::int64_t r) {
   for (PathPoint& p : points) {
     p.x *= r;
@@ -148,15 +126,12 @@ std::optional<std::vector<PathPoint>> Reader::read_path(std::int64_t k, std::int
   return points;
 }
 
-void Reader::paint_polygon(std::size_t cif_layer, const mask::Polygon& polygon, db::Rect* last_strip) {
+db::PolygonProblem Reader::paint_polygon(std::size_t cif_layer, const mask::Polygon& polygon, db::Rect* last_strip) {
   std::vector<mask::MaskPlane*>& current = planes();
   mask::MaskPlane* plane = cif_layer < current.size() ? current[cif_layer] : nullptr;
-  const auto pieces = db::decompose_polygon(polygon);
-  if (!pieces.ok()) {
-    return;
-  }
+  const db::PolygonDecomposition decomposed = db::decompose_read_polygon(polygon);
   bool strip_seen = false;
-  for (const db::PolygonPiece& piece : pieces.value()) {
+  for (const db::PolygonPiece& piece : decomposed.pieces) {
     if (!piece.triangle && !strip_seen) {
       strip_seen = true;
       if (last_strip != nullptr) {
@@ -167,12 +142,12 @@ void Reader::paint_polygon(std::size_t cif_layer, const mask::Polygon& polygon, 
       continue;
     }
     if (piece.triangle) {
-      (void)plane->paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side,
-                                  compat_.magic_compat);
+      mask::paint_read_triangle(*plane, piece, compat_.magic_compat);
     } else {
       (void)plane->paint(piece.area);
     }
   }
+  return decomposed.problem;
 }
 
 db::CellDef* Reader::begin_subcell(const std::string& name) {
@@ -260,15 +235,15 @@ void Reader::boundary_polygon(std::size_t cif_layer, mask::Polygon polygon) {
     error("Boundary is not closed.");
     polygon.push_back(polygon.front());
   }
-  const std::size_t edges = manhattan_edge_count(polygon);
-  db::Rect last_strip;
-  bool strip = false;
-  if (edges >= 4) {
-    last_strip = db::Rect{db::kPlaneMax, db::kPlaneMax, db::kPlaneMin, db::kPlaneMin};
-    paint_polygon(cif_layer, polygon, &last_strip);
-    strip = last_strip.x0 <= last_strip.x1;
-  } else if (edges > 0) {
+  // CIFPolyToRects: the triangles are painted while the path is made
+  // Manhattan, then a path of one to three edges is a CIF read error.
+  db::Rect last_strip{db::kPlaneMax, db::kPlaneMax, db::kPlaneMin, db::kPlaneMin};
+  const db::PolygonProblem problem = paint_polygon(cif_layer, polygon, &last_strip);
+  const bool strip = last_strip.x0 <= last_strip.x1;
+  if (problem == db::PolygonProblem::too_few_points) {
     messages_.cif_error(diag::make(kReadError, "polygon with fewer than 4 points."));
+  } else if (problem == db::PolygonProblem::not_manhattan) {
+    messages_.cif_error(diag::make(kReadError, "non-manhattan polygon."));
   }
   if (strip) {
     pin_shape(cif_layer, last_strip);
@@ -300,7 +275,7 @@ void Reader::element_box() {
     return;
   }
   if (xy->data.size() / 8 != 5) {
-    error("Box doesn't have 5 points.");
+    error_in_header(*xy, "Box doesn't have 5 points.");
     return;
   }
   std::optional<std::array<std::int64_t, 4>> box;  // xbot, ybot, xtop, ytop
@@ -452,7 +427,7 @@ void Reader::path_geometry(std::size_t cif_layer, const std::vector<PathPoint>& 
     messages_.print(diag::make(kReadError, warning));
   }
   for (const mask::Polygon& polygon : outline.polygons) {
-    paint_polygon(cif_layer, polygon, nullptr);
+    (void)paint_polygon(cif_layer, polygon, nullptr);  // a wire outline has at least four edges
   }
   if (outline.truncated) {
     messages_.print(diag::make(kReadError, outline.mitre_message));

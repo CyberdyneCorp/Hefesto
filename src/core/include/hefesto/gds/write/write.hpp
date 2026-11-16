@@ -38,6 +38,7 @@
 #include <string_view>
 #include <vector>
 
+#include "hefesto/cell/search_path.hpp"
 #include "hefesto/cmd/command.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/compat/compat_settings.hpp"
@@ -92,6 +93,21 @@ struct PreparedWrite {
   /// magic-compat ON (Q-MASK-211); finish_write stores it back. Owned by
   /// this write only, so concurrent writes never share it.
   std::shared_ptr<util::LibcRandom> random;
+  /// The write's generation counters, filled by emit_write; finish_write
+  /// adds them to the session's `cif statistics` (MaskSession::statistics).
+  std::shared_ptr<mask::GenerationStatistics> statistics;
+  /// The generation errors of the write, filled by emit_write; finish_write
+  /// adds them to the editor's feedback (CIFError).
+  std::shared_ptr<std::vector<mask::GenerationProblem>> problems;
+  /// The session's path variables as the calling thread resolved them at
+  /// prepare time (design D16): the emit phase finds vendor GDS files and
+  /// compares GDS_FILE values (Q-MASK-128) with this snapshot, never with
+  /// EditorState::path_variables, whose script binding reads the Tcl
+  /// interpreter, which only the command thread may touch. Holds the
+  /// variables those lookups can ask for (the PDK roots, HOME and every
+  /// `$NAME` of the search paths and vendor cells' GDS_FILE values); empty
+  /// when the session has no vendor cell.
+  cell::PathVariables path_variables;
 };
 
 /// "Output scale factors" of `style`: Wscale and Pscale, the errors Magic
@@ -122,7 +138,9 @@ struct ScaleResult {
                                             const mask::Progress* progress = nullptr);
 
 /// The finish phase (exclusive lock, after emit_write): stores the write's
-/// random() state back into the session (PreparedWrite::random).
+/// random() state back into the session (PreparedWrite::random), adds its
+/// generation counters to the session's `cif statistics` and its
+/// generation errors to the feedback.
 void finish_write(editor::EditorState& editor, const PreparedWrite& prepared);
 
 /// prepare_write, emit_write, then finish_write; `progress`'s cancel flag

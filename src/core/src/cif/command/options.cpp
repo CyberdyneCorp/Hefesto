@@ -206,7 +206,7 @@ CommandResult settings_option(const CifCall& c, std::size_t option) {
     case kPrefix:
       return prefix(c);
     case kRescale:
-      return yes_no_option(c, option, settings_of(c).rescale);
+      return yes_no_option(c, option, c.s.editor->mask.rescale_allowed);  // shared with `gds rescale`
     case kDrcCheck:
       return yes_no_option(c, option, settings_of(c).drccheck);
     case kWarning:

@@ -16,6 +16,7 @@
 //
 // Owner: GEN.
 
+#include <algorithm>
 #include <cstdio>
 #include <string>
 
@@ -291,6 +292,15 @@ std::string statistics(StatisticsCounters& counters) {
 
 std::string statistics(const GenerationStatistics& stats) {
   return stats_text(stats, stats);
+}
+
+void add_problem_feedback(editor::EditorState& editor, const std::vector<GenerationProblem>& problems) {
+  for (const GenerationProblem& p : problems) {
+    if (p.cell != nullptr) {
+      (void)editor.feedback.add(editor.windows, *p.cell, p.area, std::max(p.scale, 1),
+                                view::producer_style::kMaskGeneration, p.text, &editor.highlights);
+    }
+  }
 }
 
 }  // namespace hefesto::mask

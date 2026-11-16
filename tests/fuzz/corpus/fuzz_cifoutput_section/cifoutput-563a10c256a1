@@ -1,0 +1,11 @@
+style gds
+    scalefactor 10
+    layer CC pdc
+        and-not metal3
+        squares 20 40 40
+        calma 100 0
+    layer CCG pdc
+        and-not metal3
+        squares 20 40 40
+        grow 20
+        calma 101 0

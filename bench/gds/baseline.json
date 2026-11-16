@@ -1,0 +1,4 @@
+{
+  "comment": "Hefesto's callgrind instructions per GDS workload (op minus base, bench/gds/gds_bench.py) on the x86_64 runner, GCC 14 Release. Empty until the first gds-bench run on main whose two tools wrote identical outputs (both with the outline fonts) records them; until then bench/gds/gds_gate.py gates each workload at or below Magic's count (Open Question 2 (a), m5-mask-gds-cif design D20). Record a workload as {\"instructions\": N, \"run\": <Performance run id>, \"commit\": <sha>}.",
+  "workloads": {}
+}

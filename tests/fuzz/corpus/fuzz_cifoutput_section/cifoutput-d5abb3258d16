@@ -1,0 +1,5 @@
+style ang
+    scalefactor 25 angstroms
+    units angstroms
+    layer M1 metal1
+        calma 49 0

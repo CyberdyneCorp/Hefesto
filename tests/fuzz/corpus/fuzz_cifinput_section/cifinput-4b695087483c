@@ -1,0 +1,20 @@
+style s0
+    scalefactor 100
+    layer metal1 CMF
+    calma CMF 49 0
+style s1
+    scalefactor 1.5
+    layer metal1 CMF
+    calma CMF 49 0
+style s2
+    scalefactor 5 nanometers
+    layer metal1 CMF
+    calma CMF 49 0
+style s3
+    scalefactor 2.5 nanometers
+    layer metal1 CMF
+    calma CMF 49 0
+style s4
+    scalefactor 10 angstroms
+    layer metal1 CMF
+    calma CMF 49 0

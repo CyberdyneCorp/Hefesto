@@ -1,0 +1,15 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+        labels CMF port
+    layer metal2 CTX
+        labels CTX text
+    layer metal3 CST
+        labels CST sticky
+    layer metal3 CCL
+        labels CCL cell
+    ignore CTX
+    calma CMF 49 0
+    calma CTX 50 0
+    calma CST 52 0
+    calma CCL 53 0

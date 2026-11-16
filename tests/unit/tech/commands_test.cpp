@@ -269,6 +269,37 @@ TEST_CASE("tech load goes ahead with magic-compat ON when it cannot ask", "[cap:
   s.editor.prompt = nullptr;
 }
 
+// Regression (m5 round 5, MASK-CI-024): dbTileScaleFunc paints each scaled
+// tile with DBNMPaintPlane / DBPaintPlane and never merges split tiles, so
+// two triangles along one diagonal stay two tiles after scalegrid.
+TEST_CASE("scaling the layout keeps the split-tile fragmentation",
+          "[cap:tech-loading-and-scaling][req:scalegrid command]") {
+  Session s;
+  s.load_tiny();
+  db::CellDef* def = s.painted_cell(8, 13, db::Rect{100, 100, 104, 104});
+  db::PaintRow row{};
+  row.fill(13);
+  db::Plane& plane = def->plane(8);
+  REQUIRE(plane.paint_triangle(db::Rect{0, 0, 4, 4}, db::Diagonal::ne_sw, true, row, true, nullptr,
+                               db::PaintMerge::none).ok());
+  REQUIRE(plane.paint_triangle(db::Rect{4, 4, 8, 8}, db::Diagonal::ne_sw, true, row, true, nullptr,
+                               db::PaintMerge::none).ok());
+  const auto split_areas = [](const db::Plane& p) {
+    std::vector<db::Rect> areas;
+    p.enumerate(db::whole_plane(), ~tech::TypeMask::of(tech::kSpace), [&areas](const db::TileView& tile) {
+      if (tile.split) {
+        areas.push_back(tile.area);
+      }
+      return true;
+    });
+    std::sort(areas.begin(), areas.end(), [](const db::Rect& a, const db::Rect& b) { return a.x0 < b.x0; });
+    return areas;
+  };
+  REQUIRE(split_areas(plane) == std::vector<db::Rect>{{0, 0, 4, 4}, {4, 4, 8, 8}});
+  (void)tech::scale_layout(s.editor, 2, 1);
+  CHECK(split_areas(def->plane(8)) == std::vector<db::Rect>{{0, 0, 8, 8}, {8, 8, 16, 16}});
+}
+
 // Regression (m4-scripting round 1): startup files are now real Tcl, so a
 // `.magicrc`'s `tech load` ran over the -T technology. While the -T override
 // holds, `tech load` is a silent no-op unless `-override` lifts it

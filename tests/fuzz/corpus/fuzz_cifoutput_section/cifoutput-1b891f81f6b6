@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    options string-limit
+    layer M1 metal1
+        calma 49 0

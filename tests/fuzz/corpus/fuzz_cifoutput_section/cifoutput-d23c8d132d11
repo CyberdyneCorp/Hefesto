@@ -1,0 +1,11 @@
+style gds
+    scalefactor 10
+    layer BA nfet
+        bloat-all nfet ndiff
+        calma 100 0
+    layer BAC nfet
+        bloat-all nfet ndiff 50
+        calma 101 0
+    layer BACIF nfet
+        bloat-all BA pdc
+        calma 102 0

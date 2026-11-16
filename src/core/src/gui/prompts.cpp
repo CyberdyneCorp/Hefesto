@@ -24,6 +24,9 @@ using platform::FilePickerRequest;
 using FileTypes = std::vector<std::pair<std::string, std::string>>;
 using detail::run;
 
+// wrapper.tcl's -filetypes, as Tk's extension lists: an intercepted
+// tk_getOpenFile sees Magic's text (SCRIPT-GUI-11), and the desktop host
+// turns each ".ext" into the glob "*.ext" its native dialogs match.
 const FileTypes kMagicTypes = {{"Magic", ".mag"}, {"All files", "*"}};
 const FileTypes kGdsTypes = {{"GDS", ".gds .strm .cal"}, {"All files", "*"}};
 const FileTypes kCifTypes = {{"CIF", ".cif"}, {"All files", "*"}};
@@ -167,9 +170,14 @@ CommandResult prompt_save(CommandContext& ctx, platform::FilePicker* picker, std
     return detail::no_session(ctx);
   }
   if (type == "cif" || type == "gds") {
-    const std::string file = pick(picker, FilePickerRequest::Mode::save, type == "cif" ? kCifTypes : kGdsTypes);
+    const bool cif = type == "cif";
+    const std::string file = pick(picker, FilePickerRequest::Mode::save, cif ? kCifTypes : kGdsTypes);
     if (!file.empty()) {
-      (void)run(ctx, {std::string{type}, "write", file});
+      // `cif write` appends ".cif" (always with magic-compat ON), so the
+      // picker passes the root name (Q-MASK-320); `gds write` keeps a name
+      // that has an extension (Q-MASK-210), so the chosen file is passed as
+      // wrapper.tcl does.
+      (void)run(ctx, {std::string{type}, "write", cif ? file_root(file) : file});
     }
     return CommandResult::success();
   }

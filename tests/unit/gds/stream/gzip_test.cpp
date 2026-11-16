@@ -232,3 +232,40 @@ TEST_CASE("corrupt or cut-off gzip input is an error, not a crash",
     CHECK_FALSE(source->read(buffer).ok());
   }
 }
+
+// Security review M5-S1 (docs/contributing/security.md): a gzip bomb
+// inflates at most to the inflate size cap, then fails with GDS-STREAM-006.
+TEST_CASE("security fix M5-S1: gzip input is inflated only up to the inflate size cap",
+          "[cap:hefesto-security][req:Untrusted input handling]") {
+  CHECK(gds::inflate_cap(0) == gds::kMinInflateCap);
+  CHECK(gds::inflate_cap(1000) == gds::kMinInflateCap);
+  CHECK(gds::inflate_cap(std::uint64_t{16} << 20U) == (std::uint64_t{16} << 20U) * gds::kMaxInflateRatio);
+  CHECK(gds::inflate_cap(UINT64_MAX / 2) == UINT64_MAX);
+
+  const Bytes zeros(std::size_t{4} << 20U, std::byte{0});  // 4 MiB of zeros, a few KiB compressed
+  const Bytes bomb = gzip(zeros, 9);
+  REQUIRE(bomb.size() * 256 < zeros.size());
+  SECTION("a read past the cap fails and hands out nothing past it") {
+    constexpr std::uint64_t kCap = std::uint64_t{1} << 20U;
+    auto source = gds::make_gzip_source(bomb, gds::kMaxGzipFeed, kCap);
+    std::vector<std::byte> buffer(std::size_t{64} * 1024);
+    std::uint64_t total = 0;
+    bool capped = false;
+    while (!capped) {
+      auto got = source->read(buffer);
+      capped = !got.ok();
+      if (capped) {
+        CHECK(got.error().code == "GDS-STREAM-006");
+      } else {
+        REQUIRE(got.value() != 0);
+        total += got.value();
+      }
+    }
+    CHECK(total <= kCap);
+    CHECK_FALSE(source->seek(kCap + 1).ok());
+  }
+  SECTION("the default cap reads a stream within it") {
+    auto source = gds::make_gzip_source(bomb);
+    CHECK(read_all(*source, std::size_t{64} * 1024).size() == zeros.size());
+  }
+}

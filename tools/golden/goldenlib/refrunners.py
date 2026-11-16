@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import magic_hash_model
-from .case import Case, substitute_env
+from .case import Case, run_timeout, substitute_env
 from .pins import tool_pin
 
 ENVIRONMENT = {"TZ": "UTC", "LC_ALL": "C"}
@@ -134,7 +134,7 @@ class ContainerRunner:
     def run(self, case: Case, work: Path) -> RunResult:
         facts = self._image_facts()
         argv = self.argv(case, work)
-        proc = _run(argv, harness_stdin(case, work), work)
+        proc = _run(argv, harness_stdin(case, work), work, run_timeout(case.reference, TIMEOUT_S))
         return RunResult(proc.stdout, proc.stderr, proc.returncode, default_argv(case), facts)
 
 

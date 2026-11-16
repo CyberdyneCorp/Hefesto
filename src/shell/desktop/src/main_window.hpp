@@ -73,6 +73,7 @@
 #include "pcell_dialog.hpp"
 #include "console_panel.hpp"
 #include "hefesto/shell/console_session.hpp"
+#include "hefesto/shell/mask_job_host.hpp"
 #include "hefesto/shell/file_picker_host.hpp"
 #include "hefesto/shell/tcl_console.hpp"
 #include "manager_panels.hpp"
@@ -127,6 +128,10 @@ class MainWindow {
   /// After the background DRC pump ran BackgroundHost::service() (UI
   /// thread, between commands): redraws the committed squares.
   void on_drc_service(std::size_t committed);
+
+  /// M5 (task 12.2): the host of long GDS and CIF reads and writes, which
+  /// pumps this window's frames and shows its Interrupt card.
+  [[nodiscard]] MaskJobHost& mask_jobs() noexcept { return *mask_jobs_; }
 
   /// M4 Tcl console (m4_managers_window.cpp, SHELL-B): attaches the console
   /// and the manager procedures to the project's interpreter (startup's
@@ -235,6 +240,8 @@ class MainWindow {
   /// A frame pumped while a script runs: the scrim under its card, and the
   /// canvas and header brought up to date with the edits made so far.
   void show_script_progress();
+  /// The frame a running script or mask job draws (input blocked).
+  void pump_script_frame();
   bool m4b_shortcut(int key, std::uint8_t modifiers);
   /// A typed command-bar line runs in the project's interpreter through the
   /// console (one interpreter, one transcript); false without an interpreter.
@@ -454,6 +461,7 @@ class MainWindow {
 
   // M4 managers and Tcl console (SHELL-B).
   std::unique_ptr<TclConsoleSession> console_session_;
+  std::unique_ptr<MaskJobHost> mask_jobs_;
   std::unique_ptr<TclConsole> tcl_console_;
   std::unique_ptr<ConsolePanel> console_panel_;
   std::unique_ptr<ManagerPanels> managers_;

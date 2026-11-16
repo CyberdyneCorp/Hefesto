@@ -1,0 +1,101 @@
+
+Magic 8.3 revision 694 - Compiled on Sun Nov 15 19:37:59 UTC 2026.
+Starting magic under Tcl interpreter
+Using the terminal as the console.
+WARNING: RLIMIT_NOFILE is above 1024 and Tcl_Version<9 this may cause runtime issues [rlim_cur=65536]
+Using NULL graphics device.
+Processing system .magicrc file
+Switching to WIRING tool.
+Switching to NETLIST tool.
+Switching to PICK tool.
+Switching to BOX tool.
+Loading "input/commands.tcl" from command line.
+0 {}
+Input style gds: scaleFactor=10, multiplier=1
+The following types are not handled by extraction and will be treated as non-electrical types:
+    ndiffusion pdiffusion polysilicon ntransistor pdcontact 
+0 {}
+0 {}
+0 {}
+Creating new cell
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )  area (units^2)
+
+microns:  10.000 x 10.000  ( 0.000,  0.000), ( 10.000,  10.000)  100.000   
+lambda:      100 x 100     (     0,  0    ), (   100,  100  )  10000     
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 0.500,  5.000), ( 0.500,  5.000)
+lambda:        0 x 0       (     5,  50   ), (     5,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 1.500,  5.000), ( 1.500,  5.000)
+lambda:        0 x 0       (    15,  50   ), (    15,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 2.500,  5.000), ( 2.500,  5.000)
+lambda:        0 x 0       (    25,  50   ), (    25,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 3.500,  5.000), ( 3.500,  5.000)
+lambda:        0 x 0       (    35,  50   ), (    35,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 4.500,  5.000), ( 4.500,  5.000)
+lambda:        0 x 0       (    45,  50   ), (    45,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 5.500,  5.000), ( 5.500,  5.000)
+lambda:        0 x 0       (    55,  50   ), (    55,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 6.500,  5.000), ( 6.500,  5.000)
+lambda:        0 x 0       (    65,  50   ), (    65,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 7.500,  5.000), ( 7.500,  5.000)
+lambda:        0 x 0       (    75,  50   ), (    75,  50   )
+0 {}
+0 {}
+Root cell box:
+           width x height  (   llx,  lly  ), (   urx,  ury  )
+
+microns:   0.000 x 0.000   ( 8.500,  5.000), ( 8.500,  5.000)
+lambda:        0 x 0       (    85,  50   ), (    85,  50   )
+0 {}
+0 {}
+   Generating output for cell top
+0 {}
+0 {}
+Warning: Calma reading is not undoable!  I hope that's OK.
+Library written using GDS-II Release 3.0
+Library name: top
+Reading "top".
+0 {}
+0 {}
+0 {}

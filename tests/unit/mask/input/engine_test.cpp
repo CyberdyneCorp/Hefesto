@@ -15,6 +15,8 @@
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
+#include "hefesto/db/polygon.hpp"
+#include "hefesto/mask/input/engine.hpp"
 #include "hefesto/hints/hints.hpp"
 #include "input_fixture.hpp"
 
@@ -498,4 +500,42 @@ TEST_CASE("the engine top level, properties and misuse", "[cap:mask-input-styles
   const auto* value = s.editor.cells.find("c")->properties().find("KEY");
   REQUIRE(value != nullptr);
   CHECK(std::get<std::string>(*value) == "value");
+}
+
+TEST_CASE("read polygons report the paths CIFPolyToRects cannot fill",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  using hefesto::db::Point;
+  using hefesto::db::PolygonProblem;
+  // Two points close to two edges: "polygon with fewer than 4 points.".
+  const auto line = hefesto::db::decompose_read_polygon(std::vector<Point>{{0, 0}, {10, 0}});
+  CHECK(line.problem == PolygonProblem::too_few_points);
+  CHECK(line.pieces.empty());
+  // One point closes to nothing: no message.
+  CHECK(hefesto::db::decompose_read_polygon(std::vector<Point>{{5, 5}}).problem == PolygonProblem::none);
+  // A right triangle is one split tile and the Manhattan rest is fine.
+  const auto tri = hefesto::db::decompose_read_polygon(std::vector<Point>{{0, 0}, {10, 10}, {10, 0}});
+  CHECK(tri.problem == PolygonProblem::none);
+  REQUIRE(tri.pieces.size() == 1);
+  CHECK(tri.pieces[0].triangle.has_value());
+}
+
+TEST_CASE("a read triangle is merged with the split tiles around it", "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  // CIFMakeManhattanPath: DBNMPaintPlane, then DBMergeNMTiles over the
+  // triangle grown by one, so the halves of one diagonal and the rectangle
+  // between them become one split tile.
+  const hefesto::db::TriangleSide side{hefesto::db::Diagonal::ne_sw, true};
+  mask::MaskPlane merged;
+  REQUIRE(merged.paint({10, 0, 20, 10}).ok());
+  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{0, 0, 10, 10}, side}, true);
+  mask::paint_read_triangle(merged, hefesto::db::PolygonPiece{{10, 10, 20, 20}, side}, true);
+  const auto tiles = merged.solid_tiles();
+  REQUIRE(tiles.size() == 1);
+  CHECK(tiles[0].split);
+  CHECK(tiles[0].area == hefesto::db::Rect{0, 0, 20, 20});
+
+  mask::MaskPlane plain;  // MaskPlane::paint_triangle alone does not merge (DBNMPaintPlane)
+  REQUIRE(plain.paint({10, 0, 20, 10}).ok());
+  (void)plain.paint_triangle({0, 0, 10, 10}, side.diagonal, side.right_side, true);
+  (void)plain.paint_triangle({10, 10, 20, 20}, side.diagonal, side.right_side, true);
+  CHECK(plain.solid_tiles().size() == 3);
 }

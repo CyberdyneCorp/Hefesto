@@ -4,7 +4,7 @@
 // The engine's check context, kernel seam and hierarchy search primitives.
 // Ported from Magic 8.3.694 database/DBcellsrch.c (DBCellSrArea,
 // dbCellSrFunc, DBArraySr, DBSrCellPlaneArea) and database/DBcellbox.c
-// (DBArrayOverlap, DBComputeArrayArea); the engine-generated rules follow
+// (DBComputeArrayArea; DBArrayOverlap is db::array_overlap); the engine-generated rules follow
 // drc/DRCsubcell.c and drc/DRCarray.c (drcSubcellCookie, drcInSubCookie,
 // drcArrayCookie, drcOffGridCookie). Magic is (c) the Regents of the
 // University of California, distributed under its permissive license
@@ -128,51 +128,6 @@ void Context::clear_yank() {
 }
 
 // --- Hierarchy search -------------------------------------------------------
-
-IndexRange array_overlap(const db::CellUse& use, const db::Rect& parent_rect) {
-  const db::ArrayInfo& a = use.array;
-  if (!a.is_array()) {
-    return IndexRange{a.xlo, a.xlo, a.ylo, a.ylo};
-  }
-  db::Rect box = use.def->bbox();
-  db::Rect child = db::apply(db::invert(use.transform), parent_rect);
-  db::Coord xsep = a.xsep;
-  db::Coord ysep = a.ysep;
-  const std::int32_t xlo = std::min(a.xlo, a.xhi);
-  const std::int32_t xhi = std::max(a.xlo, a.xhi);
-  const std::int32_t ylo = std::min(a.ylo, a.yhi);
-  const std::int32_t yhi = std::max(a.ylo, a.yhi);
-  if (xsep < 0) {  // flip about the y axis
-    xsep = -xsep;
-    child = db::Rect{-child.x1, child.y0, -child.x0, child.y1};
-    box = db::Rect{-box.x1, box.y0, -box.x0, box.y1};
-  }
-  if (ysep < 0) {
-    ysep = -ysep;
-    child = db::Rect{child.x0, -child.y1, child.x1, -child.y0};
-    box = db::Rect{box.x0, -box.y1, box.x1, -box.y0};
-  }
-  IndexRange out{xlo, xhi, ylo, yhi};
-  if (xsep != 0) {
-    out.xlo = xlo + (child.x0 - box.x1 + xsep - 1) / xsep;
-    out.xhi = xlo + (child.x1 - box.x0) / xsep;
-  }
-  if (ysep != 0) {
-    out.ylo = ylo + (child.y0 - box.y1 + ysep - 1) / ysep;
-    out.yhi = ylo + (child.y1 - box.y0) / ysep;
-  }
-  out.xlo = std::max(out.xlo, xlo);
-  out.xhi = std::min(out.xhi, xhi);
-  out.ylo = std::max(out.ylo, ylo);
-  out.yhi = std::min(out.yhi, yhi);
-  if (a.xlo > a.xhi) {  // back to the use's own index direction
-    out = IndexRange{a.xhi + a.xlo - out.xhi, a.xhi + a.xlo - out.xlo, out.ylo, out.yhi};
-  }
-  if (a.ylo > a.yhi) {
-    out = IndexRange{out.xlo, out.xhi, a.yhi + a.ylo - out.yhi, a.yhi + a.ylo - out.ylo};
-  }
-  return out;
-}
 
 db::Rect array_area(const db::Rect& area, const db::CellUse& use, std::int32_t x, std::int32_t y) {
   const db::ArrayInfo& a = use.array;

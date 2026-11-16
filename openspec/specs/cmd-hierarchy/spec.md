@@ -284,14 +284,29 @@ Compatibility: behavioral
 
 Timestamps of all cells (or of the named cells) SHALL be updated first. Unknown options print usage.
 
+A modified `(UNNAMED)` cell has no name to write under: `Must specify name for cell (UNNAMED).` is printed, then `writeall force|modified` reports `Can't write file named '(UNNAMED)'` and writes nothing, while a write the user chose (or a named `(UNNAMED)`) asks for a file name as a refused `save NAME` does, and an empty answer prints `Cell not saved.`. Each cell's write first processes pending timestamp mismatches.
+
+A cell that is used but not available (for example a cell called but never defined by a GDS or CIF read) is visited with `magic-compat` ON, as Magic's DBCellSrDefs visits every cell: its write puts the new timestamp in the header and then reads the cell through the search paths (DBCellWriteFile's use enumeration). A new file is still empty at that point, so the read reports `File CELL contained format error` and a zero timestamp, the cell keeps timestamp 0, and parents written later record `timestamp 0` for its use. With `magic-compat` OFF unavailable cells are not visited. Proposed, awaiting the user's decision (M5 round 5, decision table "Proposed behaviour changes awaiting a decision"): when the cell's file already exists, Hefesto reads it before writing, so the file keeps its paint; Magic writes the still empty paint section before the read (database/DBio.c:4771-4780), so the file loses its paint while memory keeps it.
+
 Compatibility: behavioral
 
-(Magic ref: commands/CmdTZ.c:2200-2372)
+(Magic ref: commands/CmdTZ.c:2200-2372, commands/CmdSubrs.c:704-760, database/DBio.c:4780, database/DBcellsrch.c:1273)
 
 #### Scenario: Force writes all
 - **GIVEN** modified cells `a` and `b`
 - **WHEN** `writeall force` is run
 - **THEN** both SHALL be written without prompting
+
+#### Scenario: Modified (UNNAMED) is not written
+- **GIVEN** a `gds read` left `(UNNAMED)` modified
+- **WHEN** `writeall force` is run
+- **THEN** `Writing '(UNNAMED)'` and `Must specify name for cell (UNNAMED).` SHALL be printed, the error `Can't write file named '(UNNAMED)'` reported, and no `(UNNAMED).mag` written
+
+#### Scenario: Used but undefined cell
+- **GIVEN** a CIF read in which `top` calls cell `7` that is never defined, and no `7.mag`
+- **WHEN** `writeall force` is run
+- **THEN** with `magic-compat` ON `7.mag` SHALL be written after `File 7 contained format error`, and `top.mag` SHALL record `timestamp 0` for the use of `7`
+- **AND** with `magic-compat` OFF `7` SHALL not be written
 
 ### Requirement: Flush command
 

@@ -147,6 +147,15 @@ class MaskTest(unittest.TestCase):
         self.assertEqual(apply_masks(first, ["magic-crash-file"]),
                          b"0 2\nCreated database crash recovery file /tmp/MAG<masked>\n0 1\n")
 
+    def test_magic_crash_line(self):
+        # Regression (golden-capture run 43764851411, MASK-RT-gf180mcu_ocd_io): Magic's
+        # timed crash backup printed its line between different messages in each capture.
+        first = b"a\nCreated database crash recovery file /tmp/MAG1.J4DCBc\nb\nc\n"
+        second = b"a\nb\nCreated database crash recovery file /tmp/MAG7.POEaZB\nc\n"
+        self.assertFalse(compare_bytes(first, second, "bytes", ["magic-crash-file"]).equal)
+        self.assertTrue(compare_bytes(first, second, "bytes", ["magic-crash-line"]).equal)
+        self.assertEqual(apply_masks(first, ["magic-crash-line"]), b"a\nb\nc\n")
+
     def test_magic_tech_menu_order(self):
         # Regression (SCRIPT-GUI-05): the golden-capture verify differed only in
         # the order of Magic's example technologies (directory order of the

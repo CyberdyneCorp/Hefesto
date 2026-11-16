@@ -1,0 +1,7 @@
+style gds
+    scalefactor 10
+    layer BB metal1
+        bbox
+        calma 100 0
+    layer CMF metal1
+        calma 49 0

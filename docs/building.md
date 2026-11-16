@@ -87,7 +87,7 @@ Both front ends run the same Magic-compatible startup (`app::run_startup`, capab
 | `--strip-reflibs <dir>` | remove the `string GDS_START`/`GDS_END` lines from every `.mag` file in `<dir>` (Magic's reference-library stripper) and exit |
 | `-c <commands>` | run commands, e.g. `-c "tech load sky130A; tech layers"` |
 | `--diagnostics=text\|json\|magic` | diagnostic format on stderr; `magic` prints Magic's console text and each script command's result, as the golden reference scripts do (see `tools/golden/README.md`) |
-| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`, `drc`, `script`, `pcell`, `tools`, `gui`, `hints`) |
+| `--diagnostic-codes[=AREA]` | print a diagnostic code table (`core`, `tech`, `db`, `cell`, `display`, `view`, `pdk`, `app`, `undo`, `select`, `connect`, `ui`, `wiring`, `drc`, `script`, `pcell`, `tools`, `gui`, `hints`, `mask`, `gds`, `cif`) |
 | `--log-dir=<dir>`, `--no-log` | session log location, or none |
 
 Example: run the sky130A rc file of the pinned data set and a Tcl script that places a generated transistor.
@@ -138,6 +138,22 @@ Outside `--magic` mode, `-c`, script files, standard input and `--interactive` a
 **Design rule checking (M3).** Both front ends run Magic's `drc` command set (`drc check`, `catchup`, `count`, `find`, `why`, `listall`, `ignore`, `style`, `euclidean`, `printrules`, and the rest). The DRC settings are session state set by commands, as in Magic: `drc on|off` (the background checker; on by default), `drc style NAME` (the technology's DRC styles, e.g. `drc(fast)` and `drc(full)` in sky130A), `drc euclidean on|off`, `drc *halo N` and `drc *stepsize N` (a positive integer; 0, negative and non-numeric values are refused with `Step size must be a positive integer.`, decision Q-DRC-24). The background checker runs in the desktop app and in `hefesto-cli --interactive`; scripts, `-c` and piped input are batch and check only on `drc check; drc catchup`. In the desktop app the top-bar chip and the status bar show the DRC state (not run, checking, clean, N errors, off; N is `drc list count total`), and `panel drc show|hide|toggle` (or a click on the chip) opens the DRC panel: errors grouped by why-text, `#k of n` stepping (`drc find`), Re-check (`select top cell; drc check; drc catchup`), ignored rules and the style selector, each a logged command. When a long `drc catchup` ends while the window is not focused, the app requests the Dock's attention and posts a message in the window; `hefesto::notifications off` turns that off (setting `notifications`, on by default).
 
 The desktop installs the same host services as `hefesto-cli` (`src/platform_posix`: POSIX file locks, the crash-backup file host, the process runner; `src/platform_net`: the HTTPS Fetcher): a session holds a lock on its crash-backup file, `crashbackups` saves periodically, SIGTERM and SIGHUP save a backup before exiting, a normal exit removes it, and `-r` (or `crash recover`) restores the newest backup whose session is gone.
+
+### GDS and CIF
+
+Both front ends read and write GDS II and CIF with Magic's `gds` (alias `calma`) and `cif` commands (capabilities `gds-read`, `gds-write`, `cif-format-io`); the masks come from the technology's `cifoutput` and `cifinput` styles. With the sky130 data set fetched (see "Reference data for tests"), this reads a `sky130_fd_sc_hd` cell from its `.mag` file, writes it as GDS and reads the file back:
+
+```sh
+V=.cache/pdks/ciel/sky130/versions/5740c4a81c42f9fe4af5ef2ee258a99151053d28
+build/macos-debug/src/cli/hefesto-cli --no-log --pdk-root=$V -T $V/sky130A/libs.tech/magic/sky130A.tech \
+  -c "load $V/sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag; property GDS_FILE {}; gds write inv; gds read inv"
+```
+
+The library cells carry `GDS_FILE` (a vendor view): a write copies such a cell from the library GDS, which the `sky130` set does not include, and the window's own vendor cell is then skipped without a message, as in Magic, leaving an empty library. `property GDS_FILE {}` removes the property, so the write generates the masks from the cell's paint. `--pdk-root` makes `$V` trusted, so the `load` of a path under it works; reading the file back into the same session warns that the cell already existed.
+
+- **Dates and the time zone.** GDS BGNLIB/BGNSTR dates and the CIF header date are written in the host's local time zone, as Magic does (Q-MASK-203), so `gds nodatestamp` or `cellname timestamp <cell> 0` output is reproducible only under a fixed zone. Set `TZ` (for example `TZ=UTC0`) for reproducible files; the golden replay and the unit tests pin the zone the same way. The `gds-time-zone` setting of decision Q-MASK-132 is not available yet (the settings store holds booleans only); until it lands, `TZ` is the way to pin the zone.
+- **Compressed input.** `gds read` opens `<name>.gds`, `.gds.gz`, `.gds2`, `.strm` or the name itself. A `.gz` file inflates to at most 256 times its compressed size (at least 1 GiB) before the read stops with `GDS-STREAM-006`.
+- **Desktop.** File > Read GDS and Write GDS issue `promptload gds` and `promptsave gds`. A long read or write keeps the window drawing and shows the Interrupt card ("Writing chip.gds · N s", "Completed N%"); Interrupt stops it without leaving an output file.
 
 ### Managing PDKs
 

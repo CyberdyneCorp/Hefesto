@@ -27,6 +27,7 @@
 #include "codes.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/gds/stream/io.hpp"
+#include "hefesto/mask/gen/generate.hpp"
 #include "hefesto/mask/gen/throttle.hpp"
 #include "hefesto/tech/loader.hpp"
 #include "hefesto/version.hpp"
@@ -198,6 +199,8 @@ diag::Outcome<PreparedWrite> prepare_write(editor::EditorState& editor, db::Cell
   prepared.root = &root;
   prepared.options = options;
   prepared.compat = editor.drc.compat_settings();
+  prepared.statistics = std::make_shared<mask::GenerationStatistics>();
+  prepared.problems = std::make_shared<std::vector<mask::GenerationProblem>>();
   if (diag::Status s = load_cells(root, options, prepared.compat); !s.ok()) {
     return s.error();
   }
@@ -232,6 +235,12 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   out.put(preamble(prepared));
   detail::SymbolWriter writer(prepared, out, collected, ctx);
   diag::Status status = prepared.options.flat ? writer.write_flat() : writer.write_hierarchical();
+  if (prepared.statistics != nullptr) {
+    *prepared.statistics = ctx.statistics;
+  }
+  if (prepared.problems != nullptr) {
+    *prepared.problems = std::move(ctx.problems);
+  }
   std::vector<diag::Diagnostic> messages = collected.take();
   if (!status.ok() && status.error().code == codes::kCancelled) {
     (void)sink.finish();
@@ -255,22 +264,46 @@ cmd::CommandResult emit_write(const PreparedWrite& prepared, const platform::Pat
   return finished(std::move(messages), io_error(prepared.options, path));
 }
 
-void finish_write(editor::EditorState& editor, const CifWriteOptions& options) {
+void finish_write(editor::EditorState& editor, const CifWriteOptions& options, const PreparedWrite* prepared) {
+  if (prepared != nullptr && prepared->statistics != nullptr) {
+    editor.mask.statistics.add(*prepared->statistics);
+  }
+  if (prepared != nullptr && prepared->problems != nullptr) {
+    mask::add_problem_feedback(editor, *prepared->problems);
+  }
   if (defers_mismatches(options, editor.drc.compat_settings()) && options.loader.fix_mismatches) {
     options.loader.fix_mismatches();
   }
 }
+
+namespace {
+
+// The desktop's emit host (MaskSession::emit_host, design D16) runs the
+// emit on its deep-stack worker, covered by the command's exclusive hold,
+// while the UI thread pumps frames; without one the emit runs inline.
+cmd::CommandResult hosted_emit(const editor::EditorState& editor, const PreparedWrite& prepared,
+                               const platform::Path& path, const mask::Progress* progress) {
+  const mask::ProgressHost& host = editor.mask.emit_host;
+  if (!host) {
+    return emit_write(prepared, path, progress);
+  }
+  return host(path.filename().string(),
+              [&prepared, &path](const mask::Progress* hosted) { return emit_write(prepared, path, hosted); });
+}
+
+}  // namespace
 
 cmd::CommandResult write(editor::EditorState& editor, db::CellDef& root, const platform::Path& path,
                          const CifWriteOptions& options, const mask::Progress* progress) {
   CifWriteOptions with_cancel = options;
   if (progress != nullptr) {
     with_cancel.loader.cancel = progress->cancel;
+    with_cancel.loader.tick = progress->tick;
   }
   diag::Outcome<PreparedWrite> prepared = prepare_write(editor, root, with_cancel);
   if (prepared) {
-    cmd::CommandResult result = emit_write(prepared.value(), path, progress);
-    finish_write(editor, options);
+    cmd::CommandResult result = hosted_emit(editor, prepared.value(), path, progress);
+    finish_write(editor, options, &prepared.value());
     return result;
   }
   finish_write(editor, options);

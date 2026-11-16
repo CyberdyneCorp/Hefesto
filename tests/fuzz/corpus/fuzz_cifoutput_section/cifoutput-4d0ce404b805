@@ -1,0 +1,12 @@
+style gds
+    scalefactor 10
+    layer OR metal1
+        calma 100 0
+    templayer T metal2
+    layer AN metal1
+        and-not T
+        calma 101 0
+    templayer TB metal1
+        bbox
+    layer BD TB
+        calma 102 0

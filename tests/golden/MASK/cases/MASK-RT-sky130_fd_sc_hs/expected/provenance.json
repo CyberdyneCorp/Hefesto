@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case": "MASK-RT-sky130_fd_sc_hs",
+  "area": "MASK",
+  "tool": "magic",
+  "tool_repo": "https://github.com/RTimothyEdwards/magic",
+  "tool_version": "8.3.694",
+  "tool_commit": "fc5daa9e2856b89a0a3056f296ded1fd4474e39e",
+  "runner": "container",
+  "reference_captured": true,
+  "image": "hefesto-golden:ci",
+  "image_id": "sha256:2ab1df5e87e55bbc5d978343d2d56e52422d393334d1439449a151e7fd730c27",
+  "image_repo_digests": [],
+  "command": [
+    "magic",
+    "-dnull",
+    "-noconsole",
+    "-rcfile",
+    "input/pdk/sky130A/libs.tech/magic/sky130A.magicrc",
+    "input/commands.tcl"
+  ],
+  "environment": {
+    "TZ": "UTC",
+    "LC_ALL": "C"
+  },
+  "captured_at": "2026-11-15T19:35:59Z",
+  "outputs": {
+    "out.gds.sha256": "6a19313430af5237eecc49370fe5943cf8d50b95b56d01c29e54aed6634af5e1",
+    "out.gds.summary.txt": "c382f8e0c789a14f4cec0b2e71752d633b9d9c889d4f059dec214ce10961d964",
+    "stderr.txt": "ce280d00303ec8aa2ca57b0fd204eb52d16511494d25f9654c886b33b07d7c1f",
+    "stdout.txt": "52d08b0cecbc53caf7c7bd71fd40fc543775639bfaf73e74308466c2845fd8a6"
+  }
+}

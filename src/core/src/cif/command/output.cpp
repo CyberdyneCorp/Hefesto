@@ -12,15 +12,14 @@
 // California (see THIRD_PARTY_NOTICES.md). The generation itself is GEN's
 // (mask/gen/generate.hpp).
 //
-// The `cif statistics` counters belong to the session in Magic (CIFTileOps
-// and friends); until MaskSession holds them they are kept here per
-// editor and count the generations of the `cif` command's previews.
+// The `cif statistics` counters are the session's (MaskSession::statistics,
+// Magic's CIFTileOps and friends): the previews here and the GDS and CIF
+// writes add to them.
 // Owner: CIF.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-#include <mutex>
-#include <unordered_map>
 
 #include "command_impl.hpp"
 #include "hefesto/cif/read/read.hpp"
@@ -66,15 +65,9 @@ class Preview {
   CountingSink problems;
 };
 
-mask::StatisticsCounters& session_counters(const editor::EditorState& editor) {
-  static std::mutex mutex;
-  static std::unordered_map<const editor::EditorState*, mask::StatisticsCounters> counters;
-  const std::lock_guard<std::mutex> lock(mutex);
-  return counters[&editor];
-}
-
 Preview::~Preview() {
-  session_counters(*c_.s.editor).add(ctx.statistics);
+  c_.s.editor->mask.statistics.add(ctx.statistics);
+  mask::add_problem_feedback(*c_.s.editor, ctx.problems);
   for (const diag::Diagnostic& d : problems.kept) {
     c_.s.ctx->emit(d);
   }
@@ -123,6 +116,17 @@ void show_tiles(const CifCall& c, const db::CellDef& root, const std::vector<db:
   }
 }
 
+// The desktop's read host (MaskSession::read_host, design D16) pumps frames
+// from the reader's progress reports; without one the read runs inline.
+CommandResult hosted_read(editor::EditorState& editor, const platform::Path& path, const CifReadOptions& options) {
+  const mask::ProgressHost& host = editor.mask.read_host;
+  if (!host) {
+    return read(editor, path, options);
+  }
+  return host(path.filename().string(),
+              [&editor, &path, &options](const mask::Progress* p) { return read(editor, path, options, p); });
+}
+
 }  // namespace
 
 CommandResult write_option(const CifCall& c, const std::string& name, bool flat) {
@@ -140,7 +144,16 @@ CommandResult write_option(const CifCall& c, const std::string& name, bool flat)
   options.time_zone = editor.mask.time_zone;
   options.user = environment("USER");
   options.machine = environment("HOSTNAME");
-  return write(editor, *root, output_file_name(name, editor.drc.compat_settings()), options);
+  const platform::Path path{output_file_name(name, editor.drc.compat_settings())};
+  // The desktop's write host (MaskSession::write_host, design D16): frames
+  // and Interrupt during the prepare phase too; without one, inline.
+  const mask::ProgressHost& host = editor.mask.write_host;
+  if (!host) {
+    return write(editor, *root, path, options);
+  }
+  return host(path.filename().string(), [&editor, root, &path, &options](const mask::Progress* progress) {
+    return write(editor, *root, path, options, progress);
+  });
 }
 
 CommandResult read_option(const CifCall& c) {
@@ -160,10 +173,28 @@ CommandResult read_option(const CifCall& c) {
   }
   CifReadOptions options;
   options.settings = editor.mask.cif;
+  options.rescale_allowed = editor.mask.rescale_allowed;
   options.warnings = editor.mask.warnings;
   options.typed_name = name;
   options.files = &c.s.ctx->services().files;
-  return read(editor, found->path, options);
+  return hosted_read(editor, found->path, options);
+}
+
+// The previews flatten the box grown by the style radius with DBTreeSrTiles
+// (CIFGenSubcells searches the same area), which reads every unavailable
+// cell it reaches; nothing processes the timestamp mismatches afterwards.
+// Only once the layer names are valid (CIFNameToMask comes first).
+void read_reached(const CifCall& c, db::CellDef& root, const db::Rect& area, const mask::OutputStyle& style,
+                  std::string_view layer) {
+  if (!mask::select_layers(style, layer).ok()) {
+    return;
+  }
+  editor::EditorState& editor = *c.s.editor;
+  const compat::CompatSettings compat = editor.drc.compat_settings();
+  gds::SubtreeLoader loader = gds::command_subtree_loader(*c.s.ctx, editor);
+  loader.fix_mismatches = nullptr;
+  const std::int64_t radius = std::clamp<std::int64_t>(mask::generation_radius(style, compat), 0, db::kInfinity);
+  (void)gds::load_area(root, db::expand(area, static_cast<db::Coord>(radius)), loader, false, compat);
 }
 
 // SEE, and the preview forms of ARRAY and HIER (three words).
@@ -180,8 +211,9 @@ CommandResult see_option(const CifCall& c, std::size_t option) {
   if (style == nullptr) {
     return CommandResult::success();
   }
-  const db::CellDef& root = *editor.box_root;
+  db::CellDef& root = *editor.box_root;
   const std::string& layer = c.words[1];
+  read_reached(c, root, *editor.box, *style, layer);
   diag::Outcome<std::vector<db::TileView>> tiles = diag::Outcome<std::vector<db::TileView>>{std::vector<db::TileView>{}};
   {
     Preview preview(c);
@@ -228,6 +260,9 @@ CommandResult paint_option(const CifCall& c) {
   if (type.value() < tech::kFirstUserType) {  // layer >= TT_TECHDEPBASE
     return CommandResult::success();
   }
+  if (const mask::OutputStyle* style = editor.mask.output_styles.current_style(); style != nullptr) {
+    read_reached(c, root, *editor.box, *style, c.words[1]);
+  }
   diag::Status painted = diag::Done{};
   {
     Preview preview(c);
@@ -262,6 +297,9 @@ CommandResult coverage_option(const CifCall& c) {
   if (root == nullptr) {
     return CommandResult::failure(diag::make("VIEW-WINDOW-003", "Point to a window first"));
   }
+  if (const mask::OutputStyle* style = editor.mask.output_styles.current_style(); style != nullptr) {
+    read_reached(c, *root, area, *style, c.words[1]);
+  }
   diag::Outcome<mask::Coverage> covered = diag::Outcome<mask::Coverage>{mask::Coverage{}};
   {
     Preview preview(c);
@@ -279,7 +317,7 @@ CommandResult coverage_option(const CifCall& c) {
 }
 
 CommandResult statistics_option(const CifCall& c) {
-  cu::print_block(c.s, mask::statistics(session_counters(*c.s.editor)));
+  cu::print_block(c.s, mask::statistics(c.s.editor->mask.statistics));
   return CommandResult::success();
 }
 

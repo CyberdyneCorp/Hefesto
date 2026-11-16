@@ -251,3 +251,24 @@ TEST_CASE("off-grid coordinates rescale the read units", "[cap:gds-read][req:Coo
   REQUIRE(style != nullptr);
   CHECK(style->multiplier == 2);  // the rescaled style is stored back, as Magic's global style
 }
+
+TEST_CASE("a box without 5 points is reported after its XY header", "[cap:gds-read][req:Read diagnostics]") {
+  // calmaElementBox reads the XY header (READRH) and reports before its
+  // payload: the position is the byte after that header (MASK-GR-012).
+  GdsFile f;
+  f.library().begin("top");
+  const std::size_t box = f.size();
+  f.box(68, 20, {{0, 0}, {0, 5}, {8, 5}, {8, 0}});
+  f.end().end_library();
+  Session s;
+  s.read(f);
+  const std::size_t xy_header_end = box + 4 + 6 + 6 + 4;  // BOX, LAYER, BOXTYPE, the XY header
+  CHECK(s.said("(byte position " + std::to_string(xy_header_end) + "): Box doesn't have 5 points."));
+}
+
+TEST_CASE("a boundary that closes to fewer than four edges keeps its triangles and is reported",
+          "[cap:gds-read][req:Non-Manhattan boundary decomposition]") {
+  Session s;
+  s.read(one_structure([](GdsFile& f) { f.boundary(68, 20, {{0, 0}, {10, 0}, {0, 0}}); }));
+  CHECK(s.said("polygon with fewer than 4 points."));
+}

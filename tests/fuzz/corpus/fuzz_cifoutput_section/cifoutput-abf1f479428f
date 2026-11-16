@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer BO ndiff
+        bloat-or ndiff poly 30 space 10
+        calma 100 0

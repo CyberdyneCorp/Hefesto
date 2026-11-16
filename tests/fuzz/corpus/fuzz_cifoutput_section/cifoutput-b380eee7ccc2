@@ -1,0 +1,21 @@
+style gds
+    scalefactor 10
+    layer CMF metal1,pdc,via1
+        labels metal1
+        calma 49 0
+    layer CMS metal2,via1,via2
+        labels metal2
+        calma 51 0
+    layer CMT metal3,via2
+        calma 62 0
+    layer CPG poly,nfet
+        labels poly
+        calma 46 0
+    layer CAA ndiff,pdiff,nfet,pdc
+        calma 43 0
+    layer CCA pdc
+        squares 10 20 20
+        calma 48 0
+    layer CVA via1
+        squares 10 20 20
+        calma 50 0

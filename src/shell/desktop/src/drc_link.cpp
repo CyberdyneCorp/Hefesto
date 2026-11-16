@@ -36,9 +36,18 @@ void DrcPump::notify() {
 }
 
 std::size_t DrcPump::service() {
+  if (hold_ && hold_()) {
+    held_ = true;  // resume() posts the service again
+    return 0;
+  }
+  held_ = false;
   const std::size_t committed = host_.service();
   if (after_service_) after_service_(committed);
   return committed;
+}
+
+void DrcPump::resume() {
+  if (std::exchange(held_, false)) notify();
 }
 
 DrcLink::DrcLink(editor::EditorState& editor) : editor_(editor) {

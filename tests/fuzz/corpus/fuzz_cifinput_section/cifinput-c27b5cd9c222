@@ -1,0 +1,14 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+    calma CMF 49 0
+style x variants (p),(c)
+    scalefactor 10
+    variant (p)
+    layer poly CX
+    variant (c)
+    layer metal1 CX
+    variant *
+    layer metal2 CMS
+    calma CX 7 0
+    calma CMS 51 0

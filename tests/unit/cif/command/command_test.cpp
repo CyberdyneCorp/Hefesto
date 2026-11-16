@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -150,6 +151,35 @@ TEST_CASE("cif write and cif flat name the file (Q-MASK-320)", "[cap:cif-format-
   }
 }
 
+TEST_CASE("cif write runs its prepare phase inside the session's write host",
+          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+  // Regression: the prepare phase (subtree loading) got no Progress, so it
+  // drew no frame and the Interrupt could not stop it.
+  Session s;
+  std::vector<std::string> labels;
+  std::size_t ticks = 0;
+  std::atomic<bool> cancel{false};
+  bool interrupt = false;
+  s.editor.mask.write_host = [&](std::string_view label, const hefesto::mask::ProgressWork& work) {
+    labels.emplace_back(label);
+    hefesto::mask::Progress progress;
+    progress.cancel = &cancel;
+    progress.tick = [&] {
+      ++ticks;
+      cancel = interrupt;
+    };
+    return work(&progress);
+  };
+  REQUIRE(s.run("cif write chip").ok());
+  CHECK(s.files().exists("chip.cif"));
+  CHECK(labels == std::vector<std::string>{"chip.cif"});
+  CHECK(ticks > 0);
+  interrupt = true;
+  CHECK_FALSE(s.run("cif write stopped").ok());
+  CHECK_FALSE(s.files().exists("stopped.cif"));
+  s.editor.mask.write_host = {};
+}
+
 TEST_CASE("cif read reads a file along the search path into new cells",
           "[cap:cif-format-io][req:cif read, write and flat options][req:cif drccheck option]") {
   for (const bool check : {true, false}) {
@@ -174,6 +204,47 @@ TEST_CASE("cif read reads a file along the search path into new cells",
     CHECK(s.top->uses().front()->id == "u1");
     CHECK(s.top->uses().front()->transform.c == 10);
   }
+}
+
+// MASK-CF-004 end to end. Its deviation (Q-MASK-318) lists every output of
+// the case (stdout, stderr, cells.txt), so the golden replay checks nothing
+// of Hefesto's own result: this test does. Symbol 1 is defined twice (dup,
+// then dup2), `9 top` inside DS 2 names the user's existing `top`, `DD 2`
+// forgets symbol 2 and the top-level `C 1` calls the latest symbol 1.
+TEST_CASE("MASK-CF-004 end to end: a redefined symbol, DD and a name over a user cell (Q-MASK-318)",
+          "[cap:cif-format-io][req:Symbol-to-cell naming on read]") {
+  Session s(true, true, "start");
+  REQUIRE(s.run("load top").ok());
+  REQUIRE(s.files().write_atomic("in.cif", "9 outside;\nDS 1 1 1;\n9 dup;\nL CMF;\nB 40 20 20 10;\nDF;\n"
+                                           "DS 1 1 1;\n9 dup2;\nL CMS;\nB 40 20 20 10;\nDF;\n"
+                                           "DS 2 1 1;\n9 top;\nL CMF;\nB 10 10 5 5;\nDF;\nDD 2;\nC 1;\nE\n").ok());
+  (void)s.take();
+  REQUIRE(s.run("cif read in").ok());
+  const std::vector<std::string> messages = s.take();
+  CHECK(messages == std::vector<std::string>{"Warning: CIF reading is not undoable!  I hope that's OK."});
+  // Both definitions of symbol 1 are kept, and no cell is cleared or renamed
+  // (Magic clears dup, renames it dup2 and reports "cell table has NULL
+  // entry (Magic error)").
+  CHECK(s.value("cellname list allcells") == "dup dup2 outside start top");
+  const auto paint = [&s](const char* name, const char* type) {
+    const db::CellDef* def = s.editor.cells.find(name);
+    REQUIRE(def != nullptr);
+    const auto found = s.editor.technology->find_type(type);
+    REQUIRE(found.ok());
+    std::vector<db::Rect> rects;
+    tech::TypeMask mask;
+    mask.set(*found.id);
+    (void)def->plane(*s.editor.technology->home_plane(*found.id))
+        .enumerate(db::whole_plane(), mask, [&rects](const db::TileView& t) {
+          rects.push_back(t.area);
+          return true;
+        });
+    return rects;
+  };
+  CHECK(paint("dup", "metal1") == std::vector<db::Rect>{db::Rect{0, 0, 4, 2}});
+  CHECK(paint("dup2", "metal2") == std::vector<db::Rect>{db::Rect{0, 0, 4, 2}});
+  CHECK(paint("dup2", "metal1").empty());
+  CHECK(paint("top", "metal1") == std::vector<db::Rect>{db::Rect{0, 0, 1, 1}});
 }
 
 TEST_CASE("cif read of a missing file", "[cap:cif-format-io][req:cif read, write and flat options]") {
@@ -324,6 +395,82 @@ TEST_CASE("cif paint, coverage and statistics", "[cap:cif-format-io][req:cif see
   const std::vector<std::string> stats = s.take();
   REQUIRE_FALSE(stats.empty());
   CHECK(stats.front().starts_with("CIF statistics (recent/total):"));
+}
+
+TEST_CASE("the generation errors of a write become feedback entries afterwards",
+          "[cap:mask-hierarchical-generation][req:Parent/child disagreement reporting][golden:MASK-HG-007]") {
+  // MASK-HG-007: the child's pdiff under the parent's metal3; PSD = pdiff
+  // and-not metal3 differs between the child and the flattened parent.
+  std::string text = masktest_text();
+  const std::string last = "    layer CVA via1\n        squares 10 20 20\n        calma 50 0\n";
+  const std::size_t at = text.find(last);
+  REQUIRE(at != std::string::npos);
+  text.insert(at + last.size(), "    layer PSD pdiff\n        and-not metal3\n        calma 100 0\n");
+  for (const char* write : {"gds write /t/o", "cif write /t/o"}) {
+    Session s(true, true, "top", text);
+    auto made = s.editor.cells.create("child", s.editor.technology->plane_count());
+    REQUIRE(made.ok());
+    db::CellDef& child = *made.value();
+    child.flags().available = true;
+    s.paint(child, "pdiff", db::Rect{0, 0, 10, 10});
+    s.paint(*s.top, "metal3", db::Rect{5, -5, 30, 15});
+    REQUIRE(db::place(*s.top, child, db::PlaceOptions{}).ok());
+    db::recompute_bbox(*s.top);
+    REQUIRE(s.run(write).ok());
+    REQUIRE(s.editor.feedback.size() == 1);
+    const view::FeedbackArea& entry = s.editor.feedback.areas().front();
+    CHECK(entry.message() == "CIF error in cell top, layer PSD: parent and child disagree on CIF");
+    CHECK(entry.area == db::Rect{5, 0, 10, 10});
+    CHECK(entry.root == s.top);
+  }
+}
+
+TEST_CASE("the cif previews read the unread cells their flattening reaches",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options][golden:MASK-HG-022]") {
+  Session s;
+  s.editor.search_paths.path = {"/t"};
+  REQUIRE(s.files()
+              .write_atomic("/t/par.mag", "magic\ntech masktest\ntimestamp 100\nuse child  c0\ntimestamp 100\n"
+                                          "transform 1 0 0 0 1 0\nbox 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.files()
+              .write_atomic("/t/child.mag", "magic\ntech masktest\ntimestamp 100\n<< metal1 >>\nrect 0 0 10 10\n<< end >>\n")
+              .ok());
+  REQUIRE(s.run("load par").ok());
+  REQUIRE(s.run("box 0 0 10 10").ok());
+  const db::CellDef* child = s.editor.cells.find("child");
+  REQUIRE(child != nullptr);
+  REQUIRE_FALSE(child->flags().available);
+  REQUIRE(s.run("cif see NOPE").ok());  // CIFNameToMask fails first: nothing is read
+  CHECK_FALSE(child->flags().available);
+  s.editor.feedback.clear();
+  REQUIRE(s.run("cif see CMF").ok());
+  CHECK(child->flags().available);
+  CHECK(s.editor.feedback.size() > 0);
+}
+
+TEST_CASE("gds and cif writes add their generation counters to the session's cif statistics",
+          "[cap:cif-format-io][req:cif see, paint, coverage and statistics options]") {
+  Session s;
+  const hefesto::mask::StatisticsCounters& counters = s.editor.mask.statistics;
+  REQUIRE(counters.recent.flat_tiles == 0);
+  REQUIRE(s.run("cif write /t/x").ok());
+  const std::uint64_t after_cif = counters.recent.flat_tiles;
+  CHECK(after_cif > 0);
+  REQUIRE(s.run("gds write /t/y").ok());
+  const std::uint64_t after_gds = counters.recent.flat_tiles;
+  CHECK(after_gds > after_cif);
+  (void)s.take();
+  REQUIRE(s.run("cif statistics").ok());
+  const std::string both = std::to_string(after_gds);
+  const std::string tiles = "    Geometrical tile operations: " + both + "/" + both;
+  bool found = false;
+  for (const std::string& text : s.take()) {
+    found = found || text.find(tiles) != std::string::npos;
+  }
+  CHECK(found);
+  CHECK(counters.recent.flat_tiles == 0);
+  CHECK(counters.total.flat_tiles == after_gds);
 }
 
 TEST_CASE("the CIF writer ignores CIFhier with magic-compat ON and honours it OFF (Q-MASK-410)",

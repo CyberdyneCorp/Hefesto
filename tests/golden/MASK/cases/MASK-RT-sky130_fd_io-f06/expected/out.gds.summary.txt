@@ -1,0 +1,4 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure sky130_ef_io__disconnect_vccd_slice_5um created 120-12-29 19:26:43 records 810
+total structures 1 records 815

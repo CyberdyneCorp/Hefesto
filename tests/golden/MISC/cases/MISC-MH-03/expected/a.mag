@@ -1,0 +1,8 @@
+magic
+tech masktest
+timestamp 1794771727
+<< metal1 >>
+rect 0 0 4 4
+<< properties >>
+dimension MASKHINTS_SRAM 0 0 10 10
+<< end >>

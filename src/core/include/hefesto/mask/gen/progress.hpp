@@ -16,6 +16,9 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <string_view>
+
+#include "hefesto/cmd/command.hpp"
 
 namespace hefesto::mask {
 
@@ -25,6 +28,10 @@ struct Progress {
   std::function<void(double fraction)> report;
   /// Set by the host to request cancellation; nullptr = never cancelled.
   const std::atomic<bool>* cancel = nullptr;
+  /// Called while work that has no fraction to report goes on (a write's
+  /// subtree loading, at every cell visit); the host may draw a frame
+  /// there, rate-limited. May be empty.
+  std::function<void()> tick;
 
   /// True when the host asked to stop.
   [[nodiscard]] bool cancelled() const noexcept { return cancel != nullptr && cancel->load(std::memory_order_relaxed); }
@@ -46,5 +53,23 @@ struct GenerationStatistics {
 
   friend bool operator==(const GenerationStatistics&, const GenerationStatistics&) = default;
 };
+
+/// The recent and cumulative statistics counters of a session (Magic's
+/// CIFTileOps, cifTotalTileOps, ...): MaskSession::statistics, fed by every
+/// generation the commands run (`cif see` and the other previews, `gds
+/// write`, `cif write`, `cif flat`) and printed by `cif statistics`.
+struct StatisticsCounters {
+  GenerationStatistics recent;
+  GenerationStatistics total;
+
+  /// Adds a generation's counters to the recent values.
+  void add(const GenerationStatistics& stats) noexcept;
+};
+
+/// A read or an emit phase run by a host with the Progress it provides.
+using ProgressWork = std::function<cmd::CommandResult(const Progress*)>;
+/// A host that runs `work` with progress and cancellation (the desktop's
+/// shell::MaskJobHost, design D16); `label` names the file for its card.
+using ProgressHost = std::function<cmd::CommandResult(std::string_view label, const ProgressWork& work)>;
 
 }  // namespace hefesto::mask

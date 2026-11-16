@@ -27,6 +27,7 @@
 #include "hefesto/cif/read/read.hpp"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 #include "hefesto/cif/read/parser.hpp"
@@ -57,17 +58,21 @@ class UndoDisabled {
 /// The read engine's messages as the CIF reader prints them: the grid
 /// messages are CIFReadWarning and the boundary redefinition CIFReadError,
 /// at the parser's line; the units rescale is printed by the parser itself.
+/// A grid message sets the session's cifSeenSnapWarning, which a later GDS
+/// read honours.
 class EngineMessages final : public diag::DiagnosticSink {
  public:
-  EngineMessages(ReadMessages& messages, diag::DiagnosticSink& console) : messages_(messages), console_(console) {}
+  EngineMessages(ReadMessages& messages, diag::DiagnosticSink& console, bool& snap_warned)
+      : messages_(messages), console_(console), snap_warned_(snap_warned) {}
 
   void emit(const diag::Diagnostic& d) override {
     if (d.code == "MASK-INPUT-012") {
       return;
     }
     if (d.code == "MASK-INPUT-010" || d.code == "MASK-INPUT-011") {
+      snap_warned_ = true;
       messages_.warning(messages_.current_line(), d.text);
-    } else if (d.code == "MASK-INPUT-013") {
+    } else if (d.code == "MASK-INPUT-013" || d.code == "MASK-INPUT-020") {
       messages_.error(messages_.current_line(), d.text);
     } else {
       console_.emit(d);
@@ -77,6 +82,7 @@ class EngineMessages final : public diag::DiagnosticSink {
  private:
   ReadMessages& messages_;
   diag::DiagnosticSink& console_;
+  bool& snap_warned_;
 };
 
 /// The parser's view of the current input style.
@@ -140,6 +146,7 @@ class EngineTarget final : public CifReadTarget {
     return editor_.cells.create(name, editor_.technology->plane_count());
   }
   void translate(db::Transform& t);
+  db::Rect label_area(const db::Rect& area);
 
   editor::EditorState& editor_;
   mask::ReadEngine& engine_;
@@ -156,6 +163,27 @@ void EngineTarget::translate(db::Transform& t) {
   const std::int64_t factor = before != after ? before / after : 1;
   t.c = static_cast<db::Coord>(std::clamp<std::int64_t>(c * factor, db::kPlaneMin, db::kPlaneMax));
   t.f = static_cast<db::Coord>(std::clamp<std::int64_t>(f, db::kPlaneMin, db::kPlaneMax));
+}
+
+// The label corners in internal units, converted in cifParseUser94/95's
+// order (xbot, ybot, xtop, ytop) with COORD_ANY, so the off-grid warning
+// names the first corner that is off the grid; a subdivision multiplies
+// the corners converted before it.
+db::Rect EngineTarget::label_area(const db::Rect& area) {
+  const std::array<db::Coord, 4> in{area.x0, area.y0, area.x1, area.y1};
+  std::array<std::int64_t, 4> out{};
+  for (std::size_t i = 0; i < in.size(); ++i) {
+    const std::int64_t before = std::max<std::int64_t>(engine_.style().scale_factor, 1);
+    out[i] = engine_.scale_coord(in[i], mask::Snap::any);
+    const std::int64_t after = std::max<std::int64_t>(engine_.style().scale_factor, 1);
+    for (std::size_t k = 0; k < i && before != after; ++k) {
+      out[k] = std::clamp<std::int64_t>(out[k] * (before / after), db::kPlaneMin, db::kPlaneMax);
+    }
+  }
+  const auto coord = [](std::int64_t v) {
+    return static_cast<db::Coord>(std::clamp<std::int64_t>(v, db::kPlaneMin, db::kPlaneMax));
+  };
+  return db::Rect{coord(out[0]), coord(out[1]), coord(out[2]), coord(out[3])};
 }
 
 diag::Status EngineTarget::place(const CifCall& c) {
@@ -185,7 +213,7 @@ diag::Status EngineTarget::cif_label(const CifLabel& l) {
   db::Label label;
   label.text = l.label.text;
   label.type = static_cast<tech::TileType>(std::max(l.type, 0));
-  label.rect = engine_.scale_rect(l.label.area, mask::Snap::any);
+  label.rect = label_area(l.label.area);
   label.sticky = l.sticky;
   const auto put = db::put_label(*cell, std::move(label), /*auto_justify=*/true);
   if (!put.ok()) {
@@ -231,18 +259,20 @@ cmd::CommandResult read_text(editor::EditorState& editor, std::string_view text,
   diag::CollectingSink redirected;
   console.emit(diag::make(read_codes::kNotUndoable, "Warning: CIF reading is not undoable!  I hope that's OK."));
   ReadMessages messages(options.warnings.level, compat.magic_compat, console, &redirected);
-  EngineMessages engine_messages(messages, console);
+  editor.mask.snap_warned = false;  // CIFReadFile resets cifSeenSnapWarning
+  EngineMessages engine_messages(messages, console, editor.mask.snap_warned);
   mask::ReadEngine::Options engine_options;
   engine_options.top = editor.edit_cell;
-  engine_options.rescale_allowed = options.settings.rescale;
+  engine_options.rescale_allowed = options.rescale_allowed;
   engine_options.copyup_on_call = !compat.magic_compat;  // Q-MASK-309
   engine_options.sink = &engine_messages;
   mask::ReadEngine engine(editor, *style, compat, engine_options);
   ParseOptions parse_options;
   parse_options.magic_compat = compat.magic_compat;
   parse_options.rescale_limit = options.settings.limit;
-  parse_options.rescale_allowed = options.settings.rescale;
+  parse_options.rescale_allowed = options.rescale_allowed;
   parse_options.cancel = progress != nullptr ? progress->cancel : nullptr;
+  parse_options.progress = progress;
   EngineTarget target(editor, engine, engine_options.copyup_on_call);
   ReadSession session;
   parse(text, parse_style(*style), parse_options, target, messages, session);

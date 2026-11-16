@@ -1,0 +1,7 @@
+CIF file read warning: CIF style import: units rescaled by factor of 5 / 1
+Error while reading cell "efuse_async_mem_1x8" (byte position 521992): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_async_mem_1x8" (byte position 522224): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_async_mem_1x8" (byte position 523534): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "efuse_async_mem_1x8" (byte position 523592): Warning: cell "VIA_via4_5_3200_3200_3_3_1040_1040" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

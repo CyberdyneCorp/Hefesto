@@ -1,0 +1,5 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+        grow-grid 50
+    calma CMF 49 0

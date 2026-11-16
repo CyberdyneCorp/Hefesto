@@ -118,5 +118,35 @@ class WrittenCaseTest(unittest.TestCase):
                     self.assertEqual(known[spec.id].deferred, "M5")
 
 
+class ExitCheckTest(unittest.TestCase):
+    """Task 15.6: a captured case deferred to M5 is an exit blocker with an owner, and --exit-check
+    fails while any is left."""
+
+    def test_every_m5_deferral_is_listed(self):
+        known = deviations.load(REPO / "tests" / "golden")
+        expected = sorted(cid for cid, d in known.items() if d.deferred == "M5")
+        self.assertEqual([line.split(":", 1)[0] for line in m5_cases.exit_blockers()], expected)
+
+    def test_captured_deferrals_name_an_owner(self):
+        known = deviations.load(REPO / "tests" / "golden")
+        for cid, d in known.items():
+            captured = list((REPO / "tests" / "golden").glob(f"*/cases/{cid}/expected/provenance.json"))
+            if d.deferred == "M5" and captured:
+                with self.subTest(case=cid):
+                    self.assertTrue(d.reason.startswith(m5_cases.BLOCKER_PREFIX), d.reason)
+
+    def test_exit_check_fails_only_while_a_deferral_targets_m5(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "deviations.toml"
+            path.write_text('[A-1]\ndecisions = ["Q-X-1"]\noutputs = ["stdout.txt"]\nreason = "fix"\n\n'
+                            '[A-2]\ndeferred = "M6"\noutputs = ["stdout.txt"]\nreason = "later"\n',
+                            encoding="utf-8")
+            self.assertEqual(m5_cases.exit_blockers(path), [])
+            path.write_text(path.read_text(encoding="utf-8") +
+                            '\n[A-3]\ndeferred = "M5"\noutputs = ["stdout.txt"]\nreason = "M5 exit blocker, X: y"\n',
+                            encoding="utf-8")
+            self.assertEqual(m5_cases.exit_blockers(path), ["A-3: M5 exit blocker, X: y"])
+
+
 if __name__ == "__main__":
     unittest.main()

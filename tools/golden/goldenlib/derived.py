@@ -28,17 +28,32 @@ cases whose saved cells have names fixed only at run time (the generated-cell na
 the M4 Desktop Alpha cases, m4-scripting design D18). The output's masks (for example
 ``mag-timestamp``) apply to every file in it.
 
+    derived:gds-digest:<glob>
+    derived:gds-summary:<glob>
+
+are for GDS outputs too large to commit (the library round trips MASK-RT-*,
+m5-mask-gds-cif design D19). Each matching file is first decompressed when it is gzip
+data and masked with ``gds-mod-dates`` (compare/masks.py). ``gds-digest`` is then one line
+``<sha256> <size> <relative path>`` of those bytes, the pass/fail check; ``gds-summary`` is
+a line ``file <relative path>`` followed by the decoded summary of goldenlib/gds.py
+``summary`` (library name and creation date, one line per structure with its record count),
+so a differing digest can be located.
+
 A source that matches no file yields no output (the case then fails as if a plain file
 were missing).
 """
 from __future__ import annotations
 
+import gzip
 import hashlib
 import re
 from pathlib import Path
 
+from . import gds
+
 PREFIX = "derived:"
-_REDUCERS = ("mag-drc-sections", "digest", "files")
+_REDUCERS = ("mag-drc-sections", "digest", "files", "gds-digest", "gds-summary")
+_GZIP_MAGIC = b"\x1f\x8b"
 _DRC_SECTIONS = (b"checkpaint", b"error_p", b"error_s", b"error_ps")
 _SECTION = re.compile(rb"^<< (\S+) >>\r?$")
 
@@ -84,7 +99,25 @@ def _file_entry(name: bytes, data: bytes) -> bytes:
     return b"file " + name + b"\n" + data
 
 
-_ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry, "files": _file_entry}
+def canonical_gds(data: bytes) -> bytes:
+    """A GDS output as the MASK-RT cases compare it: decompressed, then ``gds-mod-dates`` masked."""
+    from compare.masks import mask_gds_mod_dates  # compare/ sits beside goldenlib/ in tools/golden
+
+    if data.startswith(_GZIP_MAGIC):
+        data = gzip.decompress(data)
+    return mask_gds_mod_dates(data)
+
+
+def _gds_digest_entry(name: bytes, data: bytes) -> bytes:
+    return _digest_entry(name, canonical_gds(data))
+
+
+def _gds_summary_entry(name: bytes, data: bytes) -> bytes:
+    return b"file " + name + b"\n" + gds.summary(canonical_gds(data)).encode("latin-1")
+
+
+_ENTRY = {"mag-drc-sections": _drc_sections_entry, "digest": _digest_entry, "files": _file_entry,
+          "gds-digest": _gds_digest_entry, "gds-summary": _gds_summary_entry}
 
 
 def build(work: Path, source: str) -> bytes | None:

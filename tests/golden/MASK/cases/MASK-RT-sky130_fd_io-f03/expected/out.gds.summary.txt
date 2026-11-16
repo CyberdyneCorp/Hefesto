@@ -1,0 +1,4 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure sky130_ef_io__bare_pad created 120-12-4 13:42:48 records 897
+total structures 1 records 902

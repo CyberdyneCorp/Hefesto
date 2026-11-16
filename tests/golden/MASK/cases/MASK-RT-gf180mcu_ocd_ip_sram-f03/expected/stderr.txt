@@ -1,0 +1,16 @@
+Error while reading cell "xpredec1_xa_3v512x8m81" (byte position 278204): Warning: cell "M3_M2$$47332396_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v512x8m81" (byte position 278392): Warning: cell "M3_M2$$47332396_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v512x8m81" (byte position 278674): Warning: cell "M2_M1$$47515692_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xpredec1_xa_3v512x8m81" (byte position 278862): Warning: cell "M2_M1$$47515692_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "wen_wm1_3v512x8m81" (byte position 822752): Warning: cell "M2_M1$$202406956_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "wen_wm1_3v512x8m81" (byte position 823536): Warning: cell "M2_M1$$202406956_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+CIF file read warning: CIF style import: units rescaled by factor of 5 / 1
+Error while reading cell "din_3v512x8m81" (byte position 1074074): Warning: cell "M1_PSUB$$46893100_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "din_3v512x8m81" (byte position 1074270): Warning: cell "M1_PSUB$$46892076_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v512x8m81" (byte position 1097766): Warning: cell "via2_x2_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v512x8m81" (byte position 1097844): Warning: cell "via2_x2_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "saout_m2_3v512x8m81" (byte position 1097922): Warning: cell "via2_x2_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "xdec64_3v512x8m81" (byte position 1301102): Warning: cell "M3_M2$$204142636_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Error while reading cell "gf180mcu_ocd_ip_sram__sram512x8m8wm1" (byte position 2185676): Warning: cell "M3_M2$$201258028_3v512x8m81" placed on top of itself.  Ignoring the extra one.
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

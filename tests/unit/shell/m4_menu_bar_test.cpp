@@ -131,11 +131,9 @@ TEST_CASE("menu bar items issue the wrapper's commands", "[cap:ui-gui-managers][
 
 TEST_CASE("later-milestone menu items are present and disabled", "[cap:ui-gui-managers][req:Wrapper menus]") {
   const MenuBarView view = menu_bar_view(gui::wrapper_menus(".layout1"), {}, {}, {});
-  const MenuBarItem* read_gds = item(menu(view, "File"), "Read GDS");
-  REQUIRE(read_gds != nullptr);
-  CHECK_FALSE(read_gds->enabled);
-  CHECK(read_gds->tooltip == "Read GDS: arrives in M5");
+  // Read GDS and Write GDS arrived in M5 (m5_gds_menu_test.cpp).
   CHECK_FALSE(item(menu(view, "Options"), "Netlist Window")->enabled);
+  CHECK(item(menu(view, "Options"), "Netlist Window")->tooltip == "Netlist Window: arrives in M12");
   CHECK(item(menu(view, "Options"), "3D Display")->tooltip == "3D Display: arrives in M10");
   CHECK(item(menu(view, "Options"), "Cell Manager")->enabled);
   CHECK(later_milestone("magic::flush") == std::nullopt);
@@ -176,8 +174,8 @@ TEST_CASE("PDK widget edits land in the wrapper menus",
   const MenuBarItem* spice = item(menu(view, "File"), "Import SPICE");
   CHECK(spice->pdk);
   CHECK(spice->script == "sky130::importspice");
-  // The native entries keep the wrapper's state (Read GDS still waits for M5).
-  CHECK_FALSE(item(menu(view, "File"), "Read GDS")->enabled);
+  // The native entries keep the wrapper's state.
+  CHECK(item(menu(view, "File"), "Read GDS")->enabled);
   CHECK_FALSE(item(menu(view, "File"), "Quit")->pdk);
   // DRC Routing appended after the wrapper's Drc items.
   const MenuBarMenu& drc = menu(view, "Drc");

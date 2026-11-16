@@ -59,6 +59,10 @@ struct SubtreeLoader {
   /// Set by the host to stop the walk (mask::Progress::cancel); nullptr:
   /// never cancelled. Polled at every cell visit.
   const std::atomic<bool>* cancel = nullptr;
+  /// Called at every cell visit (mask::Progress::tick: the desktop draws a
+  /// frame there, rate-limited, so the window stays live while a large
+  /// hierarchy loads). Empty: nothing is called.
+  std::function<void()> tick;
 };
 
 /// The walk is recursive, as Magic's; a hierarchy deeper than this fails
@@ -88,6 +92,13 @@ struct SubtreeResult {
 /// (UseIndex::search(area, compat, visit)). On failure nothing is fixed up.
 SubtreeResult load_subtree(db::CellDef& root, const SubtreeLoader& loader, bool halt_on_error,
                            const compat::CompatSettings& compat);
+
+/// The same walk over `area` of `root` instead of its bounding box
+/// (DBCellReadArea(root, area, halt_on_error)): the `cif` previews read the
+/// cells their flattening reaches (DBTreeSrTiles) with it. The mismatches
+/// are processed only when the loader has fix_mismatches.
+SubtreeResult load_area(db::CellDef& root, const db::Rect& area, const SubtreeLoader& loader, bool halt_on_error,
+                        const compat::CompatSettings& compat);
 
 /// The loader of a command: DBCellRead through the cell area's reader
 /// (technology ignored, the dereference flag followed, as subcell expansion

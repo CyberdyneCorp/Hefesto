@@ -1,0 +1,11 @@
+style gds
+    scalefactor 10
+    layer AND metal1
+        and metal2
+        calma 100 0
+    layer ANDNOT metal1
+        and-not metal2
+        calma 101 0
+    layer OR metal1
+        or metal2
+        calma 102 0

@@ -24,7 +24,8 @@ struct CifSettings {
   std::string prefix;               // `cif prefix` (CIFPathPrefix)
   bool polygon_subcells = false;    // `cif polygon subcells` (CIFSubcellPolygons)
   bool unfracture = false;          // `cif unfracture` (CIFUnfracture; Q-MASK-413)
-  bool rescale = true;              // `cif rescale` (CIFRescaleAllow)
+  // `cif rescale` (CIFRescaleAllow) is shared with `gds rescale`:
+  // MaskSession::rescale_allowed.
   std::int32_t limit = 0;           // `cif limit` (CIFRescaleLimit; 0 = Magic's default)
   bool arealabels = false;          // `cif arealabels` (CIFDoAreaLabels)
   bool idcell = true;               // `cif idcell` (CIFDoCellIdLabels; TRUE in Magic)

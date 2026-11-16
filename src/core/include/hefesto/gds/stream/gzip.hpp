@@ -13,6 +13,10 @@
 // bounded for any input) and inflates forward from there; it never seeks
 // in the compressed bytes. Inflating streams through a fixed 64 KiB buffer,
 // so a highly compressed input never allocates its decompressed size.
+// The decompressed stream is capped (inflate_cap: 256 times the compressed
+// size, at least 1 GiB), so a gzip bomb ends the read with GDS-STREAM-006
+// instead of keeping it busy for hours (hardening, design R9; Magic has no
+// cap).
 //
 // The sink writes one gzip member at deflate level 1-9 to an inner sink.
 // The compressed bytes depend on zlib and are informative; conformance
@@ -40,10 +44,21 @@ inline constexpr std::size_t kMaxCheckpoints = 256;
 /// The input bytes handed to one inflate call (zlib counts in 32 bits).
 inline constexpr std::size_t kMaxGzipFeed = std::size_t{1} << 30U;
 
+/// The inflate size cap: a gzip source yields at most
+/// max(kMinInflateCap, kMaxInflateRatio * compressed size) decompressed
+/// bytes; reading past it fails with GDS-STREAM-006. Deflate compresses at
+/// most about 1032:1, and GDS data compresses about 3:1 to 20:1.
+inline constexpr std::uint64_t kMinInflateCap = std::uint64_t{1} << 30U;
+inline constexpr std::uint64_t kMaxInflateRatio = 256;
+[[nodiscard]] std::uint64_t inflate_cap(std::uint64_t compressed_size) noexcept;
+
 /// A source over the gzip data `compressed`, inflated `max_feed` input
-/// bytes at a time (smaller in tests, to reach the window edges).
+/// bytes at a time (smaller in tests, to reach the window edges), yielding
+/// at most `max_output` decompressed bytes (0: inflate_cap of the
+/// compressed size).
 [[nodiscard]] std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed,
-                                                           std::size_t max_feed = kMaxGzipFeed);
+                                                           std::size_t max_feed = kMaxGzipFeed,
+                                                           std::uint64_t max_output = 0);
 
 /// A sink that compresses into `inner` as one gzip member at deflate level
 /// `level` (1-9; GDS-STREAM-005 otherwise). finish() ends the member and

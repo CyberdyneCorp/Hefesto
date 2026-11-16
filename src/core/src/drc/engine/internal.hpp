@@ -20,6 +20,7 @@
 #include <memory>
 #include <vector>
 
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/cell.hpp"
 #include "hefesto/db/geometry.hpp"
 #include "hefesto/db/transform.hpp"
@@ -67,14 +68,9 @@ struct Element {
 };
 
 /// DBArrayOverlap: the element index range of `use` whose images may
-/// overlap `parent_rect` (parent coordinates; C truncating division).
-struct IndexRange {
-  std::int32_t xlo = 0;
-  std::int32_t xhi = 0;
-  std::int32_t ylo = 0;
-  std::int32_t yhi = 0;
-};
-[[nodiscard]] IndexRange array_overlap(const db::CellUse& use, const db::Rect& parent_rect);
+/// overlap a parent rectangle (db/array_overlap.hpp).
+using IndexRange = db::ElementRange;
+using db::array_overlap;
 
 /// DBComputeArrayArea: `area` (child coordinates) moved to element (x, y)
 /// of `use`, still in child coordinates.

@@ -1,0 +1,7 @@
+style gds
+    scalefactor 10
+    layer metal1 CMF
+    layer metal3 CWN
+        copyup
+    calma CMF 49 0
+    calma CWN 42 0

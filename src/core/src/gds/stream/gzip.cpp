@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -33,10 +34,18 @@ diag::Diagnostic corrupt(const std::string& what) {
   return diag::make("GDS-STREAM-002", "The compressed GDS stream is corrupt: " + what + ".");
 }
 
+diag::Diagnostic too_large(std::uint64_t cap) {
+  return diag::make("GDS-STREAM-006", "The decompressed GDS stream is larger than " + std::to_string(cap) +
+                                          " bytes (the inflate size cap); the rest is not read.");
+}
+
 class GzipSource final : public ByteSource {
  public:
-  GzipSource(std::vector<std::byte> compressed, std::size_t max_feed)
-      : in_(std::move(compressed)), out_(kChunk), max_feed_(std::max<std::size_t>(max_feed, 1)) {}
+  GzipSource(std::vector<std::byte> compressed, std::size_t max_feed, std::uint64_t max_output)
+      : in_(std::move(compressed)),
+        out_(kChunk),
+        max_feed_(std::max<std::size_t>(max_feed, 1)),
+        max_output_(max_output != 0 ? max_output : inflate_cap(in_.size())) {}
 
   [[nodiscard]] diag::Outcome<std::size_t> read(std::span<std::byte> out) override;
   [[nodiscard]] std::uint64_t position() const noexcept override { return chunk_start_ + out_pos_; }
@@ -67,6 +76,7 @@ class GzipSource final : public ByteSource {
   std::vector<Checkpoint> checkpoints_;
   std::uint64_t interval_ = kFirstInterval;
   std::size_t max_feed_;
+  std::uint64_t max_output_;
 };
 
 diag::Status GzipSource::restart() {
@@ -101,6 +111,11 @@ diag::Status GzipSource::inflate_step() {
   zs.avail_out = static_cast<uInt>(out_.size() - out_len_);
   const int rc = inflate(&zs, Z_NO_FLUSH);
   out_len_ = out_.size() - zs.avail_out;
+  if (chunk_start_ + out_len_ > max_output_) {
+    out_len_ = 0;  // nothing past the cap is handed out
+    eof_ = true;
+    return too_large(max_output_);
+  }
   if (rc == Z_STREAM_END) {
     // The magic is checked against the whole input: the feed window may end
     // inside the next member's first two bytes.
@@ -292,8 +307,16 @@ bool is_gzip(std::span<const std::byte> bytes) noexcept {
   return bytes.size() >= 2 && bytes[0] == std::byte{0x1f} && bytes[1] == std::byte{0x8b};
 }
 
-std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed, std::size_t max_feed) {
-  return std::make_unique<GzipSource>(std::move(compressed), max_feed);
+std::uint64_t inflate_cap(std::uint64_t compressed_size) noexcept {
+  if (compressed_size > std::numeric_limits<std::uint64_t>::max() / kMaxInflateRatio) {
+    return std::numeric_limits<std::uint64_t>::max();
+  }
+  return std::max(kMinInflateCap, compressed_size * kMaxInflateRatio);
+}
+
+std::unique_ptr<ByteSource> make_gzip_source(std::vector<std::byte> compressed, std::size_t max_feed,
+                                             std::uint64_t max_output) {
+  return std::make_unique<GzipSource>(std::move(compressed), max_feed, max_output);
 }
 
 diag::Outcome<std::unique_ptr<ByteSink>> make_gzip_sink(std::unique_ptr<ByteSink> inner, int level) {

@@ -14,7 +14,9 @@ namespace {
 
 constexpr std::string_view kAllFiles = "All files";
 
-// "*.spice *.sp" → "*.spice;*.sp" (Tk's list of patterns → Raven's).
+// "*.spice *.sp" → "*.spice;*.sp" (Tk's list of patterns → Raven's). A Tk
+// extension (".mag", as wrapper.tcl's -filetypes give) becomes "*.mag":
+// the native dialogs match globs only.
 std::string native_patterns(std::string_view patterns) {
   std::string out;
   std::size_t start = 0;
@@ -22,6 +24,7 @@ std::string native_patterns(std::string_view patterns) {
     const std::size_t end = std::min(patterns.find_first_of(" \t;", start), patterns.size());
     if (end > start) {
       if (!out.empty()) out += ';';
+      if (patterns[start] == '.') out += '*';
       out += patterns.substr(start, end - start);
     }
     start = end + 1;

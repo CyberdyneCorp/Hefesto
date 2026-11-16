@@ -207,7 +207,17 @@ CommandResult write_gds(cmd::CommandContext& ctx, const cu::Session& s, db::Cell
   options.files = &ctx.services().files;
   options.time_zone = editor.mask.time_zone;
   const std::string file = output_file_name(name, options.settings.compress, editor.drc.compat_settings());
-  return write(editor, root, file, options);
+  // The desktop's write host (MaskSession::write_host, design D16) pumps
+  // frames while the prepare phase loads the subtree, and its Interrupt
+  // stops that loading too; without one the write runs inline.
+  const mask::ProgressHost& host = editor.mask.write_host;
+  if (!host) {
+    return write(editor, root, file, options);
+  }
+  const platform::Path path{file};
+  return host(path.filename().string(), [&editor, &root, &path, &options](const mask::Progress* progress) {
+    return write(editor, root, path, options, progress);
+  });
 }
 
 CommandResult write_option(cmd::CommandContext& ctx, const cu::Session& s, const cmd::Invocation& invocation) {

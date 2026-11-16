@@ -1,0 +1,59 @@
+DS 1 1 œª
+9 leaf;
+L CMF;
+B 40 2 1;
+9 rec;
+C 2;
+DF;
+91 ë†çƒ
+C 1 R 0 1 T 200 300;
+91 u_mx;
+C 1 M X T 500 0;
+C 1 M Y T 800 0;
+C 1 M X R  1;
+9 leaf;
+' CMF;
+B 40 201400 200  1 1;
+9 rec;
+C 2;
+DF;
+91 ëCIF-WRITE-002 T 200 300;
+91 u_mx;
+C 1 M X T 500 0;
+;
+B 40 2 1;
+9 rec;
+C 2;
+DF;
+91 ë†çƒ
+C 1 R 0 1 T 200 300;
+91 u_mx;
+C 1 M X T 500 0;
+C 1 M Yf T 800 0;
+C 1 M X R  1;
+9 leaf;
+' CMF;
+B 40 201400 200  1 1;
+9 rec;
+C 2;
+DF;
+91 ëCIF-WRITE-002 T 200 300;
+91 u_mx;
+C 1 M X T 500 0;
+C 1 M‡¶0 -1 T 1100 UTC 20 R 1 ! T 1400 0;
+C 1 M‡¶0 -1 T 1100 UTC 20 R 1 1 T 1400 
+91 u_mx;
+C 1 M X T 500 0;
+C 1 M Yf T 800 0;
+C 1 M X R  1;
+9 leaf;
+' CMF;
+B 40 201400 200  1 1;
+9 rec;
+C 2;
+DF;
+91 ëCIF-WRITE-002 T 200 300;
+91 u_mx;
+C 1 M X T 500 0;
+C 0;C 2;
+E

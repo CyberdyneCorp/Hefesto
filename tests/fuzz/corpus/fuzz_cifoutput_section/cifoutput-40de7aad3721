@@ -1,0 +1,8 @@
+style gds
+    scalefactor 10
+    layer NOC metal1
+    layer BAD metal2
+        calma 300 0
+    templayer T metal1
+    layer OK T
+        calma 49 0

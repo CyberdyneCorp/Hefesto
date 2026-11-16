@@ -1,0 +1,4 @@
+CIF file read warning: CIF style sg13g2(): units rescaled by factor of 5 / 1
+Error while reading cell "RSC_IHPSG13_CDLYX1" (byte position 251730): Unknown layer/datatype in boundary, layer=235 type=4
+Cell mask_rt_wrapper couldn't be read
+No such file or directory

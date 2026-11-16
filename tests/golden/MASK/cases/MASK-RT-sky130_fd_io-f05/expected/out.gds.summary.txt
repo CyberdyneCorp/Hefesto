@@ -1,0 +1,4 @@
+file out.gds
+library mask_rt_wrapper created 70-1-1 0:0:0 units 0.001 1e-09
+structure sky130_ef_io__connect_vdda_vddio_and_vssa_vssio_slice_20um created 120-11-17 19:39:35 records 8297
+total structures 1 records 8302
