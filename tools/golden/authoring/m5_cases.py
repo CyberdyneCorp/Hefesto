@@ -18,6 +18,7 @@ MISC-FL-05, CELL-TS-07; task 13.6).
     python3 tools/golden/authoring/m5_cases.py --deviations   # rewrite the generated block of deviations.toml
     python3 tools/golden/authoring/m5_cases.py --dispatch     # the golden-capture.yml capture command
     python3 tools/golden/authoring/m5_cases.py --dispatch-uncaptured  # the same, cases without expected/
+    python3 tools/golden/authoring/m5_cases.py --exit-check   # fail while a deferral targets M5 (task 15.6)
 
 Never touches expected/. Until a case is captured and replays, ``deviations.toml`` lists it
 as ``deferred = "M5"`` (the block between ``BEGIN`` and ``END``, every case this driver writes),
@@ -25,6 +26,13 @@ so the replay stays green
 (goldenlib/deviations.py: an uncaptured case may carry only a deferred entry). A workstream
 whose implementation makes a case replay adds its ID to ``REPLAYED`` and re-runs
 ``--deviations``; an approved fix deviation goes in the hand-written part of the file.
+
+A captured case that still differs from Magic at the M5 exit is an exit blocker: ``BLOCKERS`` names
+its owner and cause, which become its reason, and it keeps ``deferred = "M5"``. ``--exit-check``
+lists every entry of ``deviations.toml`` deferred to M5 (this block and the hand-written MASK-UO
+rows) and fails while any is left, so the M5 exit (task 15.6) cannot be declared while a known
+difference from Magic is skipped by the replay. Moving a row to a later milestone is a user
+decision.
 """
 from __future__ import annotations
 
@@ -34,6 +42,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # goldenlib
 
 import casegen  # noqa: E402
 import cell_cases  # noqa: E402
@@ -42,6 +51,7 @@ import mask_io_cases  # noqa: E402
 import mask_pdk_cases  # noqa: E402
 import misc_cases  # noqa: E402
 import tclcase  # noqa: E402
+from goldenlib import deviations  # noqa: E402
 
 MODULES = (mask_cases, mask_io_cases)
 OTHER = (misc_cases, cell_cases)  # their m5_specs() and M5_NOT_AUTHORED
@@ -54,6 +64,17 @@ REASON = ("mask generation, GDS and CIF arrive in M5 (m5-mask-gds-cif); the case
 # A MASK-RT library round trip that still differs from Magic's capture keeps this reason.
 RT_REASON = ("the library round trip differs from Magic's capture (GDSR/GDSW; m5-mask-gds-cif tasks.md "
              "13.8)")
+# Captured cases that still differ from Magic: owner and cause (the M5 exit blockers).
+BLOCKERS: dict[str, str] = {
+    "MASK-OP-021": "OPS: the generated layer differs from Magic's; the cause is not confirmed yet and the "
+                   "fix or a fix deviation needs a user decision",
+    "MASK-HG-025": "GEN/OPS: the cif statistics tile counts differ from Magic's",
+    "MASK-GR-008": "MODEL/CMDEDIT: cellname list allcells lists the read cells in a different order",
+    "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: the library round trip differs from Magic's capture",
+    "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: the library round trip differs from Magic's capture",
+    "MASK-RT-gf180mcu_fd_io-f02": "GDSR/GDSW: the library round trip differs from Magic's capture",
+}
+BLOCKER_PREFIX = "M5 exit blocker, "
 # Authored cases that replay against Magic's captured output (no deferral any more).
 REPLAYED: set[str] = {
     "CELL-TS-07",
@@ -442,13 +463,25 @@ def output_names(spec: tclcase.TclCase) -> list[str]:
     return ["stdout.txt", "stderr.txt", *files]
 
 
+def deferral_reason(case_id: str) -> str:
+    if case_id in BLOCKERS:
+        return BLOCKER_PREFIX + BLOCKERS[case_id]
+    return RT_REASON if case_id.startswith("MASK-RT-") else REASON
+
+
+def exit_blockers(path: Path = DEVIATIONS) -> list[str]:
+    """``<id>: <reason>`` of every deviations.toml entry deferred to M5 (empty at the M5 exit)."""
+    known = deviations.parse(path.read_text(encoding="utf-8"))
+    return [f"{cid}: {d.reason}" for cid, d in sorted(known.items()) if d.deferred == "M5"]
+
+
 def deviation_block() -> str:
     entries = []
     for spec in written_specs():
         if spec.id in REPLAYED:
             continue
         outs = ", ".join(f'"{n}"' for n in output_names(spec))
-        reason = RT_REASON if spec.id.startswith("MASK-RT-") else REASON
+        reason = deferral_reason(spec.id)
         entries.append(f'[{spec.id}]\ndeferred = "M5"\noutputs = [{outs}]\nreason = "{reason}"\n')
     return BEGIN + "\n\n" + "\n".join(entries) + "\n" + END + "\n"
 
@@ -476,7 +509,7 @@ def dispatch_command(uncaptured_only: bool = False) -> str:
     return f'gh workflow run golden-capture.yml --ref <branch> -f mode=capture -f cases="{cases}"'
 
 
-def main(argv: list[str]) -> int:
+def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--list", action="store_true", help="print the case ids only")
@@ -485,14 +518,32 @@ def main(argv: list[str]) -> int:
     group.add_argument("--dispatch", action="store_true", help="print the capture dispatch command")
     group.add_argument("--dispatch-uncaptured", action="store_true",
                        help="print the capture dispatch command of the cases without expected/")
-    args = parser.parse_args(argv)
+    group.add_argument("--exit-check", action="store_true",
+                       help="list the deferrals that target M5; exit 1 while any is left (task 15.6)")
+    return parser.parse_args(argv)
+
+
+def print_not_authored() -> None:
+    rows = {**not_authored(), **other_not_authored(),
+            **{i: "not authored yet (task 13.4 in progress)" for i in missing_rows()}}
+    for cid, why in rows.items():
+        print(f"{cid}: {why}")
+
+
+def exit_check() -> int:
+    blockers = exit_blockers()
+    print("\n".join(blockers) if blockers else "no deferral targets M5")
+    return 1 if blockers else 0
+
+
+def main(argv: list[str]) -> int:
+    args = parse_args(argv)
+    if args.exit_check:
+        return exit_check()
     if args.list:
         print("\n".join(s.id for s in written_specs()))
     elif args.not_authored:
-        rows = {**not_authored(), **other_not_authored(),
-                **{i: "not authored yet (task 13.4 in progress)" for i in missing_rows()}}
-        for cid, why in rows.items():
-            print(f"{cid}: {why}")
+        print_not_authored()
     elif args.deviations:
         update_deviations()
         print(DEVIATIONS.relative_to(casegen.REPO))
