@@ -15,11 +15,14 @@ release notices.
   console keeps the window drawing: the Interrupt card shows "Writing
   chip.gds · N s" and "Completed N%", Interrupt stops the job without
   leaving an output file, and lines typed meanwhile wait until it ends.
+  The card also covers a write's loading of unread cells, which Interrupt
+  stops before any file is opened.
 - **GDS throughput gate.** `perf.yml` measures `gds read` of
   `sky130_fd_sc_hd.gds` and the all-cells block write (with and without
   `gds merge`) in callgrind instructions against Magic (`bench/gds/`), and
   a `gds-roundtrip` job reads and writes every sky130, gf180mcu and IHP
-  library GDS (decision P-24).
+  library GDS (decision P-24). Both tools write with the same outline
+  fonts, and the gate fails when their outputs differ.
 
 - **`gds write` and `cif write`.** `gds write` (and a bare `gds`) writes
   the window's root cell as GDS II, byte for byte as Magic does: structure

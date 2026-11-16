@@ -218,6 +218,16 @@ Taken on the round 4 review of the GDS and CIF writers (PR #56); each entry's `R
 6. **Q-MASK-233** (new, **fix**, crash class): the GDS and CIF writers' hierarchy depth limit `gds::kMaxSubtreeDepth` is 1024 levels, the mask generators' limit (lowered from 4096 in the round 4 review); a deeper hierarchy fails the write with GDS-WRITE-014 or CIF-WRITE-008 and an empty file, in both modes, where Magic overflows the stack. Code as landed; `gds-write` "Write preconditions and subtree loading" and `cif-format-io` "CIF output symbol numbering and order" state the limit and the message, each with the scenario "Hierarchy deeper than the limit". Tests: `tests/unit/gds/write/depth_test.cpp`, `tests/unit/cif/write/write_test.cpp`.
 7. **Q-MASK-135** (new, **fix**): `gds warning redirect FILE` writes each whole read message, prefix and body, to the file and nothing to the console, in both modes; Magic's Tcl build writes only the prefixes to the file and the bodies to the console (Vfprintf is Tcl_printf). Code unchanged; `gds-read` "Read diagnostics" states it as the decision instead of describing both behaviours, with the scenario "Redirect file"; regression test in `tests/unit/gds/read/read_test.cpp` (both modes).
 
+## Proposed behaviour changes awaiting a decision (round 5)
+
+Shipped in round 5 in both modes, before approval; each stays "proposed" in its spec or security finding until the user decides (round 5 review, point 10).
+
+| Change | Where | Magic | Hefesto (both modes) | Recommendation |
+|---|---|---|---|---|
+| `writeall` of an unavailable cell whose `.mag` already exists | `cell/cell_io.cpp` `read_during_write`; cmd-hierarchy "writeall" | DBCellWriteFile writes the paint section before the use enumeration reads the cell (database/DBio.c:4771-4780): the file loses its paint, memory keeps it | reads the cell first, then writes everything | approve as a fix (Q-ID to be assigned) |
+| Read-polygon work budget (security.md M5-S7) | `db/polygon.cpp` `work_budget` | no bound (cif/CIFrdutils.c:1069-1160) | after 16 n^2 + 4096 edge visits the path stays non-Manhattan and is reported as `non-manhattan polygon.` | approve as a fix; only pathological input reaches it |
+| Use-index sub-binning depth (security.md M5-S8) | `db/use_index` `bin_array_build` | recursion without a depth bound (bplane/bpBins.c:256-500); whether it terminates on the fuzz input is what MASK-UO-013 captures | stops at 64 levels | decide after MASK-UO-013's capture |
+
 ## Audit decision D-20
 
 **Resolved 2026-11-13 by the approved Q-MASK-413, reversing D-20's recommendation.** D-20 recommended "always accept both forms" (`Resolution: fix`); Q-MASK-413 recommends compat instead. The standing rule decides it: X-2 tier 2 puts parse-argument quirks that change results behind `magic-compat`, and accepting the third word changes GDS output, so the "superset, no output change" argument behind D-20 does not apply.

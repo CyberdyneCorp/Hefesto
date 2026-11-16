@@ -141,13 +141,15 @@ The desktop installs the same host services as `hefesto-cli` (`src/platform_posi
 
 ### GDS and CIF
 
-Both front ends read and write GDS II and CIF with Magic's `gds` (alias `calma`) and `cif` commands (capabilities `gds-read`, `gds-write`, `cif-format-io`); the masks come from the technology's `cifoutput` and `cifinput` styles. With the sky130 data set fetched (see "Reference data for tests"), this reads the `sky130_fd_sc_hd` cells from their `.mag` files and writes one of them as GDS:
+Both front ends read and write GDS II and CIF with Magic's `gds` (alias `calma`) and `cif` commands (capabilities `gds-read`, `gds-write`, `cif-format-io`); the masks come from the technology's `cifoutput` and `cifinput` styles. With the sky130 data set fetched (see "Reference data for tests"), this reads a `sky130_fd_sc_hd` cell from its `.mag` file, writes it as GDS and reads the file back:
 
 ```sh
 V=.cache/pdks/ciel/sky130/versions/5740c4a81c42f9fe4af5ef2ee258a99151053d28
 build/macos-debug/src/cli/hefesto-cli --no-log --pdk-root=$V -T $V/sky130A/libs.tech/magic/sky130A.tech \
-  -c "load $V/sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag; gds write inv; gds read inv"
+  -c "load $V/sky130A/libs.ref/sky130_fd_sc_hd/mag/sky130_fd_sc_hd__inv_1.mag; property GDS_FILE {}; gds write inv; gds read inv"
 ```
+
+The library cells carry `GDS_FILE` (a vendor view): a write copies such a cell from the library GDS, which the `sky130` set does not include, and the window's own vendor cell is then skipped without a message, as in Magic, leaving an empty library. `property GDS_FILE {}` removes the property, so the write generates the masks from the cell's paint. `--pdk-root` makes `$V` trusted, so the `load` of a path under it works; reading the file back into the same session warns that the cell already existed.
 
 - **Dates and the time zone.** GDS BGNLIB/BGNSTR dates and the CIF header date are written in the host's local time zone, as Magic does (Q-MASK-203), so `gds nodatestamp` or `cellname timestamp <cell> 0` output is reproducible only under a fixed zone. Set `TZ` (for example `TZ=UTC0`) for reproducible files; the golden replay and the unit tests pin the zone the same way. The `gds-time-zone` setting of decision Q-MASK-132 is not available yet (the settings store holds booleans only); until it lands, `TZ` is the way to pin the zone.
 - **Compressed input.** `gds read` opens `<name>.gds`, `.gds.gz`, `.gds2`, `.strm` or the name itself. A `.gz` file inflates to at most 256 times its compressed size (at least 1 GiB) before the read stops with `GDS-STREAM-006`.
