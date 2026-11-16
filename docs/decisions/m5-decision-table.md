@@ -226,7 +226,7 @@ Shipped in round 5 in both modes, before approval; each stays "proposed" in its 
 |---|---|---|---|---|
 | `writeall` of an unavailable cell whose `.mag` already exists | `cell/cell_io.cpp` `read_during_write`; cmd-hierarchy "writeall" | DBCellWriteFile writes the paint section before the use enumeration reads the cell (database/DBio.c:4771-4780): the file loses its paint, memory keeps it | reads the cell first, then writes everything | approve as a fix (Q-ID to be assigned) |
 | Read-polygon work budget (security.md M5-S7) | `db/polygon.cpp` `work_budget` | no bound (cif/CIFrdutils.c:1069-1160) | after 16 n^2 + 4096 edge visits the path stays non-Manhattan and is reported as `non-manhattan polygon.` | approve as a fix; only pathological input reaches it |
-| Use-index sub-binning depth (security.md M5-S8) | `db/use_index` `bin_array_build` | recursion without a depth bound (bplane/bpBins.c:256-500); whether it terminates on the fuzz input is what MASK-UO-013 captures | stops at 64 levels | decide after MASK-UO-013's capture |
+| Use-index sub-binning depth (security.md M5-S8) | `db/use_index` `bin_array_build` | recursion without a depth bound (bplane/bpBins.c:256-500): the fuzz input made magic exit with SIGSEGV, status 139 (golden-capture run 43789239840) | stops at 64 levels | approve as a fix; Magic crashes there |
 
 ## Audit decision D-20
 

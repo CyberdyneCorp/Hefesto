@@ -274,12 +274,11 @@ namespace {
 // bpBinArrayBuild's recursion, bounded (security.md M5-S8): a bin whose area
 // is the parent's bbox, or an oversized bin that keeps its elements, rebuilt
 // the same array here without end (a fuzzed CIF file, CI fuzz run
-// 43776774834). Whether Magic terminates on that input (bpBinArraySizeIt's
-// escape hatches, bplane/bpBins.c:256-500) is not verified yet: the
-// use-order probe MASK-UO-013 captures it, and the cap is a proposed change
-// until then. Ordinary layouts nest a few levels; past kMaxBinDepth a bin
-// keeps its plain list, which only changes the order of such degenerate
-// arrays.
+// 43776774834). Magic crashes on the same input: its 3x2 use and eleven
+// 1x1 uses at one spot, binned by a partial search, made magic exit with
+// SIGSEGV (status 139) in golden-capture run 43789239840. Ordinary layouts
+// nest a few levels; past kMaxBinDepth a bin keeps its plain list, which
+// only changes the order of such degenerate arrays.
 constexpr int kMaxBinDepth = 64;
 
 std::unique_ptr<BinArray> build_level(const Rect& bbox, Element* elements, bool subbin, int depth) {

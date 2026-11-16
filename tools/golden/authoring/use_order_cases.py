@@ -104,13 +104,12 @@ def setup(quiet: bool) -> list[str]:
 
 
 def case(cid: str, title: str, steps: list[str], *, spec=GDS_ORDER, quiet: bool = True,
-         built: bool = True, top: str | None = None, children: dict[str, str] | None = None) -> tclcase.TclCase:
+         built: bool = True, top: str | None = None) -> tclcase.TclCase:
     """A probe case: set-up, then (for a built root) ``load top`` and the frame, then the steps."""
     capability, requirements = spec
     start = ["load top", *frame()] if built else []
     body = [*setup(quiet), *start, f"uo::start {cid} top", *steps, "uo::finish"]
-    files = {"useorder.tech": TECH, "use_order_probe.tcl": PROBE.read_text(encoding="utf-8"), **CHILD_FILES,
-             **(children or {})}
+    files = {"useorder.tech": TECH, "use_order_probe.tcl": PROBE.read_text(encoding="utf-8"), **CHILD_FILES}
     if top is not None:
         files["top.mag"] = top
     return tclcase.TclCase(cid, capability, requirements, title, "\n".join(body), files=files,
@@ -171,29 +170,8 @@ def fresh_write_specs() -> list[tclcase.TclCase]:
     ]
 
 
-# The fuzz_cif_reader input of security.md M5-S8 (CI fuzz run 43776774834): one 3 x 2 use and eleven
-# 1 x 1 uses at the same spot, whose bins are taller than the index box, so bpBinArrayBuild's
-# sub-binning never shrinks. Whether Magic terminates here decides whether Hefesto's 64-level cap is a
-# fix or hides a porting difference. The 1 x 1 uses are of eleven children (getcell of a cell already
-# placed at the same spot returns that use).
-DEGENERATE_ONES = [f"c{i}" for i in range(11)]
-DEGENERATE_FILES = {"cd.mag": common.mag("useorder", "<< metal1 >>\nrect 0 0 3 2\n"),
-                    **{f"{name}.mag": common.mag("useorder", "<< metal1 >>\nrect 0 0 1 1\n")
-                       for name in DEGENERATE_ONES}}
-
-
-def degenerate_specs() -> list[tclcase.TclCase]:
-    return [
-        case("MASK-UO-013", "Degenerate bins (security.md M5-S8): a 3x2 use and eleven 1x1 uses at the same "
-             "spot, then a partial search that bins them.",
-             ["uo::place cd -1 -1", *(f"uo::place {name} 0 0" for name in DEGENERATE_ONES), "uo::readout",
-              "uo::search 0 0 1 1",
-              "uo::readout"], children=DEGENERATE_FILES),
-    ]
-
-
 def all_specs() -> list[tclcase.TclCase]:
-    return controlled_specs() + fresh_write_specs() + degenerate_specs()
+    return controlled_specs() + fresh_write_specs()
 
 
 def case_dir(cid: str) -> Path:

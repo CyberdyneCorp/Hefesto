@@ -257,7 +257,6 @@ Not MASK rows of the open-questions inventory: these cases record Magic's use en
 | MASK-UO-010 | cif-format-io | as MASK-UO-009 with one `cif write` | symbol numbering and `C` call order | CIF output symbol numbering and order |
 | MASK-UO-011 | gds-write | fresh session: framed `top.mag` with 12 uses; `gds write` twice | SREF order of both writes (the first write's CIFGenSubcells searches bin the root) | Structure ordering; Write preconditions and subtree loading |
 | MASK-UO-012 | gds-write | fresh session: `top.mag` with 13 uses, two overlapping; `gds write`, `cif write`, `gds write` | SREF order, CIF numbering and calls of each write | Structure ordering |
-| MASK-UO-013 | gds-write | 12 uses: one 3x2 use and eleven 1x1 uses of different cells at the same spot, a readout, then a partial search that bins them (security.md M5-S8) | whether Magic terminates on the degenerate bins, and the SREF order of each write | Structure ordering |
 
 ## Library round trips (m5-mask-gds-cif task 13.7, design D19)
 
