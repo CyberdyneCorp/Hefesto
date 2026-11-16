@@ -49,6 +49,10 @@ release notices.
 
 ### Changed
 
+- **`cellname list allcells|topcells|modified` order follows Magic.** With
+  `magic-compat` ON the names come in Magic's order (the cell-table hash
+  order merge sorted by `strcmpbynum`, which puts `inv_1` before `inv`);
+  OFF they stay in natural order.
 - **`gds rescale` and `cif rescale` are one setting**, as Magic's
   CIFRescaleAllow is, and a CIF read resets the once-per-read grid
   message.
@@ -201,6 +205,10 @@ release notices.
   with GDS-STREAM-006 instead of filling memory. New fuzz targets cover
   the GDS and CIF readers and the `cifoutput`/`cifinput` sections
   (`docs/contributing/security.md` "Layout input").
+- **Placing many uses in one cell is no longer quadratic in the use
+  index.** Each placement made the index rescan the cell's whole use
+  list (M5-S3): reading a GDS structure with about 105 000 uses took
+  more than 1200 s.
 
 ## Unreleased (M4: scripting)
 
