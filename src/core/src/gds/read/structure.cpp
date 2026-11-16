@@ -252,16 +252,17 @@ bool Reader::read_elements(ElementCounts& counts) {
   skip_set({RecordType::strclass, RecordType::strtype});
   layer_errors_.clear();
   non_manhattan_ = false;
+  std::int64_t previous = counts.references;  // Magic's osrefs, local to the structure
   while (parse_element(counts)) {
     if (cancelled()) {
       interrupted_ = true;
       return false;
     }
     report_progress();
-    if (counts.references > 0 && counts.references % 5000 == 0 && counts.references != last_reported_) {
-      last_reported_ = counts.references;
+    if (counts.references > previous && counts.references % 5000 == 0) {
       info("    " + std::to_string(counts.references) + " uses");
     }
+    previous = counts.references;
     non_manhattan_ = false;
   }
   return true;

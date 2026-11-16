@@ -289,6 +289,29 @@ TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells o
   }
 }
 
+TEST_CASE("regression: every structure reports its own 5000th use",
+          "[cap:gds-read][req:Structure processing and cell creation]") {
+  // calmaParseStructure's osrefs is local to the structure: two structures
+  // of 5000 uses each print "    5000 uses" twice (MASK-RT-sky130_sram_macros-f01,
+  // whose bitcell array and top cell both reach 5000).
+  Session s;
+  s.options.settings.flatten = true;  // flatten copies count as uses and stay cheap
+  GdsFile f;
+  f.library().begin("VIA");
+  square(f, 68, 0, 4);
+  f.end();
+  for (const char* name : {"A", "B"}) {
+    f.begin(name);
+    for (std::int32_t i = 0; i < 5000; ++i) {
+      f.sref("VIA", {8 * (i % 100), 8 * (i / 100)});
+    }
+    f.end();
+  }
+  f.end_library();
+  s.read(f);
+  CHECK(s.count("    5000 uses") == 2);
+}
+
 TEST_CASE("polygon subcells", "[cap:gds-read][req:Polygon subcells]") {
   const auto file = [] {
     GdsFile f;

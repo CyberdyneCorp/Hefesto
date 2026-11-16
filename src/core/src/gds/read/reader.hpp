@@ -350,7 +350,6 @@ class Reader {
   std::int64_t polygon_count_ = 0;                                // CalmaPolygonCount
   std::int64_t path_count_ = 0;                                   // CalmaPathCount
   std::int64_t name_conversions_ = 0;                             // NameConvertErrors
-  std::int64_t last_reported_ = 0;                                // "    <n> uses"
   bool non_manhattan_ = false;                                    // calmaNonManhattan
   bool non_manhattan_path_ = false;                               // the last path read had a diagonal
   bool rewound_ = false;                                          // a rewind in this read (Q-MASK-111 OFF)
