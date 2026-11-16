@@ -219,7 +219,7 @@ bool Reader::duplicate_structure(std::string& name) {
 }
 
 void Reader::begin_definition(db::CellDef& def, std::int64_t date, bool magnified) {
-  clear_definition(def);
+  clear_cell(def);
   def.flags().available = true;  // DBCellSetAvail
   def.flags().dereference = false;
   const CellStamp stamp = cell_stamp(date, options_.settings.datestamp);
@@ -322,7 +322,9 @@ bool Reader::structure_body(db::CellDef& def, const std::string& name, bool was_
                             std::int64_t date, std::uint64_t start, std::int64_t polygons_before) {
   begin_definition(def, date, magnified);
   ElementCounts counts;
-  if (!read_elements(counts)) {
+  const bool complete = read_elements(counts);
+  stop_tracking(def);
+  if (!complete) {
     return true;  // interrupted (Magic's `goto done`)
   }
   if (options_.settings.readonly && !magnified) {

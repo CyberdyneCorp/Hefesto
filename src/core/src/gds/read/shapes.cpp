@@ -159,12 +159,13 @@ db::CellDef* Reader::begin_subcell(const std::string& name) {
   if (def == nullptr) {
     return nullptr;
   }
-  clear_definition(*def);
+  clear_cell(*def);
   def->flags().available = true;
   return def;
 }
 
 void Reader::end_subcell(db::CellDef& sub, db::CellDef* parent, const PlaneSet& saved) {
+  stop_tracking(sub);
   engine_->paint_current(planes(), sub);
   db::recompute_bbox(sub, compat_.magic_compat);
   drc::check_this(editor_, sub, sub.bbox());

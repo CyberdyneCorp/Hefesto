@@ -55,6 +55,7 @@
 #include "hefesto/gds/stream/records.hpp"
 #include "hefesto/mask/input/engine.hpp"
 #include "hefesto/mask/plane/plane.hpp"
+#include "hefesto/tech/technology.hpp"
 
 namespace hefesto::editor {
 struct EditorState;
@@ -320,6 +321,11 @@ class Reader {
   void array_limits(Reference& ref, const std::string& text);
   db::CellUse* place_use(db::CellDef& parent, db::CellDef& child, const db::Transform& transform,
                          const db::ArrayInfo& array, const std::string& id, bool check_duplicate);
+  [[nodiscard]] bool duplicate_placement(const db::CellDef& parent, const db::CellUse& probe);
+  /// DBCellClearDef of a cell this read defines; its uses are tracked from
+  /// here on, until stop_tracking at the end of its elements.
+  void clear_cell(db::CellDef& def);
+  void stop_tracking(const db::CellDef& def);
   void array_spacing(const Reference& ref, const db::Transform& trans, db::ArrayInfo& array);
   [[nodiscard]] bool is_flat(const db::CellDef& def) const;
   void copy_flattened(const Reference& ref, const db::Transform& trans, const db::ArrayInfo& array);
@@ -346,6 +352,24 @@ class Reader {
   std::unordered_map<const db::CellDef*, PlaneSet> flat_planes_;  // cd_client of CDFLATGDS cells
   std::int64_t flatten_paints_ = 0;  // tile paints of flatten copies so far (kMaxFlattenPaints)
   std::vector<PlaneSet*> saved_sets_;                             // nested saves, scaled by a rescale
+  // The uses this read placed in each cell it cleared, by child and
+  // translation: DBCellFindDup over them gives the use index's answer
+  // without its per-placement rescan (security.md M5-S3), since a cleared
+  // cell has no other uses.
+  struct PlacementKey {
+    const db::CellDef* child = nullptr;
+    db::Coord c = 0;
+    db::Coord f = 0;
+    friend bool operator==(const PlacementKey&, const PlacementKey&) = default;
+  };
+  struct PlacementHash {
+    std::size_t operator()(const PlacementKey& k) const noexcept;
+  };
+  struct Placements {
+    std::unordered_multimap<PlacementKey, const db::CellUse*, PlacementHash> uses;
+    tech::GridScale grid;  // editor grid when the index was last searched or the cell cleared
+  };
+  std::unordered_map<const db::CellDef*, Placements> placed_;
   std::unordered_set<std::uint64_t> layer_errors_;                // calmaLayerHash
   std::int64_t polygon_count_ = 0;                                // CalmaPolygonCount
   std::int64_t path_count_ = 0;                                   // CalmaPathCount

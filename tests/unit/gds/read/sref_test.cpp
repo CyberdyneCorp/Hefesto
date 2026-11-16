@@ -166,6 +166,41 @@ TEST_CASE("use placement rules", "[cap:gds-read][req:Use placement rules]") {
     CHECK(uses(s.cell("top")).size() == 2);
     CHECK(s.said("Warning: cell \"A\" placed on top of itself.  Ignoring the extra one."));
   }
+  SECTION("duplicate arrays follow DBCellFindDup's spacing rules") {
+    Session s;
+    GdsFile f;
+    f.library();
+    child(f, "A");
+    f.begin("top")
+        .aref("A", 3, 1, {{0, 0}, {60, 0}, {0, 0}})
+        .aref("A", 3, 1, {{0, 0}, {60, 0}, {0, 0}})    // same columns and spacing: dropped
+        .aref("A", 3, 1, {{0, 0}, {90, 0}, {0, 0}})    // other spacing: kept
+        .sref("A", {0, 0})                            // not an array, other bbox: kept
+        .end()
+        .end_library();
+    s.read(f);
+    CHECK(uses(s.cell("top")).size() == 3);
+    CHECK(s.count("placed on top of itself") == 1);
+  }
+  SECTION("regression: many uses in one structure are checked without rescanning the index") {
+    // The duplicate check searched the use index, which rescanned every use
+    // of the cell per placement: O(n^2) in the uses of one structure (the
+    // sky130-sram gds-roundtrip shard ran over 3 hours). 30 000 uses stay
+    // well inside the test timeout only when the check is incremental.
+    Session s;
+    GdsFile f;
+    f.library();
+    child(f, "A");
+    f.begin("top");
+    constexpr std::int32_t kUses = 30000;
+    for (std::int32_t i = 0; i < kUses; ++i) {
+      f.sref("A", {100 * (i % 200), 100 * (i / 200)});
+    }
+    f.sref("A", {0, 0}).end().end_library();  // one duplicate at the end
+    s.read(f);
+    CHECK(uses(s.cell("top")).size() == static_cast<std::size_t>(kUses));
+    CHECK(s.count("placed on top of itself") == 1);
+  }
   SECTION("an ancestor is not used") {
     Session s;
     GdsFile f;
