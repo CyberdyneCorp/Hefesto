@@ -219,7 +219,7 @@ bool Reader::duplicate_structure(std::string& name) {
 }
 
 void Reader::begin_definition(db::CellDef& def, std::int64_t date, bool magnified) {
-  clear_definition(def);
+  clear_cell(def);
   def.flags().available = true;  // DBCellSetAvail
   def.flags().dereference = false;
   const CellStamp stamp = cell_stamp(date, options_.settings.datestamp);
@@ -252,16 +252,17 @@ bool Reader::read_elements(ElementCounts& counts) {
   skip_set({RecordType::strclass, RecordType::strtype});
   layer_errors_.clear();
   non_manhattan_ = false;
+  std::int64_t previous = counts.references;  // Magic's osrefs, local to the structure
   while (parse_element(counts)) {
     if (cancelled()) {
       interrupted_ = true;
       return false;
     }
     report_progress();
-    if (counts.references > 0 && counts.references % 5000 == 0 && counts.references != last_reported_) {
-      last_reported_ = counts.references;
+    if (counts.references > previous && counts.references % 5000 == 0) {
       info("    " + std::to_string(counts.references) + " uses");
     }
+    previous = counts.references;
     non_manhattan_ = false;
   }
   return true;
@@ -321,7 +322,9 @@ bool Reader::structure_body(db::CellDef& def, const std::string& name, bool was_
                             std::int64_t date, std::uint64_t start, std::int64_t polygons_before) {
   begin_definition(def, date, magnified);
   ElementCounts counts;
-  if (!read_elements(counts)) {
+  const bool complete = read_elements(counts);
+  stop_tracking(def);
+  if (!complete) {
     return true;  // interrupted (Magic's `goto done`)
   }
   if (options_.settings.readonly && !magnified) {
