@@ -756,6 +756,8 @@ During interaction processing Magic prints `Completed N%` roughly every five sec
 - let the callback cancel the write; a cancelled write leaves no output file, because the output is written to a temporary file and renamed only on success;
 - generate from a read-only snapshot of the database, so the user interface is not blocked and edits made during the write do not affect it.
 
+On the desktop the write holds the database exclusively for the whole command (Q-MASK-414, amended 2026-11-16): frames keep being drawn and the Interrupt card cancels the write, while commands typed or edits made during it wait until it ends and the background DRC pauses until then. Nothing can change the layout during the write, which is the snapshot.
+
 None of this changes the mask output.
 
 Compatibility: informative
@@ -769,6 +771,7 @@ Compatibility: informative
 - **WHEN** it is written
 - **THEN** percentage progress is reported and the user interface stays responsive
 - **AND** an edit made during the write does not appear in the written file
+- **AND** on the desktop the edit and the background DRC wait until the write ends
 
 #### Scenario: Cancelled write
 - **GIVEN** a long GDS write to `chip.gds`, where `chip.gds` did not exist before

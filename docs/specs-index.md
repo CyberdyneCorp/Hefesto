@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3335 scenarios, 876 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3338 scenarios, 880 open questions.
 
 ## Hefesto product (native)
 
@@ -89,13 +89,13 @@ Open questions: [27](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 
 ## Mask generation, GDS, CIF (MASK)
 
-Open questions: [149](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
+Open questions: [153](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
 | [`cif-format-io`](../openspec/specs/cif-format-io/spec.md) | 30 | 51 | Defines the Caltech Intermediate Form (CIF) as read and written by Hefesto in a Magic-compatible way: the lexical rules and grammar accepted on input, how symbols, calls, transform… |
 | [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 91 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
-| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 76 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
+| [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 77 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 48 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
 | [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 46 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 47 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
@@ -270,7 +270,7 @@ Open questions: [38](decisions/open-questions/CMDEDIT.md) · Golden cases: [CASE
 |---|---|---|---|
 | [`cmd-box`](../openspec/specs/cmd-box/spec.md) | 15 | 30 | Defines the **box**: the single rectangular editing cursor that marks the area for paint, erase, fill, selection, cell placement and most other editing commands. This capability co… |
 | [`cmd-coordinates-and-units`](../openspec/specs/cmd-coordinates-and-units/spec.md) | 14 | 45 | Defines how editing commands parse distances and coordinates (numbers, unit suffixes, simple expressions), how keyword arguments and direction names are matched, how the `units`, `… |
-| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 34 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
+| [`cmd-hierarchy`](../openspec/specs/cmd-hierarchy/spec.md) | 19 | 35 | Defines the commands that load, create, place, navigate, expand, flatten, save and manage cells and cell instances: `load`, `xload`, `edit`, `down`, `getcell`/`get`, `dump`, `expan… |
 | [`cmd-labels-properties`](../openspec/specs/cmd-labels-properties/spec.md) | 10 | 19 | Defines the commands that create and edit labels and ports, query and set cell properties, locate labels and nodes, and draw non-mask annotation elements: `label`, `setlabel`, `por… |
 | [`cmd-misc-edit`](../openspec/specs/cmd-misc-edit/spec.md) | 9 | 14 | Defines the remaining layout-window commands that are not owned by another capability: `xor`, `random`, `shell`, the command surface of `straighten`, and the build-specific command… |
 | [`cmd-paint-erase`](../openspec/specs/cmd-paint-erase/spec.md) | 13 | 36 | Defines the commands that change mask paint in the edit cell: `paint`, `erase`, `fill`, `corner`, `contact`, `polygon`, `splitpaint`, `spliterase` and `drop`. It also defines the l… |
@@ -303,7 +303,7 @@ Open questions: [52](decisions/open-questions/SCRIPT.md) · Golden cases: [CASES
 | [`scripting-auxiliary-tools`](../openspec/specs/scripting-auxiliary-tools/spec.md) | 8 | 10 | Documents the auxiliary Tcl scripts and launchers that are installed with Magic: - the socket command server; - the BSI menu helpers; - the reference-library stripper; - the netlis… |
 | [`scripting-pdk-integration`](../openspec/specs/scripting-pdk-integration/spec.md) | 14 | 29 | Specifies what open-PDK support files expect from the layout editor and what the editor does on their behalf. This covers sky130A/B, gf180mcuA-D, IHP sg13g2 and other PDKs generate… |
 | [`ui-box-stack-and-measure`](../openspec/specs/ui-box-stack-and-measure/spec.md) | 9 | 16 | Specifies the script-level helper commands that Magic defines in `tools.tcl` and that layout-generating scripts use heavily, PDK device generators in particular: - the cursor-box s… |
-| [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 21 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
+| [`ui-gui-managers`](../openspec/specs/ui-gui-managers/spec.md) | 18 | 22 | Specifies Magic's Tcl/Tk GUI layer (`wrapper.tcl` and the scripts it sources). It covers: - the wrapper layout window, its menus, title-bar captions and the hook points that PDK sc… |
 
 ## Antenna, mask hints, fonts, 3D, plot (MISC)
 

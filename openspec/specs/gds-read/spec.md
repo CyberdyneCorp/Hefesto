@@ -370,6 +370,8 @@ The corner is chosen from the polygon's orientation. With the edge oriented as i
 
 A boundary that has at least one non-Manhattan edge SHALL be called *non-Manhattan* for the `polygon subcells` option.
 
+The decomposition of one path SHALL stop after 2^24 + 16 n^2 edge visits for n vertices, in both `magic-compat` settings (Q-MASK-416, resolution: fix). The path then stays non-Manhattan and is reported as `non-manhattan polygon.`. Magic has no bound, and nearly parallel steep edges make its read run without end; real layouts stay far below the budget.
+
 (Magic ref: cif/CIFrdutils.c:1052-1188, cif/CIFrdutils.c:747-1050, calma/CalmaRdpt.c:1145-1245)
 
 #### Scenario: 45-degree triangle
@@ -1111,7 +1113,7 @@ The options persist for the session and apply to subsequent reads. `drccheck`, `
 
 Compatibility: behavioral
 
-The file SHALL be searched along the cell search path by appending, in order, `.gds`, `.gds.gz`, `.gds2`, `.strm` and `""` to the given name. The extension is always appended, so `foo.gds` is tried as `foo.gds.gds`, … and finally `foo.gds`. The first file that opens is read. Gzip-compressed files are decompressed transparently, and uncompressed files are read as-is. If no candidate opens, "Cannot open <f>.gds, <f>.strm or <f> to read GDS-II stream input." is reported.
+The file SHALL be searched along the cell search path by appending, in order, `.gds`, `.gds.gz`, `.gds2`, `.strm` and `""` to the given name. The extension is always appended, so `foo.gds` is tried as `foo.gds.gds`, … and finally `foo.gds`. The first file that opens is read. Gzip-compressed files are decompressed transparently, and uncompressed files are read as-is. In both `magic-compat` settings the decompressed stream SHALL stop at 256 times the compressed size, at least 1 GiB, with GDS-STREAM-006, as at a corrupt member (Q-MASK-416, resolution: fix; Magic has no cap). If no candidate opens, "Cannot open <f>.gds, <f>.strm or <f> to read GDS-II stream input." is reported.
 
 The read SHALL NOT insert any geometry into the edit cell. Cells are created by name, and the library cell is displayed afterwards. The help text ("into edit cell") does not match this behavior; see Q-MASK-131.
 

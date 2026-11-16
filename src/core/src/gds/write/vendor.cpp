@@ -119,34 +119,52 @@ void fallback(const VendorIo& io, std::string first) {
   io.report(codes::kVendorCheck, std::move(first) + "\n" + std::string{kFallback});
 }
 
-// The STRNAME header search of a new-style copy: the shortest even record
-// length r >= 6 whose header `r>>8, r&0xff, 06, 06` ends at `start`.
-bool check_structure_name(const VendorIo& io, const db::CellDef& def, ByteSource& source, std::int64_t start) {
-  const std::int64_t block_start = std::max<std::int64_t>(0, start - kRecordMax);
+// The `window` bytes before `start` (fewer at the file's start); nullopt
+// when they cannot be read.
+std::optional<std::vector<std::byte>> bytes_before(ByteSource& source, std::int64_t start, std::int64_t window) {
+  const std::int64_t block_start = std::max<std::int64_t>(0, start - window);
   const auto block_size = static_cast<std::size_t>(start - block_start);
   std::vector<std::byte> block(block_size);
   diag::Outcome<std::size_t> got = source.seek(static_cast<std::uint64_t>(block_start)).ok()
                                        ? read_up_to(source, block)
                                        : diag::Outcome<std::size_t>{std::size_t{0}};
   if (!got.ok() || got.value() != block_size) {
+    return std::nullopt;
+  }
+  return block;
+}
+
+// The STRNAME header search of a new-style copy: the payload of the
+// shortest even record length r >= 6 whose header `r>>8, r&0xff, 06, 06`
+// ends at the end of `block`.
+std::optional<std::string> strname_ending(std::span<const std::byte> block) {
+  for (std::size_t length = 6; length <= block.size(); length += 2) {
+    const std::size_t at = block.size() - length;
+    if (byte_at(block, at) == ((length >> 8U) & 0xffU) && byte_at(block, at + 1) == (length & 0xffU) &&
+        byte_at(block, at + 2) == 0x06 && byte_at(block, at + 3) == 0x06) {
+      return string_value(block.subspan(at + 4));
+    }
+  }
+  return std::nullopt;
+}
+
+bool check_structure_name(const VendorIo& io, const db::CellDef& def, ByteSource& source, std::int64_t start) {
+  const std::optional<std::vector<std::byte>> block = bytes_before(source, start, kRecordMax);
+  if (!block) {
     io.report(codes::kVendorCheck, "Calma output error:  Can't read cell from vendor GDS.  Using magic's internal definition");
     return false;
   }
-  for (std::size_t length = 6; length <= block_size; length += 2) {
-    const std::size_t at = block_size - length;
-    if (byte_at(block, at) == ((length >> 8U) & 0xffU) && byte_at(block, at + 1) == (length & 0xffU) &&
-        byte_at(block, at + 2) == 0x06 && byte_at(block, at + 3) == 0x06) {
-      const std::string name = string_value(std::span<const std::byte>{block}.subspan(at + 4));
-      if (name != def.name()) {
-        io.report(codes::kVendorName, "Calma output warning:  Structure definition has name " + name +
-                                          " but cell definition has name " + def.name() +
-                                          ".\nThe structure definition will be given the cell name.");
-      }
-      return true;
-    }
+  const std::optional<std::string> name = strname_ending(*block);
+  if (!name) {
+    fallback(io, "Calma output error:  Structure name not found ending at GDS file position " + std::to_string(start));
+    return false;
   }
-  fallback(io, "Calma output error:  Structure name not found ending at GDS file position " + std::to_string(start));
-  return false;
+  if (*name != def.name()) {
+    io.report(codes::kVendorName, "Calma output warning:  Structure definition has name " + *name +
+                                      " but cell definition has name " + def.name() +
+                                      ".\nThe structure definition will be given the cell name.");
+  }
+  return true;
 }
 
 // The BGNSTR header an old-style GDS_BEGIN points at.
@@ -238,35 +256,106 @@ std::vector<const db::CellDef*> referenced_children(const VendorIo& io, const db
   return out;
 }
 
+// The STRNAME after the BGNSTR an old-style GDS_BEGIN points at.
+std::optional<std::string> strname_after_bgnstr(ByteSource& source, std::int64_t start) {
+  if (start < 0 || !source.seek(static_cast<std::uint64_t>(start)).ok()) {
+    return std::nullopt;
+  }
+  RecordReader reader(source);
+  for (const RecordType expected : {RecordType::bgnstr, RecordType::strname}) {
+    diag::Outcome<std::optional<Record>> next = reader.next();
+    if (!next.ok() || !next.value() || next.value()->type != static_cast<std::uint8_t>(expected)) {
+      return std::nullopt;
+    }
+    if (expected == RecordType::strname) {
+      return string_value(next.value()->data);
+    }
+  }
+  return std::nullopt;
+}
+
+// A vendor cell's structure name in its GDS_FILE: the STRNAME ending at
+// GDS_START (a short window first, then the record maximum) or following
+// GDS_BEGIN's BGNSTR. A cell renamed in Hefesto (`gds unique`, `cellname
+// rename`) keeps it there, so no property records it (Q-MASK-216 OFF, user
+// decision of 2026-11-16).
+std::optional<std::string> read_original_name(VendorIo& io, const db::CellDef& child) {
+  const auto* file = std::get_if<std::string>(child.properties().find("GDS_FILE"));
+  const CopySpan span = copy_span(child);
+  if (file == nullptr || (!span.old_style && child.properties().find("GDS_START") == nullptr)) {
+    return std::nullopt;
+  }
+  std::optional<VendorFile> opened = open_vendor_gds(io, child, *file);
+  if (!opened) {
+    return std::nullopt;
+  }
+  if (span.old_style) {
+    return strname_after_bgnstr(*opened->source, span.start);
+  }
+  for (const std::int64_t window : {std::int64_t{260}, kRecordMax}) {
+    const std::optional<std::vector<std::byte>> block = bytes_before(*opened->source, span.start, window);
+    if (const std::optional<std::string> name = block ? strname_ending(*block) : std::nullopt) {
+      return name;
+    }
+  }
+  return std::nullopt;
+}
+
+const std::optional<std::string>& original_name(VendorIo& io, const db::CellDef& child) {
+  const auto [it, inserted] = io.original_names.try_emplace(&child);
+  if (inserted) {
+    it->second = read_original_name(io, child);
+  }
+  return it->second;
+}
+
 // The children a copied SNAME may name, looked up by the payload of their
 // structure name (chosen, or the one they would get: nothing is claimed)
-// and by their cell name; the first child in search order wins. Built once
+// and, when the copy is rewritten (magic-compat OFF), first by their
+// structure name in their own vendor file and last by their cell name; the
+// first child in search order wins. An old-style child's structure is
+// copied with its own STRNAME, so an SNAME naming it is kept. Built once
 // per copy.
 class ChildNames {
  public:
-  ChildNames(const VendorIo& io, const ElementWriter& out, const std::vector<const db::CellDef*>& children) {
+  struct Match {
+    const db::CellDef* child = nullptr;  // nullptr: no child has that name
+    bool kept = false;                   // the SNAME already names the child's output structure
+  };
+
+  ChildNames(VendorIo& io, const ElementWriter& out, const std::vector<const db::CellDef*>& children, bool rewrite)
+      : rewrite_(rewrite) {
     for (const db::CellDef* child : children) {
       const std::string written = io.names.preview(out, *child, io.id_of(*child));
       const EncodedString encoded =
           encode_string(written, out.table(), string_options(out.style(), out.settings()), out.compat());
       by_written_.emplace(string_value(encoded.data), child);
       by_cell_.emplace(child->name(), child);
+      if (rewrite) {
+        if (const std::optional<std::string>& original = original_name(io, *child)) {
+          by_original_.emplace(*original, Match{child, copy_span(*child).old_style});
+        }
+      }
     }
   }
 
-  // The child written as `sname`, else (when `by_cell_name`) the child
-  // named `sname`.
-  [[nodiscard]] const db::CellDef* find(const std::string& sname, bool by_cell_name) const {
+  // What the copied `sname` names.
+  [[nodiscard]] Match find(const std::string& sname) const {
+    if (const auto it = by_original_.find(sname); it != by_original_.end()) {
+      return it->second;
+    }
     if (const auto it = by_written_.find(sname); it != by_written_.end()) {
-      return it->second;
+      return Match{it->second};
     }
-    if (const auto it = by_cell_.find(sname); by_cell_name && it != by_cell_.end()) {
-      return it->second;
+    if (const auto it = by_cell_.find(sname); rewrite_ && it != by_cell_.end()) {
+      return Match{it->second};
     }
-    return nullptr;
+    return Match{};
   }
 
  private:
+  bool rewrite_ = false;
+  std::unordered_map<std::string, Match> by_original_;
   std::unordered_map<std::string, const db::CellDef*> by_written_;
   std::unordered_map<std::string, const db::CellDef*> by_cell_;
 };
@@ -300,11 +389,11 @@ bool is_sname(const Record& r) {
 
 // The warning pass: each SNAME that names none of the children.
 void warn_unknown_snames(const VendorIo& io, const db::CellDef& def, ByteSource& source, const CopySpan& span,
-                         const ChildNames& children, bool by_cell_name) {
+                         const ChildNames& children) {
   (void)walk_records(source, span, [&](const Record& r) {
     if (is_sname(r)) {
       const std::string sname = string_value(r.data);
-      if (children.find(sname, by_cell_name) == nullptr) {
+      if (children.find(sname).child == nullptr) {
         io.report_native(codes::kVendorSname, "Warning: the copied structure of cell " + def.name() +
                                                   " references \"" + sname +
                                                   "\", which is not the structure name of any of its children.");
@@ -321,7 +410,8 @@ diag::Status rewrite_snames(VendorIo& io, ByteSource& source, const CopySpan& sp
   diag::Status status = diag::Done{};
   const Walk walk = walk_records(source, span, [&](const Record& r) {
     const auto type = static_cast<RecordType>(r.type);
-    const db::CellDef* child = is_sname(r) ? children.find(string_value(r.data), true) : nullptr;
+    const ChildNames::Match match = is_sname(r) ? children.find(string_value(r.data)) : ChildNames::Match{};
+    const db::CellDef* child = match.kept ? nullptr : match.child;
     status = child != nullptr ? out.string_record(type, io.names.name_of(out, *child, io.id_of(*child)))
                               : io.records.write(type, static_cast<DataType>(r.data_type), r.data);
     return status.ok();
@@ -366,8 +456,8 @@ diag::Status copy_body(VendorIo& io, const db::CellDef& def, ByteSource& source,
   const bool framed = walk_records(source, span, [](const Record&) { return true; }) == Walk::framed;
   const bool rewrite = !io.prepared.compat.magic_compat && framed;
   if (framed) {
-    const ChildNames children(io, out, referenced_children(io, def));
-    warn_unknown_snames(io, def, source, span, children, rewrite);
+    const ChildNames children(io, out, referenced_children(io, def), rewrite);
+    warn_unknown_snames(io, def, source, span, children);
     if (rewrite) {
       return rewrite_snames(io, source, span, children, out);
     }

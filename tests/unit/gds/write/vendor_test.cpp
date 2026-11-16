@@ -293,6 +293,42 @@ TEST_CASE("copied SNAMEs: verbatim with a warning ON, rewritten OFF (Q-MASK-216)
   }
 }
 
+TEST_CASE("copied SNAMEs of a renamed vendor child: its GDS_FILE name is rewritten OFF (Q-MASK-216)",
+          "[cap:gds-write][req:Verbatim copy of read-only cells]") {
+  // User decision of 2026-11-16: the original name is read from the
+  // child's GDS_FILE (new style after GDS_START's STRNAME, old style after
+  // GDS_BEGIN's BGNSTR); no .mag property records it.
+  for (const bool old_style : {false, true}) {
+    for (const bool on : {true, false}) {
+      Fixture f(on);
+      Library lib;
+      const std::uint64_t inv_begin = lib.position();
+      const std::uint64_t inv_start = lib.begin("inv_orig");
+      lib.boundary(7);
+      const std::uint64_t inv_end = lib.end();
+      const std::uint64_t start = lib.begin("wrap");
+      lib.sref("inv_orig");
+      const std::uint64_t end = lib.end();
+      lib.empty(gds::RecordType::endlib);
+      REQUIRE(f.fs.write_atomic("lib.gds", lib.bytes()).ok());
+      db::CellDef& top = f.cell("top");
+      db::CellDef& wrap = f.cell("wrap");
+      db::CellDef& inv = f.cell("inv");  // renamed after the read (`gds unique`, `cellname rename`)
+      make_read_only(inv, "lib.gds", old_style ? inv_begin : inv_start, inv_end,
+                     old_style ? "GDS_BEGIN" : "GDS_START");
+      make_read_only(wrap, "lib.gds", start, end);
+      f.place(wrap, inv);
+      f.place(top, wrap);
+      const std::vector<Rec> recs = decode(f.write(top));
+      INFO("old style " << old_style << ", magic-compat " << on);
+      CHECK(f.last.ok());
+      // An old-style copy keeps its own STRNAME, so its SNAME already names it.
+      CHECK(snames(structure(recs, "wrap")) == std::vector<std::string>{on || old_style ? "inv_orig" : "inv"});
+      CHECK(count(f.last, "GDS-WRITE-045") == (on ? 1U : 0U));
+    }
+  }
+}
+
 TEST_CASE("addendum yes omits vendor structures and keeps the references", "[cap:gds-write][req:Addendum mode]") {
   Fixture f;
   f.options.settings.addendum = true;
