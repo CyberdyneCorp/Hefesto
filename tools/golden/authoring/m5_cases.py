@@ -66,11 +66,15 @@ RT_REASON = ("the library round trip differs from Magic's capture (GDSR/GDSW; m5
              "13.8)")
 # Captured cases that still differ from Magic: owner and cause (the M5 exit blockers).
 BLOCKERS: dict[str, str] = {
-    "MASK-OP-021": "OPS: the generated layer differs from Magic's; the cause is not confirmed yet and the "
-                   "fix or a fix deviation needs a user decision",
-    "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: the library round trip differs from Magic's capture",
-    "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: the library round trip differs from Magic's capture",
-    "MASK-RT-gf180mcu_fd_io-f02": "GDSR/GDSW: the library round trip differs from Magic's capture",
+    "MASK-OP-021": "OPS: Magic's cifInteractingRegions never paints (cif/CIFgen.c:4928-4929), so every "
+                   "interacting/overlapping form gives an empty layer; copying it with magic-compat ON or a "
+                   "fix deviation needs a user decision (proposed Q-MASK-417)",
+    "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: only the digest differs (SREF order of com_ctl_hldv2, gpiov2_amux "
+                                "and overlay_gpiov2_m4); bisecting it needs Magic's out.gds",
+    "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: five structures have fewer boundaries than Magic's (regenerated "
+                                "contacts and derived layers); bisecting it needs Magic's out.gds",
+    "MASK-RT-gf180mcu_fd_io-f02": "GDSR/GDSW: POWER_RAIL_COR_1 has 678 fewer boundaries than Magic's around "
+                                  "its 45-degree paths; bisecting it needs Magic's out.gds",
 }
 BLOCKER_PREFIX = "M5 exit blocker, "
 # Authored cases that replay against Magic's captured output (no deferral any more).

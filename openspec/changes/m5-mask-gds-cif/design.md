@@ -746,6 +746,15 @@ The user decisions of 2026-11-16 (`docs/decisions/m5-decision-table.md`), applie
 - **Unavailable cells (CELL; Q-MASK-234, Q-MASK-235).** `writeall` visits unavailable cells in both modes; `save_cell` sends every unavailable cell through `read_during_write`, which reads an existing file in both modes, and with magic-compat OFF writes a missing one empty, marks the cell available and keeps the header's stamp.
 - **`promptload gds` (GUIMGR; Q-MASK-136).** `gui/prompts.cpp` looks the root name up with `gds::find_gds_file` under magic-compat OFF and reads the chosen file when the root name finds another file or none.
 
+Round 6 workstream and integration contract changes (branches `m5-r6-index`, `m5-r6-gen`, `m5-r6-io`, integration `m5-round6`):
+
+- **Placement without an id link (MODEL/INDEX).** `db::PlaceOptions += link_id` (default true). False makes the use with an empty id and no DBLinkCell, as DBCellNewUse with a NULL id; the GDS reader sets it (`gds/read/sref.cpp`), so a read SREF costs no default-id scan and leaves no dead entry in the parent's id table. `CellDef::append_indexed_use`/`erase_indexed_use` change the use list without marking it touched (db::place and db::remove_use tell the index themselves).
+- **`expand`/`unexpand` search the use index (VIEW, D7).** `ExpandWalk::walk` finds each cell's uses with `db::uses_overlapping(def, area, compat, ...)` over the box in the cell's coordinates (the whole plane for `all`), as DBExpandAll's DBCellSrArea, so a partial search builds the bins as Magic's does. Not ported: Magic's dbExpandFunc also descends into unexpanded children and stops at an array's first overlapping element.
+- **Selection searches of the use index (SELECT, D7).** `select::ops::search_root_index` makes a BPE_OVERLAP search of the root's index whose result is unused: in `types_under` over the point or box (DBSeeTypesAll) and, in `edit_uses`, over the 1x1 square at each selected use's lower-left (SelEnumCells). Not ported: the same searches in the indexes of expanded children.
+- **`cellname list` order (MODEL).** `db/cell_print_order.{hpp,cpp}`: strcmpbynum and glibc's msort_with_tmp, used with magic-compat ON for `allcells`, `topcells` and `modified`.
+- **GDS read duplicate check (GDSR).** `Reader::duplicate_placement` checks the uses placed in the structure being read, keyed by child and translation, and searches the index only for cells the read did not clear and once after a grid subdivision.
+- **Generation tile counts (GEN).** `generate_area_into` counts the tiles it ORs into an existing plane (cifPaintFunc's CIFTileOps).
+
 ## Risks / Trade-offs
 
 - **R1. Use-order emulation (Q-MASK-204).** A small mistake in bin sizing or the walk changes SREF and `C` order only in binned cells. That shows up late, in large designs and second writes. → INDEX lands early with trace tests against Magic orders (the probe of task 1.5, which lands first), targeted golden history cases, and the round-trip corpus (wrapper cells with hundreds of uses). The OFF order is history-free, so users who switch compat off are never exposed.
