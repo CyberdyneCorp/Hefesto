@@ -122,9 +122,10 @@ void paint_copies(const std::vector<FlattenLayer>& layers, std::int64_t cols, st
   for (const auto& [source, to] : layers) {
     for (std::int64_t x = 0; x < cols; ++x) {
       for (std::int64_t y = 0; y < rows; ++y) {
-        // GeoTransTranslate: the element offset is added after the transform.
-        const db::Transform t = db::compose(
-            db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)), trans);
+        // GeoTransTranslate: the element offset is in the child's
+        // coordinates, so the use's transform applies after it.
+        const db::Transform t =
+            db::compose(trans, db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)));
         copy_tiles(*source, *to, t, magic_compat);
       }
     }

@@ -193,6 +193,20 @@ TEST_CASE("copyup into an array visits every element", "[cap:mask-input-styles][
   CHECK(sorted(s.painted("TOP", "nwell")) == Rects{{0, 0, 10, 10}, {20, 0, 30, 10}});
 }
 
+TEST_CASE("regression: copyup into a rotated array steps in the child's coordinates",
+          "[cap:mask-input-styles][req:Input operator copyup]") {
+  Session s("style a\nscalefactor 1\ntemplayer UP NWELL\ncopyup NWELL\nlayer nwell NWELL");
+  auto e = s.engine();
+  read_cell(s, e, "A", {{"NWELL", db::Rect{0, 0, 10, 10}}});
+  REQUIRE(e.begin_cell("TOP").ok());
+  const db::Transform rotated{-1, 0, 100, 0, -1, 100};  // 180 degrees about (50, 50)
+  REQUIRE(e.call("A", rotated, db::ArrayInfo{0, 0, 0, 2, 0, 20}).ok());
+  REQUIRE(e.end_cell().ok());
+  REQUIRE(e.finish().ok());
+  // Rows 0..2 at child y 0, 20, 40 land at parent y 90, 70, 50 (not 110, 130).
+  CHECK(sorted(s.painted("TOP", "nwell")) == Rects{{90, 50, 100, 60}, {90, 70, 100, 80}, {90, 90, 100, 100}});
+}
+
 TEST_CASE("CIF calls do not copy up with magic-compat ON (Q-MASK-309)",
           "[cap:mask-input-styles][req:Input operator copyup]") {
   Session s("style a\nscalefactor 1\ntemplayer UP NWELL\ncopyup NWELL\nlayer nwell NWELL");
