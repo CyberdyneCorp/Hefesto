@@ -39,6 +39,10 @@ CellDef::CellDef(std::string name, std::size_t plane_count)
 
 CellDef::~CellDef() = default;
 
+void CellDef::erase_indexed_use(const CellUse& use) {
+  uses_.erase(std::remove_if(uses_.begin(), uses_.end(), [&](const auto& u) { return u.get() == &use; }), uses_.end());
+}
+
 void set_modified_flag(CellDef& def) {
   if (!def.flags().modified) {
     if (ChangeRecorder* r = def.recorder()) {

@@ -28,6 +28,11 @@ struct PlaceOptions {
   Transform transform;
   ArrayInfo array;
   bool locked = false;
+  // false: DBCellNewUse with a NULL id and no DBLinkCell, as the GDS and CIF
+  // readers place uses: the use gets an empty, unlinked id that the caller
+  // sets (DBGenerateUniqueIds at the end of the structure links it). Skips
+  // the default-id scan over the parent's uses (security.md M5-S3).
+  bool link_id = true;
 };
 
 /// Places `child` in `parent` (DBCellNewUse + DBLinkCell + DBPlaceCell).
