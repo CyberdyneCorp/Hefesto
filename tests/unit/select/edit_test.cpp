@@ -15,6 +15,7 @@
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/property.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/hints/hints.hpp"
 #include "hefesto/select/diag_codes.hpp"
 #include "select_fixture.hpp"
@@ -550,4 +551,37 @@ TEST_CASE("id is an alias of identify only with magic-compat off", ID) {
   s.project.compat.magic_compat = false;
   s.ok("id buf2");
   CHECK(db::find_use(s.top(), "buf2") != nullptr);
+}
+
+TEST_CASE("regression: select cell at a point and delete search the root's use index",
+          "[cap:gds-write][req:Structure ordering]") {
+  // Magic's `select cell <id> at X Y` sees the types under the point
+  // (DBSeeTypesAll, a 1x1 search of the root's use index), and `delete`
+  // enumerates the selected uses with SelEnumCells (a 1x1 search at each
+  // use's lower-left). A search of 10 or more unbinned uses builds the
+  // bins, and the writers emit sibling structures in the bin order
+  // (MASK-UO-005); neither command searched the index before.
+  HEFESTO_SELECT_MT(mt);
+  for (const bool by_delete : {false, true}) {
+    Session s(mt);
+    db::CellDef* child = s.cell("child");
+    sel::test::paint(*child, mt, {0, 0, 10, 10}, mt.poly);
+    db::recompute_bbox(*child);
+    for (db::Coord i = 0; i < 12; ++i) {
+      (void)s.place(*child, "c" + std::to_string(i), 100 * i, 0);
+    }
+    REQUIRE(s.editor.windows.open_frame(&s.top()).ok());
+    const db::UseIndex& index = s.top().use_index();
+    REQUIRE_FALSE(index.state_for_test().binned);
+    if (by_delete) {
+      s.ok("select cell c3");
+      s.top().use_index().rebuild();  // unbinned again: only `delete` searches below
+      REQUIRE_FALSE(index.state_for_test().binned);
+      s.ok("delete");
+      CHECK(s.top().uses().size() == 11);
+    } else {
+      s.ok("select cell c3 at 300 0");
+    }
+    CHECK(index.state_for_test().binned);
+  }
 }

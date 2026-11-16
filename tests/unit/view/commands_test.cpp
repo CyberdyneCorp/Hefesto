@@ -12,6 +12,9 @@
 
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
@@ -181,6 +184,29 @@ TEST_CASE("expand acts per window under the box", "[cap:ui-windows-and-views][re
   REQUIRE(s.run("expand").ok());
   REQUIRE(s.run("xview").ok());
   CHECK_FALSE(w0.is_expanded(u1));
+}
+
+TEST_CASE("regression: expand over part of a cell searches its use index",
+          "[cap:gds-write][req:Structure ordering]") {
+  // DBExpandAll searches the uses under the box through the index, and a
+  // partial search of 10 or more unbinned uses builds the bins; the writers
+  // then emit sibling structures in the bin order (MASK-UO-002..004/007/008).
+  // `expand` looped over the use list instead, so the index stayed the
+  // newest-first list and `gds write` put the structures in another order.
+  Session s;
+  db::CellDef* top = s.cell("top", {0, 0, 1200, 100});
+  db::CellDef* inv = s.cell("inv", {0, 0, 10, 10});
+  for (db::Coord i = 0; i < 12; ++i) {
+    db::PlaceOptions o;
+    o.transform = db::translation(100 * i, 0);
+    REQUIRE(db::place(*top, *inv, o).ok());
+  }
+  (void)s.window(top);
+  s.editor.edit_cell = top;
+  s.editor.box = db::Rect{0, 0, 5, 5};
+  REQUIRE_FALSE(top->use_index().state_for_test().binned);
+  REQUIRE(s.run("expand").ok());
+  CHECK(top->use_index().state_for_test().binned);
 }
 
 TEST_CASE("see hides layers, labels and subcells per window", "[cap:ui-windows-and-views][req:Layer visibility (see)]") {

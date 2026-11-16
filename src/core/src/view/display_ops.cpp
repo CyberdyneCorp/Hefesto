@@ -11,11 +11,13 @@
 
 #include <array>
 #include <sstream>
+#include <vector>
 
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/cmd/coordinates.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
 
@@ -86,8 +88,16 @@ struct ExpandWalk {
   /// DBExpandAll: acts on every matching instance at any depth, descending
   /// through the instances that are expanded after the action.
   void walk(const db::CellDef& def, const db::Transform& to_root) {
-    for (const auto& use : def.uses()) {
-      if (!use || use->def == nullptr) {
+    // DBExpandAll's area search goes through the use index, which bins it
+    // the way Magic's does (the writers' structure order depends on that).
+    const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
+    std::vector<db::CellUse*> found;
+    (void)db::uses_overlapping(def, area, ctx.project().compat, [&](db::CellUse& u) {
+      found.push_back(&u);
+      return true;
+    });
+    for (db::CellUse* use : found) {
+      if (use->def == nullptr) {
         continue;
       }
       if (matches(db::apply(to_root, use->bbox))) {

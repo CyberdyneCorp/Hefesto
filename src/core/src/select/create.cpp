@@ -476,7 +476,13 @@ void remove_area(const Context& c, const db::Rect& area, const Layers& layers, c
   }
 }
 
+void search_root_index(const Context& c, const db::Rect& area) {
+  (void)db::uses_overlapping(*c.root, area, compat::CompatSettings{c.s.magic_compat, true},
+                             [](db::CellUse&) { return true; });
+}
+
 tech::TypeMask types_under(const Context& c, const db::Rect& area) {
+  search_root_index(c, area);
   tech::TypeMask m;
   (void)connect::search_tree_tiles(*c.root, area, tech::TypeMask::all(), c.descend, c.s.magic_compat, [&](const connect::TreeTile& t) {
     m.set(t.tile.type);

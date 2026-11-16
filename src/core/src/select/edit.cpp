@@ -217,6 +217,8 @@ struct UsePair {
 std::vector<UsePair> edit_uses(const Context& c, NonEdit* non_edit) {
   std::vector<UsePair> out;
   for (const auto& u : c.ed->selection.def()->uses()) {
+    // selEnumCFunc1's 1x1 search at the use's lower-left (select/selEnum.c:650-663).
+    search_root_index(c, db::Rect{u->bbox.x0, u->bbox.y0, u->bbox.x0 + 1, u->bbox.y0 + 1});
     auto found = layout_use(c, *u);
     if (!found || found->use->parent != c.ed->edit_cell) {
       if (non_edit != nullptr) {

@@ -89,7 +89,12 @@ void select_intersection(const Context& c, const db::Rect& area, tech::TileType 
 /// SelectFlat.
 void select_flat(const Context& c);
 /// The types present under `area` through descended cells (DBSeeTypesAll).
+/// Makes DBTreeSrTiles' area search of the root's use index first.
 [[nodiscard]] tech::TypeMask types_under(const Context& c, const db::Rect& area);
+/// DBCellSrArea over the root's use index (BPE_OVERLAP over `area`, root
+/// coordinates) whose result is not used: the search Magic makes there
+/// changes the index's bins, so the use order after it follows Magic's.
+void search_root_index(const Context& c, const db::Rect& area);
 
 /// A use of the hierarchy under the root, with its parent's root transform.
 struct UseRef {
