@@ -272,14 +272,16 @@ void split_diagonal(Path& path, int p, bool clockwise, std::vector<PolygonPiece>
 // split that finds one leaves a shorter diagonal behind it, so edges with
 // huge, nearly parallel slopes split about once per unit of length (a
 // 5-point GDS boundary from the fuzzer never finished): counting splits
-// alone leaves O(n^3) work. An ordinary path of n vertices splits about
-// once per diagonal edge (convex arcs never cross), at most n splits over
-// a path of at most 3n edges; 16 n^2 + 4096 visits leave room for crossings
-// and keep the work quadratic, as the strip decomposition after it (M5-S5).
-// Past the budget the path stays non-Manhattan, which the caller reports as
-// for any non-Manhattan path.
+// alone leaves O(n^3) work. The number of splits depends on the geometry,
+// not only on n: a 9-point rounded corner of gf180mcu_fd_io needs 262
+// splits and about 88 000 visits (MASK-RT-gf180mcu_fd_io-f01). The budget
+// is a fixed 2^24 visits, about 190 times that, plus 16 n^2 for long paths
+// (an ordinary path splits about once per diagonal edge, at most n splits
+// over at most 3n edges), so the work stays quadratic, as the strip
+// decomposition after it (M5-S5). Past the budget the path stays
+// non-Manhattan, which the caller reports as for any non-Manhattan path.
 std::uint64_t work_budget(std::size_t vertices) noexcept {
-  constexpr std::uint64_t kMinBudget = 4096;
+  constexpr std::uint64_t kMinBudget = std::uint64_t{1} << 24;
   constexpr std::uint64_t kSaturate = std::uint64_t{1} << 28;  // n^2 * 16 stays below 2^64
   const std::uint64_t n = std::min<std::uint64_t>(vertices, kSaturate);
   return kMinBudget + 16 * n * n;

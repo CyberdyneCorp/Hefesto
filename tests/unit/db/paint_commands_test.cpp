@@ -436,7 +436,7 @@ TEST_CASE("the read decomposer bounds the splits of a degenerate path", CAP "[re
   const std::vector<Point> path{{0, 0}, {1000, 0}, {1000, 400}, {16318463, 1056965008}, {0, 0}};
   const db::PolygonDecomposition d = db::decompose_read_polygon(path);
   CHECK(d.problem == db::PolygonProblem::not_manhattan);
-  CHECK(d.pieces.size() <= 4096 + 16 * 25);
+  CHECK(d.pieces.size() <= (std::size_t{1} << 24) + 16 * 25);
   // An ordinary triangle still decomposes completely.
   const std::vector<Point> triangle{{0, 0}, {10, 0}, {0, 10}};
   const db::PolygonDecomposition t = db::decompose_read_polygon(triangle);
@@ -447,7 +447,7 @@ TEST_CASE("the read decomposer bounds the splits of a degenerate path", CAP "[re
 // Regression (round 5 review): the budget counted splits (1024 + n^2 + n)
 // and each split searched the whole path, so a crafted boundary cost
 // O(n^3) (for the XY record's 8191 points, about 5 x 10^11 visits). The
-// budget now counts edge visits, 16 n^2 + 4096 (security.md M5-S7): the
+// budget now counts edge visits, 2^24 + 16 n^2 (security.md M5-S7): the
 // fuzzer's slivers padded to 1500 vertices stop after it, while 2000
 // steep, near-parallel zigzag diagonals and a 2000-point convex arc of
 // diagonals still decompose completely. (A full 8191-point crafted path
@@ -464,7 +464,18 @@ TEST_CASE("security fix M5-S7: the read decomposer bounds the work of a crafted 
   }
   const db::PolygonDecomposition d = db::decompose_read_polygon(sliver);
   CHECK(d.problem == db::PolygonProblem::not_manhattan);
-  CHECK(d.pieces.size() <= 4096 + 16 * sliver.size());
+  CHECK(d.pieces.size() <= (std::size_t{1} << 24) + 16 * sliver.size() * sliver.size());
+
+  // Regression (round 5 review, Performance run 43789233970): a first
+  // 16 n^2 + 4096 budget refused this 9-point 45-degree power-rail band of
+  // gf180mcu_fd_io (MASK-RT-gf180mcu_fd_io-f01: "non-manhattan polygon."
+  // where Magic reads it). Its two long parallel diagonals need 262 splits
+  // and about 88 000 visits, so the budget has a fixed part.
+  const std::vector<Point> rail{{224240, 65540}, {65540, 224240}, {65540, 225255}, {66400, 225255}, {66400, 224600},
+                                {224600, 66400}, {232070, 66400}, {232070, 65540}, {224240, 65540}};
+  const db::PolygonDecomposition r = db::decompose_read_polygon(rail);
+  CHECK(r.problem == db::PolygonProblem::none);
+  CHECK(r.pieces.size() == 266);  // 262 triangles split off the diagonals, then 4 strips
 
   std::vector<Point> zigzag;
   constexpr db::Coord kTeeth = 1000;
