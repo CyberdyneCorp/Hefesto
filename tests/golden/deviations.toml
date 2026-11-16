@@ -454,11 +454,6 @@ deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "out.gds"]
 reason = "M5 exit blocker, OPS: the generated layer differs from Magic's; the cause is not confirmed yet and the fix or a fix deviation needs a user decision"
 
-[MASK-HG-025]
-deferred = "M5"
-outputs = ["stdout.txt", "stderr.txt", "out.gds"]
-reason = "M5 exit blocker, GEN/OPS: the cif statistics tile counts differ from Magic's"
-
 [MASK-RT-sky130_fd_io-f01]
 deferred = "M5"
 outputs = ["stdout.txt", "stderr.txt", "out.gds.sha256", "out.gds.summary.txt"]

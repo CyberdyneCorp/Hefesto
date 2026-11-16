@@ -287,6 +287,23 @@ TEST_CASE("Generation counts its tile operations", "[cap:mask-hierarchical-gener
   CHECK(f.ctx.statistics.interaction_areas >= 1);
 }
 
+// MASK-HG-025: CIFGen with replace false ORs each new tile in through
+// cifPaintFunc, which counts it; a plane taken over whole counts nothing.
+TEST_CASE("OR-ing generated layers into existing planes counts their tiles",
+          "[cap:mask-hierarchical-generation][req:Generation statistics]") {
+  GenFixture f;
+  const std::size_t cm1 = f.layer("CM1", {types_op(OpKind::op_or, {f.m1})});
+  db::CellDef& cell = f.cell("a");
+  f.paint(cell, f.m1, Rect{0, 0, 10, 10});
+  f.paint(cell, f.m1, Rect{20, 0, 30, 10});
+  LayerPlanes into(f.ctx.pool, f.style.layers.size());
+  generate_area_into(f.source(), cell, &cell, Rect{0, 0, 30, 10}, f.style, f.ctx, {}, into);
+  CHECK(f.ctx.statistics.flat_tiles == 2);  // the layer's two painted tiles
+  generate_area_into(f.source(), cell, &cell, Rect{0, 0, 30, 10}, f.style, f.ctx, {}, into);
+  CHECK(f.ctx.statistics.flat_tiles == 6);  // two painted, two OR'ed in
+  CHECK(GenFixture::rects(into, cm1) == Rects{Rect{0, 0, 100, 100}, Rect{200, 0, 300, 100}});
+}
+
 }  // namespace hefesto::mask::test
 
 namespace hefesto::mask::test {

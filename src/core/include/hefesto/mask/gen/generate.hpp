@@ -151,7 +151,8 @@ void unfracture_layer(MaskPlane& plane, const GenerationClip& clip, const compat
                                         GenerationContext& ctx, const GenerateOptions& options = {});
 
 /// CIFGen with `replace` false: the layers generated as generate_area does,
-/// OR'ed into `into` (an entry that is nullptr takes the new plane).
+/// OR'ed into `into` (an entry that is nullptr takes the new plane). Each
+/// tile OR'ed into an existing plane counts one tile operation (cifPaintFunc).
 void generate_area_into(const GenerationSource& source, const db::CellDef& layout, const db::CellDef* origin,
                         const db::Rect& area, const OutputStyle& style, GenerationContext& ctx,
                         const GenerateOptions& options, LayerPlanes& into);
