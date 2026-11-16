@@ -94,13 +94,42 @@ TEST_CASE("writeall force writes an undefined cell, which reads its own empty fi
   CHECK(parent.value().find("use u  u_0\ntimestamp 0\n") != std::string::npos);
 }
 
-TEST_CASE("writeall force leaves an undefined cell unwritten with magic-compat OFF",
+TEST_CASE("writeall force writes an undefined cell empty and stamped with magic-compat OFF",
           "[cap:cmd-hierarchy][req:Writeall command]") {
+  // User decision of 2026-11-16 (was: not visited with magic-compat OFF).
   Session s{false};
   db::CellDef* u = undefined_child(s);
   const auto r = s.run("writeall force");
   REQUIRE(r.ok());
-  CHECK_FALSE(cell::test::mentions(r, "Writing 'u'"));
-  CHECK_FALSE(s.services.files().exists("u.mag"));
-  CHECK_FALSE(u->flags().available);
+  INFO((r.diagnostics.empty() ? std::string{} : r.diagnostics.back().text));
+  CHECK(cell::test::mentions(r, "Writing 'u'"));
+  CHECK_FALSE(cell::test::mentions(r, "contained format error"));
+  CHECK(u->flags().available);
+  REQUIRE(u->timestamp() != 0);
+  const std::string stamp = "timestamp " + std::to_string(u->timestamp()) + "\n";
+  const auto child = s.services.files().read("u.mag");
+  REQUIRE(child.ok());
+  CHECK(child.value() == "magic\ntech tiny\n" + stamp + "<< end >>\n");
+  const auto parent = s.services.files().read("top.mag");
+  REQUIRE(parent.ok());
+  CHECK(parent.value().find("use u  u_0\n" + stamp) != std::string::npos);
+}
+
+TEST_CASE("writeall force reads an unavailable cell's existing file before writing it, in both modes",
+          "[cap:cmd-hierarchy][req:Writeall command]") {
+  // User decision of 2026-11-16 (fix): Magic writes the still empty paint
+  // section first and loses the file's paint (database/DBio.c:4771-4780).
+  for (const bool compat : {true, false}) {
+    Session s{compat};
+    s.write("u.mag", "magic\ntech tiny\ntimestamp 5\n<< metal1 >>\nrect 0 0 4 2\n<< end >>\n");
+    db::CellDef* u = undefined_child(s);
+    const auto r = s.run("writeall force");
+    INFO("magic-compat " << compat);
+    REQUIRE(r.ok());
+    CHECK(u->flags().available);
+    const auto child = s.services.files().read("u.mag");
+    REQUIRE(child.ok());
+    CHECK(child.value().find("<< metal1 >>\nrect 0 0 4 2\n") != std::string::npos);
+    CHECK(child.value().find("timestamp 0\n") == std::string::npos);
+  }
 }

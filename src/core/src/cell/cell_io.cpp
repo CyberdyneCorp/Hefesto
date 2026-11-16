@@ -256,22 +256,32 @@ diag::Status write_file(CellIoContext& ctx, const std::string& file, const std::
   return diag::Done{};
 }
 
-/// DBCellWrite of a cell that is not available, with magic-compat ON: the
-/// header is written with the new stamp, then DBCellWriteFile's use
-/// enumeration (DBCellEnum) reads the cell. A file that did not exist was
-/// just created and is still empty on disk, so the read finds it, reports
-/// a format error and a zero timestamp, and the timestamp stays 0 after
-/// the write (Magic ref: database/DBio.c:4780, database/DBcellsrch.c:1273).
+/// DBCellWrite of a cell that is not available. The header is written with
+/// the new stamp. An existing file is read before anything is written, in
+/// both modes, so it keeps its paint (Magic writes the still empty paint
+/// section first and reads the cell in DBCellWriteFile's use enumeration,
+/// database/DBio.c:4771-4780; user decision of 2026-11-16, fix). With no
+/// file, magic-compat ON creates it empty and reads it as DBCellEnum does:
+/// a format error and a zero timestamp, which the cell keeps after the
+/// write (database/DBcellsrch.c:1273); with it OFF the cell is written
+/// empty and keeps the header's stamp (user decision of 2026-11-16).
 /// Returns the stamp the header carries.
 std::int64_t read_during_write(CellIoContext& ctx, db::CellDef& def, const std::string& file) {
   const std::int64_t header_stamp = def.timestamp();
   def.set_file_path(recorded_path_of(file));  // DBCellWrite sets cd_file first
-  if (!ctx.fs.exists(file)) {
+  const bool exists = ctx.fs.exists(file);
+  if (!exists && ctx.magic_compat) {
     (void)ctx.fs.write_atomic(file, std::string{});  // fopen(tmpname, "w")
   }
-  ReadOptions opts;
-  opts.ignore_tech = true;
-  (void)read_cell(ctx, def, opts);  // DBCellEnum ignores the outcome
+  if (exists || ctx.magic_compat) {
+    ReadOptions opts;
+    opts.ignore_tech = true;
+    (void)read_cell(ctx, def, opts);  // DBCellEnum ignores the outcome
+  }
+  if (!ctx.magic_compat) {
+    def.set_timestamp(header_stamp);
+    def.flags().available = true;
+  }
   return header_stamp;
 }
 
@@ -454,7 +464,7 @@ diag::Status save_cell(CellIoContext& ctx, db::CellDef& def, std::string_view pa
   warn_renamed_children(ctx, def);
   WriteOptions write;
   write.target_file = recorded_path_of(file);
-  const bool unread = ctx.magic_compat && !def.flags().available;
+  const bool unread = !def.flags().available;
   const std::int64_t header_stamp = unread ? read_during_write(ctx, def, file) : def.timestamp();
   const std::string text = write_mag_stamped(ctx, def, write, header_stamp);
   const platform::Path old_file = def.file_path().generic_string() + std::string{kMag};

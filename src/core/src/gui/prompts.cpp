@@ -10,7 +10,9 @@
 
 #include "gui/gui_util.hpp"
 #include "hefesto/cmd/context.hpp"
+#include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
+#include "hefesto/gds/read/read.hpp"
 #include "hefesto/gui/diag_codes.hpp"
 #include "ui/command_util.hpp"
 
@@ -76,9 +78,26 @@ std::string joined(const std::vector<std::string>& words) {
   return out;
 }
 
+// The name `promptload gds` reads: wrapper.tcl's root name; with
+// magic-compat OFF the picked path when the root name does not find the
+// picked file (`chip.gds.gz`, `chip.cal`, or a `chip.gds` beside a picked
+// `chip.strm`; user decision of 2026-11-16).
+std::string gds_read_name(CommandContext& ctx, const std::string& file) {
+  std::string root = file_root(file);
+  if (ctx.project().compat.magic_compat) {
+    return root;
+  }
+  editor::EditorState& editor = *ctx.editor();
+  diag::NullSink quiet;
+  cell::LookupContext lookup{ctx.services().files, editor.search_paths, editor.path_variables, quiet};
+  const std::optional<cell::FoundFile> found = gds::find_gds_file(lookup, root);
+  const bool same = found && found->path.lexically_normal() == platform::Path{file}.lexically_normal();
+  return same ? root : file;
+}
+
 void load_gds(CommandContext& ctx, const std::string& file) {
   const std::vector<std::string> before = detail::words_of(detail::run_value(ctx, {"cellname", "list", "top"}));
-  (void)run(ctx, {"gds", "read", file_root(file)});
+  (void)run(ctx, {"gds", "read", gds_read_name(ctx, file)});
   std::vector<std::string> fresh;
   for (const std::string& cell : detail::words_of(detail::run_value(ctx, {"cellname", "list", "top"}))) {
     if (!contains(before, cell)) {

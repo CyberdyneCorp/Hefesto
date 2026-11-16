@@ -50,6 +50,9 @@ struct VendorIo {
   std::int64_t now = 0;
   /// The first failure that stops the write (a stream error).
   diag::Status error = diag::Done{};
+  /// Each vendor child's structure name in its GDS_FILE (Q-MASK-216 OFF),
+  /// read once per write; nullopt when it cannot be read.
+  std::unordered_map<const db::CellDef*, std::optional<std::string>> original_names{};
 
   [[nodiscard]] platform::FileSystem& files() const;
   [[nodiscard]] StructureContext context(const db::CellDef& def) const;
