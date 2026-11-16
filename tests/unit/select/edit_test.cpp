@@ -585,3 +585,48 @@ TEST_CASE("regression: select cell at a point and delete search the root's use i
     CHECK(index.state_for_test().binned);
   }
 }
+
+TEST_CASE("regression: delete looks for a selected array from its first element and through every child",
+          "[cap:gds-write][req:Structure ordering]") {
+  // selEnumCFunc1 searches a 1x1 square at the lower-left of element
+  // (xlo, ylo) (GeoTransRect(cu_transform, cd_bbox)), and selEnumCFunc2
+  // searches the index of every child overlapping it, expanded or not, until
+  // it finds the use. Hefesto searched the root only, at the lower-left of
+  // the whole array: a rotated array's first element is its rightmost one,
+  // so the unexpanded child `mid` under that element kept its unbinned index.
+  HEFESTO_SELECT_MT(mt);
+  for (const bool magic_compat : {true, false}) {
+    Session s(mt);
+    s.project.compat.magic_compat = magic_compat;
+    db::CellDef* child = s.cell("child");
+    sel::test::paint(*child, mt, {0, 0, 10, 10}, mt.poly);
+    db::recompute_bbox(*child);
+    db::CellDef* leaf = s.cell("leaf");
+    sel::test::paint(*leaf, mt, {0, 0, 10, 10}, mt.poly);
+    db::recompute_bbox(*leaf);
+    db::CellDef* mid = s.cell("mid");
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(900 + 100 * i, 0);
+      REQUIRE(db::place(*mid, *leaf, o).ok());
+    }
+    db::recompute_bbox(*mid);
+    // A 2x1 array at 180 degrees: element 0 at x 1000..1010, element 1 at
+    // 500..510. `mid` (x 900..2010) is placed after it, so the root's
+    // newest-first walk reaches `mid` before the array.
+    db::PlaceOptions o;
+    o.id = "arr";
+    o.transform = db::Transform{-1, 0, 1010, 0, -1, 10};
+    o.array = db::ArrayInfo{0, 1, 0, 0, 500, 0};
+    REQUIRE(db::place(s.top(), *child, o).ok());
+    (void)s.place(*mid, "m", 0, 0);
+    REQUIRE(s.editor.windows.open_frame(&s.top()).ok());
+    s.ok("select cell arr");
+    REQUIRE(s.selection().uses().size() == 1);
+    REQUIRE_FALSE(mid->use_index().state_for_test().binned);
+    s.ok("delete");
+    CHECK(db::find_use(s.top(), "arr") == nullptr);
+    CHECK(db::find_use(s.top(), "m") != nullptr);
+    CHECK(mid->use_index().state_for_test().binned);
+  }
+}

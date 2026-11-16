@@ -392,14 +392,14 @@ TEST_CASE("a GDS write runs while the background DRC has work on the same hierar
         if (host.busy()) committed_during_job += n;
       });
   // The frames a job pumps run the posted tasks, as the window's do; the
-  // checker's squares wait (DrcPump's hold) until the job ended.
-  pump.set_hold([&host] { return host.busy(); });
+  // checker's squares wait (DrcPump's hold) until the job ended, when the
+  // host resumes the pump: the shell's wiring (MaskJobDrcLink).
+  const MaskJobDrcLink link(host, pump);
   host.set_pump([&] { (void)run_tasks(); }, 1ms);
   for (int round = 0; round < 4; ++round) {
     // New work for the checker over the whole hierarchy, then a write.
     s.ok("load top; box -10 -10 80 80; drc check");
     CHECK(s.gds_write("chip" + std::to_string(round)) == reference);
-    pump.resume();
     (void)run_tasks();
   }
   const auto deadline = std::chrono::steady_clock::now() + 30s;
@@ -451,4 +451,25 @@ TEST_CASE("console lines typed while a mask job runs wait until it ends",
   CHECK(s.top().bbox().x1 < 110);  // not run yet
   CHECK(console.run_held() == 1);  // the window runs it once the job ended
   CHECK(s.top().bbox().x1 >= 110);
+}
+
+TEST_CASE("regression: the DRC link is undone before the pump it resumes goes away",
+          "[cap:hefesto-architecture][req:Concurrency model]") {
+  // shell.cpp set the window's mask-job end callback to resume the DRC pump,
+  // which is destroyed before the window: a job ending during the window's
+  // teardown called resume() on a destroyed pump. MaskJobDrcLink clears the
+  // callbacks when it leaves scope, before the pump declared ahead of it.
+  JobSession s;
+  MaskJobHost host(s.editor().database_lock);
+  std::size_t posted = 0;
+  {
+    DrcPump pump(s.editor(), [&](const std::function<void()>&) { ++posted; }, [](std::size_t) {});
+    const MaskJobDrcLink link(host, pump);
+    CHECK(host.has_on_end());
+  }
+  CHECK_FALSE(host.has_on_end());
+  const auto r = host.run_job(MaskJobKind::write, "chip.gds",
+                              [](const mask::Progress*) { return cmd::CommandResult::success(); });
+  CHECK(r.ok());
+  CHECK(posted == 0);
 }

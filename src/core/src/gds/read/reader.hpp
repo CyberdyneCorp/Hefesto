@@ -326,6 +326,10 @@ class Reader {
   /// here on, until stop_tracking at the end of its elements.
   void clear_cell(db::CellDef& def);
   void stop_tracking(const db::CellDef& def);
+  struct Placements;
+  /// After a grid subdivision: the tracked placements of `def`, keyed again
+  /// by its uses' scaled translations.
+  void retrack(const db::CellDef& def, Placements& placements) const;
   void array_spacing(const Reference& ref, const db::Transform& trans, db::ArrayInfo& array);
   [[nodiscard]] bool is_flat(const db::CellDef& def) const;
   void copy_flattened(const Reference& ref, const db::Transform& trans, const db::ArrayInfo& array);

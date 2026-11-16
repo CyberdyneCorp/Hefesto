@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "hefesto/platform/stack_thread.hpp"
+#include "hefesto/shell/drc_link.hpp"
 
 namespace hefesto::shell {
 
@@ -206,6 +207,16 @@ std::optional<MaskJobState> MaskJobHost::state() const {
   }
   out.cancel_requested = shared_->cancel.load(std::memory_order_relaxed);
   return out;
+}
+
+MaskJobDrcLink::MaskJobDrcLink(MaskJobHost& jobs, DrcPump& pump) : jobs_(jobs), pump_(pump) {
+  pump_.set_hold([&jobs] { return jobs.busy(); });
+  jobs_.set_on_end([&pump] { pump.resume(); });
+}
+
+MaskJobDrcLink::~MaskJobDrcLink() {
+  jobs_.set_on_end({});
+  pump_.set_hold({});
 }
 
 }  // namespace hefesto::shell

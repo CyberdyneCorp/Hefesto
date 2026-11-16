@@ -7,6 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <set>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -386,4 +387,51 @@ TEST_CASE("tree searches enumerate uses in the use index order of the session's 
                                     return true;
                                   });
   CHECK(off == newest_first);
+}
+
+TEST_CASE("regression: tree searches over part of a descended cell search its use index",
+          "[cap:gds-write][req:Structure ordering]") {
+  // DBTreeSrTiles, DBTreeSrLabels and DBTreeSrCells search the cell plane
+  // of every cell they descend into with DBCellSrArea (database/
+  // DBcellsrch.c:283, :858, :1151-1153), and a partial search of 10 or more
+  // unbinned uses builds the bins. The tree searches took each cell's uses
+  // in the index's order without searching it, so after `select area` or
+  // `what` over part of a child the writers still saw its unbinned index.
+  HEFESTO_SELECT_MT(mt);
+  for (const bool on : {true, false}) {
+    for (int search = 0; search < 4; ++search) {
+      CAPTURE(on, search);
+      db::CellLibrary lib;
+      db::CellDef& top = *lib.create("top", mt.tech->plane_count()).value();
+      db::CellDef& mid = *lib.create("mid", mt.tech->plane_count()).value();
+      db::CellDef& leaf = *lib.create("leaf", mt.tech->plane_count()).value();
+      paint(leaf, mt, {0, 0, 4, 4}, mt.m2);
+      db::recompute_bbox(leaf);
+      for (int i = 0; i < 12; ++i) {
+        db::PlaceOptions o;
+        o.transform = db::translation(10 * i, 0);
+        REQUIRE(db::place(mid, leaf, o).ok());
+      }
+      db::recompute_bbox(mid);
+      REQUIRE(db::place(top, mid, db::PlaceOptions{}).ok());
+      db::recompute_bbox(top);
+      REQUIRE_FALSE(mid.use_index().state_for_test().binned);
+      const Rect area{0, 0, 15, 4};
+      const connect::Descend all;
+      if (search == 0) {
+        (void)connect::search_tree_tiles(top, area, tech::TypeMask::of(mt.m2), all, on,
+                                         [](const connect::TreeTile&) { return true; });
+      } else if (search == 1) {
+        (void)connect::search_tree_labels(top, area, tech::TypeMask::all(), all, on,
+                                          [](const connect::TreeLabel&) { return true; });
+      } else if (search == 2) {
+        (void)connect::search_tree_cells(top, area, [](const db::CellUse& u) { return u.def->name() == "mid"; }, on,
+                                         [](const connect::TreeCell&) { return true; });
+      } else {
+        (void)connect::search_tree_defs(top, area, all, on,
+                                        [](const db::CellDef&, const db::Transform&, const std::string&) { return true; });
+      }
+      CHECK(mid.use_index().state_for_test().binned);
+    }
+  }
 }

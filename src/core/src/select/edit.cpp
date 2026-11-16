@@ -217,9 +217,7 @@ struct UsePair {
 std::vector<UsePair> edit_uses(const Context& c, NonEdit* non_edit) {
   std::vector<UsePair> out;
   for (const auto& u : c.ed->selection.def()->uses()) {
-    // selEnumCFunc1's 1x1 search at the use's lower-left (select/selEnum.c:650-663).
-    search_root_index(c, db::Rect{u->bbox.x0, u->bbox.y0, u->bbox.x0 + 1, u->bbox.y0 + 1});
-    auto found = layout_use(c, *u);
+    auto found = selected_layout_use(c, *u);
     if (!found || found->use->parent != c.ed->edit_cell) {
       if (non_edit != nullptr) {
         non_edit->cells = true;
@@ -339,31 +337,6 @@ std::unique_ptr<db::CellDef> scratch(const Context& c) {
   auto def = std::make_unique<db::CellDef>("__SELECT2__", c.tech->plane_count());
   def->flags().internal = true;
   return def;
-}
-
-std::optional<UseRef> layout_use(const Context& c, const db::CellUse& selected) {
-  std::optional<UseRef> found;
-  const auto visit = [&](const auto& self, const db::CellDef& def, const db::Transform& to_root,
-                         const std::string& path) -> bool {
-    for (db::CellUse* u : db::uses_in_search_order(def, compat::CompatSettings{c.s.magic_compat, true})) {
-      if (u->def == nullptr) {
-        continue;
-      }
-      if (u->def == selected.def && db::compose(to_root, u->transform) == selected.transform &&
-          u->array == selected.array) {
-        found = UseRef{u, to_root, connect::child_path(path, *u, u->array.xlo, u->array.ylo),
-                       db::Point{u->array.xlo, u->array.ylo}};
-        return false;
-      }
-      const db::Transform et = db::element_transform(*u, u->array.xlo, u->array.ylo);
-      if (!self(self, *u->def, db::compose(to_root, et), connect::child_path(path, *u, u->array.xlo, u->array.ylo))) {
-        return false;
-      }
-    }
-    return true;
-  };
-  (void)visit(visit, *c.root, db::kIdentity, std::string{});
-  return found;
 }
 
 std::unique_ptr<db::CellDef> edit_parts(const Context& c, const db::Transform& t, NonEdit* non_edit) {

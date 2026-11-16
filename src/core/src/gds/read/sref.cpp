@@ -481,12 +481,23 @@ void Reader::stop_tracking(const db::CellDef& def) {
   placed_.erase(&def);
 }
 
+// A cleared cell holds only the uses this read placed in it.
+void Reader::retrack(const db::CellDef& def, Placements& placements) const {
+  placements.uses.clear();
+  for (const auto& use : def.uses()) {
+    placements.uses.emplace(PlacementKey{use->def, use->transform.c, use->transform.f}, use.get());
+  }
+  placements.grid = editor_.grid;
+}
+
 // DBCellFindDup (BPE_EQUAL): a use of the same definition with an equal
 // bounding box and the same placement. A cell this read cleared has only
 // the uses tracked in placed_; any other cell is searched in its index.
 // A grid subdivision scales the layout behind the index's back
 // (DBScaleEverything); the index then takes the scaled uses at the next
-// search, so the first check after one still searches it, as before.
+// search, so the first check after one still searches it, as before, and
+// the tracked keys, which hold the old scale's translations, are taken
+// again from the cell's uses.
 bool Reader::duplicate_placement(const db::CellDef& parent, const db::CellUse& probe) {
   const auto tracked = placed_.find(&parent);
   if (tracked == placed_.end() || !(tracked->second.grid == editor_.grid)) {
@@ -496,7 +507,7 @@ bool Reader::duplicate_placement(const db::CellDef& parent, const db::CellUse& p
       return !duplicate;
     });
     if (tracked != placed_.end()) {
-      tracked->second.grid = editor_.grid;
+      retrack(parent, tracked->second);
     }
     return duplicate;
   }

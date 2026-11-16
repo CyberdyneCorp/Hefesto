@@ -16,6 +16,7 @@
 
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/cell/hier.hpp"
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
 #include "hefesto/db/labels.hpp"
@@ -476,13 +477,7 @@ void remove_area(const Context& c, const db::Rect& area, const Layers& layers, c
   }
 }
 
-void search_root_index(const Context& c, const db::Rect& area) {
-  (void)db::uses_overlapping(*c.root, area, compat::CompatSettings{c.s.magic_compat, true},
-                             [](db::CellUse&) { return true; });
-}
-
 tech::TypeMask types_under(const Context& c, const db::Rect& area) {
-  search_root_index(c, area);
   tech::TypeMask m;
   (void)connect::search_tree_tiles(*c.root, area, tech::TypeMask::all(), c.descend, c.s.magic_compat, [&](const connect::TreeTile& t) {
     m.set(t.tile.type);
@@ -634,7 +629,61 @@ void read_if_unavailable(const Context& c, db::CellDef* def) {
   }
 }
 
+/// selEnumCFunc2 (select/selEnum.c:700-735): looks for the layout use that
+/// a selected use stands for with DBCellSrArea's searches, which can bin
+/// the use indexes they search.
+struct SelectedUseSearch {
+  const Context& c;
+  const db::CellUse& selected;
+  std::optional<UseRef> found;
+
+  /// DBCellSrArea over `def` (`area` in its coordinates); false once found.
+  bool search(const db::CellDef& def, const db::Rect& area, const db::Transform& to_root, const std::string& path) {
+    return db::uses_overlapping(def, area, compat::CompatSettings{c.s.magic_compat, true}, [&](db::CellUse& u) {
+      if (u.def == nullptr) {
+        return true;
+      }
+      const db::ElementRange r = db::array_overlap(u, area);  // dbCellSrFunc's elements
+      for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
+        for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
+          if (!element(u, x, y, area, to_root, path)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  }
+
+  /// One element: the match, or checkChildren (the child's own search,
+  /// expanded or not, after DBCellSrArea's DBCellRead).
+  bool element(db::CellUse& u, std::int32_t x, std::int32_t y, const db::Rect& area, const db::Transform& to_root,
+               const std::string& path) {
+    const db::Transform et = db::element_transform(u, x, y);
+    const db::Transform t = db::compose(to_root, et);
+    std::string p = connect::child_path(path, u, x, y);
+    if (u.def == selected.def && t == selected.transform && u.array == selected.array) {
+      found = UseRef{&u, to_root, std::move(p), db::Point{x, y}};
+      return false;
+    }
+    read_if_unavailable(c, u.def);
+    return search(*u.def, db::apply(db::invert(et), area), t, p);
+  }
+};
+
 }  // namespace
+
+std::optional<UseRef> selected_layout_use(const Context& c, const db::CellUse& selected) {
+  if (selected.def == nullptr || selected.def == c.root) {
+    return std::nullopt;  // the root itself: no use to find (selEnumCFunc1's top-level case)
+  }
+  // A 1x1 square at the lower-left of element (xlo, ylo) of the selected use
+  // (GeoTransRect(cu_transform, cd_bbox), select/selEnum.c:655-659).
+  const db::Rect box = db::apply(selected.transform, selected.def->bbox());
+  SelectedUseSearch s{c, selected, std::nullopt};
+  (void)s.search(*c.root, db::Rect{box.x0, box.y0, box.x0 + 1, box.y0 + 1}, db::kIdentity, std::string{});
+  return std::move(s.found);
+}
 
 std::optional<UseRef> find_use_path(const Context& c, std::string_view path) {
   const db::CellDef* def = c.root;

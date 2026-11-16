@@ -195,7 +195,7 @@ std::string use_name(const db::CellUse& u) {
 std::vector<const db::CellUse*> selected_uses(const Context& c) {
   std::vector<const db::CellUse*> out;
   for (const db::CellUse* u : db::uses_in_search_order(*c.ed->selection.def(), compat::CompatSettings{c.s.magic_compat, true})) {
-    const auto found = ops::layout_use(c, *u);
+    const auto found = ops::selected_layout_use(c, *u);
     out.push_back(found ? found->use : u);
   }
   return out;
@@ -322,7 +322,7 @@ CommandResult cmd_identify(CommandContext& ctx, const Invocation& inv) {
     return fail_text(codes::kIdNoSubcell, "There isn't a selected subcell;  can't change ids.");
   }
   db::CellUse& sel_use = *selected.front();
-  const auto found = ops::layout_use(c, sel_use);
+  const auto found = ops::selected_layout_use(c, sel_use);
   if (c.ed->edit_cell == nullptr) {
     return fail_text(codes::kNotEditable, "Top-level cell is not editable---cannot change identifier of child cell " +
                                               sel_use.id + ".");

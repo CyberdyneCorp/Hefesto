@@ -121,7 +121,7 @@ TEST_CASE("sequential default identifiers and gap reuse", HI "[req:Instance iden
 
 TEST_CASE("a placement without a linked id leaves the id empty and the id table untouched",
           HI "[req:Instance identifier assignment]") {
-  // DBCellNewUse with a NULL id (the GDS and CIF readers): no default-id
+  // DBCellNewUse with a NULL id (the GDS reader): no default-id
   // scan and no DBLinkCell entry, so cd_idHash keeps Magic's order.
   db::CellLibrary lib;
   auto* top = make(lib, "top");

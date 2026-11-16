@@ -358,3 +358,28 @@ TEST_CASE("a malformed array property message has no line end, as Magic's TxErro
   REQUIRE(it != s.last.diagnostics.end());
   CHECK(it->no_newline);
 }
+
+TEST_CASE("regression: a duplicate placement is found after a grid subdivision in the same structure",
+          "[cap:gds-read][req:Use placement rules]") {
+  // The duplicate check keeps the uses of the structure by translation. A
+  // subdivision scales those translations in place (DBScaleEverything), so
+  // the SREF after the next one, at the first SREF's place, missed it: the
+  // extra use was kept and no warning printed (Magic's DBCellFindDup finds it,
+  // calma/CalmaRdcl.c:1513).
+  for (const bool magic_compat : {true, false}) {
+    Session s("style test\nscalefactor 10\nlayer m1 M1\ncalma M1 68 20\n", magic_compat);
+    GdsFile f;
+    f.library();
+    f.begin("A").boundary(68, 20, {{0, 0}, {0, 100}, {100, 100}, {100, 0}, {0, 0}}).end();
+    f.begin("top")
+        .sref("A", {100, 0})
+        .sref("A", {25, 300})  // half a grid unit: subdivides the grid
+        .sref("A", {100, 0})   // the first one again
+        .end()
+        .end_library();
+    s.read(f);
+    REQUIRE(s.said("Input off lambda grid by 1/2; grid redefined."));
+    CHECK(uses(s.cell("top")).size() == 2);
+    CHECK(s.count("placed on top of itself") == 1);
+  }
+}
