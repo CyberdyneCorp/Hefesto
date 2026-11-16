@@ -8,21 +8,22 @@
 // console's running header, the canvas Interrupt card after 2 s), so no new
 // board is needed:
 //
-//   - a read runs on the command thread, which holds the database lock
-//     exclusively; the mask::Progress it gets pumps a frame (rate-limited to
-//     the pump interval) whenever the reader reports, and its cancel flag is
-//     the Interrupt card's;
-//   - a write's prepare phase (gds/cif prepare_write) runs on the calling
-//     thread under the exclusive lock; its emit phase runs on a worker
-//     through platform::run_on_stack(platform::kDeepRecursionStackBytes),
+//   - a read, and a whole write (run_job: MaskSession::read_host and
+//     write_host), run on the command thread, which holds the database lock
+//     exclusively; the mask::Progress they get pumps a frame (rate-limited
+//     to the pump interval) whenever the reader reports or the write's
+//     subtree loading ticks (Progress::tick), and its cancel flag is the
+//     Interrupt card's;
+//   - a write's emit phase (run_emit: MaskSession::emit_host) runs on a
+//     worker through platform::run_on_stack(platform::kDeepRecursionStackBytes),
 //     because the generators and writers recurse once per hierarchy level
-//     (up to 1024 levels), holding the lock shared, while the calling thread
-//     pumps frames; the finish phase runs on the calling thread under the
-//     exclusive lock again. When the calling thread already holds the lock
-//     exclusively (a write run from inside a command), that hold covers the
-//     worker: the caller only pumps frames, which read, until the emit ends;
-//   - edits handed to defer() while a job runs are queued and run, in order,
-//     once it ended (after the finish phase), so they never reach the file;
+//     (up to 1024 levels), while the calling thread pumps frames. The
+//     command's exclusive hold covers the worker (design "Round 5 contract
+//     updates"): the calling thread only pumps frames, which read, until the
+//     emit ends, and the background DRC waits. Called without that hold
+//     (tests), the worker holds the lock shared;
+//   - console lines typed while a job runs wait as behind a script
+//     (TclConsoleSession::set_external_busy), so no edit reaches the file;
 //   - request_cancel() (the Interrupt card, Ctrl-C) sets the Progress's
 //     cancel flag; a cancelled write leaves no output file (the writers'
 //     temporary file, mask::OutputFile).
@@ -76,15 +77,6 @@ struct MaskJobState {
 /// was reported and "Stopping: no file is written" after Interrupt.
 [[nodiscard]] std::optional<InterruptCardView> mask_job_card(const MaskJobState& state);
 
-/// The three phases of a write (gds/cif prepare_write, emit_write,
-/// finish_write). `prepare` returns nullopt to go on, or the result that
-/// ends the write (a failed prepare: no emit, no finish).
-struct MaskWritePhases {
-  std::function<std::optional<cmd::CommandResult>()> prepare;
-  MaskWork emit;
-  std::function<void()> finish;
-};
-
 class MaskJobHost {
  public:
   explicit MaskJobHost(db::DatabaseLock& lock);
@@ -96,21 +88,20 @@ class MaskJobHost {
   /// runs (the shell draws a frame there).
   void set_pump(std::function<void()> pump, std::chrono::milliseconds interval = std::chrono::milliseconds{50});
 
-  /// Runs `read` on the calling thread (see the file comment).
-  cmd::CommandResult run_read(std::string_view label, const MaskWork& read);
+  /// Runs `work` on the calling thread as a job of `kind` (see the file
+  /// comment); nested inside a running job it just runs.
+  cmd::CommandResult run_job(MaskJobKind kind, std::string_view label, const MaskWork& work);
+  cmd::CommandResult run_read(std::string_view label, const MaskWork& read) {
+    return run_job(MaskJobKind::read, label, read);
+  }
   /// Runs `emit` on a deep-stack worker while the calling thread pumps;
-  /// returns its result and rethrows its exception.
+  /// returns its result and rethrows its exception. Inside run_job it is
+  /// part of that job.
   cmd::CommandResult run_emit(std::string_view label, const MaskWork& emit);
-  /// prepare (exclusive lock), run_emit, then finish (exclusive lock); then
-  /// the deferred edits.
-  cmd::CommandResult run_write(std::string_view label, const MaskWritePhases& phases);
 
-  /// Called on the calling thread once a job ended, after its deferred
-  /// edits (the window resumes the DRC commits it held: DrcPump::resume).
+  /// Called on the calling thread once a job ended (the window resumes the
+  /// DRC commits it held: DrcPump::resume).
   void set_on_end(std::function<void()> on_end) { on_end_ = std::move(on_end); }
-
-  /// Runs `edit` now when no job runs, else once the job ended.
-  void defer(std::function<void()> edit);
   /// Interrupt: true when a job runs (its Progress is then cancelled).
   bool request_cancel() noexcept;
 
@@ -122,7 +113,7 @@ class MaskJobHost {
   class Job;
   struct Shared;
   void pump_if_due();
-  void job_ended();  // the deferred edits, then the end callback
+  void job_ended();  // the end callback
 
   db::DatabaseLock& lock_;
   std::shared_ptr<Shared> shared_;
@@ -130,7 +121,6 @@ class MaskJobHost {
   std::function<void()> pump_;
   std::chrono::milliseconds interval_{50};
   std::chrono::steady_clock::time_point last_pump_{};
-  std::vector<std::function<void()>> deferred_;
   std::function<void()> on_end_;
 };
 

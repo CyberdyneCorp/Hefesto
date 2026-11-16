@@ -3,13 +3,18 @@
 //
 // The desktop host of long GDS and CIF reads and writes (shell::MaskJobHost;
 // openspec/changes/m5-mask-gds-cif tasks.md 12.2, design D16): progress and
-// the Interrupt card, a cancelled write leaving no file, an edit made during
-// a write queued until it ends, the emit phase on its deep-stack worker
-// giving the command thread's bytes, and (under TSan in CI) a write running
-// while the background DRC checker works on the same hierarchy.
+// the Interrupt card, and the `gds write` / `cif write` commands run through
+// the session's hosts exactly as the main window wires them (write_host:
+// the whole write on the command thread; emit_host: the emit on the
+// deep-stack worker covered by the command's exclusive hold): a cancelled
+// write leaves no file, a console line typed during a write waits, and
+// (under TSan in CI) the covered emit runs while the calling thread draws
+// frames over the same layout, use index and vendor cells with the Tcl
+// interpreter attached, and while the background DRC has work.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -21,9 +26,10 @@
 #include <thread>
 #include <vector>
 
-#include "hefesto/cif/write/write.hpp"
 #include "hefesto/db/lock.hpp"
-#include "hefesto/gds/write/write.hpp"
+#include "hefesto/db/use_index.hpp"
+#include "hefesto/display/scene.hpp"
+#include "hefesto/mask/session.hpp"
 #include "hefesto/script/interp.hpp"
 #include "hefesto/script/project.hpp"
 #include "hefesto/shell/console_session.hpp"
@@ -85,24 +91,8 @@ struct JobSession {
   editor::EditorState& editor() { return core.editor(); }
   db::CellDef& top() { return *core.editor().cells.find("top"); }
 
-  /// Fixed dates, so two writes of the same layout give the same bytes.
-  gds::GdsWriteOptions gds_options() {
-    gds::GdsWriteOptions options;
-    options.settings = core.editor().mask.gds;
-    options.settings.datestamp = 0;
-    options.typed_name = "chip";
-    options.files = &core.files();
-    options.now = 0;
-    return options;
-  }
-
-  cif::CifWriteOptions cif_options() {
-    cif::CifWriteOptions options;
-    options.settings = core.editor().mask.cif;
-    options.typed_name = "chip";
-    options.files = &core.files();
-    options.now = 0;
-    return options;
+  std::vector<cmd::CommandResult> run(std::string_view line) {
+    return hefesto::ui::run_command_line(core.dispatcher(), line, cmd::Origin::gui);
   }
 
   std::string file(const std::string& path) {
@@ -111,49 +101,106 @@ struct JobSession {
     return read.value();
   }
 
-  /// gds::write on the calling thread under the exclusive lock (the command
-  /// thread's way).
-  std::string reference_gds(const std::string& path) {
-    const db::DatabaseLock::Exclusive writing(core.editor().database_lock);
-    REQUIRE(gds::write(core.editor(), top(), path, gds_options()).ok());
-    return file(path);
+  /// The hosts the main window sets (MainWindow::build_m4b_console).
+  void wire(MaskJobHost& host) {
+    mask::MaskSession& m = core.editor().mask;
+    m.read_host = [&host](std::string_view label, const mask::ProgressWork& work) {
+      return host.run_read(label, work);
+    };
+    m.write_host = [&host](std::string_view label, const mask::ProgressWork& work) {
+      return host.run_job(MaskJobKind::write, label, work);
+    };
+    m.emit_host = [&host](std::string_view label, const mask::ProgressWork& work) {
+      return host.run_emit(label, work);
+    };
+  }
+
+  void unwire() {
+    mask::MaskSession& m = core.editor().mask;
+    m.read_host = {};
+    m.write_host = {};
+    m.emit_host = {};
+  }
+
+  /// `gds write /work/<name>` with the random() state reset (the full
+  /// dump's prefixes, Q-MASK-211), returning the bytes with the dates
+  /// zeroed.
+  std::string gds_write(const std::string& name) {
+    ok("random seed 1");
+    ok("gds write /work/" + name);
+    return without_dates(file("/work/" + name + ".gds"));
+  }
+
+  /// Two abstract views of one vendor library, `pad` and `via_x`
+  /// (LEFview, GDS_FILE "$LIBDIR/lib.gds" with ::LIBDIR set in Tcl),
+  /// placed in `top`: a write fully dumps the library and compares
+  /// GDS_FILE values (Q-MASK-128), which resolves the path variables.
+  void add_vendor_views() {
+    ok("load via_x");
+    ok("box 0 0 4 4; paint m1");
+    ok("load pad");
+    ok("box 0 0 0 0; getcell via_x");
+    ok("gds write /work/lib");
+    script::Interpreter* interp = core.editor().script.interp.get();
+    REQUIRE(interp != nullptr);
+    REQUIRE(interp->set_var("::LIBDIR", cmd::Value{"/work"}));
+    for (const char* name : {"pad", "via_x"}) {
+      db::CellDef* def = core.editor().cells.find(name);
+      REQUIRE(def != nullptr);
+      def->properties().put("LEFview", std::string{"TRUE"});
+      def->properties().put("GDS_FILE", std::string{"$LIBDIR/lib.gds"});
+      def->properties().put("GDS_START", std::string{"0"});
+    }
+    ok("load top");
+    ok("box 100 0 100 0; getcell pad; box 120 0 120 0; getcell via_x");
+  }
+
+  /// What a frame draw reads (LayoutCanvas::rebuild_scene): the scene of
+  /// `top` with every instance expanded, built as a database reader, and
+  /// each cell's uses in search order (the use index).
+  void draw_frame(const display::StyleSet& styles) {
+    editor::EditorState& ed = core.editor();
+    const db::DatabaseLock::Shared reading(ed.database_lock);
+    display::SceneOptions options;
+    options.expanded = [](const db::CellUse&) { return true; };
+    const auto scene = display::build_scene(top(), *ed.technology, styles, ed.fonts, options);
+    frames_drawn += scene.ok() && !scene.value().layers.empty() ? 1U : 0U;
+    ed.cells.for_each([&](db::CellDef& def) { uses_seen += db::uses_in_search_order(def, ed.drc.compat_settings()).size(); });
+  }
+
+  std::size_t frames_drawn = 0;
+  std::size_t uses_seen = 0;
+
+  static std::string without_dates(std::string bytes) {
+    std::size_t at = 0;
+    while (at + 4 <= bytes.size()) {
+      const std::size_t length = (static_cast<std::size_t>(static_cast<unsigned char>(bytes[at])) << 8U) |
+                                 static_cast<unsigned char>(bytes[at + 1]);
+      if (length < 4 || at + length > bytes.size()) break;
+      const auto type = static_cast<unsigned char>(bytes[at + 2]);
+      if (type == 0x01 || type == 0x05) {  // BGNLIB, BGNSTR
+        std::fill(bytes.begin() + static_cast<std::ptrdiff_t>(at + 4),
+                  bytes.begin() + static_cast<std::ptrdiff_t>(at + length), '\0');
+      }
+      at += length;
+    }
+    return bytes;
   }
 };
 
-/// The host phases of a GDS write of `root` to `path`.
-MaskWritePhases gds_phases(editor::EditorState& ed, db::CellDef& root, const gds::GdsWriteOptions& options,
-                           const std::string& path, const MaskWork& before_emit = {}) {
-  auto prepared = std::make_shared<std::optional<gds::PreparedWrite>>();
-  MaskWritePhases phases;
-  phases.prepare = [&ed, &root, options, prepared]() -> std::optional<cmd::CommandResult> {
-    diag::Outcome<gds::PreparedWrite> out = gds::prepare_write(ed, root, options);
-    if (!out) return cmd::CommandResult::failure(out.error());
-    *prepared = std::move(out).value();
-    return std::nullopt;
-  };
-  phases.emit = [prepared, path, before_emit](const mask::Progress* progress) {
-    if (before_emit) (void)before_emit(progress);
-    return gds::emit_write(**prepared, path, progress);
-  };
-  phases.finish = [&ed, prepared] { gds::finish_write(ed, **prepared); };
-  return phases;
-}
-
-MaskWritePhases cif_phases(editor::EditorState& ed, db::CellDef& root, const cif::CifWriteOptions& options,
-                           const std::string& path) {
-  auto prepared = std::make_shared<std::optional<cif::PreparedWrite>>();
-  MaskWritePhases phases;
-  phases.prepare = [&ed, &root, options, prepared]() -> std::optional<cmd::CommandResult> {
-    diag::Outcome<cif::PreparedWrite> out = cif::prepare_write(ed, root, options);
-    if (!out) return cmd::CommandResult::failure(out.error());
-    *prepared = std::move(out).value();
-    return std::nullopt;
-  };
-  phases.emit = [prepared, path](const mask::Progress* progress) {
-    return cif::emit_write(**prepared, path, progress);
-  };
-  phases.finish = [&ed, options] { cif::finish_write(ed, options); };
-  return phases;
+/// One layout style drawing metal1 (the frame draws of the tests).
+display::StyleSet metal1_styles(const tech::Technology& technology) {
+  display::StyleSet set;
+  set.colors.entries.resize(8);
+  set.table.layout_count = 1;
+  set.table.styles.resize(display::kFixedStyleCount + 2);
+  set.table.styles[display::kFixedStyleCount].color = 1;
+  set.table.styles[display::kFixedStyleCount + 1].color = 1;
+  set.types.styles_of_type.resize(technology.type_count());
+  const auto metal1 = technology.find_type("metal1");
+  REQUIRE(metal1.ok());
+  set.types.styles_of_type[*metal1.id].push_back(display::kFixedStyleCount);
+  return set;
 }
 
 }  // namespace
@@ -247,108 +294,77 @@ TEST_CASE("a cancelled GDS or CIF write leaves no output file",
   JobSession s;
   MaskJobHost host(s.editor().database_lock);
   CHECK_FALSE(host.request_cancel());  // nothing runs
+  s.wire(host);
+  // The Interrupt arrives while the subtree loads: the first frame the
+  // walk's tick draws presses it.
+  host.set_pump([&host] { (void)host.request_cancel(); }, 0ms);
+  std::vector<cmd::CommandResult> stopped = s.run("gds write /work/early");
+  REQUIRE(stopped.size() == 1);
+  CHECK_FALSE(stopped.front().ok());
+  CHECK(stopped.front().diagnostics.back().text == "GDS write cancelled.");
+  CHECK_FALSE(s.core.files().exists("/work/early.gds"));
+  CHECK_FALSE(s.run("cif write /work/early").front().ok());
+  CHECK_FALSE(s.core.files().exists("/work/early.cif"));
+
   // The Interrupt arrives during the emit phase (the card sets an atomic
   // flag, which the worker polls).
+  host.set_pump({});
   std::atomic<bool> cancelled{false};
   std::atomic<bool> shown{false};
-  const MaskWork interrupt = [&](const mask::Progress*) {
-    cancelled = host.request_cancel();
-    const std::optional<MaskJobState> state = host.state();
-    shown = state && state->cancel_requested;
-    return cmd::CommandResult::success();
+  s.editor().mask.emit_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    return host.run_emit(label, [&](const mask::Progress* progress) {
+      cancelled = host.request_cancel();
+      const std::optional<MaskJobState> state = host.state();
+      shown = state && state->cancel_requested && state->kind == MaskJobKind::write;
+      return work(progress);
+    });
   };
-  const cmd::CommandResult gds_result =
-      host.run_write("chip.gds", gds_phases(s.editor(), s.top(), s.gds_options(), "/work/chip.gds", interrupt));
+  CHECK_FALSE(s.run("gds write /work/chip").front().ok());
   CHECK(cancelled);
   CHECK(shown);
-  CHECK_FALSE(gds_result.ok());
   CHECK_FALSE(s.core.files().exists("/work/chip.gds"));
+  CHECK_FALSE(s.run("cif write /work/chip").front().ok());
+  CHECK_FALSE(s.core.files().exists("/work/chip.cif"));
   const auto listed = s.core.files().list("/work");
   REQUIRE(listed.ok());
   CHECK(listed.value().size() == 1);  // maskjob.tech only: no temporary file is left
 
   // The next write starts with the flag cleared.
-  REQUIRE(host.run_write("chip.gds", gds_phases(s.editor(), s.top(), s.gds_options(), "/work/chip.gds")).ok());
+  s.wire(host);
+  s.ok("gds write /work/chip");
   CHECK(s.core.files().exists("/work/chip.gds"));
-
-  MaskWritePhases cif_write = cif_phases(s.editor(), s.top(), s.cif_options(), "/work/chip.cif");
-  const MaskWork emit = cif_write.emit;
-  cif_write.emit = [&host, emit](const mask::Progress* progress) {
-    (void)host.request_cancel();
-    return emit(progress);
-  };
-  CHECK_FALSE(host.run_write("chip.cif", cif_write).ok());
-  CHECK_FALSE(s.core.files().exists("/work/chip.cif"));
+  s.unwire();
 }
 
-TEST_CASE("an edit made during a write is queued and never reaches the file",
-          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
+TEST_CASE("a covered GDS write runs while frames draw the layout, its use index and vendor views",
+          "[cap:hefesto-architecture][req:Concurrency model]") {
+  // The desktop's path (design "Round 5 contract updates"): the command
+  // holds the lock exclusively, the emit runs on the worker under that
+  // hold, and the command thread keeps drawing frames, which read the
+  // layout and the use index at the same time. With the Tcl interpreter
+  // attached, the worker must not resolve path variables through it (the
+  // vendor views' full dump compares GDS_FILE values): TSan checks both.
   JobSession s;
-  // The command thread's write (gds::write, all three phases inline).
-  const std::string reference = s.reference_gds("/work/reference.gds");
+  s.add_vendor_views();
+  const std::string reference = s.gds_write("reference");
+  const display::StyleSet styles = metal1_styles(*s.editor().technology);
   MaskJobHost host(s.editor().database_lock);
-  // The user paints in a frame drawn while the worker emits: the edit waits.
-  std::atomic<bool> deferred{false};
-  bool queued = false;
-  bool edited = false;
-  host.set_pump(
-      [&] {
-        if (deferred) return;
-        host.defer([&] {
-          s.ok("box 100 100 110 110; paint m1");
-          edited = true;
-        });
-        queued = !edited && host.busy();
-        deferred = true;
-      },
-      1ms);
-  // The emit starts once the edit was made (the worker waits for it).
-  const MaskWork edit_during = [&](const mask::Progress*) {
-    const auto deadline = std::chrono::steady_clock::now() + 10s;
-    while (!deferred && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(1ms);
-    return cmd::CommandResult::success();
-  };
-  const cmd::CommandResult result =
-      host.run_write("chip.gds", gds_phases(s.editor(), s.top(), s.gds_options(), "/work/chip.gds", edit_during));
-  INFO((result.diagnostics.empty() ? std::string{} : result.diagnostics.front().text));
-  REQUIRE(result.ok());
-  CHECK(queued);
-  CHECK(edited);  // ran once the write ended
-  CHECK(s.top().bbox().x1 >= 110);
-  // The worker's bytes are the command thread's (the edit is not in them).
-  CHECK(s.file("/work/chip.gds") == reference);
-  // Idle: an edit runs at once.
-  bool now = false;
-  host.defer([&] { now = true; });
-  CHECK(now);
+  s.wire(host);
+  host.set_pump([&] { s.draw_frame(styles); }, 0ms);  // back to back while the worker emits
+  for (int round = 0; round < 3; ++round) {
+    const std::string name = "chip" + std::to_string(round);
+    CHECK(s.gds_write(name) == reference);
+  }
+  s.unwire();
+  CHECK(s.frames_drawn > 0);
+  CHECK(s.uses_seen > 0);
+  CHECK_FALSE(host.busy());
 }
 
-TEST_CASE("a write inside a command emits on the worker under the command's lock",
-          "[cap:mask-hierarchical-generation][req:Progress reporting and interruptibility]") {
-  JobSession s;
-  const std::string reference = s.reference_gds("/work/reference.gds");
-  MaskJobHost host(s.editor().database_lock);
-  // As the gds command would: prepare, then run_emit, then finish, all on
-  // the command thread that holds the lock exclusively.
-  const db::DatabaseLock::Exclusive command(s.editor().database_lock);
-  diag::Outcome<gds::PreparedWrite> prepared = gds::prepare_write(s.editor(), s.top(), s.gds_options());
-  REQUIRE(prepared.ok());
-  std::size_t frames = 0;
-  host.set_pump([&] { ++frames; }, 1ms);
-  const cmd::CommandResult result = host.run_emit("chip.gds", [&](const mask::Progress* progress) {
-    std::this_thread::sleep_for(20ms);  // a few frames
-    return gds::emit_write(prepared.value(), "/work/chip.gds", progress);
-  });
-  gds::finish_write(s.editor(), prepared.value());
-  REQUIRE(result.ok());
-  CHECK(frames > 0);
-  CHECK(s.file("/work/chip.gds") == reference);
-}
-
-TEST_CASE("a GDS write on the worker runs while the background DRC checks the same hierarchy",
+TEST_CASE("a GDS write runs while the background DRC has work on the same hierarchy",
           "[cap:hefesto-architecture][req:Concurrency model]") {
   JobSession s;
-  const std::string reference = s.reference_gds("/work/reference.gds");
+  const std::string reference = s.gds_write("reference");
   // The UI event loop of the test: the checker's ready tasks.
   std::mutex mutex;
   std::vector<std::function<void()>> tasks;
@@ -362,6 +378,7 @@ TEST_CASE("a GDS write on the worker runs while the background DRC checks the sa
     return now.size();
   };
   MaskJobHost host(s.editor().database_lock);
+  s.wire(host);
   std::size_t committed = 0;
   std::size_t committed_during_job = 0;
   DrcPump pump(
@@ -381,12 +398,7 @@ TEST_CASE("a GDS write on the worker runs while the background DRC checks the sa
   for (int round = 0; round < 4; ++round) {
     // New work for the checker over the whole hierarchy, then a write.
     s.ok("load top; box -10 -10 80 80; drc check");
-    const std::string path = "/work/chip" + std::to_string(round) + ".gds";
-    const cmd::CommandResult result =
-        host.run_write("chip.gds", gds_phases(s.editor(), s.top(), s.gds_options(), path));
-    INFO((result.diagnostics.empty() ? std::string{} : result.diagnostics.front().text));
-    REQUIRE(result.ok());
-    CHECK(s.file(path) == reference);
+    CHECK(s.gds_write("chip" + std::to_string(round)) == reference);
     pump.resume();
     (void)run_tasks();
   }
@@ -394,6 +406,7 @@ TEST_CASE("a GDS write on the worker runs while the background DRC checks the sa
   while ((pump.busy() || !s.editor().drc.pending.empty()) && std::chrono::steady_clock::now() < deadline) {
     if (run_tasks() == 0) std::this_thread::sleep_for(1ms);
   }
+  s.unwire();
   CHECK(s.editor().drc.pending.empty());
   CHECK(committed > 0);
   CHECK(committed_during_job == 0);
@@ -410,7 +423,7 @@ TEST_CASE("console lines typed while a mask job runs wait until it ends",
   TclConsole console(session, [&history]() -> const std::vector<std::string>& { return history; });
   MaskJobHost host(s.editor().database_lock);
   session.set_external_busy([&host] { return host.busy(); });
-  const std::string reference = s.reference_gds("/work/reference.gds");
+  const std::string reference = s.gds_write("reference");
   // A frame drawn during the write: the user types a paint.
   std::atomic<bool> typed{false};
   ConsoleReturn typed_return = ConsoleReturn::empty;
@@ -422,17 +435,19 @@ TEST_CASE("console lines typed while a mask job runs wait until it ends",
         typed = true;
       },
       1ms);
-  const MaskWork wait_for_typing = [&](const mask::Progress*) {
-    const auto deadline = std::chrono::steady_clock::now() + 10s;
-    while (!typed && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(1ms);
-    return cmd::CommandResult::success();
+  s.wire(host);
+  // The emit waits on the worker until the line was typed.
+  s.editor().mask.emit_host = [&](std::string_view label, const mask::ProgressWork& work) {
+    return host.run_emit(label, [&](const mask::Progress* progress) {
+      const auto deadline = std::chrono::steady_clock::now() + 10s;
+      while (!typed && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(1ms);
+      return work(progress);
+    });
   };
-  REQUIRE(host.run_write("chip.gds",
-                         gds_phases(s.editor(), s.top(), s.gds_options(), "/work/chip.gds", wait_for_typing))
-              .ok());
+  CHECK(s.gds_write("chip") == reference);
+  s.unwire();
   CHECK(typed);
   CHECK(typed_return == ConsoleReturn::queued);
-  CHECK(s.file("/work/chip.gds") == reference);
   CHECK(s.top().bbox().x1 < 110);  // not run yet
   CHECK(console.run_held() == 1);  // the window runs it once the job ended
   CHECK(s.top().bbox().x1 >= 110);

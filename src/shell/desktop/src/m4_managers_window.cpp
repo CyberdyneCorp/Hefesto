@@ -73,6 +73,9 @@ void MainWindow::build_m4b_console() {
   mask_session.read_host = [this](std::string_view label, const mask::ProgressWork& work) {
     return mask_jobs_->run_read(label, work);
   };
+  mask_session.write_host = [this](std::string_view label, const mask::ProgressWork& work) {
+    return mask_jobs_->run_job(MaskJobKind::write, label, work);
+  };
   mask_session.emit_host = [this](std::string_view label, const mask::ProgressWork& work) {
     return mask_jobs_->run_emit(label, work);
   };
@@ -127,6 +130,7 @@ void MainWindow::teardown_m4b() {
   if (reorder_) reorder_->close();
   if (console_session_) console_session_->set_pump({});
   ctx_.core.editor().mask.read_host = {};
+  ctx_.core.editor().mask.write_host = {};
   ctx_.core.editor().mask.emit_host = {};
 }
 

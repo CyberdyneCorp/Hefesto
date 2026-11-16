@@ -116,6 +116,7 @@ MaskJobHost::MaskJobHost(db::DatabaseLock& lock) : lock_(lock), shared_(std::mak
     shared_->reported.store(true, std::memory_order_release);
     pump_if_due();
   };
+  shared_->progress.tick = [this] { pump_if_due(); };
 }
 
 MaskJobHost::~MaskJobHost() = default;
@@ -137,19 +138,19 @@ void MaskJobHost::pump_if_due() {
   pump_();
 }
 
-cmd::CommandResult MaskJobHost::run_read(std::string_view label, const MaskWork& read) {
-  if (busy()) return read(&shared_->progress);
+cmd::CommandResult MaskJobHost::run_job(MaskJobKind kind, std::string_view label, const MaskWork& work) {
+  if (busy()) return work(&shared_->progress);
   cmd::CommandResult result;
   {
-    const Job job(*this, MaskJobKind::read, label);
-    result = read(&shared_->progress);
+    const Job job(*this, kind, label);
+    result = work(&shared_->progress);
   }
   job_ended();
   return result;
 }
 
 cmd::CommandResult MaskJobHost::run_emit(std::string_view label, const MaskWork& emit) {
-  const bool outermost = !busy();  // false inside run_write, which owns the job
+  const bool outermost = !busy();  // false inside run_job, which owns the job
   std::optional<Job> job;
   if (outermost) job.emplace(*this, MaskJobKind::write, label);
   // The calling thread's exclusive hold covers the worker (it only pumps).
@@ -180,39 +181,8 @@ cmd::CommandResult MaskJobHost::run_emit(std::string_view label, const MaskWork&
   return result;
 }
 
-cmd::CommandResult MaskJobHost::run_write(std::string_view label, const MaskWritePhases& phases) {
-  std::optional<cmd::CommandResult> result;
-  {
-    const Job job(*this, MaskJobKind::write, label);
-    {
-      const db::DatabaseLock::Exclusive writing(lock_);
-      result = phases.prepare ? phases.prepare() : std::nullopt;
-    }
-    if (!result) {
-      result = run_emit(label, phases.emit);
-      const db::DatabaseLock::Exclusive writing(lock_);
-      if (phases.finish) phases.finish();
-    }
-  }
-  job_ended();
-  return std::move(*result);
-}
-
-void MaskJobHost::defer(std::function<void()> edit) {
-  if (!busy()) {
-    edit();
-    return;
-  }
-  deferred_.push_back(std::move(edit));
-}
-
 void MaskJobHost::job_ended() {
   if (busy()) return;
-  while (!deferred_.empty()) {
-    std::vector<std::function<void()>> edits = std::move(deferred_);
-    deferred_.clear();
-    for (const std::function<void()>& edit : edits) edit();
-  }
   if (on_end_) on_end_();
 }
 
