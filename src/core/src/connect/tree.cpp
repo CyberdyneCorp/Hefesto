@@ -8,7 +8,6 @@
 #include "hefesto/connect/tree.hpp"
 
 #include <algorithm>
-#include <vector>
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
@@ -22,10 +21,13 @@ struct Walk {
   const Descend* descend = nullptr;
   compat::CompatSettings compat;
   [[nodiscard]] bool descends(const db::CellUse& use) const { return !*descend || (*descend)(use); }
-  /// The uses of `def` in the use index's order (DBCellSrArea's bin walk
-  /// with magic-compat ON).
-  [[nodiscard]] std::vector<db::CellUse*> uses(const db::CellDef& def) const {
-    return db::uses_in_search_order(def, compat);
+  /// DBCellSrArea: the uses of `def` overlapping `area` (def coordinates),
+  /// found by an area search of its use index, which bins the index as
+  /// Magic's search does; magic-compat ON in the search's walk order, OFF in
+  /// the canonical order. Returns false when `visit` stopped the search.
+  template <typename F>
+  bool uses(const db::CellDef& def, const db::Rect& area, F&& visit) const {
+    return db::uses_overlapping(def, area, compat, [&](db::CellUse& u) { return visit(u); });
   }
 };
 
@@ -84,24 +86,20 @@ bool tree_tiles(const Walk& w, const db::CellDef& def, const db::Rect& area, con
   if (!tiles_in(def, area, types, triangle, base, visit)) {
     return false;
   }
-  for (const db::CellUse* u : w.uses(def)) {
-    if (!w.descends(*u)) {
-      continue;
+  return w.uses(def, area, [&](const db::CellUse& u) {
+    if (!w.descends(u)) {
+      return true;
     }
-    const bool go_on = for_each_element(*u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
+    return for_each_element(u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
       const db::Transform inv = db::invert(et);  // the triangle in the child's frame
       std::optional<db::TriangleSide> child_triangle;
       if (triangle) {
         child_triangle = db::transform_triangle(inv, triangle->diagonal, triangle->right_side);
       }
-      return tree_tiles(w, *u->def, to_local(et, area), types, child_triangle, db::compose(to_root, et),
-                        child_path(path, *u, x, y), visit);
+      return tree_tiles(w, *u.def, to_local(et, area), types, child_triangle, db::compose(to_root, et),
+                        child_path(path, u, x, y), visit);
     });
-    if (!go_on) {
-      return false;
-    }
-  }
-  return true;
+  });
 }
 
 bool tree_labels(const Walk& w, const db::CellDef& def, const db::Rect& area, const tech::TypeMask& types,
@@ -118,40 +116,28 @@ bool tree_labels(const Walk& w, const db::CellDef& def, const db::Rect& area, co
       }
     }
   }
-  for (const db::CellUse* u : w.uses(def)) {
-    if (!w.descends(*u)) {
-      continue;
+  const db::Rect grown = db::expand(area, 1);  // labels on a subcell's edge touch the area
+  return w.uses(def, grown, [&](const db::CellUse& u) {
+    if (!w.descends(u)) {
+      return true;
     }
-    const db::Rect grown = db::expand(area, 1);  // labels on a subcell's edge touch the area
-    const bool go_on = for_each_element(*u, grown, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
-      return tree_labels(w, *u->def, to_local(et, area), types, db::compose(to_root, et),
-                         child_path(path, *u, x, y), visit);
+    return for_each_element(u, grown, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
+      return tree_labels(w, *u.def, to_local(et, area), types, db::compose(to_root, et), child_path(path, u, x, y),
+                         visit);
     });
-    if (!go_on) {
-      return false;
-    }
-  }
-  return true;
+  });
 }
 
 bool tree_cells(const Walk& w, const db::CellDef& def, const db::Rect& area, const db::Transform& to_root,
                 const std::string& path, const CellFn& visit) {
-  for (const db::CellUse* u : w.uses(def)) {
-    if (!w.descends(*u)) {
-      if (u->def != nullptr && db::overlap(u->bbox, area) && !visit(TreeCell{u, to_root, &path})) {
-        return false;
-      }
-      continue;
+  return w.uses(def, area, [&](const db::CellUse& u) {
+    if (!w.descends(u)) {
+      return u.def == nullptr || visit(TreeCell{&u, to_root, &path});
     }
-    const bool go_on = for_each_element(*u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
-      return tree_cells(w, *u->def, to_local(et, area), db::compose(to_root, et),
-                        child_path(path, *u, x, y), visit);
+    return for_each_element(u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
+      return tree_cells(w, *u.def, to_local(et, area), db::compose(to_root, et), child_path(path, u, x, y), visit);
     });
-    if (!go_on) {
-      return false;
-    }
-  }
-  return true;
+  });
 }
 
 bool tree_defs(const Walk& w, const db::CellDef& def, const db::Rect& area, const db::Transform& to_root,
@@ -159,19 +145,14 @@ bool tree_defs(const Walk& w, const db::CellDef& def, const db::Rect& area, cons
   if (!visit(def, to_root, path)) {
     return false;
   }
-  for (const db::CellUse* u : w.uses(def)) {
-    if (!w.descends(*u)) {
-      continue;
+  return w.uses(def, area, [&](const db::CellUse& u) {
+    if (!w.descends(u)) {
+      return true;
     }
-    const bool go_on = for_each_element(*u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
-      return tree_defs(w, *u->def, to_local(et, area), db::compose(to_root, et),
-                       child_path(path, *u, x, y), visit);
+    return for_each_element(u, area, [&](std::int32_t x, std::int32_t y, const db::Transform& et) {
+      return tree_defs(w, *u.def, to_local(et, area), db::compose(to_root, et), child_path(path, u, x, y), visit);
     });
-    if (!go_on) {
-      return false;
-    }
-  }
-  return true;
+  });
 }
 
 }  // namespace

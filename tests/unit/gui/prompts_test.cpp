@@ -134,6 +134,36 @@ TEST_CASE("GDS with a single top cell", "[cap:ui-gui-managers][req:File prompts]
   CHECK(chip->bbox() == hefesto::db::Rect{0, 0, 4, 2});
 }
 
+TEST_CASE("promptload gds of a file the root name does not find: ON as Magic, OFF the picked path",
+          "[cap:ui-gui-managers][req:File prompts]") {
+  // `chip.cal` and `chip.strm` beside a different `chip.gds`: the root name
+  // `/work/chip` finds `chip.gds` (or nothing) instead of the picked file.
+  for (const char* name : {"/work/chip.cal", "/work/chip.strm"}) {
+    const std::string picked = name;
+    for (const bool compat : {true, false}) {
+      Session s;
+      s.project.compat.magic_compat = compat;
+      load_mask_tech(s);
+      s.write(picked, written_gds("picked"));
+      if (picked.ends_with(".strm")) {
+        s.write("/work/chip.gds", written_gds("other"));
+      }
+      REQUIRE(s.run("openwindow").ok());
+      ScriptedFilePicker picker;
+      picker.push_answer(picked);
+      const auto r =
+          s.in_command([&](hefesto::cmd::CommandContext& ctx) { return gui::prompt_load(ctx, &picker, "gds"); });
+      INFO(picked << " magic-compat " << compat << ": " << gui::test::all_text(r));
+      REQUIRE(r.ok());
+      CHECK((s.editor.cells.find("picked") != nullptr) == !compat);
+      CHECK((s.editor.cells.find("other") != nullptr) == (compat && picked.ends_with(".strm")));
+      if (!compat) {
+        CHECK(s.run("cellname list window").value.to_string() == "picked");
+      }
+    }
+  }
+}
+
 TEST_CASE("promptsave gds writes the chosen file", "[cap:ui-gui-managers][req:File prompts]") {
   for (const bool compat : {true, false}) {
     // A directory with a dot: the chosen name keeps its extension in both

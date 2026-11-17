@@ -197,19 +197,19 @@ Depends on `mask-hints`, which is completed in M3.
 - GDS output is byte-identical to Magic's, apart from the masked time fields.
 - Every sky130, gf180mcu and IHP library GDS round-trips.
 
-**Status (in review, 2026-11-15; change `openspec/changes/m5-mask-gds-cif`, round 5 integration on branch `m5-round5`, PR #61).** Mask generation (cifoutput and cifinput styles with every operator), `gds read`/`gds write` (compressed files, read-only vendor views, content-hash timestamps), `cif read`/`cif write` and the mask-layer DRC rules are implemented; the desktop app has Read GDS / Write GDS with a progress card for long reads and writes. Not complete: the exit criteria below that are not met, and tasks 12.2, 14.3, 15.1, 15.6 and 15.7.
+**Status (in review, 2026-11-16; change `openspec/changes/m5-mask-gds-cif`, round 6 integration on branch `m5-round6`, PR #62).** Mask generation (cifoutput and cifinput styles with every operator), `gds read`/`gds write` (compressed files, read-only vendor views, content-hash timestamps), `cif read`/`cif write` and the mask-layer DRC rules are implemented; the desktop app has Read GDS / Write GDS with a progress card for long reads and writes. Not complete: the exit criteria below that are not met, and tasks 14.3, 15.1, 15.6 and 15.7.
 
 | Criterion | Result | Evidence |
 |---|---|---|
-| Unit, property and fuzz tests green on every leg | met at c937e133; head pending | CI 43766374908 (c937e133, before the merge of #60 and the round 5 review fixes): every Linux and macOS leg, ASan/UBSan, TSan, fuzz (60 s per target, four new M5 targets), lavapipe; the head's CI run is recorded on PR #61 |
-| MASK golden cases pass or carry an approved deviation | not met | 233 MASK rows plus 3 PDK probes and 89 `MASK-RT-*`: all pass or carry an approved deviation except the M5 exit blockers that `tools/golden/authoring/m5_cases.py --exit-check` lists: MASK-UO-002..005/007/008 (INDEX/GDSW), MASK-GR-008 (MODEL), MASK-HG-025 (GEN/OPS), MASK-OP-021 (a decision) and three library round trips (`tasks.md` 13.7); the large shards are still to replay |
+| Unit, property and fuzz tests green on every leg | met at af000203 | CI 43864262254 (af000203): every Linux and macOS leg, GCC 11 and latest with -Werror, ASan/UBSan, TSan, fuzz (60 s per target), lavapipe, pcell-equivalence |
+| MASK golden cases pass or carry an approved deviation | not met | 233 MASK rows plus 3 PDK probes and 89 `MASK-RT-*`: all pass or carry an approved deviation except the four M5 exit blockers that `tools/golden/authoring/m5_cases.py --exit-check` lists at the head: MASK-OP-021 (a user decision: Magic's interacting operators always give an empty layer) and three library round trips (MASK-RT-gf180mcu_fd_io-f02, MASK-RT-sky130_fd_io-f01/-f09; their causes need Magic's out.gds). Local replay at af000203 with the Magic reference data: 638 pass, 0 fail, 74 deviations. Round 6 fixed MASK-UO-002..005/007/008 and MASK-HG-025; MASK-GR-008 carries the fix deviation of Q-CELL-12/Q-MODEL-9 |
 | DRC-CIF-2..7 pass | met | DRC-CIF-1..8 replay on every leg |
 | GDS byte-identical to Magic apart from masked time fields | met for the GW cases and the passing round trips | fix deviations MASK-GW-003 (Q-MASK-201), GW-006 (Q-MASK-209), GW-039 (Q-MASK-219), GW-005 (Q-MASK-208) |
-| Every sky130, gf180mcu and IHP library GDS round-trips | not met | all 89 library files captured from Magic; Hefesto matches on the sky130, sky130-io, gf180mcu-io, ihp and ihp-io shards except gf180mcu_fd_io-f02 and sky130_fd_io-f01/-f09 (GDSR/GDSW); the gf180mcu, sky130-sram and ihp-sram shards have not finished a `gds-roundtrip` run yet |
-| Determinism covers MASK | met at c937e133; head pending | determinism job of CI 43766374908 with `--require-area MASK` |
+| Every sky130, gf180mcu and IHP library GDS round-trips | not met | Performance 43864330801 (af000203): `gds-roundtrip` green on all eight shards: sky130 8/8, sky130-io 7 + 2 deferred, sky130-sram 4/4 (28 min), gf180mcu 32/32 (12 min; re_efuse-f04 no longer times out), gf180mcu-io 2 + 1 deferred, ihp 2/2, ihp-io 1/1, ihp-sram 30/30 (1 h 55 min). Not met because the replay skips the three deferred cases (MASK-RT-gf180mcu_fd_io-f02, MASK-RT-sky130_fd_io-f01/-f09) |
+| Determinism covers MASK | met at af000203 | determinism job of CI 43864262254 with `--require-area MASK` |
 | M5 requirement coverage | met | 194 of 194 |
 | `openspec validate --all --strict` | met | 177 passed |
-| `perf.yml` green and the equivalence report reviewed | partly | `gds-bench` met (0.84 / 0.87 / 0.89 x Magic's instructions, Performance 43766374927), `drc-profile` 12.24 billion (met), `golden-slow` green; `gds-roundtrip` waits for the deferrals above |
+| `perf.yml` green and the equivalence report reviewed | green; report not reviewed | Performance 43864330801 (af000203): `gds-bench`, `drc-profile`, `drc-bench`, `golden-slow` and every `gds-roundtrip` shard green; the equivalence reports in the shard summaries are still to be reviewed |
 
 ## M6 — LEF/DEF and OASIS
 

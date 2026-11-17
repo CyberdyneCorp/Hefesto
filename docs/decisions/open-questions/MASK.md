@@ -461,6 +461,17 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: platform alternative (progress callback with cancellation, and a read-only snapshot of the database during the write)
 - Recommendation: platform, on every target including iPadOS. Hierarchical generation reports progress (fraction of interaction squares done) to a callback, rate-limited to about 5 s. The console shell may print `Completed N%`, which is informative and not part of the golden output. The callback also offers cancellation: a cancelled write produces no output file, by writing to a temporary file and renaming it. Generation reads a read-only snapshot of the database, so edits cannot corrupt a write in progress, and the UI is not blocked the way Tk_RestrictEvents blocks it. None of this changes the mask output.
 - Resolution: platform — on every target hierarchical generation reports progress to a rate-limited callback that also offers cancellation (a cancelled write leaves no output file: temporary file and rename) and reads a read-only snapshot of the database, so the UI is not blocked and edits cannot corrupt a write; mask output is unchanged. Approved 2026-11-13.
+- Amended 2026-11-16 (user decision, round 5 review): on the desktop a GDS or CIF write holds the database lock exclusively for the whole command. Its emit phase runs on a deep-stack worker covered by that hold while the command thread draws frames and takes Interrupt; console lines and edits wait until the write ends, and the background DRC pauses until then (it resumes afterwards). This replaces the shared-lock emit with queued edits of design D16: the snapshot property holds because nothing can change the layout during the write. Design D8 and D16 and mask-hierarchical-generation "Progress reporting and interruptibility" state it (`tests/unit/shell/m5_mask_job_test.cpp`).
+
+### Q-MASK-416: GDS and CIF input bounds that Magic does not have
+- Kind: bug
+- Status: approved (recommendation drafted 2026-11-15 in the round 5 review as "proposed behaviour changes", approved 2026-11-16)
+- Magic behavior: Three readers have no bound on crafted input. (1) Making a read polygon Manhattan (CIFMakeManhattanPath) splits diagonal edges and searches the whole path after each split, so two nearly parallel steep edges split about once per unit of length and the read never finishes. (2) The use index's sub-binning (bpBinArrayBuild) recurses while a bin's area does not shrink; Magic exits with SIGSEGV on eleven 1x1 uses in a 3x2 box (golden-capture run 43789239840, status 139). (3) A `.gds.gz` inflates without a size limit, so a few KiB of input keep a read busy for hours.
+- Evidence: cif/CIFrdutils.c:1069-1160 (CIFMakeManhattanPath), bplane/bpBins.c:256-500, bplane/bpBins.c:560-610 (bpBinArrayBuild recursion), utils/path.c:832-935 (PaZOpen, gzopen with no limit)
+- Verified 2026-11-16: the fuzz runs 43754937069 (`fuzz_gds_reader` timeout) and 43776774834 (`fuzz_cif_reader` stack overflow) found (1) and (2); security.md M5-S1, M5-S7 and M5-S8 record the three findings and their regression tests. The bounds sit far above anything real: the largest polygon work in the round-trip libraries is about 190 times below 2^24, and a 9-point 45-degree gf180mcu_fd_io band needs about 88 000 visits.
+- Options: replicate (hang, crash) | fix (bound the work and fail or degrade with a message)
+- Recommendation: fix in both modes (X-2 tier 1: a hang or crash has no Magic output to match). (1) one path gets at most 2^24 + 16 n^2 edge visits for n vertices, then stays non-Manhattan and is reported as `non-manhattan polygon.` (MASK-INPUT-020); (2) sub-binning stops at 64 levels and the deepest bins keep plain lists, which changes the enumeration order of such degenerate arrays only; (3) the gzip source stops at `gds::inflate_cap` (256 times the compressed size, at least 1 GiB) with GDS-STREAM-006.
+- Resolution: fix — in both modes: the read-polygon work budget of 2^24 + 16 n^2 edge visits (`db::decompose_read_polygon`), the 64-level sub-binning cap of the use index (`db::use_index_detail::bin_array_build`), and the inflate cap of 256 times the compressed size, at least 1 GiB (`gds::inflate_cap`, GDS-STREAM-006). Only crafted or degenerate input reaches them. security.md M5-S1, M5-S7 and M5-S8 list the regression tests. Approved 2026-11-16.
 
 ### Q-MASK-415: `cif unfracture` merges only the internal-unit search area
 - Kind: bug
@@ -663,6 +674,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix (append only if missing) | platform alternative (file picker on iPadOS) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
 - Recommendation: compat. ON: always append `.cif` on read, write and flat, as Magic does (`cif write chip.cif` writes chip.cif.cif). OFF: append `.cif` only when the name does not already end in `.cif`, matching the GDS commands and Magic's own docs. In both modes the GUI and the iPadOS document picker pass the picked file name without its extension, so picking a file never doubles the extension (the read path of Magic's wrapper already does this). This is not tier 1 because nothing is lost: the file is written under a predictable name. (corrected 2026-11-13, was "append only when missing; on iPadOS use document picker")
 - Resolution: compat — with `magic-compat` ON `.cif` is always appended on read, write and flat, as in Magic; with it OFF only when the name does not end in `.cif`. GUI and iPadOS pickers pass the root name in both modes. Approved 2026-11-13.
+- Amended 2026-11-16 (user decision, round 5 review): the picker rule is for CIF. `promptsave gds` passes the chosen file as Magic's wrapper.tcl does (`gds write <chosen file>`, both modes), because the root name loses the extension under Q-MASK-210 ON in a dotted directory; `promptload gds` reads the root name (Q-MASK-136). Design D16 and ui-gui-managers "File prompts" state it (`tests/unit/gui/prompts_test.cpp`).
 
 ### Q-MASK-321: flat CIF named __CIF2__ and without labels
 - Kind: quirk
@@ -1088,6 +1100,15 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Recommendation: fix in both modes. A message split across two streams loses its meaning in both (the file has prefixes with no bodies, the console bodies with no cell or byte position), so it is a loss of diagnostic data; the redirect's purpose is to keep the console clean. No golden case captures a redirect file.
 - Resolution: fix — in both modes `gds warning redirect FILE` writes each whole read message, prefix and body, to the file and prints nothing on the console; Magic's Tcl build writes only the prefixes to the file and the bodies to the console. gds-read "Read diagnostics" states it (`tests/unit/gds/read/read_test.cpp`). Approved 2026-11-14.
 
+### Q-MASK-136: `promptload gds` reads the root name of the picked file
+- Kind: quirk
+- Status: approved (raised in round 5, task 12.1; approved 2026-11-16)
+- Magic behavior: wrapper.tcl's `promptload gds` runs `gds read [file root $Layoutfilename]`. `gds read` then tries the root with `.gds`, `.gds.gz`, `.gds2`, `.strm` and nothing appended, so a picked `chip.gds.gz` or `chip.cal` finds no file, and a picked `chip.strm` beside a `chip.gds` reads `chip.gds`.
+- Evidence: tcltk/wrapper.tcl:68-91 (promptload, `magic::gds read [file root $Layoutfilename]`), gds-read "Read command and file lookup"
+- Options: replicate | compat (ON: the root name; OFF: the picked path when the root name does not find the picked file)
+- Recommendation: compat. The file the user picked is the one to read; ON keeps the logged `gds read <root>` that scripts and golden logs see.
+- Resolution: compat — with `magic-compat` ON `promptload gds` reads the root name, as Magic's wrapper; with it OFF it reads the root name when that finds the picked file and otherwise the picked path. ui-gui-managers "File prompts" states it (`tests/unit/gui/prompts_test.cpp`). Approved 2026-11-16.
+
 ### Q-MASK-200: Permissive GDS character table swaps '%' and '&'
 - Kind: bug
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
@@ -1249,6 +1270,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix (parse the copied records and rewrite SNAME) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
 - Recommendation: compat. With magic-compat ON, copy the bytes verbatim as Magic does and warn when a referenced child's current name differs from the SNAME in the copy. With it OFF, parse the copied records and rewrite each SNAME to the child's current output name, adjusting record lengths. This requires Hefesto to keep each vendor cell's original GDS name. A stale SNAME silently binds to the wrong structure or to none, so the corrected output is clearly the intended one. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `magic-compat` ON copied SNAME records are written verbatim, with a warning when a child's current name differs; with it OFF each SNAME is rewritten to the child's current output name. Approved 2026-11-13.
+- Amended 2026-11-16 (user decision, round 5 review): the original GDS name of a vendor child is read from its GDS_FILE when the copy is rewritten (the STRNAME ending at GDS_START, or following GDS_BEGIN's BGNSTR), not stored in a new `.mag` property. With magic-compat OFF an SNAME naming a child's original structure name is rewritten to the child's current output name (an old-style child keeps its own STRNAME, so its SNAME is kept); then the output name and the cell name are tried. gds-write "Verbatim copy of read-only cells" states it (`tests/unit/gds/write/vendor_test.cpp`).
 
 ### Q-MASK-217: Merged polygons may contain slits and may be split arbitrarily
 - Kind: quirk
@@ -1405,3 +1427,21 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate (crash; impossible) | fix (fail the write cleanly at a fixed depth)
 - Recommendation: fix in both modes (crash class, X-2 tier 1: no Magic output to match). 1024 levels is far beyond any real design and is the limit the generators already use, so every recursive walk of a write fails at the same depth with a message instead of overflowing the stack.
 - Resolution: fix — in both modes a GDS or CIF write of a hierarchy deeper than 1024 levels below the root (`gds::kMaxSubtreeDepth`, the mask generators' limit) fails before any record is written and leaves an empty file: GDS-WRITE-014 "Failure to read entire subtree of the cell. / The hierarchy is deeper than 1024 levels at cell CELL." (the structure traversal checks the same bound as a backstop: "Calma output error:  the hierarchy under cell ROOT is deeper than 1024 levels."), CIF-WRITE-008 "Failure to read in entire subtree of the cell. / The hierarchy is deeper than 1024 levels at cell CELL.". gds-write "Write preconditions and subtree loading" and cif-format-io "CIF output symbol numbering and order" state it (`tests/unit/gds/write/depth_test.cpp`, `tests/unit/cif/write/write_test.cpp`). Approved 2026-11-14.
+
+### Q-MASK-234: `writeall` of an unavailable cell whose `.mag` exists
+- Kind: bug
+- Status: approved (shipped in round 5 as a proposed change, approved 2026-11-16)
+- Magic behavior: After a GDS or CIF read, a cell that is used but not available is visited by `writeall` (DBCellSrDefs). DBCellWriteFile writes the header and the still empty paint section, and only then reads the cell through the use enumeration (DBCellEnum). When the cell's `.mag` already exists, the rewritten file loses its paint while memory keeps it.
+- Evidence: database/DBio.c:4771-4780, database/DBcellsrch.c:1273
+- Options: replicate (lose the file's paint) | fix (read the cell before writing)
+- Recommendation: fix in both modes (X-2 tier 1, data loss).
+- Resolution: fix — in both modes the write of an unavailable cell reads its existing file first and then writes everything, so the file keeps its paint. cmd-hierarchy "Writeall command" states it (`tests/unit/cell/writeall_test.cpp`). Approved 2026-11-16.
+
+### Q-MASK-235: `writeall` of an undefined cell
+- Kind: quirk
+- Status: approved (raised in round 5; approved 2026-11-16)
+- Magic behavior: A cell called but never defined by a GDS or CIF read has no file. Its write creates the file, writes the header with the new timestamp, then reads the still empty file in the use enumeration: `File CELL contained format error`, a zero timestamp, and parents written later record `timestamp 0` for its use.
+- Evidence: database/DBio.c:4780, database/DBcellsrch.c:1273
+- Options: replicate | compat (ON: Magic; OFF: write an empty cell whose header and in-memory timestamp agree) | skip the cell with OFF (round 5 behaviour)
+- Recommendation: compat. The format error and the zero timestamp come from reading a half-written file; an empty `.mag` with a consistent stamp is what the write means.
+- Resolution: compat — with `magic-compat` ON as Magic; with it OFF `writeall` visits the cell too and writes an empty `.mag` carrying the new timestamp, which the cell and its parents' use lines keep, with no format error. cmd-hierarchy "Writeall command" states it (`tests/unit/cell/writeall_test.cpp`). Approved 2026-11-16.

@@ -104,6 +104,14 @@ struct UseRef {
 /// smallest first (expanded uses and unexpanded ones whose ancestors are all
 /// expanded).
 [[nodiscard]] std::vector<UseRef> uses_at(const Context& c, const db::Rect& area);
+/// SelEnumCells' lookup of a selected use in the layout (selEnumCFunc1/2):
+/// DBCellSrArea searches over a 1x1 square at the lower-left of the
+/// selected use's element (xlo, ylo), descending into every child that
+/// overlaps it (expanded or not, read when unavailable) until the use with
+/// the same definition, root transform and array is found. Those searches
+/// can bin the use indexes, as Magic's do. nullopt for the root itself or
+/// when no such use is there.
+[[nodiscard]] std::optional<UseRef> selected_layout_use(const Context& c, const db::CellUse& selected);
 /// SelectCell: adds (or with `replace` swaps in) the whole use.
 void select_cell(const Context& c, const UseRef& ref, bool replace);
 /// SelectRemoveCellUse.
@@ -140,7 +148,5 @@ void transform_selection(const Context& c, const db::Transform& t);
 void stretch_selection(const Context& c, db::Coord dx, db::Coord dy);
 /// SelectArray.
 void array_selection(const Context& c, const db::ArrayInfo& info);
-/// The layout use matching a selected use, and its parent's root transform.
-[[nodiscard]] std::optional<UseRef> layout_use(const Context& c, const db::CellUse& selected);
 
 }  // namespace hefesto::select::ops

@@ -29,6 +29,8 @@
 #include "hefesto/render/renderer.hpp"
 #include "hefesto/render/synthetic_layout.hpp"
 #include "hefesto/shell/core_command_sink.hpp"
+#include "hefesto/shell/drc_link.hpp"
+#include "hefesto/shell/mask_job_host.hpp"
 #include "hefesto/shell/options.hpp"
 #include "hefesto/shell/script_consent_model.hpp"
 #include "main_window.hpp"
@@ -354,8 +356,8 @@ int run_window(const ShellOptions& options) {
         [&window](std::size_t committed) { window.on_drc_service(committed); });
     // A GDS or CIF write emits on a worker that reads the layout while the
     // frames it pumps run posted tasks: squares wait until it ends (m5 D16).
-    drc_pump.set_hold([&window] { return window.mask_jobs().busy(); });
-    window.mask_jobs().set_on_end([&drc_pump] { drc_pump.resume(); });
+    // Declared after the pump, the link is undone before the pump goes.
+    const MaskJobDrcLink drc_hold(window.mask_jobs(), drc_pump);
     if (!options.run.empty()) window.run_when_ready(options.run);
     if (options.rects > 0) {
       render::SyntheticLayoutParams params;

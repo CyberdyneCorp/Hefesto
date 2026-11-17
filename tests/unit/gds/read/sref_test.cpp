@@ -8,7 +8,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
+#include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/property.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/util/magic_hash_table.hpp"
 #include "read_fixture.hpp"
 
 using namespace gds_read_test;
@@ -166,6 +173,41 @@ TEST_CASE("use placement rules", "[cap:gds-read][req:Use placement rules]") {
     CHECK(uses(s.cell("top")).size() == 2);
     CHECK(s.said("Warning: cell \"A\" placed on top of itself.  Ignoring the extra one."));
   }
+  SECTION("duplicate arrays follow DBCellFindDup's spacing rules") {
+    Session s;
+    GdsFile f;
+    f.library();
+    child(f, "A");
+    f.begin("top")
+        .aref("A", 3, 1, {{0, 0}, {60, 0}, {0, 0}})
+        .aref("A", 3, 1, {{0, 0}, {60, 0}, {0, 0}})    // same columns and spacing: dropped
+        .aref("A", 3, 1, {{0, 0}, {90, 0}, {0, 0}})    // other spacing: kept
+        .sref("A", {0, 0})                            // not an array, other bbox: kept
+        .end()
+        .end_library();
+    s.read(f);
+    CHECK(uses(s.cell("top")).size() == 3);
+    CHECK(s.count("placed on top of itself") == 1);
+  }
+  SECTION("regression: many uses in one structure are checked without rescanning the index") {
+    // The duplicate check searched the use index, which rescanned every use
+    // of the cell per placement: O(n^2) in the uses of one structure (the
+    // sky130-sram gds-roundtrip shard ran over 3 hours). 30 000 uses stay
+    // well inside the test timeout only when the check is incremental.
+    Session s;
+    GdsFile f;
+    f.library();
+    child(f, "A");
+    f.begin("top");
+    constexpr std::int32_t kUses = 30000;
+    for (std::int32_t i = 0; i < kUses; ++i) {
+      f.sref("A", {100 * (i % 200), 100 * (i / 200)});
+    }
+    f.sref("A", {0, 0}).end().end_library();  // one duplicate at the end
+    s.read(f);
+    CHECK(uses(s.cell("top")).size() == static_cast<std::size_t>(kUses));
+    CHECK(s.count("placed on top of itself") == 1);
+  }
   SECTION("an ancestor is not used") {
     Session s;
     GdsFile f;
@@ -179,6 +221,45 @@ TEST_CASE("use placement rules", "[cap:gds-read][req:Use placement rules]") {
     REQUIRE(it != s.last.diagnostics.end());
     CHECK(it->no_newline);  // Magic's text has no line end
   }
+}
+
+TEST_CASE("regression: a read SREF leaves no default-id entry in the parent's id table",
+          "[cap:gds-read][req:Instance properties]") {
+  // calmaElementSref makes the use with a NULL id and never links it. The
+  // reader linked a default id (`A_0`) per SREF and unlinked it, which left
+  // a dead `A_0` entry at its old place in cd_idHash, so a later `A_0` took
+  // that place instead of the head of its bucket; it also cost an O(n) scan
+  // of the parent's uses per SREF (security.md M5-S3).
+  Session s;
+  GdsFile f;
+  f.library();
+  child(f, "A");
+  f.begin("top");
+  constexpr std::int32_t kNamed = 30;  // below the table's growth at 48 entries
+  for (std::int32_t i = 0; i < kNamed; ++i) {
+    f.sref("A", {100 * i, 0}, RefSpec{0, {}, {}, {{61, "n" + std::to_string(i)}}});
+  }
+  f.end().end_library();
+  s.read(f);
+  db::CellDef* top = s.editor.cells.find("top");
+  db::CellDef* a = s.editor.cells.find("A");
+  REQUIRE(top != nullptr);
+  REQUIRE(a != nullptr);
+  db::PlaceOptions o;
+  o.transform = db::translation(0, 1000);
+  const auto placed = db::place(*top, *a, o);
+  REQUIRE(placed.ok());
+  REQUIRE(placed.value()->id == "A_0");
+  // A new key goes to the head of its bucket (16 buckets, DBCellNewDef).
+  const hefesto::util::MagicHashTable<bool> probe{16};
+  const std::size_t bucket = probe.bucket_of_key("A_0");
+  const std::vector<std::string> ids = top->linked_use_ids();
+  const auto first = std::find_if(ids.begin(), ids.end(),
+                                  [&](const std::string& id) { return probe.bucket_of_key(id) == bucket; });
+  REQUIRE(first != ids.end());
+  CHECK(*first == "A_0");
+  CHECK(std::count_if(ids.begin(), ids.end(), [&](const std::string& id) { return probe.bucket_of_key(id) == bucket; }) >
+        1);
 }
 
 TEST_CASE("magnified instances", "[cap:gds-read][req:Magnified instances]") {
@@ -276,4 +357,29 @@ TEST_CASE("a malformed array property message has no line end, as Magic's TxErro
   });
   REQUIRE(it != s.last.diagnostics.end());
   CHECK(it->no_newline);
+}
+
+TEST_CASE("regression: a duplicate placement is found after a grid subdivision in the same structure",
+          "[cap:gds-read][req:Use placement rules]") {
+  // The duplicate check keeps the uses of the structure by translation. A
+  // subdivision scales those translations in place (DBScaleEverything), so
+  // the SREF after the next one, at the first SREF's place, missed it: the
+  // extra use was kept and no warning printed (Magic's DBCellFindDup finds it,
+  // calma/CalmaRdcl.c:1513).
+  for (const bool magic_compat : {true, false}) {
+    Session s("style test\nscalefactor 10\nlayer m1 M1\ncalma M1 68 20\n", magic_compat);
+    GdsFile f;
+    f.library();
+    f.begin("A").boundary(68, 20, {{0, 0}, {0, 100}, {100, 100}, {100, 0}, {0, 0}}).end();
+    f.begin("top")
+        .sref("A", {100, 0})
+        .sref("A", {25, 300})  // half a grid unit: subdivides the grid
+        .sref("A", {100, 0})   // the first one again
+        .end()
+        .end_library();
+    s.read(f);
+    REQUIRE(s.said("Input off lambda grid by 1/2; grid redefined."));
+    CHECK(uses(s.cell("top")).size() == 2);
+    CHECK(s.count("placed on top of itself") == 1);
+  }
 }

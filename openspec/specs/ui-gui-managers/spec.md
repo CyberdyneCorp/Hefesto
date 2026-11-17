@@ -283,11 +283,11 @@ Compatibility: informative
 ### Requirement: File prompts
 `promptload magic|gds|cif|getcell` and `promptsave magic|force|gds|cif` SHALL use file dialogs:
 - Load magic: `load <root of chosen file>`.
-- Load gds: run `gds read`. If exactly one new top cell appears, load it. Otherwise print `Top-level cells read from GDS file: <list>`.
+- Load gds: run `gds read <root of chosen file>`. With `magic-compat` OFF, when the root name does not find the chosen file (for example `chip.gds.gz`, `chip.cal`, or `chip.strm` beside a `chip.gds`), run `gds read <chosen file>` instead (Q-MASK-136, resolution: compat). If exactly one new top cell appears, load it. Otherwise print `Top-level cells read from GDS file: <list>`.
 - Load cif: read into a temporary cell `cif_temp`, load its first child, and delete `cif_temp`.
 - getcell: add the file's directory to `path search` if absent, `getcell <file tail>`, then `path cell +<dir>/`.
 - Save magic/force: if the window cell is `(UNNAMED)`, prompt for a name (adding its directory to `path cell` if it differs from the working directory) and `save` it. Then `writeall`, or `writeall force`.
-- Save gds/cif: `gds write <file>` / `cif write <file>`.
+- Save gds/cif: `gds write <chosen file>`, in both modes (Q-MASK-320 as amended 2026-11-16) / `cif write <root of chosen file>` (Q-MASK-320).
 
 `saveallandquit` SHALL run `promptsave force` and then `quit -noprompt` if `cellname list modified` is empty, else `quit`. `prompt_dialog new|save` SHALL ask for a cell name and run `load <name>` (initial `(UNNAMED)`) or `save <name>` (initial: the window cell).
 Compatibility: behavioral
@@ -298,6 +298,12 @@ Compatibility: behavioral
 - **GIVEN** `chip.gds` contains top cell `chip` and no cells are loaded
 - **WHEN** `promptload gds` reads it
 - **THEN** `chip` SHALL be loaded into the window
+
+#### Scenario: GDS file the root name does not find
+- **GIVEN** the chosen file `chip.cal`
+- **WHEN** `promptload gds` runs
+- **THEN** with `magic-compat` ON `gds read chip` SHALL be run, as in Magic, and find no file
+- **AND** with `magic-compat` OFF `gds read chip.cal` SHALL be run and read it
 
 ### Requirement: Crash backup timer
 `crashbackups ?start|resume|stop|cancel|disable?` SHALL manage periodic crash-recovery saves:

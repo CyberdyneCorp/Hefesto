@@ -102,6 +102,7 @@ class MaskJobHost {
   /// Called on the calling thread once a job ended (the window resumes the
   /// DRC commits it held: DrcPump::resume).
   void set_on_end(std::function<void()> on_end) { on_end_ = std::move(on_end); }
+  [[nodiscard]] bool has_on_end() const noexcept { return static_cast<bool>(on_end_); }
   /// Interrupt: true when a job runs (its Progress is then cancelled).
   bool request_cancel() noexcept;
 
@@ -122,6 +123,26 @@ class MaskJobHost {
   std::chrono::milliseconds interval_{50};
   std::chrono::steady_clock::time_point last_pump_{};
   std::function<void()> on_end_;
+};
+
+class DrcPump;
+
+/// The window's link of its mask jobs to the background DRC (m5 D16,
+/// Q-MASK-414 as amended): `pump` commits no square while `jobs` runs a job
+/// (DrcPump::set_hold) and resumes when the job ends (set_on_end). The
+/// destructor clears both callbacks, so declared after the pump it undoes
+/// the link before the pump is destroyed, and a job that ends during the
+/// window's teardown never resumes a destroyed pump.
+class MaskJobDrcLink {
+ public:
+  MaskJobDrcLink(MaskJobHost& jobs, DrcPump& pump);
+  ~MaskJobDrcLink();
+  MaskJobDrcLink(const MaskJobDrcLink&) = delete;
+  MaskJobDrcLink& operator=(const MaskJobDrcLink&) = delete;
+
+ private:
+  MaskJobHost& jobs_;
+  DrcPump& pump_;
 };
 
 }  // namespace hefesto::shell

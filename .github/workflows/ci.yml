@@ -60,6 +60,11 @@ jobs:
         run: python3 scripts/check_third_party_notices.py
       - name: Core has no UI, GPU, Raven or process includes
         run: python3 scripts/check_core_includes.py
+      # M5 exit gate (openspec/changes/m5-mask-gds-cif tasks.md 15.6): fails while a case in
+      # tests/golden/deviations.toml is still deferred to M5 (m5_cases.BLOCKERS and the hand-written
+      # MASK-UO entries). TODO(INTEGRATION): uncomment once `m5_cases.py --exit-check` exits 0 on main.
+      # - name: No golden case deferred to M5 (M5 exit gate)
+      #   run: python3 tools/golden/authoring/m5_cases.py --exit-check
       - name: Requirement coverage report (report-only)
         run: |
           mkdir -p coverage-report

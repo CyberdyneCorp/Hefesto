@@ -11,11 +11,14 @@
 
 #include <array>
 #include <sstream>
+#include <vector>
 
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/cmd/coordinates.hpp"
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/view/diag_codes.hpp"
 #include "view/command_util.hpp"
 
@@ -83,19 +86,49 @@ struct ExpandWalk {
     }
   }
 
-  /// DBExpandAll: acts on every matching instance at any depth, descending
-  /// through the instances that are expanded after the action.
-  void walk(const db::CellDef& def, const db::Transform& to_root) {
-    for (const auto& use : def.uses()) {
-      if (!use || use->def == nullptr) {
+  /// DBExpandAll: acts on every matching instance at any depth reached
+  /// through instances that are expanded after the action (`acting`).
+  /// DBExpandAll's area search goes through the use index, which bins it the
+  /// way Magic's does (the writers' structure order depends on that).
+  void walk(const db::CellDef& def, const db::Transform& to_root, bool acting = true) {
+    const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
+    std::vector<db::CellUse*> found;
+    (void)db::uses_overlapping(def, area, ctx.project().compat, [&](db::CellUse& u) {
+      found.push_back(&u);
+      return true;
+    });
+    for (db::CellUse* use : found) {
+      if (use->def == nullptr) {
         continue;
       }
-      if (matches(db::apply(to_root, use->bbox))) {
+      if (acting && matches(db::apply(to_root, use->bbox))) {
         act(*use);
       }
-      if (window.is_expanded(*use)) {
-        walk(*use->def, db::compose(to_root, use->transform));
+      descend(*use, area, to_root, acting && window.is_expanded(*use));
+    }
+  }
+
+  /// magic-compat ON, dbExpandFunc's DBCellSrArea (database/DBexpand.c:251):
+  /// the search goes on into every use found, expanded or not (the child
+  /// read when unavailable, database/DBcellsrch.c:1151-1153), in the frame
+  /// of its first element overlapping the area (dbCellSrFunc, then return
+  /// 2). OFF: only into expanded uses, in the frame of element (xlo, ylo).
+  void descend(const db::CellUse& use, const db::Rect& area, const db::Transform& to_root, bool acting) {
+    if (!ctx.project().compat.magic_compat) {
+      if (acting) {
+        walk(*use.def, db::compose(to_root, use.transform), true);
       }
+      return;
+    }
+    if (!use.def->flags().available && wm.cell_reader() != nullptr) {
+      (void)wm.cell_reader()(ctx, *use.def);
+    }
+    if (use.def->flags().not_found) {
+      return;  // DBCellRead failed: DBCellSrArea searches nothing
+    }
+    const db::ElementRange r = db::array_overlap(use, area);
+    if (r.xlo <= r.xhi && r.ylo <= r.yhi) {
+      walk(*use.def, db::compose(to_root, db::element_transform(use, r.xlo, r.ylo)), acting);
     }
   }
 };

@@ -155,6 +155,11 @@ class CellDef {
     uses_touched_.store(true, std::memory_order_relaxed);
     return uses_;
   }
+  /// Appends `use` / erases `use` without marking the list touched: for
+  /// db::place and db::remove_use, which tell the use index themselves, so
+  /// its next read needs no rescan of the list (security.md M5-S3).
+  void append_indexed_use(std::unique_ptr<CellUse> use) { uses_.push_back(std::move(use)); }
+  void erase_indexed_use(const CellUse& use);
 
   /// The cell-use index of this definition (Magic's cd_cellPlane): the
   /// enumeration and area-search order of its uses (db/use_index.hpp).

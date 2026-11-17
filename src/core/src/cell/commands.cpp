@@ -570,11 +570,13 @@ void writeall_save(IoSession& s, db::CellDef& def, bool noninteractive) {
   }
 }
 
-/// The cells `writeall` visits (DBCellSrDefs): with magic-compat ON also the
-/// unavailable ones (a used but undefined GDS or CIF cell), which the write
-/// then reads; with it OFF only cells whose contents are loaded.
-bool writeall_visits(const IoSession& s, const db::CellDef& def, int option) {
-  return !def.flags().internal && (def.flags().available || s.io.magic_compat) && selected_by_flags(def, option);
+/// The cells `writeall` visits (DBCellSrDefs): every cell that is not
+/// internal, including the unavailable ones (a used but undefined GDS or
+/// CIF cell). The write reads an existing file first; with no file
+/// magic-compat ON reads its own empty file, as Magic, and OFF writes an
+/// empty, stamped cell (save_cell; user decision of 2026-11-16).
+bool writeall_visits(const db::CellDef& def, int option) {
+  return !def.flags().internal && selected_by_flags(def, option);
 }
 
 // One cell; false when the command is aborted.
@@ -638,7 +640,7 @@ CommandResult writeall_cmd(cmd::CommandContext& ctx, const cmd::Invocation& inv)
     }
     std::vector<db::CellDef*> cells;
     s.ed.cells.for_each([&](db::CellDef& def) {
-      if (writeall_visits(s, def, option)) {
+      if (writeall_visits(def, option)) {
         cells.push_back(&def);
       }
     });

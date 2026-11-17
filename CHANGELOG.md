@@ -49,6 +49,13 @@ release notices.
 
 ### Changed
 
+- **File prompts and `writeall` with `magic-compat` OFF.** `promptload
+  gds` reads the picked file when its root name does not find it
+  (Q-MASK-136); `writeall` writes an undefined cell as an empty, stamped
+  `.mag` (Q-MASK-235); and the copied SNAMEs of a renamed read-only vendor
+  child are rewritten through the child's `GDS_FILE` name (Q-MASK-216).
+  `promptsave gds` writes the chosen file (Q-MASK-320), and background
+  DRC pauses while a GDS or CIF write runs (Q-MASK-414).
 - **`gds rescale` and `cif rescale` are one setting**, as Magic's
   CIFRescaleAllow is, and a CIF read resets the once-per-read grid
   message.
@@ -129,6 +136,36 @@ release notices.
 
 ### Fixed
 
+- **GDS read of rotated or mirrored arrays.** Flatten copies and
+  copy-up copies of an AREF land on the right elements: the element
+  offset is applied in the child's coordinates, as Magic does. Before,
+  a rotated array's copies went onto other paint (159 extra "no room for
+  contacts" problems in sky130_fd_io's hvc_clampv2).
+- **The `5000 uses` progress line of a GDS read** is printed for every
+  structure that reaches 5000 uses, not only for the first.
+- **`cif statistics` counts the tiles OR-ed into existing planes**, as
+  Magic's CIFGen does, so its tile-operation counts match Magic's.
+- **`writeall` and `save` of an unavailable cell read its existing
+  `.mag` first**, so the written file keeps the cell's paint (Q-MASK-234,
+  both `magic-compat` settings).
+- **`expand` searches the use index under the box**, as Magic's
+  DBExpandAll does, so after a partial `expand` `gds write` and `cif
+  write` emit sibling structures in Magic's order. `select` at a point
+  and `delete`, `copy` and `move` of selected cells make Magic's searches
+  of the use index too.
+- **Every hierarchical search goes through the use index of each cell it
+  descends into**, as Magic's DBTreeSrTiles, DBTreeSrLabels and
+  DBTreeSrCells do: `select area`, `what` and the connectivity searches
+  bin a cell's index as Magic's do. `delete`, `move`, `identify` and the
+  array report find a selected cell from its first element's corner,
+  through every child there, as Magic's SelEnumCells does. With
+  `magic-compat` ON, `expand` and `unexpand` also search below unexpanded
+  instances, in the frame of the first array element under the box.
+- **A GDS read finds a duplicate placement after a grid subdivision** in
+  the same structure ("placed on top of itself"); it was kept before.
+- **The desktop's background DRC link to GDS and CIF writes is undone
+  before the DRC pump goes away**, so a write ending while the window
+  closes no longer resumes a destroyed pump.
 - **Array overlap no longer overflows.** The use index and the DRC
   computed the array elements under an area in 32 bits; one 64-bit
   routine now serves the use index, DRC, mask flattening and the writers.
@@ -213,6 +250,13 @@ release notices.
   with GDS-STREAM-006 instead of filling memory. New fuzz targets cover
   the GDS and CIF readers and the `cifoutput`/`cifinput` sections
   (`docs/contributing/security.md` "Layout input").
+- **Placing many uses in one cell is no longer quadratic in the use
+  index.** Each placement made the index rescan the cell's whole use
+  list (M5-S3): reading a GDS structure with about 105 000 uses took
+  more than 1200 s. The GDS reader also checks duplicate placements
+  against the uses it placed in the structure being read, and places a
+  use without generating a default id first (Magic's reader makes the use
+  with no id), so such a read now takes seconds.
 
 ## Unreleased (M4: scripting)
 

@@ -597,7 +597,7 @@ struct ArrayReport {
 std::vector<ArrayReport> selected_arrays(const Context& c) {
   std::vector<ArrayReport> out;
   for (const auto& u : c.ed->selection.def()->uses()) {
-    const auto found = ops::layout_use(c, *u);
+    const auto found = ops::selected_layout_use(c, *u);
     const db::CellUse& use = found ? *found->use : *u;
     const db::Transform& t = u->transform;
     db::ArrayInfo a = use.array;

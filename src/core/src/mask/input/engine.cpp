@@ -311,7 +311,8 @@ void ReadEngine::copy_saved_planes(const db::CellDef& child, const db::Transform
     const std::vector<db::TileView> tiles = source->solid_tiles();
     for (std::int32_t x = 0; x < cols; ++x) {
       for (std::int32_t y = 0; y < rows; ++y) {
-        const db::Transform t = db::compose(db::translation(offset(x, array.xsep), offset(y, array.ysep)), transform);
+        // The element offset is in the child's coordinates (GeoTransTranslate).
+        const db::Transform t = db::compose(transform, db::translation(offset(x, array.xsep), offset(y, array.ysep)));
         for (const db::TileView& tile : tiles) {
           db::TileView moved = tile;
           if (tile.split) {

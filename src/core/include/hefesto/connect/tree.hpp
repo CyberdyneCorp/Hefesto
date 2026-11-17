@@ -9,10 +9,11 @@
 // "Descending" follows a predicate that stands for the expansion state of a
 // window (Magic's xMask): a use the predicate refuses is visited as a whole
 // use by search_tree_cells() and its contents are not searched. An empty
-// predicate descends into every use. The uses of each cell are visited in
-// the use index's order under the session's `magic_compat`
-// (db::uses_in_search_order(def, compat): the bin walk with magic-compat
-// ON, the canonical order with it OFF).
+// predicate descends into every use. The uses of each searched cell are
+// found by an area search of its use index (DBCellSrArea's BPE_OVERLAP
+// search, db::uses_overlapping(def, area, compat)), which can bin the index
+// as Magic's does: magic-compat ON in that search's walk order, OFF in the
+// canonical order (m5-mask-gds-cif design D7).
 // (Magic ref: database/DBcellsrch.c:300-700, database/DBcell.c DBCellSrArea)
 //
 // Owner: SELECT (openspec/changes/m2-interactive-editing/design.md D2).

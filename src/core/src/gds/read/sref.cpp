@@ -30,6 +30,7 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -122,9 +123,10 @@ void paint_copies(const std::vector<FlattenLayer>& layers, std::int64_t cols, st
   for (const auto& [source, to] : layers) {
     for (std::int64_t x = 0; x < cols; ++x) {
       for (std::int64_t y = 0; y < rows; ++y) {
-        // GeoTransTranslate: the element offset is added after the transform.
-        const db::Transform t = db::compose(
-            db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)), trans);
+        // GeoTransTranslate: the element offset is in the child's
+        // coordinates, so the use's transform applies after it.
+        const db::Transform t =
+            db::compose(trans, db::translation(clamp_coord(x * array.xsep), clamp_coord(y * array.ysep)));
         copy_tiles(*source, *to, t, magic_compat);
       }
     }
@@ -463,6 +465,59 @@ void Reader::array_limits(Reference& ref, const std::string& text) {
 
 // --- placement ------------------------------------------------------------------------
 
+std::size_t Reader::PlacementHash::operator()(const PlacementKey& k) const noexcept {
+  const std::size_t h = std::hash<const void*>{}(k.child);
+  const auto c = static_cast<std::uint64_t>(static_cast<std::uint32_t>(k.c));
+  const auto f = static_cast<std::uint64_t>(static_cast<std::uint32_t>(k.f));
+  return h ^ std::hash<std::uint64_t>{}((c << 32U) | f);
+}
+
+void Reader::clear_cell(db::CellDef& def) {
+  clear_definition(def);
+  placed_[&def] = Placements{{}, editor_.grid};
+}
+
+void Reader::stop_tracking(const db::CellDef& def) {
+  placed_.erase(&def);
+}
+
+// A cleared cell holds only the uses this read placed in it.
+void Reader::retrack(const db::CellDef& def, Placements& placements) const {
+  placements.uses.clear();
+  for (const auto& use : def.uses()) {
+    placements.uses.emplace(PlacementKey{use->def, use->transform.c, use->transform.f}, use.get());
+  }
+  placements.grid = editor_.grid;
+}
+
+// DBCellFindDup (BPE_EQUAL): a use of the same definition with an equal
+// bounding box and the same placement. A cell this read cleared has only
+// the uses tracked in placed_; any other cell is searched in its index.
+// A grid subdivision scales the layout behind the index's back
+// (DBScaleEverything); the index then takes the scaled uses at the next
+// search, so the first check after one still searches it, as before, and
+// the tracked keys, which hold the old scale's translations, are taken
+// again from the cell's uses.
+bool Reader::duplicate_placement(const db::CellDef& parent, const db::CellUse& probe) {
+  const auto tracked = placed_.find(&parent);
+  if (tracked == placed_.end() || !(tracked->second.grid == editor_.grid)) {
+    bool duplicate = false;
+    (void)parent.use_index().find_equal(probe.bbox, [&](db::CellUse& other) {
+      duplicate = same_placement(other, probe);
+      return !duplicate;
+    });
+    if (tracked != placed_.end()) {
+      retrack(parent, tracked->second);
+    }
+    return duplicate;
+  }
+  const auto [first, last] =
+      tracked->second.uses.equal_range(PlacementKey{probe.def, probe.transform.c, probe.transform.f});
+  return std::any_of(first, last, [&](const auto& entry) {
+    return entry.second->bbox == probe.bbox && same_placement(*entry.second, probe);
+  });
+}
+
 db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db::Transform& transform,
                                const db::ArrayInfo& array, const std::string& id, bool check_duplicate) {
   if (check_duplicate) {
@@ -471,12 +526,7 @@ db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db
     probe.transform = transform;
     probe.array = array;
     db::compute_use_bbox(probe);
-    bool duplicate = false;
-    (void)parent.use_index().find_equal(probe.bbox, [&](db::CellUse& other) {
-      duplicate = same_placement(other, probe);
-      return !duplicate;
-    });
-    if (duplicate) {
+    if (duplicate_placement(parent, probe)) {
       error("Warning: cell \"" + child.name() + "\" placed on top of itself.  Ignoring the extra one.");
       return nullptr;
     }
@@ -484,6 +534,7 @@ db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db
   db::PlaceOptions options;
   options.transform = transform;
   options.array = array;
+  options.link_id = false;  // calmaElementSref: DBCellNewUse with a NULL id, no DBLinkCell
   auto placed = db::place(parent, child, options);
   if (!placed.ok()) {
     counted(placed.error());
@@ -492,8 +543,10 @@ db::CellUse* Reader::place_use(db::CellDef& parent, db::CellDef& child, const db
   // DBCellNewUse leaves the id as read (or unset) until DBGenerateUniqueIds
   // at the end of the structure, which resolves duplicates in Magic's order.
   db::CellUse* use = placed.value();
-  parent.unlink_use_id(use->id);
   use->id = id;
+  if (const auto tracked = placed_.find(&parent); tracked != placed_.end()) {
+    tracked->second.uses.emplace(PlacementKey{&child, transform.c, transform.f}, use);
+  }
   return use;
 }
 

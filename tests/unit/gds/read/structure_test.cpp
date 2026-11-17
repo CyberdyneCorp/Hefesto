@@ -241,6 +241,25 @@ TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells o
     CHECK(s.area("TOP", "m2") == 4 * 16.0);
     CHECK(s.cell("VIA").labels().empty());
   }
+  SECTION("regression: a rotated array copies each element at its own place") {
+    // GeoTransTranslate offsets a flatten copy in the child's coordinates:
+    // an AREF at 180 degrees steps downwards in the parent (sky130_fd_io
+    // hvc_clampv2 placed the copies upwards, MASK-RT-sky130_fd_io-f01/-f09).
+    for (const bool magic_compat : {true, false}) {
+      Session s(kStyle, magic_compat);
+      s.options.settings.flatten = true;
+      GdsFile f;
+      f.library().begin("VIA");
+      square(f, 68, 0, 4);
+      RefSpec rotated;
+      rotated.angle = 180.0;
+      f.end().begin("TOP").aref("VIA", 1, 3, {{100, 100}, {60, 100}, {100, -20}}, rotated).end().end_library();
+      s.read(f);
+      REQUIRE(s.said("Saving contents of cell VIA"));
+      CHECK(s.area("TOP", "m1") == 3 * 16.0);
+      CHECK(s.extent("TOP", "m1") == db::Rect{96, 16, 100, 100});
+    }
+  }
   SECTION("default flatglob") {
     Session s;
     GdsFile f;
@@ -268,6 +287,29 @@ TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells o
     CHECK_FALSE(s.said("Saving contents of cell V3"));
     CHECK(uses(s.cell("TOP")).size() == 1);
   }
+}
+
+TEST_CASE("regression: every structure reports its own 5000th use",
+          "[cap:gds-read][req:Structure processing and cell creation]") {
+  // calmaParseStructure's osrefs is local to the structure: two structures
+  // of 5000 uses each print "    5000 uses" twice (MASK-RT-sky130_sram_macros-f01,
+  // whose bitcell array and top cell both reach 5000).
+  Session s;
+  s.options.settings.flatten = true;  // flatten copies count as uses and stay cheap
+  GdsFile f;
+  f.library().begin("VIA");
+  square(f, 68, 0, 4);
+  f.end();
+  for (const char* name : {"A", "B"}) {
+    f.begin(name);
+    for (std::int32_t i = 0; i < 5000; ++i) {
+      f.sref("VIA", {8 * (i % 100), 8 * (i / 100)});
+    }
+    f.end();
+  }
+  f.end_library();
+  s.read(f);
+  CHECK(s.count("    5000 uses") == 2);
 }
 
 TEST_CASE("polygon subcells", "[cap:gds-read][req:Polygon subcells]") {

@@ -225,6 +225,8 @@ void generate_area_into(const GenerationSource& source, const db::CellDef& layou
     if (into.planes[i] == nullptr) {
       into.planes[i] = std::exchange(fresh.planes[i], nullptr);  // both release into ctx.pool
     } else {
+      // cifPaintFunc counts every tile it ORs in (CIFTileOps).
+      ctx.statistics.flat_tiles += plane->solid_tiles().size();
       (void)into.planes[i]->unite(*plane);
     }
   }

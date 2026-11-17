@@ -542,6 +542,21 @@ TEST_CASE("cellname list sorts naturally and cellname errors use Magic's text (M
   CHECK(s.run("cellname writeable top").value.to_string().empty());
 }
 
+TEST_CASE("cellname list allcells keeps the total natural order in both modes (Q-CELL-12)",
+          "[cap:cmd-hierarchy][req:Cellname and instance commands]") {
+  // Q-CELL-12 and Q-MODEL-9 (fix, both modes): a proper prefix sorts first.
+  // Magic lists "inv_1" before "inv" here (MASK-GR-008, a fix deviation).
+  HEFESTO_REQUIRE_MT(mt);
+  for (const bool magic_compat : {true, false}) {
+    Session s(mt);
+    s.project.compat.magic_compat = magic_compat;
+    s.cell("inv");
+    s.cell("inv_1");
+    s.cell("top_1");
+    CHECK(s.run("cellname list allcells").value.to_string() == "inv inv_1 top top_1");
+  }
+}
+
 TEST_CASE("cellname create of an existing cell is a silent no-op (DESKTOP-ALPHA-SG13G2)",
           "[cap:layout-hierarchy][req:Cell definitions and the cell namespace]") {
   // Regression: Magic's CmdCellname leaves an existing cell as it is; Hefesto reported

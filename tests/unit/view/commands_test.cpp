@@ -12,6 +12,9 @@
 
 #include "hefesto/cmd/dispatcher.hpp"
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/settings/project_settings.hpp"
@@ -183,6 +186,29 @@ TEST_CASE("expand acts per window under the box", "[cap:ui-windows-and-views][re
   CHECK_FALSE(w0.is_expanded(u1));
 }
 
+TEST_CASE("regression: expand over part of a cell searches its use index",
+          "[cap:gds-write][req:Structure ordering]") {
+  // DBExpandAll searches the uses under the box through the index, and a
+  // partial search of 10 or more unbinned uses builds the bins; the writers
+  // then emit sibling structures in the bin order (MASK-UO-002..004/007/008).
+  // `expand` looped over the use list instead, so the index stayed the
+  // newest-first list and `gds write` put the structures in another order.
+  Session s;
+  db::CellDef* top = s.cell("top", {0, 0, 1200, 100});
+  db::CellDef* inv = s.cell("inv", {0, 0, 10, 10});
+  for (db::Coord i = 0; i < 12; ++i) {
+    db::PlaceOptions o;
+    o.transform = db::translation(100 * i, 0);
+    REQUIRE(db::place(*top, *inv, o).ok());
+  }
+  (void)s.window(top);
+  s.editor.edit_cell = top;
+  s.editor.box = db::Rect{0, 0, 5, 5};
+  REQUIRE_FALSE(top->use_index().state_for_test().binned);
+  REQUIRE(s.run("expand").ok());
+  CHECK(top->use_index().state_for_test().binned);
+}
+
 TEST_CASE("see hides layers, labels and subcells per window", "[cap:ui-windows-and-views][req:Layer visibility (see)]") {
   hefesto::tech::TechnologyBuilder b;
   b.set_name("t");
@@ -315,4 +341,41 @@ TEST_CASE("redraw, reset and updatedisplay", "[cap:ui-windows-and-views][req:red
   REQUIRE(s.run("updatedisplay", {"resume"}).ok());
   CHECK_FALSE(s.editor.windows.display_suspended());
   CHECK_FALSE(s.run("updatedisplay", {"bogus"}).ok());
+}
+
+TEST_CASE("regression: unexpand and expand search below unexpanded uses with magic-compat ON",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbExpandFunc always goes on with DBCellSrArea into the use it found,
+  // expanded or not, in the frame of the first array element overlapping
+  // the area (database/DBexpand.c:251, DBcellsrch.c:1205-1225). Hefesto
+  // stopped at unexpanded uses and always took element (xlo, ylo), so a
+  // partial `unexpand` never binned an unexpanded child's index (the writers'
+  // structure order) and an expand over a later element used the wrong frame.
+  for (const bool magic_compat : {true, false}) {
+    Session s;
+    s.project.compat.magic_compat = magic_compat;
+    db::CellDef* top = s.cell("top", {0, 0, 4000, 100});
+    db::CellDef* mid = s.cell("mid", {0, 0, 1110, 10});
+    db::CellDef* leaf = s.cell("leaf", {0, 0, 10, 10});
+    std::vector<db::CellUse*> leaves;
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      leaves.push_back(db::place(*mid, *leaf, o).value());
+    }
+    db::PlaceOptions o;
+    o.array = db::ArrayInfo{0, 1, 0, 0, 2000, 0};  // elements at x 0 and 2000
+    const db::CellUse* arr = db::place(*top, *mid, o).value();
+    view::LayoutWindow& w = s.window(top);
+    s.editor.edit_cell = top;
+    // Part of element 1 only, over leaf 3 there (x 2300..2310).
+    s.editor.box = db::Rect{2300, 0, 2305, 5};
+    REQUIRE_FALSE(w.is_expanded(*arr));
+    REQUIRE_FALSE(mid->use_index().state_for_test().binned);
+    REQUIRE(s.run("unexpand").ok());
+    CHECK(mid->use_index().state_for_test().binned == magic_compat);
+    REQUIRE(s.run("expand").ok());
+    CHECK(w.is_expanded(*arr));
+    CHECK(w.is_expanded(*leaves[3]) == magic_compat);
+  }
 }
