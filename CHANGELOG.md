@@ -200,11 +200,11 @@ release notices.
   bound, and the cut operators compute their sums in 64 bits, so mask
   generation no longer overflows on them. A `cifoutput` `scalefactor`
   above 1073741818 is refused as a `cifinput` one is, and the style uses 1
-  (Q-MASK-35, proposed; Magic overflows there).
+  (Q-MASK-35, approved; Magic overflows there).
 - **A huge `repeat` count no longer hangs a technology load.** One read
   spends at most 100000 lines in `repeat` passes; past that the load
   warns (TECH-REPEAT-003) and reads the rest of the file once. Real PDK
-  files repeat about a hundred lines (Q-TECH-33, proposed).
+  files repeat about a hundred lines (Q-TECH-33, approved).
 
 ### Security
 
