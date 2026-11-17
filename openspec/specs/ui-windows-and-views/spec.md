@@ -313,7 +313,7 @@ Each layout window SHALL own one expansion bit. Each subcell instance SHALL reco
 `expand [selection|surround|overlap|all] [toggle]`:
 - The default mode is `overlap`.
 - A last argument that is any prefix of `toggle` SHALL mean toggle (see Q-UI-19).
-- It SHALL expand (or toggle) every instance, at any depth, whose bounding box the box overlaps or surrounds.
+- It SHALL expand (or toggle) every instance, at any depth, whose bounding box the box overlaps or surrounds. With `magic-compat` ON the instances reached and the `surround` test follow Magic's dbExpandFunc (cmd-hierarchy "Expand and unexpand commands", Q-MASK-418, proposed).
 - Unavailable cells SHALL be read from disk. A cell that cannot be read reports `Cell C is unavailable.  It could not be expanded.`.
 
 `unexpand [selection|surround|overlap|all]` is the inverse. Its default mode is `surround`.
