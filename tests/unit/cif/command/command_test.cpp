@@ -6,7 +6,8 @@
 // rescale options", "cif output-format toggles", "cif drccheck option",
 // "cif warning option", "cif polygon and unfracture options", "cif see,
 // paint, coverage and statistics options"; mask-hierarchical-generation
-// "Hierarchy and array output switches").
+// "Hierarchy and array output switches"; mask-output-styles "Mask generation
+// error reporting").
 // Owner: CIF.
 
 #include <catch2/catch_test_macros.hpp>
@@ -422,6 +423,32 @@ TEST_CASE("the generation errors of a write become feedback entries afterwards",
     CHECK(entry.message() == "CIF error in cell top, layer PSD: parent and child disagree on CIF");
     CHECK(entry.area == db::Rect{5, 0, 10, 10});
     CHECK(entry.root == s.top);
+  }
+}
+
+TEST_CASE("the operators' generation errors of a write become feedback entries too",
+          "[cap:mask-output-styles][req:Mask generation error reporting]") {
+  // Regression (MASK-RT-sg13g2_sram-f01..f20): a squares layer with no room
+  // for a cut counted as a problem on stdout, but only the hierarchy's
+  // errors reached the feedback list. Magic's CIFError adds every one
+  // (DBWFeedbackAdd with CIFErrorDef).
+  std::string text = masktest_text();
+  const std::string last = "    layer CVA via1\n        squares 10 20 20\n        calma 50 0\n";
+  const std::size_t at = text.find(last);
+  REQUIRE(at != std::string::npos);
+  text.insert(at + last.size(), "    layer CCT metal1\n        squares 100 20 20\n        calma 51 0\n");
+  for (const char* write : {"gds write /t/o", "cif write /t/o"}) {
+    Session s(true, true, "top", text);
+    REQUIRE(s.run(write).ok());
+    CHECK(has(s.take(), "1 problems occurred.  See feedback entries."));
+    REQUIRE(s.editor.feedback.size() == 1);
+    const view::FeedbackArea& entry = s.editor.feedback.areas().front();
+    CHECK(entry.message() == "CIF error in cell top, layer CCT: no room for contacts in area!");
+    CHECK(entry.root == s.top);
+    CHECK(entry.area.x0 >= 0);
+    CHECK(entry.area.x1 <= 4);
+    CHECK(entry.area.y0 >= 0);
+    CHECK(entry.area.y1 <= 2);
   }
 }
 
