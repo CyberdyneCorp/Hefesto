@@ -3,7 +3,7 @@
 Normative specs live in `openspec/specs/`; conventions in `docs/spec-conventions.md`; delivery plan in `docs/roadmap.md`.
 Each area has an open-questions log (`docs/decisions/open-questions/<AREA>.md`) and a golden-case inventory (`tests/golden/<AREA>/CASES.md`).
 
-**Totals:** 169 capabilities, 1995 requirements, 3334 scenarios, 876 open questions.
+**Totals:** 169 capabilities, 1995 requirements, 3336 scenarios, 877 open questions.
 
 ## Hefesto product (native)
 
@@ -47,7 +47,7 @@ Open questions: [32](decisions/open-questions/TECH.md) · Golden cases: [CASES.m
 | [`tech-contacts-and-stacking`](../openspec/specs/tech-contacts-and-stacking/spec.md) | 8 | 13 | Defines the `contact` section of a technology file (alias `images`). It covers how a type is declared a contact, its residues and the planes it touches, the `stackable` statement, … |
 | [`tech-file-format`](../openspec/specs/tech-file-format/spec.md) | 13 | 30 | Defines the lexical and structural format of a Magic-compatible technology (`.tech`) file: how lines are read and split into tokens, comments, line continuation, quoting, the `incl… |
 | [`tech-layers-and-planes`](../openspec/specs/tech-layers-and-planes/spec.md) | 11 | 23 | Defines how planes and tile types are declared in the `planes`, `types` and `aliases` sections of a technology file. It covers the built-in planes and types, how numbers and names … |
-| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 20 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
+| [`tech-loading-and-scaling`](../openspec/specs/tech-loading-and-scaling/spec.md) | 13 | 21 | Defines how a technology file is found, loaded, partly reloaded and selected at startup, and what a load does to layout already in memory. It also defines the internal-grid scale m… |
 | [`tech-styles-section`](../openspec/specs/tech-styles-section/spec.md) | 4 | 6 | Defines the `styles` section of a technology file. It covers the `styletype` statement, which selects the family of display-style and color-map files, and the mapping of each tile … |
 
 ## Cell files (.mag) (CELL)
@@ -89,7 +89,7 @@ Open questions: [27](decisions/open-questions/DRC.md) · Golden cases: [CASES.md
 
 ## Mask generation, GDS, CIF (MASK)
 
-Open questions: [149](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
+Open questions: [150](decisions/open-questions/MASK.md) · Golden cases: [CASES.md](../tests/golden/MASK/CASES.md)
 
 | Capability | Req | Scen | Purpose |
 |---|---|---|---|
@@ -97,7 +97,7 @@ Open questions: [149](decisions/open-questions/MASK.md) · Golden cases: [CASES.
 | [`gds-read`](../openspec/specs/gds-read/spec.md) | 41 | 91 | Defines how Hefesto reads a GDSII stream file (the `gds read` / `calma read` operation) into layout cells. The goal is data compatibility with Magic 8.3.694 (commit `fc5daa9e`): th… |
 | [`gds-write`](../openspec/specs/gds-write/spec.md) | 29 | 76 | Defines how Hefesto serializes a layout hierarchy to a GDSII stream file so that the output is byte-identical to Magic VLSI 8.3.694 (commit `fc5daa9e`) for the same technology file… |
 | [`mask-hierarchical-generation`](../openspec/specs/mask-hierarchical-generation/spec.md) | 25 | 48 | Define how mask (CIF/GDS output) geometry is generated for a hierarchical layout so that Hefesto produces exactly the same per-cell output geometry as Magic. This covers: |
-| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 46 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
+| [`mask-input-styles`](../openspec/specs/mask-input-styles/spec.md) | 26 | 47 | Defines the `cifinput` section of the technology file and the semantics Hefesto applies when converting mask-layer geometry read from CIF or GDSII files into Magic-compatible tile … |
 | [`mask-output-operators`](../openspec/specs/mask-output-operators/spec.md) | 28 | 47 | Defines exactly how the mask layers of an output style (capability `mask-output-styles`) are computed from layout geometry: the geometric model, the layer evaluation pipeline for o… |
 | [`mask-output-styles`](../openspec/specs/mask-output-styles/spec.md) | 19 | 38 | Defines the `cifoutput` section of the technology file: how mask output styles, style variants, mask layers (`layer`, `templayer`, `labellayer`), label-to-layer mappings, GDS layer… |
 

@@ -605,6 +605,20 @@ TEST_CASE("scalegrid rescales box and layout", "[cap:tech-loading-and-scaling][r
   CHECK(tech::scale_value(1073741818, 2, 1) == 1073741818);  // an infinity marker
 }
 
+TEST_CASE("scalegrid clamps coordinates scaled past the usable plane (Q-MASK-34)",
+          "[cap:tech-loading-and-scaling][req:scalegrid command]") {
+  Session s;
+  s.load_tiny();
+  auto* def = s.painted_cell(8, 13, db::Rect{-3, 0, 3, 2});
+  REQUIRE(s.run("scalegrid", {"1", "1000000000"}).ok());
+  CHECK(def->plane(8).bounding_box() == db::Rect{db::kPlaneMin, 0, db::kPlaneMax, db::kPlaneMax});
+  CHECK(def->bbox().x1 <= db::kPlaneMax);
+  CHECK(tech::scale_coord(3, 1000000000, 1) == db::kPlaneMax);
+  CHECK(tech::scale_coord(-3, 1000000000, 1) == db::kPlaneMin);
+  CHECK(tech::scale_coord(-3, 1, 2) == -2);
+  CHECK(tech::scale_coord(db::kInfinity, 2, 1) == db::kInfinity);  // an infinity marker is kept
+}
+
 TEST_CASE("the grid limit check uses the CIF output style", "[cap:tech-loading-and-scaling][req:Grid limit check]") {
   Session s;
   s.file("/t/g.tech", with(tiny(), "cifoutput\nend", "cifoutput\nstyle s\nscalefactor 5\ngridlimit 5\nend"));

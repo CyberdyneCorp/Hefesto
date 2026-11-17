@@ -22,6 +22,7 @@
 #include <string_view>
 
 #include "hefesto/cmd/registry.hpp"
+#include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/outcome.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/platform/services.hpp"
@@ -88,5 +89,10 @@ void reload_display_styles(editor::EditorState& editor, platform::FileSystem& fi
 
 /// DBScaleValue: floor(v*n/d) in 64-bit arithmetic; |v| >= 2^30-6 is kept.
 [[nodiscard]] std::int64_t scale_value(std::int64_t v, std::int64_t n, std::int64_t d) noexcept;
+
+/// scale_value of a coordinate, clamped to the usable plane [db::kPlaneMin,
+/// db::kPlaneMax]; an infinity marker is kept (Q-MASK-34: Magic's
+/// DBScaleValue wraps on overflow).
+[[nodiscard]] db::Coord scale_coord(db::Coord v, std::int64_t n, std::int64_t d) noexcept;
 
 }  // namespace hefesto::tech
