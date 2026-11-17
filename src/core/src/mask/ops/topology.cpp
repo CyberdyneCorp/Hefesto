@@ -3,7 +3,8 @@
 //
 // Operator group 4, region and shape filters (capability
 // mask-output-operators "maxrect", "orthogonal", "not-square", "overlapping,
-// nonoverlapping, interacting, noninteracting"; design D6, Q-MASK-7, 21):
+// nonoverlapping, interacting, noninteracting"; design D6, Q-MASK-7, 21,
+// 417):
 // CIFOP_MAXRECT, CIFOP_MANHATTAN, CIFOP_NOTSQUARE and CIFOP_INTERACT.
 //
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) cif/CIFgen.c
@@ -151,6 +152,12 @@ diag::Status op_not_square(const OpArgs& /*args*/, OperatorContext& ctx, MaskPla
 
 diag::Status op_interacting(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
   ScratchPlane next{*ctx.pool};
+  if (!q_mask_417_filters(ctx.compat)) {
+    // Magic's second walk marks the seed CIF_IGNORE before PUSHTILEONLY, which
+    // pushes only unprocessed tiles, so no region is ever painted (Q-MASK-417).
+    out.swap(*next);
+    return diag::Done{};
+  }
   const db::Plane& plane = out.plane();
   detail::Marks marks;
   // Regions are seeded from the tiles overlapping the search area as Magic

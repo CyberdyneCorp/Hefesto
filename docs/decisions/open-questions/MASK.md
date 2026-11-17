@@ -189,6 +189,7 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix (floor/ceil outward) | compat (replicate with `magic-compat` ON, corrected behavior with it OFF)
 - Recommendation: compat. With magic-compat ON, Hefesto divides with C truncation toward zero, as Magic does. With it OFF, it rounds outward: floor for lower and left edges, ceil for upper and right edges. Then an overlap or touch is detected the same way on both sides of the origin, and a database tile that the mask-unit rectangle reaches is never missed. PDK output is the same in both modes. (corrected 2026-11-13, was replicate)
 - Resolution: compat — with `magic-compat` ON interacting tests against database types convert with C truncation toward zero, as Magic does; with it OFF they round outward (floor for lower/left, ceil for upper/right edges). PDK output is the same in both modes. Approved 2026-11-13.
+- Amended 2026-11-17 (Q-MASK-417): with `magic-compat` ON the four interaction forms give an empty layer, as Magic, so the truncating conversion has no visible effect; the OFF outward rounding is unchanged.
 
 ### Q-MASK-22: net with no layer list adds nothing
 - Kind: ambiguity
@@ -482,6 +483,16 @@ Area MASK: mask output styles and operators, hierarchical mask generation, mask 
 - Options: replicate | fix (merge the whole layer) | compat (ON: Magic's internal-unit area; OFF: the whole generated layer)
 - Recommendation: compat. The unit mix-up only changes the polygon decomposition, never the covered area, so ON can keep Magic's GDS bytes. OFF merges the whole plane: every tile on it was generated for this call, so nothing outside the layer is touched, and the result no longer depends on where the geometry lies relative to the internal-unit area.
 - Resolution: compat — with `magic-compat` ON `cif unfracture` merges each generated layer over CIFGen's search area in internal units, as Magic does on its mask-unit plane; with it OFF it merges the whole generated layer (`mask::unfracture_layer`, `db::whole_plane()`). Only the decomposition changes. mask-hierarchical-generation "Non-manhattan merge option" states both (`tests/unit/mask/gen/unfracture_test.cpp`). Approved 2026-11-14.
+
+### Q-MASK-417: the interaction filters never paint
+- Kind: bug
+- Status: approved (drafted in round 6, task 14.3, from MASK-OP-021; approved by the user 2026-11-17 as compat)
+- Magic behavior: cifInteractingRegions (`overlapping`, `nonoverlapping`, `interacting`, `noninteracting`) walks each region of the current layer and decides whether it interacts, then walks it a second time to paint the kept regions. The second walk marks the seed tile CIF_IGNORE and pushes it with PUSHTILEONLY, which pushes only CIF_UNPROCESSED tiles, so the stack stays empty and nothing is painted. All four forms give an empty layer whatever the regions and the listed layers are. The golden capture of MASK-OP-021 (golden-capture run 43570973851) has only the `TM` boundaries.
+- Evidence: cif/CIFgen.c:4822-4975 (cifInteractingRegions; second walk :4928-4929), cif/CIFgen.c:1253-1257 (PUSHTILEONLY), cif/CIFgen.c:5409-5418 (CIFOP_INTERACT clears the next plane before the call), tests/golden/MASK/cases/MASK-OP-021/expected/out.gds
+- Verified 2026-11-17: no reference PDK cifoutput uses the four forms (Q-MASK-21), so PDK output is the same in both modes.
+- Options: replicate (empty layer in both modes) | fix (the region filter in both modes) | compat (ON: Magic's empty layer; OFF: the region filter as specified)
+- Recommendation: compat. A style that uses the operators gets an empty layer from Magic, and byte identity with Magic's GDS and CIF needs the same with ON. The filter is the documented and intended behaviour, so OFF keeps it.
+- Resolution: compat — with `magic-compat` ON the four interaction forms give an empty layer, as Magic's cifInteractingRegions, which never paints; with it OFF Hefesto keeps or discards each region as `mask-output-operators` "overlapping, nonoverlapping, interacting, noninteracting" specifies. With ON the Q-MASK-21 conversion is no longer observable. `mask/ops/topology.cpp` `op_interacting`, `q_mask_417_filters`; tests in `tests/unit/mask/ops/topology_test.cpp` (both modes); golden MASK-OP-021 replays (ON). Approved 2026-11-17.
 
 ### Q-MASK-300: cifinput "nanometers"/"angstroms" overwrites the decimal multiplier
 - Kind: bug

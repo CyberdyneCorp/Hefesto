@@ -66,9 +66,6 @@ RT_REASON = ("the library round trip differs from Magic's capture (GDSR/GDSW; m5
              "13.8)")
 # Captured cases that still differ from Magic: owner and cause (the M5 exit blockers).
 BLOCKERS: dict[str, str] = {
-    "MASK-OP-021": "OPS: Magic's cifInteractingRegions never paints (cif/CIFgen.c:4928-4929), so every "
-                   "interacting/overlapping form gives an empty layer; copying it with magic-compat ON or a "
-                   "fix deviation needs a user decision (proposed Q-MASK-417)",
     "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: only the digest differs (SREF order of com_ctl_hldv2, gpiov2_amux "
                                 "and overlay_gpiov2_m4); bisecting it needs Magic's out.gds",
     "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: five structures have fewer boundaries than Magic's (regenerated "
@@ -277,6 +274,7 @@ REPLAYED: set[str] = {
     "MASK-OP-018",
     "MASK-OP-019",
     "MASK-OP-020",
+    "MASK-OP-021",
     "MASK-OP-022",
     "MASK-OP-023",
     "MASK-OP-024",

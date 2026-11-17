@@ -807,31 +807,37 @@ The same rule applies to `not-square` in mask input styles (Q-MASK-330, capabili
 
 ### Requirement: overlapping, nonoverlapping, interacting, noninteracting
 
-These operators SHALL keep or discard whole regions of cur according to whether any tile of the region overlaps (`overlapping`) or overlaps-or-touches (`interacting`) the geometry of the listed layers; the `non` forms keep exactly the complementary set of regions.
+With `magic-compat` OFF these operators SHALL keep or discard whole regions of cur according to whether any tile of the region overlaps (`overlapping`) or overlaps-or-touches (`interacting`) the geometry of the listed layers; the `non` forms keep exactly the complementary set of regions. With `magic-compat` ON (the default) all four forms SHALL give an empty layer, whatever the regions and the listed layers are, as Magic: cifInteractingRegions decides each region but its second walk marks the seed tile before pushing it with PUSHTILEONLY, which pushes only unprocessed tiles, so it never paints (cif/CIFgen.c:4928-4929; Q-MASK-417, resolution: compat). The rules below describe the filter of the OFF mode.
 
 Compatibility: exact
 
 - Regions are seeded only from solid tiles of cur overlapping the search area E as given in internal units (not scaled to mu, as CIFgen.c cifInteractingRegions searches it), in both `magic-compat` settings, but extend without limit.
 - Per tile rectangle r (mu): for the touching forms, r is grown by 1 mu on every side (diagonal corner contact therefore counts).
 - Mask-layer test: any solid of the listed mask layer planes overlaps r.
-- Database-type test: r is converted to internal units by dividing each coordinate by scaleFactor, then any tile of a listed type overlaps it. The division depends on the `magic-compat` setting (Q-MASK-21, resolution: compat): with it ON (the default) it is C truncation toward zero, as in Magic; with it OFF it rounds outward, floor for lower/left edges and ceil for upper/right edges, so a database tile reached by r is never missed.
+- Database-type test: r is converted to internal units by dividing each coordinate by scaleFactor, then any tile of a listed type overlaps it. The division depends on the `magic-compat` setting (Q-MASK-21, resolution: compat): with it ON it is C truncation toward zero, as in Magic (not observable, since ON gives an empty layer, Q-MASK-417); with it OFF it rounds outward, floor for lower/left edges and ceil for upper/right edges, so a database tile reached by r is never missed.
 - Kept regions are copied tile by tile into the result; others are discarded.
 
-(Magic ref: cif/CIFgen.c:4822-4996, cif/CIFgen.c:4057-4140, cif/CIFtech.c:1131-1146)
+(Magic ref: cif/CIFgen.c:4822-4996, cif/CIFgen.c:4057-4140, cif/CIFgen.c:1253-1257, cif/CIFtech.c:1131-1146)
 
 #### Scenario: Touching counts only for interacting
 
-- **GIVEN** scaleFactor 1, cur regions `[0,10]×[0,10]` and `[50,60]×[0,10]`, and layer M with `[10,20]×[0,10]`
+- **GIVEN** scaleFactor 1, cur regions `[0,10]×[0,10]` and `[50,60]×[0,10]`, layer M with `[10,20]×[0,10]`, and `magic-compat` OFF
 - **WHEN** `overlapping M` is applied
 - **THEN** the result is empty
 - **AND** `interacting M` yields `[0,10]×[0,10]`, `noninteracting M` yields `[50,60]×[0,10]`
 
+#### Scenario: Every form is empty with magic-compat ON
+
+- **GIVEN** the cur regions and layer M of the scenario above, and `magic-compat` ON
+- **WHEN** `overlapping M`, `nonoverlapping M`, `interacting M` or `noninteracting M` is applied
+- **THEN** the result is empty, as Magic's output (Q-MASK-417)
+
 #### Scenario: Database test at negative coordinates
 
-- **GIVEN** scaleFactor 10, a cur region `[-25,-15]×[0,10]` mu, and a `poly` tile `[-3,-2]×[0,1]` internal units
+- **GIVEN** scaleFactor 10, a cur region `[-25,-15]×[0,10]` mu, a `poly` tile `[-3,-2]×[0,1]` internal units, and `magic-compat` OFF
 - **WHEN** `overlapping poly` is applied
-- **THEN** with `magic-compat` ON r converts to `[-2,-1]×[0,1]`, which does not overlap the poly tile, and the result is empty
-- **AND** with `magic-compat` OFF r converts to `[-3,-1]×[0,1]`, which overlaps it, and the region is kept
+- **THEN** r converts to `[-3,-1]×[0,1]`, which overlaps the poly tile, and the region is kept
+- **AND** Magic's truncation would convert r to `[-2,-1]×[0,1]`, which does not overlap it (Q-MASK-21; with `magic-compat` ON the layer is empty anyway)
 
 ### Requirement: net
 

@@ -92,6 +92,11 @@ struct CloseThreshold {
 [[nodiscard]] db::Rect q_mask_21_to_internal(const db::Rect& r, std::int32_t scale,
                                              const compat::CompatSettings& c) noexcept;
 
+/// Q-MASK-417 ((non)interacting, (non)overlapping): ON gives Magic's empty
+/// layer (cifInteractingRegions never paints, cif/CIFgen.c:4928-4929); OFF
+/// keeps or discards each region as specified.
+[[nodiscard]] constexpr bool q_mask_417_filters(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }
+
 /// Q-MASK-27 (squares grid-limit step): the new upper edge when the first
 /// cut origin `origin` is δ = `delta` > 0 off the grid. ON is sign-blind
 /// (`upper - 2δ`); OFF moves the edge the other way for a negative origin.
