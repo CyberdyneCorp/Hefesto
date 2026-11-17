@@ -12,10 +12,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import raw_diff
 import replay
-from goldenlib.rawkeep import FEEDBACK_PROBE, RawKeep, add_feedback_probe, written_files
+from goldenlib.rawkeep import FEEDBACK_PROBE, RawKeep, add_probe, written_files
 
 GOLDEN = Path(__file__).resolve().parents[1]
 REPO = GOLDEN.parents[1]
@@ -31,7 +32,7 @@ class FeedbackProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             script = Path(tmp) / "commands.tcl"
             script.write_text("puts a\nquit -noprompt\nputs b\n  quit -noprompt\n", encoding="utf-8")
-            self.assertTrue(add_feedback_probe(script))
+            self.assertTrue(add_probe(script))
             lines = script.read_text(encoding="utf-8").splitlines(keepends=True)
             self.assertEqual(lines[3], FEEDBACK_PROBE)
             self.assertEqual(lines[4].strip(), "quit -noprompt")
@@ -41,7 +42,7 @@ class FeedbackProbeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             script = Path(tmp) / "commands.tcl"
             script.write_text("puts a\n", encoding="utf-8")
-            self.assertFalse(add_feedback_probe(script))
+            self.assertFalse(add_probe(script))
             self.assertEqual(script.read_text(encoding="utf-8"), "puts a\n")
 
 
@@ -78,6 +79,25 @@ class KeepTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             replay.parse_args(["--hefesto-cli", "x", "--feedback-probe", str(CASE)])
 
+    def test_prepare_adds_feedback_then_probe_tcl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / "input").mkdir()
+            script = work / "input" / "commands.tcl"
+            script.write_text("puts a\nquit -noprompt\n", encoding="utf-8")
+            case = SimpleNamespace(id="C", reference={"script": "input/commands.tcl"})
+            RawKeep(work / "raw", True, "catch {save probe_x}").prepare(case, work)
+            self.assertEqual(script.read_text(encoding="utf-8"),
+                             "puts a\n" + FEEDBACK_PROBE + "catch {save probe_x}\nquit -noprompt\n")
+
+    def test_staged_cadroot_is_not_kept(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / "cadroot" / "sys").mkdir(parents=True)
+            (work / "cadroot" / "sys" / "FreeSans.pt3").write_bytes(b"font")
+            (work / "probe_x.mag").write_bytes(b"mag")
+            self.assertEqual(written_files(work), [Path("probe_x.mag")])
+
 
 def library(*structures: bytes) -> bytes:
     return gdsgen.library("LIB", structures)
@@ -96,6 +116,12 @@ class RawDiffTest(unittest.TestCase):
     def test_equal_writes_have_no_difference(self):
         a = gdsgen.structure("A", [gdsgen.rect(1, 0, 0, 0, 10, 10)])
         self.assertEqual(raw_diff.gds_report(library(a), library(a), 10), [])
+
+    def test_feedback_box_units_suffix_ignored(self):
+        """Hefesto saves boxes with an `i` suffix (Q-UI-24); the same entry must not count as a difference."""
+        entry = 'feedback add "CIF error in cell C, layer PSD: parent and child disagree on CIF" pale\n'
+        lines = raw_diff.feedback_report("box 1 2 3 4\n" + entry, "box 1i 2i 3i 4i\n" + entry, 10)
+        self.assertEqual(lines, ["feedback entries: Magic 1, Hefesto 1"])
 
     def test_feedback_groups(self):
         entry = '"CIF error in cell C, layer PSD: parent and child disagree on CIF" pale\n'

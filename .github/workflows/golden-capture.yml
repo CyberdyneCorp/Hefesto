@@ -33,7 +33,9 @@
 # cases (replay.py --keep-raw, hefesto-cli built in the job) go to the artifact
 # golden-raw-gds-rt-<shard> as magic/<case-id>/ and hefesto/<case-id>/. With `feedback-probe` both runs
 # also save their feedback list (out.feedback.tcl: the CIF "parent and child disagree" entries with cell,
-# layer and area). tools/golden/raw_diff.py compares the two directories of a case.
+# layer and area). `probe-tcl` (Tcl text) runs in both before the final quit, e.g. a `save` of the
+# cells under suspicion to compare the two reads as .mag files. tools/golden/raw_diff.py compares the
+# two directories of a case.
 
 name: Golden capture
 
@@ -57,6 +59,10 @@ on:
         description: "With keep-raw: both runs also save their feedback list (out.feedback.tcl)"
         type: boolean
         default: false
+      probe-tcl:
+        description: "With keep-raw: Tcl both runs execute before their final quit (wrap commands in catch)"
+        type: string
+        default: ""
   pull_request:
     paths:
       - tools/golden/container/**
@@ -80,6 +86,7 @@ env:
   CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.cases || '' }}
   KEEP_RAW: ${{ github.event_name == 'workflow_dispatch' && inputs.keep-raw && 'true' || 'false' }}
   FEEDBACK_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.feedback-probe && 'true' || 'false' }}
+  PROBE_TCL: ${{ github.event_name == 'workflow_dispatch' && inputs.probe-tcl || '' }}
 
 jobs:
   # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
@@ -454,6 +461,10 @@ jobs:
           raw=()
           if [ "$KEEP_RAW" = "true" ]; then raw=(--keep-raw raw/magic); fi
           if [ "$KEEP_RAW" = "true" ] && [ "$FEEDBACK_PROBE" = "true" ]; then raw+=(--feedback-probe); fi
+          if [ "$KEEP_RAW" = "true" ] && [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            raw+=(--probe-tcl raw-probe.tcl)
+          fi
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
             --verify --only-captured "${raw[@]}" "${cases[@]}"
 
@@ -467,6 +478,10 @@ jobs:
           raw=()
           if [ "$KEEP_RAW" = "true" ]; then raw=(--keep-raw raw/magic); fi
           if [ "$KEEP_RAW" = "true" ] && [ "$FEEDBACK_PROBE" = "true" ]; then raw+=(--feedback-probe); fi
+          if [ "$KEEP_RAW" = "true" ] && [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            raw+=(--probe-tcl raw-probe.tcl)
+          fi
           status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
             --only-missing "${raw[@]}" "${cases[@]}" 2>&1 | tee capture.log || status=$?
@@ -498,6 +513,10 @@ jobs:
           mkdir -p raw
           probe=()
           if [ "$FEEDBACK_PROBE" = "true" ]; then probe=(--feedback-probe); fi
+          if [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            probe+=(--probe-tcl raw-probe.tcl)
+          fi
           python3 tools/golden/replay.py --hefesto-cli build/linux-release/src/cli/hefesto-cli --include-gds-rt \
             --keep-raw raw/hefesto "${probe[@]}" "${cases[@]}" | tee raw/hefesto-replay.txt || true
           for dir in raw/magic/*/; do

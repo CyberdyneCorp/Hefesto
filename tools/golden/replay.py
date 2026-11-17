@@ -38,7 +38,8 @@ A case listed in <root>/deviations.toml (goldenlib/deviations.py) whose only
 differing outputs are the listed ones is a DEVIATION: a documented, decided
 difference from Magic, counted like a skip. A listed case that passes fails.
 --keep-raw DIR copies each run's streams and written files to DIR/<case-id>/
-(goldenlib/rawkeep.py; --feedback-probe also saves the run's feedback list),
+(goldenlib/rawkeep.py; --feedback-probe also saves the run's feedback list,
+--probe-tcl FILE runs FILE's Tcl before the script's final quit),
 to bisect a difference against capture.py's --keep-raw output of Magic.
 Exit status: 1 if any case failed or errored; else N (--skip-code, default 0)
 if any case was skipped or a deviation; else 0. 2 on usage errors.
@@ -60,6 +61,7 @@ from goldenlib import deviations
 from goldenlib.case import STREAM_SOURCES, Case, CaseError, discover, load_case, run_timeout, substitute_env
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage
+from goldenlib import rawkeep
 from goldenlib.rawkeep import RawKeep
 from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
 
@@ -297,13 +299,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="also replay the golden-gds-rt cases (gds_rt = true)")
     parser.add_argument("--require-inputs", action="append", default=[], metavar="ID[,ID...]",
                         help="fail, not skip, when these cases miss an external input (repeatable)")
-    parser.add_argument("--keep-raw", type=Path, metavar="DIR",
-                        help="copy each run's streams and written files to DIR/<case-id>/")
-    parser.add_argument("--feedback-probe", action="store_true",
-                        help="with --keep-raw: save the run's feedback list (out.feedback.tcl)")
+    rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
-    if args.feedback_probe and args.keep_raw is None:
-        parser.error("--feedback-probe needs --keep-raw")
+    args.raw = rawkeep.from_args(args, parser)
     if args.hefesto_cli is None:
         parser.error("hefesto-cli not given (use --hefesto-cli or set HEFESTO_CLI)")
     args.require_inputs = frozenset(i for group in args.require_inputs for i in group.split(",") if i)
@@ -321,8 +319,7 @@ def main(argv: list[str]) -> int:
     except (deviations.DeviationError, ValueError) as error:
         print(f"replay.py: {error}", file=sys.stderr)
         return 2
-    raw = RawKeep(args.keep_raw.resolve(), args.feedback_probe) if args.keep_raw is not None else None
-    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs, raw)
+    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs, args.raw)
     reports = [run_one(args.hefesto_cli, case_dir, options) for case_dir in select_cases(args)]
     human = sys.stderr if str(args.json) == "-" else sys.stdout
     for report in reports:

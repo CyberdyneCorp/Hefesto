@@ -23,6 +23,7 @@ A selection that leaves no case is not an error (exit 0, a note is printed).
 Raw outputs (goldenlib/rawkeep.py), for bisecting a difference; nothing in expected/ changes:
     --keep-raw DIR     copy each run's streams and written files to DIR/<case-id>/
     --feedback-probe   with --keep-raw: the run also saves its feedback list (out.feedback.tcl)
+    --probe-tcl FILE   with --keep-raw: the run also runs FILE's Tcl before its final quit
 
 Runners are described in goldenlib/refrunners.py. The default image is
 $HEFESTO_GOLDEN_IMAGE, else "hefesto-golden:local" (see README.md).
@@ -45,6 +46,7 @@ from goldenlib.case import STREAM_SOURCES, Case, CaseError, load_case
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
+from goldenlib import rawkeep
 from goldenlib.rawkeep import RawKeep
 from goldenlib.refrunners import ENVIRONMENT, ContainerRunner, LocalHarnessRunner, ModelRunner, RunnerError, RunResult
 
@@ -147,8 +149,7 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
         print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool})")
         return True
     runner = make_runner(args, pins)
-    raw = RawKeep(args.keep_raw, args.feedback_probe) if args.keep_raw is not None else None
-    result, outputs = run_reference(case, runner, raw)
+    result, outputs = run_reference(case, runner, getattr(args, "raw", None))
     if args.verify:
         problems = verify_expected(case, outputs)
         print(f"{case.id}: {'matches expected/' if not problems else 'DIFFERS'} ({runner.name} runner)")
@@ -186,13 +187,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     which = parser.add_mutually_exclusive_group()
     which.add_argument("--only-captured", action="store_true", help="keep cases that have expected/")
     which.add_argument("--only-missing", action="store_true", help="keep cases without expected/")
-    parser.add_argument("--keep-raw", type=Path, metavar="DIR",
-                        help="copy each run's streams and written files to DIR/<case-id>/")
-    parser.add_argument("--feedback-probe", action="store_true",
-                        help="with --keep-raw: save the run's feedback list (out.feedback.tcl)")
+    rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
-    if args.feedback_probe and args.keep_raw is None:
-        parser.error("--feedback-probe needs --keep-raw")
+    args.raw = rawkeep.from_args(args, parser)
     return args
 
 

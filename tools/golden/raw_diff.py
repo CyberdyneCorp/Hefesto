@@ -75,12 +75,13 @@ def gds_report(magic: bytes, hefesto: bytes, limit: int) -> list[str]:
 
 
 def feedback_entries(text: str) -> Counter:
-    """(box, text) of each entry of a ``feedback save`` file."""
+    """(box, text) of each entry of a ``feedback save`` file. Hefesto writes the box in internal
+    units with an ``i`` suffix (Q-UI-24), Magic as bare numbers: the suffix is dropped."""
     entries: Counter = Counter()
     box = ""
     for line in text.splitlines():
         if line.startswith("box "):
-            box = line[4:]
+            box = " ".join(word.removesuffix("i") for word in line[4:].split())
         elif line.startswith("feedback add "):
             entries[(box, line[len("feedback add "):])] += 1
     return entries
