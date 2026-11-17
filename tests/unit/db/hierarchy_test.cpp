@@ -557,6 +557,40 @@ TEST_CASE("flattening copies paint through the paint tables", HI "[req:Flattenin
   CHECK(flat.value()->bbox() == Rect{100, 0, 120, 4});
 }
 
+TEST_CASE("regression: flattening searches the use index of every cell it descends into",
+          "[cap:gds-write][req:Structure ordering]") {
+  // CmdFlatten's DBCellCopyAllPaint (DBTreeSrTiles) finds each cell's uses
+  // with DBCellSrArea over the source's bounding box in that cell's
+  // coordinates (commands/CmdFI.c:2200-2220): leaves touching the box edge
+  // make the search non-surrounding, which bins a cell of 10 or more uses
+  // (the writers' structure order). The flattening looped over the use
+  // lists instead. magic-compat OFF searches the whole plane.
+  HEFESTO_REQUIRE_MT(mt);
+  for (const bool magic_compat : {true, false}) {
+    db::CellLibrary lib;
+    auto* leaf = lib.create("leaf", mt.tech->plane_count()).value();
+    auto* mid = lib.create("mid", mt.tech->plane_count()).value();
+    auto* top = lib.create("top", mt.tech->plane_count()).value();
+    REQUIRE(db::paint(*leaf, *mt.tech, {0, 0, 10, 10}, mt.m1).ok());
+    db::recompute_bbox(*leaf);
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      REQUIRE(db::place(*mid, *leaf, o).ok());
+    }
+    db::recompute_bbox(*mid);
+    REQUIRE(db::place(*top, *mid, db::PlaceOptions{}).ok());
+    db::recompute_bbox(*top);
+    REQUIRE_FALSE(mid->use_index().state_for_test().binned);
+    db::FlattenOptions options;
+    options.magic_compat = magic_compat;
+    auto flat = db::flatten_to_new(lib, *top, "flat", *mt.tech, options);
+    REQUIRE(flat.ok());
+    CHECK(db::test::rects(flat.value()->plane(mt.metal1)).size() == 12);
+    CHECK(mid->use_index().state_for_test().binned == magic_compat);
+  }
+}
+
 TEST_CASE("walking the hierarchy visits array elements with transforms", HI "[req:Arrays]") {
   db::CellLibrary lib;
   auto* top = make(lib, "top");

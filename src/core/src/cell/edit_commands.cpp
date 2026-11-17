@@ -55,7 +55,7 @@ Chosen choose(IoSession& s, const cmd::Invocation& inv) {
     }
     return c;
   }
-  c.ref = choose_instance(selected_instances(s.ed), pointer_area(s.ed));
+  c.ref = choose_instance(selected_instances(s.ed, s.io.magic_compat, reader_for(s)), pointer_area(s.ed));
   return c;
 }
 

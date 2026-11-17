@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "db/tech_masks.hpp"
+#include "hefesto/db/array_overlap.hpp"
 #include "hefesto/db/diag_codes.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
@@ -35,6 +36,57 @@ Rect paint_extent(const CellDef& def) {
     r = include(r, def.plane(static_cast<tech::PlaneId>(p)).bounding_box());
   }
   return r;
+}
+
+using ElementFn = std::function<bool(CellUse& use, std::int32_t x, std::int32_t y, const Rect& child_area)>;
+
+// DBCellSrArea with dbCellSrFunc: the uses of `def` that an area search of
+// its use index finds over `area` (`def`'s coordinates; the search bins the
+// index as Magic's does), each with its array elements that may overlap the
+// area (DBArrayOverlap) and the area in that element's coordinates. `f`
+// returns false to skip the remaining elements of its use (dbCellSrFunc's
+// return 2). magic-compat OFF visits the uses in the canonical order.
+void search_elements(const CellDef& def, const Rect& area, bool magic_compat, const ElementFn& f) {
+  (void)uses_overlapping(def, area, compat::CompatSettings{magic_compat, true}, [&](CellUse& u) {
+    if (u.def == nullptr) {
+      return true;
+    }
+    const ElementRange r = array_overlap(u, area);
+    for (std::int64_t y = r.ylo; y <= r.yhi; ++y) {
+      for (std::int64_t x = r.xlo; x <= r.xhi; ++x) {
+        const auto ex = static_cast<std::int32_t>(x);
+        const auto ey = static_cast<std::int32_t>(y);
+        if (!f(u, ex, ey, apply(invert(element_transform(u, ex, ey)), area))) {
+          return true;
+        }
+      }
+    }
+    return true;
+  });
+}
+
+// The area the flattening searches below `source`: its bounding box, as
+// CmdFlatten and DBFlattenInPlace give DBCellCopyAllPaint and its siblings,
+// with magic-compat ON (grown to its uses' boxes, which only matters when a
+// caller has not recomputed the box after placing them); the whole plane
+// with it OFF, so instances outside a paint-only bounding box (Q-MODEL-19)
+// are flattened too.
+Rect flatten_area(const CellDef& source, bool magic_compat) {
+  if (!magic_compat) {
+    return whole_plane();
+  }
+  Rect area = source.bbox();
+  for (const auto& u : source.uses()) {
+    area = include(area, u->bbox);
+  }
+  return area;
+}
+
+// DBTreeSrLabels' first DBCellSrArea grows the area by 1 (within the plane).
+Rect label_area(const Rect& area) {
+  const Rect plane = whole_plane();
+  return Rect{area.x0 > plane.x0 ? area.x0 - 1 : area.x0, area.y0 > plane.y0 ? area.y0 - 1 : area.y0,
+              area.x1 < plane.x1 ? area.x1 + 1 : area.x1, area.y1 < plane.y1 ? area.y1 + 1 : area.y1};
 }
 
 void for_each_element(const CellUse& use, const std::function<void(std::int32_t, std::int32_t)>& f) {
@@ -84,44 +136,67 @@ class Flattener {
   Flattener(CellDef& dest, const tech::Technology& tech, const FlattenOptions& options)
       : dest_(dest), tech_(tech), options_(options), generated_(dest.labels().size(), false) {}
 
-  // DBCellCopyAllPaint + DBCellCopyAllCells over `def` and its descended
-  // subtree, `t` mapping `def` into the destination.
-  diag::Status copy_paint_and_cells(const CellDef& def, const Transform& t) {
+  // DBCellCopyAllPaint, then DBCellCopyAllCells, over `def` and its
+  // descended subtree (`area` in `def`'s coordinates, `t` mapping `def`
+  // into the destination).
+  diag::Status copy_paint_and_cells(const CellDef& def, const Rect& area, const Transform& t) {
+    if (auto s = copy_paint_tree(def, area, t); !s.ok()) {
+      return s;
+    }
+    if (options_.descend == Descend::all) {
+      return diag::Done{};  // CU_DESCEND_ALL keeps no instance: no DBCellCopyAllCells
+    }
+    return copy_cells_tree(def, area, t);
+  }
+
+  // DBCellCopyAllPaint's DBTreeSrTiles: the paint of `def`, then of every
+  // descended element its use index search finds.
+  diag::Status copy_paint_tree(const CellDef& def, const Rect& area, const Transform& t) {
     const Rect extent = paint_extent(def);
     if (!extent.is_null()) {
       if (auto s = copy_paint(def, extent, t, dest_, tech_, all_but_space_and_drc()); !s.ok()) {
         return s;
       }
     }
-    for (const auto& u : def.uses()) {
-      if (!descends(*u, options_.descend)) {
-        if (auto s = copy_use(*u, t); !s.ok()) {
-          return s;
-        }
-        continue;
+    diag::Status status = diag::Done{};
+    search_elements(def, area, options_.magic_compat, [&](CellUse& u, std::int32_t x, std::int32_t y, const Rect& a) {
+      if (status.ok() && descends(u, options_.descend)) {
+        status = copy_paint_tree(*u.def, a, compose(t, element_transform(u, x, y)));
       }
-      diag::Status status = diag::Done{};
-      for_each_element(*u, [&](std::int32_t x, std::int32_t y) {
-        if (status.ok()) {
-          status = copy_paint_and_cells(*u->def, compose(t, element_transform(*u, x, y)));
-        }
-      });
-      if (!status.ok()) {
-        return status;
-      }
-    }
-    return diag::Done{};
+      return status.ok();
+    });
+    return status;
   }
 
-  // flatCopyAllLabels over `def` and its descended subtree. `path` is the
-  // hierarchical prefix ("" at the top level of the flattened source).
+  // DBCellCopyAllCells' DBTreeSrCells: every use the descended search
+  // reaches but does not descend into is copied once (dbCellCopyCellsFunc
+  // returns 2 after the first element).
+  diag::Status copy_cells_tree(const CellDef& def, const Rect& area, const Transform& t) {
+    diag::Status status = diag::Done{};
+    search_elements(def, area, options_.magic_compat, [&](CellUse& u, std::int32_t x, std::int32_t y, const Rect& a) {
+      if (!status.ok()) {
+        return false;
+      }
+      if (!descends(u, options_.descend)) {
+        status = copy_use(u, t);
+        return false;
+      }
+      status = copy_cells_tree(*u.def, a, compose(t, element_transform(u, x, y)));
+      return status.ok();
+    });
+    return status;
+  }
+
+  // flatCopyAllLabels over `def` and its descended subtree (`area` in its
+  // coordinates: DBTreeSrLabels' search area). `path` is the hierarchical
+  // prefix ("" at the top level of the flattened source).
   //
   // DBTreeSrLabels visits a cell's labels, then its uses in subcell
   // enumeration order. flatCopyAllLabels turns the separator before the
   // label text into '.' in the shared path buffer and never restores it, so
   // once a level has copied a label its separator stays '.' for the labels
   // of the cells below it (commands/CmdFI.c:1990-2000).
-  void copy_labels(const CellDef& def, const Transform& t, std::string path, bool top) {
+  void copy_labels(const CellDef& def, const Rect& area, const Transform& t, std::string path, bool top) {
     for (const Label& lab : def.labels()) {
       if (!lab.text.empty()) {
         put_flat_label(lab, t, path, top);
@@ -133,15 +208,14 @@ class Flattener {
     if (options_.labels == FlattenLabels::top_only) {
       return;
     }
-    for (const CellUse* u : uses_in_search_order(def, compat::CompatSettings{options_.magic_compat, true})) {
-      if (!descends(*u, options_.descend)) {
-        continue;
-      }
-      for_each_element(*u, [&](std::int32_t x, std::int32_t y) {
-        copy_labels(*u->def, compose(t, element_transform(*u, x, y)), path + array_element_name(*u, x, y) + "/",
+    const Rect search = top ? label_area(area) : area;
+    search_elements(def, search, options_.magic_compat, [&](CellUse& u, std::int32_t x, std::int32_t y, const Rect& a) {
+      if (descends(u, options_.descend)) {
+        copy_labels(*u.def, a, compose(t, element_transform(u, x, y)), path + array_element_name(u, x, y) + "/",
                     false);
-      });
-    }
+      }
+      return true;
+    });
   }
 
   // Parallel to the destination's labels: true for a label copied from the
@@ -280,9 +354,10 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
   // Replicated under magic-compat; with it off the root is always copied
   // (Q-MODEL-33, compat).
   const bool copy_root = !options.magic_compat || descends(source, options.descend);
+  const Rect area = flatten_area(source, options.magic_compat);
   Flattener f(dest, tech, options);
   if (copy_root) {
-    if (auto s = f.copy_paint_and_cells(source, kIdentity); !s.ok()) {
+    if (auto s = f.copy_paint_and_cells(source, area, kIdentity); !s.ok()) {
       return s.error();
     }
     // DBFlatCopyMaskHints over the source's bounding box: the hints of the
@@ -290,7 +365,7 @@ diag::Outcome<CellDef*> flatten_to_new(CellLibrary& library, const CellDef& sour
     hints::flat_copy_hints(source, source.bbox(), kIdentity, dest, options.descend, options.magic_compat);
   }
   if (options.labels == FlattenLabels::top_only || (copy_root && options.labels != FlattenLabels::none)) {
-    f.copy_labels(source, kIdentity, std::string{}, true);
+    f.copy_labels(source, area, kIdentity, std::string{}, true);
   }
   recompute_bbox(dest, options.magic_compat);
   return &dest;
@@ -323,11 +398,12 @@ diag::Status flatten_element(CellUse& use, std::int32_t x, std::int32_t y, const
   CellDef& dest = *use.parent;
   Flattener f(dest, tech, options);
   const Transform t = element_transform(use, x, y);
-  if (auto s = f.copy_paint_and_cells(*use.def, t); !s.ok()) {
+  const Rect area = flatten_area(*use.def, options.magic_compat);
+  if (auto s = f.copy_paint_and_cells(*use.def, area, t); !s.ok()) {
     return s;
   }
   if (options.labels != FlattenLabels::none) {
-    f.copy_labels(*use.def, t, std::string{}, true);
+    f.copy_labels(*use.def, area, t, std::string{}, true);
   }
   prefix_generated_labels(dest, f.generated(), in_place_prefix(use, x, y, options.magic_compat), options);
   // DBCellCopyMaskHints: the element's own hints, whole, transformed; then

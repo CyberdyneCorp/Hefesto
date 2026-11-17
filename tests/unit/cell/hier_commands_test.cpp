@@ -143,16 +143,22 @@ TEST_CASE("edit without a selection or with an unknown path changes nothing",
 
 TEST_CASE("edit picks the selected instance under the pointer, else the last one",
           "[cap:cmd-hierarchy][req:Edit command]") {
-  EditFixture f;
-  db::CellUse* x2 = f.s.place(*f.s.top, *f.inv, db::translation(300, 0), "x2");
-  f.s.select_use(*f.x1);
-  f.s.select_use(*x2);
-  f.s.editor.command_point = cmd::PointerState{f.s.window, db::Point{105, 5}, Rect{105, 5, 105, 5}};
-  f.s.ok("edit");
-  CHECK(f.s.editor.edit_transform == db::translation(100, 0));
-  f.s.editor.command_point.reset();
-  f.s.ok("edit");
-  CHECK(f.s.editor.edit_transform == db::translation(300, 0));
+  // The last one in SelEnumCells' order: the selection cell's use index walk
+  // with magic-compat ON (newest first while unbinned, so x1, selected
+  // first, comes last, as cmdEditEnumFunc keeps it), the selection order
+  // with it OFF.
+  for (const bool magic_compat : {true, false}) {
+    EditFixture f(magic_compat);
+    db::CellUse* x2 = f.s.place(*f.s.top, *f.inv, db::translation(300, 0), "x2");
+    f.s.select_use(*f.x1);
+    f.s.select_use(*x2);
+    f.s.editor.command_point = cmd::PointerState{f.s.window, db::Point{105, 5}, Rect{105, 5, 105, 5}};
+    f.s.ok("edit");
+    CHECK(f.s.editor.edit_transform == db::translation(100, 0));
+    f.s.editor.command_point.reset();
+    f.s.ok("edit");
+    CHECK(f.s.editor.edit_transform == db::translation(magic_compat ? 100 : 300, 0));
+  }
 }
 
 TEST_CASE("edit by instance path keeps the previous edit transform with magic-compat ON and warns",
@@ -179,6 +185,30 @@ TEST_CASE("edit by instance path sets the full transform with magic-compat OFF",
   REQUIRE(r.ok());
   CHECK(f.inv->labels().back().rect == Rect{0, 0, 10, 10});
   CHECK_FALSE(mentions(r, "Warning: edit transform"));
+}
+
+TEST_CASE("regression: edit finds a selected instance below an array element through the use index",
+          "[cap:cmd-hierarchy][req:Edit command]") {
+  // SelEnumCells' selEnumCFunc2 searches every array element overlapping the
+  // selected instance's lower-left and the use index of every child it
+  // reaches (select/selEnum.c:700-735). cell::selected_instances walked the
+  // use lists instead and skipped arrays, so an instance selected below an
+  // array element was not found ("No cell selected to edit.").
+  for (const bool magic_compat : {true, false}) {
+    EditFixture f(magic_compat);
+    db::CellDef* mid = f.s.cell("mid");
+    const db::CellUse* y1 = f.s.place(*mid, *f.inv, db::translation(10, 0), "y1");
+    db::PlaceOptions po;
+    po.id = "m";
+    po.transform = db::translation(0, 50);
+    po.array = db::ArrayInfo{0, 1, 0, 0, 100, 0};
+    REQUIRE(db::place(*f.s.top, *mid, po).ok());
+    db::recompute_bbox(*f.s.top, true);
+    f.s.select_use(*y1, db::translation(100, 50));  // y1 of element 1
+    f.s.ok("edit");
+    CHECK(f.s.editor.edit_cell == f.inv);
+    CHECK(f.s.editor.edit_transform == db::translation(110, 50));
+  }
 }
 
 TEST_CASE("instance paths resolve nested instances and array elements", "[cap:cmd-hierarchy][req:Edit command]") {
