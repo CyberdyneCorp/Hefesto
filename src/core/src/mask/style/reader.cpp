@@ -17,13 +17,15 @@
 // statement without a value reports "Unable to parse grid limit value."
 // instead of reading a NULL argument; `render` checks only its argument
 // count (3-D display attributes are not kept; capability text:
-// "informative for Hefesto").
+// "informative for Hefesto"); a `scalefactor` above db::kPlaneMax is
+// refused (Q-MASK-35; Magic's atoi and mask generation overflow on it).
 //
 // Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
 
 #include <algorithm>
 #include <utility>
 
+#include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "mask/style/reader.hpp"
 #include "mask/style/text.hpp"
@@ -174,6 +176,12 @@ void Reader::scalefactor_line(const Tokens& t) {
   if (style_.scale.scale_factor <= 0) {
     style_.scale.scale_factor = 0;
     messages_.error("Scalefactor must be a strictly positive value.");
+  } else if (style_.scale.scale_factor > db::kPlaneMax) {
+    // Q-MASK-35: one internal unit would span more than the usable plane in
+    // mask units (mask generation multiplies layout coordinates by it);
+    // refused as cifinput refuses it (Q-MASK-34).
+    style_.scale.scale_factor = 0;
+    messages_.error("Scalefactor must be at most " + std::to_string(db::kPlaneMax) + ".");
   }
 }
 

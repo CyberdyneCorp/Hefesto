@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/format.hpp"
 #include "hefesto/mask/style/core.hpp"
 #include "style_fixture.hpp"
@@ -174,6 +175,23 @@ TEST_CASE("scalefactor errors", "[cap:mask-output-styles][req:scalefactor statem
   CHECK(mask::test::texts_of(args.messages) ==
         std::vector<std::string>{"Wrong number of arguments in scalefactor statement.",
                                  "No valid scale factor was given for s CIF."});
+}
+
+TEST_CASE("a scalefactor past the usable plane is refused", "[cap:mask-output-styles][req:scalefactor statement]") {
+  // Q-MASK-35: Magic's atoi is undefined past INT_MAX and one internal unit
+  // would span more than the plane in mask units.
+  const std::string limit = std::to_string(hefesto::db::kPlaneMax);
+  for (const std::string& scale : {std::to_string(hefesto::db::kPlaneMax + 1), std::string{"14444444444444"}}) {
+    INFO(scale);
+    const auto r = read("style s\nscalefactor " + scale + "\nlayer A metal1");
+    CHECK(mask::test::texts_of(r.messages) ==
+          std::vector<std::string>{"Scalefactor must be at most " + limit + ".",
+                                   "No valid scale factor was given for s CIF."});
+    CHECK(r.style().scale.scale_factor == 1);
+  }
+  const auto largest = read("style s\nscalefactor " + limit + "\nlayer A metal1\nbloat-all metal1 metal2");
+  CHECK(largest.messages.empty());
+  CHECK(largest.style().scale.scale_factor == hefesto::db::kPlaneMax);
 }
 
 TEST_CASE("units, stepsize and gridlimit", "[cap:mask-output-styles][req:units, stepsize and gridlimit statements]") {

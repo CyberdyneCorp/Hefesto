@@ -83,6 +83,7 @@ class LineReader {
     long long remaining = 0;
     std::uint64_t file_id = 0;  // the file the saved position belongs to
     std::size_t position = 0;
+    std::uint64_t pass_start = 0;  // physical_reads_ when the current pass began
   };
 
   [[nodiscard]] std::optional<TechLine> raw_line();
@@ -90,6 +91,7 @@ class LineReader {
   bool directive(const TechLine& line);
   void start_repeat(const TechLine& line);
   void end_repeat(const TechLine& line);
+  [[nodiscard]] bool charge_repeat_pass(const TechLine& line);
   void include(const TechLine& line);
   void push_text(std::string_view text, std::string name, platform::Path dir);
   void warn(std::string_view code, const diag::SourceLocation& where, std::string text);
@@ -100,6 +102,9 @@ class LineReader {
   std::vector<File> files_;
   std::vector<Repeat> repeats_;  // one entry in magic-compat mode
   std::uint64_t next_file_id_ = 0;
+  std::uint64_t physical_reads_ = 0;  // every physical line read, includes and repeats too
+  std::uint64_t repeat_lines_ = 0;    // the lines charged to repeat passes (Q-TECH-33)
+  bool repeat_budget_spent_ = false;
   bool failed_ = false;
   std::uint32_t end_line_ = 0;
 };

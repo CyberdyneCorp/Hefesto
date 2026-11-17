@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/geometry.hpp"
 #include "style_fixture.hpp"
 
 namespace mask = hefesto::mask;
@@ -48,6 +49,24 @@ TEST_CASE("an odd scale factor doubles the units for half-grid contacts",
   const auto odd_size = read("style s\nscalefactor 2\nlayer A pc\nsquares 5 17 17");
   CHECK(odd_size.style().scale == mask::StyleScale{4, 2, 1});
   CHECK(odd_size.style().layers[0].ops[1].values == std::vector<std::int32_t>{10, 34, 34});
+}
+
+TEST_CASE("rescaled squares and slots values stay on the usable plane",
+          "[cap:mask-output-styles][req:Unit normalisation]") {
+  // Q-MASK-35: the odd squares size doubles every value (d = 2); a value
+  // past 1073741818 is clamped to it, as a distance is (Q-MASK-30), instead
+  // of reaching the int range the cut kernels overflow on.
+  constexpr std::int32_t kMax = hefesto::db::kPlaneMax;
+  const std::string odd = std::to_string(kMax - 1);
+  const auto sq = read("style s\nscalefactor 2\nlayer A pc\nsquares 3 " + odd + " " + odd);
+  CHECK(sq.style().scale == mask::StyleScale{4, 2, 1});
+  CHECK(sq.style().layers[0].ops[1].values == std::vector<std::int32_t>{6, kMax, kMax});
+  const auto slots = read("style s\nscalefactor 3\nlayer A pc\nslots 0 2 4 0 2 4 " + odd + " 1");
+  CHECK(slots.style().layers[0].ops[1].values == std::vector<std::int32_t>{0, 4, 8, 0, 4, 8, kMax, 2});
+  for (const bool compat : {true, false}) {
+    const auto again = sq.style().rescale(1, 3, compat_mode(compat));  // a lambda ratio change
+    CHECK(again->layers[0].ops[1].values == std::vector<std::int32_t>{18, kMax, kMax});
+  }
 }
 
 TEST_CASE("bloat-all blocks the unit reduction", "[cap:mask-output-styles][req:Unit normalisation]") {

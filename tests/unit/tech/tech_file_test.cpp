@@ -213,6 +213,46 @@ TEST_CASE("repeat blocks run N times, once for 0 or a bad count", "[cap:tech-fil
   CHECK(read(nested, fs2, false).sections.at(0).lines.size() == 6);  // (A B B) x 2
 }
 
+// Regression (Q-TECH-33, fuzz_tech_file timeout): `repeat 1111...3`
+// saturated to 2^31 - 1 passes over its block.
+TEST_CASE("repeat passes share a budget of read lines", "[cap:tech-file-format][req:repeat directive]") {
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    platform::MemoryFileSystem fs;
+    hefesto::diag::CollectingSink sink;
+    tech::ReadOptions options;
+    options.magic_compat = compat;
+    const auto doc = tech::read_tech_text("connect\nrepeat 11111111111111111111113\nm1 m1\nendrepeat\nm2 m2\nend\n",
+                                          "f", fs, "", sink, options);
+    REQUIRE(doc.ok());
+    const auto& lines = doc.value().sections.at(0).lines;
+    // Each pass reads two lines (m1 m1, endrepeat): the passes up to the
+    // budget run, then the rest of the file is read once.
+    CHECK(lines.size() == tech::kMaxRepeatLines / 2 + 2);
+    CHECK(lines.back().tokens == Tokens{"m2", "m2"});
+    CHECK(doc.value().sections.at(0).closed);
+    const auto diags = sink.take();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags.front().code == "TECH-REPEAT-003");
+    CHECK(diags.front().text == "\"repeat\" blocks read more than 100000 lines; repeating stops here");
+  }
+  // Nested blocks multiply with magic-compat OFF; their passes count in the
+  // enclosing pass too, so 2000 x 2000 stops early.
+  platform::MemoryFileSystem fs;
+  hefesto::diag::CollectingSink sink;
+  tech::ReadOptions off;
+  off.magic_compat = false;
+  const auto nested = tech::read_tech_text(
+      "connect\nrepeat 2000\nA\nrepeat 2000\nB\nendrepeat\nendrepeat\nC\nend\n", "f", fs, "", sink, off);
+  REQUIRE(nested.ok());
+  const auto& lines = nested.value().sections.at(0).lines;
+  CHECK(lines.size() < tech::kMaxRepeatLines);
+  CHECK(lines.back().tokens == Tokens{"C"});
+  CHECK(sink.take().size() == 1);
+  // A real PDK's use (ihp-sg13g2-cifout.tech: `repeat 32` over two lines) stays far below.
+  CHECK(read("connect\nrepeat 32\nA\nB\nendrepeat\nend\n").sections.at(0).lines.size() == 64);
+}
+
 TEST_CASE("located load diagnostics name the section they were reported in",
           "[cap:tech-file-format][req:Error reporting and recovery]") {
   platform::MemoryFileSystem fs;

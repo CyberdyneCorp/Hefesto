@@ -147,8 +147,9 @@ std::optional<std::int64_t> scale_value(OpKind kind, std::size_t j, std::int32_t
   if (v == 0) {
     return std::nullopt;
   }
-  const bool bridge = kind == OpKind::bridge || kind == OpKind::bridge_lim;
-  v = bridge ? clamp_distance(v * d) : clamp_int(v * d);  // a bridge width is a distance
+  // A bridge width and the squares and slots values are read within the
+  // usable plane and stay there (Q-MASK-30, Q-MASK-35).
+  v = clamp_distance(v * d);
   std::int64_t folded = std::abs(std::int64_t{v});
   const bool cut = kind == OpKind::squares || kind == OpKind::slots;
   if (kind == OpKind::squares ? is_halved_squares(j) : (kind == OpKind::slots && is_halved_slots(j))) {
