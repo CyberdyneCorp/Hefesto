@@ -69,12 +69,6 @@ BLOCKERS: dict[str, str] = {
     "MASK-OP-021": "OPS: Magic's cifInteractingRegions never paints (cif/CIFgen.c:4928-4929), so every "
                    "interacting/overlapping form gives an empty layer; copying it with magic-compat ON or a "
                    "fix deviation needs a user decision (proposed Q-MASK-417)",
-    "MASK-RT-sky130_fd_io-f01": "GDSR/GDSW: only the digest differs (SREF order of com_ctl_hldv2, gpiov2_amux "
-                                "and overlay_gpiov2_m4); bisecting it needs Magic's out.gds",
-    "MASK-RT-sky130_fd_io-f09": "GDSR/GDSW: five structures have fewer boundaries than Magic's (regenerated "
-                                "contacts and derived layers); bisecting it needs Magic's out.gds",
-    "MASK-RT-gf180mcu_fd_io-f02": "GDSR/GDSW: POWER_RAIL_COR_1 has 678 fewer boundaries than Magic's around "
-                                  "its 45-degree paths; bisecting it needs Magic's out.gds",
 }
 BLOCKER_PREFIX = "M5 exit blocker, "
 # Authored cases that replay against Magic's captured output (no deferral any more).
@@ -316,6 +310,7 @@ REPLAYED: set[str] = {
     "MASK-PROBE-sky130A",
     "MASK-RT-gf180mcu_as_sc_mcu7t3v3",
     "MASK-RT-gf180mcu_fd_io-f01",
+    "MASK-RT-gf180mcu_fd_io-f02",
     "MASK-RT-gf180mcu_fd_ip_sram-f01",
     "MASK-RT-gf180mcu_fd_ip_sram-f02",
     "MASK-RT-gf180mcu_fd_ip_sram-f03",
@@ -381,6 +376,7 @@ REPLAYED: set[str] = {
     "MASK-RT-sg13g2_sram-f29",
     "MASK-RT-sg13g2_sram-f30",
     "MASK-RT-sg13g2_stdcell",
+    "MASK-RT-sky130_fd_io-f01",
     "MASK-RT-sky130_fd_io-f02",
     "MASK-RT-sky130_fd_io-f03",
     "MASK-RT-sky130_fd_io-f04",
@@ -388,6 +384,7 @@ REPLAYED: set[str] = {
     "MASK-RT-sky130_fd_io-f06",
     "MASK-RT-sky130_fd_io-f07",
     "MASK-RT-sky130_fd_io-f08",
+    "MASK-RT-sky130_fd_io-f09",
     "MASK-RT-sky130_fd_pr",
     "MASK-RT-sky130_fd_sc_hd",
     "MASK-RT-sky130_fd_sc_hdll",
