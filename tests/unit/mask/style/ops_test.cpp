@@ -275,6 +275,36 @@ TEST_CASE("slots", "[cap:mask-output-styles][req:Operator statement arguments]")
   check_rejected("slots 1 2 3 4 5 6 7 -8", "Slot start must be non-negative.");
 }
 
+// Regression (Q-MASK-35, fuzz_cifoutput_section under UBSan): a squares
+// border read as INT_MAX overflowed the strip size 2 * border + size in
+// the squares kernel.
+TEST_CASE("squares and slots values past the usable plane are rejected",
+          "[cap:mask-output-styles][req:Operator statement arguments]") {
+  const std::string limit = std::to_string(hefesto::db::kPlaneMax);
+  const std::string over = std::to_string(hefesto::db::kPlaneMax + 1);
+  const std::string huge = "14444444444444444444444444444444";  // c_atoi saturates it to INT_MAX
+  const auto at_most = [&limit](const std::string& what) { return what + " must be at most " + limit + "."; };
+  check_rejected("squares " + huge + " 20 20", at_most("Square border"));
+  check_rejected("squares 1 " + over + " 20", at_most("Square size"));
+  check_rejected("squares 1 2 " + over, at_most("Square separation"));
+  check_rejected("squares 2000000000", at_most("Square size"));  // border 1e9 fits, size does not
+  check_rejected("squares-grid 1 2 4 " + over, at_most("Square grid"));
+  check_rejected("squares-grid 1 2 4 6 " + over, at_most("Square y-grid"));
+  const One largest = one("squares " + limit + " " + limit + " " + limit);
+  REQUIRE(largest.op.has_value());
+  CHECK(largest.op->values ==
+        std::vector<std::int32_t>{hefesto::db::kPlaneMax, hefesto::db::kPlaneMax, hefesto::db::kPlaneMax});
+  check_rejected("slots " + over + " 2 4", at_most("Slot border"));
+  check_rejected("slots 1 " + over + " 4", at_most("Slot short-side size"));
+  check_rejected("slots 1 2 " + over, at_most("Slot separation"));
+  check_rejected("slots 1 2 4 " + over, at_most("Slot long-side border"));
+  check_rejected("slots 1 2 4 3 " + over + " 8", at_most("Slot long-side size"));
+  check_rejected("slots 1 2 4 3 6 " + over, at_most("Slot long-side separation"));
+  check_rejected("slots 1 2 4 3 6 8 " + over, at_most("Slot offset"));
+  check_rejected("slots 1 2 4 3 6 8 7 " + huge, at_most("Slot start"));
+  CHECK(one("slots 1 2 4 3 6 8 7 " + limit).op->values.back() == hefesto::db::kPlaneMax);
+}
+
 TEST_CASE("an operation needs a current layer", "[cap:mask-output-styles][req:Operator statement arguments]") {
   const auto r = read("style s\nscalefactor 1\ngrow 3\nfrob 3");
   CHECK(r.texts() == std::vector<std::string>{"Must define layer before specifying operation.",

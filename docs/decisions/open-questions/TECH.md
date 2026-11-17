@@ -262,3 +262,12 @@ These entries cover the capabilities `tech-file-format`, `tech-layers-and-planes
 - Options: replicate | fix (apply the default after the whole file is read)
 - Recommendation: fix. Every known PDK puts `tech` first, so the outcome there is the same.
 - Resolution: compat — the default follows the format version known when the `extract` section is finalized, as in Magic (it changes extracted values); with `magic-compat` OFF, the default is applied after the whole file is read; every known PDK puts `tech` first, so both agree on them (X-2 tier 2, D-5, approved 2026-11-07, 2026-11-07).
+
+### Q-TECH-33: repeat blocks with a huge count
+- Kind: bug
+- Status: proposed (drafted 2026-11-17 from a fuzz finding)
+- Magic behavior: `repeat N` sets the counter to atoi(N) - 1 and every `endrepeat` seeks back while it is positive, with no other bound. atoi past INT_MAX is undefined (Hefesto's count saturates at 2^31 - 1), so `repeat 1111…3` over a two-line block replays it about 2^31 times and the load runs for hours (fuzz_tech_file timeout). With `magic-compat` OFF nested blocks (Q-TECH-5) multiply their counts.
+- Evidence: utils/tech.c:607-632
+- Options: replicate (unbounded) | fix (a per-read budget of lines read by repeat passes; past it, stop repeating with a diagnostic)
+- Recommendation: fix in both modes (X-2 tier 1: a hang, no Magic output to match). One read spends at most 100000 physical lines in repeat passes: each pass about to repeat is charged with the lines read since it began (the `endrepeat` line, included files and nested passes counted again in each enclosing pass). Past the budget the warning TECH-REPEAT-003 `"repeat" blocks read more than 100000 lines; repeating stops here` is reported once, no `endrepeat` repeats again in that read, and the rest of the file is read once; the load goes on. The largest real use is `repeat 32` over two lines in `ihp-sg13g2-cifout.tech` (sky130 and gf180mcu use none), about 10^3 times below the budget.
+- Resolution: fix (proposed) — in both modes a read spends at most 100000 lines (tech::kMaxRepeatLines) in repeat passes; past it TECH-REPEAT-003 is reported and repeating stops; a fixed deviation from Magic, which replays without bound. Tests: `tests/unit/tech/tech_file_test.cpp`, fuzz seed `tests/fuzz/corpus/fuzz_tech_file/regression-timeout-repeat-count`.

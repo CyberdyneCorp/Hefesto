@@ -95,7 +95,9 @@ struct CloseThreshold {
 /// Q-MASK-27 (squares grid-limit step): the new upper edge when the first
 /// cut origin `origin` is δ = `delta` > 0 off the grid. ON is sign-blind
 /// (`upper - 2δ`); OFF moves the edge the other way for a negative origin.
-[[nodiscard]] constexpr std::int32_t q_mask_27_shift(std::int32_t upper, std::int32_t origin, std::int32_t delta,
+/// Computed in 64 bits: δ is below the grid limit, which the style does not
+/// bound (Q-MASK-35).
+[[nodiscard]] constexpr std::int64_t q_mask_27_shift(std::int64_t upper, std::int64_t origin, std::int64_t delta,
                                                      const compat::CompatSettings& c) noexcept {
   return (c.magic_compat || origin >= 0) ? upper - 2 * delta : upper + 2 * delta;
 }

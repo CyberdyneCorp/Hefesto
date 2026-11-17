@@ -259,6 +259,7 @@ bool LineReader::read_physical(std::string& out, std::uint32_t& line_no) {
   if (files_.empty()) {
     return false;
   }
+  ++physical_reads_;
   File& file = files_.back();
   if (file.skip_count) {
     file.skip_count = false;
@@ -329,7 +330,7 @@ bool LineReader::directive(const TechLine& line) {
 }
 
 void LineReader::start_repeat(const TechLine& line) {
-  Repeat repeat{0, files_.back().id, files_.back().next};
+  Repeat repeat{0, files_.back().id, files_.back().next, physical_reads_};
   if (str_is_int(line.tokens[1])) {
     repeat.remaining = str_to_int(line.tokens[1]) - 1;
   } else {
@@ -358,8 +359,33 @@ void LineReader::end_repeat(const TechLine& line) {
     repeats_.clear();
     return;
   }
+  if (!charge_repeat_pass(line)) {
+    repeats_.clear();  // Q-TECH-33: the rest of the file is read once
+    return;
+  }
   --top.remaining;
   files_.back().next = top.position;
+}
+
+// Q-TECH-33: Magic replays a block as often as its count says
+// (utils/tech.c:607-632; atoi past INT_MAX is undefined, and Hefesto's
+// count saturates at 2^31 - 1), so a read could spend unbounded time on a
+// few lines. Each pass about to repeat is charged with the physical lines
+// read since it began, includes and nested passes included, against
+// kMaxRepeatLines; past it nothing repeats again in this read.
+bool LineReader::charge_repeat_pass(const TechLine& line) {
+  Repeat& top = repeats_.back();
+  repeat_lines_ += physical_reads_ - top.pass_start;
+  top.pass_start = physical_reads_;
+  if (repeat_lines_ <= kMaxRepeatLines && !repeat_budget_spent_) {
+    return true;
+  }
+  if (!repeat_budget_spent_) {
+    repeat_budget_spent_ = true;
+    warn("TECH-REPEAT-003", line.where,
+         "\"repeat\" blocks read more than " + std::to_string(kMaxRepeatLines) + " lines; repeating stops here");
+  }
+  return false;
 }
 
 void LineReader::include(const TechLine& line) {

@@ -4,6 +4,8 @@
 // mask-output-operators: the contact strip pre-pass, squares (Q-MASK-27 in
 // both modes), squares-grid and slots.
 
+#include <algorithm>
+
 #include "ops_fixture.hpp"
 
 using namespace hefesto;
@@ -145,5 +147,37 @@ TEST_CASE("slots with long-side sizes in a region", CAP "[req:slots]") {
     CHECK(r.x1 <= 35);
     CHECK(r.y0 >= 5);
     CHECK(r.y1 <= 95);
+  }
+}
+
+// Regression (Q-MASK-35, fuzz_cifoutput_section under UBSan): the kernels
+// summed the operator's values and plane coordinates in 32 bits, so a
+// plane-wide area with values near the plane's size overflowed. The sums
+// are 64-bit; the placements are Magic's.
+TEST_CASE("cut placement over the whole plane with values the size of the plane",
+          CAP "[req:squares][req:squares-grid][req:slots]") {
+  constexpr db::Coord kMax = db::kPlaneMax;
+  constexpr db::Coord kHalf = kMax / 2;
+  const Rects plane{{-kMax, -kMax, kMax, kMax}};
+  // One column: n = (2M + M - 2*5) / 2M = 1, origin = (0 + M - 2M) / 2.
+  const Rects one_cut = strips({{-kHalf, -kHalf, kHalf, kHalf}});
+  for (const bool on : {true, false}) {
+    OpsFixture f;
+    f.compat(on);
+    CHECK(f.apply(plane, {op(OpKind::squares, {5, kMax, kMax})}) == one_cut);
+    CHECK(f.apply(plane, {op(OpKind::squares_grid, {5, kMax, kMax, 1, 1})}) == one_cut);
+    const Rects slot = f.apply(plane, {op(OpKind::slots, {5, kMax, kMax})});
+    REQUIRE(slot.size() == 1);
+    // The short side is centred like a square; the long side (long size 0)
+    // spans the strip found along the plane.
+    CHECK(std::min(slot[0].width(), slot[0].height()) == kMax);
+    CHECK(std::max(slot[0].width(), slot[0].height()) > kMax);
+    CHECK(slot[0].x0 >= -kMax);
+    CHECK(slot[0].x1 <= kMax);
+    CHECK(slot[0].y0 >= -kMax);
+    CHECK(slot[0].y1 <= kMax);
+    // A border as wide as the plane leaves no room: reported, no cut.
+    CHECK(f.apply(plane, {op(OpKind::squares, {kMax, kMax, kMax})}).empty());
+    CHECK_FALSE(f.sink.take().empty());
   }
 }

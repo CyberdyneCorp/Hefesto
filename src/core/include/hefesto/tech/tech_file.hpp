@@ -60,6 +60,12 @@ struct ReadOptions : SearchOptions {
   std::string include_suffix = ".tech";
 };
 
+/// The physical lines one read may spend in `repeat` passes (the lines from
+/// a `repeat` to its `endrepeat`, includes and nested blocks counted again
+/// in every enclosing pass). Past it the read stops repeating with
+/// TECH-REPEAT-003 (Q-TECH-33); real PDKs spend about a hundred.
+inline constexpr std::uint64_t kMaxRepeatLines = 100'000;
+
 /// "File search rules": opens `name` + `suffix` (the suffix is always
 /// appended) directly for `~`, `$`, `/`, `./` and `../` names, otherwise
 /// through ".", then each directory of `options.search_path`.

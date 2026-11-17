@@ -1,0 +1,11 @@
+style gds
+    scalefactor 10
+    layer C    layer CMS metal2,via1,vC    layer CMS metal2,reCAA ndiff,pdiff,nfet,pdc
+        calma 43 0
+    layer CCA pdc
+        squares 14444444444444444444444444444444444444444444444444444444444444444444444444444444444444440 20 20
+        calma/83 0ößßßß“ž‡er CVA via1
+        squares 10 20 20
+        calma r 1 nanometers
+    layer CM* metal2
+        calma 49 0
