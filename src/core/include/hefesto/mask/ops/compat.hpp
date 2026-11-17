@@ -106,6 +106,15 @@ struct CloseThreshold {
 /// paints; OFF enumerates a snapshot.
 [[nodiscard]] constexpr bool q_mask_228_snapshot(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }
 
+/// Q-MASK-418 (squares, squares-grid and slots region pass; proposed): after
+/// a region's cuts, ON clears only the region's start tile, as Magic's
+/// clearing walk does (it never gets past the start tile), so later regions
+/// still accept squares lying on earlier regions; OFF clears every tile of
+/// the region.
+[[nodiscard]] constexpr bool q_mask_418_clears_start_only(const compat::CompatSettings& c) noexcept {
+  return c.magic_compat;
+}
+
 /// Q-MASK-229 (bridge-lim limit erasure): ON erases whole limiting tiles,
 /// unscaled; OFF only their part inside the bridge, in mask units.
 [[nodiscard]] constexpr bool q_mask_229_clip_erase(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }

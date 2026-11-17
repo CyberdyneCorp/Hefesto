@@ -181,3 +181,54 @@ TEST_CASE("cut placement over the whole plane with values the size of the plane"
     CHECK_FALSE(f.sink.take().empty());
   }
 }
+
+// Regression (Q-MASK-418, proposed; MASK-RT-sky130_fd_io-f01/-f09): Magic's
+// region pass clears only each region's start tile, so a later region whose
+// bounding box covers an earlier region still lays its cut grid on that
+// region's other tiles. The two-tile island is found first; the L-shaped
+// region found after it has the island inside its bounding box, and its grid
+// is offset from the island's.
+TEST_CASE("Q-MASK-418: a later region's cut grid over an earlier region", CAP "[req:squares][req:slots]") {
+  const Rect island_area{100, 210, 250, 390};
+  const Rects layout{{100, 210, 250, 300}, {100, 300, 190, 390}, {0, 0, 400, 90}, {310, 90, 400, 390}};
+  const auto island_cuts = [&](const Rects& cuts) {
+    MaskPlane p;
+    for (const Rect& r : cuts) {
+      REQUIRE(p.paint(r).ok());
+    }
+    p.clip(island_area);
+    return p.solid_rects();
+  };
+  const auto with = [](Rects own, const Rects& extra) {
+    own.insert(own.end(), extra.begin(), extra.end());
+    return strips(own);
+  };
+  // The island's own arrays: 2 columns in its upper tile's width, 4 in the
+  // lower tile's, centred on the island's bounding box.
+  const Rects own_squares{{105, 350, 125, 370}, {145, 350, 165, 370}, {105, 310, 125, 330}, {145, 310, 165, 330},
+                          {105, 270, 125, 290}, {145, 270, 165, 290}, {185, 270, 205, 290}, {225, 270, 245, 290},
+                          {105, 230, 125, 250}, {145, 230, 165, 250}, {185, 230, 205, 250}, {225, 230, 245, 250}};
+  const Rects own_slots{{105, 345, 125, 375}, {145, 345, 165, 375}, {105, 305, 125, 335}, {145, 305, 165, 335},
+                        {105, 265, 125, 295}, {145, 265, 165, 295}, {185, 265, 205, 295}, {225, 265, 245, 295},
+                        {105, 225, 125, 255}, {145, 225, 165, 255}, {185, 225, 205, 255}, {225, 225, 245, 255}};
+  // The L-shaped region's cuts that fall on the island's lower tile (ON).
+  const Rects l_squares{{130, 245, 150, 265}, {170, 245, 190, 265}, {210, 245, 230, 265}};
+  const Rects l_slots{{125, 245, 155, 265}, {165, 245, 195, 265}, {205, 245, 235, 265}};
+  for (const bool on : {true, false}) {
+    OpsFixture f;
+    f.compat(on);
+    CAPTURE(on);
+    const Rects squares = island_cuts(f.apply(layout, {op(OpKind::squares, {5, 20, 20})}));
+    const Rects slots = island_cuts(f.apply(layout, {op(OpKind::slots, {5, 20, 20, 5, 30, 10})}));
+    CHECK(squares == (on ? with(own_squares, l_squares) : strips(own_squares)));
+    CHECK(slots == (on ? with(own_slots, l_slots) : strips(own_slots)));
+  }
+}
+
+TEST_CASE("Q-MASK-418 helper", CAP "[req:squares]") {
+  compat::CompatSettings on;
+  compat::CompatSettings off;
+  off.magic_compat = false;
+  CHECK(q_mask_418_clears_start_only(on));
+  CHECK_FALSE(q_mask_418_clears_start_only(off));
+}
