@@ -27,6 +27,15 @@
 # captures them in shards (scripts/gds_rt_shards.py: one per PDK, the I/O and SRAM
 # libraries in shards of their own, each with its own timeout). `rt-data` fetches and saves each PDK's
 # tech and library GDS sets once before the shards, which only restore them.
+#
+# Dispatch input `keep-raw` (off by default; capture-gds-rt only) keeps the raw outputs to bisect a
+# MASK-RT difference: Magic's run (capture.py --keep-raw: streams, out.gds) and Hefesto's run of the same
+# cases (replay.py --keep-raw, hefesto-cli built in the job) go to the artifact
+# golden-raw-gds-rt-<shard> as magic/<case-id>/ and hefesto/<case-id>/. With `feedback-probe` both runs
+# also save their feedback list (out.feedback.tcl: the CIF "parent and child disagree" entries with cell,
+# layer and area). `probe-tcl` (Tcl text) runs in both before the final quit, e.g. a `save` of the
+# cells under suspicion to compare the two reads as .mag files. tools/golden/raw_diff.py compares the
+# two directories of a case.
 
 name: Golden capture
 
@@ -40,6 +49,18 @@ on:
         default: both
       cases:
         description: "Space-separated case directories (e.g. tests/golden/TECH/cases/TECH-G01); empty = all"
+        type: string
+        default: ""
+      keep-raw:
+        description: "MASK-RT shards: upload Magic's and Hefesto's raw outputs (out.gds, logs) per case"
+        type: boolean
+        default: false
+      feedback-probe:
+        description: "With keep-raw: both runs also save their feedback list (out.feedback.tcl)"
+        type: boolean
+        default: false
+      probe-tcl:
+        description: "With keep-raw: Tcl both runs execute before their final quit (wrap commands in catch)"
         type: string
         default: ""
   pull_request:
@@ -63,6 +84,9 @@ permissions:
 env:
   MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event_name == 'schedule' && 'verify' || 'both') }}
   CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.cases || '' }}
+  KEEP_RAW: ${{ github.event_name == 'workflow_dispatch' && inputs.keep-raw && 'true' || 'false' }}
+  FEEDBACK_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.feedback-probe && 'true' || 'false' }}
+  PROBE_TCL: ${{ github.event_name == 'workflow_dispatch' && inputs.probe-tcl || '' }}
 
 jobs:
   # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
@@ -406,8 +430,9 @@ jobs:
       - name: Fetch the Magic reference sources (sparse, pinned)
         run: python3 scripts/fetch_pdk.py magic-ref
 
-      - name: Build hefesto-cli for the PDK install (cache miss only)
-        if: steps.tech.outputs.cache-hit != 'true' || steps.gds.outputs.cache-hit != 'true'
+      # keep-raw also runs Hefesto on the shard's cases, so it always builds hefesto-cli.
+      - name: Build hefesto-cli for the PDK install (cache miss or keep-raw)
+        if: steps.tech.outputs.cache-hit != 'true' || steps.gds.outputs.cache-hit != 'true' || env.KEEP_RAW == 'true'
         env:
           CC: gcc-14
           CXX: g++-14
@@ -433,8 +458,15 @@ jobs:
         shell: bash
         run: |
           mapfile -t cases < cases.txt
+          raw=()
+          if [ "$KEEP_RAW" = "true" ]; then raw=(--keep-raw raw/magic); fi
+          if [ "$KEEP_RAW" = "true" ] && [ "$FEEDBACK_PROBE" = "true" ]; then raw+=(--feedback-probe); fi
+          if [ "$KEEP_RAW" = "true" ] && [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            raw+=(--probe-tcl raw-probe.tcl)
+          fi
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --verify --only-captured "${cases[@]}"
+            --verify --only-captured "${raw[@]}" "${cases[@]}"
 
       - name: Capture cases without expected/
         if: env.MODE == 'both' || env.MODE == 'capture'
@@ -443,9 +475,16 @@ jobs:
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
           mapfile -t cases < cases.txt
+          raw=()
+          if [ "$KEEP_RAW" = "true" ]; then raw=(--keep-raw raw/magic); fi
+          if [ "$KEEP_RAW" = "true" ] && [ "$FEEDBACK_PROBE" = "true" ]; then raw+=(--feedback-probe); fi
+          if [ "$KEEP_RAW" = "true" ] && [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            raw+=(--probe-tcl raw-probe.tcl)
+          fi
           status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
-            --only-missing "${cases[@]}" 2>&1 | tee capture.log || status=$?
+            --only-missing "${raw[@]}" "${cases[@]}" 2>&1 | tee capture.log || status=$?
           mkdir -p golden-expected
           git ls-files --others --exclude-standard -- 'tests/golden/*/cases/*/expected/*' > new-files.txt
           if [ -s new-files.txt ]; then
@@ -464,6 +503,36 @@ jobs:
           path: golden-expected/
           if-no-files-found: ignore
           retention-days: 30
+
+      # keep-raw: Hefesto's run of the same cases (information; a differing case does not fail the job).
+      - name: Hefesto's raw outputs of the shard's cases
+        if: ${{ !cancelled() && env.KEEP_RAW == 'true' }}
+        shell: bash
+        run: |
+          mapfile -t cases < cases.txt
+          mkdir -p raw
+          probe=()
+          if [ "$FEEDBACK_PROBE" = "true" ]; then probe=(--feedback-probe); fi
+          if [ -n "$PROBE_TCL" ]; then
+            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
+            probe+=(--probe-tcl raw-probe.tcl)
+          fi
+          python3 tools/golden/replay.py --hefesto-cli build/linux-release/src/cli/hefesto-cli --include-gds-rt \
+            --keep-raw raw/hefesto "${probe[@]}" "${cases[@]}" | tee raw/hefesto-replay.txt || true
+          for dir in raw/magic/*/; do
+            id="$(basename "$dir")"
+            [ -d "raw/hefesto/$id" ] || continue
+            python3 tools/golden/raw_diff.py "raw/magic/$id" "raw/hefesto/$id" > "raw/$id.diff.txt" || true
+          done
+          du -sh raw
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && env.KEEP_RAW == 'true' }}
+        with:
+          name: golden-raw-gds-rt-${{ matrix.shard }}
+          path: raw/
+          if-no-files-found: ignore
+          retention-days: 14
 
   # Task 1.1 of m5-mask-gds-cif (design D19): Magic 8.3.694 reads and writes every library GDS file with
   # the PDK's rc, timed per file (scripts/d19/). Dispatch with mode d19-timing. The job summary has one
