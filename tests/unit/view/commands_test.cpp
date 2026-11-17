@@ -379,3 +379,100 @@ TEST_CASE("regression: unexpand and expand search below unexpanded uses with mag
     CHECK(w.is_expanded(*leaves[3]) == magic_compat);
   }
 }
+
+namespace {
+
+/// `top` holding one use of `mid`, whose 12 uses of `leaf` sit at x = 100 i.
+struct NestedCase {
+  Session s;
+  db::CellDef* top = nullptr;
+  db::CellDef* mid = nullptr;
+  db::CellUse* m = nullptr;
+  std::vector<db::CellUse*> leaves;
+
+  explicit NestedCase(bool magic_compat, const db::ArrayInfo& array = {}) {
+    s.project.compat.magic_compat = magic_compat;
+    top = s.cell("top", {0, 0, 4000, 100});
+    mid = s.cell("mid", {0, 0, 1110, 10});
+    db::CellDef* leaf = s.cell("leaf", {0, 0, 10, 10});
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      leaves.push_back(db::place(*mid, *leaf, o).value());
+    }
+    db::PlaceOptions o;
+    o.array = array;
+    m = db::place(*top, *mid, o).value();
+    (void)s.window(top);
+    s.editor.edit_cell = top;
+  }
+  [[nodiscard]] view::LayoutWindow& window() { return *s.editor.windows.current(); }
+};
+
+}  // namespace
+
+TEST_CASE("regression: unexpand with magic-compat ON acts below unexpanded uses, as dbExpandFunc does",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbExpandFunc acts on every use its DBCellSrArea search reaches, below
+  // expanded and unexpanded uses alike (database/DBexpand.c:182-252).
+  // Hefesto stopped at unexpanded uses, so a leaf stayed expanded under a
+  // closed parent; magic-compat OFF keeps that rule (Q-MASK-418, proposed).
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    view::LayoutWindow& w = c.window();
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(w.is_expanded(*c.leaves[3]));
+    w.set_expanded(*c.m, false);
+    c.s.editor.box = db::Rect{295, -5, 315, 15};  // surrounds leaf 3 only
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK_FALSE(w.is_expanded(*c.m));
+    CHECK(w.is_expanded(*c.leaves[3]) != magic_compat);
+    CHECK(w.is_expanded(*c.leaves[4]));
+  }
+}
+
+TEST_CASE("regression: unexpand surround with magic-compat ON uses dbExpandFunc's test",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbExpandFunc's surround test acts unless the child's bounding box
+  // surrounds the area without the area surrounding it
+  // (database/DBexpand.c:207-208): a box over part of a leaf unexpands it.
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    view::LayoutWindow& w = c.window();
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    c.s.editor.box = db::Rect{305, 5, 395, 50};  // part of leaf 3, nothing whole
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]) != magic_compat);
+    CHECK(w.is_expanded(*c.m) != magic_compat);  // the box is not inside mid either
+    c.s.editor.box = db::Rect{302, 2, 308, 8};  // inside leaf 3
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]));  // its bounding box surrounds the box
+  }
+}
+
+TEST_CASE("regression: expand with magic-compat ON skips an array whose elements miss the box",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbCellSrFunc calls dbExpandFunc only for array elements that overlap the
+  // area (DBArrayOverlap, database/DBcellsrch.c:1205-1225): a box in the
+  // gap between two elements expands nothing, although it overlaps the
+  // array's bounding box.
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});  // elements at x 0 and 2000
+    c.s.editor.box = db::Rect{1500, 0, 1505, 5};
+    REQUIRE(c.s.run("expand").ok());
+    CHECK(c.window().is_expanded(*c.m) != magic_compat);
+  }
+}
+
+TEST_CASE("regression: expand all toggle expands with magic-compat ON, as CmdExpand does",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // CmdExpand passes DB_EXPAND for `all`, with or without toggle
+  // (commands/CmdE.c:950-966); magic-compat OFF toggles (Q-MASK-418, proposed).
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(c.s.run("expand", {"all", "toggle"}).ok());
+    CHECK(c.window().is_expanded(*c.m) == magic_compat);
+  }
+}

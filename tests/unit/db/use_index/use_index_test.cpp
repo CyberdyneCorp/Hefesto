@@ -474,3 +474,43 @@ TEST_CASE("Use index: degenerate bins stop sub-binning", "[cap:gds-write][req:St
   CHECK(searched(u.index, db::Rect{0, 0, 1, 1}).size() == 12);
   CHECK(searched(u.index, db::Rect{-1, -1, 0, 0}).size() == 1);
 }
+
+TEST_CASE("Use index: the selected-use search descends through array elements and bins what it searches",
+          "[cap:gds-write][req:Structure ordering]") {
+  // selEnumCFunc2 (select/selEnum.c:700-735) finds the layout use a selected
+  // copy stands for with DBCellSrArea's searches over a 1x1 square: every
+  // overlapping array element, every child expanded or not; the searches
+  // bin a cell of 10 or more uses as Magic's do.
+  for (const CompatSettings& compat : {kOn, kOff}) {
+    db::CellDef leaf("leaf", 1);
+    leaf.set_bboxes(db::Rect{0, 0, 10, 10}, db::Rect{0, 0, 10, 10});
+    db::CellDef mid("mid", 1);
+    std::vector<db::CellUse*> leaves;
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      leaves.push_back(db::place(mid, leaf, o).value());
+    }
+    db::recompute_bbox(mid);
+    db::CellDef top("top", 1);
+    db::PlaceOptions o;
+    o.array = db::ArrayInfo{0, 1, 0, 0, 2000, 0};  // elements at x 0 and 2000
+    const db::CellUse* arr = db::place(top, mid, o).value();
+    db::recompute_bbox(top);
+    REQUIRE_FALSE(mid.use_index().state_for_test().binned);
+
+    db::CellUse selected;  // the selection's copy of leaf 3 of element 1
+    selected.def = &leaf;
+    selected.transform = db::translation(2300, 0);
+    const std::vector<db::UseElement> chain = db::find_selected_use(top, selected, compat);
+    REQUIRE(chain.size() == 2);
+    CHECK(chain[0].use == arr);
+    CHECK(chain[0].x == 1);
+    CHECK(chain[0].y == 0);
+    CHECK(chain[1].use == leaves[3]);
+    CHECK(mid.use_index().state_for_test().binned);
+
+    selected.array = db::ArrayInfo{0, 1, 0, 0, 10, 0};  // no layout use has this array
+    CHECK(db::find_selected_use(top, selected, compat).empty());
+  }
+}

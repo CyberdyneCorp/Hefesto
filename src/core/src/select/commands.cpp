@@ -11,6 +11,7 @@
 
 #include "hefesto/select/commands.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstdint>
@@ -22,6 +23,7 @@
 #include <vector>
 
 #include "db/command_util.hpp"
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/paint.hpp"
 #include "hefesto/db/property.hpp"
@@ -596,7 +598,13 @@ struct ArrayReport {
 
 std::vector<ArrayReport> selected_arrays(const Context& c) {
   std::vector<ArrayReport> out;
-  for (const auto& u : c.ed->selection.def()->uses()) {
+  // SelEnumCells' order; selGetArrayFunc prepends each use to its list, so
+  // Magic reports them in the reverse order (commands/CmdAB.c:611-613).
+  std::vector<const db::CellUse*> uses = cell::selection_uses(*c.ed->selection.def(), c.s.magic_compat);
+  if (c.s.magic_compat) {
+    std::reverse(uses.begin(), uses.end());
+  }
+  for (const db::CellUse* u : uses) {
     const auto found = ops::selected_layout_use(c, *u);
     const db::CellUse& use = found ? *found->use : *u;
     const db::Transform& t = u->transform;

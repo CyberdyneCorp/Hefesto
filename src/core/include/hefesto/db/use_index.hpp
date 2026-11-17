@@ -49,6 +49,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -130,6 +131,7 @@ class UseIndex {
   struct State;
 
   void sync_locked() const;
+  [[nodiscard]] bool in_sync_locked() const;
   void add_locked(CellUse& use) const;
   void delete_locked(const CellUse& use) const;
   void sort_canonical_locked(std::vector<CellUse*>& uses) const;
@@ -160,6 +162,31 @@ bool uses_overlapping(const CellDef& def, const Rect& area, const compat::Compat
 /// array once the transformed area surrounds the child's bounding box.
 /// The writers' prepare phase makes it before enumerating (design D7).
 void search_subtree(const CellDef& root, const Rect& area);
+
+/// One array element of a use: a step of a path through the instance tree.
+struct UseElement {
+  CellUse* use = nullptr;
+  std::int32_t x = 0;
+  std::int32_t y = 0;
+};
+
+/// Reads an unavailable definition from its file (DBCellRead); may be empty.
+using DefReader = std::function<void(CellDef&)>;
+
+/// SelEnumCells' selEnumCFunc1/2 (select/selEnum.c:645-735): the layout use
+/// below `root` that the selection copy `selected` (its transform maps to
+/// the root) stands for. DBCellSrArea searches the 1x1 square at the
+/// lower-left of the copy's area (GeoTransRect(cu_transform, cd_bbox)),
+/// visiting every array element that overlaps it and descending into every
+/// child, expanded or not (`read` first reads an unavailable child, as
+/// DBCellSrArea does; a child still not found is not searched), until a use
+/// with the same definition and array whose element maps to the root by
+/// `selected.transform` is found. The searches go through the use index
+/// under `compat`, so they bin it as Magic's do. Returns the elements from
+/// a use of `root` down to the found one (the last); empty when none.
+[[nodiscard]] std::vector<UseElement> find_selected_use(const CellDef& root, const CellUse& selected,
+                                                        const compat::CompatSettings& compat,
+                                                        const DefReader& read = {});
 
 /// DBMoveCell / DBScaleEverything: rebuilds `def`'s index after every use
 /// moved (UseIndex::rebuild).

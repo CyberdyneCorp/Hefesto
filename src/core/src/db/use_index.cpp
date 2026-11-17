@@ -133,16 +133,35 @@ void UseIndex::delete_locked(const CellUse& use) const {
   ++s.generation;
 }
 
+// Whether every use of the owner's list is in the index with the serial and
+// box it was placed with, and nothing else is: then there is nothing to
+// reconcile (a list taken for writing but only read, or changed only
+// through place, remove and refresh, security.md M5-S3).
+bool UseIndex::in_sync_locked() const {
+  const auto& uses = owner_->uses();
+  if (uses.size() != state_->elements.size()) {
+    return false;
+  }
+  return std::all_of(uses.begin(), uses.end(), [&](const std::unique_ptr<CellUse>& u) {
+    const auto it = state_->elements.find(u.get());
+    return it != state_->elements.end() && it->second->serial == u->serial && it->second->rect == u->bbox;
+  });
+}
+
 // Follows the owner's use list: uses removed from it (or destroyed and
 // replaced at the same address) leave the index, new uses are placed and
 // moved uses re-placed, in uses() order. Runs only when uses() was taken
-// for writing or the counts differ.
+// for writing or the counts differ, and reconciles only when a check
+// without allocation finds a difference.
 void UseIndex::sync_locked() const {
   if (owner_ == nullptr) {
     return;
   }
   const auto& uses = owner_->uses();
   if (!owner_->take_uses_touched() && uses.size() == state_->elements.size()) {
+    return;
+  }
+  if (in_sync_locked()) {
     return;
   }
   std::unordered_map<const CellUse*, std::uint64_t> present;
@@ -408,6 +427,69 @@ int read_area(const CellDef& def, const Rect& area) {
 }
 
 }  // namespace
+
+namespace {
+
+// selEnumCFunc2's search; `chain` holds the elements from the root down to
+// the one being visited.
+struct SelectedUseSearch {
+  const CellUse& selected;
+  const compat::CompatSettings& compat;
+  const DefReader& read;
+  std::vector<UseElement> chain;
+
+  // DBCellSrArea over `def` (`area` in its coordinates, `to_root` mapping
+  // them to the root's); false once found.
+  bool search(const CellDef& def, const Rect& area, const Transform& to_root) {
+    return uses_overlapping(def, area, compat, [&](CellUse& u) {
+      if (u.def == nullptr) {
+        return true;
+      }
+      const ElementRange r = array_overlap(u, area);  // dbCellSrFunc's elements
+      for (std::int64_t y = r.ylo; y <= r.yhi; ++y) {
+        for (std::int64_t x = r.xlo; x <= r.xhi; ++x) {
+          if (!element(u, static_cast<std::int32_t>(x), static_cast<std::int32_t>(y), area, to_root)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  }
+
+  // One element: the match, else checkChildren (the child's own search).
+  bool element(CellUse& u, std::int32_t x, std::int32_t y, const Rect& area, const Transform& to_root) {
+    const Transform et = element_transform(u, x, y);
+    const Transform t = compose(to_root, et);
+    chain.push_back(UseElement{&u, x, y});
+    if (u.def == selected.def && t == selected.transform && u.array == selected.array) {
+      return false;
+    }
+    if (read && !u.def->flags().available) {
+      read(*u.def);
+    }
+    if (!u.def->flags().not_found && !search(*u.def, apply(invert(et), area), t)) {
+      return false;
+    }
+    chain.pop_back();
+    return true;
+  }
+};
+
+}  // namespace
+
+std::vector<UseElement> find_selected_use(const CellDef& root, const CellUse& selected,
+                                          const compat::CompatSettings& compat, const DefReader& read) {
+  if (selected.def == nullptr) {
+    return {};
+  }
+  const Rect box = apply(selected.transform, selected.def->bbox());
+  SelectedUseSearch s{selected, compat, read, {}};
+  if (s.search(root, Rect{box.x0, box.y0, box.x0 + 1, box.y0 + 1}, kIdentity)) {
+    return {};
+  }
+  return std::move(s.chain);
+}
 
 void search_subtree(const CellDef& root, const Rect& area) {
   (void)read_area(root, area);
