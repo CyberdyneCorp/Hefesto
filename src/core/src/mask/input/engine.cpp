@@ -92,6 +92,13 @@ std::vector<MaskPlane*>& ReadEngine::read_planes() noexcept {
   return state_->reading != nullptr ? state_->cell : state_->top;
 }
 
+ReadTriangleBudget& ReadEngine::triangle_budget() noexcept { return state_->triangles; }
+
+void ReadTriangleBudget::add_polygon(const db::PolygonDecomposition& polygon) noexcept {
+  add_polygon(static_cast<std::size_t>(std::count_if(polygon.pieces.begin(), polygon.pieces.end(),
+                                                     [](const db::PolygonPiece& p) { return p.triangle.has_value(); })));
+}
+
 db::CellDef* ReadEngine::target_cell() const noexcept {
   return state_->reading != nullptr ? state_->reading : state_->options.top;
 }
@@ -141,9 +148,10 @@ diag::Status ReadEngine::paint(std::size_t cif_layer, const ReadShape& shape) {
   } else if (decomposed.problem == db::PolygonProblem::not_manhattan) {
     state_->emit(diag::make(kPolygonProblem, "non-manhattan polygon."));
   }
+  state_->triangles.add_polygon(decomposed);
   for (const db::PolygonPiece& piece : decomposed.pieces) {
     if (piece.triangle) {
-      paint_read_triangle(plane, piece, compat_.magic_compat);
+      paint_read_triangle(plane, piece, compat_.magic_compat, state_->triangles);
     } else {
       (void)plane.paint(piece.area);
     }
@@ -270,8 +278,13 @@ void ReadEngine::adjust_labels(db::CellDef& cell) {
 
 // --- lower level ------------------------------------------------------------------
 
-void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat) {
-  (void)plane.paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side, magic_compat);
+void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat,
+                         ReadTriangleBudget& budget) {
+  const std::size_t granted = std::min(ReadTriangleBudget::kPieces, budget.pool);
+  db::NMBudget pieces{granted};
+  (void)plane.paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side, magic_compat,
+                             &pieces);
+  budget.pool -= granted - pieces.pieces;
   // CIFMakeManhattanPath merges the split tiles around each triangle it
   // paints (DBMergeNMTiles over the triangle's area grown by one).
   const db::Rect& a = piece.area;
