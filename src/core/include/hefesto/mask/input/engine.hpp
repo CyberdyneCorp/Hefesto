@@ -59,6 +59,33 @@ struct EditorState;
 
 namespace hefesto::mask {
 
+/// The non-Manhattan work budget of one read's polygon triangles (Q-MODEL-37,
+/// proposed). A triangle painted beside a nearly parallel diagonal (a
+/// 45-degree path over a boundary with almost the same edge, as in
+/// gf180mcu_fd_io's POWER_RAIL_COR_1) makes DBNMPaintPlane0 descend into a
+/// chain of pieces about as long as the triangle divided by the edges'
+/// offset: 910 in that cell, above the 512 of a database paint
+/// (db::NMBudget, Q-MODEL-35), past which a piece is filled as a rectangle
+/// and the read planes' tiling stops being Magic's. A read triangle
+/// descends into at most kPieces pieces, drawn from a pool that starts at
+/// kPool and grows by kPerTriangle for every triangle of a polygon read, at
+/// most kPolygonGrant per polygon: the pieces of a read stay linear in the
+/// polygons it reads, and each paint keeps the bound of one chain.
+struct ReadTriangleBudget {
+  static constexpr std::size_t kPieces = 4096;
+  static constexpr std::size_t kPool = std::size_t{1} << 16;
+  static constexpr std::size_t kPerTriangle = 1024;
+  static constexpr std::size_t kPolygonGrant = std::size_t{1} << 16;
+  std::size_t pool = kPool;
+
+  /// Grows the pool for a polygon decomposed into `polygon`'s triangles.
+  void add_polygon(const db::PolygonDecomposition& polygon) noexcept;
+  /// Grows the pool for a polygon of `triangles` triangles.
+  void add_polygon(std::size_t triangles) noexcept {
+    pool += triangles < kPolygonGrant / kPerTriangle ? triangles * kPerTriangle : kPolygonGrant;
+  }
+};
+
 /// How a read-unit coordinate becomes an internal one (COORD_*).
 enum class Snap : std::uint8_t {
   exact,      // subdivide the grid if needed
@@ -153,6 +180,9 @@ class ReadEngine final : public ReadSink {
   /// The current read planes (the cell's, or the top level's), indexed by
   /// CIF layer.
   [[nodiscard]] std::vector<MaskPlane*>& read_planes() noexcept;
+  /// The non-Manhattan budget the read's polygon triangles draw from
+  /// (paint_read_triangle).
+  [[nodiscard]] ReadTriangleBudget& triangle_budget() noexcept;
   /// The saved copyup planes of `cell` (nullptr entries for layers without
   /// one), or nullptr when the cell saved none.
   [[nodiscard]] const std::vector<MaskPlane*>* saved_planes(const db::CellDef& cell) const;
@@ -208,7 +238,10 @@ struct ReadUnitValue {
 
 /// Paints a triangle piece of db::decompose_polygon into a read plane as
 /// CIFMakeManhattanPath does: DBNMPaintPlane, then DBMergeNMTiles over the
-/// triangle's area grown by one (the CIF and GDS polygon readers).
-void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat);
+/// triangle's area grown by one (the CIF and GDS polygon readers). The
+/// paint descends into at most min(ReadTriangleBudget::kPieces, pool) pieces
+/// and takes those it uses from `budget`'s pool.
+void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat,
+                         ReadTriangleBudget& budget);
 
 }  // namespace hefesto::mask

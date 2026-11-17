@@ -32,6 +32,7 @@ struct ReadEngine::State {
   /// The saved copyup planes of each cell (CDFLATGDS / cd_client), indexed
   /// by CIF layer.
   std::unordered_map<const db::CellDef*, std::vector<MaskPlane*>> saved;
+  ReadTriangleBudget triangles;   // the read's non-Manhattan budget (Q-MODEL-37)
   bool snap_warned = false;       // cifSeenSnapWarning
   bool euclidean_noted = false;   // Q-MASK-306 note given
   bool tagged_noted = false;      // Q-MASK-310 note given

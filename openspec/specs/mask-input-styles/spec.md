@@ -555,9 +555,16 @@ Hefesto SHALL convert a polygon vertex list (in read units) into a region of rec
 
 The Manhattanization of one polygon SHALL stop after 2^24 + 16 n^2 edge visits for n vertices, in both `magic-compat` settings (Q-MASK-416, resolution: fix): the polygon then stays non-Manhattan and is reported as `non-manhattan polygon.`. Magic has no bound; only crafted input reaches it.
 
+Each triangle of the Manhattanization is painted into the read plane as DBNMPaintPlane paints it, then the split tiles over its area grown by one are merged (DBMergeNMTiles). A triangle painted beside a nearly parallel diagonal (a 45-degree path over a boundary with almost the same edge) descends into a chain of pieces about as long as the triangle divided by the edges' offset, 910 in gf180mcu_fd_io's `POWER_RAIL_COR_1`. A read triangle SHALL descend into at most 4096 such pieces, drawn from a pool of the read that starts at 65536 and grows by 1024 for every triangle of a polygon read, at most 65536 per polygon; a piece past the budget is painted as a rectangle, as `layout-paint-semantics` "Non-Manhattan painting" describes for a database paint, in both `magic-compat` settings (Q-MODEL-37, proposed). The 512 pieces of a database paint changed the read planes' tiling, and from it the tiling of the layers the read painted, in that cell. Magic has no bound.
+
 Compatibility: exact
 
 (Magic ref: cif/CIFrdpoly.c:234-349, cif/CIFrdutils.c:852-1236)
+
+#### Scenario: Triangle beside a nearly parallel diagonal
+- **GIVEN** the read plane ops of `POWER_RAIL_COR_1`'s PPLUS boundary and 45-degree path after the read units were rescaled by 5 (`tests/data/mask/input/gf180_pplus_chain.txt`)
+- **WHEN** they are painted into an empty read plane
+- **THEN** some triangles descend into more than 512 pieces, and the plane holds the 58662 tiles Magic's plane holds, in the same order
 
 #### Scenario: Manhattan L-shape
 - **GIVEN** the polygon (0,0) (0,20) (10,20) (10,10) (20,10) (20,0)

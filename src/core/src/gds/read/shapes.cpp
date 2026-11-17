@@ -130,6 +130,8 @@ db::PolygonProblem Reader::paint_polygon(std::size_t cif_layer, const mask::Poly
   std::vector<mask::MaskPlane*>& current = planes();
   mask::MaskPlane* plane = cif_layer < current.size() ? current[cif_layer] : nullptr;
   const db::PolygonDecomposition decomposed = db::decompose_read_polygon(polygon);
+  mask::ReadTriangleBudget& budget = engine_->triangle_budget();
+  budget.add_polygon(decomposed);
   bool strip_seen = false;
   for (const db::PolygonPiece& piece : decomposed.pieces) {
     if (!piece.triangle && !strip_seen) {
@@ -142,7 +144,7 @@ db::PolygonProblem Reader::paint_polygon(std::size_t cif_layer, const mask::Poly
       continue;
     }
     if (piece.triangle) {
-      mask::paint_read_triangle(*plane, piece, compat_.magic_compat);
+      mask::paint_read_triangle(*plane, piece, compat_.magic_compat, budget);
     } else {
       (void)plane->paint(piece.area);
     }

@@ -437,7 +437,16 @@ Region processing: for each region of the (post-pre-pass) input, compute its bou
 
 The grid-limit step depends on the `magic-compat` setting (Q-MASK-27, resolution: compat): with it ON (the default) it is sign-blind, `x2 -= 2δ` whatever the sign of cx, as in Magic, so a contact left of or below the origin can lose its cuts; with it OFF it is sign-aware, as in `slots`: `x2 -= 2δ` when cx ≥ 0 and `x2 += 2δ` when cx < 0 (likewise in y).
 
-(Magic ref: cif/CIFgen.c:3769-3880, cif/CIFgen.c:2848-2990, cif/CIFgen.c:2548-2563, cif/CIFgen.c:5332-5347)
+After a region's cuts, the region is cleared so that later regions do not test their squares against it. How much is cleared depends on the `magic-compat` setting (Q-MASK-418, proposed: compat): with it ON (the default) only the region's first tile is cleared, as in Magic, whose clearing walk stops at the start tile, so a later region whose bounding box covers an earlier region's other tiles keeps the cuts it lays on them (overlapping, off-grid cuts); with it OFF every tile of the region is cleared. `squares-grid` and `slots` share this region pass.
+
+(Magic ref: cif/CIFgen.c:3769-3880, cif/CIFgen.c:2848-2990, cif/CIFgen.c:2548-2563, cif/CIFgen.c:3004-3045, cif/CIFgen.c:5332-5347)
+
+#### Scenario: A later region's cuts over an earlier region
+
+- **GIVEN** `squares 5 20 20` and cur made of an island `[100,250]×[210,300]` ∪ `[100,190]×[300,390]`, found first, and a later L-shaped region `[0,400]×[0,90]` ∪ `[310,400]×[90,390]` whose bounding box covers the island
+- **WHEN** applied with `magic-compat` ON
+- **THEN** the L-shaped region's cut grid also places the cuts that fit in the island's lower tile, beside the island's own cuts
+- **AND** with `magic-compat` OFF the island's area holds only the island's own cuts
 
 #### Scenario: 2x2 array centred
 
