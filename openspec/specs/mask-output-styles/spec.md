@@ -588,3 +588,10 @@ Compatibility: informative
 - **GIVEN** a style with `options no-errors` and a contact area too small for a cut
 - **WHEN** mask geometry is generated
 - **THEN** no feedback entry is created
+
+#### Scenario: Operator errors of a write reach the feedback list
+
+- **GIVEN** a style whose `squares` layer has a region too small for a cut in the written cell
+- **WHEN** the cell is written with `gds write` or `cif write`
+- **THEN** the write prints `1 problems occurred.  See feedback entries.`
+- **AND** the feedback list holds one entry `CIF error in cell <cell>, layer <layer>: no room for contacts in area!` on that cell, as the hierarchy's disagreement errors do

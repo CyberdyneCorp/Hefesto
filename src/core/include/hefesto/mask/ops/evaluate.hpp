@@ -27,8 +27,10 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -42,6 +44,15 @@
 #include "hefesto/tech/technology.hpp"
 
 namespace hefesto::mask {
+
+/// One generation error as CIFError records it: a feedback entry over
+/// `area` (mask units, `scale` mask units per layout unit) in `cell`.
+struct GenerationProblem {
+  const db::CellDef* cell = nullptr;
+  db::Rect area;
+  std::int32_t scale = 1;
+  std::string text;
+};
 
 /// Database tiles that stay marked after a bloat-all or tagged operator
 /// under magic-compat ON (Q-MASK-230: case C triggers on a plane other than
@@ -75,6 +86,9 @@ struct OperatorContext {
   bool hierarchical = false;
   /// Marks kept across operators of one generation pass (Q-MASK-230 ON).
   StaleMarks stale_marks{};
+  /// Where the operators' generation errors (CIFError) are recorded for
+  /// the feedback list, next to their report to `sink`; optional.
+  std::vector<GenerationProblem>* problems = nullptr;
 };
 
 /// What the operators of a layer read: the layout planes of the (flattened)
