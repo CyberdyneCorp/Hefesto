@@ -23,7 +23,7 @@ None remain (all 105 approved as drafted on 2026-11-13). Q-MASK-204 and Q-MASK-3
 
 ## Decision table
 
-Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
+Every row is approved (2026-11-13, or on the date the row gives for later entries); the Recommendation column is the decision recorded in the entry's `Resolution:` line. Each row's full text is the entry's `Recommendation:` line. Where the draft changes the entry's original recommendation, that line ends with `(corrected 2026-11-13, was ...)`.
 
 ### Output styles and operators
 
@@ -49,6 +49,8 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-27 | squares grid-limit fix diverges for negative coordinates | **compat** | ON: sign-blind grid-limit shrink; OFF: sign-aware correction, as slots |
 | Q-MASK-29 | unit normalisation can truncate the scale factor (2026-11-14) | **replicate** | reduce by min(lexpand, gcd(scale, expander)) in both modes; OFF also warns that the scale was rounded |
 | Q-MASK-30 | operator distances past the usable plane (2026-11-14) | **fix** | refuse grow/shrink/bridge/bloat distances above db::kPlaneMax, clamp bloat pairs and rescaled values, in both modes (fixed deviation) |
+| Q-MASK-35 | contact-cut values and cifoutput scale factor past the usable plane (2026-11-17) | **fix** | refuse `squares`/`squares-grid`/`slots` values and a `scalefactor` above db::kPlaneMax, clamp rescaled values, 64-bit cut kernels, in both modes (fixed deviation) |
+| Q-MASK-417 | the interaction filters never paint (2026-11-17) | **compat** | ON: `overlapping`, `nonoverlapping`, `interacting`, `noninteracting` give an empty layer, as Magic; OFF: the region filter as specified |
 
 ### DRC mask-layer rules
 
@@ -124,6 +126,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | ID | Question | Kind | Recommendation |
 |---|---|---|---|
 | Q-MASK-31 | input scale normalisation can truncate the scale factor (2026-11-14) | **replicate** | reduce by min(gcd(M, distances), gcd(S, M)) in both modes; OFF also warns that a value was truncated (MASK-INPUT-009) |
+| Q-MASK-34 | input scale factor and layout rescaling past the usable plane (2026-11-17) | **fix** | refuse a `cifinput` `scalefactor` above db::kPlaneMax (the style uses 1), clamp rescaled layout coordinates to the plane, in both modes (fixed deviation) |
 | Q-MASK-32 | cifinput statement before the first style line (2026-11-14) | **compat** | ON: the section and the tech load fail, as CIFReadTechLine returning FALSE; OFF: statement ignored with a warning (MASK-INPUT-018) |
 | Q-MASK-300 | cifinput "nanometers"/"angstroms" overwrites the decimal multiplier | **compat** | ON: unit keyword sets M; OFF: multiplies M, as on output; warn for decimal + unit |
 | Q-MASK-301 | labels kind "sticky" identical to "text" | **replicate** | `sticky` is the same as `text` |
@@ -178,16 +181,22 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-MASK-415 | `cif unfracture` merge area (2026-11-14) | **compat** | ON: CIFGen's internal-unit search area on the mask-unit plane, as Magic; OFF: the whole generated layer |
 | Q-MASK-416 | GDS and CIF input bounds Magic does not have (2026-11-16) | **fix** | read-polygon work budget 2^24 + 16 n^2, 64-level use-index sub-binning cap (Magic segfaults), gzip inflate cap; both modes |
 
+### Technology file
+
+| ID | Question | Kind | Recommendation |
+|---|---|---|---|
+| Q-TECH-33 | repeat blocks with a huge count (2026-11-17; `open-questions/TECH.md`) | **fix** | one tech read spends at most 100000 lines in `repeat` passes, then TECH-REPEAT-003 and the rest is read once, in both modes |
+
 ## Counts
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 82 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 136, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 235, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 338, 339, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413, 415 |
+| compat | 83 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 136, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 235, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 338, 339, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413, 415, 417 |
 | replicate | 18 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 31, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 19 | 10, 30, 126, 128, 135, 201, 209, 212, 219, 222, 233, 234, 303, 314, 318, 332, 407, 412, 416 |
+| fix | 22 | Q-TECH-33, 10, 30, 34, 35, 126, 128, 135, 201, 209, 212, 219, 222, 233, 234, 303, 314, 318, 332, 407, 412, 416 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 123: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16). Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in that review.
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 123: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16), and Q-MASK-34, Q-MASK-35, Q-TECH-33 and Q-MASK-417 of 2026-11-17: 127 in all. Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in the round 5 review, Q-MASK-21 on 2026-11-17 (its ON truncation is no longer observable).
 
 ## User decisions of 2026-11-14 (round 2 review)
 
@@ -234,9 +243,15 @@ Taken on the round 5 review (PR #61). Round 5 shipped the changes of items 6 and
 6. **Q-MASK-234** (new, **fix**, data loss): when an unavailable cell's `.mag` exists, its write reads the file before writing, so the file keeps its paint, in both modes; Magic writes the still empty paint section first (database/DBio.c:4771-4780). Hefesto's round 5 behaviour, now also for `magic-compat` OFF, which visits the cell since item 5. Test "writeall force reads an unavailable cell's existing file before writing it, in both modes"; `cmd-hierarchy` "Writeall command" states it.
 7. **Q-MASK-416** (new, **fix**, input bounds; security.md M5-S1, M5-S7, M5-S8): in both modes the read-polygon work budget of 2^24 + 16 n^2 edge visits for n vertices (then the path stays non-Manhattan and is reported as `non-manhattan polygon.`), the 64-level sub-binning cap of the use index (Magic exits with SIGSEGV on the fuzz input, golden-capture run 43789239840), and the gzip inflate cap of 256 times the compressed size, at least 1 GiB (GDS-STREAM-006). Code and regression tests as landed in round 5.
 8. **P-24** (`docs/decisions/product.md`, confirmed): the GDS read and write performance gate is callgrind instructions per workload on the x86_64 runner, at or below Magic's count and then the recorded baseline + 2 %; wall time is reported, not gated (design D20, `perf.yml` `gds-bench`).
-9. **Q-MASK-34** (new, **fix**, crash class; approved 2026-11-17, PR #63): a `cifinput` `scalefactor` above 1073741818 is refused (`Scalefactor must be at most 1073741818.`, MASK-INPUT-001; the style uses 1) and rescaled layout coordinates are clamped to ±1073741818, in both modes; Magic reads the scale factor with atoi and DBScaleValue wraps past INT_MAX (database/DBcellsrch.c:1457-1480). `mask/input/reader.cpp` `scalefactor_line`, `tech/scale_layout.cpp` `scale_coord`; `mask-input-styles` "Scalefactor statement" and `tech-loading-and-scaling` "scalegrid command" state it. Found by fuzz_cifinput_section; regression seed `tests/fuzz/corpus/fuzz_cifinput_section/regression-ubsan-scalefactor-overflow`.
-10. **Q-MASK-35** (new, **fix**, crash class; approved 2026-11-17, PR #64): in both modes a `squares`, `squares-grid` or `slots` value above 1073741818 rejects the statement (`<name> must be at most 1073741818.`), rescaling clamps those values to the plane, the cut kernels compute in 64 bits, and a cifoutput `scalefactor` above 1073741818 is refused (`Scalefactor must be at most 1073741818.`, the style uses 1); Magic computes them in int and overflows (cif/CIFgen.c, cif/CIFtech.c). `mask-output-styles` and `mask-output-operators` state it. Found by fuzz_cifoutput_section; seed `tests/fuzz/corpus/fuzz_cifoutput_section/regression-ubsan-squares-border-overflow`.
-11. **Q-TECH-33** (new, **fix**, hang; approved 2026-11-17, PR #64): in both modes one tech read spends at most 100000 lines in `repeat` passes; past it TECH-REPEAT-003 is reported and the rest of the file is read once; Magic replays without bound (utils/tech.c:607-632). `tech-file-format` "repeat directive" states it. Found by fuzz_tech_file; seed `tests/fuzz/corpus/fuzz_tech_file/regression-timeout-repeat-count`.
+
+## User decisions of 2026-11-17
+
+Taken on the fuzz fixes (PRs #63 and #64) and on the round 6 report; each entry's `Resolution:` line is in `open-questions/MASK.md` or `open-questions/TECH.md`.
+
+1. **Q-MASK-34** (new, **fix**, crash class; approved 2026-11-17, PR #63): a `cifinput` `scalefactor` above 1073741818 is refused (`Scalefactor must be at most 1073741818.`, MASK-INPUT-001; the style uses 1) and rescaled layout coordinates are clamped to ±1073741818, in both modes; Magic reads the scale factor with atoi and DBScaleValue wraps past INT_MAX (database/DBcellsrch.c:1457-1480). `mask/input/reader.cpp` `scalefactor_line`, `tech/scale_layout.cpp` `scale_coord`; `mask-input-styles` "Scalefactor statement" and `tech-loading-and-scaling` "scalegrid command" state it. Found by fuzz_cifinput_section; regression seed `tests/fuzz/corpus/fuzz_cifinput_section/regression-ubsan-scalefactor-overflow`.
+2. **Q-MASK-35** (new, **fix**, crash class; approved 2026-11-17, PR #64): in both modes a `squares`, `squares-grid` or `slots` value above 1073741818 rejects the statement (`<name> must be at most 1073741818.`), rescaling clamps those values to the plane, the cut kernels compute in 64 bits, and a cifoutput `scalefactor` above 1073741818 is refused (`Scalefactor must be at most 1073741818.`, the style uses 1); Magic computes them in int and overflows (cif/CIFgen.c, cif/CIFtech.c). `mask-output-styles` and `mask-output-operators` state it. Found by fuzz_cifoutput_section; seed `tests/fuzz/corpus/fuzz_cifoutput_section/regression-ubsan-squares-border-overflow`.
+3. **Q-TECH-33** (new, **fix**, hang; approved 2026-11-17, PR #64): in both modes one tech read spends at most 100000 lines in `repeat` passes; past it TECH-REPEAT-003 is reported and the rest of the file is read once; Magic replays without bound (utils/tech.c:607-632). `tech-file-format` "repeat directive" states it. Found by fuzz_tech_file; seed `tests/fuzz/corpus/fuzz_tech_file/regression-timeout-repeat-count`.
+4. **Q-MASK-417** (new, **compat**; drafted in round 6, approved 2026-11-17): Magic's cifInteractingRegions never paints (its second walk marks the seed CIF_IGNORE before PUSHTILEONLY, which pushes only unprocessed tiles, cif/CIFgen.c:4928-4929), so `overlapping`, `nonoverlapping`, `interacting` and `noninteracting` give an empty layer. With `magic-compat` ON Hefesto gives the same empty layer; with it OFF it keeps the region filter as specified. Behaviour change with ON: rounds 1-6 filtered in both modes. `mask/ops/topology.cpp` `op_interacting`; tests in `tests/unit/mask/ops/topology_test.cpp` (both modes); `mask-output-operators` "overlapping, nonoverlapping, interacting, noninteracting" states it, with the scenario "Every form is empty with magic-compat ON". Golden MASK-OP-021 replays and is no longer an M5 exit blocker. Q-MASK-21's ON truncation is no longer observable (amended). No reference PDK cifoutput uses the four forms.
 
 ## Audit decision D-20
 
@@ -322,6 +337,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-230**: mask-output-operators:352: qualify 'Trigger tiles ... are not reset (Q-MASK-230)' as magic-compat ON, scoped to the current generation pass, and add that with OFF every searched plane is reset.
 - **Q-MASK-231**: mask-output-operators:352: mark the order-dependent seeding sentence as magic-compat ON, and add the OFF rule (every overlapping region is seeded).
 - **Q-MASK-232**: mask-output-operators:352: mark 'truncating division (Q-MASK-232)' as magic-compat ON, and add the outward rounding for OFF.
+- **Q-MASK-417** (2026-11-17): mask-output-operators "overlapping, nonoverlapping, interacting, noninteracting": the filter is the magic-compat OFF behaviour; with ON all four forms give an empty layer (new scenario "Every form is empty with magic-compat ON"); the touching and negative-coordinate scenarios now state OFF.
 
 ### mask-output-styles
 
