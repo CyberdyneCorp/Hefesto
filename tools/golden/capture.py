@@ -20,6 +20,10 @@ Selection (applied to the CASE_DIR list before anything runs):
     --only-missing     keep the cases that do not (golden-capture.yml capture mode)
 A selection that leaves no case is not an error (exit 0, a note is printed).
 
+Raw outputs (goldenlib/rawkeep.py), for bisecting a difference; nothing in expected/ changes:
+    --keep-raw DIR     copy each run's streams and written files to DIR/<case-id>/
+    --feedback-probe   with --keep-raw: the run also saves its feedback list (out.feedback.tcl)
+
 Runners are described in goldenlib/refrunners.py. The default image is
 $HEFESTO_GOLDEN_IMAGE, else "hefesto-golden:local" (see README.md).
 Exit status: 0 ok, 1 a case failed (or differs under --verify), 2 usage error.
@@ -41,6 +45,7 @@ from goldenlib.case import STREAM_SOURCES, Case, CaseError, load_case
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, stage
 from goldenlib.pins import load_pins, tool_pin
+from goldenlib.rawkeep import RawKeep
 from goldenlib.refrunners import ENVIRONMENT, ContainerRunner, LocalHarnessRunner, ModelRunner, RunnerError, RunResult
 
 DEFAULT_IMAGE = "hefesto-golden:local"
@@ -86,7 +91,7 @@ def provenance(case: Case, pins: dict, runner_name: str, result: RunResult, outp
     }
 
 
-def run_reference(case: Case, runner) -> tuple[RunResult, dict[str, bytes]]:
+def run_reference(case: Case, runner, raw: RawKeep | None = None) -> tuple[RunResult, dict[str, bytes]]:
     with tempfile.TemporaryDirectory(prefix=f"golden-{case.id}-") as tmp:
         work = Path(tmp)
         shutil.copytree(case.input_dir, work / "input")
@@ -94,7 +99,11 @@ def run_reference(case: Case, runner) -> tuple[RunResult, dict[str, bytes]]:
             stage(case.externals, work / "input")
         except ExternalUnavailable as error:
             raise RunnerError(f"{case.id}: external input unavailable: {error}") from error
+        if raw is not None:
+            raw.prepare(case, work)
         result = runner.run(case, work)
+        if raw is not None:
+            print(f"{case.id}: raw outputs in {raw.keep(case.id, work, result.stdout, result.stderr)}")
         if result.returncode != 0 and not case.reference.get("allow_nonzero_exit", False):
             raise RunnerError(f"{case.id}: reference tool exited {result.returncode}:\n"
                               f"{result.stderr.decode(errors='replace')[-2000:]}")
@@ -138,7 +147,8 @@ def process(case_dir: Path, args: argparse.Namespace, pins: dict) -> bool:
         print(f"{case.id}: valid ({len(case.outputs)} output(s), tool {case.tool})")
         return True
     runner = make_runner(args, pins)
-    result, outputs = run_reference(case, runner)
+    raw = RawKeep(args.keep_raw, args.feedback_probe) if args.keep_raw is not None else None
+    result, outputs = run_reference(case, runner, raw)
     if args.verify:
         problems = verify_expected(case, outputs)
         print(f"{case.id}: {'matches expected/' if not problems else 'DIFFERS'} ({runner.name} runner)")
@@ -176,7 +186,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     which = parser.add_mutually_exclusive_group()
     which.add_argument("--only-captured", action="store_true", help="keep cases that have expected/")
     which.add_argument("--only-missing", action="store_true", help="keep cases without expected/")
-    return parser.parse_args(argv)
+    parser.add_argument("--keep-raw", type=Path, metavar="DIR",
+                        help="copy each run's streams and written files to DIR/<case-id>/")
+    parser.add_argument("--feedback-probe", action="store_true",
+                        help="with --keep-raw: save the run's feedback list (out.feedback.tcl)")
+    args = parser.parse_args(argv)
+    if args.feedback_probe and args.keep_raw is None:
+        parser.error("--feedback-probe needs --keep-raw")
+    return args
 
 
 def main(argv: list[str]) -> int:
