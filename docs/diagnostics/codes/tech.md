@@ -47,6 +47,7 @@ being read (an included file while inside an `include`).
 | `TECH-READ-001` | warning | A logical line longer than 1023 characters was truncated. |
 | `TECH-REPEAT-001` | warning | `repeat` with an invalid count; the block is read once. |
 | `TECH-REPEAT-002` | error | A `repeat` block crosses an include file boundary; the load fails. |
+| `TECH-REPEAT-003` | warning | `repeat` blocks read more than 100000 lines; the rest of the file is read once (Q-TECH-33). |
 | `TECH-SECTION-001` | warning | Bad section header line or unrecognized section name; lines are skipped to the next `end`. |
 | `TECH-SECTION-002` | warning | A stray `end` outside any section was ignored (magic-compat off). |
 | `TECH-SECTION-003` | warning | A section appears before its prerequisite sections and is skipped. |

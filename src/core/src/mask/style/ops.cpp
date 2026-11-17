@@ -11,7 +11,9 @@
 //
 // Deviations (docs/decisions/cross-cutting.md X-2 tier 1): a 6-token
 // `slots` line is rejected as a wrong argument count before any argument
-// is read (Q-MASK-9, fix).
+// is read (Q-MASK-9, fix); distances and `squares`/`slots` values past the
+// usable plane are refused (Q-MASK-30, Q-MASK-35; Magic's int arithmetic
+// overflows on them).
 //
 // Owner: STYLES (openspec/changes/m5-mask-gds-cif/design.md D2).
 
@@ -94,6 +96,26 @@ bool beyond_plane(std::int32_t d) noexcept {
 std::string beyond_plane_text(const std::string& what) {
   return what + " must be at most " + std::to_string(db::kPlaneMax) + ".";
 }
+
+/// The name of the first of `values` past the usable plane, or nullptr
+/// (Q-MASK-35: the contact-cut kernels add these values to each other and
+/// to plane coordinates).
+template <std::size_t N>
+const char* first_beyond_plane(const std::array<std::int32_t, N>& values,
+                               const std::array<const char*, N>& names) noexcept {
+  for (std::size_t i = 0; i < N; ++i) {
+    if (beyond_plane(values[i])) {
+      return names[i];
+    }
+  }
+  return nullptr;
+}
+
+constexpr std::array<const char*, 5> kSquareValueNames = {"Square border", "Square size", "Square separation",
+                                                          "Square grid", "Square y-grid"};
+constexpr std::array<const char*, 8> kSlotValueNames = {
+    "Slot border",         "Slot short-side size",      "Slot separation", "Slot long-side border",
+    "Slot long-side size", "Slot long-side separation", "Slot offset",     "Slot start"};
 
 /// The operator parser of one statement.
 class OpParser {
@@ -450,6 +472,9 @@ std::optional<LayerOp> OpParser::squares() {
   } else {
     return wrong_args();
   }
+  if (const char* name = first_beyond_plane(v, kSquareValueNames)) {
+    return reject(beyond_plane_text(name));
+  }
   // Squares are never placed below the minimum mask resolution: a grid
   // finer than gridlimit makes the operation squares-grid.
   if (v[3] < ctx_.grid_limit) {
@@ -520,6 +545,9 @@ std::optional<LayerOp> OpParser::slots() {
   }
   if (!slots_long(v)) {
     return std::nullopt;
+  }
+  if (const char* name = first_beyond_plane(v, kSlotValueNames)) {
+    return reject(beyond_plane_text(name));
   }
   op_.values.assign(v.begin(), v.end());
   return done();

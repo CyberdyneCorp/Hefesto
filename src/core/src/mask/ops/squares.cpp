@@ -11,10 +11,18 @@
 // Copyright (C) 1985, 1990 Regents of the University of California (see
 // THIRD_PARTY_NOTICES.md).
 //
+// Deviation (docs/decisions/cross-cutting.md X-2 tier 1, Q-MASK-35): the
+// sums of the operator's values (strip size, pitch, shrink, retry
+// differences) and the cut arithmetic are computed in 64 bits, and a
+// coordinate they produce is kept on the usable plane; Magic computes them
+// in int and overflows for values near the plane's size.
+//
 // Owner: OPS.
 
+#include <algorithm>
 #include <cstdlib>
 #include <functional>
+#include <limits>
 
 #include "mask/ops/kernel.hpp"
 
@@ -25,6 +33,33 @@ namespace {
 /// A guard against a grid-limit placement that never settles (Q-MASK-27 OFF
 /// can move an edge both ways); Magic's sign-blind ON loop always ends.
 constexpr int kMaxGridSteps = 4096;
+
+/// The cut arithmetic's integer type: the style's values are at most
+/// db::kPlaneMax each (Q-MASK-35), so their sums and products with plane
+/// coordinates fit in 64 bits.
+using Wide = std::int64_t;
+
+/// A coordinate computed in 64 bits, kept on the usable plane. A placed cut
+/// lies inside its area; only a placement that paints nothing (a negative
+/// count) or an edge moved past the plane is clamped.
+db::Coord to_coord(Wide v) noexcept {
+  return static_cast<db::Coord>(std::clamp<Wide>(v, db::kPlaneMin, db::kPlaneMax));
+}
+
+/// A cut count computed in 64 bits, kept in the int range.
+int to_count(Wide n) noexcept {
+  return static_cast<int>(std::clamp<Wide>(n, std::numeric_limits<int>::min(), std::numeric_limits<int>::max()));
+}
+
+/// `r` moved by (dx, dy).
+db::Rect moved(const db::Rect& r, Wide dx, Wide dy) noexcept {
+  return db::Rect{to_coord(r.x0 + dx), to_coord(r.y0 + dy), to_coord(r.x1 + dx), to_coord(r.y1 + dy)};
+}
+
+/// `r` grown by bx on the left and right and by by at the bottom and top.
+db::Rect grown(const db::Rect& r, Wide bx, Wide by) noexcept {
+  return db::Rect{to_coord(r.x0 - bx), to_coord(r.y0 - by), to_coord(r.x1 + bx), to_coord(r.y1 + by)};
+}
 
 // --- Placement functions -----------------------------------------------------
 
@@ -59,18 +94,19 @@ SquaresData squares_data(const LayerOp& op) {
 /// [lo, hi], moving `hi` until the origin is on the grid limit.
 int square_axis(db::Coord lo, db::Coord& hi, const SquaresData& s, std::int32_t limit, db::Coord& origin,
                 const compat::CompatSettings& compat) {
-  const std::int32_t pitch = s.size + s.sep;
+  const Wide pitch = Wide{s.size} + s.sep;
   for (int step = 0; step < kMaxGridSteps; ++step) {
-    const int n = (hi - lo + s.sep - (2 * s.border)) / pitch;
+    const Wide n = (Wide{hi} - lo + s.sep - (2 * Wide{s.border})) / pitch;
     if (n == 0) {
       return 0;
     }
-    origin = (lo + hi + s.sep - (n * pitch)) / 2;
-    const std::int32_t delta = limit > 1 ? std::abs(origin) % limit : 0;
+    const Wide o = (Wide{lo} + hi + s.sep - (n * pitch)) / 2;
+    origin = to_coord(o);
+    const Wide delta = limit > 1 ? std::abs(o) % limit : 0;
     if (delta == 0) {
-      return n;
+      return to_count(n);
     }
-    hi = q_mask_27_shift(hi, origin, delta, compat);
+    hi = to_coord(q_mask_27_shift(hi, o, delta, compat));
   }
   return 0;
 }
@@ -87,40 +123,48 @@ Placement square_func(db::Rect& area, const SquaresData& s, std::int32_t limit, 
   if (p.rows == 0) {
     return p;
   }
-  p.cut.x1 = p.cut.x0 + s.size;
-  p.cut.y1 = p.cut.y0 + s.size;
+  p.cut.x1 = to_coord(Wide{p.cut.x0} + s.size);
+  p.cut.y1 = to_coord(Wide{p.cut.y0} + s.size);
   return p;
 }
 
 /// The smallest multiple of g at or above v (cifSquareGridFunc's rounding).
-db::Coord ceil_multiple(db::Coord v, std::int32_t g) {
-  db::Coord m = (v / g) * g;
+Wide ceil_multiple(Wide v, Wide g) {
+  const Wide m = (v / g) * g;
   return m < v ? m + g : m;
+}
+
+/// One axis of cifSquareGridFunc: the cut count along [lo, hi] (the area
+/// less the border) and the first cut origin, centred on the grid `g`.
+struct GridAxis {
+  Wide count = 0;
+  Wide origin = 0;
+};
+
+GridAxis grid_axis(Wide lo, Wide hi, const SquaresData& s, Wide g) {
+  const Wide pitch = Wide{s.size} + s.sep;
+  const Wide first = ceil_multiple(lo, g);
+  GridAxis a{(hi - first + s.sep) / pitch, 0};
+  const Wide last = first + a.count * s.size + (a.count - 1) * s.sep;
+  const Wide margin = ((hi - last) - (first - lo)) / (g * 2);
+  a.origin = first + margin * g;
+  return a;
 }
 
 /// cifSquareGridFunc.
 Placement square_grid_func(const db::Rect& area, const SquaresData& s) {
   Placement p;
-  const std::int32_t pitch = s.size + s.sep;
-  const db::Rect l{area.x0 + s.border, area.y0 + s.border, area.x1 - s.border, area.y1 - s.border};
-  const db::Coord left = ceil_multiple(l.x0, s.gridx);
-  const db::Coord bottom = ceil_multiple(l.y0, s.gridy);
-  p.cols = (l.x1 - left + s.sep) / pitch;
+  const GridAxis x = grid_axis(Wide{area.x0} + s.border, Wide{area.x1} - s.border, s, s.gridx);
+  p.cols = to_count(x.count);
   if (p.cols == 0) {
     return p;
   }
-  p.rows = (l.y1 - bottom + s.sep) / pitch;
+  const GridAxis y = grid_axis(Wide{area.y0} + s.border, Wide{area.y1} - s.border, s, s.gridy);
+  p.rows = to_count(y.count);
   if (p.rows == 0) {
     return p;
   }
-  const db::Coord right = left + p.cols * s.size + (p.cols - 1) * s.sep;
-  const db::Coord top = bottom + p.rows * s.size + (p.rows - 1) * s.sep;
-  const db::Coord mx = ((l.x1 - right) - (left - l.x0)) / (s.gridx * 2);
-  const db::Coord my = ((l.y1 - top) - (bottom - l.y0)) / (s.gridy * 2);
-  p.cut.x0 = left + mx * s.gridx;
-  p.cut.y0 = bottom + my * s.gridy;
-  p.cut.x1 = p.cut.x0 + s.size;
-  p.cut.y1 = p.cut.y0 + s.size;
+  p.cut = db::Rect{to_coord(x.origin), to_coord(y.origin), to_coord(x.origin + s.size), to_coord(y.origin + s.size)};
   return p;
 }
 
@@ -167,19 +211,20 @@ SlotAxes slot_axes(db::Rect& area, Placement& p, bool vertical) {
 /// sign-aware grid-limit step.
 int slot_axis(db::Coord lo, db::Coord& hi, std::int32_t size, std::int32_t sep, std::int32_t border, std::int32_t limit,
               db::Coord& c0, db::Coord& c1) {
-  const std::int32_t pitch = size + sep;
+  const Wide pitch = Wide{size} + sep;
   for (int step = 0; step < kMaxGridSteps; ++step) {
-    const int n = (hi - lo + sep - (2 * border)) / pitch;
+    const Wide n = (Wide{hi} - lo + sep - (2 * Wide{border})) / pitch;
     if (n == 0) {
       return 0;
     }
-    c0 = (lo + hi + sep - (n * pitch)) / 2;
-    c1 = c0 + size;
-    const std::int32_t delta = limit > 1 ? std::abs(c0) % limit : 0;
+    const Wide o = (Wide{lo} + hi + sep - (n * pitch)) / 2;
+    c0 = to_coord(o);
+    c1 = to_coord(o + size);
+    const Wide delta = limit > 1 ? std::abs(o) % limit : 0;
     if (delta == 0) {
-      return n;
+      return to_count(n);
     }
-    hi = c0 >= 0 ? hi - 2 * delta : hi + 2 * delta;
+    hi = to_coord(o >= 0 ? hi - 2 * delta : hi + 2 * delta);
   }
   return 0;
 }
@@ -198,8 +243,8 @@ Placement slot_func(db::Rect& area, const SlotsData& s, std::int32_t limit, bool
     return p;
   }
   a.rows = 1;
-  a.sy0 = a.ay0 + s.lborder;
-  a.sy1 = a.ay1 - s.lborder;
+  a.sy0 = to_coord(Wide{a.ay0} + s.lborder);
+  a.sy1 = to_coord(Wide{a.ay1} - s.lborder);
   return p;
 }
 
@@ -299,8 +344,7 @@ bool left_side_has_split(const db::Plane& plane, const db::TileView& t) {
   return std::any_of(left.begin(), left.end(), [](const db::TileView& v) { return v.split; });
 }
 
-void strip_of_tile(const db::Plane& plane, const db::TileView& t, std::int32_t size, std::int32_t pitch,
-                   std::vector<Strip>& out) {
+void strip_of_tile(const db::Plane& plane, const db::TileView& t, Wide size, Wide pitch, std::vector<Strip>& out) {
   if (t.split) {
     return;
   }
@@ -308,7 +352,7 @@ void strip_of_tile(const db::Plane& plane, const db::TileView& t, std::int32_t s
   const std::int64_t height = t.area.height();
   const bool vertical = height > width;
   const std::int64_t short_side = vertical ? width : height;
-  if (short_side < size || short_side >= std::int64_t{size} + pitch || left_side_has_split(plane, t)) {
+  if (short_side < size || short_side >= size + pitch || left_side_has_split(plane, t)) {
     return;
   }
   if (!vertical) {
@@ -325,7 +369,7 @@ void strip_of_tile(const db::Plane& plane, const db::TileView& t, std::int32_t s
 
 /// Every strip of `plane`, in Magic's processing order (the most recently
 /// found first).
-std::vector<Strip> find_strips(const db::Plane& plane, std::int32_t size, std::int32_t pitch) {
+std::vector<Strip> find_strips(const db::Plane& plane, Wide size, Wide pitch) {
   std::vector<Strip> found;
   plane.enumerate(db::whole_plane(), detail::solid_mask(), [&](const db::TileView& t) {
     strip_of_tile(plane, t, size, pitch, found);
@@ -334,7 +378,7 @@ std::vector<Strip> find_strips(const db::Plane& plane, std::int32_t size, std::i
   return {found.rbegin(), found.rend()};
 }
 
-db::Rect shortened(const Strip& s, std::int32_t diff) {
+db::Rect shortened(const Strip& s, Wide diff) {
   db::Rect r = s.area;
   if (diff <= 0) {
     return r;
@@ -342,10 +386,10 @@ db::Rect shortened(const Strip& s, std::int32_t diff) {
   db::Coord& lo = s.vertical ? r.y0 : r.x0;
   db::Coord& hi = s.vertical ? r.y1 : r.x1;
   if (s.shrink_ur) {
-    hi -= diff;
+    hi = to_coord(hi - diff);
   }
   if (s.shrink_ld) {
-    lo += diff;
+    lo = to_coord(lo + diff);
   }
   return r;
 }
@@ -362,24 +406,24 @@ bool square_in_region(const db::Plane& plane, const db::Rect& square, const deta
 
 /// Shrinks a two-cut bounding box that placed no cut (beveled corners):
 /// returns false when no further pass applies.
-bool shrink_for_retry(db::Rect& bbox, const Placement& p, std::int32_t xdiff, std::int32_t ydiff) {
-  const auto bdiff = [](std::int64_t extent, std::int32_t diff) {
-    auto b = static_cast<std::int32_t>(1 + extent - diff);
+bool shrink_for_retry(db::Rect& bbox, const Placement& p, Wide xdiff, Wide ydiff) {
+  const auto bdiff = [](Wide extent, Wide diff) {
+    Wide b = 1 + extent - diff;
     if ((b & 0x1) != 0) {
       ++b;
     }
     return b >> 1;
   };
   if (p.rows == 2) {
-    const std::int32_t b = bdiff(bbox.height(), ydiff);
-    bbox.y1 -= b;
-    bbox.y0 += b;
+    const Wide b = bdiff(bbox.height(), ydiff);
+    bbox.y1 = to_coord(bbox.y1 - b);
+    bbox.y0 = to_coord(bbox.y0 + b);
     return true;
   }
   if (p.cols == 2) {
-    const std::int32_t b = bdiff(bbox.width(), xdiff);
-    bbox.x1 -= b;
-    bbox.x0 += b;
+    const Wide b = bdiff(bbox.width(), xdiff);
+    bbox.x1 = to_coord(bbox.x1 - b);
+    bbox.x0 = to_coord(bbox.x0 + b);
     return true;
   }
   return false;
@@ -388,14 +432,14 @@ bool shrink_for_retry(db::Rect& bbox, const Placement& p, std::int32_t xdiff, st
 /// How one contact operator places cuts: the strip sizes, the placement of
 /// a strip and of a region bounding box, and the cut walk of a region.
 struct CutRules {
-  std::int32_t strip_size = 0;   // S
-  std::int32_t strip_pitch = 0;  // P
-  std::int32_t shrink = 0;       // D
+  Wide strip_size = 0;   // S
+  Wide strip_pitch = 0;  // P
+  Wide shrink = 0;       // D
   std::function<Placement(db::Rect&, bool vertical)> place;
-  std::int32_t xpitch_v = 0, ypitch_v = 0, xborder_v = 0, yborder_v = 0, xdiff_v = 0, ydiff_v = 0;  // vertical
-  std::int32_t xpitch_h = 0, ypitch_h = 0, xborder_h = 0, yborder_h = 0, xdiff_h = 0, ydiff_h = 0;  // horizontal
-  std::int32_t offset = 0;
-  std::int32_t start = 0;
+  Wide xpitch_v = 0, ypitch_v = 0, xborder_v = 0, yborder_v = 0, xdiff_v = 0, ydiff_v = 0;  // vertical
+  Wide xpitch_h = 0, ypitch_h = 0, xborder_h = 0, yborder_h = 0, xdiff_h = 0, ydiff_h = 0;  // horizontal
+  Wide offset = 0;
+  Wide start = 0;
   bool oriented = false;  // slots: the region orientation selects the axes
 };
 
@@ -408,13 +452,12 @@ struct KernelState {
 
 /// Paints the cut array of a strip: squares paint the full array, slots
 /// along the long axis only (with the long pitch).
-int paint_strip_cuts(MaskPlane& out, const Placement& p, std::int32_t pitch, const Strip& s, bool slots) {
+int paint_strip_cuts(MaskPlane& out, const Placement& p, Wide pitch, const Strip& s, bool slots) {
   int painted = 0;
   if (!slots) {
     for (int i = 0; i < p.rows; ++i) {
       for (int j = 0; j < p.cols; ++j) {
-        const db::Rect c{p.cut.x0 + j * pitch, p.cut.y0 + i * pitch, p.cut.x1 + j * pitch, p.cut.y1 + i * pitch};
-        detail::paint(out, c);
+        detail::paint(out, moved(p.cut, j * pitch, i * pitch));
         ++painted;
       }
     }
@@ -422,9 +465,8 @@ int paint_strip_cuts(MaskPlane& out, const Placement& p, std::int32_t pitch, con
   }
   const int n = s.vertical ? p.rows : p.cols;
   for (int i = 0; i < n; ++i) {
-    const db::Coord dx = s.vertical ? 0 : i * pitch;
-    const db::Coord dy = s.vertical ? i * pitch : 0;
-    detail::paint(out, db::Rect{p.cut.x0 + dx, p.cut.y0 + dy, p.cut.x1 + dx, p.cut.y1 + dy});
+    const Wide step = i * pitch;
+    detail::paint(out, s.vertical ? moved(p.cut, 0, step) : moved(p.cut, step, 0));
     ++painted;
   }
   return painted;
@@ -435,7 +477,7 @@ struct StripChecks {
   std::int32_t short_size = 0;  // squares: size; slots: ssize
   std::int32_t long_size = 0;   // squares: size; slots: lsize
   std::int64_t area_limit = 0;  // 2*P² (squares) or 2*lpitch*spitch (slots)
-  std::int32_t pitch = 0;       // the strip cut pitch
+  Wide pitch = 0;               // the strip cut pitch
 };
 
 bool exact_cut_size(const db::Rect& r, const StripChecks& k) {
@@ -465,7 +507,7 @@ void process_strip(const KernelState& st, const CutRules& rules, const StripChec
 }
 
 struct Axes {
-  std::int32_t xpitch, ypitch, xborder, yborder, xdiff, ydiff;
+  Wide xpitch, ypitch, xborder, yborder, xdiff, ydiff;
 };
 
 Axes region_axes(const CutRules& r, bool vertical) {
@@ -479,13 +521,12 @@ Axes region_axes(const CutRules& r, bool vertical) {
 int place_region_cuts(const KernelState& st, const CutRules& rules, const Axes& ax, const Placement& p,
                       const detail::Region& region, const detail::Marks& marks) {
   int painted = 0;
-  db::Coord offset = rules.start;
+  Wide offset = rules.start;
   for (int i = 0; i < p.rows; ++i) {
-    const db::Coord y0 = p.cut.y0 + rules.start + i * ax.ypitch;
-    const db::Coord y1 = p.cut.y1 + rules.start + i * ax.ypitch;
+    const Wide dy = rules.start + i * ax.ypitch;
     for (int j = 0; j < p.cols; ++j) {
-      const db::Rect cut{p.cut.x0 + offset + j * ax.xpitch, y0, p.cut.x1 + offset + j * ax.xpitch, y1};
-      const db::Rect square{cut.x0 - ax.xborder, cut.y0 - ax.yborder, cut.x1 + ax.xborder, cut.y1 + ax.yborder};
+      const db::Rect cut = moved(p.cut, offset + j * ax.xpitch, dy);
+      const db::Rect square = grown(cut, ax.xborder, ax.yborder);
       if (region.simple || square_in_region(st.plane.plane(), square, marks)) {
         detail::paint(st.out, cut);
         detail::count_tile(st.ctx);
@@ -535,23 +576,23 @@ void fill_area(const KernelState& st, const CutRules& rules, const StripChecks& 
 
 diag::Status squares_kernel(const OpArgs& args, OperatorContext& ctx, MaskPlane& out, bool grid) {
   const SquaresData s = squares_data(args.op);
-  if (s.size <= 0 || s.size + s.sep <= 0) {
-    return diag::Done{};
+  if (s.size <= 0 || s.sep <= 0) {
+    return diag::Done{};  // the reader never stores these
   }
   const std::int32_t limit = detail::grid_limit_of(args);
+  const Wide pitch = Wide{s.size} + s.sep;
   CutRules rules;
-  rules.strip_size = s.size + 2 * s.border;
-  rules.strip_pitch = s.size + s.sep;
-  rules.shrink = s.sep - 2 * s.border;
+  rules.strip_size = Wide{s.size} + 2 * Wide{s.border};
+  rules.strip_pitch = pitch;
+  rules.shrink = Wide{s.sep} - 2 * Wide{s.border};
   rules.place = [&](db::Rect& area, bool) {
     return grid ? square_grid_func(area, s) : square_func(area, s, limit, ctx.compat);
   };
-  const std::int32_t pitch = s.size + s.sep;
-  const std::int32_t diff = 2 * (s.size + s.border) + s.sep;
+  const Wide diff = 2 * (Wide{s.size} + s.border) + s.sep;
   rules.xpitch_v = rules.ypitch_v = rules.xpitch_h = rules.ypitch_h = pitch;
   rules.xborder_v = rules.yborder_v = rules.xborder_h = rules.yborder_h = s.border;
   rules.xdiff_v = rules.ydiff_v = rules.xdiff_h = rules.ydiff_h = diff;
-  const StripChecks checks{false, s.size, s.size, 2 * std::int64_t{pitch} * pitch, pitch};
+  const StripChecks checks{false, s.size, s.size, 2 * pitch * pitch, pitch};
   ScratchPlane next{*ctx.pool};
   fill_area(KernelState{args, ctx, out, *next}, rules, checks);
   out.swap(*next);
@@ -570,19 +611,19 @@ diag::Status op_squares_grid(const OpArgs& args, OperatorContext& ctx, MaskPlane
 
 diag::Status op_slots(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) {
   const SlotsData s = slots_data(args.op);
-  const std::int32_t spitch = s.ssize + s.ssep;
-  const std::int32_t lpitch = s.lsize + s.lsep;
-  if (s.ssize <= 0 || spitch <= 0) {
-    return diag::Done{};
+  if (s.ssize <= 0 || s.ssep <= 0 || s.lsize < 0 || s.lsep < 0 || (s.lsize > 0 && s.lsep == 0)) {
+    return diag::Done{};  // the reader never stores these
   }
+  const Wide spitch = Wide{s.ssize} + s.ssep;
+  const Wide lpitch = Wide{s.lsize} + s.lsep;
   const std::int32_t limit = detail::grid_limit_of(args);
   CutRules rules;
-  rules.strip_size = s.ssize + 2 * s.sborder;
+  rules.strip_size = Wide{s.ssize} + 2 * Wide{s.sborder};
   rules.strip_pitch = spitch;
-  rules.shrink = s.lsep - s.lborder - s.sborder;
+  rules.shrink = Wide{s.lsep} - s.lborder - s.sborder;
   rules.place = [&](db::Rect& area, bool vertical) { return slot_func(area, s, limit, vertical); };
-  const std::int32_t sdiff = 2 * (s.ssize + s.sborder) + s.ssep;
-  const std::int32_t ldiff = 2 * (s.lsize + s.lborder) + s.lsep;
+  const Wide sdiff = 2 * (Wide{s.ssize} + s.sborder) + s.ssep;
+  const Wide ldiff = 2 * (Wide{s.lsize} + s.lborder) + s.lsep;
   rules.xpitch_v = spitch;
   rules.ypitch_v = lpitch;
   rules.xborder_v = s.sborder;
@@ -598,7 +639,7 @@ diag::Status op_slots(const OpArgs& args, OperatorContext& ctx, MaskPlane& out) 
   rules.offset = s.offset;
   rules.start = s.start;
   rules.oriented = true;
-  const StripChecks checks{true, s.ssize, s.lsize, 2 * std::int64_t{lpitch} * spitch, lpitch};
+  const StripChecks checks{true, s.ssize, s.lsize, 2 * lpitch * spitch, lpitch};
   ScratchPlane next{*ctx.pool};
   fill_area(KernelState{args, ctx, out, *next}, rules, checks);
   out.swap(*next);

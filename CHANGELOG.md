@@ -230,6 +230,18 @@ release notices.
   stream early. Flatten copies of a GDS read share one budget of 2^26 tile
   paints, so a large `gds flatglob` cell in big arrays is skipped with
   GDS-READ-011 instead of repainting without bound.
+- **Contact-cut values past the plane are refused.** A `squares`,
+  `squares-grid` or `slots` value above 1073741818 in a `cifoutput` style
+  is an error (`Square border must be at most 1073741818.` and the like)
+  and the statement is dropped, rescaling keeps the values within that
+  bound, and the cut operators compute their sums in 64 bits, so mask
+  generation no longer overflows on them. A `cifoutput` `scalefactor`
+  above 1073741818 is refused as a `cifinput` one is, and the style uses 1
+  (Q-MASK-35, approved; Magic overflows there).
+- **A huge `repeat` count no longer hangs a technology load.** One read
+  spends at most 100000 lines in `repeat` passes; past that the load
+  warns (TECH-REPEAT-003) and reads the rest of the file once. Real PDK
+  files repeat about a hundred lines (Q-TECH-33, approved).
 
 ### Security
 

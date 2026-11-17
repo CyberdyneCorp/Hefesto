@@ -51,6 +51,8 @@ constexpr std::array kTechCodes = {
     CodeInfo{"TECH-READ-001", warning, "A logical line longer than 1023 characters was truncated."},
     CodeInfo{"TECH-REPEAT-001", warning, "`repeat` with an invalid count; the block is read once."},
     CodeInfo{"TECH-REPEAT-002", error, "A `repeat` block crosses an include file boundary; the load fails."},
+    CodeInfo{"TECH-REPEAT-003", warning,
+             "`repeat` blocks read more than 100000 lines; the rest of the file is read once (Q-TECH-33)."},
     CodeInfo{"TECH-SECTION-001", warning,
              "Bad section header line or unrecognized section name; lines are skipped to the next `end`."},
     CodeInfo{"TECH-SECTION-002", warning, "A stray `end` outside any section was ignored (magic-compat off)."},
