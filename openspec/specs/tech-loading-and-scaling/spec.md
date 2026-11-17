@@ -256,7 +256,7 @@ Compatibility: exact
 3. **Reduce.** Reduce a/b by the greatest common factor.
 4. **Grid limit.** If the grid-limit check for factor (a, b) fails (see "Grid limit check"), report `Grid scaling is finer than limit set by the process!` and change nothing.
 5. **Rescale tables.** Rescale every scale-dependent table by b/a: cifinput, cifoutput, drc, extract, wiring, lef and router. Then recompute the maze-router and interactive-router parameters.
-6. **Rescale layout.** Multiply every coordinate of every cell in memory by b/a: tiles, labels, cell uses and bounding boxes. Each value v becomes ⌊v·b/a⌋, rounded toward negative infinity, computed in 64-bit arithmetic. Values v with v ≥ 2³⁰−6 or v ≤ −(2³⁰−6) are the "infinity" markers (infinity = 2³⁰−4) and are not scaled. A cell whose geometry does not scale exactly is marked modified.
+6. **Rescale layout.** Multiply every coordinate of every cell in memory by b/a: tiles, labels, cell uses and bounding boxes. Each value v becomes ⌊v·b/a⌋, rounded toward negative infinity, computed in 64-bit arithmetic. Values v with v ≥ 2³⁰−6 or v ≤ −(2³⁰−6) are the "infinity" markers (infinity = 2³⁰−4) and are not scaled. A scaled value past the usable plane is clamped to ±(2³⁰−6) (Q-MASK-34, proposed fix awaiting the user's decision; a fixed deviation, X-2 tier 1: Magic's DBScaleValue reports `ERROR: ARITHMETIC OVERFLOW in DBScaleValue()!` and keeps the wrapped int). The same rescale serves a CIF read's grid subdivision (mask-input-styles "Conversion of read units to internal units"). A cell whose geometry does not scale exactly is marked modified.
 7. **Update the scale.** Set L := L·a and I := I·b, then reduce.
 8. **Update the view.** Rescale the cursor box by b/a with the same rounding. Magic rescales the box twice, once as part of step 6 (DBScaleEverything) and once here, so the box changes by (b/a)²; with `magic-compat` ON Hefesto SHALL do the same (decision X-2, tier 2), and with it OFF SHALL rescale the box once. Rescale every window view to keep the same visible area, and redraw. Discard the whole undo history; this step cannot be undone.
 9. **Report.** Print `<I> Magic internal unit<s> = <L> Lambda`, where `<s>` is empty when I = 1 and `s` otherwise. The command returns no result.
@@ -278,6 +278,11 @@ Compatibility: exact
 - **GIVEN** scale 2:1 (I = 2, L = 1) and a tile edge at x = −3
 - **WHEN** `scalegrid 2 1` is executed (factor b/a = 1/2)
 - **THEN** the edge moves to x = −2 (⌊−1.5⌋), and the scale becomes 1:1
+
+#### Scenario: Coordinates scaled past the usable plane are clamped
+- **GIVEN** scale 1:1 and a tile from (−3,0) to (3,2)
+- **WHEN** `scalegrid 1 1000000000` is executed
+- **THEN** the tile spans (−1073741818,0) to (1073741818,1073741818), in both `magic-compat` settings
 
 #### Scenario: Invalid arguments
 - **GIVEN** any state

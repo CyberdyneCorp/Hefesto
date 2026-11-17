@@ -14,6 +14,11 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/cif/read/read.hpp"
+#include "hefesto/db/cell.hpp"
+#include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/paint.hpp"
+#include "hefesto/platform/file_system.hpp"
 #include "input_fixture.hpp"
 
 namespace mask = hefesto::mask;
@@ -107,14 +112,14 @@ TEST_CASE("saturating scale arithmetic", "[cap:mask-input-styles][req:Scale norm
 
 TEST_CASE("extreme read coordinates and subdivisions stay bounded",
           "[cap:mask-input-styles][req:Conversion of read units to internal units]") {
-  Session s("style a\nscalefactor 2147483647\nlayer m1 A\nlayer ndc B");
+  Session s("style a\nscalefactor 1073741818\nlayer m1 A\nlayer ndc B");  // the largest scale accepted
   auto e = s.engine();
   REQUIRE(e.begin_cell("a").ok());
   REQUIRE(e.paint(0, db::Rect{db::kPlaneMin, db::kPlaneMin, db::kPlaneMax, db::kPlaneMax}).ok());
   REQUIRE(e.paint(1, mask::Polygon{{1, 1}, {db::kPlaneMax, 7}, {3, db::kPlaneMax}}).ok());
   REQUIRE(e.paint(0, mask::Polygon{{0, 0}, {1, 1}}).ok());  // too few vertices: nothing
   CHECK(e.scale_coord(std::numeric_limits<std::int32_t>::max(), mask::Snap::exact) <= db::kPlaneMax);
-  CHECK(e.scale_coord(1, mask::Snap::exact) >= 0);  // a subdivision by ~2^31 would overflow the grid: snapped
+  CHECK(e.scale_coord(1, mask::Snap::exact) >= 0);
   REQUIRE(e.end_cell().ok());
   e.rescale(kIntMax, 1);
   e.rescale(3, 7);
@@ -138,4 +143,42 @@ TEST_CASE("a huge array does not copy copyup planes", "[cap:mask-input-styles][r
     capped = capped || d.code == "MASK-INPUT-017";
   }
   CHECK(capped);
+}
+
+namespace {
+
+bool in_plane(const db::Rect& r) {
+  return r.x0 >= db::kPlaneMin && r.y0 >= db::kPlaneMin && r.x1 <= db::kPlaneMax && r.y1 <= db::kPlaneMax;
+}
+
+}  // namespace
+
+// Fuzz regression (fuzz_cifinput_section): a subdivision of the grid by a
+// scale factor near the plane limit multiplied the layout past it, and the
+// end-of-read DRC marking transformed a bounding box at INT32_MAX.
+TEST_CASE("a grid subdivision near the plane limit keeps the layout in the plane (Q-MASK-34)",
+          "[cap:mask-input-styles][req:Conversion of read units to internal units]") {
+  Session s("style a\nscalefactor 1073741818\nlayer m1 A");
+  s.editor.mask.input_styles = s.inputs;
+  auto top = s.editor.cells.create("top", s.editor.technology->plane_count());
+  REQUIRE(top.ok());
+  top.value()->flags().available = true;
+  REQUIRE(db::paint_type(*top.value(), *s.editor.technology, db::Rect{0, 0, 3, 3}, s.type("m1")).ok());
+  db::recompute_bbox(*top.value());
+  s.editor.edit_cell = top.value();
+  hefesto::platform::MemoryFileSystem files;
+  hefesto::cif::CifReadOptions options;
+  options.files = &files;
+  const auto r = hefesto::cif::read_text(
+      s.editor, "DS 1 1 1;\n9 child;\nL A; B 200 200 0 100;\nDF;\nC 1 T 0 1000;\nC 1 MX R 0 1 T 3000 0;\nE\n",
+      options);
+  CHECK(r.ok());
+  CHECK(s.editor.grid.internal > 1);  // the read subdivided the grid
+  s.editor.cells.for_each([](db::CellDef& def) {
+    CHECK(in_plane(def.bbox()));
+    for (const auto& use : def.uses()) {
+      CHECK(in_plane(use->bbox));
+    }
+  });
+  CHECK(top.value()->bbox().x1 == db::kPlaneMax);  // 3 * 536870909 clamped
 }

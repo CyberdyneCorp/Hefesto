@@ -268,6 +268,17 @@ TEST_CASE("scalefactor parsing", "[cap:mask-input-styles][req:Scalefactor statem
     CHECK(r.has("CIF input style \"a\" bad scalefactor; using 1."));
     CHECK(r.style().scale_factor == 1);
   }
+  SECTION("a value past the usable plane (Q-MASK-34)") {
+    for (const char* value : {"1073741819", "2147483647", "14444444444444"}) {
+      const auto r = read(std::string{"style a\nscalefactor "} + value);
+      CHECK(r.has("Scalefactor must be at most 1073741818."));
+      CHECK(r.has("CIF input style \"a\" bad scalefactor; using 1."));
+      CHECK(r.style().scale_factor == 1);
+    }
+    const auto r = read("style a\nscalefactor 1073741818");
+    CHECK_FALSE(r.has("Scalefactor must be at most 1073741818."));
+    CHECK(r.style().scale_factor == 1073741818);
+  }
   SECTION("no scalefactor") {
     const auto r = read("style a\nlayer m1 A");
     CHECK(r.has("CIF input style \"a\" bad scalefactor; using 1."));

@@ -5,6 +5,10 @@
 // "scalegrid command" steps 6 and 8) and the paint check of "Effect on
 // existing layout".
 //
+// Deviation (X-2 tier 1, Q-MASK-34): a scaled coordinate past the usable
+// plane is clamped to it; DBScaleValue reports an arithmetic overflow and
+// keeps the wrapped int.
+//
 // Ported from Magic VLSI 8.3.694 database/DBcellsrch.c (DBScaleValue,
 // DBScalePoint, DBScaleEverything, dbScaleCell, dbScalePlane,
 // dbTileScaleFunc) and utils/tech.c (checkForPaintFunc), Copyright (C)
@@ -32,7 +36,7 @@ constexpr std::int64_t kScaleLimit = std::int64_t{db::kInfinity} - 2;
 // multiple of d (Magic's "inexact" test, applied to the scaled value).
 bool scale_in_place(db::Coord& v, std::int64_t n, std::int64_t d) {
   const std::int64_t scaled = scale_value(v, n, d);
-  v = static_cast<db::Coord>(scaled);
+  v = scale_coord(v, n, d);
   return scaled % d != 0;
 }
 
@@ -171,6 +175,13 @@ std::int64_t scale_value(std::int64_t v, std::int64_t n, std::int64_t d) noexcep
   return 0;
 }
 
+db::Coord scale_coord(db::Coord v, std::int64_t n, std::int64_t d) noexcept {
+  if (v >= kScaleLimit || v <= -kScaleLimit) {
+    return v;  // an infinity marker, kept as is
+  }
+  return static_cast<db::Coord>(std::clamp<std::int64_t>(scale_value(v, n, d), db::kPlaneMin, db::kPlaneMax));
+}
+
 bool scale_layout(editor::EditorState& editor, std::int64_t n, std::int64_t d) {
   bool inexact = false;
   editor.cells.for_each([&](db::CellDef& def) { inexact = scale_cell(def, *editor.technology, n, d) || inexact; });
@@ -180,7 +191,7 @@ bool scale_layout(editor::EditorState& editor, std::int64_t n, std::int64_t d) {
     editor.box = box;
   }
   editor.windows.scale_all([n, d](db::Point p) {
-    return db::Point{static_cast<db::Coord>(scale_value(p.x, n, d)), static_cast<db::Coord>(scale_value(p.y, n, d))};
+    return db::Point{scale_coord(p.x, n, d), scale_coord(p.y, n, d)};
   });
   return inexact;
 }
