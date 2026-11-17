@@ -49,6 +49,26 @@ release notices.
 
 ### Changed
 
+- **Interaction operators with `magic-compat` ON.** `overlapping`,
+  `nonoverlapping`, `interacting` and `noninteracting` give an empty layer,
+  as Magic's cifInteractingRegions does (Q-MASK-417, compat); OFF keeps the
+  region filter. MASK-OP-021 replays.
+- **`squares`, `squares-grid` and `slots` with `magic-compat` ON** leave an
+  earlier region's tiles marked after its cuts, as Magic's
+  cifSquaresFillArea does, so a later ring-shaped region lays its own,
+  overlapping cut grid over them (Q-MASK-418, proposed). OFF clears each
+  region. The sky130_fd_io round trips MASK-RT-sky130_fd_io-f01/-f09
+  now match Magic's GDS.
+- **`expand` and `unexpand` with `magic-compat` ON** follow Magic's
+  dbExpandFunc: they act below instances that stay unexpanded, use its
+  surround test, test only the first array element under the box, and
+  `expand all toggle` expands (Q-MASK-419, proposed). OFF is unchanged.
+- **Selected instances below array elements** are found by `edit`,
+  `expand selection`, `flatten -doinplace` and the `cellname` options, and
+  with `magic-compat` ON they are taken in Magic's SelEnumCells order.
+  `flatten`, the wiring commands and `select cell` search each cell's use
+  index as Magic does.
+
 - **File prompts and `writeall` with `magic-compat` OFF.** `promptload
   gds` reads the picked file when its root name does not find it
   (Q-MASK-136); `writeall` writes an undefined cell as an empty, stamped
@@ -135,6 +155,16 @@ release notices.
   GDS cells are in place for the coming `gds read`.
 
 ### Fixed
+
+- **GDS and CIF reads of nearly parallel 45-degree edges** tile the read
+  planes as Magic does: read-plane triangles get their own budget (up to
+  4096 pieces each from a per-read pool) instead of the 512-piece database
+  limit, which filled long chains as rectangles and changed the derived
+  layers of gf180mcu_fd_io's POWER_RAIL_COR_1 (Q-MODEL-37, proposed).
+- **Operator errors of a write reach the feedback list.** A
+  `no room for contacts in area!` from `squares`, `squares-grid` or `slots`
+  during `gds write` or `cif write` is now a feedback entry, as in Magic,
+  not only a line on the console.
 
 - **GDS read of rotated or mirrored arrays.** Flatten copies and
   copy-up copies of an AREF land on the right elements: the element
