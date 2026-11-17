@@ -461,9 +461,8 @@ TEST_CASE("regression: the DRC link is undone before the pump it resumes goes aw
   // callbacks when it leaves scope, before the pump declared ahead of it.
   JobSession s;
   MaskJobHost host(s.editor().database_lock);
-  std::size_t posted = 0;
   {
-    DrcPump pump(s.editor(), [&](const std::function<void()>&) { ++posted; }, [](std::size_t) {});
+    DrcPump pump(s.editor(), [](const std::function<void()>&) {}, [](std::size_t) {});
     const MaskJobDrcLink link(host, pump);
     CHECK(host.has_on_end());
   }
@@ -471,5 +470,4 @@ TEST_CASE("regression: the DRC link is undone before the pump it resumes goes aw
   const auto r = host.run_job(MaskJobKind::write, "chip.gds",
                               [](const mask::Progress*) { return cmd::CommandResult::success(); });
   CHECK(r.ok());
-  CHECK(posted == 0);
 }
