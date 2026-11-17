@@ -171,6 +171,7 @@ Hefesto SHALL parse `scalefactor VALUE [...] [UNIT]` into a pair `(S, M)` of pos
 2. If `VALUE` is `I.F` with `F` of `k` digits, let `n = atoi(I)*10^k + atoi(F)` and `d = 10^k`; reduce `n/d` by their greatest common divisor; `S = n`, `M = d`.
 3. If there are 3 or 4 fields, the last field is examined: if it begins with `nanom` the unit factor is 10; if it begins with `angstr` it is 100; anything else (including `calmaonly`) is ignored. With `magic-compat` ON (the default) `M` is SET to the unit factor, overwriting the value from step 2, as in Magic; with it OFF `M` is multiplied by it, as on output (Q-MASK-300, resolution: compat). In both settings the technology loader warns when a decimal `VALUE` is combined with a unit keyword, the case where the settings differ.
 4. If `S <= 0` the statement is an error and `S` is set to 0. At the end of the section, a style with `S <= 0` is reported ("bad scalefactor; using 1") and `S` becomes 1.
+5. If `S` is above 1073741818 (the usable plane, db::kPlaneMax) the statement is an error, `Scalefactor must be at most 1073741818.`, and `S` is set to 0, so the style also takes 1 at the end of the section. This holds in both `magic-compat` settings (Q-MASK-34, approved fix; a fixed deviation, X-2 tier 1): Magic reads the value with atoi, which is undefined past INT_MAX, and a read's grid subdivision by up to `S` multiplies the layout past the plane.
 
 The units of all `grow`, `grow-grid` and `shrink` distances in the style are read units, that is `1/M` centimicrons, with `M` as obtained here (see Q-MASK-304).
 
@@ -192,6 +193,11 @@ Compatibility: exact
 - **GIVEN** `scalefactor 5 nanometers`
 - **WHEN** the statement is parsed
 - **THEN** `S = 5` and `M = 10`, so one internal unit is 5 nm and `grow 10` means 10 nm
+
+#### Scenario: Scale factor past the usable plane
+- **GIVEN** `scalefactor 14444444444444` (or any value above 1073741818)
+- **WHEN** the statement is parsed
+- **THEN** `Scalefactor must be at most 1073741818.` is reported and the style ends with `S = 1` after `bad scalefactor; using 1.`, in both `magic-compat` settings
 
 #### Scenario: Decimal scale with nanometers overwrites the multiplier
 - **GIVEN** `scalefactor 2.5 nanometers`
@@ -451,7 +457,7 @@ Compatibility: exact
 
 Hefesto SHALL convert a read-unit coordinate `c` to internal units with one of four modes — exact, half-up, half-down, any — as follows. If `c mod S == 0` the result is `c / S`. Otherwise let `g = gcd(|c|, S)`, `rem = |c mod S| / g`, `den = S / g`. If rescaling is disallowed (option `cif rescale no`, see capability `cif-format-io`) or the grid limit refuses a subdivision by `den`, the mode becomes "any". Then:
 
-- **exact:** subdivide the internal grid by `den` (every database coordinate and every technology distance is multiplied by `den`; `S := S/den` keeping `M`, see "Scale normalization" with `reduceFully = false`; the output style is rescaled correspondingly) and return `c / S` with the new `S`. Emit "Input off lambda grid by REM/DEN; grid redefined." at most once per read.
+- **exact:** subdivide the internal grid by `den` (every database coordinate and every technology distance is multiplied by `den`, a database coordinate past the usable plane being clamped to ±1073741818 (Q-MASK-34, see tech-loading-and-scaling "scalegrid command" step 6); `S := S/den` keeping `M`, see "Scale normalization" with `reduceFully = false`; the output style is rescaled correspondingly) and return `c / S` with the new `S`. Emit "Input off lambda grid by REM/DEN; grid redefined." at most once per read.
 - **half-up / half-down:** if `den > 2`, first subdivide the grid by `den/2` when `den` is even, or by `den` when odd (same warning). Then return `(c + floor(S/2)) / S` for half-up or `(c - floor(S/2)) / S` for half-down, using C integer division (truncation toward zero), with the possibly new `S`.
 - **any:** return `(c + floor((S-1)/2)) / S` if `c >= 0`, or `(c - floor(S/2)) / S` if `c < 0`, with truncating division; ties round toward negative infinity. Emit "Input off lambda grid by REM/DEN; snapped to grid." at most once per read.
 

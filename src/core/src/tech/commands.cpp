@@ -435,8 +435,7 @@ std::optional<std::pair<std::int64_t, std::int64_t>> parse_scalegrid(const std::
 }
 
 db::Rect scale_rect_copy(const db::Rect& r, std::int64_t n, std::int64_t d) {
-  return db::Rect{static_cast<db::Coord>(scale_value(r.x0, n, d)), static_cast<db::Coord>(scale_value(r.y0, n, d)),
-                  static_cast<db::Coord>(scale_value(r.x1, n, d)), static_cast<db::Coord>(scale_value(r.y1, n, d))};
+  return db::Rect{scale_coord(r.x0, n, d), scale_coord(r.y0, n, d), scale_coord(r.x1, n, d), scale_coord(r.y1, n, d)};
 }
 
 std::string scale_report(const GridScale& grid) {

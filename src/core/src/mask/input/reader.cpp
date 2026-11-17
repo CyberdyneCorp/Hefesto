@@ -21,7 +21,8 @@
 // name never matches (Magic reads before the name); a full CIF layer table
 // does not fall back to the type alias table (Magic would set layout type
 // bits in a CIF layer mask); `labels` on an `ignore`d layer does not read
-// the plane of type -1.
+// the plane of type -1; a `scalefactor` above db::kPlaneMax is refused
+// (Q-MASK-34; Magic's atoi and grid subdivision overflow on it).
 //
 // Owner: INPUT (openspec/changes/m5-mask-gds-cif/design.md D2).
 
@@ -31,6 +32,7 @@
 #include <cctype>
 #include <utility>
 
+#include "hefesto/db/geometry.hpp"
 #include "hefesto/diag/codes.hpp"
 #include "hefesto/mask/style/core.hpp"
 #include "mask/style/text.hpp"
@@ -258,6 +260,11 @@ void Reader::scalefactor_line(const Tokens& t) {
   if (source.value <= 0) {
     source.value = 0;
     messages_.error("Scalefactor must be a strictly positive value.");
+  } else if (source.value > db::kPlaneMax) {
+    // Q-MASK-34: a read subdivides the grid by up to S and multiplies the
+    // layout by it, so S past the usable plane is refused (Magic overflows).
+    source.value = 0;
+    messages_.error("Scalefactor must be at most " + std::to_string(db::kPlaneMax) + ".");
   }
   style_.scale_source = source;
 }
