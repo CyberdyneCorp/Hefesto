@@ -68,6 +68,7 @@ struct ExpandWalk {
   bool toggle;
   CommandContext& ctx;
   std::vector<std::string> unavailable;
+  bool too_deep = false;  // a search stopped at db::kMaxSearchDepth
 
   [[nodiscard]] bool matches(const db::Rect& bbox) const {
     switch (mode) {
@@ -103,23 +104,33 @@ struct ExpandWalk {
   /// DBExpandAll from the window's root.
   void run(const db::CellDef& root) {
     if (ctx.project().compat.magic_compat) {
-      walk_magic(root, mode == Mode::all ? db::whole_plane() : box);
+      walk_magic(root, mode == Mode::all ? db::whole_plane() : box, 0);
     } else {
-      walk(root, db::kIdentity);
+      walk(root, db::kIdentity, 0);
     }
+  }
+
+  /// Both walks recurse once per level; they stop below db::kMaxSearchDepth
+  /// in both modes (a crash has no Magic output to match).
+  [[nodiscard]] bool deeper_allowed(std::size_t depth) {
+    if (depth + 1 < db::kMaxSearchDepth) {
+      return true;
+    }
+    too_deep = true;
+    return false;
   }
 
   /// magic-compat OFF: acts on every matching instance at any depth reached
   /// through instances that are expanded after the action (`acting`),
   /// descending into an expanded use in the frame of element (xlo, ylo).
-  void walk(const db::CellDef& def, const db::Transform& to_root) {
+  void walk(const db::CellDef& def, const db::Transform& to_root, std::size_t depth) {
     const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
     for (db::CellUse* use : search(def, area)) {
       if (matches(db::apply(to_root, use->bbox))) {
         act(*use);
       }
-      if (window.is_expanded(*use)) {
-        walk(*use->def, db::compose(to_root, use->transform));
+      if (window.is_expanded(*use) && deeper_allowed(depth)) {
+        walk(*use->def, db::compose(to_root, use->transform), depth + 1);
       }
     }
   }
@@ -132,7 +143,7 @@ struct ExpandWalk {
   /// the search goes on into its child, expanded or not, over `area` in that
   /// frame (DBCellSrArea reads an unavailable child first; a child that
   /// cannot be read is not searched).
-  void walk_magic(const db::CellDef& def, const db::Rect& area) {
+  void walk_magic(const db::CellDef& def, const db::Rect& area, std::size_t depth) {
     for (db::CellUse* use : search(def, area)) {
       const db::ElementRange r = db::array_overlap(*use, area);
       if (r.xlo > r.xhi || r.ylo > r.yhi) {
@@ -140,8 +151,8 @@ struct ExpandWalk {
       }
       const db::Transform et = db::element_transform(*use, r.xlo, r.ylo);
       const db::Rect child_area = mode == Mode::all ? area : db::apply(db::invert(et), area);
-      if (act_magic(*use, child_area) && read_for_search(*use->def)) {
-        walk_magic(*use->def, child_area);
+      if (act_magic(*use, child_area) && deeper_allowed(depth) && read_for_search(*use->def)) {
+        walk_magic(*use->def, child_area, depth + 1);
       }
     }
   }
@@ -318,6 +329,12 @@ CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand)
   ExpandWalk walk{w, t.value().editor.windows, box.value_or(db::Rect{}), args->mode, expand, toggle, ctx, {}};
   walk.run(*w.root());
   report_unavailable(ctx, walk.unavailable);
+  if (walk.too_deep) {
+    ctx.emit(diag::make(codes::kExpandDepth, std::string(expand ? "expand" : "unexpand") +
+                                                 ": the hierarchy is deeper than " +
+                                                 std::to_string(db::kMaxSearchDepth) +
+                                                 " levels; instances below that depth were not changed."));
+  }
   t.value().editor.windows.notify(w.id(), Change::expansion);
   return CommandResult::success();
 }

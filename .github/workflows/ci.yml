@@ -60,11 +60,6 @@ jobs:
         run: python3 scripts/check_third_party_notices.py
       - name: Core has no UI, GPU, Raven or process includes
         run: python3 scripts/check_core_includes.py
-      # M5 exit gate (openspec/changes/m5-mask-gds-cif tasks.md 15.6): fails while a case in
-      # tests/golden/deviations.toml is still deferred to M5 (m5_cases.BLOCKERS and the hand-written
-      # MASK-UO entries).
-      - name: No golden case deferred to M5 (M5 exit gate)
-        run: python3 tools/golden/authoring/m5_cases.py --exit-check
       - name: Requirement coverage report (report-only)
         run: |
           mkdir -p coverage-report
@@ -93,6 +88,12 @@ jobs:
         run: |
           bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint -color
+      # M5 exit gate (openspec/changes/m5-mask-gds-cif tasks.md 15.6): fails while a case in
+      # tests/golden/deviations.toml is still deferred to M5 (m5_cases.BLOCKERS and the hand-written
+      # MASK-UO entries) or an open question cited by an M5 capability has no Resolution line
+      # (scripts/check_milestone_readiness.py --milestone M5). Last, so the other checks still run.
+      - name: No golden case deferred to M5 and no open M5 decision (M5 exit gate)
+        run: python3 tools/golden/authoring/m5_cases.py --exit-check
 
   # Pinned reference data of the PDK and Magic-reference tests (design D15 of openspec/changes/m3-drc and
   # openspec/changes/m4-scripting; docs/building.md, "Reference data for tests"). Each PDK data set (sky130,

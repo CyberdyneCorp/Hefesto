@@ -22,8 +22,6 @@
 #include "hefesto/db/use_index.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
-#include "hefesto/cell/hier.hpp"
-#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "select/ops.hpp"

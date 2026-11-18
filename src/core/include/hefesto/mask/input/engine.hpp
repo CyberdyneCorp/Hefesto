@@ -68,11 +68,18 @@ namespace hefesto::mask {
 /// (db::NMBudget, Q-MODEL-35), past which a piece is filled as a rectangle
 /// and the read planes' tiling stops being Magic's. A read triangle
 /// descends into at most kPieces pieces, drawn from a pool that starts at
-/// kPool and grows by kPerTriangle for every triangle of a polygon read, at
-/// most kPolygonGrant per polygon: the pieces of a read stay linear in the
-/// polygons it reads, and each paint keeps the bound of one chain.
+/// kPool and grows by kPerTriangle for every triangle a read paints (a
+/// polygon's triangles, at most kPolygonGrant per polygon, and every split
+/// tile a rescale or flatten copy repaints).
+///
+/// Work: each piece of a chain works next to the tiles the pieces before it
+/// left, so one paint of n pieces costs about n^2 tile steps: at most
+/// kPieces^2 (about 1.05M) per paint, against 512^2 (about 0.26M) for a
+/// database paint. The pool bounds the pieces of a whole read, so the
+/// read's non-Manhattan work stays below kPieces * (kPool + kPerTriangle *
+/// triangles): about 1.05M tile steps per triangle read, at most.
 struct ReadTriangleBudget {
-  static constexpr std::size_t kPieces = 4096;
+  static constexpr std::size_t kPieces = 1024;
   static constexpr std::size_t kPool = std::size_t{1} << 16;
   static constexpr std::size_t kPerTriangle = 1024;
   static constexpr std::size_t kPolygonGrant = std::size_t{1} << 16;
@@ -243,5 +250,14 @@ struct ReadUnitValue {
 /// and takes those it uses from `budget`'s pool.
 void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat,
                          ReadTriangleBudget& budget);
+
+/// Repaints a split tile into a read plane as DBNMPaintPlane does, without
+/// merging: a read-unit rescale (dbScalePlane) or a flatten copy
+/// (gdsCopyPaintFunc, the CIF reader's copy of a saved cell). The pool
+/// grows by one triangle's grant and the paint draws from it as
+/// paint_read_triangle does, so a repaint is not cut short by the 512
+/// pieces of a database paint (Q-MODEL-37).
+void repaint_read_triangle(MaskPlane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
+                           bool magic_compat, ReadTriangleBudget& budget);
 
 }  // namespace hefesto::mask

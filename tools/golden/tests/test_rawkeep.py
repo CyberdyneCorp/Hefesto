@@ -7,6 +7,7 @@ cap:hefesto-testing-strategy req:Golden compatibility suite
 from __future__ import annotations
 
 import contextlib
+import gzip
 import io
 import sys
 import tempfile
@@ -14,6 +15,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
+import capture
 import raw_diff
 import replay
 from goldenlib.rawkeep import FEEDBACK_PROBE, RawKeep, add_probe, written_files
@@ -59,7 +61,7 @@ class KeepTest(unittest.TestCase):
             target = RawKeep(root).keep("CASE-1", work, b"out\n", b"err\n")
             self.assertEqual((target / "stdout.txt").read_bytes(), b"out\n")
             self.assertEqual((target / "stderr.txt").read_bytes(), b"err\n")
-            self.assertEqual((target / "files" / "out.gds").read_bytes(), b"gds")
+            self.assertEqual(gzip.decompress((target / "files" / "out.gds.gz").read_bytes()), b"gds")
             self.assertEqual((target / "files" / "sub" / "log.txt").read_bytes(), b"log")
             self.assertFalse((target / "files" / "input").exists())
 
@@ -89,6 +91,44 @@ class KeepTest(unittest.TestCase):
             RawKeep(work / "raw", True, "catch {save probe_x}").prepare(case, work)
             self.assertEqual(script.read_text(encoding="utf-8"),
                              "puts a\n" + FEEDBACK_PROBE + "catch {save probe_x}\nquit -noprompt\n")
+
+    # Regression (round 7 review): the capture step got the probes, whose Tcl output went to the
+    # streams and so into the expected/ files it uploads.
+    def test_capture_rejects_the_probes_without_verify(self):
+        for extra in (["--feedback-probe"], ["--probe-tcl", "probe.tcl"]):
+            with self.subTest(extra=extra), contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit):
+                capture.parse_args(["--keep-raw", "raw", *extra, str(CASE)])
+
+    # Regression (round 7 review): every written file was kept without a size limit, so a full
+    # round-trip shard could fill the runner's disk.
+    def test_gds_is_gzipped_and_files_past_the_caps_are_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work, root = Path(tmp) / "work", Path(tmp) / "raw"
+            work.mkdir()
+            (work / "out.gds").write_bytes(b"\0" * 4096)
+            (work / "big.txt").write_bytes(b"x" * 300)
+            (work / "small.txt").write_bytes(b"y" * 10)
+            keep = RawKeep(root, max_file=200, max_total=1000)
+            target = keep.keep("CASE-1", work, b"out\n", b"")
+            self.assertEqual(gzip.decompress((target / "files" / "out.gds.gz").read_bytes()), b"\0" * 4096)
+            self.assertFalse((target / "files" / "out.gds").exists())
+            self.assertFalse((target / "files" / "big.txt").exists())
+            self.assertTrue((target / "files" / "small.txt").exists())
+            self.assertIn("big.txt", (target / "skipped.txt").read_text(encoding="utf-8"))
+            self.assertLessEqual(keep.kept, 1000)
+            (work / "more.txt").write_bytes(b"z" * 190)
+            for case in ("CASE-2", "CASE-3", "CASE-4", "CASE-5", "CASE-6"):
+                keep.keep(case, work, b"", b"")
+            self.assertLessEqual(keep.kept, 1000)  # the total cap holds across cases
+            self.assertTrue((root / "CASE-6" / "skipped.txt").is_file())
+
+    def test_raw_diff_reads_a_gzipped_gds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "out.gds"
+            (Path(tmp) / "out.gds.gz").write_bytes(gzip.compress(b"gds"))
+            self.assertEqual(raw_diff.read(path), b"gds")
+            self.assertIsNone(raw_diff.read(Path(tmp) / "none.gds"))
 
     def test_staged_cadroot_is_not_kept(self):
         with tempfile.TemporaryDirectory() as tmp:

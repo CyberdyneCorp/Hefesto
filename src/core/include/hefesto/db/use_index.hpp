@@ -163,6 +163,13 @@ bool uses_overlapping(const CellDef& def, const Rect& area, const compat::Compat
 /// The writers' prepare phase makes it before enumerating (design D7).
 void search_subtree(const CellDef& root, const Rect& area);
 
+/// The deepest level the recursive hierarchy searches of commands descend
+/// to (find_selected_use, `expand`/`unexpand`), as gds::kMaxSubtreeDepth
+/// bounds the writers. Magic has no bound; a GDS read limits only nested
+/// look-ahead reads, so a library written leaf-first can be deeper than the
+/// stack allows. Only crafted input reaches it.
+inline constexpr std::size_t kMaxSearchDepth = 1024;
+
 /// One array element of a use: a step of a path through the instance tree.
 struct UseElement {
   CellUse* use = nullptr;
@@ -181,9 +188,11 @@ using DefReader = std::function<void(CellDef&)>;
 /// child, expanded or not (`read` first reads an unavailable child, as
 /// DBCellSrArea does; a child still not found is not searched), until a use
 /// with the same definition and array whose element maps to the root by
-/// `selected.transform` is found. The searches go through the use index
-/// under `compat`, so they bin it as Magic's do. Returns the elements from
-/// a use of `root` down to the found one (the last); empty when none.
+/// `selected.transform` is found (with magic-compat OFF also its id). The
+/// searches go through the use index under `compat`, so they bin it as
+/// Magic's do; they descend at most kMaxSearchDepth levels. Returns the
+/// elements from a use of `root` down to the found one (the last); empty
+/// when none.
 [[nodiscard]] std::vector<UseElement> find_selected_use(const CellDef& root, const CellUse& selected,
                                                         const compat::CompatSettings& compat,
                                                         const DefReader& read = {});

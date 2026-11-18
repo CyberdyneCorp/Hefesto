@@ -65,7 +65,10 @@ release notices.
   `expand all toggle` expands (Q-MASK-419, proposed). OFF is unchanged.
 - **Selected instances below array elements** are found by `edit`,
   `expand selection`, `flatten -doinplace` and the `cellname` options, and
-  with `magic-compat` ON they are taken in Magic's SelEnumCells order.
+  with `magic-compat` ON they are taken in Magic's SelEnumCells order (the
+  `array` queries report them in its reverse, as Magic does). With
+  `magic-compat` OFF the instance id must match too, so of two coincident
+  instances of one cell the selected one is used.
   `flatten`, the wiring commands and `select cell` search each cell's use
   index as Magic does.
 
@@ -158,9 +161,11 @@ release notices.
 
 - **GDS and CIF reads of nearly parallel 45-degree edges** tile the read
   planes as Magic does: read-plane triangles get their own budget (up to
-  4096 pieces each from a per-read pool) instead of the 512-piece database
+  1024 pieces each from a per-read pool) instead of the 512-piece database
   limit, which filled long chains as rectangles and changed the derived
-  layers of gf180mcu_fd_io's POWER_RAIL_COR_1 (Q-MODEL-37, proposed).
+  layers of gf180mcu_fd_io's POWER_RAIL_COR_1 (Q-MODEL-37, proposed). A
+  read-unit rescale and a flatten copy repaint the read planes' triangles
+  with the same budget.
 - **Operator errors of a write reach the feedback list.** A
   `no room for contacts in area!` from `squares`, `squares-grid` or `slots`
   during `gds write` or `cif write` is now a feedback entry, as in Magic,
@@ -275,6 +280,9 @@ release notices.
 
 ### Security
 
+- **Deep hierarchies no longer overflow the stack in `expand` or the
+  selection's instance search.** Both descend at most 1024 levels;
+  `expand` and `unexpand` report VIEW-EXPAND-003 when they stop.
 - **Compressed GDS input is capped.** A `.gds.gz` inflates to at most 256
   times its compressed size (at least 1 GiB); past that the read stops
   with GDS-STREAM-006 instead of filling memory. New fuzz targets cover

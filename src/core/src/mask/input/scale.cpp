@@ -144,7 +144,7 @@ void ReadEngine::rescale(std::int64_t n, std::int64_t d) {
   const auto scale_all = [&](std::vector<MaskPlane*>& planes) {
     for (MaskPlane* plane : planes) {
       if (plane != nullptr) {
-        input_detail::scale_plane(*plane, n, d, compat_.magic_compat);
+        input_detail::scale_plane(*plane, n, d, compat_.magic_compat, state_->triangles);
       }
     }
   };
@@ -161,21 +161,23 @@ void ReadEngine::rescale(std::int64_t n, std::int64_t d) {
 
 namespace input_detail {
 
-void paint_tile(MaskPlane& into, const db::TileView& tile, const db::Rect& area, bool magic_compat) {
+void paint_tile(MaskPlane& into, const db::TileView& tile, const db::Rect& area, bool magic_compat,
+                ReadTriangleBudget& budget) {
   if (tile.split) {
-    (void)into.paint_triangle(area, tile.diagonal, tile.right_side, magic_compat);
+    repaint_read_triangle(into, area, tile.diagonal, tile.right_side, magic_compat, budget);
   } else {
     (void)into.paint(area);
   }
 }
 
-void scale_plane(MaskPlane& plane, std::int64_t n, std::int64_t d, bool magic_compat) {
+void scale_plane(MaskPlane& plane, std::int64_t n, std::int64_t d, bool magic_compat,
+                 ReadTriangleBudget& budget) {
   const std::vector<db::TileView> tiles = plane.solid_tiles();
   plane.clear();
   const auto scale = [n, d](db::Coord v) { return clamp_coord(tech::scale_value(v, n, d)); };
   for (const db::TileView& t : tiles) {
     const db::Rect r{scale(t.area.x0), scale(t.area.y0), scale(t.area.x1), scale(t.area.y1)};
-    paint_tile(plane, t, r, magic_compat);
+    paint_tile(plane, t, r, magic_compat, budget);
   }
 }
 

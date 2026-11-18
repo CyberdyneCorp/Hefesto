@@ -278,13 +278,28 @@ void ReadEngine::adjust_labels(db::CellDef& cell) {
 
 // --- lower level ------------------------------------------------------------------
 
-void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat,
-                         ReadTriangleBudget& budget) {
+namespace {
+
+// DBNMPaintPlane with at most min(kPieces, pool) pieces, taken from the pool.
+void paint_budgeted(MaskPlane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
+                    bool magic_compat, ReadTriangleBudget& budget) {
   const std::size_t granted = std::min(ReadTriangleBudget::kPieces, budget.pool);
   db::NMBudget pieces{granted};
-  (void)plane.paint_triangle(piece.area, piece.triangle->diagonal, piece.triangle->right_side, magic_compat,
-                             &pieces);
+  (void)plane.paint_triangle(area, diagonal, right_side, magic_compat, &pieces);
   budget.pool -= granted - pieces.pieces;
+}
+
+}  // namespace
+
+void repaint_read_triangle(MaskPlane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
+                           bool magic_compat, ReadTriangleBudget& budget) {
+  budget.add_polygon(std::size_t{1});
+  paint_budgeted(plane, area, diagonal, right_side, magic_compat, budget);
+}
+
+void paint_read_triangle(MaskPlane& plane, const db::PolygonPiece& piece, bool magic_compat,
+                         ReadTriangleBudget& budget) {
+  paint_budgeted(plane, piece.area, piece.triangle->diagonal, piece.triangle->right_side, magic_compat, budget);
   // CIFMakeManhattanPath merges the split tiles around each triangle it
   // paints (DBMergeNMTiles over the triangle's area grown by one).
   const db::Rect& a = piece.area;
@@ -333,7 +348,8 @@ void ReadEngine::copy_saved_planes(const db::CellDef& child, const db::Transform
             moved.diagonal = side.diagonal;
             moved.right_side = side.right_side;
           }
-          input_detail::paint_tile(*planes[layer], moved, db::apply(t, tile.area), compat_.magic_compat);
+          input_detail::paint_tile(*planes[layer], moved, db::apply(t, tile.area), compat_.magic_compat,
+                                   state_->triangles);
         }
       }
     }

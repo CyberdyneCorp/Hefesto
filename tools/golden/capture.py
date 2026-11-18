@@ -189,7 +189,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     which.add_argument("--only-missing", action="store_true", help="keep cases without expected/")
     rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
-    args.raw = rawkeep.from_args(args, parser)
+    args.raw = rawkeep.from_args(args, parser, capturing=not args.verify)
     return args
 
 

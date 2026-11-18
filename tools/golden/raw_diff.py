@@ -17,6 +17,7 @@ Takes the two ``<DIR>/<case-id>/`` directories written by ``capture.py --keep-ra
 from __future__ import annotations
 
 import argparse
+import gzip
 import re
 import sys
 from collections import Counter
@@ -103,7 +104,11 @@ def feedback_report(magic: str, hefesto: str, limit: int) -> list[str]:
 
 
 def read(path: Path) -> bytes | None:
-    return path.read_bytes() if path.is_file() else None
+    """The file's bytes, or those of its gzipped copy ``<path>.gz`` (goldenlib/rawkeep.py); None if neither."""
+    if path.is_file():
+        return path.read_bytes()
+    packed = path.with_name(path.name + ".gz")
+    return gzip.decompress(packed.read_bytes()) if packed.is_file() else None
 
 
 def report(magic_dir: Path, hefesto_dir: Path, limit: int) -> list[str]:

@@ -502,6 +502,7 @@ TEST_CASE("Use index: the selected-use search descends through array elements an
     db::CellUse selected;  // the selection's copy of leaf 3 of element 1
     selected.def = &leaf;
     selected.transform = db::translation(2300, 0);
+    selected.id = leaves[3]->id;  // matched with magic-compat OFF, not by Magic
     const std::vector<db::UseElement> chain = db::find_selected_use(top, selected, compat);
     REQUIRE(chain.size() == 2);
     CHECK(chain[0].use == arr);

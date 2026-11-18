@@ -50,6 +50,9 @@ class ShardTable(unittest.TestCase):
             with self.subTest(shard=shard.name):
                 self.assertEqual(fetch.DATA_SETS[shard.gds].family, fetch.DATA_SETS[shard.tech].family)
                 self.assertGreater(shard.timeout, 0)
+                # keep-raw also replays the shard with Hefesto (round 7 review): more time, within 360.
+                self.assertGreater(shard.timeout_raw, shard.timeout)
+                self.assertLessEqual(shard.timeout_raw, 360)
 
     def test_library_of_a_case_directory(self):
         self.assertEqual(shards.library("tests/golden/MASK/cases/MASK-RT-sky130_fd_sc_hd"), "sky130_fd_sc_hd")
@@ -61,7 +64,7 @@ class ShardTable(unittest.TestCase):
         include = shards.matrix(cases)["include"]
         self.assertEqual([row["shard"] for row in include], ["sky130-io", "ihp"])
         self.assertEqual(include[1], {"shard": "ihp", "tech": "ihp", "gds": "ihp-gds", "gds_out": "ihp_gds",
-                                      "timeout": 45})
+                                      "timeout": 45, "timeout_raw": 55})
         self.assertEqual(shards.matrix(["tests/golden/MASK/cases/MASK-OS-001"]), {"include": []})
 
     def test_shard_cases_and_unknown_library(self):

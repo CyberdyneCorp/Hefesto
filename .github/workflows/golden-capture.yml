@@ -35,7 +35,10 @@
 # also save their feedback list (out.feedback.tcl: the CIF "parent and child disagree" entries with cell,
 # layer and area). `probe-tcl` (Tcl text) runs in both before the final quit, e.g. a `save` of the
 # cells under suspicion to compare the two reads as .mag files. tools/golden/raw_diff.py compares the
-# two directories of a case.
+# two directories of a case. The probes run only in the verify step (a capture writes expected/, which
+# their output must not reach). goldenlib/rawkeep.py gzips the kept GDS files and keeps at most 256 MiB
+# per file and 2 GiB per side; with keep-raw a shard's timeout is its `timeout_raw` (scripts/gds_rt_shards.py),
+# which adds Hefesto's replay of the shard.
 
 name: Golden capture
 
@@ -379,7 +382,7 @@ jobs:
     # to its own fetch.
     if: ${{ !cancelled() && needs.plan.outputs.rt_any == 'true' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ matrix.timeout }}
+    timeout-minutes: ${{ inputs.keep-raw && matrix.timeout_raw || matrix.timeout }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.rt_matrix) }}
@@ -475,13 +478,10 @@ jobs:
           SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
           export SOURCE_DATE_EPOCH
           mapfile -t cases < cases.txt
+          # keep-raw without the probes: capture.py rejects them here, since their output would reach
+          # the expected/ files this step uploads.
           raw=()
           if [ "$KEEP_RAW" = "true" ]; then raw=(--keep-raw raw/magic); fi
-          if [ "$KEEP_RAW" = "true" ] && [ "$FEEDBACK_PROBE" = "true" ]; then raw+=(--feedback-probe); fi
-          if [ "$KEEP_RAW" = "true" ] && [ -n "$PROBE_TCL" ]; then
-            printf '%s\n' "$PROBE_TCL" > raw-probe.tcl
-            raw+=(--probe-tcl raw-probe.tcl)
-          fi
           status=0
           python3 tools/golden/capture.py --runner container --image hefesto-golden:ci \
             --only-missing "${raw[@]}" "${cases[@]}" 2>&1 | tee capture.log || status=$?

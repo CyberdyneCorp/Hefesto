@@ -14,7 +14,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-None remain (all 105 approved as drafted on 2026-11-13). Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
+None remain of the 105 drafted on 2026-11-13 (all approved as drafted). Four later rows wait for the user: Q-MASK-418, Q-MASK-419, Q-MASK-420 and Q-MODEL-37 (see the pending line under Counts). Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
 
 ## Effort and scope notes
 
@@ -196,7 +196,9 @@ Every row is approved (2026-11-13, or on the date the row gives for later entrie
 | fix | 22 | Q-TECH-33, 10, 30, 34, 35, 126, 128, 135, 201, 209, 212, 219, 222, 233, 234, 303, 314, 318, 332, 407, 412, 416 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 123: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16), and Q-MASK-34, Q-MASK-35, Q-TECH-33 and Q-MASK-417 of 2026-11-17: 127 in all. Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in the round 5 review, Q-MASK-21 on 2026-11-17 (its ON truncation is no longer observable).
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 127: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16), and Q-MASK-34, Q-MASK-35, Q-TECH-33 and Q-MASK-417 of 2026-11-17: 127 in all. Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in the round 5 review, Q-MASK-21 on 2026-11-17 (its ON truncation is no longer observable).
+
+Pending (proposed, not in the table): Q-MASK-418 (squares and slots clear only a region's start tile), Q-MASK-419 (`expand`/`unexpand` with magic-compat OFF), Q-MASK-420 (`maxrect` clears only a region's start tile) and Q-MODEL-37 (the read-plane triangle budget). They wait for the user's decision; `m5_cases.py --exit-check` fails while an M5 capability cites one of them.
 
 ## User decisions of 2026-11-14 (round 2 review)
 

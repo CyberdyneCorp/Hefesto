@@ -457,13 +457,26 @@ struct SelectedUseSearch {
     });
   }
 
+  // selEnumCFunc2's match: definition, transform and array. Magic does not
+  // compare the id, so with magic-compat ON the first coincident use found
+  // is taken; OFF also requires the selection copy's id, so two coincident
+  // instances of one cell resolve to the selected one.
+  [[nodiscard]] bool is_selected(const CellUse& u, const Transform& t) const {
+    return u.def == selected.def && t == selected.transform && u.array == selected.array &&
+           (compat.magic_compat || u.id == selected.id);
+  }
+
   // One element: the match, else checkChildren (the child's own search).
   bool element(CellUse& u, std::int32_t x, std::int32_t y, const Rect& area, const Transform& to_root) {
     const Transform et = element_transform(u, x, y);
     const Transform t = compose(to_root, et);
     chain.push_back(UseElement{&u, x, y});
-    if (u.def == selected.def && t == selected.transform && u.array == selected.array) {
+    if (is_selected(u, t)) {
       return false;
+    }
+    if (chain.size() >= kMaxSearchDepth) {
+      chain.pop_back();
+      return true;  // no deeper: a crafted hierarchy must not overflow the stack
     }
     if (read && !u.def->flags().available) {
       read(*u.def);

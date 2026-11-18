@@ -476,3 +476,33 @@ TEST_CASE("regression: expand all toggle expands with magic-compat ON, as CmdExp
     CHECK(c.window().is_expanded(*c.m) == magic_compat);
   }
 }
+
+TEST_CASE("regression: expand stops at the hierarchy depth limit instead of overflowing the stack",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // The magic-compat ON walk searches below every use, expanded or not, and
+  // both walks recurse once per level; a GDS library written leaf-first can
+  // nest deeper than the command thread's stack. Both modes stop below
+  // db::kMaxSearchDepth levels and report it (X-2 tier 1).
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    Session s;
+    s.project.compat.magic_compat = magic_compat;
+    const std::size_t levels = db::kMaxSearchDepth + 8;
+    std::vector<db::CellDef*> defs;
+    for (std::size_t i = 0; i <= levels; ++i) {
+      defs.push_back(s.cell("c" + std::to_string(i), {0, 0, 10, 10}));
+    }
+    std::vector<db::CellUse*> uses{nullptr};  // uses[k]: the use at level k
+    for (std::size_t i = 1; i <= levels; ++i) {
+      uses.push_back(db::place(*defs[i - 1], *defs[i], db::PlaceOptions{}).value());
+    }
+    (void)s.window(defs[0]);
+    const auto r = s.run("expand", {"all"});
+    REQUIRE(r.ok());
+    view::LayoutWindow& w = *s.editor.windows.current();
+    CHECK(w.is_expanded(*uses[db::kMaxSearchDepth]));
+    CHECK_FALSE(w.is_expanded(*uses[db::kMaxSearchDepth + 1]));
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == view::codes::kExpandDepth);
+  }
+}

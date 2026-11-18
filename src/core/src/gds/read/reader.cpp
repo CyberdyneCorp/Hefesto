@@ -63,7 +63,7 @@ class EngineSink final : public diag::DiagnosticSink {
 };
 
 /// dbScalePlane by an integer factor (CIFScalePlanes(r, 1)).
-void scale_plane(mask::MaskPlane& plane, std::int64_t r, bool magic_compat) {
+void scale_plane(mask::MaskPlane& plane, std::int64_t r, bool magic_compat, mask::ReadTriangleBudget& budget) {
   const std::vector<db::TileView> tiles = plane.solid_tiles();
   plane.clear();
   const auto scale = [r](db::Coord v) {
@@ -72,17 +72,17 @@ void scale_plane(mask::MaskPlane& plane, std::int64_t r, bool magic_compat) {
   for (const db::TileView& t : tiles) {
     const db::Rect area{scale(t.area.x0), scale(t.area.y0), scale(t.area.x1), scale(t.area.y1)};
     if (t.split) {
-      (void)plane.paint_triangle(area, t.diagonal, t.right_side, magic_compat);
+      mask::repaint_read_triangle(plane, area, t.diagonal, t.right_side, magic_compat, budget);
     } else {
       (void)plane.paint(area);
     }
   }
 }
 
-void scale_set(PlaneSet& set, std::int64_t r, bool magic_compat) {
+void scale_set(PlaneSet& set, std::int64_t r, bool magic_compat, mask::ReadTriangleBudget& budget) {
   for (auto& plane : set) {
     if (plane) {
-      scale_plane(*plane, r, magic_compat);
+      scale_plane(*plane, r, magic_compat, budget);
     }
   }
 }
@@ -595,11 +595,12 @@ void Reader::restore_planes(const PlaneSet& saved) {
 
 void Reader::rescale_read_units(std::int64_t r) {
   engine_->rescale(r, 1);
+  mask::ReadTriangleBudget& budget = engine_->triangle_budget();
   for (auto& [def, set] : flat_planes_) {
-    scale_set(set, r, compat_.magic_compat);
+    scale_set(set, r, compat_.magic_compat, budget);
   }
   for (PlaneSet* set : saved_sets_) {
-    scale_set(*set, r, compat_.magic_compat);
+    scale_set(*set, r, compat_.magic_compat, budget);
   }
 }
 

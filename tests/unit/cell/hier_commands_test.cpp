@@ -7,11 +7,14 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <cstddef>
 #include <string>
+#include <vector>
 
 #include "hefesto/cell/diag_codes.hpp"
 #include "hefesto/cmd/prompt.hpp"
 #include "hefesto/db/diag_codes.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/hints/hints.hpp"
 #include "hier_session.hpp"
@@ -208,6 +211,55 @@ TEST_CASE("regression: edit finds a selected instance below an array element thr
     f.s.ok("edit");
     CHECK(f.s.editor.edit_cell == f.inv);
     CHECK(f.s.editor.edit_transform == db::translation(110, 50));
+  }
+}
+
+TEST_CASE("regression: a selected instance resolves by its id with magic-compat OFF",
+          "[cap:cmd-hierarchy][req:Edit command]") {
+  // selEnumCFunc2 matches definition, transform and array only, so of two
+  // coincident instances of one cell Magic takes the first its search
+  // finds. Round 7 used that match in both modes; with magic-compat OFF the
+  // search found x2 (the newer, first in the OFF order) for a selected x1,
+  // so `edit`, `flatten -doinplace` and `cellname` acted on the wrong one.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    EditFixture f(magic_compat);
+    const db::CellUse* x2 = f.s.place(*f.s.top, *f.inv, db::translation(100, 0), "x2");
+    f.s.select_use(*f.x1);
+    const auto found = cell::selected_instances(f.s.editor, magic_compat);
+    REQUIRE(found.size() == 1);
+    if (magic_compat) {
+      CHECK(found[0].use->def == f.inv);  // the first coincident use found, as Magic
+    } else {
+      CHECK(found[0].use == f.x1);
+      CHECK(found[0].use != x2);
+    }
+  }
+}
+
+TEST_CASE("regression: the selected-use search stops at the hierarchy depth limit",
+          "[cap:cmd-hierarchy][req:Edit command]") {
+  // selEnumCFunc2's search recursed once per level without a bound; a
+  // crafted hierarchy deeper than the stack crashed it. It descends at most
+  // db::kMaxSearchDepth levels in both modes (X-2 tier 1).
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    Session s(magic_compat);
+    const std::size_t levels = db::kMaxSearchDepth + 4;
+    std::vector<db::CellDef*> defs{s.top};
+    std::vector<db::CellUse*> uses{nullptr};  // uses[k]: the use at level k
+    for (std::size_t i = 1; i <= levels; ++i) {
+      defs.push_back(s.cell("c" + std::to_string(i)));
+      s.paint(*defs.back(), "metal1", Rect{0, 0, 10, 10});
+    }
+    for (std::size_t i = levels; i >= 1; --i) {  // leaf first, so every bbox is final
+      uses.insert(uses.begin() + 1, s.place(*defs[i - 1], *defs[i], db::kIdentity, "u" + std::to_string(i)));
+    }
+    s.select_use(*uses[db::kMaxSearchDepth]);
+    REQUIRE(cell::selected_instances(s.editor, magic_compat).size() == 1);
+    s.editor.selection.clear();
+    s.select_use(*uses[db::kMaxSearchDepth + 1]);
+    CHECK(cell::selected_instances(s.editor, magic_compat).empty());
   }
 }
 

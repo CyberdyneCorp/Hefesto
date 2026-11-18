@@ -630,3 +630,52 @@ TEST_CASE("the read triangle budget grows with the triangles of every polygon re
   one.add_polygon(tri);
   CHECK(one.pool == Budget::kPool + Budget::kPerTriangle);
 }
+
+namespace {
+
+/// The solid tiles of `plane` as comparable tuples.
+std::vector<std::tuple<db::Rect, bool, bool, bool>> tiling(const mask::MaskPlane& plane) {
+  std::vector<std::tuple<db::Rect, bool, bool, bool>> out;
+  for (const db::TileView& t : plane.solid_tiles()) {
+    out.emplace_back(t.area, t.split, t.split && t.diagonal == db::Diagonal::nw_se, t.split && t.right_side);
+  }
+  return out;
+}
+
+/// A comb of 400 one-unit teeth left of x = 1: the space right of it is cut
+/// into about 800 strips, so a triangle over that space descends into more
+/// pieces than a database paint's 512.
+mask::MaskPlane comb() {
+  mask::MaskPlane plane;
+  for (db::Coord i = 0; i < 400; ++i) {
+    REQUIRE(plane.paint(db::Rect{0, 2 * i, 1, 2 * i + 1}).ok());
+  }
+  return plane;
+}
+
+}  // namespace
+
+// Regression (round 7 review of Q-MODEL-37, proposed): a read-unit rescale
+// (dbScalePlane) and a flatten copy (gdsCopyPaintFunc) repaint a read
+// plane's split tiles; they used a database paint's budget of 512 pieces,
+// so a triangle beside many tiles was cut short and filled as a rectangle
+// where Magic's unbounded DBNMPaintPlane tiles it exactly.
+TEST_CASE("a rescale or flatten copy repaints read-plane triangles with the read's budget",
+          "[cap:mask-input-styles][req:Polygon to region conversion]") {
+  const db::Rect area{1, 0, 1001, 800};
+  mask::MaskPlane exact = comb();
+  db::NMBudget unbounded{std::size_t{1} << 20};
+  (void)exact.paint_triangle(area, db::Diagonal::ne_sw, false, true, &unbounded);
+  REQUIRE(db::NMBudget::kPieces < (std::size_t{1} << 20) - unbounded.pieces);  // past a database paint
+  REQUIRE((std::size_t{1} << 20) - unbounded.pieces <= mask::ReadTriangleBudget::kPieces);
+
+  mask::MaskPlane database = comb();
+  (void)database.paint_triangle(area, db::Diagonal::ne_sw, false, true);
+  CHECK(tiling(database) != tiling(exact));  // the 512-piece repaint differs
+
+  mask::MaskPlane repainted = comb();
+  mask::ReadTriangleBudget budget;
+  mask::repaint_read_triangle(repainted, area, db::Diagonal::ne_sw, false, true, budget);
+  CHECK(tiling(repainted) == tiling(exact));
+  CHECK(budget.pool > mask::ReadTriangleBudget::kPool);  // the repaint's grant was added first
+}
