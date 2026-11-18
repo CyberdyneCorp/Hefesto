@@ -15,7 +15,6 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -156,13 +155,16 @@ GeneratedViaParams complete_params(const ViaParamSet& given, const GeneratedViaP
   p.layers = completed(given.layers, rule ? &rule->layers : nullptr, via_name, "LAYERS", context);
   p.cut_size = completed(given.cut_size, rule ? &rule->cut_size : nullptr, via_name, "CUTSIZE", context);
   p.cut_spacing = completed(given.cut_spacing, rule ? &rule->cut_spacing : nullptr, via_name, "CUTSPACING", context);
-  const bool enclosure = given.bottom_enclosure && given.top_enclosure;
-  const std::optional<std::pair<db::Point, db::Point>> pair =
-      enclosure ? std::optional{std::pair{*given.bottom_enclosure, *given.top_enclosure}} : std::nullopt;
-  const std::pair<db::Point, db::Point> rule_pair =
-      rule ? std::pair{rule->bottom_enclosure, rule->top_enclosure} : std::pair<db::Point, db::Point>{};
-  std::tie(p.bottom_enclosure, p.top_enclosure) =
-      completed(pair, rule ? &rule_pair : nullptr, via_name, "ENCLOSURE", context);
+  // ENCLOSURE sets both enclosures or neither. No std::optional<std::pair>
+  // here: GCC's -Wmaybe-uninitialized misreads one at -O2.
+  if (given.bottom_enclosure && given.top_enclosure) {
+    p.bottom_enclosure = *given.bottom_enclosure;
+    p.top_enclosure = *given.top_enclosure;
+  } else {
+    warn_omitted(via_name, "ENCLOSURE", rule != nullptr, context);
+    p.bottom_enclosure = rule != nullptr ? rule->bottom_enclosure : db::Point{};
+    p.top_enclosure = rule != nullptr ? rule->top_enclosure : db::Point{};
+  }
   p.rows = given.rows;
   p.columns = given.columns;
   p.scale = given.scale;

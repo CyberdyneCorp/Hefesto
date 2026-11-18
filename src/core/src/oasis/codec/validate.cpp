@@ -248,7 +248,7 @@ diag::Outcome<std::vector<std::byte>> deflate_cblock(std::span<const std::byte> 
   if (deflateInit2(&zs, level, Z_DEFLATED, kRawWindow, kMemoryLevel, Z_DEFAULT_STRATEGY) != Z_OK) {
     return diag::make("OASIS-CODEC-027", "zlib could not start compressing a CBLOCK");
   }
-  std::vector<std::byte> out(deflateBound(&zs, static_cast<uLong>(raw.size())));
+  std::vector<std::byte> out(deflateBound(&zs, uLong{raw.size()}));
   zs.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(raw.data()));  // zlib's API is not const
   zs.avail_in = static_cast<uInt>(raw.size());
   zs.next_out = reinterpret_cast<Bytef*>(out.data());

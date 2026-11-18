@@ -20,7 +20,7 @@ namespace hefesto::oasis {
 
 namespace {
 
-using Wide = __int128;
+__extension__ typedef __int128 Wide;  // NOLINT(modernize-use-using): __extension__ needs the typedef form
 
 /// A coordinate cw * w + ch * h.
 struct Linear {

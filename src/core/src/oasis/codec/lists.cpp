@@ -25,7 +25,7 @@ namespace detail {
 
 namespace {
 
-using Wide = __int128;
+__extension__ typedef __int128 Wide;  // NOLINT(modernize-use-using): __extension__ needs the typedef form
 
 constexpr Wide kInt64Max = std::numeric_limits<std::int64_t>::max();
 

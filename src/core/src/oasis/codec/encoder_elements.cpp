@@ -86,6 +86,13 @@ std::uint64_t extension_code(std::int64_t value, const std::optional<std::int64_
   return value == half_width ? 2 : 3;
 }
 
+/// Sets `bit` of an info byte when `on` (no integer promotion on the byte).
+void set_bit(std::uint8_t& info, bool on, std::uint8_t bit) {
+  if (on) {
+    info = static_cast<std::uint8_t>(info | bit);
+  }
+}
+
 }  // namespace
 
 std::uint8_t Encoder::Impl::layer_bits(std::vector<std::byte>& fields, const Element& e) {
@@ -182,8 +189,8 @@ void Encoder::Impl::placement(std::vector<std::byte>& out, const Element& e) {
   if (simple) {
     info |= static_cast<std::uint8_t>(static_cast<unsigned>(e.angle / 90.0) << 1U);
   } else {
-    info |= e.magnification != 1.0 ? 0x04U : 0U;
-    info |= e.angle != 0.0 ? 0x02U : 0U;
+    set_bit(info, e.magnification != 1.0, 0x04);
+    set_bit(info, e.angle != 0.0, 0x02);
     if (e.magnification != 1.0) {
       write_real(fields, e.magnification);
     }
@@ -191,7 +198,7 @@ void Encoder::Impl::placement(std::vector<std::byte>& out, const Element& e) {
       write_real(fields, e.angle);
     }
   }
-  info |= e.flip ? 0x01U : 0U;
+  set_bit(info, e.flip, 0x01);
   info |= position_bits(fields, e, modal.placement_x, modal.placement_y, 0x20, 0x10, 0x08);
   put(out, simple ? 17 : 18);
   put(out, info);
@@ -226,8 +233,8 @@ void Encoder::Impl::text(std::vector<std::byte>& out, const Element& e) {
 void Encoder::Impl::rectangle(std::vector<std::byte>& out, const Element& e) {
   std::vector<std::byte> fields;
   std::uint8_t info = layer_bits(fields, e);
-  info |= length(fields, e.size.x, modal.geometry_w) ? 0x40U : 0U;
-  info |= length(fields, e.size.y, modal.geometry_h) ? 0x20U : 0U;
+  set_bit(info, length(fields, e.size.x, modal.geometry_w), 0x40);
+  set_bit(info, length(fields, e.size.y, modal.geometry_h), 0x20);
   info |= position_bits(fields, e, modal.geometry_x, modal.geometry_y, 0x10, 0x08, 0x04);
   put(out, 20);
   put(out, info);
@@ -255,7 +262,7 @@ void Encoder::Impl::polygon(std::vector<std::byte>& out, const Element& e) {
 void Encoder::Impl::path(std::vector<std::byte>& out, const Element& e) {
   std::vector<std::byte> fields;
   std::uint8_t info = layer_bits(fields, e);
-  info |= length(fields, e.half_width, modal.path_half_width) ? 0x40U : 0U;
+  set_bit(info, length(fields, e.half_width, modal.path_half_width), 0x40);
   const std::uint64_t start = extension_code(e.start_extension, modal.path_start_extension, e.half_width);
   const std::uint64_t end = extension_code(e.end_extension, modal.path_end_extension, e.half_width);
   if (start != 0 || end != 0) {
@@ -288,9 +295,9 @@ void Encoder::Impl::path(std::vector<std::byte>& out, const Element& e) {
 void Encoder::Impl::trapezoid(std::vector<std::byte>& out, const Element& e) {
   std::vector<std::byte> fields;
   std::uint8_t info = layer_bits(fields, e);
-  info |= e.vertical ? 0x80U : 0U;
-  info |= length(fields, e.size.x, modal.geometry_w) ? 0x40U : 0U;
-  info |= length(fields, e.size.y, modal.geometry_h) ? 0x20U : 0U;
+  set_bit(info, e.vertical, 0x80);
+  set_bit(info, length(fields, e.size.x, modal.geometry_w), 0x40);
+  set_bit(info, length(fields, e.size.y, modal.geometry_h), 0x20);
   write_signed(fields, e.delta_a);
   write_signed(fields, e.delta_b);
   info |= position_bits(fields, e, modal.geometry_x, modal.geometry_y, 0x10, 0x08, 0x04);
@@ -308,10 +315,10 @@ void Encoder::Impl::ctrapezoid(std::vector<std::byte>& out, const Element& e) {
     modal.ctrapezoid_type = e.ctrapezoid_type;
   }
   if (ctrapezoid_uses_width(e.ctrapezoid_type)) {
-    info |= length(fields, e.size.x, modal.geometry_w) ? 0x40U : 0U;
+    set_bit(info, length(fields, e.size.x, modal.geometry_w), 0x40);
   }
   if (ctrapezoid_uses_height(e.ctrapezoid_type)) {
-    info |= length(fields, e.size.y, modal.geometry_h) ? 0x20U : 0U;
+    set_bit(info, length(fields, e.size.y, modal.geometry_h), 0x20);
   }
   info |= position_bits(fields, e, modal.geometry_x, modal.geometry_y, 0x10, 0x08, 0x04);
   const Point64 box = extent(outline(e));
@@ -325,7 +332,7 @@ void Encoder::Impl::ctrapezoid(std::vector<std::byte>& out, const Element& e) {
 void Encoder::Impl::circle(std::vector<std::byte>& out, const Element& e) {
   std::vector<std::byte> fields;
   std::uint8_t info = layer_bits(fields, e);
-  info |= length(fields, e.radius, modal.circle_radius) ? 0x20U : 0U;
+  set_bit(info, length(fields, e.radius, modal.circle_radius), 0x20);
   info |= position_bits(fields, e, modal.geometry_x, modal.geometry_y, 0x10, 0x08, 0x04);
   put(out, 27);
   put(out, info);
