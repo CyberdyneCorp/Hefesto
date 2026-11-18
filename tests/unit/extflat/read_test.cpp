@@ -116,6 +116,22 @@ TEST_CASE("a substrate record marks the global substrate", "[cap:ext-flattening-
   CHECK_FALSE(node_named(n.value(), "a")->substrate);
 }
 
+// Regression (UBSan in CI): `substrate` needs 3 tokens, but the layer is
+// the 7th; a short line read past the end of the token list.
+TEST_CASE("a short substrate record has no layer and reports too few values",
+          "[cap:ext-flattening-read][req:Node and substrate records]") {
+  ExtFixture f;
+  f.file("top", "substrate VSUB 0\n");
+  const auto n = f.read("top");
+  REQUIRE(n.ok());
+  const auto* sub = node_named(n.value(), "VSUB");
+  REQUIRE(sub != nullptr);
+  CHECK(sub->substrate);
+  CHECK(sub->layer == "space");  // EFLayerNames index 0
+  CHECK(f.texts("EXTFLAT-READ-002") ==
+        Strings{"/w/top.ext, line 1: Too few area/perim values: assuming remainder are zero"});
+}
+
 TEST_CASE("a name defined again after a kill of its node becomes a node of its own",
           "[cap:ext-flattening-read][req:Node and substrate records]") {
   ExtFixture f;

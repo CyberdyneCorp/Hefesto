@@ -6,6 +6,8 @@
 
 #include "reader.hpp"
 
+#include <cstddef>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -221,16 +223,22 @@ void FileReader::scale(const std::vector<std::string>& argv) {
 }
 
 void FileReader::node(const std::vector<std::string>& argv, bool substrate) {
-  std::size_t ac = argv.size() - 7;
-  if ((ac & 1U) != 0) {
+  // Signed, as Magic's int: a short substrate line (3 to 6 tokens) gives a
+  // negative count and the message.
+  std::ptrdiff_t ac = static_cast<std::ptrdiff_t>(argv.size()) - 7;
+  if ((ac & 1) != 0) {
     --ac;  // the last token is an attribute list
   }
-  if (ac < 2 * st_.resist_classes.value_or(0)) {
+  if (ac < 2 * static_cast<std::ptrdiff_t>(st_.resist_classes.value_or(0))) {
     st_.read_error("Too few area/perim values: assuming remainder are zero");
   }
-  build_node(st_, def_,
-             NodeRecord{argv[1], as_int(argv, 4), as_int(argv, 5), std::string_view{argv[6]}, substrate, false,
-                        toplevel_});
+  // `substrate` needs only 3 tokens but Magic reads the 7th (its layer)
+  // from stale tokens: a missing layer is none here (fixed in both modes).
+  std::optional<std::string_view> layer;
+  if (argv.size() > 6) {
+    layer = argv[6];
+  }
+  build_node(st_, def_, NodeRecord{argv[1], as_int(argv, 4), as_int(argv, 5), layer, substrate, false, toplevel_});
 }
 
 void FileReader::rnode(const std::vector<std::string>& argv) {

@@ -107,6 +107,8 @@ Compatibility: exact
 
 If the name already exists in the definition, its capacitance and area/perimeter SHALL be added to the existing node; no new node is created. Otherwise a new node SHALL be created. Its location is `(int)(0.5 + x × locScale)` for each coordinate, and it is inserted at the head of the definition's node list. This makes node-list order the reverse of creation order. A `substrate` record SHALL mark the node as the global substrate and SHALL switch off backward-compatibility mode. In compatibility mode the global substrate is recognized by the name `GND!`; see capability `ext-flattening-hierarchy`. A `node` or `substrate` record read from the root file SHALL be recorded as a top-level node.
 
+A `substrate` record needs only 3 tokens, but Magic reads its coordinates and layer from tokens 4 to 6 even when they are missing (stale or out-of-bounds data). This is fixed in both modes: a missing coordinate SHALL be 0 and a missing layer SHALL be none (`space`). The token count is signed, so a short record also produces the `Too few area/perim values` warning, as in Magic.
+
 When a name is defined again right after a `killnode` of a node that aliases it, the alias SHALL first be removed from the killed node. A new separate node is then created. This supports `.res.ext` overlays.
 Compatibility: exact
 (Magic ref: extflat/EFread.c:417-434, extflat/EFbuild.c:143-334)
