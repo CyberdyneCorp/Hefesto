@@ -24,6 +24,7 @@ add_library(hefesto_core STATIC
   src/cmd/prompt.cpp
   src/cmd/registry.cpp
   src/cmd/quit_policy.cpp
+  src/cmd/stubs.cpp
   src/cmd/units.cpp
   src/cmd/value.cpp
   src/compat/compat_settings.cpp
@@ -68,8 +69,15 @@ add_library(hefesto::core ALIAS hefesto_core)
 #       sources.cmake owned by its workstream: mask/{plane,ops} OPS,
 #       mask/style STYLES, mask/input INPUT, mask/gen GEN, gds/{stream,read}
 #       GDSR, gds/{write,command} GDSW, cif/* CIF)
+#   M6 (openspec/changes/m6-lef-def-oasis/design.md D1/D2): lef/, def/,
+#       oasis/, extract/ INTEGRATION (shared files; each subdirectory has its
+#       own sources.cmake owned by its workstream: lef/lex LEFR, lef/tech
+#       LEFTECH, lef/via LEFVIA, lef/read LEFR, lef/write LEFW, lef/command
+#       INTEGRATION (dispatcher), def/read DEFR, def/write DEFW, oasis/codec
+#       OASFMT, oasis/read OASR, oasis/write OASW, oasis/command OASCMD,
+#       extract/tech EXTSUB)   extflat/ EXTSUB
 set(HEFESTO_CORE_AREAS tech db cell display view pdk app undo select connect ui wiring drc hints
-                       script pcell tools gui mask gds cif)
+                       script pcell tools gui mask gds cif lef def oasis extflat extract)
 foreach(_area IN LISTS HEFESTO_CORE_AREAS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/src/${_area}/sources.cmake")
 endforeach()

@@ -11,13 +11,17 @@ Golden cases are captured once from the pinned reference tools and committed. CI
 ```
 tools/golden/
   pins.toml              reference-tool pins (single source of truth)
-  container/Containerfile pinned headless Magic / netgen / ngspice / xschem image
+  container/Containerfile pinned headless Magic / netgen / ngspice / xschem / KLayout / gdstk image
   capture.py             run the reference tool, write expected/ + provenance.json
   replay.py              run hefesto-cli on each case and compare (run.py = alias)
+  ext_inputs.py          M6: run the .ext probe in the image (golden-capture.yml mode ext-inputs)
+  oasis_validate.py      M6: check Hefesto's OASIS files with KLayout and gdstk (mode oasis-validate)
   compare/               canonical comparators and time-field masks (python3 -m compare)
   goldenlib/             case model, pins, reference runners, hash-table model, external inputs
   authoring/             generators of the M1-M5 cases (m1_cases.py ... m5_cases.py), the paint/erase table dump and the GDS writer gdsgen.py
   harness/magic_hash/    driver around Magic's own utils/hash.c (magic-hash-harness)
+  harness/ext_probe/     M6: the .ext probe Magic runs (extract all)
+  harness/oasis_validate/ M6: the KLayout and gdstk scripts of oasis_validate.py
   tests/                 unit tests (CTest label golden-tools)
 ```
 
@@ -104,6 +108,28 @@ gh workflow run golden-capture.yml --ref <branch> -f mode=verify -f keep-raw=tru
 
 Hand-built GDS inputs (bad headers, damaged records, every PATHTYPE, AREFs, properties, odd TEXT) come from `authoring/gdsgen.py`, a record writer with its decoder in `goldenlib/gds.py` (`tests/test_gdsgen.py`). Inputs under 64 KB are committed as binary. Until a case is captured and its workstream lands, `deviations.toml` lists it as `deferred = "M5"` in the block `m5_cases.py --deviations` generates; a workstream whose implementation makes cases replay adds them to `REPLAYED` in `m5_cases.py` and re-runs `--deviations`.
 
+## M6: the `.ext` probe (mode `ext-inputs`)
+
+The DEF-write net cases (LEFDEF-317..328 and 330..334) read `.ext` files, which Hefesto cannot write before M7 (m6-lef-def-oasis task 1.6, Open Question 1 (a)). Magic writes them: `authoring/lefdef_cases.py --ext-plan FILE` lists the targets (every authored DEF-write net case whose `input/` has one `*.tech` file and whose `commands.tcl` loads the root cell, plus the smoke layout `tests/data/extflat/smoke/input/`), and `ext_inputs.py` runs `harness/ext_probe/ext_probe.tcl` (`extract all` into `ext/`) on each in the image. `goldenlib/extfile.py` checks every `.ext` file (ASCII, the six header records first, whole records only, no `error` line) and the probe's log (it finished, `extract all` returned 0, no feedback, no error line). `--sync-ext` copies the checked files into each case's `input/` and into `tests/data/extflat/<target>/` (format in its README.md).
+
+```sh
+gh workflow run golden-capture.yml --ref <branch> -f mode=ext-inputs   # artifact ext-inputs
+python3 authoring/lefdef_cases.py --sync-ext <artifact dir>
+```
+
+`tests/test_ext_inputs.py` runs the probe under `tclsh` against a stand-in for the Magic commands, and the runner and the sync on hand-made files.
+
+## M6: OASIS validation with KLayout and gdstk (mode `oasis-validate`)
+
+The image has KLayout and gdstk as reference tools of the OASIS cases (m6-lef-def-oasis design D18). KLayout is the Debian package of the APT snapshot, which has no strm2gds/strmxor/strmcmp programs: their operations run through KLayout's scripting API in `harness/oasis_validate/klayout_check.py` (`klayout -b`). gdstk is a pinned wheel in a virtual environment (`$HEFESTO_GDSTK_PYTHON`, `harness/oasis_validate/gdstk_check.py`). Both run as separate programs only; Hefesto never links or calls them.
+
+`oasis_validate.py produce` runs hefesto-cli (built in the job) on OASIS-050..059 and 061 and collects their `.oas` outputs, plus the committed `tests/data/oasis/codec/reference_419.oas`. A case not authored yet, or a run that stops on `CMD-DISPATCH-001` or `CORE-NOTIMPL-*`, is skipped with its reason. `oasis_validate.py check`, in the image, makes the smoke files (gdstk: GDS and OASIS with CRC32 and CHECKSUM32, and a copy with one byte changed; KLayout: strict and non-strict strm2oas of the GDS) and then checks every file: KLayout read with `expect_strict_mode` and no warning, strm2gds, strmxor (empty on every layer), strmcmp; gdstk `read_oas` and `oas_validate`; the 419-byte size. Two negative controls must fail: a strict file read as non-strict must warn, and the changed copy must fail `oas_validate`. The verdicts and the tool versions go to the job summary and the artifact `oasis-validate` (`verdicts.json`, `summary.md`, the files).
+
+```sh
+gh workflow run golden-capture.yml --ref <branch> -f mode=oasis-validate
+python3 oasis_validate.py check --dir out --klayout-python <py> --gdstk-python <py>   # local, with pip's klayout and gdstk
+```
+
 ## M8: the SCHEM cases (xschem)
 
 `authoring/schem_cases.py` writes the 41 cases of `tests/golden/SCHEM/CASES.md` (m8-schematic tasks 3.2 and 3.3, design D16), captured from xschem 3.4.8RC in the pinned image. The image installs `gawk` and makes it `awk`; its build fails when `awk --version` is not GNU Awk (task 3.1, Q-SCHEM-18), and `golden-capture.yml` logs the version.
@@ -131,7 +157,7 @@ The image is reproducible in four ways:
 
 - The base image is pinned by tag and by manifest-list digest.
 - APT packages come from `snapshot.debian.org` at the timestamp in `pins.toml`, so every package version is frozen without listing each one.
-- Every tool is checked out at a full commit SHA, and the build verifies HEAD after checkout.
+- Every built tool is checked out at a full commit SHA, and the build verifies HEAD after checkout. The installed tools (KLayout's `.deb`, gdstk's wheel) are checked against a SHA-256.
 - Capture runs with `--network=none`.
 
 `tests/test_pins.py` fails if the `ARG` defaults in the Containerfile drift from `pins.toml`.
@@ -143,6 +169,8 @@ The image is reproducible in four ways:
 | ngspice | `7aa4716494c01ac1d3120211316e898539a6cb4c` | Not a ref tip. Resolved with `git clone --bare` + `git rev-parse 7aa47164`; it is on branch `pre-master-48`. |
 | xschem | `4142e6d6f1eb5cd0e271bb183f14202af374ce27` | Full SHA taken from the specs. Not a ref tip, so `fetch_commit` verifies it at build time. |
 | base | `debian:trixie-20261020-slim@sha256:62bd423a…` | Docker Hub registry API |
+| KLayout 0.30.0 | Debian `klayout 0.30.0-1+b1`, `.deb` SHA-256 `421e473f…` | The Packages index of trixie/main amd64 at the APT snapshot. KLayout publishes no Debian 13 `.deb`. |
+| gdstk 1.0.2 | `gdstk-1.0.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl`, SHA-256 `0429cc3e…` | PyPI JSON API; Debian has no gdstk package. numpy is the snapshot's `python3-numpy` 2.2.4. |
 
 A short SHA can only be expanded from a clone, because `git ls-remote` lists ref tips only. To expand one, run `git clone --bare <repo> x.git && git -C x.git rev-parse <short>`.
 

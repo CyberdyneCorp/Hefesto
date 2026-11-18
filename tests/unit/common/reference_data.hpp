@@ -11,14 +11,16 @@
 //       ihp       ihp-sg13g2 tech files (sg13g2_pr has no .mag cells);
 //   - the library GDS data sets in .cache/pdks/gds/ciel/<family>/versions/<pin>/
 //     (sky130-gds, gf180mcu-gds, ihp-gds and the standard-cell *-gds-sc sets, M5);
+//   - the LEF data sets in .cache/pdks/lef/ciel/<family>/versions/<pin>/
+//     (sky130-lef, gf180mcu-lef, ihp-lef: tech LEF and standard-cell LEF, M6);
 //   - the xschem data sets in .cache/pdks/xschem/ciel/<family>/versions/<pin>/
 //     (sky130-xschem, gf180mcu-xschem, ihp-xschem, M8);
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
 // set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15, and
-// openspec/changes/m5-mask-gds-cif/design.md D2, D19, and openspec/changes/m8-schematic/design.md D17);
-// the device libraries were added by NATIVE in M4 round 2.
+// openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/m6-lef-def-oasis/design.md D2, and
+// openspec/changes/m8-schematic/design.md D17); the device libraries were added by NATIVE in M4 round 2.
 
 #pragma once
 
@@ -157,6 +159,40 @@ inline std::optional<std::filesystem::path> pinned_gds(const PinnedGds& gds) {
   return *dir / std::string{gds.file};
 }
 
+// The LEF data sets (openspec/changes/m6-lef-def-oasis/design.md D2, tasks 1.2 and 1.4): the tech LEF and
+// the cell LEF of one standard-cell library per PDK, same pins, under their own PDK root `.cache/pdks/lef/`
+// (fetch_pdk.py `pdk_dir`): sky130-lef, gf180mcu-lef and ihp-lef.
+
+/// One standard-cell library of a LEF data set and the two files a LEF read test loads.
+struct PinnedLef {
+  const PinnedPdk* pdk;
+  std::string_view library;   // directory under libs.ref
+  std::string_view tech_lef;  // the nominal tech LEF, relative to libs.ref/<library>
+  std::string_view cell_lef;  // the standard-cell LEF, relative to libs.ref/<library>
+};
+
+inline constexpr PinnedLef kSky130FdScHdLef{&kSky130A, "sky130_fd_sc_hd", "techlef/sky130_fd_sc_hd__nom.tlef",
+                                            "lef/sky130_fd_sc_hd.lef"};
+inline constexpr PinnedLef kGf180mcu7t5v0Lef{&kGf180mcuD, "gf180mcu_fd_sc_mcu7t5v0",
+                                             "techlef/gf180mcu_fd_sc_mcu7t5v0__nom.tlef",
+                                             "lef/gf180mcu_fd_sc_mcu7t5v0.lef"};
+inline constexpr PinnedLef kSg13g2StdcellLef{&kIhpSg13g2, "sg13g2_stdcell", "lef/sg13g2_tech.lef",
+                                             "lef/sg13g2_stdcell.lef"};
+
+/// `.cache/pdks/lef/ciel/<family>/versions/<version>/<variant>/libs.ref/<library>` when it holds both of the
+/// set's LEF files, else std::nullopt (the set was not fetched, or only in part); a test then skips.
+inline std::optional<std::filesystem::path> pinned_lef_library(const PinnedLef& lef) {
+  const std::filesystem::path dir = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" / "lef" / "ciel" /
+                                    std::string{lef.pdk->family} / "versions" / std::string{lef.pdk->version} /
+                                    std::string{lef.pdk->variant} / "libs.ref" / std::string{lef.library};
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(dir / std::string{lef.tech_lef}, ec) ||
+      !std::filesystem::is_regular_file(dir / std::string{lef.cell_lef}, ec)) {
+    return std::nullopt;
+  }
+  return dir;
+}
+
 // The xschem data sets (openspec/changes/m8-schematic/design.md D17): the xschem trees of the same ciel
 // releases, installed under their own PDK root `.cache/pdks/xschem/` (fetch_pdk.py `pdk_dir`).
 
@@ -177,6 +213,18 @@ inline std::optional<std::filesystem::path> pinned_xschem(const PinnedPdk& pdk,
     return std::nullopt;
   }
   return dir;
+}
+
+/// The pinned tech LEF of the set, if fetched.
+inline std::optional<std::filesystem::path> pinned_tech_lef(const PinnedLef& lef) {
+  const auto dir = pinned_lef_library(lef);
+  return dir ? std::optional{*dir / std::string{lef.tech_lef}} : std::nullopt;
+}
+
+/// The pinned standard-cell LEF of the set, if fetched.
+inline std::optional<std::filesystem::path> pinned_cell_lef(const PinnedLef& lef) {
+  const auto dir = pinned_lef_library(lef);
+  return dir ? std::optional{*dir / std::string{lef.cell_lef}} : std::nullopt;
 }
 
 }  // namespace hefesto::test

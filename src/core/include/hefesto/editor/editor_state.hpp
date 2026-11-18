@@ -29,6 +29,7 @@
 #include "hefesto/display/font.hpp"
 #include "hefesto/display/styles.hpp"
 #include "hefesto/drc/session.hpp"
+#include "hefesto/lef/session.hpp"
 #include "hefesto/mask/session.hpp"
 #include "hefesto/platform/file_picker.hpp"
 #include "hefesto/script/project.hpp"
@@ -204,6 +205,14 @@ struct EditorState {
   // input styles, the `gds` and `cif` settings, the read warnings and the
   // shared `random` generator.
   mask::MaskSession mask;
+
+  // ---- M6 (openspec/changes/m6-lef-def-oasis/design.md D4) ----
+
+  // LEFTECH / LEFVIA / LEFR / LEFW / DEFW: the LEF/DEF session
+  // (lef/session.hpp; each member's owner is named there): the LEF layer
+  // table, the VIA and NONDEFAULTRULE tables, `lef datestamp`, `lef
+  // nocheck` and the sticky LEF units.
+  lef::LefSession lefdef;
 
   // RULES / ENGINE / COMMANDS: the DRC session (drc/session.hpp; each
   // member's owner is named there). Declared last so that it is destroyed

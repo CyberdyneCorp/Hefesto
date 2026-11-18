@@ -174,7 +174,7 @@ TEST_CASE("path end extensions by magic-compat", "[cap:gds-read][req:PATH elemen
   using Spec = GdsFile::PathSpec;
   for (const bool magic_compat : {true, false}) {
     Session s(kStyle, magic_compat);
-    s.options.settings.savepaths = true;
+    s.options.stream_read.savepaths = true;
     s.read(one_structure([](GdsFile& f) { f.path(68, 20, Spec{4, 10, 0, 5}, {{0, 0}, {30, 40}}); }));
     const auto values = dimensions(s.cell("top"), "path");
     if (magic_compat) {
@@ -215,7 +215,7 @@ TEST_CASE("path to polygon conversion", "[cap:gds-read][req:Path-to-polygon conv
 TEST_CASE("path centerline properties", "[cap:gds-read][req:Path centerline properties]") {
   using Spec = GdsFile::PathSpec;
   Session s;
-  s.options.settings.savepaths = true;
+  s.options.stream_read.savepaths = true;
   s.read(one_structure([](GdsFile& f) {
     f.path(68, 20, Spec{0, 10, {}, {}}, {{0, 0}, {100, 0}});
     f.path(68, 20, Spec{0, 10, {}, {}}, {{0, 50}, {100, 50}});
@@ -226,7 +226,7 @@ TEST_CASE("path centerline properties", "[cap:gds-read][req:Path centerline prop
   SECTION("internal units with magic-compat OFF") {
     for (const bool magic_compat : {true, false}) {
       Session t("style test\nscalefactor 10\nlayer m1 M1\ncalma M1 68 20\n", magic_compat);
-      t.options.settings.savepaths = true;
+      t.options.stream_read.savepaths = true;
       t.read(one_structure([](GdsFile& f) { f.path(68, 20, Spec{0, 20, {}, {}}, {{0, -30}, {100, -30}}); }));
       const auto values = dimensions(t.cell("top"), "path");
       if (magic_compat) {

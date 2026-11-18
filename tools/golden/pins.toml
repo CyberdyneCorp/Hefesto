@@ -54,6 +54,34 @@ commit = "7aa4716494c01ac1d3120211316e898539a6cb4c"
 repo = "https://github.com/StefanSchippers/xschem"
 commit = "4142e6d6f1eb5cd0e271bb183f14202af374ce27"
 
+# Reference tools of the OASIS cases (openspec/changes/m6-lef-def-oasis design D18), installed
+# rather than built, so they have no `commit`. They run as separate programs in the image only:
+# Hefesto never links, bundles or calls them. Resolved 2026-11-18:
+#   KLayout: the Packages index of trixie/main amd64 at apt_snapshot lists klayout 0.30.0-1+b1;
+#     sha256 is that index's SHA256 of the .deb, which the Containerfile checks. The package ships
+#     only /usr/bin/klayout, without the strm2gds/strmxor/strmcmp buddy programs, so their
+#     operations run as KLayout batch scripts (harness/oasis_validate/klayout_check.py). KLayout
+#     publishes no Debian 13 .deb (its download page has Ubuntu builds only).
+#   gdstk: Debian has no gdstk package. The PyPI wheel for CPython 3.13 (the image's python3) is
+#     pinned by file name and SHA-256 (PyPI JSON API); numpy is python3-numpy of the APT snapshot.
+#   upstream_commit: the commit of the upstream release tag (git ls-remote), for provenance only.
+[tools.klayout]
+repo = "https://github.com/KLayout/klayout"
+version = "0.30.0"
+upstream_commit = "e6ff30adeed7aee3a274f0c4ef1a0c0d69a44632"
+source = "debian"
+package = "klayout"
+package_version = "0.30.0-1+b1"
+sha256 = "421e473f7a1e0e4aa6b20dd1ca69b494c21e38308c38ad9259a7476cf4c3f272"
+
+[tools.gdstk]
+repo = "https://github.com/heitzmann/gdstk"
+version = "1.0.2"
+upstream_commit = "ee9c2b21bfbacb5bccf0cd9a67328c531aa58ee9"
+source = "pypi-wheel"
+url = "https://files.pythonhosted.org/packages/cp313/g/gdstk/gdstk-1.0.2-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl"
+sha256 = "0429cc3eab8931415a040eec19875f3636453263603885ba881587c77837b41b"
+
 # Magic's own string hash table (utils/hash.c at the Magic pin), compiled into a
 # tiny driver (harness/magic_hash/driver.c). The hashes guard the local capture
 # path, which downloads these three files instead of using the container.

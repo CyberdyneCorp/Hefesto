@@ -126,6 +126,17 @@ class ExternalTest(unittest.TestCase):
                     self.assertEqual(gds.relative_to(Path(tmp)).parts[0], "gds")
                     self.assertEqual(gds.relative_to(Path(tmp) / "gds"), tech.relative_to(Path(tmp)))
 
+    def test_lef_set_resolves_under_its_own_pdk_root(self):
+        # The M6 LEF sets (m6-lef-def-oasis task 1.4) are installed under <pdk-root>/lef.
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"HEFESTO_PDK_ROOT": tmp}):
+            for name, tech_set in (("sky130-lef", "sky130"), ("gf180mcu-lef", "gf180mcu"), ("ihp-lef", "ihp")):
+                with self.subTest(name=name):
+                    self.assertIn(name, external.PDK_SETS)
+                    lef = external.pdk_set_root(name)
+                    self.assertEqual(lef.relative_to(Path(tmp)).parts[0], "lef")
+                    tech = external.pdk_set_root(tech_set)
+                    self.assertEqual(lef.relative_to(Path(tmp) / "lef"), tech.relative_to(Path(tmp)))
+
     def test_missing_input_is_a_capture_error_and_a_replay_skip(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"HEFESTO_PDK_ROOT": tmp}):
             case = load_case(case_with(Path(tmp), EXTERNAL_TOML))

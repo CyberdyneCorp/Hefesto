@@ -224,6 +224,28 @@ python3 scripts/fetch_pdk.py sky130-gds gf180mcu-gds ihp-gds --cli build/macos-d
 python3 scripts/fetch_pdk.py --print-digest sky130-gds
 ```
 
+### LEF data sets (M6)
+
+The LEF/DEF tests on real PDK data (the PDK LEF read tests, the `LEFDEF-RT-<lib>` golden cases and LEFDEF-240; design D2 and Open Question 6 (a) of `openspec/changes/m6-lef-def-oasis`) read the tech LEF and the standard-cell LEF of the same three releases. They come in three more data sets, fetched only when named:
+
+| Set | Subset (`<variant>/libs.ref/<lib>/…`) | Files | Downloaded | Kept (cached) | Peak disk |
+|---|---|---|---|---|---|
+| `sky130-lef` | `sky130A/libs.ref/sky130_fd_sc_hd/{lef,techlef}/` | `lef/sky130_fd_sc_hd.lef`, `lef/sky130_ef_sc_hd.lef`, `techlef/sky130_fd_sc_hd__{nom,min,max}.tlef`, `techlef/sky130_fd_sc_hd__rram__{nom,min,max}.tlef` | 134 MB (`common` 6.6 MB, `sky130_fd_sc_hd` 127 MB) | 2.0 MB, 8 files (0.17 MB) | 0.9 GB |
+| `gf180mcu-lef` | `gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/{lef,techlef}/` | `lef/gf180mcu_fd_sc_mcu7t5v0.lef`, `techlef/gf180mcu_fd_sc_mcu7t5v0__{nom,min,max}.tlef` | 350 MB (`common` 170 MB, `gf180mcu_fd_sc_mcu7t5v0` 180 MB) | 0.8 MB, 4 files (0.08 MB) | 1.6 GB |
+| `ihp-lef` | `ihp-sg13g2/libs.ref/sg13g2_stdcell/lef/` | `lef/sg13g2_tech.lef` (the tech LEF), `lef/sg13g2_stdcell.lef` | 441 MB (`common` 434 MB, `sg13g2_stdcell` 6.4 MB) | 0.2 MB, 2 files (0.03 MB) | 1.1 GB |
+
+- **Root.** The LEF sets install under their own PDK root, `.cache/pdks/lef/` (`.cache/pdks/lef/ciel/<family>/versions/<pin>/`), for the same reason as the GDS sets: `pdk install` skips a library whose `libs.ref/<lib>` directory exists, and each set is its own CI cache entry.
+- **Tech LEF.** sky130 and gf180mcu ship the tech LEF in the library's `techlef/` directory, one file per corner (sky130 also has the `rram` variants); the tests use `__nom.tlef`. IHP ships it in `lef/` as `sg13g2_tech.lef`.
+- **Other libraries.** The other libraries' LEF files are listed in design D2 of `openspec/changes/m6-lef-def-oasis` (PDK row); no test uses them, so no set holds them.
+- **Cache keys.** `pdk-sky130-lef-5740c4a81c42-b8ebb4f6dcfe84d1`, `pdk-gf180mcu-lef-5740c4a81c42-1b748b5dc37d40a6`, `pdk-ihp-lef-5e6d592e4002-fbc2d9eaf68f4d1c` (`--cache-info` output names `sky130_lef_key`, `sky130_lef_path`, and so on).
+- **CI.** The sets are wired but not fetched yet: `FETCH_LEF_SETS` in the `env` of `ci.yml` and of `golden-capture.yml` is `"false"`. Set to `"true"`, `ci.yml`'s `reference-data` job looks the three sets up, fetches the missing ones and saves them, and the build legs restore and verify them; `golden-capture.yml`'s `capture` job restores, fetches and saves them. It is switched on when the first test that reads them lands (tasks 3.4, 5.7 and 15.5 of the M6 change).
+- **Tests.** `tests/unit/common/reference_data.hpp` gives `pinned_lef_library`, `pinned_tech_lef` and `pinned_cell_lef` for `kSky130FdScHdLef`, `kGf180mcu7t5v0Lef` and `kSg13g2StdcellLef`; a test whose set is missing skips.
+
+```sh
+python3 scripts/fetch_pdk.py sky130-lef gf180mcu-lef ihp-lef --cli build/macos-debug/src/cli/hefesto-cli
+python3 scripts/fetch_pdk.py --print-digest ihp-lef
+```
+
 ### xschem data sets (M8)
 
 The schematic work of M8 (the SCHEM golden captures, the inventory `scripts/schem_inventory.py`, the PDK round-trip and netlist tests) uses the xschem trees of the same three releases (design D17 of `openspec/changes/m8-schematic`). They come in three more data sets, fetched only when named:
@@ -253,7 +275,7 @@ python3 scripts/fetch_pdk.py --print-digest gf180mcu   # tree digest of an insta
 python3 scripts/fetch_pdk.py --cache-info              # the CI cache keys and paths
 ```
 
-The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets and the three xschem sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`, the xschem sets into `DIR/xschem`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
+The steps are `sky130` (alias `pdk`), `gf180mcu`, `ihp`, the six GDS sets, the three LEF sets and the three xschem sets above and `magic-ref`; a bare run fetches `sky130`, `gf180mcu`, `ihp` and `magic-ref`. `--root DIR` installs into another PDK root (the GDS sets into `DIR/gds`, the LEF sets into `DIR/lef`, the xschem sets into `DIR/xschem`). In CI each set is its own `actions/cache` entry, keyed `pdk-<set>-<first 12 characters of the pin>-<first 16 characters of the digest>` (for example `pdk-gf180mcu-5740c4a81c42-354c55418060a14c`; the M4 keys are `pdk-sky130-5740c4a81c42-8aedf059155765ef`, `pdk-gf180mcu-5740c4a81c42-354c55418060a14c` and `pdk-ihp-5e6d592e4002-e01cd6e2db86f2d0`), and Magic's checkout is keyed `magic-ref-<first 12 characters of the commit>`. The `reference-data` job of `ci.yml` fetches the sets missing from the cache once and saves them; the build legs restore all three and only verify them, and `golden-capture.yml` restores the same entries. Changing one set's pin or digest refetches that set alone.
 
 The PDK network test (`hefesto_pdk_network_tests`, CTest label `network`) downloads about 6.4 MB from GitHub into a temporary root, once with the in-process HTTPS Fetcher and once with the `curl`-process fallback. Leave it out with `ctest -LE network`, or set `HEFESTO_SKIP_NETWORK_TESTS=1` to make it skip; CI runs it on one leg only. A transient download failure (PDK-FETCH-001) is retried three times, after 2 s, 4 s and 6 s; when GitHub cannot be reached at all (the host cannot be resolved or connected to) or keeps answering with an HTTP 5xx server error after the last attempt, the test skips instead of failing. Any other failure still fails it.
 
@@ -267,6 +289,21 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 ```
 
 `--jobs N` sets how many `hefesto-cli` sessions run at a time (default: the CPU count; a full run takes about 7 minutes with 6 jobs on an M-series Mac), `--chunk N` the cases per session, `--work DIR` keeps the two runs' files (`native/` and `tcl/` per chunk, with `console.txt`). The exit status is 0 when every case agrees, 1 on a difference, 3 when a data set is missing. The console lines of the two runs are compared too and only reported: the framework prints its own diagnostics when the `gencell` command returns, so their order may differ.
+
+## Golden capture
+
+Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), normally in CI through `golden-capture.yml`; `tools/golden/README.md` also documents local container runs (and the `local` and `model` runners of the hash harness) and is the full guide; the image holds:
+
+- Magic 8.3.694, netgen, ngspice and xschem, built from pinned commits;
+- since M6, KLayout 0.30.0 (Debian package `klayout 0.30.0-1+b1` from the APT snapshot, run as `klayout -b`) and gdstk 1.0.2 (a pinned wheel in `$HEFESTO_GDSTK_PYTHON`), reference tools of the OASIS cases only (design D18 of `openspec/changes/m6-lef-def-oasis`). Hefesto never links or calls them.
+
+The M6 dispatch modes of `golden-capture.yml`:
+
+```sh
+gh workflow run golden-capture.yml --ref <branch> -f mode=ext-inputs       # Magic's .ext files (tools/golden/ext_inputs.py)
+python3 tools/golden/authoring/lefdef_cases.py --sync-ext <artifact dir>   # commit them under tests/data/extflat/
+gh workflow run golden-capture.yml --ref <branch> -f mode=oasis-validate   # KLayout and gdstk checks (tools/golden/oasis_validate.py)
+```
 
 ## Dependencies and offline rebuilds
 

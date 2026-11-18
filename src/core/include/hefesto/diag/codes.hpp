@@ -52,15 +52,17 @@ inline constexpr std::string_view kSettingsFile = "SETTINGS-FILE-001";
 inline constexpr std::string_view kCliUsage = "CLI-USAGE-001";
 inline constexpr std::string_view kCliScript = "CLI-SCRIPT-001";
 inline constexpr std::string_view kCliLog = "CLI-LOG-001";
-// Scaffold stubs (openspec/changes/m5-mask-gds-cif/design.md D3): a command
-// option or function the M5 scaffold declared before its workstream
-// implemented it. INTEGRATION retires the code at M5 exit (tasks.md 15.5).
+// Scaffold stubs (openspec/changes/m6-lef-def-oasis/design.md D3): a command
+// option or function the M6 scaffold declared before its workstream
+// implemented it. INTEGRATION retires the code at M6 exit.
+inline constexpr std::string_view kCoreNotImplemented = "CORE-NOTIMPL-006";
 // Retired codes keep their table rows (never reused) but have no constant:
 // CLI-TECH-001 (M1: `-T` loads the technology), CORE-NOTIMPL-001 (M1: no stub left),
 // CORE-NOTIMPL-002 (M2: no stub left), CORE-NOTIMPL-003 (M3: every `drc` option
 // is implemented), CORE-NOTIMPL-004 (M4: every scaffold stub is implemented;
 // `ext2spice` beyond `scale` answers UI-CLIENT-002 until M7), CMD-PARSE-001..003
-// (M4: command lines are Tcl, the M0 command-script reader is removed).
+// (M4: command lines are Tcl, the M0 command-script reader is removed),
+// CORE-NOTIMPL-005 (M5: every scaffold stub is implemented).
 }  // namespace codes
 
 /// One area of the code table. `prefix` is the AREA part every code of the
@@ -69,7 +71,8 @@ inline constexpr std::string_view kCliLog = "CLI-LOG-001";
 struct CodeArea {
   std::string_view name;    // "core", "tech", "db", "cell", "display", "view", "pdk", "app",
                             // "undo", "select", "connect", "ui", "wiring", "drc", "hints",
-                            // "script", "pcell", "tools", "gui", "mask", "gds", "cif"
+                            // "script", "pcell", "tools", "gui", "mask", "gds", "cif",
+                            // "lef", "def", "oasis", "extflat", "extract"
   std::string_view prefix;  // required AREA part of each code; empty for "core"
   std::string_view doc;     // repository-relative path of the area's document
   std::span<const CodeInfo> codes;  // sorted by code

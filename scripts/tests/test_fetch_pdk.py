@@ -197,6 +197,79 @@ class GdsDataSets(unittest.TestCase):
             self.assertTrue(set(sc.subset) <= set(full.subset))
 
 
+class LefDataSets(unittest.TestCase):
+    """The LEF sets of openspec/changes/m6-lef-def-oasis design D2 (tasks 1.2 and 1.4, Open Question 6 (a))."""
+
+    LEF_SETS = {"sky130-lef": ("sky130_fd_sc_hd", ("lef", "techlef")),
+                "gf180mcu-lef": ("gf180mcu_fd_sc_mcu7t5v0", ("lef", "techlef")),
+                "ihp-lef": ("sg13g2_stdcell", ("lef",))}
+
+    def test_lef_sets_use_the_m4_pins_and_their_own_pdk_root(self):
+        for name in self.LEF_SETS:
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                tech = fetch.DATA_SETS[name.removesuffix("-lef")]
+                self.assertEqual((data.family, data.variant, data.version), (tech.family, tech.variant, tech.version))
+                self.assertEqual(data.pdk_dir, "lef")
+                self.assertEqual(data.version_dir(Path("/r")),
+                                 Path("/r/lef/ciel") / tech.family / "versions" / tech.version)
+                gds = fetch.DATA_SETS[f"{name.removesuffix('-lef')}-gds"]
+                self.assertNotIn(data.version_dir(Path("/r")),
+                                 (tech.version_dir(Path("/r")), gds.version_dir(Path("/r"))))
+
+    def test_each_set_keeps_the_lef_directories_of_one_standard_cell_library(self):
+        for name, (lib, subdirs) in self.LEF_SETS.items():
+            with self.subTest(name):
+                data = fetch.DATA_SETS[name]
+                self.assertEqual(data.libraries, (lib,))
+                self.assertEqual(data.subset, tuple(f"{data.variant}/libs.ref/{lib}/{sub}" for sub in subdirs))
+                self.assertEqual(len(data.install_commands()), 1)
+
+    def test_install_command_names_the_library_and_each_lef_directory(self):
+        self.assertEqual(fetch.DATA_SETS["sky130-lef"].install_script(),
+                         f"pdk install sky130A {fetch.OPEN_PDKS_PIN} -lib sky130_fd_sc_hd -accept-license "
+                         "-accept-unverified -unpack-factor 32 -only sky130A/libs.ref/sky130_fd_sc_hd/lef/ "
+                         "-only sky130A/libs.ref/sky130_fd_sc_hd/techlef/")
+
+    def test_lef_cache_keys_are_distinct_from_every_other_set(self):
+        keys = [data.cache_key() for data in fetch.DATA_SETS.values()]
+        self.assertEqual(len(set(keys)), len(keys))
+        for name in self.LEF_SETS:
+            self.assertTrue(fetch.DATA_SETS[name].cache_key().startswith(f"pdk-{name}-"))
+
+    def test_cache_info_gives_the_lef_paths(self):
+        info = dict(line.split("=", 1) for line in fetch.cache_info(fetch.REPO / ".cache" / "pdks"))
+        self.assertEqual(info["ihp_lef_key"], fetch.DATA_SETS["ihp-lef"].cache_key())
+        self.assertEqual(info["sky130_lef_path"], f".cache/pdks/lef/ciel/sky130/versions/{fetch.OPEN_PDKS_PIN}")
+
+    def test_lef_sets_are_steps_fetched_only_when_named(self):
+        self.assertNotIn("sky130-lef", fetch.selected_steps([]))
+        self.assertEqual(fetch.selected_steps(["ihp-lef", "sky130-lef", "magic-ref"]),
+                         ["sky130-lef", "ihp-lef", "magic-ref"])
+        self.assertEqual(fetch.parse_args(["--print-digest", "gf180mcu-lef"]).print_digest, "gf180mcu-lef")
+
+    def test_lef_set_installs_under_its_pdk_root_and_a_second_run_is_a_no_op(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, cli = Path(tmp) / "pdks", Path(tmp) / "hefesto-cli"
+            cli.write_text("")
+            shape = dict(pdk_dir="lef", subset=("toyA/libs.ref/toy_lib/lef", "toyA/libs.ref/toy_lib/techlef"))
+            populate(make_set(**shape), Path(tmp) / "scratch")
+            data = make_set(**shape, tree_sha256=fetch.set_digest(make_set(**shape), Path(tmp) / "scratch"))
+
+            def run(argv, check):
+                self.assertEqual(argv[2], f"--pdk-root={root / 'lef'}")
+                populate(data, root)
+                return subprocess.CompletedProcess(argv, 0)
+
+            with mock.patch.object(fetch.subprocess, "run", side_effect=run) as fake:
+                first, _, _ = quiet(fetch.fetch_set, data, cli, root)
+                second, out, _ = quiet(fetch.fetch_set, data, cli, root)
+            self.assertTrue(first and second)
+            self.assertEqual(fake.call_count, 1)
+            self.assertIn("already present and verified", out)
+            self.assertTrue((root / "lef" / "ciel" / "toyfam" / "versions" / ("ab" * 20) / data.subset[1]).is_dir())
+
+
 class XschemDataSets(unittest.TestCase):
     """The xschem data sets of openspec/changes/m8-schematic design D17 (task 2.2)."""
 
