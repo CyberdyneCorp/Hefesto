@@ -203,8 +203,7 @@ TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-sca
   check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
   check_stub(oasis::read(state, "a.oas", oasis::OasisReadOptions{}), "oasis read");
   check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
-  const std::array<hefesto::db::Point, 3> triangle{hefesto::db::Point{0, 0}, {10, 0}, {0, 10}};
-  check_stub(lef::paint_polygon(cell, 1, triangle));
+  // lef::paint_polygon is implemented (LEFVIA): tests/unit/lef/via/.
 }
 
 TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {

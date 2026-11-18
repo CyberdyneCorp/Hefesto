@@ -89,17 +89,23 @@ How this plan runs:
 ## 4. LEFVIA: via geometry, shared by LEF and DEF
 
 - [ ] 4.1 Implement the LEF VIA and VIARULE storage and redefinition: shared entries, aliases and class VIA (Q-LEFDEF-8 fix). Verify the `[req:LEF VIA and VIARULE definitions]` and `[req:Via redefinition]` tests (lef-read and def-read).
-- [ ] 4.2 Implement cut growing to `mask::OutputStyle::contact_size` (the output style, Q-LEFDEF-17) with Magic's warnings. Verify the `[req:Cut growing]` tests and LEFDEF-011's warning text in a unit test.
+  - Partly landed (`m6-r2-lefvia`): `lef/via/store.hpp` (`begin_via`, `shared_names`, `add_via_rect`) and `ViaDefinition` extended in `lef/tech/table.hpp` (class, normal and obstruction type, half-unit area, extra list head first, canonical name, ref count); tested with hand-built rectangles (`tests/unit/lef/via/store_test.cpp`). Open: the shared-alias case needs LEFTECH's `LayerTable` records and a LayerTable call to move the canonical name; the parser-driven tests need LEFR and DEFR.
+- [x] 4.2 Implement cut growing to `mask::OutputStyle::contact_size` (the output style, Q-LEFDEF-17) with Magic's warnings. Verify the `[req:Cut growing]` tests and LEFDEF-011's warning text in a unit test.
+  - Done (`m6-r2-lefvia`): `grow_cut(cut, type, named_type, ViaContext)` over `OutputStyle::contact_cut`, `LEF-VIA-003/004`. With magic-compat ON the first warning names the entry's normal type, as Magic prints it (lef-read "Cut growing" updated). `tests/unit/lef/via/cut_test.cpp`.
 - [ ] 4.3 Implement `ViaGenerator::generated`: CUTSIZE, LAYERS (with the layer-order warning), CUTSPACING, ENCLOSURE and ROWCOL. Omitted parameters take the VIARULE values or 0 (Q-LEFDEF-61 fix). ORIGIN, OFFSET and PATTERN apply with magic-compat OFF only (Q-LEFDEF-62), as do via-rule vias (Q-LEFDEF-7 OFF). Verify the `[req:Generated via geometry]` and `[req:Generated DEF vias]` tests, one per mode for Q-LEFDEF-7 and 62.
-- [ ] 4.4 Implement `paint_polygon` over `db::decompose_polygon`, with port labels from the single decomposition (Q-LEFDEF-23). Verify that LEF POLYGON, DEF pin POLYGON (Q-LEFDEF-66 OFF) and DEF route POLYGON (Q-LEFDEF-70 OFF) give identical tiles for the same vertices.
-- [ ] 4.5 Implement the DEF-write side:
+  - Partly landed (`m6-r2-lefvia`): `ViaGenerator::generated(params, ViaContext)`, `order_layers`, `complete_params` (Q-LEFDEF-61, `LEF-VIA-007`), `apply_generated` and `cut_pattern` in `lef/via/generate.hpp`; `GeneratedViaParams` holds resolved layer types and the input scale. ORIGIN, OFFSET and PATTERN are tested per mode (`tests/unit/lef/via/generate_test.cpp`). Open: the Q-LEFDEF-7 per-mode test needs LEFR's reader.
+- [x] 4.4 Implement `paint_polygon` over `db::decompose_polygon`, with port labels from the single decomposition (Q-LEFDEF-23). Verify that LEF POLYGON, DEF pin POLYGON (Q-LEFDEF-66 OFF) and DEF route POLYGON (Q-LEFDEF-70 OFF) give identical tiles for the same vertices.
+  - Done (`m6-r2-lefvia`): `paint_polygon_rects`, `paint_polygon` (optional `PortLabel`) and `polygon_rects` in `lef/via/polygon.hpp`, taking the technology. `tests/unit/lef/via/polygon_test.cpp`.
+- [x] 4.5 Implement the DEF-write side:
   - contact-region identification, with Q-LEFDEF-111 per mode and Q-LEFDEF-106 fixed;
   - generated-via naming, with the `_hx`/`_vx` suffixes and Q-LEFDEF-105 per mode;
   - the cut array, with Q-LEFDEF-107 per mode;
   - a residue with no LEF mapping is skipped with a warning (Q-LEFDEF-115).
 
   Verify the `[req:Contact region identification]` and `[req:Generated via definitions]` tests.
-- [ ] 4.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `lef/via/`.
+  - Done (`m6-r2-lefvia`): `contact_regions`, `region_via`, `via_name`, `register_vias` (VIAS count, position index) and `via_rects` (VIAS RECTs and cut array, `LEF-VIA-009/010/011`) in `lef/via/regions.hpp`, through `DefViaContext`. `tests/unit/lef/via/regions_test.cpp`. def-write "Contact region identification" now follows Magic's RT/TR walk (its L-shaped scenario was wrong for magic-compat ON); "VIAS section content" states the Q-LEFDEF-115 fix.
+- [x] 4.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `lef/via/`.
+  - Done (`m6-r2-lefvia`): clang-tidy `readability-function-cognitive-complexity` with the build's compile database: worst 11 (`region_via`).
 
 ## 5. LEFR: lef-read, the tokenizer and the lef read command
 
