@@ -321,6 +321,7 @@ Depends on `mask-hints`, which is completed in M3.
 - **Accessibility and localization:** completed.
 - **Packaging:** an AppImage and a native Linux package, and a signed, notarized macOS app with MoltenVK bundled.
 - **Release gates:** license and acknowledgements checks. Every open question is resolved for the shipped scope.
+- **Clean-room counsel review (exit item):** legal counsel has reviewed the two-team clean-room process of the schematic editor and the system-library interface table, and the review is recorded (J-1, Q-SCHEM-10; capability `hefesto-licensing`, Requirement "Two-team clean-room process for specs written from GPL source", scenario "Counsel review before Desktop 1.0"; early de-risking schedule, "Before Desktop 1.0"). Desktop 1.0 does not ship the xschem-compatible system symbol library without it.
 
 **Desktop 1.0:** release on Linux and macOS, ready to take a design to a shuttle.
 
@@ -362,5 +363,5 @@ Desktop-only at first: the digital flow, the legacy tools, `shell` and git integ
 | M8 | SCHEM golden capture from xschem 3.4.8RC with gawk | The exact texts of Q-SCHEM-14, -21, -22, -27 and -28, and the start of M8 implementation |
 | M9 | ngspice LGPL/MPL linking review | How the iPad simulation engine is built |
 | M11 | Analog routing evaluation | Whether to add a dedicated analog router (Q-AGENT-1) |
-| Before Desktop 1.0 | Counsel review of the two-team clean-room process and the system-library interface table (J-1, Q-SCHEM-10) | Whether the xschem-derived specs and symbol interface may ship |
+| Before Desktop 1.0 | Counsel review of the two-team clean-room process and the system-library interface table (J-1, Q-SCHEM-10); an M13 exit item | Whether the xschem-derived specs and symbol interface may ship |
 | Before the M14 iPad scope freeze | Usability test of finger vs Pencil wire drawing (Q-SCHEM-24) | The final iPad schematic gesture set |
