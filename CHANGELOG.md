@@ -4,6 +4,18 @@ User-visible changes to Hefesto, newest first. Milestone details live in
 `openspec/changes/` and `docs/roadmap.md`; this file lists what a user of a
 release notices.
 
+## Unreleased (M6: LEF/DEF and OASIS, in progress)
+
+### Changed
+
+- **`lef`, `def` and `oasis` are registered commands.** They take Magic's
+  option names (`oasis` the `gds` options plus `strict`, `validation`,
+  `repetitions`, `layernames` and `circlepoints`), and `help` prints
+  Magic's `lef` and `def` lines. Until the readers and writers land, each
+  option answers `CORE-NOTIMPL-006` ("not implemented yet: lef read"), so
+  a startup script's `lef read` now fails with that message instead of
+  "unknown command".
+
 ## Unreleased (M5: mask generation, GDS and CIF)
 
 ### Added
