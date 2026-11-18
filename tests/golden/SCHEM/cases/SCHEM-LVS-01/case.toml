@@ -74,7 +74,7 @@ masks = []
 name = "stdout.txt"
 source = "stdout"
 comparator = "bytes"
-masks = ["schem-paths"]
+masks = ["schem-paths", "regex:(?i)compiled on [^\\n]*", "regex:rlim_cur=\\d+"]
 
 [[outputs]]
 name = "stderr.txt"

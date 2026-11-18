@@ -1,5 +1,5 @@
 schematic open input/nl17.sch
-schematic netlist out/nl17.spice
+schematic netlist out/nl17-options.spice
 schematic close -discard
 schematic open input/nl17.sch
 schematic netlist out/nl17-uppercase.spice

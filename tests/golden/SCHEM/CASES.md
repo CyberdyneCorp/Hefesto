@@ -13,6 +13,8 @@ These cases will be captured later by running xschem `3.4.8RC` (`StefanSchippers
 - Hefesto runs with `xschem-compat` ON (the default) and "portable netlist paths" off; the OFF behaviour of the compat entries is covered by unit tests, one per mode
 - flat netlists (SCHEM-NL-21) are compared by their canonical parsed form, never by bytes (Q-SCHEM-15)
 
+**As authored (m8-schematic task 3.3).** The cases are written by `tools/golden/authoring/schem_cases.py` (see `tools/golden/README.md`, "M8: the SCHEM cases"). Choices the table leaves open: SCHEM-NL-03's testbench is sky130 `sky130_tests/gain_stage.sch`; SCHEM-NL-19 uses `tap.sym`, a Hefesto-drawn symbol of type `bus_tap`; SCHEM-NL-12, NL-13 and NL-18 build their elements from `res.sym` instances with an instance `format` or `device_model`; SCHEM-NL-17 and NL-20 set `uppercase_subckt` and `top_is_subckt` with `--tcl`; SCHEM-CMD-01's reference is xschem's netlist of `div.sch`, the circuit the divider script draws; SCHEM-SIM-01 captures the deck and SCHEM-SIM-02 the `@spice_get_*` texts with no simulation loaded, because no data set carries the PDK ngspice models (the simulation results are M9); SCHEM-LVS-01 extracts `sky130_fd_sc_hd__inv_1` from the `sky130` data set with Magic and compares it with netgen (no setup file).
+
 **What is captured.** The output file (`.spice` or `.sch`/`.sym`), xschem's stdout and stderr (ERC messages), and the exit code.
 
 | ID | capability | input description (files, options, commands) | what to capture | requirement(s) covered |

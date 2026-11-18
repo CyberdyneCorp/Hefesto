@@ -2,3 +2,7 @@ schematic pdk sky130A
 schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/top.sch
 schematic netlist out/top-flat.spice -flat
 schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/gain_stage.sch
+schematic netlist out/gain_stage-flat.spice -flat
+schematic close -discard

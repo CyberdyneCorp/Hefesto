@@ -12,7 +12,7 @@ run() {
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
 run with-symbol xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set top_is_subckt 1' /work/input/with/inv.sch
-mv out/inv.spice out/inv-with-symbol.spice
+if [ -f out/inv.spice ]; then mv out/inv.spice out/inv-with-symbol.spice; else echo "== with-symbol: no out/inv.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run without-symbol xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set top_is_subckt 1' /work/input/without/inv.sch
-mv out/inv.spice out/inv-without-symbol.spice
+if [ -f out/inv.spice ]; then mv out/inv.spice out/inv-without-symbol.spice; else echo "== without-symbol: no out/inv.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 exit "$status"

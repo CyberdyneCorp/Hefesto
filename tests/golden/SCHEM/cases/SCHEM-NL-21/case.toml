@@ -10,8 +10,8 @@ area = "SCHEM"
 capability = "schematic-netlisting"
 requirements = ["Flat netlist"]
 tool = "xschem"
-description = "sky130 sky130_tests/top.sch in flat mode (-f), compared electrically (Q-SCHEM-15)."
-provenance = "pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_tests/top.sch"
+description = "sky130 sky130_tests/top.sch in flat mode (-f), compared electrically (Q-SCHEM-15); also gain_stage.sch (passgate.sym inside), whose flat netlist has devices."
+provenance = ["pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_tests/top.sch", "pdk:sky130-xschem:sky130A/libs.tech/xschem/sky130_tests/gain_stage.sch"]
 
 [reference]
 argv = ["sh", "/work/input/run.sh"]
@@ -25,6 +25,12 @@ requires_commands = ["schematic"]
 [[outputs]]
 name = "top-flat.spice"
 source = "out/top-flat.spice"
+comparator = "spice-canonical"
+masks = ["schem-paths"]
+
+[[outputs]]
+name = "gain_stage-flat.spice"
+source = "out/gain_stage-flat.spice"
 comparator = "spice-canonical"
 masks = ["schem-paths"]
 

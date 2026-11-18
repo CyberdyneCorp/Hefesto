@@ -61,7 +61,9 @@ def collect_outputs(case: Case, work: Path, result: RunResult) -> dict[str, byte
             continue
         data = read_output(work, out.source)
         if data is None:
-            raise RunnerError(f"{case.id}: reference tool did not write '{out.source}'")
+            raise RunnerError(f"{case.id}: reference tool did not write '{out.source}' (exit {result.returncode})\n"
+                              f"stdout: {result.stdout.decode(errors='replace')[-1500:]}\n"
+                              f"stderr: {result.stderr.decode(errors='replace')[-1500:]}")
         outputs[out.name] = data
     return outputs
 

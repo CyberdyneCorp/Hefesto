@@ -12,7 +12,7 @@ run() {
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
 run nl17 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out /work/input/nl17.sch
-mv out/nl17.spice out/nl17.spice
+if [ -f out/nl17.spice ]; then mv out/nl17.spice out/nl17-options.spice; else echo "== nl17: no out/nl17.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run nl17-uppercase xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set uppercase_subckt 1' /work/input/nl17.sch
-mv out/nl17.spice out/nl17-uppercase.spice
+if [ -f out/nl17.spice ]; then mv out/nl17.spice out/nl17-uppercase.spice; else echo "== nl17-uppercase: no out/nl17.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 exit "$status"

@@ -201,7 +201,9 @@ def run_script(spec: Spec) -> str:
         argv = [*env, *XSCHEM, "-n", "-s", "-o", "/work/out", *run.options, run.file]
         lines.append(f"run {run.label} {' '.join(_sh_quote(a) for a in argv)}")
         if run.out:
-            lines.append(f"mv out/{run.cell}.spice out/{run.out}")
+            lines.append(f'if [ -f out/{run.cell}.spice ]; then mv out/{run.cell}.spice out/{run.out}; '
+                         f'else echo "== {run.label}: no out/{run.cell}.spice; out/ has: '
+                         f'$(ls out | tr \'\\n\' \' \')" >&2; fi')
     lines.append('exit "$status"')
     return "\n".join(lines) + "\n"
 
@@ -459,7 +461,8 @@ NL11 = sch(
 # SCHEM-NL-12: line breaking (Q-SCHEM-20). Each element comes from a res.sym instance whose format is
 # overridden; values are fields of ten characters.
 TEN = " ".join(f"f{i:08d}" for i in range(1, 19))           # 18 fields, 197 characters
-BRACED = " ".join(f"{{a{i:02d}*b{i:02d}}}" for i in range(1, 19))
+# Braces inside a brace string are escaped (schematic-file-format "Brace strings").
+BRACED = " ".join(f"\\{{a{i:02d}*b{i:02d}\\}}" for i in range(1, 19))
 NL12 = sch(
     res(0, 0, f'name=R1 value="{TEN}" format="@name @pinlist @value"'),
     res(100, 0, f'name=R2 value="{BRACED}" format="@name @pinlist @value"'),
@@ -518,7 +521,8 @@ NL18 = sch(*[res(100 * i, 0, f'name=R{i + 1} value=1 device_model="{m}"') for i,
 # SCHEM-NL-19: bus taps (replaces xschem's GPL bus example, J-1). tap.sym is a Hefesto-drawn symbol of
 # type bus_tap: pin 0 (the tap) at (0,-20), pin 1 (the bus) at (0,0).
 TAP_SYM = (VERSION + 'G {}\nK {type=bus_tap\ntemplate="name=l1 lab=[0]"}\nV {}\nS {}\nF {}\nE {}\n'
-           "L 4 0 -20 0 0 {}\nB 5 -2.5 -22.5 2.5 -17.5 {name=tap dir=inout}\nB 5 -2.5 -2.5 2.5 2.5 {name=bus dir=inout}\n"
+           "L 4 0 -20 0 0 {}\nB 5 -2.5 -22.5 2.5 -17.5 {name=tap dir=inout}\n"
+           "B 5 -2.5 -2.5 2.5 2.5 {name=bus dir=inout}\n"
            "T {@lab} 5 -15 0 0 0.2 0.2 {}\n")
 NL19 = sch(
     lab(0, 0, "b1", "DATA[3:0]"), wire(0, 0, 500, 0, "bus=true"),
@@ -660,7 +664,8 @@ def specs() -> list[Spec]:
                         tcl_roundtrip([(pdk_path(S, rel7), "nfet_01v8.sym", "symbol")]),
                         [file_out("nfet_01v8.sym"), file_out("2-nfet_01v8.sym")], [S], [pdk_prov(S, rel7)]))
     out.append(tcl_spec("SCHEM-RT-08", FILE_FORMAT, ["Version record and header text"],
-                        "Files with no version record: (a) first record K {}, (b) first record an instance (Q-SCHEM-3).",
+                        "Files with no version record: (a) first record K {}, (b) first record an instance "
+                        "(Q-SCHEM-3).",
                         tcl_roundtrip([("/work/input/a.sch", "a.sch", "schematic"),
                                        ("/work/input/b.sch", "b.sch", "schematic")]),
                         [file_out("a.sch"), file_out("2-a.sch"), file_out("b.sch"), file_out("2-b.sch")],
@@ -766,7 +771,7 @@ def specs() -> list[Spec]:
     out.append(netlist_spec("SCHEM-NL-17", NETLISTING, ["Netlist options", "Bus and vector notation"],
                             "netlist_options.sym with bus_replacement_char=<> and top_is_subckt=true; then with "
                             "option uppercase_subckt as well.",
-                            [Run("nl17", "/work/input/nl17.sch", "nl17", out="nl17.spice"),
+                            [Run("nl17", "/work/input/nl17.sch", "nl17", out="nl17-options.spice"),
                              Run("nl17-uppercase", "/work/input/nl17.sch", "nl17", ["--tcl", "set uppercase_subckt 1"],
                                  out="nl17-uppercase.spice")], [], ["hefesto"], {"nl17.sch": NL17}))
     out.append(netlist_spec("SCHEM-NL-18", NETLISTING, ["Device models"],
@@ -785,9 +790,13 @@ def specs() -> list[Spec]:
                                  ["--tcl", "set top_is_subckt 1"], out="inv-without-symbol.spice")],
                             [], ["hefesto"], NL20_FILES))
     out.append(netlist_spec("SCHEM-NL-21", NETLISTING, ["Flat netlist"],
-                            "sky130 sky130_tests/top.sch in flat mode (-f), compared electrically (Q-SCHEM-15).",
-                            [Run("top-flat", pdk_path(S, "sky130_tests/top.sch"), "top", ["-f"], out="top-flat.spice")],
-                            [S], [pdk_prov(S, "sky130_tests/top.sch")], comparator="spice-canonical"))
+                            "sky130 sky130_tests/top.sch in flat mode (-f), compared electrically (Q-SCHEM-15); also "
+                            "gain_stage.sch (passgate.sym inside), whose flat netlist has devices.",
+                            [Run("top-flat", pdk_path(S, "sky130_tests/top.sch"), "top", ["-f"], out="top-flat.spice"),
+                             Run("gain_stage-flat", pdk_path(S, "sky130_tests/gain_stage.sch"), "gain_stage", ["-f"],
+                                 out="gain_stage-flat.spice")],
+                            [S], [pdk_prov(S, "sky130_tests/top.sch"), pdk_prov(S, "sky130_tests/gain_stage.sch")],
+                            comparator="spice-canonical"))
     out.append(tcl_spec("SCHEM-NL-22", NETLISTING, ["Net naming order"],
                         "The SCHEM-NL-11 schematic netlisted, then saved: lab= on the wires (Q-SCHEM-29).",
                         "xschem load /work/input/nl11.sch\nputs \"netlist [xschem netlist]\"\n"
@@ -865,7 +874,10 @@ def lvs_spec() -> Spec:
                 "not.sch, compared by netgen.", [pdk_prov(S, "sky130_tests/not.sch")], [S],
                 {"extract.tcl": LVS01_TCL}, shell=LVS01_SH,
                 outputs=[netlist_out("not.spice"), ("inv_1.spice", "out/sky130_fd_sc_hd__inv_1.spice", "bytes", []),
-                         ("lvs.out", "out/lvs.out", "bytes", [])] + STREAMS,
+                         ("lvs.out", "out/lvs.out", "bytes", []),
+                         # Magic's and netgen's banners carry the image build time and the host's file limit.
+                         ("stdout.txt", "stdout", "bytes", ["schem-paths", r"regex:(?i)compiled on [^\n]*",
+                                                            r"regex:rlim_cur=\d+"])] + STREAMS[1:],
                 externals=[*common.SKY130_TECH_EXTERNALS,
                            {"source": "pdk", "path": mag, "to": "sky130_fd_sc_hd__inv_1.mag"}])
     spec.hefesto = ("schematic pdk sky130A\nschematic open pdk/sky130A/libs.tech/xschem/sky130_tests/not.sch\n"

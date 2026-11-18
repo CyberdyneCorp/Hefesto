@@ -12,9 +12,9 @@ run() {
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
 run not env PDK=sky130A xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_netlist 1; set lvs_ignore 1' /pdk/sky130A/libs.tech/xschem/sky130_tests/not.sch
-mv out/not.spice out/not-lvs.spice
+if [ -f out/not.spice ]; then mv out/not.spice out/not-lvs.spice; else echo "== not: no out/not.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run dc_logic_not env PDK=ihp-sg13g2 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_netlist 1; set lvs_ignore 1' /pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_logic_not.sch
-mv out/dc_logic_not.spice out/dc_logic_not-lvs.spice
+if [ -f out/dc_logic_not.spice ]; then mv out/dc_logic_not.spice out/dc_logic_not-lvs.spice; else echo "== dc_logic_not: no out/dc_logic_not.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_nfet_03v3 env PDK=gf180mcuD xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_netlist 1; set lvs_ignore 1' /pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
-mv out/test_nfet_03v3.spice out/test_nfet_03v3-lvs.spice
+if [ -f out/test_nfet_03v3.spice ]; then mv out/test_nfet_03v3.spice out/test_nfet_03v3-lvs.spice; else echo "== test_nfet_03v3: no out/test_nfet_03v3.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 exit "$status"

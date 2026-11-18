@@ -22,8 +22,8 @@ args = ["--no-log", "{input}/hefesto.hef"]
 requires_commands = ["schematic"]
 
 [[outputs]]
-name = "nl17.spice"
-source = "out/nl17.spice"
+name = "nl17-options.spice"
+source = "out/nl17-options.spice"
 comparator = "bytes"
 masks = ["schem-paths"]
 

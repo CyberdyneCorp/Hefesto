@@ -12,5 +12,7 @@ run() {
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
 run top-flat xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out -f /pdk/sky130A/libs.tech/xschem/sky130_tests/top.sch
-mv out/top.spice out/top-flat.spice
+if [ -f out/top.spice ]; then mv out/top.spice out/top-flat.spice; else echo "== top-flat: no out/top.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
+run gain_stage-flat xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out -f /pdk/sky130A/libs.tech/xschem/sky130_tests/gain_stage.sch
+if [ -f out/gain_stage.spice ]; then mv out/gain_stage.spice out/gain_stage-flat.spice; else echo "== gain_stage-flat: no out/gain_stage.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 exit "$status"

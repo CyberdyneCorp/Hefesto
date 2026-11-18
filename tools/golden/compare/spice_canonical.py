@@ -9,7 +9,8 @@ written from SPICE semantics only.
 Parsing (case-insensitive, as SPICE reads a netlist):
 
 - CR is dropped; a line starting with ``+`` continues the previous line; empty lines and lines starting
-  with ``*`` are skipped; ``.end`` ends the netlist; a ``.control`` ... ``.endc`` block is skipped.
+  with ``*`` are skipped; ``.end`` outside a subcircuit ends the netlist (inside one it is ignored); a
+  ``.control`` ... ``.endc`` block is skipped.
 - A line is split into fields at whitespace outside ``{...}``, ``'...'`` and ``"..."``; ``k = v`` with
   spaces around ``=`` is one field ``k=v``.
 - ``.subckt <name> <ports...> [params:] [k=v...]`` ... ``.ends`` defines a subcircuit; ``.global <nets>``
@@ -149,8 +150,6 @@ def logical_lines(text: str) -> list[list[str]]:
             in_control = True
         elif word == ".endc":
             in_control = False
-        elif word == ".end":
-            break
         elif not in_control:
             lines.append(split_fields(line))
     return lines
@@ -160,6 +159,10 @@ def parse(text: str) -> Netlist:
     netlist, current = Netlist(), None
     for fields in logical_lines(text):
         word = fields[0].lower()
+        if word == ".end":
+            if current is None:
+                break
+            continue  # a .end in a subcircuit's user code (xschem copies testbench code verbatim)
         if word == ".subckt":
             if current is not None:
                 raise SpiceError(f"nested .subckt {fields[1:2]}")

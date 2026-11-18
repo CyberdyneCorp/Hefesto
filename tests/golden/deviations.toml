@@ -593,7 +593,7 @@ reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem com
 
 [SCHEM-NL-17]
 deferred = "M8"
-outputs = ["nl17.spice", "nl17-uppercase.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
+outputs = ["nl17-options.spice", "nl17-uppercase.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
 reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
 
 [SCHEM-NL-18]
@@ -613,7 +613,7 @@ reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem com
 
 [SCHEM-NL-21]
 deferred = "M8"
-outputs = ["top-flat.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
+outputs = ["top-flat.spice", "gain_stage-flat.spice", "stdout.txt", "stderr.txt", "exitcode.txt"]
 reason = "hefesto-cli has no schematic reader, netlister or schematic/xschem command yet (m8-schematic sections 6-11)"
 
 [SCHEM-NL-22]

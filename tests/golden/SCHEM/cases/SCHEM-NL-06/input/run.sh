@@ -12,15 +12,15 @@ run() {
   if [ "$rc" -ne 0 ]; then status=$rc; fi
 }
 run test_lvs_ignore-lvs_ignore0 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 0' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
-mv out/test_lvs_ignore.spice out/test_lvs_ignore-lvs_ignore0.spice
+if [ -f out/test_lvs_ignore.spice ]; then mv out/test_lvs_ignore.spice out/test_lvs_ignore-lvs_ignore0.spice; else echo "== test_lvs_ignore-lvs_ignore0: no out/test_lvs_ignore.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_lvs_ignore-lvs_ignore1 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 1' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
-mv out/test_lvs_ignore.spice out/test_lvs_ignore-lvs_ignore1.spice
+if [ -f out/test_lvs_ignore.spice ]; then mv out/test_lvs_ignore.spice out/test_lvs_ignore-lvs_ignore1.spice; else echo "== test_lvs_ignore-lvs_ignore1: no out/test_lvs_ignore.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_short_option-lvs_ignore0 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 0' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
-mv out/test_short_option.spice out/test_short_option-lvs_ignore0.spice
+if [ -f out/test_short_option.spice ]; then mv out/test_short_option.spice out/test_short_option-lvs_ignore0.spice; else echo "== test_short_option-lvs_ignore0: no out/test_short_option.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_short_option-lvs_ignore1 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 1' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
-mv out/test_short_option.spice out/test_short_option-lvs_ignore1.spice
+if [ -f out/test_short_option.spice ]; then mv out/test_short_option.spice out/test_short_option-lvs_ignore1.spice; else echo "== test_short_option-lvs_ignore1: no out/test_short_option.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_format_override-lvs_ignore0 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 0' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
-mv out/test_format_override.spice out/test_format_override-lvs_ignore0.spice
+if [ -f out/test_format_override.spice ]; then mv out/test_format_override.spice out/test_format_override-lvs_ignore0.spice; else echo "== test_format_override-lvs_ignore0: no out/test_format_override.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 run test_format_override-lvs_ignore1 xschem -q -x -r --rcfile /work/input/xschemrc -n -s -o /work/out --tcl 'set lvs_ignore 1' /pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
-mv out/test_format_override.spice out/test_format_override-lvs_ignore1.spice
+if [ -f out/test_format_override.spice ]; then mv out/test_format_override.spice out/test_format_override-lvs_ignore1.spice; else echo "== test_format_override-lvs_ignore1: no out/test_format_override.spice; out/ has: $(ls out | tr '\n' ' ')" >&2; fi
 exit "$status"
