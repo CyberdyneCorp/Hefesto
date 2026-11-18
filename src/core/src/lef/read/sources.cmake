@@ -7,4 +7,10 @@
 
 target_sources(hefesto_core PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/find_file.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/read.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/geometry.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/layer_section.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/layers.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/nondefault_rule.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/read.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/top_level.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/units.cpp)
