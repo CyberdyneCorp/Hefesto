@@ -162,7 +162,7 @@ TEST_CASE("the gds and cif options are implemented", "[m5-scaffold]") {
   REQUIRE_FALSE(missing.ok());
   CHECK(missing.diagnostics.front().code == "GDS-CMD-004");
   REQUIRE(s.run("gds nodup yes").ok());
-  CHECK(s.state.mask.gds.noduplicates);
+  CHECK(s.state.mask.stream_read.noduplicates);
 
   // CIF landed every `cif` option (tests/unit/cif/command/).
 }
@@ -208,9 +208,10 @@ TEST_CASE("the mask session has its defaults", "[m5-scaffold]") {
   editor::EditorState state;
   CHECK(state.mask.output_styles.current_style() == nullptr);
   CHECK(state.mask.input_styles.current_style() == nullptr);
+  CHECK(state.mask.stream_read == hefesto::stream::StreamReadSettings{});
   CHECK(state.mask.gds == gds::GdsSettings{});
   CHECK(state.mask.gds.labels);
-  CHECK(state.mask.gds.flatten_limit == 10);
+  CHECK(state.mask.stream_read.flatten_limit == 10);
   CHECK(state.mask.cif == cif::CifSettings{});
   CHECK(state.mask.warnings.level == mask::WarningLevel::warn_default);
 }

@@ -291,36 +291,36 @@ TEST_CASE("the read options and their defaults", "[cap:gds-read][req:Read option
     CHECK_FALSE(s.run(std::string{"gds "} + option + " maybe").ok());
   }
   REQUIRE(s.run("gds readonly yes").ok());
-  CHECK(s.f.ed.mask.gds.readonly);
+  CHECK(s.f.ed.mask.stream_read.readonly);
   REQUIRE(s.run("gds drccheck off").ok());
-  CHECK_FALSE(s.f.ed.mask.gds.drccheck);
+  CHECK_FALSE(s.f.ed.mask.stream_read.drccheck);
   REQUIRE(s.run("gds path subcells true").ok());
-  CHECK(s.f.ed.mask.gds.path_subcells);
+  CHECK(s.f.ed.mask.stream_read.path_subcells);
 }
 
 TEST_CASE("read options match by unique prefix", "[cap:gds-read][req:Read option syntax and defaults]") {
   Session s;
   REQUIRE(s.run("gds noduplicates t").ok());
-  CHECK(s.f.ed.mask.gds.noduplicates);
+  CHECK(s.f.ed.mask.stream_read.noduplicates);
   REQUIRE(s.run("gds ord on").ok());
-  CHECK(s.f.ed.mask.gds.ordering);
+  CHECK(s.f.ed.mask.stream_read.ordering);
 }
 
 TEST_CASE("flatten takes a boolean or a limit", "[cap:gds-read][req:Read option syntax and defaults]") {
   Session s;
   REQUIRE(s.run("gds flatten 5").ok());
-  CHECK(s.f.ed.mask.gds.flatten);
-  CHECK(s.f.ed.mask.gds.flatten_limit == 5);
+  CHECK(s.f.ed.mask.stream_read.flatten);
+  CHECK(s.f.ed.mask.stream_read.flatten_limit == 5);
   REQUIRE(s.run("gds flatten 0").ok());  // "0" is the boolean no: the limit stays
-  CHECK_FALSE(s.f.ed.mask.gds.flatten);
-  CHECK(s.f.ed.mask.gds.flatten_limit == 5);
+  CHECK_FALSE(s.f.ed.mask.stream_read.flatten);
+  CHECK(s.f.ed.mask.stream_read.flatten_limit == 5);
   REQUIRE(s.run("gds flatten -2").ok());
-  CHECK_FALSE(s.f.ed.mask.gds.flatten);
-  CHECK(s.f.ed.mask.gds.flatten_limit == -2);
+  CHECK_FALSE(s.f.ed.mask.stream_read.flatten);
+  CHECK(s.f.ed.mask.stream_read.flatten_limit == -2);
   REQUIRE(s.run("gds flatten yes").ok());
-  CHECK(s.f.ed.mask.gds.flatten);
+  CHECK(s.f.ed.mask.stream_read.flatten);
   CHECK_FALSE(s.run("gds flatten some").ok());
-  CHECK(s.f.ed.mask.gds.flatten);
+  CHECK(s.f.ed.mask.stream_read.flatten);
 }
 
 TEST_CASE("flatglob adds patterns and none clears them", "[cap:gds-read][req:Read option syntax and defaults]") {
@@ -328,7 +328,7 @@ TEST_CASE("flatglob adds patterns and none clears them", "[cap:gds-read][req:Rea
   REQUIRE(s.run("gds flatglob via*").ok());
   CHECK(s.run("gds flatglob").value.to_string() == "*_CDNS_* via*");
   REQUIRE(s.run("gds flatglob NONE").ok());
-  CHECK(s.f.ed.mask.gds.flatglob.empty());
+  CHECK(s.f.ed.mask.stream_read.flatglob.empty());
   CHECK(s.run("gds flatglob").value.to_string().empty());
 }
 
@@ -337,9 +337,9 @@ TEST_CASE("polygon subcells takes a type or a boolean", "[cap:gds-read][req:Read
   REQUIRE(s.run("gds polygon subcells keep").ok());
   CHECK(s.run("gds polygon subcells").value.to_string() == "keep");
   REQUIRE(s.run("gds polygon subcells yes").ok());
-  CHECK(s.f.ed.mask.gds.polygon_subcells == gds::PolygonSubcells::temporary);
+  CHECK(s.f.ed.mask.stream_read.polygon_subcells == gds::PolygonSubcells::temporary);
   REQUIRE(s.run("gds polygon subcells no").ok());
-  CHECK(s.f.ed.mask.gds.polygon_subcells == gds::PolygonSubcells::none);
+  CHECK(s.f.ed.mask.stream_read.polygon_subcells == gds::PolygonSubcells::none);
   CHECK_FALSE(s.run("gds polygon subcells maybe").ok());
   CHECK_FALSE(s.run("gds polygon").ok());
 }
@@ -350,10 +350,10 @@ TEST_CASE("maskhints takes a boolean or a list of input layers",
   REQUIRE(s.run("gds maskhints yes").ok());
   CHECK(s.run("gds maskhints").value.to_string() == "1");
   REQUIRE(s.run("gds maskhints no").ok());
-  CHECK(s.f.ed.mask.gds.maskhints.empty());
+  CHECK(s.f.ed.mask.stream_read.maskhints.empty());
   (void)s.printed.take();
   REQUIRE(s.run("gds maskhints CMF,CPG").ok());  // no input style: both unknown
-  CHECK(s.f.ed.mask.gds.maskhints.empty());
+  CHECK(s.f.ed.mask.stream_read.maskhints.empty());
   const auto printed = s.printed.take();
   REQUIRE(printed.size() == 2);
   CHECK(printed[0].text == "Error:  CIF layer \"CMF\" is unknown.");

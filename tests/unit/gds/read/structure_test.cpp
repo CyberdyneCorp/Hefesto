@@ -128,7 +128,7 @@ TEST_CASE("cells already in memory", "[cap:gds-read][req:Cells already in memory
   }
   SECTION("noduplicates keeps a pre-loaded cell") {
     Session s;
-    s.options.settings.noduplicates = true;
+    s.options.stream_read.noduplicates = true;
     preload(s, "INV");
     GdsFile f;
     f.library().begin("INV");
@@ -142,7 +142,7 @@ TEST_CASE("cells already in memory", "[cap:gds-read][req:Cells already in memory
   }
   SECTION("noduplicates annotates a LEF abstract") {
     Session s;
-    s.options.settings.noduplicates = true;
+    s.options.stream_read.noduplicates = true;
     db::CellDef* pad = preload(s, "PAD");
     db::set_property(*pad, "LEFview", db::PropertyValue{std::string{"TRUE"}});
     GdsFile f;
@@ -167,7 +167,7 @@ TEST_CASE("cells already in memory", "[cap:gds-read][req:Cells already in memory
   }
   SECTION("unique renames the old cell") {
     Session s;
-    s.options.settings.unique = true;
+    s.options.stream_read.unique = true;
     preload(s, "A");
     preload(s, "A_1");
     GdsFile f;
@@ -184,7 +184,7 @@ TEST_CASE("cells already in memory", "[cap:gds-read][req:Cells already in memory
 
 TEST_CASE("post-order reading", "[cap:gds-read][req:Post-order reading and file repositioning]") {
   Session s;
-  s.options.settings.ordering = true;
+  s.options.stream_read.ordering = true;
   GdsFile f;
   f.library().begin("TOP").sref("A", {0, 0}).end();
   f.begin("A");
@@ -197,7 +197,7 @@ TEST_CASE("post-order reading", "[cap:gds-read][req:Post-order reading and file 
 
   SECTION("a rewind reports when ordering is off") {
     Session t;
-    t.options.settings.flatglob = {"A*"};
+    t.options.stream_read.flatglob = {"A*"};
     GdsFile g;
     g.library().begin("TOP").sref("A9", {0, 0}).end().end_library();
     t.read(g);
@@ -212,7 +212,7 @@ TEST_CASE("post-order reading", "[cap:gds-read][req:Post-order reading and file 
 TEST_CASE("duplicate messages after a rewind (Q-MASK-111)", "[cap:gds-read][req:Duplicate structures within one file]") {
   for (const bool magic_compat : {true, false}) {
     Session s(kStyle, magic_compat);
-    s.options.settings.flatglob = {"A*"};
+    s.options.stream_read.flatglob = {"A*"};
     GdsFile rewinding;
     rewinding.library().begin("TOP").sref("A9", {0, 0}).end().end_library();
     s.read(rewinding);
@@ -228,7 +228,7 @@ TEST_CASE("duplicate messages after a rewind (Q-MASK-111)", "[cap:gds-read][req:
 TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells on input]") {
   SECTION("contact cell flattened into its parent") {
     Session s;
-    s.options.settings.flatten = true;
+    s.options.stream_read.flatten = true;
     GdsFile f;
     f.library().begin("VIA");
     square(f, 68, 0, 4);
@@ -247,7 +247,7 @@ TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells o
     // hvc_clampv2 placed the copies upwards, MASK-RT-sky130_fd_io-f01/-f09).
     for (const bool magic_compat : {true, false}) {
       Session s(kStyle, magic_compat);
-      s.options.settings.flatten = true;
+      s.options.stream_read.flatten = true;
       GdsFile f;
       f.library().begin("VIA");
       square(f, 68, 0, 4);
@@ -275,8 +275,8 @@ TEST_CASE("flattening small cells", "[cap:gds-read][req:Flattening small cells o
   }
   SECTION("shape limit") {
     Session s;
-    s.options.settings.flatten = true;
-    s.options.settings.flatten_limit = 3;
+    s.options.stream_read.flatten = true;
+    s.options.stream_read.flatten_limit = 3;
     GdsFile f;
     f.library().begin("V3");
     square(f, 68, 0);
@@ -295,7 +295,7 @@ TEST_CASE("regression: every structure reports its own 5000th use",
   // of 5000 uses each print "    5000 uses" twice (MASK-RT-sky130_sram_macros-f01,
   // whose bitcell array and top cell both reach 5000).
   Session s;
-  s.options.settings.flatten = true;  // flatten copies count as uses and stay cheap
+  s.options.stream_read.flatten = true;  // flatten copies count as uses and stay cheap
   GdsFile f;
   f.library().begin("VIA");
   square(f, 68, 0, 4);
@@ -324,7 +324,7 @@ TEST_CASE("polygon subcells", "[cap:gds-read][req:Polygon subcells]") {
   };
   SECTION("keep") {
     Session s;
-    s.options.settings.polygon_subcells = gds::PolygonSubcells::keep;
+    s.options.stream_read.polygon_subcells = gds::PolygonSubcells::keep;
     s.read(file());
     REQUIRE(s.has_cell("polygon00001"));
     REQUIRE(s.has_cell("polygon00002"));
@@ -334,7 +334,7 @@ TEST_CASE("polygon subcells", "[cap:gds-read][req:Polygon subcells]") {
   }
   SECTION("temporary") {
     Session s;
-    s.options.settings.polygon_subcells = gds::PolygonSubcells::temporary;
+    s.options.stream_read.polygon_subcells = gds::PolygonSubcells::temporary;
     s.read(file());
     CHECK_FALSE(s.has_cell("polygon00001"));
     CHECK(uses(s.cell("top")).empty());
@@ -344,7 +344,7 @@ TEST_CASE("polygon subcells", "[cap:gds-read][req:Polygon subcells]") {
 
 TEST_CASE("path subcells", "[cap:gds-read][req:Path subcells]") {
   Session s;
-  s.options.settings.path_subcells = true;
+  s.options.stream_read.path_subcells = true;
   GdsFile f;
   f.library().begin("top");
   for (int i = 0; i < 3; ++i) {
@@ -362,7 +362,7 @@ TEST_CASE("path subcells", "[cap:gds-read][req:Path subcells]") {
 TEST_CASE("end-of-structure processing", "[cap:gds-read][req:End-of-structure processing]") {
   for (const bool drccheck : {true, false}) {
     Session s;
-    s.options.settings.drccheck = drccheck;
+    s.options.stream_read.drccheck = drccheck;
     GdsFile f;
     f.library().begin("top");
     square(f, 68, 0);

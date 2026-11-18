@@ -36,6 +36,7 @@
 #include "hefesto/gds/command/settings.hpp"
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/input/warnings.hpp"
+#include "hefesto/mask/stream_read.hpp"
 #include "hefesto/platform/file_system.hpp"
 
 namespace hefesto::editor {
@@ -46,10 +47,12 @@ namespace hefesto::gds {
 
 class ByteSource;
 
-/// The options of one read: the session's `gds` settings and read warnings
-/// at the time of the call, and the name the user typed (for messages and
-/// GDS_FILE).
+/// The options of one read: the session's shared read settings, `gds`
+/// settings and read warnings at the time of the call, and the name the
+/// user typed (for messages and GDS_FILE).
 struct GdsReadOptions {
+  /// MaskSession::stream_read: the read settings shared with `oasis`.
+  stream::StreamReadSettings stream_read;
   GdsSettings settings;
   /// CIFRescaleAllow (MaskSession::rescale_allowed): the read may subdivide
   /// the internal grid.

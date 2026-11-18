@@ -56,7 +56,7 @@ TEST_CASE("an enormous magnification is capped", "[cap:gds-read][req:Magnified i
 
 TEST_CASE("a long look-ahead chain is capped", "[cap:gds-read][req:Post-order reading and file repositioning]") {
   Session s;
-  s.options.settings.ordering = true;
+  s.options.stream_read.ordering = true;
   constexpr int kChain = 600;
   GdsFile f;
   f.library();
@@ -76,7 +76,7 @@ TEST_CASE("a long look-ahead chain is capped", "[cap:gds-read][req:Post-order re
 
 TEST_CASE("reference cycles are refused", "[cap:gds-read][req:Use placement rules]") {
   Session s;
-  s.options.settings.ordering = true;
+  s.options.stream_read.ordering = true;
   GdsFile f;
   f.library().begin("A").sref("B", {0, 0}).end().begin("B").sref("A", {0, 0}).end().end_library();
   s.read(f);
@@ -85,7 +85,7 @@ TEST_CASE("reference cycles are refused", "[cap:gds-read][req:Use placement rule
 
 TEST_CASE("flatten copies into a huge array are capped", "[cap:gds-read][req:Flattening small cells on input]") {
   Session s;
-  s.options.settings.flatten = true;
+  s.options.stream_read.flatten = true;
   GdsFile f;
   f.library().begin("VIA");
   square(f, 0, 2);
@@ -100,7 +100,7 @@ TEST_CASE("flatten copies share one per-read paint budget", "[cap:gds-read][req:
   // 1024 x 1024 array is 2^27 tile paints, over the read's budget.
   const auto read_big = [](std::int32_t n) {
     Session s;
-    s.options.settings.flatglob = {"BIG"};
+    s.options.stream_read.flatglob = {"BIG"};
     GdsFile f;
     f.library().begin("BIG");
     for (std::int32_t i = 0; i < 128; ++i) {
@@ -148,7 +148,7 @@ TEST_CASE("truncated and padded streams", "[cap:gds-read][req:Record framing and
   }
   SECTION("block padding after a missing look-ahead target") {
     Session s;
-    s.options.settings.ordering = true;
+    s.options.stream_read.ordering = true;
     GdsFile padded = f;
     padded.end().end_library();
     gds_test::Bytes bytes = padded.bytes();

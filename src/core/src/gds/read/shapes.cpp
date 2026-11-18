@@ -224,7 +224,7 @@ void Reader::boundary_polygon(std::size_t cif_layer, mask::Polygon polygon) {
   db::CellDef* parent = current_;
   db::CellDef* sub = nullptr;
   PlaneSet saved;
-  if (settings().polygon_subcells != PolygonSubcells::none && non_manhattan_path_) {
+  if (stream_read().polygon_subcells != PolygonSubcells::none && non_manhattan_path_) {
     // 32 bytes: the prefix, up to 20 digits of a 64-bit count and the NUL.
     char name[32];
     std::snprintf(name, sizeof name, "polygon%05lld", static_cast<long long>(++polygon_count_));
@@ -412,7 +412,7 @@ void Reader::path_geometry(std::size_t cif_layer, const std::vector<PathPoint>& 
   db::CellDef* parent = current_;
   db::CellDef* sub = nullptr;
   PlaneSet saved;
-  if (settings().path_subcells) {
+  if (stream_read().path_subcells) {
     // 32 bytes: the prefix, up to 20 digits of a 64-bit count and the NUL.
     char name[32];
     std::snprintf(name, sizeof name, "path%05lld", static_cast<long long>(++path_count_));
@@ -422,7 +422,7 @@ void Reader::path_geometry(std::size_t cif_layer, const std::vector<PathPoint>& 
       saved = save_planes(true);
     }
   }
-  if (settings().savepaths && current_ != nullptr) {
+  if (stream_read().savepaths && current_ != nullptr) {
     record_path(*current_, points);
   }
   const PathOutline outline = path_outline(points, width, endcap, compat_.magic_compat);

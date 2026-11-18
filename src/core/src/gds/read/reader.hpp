@@ -235,6 +235,7 @@ class Reader {
   [[nodiscard]] std::int64_t scale_factor() const;
   [[nodiscard]] std::int64_t convert(std::int32_t v, std::int64_t k, std::int64_t& rescale);
   [[nodiscard]] const GdsSettings& settings() const noexcept { return options_.settings; }
+  [[nodiscard]] const stream::StreamReadSettings& stream_read() const noexcept { return options_.stream_read; }
 
   // --- structures (structure.cpp) ---
   bool parse_structure();
