@@ -17,6 +17,7 @@
 #include "hefesto/cell/hier.hpp"
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/drc/rules/style.hpp"
+#include "hefesto/lef/tech/lifecycle.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/script/pdk/tech_rc.hpp"
@@ -103,6 +104,7 @@ IoSession::IoSession(cmd::CommandContext& cmd_ctx, editor::EditorState& editor)
       io.sink.emit(message);
     }
     (void)tech::scale_layout(ed, n, d);
+    lef::refill_layer_table(ed, ed.drc.compat_settings());
     return true;
   };
   io.load_technology = [this](std::string_view name) { return discover_technology(name); };

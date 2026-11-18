@@ -157,6 +157,22 @@ TEST_CASE("the OFF refill after scalegrid fills what a reader left unset", SCALE
   CHECK(s.record("METAL1X").width == 6);
 }
 
+TEST_CASE("the OFF refill after a finer-grid cell read fills what a reader left unset", SCALE_REQ) {
+  // Round-2 integration: dbReadOpen's finer-grid read rescales the table
+  // (scale_layout) and, with magic-compat OFF, refills it as scalegrid does.
+  Session s(false);
+  load_at(s, 1, 1);
+  lef::LayerRecord added;
+  added.layer_class = lef::LayerClass::route;
+  added.type = s.type("m1");
+  s.editor.lefdef.layers.add("METAL1X", added);
+  s.file("/t/fine.mag", "magic\ntech leftest\nmagscale 1 2\ntimestamp 1\n<< end >>\n");
+  REQUIRE(s.run("load /t/fine.mag").ok());
+  REQUIRE(s.editor.grid == tech::GridScale{2, 1});
+  CHECK(s.record("METAL1X").width == 6);
+  CHECK(s.record("METAL1X").spacing == 8);
+}
+
 TEST_CASE("the table starts empty before any technology load", LIFE_REQ) {
   hefesto::editor::EditorState editor;
   CHECK(editor.lefdef.layers.size() == 0);
