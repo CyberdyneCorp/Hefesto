@@ -228,8 +228,10 @@ TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   gds::MemorySource source{bytes};
   lef::Lexer lexer{source};
   CHECK(&lexer.source() == &source);
-  check_stub(lexer.next());
-  CHECK(lexer.line() == 0);
+  // Implemented by LEFR (tests/unit/lef/lex/): four NULs are one empty line.
+  const auto none = lexer.next();
+  CHECK((none.ok() && !none.value()));
+  CHECK(lexer.line() == 1);
   CHECK(lexer.estimate() == 0.0);
 
   lef::MessageCounter counter;

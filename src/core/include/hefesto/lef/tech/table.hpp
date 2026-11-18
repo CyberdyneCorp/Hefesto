@@ -189,9 +189,33 @@ struct ViaDefinition {
   friend bool operator==(const ViaDefinition&, const ViaDefinition&) = default;
 };
 
-/// A NONDEFAULTRULE: per-layer widths and spacings. LEFR extends it.
+/// What one rule of a NONDEFAULTRULE names (lefRule::lefInfo).
+enum class RuleTarget : std::uint8_t {
+  none,   // the name had no entry (Magic's null lefInfo)
+  layer,  // an entry of the LEF layer table
+  via,    // a VIA definition
+};
+
+/// One rule of a NONDEFAULTRULE (lefRule): a layer or via and its values.
+/// Distances are in internal units; the extension is in half units.
+struct NonDefaultRuleLayer {
+  std::string name;  // the name looked up
+  RuleTarget target = RuleTarget::none;
+  db::Coord width = 0;
+  db::Coord spacing = 0;
+  db::Coord extension = 0;
+
+  friend bool operator==(const NonDefaultRuleLayer&, const NonDefaultRuleLayer&) = default;
+};
+
+/// A NONDEFAULTRULE (LefRules), filled by LEF read (lef-read "LEF
+/// NONDEFAULTRULE section") and DEF read/write.
 struct NonDefaultRule {
-  bool hard_spacing = false;
+  std::string name;  // the rule set's name (after Q-LEFDEF-9 renaming)
+  bool hard_spacing = false;  // HARDSPACING was read (no effect on reading)
+  /// The rules in Magic's list order: built by prepending, so the last rule
+  /// read is first.
+  std::vector<NonDefaultRuleLayer> layers;
 
   friend bool operator==(const NonDefaultRule&, const NonDefaultRule&) = default;
 };
