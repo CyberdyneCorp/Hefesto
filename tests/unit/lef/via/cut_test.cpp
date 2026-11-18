@@ -9,6 +9,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -92,6 +93,24 @@ TEST_CASE("cut growing leaves other rectangles alone", "[cap:lef-read][req:Cut g
   grown.layers[0].ops.insert(grown.layers[0].ops.begin() + 1, grow);
   Context c{technology, true, &grown};
   CHECK(grow_cut(cut, via, via, c.via()) == cut);
+}
+
+TEST_CASE("regression: cut growing at the coordinate limits saturates instead of overflowing",
+          "[cap:lef-read][req:Cut growing]") {
+  // LEF rectangles reach +-2^31 half units; the centre and edge sums
+  // overflowed int32 (undefined behaviour, fixed in both modes).
+  constexpr db::Coord kMax = std::numeric_limits<db::Coord>::max();
+  constexpr db::Coord kMin = std::numeric_limits<db::Coord>::min();
+  const auto technology = test::via_tech();
+  const tech::TileType via = test::type_of(*technology, "m2contact");
+  const mask::OutputStyle style = test::squares_style(via, 1, 1, 2, 2);  // C = 8
+  for (const bool compat : {true, false}) {
+    Context c{technology, compat, &style};
+    CHECK(grow_cut(db::Rect{kMax - 1, kMax - 1, kMax, kMax}, via, via, c.via()) ==
+          db::Rect{kMax - 5, kMax - 5, kMax, kMax});
+    CHECK(grow_cut(db::Rect{kMin, kMin, kMin + 1, kMin + 1}, via, via, c.via()) ==
+          db::Rect{kMin, kMin, kMin + 5, kMin + 5});
+  }
 }
 
 }  // namespace

@@ -11,6 +11,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -242,6 +243,55 @@ TEST_CASE("a layer that did not resolve gives no shapes", "[cap:def-read][req:Ge
   CHECK(g.shapes.empty());
   p.scale = 0.0F;
   CHECK(ViaGenerator::generated(p, c.via()).area == db::Rect{});
+}
+
+TEST_CASE("regression: a generated via too large for a coordinate has no geometry",
+          "[cap:def-read][req:Generated DEF vias]") {
+  // CUTSIZE x ROWCOL of 2^32 input units: Magic's (int)roundf is undefined
+  // there (fixed in both modes); the via gets no geometry.
+  for (const bool compat : {true, false}) {
+    Context c{test::via_tech(), compat};
+    GeneratedViaParams p;
+    p.layers = m1_m2(c);
+    p.cut_size = {1 << 30, 2};
+    p.rows = 1;
+    p.columns = 4;
+    const ViaGeometry g = ViaGenerator::generated(p, c.via());
+    CHECK(g.type == c.type("metal2"));
+    CHECK(g.area == db::Rect{});
+    CHECK(g.shapes.empty());
+  }
+}
+
+TEST_CASE("regression: a generated cut whose edge overflows is dropped", "[cap:def-read][req:Generated DEF vias]") {
+  // Four 2^29 cuts with enclosure -2^29: the enclosure fits, but the last
+  // cut's x0 + size is 2^31 half units (an int overflow in Magic).
+  Context c{test::via_tech()};
+  GeneratedViaParams p;
+  p.layers = m1_m2(c);
+  p.cut_size = {1 << 29, 2};
+  p.bottom_enclosure = {-(1 << 29), 1};
+  p.top_enclosure = {-(1 << 29), 1};
+  p.rows = 1;
+  p.columns = 4;
+  const ViaGeometry g = ViaGenerator::generated(p, c.via());
+  CHECK(g.area == db::Rect{-(1 << 30), -4, 1 << 30, 4});
+  std::size_t cuts = 0;
+  for (const ViaShape& s : g.shapes) {
+    cuts += s.type == c.type("m2contact") ? 1U : 0U;
+  }
+  CHECK(cuts == 3);
+}
+
+TEST_CASE("regression: an ORIGIN past the coordinate range saturates the shift",
+          "[cap:def-read][req:Generated DEF vias]") {
+  Context c{test::via_tech(), false};
+  GeneratedViaParams p = def_vg(c);
+  // 2^29 input units each: 2^30 half units, which fit; their sum does not.
+  p.origin = {std::numeric_limits<db::Coord>::max() / 4, 0};
+  p.top_offset = {std::numeric_limits<db::Coord>::max() / 4, 0};
+  const ViaGeometry g = ViaGenerator::generated(p, c.via());
+  CHECK(g.area.x1 == std::numeric_limits<db::Coord>::max());
 }
 
 }  // namespace

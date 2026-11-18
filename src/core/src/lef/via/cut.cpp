@@ -10,7 +10,9 @@
 
 #include "hefesto/lef/via/cut.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <string>
 
 #include "hefesto/diag/diagnostic.hpp"
@@ -24,6 +26,13 @@ namespace {
 /// ceil(v / f) for v >= 0 and f > 0, as LefGrowVia computes it.
 std::int64_t ceil_div(std::int64_t v, std::int64_t f) {
   return v % f == 0 ? v / f : v / f + 1;
+}
+
+/// v clamped to the coordinate range: Magic's int arithmetic overflows
+/// there, which is undefined; Hefesto saturates in both modes.
+db::Coord saturated(std::int64_t v) {
+  return static_cast<db::Coord>(
+      std::clamp<std::int64_t>(v, std::numeric_limits<db::Coord>::min(), std::numeric_limits<db::Coord>::max()));
 }
 
 void warn_mismatch(const db::Rect& cut, std::int64_t edge, tech::TileType named_type, const ViaContext& context) {
@@ -55,13 +64,12 @@ db::Rect grow_cut(const db::Rect& cut, tech::TileType type, tech::TileType named
   if (cut.width() != edge || cut.height() != edge) {
     warn_mismatch(cut, edge, named_type, context);
   }
-  const auto half = static_cast<db::Coord>(size >> 1);
-  db::Rect grown;
-  grown.x0 = (cut.x0 + cut.x1) / 2 - half;  // C division truncates toward zero
-  grown.y0 = (cut.y0 + cut.y1) / 2 - half;
-  grown.x1 = grown.x0 + static_cast<db::Coord>(size);
-  grown.y1 = grown.y0 + static_cast<db::Coord>(size);
-  return grown;
+  const std::int64_t half = size >> 1;
+  // 64-bit sums: a cut can reach the int range, where Magic's int sums
+  // overflow. C division truncates toward zero.
+  const std::int64_t x0 = (std::int64_t{cut.x0} + cut.x1) / 2 - half;
+  const std::int64_t y0 = (std::int64_t{cut.y0} + cut.y1) / 2 - half;
+  return db::Rect{saturated(x0), saturated(y0), saturated(x0 + size), saturated(y0 + size)};
 }
 
 }  // namespace hefesto::lef

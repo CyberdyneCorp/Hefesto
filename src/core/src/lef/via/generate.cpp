@@ -12,13 +12,15 @@
 #include "hefesto/lef/via/generate.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
+#include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "hefesto/diag/diagnostic.hpp"
+#include "hefesto/lef/read/units.hpp"
 #include "hefesto/lef/via/cut.hpp"
 #include "hefesto/tech/technology.hpp"
 
@@ -30,31 +32,68 @@ bool is_contact(const ViaContext& context, std::optional<tech::TileType> type) {
   return type && context.tech.is_contact(*type);
 }
 
-/// (int)roundf(v / s): binary32 division, rounded half away from zero.
-db::Coord round_div(std::int64_t v, float s) {
-  return static_cast<db::Coord>(std::roundf(static_cast<float>(v) / s));
+/// (int)roundf(v / s): binary32 division, rounded half away from zero;
+/// nullopt where Magic's int cast is undefined (NaN or out of range).
+std::optional<db::Coord> round_div(std::int64_t v, float s) {
+  return to_internal(static_cast<float>(v), s);
+}
+
+/// a + b, or nullopt when it does not fit a coordinate (Magic's int
+/// addition overflows there).
+std::optional<db::Coord> add(db::Coord a, db::Coord b) {
+  const std::int64_t sum = std::int64_t{a} + b;
+  if (sum < std::numeric_limits<db::Coord>::min() || sum > std::numeric_limits<db::Coord>::max()) {
+    return std::nullopt;
+  }
+  return static_cast<db::Coord>(sum);
 }
 
 /// The rectangle of an enclosure: (−round(W/u), −round(H/u), round(W/u),
-/// round(H/u)) half units with W = cut array width + 2 enclosure.
-db::Rect enclosure_rect(const GeneratedViaParams& p, db::Point enclosure) {
+/// round(H/u)) half units with W = cut array width + 2 enclosure; nullopt
+/// when a side does not fit.
+std::optional<db::Rect> enclosure_rect(const GeneratedViaParams& p, db::Point enclosure) {
   const std::int64_t w = std::int64_t{p.cut_size.x} * p.columns + std::int64_t{p.cut_spacing.x} * (p.columns - 1) +
                          2 * std::int64_t{enclosure.x};
   const std::int64_t h = std::int64_t{p.cut_size.y} * p.rows + std::int64_t{p.cut_spacing.y} * (p.rows - 1) +
                          2 * std::int64_t{enclosure.y};
-  const db::Coord x = round_div(w, p.scale);
-  const db::Coord y = round_div(h, p.scale);
-  return db::Rect{-x, -y, x, y};
+  const auto x = round_div(w, p.scale);
+  const auto y = round_div(h, p.scale);
+  if (!x || !y || *x == std::numeric_limits<db::Coord>::min() || *y == std::numeric_limits<db::Coord>::min()) {
+    return std::nullopt;
+  }
+  return db::Rect{-*x, -*y, *x, *y};
 }
 
+/// `r` moved by `by`, saturating at the coordinate range.
 db::Rect shifted(const db::Rect& r, db::Point by) {
-  return db::Rect{r.x0 + by.x, r.y0 + by.y, r.x1 + by.x, r.y1 + by.y};
+  const auto shift = [](db::Coord v, db::Coord d) {
+    return static_cast<db::Coord>(std::clamp<std::int64_t>(std::int64_t{v} + d, std::numeric_limits<db::Coord>::min(),
+                                                           std::numeric_limits<db::Coord>::max()));
+  };
+  return db::Rect{shift(r.x0, by.x), shift(r.y0, by.y), shift(r.x1, by.x), shift(r.y1, by.y)};
 }
 
-/// An ORIGIN or OFFSET in input units, as half units.
+/// An ORIGIN or OFFSET in input units, as half units; a value that does
+/// not fit is ignored (0), as the readers ignore such values.
 db::Point half_units(db::Point p, float scale) {
   const float half = scale / 2;
-  return db::Point{round_div(p.x, half), round_div(p.y, half)};
+  return db::Point{round_div(p.x, half).value_or(0), round_div(p.y, half).value_or(0)};
+}
+
+/// The cut at (x, y) input units with size (sx, sy) half units; nullopt
+/// when a coordinate does not fit.
+std::optional<db::Rect> cut_rect(std::int64_t x, std::int64_t y, db::Coord sx, db::Coord sy, float half) {
+  const auto x0 = round_div(x, half);
+  const auto y0 = round_div(y, half);
+  if (!x0 || !y0) {
+    return std::nullopt;
+  }
+  const auto x1 = add(*x0, sx);
+  const auto y1 = add(*y0, sy);
+  if (!x1 || !y1) {
+    return std::nullopt;
+  }
+  return db::Rect{*x0, *y0, *x1, *y1};
 }
 
 /// The pattern of the cut array: every cut, or (magic-compat OFF) the
@@ -84,17 +123,20 @@ void add_cuts(const GeneratedViaParams& p, const ViaContext& context, std::vecto
   const float half = p.scale / 2;
   const std::int64_t wc = std::int64_t{p.cut_size.x} * p.columns + std::int64_t{p.cut_spacing.x} * (p.columns - 1);
   const std::int64_t hc = std::int64_t{p.cut_size.y} * p.rows + std::int64_t{p.cut_spacing.y} * (p.rows - 1);
-  const db::Coord sx = round_div(p.cut_size.x, half);
-  const db::Coord sy = round_div(p.cut_size.y, half);
+  const auto sx = round_div(p.cut_size.x, half);
+  const auto sy = round_div(p.cut_size.y, half);
+  if (!sx || !sy) {
+    return;  // a cut size that does not fit: no cuts
+  }
   std::int64_t x = -wc / 2;  // C division truncates toward zero
   for (std::int32_t i = 0; i < p.columns; ++i) {
     std::int64_t y = -hc / 2;
     for (std::int32_t j = 0; j < p.rows; ++j) {
-      if (present[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]) {
-        const db::Coord x0 = round_div(x, half);
-        const db::Coord y0 = round_div(y, half);
-        const db::Rect grown = grow_cut(db::Rect{x0, y0, x0 + sx, y0 + sy}, cut, named, context);
-        out.insert(out.begin(), ViaShape{cut, grown});
+      const auto rect = present[static_cast<std::size_t>(j)][static_cast<std::size_t>(i)]
+                            ? cut_rect(x, y, *sx, *sy, half)
+                            : std::nullopt;
+      if (rect) {
+        out.insert(out.begin(), ViaShape{cut, grow_cut(*rect, cut, named, context)});
       }
       y += std::int64_t{p.cut_size.y} + p.cut_spacing.y;
     }
@@ -181,9 +223,14 @@ ViaGeometry ViaGenerator::generated(const GeneratedViaParams& params, const ViaC
   if (!(params.scale > 0.0F)) {
     return g;  // no unit: nothing to place (DEF read refuses such UNITS)
   }
-  g.area = enclosure_rect(params, params.top_enclosure);
+  const auto top = enclosure_rect(params, params.top_enclosure);
+  const auto bottom = enclosure_rect(params, params.bottom_enclosure);
+  if (!top || (params.layers.bottom && !bottom)) {
+    return g;  // a size that does not fit (Magic's int cast is undefined): no geometry
+  }
+  g.area = *top;
   if (params.layers.bottom) {
-    g.shapes.push_back(ViaShape{*params.layers.bottom, enclosure_rect(params, params.bottom_enclosure)});
+    g.shapes.push_back(ViaShape{*params.layers.bottom, *bottom});
   }
   add_cuts(params, context, g.shapes);
   if (!context.compat.magic_compat) {
