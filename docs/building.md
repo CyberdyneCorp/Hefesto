@@ -270,6 +270,21 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 
 `--jobs N` sets how many `hefesto-cli` sessions run at a time (default: the CPU count; a full run takes about 7 minutes with 6 jobs on an M-series Mac), `--chunk N` the cases per session, `--work DIR` keeps the two runs' files (`native/` and `tcl/` per chunk, with `console.txt`). The exit status is 0 when every case agrees, 1 on a difference, 3 when a data set is missing. The console lines of the two runs are compared too and only reported: the framework prints its own diagnostics when the `gencell` command returns, so their order may differ.
 
+## Golden capture
+
+Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), in CI through `golden-capture.yml`, never on developer machines. `tools/golden/README.md` is the full guide; the image holds:
+
+- Magic 8.3.694, netgen, ngspice and xschem, built from pinned commits;
+- since M6, KLayout 0.30.0 (Debian package `klayout 0.30.0-1+b1` from the APT snapshot, run as `klayout -b`) and gdstk 1.0.2 (a pinned wheel in `$HEFESTO_GDSTK_PYTHON`), reference tools of the OASIS cases only (design D18 of `openspec/changes/m6-lef-def-oasis`). Hefesto never links or calls them.
+
+The M6 dispatch modes of `golden-capture.yml`:
+
+```sh
+gh workflow run golden-capture.yml --ref <branch> -f mode=ext-inputs       # Magic's .ext files (tools/golden/ext_inputs.py)
+python3 tools/golden/authoring/lefdef_cases.py --sync-ext <artifact dir>   # commit them under tests/data/extflat/
+gh workflow run golden-capture.yml --ref <branch> -f mode=oasis-validate   # KLayout and gdstk checks (tools/golden/oasis_validate.py)
+```
+
 ## Dependencies and offline rebuilds
 
 All third-party dependencies are pinned in `cmake/Dependencies.cmake` (zlib, nlohmann/json, the Zstandard decoder, libcurl on Linux, Catch2, and Raven for the desktop build) and `cmake/Tcl.cmake` (Tcl 8.6.16, by URL and SHA-256, with the fixes in `third_party/patches/tcl/` applied on top by `cmake/ApplyPatches.cmake`), and fetched with CMake FetchContent into `.cache/deps/<preset>`. Tcl is compiled by CMake with the preset's own toolchain and flags (no `configure` run; the platform settings are in `cmake/tcl/tclConfig.h`), statically, without Tk and without dynamic loading, and its `library/` scripts are embedded in the binary, so no Tcl file is read from the host. CI's dependency caches are keyed on both files and on the patches. Deleting `build/` keeps that cache. To rebuild without network access once the cache is populated:

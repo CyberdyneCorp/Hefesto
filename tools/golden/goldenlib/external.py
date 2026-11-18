@@ -64,11 +64,13 @@ class ExternalUnavailable(RuntimeError):
 
 
 # The data sets of scripts/fetch_pdk.py (DATA_SETS): the M4 tech/.mag sets and the M5 library GDS sets
-# (m5-mask-gds-cif D19), which live under their own PDK root (<pdk-root>/gds).
+# (m5-mask-gds-cif D19), which live under their own PDK root (<pdk-root>/gds), and the M6 LEF sets
+# (m6-lef-def-oasis D2, task 1.4), under <pdk-root>/lef.
 PDK_SETS = (
     "sky130", "gf180mcu", "ihp",
     "sky130-gds", "gf180mcu-gds", "ihp-gds",
     "sky130-gds-sc", "gf180mcu-gds-sc", "ihp-gds-sc",
+    "sky130-lef", "gf180mcu-lef", "ihp-lef",
 )
 
 
@@ -129,7 +131,7 @@ def pdk_root() -> Path:
 def pdk_set_root(pdk_set: str) -> Path:
     """``<set root>/ciel/<family>/versions/<pin>`` of a PDK data set of scripts/fetch_pdk.py.
 
-    The set root is ``<pdk-root>`` for the tech/.mag sets and ``<pdk-root>/<pdk_dir>`` for the GDS sets.
+    The set root is ``<pdk-root>`` for the tech/.mag sets and ``<pdk-root>/<pdk_dir>`` for the GDS and LEF sets.
     """
     return _fetch_pdk_module().DATA_SETS[pdk_set].version_dir(pdk_root())
 
