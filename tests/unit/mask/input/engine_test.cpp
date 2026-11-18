@@ -558,7 +558,7 @@ TEST_CASE("a read triangle is merged with the split tiles around it", "[cap:mask
   CHECK(plain.solid_tiles().size() == 3);
 }
 
-// Regression (MASK-RT-gf180mcu_fd_io-f02, Q-MODEL-37 proposed): a read
+// Regression (MASK-RT-gf180mcu_fd_io-f02, Q-MODEL-37): a read
 // triangle beside a nearly parallel diagonal a few units off, as a 45-degree
 // path over a boundary with almost the same edge leaves it (POWER_RAIL_COR_1's
 // PPLUS). DBNMPaintPlane0 descends into a chain of small pieces along the two
@@ -655,7 +655,7 @@ mask::MaskPlane comb() {
 
 }  // namespace
 
-// Regression (round 7 review of Q-MODEL-37, proposed): a read-unit rescale
+// Regression (round 7 review of Q-MODEL-37): a read-unit rescale
 // (dbScalePlane) and a flatten copy (gdsCopyPaintFunc) repaint a read
 // plane's split tiles; they used a database paint's budget of 512 pieces,
 // so a triangle beside many tiles was cut short and filled as a rectangle

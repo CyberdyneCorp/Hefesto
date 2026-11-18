@@ -111,12 +111,21 @@ struct CloseThreshold {
 /// paints; OFF enumerates a snapshot.
 [[nodiscard]] constexpr bool q_mask_228_snapshot(const compat::CompatSettings& c) noexcept { return !c.magic_compat; }
 
-/// Q-MASK-418 (squares, squares-grid and slots region pass; proposed): after
-/// a region's cuts, ON clears only the region's start tile, as Magic's
+/// Q-MASK-418 (squares, squares-grid and slots region pass): after a
+/// region's cuts, ON clears only the region's start tile, as Magic's
 /// clearing walk does (it never gets past the start tile), so later regions
 /// still accept squares lying on earlier regions; OFF clears every tile of
 /// the region.
 [[nodiscard]] constexpr bool q_mask_418_clears_start_only(const compat::CompatSettings& c) noexcept {
+  return c.magic_compat;
+}
+
+/// Q-MASK-420 (`maxrect` region pass): after a region's rectangle, ON
+/// clears only the region's start tile, as cifRectBoundingBox's clearing
+/// walk does, so a later non-simple internal region counts the earlier
+/// regions' other tiles as its own when it looks for its largest rectangle;
+/// OFF clears every tile of the region.
+[[nodiscard]] constexpr bool q_mask_420_clears_start_only(const compat::CompatSettings& c) noexcept {
   return c.magic_compat;
 }
 

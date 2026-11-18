@@ -437,7 +437,7 @@ Region processing: for each region of the (post-pre-pass) input, compute its bou
 
 The grid-limit step depends on the `magic-compat` setting (Q-MASK-27, resolution: compat): with it ON (the default) it is sign-blind, `x2 -= 2δ` whatever the sign of cx, as in Magic, so a contact left of or below the origin can lose its cuts; with it OFF it is sign-aware, as in `slots`: `x2 -= 2δ` when cx ≥ 0 and `x2 += 2δ` when cx < 0 (likewise in y).
 
-After a region's cuts, the region is cleared so that later regions do not test their squares against it. How much is cleared depends on the `magic-compat` setting (Q-MASK-418, proposed: compat): with it ON (the default) only the region's first tile is cleared, as in Magic, whose clearing walk stops at the start tile, so a later region whose bounding box covers an earlier region's other tiles keeps the cuts it lays on them (overlapping, off-grid cuts); with it OFF every tile of the region is cleared. `squares-grid` and `slots` share this region pass.
+After a region's cuts, the region is cleared so that later regions do not test their squares against it. How much is cleared depends on the `magic-compat` setting (Q-MASK-418, resolution: compat): with it ON (the default) only the region's first tile is cleared, as in Magic, whose clearing walk stops at the start tile, so a later region whose bounding box covers an earlier region's other tiles keeps the cuts it lays on them (overlapping, off-grid cuts); with it OFF every tile of the region is cleared. `squares-grid` and `slots` share this region pass.
 
 (Magic ref: cif/CIFgen.c:3769-3880, cif/CIFgen.c:2848-2990, cif/CIFgen.c:2548-2563, cif/CIFgen.c:3004-3045, cif/CIFgen.c:5332-5347)
 
@@ -763,7 +763,9 @@ Paint/erase of a rectangle with non-positive extent changes nothing. Bridges do 
 
 Compatibility: exact
 
-Internal computation: start with the candidate list [bounding box]; for every obstacle tile (any tile overlapping the bounding box that is not part of the region, enumerated in the plane's area-search order) replace each candidate overlapping it by its non-degenerate parts above, below, left and right of the obstacle (each kept only if at least 1 mu thick), keeping non-overlapping candidates; finally choose the candidate with strictly largest area, the first in list order on ties. Split tiles belonging to the region are treated as entirely inside it. See Q-MASK-14.
+Internal computation: start with the candidate list [bounding box]; for every obstacle tile (any tile overlapping the bounding box that is not marked as part of the region, enumerated in the plane's area-search order) replace each candidate overlapping it by its non-degenerate parts above, below, left and right of the obstacle (each kept only if at least 1 mu thick), keeping non-overlapping candidates; finally choose the candidate with strictly largest area, the first in list order on ties. Split tiles belonging to the region are treated as entirely inside it. See Q-MASK-14.
+
+After a region's rectangle, the region's marks are cleared so that later regions do not count its tiles. How much is cleared depends on the `magic-compat` setting (Q-MASK-420, resolution: compat): with it ON (the default) only the region's first tile is cleared, as in Magic, whose clearing walk stops at the start tile (the same idiom as the `squares` region pass, Q-MASK-418), so the earlier regions' other tiles stay marked and a later non-simple region counts them as part of itself when it looks for its largest rectangle (they are not obstacles); with it OFF every tile of the region is cleared. `external` and simple regions paint their bounding box and are the same in both modes.
 
 (Magic ref: cif/CIFgen.c:2579-2735, utils/maxrect.c:30-160, utils/maxrect.c:306-344)
 
@@ -773,6 +775,13 @@ Internal computation: start with the candidate list [bounding box]; for every ob
 - **WHEN** `maxrect` (internal)
 - **THEN** candidate areas are `[0,10]×[0,30]` (300) and `[0,40]×[0,10]` (400); the result is `[0,40]×[0,10]`
 - **AND** with `maxrect external` the result is `[0,40]×[0,30]`
+
+#### Scenario: A later region over an earlier region's tiles
+
+- **GIVEN** cur made of a region A = `[40,50]×[90,95]` ∪ `[20,80]×[20,90]`, found first (its start tile is the top one), and a later cup-shaped region B = `[0,100]×[0,15]` ∪ `[0,10]×[15,60]` ∪ `[90,100]×[15,60]`
+- **WHEN** `maxrect` (internal) is applied with `magic-compat` ON
+- **THEN** A's tile `[20,80]×[20,90]` stays marked, B's largest rectangle is `[20,80]×[20,60]`, and the result is `[20,80]×[20,90]`
+- **AND** with `magic-compat` OFF B's largest rectangle is its bar `[0,100]×[0,15]`, and the result is `[0,100]×[0,15]` ∪ `[20,80]×[20,90]`
 
 ### Requirement: orthogonal
 

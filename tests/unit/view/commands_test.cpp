@@ -376,7 +376,8 @@ TEST_CASE("regression: unexpand and expand search below unexpanded uses with mag
     CHECK(mid->use_index().state_for_test().binned == magic_compat);
     REQUIRE(s.run("expand").ok());
     CHECK(w.is_expanded(*arr));
-    CHECK(w.is_expanded(*leaves[3]) == magic_compat);
+    // magic-compat OFF also descends under element 1 since Q-MASK-419.
+    CHECK(w.is_expanded(*leaves[3]));
   }
 }
 
@@ -416,7 +417,7 @@ TEST_CASE("regression: unexpand with magic-compat ON acts below unexpanded uses,
   // dbExpandFunc acts on every use its DBCellSrArea search reaches, below
   // expanded and unexpanded uses alike (database/DBexpand.c:182-252).
   // Hefesto stopped at unexpanded uses, so a leaf stayed expanded under a
-  // closed parent; magic-compat OFF keeps that rule (Q-MASK-419, proposed).
+  // closed parent; magic-compat OFF keeps that rule (Q-MASK-419).
   for (const bool magic_compat : {true, false}) {
     NestedCase c(magic_compat);
     view::LayoutWindow& w = c.window();
@@ -465,10 +466,44 @@ TEST_CASE("regression: expand with magic-compat ON skips an array whose elements
   }
 }
 
+TEST_CASE("regression: expand with magic-compat OFF descends under every array element the box overlaps",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // The OFF walk descended into an expanded array in the frame of its first
+  // element only, so instances under the other elements were never acted on
+  // (Q-MASK-419). ON visits the first element overlapping the box, as
+  // dbCellSrFunc does.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});  // elements at x 0 and 2000
+    view::LayoutWindow& w = c.window();
+    w.set_expanded(*c.m, true);
+    c.s.editor.box = db::Rect{2295, -5, 2315, 15};  // leaf 3 of the second element
+    REQUIRE(c.s.run("expand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]));
+    CHECK_FALSE(w.is_expanded(*c.leaves[2]));
+  }
+}
+
+TEST_CASE("regression: expand toggle with magic-compat OFF acts once on an instance under two array elements",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // Leaf 3 lies under the box in both elements; the OFF walk acts on each
+  // instance once, so the toggle is not undone by the second element.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});
+    view::LayoutWindow& w = c.window();
+    c.s.editor.box = db::Rect{295, -5, 2315, 15};  // leaves 3-11 of element 0, 0-3 of element 1
+    REQUIRE(c.s.run("expand", {"toggle"}).ok());
+    CHECK(w.is_expanded(*c.m));
+    CHECK(w.is_expanded(*c.leaves[3]));
+    CHECK(w.is_expanded(*c.leaves[1]) != magic_compat);  // under element 1 only
+  }
+}
+
 TEST_CASE("regression: expand all toggle expands with magic-compat ON, as CmdExpand does",
           "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
   // CmdExpand passes DB_EXPAND for `all`, with or without toggle
-  // (commands/CmdE.c:950-966); magic-compat OFF toggles (Q-MASK-419, proposed).
+  // (commands/CmdE.c:950-966); magic-compat OFF toggles (Q-MASK-419).
   for (const bool magic_compat : {true, false}) {
     NestedCase c(magic_compat);
     REQUIRE(c.s.run("expand", {"all"}).ok());

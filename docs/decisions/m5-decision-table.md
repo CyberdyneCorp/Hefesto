@@ -14,7 +14,7 @@ Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
 ## Judgement items
 
-None remain of the 105 drafted on 2026-11-13 (all approved as drafted). Four later rows wait for the user: Q-MASK-418, Q-MASK-419, Q-MASK-420 and Q-MODEL-37 (see the pending line under Counts). Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
+None remain of the 105 drafted on 2026-11-13 (all approved as drafted). The four rows drafted in round 7 (Q-MASK-418, Q-MASK-419, Q-MASK-420 and Q-MODEL-37) were approved by the user on 2026-11-17 (see "User decisions of 2026-11-17 (round 7)"). Q-MASK-204 and Q-MASK-318 were judgement items in the first draft; review against Magic's source showed that the standing rules decide both (Q-MASK-204 by the compat rule and the byte-identical exit criterion, Q-MASK-318 by X-2 tier 1 because it loses data). What is left is cost and scope, in the next section.
 
 ## Effort and scope notes
 
@@ -51,6 +51,8 @@ Every row is approved (2026-11-13, or on the date the row gives for later entrie
 | Q-MASK-30 | operator distances past the usable plane (2026-11-14) | **fix** | refuse grow/shrink/bridge/bloat distances above db::kPlaneMax, clamp bloat pairs and rescaled values, in both modes (fixed deviation) |
 | Q-MASK-35 | contact-cut values and cifoutput scale factor past the usable plane (2026-11-17) | **fix** | refuse `squares`/`squares-grid`/`slots` values and a `scalefactor` above db::kPlaneMax, clamp rescaled values, 64-bit cut kernels, in both modes (fixed deviation) |
 | Q-MASK-417 | the interaction filters never paint (2026-11-17) | **compat** | ON: `overlapping`, `nonoverlapping`, `interacting`, `noninteracting` give an empty layer, as Magic; OFF: the region filter as specified |
+| Q-MASK-418 | squares and slots regions leave earlier regions marked processed (2026-11-17, round 7) | **compat** | ON: the squares, squares-grid and slots region pass clears only a region's start tile, as Magic; OFF: clears each whole region |
+| Q-MASK-420 | `maxrect` leaves earlier regions marked processed (2026-11-17, round 7) | **compat** | ON: `maxrect` clears only a region's start tile, so a later non-simple region's largest rectangle can lie on earlier regions' tiles, as Magic; OFF: clears each whole region |
 
 ### DRC mask-layer rules
 
@@ -158,6 +160,7 @@ Every row is approved (2026-11-13, or on the date the row gives for later entrie
 | Q-MASK-335 | malformed CIF call transformation is used unscaled | **compat** | ON: place the call with the partial unscaled transform; OFF: skip the call |
 | Q-MASK-338 | CIF label-layer tiles are scaled twice (2026-11-14) | **compat** | ON: label-layer tiles multiplied by S, then divided by R, as Magic; OFF: divided by R only |
 | Q-MASK-339 | CIF header of a technology without a version section (2026-11-14) | **compat** | ON: the start-up technology's `0.0` / `Minimum technology file structure`; OFF: `unknown` and no `@@techdesc` line |
+| Q-MODEL-37 | the 512-piece limit changes the tiling of real GDS reads (2026-11-17, round 7; `open-questions/MODEL.md`) | **fix** | read-plane triangles: at most 1024 pieces per paint from a read pool of 65536 + 1024 per triangle, at most 65536 per polygon; database paints keep 512; both modes |
 
 ### Hierarchical generation
 
@@ -180,6 +183,7 @@ Every row is approved (2026-11-13, or on the date the row gives for later entrie
 | Q-MASK-414 | Progress reporting and event blocking during interaction processing | **platform** | progress callback, cancellation without partial output, snapshot isolation |
 | Q-MASK-415 | `cif unfracture` merge area (2026-11-14) | **compat** | ON: CIFGen's internal-unit search area on the mask-unit plane, as Magic; OFF: the whole generated layer |
 | Q-MASK-416 | GDS and CIF input bounds Magic does not have (2026-11-16) | **fix** | read-polygon work budget 2^24 + 16 n^2, 64-level use-index sub-binning cap (Magic segfaults), gzip inflate cap; both modes |
+| Q-MASK-419 | `expand` and `unexpand` act below unexpanded instances and use dbExpandFunc's surround test (2026-11-17, round 7) | **compat** | ON: Magic's DBExpandAll/dbExpandFunc; OFF: the documented `cmd-hierarchy` rules, every array element under the box considered |
 
 ### Technology file
 
@@ -191,14 +195,14 @@ Every row is approved (2026-11-13, or on the date the row gives for later entrie
 
 | Kind | Count | IDs |
 |---|---|---|
-| compat | 83 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 136, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 235, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 338, 339, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413, 415, 417 |
+| compat | 86 | Q-DRC-13, Q-DRC-27, 1, 2, 3, 5, 6, 7, 18, 21, 27, 32, 33, 110, 111, 113, 114, 115, 116, 118, 119, 120, 121, 123, 124, 125, 129, 130, 134, 136, 200, 202, 204, 206, 207, 210, 211, 214, 215, 216, 221, 225, 226, 228, 229, 230, 231, 232, 235, 300, 302, 306, 307, 309, 310, 311, 315, 317, 320, 321, 322, 323, 325, 326, 327, 330, 331, 334, 335, 338, 339, 400, 402, 403, 404, 405, 406, 409, 410, 411, 413, 415, 417, 418, 419, 420 |
 | replicate | 18 | 8, 11, 13, 15, 20, 22, 23, 26, 29, 31, 122, 203, 205, 217, 301, 316, 333, 401 |
-| fix | 22 | Q-TECH-33, 10, 30, 34, 35, 126, 128, 135, 201, 209, 212, 219, 222, 233, 234, 303, 314, 318, 332, 407, 412, 416 |
+| fix | 23 | Q-TECH-33, Q-MODEL-37, 10, 30, 34, 35, 126, 128, 135, 201, 209, 212, 219, 222, 233, 234, 303, 314, 318, 332, 407, 412, 416 |
 | platform | 4 | 132, 223, 324, 414 |
 
-Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 127: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16), and Q-MASK-34, Q-MASK-35, Q-TECH-33 and Q-MASK-417 of 2026-11-17: 127 in all. Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in the round 5 review, Q-MASK-21 on 2026-11-17 (its ON truncation is no longer observable).
+Bare numbers are Q-MASK IDs. Q-MASK-323 is counted as compat (it follows Q-MASK-204). Q-MASK-318 is counted as fix; its DD sub-rule is compat. Total 131: the 105 of 2026-11-13, Q-MASK-29 and Q-MASK-30 of the round 2 review, Q-MASK-412 (completed after the round 2 captures), Q-MASK-31, Q-MASK-32, Q-MASK-33, Q-MASK-407 (amended) and Q-DRC-27 of the round 3 review, and Q-MASK-135, Q-MASK-233, Q-MASK-332 (resolved 2026-11-07, first tabled here), Q-MASK-338, Q-MASK-339 and Q-MASK-415 of the round 4 review, all of 2026-11-14, and Q-MASK-136, Q-MASK-234, Q-MASK-235 and Q-MASK-416 of the round 5 review (2026-11-16), and Q-MASK-34, Q-MASK-35, Q-TECH-33 and Q-MASK-417 of 2026-11-17, and Q-MASK-418, Q-MASK-419, Q-MASK-420 and Q-MODEL-37 of round 7 (2026-11-17): 131 in all. Q-MASK-216, Q-MASK-320 and Q-MASK-414 were amended in the round 5 review, Q-MASK-21 on 2026-11-17 (its ON truncation is no longer observable).
 
-Pending (proposed, not in the table): Q-MASK-418 (squares and slots clear only a region's start tile), Q-MASK-419 (`expand`/`unexpand` with magic-compat OFF), Q-MASK-420 (`maxrect` clears only a region's start tile) and Q-MODEL-37 (the read-plane triangle budget). They wait for the user's decision; `m5_cases.py --exit-check` fails while an M5 capability cites one of them.
+Pending (proposed, not in the table): none.
 
 ## User decisions of 2026-11-14 (round 2 review)
 
@@ -254,6 +258,15 @@ Taken on the fuzz fixes (PRs #63 and #64) and on the round 6 report; each entry'
 2. **Q-MASK-35** (new, **fix**, crash class; approved 2026-11-17, PR #64): in both modes a `squares`, `squares-grid` or `slots` value above 1073741818 rejects the statement (`<name> must be at most 1073741818.`), rescaling clamps those values to the plane, the cut kernels compute in 64 bits, and a cifoutput `scalefactor` above 1073741818 is refused (`Scalefactor must be at most 1073741818.`, the style uses 1); Magic computes them in int and overflows (cif/CIFgen.c, cif/CIFtech.c). `mask-output-styles` and `mask-output-operators` state it. Found by fuzz_cifoutput_section; seed `tests/fuzz/corpus/fuzz_cifoutput_section/regression-ubsan-squares-border-overflow`.
 3. **Q-TECH-33** (new, **fix**, hang; approved 2026-11-17, PR #64): in both modes one tech read spends at most 100000 lines in `repeat` passes; past it TECH-REPEAT-003 is reported and the rest of the file is read once; Magic replays without bound (utils/tech.c:607-632). `tech-file-format` "repeat directive" states it. Found by fuzz_tech_file; seed `tests/fuzz/corpus/fuzz_tech_file/regression-timeout-repeat-count`.
 4. **Q-MASK-417** (new, **compat**; drafted in round 6, approved 2026-11-17): Magic's cifInteractingRegions never paints (its second walk marks the seed CIF_IGNORE before PUSHTILEONLY, which pushes only unprocessed tiles, cif/CIFgen.c:4928-4929), so `overlapping`, `nonoverlapping`, `interacting` and `noninteracting` give an empty layer. With `magic-compat` ON Hefesto gives the same empty layer; with it OFF it keeps the region filter as specified. Behaviour change with ON: rounds 1-6 filtered in both modes. `mask/ops/topology.cpp` `op_interacting`; tests in `tests/unit/mask/ops/topology_test.cpp` (both modes); `mask-output-operators` "overlapping, nonoverlapping, interacting, noninteracting" states it, with the scenario "Every form is empty with magic-compat ON". Golden MASK-OP-021 replays and is no longer an M5 exit blocker. Q-MASK-21's ON truncation is no longer observable (amended). No reference PDK cifoutput uses the four forms.
+
+## User decisions of 2026-11-17 (round 7)
+
+Taken on the round 7 report (PR #65); each entry's `Resolution:` line is in `open-questions/MASK.md` or `open-questions/MODEL.md`. With them no M5 capability cites a decision without a `Resolution:` line, and `m5_cases.py --exit-check` exits 0.
+
+1. **Q-MASK-418** (new, **compat**; drafted in round 7 from MASK-RT-sky130_fd_io-f01/-f09): Magic's cifSquaresFillArea and cifSlotsFillArea clear a region by marking its start tile CIF_IGNORE and pushing it with PUSHTILEONLY, which pushes only unprocessed tiles (cif/CIFgen.c:1252-1256, :3004-3045, :3369-3373), so the region's other tiles keep CIF_PROCESSED and a later region lays its own cut grid over them. With `magic-compat` ON the squares, squares-grid and slots region pass copies those leftover marks; with it OFF each region is cleared. Code as landed in round 7 (`mask/ops/squares.cpp` `fill_area`); test in `tests/unit/mask/ops/squares_test.cpp` (both modes); `mask-output-operators` "squares" states it. The sky130_fd_io round trips need ON.
+2. **Q-MODEL-37** (new, **fix**; drafted in round 7 from MASK-RT-gf180mcu_fd_io-f02): in both modes a read-plane triangle descends into at most 1024 pieces, drawn from a pool of the read that starts at 65536 and grows by 1024 per triangle painted, at most 65536 per polygon; the read-unit rescale and the flatten copies repaint with the same budget. Cost as approved: at most about 1.05M tile steps per read paint and about 1.05M per triangle over a read; database paints keep Q-MODEL-35's 512. Code as landed (`mask::ReadTriangleBudget`); `mask-input-styles` "Polygon to region conversion", `layout-paint-semantics` "Non-Manhattan painting" and security.md state it.
+3. **Q-MASK-419** (new, **compat**; drafted in round 7, `m5-r7-expand`): with `magic-compat` ON `expand`/`unexpand` follow Magic's DBExpandAll and dbExpandFunc as landed in round 7. With it OFF they keep the documented `cmd-hierarchy` rules and consider every array element under the box: the round 7 OFF walk descended into an expanded array in the frame of its first element only, so the decision round changes it to descend under every element the box overlaps (`ExpandWalk::element_frames`) and to act on each instance once per command. Regression tests in `tests/unit/view/commands_test.cpp`; `cmd-hierarchy` "Expand and unexpand commands" has the scenario "Expand under a second array element with magic-compat OFF".
+4. **Q-MASK-420** (new, **compat**; drafted in the round 7 review): Magic's cifRectBoundingBox (`maxrect`) clears a region with the same idiom (cif/CIFgen.c:2671-2700), and FindMaxRectangle2 matches every tile carrying the start tile's mark (utils/maxrect.c:50, :107-108), so a later non-simple internal region's largest rectangle can lie on earlier regions' tiles. With `magic-compat` ON `op_maxrect` now clears only the start tile; with it OFF it clears the whole region, as before. Behaviour change with ON (implemented in the decision round); `mask/ops/topology.cpp` `op_maxrect`, `q_mask_420_clears_start_only`; regression test "maxrect of a later region over an earlier region's tiles (Q-MASK-420)" (`tests/unit/mask/ops/topology_test.cpp`, both modes); `mask-output-operators` "maxrect" has the scenario "A later region over an earlier region's tiles". No golden case or reference PDK style changes.
 
 ## Audit decision D-20
 
@@ -340,6 +353,8 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-231**: mask-output-operators:352: mark the order-dependent seeding sentence as magic-compat ON, and add the OFF rule (every overlapping region is seeded).
 - **Q-MASK-232**: mask-output-operators:352: mark 'truncating division (Q-MASK-232)' as magic-compat ON, and add the outward rounding for OFF.
 - **Q-MASK-417** (2026-11-17): mask-output-operators "overlapping, nonoverlapping, interacting, noninteracting": the filter is the magic-compat OFF behaviour; with ON all four forms give an empty layer (new scenario "Every form is empty with magic-compat ON"); the touching and negative-coordinate scenarios now state OFF.
+- **Q-MASK-418** (2026-11-17, round 7): mask-output-operators "squares": the region clearing is resolved as compat (ON: only the start tile, as Magic; OFF: the whole region), scenario "A later region's cuts over an earlier region".
+- **Q-MASK-420** (2026-11-17, round 7): mask-output-operators "maxrect": ON clears only a region's start tile, so a later non-simple internal region counts the earlier regions' other tiles; OFF clears the whole region; new scenario "A later region over an earlier region's tiles".
 
 ### mask-output-styles
 
@@ -415,6 +430,7 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-326**: mask-input-styles 'GDS layer and datatype mapping': make the '255 or more list entries' clause compat-ON only. OFF has no entry-count limit.
 - **Q-MASK-330**: mask-input-styles 'Input operator not-square' and mask-output-operators 'not-square': make 'split tiles are dropped' compat-ON. OFF keeps split tiles unchanged.
 - **Q-MASK-334**: mask-input-styles grow-grid (spec.md:317): add the OFF outward-rounding formula, and state that it is the shared function with mask-output-operators.
+- **Q-MODEL-37** (2026-11-17, round 7): mask-input-styles "Polygon to region conversion" and layout-paint-semantics "Non-Manhattan painting": the read-plane triangle budget (1024 pieces per paint, pool 65536 + 1024 per triangle, at most 65536 per polygon) is resolved as fix in both modes.
 
 ### cif-format-io
 
@@ -451,6 +467,10 @@ Applied to `openspec/specs/*/spec.md` after the 2026-11-13 approval ("Align the 
 - **Q-MASK-413**: mask-hierarchical-generation:653 and cif-format-io:505: add the OFF third-word form and the ON warning. Update D-20 in docs/decisions/audit/DECISIONS.md to the compat option.
 - **Q-MASK-412**: mask-output-operators "net": state that the net is searched in the cell being generated in both modes, with Magic's crash and stale-cell search as the fixed deviation.
 - **Q-MASK-414**: mask-hierarchical-generation:727 [platform]: state progress callback, cancellation without partial output, and snapshot isolation.
+
+### cmd-hierarchy
+
+- **Q-MASK-419** (2026-11-17, round 7): "Expand and unexpand commands": the magic-compat ON rules are resolved as compat; with OFF an expanded array is searched under every element the box overlaps and each instance is acted on once per command; new scenario "Expand under a second array element with magic-compat OFF".
 
 No spec change beyond the `Resolution:` reference (and evidence line numbers): Q-MASK-11, Q-MASK-20, Q-MASK-26, Q-MASK-203, Q-MASK-217, Q-MASK-223, Q-MASK-301, Q-MASK-316.
 

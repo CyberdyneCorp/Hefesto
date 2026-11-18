@@ -11,6 +11,7 @@
 
 #include <array>
 #include <sstream>
+#include <unordered_set>
 #include <vector>
 
 #include "hefesto/cell/hier.hpp"
@@ -69,6 +70,7 @@ struct ExpandWalk {
   CommandContext& ctx;
   std::vector<std::string> unavailable;
   bool too_deep = false;  // a search stopped at db::kMaxSearchDepth
+  std::unordered_set<const db::CellUse*> acted{};  // the OFF walk's instances already acted on
 
   [[nodiscard]] bool matches(const db::Rect& bbox) const {
     switch (mode) {
@@ -121,18 +123,47 @@ struct ExpandWalk {
   }
 
   /// magic-compat OFF: acts on every matching instance at any depth reached
-  /// through instances that are expanded after the action (`acting`),
-  /// descending into an expanded use in the frame of element (xlo, ylo).
+  /// through instances that are expanded after the action, descending into
+  /// an expanded array under every element the box overlaps (Q-MASK-419).
+  /// Each instance is acted on at most once per command, so a toggle is not
+  /// undone when an instance matches under several elements or parents.
   void walk(const db::CellDef& def, const db::Transform& to_root, std::size_t depth) {
     const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
     for (db::CellUse* use : search(def, area)) {
-      if (matches(db::apply(to_root, use->bbox))) {
+      if (matches(db::apply(to_root, use->bbox)) && acted.insert(use).second) {
         act(*use);
       }
       if (window.is_expanded(*use) && deeper_allowed(depth)) {
-        walk(*use->def, db::compose(to_root, use->transform), depth + 1);
+        for (const db::Transform& et : element_frames(*use, area)) {
+          walk(*use->def, db::compose(to_root, et), depth + 1);
+        }
       }
     }
+  }
+
+  /// The element transforms the OFF walk descends through: one frame for
+  /// `all`; otherwise every element overlapping `area` (parent coordinates)
+  /// whose cell's bounding box `area` does not surround, and the first one
+  /// it surrounds (inside such elements every instance lies under the box,
+  /// so they all match the same instances).
+  [[nodiscard]] std::vector<db::Transform> element_frames(const db::CellUse& use, const db::Rect& area) const {
+    if (mode == Mode::all) {
+      return {use.transform};
+    }
+    std::vector<db::Transform> frames;
+    const db::ElementRange r = db::array_overlap(use, area);
+    bool covered_seen = false;
+    for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
+      for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
+        const db::Transform et = db::element_transform(use, x, y);
+        const bool covered = db::surround(area, db::apply(et, use.def->bbox()));
+        if (!covered || !covered_seen) {
+          frames.push_back(et);
+        }
+        covered_seen = covered_seen || covered;
+      }
+    }
+    return frames;
   }
 
   /// magic-compat ON, dbExpandFunc (database/DBexpand.c:182-252) under
@@ -160,7 +191,7 @@ struct ExpandWalk {
   /// dbExpandFunc's test: `overlap` (and `all`) acts on every use found;
   /// `surround` on a use unless its child's bounding box surrounds the area
   /// without the area surrounding it (database/DBexpand.c:207-208), which
-  /// is not "the box surrounds the instance" (Q-MASK-419, proposed).
+  /// is not "the box surrounds the instance" (Q-MASK-419).
   [[nodiscard]] bool magic_matches(const db::CellUse& use, const db::Rect& child_area) const {
     if (mode != Mode::surround) {
       return true;

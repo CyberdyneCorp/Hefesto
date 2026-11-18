@@ -191,7 +191,7 @@ Expansion state is kept per instance per window. `expand [selection|surround|ove
 
 A last argument that is a prefix of `toggle` SHALL toggle instead of set. `expand toggle` alone toggles under `overlap`. `unexpand [selection|surround|overlap|all]` SHALL unexpand; its default is `surround`. Unknown options print help. Except for `selection`, the box SHALL be in the current window ("The box isn't in the same window as the cursor.").
 
-The rules above are the magic-compat OFF behaviour. With `magic-compat` ON the box modes follow Magic's DBExpandAll and dbExpandFunc (Q-MASK-419, proposed): the search goes on into every instance it finds, expanded or not (an unavailable cell is read first), so instances are acted on at every depth under the box, also below instances that stay unexpanded; each array is tested on its first element overlapping the box only, in that element's coordinates, and not at all when the box falls between elements; `surround` acts on an instance unless its cell's bounding box surrounds the box without the box surrounding it, so a box over part of an instance acts on it; and `expand all toggle` expands instead of toggling. In both modes each cell's instances are found by an area search of its use index (gds-write "Structure ordering"), and the search descends at most 1024 levels: below that depth no instance is changed and the command reports `expand: the hierarchy is deeper than 1024 levels; instances below that depth were not changed.` (`unexpand: ...` for `unexpand`, VIEW-EXPAND-003). Magic has no bound; only a crafted hierarchy is that deep.
+The rules above are the magic-compat OFF behaviour. With it OFF an expanded array is searched under every element the box overlaps, in that element's coordinates, and each instance is acted on at most once per command (a toggle is not undone by an instance that lies under the box in two elements or below two instances of its parent's cell). With `magic-compat` ON the box modes follow Magic's DBExpandAll and dbExpandFunc (Q-MASK-419, resolution: compat): the search goes on into every instance it finds, expanded or not (an unavailable cell is read first), so instances are acted on at every depth under the box, also below instances that stay unexpanded; each array is tested on its first element overlapping the box only, in that element's coordinates, and not at all when the box falls between elements; `surround` acts on an instance unless its cell's bounding box surrounds the box without the box surrounding it, so a box over part of an instance acts on it; and `expand all toggle` expands instead of toggling. In both modes each cell's instances are found by an area search of its use index (gds-write "Structure ordering"), and the search descends at most 1024 levels: below that depth no instance is changed and the command reports `expand: the hierarchy is deeper than 1024 levels; instances below that depth were not changed.` (`unexpand: ...` for `unexpand`, VIEW-EXPAND-003). Magic has no bound; only a crafted hierarchy is that deep.
 
 If reading newly expanded cells changes the internal-unit ratio (a cell saved at a finer scale), the box and windows SHALL be rescaled, `expand: rescaled by D` is printed, and expansion repeats until stable. Expansion changes display only. It is not recorded as a cell modification.
 
@@ -209,6 +209,12 @@ Compatibility: behavioral
 - **WHEN** `unexpand` is run
 - **THEN** `l` SHALL be unexpanded
 - **AND** with `magic-compat` OFF `l` SHALL stay expanded
+
+#### Scenario: Expand under a second array element with magic-compat OFF
+- **GIVEN** `magic-compat` OFF, an expanded 2-element array instance whose cell holds unexpanded instances, and the box over one of them in the second element only
+- **WHEN** `expand` is run
+- **THEN** that instance SHALL be expanded
+- **AND** the cell's other instances, which the box covers in no element, SHALL stay unexpanded
 
 #### Scenario: Unexpand surround over part of an instance with magic-compat ON
 - **GIVEN** `magic-compat` ON and an expanded instance whose bounding box the box overlaps without surrounding it or lying inside it

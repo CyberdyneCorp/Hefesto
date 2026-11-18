@@ -56,13 +56,20 @@ release notices.
 - **`squares`, `squares-grid` and `slots` with `magic-compat` ON** leave an
   earlier region's tiles marked after its cuts, as Magic's
   cifSquaresFillArea does, so a later ring-shaped region lays its own,
-  overlapping cut grid over them (Q-MASK-418, proposed). OFF clears each
+  overlapping cut grid over them (Q-MASK-418, compat). OFF clears each
   region. The sky130_fd_io round trips MASK-RT-sky130_fd_io-f01/-f09
   now match Magic's GDS.
 - **`expand` and `unexpand` with `magic-compat` ON** follow Magic's
   dbExpandFunc: they act below instances that stay unexpanded, use its
   surround test, test only the first array element under the box, and
-  `expand all toggle` expands (Q-MASK-419, proposed). OFF is unchanged.
+  `expand all toggle` expands (Q-MASK-419, compat). With OFF an expanded
+  array is now searched under every element the box overlaps, not only its
+  first, and each instance is acted on once per command, so `expand
+  toggle` no longer undoes itself on an instance under two elements.
+- **`maxrect` with `magic-compat` ON** leaves an earlier region's tiles
+  marked after its rectangle, as Magic's cifRectBoundingBox does, so a
+  later non-simple region's largest rectangle can lie on them (Q-MASK-420,
+  compat). OFF clears each region, as before.
 - **Selected instances below array elements** are found by `edit`,
   `expand selection`, `flatten -doinplace` and the `cellname` options, and
   with `magic-compat` ON they are taken in Magic's SelEnumCells order (the
@@ -163,7 +170,7 @@ release notices.
   planes as Magic does: read-plane triangles get their own budget (up to
   1024 pieces each from a per-read pool) instead of the 512-piece database
   limit, which filled long chains as rectangles and changed the derived
-  layers of gf180mcu_fd_io's POWER_RAIL_COR_1 (Q-MODEL-37, proposed). A
+  layers of gf180mcu_fd_io's POWER_RAIL_COR_1 (Q-MODEL-37, fix). A
   read-unit rescale and a flatten copy repaint the read planes' triangles
   with the same budget.
 - **Operator errors of a write reach the feedback list.** A

@@ -4,7 +4,7 @@
 // Operator group 4, region and shape filters (capability
 // mask-output-operators "maxrect", "orthogonal", "not-square", "overlapping,
 // nonoverlapping, interacting, noninteracting"; design D6, Q-MASK-7, 21,
-// 417):
+// 417, 420):
 // CIFOP_MAXRECT, CIFOP_MANHATTAN, CIFOP_NOTSQUARE and CIFOP_INTERACT.
 //
 // Ported from Magic VLSI 8.3.694 (fc5daa9e) cif/CIFgen.c
@@ -50,8 +50,10 @@ void split_candidates(std::vector<db::Rect>& candidates, const db::Rect& o) {
   candidates = std::move(next);
 }
 
-/// FindMaxRectangle2 over the region whose tiles are marked processed: the
-/// largest-area candidate (the first on ties), or the start tile.
+/// FindMaxRectangle2 over the tiles marked processed (the region's, and with
+/// magic-compat ON the earlier regions' tiles other than their start tiles,
+/// Q-MASK-420): the largest-area candidate (the first on ties), or the start
+/// tile.
 db::Rect max_rectangle(const db::Plane& plane, const db::Rect& bbox, const db::TileView& start,
                        const detail::Marks& marks) {
   std::vector<db::Rect> candidates{bbox};
@@ -98,12 +100,20 @@ diag::Status op_maxrect(const OpArgs& args, OperatorContext& ctx, MaskPlane& out
   const bool external = args.op.option;
   ScratchPlane next{*ctx.pool};
   const db::Plane& plane = out.plane();
+  const bool start_only = q_mask_420_clears_start_only(ctx.compat);
   detail::Marks marks;
   detail::for_each_region_start(plane, db::whole_plane(), marks, [&](const db::TileView& start) {
     const detail::Region region = detail::collect_region(plane, start, marks, [](const db::TileView&) {});
     const bool whole = external || region.simple;
     detail::paint(*next, whole ? region.bbox : max_rectangle(plane, region.bbox, start, marks));
     detail::count_tile(ctx);
+    // "Clear the tiles that were processed in this set": Magic marks the
+    // start tile CIF_IGNORE and then pushes it with PUSHTILEONLY, which only
+    // pushes unprocessed tiles, so its walk stops there (Q-MASK-420).
+    if (start_only) {
+      marks.set(start, detail::Mark::ignore);
+      return;
+    }
     for (const db::TileView& t : region.tiles) {
       marks.set(t, detail::Mark::ignore);
     }

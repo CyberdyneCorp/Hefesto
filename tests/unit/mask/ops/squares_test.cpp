@@ -182,7 +182,7 @@ TEST_CASE("cut placement over the whole plane with values the size of the plane"
   }
 }
 
-// Regression (Q-MASK-418, proposed; MASK-RT-sky130_fd_io-f01/-f09): Magic's
+// Regression (Q-MASK-418; MASK-RT-sky130_fd_io-f01/-f09): Magic's
 // region pass clears only each region's start tile, so a later region whose
 // bounding box covers an earlier region still lays its cut grid on that
 // region's other tiles. The two-tile island is found first; the L-shaped
