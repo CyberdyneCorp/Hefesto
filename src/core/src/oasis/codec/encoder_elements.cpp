@@ -173,19 +173,23 @@ void Encoder::Impl::element(const Element& e) {
   emit(out);
 }
 
+std::uint8_t Encoder::Impl::placement_cell(std::vector<std::byte>& fields, const std::string& name) {
+  if (options.strict ? modal.placement_cell_reference == cellnames.ref(name) : modal.placement_cell == name) {
+    return 0;
+  }
+  name_field(fields, name, cellnames, StringKind::n_string);
+  modal.placement_cell = options.strict ? std::nullopt : std::optional<std::string>{name};
+  modal.placement_cell_reference = options.strict ? std::optional<std::uint64_t>{cellnames.ref(name)} : std::nullopt;
+  return static_cast<std::uint8_t>(options.strict ? 0xc0U : 0x80U);
+}
+
 void Encoder::Impl::placement(std::vector<std::byte>& out, const Element& e) {
   const bool simple = e.magnification == 1.0 && quarter_turn(e.angle);
   std::vector<std::byte> fields;
-  std::uint8_t info = 0;
   if (e.name.empty()) {
     reject("OASIS encoder: PLACEMENT without a cell name");
   }
-  if (options.strict ? modal.placement_cell_reference != cellnames.ref(e.name) : modal.placement_cell != e.name) {
-    info |= options.strict ? 0xc0U : 0x80U;
-    name_field(fields, e.name, cellnames, StringKind::n_string);
-    modal.placement_cell = options.strict ? std::nullopt : std::optional<std::string>{e.name};
-    modal.placement_cell_reference = options.strict ? std::optional<std::uint64_t>{cellnames.ref(e.name)} : std::nullopt;
-  }
+  std::uint8_t info = placement_cell(fields, e.name);
   if (simple) {
     info |= static_cast<std::uint8_t>(static_cast<unsigned>(e.angle / 90.0) << 1U);
   } else {

@@ -59,6 +59,7 @@ class Flattener {
   [[nodiscard]] std::uint32_t lookup(const std::string& prefix, const std::string& name, std::string_view what);
   void report_split_global(std::string_view leaf, std::uint32_t glob, std::uint32_t flat);
   void report_names(std::uint32_t node);
+  void name_globals(const GlobalTable& global);
   [[nodiscard]] FlatNode output(std::uint32_t node) const;
 
   ReadState& st_;
@@ -328,6 +329,12 @@ void Flattener::flat_glob() {
     }
     entry.value = flat_.merge(i, glob);
   }
+  name_globals(global);
+}
+
+// efFlatGlob's last pass: every global leaf not yet a flat name becomes a
+// name of its node.
+void Flattener::name_globals(const GlobalTable& global) {
   global.for_each([&](const auto& entry) {
     if (!entry.value || table_.count(entry.key) != 0) {
       return;

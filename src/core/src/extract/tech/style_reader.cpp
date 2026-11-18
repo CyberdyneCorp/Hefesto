@@ -492,26 +492,29 @@ void StyleReader::device(const Tokens& t) {
   }
 }
 
+// A `k=name` parameter argument: an `=` not preceded by `<` or `>`.
+bool is_parameter_option(const std::string& arg) {
+  const std::size_t eq = arg.find('=');
+  return eq != std::string::npos && (eq == 0 || (arg[eq - 1] != '<' && arg[eq - 1] != '>'));
+}
+
+// A limit argument: `<`, `>`, `<=` or `>=` within the first four
+// characters, followed by a number.
+bool is_limit_option(const std::string& arg) {
+  const std::size_t at = arg.find_first_of("<>");
+  if (at == std::string::npos || at > 3) {
+    return false;
+  }
+  const std::size_t skip = at + 1 < arg.size() && arg[at + 1] == '=' ? 1 : 0;
+  return str_is_numeric(arg.substr(at + 1 + skip));
+}
+
 // Removes the trailing `k=name`, limit and `+types` arguments.
 Tokens strip_device_options(Tokens t) {
-  while (t.size() > 1) {
-    const std::string& last = t.back();
-    const std::size_t eq = last.find('=');
-    if (eq == std::string::npos || (eq > 0 && (last[eq - 1] == '<' || last[eq - 1] == '>'))) {
-      break;
-    }
+  while (t.size() > 1 && is_parameter_option(t.back())) {
     t.pop_back();
   }
-  while (t.size() > 1) {
-    const std::string& last = t.back();
-    const std::size_t at = last.find_first_of("<>");
-    if (at == std::string::npos || at > 3) {
-      break;
-    }
-    const std::string value = last.substr(at + 1 + (at + 1 < last.size() && last[at + 1] == '=' ? 1 : 0));
-    if (!str_is_numeric(value)) {
-      break;
-    }
+  while (t.size() > 1 && is_limit_option(t.back())) {
     t.pop_back();
   }
   if (t.size() > 1 && t.back().starts_with("+")) {

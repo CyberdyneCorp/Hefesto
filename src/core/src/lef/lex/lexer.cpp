@@ -99,6 +99,15 @@ std::string total_text(Dialect dialect, std::uint32_t count, std::string_view ki
          std::string{kind} + (count == 1 ? "" : "s") + " total.";
 }
 
+// What next() returns when a read that answered `got` (false: end of
+// input) stops the token stream: the read's error, or no token.
+diag::Outcome<std::optional<Token>> stream_end(const diag::Outcome<bool>& got) {
+  if (!got.ok()) {
+    return got.error();
+  }
+  return std::optional<Token>{};
+}
+
 }  // namespace
 
 // --- Lexer ---------------------------------------------------------------------------
@@ -218,7 +227,7 @@ diag::Outcome<std::optional<Token>> Lexer::next(EolMode mode) {
     auto started = start_line();
     if (!started.ok() || !started.value()) {
       ended_ = true;
-      return started.ok() ? diag::Outcome<std::optional<Token>>{std::optional<Token>{}} : started.error();
+      return stream_end(started);
     }
     if (mode == EolMode::report) {
       return std::optional<Token>{Token{"\n", line_, buffer_offset_ + next_, true}};
@@ -230,7 +239,7 @@ diag::Outcome<std::optional<Token>> Lexer::next(EolMode mode) {
     auto closed = scan_quoted(end);
     if (!closed.ok() || !closed.value()) {
       ended_ = true;
-      return closed.ok() ? diag::Outcome<std::optional<Token>>{std::optional<Token>{}} : closed.error();
+      return stream_end(closed);
     }
   } else {
     end = scan_plain(start);

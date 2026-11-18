@@ -59,6 +59,9 @@ struct Encoder::Impl {
   // --- elements (encoder_elements.cpp) ---
   void element(const Element& e);
   void placement(std::vector<std::byte>& out, const Element& e);
+  /// The cell-name field of a PLACEMENT when it differs from the modal
+  /// placement-cell; returns its info bits (0 when the modal value is kept).
+  std::uint8_t placement_cell(std::vector<std::byte>& fields, const std::string& name);
   void text(std::vector<std::byte>& out, const Element& e);
   void rectangle(std::vector<std::byte>& out, const Element& e);
   void polygon(std::vector<std::byte>& out, const Element& e);
