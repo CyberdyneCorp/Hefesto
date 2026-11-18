@@ -22,9 +22,9 @@ Defines what a schematic symbol means and how symbols are found. Decision P-12 r
 Traces use `(xschem ref: path/file.c:line)`, relative to the xschem `src/` directory. They exist for traceability only. Implementers SHALL work from this spec and SHALL NOT consult the GPL sources (capability `hefesto-licensing`).
 
 PDK reference data, read only:
-- `StefanSchippers/xschem_sky130` @ `2bfd7d654e12492d47986b78e68bb770e633b5da`
-- `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/xschem`)
-- `efabless/globalfoundries-pdk-libs-gf180mcu_fd_pr` @ `aacc04cc30ed119baaa616dff266cca7006dc3d6` (`cells/xschem`)
+- `StefanSchippers/xschem_sky130` @ `2bfd7d654e12492d47986b78e68bb770e633b5da`, as installed by open_pdks into `sky130A/libs.tech/xschem` (ciel release `sky130-5740c4a8`)
+- `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/xschem` and `ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem`, ciel release `ihp-sg13g2-5e6d592e`)
+- `fossi-foundation/globalfoundries-pdk-libs-gf180mcu_fd_pr` @ `5e4be8726e2ae8be099c4131f697a353d6457874` (`cells/xschem`), as installed by open_pdks into `gf180mcuD/libs.tech/xschem` (ciel release `gf180mcu-5740c4a8`; re-pinned from `aacc04cc` on 2026-11-17, design Open Question 1 of `openspec/changes/m8-schematic`)
 - `RTimothyEdwards/open_pdks` @ `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (`sky130/custom/xschem`)
 
 Other capabilities own related parts:
@@ -221,9 +221,19 @@ Compatibility: exact
 (xschem ref: token.c:4675-4795, token.c:5299-5560)
 
 #### Scenario: Resistor label
-- **GIVEN** a symbol text `@name=@value` and an instance `name=R7 value=4.7k`
+- **GIVEN** a symbol text `@name=@value` and an instance `name=R7 value=4.7k` of `res.sym`
 - **WHEN** the instance is drawn
-- **THEN** the text SHALL read `R7=4.7k`
+- **THEN** the text SHALL read `4.7k`: the first token is `@name=` (it ends only before the next `@`), which is not a defined key and is empty, and Hefesto SHALL report the Q-SCHEM-26 warning naming `name=` and the defined prefix `name` (golden case SCHEM-PR-04)
+
+#### Scenario: Resistor label written with a separator
+- **GIVEN** a symbol text `@name @value` and the same instance
+- **WHEN** the instance is drawn
+- **THEN** the text SHALL read `R7 4.7k`
+
+#### Scenario: Token values from xschem translate
+- **GIVEN** golden case SCHEM-PR-04: instances `R7` (`value=4.7k`) and `M1` (`W=2 L=1 value=2`) of `res.sym`, whose pins are `P` and `M`
+- **WHEN** the texts are substituted for them
+- **THEN** `@W/@L` on `M1` SHALL give `1`, `@W @L` SHALL give `2 1`, and on `R7` `%undef` SHALL give `undef`, `@undef` the empty text, `@symname` `res`, `@symname_ext` `res.sym`, `@#0:pinnumber` `1` and `@#1:name` `M`
 
 #### Scenario: Escaped at sign
 - **GIVEN** a symbol text `a\@b @name` and an instance named `X1`
@@ -281,12 +291,14 @@ A symbol reference in a `C` record SHALL be resolved to a file as follows:
 2. An `http://` or `https://` reference SHALL be kept as written and SHALL NOT be downloaded. The instance SHALL be shown as a missing symbol (Requirement "Missing symbols") and a warning naming the reference SHALL be reported (Q-SCHEM-9, `Resolution: platform`).
 3. A reference starting with `/` is an absolute path.
 4. Otherwise, runs of `/` SHALL be collapsed, `/./` removed, `dir/../` pairs removed, and a trailing `/` or `/.` removed.
-5. A reference that then starts with `./` or `../` SHALL be resolved against the folder of the schematic that contains the instance; it is used if the file or its folder exists.
+5. A reference that then starts with `./` or `../` SHALL be resolved against the folder of the schematic that contains the instance, whatever the `xschem-compat` setting; it is used if the file or its folder exists (Q-SCHEM-30, `Resolution: fix`; paragraph "Working folder").
 6. If the first path component is a library alias (Requirement "Library search path"), the alias SHALL be replaced by its folder.
 7. Otherwise, each folder of the search path is tried in order, and the first `<folder>/<reference>` that exists is used.
 8. If none exists, `<folder of the containing schematic>/<reference>` is used.
 
-When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. References read from a file SHALL be written back unchanged.
+When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. A folder that has an alias SHALL be written in the alias form (golden case SCHEM-PR-05: with the element `/work/input/libB | lib`, `/work/input/libB/x.sym` is written `lib/x.sym`). References read from a file SHALL be written back unchanged.
+
+**Working folder (Q-SCHEM-30, `Resolution: fix`).** The `./` and `../` references of step 5 and the search-path element `.` of Requirement "Library search path" SHALL be resolved against the folder of the schematic that contains the instance, never against the folder Hefesto was started in, in both modes of `xschem-compat`, so a document resolves the same way on every platform and from every start folder. xschem resolves them against the folder it was started in (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists); the two agree when xschem is started in the schematic's folder. Because xschem may resolve such a reference elsewhere, each reference resolved through `./`, `../` or the `.` element SHALL report, once per reference, the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. SCHEM-PR-05 differs from xschem in its `./` and `../` lines by this decision (a recorded deviation).
 
 Compatibility: exact
 
@@ -296,6 +308,11 @@ Compatibility: exact
 - **GIVEN** the search path `/pdk/xschem:/pdk/xschem/sg13g2_pr` and the reference `sg13g2_pr/sg13_lv_nmos.sym`
 - **WHEN** it is resolved
 - **THEN** the file SHALL be `/pdk/xschem/sg13g2_pr/sg13_lv_nmos.sym`
+
+#### Scenario: Relative reference resolved against the schematic folder
+- **GIVEN** golden case SCHEM-PR-05: `/work/input/sub/top.sch` with the instance `../x.sym`, the files `/work/input/x.sym` and `/work/input/sub/x.sym`, and Hefesto started in `/work`
+- **WHEN** `top.sch` is opened and `./x.sym` and `../x.sym` are resolved, with `xschem-compat` ON or OFF
+- **THEN** `../x.sym` SHALL resolve to `/work/input/x.sym` and `./x.sym` to `/work/input/sub/x.sym`, the instance SHALL NOT be reported as a missing symbol, and the warning `SCHEM-LIB-001` SHALL be reported once for each of the two references
 
 #### Scenario: Web reference not fetched
 - **GIVEN** an instance whose reference is `https://example.com/lib/amp.sym`
@@ -308,7 +325,7 @@ The search path SHALL be an ordered list of folders built from the value of `XSC
 - an element of the form `<folder> | <alias>` (spaces around `|` optional, `\|` an escaped bar) SHALL define the alias `<alias>` for `<folder>`
 - elements that start with `#` SHALL be dropped
 - `~` and environment references in an element SHALL be expanded, and elements that do not exist SHALL be dropped
-- the element `.` means the folder of the current schematic
+- the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
 Hefesto SHALL build `XSCHEM_LIBRARY_PATH` from the active PDK's `xschemrc` (Requirement "xschemrc as data"), and SHALL also accept a search path set in Hefesto settings (capability `hefesto-settings`) that is prepended to it.
@@ -321,6 +338,11 @@ Compatibility: behavioral
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `:/a:/missing:/b` where `/missing` does not exist
 - **WHEN** the search path is built
 - **THEN** it SHALL be `/a`, `/b`
+
+#### Scenario: Dot element is the schematic folder
+- **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
+- **WHEN** the instance is resolved
+- **THEN** its symbol SHALL be `/w/s/y.sym`, in both modes of `xschem-compat`, and the warning `SCHEM-LIB-001` SHALL name `y.sym` and `/w/s`
 
 ### Requirement: xschemrc as data
 PDKs configure xschem through a Tcl file named `xschemrc`. Hefesto SHALL read it as follows:
@@ -441,11 +463,11 @@ Compatibility: native
 Hefesto SHALL netlist the three PDK libraries as xschem does. Conventions the netlister and display SHALL support, observed in the pinned PDK data:
 - **sky130** (`xschem_sky130`, installed by open_pdks as `<PDK>/libs.tech/xschem`): MOS symbols have `type=nmos` or `pmos`; `format="@spiceprefix@name @pinlist sky130_fd_pr__@model L=@L W=@W` LF `+ nf=@nf ad=@ad ..."` with `+` continuation lines; `template` with `spiceprefix=X` and geometry defaults written as `expr('...')` (capability `schematic-netlisting`, Requirement "expr evaluation"); a separate `lvs_format`; `corner.sym` of type `netlist_commands` whose format is `tcleval(.lib $::SKYWATER_MODELS/sky130.lib.spice @corner )`; and texts with `@spice_get_node` for operating-point display.
 - **IHP sg13g2** (`ihp-sg13g2/libs.tech/xschem`, symbols in `sg13g2_pr`, standard cells in `libs.ref/sg13g2_stdcell/sym/xschem`): `lvs_format` beginning with a literal device letter (`M@name ...`); `format="@spiceprefix@name @pinlist @model w=@w l=@l ng=@ng m=@m mm_ok=@mm_ok"`; resistor, capacitor and bipolar formats wrapped in `tcleval(...)` that call `ev`, `ev7` or the PDK procedure `cap_cmomi_C`; testbenches using `code_shown.sym` with `format="tcleval( @value )"`.
-- **gf180mcu** (`gf180mcu_fd_pr/cells/xschem/symbols`): `format` with `+` continuation lines and SPICE expressions in single quotes (`ad='int((nf+1)/2) * W/nf * 0.18u'`) passed through unchanged; `lvs_format` without `@spiceprefix`.
+- **gf180mcu** (`gf180mcuD/libs.tech/xschem/symbols`, a copy of `gf180mcu_fd_pr`): `format` with `+` continuation lines and SPICE expressions in single quotes (`ad='int((nf+1)/2) * W/nf * 0.18u'`) passed through unchanged; `lvs_format` without `@spiceprefix`.
 
 Compatibility: exact
 
-(xschem ref: token.c:2426-2816; PDK data: xschem_sky130 sky130_fd_pr/nfet_01v8.sym, sky130_fd_pr/corner.sym; IHP-Open-PDK ihp-sg13g2/libs.tech/xschem/sg13g2_pr/sg13_lv_nmos.sym, xschemrc:390-460; gf180mcu_fd_pr cells/xschem/symbols/nfet_03v3.sym)
+(xschem ref: token.c:2426-2816; PDK data: xschem_sky130 sky130_fd_pr/nfet_01v8.sym, sky130_fd_pr/corner.sym; IHP-Open-PDK ihp-sg13g2/libs.tech/xschem/sg13g2_pr/sg13_lv_nmos.sym, xschemrc:390-460; gf180mcu_fd_pr cells/xschem/gf180mcu_fd_pr/nfet_03v3.sym)
 
 #### Scenario: IHP LVS device line
 - **GIVEN** an `sg13_lv_nmos` instance `name=M1 l=0.45u w=1.0u ng=1 m=1` with pins D=D, G=G, S=GND, B=GND, in LVS netlist mode

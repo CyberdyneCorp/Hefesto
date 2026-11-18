@@ -1,0 +1,24 @@
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
+schematic netlist out/test_lvs_ignore-lvs_ignore0.spice
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_lvs_ignore.sch
+schematic netlist out/test_lvs_ignore-lvs_ignore1.spice -lvsignore
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
+schematic netlist out/test_short_option-lvs_ignore0.spice
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_short_option.sch
+schematic netlist out/test_short_option-lvs_ignore1.spice -lvsignore
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
+schematic netlist out/test_format_override-lvs_ignore0.spice
+schematic close -discard
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
+schematic netlist out/test_format_override-lvs_ignore1.spice -lvsignore
+schematic close -discard

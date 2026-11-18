@@ -46,6 +46,17 @@ own PDK root ``<root>/lef/``. Each holds the LEF directories of one standard-cel
 ``ihp-lef``       ihp-sg13g2/libs.ref/sg13g2_stdcell/lef/ (441 MB downloaded, 0.2 MB kept, 2 files: the tech
                   LEF sg13g2_tech.lef and sg13g2_stdcell.lef)
 
+xschem data sets (openspec/changes/m8-schematic design D17), same pins, under their own PDK root
+``<root>/xschem/``:
+
+``sky130-xschem``    sky130A/libs.tech/xschem (xschem_sky130 2bfd7d65 as installed by open_pdks) and
+                     sky130A/libs.tech/netgen (the netgen setup file of SCHEM-LVS-01)
+                     20 MB downloaded (common 6.6 MB, sky130_fd_pr 13.9 MB), 6.3 MB kept, 955 files
+``gf180mcu-xschem``  gf180mcuD/libs.tech/xschem (gf180mcu_fd_pr 5e4be872 cells/xschem as installed)
+                     170 MB downloaded (common), 0.5 MB kept, 269 files
+``ihp-xschem``       ihp-sg13g2/libs.tech/xschem and ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem
+                     441 MB downloaded (common 434 MB, sg13g2_stdcell 6.4 MB), 3.2 MB kept, 362 files
+
 After an install the set's tree digest (SHA-256 over the sorted
 "path NUL sha256 LF" records of every file in its subset, paths relative to the
 version directory) must equal the set's pinned digest.
@@ -63,7 +74,7 @@ Usage:
     scripts/fetch_pdk.py --print-digest [SET]   digest of an installed set (default sky130)
     scripts/fetch_pdk.py --cache-info           GitHub Actions outputs: <set>_key, <set>_path
                                                 ("-" in a set name becomes "_": sky130_gds_key)
-Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS and LEF sets only when named. ``pdk`` is an
+Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS, LEF and xschem sets only when named. ``pdk`` is an
 alias of ``sky130``.
 hefesto-cli comes from --cli, $HEFESTO_CLI, or build/macos-debug/src/cli/hefesto-cli.
 The PDK steps need network access (GITHUB_TOKEN, when set, raises the GitHub
@@ -206,6 +217,29 @@ DATA_SETS.update({
     "ihp-lef": lef_set("ihp-lef", DATA_SETS["ihp"], "sg13g2_stdcell", ("lef",),
                        "fbc2d9eaf68f4d1c2bc5327f86dd0461b5cbe4123c1a1a227c3db2113a4ed7c8"),
 })
+
+
+def xschem_set(name: str, tech: DataSet, library: str, subset: tuple[str, ...], digest: str) -> DataSet:
+    """An xschem data set (openspec/changes/m8-schematic design D17): the xschem trees of the same ciel
+    release as ``tech``, under their own PDK root ``<root>/xschem``. ``libs.tech/xschem`` comes from the
+    release's common archive; ``library`` is the one `-lib` that `pdk install` needs (the smallest one,
+    or the one whose archive holds a subset directory)."""
+    return DataSet(name, tech.family, tech.variant, tech.version, (library,), subset, digest, "xschem")
+
+
+# The xschem trees of the M5 releases (m8-schematic task 2.1, design D17): sky130A holds xschem_sky130
+# @ 2bfd7d65, gf180mcuD holds gf180mcu_fd_pr @ 5e4be872 cells/xschem, ihp-sg13g2 holds IHP-Open-PDK
+# @ 5e6d592e; libs.ref/sg13g2_stdcell/sym/xschem is in the sg13g2_stdcell archive.
+DATA_SETS.update({
+    "sky130-xschem": xschem_set("sky130-xschem", DATA_SETS["sky130"], "sky130_fd_pr",
+                                ("sky130A/libs.tech/xschem", "sky130A/libs.tech/netgen"),
+                                "8a3b28a791383eb5c6f546acb3a6fd42e91ebb954fa986257e7851d2447a78d8"),
+    "gf180mcu-xschem": xschem_set("gf180mcu-xschem", DATA_SETS["gf180mcu"], "gf180mcu_fd_pr",
+                                  ("gf180mcuD/libs.tech/xschem",), "e70989764fe362e8dc1d59824768c7dbc988eeab11c7ac714a3e6f118e69bad6"),
+    "ihp-xschem": xschem_set("ihp-xschem", DATA_SETS["ihp"], "sg13g2_stdcell",
+                             ("ihp-sg13g2/libs.tech/xschem", "ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem"),
+                             "a38b0850a131fbe4f169b7332541da0012281765419523d7fad255af6a36498b"),
+})
 ALIASES = {"pdk": "sky130"}
 
 # The sky130 pins under their M1 names (tools/golden/goldenlib/external.py reads PDK_VERSION).
@@ -330,7 +364,7 @@ def cache_info(root: Path) -> list[str]:
 
 
 STEPS = (*DATA_SETS, "magic-ref")
-# A bare run fetches the tech/.mag sets and magic-ref; the GDS and LEF sets only when named.
+# A bare run fetches the tech/.mag sets and magic-ref; the GDS (several GB), LEF and xschem sets only when named.
 DEFAULT_STEPS = (*(name for name, data in DATA_SETS.items() if not data.pdk_dir), "magic-ref")
 
 

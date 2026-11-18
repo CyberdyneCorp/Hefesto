@@ -13,13 +13,14 @@
 //     (sky130-gds, gf180mcu-gds, ihp-gds and the standard-cell *-gds-sc sets, M5);
 //   - the LEF data sets in .cache/pdks/lef/ciel/<family>/versions/<pin>/
 //     (sky130-lef, gf180mcu-lef, ihp-lef: tech LEF and standard-cell LEF, M6);
+//   - the xschem data sets in .cache/pdks/xschem/ciel/<family>/versions/<pin>/
+//     (sky130-xschem, gf180mcu-xschem, ihp-xschem, M8);
 //   - Magic's sources at fc5daa9e in build/ref/magic (scmos/, graphics/).
 // Only the exact pinned versions are used, never another installed one, so a
 // stale cache cannot silently change what a test checks; a test whose data
 // set is missing skips. Owner: PDK (openspec/changes/m4-scripting/design.md D2, D15, and
-// openspec/changes/m5-mask-gds-cif/design.md D2, D19, and openspec/changes/m6-lef-def-oasis/design.md D2);
-// the device libraries were added by NATIVE
-// in M4 round 2.
+// openspec/changes/m5-mask-gds-cif/design.md D2, D19, openspec/changes/m6-lef-def-oasis/design.md D2, and
+// openspec/changes/m8-schematic/design.md D17); the device libraries were added by NATIVE in M4 round 2.
 
 #pragma once
 
@@ -187,6 +188,28 @@ inline std::optional<std::filesystem::path> pinned_lef_library(const PinnedLef& 
   std::error_code ec;
   if (!std::filesystem::is_regular_file(dir / std::string{lef.tech_lef}, ec) ||
       !std::filesystem::is_regular_file(dir / std::string{lef.cell_lef}, ec)) {
+    return std::nullopt;
+  }
+  return dir;
+}
+
+// The xschem data sets (openspec/changes/m8-schematic/design.md D17): the xschem trees of the same ciel
+// releases, installed under their own PDK root `.cache/pdks/xschem/` (fetch_pdk.py `pdk_dir`).
+
+/// The PDK's xschem library tree (`libs.tech/xschem`, with its `xschemrc`), in every xschem set.
+inline constexpr std::string_view kXschemTree = "libs.tech/xschem";
+/// IHP's standard-cell symbols, in the ihp-xschem set only.
+inline constexpr std::string_view kIhpStdcellXschemSymbols = "libs.ref/sg13g2_stdcell/sym/xschem";
+
+/// `.cache/pdks/xschem/ciel/<family>/versions/<version>/<variant>/<tree>` when that directory holds at least
+/// one file, else std::nullopt (the set was not fetched); a test whose tree is missing skips.
+inline std::optional<std::filesystem::path> pinned_xschem(const PinnedPdk& pdk,
+                                                          std::string_view tree = kXschemTree) {
+  const std::filesystem::path dir = std::filesystem::path{HEFESTO_SOURCE_DIR} / ".cache" / "pdks" / "xschem" /
+                                    "ciel" / std::string{pdk.family} / "versions" / std::string{pdk.version} /
+                                    std::string{pdk.variant} / std::string{tree};
+  std::error_code ec;
+  if (!std::filesystem::is_directory(dir, ec) || std::filesystem::is_empty(dir, ec) || ec) {
     return std::nullopt;
   }
   return dir;

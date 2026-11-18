@@ -1,0 +1,12 @@
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/not.sch
+schematic netlist out/not-lvs.spice -lvs -lvsignore
+schematic close -discard
+schematic pdk ihp-sg13g2
+schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_logic_not.sch
+schematic netlist out/dc_logic_not-lvs.spice -lvs -lvsignore
+schematic close -discard
+schematic pdk gf180mcuD
+schematic open pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+schematic netlist out/test_nfet_03v3-lvs.spice -lvs -lvsignore
+schematic close -discard

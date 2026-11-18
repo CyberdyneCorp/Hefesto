@@ -1,0 +1,10 @@
+** sch_path: /pdk/sky130A/libs.tech/xschem/sky130_tests/test_format_override.sch
+**.subckt test_format_override
+x1 x1_A x1_B VCC VSS VCC VSS x1_Y AND2
+x2 x2_Y x2_A x2_B VCC VSS VCC VSS AND2
+* noconn x1_A
+* noconn x1_B
+* noconn x2_A
+* noconn x2_B
+**.ends
+.end

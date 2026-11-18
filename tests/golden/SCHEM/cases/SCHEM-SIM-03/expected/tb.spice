@@ -1,0 +1,16 @@
+** sch_path: /work/input/tb.sch
+**.subckt tb
+x1 IN OUT stage
+**.ends
+
+* expanding   symbol:  stage.sym # of pins=2
+** sym_path: /work/input/stage.sym
+** sch_path: /work/input/stage.sch
+.subckt stage A Y
+*.ipin A
+*.opin Y
+R1 A MID 1k
+R2 MID Y 1k
+.ends
+
+.end

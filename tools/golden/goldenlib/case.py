@@ -28,6 +28,8 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
     display = "xvfb"                 # optional: run under a virtual X server (GUI cases, Tk)
     stdin = "input/commands.tcl"     # optional: the tool's standard input (path relative to the case)
     timeout_s = 3600                 # optional: seconds before the run is abandoned (default 600)
+    xschem_sets = ["sky130-xschem"]  # optional (tool xschem): xschem data sets of scripts/fetch_pdk.py,
+                                     # mounted read-only at /pdk/<variant>, PDK_ROOT=/pdk (m8-schematic D16)
 
     [env]                            # optional: environment of BOTH runs (reference and replay);
     PDK_ROOT = "{work}/input/pdk"    # {work} = the work directory (/work in the container)
@@ -46,7 +48,8 @@ A case lives in ``tests/golden/<AREA>/cases/<case-id>/``::
 
     [[outputs]]                      # one per compared output
     name = "stdout.txt"              # file name under expected/
-    source = "stdout"                # stdout | stderr | a path relative to the work dir
+    source = "stdout"                # stdout | stderr | exitcode (the exit status as one line)
+                                     # | a path relative to the work dir
                                      # | derived:mag-drc-sections:<glob> (goldenlib/derived.py)
     comparator = "bytes"             # see compare/ (bytes, ext-cap)
     masks = []                       # time-dependent field masks (see compare/masks.py)
@@ -65,6 +68,17 @@ from .external import External, parse_external
 
 REFERENCE_TOOLS = ("magic", "netgen", "ngspice", "xschem", "magic-hash-harness")
 STREAM_SOURCES = ("stdout", "stderr")
+EXIT_SOURCE = "exitcode"  # the tool's exit status as one decimal line (the SCHEM cases, m8-schematic D16)
+RUN_SOURCES = (*STREAM_SOURCES, EXIT_SOURCE)
+
+
+def run_output(source: str, stdout: bytes, stderr: bytes, returncode: int) -> bytes:
+    """The output of a run source: a stream, or the exit status written as ``<n>`` LF."""
+    if source == EXIT_SOURCE:
+        return f"{returncode}\n".encode()
+    return stdout if source == "stdout" else stderr
+
+
 DISPLAY_VIEWS = ("gds-records",)  # the display views of compare/__init__.py (DISPLAYS)
 
 
@@ -227,6 +241,7 @@ def load_case(root: Path, known_comparators=None) -> Case:
     display = case.reference.get("display")
     if display is not None and display not in DISPLAYS:
         raise CaseError(f"{where}: reference.display must be one of {', '.join(DISPLAYS)}")
+    _check_xschem_sets(case, where)
     if case.id != root.name:
         raise CaseError(f"{where}: id '{case.id}' does not match directory '{root.name}'")
     if root.parent.name != "cases" or root.parent.parent.name != case.area:
@@ -235,6 +250,17 @@ def load_case(root: Path, known_comparators=None) -> Case:
     for table in ("reference", "hefesto"):
         _check_timeout(getattr(case, table), table, where)
     return case
+
+
+XSCHEM_SETS = ("sky130-xschem", "gf180mcu-xschem", "ihp-xschem")
+
+
+def _check_xschem_sets(case: Case, where: str) -> None:
+    sets = case.reference.get("xschem_sets", [])
+    if not isinstance(sets, list) or not all(s in XSCHEM_SETS for s in sets) or len(set(sets)) != len(sets):
+        raise CaseError(f"{where}: reference.xschem_sets must list distinct sets of {', '.join(XSCHEM_SETS)}")
+    if sets and case.tool != "xschem":
+        raise CaseError(f"{where}: reference.xschem_sets applies to tool xschem only")
 
 
 MAX_TIMEOUT_S = 6 * 3600  # the longest capture shard (golden-capture.yml) is 200 minutes

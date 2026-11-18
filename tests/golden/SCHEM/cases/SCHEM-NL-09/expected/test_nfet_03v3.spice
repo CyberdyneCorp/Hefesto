@@ -1,0 +1,25 @@
+** sch_path: /pdk/gf180mcuD/libs.tech/xschem/tests/test_nfet_03v3.sch
+**.subckt test_nfet_03v3
+XM1 D G S B nfet_03v3 L=0.28u W=0.22u nf=1 ad='int((nf+1)/2) * W/nf * 0.18u' as='int((nf+2)/2) * W/nf * 0.18u' pd='2*int((nf+1)/2) * (W/nf + 0.18u)'
++ ps='2*int((nf+2)/2) * (W/nf + 0.18u)' nrd='0.18u / W' nrs='0.18u / W' sa=0 sb=0 sd=0 m=1 par=1
+**** begin user architecture code
+
+.include /pdk/gf180mcuD/libs.tech/ngspice/design.ngspice
+.lib /pdk/gf180mcuD/libs.tech/ngspice/sm141064.ngspice typical
+
+
+
+vg g 0 0
+vd d 0 0
+vs s 0 0
+vb b 0 0
+.control
+save all
+dc vd 0 3.3 0.01 vg 0 3.3 0.3
+write test_nfet_03v3.raw
+.endc
+
+
+**** end user architecture code
+**.ends
+.end

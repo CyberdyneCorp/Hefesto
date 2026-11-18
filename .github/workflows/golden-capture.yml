@@ -215,6 +215,26 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_lef_path }}
           key: ${{ steps.keys.outputs.ihp_lef_key }}
+      # The xschem data sets of the SCHEM cases (m8-schematic design D16, D17), mounted read-only into the
+      # capture container as /pdk/<variant> (goldenlib/refrunners.py); same cache entries as ci.yml.
+      - name: Restore sky130-xschem
+        id: sky130_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_xschem_path }}
+          key: ${{ steps.keys.outputs.sky130_xschem_key }}
+      - name: Restore gf180mcu-xschem
+        id: gf180mcu_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+      - name: Restore ihp-xschem
+        id: ihp_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_xschem_path }}
+          key: ${{ steps.keys.outputs.ihp_xschem_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ steps.keys.outputs.magic_ref_path }}
@@ -228,7 +248,8 @@ jobs:
       - name: Build hefesto-cli for the PDK install (cache miss only)
         if: >-
           steps.sky130.outputs.cache-hit != 'true' || steps.gf180mcu.outputs.cache-hit != 'true' ||
-          steps.ihp.outputs.cache-hit != 'true' ||
+          steps.ihp.outputs.cache-hit != 'true' || steps.sky130_xschem.outputs.cache-hit != 'true' ||
+          steps.gf180mcu_xschem.outputs.cache-hit != 'true' || steps.ihp_xschem.outputs.cache-hit != 'true' ||
           (env.FETCH_LEF_SETS == 'true' && (steps.sky130_lef.outputs.cache-hit != 'true' ||
           steps.gf180mcu_lef.outputs.cache-hit != 'true' || steps.ihp_lef.outputs.cache-hit != 'true'))
         env:
@@ -246,7 +267,7 @@ jobs:
         run: |
           lef_sets=()
           [ "$FETCH_LEF_SETS" != "true" ] || lef_sets=(sky130-lef gf180mcu-lef ihp-lef)
-          python3 scripts/fetch_pdk.py sky130 gf180mcu ihp "${lef_sets[@]}" \
+          python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-xschem gf180mcu-xschem ihp-xschem "${lef_sets[@]}" \
             --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Save sky130
@@ -285,9 +306,31 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_lef_path }}
           key: ${{ steps.keys.outputs.ihp_lef_key }}
+      - name: Save sky130-xschem
+        if: steps.sky130_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_xschem_path }}
+          key: ${{ steps.keys.outputs.sky130_xschem_key }}
+      - name: Save gf180mcu-xschem
+        if: steps.gf180mcu_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+      - name: Save ihp-xschem
+        if: steps.ihp_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_xschem_path }}
+          key: ${{ steps.keys.outputs.ihp_xschem_key }}
 
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+
+      # m8-schematic task 3.1: the image's awk is GNU Awk (the SCHEM captures depend on it).
+      - name: Report the image's awk
+        run: docker run --rm hefesto-golden:ci awk --version | head -n 1
 
       - name: Verify captured cases against a fresh capture
         if: env.MODE == 'both' || env.MODE == 'verify'

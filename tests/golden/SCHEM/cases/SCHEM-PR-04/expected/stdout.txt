@@ -1,0 +1,13 @@
+R7 @name=@value -> [4.7k]
+X1 {a\@b @name} -> [a@b X1]
+M1 @W/@L -> [1]
+M1 {@W @L} -> [2 1]
+R7 %undef -> [undef]
+R7 @undef -> []
+R7 @symname -> [res]
+R7 @symname_ext -> [res.sym]
+R7 @#0:pinnumber -> [1]
+R7 @#1:name -> [M]
+R7 @@P -> [net1]
+no instance: {@name %undef}
+

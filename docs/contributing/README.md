@@ -6,7 +6,7 @@ This page covers the day-to-day workflow: building, running each kind of test, a
 
 - Behavior is defined by the specs in `openspec/specs/`. Medium or large changes, and any change to a requirement, go through an OpenSpec change (`openspec/changes/<id>/`) with a proposal, design and tasks. Run `openspec validate --all --strict` before pushing.
 - Changes to scripting, the sandbox, consent or any command a script can reach follow [the scripting security model](security.md) (sandbox, trust, review findings, "Adding a command safely").
-- Hefesto is licensed under Apache-2.0 (decision P-9). Read the [clean-room rule](#clean-room-rule) before touching LVS, schematic or OASIS code.
+- Hefesto is licensed under Apache-2.0 (decision P-9). Read the [clean-room rule](#clean-room-rule) before touching LVS, schematic or OASIS code, and the [schematic clean-room process](cleanroom.md) before taking any M8 task.
 - Supported compilers: GCC 11+, Clang 14+, Apple Clang 15+ (Xcode 15). CMake 3.25+ and Ninja.
 
 ## Build
@@ -104,7 +104,9 @@ CI runs each target for 60 seconds on every pull request, and fails if any targe
 | Requirement coverage report (report-only) | `python3 scripts/check_requirement_coverage.py` |
 | Unit tests of the scripts above | `python3 -m unittest discover -s scripts/tests` |
 | Specs, roadmap and specs index | `.github/workflows/openspec-validate.yml` |
+| Schematic clean room: no xschem GPL header committed, SCHEM golden cases declare a Hefesto or PDK `provenance`, no `xschem ref:` trace under `src/` | `python3 scripts/check_cleanroom.py` (in `openspec-validate.yml`) |
 | Build and test matrix, ASan, TSan, fuzz, golden determinism | `.github/workflows/ci.yml` |
+| PDK xschem inventory (`tests/data/schem/inventory.json`) matches the cached xschem data sets (m8-schematic design D18) | `ci.yml` job `schem-inventory` (`python3 scripts/schem_inventory.py --check`) |
 | Native PCell generators against the PDKs' Tcl generators (names and `.mag` files, D-29) | `ci.yml` job `pcell-equivalence` (`scripts/pcell_equivalence.py`, see `docs/building.md`) |
 | Golden captures from Magic: verify the captured cases, capture the new ones | `.github/workflows/golden-capture.yml` |
 | Workflow `run` steps keep their status through `\| tee` (`shell: bash` or `PIPESTATUS`) | `python3 -m unittest scripts/tests/test_workflows.py` |
@@ -133,7 +135,7 @@ Hefesto reproduces the behavior of GPL-licensed tools but never contains their c
 - KLayout may only be run as a separate, user-installed program on desktop (decision P-18). It is never linked or bundled.
 - Magic (UC Berkeley notice) and ngspice (modified BSD, GPL parts excluded) are permissively licensed. Ported logic keeps their notices, recorded in `THIRD_PARTY_NOTICES.md`.
 
-The pull request template asks you to confirm this for every pull request that touches these areas.
+The [pull request template](../../.github/pull_request_template.md) asks you to confirm this for every pull request that touches these areas; for schematic code it has the clean-room checkbox for the author and the "author not on the spec team" item for the reviewer. The full process for the schematic editor (the two teams, the rules for implementation sessions, spec issues, the roster and the checks) is in [cleanroom.md](cleanroom.md).
 
 ## Pull requests
 

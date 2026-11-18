@@ -110,6 +110,9 @@ jobs:
   # (sky130-gds-sc, gf180mcu-gds-sc, ihp-gds-sc; openspec/changes/m5-mask-gds-cif design D19) are cached the
   # same way, under .cache/pdks/gds, for the MASK-RT cases the golden legs replay (about 0.9 GB more on a cold
   # cache, 6 MB kept); the full GDS sets are fetched only by the jobs that use them (golden-capture.yml, perf.yml).
+  # The three xschem sets (sky130-xschem, gf180mcu-xschem, ihp-xschem; openspec/changes/m8-schematic design D17)
+  # are cached the same way, under .cache/pdks/xschem, for the schem-inventory job (about 0.6 GB more on a cold
+  # cache, 10 MB kept).
   reference-data:
     name: reference data (PDK sets)
     runs-on: ubuntu-24.04
@@ -133,6 +136,12 @@ jobs:
       gf180mcu_lef_path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
       ihp_lef_key: ${{ steps.keys.outputs.ihp_lef_key }}
       ihp_lef_path: ${{ steps.keys.outputs.ihp_lef_path }}
+      sky130_xschem_key: ${{ steps.keys.outputs.sky130_xschem_key }}
+      sky130_xschem_path: ${{ steps.keys.outputs.sky130_xschem_path }}
+      gf180mcu_xschem_key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+      gf180mcu_xschem_path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+      ihp_xschem_key: ${{ steps.keys.outputs.ihp_xschem_key }}
+      ihp_xschem_path: ${{ steps.keys.outputs.ihp_xschem_path }}
       magic_ref_key: ${{ steps.keys.outputs.magic_ref_key }}
       magic_ref_path: ${{ steps.keys.outputs.magic_ref_path }}
     steps:
@@ -212,6 +221,27 @@ jobs:
           path: ${{ steps.keys.outputs.ihp_lef_path }}
           key: ${{ steps.keys.outputs.ihp_lef_key }}
           lookup-only: true
+      - name: Look up sky130-xschem
+        id: sky130_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_xschem_path }}
+          key: ${{ steps.keys.outputs.sky130_xschem_key }}
+          lookup-only: true
+      - name: Look up gf180mcu-xschem
+        id: gf180mcu_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+          lookup-only: true
+      - name: Look up ihp-xschem
+        id: ihp_xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_xschem_path }}
+          key: ${{ steps.keys.outputs.ihp_xschem_key }}
+          lookup-only: true
 
       - name: List the sets to fetch
         id: missing
@@ -225,6 +255,9 @@ jobs:
           SKY130_LEF_HIT: ${{ steps.sky130_lef.outputs.cache-hit }}
           GF180MCU_LEF_HIT: ${{ steps.gf180mcu_lef.outputs.cache-hit }}
           IHP_LEF_HIT: ${{ steps.ihp_lef.outputs.cache-hit }}
+          SKY130_XSCHEM_HIT: ${{ steps.sky130_xschem.outputs.cache-hit }}
+          GF180MCU_XSCHEM_HIT: ${{ steps.gf180mcu_xschem.outputs.cache-hit }}
+          IHP_XSCHEM_HIT: ${{ steps.ihp_xschem.outputs.cache-hit }}
         run: |
           sets=""
           [ "$SKY130_HIT" = "true" ] || sets="$sets sky130"
@@ -238,6 +271,9 @@ jobs:
             [ "$GF180MCU_LEF_HIT" = "true" ] || sets="$sets gf180mcu-lef"
             [ "$IHP_LEF_HIT" = "true" ] || sets="$sets ihp-lef"
           fi
+          [ "$SKY130_XSCHEM_HIT" = "true" ] || sets="$sets sky130-xschem"
+          [ "$GF180MCU_XSCHEM_HIT" = "true" ] || sets="$sets gf180mcu-xschem"
+          [ "$IHP_XSCHEM_HIT" = "true" ] || sets="$sets ihp-xschem"
           echo "sets=${sets# }" >> "$GITHUB_OUTPUT"
           echo "::notice::reference data to fetch: ${sets:- none}"
 
@@ -319,6 +355,59 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_lef_path }}
           key: ${{ steps.keys.outputs.ihp_lef_key }}
+      - name: Save sky130-xschem
+        if: steps.sky130_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_xschem_path }}
+          key: ${{ steps.keys.outputs.sky130_xschem_key }}
+      - name: Save gf180mcu-xschem
+        if: steps.gf180mcu_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_xschem_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_xschem_key }}
+      - name: Save ihp-xschem
+        if: steps.ihp_xschem.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_xschem_path }}
+          key: ${{ steps.keys.outputs.ihp_xschem_key }}
+
+  # The PDK xschem inventory (openspec/changes/m8-schematic design D18, task 2.4): scripts/schem_inventory.py
+  # re-runs on the cached xschem sets and fails when its result differs from tests/data/schem/inventory.json,
+  # for example after a PDK bump that references a new devices/ symbol or calls a new Tcl procedure. It also
+  # fails (exit 2) when a set does not verify against its pinned digest.
+  schem-inventory:
+    name: schem inventory
+    needs: reference-data
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Restore sky130-xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_xschem_path }}
+          key: ${{ needs.reference-data.outputs.sky130_xschem_key }}
+          fail-on-cache-miss: true
+      - name: Restore gf180mcu-xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_xschem_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_xschem_key }}
+          fail-on-cache-miss: true
+      - name: Restore ihp-xschem
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_xschem_path }}
+          key: ${{ needs.reference-data.outputs.ihp_xschem_key }}
+          fail-on-cache-miss: true
+      - name: Inventory matches tests/data/schem/inventory.json
+        run: python3 scripts/schem_inventory.py --check
 
   # Native PCell generators against the PDKs' Tcl generators (m4-scripting design D10, D-29; risk R3):
   # scripts/pcell_equivalence.py over tests/data/pcell/sweeps/ generates every sweep case natively and

@@ -1,0 +1,4 @@
+== nl14
+has_included_subcircuit: error opening file /work/x.spice: couldn't open "/work/x.spice": no such file or directory
+
+== nl14: exit 0

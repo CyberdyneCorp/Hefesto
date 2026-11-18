@@ -1,0 +1,12 @@
+v {xschem version=3.4.8RC file_version=1.3}
+G {}
+K {type=bus_tap
+template="name=l1 lab=[0]"}
+V {}
+S {}
+F {}
+E {}
+L 4 0 -20 0 0 {}
+B 5 -2.5 -22.5 2.5 -17.5 {name=tap dir=inout}
+B 5 -2.5 -2.5 2.5 2.5 {name=bus dir=inout}
+T {@lab} 5 -15 0 0 0.2 0.2 {}

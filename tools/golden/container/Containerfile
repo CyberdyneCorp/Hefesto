@@ -69,8 +69,15 @@ RUN set -eux; \
         autoconf automake libtool bison flex \
         tcl8.6-dev tk8.6-dev libx11-dev libxext-dev zlib1g-dev libreadline-dev \
         libxpm-dev libcairo2-dev libxrender-dev libx11-xcb-dev libxcb1-dev \
-        xvfb xauth xfonts-base; \
+        xvfb xauth xfonts-base gawk; \
     rm -rf /var/lib/apt/lists/*
+
+# gawk is awk (openspec/changes/m8-schematic design D16, Q-SCHEM-18): the SCHEM goldens are captured with GNU
+# Awk as the system awk. mawk stays installed but is not awk; the build fails if awk is not GNU Awk.
+RUN set -eux; \
+    update-alternatives --set awk /usr/bin/gawk; \
+    awk --version | head -n 1 | grep -q '^GNU Awk'; \
+    awk --version | head -n 1
 
 # fetch_commit DIR REPO SHA [BRANCH]: shallow fetch by SHA when the server allows
 # it (GitHub does), else clone the branch; then verify HEAD is exactly SHA.

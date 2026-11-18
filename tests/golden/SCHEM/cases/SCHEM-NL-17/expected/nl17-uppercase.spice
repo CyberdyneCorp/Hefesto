@@ -1,0 +1,7 @@
+** sch_path: /work/input/nl17.sch
+**.SUBCKT nl17 IN<1>,IN<0> OUT<1>,OUT<0>
+*.PININFO IN[1:0]:I OUT[1:0]:O
+R1<1> IN<1> OUT<1> 1k
+R1<0> IN<0> OUT<0> 1k
+**.ENDS
+.end
