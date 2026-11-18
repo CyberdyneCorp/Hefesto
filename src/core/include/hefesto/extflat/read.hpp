@@ -12,7 +12,7 @@
 // M7's area layout, so M7 extends it rather than replacing it.
 //
 // Scaffold stub: read_flat fails with CORE-NOTIMPL-006 until EXTSUB lands
-// it (the stub body is inline so that the header needs no area sources).
+// it (src/core/src/extflat/read.cpp).
 //
 // Owner: INTEGRATION (this header, created by the M6 scaffold); EXTSUB
 // fills in the implementation in src/core/src/extflat/ (design D2).
@@ -77,15 +77,13 @@ class Netlist {
   [[nodiscard]] const std::vector<FileStamp>& stamps() const noexcept { return stamps_; }
 
  private:
-  std::vector<FlatNode> nodes_;   // EFVisitNodes order
+  std::vector<FlatNode> nodes_;    // EFVisitNodes order
   std::vector<FileStamp> stamps_;  // in read order
 };
 
 /// Reads `<root>.ext` and the `.ext` files of every cell it uses, found
 /// through `ctx` as EFReadFile finds them, and flattens the nodes.
-[[nodiscard]] inline diag::Outcome<Netlist> read_flat(cell::LookupContext& /*ctx*/, std::string_view /*root*/,
-                                                      const ReadOptions& /*options*/) {
-  return diag::make("CORE-NOTIMPL-006", "not implemented yet: extflat read_flat");
-}
+[[nodiscard]] diag::Outcome<Netlist> read_flat(cell::LookupContext& ctx, std::string_view root,
+                                               const ReadOptions& options);
 
 }  // namespace hefesto::extflat

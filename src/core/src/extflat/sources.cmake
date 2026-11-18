@@ -9,4 +9,5 @@
 # except codes.cpp (INTEGRATION). Add new files here.
 
 target_sources(hefesto_core PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/codes.cpp)
+  ${CMAKE_CURRENT_LIST_DIR}/codes.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/read.cpp)

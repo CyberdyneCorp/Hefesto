@@ -21,6 +21,7 @@
 #include "hefesto/mask/input/warnings.hpp"
 #include "hefesto/mask/stream_read.hpp"
 #include "hefesto/mask/style/style.hpp"
+#include "hefesto/oasis/command/settings.hpp"
 #include "hefesto/util/libc_random.hpp"
 
 namespace hefesto::mask {
@@ -37,6 +38,9 @@ struct MaskSession {
   // GDSW (read options GDSR): every other `gds` option, the session date
   // stamp and the Q-MASK-111 rewound flag.
   gds::GdsSettings gds;
+  // OASCMD (write side OASW, read side OASR): the `oasis` options stored
+  // apart from the `gds` ones (M6 design D4, D15).
+  oasis::OasisSettings oasis;
   // CIF: the `cif` options.
   cif::CifSettings cif;
   // INPUT / GDSR / CIF: the read warning level and redirect, which `cif

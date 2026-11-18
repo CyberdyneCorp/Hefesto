@@ -4,34 +4,56 @@
 // M6 scaffold (openspec/changes/m6-lef-def-oasis tasks.md 2.4, 2.5): the
 // shared read settings split out of gds::GdsSettings into
 // MaskSession::stream_read (design D15), and the shared interfaces of design
-// D4 that live outside the lef, def and oasis areas (extflat::read_flat,
-// extract::StyleView). Owners replace these [m6-scaffold] tests with
+// D4: the session state (EditorState::lefdef, MaskSession::oasis), the
+// LEF/DEF and OASIS core types and entry points, extflat::read_flat and
+// extract::StyleView. Owners replace these [m6-scaffold] tests with
 // [cap:][req:] ones as the stubs go away.
 
 #include <catch2/catch_test_macros.hpp>
 
+#include <array>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "hefesto/cmd/all_commands.hpp"
 #include "hefesto/cmd/dispatcher.hpp"
+#include "hefesto/def/read/read.hpp"
+#include "hefesto/def/write/write.hpp"
 #include "hefesto/diag/sink.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/extflat/read.hpp"
 #include "hefesto/extract/tech/style_view.hpp"
 #include "hefesto/gds/command/settings.hpp"
+#include "hefesto/gds/stream/io.hpp"
+#include "hefesto/lef/lex/lexer.hpp"
+#include "hefesto/lef/read/read.hpp"
+#include "hefesto/lef/session.hpp"
+#include "hefesto/lef/tech/table.hpp"
+#include "hefesto/lef/via/generate.hpp"
+#include "hefesto/lef/via/polygon.hpp"
+#include "hefesto/lef/write/write.hpp"
 #include "hefesto/mask/stream_read.hpp"
+#include "hefesto/oasis/codec/decoder.hpp"
+#include "hefesto/oasis/codec/elements.hpp"
+#include "hefesto/oasis/codec/encoder.hpp"
+#include "hefesto/oasis/codec/modal.hpp"
+#include "hefesto/oasis/read/read.hpp"
+#include "hefesto/oasis/write/write.hpp"
 #include "hefesto/platform/services.hpp"
 #include "hefesto/tech/technology.hpp"
 #include "hefesto/ui/line.hpp"
 
 namespace cmd = hefesto::cmd;
+namespace def = hefesto::def;
 namespace diag = hefesto::diag;
 namespace editor = hefesto::editor;
 namespace extflat = hefesto::extflat;
 namespace extract = hefesto::extract;
 namespace gds = hefesto::gds;
+namespace lef = hefesto::lef;
+namespace oasis = hefesto::oasis;
 namespace stream = hefesto::stream;
 namespace tech = hefesto::tech;
 
@@ -111,8 +133,7 @@ TEST_CASE("extflat::read_flat is a stub", "[m6-scaffold]") {
   REQUIRE_FALSE(netlist.ok());
   CHECK(netlist.error().code == "CORE-NOTIMPL-006");
 
-  const extflat::Netlist built{{{"top/a", "metal1", {1, 2}, false}, {"GND!", "pwell", {0, 0}, true}},
-                               {{"top", 42}}};
+  const extflat::Netlist built{{{"top/a", "metal1", {1, 2}, false}, {"GND!", "pwell", {0, 0}, true}}, {{"top", 42}}};
   std::vector<std::string> names;
   built.visit_nodes([&names](const extflat::FlatNode& node) { names.push_back(node.name); });
   CHECK(names == std::vector<std::string>{"top/a", "GND!"});
@@ -139,4 +160,133 @@ TEST_CASE("extract::StyleView answers nullopt without a style", "[m6-scaffold]")
   CHECK(view.diff_types()->test(11));
   CHECK(view.active_types()->empty());
   CHECK(view.substrate_types()->empty());
+}
+
+// --- tasks.md 2.5: the session state and the LEF/DEF and OASIS interfaces ---
+
+namespace {
+
+void check_stub(const cmd::CommandResult& result, std::string_view what) {
+  INFO(what);
+  REQUIRE_FALSE(result.ok());
+  REQUIRE_FALSE(result.diagnostics.empty());
+  CHECK(result.diagnostics.front().code == "CORE-NOTIMPL-006");
+  CHECK(result.diagnostics.front().text == "not implemented yet: " + std::string{what});
+}
+
+template <typename T>
+void check_stub(const diag::Outcome<T>& outcome) {
+  REQUIRE_FALSE(outcome.ok());
+  CHECK(outcome.error().code == "CORE-NOTIMPL-006");
+}
+
+}  // namespace
+
+TEST_CASE("EditorState holds the LEF/DEF session and MaskSession the oasis settings", "[m6-scaffold]") {
+  const editor::EditorState state;
+  CHECK(state.lefdef.layers.size() == 0);
+  CHECK(state.lefdef.vias.size() == 0);
+  CHECK(state.lefdef.rules.size() == 0);
+  CHECK_FALSE(state.lefdef.datestamp.has_value());
+  CHECK(state.lefdef.nocheck.empty());
+  CHECK(state.lefdef.units == lef::LefUnits{});
+  CHECK(state.mask.oasis == oasis::OasisSettings{});
+}
+
+TEST_CASE("the LEF/DEF and OASIS entry points answer CORE-NOTIMPL-006", "[m6-scaffold]") {
+  editor::EditorState state;
+  hefesto::db::CellDef cell{"top", 1};
+  check_stub(lef::read(state, "a.lef", lef::LefReadOptions{}), "lef read");
+  check_stub(lef::write(state, cell, "a.lef", lef::LefWriteOptions{}), "lef write");
+  check_stub(lef::write_all(state, cell, "a.lef", lef::LefWriteOptions{}), "lef writeall");
+  check_stub(def::read(state, "a.def", def::DefReadOptions{}), "def read");
+  check_stub(def::write(state, cell, "a.def", def::DefWriteOptions{}), "def write");
+  check_stub(oasis::read(state, "a.oas", oasis::OasisReadOptions{}), "oasis read");
+  check_stub(oasis::write(state, cell, "a.oas", oasis::OasisWriteOptions{}), "oasis write");
+  const std::array<hefesto::db::Point, 3> triangle{hefesto::db::Point{0, 0}, {10, 0}, {0, 10}};
+  check_stub(lef::paint_polygon(cell, 1, triangle));
+}
+
+TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
+  diag::CollectingSink sink;
+  const tech::Technology technology;
+  const lef::LayerTable table = lef::LayerTable::from_section(tech::RawSection{"lef", {}}, technology, sink);
+  CHECK(table.size() == 0);
+  CHECK(table.find("metal1") == nullptr);
+  CHECK(table.magic_to_lef(1) == nullptr);
+  int visited = 0;
+  table.enumerate([&visited](std::string_view, const lef::LayerRecord&) { ++visited; });
+  CHECK(visited == 0);
+
+  const std::vector<std::byte> bytes(4, std::byte{0});
+  gds::MemorySource source{bytes};
+  lef::Lexer lexer{source};
+  check_stub(lexer.next());
+  CHECK(lexer.line() == 0);
+  CHECK(lexer.estimate() == 0.0);
+
+  lef::MessageCounter counter;
+  CHECK(counter.count(diag::Severity::error));
+  CHECK(counter.count(diag::Severity::warning));
+  CHECK(counter.count(diag::Severity::warning));
+  CHECK(counter.errors() == 1);
+  CHECK(counter.warnings() == 2);
+}
+
+TEST_CASE("the OASIS codec interfaces are stubs", "[m6-scaffold]") {
+  const std::vector<std::byte> bytes(4, std::byte{0});
+  gds::MemorySource source{bytes};
+  oasis::Decoder decoder{source};
+  check_stub(decoder.next());
+  CHECK(decoder.modal() == oasis::ModalState{});
+  CHECK(decoder.names().cellnames.empty());
+
+  gds::MemorySink sink;
+  oasis::Encoder encoder{sink};
+  check_stub(encoder.begin());
+  check_stub(encoder.begin_cell("top"));
+  check_stub(encoder.element(oasis::Element{}));
+  check_stub(encoder.finish());
+  CHECK(encoder.options().compress == 6);
+
+  CHECK(oasis::expand(oasis::Repetition{}) == std::vector<oasis::Point64>{oasis::Point64{}});
+
+  oasis::ModalState modal;
+  modal.layer = 3;
+  modal.xy_absolute = false;
+  modal.reset();
+  CHECK(modal == oasis::ModalState{});
+}
+
+TEST_CASE(
+    "to_gds_write_options takes the shared write options from the oasis "
+    "settings",
+    "[m6-scaffold]") {
+  oasis::OasisSettings settings;
+  settings.allow_abstract = true;
+  settings.addendum = true;
+  settings.arrays = true;
+  settings.contacts = true;
+  settings.labels = false;
+  settings.library = true;
+  settings.lower = false;
+  settings.merge = true;
+  settings.allow_undefined = true;
+  settings.datestamp = 77;
+  settings.magscale = 2.0;
+  const gds::GdsWriteOptions options = oasis::to_gds_write_options(settings, stream::StreamReadSettings{});
+  const gds::GdsSettings& g = options.settings;
+  CHECK(g.allow_abstract);
+  CHECK(g.addendum);
+  CHECK(g.arrays);
+  CHECK(g.contacts);
+  CHECK_FALSE(g.labels);
+  CHECK(g.library);
+  CHECK_FALSE(g.lower);
+  CHECK(g.merge);
+  CHECK(g.allow_undefined);
+  CHECK(g.datestamp == 77);
+  CHECK(g.magscale == 2.0);
+  // OASIS compresses with CBLOCKs, never with GDS gzip (`oasis compress` is 6).
+  CHECK(g.compress == 0);
 }
