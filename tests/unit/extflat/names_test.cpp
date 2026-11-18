@@ -80,6 +80,7 @@ TEST_CASE("efReadLine tokens: quotes group and vanish, a final backslash is drop
   CHECK(detail::tokenize("  x\"\"  y\\") == Strings{"x", "y"});
   CHECK(detail::tokenize("\"\" z") == Strings{"", "z"});
   CHECK(detail::tokenize("a\\b") == Strings{"a\\b"});
+  CHECK(detail::tokenize("equiv a\\ b") == Strings{"equiv", "a\\", "b"});  // a backslash escapes nothing
   CHECK(detail::tokenize("   ").empty());
 }
 

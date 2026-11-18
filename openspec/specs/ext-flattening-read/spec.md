@@ -34,7 +34,7 @@ The reader SHALL split each physical line into tokens as follows:
 - A line that ends with a backslash continues on the next physical line. The backslash is removed and the next line is appended directly.
 - Blank lines and lines that contain only whitespace are skipped.
 - Tokens are separated by whitespace. A double quote starts a quoted section, which may contain whitespace, and the next double quote ends it. The quote characters themselves are removed from the token.
-- Any other character preceded by a backslash is taken literally.
+- A backslash inside a token is copied into the token as an ordinary character, and the character after it is processed as usual (it does not escape whitespace or a double quote). A backslash that is the last character of the logical line is dropped. Magic's comment says "any character preceded by a backslash is taken literally", but its code does this; the spec follows the code (D-5).
 
 Lines have no length limit. At most 128 tokens per line are supported.
 Compatibility: exact
@@ -44,6 +44,11 @@ Compatibility: exact
 - **GIVEN** the line `equiv "a b" c`
 - **WHEN** it is tokenized
 - **THEN** the tokens are `equiv`, `a b`, `c`
+
+#### Scenario: Backslash is kept
+- **GIVEN** the line `equiv a\ b`
+- **WHEN** it is tokenized
+- **THEN** the tokens are `equiv`, `a\` and `b`
 
 #### Scenario: Continuation line
 - **GIVEN** the two physical lines `node n1 0 10 \` and `0 0 metal1 0 0`
@@ -146,7 +151,7 @@ An optional substrate is present when the remaining token count after the parame
 
 If the terminal tokens are not a multiple of 3, the record SHALL fail with `Incomplete terminal description for device`. Terminal and substrate node names that do not exist SHALL be created. A substrate node created this way, and any node marked as a device substrate whose name is not global, SHALL be flagged as an implicit substrate port. A substrate node created this way SHALL also be flagged as a device-terminal-only node.
 
-A device whose type is `Short` SHALL NOT be stored. It SHALL behave as `equiv` between its first two terminal names. When resistance-extraction overlays (`extresist on`) are being read, it SHALL do so only while reading the `.res.ext` file, or always when overlays are disabled.
+A device whose type is `Short` SHALL NOT be stored. It SHALL behave as `equiv` between the tokens at positions k+1 and k+4, where k is the first position after the rectangle (token 7, counting the keyword as 0) whose token contains no `=`. With the usual substrate token at k, these are the first two terminal names; without one they are other tokens, as in Magic. When fewer than k+5 tokens exist, `Bad terminal description for Short device` SHALL be reported. When resistance-extraction overlays (`extresist on`) are being read, it SHALL do so only while reading the `.res.ext` file, or always when overlays are disabled.
 
 Devices SHALL be keyed by the string `"<llx>x<lly>_<t>"` (decimal integers). `t` is the technology tile-type index of the device type. If the type is unknown to the technology, `t` is the smallest index ≥ the number of tile types for which the key is still unused. A second record with an existing key SHALL be merged into the first if class, type (or tile type) and terminal count match. Its terminal nodes then replace the original ones. Otherwise it SHALL be rejected with an overlap error.
 Compatibility: exact
@@ -163,9 +168,14 @@ Compatibility: exact
 - **THEN** the device has resistance 25.5 and terminals `n1`, `n2`, and no substrate
 
 #### Scenario: Short device
-- **GIVEN** `device subckt Short 0 0 1 1 a 0 0 b 0 0` with overlays disabled
+- **GIVEN** `device subckt Short 0 0 1 1 None a 0 0 b 0 0` with overlays disabled
 - **WHEN** it is read
 - **THEN** no device is created and nodes `a` and `b` become one node
+
+#### Scenario: Short device without a substrate token
+- **GIVEN** `device subckt Short 0 0 1 1 a 0 0 b 0 0` with overlays disabled
+- **WHEN** it is read
+- **THEN** no device is created, and the record acts as `equiv 0 0`, which changes nothing
 
 ### Requirement: Parameters records
 `parameters <type> {<key>=<expr>}` SHALL declare, once per device type name, how parameters are output. Later declarations for the same type are ignored. For each token:
@@ -191,8 +201,8 @@ Compatibility: exact
 
 ### Requirement: Equivalence, merge and kill records
 `equiv <a> <b>` SHALL make the two names the same node:
-- If neither name exists, `a` is created, then `b` is added as a non-preferred alias.
-- If only one name exists, the other is added as an alias. When `a` is new, the alias is added non-preferred. Otherwise preference follows capability `ext-flattening-names`, except that a top-level port name is never displaced.
+- If neither name exists, nothing happens: no node is created (efBuildEquiv returns when both lookups find nothing; Magic's comment says one name must already be known). The spec follows Magic's code (D-5).
+- If only one name exists, the other is added as an alias. When `a` is the missing name, it is added non-preferred. Otherwise preference follows capability `ext-flattening-names`, except that a top-level port name is never displaced.
 - If both names exist on different nodes, the nodes are merged (see capability `ext-flattening-hierarchy`).
 
 When both names are ports with different port indices, the following rules SHALL apply in order:
@@ -209,6 +219,11 @@ Every `equiv` read while an overlay is pending SHALL also be remembered. After t
 `killnode <name>` SHALL record a kill that is applied at flattening time.
 Compatibility: exact
 (Magic ref: extflat/EFbuild.c:541-750, extflat/EFbuild.c:638-648, extflat/EFbuild.c:1762-1880, extflat/EFbuild.c:1817-1836, extflat/EFbuild.c:509-530, extflat/EFread.c:374-416, extflat/EFread.c:725-745)
+
+#### Scenario: Equiv of two unknown names
+- **GIVEN** no node named `x` or `y`
+- **WHEN** `equiv x y` is read
+- **THEN** no node is created
 
 #### Scenario: Shorted ports with resistor policy
 - **GIVEN** `ext2spice short resistor`, ports `A` (index 0) and `B` (index 1), and the line `equiv A B`
