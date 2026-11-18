@@ -14,6 +14,8 @@
 #include "hefesto/drc/commands/command.hpp"
 #include "hefesto/gds/command/command.hpp"
 #include "hefesto/gui/commands.hpp"
+#include "hefesto/lef/command/command.hpp"
+#include "hefesto/oasis/command/command.hpp"
 #include "hefesto/pcell/framework/gencell.hpp"
 #include "hefesto/pdk/commands.hpp"
 #include "hefesto/script/binding/commands.hpp"
@@ -59,6 +61,9 @@ bool register_all_commands(CommandRegistry& registry, pdk::CommandHosts pdk_host
   // M5 (openspec/changes/m5-mask-gds-cif/design.md D3).
   ok = gds::register_gds_command(registry) && ok;
   ok = cif::register_cif_command(registry) && ok;
+  // M6 (openspec/changes/m6-lef-def-oasis/design.md D3, D14, D15).
+  ok = lef::register_lef_def_commands(registry) && ok;
+  ok = oasis::register_oasis_command(registry) && ok;
   return ok;
 }
 
