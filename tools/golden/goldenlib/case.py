@@ -79,7 +79,7 @@ def run_output(source: str, stdout: bytes, stderr: bytes, returncode: int) -> by
     return stdout if source == "stdout" else stderr
 
 
-DISPLAY_VIEWS = ("gds-records",)  # the display views of compare/__init__.py (DISPLAYS)
+DISPLAY_VIEWS = ("gds-records", "oasis-records")  # the display views of compare/__init__.py (DISPLAYS)
 
 
 class CaseError(ValueError):
