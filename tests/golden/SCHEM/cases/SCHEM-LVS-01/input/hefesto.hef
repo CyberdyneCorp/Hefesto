@@ -1,0 +1,3 @@
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/not.sch
+schematic netlist out/not.spice -lvs -lvsignore

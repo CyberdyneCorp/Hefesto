@@ -1,0 +1,6 @@
+schematic open input/nl17.sch
+schematic netlist out/nl17.spice
+schematic close -discard
+schematic open input/nl17.sch
+schematic netlist out/nl17-uppercase.spice
+schematic close -discard

@@ -1,0 +1,4 @@
+schematic pdk ihp-sg13g2
+schematic open pdk/ihp-sg13g2/libs.tech/xschem/sg13g2_tests/dc_lv_nmos.sch
+schematic netlist out/dc_lv_nmos.spice
+schematic close -discard

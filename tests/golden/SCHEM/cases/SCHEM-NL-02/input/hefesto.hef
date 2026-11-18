@@ -1,0 +1,4 @@
+schematic pdk sky130A
+schematic open pdk/sky130A/libs.tech/xschem/sky130_tests/test_inv.sch
+schematic netlist out/test_inv.spice
+schematic close -discard

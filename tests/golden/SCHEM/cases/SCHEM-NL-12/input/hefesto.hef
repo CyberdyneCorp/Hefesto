@@ -1,0 +1,3 @@
+schematic open input/nl12.sch
+schematic netlist out/nl12.spice
+schematic close -discard

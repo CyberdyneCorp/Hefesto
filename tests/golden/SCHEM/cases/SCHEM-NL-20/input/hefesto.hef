@@ -1,0 +1,6 @@
+schematic open input/with/inv.sch
+schematic netlist out/inv-with-symbol.spice -topsubckt
+schematic close -discard
+schematic open input/without/inv.sch
+schematic netlist out/inv-without-symbol.spice -topsubckt
+schematic close -discard
