@@ -484,7 +484,7 @@ Otherwise write:
 4. otherwise `** sch_path: <absolute schematic path>` (Requirement "Schematic resolution"), then the header line `.subckt <name> ` where `<name>` is the template's `model` if set, else the cell name, followed by:
    - the port names, from scanning the symbol format: `@spiceprefix` and `@name` are ignored; `@pinlist` writes each pin name (not `spice_ignore`, first of each distinct name, substituted in the parent context, `expr`-evaluated, bus-expanded) followed by a space; `@@pin` and `@#n` write that pin's expanded name and a space; any other `@token` that is followed by a separator writes the token name and a space; `@symname` or `@model` ends the scan; if the scan reaches the end of the format instead, a LF is written. A format starting with `tcleval(` is Tcl-evaluated first.
    - the template with the keys `name`, `spiceprefix` and `model` removed, values decoded, and all other characters (including separators) kept. Keys named in `extra` are also removed: with `xschem-compat` ON, every key that occurs as a substring of the symbol's `extra` value, as xschem does; with `xschem-compat` OFF, only keys that are whole words of `extra` (delimited by separators). Both modes SHALL report a warning for each template key that occurs in `extra` as a substring but not as a whole word (Q-SCHEM-19, `Resolution: compat`).
-   - LFs of the template: with `xschem-compat` ON they are kept, as xschem does, which puts parameters on lines without `+`; with `xschem-compat` OFF each LF SHALL be written as one space, so the header is valid SPICE. Both modes SHALL report a warning naming the symbol whose template contains an LF (Q-SCHEM-21, `Resolution: compat`). With ON, the text after each LF is a line of its own and goes through Requirement "Element line post-processing" like any other line (scenario "Multi-line template, xschem-compat ON")
+   - LFs of the template: with `xschem-compat` ON they are kept, as xschem does, which puts parameters on lines without `+`; with `xschem-compat` OFF an LF followed by optional blanks (spaces and tabs) and `+` SHALL be kept, so a SPICE continuation line stays one, and every other LF SHALL be written as one space, so the header is valid SPICE. Both modes SHALL report a warning naming the symbol whose template contains an LF (Q-SCHEM-21, `Resolution: compat`, amended 2026-11-18). The text after a kept LF is a line of its own and goes through Requirement "Element line post-processing" like any other line (scenarios "Multi-line template, xschem-compat ON" and "Template continuation lines, xschem-compat OFF")
    - a LF
 5. the body of the schematic (Requirement "Subcircuit body"), unless `spice_stop` is true
 6. if the schematic's `S` property is non-empty: `**** begin user architecture code`, the property, `**** end user architecture code`
@@ -519,6 +519,13 @@ Compatibility: exact
 - **GIVEN** a subcircuit symbol whose template is `name=x1` LF `W=1`, and `xschem-compat` OFF
 - **WHEN** its definition is written
 - **THEN** the header line SHALL end with ` W=1` on the same line, and a warning SHALL name the symbol
+
+#### Scenario: Template continuation lines, xschem-compat OFF
+- **GIVEN** a subcircuit symbol `amp.sym` with pins `IN`, `OUT`, format `@name @pinlist @symname` and template `name=x1 W=1` LF `L=2` LF `+ M=4`, and `xschem-compat` OFF
+- **WHEN** its definition is written
+- **THEN** the header text handed to Requirement "Element line post-processing" SHALL be `.subckt amp IN OUT  W=1 L=2` LF `+ M=4`: the LF before `L=2` becomes a space and the LF before `+` is kept, so no bare `+` word is put inside the header line (post-processing then treats `+ M=4` as a continuation line); a warning SHALL name the symbol
+- **AND** with the last template line written `  + M=4` (blanks before the `+`) the LF before it SHALL also be kept
+- **AND** with `xschem-compat` ON both LFs SHALL be kept, as in scenario "Multi-line template, xschem-compat ON"
 
 #### Scenario: Multi-line template, xschem-compat ON
 - **GIVEN** sky130 `sky130_tests/passgate.sym` (pins `Z`, `A`, `GP`, `GN`; format `@name @pinlist @VCCBPIN @VSSBPIN @symname W_N=@W_N L_N=@L_N W_P=@W_P L_P=@L_P m=@m`; template `name=x1 W_N=1 L_N=0.2 W_P=1 L_P=0.2 VCCBPIN=VCC VSSBPIN=VSS ` LF `modeln=nfet_01v8 modelp=pfet_01v8 m=1`; `extra="VCCBPIN VSSBPIN modeln modelp"`), used by `gain_stage.sch`, and `xschem-compat` ON

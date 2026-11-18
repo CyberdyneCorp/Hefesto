@@ -291,14 +291,14 @@ A symbol reference in a `C` record SHALL be resolved to a file as follows:
 2. An `http://` or `https://` reference SHALL be kept as written and SHALL NOT be downloaded. The instance SHALL be shown as a missing symbol (Requirement "Missing symbols") and a warning naming the reference SHALL be reported (Q-SCHEM-9, `Resolution: platform`).
 3. A reference starting with `/` is an absolute path.
 4. Otherwise, runs of `/` SHALL be collapsed, `/./` removed, `dir/../` pairs removed, and a trailing `/` or `/.` removed.
-5. A reference that then starts with `./` or `../` SHALL be resolved against the folder of the schematic that contains the instance; it is used if the file or its folder exists.
+5. A reference that then starts with `./` or `../` SHALL be resolved against the folder of the schematic that contains the instance, whatever the `xschem-compat` setting; it is used if the file or its folder exists (Q-SCHEM-30, `Resolution: fix`; paragraph "Working folder").
 6. If the first path component is a library alias (Requirement "Library search path"), the alias SHALL be replaced by its folder.
 7. Otherwise, each folder of the search path is tried in order, and the first `<folder>/<reference>` that exists is used.
 8. If none exists, `<folder of the containing schematic>/<reference>` is used.
 
 When Hefesto writes a reference it chose itself (placing, replacing or re-pathing a symbol), it SHALL write the shortest form: the path relative to the first search-path folder that is a prefix of the absolute path, or the alias form, or the bare file name if the file is in the schematic's folder, or else the absolute path. A folder that has an alias SHALL be written in the alias form (golden case SCHEM-PR-05: with the element `/work/input/libB | lib`, `/work/input/libB/x.sym` is written `lib/x.sym`). References read from a file SHALL be written back unchanged.
 
-**Working folder (proposed, Q-SCHEM-30).** xschem resolves the `./` and `../` references of step 5, and the search-path element `.` of Requirement "Library search path", against the folder xschem was started in, not against the folder of the schematic (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists). Steps 5 and the `.` element above keep the schematic's folder until Q-SCHEM-30 is decided; the open-question entry records the options.
+**Working folder (Q-SCHEM-30, `Resolution: fix`).** The `./` and `../` references of step 5 and the search-path element `.` of Requirement "Library search path" SHALL be resolved against the folder of the schematic that contains the instance, never against the folder Hefesto was started in, in both modes of `xschem-compat`, so a document resolves the same way on every platform and from every start folder. xschem resolves them against the folder it was started in (golden case SCHEM-PR-05, started in `/work` and loading `/work/input/sub/top.sch`: `./x.sym` resolves to `/work/x.sym`, `../x.sym` to `//x.sym`, and the instance `../x.sym` of `top.sch` is reported as a missing symbol although `/work/input/x.sym` exists); the two agree when xschem is started in the schematic's folder. Because xschem may resolve such a reference elsewhere, each reference resolved through `./`, `../` or the `.` element SHALL report, once per reference, the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. SCHEM-PR-05 differs from xschem in its `./` and `../` lines by this decision (a recorded deviation).
 
 Compatibility: exact
 
@@ -308,6 +308,11 @@ Compatibility: exact
 - **GIVEN** the search path `/pdk/xschem:/pdk/xschem/sg13g2_pr` and the reference `sg13g2_pr/sg13_lv_nmos.sym`
 - **WHEN** it is resolved
 - **THEN** the file SHALL be `/pdk/xschem/sg13g2_pr/sg13_lv_nmos.sym`
+
+#### Scenario: Relative reference resolved against the schematic folder
+- **GIVEN** golden case SCHEM-PR-05: `/work/input/sub/top.sch` with the instance `../x.sym`, the files `/work/input/x.sym` and `/work/input/sub/x.sym`, and Hefesto started in `/work`
+- **WHEN** `top.sch` is opened and `./x.sym` and `../x.sym` are resolved, with `xschem-compat` ON or OFF
+- **THEN** `../x.sym` SHALL resolve to `/work/input/x.sym` and `./x.sym` to `/work/input/sub/x.sym`, the instance SHALL NOT be reported as a missing symbol, and the warning `SCHEM-LIB-001` SHALL be reported once for each of the two references
 
 #### Scenario: Web reference not fetched
 - **GIVEN** an instance whose reference is `https://example.com/lib/amp.sym`
@@ -320,7 +325,7 @@ The search path SHALL be an ordered list of folders built from the value of `XSC
 - an element of the form `<folder> | <alias>` (spaces around `|` optional, `\|` an escaped bar) SHALL define the alias `<alias>` for `<folder>`
 - elements that start with `#` SHALL be dropped
 - `~` and environment references in an element SHALL be expanded, and elements that do not exist SHALL be dropped
-- the element `.` means the folder of the current schematic
+- the element `.` means the folder of the current schematic, never the folder Hefesto was started in, whatever the `xschem-compat` setting; a reference found through it reports the warning `SCHEM-LIB-001` (Q-SCHEM-30, Requirement "Symbol references", paragraph "Working folder")
 - if the result is empty, it SHALL be the current schematic's folder
 
 Hefesto SHALL build `XSCHEM_LIBRARY_PATH` from the active PDK's `xschemrc` (Requirement "xschemrc as data"), and SHALL also accept a search path set in Hefesto settings (capability `hefesto-settings`) that is prepended to it.
@@ -333,6 +338,11 @@ Compatibility: behavioral
 - **GIVEN** `XSCHEM_LIBRARY_PATH` = `:/a:/missing:/b` where `/missing` does not exist
 - **WHEN** the search path is built
 - **THEN** it SHALL be `/a`, `/b`
+
+#### Scenario: Dot element is the schematic folder
+- **GIVEN** `XSCHEM_LIBRARY_PATH` = `/a:.`, the schematic `/w/s/top.sch` with the instance `y.sym`, the file `/w/s/y.sym`, no `/a/y.sym`, and Hefesto started in `/w`
+- **WHEN** the instance is resolved
+- **THEN** its symbol SHALL be `/w/s/y.sym`, in both modes of `xschem-compat`, and the warning `SCHEM-LIB-001` SHALL name `y.sym` and `/w/s`
 
 ### Requirement: xschemrc as data
 PDKs configure xschem through a Tcl file named `xschemrc`. Hefesto SHALL read it as follows:

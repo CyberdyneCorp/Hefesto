@@ -244,7 +244,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Goal.** Draw schematics in an editor that is compatible with xschem, using the PDKs' symbol libraries. Schematics then drive simulation and LVS.
 
-**Status (2026-11-18): planned; golden capture done, implementation not started.** The 24 open SCHEM questions and D-21 were approved on 2026-11-13 (`docs/decisions/m8-decision-table.md`): xschem quirks are governed by the `xschem-compat` setting (default ON), and the specs follow a two-team clean-room process (`hefesto-licensing`). The plan is OpenSpec change `openspec/changes/m8-schematic`. Done: the xschem PDK data sets and the inventory (section 2), the clean-room check and pull-request template (tasks 1.3, 1.4), and the 41 SCHEM golden cases, captured from xschem 3.4.8RC with gawk in runs 44239093096 and 44239987461, with the capture-fixed texts recorded in the specs (gate G2, task 3.6; the SCHEM-SIM-01/02 simulation results wait for M9). Open: gate G1 needs the outside reviewer's confirmation of `docs/contributing/cleanroom.md` (task 1.1) and the second spec-team signature of the paraphrase review (task 1.2); `scripts/check_milestone_readiness.py --milestone M8` reports one blocking entry, Q-SCHEM-30 (relative symbol references, proposed from SCHEM-PR-05), and the Q-SCHEM-21 OFF-mode amendment is proposed. Implementation starts after G1.
+**Status (2026-11-18): planned; golden capture done, implementation not started.** The 24 open SCHEM questions and D-21 were approved on 2026-11-13 (`docs/decisions/m8-decision-table.md`): xschem quirks are governed by the `xschem-compat` setting (default ON), and the specs follow a two-team clean-room process (`hefesto-licensing`). The plan is OpenSpec change `openspec/changes/m8-schematic`. Done: the xschem PDK data sets and the inventory (section 2), the clean-room check and pull-request template (tasks 1.3, 1.4), and the 41 SCHEM golden cases, captured from xschem 3.4.8RC with gawk in runs 44239093096 and 44239987461, with the capture-fixed texts recorded in the specs (gate G2, task 3.6). Decided 2026-11-18: Q-SCHEM-30 (fix: relative symbol references resolve against the containing schematic's folder in both modes, with a warning; SCHEM-PR-05 has an approved deviation), the Q-SCHEM-21 OFF-mode amendment (a template LF followed by `+` is kept), and the SCHEM-SIM-01/02 simulation results move to M9 (both cases deferred to M9, captures kept). Open: gate G1 needs the outside reviewer's confirmation of `docs/contributing/cleanroom.md` (task 1.1) and the second spec-team signature of the paraphrase review (task 1.2). Implementation starts after G1.
 
 **Capabilities:** `schematic-file-format`, `schematic-symbols-and-libraries`, `schematic-editing`, `schematic-netlisting`, `schematic-simulation-integration`, `schematic-command`
 
@@ -256,7 +256,7 @@ Depends on `mask-hints`, which is completed in M3.
 
 **Exit criteria**
 - The common exit criteria.
-- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics.
+- The SCHEM golden cases pass, including round trips of every PDK `.sch`/`.sym` file and netlists matching xschem's for the PDK example schematics. SCHEM-SIM-01/02 are deferred to M9 (their simulation results need the embedded simulator; decided 2026-11-18), and SCHEM-PR-05 differs only by the approved fix Q-SCHEM-30.
 - A `hefesto-security` review signs off the schematic script permission model (Q-SCHEM-25).
 
 ## M9 — LVS, simulation and advanced analog simulation → Desktop Beta
@@ -266,6 +266,7 @@ Depends on `mask-hints`, which is completed in M3.
 **Deliverables**
 - **LVS:** built-in LVS compatible with netgen, implemented clean-room from the specs. Reports in `comp.out` and JSON formats, and cross-probing between the report and the layout.
 - **Simulation:** embedded ngspice in a worker process, a waveform viewer, and probing from the layout.
+- **Schematic simulation results (from M8):** the golden cases SCHEM-SIM-01 (IHP `dc_lv_nmos.sch` simulation results) and SCHEM-SIM-02 (sky130 `test_inv.sch` operating-point annotation), deferred from M8 on 2026-11-18, pass.
 - **Advanced analog simulation:** sweeps, corner matrix, Monte Carlo and mismatch with reproducible seeds, measurements, specs and yield statistics.
 
 **Desktop Beta:** the complete flow (schematic → simulation → layout → DRC → GDS → extraction → LVS → post-layout simulation) on Linux and macOS.

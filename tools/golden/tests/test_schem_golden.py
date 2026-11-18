@@ -148,6 +148,23 @@ class AuthoredCasesTest(unittest.TestCase):
         text = schem_cases.DEVIATIONS.read_text(encoding="utf-8")
         self.assertIn(schem_cases.deviation_block(self.specs), text)
 
+    def test_decided_deviation_outlives_replay(self):
+        spec = next(s for s in self.specs if s.id == "SCHEM-PR-05")
+        self.assertIn('deferred = "M8"', schem_cases.deviation_entry(spec))
+        with mock.patch.object(schem_cases, "REPLAYED", frozenset({"SCHEM-PR-05", "SCHEM-RT-01"})):
+            entry = schem_cases.deviation_entry(spec)
+            rt01 = schem_cases.deviation_entry(next(s for s in self.specs if s.id == "SCHEM-RT-01"))
+        self.assertIn('decisions = ["Q-SCHEM-30"]', entry)
+        self.assertIn('outputs = ["stdout.txt", "stderr.txt"]', entry)
+        self.assertFalse(any(line.startswith("deferred") for line in entry))
+        self.assertEqual(rt01, [])
+
+    def test_simulation_results_deferred_to_m9(self):
+        for case_id in ("SCHEM-SIM-01", "SCHEM-SIM-02"):
+            with self.subTest(case=case_id):
+                entry = schem_cases.deviation_entry(next(s for s in self.specs if s.id == case_id))
+                self.assertIn('deferred = "M9"', entry)
+
 
 class ContainerfileTest(unittest.TestCase):
     def test_gawk_is_awk(self):

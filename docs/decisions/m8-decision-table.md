@@ -1,8 +1,8 @@
-# M8 decision table: the 29 SCHEM open questions and D-21
+# M8 decision table: the 30 SCHEM open questions and D-21
 
-M8 ("Schematic capture", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M8` lists 24 blocking entries, all in `docs/decisions/open-questions/SCHEM.md`. This table covers all 29 Q-SCHEM entries: the 24 blocking ones plus the five already resolved (Q-SCHEM-6, -7, -11, -17, -23), which are listed for completeness. It also covers D-21, the open item in X-2 on whether xschem quirks get their own `xschem-compat` setting. Most of the kinds below depend on that item. That gives 30 rows.
+M8 ("Schematic capture", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M8` lists 24 blocking entries, all in `docs/decisions/open-questions/SCHEM.md`. This table covers all 29 Q-SCHEM entries: the 24 blocking ones plus the five already resolved (Q-SCHEM-6, -7, -11, -17, -23), which are listed for completeness. It also covers D-21, the open item in X-2 on whether xschem quirks get their own `xschem-compat` setting. Most of the kinds below depend on that item. That gives 30 rows. Q-SCHEM-30, raised from golden case SCHEM-PR-05 on 2026-11-18 and approved the same day, adds a 31st row ("Decisions of 2026-11-18").
 
-**Status: drafted 2026-11-13, reviewed 2026-11-13, approved 2026-11-13.** The user approved every recommendation, the recommended option of all five judgement items included (see "Judgement items"), with no option changed. Each of the 24 open entries in `SCHEM.md` now carries `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line; the five entries resolved earlier carry a `Status:` line that confirms them. Where the table changes an entry's original recommendation, its `Recommendation:` line ends with `(corrected 2026-11-13, ...)`. D-21 is recorded in `cross-cutting.md` (X-2) and `audit/DECISIONS.md`. `python3 scripts/check_milestone_readiness.py --milestone M8` reports `M8: ready`.
+**Status: drafted 2026-11-13, reviewed 2026-11-13, approved 2026-11-13.** The user approved every recommendation, the recommended option of all five judgement items included (see "Judgement items"), with no option changed. Each of the 24 open entries in `SCHEM.md` now carries `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line; the five entries resolved earlier carry a `Status:` line that confirms them. Where the table changes an entry's original recommendation, its `Recommendation:` line ends with `(corrected 2026-11-13, ...)`. D-21 is recorded in `cross-cutting.md` (X-2) and `audit/DECISIONS.md`. `python3 scripts/check_milestone_readiness.py --milestone M8` reports `M8: ready`. The decisions of 2026-11-18 (Q-SCHEM-30, the Q-SCHEM-21 OFF-mode amendment and the move of the SCHEM-SIM-01/02 simulation results to M9) are recorded below under "Decisions of 2026-11-18".
 
 ## Clean-room method and sources
 
@@ -66,7 +66,7 @@ The options as drafted:
 
 ## Decision table
 
-Every row is approved (2026-11-13); the Recommendation column is the decision recorded in the entry's `Resolution:` line. **Src** names the sources a row used. **Caps** names the capabilities the row affects: `sff` is schematic-file-format, `ssl` schematic-symbols-and-libraries, `sed` schematic-editing, `snl` schematic-netlisting, `ssi` schematic-simulation-integration and `scmd` schematic-command. Rows marked *(resolved)* already have a `Resolution:` line and are listed only for completeness.
+Every row is approved (2026-11-13; Q-SCHEM-30 and the Q-SCHEM-21 amendment 2026-11-18); the Recommendation column is the decision recorded in the entry's `Resolution:` line. **Src** names the sources a row used. **Caps** names the capabilities the row affects: `sff` is schematic-file-format, `ssl` schematic-symbols-and-libraries, `sed` schematic-editing, `snl` schematic-netlisting, `ssi` schematic-simulation-integration and `scmd` schematic-command. Rows marked *(resolved)* already have a `Resolution:` line and are listed only for completeness.
 
 ### Cross-cutting
 
@@ -97,6 +97,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-SCHEM-11 | Symbol generators *(resolved)* | **platform** | Tcl-only generators in the sandbox (X-3, X-4, 2026-11-07) | none | already resolved | ssl | [E] |
 | Q-SCHEM-23 | `xschemrc` evaluation on iPadOS *(resolved)* | **platform** | sandboxed Tcl with synthetic `env()` (X-3, X-4, 2026-11-07) | none | already resolved | ssl, hefesto-files-and-pdks | [E] |
 | Q-SCHEM-25 | Script permission model | **platform** (judgement J-5) | as specified: `tcleval` always runs in the sandbox, launchers are confirmed once per document, `xschem_execute_scripts` is ignored with a log line; needs `hefesto-security` review sign-off before the M8 exit | replicate `ask`/`yes`/`no`; add a per-PDK trust flag | the X-3 sandbox already removes the risks the xschem setting guards against; prompts would block iPad netlisting | ssl, hefesto-security, hefesto-scripting | [E][S][D] |
+| Q-SCHEM-30 | Relative references follow xschem's start folder | **fix** | in both modes resolve `./`, `../` and the search-path element `.` against the folder of the containing schematic; warn (`SCHEM-LIB-001`) once per reference resolved that way; SCHEM-PR-05 gets an approved deviation | replicate (process working folder; no such folder on iPadOS); compat (replicate ON, fix OFF) | a document then opens the same way on every platform and from every start folder; xschem started in the schematic's folder, the usual case, gives the same result | ssl | [E][S][G] SCHEM-PR-05 |
 
 ### Editing
 
@@ -117,7 +118,7 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | Q-SCHEM-18 | awk dialect in post-processing | **replicate** | gawk semantics (case-insensitive `.param` and `value=` matching) on every platform | mawk/BWK semantics | X-1 rule: one deterministic behaviour on all platforms, the one PDK users mostly get; golden captures need gawk installed as `awk` (it is not installed on this Mac) | snl | [E][S][G][D] |
 | Q-SCHEM-19 | `extra` exclusion uses substring match | **compat** | ON: drop a template key that occurs anywhere in `extra`; OFF: drop only whole words of `extra`; both modes warn when a dropped key is not a whole word | replicate only | changes `.subckt` parameter lists, so compat; the warning catches the `VPW`/`VPWR` case | snl | [E][S] |
 | Q-SCHEM-20 | Line breaker quote state | **replicate** | carry the quote state across lines and reset the column counter as xschem does, in both modes | fix | changes only where long lines wrap; SPICE meaning is unchanged; covered by golden case SCHEM-NL-12 | snl | [E][S][G] |
-| Q-SCHEM-21 | Multi-line templates break `.subckt` lines | **compat** | ON: copy the template LFs onto the header; OFF: replace LFs by spaces; both modes warn; the inventory checks whether any PDK subcircuit symbol has a multi-line template | replicate and warn only | xschem's output is invalid SPICE, so OFF must be able to produce a valid netlist; if the inventory finds no PDK case, both modes are identical on PDK data | snl | [E][S] |
+| Q-SCHEM-21 | Multi-line templates break `.subckt` lines | **compat** | ON: copy the template LFs onto the header; OFF: replace LFs by spaces, except an LF followed by optional blanks and `+`, which is kept (amended 2026-11-18); both modes warn; the inventory checks whether any PDK subcircuit symbol has a multi-line template | replicate and warn only | xschem's output is invalid SPICE, so OFF must be able to produce a valid netlist; if the inventory finds no PDK case, both modes are identical on PDK data | snl | [E][S] |
 | Q-SCHEM-22 | Trailing `m=1` removed everywhere | **compat** | ON: remove a trailing ` m=1` from every line; OFF: from device lines only, keeping comments, `.param` and `.control` text | replicate only (the entry's original recommendation) | on user code and `.param` lines the removal changes netlist content, so the standing rule makes it compat; on device lines `m=1` is the default and removing it changes nothing | snl | [E][S] |
 | Q-SCHEM-26 | `@` tokens end only at whitespace | **replicate** | token ends as xschem's do, in both modes; warn when a token lookup fails but a shorter identifier prefix exists (`@W/` → `@W`) | fix (stop at non-identifier characters) | a fix would change PDK netlists that rely on tokens such as `@spice_get_voltage(net)`, even with compat OFF; the warning gives users the fix | ssl, snl | [E][S][G] SCHEM-PR-04 |
 | Q-SCHEM-27 | Missing subcircuit schematic | **replicate** | write the header and an empty body and warn, as the spec says; the exact text is fixed by golden case SCHEM-NL-14 | always an error | keeps netlists of PDK primitives with absent schematics usable | snl | [E][S][G] |
@@ -129,11 +130,11 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 |---|---|---|
 | replicate | 9 | SCHEM-1, SCHEM-2, SCHEM-15, SCHEM-18, SCHEM-20, SCHEM-26, SCHEM-27, SCHEM-28, SCHEM-29 |
 | compat | 6 | SCHEM-3, SCHEM-12, SCHEM-14, SCHEM-19, SCHEM-21, SCHEM-22 |
-| fix | 3 | SCHEM-5, SCHEM-16, SCHEM-17 (resolved) |
+| fix | 4 | SCHEM-5, SCHEM-16, SCHEM-17 (resolved), SCHEM-30 (2026-11-18) |
 | platform | 8 | SCHEM-6, SCHEM-7, SCHEM-11, SCHEM-23 (all resolved), SCHEM-9, SCHEM-13, SCHEM-24, SCHEM-25 |
 | other | 4 | SCHEM-4, SCHEM-8, SCHEM-10, D-21 |
 
-Total: 30 rows, of which 25 are open (24 Q-SCHEM plus D-21) and 5 are already resolved. IDs are given without the `Q-` prefix. Kinds follow D-21 (a). If D-21 takes (b), the six compat rows become replicate, except Q-SCHEM-14 and Q-SCHEM-21, which become fix (warn and produce valid SPICE).
+Total: 31 rows: the 30 of 2026-11-13, of which 25 were open (24 Q-SCHEM plus D-21) and 5 already resolved, and Q-SCHEM-30, added and approved 2026-11-18. IDs are given without the `Q-` prefix. Kinds follow D-21 (a). If D-21 takes (b), the six compat rows become replicate, except Q-SCHEM-14 and Q-SCHEM-21, which become fix (warn and produce valid SPICE).
 
 ## Changes to the entries' original recommendations
 
@@ -146,6 +147,17 @@ Total: 30 rows, of which 25 are open (24 Q-SCHEM plus D-21) and 5 are already re
 - **Q-SCHEM-8:** adds the rule that the semantics are specified from public docs and PDK values, never from xschem's Tcl.
 - **Q-SCHEM-13:** the portable-paths option becomes a per-project setting.
 - **Q-SCHEM-25:** adds `hefesto-security` sign-off as an M8 exit condition.
+- **Q-SCHEM-21 (2026-11-18):** the OFF rule keeps an LF followed by optional blanks and `+` (sky130 `not.sym`, `lvtnot.sym`); ON unchanged.
+
+## Decisions of 2026-11-18
+
+Raised by the spec team from the golden captures of run 44239093096 (task 3.6 of `openspec/changes/m8-schematic`) and approved by the user on 2026-11-18:
+
+1. **Q-SCHEM-30 (fix, new row above).** `./`, `../` and the search-path element `.` resolve against the containing schematic's folder in both modes, with the warning `SCHEM-LIB-001` `Relative symbol reference <reference> resolved against the schematic folder <folder>; xschem resolves it against its start folder`. Spec: `schematic-symbols-and-libraries` "Symbol references" (step 5, paragraph "Working folder", scenario "Relative reference resolved against the schematic folder") and "Library search path" (scenario "Dot element is the schematic folder"). SCHEM-PR-05 has an approved deviation (`stdout.txt`, `stderr.txt`) in `tests/golden/deviations.toml`.
+2. **Q-SCHEM-21 amendment (compat, row amended above).** With `xschem-compat` OFF a template LF followed by optional blanks and `+` is kept; every other LF still becomes a space; ON unchanged. Spec: `schematic-netlisting` "Subcircuit definitions", scenario "Template continuation lines, xschem-compat OFF".
+3. **SCHEM-SIM-01/02 simulation results move to M9.** Both cases are deferred to M9 in `tests/golden/deviations.toml` (and marked in `tests/golden/SCHEM/CASES.md`); their current captures (SIM-01's deck, SIM-02's `@spice_get_*` texts with no simulation loaded) are kept. SIM-01's deck is the same `dc_lv_nmos.spice` that SCHEM-NL-07 checks in M8. Recorded in `openspec/changes/m8-schematic` tasks.md and design D21 (exit criteria) and in the roadmap's M8 exit criteria.
+
+`python3 scripts/check_milestone_readiness.py --milestone M8` no longer reports Q-SCHEM-30.
 
 ## Blocked on capture
 

@@ -182,7 +182,7 @@ Same output on Linux x86_64, Linux aarch64 and macOS arm64: number parsing and p
 
 ### D21. Exit criteria
 
-- The SCHEM golden cases pass (D16), including every PDK round trip and the PDK example netlists.
+- The SCHEM golden cases pass (D16), including every PDK round trip and the PDK example netlists. Two kinds of listed case do not block the exit (decisions of 2026-11-18): SCHEM-SIM-01 and SIM-02, whose simulation results move to M9 (`deferred = "M9"`, captures kept), and SCHEM-PR-05, which may differ only in `stdout.txt` and `stderr.txt` by the approved deviation Q-SCHEM-30.
 - `check_requirement_coverage.py` covers every requirement of the six capabilities, or lists it as deferred to M9 with D13's reason.
 - Unit, property and fuzz tests green; output byte-identical across the three platforms (D20).
 - Each compat branch point tested in both modes; `xschem-compat` OFF changes no layout, extraction or LVS output (`hefesto-magic-compat-mode` scenarios).
