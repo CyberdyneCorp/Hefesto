@@ -1,8 +1,20 @@
-# M6 decision table: the 99 open questions blocking LEF/DEF and OASIS
+# M6 decision table: LEF/DEF and OASIS
 
 M6 ("LEF/DEF and OASIS", docs/roadmap.md) cannot start until every open question its specs cite has a `Resolution:` line. `python3 scripts/check_milestone_readiness.py --milestone M6` lists 99: 65 in `docs/decisions/open-questions/LEFDEF.md` and 34 in `OASIS.md`. Each LEFDEF entry was checked against Magic 8.3.694 (fc5daa9e, `/Users/leonardo/trabalho/magic`, read-only; `lef/` is unchanged up to HEAD 9c83a9a6). Magic has no OASIS code, so the OASIS entries were checked against the gds-read and gds-write code they mirror and against KLayout (master `dbOASISReader.cc`, `dbOASISWriter.cc`) and gdstk (`library.cpp`); the SEMI P39 text was not available. Each entry carries a rewritten `Recommendation:` line with the full reasoning; corrected evidence is marked `(corrected 2026-11-13: ...)`, and evidence that was right gets a `Verified 2026-11-13:` line. **All 99 were approved as drafted on 2026-11-13**, and the three judgement items were decided with the recommended option (a). Each entry now has `Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)` and a `Resolution:` line, and `check_milestone_readiness.py --milestone M6` reports ready.
 
 The standing rule for Magic bugs and quirks is compat: `magic-compat` ON copies Magic, OFF does the intended thing. Most LEFDEF rows follow it. Where they do not, the row says why: replicate when Magic defines no corrected behaviour or the quirk is a formatting or arithmetic choice that byte identity needs, fix when the quirk loses data, is undefined behaviour, or has no Magic output to match. Most OASIS rows have no Magic output at all: they are fix (format semantics, aligned with KLayout and gdstk), replicate (the GDS-equivalence rule inherits gds-read or gds-write behaviour), or other (a Hefesto default).
+
+## Status of every entry
+
+As of 2026-11-17, `docs/decisions/open-questions/LEFDEF.md` has 102 entries and `OASIS.md` has 34, 136 in all:
+
+| Status | Count | Where listed |
+|---|---|---|
+| Approved 2026-11-13 (the M6 round) | 99: 65 Q-LEFDEF, 34 Q-OASIS | "Decision table" below |
+| Resolved earlier (2026-11-06/07, by X-1 as amended by D-1, X-2 tier 1, X-4, D-5 and D-14) | 36 Q-LEFDEF | "Entries resolved before the M6 round" |
+| Pending: no `Resolution:` line | 1: Q-LEFDEF-114 | "Pending" |
+
+`check_milestone_readiness.py --milestone M6` reports ready, because no M6 spec cites Q-LEFDEF-114. The M6 implementation plan (`openspec/changes/m6-lef-def-oasis/`) raises six further planning questions. They are proposed, not decided, and are listed under "Planning questions raised by the M6 plan".
 
 Recommendation kinds (X-2, docs/decisions/cross-cutting.md):
 
@@ -193,6 +205,74 @@ Every row is approved (2026-11-13); the Recommendation column is the decision re
 | total | 99 | |
 
 L = Q-LEFDEF, O = Q-OASIS. The judgement items are counted under the chosen option (a) (Q-OASIS-2 fix, Q-OASIS-35 fix, Q-OASIS-90 other). Q-LEFDEF-1 and Q-LEFDEF-73 are compat with a tier-1 part fixed in both modes; Q-OASIS-33, 61 and 68 are already settled by the approved Q-MASK-114, 209 and 211 resolutions.
+
+## Entries resolved before the M6 round
+
+These were resolved before the M6 round by the standing decisions named in each row. They have a `Resolution:` line and no `Status:` line. The M6 plan cites them in design D5–D9.
+
+| ID | Question | Kind | Resolution |
+|---|---|---|---|
+| Q-LEFDEF-4 | Table names without an entry crash the reader | **fix** | an entry-less name is treated as absent (X-2 tier 1) |
+| Q-LEFDEF-5 | New ROUTE entries from LEF LAYER sections have undefined parameters | **fix** | initialised like a tech `routing` line: DRC default width and spacing, pitch 0, horizontal |
+| Q-LEFDEF-8 | Via redefinition corrupts shared entries | **fix** | the canonical name keeps an alias of the same entry; the new entry's class is VIA |
+| Q-LEFDEF-9 | NONDEFAULTRULE duplicate renaming never increments | **fix** | try `_0`, `_1`, `_2`, ...; the first rename stays `_0` |
+| Q-LEFDEF-16 | `-import` has no effect | **n/a** | the spec follows Magic's code; the documentation is wrong (D-5) |
+| Q-LEFDEF-17 | Cut growing uses the output style, not the input style | **n/a** | the spec follows Magic's code (D-5) |
+| Q-LEFDEF-18 | POLYGON on an unknown layer | **fix** | skipped, as a RECT is |
+| Q-LEFDEF-19 | Empty CLASS or SYMMETRY statement | **fix** | sets no property |
+| Q-LEFDEF-24 | File search uses Magic's cell search path | **platform** | the cell search path on desktop; the document picker or granted folders on iPadOS (X-4) |
+| Q-LEFDEF-30 | LEF write order depends on hash-table iteration | **replicate** | Magic's string hash order, reproduced exactly (X-1 as amended by D-1) |
+| Q-LEFDEF-40 | Antenna type masks without extraction style | **fix** | empty gate and diffusion masks |
+| Q-LEFDEF-41 | writeall macro order depends on subcell enumeration; doc says only cells with ports are written | **n/a** | the spec follows Magic's code (D-5) |
+| Q-LEFDEF-42 | LEFproperties format differs from documentation | **n/a** | the spec follows Magic's code (D-5) |
+| Q-LEFDEF-43 | Output file location | **platform** | Magic's naming on desktop; the project's document folder on iPadOS (X-4) |
+| Q-LEFDEF-44 | Power/ground names come from Tcl variables | **platform** | the project setting "global nets and power names", seeded from `$VDD`/`$GND` (D-14) |
+| Q-LEFDEF-53 | Boundary layer declared but unpainted | **fix** | FIXED_BBOX if present, otherwise the cell bounding box |
+| Q-LEFDEF-61 | Generated-via parameters undefined when omitted | **fix** | the LEF VIARULE values when known, otherwise 0, with a warning |
+| Q-LEFDEF-67 | Unknown pin layer paints with an invalid type | **fix** | reported, rectangle skipped |
+| Q-LEFDEF-68 | Rectangle parse failure dereferences NULL | **fix** | reported, statement skipped |
+| Q-LEFDEF-75 | NONDEFAULTRULES state bugs and table pollution | **fix** | flag initialised, lookups without insertion, unknown layer reported |
+| Q-LEFDEF-76 | Placement and other non-layer blockages painted on stale layer | **fix** | ignored with a message |
+| Q-LEFDEF-80 | Annotation mode still paints pin geometry | **n/a** | the spec follows Magic's code (D-5) |
+| Q-LEFDEF-82 | Layer record after a via depends on hash iteration order | **compat** | the first match in Magic's string hash order, reproduced exactly (X-1 as amended by D-1) |
+| Q-LEFDEF-89 | Pin label sizing loops forever with no default width | **fix** | the loop terminates; the rectangle height is used |
+| Q-LEFDEF-90 | DEF write file mechanics (temporary _part file, search paths) | **platform** | nets buffered in memory (same bytes); Magic's naming; the document model on iPadOS (X-4) |
+| Q-LEFDEF-92 | Cut-type layer map can resolve to a VIA definition name | **compat** | the first via-class record in Magic's hash order wins, reproduced exactly (X-1 as amended by D-1) |
+| Q-LEFDEF-100 | -anal dereferences cleared layer-table slots | **fix** | empty slots skipped |
+| Q-LEFDEF-101 | Blockage collector called with mismatched arguments | **fix** | the intended arguments; the net's geometry is collected |
+| Q-LEFDEF-102 | Special-net classification depends on Tcl variables | **platform** | Tcl-build rules with `globalNets`, `vdd`, `gnd` from the project setting; the trailing-`!` rule kept (D-14) |
+| Q-LEFDEF-104 | -units argument handling | **fix** | a missing value is reported; values <= 0 rejected |
+| Q-LEFDEF-106 | Uninitialized surround for single-residue contacts | **fix** | high-layer surround 0 |
+| Q-LEFDEF-108 | Byte-exact route ordering depends on tile structure and traversal | **compat** | Magic's maximal-horizontal-strip decomposition and traversal, byte-identical (X-1 tile order) |
+| Q-LEFDEF-109 | `def write` help shows `[cell]`, but the argument is the output file name | **n/a** | the spec follows Magic's code (D-5) |
+| Q-LEFDEF-113 | Fixed-size name buffers | **fix** | unbounded strings |
+| Q-LEFDEF-115 | `(null)` layer names in VIAS | **fix** | a residue with no LEF mapping is skipped with a warning |
+| Q-LEFDEF-116 | Hash ordering depends on char signedness | **compat** | signed-byte hash on every platform, matching Magic on x86-64 Linux and macOS (X-1 as amended by D-1) |
+
+Counts: 20 fix, 6 n/a (D-5 documentation mismatches), 5 platform, 4 compat, 1 replicate; 36 in all.
+
+## Pending
+
+**Q-LEFDEF-114: Pin layer error message arguments swapped.** `def write` prints `No LEF layer corresponding to layer %s of pin "%s".` with the label text where the layer name belongs, and the layer name where the pin name belongs (lef/defWrite.c:2432-2434, verified 2026-11-17 in the Magic checkout at 9c83a9a6; `lef/` is unchanged since fc5daa9e). The entry has `Kind: bug`, `Options: replicate | fix` and `Recommendation: fix (informative message)`, but no `Status:` or `Resolution:` line. No spec cites it, so M6 readiness is unaffected. Golden case LEFDEF-316 ("label on unmapped layer") captures the message.
+
+- (a) **Recommended: compat.** With `magic-compat` ON, print Magic's swapped text, so LEFDEF-316 compares without a deviation. With it OFF, print the layer, then the pin. This follows the standing rule (the quirk loses no data) and the treatment of other message-only quirks such as Q-LEFDEF-20 and 107.
+- (b) fix: the corrected text in both modes, as the entry's own recommendation says. LEFDEF-316 then needs an approved deviation for its stderr.
+- (c) replicate: Magic's text in both modes.
+
+Until the user decides, DEFW writes Magic's text (m6-lef-def-oasis design D9).
+
+## Planning questions raised by the M6 plan
+
+These come from planning the implementation, not from the specs. They are drafted in `openspec/changes/m6-lef-def-oasis/design.md` "Open Questions" with options and reasons. Each is **proposed** and none is decided.
+
+| # | Question | Recommended option (proposed) |
+|---|---|---|
+| 1 | `def write` reads its nets from `.ext` files (EFReadFile), which is M7 | pull forward the `.ext` read-and-flatten subset, built to the M7 specs; cases take Magic-written `.ext` inputs |
+| 2 | LEF antenna areas and DEF blockage filtering read the extraction style, which is M7 | pull forward the device, antenna tie-down, substrate and active-type parts of the extract section |
+| 3 | Commercial OASIS files for the release gates OASIS-012, 030 and 061 (Q-OASIS-2 (a)) | the user supplies or names a source; otherwise an approved deviation and Q-OASIS-2 reopened |
+| 4 | Performance gate for LEF/DEF/OASIS (no spec target) | callgrind benches gated at their own baseline + 2 %, with the comparisons informational |
+| 5 | Desktop scope | OASIS recognised on open, progress and cancel; no new menu items |
+| 6 | Real-PDK LEF/DEF coverage | LEF data sets, one `LEFDEF-RT-<lib>` case per standard-cell library, LEFDEF-240 on an OpenROAD-style DEF |
 
 ## Notable changes to the entries' original recommendations
 
