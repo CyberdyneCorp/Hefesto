@@ -138,6 +138,22 @@ None of these codes reads like a golden case ID (LEFDEF-001, OASIS-001).
 | PERF | none (the D22 benches, Open Question 4, decided (a)) | `bench/{lefdef,oasis}/`, the `lefdef-bench` and `oasis-bench` jobs of `perf.yml`, `docs/design/m6-ui-conformance.md` "Performance" |
 | INTEGRATION | none | everything shared: root and `src/core/CMakeLists.txt`, the `<area>/{sources.cmake,codes.cpp}` assemblers, the shared headers of D4, `mask/session.hpp`, `gds/command/settings.hpp` (the Q-OASIS-90 split, D15), `editor/`, `cmd/`, `diag/`, `src/cli/`, `CMakePresets.json`, `cmake/`, `tests/unit/CMakeLists.txt`, `tests/fuzz/`, `.github/` (other steps), `scripts/` (other files), `README.md`, `CHANGELOG.md`, `docs/roadmap.md`, `docs/building.md` (other sections), `docs/contributing/`, `docs/decisions/`, `docs/diagnostics/codes.md`, `openspec/specs/` (open items), this change's artifacts |
 
+**PDK row: task 1.2 facts (measured 2026-11-18).** Every asset of the three pinned ciel releases was streamed and its `libs.ref/<lib>/{lef,techlef}/` members listed; nothing else of them was kept. For the variants Hefesto pins (sky130A, gf180mcuD, ihp-sg13g2):
+- sky130 `5740c4a8…`: each standard-cell library (`sky130_fd_sc_{hd,hdll,hs,hvl,lp,ls,ms}`) has `lef/<lib>.lef` and `techlef/<lib>__{nom,min,max}.tlef` plus `techlef/<lib>__rram__{nom,min,max}.tlef`. `sky130_fd_sc_hd` also has `lef/sky130_ef_sc_hd.lef` (8 macros beside the 437 of `sky130_fd_sc_hd.lef`). `sky130_fd_io` has `lef/sky130_{fd,ef}_io.lef`, `sky130_fd_pr` has `lef/sky130_fd_pr.lef`, and `sky130_sram_macros` has 4 macro LEFs (24.9 MB). `sky130_ml_xx_hd` and `sky130_fd_pr_reram` have none, and `common` holds no `libs.ref`.
+- gf180mcu `5740c4a8…`: `gf180mcu_fd_sc_mcu{7t5v0,9t5v0}`, `gf180mcu_as_sc_mcu7t3v3` and `gf180mcu_ocd_sc_rt12t3v3` have `lef/<lib>.lef` and `techlef/<lib>__{nom,min,max}.tlef`; `gf180mcu_osu_sc_gp{9t3v3,12t3v3}` have `lef/<lib>.lef` and `techlef/<lib>__nom.tlef` only. `gf180mcu_fd_io` (15 files), `gf180mcu_ocd_io` (1), `gf180mcu_fd_ip_sram` (4), `gf180mcu_ocd_ip_sram` (5) and `gf180mcu_re_efuse` (7) have `lef/` only. `gf180mcu_fd_pr` and `gf180mcu_ocd_alpha_{large,misc,small}` have none. `gf180mcu_fd_sc_mcu7t5v0.lef` has 229 macros.
+- ihp-sg13g2 `5e6d592e…`: `sg13g2_stdcell` has `lef/sg13g2_stdcell.lef` (84 macros) and the tech LEF `lef/sg13g2_tech.lef`; there is no `techlef/` directory. `sg13g2_io` has `lef/sg13g2_io{,_notracks}.lef`, `sg13g2_sram` 30 macro LEFs, and `sg13g2_pr` none.
+- Every LEF file is `VERSION 5.7`.
+- The LEF sets of task 1.4 (`scripts/fetch_pdk.py`, PDK root `.cache/pdks/lef`) hold one standard-cell library per PDK:
+
+  | Set | Kept | Downloaded | Kept size (cached) | Peak disk | Tree digest |
+  |---|---|---|---|---|---|
+  | `sky130-lef` | `sky130_fd_sc_hd/{lef,techlef}/`, 8 files | 134 MB | 2.0 MB (0.17 MB) | 0.88 GB | `b8ebb4f6…` |
+  | `gf180mcu-lef` | `gf180mcu_fd_sc_mcu7t5v0/{lef,techlef}/`, 4 files | 350 MB | 0.77 MB (0.08 MB) | 1.63 GB | `1b748b5d…` |
+  | `ihp-lef` | `sg13g2_stdcell/lef/`, 2 files | 441 MB | 0.22 MB (0.03 MB) | 1.13 GB | `fbc2d9ea…` |
+
+  The peak is the scratch root's measured disk use during `pdk install` (archives and decompressed tars included). The download is dominated by the `common` archives, which `pdk install` needs and keeps nothing of here. `python3 scripts/fetch_pdk.py sky130-lef gf180mcu-lef ihp-lef --root <scratch>` reproduces the install. A second run reports each set "already present and verified".
+- OASIS: one file in all three releases, `ihp-sg13g2/libs.tech/klayout/tech/lvs/testing/testcases/manual_tests/sram_support/SP01.oas` (26,667 bytes, IHP `common`). It is a KLayout LVS test layout, and its records match KLayout's writer: START version `1.0`, unit 1000, table offsets in END; the file-level standard properties `S_MAX_SIGNED_INTEGER_WIDTH`, `S_MAX_UNSIGNED_INTEGER_WIDTH` and `S_TOP_CELL`; `S_CELL_OFFSET` per cell; `S_GDS_PROPERTY`; CBLOCK compression; and an END record padded with `0x80` bytes. OASIS has no writer-name record, so the attribution is inferred. No library ships OASIS under `libs.ref`, and no file is from a commercial writer (D19 "Commercial OASIS files").
+
 Rules (unchanged from M1–M5 D2):
 - A workstream edits only what it owns. A needed change to a shared file or to another workstream's file is an `open_item` (what, why, and the exact edit if small). The owner or INTEGRATION applies it.
 - GOLDEN authors new golden case directories from the requirement and the owning workstream's notes. `expected/` is captured in CI.
@@ -532,6 +548,7 @@ No menu item is added, so DESIGN draws no board for M6. `docs/design/m6-ui-confo
 
   The capture runs with magic-compat ON, and the OFF behaviours are unit-tested.
 - **Commercial OASIS files (Open Question 3, decided (b)).** The user named no source of commercial OASIS files, so OASIS-012, OASIS-030 and OASIS-061 are authored and captured with their gdstk- and KLayout-written inputs and readers only. Each carries an approved deviation naming the missing commercial writer's or reader's input, under Q-OASIS-2 as amended 2026-11-18. The cases still pass, so the deviation is not a `tests/golden/deviations.toml` entry (that file lists cases whose outputs differ): it is recorded in each case's notes and in its row of `tests/golden/OASIS/CASES.md`, and `m6_cases.py --exit-check` lists it with its decision. Q-OASIS-2's judgement item is reopened with option (b), buy SEMI P39. If commercial files or P39 arrive later, GOLDEN adds them without a plan change.
+  - Task 1.2 (2026-11-18) confirmed it: the only OASIS file in the pinned releases is IHP's KLayout-written LVS test layout `SP01.oas` (D2, PDK row), so the PDKs add no commercial-writer input. GOLDEN may use `SP01.oas` as a further KLayout-written reader input, after checking that its licence allows it as a test input.
 
 ### D20. The 419-byte OASIS reference file (OASFMT, GOLDEN; exit criterion)
 

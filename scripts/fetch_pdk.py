@@ -37,6 +37,15 @@ PDK root ``<root>/gds/`` (``<root>/gds/ciel/<family>/versions/<pin>/``). Each ho
                   (sky130_fd_sc_hd, gf180mcu_fd_sc_mcu7t5v0, sg13g2_stdcell), for the MASK-RT cases
                   of every CI golden leg. They share the full sets' version directories.
 
+LEF sets (openspec/changes/m6-lef-def-oasis design D2, tasks 1.2 and 1.4), same pins, installed under their
+own PDK root ``<root>/lef/``. Each holds the LEF directories of one standard-cell library:
+
+``sky130-lef``    sky130A/libs.ref/sky130_fd_sc_hd/{lef,techlef}/ (134 MB downloaded, 2.0 MB kept, 8 files)
+``gf180mcu-lef``  gf180mcuD/libs.ref/gf180mcu_fd_sc_mcu7t5v0/{lef,techlef}/ (350 MB downloaded, 0.8 MB kept,
+                  4 files)
+``ihp-lef``       ihp-sg13g2/libs.ref/sg13g2_stdcell/lef/ (441 MB downloaded, 0.2 MB kept, 2 files: the tech
+                  LEF sg13g2_tech.lef and sg13g2_stdcell.lef)
+
 After an install the set's tree digest (SHA-256 over the sorted
 "path NUL sha256 LF" records of every file in its subset, paths relative to the
 version directory) must equal the set's pinned digest.
@@ -54,7 +63,7 @@ Usage:
     scripts/fetch_pdk.py --print-digest [SET]   digest of an installed set (default sky130)
     scripts/fetch_pdk.py --cache-info           GitHub Actions outputs: <set>_key, <set>_path
                                                 ("-" in a set name becomes "_": sky130_gds_key)
-Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS sets only when named. ``pdk`` is an
+Default steps: sky130, gf180mcu, ihp and magic-ref; the GDS and LEF sets only when named. ``pdk`` is an
 alias of ``sky130``.
 hefesto-cli comes from --cli, $HEFESTO_CLI, or build/macos-debug/src/cli/hefesto-cli.
 The PDK steps need network access (GITHUB_TOKEN, when set, raises the GitHub
@@ -85,7 +94,7 @@ class DataSet:
     libraries: tuple[str, ...]  # the `-lib` libraries installed (`pdk install` needs at least one)
     subset: tuple[str, ...]  # `-only` prefixes, relative to the version directory
     tree_sha256: str
-    pdk_dir: str = ""  # the set's PDK root below --root: "" for the tech/.mag sets, "gds" for the GDS sets
+    pdk_dir: str = ""  # the set's PDK root below --root: "" for the tech/.mag sets, "gds" or "lef" for the others
     per_library: bool = False  # one `pdk install` per library, which bounds the peak disk use (m5 D19)
 
     def pdk_root(self, root: Path) -> Path:
@@ -174,6 +183,28 @@ DATA_SETS.update({
                                "50469c4cd42efa29057b2d14c5c60e94228e4c64640233dd32f297c724fdc315"),
     "ihp-gds-sc": gds_set("ihp-gds-sc", DATA_SETS["ihp"], ("sg13g2_stdcell",),
                           "fd0edbc877f78824844fac82eb1172d0c8867cc3494b772e5c30996504559fc2"),
+})
+
+
+def lef_set(name: str, tech: DataSet, library: str, subdirs: tuple[str, ...], digest: str) -> DataSet:
+    """A LEF set (m6-lef-def-oasis design D2, task 1.4): the tech LEF and the cell LEF of one standard-cell
+    library (``libs.ref/<library>/<subdir>`` for each of ``subdirs``), same pin as ``tech``, under its own PDK
+    root ``<root>/lef``: `pdk install` skips a library whose ``libs.ref/<library>`` exists, so a LEF install
+    into the tech/.mag or GDS version directories would skip that library there."""
+    return DataSet(name, tech.family, tech.variant, tech.version, (library,),
+                   tuple(f"{tech.variant}/libs.ref/{library}/{sub}" for sub in subdirs), digest, "lef")
+
+
+# The tech LEF and the standard-cell LEF of each release (m6 Open Question 6 (a); task 1.2 lists every
+# library's lef/ and techlef/). sky130 and gf180mcu ship the tech LEF in techlef/ (one file per corner);
+# IHP ships it in lef/ beside the cell LEF.
+DATA_SETS.update({
+    "sky130-lef": lef_set("sky130-lef", DATA_SETS["sky130"], "sky130_fd_sc_hd", ("lef", "techlef"),
+                          "b8ebb4f6dcfe84d1e05c5adb0a9b57efd5c247e4382fc422811f1d7c449bd1c8"),
+    "gf180mcu-lef": lef_set("gf180mcu-lef", DATA_SETS["gf180mcu"], "gf180mcu_fd_sc_mcu7t5v0", ("lef", "techlef"),
+                            "1b748b5dc37d40a624a59a65b2cce890295d27e73759620161bc03d770a5a95a"),
+    "ihp-lef": lef_set("ihp-lef", DATA_SETS["ihp"], "sg13g2_stdcell", ("lef",),
+                       "fbc2d9eaf68f4d1c2bc5327f86dd0461b5cbe4123c1a1a227c3db2113a4ed7c8"),
 })
 ALIASES = {"pdk": "sky130"}
 
@@ -299,7 +330,7 @@ def cache_info(root: Path) -> list[str]:
 
 
 STEPS = (*DATA_SETS, "magic-ref")
-# A bare run fetches the tech/.mag sets and magic-ref; the GDS sets (several GB) only when named.
+# A bare run fetches the tech/.mag sets and magic-ref; the GDS and LEF sets only when named.
 DEFAULT_STEPS = (*(name for name, data in DATA_SETS.items() if not data.pdk_dir), "magic-ref")
 
 

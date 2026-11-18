@@ -90,6 +90,10 @@ env:
   KEEP_RAW: ${{ github.event_name == 'workflow_dispatch' && inputs.keep-raw && 'true' || 'false' }}
   FEEDBACK_PROBE: ${{ github.event_name == 'workflow_dispatch' && inputs.feedback-probe && 'true' || 'false' }}
   PROBE_TCL: ${{ github.event_name == 'workflow_dispatch' && inputs.probe-tcl || '' }}
+  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
+  # 1.4). "true" makes `capture` restore them, fetch the missing ones and save them. Off until a case reads
+  # them (the LEFDEF-RT-<lib> cases and LEFDEF-240 of task 15.5, as `[[external]] set` inputs).
+  FETCH_LEF_SETS: "false"
 
 jobs:
   # Splits the selected cases: the MASK-RT-* round trips go to capture-gds-rt (a matrix of the shards
@@ -188,6 +192,28 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
+      # The LEF sets (m6-lef-def-oasis task 1.4), only with FETCH_LEF_SETS.
+      - name: Restore sky130-lef
+        id: sky130_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+      - name: Restore gf180mcu-lef
+        id: gf180mcu_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_lef_key }}
+      - name: Restore ihp-lef
+        id: ihp_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_lef_path }}
+          key: ${{ steps.keys.outputs.ihp_lef_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ steps.keys.outputs.magic_ref_path }}
@@ -201,7 +227,9 @@ jobs:
       - name: Build hefesto-cli for the PDK install (cache miss only)
         if: >-
           steps.sky130.outputs.cache-hit != 'true' || steps.gf180mcu.outputs.cache-hit != 'true' ||
-          steps.ihp.outputs.cache-hit != 'true'
+          steps.ihp.outputs.cache-hit != 'true' ||
+          (env.FETCH_LEF_SETS == 'true' && (steps.sky130_lef.outputs.cache-hit != 'true' ||
+          steps.gf180mcu_lef.outputs.cache-hit != 'true' || steps.ihp_lef.outputs.cache-hit != 'true'))
         env:
           CC: gcc-14
           CXX: g++-14
@@ -214,7 +242,11 @@ jobs:
       - name: Fetch the pinned PDK data sets
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/fetch_pdk.py sky130 gf180mcu ihp --cli build/linux-release/src/cli/hefesto-cli
+        run: |
+          lef_sets=()
+          [ "$FETCH_LEF_SETS" != "true" ] || lef_sets=(sky130-lef gf180mcu-lef ihp-lef)
+          python3 scripts/fetch_pdk.py sky130 gf180mcu ihp "${lef_sets[@]}" \
+            --cli build/linux-release/src/cli/hefesto-cli
 
       - name: Save sky130
         if: steps.sky130.outputs.cache-hit != 'true'
@@ -234,6 +266,24 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_path }}
           key: ${{ steps.keys.outputs.ihp_key }}
+      - name: Save sky130-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.sky130_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+      - name: Save gf180mcu-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.gf180mcu_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_lef_key }}
+      - name: Save ihp-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.ihp_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_lef_path }}
+          key: ${{ steps.keys.outputs.ihp_lef_key }}
 
       - name: Build reference-tool image
         run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
