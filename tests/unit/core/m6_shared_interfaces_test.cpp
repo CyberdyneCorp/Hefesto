@@ -234,22 +234,20 @@ TEST_CASE("the LEF/DEF core interfaces are stubs", "[m6-scaffold]") {
   CHECK(counter.warnings() == 2);
 }
 
-TEST_CASE("the OASIS codec interfaces are stubs", "[m6-scaffold]") {
+TEST_CASE("the OASIS codec interfaces keep their scaffold shape", "[m6-scaffold]") {
+  // The codec is implemented (OASFMT); its behaviour is tested in
+  // tests/unit/oasis/codec/. Only the interface shape is checked here.
   const std::vector<std::byte> bytes(4, std::byte{0});
   gds::MemorySource source{bytes};
   oasis::Decoder decoder{source};
   CHECK(&decoder.source() == &source);
-  check_stub(decoder.next());
+  CHECK_FALSE(decoder.next().ok());  // not an OASIS file
   CHECK(decoder.modal() == oasis::ModalState{});
   CHECK(decoder.names().cellnames.empty());
 
   gds::MemorySink sink;
   oasis::Encoder encoder{sink};
   CHECK(&encoder.sink() == &sink);
-  check_stub(encoder.begin());
-  check_stub(encoder.begin_cell("top"));
-  check_stub(encoder.element(oasis::Element{}));
-  check_stub(encoder.finish());
   CHECK(encoder.options().compress == 6);
 
   CHECK(oasis::expand(oasis::Repetition{}) == std::vector<oasis::Point64>{oasis::Point64{}});
