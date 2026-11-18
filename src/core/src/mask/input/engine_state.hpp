@@ -32,6 +32,7 @@ struct ReadEngine::State {
   /// The saved copyup planes of each cell (CDFLATGDS / cd_client), indexed
   /// by CIF layer.
   std::unordered_map<const db::CellDef*, std::vector<MaskPlane*>> saved;
+  ReadTriangleBudget triangles;   // the read's non-Manhattan budget (Q-MODEL-37)
   bool snap_warned = false;       // cifSeenSnapWarning
   bool euclidean_noted = false;   // Q-MASK-306 note given
   bool tagged_noted = false;      // Q-MASK-310 note given
@@ -55,11 +56,12 @@ namespace input_detail {
                                            const tech::Technology& technology, const compat::CompatSettings& compat);
 
 /// dbScalePlane: every tile of `plane` scaled by n/d (DBScaleValue).
-void scale_plane(MaskPlane& plane, std::int64_t n, std::int64_t d, bool magic_compat);
+void scale_plane(MaskPlane& plane, std::int64_t n, std::int64_t d, bool magic_compat, ReadTriangleBudget& budget);
 
 /// Paints one tile view (rectangle or reported triangle) of a mask plane at
 /// `area` into `into`.
-void paint_tile(MaskPlane& into, const db::TileView& tile, const db::Rect& area, bool magic_compat);
+void paint_tile(MaskPlane& into, const db::TileView& tile, const db::Rect& area, bool magic_compat,
+                ReadTriangleBudget& budget);
 
 }  // namespace input_detail
 

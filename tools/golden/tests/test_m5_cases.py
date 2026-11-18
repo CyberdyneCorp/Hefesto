@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 GOLDEN = Path(__file__).resolve().parents[1]
 REPO = GOLDEN.parents[1]
@@ -146,6 +147,27 @@ class ExitCheckTest(unittest.TestCase):
                             '\n[A-3]\ndeferred = "M5"\noutputs = ["stdout.txt"]\nreason = "M5 exit blocker, X: y"\n',
                             encoding="utf-8")
             self.assertEqual(m5_cases.exit_blockers(path), ["A-3: M5 exit blocker, X: y"])
+
+    def test_unresolved_decisions_are_the_m5_readiness_report(self):
+        readiness = m5_cases._readiness_module()
+        entries = readiness.load_entries()
+        caps = readiness.milestone_assignments(readiness.ROADMAP.read_text()).get("M5", [])
+        unresolved, missing = readiness.classify_citations(caps, entries)
+        got = [line.split(":", 1)[0] for line in m5_cases.unresolved_decisions()]
+        self.assertEqual(sorted(got), sorted([*unresolved, *missing]))
+
+    # Regression (round 7 review): with the M5 deferrals gone the gate passed although M5's
+    # round trips relied on proposed decisions; an unresolved M5 decision now fails it too.
+    def test_exit_check_fails_while_an_m5_decision_is_unresolved(self):
+        with mock.patch.object(m5_cases, "exit_blockers", return_value=[]), \
+                mock.patch.object(m5_cases, "unresolved_decisions",
+                                  return_value=["Q-X-1: unresolved decision cited by cap"]), \
+                mock.patch("builtins.print"):
+            self.assertEqual(m5_cases.exit_check(), 1)
+        with mock.patch.object(m5_cases, "exit_blockers", return_value=[]), \
+                mock.patch.object(m5_cases, "unresolved_decisions", return_value=[]), \
+                mock.patch("builtins.print"):
+            self.assertEqual(m5_cases.exit_check(), 0)
 
 
 if __name__ == "__main__":

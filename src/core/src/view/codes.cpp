@@ -25,6 +25,7 @@ constexpr std::array kViewCodes = {
     CodeInfo{"VIEW-COORD-001", error, "A view command argument is not a valid coordinate, integer or fraction."},
     CodeInfo{"VIEW-EXPAND-001", warning, "An instance under the box cannot be expanded because its cell is unavailable."},
     CodeInfo{"VIEW-EXPAND-002", error, "`expand instance` / `unexpand instance` names an instance path that does not exist under the window's root."},
+    CodeInfo{"VIEW-EXPAND-003", warning, "`expand` or `unexpand` stopped at the hierarchy depth limit (1024 levels); deeper instances were not changed."},
     CodeInfo{"VIEW-FEEDBACK-001", error, "`feedback` was given an unknown option, an unknown display style, or a style index below 1."},
     CodeInfo{"VIEW-FEEDBACK-002", warning, "`feedback find N` names an area that does not exist; area 1 is shown instead."},
     CodeInfo{"VIEW-FEEDBACK-003", error, "`feedback save` cannot write its file."},

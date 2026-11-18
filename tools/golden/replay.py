@@ -37,6 +37,10 @@ ERROR when named.
 A case listed in <root>/deviations.toml (goldenlib/deviations.py) whose only
 differing outputs are the listed ones is a DEVIATION: a documented, decided
 difference from Magic, counted like a skip. A listed case that passes fails.
+--keep-raw DIR copies each run's streams and written files to DIR/<case-id>/
+(goldenlib/rawkeep.py; --feedback-probe also saves the run's feedback list,
+--probe-tcl FILE runs FILE's Tcl before the script's final quit),
+to bisect a difference against capture.py's --keep-raw output of Magic.
 Exit status: 1 if any case failed or errored; else N (--skip-code, default 0)
 if any case was skipped or a deviation; else 0. 2 on usage errors.
 """
@@ -58,6 +62,8 @@ from goldenlib.case import (RUN_SOURCES, Case, CaseError, discover, load_case, r
                             substitute_env)
 from goldenlib.derived import read_output
 from goldenlib.external import ExternalUnavailable, cad_root, stage, xschem_set_tree
+from goldenlib import rawkeep
+from goldenlib.rawkeep import RawKeep
 from goldenlib.refrunners import CONTAINER_CAD_ROOT, CONTAINER_WORK, ENVIRONMENT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -126,11 +132,16 @@ def run_hefesto(cli: Path, case: Case, work: Path, args: list[str] | None = None
                           timeout=run_timeout(case.hefesto, TIMEOUT_S), check=False, input=stdin)
 
 
-def execute(cli: Path, case: Case, work: Path) -> Execution:
-    """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent."""
+def execute(cli: Path, case: Case, work: Path, raw: RawKeep | None = None) -> Execution:
+    """Run hefesto-cli on a work copy of input/; ExternalUnavailable if an external input is absent.
+    ``raw`` keeps the run's raw outputs (``--keep-raw``)."""
     shutil.copytree(case.input_dir, work / "input")
     stage(case.externals, work / "input")
+    if raw is not None:
+        raw.prepare(case, work)
     proc = run_hefesto(cli, case, work)
+    if raw is not None:
+        raw.keep(case.id, work, proc.stdout, proc.stderr)
     files = {}
     for out in case.outputs:
         if out.source not in RUN_SOURCES:
@@ -176,6 +187,7 @@ class Options:
     known: dict = field(default_factory=dict)          # case id -> deviations.Deviation
     include_gds_rt: bool = False
     require_inputs: frozenset[str] = frozenset()       # case ids whose external inputs must exist
+    raw: RawKeep | None = None                          # --keep-raw
 
 
 def compare_outputs(case: Case, execution: Execution) -> list[OutputReport]:
@@ -214,11 +226,12 @@ def is_provisional(case: Case) -> bool:
 
 
 def replay_case(cli: Path, case: Case, output_dir: Path | None,
-                deviation: deviations.Deviation | None = None, require_inputs: bool = False) -> CaseReport:
+                deviation: deviations.Deviation | None = None, require_inputs: bool = False,
+                raw: RawKeep | None = None) -> CaseReport:
     report = CaseReport(case.id, case.area, "error", is_provisional(case))
     with tempfile.TemporaryDirectory(prefix=f"replay-{case.id}-") as tmp:
         try:
-            execution = execute(cli, case, Path(tmp))
+            execution = execute(cli, case, Path(tmp), raw)
         except ExternalUnavailable as error:
             report.status = "fail" if require_inputs else "skip"
             report.detail = f"external input unavailable: {error}"
@@ -273,7 +286,8 @@ def run_one(cli: Path, case_dir: Path, options: Options | None = None) -> CaseRe
             deviations.check(deviation, [o.name for o in case.outputs])
         if not case.is_captured:
             return uncaptured(case, deviation)
-        return replay_case(cli, case, options.output_dir, deviation, case.id in options.require_inputs)
+        return replay_case(cli, case, options.output_dir, deviation, case.id in options.require_inputs,
+                           options.raw)
     except (CaseError, OSError, subprocess.TimeoutExpired, ValueError) as error:
         return CaseReport(case_dir.name, case_dir.parent.parent.name, "error", detail=str(error))
 
@@ -305,7 +319,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="also replay the golden-gds-rt cases (gds_rt = true)")
     parser.add_argument("--require-inputs", action="append", default=[], metavar="ID[,ID...]",
                         help="fail, not skip, when these cases miss an external input (repeatable)")
+    rawkeep.add_arguments(parser)
     args = parser.parse_args(argv)
+    args.raw = rawkeep.from_args(args, parser)
     if args.hefesto_cli is None:
         parser.error("hefesto-cli not given (use --hefesto-cli or set HEFESTO_CLI)")
     args.require_inputs = frozenset(i for group in args.require_inputs for i in group.split(",") if i)
@@ -323,7 +339,7 @@ def main(argv: list[str]) -> int:
     except (deviations.DeviationError, ValueError) as error:
         print(f"replay.py: {error}", file=sys.stderr)
         return 2
-    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs)
+    options = Options(args.output_dir, known, args.include_gds_rt, args.require_inputs, args.raw)
     reports = [run_one(args.hefesto_cli, case_dir, options) for case_dir in select_cases(args)]
     human = sys.stderr if str(args.json) == "-" else sys.stdout
     for report in reports:

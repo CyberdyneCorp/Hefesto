@@ -20,6 +20,7 @@ inline constexpr std::string_view kColorFile = "VIEW-COLOR-003";
 inline constexpr std::string_view kCoordinate = "VIEW-COORD-001";
 inline constexpr std::string_view kExpand = "VIEW-EXPAND-001";
 inline constexpr std::string_view kInstance = "VIEW-EXPAND-002";
+inline constexpr std::string_view kExpandDepth = "VIEW-EXPAND-003";
 inline constexpr std::string_view kFeedback = "VIEW-FEEDBACK-001";
 inline constexpr std::string_view kFeedbackRange = "VIEW-FEEDBACK-002";
 inline constexpr std::string_view kFeedbackFile = "VIEW-FEEDBACK-003";

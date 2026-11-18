@@ -11,6 +11,7 @@
 
 #include <array>
 #include <sstream>
+#include <unordered_set>
 #include <vector>
 
 #include "hefesto/cell/hier.hpp"
@@ -68,6 +69,8 @@ struct ExpandWalk {
   bool toggle;
   CommandContext& ctx;
   std::vector<std::string> unavailable;
+  bool too_deep = false;  // a search stopped at db::kMaxSearchDepth
+  std::unordered_set<const db::CellUse*> acted{};  // the OFF walk's instances already acted on
 
   [[nodiscard]] bool matches(const db::Rect& bbox) const {
     switch (mode) {
@@ -86,50 +89,139 @@ struct ExpandWalk {
     }
   }
 
-  /// DBExpandAll: acts on every matching instance at any depth reached
-  /// through instances that are expanded after the action (`acting`).
-  /// DBExpandAll's area search goes through the use index, which bins it the
-  /// way Magic's does (the writers' structure order depends on that).
-  void walk(const db::CellDef& def, const db::Transform& to_root, bool acting = true) {
-    const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
+  /// The uses of `def` that DBExpandAll's DBCellSrArea finds over `area`
+  /// (`def`'s coordinates): an area search of the use index, which bins it
+  /// the way Magic's does (the writers' structure order depends on that).
+  [[nodiscard]] std::vector<db::CellUse*> search(const db::CellDef& def, const db::Rect& area) const {
     std::vector<db::CellUse*> found;
     (void)db::uses_overlapping(def, area, ctx.project().compat, [&](db::CellUse& u) {
-      found.push_back(&u);
+      if (u.def != nullptr) {
+        found.push_back(&u);
+      }
       return true;
     });
-    for (db::CellUse* use : found) {
-      if (use->def == nullptr) {
-        continue;
-      }
-      if (acting && matches(db::apply(to_root, use->bbox))) {
-        act(*use);
-      }
-      descend(*use, area, to_root, acting && window.is_expanded(*use));
+    return found;
+  }
+
+  /// DBExpandAll from the window's root.
+  void run(const db::CellDef& root) {
+    if (ctx.project().compat.magic_compat) {
+      walk_magic(root, mode == Mode::all ? db::whole_plane() : box, 0);
+    } else {
+      walk(root, db::kIdentity, 0);
     }
   }
 
-  /// magic-compat ON, dbExpandFunc's DBCellSrArea (database/DBexpand.c:251):
-  /// the search goes on into every use found, expanded or not (the child
-  /// read when unavailable, database/DBcellsrch.c:1151-1153), in the frame
-  /// of its first element overlapping the area (dbCellSrFunc, then return
-  /// 2). OFF: only into expanded uses, in the frame of element (xlo, ylo).
-  void descend(const db::CellUse& use, const db::Rect& area, const db::Transform& to_root, bool acting) {
-    if (!ctx.project().compat.magic_compat) {
-      if (acting) {
-        walk(*use.def, db::compose(to_root, use.transform), true);
+  /// Both walks recurse once per level; they stop below db::kMaxSearchDepth
+  /// in both modes (a crash has no Magic output to match).
+  [[nodiscard]] bool deeper_allowed(std::size_t depth) {
+    if (depth + 1 < db::kMaxSearchDepth) {
+      return true;
+    }
+    too_deep = true;
+    return false;
+  }
+
+  /// magic-compat OFF: acts on every matching instance at any depth reached
+  /// through instances that are expanded after the action, descending into
+  /// an expanded array under every element the box overlaps (Q-MASK-419).
+  /// Each instance is acted on at most once per command, so a toggle is not
+  /// undone when an instance matches under several elements or parents.
+  void walk(const db::CellDef& def, const db::Transform& to_root, std::size_t depth) {
+    const db::Rect area = mode == Mode::all ? db::whole_plane() : db::apply(db::invert(to_root), box);
+    for (db::CellUse* use : search(def, area)) {
+      if (matches(db::apply(to_root, use->bbox)) && acted.insert(use).second) {
+        act(*use);
       }
-      return;
+      if (window.is_expanded(*use) && deeper_allowed(depth)) {
+        for (const db::Transform& et : element_frames(*use, area)) {
+          walk(*use->def, db::compose(to_root, et), depth + 1);
+        }
+      }
     }
-    if (!use.def->flags().available && wm.cell_reader() != nullptr) {
-      (void)wm.cell_reader()(ctx, *use.def);
+  }
+
+  /// The element transforms the OFF walk descends through: one frame for
+  /// `all`; otherwise every element overlapping `area` (parent coordinates)
+  /// whose cell's bounding box `area` does not surround, and the first one
+  /// it surrounds (inside such elements every instance lies under the box,
+  /// so they all match the same instances).
+  [[nodiscard]] std::vector<db::Transform> element_frames(const db::CellUse& use, const db::Rect& area) const {
+    if (mode == Mode::all) {
+      return {use.transform};
     }
-    if (use.def->flags().not_found) {
-      return;  // DBCellRead failed: DBCellSrArea searches nothing
-    }
+    std::vector<db::Transform> frames;
     const db::ElementRange r = db::array_overlap(use, area);
-    if (r.xlo <= r.xhi && r.ylo <= r.yhi) {
-      walk(*use.def, db::compose(to_root, db::element_transform(use, r.xlo, r.ylo)), acting);
+    bool covered_seen = false;
+    for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
+      for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
+        const db::Transform et = db::element_transform(use, x, y);
+        const bool covered = db::surround(area, db::apply(et, use.def->bbox()));
+        if (!covered || !covered_seen) {
+          frames.push_back(et);
+        }
+        covered_seen = covered_seen || covered;
+      }
     }
+    return frames;
+  }
+
+  /// magic-compat ON, dbExpandFunc (database/DBexpand.c:182-252) under
+  /// DBCellSrArea's dbCellSrFunc (database/DBcellsrch.c:1131-1225): for each
+  /// use found, only the first array element overlapping `area` is visited
+  /// (dbExpandFunc returns 2; none when the area falls between elements);
+  /// the use is acted on by dbExpandFunc's test in that element's frame, and
+  /// the search goes on into its child, expanded or not, over `area` in that
+  /// frame (DBCellSrArea reads an unavailable child first; a child that
+  /// cannot be read is not searched).
+  void walk_magic(const db::CellDef& def, const db::Rect& area, std::size_t depth) {
+    for (db::CellUse* use : search(def, area)) {
+      const db::ElementRange r = db::array_overlap(*use, area);
+      if (r.xlo > r.xhi || r.ylo > r.yhi) {
+        continue;
+      }
+      const db::Transform et = db::element_transform(*use, r.xlo, r.ylo);
+      const db::Rect child_area = mode == Mode::all ? area : db::apply(db::invert(et), area);
+      if (act_magic(*use, child_area) && deeper_allowed(depth) && read_for_search(*use->def)) {
+        walk_magic(*use->def, child_area, depth + 1);
+      }
+    }
+  }
+
+  /// dbExpandFunc's test: `overlap` (and `all`) acts on every use found;
+  /// `surround` on a use unless its child's bounding box surrounds the area
+  /// without the area surrounding it (database/DBexpand.c:207-208), which
+  /// is not "the box surrounds the instance" (Q-MASK-419).
+  [[nodiscard]] bool magic_matches(const db::CellUse& use, const db::Rect& child_area) const {
+    if (mode != Mode::surround) {
+      return true;
+    }
+    const db::Rect& b = use.def->bbox();
+    return !db::surround(b, child_area) || db::surround(child_area, b);
+  }
+
+  /// dbExpandFunc's expansion change; false when the child had to be read
+  /// to expand it and could not be (Magic then returns 2 without searching it).
+  bool act_magic(const db::CellUse& use, const db::Rect& child_area) {
+    const bool expanded = window.is_expanded(use);
+    const bool next = toggle ? !expanded : expand;
+    if (next == expanded || !magic_matches(use, child_area)) {
+      return true;
+    }
+    if (!set_expansion(window, wm, use, next, ctx)) {
+      unavailable.push_back(use.def->name());
+      return false;
+    }
+    return true;
+  }
+
+  /// DBCellSrArea's DBCellRead of the cell it searches; false when it is
+  /// still unavailable after the read (database/DBcellsrch.c:1151-1153).
+  bool read_for_search(db::CellDef& def) {
+    if (!def.flags().available && wm.cell_reader() != nullptr) {
+      (void)wm.cell_reader()(ctx, def);
+    }
+    return !def.flags().not_found;
   }
 };
 
@@ -221,7 +313,14 @@ CommandResult selection_expansion(CommandContext& ctx, const ExpandArgs& args, b
   }
   LayoutWindow& w = t.value().window;
   ExpandWalk walk{w, t.value().editor.windows, db::Rect{}, Mode::selection, expand, args.toggle, ctx, {}};
-  for (const cell::InstanceRef& ref : cell::selected_instances(t.value().editor)) {
+  WindowManager& wm = t.value().editor.windows;
+  const auto read = [&](db::CellDef& def) {
+    if (wm.cell_reader() != nullptr) {
+      (void)wm.cell_reader()(ctx, def);
+    }
+  };
+  for (const cell::InstanceRef& ref :
+       cell::selected_instances(t.value().editor, ctx.project().compat.magic_compat, read)) {
     if (ref.use != nullptr && ref.use->def != nullptr) {
       walk.act(*ref.use);
     }
@@ -255,9 +354,18 @@ CommandResult expansion(CommandContext& ctx, const Invocation& inv, bool expand)
   if (w.root() == nullptr) {
     return CommandResult::success();
   }
-  ExpandWalk walk{w, t.value().editor.windows, box.value_or(db::Rect{}), args->mode, expand, args->toggle, ctx, {}};
-  walk.walk(*w.root(), db::kIdentity);
+  // `expand all toggle` expands with magic-compat ON: CmdExpand passes
+  // DB_EXPAND for `all` with or without toggle (commands/CmdE.c:950-966).
+  const bool toggle = args->toggle && !(args->mode == Mode::all && ctx.project().compat.magic_compat);
+  ExpandWalk walk{w, t.value().editor.windows, box.value_or(db::Rect{}), args->mode, expand, toggle, ctx, {}};
+  walk.run(*w.root());
   report_unavailable(ctx, walk.unavailable);
+  if (walk.too_deep) {
+    ctx.emit(diag::make(codes::kExpandDepth, std::string(expand ? "expand" : "unexpand") +
+                                                 ": the hierarchy is deeper than " +
+                                                 std::to_string(db::kMaxSearchDepth) +
+                                                 " levels; instances below that depth were not changed."));
+  }
   t.value().editor.windows.notify(w.id(), Change::expansion);
   return CommandResult::success();
 }

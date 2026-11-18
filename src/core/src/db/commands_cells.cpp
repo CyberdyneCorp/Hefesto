@@ -319,7 +319,7 @@ CellDef* option_cell(const cu::Session& s, const std::vector<std::string>& args,
     return s.editor->cells.find(args[1]);
   }
   if (use_selection) {
-    const auto selected = cell::selected_instances(*s.editor);
+    const auto selected = cell::selected_instances(*s.editor, s.magic_compat);
     if (!selected.empty()) {
       return selected.front().use->def;
     }
@@ -646,7 +646,7 @@ std::vector<CellUse*> option_uses(const cu::Session& s, const std::vector<std::s
     }
     return out;
   }
-  for (const cell::InstanceRef& ref : cell::selected_instances(*s.editor)) {
+  for (const cell::InstanceRef& ref : cell::selected_instances(*s.editor, s.magic_compat)) {
     out.push_back(ref.use);
   }
   return out;

@@ -41,7 +41,7 @@ Cases to be captured later by running Magic 8.3.694 (commit fc5daa9e) headless. 
 | MASK-OP-018 | mask-output-operators | L-shape, T-shape, region with hole, tie case; `maxrect`, `maxrect external` | geometry | maxrect |
 | MASK-OP-019 | mask-output-operators | rect + triangle; `orthogonal`, `orthogonal fill` | geometry | orthogonal |
 | MASK-OP-020 | mask-output-operators | isolated squares, non-isolated squares, triangle; `not-square` | geometry | not-square |
-| MASK-OP-021 | mask-output-operators | regions touching/overlapping/diagonal to M; all four interact forms; paint and templayer M; scale 1 (Magic crashes at tech load on the interacting family unless the reducer is already 1, Q-MASK-12) | geometry | overlapping, nonoverlapping, interacting, noninteracting |
+| MASK-OP-021 | mask-output-operators | regions touching/overlapping/diagonal to M; all four interact forms; paint and templayer M; scale 1 (Magic crashes at tech load on the interacting family unless the reducer is already 1, Q-MASK-12); Magic gives an empty layer for all four forms (Q-MASK-417, compat) | geometry | overlapping, nonoverlapping, interacting, noninteracting |
 | MASK-OP-022 | mask-output-operators | flat cell with labelled net VDD; `net VDD metal1,metal2` and `net VDD`; a `cif see` before the write (Q-MASK-412) | geometry | net |
 | MASK-OP-023 | mask-output-operators | labels A on regions; `tagged A`, `tagged A metal1`; scaleFactor 1 and 10 | geometry | tagged |
 | MASK-OP-024 | mask-output-operators | top cell and child; `bbox`, `bbox top` | geometry per cell | bbox |

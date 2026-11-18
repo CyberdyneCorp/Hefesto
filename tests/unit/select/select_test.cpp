@@ -11,6 +11,8 @@
 
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/labels.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/select/diag_codes.hpp"
 #include "hefesto/select/selection.hpp"
 #include "select_fixture.hpp"
@@ -462,6 +464,39 @@ TEST_CASE("select cell with an empty name selects the top cell", CELL) {
   CHECK(s.run("cellname list exists").value.to_string() == "inv");
   s.ok("select clear");
   CHECK(s.run("cellname list self").value.to_string() == "top");
+}
+
+TEST_CASE("regression: cell selection at a point searches each descended cell's use index",
+          "[cap:gds-write][req:Structure ordering]") {
+  // DBSelectCell finds the uses under the point with DBCellSrArea in every
+  // cell it descends into (database/DBcellsel.c:171-290), which bins a cell
+  // of 10 or more uses as Magic's search does (the writers' structure
+  // order). The candidates were enumerated instead, so `select cell` left an
+  // expanded child's index unbinned.
+  HEFESTO_SELECT_MT(mt);
+  for (const bool magic_compat : {true, false}) {
+    Session s(mt);
+    s.project.compat.magic_compat = magic_compat;
+    db::CellDef* leaf = s.cell("leaf");
+    sel::test::paint(*leaf, mt, {0, 0, 10, 10}, mt.poly);
+    db::recompute_bbox(*leaf);
+    db::CellDef* mid = s.cell("mid");
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      REQUIRE(db::place(*mid, *leaf, o).ok());
+    }
+    db::recompute_bbox(*mid);
+    db::CellUse* m = s.place(*mid, "m", 0, 0);
+    REQUIRE(s.editor.windows.open_frame(&s.top()).ok());
+    s.editor.windows.current()->set_expanded(*m, true);
+    s.editor.command_point = hefesto::cmd::PointerState{0, {305, 5}, {305, 5, 306, 6}};
+    REQUIRE_FALSE(mid->use_index().state_for_test().binned);
+    s.ok("select cell");
+    CHECK(mid->use_index().state_for_test().binned);
+    REQUIRE(s.selection().uses().size() == 1U);
+    CHECK(s.selection().uses().front()->def == leaf);
+  }
 }
 
 TEST_CASE("cell selection cycles through nested cells, then the top cell", CELL) {

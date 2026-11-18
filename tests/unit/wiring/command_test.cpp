@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+#include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/transform.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/wiring/diag_codes.hpp"
 #include "wire_fixture.hpp"
 
@@ -134,6 +137,31 @@ TEST_CASE("wire type picks the material under the cursor", TYPE) {
   s.ok("wire type metal2 2");
   CHECK(last_text(s.run("wire type at 10 3")) == "Using metal1 wires 4 units wide.");
   CHECK(*s.editor.box == Rect{8, 0, 12, 4});
+}
+
+TEST_CASE("regression: wire type searches the use index of the cells under the cursor",
+          "[cap:gds-write][req:Structure ordering]") {
+  // The wiring's DBSeeTypesAll / DBTreeSrTiles find each cell's uses with
+  // DBCellSrArea (wiring/wireOps.c), an area search of the use index that
+  // bins a cell of 10 or more uses as Magic's does (the writers' structure
+  // order). The wiring walked the hierarchy instead, so the index stayed
+  // unbinned.
+  for (const bool magic_compat : {true, false}) {
+    Session s;
+    s.project.compat.magic_compat = magic_compat;
+    db::CellDef* leaf = s.editor.cells.create("leaf", s.editor.technology->plane_count()).value();
+    leaf->set_bboxes(Rect{0, 0, 10, 10}, Rect{0, 0, 10, 10});
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(200 + 100 * i, 0);
+      REQUIRE(db::place(*s.top, *leaf, o).ok());
+    }
+    s.paint("metal1", 0, 0, 100, 4);
+    REQUIRE_FALSE(s.top->use_index().state_for_test().binned);
+    s.point_at(50, 2);
+    s.ok("wire type");
+    CHECK(s.top->use_index().state_for_test().binned);
+  }
 }
 
 TEST_CASE("repeated wire type cycles through overlapping layers", TYPE) {
