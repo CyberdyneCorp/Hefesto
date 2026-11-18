@@ -219,16 +219,28 @@ Pulled forward from M7 on 2026-11-18 and built to the M7 specs in M7's area layo
 
 ## 10. OASFMT: oasis-format
 
-- [ ] 10.1 Implement:
+- [x] 10.1 Implement:
   - the primitives: unsigned and signed integers (Q-OASIS-1; the 65-bit overflow), reals of types 0–7, strings with their character sets, deltas, point lists, repetitions (lazy), intervals;
   - the record identifiers and the file structure.
 
   Verify the `[cap:oasis-format]` tests for "File structure and magic bytes", "Record identifiers", "Unsigned and signed integers", "Real numbers", "Strings and character sets", "Delta encodings", "Point lists", "Repetitions" and "Intervals", with OASIS-001..004's byte files as unit inputs.
-- [ ] 10.2 Implement START and table offsets (Q-OASIS-8), END and padding, validation (Q-OASIS-2: gdstk coverage and byte order), name records and refnums, CELL, and modal variables (Q-OASIS-5). Verify their tests with OASIS-005..008's inputs.
-- [ ] 10.3 Implement the element records: PLACEMENT, TEXT, RECTANGLE (Q-OASIS-3), POLYGON, PATH (Q-OASIS-11), TRAPEZOID, CTRAPEZOID (Q-OASIS-4, all 26 types), CIRCLE. Then PROPERTY (Q-OASIS-6), standard properties, extension records, PAD, CBLOCK (Q-OASIS-9, inflate cap) and strict mode (Q-OASIS-7). Verify each `[req:…]` test with OASIS-009..015's inputs.
-- [ ] 10.4 Implement the `Encoder`: minimal forms, modal omission, strict and non-strict tables, CBLOCK at a level, and END with validation. Verify that decode(encode(x)) = x over seeded random records, and that encode(decode(f)) = f for every hand-assembled file written in minimal form.
-- [ ] 10.5 Write `tests/data/oasis/codec/make_reference.py` (with tests) to assemble the 419-byte file from the "Complete annotated example" listing, and commit the file and its SHA-256. Verify the `[req:Complete annotated example]` test: 419 bytes, the decoded cell as listed, and identical re-encoding.
-- [ ] 10.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `oasis/codec/`. Verify that `check_requirement_coverage.py --capability oasis-format --classes native` reports 30 of 30 (all native).
+
+  As landed: `oasis/codec/primitives.hpp` (span entry points; the decoder uses the same code through an internal byte input), `lists.cpp` (point lists, repetitions with `instance_count`/`offset_at`, never expanded eagerly) and `geometry.cpp` (`outline`). Where the spec is silent: a point-list type above 5 stops decoding (the record length is unknown), interval bounds are 32-bit fields, and a repetition step outside 32 bits or a farthest offset outside 64 bits drops the element (OASIS-CODEC-008); raised as spec open items. Tests: `tests/unit/oasis/codec/primitives_test.cpp`.
+- [x] 10.2 Implement START and table offsets (Q-OASIS-8), END and padding, validation (Q-OASIS-2: gdstk coverage and byte order), name records and refnums, CELL, and modal variables (Q-OASIS-5). Verify their tests with OASIS-005..008's inputs.
+
+  As landed: `decoder.cpp` (one handler per record ID; state in `decoder_impl.hpp`) and `input.cpp` (buffered file bytes with running CRC32/CHECKSUM32 and one inflated CBLOCK in front). References stay refnums in the records. Undefined refnums, cells defined twice, unknown standard properties and the strict-mode checks are reported at END through `diagnostics()`. `ModalState{}` is the reset state (x and y 0). Tests: `records_test.cpp`.
+- [x] 10.3 Implement the element records: PLACEMENT, TEXT, RECTANGLE (Q-OASIS-3), POLYGON, PATH (Q-OASIS-11), TRAPEZOID, CTRAPEZOID (Q-OASIS-4, all 26 types), CIRCLE. Then PROPERTY (Q-OASIS-6), standard properties, extension records, PAD, CBLOCK (Q-OASIS-9, inflate cap) and strict mode (Q-OASIS-7). Verify each `[req:…]` test with OASIS-009..015's inputs.
+
+  As landed: `decoder_elements.cpp`. The modal state after a record is a function of the resolved element, which the encoder mirrors. PROPERTY records carry a `PropertyTarget`. A CBLOCK whose declared size is over `DecoderOptions::inflate_limit` (1 GiB) is refused from its header. Codes OASIS-CODEC-001..028 are in `docs/diagnostics/codes/oasis.md`.
+- [x] 10.4 Implement the `Encoder`: minimal forms, modal omission, strict and non-strict tables, CBLOCK at a level, and END with validation. Verify that decode(encode(x)) = x over seeded random records, and that encode(decode(f)) = f for every hand-assembled file written in minimal form.
+
+  As landed: `encoder.cpp`, `encoder_elements.cpp`, with `standard_properties`, `file_property`, `layer_name` and `property` added to the scaffold's four methods. TRAPEZOID is always record 23 and the RECTANGLE S form is never written. A rejected element leaves the modal state unchanged. Round trips: 20 seeds of 180 random elements, strict and non-strict, compress 0 and 6; encode(decode(f)) = f for the reference file and a minimal non-strict file of every element kind (`encoder_test.cpp`).
+- [x] 10.5 Write `tests/data/oasis/codec/make_reference.py` (with tests) to assemble the 419-byte file from the "Complete annotated example" listing, and commit the file and its SHA-256. Verify the `[req:Complete annotated example]` test: 419 bytes, the decoded cell as listed, and identical re-encoding.
+
+  As landed: the script parses the spec listing (each row checked against its offset, the listed CRC32 recomputed) and writes `reference.oas` and `reference.oas.sha256` (`8606cf40…12a89`); `--check` verifies them. `test_make_reference.py` (6 tests) runs with `python3 -m unittest discover -s tests/data/oasis/codec`; wiring it into `ci.yml` is an INTEGRATION open item. The encoder writes the file byte for byte.
+- [x] 10.6 Keep every function's cognitive complexity at most 15, and verify it with the tooling on `oasis/codec/`. Verify that `check_requirement_coverage.py --capability oasis-format --classes native` reports 30 of 30 (all native).
+
+  As landed: clang-tidy `readability-function-cognitive-complexity` over the compile database reports a maximum of 14 (`Decoder::Impl::property`). Coverage reports 30 of 30.
 
 ## 11. OASR: oasis-read
 

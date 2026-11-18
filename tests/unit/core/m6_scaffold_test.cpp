@@ -275,9 +275,8 @@ TEST_CASE("the M6 area-contract stubs answer their documented values", "[m6-scaf
   CHECK(oasis::sniff_format(source) == oasis::FileFormat::unknown);
   CHECK(oasis::kOasisMagic.size() == 13);
   CHECK(oasis::content_stamps(source).empty());
-  check_not_implemented(oasis::validate(source));
-  check_not_implemented(oasis::inflate_cblock(bytes, 16));
-  check_not_implemented(oasis::deflate_cblock(bytes, 6));
+  // validate, inflate_cblock and deflate_cblock are implemented (OASFMT,
+  // tests/unit/oasis/codec/).
   CHECK(oasis::ValidationResult{}.ok());
 
   const std::array<db::Point, 2> points{db::Point{0, 0}, db::Point{10, 0}};

@@ -10,8 +10,7 @@
 // M6-S4). Deflation uses the fixed level, window, memory level and strategy
 // of Q-OASIS-64, so the bytes are the same on every platform.
 //
-// Owner: INTEGRATION (this header, created by the M6 scaffold); OASFMT fills
-// in the implementation in src/core/src/oasis/codec/ (design D2).
+// Owner: OASFMT (design D2; the header was created by the M6 scaffold).
 
 #pragma once
 
@@ -27,14 +26,15 @@ namespace hefesto::oasis {
 /// The decompressed bytes of one CBLOCK: `compressed` inflated to exactly
 /// `uncompressed_size` bytes, which must not exceed `cap` (0: the default
 /// cap of `compressed.size()`). A damaged stream, a size mismatch or a
-/// size over the cap is an error. SCAFFOLD: fails with CORE-NOTIMPL-006
-/// until OASFMT lands it.
+/// size over the cap is an error (OASIS-CODEC-023). The output grows as
+/// data is inflated, so the declared size is never allocated up front.
 [[nodiscard]] diag::Outcome<std::vector<std::byte>> inflate_cblock(std::span<const std::byte> compressed,
                                                                    std::uint64_t uncompressed_size,
                                                                    std::uint64_t cap = 0);
 
-/// The raw DEFLATE data of `raw` at `level` (1-9; `oasis compress`).
-/// SCAFFOLD: fails with CORE-NOTIMPL-006 until OASFMT lands it.
+/// The raw DEFLATE data of `raw` at `level` (1-9; `oasis compress`):
+/// window bits -15, memory level 8, default strategy, one Z_FINISH
+/// (Q-OASIS-64). Another level is an error (OASIS-CODEC-027).
 [[nodiscard]] diag::Outcome<std::vector<std::byte>> deflate_cblock(std::span<const std::byte> raw, int level);
 
 }  // namespace hefesto::oasis
