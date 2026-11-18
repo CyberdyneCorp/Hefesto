@@ -39,6 +39,11 @@ env:
   # The PDK install test over the network (ctest label `network`, tests/unit/pdk/network_e2e.cpp) skips
   # itself everywhere except the one leg that runs it on purpose (matrix `network`, step "PDK network test").
   HEFESTO_SKIP_NETWORK_TESTS: "1"
+  # The LEF data sets (sky130-lef, gf180mcu-lef, ihp-lef; openspec/changes/m6-lef-def-oasis design D2, task
+  # 1.4): the tech LEF and standard-cell LEF of each PDK. "true" makes reference-data look them up, fetch the
+  # missing ones and save them, and the build legs restore and verify them. Off until a test reads them
+  # (the LEF PDK unit tests of tasks 3.4/5.7 and the LEFDEF-RT-<lib> golden cases of task 15.5).
+  FETCH_LEF_SETS: "false"
 
 jobs:
   lint:
@@ -122,6 +127,12 @@ jobs:
       gf180mcu_gds_sc_path: ${{ steps.keys.outputs.gf180mcu_gds_sc_path }}
       ihp_gds_sc_key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
       ihp_gds_sc_path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
+      sky130_lef_key: ${{ steps.keys.outputs.sky130_lef_key }}
+      sky130_lef_path: ${{ steps.keys.outputs.sky130_lef_path }}
+      gf180mcu_lef_key: ${{ steps.keys.outputs.gf180mcu_lef_key }}
+      gf180mcu_lef_path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
+      ihp_lef_key: ${{ steps.keys.outputs.ihp_lef_key }}
+      ihp_lef_path: ${{ steps.keys.outputs.ihp_lef_path }}
       magic_ref_key: ${{ steps.keys.outputs.magic_ref_key }}
       magic_ref_path: ${{ steps.keys.outputs.magic_ref_path }}
     steps:
@@ -176,6 +187,31 @@ jobs:
           path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
           key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
           lookup-only: true
+      # The LEF sets (m6-lef-def-oasis task 1.4), only with FETCH_LEF_SETS.
+      - name: Look up sky130-lef
+        id: sky130_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+          lookup-only: true
+      - name: Look up gf180mcu-lef
+        id: gf180mcu_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_lef_key }}
+          lookup-only: true
+      - name: Look up ihp-lef
+        id: ihp_lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_lef_path }}
+          key: ${{ steps.keys.outputs.ihp_lef_key }}
+          lookup-only: true
 
       - name: List the sets to fetch
         id: missing
@@ -186,6 +222,9 @@ jobs:
           SKY130_GDS_SC_HIT: ${{ steps.sky130_gds_sc.outputs.cache-hit }}
           GF180MCU_GDS_SC_HIT: ${{ steps.gf180mcu_gds_sc.outputs.cache-hit }}
           IHP_GDS_SC_HIT: ${{ steps.ihp_gds_sc.outputs.cache-hit }}
+          SKY130_LEF_HIT: ${{ steps.sky130_lef.outputs.cache-hit }}
+          GF180MCU_LEF_HIT: ${{ steps.gf180mcu_lef.outputs.cache-hit }}
+          IHP_LEF_HIT: ${{ steps.ihp_lef.outputs.cache-hit }}
         run: |
           sets=""
           [ "$SKY130_HIT" = "true" ] || sets="$sets sky130"
@@ -194,6 +233,11 @@ jobs:
           [ "$SKY130_GDS_SC_HIT" = "true" ] || sets="$sets sky130-gds-sc"
           [ "$GF180MCU_GDS_SC_HIT" = "true" ] || sets="$sets gf180mcu-gds-sc"
           [ "$IHP_GDS_SC_HIT" = "true" ] || sets="$sets ihp-gds-sc"
+          if [ "$FETCH_LEF_SETS" = "true" ]; then
+            [ "$SKY130_LEF_HIT" = "true" ] || sets="$sets sky130-lef"
+            [ "$GF180MCU_LEF_HIT" = "true" ] || sets="$sets gf180mcu-lef"
+            [ "$IHP_LEF_HIT" = "true" ] || sets="$sets ihp-lef"
+          fi
           echo "sets=${sets# }" >> "$GITHUB_OUTPUT"
           echo "::notice::reference data to fetch: ${sets:- none}"
 
@@ -257,6 +301,24 @@ jobs:
         with:
           path: ${{ steps.keys.outputs.ihp_gds_sc_path }}
           key: ${{ steps.keys.outputs.ihp_gds_sc_key }}
+      - name: Save sky130-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.sky130_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.sky130_lef_path }}
+          key: ${{ steps.keys.outputs.sky130_lef_key }}
+      - name: Save gf180mcu-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.gf180mcu_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.gf180mcu_lef_path }}
+          key: ${{ steps.keys.outputs.gf180mcu_lef_key }}
+      - name: Save ihp-lef
+        if: env.FETCH_LEF_SETS == 'true' && steps.ihp_lef.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ steps.keys.outputs.ihp_lef_path }}
+          key: ${{ steps.keys.outputs.ihp_lef_key }}
 
   # Native PCell generators against the PDKs' Tcl generators (m4-scripting design D10, D-29; risk R3):
   # scripts/pcell_equivalence.py over tests/data/pcell/sweeps/ generates every sweep case natively and
@@ -447,6 +509,25 @@ jobs:
         with:
           path: ${{ needs.reference-data.outputs.ihp_gds_sc_path }}
           key: ${{ needs.reference-data.outputs.ihp_gds_sc_key }}
+      # The LEF sets (m6-lef-def-oasis task 1.4), only with FETCH_LEF_SETS.
+      - name: Restore sky130-lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.sky130_lef_path }}
+          key: ${{ needs.reference-data.outputs.sky130_lef_key }}
+      - name: Restore gf180mcu-lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.gf180mcu_lef_path }}
+          key: ${{ needs.reference-data.outputs.gf180mcu_lef_key }}
+      - name: Restore ihp-lef
+        if: env.FETCH_LEF_SETS == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ needs.reference-data.outputs.ihp_lef_path }}
+          key: ${{ needs.reference-data.outputs.ihp_lef_key }}
       - uses: actions/cache@v4
         with:
           path: ${{ needs.reference-data.outputs.magic_ref_path }}
@@ -467,8 +548,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          lef_sets=()
+          [ "$FETCH_LEF_SETS" != "true" ] || lef_sets=(sky130-lef gf180mcu-lef ihp-lef)
           python3 scripts/fetch_pdk.py sky130 gf180mcu ihp sky130-gds-sc gf180mcu-gds-sc ihp-gds-sc \
-            --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
+            "${lef_sets[@]}" --cli "build/${{ matrix.preset }}/src/cli/hefesto-cli"
 
       # The standard-cell corpus cases (label golden-slow, m3-drc design D14) run in the golden replay below;
       # the GDS library round trips (label golden-gds-rt, m5 design D19) run in perf.yml.
