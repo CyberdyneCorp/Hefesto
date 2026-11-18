@@ -6,7 +6,7 @@
 Capability hefesto-licensing, Requirement "Two-team clean-room process for specs written from GPL
 source"; the process is docs/contributing/cleanroom.md. The check fails when:
 
-1. a committed file carries xschem's GPL header (its "this file is part of XSCHEM" line, or its
+1. a committed file carries xschem's GPL header (the line that says the file is part of xschem, or its
    copyright line naming xschem's author);
 2. a golden case under tests/golden/SCHEM/ (a directory holding a ``case.toml``) declares no
    ``provenance``, or declares one that is neither ``"hefesto"`` nor ``"pdk:<set>:<path>"`` with an
