@@ -236,6 +236,7 @@ The schematic work of M8 (the SCHEM golden captures, the inventory `scripts/sche
 
 - **Root.** The sets install under their own PDK root, `.cache/pdks/xschem/` (`.cache/pdks/xschem/ciel/<family>/versions/<pin>/`), for the reason given for the GDS sets. Each `pdk install` names one library because the command needs one; only the subset is kept (the `-lib` of `ihp-xschem` is `sg13g2_stdcell`, whose archive holds the standard-cell symbols).
 - **Cache keys.** `pdk-sky130-xschem-5740c4a81c42-51219df24d4b69c4`, `pdk-gf180mcu-xschem-5740c4a81c42-e70989764fe362e8`, `pdk-ihp-xschem-5e6d592e4002-a38b0850a131fbe4` (`--cache-info`: `sky130_xschem_key`, `sky130_xschem_path`, ...).
+- **Inventory.** `scripts/schem_inventory.py` reads only these sets and writes `tests/data/schem/inventory.json` (design D18): the `devices/` symbols, Tcl commands and `$::` variables, `xschem` subcommands and multi-line subcircuit templates each PDK uses. After a pin change, rerun it and commit the result; the `schem-inventory` job of `ci.yml` runs `--check` on the cached sets and fails on any difference.
 - **Tests.** `tests/unit/common/reference_data.hpp` gives the paths (`pinned_xschem(pdk)` for `libs.tech/xschem`, `pinned_xschem(kIhpSg13g2, kIhpStdcellXschemSymbols)` for IHP's standard-cell symbols); a test whose set is missing skips.
 
 ```sh

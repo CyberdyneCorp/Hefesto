@@ -105,6 +105,7 @@ CI runs each target for 60 seconds on every pull request, and fails if any targe
 | Unit tests of the scripts above | `python3 -m unittest discover -s scripts/tests` |
 | Specs, roadmap and specs index | `.github/workflows/openspec-validate.yml` |
 | Build and test matrix, ASan, TSan, fuzz, golden determinism | `.github/workflows/ci.yml` |
+| PDK xschem inventory (`tests/data/schem/inventory.json`) matches the cached xschem data sets (m8-schematic design D18) | `ci.yml` job `schem-inventory` (`python3 scripts/schem_inventory.py --check`) |
 | Native PCell generators against the PDKs' Tcl generators (names and `.mag` files, D-29) | `ci.yml` job `pcell-equivalence` (`scripts/pcell_equivalence.py`, see `docs/building.md`) |
 | Golden captures from Magic: verify the captured cases, capture the new ones | `.github/workflows/golden-capture.yml` |
 | Workflow `run` steps keep their status through `\| tee` (`shell: bash` or `PIPESTATUS`) | `python3 -m unittest scripts/tests/test_workflows.py` |
