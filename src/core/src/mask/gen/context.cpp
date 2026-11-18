@@ -9,7 +9,9 @@
 namespace hefesto::mask {
 
 OperatorContext GenerationContext::operator_context(const db::CellDef* cell, const compat::CompatSettings& compat) {
-  return OperatorContext{compat, cell, &pool, progress, &statistics, sink};
+  OperatorContext octx{compat, cell, &pool, progress, &statistics, sink};
+  octx.problems = &problems;
+  return octx;
 }
 
 }  // namespace hefesto::mask

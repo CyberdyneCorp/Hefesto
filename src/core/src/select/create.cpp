@@ -629,60 +629,30 @@ void read_if_unavailable(const Context& c, db::CellDef* def) {
   }
 }
 
-/// selEnumCFunc2 (select/selEnum.c:700-735): looks for the layout use that
-/// a selected use stands for with DBCellSrArea's searches, which can bin
-/// the use indexes they search.
-struct SelectedUseSearch {
-  const Context& c;
-  const db::CellUse& selected;
-  std::optional<UseRef> found;
-
-  /// DBCellSrArea over `def` (`area` in its coordinates); false once found.
-  bool search(const db::CellDef& def, const db::Rect& area, const db::Transform& to_root, const std::string& path) {
-    return db::uses_overlapping(def, area, compat::CompatSettings{c.s.magic_compat, true}, [&](db::CellUse& u) {
-      if (u.def == nullptr) {
-        return true;
-      }
-      const db::ElementRange r = db::array_overlap(u, area);  // dbCellSrFunc's elements
-      for (std::int32_t y = r.ylo; y <= r.yhi; ++y) {
-        for (std::int32_t x = r.xlo; x <= r.xhi; ++x) {
-          if (!element(u, x, y, area, to_root, path)) {
-            return false;
-          }
-        }
-      }
-      return true;
-    });
-  }
-
-  /// One element: the match, or checkChildren (the child's own search,
-  /// expanded or not, after DBCellSrArea's DBCellRead).
-  bool element(db::CellUse& u, std::int32_t x, std::int32_t y, const db::Rect& area, const db::Transform& to_root,
-               const std::string& path) {
-    const db::Transform et = db::element_transform(u, x, y);
-    const db::Transform t = db::compose(to_root, et);
-    std::string p = connect::child_path(path, u, x, y);
-    if (u.def == selected.def && t == selected.transform && u.array == selected.array) {
-      found = UseRef{&u, to_root, std::move(p), db::Point{x, y}};
-      return false;
-    }
-    read_if_unavailable(c, u.def);
-    return search(*u.def, db::apply(db::invert(et), area), t, p);
-  }
-};
-
 }  // namespace
 
 std::optional<UseRef> selected_layout_use(const Context& c, const db::CellUse& selected) {
   if (selected.def == nullptr || selected.def == c.root) {
     return std::nullopt;  // the root itself: no use to find (selEnumCFunc1's top-level case)
   }
-  // A 1x1 square at the lower-left of element (xlo, ylo) of the selected use
-  // (GeoTransRect(cu_transform, cd_bbox), select/selEnum.c:655-659).
-  const db::Rect box = db::apply(selected.transform, selected.def->bbox());
-  SelectedUseSearch s{c, selected, std::nullopt};
-  (void)s.search(*c.root, db::Rect{box.x0, box.y0, box.x0 + 1, box.y0 + 1}, db::kIdentity, std::string{});
-  return std::move(s.found);
+  // selEnumCFunc1/2: the searches of db::find_selected_use, reading
+  // unavailable children through the windows' reader.
+  const std::vector<db::UseElement> chain =
+      db::find_selected_use(*c.root, selected, compat::CompatSettings{c.s.magic_compat, true},
+                            [&](db::CellDef& def) { read_if_unavailable(c, &def); });
+  if (chain.empty()) {
+    return std::nullopt;
+  }
+  db::Transform to_root = db::kIdentity;
+  std::string path;
+  for (std::size_t k = 0; k + 1 < chain.size(); ++k) {
+    const db::UseElement& e = chain[k];
+    to_root = db::compose(to_root, db::element_transform(*e.use, e.x, e.y));
+    path = connect::child_path(path, *e.use, e.x, e.y);
+  }
+  const db::UseElement& found = chain.back();
+  return UseRef{found.use, to_root, connect::child_path(path, *found.use, found.x, found.y),
+                db::Point{found.x, found.y}};
 }
 
 std::optional<UseRef> find_use_path(const Context& c, std::string_view path) {
@@ -709,23 +679,32 @@ std::optional<UseRef> find_use_path(const Context& c, std::string_view path) {
 std::vector<UseRef> uses_at(const Context& c, const db::Rect& area) {
   std::vector<UseRef> out;
   // Uses whose element contains the area: descended uses and the first
-  // unexpanded level below them.
+  // unexpanded level below them. Each searched cell's uses are found by
+  // DBSelectCell's DBCellSrArea over the area (an area search of its use
+  // index, which bins it as Magic's does).
+  const compat::CompatSettings compat{c.s.magic_compat, true};
   const auto visit = [&](const auto& self, const db::CellDef& def, const db::Transform& to_root,
                          const std::string& path) -> void {
     const db::Rect local = connect::to_local(to_root, area);
-    for (db::CellUse* u : db::uses_in_search_order(def, compat::CompatSettings{c.s.magic_compat, true})) {
-      if (u->def == nullptr || !db::overlap(u->bbox, local)) {
-        continue;
+    std::vector<db::CellUse*> found;
+    (void)db::uses_overlapping(def, local, compat, [&](db::CellUse& u) {
+      if (u.def != nullptr && db::overlap(u.bbox, local)) {
+        found.push_back(&u);
       }
-      const db::ArrayInfo& a = u->array;
-      for (std::int32_t y = std::min(a.ylo, a.yhi); y <= std::max(a.ylo, a.yhi); ++y) {
-        for (std::int32_t x = std::min(a.xlo, a.xhi); x <= std::max(a.xlo, a.xhi); ++x) {
-          const db::Transform et = db::element_transform(*u, x, y);
+      return true;
+    });
+    for (db::CellUse* u : found) {
+      const db::ElementRange r = db::array_overlap(*u, local);  // dbCellSrFunc's elements
+      for (std::int64_t y = r.ylo; y <= r.yhi; ++y) {
+        for (std::int64_t x = r.xlo; x <= r.xhi; ++x) {
+          const auto ex = static_cast<std::int32_t>(x);
+          const auto ey = static_cast<std::int32_t>(y);
+          const db::Transform et = db::element_transform(*u, ex, ey);
           if (!db::surround(db::apply(et, u->def->bbox()), local)) {
             continue;
           }
-          const std::string p = connect::child_path(path, *u, x, y);
-          out.push_back(UseRef{u, to_root, p, db::Point{x, y}});
+          const std::string p = connect::child_path(path, *u, ex, ey);
+          out.push_back(UseRef{u, to_root, p, db::Point{ex, ey}});
           if (!c.descend || c.descend(*u)) {
             self(self, *u->def, db::compose(to_root, et), p);
           }

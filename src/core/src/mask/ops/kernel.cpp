@@ -266,6 +266,9 @@ void cif_error(const OpArgs& args, const OperatorContext& ctx, const db::Rect& m
       diag::make(code, "CIF error in cell " + ctx.cell->name() + ", layer " + layer + ": " + std::string{message},
                  diag::LayoutLocation{ctx.cell->name(), mask_area.x0 / s, mask_area.y0 / s});
   d.native_only = true;  // Magic adds feedback; it prints nothing
+  if (ctx.problems != nullptr) {  // DBWFeedbackAdd(area, msg, CIFErrorDef, scale, ...)
+    ctx.problems->push_back(GenerationProblem{ctx.cell, mask_area, s, d.text});
+  }
   ctx.sink->emit(d);
 }
 

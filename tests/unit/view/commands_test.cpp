@@ -376,6 +376,168 @@ TEST_CASE("regression: unexpand and expand search below unexpanded uses with mag
     CHECK(mid->use_index().state_for_test().binned == magic_compat);
     REQUIRE(s.run("expand").ok());
     CHECK(w.is_expanded(*arr));
-    CHECK(w.is_expanded(*leaves[3]) == magic_compat);
+    // magic-compat OFF also descends under element 1 since Q-MASK-419.
+    CHECK(w.is_expanded(*leaves[3]));
+  }
+}
+
+namespace {
+
+/// `top` holding one use of `mid`, whose 12 uses of `leaf` sit at x = 100 i.
+struct NestedCase {
+  Session s;
+  db::CellDef* top = nullptr;
+  db::CellDef* mid = nullptr;
+  db::CellUse* m = nullptr;
+  std::vector<db::CellUse*> leaves;
+
+  explicit NestedCase(bool magic_compat, const db::ArrayInfo& array = {}) {
+    s.project.compat.magic_compat = magic_compat;
+    top = s.cell("top", {0, 0, 4000, 100});
+    mid = s.cell("mid", {0, 0, 1110, 10});
+    db::CellDef* leaf = s.cell("leaf", {0, 0, 10, 10});
+    for (db::Coord i = 0; i < 12; ++i) {
+      db::PlaceOptions o;
+      o.transform = db::translation(100 * i, 0);
+      leaves.push_back(db::place(*mid, *leaf, o).value());
+    }
+    db::PlaceOptions o;
+    o.array = array;
+    m = db::place(*top, *mid, o).value();
+    (void)s.window(top);
+    s.editor.edit_cell = top;
+  }
+  [[nodiscard]] view::LayoutWindow& window() { return *s.editor.windows.current(); }
+};
+
+}  // namespace
+
+TEST_CASE("regression: unexpand with magic-compat ON acts below unexpanded uses, as dbExpandFunc does",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbExpandFunc acts on every use its DBCellSrArea search reaches, below
+  // expanded and unexpanded uses alike (database/DBexpand.c:182-252).
+  // Hefesto stopped at unexpanded uses, so a leaf stayed expanded under a
+  // closed parent; magic-compat OFF keeps that rule (Q-MASK-419).
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    view::LayoutWindow& w = c.window();
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(w.is_expanded(*c.leaves[3]));
+    w.set_expanded(*c.m, false);
+    c.s.editor.box = db::Rect{295, -5, 315, 15};  // surrounds leaf 3 only
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK_FALSE(w.is_expanded(*c.m));
+    CHECK(w.is_expanded(*c.leaves[3]) != magic_compat);
+    CHECK(w.is_expanded(*c.leaves[4]));
+  }
+}
+
+TEST_CASE("regression: unexpand surround with magic-compat ON uses dbExpandFunc's test",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbExpandFunc's surround test acts unless the child's bounding box
+  // surrounds the area without the area surrounding it
+  // (database/DBexpand.c:207-208): a box over part of a leaf unexpands it.
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    view::LayoutWindow& w = c.window();
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    c.s.editor.box = db::Rect{305, 5, 395, 50};  // part of leaf 3, nothing whole
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]) != magic_compat);
+    CHECK(w.is_expanded(*c.m) != magic_compat);  // the box is not inside mid either
+    c.s.editor.box = db::Rect{302, 2, 308, 8};  // inside leaf 3
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(c.s.run("unexpand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]));  // its bounding box surrounds the box
+  }
+}
+
+TEST_CASE("regression: expand with magic-compat ON skips an array whose elements miss the box",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // dbCellSrFunc calls dbExpandFunc only for array elements that overlap the
+  // area (DBArrayOverlap, database/DBcellsrch.c:1205-1225): a box in the
+  // gap between two elements expands nothing, although it overlaps the
+  // array's bounding box.
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});  // elements at x 0 and 2000
+    c.s.editor.box = db::Rect{1500, 0, 1505, 5};
+    REQUIRE(c.s.run("expand").ok());
+    CHECK(c.window().is_expanded(*c.m) != magic_compat);
+  }
+}
+
+TEST_CASE("regression: expand with magic-compat OFF descends under every array element the box overlaps",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // The OFF walk descended into an expanded array in the frame of its first
+  // element only, so instances under the other elements were never acted on
+  // (Q-MASK-419). ON visits the first element overlapping the box, as
+  // dbCellSrFunc does.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});  // elements at x 0 and 2000
+    view::LayoutWindow& w = c.window();
+    w.set_expanded(*c.m, true);
+    c.s.editor.box = db::Rect{2295, -5, 2315, 15};  // leaf 3 of the second element
+    REQUIRE(c.s.run("expand").ok());
+    CHECK(w.is_expanded(*c.leaves[3]));
+    CHECK_FALSE(w.is_expanded(*c.leaves[2]));
+  }
+}
+
+TEST_CASE("regression: expand toggle with magic-compat OFF acts once on an instance under two array elements",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // Leaf 3 lies under the box in both elements; the OFF walk acts on each
+  // instance once, so the toggle is not undone by the second element.
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    NestedCase c(magic_compat, db::ArrayInfo{0, 1, 0, 0, 2000, 0});
+    view::LayoutWindow& w = c.window();
+    c.s.editor.box = db::Rect{295, -5, 2315, 15};  // leaves 3-11 of element 0, 0-3 of element 1
+    REQUIRE(c.s.run("expand", {"toggle"}).ok());
+    CHECK(w.is_expanded(*c.m));
+    CHECK(w.is_expanded(*c.leaves[3]));
+    CHECK(w.is_expanded(*c.leaves[1]) != magic_compat);  // under element 1 only
+  }
+}
+
+TEST_CASE("regression: expand all toggle expands with magic-compat ON, as CmdExpand does",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // CmdExpand passes DB_EXPAND for `all`, with or without toggle
+  // (commands/CmdE.c:950-966); magic-compat OFF toggles (Q-MASK-419).
+  for (const bool magic_compat : {true, false}) {
+    NestedCase c(magic_compat);
+    REQUIRE(c.s.run("expand", {"all"}).ok());
+    REQUIRE(c.s.run("expand", {"all", "toggle"}).ok());
+    CHECK(c.window().is_expanded(*c.m) == magic_compat);
+  }
+}
+
+TEST_CASE("regression: expand stops at the hierarchy depth limit instead of overflowing the stack",
+          "[cap:cmd-hierarchy][req:Expand and unexpand commands]") {
+  // The magic-compat ON walk searches below every use, expanded or not, and
+  // both walks recurse once per level; a GDS library written leaf-first can
+  // nest deeper than the command thread's stack. Both modes stop below
+  // db::kMaxSearchDepth levels and report it (X-2 tier 1).
+  for (const bool magic_compat : {true, false}) {
+    INFO("magic-compat " << magic_compat);
+    Session s;
+    s.project.compat.magic_compat = magic_compat;
+    const std::size_t levels = db::kMaxSearchDepth + 8;
+    std::vector<db::CellDef*> defs;
+    for (std::size_t i = 0; i <= levels; ++i) {
+      defs.push_back(s.cell("c" + std::to_string(i), {0, 0, 10, 10}));
+    }
+    std::vector<db::CellUse*> uses{nullptr};  // uses[k]: the use at level k
+    for (std::size_t i = 1; i <= levels; ++i) {
+      uses.push_back(db::place(*defs[i - 1], *defs[i], db::PlaceOptions{}).value());
+    }
+    (void)s.window(defs[0]);
+    const auto r = s.run("expand", {"all"});
+    REQUIRE(r.ok());
+    view::LayoutWindow& w = *s.editor.windows.current();
+    CHECK(w.is_expanded(*uses[db::kMaxSearchDepth]));
+    CHECK_FALSE(w.is_expanded(*uses[db::kMaxSearchDepth + 1]));
+    REQUIRE_FALSE(r.diagnostics.empty());
+    CHECK(r.diagnostics.back().code == view::codes::kExpandDepth);
   }
 }

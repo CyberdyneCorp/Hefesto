@@ -458,6 +458,57 @@ TEST_CASE("array -list follows magic-compat", ARRAY) {
   }
 }
 
+// Regression (round 7 review): with magic-compat ON the array report takes
+// the selection in SelEnumCells' order, the selection cell's use index walk,
+// and reverses it, as selGetArrayFunc prepends each use to its list
+// (commands/CmdAB.c:611-613). It used the selection cell's use list, which
+// differs from the walk once the index is binned.
+TEST_CASE("regression: array reports the selection in reverse SelEnumCells order with magic-compat ON", ARRAY) {
+  HEFESTO_SELECT_MT(mt);
+  for (const bool compat : {true, false}) {
+    INFO("magic-compat " << compat);
+    Session s(mt);
+    s.project.compat.magic_compat = compat;
+    db::CellDef* inv = s.cell("inv");
+    sel::test::paint(*inv, mt, {0, 0, 4, 4}, mt.m1);
+    const std::vector<int> slot{7, 2, 11, 0, 5, 9, 3, 10, 1, 6, 8, 4};  // placed out of position order
+    for (std::size_t k = 0; k < slot.size(); ++k) {
+      db::PlaceOptions o;
+      o.id = "a" + std::to_string(k);
+      o.transform = db::translation(100 * slot[k], 100 * (slot[k] % 3));
+      o.array = db::ArrayInfo{0, 1, 0, 0, 10, 10};
+      REQUIRE(db::place(s.top(), *inv, o).ok());
+    }
+    db::recompute_bbox(s.top());
+    s.ok("box -10 -10 2000 2000");
+    s.ok("select area subcell");
+    // A search over part of the selection cell bins its index (at 10 or
+    // more uses, bpBins.c:651), so its walk no longer follows the list.
+    const db::CellDef& picked = s.selection();
+    (void)picked.use_index().search(Rect{0, 0, 1, 1}, [](db::CellUse&) { return true; });
+    std::vector<std::string> walk;
+    for (const db::CellUse* u : picked.use_index().order(hefesto::compat::CompatSettings{true, true})) {
+      walk.push_back(u->id);
+    }
+    std::reverse(walk.begin(), walk.end());
+    std::vector<std::string> list;
+    for (const auto& u : picked.uses()) {
+      list.push_back(u->id);
+    }
+    REQUIRE(walk.size() == slot.size());
+    REQUIRE(walk != list);
+    const auto r = s.run("array count");
+    REQUIRE(r.ok());
+    std::vector<std::string> reported;
+    const std::string text = all_text(r);
+    for (std::size_t at = text.find("Cell use \""); at != std::string::npos; at = text.find("Cell use \"", at + 1)) {
+      const std::size_t from = at + 10;
+      reported.push_back(text.substr(from, text.find('"', from) - from));
+    }
+    CHECK(reported == (compat ? walk : list));
+  }
+}
+
 TEST_CASE("array needs the box for its spacing and prints help on bad arguments", ARRAY) {
   HEFESTO_SELECT_MT(mt);
   Session s(mt);

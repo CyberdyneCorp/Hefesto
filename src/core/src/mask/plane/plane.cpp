@@ -53,14 +53,14 @@ diag::Status paint_rect(db::Plane& plane, const db::Rect& area, const db::PaintR
 }
 
 diag::Status paint_tri(db::Plane& plane, const db::Rect& area, db::Diagonal diagonal, bool right_side,
-                       const db::PaintRow& row, bool magic_compat) {
+                       const db::PaintRow& row, bool magic_compat, db::NMBudget* budget = nullptr) {
   if (area.is_null() || !db::surround(kMaskUniverse, area)) {
     // A triangle cannot be clipped to the plane without changing its
     // slope; one beyond the plane contributes nothing (as for any shape
     // the database rejects).
     return diag::Done{};
   }
-  return plane.paint_triangle(area, diagonal, right_side, row, magic_compat, nullptr, db::PaintMerge::none);
+  return plane.paint_triangle(area, diagonal, right_side, row, magic_compat, nullptr, db::PaintMerge::none, budget);
 }
 
 /// Paints or erases every solid tile of `from` into `into`.
@@ -97,8 +97,8 @@ diag::Status MaskPlane::paint(const db::Rect& area) { return paint_rect(plane_, 
 diag::Status MaskPlane::erase(const db::Rect& area) { return paint_rect(plane_, area, cif_erase_table()); }
 
 diag::Status MaskPlane::paint_triangle(const db::Rect& area, db::Diagonal diagonal, bool right_side,
-                                       bool magic_compat) {
-  return paint_tri(plane_, area, diagonal, right_side, cif_paint_table(), magic_compat);
+                                       bool magic_compat, db::NMBudget* budget) {
+  return paint_tri(plane_, area, diagonal, right_side, cif_paint_table(), magic_compat, budget);
 }
 
 diag::Status MaskPlane::erase_triangle(const db::Rect& area, db::Diagonal diagonal, bool right_side,

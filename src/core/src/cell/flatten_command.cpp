@@ -135,7 +135,7 @@ CommandResult flatten_one_in_place(IoSession& s, const FlattenRequest& r) {
 // DBCellFlattenAllCells over the selection, then SelectDeleteUses: every
 // selected instance of the edit cell is flattened in place.
 CommandResult flatten_selected_in_place(IoSession& s, const FlattenRequest& r) {
-  for (const InstanceRef& ref : selected_instances(s.ed)) {
+  for (const InstanceRef& ref : selected_instances(s.ed, s.io.magic_compat)) {
     if (ref.use->parent != s.ed.edit_cell) {
       continue;
     }

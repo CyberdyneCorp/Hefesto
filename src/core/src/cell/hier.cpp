@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "hefesto/db/hierarchy.hpp"
+#include "hefesto/db/use_index.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "hefesto/undo/undo_log.hpp"
 
@@ -188,26 +189,22 @@ bool descend_component(InstanceRef& ref, db::CellDef*& def, std::string_view& na
 
 // --- SelEnumCells ------------------------------------------------------------------
 
-// The layout use below `def` (whose coordinates map to the root by
-// `to_root`) that the selection's copy `sel` stands for.
-std::optional<InstanceRef> find_layout_use(db::CellDef& def, const db::Transform& to_root, const db::CellUse& sel,
-                                           const std::string& prefix) {
-  for (const auto& u : def.uses()) {
-    if (u->def == sel.def && u->id == sel.id && u->array == sel.array &&
-        db::compose(to_root, u->transform) == sel.transform) {
-      return InstanceRef{u.get(), db::compose(to_root, u->transform), to_root, u->array.xlo, u->array.ylo,
-                         prefix + u->id};
-    }
+// The InstanceRef of the last element of `chain` (db::find_selected_use).
+InstanceRef instance_of(const std::vector<db::UseElement>& chain) {
+  InstanceRef ref;
+  ref.parent_to_root = db::kIdentity;
+  for (std::size_t k = 0; k + 1 < chain.size(); ++k) {
+    const db::UseElement& e = chain[k];
+    ref.parent_to_root = db::compose(ref.parent_to_root, db::element_transform(*e.use, e.x, e.y));
+    ref.path += db::array_element_name(*e.use, e.x, e.y) + "/";
   }
-  for (const auto& u : def.uses()) {
-    if (u->def == nullptr || u->array.is_array()) {
-      continue;  // selected subcells are reached through single instances
-    }
-    if (auto found = find_layout_use(*u->def, db::compose(to_root, u->transform), sel, prefix + u->id + "/")) {
-      return found;
-    }
-  }
-  return std::nullopt;
+  const db::UseElement& found = chain.back();
+  ref.use = found.use;
+  ref.x = found.x;
+  ref.y = found.y;
+  ref.to_root = db::compose(ref.parent_to_root, db::element_transform(*found.use, found.x, found.y));
+  ref.path += found.use->id;
+  return ref;
 }
 
 // --- SelEnumLabels -----------------------------------------------------------------
@@ -332,16 +329,36 @@ std::optional<InstanceRef> find_instance(db::CellDef& root, std::string_view pat
   return ref;
 }
 
-std::vector<InstanceRef> selected_instances(editor::EditorState& editor) {
+std::vector<const db::CellUse*> selection_uses(const db::CellDef& sel, bool magic_compat) {
+  std::vector<const db::CellUse*> out;
+  if (!magic_compat) {
+    for (const auto& u : sel.uses()) {
+      out.push_back(u.get());
+    }
+    return out;
+  }
+  (void)db::uses_overlapping(sel, db::whole_plane(), compat::CompatSettings{true, true}, [&](db::CellUse& u) {
+    out.push_back(&u);
+    return true;
+  });
+  return out;
+}
+
+std::vector<InstanceRef> selected_instances(editor::EditorState& editor, bool magic_compat, const CellReader& read) {
   std::vector<InstanceRef> out;
-  db::CellDef* root = editor.selection.root();
+  const db::CellDef* root = editor.selection.root();
   const db::CellDef* sel = editor.selection.def();
   if (root == nullptr || sel == nullptr) {
     return out;
   }
-  for (const auto& u : sel->uses()) {
-    if (auto found = find_layout_use(*root, db::kIdentity, *u, {})) {
-      out.push_back(std::move(*found));
+  const compat::CompatSettings compat{magic_compat, true};
+  for (const db::CellUse* u : selection_uses(*sel, magic_compat)) {
+    if (u->def == root) {
+      continue;  // the root itself (selEnumCFunc1's top-level case): no instance
+    }
+    const std::vector<db::UseElement> chain = db::find_selected_use(*root, *u, compat, read);
+    if (!chain.empty()) {
+      out.push_back(instance_of(chain));
     }
   }
   return out;

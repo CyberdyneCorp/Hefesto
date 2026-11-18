@@ -16,12 +16,12 @@
 #include <utility>
 #include <vector>
 
+#include "hefesto/cell/hier.hpp"
 #include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/db/hierarchy.hpp"
 #include "hefesto/db/use_index.hpp"
 #include "hefesto/db/labels.hpp"
 #include "hefesto/db/paint.hpp"
-#include "hefesto/drc/engine/marking.hpp"
 #include "hefesto/editor/edit_frame.hpp"
 #include "hefesto/editor/editor_state.hpp"
 #include "select/ops.hpp"
@@ -216,7 +216,7 @@ struct UsePair {
 
 std::vector<UsePair> edit_uses(const Context& c, NonEdit* non_edit) {
   std::vector<UsePair> out;
-  for (const auto& u : c.ed->selection.def()->uses()) {
+  for (const db::CellUse* u : cell::selection_uses(*c.ed->selection.def(), c.s.magic_compat)) {  // SelEnumCells
     auto found = selected_layout_use(c, *u);
     if (!found || found->use->parent != c.ed->edit_cell) {
       if (non_edit != nullptr) {
@@ -224,7 +224,7 @@ std::vector<UsePair> edit_uses(const Context& c, NonEdit* non_edit) {
       }
       continue;
     }
-    out.push_back(UsePair{u.get(), std::move(*found)});
+    out.push_back(UsePair{u, std::move(*found)});
   }
   return out;
 }

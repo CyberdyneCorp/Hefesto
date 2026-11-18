@@ -564,10 +564,18 @@ void fill_area(const KernelState& st, const CutRules& rules, const StripChecks& 
     process_strip(st, rules, checks, s);
   }
   const db::Plane& plane = st.plane.plane();
+  const bool start_only = q_mask_418_clears_start_only(st.ctx.compat);
   detail::Marks marks;
   detail::for_each_region_start(plane, db::whole_plane(), marks, [&](const db::TileView& start) {
     const detail::Region region = detail::collect_region(plane, start, marks, [](const db::TileView&) {});
     process_region(st, rules, region, marks);
+    // "Clear the tiles that were processed": Magic marks the start tile
+    // CIF_IGNORE and then pushes it with PUSHTILEONLY, which only pushes
+    // unprocessed tiles, so its walk stops there (Q-MASK-418).
+    if (start_only) {
+      marks.set(start, detail::Mark::ignore);
+      return;
+    }
     for (const db::TileView& t : region.tiles) {
       marks.set(t, detail::Mark::ignore);
     }
