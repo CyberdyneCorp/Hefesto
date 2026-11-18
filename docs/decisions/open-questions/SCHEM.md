@@ -148,7 +148,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-16: Shorts at top level are not always reported
 - Kind: quirk
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: the short report is suppressed while the netlist counter is 0, i.e. during the first connectivity pass of the top level; top-level shorts appear only from the second pass after the hierarchy has been netlisted, and not at all in `-nohier` runs.
+- xschem behavior: a short at the top level is not reported when the top level's connectivity is first computed; it is reported only when the top level is processed again after the hierarchy below it has been netlisted, and not at all in `-nohier` runs. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: netlist.c:908-927, spice_netlist.c:556-560
 - Options: replicate | fix (always report)
 - Recommendation: fix: always report shorts; the netlist text is unaffected.
@@ -166,7 +166,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-18: awk dialect differences in xschem's post-processing
 - Kind: platform
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: `spice.awk` relies on gawk's `IGNORECASE` for `.param` detection and the `value=` renames. With mawk (Debian/Ubuntu default) or BWK awk (macOS) these matches are case-sensitive, so the same schematic can give different netlists on different hosts.
+- xschem behavior: xschem post-processes its netlist with the system `awk`. Under gawk the `.param` detection and the `value=` renames match case-insensitively; with mawk (Debian/Ubuntu default) or BWK awk (macOS) they are case-sensitive, so the same schematic can give different netlists on different hosts. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: spice.awk:101-140, spice.awk:238-262
 - Options: follow gawk (case-insensitive) | follow mawk (case-sensitive)
 - Recommendation: gawk semantics (spec); golden references must be generated with gawk installed as `awk`.
@@ -184,7 +184,7 @@ xschem is GPL-2.0-or-later, including its `xschem_library/devices` symbols (they
 ### Q-SCHEM-20: Line breaker state
 - Kind: quirk
 - Status: approved (recommendation drafted 2026-11-13, approved 2026-11-13)
-- xschem behavior: the quote state of `break.awk` (toggled by `{`, `}` and `'`, with no nesting) persists across lines, so one unbalanced quote disables breaking for later lines; after a break the column counter is reset without counting the field just written.
+- xschem behavior: when wrapping long lines, a quote opened by `{`, `}` or `'` (no nesting) stays open across lines, so one unbalanced quote stops later lines from wrapping; after a wrap, the field written after the `+` does not count toward the new line's length. (Reworded as behaviour by the paraphrase review of 2026-11-17.)
 - Evidence: break.awk:26-75
 - Options: replicate | fix
 - Recommendation: replicate (it only affects layout of long lines), covered by golden case SCHEM-NL-12.

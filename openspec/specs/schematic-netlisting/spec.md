@@ -6,7 +6,7 @@ Defines how Hefesto turns a schematic hierarchy into a SPICE netlist that is ide
 - net naming, including unnamed nets and unconnected pins
 - bus and vector notation
 - `format` string substitution (`@name`, `@pinlist`, `@@pin`, `@#n`, `@key`, `%key`, `@spiceprefix`, `tcleval`, `expr(...)`)
-- the post-processing that xschem performs with its `spice.awk` and `break.awk` helper scripts: vector expansion, line joining and line breaking
+- the rules that turn substituted element text into netlist lines: continuation lines, vector expansion, renames and line breaking
 - the file structure of hierarchical, top-level-only and flat netlists, `.subckt` generation and ordering
 - netlist options and the LVS netlist mode used by PDK LVS flows
 
@@ -20,7 +20,7 @@ Only the SPICE netlister is in scope. xschem's Verilog, VHDL, Spectre and tEDAx 
 
 xschem quirks whose open-question entry records `Resolution: compat` are governed by the `xschem-compat` setting (capability `hefesto-magic-compat-mode`, default ON). The requirements that cite them state both modes; `exact` refers to the output with `xschem-compat` ON, which is the default. Warnings that an entry gives in both modes are reported whatever the setting.
 
-Traces use `(xschem ref: path/file:line)`, relative to the xschem `src/` directory; `.awk` traces point at xschem's post-processing scripts. They exist for traceability only. Implementers SHALL work from this spec and SHALL NOT consult the GPL sources (capability `hefesto-licensing`). Hefesto SHALL produce the final text directly; it SHALL NOT run awk or any external program.
+Traces use `(xschem ref: path/file:line)`, relative to the xschem `src/` directory. They exist for traceability only. Implementers SHALL work from this spec and SHALL NOT consult the GPL sources (capability `hefesto-licensing`). Hefesto SHALL produce the final text directly; it SHALL NOT run awk or any external program.
 
 Other capabilities own related parts:
 - File grammar, property strings and boolean values: capability `schematic-file-format`.
@@ -247,21 +247,21 @@ Token values:
 | `@#<n>:<attr>` | The pin attribute value (capability `schematic-symbols-and-libraries`, Requirement "Text substitution tokens"); `--UNDEF--` if not found; for `pinnumber` with an instance name ending in `:<k>` and a value containing `:`, the k-th `:`-separated item |
 | `@symname`, `@symname_ext`, `@symref`, `@schname`, `@schname_ext`, `@topschname`, `@index` | As in capability `schematic-symbols-and-libraries`; `@symname` sanitised like a generator name |
 | `@savecurrent` | If the instance's (else template's) `savecurrent` is true: LF `.save I( ?1 <instance name> )`; else nothing |
-| `@spiceprefix` | With option `spiceprefix` off: nothing. Otherwise its value v (Requirement "Hierarchical parameters"); if v is non-empty, the text `**** spice_prefix <v>` LF, which marks the line for prefixing (Requirement "Element line post-processing") |
+| `@spiceprefix` | Nothing is written. With option `spiceprefix` on, its value v (Requirement "Hierarchical parameters"), if non-empty, becomes the element's spice prefix, which Requirement "Element line post-processing" puts before each element name |
 | `@tcleval(...)` | Tcl evaluation (capability `schematic-symbols-and-libraries`, Requirement "tcleval values") |
 | `@<key>` | The value of `key` (Requirement "Hierarchical parameters"), then `expr` evaluation. If unresolved, nothing. `@name` and `@lab` values are bus-expanded. |
 | `%<key>` | As `@key`, but if `key` is defined nowhere, the text `<key>` |
 
-After the whole line is built: if it begins with `tcleval(`, it SHALL be Tcl-evaluated; then `expr` evaluation SHALL be applied to the whole line. If the instance produced output, the marker line `**** end_element` SHALL follow it.
+After the whole line is built: if it begins with `tcleval(`, it SHALL be Tcl-evaluated; then `expr` evaluation SHALL be applied to the whole line. The text one instance produces (one line, or several with continuation lines) is one **element**; its spice prefix applies to that element only.
 
 Compatibility: exact
 
 (xschem ref: token.c:2426-2816)
 
-#### Scenario: Resistor line before post-processing
+#### Scenario: Resistor element text
 - **GIVEN** `res.sym` (`format="@name @pinlist @value m=@m"`) with instance `name=R1 value=1k m=1`, pin P on net `A`, pin M on net `B`
 - **WHEN** the element text is built
-- **THEN** it SHALL be `R1 ?1 A ?1 B  1k m=1` (two spaces before `1k`, because `@pinlist` ends with a space and the space after the token is copied) LF, followed by the line `**** end_element`, and after post-processing the line SHALL be `R1 A B 1k`
+- **THEN** it SHALL be `R1 ?1 A ?1 B  1k m=1` (two spaces before `1k`, because `@pinlist` ends with a space and the space after the token is copied) followed by LF, and the netlist line SHALL be `R1 A B 1k`
 
 #### Scenario: Token ends at whitespace only
 - **GIVEN** a format containing `@W/@L` and an instance with `W=2 L=1`
@@ -320,19 +320,39 @@ Compatibility: exact
 - **THEN** they SHALL give `1`, `-0.999` and `1`, and a warning SHALL be reported for the first two only
 
 ### Requirement: Element line post-processing
-After all element texts are built, the netlist text SHALL be transformed line by line, as xschem does with its `spice.awk` script:
-1. **Join.** Outside user-code blocks, a line starting with `+` SHALL be appended to the previous line as one space followed by the rest of the line after the `+`. A user-code block runs from a line starting with `**** begin user architecture code` or `**** begin user header code` to the matching `**** end user ... code` line.
-2. **Trailing m=1.** A trailing match of the regular expression ` [mM] *= *1 *$` SHALL be removed. With `xschem-compat` ON it is removed from every line, including user code, comments, `.param` and `.control` text, as xschem does. With `xschem-compat` OFF it is removed only from device lines: lines outside user-code blocks whose first field does not start with `*` or `.` (Q-SCHEM-22, `Resolution: compat`).
-3. **Parametric vector instance names.** If any line starts with `.param` (case-insensitive), its `name=value` pairs (spaces around `=` removed) SHALL be recorded; an element whose first field matches `^[a-zA-Z][^\[\]:]+\[[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\]$` SHALL have its first field replaced by the expansion `name[first],...,name[last]` with recorded parameter values.
-4. **Markers.** `**** end_element` lines SHALL be dropped and reset the prefix; `**** spice_prefix <p>` lines SHALL be dropped and set the prefix to the third field. User-code header markers SHALL be dropped; architecture markers SHALL be kept. Lines inside user code SHALL be kept unchanged.
-5. **Comments.** A line whose first field starts with `*` SHALL be kept unchanged.
-6. **Field prefixes.** A field starting with `##` SHALL lose the `##`. A field of the form `#<pfx>#<rest>` SHALL become `<pfx><rest>` with `<pfx>` also inserted after every comma, and `?1 ` inserted before it if the previous field is not a `?` marker. A field `#<pfx>#?<w>` SHALL lose its prefix and the prefix SHALL be put before each comma-separated item of the next field.
-7. **Renames.** Every `PARAM:` SHALL be removed. On lines starting with `g` or `G`, the first ` value=` (case-insensitive) becomes ` cur=`; `e`/`E`: ` vol=`; `r`/`R`: ` r=`; `c`/`C`: ` c=`. On lines starting with `D`, the first `PERI` followed by optional spaces and `=` becomes `PJ=`.
-8. **Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains `?<n>` SHALL be lowercased, and for each remaining field `<t>(<names>)`, after removing `?n` markers and spaces next to parentheses, one line `<.save or .print> <t>(<name>)` SHALL be written per comma-separated name.
-9. **Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing.
-10. **Element expansion.** Any other line: let the names be the comma-separated items of field 1 (for the devices `ymemristor`, `ylin`, `ydelay`, `ytransline`, `ypgbr`, `ypowergridbranch`, `yacc`, `.model` and `.subckt`, field 1 repeated as many times as field 3 has items). A field matching `^(.*=)?\?-?[0-9]+$` is a width marker for the next field. For the i-th name (i from 1), write the prefix and the name, then each other field: a non-marker field as is; for a marker with width w (w = −1 means the item count of the next field) and next field with items a₁..a_k, write `<key=>` if the marker had one, then items a[((l + w·(i−1)) mod k) + 1] for l = 0..w−1. Every written field is followed by one space. A line with no names SHALL be written as an empty line.
+The netlist text (the element texts of Requirement "Format string substitution", the user code and the lines of Requirement "Netlist file structure") SHALL become the final netlist lines by the rules below. They state the result; where one rule works on the result of another, the rule says so. None of these rules depends on the `xschem-compat` setting except "Trailing m=1".
 
-Case-insensitive matches in steps 3 and 7 follow gawk on every platform, whatever the `xschem-compat` setting (Q-SCHEM-18, `Resolution: replicate`).
+**User-code blocks.** A user-code block runs from a line starting with `**** begin user architecture code` or `**** begin user header code` to the matching `**** end user ... code` line. Lines inside a block SHALL be written unchanged, except for "Trailing m=1". The begin and end lines of architecture code SHALL be written; those of header code SHALL NOT.
+
+**Continuation lines.** Outside user-code blocks, a line starting with `+` continues the line before it: they SHALL form one line, the earlier line followed by one space and the rest of the continuation line after the `+`. The other rules apply to the joined line.
+
+**Trailing m=1.** A trailing match of the regular expression ` [mM] *= *1 *$` SHALL be removed from the joined line; for a vector element it is therefore missing from every line written for it. With `xschem-compat` ON it is removed from every line, including user code, comments, `.param` and `.control` text, as xschem does. With `xschem-compat` OFF it is removed only from device lines: lines outside user-code blocks whose first field does not start with `*` or `.` (Q-SCHEM-22, `Resolution: compat`).
+
+**Comment lines.** A line whose first field starts with `*` SHALL be written unchanged.
+
+**Notations in element text.** Element text MAY contain these notations, from the tokens of Requirement "Format string substitution" or written literally in a format string. None of them appears in the netlist:
+- **width marker**: a field matching `^(.*=)?\?-?[0-9]+$`, that is an optional `<key>=` and `?<w>`, applies to the field after it (see "Vector elements")
+- `##` at the start of a field SHALL be removed
+- `#<p>#<rest>` SHALL become `<p><rest>` with `<p>` also inserted after every comma of `<rest>`, and the field SHALL be treated as preceded by the width marker `?1` when the field before it is not a width marker
+- `#<p>#?<w>` is a width marker `?<w>` whose prefix `<p>` SHALL be put before each comma-separated item of the field after it
+- every `PARAM:` SHALL be removed
+
+**Vector elements.** Every other line (outside user-code blocks, not a comment line, not a subcircuit line and not a save line with a width marker, as below; `.param` and other dot lines included) is an element line. Its first field is the list of element names, separated by commas: for example `R1[1],R1[0]` for a vector instance. For the devices `ymemristor`, `ylin`, `ydelay`, `ytransline`, `ypgbr`, `ypowergridbranch` and `yacc`, and for `.model` lines, the list is the first field repeated once per comma-separated item of the third field. One line SHALL be written per name, in list order. The line for the i-th name (i from 1) SHALL be the element's spice prefix, the name, and then the other fields in order, each followed by one space:
+- a width marker itself is not written
+- the field after a width marker with width w (w = −1 means the item count of that field) and items a₁..a_k SHALL contribute `<key>=` when the marker has one, then the items a[((l + w·(i−1)) mod k) + 1] for l = 0..w−1
+- any other field SHALL be written as it is
+
+An element line whose name list is empty SHALL be written as an empty line.
+
+**Parametric vector names.** The `name=value` pairs of the `.param` lines (matched case-insensitively, spaces around `=` ignored) that precede an element SHALL be used to expand its first field when that field matches `^[a-zA-Z][^\[\]:]+\[[a-zA-Z_][a-zA-Z0-9_]*:[a-zA-Z_][a-zA-Z0-9_]*\]$`: `<base>[<a>:<b>]` becomes the bus expansion (Requirement "Bus and vector notation") of `<base>[<value of a>:<value of b>]`.
+
+**Renames.** On an element line starting with `g` or `G`, the first ` value=` (case-insensitive) SHALL become ` cur=`; with `e` or `E` it becomes ` vol=`; with `r` or `R`, ` r=`; with `c` or `C`, ` c=`. On a line starting with `D`, the first `PERI` followed by optional spaces and `=` SHALL become `PJ=`.
+
+**Save lines.** A line whose first field is `.save` or `.print` (case-insensitive) and that contains a width marker SHALL be written in lower case as one line `<.save or .print> <t>(<name>)` for each comma-separated name of each of its other fields `<t>(<names>)`, after the width markers and the spaces next to the parentheses are removed.
+
+**Subcircuit lines.** A line whose first field contains `.subckt` (case-insensitive) SHALL have its first ` m=<digits>` replaced by one space and every comma replaced by a space, and SHALL otherwise keep its spacing.
+
+Case-insensitive matches in "Parametric vector names" and "Renames" follow gawk on every platform, whatever the `xschem-compat` setting (Q-SCHEM-18, `Resolution: replicate`).
 
 Compatibility: exact
 
@@ -340,12 +360,12 @@ Compatibility: exact
 
 #### Scenario: Vector instance on a bus
 - **GIVEN** the element text `R1[1],R1[0] ?1 A[1],A[0] ?1 B 1k`
-- **WHEN** it is post-processed
+- **WHEN** it is written to the netlist
 - **THEN** the lines SHALL be `R1[1] A[1] B 1k` and `R1[0] A[0] B 1k`
 
 #### Scenario: sky130 transistor with prefix
-- **GIVEN** the element text `**** spice_prefix X`, `M1 ?1 D ?1 G ?1 S ?1 B sky130_fd_pr__nfet_01v8 L=0.15 W=1`, `+ nf=1 ad=0.29`, `**** end_element`
-- **WHEN** it is post-processed
+- **GIVEN** an element with spice prefix `X` whose text is `M1 ?1 D ?1 G ?1 S ?1 B sky130_fd_pr__nfet_01v8 L=0.15 W=1` LF `+ nf=1 ad=0.29`
+- **WHEN** it is written to the netlist
 - **THEN** the single output line SHALL be `XM1 D G S B sky130_fd_pr__nfet_01v8 L=0.15 W=1 nf=1 ad=0.29`
 
 #### Scenario: Current save
@@ -359,11 +379,12 @@ Compatibility: exact
 - **THEN** with ON the lines SHALL be `.param` and `R1 A B 1k`; with OFF they SHALL be `.param m=1` and `R1 A B 1k`
 
 ### Requirement: Line breaking
-Finally, every line SHALL be processed as xschem does with its `break.awk` script:
-- trailing spaces and tabs SHALL be removed; an empty line stays empty
-- lines inside user-code blocks, lines whose first field (lowercased) matches the unanchored regular expression `\.inc(lude)?|\.lib|\.title|\.save|\.write`, and lines matching `^\*\* ..._path:` SHALL NOT be broken
-- other lines SHALL be broken so that no segment exceeds 130 characters before a break opportunity: a running column counter p starts at 0; for each field, p increases by the field's length plus the length of the whitespace before it; when p > 130, the text LF followed by `+` (or `*+` if the line starts with `*`) SHALL be emitted before that whitespace and p SHALL be reset to 0 (the field just placed is not counted)
-- if a line contains `{`, `}` or `'`, or the quote state carried over from an earlier line is set, it SHALL instead be scanned character by character: each of `{`, `}` and `'` toggles a quote state that persists across lines; p counts characters; a break (LF then `+` or `*+`) SHALL be inserted before a space or tab when p > 130 and the quote state is off, and p SHALL be reset to 0. Both rules are xschem's and are kept whatever the `xschem-compat` setting, because they change only where long lines wrap (Q-SCHEM-20, `Resolution: replicate`)
+Finally, long lines SHALL be wrapped with SPICE continuation lines. This is xschem's layout of long lines, kept whatever the `xschem-compat` setting because it changes only where lines wrap (Q-SCHEM-20, `Resolution: replicate`):
+- Trailing spaces and tabs SHALL be removed from every line; an empty line stays empty.
+- These lines SHALL NOT be wrapped: lines inside user-code blocks, lines whose first field in lower case contains a match of `\.inc(lude)?|\.lib|\.title|\.save|\.write` (unanchored), and lines matching `^\*\* ..._path:`.
+- A wrap SHALL insert LF and `+` (or `*+` when the line starts with `*`) directly before the whitespace that precedes a field, so the continuation line starts with `+` followed by that whitespace.
+- **Field rule.** A line with no `{`, `}` or `'`, read while no quote is open (below), SHALL be wrapped before a field when the length of the current segment, counted up to the end of that field, exceeds 130 characters. A segment's length counts each field with the whitespace before it, except the field that starts a continuation segment (the field written after the `+`), which counts as zero.
+- **Quote rule.** A line that contains `{`, `}` or `'`, or that starts while a quote is open, SHALL instead be read character by character. Each `{`, `}` and `'` opens a quote when none is open and closes it otherwise (there is no nesting, and the three characters are interchangeable); a quote left open at the end of a line stays open for the following lines. The line SHALL be wrapped before a space or tab when no quote is open and the segment, counted in characters from its start to that space or tab, is longer than 130 characters; the next segment is counted from zero.
 
 Compatibility: exact
 
@@ -372,7 +393,7 @@ Compatibility: exact
 #### Scenario: Long device line
 - **GIVEN** a device line of 200 characters made of fields of 10 characters separated by single spaces, with no braces or quotes
 - **WHEN** it is broken
-- **THEN** the first output line SHALL end after the eleventh field (the counter reaches 131 at the twelfth field), the next line SHALL start with `+ ` followed by the twelfth field, and the following break SHALL come before the twenty-fourth field
+- **THEN** the first output line SHALL end after the eleventh field (the segment reaches 131 characters at the twelfth field), the next line SHALL start with `+ ` followed by the twelfth field, and the following break SHALL come before the twenty-fourth field
 
 ### Requirement: Netlist file structure
 The hierarchical SPICE netlist of top schematic `T` (path `/abs/T.sch`) SHALL consist of, in order:
