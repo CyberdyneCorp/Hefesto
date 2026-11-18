@@ -693,9 +693,12 @@ jobs:
           read -ra cases <<< "$CASES"
           python3 tools/golden/oasis_validate.py produce --hefesto-cli build/linux-release/src/cli/hefesto-cli \
             --out oasis-validate "${cases[@]}"
+      # The image size is recorded in m6-lef-def-oasis design D18 (task 1.3).
       - name: Build reference-tool image
         if: ${{ !cancelled() }}
-        run: docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+        run: |
+          docker build -f tools/golden/container/Containerfile -t hefesto-golden:ci tools/golden
+          echo "::notice::hefesto-golden:ci is $(docker image inspect --format '{{.Size}}' hefesto-golden:ci) bytes"
       - name: Check with KLayout and gdstk
         if: ${{ !cancelled() }}
         shell: bash
