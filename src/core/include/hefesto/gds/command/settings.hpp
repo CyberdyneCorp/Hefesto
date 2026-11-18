@@ -9,7 +9,10 @@
 // session-global Magic state that magic-compat ON reproduces (the
 // Q-MASK-111 rewound flag) is an explicit field here, never a static.
 // `gds warning` sets the read warnings shared with `cif warning`
-// (mask/input/warnings.hpp, EditorState::mask.warnings).
+// (mask/input/warnings.hpp, EditorState::mask.warnings). The read options
+// that `oasis` shares (Q-OASIS-90 (a)) are stream::StreamReadSettings
+// (mask/stream_read.hpp, EditorState::mask.stream_read), split out by the
+// M6 scaffold (openspec/changes/m6-lef-def-oasis/design.md D15).
 //
 // Owner: INTEGRATION (this header, created by the M5 scaffold); GDSW owns
 // the write options and the command, GDSR the read options (design D2/D4).
@@ -18,32 +21,20 @@
 
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <vector>
+
+#include "hefesto/mask/stream_read.hpp"
 
 namespace hefesto::gds {
 
-/// `gds polygon subcells` (CalmaSubcellPolygons).
-enum class PolygonSubcells : std::uint8_t { none, temporary, keep };
+using stream::PolygonSubcells;
 
 struct GdsSettings {
-  // ---- read options (GDSR) ----
-  bool flatten = false;                      // CalmaFlattenUses
-  std::int32_t flatten_limit = 10;           // CalmaFlattenLimit
-  std::vector<std::string> flatglob{"*_CDNS_*"};  // CalmaFlattenUsesByName (CalmaTechInit's default)
-  bool readonly = false;                     // CalmaReadOnly
+  // ---- read options (GDSR) not shared with `oasis` ----
   double magscale = 1.0;                     // CalmaMagScale (float in Magic)
-  bool drccheck = true;                      // !CalmaNoDRCCheck
-  bool ordering = false;                     // CalmaPostOrder
-  bool noduplicates = false;                 // CalmaNoDuplicates
-  bool unique = false;                       // CalmaUnique
-  bool savepaths = false;                    // CalmaRecordPaths
-  std::string maskhints;                     // CalmaMaskHints: "" none, "yes" all, else CIF layers a,b,...
-  PolygonSubcells polygon_subcells = PolygonSubcells::none;  // CalmaSubcellPolygons
-  bool path_subcells = false;                // CalmaSubcellPaths
   bool rewound = false;                      // CalmaRewound (Q-MASK-111, ON only)
-  // `gds rescale` (CIFRescaleAllow) and cifSeenSnapWarning are shared with
-  // `cif`: MaskSession::rescale_allowed and MaskSession::snap_warned.
+  // The shared read options are MaskSession::stream_read. `gds rescale`
+  // (CIFRescaleAllow) and cifSeenSnapWarning are shared with `cif`:
+  // MaskSession::rescale_allowed and MaskSession::snap_warned.
 
   // ---- write options (GDSW) ----
   bool library = false;                      // CalmaDoLibrary

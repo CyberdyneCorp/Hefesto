@@ -4,6 +4,9 @@
 // MaskSession: the M5 session state of one open project,
 // editor::EditorState::mask (openspec/changes/m5-mask-gds-cif/design.md D4).
 // INTEGRATION owns the struct; each member belongs to the named workstream.
+// The M6 scaffold split the read settings that `gds` and `oasis` share out
+// of `gds` into `stream_read` (openspec/changes/m6-lef-def-oasis/design.md
+// D4, D15).
 //
 // Owner: INTEGRATION.
 
@@ -16,6 +19,7 @@
 #include "hefesto/mask/gen/progress.hpp"
 #include "hefesto/mask/input/style.hpp"
 #include "hefesto/mask/input/warnings.hpp"
+#include "hefesto/mask/stream_read.hpp"
 #include "hefesto/mask/style/style.hpp"
 #include "hefesto/util/libc_random.hpp"
 
@@ -27,8 +31,11 @@ struct MaskSession {
   OutputStyleSet output_styles;
   // INPUT: the parsed cifinput styles and the current one.
   InputStyleSet input_styles;
-  // GDSW (read options GDSR): every `gds` option, the session date stamp
-  // and the Q-MASK-111 rewound flag.
+  // INTEGRATION (D15; read by GDSR and OASR): the read settings that `gds`
+  // and `oasis` share (Q-OASIS-90 (a)).
+  stream::StreamReadSettings stream_read;
+  // GDSW (read options GDSR): every other `gds` option, the session date
+  // stamp and the Q-MASK-111 rewound flag.
   gds::GdsSettings gds;
   // CIF: the `cif` options.
   cif::CifSettings cif;

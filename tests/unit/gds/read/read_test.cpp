@@ -122,7 +122,7 @@ TEST_CASE("element dispatch", "[cap:gds-read][req:Element dispatch and unsupport
 TEST_CASE("read-only vendor views", "[cap:gds-read][req:Read-only vendor views]") {
   SECTION("offsets, file and flag") {
     Session s;
-    s.options.settings.readonly = true;
+    s.options.stream_read.readonly = true;
     GdsFile f;
     f.library("lib", 1e-9);
     f.begin("A");
@@ -150,7 +150,7 @@ TEST_CASE("read-only vendor views", "[cap:gds-read][req:Read-only vendor views]"
   }
   SECTION("wrong units refused") {
     Session s;
-    s.options.settings.readonly = true;
+    s.options.stream_read.readonly = true;
     GdsFile f;
     f.library("lib", 1e-8).begin("A").end().end_library();
     s.read(f);
@@ -160,7 +160,7 @@ TEST_CASE("read-only vendor views", "[cap:gds-read][req:Read-only vendor views]"
   }
   SECTION("unknown layers are not reported in read-only cells") {
     Session s;
-    s.options.settings.readonly = true;
+    s.options.stream_read.readonly = true;
     GdsFile f;
     f.library("lib", 1e-9).begin("A");
     square(f, 99);
@@ -179,7 +179,7 @@ TEST_CASE("content-hash stamps at read time", "[cap:gds-read][req:When content-h
   REQUIRE(table.size() == 2);
   SECTION("readonly with the default datestamp") {
     Session s;
-    s.options.settings.readonly = true;
+    s.options.stream_read.readonly = true;
     s.read(f);
     CHECK(s.cell("A").timestamp() == table[0].stamp);
     CHECK(s.cell("B").timestamp() == table[1].stamp);
@@ -187,7 +187,7 @@ TEST_CASE("content-hash stamps at read time", "[cap:gds-read][req:When content-h
   }
   SECTION("a fixed datestamp overrides the hash") {
     Session s;
-    s.options.settings.readonly = true;
+    s.options.stream_read.readonly = true;
     s.options.settings.datestamp = 1234;
     s.read(f);
     CHECK(s.cell("A").timestamp() == 1234);
@@ -200,7 +200,7 @@ TEST_CASE("mask hints on input", "[cap:gds-read][req:Mask hints on input]") {
   constexpr std::string_view kOtherSource = "style out\nscalefactor 1\nlayer M1 m2\nmask-hints M1\n";
   SECTION("hint for input the output does not regenerate") {
     Session s(kStyle, true, kOtherSource);
-    s.options.settings.maskhints = "yes";
+    s.options.stream_read.maskhints = "yes";
     GdsFile f;
     f.library().begin("top");
     square(f, 68);
@@ -212,7 +212,7 @@ TEST_CASE("mask hints on input", "[cap:gds-read][req:Mask hints on input]") {
   }
   SECTION("no hint for input the output regenerates") {
     Session s(kStyle, true, kOutput);
-    s.options.settings.maskhints = "yes";
+    s.options.stream_read.maskhints = "yes";
     GdsFile f;
     f.library().begin("top");
     square(f, 68);
@@ -222,7 +222,7 @@ TEST_CASE("mask hints on input", "[cap:gds-read][req:Mask hints on input]") {
   }
   SECTION("only the named layers") {
     Session s(kStyle, true, kOutput);
-    s.options.settings.maskhints = "M2,PO";
+    s.options.stream_read.maskhints = "M2,PO";
     GdsFile f;
     f.library().begin("top");
     square(f, 68);
@@ -354,11 +354,12 @@ TEST_CASE("read command file lookup", "[cap:gds-read][req:Read command and file 
 }
 
 TEST_CASE("read option defaults", "[cap:gds-read][req:Read option syntax and defaults]") {
-  const gds::GdsSettings defaults;
+  const hefesto::stream::StreamReadSettings defaults;  // shared with `oasis` (MaskSession::stream_read)
+  const gds::GdsSettings gds_only;
   CHECK_FALSE(defaults.flatten);
   CHECK(defaults.flatten_limit == 10);
   CHECK(defaults.flatglob == std::vector<std::string>{"*_CDNS_*"});
-  CHECK(defaults.magscale == 1.0);
+  CHECK(gds_only.magscale == 1.0);
   CHECK(defaults.drccheck);
   CHECK_FALSE(defaults.ordering);
   CHECK_FALSE(defaults.noduplicates);
@@ -369,7 +370,7 @@ TEST_CASE("read option defaults", "[cap:gds-read][req:Read option syntax and def
   CHECK(defaults.polygon_subcells == gds::PolygonSubcells::none);
   CHECK_FALSE(defaults.path_subcells);
   CHECK(hefesto::mask::MaskSession{}.rescale_allowed);  // shared with `cif rescale`
-  CHECK_FALSE(defaults.datestamp.has_value());
+  CHECK_FALSE(gds_only.datestamp.has_value());
 }
 
 TEST_CASE("a read needs a cifinput style", "[cap:gds-read][req:Read command and file lookup]") {

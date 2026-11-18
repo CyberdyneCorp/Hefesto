@@ -291,7 +291,7 @@ bool Reader::read_header() {
     libname_ = name.name;
   }
   const double mpd = header.value().meters_per_unit;
-  if (options_.settings.readonly) {
+  if (options_.stream_read.readonly) {
     const mask::OutputStyle* out = editor_.mask.output_styles.current_style();
     const bool angstroms = out != nullptr && out->has_option(mask::style_option::angstroms);
     if (auto refused = readonly_units_error(mpd, angstroms)) {
@@ -309,7 +309,7 @@ bool Reader::read_header() {
 }
 
 void Reader::end_of_read() {
-  const bool drc = options_.settings.drccheck;
+  const bool drc = options_.stream_read.drccheck;
   for (db::CellDef* def : cell_order_) {
     if (!def->flags().available) {
       error("cell " + def->name() + " was used but not defined.");
@@ -342,7 +342,7 @@ void Reader::end_of_read() {
   }
   flat_planes_.clear();
   const bool stamp_default = !options_.settings.datestamp || *options_.settings.datestamp == 0;
-  if (options_.settings.readonly && !interrupted_ && !readonly_refused_ && stamp_default &&
+  if (options_.stream_read.readonly && !interrupted_ && !readonly_refused_ && stamp_default &&
       source_.seek(0).ok()) {
     const StampTable table = content_stamps(source_);
     assign_content_stamps(table, cell_order_);
@@ -489,7 +489,7 @@ db::CellDef* Reader::create_cell(const std::string& name) {
 }
 
 bool Reader::note_existing_cell(const std::string& name) {
-  if (!options_.settings.noduplicates) {
+  if (!options_.stream_read.noduplicates) {
     info("Warning:  cell " + name + " already existed before reading GDS!");
     return false;
   }

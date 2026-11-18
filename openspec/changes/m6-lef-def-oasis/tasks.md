@@ -43,12 +43,13 @@ How this plan runs:
 - [x] 2.1 Create the change `m6-lef-def-oasis` (README, proposal, design, tasks, `skip_specs: true`). Verify that `openspec validate m6-lef-def-oasis --strict` and `openspec validate --all --strict` pass.
 - [ ] 2.2 Add the areas `lef` (`lex`, `tech`, `via`, `read`, `write`, `command`), `def` (`read`, `write`) and `oasis` (`codec`, `read`, `write`, `command`), plus `extflat` and `extract/tech` (Open Questions 1 and 2, decided (a); `extract/tech` may already exist from M10's subset). Each subdirectory gets its `sources.cmake` and `codes.inc`, plus the INTEGRATION-owned assemblers. Add the test directories and `docs/diagnostics/codes/{lef,def,oasis}.md`, one section per owning workstream (design D1). Verify that the build passes and the test "each area's code table matches its document and prefix" covers the new areas.
 - [ ] 2.3 Write the documented public headers of design "Area contracts" with stubs, and add `CORE-NOTIMPL-006`. Register `lef` and `def` through one dispatcher with Magic's option lookup (design D3, D14), and `oasis` with its full option table. Unimplemented options fail with `CORE-NOTIMPL-006`. Add the `def` and `oasis` help lines to `ui/magic_help.cpp`. Verify that the headers compile standalone with `-Werror` in `macos-debug`, and that a `[m6-scaffold]` test lists every `lef`, `def` and `oasis` option and Magic's invalid-option message.
-- [ ] 2.4 Split `gds::GdsSettings` (design D15):
+- [x] 2.4 Split `gds::GdsSettings` (design D15):
   - `stream::StreamReadSettings` gets the 11 shared read fields;
   - `MaskSession` gains `stream_read` and `oasis`;
   - every `gds` option handler and every reader of a moved field is updated.
 
   The split is behaviour-preserving. Verify that every `tests/unit/gds/` test, the `[m5-scaffold]` test and every MASK golden case that runs locally pass unchanged, and that `gds readonly`, `gds flatten` and `gds ordering` queries return the same values.
+  - As landed (round 1): `stream::StreamReadSettings` and `stream::PolygonSubcells` in `mask/stream_read.hpp` (INTEGRATION; `gds::PolygonSubcells` is an alias), holding the 11 options (12 fields with `flatten_limit`); `GdsSettings` keeps `magscale`, `rewound` and the write options. `MaskSession::stream_read` added; `GdsReadOptions` gained `stream_read`, which `gds read` copies from the session and the GDS reader reads (`read_detail::Reader::stream_read()`). `MaskSession::oasis` is not added yet: `oasis::OasisSettings` belongs to the `oasis/command/` header of task 2.3. Tests and the GDS fuzz target follow the field move with renames only. `[m6-scaffold]` (`tests/unit/core/m6_shared_interfaces_test.cpp`) checks that the options write `stream_read`, leave `GdsSettings` at its defaults and query as before. Full ctest and the local golden replay (224 MASK cases pass, the rest skip for missing reference data) pass.
 - [ ] 2.5 Add the shared interfaces of design D4 as stubs:
   - `lef::LefSession` in `EditorState`;
   - `Lexer`, `MessageCounter`, `LayerTable`, `ViaGenerator`, `paint_polygon`;
@@ -57,6 +58,7 @@ How this plan runs:
   - the read and write entry points.
 
   Verify that the CLI, shell and core tests pass unchanged.
+  - Partly landed (round 1, Scaffold B): `extflat::read_flat`, `Netlist`, `FlatNode`, `FileStamp` (`extflat/read.hpp`) and `extract::StyleView` with `from_section`, `gate_types`, `diff_types`, `active_types`, `substrate_types` (`extract/tech/style_view.hpp`), as header-only stubs (no area sources needed): `read_flat` fails with `CORE-NOTIMPL-006` and `from_section` gives a view with no style. `gds::prepare_write`, `emit_write` and `finish_write` already exist from M5. Still open, because they live in the `lef/` and `oasis/` areas of tasks 2.2 and 2.3: `EditorState::lefdef` (`lef::LefSession`), `MaskSession::oasis`, and the LEF/DEF and OASIS types and entry points.
 - [ ] 2.6 Record the as-landed file and owner table and every difference from "Area contracts" in design.md ("As-landed scaffold contracts"), and seed `docs/design/m6-ui-conformance.md`. Verify that `openspec validate --all --strict` passes.
 
 ## 3. LEFTECH: lef-tech-section

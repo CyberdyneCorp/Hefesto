@@ -131,17 +131,18 @@ void read_then_write(std::uint8_t mode, const std::vector<std::byte>& stored) {
     return;
   }
   gds::GdsReadOptions options;
+  options.stream_read = session.editor.mask.stream_read;
   options.settings = session.editor.mask.gds;
-  options.settings.readonly = (mode & kReadOnly) != 0;
-  options.settings.ordering = (mode & kOrdering) != 0;
-  options.settings.flatten = (mode & kFlatten) != 0;
+  options.stream_read.readonly = (mode & kReadOnly) != 0;
+  options.stream_read.ordering = (mode & kOrdering) != 0;
+  options.stream_read.flatten = (mode & kFlatten) != 0;
   options.files = &session.files;
   options.gds_file = kInputPath;
   options.time_zone = "UTC0";
   options.typed_name = "in";
   auto source = open(mode, stored);
   (void)gds::read(session.editor, *source, options);
-  session.editor.mask.gds.readonly = options.settings.readonly;
+  session.editor.mask.stream_read.readonly = options.stream_read.readonly;
   session.write_tops(kMaxTopWrites, (mode & kMerge) != 0, (mode & kCompress) != 0 ? 1 : 0);
 }
 

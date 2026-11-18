@@ -67,22 +67,22 @@ CommandResult magscale_option(const cmd::Invocation& invocation, GdsSettings& g)
   return CommandResult::success();
 }
 
-CommandResult flatten_option(const cmd::Invocation& invocation, GdsSettings& g) {
+CommandResult flatten_option(const cmd::Invocation& invocation, stream::StreamReadSettings& r) {
   if (invocation.args.size() == 1) {
-    return boolean(g.flatten);
+    return boolean(r.flatten);
   }
   if (invocation.args.size() != 2) {
     return wrong_args(invocation);
   }
   if (const auto index = lookup_index(invocation.args[1], kYesNo)) {
-    g.flatten = *index >= 4;
+    r.flatten = *index >= 4;
     return CommandResult::success();
   }
   if (!cu::str_is_int(invocation.args[1])) {
     return wrong_args(invocation);
   }
-  g.flatten_limit = cu::c_atoi(invocation.args[1]);
-  g.flatten = g.flatten_limit > 0;
+  r.flatten_limit = cu::c_atoi(invocation.args[1]);
+  r.flatten = r.flatten_limit > 0;
   return CommandResult::success();
 }
 
@@ -99,13 +99,13 @@ bool equals_ignoring_case(std::string_view a, std::string_view b) {
   return true;
 }
 
-CommandResult flatglob_option(const cmd::Invocation& invocation, GdsSettings& g) {
+CommandResult flatglob_option(const cmd::Invocation& invocation, stream::StreamReadSettings& r) {
   if (invocation.args.size() == 1) {
-    if (g.flatglob.empty()) {
+    if (r.flatglob.empty()) {
       return CommandResult::success();
     }
     cmd::Value::List list;
-    for (const std::string& pattern : g.flatglob) {
+    for (const std::string& pattern : r.flatglob) {
       list.emplace_back(pattern);
     }
     return CommandResult::success(cmd::Value{std::move(list)});
@@ -114,9 +114,9 @@ CommandResult flatglob_option(const cmd::Invocation& invocation, GdsSettings& g)
     return wrong_args(invocation);
   }
   if (equals_ignoring_case(invocation.args[1], "none")) {
-    g.flatglob.clear();
+    r.flatglob.clear();
   } else {
-    g.flatglob.push_back(invocation.args[1]);
+    r.flatglob.push_back(invocation.args[1]);
   }
   return CommandResult::success();
 }
@@ -152,38 +152,39 @@ std::string known_read_layers(const cu::Session& s, std::string_view list) {
   return known;
 }
 
-CommandResult maskhints_option(const cu::Session& s, const cmd::Invocation& invocation, GdsSettings& g) {
+CommandResult maskhints_option(const cu::Session& s, const cmd::Invocation& invocation,
+                                stream::StreamReadSettings& r) {
   if (invocation.args.size() == 1) {
-    return boolean(!g.maskhints.empty());
+    return boolean(!r.maskhints.empty());
   }
   if (invocation.args.size() != 2) {
     return wrong_args(invocation);
   }
   if (const auto index = lookup_index(invocation.args[1], kYesNo)) {
-    g.maskhints = *index >= 4 ? "yes" : "";
+    r.maskhints = *index >= 4 ? "yes" : "";
   } else {
-    g.maskhints = known_read_layers(s, invocation.args[1]);
+    r.maskhints = known_read_layers(s, invocation.args[1]);
   }
   return CommandResult::success();
 }
 
-CommandResult polygons_option(const cmd::Invocation& invocation, GdsSettings& g) {
+CommandResult polygons_option(const cmd::Invocation& invocation, stream::StreamReadSettings& r) {
   if (invocation.args.size() == 2) {
     return CommandResult::success(
-        cmd::Value{std::string{kPolygonTypes.at(static_cast<std::size_t>(g.polygon_subcells))}});
+        cmd::Value{std::string{kPolygonTypes.at(static_cast<std::size_t>(r.polygon_subcells))}});
   }
   if (invocation.args.size() != 3) {
     return wrong_args(invocation);
   }
   if (const auto type = lookup_index(invocation.args[2], kPolygonTypes)) {
-    g.polygon_subcells = static_cast<PolygonSubcells>(*type);
+    r.polygon_subcells = static_cast<PolygonSubcells>(*type);
     return CommandResult::success();
   }
   const auto index = lookup_index(invocation.args[2], kYesNo);
   if (!index) {
     return wrong_args(invocation);
   }
-  g.polygon_subcells = *index >= 4 ? PolygonSubcells::temporary : PolygonSubcells::none;
+  r.polygon_subcells = *index >= 4 ? PolygonSubcells::temporary : PolygonSubcells::none;
   return CommandResult::success();
 }
 
@@ -266,31 +267,32 @@ CommandResult hosted_read(editor::EditorState& editor, const platform::Path& pat
 std::optional<CommandResult> read_settings_option(const cu::Session& s, std::size_t option,
                                                   const cmd::Invocation& invocation) {
   GdsSettings& g = s.editor->mask.gds;
+  stream::StreamReadSettings& r = s.editor->mask.stream_read;
   switch (option) {
     case kDrcCheck:
-      return yes_no_option(invocation, g.drccheck);
+      return yes_no_option(invocation, r.drccheck);
     case kNoDuplicates:
-      return yes_no_option(invocation, g.noduplicates);
+      return yes_no_option(invocation, r.noduplicates);
     case kOrdering:
-      return yes_no_option(invocation, g.ordering);
+      return yes_no_option(invocation, r.ordering);
     case kReadOnly:
-      return yes_no_option(invocation, g.readonly);
+      return yes_no_option(invocation, r.readonly);
     case kSavePaths:
-      return yes_no_option(invocation, g.savepaths);
+      return yes_no_option(invocation, r.savepaths);
     case kUnique:
-      return yes_no_option(invocation, g.unique);
+      return yes_no_option(invocation, r.unique);
     case kPaths:
-      return yes_no_option(invocation, g.path_subcells, 2);
+      return yes_no_option(invocation, r.path_subcells, 2);
     case kMagScale:
       return magscale_option(invocation, g);
     case kFlatten:
-      return flatten_option(invocation, g);
+      return flatten_option(invocation, r);
     case kFlatGlob:
-      return flatglob_option(invocation, g);
+      return flatglob_option(invocation, r);
     case kMaskHints:
-      return maskhints_option(s, invocation, g);
+      return maskhints_option(s, invocation, r);
     case kPolygons:
-      return polygons_option(invocation, g);
+      return polygons_option(invocation, r);
     case kRescale:
       return rescale_option(s, invocation);
     case kWarning:
@@ -316,6 +318,7 @@ CommandResult read_option(cmd::CommandContext& ctx, const cu::Session& s, const 
     (void)run_nested(ctx, {"load"});
   }
   GdsReadOptions options;
+  options.stream_read = editor.mask.stream_read;
   options.settings = editor.mask.gds;
   options.rescale_allowed = editor.mask.rescale_allowed;
   options.warnings = editor.mask.warnings;

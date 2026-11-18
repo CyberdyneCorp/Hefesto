@@ -656,7 +656,7 @@ bool Reader::place_reference(const Reference& ref, bool unscaled, std::int64_t& 
 
 db::CellDef* Reader::reference_cell(const std::string& sname) {
   db::CellDef* def = look_cell(sname);
-  const bool look_ahead = settings().ordering || settings().flatten || matches_any(settings().flatglob, sname);
+  const bool look_ahead = stream_read().ordering || stream_read().flatten || matches_any(stream_read().flatglob, sname);
   if (def == nullptr && look_ahead) {
     def = read_ahead(sname);
   }

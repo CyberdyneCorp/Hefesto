@@ -133,7 +133,7 @@ Reader::Position Reader::set_position(const std::string& name) {
     if (!search.offset && editor_.cells.find(name) == nullptr) {
       error("Cell \"" + name + "\" is used but not defined in this file.");
     }
-    if (!options_.settings.ordering) {
+    if (!options_.stream_read.ordering) {
       error("Rewinding input.  Cells may have been instanced before they were defined.  Consider using \"gds "
             "ordering on\".");
     }
@@ -195,7 +195,7 @@ bool Reader::duplicate_structure(std::string& name) {
   }
   if (st.processed) {
     const bool rewound = compat_.magic_compat ? editor_.mask.gds.rewound : rewound_;
-    if (!options_.settings.ordering && !rewound) {
+    if (!options_.stream_read.ordering && !rewound) {
       current_ = def;
       error("Cell \"" + name + "\" was already defined in this file.");
       error("Ignoring duplicate definition");
@@ -227,7 +227,7 @@ void Reader::begin_definition(db::CellDef& def, std::int64_t date, bool magnifie
   if (stamp.fixed) {
     def.flags().fixed_timestamp = true;
   }
-  if (options_.settings.readonly && !magnified) {
+  if (options_.stream_read.readonly && !magnified) {
     def.flags().vendor_gds = true;  // CDVENDORGDS
   }
 }
@@ -242,10 +242,10 @@ bool Reader::flatten_decision(const std::string& name, bool was_called, const El
   if (was_called) {
     return false;
   }
-  if (matches_any(options_.settings.flatglob, name)) {
+  if (matches_any(options_.stream_read.flatglob, name)) {
     return true;
   }
-  return options_.settings.flatten && counts.shapes < options_.settings.flatten_limit && counts.references == 0;
+  return options_.stream_read.flatten && counts.shapes < options_.stream_read.flatten_limit && counts.references == 0;
 }
 
 bool Reader::read_elements(ElementCounts& counts) {
@@ -291,7 +291,7 @@ bool Reader::parse_structure() {
   if (duplicate_structure(name)) {
     return true;
   }
-  if (options_.settings.unique) {
+  if (options_.stream_read.unique) {
     unique_cell(name);
   }
   bool was_called = false;
@@ -327,7 +327,7 @@ bool Reader::structure_body(db::CellDef& def, const std::string& name, bool was_
   if (!complete) {
     return true;  // interrupted (Magic's `goto done`)
   }
-  if (options_.settings.readonly && !magnified) {
+  if (options_.stream_read.readonly && !magnified) {
     // Magic's FTELL with the ENDSTR header read ahead: the end of that header.
     const std::optional<Record> ahead = peek();
     annotate_vendor(def, start, ahead ? ahead->offset + 4 : records_.position());
@@ -374,7 +374,7 @@ void Reader::save_flatten_planes(db::CellDef& def) {
 
 void Reader::paint_structure(db::CellDef& def) {
   std::optional<PlaneSet> hint_inputs;
-  if (!options_.settings.maskhints.empty()) {
+  if (!options_.stream_read.maskhints.empty()) {
     hint_inputs = save_planes(false);
   }
   engine_->paint_current(planes(), def);
@@ -385,12 +385,12 @@ void Reader::paint_structure(db::CellDef& def) {
 
 void Reader::end_structure(db::CellDef& def, std::int64_t polygons_before) {
   std::erase_if(def.labels(), [](const db::Label& l) { return l.text.empty(); });
-  if (options_.settings.polygon_subcells == PolygonSubcells::temporary && polygons_before < polygon_count_) {
+  if (options_.stream_read.polygon_subcells == PolygonSubcells::temporary && polygons_before < polygon_count_) {
     flatten_polygon_cells(def);
   }
   adjust_labels(def);
   db::recompute_bbox(def, compat_.magic_compat);
-  if (!options_.settings.readonly && options_.settings.drccheck) {
+  if (!options_.stream_read.readonly && options_.stream_read.drccheck) {
     drc::check_this(editor_, def, def.bbox());
   }
   db::mark_modified(def);
@@ -504,7 +504,7 @@ void Reader::mask_hints(db::CellDef& def, const PlaneSet& inputs) {
 }
 
 bool Reader::hint_requested(std::string_view layer) const {
-  const std::string& list = options_.settings.maskhints;
+  const std::string& list = options_.stream_read.maskhints;
   if (list == "yes" || list == "all" || list == "*") {
     return true;
   }
