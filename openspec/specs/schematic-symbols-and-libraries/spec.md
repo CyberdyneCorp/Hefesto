@@ -22,9 +22,9 @@ Defines what a schematic symbol means and how symbols are found. Decision P-12 r
 Traces use `(xschem ref: path/file.c:line)`, relative to the xschem `src/` directory. They exist for traceability only. Implementers SHALL work from this spec and SHALL NOT consult the GPL sources (capability `hefesto-licensing`).
 
 PDK reference data, read only:
-- `StefanSchippers/xschem_sky130` @ `2bfd7d654e12492d47986b78e68bb770e633b5da`
-- `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/xschem`)
-- `efabless/globalfoundries-pdk-libs-gf180mcu_fd_pr` @ `aacc04cc30ed119baaa616dff266cca7006dc3d6` (`cells/xschem`)
+- `StefanSchippers/xschem_sky130` @ `2bfd7d654e12492d47986b78e68bb770e633b5da`, as installed by open_pdks into `sky130A/libs.tech/xschem` (ciel release `sky130-5740c4a8`)
+- `IHP-GmbH/IHP-Open-PDK` @ `5e6d592e4002946a4616f798c357f0f3c06cf3b6` (`ihp-sg13g2/libs.tech/xschem` and `ihp-sg13g2/libs.ref/sg13g2_stdcell/sym/xschem`, ciel release `ihp-sg13g2-5e6d592e`)
+- `fossi-foundation/globalfoundries-pdk-libs-gf180mcu_fd_pr` @ `5e4be8726e2ae8be099c4131f697a353d6457874` (`cells/xschem`), as installed by open_pdks into `gf180mcuD/libs.tech/xschem` (ciel release `gf180mcu-5740c4a8`; re-pinned from `aacc04cc` on 2026-11-17, design Open Question 1 of `openspec/changes/m8-schematic`)
 - `RTimothyEdwards/open_pdks` @ `c6df28c1fccb05c286aa0a15e9c4c7dcd8502607` (`sky130/custom/xschem`)
 
 Other capabilities own related parts:
@@ -441,11 +441,11 @@ Compatibility: native
 Hefesto SHALL netlist the three PDK libraries as xschem does. Conventions the netlister and display SHALL support, observed in the pinned PDK data:
 - **sky130** (`xschem_sky130`, installed by open_pdks as `<PDK>/libs.tech/xschem`): MOS symbols have `type=nmos` or `pmos`; `format="@spiceprefix@name @pinlist sky130_fd_pr__@model L=@L W=@W` LF `+ nf=@nf ad=@ad ..."` with `+` continuation lines; `template` with `spiceprefix=X` and geometry defaults written as `expr('...')` (capability `schematic-netlisting`, Requirement "expr evaluation"); a separate `lvs_format`; `corner.sym` of type `netlist_commands` whose format is `tcleval(.lib $::SKYWATER_MODELS/sky130.lib.spice @corner )`; and texts with `@spice_get_node` for operating-point display.
 - **IHP sg13g2** (`ihp-sg13g2/libs.tech/xschem`, symbols in `sg13g2_pr`, standard cells in `libs.ref/sg13g2_stdcell/sym/xschem`): `lvs_format` beginning with a literal device letter (`M@name ...`); `format="@spiceprefix@name @pinlist @model w=@w l=@l ng=@ng m=@m mm_ok=@mm_ok"`; resistor, capacitor and bipolar formats wrapped in `tcleval(...)` that call `ev`, `ev7` or the PDK procedure `cap_cmomi_C`; testbenches using `code_shown.sym` with `format="tcleval( @value )"`.
-- **gf180mcu** (`gf180mcu_fd_pr/cells/xschem/symbols`): `format` with `+` continuation lines and SPICE expressions in single quotes (`ad='int((nf+1)/2) * W/nf * 0.18u'`) passed through unchanged; `lvs_format` without `@spiceprefix`.
+- **gf180mcu** (`gf180mcuD/libs.tech/xschem/symbols`, a copy of `gf180mcu_fd_pr`): `format` with `+` continuation lines and SPICE expressions in single quotes (`ad='int((nf+1)/2) * W/nf * 0.18u'`) passed through unchanged; `lvs_format` without `@spiceprefix`.
 
 Compatibility: exact
 
-(xschem ref: token.c:2426-2816; PDK data: xschem_sky130 sky130_fd_pr/nfet_01v8.sym, sky130_fd_pr/corner.sym; IHP-Open-PDK ihp-sg13g2/libs.tech/xschem/sg13g2_pr/sg13_lv_nmos.sym, xschemrc:390-460; gf180mcu_fd_pr cells/xschem/symbols/nfet_03v3.sym)
+(xschem ref: token.c:2426-2816; PDK data: xschem_sky130 sky130_fd_pr/nfet_01v8.sym, sky130_fd_pr/corner.sym; IHP-Open-PDK ihp-sg13g2/libs.tech/xschem/sg13g2_pr/sg13_lv_nmos.sym, xschemrc:390-460; gf180mcu_fd_pr cells/xschem/gf180mcu_fd_pr/nfet_03v3.sym)
 
 #### Scenario: IHP LVS device line
 - **GIVEN** an `sg13_lv_nmos` instance `name=M1 l=0.45u w=1.0u ng=1 m=1` with pins D=D, G=G, S=GND, B=GND, in LVS netlist mode
