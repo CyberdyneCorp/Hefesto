@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 #include "decoder_impl.hpp"
@@ -412,10 +413,7 @@ PropertyValue Decoder::Impl::property_value() {
   return value;
 }
 
-void Decoder::Impl::property() {
-  const std::uint8_t info = in.get();
-  Property p;
-  p.standard = (info & 0x01U) != 0;
+void Decoder::Impl::property_name(std::uint8_t info) {
   if ((info & 0x04U) == 0) {
     if (!modal.last_property_name && !modal.last_property_name_reference) {
       detail::fail("OASIS-CODEC-020", "modal variable last-property-name undefined");
@@ -430,6 +428,13 @@ void Decoder::Impl::property() {
     check(StringKind::n_string, *modal.last_property_name);
     strict.inline_use(detail::InlineUse::property_name);
   }
+}
+
+void Decoder::Impl::property() {
+  const std::uint8_t info = in.get();
+  Property p;
+  p.standard = (info & 0x01U) != 0;
+  property_name(info);
   p.name = modal.last_property_name.value_or("");
   p.name_reference = modal.last_property_name_reference;
   const unsigned count_field = info >> 4U;
@@ -464,6 +469,20 @@ void Decoder::Impl::property_repeat() {
   record.target = target;
 }
 
+namespace {
+
+// The inflate cap of one CBLOCK (design D11): 256 times its compressed
+// size, saturating, and at least `floor` (and at least 1 byte, as 0 would
+// mean inflate_cblock's default cap).
+std::uint64_t cblock_cap(std::uint64_t floor, std::uint64_t compressed) noexcept {
+  constexpr std::uint64_t kRatio = 256;
+  constexpr std::uint64_t kMax = std::numeric_limits<std::uint64_t>::max();
+  const std::uint64_t scaled = compressed > kMax / kRatio ? kMax : compressed * kRatio;
+  return std::max({floor, scaled, std::uint64_t{1}});
+}
+
+}  // namespace
+
 void Decoder::Impl::cblock() {
   const std::uint32_t type = detail::read_u32(in, "CBLOCK compression type");
   if (type != 0) {
@@ -471,12 +490,13 @@ void Decoder::Impl::cblock() {
   }
   const std::uint64_t uncompressed = detail::read_unsigned(in);
   const std::uint64_t compressed = detail::read_unsigned(in);
-  if (uncompressed > options.inflate_limit) {
+  const std::uint64_t cap = cblock_cap(options.inflate_limit, compressed);
+  if (uncompressed > cap) {
     detail::fail("OASIS-CODEC-023", "CBLOCK of " + std::to_string(uncompressed) + " bytes is over the cap of " +
-                                        std::to_string(options.inflate_limit) + " bytes");
+                                        std::to_string(cap) + " bytes");
   }
   const std::vector<std::byte> data = in.read_file_bytes(compressed);
-  auto inflated = inflate_cblock(data, uncompressed, std::max<std::uint64_t>(options.inflate_limit, 1));
+  auto inflated = inflate_cblock(data, uncompressed, cap);
   if (!inflated.ok()) {
     throw detail::CodecError{inflated.error()};
   }

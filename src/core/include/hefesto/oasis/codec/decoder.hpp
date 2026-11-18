@@ -177,7 +177,8 @@ struct NameTables {
 struct DecoderOptions {
   /// The strict-mode checks of Q-OASIS-7.
   bool check_strict = true;
-  /// The cap on the bytes one CBLOCK may inflate to.
+  /// The floor of the cap on the bytes one CBLOCK may inflate to: the cap is
+  /// 256 times the CBLOCK's compressed size, and at least this (design D11).
   std::uint64_t inflate_limit = std::uint64_t{1} << 30;
 };
 

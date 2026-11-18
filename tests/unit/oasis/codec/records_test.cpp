@@ -756,12 +756,33 @@ TEST_CASE("CBLOCK errors stop decoding", "[cap:oasis-format][req:CBLOCK compress
   File ending;
   ending.add(cblock(hex("02")));
   CHECK(oasis_test::decode(ending.end()).error->text == "record type 2 inside a CBLOCK");
+  // 1 MiB of zeros deflates to about 1 KiB, so 256 x compressed is below it.
   File capped;
-  capped.add("0E").add(str("top")).add(cblock(std::vector<std::byte>(4096, std::byte{0})));
+  capped.add("0E").add(str("top")).add(cblock(std::vector<std::byte>(std::size_t{1} << 20, std::byte{0})));
   const auto over = oasis_test::decode(capped.end(), oasis::DecoderOptions{true, 1024});
   REQUIRE(over.error);
-  CHECK(over.error->text == "CBLOCK of 4096 bytes is over the cap of 1024 bytes");
+  CHECK(over.error->code == "OASIS-CODEC-023");
+  CHECK(over.error->text.starts_with("CBLOCK of 1048576 bytes is over the cap of "));
   CHECK_FALSE(oasis::inflate_cblock(hex("FF FF FF"), 10).ok());
+}
+
+TEST_CASE("regression: the CBLOCK cap is 256 x compressed size, at least the limit",
+          "[cap:oasis-format][req:CBLOCK compression]") {
+  // Design D11. The cap was the fixed inflate_limit, so a CBLOCK above it
+  // was refused even when it inflated to less than 256 x its compressed
+  // size. A TEXTSTRING of 4093 pseudo-random printable bytes (4096 bytes
+  // with its header) deflates to well over 4096 / 256 bytes.
+  std::vector<std::byte> record = hex("05 FD 1F");
+  std::uint32_t x = 12345;
+  for (int i = 0; i < 4093; ++i) {
+    x = x * 1103515245U + 12345U;
+    record.push_back(static_cast<std::byte>(0x21 + (x >> 16) % 94));
+  }
+  REQUIRE(record.size() == 4096);
+  File f;
+  f.add(cblock(record)).add("0E").add(str("top"));
+  const auto d = oasis_test::decode(f.end(), oasis::DecoderOptions{true, 1024});
+  CHECK_FALSE(d.error);
 }
 
 TEST_CASE("an inflate bomb is refused before inflating", "[cap:oasis-format][req:CBLOCK compression]") {

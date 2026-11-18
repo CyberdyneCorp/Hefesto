@@ -78,6 +78,8 @@ struct Decoder::Impl {
   void name_record(NameTable table, bool implicit, StringKind kind);
   TableOffsets read_tables();
   PropertyValue property_value();
+  /// The name field of a PROPERTY record (info bits 0x04 and 0x02).
+  void property_name(std::uint8_t info);
   void after_end(const EndInfo& end);
   [[nodiscard]] std::vector<diag::Diagnostic> reference_checks() const;
   [[nodiscard]] std::vector<diag::Diagnostic> cell_checks() const;
