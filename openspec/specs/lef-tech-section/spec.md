@@ -56,7 +56,9 @@ end
 ### Requirement: Magic type resolution in lef lines
 
 For non-`ignore` lines, the second field SHALL be resolved to a set of user tile types using the tech type-name expression rules. Let T be the set of resolved types ordered by ascending type number. The line SHALL be rejected when |T| = 0 (error `Bad magic layer type "<name>" in LEF layer definition.`), when |T| = 2 and the keyword is not `obstruction` (error `Can only define multiple types for via obstruction layers.`), or when |T| > 2 (error `Too many types in LEF layer definition.`). The first type of T SHALL be the primary type; for an `obstruction` line with |T| = 2 the second type SHALL be the secondary via-obstruction type; otherwise the secondary type is "none".
-Compatibility: exact
+
+With `magic-compat` ON, |T| > 2 is treated as Magic treats it: Magic's counting loop stops at the second type, so the `Too many types` error is never printed. An `obstruction` line keeps the first two types of T, and any other line is rejected with `Can only define multiple types for via obstruction layers.`. With `magic-compat` OFF the line is rejected with `Too many types in LEF layer definition.` as stated above.
+Compatibility: exact (|T| > 2: compat)
 
 (Magic ref: lef/lefTech.c:247-279)
 
@@ -115,6 +117,8 @@ All LEF names on one line that are not yet in the table SHALL be bound to one sh
 - else if the line is not an `obstruction` line and the existing entry has no normal type, its normal type SHALL become P;
 - otherwise the error `LEF name <name> already used for magic type <type>` SHALL be reported and the name is left unchanged.
 A name already bound to an IGNORE entry SHALL be silently left unchanged. Existing entries SHALL never change class through a later line.
+
+In both modes, an `ignore` line that names a LEF name already bound to a non-IGNORE entry SHALL report the `already used` error and leave the name unchanged. (Magic reads LefTechLine's uninitialized `isObstruction` and `mtype` there.) When the entry has no normal type, the error SHALL name its obstruction type. (Magic indexes its type-name table with -1 there.)
 Compatibility: exact
 
 (Magic ref: lef/lefTech.c:292-401)
@@ -161,7 +165,9 @@ Compatibility: exact
 
 ### Requirement: Filling defaults after grid scaling
 
-Route width and spacing and the contact area of a contact-flavor VIA entry SHALL be filled from the DRC defaults according to the `magic-compat` setting (Q-LEFDEF-1, resolution: compat; Q-LEFDEF-2, resolution: compat). Hefesto keeps an "unset" flag on these values instead of a numeric sentinel; the sentinel values below describe what Magic stores and are reproduced with `magic-compat` ON.
+Route width and spacing and the contact area of a contact-flavor VIA entry SHALL be filled from the DRC defaults according to the `magic-compat` setting (Q-LEFDEF-1, resolution: compat; Q-LEFDEF-2, resolution: compat). With `magic-compat` ON these values hold Magic's numeric sentinels, described below. With it OFF an unfilled value carries an "unset" flag instead of a number, and scaling keeps it unset.
+
+In both modes, the default of an entry with no normal type (an obstruction-only entry) SHALL be 0. Magic calls DRCGetDefaultLayerWidth(-1), which prints an error and returns 0, and DRCGetDefaultLayerSpacing(-1, -1), which reads outside its rule table.
 
 With `magic-compat` ON (the default), as in Magic: when the technology is loaded with an internal grid that is not 1:1 with lambda (internal units per lambda = n/d with (n, d) ≠ (1, 1)), after the LEF table has been scaled by n/d (see "Scaling the LEF table") the system SHALL fill sentinels as follows, for every entry:
 - VIA class: if all four contact-area coordinates equal exactly -1, the area SHALL become (-w, -w, w, w) where w is the default DRC width of the entry's normal type (now in internal units); the stored area is in half units, so the contact square has side w internal units.
