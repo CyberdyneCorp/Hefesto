@@ -6,7 +6,8 @@
 // - LayerTable: the records of the tech `lef` section (route, cut/via,
 //   masterslice, overlap, bound, ignore and obstruction entries, aliases
 //   and canonical names), keyed by LEF name in a util::MagicHashTable so
-//   that enumeration follows Magic's hash order. Built at tech load
+//   that enumeration follows Magic's hash order; the aliases of a layer
+//   share one record. Built at tech load
 //   (from_section), completed from the DRC rules (fill_defaults,
 //   Q-LEFDEF-1, 2) and rescaled by `scalegrid` (scale);
 // - ViaTable and RuleTable: the VIA definitions (LEF and DEF, generated
@@ -83,20 +84,28 @@ class LayerTable {
   /// SCAFFOLD: no effect until LEFTECH lands it.
   void scale(std::int32_t n, std::int32_t d);
 
-  /// The record named `lef_name` (an alias or a canonical name).
+  /// The record named `lef_name` (an alias or a canonical name). Aliases of
+  /// one layer return the same pointer.
   [[nodiscard]] const LayerRecord* find(std::string_view lef_name) const;
 
   /// The record a writer uses for magic type `type` (Q-LEFDEF-92 order).
   /// SCAFFOLD: returns nullptr until LEFTECH lands it.
   [[nodiscard]] const LayerRecord* magic_to_lef(tech::TileType type) const;
 
-  /// Visits every record in Magic's hash order.
+  /// Visits every LEF name in Magic's hash order, with its record (aliases
+  /// visit the same record).
   void enumerate(const Visitor& visit) const;
 
-  [[nodiscard]] std::size_t size() const noexcept { return records_.size(); }
+  /// The number of LEF names (aliases included).
+  [[nodiscard]] std::size_t size() const noexcept { return names_.size(); }
 
  private:
-  util::MagicHashTable<LayerRecord> records_;
+  // One record per layer, shared by its aliases as Magic's lefLayer is
+  // (lef-tech-section "LEF name aliasing and canonical names"): names_ maps
+  // each LEF name to an index into records_, so scale and fill_defaults
+  // update a layer once and find returns one pointer per layer.
+  std::vector<LayerRecord> records_;
+  util::MagicHashTable<std::size_t> names_;
 };
 
 /// One shape of a via definition.

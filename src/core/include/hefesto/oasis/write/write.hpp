@@ -43,9 +43,10 @@ struct OasisWriteOptions {
 
 /// The GdsSettings that gds::prepare_write reads for an OASIS write: the
 /// write options `oasis` shares with `gds` by syntax (abstract, addendum,
-/// arrays, contacts, labels, library, lower, merge, undefined, datestamp)
-/// taken from the `oasis` values, magscale from `oasis`, and no GDS
-/// compression (OASIS compresses with CBLOCKs). `stream_read` is part of
+/// arrays, contacts, labels, library, lower, merge, undefined) taken from
+/// the `oasis` values, magscale from `oasis`, and no GDS compression (OASIS
+/// compresses with CBLOCKs). `datestamp` is not mapped: for OASIS it is a
+/// read option (OASIS has no dates), so the GDS datestamp stays nullopt. `stream_read` is part of
 /// the D4 signature; prepare_write reads no read setting today.
 [[nodiscard]] gds::GdsWriteOptions to_gds_write_options(const OasisSettings& settings,
                                                         const stream::StreamReadSettings& stream_read);

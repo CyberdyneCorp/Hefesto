@@ -264,7 +264,7 @@ TEST_CASE("the OASIS codec interfaces are stubs", "[m6-scaffold]") {
 TEST_CASE(
     "to_gds_write_options takes the shared write options from the oasis "
     "settings",
-    "[m6-scaffold]") {
+    "[cap:oasis-command][req:Settings shared with the gds command]") {
   oasis::OasisSettings settings;
   settings.allow_abstract = true;
   settings.addendum = true;
@@ -288,7 +288,8 @@ TEST_CASE(
   CHECK_FALSE(g.lower);
   CHECK(g.merge);
   CHECK(g.allow_undefined);
-  CHECK(g.datestamp == 77);
+  // datestamp is read-side only for OASIS: never a GDS write date.
+  CHECK_FALSE(g.datestamp.has_value());
   CHECK(g.magscale == 2.0);
   // OASIS compresses with CBLOCKs, never with GDS gzip (`oasis compress` is 6).
   CHECK(g.compress == 0);

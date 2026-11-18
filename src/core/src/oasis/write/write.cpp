@@ -22,7 +22,6 @@ gds::GdsWriteOptions to_gds_write_options(const OasisSettings& settings,
   gds.lower = settings.lower;
   gds.arrays = settings.arrays;
   gds.addendum = settings.addendum;
-  gds.datestamp = settings.datestamp;
   gds.allow_undefined = settings.allow_undefined;
   gds.allow_abstract = settings.allow_abstract;
   gds.contacts = settings.contacts;

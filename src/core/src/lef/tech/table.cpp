@@ -21,8 +21,8 @@ void LayerTable::fill_defaults(const drc::RuleSet& /*rules*/, const tech::Techno
 void LayerTable::scale(std::int32_t /*n*/, std::int32_t /*d*/) {}
 
 const LayerRecord* LayerTable::find(std::string_view lef_name) const {
-  const auto* entry = records_.find(std::string{lef_name});
-  return entry != nullptr && entry->value ? &*entry->value : nullptr;
+  const auto* entry = names_.find(std::string{lef_name});
+  return entry != nullptr && entry->value ? &records_[*entry->value] : nullptr;
 }
 
 const LayerRecord* LayerTable::magic_to_lef(tech::TileType /*type*/) const {
@@ -30,9 +30,9 @@ const LayerRecord* LayerTable::magic_to_lef(tech::TileType /*type*/) const {
 }
 
 void LayerTable::enumerate(const Visitor& visit) const {
-  records_.for_each([&](const auto& entry) {
+  names_.for_each([&](const auto& entry) {
     if (entry.value) {
-      visit(entry.key, *entry.value);
+      visit(entry.key, records_[*entry.value]);
     }
   });
 }

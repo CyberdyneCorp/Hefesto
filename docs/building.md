@@ -272,7 +272,7 @@ python3 scripts/pcell_equivalence.py sky130 --limit 50 --keep --cli build/macos-
 
 ## Golden capture
 
-Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), in CI through `golden-capture.yml`, never on developer machines. `tools/golden/README.md` is the full guide; the image holds:
+Golden references are captured with the pinned reference tools in the capture image (`tools/golden/container/Containerfile`, pins in `tools/golden/pins.toml`), normally in CI through `golden-capture.yml`; `tools/golden/README.md` also documents local container runs (and the `local` and `model` runners of the hash harness) and is the full guide; the image holds:
 
 - Magic 8.3.694, netgen, ngspice and xschem, built from pinned commits;
 - since M6, KLayout 0.30.0 (Debian package `klayout 0.30.0-1+b1` from the APT snapshot, run as `klayout -b`) and gdstk 1.0.2 (a pinned wheel in `$HEFESTO_GDSTK_PYTHON`), reference tools of the OASIS cases only (design D18 of `openspec/changes/m6-lef-def-oasis`). Hefesto never links or calls them.

@@ -15,7 +15,7 @@ Nothing is claimed from code reading alone: a row is **done** only after a captu
 
 ## How this was checked
 
-Not checked yet: the scaffold seeded the rows (round 1). The core functions are `CORE-NOTIMPL-006` stubs (`oasis::read`, `oasis::write`, `lef::read`, `lef::write`, `def::read`, `def::write`), so every row is **todo**.
+Not checked yet: the scaffold seeded the rows (round 1). The core functions are `CORE-NOTIMPL-006` stubs (`oasis::read`, `oasis::write`, `lef::read`, `lef::write`, `def::read`, `def::write`), so every row is **todo** or, for the rows that need a stub, **blocked**.
 
 Missing from every board: nothing expected. The open paths are the M4 picker and drag and drop, and the progress of a read or write reuses the M5 rows (the running header of `M4-Console` and the Interrupt card of `M4-Script-Consent` tile 7).
 
